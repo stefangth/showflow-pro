@@ -60,13 +60,12 @@ export default function AvailabilityPage() {
     mutationFn: async (date: string) => {
       const existing = availability?.find(a => a.date === date);
       if (existing) {
-        // Cycle: available -> unavailable -> tentative -> delete
-        const cycle: Record<string, string> = { available: 'unavailable', unavailable: 'tentative', tentative: 'delete' };
-        const next = cycle[existing.status] ?? 'delete';
+        const cycle = { available: 'unavailable', unavailable: 'tentative', tentative: 'delete' } as const;
+        const next = cycle[existing.status as keyof typeof cycle] ?? 'delete';
         if (next === 'delete') {
           await supabase.from('availability').delete().eq('id', existing.id);
         } else {
-          await supabase.from('availability').update({ status: next }).eq('id', existing.id);
+          await supabase.from('availability').update({ status: next as 'available' | 'unavailable' | 'tentative' }).eq('id', existing.id);
         }
       } else {
         await supabase.from('availability').insert({ artist_id: artist!.id, date, status: 'available' });

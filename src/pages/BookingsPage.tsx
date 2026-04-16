@@ -21,7 +21,7 @@ export default function BookingsPage() {
         .select('*, artist:artists(name), show_date:show_dates(date, start_time, show:shows(title, venue))')
         .order('created_at', { ascending: false })
         .limit(100);
-      if (statusFilter !== 'all') q = q.eq('status', statusFilter);
+      if (statusFilter !== 'all') q = q.eq('status', statusFilter as 'suggested' | 'soft_booked' | 'confirmed' | 'cancelled');
       const { data, error } = await q;
       if (error) throw error;
       return data ?? [];
