@@ -1,0 +1,236 @@
+import { useState, useEffect } from 'react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/features/auth/AuthContext';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Switch } from '@/components/ui/switch';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Separator } from '@/components/ui/separator';
+import { toast } from 'sonner';
+import { Settings as SettingsIcon, Database, Bell, Wand2, Save } from 'lucide-react';
+
+type SettingRow = {
+  id: string;
+  key: string;
+  value: any;
+  description: string | null;
+  updated_at: string;
+};
+
+export default function SettingsPage() {
+  const { hasRole } = useAuth();
+  const qc = useQueryClient();
+
+  const { data: settings, isLoading } = useQuery({
+    queryKey: ['app-settings'],
+    queryFn: async () => {
+      const { data, error } = await supabase.from('app_settings').select('*').order('key');
+      if (error) throw error;
+      return (data ?? []) as SettingRow[];
+    },
+  });
+
+  const [draft, setDraft] = useState<Record<string, any>>({});
+
+  useEffect(() => {
+    if (settings) {
+      const next: Record<string, any> = {};
+      for (const s of settings) next[s.key] = s.value;
+      setDraft(next);
+    }
+  }, [settings]);
+
+  const saveMutation = useMutation({
+    mutationFn: async (updates: { key: string; value: any }[]) => {
+      for (const u of updates) {
+        const { error } = await supabase
+          .from('app_settings')
+          .update({ value: u.value })
+          .eq('key', u.key);
+        if (error) throw error;
+      }
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['app-settings'] });
+      toast.success('Settings saved');
+    },
+    onError: (e: any) => toast.error(e.message ?? 'Failed to save'),
+  });
+
+  if (!hasRole('admin')) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <p className="text-muted-foreground">Admin access required</p>
+      </div>
+    );
+  }
+
+  if (isLoading || !settings) {
+    return <div className="flex items-center justify-center h-64 text-muted-foreground">Loading settings…</div>;
+  }
+
+  const get = (key: string, fallback: any = '') => draft[key] ?? fallback;
+  const set = (key: string, value: any) => setDraft(d => ({ ...d, [key]: value }));
+
+  const dirtyKeys = settings
+    .filter(s => JSON.stringify(s.value) !== JSON.stringify(draft[s.key]))
+    .map(s => s.key);
+
+  const handleSave = () => {
+    const updates = dirtyKeys.map(k => ({ key: k, value: draft[k] }));
+    if (updates.length === 0) {
+      toast.info('No changes to save');
+      return;
+    }
+    saveMutation.mutate(updates);
+  };
+
+  return (
+    <div className="space-y-6 max-w-4xl">
+      <div className="flex items-start justify-between gap-4">
+        <div>
+          <h1 className="font-display text-3xl font-bold flex items-center gap-3">
+            <SettingsIcon className="h-7 w-7 text-primary" />
+            Settings
+          </h1>
+          <p className="text-muted-foreground mt-1">
+            Configure integrations, booking behaviour, and notifications. Changes apply immediately.
+          </p>
+        </div>
+        <Button onClick={handleSave} disabled={saveMutation.isPending || dirtyKeys.length === 0}>
+          <Save className="h-4 w-4 mr-2" />
+          {saveMutation.isPending ? 'Saving…' : `Save${dirtyKeys.length ? ` (${dirtyKeys.length})` : ''}`}
+        </Button>
+      </div>
+
+      <Tabs defaultValue="airtable">
+        <TabsList>
+          <TabsTrigger value="airtable"><Database className="h-4 w-4 mr-2" />Airtable Sync</TabsTrigger>
+          <TabsTrigger value="booking"><Wand2 className="h-4 w-4 mr-2" />Booking Engine</TabsTrigger>
+          <TabsTrigger value="notifications"><Bell className="h-4 w-4 mr-2" />Notifications</TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="airtable" className="mt-4">
+          <Card>
+            <CardHeader>
+              <CardTitle className="font-display">Airtable Sync</CardTitle>
+              <CardDescription>
+                Pull show schedules from Airtable on a regular interval. Sync is currently mocked — enabling it will start the polling loop once the integration is wired up.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <Label className="font-medium">Enable Airtable sync</Label>
+                  <p className="text-xs text-muted-foreground mt-0.5">Turn polling on or off globally.</p>
+                </div>
+                <Switch
+                  checked={!!get('airtable_sync_enabled', false)}
+                  onCheckedChange={v => set('airtable_sync_enabled', v)}
+                />
+              </div>
+              <Separator />
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label>Poll interval (minutes)</Label>
+                  <Input
+                    type="number"
+                    min={1}
+                    value={get('airtable_poll_interval_minutes', 5)}
+                    onChange={e => set('airtable_poll_interval_minutes', Number(e.target.value))}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>Airtable base ID</Label>
+                  <Input
+                    placeholder="app1234567890"
+                    value={get('airtable_base_id', '')}
+                    onChange={e => set('airtable_base_id', e.target.value)}
+                  />
+                </div>
+                <div className="space-y-2 sm:col-span-2">
+                  <Label>Airtable table name</Label>
+                  <Input
+                    placeholder="Shows"
+                    value={get('airtable_table_name', '')}
+                    onChange={e => set('airtable_table_name', e.target.value)}
+                  />
+                </div>
+              </div>
+              <p className="text-xs text-muted-foreground">
+                The Airtable API key is stored as a Supabase secret, not here. Add or rotate it from the Edge Functions secrets panel.
+              </p>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="booking" className="mt-4">
+          <Card>
+            <CardHeader>
+              <CardTitle className="font-display">Booking Engine</CardTitle>
+              <CardDescription>Tune the auto-suggest engine and soft-book lifecycle.</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <Label className="font-medium">Enable auto-suggest</Label>
+                  <p className="text-xs text-muted-foreground mt-0.5">Rank artists per slot using priority, skill match, and recent history.</p>
+                </div>
+                <Switch
+                  checked={!!get('auto_suggest_enabled', true)}
+                  onCheckedChange={v => set('auto_suggest_enabled', v)}
+                />
+              </div>
+              <Separator />
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label>Soft-book expiry (hours)</Label>
+                  <Input
+                    type="number"
+                    min={1}
+                    value={get('soft_book_expiry_hours', 48)}
+                    onChange={e => set('soft_book_expiry_hours', Number(e.target.value))}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>Max suggestions per slot</Label>
+                  <Input
+                    type="number"
+                    min={1}
+                    max={20}
+                    value={get('max_suggestions', 5)}
+                    onChange={e => set('max_suggestions', Number(e.target.value))}
+                  />
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="notifications" className="mt-4">
+          <Card>
+            <CardHeader>
+              <CardTitle className="font-display">Notifications</CardTitle>
+              <CardDescription>Control in-app alerts for bookings and schedule changes.</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <Label className="font-medium">Enable in-app notifications</Label>
+                  <p className="text-xs text-muted-foreground mt-0.5">Producers and artists receive real-time alerts.</p>
+                </div>
+                <Switch
+                  checked={!!get('notifications_enabled', true)}
+                  onCheckedChange={v => set('notifications_enabled', v)}
+                />
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+      </Tabs>
+    </div>
+  );
+}

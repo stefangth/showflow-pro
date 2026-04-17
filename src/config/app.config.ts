@@ -72,6 +72,6 @@ export const ROUTES = {
 /** App metadata */
 export const APP_META = {
   NAME: 'Showflow Pro',
-  DESCRIPTION: 'Artist Booking SaaS for Fever Show Productions',
+  DESCRIPTION: 'Artist Booking SaaS for live show productions',
   VERSION: '1.0.0',
 } as const;

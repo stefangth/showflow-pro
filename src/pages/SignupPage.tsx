@@ -49,7 +49,7 @@ export default function SignupPage() {
               </div>
               <div className="space-y-2">
                 <label className="text-sm font-medium">Email</label>
-                <Input type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="you@fever.com" required />
+                <Input type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="you@example.com" required />
               </div>
               <div className="space-y-2">
                 <label className="text-sm font-medium">Password</label>
