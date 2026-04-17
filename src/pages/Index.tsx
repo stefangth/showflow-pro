@@ -37,7 +37,7 @@ export default function Index() {
         <motion.div initial={{ opacity: 0, y: 30 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.7 }}>
           <div className="inline-flex items-center gap-2 bg-primary/10 text-primary px-4 py-1.5 rounded-full text-sm font-medium mb-6">
             <Sparkles className="h-4 w-4" />
-            Built for Fever Productions
+            Built for live show productions
           </div>
           <h1 className="font-display text-5xl md:text-7xl font-bold leading-tight max-w-4xl mx-auto">
             Book artists.
@@ -84,7 +84,7 @@ export default function Index() {
 
       {/* Footer */}
       <footer className="border-t border-border py-8 text-center">
-        <p className="text-sm text-muted-foreground">&copy; {new Date().getFullYear()} {APP_META.NAME}. Built for Fever Show Productions.</p>
+        <p className="text-sm text-muted-foreground">&copy; {new Date().getFullYear()} {APP_META.NAME}. Intelligent booking for live show productions.</p>
       </footer>
     </div>
   );
