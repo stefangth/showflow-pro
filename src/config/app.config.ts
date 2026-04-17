@@ -65,6 +65,7 @@ export const ROUTES = {
   BOOKINGS: '/bookings',
   AVAILABILITY: '/availability',
   ADMIN: '/admin',
+  SETTINGS: '/settings',
   PROFILE: '/profile',
   RESET_PASSWORD: '/reset-password',
 } as const;

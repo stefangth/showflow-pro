@@ -6,7 +6,7 @@ import { APP_META, ROUTES } from '@/config/app.config';
 import { Button } from '@/components/ui/button';
 import {
   Zap, LayoutDashboard, CalendarDays, Users, BookOpen,
-  Clock, Settings, LogOut, Bell, ChevronLeft, ChevronRight, Menu, X
+  Clock, Settings, Shield, LogOut, Bell, ChevronLeft, ChevronRight, Menu, X
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -20,7 +20,8 @@ const navItems = [
   { to: ROUTES.ARTISTS, icon: Users, label: 'Artists' },
   { to: ROUTES.BOOKINGS, icon: BookOpen, label: 'Bookings' },
   { to: ROUTES.AVAILABILITY, icon: Clock, label: 'Availability' },
-  { to: ROUTES.ADMIN, icon: Settings, label: 'Admin', roles: ['admin'] as string[] },
+  { to: ROUTES.ADMIN, icon: Shield, label: 'Admin', roles: ['admin'] as string[] },
+  { to: ROUTES.SETTINGS, icon: Settings, label: 'Settings', roles: ['admin'] as string[] },
 ];
 
 export default function AppLayout({ children }: AppLayoutProps) {
