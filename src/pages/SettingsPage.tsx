@@ -173,7 +173,82 @@ export default function SettingsPage() {
           </Card>
         </TabsContent>
 
-        <TabsContent value="booking" className="mt-4">
+        <TabsContent value="filters" className="mt-4 space-y-6">
+          <Card>
+            <CardHeader>
+              <CardTitle className="font-display">Filter Mappings (Airtable)</CardTitle>
+              <CardDescription>
+                Map Showflow filter fields to your Airtable column names. Mock for now — these will be used once the sync worker is wired up.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {(['program', 'timeframe', 'sort_field', 'status'] as const).map(field => (
+                <div key={field} className="grid grid-cols-1 sm:grid-cols-[160px_1fr] gap-3 items-center">
+                  <Label className="capitalize">{field.replace('_', ' ')}</Label>
+                  <Input
+                    placeholder="Airtable column name"
+                    value={(get('filter_mappings', {})?.[field]) ?? ''}
+                    onChange={e => set('filter_mappings', { ...(get('filter_mappings', {}) ?? {}), [field]: e.target.value })}
+                  />
+                </div>
+              ))}
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle className="font-display">Filter Visibility per Role</CardTitle>
+              <CardDescription>
+                Toggle which filters producers and artists see on each page. Admins always see everything.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-8">
+              {PAGES.map(page => {
+                const pageVis = get('filters_visibility', {})?.[page] ?? {};
+                return (
+                  <div key={page} className="space-y-3">
+                    <h4 className="font-display font-semibold capitalize">{page}</h4>
+                    <div className="overflow-x-auto">
+                      <table className="w-full text-sm">
+                        <thead>
+                          <tr className="text-muted-foreground text-xs">
+                            <th className="text-left py-2 pr-4 font-medium">Role</th>
+                            {FILTER_KEYS.map(k => <th key={k} className="text-center py-2 px-2 font-medium capitalize">{k}</th>)}
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {ROLES.map(role => {
+                            const row = pageVis[role] ?? {};
+                            return (
+                              <tr key={role} className="border-t border-border">
+                                <td className="py-2 pr-4 capitalize font-medium">{role}</td>
+                                {FILTER_KEYS.map(key => (
+                                  <td key={key} className="text-center py-2 px-2">
+                                    <Switch
+                                      checked={!!row[key]}
+                                      onCheckedChange={(v) => {
+                                        const all = get('filters_visibility', {}) ?? {};
+                                        const nextPage = { ...(all[page] ?? {}) };
+                                        nextPage[role] = { ...(nextPage[role] ?? {}), [key]: v };
+                                        set('filters_visibility', { ...all, [page]: nextPage });
+                                      }}
+                                    />
+                                  </td>
+                                ))}
+                              </tr>
+                            );
+                          })}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                );
+              })}
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+
           <Card>
             <CardHeader>
               <CardTitle className="font-display">Booking Engine</CardTitle>
