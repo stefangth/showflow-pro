@@ -114,6 +114,7 @@ export default function SettingsPage() {
       <Tabs defaultValue="airtable">
         <TabsList>
           <TabsTrigger value="airtable"><Database className="h-4 w-4 mr-2" />Airtable Sync</TabsTrigger>
+          <TabsTrigger value="filters"><SlidersHorizontal className="h-4 w-4 mr-2" />Filters</TabsTrigger>
           <TabsTrigger value="booking"><Wand2 className="h-4 w-4 mr-2" />Booking Engine</TabsTrigger>
           <TabsTrigger value="notifications"><Bell className="h-4 w-4 mr-2" />Notifications</TabsTrigger>
         </TabsList>
