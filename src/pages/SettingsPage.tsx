@@ -248,7 +248,7 @@ export default function SettingsPage() {
           </Card>
         </TabsContent>
 
-
+        <TabsContent value="booking" className="mt-4">
           <Card>
             <CardHeader>
               <CardTitle className="font-display">Booking Engine</CardTitle>
