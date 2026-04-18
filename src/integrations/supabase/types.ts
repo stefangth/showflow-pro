@@ -375,6 +375,7 @@ export type Database = {
           created_by: string | null
           description: string | null
           id: string
+          program: string | null
           required_skills: string[] | null
           slots_per_date: number
           status: Database["public"]["Enums"]["show_status"]
@@ -388,6 +389,7 @@ export type Database = {
           created_by?: string | null
           description?: string | null
           id?: string
+          program?: string | null
           required_skills?: string[] | null
           slots_per_date?: number
           status?: Database["public"]["Enums"]["show_status"]
@@ -401,6 +403,7 @@ export type Database = {
           created_by?: string | null
           description?: string | null
           id?: string
+          program?: string | null
           required_skills?: string[] | null
           slots_per_date?: number
           status?: Database["public"]["Enums"]["show_status"]
