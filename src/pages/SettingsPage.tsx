@@ -10,7 +10,12 @@ import { Switch } from '@/components/ui/switch';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Separator } from '@/components/ui/separator';
 import { toast } from 'sonner';
-import { Settings as SettingsIcon, Database, Bell, Wand2, Save } from 'lucide-react';
+import { Settings as SettingsIcon, Database, Bell, Wand2, Save, SlidersHorizontal } from 'lucide-react';
+
+type FilterKey = 'program' | 'timeframe' | 'sort' | 'status';
+const FILTER_KEYS: FilterKey[] = ['program', 'timeframe', 'sort', 'status'];
+const PAGES: ('shows' | 'artists' | 'bookings')[] = ['shows', 'artists', 'bookings'];
+const ROLES: ('producer' | 'artist')[] = ['producer', 'artist'];
 
 type SettingRow = {
   id: string;
