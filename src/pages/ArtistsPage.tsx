@@ -20,6 +20,7 @@ import { ViewToggle, type ViewMode } from '@/components/filters/ViewToggle';
 import { useFilterVisibility } from '@/components/filters/useFilterVisibility';
 import { EntityCalendar } from '@/components/calendar/EntityCalendar';
 import { applySort, inTimeframe } from '@/components/filters/filterUtils';
+import { CastsSection } from '@/components/casts/CastsSection';
 
 type BookingJoin = {
   id: string; artist_id: string; status: string;
@@ -38,7 +39,7 @@ export default function ArtistsPage() {
   const [sort, setSort] = useState<SortValue>('alpha_asc');
   const [view, setView] = useState<ViewMode>('list');
   const [dialogOpen, setDialogOpen] = useState(false);
-  const [form, setForm] = useState({ name: '', email: '', phone: '', skills: '', priority_score: 50, bio: '' });
+  const [form, setForm] = useState({ name: '', email: '', phone: '', skills: '', priority_score: 50, bio: '', cast_role: '' });
 
   const { data: artists, isLoading } = useQuery({
     queryKey: ['artists'],
@@ -61,6 +62,24 @@ export default function ArtistsPage() {
     },
   });
 
+  // Cast memberships per artist
+  const { data: artistCasts } = useQuery({
+    queryKey: ['artist-casts'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('cast_members')
+        .select('artist_id, cast:casts(id, name)');
+      if (error) throw error;
+      const map = new Map<string, { id: string; name: string }[]>();
+      (data ?? []).forEach((r: any) => {
+        const arr = map.get(r.artist_id) ?? [];
+        if (r.cast) arr.push(r.cast);
+        map.set(r.artist_id, arr);
+      });
+      return map;
+    },
+  });
+
   const createArtist = useMutation({
     mutationFn: async () => {
       const { error } = await supabase.from('artists').insert({
@@ -70,13 +89,14 @@ export default function ArtistsPage() {
         skills: form.skills ? form.skills.split(',').map(s => s.trim()) : [],
         priority_score: form.priority_score,
         bio: form.bio || null,
+        cast_role: form.cast_role || null,
       });
       if (error) throw error;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['artists'] });
       setDialogOpen(false);
-      setForm({ name: '', email: '', phone: '', skills: '', priority_score: 50, bio: '' });
+      setForm({ name: '', email: '', phone: '', skills: '', priority_score: 50, bio: '', cast_role: '' });
       toast({ title: 'Artist added' });
     },
     onError: (err: any) => toast({ title: 'Error', description: err.message, variant: 'destructive' }),
@@ -168,6 +188,7 @@ export default function ArtistsPage() {
                 <Input type="email" placeholder="Email" value={form.email} onChange={e => setForm(f => ({ ...f, email: e.target.value }))} />
                 <Input placeholder="Phone" value={form.phone} onChange={e => setForm(f => ({ ...f, phone: e.target.value }))} />
                 <Input placeholder="Skills (comma-separated)" value={form.skills} onChange={e => setForm(f => ({ ...f, skills: e.target.value }))} />
+                <Input placeholder="Cast role (e.g. lead violin)" value={form.cast_role} onChange={e => setForm(f => ({ ...f, cast_role: e.target.value }))} />
                 <div className="space-y-1">
                   <label className="text-sm font-medium">Priority Score (1-100)</label>
                   <Input type="number" min={1} max={100} value={form.priority_score} onChange={e => setForm(f => ({ ...f, priority_score: parseInt(e.target.value) || 50 }))} />
@@ -192,6 +213,8 @@ export default function ArtistsPage() {
         {canSee('sort') && <SortControl value={sort} onChange={setSort} chronoLabel="Next booking" />}
         <div className="ml-auto"><ViewToggle value={view} onChange={setView} /></div>
       </div>
+
+      <CastsSection />
 
       {isLoading ? (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -219,10 +242,20 @@ export default function ArtistsPage() {
                     <Star className="h-3 w-3 text-warning" />
                     <span className="text-xs text-muted-foreground">Priority: {artist.priority_score}</span>
                   </div>
+                  {artist.cast_role && (
+                    <p className="text-xs text-muted-foreground mb-2 italic">{artist.cast_role}</p>
+                  )}
                   {artist.skills && artist.skills.length > 0 && (
-                    <div className="flex flex-wrap gap-1">
+                    <div className="flex flex-wrap gap-1 mb-2">
                       {artist.skills.map(s => (
                         <Badge key={s} variant="outline" className="text-xs">{s}</Badge>
+                      ))}
+                    </div>
+                  )}
+                  {artistCasts?.get(artist.id) && artistCasts.get(artist.id)!.length > 0 && (
+                    <div className="flex flex-wrap gap-1 pt-2 border-t border-border mt-2">
+                      {artistCasts.get(artist.id)!.map(c => (
+                        <Badge key={c.id} variant="secondary" className="text-xs">{c.name}</Badge>
                       ))}
                     </div>
                   )}
