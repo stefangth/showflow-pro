@@ -16,6 +16,13 @@ export type Notification = Database['public']['Tables']['notifications']['Row'];
 export type Profile = Database['public']['Tables']['profiles']['Row'];
 export type UserRole = Database['public']['Tables']['user_roles']['Row'];
 export type AirtableSyncLog = Database['public']['Tables']['airtable_sync_log']['Row'];
+export type City = Database['public']['Tables']['cities']['Row'];
+export type Cast = Database['public']['Tables']['casts']['Row'];
+export type CastMember = Database['public']['Tables']['cast_members']['Row'];
+export type ShowCastEligibility = Database['public']['Tables']['show_cast_eligibility']['Row'];
+export type ShowDateCastEligibility = Database['public']['Tables']['show_date_cast_eligibility']['Row'];
+export type Chat = Database['public']['Tables']['chats']['Row'];
+export type ChatMessage = Database['public']['Tables']['chat_messages']['Row'];
 
 // Enum types
 export type ShowStatus = Database['public']['Enums']['show_status'];
