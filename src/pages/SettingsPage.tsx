@@ -9,8 +9,10 @@ import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Separator } from '@/components/ui/separator';
+import { Badge } from '@/components/ui/badge';
 import { toast } from 'sonner';
-import { Settings as SettingsIcon, Database, Bell, Wand2, Save, SlidersHorizontal } from 'lucide-react';
+import { Settings as SettingsIcon, Database, Bell, Wand2, Save, SlidersHorizontal, MapPin, Plus, Trash2 } from 'lucide-react';
+import type { City, Cast } from '@/types';
 
 type FilterKey = 'program' | 'timeframe' | 'sort' | 'status';
 const FILTER_KEYS: FilterKey[] = ['program', 'timeframe', 'sort', 'status'];
@@ -65,10 +67,63 @@ export default function SettingsPage() {
     onError: (e: any) => toast.error(e.message ?? 'Failed to save'),
   });
 
-  if (!hasRole('admin')) {
+  const isAdmin = hasRole('admin');
+  const isProducer = hasRole('producer');
+  const canEnter = isAdmin || isProducer;
+
+  // Cities (available to producers + admins)
+  const { data: cities } = useQuery({
+    queryKey: ['cities'],
+    enabled: canEnter,
+    queryFn: async () => {
+      const { data, error } = await supabase.from('cities').select('*').order('name');
+      if (error) throw error;
+      return data as City[];
+    },
+  });
+  const [newCity, setNewCity] = useState('');
+  const addCity = useMutation({
+    mutationFn: async (name: string) => {
+      const { error } = await supabase.from('cities').insert({ name });
+      if (error) throw error;
+    },
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ['cities'] }); setNewCity(''); toast.success('City added'); },
+    onError: (e: any) => toast.error(e.message ?? 'Failed to add'),
+  });
+  const removeCity = useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await supabase.from('cities').delete().eq('id', id);
+      if (error) throw error;
+    },
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ['cities'] }); toast.success('City removed'); },
+    onError: (e: any) => toast.error(e.message ?? 'Failed to remove'),
+  });
+
+  const { data: casts } = useQuery({
+    queryKey: ['casts'],
+    enabled: canEnter,
+    queryFn: async () => {
+      const { data, error } = await supabase.from('casts').select('*').order('name');
+      if (error) throw error;
+      return data as Cast[];
+    },
+  });
+  const { data: castCounts } = useQuery({
+    queryKey: ['cast-members-counts'],
+    enabled: canEnter,
+    queryFn: async () => {
+      const { data, error } = await supabase.from('cast_members').select('cast_id');
+      if (error) throw error;
+      const map: Record<string, number> = {};
+      (data ?? []).forEach(r => { map[r.cast_id] = (map[r.cast_id] ?? 0) + 1; });
+      return map;
+    },
+  });
+
+  if (!canEnter) {
     return (
       <div className="flex items-center justify-center h-64">
-        <p className="text-muted-foreground">Admin access required</p>
+        <p className="text-muted-foreground">Admin or producer access required</p>
       </div>
     );
   }
