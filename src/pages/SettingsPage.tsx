@@ -160,10 +160,12 @@ export default function SettingsPage() {
             Configure integrations, booking behaviour, and notifications. Changes apply immediately.
           </p>
         </div>
-        <Button onClick={handleSave} disabled={saveMutation.isPending || dirtyKeys.length === 0}>
-          <Save className="h-4 w-4 mr-2" />
-          {saveMutation.isPending ? 'Saving…' : `Save${dirtyKeys.length ? ` (${dirtyKeys.length})` : ''}`}
-        </Button>
+        {isAdmin && (
+          <Button onClick={handleSave} disabled={saveMutation.isPending || dirtyKeys.length === 0}>
+            <Save className="h-4 w-4 mr-2" />
+            {saveMutation.isPending ? 'Saving…' : `Save${dirtyKeys.length ? ` (${dirtyKeys.length})` : ''}`}
+          </Button>
+        )}
       </div>
 
       <Tabs defaultValue={isAdmin ? 'airtable' : 'casts-cities'}>
