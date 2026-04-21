@@ -9,8 +9,10 @@ import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Separator } from '@/components/ui/separator';
+import { Badge } from '@/components/ui/badge';
 import { toast } from 'sonner';
-import { Settings as SettingsIcon, Database, Bell, Wand2, Save, SlidersHorizontal } from 'lucide-react';
+import { Settings as SettingsIcon, Database, Bell, Wand2, Save, SlidersHorizontal, MapPin, Plus, Trash2 } from 'lucide-react';
+import type { City, Cast } from '@/types';
 
 type FilterKey = 'program' | 'timeframe' | 'sort' | 'status';
 const FILTER_KEYS: FilterKey[] = ['program', 'timeframe', 'sort', 'status'];
@@ -65,10 +67,63 @@ export default function SettingsPage() {
     onError: (e: any) => toast.error(e.message ?? 'Failed to save'),
   });
 
-  if (!hasRole('admin')) {
+  const isAdmin = hasRole('admin');
+  const isProducer = hasRole('producer');
+  const canEnter = isAdmin || isProducer;
+
+  // Cities (available to producers + admins)
+  const { data: cities } = useQuery({
+    queryKey: ['cities'],
+    enabled: canEnter,
+    queryFn: async () => {
+      const { data, error } = await supabase.from('cities').select('*').order('name');
+      if (error) throw error;
+      return data as City[];
+    },
+  });
+  const [newCity, setNewCity] = useState('');
+  const addCity = useMutation({
+    mutationFn: async (name: string) => {
+      const { error } = await supabase.from('cities').insert({ name });
+      if (error) throw error;
+    },
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ['cities'] }); setNewCity(''); toast.success('City added'); },
+    onError: (e: any) => toast.error(e.message ?? 'Failed to add'),
+  });
+  const removeCity = useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await supabase.from('cities').delete().eq('id', id);
+      if (error) throw error;
+    },
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ['cities'] }); toast.success('City removed'); },
+    onError: (e: any) => toast.error(e.message ?? 'Failed to remove'),
+  });
+
+  const { data: casts } = useQuery({
+    queryKey: ['casts'],
+    enabled: canEnter,
+    queryFn: async () => {
+      const { data, error } = await supabase.from('casts').select('*').order('name');
+      if (error) throw error;
+      return data as Cast[];
+    },
+  });
+  const { data: castCounts } = useQuery({
+    queryKey: ['cast-members-counts'],
+    enabled: canEnter,
+    queryFn: async () => {
+      const { data, error } = await supabase.from('cast_members').select('cast_id');
+      if (error) throw error;
+      const map: Record<string, number> = {};
+      (data ?? []).forEach(r => { map[r.cast_id] = (map[r.cast_id] ?? 0) + 1; });
+      return map;
+    },
+  });
+
+  if (!canEnter) {
     return (
       <div className="flex items-center justify-center h-64">
-        <p className="text-muted-foreground">Admin access required</p>
+        <p className="text-muted-foreground">Admin or producer access required</p>
       </div>
     );
   }
@@ -105,19 +160,84 @@ export default function SettingsPage() {
             Configure integrations, booking behaviour, and notifications. Changes apply immediately.
           </p>
         </div>
-        <Button onClick={handleSave} disabled={saveMutation.isPending || dirtyKeys.length === 0}>
-          <Save className="h-4 w-4 mr-2" />
-          {saveMutation.isPending ? 'Saving…' : `Save${dirtyKeys.length ? ` (${dirtyKeys.length})` : ''}`}
-        </Button>
+        {isAdmin && (
+          <Button onClick={handleSave} disabled={saveMutation.isPending || dirtyKeys.length === 0}>
+            <Save className="h-4 w-4 mr-2" />
+            {saveMutation.isPending ? 'Saving…' : `Save${dirtyKeys.length ? ` (${dirtyKeys.length})` : ''}`}
+          </Button>
+        )}
       </div>
 
-      <Tabs defaultValue="airtable">
+      <Tabs defaultValue={isAdmin ? 'airtable' : 'casts-cities'}>
         <TabsList>
-          <TabsTrigger value="airtable"><Database className="h-4 w-4 mr-2" />Airtable Sync</TabsTrigger>
-          <TabsTrigger value="filters"><SlidersHorizontal className="h-4 w-4 mr-2" />Filters</TabsTrigger>
-          <TabsTrigger value="booking"><Wand2 className="h-4 w-4 mr-2" />Booking Engine</TabsTrigger>
-          <TabsTrigger value="notifications"><Bell className="h-4 w-4 mr-2" />Notifications</TabsTrigger>
+          {isAdmin && <TabsTrigger value="airtable"><Database className="h-4 w-4 mr-2" />Airtable Sync</TabsTrigger>}
+          {isAdmin && <TabsTrigger value="filters"><SlidersHorizontal className="h-4 w-4 mr-2" />Filters</TabsTrigger>}
+          <TabsTrigger value="casts-cities"><MapPin className="h-4 w-4 mr-2" />Casts & Cities</TabsTrigger>
+          {isAdmin && <TabsTrigger value="booking"><Wand2 className="h-4 w-4 mr-2" />Booking Engine</TabsTrigger>}
+          {isAdmin && <TabsTrigger value="notifications"><Bell className="h-4 w-4 mr-2" />Notifications</TabsTrigger>}
         </TabsList>
+
+        <TabsContent value="casts-cities" className="mt-4 space-y-6">
+          <Card>
+            <CardHeader>
+              <CardTitle className="font-display">Cities</CardTitle>
+              <CardDescription>
+                Pulled from Airtable once sync is wired — currently editable for mock data. Cities are used to scope cast eligibility per show.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              <form
+                className="flex gap-2"
+                onSubmit={(e) => { e.preventDefault(); if (newCity.trim()) addCity.mutate(newCity.trim()); }}
+              >
+                <Input placeholder="New city name" value={newCity} onChange={e => setNewCity(e.target.value)} />
+                <Button type="submit" disabled={!newCity.trim() || addCity.isPending}>
+                  <Plus className="h-4 w-4 mr-1" />Add
+                </Button>
+              </form>
+              <div className="flex flex-wrap gap-2 pt-2">
+                {(cities ?? []).map(c => (
+                  <Badge key={c.id} variant="secondary" className="gap-2 py-1.5 pl-3 pr-1">
+                    {c.name}
+                    <button
+                      onClick={() => removeCity.mutate(c.id)}
+                      className="rounded hover:bg-background/40 p-0.5"
+                      aria-label={`Remove ${c.name}`}
+                    >
+                      <Trash2 className="h-3 w-3" />
+                    </button>
+                  </Badge>
+                ))}
+                {(cities?.length ?? 0) === 0 && <p className="text-sm text-muted-foreground">No cities yet.</p>}
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle className="font-display">Casts</CardTitle>
+              <CardDescription>
+                Manage casts and their members on the <a className="text-primary underline" href="/artists">Artists page</a>.
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              {(casts?.length ?? 0) === 0 ? (
+                <p className="text-sm text-muted-foreground">No casts yet.</p>
+              ) : (
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                  {casts!.map(c => (
+                    <div key={c.id} className="p-3 rounded-lg border border-border">
+                      <p className="font-medium text-sm">{c.name}</p>
+                      <p className="text-xs text-muted-foreground mt-1">
+                        {castCounts?.[c.id] ?? 0} member{(castCounts?.[c.id] ?? 0) === 1 ? '' : 's'}
+                      </p>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
 
         <TabsContent value="airtable" className="mt-4">
           <Card>

@@ -74,6 +74,7 @@ export type Database = {
       artists: {
         Row: {
           bio: string | null
+          cast_role: string | null
           created_at: string
           email: string | null
           id: string
@@ -87,6 +88,7 @@ export type Database = {
         }
         Insert: {
           bio?: string | null
+          cast_role?: string | null
           created_at?: string
           email?: string | null
           id?: string
@@ -100,6 +102,7 @@ export type Database = {
         }
         Update: {
           bio?: string | null
+          cast_role?: string | null
           created_at?: string
           email?: string | null
           id?: string
@@ -252,6 +255,151 @@ export type Database = {
           },
         ]
       }
+      cast_members: {
+        Row: {
+          artist_id: string
+          cast_id: string
+          created_at: string
+          id: string
+        }
+        Insert: {
+          artist_id: string
+          cast_id: string
+          created_at?: string
+          id?: string
+        }
+        Update: {
+          artist_id?: string
+          cast_id?: string
+          created_at?: string
+          id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "cast_members_artist_id_fkey"
+            columns: ["artist_id"]
+            isOneToOne: false
+            referencedRelation: "artists"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "cast_members_cast_id_fkey"
+            columns: ["cast_id"]
+            isOneToOne: false
+            referencedRelation: "casts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      casts: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          description: string | null
+          id: string
+          name: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          id?: string
+          name: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          id?: string
+          name?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      chat_messages: {
+        Row: {
+          body: string
+          chat_id: string
+          created_at: string
+          id: string
+          user_id: string
+        }
+        Insert: {
+          body: string
+          chat_id: string
+          created_at?: string
+          id?: string
+          user_id: string
+        }
+        Update: {
+          body?: string
+          chat_id?: string
+          created_at?: string
+          id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "chat_messages_chat_id_fkey"
+            columns: ["chat_id"]
+            isOneToOne: false
+            referencedRelation: "chats"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      chats: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          id: string
+          show_date_id: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          show_date_id: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          show_date_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "chats_show_date_id_fkey"
+            columns: ["show_date_id"]
+            isOneToOne: true
+            referencedRelation: "show_dates"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      cities: {
+        Row: {
+          airtable_record_id: string | null
+          created_at: string
+          id: string
+          name: string
+        }
+        Insert: {
+          airtable_record_id?: string | null
+          created_at?: string
+          id?: string
+          name: string
+        }
+        Update: {
+          airtable_record_id?: string | null
+          created_at?: string
+          id?: string
+          name?: string
+        }
+        Relationships: []
+      }
       notifications: {
         Row: {
           created_at: string
@@ -318,9 +466,92 @@ export type Database = {
         }
         Relationships: []
       }
+      show_cast_eligibility: {
+        Row: {
+          cast_id: string
+          city_id: string
+          created_at: string
+          id: string
+          show_id: string
+        }
+        Insert: {
+          cast_id: string
+          city_id: string
+          created_at?: string
+          id?: string
+          show_id: string
+        }
+        Update: {
+          cast_id?: string
+          city_id?: string
+          created_at?: string
+          id?: string
+          show_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "show_cast_eligibility_cast_id_fkey"
+            columns: ["cast_id"]
+            isOneToOne: false
+            referencedRelation: "casts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "show_cast_eligibility_city_id_fkey"
+            columns: ["city_id"]
+            isOneToOne: false
+            referencedRelation: "cities"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "show_cast_eligibility_show_id_fkey"
+            columns: ["show_id"]
+            isOneToOne: false
+            referencedRelation: "shows"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      show_date_cast_eligibility: {
+        Row: {
+          cast_id: string
+          created_at: string
+          id: string
+          show_date_id: string
+        }
+        Insert: {
+          cast_id: string
+          created_at?: string
+          id?: string
+          show_date_id: string
+        }
+        Update: {
+          cast_id?: string
+          created_at?: string
+          id?: string
+          show_date_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "show_date_cast_eligibility_cast_id_fkey"
+            columns: ["cast_id"]
+            isOneToOne: false
+            referencedRelation: "casts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "show_date_cast_eligibility_show_date_id_fkey"
+            columns: ["show_date_id"]
+            isOneToOne: false
+            referencedRelation: "show_dates"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       show_dates: {
         Row: {
           airtable_record_id: string | null
+          city_id: string | null
           created_at: string
           date: string
           end_time: string | null
@@ -334,6 +565,7 @@ export type Database = {
         }
         Insert: {
           airtable_record_id?: string | null
+          city_id?: string | null
           created_at?: string
           date: string
           end_time?: string | null
@@ -347,6 +579,7 @@ export type Database = {
         }
         Update: {
           airtable_record_id?: string | null
+          city_id?: string | null
           created_at?: string
           date?: string
           end_time?: string | null
@@ -359,6 +592,13 @@ export type Database = {
           venue_override?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "show_dates_city_id_fkey"
+            columns: ["city_id"]
+            isOneToOne: false
+            referencedRelation: "cities"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "show_dates_show_id_fkey"
             columns: ["show_id"]
@@ -444,6 +684,10 @@ export type Database = {
           _role: Database["public"]["Enums"]["app_role"]
           _user_id: string
         }
+        Returns: boolean
+      }
+      is_chat_participant: {
+        Args: { _chat_id: string; _user_id: string }
         Returns: boolean
       }
     }
