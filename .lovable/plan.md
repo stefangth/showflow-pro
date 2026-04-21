@@ -1,73 +1,101 @@
 
 
-## Plan: Filters, Calendar/List Views, and Per-Role Filter Visibility
+## Plan: Casts, City Eligibility, and Per-Date Chat
 
-### 1. Data & config (mock for now)
+### 1. Data model
 
-- Add a `program` (text) column to `shows` (nullable, mock IP field). Will later be replaced by the real Airtable column once the schema is confirmed.
-- Seed a small set of mock programs into existing rows (e.g. "Jury Experience", "Ballet of Lights", "Candlelight", "Immersive Van Gogh") so filters have content.
-- New `app_settings` keys (JSONB) for filter visibility, defaulting to "all visible":
-  - `filters_visibility.shows` → `{ producer: { program, timeframe, sort, status }, artist: { ... } }`
-  - `filters_visibility.artists` → same shape
-  - `filters_visibility.bookings` → same shape
-- New `app_settings.filter_mappings` (JSONB): admin-editable mapping of Showflow filter fields → Airtable column names (e.g. `program → "IP"`, `timeframe → "Show Date"`). Display-only for now; sync worker will read it later.
+New tables (all RLS-enabled, `authenticated` only):
 
-### 2. Shared filter components (`src/components/filters/`)
+- **`cities`** — `id`, `name` (unique), `airtable_record_id` (nullable), `created_at`. Mock-seed: Berlin, London, Paris, New York, Madrid. Replaced by Airtable sync later.
+- **`casts`** — `id`, `name`, `description`, `created_by`, timestamps. Producers/admins manage.
+- **`cast_members`** — `cast_id` ↔ `artist_id` (composite unique). Producers/admins manage.
+- **`show_cast_eligibility`** — `show_id`, `city_id`, `cast_id` (composite unique). The "show + city → eligible casts" config. Producers/admins manage.
+- **`show_date_cast_eligibility`** — `show_date_id`, `cast_id` (composite unique). Per-date overrides/additions on top of the show-level inheritance. Producers/admins manage.
+- **`chats`** — `id`, `show_date_id` (unique, one chat per date), `created_by`, `created_at`. Auto-created on first message.
+- **`chat_messages`** — `id`, `chat_id`, `user_id`, `body`, `created_at`. Realtime-enabled.
 
-- `ProgramFilter` — multi-select, options derived from distinct `shows.program` values.
-- `TimeframeFilter` — presets (Today, This week, This month, Next 30/90 days, Past) + custom from/to range using shadcn DatePicker + Popover. Outputs `{from, to}`.
-- `SortControl` — dropdown: Alphabetical A→Z / Z→A, Chronological ↑ / ↓. Each page maps "chronological" to its relevant date field (shows → earliest upcoming show_date; artists → created_at or next booking; bookings → show_date.date).
-- `ViewToggle` — List / Calendar segmented control.
-- `useFilterVisibility(page)` hook — reads `app_settings.filters_visibility[page]`, returns `{ canSee('program'|'timeframe'|'sort'|'status') }`. Admin always sees all; producer/artist gated by settings.
+Schema additions to existing tables:
 
-### 3. Calendar view component (`src/components/calendar/`)
+- **`artists.cast_role`** (text, nullable) — free-text role tag (e.g. "lead violin").
+- **`show_dates.city_id`** (uuid, nullable, FK → cities) — needed so we can resolve "this date's eligible casts" by joining show + city.
 
-- `EntityCalendar` — dual-mode (matches user choice "Both — toggle inside calendar"):
-  - **Month grid**: shadcn `Calendar` with day modifiers showing badge count per day; clicking a day opens a side panel listing items.
-  - **Agenda**: chronological list grouped by date.
-  - Internal toggle: "Month" / "Agenda".
-- Accepts `items`, `getDate(item)`, `renderItem(item)` so it's reusable across Shows / Artists / Bookings.
+Helper SQL function `is_chat_participant(_chat_id uuid, _user_id uuid)`:
+- Returns true if user is admin/producer, OR is the artist on a `bookings` row with status in (`soft_booked`,`confirmed`) for the chat's `show_date_id`.
 
-### 4. Page updates
+RLS using that function:
+- `chats` — SELECT/INSERT for participants. UPDATE/DELETE: admin only.
+- `chat_messages` — SELECT for participants; INSERT for participants where `user_id = auth.uid()`. No UPDATE/DELETE.
 
-**ShowsPage**: add filter bar (search + program + timeframe + sort + view toggle). Timeframe filters on the show's earliest upcoming date (requires fetching `show_dates` join). Calendar view plots show_dates per day.
+Eligibility resolver (frontend): for a given `show_date`, eligible casts = (show-level casts for `show_date.city_id`) ∪ (per-date overrides). Bookable artists = members of those casts.
 
-**ArtistsPage**: add filter bar (search + skills/program-they-perform-in + timeframe of next booking + sort + view toggle). Calendar view plots each artist's bookings.
+### 2. UI — Artists page
 
-**BookingsPage**: add filter bar (status — already present + program + timeframe + sort + view toggle). Calendar view plots bookings on their show_date.
+- New "Cast role" input on add-artist dialog and on artist card display (small muted line).
+- New "Casts" multi-select chip on each artist card showing memberships.
+- New "Casts" section (above the artist grid) — for producers/admins: list of casts with member counts, "New Cast" button → dialog (name + description), click a cast → side sheet to add/remove member artists.
 
-All three pages respect `useFilterVisibility(page)` for non-admin roles.
+### 3. UI — Show detail page
 
-### 5. SettingsPage — new "Filters" tab
+New "Cast eligibility" panel (producer/admin only) above the dates list:
+- Per city: multi-select of casts. Saved into `show_cast_eligibility`.
+- Helper text: "New dates synced from Airtable inherit this. Override per date below."
 
-Two sub-sections:
+On each show date card:
+- Show inherited casts as muted chips + "+ Add cast for this date" → adds to `show_date_cast_eligibility`.
+- City selector (dropdown of `cities`) on the date itself, drives which inherited casts apply.
 
-1. **Filter mappings (Airtable)** — table with rows (Program, Timeframe, Sort field, Status) × column "Airtable column name". Free-text inputs, saved into `app_settings.filter_mappings`. Helper text: "These map Showflow filters to your Airtable schema. Mock for now — used once sync is wired up."
-2. **Visibility per role** — for each page (Shows, Artists, Bookings) and each non-admin role (Producer, Artist), a row of switches (Program, Timeframe, Sort, Status). Saves into `app_settings.filters_visibility`.
+Booking panel (`Available Artists`) is now filtered: show only artists who are members of at least one eligible cast for that date (and still respect availability).
+
+### 4. UI — Chat
+
+New `ChatPanel` component on the show-date booking view (right column tab "Chat" alongside "Bookings"):
+- Lists messages chronologically, input at the bottom.
+- Subscribes via Supabase Realtime to `chat_messages` for live updates.
+- Hidden entirely if `show_date.date < now() - 30 days` (archive rule) for non-admins; admins see a muted "Archived" banner and read-only history.
+- Top bar: participant count + avatars (booked + soft-booked artists + producers/admins resolved client-side from `bookings` + `user_roles`).
+- New "Chats" entry in sidebar → `ChatsListPage` showing all active (non-archived) chats the user is a participant in, grouped by date.
+
+### 5. Settings → new "Casts & Cities" tab
+
+Producers + admins (lift the admin-only gate so producers can access **just this tab** — page-level guard adjusted to allow producer for the casts/cities tabs only).
+
+- **Cities**: list + add/remove (text). Note: "Pulled from Airtable once sync is wired — currently editable for mock data."
+- **Casts overview**: link to Artists page (where casts are managed inline).
+- **Show eligibility matrix** (admins only): table of shows × cities → which casts eligible. Useful for bulk config.
 
 ### 6. Files to create / edit
 
 ```text
 NEW:
-  src/components/filters/ProgramFilter.tsx
-  src/components/filters/TimeframeFilter.tsx
-  src/components/filters/SortControl.tsx
-  src/components/filters/ViewToggle.tsx
-  src/components/filters/useFilterVisibility.ts
-  src/components/calendar/EntityCalendar.tsx
-  supabase/migrations/<ts>_add_program_and_filter_settings.sql
+  src/components/casts/CastsSection.tsx       (artists page section)
+  src/components/casts/CastDialog.tsx
+  src/components/casts/CastMembersSheet.tsx
+  src/components/casts/EligibilityPanel.tsx   (show detail)
+  src/components/chat/ChatPanel.tsx
+  src/components/chat/MessageBubble.tsx
+  src/hooks/useChatParticipant.ts
+  src/hooks/useEligibleArtists.ts
+  src/pages/ChatsListPage.tsx
+  src/pages/SettingsPage.tsx                  (add "Casts & Cities" tab)
+  supabase/migrations/<ts>_casts_cities_chat.sql
 
 EDIT:
-  src/pages/ShowsPage.tsx       (filter bar + list/calendar + program in create form)
-  src/pages/ArtistsPage.tsx     (filter bar + list/calendar)
-  src/pages/BookingsPage.tsx    (extend filter bar + list/calendar)
-  src/pages/SettingsPage.tsx    (new "Filters" tab with mappings + visibility)
-  src/types/index.ts            (Show.program type already inferred from regenerated types)
+  src/App.tsx                                 (route /chats)
+  src/components/layout/AppLayout.tsx         (sidebar entry)
+  src/pages/ArtistsPage.tsx                   (cast_role + casts UI)
+  src/pages/ShowDetailPage.tsx                (eligibility + city + filtered bookable list + chat tab)
+  src/types/index.ts                          (Cast, City, ChatMessage exports)
+  src/config/app.config.ts                    (ROUTES.CHATS, CHAT_ARCHIVE_DAYS = 30)
 ```
 
-### 7. Out of scope (call out explicitly)
+### 7. Realtime
 
-- No real Airtable parsing — `program` is a free text/mock field. Will revisit once client provides Airtable schema.
-- Filter visibility for `Availability` and `Admin` pages not included (not requested).
-- Sort/filter is client-side (existing pages already fetch full lists). Acceptable at current scale; pagination can come later.
+Enable Supabase Realtime publication on `chat_messages` (added in the migration). `ChatPanel` uses `supabase.channel()` to subscribe.
+
+### 8. Out of scope (explicit)
+
+- No real Airtable city sync — `cities` is mock + manually editable until the schema lands.
+- No push notifications for chat (only in-app via existing notifications table — out of scope here).
+- No file/image attachments in chat (text only v1).
+- No hard-delete edge function for archived chats — rows remain; UI hides them.
 
