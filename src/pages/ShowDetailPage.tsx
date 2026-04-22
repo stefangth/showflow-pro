@@ -16,12 +16,17 @@ import { Plus, CalendarDays, Users, Check, ChevronsUpDown, MessageSquare } from 
 import { cn } from '@/lib/utils';
 import { format } from 'date-fns';
 import type { Show, ShowDate, Booking, Artist, City, Cast } from '@/types';
-import { EligibilityPanel } from '@/components/casts/EligibilityPanel';
 import { ChatPanel } from '@/components/chat/ChatPanel';
 import { useEligibleArtists } from '@/hooks/useEligibleArtists';
 
-export default function ShowDetailPage() {
-  const { id } = useParams<{ id: string }>();
+interface Props {
+  /** When provided (e.g. inside a sheet), use this id instead of the route param. */
+  idOverride?: string;
+}
+
+export default function ShowDetailPage({ idOverride }: Props = {}) {
+  const params = useParams<{ id: string }>();
+  const id = idOverride ?? params.id;
   const { hasRole, user } = useAuth();
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -245,8 +250,6 @@ export default function ShowDetailPage() {
         </div>
         {show.description && <p className="text-muted-foreground mt-3">{show.description}</p>}
       </div>
-
-      {canManage && <EligibilityPanel showId={show.id} />}
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Dates list */}
