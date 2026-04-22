@@ -11,15 +11,15 @@ import Index from "./pages/Index";
 import LoginPage from "./pages/LoginPage";
 import SignupPage from "./pages/SignupPage";
 import DashboardPage from "./pages/DashboardPage";
-import ShowsPage from "./pages/ShowsPage";
+import ShowsBookingsPage from "./pages/ShowsBookingsPage";
 import ShowDetailPage from "./pages/ShowDetailPage";
 import ArtistsPage from "./pages/ArtistsPage";
-import BookingsPage from "./pages/BookingsPage";
 import AvailabilityPage from "./pages/AvailabilityPage";
 import AdminPage from "./pages/AdminPage";
 import SettingsPage from "./pages/SettingsPage";
 import ChatsListPage from "./pages/ChatsListPage";
 import NotFound from "./pages/NotFound";
+import { Navigate } from "react-router-dom";
 
 const queryClient = new QueryClient();
 
@@ -35,10 +35,10 @@ const App = () => (
             <Route path={ROUTES.LOGIN} element={<LoginPage />} />
             <Route path={ROUTES.SIGNUP} element={<SignupPage />} />
             <Route path={ROUTES.DASHBOARD} element={<ProtectedRoute><AppLayout><DashboardPage /></AppLayout></ProtectedRoute>} />
-            <Route path={ROUTES.SHOWS} element={<ProtectedRoute><AppLayout><ShowsPage /></AppLayout></ProtectedRoute>} />
+            <Route path={ROUTES.SHOWS} element={<Navigate to={ROUTES.BOOKINGS} replace />} />
             <Route path="/shows/:id" element={<ProtectedRoute><AppLayout><ShowDetailPage /></AppLayout></ProtectedRoute>} />
             <Route path={ROUTES.ARTISTS} element={<ProtectedRoute><AppLayout><ArtistsPage /></AppLayout></ProtectedRoute>} />
-            <Route path={ROUTES.BOOKINGS} element={<ProtectedRoute><AppLayout><BookingsPage /></AppLayout></ProtectedRoute>} />
+            <Route path={ROUTES.BOOKINGS} element={<ProtectedRoute><AppLayout><ShowsBookingsPage /></AppLayout></ProtectedRoute>} />
             <Route path={ROUTES.AVAILABILITY} element={<ProtectedRoute><AppLayout><AvailabilityPage /></AppLayout></ProtectedRoute>} />
             <Route path={ROUTES.ADMIN} element={<ProtectedRoute requiredRoles={['admin']}><AppLayout><AdminPage /></AppLayout></ProtectedRoute>} />
             <Route path={ROUTES.SETTINGS} element={<ProtectedRoute requiredRoles={['admin', 'producer']}><AppLayout><SettingsPage /></AppLayout></ProtectedRoute>} />
