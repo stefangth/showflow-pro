@@ -619,6 +619,7 @@ export type Database = {
           required_skills: string[] | null
           slots_per_date: number
           status: Database["public"]["Enums"]["show_status"]
+          sub_program: string | null
           title: string
           updated_at: string
           venue: string | null
@@ -633,6 +634,7 @@ export type Database = {
           required_skills?: string[] | null
           slots_per_date?: number
           status?: Database["public"]["Enums"]["show_status"]
+          sub_program?: string | null
           title: string
           updated_at?: string
           venue?: string | null
@@ -647,6 +649,7 @@ export type Database = {
           required_skills?: string[] | null
           slots_per_date?: number
           status?: Database["public"]["Enums"]["show_status"]
+          sub_program?: string | null
           title?: string
           updated_at?: string
           venue?: string | null
