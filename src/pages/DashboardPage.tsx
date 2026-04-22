@@ -1,167 +1,145 @@
-import { useAuth } from '@/features/auth/AuthContext';
 import { useQuery } from '@tanstack/react-query';
+import { Link } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
-import { CalendarDays, Users, BookOpen, AlertTriangle, TrendingUp, Clock } from 'lucide-react';
+import { Card, CardContent } from '@/components/ui/card';
+import { CalendarDays, TrendingUp, Clock } from 'lucide-react';
 import { motion } from 'framer-motion';
-import { format } from 'date-fns';
+import { addDays, format } from 'date-fns';
 
 const fadeUp = {
   initial: { opacity: 0, y: 20 },
   animate: { opacity: 1, y: 0 },
 };
 
-export default function DashboardPage() {
-  const { user, roles, hasRole } = useAuth();
+type DateRow = { id: string; date: string; show_id: string };
+type BookingLite = { show_date_id: string; status: string };
 
-  const { data: shows } = useQuery({
-    queryKey: ['shows-count'],
-    queryFn: async () => {
-      const { count } = await supabase.from('shows').select('*', { count: 'exact', head: true });
-      return count ?? 0;
-    },
-  });
+export default function DashboardPage() {
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const todayStr = format(today, 'yyyy-MM-dd');
+  const in14 = format(addDays(today, 14), 'yyyy-MM-dd');
+  const in30 = format(addDays(today, 30), 'yyyy-MM-dd');
 
   const { data: upcomingDates } = useQuery({
-    queryKey: ['upcoming-dates'],
+    queryKey: ['dashboard-upcoming-dates', todayStr],
     queryFn: async () => {
-      const { data } = await supabase
+      const { data, error } = await supabase
         .from('show_dates')
-        .select('*, show:shows(title)')
-        .gte('date', format(new Date(), 'yyyy-MM-dd'))
-        .order('date', { ascending: true })
-        .limit(10);
-      return data ?? [];
+        .select('id, date, show_id, show:shows(slots_per_date)')
+        .gte('date', todayStr)
+        .neq('status', 'cancelled')
+        .order('date', { ascending: true });
+      if (error) throw error;
+      return (data ?? []) as unknown as (DateRow & { show: { slots_per_date: number } })[];
     },
   });
 
-  const { data: artists } = useQuery({
-    queryKey: ['artists-count'],
+  const { data: confirmedBookings } = useQuery({
+    queryKey: ['dashboard-confirmed-bookings'],
     queryFn: async () => {
-      const { count } = await supabase.from('artists').select('*', { count: 'exact', head: true });
-      return count ?? 0;
-    },
-  });
-
-  const { data: activeBookings } = useQuery({
-    queryKey: ['active-bookings'],
-    queryFn: async () => {
-      const { count } = await supabase
+      const { data, error } = await supabase
         .from('bookings')
-        .select('*', { count: 'exact', head: true })
-        .in('status', ['suggested', 'soft_booked', 'confirmed']);
-      return count ?? 0;
+        .select('show_date_id, status')
+        .eq('status', 'confirmed');
+      if (error) throw error;
+      return (data ?? []) as BookingLite[];
     },
   });
 
-  const { data: recentBookings } = useQuery({
-    queryKey: ['recent-bookings'],
-    queryFn: async () => {
-      const { data } = await supabase
-        .from('bookings')
-        .select('*, artist:artists(name), show_date:show_dates(date, show:shows(title))')
-        .order('created_at', { ascending: false })
-        .limit(5);
-      return data ?? [];
-    },
-  });
+  const confirmedCountByDate = (() => {
+    const map = new Map<string, number>();
+    (confirmedBookings ?? []).forEach(b => {
+      map.set(b.show_date_id, (map.get(b.show_date_id) ?? 0) + 1);
+    });
+    return map;
+  })();
 
-  const statusColor: Record<string, string> = {
-    suggested: 'bg-info/10 text-info',
-    soft_booked: 'bg-warning/10 text-warning',
-    confirmed: 'bg-success/10 text-success',
-    cancelled: 'bg-destructive/10 text-destructive',
-    open: 'bg-muted text-muted-foreground',
-    partially_filled: 'bg-warning/10 text-warning',
-    fully_filled: 'bg-success/10 text-success',
+  const computeRange = (untilStr: string | null) => {
+    const dates = (upcomingDates ?? []).filter(d => !untilStr || d.date <= untilStr);
+    const total = dates.length;
+    const fullyConfirmed = dates.filter(d => (confirmedCountByDate.get(d.id) ?? 0) >= (d.show?.slots_per_date ?? 1)).length;
+    const pct = total === 0 ? 0 : Math.round((fullyConfirmed / total) * 100);
+    const showCount = new Set(dates.map(d => d.show_id)).size;
+    return { total, pct, showCount };
   };
+
+  const all = computeRange(null);
+  const next14 = computeRange(in14);
+  const next30 = computeRange(in30);
+
+  const cards = [
+    {
+      title: 'Live & upcoming',
+      icon: CalendarDays,
+      primary: `${all.total}`,
+      primaryLabel: all.total === 1 ? 'live date' : 'live dates',
+      pct: all.pct,
+      to: `/bookings?status=cast_pending&from=${todayStr}`,
+      accent: 'text-primary',
+    },
+    {
+      title: 'Next 14 days',
+      icon: Clock,
+      primary: `${next14.pct}%`,
+      primaryLabel: 'cast confirmed',
+      sub: `${next14.showCount} show${next14.showCount === 1 ? '' : 's'}`,
+      to: `/bookings?status=cast_pending&from=${todayStr}&to=${in14}`,
+      accent: 'text-info',
+      pctMode: true,
+    },
+    {
+      title: 'Next 30 days',
+      icon: TrendingUp,
+      primary: `${next30.pct}%`,
+      primaryLabel: 'cast confirmed',
+      sub: `${next30.showCount} show${next30.showCount === 1 ? '' : 's'}`,
+      to: `/bookings?status=cast_pending&from=${todayStr}&to=${in30}`,
+      accent: 'text-success',
+      pctMode: true,
+    },
+  ];
 
   return (
     <div className="space-y-6">
       <div>
         <h1 className="font-display text-3xl font-bold">Dashboard</h1>
-        <p className="text-muted-foreground mt-1">Welcome back. Here's what's happening.</p>
+        <p className="text-muted-foreground mt-1">Cast confirmation status across upcoming dates.</p>
       </div>
 
-      {/* Stats */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        {[
-          { label: 'Active Shows', value: shows ?? 0, icon: CalendarDays, color: 'text-primary' },
-          { label: 'Artists', value: artists ?? 0, icon: Users, color: 'text-accent' },
-          { label: 'Active Bookings', value: activeBookings ?? 0, icon: BookOpen, color: 'text-success' },
-          { label: 'Upcoming Dates', value: upcomingDates?.length ?? 0, icon: Clock, color: 'text-info' },
-        ].map((stat, i) => (
-          <motion.div key={stat.label} variants={fadeUp} initial="initial" animate="animate" transition={{ delay: i * 0.1 }}>
-            <Card>
-              <CardContent className="pt-6">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm text-muted-foreground">{stat.label}</p>
-                    <p className="text-3xl font-display font-bold mt-1">{stat.value}</p>
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+        {cards.map((c, i) => (
+          <motion.div key={c.title} variants={fadeUp} initial="initial" animate="animate" transition={{ delay: i * 0.1 }}>
+            <Link to={c.to} className="block">
+              <Card className="hover:shadow-lg transition-shadow cursor-pointer h-full">
+                <CardContent className="pt-6">
+                  <div className="flex items-start justify-between mb-4">
+                    <p className="text-sm text-muted-foreground font-medium">{c.title}</p>
+                    <c.icon className={`h-8 w-8 ${c.accent} opacity-30`} />
                   </div>
-                  <stat.icon className={`h-10 w-10 ${stat.color} opacity-20`} />
-                </div>
-              </CardContent>
-            </Card>
+                  <div className="flex items-baseline gap-2 mb-3">
+                    <p className="text-4xl font-display font-bold">{c.primary}</p>
+                    <p className="text-sm text-muted-foreground">{c.primaryLabel}</p>
+                  </div>
+                  {c.pctMode ? (
+                    <p className="text-sm text-muted-foreground">{c.sub}</p>
+                  ) : (
+                    <div className="space-y-1">
+                      <div className="flex items-center justify-between text-xs">
+                        <span className="text-muted-foreground">Cast confirmed</span>
+                        <span className="font-medium">{c.pct}%</span>
+                      </div>
+                      <div className="h-1.5 rounded-full bg-muted overflow-hidden">
+                        <div className="h-full bg-primary transition-all" style={{ width: `${c.pct}%` }} />
+                      </div>
+                    </div>
+                  )}
+                  <p className="text-xs text-muted-foreground mt-3">Click to see pending shows →</p>
+                </CardContent>
+              </Card>
+            </Link>
           </motion.div>
         ))}
-      </div>
-
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Upcoming dates */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="font-display text-lg">Upcoming Show Dates</CardTitle>
-          </CardHeader>
-          <CardContent>
-            {upcomingDates && upcomingDates.length > 0 ? (
-              <div className="space-y-3">
-                {upcomingDates.map((d: any) => (
-                  <div key={d.id} className="flex items-center justify-between py-2 border-b border-border last:border-0">
-                    <div>
-                      <p className="font-medium text-sm">{d.show?.title ?? 'Unknown Show'}</p>
-                      <p className="text-xs text-muted-foreground">{format(new Date(d.date), 'MMM d, yyyy')}</p>
-                    </div>
-                    <Badge variant="secondary" className={statusColor[d.status] ?? ''}>
-                      {d.status.replace('_', ' ')}
-                    </Badge>
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <p className="text-sm text-muted-foreground">No upcoming dates</p>
-            )}
-          </CardContent>
-        </Card>
-
-        {/* Recent bookings */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="font-display text-lg">Recent Bookings</CardTitle>
-          </CardHeader>
-          <CardContent>
-            {recentBookings && recentBookings.length > 0 ? (
-              <div className="space-y-3">
-                {recentBookings.map((b: any) => (
-                  <div key={b.id} className="flex items-center justify-between py-2 border-b border-border last:border-0">
-                    <div>
-                      <p className="font-medium text-sm">{b.artist?.name ?? 'Unknown'}</p>
-                      <p className="text-xs text-muted-foreground">
-                        {b.show_date?.show?.title} — {b.show_date?.date ? format(new Date(b.show_date.date), 'MMM d') : ''}
-                      </p>
-                    </div>
-                    <Badge variant="secondary" className={statusColor[b.status] ?? ''}>
-                      {b.status.replace('_', ' ')}
-                    </Badge>
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <p className="text-sm text-muted-foreground">No bookings yet</p>
-            )}
-          </CardContent>
-        </Card>
       </div>
     </div>
   );

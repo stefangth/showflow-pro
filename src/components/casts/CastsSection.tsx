@@ -4,7 +4,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/features/auth/AuthContext';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { CastDialog } from './CastDialog';
-import { CastMembersSheet } from './CastMembersSheet';
+import { CastDetailsSheet } from './CastDetailsSheet';
 import { Users } from 'lucide-react';
 import type { Cast } from '@/types';
 
@@ -65,7 +65,7 @@ export function CastsSection() {
         )}
       </CardContent>
 
-      <CastMembersSheet
+      <CastDetailsSheet
         cast={activeCast}
         open={!!activeCast}
         onOpenChange={(o) => { if (!o) setActiveCast(null); }}
