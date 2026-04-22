@@ -1,101 +1,92 @@
 
 
-## Plan: Casts, City Eligibility, and Per-Date Chat
+## Plan: Unified Shows & Bookings, Cast Eligibility on Artists Sheet, Dashboard Cast Cards
 
-### 1. Data model
+### 1. Move Cast Eligibility to the Artist side panel
 
-New tables (all RLS-enabled, `authenticated` only):
+- The current `EligibilityPanel` (per-show × city → casts) on `ShowDetailPage` is removed from the show page.
+- Replace `CastMembersSheet` with a richer `CastDetailsSheet` opened from `CastsSection` on `/artists`. New tabbed layout inside the sheet:
+  - **Members** — the existing add/remove artists UI.
+  - **City eligibility** — a matrix: rows = cities, columns = shows. Each cell is a checkbox; toggling writes/deletes a row in `show_cast_eligibility` (`show_id`, `city_id`, `cast_id` of this cast). This makes "where this cast is eligible" a property of the cast, configured from the artists view.
+- Existing per-date overrides (`show_date_cast_eligibility`) and the date-config card on `ShowDetailPage` remain — that's still the place to override per individual show date.
 
-- **`cities`** — `id`, `name` (unique), `airtable_record_id` (nullable), `created_at`. Mock-seed: Berlin, London, Paris, New York, Madrid. Replaced by Airtable sync later.
-- **`casts`** — `id`, `name`, `description`, `created_by`, timestamps. Producers/admins manage.
-- **`cast_members`** — `cast_id` ↔ `artist_id` (composite unique). Producers/admins manage.
-- **`show_cast_eligibility`** — `show_id`, `city_id`, `cast_id` (composite unique). The "show + city → eligible casts" config. Producers/admins manage.
-- **`show_date_cast_eligibility`** — `show_date_id`, `cast_id` (composite unique). Per-date overrides/additions on top of the show-level inheritance. Producers/admins manage.
-- **`chats`** — `id`, `show_date_id` (unique, one chat per date), `created_by`, `created_at`. Auto-created on first message.
-- **`chat_messages`** — `id`, `chat_id`, `user_id`, `body`, `created_at`. Realtime-enabled.
+### 2. Unify Shows & Bookings into one page (`/bookings`)
 
-Schema additions to existing tables:
+- New `ShowsBookingsPage` mounted at `ROUTES.BOOKINGS` (`/bookings`). Old `/shows` route redirects to `/bookings`. Sidebar entry "Shows" removed; "Bookings" renamed to "Shows & Bookings".
+- `ShowDetailPage` continues to exist at `/shows/:id` (for direct deep links), but the unified page also opens shows in a **side sheet** instead of navigating away — the sheet renders the existing show detail (dates list + bookings tab + chat tab) inline.
+- **List view** is a true table (using shadcn `Table`) with these columns:
+  1. **Date** — earliest upcoming `show_date.date` formatted `DD/MM/YYYY`
+  2. **Program** — `shows.program`
+  3. **Sub Program** — new `shows.sub_program` column
+  4. **Venue** — `shows.venue`
+  5. **Booking Status** — derived: `Cast Confirmed` (all slots on next date confirmed), `Cast Pending` (slots not fully confirmed), `Open` (no bookings yet), `Cancelled`
+  6. **Show 1 / Show 2 / Show 3** — the first 3 `start_time`s of the next upcoming `show_date` (ordered). Empty cell if fewer.
+- Filter bar keeps the existing program / timeframe / sort / view-toggle controls. **New filter: "Cast Pending"** added to a status dropdown (`All / Cast Confirmed / Cast Pending / Open / Cancelled`) gated by `canSee('status')`.
+- Calendar view: keep existing `EntityCalendar`, plotting next show date per show; clicking opens the same side sheet.
+- Clicking a row → opens `ShowDetailSheet` (right-side `Sheet`) showing bookings for that show.
 
-- **`artists.cast_role`** (text, nullable) — free-text role tag (e.g. "lead violin").
-- **`show_dates.city_id`** (uuid, nullable, FK → cities) — needed so we can resolve "this date's eligible casts" by joining show + city.
+### 3. Schema additions
 
-Helper SQL function `is_chat_participant(_chat_id uuid, _user_id uuid)`:
-- Returns true if user is admin/producer, OR is the artist on a `bookings` row with status in (`soft_booked`,`confirmed`) for the chat's `show_date_id`.
+One migration:
 
-RLS using that function:
-- `chats` — SELECT/INSERT for participants. UPDATE/DELETE: admin only.
-- `chat_messages` — SELECT for participants; INSERT for participants where `user_id = auth.uid()`. No UPDATE/DELETE.
+- `ALTER TABLE shows ADD COLUMN sub_program text` (nullable).
+- No other schema changes — `Cast Pending` is computed client-side from `bookings.status` + `shows.slots_per_date`.
 
-Eligibility resolver (frontend): for a given `show_date`, eligible casts = (show-level casts for `show_date.city_id`) ∪ (per-date overrides). Bookable artists = members of those casts.
+### 4. Dashboard cards
 
-### 2. UI — Artists page
+Replace the four existing stat cards on `DashboardPage` with three cast-status cards:
 
-- New "Cast role" input on add-artist dialog and on artist card display (small muted line).
-- New "Casts" multi-select chip on each artist card showing memberships.
-- New "Casts" section (above the artist grid) — for producers/admins: list of casts with member counts, "New Cast" button → dialog (name + description), click a cast → side sheet to add/remove member artists.
+- **Card 1 — Live & upcoming**: count of `show_dates` with `date >= today`, plus "Cast confirmed: X%" (dates where all `slots_per_date` slots are filled with `confirmed` bookings ÷ total upcoming dates).
+- **Card 2 — Next 14 days**: same percentage scoped to `today …+14d`, with the count of distinct shows in that range below.
+- **Card 3 — Next 30 days**: same for `today …+30d`.
 
-### 3. UI — Show detail page
+Each card is a `Link` to:
 
-New "Cast eligibility" panel (producer/admin only) above the dates list:
-- Per city: multi-select of casts. Saved into `show_cast_eligibility`.
-- Helper text: "New dates synced from Airtable inherit this. Override per date below."
+```text
+/bookings?status=cast_pending&from=YYYY-MM-DD&to=YYYY-MM-DD
+```
 
-On each show date card:
-- Show inherited casts as muted chips + "+ Add cast for this date" → adds to `show_date_cast_eligibility`.
-- City selector (dropdown of `cities`) on the date itself, drives which inherited casts apply.
+`ShowsBookingsPage` reads `searchParams` on mount and pre-applies the timeframe + status filters.
 
-Booking panel (`Available Artists`) is now filtered: show only artists who are members of at least one eligible cast for that date (and still respect availability).
-
-### 4. UI — Chat
-
-New `ChatPanel` component on the show-date booking view (right column tab "Chat" alongside "Bookings"):
-- Lists messages chronologically, input at the bottom.
-- Subscribes via Supabase Realtime to `chat_messages` for live updates.
-- Hidden entirely if `show_date.date < now() - 30 days` (archive rule) for non-admins; admins see a muted "Archived" banner and read-only history.
-- Top bar: participant count + avatars (booked + soft-booked artists + producers/admins resolved client-side from `bookings` + `user_roles`).
-- New "Chats" entry in sidebar → `ChatsListPage` showing all active (non-archived) chats the user is a participant in, grouped by date.
-
-### 5. Settings → new "Casts & Cities" tab
-
-Producers + admins (lift the admin-only gate so producers can access **just this tab** — page-level guard adjusted to allow producer for the casts/cities tabs only).
-
-- **Cities**: list + add/remove (text). Note: "Pulled from Airtable once sync is wired — currently editable for mock data."
-- **Casts overview**: link to Artists page (where casts are managed inline).
-- **Show eligibility matrix** (admins only): table of shows × cities → which casts eligible. Useful for bulk config.
-
-### 6. Files to create / edit
+### 5. Files to create / edit
 
 ```text
 NEW:
-  src/components/casts/CastsSection.tsx       (artists page section)
-  src/components/casts/CastDialog.tsx
-  src/components/casts/CastMembersSheet.tsx
-  src/components/casts/EligibilityPanel.tsx   (show detail)
-  src/components/chat/ChatPanel.tsx
-  src/components/chat/MessageBubble.tsx
-  src/hooks/useChatParticipant.ts
-  src/hooks/useEligibleArtists.ts
-  src/pages/ChatsListPage.tsx
-  src/pages/SettingsPage.tsx                  (add "Casts & Cities" tab)
-  supabase/migrations/<ts>_casts_cities_chat.sql
+  src/pages/ShowsBookingsPage.tsx              (table + filters + side sheet)
+  src/components/shows/ShowDetailSheet.tsx     (sheet wrapper around show detail content)
+  src/components/casts/CastDetailsSheet.tsx    (replaces CastMembersSheet — adds eligibility tab)
+  supabase/migrations/<ts>_add_sub_program.sql
 
 EDIT:
-  src/App.tsx                                 (route /chats)
-  src/components/layout/AppLayout.tsx         (sidebar entry)
-  src/pages/ArtistsPage.tsx                   (cast_role + casts UI)
-  src/pages/ShowDetailPage.tsx                (eligibility + city + filtered bookable list + chat tab)
-  src/types/index.ts                          (Cast, City, ChatMessage exports)
-  src/config/app.config.ts                    (ROUTES.CHATS, CHAT_ARCHIVE_DAYS = 30)
+  src/App.tsx                                  (redirect /shows → /bookings, mount new page)
+  src/components/layout/AppLayout.tsx          (drop Shows nav, rename Bookings)
+  src/pages/DashboardPage.tsx                  (3 new cast cards with deep-link search params)
+  src/pages/ArtistsPage.tsx                    (use new CastDetailsSheet)
+  src/pages/ShowDetailPage.tsx                 (remove EligibilityPanel import/use)
+  src/pages/ShowsPage.tsx                      (DELETE)
+  src/pages/BookingsPage.tsx                   (DELETE)
+  src/components/casts/EligibilityPanel.tsx    (DELETE — logic moves into CastDetailsSheet)
+  src/components/casts/CastMembersSheet.tsx    (DELETE — superseded)
+  src/components/filters/SortControl.tsx       (no change; reused)
+
+KEEP:
+  /shows/:id route (deep-link target for show detail page)
 ```
 
-### 7. Realtime
+### 6. Computed "Booking Status" rules (column + filter)
 
-Enable Supabase Realtime publication on `chat_messages` (added in the migration). `ChatPanel` uses `supabase.channel()` to subscribe.
+For a show, look at the **next upcoming** show_date:
 
-### 8. Out of scope (explicit)
+- `Cancelled` — if status = cancelled.
+- `Cast Confirmed` — count of bookings with status `confirmed` ≥ `slots_per_date`.
+- `Cast Pending` — has bookings but confirmed count < `slots_per_date`.
+- `Open` — zero bookings.
 
-- No real Airtable city sync — `cities` is mock + manually editable until the schema lands.
-- No push notifications for chat (only in-app via existing notifications table — out of scope here).
-- No file/image attachments in chat (text only v1).
-- No hard-delete edge function for archived chats — rows remain; UI hides them.
+If there are no upcoming dates, status is `—` and the show is hidden from the Cast Pending filter.
+
+### 7. Out of scope
+
+- No backfill of `sub_program` data — admins fill it manually until Airtable mapping ships.
+- Booking row-level actions (Confirm / Soft Book / Cancel buttons currently on `BookingsPage`) move into the show detail sheet. The unified page table is read-only at the row level — actions happen inside the sheet.
+- Keyboard nav / multi-select on the table is not implemented.
 
