@@ -1,94 +1,99 @@
 
 
-## Plan: Admin-approved signup + Google OAuth + IAM approval flow
+## Plan: Artist-scoped views, side-view date format, dev login, calendar availability
 
-### 1. Approval data model
+Skipping (already built today): admin-gated signup flow, Google OAuth wiring, IAM admin list, approvals tab, transactional email infra. Below is only what's still outstanding.
 
-New table `user_approvals` (RLS-enabled):
+---
 
-- `id`, `user_id` (uuid, unique, references `auth.users.id` logically), `email` (text), `display_name` (text), `status` (enum: `pending` / `approved` / `rejected`), `requested_role` (`app_role`, default `artist`), `decided_by` (uuid, nullable), `decided_at` (timestamptz, nullable), `rejection_reason` (text, nullable), `created_at`, `updated_at`.
+### 1. Side-view date discrepancies (Shows & Bookings, Show detail sheet)
 
-Policies:
-- `SELECT`: self (`user_id = auth.uid()`) OR admin via `has_role`.
-- `INSERT`: only via the post-signup edge function (service role) — no client policy.
-- `UPDATE`: admin only.
+**Cause of discrepancy**: `ShowDetailPage` (rendered inside the side sheet) formats `show_dates` with `format(new Date(d.date), 'EEEE, MMM d, yyyy')`, while the list/calendar use `dd/MM/yyyy`. There is **no data discrepancy** — both views read from the same `show_dates` rows. The mismatch is purely the display format and the parsing of date-only strings without a timezone (`new Date('2026-04-23')` is parsed as UTC, which can shift a day in negative timezones).
 
-Trigger: replace `handle_new_user()` so that on `auth.users` insert it ALSO inserts a `user_approvals` row with `status = 'pending'` and does NOT insert into `user_roles`. The existing `profiles` insert continues. Roles are granted only when an admin approves.
+**Fix**:
+- In `ShowDetailPage.tsx`, format every `show_date.date` as `dd/MM/yyyy` and parse with `new Date(d.date + 'T00:00:00')` (timezone-safe, matching `ShowsBookingsPage`).
+- Same fix in `CastDetailsSheet.tsx` and any other sheet showing dates.
+- Add a tiny shared helper `src/lib/dates.ts` exporting `formatDateDMY(dateStr)` and `parseDateOnly(dateStr)` so the convention is enforced everywhere; refactor existing call sites.
 
-Bootstrap: a one-time SQL migration that auto-approves and grants `admin` to the first user whose email matches a developer seed (kept manual — admin can also self-promote via the existing IAM `admin-set-role` function once the bootstrap admin exists).
+### 2. Developer login + IAM "Assign role" control
 
-### 2. Auth flow changes
+- Add **"Assign role"** controls to the existing IAM Users tab: per-user role multi-select (Artist / Producer / Admin) backed by inserts/deletes into `user_roles` via a new edge function `admin-set-role` (service role; verifies caller has admin via `has_role`).
+- Add a one-time bootstrap: a **Settings > Developer** card visible only when the current user has zero approvals/roles configured AND their email matches a developer seed list (env-driven), letting them self-promote to admin. Once any admin exists this card hides.
+- For the user's own dev account: the simpler path is to run a one-off `INSERT` via the migration tool to (a) auto-approve their `user_approvals` row and (b) grant `admin` in `user_roles`. Will execute this once the user confirms which email to elevate.
 
-- **Google OAuth** (Supabase URLs already configured by the user, site URL = `showflow.pro`, redirect path `/oauth/consent`):
-  - `LoginPage` keeps the existing Google button. After Google returns and the new `auth.users` row is created, the `handle_new_user` trigger writes a `user_approvals` row with `status = 'pending'`.
-- **Email/password login** kept; signup remains removed (already done in the previous loop).
-- New gate component `ApprovalGate` wraps `ProtectedRoute`:
-  - On every authenticated session it queries `user_approvals` for the current user.
-  - `pending` → render `PendingApprovalScreen` ("Your signup is being reviewed. We'll email you when an admin approves your account."), with a sign-out button. No app routes accessible.
-  - `rejected` → render `RejectedScreen` with the reason and sign-out button.
-  - `approved` → normal app access.
-  - If the row is missing (legacy users created before this change), treat as approved to avoid lockout.
+### 3. Remove `/artists` view + permissions
 
-### 3. Admin notification email
+- Drop the route from `src/App.tsx`, the nav item from `AppLayout.tsx`, and the constant from `ROUTES`.
+- Delete `src/pages/ArtistsPage.tsx`.
+- Keep the `artists` table and producer/admin write access — artist *management* still happens via the IAM tab and the booking flow inside `/shows/:id`.
 
-- New transactional flow using Lovable's built-in email infrastructure (per project rules):
-  1. `email_domain--check_email_domain_status` → if no domain, prompt the user to set up an email sender domain (`<lov-open-email-setup>`). This is a prerequisite.
-  2. Once domain exists, run `email_domain--setup_email_infra` and `email_domain--scaffold_transactional_email`.
-  3. Add two React Email templates in `supabase/functions/_shared/transactional-email-templates/`:
-     - `new-signup-admin-notification.tsx` — sent to all admins. Includes signup name, email, requested role, and a link to `https://showflow.pro/admin?tab=approvals`.
-     - `signup-decision.tsx` — sent to the signed-up user when an admin approves or rejects them (subject + body switch based on `decision` prop).
-- New edge function `notify-signup` (service role, `verify_jwt = false`, called by a database webhook on `user_approvals` insert):
-  - Looks up admin user emails via service role and `auth.admin.listUsers()` filtered against `user_roles` rows where `role = 'admin'`.
-  - For each admin, invokes `send-transactional-email` with `templateName: 'new-signup-admin-notification'` and an `idempotencyKey` of `signup-${user_approvals.id}-${admin.id}`.
-- `admin-set-role` is extended (or paired with a new `admin-decide-approval` function) so when an admin approves/rejects:
-  - Updates `user_approvals` (status, `decided_by`, `decided_at`, `rejection_reason`).
-  - On approve: inserts the chosen role into `user_roles`.
-  - On reject: leaves `user_roles` empty.
-  - Invokes `send-transactional-email` with `templateName: 'signup-decision'`, `idempotencyKey: approval-${user_approvals.id}-${status}`, `templateData: { decision, reason, displayName }`.
+### 4. Artist-scoped data on `/bookings`, `/dashboard`, `/availability`
 
-### 4. IAM view updates (`AdminPage`)
+A new shared hook `useArtistEligibleDates()` returns the set of `show_date` IDs the current artist is eligible for, computed as:
 
-Add a new tab "Approvals" (default tab when there are pending requests) alongside the existing Users / Audit / Sync tabs.
+```text
+artist.id
+   └─> cast_members (cast_ids the artist belongs to)
+         ├─> show_cast_eligibility   (city-scoped show eligibility)
+         └─> show_date_cast_eligibility (per-date overrides)
+               └─> resulting show_date IDs (filter to date >= today)
+```
 
-- **Approvals tab**: lists `user_approvals` where `status = 'pending'`. Each row shows email, display name, requested at (`DD/MM/YYYY HH:mm`), role selector (default `artist`, choices `artist | producer | admin`), and two buttons: **Approve** and **Reject** (Reject opens a small dialog asking for a reason). Buttons call `admin-decide-approval`.
-- **Users tab**: extend the existing IAM table with a status badge column (`Pending` / `Approved` / `Rejected`) joined from `user_approvals`. Rejected/pending users still appear so admins can change their mind; approving from here works the same as the Approvals tab.
-- Realtime: subscribe to `user_approvals` so the badge / pending count updates without refresh.
-- A small badge on the Approvals tab trigger shows the pending count.
+Used to gate every artist-facing query:
 
-### 5. Files to create / edit
+- **`/bookings` (artist role)**: same list/calendar UI as producers, but filtered to eligible `show_dates`. Side view (ShowDetailSheet) for an artist hides Date configuration / cast-eligibility editors and instead shows the artist's own availability + booking status for that single date with the Available / Not available / Tentative selector.
+- **`/dashboard` (artist role)**: replace the producer cards with an artist-only card:
+  - "Response rate": `% of eligible upcoming dates where an availability row exists`.
+  - Click → navigate to `/availability?filter=unanswered` showing only the unanswered eligible dates.
+- **`/availability` (artist role)**: rebuilt to mirror `/bookings`:
+  - Same filter bar (timeframe, sort, view toggle).
+  - List view: rows of eligible upcoming dates with a Select (Available / Not available / Tentative / Clear).
+  - Calendar view: month grid where each eligible date renders with:
+    - **Bold blue outline** → offered (date is in eligibility set).
+    - **Red shade** → artist marked Not available.
+    - **Green shade** → artist has a `confirmed` booking on that date.
+    - Yellow shade for Tentative (existing token), neutral for Available, no shade for unanswered.
+  - Tapping a calendar cell opens a small popover dropdown with Available / Not available / Tentative; selection upserts into `availability`. List view uses the same options inline.
+- Producers/admins keep the current `/availability` view (their own availability still editable; no eligibility filter).
+
+### 5. Routing & role gating
+
+- `ProtectedRoute` continues to gate by role. Artist-only routes: `/dashboard`, `/bookings`, `/availability`, `/chats`. Remove `/artists` entirely.
+- The artist variants of Bookings/Dashboard/Availability are selected inside the page component via `hasRole('artist') && !hasRole('producer') && !hasRole('admin')`, so admins can still preview the producer view.
+
+### 6. Files to create / edit
 
 ```text
 NEW:
-  supabase/functions/notify-signup/index.ts
-  supabase/functions/admin-decide-approval/index.ts
-  supabase/functions/_shared/transactional-email-templates/new-signup-admin-notification.tsx
-  supabase/functions/_shared/transactional-email-templates/signup-decision.tsx
-  src/features/auth/ApprovalGate.tsx
-  src/pages/PendingApprovalScreen.tsx
-  src/pages/RejectedScreen.tsx
-  src/components/admin/ApprovalsTab.tsx
-  supabase/migrations/<ts>_user_approvals.sql
+  src/lib/dates.ts                              (formatDateDMY, parseDateOnly)
+  src/hooks/useArtistEligibleDates.ts
+  src/hooks/useMyArtist.ts                      (already-inline pattern, extracted)
+  src/components/availability/AvailabilityPicker.tsx  (calendar popover + list select)
+  src/components/availability/ArtistAvailabilityCalendar.tsx
+  src/components/dashboard/ArtistDashboard.tsx
+  src/components/bookings/ArtistBookingsView.tsx
+  supabase/functions/admin-set-role/index.ts
 
 EDIT:
-  src/features/auth/AuthContext.tsx                 (expose approval status)
-  src/features/auth/ProtectedRoute.tsx              (delegate to ApprovalGate)
-  src/App.tsx                                       (mount ApprovalGate)
-  src/pages/AdminPage.tsx                           (new Approvals tab + status column)
-  src/pages/LoginPage.tsx                           (info copy under Google button)
-  supabase/functions/_shared/transactional-email-templates/registry.ts
-                                                    (register the two new templates)
+  src/App.tsx                                   (drop /artists route)
+  src/components/layout/AppLayout.tsx           (drop Artists nav)
+  src/config/app.config.ts                      (drop ROUTES.ARTISTS)
+  src/pages/ShowsBookingsPage.tsx               (artist branch → ArtistBookingsView)
+  src/pages/DashboardPage.tsx                   (artist branch → ArtistDashboard)
+  src/pages/AvailabilityPage.tsx                (artist branch + producer kept)
+  src/pages/ShowDetailPage.tsx                  (DD/MM/YYYY, side-view artist mode)
+  src/components/shows/ShowDetailSheet.tsx     (pass `isArtistView` prop)
+  src/components/casts/CastDetailsSheet.tsx     (date format fix)
+  src/pages/AdminPage.tsx                       (Assign role control in Users tab)
+
+DELETE:
+  src/pages/ArtistsPage.tsx
 ```
-
-### 6. Webhook wiring
-
-- One DB webhook (configured via the migration tool's webhook helper) on `user_approvals` `INSERT` → POST to `notify-signup`. If automated webhook config isn't possible from the migration, the edge function will alternatively be invoked from the `handle_new_user` trigger via `pg_net` (preferred fallback — keeps everything in SQL).
 
 ### 7. Out of scope
 
-- No bulk approve/reject.
-- No expiring approval requests / auto-cleanup of rejected rows.
-- No CAPTCHA on signup (Google OAuth is the only entry path; email/password signup is already removed).
-- No per-admin notification preferences — every admin gets every signup email until we add a settings toggle.
-- No re-application after rejection — admin must manually clear the row in Supabase to let the user retry. Will revisit if needed.
-- The four Supabase OAuth endpoint URLs you shared are already what `supabase-js` uses under the hood — no extra config needed in the client. They're noted for reference only.
+- Bulk availability editing.
+- Push/email notifications when an artist is offered a new date (existing `notifications` table only).
+- Re-enabling Artists page in the future (kept the table + RLS so it can come back).
+- Changes to producer/admin Bookings UX beyond the date-format fix.
 
