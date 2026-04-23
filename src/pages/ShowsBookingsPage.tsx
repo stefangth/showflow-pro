@@ -72,7 +72,11 @@ export default function ShowsBookingsPage() {
   if (hasRole('artist') && !hasRole('producer') && !hasRole('admin')) {
     return <ArtistBookingsView />;
   }
+  return <ProducerShowsBookings />;
+}
 
+function ProducerShowsBookings() {
+  const { hasRole } = useAuth();
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const { canSee } = useFilterVisibility('bookings');
