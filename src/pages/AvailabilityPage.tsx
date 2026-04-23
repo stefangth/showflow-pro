@@ -1,35 +1,214 @@
-import { useState, useMemo } from 'react';
+import { useMemo, useState, useEffect } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/features/auth/AuthContext';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { useToast } from '@/hooks/use-toast';
-import { format, startOfMonth, endOfMonth, eachDayOfInterval, isSameMonth, isToday, addMonths, subMonths } from 'date-fns';
+import {
+  format, startOfMonth, endOfMonth, eachDayOfInterval, isToday, addMonths, subMonths,
+} from 'date-fns';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
+import { TimeframeFilter, type TimeframeValue } from '@/components/filters/TimeframeFilter';
+import { SortControl, type SortValue } from '@/components/filters/SortControl';
+import { ViewToggle, type ViewMode } from '@/components/filters/ViewToggle';
+import { applySort, inTimeframe } from '@/components/filters/filterUtils';
+import { useArtistEligibleDates } from '@/hooks/useArtistEligibleDates';
+import { useMyArtist } from '@/hooks/useMyArtist';
+import { ArtistAvailabilityCalendar } from '@/components/availability/ArtistAvailabilityCalendar';
+import { AvailabilityPicker } from '@/components/availability/AvailabilityPicker';
+import { formatDateDMY, parseDateOnly } from '@/lib/dates';
 
 export default function AvailabilityPage() {
+  const { hasRole } = useAuth();
+  if (hasRole('artist') && !hasRole('producer') && !hasRole('admin')) {
+    return <ArtistAvailability />;
+  }
+  return <ProducerAvailability />;
+}
+
+/* ============================================================
+ * Artist view — eligibility-scoped list + calendar
+ * ============================================================ */
+function ArtistAvailability() {
+  const { data: artist } = useMyArtist();
+  const { data: eligibleDates, isLoading } = useArtistEligibleDates();
+  const [searchParams, setSearchParams] = useSearchParams();
+
+  const [timeframe, setTimeframe] = useState<TimeframeValue>({ from: null, to: null });
+  const [sort, setSort] = useState<SortValue>('chrono_asc');
+  const [view, setView] = useState<ViewMode>('list');
+  const [filter, setFilter] = useState<'all' | 'unanswered'>(
+    (searchParams.get('filter') as any) === 'unanswered' ? 'unanswered' : 'all'
+  );
+
+  useEffect(() => {
+    const next = new URLSearchParams(searchParams);
+    if (filter === 'unanswered') next.set('filter', 'unanswered');
+    else next.delete('filter');
+    setSearchParams(next, { replace: true });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [filter]);
+
+  const { data: myAvailability } = useQuery({
+    queryKey: ['my-availability-all', artist?.id],
+    enabled: !!artist?.id,
+    queryFn: async () => {
+      const { data } = await supabase
+        .from('availability')
+        .select('date, status')
+        .eq('artist_id', artist!.id);
+      return (data ?? []) as { date: string; status: string }[];
+    },
+  });
+
+  const respondedSet = useMemo(
+    () => new Set((myAvailability ?? []).map((a) => a.date)),
+    [myAvailability]
+  );
+
+  const filtered = useMemo(() => {
+    let list = (eligibleDates ?? []).filter((d) =>
+      inTimeframe(parseDateOnly(d.date), timeframe)
+    );
+    if (filter === 'unanswered') list = list.filter((d) => !respondedSet.has(d.date));
+    return applySort(list, sort, (d) => d.show.title, (d) => parseDateOnly(d.date));
+  }, [eligibleDates, timeframe, sort, filter, respondedSet]);
+
+  if (!artist) {
+    return (
+      <div className="space-y-6">
+        <h1 className="font-display text-3xl font-bold">Availability</h1>
+        <Card>
+          <CardContent className="py-12 text-center">
+            <p className="text-muted-foreground">
+              No artist profile linked to your account. Ask an admin to link your account.
+            </p>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-6">
+      <div>
+        <h1 className="font-display text-3xl font-bold">My Availability</h1>
+        <p className="text-muted-foreground mt-1">
+          Respond to dates you've been offered. Bold blue outline = offered, red = not available, green = confirmed.
+        </p>
+      </div>
+
+      <div className="flex flex-wrap items-center gap-3">
+        <div className="inline-flex rounded-md border border-input p-0.5">
+          {(['all', 'unanswered'] as const).map((f) => (
+            <button
+              key={f}
+              onClick={() => setFilter(f)}
+              className={`px-3 py-1.5 text-sm rounded-sm capitalize ${
+                filter === f ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:text-foreground'
+              }`}
+            >
+              {f === 'all' ? 'All offers' : 'Unanswered'}
+            </button>
+          ))}
+        </div>
+        <TimeframeFilter value={timeframe} onChange={setTimeframe} />
+        <SortControl value={sort} onChange={setSort} chronoLabel="Date" />
+        <div className="ml-auto">
+          <ViewToggle value={view} onChange={setView} />
+        </div>
+      </div>
+
+      {isLoading ? (
+        <div className="space-y-2">
+          {[1, 2, 3, 4].map((i) => (
+            <div key={i} className="h-12 rounded bg-muted animate-pulse" />
+          ))}
+        </div>
+      ) : view === 'list' ? (
+        <Card>
+          <CardContent className="p-0 overflow-x-auto">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Date</TableHead>
+                  <TableHead>Show</TableHead>
+                  <TableHead>Venue</TableHead>
+                  <TableHead>Time</TableHead>
+                  <TableHead className="w-56">My response</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {filtered.map((d) => (
+                  <TableRow key={d.id}>
+                    <TableCell className="font-medium whitespace-nowrap">
+                      {formatDateDMY(d.date)}
+                    </TableCell>
+                    <TableCell>{d.show.title}</TableCell>
+                    <TableCell>
+                      {d.show.venue || <span className="text-muted-foreground">—</span>}
+                    </TableCell>
+                    <TableCell className="whitespace-nowrap">
+                      {d.start_time ? d.start_time.slice(0, 5) : '—'}
+                    </TableCell>
+                    <TableCell>
+                      <AvailabilityPicker artistId={artist.id} date={d.date} size="sm" />
+                    </TableCell>
+                  </TableRow>
+                ))}
+                {filtered.length === 0 && (
+                  <TableRow>
+                    <TableCell colSpan={5} className="text-center text-muted-foreground py-12">
+                      {filter === 'unanswered'
+                        ? 'No unanswered offers — great work!'
+                        : 'No eligible dates yet.'}
+                    </TableCell>
+                  </TableRow>
+                )}
+              </TableBody>
+            </Table>
+          </CardContent>
+        </Card>
+      ) : (
+        <ArtistAvailabilityCalendar
+          artistId={artist.id}
+          eligibleDates={eligibleDates ?? []}
+        />
+      )}
+    </div>
+  );
+}
+
+/* ============================================================
+ * Producer / Admin view — original month grid (own availability)
+ * ============================================================ */
+function ProducerAvailability() {
   const { user } = useAuth();
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [currentMonth, setCurrentMonth] = useState(new Date());
 
-  // Get artist record for current user
   const { data: artist } = useQuery({
-    queryKey: ['my-artist', user?.id],
+    queryKey: ['my-artist-producer', user?.id],
     queryFn: async () => {
-      const { data } = await supabase.from('artists').select('*').eq('user_id', user!.id).maybeSingle();
+      const { data } = await supabase
+        .from('artists')
+        .select('*')
+        .eq('user_id', user!.id)
+        .maybeSingle();
       return data;
     },
     enabled: !!user,
   });
 
-  // Get availability for the month
   const monthStart = startOfMonth(currentMonth);
   const monthEnd = endOfMonth(currentMonth);
   const { data: availability } = useQuery({
-    queryKey: ['my-availability', artist?.id, format(currentMonth, 'yyyy-MM')],
+    queryKey: ['producer-availability', artist?.id, format(currentMonth, 'yyyy-MM')],
     queryFn: async () => {
       const { data } = await supabase
         .from('availability')
@@ -42,54 +221,34 @@ export default function AvailabilityPage() {
     enabled: !!artist,
   });
 
-  // Get bookings for the month
-  const { data: myBookings } = useQuery({
-    queryKey: ['my-bookings', artist?.id, format(currentMonth, 'yyyy-MM')],
-    queryFn: async () => {
-      const { data } = await supabase
-        .from('bookings')
-        .select('*, show_date:show_dates(date, show:shows(title))')
-        .eq('artist_id', artist!.id)
-        .neq('status', 'cancelled');
-      return data ?? [];
-    },
-    enabled: !!artist,
-  });
-
-  const toggleAvailability = useMutation({
+  const toggle = useMutation({
     mutationFn: async (date: string) => {
-      const existing = availability?.find(a => a.date === date);
+      const existing = availability?.find((a) => a.date === date);
       if (existing) {
         const cycle = { available: 'unavailable', unavailable: 'tentative', tentative: 'delete' } as const;
         const next = cycle[existing.status as keyof typeof cycle] ?? 'delete';
         if (next === 'delete') {
           await supabase.from('availability').delete().eq('id', existing.id);
         } else {
-          await supabase.from('availability').update({ status: next as 'available' | 'unavailable' | 'tentative' }).eq('id', existing.id);
+          await supabase
+            .from('availability')
+            .update({ status: next as 'available' | 'unavailable' | 'tentative' })
+            .eq('id', existing.id);
         }
       } else {
         await supabase.from('availability').insert({ artist_id: artist!.id, date, status: 'available' });
       }
     },
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['my-availability'] }),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['producer-availability'] }),
     onError: (err: any) => toast({ title: 'Error', description: err.message, variant: 'destructive' }),
   });
 
   const days = eachDayOfInterval({ start: monthStart, end: monthEnd });
   const availMap = useMemo(() => {
     const map: Record<string, string> = {};
-    availability?.forEach(a => { map[a.date] = a.status; });
+    availability?.forEach((a) => (map[a.date] = a.status));
     return map;
   }, [availability]);
-
-  const bookingMap = useMemo(() => {
-    const map: Record<string, any[]> = {};
-    myBookings?.forEach((b: any) => {
-      const d = b.show_date?.date;
-      if (d) { if (!map[d]) map[d] = []; map[d].push(b); }
-    });
-    return map;
-  }, [myBookings]);
 
   const statusStyles: Record<string, string> = {
     available: 'bg-success/20 border-success text-success hover:bg-success/30',
@@ -103,7 +262,9 @@ export default function AvailabilityPage() {
         <h1 className="font-display text-3xl font-bold">Availability</h1>
         <Card>
           <CardContent className="py-12 text-center">
-            <p className="text-muted-foreground">No artist profile linked to your account. Ask an admin to link your account.</p>
+            <p className="text-muted-foreground">
+              No artist profile linked to your account.
+            </p>
           </CardContent>
         </Card>
       </div>
@@ -114,7 +275,9 @@ export default function AvailabilityPage() {
     <div className="space-y-6">
       <div>
         <h1 className="font-display text-3xl font-bold">My Availability</h1>
-        <p className="text-muted-foreground mt-1">Click dates to toggle: available → unavailable → tentative → clear</p>
+        <p className="text-muted-foreground mt-1">
+          Click dates to toggle: available → unavailable → tentative → clear
+        </p>
       </div>
 
       <Card>
@@ -130,45 +293,33 @@ export default function AvailabilityPage() {
           </div>
         </CardHeader>
         <CardContent>
-          {/* Day headers */}
           <div className="grid grid-cols-7 gap-1 mb-2">
-            {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map(d => (
-              <div key={d} className="text-center text-xs font-medium text-muted-foreground py-1">{d}</div>
+            {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map((d) => (
+              <div key={d} className="text-center text-xs font-medium text-muted-foreground py-1">
+                {d}
+              </div>
             ))}
           </div>
-
-          {/* Calendar grid */}
           <div className="grid grid-cols-7 gap-1">
-            {/* Empty cells for first week offset */}
-            {Array.from({ length: monthStart.getDay() }).map((_, i) => <div key={`empty-${i}`} />)}
-            {days.map(day => {
+            {Array.from({ length: monthStart.getDay() }).map((_, i) => (
+              <div key={`empty-${i}`} />
+            ))}
+            {days.map((day) => {
               const dateStr = format(day, 'yyyy-MM-dd');
               const status = availMap[dateStr];
-              const dayBookings = bookingMap[dateStr];
               return (
                 <button
                   key={dateStr}
-                  onClick={() => toggleAvailability.mutate(dateStr)}
+                  onClick={() => toggle.mutate(dateStr)}
                   className={`relative p-2 rounded-lg border text-center min-h-[60px] transition-colors ${
                     status ? statusStyles[status] : 'border-border hover:bg-muted'
                   } ${isToday(day) ? 'ring-2 ring-primary' : ''}`}
                 >
                   <span className={`text-sm ${isToday(day) ? 'font-bold' : ''}`}>{format(day, 'd')}</span>
-                  {dayBookings && (
-                    <div className="mt-1">
-                      {dayBookings.map((b: any) => (
-                        <div key={b.id} className="text-[10px] truncate bg-primary/10 text-primary rounded px-1">
-                          {b.show_date?.show?.title}
-                        </div>
-                      ))}
-                    </div>
-                  )}
                 </button>
               );
             })}
           </div>
-
-          {/* Legend */}
           <div className="flex items-center gap-4 mt-4 pt-4 border-t border-border">
             <span className="text-xs text-muted-foreground">Legend:</span>
             <div className="flex items-center gap-1"><div className="h-3 w-3 rounded bg-success/30" /><span className="text-xs">Available</span></div>
@@ -180,3 +331,6 @@ export default function AvailabilityPage() {
     </div>
   );
 }
+
+/* Suppress unused warning for badge import we may want later */
+void Badge;

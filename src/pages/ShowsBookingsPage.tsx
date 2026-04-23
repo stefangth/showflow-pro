@@ -22,6 +22,7 @@ import { useFilterVisibility } from '@/components/filters/useFilterVisibility';
 import { EntityCalendar } from '@/components/calendar/EntityCalendar';
 import { applySort, inTimeframe } from '@/components/filters/filterUtils';
 import { ShowDetailSheet } from '@/components/shows/ShowDetailSheet';
+import { ArtistBookingsView } from '@/components/bookings/ArtistBookingsView';
 
 type ShowDateLite = {
   id: string;
@@ -65,6 +66,16 @@ const STATUS_STYLE: Record<DerivedStatus, string> = {
 };
 
 export default function ShowsBookingsPage() {
+  const { hasRole } = useAuth();
+
+  // Artist-only users get a scoped view; admins/producers keep producer view.
+  if (hasRole('artist') && !hasRole('producer') && !hasRole('admin')) {
+    return <ArtistBookingsView />;
+  }
+  return <ProducerShowsBookings />;
+}
+
+function ProducerShowsBookings() {
   const { hasRole } = useAuth();
   const { toast } = useToast();
   const queryClient = useQueryClient();

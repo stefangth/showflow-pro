@@ -1,14 +1,21 @@
 import { useEffect, useState } from 'react';
-import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useQuery, useQueryClient, useMutation } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/features/auth/AuthContext';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Check, Settings as SettingsIcon } from 'lucide-react';
 import { format } from 'date-fns';
 import { Users, Activity, Database } from 'lucide-react';
 import { useSearchParams } from 'react-router-dom';
 import { ApprovalsTab } from '@/components/admin/ApprovalsTab';
+import { useToast } from '@/hooks/use-toast';
+import { cn } from '@/lib/utils';
+
+const ALL_ROLES: Array<'admin' | 'producer' | 'artist'> = ['admin', 'producer', 'artist'];
 
 type IamUser = {
   id: string;
@@ -184,6 +191,7 @@ export default function AdminPage() {
                       ) : (
                         <Badge variant="outline" className="text-xs">No role</Badge>
                       )}
+                      <RoleAssignPopover userId={u.id} currentRoles={u.roles} />
                     </div>
                   </div>
                 ))}
@@ -246,5 +254,49 @@ export default function AdminPage() {
         </TabsContent>
       </Tabs>
     </div>
+  );
+}
+
+function RoleAssignPopover({ userId, currentRoles }: { userId: string; currentRoles: string[] }) {
+  const qc = useQueryClient();
+  const { toast } = useToast();
+  const setRole = useMutation({
+    mutationFn: async ({ role, action }: { role: 'admin' | 'producer' | 'artist'; action: 'add' | 'remove' }) => {
+      const { data, error } = await supabase.functions.invoke('admin-set-role', {
+        body: { user_id: userId, role, action },
+      });
+      if (error) throw error;
+      if (data?.error) throw new Error(data.error);
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['admin-iam-users'] });
+      toast({ title: 'Role updated' });
+    },
+    onError: (e: any) => toast({ title: 'Error', description: e.message, variant: 'destructive' }),
+  });
+
+  return (
+    <Popover>
+      <PopoverTrigger asChild>
+        <Button size="sm" variant="outline" className="h-7 px-2 text-xs">
+          <SettingsIcon className="h-3 w-3 mr-1" />Roles
+        </Button>
+      </PopoverTrigger>
+      <PopoverContent className="w-48 p-1" align="end">
+        {ALL_ROLES.map((r) => {
+          const has = currentRoles.includes(r);
+          return (
+            <button
+              key={r}
+              onClick={() => setRole.mutate({ role: r, action: has ? 'remove' : 'add' })}
+              className="flex items-center w-full px-2 py-1.5 text-sm rounded hover:bg-muted text-left capitalize"
+            >
+              <Check className={cn('h-4 w-4 mr-2', has ? 'opacity-100' : 'opacity-0')} />
+              {r}
+            </button>
+          );
+        })}
+      </PopoverContent>
+    </Popover>
   );
 }

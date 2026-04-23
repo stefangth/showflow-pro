@@ -1,0 +1,203 @@
+import { useMemo, useState } from 'react';
+import { useQuery } from '@tanstack/react-query';
+import { supabase } from '@/integrations/supabase/client';
+import {
+  format, startOfMonth, endOfMonth, eachDayOfInterval, addMonths, subMonths, isToday,
+} from 'date-fns';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { ChevronLeft, ChevronRight } from 'lucide-react';
+import { cn } from '@/lib/utils';
+import { toDateKey } from '@/lib/dates';
+import { AvailabilityPicker } from './AvailabilityPicker';
+import type { EligibleDate } from '@/hooks/useArtistEligibleDates';
+
+type AvailRow = { date: string; status: 'available' | 'unavailable' | 'tentative' };
+type BookingRow = { show_date_id: string; status: string; show_date: { date: string } };
+
+interface Props {
+  artistId: string;
+  eligibleDates: EligibleDate[];
+}
+
+/**
+ * Month-grid calendar:
+ *  - Bold blue outline → eligible/offered date
+ *  - Red shade        → artist marked Not available
+ *  - Yellow shade     → Tentative
+ *  - Green shade      → Confirmed booking
+ *  - Subtle shade     → Available (responded)
+ *  - No shade         → Unanswered
+ * Tapping a cell opens a small popover with the AvailabilityPicker.
+ */
+export function ArtistAvailabilityCalendar({ artistId, eligibleDates }: Props) {
+  const [currentMonth, setCurrentMonth] = useState<Date>(startOfMonth(new Date()));
+
+  const monthStart = startOfMonth(currentMonth);
+  const monthEnd = endOfMonth(currentMonth);
+  const days = eachDayOfInterval({ start: monthStart, end: monthEnd });
+
+  const { data: availability } = useQuery({
+    queryKey: ['my-availability', artistId, format(currentMonth, 'yyyy-MM')],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from('availability')
+        .select('date, status')
+        .eq('artist_id', artistId)
+        .gte('date', toDateKey(monthStart))
+        .lte('date', toDateKey(monthEnd));
+      return (data ?? []) as AvailRow[];
+    },
+  });
+
+  const { data: bookings } = useQuery({
+    queryKey: ['my-bookings', artistId, format(currentMonth, 'yyyy-MM')],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from('bookings')
+        .select('show_date_id, status, show_date:show_dates!inner(date)')
+        .eq('artist_id', artistId)
+        .gte('show_date.date', toDateKey(monthStart))
+        .lte('show_date.date', toDateKey(monthEnd));
+      return (data ?? []) as unknown as BookingRow[];
+    },
+  });
+
+  const eligibleSet = useMemo(
+    () => new Set(eligibleDates.map((d) => d.date)),
+    [eligibleDates]
+  );
+
+  const availMap = useMemo(() => {
+    const m: Record<string, AvailRow['status']> = {};
+    availability?.forEach((a) => (m[a.date] = a.status));
+    return m;
+  }, [availability]);
+
+  const confirmedSet = useMemo(() => {
+    const s = new Set<string>();
+    bookings?.forEach((b) => {
+      if (b.status === 'confirmed' && b.show_date?.date) s.add(b.show_date.date);
+    });
+    return s;
+  }, [bookings]);
+
+  return (
+    <Card>
+      <CardHeader>
+        <div className="flex items-center justify-between">
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={() => setCurrentMonth(subMonths(currentMonth, 1))}
+          >
+            <ChevronLeft className="h-4 w-4" />
+          </Button>
+          <CardTitle className="font-display">{format(currentMonth, 'MMMM yyyy')}</CardTitle>
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={() => setCurrentMonth(addMonths(currentMonth, 1))}
+          >
+            <ChevronRight className="h-4 w-4" />
+          </Button>
+        </div>
+      </CardHeader>
+      <CardContent>
+        <div className="grid grid-cols-7 gap-1 mb-2">
+          {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map((d) => (
+            <div key={d} className="text-center text-xs font-medium text-muted-foreground py-1">
+              {d}
+            </div>
+          ))}
+        </div>
+
+        <div className="grid grid-cols-7 gap-1">
+          {Array.from({ length: monthStart.getDay() }).map((_, i) => (
+            <div key={`pad-${i}`} />
+          ))}
+          {days.map((day) => {
+            const dateStr = toDateKey(day);
+            const isEligible = eligibleSet.has(dateStr);
+            const status = availMap[dateStr];
+            const isConfirmed = confirmedSet.has(dateStr);
+
+            // Color logic — confirmed > unavailable > tentative > available > none
+            const shade = isConfirmed
+              ? 'bg-success/30 text-success-foreground'
+              : status === 'unavailable'
+              ? 'bg-destructive/25 text-destructive'
+              : status === 'tentative'
+              ? 'bg-warning/25 text-warning'
+              : status === 'available'
+              ? 'bg-success/10'
+              : '';
+
+            const cell = (
+              <button
+                disabled={!isEligible && !status}
+                className={cn(
+                  'relative w-full p-2 rounded-lg text-center min-h-[60px] transition-colors',
+                  'border',
+                  isEligible ? 'border-2 border-info shadow-sm' : 'border-border',
+                  shade,
+                  isToday(day) && 'ring-2 ring-primary ring-offset-1',
+                  (isEligible || status) ? 'hover:opacity-90 cursor-pointer' : 'opacity-50 cursor-default'
+                )}
+              >
+                <span className="text-sm font-medium">{format(day, 'd')}</span>
+                {isConfirmed && (
+                  <span className="block text-[9px] mt-0.5 font-semibold uppercase tracking-wide">
+                    Booked
+                  </span>
+                )}
+              </button>
+            );
+
+            if (!isEligible && !status) {
+              return <div key={dateStr}>{cell}</div>;
+            }
+
+            return (
+              <Popover key={dateStr}>
+                <PopoverTrigger asChild>{cell}</PopoverTrigger>
+                <PopoverContent className="w-56 p-3" align="center">
+                  <p className="text-xs text-muted-foreground mb-2">
+                    {format(day, 'EEE, dd/MM/yyyy')}
+                  </p>
+                  <AvailabilityPicker artistId={artistId} date={dateStr} size="sm" />
+                </PopoverContent>
+              </Popover>
+            );
+          })}
+        </div>
+
+        {/* Legend */}
+        <div className="flex flex-wrap items-center gap-4 mt-4 pt-4 border-t border-border">
+          <span className="text-xs text-muted-foreground">Legend:</span>
+          <div className="flex items-center gap-1.5">
+            <div className="h-3 w-3 rounded border-2 border-info" />
+            <span className="text-xs">Offered</span>
+          </div>
+          <div className="flex items-center gap-1.5">
+            <div className="h-3 w-3 rounded bg-success/10" />
+            <span className="text-xs">Available</span>
+          </div>
+          <div className="flex items-center gap-1.5">
+            <div className="h-3 w-3 rounded bg-warning/25" />
+            <span className="text-xs">Tentative</span>
+          </div>
+          <div className="flex items-center gap-1.5">
+            <div className="h-3 w-3 rounded bg-destructive/25" />
+            <span className="text-xs">Not available</span>
+          </div>
+          <div className="flex items-center gap-1.5">
+            <div className="h-3 w-3 rounded bg-success/30" />
+            <span className="text-xs">Confirmed</span>
+          </div>
+        </div>
+      </CardContent>
+    </Card>
+  );
+}

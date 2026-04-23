@@ -82,7 +82,7 @@ export function EntityCalendar<T>({ items, getDate, renderItem, emptyMessage = '
           <div className="space-y-3">
             <div className="flex items-baseline gap-3">
               <h3 className="font-display text-lg font-semibold">
-                {selected ? format(selected, 'EEEE, MMM d, yyyy') : 'Pick a day'}
+                {selected ? format(selected, 'EEE, dd/MM/yyyy') : 'Pick a day'}
               </h3>
               <Badge variant="secondary">{selectedItems.length} item{selectedItems.length === 1 ? '' : 's'}</Badge>
             </div>
@@ -100,7 +100,7 @@ export function EntityCalendar<T>({ items, getDate, renderItem, emptyMessage = '
             <div key={dateKey} className="space-y-2">
               <div className="flex items-baseline gap-3 sticky top-0 bg-background py-1 z-10">
                 <h4 className="font-display font-semibold">
-                  {format(new Date(dateKey + 'T00:00:00'), 'EEE, MMM d, yyyy')}
+                  {format(new Date(dateKey + 'T00:00:00'), 'EEE, dd/MM/yyyy')}
                 </h4>
                 <Badge variant="outline" className="text-xs">{dayItems.length}</Badge>
               </div>

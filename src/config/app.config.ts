@@ -61,7 +61,6 @@ export const ROUTES = {
   DASHBOARD: '/dashboard',
   SHOWS: '/shows',
   SHOW_DETAIL: '/shows/:id',
-  ARTISTS: '/artists',
   BOOKINGS: '/bookings',
   AVAILABILITY: '/availability',
   ADMIN: '/admin',

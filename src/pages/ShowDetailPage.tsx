@@ -14,7 +14,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { useToast } from '@/hooks/use-toast';
 import { Plus, CalendarDays, Users, Check, ChevronsUpDown, MessageSquare } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { format } from 'date-fns';
+import { formatDateWithWeekday } from '@/lib/dates';
 import type { Show, ShowDate, Booking, Artist, City, Cast } from '@/types';
 import { ChatPanel } from '@/components/chat/ChatPanel';
 import { useEligibleArtists } from '@/hooks/useEligibleArtists';
@@ -287,7 +287,7 @@ export default function ShowDetailPage({ idOverride }: Props = {}) {
               >
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="font-medium text-sm">{format(new Date(d.date), 'EEEE, MMM d, yyyy')}</p>
+                    <p className="font-medium text-sm">{formatDateWithWeekday(d.date)}</p>
                     {d.start_time && <p className="text-xs text-muted-foreground">{d.start_time}{d.end_time ? ` - ${d.end_time}` : ''}</p>}
                     {d.city_id && (
                       <p className="text-xs text-muted-foreground mt-0.5">
