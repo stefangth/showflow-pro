@@ -18,11 +18,13 @@ type BookingLite = { show_date_id: string; status: string };
 
 export default function DashboardPage() {
   const { hasRole } = useAuth();
-  // Artist-only users (no producer/admin) get their own dashboard
   if (hasRole('artist') && !hasRole('producer') && !hasRole('admin')) {
     return <ArtistDashboard />;
   }
+  return <ProducerDashboard />;
+}
 
+function ProducerDashboard() {
   const today = new Date();
   today.setHours(0, 0, 0, 0);
   const todayStr = format(today, 'yyyy-MM-dd');
