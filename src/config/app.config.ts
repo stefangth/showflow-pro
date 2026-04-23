@@ -62,6 +62,7 @@ export const ROUTES = {
   SHOWS: '/shows',
   SHOW_DETAIL: '/shows/:id',
   BOOKINGS: '/bookings',
+  ARTISTS: '/artists',
   AVAILABILITY: '/availability',
   ADMIN: '/admin',
   SETTINGS: '/settings',

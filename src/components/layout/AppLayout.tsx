@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button';
 import {
   Zap, LayoutDashboard, BookOpen,
   Clock, Settings, Shield, LogOut, Bell, ChevronLeft, ChevronRight, Menu,
-  MessageSquare,
+  MessageSquare, Users,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -18,6 +18,7 @@ interface AppLayoutProps {
 const navItems = [
   { to: ROUTES.DASHBOARD, icon: LayoutDashboard, label: 'Dashboard' },
   { to: ROUTES.BOOKINGS, icon: BookOpen, label: 'Shows & Bookings' },
+  { to: ROUTES.ARTISTS, icon: Users, label: 'Artists', roles: ['admin', 'producer'] as string[] },
   { to: ROUTES.AVAILABILITY, icon: Clock, label: 'Availability' },
   { to: ROUTES.CHATS, icon: MessageSquare, label: 'Chats' },
   { to: ROUTES.ADMIN, icon: Shield, label: 'Admin', roles: ['admin'] as string[] },
