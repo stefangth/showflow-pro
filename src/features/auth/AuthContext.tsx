@@ -3,13 +3,17 @@ import { supabase } from '@/integrations/supabase/client';
 import type { User, Session } from '@supabase/supabase-js';
 import type { AppRole } from '@/config/app.config';
 
+export type ApprovalStatus = 'pending' | 'approved' | 'rejected' | 'unknown';
+
 interface AuthContextType {
   user: User | null;
   session: Session | null;
   roles: AppRole[];
   loading: boolean;
+  approvalStatus: ApprovalStatus;
+  approvalReason: string | null;
   signIn: (email: string, password: string) => Promise<void>;
-  signUp: (email: string, password: string, displayName?: string) => Promise<void>;
+  signInWithGoogle: () => Promise<void>;
   signOut: () => Promise<void>;
   hasRole: (role: AppRole) => boolean;
 }
@@ -21,6 +25,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [session, setSession] = useState<Session | null>(null);
   const [roles, setRoles] = useState<AppRole[]>([]);
   const [loading, setLoading] = useState(true);
+  const [approvalStatus, setApprovalStatus] = useState<ApprovalStatus>('unknown');
+  const [approvalReason, setApprovalReason] = useState<string | null>(null);
 
   /** Fetch user roles from user_roles table */
   const fetchRoles = async (userId: string) => {
@@ -31,28 +37,47 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setRoles(data?.map(r => r.role as AppRole) ?? []);
   };
 
+  /** Fetch approval row; missing row = treat as approved (legacy users). */
+  const fetchApproval = async (userId: string) => {
+    const { data } = await supabase
+      .from('user_approvals')
+      .select('status, rejection_reason')
+      .eq('user_id', userId)
+      .maybeSingle();
+    if (!data) {
+      setApprovalStatus('approved');
+      setApprovalReason(null);
+    } else {
+      setApprovalStatus(data.status as ApprovalStatus);
+      setApprovalReason(data.rejection_reason ?? null);
+    }
+  };
+
   useEffect(() => {
-    // Set up auth state listener FIRST
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (_event, session) => {
         setSession(session);
         setUser(session?.user ?? null);
         if (session?.user) {
-          // Use setTimeout to avoid Supabase deadlock
-          setTimeout(() => fetchRoles(session.user.id), 0);
+          setTimeout(() => {
+            fetchRoles(session.user.id);
+            fetchApproval(session.user.id);
+          }, 0);
         } else {
           setRoles([]);
+          setApprovalStatus('unknown');
+          setApprovalReason(null);
         }
         setLoading(false);
       }
     );
 
-    // THEN check current session
     supabase.auth.getSession().then(({ data: { session } }) => {
       setSession(session);
       setUser(session?.user ?? null);
       if (session?.user) {
         fetchRoles(session.user.id);
+        fetchApproval(session.user.id);
       }
       setLoading(false);
     });
@@ -60,19 +85,35 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return () => subscription.unsubscribe();
   }, []);
 
+  // Realtime: react to approval decisions immediately
+  useEffect(() => {
+    if (!user) return;
+    const channel = supabase
+      .channel(`user-approval-${user.id}`)
+      .on(
+        'postgres_changes',
+        { event: 'UPDATE', schema: 'public', table: 'user_approvals', filter: `user_id=eq.${user.id}` },
+        (payload) => {
+          const next = payload.new as { status: ApprovalStatus; rejection_reason: string | null };
+          setApprovalStatus(next.status);
+          setApprovalReason(next.rejection_reason);
+          // Refresh roles since approval may have just granted one
+          fetchRoles(user.id);
+        }
+      )
+      .subscribe();
+    return () => { supabase.removeChannel(channel); };
+  }, [user]);
+
   const signIn = async (email: string, password: string) => {
     const { error } = await supabase.auth.signInWithPassword({ email, password });
     if (error) throw error;
   };
 
-  const signUp = async (email: string, password: string, displayName?: string) => {
-    const { error } = await supabase.auth.signUp({
-      email,
-      password,
-      options: {
-        data: { display_name: displayName },
-        emailRedirectTo: window.location.origin,
-      },
+  const signInWithGoogle = async () => {
+    const { error } = await supabase.auth.signInWithOAuth({
+      provider: 'google',
+      options: { redirectTo: `${window.location.origin}/dashboard` },
     });
     if (error) throw error;
   };
@@ -85,7 +126,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const hasRole = (role: AppRole) => roles.includes(role);
 
   return (
-    <AuthContext.Provider value={{ user, session, roles, loading, signIn, signUp, signOut, hasRole }}>
+    <AuthContext.Provider value={{ user, session, roles, loading, approvalStatus, approvalReason, signIn, signInWithGoogle, signOut, hasRole }}>
       {children}
     </AuthContext.Provider>
   );
