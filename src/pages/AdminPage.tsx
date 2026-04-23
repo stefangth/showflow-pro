@@ -191,6 +191,7 @@ export default function AdminPage() {
                       ) : (
                         <Badge variant="outline" className="text-xs">No role</Badge>
                       )}
+                      <RoleAssignPopover userId={u.id} currentRoles={u.roles} />
                     </div>
                   </div>
                 ))}
