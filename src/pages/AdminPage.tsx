@@ -1,21 +1,50 @@
-import { useQuery } from '@tanstack/react-query';
+import { useEffect, useState } from 'react';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/features/auth/AuthContext';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { format } from 'date-fns';
-import { Shield, Users, Activity, Database } from 'lucide-react';
+import { Users, Activity, Database } from 'lucide-react';
+import { useSearchParams } from 'react-router-dom';
+import { ApprovalsTab } from '@/components/admin/ApprovalsTab';
+
+type IamUser = {
+  id: string;
+  email: string;
+  created_at: string;
+  last_sign_in_at: string | null;
+  roles: string[];
+  approval_status: 'pending' | 'approved' | 'rejected' | null;
+};
 
 export default function AdminPage() {
   const { hasRole } = useAuth();
+  const qc = useQueryClient();
+  const [params, setParams] = useSearchParams();
+  const initialTab = params.get('tab') || 'approvals';
+  const [tab, setTab] = useState(initialTab);
 
-  const { data: users } = useQuery({
-    queryKey: ['admin-users'],
+  const { data: pendingCount } = useQuery({
+    queryKey: ['user-approvals', 'count'],
     queryFn: async () => {
-      const { data } = await supabase.from('profiles').select('*, user_roles(role)');
-      return data ?? [];
+      const { count } = await supabase
+        .from('user_approvals')
+        .select('*', { count: 'exact', head: true })
+        .eq('status', 'pending');
+      return count ?? 0;
     },
+  });
+
+  const { data: iamUsers } = useQuery({
+    queryKey: ['admin-iam-users'],
+    queryFn: async () => {
+      const { data, error } = await supabase.functions.invoke('admin-list-users');
+      if (error) throw error;
+      return (data?.users ?? []) as IamUser[];
+    },
+    enabled: hasRole('admin'),
   });
 
   const { data: auditLogs } = useQuery({
@@ -54,6 +83,23 @@ export default function AdminPage() {
     },
   });
 
+  // Realtime invalidation for approvals (drives badge count)
+  useEffect(() => {
+    const channel = supabase
+      .channel('admin-page-approvals')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'user_approvals' }, () => {
+        qc.invalidateQueries({ queryKey: ['user-approvals'] });
+        qc.invalidateQueries({ queryKey: ['admin-iam-users'] });
+      })
+      .subscribe();
+    return () => { supabase.removeChannel(channel); };
+  }, [qc]);
+
+  const handleTabChange = (v: string) => {
+    setTab(v);
+    setParams((p) => { p.set('tab', v); return p; }, { replace: true });
+  };
+
   if (!hasRole('admin')) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -66,10 +112,9 @@ export default function AdminPage() {
     <div className="space-y-6">
       <div>
         <h1 className="font-display text-3xl font-bold">Admin Panel</h1>
-        <p className="text-muted-foreground mt-1">System management and monitoring</p>
+        <p className="text-muted-foreground mt-1">Identity & access management, audit trail, sync status</p>
       </div>
 
-      {/* Stats */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         {[
           { label: 'Total Shows', value: stats?.shows ?? 0, icon: Activity },
@@ -88,35 +133,61 @@ export default function AdminPage() {
         ))}
       </div>
 
-      <Tabs defaultValue="users">
+      <Tabs value={tab} onValueChange={handleTabChange}>
         <TabsList>
+          <TabsTrigger value="approvals" className="relative">
+            Approvals
+            {pendingCount && pendingCount > 0 ? (
+              <Badge variant="destructive" className="ml-2 h-5 min-w-5 px-1.5 text-xs">{pendingCount}</Badge>
+            ) : null}
+          </TabsTrigger>
           <TabsTrigger value="users">Users</TabsTrigger>
           <TabsTrigger value="audit">Audit Log</TabsTrigger>
           <TabsTrigger value="sync">Sync Status</TabsTrigger>
         </TabsList>
 
+        <TabsContent value="approvals" className="mt-4">
+          <ApprovalsTab />
+        </TabsContent>
+
         <TabsContent value="users" className="mt-4">
           <Card>
-            <CardHeader><CardTitle className="font-display">User Management</CardTitle></CardHeader>
+            <CardHeader><CardTitle className="font-display">Identity & access</CardTitle></CardHeader>
             <CardContent>
               <div className="space-y-3">
-                {users?.map((u: any) => (
-                  <div key={u.id} className="flex items-center justify-between p-3 rounded-lg border border-border">
-                    <div>
-                      <p className="font-medium text-sm">{u.display_name || 'Unnamed'}</p>
-                      <p className="text-xs text-muted-foreground">{u.user_id}</p>
+                {iamUsers?.map((u) => (
+                  <div key={u.id} className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 p-3 rounded-lg border border-border">
+                    <div className="min-w-0">
+                      <p className="font-medium text-sm truncate">{u.email}</p>
+                      <p className="text-xs text-muted-foreground">
+                        Joined {format(new Date(u.created_at), 'dd/MM/yyyy')}
+                        {u.last_sign_in_at ? ` · Last seen ${format(new Date(u.last_sign_in_at), 'dd/MM/yyyy HH:mm')}` : ' · Never signed in'}
+                      </p>
                     </div>
-                    <div className="flex gap-1">
-                      {u.user_roles?.map((r: any) => (
-                        <Badge key={r.role} variant="secondary" className="text-xs capitalize">{r.role}</Badge>
-                      ))}
-                      {(!u.user_roles || u.user_roles.length === 0) && (
+                    <div className="flex items-center gap-1 flex-wrap">
+                      {u.approval_status && (
+                        <Badge
+                          variant="outline"
+                          className={
+                            u.approval_status === 'approved' ? 'border-success text-success' :
+                            u.approval_status === 'rejected' ? 'border-destructive text-destructive' :
+                            'border-warning text-warning'
+                          }
+                        >
+                          {u.approval_status}
+                        </Badge>
+                      )}
+                      {u.roles.length > 0 ? (
+                        u.roles.map(r => (
+                          <Badge key={r} variant="secondary" className="text-xs capitalize">{r}</Badge>
+                        ))
+                      ) : (
                         <Badge variant="outline" className="text-xs">No role</Badge>
                       )}
                     </div>
                   </div>
                 ))}
-                {users?.length === 0 && <p className="text-sm text-muted-foreground text-center py-6">No users</p>}
+                {iamUsers?.length === 0 && <p className="text-sm text-muted-foreground text-center py-6">No users</p>}
               </div>
             </CardContent>
           </Card>
@@ -137,7 +208,7 @@ export default function AdminPage() {
                       {log.old_status && <Badge variant="outline" className="text-xs">{log.old_status}</Badge>}
                       {log.old_status && log.new_status && <span className="text-muted-foreground">→</span>}
                       {log.new_status && <Badge variant="secondary" className="text-xs">{log.new_status}</Badge>}
-                      <span className="text-xs text-muted-foreground">{format(new Date(log.created_at), 'MMM d, HH:mm')}</span>
+                      <span className="text-xs text-muted-foreground">{format(new Date(log.created_at), 'dd/MM/yyyy HH:mm')}</span>
                     </div>
                   </div>
                 ))}
@@ -161,7 +232,7 @@ export default function AdminPage() {
                       <span>{log.sync_type}</span>
                       <span className="text-muted-foreground">{log.records_processed} records</span>
                     </div>
-                    <span className="text-xs text-muted-foreground">{format(new Date(log.synced_at), 'MMM d, HH:mm')}</span>
+                    <span className="text-xs text-muted-foreground">{format(new Date(log.synced_at), 'dd/MM/yyyy HH:mm')}</span>
                   </div>
                 )) : (
                   <div className="text-center py-8">
