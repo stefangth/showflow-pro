@@ -256,3 +256,47 @@ export default function AdminPage() {
     </div>
   );
 }
+
+function RoleAssignPopover({ userId, currentRoles }: { userId: string; currentRoles: string[] }) {
+  const qc = useQueryClient();
+  const { toast } = useToast();
+  const setRole = useMutation({
+    mutationFn: async ({ role, action }: { role: 'admin' | 'producer' | 'artist'; action: 'add' | 'remove' }) => {
+      const { data, error } = await supabase.functions.invoke('admin-set-role', {
+        body: { user_id: userId, role, action },
+      });
+      if (error) throw error;
+      if (data?.error) throw new Error(data.error);
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['admin-iam-users'] });
+      toast({ title: 'Role updated' });
+    },
+    onError: (e: any) => toast({ title: 'Error', description: e.message, variant: 'destructive' }),
+  });
+
+  return (
+    <Popover>
+      <PopoverTrigger asChild>
+        <Button size="sm" variant="outline" className="h-7 px-2 text-xs">
+          <SettingsIcon className="h-3 w-3 mr-1" />Roles
+        </Button>
+      </PopoverTrigger>
+      <PopoverContent className="w-48 p-1" align="end">
+        {ALL_ROLES.map((r) => {
+          const has = currentRoles.includes(r);
+          return (
+            <button
+              key={r}
+              onClick={() => setRole.mutate({ role: r, action: has ? 'remove' : 'add' })}
+              className="flex items-center w-full px-2 py-1.5 text-sm rounded hover:bg-muted text-left capitalize"
+            >
+              <Check className={cn('h-4 w-4 mr-2', has ? 'opacity-100' : 'opacity-0')} />
+              {r}
+            </button>
+          );
+        })}
+      </PopoverContent>
+    </Popover>
+  );
+}
