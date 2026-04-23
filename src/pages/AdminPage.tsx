@@ -1,14 +1,21 @@
 import { useEffect, useState } from 'react';
-import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useQuery, useQueryClient, useMutation } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/features/auth/AuthContext';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Check, Settings as SettingsIcon } from 'lucide-react';
 import { format } from 'date-fns';
 import { Users, Activity, Database } from 'lucide-react';
 import { useSearchParams } from 'react-router-dom';
 import { ApprovalsTab } from '@/components/admin/ApprovalsTab';
+import { useToast } from '@/hooks/use-toast';
+import { cn } from '@/lib/utils';
+
+const ALL_ROLES: Array<'admin' | 'producer' | 'artist'> = ['admin', 'producer', 'artist'];
 
 type IamUser = {
   id: string;
