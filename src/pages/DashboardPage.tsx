@@ -1,10 +1,12 @@
 import { useQuery } from '@tanstack/react-query';
 import { Link } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/features/auth/AuthContext';
 import { Card, CardContent } from '@/components/ui/card';
 import { CalendarDays, TrendingUp, Clock } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { addDays, format } from 'date-fns';
+import { ArtistDashboard } from '@/components/dashboard/ArtistDashboard';
 
 const fadeUp = {
   initial: { opacity: 0, y: 20 },
@@ -15,6 +17,12 @@ type DateRow = { id: string; date: string; show_id: string };
 type BookingLite = { show_date_id: string; status: string };
 
 export default function DashboardPage() {
+  const { hasRole } = useAuth();
+  // Artist-only users (no producer/admin) get their own dashboard
+  if (hasRole('artist') && !hasRole('producer') && !hasRole('admin')) {
+    return <ArtistDashboard />;
+  }
+
   const today = new Date();
   today.setHours(0, 0, 0, 0);
   const todayStr = format(today, 'yyyy-MM-dd');
