@@ -656,6 +656,48 @@ export type Database = {
         }
         Relationships: []
       }
+      user_approvals: {
+        Row: {
+          created_at: string
+          decided_at: string | null
+          decided_by: string | null
+          display_name: string | null
+          email: string
+          id: string
+          rejection_reason: string | null
+          requested_role: Database["public"]["Enums"]["app_role"]
+          status: Database["public"]["Enums"]["approval_status"]
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          decided_at?: string | null
+          decided_by?: string | null
+          display_name?: string | null
+          email: string
+          id?: string
+          rejection_reason?: string | null
+          requested_role?: Database["public"]["Enums"]["app_role"]
+          status?: Database["public"]["Enums"]["approval_status"]
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          decided_at?: string | null
+          decided_by?: string | null
+          display_name?: string | null
+          email?: string
+          id?: string
+          rejection_reason?: string | null
+          requested_role?: Database["public"]["Enums"]["app_role"]
+          status?: Database["public"]["Enums"]["approval_status"]
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       user_roles: {
         Row: {
           created_at: string
@@ -696,6 +738,7 @@ export type Database = {
     }
     Enums: {
       app_role: "admin" | "producer" | "artist"
+      approval_status: "pending" | "approved" | "rejected"
       artist_status: "active" | "inactive" | "on_leave"
       availability_status: "available" | "unavailable" | "tentative"
       booking_status: "suggested" | "soft_booked" | "confirmed" | "cancelled"
@@ -833,6 +876,7 @@ export const Constants = {
   public: {
     Enums: {
       app_role: ["admin", "producer", "artist"],
+      approval_status: ["pending", "approved", "rejected"],
       artist_status: ["active", "inactive", "on_leave"],
       availability_status: ["available", "unavailable", "tentative"],
       booking_status: ["suggested", "soft_booked", "confirmed", "cancelled"],
