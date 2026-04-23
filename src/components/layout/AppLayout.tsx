@@ -5,8 +5,8 @@ import { useAuth } from '@/features/auth/AuthContext';
 import { APP_META, ROUTES } from '@/config/app.config';
 import { Button } from '@/components/ui/button';
 import {
-  Zap, LayoutDashboard, CalendarDays, Users, BookOpen,
-  Clock, Settings, Shield, LogOut, Bell, ChevronLeft, ChevronRight, Menu, X,
+  Zap, LayoutDashboard, BookOpen,
+  Clock, Settings, Shield, LogOut, Bell, ChevronLeft, ChevronRight, Menu,
   MessageSquare,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
