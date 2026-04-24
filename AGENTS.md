@@ -168,4 +168,6 @@ Passwords are documented in the seeding function; **rotate before any production
 - Storing roles on `profiles`, or doing role checks via `localStorage`.
 - Adding `WITH CHECK (true)` policies on log/audit tables.
 - Hardcoding colors, fonts, or route strings.
+- Defaulting calendars/grids to Sunday-first — week starts on Monday across the app.
+- Letting artists declare availability on dates outside `useArtistEligibleDates`.
 - Coupling client logic to a specific tenant or production brand — the platform is product-agnostic.
