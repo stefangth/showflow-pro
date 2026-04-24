@@ -137,13 +137,6 @@ supabase/
 - Schema changes go through the migration tool — never hand-edit `supabase/migrations/` or `src/integrations/supabase/types.ts`.
 - Every new table needs RLS enabled and explicit policies. Default to `authenticated` role; restrict writes by `has_role(...)`.
 - Use the `update_updated_at_column()` trigger on tables with `updated_at`.
-
-### Edge functions
-
-- One folder per function under `supabase/functions/<name>/index.ts`.
-- Use the service role key only when bypassing RLS is intentional (e.g., seeding).
-- Read secrets via `Deno.env.get('SECRET_NAME')`.
-
 ---
 
 ## Booking workflow (domain rules)
