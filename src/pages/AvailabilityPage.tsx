@@ -294,14 +294,15 @@ function ProducerAvailability() {
         </CardHeader>
         <CardContent>
           <div className="grid grid-cols-7 gap-1 mb-2">
-            {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map((d) => (
+            {['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].map((d) => (
               <div key={d} className="text-center text-xs font-medium text-muted-foreground py-1">
                 {d}
               </div>
             ))}
           </div>
           <div className="grid grid-cols-7 gap-1">
-            {Array.from({ length: monthStart.getDay() }).map((_, i) => (
+            {/* Monday-based leading pad: Mon=0, …, Sun=6 */}
+            {Array.from({ length: (monthStart.getDay() + 6) % 7 }).map((_, i) => (
               <div key={`empty-${i}`} />
             ))}
             {days.map((day) => {

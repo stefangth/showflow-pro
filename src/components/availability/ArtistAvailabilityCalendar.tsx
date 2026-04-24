@@ -106,7 +106,7 @@ export function ArtistAvailabilityCalendar({ artistId, eligibleDates }: Props) {
       </CardHeader>
       <CardContent>
         <div className="grid grid-cols-7 gap-1 mb-2">
-          {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map((d) => (
+          {['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].map((d) => (
             <div key={d} className="text-center text-xs font-medium text-muted-foreground py-1">
               {d}
             </div>
@@ -114,7 +114,8 @@ export function ArtistAvailabilityCalendar({ artistId, eligibleDates }: Props) {
         </div>
 
         <div className="grid grid-cols-7 gap-1">
-          {Array.from({ length: monthStart.getDay() }).map((_, i) => (
+          {/* Monday-based leading pad: Mon=0, …, Sun=6 */}
+          {Array.from({ length: (monthStart.getDay() + 6) % 7 }).map((_, i) => (
             <div key={`pad-${i}`} />
           ))}
           {days.map((day) => {
@@ -136,14 +137,18 @@ export function ArtistAvailabilityCalendar({ artistId, eligibleDates }: Props) {
 
             const cell = (
               <button
-                disabled={!isEligible && !status}
+                disabled={!isEligible}
                 className={cn(
                   'relative w-full p-2 rounded-lg text-center min-h-[60px] transition-colors',
                   'border',
                   isEligible ? 'border-2 border-info shadow-sm' : 'border-border',
                   shade,
                   isToday(day) && 'ring-2 ring-primary ring-offset-1',
-                  (isEligible || status) ? 'hover:opacity-90 cursor-pointer' : 'opacity-50 cursor-default'
+                  isEligible
+                    ? 'hover:opacity-90 cursor-pointer'
+                    : status
+                    ? 'opacity-60 cursor-default'
+                    : 'opacity-50 cursor-default'
                 )}
               >
                 <span className="text-sm font-medium">{format(day, 'd')}</span>
@@ -155,7 +160,8 @@ export function ArtistAvailabilityCalendar({ artistId, eligibleDates }: Props) {
               </button>
             );
 
-            if (!isEligible && !status) {
+            // Only currently-offered (eligible) dates are interactive.
+            if (!isEligible) {
               return <div key={dateStr}>{cell}</div>;
             }
 
