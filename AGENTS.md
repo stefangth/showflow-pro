@@ -45,13 +45,23 @@ Edge functions deploy automatically when files in `supabase/functions/<name>/` c
 ```
 src/
   components/
+    admin/         # Admin-only UI (ApprovalsTab, etc.)
+    availability/  # ArtistAvailabilityCalendar, AvailabilityPicker
+    bookings/      # ArtistBookingsView and booking surfaces
+    calendar/      # EntityCalendar (shared month grid)
+    casts/         # Cast grouping UI (dialog, sheet, section)
+    chat/          # ChatPanel, MessageBubble (per-show-date threads)
+    dashboard/     # Role-specific dashboards (ArtistDashboard, …)
+    filters/       # Reusable filter/sort/view-toggle controls
+    shows/         # ShowDetailSheet and show-related surfaces
     layout/        # AppLayout (sidebar + topbar shell)
     ui/            # shadcn primitives — DO NOT edit by hand, regenerate via shadcn
   config/
-    app.config.ts  # Feature flags, route constants, booking weights, role enum
+    app.config.ts  # Feature flags, route constants, booking weights, chat archive window
   features/
-    auth/          # AuthContext, ProtectedRoute, role helpers
-  hooks/           # Reusable hooks (use-mobile, use-toast)
+    auth/          # AuthContext, ProtectedRoute, ApprovalGate, role helpers
+  hooks/           # Domain hooks (useMyArtist, useEligibleArtists, useChatParticipant,
+                   #   useArtistEligibleDates) + UI hooks (use-mobile, use-toast)
   integrations/
     supabase/
       client.ts    # Single shared Supabase client
@@ -60,17 +70,25 @@ src/
   types/           # Domain types extending Supabase row types
 supabase/
   functions/       # Deno edge functions
+    _shared/transactional-email-templates/  # React Email templates + registry
   migrations/      # SQL migrations — read-only, generated via the migration tool
 ```
 
 ### Key decisions
 
-- **Single source of truth for routes/flags:** `src/config/app.config.ts`. Reference `ROUTES.X` rather than string literals.
+- **Single source of truth for routes/flags:** `src/config/app.config.ts`. Reference `ROUTES.X` rather than string literals. `CHAT_ARCHIVE_DAYS` (30) gates chat write access after a show date passes.
 - **Admin-tunable settings live in the DB:** the `app_settings` table (key/value JSONB) is edited via the Settings page. Static developer-only constants stay in `app.config.ts`.
+- **Signup is admin-gated.** New users land in `user_approvals` with status `pending`; `ApprovalGate` (inside `ProtectedRoute`) renders `PendingApprovalScreen` / `RejectedScreen` until an admin decides via the `admin-decide-approval` edge function. Role is assigned at approval time and inserted into `user_roles`.
 - **Role checks are always server-enforced via RLS.** The client `useAuth().hasRole(...)` is for UX only (hiding nav, gating pages); never trust it for data access.
 - **Roles live in `user_roles`**, never on `profiles`. Always check via the `has_role(uuid, app_role)` security-definer function in policies.
+- **Chat is per show-date.** One `chats` row per `show_date_id`; participation is gated by `is_chat_participant(chat_id, user_id)` (admins, producers, and artists booked/soft-booked for that date). Threads become read-only after `CHAT_ARCHIVE_DAYS`; admins can still view archived threads.
+- **Artist availability is gated by eligibility.** Artists can only declare availability on dates returned by `useArtistEligibleDates` (derived from cast eligibility). Non-eligible dates render non-interactively in the calendar.
 - **Audit trail:** all booking status changes append to `booking_audit_log`. Never delete from this table.
 - **Airtable sync is mocked.** The polling loop is not wired up; the Settings page toggles a flag the sync worker will read once implemented.
+
+### Calendar conventions
+
+- **Week starts on Monday everywhere.** When using shadcn `Calendar` / `DayPicker`, pass `weekStartsOn={1}`. For manually rendered month grids, compute the leading pad as `(monthStart.getDay() + 6) % 7` and order weekday headers Mon–Sun.
 
 ---
 
@@ -87,9 +105,20 @@ supabase/
 ### React / data
 
 - Use `useQuery` for reads, `useMutation` for writes; invalidate the relevant `queryKey` on success.
-- Keep query keys stable arrays: `['shows']`, `['show', id]`, `['admin-users']`.
+- Keep query keys stable arrays. Examples in use: `['shows']`, `['show', id]`, `['admin-users']`, `['my-artist']`, `['availability', artistId]`, `['eligible-artists', showDateId]`, `['chat', showDateId]`, `['chat-messages', chatId]`.
+- Prefer the existing domain hooks in `src/hooks/` (`useMyArtist`, `useEligibleArtists`, `useArtistEligibleDates`, `useChatParticipant`) over duplicating Supabase queries inline.
 - Never call Supabase from a component effect when a query will do.
 - Side effects on success → `sonner` toast (`toast.success`, `toast.error`).
+
+### Edge functions
+
+- One folder per function under `supabase/functions/<name>/index.ts`. Current categories:
+  - **Admin ops:** `admin-list-users`, `admin-set-role`, `admin-decide-approval`
+  - **Signup notifications:** `notify-signup`
+  - **Transactional email:** `send-transactional-email`, `preview-transactional-email`, `handle-email-suppression`, `handle-email-unsubscribe`. New templates must be registered in `_shared/transactional-email-templates/registry.ts`.
+  - **Dev only:** `seed-test-data`
+- Use the service role key only when bypassing RLS is intentional (admin endpoints, seeding). Always re-verify the caller's role server-side first (see `admin-decide-approval` for the pattern).
+- Read secrets via `Deno.env.get('SECRET_NAME')`.
 
 ### Styling
 
@@ -108,13 +137,6 @@ supabase/
 - Schema changes go through the migration tool — never hand-edit `supabase/migrations/` or `src/integrations/supabase/types.ts`.
 - Every new table needs RLS enabled and explicit policies. Default to `authenticated` role; restrict writes by `has_role(...)`.
 - Use the `update_updated_at_column()` trigger on tables with `updated_at`.
-
-### Edge functions
-
-- One folder per function under `supabase/functions/<name>/index.ts`.
-- Use the service role key only when bypassing RLS is intentional (e.g., seeding).
-- Read secrets via `Deno.env.get('SECRET_NAME')`.
-
 ---
 
 ## Booking workflow (domain rules)
@@ -146,4 +168,6 @@ Passwords are documented in the seeding function; **rotate before any production
 - Storing roles on `profiles`, or doing role checks via `localStorage`.
 - Adding `WITH CHECK (true)` policies on log/audit tables.
 - Hardcoding colors, fonts, or route strings.
+- Defaulting calendars/grids to Sunday-first — week starts on Monday across the app.
+- Letting artists declare availability on dates outside `useArtistEligibleDates`.
 - Coupling client logic to a specific tenant or production brand — the platform is product-agnostic.
