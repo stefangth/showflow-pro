@@ -45,13 +45,23 @@ Edge functions deploy automatically when files in `supabase/functions/<name>/` c
 ```
 src/
   components/
+    admin/         # Admin-only UI (ApprovalsTab, etc.)
+    availability/  # ArtistAvailabilityCalendar, AvailabilityPicker
+    bookings/      # ArtistBookingsView and booking surfaces
+    calendar/      # EntityCalendar (shared month grid)
+    casts/         # Cast grouping UI (dialog, sheet, section)
+    chat/          # ChatPanel, MessageBubble (per-show-date threads)
+    dashboard/     # Role-specific dashboards (ArtistDashboard, …)
+    filters/       # Reusable filter/sort/view-toggle controls
+    shows/         # ShowDetailSheet and show-related surfaces
     layout/        # AppLayout (sidebar + topbar shell)
     ui/            # shadcn primitives — DO NOT edit by hand, regenerate via shadcn
   config/
-    app.config.ts  # Feature flags, route constants, booking weights, role enum
+    app.config.ts  # Feature flags, route constants, booking weights, chat archive window
   features/
-    auth/          # AuthContext, ProtectedRoute, role helpers
-  hooks/           # Reusable hooks (use-mobile, use-toast)
+    auth/          # AuthContext, ProtectedRoute, ApprovalGate, role helpers
+  hooks/           # Domain hooks (useMyArtist, useEligibleArtists, useChatParticipant,
+                   #   useArtistEligibleDates) + UI hooks (use-mobile, use-toast)
   integrations/
     supabase/
       client.ts    # Single shared Supabase client
@@ -60,17 +70,25 @@ src/
   types/           # Domain types extending Supabase row types
 supabase/
   functions/       # Deno edge functions
+    _shared/transactional-email-templates/  # React Email templates + registry
   migrations/      # SQL migrations — read-only, generated via the migration tool
 ```
 
 ### Key decisions
 
-- **Single source of truth for routes/flags:** `src/config/app.config.ts`. Reference `ROUTES.X` rather than string literals.
+- **Single source of truth for routes/flags:** `src/config/app.config.ts`. Reference `ROUTES.X` rather than string literals. `CHAT_ARCHIVE_DAYS` (30) gates chat write access after a show date passes.
 - **Admin-tunable settings live in the DB:** the `app_settings` table (key/value JSONB) is edited via the Settings page. Static developer-only constants stay in `app.config.ts`.
+- **Signup is admin-gated.** New users land in `user_approvals` with status `pending`; `ApprovalGate` (inside `ProtectedRoute`) renders `PendingApprovalScreen` / `RejectedScreen` until an admin decides via the `admin-decide-approval` edge function. Role is assigned at approval time and inserted into `user_roles`.
 - **Role checks are always server-enforced via RLS.** The client `useAuth().hasRole(...)` is for UX only (hiding nav, gating pages); never trust it for data access.
 - **Roles live in `user_roles`**, never on `profiles`. Always check via the `has_role(uuid, app_role)` security-definer function in policies.
+- **Chat is per show-date.** One `chats` row per `show_date_id`; participation is gated by `is_chat_participant(chat_id, user_id)` (admins, producers, and artists booked/soft-booked for that date). Threads become read-only after `CHAT_ARCHIVE_DAYS`; admins can still view archived threads.
+- **Artist availability is gated by eligibility.** Artists can only declare availability on dates returned by `useArtistEligibleDates` (derived from cast eligibility). Non-eligible dates render non-interactively in the calendar.
 - **Audit trail:** all booking status changes append to `booking_audit_log`. Never delete from this table.
 - **Airtable sync is mocked.** The polling loop is not wired up; the Settings page toggles a flag the sync worker will read once implemented.
+
+### Calendar conventions
+
+- **Week starts on Monday everywhere.** When using shadcn `Calendar` / `DayPicker`, pass `weekStartsOn={1}`. For manually rendered month grids, compute the leading pad as `(monthStart.getDay() + 6) % 7` and order weekday headers Mon–Sun.
 
 ---
 
