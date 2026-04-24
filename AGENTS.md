@@ -105,9 +105,20 @@ supabase/
 ### React / data
 
 - Use `useQuery` for reads, `useMutation` for writes; invalidate the relevant `queryKey` on success.
-- Keep query keys stable arrays: `['shows']`, `['show', id]`, `['admin-users']`.
+- Keep query keys stable arrays. Examples in use: `['shows']`, `['show', id]`, `['admin-users']`, `['my-artist']`, `['availability', artistId]`, `['eligible-artists', showDateId]`, `['chat', showDateId]`, `['chat-messages', chatId]`.
+- Prefer the existing domain hooks in `src/hooks/` (`useMyArtist`, `useEligibleArtists`, `useArtistEligibleDates`, `useChatParticipant`) over duplicating Supabase queries inline.
 - Never call Supabase from a component effect when a query will do.
 - Side effects on success → `sonner` toast (`toast.success`, `toast.error`).
+
+### Edge functions
+
+- One folder per function under `supabase/functions/<name>/index.ts`. Current categories:
+  - **Admin ops:** `admin-list-users`, `admin-set-role`, `admin-decide-approval`
+  - **Signup notifications:** `notify-signup`
+  - **Transactional email:** `send-transactional-email`, `preview-transactional-email`, `handle-email-suppression`, `handle-email-unsubscribe`. New templates must be registered in `_shared/transactional-email-templates/registry.ts`.
+  - **Dev only:** `seed-test-data`
+- Use the service role key only when bypassing RLS is intentional (admin endpoints, seeding). Always re-verify the caller's role server-side first (see `admin-decide-approval` for the pattern).
+- Read secrets via `Deno.env.get('SECRET_NAME')`.
 
 ### Styling
 
