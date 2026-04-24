@@ -74,7 +74,14 @@ export function AvailabilityPicker({ artistId, date, size = 'default' }: Props) 
   });
 
   return (
-    <Select value={row?.status ?? ''} onValueChange={(v) => setStatus.mutate(v as any)}>
+    // `key` forces Radix Select to fully re-mount when the row is cleared,
+    // so the placeholder shows again and the artist can pick a new status
+    // without needing a page refresh.
+    <Select
+      key={row?.status ?? 'empty'}
+      value={row?.status ?? undefined}
+      onValueChange={(v) => setStatus.mutate(v as any)}
+    >
       <SelectTrigger className={size === 'sm' ? 'h-8 text-xs' : ''}>
         <SelectValue placeholder="Set availability…" />
       </SelectTrigger>
