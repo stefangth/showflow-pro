@@ -1,14 +1,16 @@
 import { useMemo, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/features/auth/AuthContext';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from '@/components/ui/sheet';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Checkbox } from '@/components/ui/checkbox';
 import { useToast } from '@/hooks/use-toast';
-import { Search, X, Plus, Users, Layers } from 'lucide-react';
+import { Search, X, Plus, Users, Layers, Pencil, Check } from 'lucide-react';
 import type { Artist, Cast, City, Show } from '@/types';
 
 interface Props {
@@ -18,9 +20,40 @@ interface Props {
 }
 
 export function CastDetailsSheet({ cast, open, onOpenChange }: Props) {
+  const { hasRole } = useAuth();
+  const canManage = hasRole('admin') || hasRole('producer');
   const { toast } = useToast();
   const qc = useQueryClient();
   const [search, setSearch] = useState('');
+  const [editMode, setEditMode] = useState(false);
+  const [editName, setEditName] = useState('');
+  const [editDescription, setEditDescription] = useState('');
+
+  const updateCast = useMutation({
+    mutationFn: async ({ name, description }: { name: string; description: string }) => {
+      const { error } = await supabase
+        .from('casts')
+        .update({ name, description: description || null, updated_at: new Date().toISOString() })
+        .eq('id', cast!.id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['casts'] });
+      setEditMode(false);
+      toast({ title: 'Cast updated' });
+    },
+    onError: (e: any) => toast({ title: 'Error', description: e.message, variant: 'destructive' }),
+  });
+
+  function startEdit() {
+    setEditName(cast?.name ?? '');
+    setEditDescription(cast?.description ?? '');
+    setEditMode(true);
+  }
+
+  function cancelEdit() {
+    setEditMode(false);
+  }
 
   // Members
   const { data: members } = useQuery({
@@ -142,8 +175,50 @@ export function CastDetailsSheet({ cast, open, onOpenChange }: Props) {
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent className="w-full sm:max-w-2xl overflow-y-auto">
         <SheetHeader>
-          <SheetTitle className="font-display">{cast?.name}</SheetTitle>
-          <SheetDescription>{cast?.description || 'Manage cast members and city eligibility'}</SheetDescription>
+          {editMode ? (
+            <form
+              onSubmit={(e) => {
+                e.preventDefault();
+                if (editName.trim()) updateCast.mutate({ name: editName.trim(), description: editDescription.trim() });
+              }}
+              className="space-y-2"
+            >
+              <Input
+                value={editName}
+                onChange={e => setEditName(e.target.value)}
+                placeholder="Cast name"
+                required
+                autoFocus
+                className="text-lg font-display font-semibold"
+              />
+              <Textarea
+                value={editDescription}
+                onChange={e => setEditDescription(e.target.value)}
+                placeholder="Description (optional)"
+                rows={2}
+              />
+              <div className="flex gap-2">
+                <Button type="submit" size="sm" disabled={updateCast.isPending || !editName.trim()}>
+                  <Check className="h-4 w-4 mr-1" />{updateCast.isPending ? 'Saving…' : 'Save'}
+                </Button>
+                <Button type="button" size="sm" variant="ghost" onClick={cancelEdit} disabled={updateCast.isPending}>
+                  Cancel
+                </Button>
+              </div>
+            </form>
+          ) : (
+            <div className="flex items-start justify-between gap-2">
+              <div>
+                <SheetTitle className="font-display">{cast?.name}</SheetTitle>
+                <SheetDescription>{cast?.description || 'Manage cast members and city eligibility'}</SheetDescription>
+              </div>
+              {canManage && (
+                <Button size="icon" variant="ghost" className="shrink-0 mt-0.5" onClick={startEdit} title="Edit cast">
+                  <Pencil className="h-4 w-4" />
+                </Button>
+              )}
+            </div>
+          )}
         </SheetHeader>
 
         <Tabs defaultValue="members" className="mt-6">
