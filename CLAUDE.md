@@ -1,8 +1,8 @@
-# AGENTS.md — Showflow Pro
+# CLAUDE.md — Showflow Pro
 
-Guidance for AI coding agents and new developers working on this repo. Read this first.
+Guidance for AI coding agents (Claude Code and others) and new developers. Read this before writing any code.
 
-> Do **not** put secrets, API keys, sprint goals, or current task lists here. This file is loaded into agent context and rots quickly when filled with transient info.
+> Do **not** put secrets, API keys, sprint goals, or current task lists here. See `memory.md` for living project state.
 
 ---
 
@@ -30,13 +30,37 @@ Scale target: 50+ active shows, 200+ artists, multi-venue.
 
 ```bash
 npm install          # or bun install
-npm run dev          # local dev server (Vite)
+npm run dev          # local dev server (Vite, port 5173)
 npm run build        # production build
 npm run lint         # eslint
 npx vitest run       # unit tests (vitest + jsdom; setup in src/test/setup.ts)
+npm run test:watch   # vitest watch mode
 ```
 
 Edge functions deploy automatically when files in `supabase/functions/<name>/` change. No manual deploy step.
+
+---
+
+## Environment setup
+
+Create a `.env` file at the repo root with:
+
+```
+VITE_SUPABASE_URL=https://<project-id>.supabase.co
+VITE_SUPABASE_PUBLISHABLE_KEY=<anon-key>
+VITE_SUPABASE_PROJECT_ID=<project-id>
+```
+
+These are public values (anon key, not service role). Never commit `.env`. The service role key is used only inside edge functions via `Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')`.
+
+---
+
+## Git workflow
+
+- **Branch naming:** `feature/<short-desc>`, `fix/<short-desc>`, `claude/<short-desc>`
+- **Commit messages:** imperative, lowercase, ≤72 chars (e.g. `add artist availability calendar`)
+- **PRs target `dev`.** `main` is production-only — never push directly.
+- **Claude Code sessions** develop on the branch specified at session start (see `memory.md` for current active branch).
 
 ---
 
@@ -85,6 +109,7 @@ supabase/
 - **Artist availability is gated by eligibility.** Artists can only declare availability on dates returned by `useArtistEligibleDates` (derived from cast eligibility). Non-eligible dates render non-interactively in the calendar.
 - **Audit trail:** all booking status changes append to `booking_audit_log`. Never delete from this table.
 - **Airtable sync is mocked.** The polling loop is not wired up; the Settings page toggles a flag the sync worker will read once implemented.
+- **Feature flags** live in `app.config.ts` as the `FLAGS` object. Check with `if (FLAGS.FEATURE_NAME) { ... }`. Wrap entire feature blocks, not individual lines. Don't build UI for a flag that's `false` unless wiring it up in the same change.
 
 ### Calendar conventions
 
@@ -110,15 +135,34 @@ supabase/
 - Never call Supabase from a component effect when a query will do.
 - Side effects on success → `sonner` toast (`toast.success`, `toast.error`).
 
+### Error handling & loading states
+
+- Use React Query's `isLoading`, `isError`, `error` states — no ad-hoc local loading flags.
+- Show `Skeleton` (shadcn) for loading cards; show `Alert variant="destructive"` for page-level errors.
+- Edge function errors: return `{ error: "message" }` with appropriate HTTP status; surface to the client via `toast.error`.
+
+### New page / route checklist
+
+When adding a new page:
+1. Add a route constant to `ROUTES` in `src/config/app.config.ts`.
+2. Create `src/pages/YourPage.tsx` with a default export.
+3. Register in `src/App.tsx` with `<ProtectedRoute roles={[...]}>`.
+4. Add a nav item in `src/components/layout/` with matching role gating.
+
 ### Edge functions
 
 - One folder per function under `supabase/functions/<name>/index.ts`. Current categories:
   - **Admin ops:** `admin-list-users`, `admin-set-role`, `admin-decide-approval`
   - **Signup notifications:** `notify-signup`
   - **Transactional email:** `send-transactional-email`, `preview-transactional-email`, `handle-email-suppression`, `handle-email-unsubscribe`. New templates must be registered in `_shared/transactional-email-templates/registry.ts`.
-  - **Dev only:** `seed-test-data`
-- Use the service role key only when bypassing RLS is intentional (admin endpoints, seeding). Always re-verify the caller's role server-side first (see `admin-decide-approval` for the pattern).
+- Use the service role key only when bypassing RLS is intentional (admin endpoints). Always re-verify the caller's role server-side first (see `admin-decide-approval` for the pattern).
 - Read secrets via `Deno.env.get('SECRET_NAME')`.
+
+### Notification system
+
+- In-app notifications write to the `notifications` table (columns: `user_id`, `type`, `payload`, `read_at`).
+- `FLAGS.NOTIFICATIONS` must be `true` (it is, by default).
+- Create notifications from edge functions or server-side mutations only — never bare client-side inserts without proper RLS policies.
 
 ### Styling
 
@@ -132,11 +176,20 @@ supabase/
 - Prefer types derived from `Database` in `src/integrations/supabase/types.ts` — see `src/types/index.ts` for extension patterns.
 - `any` is allowed for Supabase joined-row shapes when typing them is disproportionate, but isolate to the boundary.
 
+### Testing
+
+- Framework: Vitest + jsdom + @testing-library/react. Setup in `src/test/setup.ts`.
+- Co-locate tests beside the file they test: `Foo.test.tsx` next to `Foo.tsx`.
+- Unit-test pure functions and hooks; mock the Supabase client via `vi.mock('../../integrations/supabase/client')`.
+- Component tests: render + simulate user interaction + assert on accessible queries (`getByRole`, `getByText`).
+- Never test implementation details (internal state, private methods).
+
 ### Database changes
 
 - Schema changes go through the migration tool — never hand-edit `supabase/migrations/` or `src/integrations/supabase/types.ts`.
 - Every new table needs RLS enabled and explicit policies. Default to `authenticated` role; restrict writes by `has_role(...)`.
 - Use the `update_updated_at_column()` trigger on tables with `updated_at`.
+
 ---
 
 ## Booking workflow (domain rules)
@@ -152,13 +205,26 @@ A booking moves through: `suggested → soft_booked → confirmed` (or `cancelle
 
 ## Test accounts (development only)
 
-Seeded by `supabase/functions/seed-test-data`:
+Test accounts are created manually through the standard signup flow and then approved via the admin panel. There is no automated seeding function — you must create and approve accounts yourself in the dev environment.
 
+Suggested emails:
 - `test-admin@showflowpro.com`
 - `test-producer@showflowpro.com`
 - `test-artist@showflowpro.com`
 
-Passwords are documented in the seeding function; **rotate before any production deploy.**
+**Rotate or remove before any production deploy.**
+
+---
+
+## Key files to reference
+
+| File | Purpose |
+|------|---------|
+| `src/config/app.config.ts` | Feature flags, ROUTES, BOOKING_CONFIG, CHAT_ARCHIVE_DAYS |
+| `src/integrations/supabase/types.ts` | Auto-generated DB types — read only |
+| `src/features/auth/AuthContext.tsx` | Auth state, role helpers, approval status |
+| `src/hooks/` | All domain hooks — reuse before writing new queries |
+| `src/types/index.ts` | Domain type extensions on top of Supabase types |
 
 ---
 
@@ -171,3 +237,5 @@ Passwords are documented in the seeding function; **rotate before any production
 - Defaulting calendars/grids to Sunday-first — week starts on Monday across the app.
 - Letting artists declare availability on dates outside `useArtistEligibleDates`.
 - Coupling client logic to a specific tenant or production brand — the platform is product-agnostic.
+- Using ad-hoc `useState` loading flags when React Query's `isLoading` / `isError` will do.
+- Pushing to `main` directly — always PR through `dev`.
