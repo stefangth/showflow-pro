@@ -59,30 +59,15 @@ Deno.serve(async (req) => {
       .maybeSingle();
     if (aErr || !approval) return json({ error: 'Approval not found' }, 404);
 
-    // Update approval row
-    const { error: upErr } = await admin
-      .from('user_approvals')
-      .update({
-        status: decision,
-        requested_role: decision === 'approved' ? role : undefined,
-        decided_by: callerId,
-        decided_at: new Date().toISOString(),
-        rejection_reason: decision === 'rejected' ? rejection_reason : null,
-      })
-      .eq('id', approval_id);
-    if (upErr) throw upErr;
-
-    if (decision === 'approved') {
-      // Insert role (idempotent: unique constraint on user_id+role)
-      const { error: roleErr } = await admin
-        .from('user_roles')
-        .insert({ user_id: approval.user_id, role })
-        .select()
-        .maybeSingle();
-      if (roleErr && !roleErr.message?.includes('duplicate')) {
-        console.error('Role insert error', roleErr);
-      }
-    }
+    // Atomically update approval + insert role via a single DB transaction
+    const { error: rpcErr } = await admin.rpc('decide_user_approval', {
+      p_approval_id:      approval_id,
+      p_decision:         decision,
+      p_role:             role,
+      p_rejection_reason: rejection_reason,
+      p_decided_by:       callerId,
+    });
+    if (rpcErr) throw rpcErr;
 
     // Fire notification email (non-blocking)
     try {
