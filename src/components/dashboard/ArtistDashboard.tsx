@@ -8,6 +8,7 @@ import { CalendarDays, MessageCircleQuestion, Theater } from 'lucide-react';
 import { useArtistEligibleDates } from '@/hooks/useArtistEligibleDates';
 import { useMyArtist } from '@/hooks/useMyArtist';
 import { formatDateDMY } from '@/lib/dates';
+import { showLabel } from '@/types';
 
 type AvailRow = { date: string };
 type CastMembershipRow = { id: string; role: string | null; cast: { id: string; name: string } | null };
@@ -132,7 +133,7 @@ export function ArtistDashboard() {
                     className="flex items-center justify-between p-2 rounded-md hover:bg-muted text-sm"
                   >
                     <div className="min-w-0">
-                      <p className="font-medium truncate">{d.show.title}</p>
+                      <p className="font-medium truncate">{showLabel(d.show)}</p>
                       <p className="text-xs text-muted-foreground">{formatDateDMY(d.date)}</p>
                     </div>
                     <Badge variant="outline" className="text-xs">

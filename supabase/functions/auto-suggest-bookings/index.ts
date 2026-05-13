@@ -44,15 +44,27 @@ Deno.serve(async (req) => {
     // Fetch the show date + parent show
     const { data: showDate, error: sdErr } = await admin
       .from('show_dates')
-      .select('id, show_id, city_id, slots_per_date, status, shows(slots_per_date, required_skills)')
+      .select('id, show_id, city_id, status, shows(required_skills, sub_program)')
       .eq('id', show_date_id)
       .maybeSingle();
     if (sdErr || !showDate) return json({ error: 'Show date not found' }, 404);
     if (showDate.status === 'cancelled') return json({ error: 'Show date is cancelled' }, 400);
 
-    const show = (showDate as any).shows as { slots_per_date: number; required_skills: string[] | null };
-    const effectiveSlots: number = (showDate.slots_per_date ?? show.slots_per_date) || 1;
+    const show = (showDate as any).shows as { required_skills: string[] | null; sub_program: string | null };
     const requiredSkills: string[] = show.required_skills ?? [];
+
+    // Resolve slot count from sub_program_slots_defaults (no fallback — must be configured)
+    const { data: slotSetting } = await admin
+      .from('app_settings')
+      .select('value')
+      .eq('key', 'sub_program_slots_defaults')
+      .maybeSingle();
+    const slotDefaults = (slotSetting?.value ?? {}) as Record<string, { main_cast: number; understudies: number }>;
+    const slotConfig = show.sub_program ? slotDefaults[show.sub_program] : null;
+    if (!slotConfig) {
+      return json({ error: `No slot configuration for sub-program "${show.sub_program ?? '(none)'}". Set defaults in Settings.` }, 400);
+    }
+    const effectiveSlots: number = slotConfig.main_cast;
 
     // Find eligible artists: those in casts eligible for this show_date
     // Logic mirrors useArtistEligibleDates: cast membership → show_cast_eligibility or show_date_cast_eligibility

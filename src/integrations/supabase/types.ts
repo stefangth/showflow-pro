@@ -670,47 +670,38 @@ export type Database = {
       }
       shows: {
         Row: {
-          category: string | null
           created_at: string
           created_by: string | null
-          description: string | null
           id: string
           program: string | null
           required_skills: string[] | null
           slots_per_date: number
           status: Database["public"]["Enums"]["show_status"]
           sub_program: string | null
-          title: string
           updated_at: string
           venue: string | null
         }
         Insert: {
-          category?: string | null
           created_at?: string
           created_by?: string | null
-          description?: string | null
           id?: string
           program?: string | null
           required_skills?: string[] | null
           slots_per_date?: number
           status?: Database["public"]["Enums"]["show_status"]
           sub_program?: string | null
-          title: string
           updated_at?: string
           venue?: string | null
         }
         Update: {
-          category?: string | null
           created_at?: string
           created_by?: string | null
-          description?: string | null
           id?: string
           program?: string | null
           required_skills?: string[] | null
           slots_per_date?: number
           status?: Database["public"]["Enums"]["show_status"]
           sub_program?: string | null
-          title?: string
           updated_at?: string
           venue?: string | null
         }
