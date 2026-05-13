@@ -7,6 +7,7 @@ import { AuthProvider } from "@/features/auth/AuthContext";
 import { ProtectedRoute } from "@/features/auth/ProtectedRoute";
 import AppLayout from "@/components/layout/AppLayout";
 import { ROUTES } from "@/config/app.config";
+import { Analytics } from "@vercel/analytics/react";
 import Index from "./pages/Index";
 import LoginPage from "./pages/LoginPage";
 import DashboardPage from "./pages/DashboardPage";
@@ -47,6 +48,7 @@ const App = () => (
           </Routes>
         </AuthProvider>
       </BrowserRouter>
+      <Analytics />
     </TooltipProvider>
   </QueryClientProvider>
 );
