@@ -811,6 +811,16 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      decide_user_approval: {
+        Args: {
+          p_approval_id: string
+          p_decided_by: string
+          p_decision: string
+          p_rejection_reason: string
+          p_role: string
+        }
+        Returns: undefined
+      }
       expire_soft_bookings: { Args: never; Returns: undefined }
       has_role: {
         Args: {
