@@ -13,6 +13,7 @@ import { ShowDetailSheet } from '@/components/shows/ShowDetailSheet';
 import { useArtistEligibleDates, type EligibleDate } from '@/hooks/useArtistEligibleDates';
 import { useMyArtist } from '@/hooks/useMyArtist';
 import { formatDateDMY, parseDateOnly } from '@/lib/dates';
+import { showLabel } from '@/types';
 
 type BookingLite = { show_date_id: string; status: string; is_understudy: boolean };
 type AvailLite = { date: string; status: 'available' | 'unavailable' | 'tentative' };
@@ -101,7 +102,7 @@ export function ArtistBookingsView() {
     return applySort(
       list,
       sort,
-      (d) => d.show.title,
+      (d) => showLabel(d.show),
       (d) => parseDateOnly(d.date)
     );
   }, [eligibleDates, timeframe, sort]);
@@ -159,7 +160,7 @@ export function ArtistBookingsView() {
                       <TableCell className="font-medium whitespace-nowrap">
                         {formatDateDMY(d.date)}
                       </TableCell>
-                      <TableCell>{d.show.title}</TableCell>
+                      <TableCell>{showLabel(d.show)}</TableCell>
                       <TableCell>
                         {d.show.venue || <span className="text-muted-foreground">—</span>}
                       </TableCell>
@@ -199,7 +200,7 @@ export function ArtistBookingsView() {
               >
                 <CardContent className="py-3 flex items-center justify-between gap-3">
                   <div className="min-w-0">
-                    <p className="font-medium truncate">{it.eligible.show.title}</p>
+                    <p className="font-medium truncate">{showLabel(it.eligible.show)}</p>
                     <p className="text-xs text-muted-foreground truncate">
                       {it.eligible.show.venue ?? ''}
                       {it.eligible.start_time ? ` • ${it.eligible.start_time.slice(0, 5)}` : ''}
