@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useBlocker, useBeforeUnload } from 'react-router-dom';
+import { useSettingsWarnings } from '@/hooks/useSettingsWarnings';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/features/auth/AuthContext';
@@ -203,6 +204,7 @@ export default function SettingsPage() {
   const isAdmin = hasRole('admin');
   const isProducer = hasRole('producer');
   const canEnter = isAdmin || isProducer;
+  const { schedulingWarnings } = useSettingsWarnings();
 
   // Cities (available to producers + admins)
   const { data: cities } = useQuery({
@@ -329,7 +331,13 @@ export default function SettingsPage() {
           {isAdmin && <TabsTrigger value="airtable"><Database className="h-4 w-4 mr-2" />Airtable Sync</TabsTrigger>}
           {isAdmin && <TabsTrigger value="filters"><SlidersHorizontal className="h-4 w-4 mr-2" />Filters</TabsTrigger>}
           <TabsTrigger value="casts-cities"><MapPin className="h-4 w-4 mr-2" />Casts & Cities</TabsTrigger>
-          <TabsTrigger value="scheduling"><Clock className="h-4 w-4 mr-2" />Scheduling</TabsTrigger>
+          <TabsTrigger value="scheduling" className="gap-2">
+            <Clock className="h-4 w-4" />
+            Scheduling
+            {schedulingWarnings > 0 && (
+              <span className="h-2 w-2 rounded-full bg-destructive shrink-0" />
+            )}
+          </TabsTrigger>
           {isAdmin && <TabsTrigger value="booking"><Wand2 className="h-4 w-4 mr-2" />Booking Engine</TabsTrigger>}
           {isAdmin && <TabsTrigger value="notifications"><Bell className="h-4 w-4 mr-2" />Notifications</TabsTrigger>}
         </TabsList>
