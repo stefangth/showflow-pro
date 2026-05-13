@@ -216,10 +216,6 @@ export function ArtistAvailabilityCalendar({ artistId, eligibleDates }: Props) {
             <span className="text-xs">Confirmed</span>
           </div>
           <div className="flex items-center gap-1.5">
-            <div className="h-3 w-3 rounded bg-primary/20" />
-            <span className="text-xs">Hold</span>
-          </div>
-          <div className="flex items-center gap-1.5">
             <div className="h-3 w-3 rounded bg-info/20" />
             <span className="text-xs">Available</span>
           </div>
