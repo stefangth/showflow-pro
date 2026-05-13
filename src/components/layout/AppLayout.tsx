@@ -10,6 +10,7 @@ import {
   MessageSquare, Users,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { useSettingsWarnings } from '@/hooks/useSettingsWarnings';
 
 interface AppLayoutProps {
   children: React.ReactNode;
@@ -30,6 +31,7 @@ export default function AppLayout({ children }: AppLayoutProps) {
   const navigate = useNavigate();
   const [collapsed, setCollapsed] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
+  const { hasAnyWarning } = useSettingsWarnings();
 
   const handleSignOut = async () => {
     await signOut();
@@ -53,24 +55,39 @@ export default function AppLayout({ children }: AppLayoutProps) {
 
       {/* Nav links */}
       <nav className="flex-1 px-3 py-4 space-y-1">
-        {filteredNav.map(item => (
-          <NavLink
-            key={item.to}
-            to={item.to}
-            onClick={() => setMobileOpen(false)}
-            className={({ isActive }) =>
-              cn(
-                'flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors',
-                isActive
-                  ? 'bg-primary/10 text-primary'
-                  : 'text-muted-foreground hover:bg-muted hover:text-foreground'
-              )
-            }
-          >
-            <item.icon className="h-5 w-5 shrink-0" />
-            {!collapsed && <span>{item.label}</span>}
-          </NavLink>
-        ))}
+        {filteredNav.map(item => {
+          const showWarningDot = item.to === ROUTES.SETTINGS && hasAnyWarning;
+          return (
+            <NavLink
+              key={item.to}
+              to={item.to}
+              onClick={() => setMobileOpen(false)}
+              className={({ isActive }) =>
+                cn(
+                  'flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors',
+                  isActive
+                    ? 'bg-primary/10 text-primary'
+                    : 'text-muted-foreground hover:bg-muted hover:text-foreground'
+                )
+              }
+            >
+              <span className="relative shrink-0">
+                <item.icon className="h-5 w-5" />
+                {showWarningDot && (
+                  <span className="absolute -top-1 -right-1 h-2 w-2 rounded-full bg-destructive ring-2 ring-background" />
+                )}
+              </span>
+              {!collapsed && (
+                <span className="flex items-center gap-2 flex-1 min-w-0">
+                  {item.label}
+                  {showWarningDot && (
+                    <span className="ml-auto h-2 w-2 rounded-full bg-destructive shrink-0" />
+                  )}
+                </span>
+              )}
+            </NavLink>
+          );
+        })}
       </nav>
 
       {/* User section */}
