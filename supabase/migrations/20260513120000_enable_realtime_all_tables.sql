@@ -1,0 +1,17 @@
+alter publication supabase_realtime add table bookings;
+alter publication supabase_realtime add table availability;
+alter publication supabase_realtime add table show_dates;
+alter publication supabase_realtime add table show_date_cast_eligibility;
+alter publication supabase_realtime add table show_cast_eligibility;
+alter publication supabase_realtime add table cast_members;
+alter publication supabase_realtime add table artists;
+alter publication supabase_realtime add table shows;
+alter publication supabase_realtime add table casts;
+alter publication supabase_realtime add table cities;
+alter publication supabase_realtime add table app_settings;
+alter publication supabase_realtime add table profiles;
+alter publication supabase_realtime add table user_approvals;
+alter publication supabase_realtime add table chat_messages;
+alter publication supabase_realtime add table chats;
+alter publication supabase_realtime add table booking_audit_log;
+alter publication supabase_realtime add table airtable_sync_log;

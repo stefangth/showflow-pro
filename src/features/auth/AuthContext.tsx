@@ -1,7 +1,28 @@
 import { createContext, useContext, useEffect, useState, type ReactNode } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import type { User, Session } from '@supabase/supabase-js';
 import type { AppRole } from '@/config/app.config';
+
+const REALTIME_INVALIDATIONS: Array<{ table: string; keys: unknown[][] }> = [
+  { table: 'bookings',                   keys: [['bookings']] },
+  { table: 'availability',               keys: [['availability']] },
+  { table: 'show_dates',                 keys: [['show-dates'], ['dashboard-upcoming-dates'], ['availability', 'available']] },
+  { table: 'show_date_cast_eligibility', keys: [['show-date-cast-eligibility'], ['eligible-artists']] },
+  { table: 'show_cast_eligibility',      keys: [['cast-eligibility'], ['eligible-artists']] },
+  { table: 'cast_members',              keys: [['cast-members'], ['artist-casts'], ['my-cast-memberships'], ['cast-members-counts']] },
+  { table: 'artists',                    keys: [['artists'], ['my-artist'], ['my-artist-producer']] },
+  { table: 'shows',                      keys: [['show'], ['shows-for-eligibility'], ['shows-sub-programs']] },
+  { table: 'casts',                      keys: [['casts']] },
+  { table: 'cities',                     keys: [['cities']] },
+  { table: 'app_settings',               keys: [['app-settings']] },
+  { table: 'profiles',                   keys: [['chat-author-profiles']] },
+  { table: 'user_approvals',             keys: [['user-approvals'], ['admin-iam-users']] },
+  { table: 'chat_messages',              keys: [['chat-messages']] },
+  { table: 'chats',                      keys: [['chat'], ['my-chats']] },
+  { table: 'booking_audit_log',          keys: [['admin-audit']] },
+  { table: 'airtable_sync_log',          keys: [['admin-sync']] },
+];
 
 export type ApprovalStatus = 'pending' | 'approved' | 'rejected' | 'unknown';
 
@@ -21,6 +42,7 @@ interface AuthContextType {
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
+  const queryClient = useQueryClient();
   const [user, setUser] = useState<User | null>(null);
   const [session, setSession] = useState<Session | null>(null);
   const [roles, setRoles] = useState<AppRole[]>([]);
@@ -104,6 +126,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       .subscribe();
     return () => { supabase.removeChannel(channel); };
   }, [user]);
+
+  // Realtime: global cache invalidation for all queried tables
+  useEffect(() => {
+    if (!user) return;
+    const channels = REALTIME_INVALIDATIONS.map(({ table, keys }) =>
+      supabase
+        .channel(`rt-${table}`)
+        .on('postgres_changes', { event: '*', schema: 'public', table }, () => {
+          keys.forEach(key => queryClient.invalidateQueries({ queryKey: key }));
+        })
+        .subscribe()
+    );
+    return () => { channels.forEach(ch => supabase.removeChannel(ch)); };
+  }, [user, queryClient]);
 
   const signIn = async (email: string, password: string) => {
     const { error } = await supabase.auth.signInWithPassword({ email, password });
