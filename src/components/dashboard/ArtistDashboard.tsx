@@ -4,12 +4,13 @@ import { Link } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { CalendarDays, MessageCircleQuestion } from 'lucide-react';
+import { CalendarDays, MessageCircleQuestion, Theater } from 'lucide-react';
 import { useArtistEligibleDates } from '@/hooks/useArtistEligibleDates';
 import { useMyArtist } from '@/hooks/useMyArtist';
 import { formatDateDMY } from '@/lib/dates';
 
 type AvailRow = { date: string };
+type CastMembershipRow = { id: string; role: string | null; cast: { id: string; name: string } | null };
 
 /**
  * Artist dashboard: response rate to eligible dates + list of unanswered offers.
@@ -27,6 +28,19 @@ export function ArtistDashboard() {
         .select('date')
         .eq('artist_id', artist!.id);
       return (data ?? []) as AvailRow[];
+    },
+  });
+
+  const { data: myMemberships } = useQuery({
+    queryKey: ['my-cast-memberships', artist?.id],
+    enabled: !!artist?.id,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('cast_members')
+        .select('id, role, cast:casts(id, name)')
+        .eq('artist_id', artist!.id);
+      if (error) throw error;
+      return (data ?? []) as unknown as CastMembershipRow[];
     },
   });
 
@@ -136,6 +150,36 @@ export function ArtistDashboard() {
           </CardContent>
         </Card>
       </div>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="font-display flex items-center gap-2 text-base">
+            <Theater className="h-4 w-4" />
+            My Casts
+            {(myMemberships?.length ?? 0) > 0 && (
+              <Badge variant="secondary">{myMemberships!.length}</Badge>
+            )}
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          {(myMemberships?.length ?? 0) === 0 ? (
+            <p className="text-sm text-muted-foreground">You haven't been added to any casts yet.</p>
+          ) : (
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+              {myMemberships!.map(m => (
+                <div key={m.id} className="flex items-center justify-between p-2 rounded-md border border-border">
+                  <p className="text-sm font-medium">{m.cast?.name ?? '—'}</p>
+                  {m.role ? (
+                    <Badge variant="outline" className="text-xs">{m.role}</Badge>
+                  ) : (
+                    <span className="text-xs text-muted-foreground">No role assigned</span>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
+        </CardContent>
+      </Card>
     </div>
   );
 }

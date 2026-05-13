@@ -11,7 +11,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Separator } from '@/components/ui/separator';
 import { Badge } from '@/components/ui/badge';
 import { toast } from 'sonner';
-import { Settings as SettingsIcon, Database, Bell, Wand2, Save, SlidersHorizontal, MapPin, Plus, Trash2 } from 'lucide-react';
+import { Settings as SettingsIcon, Database, Bell, Wand2, Save, SlidersHorizontal, MapPin, Plus, Trash2, Clock } from 'lucide-react';
 import type { City, Cast } from '@/types';
 
 type FilterKey = 'program' | 'timeframe' | 'sort' | 'status';
@@ -26,6 +26,90 @@ type SettingRow = {
   description: string | null;
   updated_at: string;
 };
+
+function SubProgramSlotsEditor({
+  value,
+  onChange,
+}: {
+  value: Record<string, number>;
+  onChange: (v: Record<string, number>) => void;
+}) {
+  const [newSubProgram, setNewSubProgram] = useState('');
+  const [newSlots, setNewSlots] = useState(1);
+
+  const entries = Object.entries(value);
+
+  function addRow() {
+    const key = newSubProgram.trim();
+    if (!key) return;
+    onChange({ ...value, [key]: newSlots });
+    setNewSubProgram('');
+    setNewSlots(1);
+  }
+
+  function removeRow(key: string) {
+    const next = { ...value };
+    delete next[key];
+    onChange(next);
+  }
+
+  function updateSlots(key: string, slots: number) {
+    onChange({ ...value, [key]: slots });
+  }
+
+  return (
+    <div className="space-y-3">
+      {entries.length > 0 && (
+        <div className="space-y-2">
+          {entries.map(([subProgram, slots]) => (
+            <div key={subProgram} className="flex items-center gap-2">
+              <span className="flex-1 text-sm font-medium truncate">{subProgram}</span>
+              <Input
+                type="number"
+                min={1}
+                className="w-20 text-center"
+                value={slots}
+                onChange={e => updateSlots(subProgram, Number(e.target.value) || 1)}
+              />
+              <span className="text-xs text-muted-foreground w-10">slot{slots === 1 ? '' : 's'}</span>
+              <button
+                onClick={() => removeRow(subProgram)}
+                className="text-muted-foreground hover:text-destructive p-1 rounded"
+                aria-label={`Remove ${subProgram}`}
+              >
+                <Trash2 className="h-3.5 w-3.5" />
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
+      {entries.length === 0 && (
+        <p className="text-sm text-muted-foreground">No sub-program defaults set — all dates use the show-level default.</p>
+      )}
+      <form
+        className="flex gap-2 pt-1"
+        onSubmit={e => { e.preventDefault(); addRow(); }}
+      >
+        <Input
+          placeholder="Sub-program name"
+          className="flex-1"
+          value={newSubProgram}
+          onChange={e => setNewSubProgram(e.target.value)}
+        />
+        <Input
+          type="number"
+          min={1}
+          className="w-20 text-center"
+          value={newSlots}
+          onChange={e => setNewSlots(Number(e.target.value) || 1)}
+        />
+        <Button type="submit" variant="outline" disabled={!newSubProgram.trim()}>
+          <Plus className="h-4 w-4" />
+        </Button>
+      </form>
+    </div>
+  );
+}
 
 export default function SettingsPage() {
   const { hasRole } = useAuth();
@@ -160,7 +244,7 @@ export default function SettingsPage() {
             Configure integrations, booking behaviour, and notifications. Changes apply immediately.
           </p>
         </div>
-        {isAdmin && (
+        {canEnter && (
           <Button onClick={handleSave} disabled={saveMutation.isPending || dirtyKeys.length === 0}>
             <Save className="h-4 w-4 mr-2" />
             {saveMutation.isPending ? 'Saving…' : `Save${dirtyKeys.length ? ` (${dirtyKeys.length})` : ''}`}
@@ -168,11 +252,12 @@ export default function SettingsPage() {
         )}
       </div>
 
-      <Tabs defaultValue={isAdmin ? 'airtable' : 'casts-cities'}>
+      <Tabs defaultValue={isAdmin ? 'airtable' : 'scheduling'}>
         <TabsList>
           {isAdmin && <TabsTrigger value="airtable"><Database className="h-4 w-4 mr-2" />Airtable Sync</TabsTrigger>}
           {isAdmin && <TabsTrigger value="filters"><SlidersHorizontal className="h-4 w-4 mr-2" />Filters</TabsTrigger>}
           <TabsTrigger value="casts-cities"><MapPin className="h-4 w-4 mr-2" />Casts & Cities</TabsTrigger>
+          <TabsTrigger value="scheduling"><Clock className="h-4 w-4 mr-2" />Scheduling</TabsTrigger>
           {isAdmin && <TabsTrigger value="booking"><Wand2 className="h-4 w-4 mr-2" />Booking Engine</TabsTrigger>}
           {isAdmin && <TabsTrigger value="notifications"><Bell className="h-4 w-4 mr-2" />Notifications</TabsTrigger>}
         </TabsList>
@@ -235,6 +320,44 @@ export default function SettingsPage() {
                   ))}
                 </div>
               )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="scheduling" className="mt-4 space-y-6">
+          <Card>
+            <CardHeader>
+              <CardTitle className="font-display">Soft-Book Expiry</CardTitle>
+              <CardDescription>
+                Soft bookings that aren't confirmed within this window are automatically cancelled by a scheduled database job.
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-2 max-w-xs">
+                <Label>Expiry window (hours)</Label>
+                <Input
+                  type="number"
+                  min={1}
+                  value={get('soft_book_expiry_hours', 48)}
+                  onChange={e => set('soft_book_expiry_hours', Number(e.target.value))}
+                />
+                <p className="text-xs text-muted-foreground">Default: 48 hours. The job runs every hour on the hour.</p>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle className="font-display">Default Slots by Sub-Program</CardTitle>
+              <CardDescription>
+                Set the default number of artist slots per show date for each sub-program. Applies when a date has no explicit slot override. Falls back to the show-level default if no sub-program match is found.
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <SubProgramSlotsEditor
+                value={get('sub_program_slots_defaults', {}) as Record<string, number>}
+                onChange={v => set('sub_program_slots_defaults', v)}
+              />
             </CardContent>
           </Card>
         </TabsContent>
@@ -386,26 +509,15 @@ export default function SettingsPage() {
                 />
               </div>
               <Separator />
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label>Soft-book expiry (hours)</Label>
-                  <Input
-                    type="number"
-                    min={1}
-                    value={get('soft_book_expiry_hours', 48)}
-                    onChange={e => set('soft_book_expiry_hours', Number(e.target.value))}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label>Max suggestions per slot</Label>
-                  <Input
-                    type="number"
-                    min={1}
-                    max={20}
-                    value={get('max_suggestions', 5)}
-                    onChange={e => set('max_suggestions', Number(e.target.value))}
-                  />
-                </div>
+              <div className="max-w-xs space-y-2">
+                <Label>Max suggestions per slot</Label>
+                <Input
+                  type="number"
+                  min={1}
+                  max={20}
+                  value={get('max_suggestions', 5)}
+                  onChange={e => set('max_suggestions', Number(e.target.value))}
+                />
               </div>
             </CardContent>
           </Card>
