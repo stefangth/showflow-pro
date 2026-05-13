@@ -1,5 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
-import { useBlocker, useBeforeUnload } from 'react-router-dom';
+import { useState, useEffect } from 'react';
 import { useSettingsWarnings } from '@/hooks/useSettingsWarnings';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
@@ -288,14 +287,13 @@ export default function SettingsPage() {
   const isDirty = dirtyKeys.length > 0;
 
   // Warn on browser tab close / refresh
-  useBeforeUnload(
-    useCallback((e) => {
+  useEffect(() => {
+    const handler = (e: BeforeUnloadEvent) => {
       if (isDirty) e.preventDefault();
-    }, [isDirty])
-  );
-
-  // Warn on in-app navigation
-  const blocker = useBlocker(isDirty);
+    };
+    window.addEventListener('beforeunload', handler);
+    return () => window.removeEventListener('beforeunload', handler);
+  }, [isDirty]);
 
   const handleSave = () => {
     const updates = dirtyKeys.map(k => ({ key: k, value: draft[k] }));
@@ -325,6 +323,16 @@ export default function SettingsPage() {
           </Button>
         )}
       </div>
+
+      {isDirty && (
+        <div className="flex items-center justify-between gap-4 rounded-lg border border-warning bg-warning/10 px-4 py-2.5 text-sm text-warning">
+          <span>You have unsaved changes — they will be lost if you navigate away.</span>
+          <Button size="sm" onClick={handleSave} disabled={saveMutation.isPending}>
+            <Save className="h-3.5 w-3.5 mr-1.5" />
+            {saveMutation.isPending ? 'Saving…' : 'Save now'}
+          </Button>
+        </div>
+      )}
 
       <Tabs defaultValue={isAdmin ? 'airtable' : 'scheduling'}>
         <TabsList>
@@ -626,20 +634,6 @@ export default function SettingsPage() {
         </TabsContent>
       </Tabs>
 
-      {blocker.state === 'blocked' && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
-          <div className="bg-background border border-border rounded-lg shadow-xl p-6 max-w-sm w-full mx-4 space-y-4">
-            <h2 className="font-display font-semibold text-lg">Unsaved changes</h2>
-            <p className="text-sm text-muted-foreground">
-              You have unsaved settings changes. Leave anyway and discard them?
-            </p>
-            <div className="flex gap-3 justify-end">
-              <Button variant="outline" onClick={() => blocker.reset()}>Stay</Button>
-              <Button variant="destructive" onClick={() => blocker.proceed()}>Leave without saving</Button>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 }
