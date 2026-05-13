@@ -21,7 +21,7 @@ export function ArtistDashboard() {
   const { data: eligibleDates } = useArtistEligibleDates();
 
   const { data: myAvailability } = useQuery({
-    queryKey: ['artist-response-rate', artist?.id],
+    queryKey: ['availability', 'response-rate', artist?.id],
     enabled: !!artist?.id,
     queryFn: async () => {
       const { data } = await supabase

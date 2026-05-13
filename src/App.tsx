@@ -38,7 +38,7 @@ const App = () => (
             <Route path="/shows/:id" element={<ProtectedRoute><AppLayout><ShowDetailPage /></AppLayout></ProtectedRoute>} />
             <Route path={ROUTES.ARTISTS} element={<ProtectedRoute requiredRoles={['admin', 'producer']}><AppLayout><ArtistsPage /></AppLayout></ProtectedRoute>} />
             <Route path={ROUTES.BOOKINGS} element={<ProtectedRoute requiredRoles={['admin', 'producer']}><AppLayout><ShowsBookingsPage /></AppLayout></ProtectedRoute>} />
-            <Route path={ROUTES.AVAILABILITY} element={<ProtectedRoute><AppLayout><AvailabilityPage /></AppLayout></ProtectedRoute>} />
+            <Route path={ROUTES.AVAILABILITY} element={<ProtectedRoute requiredRoles={['artist']}><AppLayout><AvailabilityPage /></AppLayout></ProtectedRoute>} />
             <Route path={ROUTES.ADMIN} element={<ProtectedRoute requiredRoles={['admin']}><AppLayout><AdminPage /></AppLayout></ProtectedRoute>} />
             <Route path={ROUTES.SETTINGS} element={<ProtectedRoute requiredRoles={['admin', 'producer']}><AppLayout><SettingsPage /></AppLayout></ProtectedRoute>} />
             <Route path={ROUTES.CHATS} element={<ProtectedRoute><AppLayout><ChatsListPage /></AppLayout></ProtectedRoute>} />

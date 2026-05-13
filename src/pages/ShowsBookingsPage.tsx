@@ -102,7 +102,7 @@ function ProducerShowsBookings() {
   }, []);
 
   const { data: showDates, isLoading } = useQuery({
-    queryKey: ['show-dates-bookings'],
+    queryKey: ['bookings', 'show-dates'],
     queryFn: async () => {
       const { data, error } = await supabase
         .from('show_dates')
@@ -118,7 +118,7 @@ function ProducerShowsBookings() {
   });
 
   const { data: bookings } = useQuery({
-    queryKey: ['show-dates-bookings-status'],
+    queryKey: ['bookings', 'status'],
     queryFn: async () => {
       const { data, error } = await supabase
         .from('bookings')

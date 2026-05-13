@@ -129,7 +129,11 @@ supabase/
 ### React / data
 
 - Use `useQuery` for reads, `useMutation` for writes; invalidate the relevant `queryKey` on success.
-- Keep query keys stable arrays. Examples in use: `['shows']`, `['show', id]`, `['admin-users']`, `['my-artist']`, `['availability', artistId]`, `['eligible-artists', showDateId]`, `['chat', showDateId]`, `['chat-messages', chatId]`.
+- **Query key convention — hierarchical prefix by domain:** All keys follow `['domain', 'sub-key', ...params]`. The two most critical domains:
+  - **`['bookings', ...]`** — everything that reads from the `bookings` table (e.g. `['bookings', 'for-date', id]`, `['bookings', 'status']`, `['bookings', 'artist', artistId]`).
+  - **`['availability', ...]`** — everything that reads from the `availability` table (e.g. `['availability', 'cell', artistId, date]`, `['availability', 'available', dateId]`).
+- **Invalidation rule:** Mutations that write to `bookings` invalidate `['bookings']` (prefix match, catches all sub-keys). Mutations that write to `availability` invalidate `['availability']`. This is the only pattern that stays correct as new consumers are added. Never list individual sub-keys in a mutation — always bust the whole domain.
+- **Future work:** Supabase Realtime subscriptions (table-level) are the path to cross-user reactivity (e.g. Producer A's screen updates when Producer B confirms a booking). This requires enabling realtime on tables + RLS policies for realtime. Planned for a future dedicated PR.
 - Prefer the existing domain hooks in `src/hooks/` (`useMyArtist`, `useEligibleArtists`, `useArtistEligibleDates`, `useChatParticipant`) over duplicating Supabase queries inline.
 - Never call Supabase from a component effect when a query will do.
 - Side effects on success → `sonner` toast (`toast.success`, `toast.error`).

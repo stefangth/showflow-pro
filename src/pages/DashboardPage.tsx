@@ -46,7 +46,7 @@ function ProducerDashboard() {
   });
 
   const { data: confirmedBookings } = useQuery({
-    queryKey: ['dashboard-confirmed-bookings'],
+    queryKey: ['bookings', 'confirmed-dashboard'],
     queryFn: async () => {
       const { data, error } = await supabase
         .from('bookings')
