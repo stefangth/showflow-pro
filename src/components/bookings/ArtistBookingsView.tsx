@@ -9,7 +9,7 @@ import { SortControl, type SortValue } from '@/components/filters/SortControl';
 import { ViewToggle, type ViewMode } from '@/components/filters/ViewToggle';
 import { EntityCalendar } from '@/components/calendar/EntityCalendar';
 import { applySort, inTimeframe } from '@/components/filters/filterUtils';
-import { ShowDetailSheet } from '@/components/shows/ShowDetailSheet';
+import { ShowDateDetailSheet } from '@/components/shows/ShowDateDetailSheet';
 import { useArtistEligibleDates, type EligibleDate } from '@/hooks/useArtistEligibleDates';
 import { useMyArtist } from '@/hooks/useMyArtist';
 import { formatDateDMY, parseDateOnly } from '@/lib/dates';
@@ -47,7 +47,7 @@ export function ArtistBookingsView() {
   const [timeframe, setTimeframe] = useState<TimeframeValue>({ from: null, to: null });
   const [sort, setSort] = useState<SortValue>('chrono_asc');
   const [view, setView] = useState<ViewMode>('list');
-  const [activeShowId, setActiveShowId] = useState<string | null>(null);
+  const [activeShowDateId, setActiveShowDateId] = useState<string | null>(null);
 
   const { data: myBookings } = useQuery({
     queryKey: ['bookings', 'artist-all', artist?.id],
@@ -155,7 +155,7 @@ export function ArtistBookingsView() {
                     <TableRow
                       key={d.id}
                       className="cursor-pointer"
-                      onClick={() => setActiveShowId(d.show_id)}
+                      onClick={() => setActiveShowDateId(d.id)}
                     >
                       <TableCell className="font-medium whitespace-nowrap">
                         {formatDateDMY(d.date)}
@@ -216,11 +216,11 @@ export function ArtistBookingsView() {
         />
       )}
 
-      <ShowDetailSheet
-        showId={activeShowId}
-        open={!!activeShowId}
+      <ShowDateDetailSheet
+        showDateId={activeShowDateId}
+        open={!!activeShowDateId}
         onOpenChange={(o) => {
-          if (!o) setActiveShowId(null);
+          if (!o) setActiveShowDateId(null);
         }}
       />
     </div>
