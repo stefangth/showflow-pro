@@ -68,6 +68,7 @@ export function AvailabilityPicker({ artistId, date, size = 'default' }: Props) 
       qc.invalidateQueries({ queryKey: ['availability-cell', artistId, date] });
       qc.invalidateQueries({ queryKey: ['my-availability'] });
       qc.invalidateQueries({ queryKey: ['artist-response-rate'] });
+      qc.invalidateQueries({ queryKey: ['eligible-artists'] });
       toast({ title: 'Availability updated' });
     },
     onError: (e: any) => toast({ title: 'Error', description: e.message, variant: 'destructive' }),

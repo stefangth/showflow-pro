@@ -23,12 +23,13 @@ interface Props {
 
 /**
  * Month-grid calendar:
- *  - Bold blue outline → eligible/offered date
- *  - Red shade        → artist marked Not available
- *  - Yellow shade     → Tentative
- *  - Green shade      → Confirmed booking
- *  - Subtle shade     → Available (responded)
- *  - No shade         → Unanswered
+ *  - Bold blue outline → eligible date (producer has offered this date)
+ *  - Green shade       → Confirmed booking ("Booked" label)
+ *  - Primary blue fill → Soft-booked / hold placed ("Hold" label)
+ *  - Info blue fill    → Artist marked Available
+ *  - Yellow shade      → Tentative
+ *  - Red shade         → Artist marked Not available
+ *  - No shade          → Unanswered / suggested (eligible border only)
  * Tapping a cell opens a small popover with the AvailabilityPicker.
  */
 export function ArtistAvailabilityCalendar({ artistId, eligibleDates }: Props) {
@@ -51,15 +52,16 @@ export function ArtistAvailabilityCalendar({ artistId, eligibleDates }: Props) {
     },
   });
 
+  // Fetch all non-cancelled bookings for this artist (no server-side date filter —
+  // filtering on aliased join columns is unreliable in PostgREST; we slice by month in JS).
   const { data: bookings } = useQuery({
-    queryKey: ['my-bookings', artistId, format(currentMonth, 'yyyy-MM')],
+    queryKey: ['my-bookings', artistId],
     queryFn: async () => {
       const { data } = await supabase
         .from('bookings')
         .select('show_date_id, status, show_date:show_dates!inner(date)')
         .eq('artist_id', artistId)
-        .gte('show_date.date', toDateKey(monthStart))
-        .lte('show_date.date', toDateKey(monthEnd));
+        .neq('status', 'cancelled');
       return (data ?? []) as unknown as BookingRow[];
     },
   });
@@ -75,13 +77,27 @@ export function ArtistAvailabilityCalendar({ artistId, eligibleDates }: Props) {
     return m;
   }, [availability]);
 
+  const monthStartKey = toDateKey(monthStart);
+  const monthEndKey = toDateKey(monthEnd);
+
   const confirmedSet = useMemo(() => {
     const s = new Set<string>();
     bookings?.forEach((b) => {
-      if (b.status === 'confirmed' && b.show_date?.date) s.add(b.show_date.date);
+      const d = b.show_date?.date;
+      if (b.status === 'confirmed' && d && d >= monthStartKey && d <= monthEndKey) s.add(d);
     });
     return s;
-  }, [bookings]);
+  }, [bookings, monthStartKey, monthEndKey]);
+
+  const softBookedSet = useMemo(() => {
+    const s = new Set<string>();
+    bookings?.forEach((b) => {
+      const d = b.show_date?.date;
+      if (b.status === 'soft_booked' && d && d >= monthStartKey && d <= monthEndKey) s.add(d);
+    });
+    return s;
+  }, [bookings, monthStartKey, monthEndKey]);
+
 
   return (
     <Card>
@@ -123,16 +139,20 @@ export function ArtistAvailabilityCalendar({ artistId, eligibleDates }: Props) {
             const isEligible = eligibleSet.has(dateStr);
             const status = availMap[dateStr];
             const isConfirmed = confirmedSet.has(dateStr);
+            const isSoftBooked = !isConfirmed && softBookedSet.has(dateStr);
 
-            // Color logic — confirmed > unavailable > tentative > available > none
+            // Color priority: confirmed > soft_booked > unavailable > tentative > available > none
+            // suggested has no special fill — the eligible border is sufficient
             const shade = isConfirmed
               ? 'bg-success/30 text-success-foreground'
+              : isSoftBooked
+              ? 'bg-primary/20 text-primary'
               : status === 'unavailable'
               ? 'bg-destructive/25 text-destructive'
               : status === 'tentative'
               ? 'bg-warning/25 text-warning'
               : status === 'available'
-              ? 'bg-success/10'
+              ? 'bg-info/20'
               : '';
 
             const cell = (
@@ -155,6 +175,11 @@ export function ArtistAvailabilityCalendar({ artistId, eligibleDates }: Props) {
                 {isConfirmed && (
                   <span className="block text-[9px] mt-0.5 font-semibold uppercase tracking-wide">
                     Booked
+                  </span>
+                )}
+                {isSoftBooked && (
+                  <span className="block text-[9px] mt-0.5 font-semibold uppercase tracking-wide">
+                    Hold
                   </span>
                 )}
               </button>
@@ -184,10 +209,14 @@ export function ArtistAvailabilityCalendar({ artistId, eligibleDates }: Props) {
           <span className="text-xs text-muted-foreground">Legend:</span>
           <div className="flex items-center gap-1.5">
             <div className="h-3 w-3 rounded border-2 border-info" />
-            <span className="text-xs">Offered</span>
+            <span className="text-xs">Eligible</span>
           </div>
           <div className="flex items-center gap-1.5">
-            <div className="h-3 w-3 rounded bg-success/10" />
+            <div className="h-3 w-3 rounded bg-success/30" />
+            <span className="text-xs">Confirmed</span>
+          </div>
+          <div className="flex items-center gap-1.5">
+            <div className="h-3 w-3 rounded bg-info/20" />
             <span className="text-xs">Available</span>
           </div>
           <div className="flex items-center gap-1.5">
@@ -197,10 +226,6 @@ export function ArtistAvailabilityCalendar({ artistId, eligibleDates }: Props) {
           <div className="flex items-center gap-1.5">
             <div className="h-3 w-3 rounded bg-destructive/25" />
             <span className="text-xs">Not available</span>
-          </div>
-          <div className="flex items-center gap-1.5">
-            <div className="h-3 w-3 rounded bg-success/30" />
-            <span className="text-xs">Confirmed</span>
           </div>
         </div>
       </CardContent>

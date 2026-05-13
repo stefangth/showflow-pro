@@ -1,4 +1,6 @@
 import { useState, useEffect } from 'react';
+import { Link } from 'react-router-dom';
+import { ROUTES } from '@/config/app.config';
 import { useSettingsWarnings } from '@/hooks/useSettingsWarnings';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
@@ -390,7 +392,7 @@ export default function SettingsPage() {
             <CardHeader>
               <CardTitle className="font-display">Casts</CardTitle>
               <CardDescription>
-                Manage casts and their members on the <a className="text-primary underline" href="/artists">Artists page</a>.
+                Manage casts and their members on the <Link className="text-primary underline" to={ROUTES.ARTISTS}>Artists page</Link>.
               </CardDescription>
             </CardHeader>
             <CardContent>
