@@ -53,15 +53,16 @@ export function ArtistAvailabilityCalendar({ artistId, eligibleDates }: Props) {
     },
   });
 
+  // Fetch all non-cancelled bookings for this artist (no server-side date filter —
+  // filtering on aliased join columns is unreliable in PostgREST; we slice by month in JS).
   const { data: bookings } = useQuery({
-    queryKey: ['my-bookings', artistId, format(currentMonth, 'yyyy-MM')],
+    queryKey: ['my-bookings', artistId],
     queryFn: async () => {
       const { data } = await supabase
         .from('bookings')
         .select('show_date_id, status, show_date:show_dates!inner(date)')
         .eq('artist_id', artistId)
-        .gte('show_date.date', toDateKey(monthStart))
-        .lte('show_date.date', toDateKey(monthEnd));
+        .neq('status', 'cancelled');
       return (data ?? []) as unknown as BookingRow[];
     },
   });
@@ -77,29 +78,35 @@ export function ArtistAvailabilityCalendar({ artistId, eligibleDates }: Props) {
     return m;
   }, [availability]);
 
+  const monthStartKey = toDateKey(monthStart);
+  const monthEndKey = toDateKey(monthEnd);
+
   const confirmedSet = useMemo(() => {
     const s = new Set<string>();
     bookings?.forEach((b) => {
-      if (b.status === 'confirmed' && b.show_date?.date) s.add(b.show_date.date);
+      const d = b.show_date?.date;
+      if (b.status === 'confirmed' && d && d >= monthStartKey && d <= monthEndKey) s.add(d);
     });
     return s;
-  }, [bookings]);
+  }, [bookings, monthStartKey, monthEndKey]);
 
   const softBookedSet = useMemo(() => {
     const s = new Set<string>();
     bookings?.forEach((b) => {
-      if (b.status === 'soft_booked' && b.show_date?.date) s.add(b.show_date.date);
+      const d = b.show_date?.date;
+      if (b.status === 'soft_booked' && d && d >= monthStartKey && d <= monthEndKey) s.add(d);
     });
     return s;
-  }, [bookings]);
+  }, [bookings, monthStartKey, monthEndKey]);
 
   const suggestedSet = useMemo(() => {
     const s = new Set<string>();
     bookings?.forEach((b) => {
-      if (b.status === 'suggested' && b.show_date?.date) s.add(b.show_date.date);
+      const d = b.show_date?.date;
+      if (b.status === 'suggested' && d && d >= monthStartKey && d <= monthEndKey) s.add(d);
     });
     return s;
-  }, [bookings]);
+  }, [bookings, monthStartKey, monthEndKey]);
 
   return (
     <Card>
