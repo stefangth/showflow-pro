@@ -265,6 +265,21 @@ export default function SettingsPage() {
     },
   });
 
+  const dirtyKeys = (settings ?? [])
+    .filter(s => JSON.stringify(s.value) !== JSON.stringify(draft[s.key]))
+    .map(s => s.key);
+
+  const isDirty = dirtyKeys.length > 0;
+
+  // Warn on browser tab close / refresh — must be before any early returns (Rules of Hooks)
+  useEffect(() => {
+    const handler = (e: BeforeUnloadEvent) => {
+      if (isDirty) e.preventDefault();
+    };
+    window.addEventListener('beforeunload', handler);
+    return () => window.removeEventListener('beforeunload', handler);
+  }, [isDirty]);
+
   if (!canEnter) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -279,21 +294,6 @@ export default function SettingsPage() {
 
   const get = (key: string, fallback: any = '') => draft[key] ?? fallback;
   const set = (key: string, value: any) => setDraft(d => ({ ...d, [key]: value }));
-
-  const dirtyKeys = settings
-    .filter(s => JSON.stringify(s.value) !== JSON.stringify(draft[s.key]))
-    .map(s => s.key);
-
-  const isDirty = dirtyKeys.length > 0;
-
-  // Warn on browser tab close / refresh
-  useEffect(() => {
-    const handler = (e: BeforeUnloadEvent) => {
-      if (isDirty) e.preventDefault();
-    };
-    window.addEventListener('beforeunload', handler);
-    return () => window.removeEventListener('beforeunload', handler);
-  }, [isDirty]);
 
   const handleSave = () => {
     const updates = dirtyKeys.map(k => ({ key: k, value: draft[k] }));
