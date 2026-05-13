@@ -13,7 +13,6 @@ export type EligibleDate = {
   show_id: string;
   show: {
     id: string;
-    title: string;
     venue: string | null;
     program: string | null;
     sub_program: string | null;
@@ -64,7 +63,7 @@ export function useArtistEligibleDates() {
       const { data: dates, error } = await supabase
         .from('show_dates')
         .select(
-          'id, date, start_time, end_time, status, city_id, show_id, show:shows(id, title, venue, program, sub_program, slots_per_date, status)'
+          'id, date, start_time, end_time, status, city_id, show_id, show:shows(id, venue, program, sub_program, slots_per_date, status)'
         )
         .gte('date', today)
         .neq('status', 'cancelled')

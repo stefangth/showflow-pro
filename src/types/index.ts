@@ -46,3 +46,8 @@ export interface ShowDateWithBookings extends ShowDate {
   bookings: (Booking & { artist: Artist })[];
   show: Show;
 }
+
+export function showLabel(show: { program: string | null; sub_program: string | null }): string {
+  if (show.program && show.sub_program) return `${show.program} – ${show.sub_program}`;
+  return show.program ?? '—';
+}

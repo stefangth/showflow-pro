@@ -13,6 +13,7 @@ import { Plus, Search, Star } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { format } from 'date-fns';
 import type { Artist } from '@/types';
+import { showLabel } from '@/types';
 import { ProgramFilter } from '@/components/filters/ProgramFilter';
 import { TimeframeFilter, type TimeframeValue } from '@/components/filters/TimeframeFilter';
 import { SortControl, type SortValue } from '@/components/filters/SortControl';
@@ -24,7 +25,7 @@ import { CastsSection } from '@/components/casts/CastsSection';
 
 type BookingJoin = {
   id: string; artist_id: string; status: string;
-  show_date: { date: string; show: { title: string; program: string | null } } | null;
+  show_date: { date: string; show: { program: string | null; sub_program: string | null } } | null;
 };
 
 export default function ArtistsPage() {
@@ -55,7 +56,7 @@ export default function ArtistsPage() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from('bookings')
-        .select('id, artist_id, status, show_date:show_dates(date, show:shows(title, program))')
+        .select('id, artist_id, status, show_date:show_dates(date, show:shows(program, sub_program))')
         .neq('status', 'cancelled');
       if (error) throw error;
       return (data ?? []) as unknown as BookingJoin[];
@@ -279,7 +280,7 @@ export default function ArtistsPage() {
                   </div>
                   <div className="min-w-0">
                     <p className="font-medium truncate">{it.artist?.name}</p>
-                    <p className="text-xs text-muted-foreground truncate">{it.show?.title}{it.show?.program ? ` • ${it.show.program}` : ''}</p>
+                    <p className="text-xs text-muted-foreground truncate">{it.show ? showLabel(it.show) : ''}</p>
                   </div>
                 </div>
               </CardContent>
