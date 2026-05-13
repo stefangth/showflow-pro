@@ -28,14 +28,15 @@ Deno.serve(async (req) => {
 
     const admin = createClient(supabaseUrl, serviceKey);
 
-    // Caller must be admin or producer
+    // Caller must be admin, producer, or artist (artists further verified below)
     const { data: roleRow } = await admin
       .from('user_roles')
       .select('role')
       .eq('user_id', callerId)
-      .in('role', ['admin', 'producer'])
+      .in('role', ['admin', 'producer', 'artist'])
       .maybeSingle();
-    if (!roleRow) return json({ error: 'Forbidden — admin or producer only' }, 403);
+    if (!roleRow) return json({ error: 'Forbidden' }, 403);
+    const callerIsArtist = roleRow.role === 'artist';
 
     const body = await req.json().catch(() => ({}));
     const show_date_id: string = body.show_date_id || '';
@@ -44,11 +45,30 @@ Deno.serve(async (req) => {
     // Fetch the show date + parent show
     const { data: showDate, error: sdErr } = await admin
       .from('show_dates')
-      .select('id, show_id, city_id, status, shows(required_skills, sub_program)')
+      .select('id, show_id, city_id, date, status, shows(required_skills, sub_program)')
       .eq('id', show_date_id)
       .maybeSingle();
     if (sdErr || !showDate) return json({ error: 'Show date not found' }, 404);
     if (showDate.status === 'cancelled') return json({ error: 'Show date is cancelled' }, 400);
+
+    // Artists may only trigger suggestions for dates where they themselves are available
+    if (callerIsArtist) {
+      const { data: artistRow } = await admin
+        .from('artists')
+        .select('id')
+        .eq('user_id', callerId)
+        .maybeSingle();
+      if (!artistRow) return json({ error: 'Forbidden — no artist profile linked to this account' }, 403);
+
+      const { data: availRow } = await admin
+        .from('availability')
+        .select('id')
+        .eq('artist_id', artistRow.id)
+        .eq('date', (showDate as any).date)
+        .eq('status', 'available')
+        .maybeSingle();
+      if (!availRow) return json({ error: 'Forbidden — you must be available on this date to trigger suggestions' }, 403);
+    }
 
     const show = (showDate as any).shows as { required_skills: string[] | null; sub_program: string | null };
     const requiredSkills: string[] = show.required_skills ?? [];

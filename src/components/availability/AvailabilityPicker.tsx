@@ -64,10 +64,35 @@ export function AvailabilityPicker({ artistId, date, size = 'default' }: Props) 
         if (error) throw error;
       }
     },
-    onSuccess: () => {
+    onSuccess: async (_data, next) => {
       qc.invalidateQueries({ queryKey: ['availability'] });
       qc.invalidateQueries({ queryKey: ['eligible-artists'] });
-      toast({ title: 'Availability updated' });
+
+      if (next === 'available') {
+        // Trigger auto-suggest for all non-cancelled show dates on this day
+        const { data: dates } = await supabase
+          .from('show_dates')
+          .select('id')
+          .eq('date', date)
+          .neq('status', 'cancelled');
+
+        if (dates && dates.length > 0) {
+          await Promise.allSettled(
+            dates.map(d =>
+              supabase.functions.invoke('auto-suggest-bookings', { body: { show_date_id: d.id } })
+            )
+          );
+          qc.invalidateQueries({ queryKey: ['bookings'] });
+          toast({
+            title: 'Availability updated',
+            description: `Suggestions triggered for ${dates.length} show date${dates.length === 1 ? '' : 's'}.`,
+          });
+        } else {
+          toast({ title: 'Availability updated' });
+        }
+      } else {
+        toast({ title: 'Availability updated' });
+      }
     },
     onError: (e: any) => toast({ title: 'Error', description: e.message, variant: 'destructive' }),
   });
