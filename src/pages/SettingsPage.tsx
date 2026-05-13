@@ -1,4 +1,6 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
+import { useBlocker, useBeforeUnload } from 'react-router-dom';
+import { useSettingsWarnings } from '@/hooks/useSettingsWarnings';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/features/auth/AuthContext';
@@ -75,14 +77,17 @@ function SubProgramSlotsEditor({
         </Alert>
       )}
 
+      {(entries.length > 0 || unconfigured.length > 0) && (
+        <div className="grid grid-cols-[1fr_80px_80px_32px] gap-2 text-xs text-muted-foreground px-1">
+          <span>Sub-program</span>
+          <span className="text-center">Main cast</span>
+          <span className="text-center">Understudies</span>
+          <span />
+        </div>
+      )}
+
       {entries.length > 0 && (
         <div className="space-y-2">
-          <div className="grid grid-cols-[1fr_80px_80px_32px] gap-2 text-xs text-muted-foreground px-1">
-            <span>Sub-program</span>
-            <span className="text-center">Main cast</span>
-            <span className="text-center">Understudies</span>
-            <span />
-          </div>
           {entries.map(([subProgram, config]) => (
             <div key={subProgram} className="grid grid-cols-[1fr_80px_80px_32px] items-center gap-2">
               <span className="text-sm font-medium truncate">{subProgram}</span>
@@ -199,6 +204,7 @@ export default function SettingsPage() {
   const isAdmin = hasRole('admin');
   const isProducer = hasRole('producer');
   const canEnter = isAdmin || isProducer;
+  const { schedulingWarnings } = useSettingsWarnings();
 
   // Cities (available to producers + admins)
   const { data: cities } = useQuery({
@@ -279,6 +285,18 @@ export default function SettingsPage() {
     .filter(s => JSON.stringify(s.value) !== JSON.stringify(draft[s.key]))
     .map(s => s.key);
 
+  const isDirty = dirtyKeys.length > 0;
+
+  // Warn on browser tab close / refresh
+  useBeforeUnload(
+    useCallback((e) => {
+      if (isDirty) e.preventDefault();
+    }, [isDirty])
+  );
+
+  // Warn on in-app navigation
+  const blocker = useBlocker(isDirty);
+
   const handleSave = () => {
     const updates = dirtyKeys.map(k => ({ key: k, value: draft[k] }));
     if (updates.length === 0) {
@@ -301,9 +319,9 @@ export default function SettingsPage() {
           </p>
         </div>
         {canEnter && (
-          <Button onClick={handleSave} disabled={saveMutation.isPending || dirtyKeys.length === 0}>
+          <Button onClick={handleSave} disabled={saveMutation.isPending || !isDirty}>
             <Save className="h-4 w-4 mr-2" />
-            {saveMutation.isPending ? 'Saving…' : `Save${dirtyKeys.length ? ` (${dirtyKeys.length})` : ''}`}
+            {saveMutation.isPending ? 'Saving…' : `Save${isDirty ? ` (${dirtyKeys.length})` : ''}`}
           </Button>
         )}
       </div>
@@ -313,7 +331,13 @@ export default function SettingsPage() {
           {isAdmin && <TabsTrigger value="airtable"><Database className="h-4 w-4 mr-2" />Airtable Sync</TabsTrigger>}
           {isAdmin && <TabsTrigger value="filters"><SlidersHorizontal className="h-4 w-4 mr-2" />Filters</TabsTrigger>}
           <TabsTrigger value="casts-cities"><MapPin className="h-4 w-4 mr-2" />Casts & Cities</TabsTrigger>
-          <TabsTrigger value="scheduling"><Clock className="h-4 w-4 mr-2" />Scheduling</TabsTrigger>
+          <TabsTrigger value="scheduling" className="gap-2">
+            <Clock className="h-4 w-4" />
+            Scheduling
+            {schedulingWarnings > 0 && (
+              <span className="h-2 w-2 rounded-full bg-destructive shrink-0" />
+            )}
+          </TabsTrigger>
           {isAdmin && <TabsTrigger value="booking"><Wand2 className="h-4 w-4 mr-2" />Booking Engine</TabsTrigger>}
           {isAdmin && <TabsTrigger value="notifications"><Bell className="h-4 w-4 mr-2" />Notifications</TabsTrigger>}
         </TabsList>
@@ -601,6 +625,21 @@ export default function SettingsPage() {
           </Card>
         </TabsContent>
       </Tabs>
+
+      {blocker.state === 'blocked' && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
+          <div className="bg-background border border-border rounded-lg shadow-xl p-6 max-w-sm w-full mx-4 space-y-4">
+            <h2 className="font-display font-semibold text-lg">Unsaved changes</h2>
+            <p className="text-sm text-muted-foreground">
+              You have unsaved settings changes. Leave anyway and discard them?
+            </p>
+            <div className="flex gap-3 justify-end">
+              <Button variant="outline" onClick={() => blocker.reset()}>Stay</Button>
+              <Button variant="destructive" onClick={() => blocker.proceed()}>Leave without saving</Button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
