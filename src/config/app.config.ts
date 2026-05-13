@@ -59,8 +59,6 @@ export const ROUTES = {
   LOGIN: '/login',
   SIGNUP: '/signup',
   DASHBOARD: '/dashboard',
-  SHOWS: '/shows',
-  SHOW_DETAIL: '/shows/:id',
   BOOKINGS: '/bookings',
   ARTISTS: '/artists',
   AVAILABILITY: '/availability',

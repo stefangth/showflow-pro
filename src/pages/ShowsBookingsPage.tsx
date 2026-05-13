@@ -20,7 +20,6 @@ import { applySort, inTimeframe } from '@/components/filters/filterUtils';
 import { ArtistBookingsView } from '@/components/bookings/ArtistBookingsView';
 import { ShowDateDetailSheet } from '@/components/shows/ShowDateDetailSheet';
 import { showLabel } from '@/types';
-import { useSubProgramSlots, effectiveSlots } from '@/hooks/useSubProgramSlots';
 
 type ShowRef = {
   id: string;
@@ -29,6 +28,7 @@ type ShowRef = {
   venue: string | null;
   required_skills: string[] | null;
   status: 'active' | 'archived' | 'draft';
+  slots_per_date: number;
 };
 
 type CityRef = { id: string; name: string } | null;
@@ -43,28 +43,25 @@ type ShowDateRow = {
   notes: string | null;
   city_id: string | null;
   show_id: string;
+  slots_per_date: number | null;
   show: ShowRef;
   city: CityRef;
 };
 
-type BookingLite = { show_date_id: string; status: string; is_understudy: boolean };
+type ShowDateStatus = 'open' | 'partially_filled' | 'fully_filled' | 'cancelled';
 
-type DerivedStatus = 'cast_confirmed' | 'cast_pending' | 'open' | 'cancelled' | 'unconfigured';
-
-const STATUS_LABEL: Record<DerivedStatus, string> = {
-  cast_confirmed: 'Cast Confirmed',
-  cast_pending: 'Cast Pending',
+const STATUS_LABEL: Record<ShowDateStatus, string> = {
   open: 'Open',
+  partially_filled: 'Partially Filled',
+  fully_filled: 'Fully Filled',
   cancelled: 'Cancelled',
-  unconfigured: 'Unconfigured',
 };
 
-const STATUS_STYLE: Record<DerivedStatus, string> = {
-  cast_confirmed: 'bg-success/10 text-success',
-  cast_pending: 'bg-warning/10 text-warning',
+const STATUS_STYLE: Record<ShowDateStatus, string> = {
   open: 'bg-muted text-muted-foreground',
+  partially_filled: 'bg-warning/10 text-warning',
+  fully_filled: 'bg-success/10 text-success',
   cancelled: 'bg-destructive/10 text-destructive',
-  unconfigured: 'bg-destructive/10 text-destructive',
 };
 
 export default function ShowsBookingsPage() {
@@ -78,12 +75,11 @@ export default function ShowsBookingsPage() {
 function ProducerShowsBookings() {
   const { canSee } = useFilterVisibility('bookings');
   const [searchParams, setSearchParams] = useSearchParams();
-  const slotDefaults = useSubProgramSlots();
 
   const [search, setSearch] = useState('');
   const [programs, setPrograms] = useState<string[]>([]);
   const [timeframe, setTimeframe] = useState<TimeframeValue>({ from: null, to: null });
-  const [statusFilter, setStatusFilter] = useState<'all' | DerivedStatus>('all');
+  const [statusFilter, setStatusFilter] = useState<'all' | ShowDateStatus>('all');
   const [sort, setSort] = useState<SortValue>('chrono_asc');
   const [view, setView] = useState<ViewMode>('list');
   const [activeShowDateId, setActiveShowDateId] = useState<string | null>(null);
@@ -92,8 +88,8 @@ function ProducerShowsBookings() {
     const status = searchParams.get('status');
     const from = searchParams.get('from');
     const to = searchParams.get('to');
-    if (status && ['cast_confirmed', 'cast_pending', 'open', 'cancelled', 'unconfigured'].includes(status)) {
-      setStatusFilter(status as DerivedStatus);
+    if (status && ['open', 'partially_filled', 'fully_filled', 'cancelled'].includes(status)) {
+      setStatusFilter(status as ShowDateStatus);
     }
     if (from || to) {
       setTimeframe({ from: from ? parseISO(from) : null, to: to ? parseISO(to) : null });
@@ -102,13 +98,13 @@ function ProducerShowsBookings() {
   }, []);
 
   const { data: showDates, isLoading } = useQuery({
-    queryKey: ['bookings', 'show-dates'],
+    queryKey: ['show-dates', 'list'],
     queryFn: async () => {
       const { data, error } = await supabase
         .from('show_dates')
         .select(`
-          id, date, start_time, end_time, venue_override, status, notes, city_id, show_id,
-          show:shows(id, program, sub_program, venue, required_skills, status),
+          id, date, start_time, end_time, venue_override, status, notes, city_id, show_id, slots_per_date,
+          show:shows(id, program, sub_program, venue, required_skills, status, slots_per_date),
           city:cities(id, name)
         `)
         .order('date', { ascending: true });
@@ -116,44 +112,6 @@ function ProducerShowsBookings() {
       return data as unknown as ShowDateRow[];
     },
   });
-
-  const { data: bookings } = useQuery({
-    queryKey: ['bookings', 'status'],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from('bookings')
-        .select('show_date_id, status, is_understudy')
-        .neq('status', 'cancelled');
-      if (error) throw error;
-      return (data ?? []) as BookingLite[];
-    },
-  });
-
-  const confirmedMainByDate = useMemo(() => {
-    const map = new Map<string, number>();
-    (bookings ?? []).forEach(b => {
-      if (b.status === 'confirmed' && !b.is_understudy) {
-        map.set(b.show_date_id, (map.get(b.show_date_id) ?? 0) + 1);
-      }
-    });
-    return map;
-  }, [bookings]);
-
-  const anyBookingByDate = useMemo(() => {
-    const set = new Set<string>();
-    (bookings ?? []).forEach(b => set.add(b.show_date_id));
-    return set;
-  }, [bookings]);
-
-  const derivedStatus = (sd: ShowDateRow): DerivedStatus => {
-    if (sd.status === 'cancelled') return 'cancelled';
-    const config = effectiveSlots(slotDefaults, sd.show?.sub_program ?? null);
-    if (!config) return 'unconfigured';
-    const confirmedMain = confirmedMainByDate.get(sd.id) ?? 0;
-    if (confirmedMain >= config.main_cast) return 'cast_confirmed';
-    if (anyBookingByDate.has(sd.id)) return 'cast_pending';
-    return 'open';
-  };
 
   const programOptions = useMemo(() => {
     const set = new Set<string>();
@@ -178,20 +136,20 @@ function ProducerShowsBookings() {
       list = list.filter(sd => inTimeframe(new Date(sd.date + 'T00:00:00'), timeframe));
     }
     if (statusFilter !== 'all') {
-      list = list.filter(sd => derivedStatus(sd) === statusFilter);
+      list = list.filter(sd => sd.status === statusFilter);
     }
     return applySort(list, sort,
       sd => sd.show?.program ?? '',
       sd => new Date(sd.date + 'T00:00:00')
     );
-  }, [showDates, search, programs, timeframe, statusFilter, sort, slotDefaults, confirmedMainByDate, anyBookingByDate]);
+  }, [showDates, search, programs, timeframe, statusFilter, sort]);
 
   const calendarItems = useMemo(() =>
     filtered.map(sd => ({ showDate: sd, date: new Date(sd.date + 'T00:00:00') })),
     [filtered]
   );
 
-  const updateStatusFilter = (v: 'all' | DerivedStatus) => {
+  const updateStatusFilter = (v: 'all' | ShowDateStatus) => {
     setStatusFilter(v);
     const next = new URLSearchParams(searchParams);
     if (v === 'all') next.delete('status'); else next.set('status', v);
@@ -202,6 +160,8 @@ function ProducerShowsBookings() {
     const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
     return days[new Date(dateStr + 'T00:00:00').getDay()];
   };
+
+  const effectiveSlots = (sd: ShowDateRow) => sd.slots_per_date ?? sd.show?.slots_per_date ?? 1;
 
   return (
     <div className="space-y-6">
@@ -225,11 +185,10 @@ function ProducerShowsBookings() {
             <SelectTrigger className="w-[180px]"><SelectValue placeholder="Status" /></SelectTrigger>
             <SelectContent>
               <SelectItem value="all">All statuses</SelectItem>
-              <SelectItem value="cast_confirmed">Cast Confirmed</SelectItem>
-              <SelectItem value="cast_pending">Cast Pending</SelectItem>
               <SelectItem value="open">Open</SelectItem>
+              <SelectItem value="partially_filled">Partially Filled</SelectItem>
+              <SelectItem value="fully_filled">Fully Filled</SelectItem>
               <SelectItem value="cancelled">Cancelled</SelectItem>
-              <SelectItem value="unconfigured">Unconfigured</SelectItem>
             </SelectContent>
           </Select>
         )}
@@ -260,10 +219,9 @@ function ProducerShowsBookings() {
               </TableHeader>
               <TableBody>
                 {filtered.map(sd => {
-                  const status = derivedStatus(sd);
-                  const config = effectiveSlots(slotDefaults, sd.show?.sub_program ?? null);
                   const venue = sd.venue_override ?? sd.show?.venue;
-                  const confirmedMain = confirmedMainByDate.get(sd.id) ?? 0;
+                  const slots = effectiveSlots(sd);
+                  const status = sd.status as ShowDateStatus;
                   return (
                     <TableRow
                       key={sd.id}
@@ -281,15 +239,12 @@ function ProducerShowsBookings() {
                       <TableCell>{sd.show?.sub_program || <span className="text-muted-foreground">—</span>}</TableCell>
                       <TableCell>{venue || <span className="text-muted-foreground">—</span>}</TableCell>
                       <TableCell>{sd.city?.name || <span className="text-muted-foreground">—</span>}</TableCell>
-                      <TableCell className="whitespace-nowrap text-sm">
-                        {config
-                          ? <span>{confirmedMain}/{config.main_cast} <span className="text-muted-foreground">+ {config.understudies} u/s</span></span>
-                          : <Badge variant="secondary" className="bg-destructive/10 text-destructive text-xs">Unconfigured</Badge>
-                        }
+                      <TableCell className="whitespace-nowrap text-sm text-muted-foreground">
+                        {slots} slot{slots !== 1 ? 's' : ''}
                       </TableCell>
                       <TableCell>
-                        <Badge variant="secondary" className={STATUS_STYLE[status]}>
-                          {STATUS_LABEL[status]}
+                        <Badge variant="secondary" className={STATUS_STYLE[status] ?? STATUS_STYLE.open}>
+                          {STATUS_LABEL[status] ?? status}
                         </Badge>
                       </TableCell>
                     </TableRow>
@@ -324,8 +279,11 @@ function ProducerShowsBookings() {
                       .filter(Boolean).join(' · ')}
                   </p>
                 </div>
-                <Badge variant="secondary" className={STATUS_STYLE[derivedStatus(it.showDate)]}>
-                  {STATUS_LABEL[derivedStatus(it.showDate)]}
+                <Badge
+                  variant="secondary"
+                  className={STATUS_STYLE[it.showDate.status as ShowDateStatus] ?? STATUS_STYLE.open}
+                >
+                  {STATUS_LABEL[it.showDate.status as ShowDateStatus] ?? it.showDate.status}
                 </Badge>
               </CardContent>
             </Card>
