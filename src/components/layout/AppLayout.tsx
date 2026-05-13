@@ -18,7 +18,7 @@ interface AppLayoutProps {
 
 const navItems = [
   { to: ROUTES.DASHBOARD, icon: LayoutDashboard, label: 'Dashboard' },
-  { to: ROUTES.BOOKINGS, icon: BookOpen, label: 'Shows & Bookings' },
+  { to: ROUTES.BOOKINGS, icon: BookOpen, label: 'Shows & Bookings', roles: ['admin', 'producer'] as string[] },
   { to: ROUTES.ARTISTS, icon: Users, label: 'Artists', roles: ['admin', 'producer'] as string[] },
   { to: ROUTES.AVAILABILITY, icon: Clock, label: 'Availability' },
   { to: ROUTES.CHATS, icon: MessageSquare, label: 'Chats' },

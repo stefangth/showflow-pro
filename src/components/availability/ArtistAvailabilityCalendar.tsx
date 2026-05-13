@@ -24,11 +24,13 @@ interface Props {
 /**
  * Month-grid calendar:
  *  - Bold blue outline → eligible/offered date
- *  - Red shade        → artist marked Not available
- *  - Yellow shade     → Tentative
- *  - Green shade      → Confirmed booking
- *  - Subtle shade     → Available (responded)
- *  - No shade         → Unanswered
+ *  - Green shade (dark) → Confirmed booking
+ *  - Blue shade        → Soft-booked (hold placed)
+ *  - Muted shade       → Suggested (under consideration)
+ *  - Red shade         → artist marked Not available
+ *  - Yellow shade      → Tentative
+ *  - Green shade (light)→ Available (responded)
+ *  - No shade          → Unanswered
  * Tapping a cell opens a small popover with the AvailabilityPicker.
  */
 export function ArtistAvailabilityCalendar({ artistId, eligibleDates }: Props) {
@@ -83,6 +85,22 @@ export function ArtistAvailabilityCalendar({ artistId, eligibleDates }: Props) {
     return s;
   }, [bookings]);
 
+  const softBookedSet = useMemo(() => {
+    const s = new Set<string>();
+    bookings?.forEach((b) => {
+      if (b.status === 'soft_booked' && b.show_date?.date) s.add(b.show_date.date);
+    });
+    return s;
+  }, [bookings]);
+
+  const suggestedSet = useMemo(() => {
+    const s = new Set<string>();
+    bookings?.forEach((b) => {
+      if (b.status === 'suggested' && b.show_date?.date) s.add(b.show_date.date);
+    });
+    return s;
+  }, [bookings]);
+
   return (
     <Card>
       <CardHeader>
@@ -123,10 +141,16 @@ export function ArtistAvailabilityCalendar({ artistId, eligibleDates }: Props) {
             const isEligible = eligibleSet.has(dateStr);
             const status = availMap[dateStr];
             const isConfirmed = confirmedSet.has(dateStr);
+            const isSoftBooked = !isConfirmed && softBookedSet.has(dateStr);
+            const isSuggested = !isConfirmed && !isSoftBooked && suggestedSet.has(dateStr);
 
-            // Color logic — confirmed > unavailable > tentative > available > none
+            // Color priority: confirmed > soft_booked > suggested > unavailable > tentative > available > none
             const shade = isConfirmed
               ? 'bg-success/30 text-success-foreground'
+              : isSoftBooked
+              ? 'bg-primary/20 text-primary'
+              : isSuggested
+              ? 'bg-muted/60'
               : status === 'unavailable'
               ? 'bg-destructive/25 text-destructive'
               : status === 'tentative'
@@ -157,6 +181,16 @@ export function ArtistAvailabilityCalendar({ artistId, eligibleDates }: Props) {
                     Booked
                   </span>
                 )}
+                {isSoftBooked && (
+                  <span className="block text-[9px] mt-0.5 font-semibold uppercase tracking-wide">
+                    Hold
+                  </span>
+                )}
+                {isSuggested && (
+                  <span className="block text-[9px] mt-0.5 font-semibold uppercase tracking-wide">
+                    Offered
+                  </span>
+                )}
               </button>
             );
 
@@ -184,7 +218,19 @@ export function ArtistAvailabilityCalendar({ artistId, eligibleDates }: Props) {
           <span className="text-xs text-muted-foreground">Legend:</span>
           <div className="flex items-center gap-1.5">
             <div className="h-3 w-3 rounded border-2 border-info" />
+            <span className="text-xs">Eligible</span>
+          </div>
+          <div className="flex items-center gap-1.5">
+            <div className="h-3 w-3 rounded bg-muted/60" />
             <span className="text-xs">Offered</span>
+          </div>
+          <div className="flex items-center gap-1.5">
+            <div className="h-3 w-3 rounded bg-primary/20" />
+            <span className="text-xs">Hold</span>
+          </div>
+          <div className="flex items-center gap-1.5">
+            <div className="h-3 w-3 rounded bg-success/30" />
+            <span className="text-xs">Confirmed</span>
           </div>
           <div className="flex items-center gap-1.5">
             <div className="h-3 w-3 rounded bg-success/10" />
@@ -197,10 +243,6 @@ export function ArtistAvailabilityCalendar({ artistId, eligibleDates }: Props) {
           <div className="flex items-center gap-1.5">
             <div className="h-3 w-3 rounded bg-destructive/25" />
             <span className="text-xs">Not available</span>
-          </div>
-          <div className="flex items-center gap-1.5">
-            <div className="h-3 w-3 rounded bg-success/30" />
-            <span className="text-xs">Confirmed</span>
           </div>
         </div>
       </CardContent>
