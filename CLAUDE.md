@@ -59,7 +59,6 @@ These are public values (anon key, not service role). Never commit `.env`. The s
 
 - **Branch naming:** `feature/<short-desc>`, `fix/<short-desc>`, `claude/<short-desc>`
 - **Commit messages:** imperative, lowercase, ≤72 chars (e.g. `add artist availability calendar`)
-- **PRs target `dev`.** `main` is production-only — never push directly.
 - **Claude Code sessions** develop on the branch specified at session start (see `memory.md` for current active branch).
 
 ---
