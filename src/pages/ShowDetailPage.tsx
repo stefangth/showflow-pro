@@ -16,6 +16,7 @@ import { Plus, CalendarDays, Users, Check, ChevronsUpDown, MessageSquare } from 
 import { cn } from '@/lib/utils';
 import { formatDateWithWeekday } from '@/lib/dates';
 import type { Show, ShowDate, Booking, Artist, City, Cast } from '@/types';
+import { showLabel } from '@/types';
 import { ChatPanel } from '@/components/chat/ChatPanel';
 import { useEligibleArtists } from '@/hooks/useEligibleArtists';
 
@@ -242,13 +243,11 @@ export default function ShowDetailPage({ idOverride }: Props = {}) {
     <div className="space-y-6">
       {/* Show header */}
       <div>
-        <h1 className="font-display text-3xl font-bold">{show.title}</h1>
+        <h1 className="font-display text-3xl font-bold">{showLabel(show)}</h1>
         <div className="flex items-center gap-3 mt-2">
           <Badge className={statusColor[show.status] ?? ''} variant="secondary">{show.status}</Badge>
           {show.venue && <span className="text-sm text-muted-foreground">{show.venue}</span>}
-          {show.category && <span className="text-sm text-muted-foreground">• {show.category}</span>}
         </div>
-        {show.description && <p className="text-muted-foreground mt-3">{show.description}</p>}
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">

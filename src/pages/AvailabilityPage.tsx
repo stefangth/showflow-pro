@@ -21,6 +21,7 @@ import { useMyArtist } from '@/hooks/useMyArtist';
 import { ArtistAvailabilityCalendar } from '@/components/availability/ArtistAvailabilityCalendar';
 import { AvailabilityPicker } from '@/components/availability/AvailabilityPicker';
 import { formatDateDMY, parseDateOnly } from '@/lib/dates';
+import { showLabel } from '@/types';
 
 export default function AvailabilityPage() {
   const { hasRole } = useAuth();
@@ -75,7 +76,7 @@ function ArtistAvailability() {
       inTimeframe(parseDateOnly(d.date), timeframe)
     );
     if (filter === 'unanswered') list = list.filter((d) => !respondedSet.has(d.date));
-    return applySort(list, sort, (d) => d.show.title, (d) => parseDateOnly(d.date));
+    return applySort(list, sort, (d) => showLabel(d.show), (d) => parseDateOnly(d.date));
   }, [eligibleDates, timeframe, sort, filter, respondedSet]);
 
   if (!artist) {
@@ -148,7 +149,7 @@ function ArtistAvailability() {
                     <TableCell className="font-medium whitespace-nowrap">
                       {formatDateDMY(d.date)}
                     </TableCell>
-                    <TableCell>{d.show.title}</TableCell>
+                    <TableCell>{showLabel(d.show)}</TableCell>
                     <TableCell>
                       {d.show.venue || <span className="text-muted-foreground">—</span>}
                     </TableCell>

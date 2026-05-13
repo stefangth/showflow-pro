@@ -12,6 +12,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { useToast } from '@/hooks/use-toast';
 import { Search, X, Plus, Users, Layers, Pencil, Check } from 'lucide-react';
 import type { Artist, Cast, City, Show } from '@/types';
+import { showLabel } from '@/types';
 
 interface Props {
   cast: Cast | null;
@@ -91,9 +92,9 @@ export function CastDetailsSheet({ cast, open, onOpenChange }: Props) {
   const { data: shows } = useQuery({
     queryKey: ['shows-for-eligibility'],
     queryFn: async () => {
-      const { data, error } = await supabase.from('shows').select('id, title').order('title');
+      const { data, error } = await supabase.from('shows').select('id, program, sub_program').order('program');
       if (error) throw error;
-      return data as Pick<Show, 'id' | 'title'>[];
+      return data as Pick<Show, 'id' | 'program' | 'sub_program'>[];
     },
   });
 
@@ -288,7 +289,7 @@ export function CastDetailsSheet({ cast, open, onOpenChange }: Props) {
                     <tr>
                       <th className="text-left p-2 font-medium sticky left-0 bg-muted/50">City \ Show</th>
                       {(shows ?? []).map(s => (
-                        <th key={s.id} className="text-left p-2 font-medium whitespace-nowrap">{s.title}</th>
+                        <th key={s.id} className="text-left p-2 font-medium whitespace-nowrap">{showLabel(s)}</th>
                       ))}
                     </tr>
                   </thead>

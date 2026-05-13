@@ -7,12 +7,13 @@ import { Badge } from '@/components/ui/badge';
 import { CHAT_ARCHIVE_DAYS } from '@/config/app.config';
 import { differenceInCalendarDays, format } from 'date-fns';
 import { MessageSquare } from 'lucide-react';
+import { showLabel } from '@/types';
 
 type ChatRow = {
   id: string;
   show_date_id: string;
   created_at: string;
-  show_date: { id: string; date: string; show_id: string; show: { id: string; title: string } } | null;
+  show_date: { id: string; date: string; show_id: string; show: { id: string; program: string | null; sub_program: string | null } } | null;
 };
 
 export default function ChatsListPage() {
@@ -22,7 +23,7 @@ export default function ChatsListPage() {
       // RLS already restricts to chats the user can read
       const { data, error } = await supabase
         .from('chats')
-        .select('id, show_date_id, created_at, show_date:show_dates(id, date, show_id, show:shows(id, title))')
+        .select('id, show_date_id, created_at, show_date:show_dates(id, date, show_id, show:shows(id, program, sub_program))')
         .order('created_at', { ascending: false });
       if (error) throw error;
       return (data ?? []) as unknown as ChatRow[];
@@ -63,7 +64,7 @@ export default function ChatsListPage() {
               <Card className="hover:border-primary transition-colors">
                 <CardContent className="py-4 flex items-center justify-between gap-3">
                   <div>
-                    <p className="font-medium">{c.show_date?.show?.title ?? 'Untitled show'}</p>
+                    <p className="font-medium">{showLabel(c.show_date?.show ?? { program: null, sub_program: null })}</p>
                     <p className="text-sm text-muted-foreground">
                       {c.show_date?.date && format(new Date(c.show_date.date + 'T00:00:00'), 'EEEE, MMM d, yyyy')}
                     </p>
