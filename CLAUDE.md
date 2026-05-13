@@ -134,7 +134,7 @@ supabase/
   - **`['availability', ...]`** — everything that reads from the `availability` table (e.g. `['availability', 'cell', artistId, date]`, `['availability', 'available', dateId]`).
 - **Invalidation rule:** Mutations that write to `bookings` invalidate `['bookings']` (prefix match, catches all sub-keys). Mutations that write to `availability` invalidate `['availability']`. This is the only pattern that stays correct as new consumers are added. Never list individual sub-keys in a mutation — always bust the whole domain.
 - **Future work:** Supabase Realtime subscriptions (table-level) are the path to cross-user reactivity (e.g. Producer A's screen updates when Producer B confirms a booking). This requires enabling realtime on tables + RLS policies for realtime. Planned for a future dedicated PR.
-- Prefer the existing domain hooks in `src/hooks/` (`useMyArtist`, `useEligibleArtists`, `useArtistEligibleDates`, `useChatParticipant`) over duplicating Supabase queries inline.
+- Prefer the existing domain hooks in `src/hooks/` (`useMyArtist`, `useEligibleArtists`, `useArtistEligibleDates`, `useChatParticipant`) over duplicating Supabase queries inline. -done
 - Never call Supabase from a component effect when a query will do.
 - Side effects on success → `sonner` toast (`toast.success`, `toast.error`).
 
@@ -241,4 +241,3 @@ Suggested emails:
 - Letting artists declare availability on dates outside `useArtistEligibleDates`.
 - Coupling client logic to a specific tenant or production brand — the platform is product-agnostic.
 - Using ad-hoc `useState` loading flags when React Query's `isLoading` / `isError` will do.
-- Pushing to `main` directly — always PR through `dev`.
