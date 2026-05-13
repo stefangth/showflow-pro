@@ -98,7 +98,7 @@ export default function ShowDetailPage({ idOverride }: Props = {}) {
   const { data: eligibility } = useEligibleArtists(id, selectedDate, selectedDateObj?.city_id ?? null);
 
   const { data: bookingsForDate } = useQuery({
-    queryKey: ['bookings-for-date', selectedDate],
+    queryKey: ['bookings', 'for-date', selectedDate],
     enabled: !!selectedDate,
     queryFn: async () => {
       const { data, error } = await supabase
@@ -111,7 +111,7 @@ export default function ShowDetailPage({ idOverride }: Props = {}) {
   });
 
   const { data: availableArtists } = useQuery({
-    queryKey: ['available-artists', selectedDate],
+    queryKey: ['availability', 'available', selectedDate],
     enabled: !!selectedDate,
     queryFn: async () => {
       const dateObj = showDates?.find(d => d.id === selectedDate);
@@ -200,7 +200,7 @@ export default function ShowDetailPage({ idOverride }: Props = {}) {
       if (error) throw error;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['bookings-for-date', selectedDate] });
+      queryClient.invalidateQueries({ queryKey: ['bookings'] });
       toast({ title: 'Artist booked' });
     },
     onError: (err: any) => toast({ title: 'Error', description: err.message, variant: 'destructive' }),
@@ -215,7 +215,7 @@ export default function ShowDetailPage({ idOverride }: Props = {}) {
       if (error) throw error;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['bookings-for-date', selectedDate] });
+      queryClient.invalidateQueries({ queryKey: ['bookings'] });
       toast({ title: 'Booking updated' });
     },
     onError: (err: any) => toast({ title: 'Error', description: err.message, variant: 'destructive' }),

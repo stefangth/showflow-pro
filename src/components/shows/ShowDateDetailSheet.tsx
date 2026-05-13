@@ -43,7 +43,7 @@ export function ShowDateDetailSheet({ showDateId, open, onOpenChange }: Props) {
   });
 
   const { data: bookingRows } = useQuery({
-    queryKey: ['show-date-bookings', showDateId],
+    queryKey: ['bookings', 'show-date', showDateId],
     enabled: !!showDateId,
     queryFn: async () => {
       const { data, error } = await supabase

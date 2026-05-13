@@ -40,7 +40,7 @@ export function ArtistAvailabilityCalendar({ artistId, eligibleDates }: Props) {
   const days = eachDayOfInterval({ start: monthStart, end: monthEnd });
 
   const { data: availability } = useQuery({
-    queryKey: ['my-availability', artistId, format(currentMonth, 'yyyy-MM')],
+    queryKey: ['availability', 'artist', artistId, format(currentMonth, 'yyyy-MM')],
     queryFn: async () => {
       const { data } = await supabase
         .from('availability')
@@ -55,7 +55,7 @@ export function ArtistAvailabilityCalendar({ artistId, eligibleDates }: Props) {
   // Fetch all non-cancelled bookings for this artist (no server-side date filter —
   // filtering on aliased join columns is unreliable in PostgREST; we slice by month in JS).
   const { data: bookings } = useQuery({
-    queryKey: ['my-bookings', artistId],
+    queryKey: ['bookings', 'artist', artistId],
     queryFn: async () => {
       const { data } = await supabase
         .from('bookings')
