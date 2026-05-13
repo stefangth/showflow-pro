@@ -1,3 +1,4 @@
+import { useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Link } from 'react-router-dom';
 import { format } from 'date-fns';
@@ -20,6 +21,7 @@ interface Props {
 }
 
 type BookingWithArtist = Booking & { artist: Artist };
+type AvailForDate = { id: string; name: string; priority_score: number | null; skills: string[] | null };
 
 export function ShowDateDetailSheet({ showDateId, open, onOpenChange }: Props) {
   const slotDefaults = useSubProgramSlots();
@@ -57,8 +59,32 @@ export function ShowDateDetailSheet({ showDateId, open, onOpenChange }: Props) {
     },
   });
 
+  const { data: availableArtists } = useQuery({
+    queryKey: ['availability', 'for-date', showDate?.date],
+    enabled: !!showDate?.date,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('artists')
+        .select('id, name, priority_score, skills, availability!inner(status, date)')
+        .eq('status', 'active')
+        .eq('availability.date', showDate!.date)
+        .in('availability.status', ['available', 'tentative']);
+      if (error) throw error;
+      return (data ?? []) as AvailForDate[];
+    },
+  });
+
   const mainBookings = bookingRows?.filter(b => !b.is_understudy) ?? [];
   const understudyBookings = bookingRows?.filter(b => b.is_understudy) ?? [];
+
+  const bookedArtistIds = useMemo(
+    () => new Set(bookingRows?.map(b => b.artist_id) ?? []),
+    [bookingRows]
+  );
+  const availableNotBooked = useMemo(
+    () => (availableArtists ?? []).filter(a => !bookedArtistIds.has(a.id)),
+    [availableArtists, bookedArtistIds]
+  );
 
   const config = showDate ? effectiveSlots(slotDefaults, showDate.show?.sub_program ?? null) : null;
 
@@ -184,6 +210,27 @@ export function ShowDateDetailSheet({ showDateId, open, onOpenChange }: Props) {
                       ))}
                     </div>
                   )}
+                </div>
+              )}
+
+              {/* Available to Book */}
+              {availableNotBooked.length > 0 && (
+                <div className="space-y-3">
+                  <p className="text-sm font-medium">Available to Book</p>
+                  <div className="space-y-1">
+                    {availableNotBooked.map(a => (
+                      <div key={a.id} className="flex items-center justify-between py-1.5 border-b border-border/50 last:border-0">
+                        <div>
+                          <p className="text-sm font-medium">{a.name}</p>
+                          <p className="text-xs text-muted-foreground">
+                            Priority: {a.priority_score ?? '—'}
+                            {a.skills?.length ? ` • ${a.skills.join(', ')}` : ''}
+                          </p>
+                        </div>
+                        <Badge variant="secondary" className="bg-success/10 text-success">Available</Badge>
+                      </div>
+                    ))}
+                  </div>
                 </div>
               )}
 
