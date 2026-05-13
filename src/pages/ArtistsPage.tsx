@@ -39,7 +39,7 @@ export default function ArtistsPage() {
   const [sort, setSort] = useState<SortValue>('alpha_asc');
   const [view, setView] = useState<ViewMode>('list');
   const [dialogOpen, setDialogOpen] = useState(false);
-  const [form, setForm] = useState({ name: '', email: '', phone: '', skills: '', priority_score: 50, bio: '', cast_role: '' });
+  const [form, setForm] = useState({ name: '', email: '', phone: '', skills: '', priority_score: 50, bio: '' });
 
   const { data: artists, isLoading } = useQuery({
     queryKey: ['artists'],
@@ -89,14 +89,13 @@ export default function ArtistsPage() {
         skills: form.skills ? form.skills.split(',').map(s => s.trim()) : [],
         priority_score: form.priority_score,
         bio: form.bio || null,
-        cast_role: form.cast_role || null,
       });
       if (error) throw error;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['artists'] });
       setDialogOpen(false);
-      setForm({ name: '', email: '', phone: '', skills: '', priority_score: 50, bio: '', cast_role: '' });
+      setForm({ name: '', email: '', phone: '', skills: '', priority_score: 50, bio: '' });
       toast({ title: 'Artist added' });
     },
     onError: (err: any) => toast({ title: 'Error', description: err.message, variant: 'destructive' }),
@@ -188,7 +187,6 @@ export default function ArtistsPage() {
                 <Input type="email" placeholder="Email" value={form.email} onChange={e => setForm(f => ({ ...f, email: e.target.value }))} />
                 <Input placeholder="Phone" value={form.phone} onChange={e => setForm(f => ({ ...f, phone: e.target.value }))} />
                 <Input placeholder="Skills (comma-separated)" value={form.skills} onChange={e => setForm(f => ({ ...f, skills: e.target.value }))} />
-                <Input placeholder="Cast role (e.g. lead violin)" value={form.cast_role} onChange={e => setForm(f => ({ ...f, cast_role: e.target.value }))} />
                 <div className="space-y-1">
                   <label className="text-sm font-medium">Priority Score (1-100)</label>
                   <Input type="number" min={1} max={100} value={form.priority_score} onChange={e => setForm(f => ({ ...f, priority_score: parseInt(e.target.value) || 50 }))} />
@@ -242,8 +240,10 @@ export default function ArtistsPage() {
                     <Star className="h-3 w-3 text-warning" />
                     <span className="text-xs text-muted-foreground">Priority: {artist.priority_score}</span>
                   </div>
-                  {artist.cast_role && (
-                    <p className="text-xs text-muted-foreground mb-2 italic">{artist.cast_role}</p>
+                  {(artistCasts?.get(artist.id)?.length ?? 0) > 0 && (
+                    <p className="text-xs text-muted-foreground mb-2 italic">
+                      {artistCasts!.get(artist.id)!.map(c => c.name).join(', ')}
+                    </p>
                   )}
                   {artist.skills && artist.skills.length > 0 && (
                     <div className="flex flex-wrap gap-1 mb-2">

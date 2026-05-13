@@ -74,7 +74,6 @@ export type Database = {
       artists: {
         Row: {
           bio: string | null
-          cast_role: string | null
           created_at: string
           email: string | null
           id: string
@@ -88,7 +87,6 @@ export type Database = {
         }
         Insert: {
           bio?: string | null
-          cast_role?: string | null
           created_at?: string
           email?: string | null
           id?: string
@@ -102,7 +100,6 @@ export type Database = {
         }
         Update: {
           bio?: string | null
-          cast_role?: string | null
           created_at?: string
           email?: string | null
           id?: string
@@ -261,18 +258,21 @@ export type Database = {
           cast_id: string
           created_at: string
           id: string
+          role: string | null
         }
         Insert: {
           artist_id: string
           cast_id: string
           created_at?: string
           id?: string
+          role?: string | null
         }
         Update: {
           artist_id?: string
           cast_id?: string
           created_at?: string
           id?: string
+          role?: string | null
         }
         Relationships: [
           {
@@ -397,6 +397,63 @@ export type Database = {
           created_at?: string
           id?: string
           name?: string
+        }
+        Relationships: []
+      }
+      email_send_log: {
+        Row: {
+          created_at: string | null
+          error_message: string | null
+          id: string
+          message_id: string | null
+          metadata: Json | null
+          recipient_email: string
+          status: string
+          template_name: string
+        }
+        Insert: {
+          created_at?: string | null
+          error_message?: string | null
+          id?: string
+          message_id?: string | null
+          metadata?: Json | null
+          recipient_email: string
+          status: string
+          template_name: string
+        }
+        Update: {
+          created_at?: string | null
+          error_message?: string | null
+          id?: string
+          message_id?: string | null
+          metadata?: Json | null
+          recipient_email?: string
+          status?: string
+          template_name?: string
+        }
+        Relationships: []
+      }
+      email_unsubscribe_tokens: {
+        Row: {
+          created_at: string | null
+          email: string
+          id: string
+          token: string
+          used_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          email: string
+          id?: string
+          token: string
+          used_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          email?: string
+          id?: string
+          token?: string
+          used_at?: string | null
         }
         Relationships: []
       }
@@ -558,6 +615,7 @@ export type Database = {
           id: string
           notes: string | null
           show_id: string
+          slots_per_date: number | null
           start_time: string | null
           status: Database["public"]["Enums"]["show_date_status"]
           updated_at: string
@@ -572,6 +630,7 @@ export type Database = {
           id?: string
           notes?: string | null
           show_id: string
+          slots_per_date?: number | null
           start_time?: string | null
           status?: Database["public"]["Enums"]["show_date_status"]
           updated_at?: string
@@ -586,6 +645,7 @@ export type Database = {
           id?: string
           notes?: string | null
           show_id?: string
+          slots_per_date?: number | null
           start_time?: string | null
           status?: Database["public"]["Enums"]["show_date_status"]
           updated_at?: string
@@ -653,6 +713,33 @@ export type Database = {
           title?: string
           updated_at?: string
           venue?: string | null
+        }
+        Relationships: []
+      }
+      suppressed_emails: {
+        Row: {
+          created_at: string | null
+          email: string
+          id: string
+          metadata: Json | null
+          reason: string
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          email: string
+          id?: string
+          metadata?: Json | null
+          reason: string
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          email?: string
+          id?: string
+          metadata?: Json | null
+          reason?: string
+          updated_at?: string | null
         }
         Relationships: []
       }
@@ -724,6 +811,7 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      expire_soft_bookings: { Args: never; Returns: undefined }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
