@@ -50,7 +50,7 @@ export function ArtistBookingsView() {
   const [activeShowId, setActiveShowId] = useState<string | null>(null);
 
   const { data: myBookings } = useQuery({
-    queryKey: ['my-bookings-all', artist?.id],
+    queryKey: ['bookings', 'artist-all', artist?.id],
     enabled: !!artist?.id,
     queryFn: async () => {
       const { data } = await supabase
@@ -63,7 +63,7 @@ export function ArtistBookingsView() {
   });
 
   const { data: myAvailability } = useQuery({
-    queryKey: ['my-availability-all', artist?.id],
+    queryKey: ['availability', 'artist-all', artist?.id],
     enabled: !!artist?.id,
     queryFn: async () => {
       const { data } = await supabase

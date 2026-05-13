@@ -52,7 +52,7 @@ export default function ArtistsPage() {
   });
 
   const { data: bookings } = useQuery({
-    queryKey: ['artist-bookings-light'],
+    queryKey: ['bookings', 'light'],
     queryFn: async () => {
       const { data, error } = await supabase
         .from('bookings')

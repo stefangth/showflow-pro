@@ -30,7 +30,7 @@ export function AvailabilityPicker({ artistId, date, size = 'default' }: Props) 
   const { toast } = useToast();
 
   const { data: row } = useQuery({
-    queryKey: ['availability-cell', artistId, date],
+    queryKey: ['availability', 'cell', artistId, date],
     queryFn: async () => {
       const { data, error } = await supabase
         .from('availability')
@@ -65,9 +65,7 @@ export function AvailabilityPicker({ artistId, date, size = 'default' }: Props) 
       }
     },
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ['availability-cell', artistId, date] });
-      qc.invalidateQueries({ queryKey: ['my-availability'] });
-      qc.invalidateQueries({ queryKey: ['artist-response-rate'] });
+      qc.invalidateQueries({ queryKey: ['availability'] });
       qc.invalidateQueries({ queryKey: ['eligible-artists'] });
       toast({ title: 'Availability updated' });
     },

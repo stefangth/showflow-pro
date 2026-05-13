@@ -55,7 +55,7 @@ function ArtistAvailability() {
   }, [filter]);
 
   const { data: myAvailability } = useQuery({
-    queryKey: ['my-availability-all', artist?.id],
+    queryKey: ['availability', 'artist-all', artist?.id],
     enabled: !!artist?.id,
     queryFn: async () => {
       const { data } = await supabase
@@ -209,7 +209,7 @@ function ProducerAvailability() {
   const monthStart = startOfMonth(currentMonth);
   const monthEnd = endOfMonth(currentMonth);
   const { data: availability } = useQuery({
-    queryKey: ['producer-availability', artist?.id, format(currentMonth, 'yyyy-MM')],
+    queryKey: ['availability', 'producer', artist?.id, format(currentMonth, 'yyyy-MM')],
     queryFn: async () => {
       const { data } = await supabase
         .from('availability')
@@ -240,7 +240,7 @@ function ProducerAvailability() {
         await supabase.from('availability').insert({ artist_id: artist!.id, date, status: 'available' });
       }
     },
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['producer-availability'] }),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['availability'] }),
     onError: (err: any) => toast({ title: 'Error', description: err.message, variant: 'destructive' }),
   });
 
