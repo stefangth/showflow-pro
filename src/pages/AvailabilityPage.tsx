@@ -11,7 +11,9 @@ import { useToast } from '@/hooks/use-toast';
 import {
   format, startOfMonth, endOfMonth, eachDayOfInterval, isToday, addMonths, subMonths,
 } from 'date-fns';
-import { ChevronLeft, ChevronRight } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Plus, Trash2 } from 'lucide-react';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import { TimeframeFilter, type TimeframeValue } from '@/components/filters/TimeframeFilter';
 import { SortControl, type SortValue } from '@/components/filters/SortControl';
 import { ViewToggle, type ViewMode } from '@/components/filters/ViewToggle';
@@ -75,6 +77,52 @@ function ArtistAvailability() {
     () => new Set((myAvailability ?? []).map((a) => a.date)),
     [myAvailability]
   );
+
+  const qc = useQueryClient();
+
+  type BlockedDateRow = { id: string; date: string; reason: string | null };
+
+  const { data: blockedDates } = useQuery({
+    queryKey: ['blocked-dates', artist?.id],
+    enabled: !!artist?.id,
+    queryFn: async () => {
+      const { data, error } = await (supabase as any)
+        .from('blocked_dates')
+        .select('id, date, reason')
+        .eq('artist_id', artist!.id)
+        .order('date');
+      if (error) throw error;
+      return (data ?? []) as BlockedDateRow[];
+    },
+  });
+
+  const [newBlockDate, setNewBlockDate] = useState('');
+  const [newBlockReason, setNewBlockReason] = useState('');
+
+  const addBlock = useMutation({
+    mutationFn: async () => {
+      const { error } = await (supabase as any).from('blocked_dates').insert({
+        artist_id: artist!.id,
+        date: newBlockDate,
+        reason: newBlockReason || null,
+      });
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['blocked-dates'] });
+      setNewBlockDate('');
+      setNewBlockReason('');
+    },
+    onError: (e: any) => { /* toast handled below */ void e; },
+  });
+
+  const removeBlock = useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await (supabase as any).from('blocked_dates').delete().eq('id', id);
+      if (error) throw error;
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['blocked-dates'] }),
+  });
 
   const filtered = useMemo(() => {
     let list = (eligibleDates ?? []).filter((d) =>
@@ -226,6 +274,75 @@ function ArtistAvailability() {
           eligibleDates={eligibleDates ?? []}
         />
       )}
+
+      {/* Blocked dates — vacation / conflict windows */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="font-display text-base">Blocked Dates</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <p className="text-sm text-muted-foreground">
+            Mark dates you're unavailable so the system won't send you offers for those days.
+          </p>
+
+          <form
+            className="flex flex-wrap items-end gap-3"
+            onSubmit={(e) => {
+              e.preventDefault();
+              if (newBlockDate) addBlock.mutate();
+            }}
+          >
+            <div className="space-y-1">
+              <Label className="text-xs">Date</Label>
+              <Input
+                type="date"
+                className="w-44"
+                value={newBlockDate}
+                onChange={(e) => setNewBlockDate(e.target.value)}
+                required
+              />
+            </div>
+            <div className="space-y-1 flex-1 min-w-32">
+              <Label className="text-xs">Reason (optional)</Label>
+              <Input
+                placeholder="Vacation, other work…"
+                value={newBlockReason}
+                onChange={(e) => setNewBlockReason(e.target.value)}
+              />
+            </div>
+            <Button
+              type="submit"
+              size="sm"
+              disabled={!newBlockDate || addBlock.isPending}
+            >
+              <Plus className="h-4 w-4 mr-1" />Block
+            </Button>
+          </form>
+
+          {(blockedDates?.length ?? 0) > 0 && (
+            <div className="space-y-1.5 pt-1">
+              {blockedDates!.map((b) => (
+                <div key={b.id} className="flex items-center gap-3 text-sm p-2 rounded-md border border-border">
+                  <span className="font-medium w-28 shrink-0">
+                    {new Date(b.date + 'T00:00:00').toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}
+                  </span>
+                  <span className="flex-1 text-muted-foreground">{b.reason ?? '—'}</span>
+                  <button
+                    onClick={() => removeBlock.mutate(b.id)}
+                    className="p-0.5 rounded hover:bg-muted text-muted-foreground hover:text-destructive"
+                    aria-label="Remove block"
+                  >
+                    <Trash2 className="h-3.5 w-3.5" />
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
+          {(blockedDates?.length ?? 0) === 0 && (
+            <p className="text-sm text-muted-foreground pt-1">No blocked dates yet.</p>
+          )}
+        </CardContent>
+      </Card>
     </div>
   );
 }
