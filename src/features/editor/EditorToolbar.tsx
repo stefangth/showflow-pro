@@ -1,18 +1,42 @@
-import { Eye, Pencil, Settings, X } from 'lucide-react';
+import { Eye, Pencil, Settings, User, X } from 'lucide-react';
+import { useQuery } from '@tanstack/react-query';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Separator } from '@/components/ui/separator';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { useAuth } from '@/features/auth/AuthContext';
+import type { AppRole } from '@/config/app.config';
+import { supabase } from '@/integrations/supabase/client';
 import { useEditor } from './EditorContext';
 import { EditorSidePanel } from './EditorSidePanel';
 
+interface IamUser {
+  id: string;
+  email: string | null;
+  roles: AppRole[];
+  approval_status: string | null;
+}
+
 export function EditorToolbar() {
-  const { roles, viewAsRole, setViewAsRole } = useAuth();
+  const { roles, viewAsRole, setViewAsRole, viewAsUser, setViewAsUser } = useAuth();
   const { isEditorMode, enableEditorMode, disableEditorMode, isSidePanelOpen, setSidePanelOpen } = useEditor();
 
   const isRealAdmin = roles.includes('admin');
+
+  const { data: iamUsers } = useQuery({
+    queryKey: ['admin-iam-users'],
+    enabled: isRealAdmin && isEditorMode,
+    queryFn: async () => {
+      const { data, error } = await supabase.functions.invoke('admin-list-users');
+      if (error) throw error;
+      return ((data?.users ?? []) as IamUser[])
+        .filter(u => u.approval_status === 'approved' && u.email)
+        .sort((a, b) => (a.email ?? '').localeCompare(b.email ?? ''));
+    },
+    staleTime: 60_000,
+  });
+
   if (!isRealAdmin) return null;
 
   if (!isEditorMode) {
@@ -47,10 +71,14 @@ export function EditorToolbar() {
           <Eye className="h-4 w-4 text-muted-foreground" />
           <span className="text-muted-foreground text-xs">Viewing as:</span>
           <Select
-            value={viewAsRole ?? '__real__'}
-            onValueChange={v => setViewAsRole(v === '__real__' ? null : v as 'admin' | 'producer' | 'artist')}
+            value={viewAsUser ? '__user__' : (viewAsRole ?? '__real__')}
+            onValueChange={v => {
+              if (v === '__real__') setViewAsRole(null);
+              else if (v !== '__user__') setViewAsRole(v as AppRole);
+            }}
+            disabled={!!viewAsUser}
           >
-            <SelectTrigger className="h-7 w-36 text-xs">
+            <SelectTrigger className="h-7 w-32 text-xs">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
@@ -58,6 +86,40 @@ export function EditorToolbar() {
               <SelectItem value="admin">Admin</SelectItem>
               <SelectItem value="producer">Producer</SelectItem>
               <SelectItem value="artist">Artist</SelectItem>
+              {viewAsUser && <SelectItem value="__user__" disabled>From user</SelectItem>}
+            </SelectContent>
+          </Select>
+        </div>
+
+        <div className="flex items-center gap-2 shrink-0">
+          <User className="h-4 w-4 text-muted-foreground" />
+          <span className="text-muted-foreground text-xs">as user:</span>
+          <Select
+            value={viewAsUser?.id ?? '__none__'}
+            onValueChange={v => {
+              if (v === '__none__') {
+                setViewAsUser(null);
+                return;
+              }
+              const u = (iamUsers ?? []).find(x => x.id === v);
+              if (u && u.email) {
+                setViewAsUser({ id: u.id, email: u.email, roles: u.roles });
+              }
+            }}
+          >
+            <SelectTrigger className="h-7 w-52 text-xs">
+              <SelectValue placeholder="(none)" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="__none__">(none)</SelectItem>
+              {(iamUsers ?? []).map(u => (
+                <SelectItem key={u.id} value={u.id} className="text-xs">
+                  <span className="font-mono">{u.email}</span>
+                  {u.roles.length > 0 && (
+                    <span className="ml-2 text-muted-foreground">— {u.roles.join(', ')}</span>
+                  )}
+                </SelectItem>
+              ))}
             </SelectContent>
           </Select>
         </div>

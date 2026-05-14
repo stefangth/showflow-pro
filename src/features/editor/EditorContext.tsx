@@ -4,7 +4,7 @@ import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/features/auth/AuthContext';
 import type { AppRole } from '@/config/app.config';
-import { resolveColumnTemplate, COLUMN_REGISTRIES } from './columnRegistries';
+import { resolveColumnTemplate, pageColumnDefs } from './columnRegistries';
 import {
   DEFAULT_PAGE_ACCESS,
   DEFAULT_TABLE_PERMISSIONS,
@@ -141,7 +141,7 @@ export function EditorProvider({ children }: { children: ReactNode }) {
   );
 
   const getColumnDefs = useCallback((pageKey: string): ColumnDef[] =>
-    COLUMN_REGISTRIES[pageKey] ?? [],
+    pageColumnDefs(pageKey),
     []
   );
 
