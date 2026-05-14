@@ -4,6 +4,7 @@ import { format } from 'date-fns';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/features/auth/AuthContext';
+import { useEditorConfig } from '@/features/editor/EditorContext';
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -35,7 +36,9 @@ const BOOKING_STATUS_STYLE: Record<string, string> = {
 };
 
 export function ShowDateDetailSheet({ showDateId, open, onOpenChange }: Props) {
-  const { hasRole, user } = useAuth();
+  const { hasRole, user, roles } = useAuth();
+  const { isEditorMode } = useEditorConfig();
+  const isRealAdmin = roles.includes('admin');
   const queryClient = useQueryClient();
   const canManage = hasRole('admin') || hasRole('producer');
 
@@ -248,6 +251,11 @@ export function ShowDateDetailSheet({ showDateId, open, onOpenChange }: Props) {
             <SheetTitle className="font-display text-base">
               {showDate ? showLabel(showDate.show) : 'Show Date'}
             </SheetTitle>
+            {isEditorMode && isRealAdmin && (
+              <Badge variant="outline" className="text-xs font-mono text-muted-foreground w-fit">
+                ShowDateDetailSheet.tsx
+              </Badge>
+            )}
           </SheetHeader>
         </div>
 
