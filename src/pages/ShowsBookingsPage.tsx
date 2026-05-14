@@ -19,8 +19,8 @@ import { EntityCalendar } from '@/components/calendar/EntityCalendar';
 import { applySort, inTimeframe } from '@/components/filters/filterUtils';
 import { ArtistBookingsView } from '@/components/bookings/ArtistBookingsView';
 import { ShowDateDetailSheet } from '@/components/shows/ShowDateDetailSheet';
-import { showLabel } from '@/types';
 import { useSubProgramSlots, effectiveSlots } from '@/hooks/useSubProgramSlots';
+import { showLabel } from '@/types';
 
 type ShowRef = {
   id: string;
@@ -47,22 +47,22 @@ type ShowDateRow = {
   city: CityRef;
 };
 
-type BookingLite = { show_date_id: string; status: string; is_understudy: boolean };
+type ShowDateStatus = 'open' | 'partially_filled' | 'fully_filled' | 'cancelled';
+/** UI-only status: 'unconfigured' is rendered client-side when the show's (program, sub_program) has no slot config. */
+type DisplayStatus = ShowDateStatus | 'unconfigured';
 
-type DerivedStatus = 'cast_confirmed' | 'cast_pending' | 'open' | 'cancelled' | 'unconfigured';
-
-const STATUS_LABEL: Record<DerivedStatus, string> = {
-  cast_confirmed: 'Cast Confirmed',
-  cast_pending: 'Cast Pending',
+const STATUS_LABEL: Record<DisplayStatus, string> = {
   open: 'Open',
+  partially_filled: 'Partially Filled',
+  fully_filled: 'Fully Filled',
   cancelled: 'Cancelled',
   unconfigured: 'Unconfigured',
 };
 
-const STATUS_STYLE: Record<DerivedStatus, string> = {
-  cast_confirmed: 'bg-success/10 text-success',
-  cast_pending: 'bg-warning/10 text-warning',
+const STATUS_STYLE: Record<DisplayStatus, string> = {
   open: 'bg-muted text-muted-foreground',
+  partially_filled: 'bg-warning/10 text-warning',
+  fully_filled: 'bg-success/10 text-success',
   cancelled: 'bg-destructive/10 text-destructive',
   unconfigured: 'bg-destructive/10 text-destructive',
 };
@@ -78,12 +78,12 @@ export default function ShowsBookingsPage() {
 function ProducerShowsBookings() {
   const { canSee } = useFilterVisibility('bookings');
   const [searchParams, setSearchParams] = useSearchParams();
-  const slotDefaults = useSubProgramSlots();
 
   const [search, setSearch] = useState('');
   const [programs, setPrograms] = useState<string[]>([]);
   const [timeframe, setTimeframe] = useState<TimeframeValue>({ from: null, to: null });
-  const [statusFilter, setStatusFilter] = useState<'all' | DerivedStatus>('all');
+  const [statusFilter, setStatusFilter] = useState<'all' | DisplayStatus>('all');
+  const slotDefaults = useSubProgramSlots();
   const [sort, setSort] = useState<SortValue>('chrono_asc');
   const [view, setView] = useState<ViewMode>('list');
   const [activeShowDateId, setActiveShowDateId] = useState<string | null>(null);
@@ -92,8 +92,8 @@ function ProducerShowsBookings() {
     const status = searchParams.get('status');
     const from = searchParams.get('from');
     const to = searchParams.get('to');
-    if (status && ['cast_confirmed', 'cast_pending', 'open', 'cancelled', 'unconfigured'].includes(status)) {
-      setStatusFilter(status as DerivedStatus);
+    if (status && ['open', 'partially_filled', 'fully_filled', 'cancelled', 'unconfigured'].includes(status)) {
+      setStatusFilter(status as DisplayStatus);
     }
     if (from || to) {
       setTimeframe({ from: from ? parseISO(from) : null, to: to ? parseISO(to) : null });
@@ -102,7 +102,7 @@ function ProducerShowsBookings() {
   }, []);
 
   const { data: showDates, isLoading } = useQuery({
-    queryKey: ['bookings', 'show-dates'],
+    queryKey: ['show-dates', 'list'],
     queryFn: async () => {
       const { data, error } = await supabase
         .from('show_dates')
@@ -117,49 +117,18 @@ function ProducerShowsBookings() {
     },
   });
 
-  const { data: bookings } = useQuery({
-    queryKey: ['bookings', 'status'],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from('bookings')
-        .select('show_date_id, status, is_understudy')
-        .neq('status', 'cancelled');
-      if (error) throw error;
-      return (data ?? []) as BookingLite[];
-    },
-  });
-
-  const confirmedMainByDate = useMemo(() => {
-    const map = new Map<string, number>();
-    (bookings ?? []).forEach(b => {
-      if (b.status === 'confirmed' && !b.is_understudy) {
-        map.set(b.show_date_id, (map.get(b.show_date_id) ?? 0) + 1);
-      }
-    });
-    return map;
-  }, [bookings]);
-
-  const anyBookingByDate = useMemo(() => {
-    const set = new Set<string>();
-    (bookings ?? []).forEach(b => set.add(b.show_date_id));
-    return set;
-  }, [bookings]);
-
-  const derivedStatus = (sd: ShowDateRow): DerivedStatus => {
-    if (sd.status === 'cancelled') return 'cancelled';
-    const config = effectiveSlots(slotDefaults, sd.show?.sub_program ?? null);
-    if (!config) return 'unconfigured';
-    const confirmedMain = confirmedMainByDate.get(sd.id) ?? 0;
-    if (confirmedMain >= config.main_cast) return 'cast_confirmed';
-    if (anyBookingByDate.has(sd.id)) return 'cast_pending';
-    return 'open';
-  };
-
   const programOptions = useMemo(() => {
     const set = new Set<string>();
     showDates?.forEach(sd => sd.show?.program && set.add(sd.show.program));
     return Array.from(set).sort();
   }, [showDates]);
+
+  const displayStatus = (sd: ShowDateRow): DisplayStatus => {
+    if (sd.status === 'open' && !effectiveSlots(slotDefaults, sd.show?.program, sd.show?.sub_program)) {
+      return 'unconfigured';
+    }
+    return sd.status;
+  };
 
   const filtered = useMemo(() => {
     if (!showDates) return [];
@@ -178,20 +147,21 @@ function ProducerShowsBookings() {
       list = list.filter(sd => inTimeframe(new Date(sd.date + 'T00:00:00'), timeframe));
     }
     if (statusFilter !== 'all') {
-      list = list.filter(sd => derivedStatus(sd) === statusFilter);
+      list = list.filter(sd => displayStatus(sd) === statusFilter);
     }
     return applySort(list, sort,
       sd => sd.show?.program ?? '',
       sd => new Date(sd.date + 'T00:00:00')
     );
-  }, [showDates, search, programs, timeframe, statusFilter, sort, slotDefaults, confirmedMainByDate, anyBookingByDate]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [showDates, search, programs, timeframe, statusFilter, sort, slotDefaults]);
 
   const calendarItems = useMemo(() =>
     filtered.map(sd => ({ showDate: sd, date: new Date(sd.date + 'T00:00:00') })),
     [filtered]
   );
 
-  const updateStatusFilter = (v: 'all' | DerivedStatus) => {
+  const updateStatusFilter = (v: 'all' | DisplayStatus) => {
     setStatusFilter(v);
     const next = new URLSearchParams(searchParams);
     if (v === 'all') next.delete('status'); else next.set('status', v);
@@ -225,9 +195,9 @@ function ProducerShowsBookings() {
             <SelectTrigger className="w-[180px]"><SelectValue placeholder="Status" /></SelectTrigger>
             <SelectContent>
               <SelectItem value="all">All statuses</SelectItem>
-              <SelectItem value="cast_confirmed">Cast Confirmed</SelectItem>
-              <SelectItem value="cast_pending">Cast Pending</SelectItem>
               <SelectItem value="open">Open</SelectItem>
+              <SelectItem value="partially_filled">Partially Filled</SelectItem>
+              <SelectItem value="fully_filled">Fully Filled</SelectItem>
               <SelectItem value="cancelled">Cancelled</SelectItem>
               <SelectItem value="unconfigured">Unconfigured</SelectItem>
             </SelectContent>
@@ -260,10 +230,9 @@ function ProducerShowsBookings() {
               </TableHeader>
               <TableBody>
                 {filtered.map(sd => {
-                  const status = derivedStatus(sd);
-                  const config = effectiveSlots(slotDefaults, sd.show?.sub_program ?? null);
                   const venue = sd.venue_override ?? sd.show?.venue;
-                  const confirmedMain = confirmedMainByDate.get(sd.id) ?? 0;
+                  const slotConfig = effectiveSlots(slotDefaults, sd.show?.program, sd.show?.sub_program);
+                  const status = displayStatus(sd);
                   return (
                     <TableRow
                       key={sd.id}
@@ -282,14 +251,17 @@ function ProducerShowsBookings() {
                       <TableCell>{venue || <span className="text-muted-foreground">—</span>}</TableCell>
                       <TableCell>{sd.city?.name || <span className="text-muted-foreground">—</span>}</TableCell>
                       <TableCell className="whitespace-nowrap text-sm">
-                        {config
-                          ? <span>{confirmedMain}/{config.main_cast} <span className="text-muted-foreground">+ {config.understudies} u/s</span></span>
-                          : <Badge variant="secondary" className="bg-destructive/10 text-destructive text-xs">Unconfigured</Badge>
-                        }
+                        {slotConfig ? (
+                          <span className="text-muted-foreground">
+                            {slotConfig.main_cast + slotConfig.understudies} slot{slotConfig.main_cast + slotConfig.understudies !== 1 ? 's' : ''}
+                          </span>
+                        ) : (
+                          <Badge variant="secondary" className="bg-destructive/10 text-destructive text-xs">Unconfigured</Badge>
+                        )}
                       </TableCell>
                       <TableCell>
-                        <Badge variant="secondary" className={STATUS_STYLE[status]}>
-                          {STATUS_LABEL[status]}
+                        <Badge variant="secondary" className={STATUS_STYLE[status] ?? STATUS_STYLE.open}>
+                          {STATUS_LABEL[status] ?? status}
                         </Badge>
                       </TableCell>
                     </TableRow>
@@ -324,8 +296,11 @@ function ProducerShowsBookings() {
                       .filter(Boolean).join(' · ')}
                   </p>
                 </div>
-                <Badge variant="secondary" className={STATUS_STYLE[derivedStatus(it.showDate)]}>
-                  {STATUS_LABEL[derivedStatus(it.showDate)]}
+                <Badge
+                  variant="secondary"
+                  className={STATUS_STYLE[displayStatus(it.showDate)] ?? STATUS_STYLE.open}
+                >
+                  {STATUS_LABEL[displayStatus(it.showDate)] ?? it.showDate.status}
                 </Badge>
               </CardContent>
             </Card>

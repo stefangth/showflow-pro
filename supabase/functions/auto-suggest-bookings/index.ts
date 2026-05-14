@@ -45,7 +45,7 @@ Deno.serve(async (req) => {
     // Fetch the show date + parent show
     const { data: showDate, error: sdErr } = await admin
       .from('show_dates')
-      .select('id, show_id, city_id, date, status, shows(required_skills, sub_program)')
+      .select('id, show_id, city_id, date, status, shows(required_skills, program, sub_program)')
       .eq('id', show_date_id)
       .maybeSingle();
     if (sdErr || !showDate) return json({ error: 'Show date not found' }, 404);
@@ -70,19 +70,19 @@ Deno.serve(async (req) => {
       if (!availRow) return json({ error: 'Forbidden — you must be available on this date to trigger suggestions' }, 403);
     }
 
-    const show = (showDate as any).shows as { required_skills: string[] | null; sub_program: string | null };
+    const show = (showDate as any).shows as { required_skills: string[] | null; program: string | null; sub_program: string | null };
     const requiredSkills: string[] = show.required_skills ?? [];
 
-    // Resolve slot count from sub_program_slots_defaults (no fallback — must be configured)
+    // Resolve slot count from sub_program_slots_defaults, nested by (program, sub_program).
     const { data: slotSetting } = await admin
       .from('app_settings')
       .select('value')
       .eq('key', 'sub_program_slots_defaults')
       .maybeSingle();
-    const slotDefaults = (slotSetting?.value ?? {}) as Record<string, { main_cast: number; understudies: number }>;
-    const slotConfig = show.sub_program ? slotDefaults[show.sub_program] : null;
+    const slotDefaults = (slotSetting?.value ?? {}) as Record<string, Record<string, { main_cast: number; understudies: number }>>;
+    const slotConfig = (show.program && show.sub_program) ? slotDefaults?.[show.program]?.[show.sub_program] : null;
     if (!slotConfig) {
-      return json({ error: `No slot configuration for sub-program "${show.sub_program ?? '(none)'}". Set defaults in Settings.` }, 400);
+      return json({ error: `No slot configuration for ${show.program ?? '(no program)'} / ${show.sub_program ?? '(no sub-program)'}. Set defaults in Settings.` }, 400);
     }
     const effectiveSlots: number = slotConfig.main_cast;
 

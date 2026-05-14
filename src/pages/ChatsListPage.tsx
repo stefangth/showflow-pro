@@ -1,6 +1,5 @@
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { Link } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -8,6 +7,7 @@ import { CHAT_ARCHIVE_DAYS } from '@/config/app.config';
 import { differenceInCalendarDays, format } from 'date-fns';
 import { MessageSquare } from 'lucide-react';
 import { showLabel } from '@/types';
+import { ShowDateDetailSheet } from '@/components/shows/ShowDateDetailSheet';
 
 type ChatRow = {
   id: string;
@@ -17,10 +17,11 @@ type ChatRow = {
 };
 
 export default function ChatsListPage() {
+  const [activeShowDateId, setActiveShowDateId] = useState<string | null>(null);
+
   const { data: chats, isLoading } = useQuery({
     queryKey: ['my-chats'],
     queryFn: async () => {
-      // RLS already restricts to chats the user can read
       const { data, error } = await supabase
         .from('chats')
         .select('id, show_date_id, created_at, show_date:show_dates(id, date, show_id, show:shows(id, program, sub_program))')
@@ -60,7 +61,11 @@ export default function ChatsListPage() {
       ) : (
         <div className="grid gap-3">
           {visible.map(c => (
-            <Link key={c.id} to={`/shows/${c.show_date?.show?.id}`}>
+            <button
+              key={c.id}
+              className="text-left w-full"
+              onClick={() => setActiveShowDateId(c.show_date?.id ?? null)}
+            >
               <Card className="hover:border-primary transition-colors">
                 <CardContent className="py-4 flex items-center justify-between gap-3">
                   <div>
@@ -72,10 +77,16 @@ export default function ChatsListPage() {
                   <Badge variant="secondary">Open</Badge>
                 </CardContent>
               </Card>
-            </Link>
+            </button>
           ))}
         </div>
       )}
+
+      <ShowDateDetailSheet
+        showDateId={activeShowDateId}
+        open={!!activeShowDateId}
+        onOpenChange={o => { if (!o) setActiveShowDateId(null); }}
+      />
     </div>
   );
 }
