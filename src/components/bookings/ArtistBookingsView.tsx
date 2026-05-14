@@ -176,14 +176,17 @@ export function ArtistBookingsView() {
                           {d.venue || <span className="text-muted-foreground">—</span>}
                         </TableCell>
                       );
-                      case 'show_dates.start_time': return (
+                      case 'show_dates.session_1': return (
+                        <TableCell key={colId} className="whitespace-nowrap">{d.session_1.slice(0, 5)}</TableCell>
+                      );
+                      case 'show_dates.session_2': return (
                         <TableCell key={colId} className="whitespace-nowrap">
-                          {d.start_time ? d.start_time.slice(0, 5) : '—'}
+                          {d.session_2 ? d.session_2.slice(0, 5) : '—'}
                         </TableCell>
                       );
-                      case 'show_dates.end_time': return (
+                      case 'show_dates.session_3': return (
                         <TableCell key={colId} className="whitespace-nowrap">
-                          {d.end_time ? d.end_time.slice(0, 5) : '—'}
+                          {d.session_3 ? d.session_3.slice(0, 5) : '—'}
                         </TableCell>
                       );
                       case '_computed.my_status': return (
@@ -236,7 +239,7 @@ export function ArtistBookingsView() {
                     <p className="font-medium truncate">{showLabel(it.eligible.show)}</p>
                     <p className="text-xs text-muted-foreground truncate">
                       {it.eligible.venue ?? ''}
-                      {it.eligible.start_time ? ` • ${it.eligible.start_time.slice(0, 5)}` : ''}
+                      {it.eligible.session_1 ? ` • ${it.eligible.session_1.slice(0, 5)}` : ''}
                     </p>
                   </div>
                   <Badge variant="secondary" className={STATUS_STYLE[status] ?? ''}>

@@ -37,8 +37,9 @@ type CityRef = { id: string; name: string } | null;
 type ShowDateRow = {
   id: string;
   date: string;
-  start_time: string | null;
-  end_time: string | null;
+  session_1: string;
+  session_2: string | null;
+  session_3: string | null;
   venue: string | null;
   status: 'open' | 'partially_filled' | 'fully_filled' | 'cancelled';
   notes: string | null;
@@ -146,7 +147,7 @@ function ProducerShowsBookings() {
       const { data, error } = await supabase
         .from('show_dates')
         .select(`
-          id, date, start_time, end_time, venue, status, notes, city_id, show_id,
+          id, date, session_1, session_2, session_3, venue, status, notes, city_id, show_id,
           show:shows(id, program, sub_program, required_skills, status),
           city:cities(id, name)
         `)
@@ -285,14 +286,17 @@ function ProducerShowsBookings() {
                       case '_computed.day': return (
                         <TableCell key={colId} className="text-muted-foreground">{dayAbbr(sd.date)}</TableCell>
                       );
-                      case 'show_dates.start_time': return (
+                      case 'show_dates.session_1': return (
+                        <TableCell key={colId} className="whitespace-nowrap">{sd.session_1.slice(0, 5)}</TableCell>
+                      );
+                      case 'show_dates.session_2': return (
                         <TableCell key={colId} className="whitespace-nowrap">
-                          {sd.start_time ? sd.start_time.slice(0, 5) : <span className="text-muted-foreground">—</span>}
+                          {sd.session_2 ? sd.session_2.slice(0, 5) : <span className="text-muted-foreground">—</span>}
                         </TableCell>
                       );
-                      case 'show_dates.end_time': return (
+                      case 'show_dates.session_3': return (
                         <TableCell key={colId} className="whitespace-nowrap">
-                          {sd.end_time ? sd.end_time.slice(0, 5) : <span className="text-muted-foreground">—</span>}
+                          {sd.session_3 ? sd.session_3.slice(0, 5) : <span className="text-muted-foreground">—</span>}
                         </TableCell>
                       );
                       case 'shows.program': return (
