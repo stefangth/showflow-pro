@@ -23,6 +23,7 @@ import { useSubProgramSlots, effectiveSlots } from '@/hooks/useSubProgramSlots';
 import { showLabel } from '@/types';
 import { useColumnTemplate } from '@/features/editor/EditorContext';
 import { pageColumnDefs } from '@/features/editor/columnRegistries';
+import { ColumnLayoutEditor } from '@/features/editor/ColumnLayoutEditor';
 
 type ShowRef = {
   id: string;
@@ -248,6 +249,8 @@ function ProducerShowsBookings() {
         {canSee('sort') && <SortControl value={sort} onChange={setSort} chronoLabel="Date" />}
         <div className="ml-auto"><ViewToggle value={view} onChange={setView} /></div>
       </div>
+
+      <ColumnLayoutEditor pageKey="bookings-producer" />
 
       {isLoading ? (
         <div className="space-y-2">{[1,2,3,4,5].map(i => <div key={i} className="h-12 rounded bg-muted animate-pulse" />)}</div>

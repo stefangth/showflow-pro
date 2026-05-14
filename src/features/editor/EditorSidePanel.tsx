@@ -1,6 +1,6 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useLocation } from 'react-router-dom';
-import { ArrowDown, ArrowUp, Eye, EyeOff, RotateCcw, Save } from 'lucide-react';
+import { Columns, Save } from 'lucide-react';
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Switch } from '@/components/ui/switch';
@@ -9,16 +9,13 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Separator } from '@/components/ui/separator';
-import { Alert, AlertDescription } from '@/components/ui/alert';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import type { AppRole } from '@/config/app.config';
 import { ROUTES } from '@/config/app.config';
 import { useEditor } from './EditorContext';
-import { pageColumnDefs, resolveColumnTemplate } from './columnRegistries';
 import {
   DEFAULT_PAGE_ACCESS,
   DEFAULT_TABLE_PERMISSIONS,
-  type ColumnTemplate,
   type PageAccessConfig,
   type TablePermissionLevel,
   type TablePermissions,
@@ -41,17 +38,11 @@ const ROUTE_LABELS: Record<string, string> = {
   [ROUTES.CHATS]:        'Chats',
 };
 
-const PAGE_KEYS: Record<string, string> = {
-  [ROUTES.BOOKINGS]:     'bookings-producer',
-  [ROUTES.AVAILABILITY]: 'availability',
-};
-
 const TABLE_KEYS = Object.keys(DEFAULT_TABLE_PERMISSIONS);
 
 export function EditorSidePanel({ open, onOpenChange }: EditorSidePanelProps) {
   const location = useLocation();
-  const { pageAccess, columnTemplates, tablePermissions, savePageAccess, saveColumnTemplate, saveTablePermission } = useEditor();
-  const effectivePageAccess = { ...DEFAULT_PAGE_ACCESS, ...pageAccess };
+  const { pageAccess, tablePermissions, savePageAccess, saveTablePermission } = useEditor();
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
@@ -81,12 +72,7 @@ export function EditorSidePanel({ open, onOpenChange }: EditorSidePanelProps) {
           </TabsContent>
 
           <TabsContent value="layout" className="flex-1 overflow-hidden mt-0">
-            <LayoutTab
-              columnTemplates={columnTemplates}
-              currentRoute={location.pathname}
-              pageAccess={effectivePageAccess}
-              onSave={saveColumnTemplate}
-            />
+            <LayoutTab />
           </TabsContent>
 
           <TabsContent value="permissions" className="flex-1 overflow-hidden mt-0">
@@ -196,184 +182,18 @@ function AccessTab({
 
 /* ── Tab B: Column Layout ────────────────────────────────────── */
 
-function LayoutTab({
-  columnTemplates,
-  currentRoute,
-  pageAccess,
-  onSave,
-}: {
-  columnTemplates: Record<string, Partial<Record<AppRole, ColumnTemplate[]>>>;
-  currentRoute: string;
-  pageAccess: PageAccessConfig;
-  onSave: (pageKey: string, role: AppRole, columns: ColumnTemplate[]) => Promise<void>;
-}) {
-  const pageKey = PAGE_KEYS[currentRoute];
-  const [selectedRole, setSelectedRole] = useState<AppRole>('admin');
-  const [localCols, setLocalCols] = useState<ColumnTemplate[]>([]);
-  const [saving, setSaving] = useState(false);
-
-  useEffect(() => {
-    if (!pageKey) return;
-    setLocalCols(resolveColumnTemplate(pageKey, selectedRole, columnTemplates));
-  }, [pageKey, selectedRole, columnTemplates]);
-
-  if (!pageKey) {
-    return (
-      <div className="px-6 py-8 flex items-center justify-center">
-        <Alert>
-          <AlertDescription className="text-sm text-muted-foreground">
-            Column templates are not available for this page. Navigate to Shows &amp; Bookings or Availability to configure column layouts.
-          </AlertDescription>
-        </Alert>
-      </div>
-    );
-  }
-
-  const defs = pageColumnDefs(pageKey);
-  const roleHasAccess = (pageAccess[currentRoute] ?? []).includes(selectedRole);
-  const readOnly = !roleHasAccess;
-
-  const toggle = (colId: string) => {
-    if (readOnly) return;
-    setLocalCols(prev => prev.map(c => c.columnId === colId ? { ...c, visible: !c.visible } : c));
-  };
-
-  const move = (colId: string, dir: -1 | 1) => {
-    if (readOnly) return;
-    setLocalCols(prev => {
-      const sorted = [...prev].sort((a, b) => a.order - b.order);
-      const idx = sorted.findIndex(c => c.columnId === colId);
-      const swapIdx = idx + dir;
-      if (swapIdx < 0 || swapIdx >= sorted.length) return prev;
-      const newOrder = sorted[idx].order;
-      const swapOrder = sorted[swapIdx].order;
-      return prev.map(c => {
-        if (c.columnId === sorted[idx].columnId) return { ...c, order: swapOrder };
-        if (c.columnId === sorted[swapIdx].columnId) return { ...c, order: newOrder };
-        return c;
-      });
-    });
-  };
-
-  const reset = () => {
-    setLocalCols(defs.map(d => ({ columnId: d.id, visible: d.defaultVisible, order: d.defaultOrder })));
-  };
-
-  const handleSave = async () => {
-    if (readOnly) return;
-    setSaving(true);
-    try {
-      await onSave(pageKey, selectedRole, localCols);
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  // Group columns by table, preserving the per-table order from defs.
-  const sorted = [...localCols].sort((a, b) => a.order - b.order);
-  const tableOrder: string[] = [];
-  const byTable = new Map<string, ColumnTemplate[]>();
-  for (const col of sorted) {
-    const def = defs.find(d => d.id === col.columnId);
-    const table = def?.table ?? 'unknown';
-    if (!byTable.has(table)) { byTable.set(table, []); tableOrder.push(table); }
-    byTable.get(table)!.push(col);
-  }
-
+function LayoutTab() {
   return (
-    <div className="flex flex-col h-full">
-      <div className="px-6 py-3 border-b border-border shrink-0">
-        <div className="flex items-center gap-3">
-          <Label className="text-xs text-muted-foreground shrink-0">Configure for role:</Label>
-          <Select value={selectedRole} onValueChange={v => setSelectedRole(v as AppRole)}>
-            <SelectTrigger className="h-7 flex-1 text-xs">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              {ALL_ROLES.map(r => (
-                <SelectItem key={r} value={r} className="capitalize">{r}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
+    <div className="px-6 py-8 flex flex-col items-center justify-center gap-3 text-center">
+      <div className="h-10 w-10 rounded-full bg-muted flex items-center justify-center">
+        <Columns className="h-5 w-5 text-muted-foreground" />
       </div>
-
-      <ScrollArea className="flex-1">
-        <div className="px-6 py-4 space-y-3">
-          {readOnly && (
-            <Alert variant="destructive" className="border-warning/40 bg-warning/10 text-foreground">
-              <AlertDescription className="text-xs">
-                <span className="capitalize font-medium">{selectedRole}</span> has no access to{' '}
-                <code className="font-mono">{currentRoute}</code>. Grant access in the Access tab to
-                manage its column layout.
-              </AlertDescription>
-            </Alert>
-          )}
-          <p className="text-xs text-muted-foreground">
-            Columns are grouped by source table; names match the database schema. Toggle the eye to
-            show/hide; use arrows to reorder within the page.
-          </p>
-          {tableOrder.map(table => {
-            const cols = byTable.get(table)!;
-            return (
-              <div key={table} className="space-y-1">
-                <div className="flex items-center gap-2 pt-2 pb-1">
-                  <span className="text-xs font-mono font-medium text-muted-foreground">{table}</span>
-                  <div className="flex-1 h-px bg-border" />
-                  <Badge variant="outline" className="text-[10px] h-4 px-1.5">{cols.length}</Badge>
-                </div>
-                {cols.map(col => {
-                  const def = defs.find(d => d.id === col.columnId);
-                  const fullIdx = sorted.findIndex(s => s.columnId === col.columnId);
-                  return (
-                    <div
-                      key={col.columnId}
-                      className={`flex items-center gap-2 rounded-md border border-border px-3 py-2 bg-card ${readOnly ? 'opacity-60' : ''}`}
-                    >
-                      <div className="flex flex-col gap-0.5 shrink-0">
-                        <button
-                          onClick={() => move(col.columnId, -1)}
-                          disabled={readOnly || fullIdx === 0}
-                          className="disabled:opacity-30 hover:text-foreground text-muted-foreground"
-                        >
-                          <ArrowUp className="h-3 w-3" />
-                        </button>
-                        <button
-                          onClick={() => move(col.columnId, 1)}
-                          disabled={readOnly || fullIdx === sorted.length - 1}
-                          className="disabled:opacity-30 hover:text-foreground text-muted-foreground"
-                        >
-                          <ArrowDown className="h-3 w-3" />
-                        </button>
-                      </div>
-                      <span className={`flex-1 text-xs font-mono ${col.visible ? '' : 'text-muted-foreground line-through'}`}>
-                        {def?.column ?? col.columnId}
-                      </span>
-                      <button
-                        onClick={() => toggle(col.columnId)}
-                        disabled={readOnly}
-                        className={`shrink-0 ${col.visible ? 'text-foreground' : 'text-muted-foreground'} disabled:cursor-not-allowed`}
-                      >
-                        {col.visible ? <Eye className="h-4 w-4" /> : <EyeOff className="h-4 w-4" />}
-                      </button>
-                    </div>
-                  );
-                })}
-              </div>
-            );
-          })}
-        </div>
-      </ScrollArea>
-
-      <div className="px-6 py-4 border-t border-border shrink-0 flex gap-2">
-        <Button variant="outline" size="sm" onClick={reset} className="gap-1.5">
-          <RotateCcw className="h-3.5 w-3.5" />
-          Reset
-        </Button>
-        <Button onClick={handleSave} disabled={saving || readOnly} className="flex-1 gap-2">
-          <Save className="h-4 w-4" />
-          {saving ? 'Saving…' : readOnly ? 'No access' : `Save for ${selectedRole}`}
-        </Button>
+      <div>
+        <p className="text-sm font-medium">Edit columns directly on the page</p>
+        <p className="text-xs text-muted-foreground mt-1">
+          Navigate to Shows &amp; Bookings or Availability with editor mode on.
+          A column bar appears above each table — drag chips to reorder, click the eye to hide.
+        </p>
       </div>
     </div>
   );
