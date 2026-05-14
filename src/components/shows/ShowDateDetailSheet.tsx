@@ -15,6 +15,7 @@ import { MapPin, Clock, Users, Check, ChevronsUpDown } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { showLabel } from '@/types';
 import { useEligibleArtists } from '@/hooks/useEligibleArtists';
+import { useSubProgramSlots, effectiveSlots } from '@/hooks/useSubProgramSlots';
 import { ChatPanel } from '@/components/chat/ChatPanel';
 import type { Booking, Artist, City, Cast } from '@/types';
 
@@ -45,8 +46,8 @@ export function ShowDateDetailSheet({ showDateId, open, onOpenChange }: Props) {
       const { data, error } = await supabase
         .from('show_dates')
         .select(`
-          id, date, start_time, end_time, venue_override, status, notes, city_id, show_id, slots_per_date,
-          show:shows(id, program, sub_program, venue, slots_per_date),
+          id, date, start_time, end_time, venue_override, status, notes, city_id, show_id,
+          show:shows(id, program, sub_program, venue),
           city:cities(id, name)
         `)
         .eq('id', showDateId!)
@@ -58,7 +59,8 @@ export function ShowDateDetailSheet({ showDateId, open, onOpenChange }: Props) {
 
   const showId = showDate?.show_id ?? null;
   const cityId = showDate?.city_id ?? null;
-  const effectiveSlotsPerDate: number = showDate?.slots_per_date ?? showDate?.show?.slots_per_date ?? 1;
+  const slotDefaults = useSubProgramSlots();
+  const slotConfig = effectiveSlots(slotDefaults, showDate?.show?.program, showDate?.show?.sub_program);
 
   const { data: bookingsForDate } = useQuery({
     queryKey: ['bookings', 'for-date', showDateId],
@@ -152,8 +154,12 @@ export function ShowDateDetailSheet({ showDateId, open, onOpenChange }: Props) {
     [eligibility, overrideCastIds]
   );
 
-  const confirmedCount = useMemo(
-    () => activeBookings.filter(b => b.status === 'confirmed').length,
+  const confirmedMainCount = useMemo(
+    () => activeBookings.filter(b => b.status === 'confirmed' && !b.is_understudy).length,
+    [activeBookings]
+  );
+  const confirmedUnderstudyCount = useMemo(
+    () => activeBookings.filter(b => b.status === 'confirmed' && b.is_understudy).length,
     [activeBookings]
   );
 
@@ -286,14 +292,26 @@ export function ShowDateDetailSheet({ showDateId, open, onOpenChange }: Props) {
               </div>
 
               {/* Slots summary */}
-              <div className="rounded-lg border border-border p-4">
-                <p className="text-sm font-medium flex items-center gap-2 mb-2">
+              <div className="rounded-lg border border-border p-4 space-y-2">
+                <p className="text-sm font-medium flex items-center gap-2">
                   <Users className="h-4 w-4" />Slots
                 </p>
-                <p className="text-sm">
-                  <span className="font-medium">{confirmedCount}</span>
-                  <span className="text-muted-foreground"> / {effectiveSlotsPerDate} confirmed</span>
-                </p>
+                {slotConfig ? (
+                  <div className="grid grid-cols-2 gap-4 text-sm">
+                    <div>
+                      <p className="text-muted-foreground text-xs mb-1">Main cast</p>
+                      <p className="font-medium">{confirmedMainCount} / {slotConfig.main_cast} confirmed</p>
+                    </div>
+                    <div>
+                      <p className="text-muted-foreground text-xs mb-1">Understudies</p>
+                      <p className="font-medium">{confirmedUnderstudyCount} / {slotConfig.understudies} confirmed</p>
+                    </div>
+                  </div>
+                ) : (
+                  <Badge variant="secondary" className="bg-destructive/10 text-destructive">
+                    Slot config missing for {showDate.show?.program ?? '—'} / {showDate.show?.sub_program ?? '—'} — configure in Settings
+                  </Badge>
+                )}
               </div>
 
               {/* Date configuration (producer/admin only) */}

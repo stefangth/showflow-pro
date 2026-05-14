@@ -21,7 +21,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { toast } from 'sonner';
 import { Settings as SettingsIcon, Database, Bell, Wand2, Save, SlidersHorizontal, MapPin, Plus, Trash2, Clock, AlertTriangle, BookOpen } from 'lucide-react';
 import type { City, Cast } from '@/types';
-import type { SubProgramSlotConfig } from '@/hooks/useSubProgramSlots';
+import type { SubProgramSlotConfig, NestedSlotDefaults } from '@/hooks/useSubProgramSlots';
 
 type FilterKey = 'program' | 'timeframe' | 'sort' | 'status';
 const FILTER_KEYS: FilterKey[] = ['program', 'timeframe', 'sort', 'status'];
@@ -36,108 +36,144 @@ type SettingRow = {
   updated_at: string;
 };
 
+type ProgramSubProgramPair = { program: string; sub_program: string };
+
 function SubProgramSlotsEditor({
   value,
   onChange,
-  availableSubPrograms,
+  availablePairs,
 }: {
-  value: Record<string, SubProgramSlotConfig>;
-  onChange: (v: Record<string, SubProgramSlotConfig>) => void;
-  availableSubPrograms: string[];
+  value: NestedSlotDefaults;
+  onChange: (v: NestedSlotDefaults) => void;
+  availablePairs: ProgramSubProgramPair[];
 }) {
-  const [selectedSubProgram, setSelectedSubProgram] = useState('');
+  const [newProgram, setNewProgram] = useState('');
+  const [newSubProgram, setNewSubProgram] = useState('');
   const [newMainCast, setNewMainCast] = useState(1);
   const [newUnderstudies, setNewUnderstudies] = useState(0);
 
-  const entries = Object.entries(value);
-  const unconfigured = availableSubPrograms.filter(sp => !value[sp]);
+  const isConfigured = (program: string, subProgram: string) => Boolean(value?.[program]?.[subProgram]);
+  const unconfigured = availablePairs.filter(p => !isConfigured(p.program, p.sub_program));
+
+  const programs = Array.from(new Set(availablePairs.map(p => p.program))).sort();
+  const subProgramsForNewProgram = newProgram
+    ? Array.from(new Set(unconfigured.filter(p => p.program === newProgram).map(p => p.sub_program))).sort()
+    : [];
+
+  const configuredPrograms = Object.keys(value ?? {}).sort();
 
   function addRow() {
-    if (!selectedSubProgram) return;
-    onChange({ ...value, [selectedSubProgram]: { main_cast: newMainCast, understudies: newUnderstudies } });
-    setSelectedSubProgram('');
+    if (!newProgram || !newSubProgram) return;
+    const next: NestedSlotDefaults = { ...(value ?? {}) };
+    next[newProgram] = { ...(next[newProgram] ?? {}), [newSubProgram]: { main_cast: newMainCast, understudies: newUnderstudies } };
+    onChange(next);
+    setNewProgram('');
+    setNewSubProgram('');
     setNewMainCast(1);
     setNewUnderstudies(0);
   }
 
-  function removeRow(key: string) {
-    const next = { ...value };
-    delete next[key];
+  function removeRow(program: string, subProgram: string) {
+    const next: NestedSlotDefaults = { ...(value ?? {}) };
+    if (next[program]) {
+      const { [subProgram]: _, ...rest } = next[program];
+      if (Object.keys(rest).length === 0) {
+        delete next[program];
+      } else {
+        next[program] = rest;
+      }
+    }
     onChange(next);
   }
 
-  function updateConfig(key: string, field: keyof SubProgramSlotConfig, n: number) {
-    onChange({ ...value, [key]: { ...value[key], [field]: n } });
+  function updateConfig(program: string, subProgram: string, field: keyof SubProgramSlotConfig, n: number) {
+    const existing = value?.[program]?.[subProgram] ?? { main_cast: 0, understudies: 0 };
+    const next: NestedSlotDefaults = { ...(value ?? {}) };
+    next[program] = { ...(next[program] ?? {}), [subProgram]: { ...existing, [field]: n } };
+    onChange(next);
   }
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-6">
       {unconfigured.length > 0 && (
         <Alert variant="destructive">
           <AlertTriangle className="h-4 w-4" />
           <AlertDescription>
-            Slot defaults missing for: <strong>{unconfigured.join(', ')}</strong>. Bookings for these sub-programs cannot be processed until defaults are set.
+            Slot defaults missing for <strong>{unconfigured.length}</strong> program/sub-program combination{unconfigured.length === 1 ? '' : 's'}:{' '}
+            <strong>{unconfigured.map(p => `${p.program} / ${p.sub_program}`).join(', ')}</strong>.
+            Bookings for these cannot reach <em>fully filled</em> until defaults are set.
           </AlertDescription>
         </Alert>
       )}
 
-      {(entries.length > 0 || unconfigured.length > 0) && (
-        <div className="grid grid-cols-[1fr_80px_80px_32px] gap-2 text-xs text-muted-foreground px-1">
-          <span>Sub-program</span>
-          <span className="text-center">Main cast</span>
-          <span className="text-center">Understudies</span>
-          <span />
-        </div>
+      {configuredPrograms.length === 0 && unconfigured.length === 0 && (
+        <p className="text-sm text-muted-foreground">No programs found — they will appear here once Airtable sync populates shows.</p>
       )}
 
-      {entries.length > 0 && (
-        <div className="space-y-2">
-          {entries.map(([subProgram, config]) => (
-            <div key={subProgram} className="grid grid-cols-[1fr_80px_80px_32px] items-center gap-2">
-              <span className="text-sm font-medium truncate">{subProgram}</span>
-              <Input
-                type="number"
-                min={0}
-                className="text-center h-8"
-                value={config.main_cast}
-                onChange={e => updateConfig(subProgram, 'main_cast', Number(e.target.value) || 0)}
-              />
-              <Input
-                type="number"
-                min={0}
-                className="text-center h-8"
-                value={config.understudies}
-                onChange={e => updateConfig(subProgram, 'understudies', Number(e.target.value) || 0)}
-              />
-              <button
-                onClick={() => removeRow(subProgram)}
-                className="text-muted-foreground hover:text-destructive p-1 rounded"
-                aria-label={`Remove ${subProgram}`}
-              >
-                <Trash2 className="h-3.5 w-3.5" />
-              </button>
+      {configuredPrograms.map(program => {
+        const subPrograms = Object.entries(value[program] ?? {});
+        return (
+          <div key={program} className="space-y-2">
+            <h4 className="font-display font-semibold text-sm">{program}</h4>
+            <div className="grid grid-cols-[1fr_80px_80px_32px] gap-2 text-xs text-muted-foreground px-1">
+              <span>Sub-program</span>
+              <span className="text-center">Main cast</span>
+              <span className="text-center">Understudies</span>
+              <span />
             </div>
-          ))}
-        </div>
-      )}
-
-      {entries.length === 0 && unconfigured.length === 0 && (
-        <p className="text-sm text-muted-foreground">No sub-programs found — they will appear here once Airtable sync populates shows.</p>
-      )}
+            <div className="space-y-2">
+              {subPrograms.map(([subProgram, config]) => (
+                <div key={subProgram} className="grid grid-cols-[1fr_80px_80px_32px] items-center gap-2">
+                  <span className="text-sm font-medium truncate">{subProgram}</span>
+                  <Input
+                    type="number"
+                    min={0}
+                    className="text-center h-8"
+                    value={config.main_cast}
+                    onChange={e => updateConfig(program, subProgram, 'main_cast', Number(e.target.value) || 0)}
+                  />
+                  <Input
+                    type="number"
+                    min={0}
+                    className="text-center h-8"
+                    value={config.understudies}
+                    onChange={e => updateConfig(program, subProgram, 'understudies', Number(e.target.value) || 0)}
+                  />
+                  <button
+                    onClick={() => removeRow(program, subProgram)}
+                    className="text-muted-foreground hover:text-destructive p-1 rounded"
+                    aria-label={`Remove ${program} / ${subProgram}`}
+                  >
+                    <Trash2 className="h-3.5 w-3.5" />
+                  </button>
+                </div>
+              ))}
+            </div>
+          </div>
+        );
+      })}
 
       {unconfigured.length > 0 && (
         <form
-          className="grid grid-cols-[1fr_80px_80px_auto] gap-2 pt-1"
+          className="grid grid-cols-[1fr_1fr_80px_80px_auto] gap-2 pt-1"
           onSubmit={e => { e.preventDefault(); addRow(); }}
         >
-          <Select value={selectedSubProgram} onValueChange={setSelectedSubProgram}>
+          <Select value={newProgram} onValueChange={v => { setNewProgram(v); setNewSubProgram(''); }}>
             <SelectTrigger className="h-8">
-              <SelectValue placeholder="Select sub-program…" />
+              <SelectValue placeholder="Program…" />
             </SelectTrigger>
             <SelectContent>
-              {unconfigured.map(sp => (
-                <SelectItem key={sp} value={sp}>{sp}</SelectItem>
-              ))}
+              {programs
+                .filter(p => unconfigured.some(u => u.program === p))
+                .map(p => <SelectItem key={p} value={p}>{p}</SelectItem>)}
+            </SelectContent>
+          </Select>
+          <Select value={newSubProgram} onValueChange={setNewSubProgram} disabled={!newProgram}>
+            <SelectTrigger className="h-8">
+              <SelectValue placeholder="Sub-program…" />
+            </SelectTrigger>
+            <SelectContent>
+              {subProgramsForNewProgram.map(sp => <SelectItem key={sp} value={sp}>{sp}</SelectItem>)}
             </SelectContent>
           </Select>
           <Input
@@ -156,7 +192,7 @@ function SubProgramSlotsEditor({
             onChange={e => setNewUnderstudies(Number(e.target.value) || 0)}
             placeholder="U/S"
           />
-          <Button type="submit" variant="outline" size="sm" disabled={!selectedSubProgram} className="h-8">
+          <Button type="submit" variant="outline" size="sm" disabled={!newProgram || !newSubProgram} className="h-8">
             <Plus className="h-4 w-4" />
           </Button>
         </form>
@@ -238,14 +274,27 @@ export default function SettingsPage() {
     onError: (e: any) => toast.error(e.message ?? 'Failed to remove'),
   });
 
-  const { data: showSubPrograms } = useQuery({
-    queryKey: ['shows-sub-programs'],
+  const { data: showProgramSubProgramPairs } = useQuery({
+    queryKey: ['shows-program-sub-programs'],
     enabled: canEnter,
     queryFn: async () => {
-      const { data, error } = await supabase.from('shows').select('sub_program').not('sub_program', 'is', null);
+      const { data, error } = await supabase
+        .from('shows')
+        .select('program, sub_program')
+        .not('program', 'is', null)
+        .not('sub_program', 'is', null);
       if (error) throw error;
-      const unique = [...new Set((data ?? []).map(r => r.sub_program as string))].sort();
-      return unique;
+      const seen = new Set<string>();
+      const pairs: ProgramSubProgramPair[] = [];
+      (data ?? []).forEach(r => {
+        const key = `${r.program}::${r.sub_program}`;
+        if (!seen.has(key)) {
+          seen.add(key);
+          pairs.push({ program: r.program as string, sub_program: r.sub_program as string });
+        }
+      });
+      pairs.sort((a, b) => a.program.localeCompare(b.program) || a.sub_program.localeCompare(b.sub_program));
+      return pairs;
     },
   });
 
@@ -442,16 +491,16 @@ export default function SettingsPage() {
 
           <Card>
             <CardHeader>
-              <CardTitle className="font-display">Default Slots by Sub-Program</CardTitle>
+              <CardTitle className="font-display">Default Slots by Program &amp; Sub-Program</CardTitle>
               <CardDescription>
-                Set the main cast and understudy slot counts for each sub-program. Sub-programs are sourced from Airtable. All sub-programs must be configured before bookings can be processed.
+                Set the main cast and understudy slot counts for each program / sub-program combination. Combinations are sourced from existing shows. A date can only reach <em>fully filled</em> once its combination is configured.
               </CardDescription>
             </CardHeader>
             <CardContent>
               <SubProgramSlotsEditor
-                value={get('sub_program_slots_defaults', {}) as Record<string, SubProgramSlotConfig>}
+                value={get('sub_program_slots_defaults', {}) as NestedSlotDefaults}
                 onChange={v => set('sub_program_slots_defaults', v)}
-                availableSubPrograms={showSubPrograms ?? []}
+                availablePairs={showProgramSubProgramPairs ?? []}
               />
             </CardContent>
           </Card>
