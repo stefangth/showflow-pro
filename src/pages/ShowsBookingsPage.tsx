@@ -131,11 +131,14 @@ function ProducerShowsBookings() {
         .select('show_date_id, status, is_understudy')
         .neq('status', 'cancelled');
       if (error) throw error;
-      const map = new Map<string, { confirmed: number; total: number }>();
+      const map = new Map<string, { confirmedMain: number; confirmedUs: number; total: number }>();
       (data ?? []).forEach((b: any) => {
-        const cur = map.get(b.show_date_id) ?? { confirmed: 0, total: 0 };
+        const cur = map.get(b.show_date_id) ?? { confirmedMain: 0, confirmedUs: 0, total: 0 };
         cur.total += 1;
-        if (b.status === 'confirmed') cur.confirmed += 1;
+        if (b.status === 'confirmed') {
+          if (b.is_understudy) cur.confirmedUs += 1;
+          else cur.confirmedMain += 1;
+        }
         map.set(b.show_date_id, cur);
       });
       return map;
@@ -277,8 +280,6 @@ function ProducerShowsBookings() {
                   const slotConfig = effectiveSlots(slotDefaults, sd.show?.program, sd.show?.sub_program);
                   const status = displayStatus(sd);
                   const counts = bookingCounts?.get(sd.id);
-                  const booked = counts?.total ?? 0;
-                  const totalSlots = slotConfig ? slotConfig.main_cast + slotConfig.understudies : null;
                   const cellFor = (colId: string) => {
                     switch (colId) {
                       case 'show_dates.date': return (
@@ -335,8 +336,12 @@ function ProducerShowsBookings() {
                       );
                       case '_computed.slots': return (
                         <TableCell key={colId} className="whitespace-nowrap text-sm">
-                          {totalSlots !== null ? (
-                            <span className="text-muted-foreground">{booked}/{totalSlots}</span>
+                          {slotConfig !== null ? (
+                            <span className="text-muted-foreground tabular-nums">
+                              {counts?.confirmedMain ?? 0}/{slotConfig.main_cast}
+                              {' + '}
+                              {counts?.confirmedUs ?? 0}/{slotConfig.understudies}
+                            </span>
                           ) : (
                             <Badge variant="secondary" className="bg-destructive/10 text-destructive text-xs">Unconfigured</Badge>
                           )}

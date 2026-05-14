@@ -28,12 +28,17 @@ export function useSubProgramSlots(): NestedSlotDefaults {
   return data ?? {};
 }
 
-/** Returns null when (program, sub_program) has no config — callers must handle this as "unconfigured". */
+/**
+ * Returns null when (program, sub_program) has no config or when both thresholds
+ * are 0 — callers must treat null as "unconfigured" (matches DB trigger behaviour).
+ */
 export function effectiveSlots(
   slotDefaults: NestedSlotDefaults,
   program: string | null | undefined,
   subProgram: string | null | undefined,
 ): SubProgramSlotConfig | null {
   if (!program || !subProgram) return null;
-  return slotDefaults?.[program]?.[subProgram] ?? null;
+  const cfg = slotDefaults?.[program]?.[subProgram] ?? null;
+  if (cfg && cfg.main_cast === 0 && cfg.understudies === 0) return null;
+  return cfg;
 }
