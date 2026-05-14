@@ -641,11 +641,12 @@ export type Database = {
           city_id: string | null
           created_at: string
           date: string
-          end_time: string | null
           id: string
           notes: string | null
+          session_1: string
+          session_2: string | null
+          session_3: string | null
           show_id: string
-          start_time: string | null
           status: Database["public"]["Enums"]["show_date_status"]
           updated_at: string
           venue: string | null
@@ -655,11 +656,12 @@ export type Database = {
           city_id?: string | null
           created_at?: string
           date: string
-          end_time?: string | null
           id?: string
           notes?: string | null
+          session_1: string
+          session_2?: string | null
+          session_3?: string | null
           show_id: string
-          start_time?: string | null
           status?: Database["public"]["Enums"]["show_date_status"]
           updated_at?: string
           venue?: string | null
@@ -669,11 +671,12 @@ export type Database = {
           city_id?: string | null
           created_at?: string
           date?: string
-          end_time?: string | null
           id?: string
           notes?: string | null
+          session_1?: string
+          session_2?: string | null
+          session_3?: string | null
           show_id?: string
-          start_time?: string | null
           status?: Database["public"]["Enums"]["show_date_status"]
           updated_at?: string
           venue?: string | null
