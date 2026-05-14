@@ -24,6 +24,7 @@ import { formatDateDMY, parseDateOnly } from '@/lib/dates';
 import { showLabel } from '@/types';
 import { useColumnTemplate } from '@/features/editor/EditorContext';
 import { pageColumnDefs } from '@/features/editor/columnRegistries';
+import { ColumnLayoutEditor } from '@/features/editor/ColumnLayoutEditor';
 
 export default function AvailabilityPage() {
   const { hasRole } = useAuth();
@@ -127,6 +128,8 @@ function ArtistAvailability() {
           <ViewToggle value={view} onChange={setView} />
         </div>
       </div>
+
+      <ColumnLayoutEditor pageKey="availability" />
 
       {isLoading ? (
         <div className="space-y-2">
