@@ -11,9 +11,10 @@ import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { toDateKey } from '@/lib/dates';
 import { AvailabilityPicker } from './AvailabilityPicker';
+import { OfferResponseButtons } from './OfferResponseButtons';
 import type { EligibleDate } from '@/hooks/useArtistEligibleDates';
 
-type BookingRow = { show_date_id: string; status: string; show_date: { date: string } };
+type BookingRow = { id: string; show_date_id: string; status: string; show_date: { date: string } };
 
 interface Props {
   artistId: string;
@@ -46,7 +47,7 @@ export function ArtistAvailabilityCalendar({ artistId, eligibleDates }: Props) {
     queryFn: async () => {
       const { data } = await supabase
         .from('bookings')
-        .select('show_date_id, status, show_date:show_dates!inner(date)')
+        .select('id, show_date_id, status, show_date:show_dates!inner(date)')
         .eq('artist_id', artistId)
         .neq('status', 'cancelled');
       return (data ?? []) as unknown as BookingRow[];
@@ -103,6 +104,16 @@ export function ArtistAvailabilityCalendar({ artistId, eligibleDates }: Props) {
     });
     return s;
   }, [bookings, monthStartKey, monthEndKey]);
+
+  // Maps date string → booking ID for suggested offers (for offer-response popover)
+  const suggestedIdByDate = useMemo(() => {
+    const m = new Map<string, string>();
+    bookings?.forEach((b) => {
+      const d = b.show_date?.date;
+      if (b.status === 'suggested' && d) m.set(d, b.id);
+    });
+    return m;
+  }, [bookings]);
 
   return (
     <Card>
@@ -204,11 +215,15 @@ export function ArtistAvailabilityCalendar({ artistId, eligibleDates }: Props) {
             return (
               <Popover key={dateStr}>
                 <PopoverTrigger asChild>{cell}</PopoverTrigger>
-                <PopoverContent className="w-52 p-3" align="center">
+                <PopoverContent className="w-56 p-3" align="center">
                   <p className="text-xs text-muted-foreground mb-2">
                     {format(day, 'EEE, dd/MM/yyyy')}
                   </p>
-                  <AvailabilityPicker artistId={artistId} date={dateStr} size="sm" />
+                  {suggestedIdByDate.has(dateStr) ? (
+                    <OfferResponseButtons bookingId={suggestedIdByDate.get(dateStr)!} size="sm" />
+                  ) : (
+                    <AvailabilityPicker artistId={artistId} date={dateStr} size="sm" />
+                  )}
                 </PopoverContent>
               </Popover>
             );

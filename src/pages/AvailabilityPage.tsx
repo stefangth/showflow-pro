@@ -20,6 +20,7 @@ import { useArtistEligibleDates } from '@/hooks/useArtistEligibleDates';
 import { useMyArtist } from '@/hooks/useMyArtist';
 import { ArtistAvailabilityCalendar } from '@/components/availability/ArtistAvailabilityCalendar';
 import { AvailabilityPicker } from '@/components/availability/AvailabilityPicker';
+import { OfferResponseButtons } from '@/components/availability/OfferResponseButtons';
 import { formatDateDMY, parseDateOnly } from '@/lib/dates';
 import { showLabel } from '@/types';
 import { useColumnTemplate } from '@/features/editor/EditorContext';
@@ -77,25 +78,25 @@ function ArtistAvailability() {
     queryFn: async () => {
       const { data } = await supabase
         .from('bookings')
-        .select('show_date_id, status')
+        .select('id, show_date_id, status')
         .eq('artist_id', artist!.id)
         .neq('status', 'cancelled');
-      return (data ?? []) as { show_date_id: string; status: string }[];
+      return (data ?? []) as { id: string; show_date_id: string; status: string }[];
     },
   });
 
   const bookingMap = useMemo(() => {
-    const m = new Map<string, string>();
-    myBookings?.forEach((b) => m.set(b.show_date_id, b.status));
+    const m = new Map<string, { id: string; status: string }>();
+    myBookings?.forEach((b) => m.set(b.show_date_id, { id: b.id, status: b.status }));
     return m;
   }, [myBookings]);
 
-  const statusFor = (dateId: string): string => bookingMap.get(dateId) ?? 'unanswered';
+  const statusFor = (dateId: string): string => bookingMap.get(dateId)?.status ?? 'unanswered';
 
   const respondedSet = useMemo(
     () => new Set(
       [...bookingMap.entries()]
-        .filter(([, s]) => s === 'confirmed' || s === 'soft_booked')
+        .filter(([, b]) => b.status === 'confirmed' || b.status === 'soft_booked')
         .map(([id]) => id)
     ),
     [bookingMap]
@@ -271,11 +272,21 @@ function ArtistAvailability() {
                           </Badge>
                         </TableCell>
                       );
-                      case '_computed.blocked': return (
-                        <TableCell key={colId} className="w-36">
-                          <AvailabilityPicker artistId={artist.id} date={d.date} size="sm" />
-                        </TableCell>
-                      );
+                      case '_computed.blocked': {
+                        const booking = bookingMap.get(d.id);
+                        if (booking?.status === 'suggested') {
+                          return (
+                            <TableCell key={colId} className="w-48">
+                              <OfferResponseButtons bookingId={booking.id} size="sm" />
+                            </TableCell>
+                          );
+                        }
+                        return (
+                          <TableCell key={colId} className="w-36">
+                            <AvailabilityPicker artistId={artist.id} date={d.date} size="sm" />
+                          </TableCell>
+                        );
+                      }
                       default: return (
                         <TableCell key={colId} className="text-xs text-muted-foreground">—</TableCell>
                       );
