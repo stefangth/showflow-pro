@@ -1,8 +1,10 @@
-import { Navigate } from 'react-router-dom';
+import { Navigate, useLocation } from 'react-router-dom';
 import { useAuth } from './AuthContext';
 import { ApprovalGate } from './ApprovalGate';
 import type { AppRole } from '@/config/app.config';
 import { ROUTES } from '@/config/app.config';
+import { DEFAULT_PAGE_ACCESS } from '@/features/editor/types';
+import { useEditorConfig } from '@/features/editor/EditorContext';
 
 interface ProtectedRouteProps {
   children: React.ReactNode;
@@ -11,6 +13,8 @@ interface ProtectedRouteProps {
 
 export function ProtectedRoute({ children, requiredRoles }: ProtectedRouteProps) {
   const { user, loading, roles, approvalStatus } = useAuth();
+  const { isEditorMode, pageAccess } = useEditorConfig();
+  const location = useLocation();
 
   if (loading) {
     return (
@@ -29,8 +33,18 @@ export function ProtectedRoute({ children, requiredRoles }: ProtectedRouteProps)
     return <ApprovalGate>{children}</ApprovalGate>;
   }
 
-  if (requiredRoles && requiredRoles.length > 0) {
-    const hasRequired = requiredRoles.some(r => roles.includes(r));
+  // Admins in editor mode bypass all route role gates — they can navigate anywhere.
+  const isRealAdmin = roles.includes('admin');
+  if (isEditorMode && isRealAdmin) {
+    return <ApprovalGate>{children}</ApprovalGate>;
+  }
+
+  // Determine effective required roles: prefer DB-configured access, fall back to prop/defaults.
+  const configuredRoles = pageAccess[location.pathname] ?? DEFAULT_PAGE_ACCESS[location.pathname];
+  const effectiveRoles = configuredRoles ?? requiredRoles;
+
+  if (effectiveRoles && effectiveRoles.length > 0) {
+    const hasRequired = effectiveRoles.some(r => roles.includes(r));
     if (!hasRequired) {
       return <Navigate to={ROUTES.DASHBOARD} replace />;
     }

@@ -37,6 +37,9 @@ interface AuthContextType {
   signInWithGoogle: () => Promise<void>;
   signOut: () => Promise<void>;
   hasRole: (role: AppRole) => boolean;
+  /** Set by EditorContext to simulate a different role in the UI. Never affects DB access. */
+  viewAsRole: AppRole | null;
+  setViewAsRole: (role: AppRole | null) => void;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -49,6 +52,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true);
   const [approvalStatus, setApprovalStatus] = useState<ApprovalStatus>('unknown');
   const [approvalReason, setApprovalReason] = useState<string | null>(null);
+  const [viewAsRole, setViewAsRole] = useState<AppRole | null>(null);
 
   /** Fetch user roles from user_roles table */
   const fetchRoles = async (userId: string) => {
@@ -89,6 +93,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           setRoles([]);
           setApprovalStatus('unknown');
           setApprovalReason(null);
+          setViewAsRole(null);
+          localStorage.removeItem('showflow_editor_mode');
         }
         setLoading(false);
       }
@@ -155,14 +161,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   const signOut = async () => {
+    setViewAsRole(null);
+    localStorage.removeItem('showflow_editor_mode');
     const { error } = await supabase.auth.signOut();
     if (error) throw error;
   };
 
-  const hasRole = (role: AppRole) => roles.includes(role);
+  const hasRole = (role: AppRole) => {
+    if (viewAsRole !== null) return role === viewAsRole;
+    return roles.includes(role);
+  };
 
   return (
-    <AuthContext.Provider value={{ user, session, roles, loading, approvalStatus, approvalReason, signIn, signInWithGoogle, signOut, hasRole }}>
+    <AuthContext.Provider value={{ user, session, roles, loading, approvalStatus, approvalReason, signIn, signInWithGoogle, signOut, hasRole, viewAsRole, setViewAsRole }}>
       {children}
     </AuthContext.Provider>
   );
