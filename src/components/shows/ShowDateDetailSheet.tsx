@@ -114,21 +114,6 @@ export function ShowDateDetailSheet({ showDateId, open, onOpenChange }: Props) {
 
   const { data: eligibility } = useEligibleArtists(showId, showDateId, cityId);
 
-  const { data: availableArtists } = useQuery({
-    queryKey: ['availability', 'available', showDateId],
-    enabled: !!showDate?.date && canManage,
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from('artists')
-        .select('*, availability!inner(status)')
-        .eq('status', 'active')
-        .eq('availability.date', showDate!.date)
-        .eq('availability.status', 'available');
-      if (error) throw error;
-      return (data ?? []) as Artist[];
-    },
-  });
-
   const activeBookings = useMemo(
     () => (bookingsForDate ?? []).filter(b => b.status !== 'cancelled'),
     [bookingsForDate]
@@ -140,13 +125,6 @@ export function ShowDateDetailSheet({ showDateId, open, onOpenChange }: Props) {
     () => new Set(activeBookings.map(b => b.artist_id)),
     [activeBookings]
   );
-
-  const filteredAvailable = useMemo(() => {
-    if (!availableArtists) return [];
-    const notBooked = availableArtists.filter(a => !bookedArtistIds.has(a.id));
-    if (!eligibility?.artistIds) return notBooked;
-    return notBooked.filter(a => eligibility.artistIds!.has(a.id));
-  }, [availableArtists, bookedArtistIds, eligibility]);
 
   const overrideCastIds = useMemo(
     () => new Set((dateCastOverrides ?? []).map(r => r.cast_id)),
@@ -176,7 +154,6 @@ export function ShowDateDetailSheet({ showDateId, open, onOpenChange }: Props) {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['bookings'] });
-      queryClient.invalidateQueries({ queryKey: ['availability'] });
       queryClient.invalidateQueries({ queryKey: ['show-date-detail', showDateId] });
       toast.success('City updated');
     },
@@ -220,7 +197,6 @@ export function ShowDateDetailSheet({ showDateId, open, onOpenChange }: Props) {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['bookings'] });
-      queryClient.invalidateQueries({ queryKey: ['availability'] });
       toast.success('Artist booked');
     },
     onError: (err: any) => toast.error(err.message),
@@ -495,56 +471,6 @@ export function ShowDateDetailSheet({ showDateId, open, onOpenChange }: Props) {
                   )}
                 </CardContent>
               </Card>
-
-              {/* Available Artists (producer/admin only) */}
-              {canManage && (
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="font-display text-lg">Available Artists</CardTitle>
-                    {eligibility?.artistIds && (
-                      <p className="text-xs text-muted-foreground">
-                        Filtered by eligible casts ({eligibility.castIds.length} cast{eligibility.castIds.length === 1 ? '' : 's'})
-                      </p>
-                    )}
-                  </CardHeader>
-                  <CardContent>
-                    {filteredAvailable.length > 0 ? (
-                      <div className="space-y-2">
-                        {filteredAvailable.map(a => (
-                          <div key={a.id} className="flex items-center justify-between p-3 rounded-lg border border-border">
-                            <div>
-                              <p className="font-medium text-sm">{a.name}</p>
-                              <p className="text-xs text-muted-foreground">
-                                Priority: {(a as any).priority_score ?? '—'}
-                              </p>
-                            </div>
-                            <div className="flex gap-2">
-                              <Button size="sm" onClick={() => createBooking.mutate({ artistId: a.id })}>
-                                Book
-                              </Button>
-                              <Button
-                                size="sm"
-                                variant="outline"
-                                onClick={() => createBooking.mutate({ artistId: a.id, isUnderstudy: true })}
-                              >
-                                Understudy
-                              </Button>
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    ) : eligibility?.artistIds && eligibility.artistIds.size === 0 ? (
-                      <p className="text-sm text-muted-foreground">
-                        No artists in the eligible casts. Add members to the casts or relax eligibility.
-                      </p>
-                    ) : (
-                      <p className="text-sm text-muted-foreground">
-                        No available artists for this date. Artists need to mark their availability first.
-                      </p>
-                    )}
-                  </CardContent>
-                </Card>
-              )}
 
               {/* Chat */}
               <ChatPanel showDateId={showDate.id} showDate={showDate.date} />

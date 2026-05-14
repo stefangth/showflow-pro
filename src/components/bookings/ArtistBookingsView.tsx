@@ -19,25 +19,18 @@ import { pageColumnDefs } from '@/features/editor/columnRegistries';
 import { ColumnLayoutEditor } from '@/features/editor/ColumnLayoutEditor';
 
 type BookingLite = { show_date_id: string; status: string; is_understudy: boolean };
-type AvailLite = { date: string; status: 'available' | 'unavailable' | 'tentative' };
 
 const STATUS_LABEL: Record<string, string> = {
   confirmed: 'Confirmed',
   soft_booked: 'Soft booked',
-  suggested: 'Suggested',
-  unavailable: 'Not available',
-  tentative: 'Tentative',
-  available: 'Available',
-  unanswered: 'Unanswered',
+  suggested: 'Offer pending',
+  unanswered: 'No offer yet',
 };
 
 const STATUS_STYLE: Record<string, string> = {
   confirmed: 'bg-success/10 text-success',
   soft_booked: 'bg-warning/10 text-warning',
   suggested: 'bg-info/10 text-info',
-  unavailable: 'bg-destructive/10 text-destructive',
-  tentative: 'bg-warning/10 text-warning',
-  available: 'bg-success/10 text-success',
   unanswered: 'bg-muted text-muted-foreground',
 };
 
@@ -67,37 +60,15 @@ export function ArtistBookingsView() {
     },
   });
 
-  const { data: myAvailability } = useQuery({
-    queryKey: ['availability', 'artist-all', artist?.id],
-    enabled: !!artist?.id,
-    queryFn: async () => {
-      const { data } = await supabase
-        .from('availability')
-        .select('date, status')
-        .eq('artist_id', artist!.id);
-      return (data ?? []) as AvailLite[];
-    },
-  });
-
   const bookingByDateId = useMemo(() => {
     const m = new Map<string, BookingLite>();
     myBookings?.forEach((b) => m.set(b.show_date_id, b));
     return m;
   }, [myBookings]);
 
-  const availByDate = useMemo(() => {
-    const m = new Map<string, AvailLite['status']>();
-    myAvailability?.forEach((a) => m.set(a.date, a.status));
-    return m;
-  }, [myAvailability]);
-
-  /** Per-date status: booking takes precedence, then availability, else unanswered. */
   const statusFor = (d: EligibleDate): string => {
     const b = bookingByDateId.get(d.id);
-    if (b) return b.status;
-    const a = availByDate.get(d.date);
-    if (a) return a;
-    return 'unanswered';
+    return b ? b.status : 'unanswered';
   };
 
   const filtered = useMemo(() => {

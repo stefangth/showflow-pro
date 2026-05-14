@@ -13,7 +13,6 @@ import { toDateKey } from '@/lib/dates';
 import { AvailabilityPicker } from './AvailabilityPicker';
 import type { EligibleDate } from '@/hooks/useArtistEligibleDates';
 
-type AvailRow = { date: string; status: 'available' | 'unavailable' | 'tentative' };
 type BookingRow = { show_date_id: string; status: string; show_date: { date: string } };
 
 interface Props {
@@ -23,14 +22,13 @@ interface Props {
 
 /**
  * Month-grid calendar:
- *  - Bold blue outline → eligible date (producer has offered this date)
+ *  - Bold blue outline → eligible date
  *  - Green shade       → Confirmed booking ("Booked" label)
  *  - Primary blue fill → Soft-booked / hold placed ("Hold" label)
- *  - Info blue fill    → Artist marked Available
- *  - Yellow shade      → Tentative
- *  - Red shade         → Artist marked Not available
- *  - No shade          → Unanswered / suggested (eligible border only)
- * Tapping a cell opens a small popover with the AvailabilityPicker.
+ *  - Yellow shade      → Suggested offer pending ("Offer" label)
+ *  - Red shade         → Blocked date
+ *  - No shade          → Eligible, no offer yet
+ * Tapping a cell opens a popover with a blocked-date toggle.
  */
 export function ArtistAvailabilityCalendar({ artistId, eligibleDates }: Props) {
   const [currentMonth, setCurrentMonth] = useState<Date>(startOfMonth(new Date()));
@@ -39,21 +37,10 @@ export function ArtistAvailabilityCalendar({ artistId, eligibleDates }: Props) {
   const monthEnd = endOfMonth(currentMonth);
   const days = eachDayOfInterval({ start: monthStart, end: monthEnd });
 
-  const { data: availability } = useQuery({
-    queryKey: ['availability', 'artist', artistId, format(currentMonth, 'yyyy-MM')],
-    queryFn: async () => {
-      const { data } = await supabase
-        .from('availability')
-        .select('date, status')
-        .eq('artist_id', artistId)
-        .gte('date', toDateKey(monthStart))
-        .lte('date', toDateKey(monthEnd));
-      return (data ?? []) as AvailRow[];
-    },
-  });
+  const monthStartKey = toDateKey(monthStart);
+  const monthEndKey = toDateKey(monthEnd);
 
-  // Fetch all non-cancelled bookings for this artist (no server-side date filter —
-  // filtering on aliased join columns is unreliable in PostgREST; we slice by month in JS).
+  // Fetch all non-cancelled bookings for this artist
   const { data: bookings } = useQuery({
     queryKey: ['bookings', 'artist', artistId],
     queryFn: async () => {
@@ -66,19 +53,29 @@ export function ArtistAvailabilityCalendar({ artistId, eligibleDates }: Props) {
     },
   });
 
+  const { data: blockedDates } = useQuery({
+    queryKey: ['blocked-dates', artistId, format(currentMonth, 'yyyy-MM')],
+    queryFn: async () => {
+      const { data } = await (supabase as any)
+        .from('blocked_dates')
+        .select('date')
+        .eq('artist_id', artistId)
+        .gte('date', monthStartKey)
+        .lte('date', monthEndKey);
+      return (data ?? []) as { date: string }[];
+    },
+  });
+
   const eligibleSet = useMemo(
     () => new Set(eligibleDates.map((d) => d.date)),
     [eligibleDates]
   );
 
-  const availMap = useMemo(() => {
-    const m: Record<string, AvailRow['status']> = {};
-    availability?.forEach((a) => (m[a.date] = a.status));
-    return m;
-  }, [availability]);
-
-  const monthStartKey = toDateKey(monthStart);
-  const monthEndKey = toDateKey(monthEnd);
+  const blockedSet = useMemo(() => {
+    const s = new Set<string>();
+    blockedDates?.forEach((b) => s.add(b.date));
+    return s;
+  }, [blockedDates]);
 
   const confirmedSet = useMemo(() => {
     const s = new Set<string>();
@@ -98,6 +95,14 @@ export function ArtistAvailabilityCalendar({ artistId, eligibleDates }: Props) {
     return s;
   }, [bookings, monthStartKey, monthEndKey]);
 
+  const suggestedSet = useMemo(() => {
+    const s = new Set<string>();
+    bookings?.forEach((b) => {
+      const d = b.show_date?.date;
+      if (b.status === 'suggested' && d && d >= monthStartKey && d <= monthEndKey) s.add(d);
+    });
+    return s;
+  }, [bookings, monthStartKey, monthEndKey]);
 
   return (
     <Card>
@@ -137,22 +142,19 @@ export function ArtistAvailabilityCalendar({ artistId, eligibleDates }: Props) {
           {days.map((day) => {
             const dateStr = toDateKey(day);
             const isEligible = eligibleSet.has(dateStr);
-            const status = availMap[dateStr];
             const isConfirmed = confirmedSet.has(dateStr);
             const isSoftBooked = !isConfirmed && softBookedSet.has(dateStr);
+            const isSuggested = !isConfirmed && !isSoftBooked && suggestedSet.has(dateStr);
+            const isBlocked = blockedSet.has(dateStr);
 
-            // Color priority: confirmed > soft_booked > unavailable > tentative > available > none
-            // suggested has no special fill — the eligible border is sufficient
             const shade = isConfirmed
               ? 'bg-success/30 text-success-foreground'
               : isSoftBooked
               ? 'bg-primary/20 text-primary'
-              : status === 'unavailable'
+              : isSuggested
+              ? 'bg-warning/20 text-warning'
+              : isBlocked
               ? 'bg-destructive/25 text-destructive'
-              : status === 'tentative'
-              ? 'bg-warning/25 text-warning'
-              : status === 'available'
-              ? 'bg-info/20'
               : '';
 
             const cell = (
@@ -166,7 +168,7 @@ export function ArtistAvailabilityCalendar({ artistId, eligibleDates }: Props) {
                   isToday(day) && 'ring-2 ring-primary ring-offset-1',
                   isEligible
                     ? 'hover:opacity-90 cursor-pointer'
-                    : status
+                    : isBlocked
                     ? 'opacity-60 cursor-default'
                     : 'opacity-50 cursor-default'
                 )}
@@ -182,10 +184,19 @@ export function ArtistAvailabilityCalendar({ artistId, eligibleDates }: Props) {
                     Hold
                   </span>
                 )}
+                {isSuggested && (
+                  <span className="block text-[9px] mt-0.5 font-semibold uppercase tracking-wide">
+                    Offer
+                  </span>
+                )}
+                {isBlocked && !isConfirmed && !isSoftBooked && !isSuggested && (
+                  <span className="block text-[9px] mt-0.5 font-semibold uppercase tracking-wide">
+                    Blocked
+                  </span>
+                )}
               </button>
             );
 
-            // Only currently-offered (eligible) dates are interactive.
             if (!isEligible) {
               return <div key={dateStr}>{cell}</div>;
             }
@@ -193,7 +204,7 @@ export function ArtistAvailabilityCalendar({ artistId, eligibleDates }: Props) {
             return (
               <Popover key={dateStr}>
                 <PopoverTrigger asChild>{cell}</PopoverTrigger>
-                <PopoverContent className="w-56 p-3" align="center">
+                <PopoverContent className="w-52 p-3" align="center">
                   <p className="text-xs text-muted-foreground mb-2">
                     {format(day, 'EEE, dd/MM/yyyy')}
                   </p>
@@ -216,16 +227,16 @@ export function ArtistAvailabilityCalendar({ artistId, eligibleDates }: Props) {
             <span className="text-xs">Confirmed</span>
           </div>
           <div className="flex items-center gap-1.5">
-            <div className="h-3 w-3 rounded bg-info/20" />
-            <span className="text-xs">Available</span>
+            <div className="h-3 w-3 rounded bg-primary/20" />
+            <span className="text-xs">Hold</span>
           </div>
           <div className="flex items-center gap-1.5">
-            <div className="h-3 w-3 rounded bg-warning/25" />
-            <span className="text-xs">Tentative</span>
+            <div className="h-3 w-3 rounded bg-warning/20" />
+            <span className="text-xs">Offer pending</span>
           </div>
           <div className="flex items-center gap-1.5">
             <div className="h-3 w-3 rounded bg-destructive/25" />
-            <span className="text-xs">Not available</span>
+            <span className="text-xs">Blocked</span>
           </div>
         </div>
       </CardContent>
