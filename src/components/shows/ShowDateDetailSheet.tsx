@@ -46,7 +46,7 @@ export function ShowDateDetailSheet({ showDateId, open, onOpenChange }: Props) {
       const { data, error } = await supabase
         .from('show_dates')
         .select(`
-          id, date, start_time, end_time, venue, status, notes, city_id, show_id,
+          id, date, session_1, session_2, session_3, venue, status, notes, city_id, show_id,
           show:shows(id, program, sub_program),
           city:cities(id, name)
         `)
@@ -268,11 +268,13 @@ export function ShowDateDetailSheet({ showDateId, open, onOpenChange }: Props) {
                   {format(new Date(showDate.date + 'T00:00:00'), 'EEEE, d MMMM yyyy')}
                 </p>
                 <div className="flex flex-wrap gap-3 text-sm text-muted-foreground">
-                  {showDate.start_time && (
+                  {(showDate.session_1 || showDate.session_2 || showDate.session_3) && (
                     <span className="flex items-center gap-1">
                       <Clock className="h-3.5 w-3.5" />
-                      {showDate.start_time.slice(0, 5)}
-                      {showDate.end_time && ` – ${showDate.end_time.slice(0, 5)}`}
+                      {[showDate.session_1, showDate.session_2, showDate.session_3]
+                        .filter(Boolean)
+                        .map((t: string) => t.slice(0, 5))
+                        .join(' / ')}
                     </span>
                   )}
                   {venue && (

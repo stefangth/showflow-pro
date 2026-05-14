@@ -6,8 +6,9 @@ import { toDateKey } from '@/lib/dates';
 export type EligibleDate = {
   id: string;                 // show_date.id
   date: string;               // YYYY-MM-DD
-  start_time: string | null;
-  end_time: string | null;
+  session_1: string;
+  session_2: string | null;
+  session_3: string | null;
   status: string;
   city_id: string | null;
   show_id: string;
@@ -62,7 +63,7 @@ export function useArtistEligibleDates() {
       const { data: dates, error } = await supabase
         .from('show_dates')
         .select(
-          'id, date, start_time, end_time, status, city_id, show_id, venue, show:shows(id, program, sub_program, status)'
+          'id, date, session_1, session_2, session_3, status, city_id, show_id, venue, show:shows(id, program, sub_program, status)'
         )
         .gte('date', today)
         .neq('status', 'cancelled')
