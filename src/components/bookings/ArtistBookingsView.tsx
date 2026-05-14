@@ -15,7 +15,7 @@ import { useMyArtist } from '@/hooks/useMyArtist';
 import { formatDateDMY, parseDateOnly } from '@/lib/dates';
 import { showLabel } from '@/types';
 import { useColumnTemplate } from '@/features/editor/EditorContext';
-import { COLUMN_REGISTRIES } from '@/features/editor/columnRegistries';
+import { pageColumnDefs } from '@/features/editor/columnRegistries';
 
 type BookingLite = { show_date_id: string; status: string; is_understudy: boolean };
 type AvailLite = { date: string; status: 'available' | 'unavailable' | 'tentative' };
@@ -47,7 +47,7 @@ export function ArtistBookingsView() {
   const { data: artist } = useMyArtist();
   const { data: eligibleDates, isLoading } = useArtistEligibleDates();
   const { orderedColumns, visibleCount } = useColumnTemplate('bookings-artist');
-  const colDefs = COLUMN_REGISTRIES['bookings-artist'];
+  const colDefs = pageColumnDefs('bookings-artist');
   const [timeframe, setTimeframe] = useState<TimeframeValue>({ from: null, to: null });
   const [sort, setSort] = useState<SortValue>('chrono_asc');
   const [view, setView] = useState<ViewMode>('list');
@@ -147,11 +147,14 @@ export function ArtistBookingsView() {
                 <TableRow>
                   {orderedColumns
                     .filter(c => c.visible)
-                    .map(c => (
-                      <TableHead key={c.columnId}>
-                        {colDefs.find(d => d.id === c.columnId)?.label ?? c.columnId}
-                      </TableHead>
-                    ))}
+                    .map(c => {
+                      const def = colDefs.find(d => d.id === c.columnId);
+                      return (
+                        <TableHead key={c.columnId} className="font-mono text-xs">
+                          {def?.column ?? c.columnId}
+                        </TableHead>
+                      );
+                    })}
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -159,30 +162,40 @@ export function ArtistBookingsView() {
                   const status = statusFor(d);
                   const cellFor = (colId: string) => {
                     switch (colId) {
-                      case 'date': return (
-                        <TableCell key="date" className="font-medium whitespace-nowrap">
+                      case 'show_dates.date': return (
+                        <TableCell key={colId} className="font-medium whitespace-nowrap">
                           {formatDateDMY(d.date)}
                         </TableCell>
                       );
-                      case 'show': return <TableCell key="show">{showLabel(d.show)}</TableCell>;
-                      case 'venue': return (
-                        <TableCell key="venue">
+                      case 'shows.program': return <TableCell key={colId}>{showLabel(d.show)}</TableCell>;
+                      case 'shows.sub_program': return (
+                        <TableCell key={colId}>{d.show?.sub_program ?? <span className="text-muted-foreground">—</span>}</TableCell>
+                      );
+                      case 'show_dates.venue': return (
+                        <TableCell key={colId}>
                           {d.venue || <span className="text-muted-foreground">—</span>}
                         </TableCell>
                       );
-                      case 'time': return (
-                        <TableCell key="time" className="whitespace-nowrap">
+                      case 'show_dates.start_time': return (
+                        <TableCell key={colId} className="whitespace-nowrap">
                           {d.start_time ? d.start_time.slice(0, 5) : '—'}
                         </TableCell>
                       );
-                      case 'status': return (
-                        <TableCell key="status">
+                      case 'show_dates.end_time': return (
+                        <TableCell key={colId} className="whitespace-nowrap">
+                          {d.end_time ? d.end_time.slice(0, 5) : '—'}
+                        </TableCell>
+                      );
+                      case '_computed.my_status': return (
+                        <TableCell key={colId}>
                           <Badge variant="secondary" className={STATUS_STYLE[status] ?? ''}>
                             {STATUS_LABEL[status] ?? status}
                           </Badge>
                         </TableCell>
                       );
-                      default: return null;
+                      default: return (
+                        <TableCell key={colId} className="text-xs text-muted-foreground">—</TableCell>
+                      );
                     }
                   };
                   return (

@@ -23,7 +23,7 @@ import { AvailabilityPicker } from '@/components/availability/AvailabilityPicker
 import { formatDateDMY, parseDateOnly } from '@/lib/dates';
 import { showLabel } from '@/types';
 import { useColumnTemplate } from '@/features/editor/EditorContext';
-import { COLUMN_REGISTRIES } from '@/features/editor/columnRegistries';
+import { pageColumnDefs } from '@/features/editor/columnRegistries';
 
 export default function AvailabilityPage() {
   const { hasRole } = useAuth();
@@ -40,7 +40,7 @@ function ArtistAvailability() {
   const { data: artist } = useMyArtist();
   const { data: eligibleDates, isLoading } = useArtistEligibleDates();
   const { orderedColumns, visibleCount } = useColumnTemplate('availability');
-  const colDefs = COLUMN_REGISTRIES['availability'];
+  const colDefs = pageColumnDefs('availability');
   const [searchParams, setSearchParams] = useSearchParams();
 
   const [timeframe, setTimeframe] = useState<TimeframeValue>({ from: null, to: null });
@@ -142,39 +142,57 @@ function ArtistAvailability() {
                 <TableRow>
                   {orderedColumns
                     .filter(c => c.visible)
-                    .map(c => (
-                      <TableHead key={c.columnId} className={c.columnId === 'response' ? 'w-56' : undefined}>
-                        {colDefs.find(d => d.id === c.columnId)?.label ?? c.columnId}
-                      </TableHead>
-                    ))}
+                    .map(c => {
+                      const def = colDefs.find(d => d.id === c.columnId);
+                      return (
+                        <TableHead
+                          key={c.columnId}
+                          className={`font-mono text-xs ${c.columnId === 'availability.status' ? 'w-56' : ''}`}
+                        >
+                          {def?.column ?? c.columnId}
+                        </TableHead>
+                      );
+                    })}
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {filtered.map((d) => {
                   const cellFor = (colId: string) => {
                     switch (colId) {
-                      case 'date': return (
-                        <TableCell key="date" className="font-medium whitespace-nowrap">
+                      case 'show_dates.date': return (
+                        <TableCell key={colId} className="font-medium whitespace-nowrap">
                           {formatDateDMY(d.date)}
                         </TableCell>
                       );
-                      case 'show': return <TableCell key="show">{showLabel(d.show)}</TableCell>;
-                      case 'venue': return (
-                        <TableCell key="venue">
+                      case 'shows.program': return <TableCell key={colId}>{showLabel(d.show)}</TableCell>;
+                      case 'shows.sub_program': return (
+                        <TableCell key={colId}>
+                          {d.show?.sub_program ?? <span className="text-muted-foreground">—</span>}
+                        </TableCell>
+                      );
+                      case 'show_dates.venue': return (
+                        <TableCell key={colId}>
                           {d.venue || <span className="text-muted-foreground">—</span>}
                         </TableCell>
                       );
-                      case 'time': return (
-                        <TableCell key="time" className="whitespace-nowrap">
+                      case 'show_dates.start_time': return (
+                        <TableCell key={colId} className="whitespace-nowrap">
                           {d.start_time ? d.start_time.slice(0, 5) : '—'}
                         </TableCell>
                       );
-                      case 'response': return (
-                        <TableCell key="response">
+                      case 'show_dates.end_time': return (
+                        <TableCell key={colId} className="whitespace-nowrap">
+                          {d.end_time ? d.end_time.slice(0, 5) : '—'}
+                        </TableCell>
+                      );
+                      case 'availability.status': return (
+                        <TableCell key={colId}>
                           <AvailabilityPicker artistId={artist.id} date={d.date} size="sm" />
                         </TableCell>
                       );
-                      default: return null;
+                      default: return (
+                        <TableCell key={colId} className="text-xs text-muted-foreground">—</TableCell>
+                      );
                     }
                   };
                   return (

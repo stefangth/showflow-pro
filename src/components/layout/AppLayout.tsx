@@ -31,7 +31,7 @@ const navItems = [
 ];
 
 export default function AppLayout({ children }: AppLayoutProps) {
-  const { user, signOut, roles, hasRole, viewAsRole } = useAuth();
+  const { user, signOut, roles, hasRole, viewAsRole, viewAsUser } = useAuth();
   const { isEditorMode } = useEditorConfig();
   const navigate = useNavigate();
   const [collapsed, setCollapsed] = useState(false);
@@ -53,10 +53,12 @@ export default function AppLayout({ children }: AppLayoutProps) {
         return item.roles.some(r => hasRole(r as any));
       });
 
-  // Items the simulated role wouldn't normally see (for editor visual cue)
+  // Items the simulated role/user wouldn't normally see (for editor visual cue)
   const isHiddenForViewAs = (item: typeof navItems[0]) => {
-    if (!isEditorMode || viewAsRole === null) return false;
+    if (!isEditorMode) return false;
     if (!item.roles) return false;
+    if (viewAsUser) return !item.roles.some(r => viewAsUser.roles.includes(r as any));
+    if (viewAsRole === null) return false;
     return !item.roles.includes(viewAsRole);
   };
 
@@ -118,10 +120,18 @@ export default function AppLayout({ children }: AppLayoutProps) {
           <div className="px-3 mb-2">
             <p className="text-sm font-medium truncate">{user?.email}</p>
             <p className="text-xs text-muted-foreground capitalize">{roles.join(', ') || 'No role'}</p>
-            {viewAsRole && isEditorMode && (
+            {viewAsRole && isEditorMode && !viewAsUser && (
               <Badge variant="outline" className="mt-1 text-xs border-warning text-warning">
                 Viewing as: {viewAsRole}
               </Badge>
+            )}
+            {viewAsUser && isEditorMode && (
+              <div className="mt-1 space-y-0.5">
+                <Badge variant="outline" className="text-xs border-warning text-warning">
+                  Viewing as: {viewAsUser.roles.join(', ') || 'no role'}
+                </Badge>
+                <p className="text-[10px] font-mono text-warning truncate">{viewAsUser.email}</p>
+              </div>
             )}
           </div>
         )}
