@@ -11,7 +11,6 @@ import Index from "./pages/Index";
 import LoginPage from "./pages/LoginPage";
 import DashboardPage from "./pages/DashboardPage";
 import ShowsBookingsPage from "./pages/ShowsBookingsPage";
-import ShowDetailPage from "./pages/ShowDetailPage";
 import AvailabilityPage from "./pages/AvailabilityPage";
 import AdminPage from "./pages/AdminPage";
 import SettingsPage from "./pages/SettingsPage";
@@ -34,8 +33,6 @@ const App = () => (
             <Route path={ROUTES.LOGIN} element={<LoginPage />} />
             <Route path="/signup" element={<Navigate to={ROUTES.LOGIN} replace />} />
             <Route path={ROUTES.DASHBOARD} element={<ProtectedRoute><AppLayout><DashboardPage /></AppLayout></ProtectedRoute>} />
-            <Route path={ROUTES.SHOWS} element={<Navigate to={ROUTES.BOOKINGS} replace />} />
-            <Route path="/shows/:id" element={<ProtectedRoute><AppLayout><ShowDetailPage /></AppLayout></ProtectedRoute>} />
             <Route path={ROUTES.ARTISTS} element={<ProtectedRoute requiredRoles={['admin', 'producer']}><AppLayout><ArtistsPage /></AppLayout></ProtectedRoute>} />
             <Route path={ROUTES.BOOKINGS} element={<ProtectedRoute requiredRoles={['admin', 'producer']}><AppLayout><ShowsBookingsPage /></AppLayout></ProtectedRoute>} />
             <Route path={ROUTES.AVAILABILITY} element={<ProtectedRoute requiredRoles={['artist']}><AppLayout><AvailabilityPage /></AppLayout></ProtectedRoute>} />

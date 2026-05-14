@@ -6,7 +6,13 @@ export interface SubProgramSlotConfig {
   understudies: number;
 }
 
-export function useSubProgramSlots(): Record<string, SubProgramSlotConfig> {
+/**
+ * Nested slot defaults: { [program]: { [sub_program]: { main_cast, understudies } } }.
+ * Stored in app_settings.sub_program_slots_defaults.
+ */
+export type NestedSlotDefaults = Record<string, Record<string, SubProgramSlotConfig>>;
+
+export function useSubProgramSlots(): NestedSlotDefaults {
   const { data } = useQuery({
     queryKey: ['app-settings', 'sub_program_slots_defaults'],
     queryFn: async () => {
@@ -16,17 +22,18 @@ export function useSubProgramSlots(): Record<string, SubProgramSlotConfig> {
         .eq('key', 'sub_program_slots_defaults')
         .maybeSingle();
       if (error) throw error;
-      return (data?.value ?? {}) as Record<string, SubProgramSlotConfig>;
+      return (data?.value ?? {}) as NestedSlotDefaults;
     },
   });
   return data ?? {};
 }
 
-/** Returns null when the sub_program has no config — callers must handle this as "unconfigured". */
+/** Returns null when (program, sub_program) has no config — callers must handle this as "unconfigured". */
 export function effectiveSlots(
-  slotDefaults: Record<string, SubProgramSlotConfig>,
-  subProgram: string | null
+  slotDefaults: NestedSlotDefaults,
+  program: string | null | undefined,
+  subProgram: string | null | undefined,
 ): SubProgramSlotConfig | null {
-  if (subProgram && slotDefaults[subProgram] != null) return slotDefaults[subProgram];
-  return null;
+  if (!program || !subProgram) return null;
+  return slotDefaults?.[program]?.[subProgram] ?? null;
 }
