@@ -16,6 +16,7 @@ import { formatDateDMY, parseDateOnly } from '@/lib/dates';
 import { showLabel } from '@/types';
 import { useColumnTemplate } from '@/features/editor/EditorContext';
 import { pageColumnDefs } from '@/features/editor/columnRegistries';
+import { ColumnLayoutEditor } from '@/features/editor/ColumnLayoutEditor';
 
 type BookingLite = { show_date_id: string; status: string; is_understudy: boolean };
 type AvailLite = { date: string; status: 'available' | 'unavailable' | 'tentative' };
@@ -132,6 +133,8 @@ export function ArtistBookingsView() {
           <ViewToggle value={view} onChange={setView} />
         </div>
       </div>
+
+      <ColumnLayoutEditor pageKey="bookings-artist" />
 
       {isLoading ? (
         <div className="space-y-2">
