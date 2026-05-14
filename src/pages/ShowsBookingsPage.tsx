@@ -21,6 +21,8 @@ import { ArtistBookingsView } from '@/components/bookings/ArtistBookingsView';
 import { ShowDateDetailSheet } from '@/components/shows/ShowDateDetailSheet';
 import { useSubProgramSlots, effectiveSlots } from '@/hooks/useSubProgramSlots';
 import { showLabel } from '@/types';
+import { useColumnTemplate } from '@/features/editor/EditorContext';
+import { COLUMN_REGISTRIES } from '@/features/editor/columnRegistries';
 
 type ShowRef = {
   id: string;
@@ -68,6 +70,7 @@ const STATUS_STYLE: Record<DisplayStatus, string> = {
 
 export default function ShowsBookingsPage() {
   const { hasRole } = useAuth();
+  // hasRole respects viewAsRole simulation, so an admin viewing-as-artist gets ArtistBookingsView
   if (hasRole('artist') && !hasRole('producer') && !hasRole('admin')) {
     return <ArtistBookingsView />;
   }
@@ -76,6 +79,8 @@ export default function ShowsBookingsPage() {
 
 function ProducerShowsBookings() {
   const { canSee } = useFilterVisibility('bookings');
+  const { orderedColumns, visibleCount } = useColumnTemplate('bookings-producer');
+  const colDefs = COLUMN_REGISTRIES['bookings-producer'];
   const queryClient = useQueryClient();
   const [searchParams, setSearchParams] = useSearchParams();
 
@@ -251,60 +256,81 @@ function ProducerShowsBookings() {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Date</TableHead>
-                  <TableHead>Day</TableHead>
-                  <TableHead>Time</TableHead>
-                  <TableHead>Program</TableHead>
-                  <TableHead>Sub Program</TableHead>
-                  <TableHead>Venue</TableHead>
-                  <TableHead>City</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead>Slots</TableHead>
+                  {orderedColumns
+                    .filter(c => c.visible)
+                    .map(c => (
+                      <TableHead key={c.columnId}>
+                        {colDefs.find(d => d.id === c.columnId)?.label ?? c.columnId}
+                      </TableHead>
+                    ))}
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {filtered.map(sd => {
-                  const venue = sd.venue;
                   const slotConfig = effectiveSlots(slotDefaults, sd.show?.program, sd.show?.sub_program);
                   const status = displayStatus(sd);
                   const counts = bookingCounts?.get(sd.id);
                   const booked = counts?.total ?? 0;
                   const totalSlots = slotConfig ? slotConfig.main_cast + slotConfig.understudies : null;
+                  const cellFor = (colId: string) => {
+                    switch (colId) {
+                      case 'date': return (
+                        <TableCell key="date" className="font-medium whitespace-nowrap">
+                          {format(new Date(sd.date + 'T00:00:00'), 'dd MMM yyyy')}
+                        </TableCell>
+                      );
+                      case 'day': return (
+                        <TableCell key="day" className="text-muted-foreground">{dayAbbr(sd.date)}</TableCell>
+                      );
+                      case 'time': return (
+                        <TableCell key="time" className="whitespace-nowrap">
+                          {sd.start_time ? sd.start_time.slice(0, 5) : <span className="text-muted-foreground">—</span>}
+                        </TableCell>
+                      );
+                      case 'program': return (
+                        <TableCell key="program">{sd.show?.program || <span className="text-muted-foreground">—</span>}</TableCell>
+                      );
+                      case 'sub_program': return (
+                        <TableCell key="sub_program">{sd.show?.sub_program || <span className="text-muted-foreground">—</span>}</TableCell>
+                      );
+                      case 'venue': return (
+                        <TableCell key="venue">{sd.venue || <span className="text-muted-foreground">—</span>}</TableCell>
+                      );
+                      case 'city': return (
+                        <TableCell key="city">{sd.city?.name || <span className="text-muted-foreground">—</span>}</TableCell>
+                      );
+                      case 'status': return (
+                        <TableCell key="status">
+                          <Badge variant="secondary" className={STATUS_STYLE[status] ?? STATUS_STYLE.open}>
+                            {STATUS_LABEL[status] ?? status}
+                          </Badge>
+                        </TableCell>
+                      );
+                      case 'slots': return (
+                        <TableCell key="slots" className="whitespace-nowrap text-sm">
+                          {totalSlots !== null ? (
+                            <span className="text-muted-foreground">{booked}/{totalSlots}</span>
+                          ) : (
+                            <Badge variant="secondary" className="bg-destructive/10 text-destructive text-xs">Unconfigured</Badge>
+                          )}
+                        </TableCell>
+                      );
+                      default: return null;
+                    }
+                  };
                   return (
                     <TableRow
                       key={sd.id}
                       className="cursor-pointer"
                       onClick={() => setActiveShowDateId(sd.id)}
                     >
-                      <TableCell className="font-medium whitespace-nowrap">
-                        {format(new Date(sd.date + 'T00:00:00'), 'dd MMM yyyy')}
-                      </TableCell>
-                      <TableCell className="text-muted-foreground">{dayAbbr(sd.date)}</TableCell>
-                      <TableCell className="whitespace-nowrap">
-                        {sd.start_time ? sd.start_time.slice(0, 5) : <span className="text-muted-foreground">—</span>}
-                      </TableCell>
-                      <TableCell>{sd.show?.program || <span className="text-muted-foreground">—</span>}</TableCell>
-                      <TableCell>{sd.show?.sub_program || <span className="text-muted-foreground">—</span>}</TableCell>
-                      <TableCell>{venue || <span className="text-muted-foreground">—</span>}</TableCell>
-                      <TableCell>{sd.city?.name || <span className="text-muted-foreground">—</span>}</TableCell>
-                      <TableCell>
-                        <Badge variant="secondary" className={STATUS_STYLE[status] ?? STATUS_STYLE.open}>
-                          {STATUS_LABEL[status] ?? status}
-                        </Badge>
-                      </TableCell>
-                      <TableCell className="whitespace-nowrap text-sm">
-                        {totalSlots !== null ? (
-                          <span className="text-muted-foreground">{booked}/{totalSlots}</span>
-                        ) : (
-                          <Badge variant="secondary" className="bg-destructive/10 text-destructive text-xs">Unconfigured</Badge>
-                        )}
-                      </TableCell>
+                      {orderedColumns.filter(c => c.visible).map(c => cellFor(c.columnId))}
                     </TableRow>
                   );
                 })}
                 {filtered.length === 0 && (
                   <TableRow>
-                    <TableCell colSpan={9} className="text-center text-muted-foreground py-12">
+                    <TableCell colSpan={visibleCount || 9} className="text-center text-muted-foreground py-12">
                       No show dates match the current filters.
                     </TableCell>
                   </TableRow>

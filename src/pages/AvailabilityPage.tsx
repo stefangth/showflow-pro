@@ -22,6 +22,8 @@ import { ArtistAvailabilityCalendar } from '@/components/availability/ArtistAvai
 import { AvailabilityPicker } from '@/components/availability/AvailabilityPicker';
 import { formatDateDMY, parseDateOnly } from '@/lib/dates';
 import { showLabel } from '@/types';
+import { useColumnTemplate } from '@/features/editor/EditorContext';
+import { COLUMN_REGISTRIES } from '@/features/editor/columnRegistries';
 
 export default function AvailabilityPage() {
   const { hasRole } = useAuth();
@@ -37,6 +39,8 @@ export default function AvailabilityPage() {
 function ArtistAvailability() {
   const { data: artist } = useMyArtist();
   const { data: eligibleDates, isLoading } = useArtistEligibleDates();
+  const { orderedColumns, visibleCount } = useColumnTemplate('availability');
+  const colDefs = COLUMN_REGISTRIES['availability'];
   const [searchParams, setSearchParams] = useSearchParams();
 
   const [timeframe, setTimeframe] = useState<TimeframeValue>({ from: null, to: null });
@@ -136,34 +140,52 @@ function ArtistAvailability() {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Date</TableHead>
-                  <TableHead>Show</TableHead>
-                  <TableHead>Venue</TableHead>
-                  <TableHead>Time</TableHead>
-                  <TableHead className="w-56">My response</TableHead>
+                  {orderedColumns
+                    .filter(c => c.visible)
+                    .map(c => (
+                      <TableHead key={c.columnId} className={c.columnId === 'response' ? 'w-56' : undefined}>
+                        {colDefs.find(d => d.id === c.columnId)?.label ?? c.columnId}
+                      </TableHead>
+                    ))}
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {filtered.map((d) => (
-                  <TableRow key={d.id}>
-                    <TableCell className="font-medium whitespace-nowrap">
-                      {formatDateDMY(d.date)}
-                    </TableCell>
-                    <TableCell>{showLabel(d.show)}</TableCell>
-                    <TableCell>
-                      {d.venue || <span className="text-muted-foreground">—</span>}
-                    </TableCell>
-                    <TableCell className="whitespace-nowrap">
-                      {d.start_time ? d.start_time.slice(0, 5) : '—'}
-                    </TableCell>
-                    <TableCell>
-                      <AvailabilityPicker artistId={artist.id} date={d.date} size="sm" />
-                    </TableCell>
-                  </TableRow>
-                ))}
+                {filtered.map((d) => {
+                  const cellFor = (colId: string) => {
+                    switch (colId) {
+                      case 'date': return (
+                        <TableCell key="date" className="font-medium whitespace-nowrap">
+                          {formatDateDMY(d.date)}
+                        </TableCell>
+                      );
+                      case 'show': return <TableCell key="show">{showLabel(d.show)}</TableCell>;
+                      case 'venue': return (
+                        <TableCell key="venue">
+                          {d.venue || <span className="text-muted-foreground">—</span>}
+                        </TableCell>
+                      );
+                      case 'time': return (
+                        <TableCell key="time" className="whitespace-nowrap">
+                          {d.start_time ? d.start_time.slice(0, 5) : '—'}
+                        </TableCell>
+                      );
+                      case 'response': return (
+                        <TableCell key="response">
+                          <AvailabilityPicker artistId={artist.id} date={d.date} size="sm" />
+                        </TableCell>
+                      );
+                      default: return null;
+                    }
+                  };
+                  return (
+                    <TableRow key={d.id}>
+                      {orderedColumns.filter(c => c.visible).map(c => cellFor(c.columnId))}
+                    </TableRow>
+                  );
+                })}
                 {filtered.length === 0 && (
                   <TableRow>
-                    <TableCell colSpan={5} className="text-center text-muted-foreground py-12">
+                    <TableCell colSpan={visibleCount || 5} className="text-center text-muted-foreground py-12">
                       {filter === 'unanswered'
                         ? 'No unanswered offers — great work!'
                         : 'No eligible dates yet.'}
