@@ -22,7 +22,7 @@ import { ShowDateDetailSheet } from '@/components/shows/ShowDateDetailSheet';
 import { useSubProgramSlots, effectiveSlots } from '@/hooks/useSubProgramSlots';
 import { showLabel } from '@/types';
 import { useColumnTemplate } from '@/features/editor/EditorContext';
-import { COLUMN_REGISTRIES } from '@/features/editor/columnRegistries';
+import { pageColumnDefs } from '@/features/editor/columnRegistries';
 
 type ShowRef = {
   id: string;
@@ -80,7 +80,7 @@ export default function ShowsBookingsPage() {
 function ProducerShowsBookings() {
   const { canSee } = useFilterVisibility('bookings');
   const { orderedColumns, visibleCount } = useColumnTemplate('bookings-producer');
-  const colDefs = COLUMN_REGISTRIES['bookings-producer'];
+  const colDefs = pageColumnDefs('bookings-producer');
   const queryClient = useQueryClient();
   const [searchParams, setSearchParams] = useSearchParams();
 
@@ -258,11 +258,14 @@ function ProducerShowsBookings() {
                 <TableRow>
                   {orderedColumns
                     .filter(c => c.visible)
-                    .map(c => (
-                      <TableHead key={c.columnId}>
-                        {colDefs.find(d => d.id === c.columnId)?.label ?? c.columnId}
-                      </TableHead>
-                    ))}
+                    .map(c => {
+                      const def = colDefs.find(d => d.id === c.columnId);
+                      return (
+                        <TableHead key={c.columnId} className="font-mono text-xs">
+                          {def?.column ?? c.columnId}
+                        </TableHead>
+                      );
+                    })}
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -274,40 +277,57 @@ function ProducerShowsBookings() {
                   const totalSlots = slotConfig ? slotConfig.main_cast + slotConfig.understudies : null;
                   const cellFor = (colId: string) => {
                     switch (colId) {
-                      case 'date': return (
-                        <TableCell key="date" className="font-medium whitespace-nowrap">
+                      case 'show_dates.date': return (
+                        <TableCell key={colId} className="font-medium whitespace-nowrap">
                           {format(new Date(sd.date + 'T00:00:00'), 'dd MMM yyyy')}
                         </TableCell>
                       );
-                      case 'day': return (
-                        <TableCell key="day" className="text-muted-foreground">{dayAbbr(sd.date)}</TableCell>
+                      case '_computed.day': return (
+                        <TableCell key={colId} className="text-muted-foreground">{dayAbbr(sd.date)}</TableCell>
                       );
-                      case 'time': return (
-                        <TableCell key="time" className="whitespace-nowrap">
+                      case 'show_dates.start_time': return (
+                        <TableCell key={colId} className="whitespace-nowrap">
                           {sd.start_time ? sd.start_time.slice(0, 5) : <span className="text-muted-foreground">—</span>}
                         </TableCell>
                       );
-                      case 'program': return (
-                        <TableCell key="program">{sd.show?.program || <span className="text-muted-foreground">—</span>}</TableCell>
+                      case 'show_dates.end_time': return (
+                        <TableCell key={colId} className="whitespace-nowrap">
+                          {sd.end_time ? sd.end_time.slice(0, 5) : <span className="text-muted-foreground">—</span>}
+                        </TableCell>
                       );
-                      case 'sub_program': return (
-                        <TableCell key="sub_program">{sd.show?.sub_program || <span className="text-muted-foreground">—</span>}</TableCell>
+                      case 'shows.program': return (
+                        <TableCell key={colId}>{sd.show?.program || <span className="text-muted-foreground">—</span>}</TableCell>
                       );
-                      case 'venue': return (
-                        <TableCell key="venue">{sd.venue || <span className="text-muted-foreground">—</span>}</TableCell>
+                      case 'shows.sub_program': return (
+                        <TableCell key={colId}>{sd.show?.sub_program || <span className="text-muted-foreground">—</span>}</TableCell>
                       );
-                      case 'city': return (
-                        <TableCell key="city">{sd.city?.name || <span className="text-muted-foreground">—</span>}</TableCell>
+                      case 'show_dates.venue': return (
+                        <TableCell key={colId}>{sd.venue || <span className="text-muted-foreground">—</span>}</TableCell>
                       );
-                      case 'status': return (
-                        <TableCell key="status">
+                      case 'cities.name': return (
+                        <TableCell key={colId}>{sd.city?.name || <span className="text-muted-foreground">—</span>}</TableCell>
+                      );
+                      case 'show_dates.status': return (
+                        <TableCell key={colId}>
                           <Badge variant="secondary" className={STATUS_STYLE[status] ?? STATUS_STYLE.open}>
                             {STATUS_LABEL[status] ?? status}
                           </Badge>
                         </TableCell>
                       );
-                      case 'slots': return (
-                        <TableCell key="slots" className="whitespace-nowrap text-sm">
+                      case 'show_dates.notes': return (
+                        <TableCell key={colId} className="text-xs text-muted-foreground max-w-[200px] truncate">
+                          {sd.notes || '—'}
+                        </TableCell>
+                      );
+                      case 'shows.id':
+                      case 'show_dates.id':
+                      case 'show_dates.show_id': return (
+                        <TableCell key={colId} className="font-mono text-xs text-muted-foreground">
+                          {colId === 'shows.id' ? sd.show?.id : colId === 'show_dates.id' ? sd.id : sd.show_id}
+                        </TableCell>
+                      );
+                      case '_computed.slots': return (
+                        <TableCell key={colId} className="whitespace-nowrap text-sm">
                           {totalSlots !== null ? (
                             <span className="text-muted-foreground">{booked}/{totalSlots}</span>
                           ) : (
@@ -315,7 +335,9 @@ function ProducerShowsBookings() {
                           )}
                         </TableCell>
                       );
-                      default: return null;
+                      default: return (
+                        <TableCell key={colId} className="text-xs text-muted-foreground">—</TableCell>
+                      );
                     }
                   };
                   return (

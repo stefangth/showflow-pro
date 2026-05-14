@@ -26,6 +26,12 @@ const REALTIME_INVALIDATIONS: Array<{ table: string; keys: unknown[][] }> = [
 
 export type ApprovalStatus = 'pending' | 'approved' | 'rejected' | 'unknown';
 
+export interface ViewAsUser {
+  id: string;
+  email: string;
+  roles: AppRole[];
+}
+
 interface AuthContextType {
   user: User | null;
   session: Session | null;
@@ -40,6 +46,9 @@ interface AuthContextType {
   /** Set by EditorContext to simulate a different role in the UI. Never affects DB access. */
   viewAsRole: AppRole | null;
   setViewAsRole: (role: AppRole | null) => void;
+  /** Set by editor toolbar to simulate a different user identity in the UI. Never affects DB access. */
+  viewAsUser: ViewAsUser | null;
+  setViewAsUser: (u: ViewAsUser | null) => void;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -53,6 +62,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [approvalStatus, setApprovalStatus] = useState<ApprovalStatus>('unknown');
   const [approvalReason, setApprovalReason] = useState<string | null>(null);
   const [viewAsRole, setViewAsRole] = useState<AppRole | null>(null);
+  const [viewAsUser, setViewAsUserState] = useState<ViewAsUser | null>(null);
+
+  const setViewAsUser = (u: ViewAsUser | null) => {
+    setViewAsUserState(u);
+    if (u) setViewAsRole(null);
+  };
 
   /** Fetch user roles from user_roles table */
   const fetchRoles = async (userId: string) => {
@@ -94,6 +109,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           setApprovalStatus('unknown');
           setApprovalReason(null);
           setViewAsRole(null);
+          setViewAsUserState(null);
           localStorage.removeItem('showflow_editor_mode');
         }
         setLoading(false);
@@ -162,21 +178,30 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const signOut = async () => {
     setViewAsRole(null);
+    setViewAsUserState(null);
     localStorage.removeItem('showflow_editor_mode');
     const { error } = await supabase.auth.signOut();
     if (error) throw error;
   };
 
   const hasRole = (role: AppRole) => {
+    if (viewAsUser) return viewAsUser.roles.includes(role);
     if (viewAsRole !== null) return role === viewAsRole;
     return roles.includes(role);
   };
 
   return (
-    <AuthContext.Provider value={{ user, session, roles, loading, approvalStatus, approvalReason, signIn, signInWithGoogle, signOut, hasRole, viewAsRole, setViewAsRole }}>
+    <AuthContext.Provider value={{ user, session, roles, loading, approvalStatus, approvalReason, signIn, signInWithGoogle, signOut, hasRole, viewAsRole, setViewAsRole, viewAsUser, setViewAsUser }}>
       {children}
     </AuthContext.Provider>
   );
+}
+
+/** Returns the effective user id for identity-scoped queries (impersonation-aware). */
+export function useEffectiveUserId(): string | undefined {
+  const ctx = useContext(AuthContext);
+  if (!ctx) throw new Error('useEffectiveUserId must be used within AuthProvider');
+  return ctx.viewAsUser?.id ?? ctx.user?.id;
 }
 
 export function useAuth() {
