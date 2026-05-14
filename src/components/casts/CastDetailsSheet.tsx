@@ -18,9 +18,10 @@ interface Props {
   cast: Cast | null;
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  onArtistClick?: (artistId: string) => void;
 }
 
-export function CastDetailsSheet({ cast, open, onOpenChange }: Props) {
+export function CastDetailsSheet({ cast, open, onOpenChange, onArtistClick }: Props) {
   const { hasRole } = useAuth();
   const canManage = hasRole('admin') || hasRole('producer');
   const { toast } = useToast();
@@ -234,10 +235,15 @@ export function CastDetailsSheet({ cast, open, onOpenChange }: Props) {
               <div className="space-y-2">
                 {(members ?? []).map(m => (
                   <div key={m.id} className="flex items-center justify-between p-2 rounded-md border border-border">
-                    <div>
+                    <button
+                      type="button"
+                      onClick={() => onArtistClick?.(m.artist_id)}
+                      className="text-left flex-1 hover:underline disabled:cursor-default disabled:no-underline"
+                      disabled={!onArtistClick}
+                    >
                       <p className="text-sm font-medium">{m.artist.name}</p>
                       {m.role && <p className="text-xs text-muted-foreground">{m.role}</p>}
-                    </div>
+                    </button>
                     <Button size="icon" variant="ghost" onClick={() => removeMember.mutate(m.id)}>
                       <X className="h-4 w-4" />
                     </Button>

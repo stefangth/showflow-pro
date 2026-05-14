@@ -8,7 +8,11 @@ import { CastDetailsSheet } from './CastDetailsSheet';
 import { Users } from 'lucide-react';
 import type { Cast } from '@/types';
 
-export function CastsSection() {
+interface CastsSectionProps {
+  onArtistClick?: (artistId: string) => void;
+}
+
+export function CastsSection({ onArtistClick }: CastsSectionProps = {}) {
   const { hasRole } = useAuth();
   const canManage = hasRole('admin') || hasRole('producer');
   const [activeCast, setActiveCast] = useState<Cast | null>(null);
@@ -69,6 +73,7 @@ export function CastsSection() {
         cast={activeCast}
         open={!!activeCast}
         onOpenChange={(o) => { if (!o) setActiveCast(null); }}
+        onArtistClick={onArtistClick}
       />
     </Card>
   );
