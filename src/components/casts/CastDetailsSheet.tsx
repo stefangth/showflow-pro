@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/features/auth/AuthContext';
+import { useEditorConfig } from '@/features/editor/EditorContext';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from '@/components/ui/sheet';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Input } from '@/components/ui/input';
@@ -22,7 +23,9 @@ interface Props {
 }
 
 export function CastDetailsSheet({ cast, open, onOpenChange, onArtistClick }: Props) {
-  const { hasRole } = useAuth();
+  const { hasRole, roles } = useAuth();
+  const { isEditorMode } = useEditorConfig();
+  const isRealAdmin = roles.includes('admin');
   const canManage = hasRole('admin') || hasRole('producer');
   const { toast } = useToast();
   const qc = useQueryClient();
@@ -220,6 +223,11 @@ export function CastDetailsSheet({ cast, open, onOpenChange, onArtistClick }: Pr
                 </Button>
               )}
             </div>
+          )}
+          {isEditorMode && isRealAdmin && (
+            <Badge variant="outline" className="text-xs font-mono text-muted-foreground w-fit">
+              CastDetailsSheet.tsx
+            </Badge>
           )}
         </SheetHeader>
 
