@@ -14,7 +14,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import type { AppRole } from '@/config/app.config';
 import { ROUTES } from '@/config/app.config';
 import { useEditor } from './EditorContext';
-import { COLUMN_REGISTRIES, resolveColumnTemplate } from './columnRegistries';
+import { pageColumnDefs, resolveColumnTemplate } from './columnRegistries';
 import {
   DEFAULT_PAGE_ACCESS,
   DEFAULT_TABLE_PERMISSIONS,
@@ -51,6 +51,7 @@ const TABLE_KEYS = Object.keys(DEFAULT_TABLE_PERMISSIONS);
 export function EditorSidePanel({ open, onOpenChange }: EditorSidePanelProps) {
   const location = useLocation();
   const { pageAccess, columnTemplates, tablePermissions, savePageAccess, saveColumnTemplate, saveTablePermission } = useEditor();
+  const effectivePageAccess = { ...DEFAULT_PAGE_ACCESS, ...pageAccess };
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
@@ -83,6 +84,7 @@ export function EditorSidePanel({ open, onOpenChange }: EditorSidePanelProps) {
             <LayoutTab
               columnTemplates={columnTemplates}
               currentRoute={location.pathname}
+              pageAccess={effectivePageAccess}
               onSave={saveColumnTemplate}
             />
           </TabsContent>
@@ -197,10 +199,12 @@ function AccessTab({
 function LayoutTab({
   columnTemplates,
   currentRoute,
+  pageAccess,
   onSave,
 }: {
   columnTemplates: Record<string, Partial<Record<AppRole, ColumnTemplate[]>>>;
   currentRoute: string;
+  pageAccess: PageAccessConfig;
   onSave: (pageKey: string, role: AppRole, columns: ColumnTemplate[]) => Promise<void>;
 }) {
   const pageKey = PAGE_KEYS[currentRoute];
@@ -225,13 +229,17 @@ function LayoutTab({
     );
   }
 
-  const defs = COLUMN_REGISTRIES[pageKey] ?? [];
+  const defs = pageColumnDefs(pageKey);
+  const roleHasAccess = (pageAccess[currentRoute] ?? []).includes(selectedRole);
+  const readOnly = !roleHasAccess;
 
   const toggle = (colId: string) => {
+    if (readOnly) return;
     setLocalCols(prev => prev.map(c => c.columnId === colId ? { ...c, visible: !c.visible } : c));
   };
 
   const move = (colId: string, dir: -1 | 1) => {
+    if (readOnly) return;
     setLocalCols(prev => {
       const sorted = [...prev].sort((a, b) => a.order - b.order);
       const idx = sorted.findIndex(c => c.columnId === colId);
@@ -252,6 +260,7 @@ function LayoutTab({
   };
 
   const handleSave = async () => {
+    if (readOnly) return;
     setSaving(true);
     try {
       await onSave(pageKey, selectedRole, localCols);
@@ -260,7 +269,16 @@ function LayoutTab({
     }
   };
 
+  // Group columns by table, preserving the per-table order from defs.
   const sorted = [...localCols].sort((a, b) => a.order - b.order);
+  const tableOrder: string[] = [];
+  const byTable = new Map<string, ColumnTemplate[]>();
+  for (const col of sorted) {
+    const def = defs.find(d => d.id === col.columnId);
+    const table = def?.table ?? 'unknown';
+    if (!byTable.has(table)) { byTable.set(table, []); tableOrder.push(table); }
+    byTable.get(table)!.push(col);
+  }
 
   return (
     <div className="flex flex-col h-full">
@@ -281,37 +299,66 @@ function LayoutTab({
       </div>
 
       <ScrollArea className="flex-1">
-        <div className="px-6 py-4 space-y-1">
-          <p className="text-xs text-muted-foreground mb-3">Drag to reorder or use arrows. Toggle visibility with the eye icon.</p>
-          {sorted.map((col, idx) => {
-            const def = defs.find(d => d.id === col.columnId);
+        <div className="px-6 py-4 space-y-3">
+          {readOnly && (
+            <Alert variant="destructive" className="border-warning/40 bg-warning/10 text-foreground">
+              <AlertDescription className="text-xs">
+                <span className="capitalize font-medium">{selectedRole}</span> has no access to{' '}
+                <code className="font-mono">{currentRoute}</code>. Grant access in the Access tab to
+                manage its column layout.
+              </AlertDescription>
+            </Alert>
+          )}
+          <p className="text-xs text-muted-foreground">
+            Columns are grouped by source table; names match the database schema. Toggle the eye to
+            show/hide; use arrows to reorder within the page.
+          </p>
+          {tableOrder.map(table => {
+            const cols = byTable.get(table)!;
             return (
-              <div key={col.columnId} className="flex items-center gap-2 rounded-md border border-border px-3 py-2 bg-card">
-                <div className="flex flex-col gap-0.5 shrink-0">
-                  <button
-                    onClick={() => move(col.columnId, -1)}
-                    disabled={idx === 0}
-                    className="disabled:opacity-30 hover:text-foreground text-muted-foreground"
-                  >
-                    <ArrowUp className="h-3 w-3" />
-                  </button>
-                  <button
-                    onClick={() => move(col.columnId, 1)}
-                    disabled={idx === sorted.length - 1}
-                    className="disabled:opacity-30 hover:text-foreground text-muted-foreground"
-                  >
-                    <ArrowDown className="h-3 w-3" />
-                  </button>
+              <div key={table} className="space-y-1">
+                <div className="flex items-center gap-2 pt-2 pb-1">
+                  <span className="text-xs font-mono font-medium text-muted-foreground">{table}</span>
+                  <div className="flex-1 h-px bg-border" />
+                  <Badge variant="outline" className="text-[10px] h-4 px-1.5">{cols.length}</Badge>
                 </div>
-                <span className={`flex-1 text-sm ${col.visible ? '' : 'text-muted-foreground line-through'}`}>
-                  {def?.label ?? col.columnId}
-                </span>
-                <button
-                  onClick={() => toggle(col.columnId)}
-                  className={`shrink-0 ${col.visible ? 'text-foreground' : 'text-muted-foreground'}`}
-                >
-                  {col.visible ? <Eye className="h-4 w-4" /> : <EyeOff className="h-4 w-4" />}
-                </button>
+                {cols.map(col => {
+                  const def = defs.find(d => d.id === col.columnId);
+                  const fullIdx = sorted.findIndex(s => s.columnId === col.columnId);
+                  return (
+                    <div
+                      key={col.columnId}
+                      className={`flex items-center gap-2 rounded-md border border-border px-3 py-2 bg-card ${readOnly ? 'opacity-60' : ''}`}
+                    >
+                      <div className="flex flex-col gap-0.5 shrink-0">
+                        <button
+                          onClick={() => move(col.columnId, -1)}
+                          disabled={readOnly || fullIdx === 0}
+                          className="disabled:opacity-30 hover:text-foreground text-muted-foreground"
+                        >
+                          <ArrowUp className="h-3 w-3" />
+                        </button>
+                        <button
+                          onClick={() => move(col.columnId, 1)}
+                          disabled={readOnly || fullIdx === sorted.length - 1}
+                          className="disabled:opacity-30 hover:text-foreground text-muted-foreground"
+                        >
+                          <ArrowDown className="h-3 w-3" />
+                        </button>
+                      </div>
+                      <span className={`flex-1 text-xs font-mono ${col.visible ? '' : 'text-muted-foreground line-through'}`}>
+                        {def?.column ?? col.columnId}
+                      </span>
+                      <button
+                        onClick={() => toggle(col.columnId)}
+                        disabled={readOnly}
+                        className={`shrink-0 ${col.visible ? 'text-foreground' : 'text-muted-foreground'} disabled:cursor-not-allowed`}
+                      >
+                        {col.visible ? <Eye className="h-4 w-4" /> : <EyeOff className="h-4 w-4" />}
+                      </button>
+                    </div>
+                  );
+                })}
               </div>
             );
           })}
@@ -323,9 +370,9 @@ function LayoutTab({
           <RotateCcw className="h-3.5 w-3.5" />
           Reset
         </Button>
-        <Button onClick={handleSave} disabled={saving} className="flex-1 gap-2">
+        <Button onClick={handleSave} disabled={saving || readOnly} className="flex-1 gap-2">
           <Save className="h-4 w-4" />
-          {saving ? 'Saving…' : `Save for ${selectedRole}`}
+          {saving ? 'Saving…' : readOnly ? 'No access' : `Save for ${selectedRole}`}
         </Button>
       </div>
     </div>
