@@ -6,8 +6,7 @@ import type { AppRole } from '@/config/app.config';
 
 const REALTIME_INVALIDATIONS: Array<{ table: string; keys: unknown[][] }> = [
   { table: 'bookings',                   keys: [['bookings']] },
-  { table: 'availability',               keys: [['availability']] },
-  { table: 'show_dates',                 keys: [['show-dates'], ['dashboard-upcoming-dates'], ['availability', 'available']] },
+  { table: 'show_dates',                 keys: [['show-dates'], ['dashboard-upcoming-dates']] },
   { table: 'show_date_cast_eligibility', keys: [['show-date-cast-eligibility'], ['eligible-artists']] },
   { table: 'show_cast_eligibility',      keys: [['cast-eligibility'], ['eligible-artists']] },
   { table: 'cast_members',              keys: [['cast-members'], ['artist-casts'], ['my-cast-memberships'], ['cast-members-counts']] },
