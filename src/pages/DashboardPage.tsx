@@ -7,6 +7,7 @@ import { CalendarDays, TrendingUp, Clock } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { addDays, format } from 'date-fns';
 import { ArtistDashboard } from '@/components/dashboard/ArtistDashboard';
+import { useSubProgramSlots, effectiveSlots } from '@/hooks/useSubProgramSlots';
 
 const fadeUp = {
   initial: { opacity: 0, y: 20 },
@@ -31,17 +32,19 @@ function ProducerDashboard() {
   const in14 = format(addDays(today, 14), 'yyyy-MM-dd');
   const in30 = format(addDays(today, 30), 'yyyy-MM-dd');
 
+  const slotDefaults = useSubProgramSlots();
+
   const { data: upcomingDates } = useQuery({
     queryKey: ['dashboard-upcoming-dates', todayStr],
     queryFn: async () => {
       const { data, error } = await supabase
         .from('show_dates')
-        .select('id, date, show_id, show:shows(slots_per_date)')
+        .select('id, date, show_id, show:shows(program, sub_program)')
         .gte('date', todayStr)
         .neq('status', 'cancelled')
         .order('date', { ascending: true });
       if (error) throw error;
-      return (data ?? []) as unknown as (DateRow & { show: { slots_per_date: number } })[];
+      return (data ?? []) as unknown as (DateRow & { show: { program: string | null; sub_program: string | null } })[];
     },
   });
 
@@ -68,7 +71,12 @@ function ProducerDashboard() {
   const computeRange = (untilStr: string | null) => {
     const dates = (upcomingDates ?? []).filter(d => !untilStr || d.date <= untilStr);
     const total = dates.length;
-    const fullyConfirmed = dates.filter(d => (confirmedCountByDate.get(d.id) ?? 0) >= (d.show?.slots_per_date ?? 1)).length;
+    const fullyConfirmed = dates.filter(d => {
+      const cfg = effectiveSlots(slotDefaults, d.show?.program, d.show?.sub_program);
+      if (!cfg) return false; // unconfigured pairs cannot count as fully confirmed
+      const totalSlots = cfg.main_cast + cfg.understudies;
+      return (confirmedCountByDate.get(d.id) ?? 0) >= totalSlots;
+    }).length;
     const pct = total === 0 ? 0 : Math.round((fullyConfirmed / total) * 100);
     const showCount = new Set(dates.map(d => d.show_id)).size;
     return { total, pct, showCount };
@@ -85,7 +93,7 @@ function ProducerDashboard() {
       primary: `${all.total}`,
       primaryLabel: all.total === 1 ? 'live date' : 'live dates',
       pct: all.pct,
-      to: `/bookings?status=cast_pending&from=${todayStr}`,
+      to: `/bookings?status=partially_filled&from=${todayStr}`,
       accent: 'text-primary',
     },
     {
@@ -94,7 +102,7 @@ function ProducerDashboard() {
       primary: `${next14.pct}%`,
       primaryLabel: 'cast confirmed',
       sub: `${next14.showCount} show${next14.showCount === 1 ? '' : 's'}`,
-      to: `/bookings?status=cast_pending&from=${todayStr}&to=${in14}`,
+      to: `/bookings?status=partially_filled&from=${todayStr}&to=${in14}`,
       accent: 'text-info',
       pctMode: true,
     },
@@ -104,7 +112,7 @@ function ProducerDashboard() {
       primary: `${next30.pct}%`,
       primaryLabel: 'cast confirmed',
       sub: `${next30.showCount} show${next30.showCount === 1 ? '' : 's'}`,
-      to: `/bookings?status=cast_pending&from=${todayStr}&to=${in30}`,
+      to: `/bookings?status=partially_filled&from=${todayStr}&to=${in30}`,
       accent: 'text-success',
       pctMode: true,
     },
