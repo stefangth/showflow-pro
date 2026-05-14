@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/features/auth/AuthContext';
+import { useEditorConfig } from '@/features/editor/EditorContext';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from '@/components/ui/sheet';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -23,7 +24,9 @@ interface Props {
 const STATUS_OPTIONS: ArtistStatus[] = ['active', 'inactive', 'on_leave'];
 
 export function ArtistProfileSheet({ artistId, open, onOpenChange }: Props) {
-  const { hasRole } = useAuth();
+  const { hasRole, roles } = useAuth();
+  const { isEditorMode } = useEditorConfig();
+  const isRealAdmin = roles.includes('admin');
   const { toast } = useToast();
   const qc = useQueryClient();
   const canEdit = hasRole('admin') || hasRole('producer');
@@ -128,6 +131,11 @@ export function ArtistProfileSheet({ artistId, open, onOpenChange }: Props) {
           <SheetDescription>
             {canEdit ? 'Edit artist details and skills.' : 'View artist details.'}
           </SheetDescription>
+          {isEditorMode && isRealAdmin && (
+            <Badge variant="outline" className="text-xs font-mono text-muted-foreground w-fit">
+              ArtistProfileSheet.tsx
+            </Badge>
+          )}
         </SheetHeader>
 
         {isLoading || !artist ? (

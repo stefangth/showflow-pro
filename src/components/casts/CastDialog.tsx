@@ -2,15 +2,19 @@ import { useState } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/features/auth/AuthContext';
+import { useEditorConfig } from '@/features/editor/EditorContext';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
 import { Plus } from 'lucide-react';
 
 export function CastDialog() {
-  const { user } = useAuth();
+  const { user, roles } = useAuth();
+  const { isEditorMode } = useEditorConfig();
+  const isRealAdmin = roles.includes('admin');
   const { toast } = useToast();
   const qc = useQueryClient();
   const [open, setOpen] = useState(false);
@@ -42,7 +46,14 @@ export function CastDialog() {
         <Button size="sm" variant="outline"><Plus className="h-4 w-4 mr-1" />New Cast</Button>
       </DialogTrigger>
       <DialogContent>
-        <DialogHeader><DialogTitle className="font-display">New Cast</DialogTitle></DialogHeader>
+        <DialogHeader>
+          <DialogTitle className="font-display">New Cast</DialogTitle>
+          {isEditorMode && isRealAdmin && (
+            <Badge variant="outline" className="text-xs font-mono text-muted-foreground w-fit">
+              CastDialog.tsx
+            </Badge>
+          )}
+        </DialogHeader>
         <form
           onSubmit={(e) => { e.preventDefault(); if (name.trim()) create.mutate(); }}
           className="space-y-4"
