@@ -85,9 +85,9 @@ export function EditorProvider({ children }: { children: ReactNode }) {
     staleTime: 30_000,
   });
 
-  const pageAccess: PageAccessConfig = rawSettings?.pageAccess ?? {};
-  const columnTemplates: ColumnTemplates = rawSettings?.columnTemplates ?? {};
-  const tablePermissions: TablePermissions = rawSettings?.tablePermissions ?? {};
+  const pageAccess = useMemo<PageAccessConfig>(() => rawSettings?.pageAccess ?? {}, [rawSettings]);
+  const columnTemplates = useMemo<ColumnTemplates>(() => rawSettings?.columnTemplates ?? {}, [rawSettings]);
+  const tablePermissions = useMemo<TablePermissions>(() => rawSettings?.tablePermissions ?? {}, [rawSettings]);
 
   const upsertSetting = useCallback(async (key: string, value: unknown) => {
     const { error } = await supabase
