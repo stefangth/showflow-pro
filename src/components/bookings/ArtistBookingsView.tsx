@@ -162,7 +162,7 @@ export function ArtistBookingsView() {
                       </TableCell>
                       <TableCell>{showLabel(d.show)}</TableCell>
                       <TableCell>
-                        {d.show.venue || <span className="text-muted-foreground">—</span>}
+                        {d.venue || <span className="text-muted-foreground">—</span>}
                       </TableCell>
                       <TableCell className="whitespace-nowrap">
                         {d.start_time ? d.start_time.slice(0, 5) : '—'}
@@ -196,13 +196,13 @@ export function ArtistBookingsView() {
             return (
               <Card
                 className="hover:shadow-md transition-shadow cursor-pointer"
-                onClick={() => setActiveShowId(it.eligible.show_id)}
+                onClick={() => setActiveShowDateId(it.eligible.id)}
               >
                 <CardContent className="py-3 flex items-center justify-between gap-3">
                   <div className="min-w-0">
                     <p className="font-medium truncate">{showLabel(it.eligible.show)}</p>
                     <p className="text-xs text-muted-foreground truncate">
-                      {it.eligible.show.venue ?? ''}
+                      {it.eligible.venue ?? ''}
                       {it.eligible.start_time ? ` • ${it.eligible.start_time.slice(0, 5)}` : ''}
                     </p>
                   </div>

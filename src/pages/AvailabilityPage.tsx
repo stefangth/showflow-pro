@@ -151,7 +151,7 @@ function ArtistAvailability() {
                     </TableCell>
                     <TableCell>{showLabel(d.show)}</TableCell>
                     <TableCell>
-                      {d.show.venue || <span className="text-muted-foreground">—</span>}
+                      {d.venue || <span className="text-muted-foreground">—</span>}
                     </TableCell>
                     <TableCell className="whitespace-nowrap">
                       {d.start_time ? d.start_time.slice(0, 5) : '—'}

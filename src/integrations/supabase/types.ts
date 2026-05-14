@@ -71,6 +71,39 @@ export type Database = {
         }
         Relationships: []
       }
+      artist_skills: {
+        Row: {
+          artist_id: string
+          created_at: string
+          skill_id: string
+        }
+        Insert: {
+          artist_id: string
+          created_at?: string
+          skill_id: string
+        }
+        Update: {
+          artist_id?: string
+          created_at?: string
+          skill_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "artist_skills_artist_id_fkey"
+            columns: ["artist_id"]
+            isOneToOne: false
+            referencedRelation: "artists"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "artist_skills_skill_id_fkey"
+            columns: ["skill_id"]
+            isOneToOne: false
+            referencedRelation: "skills"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       artists: {
         Row: {
           bio: string | null
@@ -80,7 +113,6 @@ export type Database = {
           name: string
           phone: string | null
           priority_score: number
-          skills: string[] | null
           status: Database["public"]["Enums"]["artist_status"]
           updated_at: string
           user_id: string | null
@@ -93,7 +125,6 @@ export type Database = {
           name: string
           phone?: string | null
           priority_score?: number
-          skills?: string[] | null
           status?: Database["public"]["Enums"]["artist_status"]
           updated_at?: string
           user_id?: string | null
@@ -106,7 +137,6 @@ export type Database = {
           name?: string
           phone?: string | null
           priority_score?: number
-          skills?: string[] | null
           status?: Database["public"]["Enums"]["artist_status"]
           updated_at?: string
           user_id?: string | null
@@ -615,11 +645,10 @@ export type Database = {
           id: string
           notes: string | null
           show_id: string
-          slots_per_date: number | null
           start_time: string | null
           status: Database["public"]["Enums"]["show_date_status"]
           updated_at: string
-          venue_override: string | null
+          venue: string | null
         }
         Insert: {
           airtable_record_id?: string | null
@@ -630,11 +659,10 @@ export type Database = {
           id?: string
           notes?: string | null
           show_id: string
-          slots_per_date?: number | null
           start_time?: string | null
           status?: Database["public"]["Enums"]["show_date_status"]
           updated_at?: string
-          venue_override?: string | null
+          venue?: string | null
         }
         Update: {
           airtable_record_id?: string | null
@@ -645,11 +673,10 @@ export type Database = {
           id?: string
           notes?: string | null
           show_id?: string
-          slots_per_date?: number | null
           start_time?: string | null
           status?: Database["public"]["Enums"]["show_date_status"]
           updated_at?: string
-          venue_override?: string | null
+          venue?: string | null
         }
         Relationships: [
           {
@@ -675,11 +702,9 @@ export type Database = {
           id: string
           program: string | null
           required_skills: string[] | null
-          slots_per_date: number
           status: Database["public"]["Enums"]["show_status"]
           sub_program: string | null
           updated_at: string
-          venue: string | null
         }
         Insert: {
           created_at?: string
@@ -687,11 +712,9 @@ export type Database = {
           id?: string
           program?: string | null
           required_skills?: string[] | null
-          slots_per_date?: number
           status?: Database["public"]["Enums"]["show_status"]
           sub_program?: string | null
           updated_at?: string
-          venue?: string | null
         }
         Update: {
           created_at?: string
@@ -699,11 +722,27 @@ export type Database = {
           id?: string
           program?: string | null
           required_skills?: string[] | null
-          slots_per_date?: number
           status?: Database["public"]["Enums"]["show_status"]
           sub_program?: string | null
           updated_at?: string
-          venue?: string | null
+        }
+        Relationships: []
+      }
+      skills: {
+        Row: {
+          created_at: string
+          id: string
+          name: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          name: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          name?: string
         }
         Relationships: []
       }
@@ -802,6 +841,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      compute_show_date_status: {
+        Args: { p_show_date_id: string }
+        Returns: undefined
+      }
       decide_user_approval: {
         Args: {
           p_approval_id: string
