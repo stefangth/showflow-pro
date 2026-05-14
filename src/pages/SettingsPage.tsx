@@ -400,7 +400,7 @@ export default function SettingsPage() {
               <span className="h-2 w-2 rounded-full bg-destructive shrink-0" />
             )}
           </TabsTrigger>
-          {isAdmin && <TabsTrigger value="booking"><Wand2 className="h-4 w-4 mr-2" />Booking Engine</TabsTrigger>}
+          {(isAdmin || isProducer) && <TabsTrigger value="booking"><Wand2 className="h-4 w-4 mr-2" />Booking Engine</TabsTrigger>}
           {isAdmin && <TabsTrigger value="notifications"><Bell className="h-4 w-4 mr-2" />Notifications</TabsTrigger>}
           <TabsTrigger value="docs"><BookOpen className="h-4 w-4 mr-2" />Documentation</TabsTrigger>
         </TabsList>
