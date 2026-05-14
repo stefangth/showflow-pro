@@ -19,7 +19,7 @@ import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { toast } from 'sonner';
-import { Settings as SettingsIcon, Database, Bell, Wand2, Save, SlidersHorizontal, MapPin, Plus, Trash2, Clock, AlertTriangle, BookOpen } from 'lucide-react';
+import { Settings as SettingsIcon, Database, Bell, Wand2, Save, SlidersHorizontal, MapPin, Plus, Trash2, Clock, AlertTriangle, BookOpen, UserCog } from 'lucide-react';
 import type { City, Cast } from '@/types';
 import type { SubProgramSlotConfig, NestedSlotDefaults } from '@/hooks/useSubProgramSlots';
 
@@ -382,6 +382,90 @@ export default function SettingsPage() {
     onError: (e: any) => toast.error(e.message ?? 'Failed to remove'),
   });
 
+  // show_assignments — production ownership routing
+  type ShowAssignmentRow = { id: string; producer_user_id: string; program: string; sub_program: string | null; city_id: string | null };
+  type ProducerUser = { user_id: string; display_name: string | null };
+
+  const { data: showAssignments } = useQuery({
+    queryKey: ['show-assignments'],
+    enabled: canEnter,
+    queryFn: async () => {
+      const { data, error } = await (supabase as any)
+        .from('show_assignments')
+        .select('id, producer_user_id, program, sub_program, city_id')
+        .order('program').order('sub_program').order('created_at');
+      if (error) throw error;
+      return (data ?? []) as ShowAssignmentRow[];
+    },
+  });
+
+  const { data: producerUsers } = useQuery({
+    queryKey: ['producer-users'],
+    enabled: canEnter,
+    queryFn: async () => {
+      const { data: roleRows } = await supabase
+        .from('user_roles')
+        .select('user_id')
+        .in('role', ['producer', 'admin']);
+      const userIds = (roleRows ?? []).map((r: any) => r.user_id);
+      if (userIds.length === 0) return [] as ProducerUser[];
+      const { data: profileRows } = await supabase
+        .from('profiles')
+        .select('user_id, display_name')
+        .in('user_id', userIds);
+      return (profileRows ?? []) as ProducerUser[];
+    },
+  });
+
+  useEffect(() => {
+    if (!canEnter) return;
+    const channel = supabase
+      .channel('show_assignments_realtime')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'show_assignments' }, () => {
+        qc.invalidateQueries({ queryKey: ['show-assignments'] });
+      })
+      .subscribe();
+    return () => { void supabase.removeChannel(channel); };
+  }, [canEnter, qc]);
+
+  const [newAssignProgram, setNewAssignProgram] = useState('');
+  const [newAssignSubProgram, setNewAssignSubProgram] = useState('');
+  const [newAssignCityId, setNewAssignCityId] = useState('');
+  const [newAssignUserId, setNewAssignUserId] = useState('');
+
+  const addAssignment = useMutation({
+    mutationFn: async () => {
+      const { error } = await (supabase as any).from('show_assignments').insert({
+        producer_user_id: newAssignUserId,
+        program: newAssignProgram,
+        sub_program: newAssignSubProgram || null,
+        city_id: newAssignCityId || null,
+      });
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['show-assignments'] });
+      setNewAssignProgram('');
+      setNewAssignSubProgram('');
+      setNewAssignCityId('');
+      setNewAssignUserId('');
+      toast.success('Assignment added');
+    },
+    onError: (e: any) => toast.error(e.message ?? 'Failed to add assignment'),
+  });
+
+  const deleteAssignment = useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await (supabase as any).from('show_assignments').delete().eq('id', id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['show-assignments'] });
+      toast.success('Assignment removed');
+    },
+    onError: (e: any) => toast.error(e.message ?? 'Failed to remove'),
+  });
+
   const dirtyKeys = (settings ?? [])
     .filter(s => JSON.stringify(s.value) !== JSON.stringify(draft[s.key]))
     .map(s => s.key);
@@ -456,6 +540,7 @@ export default function SettingsPage() {
           {isAdmin && <TabsTrigger value="airtable"><Database className="h-4 w-4 mr-2" />Airtable Sync</TabsTrigger>}
           {isAdmin && <TabsTrigger value="filters"><SlidersHorizontal className="h-4 w-4 mr-2" />Filters</TabsTrigger>}
           <TabsTrigger value="casts-cities"><MapPin className="h-4 w-4 mr-2" />Casts & Cities</TabsTrigger>
+          {(isAdmin || isProducer) && <TabsTrigger value="production-ownership"><UserCog className="h-4 w-4 mr-2" />Production Ownership</TabsTrigger>}
           <TabsTrigger value="scheduling" className="gap-2">
             <Clock className="h-4 w-4" />
             Scheduling
@@ -625,6 +710,113 @@ export default function SettingsPage() {
                   <Plus className="h-4 w-4 mr-1" />Assign
                 </Button>
               </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="production-ownership" className="mt-4 space-y-6">
+          <Card>
+            <CardHeader>
+              <CardTitle className="font-display">Production Ownership</CardTitle>
+              <CardDescription>
+                Map producer users to show scopes for notification routing. The most-specific match wins:
+                (program + sub-program + city) beats (program + city) beats (program + sub-program) beats (program only).
+                Admins are always fallback recipients.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {/* Add assignment form */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3 items-end">
+                <div className="space-y-1">
+                  <Label className="text-xs">Producer</Label>
+                  <Select value={newAssignUserId} onValueChange={setNewAssignUserId}>
+                    <SelectTrigger><SelectValue placeholder="Select producer…" /></SelectTrigger>
+                    <SelectContent>
+                      {(producerUsers ?? []).map(u => (
+                        <SelectItem key={u.user_id} value={u.user_id}>
+                          {u.display_name ?? u.user_id.slice(0, 8)}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-1">
+                  <Label className="text-xs">Program</Label>
+                  <Select value={newAssignProgram} onValueChange={(v) => { setNewAssignProgram(v); setNewAssignSubProgram(''); }}>
+                    <SelectTrigger><SelectValue placeholder="Select program…" /></SelectTrigger>
+                    <SelectContent>
+                      {Array.from(new Set((showProgramSubProgramPairs ?? []).map(p => p.program))).sort().map(prog => (
+                        <SelectItem key={prog} value={prog}>{prog}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-1">
+                  <Label className="text-xs">Sub-program (optional)</Label>
+                  <Select value={newAssignSubProgram} onValueChange={setNewAssignSubProgram}>
+                    <SelectTrigger><SelectValue placeholder="Any sub-program" /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="">Any</SelectItem>
+                      {Array.from(new Set((showProgramSubProgramPairs ?? []).filter(p => p.program === newAssignProgram).map(p => p.sub_program))).sort().map(sp => (
+                        <SelectItem key={sp} value={sp}>{sp}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-1">
+                  <Label className="text-xs">City (optional)</Label>
+                  <Select value={newAssignCityId} onValueChange={setNewAssignCityId}>
+                    <SelectTrigger><SelectValue placeholder="Any city" /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="">Any</SelectItem>
+                      {(cities ?? []).map(c => (
+                        <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <Button
+                  size="sm"
+                  disabled={!newAssignUserId || !newAssignProgram || addAssignment.isPending}
+                  onClick={() => addAssignment.mutate()}
+                >
+                  <Plus className="h-4 w-4 mr-1" />Add
+                </Button>
+              </div>
+
+              {/* Existing assignments */}
+              {(showAssignments?.length ?? 0) === 0 ? (
+                <p className="text-sm text-muted-foreground pt-2">No assignments yet.</p>
+              ) : (
+                <div className="space-y-1.5 pt-2">
+                  {showAssignments!.map((a) => {
+                    const producer = producerUsers?.find(u => u.user_id === a.producer_user_id);
+                    const city = cities?.find(c => c.id === a.city_id);
+                    return (
+                      <div key={a.id} className="flex items-center gap-3 text-sm p-2 rounded-md border border-border">
+                        <span className="font-medium w-32 shrink-0 truncate">
+                          {producer?.display_name ?? a.producer_user_id.slice(0, 8)}
+                        </span>
+                        <span className="flex-1 text-muted-foreground">
+                          {a.program}
+                          {a.sub_program ? ` / ${a.sub_program}` : ''}
+                          {city ? ` — ${city.name}` : ''}
+                        </span>
+                        <Badge variant="outline" className="text-xs shrink-0">
+                          {a.sub_program && a.city_id ? 'Exact' : a.city_id ? 'City' : a.sub_program ? 'Sub' : 'Program'}
+                        </Badge>
+                        <button
+                          onClick={() => deleteAssignment.mutate(a.id)}
+                          className="p-0.5 rounded hover:bg-muted text-muted-foreground hover:text-destructive"
+                          aria-label="Remove assignment"
+                        >
+                          <Trash2 className="h-3.5 w-3.5" />
+                        </button>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
             </CardContent>
           </Card>
         </TabsContent>
