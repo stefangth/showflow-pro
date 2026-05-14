@@ -319,6 +319,69 @@ export default function SettingsPage() {
     },
   });
 
+  // cast_city_priority — available to admins and producers
+  type CastCityPriorityRow = { id: string; cast_id: string; city_id: string; priority: number };
+
+  const { data: castCityPriorities } = useQuery({
+    queryKey: ['cast-city-priority'],
+    enabled: canEnter,
+    queryFn: async () => {
+      const { data, error } = await (supabase as any)
+        .from('cast_city_priority')
+        .select('id, cast_id, city_id, priority')
+        .order('city_id')
+        .order('priority');
+      if (error) throw error;
+      return (data ?? []) as CastCityPriorityRow[];
+    },
+  });
+
+  useEffect(() => {
+    if (!canEnter) return;
+    const channel = supabase
+      .channel('cast_city_priority_realtime')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'cast_city_priority' }, () => {
+        qc.invalidateQueries({ queryKey: ['cast-city-priority'] });
+      })
+      .subscribe();
+    return () => { void supabase.removeChannel(channel); };
+  }, [canEnter, qc]);
+
+  const [newPriorityCityId, setNewPriorityCityId] = useState('');
+  const [newPriorityCastId, setNewPriorityCastId] = useState('');
+  const [newPriorityValue, setNewPriorityValue] = useState(1);
+
+  const addCastPriority = useMutation({
+    mutationFn: async () => {
+      const { error } = await (supabase as any).from('cast_city_priority').insert({
+        city_id: newPriorityCityId,
+        cast_id: newPriorityCastId,
+        priority: newPriorityValue,
+      });
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['cast-city-priority'] });
+      setNewPriorityCityId('');
+      setNewPriorityCastId('');
+      setNewPriorityValue(1);
+      toast.success('Priority assigned');
+    },
+    onError: (e: any) => toast.error(e.message ?? 'Failed to assign priority'),
+  });
+
+  const deleteCastPriority = useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await (supabase as any).from('cast_city_priority').delete().eq('id', id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['cast-city-priority'] });
+      toast.success('Assignment removed');
+    },
+    onError: (e: any) => toast.error(e.message ?? 'Failed to remove'),
+  });
+
   const dirtyKeys = (settings ?? [])
     .filter(s => JSON.stringify(s.value) !== JSON.stringify(draft[s.key]))
     .map(s => s.key);
@@ -463,6 +526,105 @@ export default function SettingsPage() {
                   ))}
                 </div>
               )}
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle className="font-display">Cast Priority by City</CardTitle>
+              <CardDescription>
+                Configure which cast is offered first (Tier 1), second (Tier 2), etc. for each city.
+                The offer engine follows this order when creating booking offers.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              {/* Existing assignments grouped by city */}
+              {(cities ?? []).map(city => {
+                const assignments = (castCityPriorities ?? [])
+                  .filter(r => r.city_id === city.id)
+                  .sort((a, b) => a.priority - b.priority);
+                if (assignments.length === 0) return null;
+                return (
+                  <div key={city.id}>
+                    <p className="text-sm font-medium mb-2">{city.name}</p>
+                    <div className="space-y-1.5">
+                      {assignments.map(a => {
+                        const cast = casts?.find(c => c.id === a.cast_id);
+                        return (
+                          <div key={a.id} className="flex items-center gap-3 p-2 rounded-md border border-border">
+                            <Badge variant="outline" className="text-xs w-16 justify-center shrink-0">
+                              Tier {a.priority}
+                            </Badge>
+                            <span className="text-sm flex-1">{cast?.name ?? '–'}</span>
+                            <button
+                              onClick={() => deleteCastPriority.mutate(a.id)}
+                              className="rounded hover:bg-muted p-0.5 text-muted-foreground hover:text-destructive"
+                              aria-label="Remove assignment"
+                            >
+                              <Trash2 className="h-3.5 w-3.5" />
+                            </button>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                );
+              })}
+              {(cities?.length ?? 0) === 0 && (
+                <p className="text-sm text-muted-foreground">Add cities above to configure priorities.</p>
+              )}
+
+              {/* Add assignment form */}
+              <div className="pt-4 border-t border-border space-y-3">
+                <p className="text-sm font-medium">Add assignment</p>
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                  <Select
+                    value={newPriorityCityId}
+                    onValueChange={v => { setNewPriorityCityId(v); setNewPriorityCastId(''); }}
+                  >
+                    <SelectTrigger><SelectValue placeholder="City…" /></SelectTrigger>
+                    <SelectContent>
+                      {(cities ?? []).map(c => (
+                        <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <Select
+                    value={newPriorityCastId}
+                    onValueChange={setNewPriorityCastId}
+                    disabled={!newPriorityCityId}
+                  >
+                    <SelectTrigger><SelectValue placeholder="Cast…" /></SelectTrigger>
+                    <SelectContent>
+                      {(casts ?? [])
+                        .filter(c =>
+                          !(castCityPriorities ?? []).some(
+                            p => p.city_id === newPriorityCityId && p.cast_id === c.id
+                          )
+                        )
+                        .map(c => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
+                  <Select
+                    value={String(newPriorityValue)}
+                    onValueChange={v => setNewPriorityValue(Number(v))}
+                  >
+                    <SelectTrigger><SelectValue placeholder="Tier…" /></SelectTrigger>
+                    <SelectContent>
+                      {[1, 2, 3, 4, 5].map(n => (
+                        <SelectItem key={n} value={String(n)}>Tier {n}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <Button
+                  size="sm"
+                  disabled={!newPriorityCityId || !newPriorityCastId || addCastPriority.isPending}
+                  onClick={() => addCastPriority.mutate()}
+                >
+                  <Plus className="h-4 w-4 mr-1" />Assign
+                </Button>
+              </div>
             </CardContent>
           </Card>
         </TabsContent>
