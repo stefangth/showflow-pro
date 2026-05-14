@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/features/auth/AuthContext';
 import { Card, CardContent } from '@/components/ui/card';
@@ -26,7 +26,6 @@ type ShowRef = {
   id: string;
   program: string | null;
   sub_program: string | null;
-  venue: string | null;
   required_skills: string[] | null;
   status: 'active' | 'archived' | 'draft';
 };
@@ -38,7 +37,7 @@ type ShowDateRow = {
   date: string;
   start_time: string | null;
   end_time: string | null;
-  venue_override: string | null;
+  venue: string | null;
   status: 'open' | 'partially_filled' | 'fully_filled' | 'cancelled';
   notes: string | null;
   city_id: string | null;
@@ -77,6 +76,7 @@ export default function ShowsBookingsPage() {
 
 function ProducerShowsBookings() {
   const { canSee } = useFilterVisibility('bookings');
+  const queryClient = useQueryClient();
   const [searchParams, setSearchParams] = useSearchParams();
 
   const [search, setSearch] = useState('');
@@ -101,14 +101,48 @@ function ProducerShowsBookings() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // Realtime: invalidate when bookings or show_dates change
+  useEffect(() => {
+    const channel = supabase
+      .channel('shows-bookings-page')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'bookings' }, () => {
+        queryClient.invalidateQueries({ queryKey: ['bookings'] });
+        queryClient.invalidateQueries({ queryKey: ['show-dates'] });
+      })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'show_dates' }, () => {
+        queryClient.invalidateQueries({ queryKey: ['show-dates'] });
+      })
+      .subscribe();
+    return () => { supabase.removeChannel(channel); };
+  }, [queryClient]);
+
+  const { data: bookingCounts } = useQuery({
+    queryKey: ['bookings', 'counts-by-date'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('bookings')
+        .select('show_date_id, status, is_understudy')
+        .neq('status', 'cancelled');
+      if (error) throw error;
+      const map = new Map<string, { confirmed: number; total: number }>();
+      (data ?? []).forEach((b: any) => {
+        const cur = map.get(b.show_date_id) ?? { confirmed: 0, total: 0 };
+        cur.total += 1;
+        if (b.status === 'confirmed') cur.confirmed += 1;
+        map.set(b.show_date_id, cur);
+      });
+      return map;
+    },
+  });
+
   const { data: showDates, isLoading } = useQuery({
     queryKey: ['show-dates', 'list'],
     queryFn: async () => {
       const { data, error } = await supabase
         .from('show_dates')
         .select(`
-          id, date, start_time, end_time, venue_override, status, notes, city_id, show_id,
-          show:shows(id, program, sub_program, venue, required_skills, status),
+          id, date, start_time, end_time, venue, status, notes, city_id, show_id,
+          show:shows(id, program, sub_program, required_skills, status),
           city:cities(id, name)
         `)
         .order('date', { ascending: true });
@@ -133,7 +167,7 @@ function ProducerShowsBookings() {
   const filtered = useMemo(() => {
     if (!showDates) return [];
     let list = showDates.filter(sd => {
-      const venue = sd.venue_override ?? sd.show?.venue ?? '';
+      const venue = sd.venue ?? '';
       const cityName = sd.city?.name ?? '';
       const matchSearch = search === '' ||
         sd.show?.program?.toLowerCase().includes(search.toLowerCase()) ||
@@ -224,15 +258,18 @@ function ProducerShowsBookings() {
                   <TableHead>Sub Program</TableHead>
                   <TableHead>Venue</TableHead>
                   <TableHead>City</TableHead>
-                  <TableHead>Slots</TableHead>
                   <TableHead>Status</TableHead>
+                  <TableHead>Slots</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {filtered.map(sd => {
-                  const venue = sd.venue_override ?? sd.show?.venue;
+                  const venue = sd.venue;
                   const slotConfig = effectiveSlots(slotDefaults, sd.show?.program, sd.show?.sub_program);
                   const status = displayStatus(sd);
+                  const counts = bookingCounts?.get(sd.id);
+                  const booked = counts?.total ?? 0;
+                  const totalSlots = slotConfig ? slotConfig.main_cast + slotConfig.understudies : null;
                   return (
                     <TableRow
                       key={sd.id}
@@ -250,19 +287,17 @@ function ProducerShowsBookings() {
                       <TableCell>{sd.show?.sub_program || <span className="text-muted-foreground">—</span>}</TableCell>
                       <TableCell>{venue || <span className="text-muted-foreground">—</span>}</TableCell>
                       <TableCell>{sd.city?.name || <span className="text-muted-foreground">—</span>}</TableCell>
-                      <TableCell className="whitespace-nowrap text-sm">
-                        {slotConfig ? (
-                          <span className="text-muted-foreground">
-                            {slotConfig.main_cast + slotConfig.understudies} slot{slotConfig.main_cast + slotConfig.understudies !== 1 ? 's' : ''}
-                          </span>
-                        ) : (
-                          <Badge variant="secondary" className="bg-destructive/10 text-destructive text-xs">Unconfigured</Badge>
-                        )}
-                      </TableCell>
                       <TableCell>
                         <Badge variant="secondary" className={STATUS_STYLE[status] ?? STATUS_STYLE.open}>
                           {STATUS_LABEL[status] ?? status}
                         </Badge>
+                      </TableCell>
+                      <TableCell className="whitespace-nowrap text-sm">
+                        {totalSlots !== null ? (
+                          <span className="text-muted-foreground">{booked}/{totalSlots}</span>
+                        ) : (
+                          <Badge variant="secondary" className="bg-destructive/10 text-destructive text-xs">Unconfigured</Badge>
+                        )}
                       </TableCell>
                     </TableRow>
                   );
@@ -292,7 +327,7 @@ function ProducerShowsBookings() {
                 <div className="min-w-0">
                   <p className="font-medium truncate">{showLabel(it.showDate.show)}</p>
                   <p className="text-xs text-muted-foreground truncate">
-                    {[it.showDate.venue_override ?? it.showDate.show?.venue, it.showDate.city?.name]
+                    {[it.showDate.venue, it.showDate.city?.name]
                       .filter(Boolean).join(' · ')}
                   </p>
                 </div>

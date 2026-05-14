@@ -33,12 +33,12 @@ BEGIN
   END IF;
 END $$;
 
--- 2. Drop both slots_per_date columns. Order matters: drop child first, then parent.
+-- 2. Drop the old trigger that watched shows.slots_per_date BEFORE dropping the column it depends on.
+DROP TRIGGER IF EXISTS sync_show_dates_on_show_update_trigger ON shows;
+
+-- 3. Drop both slots_per_date columns. Order matters: drop child first, then parent.
 ALTER TABLE show_dates DROP COLUMN IF EXISTS slots_per_date;
 ALTER TABLE shows DROP COLUMN IF EXISTS slots_per_date;
-
--- 3. Drop the old trigger that watched shows.slots_per_date (column no longer exists).
-DROP TRIGGER IF EXISTS sync_show_dates_on_show_update_trigger ON shows;
 
 -- 4. Rewrite compute_show_date_status to read main_cast + understudies from settings,
 --    keyed by (program, sub_program). Status:

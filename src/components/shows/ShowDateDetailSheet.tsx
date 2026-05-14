@@ -25,7 +25,7 @@ interface Props {
   onOpenChange: (open: boolean) => void;
 }
 
-type BookingWithArtist = Booking & { artist: Pick<Artist, 'id' | 'name' | 'skills' | 'priority_score'> };
+type BookingWithArtist = Booking & { artist: Pick<Artist, 'id' | 'name' | 'priority_score'> };
 
 const BOOKING_STATUS_STYLE: Record<string, string> = {
   confirmed: 'bg-success/10 text-success',
@@ -46,8 +46,8 @@ export function ShowDateDetailSheet({ showDateId, open, onOpenChange }: Props) {
       const { data, error } = await supabase
         .from('show_dates')
         .select(`
-          id, date, start_time, end_time, venue_override, status, notes, city_id, show_id,
-          show:shows(id, program, sub_program, venue),
+          id, date, start_time, end_time, venue, status, notes, city_id, show_id,
+          show:shows(id, program, sub_program),
           city:cities(id, name)
         `)
         .eq('id', showDateId!)
@@ -68,7 +68,7 @@ export function ShowDateDetailSheet({ showDateId, open, onOpenChange }: Props) {
     queryFn: async () => {
       const { data, error } = await supabase
         .from('bookings')
-        .select('*, artist:artists(id, name, skills, priority_score)')
+        .select('*, artist:artists(id, name, priority_score)')
         .eq('show_date_id', showDateId!)
         .order('created_at', { ascending: true });
       if (error) throw error;
@@ -238,7 +238,7 @@ export function ShowDateDetailSheet({ showDateId, open, onOpenChange }: Props) {
     onError: (err: any) => toast.error(err.message),
   });
 
-  const venue = showDate?.venue_override ?? showDate?.show?.venue;
+  const venue = showDate?.venue;
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
@@ -506,7 +506,6 @@ export function ShowDateDetailSheet({ showDateId, open, onOpenChange }: Props) {
                               <p className="font-medium text-sm">{a.name}</p>
                               <p className="text-xs text-muted-foreground">
                                 Priority: {(a as any).priority_score ?? '—'}
-                                {(a as any).skills?.length ? ` • ${(a as any).skills.join(', ')}` : ''}
                               </p>
                             </div>
                             <div className="flex gap-2">

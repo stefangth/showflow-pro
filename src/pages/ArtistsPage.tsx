@@ -11,22 +11,21 @@ import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
 import { Plus, Search, Star } from 'lucide-react';
 import { motion } from 'framer-motion';
-import { format } from 'date-fns';
 import type { Artist } from '@/types';
-import { showLabel } from '@/types';
 import { ProgramFilter } from '@/components/filters/ProgramFilter';
 import { TimeframeFilter, type TimeframeValue } from '@/components/filters/TimeframeFilter';
 import { SortControl, type SortValue } from '@/components/filters/SortControl';
-import { ViewToggle, type ViewMode } from '@/components/filters/ViewToggle';
 import { useFilterVisibility } from '@/components/filters/useFilterVisibility';
-import { EntityCalendar } from '@/components/calendar/EntityCalendar';
 import { applySort, inTimeframe } from '@/components/filters/filterUtils';
 import { CastsSection } from '@/components/casts/CastsSection';
+import { ArtistProfileSheet } from '@/components/artists/ArtistProfileSheet';
 
 type BookingJoin = {
   id: string; artist_id: string; status: string;
   show_date: { date: string; show: { program: string | null; sub_program: string | null } } | null;
 };
+
+type SkillJoin = { artist_id: string; skill: { id: string; name: string } | null };
 
 export default function ArtistsPage() {
   const { hasRole } = useAuth();
@@ -38,9 +37,9 @@ export default function ArtistsPage() {
   const [programs, setPrograms] = useState<string[]>([]);
   const [timeframe, setTimeframe] = useState<TimeframeValue>({ from: null, to: null });
   const [sort, setSort] = useState<SortValue>('alpha_asc');
-  const [view, setView] = useState<ViewMode>('list');
   const [dialogOpen, setDialogOpen] = useState(false);
-  const [form, setForm] = useState({ name: '', email: '', phone: '', skills: '', priority_score: 50, bio: '' });
+  const [form, setForm] = useState({ name: '', email: '', phone: '', priority_score: 50, bio: '' });
+  const [profileArtistId, setProfileArtistId] = useState<string | null>(null);
 
   const { data: artists, isLoading } = useQuery({
     queryKey: ['artists'],
@@ -63,7 +62,24 @@ export default function ArtistsPage() {
     },
   });
 
-  // Cast memberships per artist
+  const { data: skillsByArtist } = useQuery({
+    queryKey: ['artist-skills', 'all'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('artist_skills')
+        .select('artist_id, skill:skills(id, name)');
+      if (error) throw error;
+      const map = new Map<string, { id: string; name: string }[]>();
+      ((data ?? []) as unknown as SkillJoin[]).forEach((r) => {
+        if (!r.skill) return;
+        const arr = map.get(r.artist_id) ?? [];
+        arr.push(r.skill);
+        map.set(r.artist_id, arr);
+      });
+      return map;
+    },
+  });
+
   const { data: artistCasts } = useQuery({
     queryKey: ['artist-casts'],
     queryFn: async () => {
@@ -87,7 +103,6 @@ export default function ArtistsPage() {
         name: form.name,
         email: form.email || null,
         phone: form.phone || null,
-        skills: form.skills ? form.skills.split(',').map(s => s.trim()) : [],
         priority_score: form.priority_score,
         bio: form.bio || null,
       });
@@ -96,7 +111,7 @@ export default function ArtistsPage() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['artists'] });
       setDialogOpen(false);
-      setForm({ name: '', email: '', phone: '', skills: '', priority_score: 50, bio: '' });
+      setForm({ name: '', email: '', phone: '', priority_score: 50, bio: '' });
       toast({ title: 'Artist added' });
     },
     onError: (err: any) => toast({ title: 'Error', description: err.message, variant: 'destructive' }),
@@ -129,11 +144,13 @@ export default function ArtistsPage() {
 
   const filtered = useMemo(() => {
     if (!artists) return [];
-    let list = artists.filter(a =>
-      search === '' ||
-      a.name.toLowerCase().includes(search.toLowerCase()) ||
-      a.skills?.some(s => s.toLowerCase().includes(search.toLowerCase()))
-    );
+    const q = search.toLowerCase();
+    let list = artists.filter(a => {
+      if (q === '') return true;
+      if (a.name.toLowerCase().includes(q)) return true;
+      const skills = skillsByArtist?.get(a.id) ?? [];
+      return skills.some(s => s.name.toLowerCase().includes(q));
+    });
     if (programs.length > 0) {
       list = list.filter(a => {
         const artistPrograms = (bookingsByArtist.get(a.id) ?? [])
@@ -148,20 +165,7 @@ export default function ArtistsPage() {
       ));
     }
     return applySort(list, sort, a => a.name, a => nextBookingDate(a.id));
-  }, [artists, search, programs, timeframe, sort, bookingsByArtist]);
-
-  const calendarItems = useMemo(() => {
-    if (!bookings || !artists) return [];
-    const filteredIds = new Set(filtered.map(a => a.id));
-    const artistMap = new Map(artists.map(a => [a.id, a]));
-    return bookings
-      .filter(b => filteredIds.has(b.artist_id) && b.show_date?.date)
-      .map(b => ({
-        artist: artistMap.get(b.artist_id)!,
-        date: new Date(b.show_date!.date + 'T00:00:00'),
-        show: b.show_date!.show,
-      }));
-  }, [bookings, artists, filtered]);
+  }, [artists, search, programs, timeframe, sort, bookingsByArtist, skillsByArtist]);
 
   const statusColor: Record<string, string> = {
     active: 'bg-success/10 text-success',
@@ -187,12 +191,12 @@ export default function ArtistsPage() {
                 <Input placeholder="Full name" value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} required />
                 <Input type="email" placeholder="Email" value={form.email} onChange={e => setForm(f => ({ ...f, email: e.target.value }))} />
                 <Input placeholder="Phone" value={form.phone} onChange={e => setForm(f => ({ ...f, phone: e.target.value }))} />
-                <Input placeholder="Skills (comma-separated)" value={form.skills} onChange={e => setForm(f => ({ ...f, skills: e.target.value }))} />
                 <div className="space-y-1">
                   <label className="text-sm font-medium">Priority Score (1-100)</label>
                   <Input type="number" min={1} max={100} value={form.priority_score} onChange={e => setForm(f => ({ ...f, priority_score: parseInt(e.target.value) || 50 }))} />
                 </div>
                 <Textarea placeholder="Bio" value={form.bio} onChange={e => setForm(f => ({ ...f, bio: e.target.value }))} />
+                <p className="text-xs text-muted-foreground">Skills can be added after creation via the artist's profile.</p>
                 <Button type="submit" className="w-full" disabled={createArtist.isPending}>
                   {createArtist.isPending ? 'Adding...' : 'Add Artist'}
                 </Button>
@@ -210,84 +214,69 @@ export default function ArtistsPage() {
         {canSee('program') && <ProgramFilter options={programOptions} value={programs} onChange={setPrograms} />}
         {canSee('timeframe') && <TimeframeFilter value={timeframe} onChange={setTimeframe} />}
         {canSee('sort') && <SortControl value={sort} onChange={setSort} chronoLabel="Next booking" />}
-        <div className="ml-auto"><ViewToggle value={view} onChange={setView} /></div>
       </div>
 
-      <CastsSection />
+      <CastsSection onArtistClick={(id) => setProfileArtistId(id)} />
 
       {isLoading ? (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {[1,2,3].map(i => <div key={i} className="h-40 rounded-lg bg-muted animate-pulse" />)}
         </div>
-      ) : view === 'list' ? (
+      ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {filtered.map((artist, i) => (
-            <motion.div key={artist.id} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: Math.min(i * 0.03, 0.3) }}>
-              <Card className="h-full">
-                <CardContent className="pt-6">
-                  <div className="flex items-start justify-between mb-3">
-                    <div className="flex items-center gap-3">
-                      <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/10 text-primary font-display font-bold">
-                        {artist.name.charAt(0)}
+          {filtered.map((artist, i) => {
+            const skills = skillsByArtist?.get(artist.id) ?? [];
+            return (
+              <motion.div key={artist.id} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: Math.min(i * 0.03, 0.3) }}>
+                <Card
+                  className="h-full cursor-pointer hover:shadow-md transition-shadow"
+                  onClick={() => setProfileArtistId(artist.id)}
+                >
+                  <CardContent className="pt-6">
+                    <div className="flex items-start justify-between mb-3">
+                      <div className="flex items-center gap-3">
+                        <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/10 text-primary font-display font-bold">
+                          {artist.name.charAt(0)}
+                        </div>
+                        <div>
+                          <p className="font-medium">{artist.name}</p>
+                          <p className="text-xs text-muted-foreground">{artist.email}</p>
+                        </div>
                       </div>
-                      <div>
-                        <p className="font-medium">{artist.name}</p>
-                        <p className="text-xs text-muted-foreground">{artist.email}</p>
+                      <Badge variant="secondary" className={statusColor[artist.status] ?? ''}>{artist.status}</Badge>
+                    </div>
+                    <div className="flex items-center gap-1 mb-2">
+                      <Star className="h-3 w-3 text-warning" />
+                      <span className="text-xs text-muted-foreground">Priority: {artist.priority_score}</span>
+                    </div>
+                    {skills.length > 0 && (
+                      <div className="flex flex-wrap gap-1 mb-2">
+                        {skills.map(s => (
+                          <Badge key={s.id} variant="outline" className="text-xs">{s.name}</Badge>
+                        ))}
                       </div>
-                    </div>
-                    <Badge variant="secondary" className={statusColor[artist.status] ?? ''}>{artist.status}</Badge>
-                  </div>
-                  <div className="flex items-center gap-1 mb-2">
-                    <Star className="h-3 w-3 text-warning" />
-                    <span className="text-xs text-muted-foreground">Priority: {artist.priority_score}</span>
-                  </div>
-                  {(artistCasts?.get(artist.id)?.length ?? 0) > 0 && (
-                    <p className="text-xs text-muted-foreground mb-2 italic">
-                      {artistCasts!.get(artist.id)!.map(c => c.name).join(', ')}
-                    </p>
-                  )}
-                  {artist.skills && artist.skills.length > 0 && (
-                    <div className="flex flex-wrap gap-1 mb-2">
-                      {artist.skills.map(s => (
-                        <Badge key={s} variant="outline" className="text-xs">{s}</Badge>
-                      ))}
-                    </div>
-                  )}
-                  {artistCasts?.get(artist.id) && artistCasts.get(artist.id)!.length > 0 && (
-                    <div className="flex flex-wrap gap-1 pt-2 border-t border-border mt-2">
-                      {artistCasts.get(artist.id)!.map(c => (
-                        <Badge key={c.id} variant="secondary" className="text-xs">{c.name}</Badge>
-                      ))}
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
-            </motion.div>
-          ))}
+                    )}
+                    {artistCasts?.get(artist.id) && artistCasts.get(artist.id)!.length > 0 && (
+                      <div className="flex flex-wrap gap-1 pt-2 border-t border-border mt-2">
+                        {artistCasts.get(artist.id)!.map(c => (
+                          <Badge key={c.id} variant="secondary" className="text-xs">{c.name}</Badge>
+                        ))}
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+              </motion.div>
+            );
+          })}
           {filtered.length === 0 && <p className="text-muted-foreground col-span-full text-center py-12">No artists found</p>}
         </div>
-      ) : (
-        <EntityCalendar
-          items={calendarItems}
-          getDate={(it) => it.date}
-          emptyMessage="No artist bookings"
-          renderItem={(it) => (
-            <Card>
-              <CardContent className="py-3 flex items-center justify-between gap-3">
-                <div className="flex items-center gap-3 min-w-0">
-                  <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary/10 text-primary font-display font-bold text-sm">
-                    {it.artist?.name.charAt(0)}
-                  </div>
-                  <div className="min-w-0">
-                    <p className="font-medium truncate">{it.artist?.name}</p>
-                    <p className="text-xs text-muted-foreground truncate">{it.show ? showLabel(it.show) : ''}</p>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          )}
-        />
       )}
+
+      <ArtistProfileSheet
+        artistId={profileArtistId}
+        open={!!profileArtistId}
+        onOpenChange={(o) => { if (!o) setProfileArtistId(null); }}
+      />
     </div>
   );
 }
