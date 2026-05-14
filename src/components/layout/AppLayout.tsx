@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import { useNavigate, Link, useLocation } from 'react-router-dom';
 import { NavLink } from 'react-router-dom';
 import { useAuth } from '@/features/auth/AuthContext';
 import { APP_META, ROUTES } from '@/config/app.config';
@@ -20,6 +20,16 @@ interface AppLayoutProps {
   children: React.ReactNode;
 }
 
+const ROUTE_TO_FILE: Record<string, string> = {
+  [ROUTES.DASHBOARD]:    'DashboardPage.tsx',
+  [ROUTES.BOOKINGS]:     'ShowsBookingsPage.tsx',
+  [ROUTES.ARTISTS]:      'ArtistsPage.tsx',
+  [ROUTES.AVAILABILITY]: 'AvailabilityPage.tsx',
+  [ROUTES.ADMIN]:        'AdminPage.tsx',
+  [ROUTES.SETTINGS]:     'SettingsPage.tsx',
+  [ROUTES.CHATS]:        'ChatsListPage.tsx',
+};
+
 const navItems = [
   { to: ROUTES.DASHBOARD, icon: LayoutDashboard, label: 'Dashboard' },
   { to: ROUTES.BOOKINGS, icon: BookOpen, label: 'Shows & Bookings', roles: ['admin', 'producer'] as string[] },
@@ -34,6 +44,7 @@ export default function AppLayout({ children }: AppLayoutProps) {
   const { user, signOut, roles, hasRole, viewAsRole, viewAsUser } = useAuth();
   const { isEditorMode } = useEditorConfig();
   const navigate = useNavigate();
+  const location = useLocation();
   const [collapsed, setCollapsed] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
   const { hasAnyWarning } = useSettingsWarnings();
@@ -193,6 +204,13 @@ export default function AppLayout({ children }: AppLayoutProps) {
 
         {/* Page content */}
         <main className="flex-1 overflow-y-auto p-6">
+          {isEditorMode && isRealAdmin && (
+            <div className="mb-4">
+              <Badge variant="outline" className="text-xs font-mono text-muted-foreground">
+                {ROUTE_TO_FILE[location.pathname] ?? 'Unknown page'}
+              </Badge>
+            </div>
+          )}
           {children}
         </main>
       </div>
