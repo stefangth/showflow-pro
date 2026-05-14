@@ -4,13 +4,17 @@ import { NavLink } from 'react-router-dom';
 import { useAuth } from '@/features/auth/AuthContext';
 import { APP_META, ROUTES } from '@/config/app.config';
 import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import {
   Zap, LayoutDashboard, BookOpen,
   Clock, Settings, Shield, LogOut, Bell, ChevronLeft, ChevronRight, Menu,
-  MessageSquare, Users,
+  MessageSquare, Users, EyeOff,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useSettingsWarnings } from '@/hooks/useSettingsWarnings';
+import { useEditorConfig } from '@/features/editor/EditorContext';
+import { EditorToolbar, EditorModeToggle } from '@/features/editor/EditorToolbar';
 
 interface AppLayoutProps {
   children: React.ReactNode;
@@ -27,21 +31,34 @@ const navItems = [
 ];
 
 export default function AppLayout({ children }: AppLayoutProps) {
-  const { user, signOut, roles, hasRole } = useAuth();
+  const { user, signOut, roles, hasRole, viewAsRole } = useAuth();
+  const { isEditorMode } = useEditorConfig();
   const navigate = useNavigate();
   const [collapsed, setCollapsed] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
   const { hasAnyWarning } = useSettingsWarnings();
+
+  const isRealAdmin = roles.includes('admin');
 
   const handleSignOut = async () => {
     await signOut();
     navigate(ROUTES.LOGIN);
   };
 
-  const filteredNav = navItems.filter(item => {
-    if (!item.roles) return true;
-    return item.roles.some(r => hasRole(r as any));
-  });
+  // In editor mode, real admins see all nav items; items hidden for viewAsRole get a dimmed indicator.
+  const filteredNav = (isEditorMode && isRealAdmin)
+    ? navItems
+    : navItems.filter(item => {
+        if (!item.roles) return true;
+        return item.roles.some(r => hasRole(r as any));
+      });
+
+  // Items the simulated role wouldn't normally see (for editor visual cue)
+  const isHiddenForViewAs = (item: typeof navItems[0]) => {
+    if (!isEditorMode || viewAsRole === null) return false;
+    if (!item.roles) return false;
+    return !item.roles.includes(viewAsRole);
+  };
 
   const SidebarContent = () => (
     <div className="flex flex-col h-full">
@@ -57,6 +74,7 @@ export default function AppLayout({ children }: AppLayoutProps) {
       <nav className="flex-1 px-3 py-4 space-y-1">
         {filteredNav.map(item => {
           const showWarningDot = item.to === ROUTES.SETTINGS && hasAnyWarning;
+          const hiddenForRole = isHiddenForViewAs(item);
           return (
             <NavLink
               key={item.to}
@@ -65,6 +83,7 @@ export default function AppLayout({ children }: AppLayoutProps) {
               className={({ isActive }) =>
                 cn(
                   'flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors',
+                  hiddenForRole ? 'opacity-40' : '',
                   isActive
                     ? 'bg-primary/10 text-primary'
                     : 'text-muted-foreground hover:bg-muted hover:text-foreground'
@@ -75,6 +94,9 @@ export default function AppLayout({ children }: AppLayoutProps) {
                 <item.icon className="h-5 w-5" />
                 {showWarningDot && (
                   <span className="absolute -top-1 -right-1 h-2 w-2 rounded-full bg-destructive ring-2 ring-background" />
+                )}
+                {hiddenForRole && !collapsed && (
+                  <EyeOff className="absolute -bottom-1 -right-1 h-2.5 w-2.5 text-muted-foreground" />
                 )}
               </span>
               {!collapsed && (
@@ -96,6 +118,11 @@ export default function AppLayout({ children }: AppLayoutProps) {
           <div className="px-3 mb-2">
             <p className="text-sm font-medium truncate">{user?.email}</p>
             <p className="text-xs text-muted-foreground capitalize">{roles.join(', ') || 'No role'}</p>
+            {viewAsRole && isEditorMode && (
+              <Badge variant="outline" className="mt-1 text-xs border-warning text-warning">
+                Viewing as: {viewAsRole}
+              </Badge>
+            )}
           </div>
         )}
         <Button variant="ghost" size="sm" className="w-full justify-start gap-3" onClick={handleSignOut}>
@@ -143,10 +170,16 @@ export default function AppLayout({ children }: AppLayoutProps) {
           </button>
           <div className="lg:hidden font-display font-bold">{APP_META.NAME}</div>
           <div className="flex-1 hidden lg:block" />
-          <Button variant="ghost" size="icon" className="relative">
-            <Bell className="h-5 w-5" />
-          </Button>
+          <div className="flex items-center gap-1">
+            {isRealAdmin && <EditorModeToggle />}
+            <Button variant="ghost" size="icon" className="relative">
+              <Bell className="h-5 w-5" />
+            </Button>
+          </div>
         </header>
+
+        {/* Editor toolbar — shown between header and content when editor mode is active */}
+        {isEditorMode && isRealAdmin && <EditorToolbar />}
 
         {/* Page content */}
         <main className="flex-1 overflow-y-auto p-6">
