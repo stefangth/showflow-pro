@@ -113,9 +113,9 @@ Deno.serve(async (req) => {
       try {
         await admin.functions.invoke('send-transactional-email', {
           body: {
-            template_key: 'cast-escalation-requested',
+            template_name: 'cast-escalation-requested',
             recipient_email: recipientEmail,
-            data: { program, date: (sd as any).date, tier: row.tier, accepted, required: requiredSlots },
+            templateData: { program, date: (sd as any).date, tier: row.tier, accepted, required: requiredSlots },
           },
         })
       } catch (e) {
