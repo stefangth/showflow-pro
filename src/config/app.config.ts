@@ -31,17 +31,6 @@ export const SYNC_CONFIG = {
 export const BOOKING_CONFIG = {
   /** Hours before a soft-book auto-expires (default: 48h) */
   SOFT_BOOK_EXPIRY_HOURS: 48,
-  /** Auto-suggest algorithm weights */
-  SUGGEST_WEIGHTS: {
-    /** Weight for artist priority score (0-1) */
-    PRIORITY: 0.4,
-    /** Weight for skill match percentage (0-1) */
-    SKILL_MATCH: 0.35,
-    /** Weight for recent booking history (fewer recent = higher) (0-1) */
-    AVAILABILITY_HISTORY: 0.25,
-  },
-  /** Max suggestions to show per slot */
-  MAX_SUGGESTIONS: 5,
 } as const;
 
 /** Role definitions */
