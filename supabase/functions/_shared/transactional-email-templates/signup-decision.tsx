@@ -21,10 +21,19 @@ interface Props {
   displayName?: string
   reason?: string | null
   role?: string
+  _intro?: string
+  _cta_label?: string
+  _footer?: string
 }
 
-const SignupDecisionEmail = ({ decision, displayName, reason, role }: Props) => {
+const SignupDecisionEmail = ({ decision, displayName, reason, role, _intro, _cta_label, _footer }: Props) => {
   const isApproved = decision === 'approved'
+  const defaultIntro = isApproved
+    ? `Good news — your account has been approved. You can now sign in and start using ${SITE_NAME}${role ? ` as a ${role}.` : '.'}`
+    : 'After review, your access request was not approved at this time.'
+  const introText = _intro || defaultIntro
+  const ctaLabel = _cta_label || `Open ${SITE_NAME}`
+  const footerText = _footer || `— The ${SITE_NAME} team`
   return (
     <Html lang="en" dir="ltr">
       <Head />
@@ -43,22 +52,16 @@ const SignupDecisionEmail = ({ decision, displayName, reason, role }: Props) => 
           </Text>
           {isApproved ? (
             <>
-              <Text style={text}>
-                Good news — your account has been approved. You can now sign in
-                and start using {SITE_NAME}
-                {role ? ` as a ${role}.` : '.'}
-              </Text>
+              <Text style={text}>{introText}</Text>
               <Section style={{ textAlign: 'center', margin: '32px 0' }}>
                 <Button href={APP_URL} style={button}>
-                  Open {SITE_NAME}
+                  {ctaLabel}
                 </Button>
               </Section>
             </>
           ) : (
             <>
-              <Text style={text}>
-                After review, your access request was not approved at this time.
-              </Text>
+              <Text style={text}>{introText}</Text>
               {reason && (
                 <Section style={card}>
                   <Text style={cardLabel}>Reason</Text>
@@ -71,7 +74,7 @@ const SignupDecisionEmail = ({ decision, displayName, reason, role }: Props) => 
               </Text>
             </>
           )}
-          <Text style={footer}>— The {SITE_NAME} team</Text>
+          <Text style={footer}>{footerText}</Text>
         </Container>
       </Body>
     </Html>
