@@ -9,7 +9,7 @@ import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
-import { Plus, Search, Star } from 'lucide-react';
+import { Plus, Search } from 'lucide-react';
 import { motion } from 'framer-motion';
 import type { Artist } from '@/types';
 import { ProgramFilter } from '@/components/filters/ProgramFilter';
@@ -38,13 +38,13 @@ export default function ArtistsPage() {
   const [timeframe, setTimeframe] = useState<TimeframeValue>({ from: null, to: null });
   const [sort, setSort] = useState<SortValue>('alpha_asc');
   const [dialogOpen, setDialogOpen] = useState(false);
-  const [form, setForm] = useState({ name: '', email: '', phone: '', priority_score: 50, bio: '' });
+  const [form, setForm] = useState({ name: '', email: '', phone: '', bio: '' });
   const [profileArtistId, setProfileArtistId] = useState<string | null>(null);
 
   const { data: artists, isLoading } = useQuery({
     queryKey: ['artists'],
     queryFn: async () => {
-      const { data, error } = await supabase.from('artists').select('*').order('priority_score', { ascending: false });
+      const { data, error } = await supabase.from('artists').select('*').order('name', { ascending: true });
       if (error) throw error;
       return data as Artist[];
     },
@@ -103,7 +103,6 @@ export default function ArtistsPage() {
         name: form.name,
         email: form.email || null,
         phone: form.phone || null,
-        priority_score: form.priority_score,
         bio: form.bio || null,
       });
       if (error) throw error;
@@ -111,7 +110,7 @@ export default function ArtistsPage() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['artists'] });
       setDialogOpen(false);
-      setForm({ name: '', email: '', phone: '', priority_score: 50, bio: '' });
+      setForm({ name: '', email: '', phone: '', bio: '' });
       toast({ title: 'Artist added' });
     },
     onError: (err: any) => toast({ title: 'Error', description: err.message, variant: 'destructive' }),
@@ -191,10 +190,6 @@ export default function ArtistsPage() {
                 <Input placeholder="Full name" value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} required />
                 <Input type="email" placeholder="Email" value={form.email} onChange={e => setForm(f => ({ ...f, email: e.target.value }))} />
                 <Input placeholder="Phone" value={form.phone} onChange={e => setForm(f => ({ ...f, phone: e.target.value }))} />
-                <div className="space-y-1">
-                  <label className="text-sm font-medium">Priority Score (1-100)</label>
-                  <Input type="number" min={1} max={100} value={form.priority_score} onChange={e => setForm(f => ({ ...f, priority_score: parseInt(e.target.value) || 50 }))} />
-                </div>
                 <Textarea placeholder="Bio" value={form.bio} onChange={e => setForm(f => ({ ...f, bio: e.target.value }))} />
                 <p className="text-xs text-muted-foreground">Skills can be added after creation via the artist's profile.</p>
                 <Button type="submit" className="w-full" disabled={createArtist.isPending}>
@@ -244,10 +239,6 @@ export default function ArtistsPage() {
                         </div>
                       </div>
                       <Badge variant="secondary" className={statusColor[artist.status] ?? ''}>{artist.status}</Badge>
-                    </div>
-                    <div className="flex items-center gap-1 mb-2">
-                      <Star className="h-3 w-3 text-warning" />
-                      <span className="text-xs text-muted-foreground">Priority: {artist.priority_score}</span>
                     </div>
                     {skills.length > 0 && (
                       <div className="flex flex-wrap gap-1 mb-2">
