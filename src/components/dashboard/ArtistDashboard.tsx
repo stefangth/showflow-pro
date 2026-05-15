@@ -10,25 +10,26 @@ import { useMyArtist } from '@/hooks/useMyArtist';
 import { formatDateDMY } from '@/lib/dates';
 import { showLabel } from '@/types';
 
-type AvailRow = { date: string };
+type BookingLite = { show_date_id: string; status: string };
 type CastMembershipRow = { id: string; role: string | null; cast: { id: string; name: string } | null };
 
 /**
- * Artist dashboard: response rate to eligible dates + list of unanswered offers.
+ * Artist dashboard: offer response rate + list of pending offers.
  */
 export function ArtistDashboard() {
   const { data: artist } = useMyArtist();
   const { data: eligibleDates } = useArtistEligibleDates();
 
-  const { data: myAvailability } = useQuery({
-    queryKey: ['availability', 'response-rate', artist?.id],
+  const { data: myBookings } = useQuery({
+    queryKey: ['bookings', 'artist-all', artist?.id],
     enabled: !!artist?.id,
     queryFn: async () => {
       const { data } = await supabase
-        .from('availability')
-        .select('date')
-        .eq('artist_id', artist!.id);
-      return (data ?? []) as AvailRow[];
+        .from('bookings')
+        .select('show_date_id, status')
+        .eq('artist_id', artist!.id)
+        .neq('status', 'cancelled');
+      return (data ?? []) as BookingLite[];
     },
   });
 
@@ -45,18 +46,26 @@ export function ArtistDashboard() {
     },
   });
 
+  const bookingMap = useMemo(() => {
+    const m = new Map<string, string>();
+    myBookings?.forEach((b) => m.set(b.show_date_id, b.status));
+    return m;
+  }, [myBookings]);
+
   const { responded, total, pct, unanswered } = useMemo(() => {
     const dates = eligibleDates ?? [];
-    const respondedSet = new Set((myAvailability ?? []).map((a) => a.date));
     const total = dates.length;
-    const respondedCount = dates.filter((d) => respondedSet.has(d.date)).length;
+    const respondedCount = dates.filter((d) => {
+      const s = bookingMap.get(d.id);
+      return s === 'confirmed' || s === 'soft_booked';
+    }).length;
     return {
       total,
       responded: respondedCount,
       pct: total === 0 ? 0 : Math.round((respondedCount / total) * 100),
-      unanswered: dates.filter((d) => !respondedSet.has(d.date)),
+      unanswered: dates.filter((d) => bookingMap.get(d.id) === 'suggested'),
     };
-  }, [eligibleDates, myAvailability]);
+  }, [eligibleDates, bookingMap]);
 
   if (!artist) {
     return (
@@ -105,7 +114,7 @@ export function ArtistDashboard() {
                 </div>
               </div>
               <p className="text-xs text-muted-foreground mt-3">
-                Click to see unanswered offers →
+                Click to see pending offers →
               </p>
             </CardContent>
           </Card>
