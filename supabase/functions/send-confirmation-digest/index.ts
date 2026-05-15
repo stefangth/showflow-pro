@@ -73,22 +73,11 @@ Deno.serve(async (req) => {
     .select(`
       id,
       artist_id,
-      artists (
-        id,
-        user_id,
-        profiles (
-          display_name,
-          email
-        )
-      ),
+      artists ( id, name, email ),
       show_dates (
         date,
-        shows (
-          name
-        ),
-        cities (
-          name
-        )
+        shows ( program, sub_program ),
+        cities ( name )
       )
     `)
     .eq('status', 'confirmed')
@@ -114,19 +103,21 @@ Deno.serve(async (req) => {
 
   for (const b of confirmedBookings as any[]) {
     const artistId = b.artist_id
-    const profile = b.artists?.profiles
-    const recipientEmail = profile?.email
+    const artist = b.artists
+    const recipientEmail = artist?.email
     if (!recipientEmail) continue
 
     const showDate = b.show_dates
-    const show = showDate?.shows?.name ?? 'Unknown show'
+    const program = showDate?.shows?.program
+    const subProgram = showDate?.shows?.sub_program
+    const show = program ? (subProgram ? `${program} — ${subProgram}` : program) : 'Unknown show'
     const date = showDate?.date ?? '—'
     const city = showDate?.cities?.name ?? '—'
 
     if (!grouped.has(artistId)) {
       grouped.set(artistId, {
         recipientEmail,
-        displayName: profile?.display_name ?? '',
+        displayName: artist?.name ?? '',
         bookingIds: [],
         bookings: [],
       })
