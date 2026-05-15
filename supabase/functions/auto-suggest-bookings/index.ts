@@ -5,10 +5,6 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
-// Mirror of BOOKING_CONFIG.SUGGEST_WEIGHTS from app.config.ts
-const WEIGHTS = { PRIORITY: 0.4, SKILL_MATCH: 0.35, AVAILABILITY_HISTORY: 0.25 };
-const MAX_SUGGESTIONS = 5;
-
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return json(null, 204);
 
@@ -42,10 +38,20 @@ Deno.serve(async (req) => {
     const show_date_id: string = body.show_date_id || '';
     if (!show_date_id) return json({ error: 'show_date_id is required' }, 400);
 
+    // Honor the global enable toggle from app_settings
+    const { data: enabledRow } = await admin
+      .from('app_settings')
+      .select('value')
+      .eq('key', 'auto_suggest_enabled')
+      .maybeSingle();
+    if (enabledRow?.value === false) {
+      return json({ suggestions: [], message: 'Auto-suggest is disabled' });
+    }
+
     // Fetch the show date + parent show
     const { data: showDate, error: sdErr } = await admin
       .from('show_dates')
-      .select('id, show_id, city_id, date, status, shows(required_skills, program, sub_program)')
+      .select('id, show_id, city_id, date, status, shows(program, sub_program)')
       .eq('id', show_date_id)
       .maybeSingle();
     if (sdErr || !showDate) return json({ error: 'Show date not found' }, 404);
@@ -70,8 +76,7 @@ Deno.serve(async (req) => {
       if (!availRow) return json({ error: 'Forbidden — you must be available on this date to trigger suggestions' }, 403);
     }
 
-    const show = (showDate as any).shows as { required_skills: string[] | null; program: string | null; sub_program: string | null };
-    const requiredSkills: string[] = show.required_skills ?? [];
+    const show = (showDate as any).shows as { program: string | null; sub_program: string | null };
 
     // Resolve slot count from sub_program_slots_defaults, nested by (program, sub_program).
     const { data: slotSetting } = await admin
@@ -85,6 +90,14 @@ Deno.serve(async (req) => {
       return json({ error: `No slot configuration for ${show.program ?? '(no program)'} / ${show.sub_program ?? '(no sub-program)'}. Set defaults in Settings.` }, 400);
     }
     const effectiveSlots: number = slotConfig.main_cast;
+
+    // Per-slot suggestion cap from app_settings
+    const { data: maxRow } = await admin
+      .from('app_settings')
+      .select('value')
+      .eq('key', 'max_suggestions')
+      .maybeSingle();
+    const maxSuggestions: number = typeof maxRow?.value === 'number' ? maxRow.value : 5;
 
     // Find eligible artists: those in casts eligible for this show_date
     // Logic mirrors useArtistEligibleDates: cast membership → show_cast_eligibility or show_date_cast_eligibility
@@ -134,49 +147,19 @@ Deno.serve(async (req) => {
     const candidateIds = eligibleArtistIds.filter((id) => !alreadyBookedIds.has(id));
     if (candidateIds.length === 0) return json({ suggestions: [], message: 'All eligible artists already booked' });
 
-    // Fetch artist details
+    // Fetch active candidates
     const { data: artists } = await admin
       .from('artists')
-      .select('id, name, priority_score, skills, status')
+      .select('id, name, status')
       .in('id', candidateIds)
       .eq('status', 'active');
 
     if (!artists || artists.length === 0) return json({ suggestions: [], message: 'No active eligible artists' });
 
-    // Fetch recent booking history (past 90 days) for scoring
-    const since = new Date(Date.now() - 90 * 24 * 60 * 60 * 1000).toISOString();
-    const { data: recentBookings } = await admin
-      .from('bookings')
-      .select('artist_id')
-      .in('artist_id', artists.map((a: any) => a.id))
-      .gte('created_at', since)
-      .eq('status', 'confirmed');
-
-    const recentCountMap = new Map<string, number>();
-    for (const b of (recentBookings ?? [])) {
-      recentCountMap.set(b.artist_id, (recentCountMap.get(b.artist_id) ?? 0) + 1);
-    }
-
-    // Score each candidate
-    const scored = artists.map((artist: any) => {
-      const priorityScore   = Math.min((artist.priority_score ?? 0) / 10, 1);
-      const artistSkills    = new Set<string>(artist.skills ?? []);
-      const skillMatch      = requiredSkills.length === 0
-        ? 1
-        : requiredSkills.filter((s) => artistSkills.has(s)).length / requiredSkills.length;
-      const recentCount     = recentCountMap.get(artist.id) ?? 0;
-      const historyScore    = 1 - Math.min(recentCount / 10, 1); // fewer recent bookings = higher score
-
-      const total =
-        priorityScore   * WEIGHTS.PRIORITY +
-        skillMatch      * WEIGHTS.SKILL_MATCH +
-        historyScore    * WEIGHTS.AVAILABILITY_HISTORY;
-
-      return { artist_id: artist.id, artist_name: artist.name, score: Math.round(total * 1000) / 1000 };
-    });
-
-    scored.sort((a, b) => b.score - a.score);
-    const topCandidates = scored.slice(0, Math.min(slotsRemaining * MAX_SUGGESTIONS, scored.length));
+    // No ranking — return all eligible candidates alphabetically, capped per remaining slot
+    const cap = maxSuggestions * slotsRemaining;
+    const sorted = [...artists].sort((a, b) => a.name.localeCompare(b.name));
+    const topCandidates = sorted.slice(0, cap).map((a) => ({ artist_id: a.id, artist_name: a.name }));
 
     // Insert suggested bookings (idempotent)
     const toInsert = topCandidates.map((c) => ({

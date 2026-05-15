@@ -50,7 +50,6 @@ export function ArtistProfileSheet({ artistId, open, onOpenChange }: Props) {
     email: '',
     phone: '',
     bio: '',
-    priority_score: 50,
     status: 'active' as ArtistStatus,
   });
   const [selectedSkills, setSelectedSkills] = useState<TagOption[]>([]);
@@ -62,7 +61,6 @@ export function ArtistProfileSheet({ artistId, open, onOpenChange }: Props) {
         email: artist.email ?? '',
         phone: artist.phone ?? '',
         bio: artist.bio ?? '',
-        priority_score: artist.priority_score,
         status: artist.status,
       });
     }
@@ -83,7 +81,6 @@ export function ArtistProfileSheet({ artistId, open, onOpenChange }: Props) {
           email: form.email || null,
           phone: form.phone || null,
           bio: form.bio || null,
-          priority_score: form.priority_score,
           status: form.status,
           updated_at: new Date().toISOString(),
         })
@@ -182,35 +179,20 @@ export function ArtistProfileSheet({ artistId, open, onOpenChange }: Props) {
               </div>
             </div>
 
-            <div className="grid grid-cols-2 gap-3">
-              <div className="space-y-1">
-                <label className="text-sm font-medium">Priority score</label>
-                <Input
-                  type="number"
-                  min={1}
-                  max={100}
-                  value={form.priority_score}
-                  onChange={(e) =>
-                    setForm((f) => ({ ...f, priority_score: parseInt(e.target.value) || 0 }))
-                  }
-                  disabled={!canEdit}
-                />
-              </div>
-              <div className="space-y-1">
-                <label className="text-sm font-medium">Status</label>
-                <Select
-                  value={form.status}
-                  onValueChange={(v) => setForm((f) => ({ ...f, status: v as ArtistStatus }))}
-                  disabled={!canEdit}
-                >
-                  <SelectTrigger><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    {STATUS_OPTIONS.map((s) => (
-                      <SelectItem key={s} value={s}>{s.replace('_', ' ')}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
+            <div className="space-y-1">
+              <label className="text-sm font-medium">Status</label>
+              <Select
+                value={form.status}
+                onValueChange={(v) => setForm((f) => ({ ...f, status: v as ArtistStatus }))}
+                disabled={!canEdit}
+              >
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  {STATUS_OPTIONS.map((s) => (
+                    <SelectItem key={s} value={s}>{s.replace('_', ' ')}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
 
             <div className="space-y-1">
