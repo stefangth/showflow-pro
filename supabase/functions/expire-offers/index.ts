@@ -135,10 +135,11 @@ Deno.serve(async (req) => {
       await admin.from('notifications').insert(notifRows)
     }
 
-    // Send producer emails (best-effort, non-blocking on failures)
+    // Send producer emails (best-effort, non-blocking on failures).
+    // Email lives on auth.users — `profiles` has no email column.
     for (const uid of recipientIds) {
-      const { data: profile } = await admin.from('profiles').select('email').eq('user_id', uid).maybeSingle()
-      const recipientEmail = (profile as any)?.email
+      const { data: userResp } = await admin.auth.admin.getUserById(uid)
+      const recipientEmail = userResp?.user?.email
       if (!recipientEmail) continue
       try {
         await admin.functions.invoke('send-transactional-email', {

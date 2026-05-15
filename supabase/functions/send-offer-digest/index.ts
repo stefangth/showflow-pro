@@ -80,29 +80,19 @@ Deno.serve(async (req) => {
   }
 
   // ── Query pending offers ─────────────────────────────────────────────────
-  // Join: bookings → artists → profiles (for email), show_dates → shows → cities
+  // Artist email + display name live on the `artists` row (not `profiles`);
+  // shows uses `program`/`sub_program` (no `name` column).
   const { data: pendingBookings, error: queryErr } = await admin
     .from('bookings')
     .select(`
       id,
       artist_id,
       offer_expires_at,
-      artists (
-        id,
-        user_id,
-        profiles (
-          display_name,
-          email
-        )
-      ),
+      artists ( id, name, email ),
       show_dates (
         date,
-        shows (
-          name
-        ),
-        cities (
-          name
-        )
+        shows ( program, sub_program ),
+        cities ( name )
       )
     `)
     .eq('status', 'suggested')
@@ -130,12 +120,14 @@ Deno.serve(async (req) => {
 
   for (const b of pendingBookings as any[]) {
     const artistId = b.artist_id
-    const profile = b.artists?.profiles
-    const recipientEmail = profile?.email
+    const artist = b.artists
+    const recipientEmail = artist?.email
     if (!recipientEmail) continue
 
     const showDate = b.show_dates
-    const show = showDate?.shows?.name ?? 'Unknown show'
+    const program = showDate?.shows?.program
+    const subProgram = showDate?.shows?.sub_program
+    const show = program ? (subProgram ? `${program} — ${subProgram}` : program) : 'Unknown show'
     const date = showDate?.date ?? '—'
     const city = showDate?.cities?.name ?? '—'
     const expiresRaw = b.offer_expires_at
@@ -154,7 +146,7 @@ Deno.serve(async (req) => {
     if (!grouped.has(artistId)) {
       grouped.set(artistId, {
         recipientEmail,
-        displayName: profile?.display_name ?? '',
+        displayName: artist?.name ?? '',
         bookingIds: [],
         offers: [],
       })

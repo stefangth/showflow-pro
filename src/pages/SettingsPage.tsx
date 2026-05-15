@@ -28,6 +28,8 @@ const EMAIL_TEMPLATE_KEYS = [
   'signup-decision',
   'new-signup-admin-notification',
   'cast-escalation-requested',
+  'artist-offer-digest',
+  'artist-confirmation-digest',
 ] as const;
 type EmailTemplateKey = typeof EMAIL_TEMPLATE_KEYS[number];
 
@@ -35,7 +37,13 @@ const EMAIL_TEMPLATE_LABELS: Record<EmailTemplateKey, string> = {
   'signup-decision': 'Signup Decision',
   'new-signup-admin-notification': 'New Signup — Admin Notification',
   'cast-escalation-requested': 'Cast Escalation Requested',
+  'artist-offer-digest': 'Artist Offer Digest',
+  'artist-confirmation-digest': 'Artist Confirmation Digest',
 };
+
+// Sentinel value used in Selects to represent "Any" / unscoped — Radix Select
+// forbids empty-string SelectItem values.
+const ANY_SCOPE = '__any__';
 
 type FilterKey = 'program' | 'timeframe' | 'sort' | 'status';
 const FILTER_KEYS: FilterKey[] = ['program', 'timeframe', 'sort', 'status'];
@@ -945,10 +953,10 @@ export default function SettingsPage() {
                 </div>
                 <div className="space-y-1">
                   <Label className="text-xs">Sub-program (optional)</Label>
-                  <Select value={newAssignSubProgram} onValueChange={setNewAssignSubProgram}>
+                  <Select value={newAssignSubProgram || ANY_SCOPE} onValueChange={(v) => setNewAssignSubProgram(v === ANY_SCOPE ? '' : v)}>
                     <SelectTrigger><SelectValue placeholder="Any sub-program" /></SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="">Any</SelectItem>
+                      <SelectItem value={ANY_SCOPE}>Any</SelectItem>
                       {Array.from(new Set((showProgramSubProgramPairs ?? []).filter(p => p.program === newAssignProgram).map(p => p.sub_program))).sort().map(sp => (
                         <SelectItem key={sp} value={sp}>{sp}</SelectItem>
                       ))}
@@ -957,10 +965,10 @@ export default function SettingsPage() {
                 </div>
                 <div className="space-y-1">
                   <Label className="text-xs">City (optional)</Label>
-                  <Select value={newAssignCityId} onValueChange={setNewAssignCityId}>
+                  <Select value={newAssignCityId || ANY_SCOPE} onValueChange={(v) => setNewAssignCityId(v === ANY_SCOPE ? '' : v)}>
                     <SelectTrigger><SelectValue placeholder="Any city" /></SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="">Any</SelectItem>
+                      <SelectItem value={ANY_SCOPE}>Any</SelectItem>
                       {(cities ?? []).map(c => (
                         <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
                       ))}

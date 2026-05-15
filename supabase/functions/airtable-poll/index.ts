@@ -94,16 +94,18 @@ Deno.serve(async (req) => {
     return json({ processed: 0, new_dates: 0, tiers_opened: 0 })
   }
 
-  // ── Load shows (keyed by airtable_record_id and name) and cities (by name) ─
+  // ── Load shows (keyed by airtable_record_id and by program) and cities (by name) ─
+  // `shows` has no `name` column; fall back to `program` as the display key.
   const { data: shows } = await admin
     .from('shows')
-    .select('id, name, airtable_record_id')
+    .select('id, program, sub_program, airtable_record_id')
 
   const showsByAirtableId = new Map<string, string>()
   const showsByName = new Map<string, string>()
   for (const s of shows ?? []) {
-    if ((s as any).airtable_record_id) showsByAirtableId.set((s as any).airtable_record_id, s.id)
-    if (s.name) showsByName.set(s.name.toLowerCase(), s.id)
+    const sAny = s as any
+    if (sAny.airtable_record_id) showsByAirtableId.set(sAny.airtable_record_id, s.id)
+    if (sAny.program) showsByName.set(String(sAny.program).toLowerCase(), s.id)
   }
 
   const { data: citiesRows } = await admin
