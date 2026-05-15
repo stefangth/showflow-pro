@@ -112,7 +112,6 @@ export type Database = {
           id: string
           name: string
           phone: string | null
-          priority_score: number
           status: Database["public"]["Enums"]["artist_status"]
           updated_at: string
           user_id: string | null
@@ -124,7 +123,6 @@ export type Database = {
           id?: string
           name: string
           phone?: string | null
-          priority_score?: number
           status?: Database["public"]["Enums"]["artist_status"]
           updated_at?: string
           user_id?: string | null
@@ -136,7 +134,6 @@ export type Database = {
           id?: string
           name?: string
           phone?: string | null
-          priority_score?: number
           status?: Database["public"]["Enums"]["artist_status"]
           updated_at?: string
           user_id?: string | null

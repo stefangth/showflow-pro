@@ -26,7 +26,7 @@ interface Props {
   onOpenChange: (open: boolean) => void;
 }
 
-type BookingWithArtist = Booking & { artist: Pick<Artist, 'id' | 'name' | 'priority_score'> };
+type BookingWithArtist = Booking & { artist: Pick<Artist, 'id' | 'name'> };
 
 const BOOKING_STATUS_STYLE: Record<string, string> = {
   confirmed: 'bg-success/10 text-success',
@@ -71,7 +71,7 @@ export function ShowDateDetailSheet({ showDateId, open, onOpenChange }: Props) {
     queryFn: async () => {
       const { data, error } = await supabase
         .from('bookings')
-        .select('*, artist:artists(id, name, priority_score)')
+        .select('*, artist:artists(id, name)')
         .eq('show_date_id', showDateId!)
         .order('created_at', { ascending: true });
       if (error) throw error;
@@ -514,9 +514,6 @@ export function ShowDateDetailSheet({ showDateId, open, onOpenChange }: Props) {
                           <div key={a.id} className="flex items-center justify-between p-3 rounded-lg border border-border">
                             <div>
                               <p className="font-medium text-sm">{a.name}</p>
-                              <p className="text-xs text-muted-foreground">
-                                Priority: {(a as any).priority_score ?? '—'}
-                              </p>
                             </div>
                             <div className="flex gap-2">
                               <Button size="sm" onClick={() => createBooking.mutate({ artistId: a.id })}>
