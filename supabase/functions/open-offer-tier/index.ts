@@ -184,7 +184,10 @@ Deno.serve(async (req) => {
   const offeredAt = new Date()
   const offerExpiresAt = new Date(offeredAt.getTime() + expiryHours * 60 * 60 * 1000)
 
-  // Batch insert suggested bookings (idempotent via ignoreDuplicates)
+  // Batch insert suggested bookings. Pre-filtering (alreadyBookedIds /
+  // blockedArtistIds) handles deduplication — bookings has no UNIQUE
+  // (show_date_id, artist_id) constraint, so an ON CONFLICT upsert here
+  // would fail Postgres parse-time validation.
   const toInsert = candidateIds.map((artistId: string) => ({
     show_date_id,
     artist_id: artistId,
@@ -197,7 +200,7 @@ Deno.serve(async (req) => {
 
   const { data: inserted, error: insErr } = await admin
     .from('bookings')
-    .upsert(toInsert, { onConflict: 'show_date_id,artist_id', ignoreDuplicates: true })
+    .insert(toInsert)
     .select('id')
 
   if (insErr) {
@@ -205,7 +208,8 @@ Deno.serve(async (req) => {
     return json({ error: insErr.message }, 500)
   }
 
-  // Upsert show_date_offer_tiers record
+  // show_date_offer_tiers has a UNIQUE (show_date_id, tier) constraint, so
+  // the upsert is safe here.
   await (admin as any)
     .from('show_date_offer_tiers')
     .upsert(
