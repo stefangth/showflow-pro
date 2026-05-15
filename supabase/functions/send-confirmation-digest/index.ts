@@ -12,15 +12,6 @@ function json(body: unknown, status = 200): Response {
   })
 }
 
-/**
- * Daily confirmation digest:
- *   Fires hourly (via pg_cron). Checks if Berlin local hour matches
- *   `confirmation_digest_hour_berlin` (default 20). If so, groups all
- *   undigested confirmed bookings by artist and sends one email per artist,
- *   then stamps confirmation_digest_sent_at = now() on the bookings included.
- *
- * Auth: X-Cron-Secret header (pg_cron), or user JWT (admin/producer manual trigger).
- */
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response(null, { headers: corsHeaders })
 
@@ -28,7 +19,6 @@ Deno.serve(async (req) => {
   const serviceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
   const admin = createClient(supabaseUrl, serviceKey)
 
-  // ── Auth: X-Cron-Secret or user JWT ──────────────────────────────────────
   const cronSecret = req.headers.get('X-Cron-Secret')
   if (cronSecret) {
     const { data: secretSetting } = await admin
@@ -55,10 +45,9 @@ Deno.serve(async (req) => {
       .eq('user_id', user.id)
       .in('role', ['admin', 'producer'])
       .maybeSingle()
-    if (!roleRow) return json({ error: 'Forbidden — admin or producer required' }, 403)
+    if (!roleRow) return json({ error: 'Forbidden' }, 403)
   }
 
-  // ── Berlin hour gate ─────────────────────────────────────────────────────
   const { data: hourSetting } = await admin
     .from('app_settings')
     .select('value')
@@ -79,7 +68,6 @@ Deno.serve(async (req) => {
     return json({ skipped: true, reason: `Berlin hour is ${berlinHour}, target is ${targetHour}` })
   }
 
-  // ── Query confirmed bookings without digest ───────────────────────────────
   const { data: confirmedBookings, error: queryErr } = await admin
     .from('bookings')
     .select(`
@@ -115,7 +103,6 @@ Deno.serve(async (req) => {
     return json({ digests_sent: 0 })
   }
 
-  // ── Group by artist ──────────────────────────────────────────────────────
   type GroupedEntry = {
     recipientEmail: string
     displayName: string
@@ -149,7 +136,6 @@ Deno.serve(async (req) => {
     entry.bookings.push({ show, date, city })
   }
 
-  // ── Send one email per artist ─────────────────────────────────────────────
   let digestsSent = 0
 
   for (const [artistId, entry] of grouped) {
@@ -166,25 +152,18 @@ Deno.serve(async (req) => {
         },
       })
 
-      // Stamp confirmation_digest_sent_at on these specific bookings
       const { error: stampErr } = await admin
         .from('bookings')
         .update({ confirmation_digest_sent_at: new Date().toISOString() })
         .in('id', entry.bookingIds)
 
       if (stampErr) {
-        console.error('send-confirmation-digest: failed to stamp confirmation_digest_sent_at', {
-          artistId,
-          error: stampErr.message,
-        })
+        console.error('send-confirmation-digest: failed to stamp', { artistId, error: stampErr.message })
       }
 
       digestsSent += 1
     } catch (e) {
-      console.error('send-confirmation-digest: email send failed', {
-        artistId,
-        error: (e as Error).message,
-      })
+      console.error('send-confirmation-digest: email send failed', { artistId, error: (e as Error).message })
     }
   }
 
