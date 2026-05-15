@@ -993,29 +993,42 @@ export default function SettingsPage() {
           <Card>
             <CardHeader>
               <CardTitle className="font-display">Booking Engine</CardTitle>
-              <CardDescription>Tune the auto-suggest engine and soft-book lifecycle.</CardDescription>
+              <CardDescription>
+                Offer-window timings and digest scheduling are configured here. Editable email templates are added in Task 15.
+              </CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <Label className="font-medium">Enable auto-suggest</Label>
-                  <p className="text-xs text-muted-foreground mt-0.5">Rank artists per slot using priority, skill match, and recent history.</p>
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                <div className="space-y-2">
+                  <Label>Offer response window (hours)</Label>
+                  <Input
+                    type="number"
+                    min={1}
+                    value={get('offer_response_window_hours', 48)}
+                    onChange={e => set('offer_response_window_hours', Number(e.target.value))}
+                  />
+                  <p className="text-xs text-muted-foreground">Window an artist has to respond to an offer.</p>
                 </div>
-                <Switch
-                  checked={!!get('auto_suggest_enabled', true)}
-                  onCheckedChange={v => set('auto_suggest_enabled', v)}
-                />
-              </div>
-              <Separator />
-              <div className="max-w-xs space-y-2">
-                <Label>Max suggestions per slot</Label>
-                <Input
-                  type="number"
-                  min={1}
-                  max={20}
-                  value={get('max_suggestions', 5)}
-                  onChange={e => set('max_suggestions', Number(e.target.value))}
-                />
+                <div className="space-y-2">
+                  <Label>Offer digest hour (Berlin)</Label>
+                  <Input
+                    type="number"
+                    min={0}
+                    max={23}
+                    value={get('offer_digest_hour_berlin', 19)}
+                    onChange={e => set('offer_digest_hour_berlin', Number(e.target.value))}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>Confirmation digest hour (Berlin)</Label>
+                  <Input
+                    type="number"
+                    min={0}
+                    max={23}
+                    value={get('confirmation_digest_hour_berlin', 20)}
+                    onChange={e => set('confirmation_digest_hour_berlin', Number(e.target.value))}
+                  />
+                </div>
               </div>
             </CardContent>
           </Card>
