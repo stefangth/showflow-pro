@@ -74,12 +74,20 @@ Deno.serve(async (req) => {
     .maybeSingle()
   const slotDefaults = (slotsSetting?.value as Record<string, Record<string, { main_cast: number; understudies: number }>>) ?? {}
 
-  // Clear stale tier_at_risk notifications first; we re-emit below for still-at-risk ones
-  await admin
+  // Load existing tier_at_risk notifications so we can:
+  //   1. Skip re-creating one that already exists for (tier, user) — preserves read state
+  //   2. Delete ones whose tier has since recovered
+  const { data: existingTierAtRiskNotifs } = await admin
     .from('notifications')
-    .delete()
+    .select('id, user_id, related_entity_id')
     .eq('type', 'tier_at_risk')
 
+  const existingKeySet = new Set<string>()
+  for (const n of (existingTierAtRiskNotifs ?? []) as Array<{ id: string; user_id: string; related_entity_id: string }>) {
+    existingKeySet.add(`${n.related_entity_id}::${n.user_id}`)
+  }
+
+  const stillAtRiskTierIds = new Set<string>()
   let atRiskCount = 0
 
   for (const row of openTiers as Array<{ id: string; show_date_id: string; tier: number }>) {
@@ -111,35 +119,49 @@ Deno.serve(async (req) => {
     if (pending + accepted >= requiredSlots) continue // healthy
 
     atRiskCount += 1
+    stillAtRiskTierIds.add(row.id)
 
-    // Resolve producers to notify (admin fallback)
+    // Resolve producers to notify (admin fallback). Dedupe — resolve_show_assignments
+    // can return the same producer multiple times when several scopes match.
     const { data: producers } = await (admin as any).rpc('resolve_show_assignments', {
       p_program: program ?? '',
       p_sub_program: subProgram,
       p_city_id: (sd as any).city_id,
     })
 
-    let recipientIds = (producers ?? []).map((p: any) => p.producer_user_id)
+    let recipientIds = Array.from(new Set((producers ?? []).map((p: any) => p.producer_user_id)))
     if (recipientIds.length === 0) {
       const { data: admins } = await admin.from('user_roles').select('user_id').eq('role', 'admin')
-      recipientIds = (admins ?? []).map((a: any) => a.user_id)
+      recipientIds = Array.from(new Set((admins ?? []).map((a: any) => a.user_id)))
     }
 
     const payloadMessage = `Tier ${row.tier} for ${program ?? 'show'} on ${(sd as any).date} is mathematically unfillable (${pending} pending, ${accepted} accepted, need ${requiredSlots}).`
 
-    const rows = recipientIds.map((uid: string) => ({
-      user_id: uid,
-      type: 'tier_at_risk',
-      title: 'Tier at risk',
-      message: payloadMessage,
-      related_entity_type: 'show_date_offer_tier',
-      related_entity_id: row.id,
-    }))
+    // Only insert notifications for (tier, user) pairs that don't already have one
+    const newRows = (recipientIds as string[])
+      .filter(uid => !existingKeySet.has(`${row.id}::${uid}`))
+      .map(uid => ({
+        user_id: uid,
+        type: 'tier_at_risk',
+        title: 'Tier at risk',
+        message: payloadMessage,
+        related_entity_type: 'show_date_offer_tier',
+        related_entity_id: row.id,
+      }))
 
-    if (rows.length > 0) {
-      await admin.from('notifications').insert(rows)
+    if (newRows.length > 0) {
+      await admin.from('notifications').insert(newRows)
     }
   }
 
-  return json({ at_risk_count: atRiskCount })
+  // Delete tier_at_risk notifications whose tier is no longer at risk
+  const idsToDelete = ((existingTierAtRiskNotifs ?? []) as Array<{ id: string; related_entity_id: string }>)
+    .filter(n => !stillAtRiskTierIds.has(n.related_entity_id))
+    .map(n => n.id)
+
+  if (idsToDelete.length > 0) {
+    await admin.from('notifications').delete().in('id', idsToDelete)
+  }
+
+  return json({ at_risk_count: atRiskCount, cleared: idsToDelete.length })
 })
