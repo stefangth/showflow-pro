@@ -173,19 +173,13 @@ Deno.serve(async (req) => {
     )
   }
 
-  // Render template
-  const html = await renderAsync(React.createElement(template.component, templateData))
-  const plainText = await renderAsync(
-    React.createElement(template.component, templateData),
-    { plainText: true }
-  )
-
+  // Render template (overrides merged below after reading app_settings)
   const resolvedSubject =
     typeof template.subject === 'function'
       ? template.subject(templateData)
       : template.subject
 
-  // Read from address from app_settings (fallback to env default)
+  // Read from address and template overrides from app_settings
   const { data: fromSetting } = await supabase
     .from('app_settings')
     .select('value')
@@ -194,6 +188,34 @@ Deno.serve(async (req) => {
 
   const fromAddress =
     (fromSetting?.value as string | null) ?? 'Showflow Pro <noreply@showflow.pro>'
+
+  const { data: overridesSetting } = await supabase
+    .from('app_settings')
+    .select('value')
+    .eq('key', 'email_template_overrides')
+    .maybeSingle()
+
+  const overrides = (overridesSetting?.value as Record<string, any> | null) ?? {}
+  const templateOverride = overrides[templateName] ?? {}
+
+  // Apply subject override
+  let resolvedSubjectFinal = resolvedSubject
+  if (templateOverride.subject && typeof templateOverride.subject === 'string' && templateOverride.subject.trim()) {
+    resolvedSubjectFinal = templateOverride.subject.trim()
+  }
+
+  // Merge _intro, _cta_label, _footer into templateData (non-null values only)
+  const mergedTemplateData = { ...templateData }
+  if (templateOverride.intro) mergedTemplateData._intro = templateOverride.intro
+  if (templateOverride.cta_label) mergedTemplateData._cta_label = templateOverride.cta_label
+  if (templateOverride.footer) mergedTemplateData._footer = templateOverride.footer
+
+  // Render template with merged data
+  const html = await renderAsync(React.createElement(template.component, mergedTemplateData))
+  const plainText = await renderAsync(
+    React.createElement(template.component, mergedTemplateData),
+    { plainText: true }
+  )
 
   // Build unsubscribe URL pointing at the edge function
   const unsubscribeUrl = `${supabaseUrl}/functions/v1/handle-email-unsubscribe?token=${unsubscribeToken}`
@@ -217,7 +239,7 @@ Deno.serve(async (req) => {
     body: JSON.stringify({
       from: fromAddress,
       to: [effectiveRecipient],
-      subject: resolvedSubject,
+      subject: resolvedSubjectFinal,
       html,
       text: plainText,
       headers: {

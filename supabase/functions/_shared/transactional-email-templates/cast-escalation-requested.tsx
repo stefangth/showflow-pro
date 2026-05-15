@@ -22,9 +22,16 @@ interface Props {
   tier?: number
   accepted?: number
   required?: number
+  _intro?: string
+  _cta_label?: string
+  _footer?: string
 }
 
-const CastEscalationRequested = ({ program, date, tier, accepted, required }: Props) => (
+const CastEscalationRequested = ({ program, date, tier, accepted, required, _intro, _cta_label, _footer }: Props) => {
+  const introText = _intro || `Open the next priority tier to keep this date on track.`
+  const ctaLabel = _cta_label || 'Open bookings'
+  const footerText = _footer || `— The ${SITE_NAME} team`
+  return (
   <Html lang="en" dir="ltr">
     <Head />
     <Preview>Cast escalation needed — Tier {tier} for {program} on {date}</Preview>
@@ -46,19 +53,18 @@ const CastEscalationRequested = ({ program, date, tier, accepted, required }: Pr
           <Text style={cardLabel}>Filled</Text>
           <Text style={cardValue}>{accepted ?? 0} / {required ?? '?'} slots</Text>
         </Section>
-        <Text style={text}>
-          Open the next priority tier to keep this date on track.
-        </Text>
+        <Text style={text}>{introText}</Text>
         <Section style={{ textAlign: 'center', margin: '32px 0' }}>
           <Button href={BOOKINGS_URL} style={button}>
-            Open bookings
+            {ctaLabel}
           </Button>
         </Section>
-        <Text style={footer}>— The {SITE_NAME} team</Text>
+        <Text style={footer}>{footerText}</Text>
       </Container>
     </Body>
   </Html>
-)
+  )
+}
 
 export const template = {
   component: CastEscalationRequested,
