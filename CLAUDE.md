@@ -203,10 +203,13 @@ When adding a new page:
 
 A booking moves through: `suggested → soft_booked → confirmed` (or `cancelled` from any state).
 
-- Soft-bookings auto-expire after `app_settings.soft_book_expiry_hours` (default 48h).
-- A show date has `slots_per_date` slots; once filled, status becomes `fully_filled`.
+- Offers are created by `open-offer-tier` edge function (call after new show_date creation or manually).
+- Artists have `offer_response_window_hours` (default 48h) to respond; `expire-offers` runs hourly.
+- Artists receive a daily offer digest email at `offer_digest_hour_berlin` (default 19:00 Berlin).
+- Producers see soft_booked rows in their dashboard and bulk-confirm.
+- Artists receive a confirmation digest email at `confirmation_digest_hour_berlin` (default 20:00 Berlin).
+- Email provider: Resend. Template overrides editable in Settings → Booking Engine.
 - Understudies (`is_understudy = true`) auto-promote when the primary cancels.
-- Auto-suggest scoring weights are in `BOOKING_CONFIG.SUGGEST_WEIGHTS` and must sum to 1.
 
 ---
 
@@ -232,6 +235,10 @@ Suggested emails:
 | `src/features/auth/AuthContext.tsx` | Auth state, role helpers, approval status |
 | `src/hooks/` | All domain hooks — reuse before writing new queries |
 | `src/types/index.ts` | Domain type extensions on top of Supabase types |
+| `supabase/functions/send-offer-digest/index.ts` | Daily offer digest (Berlin 19:00 gate) |
+| `supabase/functions/send-confirmation-digest/index.ts` | Daily confirmation digest (Berlin 20:00 gate) |
+| `supabase/functions/airtable-poll/index.ts` | Airtable → show_dates sync |
+| `supabase/functions/open-offer-tier/index.ts` | Creates suggested bookings for a date/tier |
 
 ---
 
