@@ -20,23 +20,30 @@ interface Props {
   signupName?: string
   signupEmail?: string
   requestedRole?: string
+  _intro?: string
+  _cta_label?: string
+  _footer?: string
 }
 
 const NewSignupAdminNotification = ({
   signupName,
   signupEmail,
   requestedRole,
-}: Props) => (
+  _intro,
+  _cta_label,
+  _footer,
+}: Props) => {
+  const introText = _intro || `A new user has signed up to ${SITE_NAME} and is waiting for an admin to approve or reject their access.`
+  const ctaLabel = _cta_label || 'Review request'
+  const footerText = _footer || `You're receiving this email because you're an admin on ${SITE_NAME}.`
+  return (
   <Html lang="en" dir="ltr">
     <Head />
     <Preview>New signup awaiting your approval on {SITE_NAME}</Preview>
     <Body style={main}>
       <Container style={container}>
         <Heading style={h1}>New signup pending review</Heading>
-        <Text style={text}>
-          A new user has signed up to {SITE_NAME} and is waiting for an admin to
-          approve or reject their access.
-        </Text>
+        <Text style={text}>{introText}</Text>
 
         <Section style={card}>
           <Text style={cardLabel}>Name</Text>
@@ -49,17 +56,16 @@ const NewSignupAdminNotification = ({
 
         <Section style={{ textAlign: 'center', margin: '32px 0' }}>
           <Button href={APPROVALS_URL} style={button}>
-            Review request
+            {ctaLabel}
           </Button>
         </Section>
 
-        <Text style={footer}>
-          You're receiving this email because you're an admin on {SITE_NAME}.
-        </Text>
+        <Text style={footer}>{footerText}</Text>
       </Container>
     </Body>
   </Html>
-)
+  )
+}
 
 export const template = {
   component: NewSignupAdminNotification,

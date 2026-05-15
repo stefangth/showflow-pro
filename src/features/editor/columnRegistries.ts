@@ -6,7 +6,6 @@ import type { ColumnDef, ColumnTemplate, ColumnTemplates } from './types';
  * Mirrors src/integrations/supabase/types.ts — keep in sync when adding columns.
  */
 export const TABLE_COLUMNS: Record<string, readonly string[]> = {
-  availability: ['id', 'artist_id', 'date', 'status', 'recurrence_rule', 'created_at', 'updated_at'],
   bookings: [
     'id', 'artist_id', 'show_date_id', 'status', 'is_understudy',
     'booked_by', 'confirmed_at', 'cancelled_at', 'cancellation_reason',
@@ -20,7 +19,7 @@ export const TABLE_COLUMNS: Record<string, readonly string[]> = {
   cities: ['id', 'name', 'country', 'created_at'],
   artists: ['id', 'user_id', 'stage_name', 'email', 'phone', 'bio', 'skills', 'status', 'created_at', 'updated_at'],
   // Computed/derived columns surfaced in the editor under a virtual table.
-  _computed: ['day', 'slots', 'my_status'],
+  _computed: ['day', 'slots', 'my_status', 'blocked'],
 };
 
 /**
@@ -60,13 +59,14 @@ export const PAGE_COLUMN_SPECS: Record<string, PageColumnSpec> = {
     ],
   },
   'availability': {
-    tables: ['show_dates', 'shows', 'cities', 'availability'],
+    tables: ['show_dates', 'shows', '_computed'],
     rendered: [
       'show_dates.date',
       'shows.program',
       'show_dates.venue',
       'show_dates.session_1',
-      'availability.status',
+      '_computed.my_status',
+      '_computed.blocked',
     ],
   },
 };

@@ -1,13 +1,20 @@
-import { useQuery } from '@tanstack/react-query';
+import { useState, useMemo } from 'react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Link } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/features/auth/AuthContext';
-import { Card, CardContent } from '@/components/ui/card';
-import { CalendarDays, TrendingUp, Clock } from 'lucide-react';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { Checkbox } from '@/components/ui/checkbox';
+import { CalendarDays, TrendingUp, Clock, CheckCircle2, XCircle } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { addDays, format } from 'date-fns';
+import { toast } from 'sonner';
 import { ArtistDashboard } from '@/components/dashboard/ArtistDashboard';
 import { useSubProgramSlots, effectiveSlots } from '@/hooks/useSubProgramSlots';
+import { formatDateDMY } from '@/lib/dates';
+import { showLabel } from '@/types';
 
 const fadeUp = {
   initial: { opacity: 0, y: 20 },
@@ -16,6 +23,12 @@ const fadeUp = {
 
 type DateRow = { id: string; date: string; show_id: string };
 type BookingLite = { show_date_id: string; status: string };
+type SoftBookedRow = {
+  id: string;
+  is_understudy: boolean;
+  artist: { id: string; name: string } | null;
+  show_date: { id: string; date: string; show: { program: string | null; sub_program: string | null } | null } | null;
+};
 
 export default function DashboardPage() {
   const { hasRole } = useAuth();
@@ -31,6 +44,9 @@ function ProducerDashboard() {
   const todayStr = format(today, 'yyyy-MM-dd');
   const in14 = format(addDays(today, 14), 'yyyy-MM-dd');
   const in30 = format(addDays(today, 30), 'yyyy-MM-dd');
+
+  const qc = useQueryClient();
+  const [selected, setSelected] = useState<Set<string>>(new Set());
 
   const slotDefaults = useSubProgramSlots();
 
@@ -67,6 +83,66 @@ function ProducerDashboard() {
     });
     return map;
   })();
+
+  const { data: softBookedRows } = useQuery({
+    queryKey: ['bookings', 'soft-booked'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('bookings')
+        .select('id, is_understudy, artist:artists(id, name), show_date:show_dates!inner(id, date, show:shows(program, sub_program))')
+        .eq('status', 'soft_booked')
+        .order('show_date(date)', { ascending: true });
+      if (error) throw error;
+      return (data ?? []) as unknown as SoftBookedRow[];
+    },
+  });
+
+  const bulkConfirm = useMutation({
+    mutationFn: async (ids: string[]) => {
+      const { error } = await supabase
+        .from('bookings')
+        .update({ status: 'confirmed', confirmed_at: new Date().toISOString() })
+        .in('id', ids);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['bookings'] });
+      setSelected(new Set());
+      toast.success('Bookings confirmed');
+    },
+    onError: (e: any) => toast.error(e.message),
+  });
+
+  const bulkDecline = useMutation({
+    mutationFn: async (ids: string[]) => {
+      const { error } = await supabase
+        .from('bookings')
+        .update({ status: 'cancelled', cancelled_at: new Date().toISOString(), cancellation_reason: 'producer_declined' })
+        .in('id', ids);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['bookings'] });
+      setSelected(new Set());
+      toast.success('Bookings declined');
+    },
+    onError: (e: any) => toast.error(e.message),
+  });
+
+  const allIds = useMemo(() => (softBookedRows ?? []).map(r => r.id), [softBookedRows]);
+  const allSelected = allIds.length > 0 && allIds.every(id => selected.has(id));
+
+  const toggleAll = () => {
+    if (allSelected) setSelected(new Set());
+    else setSelected(new Set(allIds));
+  };
+
+  const toggleOne = (id: string) => {
+    const next = new Set(selected);
+    if (next.has(id)) next.delete(id);
+    else next.add(id);
+    setSelected(next);
+  };
 
   const computeRange = (untilStr: string | null) => {
     const dates = (upcomingDates ?? []).filter(d => !untilStr || d.date <= untilStr);
@@ -124,6 +200,76 @@ function ProducerDashboard() {
         <h1 className="font-display text-3xl font-bold">Dashboard</h1>
         <p className="text-muted-foreground mt-1">Cast confirmation status across upcoming dates.</p>
       </div>
+
+      {/* Ready to confirm */}
+      {(softBookedRows?.length ?? 0) > 0 && (
+        <Card>
+          <CardHeader>
+            <div className="flex items-center justify-between flex-wrap gap-3">
+              <CardTitle className="font-display flex items-center gap-2 text-base">
+                <CheckCircle2 className="h-4 w-4 text-warning" />
+                Ready to Confirm
+                <Badge variant="secondary">{softBookedRows!.length}</Badge>
+              </CardTitle>
+              {selected.size > 0 && (
+                <div className="flex gap-2">
+                  <Button
+                    size="sm"
+                    variant="default"
+                    className="text-xs"
+                    disabled={bulkConfirm.isPending || bulkDecline.isPending}
+                    onClick={() => bulkConfirm.mutate([...selected])}
+                  >
+                    <CheckCircle2 className="h-3.5 w-3.5 mr-1" />
+                    Confirm {selected.size}
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="text-xs hover:bg-destructive/10 hover:text-destructive"
+                    disabled={bulkConfirm.isPending || bulkDecline.isPending}
+                    onClick={() => bulkDecline.mutate([...selected])}
+                  >
+                    <XCircle className="h-3.5 w-3.5 mr-1" />
+                    Decline {selected.size}
+                  </Button>
+                </div>
+              )}
+            </div>
+          </CardHeader>
+          <CardContent className="p-0">
+            <div className="divide-y divide-border">
+              {/* Select-all header */}
+              <div className="flex items-center gap-3 px-4 py-2 bg-muted/30 text-xs text-muted-foreground">
+                <Checkbox checked={allSelected} onCheckedChange={toggleAll} />
+                <span className="flex-1">Artist</span>
+                <span className="w-40">Date / Show</span>
+                <span className="w-20 text-right">Type</span>
+              </div>
+              {softBookedRows!.map((row) => (
+                <div key={row.id} className="flex items-center gap-3 px-4 py-3 hover:bg-muted/20">
+                  <Checkbox
+                    checked={selected.has(row.id)}
+                    onCheckedChange={() => toggleOne(row.id)}
+                  />
+                  <span className="flex-1 text-sm font-medium truncate">
+                    {row.artist?.name ?? '—'}
+                  </span>
+                  <div className="w-40 min-w-0">
+                    <p className="text-sm truncate">{showLabel(row.show_date?.show as any)}</p>
+                    <p className="text-xs text-muted-foreground">{formatDateDMY(row.show_date?.date ?? '')}</p>
+                  </div>
+                  <div className="w-20 text-right">
+                    <Badge variant="outline" className="text-xs">
+                      {row.is_understudy ? 'Understudy' : 'Main'}
+                    </Badge>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
         {cards.map((c, i) => (
