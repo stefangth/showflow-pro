@@ -184,16 +184,22 @@ export async function getLatestBooking(
   return data ?? null;
 }
 
-/** Count rows in email_send_log for a recipient since a wall-clock instant. */
-export async function emailLogCountSince(
-  recipient: string,
+/**
+ * Count `booking_confirmed` notifications for a user since a wall-clock instant.
+ * The booking-status-change trigger writes to `notifications` directly; the
+ * email itself is sent later by the daily confirmation-digest cron job.
+ * For E2E we verify the trigger fired — that's the "email stub" boundary.
+ */
+export async function confirmedNotificationsSince(
+  userId: string,
   sinceISO: string
 ): Promise<number> {
   const admin = adminClient();
   const { count } = await admin
-    .from("email_send_log")
+    .from("notifications")
     .select("*", { count: "exact", head: true })
-    .eq("recipient_email", recipient)
+    .eq("user_id", userId)
+    .eq("type", "booking_confirmed")
     .gte("created_at", sinceISO);
   return count ?? 0;
 }

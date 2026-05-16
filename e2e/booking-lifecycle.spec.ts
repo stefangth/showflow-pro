@@ -14,7 +14,7 @@ import { deleteUserByEmail } from "./helpers/users";
 import { tagEmail } from "./helpers/supabase";
 import {
   cleanupBookingFixture,
-  emailLogCountSince,
+  confirmedNotificationsSince,
   getLatestBooking,
   openOfferTier,
   seedBookingFixture,
@@ -93,13 +93,14 @@ test.describe("Flow B — booking lifecycle", () => {
     expect(booking?.status).toBe("confirmed");
   });
 
-  test("a notification email is queued for the artist", async () => {
-    // The booking-status-change trigger / digest pipeline writes a row into
-    // email_send_log (or queues one). Either a pending or sent row counts.
-    // Allow some slack for async writes.
+  test("a confirmation notification is queued for the artist", async () => {
+    // The booking_status_change trigger writes a `booking_confirmed`
+    // notification when status moves to confirmed. The transactional email
+    // itself is sent by the daily digest cron — we verify the trigger fired,
+    // which is the integration boundary the ticket calls an "email stub".
     let count = 0;
     for (let i = 0; i < 10; i++) {
-      count = await emailLogCountSince(ARTIST_EMAIL, runStartISO);
+      count = await confirmedNotificationsSince(fixture.artistUser.id, runStartISO);
       if (count > 0) break;
       await new Promise((r) => setTimeout(r, 1_000));
     }
