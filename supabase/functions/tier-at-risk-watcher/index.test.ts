@@ -4,9 +4,7 @@
  * Tests the risk assessment logic, idempotency (no duplicate notifications),
  * and the recovery (deletion) path. No real Supabase calls.
  */
-import {
-  assertEquals,
-} from "https://deno.land/std@0.224.0/testing/asserts.ts";
+import { assertEquals } from "../_shared/test-asserts.ts";
 
 // ── Logic helpers mirroring the function ─────────────────────────────────
 
@@ -52,7 +50,11 @@ Deno.test("tier is at risk when pending + accepted < required slots", () => {
     { status: "suggested" }, // 1 pending
     { status: "cancelled" }, // doesn't count
   ];
-  assertEquals(isAtRisk(bookings, 3), true, "1 pending, 0 accepted < 3 required");
+  assertEquals(
+    isAtRisk(bookings, 3),
+    true,
+    "1 pending, 0 accepted < 3 required",
+  );
 });
 
 Deno.test("tier is healthy when pending + accepted >= required slots", () => {
@@ -105,9 +107,35 @@ Deno.test("still-at-risk tier notification is NOT deleted", () => {
 });
 
 Deno.test("missing auth returns 401 equivalent", () => {
-  const cronSecret: string | null = null;
-  const authHeader: string | null = null;
-  const isAuthorized =
-    cronSecret !== null || (authHeader?.startsWith("Bearer ") ?? false);
+  const cronSecret = null as string | null;
+  const authHeader = null as string | null;
+  const isAuthorized = cronSecret !== null ||
+    (authHeader?.startsWith("Bearer ") ?? false);
   assertEquals(isAuthorized, false);
+});
+
+Deno.test("single notification per producer per tier even when assignment resolver duplicates producers", () => {
+  const tierId = "tier-uuid-1";
+  const duplicatedRecipientIds = ["producer-1", "producer-1", "producer-2"];
+  const uniqueRecipientIds = Array.from(new Set(duplicatedRecipientIds));
+
+  const newRows = dedupeNewNotifications(tierId, uniqueRecipientIds, new Set());
+
+  assertEquals(newRows.map((row) => row.user_id), ["producer-1", "producer-2"]);
+});
+
+Deno.test("notification can be recreated after recovery deleted the old row", () => {
+  const tierId = "tier-uuid-1";
+  const existingBeforeRecovery = new Set([`${tierId}::producer-1`]);
+  const duringRisk = dedupeNewNotifications(
+    tierId,
+    ["producer-1"],
+    existingBeforeRecovery,
+  );
+  const afterRecoveryDeletedOldRow = dedupeNewNotifications(tierId, [
+    "producer-1",
+  ], new Set());
+
+  assertEquals(duringRisk, []);
+  assertEquals(afterRecoveryDeletedOldRow.length, 1);
 });
