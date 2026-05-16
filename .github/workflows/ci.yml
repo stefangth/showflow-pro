@@ -1,0 +1,107 @@
+name: CI
+
+on:
+  push:
+    branches: ["**"]
+  pull_request:
+    branches: ["**"]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  # ── 1. Lint ────────────────────────────────────────────────────────────────
+  lint:
+    name: Lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - run: npm ci
+
+      - run: npm run lint
+
+  # ── 2. Unit / hook tests (Vitest) ──────────────────────────────────────────
+  unit-tests:
+    name: Unit tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - run: npm ci
+
+      - name: Run Vitest
+        run: npm test
+
+  # ── 3. Database tests (pgTAP) ──────────────────────────────────────────────
+  # Scaffolded — filled in when the pgTAP harness lands (item 2 in the plan).
+  db-tests:
+    name: Database tests (pgTAP)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Check for DB test suite
+        run: |
+          if [ -d supabase/tests ] && ls supabase/tests/**/*.sql 2>/dev/null | grep -q .; then
+            echo "DB test suite found — this job needs the full Supabase runner (see plan item 2)."
+            echo "Failing until runner is wired up."
+            exit 1
+          else
+            echo "No DB tests yet — skipping."
+          fi
+
+  # ── 4. Edge function tests (Deno) ──────────────────────────────────────────
+  # Scaffolded — filled in when Deno test harness lands (plan items 7–12).
+  function-tests:
+    name: Edge function tests (Deno)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Check for function tests
+        run: |
+          if find supabase/functions -name "*.test.ts" 2>/dev/null | grep -q .; then
+            echo "Function tests found — this job needs Deno installed (see plan items 7–12)."
+            exit 1
+          else
+            echo "No function tests yet — skipping."
+          fi
+
+  # ── 5. End-to-end tests (Playwright) ──────────────────────────────────────
+  # Only runs on pull requests to main. Scaffolded — filled in when
+  # the Playwright happy-path specs land (plan item 17).
+  e2e:
+    name: E2E tests (Playwright)
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request' && github.base_ref == 'main'
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - run: npm ci
+
+      - name: Check for E2E suite
+        run: |
+          if [ -d e2e ] && ls e2e/**/*.spec.ts 2>/dev/null | grep -q .; then
+            echo "E2E tests found — this job needs Playwright browsers installed."
+            echo "Add 'npx playwright install --with-deps' and 'npx playwright test' here."
+            exit 1
+          else
+            echo "No E2E tests yet — skipping."
+          fi
