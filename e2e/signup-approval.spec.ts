@@ -8,7 +8,7 @@
  * approval click, artist login, dashboard render — exercises the real UI.
  */
 import { expect, test } from "@playwright/test";
-import { loginAs, loginAsAndAwaitDashboard } from "./helpers/auth";
+import { loginAs, loginAsAndAwaitDashboard, navViaSidebar } from "./helpers/auth";
 import {
   createConfirmedUser,
   deleteUserByEmail,
@@ -46,8 +46,14 @@ test.describe("Flow A — signup to dashboard", () => {
   test("admin approves the pending artist from the admin panel", async ({ page }) => {
     await loginAsAndAwaitDashboard(page, TEST_ADMIN_EMAIL, TEST_ADMIN_PASSWORD);
 
-    await page.goto("/admin");
-    await expect(page.getByRole("heading", { name: /pending approvals/i })).toBeVisible();
+    // The Admin nav link is admin-only; clicking it (rather than goto'ing)
+    // doubles as proof that AuthContext has finished loading roles, so we
+    // don't race ProtectedRoute back to /dashboard.
+    await navViaSidebar(page, /^admin$/i);
+
+    await expect(page.getByRole("heading", { name: /pending approvals/i })).toBeVisible({
+      timeout: 15_000,
+    });
 
     // Approval rows are divs that contain both the artist email and the
     // Approve button. `.last()` picks the innermost matching ancestor — the

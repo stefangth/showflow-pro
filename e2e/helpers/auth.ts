@@ -28,6 +28,19 @@ export async function loginAsAndAwaitDashboard(
   await expect(page).toHaveURL(/\/dashboard/, { timeout: 15_000 });
 }
 
+/**
+ * Navigate to a role-gated route by clicking its sidebar link. `AuthContext`
+ * fetches roles asynchronously after `loading` flips to false, so a direct
+ * `page.goto` can race the role load and `ProtectedRoute` will bounce you
+ * back to /dashboard. Waiting for the sidebar link to appear is a clean
+ * proof-of-roles signal.
+ */
+export async function navViaSidebar(page: Page, linkName: RegExp): Promise<void> {
+  const link = page.getByRole("link", { name: linkName });
+  await expect(link).toBeVisible({ timeout: 15_000 });
+  await link.click();
+}
+
 export async function signOut(page: Page): Promise<void> {
   // Sign out is in the avatar menu in AppLayout; if not present, clear session via storage.
   await page.context().clearCookies();

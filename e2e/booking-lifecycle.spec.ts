@@ -9,7 +9,7 @@
  *   5. Verify an email was queued in email_send_log for the artist
  */
 import { expect, test } from "@playwright/test";
-import { loginAs, loginAsAndAwaitDashboard } from "./helpers/auth";
+import { loginAs, loginAsAndAwaitDashboard, navViaSidebar } from "./helpers/auth";
 import { deleteUserByEmail } from "./helpers/users";
 import { tagEmail } from "./helpers/supabase";
 import {
@@ -59,7 +59,9 @@ test.describe("Flow B — booking lifecycle", () => {
 
   test("artist sees the pending offer and accepts it", async ({ page }) => {
     await loginAsAndAwaitDashboard(page, ARTIST_EMAIL, ARTIST_PASSWORD);
-    await page.goto("/availability");
+    // Sidebar link is artist-gated → click it instead of goto'ing so we don't
+    // race AuthContext.fetchRoles.
+    await navViaSidebar(page, /^availability$/i);
 
     // The row for our seeded date renders an Accept button via OfferResponseButtons.
     const acceptButton = page.getByRole("button", { name: /accept/i }).first();
@@ -74,7 +76,7 @@ test.describe("Flow B — booking lifecycle", () => {
 
   test("producer confirms the soft-booked artist", async ({ page }) => {
     await loginAsAndAwaitDashboard(page, TEST_PRODUCER_EMAIL, TEST_PRODUCER_PASSWORD);
-    await page.goto("/bookings");
+    await navViaSidebar(page, /^shows & bookings$/i);
 
     // The seeded show's program ("e2e-program") is shown in a TableCell. Click
     // the row that contains it to open ShowDateDetailSheet.
