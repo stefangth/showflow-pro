@@ -27,13 +27,13 @@ BEGIN
   -- Resolve slot capacity from app_settings.sub_program_slots_defaults
   SELECT
     COALESCE(
-      (app.value -> sd.show_id::text -> 'main_cast')::int,
-      (app.value -> (s.program) -> (s.sub_program) -> 'main_cast')::int,
+      NULLIF(app.value -> sd.show_id::text ->> 'main_cast', '')::int,
+      NULLIF(app.value -> s.program -> s.sub_program ->> 'main_cast', '')::int,
       0
     ),
     COALESCE(
-      (app.value -> sd.show_id::text -> 'understudies')::int,
-      (app.value -> (s.program) -> (s.sub_program) -> 'understudies')::int,
+      NULLIF(app.value -> sd.show_id::text ->> 'understudies', '')::int,
+      NULLIF(app.value -> s.program -> s.sub_program ->> 'understudies', '')::int,
       0
     )
   INTO v_main_cast, v_understudies
@@ -48,8 +48,8 @@ BEGIN
   IF v_main_cast IS NULL OR v_main_cast = 0 THEN
     -- Fall back to jsonb path (program → sub_program → main_cast)
     SELECT
-      COALESCE((a.value -> s.program -> s.sub_program -> 'main_cast')::int, 0),
-      COALESCE((a.value -> s.program -> s.sub_program -> 'understudies')::int, 0)
+      COALESCE(NULLIF(a.value -> s.program -> s.sub_program ->> 'main_cast', '')::int, 0),
+      COALESCE(NULLIF(a.value -> s.program -> s.sub_program ->> 'understudies', '')::int, 0)
     INTO v_main_cast, v_understudies
     FROM show_dates sd
     JOIN shows s ON s.id = sd.show_id
