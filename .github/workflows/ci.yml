@@ -57,20 +57,51 @@ jobs:
         with:
           version: latest
 
-      - name: Start Supabase local stack (db + auth only)
-        run: supabase start -x studio,inbucket,imgproxy,edge-runtime,logflare,vector --debug
+      - name: Show Supabase CLI version
+        run: supabase --version
 
-      - name: Run pgTAP tests
-        run: supabase test db --debug
-
-      - name: Dump Supabase logs on failure
-        if: failure()
+      - name: Start Supabase local stack
+        id: start
         run: |
+          set -o pipefail
+          supabase start -x studio,inbucket,imgproxy,edge-runtime,logflare,vector 2>&1 | tee /tmp/supabase-start.log
+
+      - name: Show what's running
+        if: always()
+        run: |
+          echo "─── docker ps ───"
+          docker ps -a --format 'table {{.Names}}\t{{.Status}}\t{{.Image}}' || true
           echo "─── supabase status ───"
           supabase status || true
-          echo "─── postgres logs (last 200 lines) ───"
-          docker logs --tail 200 supabase_db_showflow-pro 2>&1 || \
-            docker ps --format '{{.Names}}' | grep -i supabase | head -5 | xargs -I{} sh -c 'echo "── {} ──"; docker logs --tail 200 {} 2>&1' || true
+
+      - name: Dump container logs on start failure
+        if: failure() && steps.start.outcome == 'failure'
+        run: |
+          for c in $(docker ps -a --format '{{.Names}}' | grep -i supabase); do
+            echo "═══════════════════════════════════"
+            echo "── $c ──"
+            echo "═══════════════════════════════════"
+            docker logs --tail 300 "$c" 2>&1 || true
+          done
+          echo "─── tail of supabase start output ───"
+          tail -200 /tmp/supabase-start.log || true
+
+      - name: Run pgTAP tests
+        id: tests
+        run: |
+          set -o pipefail
+          supabase test db 2>&1 | tee /tmp/pgtap.log
+
+      - name: Dump pgTAP output and postgres logs on test failure
+        if: failure() && steps.tests.outcome == 'failure'
+        run: |
+          echo "─── full pgTAP output ───"
+          cat /tmp/pgtap.log || true
+          echo "─── postgres container logs (last 200) ───"
+          for c in $(docker ps --format '{{.Names}}' | grep -iE 'db|postgres'); do
+            echo "── $c ──"
+            docker logs --tail 200 "$c" 2>&1 || true
+          done
 
   # ── 4. Edge function tests (Deno) ──────────────────────────────────────────
   # Scaffolded — filled in when Deno test harness lands (plan items 7–12).
