@@ -23,6 +23,17 @@ SELECT plan(8);
 -- ────────────────────────────────────────────────────────────────────────────
 -- Fixtures (superuser; bypass FK triggers with replica role)
 -- ────────────────────────────────────────────────────────────────────────────
+-- Set slot capacity high enough that slot_fill_auto_cancel_trigger never
+-- fires during this test. Without this, confirming booking 2 hits the NULL
+-- guard bug (empty app_settings → v_main_cast = NULL → guard evaluates to
+-- NULL not TRUE → falls through to cancel other bookings → test 7 fails).
+INSERT INTO public.app_settings (key, value)
+VALUES (
+  'sub_program_slots_defaults',
+  '{"theatre":{"musical":{"main_cast":10,"understudies":10}}}'::jsonb
+)
+ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value;
+
 SET session_replication_role = replica;
 
 INSERT INTO auth.users (id, aud, role, email, email_confirmed_at, raw_app_meta_data, raw_user_meta_data, created_at, updated_at)
