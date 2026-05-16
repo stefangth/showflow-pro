@@ -1,12 +1,21 @@
 /**
  * Booking-lifecycle seeding helpers. Creates the minimum graph needed to drive
- * Flow B: a show, a future show_date, a cast, an artist linked to a user, and
+ * Flow B: a city, show, future show_date, cast, artist linked to a user, and
  * the eligibility rows that make the artist appear as a valid offer target.
+ *
+ * Schema reminders (from src/integrations/supabase/types.ts):
+ *   - `shows` has NO `title` column — identify by `program` + `sub_program`.
+ *   - `casts` has NO `show_id` — the cast↔show link lives in
+ *     `show_cast_eligibility (show_id, cast_id, city_id)`.
+ *   - `show_cast_eligibility.city_id` is NOT NULL, so we always seed a city.
+ *   - `show_date_cast_eligibility (show_date_id, cast_id)` is the per-date
+ *     override used by `open-offer-tier` when `tier=99`.
  */
 import { adminClient, E2E_TAG } from "./supabase";
 import { ensureUserWithRole, type SeededUser } from "./users";
 
 export interface BookingFixture {
+  cityId: string;
   showId: string;
   showDateId: string;
   castId: string;
@@ -27,17 +36,23 @@ function isoDays(offset: number): string {
   return d.toISOString().slice(0, 10);
 }
 
-/** Idempotent seeding keyed by a fixed tag — deletes any prior e2e booking graph first. */
+/** Idempotent seeding: wipes any prior e2e booking graph then re-seeds. */
 export async function seedBookingFixture(opts: SeedOptions): Promise<BookingFixture> {
   const admin = adminClient();
   await cleanupBookingFixture();
 
   const artistUser = await ensureUserWithRole(opts.artistEmail, opts.artistPassword, "artist");
 
+  const { data: city, error: cityErr } = await admin
+    .from("cities")
+    .insert({ name: `${E2E_TAG}-city` })
+    .select("id")
+    .single();
+  if (cityErr || !city) throw new Error(`seed city failed: ${cityErr?.message}`);
+
   const { data: show, error: showErr } = await admin
     .from("shows")
     .insert({
-      title: `${E2E_TAG} show`,
       program: `${E2E_TAG}-program`,
       sub_program: `${E2E_TAG}-sub`,
     })
@@ -47,7 +62,7 @@ export async function seedBookingFixture(opts: SeedOptions): Promise<BookingFixt
 
   const { data: cast, error: castErr } = await admin
     .from("casts")
-    .insert({ name: `${E2E_TAG} cast`, show_id: show.id })
+    .insert({ name: `${E2E_TAG}-cast` })
     .select("id")
     .single();
   if (castErr || !cast) throw new Error(`seed cast failed: ${castErr?.message}`);
@@ -55,7 +70,7 @@ export async function seedBookingFixture(opts: SeedOptions): Promise<BookingFixt
   const { data: artist, error: artistErr } = await admin
     .from("artists")
     .insert({
-      name: `${E2E_TAG} artist`,
+      name: `${E2E_TAG}-artist`,
       user_id: artistUser.id,
       email: artistUser.email,
     })
@@ -63,15 +78,19 @@ export async function seedBookingFixture(opts: SeedOptions): Promise<BookingFixt
     .single();
   if (artistErr || !artist) throw new Error(`seed artist failed: ${artistErr?.message}`);
 
-  await admin
+  const { error: cmErr } = await admin
     .from("cast_members")
     .insert({ cast_id: cast.id, artist_id: artist.id, role: "primary" });
+  if (cmErr) throw new Error(`seed cast_members failed: ${cmErr.message}`);
 
-  await admin
+  const { error: sceErr } = await admin
     .from("show_cast_eligibility")
-    .insert({ show_id: show.id, cast_id: cast.id });
+    .insert({ show_id: show.id, cast_id: cast.id, city_id: city.id });
+  if (sceErr) throw new Error(`seed show_cast_eligibility failed: ${sceErr.message}`);
 
   const dateISO = opts.dateISO ?? isoDays(30);
+  // Leave city_id null on the show_date — that keeps `open-offer-tier` on the
+  // tier-99 path with no priority filtering.
   const { data: showDate, error: dateErr } = await admin
     .from("show_dates")
     .insert({
@@ -83,11 +102,13 @@ export async function seedBookingFixture(opts: SeedOptions): Promise<BookingFixt
     .single();
   if (dateErr || !showDate) throw new Error(`seed show_date failed: ${dateErr?.message}`);
 
-  await admin
+  const { error: sdceErr } = await admin
     .from("show_date_cast_eligibility")
     .insert({ show_date_id: showDate.id, cast_id: cast.id });
+  if (sdceErr) throw new Error(`seed show_date_cast_eligibility failed: ${sdceErr.message}`);
 
   return {
+    cityId: city.id,
     showId: show.id,
     showDateId: showDate.id,
     castId: cast.id,
@@ -96,29 +117,47 @@ export async function seedBookingFixture(opts: SeedOptions): Promise<BookingFixt
   };
 }
 
-/** Remove any e2e show/cast/artist/booking rows from prior runs. Order matters for FKs. */
+/** Remove any e2e-tagged graph from prior runs. Order matters for FK constraints. */
 export async function cleanupBookingFixture(): Promise<void> {
   const admin = adminClient();
-  // shows cascade to show_dates, casts, show_cast_eligibility (per app FK rules).
-  // Bookings reference show_date and artist, so delete those first by tag.
-  const { data: showIds } = await admin
+
+  const { data: shows } = await admin
     .from("shows")
     .select("id")
-    .like("title", `${E2E_TAG}%`);
-  const ids = (showIds ?? []).map((r) => r.id);
-  if (ids.length > 0) {
-    // bookings → show_dates → shows
-    const { data: dateIds } = await admin
+    .like("program", `${E2E_TAG}%`);
+  const showIds = (shows ?? []).map((r) => r.id);
+
+  const { data: casts } = await admin
+    .from("casts")
+    .select("id")
+    .like("name", `${E2E_TAG}%`);
+  const castIds = (casts ?? []).map((r) => r.id);
+
+  if (showIds.length > 0) {
+    const { data: dates } = await admin
       .from("show_dates")
       .select("id")
-      .in("show_id", ids);
-    const dateIdList = (dateIds ?? []).map((d) => d.id);
-    if (dateIdList.length > 0) {
-      await admin.from("bookings").delete().in("show_date_id", dateIdList);
+      .in("show_id", showIds);
+    const dateIds = (dates ?? []).map((d) => d.id);
+
+    if (dateIds.length > 0) {
+      await admin.from("bookings").delete().in("show_date_id", dateIds);
+      await admin.from("show_date_cast_eligibility").delete().in("show_date_id", dateIds);
     }
-    await admin.from("shows").delete().in("id", ids);
+    await admin.from("show_cast_eligibility").delete().in("show_id", showIds);
+    await admin.from("show_dates").delete().in("show_id", showIds);
+    await admin.from("shows").delete().in("id", showIds);
   }
+
+  if (castIds.length > 0) {
+    await admin.from("cast_members").delete().in("cast_id", castIds);
+    await admin.from("show_cast_eligibility").delete().in("cast_id", castIds);
+    await admin.from("show_date_cast_eligibility").delete().in("cast_id", castIds);
+    await admin.from("casts").delete().in("id", castIds);
+  }
+
   await admin.from("artists").delete().like("name", `${E2E_TAG}%`);
+  await admin.from("cities").delete().like("name", `${E2E_TAG}%`);
 }
 
 /** Trigger an offer tier for a date via the same edge function the producer flow uses. */
