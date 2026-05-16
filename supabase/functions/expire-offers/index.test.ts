@@ -39,7 +39,7 @@ function shouldEscalate(
 Deno.test("cron secret missing returns 401", () => {
   const cronSecretHeader: string | null = null;
   const authHeader: string | null = null;
-  const isAuthorized = cronSecretHeader !== null || authHeader?.startsWith("Bearer ");
+  const isAuthorized = cronSecretHeader !== null || (authHeader?.startsWith("Bearer ") ?? false);
   assertEquals(isAuthorized, false);
 });
 

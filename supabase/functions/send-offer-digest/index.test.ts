@@ -95,7 +95,7 @@ Deno.test("missing auth returns 401", () => {
   const cronSecret: string | null = null;
   const authHeader: string | null = null;
   const isAuthorized =
-    cronSecret !== null || authHeader?.startsWith("Bearer ");
+    cronSecret !== null || (authHeader?.startsWith("Bearer ") ?? false);
   assertEquals(isAuthorized, false);
 });
 
