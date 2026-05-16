@@ -4,9 +4,7 @@
  * Tests Berlin timezone hour gate, auth validation, and grouping logic.
  * No real Supabase or email calls.
  */
-import {
-  assertEquals,
-} from "https://deno.land/std@0.224.0/testing/asserts.ts";
+import { assertEquals } from "../_shared/test-asserts.ts";
 
 // ── Logic helpers mirroring the function ─────────────────────────────────
 
@@ -40,7 +38,9 @@ function groupByArtist(pendingBookings: OfferRow[]): Map<
     recipientEmail: string;
     displayName: string;
     bookingIds: string[];
-    offers: Array<{ show: string; date: string; city: string; expires: string }>;
+    offers: Array<
+      { show: string; date: string; city: string; expires: string }
+    >;
   }
 > {
   const grouped = new Map();
@@ -79,7 +79,11 @@ Deno.test("hour gate skips when Berlin hour does not match target", () => {
   const dateAtNoonUTC = new Date("2026-01-15T12:00:00Z");
   const berlinHour = getBerlinHour(dateAtNoonUTC);
   const shouldSkip = berlinHour !== targetHour;
-  assertEquals(shouldSkip, true, `Berlin hour ${berlinHour} should not match target 19`);
+  assertEquals(
+    shouldSkip,
+    true,
+    `Berlin hour ${berlinHour} should not match target 19`,
+  );
 });
 
 Deno.test("hour gate proceeds at correct Berlin hour", () => {
@@ -92,10 +96,10 @@ Deno.test("hour gate proceeds at correct Berlin hour", () => {
 });
 
 Deno.test("missing auth returns 401", () => {
-  const cronSecret: string | null = null;
-  const authHeader: string | null = null;
-  const isAuthorized =
-    cronSecret !== null || (authHeader?.startsWith("Bearer ") ?? false);
+  const cronSecret = null as string | null;
+  const authHeader = null as string | null;
+  const isAuthorized = cronSecret !== null ||
+    (authHeader?.startsWith("Bearer ") ?? false);
   assertEquals(isAuthorized, false);
 });
 
@@ -181,4 +185,58 @@ Deno.test("show label includes sub_program when present", () => {
   const grouped = groupByArtist(bookings);
   const offer = grouped.get("a1")?.offers[0];
   assertEquals(offer?.show, "theatre — musical");
+});
+
+async function stampSentOfferDigests(
+  pendingBookings: OfferRow[],
+  send: (artistId: string, bookingIds: string[]) => Promise<void>,
+): Promise<{ sent: number; stamped: string[] }> {
+  const stamped: string[] = [];
+  let sent = 0;
+
+  for (const [artistId, entry] of groupByArtist(pendingBookings)) {
+    try {
+      await send(artistId, entry.bookingIds);
+      stamped.push(...entry.bookingIds);
+      sent += 1;
+    } catch {
+      // Mirrors production: only successfully sent digests are stamped.
+    }
+  }
+
+  return { sent, stamped };
+}
+
+Deno.test("Berlin spring DST target hour can still be matched", () => {
+  assertEquals(getBerlinHour(new Date("2026-03-29T17:00:00Z")), 19);
+});
+
+Deno.test("Berlin autumn DST target hour can still be matched", () => {
+  assertEquals(getBerlinHour(new Date("2026-10-25T18:00:00Z")), 19);
+});
+
+Deno.test("digest_sent_at is stamped atomically for only the sent artist group", async () => {
+  const bookings: OfferRow[] = [
+    {
+      id: "booking-a1",
+      artist_id: "artist-a",
+      offer_expires_at: "2026-05-17T10:00:00Z",
+      artists: { id: "artist-a", name: "A", email: "a@example.com" },
+      show_dates: null,
+    },
+    {
+      id: "booking-b1",
+      artist_id: "artist-b",
+      offer_expires_at: "2026-05-17T10:00:00Z",
+      artists: { id: "artist-b", name: "B", email: "b@example.com" },
+      show_dates: null,
+    },
+  ];
+
+  const result = await stampSentOfferDigests(bookings, async (artistId) => {
+    if (artistId === "artist-b") throw new Error("email failed");
+  });
+
+  assertEquals(result.sent, 1);
+  assertEquals(result.stamped, ["booking-a1"]);
 });
