@@ -57,7 +57,7 @@ describe("useEligibleArtists", () => {
   });
 
   it("returns artistIds set when cast members are found", async () => {
-    let callCount = 0;
+    const callCount = 0;
     vi.mocked(supabase.from).mockImplementation((table: string) => {
       if (table === "show_cast_eligibility") {
         return {
