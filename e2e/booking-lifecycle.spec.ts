@@ -1,119 +1,106 @@
 /**
- * E2E Flow B: Booking lifecycle
- *   1. Producer opens an offer tier for a show date
- *   2. Artist accepts the offer (suggested → soft_booked)
- *   3. Producer confirms the booking (soft_booked → confirmed)
+ * Flow B — Booking lifecycle.
  *
- * Preconditions:
- *   - Producer account: test-producer@showflowpro.com (PLAYWRIGHT_PRODUCER_PASSWORD)
- *   - Artist account: test-artist@showflowpro.com (PLAYWRIGHT_ARTIST_PASSWORD)
- *   - At least one show date in 'open' status visible to the producer
- *   - The artist is in an eligible cast for that show date
+ *   1. Seed a show + future date + cast + artist + eligibility
+ *   2. Producer triggers the offer tier (via the open-offer-tier edge function,
+ *      the same call the producer flow ultimately makes) → suggested booking
+ *   3. Artist accepts the offer in the Availability UI → soft_booked
+ *   4. Producer confirms the soft-booked artist in ShowDateDetailSheet → confirmed
+ *   5. Verify an email was queued in email_send_log for the artist
  */
-import { test, expect } from "@playwright/test";
+import { expect, test } from "@playwright/test";
+import { loginAs, loginAsAndAwaitDashboard } from "./helpers/auth";
+import { deleteUserByEmail } from "./helpers/users";
+import { tagEmail } from "./helpers/supabase";
+import {
+  cleanupBookingFixture,
+  emailLogCountSince,
+  getLatestBooking,
+  openOfferTier,
+  seedBookingFixture,
+  type BookingFixture,
+} from "./helpers/booking";
+import { TEST_PRODUCER_EMAIL, TEST_PRODUCER_PASSWORD } from "./global-setup";
 
-const BASE_URL = process.env.PLAYWRIGHT_BASE_URL ?? "http://localhost:5173";
-const PRODUCER_EMAIL = process.env.PLAYWRIGHT_PRODUCER_EMAIL ?? "test-producer@showflowpro.com";
-const PRODUCER_PASSWORD = process.env.PLAYWRIGHT_PRODUCER_PASSWORD ?? "TestPass123!";
-const ARTIST_EMAIL = process.env.PLAYWRIGHT_ARTIST_EMAIL ?? "test-artist@showflowpro.com";
-const ARTIST_PASSWORD = process.env.PLAYWRIGHT_ARTIST_PASSWORD ?? "TestPass123!";
+const ARTIST_EMAIL = tagEmail("artist-booking", Date.now());
+const ARTIST_PASSWORD = "E2eBookingArtist!1";
 
-async function loginAs(page: any, email: string, password: string) {
-  await page.goto(`${BASE_URL}/login`);
-  await page.getByLabel(/email/i).first().fill(email);
-  await page.getByLabel(/password/i).first().fill(password);
-  await page.getByRole("button", { name: /sign in|log in|login/i }).click();
-  await expect(page).toHaveURL(/dashboard/, { timeout: 10_000 });
-}
+let fixture: BookingFixture;
+let runStartISO: string;
 
-test.describe("Booking lifecycle flow", () => {
-  test("producer can navigate to bookings page", async ({ page }) => {
-    await loginAs(page, PRODUCER_EMAIL, PRODUCER_PASSWORD);
+test.describe.configure({ mode: "serial" });
 
-    // Navigate to bookings / shows page
-    await page.goto(`${BASE_URL}/bookings`);
-    await expect(page.getByText(/bookings|shows|dates/i)).toBeVisible({ timeout: 8_000 });
-  });
+test.describe("Flow B — booking lifecycle", () => {
+  test.beforeAll(async () => {
+    runStartISO = new Date().toISOString();
+    await deleteUserByEmail(ARTIST_EMAIL);
+    fixture = await seedBookingFixture({
+      artistEmail: ARTIST_EMAIL,
+      artistPassword: ARTIST_PASSWORD,
+    });
+    // Producer triggers an offer for the seeded date — creates a `suggested` booking
+    // for the seeded artist (the only eligible artist in the seeded cast).
+    await openOfferTier(fixture.showDateId, 1);
 
-  test("producer can open a show date detail and see booking management", async ({ page }) => {
-    await loginAs(page, PRODUCER_EMAIL, PRODUCER_PASSWORD);
-    await page.goto(`${BASE_URL}/bookings`);
-
-    // Find and click the first available show date
-    const firstDate = page.locator('[data-testid="show-date-row"], .show-date-row, tr').first();
-    if (await firstDate.isVisible({ timeout: 5_000 })) {
-      await firstDate.click();
-      // ShowDateDetailSheet should open
-      await expect(
-        page.getByText(/artists|bookings|available|assigned/i)
-      ).toBeVisible({ timeout: 8_000 });
-    } else {
-      test.skip(); // No show dates visible — acceptable in fresh environment
+    const booking = await getLatestBooking(fixture.artistId);
+    if (!booking || booking.status !== "suggested") {
+      throw new Error(
+        `expected a suggested booking after openOfferTier, got ${JSON.stringify(booking)}`
+      );
     }
   });
 
-  test("artist can view their bookings on the dashboard", async ({ page }) => {
-    await loginAs(page, ARTIST_EMAIL, ARTIST_PASSWORD);
-
-    // Artist dashboard should show booking section
-    await expect(
-      page.getByText(/dashboard|my bookings|offers|upcoming/i)
-    ).toBeVisible({ timeout: 8_000 });
+  test.afterAll(async () => {
+    await cleanupBookingFixture();
+    await deleteUserByEmail(ARTIST_EMAIL);
   });
 
-  test("artist can navigate to bookings page", async ({ page }) => {
-    await loginAs(page, ARTIST_EMAIL, ARTIST_PASSWORD);
+  test("artist sees the pending offer and accepts it", async ({ page }) => {
+    await loginAsAndAwaitDashboard(page, ARTIST_EMAIL, ARTIST_PASSWORD);
+    await page.goto("/availability");
 
-    // Artist typically has /bookings or sees offers on dashboard
-    // The route depends on role-based nav — just verify they land somewhere meaningful
-    await expect(page.url()).toContain("dashboard");
-    const bookingsLink = page.getByRole("link", { name: /bookings|offers|my dates/i });
-    if (await bookingsLink.isVisible({ timeout: 3_000 })) {
-      await bookingsLink.click();
-      await expect(page.getByText(/bookings|offers|no upcoming/i)).toBeVisible({ timeout: 8_000 });
-    }
+    // The row for our seeded date renders an Accept button via OfferResponseButtons.
+    const acceptButton = page.getByRole("button", { name: /accept/i }).first();
+    await expect(acceptButton).toBeVisible({ timeout: 15_000 });
+    await acceptButton.click();
+
+    await expect(page.getByText(/offer accepted/i)).toBeVisible({ timeout: 10_000 });
+
+    const booking = await getLatestBooking(fixture.artistId);
+    expect(booking?.status).toBe("soft_booked");
   });
 
-  test("producer can confirm a soft-booked artist", async ({ page }) => {
-    await loginAs(page, PRODUCER_EMAIL, PRODUCER_PASSWORD);
-    await page.goto(`${BASE_URL}/bookings`);
+  test("producer confirms the soft-booked artist", async ({ page }) => {
+    await loginAsAndAwaitDashboard(page, TEST_PRODUCER_EMAIL, TEST_PRODUCER_PASSWORD);
+    await page.goto("/bookings");
 
-    // Look for any soft-booked row with a confirm button
-    const confirmButton = page.getByRole("button", { name: /confirm/i }).first();
+    // The seeded show's program ("e2e-program") is shown in a TableCell. Click
+    // the row that contains it to open ShowDateDetailSheet.
+    const dateRow = page.getByRole("row", { name: /e2e-program/i }).first();
+    await expect(dateRow).toBeVisible({ timeout: 15_000 });
+    await dateRow.click();
 
-    if (await confirmButton.isVisible({ timeout: 5_000 })) {
-      await confirmButton.click();
+    // ShowDateDetailSheet renders a Confirm button on each soft_booked row.
+    const confirmButton = page.getByRole("button", { name: /^confirm$/i }).first();
+    await expect(confirmButton).toBeVisible({ timeout: 15_000 });
+    await confirmButton.click();
 
-      // Expect confirmation dialog or success toast
-      const dialogConfirm = page.getByRole("button", {
-        name: /confirm|yes|ok|save/i,
-      });
-      if (await dialogConfirm.isVisible({ timeout: 2_000 })) {
-        await dialogConfirm.click();
-      }
+    await expect(page.getByText(/booking updated/i)).toBeVisible({ timeout: 10_000 });
 
-      await expect(
-        page.getByText(/confirmed|success/i)
-      ).toBeVisible({ timeout: 8_000 });
-    } else {
-      // No soft-booked rows available — skip (state-dependent test)
-      test.skip();
-    }
+    const booking = await getLatestBooking(fixture.artistId);
+    expect(booking?.status).toBe("confirmed");
   });
 
-  test("artist sees booking status change after confirmation", async ({ page }) => {
-    await loginAs(page, ARTIST_EMAIL, ARTIST_PASSWORD);
-
-    // Navigate to bookings or dashboard where status is visible
-    await page.goto(`${BASE_URL}/dashboard`);
-
-    // Check for any booking status indicator
-    const statusBadge = page.getByText(/confirmed|soft.booked|suggested/i).first();
-    if (await statusBadge.isVisible({ timeout: 5_000 })) {
-      // Verify the booking status is visible to the artist
-      await expect(statusBadge).toBeVisible();
-    } else {
-      test.skip(); // No bookings in current state
+  test("a notification email is queued for the artist", async () => {
+    // The booking-status-change trigger / digest pipeline writes a row into
+    // email_send_log (or queues one). Either a pending or sent row counts.
+    // Allow some slack for async writes.
+    let count = 0;
+    for (let i = 0; i < 10; i++) {
+      count = await emailLogCountSince(ARTIST_EMAIL, runStartISO);
+      if (count > 0) break;
+      await new Promise((r) => setTimeout(r, 1_000));
     }
+    expect(count).toBeGreaterThan(0);
   });
 });

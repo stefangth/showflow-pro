@@ -121,8 +121,10 @@ jobs:
         run: deno test --allow-all supabase/functions/
 
   # ── 5. End-to-end tests (Playwright) ──────────────────────────────────────
-  # Only runs on pull requests to main. Scaffolded — filled in when
-  # the Playwright happy-path specs land (plan item 17).
+  # Two scripted happy paths (signup→approval, booking lifecycle). Only runs
+  # on pull requests targeting `main` — these are the integration-bug net.
+  # Boots a local Supabase stack, runs the Vite dev server against it, and
+  # exercises the UI end-to-end.
   e2e:
     name: E2E tests (Playwright)
     runs-on: ubuntu-latest
@@ -137,11 +139,47 @@ jobs:
 
       - run: npm ci
 
-      - name: E2E suite not enabled until Phase 7
+      - uses: supabase/setup-cli@v1
+        with:
+          version: 2.98.2
+
+      - name: Start Supabase local stack
+        run: supabase start -x studio,inbucket,imgproxy,logflare,vector
+
+      - name: Export Supabase env
+        id: sb
         run: |
-          if [ -d e2e ] && find e2e -name '*.spec.ts' -print -quit | grep -q .; then
-            echo "E2E specs are present, but the runnable Playwright stack is tracked by SFP-62 (Phase 7)."
-            echo "Skipping instead of failing unrelated Phase 5 pull requests."
-          else
-            echo "No E2E tests yet — skipping."
-          fi
+          # `supabase status -o env` prints KEY=VALUE pairs we can sink into GITHUB_ENV.
+          # Map the local-stack values onto the names the dev server and helpers expect.
+          eval "$(supabase status -o env)"
+          {
+            echo "SUPABASE_URL=$API_URL"
+            echo "SUPABASE_SERVICE_ROLE_KEY=$SERVICE_ROLE_KEY"
+            echo "VITE_SUPABASE_URL=$API_URL"
+            echo "VITE_SUPABASE_PUBLISHABLE_KEY=$ANON_KEY"
+            echo "VITE_SUPABASE_PROJECT_ID=local"
+          } >> "$GITHUB_ENV"
+
+      - name: Install Playwright browsers
+        run: npx playwright install --with-deps chromium
+
+      - name: Build and serve the app
+        run: |
+          npm run build
+          # vite preview is faster and more representative than `npm run dev`.
+          npx vite preview --port 5173 --host 127.0.0.1 &
+          npx wait-on http://127.0.0.1:5173 --timeout 60000
+
+      - name: Run Playwright
+        env:
+          CI: "true"
+          PLAYWRIGHT_BASE_URL: http://127.0.0.1:5173
+        run: npx playwright test --config=e2e/playwright.config.ts
+
+      - name: Upload Playwright report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: playwright-report
+          retention-days: 7
