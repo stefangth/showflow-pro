@@ -13,6 +13,10 @@
 
 BEGIN;
 
+-- pgTAP must be loaded before plan() can be called. Some CLI versions
+-- auto-load it; doing it here makes the file portable.
+CREATE EXTENSION IF NOT EXISTS pgtap WITH SCHEMA extensions;
+
 SELECT plan(8);
 
 -- ────────────────────────────────────────────────────────────────────────────

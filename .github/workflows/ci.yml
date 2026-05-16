@@ -58,10 +58,19 @@ jobs:
           version: latest
 
       - name: Start Supabase local stack (db + auth only)
-        run: supabase start -x studio,inbucket,imgproxy,edge-runtime,logflare,vector
+        run: supabase start -x studio,inbucket,imgproxy,edge-runtime,logflare,vector --debug
 
       - name: Run pgTAP tests
-        run: supabase test db
+        run: supabase test db --debug
+
+      - name: Dump Supabase logs on failure
+        if: failure()
+        run: |
+          echo "─── supabase status ───"
+          supabase status || true
+          echo "─── postgres logs (last 200 lines) ───"
+          docker logs --tail 200 supabase_db_showflow-pro 2>&1 || \
+            docker ps --format '{{.Names}}' | grep -i supabase | head -5 | xargs -I{} sh -c 'echo "── {} ──"; docker logs --tail 200 {} 2>&1' || true
 
   # ── 4. Edge function tests (Deno) ──────────────────────────────────────────
   # Scaffolded — filled in when Deno test harness lands (plan items 7–12).
