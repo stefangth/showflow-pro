@@ -36,12 +36,13 @@ SELECT plan(12);
 
 SET session_replication_role = replica;
 
-INSERT INTO auth.users (id, email, raw_app_meta_data, raw_user_meta_data, created_at, updated_at)
+-- aud and role are NOT NULL in GoTrue's local Docker schema; always provide them.
+INSERT INTO auth.users (id, aud, role, email, email_confirmed_at, raw_app_meta_data, raw_user_meta_data, created_at, updated_at)
 VALUES
-  ('aaaaaaaa-aaaa-0001-0000-000000000000', 'rls-nr-admin@test.com',    '{"provider":"email"}'::jsonb, '{}'::jsonb, now(), now()),
-  ('aaaaaaaa-aaaa-0002-0000-000000000000', 'rls-nr-producer@test.com', '{"provider":"email"}'::jsonb, '{}'::jsonb, now(), now()),
-  ('aaaaaaaa-aaaa-0003-0000-000000000000', 'rls-nr-artista@test.com',  '{"provider":"email"}'::jsonb, '{}'::jsonb, now(), now()),
-  ('aaaaaaaa-aaaa-0004-0000-000000000000', 'rls-nr-artistb@test.com',  '{"provider":"email"}'::jsonb, '{}'::jsonb, now(), now());
+  ('aaaaaaaa-aaaa-0001-0000-000000000000', 'authenticated', 'authenticated', 'rls-nr-admin@test.com',    now(), '{"provider":"email"}'::jsonb, '{}'::jsonb, now(), now()),
+  ('aaaaaaaa-aaaa-0002-0000-000000000000', 'authenticated', 'authenticated', 'rls-nr-producer@test.com', now(), '{"provider":"email"}'::jsonb, '{}'::jsonb, now(), now()),
+  ('aaaaaaaa-aaaa-0003-0000-000000000000', 'authenticated', 'authenticated', 'rls-nr-artista@test.com',  now(), '{"provider":"email"}'::jsonb, '{}'::jsonb, now(), now()),
+  ('aaaaaaaa-aaaa-0004-0000-000000000000', 'authenticated', 'authenticated', 'rls-nr-artistb@test.com',  now(), '{"provider":"email"}'::jsonb, '{}'::jsonb, now(), now());
 
 INSERT INTO public.user_roles (user_id, role) VALUES
   ('aaaaaaaa-aaaa-0001-0000-000000000000', 'admin'::app_role),
