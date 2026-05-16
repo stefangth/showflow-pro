@@ -1,6 +1,10 @@
 /**
  * UI auth helpers for E2E tests. Use the email/password form on the login page —
  * Google OAuth is not scriptable in CI.
+ *
+ * The login form's `<label>` elements aren't associated with their inputs
+ * (no `htmlFor`, no wrapping), so `getByLabel` can't find them. Target the
+ * inputs by `type` instead.
  */
 import { expect, type Page } from "@playwright/test";
 
@@ -10,9 +14,9 @@ export async function loginAs(
   password: string
 ): Promise<void> {
   await page.goto("/login");
-  await page.getByLabel(/email/i).fill(email);
-  await page.getByLabel(/password/i).fill(password);
-  await page.getByRole("button", { name: /sign in/i }).click();
+  await page.locator('input[type="email"]').fill(email);
+  await page.locator('input[type="password"]').fill(password);
+  await page.getByRole("button", { name: /^sign in$/i }).click();
 }
 
 export async function loginAsAndAwaitDashboard(
