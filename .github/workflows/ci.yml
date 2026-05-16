@@ -144,14 +144,22 @@ jobs:
           version: 2.98.2
 
       - name: Start Supabase local stack
-        run: supabase start -x studio,inbucket,imgproxy,logflare,vector
+        id: start
+        run: |
+          set -o pipefail
+          supabase start -x studio,inbucket,imgproxy,logflare,vector 2>&1 | tee /tmp/supabase-start.log
 
       - name: Export Supabase env
-        id: sb
         run: |
-          # `supabase status -o env` prints KEY=VALUE pairs we can sink into GITHUB_ENV.
-          # Map the local-stack values onto the names the dev server and helpers expect.
+          # `supabase status -o env` prints quoted KEY=VALUE pairs we can `eval`.
+          # The keys are API_URL / ANON_KEY / SERVICE_ROLE_KEY on the version pinned above.
+          echo "── raw supabase status -o env ──"
+          supabase status -o env
+          echo "─────────────────────────────────"
           eval "$(supabase status -o env)"
+          : "${API_URL:?supabase status did not return API_URL}"
+          : "${ANON_KEY:?supabase status did not return ANON_KEY}"
+          : "${SERVICE_ROLE_KEY:?supabase status did not return SERVICE_ROLE_KEY}"
           {
             echo "SUPABASE_URL=$API_URL"
             echo "SUPABASE_SERVICE_ROLE_KEY=$SERVICE_ROLE_KEY"
@@ -163,12 +171,26 @@ jobs:
       - name: Install Playwright browsers
         run: npx playwright install --with-deps chromium
 
-      - name: Build and serve the app
+      - name: Build the app
+        run: npm run build
+
+      - name: Start preview server
         run: |
-          npm run build
-          # vite preview is faster and more representative than `npm run dev`.
-          npx vite preview --port 5173 --host 127.0.0.1 &
-          npx wait-on http://127.0.0.1:5173 --timeout 60000
+          # Background `vite preview` and poll until it answers — avoids pulling
+          # in `wait-on` just for one check.
+          nohup npx vite preview --port 5173 --host 127.0.0.1 \
+            > /tmp/vite-preview.log 2>&1 &
+          echo $! > /tmp/vite-preview.pid
+          for i in $(seq 1 60); do
+            if curl -sf http://127.0.0.1:5173 > /dev/null; then
+              echo "preview up after ${i}s"
+              exit 0
+            fi
+            sleep 1
+          done
+          echo "preview never came up; dumping log:"
+          cat /tmp/vite-preview.log
+          exit 1
 
       - name: Run Playwright
         env:
@@ -176,10 +198,28 @@ jobs:
           PLAYWRIGHT_BASE_URL: http://127.0.0.1:5173
         run: npx playwright test --config=e2e/playwright.config.ts
 
+      - name: Dump diagnostics on failure
+        if: failure()
+        run: |
+          echo "─── supabase status ───"
+          supabase status || true
+          echo "─── vite preview log ───"
+          tail -200 /tmp/vite-preview.log || true
+          echo "─── docker ps ───"
+          docker ps -a --format 'table {{.Names}}\t{{.Status}}\t{{.Image}}' || true
+          echo "─── edge-runtime logs (last 200) ───"
+          for c in $(docker ps -a --format '{{.Names}}' | grep -iE 'edge|functions'); do
+            echo "── $c ──"
+            docker logs --tail 200 "$c" 2>&1 || true
+          done
+
       - name: Upload Playwright report
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: playwright-report
-          path: playwright-report
+          path: |
+            playwright-report
+            test-results
           retention-days: 7
+          if-no-files-found: ignore
