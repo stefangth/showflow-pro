@@ -45,22 +45,63 @@ jobs:
         run: npm test
 
   # ── 3. Database tests (pgTAP) ──────────────────────────────────────────────
-  # Scaffolded — filled in when the pgTAP harness lands (item 2 in the plan).
+  # Boots the local Supabase Postgres stack, applies all migrations, and runs
+  # pgTAP tests under supabase/tests/ via `supabase test db`.
   db-tests:
     name: Database tests (pgTAP)
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
 
-      - name: Check for DB test suite
+      - uses: supabase/setup-cli@v1
+        with:
+          version: latest
+
+      - name: Show Supabase CLI version
+        run: supabase --version
+
+      - name: Start Supabase local stack
+        id: start
         run: |
-          if [ -d supabase/tests ] && ls supabase/tests/**/*.sql 2>/dev/null | grep -q .; then
-            echo "DB test suite found — this job needs the full Supabase runner (see plan item 2)."
-            echo "Failing until runner is wired up."
-            exit 1
-          else
-            echo "No DB tests yet — skipping."
-          fi
+          set -o pipefail
+          supabase start -x studio,inbucket,imgproxy,edge-runtime,logflare,vector 2>&1 | tee /tmp/supabase-start.log
+
+      - name: Show what's running
+        if: always()
+        run: |
+          echo "─── docker ps ───"
+          docker ps -a --format 'table {{.Names}}\t{{.Status}}\t{{.Image}}' || true
+          echo "─── supabase status ───"
+          supabase status || true
+
+      - name: Dump container logs on start failure
+        if: failure() && steps.start.outcome == 'failure'
+        run: |
+          for c in $(docker ps -a --format '{{.Names}}' | grep -i supabase); do
+            echo "═══════════════════════════════════"
+            echo "── $c ──"
+            echo "═══════════════════════════════════"
+            docker logs --tail 300 "$c" 2>&1 || true
+          done
+          echo "─── tail of supabase start output ───"
+          tail -200 /tmp/supabase-start.log || true
+
+      - name: Run pgTAP tests
+        id: tests
+        run: |
+          set -o pipefail
+          supabase test db 2>&1 | tee /tmp/pgtap.log
+
+      - name: Dump pgTAP output and postgres logs on test failure
+        if: failure() && steps.tests.outcome == 'failure'
+        run: |
+          echo "─── full pgTAP output ───"
+          cat /tmp/pgtap.log || true
+          echo "─── postgres container logs (last 200) ───"
+          for c in $(docker ps --format '{{.Names}}' | grep -iE 'db|postgres'); do
+            echo "── $c ──"
+            docker logs --tail 200 "$c" 2>&1 || true
+          done
 
   # ── 4. Edge function tests (Deno) ──────────────────────────────────────────
   # Scaffolded — filled in when Deno test harness lands (plan items 7–12).
