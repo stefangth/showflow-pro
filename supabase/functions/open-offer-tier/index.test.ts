@@ -5,10 +5,7 @@
  * deduplication against existing bookings, offer_expires_at calculation,
  * and the tier-99 (ad-hoc) path. No real Supabase calls are made.
  */
-import {
-  assertEquals,
-  assertExists,
-} from "https://deno.land/std@0.224.0/testing/asserts.ts";
+import { assertEquals, assertExists } from "../_shared/test-asserts.ts";
 
 // ── Helper: simulate offer_expires_at calculation ─────────────────────────
 
@@ -40,7 +37,7 @@ Deno.test("OPTIONS preflight returns 200 equivalent response", () => {
 });
 
 Deno.test("missing Authorization returns 401", () => {
-  const authHeader: string | null = null;
+  const authHeader = null as string | null;
   const isServiceRole = authHeader === "Bearer service-key";
   const hasBearerToken = authHeader?.startsWith("Bearer ") ?? false;
   assertEquals(isServiceRole, false);
@@ -133,10 +130,110 @@ Deno.test("tier 99 returns early when no ad-hoc casts configured", () => {
 });
 
 Deno.test("regular tier without city_id returns early with informational message", () => {
-  const tier = 1;
-  const cityId: string | null = null;
+  const tier = 1 as number;
+  const cityId = null as string | null;
   if (tier !== 99 && !cityId) {
     const message = "Show date has no city — cannot resolve priority casts";
     assertExists(message);
   }
+});
+
+type TierFixture = {
+  tier: number;
+  cityId: string | null;
+  priorityRows: Array<{ cast_id: string; priority: number }>;
+  dateCasts: Array<{ cast_id: string }>;
+};
+
+function resolveEligibleCastIds(fixture: TierFixture): string[] {
+  if (fixture.tier === 99) {
+    const prioritized = new Set(fixture.priorityRows.map((row) => row.cast_id));
+    return fixture.dateCasts
+      .map((row) => row.cast_id)
+      .filter((castId) => !prioritized.has(castId));
+  }
+
+  if (!fixture.cityId) return [];
+  return fixture.priorityRows
+    .filter((row) => row.priority === fixture.tier)
+    .map((row) => row.cast_id);
+}
+
+function buildOfferRows(
+  showDateId: string,
+  tier: number,
+  candidateIds: string[],
+  offeredAt: Date,
+  expiryHours: number,
+) {
+  return candidateIds.map((artistId) => ({
+    show_date_id: showDateId,
+    artist_id: artistId,
+    status: "suggested",
+    is_understudy: false,
+    offered_at: offeredAt.toISOString(),
+    offer_expires_at: computeOfferExpiresAt(offeredAt, expiryHours)
+      .toISOString(),
+    offer_tier: tier,
+  }));
+}
+
+Deno.test("tier 1/2/3 resolve the matching city-priority casts", () => {
+  const priorityRows = [
+    { cast_id: "cast-tier-1", priority: 1 },
+    { cast_id: "cast-tier-2", priority: 2 },
+    { cast_id: "cast-tier-3", priority: 3 },
+  ];
+
+  assertEquals(
+    resolveEligibleCastIds({
+      tier: 1,
+      cityId: "city-1",
+      priorityRows,
+      dateCasts: [],
+    }),
+    ["cast-tier-1"],
+  );
+  assertEquals(
+    resolveEligibleCastIds({
+      tier: 2,
+      cityId: "city-1",
+      priorityRows,
+      dateCasts: [],
+    }),
+    ["cast-tier-2"],
+  );
+  assertEquals(
+    resolveEligibleCastIds({
+      tier: 3,
+      cityId: "city-1",
+      priorityRows,
+      dateCasts: [],
+    }),
+    ["cast-tier-3"],
+  );
+});
+
+Deno.test("tier 99 includes only ad-hoc casts outside configured city priorities", () => {
+  const castIds = resolveEligibleCastIds({
+    tier: 99,
+    cityId: "city-1",
+    priorityRows: [{ cast_id: "priority-cast", priority: 1 }],
+    dateCasts: [{ cast_id: "priority-cast" }, { cast_id: "ad-hoc-cast" }],
+  });
+
+  assertEquals(castIds, ["ad-hoc-cast"]);
+});
+
+Deno.test("offer insert payload includes the correct offer_expires_at", () => {
+  const rows = buildOfferRows(
+    "show-date-1",
+    2,
+    ["artist-1"],
+    new Date("2026-05-16T12:00:00Z"),
+    36,
+  );
+
+  assertEquals(rows[0].offer_tier, 2);
+  assertEquals(rows[0].offer_expires_at, "2026-05-18T00:00:00.000Z");
 });
