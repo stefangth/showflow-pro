@@ -61,10 +61,14 @@ VALUES ('cccccccc-cccc-0001-0000-000000000000', 'Chat Test Show', 'theatre', 'mu
 INSERT INTO public.show_dates (id, show_id, date, session_1)
 VALUES ('dddddddd-dddd-0001-0000-000000000000', 'cccccccc-cccc-0001-0000-000000000000', '2099-02-01', '20:00'::time);
 
--- Artist A is soft_booked → participant; artist B is only suggested → not a participant
+-- Artist A is soft_booked main-cast → participant.
+-- Artist B is suggested understudy → not a participant.
+-- is_understudy differs deliberately: slot_fill_auto_cancel_trigger only cancels
+-- bookings with the SAME is_understudy value, so confirming artist B's understudy
+-- slot (in tests 5-7) cannot cancel artist A's main-cast booking.
 INSERT INTO public.bookings (id, show_date_id, artist_id, status, is_understudy) VALUES
   ('eeeeeeee-eeee-0001-0000-000000000000', 'dddddddd-dddd-0001-0000-000000000000', 'bbbbbbbb-bbbb-0001-0000-000000000000', 'soft_booked'::booking_status, false),
-  ('eeeeeeee-eeee-0002-0000-000000000000', 'dddddddd-dddd-0001-0000-000000000000', 'bbbbbbbb-bbbb-0002-0000-000000000000', 'suggested'::booking_status, false);
+  ('eeeeeeee-eeee-0002-0000-000000000000', 'dddddddd-dddd-0001-0000-000000000000', 'bbbbbbbb-bbbb-0002-0000-000000000000', 'suggested'::booking_status, true);
 
 INSERT INTO public.chats (id, show_date_id)
 VALUES ('ffffffff-ffff-0001-0000-000000000000', 'dddddddd-dddd-0001-0000-000000000000');
