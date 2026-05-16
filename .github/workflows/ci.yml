@@ -104,21 +104,18 @@ jobs:
           done
 
   # ── 4. Edge function tests (Deno) ──────────────────────────────────────────
-  # Scaffolded — filled in when Deno test harness lands (plan items 7–12).
   function-tests:
     name: Edge function tests (Deno)
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
 
-      - name: Check for function tests
-        run: |
-          if find supabase/functions -name "*.test.ts" 2>/dev/null | grep -q .; then
-            echo "Function tests found — this job needs Deno installed (see plan items 7–12)."
-            exit 1
-          else
-            echo "No function tests yet — skipping."
-          fi
+      - uses: denoland/setup-deno@v2
+        with:
+          deno-version: v2.x
+
+      - name: Run Deno function tests
+        run: deno test --allow-all supabase/functions/
 
   # ── 5. End-to-end tests (Playwright) ──────────────────────────────────────
   # Only runs on pull requests to main. Scaffolded — filled in when
