@@ -45,22 +45,23 @@ jobs:
         run: npm test
 
   # ── 3. Database tests (pgTAP) ──────────────────────────────────────────────
-  # Scaffolded — filled in when the pgTAP harness lands (item 2 in the plan).
+  # Boots the local Supabase Postgres stack, applies all migrations, and runs
+  # pgTAP tests under supabase/tests/ via `supabase test db`.
   db-tests:
     name: Database tests (pgTAP)
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
 
-      - name: Check for DB test suite
-        run: |
-          if [ -d supabase/tests ] && ls supabase/tests/**/*.sql 2>/dev/null | grep -q .; then
-            echo "DB test suite found — this job needs the full Supabase runner (see plan item 2)."
-            echo "Failing until runner is wired up."
-            exit 1
-          else
-            echo "No DB tests yet — skipping."
-          fi
+      - uses: supabase/setup-cli@v1
+        with:
+          version: latest
+
+      - name: Start Supabase local stack (db + auth only)
+        run: supabase start -x studio,inbucket,imgproxy,edge-runtime,logflare,vector
+
+      - name: Run pgTAP tests
+        run: supabase test db
 
   # ── 4. Edge function tests (Deno) ──────────────────────────────────────────
   # Scaffolded — filled in when Deno test harness lands (plan items 7–12).
