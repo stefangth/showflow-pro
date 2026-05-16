@@ -55,8 +55,8 @@ INSERT INTO public.artists (id, name, user_id) VALUES
   ('bbbbbbbb-bbbb-0001-0000-000000000000', 'Chat Artist A', 'aaaaaaaa-aaaa-0003-0000-000000000000'),
   ('bbbbbbbb-bbbb-0002-0000-000000000000', 'Chat Artist B', 'aaaaaaaa-aaaa-0004-0000-000000000000');
 
-INSERT INTO public.shows (id, title, program, sub_program)
-VALUES ('cccccccc-cccc-0001-0000-000000000000', 'Chat Test Show', 'theatre', 'musical');
+INSERT INTO public.shows (id, program, sub_program)
+VALUES ('cccccccc-cccc-0001-0000-000000000000', 'theatre', 'musical');
 
 INSERT INTO public.show_dates (id, show_id, date, session_1)
 VALUES ('dddddddd-dddd-0001-0000-000000000000', 'cccccccc-cccc-0001-0000-000000000000', '2099-02-01', '20:00'::time);

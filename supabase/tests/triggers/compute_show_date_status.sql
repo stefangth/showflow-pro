@@ -32,12 +32,12 @@ VALUES (
 ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value;
 
 -- Configured show
-INSERT INTO public.shows (id, title, program, sub_program)
-VALUES ('11111111-1111-1111-1111-111111111111', 'Configured Show', 'theatre', 'musical');
+INSERT INTO public.shows (id, program, sub_program)
+VALUES ('11111111-1111-1111-1111-111111111111', 'theatre', 'musical');
 
 -- Unconfigured show (program/sub_program with no entry in settings)
-INSERT INTO public.shows (id, title, program, sub_program)
-VALUES ('11111111-1111-1111-1111-111111111112', 'Unconfigured Show', 'theatre', 'comedy');
+INSERT INTO public.shows (id, program, sub_program)
+VALUES ('11111111-1111-1111-1111-111111111112', 'theatre', 'comedy');
 
 -- Four artists for stacking bookings on the same date
 INSERT INTO public.artists (id, name) VALUES
