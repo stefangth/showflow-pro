@@ -80,7 +80,7 @@ export async function seedBookingFixture(opts: SeedOptions): Promise<BookingFixt
 
   const { error: cmErr } = await admin
     .from("cast_members")
-    .insert({ cast_id: cast.id, artist_id: artist.id, role: "primary" });
+    .insert({ cast_id: cast.id, artist_id: artist.id });
   if (cmErr) throw new Error(`seed cast_members failed: ${cmErr.message}`);
 
   const { error: sceErr } = await admin

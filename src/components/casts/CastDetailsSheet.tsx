@@ -67,10 +67,10 @@ export function CastDetailsSheet({ cast, open, onOpenChange, onArtistClick }: Pr
     queryFn: async () => {
       const { data, error } = await supabase
         .from('cast_members')
-        .select('id, artist_id, role, artist:artists(*)')
+        .select('id, artist_id, artist:artists(*)')
         .eq('cast_id', cast!.id);
       if (error) throw error;
-      return (data ?? []) as unknown as { id: string; artist_id: string; role: string | null; artist: Artist }[];
+      return (data ?? []) as unknown as { id: string; artist_id: string; artist: Artist }[];
     },
   });
 
@@ -250,7 +250,6 @@ export function CastDetailsSheet({ cast, open, onOpenChange, onArtistClick }: Pr
                       disabled={!onArtistClick}
                     >
                       <p className="text-sm font-medium">{m.artist.name}</p>
-                      {m.role && <p className="text-xs text-muted-foreground">{m.role}</p>}
                     </button>
                     <Button size="icon" variant="ghost" onClick={() => removeMember.mutate(m.id)}>
                       <X className="h-4 w-4" />
