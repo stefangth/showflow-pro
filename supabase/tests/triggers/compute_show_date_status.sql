@@ -49,8 +49,8 @@ INSERT INTO public.artists (id, name) VALUES
 -- ────────────────────────────────────────────────────────────────────────────
 -- Test 1: Configured, no bookings → 'open'
 -- ────────────────────────────────────────────────────────────────────────────
-INSERT INTO public.show_dates (id, show_id, date)
-VALUES ('22222222-0000-0000-0000-000000000001', '11111111-1111-1111-1111-111111111111', '2026-06-01');
+INSERT INTO public.show_dates (id, show_id, date, session_1)
+VALUES ('22222222-0000-0000-0000-000000000001', '11111111-1111-1111-1111-111111111111', '2026-06-01', '19:00'::time);
 
 -- No booking trigger fires (no bookings). Call the function directly.
 SELECT public.compute_show_date_status('22222222-0000-0000-0000-000000000001'::uuid);
@@ -64,8 +64,8 @@ SELECT is(
 -- ────────────────────────────────────────────────────────────────────────────
 -- Test 2: One suggested booking → 'partially_filled'
 -- ────────────────────────────────────────────────────────────────────────────
-INSERT INTO public.show_dates (id, show_id, date)
-VALUES ('22222222-0000-0000-0000-000000000002', '11111111-1111-1111-1111-111111111111', '2026-06-02');
+INSERT INTO public.show_dates (id, show_id, date, session_1)
+VALUES ('22222222-0000-0000-0000-000000000002', '11111111-1111-1111-1111-111111111111', '2026-06-02', '19:00'::time);
 
 INSERT INTO public.bookings (show_date_id, artist_id, status, is_understudy)
 VALUES ('22222222-0000-0000-0000-000000000002', 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaa01', 'suggested', false);
@@ -79,8 +79,8 @@ SELECT is(
 -- ────────────────────────────────────────────────────────────────────────────
 -- Test 3: Exact capacity (2 main + 1 understudy confirmed) → 'fully_filled'
 -- ────────────────────────────────────────────────────────────────────────────
-INSERT INTO public.show_dates (id, show_id, date)
-VALUES ('22222222-0000-0000-0000-000000000003', '11111111-1111-1111-1111-111111111111', '2026-06-03');
+INSERT INTO public.show_dates (id, show_id, date, session_1)
+VALUES ('22222222-0000-0000-0000-000000000003', '11111111-1111-1111-1111-111111111111', '2026-06-03', '19:00'::time);
 
 INSERT INTO public.bookings (show_date_id, artist_id, status, is_understudy) VALUES
   ('22222222-0000-0000-0000-000000000003', 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaa01', 'confirmed', false),
@@ -96,8 +96,8 @@ SELECT is(
 -- ────────────────────────────────────────────────────────────────────────────
 -- Test 4: Main cast met but understudy missing → 'partially_filled'
 -- ────────────────────────────────────────────────────────────────────────────
-INSERT INTO public.show_dates (id, show_id, date)
-VALUES ('22222222-0000-0000-0000-000000000004', '11111111-1111-1111-1111-111111111111', '2026-06-04');
+INSERT INTO public.show_dates (id, show_id, date, session_1)
+VALUES ('22222222-0000-0000-0000-000000000004', '11111111-1111-1111-1111-111111111111', '2026-06-04', '19:00'::time);
 
 INSERT INTO public.bookings (show_date_id, artist_id, status, is_understudy) VALUES
   ('22222222-0000-0000-0000-000000000004', 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaa01', 'confirmed', false),
@@ -112,8 +112,8 @@ SELECT is(
 -- ────────────────────────────────────────────────────────────────────────────
 -- Test 5: Over capacity on main (3 confirmed main, 1 understudy) → 'fully_filled'
 -- ────────────────────────────────────────────────────────────────────────────
-INSERT INTO public.show_dates (id, show_id, date)
-VALUES ('22222222-0000-0000-0000-000000000005', '11111111-1111-1111-1111-111111111111', '2026-06-05');
+INSERT INTO public.show_dates (id, show_id, date, session_1)
+VALUES ('22222222-0000-0000-0000-000000000005', '11111111-1111-1111-1111-111111111111', '2026-06-05', '19:00'::time);
 
 INSERT INTO public.bookings (show_date_id, artist_id, status, is_understudy) VALUES
   ('22222222-0000-0000-0000-000000000005', 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaa01', 'confirmed', false),
@@ -130,8 +130,8 @@ SELECT is(
 -- ────────────────────────────────────────────────────────────────────────────
 -- Test 6: 'cancelled' is never overwritten
 -- ────────────────────────────────────────────────────────────────────────────
-INSERT INTO public.show_dates (id, show_id, date, status)
-VALUES ('22222222-0000-0000-0000-000000000006', '11111111-1111-1111-1111-111111111111', '2026-06-06', 'cancelled');
+INSERT INTO public.show_dates (id, show_id, date, session_1, status)
+VALUES ('22222222-0000-0000-0000-000000000006', '11111111-1111-1111-1111-111111111111', '2026-06-06', '19:00'::time, 'cancelled');
 
 INSERT INTO public.bookings (show_date_id, artist_id, status, is_understudy) VALUES
   ('22222222-0000-0000-0000-000000000006', 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaa01', 'confirmed', false),
@@ -147,8 +147,8 @@ SELECT is(
 -- ────────────────────────────────────────────────────────────────────────────
 -- Test 7: Unconfigured (program, sub_program) → caps at 'partially_filled'
 -- ────────────────────────────────────────────────────────────────────────────
-INSERT INTO public.show_dates (id, show_id, date)
-VALUES ('22222222-0000-0000-0000-000000000007', '11111111-1111-1111-1111-111111111112', '2026-06-07');
+INSERT INTO public.show_dates (id, show_id, date, session_1)
+VALUES ('22222222-0000-0000-0000-000000000007', '11111111-1111-1111-1111-111111111112', '2026-06-07', '19:00'::time);
 
 INSERT INTO public.bookings (show_date_id, artist_id, status, is_understudy) VALUES
   ('22222222-0000-0000-0000-000000000007', 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaa01', 'confirmed', false),
@@ -164,8 +164,8 @@ SELECT is(
 -- ────────────────────────────────────────────────────────────────────────────
 -- Test 8: Cancelled bookings do not count toward thresholds
 -- ────────────────────────────────────────────────────────────────────────────
-INSERT INTO public.show_dates (id, show_id, date)
-VALUES ('22222222-0000-0000-0000-000000000008', '11111111-1111-1111-1111-111111111111', '2026-06-08');
+INSERT INTO public.show_dates (id, show_id, date, session_1)
+VALUES ('22222222-0000-0000-0000-000000000008', '11111111-1111-1111-1111-111111111111', '2026-06-08', '19:00'::time);
 
 INSERT INTO public.bookings (show_date_id, artist_id, status, is_understudy) VALUES
   ('22222222-0000-0000-0000-000000000008', 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaa01', 'confirmed', false),
