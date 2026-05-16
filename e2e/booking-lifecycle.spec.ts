@@ -38,9 +38,11 @@ test.describe("Flow B — booking lifecycle", () => {
       artistEmail: ARTIST_EMAIL,
       artistPassword: ARTIST_PASSWORD,
     });
-    // Producer triggers an offer for the seeded date — creates a `suggested` booking
-    // for the seeded artist (the only eligible artist in the seeded cast).
-    await openOfferTier(fixture.showDateId, 1);
+    // Producer triggers an offer for the seeded date. Tier 99 is the "ad-hoc"
+    // path that reads from `show_date_cast_eligibility` directly — tiers 1-N
+    // require `show_dates.city_id` + `cast_city_priority`, which would mean
+    // dragging the whole priority graph into the fixture.
+    await openOfferTier(fixture.showDateId, 99);
 
     const booking = await getLatestBooking(fixture.artistId);
     if (!booking || booking.status !== "suggested") {

@@ -49,9 +49,16 @@ test.describe("Flow A — signup to dashboard", () => {
     await page.goto("/admin");
     await expect(page.getByRole("heading", { name: /pending approvals/i })).toBeVisible();
 
-    // The approval row contains the artist's email. Click the Approve button
-    // inside that row.
-    const row = page.locator("div").filter({ hasText: ARTIST_EMAIL }).last();
+    // Approval rows are divs that contain both the artist email and the
+    // Approve button. `.last()` picks the innermost matching ancestor — the
+    // row itself rather than an outer Card/Tab container.
+    const row = page
+      .locator("div")
+      .filter({
+        hasText: ARTIST_EMAIL,
+        has: page.getByRole("button", { name: /approve/i }),
+      })
+      .last();
     await expect(row).toBeVisible({ timeout: 15_000 });
     await row.getByRole("button", { name: /approve/i }).click();
 
