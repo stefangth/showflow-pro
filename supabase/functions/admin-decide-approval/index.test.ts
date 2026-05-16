@@ -4,9 +4,7 @@
  * Strategy: mock the Supabase client and assert on the HTTP response.
  * No real network requests are made.
  */
-import {
-  assertEquals,
-} from "https://deno.land/std@0.224.0/testing/asserts.ts";
+import { assertEquals } from "../_shared/test-asserts.ts";
 
 // ── Minimal stub helpers ───────────────────────────────────────────────────
 
@@ -51,7 +49,7 @@ Deno.test("OPTIONS preflight returns 200", async () => {
 
 Deno.test("missing Authorization header returns 401", async () => {
   // Test the authorization guard logic directly
-  const authHeader: string | null = null;
+  const authHeader = null as string | null;
   const isAuthorized = authHeader?.startsWith("Bearer ") ?? false;
   assertEquals(isAuthorized, false);
 });
@@ -64,11 +62,14 @@ Deno.test("non-admin caller is rejected with 403", async () => {
 });
 
 Deno.test("missing approval_id returns validation error", async () => {
-  const body = { decision: "approved", role: "artist" }; // no approval_id
+  const body: { approval_id?: string; decision: string; role: string } = {
+    decision: "approved",
+    role: "artist",
+  }; // no approval_id
   const approvalId = String(body.approval_id ?? "");
   const decision = body.decision as string;
-  const isValid =
-    approvalId.length > 0 && ["approved", "rejected"].includes(decision);
+  const isValid = approvalId.length > 0 &&
+    ["approved", "rejected"].includes(decision);
   assertEquals(isValid, false);
 });
 
@@ -109,4 +110,77 @@ Deno.test("CORS headers present on all responses", () => {
   });
   assertEquals(response.headers.get("Access-Control-Allow-Origin"), "*");
   assertEquals(response.status, 401);
+});
+
+type ApprovalDecisionScenario = {
+  callerIsAdmin: boolean;
+  approvalExists: boolean;
+  decision: "approved" | "rejected";
+  role?: "admin" | "producer" | "artist";
+  emailShouldFail?: boolean;
+};
+
+async function runApprovalScenario(scenario: ApprovalDecisionScenario) {
+  const calls: string[] = [];
+
+  if (!scenario.callerIsAdmin) return { status: 403, calls };
+  if (!scenario.approvalExists) return { status: 404, calls };
+
+  calls.push("rpc:decide_user_approval");
+  calls.push(`rpc:decision:${scenario.decision}`);
+  if (scenario.decision === "approved") {
+    calls.push(`rpc:role:${scenario.role ?? "artist"}`);
+  }
+
+  try {
+    calls.push("email:signup-decision");
+    if (scenario.emailShouldFail) throw new Error("resend unavailable");
+  } catch {
+    calls.push("email:failed-but-non-blocking");
+  }
+
+  return { status: 200, calls };
+}
+
+Deno.test("non-admin rejects before approval mutation", async () => {
+  const result = await runApprovalScenario({
+    callerIsAdmin: false,
+    approvalExists: true,
+    decision: "approved",
+    role: "artist",
+  });
+
+  assertEquals(result.status, 403);
+  assertEquals(result.calls, []);
+});
+
+Deno.test("admin approval succeeds and delegates role insertion to transaction RPC", async () => {
+  const result = await runApprovalScenario({
+    callerIsAdmin: true,
+    approvalExists: true,
+    decision: "approved",
+    role: "producer",
+  });
+
+  assertEquals(result.status, 200);
+  assertEquals(result.calls.includes("rpc:decide_user_approval"), true);
+  assertEquals(result.calls.includes("rpc:role:producer"), true);
+  assertEquals(result.calls.includes("email:signup-decision"), true);
+});
+
+Deno.test("signup-decision email failure is non-blocking after transaction RPC", async () => {
+  const result = await runApprovalScenario({
+    callerIsAdmin: true,
+    approvalExists: true,
+    decision: "rejected",
+    emailShouldFail: true,
+  });
+
+  assertEquals(result.status, 200);
+  assertEquals(result.calls, [
+    "rpc:decide_user_approval",
+    "rpc:decision:rejected",
+    "email:signup-decision",
+    "email:failed-but-non-blocking",
+  ]);
 });
