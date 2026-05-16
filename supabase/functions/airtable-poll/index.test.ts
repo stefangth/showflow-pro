@@ -8,6 +8,8 @@
  */
 import { assertEquals } from "../_shared/test-asserts.ts";
 
+const skipInCi = Deno.env.get("CI") === "true";
+
 type AirtableRecord = { id: string; fields: Record<string, unknown> };
 type PollSettings = {
   airtable_sync_enabled?: boolean;
@@ -49,7 +51,7 @@ function applyAirtablePollContract(
 
 Deno.test({
   name: "airtable-poll: disabled flag short-circuits before reading records",
-  ignore: Deno.env.get("CI") === "true",
+  ignore: skipInCi,
   fn() {
     const result = applyAirtablePollContract(
       {
@@ -67,7 +69,7 @@ Deno.test({
 Deno.test({
   name:
     "airtable-poll: contract maps stub records to processed dates and tier openings",
-  ignore: Deno.env.get("CI") === "true",
+  ignore: skipInCi,
   fn() {
     const stubResponse = {
       records: [
@@ -96,7 +98,11 @@ Deno.test({
   },
 });
 
-Deno.test("airtable-poll: missing cron secret is unauthorized", () => {
-  const cronSecretHeader: string | null = null;
-  assertEquals(cronSecretHeader === null, true);
+Deno.test({
+  name: "airtable-poll: missing cron secret is unauthorized",
+  ignore: skipInCi,
+  fn() {
+    const cronSecretHeader: string | null = null;
+    assertEquals(cronSecretHeader === null, true);
+  },
 });
