@@ -50,8 +50,8 @@ INSERT INTO public.user_roles (user_id, role) VALUES
 INSERT INTO public.artists (id, name, user_id)
 VALUES ('bbbbbbbb-ab00-0001-0000-000000000000', 'NBT Artist', 'aaaaaaaa-ab00-0003-0000-000000000000');
 
-INSERT INTO public.shows (id, title, program, sub_program)
-VALUES ('cccccccc-ab00-0001-0000-000000000000', 'NBT Show', 'theatre', 'musical');
+INSERT INTO public.shows (id, program, sub_program)
+VALUES ('cccccccc-ab00-0001-0000-000000000000', 'theatre', 'musical');
 
 INSERT INTO public.show_dates (id, show_id, date, session_1)
 VALUES ('dddddddd-ab00-0001-0000-000000000000', 'cccccccc-ab00-0001-0000-000000000000', '2099-07-01', '19:00'::time);

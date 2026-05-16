@@ -33,8 +33,8 @@ INSERT INTO public.artists (id, name) VALUES
   ('bbbbbbbb-ac00-0005-0000-000000000000', 'AC Artist 5'),
   ('bbbbbbbb-ac00-0006-0000-000000000000', 'AC Artist 6');
 
-INSERT INTO public.shows (id, title, program, sub_program)
-VALUES ('cccccccc-ac00-0001-0000-000000000000', 'AC Test Show', 'theatre', 'musical');
+INSERT INTO public.shows (id, program, sub_program)
+VALUES ('cccccccc-ac00-0001-0000-000000000000', 'theatre', 'musical');
 
 INSERT INTO public.show_dates (id, show_id, date, session_1)
 VALUES ('dddddddd-ac00-0001-0000-000000000000', 'cccccccc-ac00-0001-0000-000000000000', '2099-06-01', '19:00'::time);
