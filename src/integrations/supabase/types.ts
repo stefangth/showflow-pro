@@ -285,21 +285,18 @@ export type Database = {
           cast_id: string
           created_at: string
           id: string
-          role: string | null
         }
         Insert: {
           artist_id: string
           cast_id: string
           created_at?: string
           id?: string
-          role?: string | null
         }
         Update: {
           artist_id?: string
           cast_id?: string
           created_at?: string
           id?: string
-          role?: string | null
         }
         Relationships: [
           {

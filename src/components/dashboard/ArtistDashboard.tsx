@@ -11,7 +11,7 @@ import { formatDateDMY } from '@/lib/dates';
 import { showLabel } from '@/types';
 
 type BookingLite = { show_date_id: string; status: string };
-type CastMembershipRow = { id: string; role: string | null; cast: { id: string; name: string } | null };
+type CastMembershipRow = { id: string; cast: { id: string; name: string } | null };
 
 /**
  * Artist dashboard: offer response rate + list of pending offers.
@@ -39,7 +39,7 @@ export function ArtistDashboard() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from('cast_members')
-        .select('id, role, cast:casts(id, name)')
+        .select('id, cast:casts(id, name)')
         .eq('artist_id', artist!.id);
       if (error) throw error;
       return (data ?? []) as unknown as CastMembershipRow[];
@@ -179,11 +179,7 @@ export function ArtistDashboard() {
               {myMemberships!.map(m => (
                 <div key={m.id} className="flex items-center justify-between p-2 rounded-md border border-border">
                   <p className="text-sm font-medium">{m.cast?.name ?? '—'}</p>
-                  {m.role ? (
-                    <Badge variant="outline" className="text-xs">{m.role}</Badge>
-                  ) : (
-                    <span className="text-xs text-muted-foreground">No role assigned</span>
-                  )}
+                  <Badge variant="outline" className="text-xs">Member</Badge>
                 </div>
               ))}
             </div>
