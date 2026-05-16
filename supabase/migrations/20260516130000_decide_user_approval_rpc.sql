@@ -62,5 +62,11 @@ BEGIN
 END;
 $$;
 
-GRANT EXECUTE ON FUNCTION public.decide_user_approval(uuid, text, text, text, uuid) TO authenticated;
+-- SECURITY DEFINER functions are executable by PUBLIC by default. Keep this
+-- RPC service-role-only: admin authorization lives in admin-decide-approval,
+-- which invokes this function with the service-role client after checking the
+-- caller is an admin.
+REVOKE ALL ON FUNCTION public.decide_user_approval(uuid, text, text, text, uuid) FROM PUBLIC;
+REVOKE ALL ON FUNCTION public.decide_user_approval(uuid, text, text, text, uuid) FROM anon;
+REVOKE ALL ON FUNCTION public.decide_user_approval(uuid, text, text, text, uuid) FROM authenticated;
 GRANT EXECUTE ON FUNCTION public.decide_user_approval(uuid, text, text, text, uuid) TO service_role;

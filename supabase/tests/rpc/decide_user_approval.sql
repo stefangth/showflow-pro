@@ -5,7 +5,7 @@ BEGIN;
 
 CREATE EXTENSION IF NOT EXISTS pgtap WITH SCHEMA extensions;
 
-SELECT plan(5);
+SELECT plan(6);
 
 SET session_replication_role = replica;
 
@@ -52,6 +52,16 @@ SELECT is(
    WHERE id = 'bbbbbbbb-ac00-0002-0000-000000000000'),
   'rejected|not this time|0',
   'rejection stores reason and clears roles'
+);
+
+SELECT is(
+  has_function_privilege(
+    'authenticated',
+    'public.decide_user_approval(uuid,text,text,text,uuid)',
+    'EXECUTE'
+  ),
+  false,
+  'authenticated callers cannot execute the service-role-only approval RPC directly'
 );
 
 SELECT * FROM finish();
