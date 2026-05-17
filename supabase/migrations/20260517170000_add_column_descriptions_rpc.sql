@@ -72,7 +72,8 @@ AS $$
   JOIN pg_namespace n ON c.relnamespace = n.oid
   JOIN pg_description d ON d.objoid = c.oid AND d.objsubid = a.attnum
   WHERE n.nspname = 'public'
-    AND c.relkind = 'r';
+    AND c.relname IN ('show_dates', 'shows', 'cities', 'bookings', 'artists');
+    -- Keep in sync with TABLE_COLUMNS in src/features/editor/columnRegistries.ts
 $$;
 
 GRANT EXECUTE ON FUNCTION get_column_descriptions() TO authenticated;
