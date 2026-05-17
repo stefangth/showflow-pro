@@ -148,15 +148,18 @@ export function EditorProvider({ children }: { children: ReactNode }) {
 
   // Fetch column descriptions from Postgres column comments via RPC.
   // _computed.* columns have no DB backing so they are merged in statically.
-  const { data: rawColumnDescriptions } = useQuery({
+  const { data: columnDescriptions } = useQuery({
     queryKey: ['editor', 'column-descriptions'],
     staleTime: Infinity,
     gcTime: Infinity,
     queryFn: async () => {
       const { data, error } = await supabase.rpc('get_column_descriptions');
       if (error) throw error;
+      const raw = data != null && typeof data === 'object' && !Array.isArray(data)
+        ? (data as Record<string, string>)
+        : {};
       return {
-        ...(data as Record<string, string>),
+        ...raw,
         '_computed.day': 'Day',
         '_computed.slots': 'Slots',
         '_computed.my_status': 'My status',
@@ -166,8 +169,12 @@ export function EditorProvider({ children }: { children: ReactNode }) {
   });
 
   const getColumnLabel = useCallback(
-    (colId: string) => rawColumnDescriptions?.[colId] ?? colId,
-    [rawColumnDescriptions]
+    (colId: string) => {
+      if (columnDescriptions) return columnDescriptions[colId] ?? colId;
+      const dotIdx = colId.indexOf('.');
+      return dotIdx !== -1 ? colId.slice(dotIdx + 1) : colId;
+    },
+    [columnDescriptions]
   );
 
   const getTablePermission = useCallback((tableKey: string, role: AppRole): TablePermissionLevel => {
