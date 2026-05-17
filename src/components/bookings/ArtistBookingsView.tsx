@@ -14,8 +14,7 @@ import { useArtistEligibleDates, type EligibleDate } from '@/hooks/useArtistElig
 import { useMyArtist } from '@/hooks/useMyArtist';
 import { formatDateDMY, parseDateOnly } from '@/lib/dates';
 import { showLabel } from '@/types';
-import { useColumnTemplate } from '@/features/editor/EditorContext';
-import { pageColumnDefs } from '@/features/editor/columnRegistries';
+import { useColumnTemplate, useEditorConfig } from '@/features/editor/EditorContext';
 import { ColumnLayoutEditor } from '@/features/editor/ColumnLayoutEditor';
 
 type BookingLite = { show_date_id: string; status: string; is_understudy: boolean };
@@ -41,7 +40,7 @@ export function ArtistBookingsView() {
   const { data: artist } = useMyArtist();
   const { data: eligibleDates, isLoading } = useArtistEligibleDates();
   const { orderedColumns, visibleCount } = useColumnTemplate('bookings-artist');
-  const colDefs = pageColumnDefs('bookings-artist');
+  const { isEditorMode, getColumnLabel } = useEditorConfig();
   const [timeframe, setTimeframe] = useState<TimeframeValue>({ from: null, to: null });
   const [sort, setSort] = useState<SortValue>('chrono_asc');
   const [view, setView] = useState<ViewMode>('list');
@@ -121,14 +120,11 @@ export function ArtistBookingsView() {
                 <TableRow>
                   {orderedColumns
                     .filter(c => c.visible)
-                    .map(c => {
-                      const def = colDefs.find(d => d.id === c.columnId);
-                      return (
-                        <TableHead key={c.columnId} className="font-mono text-xs">
-                          {def?.column ?? c.columnId}
-                        </TableHead>
-                      );
-                    })}
+                    .map(c => (
+                      <TableHead key={c.columnId} className={isEditorMode ? 'font-mono text-xs' : 'text-xs'}>
+                        {isEditorMode ? c.columnId : getColumnLabel(c.columnId)}
+                      </TableHead>
+                    ))}
                 </TableRow>
               </TableHeader>
               <TableBody>

@@ -128,7 +128,7 @@ export function ColumnLayoutEditor({ pageKey }: ColumnLayoutEditorProps) {
       <div className="flex flex-wrap items-center gap-1.5">
         {sorted.map(col => {
           const def = defs.find(d => d.id === col.columnId);
-          const label = def?.label ?? col.columnId;
+          const label = col.columnId;
           const isOver = dragOverColId === col.columnId;
 
           return (

@@ -37,6 +37,7 @@ interface EditorContextType {
   getColumnTemplate: (pageKey: string, role: AppRole) => ColumnTemplate[];
   getColumnDefs: (pageKey: string) => ColumnDef[];
   getTablePermission: (tableKey: string, role: AppRole) => TablePermissionLevel;
+  getColumnLabel: (colId: string) => string;
 }
 
 const EditorContext = createContext<EditorContextType | undefined>(undefined);
@@ -145,6 +146,29 @@ export function EditorProvider({ children }: { children: ReactNode }) {
     []
   );
 
+  // Fetch column descriptions from Postgres column comments via RPC.
+  // _computed.* columns have no DB backing so they are merged in statically.
+  const { data: rawColumnDescriptions } = useQuery({
+    queryKey: ['column-descriptions'],
+    staleTime: Infinity,
+    queryFn: async () => {
+      const { data, error } = await supabase.rpc('get_column_descriptions');
+      if (error) throw error;
+      return {
+        ...(data as Record<string, string>),
+        '_computed.day': 'Day',
+        '_computed.slots': 'Slots',
+        '_computed.my_status': 'My status',
+        '_computed.blocked': 'Blocked',
+      } as Record<string, string>;
+    },
+  });
+
+  const getColumnLabel = useCallback(
+    (colId: string) => rawColumnDescriptions?.[colId] ?? colId,
+    [rawColumnDescriptions]
+  );
+
   const getTablePermission = useCallback((tableKey: string, role: AppRole): TablePermissionLevel => {
     return tablePermissions[tableKey]?.[role]
       ?? DEFAULT_TABLE_PERMISSIONS[tableKey]?.[role]
@@ -167,12 +191,13 @@ export function EditorProvider({ children }: { children: ReactNode }) {
     getColumnTemplate,
     getColumnDefs,
     getTablePermission,
+    getColumnLabel,
   }), [
     isEditorMode,
     isSidePanelOpen,
     pageAccess, columnTemplates, tablePermissions, isConfigLoading,
     savePageAccess, saveColumnTemplate, saveTablePermission,
-    getColumnTemplate, getColumnDefs, getTablePermission,
+    getColumnTemplate, getColumnDefs, getTablePermission, getColumnLabel,
   ]);
 
   return <EditorContext.Provider value={value}>{children}</EditorContext.Provider>;
@@ -194,6 +219,7 @@ export function useEditorConfig() {
     getColumnTemplate: ctx.getColumnTemplate,
     getColumnDefs: ctx.getColumnDefs,
     getTablePermission: ctx.getTablePermission,
+    getColumnLabel: ctx.getColumnLabel,
   };
 }
 

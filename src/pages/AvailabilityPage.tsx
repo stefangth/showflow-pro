@@ -23,8 +23,7 @@ import { AvailabilityPicker } from '@/components/availability/AvailabilityPicker
 import { OfferResponseButtons } from '@/components/availability/OfferResponseButtons';
 import { formatDateDMY, parseDateOnly } from '@/lib/dates';
 import { showLabel } from '@/types';
-import { useColumnTemplate } from '@/features/editor/EditorContext';
-import { pageColumnDefs } from '@/features/editor/columnRegistries';
+import { useColumnTemplate, useEditorConfig } from '@/features/editor/EditorContext';
 import { ColumnLayoutEditor } from '@/features/editor/ColumnLayoutEditor';
 import { useToast } from '@/hooks/use-toast';
 
@@ -53,7 +52,7 @@ function ArtistAvailability() {
   const { data: artist } = useMyArtist();
   const { data: eligibleDates, isLoading } = useArtistEligibleDates();
   const { orderedColumns, visibleCount } = useColumnTemplate('availability');
-  const colDefs = pageColumnDefs('availability');
+  const { isEditorMode, getColumnLabel } = useEditorConfig();
   const [searchParams, setSearchParams] = useSearchParams();
   const { toast } = useToast();
 
@@ -221,14 +220,11 @@ function ArtistAvailability() {
                 <TableRow>
                   {orderedColumns
                     .filter(c => c.visible)
-                    .map(c => {
-                      const def = colDefs.find(d => d.id === c.columnId);
-                      return (
-                        <TableHead key={c.columnId} className="font-mono text-xs">
-                          {def?.column ?? c.columnId}
-                        </TableHead>
-                      );
-                    })}
+                    .map(c => (
+                      <TableHead key={c.columnId} className={isEditorMode ? 'font-mono text-xs' : 'text-xs'}>
+                        {isEditorMode ? c.columnId : getColumnLabel(c.columnId)}
+                      </TableHead>
+                    ))}
                 </TableRow>
               </TableHeader>
               <TableBody>

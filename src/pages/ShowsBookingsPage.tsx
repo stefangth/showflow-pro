@@ -21,8 +21,7 @@ import { ArtistBookingsView } from '@/components/bookings/ArtistBookingsView';
 import { ShowDateDetailSheet } from '@/components/shows/ShowDateDetailSheet';
 import { useSubProgramSlots, effectiveSlots } from '@/hooks/useSubProgramSlots';
 import { showLabel } from '@/types';
-import { useColumnTemplate } from '@/features/editor/EditorContext';
-import { pageColumnDefs } from '@/features/editor/columnRegistries';
+import { useColumnTemplate, useEditorConfig } from '@/features/editor/EditorContext';
 import { ColumnLayoutEditor } from '@/features/editor/ColumnLayoutEditor';
 
 type ShowRef = {
@@ -82,7 +81,7 @@ export default function ShowsBookingsPage() {
 function ProducerShowsBookings() {
   const { canSee } = useFilterVisibility('bookings');
   const { orderedColumns, visibleCount } = useColumnTemplate('bookings-producer');
-  const colDefs = pageColumnDefs('bookings-producer');
+  const { isEditorMode, getColumnLabel } = useEditorConfig();
   const queryClient = useQueryClient();
   const [searchParams, setSearchParams] = useSearchParams();
 
@@ -265,14 +264,11 @@ function ProducerShowsBookings() {
                 <TableRow>
                   {orderedColumns
                     .filter(c => c.visible)
-                    .map(c => {
-                      const def = colDefs.find(d => d.id === c.columnId);
-                      return (
-                        <TableHead key={c.columnId} className="font-mono text-xs">
-                          {def?.column ?? c.columnId}
-                        </TableHead>
-                      );
-                    })}
+                    .map(c => (
+                      <TableHead key={c.columnId} className={isEditorMode ? 'font-mono text-xs' : 'text-xs'}>
+                        {isEditorMode ? c.columnId : getColumnLabel(c.columnId)}
+                      </TableHead>
+                    ))}
                 </TableRow>
               </TableHeader>
               <TableBody>
