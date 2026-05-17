@@ -156,6 +156,8 @@ export function EditorProvider({ children }: { children: ReactNode }) {
 
   // Fetch column descriptions from Postgres column comments via RPC.
   // _computed.* columns have no DB backing so they are merged in statically.
+  // staleTime/gcTime: Infinity — column comments are schema metadata that
+  // changes rarely. Sessions pick up changes only on hard reload.
   const { data: columnDescriptions, error: columnDescriptionsError } = useQuery({
     queryKey: ['editor', 'column-descriptions'],
     staleTime: Infinity,

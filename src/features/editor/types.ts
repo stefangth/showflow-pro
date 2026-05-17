@@ -3,7 +3,6 @@ import type { AppRole } from '@/config/app.config';
 export interface ColumnDef {
   /** Namespaced id: `${table}.${column}`. */
   id: string;
-  label: string;
   /** Source table the column comes from (or `_computed` for derived cells). */
   table: string;
   /** Bare DB column name within the table. */

@@ -16,7 +16,7 @@ export const TABLE_COLUMNS: Record<string, readonly string[]> = {
     'status', 'notes', 'airtable_record_id', 'created_at', 'updated_at',
   ],
   shows: ['id', 'program', 'sub_program', 'status', 'required_skills', 'created_by', 'created_at', 'updated_at'],
-  cities: ['id', 'name', 'country', 'created_at'],
+  cities: ['id', 'name', 'airtable_record_id', 'created_at'],
   artists: ['id', 'user_id', 'name', 'email', 'phone', 'bio', 'status', 'created_at', 'updated_at'],
   // Computed/derived columns surfaced in the editor under a virtual table.
   _computed: ['day', 'slots', 'my_status', 'blocked'],
@@ -86,7 +86,6 @@ export function pageColumnDefs(pageKey: string): ColumnDef[] {
       const isRendered = renderedOrder !== undefined;
       defs.push({
         id,
-        label: id,
         table,
         column: col,
         defaultVisible: isRendered,
