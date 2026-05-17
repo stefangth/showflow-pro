@@ -1,4 +1,4 @@
-Claude Code Action
+name: Claude Code Action
 
 on:
   issue_comment:
@@ -24,6 +24,11 @@ jobs:
       issues: write
       id-token: write
     steps:
+      # Step 1: Initialize the .git environment so Claude can fetch origin branches
+      - name: Checkout Repository Base
+        uses: actions/checkout@v4
+
+      # Step 2: Run the Claude action with your API key secret
       - name: Claude Code Action Official
         uses: anthropics/claude-code-action@v1
         with:
