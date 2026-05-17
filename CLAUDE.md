@@ -69,6 +69,7 @@ These are public values (anon key, not service role). Never commit `.env`. The s
 src/
   components/
     admin/         # Admin-only UI (ApprovalsTab, etc.)
+    artists/       # ArtistProfileSheet
     availability/  # ArtistAvailabilityCalendar, AvailabilityPicker
     bookings/      # ArtistBookingsView and booking surfaces
     calendar/      # EntityCalendar (shared month grid)
@@ -80,9 +81,15 @@ src/
     layout/        # AppLayout (sidebar + topbar shell)
     ui/            # shadcn primitives — DO NOT edit by hand, regenerate via shadcn
   config/
-    app.config.ts  # Feature flags, route constants, booking weights, chat archive window
+    app.config.ts  # Feature flags (FEATURES), route constants (ROUTES), BOOKING_CONFIG, CHAT_ARCHIVE_DAYS
   features/
     auth/          # AuthContext, ProtectedRoute, ApprovalGate, role helpers
+    editor/        # Admin-only UI editor: EditorContext, EditorToolbar, EditorSidePanel,
+                   #   ColumnLayoutEditor, columnRegistries, types.
+                   #   Persists page access / column templates / table permissions in
+                   #   app_settings (keys: editor_page_access, editor_column_templates,
+                   #   editor_table_permissions). EditorProvider wraps the whole app.
+                   #   Read-only hook for page components: useEditorConfig().
   hooks/           # Domain hooks (useMyArtist, useEligibleArtists, useChatParticipant,
                    #   useArtistEligibleDates) + UI hooks (use-mobile, use-toast)
   integrations/
@@ -90,6 +97,12 @@ src/
       client.ts    # Single shared Supabase client
       types.ts     # AUTO-GENERATED — never edit
   pages/           # One file per route, default-exported
+                   #   Key pages: DashboardPage, ShowsBookingsPage (ROUTES.BOOKINGS),
+                   #   ArtistsPage (admin+producer), AvailabilityPage (artist),
+                   #   AdminPage, SettingsPage, ChatsListPage, UnsubscribePage (public)
+                   #   ROUTES.PROFILE and ROUTES.RESET_PASSWORD are defined but have
+                   #   no pages yet — reserved for future implementation.
+                   #   /signup redirects to /login (no standalone signup page).
   types/           # Domain types extending Supabase row types
 supabase/
   functions/       # Deno edge functions
@@ -112,7 +125,8 @@ supabase/
 - **Booking detail surface: `ShowDateDetailSheet`.** The full booking management experience (date config, assigned artists, available artists, chat) lives in `src/components/shows/ShowDateDetailSheet.tsx`. There is no standalone `/shows/:id` page — `ShowDetailPage` and `ShowDetailSheet` have been deleted.
 - **Audit trail:** all booking status changes append to `booking_audit_log`. Never delete from this table.
 - **Airtable sync is mocked.** The polling loop is not wired up; the Settings page toggles a flag the sync worker will read once implemented.
-- **Feature flags** live in `app.config.ts` as the `FLAGS` object. Check with `if (FLAGS.FEATURE_NAME) { ... }`. Wrap entire feature blocks, not individual lines. Don't build UI for a flag that's `false` unless wiring it up in the same change.
+- **Feature flags** live in `app.config.ts` as the `FEATURES` object. Check with `if (FEATURES.FEATURE_NAME) { ... }`. Wrap entire feature blocks, not individual lines. Don't build UI for a flag that's `false` unless wiring it up in the same change.
+- **Admin-only editor mode:** `EditorProvider` (wraps the entire app in `App.tsx`) exposes `isEditorMode`. Admins in editor mode bypass route-level role gates — `ProtectedRoute` reads `pageAccess` from `useEditorConfig()` and uses DB-stored role overrides instead of the `requiredRoles` prop. Never use `isEditorMode` to skip server-side RLS checks.
 
 ### Calendar conventions
 
@@ -153,7 +167,7 @@ supabase/
 When adding a new page:
 1. Add a route constant to `ROUTES` in `src/config/app.config.ts`.
 2. Create `src/pages/YourPage.tsx` with a default export.
-3. Register in `src/App.tsx` with `<ProtectedRoute roles={[...]}>`.
+3. Register in `src/App.tsx` with `<ProtectedRoute requiredRoles={[...]}>`.
 4. Add a nav item in `src/components/layout/` with matching role gating.
 
 ### Edge functions
@@ -168,7 +182,7 @@ When adding a new page:
 ### Notification system
 
 - In-app notifications write to the `notifications` table (columns: `user_id`, `type`, `payload`, `read_at`).
-- `FLAGS.NOTIFICATIONS` must be `true` (it is, by default).
+- `FEATURES.NOTIFICATIONS` must be `true` (it is, by default).
 - Create notifications from edge functions or server-side mutations only — never bare client-side inserts without proper RLS policies.
 
 ### Styling
@@ -204,10 +218,10 @@ When adding a new page:
 A booking moves through: `suggested → soft_booked → confirmed` (or `cancelled` from any state).
 
 - Offers are created by `open-offer-tier` edge function (call after new show_date creation or manually).
-- Artists have `offer_response_window_hours` (default 48h) to respond; `expire-offers` runs hourly.
-- Artists receive a daily offer digest email at `offer_digest_hour_berlin` (default 19:00 Berlin).
+- Artists have a configurable response window (default 48h) to respond; `expire-offers` runs hourly. The window duration, digest send hours (Berlin time), and other booking engine settings are stored in `app_settings` (editable via Settings → Booking Engine), not hardcoded in `app.config.ts`.
+- Artists receive a daily offer digest email at the configured hour (default 19:00 Berlin).
 - Producers see soft_booked rows in their dashboard and bulk-confirm.
-- Artists receive a confirmation digest email at `confirmation_digest_hour_berlin` (default 20:00 Berlin).
+- Artists receive a confirmation digest email at the configured hour (default 20:00 Berlin).
 - Email provider: Resend. Template overrides editable in Settings → Booking Engine.
 - Understudies (`is_understudy = true`) auto-promote when the primary cancels.
 
@@ -230,9 +244,10 @@ Suggested emails:
 
 | File | Purpose |
 |------|---------|
-| `src/config/app.config.ts` | Feature flags, ROUTES, BOOKING_CONFIG, CHAT_ARCHIVE_DAYS |
+| `src/config/app.config.ts` | FEATURES flags, ROUTES, BOOKING_CONFIG (`SOFT_BOOK_EXPIRY_HOURS`), CHAT_ARCHIVE_DAYS |
 | `src/integrations/supabase/types.ts` | Auto-generated DB types — read only |
 | `src/features/auth/AuthContext.tsx` | Auth state, role helpers, approval status |
+| `src/features/editor/EditorContext.tsx` | Editor mode state, page access and column/permission config (admin only) |
 | `src/hooks/` | All domain hooks — reuse before writing new queries |
 | `src/types/index.ts` | Domain type extensions on top of Supabase types |
 | `supabase/functions/send-offer-digest/index.ts` | Daily offer digest (Berlin 19:00 gate) |
