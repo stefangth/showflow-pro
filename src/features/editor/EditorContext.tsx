@@ -18,6 +18,14 @@ import {
 
 const EDITOR_MODE_KEY = 'showflow_editor_mode';
 
+// Labels for virtual _computed columns — no DB backing, always available regardless of RPC state
+const COMPUTED_LABELS: Record<string, string> = {
+  '_computed.day': 'Day',
+  '_computed.slots': 'Slots',
+  '_computed.my_status': 'My status',
+  '_computed.blocked': 'Blocked',
+};
+
 interface EditorContextType {
   isEditorMode: boolean;
   enableEditorMode: () => void;
@@ -158,18 +166,15 @@ export function EditorProvider({ children }: { children: ReactNode }) {
       const raw = data != null && typeof data === 'object' && !Array.isArray(data)
         ? (data as Record<string, string>)
         : {};
-      return {
-        ...raw,
-        '_computed.day': 'Day',
-        '_computed.slots': 'Slots',
-        '_computed.my_status': 'My status',
-        '_computed.blocked': 'Blocked',
-      } as Record<string, string>;
+      return raw;
     },
   });
 
+  // Note: staleTime/gcTime are both Infinity — updated column comments won't
+  // be picked up without a hard reload. Acceptable for schema metadata.
   const getColumnLabel = useCallback(
     (colId: string) => {
+      if (COMPUTED_LABELS[colId]) return COMPUTED_LABELS[colId];
       if (columnDescriptions) return columnDescriptions[colId] ?? colId;
       const dotIdx = colId.indexOf('.');
       return dotIdx !== -1 ? colId.slice(dotIdx + 1) : colId;
