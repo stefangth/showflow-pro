@@ -380,7 +380,7 @@ function ProducerShowsBookings() {
           emptyMessage="No show dates scheduled"
           renderItem={it => (
             <Card
-              className="hover:shadow-md transition-shadow cursor-pointer"
+              className="hover:shadow-elev2 transition-shadow cursor-pointer"
               onClick={() => setActiveShowDateId(it.showDate.id)}
             >
               <CardContent className="py-3 flex items-center justify-between gap-3">

@@ -205,7 +205,7 @@ export function ArtistBookingsView() {
             const status = statusFor(it.eligible);
             return (
               <Card
-                className="hover:shadow-md transition-shadow cursor-pointer"
+                className="hover:shadow-elev2 transition-shadow cursor-pointer"
                 onClick={() => setActiveShowDateId(it.eligible.id)}
               >
                 <CardContent className="py-3 flex items-center justify-between gap-3">

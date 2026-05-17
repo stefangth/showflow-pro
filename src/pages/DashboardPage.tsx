@@ -275,14 +275,14 @@ function ProducerDashboard() {
         {cards.map((c, i) => (
           <motion.div key={c.title} variants={fadeUp} initial="initial" animate="animate" transition={{ delay: i * 0.1 }}>
             <Link to={c.to} className="block">
-              <Card className="hover:shadow-lg transition-shadow cursor-pointer h-full">
+              <Card className="hover:shadow-elev3 transition-shadow cursor-pointer h-full">
                 <CardContent className="pt-6">
                   <div className="flex items-start justify-between mb-4">
                     <p className="text-sm text-muted-foreground font-medium">{c.title}</p>
                     <c.icon className={`h-8 w-8 ${c.accent} opacity-30`} />
                   </div>
                   <div className="flex items-baseline gap-2 mb-3">
-                    <p className="text-4xl font-display font-bold">{c.primary}</p>
+                    <p className="text-[36px] font-display font-semibold tracking-tight">{c.primary}</p>
                     <p className="text-sm text-muted-foreground">{c.primaryLabel}</p>
                   </div>
                   {c.pctMode ? (

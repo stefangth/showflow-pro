@@ -132,7 +132,7 @@ export default function AdminPage() {
             <CardContent className="pt-6 flex items-center justify-between">
               <div>
                 <p className="text-sm text-muted-foreground">{s.label}</p>
-                <p className="text-2xl font-display font-bold">{s.value}</p>
+                <p className="text-[26px] font-display font-semibold">{s.value}</p>
               </div>
               <s.icon className="h-8 w-8 text-primary opacity-20" />
             </CardContent>

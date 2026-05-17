@@ -9,9 +9,9 @@ export default function PendingApprovalScreen() {
   return (
     <div className="flex min-h-screen items-center justify-center bg-background p-4">
       <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4 }}>
-        <Card className="w-full max-w-md shadow-2xl border-0">
+        <Card className="w-full max-w-md">
           <CardHeader className="text-center space-y-2">
-            <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-primary/10">
+            <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-xl bg-primary/10">
               <Clock className="h-7 w-7 text-primary" />
             </div>
             <CardTitle className="font-display text-2xl">Awaiting approval</CardTitle>

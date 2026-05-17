@@ -225,7 +225,7 @@ export default function ArtistsPage() {
             return (
               <motion.div key={artist.id} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: Math.min(i * 0.03, 0.3) }}>
                 <Card
-                  className="h-full cursor-pointer hover:shadow-md transition-shadow"
+                  className="h-full cursor-pointer hover:shadow-elev2 transition-shadow"
                   onClick={() => setProfileArtistId(artist.id)}
                 >
                   <CardContent className="pt-6">

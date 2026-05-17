@@ -1224,7 +1224,7 @@ export default function SettingsPage() {
             </CardHeader>
             <CardContent>
               <div className="prose prose-sm max-w-none text-foreground
-                [&_h1]:font-display [&_h1]:text-2xl [&_h1]:font-bold [&_h1]:mt-6 [&_h1]:mb-3
+                [&_h1]:font-display [&_h1]:text-2xl [[&_h1]:font-bold_h1]:font-semibold [&_h1]:mt-6 [&_h1]:mb-3
                 [&_h2]:font-display [&_h2]:text-xl [&_h2]:font-semibold [&_h2]:mt-6 [&_h2]:mb-2 [&_h2]:border-b [&_h2]:border-border [&_h2]:pb-1
                 [&_h3]:font-display [&_h3]:text-base [&_h3]:font-semibold [&_h3]:mt-4 [&_h3]:mb-1
                 [&_p]:text-sm [&_p]:leading-relaxed [&_p]:mb-3 [&_p]:text-foreground
