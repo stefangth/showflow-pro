@@ -44,7 +44,7 @@ export default function ChatsListPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="font-display text-3xl font-bold flex items-center gap-3">
+        <h1 className="font-display text-[32px] font-semibold tracking-tight flex items-center gap-3">
           <MessageSquare className="h-7 w-7 text-primary" /> Chats
         </h1>
         <p className="text-muted-foreground mt-1">

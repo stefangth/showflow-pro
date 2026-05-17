@@ -7,7 +7,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { ROUTES, APP_META } from '@/config/app.config';
 import { useToast } from '@/hooks/use-toast';
 import { motion } from 'framer-motion';
-import { Zap } from 'lucide-react';
+import { StageMark } from '@/components/brand/StageMark';
 
 export default function LoginPage() {
   const [email, setEmail] = useState('');
@@ -44,12 +44,12 @@ export default function LoginPage() {
   return (
     <div className="flex min-h-screen items-center justify-center bg-background p-4">
       <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5 }}>
-        <Card className="w-full max-w-md shadow-2xl border-0">
-          <CardHeader className="text-center space-y-2">
-            <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-primary">
-              <Zap className="h-7 w-7 text-primary-foreground" />
+        <Card className="w-full max-w-md">
+          <CardHeader className="text-center space-y-3">
+            <div className="mx-auto">
+              <StageMark variant="tile" size={52} />
             </div>
-            <CardTitle className="font-display text-3xl">{APP_META.NAME}</CardTitle>
+            <CardTitle className="font-display text-[26px] font-semibold tracking-tight">{APP_META.NAME}</CardTitle>
             <CardDescription>Sign in to manage your bookings</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">

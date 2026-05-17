@@ -248,7 +248,7 @@ export function ShowDateDetailSheet({ showDateId, open, onOpenChange }: Props) {
             <>
               {/* Date info */}
               <div className="space-y-2">
-                <p className="font-display text-2xl font-bold">
+                <p className="font-display text-[26px] font-semibold tracking-tight">
                   {format(new Date(showDate.date + 'T00:00:00'), 'EEEE, d MMMM yyyy')}
                 </p>
                 <div className="flex flex-wrap gap-3 text-sm text-muted-foreground">
