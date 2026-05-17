@@ -1,33 +1,390 @@
 <!doctype html>
 <html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <!-- TODO: Set the document title to the name of your application -->
-    <title>Showflow Pro - Artist Booking Platform</title>
-    <meta name="description" content="Showflow Pro: Intelligent artist booking for show productions. Auto-suggest, availability management, and real-time booking.">
-    <meta name="author" content="Showflow Pro" />
+<head>
+  <meta charset="utf-8" />
+  <title>ShowFlow — Brand & Visual Identity</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
 
-    
-    
-    <meta property="og:type" content="website" />
-    
+  <!-- React + Babel -->
+  <script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
 
-    <meta name="twitter:card" content="summary_large_image" />
-    <meta name="twitter:site" content="@Lovable" />
-    
-    <meta property="og:title" content="Showflow Pro - Artist Booking Platform">
-  <meta name="twitter:title" content="Showflow Pro - Artist Booking Platform">
-  <meta property="og:description" content="Showflow Pro: Intelligent artist booking for show productions. Auto-suggest, availability management, and real-time booking.">
-  <meta name="twitter:description" content="Showflow Pro: Intelligent artist booking for show productions. Auto-suggest, availability management, and real-time booking.">
-  <link rel="icon" type="image/x-icon" href="/favicon.ico">
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="">
-    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=Inter:wght@300;400;500;600;700&display=swap">
+  <style>
+    html, body { margin: 0; padding: 0; background: #f0eee9; }
+    * { box-sizing: border-box; }
+  </style>
 </head>
+<body>
+  <div id="root"></div>
 
-  <body>
-    <div id="root"></div>
-    <script type="module" src="/src/main.tsx"></script>
-  </body>
+  <!-- Component scripts (each Object.assigns to window) -->
+  <script type="text/babel" src="design-canvas.jsx"></script>
+  <script type="text/babel" src="tweaks-panel.jsx"></script>
+  <script type="text/babel" src="ios-frame.jsx"></script>
+  <script type="text/babel" src="macos-window.jsx"></script>
+  <script type="text/babel" src="tokens.jsx"></script>
+  <script type="text/babel" src="logos.jsx"></script>
+  <script type="text/babel" src="system.jsx"></script>
+  <script type="text/babel" src="components.jsx"></script>
+  <script type="text/babel" src="preview.jsx"></script>
+  <script type="text/babel" src="apple.jsx"></script>
+
+  <script type="text/babel">
+    const TWEAK_DEFAULTS = /*EDITMODE-BEGIN*/{
+      "mode": "light",
+      "accent": "violet",
+      "density": "regular",
+      "typeface": "geist",
+      "logoVariant": 3
+    }/*EDITMODE-END*/;
+
+    // ─── Reusable artboard chrome ────────────────────────────────────────────
+    function ArtboardShell({ tokens, children, padding = 0, hero }) {
+      return (
+        <div style={{
+          width: '100%', height: '100%',
+          background: tokens.n.bg,
+          color: tokens.n.text,
+          fontFamily: tokens.type.body,
+          padding,
+          display: 'flex', flexDirection: 'column',
+        }}>
+          {children}
+        </div>
+      );
+    }
+
+    // ─── Logo direction artboard ─────────────────────────────────────────────
+    function LogoArtboard({ tokens, logo, isSelected, onSelect }) {
+      const L = logo.component;
+      const a = tokens.accent;
+      const n = tokens.n;
+      return (
+        <div onClick={onSelect} style={{
+          width: '100%', height: '100%',
+          background: n.bg, color: n.text,
+          fontFamily: tokens.type.body,
+          display: 'flex', flexDirection: 'column',
+          cursor: 'pointer', position: 'relative',
+          outline: isSelected ? `2px solid ${a[500]}` : 'none',
+          outlineOffset: -2,
+        }}>
+          {/* Hero mark on accent */}
+          <div style={{
+            flex: 1.4, background: a[500],
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            position: 'relative',
+          }}>
+            <L size={140} color="#fff" bg={a[500]} />
+            {isSelected && (
+              <div style={{
+                position: 'absolute', top: 10, right: 10,
+                width: 18, height: 18, borderRadius: 9,
+                background: '#fff', color: a[600],
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+              }}>
+                <Icon d={ICONS.check} size={10} color={a[600]} />
+              </div>
+            )}
+          </div>
+          {/* Mark on neutral + meta */}
+          <div style={{
+            flex: 1, padding: 20, display: 'flex', flexDirection: 'column', gap: 14,
+            borderTop: `0.5px solid ${n.line}`,
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+              <div style={{ fontFamily: tokens.type.display, fontSize: 16, fontWeight: 600, letterSpacing: -0.2 }}>
+                {logo.name}
+              </div>
+              <Mono tokens={tokens} size={10}>0{logo.id}/06</Mono>
+            </div>
+            <div style={{ fontSize: 12, color: n.textMuted, lineHeight: 1.4 }}>{logo.note}</div>
+            <div style={{ marginTop: 'auto', display: 'flex', alignItems: 'center', gap: 16, flexWrap: 'wrap' }}>
+              {/* small wordmark */}
+              <Wordmark logoVariant={logo.id} size={16} color={n.text} accent={a[500]} tokens={tokens} />
+              {/* monochrome variant */}
+              <div style={{ opacity: 0.5 }}>
+                <L size={20} color={n.textMuted} bg={n.bg} />
+              </div>
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    // ─── Brand cover artboard ────────────────────────────────────────────────
+    function BrandCover({ tokens, logoVariant }) {
+      const a = tokens.accent;
+      const n = tokens.n;
+      const L = LOGOS[(logoVariant - 1) % LOGOS.length].component;
+      return (
+        <div style={{
+          width: '100%', height: '100%',
+          background: n.bg, color: n.text,
+          fontFamily: tokens.type.body,
+          display: 'grid', gridTemplateColumns: '1.1fr 1fr',
+          overflow: 'hidden', position: 'relative',
+        }}>
+          {/* Left: type lockup */}
+          <div style={{ padding: '40px 44px', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+              <Wordmark logoVariant={logoVariant} size={26} color={n.text} accent={a[500]} tokens={tokens} />
+              <Badge tokens={tokens} tone="accent">v1.0 · 2026</Badge>
+            </div>
+
+            <div>
+              <SectionLabel tokens={tokens}>Brand & visual identity</SectionLabel>
+              <div style={{
+                fontFamily: tokens.type.display,
+                fontSize: 56, fontWeight: 600, letterSpacing: -1.6,
+                lineHeight: 1.02, marginTop: 14,
+                textWrap: 'pretty',
+              }}>
+                The operating system for{' '}
+                <span style={{ color: a[500] }}>touring music.</span>
+              </div>
+              <div style={{ fontSize: 15, color: n.textMuted, marginTop: 14, maxWidth: 460, lineHeight: 1.5 }}>
+                Route, book, hold and settle 50,000+ live dates a year from one place. Pitch deck preview — colors, type, components, in-context.
+              </div>
+            </div>
+
+            <div style={{ display: 'flex', gap: 24, alignItems: 'baseline' }}>
+              <div>
+                <div style={{ fontFamily: tokens.type.display, fontSize: 28, fontWeight: 600 }}>06</div>
+                <Mono tokens={tokens} size={11}>logo directions</Mono>
+              </div>
+              <div>
+                <div style={{ fontFamily: tokens.type.display, fontSize: 28, fontWeight: 600 }}>3</div>
+                <Mono tokens={tokens} size={11}>accent palettes</Mono>
+              </div>
+              <div>
+                <div style={{ fontFamily: tokens.type.display, fontSize: 28, fontWeight: 600 }}>1</div>
+                <Mono tokens={tokens} size={11}>component system</Mono>
+              </div>
+            </div>
+          </div>
+
+          {/* Right: hero mark on accent block */}
+          <div style={{
+            background: a[500], position: 'relative',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            overflow: 'hidden',
+          }}>
+            {/* subtle radial / grid texture */}
+            <div style={{ position: 'absolute', inset: 0,
+              background: `radial-gradient(800px 400px at 70% 40%, ${a[400]}88, transparent 70%)` }} />
+            <div style={{ position: 'absolute', inset: 0, opacity: 0.06,
+              backgroundImage: 'linear-gradient(#fff 1px, transparent 1px), linear-gradient(90deg, #fff 1px, transparent 1px)',
+              backgroundSize: '40px 40px' }} />
+            <div style={{ position: 'relative' }}>
+              <L size={260} color="#fff" bg={a[500]} />
+            </div>
+            <div style={{ position: 'absolute', bottom: 28, left: 28, color: '#fff', opacity: .8,
+              fontFamily: tokens.type.mono, fontSize: 11, letterSpacing: '0.06em' }}>
+              ShowFlow · {a.name} · {tokens.mode}
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    // ─── Lockups artboard (wordmark + app icon + monochrome) ─────────────────
+    function LockupArtboard({ tokens, logoVariant }) {
+      const a = tokens.accent;
+      const n = tokens.n;
+      const L = LOGOS[(logoVariant - 1) % LOGOS.length].component;
+      return (
+        <div style={{
+          width: '100%', height: '100%',
+          background: n.bg, color: n.text,
+          fontFamily: tokens.type.body, padding: 28,
+          display: 'flex', flexDirection: 'column', gap: 18,
+        }}>
+          <div>
+            <SectionLabel tokens={tokens}>Lockups</SectionLabel>
+            <div style={{ fontFamily: tokens.type.display, fontSize: 22, fontWeight: 600, letterSpacing: -0.3, marginTop: 4 }}>
+              {LOGOS[logoVariant - 1].name.replace(/^\d+\s·\s/, '')} family
+            </div>
+          </div>
+
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 12, flex: 1 }}>
+            {/* Wordmark on light */}
+            <div style={{
+              background: n.surface, border: `0.5px solid ${n.line}`, borderRadius: 10,
+              padding: 18, display: 'flex', flexDirection: 'column', justifyContent: 'space-between',
+            }}>
+              <Mono tokens={tokens} size={10}>Horizontal · light</Mono>
+              <Wordmark logoVariant={logoVariant} size={22} color={n.text} accent={a[500]} tokens={tokens} />
+            </div>
+            {/* Wordmark on accent */}
+            <div style={{
+              background: a[500], borderRadius: 10,
+              padding: 18, display: 'flex', flexDirection: 'column', justifyContent: 'space-between',
+            }}>
+              <Mono tokens={tokens} size={10}><span style={{ color: '#fff', opacity: .7 }}>Horizontal · accent</span></Mono>
+              <Wordmark logoVariant={logoVariant} size={22} color="#fff" accent="#fff" tokens={tokens} />
+            </div>
+            {/* Wordmark on dark */}
+            <div style={{
+              background: '#0D0C10', borderRadius: 10,
+              padding: 18, display: 'flex', flexDirection: 'column', justifyContent: 'space-between',
+            }}>
+              <Mono tokens={tokens} size={10}><span style={{ color: '#9A9890' }}>Horizontal · dark</span></Mono>
+              <Wordmark logoVariant={logoVariant} size={22} color="#F5F4F1" accent={a[400]} tokens={tokens} />
+            </div>
+          </div>
+
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr', gap: 12, alignItems: 'stretch' }}>
+            <div style={{
+              background: n.surface, border: `0.5px solid ${n.line}`, borderRadius: 10,
+              padding: 14, display: 'flex', flexDirection: 'column', gap: 10,
+            }}>
+              <Mono tokens={tokens} size={10}>App icon</Mono>
+              <div style={{ display: 'flex', justifyContent: 'center', flex: 1, alignItems: 'center' }}>
+                <AppIcon logoVariant={logoVariant} size={84} accent={a[500]} tokens={tokens} />
+              </div>
+            </div>
+            <div style={{
+              background: n.surface, border: `0.5px solid ${n.line}`, borderRadius: 10,
+              padding: 14, display: 'flex', flexDirection: 'column', gap: 10,
+            }}>
+              <Mono tokens={tokens} size={10}>Mark · accent</Mono>
+              <div style={{ display: 'flex', justifyContent: 'center', flex: 1, alignItems: 'center' }}>
+                <L size={84} color={a[500]} bg={n.surface} />
+              </div>
+            </div>
+            <div style={{
+              background: n.surface, border: `0.5px solid ${n.line}`, borderRadius: 10,
+              padding: 14, display: 'flex', flexDirection: 'column', gap: 10,
+            }}>
+              <Mono tokens={tokens} size={10}>Mark · ink</Mono>
+              <div style={{ display: 'flex', justifyContent: 'center', flex: 1, alignItems: 'center' }}>
+                <L size={84} color={n.text} bg={n.surface} />
+              </div>
+            </div>
+            <div style={{
+              background: a[500], borderRadius: 10,
+              padding: 14, display: 'flex', flexDirection: 'column', gap: 10,
+            }}>
+              <Mono tokens={tokens} size={10}><span style={{ color: '#fff', opacity: .7 }}>Mark · reverse</span></Mono>
+              <div style={{ display: 'flex', justifyContent: 'center', flex: 1, alignItems: 'center' }}>
+                <L size={84} color="#fff" bg={a[500]} />
+              </div>
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    // ─── Main App ────────────────────────────────────────────────────────────
+    function App() {
+      useGoogleFonts();
+      const [tw, setTweak] = useTweaks(TWEAK_DEFAULTS);
+      const tokens = useTokens(tw);
+
+      return (
+        <>
+          <DesignCanvas>
+            <DCSection id="cover" title="ShowFlow · Brand showcase" subtitle="Pitch-ready visual identity · click a logo to set it across the system">
+              <DCArtboard id="cover" label="Cover · v1.0" width={1240} height={460}>
+                <BrandCover tokens={tokens} logoVariant={tw.logoVariant} />
+              </DCArtboard>
+            </DCSection>
+
+            <DCSection id="logos" title="Logo · six directions" subtitle="Click any direction to apply it everywhere else.">
+              {LOGOS.map((logo) => (
+                <DCArtboard key={logo.id} id={`logo-${logo.id}`} label={logo.name} width={320} height={420}>
+                  <LogoArtboard tokens={tokens} logo={logo}
+                    isSelected={tw.logoVariant === logo.id}
+                    onSelect={() => setTweak('logoVariant', logo.id)} />
+                </DCArtboard>
+              ))}
+            </DCSection>
+
+            <DCSection id="lockups" title="Lockups & app icon">
+              <DCArtboard id="lockup" label="Lockup family" width={760} height={420}>
+                <LockupArtboard tokens={tokens} logoVariant={tw.logoVariant} />
+              </DCArtboard>
+            </DCSection>
+
+            <DCSection id="color" title="Color system">
+              <DCArtboard id="palette" label={`${tokens.accent.name} · 10-step scale`} width={920} height={500}>
+                <PaletteArtboard tokens={tokens} width={920} height={500} />
+              </DCArtboard>
+            </DCSection>
+
+            <DCSection id="type" title="Typography">
+              <DCArtboard id="type" label={tokens.type.name} width={760} height={500}>
+                <TypeArtboard tokens={tokens} width={760} height={500} />
+              </DCArtboard>
+            </DCSection>
+
+            <DCSection id="components" title="Components">
+              <DCArtboard id="components" label="Primitives · live tokens" width={760} height={620}>
+                <ComponentsArtboard tokens={tokens} width={760} height={620} />
+              </DCArtboard>
+            </DCSection>
+
+            <DCSection id="context" title="In context" subtitle="Tour director's morning dashboard, rendered with the live brand system.">
+              <DCArtboard id="dashboard" label="Today · routing dashboard" width={1240} height={800}>
+                <DashboardPreview tokens={tokens} logoVariant={tw.logoVariant} width={1240} height={800} />
+              </DCArtboard>
+            </DCSection>
+
+            <DCSection id="apple" title="Apple HIG · iOS 26 / macOS Tahoe" subtitle="Stage mark · Violet · Geist — rendered into Liquid Glass.">
+              <DCArtboard id="hig-notes" label="Adaptation notes" width={620} height={874}>
+                <HIGNotes tokens={tokens} width={620} height={874} />
+              </DCArtboard>
+              <DCArtboard id="ios-today" label="iOS · Today" width={402} height={874}>
+                <IOSDevice width={402} height={874} dark={tw.mode === 'dark'}>
+                  <IOSTodayScreen tokens={tokens} logoVariant={tw.logoVariant} dark={tw.mode === 'dark'} />
+                </IOSDevice>
+              </DCArtboard>
+              <DCArtboard id="ios-routing" label="iOS · Routing detail" width={402} height={874}>
+                <IOSDevice width={402} height={874} dark={tw.mode === 'dark'}>
+                  <IOSRoutingScreen tokens={tokens} logoVariant={tw.logoVariant} dark={tw.mode === 'dark'} />
+                </IOSDevice>
+              </DCArtboard>
+              <DCArtboard id="macos-dash" label="macOS Tahoe · Today" width={1200} height={760}>
+                <MacOSDashboard tokens={tokens} logoVariant={tw.logoVariant} width={1200} height={760} />
+              </DCArtboard>
+            </DCSection>
+          </DesignCanvas>
+
+          <TweaksPanel title="Tweaks">
+            <TweakSection label="System" />
+            <TweakRadio label="Mode" value={tw.mode}
+              options={['light', 'dark']}
+              onChange={(v) => setTweak('mode', v)} />
+            <TweakRadio label="Accent" value={tw.accent}
+              options={[
+                { value: 'violet', label: 'Violet' },
+                { value: 'cyan',   label: 'Cyan' },
+                { value: 'warm',   label: 'Ember' },
+              ]}
+              onChange={(v) => setTweak('accent', v)} />
+            <TweakRadio label="Density" value={tw.density}
+              options={['compact', 'regular']}
+              onChange={(v) => setTweak('density', v)} />
+            <TweakSection label="Type" />
+            <TweakSelect label="Typeface" value={tw.typeface}
+              options={[
+                { value: 'inter', label: 'Inter + Space Grotesk' },
+                { value: 'geist', label: 'Geist + Geist Mono' },
+                { value: 'serif', label: 'Instrument Serif + Inter' },
+              ]}
+              onChange={(v) => setTweak('typeface', v)} />
+            <TweakSection label="Logo" />
+            <TweakSelect label="Variant" value={tw.logoVariant}
+              options={LOGOS.map((l) => ({ value: l.id, label: l.name }))}
+              onChange={(v) => setTweak('logoVariant', Number(v))} />
+          </TweaksPanel>
+        </>
+      );
+    }
+
+    ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+  </script>
+</body>
 </html>

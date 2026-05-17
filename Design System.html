@@ -1,0 +1,801 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>ShowFlow · Design System v1.0</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&family=Geist+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
+
+  <script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+
+  <style>
+    :root {
+      --accent-50:  #F4F1FF;
+      --accent-100: #E5DEFF;
+      --accent-200: #CABBFF;
+      --accent-300: #A88EFF;
+      --accent-400: #8A6DF6;
+      --accent-500: #6E5CF6;
+      --accent-600: #5848D8;
+      --accent-700: #4738B0;
+      --accent-800: #322685;
+      --accent-900: #1E175A;
+
+      --bg:        #F6F4EF;
+      --surface:   #FFFFFF;
+      --surface-2: #FAF8F4;
+      --line:      rgba(20, 18, 14, 0.08);
+      --line-strong: rgba(20, 18, 14, 0.14);
+      --text:      #15131C;
+      --text-muted:#5B5A57;
+      --text-faint:#8B8A85;
+
+      --shadow-1: 0 1px 2px rgba(20,18,14,.05);
+      --shadow-2: 0 1px 2px rgba(20,18,14,.04), 0 4px 10px rgba(20,18,14,.05);
+      --shadow-3: 0 1px 2px rgba(20,18,14,.04), 0 8px 24px rgba(20,18,14,.08);
+
+      --font-display: "Geist", system-ui, sans-serif;
+      --font-body:    "Geist", system-ui, sans-serif;
+      --font-mono:    "Geist Mono", ui-monospace, monospace;
+    }
+
+    * { box-sizing: border-box; }
+    html, body { margin: 0; padding: 0;
+      background: var(--bg); color: var(--text);
+      font-family: var(--font-body);
+      -webkit-font-smoothing: antialiased;
+    }
+    a { color: var(--accent-600); text-decoration: none; }
+    code { font-family: var(--font-mono); }
+
+    /* Layout */
+    .doc {
+      display: grid;
+      grid-template-columns: 260px minmax(0, 1fr);
+      max-width: 1400px;
+      margin: 0 auto;
+      min-height: 100vh;
+    }
+    .toc {
+      position: sticky; top: 0;
+      height: 100vh;
+      padding: 40px 28px 40px 40px;
+      border-right: 0.5px solid var(--line);
+      overflow-y: auto;
+      background: var(--bg);
+    }
+    .toc-brand {
+      display: flex; align-items: center; gap: 10px;
+      margin-bottom: 32px;
+    }
+    .toc-brand .name {
+      font-family: var(--font-display);
+      font-size: 16px; font-weight: 600; letter-spacing: -0.2px;
+    }
+    .toc-brand .ver {
+      font-family: var(--font-mono); font-size: 10px;
+      color: var(--text-faint);
+      padding: 2px 6px; border-radius: 4px;
+      background: var(--surface-2); border: 0.5px solid var(--line);
+    }
+    .toc-group {
+      font-size: 10px; font-weight: 600; letter-spacing: 0.16em;
+      text-transform: uppercase; color: var(--text-faint);
+      margin: 22px 0 8px;
+    }
+    .toc-group:first-of-type { margin-top: 0; }
+    .toc-link {
+      display: flex; align-items: center; gap: 8px;
+      padding: 5px 8px; margin: 0 -8px;
+      border-radius: 6px;
+      font-size: 13px; color: var(--text-muted);
+      cursor: pointer; user-select: none;
+    }
+    .toc-link:hover { background: var(--surface); color: var(--text); }
+    .toc-link[data-active="1"] {
+      background: var(--accent-100); color: var(--accent-700); font-weight: 500;
+    }
+    .toc-num {
+      font-family: var(--font-mono); font-size: 10px;
+      color: var(--text-faint); width: 22px; flex-shrink: 0;
+    }
+    .toc-link[data-active="1"] .toc-num { color: var(--accent-600); }
+
+    .main {
+      padding: 56px 56px 120px;
+      max-width: 1080px;
+    }
+
+    /* Hero header */
+    .hero {
+      display: flex; flex-direction: column; gap: 14px;
+      padding-bottom: 40px;
+      margin-bottom: 48px;
+      border-bottom: 0.5px solid var(--line);
+    }
+    .eyebrow {
+      font-size: 11px; font-weight: 600; letter-spacing: 0.16em;
+      text-transform: uppercase; color: var(--accent-600);
+    }
+    .h1 {
+      margin: 0;
+      font-family: var(--font-display);
+      font-size: 52px; font-weight: 600; letter-spacing: -1.4px;
+      line-height: 1.02;
+    }
+    .lede {
+      margin: 0; font-size: 16px; line-height: 1.55;
+      color: var(--text-muted); max-width: 660px;
+    }
+    .meta {
+      display: flex; gap: 24px; margin-top: 20px;
+      font-family: var(--font-mono); font-size: 11px;
+      color: var(--text-faint);
+    }
+    .meta b { color: var(--text); font-weight: 500; }
+
+    h2.sec {
+      margin: 0;
+      font-family: var(--font-display);
+      font-size: 36px; font-weight: 600; letter-spacing: -0.8px;
+      line-height: 1.05;
+    }
+
+    .print-hint {
+      position: fixed; right: 24px; bottom: 24px;
+      padding: 10px 14px; border-radius: 999px;
+      background: var(--text); color: white;
+      font-size: 12px; font-weight: 500;
+      box-shadow: var(--shadow-3);
+      display: flex; align-items: center; gap: 8px;
+      z-index: 50;
+    }
+
+    @media print {
+      .toc, .print-hint { display: none; }
+      .doc { display: block; max-width: none; }
+      .main { padding: 0; max-width: none; }
+      .hero { padding-top: 24px; }
+      section { page-break-inside: avoid; }
+    }
+  </style>
+</head>
+<body>
+  <div id="root"></div>
+
+  <!-- Reuse modules -->
+  <script type="text/babel" src="tokens.jsx"></script>
+  <script type="text/babel" src="logos.jsx"></script>
+  <script type="text/babel" src="components.jsx"></script>
+  <script type="text/babel" src="spec.jsx"></script>
+
+  <script type="text/babel">
+    // Locked token state — no tweak panel here. This file IS the spec.
+    const LOCKED = {
+      mode: 'light', accent: 'violet', density: 'regular',
+      typeface: 'geist', logoVariant: 3,
+    };
+
+    const TOC = [
+      { group: 'Foundations', items: [
+        { id: 'brand',     n: '01', t: 'Brand' },
+        { id: 'color',     n: '02', t: 'Color' },
+        { id: 'type',      n: '03', t: 'Typography' },
+        { id: 'spacing',   n: '04', t: 'Spacing' },
+        { id: 'radius',    n: '05', t: 'Radius' },
+        { id: 'elevation', n: '06', t: 'Elevation' },
+        { id: 'icons',     n: '07', t: 'Iconography' },
+      ]},
+      { group: 'Components', items: [
+        { id: 'buttons',   n: '08', t: 'Buttons' },
+        { id: 'badges',    n: '09', t: 'Status & badges' },
+        { id: 'inputs',    n: '10', t: 'Inputs & search' },
+        { id: 'segmented', n: '11', t: 'Tabs & segmented' },
+        { id: 'cards',     n: '12', t: 'Cards & rows' },
+        { id: 'avatar',    n: '13', t: 'Avatars' },
+        { id: 'nav',       n: '14', t: 'Navigation' },
+      ]},
+      { group: 'Layouts', items: [
+        { id: 'shell',     n: '15', t: 'App shell' },
+        { id: 'patterns',  n: '16', t: 'Layout patterns' },
+        { id: 'usage',     n: '17', t: 'Usage & don\u2019ts' },
+      ]},
+    ];
+
+    function TOCNav() {
+      const ids = TOC.flatMap(g => g.items.map(i => i.id));
+      const [active, setActive] = React.useState(ids[0]);
+      React.useEffect(() => {
+        const io = new IntersectionObserver(
+          (entries) => {
+            // Pick the topmost section currently intersecting
+            const visible = entries
+              .filter(e => e.isIntersecting)
+              .sort((a, b) => a.boundingClientRect.top - b.boundingClientRect.top);
+            if (visible[0]) setActive(visible[0].target.id);
+          },
+          { rootMargin: '-10% 0px -70% 0px', threshold: 0 }
+        );
+        ids.forEach(id => {
+          const el = document.getElementById(id);
+          if (el) io.observe(el);
+        });
+        return () => io.disconnect();
+      }, []);
+      return (
+        <aside className="toc">
+          <div className="toc-brand">
+            <Wordmark logoVariant={3} size={20} color="var(--text)" accent="var(--accent-500)"
+              tokens={{ type: { display: 'var(--font-display)' }, n: { surface: 'var(--surface)' } }} />
+            <span style={{ flex: 1 }} />
+            <span className="ver">v1.0</span>
+          </div>
+          <nav>
+            {TOC.map(g => (
+              <React.Fragment key={g.group}>
+                <div className="toc-group">{g.group}</div>
+                {g.items.map(it => (
+                  <a key={it.id} className="toc-link" href={`#${it.id}`}
+                    data-active={active === it.id ? '1' : '0'}>
+                    <span className="toc-num">{it.n}</span>
+                    {it.t}
+                  </a>
+                ))}
+              </React.Fragment>
+            ))}
+          </nav>
+          <div style={{ marginTop: 40, padding: '14px 12px', background: 'var(--surface)',
+            border: '0.5px solid var(--line)', borderRadius: 10,
+            fontSize: 12, color: 'var(--text-muted)', lineHeight: 1.5 }}>
+            <b style={{ color: 'var(--text)' }}>Print</b> · ⌘ P / Ctrl P. Hides
+            the TOC and lays out as 8.5×11.
+          </div>
+        </aside>
+      );
+    }
+
+    function App() {
+      // Light-mode locked tokens for component demos
+      const tokens = useTokens(LOCKED);
+
+      return (
+        <div className="doc">
+          <TOCNav />
+          <main className="main">
+            {/* HERO */}
+            <header className="hero">
+              <div className="eyebrow">ShowFlow · Design system</div>
+              <h1 className="h1">
+                The operating system for{' '}
+                <span style={{ color: 'var(--accent-500)' }}>touring music.</span>
+              </h1>
+              <p className="lede">
+                A working spec — locked to the Stage mark, violet accent, Geist typography and
+                regular density. Foundations, components and layout patterns to ship the
+                product against. Pitch-ready, print-ready.
+              </p>
+              <div className="meta">
+                <span><b>Stage</b> · mark</span>
+                <span><b>Violet</b> · accent</span>
+                <span><b>Geist · Geist Mono</b> · type</span>
+                <span><b>Regular</b> · density</span>
+                <span><b>May 14, 2026</b> · v1.0</span>
+              </div>
+            </header>
+
+            {/* ── 01 Brand ── */}
+            <Spec.Block>
+              <Spec.H id="brand" eyebrow="01 · Foundations" title="Brand"
+                sub="The Stage mark is a proscenium arch with two lighting beams — a geometric stand-in for the show itself. Always rendered in violet on a light surface, white on accent or dark." />
+
+              <Spec.H3>Mark · Wordmark · App icon</Spec.H3>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 16 }}>
+                <Spec.Demo label="Mark on light" code="Logo03_Stage / size: 88">
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: 140 }}>
+                    <Logo03_Stage size={88} color="var(--accent-500)" />
+                  </div>
+                </Spec.Demo>
+                <Spec.Demo label="Mark on accent" code="bg: --accent-500" bg="var(--accent-500)">
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: 140 }}>
+                    <Logo03_Stage size={88} color="#fff" />
+                  </div>
+                </Spec.Demo>
+                <Spec.Demo label="App icon" code="r: --radius-xxl" bg="var(--surface-2)">
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: 140 }}>
+                    <AppIcon logoVariant={3} size={84} accent="var(--accent-500)" tokens={tokens} />
+                  </div>
+                </Spec.Demo>
+              </div>
+
+              <Spec.H3>Wordmark · sizes</Spec.H3>
+              <Spec.Demo label="Horizontal lockup · 14 / 20 / 28 / 36px" bg="var(--surface)">
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 22, padding: '6px 0' }}>
+                  {[14, 20, 28, 36].map((s) => (
+                    <Wordmark key={s} logoVariant={3} size={s} color="var(--text)"
+                      accent="var(--accent-500)" tokens={tokens} />
+                  ))}
+                </div>
+              </Spec.Demo>
+
+              <Spec.H3>Clearspace & don'ts</Spec.H3>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
+                <Spec.Demo label="Clearspace · 1× cap-height on all sides">
+                  <div style={{ display: 'flex', justifyContent: 'center', height: 120,
+                    alignItems: 'center', position: 'relative' }}>
+                    <div style={{ padding: 22, border: '1px dashed var(--line-strong)',
+                      borderRadius: 8 }}>
+                      <Wordmark logoVariant={3} size={22} color="var(--text)"
+                        accent="var(--accent-500)" tokens={tokens} />
+                    </div>
+                  </div>
+                </Spec.Demo>
+                <Spec.Demo label="Don't — recolor mark, distort or rotate">
+                  <div style={{ display: 'flex', justifyContent: 'space-around',
+                    alignItems: 'center', height: 120, opacity: 0.55 }}>
+                    <div style={{ position: 'relative' }}>
+                      <Logo03_Stage size={42} color="#16A34A" />
+                      <div style={{ position: 'absolute', inset: 0,
+                        display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                        <span style={{ color: '#DC2626', fontSize: 38, fontWeight: 200 }}>⊘</span>
+                      </div>
+                    </div>
+                    <div style={{ position: 'relative', transform: 'rotate(-12deg)' }}>
+                      <Logo03_Stage size={42} color="var(--accent-500)" />
+                    </div>
+                    <div style={{ position: 'relative', transform: 'scaleX(1.5)' }}>
+                      <Logo03_Stage size={42} color="var(--accent-500)" />
+                    </div>
+                  </div>
+                </Spec.Demo>
+              </div>
+            </Spec.Block>
+
+            {/* ── 02 Color ── */}
+            <Spec.Block>
+              <Spec.H id="color" eyebrow="02 · Foundations" title="Color"
+                sub="A 10-step OKLCH-tuned violet scale, a warm neutral system tuned for long-session ops work, and four semantic tones for state. All tokens are CSS variables." />
+
+              <Spec.H3>Accent · Violet</Spec.H3>
+              <PaletteScale tokens={tokens} />
+              <div style={{ marginTop: 12, fontSize: 12, color: 'var(--text-muted)' }}>
+                <b>500</b> is the base for buttons, links and selected states.
+                <b style={{ marginLeft: 16 }}>600 / 700</b> for hover, active and dense ink.
+                <b style={{ marginLeft: 16 }}>50 / 100</b> for tinted surfaces.
+              </div>
+
+              <Spec.H3>Neutrals</Spec.H3>
+              <NeutralsRow tokens={tokens} />
+
+              <Spec.H3>Semantic</Spec.H3>
+              <SemanticRow tokens={tokens} />
+
+              <Spec.H3>Usage tokens</Spec.H3>
+              <Spec.Table cols={['Token', 'Value', 'Where']}
+                rows={[
+                  ['--accent-500', '#6E5CF6', 'Primary buttons, active nav, links, selection'],
+                  ['--accent-700', '#4738B0', 'Hover / pressed primary, accent text on light'],
+                  ['--accent-100', '#E5DEFF', 'Tinted backgrounds for selected list rows / pills'],
+                  ['--bg',          '#F6F4EF', 'Page background (warm neutral)'],
+                  ['--surface',     '#FFFFFF', 'Card, sidebar, popover'],
+                  ['--surface-2',   '#FAF8F4', 'Recessed wells (input, empty state)'],
+                  ['--line',        'rgba(20,18,14,.08)', 'Default border, 0.5px hairline'],
+                  ['--text',        '#15131C', 'Primary type'],
+                  ['--text-muted',  '#5B5A57', 'Secondary type, metadata'],
+                  ['--text-faint',  '#8B8A85', 'Labels, eyebrows, placeholder'],
+                ]} />
+            </Spec.Block>
+
+            {/* ── 03 Type ── */}
+            <Spec.Block>
+              <Spec.H id="type" eyebrow="03 · Foundations" title="Typography"
+                sub="Geist for everything — display, body and UI. Geist Mono for tabular figures, IDs and dollar amounts. Tight tracking on display sizes; default on body." />
+
+              <TypeScaleDemo tokens={tokens} />
+
+              <Spec.H3>Pairings · in context</Spec.H3>
+              <Spec.Demo label="Headline + meta">
+                <div style={{ maxWidth: 540 }}>
+                  <div style={{ fontSize: 11, fontWeight: 600, letterSpacing: '0.16em',
+                    textTransform: 'uppercase', color: 'var(--accent-600)', marginBottom: 8 }}>
+                    Routing · NA Spring
+                  </div>
+                  <div style={{ fontFamily: 'var(--font-display)',
+                    fontSize: 32, fontWeight: 600, letterSpacing: -0.6, lineHeight: 1.1 }}>
+                    Tame Impala confirmed 12 of 14 dates between Apr 12 and May 04.
+                  </div>
+                  <div style={{ fontSize: 14, color: 'var(--text-muted)', marginTop: 8 }}>
+                    Net projected at <code style={{ fontFamily: 'var(--font-mono)',
+                      color: 'var(--text)' }}>$2.41M</code>. Two holds at the Anthem (DC, Apr 30) and
+                    Eaglebank (Fairfax, May 02) — both expire today at 5:00 PM EST.
+                  </div>
+                </div>
+              </Spec.Demo>
+            </Spec.Block>
+
+            {/* ── 04 Spacing ── */}
+            <Spec.Block>
+              <Spec.H id="spacing" eyebrow="04 · Foundations" title="Spacing"
+                sub="A doubling-ish scale anchored on 8px. Use --space-6 (16) as the default gap inside cards; --space-7 (24) between sections; --space-9 (48) between document blocks." />
+              <SpacingDemo />
+            </Spec.Block>
+
+            {/* ── 05 Radius ── */}
+            <Spec.Block>
+              <Spec.H id="radius" eyebrow="05 · Foundations" title="Radius"
+                sub="Radii compose concentrically — a card at r:10 holds buttons at r:8 which hold a badge at r:4. Never reverse the gradient." />
+              <RadiusDemo />
+            </Spec.Block>
+
+            {/* ── 06 Elevation ── */}
+            <Spec.Block>
+              <Spec.H id="elevation" eyebrow="06 · Foundations" title="Elevation"
+                sub="Five steps. Most product UI lives at 1 (inputs) and 2 (cards). Elevation 3 is reserved for floating panels (command bar, hover preview); 4 for modals." />
+              <ElevationDemo />
+            </Spec.Block>
+
+            {/* ── 07 Icons ── */}
+            <Spec.Block>
+              <Spec.H id="icons" eyebrow="07 · Foundations" title="Iconography"
+                sub="Lucide-style 24×24 grid, 1.6 stroke, round caps and joins. Use at 14, 16, 18 or 20px. Icons inherit currentColor — never set a fill manually." />
+              <Spec.Demo label="Inline set · 14px">
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(8, 1fr)', gap: 16,
+                  alignItems: 'center' }}>
+                  {Object.entries(ICONS).map(([name, d]) => (
+                    <div key={name} style={{ display: 'flex', flexDirection: 'column',
+                      alignItems: 'center', gap: 8 }}>
+                      <div style={{
+                        width: 44, height: 44, borderRadius: 8,
+                        background: 'var(--surface-2)',
+                        border: '0.5px solid var(--line)',
+                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        color: 'var(--text)',
+                      }}>
+                        <Icon d={d} size={18} />
+                      </div>
+                      <code style={{ fontFamily: 'var(--font-mono)', fontSize: 10,
+                        color: 'var(--text-faint)' }}>{name}</code>
+                    </div>
+                  ))}
+                </div>
+              </Spec.Demo>
+            </Spec.Block>
+
+            {/* ── 08 Buttons ── */}
+            <Spec.Block>
+              <Spec.H id="buttons" eyebrow="08 · Components" title="Buttons"
+                sub="Four variants (primary, secondary, ghost, danger) × three sizes (s, m, l). Primary buttons are always violet — never duplicate two primaries in one container." />
+
+              <Spec.Demo label="Variants" code="<Btn variant='primary' />">
+                <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+                  <Btn tokens={tokens} variant="primary">Confirm hold</Btn>
+                  <Btn tokens={tokens} variant="secondary">Save draft</Btn>
+                  <Btn tokens={tokens} variant="ghost">Cancel</Btn>
+                  <Btn tokens={tokens} variant="danger">Drop date</Btn>
+                </div>
+              </Spec.Demo>
+
+              <Spec.Demo label="Sizes · s / m / l">
+                <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
+                  <Btn tokens={tokens} variant="primary" size="s">Small</Btn>
+                  <Btn tokens={tokens} variant="primary" size="m">Medium</Btn>
+                  <Btn tokens={tokens} variant="primary" size="l">Large</Btn>
+                  <span style={{ width: 24 }} />
+                  <Btn tokens={tokens} variant="secondary" size="s" icon={<Icon d={ICONS.plus} size={12} />}>New</Btn>
+                  <Btn tokens={tokens} variant="primary" icon={<Icon d={ICONS.plus} />}>New routing</Btn>
+                  <Btn tokens={tokens} variant="secondary" icon={<Icon d={ICONS.filter} />}>Filter</Btn>
+                </div>
+              </Spec.Demo>
+
+              <Spec.H3>Spec</Spec.H3>
+              <Spec.Table cols={['Variant', 'Background / Border', 'Use']}
+                rows={[
+                  ['Primary',   '--accent-500 / --accent-600',                  'Main action per container — one per view'],
+                  ['Secondary', '--surface / --line-strong',                    'Supporting actions, neutral choices'],
+                  ['Ghost',     'transparent',                                  'Tertiary, in-card dismissals'],
+                  ['Danger',    '#FEF2F2 / #FECACA (light); deep red on dark',  'Destructive — release hold, drop date'],
+                ]} />
+            </Spec.Block>
+
+            {/* ── 09 Badges ── */}
+            <Spec.Block>
+              <Spec.H id="badges" eyebrow="09 · Components" title="Status & badges"
+                sub="20px tall pills with optional 6px status dot. Use semantic tones for state; the accent tone for branded routings; neutral for metadata." />
+              <Spec.Demo label="Tones">
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+                  <Badge tokens={tokens} tone="confirmed" dot>Confirmed</Badge>
+                  <Badge tokens={tokens} tone="hold" dot>1st hold</Badge>
+                  <Badge tokens={tokens} tone="hold">2nd hold</Badge>
+                  <Badge tokens={tokens} tone="risk" dot>At risk</Badge>
+                  <Badge tokens={tokens} tone="accent" dot>Routed</Badge>
+                  <Badge tokens={tokens} tone="accent">Apr 30</Badge>
+                  <Badge tokens={tokens} tone="neutral">Draft</Badge>
+                  <Badge tokens={tokens} tone="neutral">INV-0931</Badge>
+                </div>
+              </Spec.Demo>
+            </Spec.Block>
+
+            {/* ── 10 Inputs ── */}
+            <Spec.Block>
+              <Spec.H id="inputs" eyebrow="10 · Components" title="Inputs & search"
+                sub="36px tall rounded-rect inputs, hairline border, recessed shadow. Search is the canonical example — always paired with a left icon." />
+
+              <Spec.Demo label="Variants">
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12 }}>
+                  <Input tokens={tokens} placeholder="Search venues, artists, cities…"
+                    icon={<Icon d={ICONS.search} color="var(--text-faint)" />} w={300} />
+                  <Input tokens={tokens} value="Apr 12 – Apr 28"
+                    icon={<Icon d={ICONS.calendar} color="var(--text-faint)" />} w={180} />
+                  <Input tokens={tokens} value="184,250" prefix="$" w={140} />
+                </div>
+              </Spec.Demo>
+
+              <Spec.Demo label="Command bar · ⌘K">
+                <div style={{
+                  display: 'flex', alignItems: 'center', gap: 12,
+                  height: 44, padding: '0 12px',
+                  border: '0.5px solid var(--line-strong)',
+                  background: 'var(--surface)',
+                  borderRadius: 12, boxShadow: 'var(--shadow-3)',
+                }}>
+                  <Icon d={ICONS.search} color="var(--text-faint)" />
+                  <span style={{ flex: 1, color: 'var(--text-faint)' }}>Find a date, venue, artist, or routing…</span>
+                  <code style={{ padding: '2px 6px', borderRadius: 4,
+                    background: 'var(--surface-2)', border: '0.5px solid var(--line)',
+                    fontSize: 11, color: 'var(--text-muted)' }}>⌘K</code>
+                </div>
+              </Spec.Demo>
+            </Spec.Block>
+
+            {/* ── 11 Segmented ── */}
+            <Spec.Block>
+              <Spec.H id="segmented" eyebrow="11 · Components" title="Tabs & segmented"
+                sub="A floating pill in --surface-2 holds 2–4 inline options. Use for view modes within a single page; use real tabs for switching content trees." />
+              <Spec.Demo label="Segmented control">
+                <div style={{ display: 'inline-flex', padding: 2,
+                  background: '#EFEDE7', borderRadius: 8 }}>
+                  {['Calendar', 'Pipeline', 'Settlements'].map((t, i) => (
+                    <div key={t} style={{
+                      padding: '5px 14px', fontSize: 12, fontWeight: 500,
+                      borderRadius: 6, cursor: 'pointer',
+                      background: i === 0 ? 'var(--surface)' : 'transparent',
+                      color: i === 0 ? 'var(--text)' : 'var(--text-muted)',
+                      boxShadow: i === 0 ? 'var(--shadow-1)' : 'none',
+                    }}>{t}</div>
+                  ))}
+                </div>
+              </Spec.Demo>
+            </Spec.Block>
+
+            {/* ── 12 Cards ── */}
+            <Spec.Block>
+              <Spec.H id="cards" eyebrow="12 · Components" title="Cards & rows"
+                sub="Cards sit on --surface with a 0.5px line border. Don't add a heavy shadow inside cards already on a page — let the line carry the work." />
+
+              <Spec.Demo label="Routing summary card">
+                <div style={{
+                  padding: 14, background: 'var(--surface)',
+                  border: '0.5px solid var(--line)', borderRadius: 10,
+                  boxShadow: 'var(--shadow-2)',
+                  display: 'flex', alignItems: 'center', gap: 12,
+                }}>
+                  <div style={{ width: 36, height: 36, borderRadius: 8,
+                    background: 'var(--accent-500)', display: 'flex', alignItems: 'center',
+                    justifyContent: 'center' }}>
+                    <Icon d={ICONS.music} color="#fff" size={18} />
+                  </div>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontSize: 13, fontWeight: 600 }}>Tame Impala — North America Spring</div>
+                    <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 2 }}>
+                      14 dates · Apr 12 – May 04 · routing draft
+                    </div>
+                  </div>
+                  <Badge tokens={tokens} tone="accent" dot>Routed</Badge>
+                  <IconBtn tokens={tokens}><Icon d={ICONS.more} size={14} /></IconBtn>
+                </div>
+              </Spec.Demo>
+
+              <Spec.Demo label="Stat card · KPI">
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 12 }}>
+                  {[
+                    { k: 'Confirmed (Q2)', v: '$2.41M', d: '+12.4%', up: true },
+                    { k: 'Active holds',   v: '46',     d: '−3 today', up: false },
+                    { k: 'Avg net / show', v: '$184k',  d: '+8.1%', up: true },
+                    { k: 'Drive time',     v: '11h 22m',d: '2 conflicts', flat: true },
+                  ].map((s) => (
+                    <div key={s.k} style={{
+                      padding: 14, background: 'var(--surface)',
+                      border: '0.5px solid var(--line)', borderRadius: 10,
+                    }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between',
+                        alignItems: 'baseline' }}>
+                        <div style={{ fontSize: 10, color: 'var(--text-faint)',
+                          fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.06em' }}>{s.k}</div>
+                        <div style={{ fontFamily: 'var(--font-mono)', fontSize: 11,
+                          fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap',
+                          color: s.flat ? 'var(--text-faint)' : s.up ? '#157F3D' : '#B91C1C' }}>{s.d}</div>
+                      </div>
+                      <div style={{ fontFamily: 'var(--font-display)', fontSize: 26,
+                        fontWeight: 600, letterSpacing: -0.5, marginTop: 6, whiteSpace: 'nowrap' }}>{s.v}</div>
+                    </div>
+                  ))}
+                </div>
+              </Spec.Demo>
+            </Spec.Block>
+
+            {/* ── 13 Avatar ── */}
+            <Spec.Block>
+              <Spec.H id="avatar" eyebrow="13 · Components" title="Avatars"
+                sub="Round 50%, initials-only fallback. Color is per-person and stable across the app — pick from the agent palette below." />
+              <Spec.Demo label="Sizes · 18 / 22 / 28 / 36">
+                <div style={{ display: 'flex', gap: 16, alignItems: 'center' }}>
+                  {[18, 22, 28, 36].map((s) => (
+                    <Avatar key={s} tokens={tokens} initials="MC" color="var(--accent-500)" size={s} />
+                  ))}
+                </div>
+              </Spec.Demo>
+              <Spec.Demo label="Agent palette · stable per person">
+                <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
+                  {[
+                    ['MC', '#7A5AE0', 'Maya Chen'],
+                    ['DP', '#E26A4D', 'Devon Park'],
+                    ['AR', '#0891B2', 'Ana Ruiz'],
+                    ['JA', '#1F8A5B', 'Jules Adesina'],
+                    ['SC', '#D97706', 'Sasha Chen'],
+                  ].map(([i, c, n]) => (
+                    <div key={n} style={{ display: 'flex', flexDirection: 'column',
+                      alignItems: 'center', gap: 6 }}>
+                      <Avatar tokens={tokens} initials={i} color={c} size={32} />
+                      <code style={{ fontFamily: 'var(--font-mono)', fontSize: 10,
+                        color: 'var(--text-faint)' }}>{c}</code>
+                    </div>
+                  ))}
+                </div>
+              </Spec.Demo>
+            </Spec.Block>
+
+            {/* ── 14 Nav ── */}
+            <Spec.Block>
+              <Spec.H id="nav" eyebrow="14 · Components" title="Navigation"
+                sub="Sidebar nav: 7px-radius rows, accent-tinted on selection. Top bar: 52px tall, sticks under any breadcrumb. Section labels are 10px eyebrow caps." />
+
+              <Spec.Demo label="Sidebar group">
+                <div style={{ width: 240, padding: 8, background: 'var(--surface-2)',
+                  borderRadius: 10, border: '0.5px solid var(--line)' }}>
+                  {[
+                    { d: ICONS.bolt,     l: 'Today',    active: true, count: null },
+                    { d: ICONS.calendar, l: 'Routing',  count: 4 },
+                    { d: ICONS.ticket,   l: 'Pipeline', count: 28 },
+                    { d: ICONS.music,    l: 'Artists' },
+                    { d: ICONS.pin,      l: 'Venues' },
+                  ].map((it) => (
+                    <div key={it.l} style={{
+                      display: 'flex', alignItems: 'center', gap: 9,
+                      padding: '7px 9px', borderRadius: 7,
+                      background: it.active ? 'var(--accent-100)' : 'transparent',
+                      color: it.active ? 'var(--accent-700)' : 'var(--text-muted)',
+                      fontSize: 13, fontWeight: it.active ? 600 : 500,
+                    }}>
+                      <Icon d={it.d} size={14} />
+                      <span style={{ flex: 1 }}>{it.l}</span>
+                      {it.count && (
+                        <span style={{
+                          fontFamily: 'var(--font-mono)', fontSize: 10,
+                          fontVariantNumeric: 'tabular-nums',
+                          color: it.active ? 'inherit' : 'var(--text-faint)',
+                          padding: '1px 5px', borderRadius: 4,
+                          background: it.active ? 'transparent' : '#E8E5DD',
+                        }}>{it.count}</span>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </Spec.Demo>
+
+              <Spec.Demo label="Top bar · search + alerts + primary action" bg="var(--surface)">
+                <div style={{
+                  height: 52, padding: '0 16px',
+                  display: 'flex', alignItems: 'center', gap: 12,
+                  margin: '-24px', borderBottom: '0.5px solid var(--line)',
+                }}>
+                  <Input tokens={tokens} placeholder="⌘K · Find anything"
+                    icon={<Icon d={ICONS.search} color="var(--text-faint)" />} w={320} />
+                  <span style={{ flex: 1 }} />
+                  <Badge tokens={tokens} tone="hold" dot>3 holds expire today</Badge>
+                  <IconBtn tokens={tokens}><Icon d={ICONS.calendar} size={14} /></IconBtn>
+                  <IconBtn tokens={tokens}><Icon d={ICONS.filter} size={14} /></IconBtn>
+                  <Btn tokens={tokens} variant="primary" size="s" icon={<Icon d={ICONS.plus} size={12} />}>New date</Btn>
+                </div>
+              </Spec.Demo>
+            </Spec.Block>
+
+            {/* ── 15 App shell ── */}
+            <Spec.Block>
+              <Spec.H id="shell" eyebrow="15 · Layouts" title="App shell"
+                sub="Sidebar + top bar + canvas. 220px sidebar; 52px top bar; canvas padded 24px on all sides. The canvas owns its own grid." />
+              <AppShellPattern tokens={tokens} />
+            </Spec.Block>
+
+            {/* ── 16 Patterns ── */}
+            <Spec.Block>
+              <Spec.H id="patterns" eyebrow="16 · Layouts" title="Layout patterns"
+                sub="Six recurring page types. Each is a wireframe — fill the slots with the cards and rows above." />
+              <LayoutGallery tokens={tokens} />
+            </Spec.Block>
+
+            {/* ── 17 Usage ── */}
+            <Spec.Block>
+              <Spec.H id="usage" eyebrow="17 · Layouts" title="Usage & don'ts"
+                sub="Short list of rules that survive contact with shipping." />
+
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
+                {[
+                  { ok: true,  t: 'One primary per view',
+                    d: 'A page has exactly one violet button. Everything else is secondary or ghost.' },
+                  { ok: false, t: 'Don\u2019t double-stack violet',
+                    d: 'Two primary CTAs in a row read as a toolbar, not a decision.' },
+                  { ok: true,  t: 'Tabular figures in tables',
+                    d: 'Money, counts and durations always use Geist Mono with font-variant-numeric: tabular-nums.' },
+                  { ok: false, t: 'Don\u2019t mix neutrals',
+                    d: 'Pick warm (#F6F4EF) or cool (#F4F4F5) and stay there. We picked warm.' },
+                  { ok: true,  t: 'Use semantic tones for state',
+                    d: 'Hold = amber, Confirmed = green, At risk = red, Routed = violet. Reserved.' },
+                  { ok: false, t: 'Don\u2019t use red for emphasis',
+                    d: 'Red means risk. If something is just important, use violet or weight.' },
+                  { ok: true,  t: 'Hairline borders, not shadow',
+                    d: 'On a page, cards use a 0.5px line. Save shadow for elements that actually float.' },
+                  { ok: false, t: 'Don\u2019t round inside out',
+                    d: 'A r:10 card holds r:8 buttons holds r:4 chips. Never reverse.' },
+                ].map((r) => (
+                  <div key={r.t} style={{
+                    padding: 16, background: 'var(--surface)',
+                    border: '0.5px solid var(--line)', borderRadius: 10,
+                    display: 'flex', flexDirection: 'column', gap: 6,
+                  }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                      <div style={{ width: 18, height: 18, borderRadius: 9,
+                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        background: r.ok ? 'var(--accent-100)' : '#FEE2E2',
+                        color: r.ok ? 'var(--accent-700)' : '#B91C1C',
+                      }}>
+                        {r.ok ? <Icon d={ICONS.check} size={11} /> : <span style={{ fontWeight: 700, fontSize: 12, lineHeight: 1 }}>×</span>}
+                      </div>
+                      <div style={{ fontSize: 14, fontWeight: 600 }}>{r.t}</div>
+                    </div>
+                    <div style={{ fontSize: 13, color: 'var(--text-muted)',
+                      lineHeight: 1.45 }}>{r.d}</div>
+                  </div>
+                ))}
+              </div>
+            </Spec.Block>
+
+            <footer style={{
+              marginTop: 80, paddingTop: 32,
+              borderTop: '0.5px solid var(--line)',
+              display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+              fontSize: 12, color: 'var(--text-faint)',
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                <Logo03_Stage size={20} color="var(--accent-500)" />
+                <span><b style={{ color: 'var(--text)', fontWeight: 500 }}>ShowFlow</b> · Design system v1.0</span>
+              </div>
+              <div style={{ fontFamily: 'var(--font-mono)' }}>May 14, 2026</div>
+            </footer>
+          </main>
+
+          <div className="print-hint">
+            <Icon d="M6 9V2h12v7 M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2 M6 14h12v8H6Z" size={14} color="#fff" />
+            <span>⌘P to save as PDF</span>
+          </div>
+        </div>
+      );
+    }
+
+    ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+  </script>
+</body>
+</html>
