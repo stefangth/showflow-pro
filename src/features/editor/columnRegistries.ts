@@ -19,8 +19,8 @@ export const TABLE_COLUMNS: Record<string, readonly string[]> = {
     'status', 'notes', 'airtable_record_id', 'created_at', 'updated_at',
   ],
   shows: ['id', 'program', 'sub_program', 'status', 'required_skills', 'created_by', 'created_at', 'updated_at'],
-  cities: ['id', 'name', 'airtable_record_id', 'created_at'],
-  artists: ['id', 'user_id', 'name', 'email', 'phone', 'bio', 'status', 'created_at', 'updated_at'],
+  cities: ['id', 'name', 'airtable_record_id', 'created_at'],  // no 'country' column in current schema
+  artists: ['id', 'user_id', 'name', 'email', 'phone', 'bio', 'status', 'created_at', 'updated_at'],  // column is 'name', not 'stage_name'; no 'skills' column (see artist_skills join table)
   // Computed/derived columns surfaced in the editor under a virtual table.
   _computed: ['day', 'slots', 'my_status', 'blocked'],
 };

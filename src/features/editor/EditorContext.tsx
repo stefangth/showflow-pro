@@ -4,7 +4,7 @@ import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/features/auth/AuthContext';
 import type { AppRole } from '@/config/app.config';
-import { resolveColumnTemplate, pageColumnDefs } from './columnRegistries';
+import { resolveColumnTemplate, pageColumnDefs, TABLE_COLUMNS } from './columnRegistries';
 import {
   DEFAULT_PAGE_ACCESS,
   DEFAULT_TABLE_PERMISSIONS,
@@ -26,6 +26,15 @@ const COMPUTED_LABELS: Record<string, string> = {
   '_computed.my_status': 'My status',
   '_computed.blocked': 'Blocked',
 };
+
+if (import.meta.env.DEV) {
+  for (const col of TABLE_COLUMNS._computed ?? []) {
+    const key = `_computed.${col}`;
+    if (!(key in COMPUTED_LABELS)) {
+      console.error(`[editor] COMPUTED_LABELS is missing an entry for "${key}" — add it to EditorContext.tsx`);
+    }
+  }
+}
 
 interface EditorContextType {
   isEditorMode: boolean;

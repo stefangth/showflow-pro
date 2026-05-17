@@ -55,9 +55,9 @@ export function ColumnLayoutEditor({ pageKey }: ColumnLayoutEditorProps) {
       const baseLabel = getColumnLabel(col.columnId);
       const table = col.columnId.split('.')[0];
       const label = (labelCounts.get(baseLabel) ?? 1) > 1 ? `${baseLabel} · ${table}` : baseLabel;
-      return { col, label, isOver: dragOverColId === col.columnId };
+      return { col, label };
     });
-  }, [sorted, getColumnLabel, dragOverColId]);
+  }, [sorted, getColumnLabel]);
 
   // ── Drag handlers ──────────────────────────────────────────────
 
@@ -140,7 +140,7 @@ export function ColumnLayoutEditor({ pageKey }: ColumnLayoutEditorProps) {
 
       {/* Draggable chips */}
       <div className="flex flex-wrap items-center gap-1.5">
-        {chipItems.map(({ col, label, isOver }) => (
+        {chipItems.map(({ col, label }) => (
           <div
             key={col.columnId}
             draggable
@@ -152,7 +152,7 @@ export function ColumnLayoutEditor({ pageKey }: ColumnLayoutEditorProps) {
               col.visible
                 ? 'border-border bg-background'
                 : 'border-border/50 bg-muted text-muted-foreground opacity-60'
-            } ${isOver ? 'ring-2 ring-primary ring-offset-1' : ''}`}
+            } ${dragOverColId === col.columnId ? 'ring-2 ring-primary ring-offset-1' : ''}`}
           >
             <GripHorizontal className="h-3 w-3 text-muted-foreground shrink-0" />
 
