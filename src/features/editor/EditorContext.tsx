@@ -160,10 +160,13 @@ export function EditorProvider({ children }: { children: ReactNode }) {
     queryKey: ['editor', 'column-descriptions'],
     staleTime: Infinity,
     gcTime: Infinity,
-    retry: false,
+    retry: 1,
     queryFn: async () => {
       const { data, error } = await supabase.rpc('get_column_descriptions');
-      if (error) throw error;
+      if (error) {
+        console.warn('[editor] get_column_descriptions failed, falling back to bare column names:', error.message);
+        throw error;
+      }
       const raw = data != null && typeof data === 'object' && !Array.isArray(data)
         ? (data as Record<string, string>)
         : {};
@@ -176,9 +179,9 @@ export function EditorProvider({ children }: { children: ReactNode }) {
   const getColumnLabel = useCallback(
     (colId: string) => {
       if (colId in COMPUTED_LABELS) return COMPUTED_LABELS[colId];
-      if (columnDescriptions) return columnDescriptions[colId] ?? colId;
       const dotIdx = colId.indexOf('.');
-      return dotIdx !== -1 ? colId.slice(dotIdx + 1) : colId;
+      const nameOnly = dotIdx !== -1 ? colId.slice(dotIdx + 1) : colId;
+      return columnDescriptions?.[colId] ?? nameOnly;
     },
     [columnDescriptions]
   );
