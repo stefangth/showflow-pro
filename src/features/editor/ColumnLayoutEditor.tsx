@@ -127,6 +127,8 @@ export function ColumnLayoutEditor({ pageKey }: ColumnLayoutEditorProps) {
       {/* Draggable chips */}
       <div className="flex flex-wrap items-center gap-1.5">
         {sorted.map(col => {
+          // Intentionally show raw table.column IDs in editor chips (per SFP-20):
+          // admins need the technical name to cross-reference the DB schema.
           const label = col.columnId;
           const isOver = dragOverColId === col.columnId;
 

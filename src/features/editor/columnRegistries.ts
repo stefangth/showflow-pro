@@ -17,7 +17,7 @@ export const TABLE_COLUMNS: Record<string, readonly string[]> = {
   ],
   shows: ['id', 'program', 'sub_program', 'status', 'required_skills', 'created_by', 'created_at', 'updated_at'],
   cities: ['id', 'name', 'country', 'created_at'],
-  artists: ['id', 'user_id', 'stage_name', 'email', 'phone', 'bio', 'skills', 'status', 'created_at', 'updated_at'],
+  artists: ['id', 'user_id', 'name', 'email', 'phone', 'bio', 'status', 'created_at', 'updated_at'],
   // Computed/derived columns surfaced in the editor under a virtual table.
   _computed: ['day', 'slots', 'my_status', 'blocked'],
 };
