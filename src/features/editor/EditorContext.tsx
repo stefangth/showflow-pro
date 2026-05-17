@@ -160,7 +160,7 @@ export function EditorProvider({ children }: { children: ReactNode }) {
     queryKey: ['editor', 'column-descriptions'],
     staleTime: Infinity,
     gcTime: Infinity,
-    retry: 1,
+    retry: 2,
     queryFn: async () => {
       const { data, error } = await supabase.rpc('get_column_descriptions');
       if (error) {
