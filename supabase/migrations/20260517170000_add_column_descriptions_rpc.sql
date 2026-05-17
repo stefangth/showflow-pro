@@ -1,6 +1,7 @@
 -- Human-readable descriptions for table columns (stored as Postgres column comments)
 
 -- show_dates
+COMMENT ON COLUMN show_dates.show_id IS 'Show';
 COMMENT ON COLUMN show_dates.date IS 'Date';
 COMMENT ON COLUMN show_dates.session_1 IS 'Session 1';
 COMMENT ON COLUMN show_dates.session_2 IS 'Session 2';
@@ -28,6 +29,8 @@ COMMENT ON COLUMN cities.airtable_record_id IS 'Airtable ID';
 COMMENT ON COLUMN cities.created_at IS 'Created';
 
 -- bookings
+COMMENT ON COLUMN bookings.artist_id IS 'Artist';
+COMMENT ON COLUMN bookings.show_date_id IS 'Show date';
 COMMENT ON COLUMN bookings.status IS 'Booking status';
 COMMENT ON COLUMN bookings.is_understudy IS 'Understudy';
 COMMENT ON COLUMN bookings.booked_by IS 'Booked by';
@@ -44,6 +47,7 @@ COMMENT ON COLUMN bookings.digest_sent_at IS 'Digest sent';
 COMMENT ON COLUMN bookings.confirmation_digest_sent_at IS 'Confirmation sent';
 
 -- artists
+COMMENT ON COLUMN artists.user_id IS 'User';
 COMMENT ON COLUMN artists.name IS 'Name';
 COMMENT ON COLUMN artists.email IS 'Email';
 COMMENT ON COLUMN artists.phone IS 'Phone';

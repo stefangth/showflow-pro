@@ -7,7 +7,7 @@ import { Separator } from '@/components/ui/separator';
 import { useAuth } from '@/features/auth/AuthContext';
 import type { AppRole } from '@/config/app.config';
 import { useEditor, useEditorConfig } from './EditorContext';
-import { COLUMN_REGISTRIES, resolveColumnTemplate } from './columnRegistries';
+import { pageColumnDefs, resolveColumnTemplate } from './columnRegistries';
 import type { ColumnTemplate } from './types';
 
 interface ColumnLayoutEditorProps {
@@ -35,7 +35,7 @@ export function ColumnLayoutEditor({ pageKey }: ColumnLayoutEditorProps) {
   const effectiveRole: AppRole = viewAsRole
     ?? (roles.includes('admin') ? 'admin' : roles.includes('producer') ? 'producer' : 'artist');
 
-  const defs = COLUMN_REGISTRIES[pageKey] ?? [];
+  const defs = pageColumnDefs(pageKey);
 
   // Sync draft whenever role or saved templates change
   useEffect(() => {
