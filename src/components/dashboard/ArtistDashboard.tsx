@@ -70,7 +70,7 @@ export function ArtistDashboard() {
   if (!artist) {
     return (
       <div className="space-y-6">
-        <h1 className="font-display text-3xl font-bold">Dashboard</h1>
+        <h1 className="font-display text-[32px] font-semibold tracking-tight">Dashboard</h1>
         <Card>
           <CardContent className="py-12 text-center">
             <p className="text-muted-foreground">
@@ -85,7 +85,7 @@ export function ArtistDashboard() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="font-display text-3xl font-bold">Dashboard</h1>
+        <h1 className="font-display text-[32px] font-semibold tracking-tight">Dashboard</h1>
         <p className="text-muted-foreground mt-1">
           Your response rate on dates you've been offered.
         </p>
@@ -93,14 +93,14 @@ export function ArtistDashboard() {
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <Link to="/availability?filter=unanswered" className="block">
-          <Card className="hover:shadow-lg transition-shadow cursor-pointer h-full">
+          <Card className="hover:shadow-elev3 transition-shadow cursor-pointer h-full">
             <CardContent className="pt-6">
               <div className="flex items-start justify-between mb-4">
                 <p className="text-sm text-muted-foreground font-medium">Response rate</p>
                 <CalendarDays className="h-8 w-8 text-primary opacity-30" />
               </div>
               <div className="flex items-baseline gap-2 mb-3">
-                <p className="text-4xl font-display font-bold">{pct}%</p>
+                <p className="text-[36px] font-display font-semibold tracking-tight">{pct}%</p>
                 <p className="text-sm text-muted-foreground">
                   {responded} of {total} dates
                 </p>

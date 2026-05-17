@@ -1,4 +1,5 @@
 import { useState, useMemo } from 'react';
+import { getAvatarTone } from '@/lib/avatar';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/features/auth/AuthContext';
@@ -176,7 +177,7 @@ export default function ArtistsPage() {
     <div className="space-y-6">
       <div className="flex items-center justify-between flex-wrap gap-4">
         <div>
-          <h1 className="font-display text-3xl font-bold">Artists</h1>
+          <h1 className="font-display text-[32px] font-semibold tracking-tight">Artists</h1>
           <p className="text-muted-foreground mt-1">Manage your artist roster</p>
         </div>
         {hasRole('admin') && (
@@ -224,14 +225,17 @@ export default function ArtistsPage() {
             return (
               <motion.div key={artist.id} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: Math.min(i * 0.03, 0.3) }}>
                 <Card
-                  className="h-full cursor-pointer hover:shadow-md transition-shadow"
+                  className="h-full cursor-pointer hover:shadow-elev2 transition-shadow"
                   onClick={() => setProfileArtistId(artist.id)}
                 >
                   <CardContent className="pt-6">
                     <div className="flex items-start justify-between mb-3">
                       <div className="flex items-center gap-3">
-                        <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/10 text-primary font-display font-bold">
-                          {artist.name.charAt(0)}
+                        <div
+                          className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-[12px] font-semibold"
+                          style={{ backgroundColor: getAvatarTone(artist.id).bg, color: getAvatarTone(artist.id).text }}
+                        >
+                          {artist.name.charAt(0).toUpperCase()}
                         </div>
                         <div>
                           <p className="font-medium">{artist.name}</p>

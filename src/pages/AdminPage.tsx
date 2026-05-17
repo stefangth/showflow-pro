@@ -118,7 +118,7 @@ export default function AdminPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="font-display text-3xl font-bold">Admin Panel</h1>
+        <h1 className="font-display text-[32px] font-semibold tracking-tight">Admin Panel</h1>
         <p className="text-muted-foreground mt-1">Identity & access management, audit trail, sync status</p>
       </div>
 
@@ -132,7 +132,7 @@ export default function AdminPage() {
             <CardContent className="pt-6 flex items-center justify-between">
               <div>
                 <p className="text-sm text-muted-foreground">{s.label}</p>
-                <p className="text-2xl font-display font-bold">{s.value}</p>
+                <p className="text-[26px] font-display font-semibold">{s.value}</p>
               </div>
               <s.icon className="h-8 w-8 text-primary opacity-20" />
             </CardContent>
