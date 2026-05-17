@@ -147,19 +147,12 @@ export function EditorProvider({ children }: { children: ReactNode }) {
     []
   );
 
-  // Fetch column descriptions from Postgres column comments via RPC.
-  // _computed.* columns have no DB backing so they are merged in statically.
-  // staleTime/gcTime: Infinity — column comments are schema metadata that
-  // changes rarely. Sessions pick up changes only on hard reload.
-  // placeholderData: {} — intentional trade-off: headers briefly show
-  // raw table.column IDs on first load (<100ms) rather than an undefined
-  // flash; acceptable given the lightweight nature of the RPC.
   const { data: columnDescriptions, error: columnDescriptionsError } = useQuery({
     queryKey: ['columns', 'descriptions'],
-    staleTime: Infinity,
+    staleTime: Infinity, // schema metadata; sessions pick up changes on hard reload only
     gcTime: Infinity,
     retry: 1,
-    placeholderData: {},
+    placeholderData: {}, // show raw IDs (<100ms) rather than undefined on first load
     queryFn: async () => {
       const { data, error } = await supabase.rpc('get_column_descriptions');
       if (error) throw error;
