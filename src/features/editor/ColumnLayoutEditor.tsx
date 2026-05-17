@@ -126,11 +126,19 @@ export function ColumnLayoutEditor({ pageKey }: ColumnLayoutEditorProps) {
 
       {/* Draggable chips */}
       <div className="flex flex-wrap items-center gap-1.5">
-        {sorted.map(col => {
-          const label = getColumnLabel(col.columnId);
-          const isOver = dragOverColId === col.columnId;
+        {(() => {
+          const labelCounts = new Map<string, number>();
+          for (const col of sorted) {
+            const lbl = getColumnLabel(col.columnId);
+            labelCounts.set(lbl, (labelCounts.get(lbl) ?? 0) + 1);
+          }
+          return sorted.map(col => {
+            const baseLabel = getColumnLabel(col.columnId);
+            const table = col.columnId.split('.')[0];
+            const label = (labelCounts.get(baseLabel) ?? 1) > 1 ? `${baseLabel} · ${table}` : baseLabel;
+            const isOver = dragOverColId === col.columnId;
 
-          return (
+            return (
             <div
               key={col.columnId}
               draggable
@@ -168,7 +176,8 @@ export function ColumnLayoutEditor({ pageKey }: ColumnLayoutEditorProps) {
               </Tooltip>
             </div>
           );
-        })}
+          });
+        })()}
       </div>
 
       {/* Actions */}

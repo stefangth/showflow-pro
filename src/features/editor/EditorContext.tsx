@@ -18,7 +18,8 @@ import {
 
 const EDITOR_MODE_KEY = 'showflow_editor_mode';
 
-// Labels for virtual _computed columns — no DB backing, always available regardless of RPC state
+// Labels for virtual _computed columns — no DB backing, always available regardless of RPC state.
+// Keep in sync with TABLE_COLUMNS._computed in ./columnRegistries.ts
 const COMPUTED_LABELS: Record<string, string> = {
   '_computed.day': 'Day',
   '_computed.slots': 'Slots',
@@ -183,9 +184,7 @@ export function EditorProvider({ children }: { children: ReactNode }) {
   const getColumnLabel = useCallback(
     (colId: string) => {
       if (colId in COMPUTED_LABELS) return COMPUTED_LABELS[colId];
-      const dotIdx = colId.indexOf('.');
-      const nameOnly = dotIdx !== -1 ? colId.slice(dotIdx + 1) : colId;
-      return columnDescriptions?.[colId] ?? nameOnly;
+      return columnDescriptions?.[colId] ?? colId;
     },
     [columnDescriptions]
   );

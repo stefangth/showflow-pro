@@ -7,7 +7,7 @@ COMMENT ON COLUMN show_dates.session_1 IS 'Session 1';
 COMMENT ON COLUMN show_dates.session_2 IS 'Session 2';
 COMMENT ON COLUMN show_dates.session_3 IS 'Session 3';
 COMMENT ON COLUMN show_dates.venue IS 'Venue';
-COMMENT ON COLUMN show_dates.city_id IS 'City ID';
+COMMENT ON COLUMN show_dates.city_id IS 'City (ref)';
 COMMENT ON COLUMN show_dates.status IS 'Status';
 COMMENT ON COLUMN show_dates.notes IS 'Notes';
 COMMENT ON COLUMN show_dates.airtable_record_id IS 'Airtable ID';
