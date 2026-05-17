@@ -127,7 +127,6 @@ export function ColumnLayoutEditor({ pageKey }: ColumnLayoutEditorProps) {
       {/* Draggable chips */}
       <div className="flex flex-wrap items-center gap-1.5">
         {sorted.map(col => {
-          const def = defs.find(d => d.id === col.columnId);
           const label = col.columnId;
           const isOver = dragOverColId === col.columnId;
 

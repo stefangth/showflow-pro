@@ -149,8 +149,9 @@ export function EditorProvider({ children }: { children: ReactNode }) {
   // Fetch column descriptions from Postgres column comments via RPC.
   // _computed.* columns have no DB backing so they are merged in statically.
   const { data: rawColumnDescriptions } = useQuery({
-    queryKey: ['column-descriptions'],
+    queryKey: ['editor', 'column-descriptions'],
     staleTime: Infinity,
+    gcTime: Infinity,
     queryFn: async () => {
       const { data, error } = await supabase.rpc('get_column_descriptions');
       if (error) throw error;
