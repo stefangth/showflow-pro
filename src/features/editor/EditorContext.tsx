@@ -24,7 +24,7 @@ const COMPUTED_LABELS: Record<string, string> = {
   '_computed.day': 'Day',
   '_computed.slots': 'Slots',
   '_computed.my_status': 'My status',
-  '_computed.blocked': 'Blocked',
+  '_computed.blocked': 'Availability',
 };
 
 if (import.meta.env.DEV) {

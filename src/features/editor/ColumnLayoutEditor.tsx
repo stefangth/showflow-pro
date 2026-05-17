@@ -53,8 +53,10 @@ export function ColumnLayoutEditor({ pageKey }: ColumnLayoutEditorProps) {
     }
     return sorted.map(col => {
       const baseLabel = getColumnLabel(col.columnId);
-      const table = col.columnId.split('.')[0];
-      const label = (labelCounts.get(baseLabel) ?? 1) > 1 ? `${baseLabel} · ${table}` : baseLabel;
+      // Fall back to the full table.column id when two columns share the same
+      // label so admins can always distinguish them without needing the tooltip.
+      const isDuplicate = (labelCounts.get(baseLabel) ?? 1) > 1;
+      const label = isDuplicate ? col.columnId : baseLabel;
       return { col, label };
     });
   }, [sorted, getColumnLabel]);
