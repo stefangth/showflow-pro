@@ -218,13 +218,23 @@ function ArtistAvailability() {
             <Table>
               <TableHeader>
                 <TableRow>
-                  {orderedColumns
-                    .filter(c => c.visible)
-                    .map(c => (
-                      <TableHead key={c.columnId} className={isEditorMode ? 'font-mono text-xs' : 'text-xs'}>
-                        {isEditorMode ? c.columnId : getColumnLabel(c.columnId)}
-                      </TableHead>
-                    ))}
+                  {(() => {
+                    const visible = orderedColumns.filter(c => c.visible);
+                    const labelCounts = new Map<string, number>();
+                    visible.forEach(c => {
+                      const lbl = getColumnLabel(c.columnId);
+                      labelCounts.set(lbl, (labelCounts.get(lbl) ?? 0) + 1);
+                    });
+                    return visible.map(c => {
+                      const lbl = getColumnLabel(c.columnId);
+                      const headerLbl = (labelCounts.get(lbl) ?? 1) > 1 ? c.columnId : lbl;
+                      return (
+                        <TableHead key={c.columnId} className={isEditorMode ? 'font-mono text-xs' : 'text-xs'}>
+                          {isEditorMode ? c.columnId : headerLbl}
+                        </TableHead>
+                      );
+                    });
+                  })()}
                 </TableRow>
               </TableHeader>
               <TableBody>

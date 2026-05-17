@@ -1,12 +1,13 @@
 import { readdirSync, readFileSync } from 'fs';
-import { resolve, join } from 'path';
+import { dirname, join, resolve } from 'path';
+import { fileURLToPath } from 'url';
 import { describe, it, expect } from 'vitest';
-import { TABLE_COLUMNS } from './columnRegistries';
-import { COMPUTED_LABELS } from './EditorContext';
+import { TABLE_COLUMNS, COMPUTED_LABELS } from './columnRegistries';
 
 describe('columnRegistries / RPC allowlist sync', () => {
   it('every non-_computed table in TABLE_COLUMNS appears in the get_column_descriptions allowlist', () => {
-    const migrationsDir = resolve(process.cwd(), 'supabase/migrations');
+    // Anchor to this file so the path is correct regardless of cwd.
+    const migrationsDir = resolve(dirname(fileURLToPath(import.meta.url)), '../../..', 'supabase', 'migrations');
 
     // Find the last migration (alphabetical = chronological by timestamp prefix)
     // that defines get_column_descriptions. Using the last one handles
@@ -44,7 +45,7 @@ describe('COMPUTED_LABELS / TABLE_COLUMNS._computed sync', () => {
       const key = `_computed.${col}`;
       expect(
         key in COMPUTED_LABELS,
-        `COMPUTED_LABELS is missing an entry for "${key}" — add it to EditorContext.tsx`
+        `COMPUTED_LABELS is missing an entry for "${key}" — add it to columnRegistries.ts`
       ).toBe(true);
     }
   });

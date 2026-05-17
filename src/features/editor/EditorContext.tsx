@@ -4,7 +4,7 @@ import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/features/auth/AuthContext';
 import type { AppRole } from '@/config/app.config';
-import { resolveColumnTemplate, pageColumnDefs } from './columnRegistries';
+import { resolveColumnTemplate, pageColumnDefs, COMPUTED_LABELS } from './columnRegistries';
 import {
   DEFAULT_PAGE_ACCESS,
   DEFAULT_TABLE_PERMISSIONS,
@@ -17,15 +17,6 @@ import {
 } from './types';
 
 const EDITOR_MODE_KEY = 'showflow_editor_mode';
-
-// Labels for virtual _computed columns — no DB backing, always available regardless of RPC state.
-// Keep in sync with TABLE_COLUMNS._computed in ./columnRegistries.ts
-export const COMPUTED_LABELS: Record<string, string> = {
-  '_computed.day': 'Day',
-  '_computed.slots': 'Slots',
-  '_computed.my_status': 'My status',
-  '_computed.blocked': 'Availability',
-};
 
 
 interface EditorContextType {

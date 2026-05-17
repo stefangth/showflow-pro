@@ -25,6 +25,14 @@ export const TABLE_COLUMNS: Record<string, readonly string[]> = {
   _computed: ['day', 'slots', 'my_status', 'blocked'],
 };
 
+/** Human-readable labels for _computed virtual columns (no DB backing). */
+export const COMPUTED_LABELS: Record<string, string> = {
+  '_computed.day': 'Day',
+  '_computed.slots': 'Slots',
+  '_computed.my_status': 'My status',
+  '_computed.blocked': 'Availability',
+};
+
 /**
  * For each page, declare which tables back it and which columns are rendered
  * by default (in display order). Columns from `tables` that aren't in `rendered`
