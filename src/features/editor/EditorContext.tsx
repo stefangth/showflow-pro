@@ -175,7 +175,7 @@ export function EditorProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     if (columnDescriptionsError) {
-      console.warn('[editor] get_column_descriptions failed, falling back to bare column names:', (columnDescriptionsError as any).message);
+      console.warn('[editor] get_column_descriptions failed, falling back to bare column names:', columnDescriptionsError.message);
     }
   }, [columnDescriptionsError]);
 

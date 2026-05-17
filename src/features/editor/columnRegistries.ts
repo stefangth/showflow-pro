@@ -9,7 +9,8 @@ export const TABLE_COLUMNS: Record<string, readonly string[]> = {
   bookings: [
     'id', 'artist_id', 'show_date_id', 'status', 'is_understudy',
     'booked_by', 'confirmed_at', 'cancelled_at', 'cancellation_reason',
-    'notes', 'created_at', 'updated_at',
+    'notes', 'offered_at', 'offer_expires_at', 'offer_tier',
+    'digest_sent_at', 'confirmation_digest_sent_at', 'created_at', 'updated_at',
   ],
   show_dates: [
     'id', 'show_id', 'date', 'session_1', 'session_2', 'session_3', 'venue', 'city_id',
