@@ -70,7 +70,7 @@ src/
   components/
     admin/         # Admin-only UI (ApprovalsTab, etc.)
     artists/       # ArtistProfileSheet
-    availability/  # ArtistAvailabilityCalendar, AvailabilityPicker
+    availability/  # ArtistAvailabilityCalendar, AvailabilityPicker, OfferResponseButtons
     bookings/      # ArtistBookingsView and booking surfaces
     calendar/      # EntityCalendar (shared month grid)
     casts/         # Cast grouping UI (dialog, sheet, section)
@@ -91,7 +91,8 @@ src/
                    #   editor_table_permissions). EditorProvider wraps the whole app.
                    #   Read-only hook for page components: useEditorConfig().
   hooks/           # Domain hooks (useMyArtist, useEligibleArtists, useChatParticipant,
-                   #   useArtistEligibleDates) + UI hooks (use-mobile, use-toast)
+                   #   useArtistEligibleDates, useSubProgramSlots, useSettingsWarnings,
+                   #   useSkills/useArtistSkills) + UI hooks (use-mobile, use-toast)
   integrations/
     supabase/
       client.ts    # Single shared Supabase client
@@ -152,7 +153,7 @@ supabase/
   - **`['availability', ...]`** — everything that reads from the `availability` table (e.g. `['availability', 'cell', artistId, date]`, `['availability', 'available', dateId]`).
 - **Invalidation rule:** Mutations that write to `bookings` invalidate `['bookings']` (prefix match, catches all sub-keys). Mutations that write to `availability` invalidate `['availability']`. This is the only pattern that stays correct as new consumers are added. Never list individual sub-keys in a mutation — always bust the whole domain.
 - **Supabase Realtime is enabled** on all primary tables. Booking status changes propagate automatically to subscribed clients.
-- Prefer the existing domain hooks in `src/hooks/` (`useMyArtist`, `useEligibleArtists`, `useArtistEligibleDates`, `useChatParticipant`) over duplicating Supabase queries inline. -done
+- Prefer the existing domain hooks in `src/hooks/` (`useMyArtist`, `useEligibleArtists`, `useArtistEligibleDates`, `useChatParticipant`, `useSubProgramSlots`, `useSettingsWarnings`, `useSkills`/`useArtistSkills`) over duplicating Supabase queries inline.
 - Never call Supabase from a component effect when a query will do.
 - Side effects on success → `sonner` toast (`toast.success`, `toast.error`).
 
@@ -176,6 +177,8 @@ When adding a new page:
   - **Admin ops:** `admin-list-users`, `admin-set-role`, `admin-decide-approval`
   - **Signup notifications:** `notify-signup`
   - **Transactional email:** `send-transactional-email`, `preview-transactional-email`, `handle-email-suppression`, `handle-email-unsubscribe`. New templates must be registered in `_shared/transactional-email-templates/registry.ts`.
+  - **Booking engine:** `open-offer-tier` (create suggested bookings), `expire-offers` (hourly expiry), `send-offer-digest` (daily 19:00 Berlin), `send-confirmation-digest` (daily 20:00 Berlin).
+  - **Watchers:** `tier-at-risk-watcher` — scans open offer tiers and fires an in-app `tier_at_risk` notification when remaining pending + accepted < required slots. Idempotent (one notification per date/tier). No email; visual only.
 - Use the service role key only when bypassing RLS is intentional (admin endpoints). Always re-verify the caller's role server-side first (see `admin-decide-approval` for the pattern).
 - Read secrets via `Deno.env.get('SECRET_NAME')`.
 
@@ -244,7 +247,7 @@ Suggested emails:
 
 | File | Purpose |
 |------|---------|
-| `src/config/app.config.ts` | FEATURES flags, ROUTES, BOOKING_CONFIG (`SOFT_BOOK_EXPIRY_HOURS`), CHAT_ARCHIVE_DAYS |
+| `src/config/app.config.ts` | FEATURES flags, ROUTES, BOOKING_CONFIG (`SOFT_BOOK_EXPIRY_HOURS`), SYNC_CONFIG, CHAT_ARCHIVE_DAYS |
 | `src/integrations/supabase/types.ts` | Auto-generated DB types — read only |
 | `src/features/auth/AuthContext.tsx` | Auth state, role helpers, approval status |
 | `src/features/editor/EditorContext.tsx` | Editor mode state, page access and column/permission config (admin only) |
@@ -254,6 +257,7 @@ Suggested emails:
 | `supabase/functions/send-confirmation-digest/index.ts` | Daily confirmation digest (Berlin 20:00 gate) |
 | `supabase/functions/airtable-poll/index.ts` | Airtable → show_dates sync |
 | `supabase/functions/open-offer-tier/index.ts` | Creates suggested bookings for a date/tier |
+| `supabase/functions/tier-at-risk-watcher/index.ts` | In-app notification when a tier can no longer fill before deadline |
 
 ---
 
