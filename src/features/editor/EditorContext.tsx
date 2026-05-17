@@ -174,8 +174,6 @@ export function EditorProvider({ children }: { children: ReactNode }) {
     },
   });
 
-  // Note: staleTime/gcTime are both Infinity — updated column comments won't
-  // be picked up without a hard reload. Acceptable for schema metadata.
   const getColumnLabel = useCallback(
     (colId: string) => {
       if (colId in COMPUTED_LABELS) return COMPUTED_LABELS[colId];
