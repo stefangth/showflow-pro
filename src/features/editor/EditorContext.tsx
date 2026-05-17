@@ -20,21 +20,13 @@ const EDITOR_MODE_KEY = 'showflow_editor_mode';
 
 // Labels for virtual _computed columns — no DB backing, always available regardless of RPC state.
 // Keep in sync with TABLE_COLUMNS._computed in ./columnRegistries.ts
-const COMPUTED_LABELS: Record<string, string> = {
+export const COMPUTED_LABELS: Record<string, string> = {
   '_computed.day': 'Day',
   '_computed.slots': 'Slots',
   '_computed.my_status': 'My status',
   '_computed.blocked': 'Availability',
 };
 
-if (import.meta.env.DEV) {
-  for (const col of TABLE_COLUMNS._computed ?? []) {
-    const key = `_computed.${col}`;
-    if (!(key in COMPUTED_LABELS)) {
-      console.error(`[editor] COMPUTED_LABELS is missing an entry for "${key}" — add it to EditorContext.tsx`);
-    }
-  }
-}
 
 interface EditorContextType {
   isEditorMode: boolean;
