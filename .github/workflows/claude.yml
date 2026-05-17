@@ -17,18 +17,23 @@ jobs:
       (github.event_name == 'pull_request_review_comment' && contains(github.event.comment.body, '@claude')) ||
       (github.event_name == 'pull_request_review' && contains(github.event.review.body, '@claude')) ||
       (github.event_name == 'issues' && (contains(github.event.issue.body, '@claude') || contains(github.event.issue.title, '@claude')))
+    
     runs-on: ubuntu-latest
+    
+    # Restructured permissions to ensure the runner has full context
     permissions:
       contents: write
       pull-requests: write
       issues: write
-      id-token: write
-    steps:
-      # Step 1: Initialize the .git environment so Claude can fetch origin branches
-      - name: Checkout Repository Base
-        uses: actions/checkout@v4
+      statuses: write
 
-      # Step 2: Run the Claude action with your API key secret
+    steps:
+      # CRITICAL: This pulls your repository code into the runner environment
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # Allows Claude to see git history if needed
+
       - name: Claude Code Action Official
         uses: anthropics/claude-code-action@v1
         with:
