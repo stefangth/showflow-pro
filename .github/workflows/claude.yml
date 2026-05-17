@@ -24,6 +24,17 @@ jobs:
       issues: write
       id-token: write
     steps:
+      # Step 1: Clone the repository with the correct context
+      - name: Checkout Repository Context
+        uses: actions/checkout@v4
+        with:
+          # Dynamically selects: 
+          # 1. The PR branch (for PR reviews/comments)
+          # 2. The PR head ref (for issue comments on a PR)
+          # 3. The default branch/ref (for standard issues)
+          ref: ${{ github.event.pull_request.head.ref || (github.event.issue.pull_request && format('refs/pull/{0}/head', github.event.issue.number)) || github.ref }}
+
+      # Step 2: Run the Claude Action
       - name: Claude Code Action Official
         uses: anthropics/claude-code-action@v1
         with:
