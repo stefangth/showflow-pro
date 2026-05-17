@@ -8,7 +8,6 @@ import { EditorProvider } from "@/features/editor/EditorContext";
 import { ProtectedRoute } from "@/features/auth/ProtectedRoute";
 import AppLayout from "@/components/layout/AppLayout";
 import { ROUTES } from "@/config/app.config";
-import Index from "./pages/Index";
 import LoginPage from "./pages/LoginPage";
 import DashboardPage from "./pages/DashboardPage";
 import ShowsBookingsPage from "./pages/ShowsBookingsPage";
@@ -31,7 +30,7 @@ const App = () => (
         <AuthProvider>
           <EditorProvider>
           <Routes>
-            <Route path="/" element={<Index />} />
+            <Route path="/" element={<Navigate to={ROUTES.LOGIN} replace />} />
             <Route path={ROUTES.LOGIN} element={<LoginPage />} />
             <Route path="/signup" element={<Navigate to={ROUTES.LOGIN} replace />} />
             <Route path={ROUTES.DASHBOARD} element={<ProtectedRoute><AppLayout><DashboardPage /></AppLayout></ProtectedRoute>} />
