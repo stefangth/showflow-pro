@@ -58,7 +58,6 @@ CREATE OR REPLACE FUNCTION get_column_descriptions()
 RETURNS jsonb
 LANGUAGE sql
 STABLE
-SECURITY DEFINER
 SET search_path = public
 AS $$
   SELECT COALESCE(

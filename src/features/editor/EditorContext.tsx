@@ -160,6 +160,7 @@ export function EditorProvider({ children }: { children: ReactNode }) {
     queryKey: ['editor', 'column-descriptions'],
     staleTime: Infinity,
     gcTime: Infinity,
+    retry: false,
     queryFn: async () => {
       const { data, error } = await supabase.rpc('get_column_descriptions');
       if (error) throw error;
@@ -174,7 +175,7 @@ export function EditorProvider({ children }: { children: ReactNode }) {
   // be picked up without a hard reload. Acceptable for schema metadata.
   const getColumnLabel = useCallback(
     (colId: string) => {
-      if (COMPUTED_LABELS[colId]) return COMPUTED_LABELS[colId];
+      if (colId in COMPUTED_LABELS) return COMPUTED_LABELS[colId];
       if (columnDescriptions) return columnDescriptions[colId] ?? colId;
       const dotIdx = colId.indexOf('.');
       return dotIdx !== -1 ? colId.slice(dotIdx + 1) : colId;
