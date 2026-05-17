@@ -43,7 +43,7 @@ export function ColumnLayoutEditor({ pageKey }: ColumnLayoutEditorProps) {
     setDirty(false);
   }, [pageKey, effectiveRole, columnTemplates]);
 
-  const sorted = [...draft].sort((a, b) => a.order - b.order);
+  const sorted = useMemo(() => [...draft].sort((a, b) => a.order - b.order), [draft]);
 
   const chipItems = useMemo(() => {
     const labelCounts = new Map<string, number>();

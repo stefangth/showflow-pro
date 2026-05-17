@@ -168,6 +168,9 @@ export function EditorProvider({ children }: { children: ReactNode }) {
   // _computed.* columns have no DB backing so they are merged in statically.
   // staleTime/gcTime: Infinity — column comments are schema metadata that
   // changes rarely. Sessions pick up changes only on hard reload.
+  // placeholderData: {} — intentional trade-off: headers briefly show
+  // raw table.column IDs on first load (<100ms) rather than an undefined
+  // flash; acceptable given the lightweight nature of the RPC.
   const { data: columnDescriptions, error: columnDescriptionsError } = useQuery({
     queryKey: ['columns', 'descriptions'],
     staleTime: Infinity,
