@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Eye, EyeOff, GripHorizontal, RotateCcw, Save } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -44,6 +44,20 @@ export function ColumnLayoutEditor({ pageKey }: ColumnLayoutEditorProps) {
   }, [pageKey, effectiveRole, columnTemplates]);
 
   const sorted = [...draft].sort((a, b) => a.order - b.order);
+
+  const chipItems = useMemo(() => {
+    const labelCounts = new Map<string, number>();
+    for (const col of sorted) {
+      const lbl = getColumnLabel(col.columnId);
+      labelCounts.set(lbl, (labelCounts.get(lbl) ?? 0) + 1);
+    }
+    return sorted.map(col => {
+      const baseLabel = getColumnLabel(col.columnId);
+      const table = col.columnId.split('.')[0];
+      const label = (labelCounts.get(baseLabel) ?? 1) > 1 ? `${baseLabel} · ${table}` : baseLabel;
+      return { col, label, isOver: dragOverColId === col.columnId };
+    });
+  }, [sorted, getColumnLabel, dragOverColId]);
 
   // ── Drag handlers ──────────────────────────────────────────────
 
@@ -126,58 +140,44 @@ export function ColumnLayoutEditor({ pageKey }: ColumnLayoutEditorProps) {
 
       {/* Draggable chips */}
       <div className="flex flex-wrap items-center gap-1.5">
-        {(() => {
-          const labelCounts = new Map<string, number>();
-          for (const col of sorted) {
-            const lbl = getColumnLabel(col.columnId);
-            labelCounts.set(lbl, (labelCounts.get(lbl) ?? 0) + 1);
-          }
-          return sorted.map(col => {
-            const baseLabel = getColumnLabel(col.columnId);
-            const table = col.columnId.split('.')[0];
-            const label = (labelCounts.get(baseLabel) ?? 1) > 1 ? `${baseLabel} · ${table}` : baseLabel;
-            const isOver = dragOverColId === col.columnId;
+        {chipItems.map(({ col, label, isOver }) => (
+          <div
+            key={col.columnId}
+            draggable
+            onDragStart={() => onDragStart(col.columnId)}
+            onDragOver={e => onDragOver(e, col.columnId)}
+            onDrop={e => onDrop(e, col.columnId)}
+            onDragEnd={onDragEnd}
+            className={`flex items-center gap-1 rounded border px-1.5 py-0.5 text-xs cursor-grab active:cursor-grabbing select-none transition-all ${
+              col.visible
+                ? 'border-border bg-background'
+                : 'border-border/50 bg-muted text-muted-foreground opacity-60'
+            } ${isOver ? 'ring-2 ring-primary ring-offset-1' : ''}`}
+          >
+            <GripHorizontal className="h-3 w-3 text-muted-foreground shrink-0" />
 
-            return (
-            <div
-              key={col.columnId}
-              draggable
-              onDragStart={() => onDragStart(col.columnId)}
-              onDragOver={e => onDragOver(e, col.columnId)}
-              onDrop={e => onDrop(e, col.columnId)}
-              onDragEnd={onDragEnd}
-              className={`flex items-center gap-1 rounded border px-1.5 py-0.5 text-xs cursor-grab active:cursor-grabbing select-none transition-all ${
-                col.visible
-                  ? 'border-border bg-background'
-                  : 'border-border/50 bg-muted text-muted-foreground opacity-60'
-              } ${isOver ? 'ring-2 ring-primary ring-offset-1' : ''}`}
-            >
-              <GripHorizontal className="h-3 w-3 text-muted-foreground shrink-0" />
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <span className={col.visible ? '' : 'line-through'}>{label}</span>
+              </TooltipTrigger>
+              <TooltipContent className="font-mono">{col.columnId}</TooltipContent>
+            </Tooltip>
 
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <span className={col.visible ? '' : 'line-through'}>{label}</span>
-                </TooltipTrigger>
-                <TooltipContent className="font-mono">{col.columnId}</TooltipContent>
-              </Tooltip>
-
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <button
-                    onClick={() => toggle(col.columnId)}
-                    className="ml-0.5 text-muted-foreground hover:text-foreground"
-                  >
-                    {col.visible
-                      ? <Eye className="h-2.5 w-2.5" />
-                      : <EyeOff className="h-2.5 w-2.5" />}
-                  </button>
-                </TooltipTrigger>
-                <TooltipContent>{col.visible ? 'Hide' : 'Show'}</TooltipContent>
-              </Tooltip>
-            </div>
-          );
-          });
-        })()}
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <button
+                  onClick={() => toggle(col.columnId)}
+                  className="ml-0.5 text-muted-foreground hover:text-foreground"
+                >
+                  {col.visible
+                    ? <Eye className="h-2.5 w-2.5" />
+                    : <EyeOff className="h-2.5 w-2.5" />}
+                </button>
+              </TooltipTrigger>
+              <TooltipContent>{col.visible ? 'Hide' : 'Show'}</TooltipContent>
+            </Tooltip>
+          </div>
+        ))}
       </div>
 
       {/* Actions */}
