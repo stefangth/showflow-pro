@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" fill="none" aria-label="ShowFlow Stage mark">
+  
+  <path d="M10 50 V 32 C 10 18, 22 10, 32 10 C 42 10, 54 18, 54 32 V 50 Z" stroke="#6E5CF6" stroke-width="3" stroke-linejoin="round"></path>
+  <path d="M22 50 L 32 24 L 42 50" stroke="#6E5CF6" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" opacity="0.55"></path>
+  <circle cx="32" cy="20" r="2.5" fill="#6E5CF6"></circle>
+</svg>
