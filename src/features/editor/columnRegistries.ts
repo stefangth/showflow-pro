@@ -3,7 +3,9 @@ import type { ColumnDef, ColumnTemplate, ColumnTemplates } from './types';
 
 /**
  * Static enumeration of DB columns per table that the editor can surface.
- * Mirrors src/integrations/supabase/types.ts — keep in sync when adding columns.
+ * Source of truth: src/integrations/supabase/types.ts (auto-generated from DB schema).
+ * Run `npx supabase gen types typescript` to regenerate types, then update this list.
+ * Do NOT rename or drop columns here without a companion ALTER TABLE migration.
  */
 export const TABLE_COLUMNS: Record<string, readonly string[]> = {
   bookings: [

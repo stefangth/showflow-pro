@@ -162,7 +162,8 @@ export function EditorProvider({ children }: { children: ReactNode }) {
     queryKey: ['editor', 'column-descriptions'],
     staleTime: Infinity,
     gcTime: Infinity,
-    retry: 2,
+    retry: 1,
+    initialData: {} as Record<string, string>,
     queryFn: async () => {
       const { data, error } = await supabase.rpc('get_column_descriptions');
       if (error) throw error;
@@ -184,7 +185,7 @@ export function EditorProvider({ children }: { children: ReactNode }) {
       if (colId in COMPUTED_LABELS) return COMPUTED_LABELS[colId];
       const dotIdx = colId.indexOf('.');
       const nameOnly = dotIdx !== -1 ? colId.slice(dotIdx + 1) : colId;
-      return columnDescriptions?.[colId] ?? nameOnly;
+      return columnDescriptions[colId] ?? nameOnly;
     },
     [columnDescriptions]
   );
