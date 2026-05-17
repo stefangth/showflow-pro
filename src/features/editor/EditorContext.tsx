@@ -159,7 +159,7 @@ export function EditorProvider({ children }: { children: ReactNode }) {
   // staleTime/gcTime: Infinity — column comments are schema metadata that
   // changes rarely. Sessions pick up changes only on hard reload.
   const { data: columnDescriptions, error: columnDescriptionsError } = useQuery({
-    queryKey: ['editor', 'column-descriptions'],
+    queryKey: ['columns', 'descriptions'],
     staleTime: Infinity,
     gcTime: Infinity,
     retry: 1,
@@ -185,7 +185,7 @@ export function EditorProvider({ children }: { children: ReactNode }) {
       if (colId in COMPUTED_LABELS) return COMPUTED_LABELS[colId];
       const dotIdx = colId.indexOf('.');
       const nameOnly = dotIdx !== -1 ? colId.slice(dotIdx + 1) : colId;
-      return (columnDescriptions ?? {})[colId] ?? nameOnly;
+      return columnDescriptions?.[colId] ?? nameOnly;
     },
     [columnDescriptions]
   );

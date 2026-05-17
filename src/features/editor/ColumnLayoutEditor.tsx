@@ -21,7 +21,7 @@ interface ColumnLayoutEditorProps {
  */
 export function ColumnLayoutEditor({ pageKey }: ColumnLayoutEditorProps) {
   const { roles, viewAsRole } = useAuth();
-  const { isEditorMode } = useEditorConfig();
+  const { isEditorMode, getColumnLabel } = useEditorConfig();
   const { columnTemplates, saveColumnTemplate } = useEditor();
 
   const [draft, setDraft] = useState<ColumnTemplate[]>([]);
@@ -127,8 +127,7 @@ export function ColumnLayoutEditor({ pageKey }: ColumnLayoutEditorProps) {
       {/* Draggable chips */}
       <div className="flex flex-wrap items-center gap-1.5">
         {sorted.map(col => {
-          // Admins need the technical name to cross-reference the DB schema.
-          const label = col.columnId;
+          const label = getColumnLabel(col.columnId);
           const isOver = dragOverColId === col.columnId;
 
           return (
@@ -147,7 +146,12 @@ export function ColumnLayoutEditor({ pageKey }: ColumnLayoutEditorProps) {
             >
               <GripHorizontal className="h-3 w-3 text-muted-foreground shrink-0" />
 
-              <span className={col.visible ? '' : 'line-through'}>{label}</span>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <span className={col.visible ? '' : 'line-through'}>{label}</span>
+                </TooltipTrigger>
+                <TooltipContent className="font-mono">{col.columnId}</TooltipContent>
+              </Tooltip>
 
               <Tooltip>
                 <TooltipTrigger asChild>
