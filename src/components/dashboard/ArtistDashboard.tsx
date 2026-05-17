@@ -70,7 +70,7 @@ export function ArtistDashboard() {
   if (!artist) {
     return (
       <div className="space-y-6">
-        <h1 className="font-display text-3xl font-bold">Dashboard</h1>
+        <h1 className="font-display text-[32px] font-semibold tracking-tight">Dashboard</h1>
         <Card>
           <CardContent className="py-12 text-center">
             <p className="text-muted-foreground">
@@ -85,7 +85,7 @@ export function ArtistDashboard() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="font-display text-3xl font-bold">Dashboard</h1>
+        <h1 className="font-display text-[32px] font-semibold tracking-tight">Dashboard</h1>
         <p className="text-muted-foreground mt-1">
           Your response rate on dates you've been offered.
         </p>

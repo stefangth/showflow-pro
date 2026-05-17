@@ -220,7 +220,7 @@ function ProducerShowsBookings() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="font-display text-3xl font-bold">Shows &amp; Bookings</h1>
+        <h1 className="font-display text-[32px] font-semibold tracking-tight">Shows &amp; Bookings</h1>
         <p className="text-muted-foreground mt-1">All scheduled dates and cast status in one place.</p>
       </div>
 

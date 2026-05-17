@@ -709,7 +709,7 @@ export default function SettingsPage() {
     <div className="space-y-6 max-w-4xl">
       <div className="flex items-start justify-between gap-4">
         <div>
-          <h1 className="font-display text-3xl font-bold flex items-center gap-3">
+          <h1 className="font-display text-[32px] font-semibold tracking-tight flex items-center gap-3">
             <SettingsIcon className="h-7 w-7 text-primary" />
             Settings
           </h1>

@@ -70,7 +70,7 @@ export default function UnsubscribePage() {
   return (
     <main className="min-h-screen flex items-center justify-center bg-background px-4">
       <Card className="w-full max-w-md p-8 space-y-6 text-center">
-        <h1 className="font-display text-2xl font-bold">Email preferences</h1>
+        <h1 className="font-display text-[26px] font-semibold tracking-tight">Email preferences</h1>
 
         {state.kind === 'loading' && (
           <div className="flex flex-col items-center gap-3 text-muted-foreground">

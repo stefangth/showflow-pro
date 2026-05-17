@@ -91,7 +91,7 @@ export function ArtistBookingsView() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="font-display text-3xl font-bold">My Bookings</h1>
+        <h1 className="font-display text-[32px] font-semibold tracking-tight">My Bookings</h1>
         <p className="text-muted-foreground mt-1">
           Dates you've been offered for, based on your cast eligibility.
         </p>
