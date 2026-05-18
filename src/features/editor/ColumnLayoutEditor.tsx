@@ -35,7 +35,7 @@ export function ColumnLayoutEditor({ pageKey }: ColumnLayoutEditorProps) {
   const effectiveRole: AppRole = viewAsRole
     ?? (roles.includes('admin') ? 'admin' : roles.includes('producer') ? 'producer' : 'artist');
 
-  const defs = pageColumnDefs(pageKey);
+  const defs = useMemo(() => pageColumnDefs(pageKey), [pageKey]);
 
   // Sync draft whenever role or saved templates change
   useEffect(() => {

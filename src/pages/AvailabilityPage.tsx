@@ -23,7 +23,8 @@ import { AvailabilityPicker } from '@/components/availability/AvailabilityPicker
 import { OfferResponseButtons } from '@/components/availability/OfferResponseButtons';
 import { formatDateDMY, parseDateOnly } from '@/lib/dates';
 import { showLabel } from '@/types';
-import { useColumnTemplate, useEditorConfig } from '@/features/editor/EditorContext';
+import { useColumnTemplate } from '@/features/editor/EditorContext';
+import { useColumnHeaders } from '@/features/editor/useColumnHeaders';
 import { ColumnLayoutEditor } from '@/features/editor/ColumnLayoutEditor';
 import { useToast } from '@/hooks/use-toast';
 
@@ -52,7 +53,7 @@ function ArtistAvailability() {
   const { data: artist } = useMyArtist();
   const { data: eligibleDates, isLoading } = useArtistEligibleDates();
   const { orderedColumns, visibleCount } = useColumnTemplate('availability');
-  const { isEditorMode, getColumnLabel } = useEditorConfig();
+  const columnHeaders = useColumnHeaders(orderedColumns);
   const [searchParams, setSearchParams] = useSearchParams();
   const { toast } = useToast();
 
@@ -218,23 +219,11 @@ function ArtistAvailability() {
             <Table>
               <TableHeader>
                 <TableRow>
-                  {(() => {
-                    const visible = orderedColumns.filter(c => c.visible);
-                    const labelCounts = new Map<string, number>();
-                    visible.forEach(c => {
-                      const lbl = getColumnLabel(c.columnId);
-                      labelCounts.set(lbl, (labelCounts.get(lbl) ?? 0) + 1);
-                    });
-                    return visible.map(c => {
-                      const lbl = getColumnLabel(c.columnId);
-                      const headerLbl = (labelCounts.get(lbl) ?? 1) > 1 ? c.columnId : lbl;
-                      return (
-                        <TableHead key={c.columnId} className={isEditorMode ? 'font-mono text-xs' : 'text-xs'}>
-                          {isEditorMode ? c.columnId : headerLbl}
-                        </TableHead>
-                      );
-                    });
-                  })()}
+                  {columnHeaders.map(({ columnId, headerLabel, isEditorMode }) => (
+                    <TableHead key={columnId} className={isEditorMode ? 'font-mono text-xs' : 'text-xs'}>
+                      {headerLabel}
+                    </TableHead>
+                  ))}
                 </TableRow>
               </TableHeader>
               <TableBody>

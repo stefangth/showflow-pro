@@ -147,32 +147,31 @@ export function EditorProvider({ children }: { children: ReactNode }) {
     []
   );
 
-  const { data: columnDescriptions, error: columnDescriptionsError } = useQuery({
+  const { data: columnDescriptions } = useQuery({
     queryKey: ['columns', 'descriptions'],
     staleTime: Infinity, // schema metadata; sessions pick up changes on hard reload only
     gcTime: Infinity,
-    retry: 1,
-    placeholderData: {}, // show raw IDs (<100ms) rather than undefined on first load
+    retry: false,
+    placeholderData: {}, // show nameOnly fallback (<100ms flash) rather than undefined on first load
     queryFn: async () => {
       const { data, error } = await supabase.rpc('get_column_descriptions');
-      if (error) throw error;
-      const raw = data != null && typeof data === 'object' && !Array.isArray(data)
+      if (error) {
+        console.warn('[editor] get_column_descriptions failed, falling back to bare column names:', error.message);
+        throw error;
+      }
+      const raw = (data !== null && typeof data === 'object' && !Array.isArray(data))
         ? (data as Record<string, string>)
         : {};
       return raw;
     },
   });
 
-  useEffect(() => {
-    if (columnDescriptionsError) {
-      console.warn('[editor] get_column_descriptions failed, falling back to bare column names:', columnDescriptionsError.message);
-    }
-  }, [columnDescriptionsError]);
-
   const getColumnLabel = useCallback(
     (colId: string) => {
       if (colId in COMPUTED_LABELS) return COMPUTED_LABELS[colId];
-      return columnDescriptions?.[colId] ?? colId;
+      const dotIdx = colId.indexOf('.');
+      const nameOnly = dotIdx !== -1 ? colId.slice(dotIdx + 1) : colId;
+      return (columnDescriptions ?? {})[colId] ?? nameOnly;
     },
     [columnDescriptions]
   );
