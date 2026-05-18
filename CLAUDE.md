@@ -72,13 +72,14 @@ src/
     artists/       # ArtistProfileSheet
     availability/  # ArtistAvailabilityCalendar, AvailabilityPicker, OfferResponseButtons
     bookings/      # ArtistBookingsView and booking surfaces
+    brand/         # StageMark — brand mark SVG (variants: mono outline "mark", violet tile "tile")
     calendar/      # EntityCalendar (shared month grid)
     casts/         # Cast grouping UI (dialog, sheet, section)
     chat/          # ChatPanel, MessageBubble (per-show-date threads)
     dashboard/     # Role-specific dashboards (ArtistDashboard, …)
     filters/       # Reusable filter/sort/view-toggle controls
     shows/         # ShowDateDetailSheet — the full per-date booking management surface
-    layout/        # AppLayout (sidebar + topbar shell)
+    layout/        # AppLayout (sidebar + topbar shell), NotificationsList (notification bell popover)
     ui/            # shadcn primitives — DO NOT edit by hand, regenerate via shadcn
   config/
     app.config.ts  # Feature flags (FEATURES), route constants (ROUTES), BOOKING_CONFIG, CHAT_ARCHIVE_DAYS
@@ -92,11 +93,15 @@ src/
                    #   Read-only hook for page components: useEditorConfig().
   hooks/           # Domain hooks (useMyArtist, useEligibleArtists, useChatParticipant,
                    #   useArtistEligibleDates, useSubProgramSlots, useSettingsWarnings,
-                   #   useSkills/useArtistSkills) + UI hooks (use-mobile, use-toast)
+                   #   useSkills/useArtistSkills, useNotifications/useMarkNotificationRead/
+                   #   useMarkAllNotificationsRead) + UI hooks (use-mobile, use-toast)
   integrations/
     supabase/
       client.ts    # Single shared Supabase client
       types.ts     # AUTO-GENERATED — never edit
+  lib/             # Shared utilities: utils.ts (cn helper), dates.ts (parseDateOnly,
+                   #   formatDateDMY, formatDateWithWeekday, toDateKey — all timezone-safe),
+                   #   avatar.ts
   pages/           # One file per route, default-exported
                    #   Key pages: DashboardPage, ShowsBookingsPage (ROUTES.BOOKINGS),
                    #   ArtistsPage (admin+producer), AvailabilityPage (artist),
@@ -113,12 +118,12 @@ supabase/
 
 ### Key decisions
 
-- **Single source of truth for routes/flags:** `src/config/app.config.ts`. Reference `ROUTES.X` rather than string literals. `CHAT_ARCHIVE_DAYS` (30) gates chat write access after a show date passes. Note: `ROUTES.SHOWS` (`/shows`) has been removed — the `/shows` path no longer exists.
+- **Single source of truth for routes/flags:** `src/config/app.config.ts`. Reference `ROUTES.X` rather than string literals. `CHAT_ARCHIVE_DAYS` (30) hides chats from the list and gates write access after a show date passes (chats older than 30 days are hidden from `ChatsListPage` for non-admins and made read-only in `ChatPanel`). Note: `ROUTES.SHOWS` (`/shows`) has been removed — the `/shows` path no longer exists.
 - **Admin-tunable settings live in the DB:** the `app_settings` table (key/value JSONB) is edited via the Settings page. Static developer-only constants stay in `app.config.ts`.
 - **Signup is admin-gated.** New users land in `user_approvals` with status `pending`; `ApprovalGate` (inside `ProtectedRoute`) renders `PendingApprovalScreen` / `RejectedScreen` until an admin decides via the `admin-decide-approval` edge function. Role is assigned at approval time and inserted into `user_roles`.
 - **Role checks are always server-enforced via RLS.** The client `useAuth().hasRole(...)` is for UX only (hiding nav, gating pages); never trust it for data access.
 - **Roles live in `user_roles`**, never on `profiles`. Always check via the `has_role(uuid, app_role)` security-definer function in policies.
-- **Chat is per show-date.** One `chats` row per `show_date_id`; participation is gated by `is_chat_participant(chat_id, user_id)` (admins, producers, and artists booked/soft-booked for that date). Threads become read-only after `CHAT_ARCHIVE_DAYS`; admins can still view archived threads.
+- **Chat is per show-date.** One `chats` row per `show_date_id`; participation is gated by `is_chat_participant(chat_id, user_id)` (admins, producers, and artists booked/soft-booked for that date). After `CHAT_ARCHIVE_DAYS` days, chats are hidden from `ChatsListPage` for non-admins and become read-only in `ChatPanel` (admins can still view the archived thread).
 - **Artist availability is gated by eligibility.** Artists can only declare availability on dates returned by `useArtistEligibleDates` (derived from cast eligibility). Non-eligible dates render non-interactively in the calendar.
 - **`show_dates.status` is DB-computed.** A Postgres trigger (`sync_show_date_status_trigger` on `bookings`) automatically sets status to `open | partially_filled | fully_filled` based on confirmed booking counts vs the `main_cast` + `understudies` thresholds in `app_settings.sub_program_slots_defaults` (keyed by `(program, sub_program)`). Only `cancelled` is set by mutations directly. Do not set status manually in client code. A second trigger on `app_settings` recomputes all show_dates when slot defaults change; a third on `shows` does so when a show's `program` or `sub_program` is updated.
 - **Slot capacity comes from settings, not columns.** There is no `slots_per_date` column on `shows` or `show_dates`. Capacity for any date is `app_settings.sub_program_slots_defaults[program][sub_program]` (an object with `main_cast` and `understudies`). When a `(program, sub_program)` combination is unconfigured, the trigger leaves status as `open`/`partially_filled` (never `fully_filled`); the UI overrides the badge to "Unconfigured" via `useSubProgramSlots` + `effectiveSlots(defaults, program, subProgram)`.
@@ -153,7 +158,7 @@ supabase/
   - **`['availability', ...]`** — everything that reads from the `availability` table (e.g. `['availability', 'cell', artistId, date]`, `['availability', 'available', dateId]`).
 - **Invalidation rule:** Mutations that write to `bookings` invalidate `['bookings']` (prefix match, catches all sub-keys). Mutations that write to `availability` invalidate `['availability']`. This is the only pattern that stays correct as new consumers are added. Never list individual sub-keys in a mutation — always bust the whole domain.
 - **Supabase Realtime is enabled** on all primary tables. Booking status changes propagate automatically to subscribed clients.
-- Prefer the existing domain hooks in `src/hooks/` (`useMyArtist`, `useEligibleArtists`, `useArtistEligibleDates`, `useChatParticipant`, `useSubProgramSlots`, `useSettingsWarnings`, `useSkills`/`useArtistSkills`) over duplicating Supabase queries inline.
+- Prefer the existing domain hooks in `src/hooks/` (`useMyArtist`, `useEligibleArtists`, `useArtistEligibleDates`, `useChatParticipant`, `useSubProgramSlots`, `useSettingsWarnings`, `useSkills`/`useArtistSkills`, `useNotifications`) over duplicating Supabase queries inline.
 - Never call Supabase from a component effect when a query will do.
 - Side effects on success → `sonner` toast (`toast.success`, `toast.error`).
 
@@ -184,7 +189,7 @@ When adding a new page:
 
 ### Notification system
 
-- In-app notifications write to the `notifications` table (columns: `user_id`, `type`, `payload`, `read_at`).
+- In-app notifications write to the `notifications` table (columns: `id`, `user_id`, `type`, `title`, `message`, `read` boolean, `related_entity_id`, `related_entity_type`, `created_at`). There is no `payload` column and no `read_at` timestamp — read state is a plain boolean `read`.
 - `FEATURES.NOTIFICATIONS` must be `true` (it is, by default).
 - Create notifications from edge functions or server-side mutations only — never bare client-side inserts without proper RLS policies.
 
