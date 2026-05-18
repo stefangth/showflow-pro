@@ -58,6 +58,15 @@ Deno.serve(async (req) => {
     if (!roleRow) return json({ error: 'Forbidden — admin or producer required' }, 403)
   }
 
+  // ── Offer window setting ─────────────────────────────────────────────────
+  // Read once; used to stamp offer_expires_at when the digest is sent.
+  const { data: expirySetting } = await admin
+    .from('app_settings')
+    .select('value')
+    .eq('key', 'offer_response_window_hours')
+    .maybeSingle()
+  const offerWindowHours = (expirySetting?.value as number | null) ?? 48
+
   // ── Berlin hour gate ─────────────────────────────────────────────────────
   const { data: hourSetting } = await admin
     .from('app_settings')
@@ -82,12 +91,18 @@ Deno.serve(async (req) => {
   // ── Query pending offers ─────────────────────────────────────────────────
   // Artist email + display name live on the `artists` row (not `profiles`);
   // shows uses `program`/`sub_program` (no `name` column).
+  //
+  // offer_expires_at is null on newly created offers (expiry is set here
+  // when the digest is sent, not at offer creation). Include both null-expiry
+  // offers and any that still have time remaining.
+  const now = new Date()
+  const offerExpiresAt = new Date(now.getTime() + offerWindowHours * 60 * 60 * 1000)
+
   const { data: pendingBookings, error: queryErr } = await admin
     .from('bookings')
     .select(`
       id,
       artist_id,
-      offer_expires_at,
       artists ( id, name, email ),
       show_dates (
         date,
@@ -97,7 +112,7 @@ Deno.serve(async (req) => {
     `)
     .eq('status', 'suggested')
     .is('digest_sent_at', null)
-    .gt('offer_expires_at', new Date().toISOString())
+    .or(`offer_expires_at.is.null,offer_expires_at.gt.${now.toISOString()}`)
 
   if (queryErr) {
     console.error('send-offer-digest: query error', queryErr)
@@ -118,6 +133,17 @@ Deno.serve(async (req) => {
 
   const grouped = new Map<string, GroupedEntry>()
 
+  // Format the expiry time once — same for all offers in this digest run.
+  const expiresDisplay = new Intl.DateTimeFormat('en-GB', {
+    timeZone: 'Europe/Berlin',
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: false,
+  }).format(offerExpiresAt)
+
   for (const b of pendingBookings as any[]) {
     const artistId = b.artist_id
     const artist = b.artists
@@ -130,18 +156,7 @@ Deno.serve(async (req) => {
     const show = program ? (subProgram ? `${program} — ${subProgram}` : program) : 'Unknown show'
     const date = showDate?.date ?? '—'
     const city = showDate?.cities?.name ?? '—'
-    const expiresRaw = b.offer_expires_at
-    const expires = expiresRaw
-      ? new Intl.DateTimeFormat('en-GB', {
-          timeZone: 'Europe/Berlin',
-          day: '2-digit',
-          month: '2-digit',
-          year: 'numeric',
-          hour: '2-digit',
-          minute: '2-digit',
-          hour12: false,
-        }).format(new Date(expiresRaw))
-      : '—'
+    const expires = expiresDisplay
 
     if (!grouped.has(artistId)) {
       grouped.set(artistId, {
@@ -173,10 +188,14 @@ Deno.serve(async (req) => {
         },
       })
 
-      // Stamp digest_sent_at on these specific bookings
+      // Stamp digest_sent_at and set offer_expires_at on these bookings.
+      // The expiry window starts from digest send time, not offer creation.
       const { error: stampErr } = await admin
         .from('bookings')
-        .update({ digest_sent_at: new Date().toISOString() })
+        .update({
+          digest_sent_at: now.toISOString(),
+          offer_expires_at: offerExpiresAt.toISOString(),
+        })
         .in('id', entry.bookingIds)
 
       if (stampErr) {
