@@ -1,3 +1,6 @@
+-- Supersedes the function body in 20260519000000_promote_understudy_on_cancellation.sql.
+-- The trigger definition in that migration still holds; no DROP/CREATE TRIGGER needed.
+--
 -- When a suggested understudy is promoted to soft_booked by
 -- promote_understudy_on_cancellation, notify_booking_transition is suppressed
 -- via the GUC guard to avoid a spurious "artist accepted offer" notification.

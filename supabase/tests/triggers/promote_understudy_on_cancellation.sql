@@ -12,7 +12,7 @@ BEGIN;
 
 CREATE EXTENSION IF NOT EXISTS pgtap WITH SCHEMA extensions;
 
-SELECT plan(13);
+SELECT plan(14);
 
 -- ────────────────────────────────────────────────────────────────────────────
 -- Shared fixtures
@@ -24,6 +24,16 @@ VALUES (
   '{"theatre":{"musical":{"main_cast":1,"understudies":1}}}'::jsonb
 )
 ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value;
+
+-- Admin user required for the booking_ready_to_confirm fallback notification
+-- (no show_assignments exist in this test, so the trigger falls back to admins).
+SET session_replication_role = replica;
+INSERT INTO auth.users (id, aud, role, email, email_confirmed_at, raw_app_meta_data, raw_user_meta_data, created_at, updated_at)
+VALUES ('aaaaaaaa-0d00-0001-0000-000000000000', 'authenticated', 'authenticated', 'up-admin@test.com', now(), '{"provider":"email"}'::jsonb, '{}'::jsonb, now(), now());
+SET session_replication_role = DEFAULT;
+
+INSERT INTO public.user_roles (user_id, role)
+VALUES ('aaaaaaaa-0d00-0001-0000-000000000000', 'admin'::app_role);
 
 INSERT INTO public.artists (id, name) VALUES
   ('bbbbbbbb-0d00-0001-0000-000000000000', 'UP Artist 1'),
@@ -100,6 +110,20 @@ SELECT is(
   (SELECT confirmed_at FROM public.bookings WHERE id = 'eeeeeeee-0d00-0004-0000-000000000000'),
   NULL,
   'test 3b: confirmed_at is null when suggested understudy reaches soft_booked (not confirmed)'
+);
+
+-- ────────────────────────────────────────────────────────────────────────────
+-- Test 3c: booking_ready_to_confirm notification written for producers when
+--          a suggested understudy is promoted to soft_booked
+--          (no show_assignments exist → admin fallback fires)
+-- ────────────────────────────────────────────────────────────────────────────
+SELECT ok(
+  EXISTS (
+    SELECT 1 FROM public.notifications
+    WHERE related_entity_id = 'eeeeeeee-0d00-0004-0000-000000000000'
+      AND type = 'booking_ready_to_confirm'
+  ),
+  'test 3c: booking_ready_to_confirm notification written when suggested understudy promoted to soft_booked'
 );
 
 -- ────────────────────────────────────────────────────────────────────────────
