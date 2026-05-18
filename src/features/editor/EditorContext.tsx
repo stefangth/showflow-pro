@@ -4,7 +4,7 @@ import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/features/auth/AuthContext';
 import type { AppRole } from '@/config/app.config';
-import { resolveColumnTemplate, pageColumnDefs } from './columnRegistries';
+import { resolveColumnTemplate, pageColumnDefs, COMPUTED_LABELS } from './columnRegistries';
 import {
   DEFAULT_PAGE_ACCESS,
   DEFAULT_TABLE_PERMISSIONS,
@@ -17,6 +17,7 @@ import {
 } from './types';
 
 const EDITOR_MODE_KEY = 'showflow_editor_mode';
+
 
 interface EditorContextType {
   isEditorMode: boolean;
@@ -37,6 +38,7 @@ interface EditorContextType {
   getColumnTemplate: (pageKey: string, role: AppRole) => ColumnTemplate[];
   getColumnDefs: (pageKey: string) => ColumnDef[];
   getTablePermission: (tableKey: string, role: AppRole) => TablePermissionLevel;
+  getColumnLabel: (colId: string) => string;
 }
 
 const EditorContext = createContext<EditorContextType | undefined>(undefined);
@@ -145,6 +147,38 @@ export function EditorProvider({ children }: { children: ReactNode }) {
     []
   );
 
+  const { data: columnDescriptions, error: columnDescriptionsError } = useQuery({
+    queryKey: ['columns', 'descriptions'],
+    staleTime: Infinity, // schema metadata; sessions pick up changes on hard reload only
+    gcTime: Infinity,
+    retry: 2,
+    placeholderData: {}, // show nameOnly fallback (<100ms flash) rather than undefined on first load
+    queryFn: async () => {
+      const { data, error } = await supabase.rpc('get_column_descriptions');
+      if (error) throw error;
+      const raw = (data !== null && typeof data === 'object' && !Array.isArray(data))
+        ? (data as Record<string, string>)
+        : {};
+      return raw;
+    },
+  });
+
+  useEffect(() => {
+    if (columnDescriptionsError) {
+      console.warn('[editor] get_column_descriptions failed, falling back to bare column names:', columnDescriptionsError.message);
+    }
+  }, [columnDescriptionsError]);
+
+  const getColumnLabel = useCallback(
+    (colId: string) => {
+      if (colId in COMPUTED_LABELS) return COMPUTED_LABELS[colId];
+      const dotIdx = colId.indexOf('.');
+      const nameOnly = dotIdx !== -1 ? colId.slice(dotIdx + 1) : colId;
+      return (columnDescriptions ?? {})[colId] ?? nameOnly;
+    },
+    [columnDescriptions]
+  );
+
   const getTablePermission = useCallback((tableKey: string, role: AppRole): TablePermissionLevel => {
     return tablePermissions[tableKey]?.[role]
       ?? DEFAULT_TABLE_PERMISSIONS[tableKey]?.[role]
@@ -167,12 +201,13 @@ export function EditorProvider({ children }: { children: ReactNode }) {
     getColumnTemplate,
     getColumnDefs,
     getTablePermission,
+    getColumnLabel,
   }), [
     isEditorMode,
     isSidePanelOpen,
     pageAccess, columnTemplates, tablePermissions, isConfigLoading,
     savePageAccess, saveColumnTemplate, saveTablePermission,
-    getColumnTemplate, getColumnDefs, getTablePermission,
+    getColumnTemplate, getColumnDefs, getTablePermission, getColumnLabel,
   ]);
 
   return <EditorContext.Provider value={value}>{children}</EditorContext.Provider>;
@@ -194,6 +229,7 @@ export function useEditorConfig() {
     getColumnTemplate: ctx.getColumnTemplate,
     getColumnDefs: ctx.getColumnDefs,
     getTablePermission: ctx.getTablePermission,
+    getColumnLabel: ctx.getColumnLabel,
   };
 }
 

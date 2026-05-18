@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Eye, EyeOff, GripHorizontal, RotateCcw, Save } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -7,7 +7,7 @@ import { Separator } from '@/components/ui/separator';
 import { useAuth } from '@/features/auth/AuthContext';
 import type { AppRole } from '@/config/app.config';
 import { useEditor, useEditorConfig } from './EditorContext';
-import { COLUMN_REGISTRIES, resolveColumnTemplate } from './columnRegistries';
+import { pageColumnDefs, resolveColumnTemplate, disambiguateLabels } from './columnRegistries';
 import type { ColumnTemplate } from './types';
 
 interface ColumnLayoutEditorProps {
@@ -21,7 +21,7 @@ interface ColumnLayoutEditorProps {
  */
 export function ColumnLayoutEditor({ pageKey }: ColumnLayoutEditorProps) {
   const { roles, viewAsRole } = useAuth();
-  const { isEditorMode } = useEditorConfig();
+  const { isEditorMode, getColumnLabel } = useEditorConfig();
   const { columnTemplates, saveColumnTemplate } = useEditor();
 
   const [draft, setDraft] = useState<ColumnTemplate[]>([]);
@@ -35,7 +35,7 @@ export function ColumnLayoutEditor({ pageKey }: ColumnLayoutEditorProps) {
   const effectiveRole: AppRole = viewAsRole
     ?? (roles.includes('admin') ? 'admin' : roles.includes('producer') ? 'producer' : 'artist');
 
-  const defs = COLUMN_REGISTRIES[pageKey] ?? [];
+  const defs = useMemo(() => pageColumnDefs(pageKey), [pageKey]);
 
   // Sync draft whenever role or saved templates change
   useEffect(() => {
@@ -43,7 +43,17 @@ export function ColumnLayoutEditor({ pageKey }: ColumnLayoutEditorProps) {
     setDirty(false);
   }, [pageKey, effectiveRole, columnTemplates]);
 
-  const sorted = [...draft].sort((a, b) => a.order - b.order);
+  const sorted = useMemo(() => [...draft].sort((a, b) => a.order - b.order), [draft]);
+
+  const chipItems = useMemo(
+    () => {
+      const labelMap = new Map(
+        disambiguateLabels(sorted, getColumnLabel).map(({ columnId, label }) => [columnId, label])
+      );
+      return sorted.map(col => ({ col, label: labelMap.get(col.columnId) ?? col.columnId }));
+    },
+    [sorted, getColumnLabel]
+  );
 
   // ── Drag handlers ──────────────────────────────────────────────
 
@@ -126,45 +136,44 @@ export function ColumnLayoutEditor({ pageKey }: ColumnLayoutEditorProps) {
 
       {/* Draggable chips */}
       <div className="flex flex-wrap items-center gap-1.5">
-        {sorted.map(col => {
-          const def = defs.find(d => d.id === col.columnId);
-          const label = def?.label ?? col.columnId;
-          const isOver = dragOverColId === col.columnId;
+        {chipItems.map(({ col, label }) => (
+          <div
+            key={col.columnId}
+            draggable
+            onDragStart={() => onDragStart(col.columnId)}
+            onDragOver={e => onDragOver(e, col.columnId)}
+            onDrop={e => onDrop(e, col.columnId)}
+            onDragEnd={onDragEnd}
+            className={`flex items-center gap-1 rounded border px-1.5 py-0.5 text-xs cursor-grab active:cursor-grabbing select-none transition-all ${
+              col.visible
+                ? 'border-border bg-background'
+                : 'border-border/50 bg-muted text-muted-foreground opacity-60'
+            } ${dragOverColId === col.columnId ? 'ring-2 ring-primary ring-offset-1' : ''}`}
+          >
+            <GripHorizontal className="h-3 w-3 text-muted-foreground shrink-0" />
 
-          return (
-            <div
-              key={col.columnId}
-              draggable
-              onDragStart={() => onDragStart(col.columnId)}
-              onDragOver={e => onDragOver(e, col.columnId)}
-              onDrop={e => onDrop(e, col.columnId)}
-              onDragEnd={onDragEnd}
-              className={`flex items-center gap-1 rounded border px-1.5 py-0.5 text-xs cursor-grab active:cursor-grabbing select-none transition-all ${
-                col.visible
-                  ? 'border-border bg-background'
-                  : 'border-border/50 bg-muted text-muted-foreground opacity-60'
-              } ${isOver ? 'ring-2 ring-primary ring-offset-1' : ''}`}
-            >
-              <GripHorizontal className="h-3 w-3 text-muted-foreground shrink-0" />
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <span className={col.visible ? '' : 'line-through'}>{label}</span>
+              </TooltipTrigger>
+              <TooltipContent className="font-mono">{col.columnId}</TooltipContent>
+            </Tooltip>
 
-              <span className={col.visible ? '' : 'line-through'}>{label}</span>
-
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <button
-                    onClick={() => toggle(col.columnId)}
-                    className="ml-0.5 text-muted-foreground hover:text-foreground"
-                  >
-                    {col.visible
-                      ? <Eye className="h-2.5 w-2.5" />
-                      : <EyeOff className="h-2.5 w-2.5" />}
-                  </button>
-                </TooltipTrigger>
-                <TooltipContent>{col.visible ? 'Hide' : 'Show'}</TooltipContent>
-              </Tooltip>
-            </div>
-          );
-        })}
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <button
+                  onClick={() => toggle(col.columnId)}
+                  className="ml-0.5 text-muted-foreground hover:text-foreground"
+                >
+                  {col.visible
+                    ? <Eye className="h-2.5 w-2.5" />
+                    : <EyeOff className="h-2.5 w-2.5" />}
+                </button>
+              </TooltipTrigger>
+              <TooltipContent>{col.visible ? 'Hide' : 'Show'}</TooltipContent>
+            </Tooltip>
+          </div>
+        ))}
       </div>
 
       {/* Actions */}
