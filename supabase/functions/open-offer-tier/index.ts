@@ -173,28 +173,23 @@ Deno.serve(async (req) => {
     return json({ offers_created: 0, message: 'All eligible artists already have offers or are blocked' })
   }
 
-  // Read offer_response_window_hours from settings (fallback: 48h)
-  const { data: expirySetting } = await admin
-    .from('app_settings')
-    .select('value')
-    .eq('key', 'offer_response_window_hours')
-    .maybeSingle()
-
-  const expiryHours = (expirySetting?.value as number | null) ?? 48
   const offeredAt = new Date()
-  const offerExpiresAt = new Date(offeredAt.getTime() + expiryHours * 60 * 60 * 1000)
 
   // Batch insert suggested bookings. Pre-filtering (alreadyBookedIds /
   // blockedArtistIds) handles deduplication — bookings has no UNIQUE
   // (show_date_id, artist_id) constraint, so an ON CONFLICT upsert here
   // would fail Postgres parse-time validation.
+  //
+  // offer_expires_at is intentionally omitted here: the expiry window
+  // starts from when the artist is notified via the offer digest email,
+  // not from offer creation. send-offer-digest sets offer_expires_at when
+  // it stamps digest_sent_at.
   const toInsert = candidateIds.map((artistId: string) => ({
     show_date_id,
     artist_id: artistId,
     status: 'suggested' as const,
     is_understudy: false,
     offered_at: offeredAt.toISOString(),
-    offer_expires_at: offerExpiresAt.toISOString(),
     offer_tier: tier,
   }))
 
