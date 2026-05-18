@@ -10,6 +10,9 @@
 --   • soft_booked understudy → confirmed main cast (confirmed_at = now())
 --   • suggested understudy  → soft_booked main cast
 --   • Appends to booking_audit_log; notifies the promoted artist.
+--   • When a suggested understudy reaches soft_booked, also notifies producers
+--     via resolve_show_assignments (+ admin fallback) because
+--     notify_booking_transition is suppressed for system-driven promotions.
 --
 -- SECURITY DEFINER required: booking_audit_log and notifications both
 -- restrict INSERT to admins/producers via RLS.
@@ -21,9 +24,11 @@ SECURITY DEFINER
 SET search_path = public
 AS $$
 DECLARE
-  v_candidate  RECORD;
-  v_new_status booking_status;
-  v_show_date  RECORD;
+  v_candidate        RECORD;
+  v_new_status       booking_status;
+  v_show_date        RECORD;
+  v_producer_user_id UUID;
+  v_notified         BOOLEAN := false;
 BEGIN
   -- Find the best understudy: prefer soft_booked, then suggested; oldest first.
   -- The WHEN clause on the trigger guarantees OLD.status = 'confirmed',
@@ -65,7 +70,8 @@ BEGIN
 
   PERFORM set_config('app.promoting_understudy', '', true);
 
-  -- Audit log
+  -- Audit log: written for every promotion (skipped by notify_booking_transition
+  -- on this same UPDATE because of the GUC guard set above)
   INSERT INTO public.booking_audit_log (booking_id, action, old_status, new_status, performed_by)
   VALUES (
     v_candidate.id,
@@ -75,8 +81,8 @@ BEGIN
     NULL
   );
 
-  -- Resolve show context for the notification message
-  SELECT sd.date, s.program
+  -- Fetch show context (program, sub_program, city_id) for notifications
+  SELECT sd.date, s.program, s.sub_program, sd.city_id
   INTO v_show_date
   FROM public.show_dates sd
   JOIN public.shows s ON s.id = sd.show_id
@@ -98,6 +104,49 @@ BEGIN
   FROM public.artists a
   WHERE a.id = v_candidate.artist_id
     AND a.user_id IS NOT NULL;
+
+  -- When a suggested understudy reaches soft_booked, producers need to confirm it.
+  -- notify_booking_transition is suppressed via the GUC guard for this path,
+  -- so issue booking_ready_to_confirm directly using the same routing logic.
+  IF v_new_status = 'soft_booked'::booking_status THEN
+    FOR v_producer_user_id IN
+      SELECT DISTINCT producer_user_id
+      FROM public.resolve_show_assignments(
+        COALESCE(v_show_date.program, ''),
+        v_show_date.sub_program,
+        v_show_date.city_id
+      )
+      LIMIT 5
+    LOOP
+      v_notified := true;
+      INSERT INTO public.notifications (user_id, type, title, message, related_entity_type, related_entity_id)
+      VALUES (
+        v_producer_user_id,
+        'booking_ready_to_confirm',
+        'Understudy ready to confirm',
+        'An understudy has been promoted to main cast and is ready to confirm.',
+        'booking',
+        v_candidate.id
+      );
+    END LOOP;
+
+    -- Fallback: notify all admins when no assignment matched
+    IF NOT v_notified THEN
+      FOR v_producer_user_id IN
+        SELECT user_id FROM public.user_roles WHERE role = 'admin'
+      LOOP
+        INSERT INTO public.notifications (user_id, type, title, message, related_entity_type, related_entity_id)
+        VALUES (
+          v_producer_user_id,
+          'booking_ready_to_confirm',
+          'Understudy ready to confirm',
+          'An understudy has been promoted to main cast and is ready to confirm.',
+          'booking',
+          v_candidate.id
+        );
+      END LOOP;
+    END IF;
+  END IF;
 
   RETURN NULL;
 END;
