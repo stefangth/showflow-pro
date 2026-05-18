@@ -21,7 +21,7 @@ import { ArtistBookingsView } from '@/components/bookings/ArtistBookingsView';
 import { ShowDateDetailSheet } from '@/components/shows/ShowDateDetailSheet';
 import { useSubProgramSlots, effectiveSlots } from '@/hooks/useSubProgramSlots';
 import { showLabel } from '@/types';
-import { useColumnTemplate } from '@/features/editor/EditorContext';
+import { useColumnTemplate, useEditorConfig } from '@/features/editor/EditorContext';
 import { useColumnHeaders } from '@/features/editor/useColumnHeaders';
 import { ColumnLayoutEditor } from '@/features/editor/ColumnLayoutEditor';
 
@@ -82,6 +82,7 @@ export default function ShowsBookingsPage() {
 function ProducerShowsBookings() {
   const { canSee } = useFilterVisibility('bookings');
   const { orderedColumns, visibleCount } = useColumnTemplate('bookings-producer');
+  const { isEditorMode } = useEditorConfig();
   const columnHeaders = useColumnHeaders(orderedColumns);
   const queryClient = useQueryClient();
   const [searchParams, setSearchParams] = useSearchParams();
@@ -263,7 +264,7 @@ function ProducerShowsBookings() {
             <Table>
               <TableHeader>
                 <TableRow>
-                  {columnHeaders.map(({ columnId, headerLabel, isEditorMode }) => (
+                  {columnHeaders.map(({ columnId, headerLabel }) => (
                     <TableHead key={columnId} className={isEditorMode ? 'font-mono text-xs' : 'text-xs'}>
                       {headerLabel}
                     </TableHead>

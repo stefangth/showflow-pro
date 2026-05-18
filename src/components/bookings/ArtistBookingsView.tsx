@@ -14,7 +14,7 @@ import { useArtistEligibleDates, type EligibleDate } from '@/hooks/useArtistElig
 import { useMyArtist } from '@/hooks/useMyArtist';
 import { formatDateDMY, parseDateOnly } from '@/lib/dates';
 import { showLabel } from '@/types';
-import { useColumnTemplate } from '@/features/editor/EditorContext';
+import { useColumnTemplate, useEditorConfig } from '@/features/editor/EditorContext';
 import { useColumnHeaders } from '@/features/editor/useColumnHeaders';
 import { ColumnLayoutEditor } from '@/features/editor/ColumnLayoutEditor';
 
@@ -41,6 +41,7 @@ export function ArtistBookingsView() {
   const { data: artist } = useMyArtist();
   const { data: eligibleDates, isLoading } = useArtistEligibleDates();
   const { orderedColumns, visibleCount } = useColumnTemplate('bookings-artist');
+  const { isEditorMode } = useEditorConfig();
   const columnHeaders = useColumnHeaders(orderedColumns);
   const [timeframe, setTimeframe] = useState<TimeframeValue>({ from: null, to: null });
   const [sort, setSort] = useState<SortValue>('chrono_asc');
@@ -119,7 +120,7 @@ export function ArtistBookingsView() {
             <Table>
               <TableHeader>
                 <TableRow>
-                  {columnHeaders.map(({ columnId, headerLabel, isEditorMode }) => (
+                  {columnHeaders.map(({ columnId, headerLabel }) => (
                     <TableHead key={columnId} className={isEditorMode ? 'font-mono text-xs' : 'text-xs'}>
                       {headerLabel}
                     </TableHead>

@@ -5,7 +5,6 @@ import type { ColumnTemplate } from './types';
 interface ColumnHeader {
   columnId: string;
   headerLabel: string;
-  isEditorMode: boolean;
 }
 
 /**
@@ -25,7 +24,7 @@ export function useColumnHeaders(orderedColumns: ColumnTemplate[]): ColumnHeader
     return visible.map(c => {
       const lbl = getColumnLabel(c.columnId);
       const headerLabel = isEditorMode ? c.columnId : (counts.get(lbl)! > 1 ? c.columnId : lbl);
-      return { columnId: c.columnId, headerLabel, isEditorMode };
+      return { columnId: c.columnId, headerLabel };
     });
   }, [orderedColumns, getColumnLabel, isEditorMode]);
 }

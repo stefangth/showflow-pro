@@ -147,24 +147,27 @@ export function EditorProvider({ children }: { children: ReactNode }) {
     []
   );
 
-  const { data: columnDescriptions } = useQuery({
+  const { data: columnDescriptions, error: columnDescriptionsError } = useQuery({
     queryKey: ['columns', 'descriptions'],
     staleTime: Infinity, // schema metadata; sessions pick up changes on hard reload only
     gcTime: Infinity,
-    retry: false,
+    retry: 2,
     placeholderData: {}, // show nameOnly fallback (<100ms flash) rather than undefined on first load
     queryFn: async () => {
       const { data, error } = await supabase.rpc('get_column_descriptions');
-      if (error) {
-        console.warn('[editor] get_column_descriptions failed, falling back to bare column names:', error.message);
-        throw error;
-      }
+      if (error) throw error;
       const raw = (data !== null && typeof data === 'object' && !Array.isArray(data))
         ? (data as Record<string, string>)
         : {};
       return raw;
     },
   });
+
+  useEffect(() => {
+    if (columnDescriptionsError) {
+      console.warn('[editor] get_column_descriptions failed, falling back to bare column names:', columnDescriptionsError.message);
+    }
+  }, [columnDescriptionsError]);
 
   const getColumnLabel = useCallback(
     (colId: string) => {

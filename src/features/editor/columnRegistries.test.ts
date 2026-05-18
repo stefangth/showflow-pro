@@ -20,7 +20,7 @@ describe('columnRegistries / RPC allowlist sync', () => {
     let authoritative: string | null = null;
     for (const file of files) {
       const sql = readFileSync(join(migrationsDir, file), 'utf8');
-      if (sql.includes('get_column_descriptions')) {
+      if (sql.includes('CREATE OR REPLACE FUNCTION get_column_descriptions')) {
         authoritative = sql;
       }
     }
