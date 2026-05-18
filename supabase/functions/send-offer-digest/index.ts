@@ -65,7 +65,7 @@ Deno.serve(async (req) => {
     .select('value')
     .eq('key', 'offer_response_window_hours')
     .maybeSingle()
-  const offerWindowHours = (expirySetting?.value as number | null) ?? 48
+  const offerWindowHours = Number(expirySetting?.value ?? 48)
 
   // ── Berlin hour gate ─────────────────────────────────────────────────────
   const { data: hourSetting } = await admin
@@ -73,7 +73,7 @@ Deno.serve(async (req) => {
     .select('value')
     .eq('key', 'offer_digest_hour_berlin')
     .maybeSingle()
-  const targetHour = (hourSetting?.value as number | null) ?? 19
+  const targetHour = Number(hourSetting?.value ?? 19)
 
   const berlinHour = parseInt(
     new Intl.DateTimeFormat('en', {
