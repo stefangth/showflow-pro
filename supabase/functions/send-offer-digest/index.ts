@@ -199,7 +199,8 @@ Deno.serve(async (req) => {
         .in('id', entry.bookingIds)
 
       if (stampErr) {
-        console.error('send-offer-digest: failed to stamp digest_sent_at', { artistId, error: stampErr.message })
+        console.error('send-offer-digest: failed to stamp digest_sent_at — offers will re-send next run', { artistId, error: stampErr.message })
+        continue
       }
 
       digestsSent += 1
