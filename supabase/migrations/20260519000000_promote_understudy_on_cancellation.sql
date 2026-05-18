@@ -266,10 +266,10 @@ BEGIN
       );
     END LOOP;
 
-    -- Fallback: notify all admins when no assignment matched
+    -- Fallback: notify up to 5 admins when no assignment matched
     IF NOT v_notified THEN
       FOR v_producer_user_id IN
-        SELECT user_id FROM public.user_roles WHERE role = 'admin'
+        SELECT user_id FROM public.user_roles WHERE role = 'admin' LIMIT 5
       LOOP
         INSERT INTO public.notifications (user_id, type, title, message, related_entity_type, related_entity_id)
         VALUES (

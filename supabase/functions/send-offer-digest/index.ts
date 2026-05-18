@@ -58,15 +58,6 @@ Deno.serve(async (req) => {
     if (!roleRow) return json({ error: 'Forbidden — admin or producer required' }, 403)
   }
 
-  // ── Offer window setting ─────────────────────────────────────────────────
-  // Read once; used to stamp offer_expires_at when the digest is sent.
-  const { data: expirySetting } = await admin
-    .from('app_settings')
-    .select('value')
-    .eq('key', 'offer_response_window_hours')
-    .maybeSingle()
-  const offerWindowHours = typeof expirySetting?.value === 'number' ? expirySetting.value : 48
-
   // ── Berlin hour gate ─────────────────────────────────────────────────────
   const { data: hourSetting } = await admin
     .from('app_settings')
@@ -87,6 +78,15 @@ Deno.serve(async (req) => {
   if (berlinHour !== targetHour) {
     return json({ skipped: true, reason: `Berlin hour is ${berlinHour}, target is ${targetHour}` })
   }
+
+  // ── Offer window setting ─────────────────────────────────────────────────
+  // Read after the gate so this round-trip only happens on the one sending hour.
+  const { data: expirySetting } = await admin
+    .from('app_settings')
+    .select('value')
+    .eq('key', 'offer_response_window_hours')
+    .maybeSingle()
+  const offerWindowHours = typeof expirySetting?.value === 'number' ? expirySetting.value : 48
 
   // ── Query pending offers ─────────────────────────────────────────────────
   // Artist email + display name live on the `artists` row (not `profiles`);
