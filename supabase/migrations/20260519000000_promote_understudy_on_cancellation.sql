@@ -25,20 +25,17 @@ DECLARE
   v_new_status booking_status;
   v_show_date  RECORD;
 BEGIN
-  -- Guard: only act when a confirmed main-cast booking is cancelled
-  IF OLD.status <> 'confirmed' OR NEW.status <> 'cancelled' OR OLD.is_understudy = true THEN
-    RETURN NULL;
-  END IF;
-
-  -- Find the best understudy: prefer soft_booked, then suggested; oldest first
+  -- Find the best understudy: prefer soft_booked, then suggested; oldest first.
+  -- The WHEN clause on the trigger guarantees OLD.status = 'confirmed',
+  -- NEW.status = 'cancelled', OLD.is_understudy = false before we get here.
   SELECT id, artist_id, status
   INTO v_candidate
   FROM public.bookings
   WHERE show_date_id = NEW.show_date_id
     AND is_understudy = true
-    AND status IN ('soft_booked', 'suggested')
+    AND status IN ('soft_booked'::booking_status, 'suggested'::booking_status)
   ORDER BY
-    CASE status WHEN 'soft_booked' THEN 0 ELSE 1 END,
+    CASE status::text WHEN 'soft_booked' THEN 0 ELSE 1 END,
     created_at ASC
   LIMIT 1;
 
@@ -46,17 +43,18 @@ BEGIN
     RETURN NULL;
   END IF;
 
-  v_new_status := CASE v_candidate.status
-    WHEN 'soft_booked' THEN 'confirmed'::booking_status
-    ELSE                    'soft_booked'::booking_status
-  END;
+  IF v_candidate.status::text = 'soft_booked' THEN
+    v_new_status := 'confirmed'::booking_status;
+  ELSE
+    v_new_status := 'soft_booked'::booking_status;
+  END IF;
 
   -- Promote: move to main cast with the new status
   UPDATE public.bookings
   SET
     status        = v_new_status,
     is_understudy = false,
-    confirmed_at  = CASE WHEN v_new_status = 'confirmed' THEN now() ELSE confirmed_at END,
+    confirmed_at  = CASE WHEN v_new_status = 'confirmed'::booking_status THEN now() ELSE confirmed_at END,
     updated_at    = now()
   WHERE id = v_candidate.id;
 
@@ -98,7 +96,9 @@ BEGIN
 END;
 $$;
 
+DROP TRIGGER IF EXISTS promote_understudy_on_cancellation ON public.bookings;
 CREATE TRIGGER promote_understudy_on_cancellation
 AFTER UPDATE ON public.bookings
 FOR EACH ROW
+WHEN (OLD.status = 'confirmed' AND NEW.status = 'cancelled' AND OLD.is_understudy = false)
 EXECUTE FUNCTION public.promote_understudy_on_cancellation();

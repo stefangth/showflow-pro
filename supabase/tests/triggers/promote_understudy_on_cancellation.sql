@@ -12,7 +12,7 @@ BEGIN;
 
 CREATE EXTENSION IF NOT EXISTS pgtap WITH SCHEMA extensions;
 
-SELECT plan(10);
+SELECT plan(12);
 
 -- ────────────────────────────────────────────────────────────────────────────
 -- Shared fixtures
@@ -65,6 +65,15 @@ SELECT is(
 );
 
 -- ────────────────────────────────────────────────────────────────────────────
+-- Test 2b: confirmed_at is stamped when soft_booked understudy is promoted
+--          to confirmed (re-uses fixture from tests 1 & 2)
+-- ────────────────────────────────────────────────────────────────────────────
+SELECT ok(
+  (SELECT confirmed_at FROM public.bookings WHERE id = 'eeeeeeee-up00-0002-0000-000000000000') IS NOT NULL,
+  'test 2b: confirmed_at is set when soft_booked understudy is promoted to confirmed'
+);
+
+-- ────────────────────────────────────────────────────────────────────────────
 -- Test 3: Confirmed main-cast cancelled → suggested understudy promoted
 --         to soft_booked with is_understudy = false
 -- ────────────────────────────────────────────────────────────────────────────
@@ -81,6 +90,16 @@ SELECT is(
   (SELECT status::text FROM public.bookings WHERE id = 'eeeeeeee-up00-0004-0000-000000000000'),
   'soft_booked',
   'test 3: suggested understudy promoted to soft_booked when main-cast booking cancelled'
+);
+
+-- ────────────────────────────────────────────────────────────────────────────
+-- Test 3b: confirmed_at is NOT set when suggested understudy is only promoted
+--          to soft_booked (re-uses fixture from test 3)
+-- ────────────────────────────────────────────────────────────────────────────
+SELECT is(
+  (SELECT confirmed_at FROM public.bookings WHERE id = 'eeeeeeee-up00-0004-0000-000000000000'),
+  NULL,
+  'test 3b: confirmed_at is null when suggested understudy reaches soft_booked (not confirmed)'
 );
 
 -- ────────────────────────────────────────────────────────────────────────────
