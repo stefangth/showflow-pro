@@ -26,11 +26,11 @@ The four core tables — `shows`, `show_dates`, `bookings`, and `availability` �
 
 ### `shows`
 
-A show is a production template: program name, sub-program, default venue, required skills, and a default slot count. One show row represents the production as a whole, not any specific performance date.
+A show is a production template: program name, sub-program, required skills, and status. One show row represents the production as a whole, not any specific performance date. Venues are set per show date (not on the show itself); slot capacity comes from `app_settings`, not from a column on this table.
 
 ### `show_dates`
 
-Each row is one performance instance of a show: a specific date, city, optional venue override, and start/end times. One show typically has many dates. Status progresses from `open` → `partially_filled` → `fully_filled`, or `cancelled`.
+Each row is one performance instance of a show: a specific date, city, optional venue override, and session times. One show typically has many dates. Status progresses from `open` → `partially_filled` → `fully_filled`, or `cancelled`.
 
 ### `bookings`
 
@@ -50,13 +50,17 @@ An artist's declared availability on a **calendar date** (not tied to a specific
 This separation matters because:
 - One artist may be eligible for multiple shows on the same day (e.g. a matinée and an evening). They mark availability once; the booking system handles each show separately.
 - Availability can exist before any show date is scheduled.
-- Availability and bookings have different access patterns: artists write their own availability; bookings are created by producers or the auto-suggest engine.
+- Availability and bookings have different access patterns: artists write their own availability; bookings are created by the offer engine.
+
+### `blocked_dates`
+
+An artist's list of dates they are explicitly blocking — dates when they should not receive offers regardless of their general availability status. One row per (artist, date). The `open-offer-tier` function filters out artists with a `blocked_dates` entry before creating offers. Artists manage blocked dates via the calendar UI.
 
 ---
 
 ## Eligibility
 
-Before a producer can book an artist, the artist must be **eligible** for that show date. Eligibility is defined through casts.
+Before an artist can receive an offer for a show date, the artist must be **eligible** for that date. Eligibility is defined through casts.
 
 ### Casts and cast membership
 
@@ -84,68 +88,74 @@ Artists can only declare availability on dates returned by `useArtistEligibleDat
 
 ---
 
-## The Availability → Booking Flow
+## The Offer → Booking Flow
 
 This is the core workflow. Here is the full sequence:
 
 ```
-Artist marks "Available" on a date
+New show date arrives via Airtable sync (airtable-poll cron)
         │
         ▼
-availability table: INSERT/UPDATE { artist_id, date, status: 'available' }
+airtable-poll calls open-offer-tier for Tier 1
         │
         ▼
-AvailabilityPicker (client) invokes auto-suggest-bookings edge function
-for each non-cancelled show_date on that calendar day
+open-offer-tier edge function:
+  1. Resolves eligible artists for the tier (cast_city_priority table;
+     Tier 99 = ad-hoc cast via show_date_cast_eligibility)
+  2. Filters out: artists with existing non-cancelled bookings for this date,
+     artists with a blocked_dates entry for this date
+  3. Inserts suggested bookings for all remaining candidates
+     (no scoring/ranking — all eligible artists in the tier receive an offer)
+  4. offer_expires_at is left null until the offer digest is sent
+  5. Records the tier as opened in show_date_offer_tiers
         │
         ▼
-auto-suggest-bookings edge function:
-  1. Verify caller is available on this date (artist self-verification)
-  2. Resolve eligible artists for the show date (cast eligibility logic)
-  3. Filter out already-booked artists
-  4. Score remaining candidates:
-       Priority score    × 0.40
-       Skill match       × 0.35
-       Availability history (inverse recent booking count) × 0.25
-  5. Upsert top N candidates as bookings with status='suggested'
-     (idempotent — safe to re-run; duplicates are ignored)
+Daily offer digest email (send-offer-digest, 19:00 Berlin):
+  - Sends one consolidated email per artist listing all their pending offers
+  - Stamps digest_sent_at = now() and sets offer_expires_at = now() + offer_response_window_hours
+  - The expiry clock starts from when the artist is notified, not from offer creation
         │
         ▼
-Producer opens /bookings
-  - Show date status changes from "Open" → "Cast Pending"
-    (because suggested bookings now exist)
-  - Clicking the date opens ShowDateDetailSheet:
-      • "Cast" section: artists with suggested/soft_booked/confirmed bookings
-      • "Available to Book" section: artists who declared available but aren't booked yet
+Artist opens their calendar (ArtistAvailabilityCalendar)
+  - Dates with pending offers show an "Offer" indicator
+  - Clicking the date opens OfferResponseButtons:
+      Accept → booking status: suggested → soft_booked
+      Decline → booking status: suggested → cancelled (cancellation_reason: 'artist_declined')
         │
         ▼
-Producer reviews suggested artists and soft-books or confirms
+expire-offers runs hourly:
+  - Cancels suggested bookings where offer_expires_at < now() (status → cancelled)
+  - If a tier's window has fully closed (no pending, non-expired offers remain)
+    and accepted count < required slots:
+      → creates a cast_escalation_requested in-app notification + emails producers
+      → stamps escalation_notified_at (idempotent — fires once per tier)
         │
         ▼
-Booking status: suggested → soft_booked → confirmed
+Producer opens /bookings (ShowsBookingsPage)
+  - Show date shows "Partially Filled" once soft-booked bookings exist
+  - Clicking the date opens ShowDateDetailSheet: review soft-booked artists → confirm or cancel
+        │
+        ▼
+Daily confirmation digest email (send-confirmation-digest, 20:00 Berlin):
+  - Sends a confirmation summary to newly confirmed artists
 ```
 
 ### Slot counts and sub-program config
 
-Before the auto-suggest engine runs, it reads slot defaults from `app_settings` (key: `sub_program_slots_defaults`). Each sub-program (e.g. "Matinée", "Evening") must have a configured `main_cast` count and `understudies` count. If a sub-program has no slot config, the engine returns an error — configure missing sub-programs in **Settings → Scheduling**.
+Each sub-program (e.g. "Matinée", "Evening") must have a configured `main_cast` count and `understudies` count in `app_settings` (key: `sub_program_slots_defaults`). If a sub-program has no slot config, the show date status will never reach `fully_filled` and the UI shows an "Unconfigured" badge — configure missing sub-programs in **Settings → Scheduling**.
 
-### Soft-book expiry
+### Offer expiry
 
-Soft bookings that aren't confirmed within the configured window (`soft_book_expiry_hours`, default 48 h) are automatically cancelled by a scheduled database job. This prevents dates from being held indefinitely.
+Suggested offers that have not been accepted or declined expire once `offer_expires_at` passes. The expiry window (`offer_response_window_hours`, default 48 h) starts from the time the offer digest email is sent — not from when the offer was created. This gives artists the full configured window after they receive notification. The `expire-offers` function runs hourly and cancels any suggested booking whose `offer_expires_at` has passed.
 
 ### Understudy promotion
 
-If a confirmed main-cast artist cancels, any `is_understudy = true` booking with status `suggested` or `soft_booked` is automatically promoted to fill the slot.
+If a confirmed main-cast booking is cancelled, the system automatically promotes the best available understudy to fill the vacant slot. The promotion trigger selects from `is_understudy = true` bookings for the same show date with status `soft_booked` or `suggested`, preferring `soft_booked` over `suggested` and, within the same status, the earliest created booking.
 
-### Scoring weights (reference)
+- A `soft_booked` understudy → promoted to `confirmed`, `is_understudy = false`
+- A `suggested` understudy → promoted to `soft_booked`, `is_understudy = false`
 
-| Factor | Weight | Notes |
-|---|---|---|
-| Priority score | 40% | Artist's `priority_score` field (0–10 scale, normalised to 0–1) |
-| Skill match | 35% | Proportion of show's `required_skills` the artist has |
-| Availability history | 25% | Inverse of recent confirmed bookings (last 90 days); artists with fewer recent bookings score higher to distribute work |
-
-Weights are defined in `src/config/app.config.ts` (`BOOKING_CONFIG.SUGGEST_WEIGHTS`) and in the edge function. They must sum to 1.
+The promotion is recorded in `booking_audit_log` (action: `understudy_promoted`) and the promoted artist receives an `understudy_promoted` in-app notification.
 
 ---
 
@@ -155,8 +165,8 @@ Weights are defined in `src/config/app.config.ts` (`BOOKING_CONFIG.SUGGEST_WEIGH
 
 | Status | Meaning |
 |---|---|
-| `suggested` | Auto-suggest engine has nominated this artist; no commitment yet |
-| `soft_booked` | Producer has placed a hold; artist is tentatively scheduled |
+| `suggested` | Offer has been sent to this artist; no commitment yet |
+| `soft_booked` | Artist accepted the offer; producer still needs to confirm |
 | `confirmed` | Booking is locked in; artist is on the cast list |
 | `cancelled` | Booking cancelled; recorded in audit log, never deleted |
 
@@ -165,8 +175,8 @@ Weights are defined in `src/config/app.config.ts` (`BOOKING_CONFIG.SUGGEST_WEIGH
 | Status | Condition |
 |---|---|
 | Open | No bookings exist for this date |
-| Cast Pending | Some bookings exist but confirmed main cast < required slots |
-| Cast Confirmed | Confirmed main cast ≥ required slots |
+| Partially Filled | Some bookings exist but confirmed main cast < required slots |
+| Fully Filled | Confirmed main cast ≥ required slots |
 | Cancelled | show_date.status = 'cancelled' |
 | Unconfigured | No slot config found for this sub-program |
 
@@ -194,7 +204,7 @@ Chat threads become **read-only** after `CHAT_ARCHIVE_DAYS` (30 days) past the s
 
 ## Notifications
 
-In-app notifications are written to the `notifications` table (`user_id`, `type`, `payload`, `read_at`). They are created server-side only (edge functions or server mutations with appropriate RLS). Notification delivery requires `FLAGS.NOTIFICATIONS = true` (default on).
+In-app notifications are written to the `notifications` table (`user_id`, `type`, `title`, `message`, `read`, `related_entity_id`, `related_entity_type`). They are created server-side only (edge functions or triggers with appropriate RLS). Read state is a plain boolean `read` field. Notification delivery requires `FEATURES.NOTIFICATIONS = true` (default on).
 
 Transactional email uses the `send-transactional-email` edge function. Templates live in `supabase/functions/_shared/transactional-email-templates/` and are registered in `registry.ts`. New templates must be added to the registry to be deliverable.
 
@@ -204,7 +214,8 @@ Transactional email uses the `send-transactional-email` edge function. Templates
 
 | Setting | Location | Purpose |
 |---|---|---|
-| `soft_book_expiry_hours` | Settings → Scheduling | Hours before an unconfirmed soft booking auto-cancels |
+| `offer_response_window_hours` | Settings → Booking Engine | Hours after the offer digest email that an artist has to respond before the offer auto-expires (active setting; default 48 h) |
+| `soft_book_expiry_hours` | Settings → Scheduling | Legacy — superseded by `offer_response_window_hours`. Has no effect on current expiry logic. |
 | `sub_program_slots_defaults` | Settings → Scheduling | Main cast + understudy slot counts per sub-program |
 | `auto_suggest_enabled` | Settings → Booking Engine | Toggle auto-suggest globally |
 | `max_suggestions` | Settings → Booking Engine | Max candidates per slot |
@@ -212,4 +223,4 @@ Transactional email uses the `send-transactional-email` edge function. Templates
 | `notifications_enabled` | Settings → Notifications | Toggle in-app notifications |
 | `filters_visibility` | Settings → Filters | Which filter controls producers and artists see on each page |
 
-Static developer constants (feature flags, route definitions, scoring weights) live in `src/config/app.config.ts` and require a code deploy to change.
+Static developer constants (feature flags, route definitions) live in `src/config/app.config.ts` and require a code deploy to change.

@@ -1,0 +1,5 @@
+-- No-op: the notify_booking_transition GUC guard and the full
+-- promote_understudy_on_cancellation function were merged into
+-- 20260519000000_promote_understudy_on_cancellation.sql for atomic deployment.
+-- This file is retained so existing environments that already applied it
+-- do not show a missing-migration gap.
