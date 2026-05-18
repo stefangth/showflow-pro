@@ -26,7 +26,7 @@ BEGIN
     RETURN NULL;
   END IF;
 
-  -- Audit log (always)
+  -- Audit log: written for every user-driven status change (skipped for system promotions, which audit themselves)
   INSERT INTO public.booking_audit_log (booking_id, action, old_status, new_status, performed_by)
   VALUES (NEW.id, 'status_change', OLD.status::booking_status, NEW.status::booking_status, auth.uid());
 
