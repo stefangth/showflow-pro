@@ -161,5 +161,5 @@ EXECUTE FUNCTION public.promote_understudy_on_cancellation();
 
 -- Partial index to accelerate the understudy candidate lookup
 CREATE INDEX IF NOT EXISTS idx_bookings_understudy_candidate
-  ON public.bookings (show_date_id, created_at)
+  ON public.bookings (show_date_id, status, created_at)
   WHERE is_understudy = true AND status IN ('soft_booked', 'suggested');
