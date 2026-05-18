@@ -3,23 +3,34 @@ import type { ColumnDef, ColumnTemplate, ColumnTemplates } from './types';
 
 /**
  * Static enumeration of DB columns per table that the editor can surface.
- * Mirrors src/integrations/supabase/types.ts — keep in sync when adding columns.
+ * Source of truth: src/integrations/supabase/types.ts (auto-generated from DB schema).
+ * Run `npx supabase gen types typescript` to regenerate types, then update this list.
+ * Do NOT rename or drop columns here without a companion ALTER TABLE migration.
  */
 export const TABLE_COLUMNS: Record<string, readonly string[]> = {
   bookings: [
     'id', 'artist_id', 'show_date_id', 'status', 'is_understudy',
     'booked_by', 'confirmed_at', 'cancelled_at', 'cancellation_reason',
-    'notes', 'created_at', 'updated_at',
+    'notes', 'offered_at', 'offer_expires_at', 'offer_tier',
+    'digest_sent_at', 'confirmation_digest_sent_at', 'created_at', 'updated_at',
   ],
   show_dates: [
     'id', 'show_id', 'date', 'session_1', 'session_2', 'session_3', 'venue', 'city_id',
     'status', 'notes', 'airtable_record_id', 'created_at', 'updated_at',
   ],
   shows: ['id', 'program', 'sub_program', 'status', 'required_skills', 'created_by', 'created_at', 'updated_at'],
-  cities: ['id', 'name', 'country', 'created_at'],
-  artists: ['id', 'user_id', 'stage_name', 'email', 'phone', 'bio', 'skills', 'status', 'created_at', 'updated_at'],
+  cities: ['id', 'name', 'airtable_record_id', 'created_at'],
+  artists: ['id', 'user_id', 'name', 'email', 'phone', 'bio', 'status', 'created_at', 'updated_at'],
   // Computed/derived columns surfaced in the editor under a virtual table.
   _computed: ['day', 'slots', 'my_status', 'blocked'],
+};
+
+/** Human-readable labels for _computed virtual columns (no DB backing). */
+export const COMPUTED_LABELS: Record<string, string> = {
+  '_computed.day': 'Day',
+  '_computed.slots': 'Slots',
+  '_computed.my_status': 'My status',
+  '_computed.blocked': 'Availability',
 };
 
 /**
@@ -86,7 +97,6 @@ export function pageColumnDefs(pageKey: string): ColumnDef[] {
       const isRendered = renderedOrder !== undefined;
       defs.push({
         id,
-        label: id,
         table,
         column: col,
         defaultVisible: isRendered,
@@ -95,6 +105,26 @@ export function pageColumnDefs(pageKey: string): ColumnDef[] {
     }
   }
   return defs;
+}
+
+/**
+ * Given a list of columns and a label resolver, returns each column paired with
+ * its display label — falling back to the raw `table.column` id when two columns
+ * share the same label so they remain distinguishable.
+ */
+export function disambiguateLabels(
+  columns: ColumnTemplate[],
+  getLabel: (id: string) => string
+): { columnId: string; label: string }[] {
+  const counts = new Map<string, number>();
+  columns.forEach(c => {
+    const lbl = getLabel(c.columnId);
+    counts.set(lbl, (counts.get(lbl) ?? 0) + 1);
+  });
+  return columns.map(c => {
+    const lbl = getLabel(c.columnId);
+    return { columnId: c.columnId, label: counts.get(lbl)! > 1 ? c.columnId : lbl };
+  });
 }
 
 /** @deprecated Prefer pageColumnDefs(). Kept for callers still passing through. */
