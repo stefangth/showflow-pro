@@ -107,6 +107,26 @@ export function pageColumnDefs(pageKey: string): ColumnDef[] {
   return defs;
 }
 
+/**
+ * Given a list of columns and a label resolver, returns each column paired with
+ * its display label — falling back to the raw `table.column` id when two columns
+ * share the same label so they remain distinguishable.
+ */
+export function disambiguateLabels(
+  columns: ColumnTemplate[],
+  getLabel: (id: string) => string
+): { columnId: string; label: string }[] {
+  const counts = new Map<string, number>();
+  columns.forEach(c => {
+    const lbl = getLabel(c.columnId);
+    counts.set(lbl, (counts.get(lbl) ?? 0) + 1);
+  });
+  return columns.map(c => {
+    const lbl = getLabel(c.columnId);
+    return { columnId: c.columnId, label: counts.get(lbl)! > 1 ? c.columnId : lbl };
+  });
+}
+
 /** @deprecated Prefer pageColumnDefs(). Kept for callers still passing through. */
 export const COLUMN_REGISTRIES: Record<string, ColumnDef[]> = new Proxy({} as Record<string, ColumnDef[]>, {
   get: (_t, key: string) => pageColumnDefs(key),

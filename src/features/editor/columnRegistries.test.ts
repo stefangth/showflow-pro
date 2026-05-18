@@ -30,10 +30,11 @@ describe('columnRegistries / RPC allowlist sync', () => {
       'no migration defines get_column_descriptions — add one or check the migrations directory'
     ).not.toBeNull();
 
+    const arrayLiteral = authoritative!.match(/ANY\(ARRAY\[([^\]]+)\]/)?.[1] ?? '';
     const tables = Object.keys(TABLE_COLUMNS).filter(t => t !== '_computed');
     for (const table of tables) {
       expect(
-        authoritative,
+        arrayLiteral,
         `table '${table}' missing from get_column_descriptions allowlist`
       ).toContain(`'${table}'`);
     }

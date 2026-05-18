@@ -7,7 +7,7 @@ import { Separator } from '@/components/ui/separator';
 import { useAuth } from '@/features/auth/AuthContext';
 import type { AppRole } from '@/config/app.config';
 import { useEditor, useEditorConfig } from './EditorContext';
-import { pageColumnDefs, resolveColumnTemplate } from './columnRegistries';
+import { pageColumnDefs, resolveColumnTemplate, disambiguateLabels } from './columnRegistries';
 import type { ColumnTemplate } from './types';
 
 interface ColumnLayoutEditorProps {
@@ -45,21 +45,13 @@ export function ColumnLayoutEditor({ pageKey }: ColumnLayoutEditorProps) {
 
   const sorted = useMemo(() => [...draft].sort((a, b) => a.order - b.order), [draft]);
 
-  const chipItems = useMemo(() => {
-    const labelCounts = new Map<string, number>();
-    for (const col of sorted) {
-      const lbl = getColumnLabel(col.columnId);
-      labelCounts.set(lbl, (labelCounts.get(lbl) ?? 0) + 1);
-    }
-    return sorted.map(col => {
-      const baseLabel = getColumnLabel(col.columnId);
-      // Fall back to the full table.column id when two columns share the same
-      // label so admins can always distinguish them without needing the tooltip.
-      const isDuplicate = (labelCounts.get(baseLabel) ?? 1) > 1;
-      const label = isDuplicate ? col.columnId : baseLabel;
-      return { col, label };
-    });
-  }, [sorted, getColumnLabel]);
+  const chipItems = useMemo(
+    () => disambiguateLabels(sorted, getColumnLabel).map(({ columnId, label }) => ({
+      col: sorted.find(c => c.columnId === columnId)!,
+      label,
+    })),
+    [sorted, getColumnLabel]
+  );
 
   // ── Drag handlers ──────────────────────────────────────────────
 
