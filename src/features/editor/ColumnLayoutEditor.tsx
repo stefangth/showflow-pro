@@ -46,10 +46,12 @@ export function ColumnLayoutEditor({ pageKey }: ColumnLayoutEditorProps) {
   const sorted = useMemo(() => [...draft].sort((a, b) => a.order - b.order), [draft]);
 
   const chipItems = useMemo(
-    () => disambiguateLabels(sorted, getColumnLabel).map(({ columnId, label }) => ({
-      col: sorted.find(c => c.columnId === columnId)!,
-      label,
-    })),
+    () => {
+      const labelMap = new Map(
+        disambiguateLabels(sorted, getColumnLabel).map(({ columnId, label }) => [columnId, label])
+      );
+      return sorted.map(col => ({ col, label: labelMap.get(col.columnId) ?? col.columnId }));
+    },
     [sorted, getColumnLabel]
   );
 
