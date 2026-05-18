@@ -12,7 +12,7 @@ BEGIN;
 
 CREATE EXTENSION IF NOT EXISTS pgtap WITH SCHEMA extensions;
 
-SELECT plan(14);
+SELECT plan(16);
 
 -- ────────────────────────────────────────────────────────────────────────────
 -- Shared fixtures
@@ -29,19 +29,22 @@ ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value;
 -- (no show_assignments exist in this test, so the trigger falls back to admins).
 SET session_replication_role = replica;
 INSERT INTO auth.users (id, aud, role, email, email_confirmed_at, raw_app_meta_data, raw_user_meta_data, created_at, updated_at)
-VALUES ('aaaaaaaa-0d00-0001-0000-000000000000', 'authenticated', 'authenticated', 'up-admin@test.com', now(), '{"provider":"email"}'::jsonb, '{}'::jsonb, now(), now());
+VALUES
+  ('aaaaaaaa-0d00-0001-0000-000000000000', 'authenticated', 'authenticated', 'up-admin@test.com',  now(), '{"provider":"email"}'::jsonb, '{}'::jsonb, now(), now()),
+  ('aaaaaaaa-0d00-0002-0000-000000000000', 'authenticated', 'authenticated', 'up-artist2@test.com', now(), '{"provider":"email"}'::jsonb, '{}'::jsonb, now(), now());
 SET session_replication_role = DEFAULT;
 
 INSERT INTO public.user_roles (user_id, role)
 VALUES ('aaaaaaaa-0d00-0001-0000-000000000000', 'admin'::app_role);
 
-INSERT INTO public.artists (id, name) VALUES
-  ('bbbbbbbb-0d00-0001-0000-000000000000', 'UP Artist 1'),
-  ('bbbbbbbb-0d00-0002-0000-000000000000', 'UP Artist 2'),
-  ('bbbbbbbb-0d00-0003-0000-000000000000', 'UP Artist 3'),
-  ('bbbbbbbb-0d00-0004-0000-000000000000', 'UP Artist 4'),
-  ('bbbbbbbb-0d00-0005-0000-000000000000', 'UP Artist 5'),
-  ('bbbbbbbb-0d00-0006-0000-000000000000', 'UP Artist 6');
+-- Artist 2 has a user_id so the understudy_promoted notification path is exercised
+INSERT INTO public.artists (id, name, user_id) VALUES
+  ('bbbbbbbb-0d00-0001-0000-000000000000', 'UP Artist 1', NULL),
+  ('bbbbbbbb-0d00-0002-0000-000000000000', 'UP Artist 2', 'aaaaaaaa-0d00-0002-0000-000000000000'),
+  ('bbbbbbbb-0d00-0003-0000-000000000000', 'UP Artist 3', NULL),
+  ('bbbbbbbb-0d00-0004-0000-000000000000', 'UP Artist 4', NULL),
+  ('bbbbbbbb-0d00-0005-0000-000000000000', 'UP Artist 5', NULL),
+  ('bbbbbbbb-0d00-0006-0000-000000000000', 'UP Artist 6', NULL);
 
 INSERT INTO public.shows (id, program, sub_program)
 VALUES ('cccccccc-0d00-0001-0000-000000000000', 'theatre', 'musical');
@@ -81,6 +84,20 @@ SELECT is(
 SELECT ok(
   (SELECT confirmed_at FROM public.bookings WHERE id = 'eeeeeeee-0d00-0002-0000-000000000000') IS NOT NULL,
   'test 2b: confirmed_at is set when soft_booked understudy is promoted to confirmed'
+);
+
+-- ────────────────────────────────────────────────────────────────────────────
+-- Test 2c: understudy_promoted notification written to the promoted artist
+--          (artist 2 has user_id = aaaaaaaa-0d00-0002; re-uses test 1 fixture)
+-- ────────────────────────────────────────────────────────────────────────────
+SELECT ok(
+  EXISTS (
+    SELECT 1 FROM public.notifications
+    WHERE user_id = 'aaaaaaaa-0d00-0002-0000-000000000000'
+      AND type = 'understudy_promoted'
+      AND related_entity_id = 'dddddddd-0d00-0001-0000-000000000000'
+  ),
+  'test 2c: understudy_promoted notification written to the promoted artist'
 );
 
 -- ────────────────────────────────────────────────────────────────────────────
@@ -188,6 +205,18 @@ SELECT ok(
       AND action = 'understudy_promoted'
   ),
   'test 6: audit log row written with action understudy_promoted'
+);
+
+-- ────────────────────────────────────────────────────────────────────────────
+-- Test 6b: notify_booking_transition does NOT write a status_change entry for
+--          system-driven promotions (GUC guard suppression)
+-- ────────────────────────────────────────────────────────────────────────────
+SELECT is(
+  (SELECT count(*)::int FROM public.booking_audit_log
+   WHERE booking_id = 'eeeeeeee-0d00-0002-0000-000000000000'
+     AND action = 'status_change'),
+  0,
+  'test 6b: notify_booking_transition does NOT write a status_change entry for system-driven promotion'
 );
 
 -- ────────────────────────────────────────────────────────────────────────────
