@@ -49,6 +49,11 @@ BEGIN
     v_new_status := 'soft_booked'::booking_status;
   END IF;
 
+  -- Suppress notify_booking_transition for this system-driven status change.
+  -- Without this guard, that trigger fires and sends wrong "artist accepted offer"
+  -- notifications and calls resolve_show_assignments unnecessarily.
+  PERFORM set_config('app.promoting_understudy', 'true', true);
+
   -- Promote: move to main cast with the new status
   UPDATE public.bookings
   SET
@@ -57,6 +62,8 @@ BEGIN
     confirmed_at  = CASE WHEN v_new_status = 'confirmed'::booking_status THEN now() ELSE confirmed_at END,
     updated_at    = now()
   WHERE id = v_candidate.id;
+
+  PERFORM set_config('app.promoting_understudy', '', true);
 
   -- Audit log
   INSERT INTO public.booking_audit_log (booking_id, action, old_status, new_status, performed_by)
@@ -102,3 +109,8 @@ AFTER UPDATE ON public.bookings
 FOR EACH ROW
 WHEN (OLD.status = 'confirmed' AND NEW.status = 'cancelled' AND OLD.is_understudy = false)
 EXECUTE FUNCTION public.promote_understudy_on_cancellation();
+
+-- Partial index to accelerate the understudy candidate lookup
+CREATE INDEX IF NOT EXISTS idx_bookings_understudy_candidate
+  ON public.bookings (show_date_id, created_at)
+  WHERE is_understudy = true AND status IN ('soft_booked', 'suggested');
