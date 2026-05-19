@@ -173,6 +173,7 @@ export function CastDetailsSheet({ cast, open, onOpenChange, onArtistClick }: Pr
       qc.invalidateQueries({ queryKey: ['cast-eligibility', cast?.id] });
       qc.invalidateQueries({ queryKey: ['eligible-artists'] });
       qc.invalidateQueries({ queryKey: ['artist-eligible-dates'] });
+      toast.success('Eligibility updated');
     },
     onError: (e: any) => toast.error(e.message),
   });
