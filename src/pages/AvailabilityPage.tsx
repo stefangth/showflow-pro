@@ -277,6 +277,11 @@ function ArtistAvailability() {
                             </TableCell>
                           );
                         }
+                        if (booking?.status === 'soft_booked' || booking?.status === 'confirmed') {
+                          return (
+                            <TableCell key={colId} className="text-muted-foreground text-xs">—</TableCell>
+                          );
+                        }
                         return (
                           <TableCell key={colId} className="w-36">
                             <AvailabilityPicker artistId={artist.id} date={d.date} size="sm" />

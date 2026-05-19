@@ -221,6 +221,14 @@ export function ArtistAvailabilityCalendar({ artistId, eligibleDates }: Props) {
                   </p>
                   {suggestedIdByDate.has(dateStr) ? (
                     <OfferResponseButtons bookingId={suggestedIdByDate.get(dateStr)!} size="sm" />
+                  ) : softBookedSet.has(dateStr) ? (
+                    <p className="text-xs text-center text-muted-foreground">
+                      Hold placed — awaiting producer confirmation
+                    </p>
+                  ) : confirmedSet.has(dateStr) ? (
+                    <p className="text-xs text-center text-success">
+                      Booking confirmed
+                    </p>
                   ) : (
                     <AvailabilityPicker artistId={artistId} date={dateStr} size="sm" />
                   )}
