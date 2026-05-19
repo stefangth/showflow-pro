@@ -279,7 +279,7 @@ function ArtistAvailability() {
                         }
                         if (booking?.status === 'soft_booked' || booking?.status === 'confirmed') {
                           return (
-                            <TableCell key={colId} className="text-muted-foreground text-xs">—</TableCell>
+                            <TableCell key={colId} className="w-36 text-muted-foreground text-xs">—</TableCell>
                           );
                         }
                         return (
