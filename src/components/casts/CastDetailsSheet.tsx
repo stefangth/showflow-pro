@@ -10,7 +10,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Checkbox } from '@/components/ui/checkbox';
-import { useToast } from '@/hooks/use-toast';
+import { toast } from 'sonner';
 import { Search, X, Plus, Users, Layers, Pencil, Check } from 'lucide-react';
 import type { Artist, Cast, City, Show } from '@/types';
 import { showLabel } from '@/types';
@@ -27,7 +27,6 @@ export function CastDetailsSheet({ cast, open, onOpenChange, onArtistClick }: Pr
   const { isEditorMode } = useEditorConfig();
   const isRealAdmin = roles.includes('admin');
   const canManage = hasRole('admin') || hasRole('producer');
-  const { toast } = useToast();
   const qc = useQueryClient();
   const [search, setSearch] = useState('');
   const [editMode, setEditMode] = useState(false);
@@ -45,9 +44,9 @@ export function CastDetailsSheet({ cast, open, onOpenChange, onArtistClick }: Pr
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['casts'] });
       setEditMode(false);
-      toast({ title: 'Cast updated' });
+      toast.success('Cast updated');
     },
-    onError: (e: any) => toast({ title: 'Error', description: e.message, variant: 'destructive' }),
+    onError: (e: any) => toast.error(e.message),
   });
 
   function startEdit() {
@@ -135,9 +134,9 @@ export function CastDetailsSheet({ cast, open, onOpenChange, onArtistClick }: Pr
       qc.invalidateQueries({ queryKey: ['artist-casts'] });
       qc.invalidateQueries({ queryKey: ['eligible-artists'] });
       qc.invalidateQueries({ queryKey: ['artist-eligible-dates'] });
-      toast({ title: 'Artist added to cast' });
+      toast.success('Artist added to cast');
     },
-    onError: (e: any) => toast({ title: 'Error', description: e.message, variant: 'destructive' }),
+    onError: (e: any) => toast.error(e.message),
   });
 
   const removeMember = useMutation({
@@ -151,9 +150,9 @@ export function CastDetailsSheet({ cast, open, onOpenChange, onArtistClick }: Pr
       qc.invalidateQueries({ queryKey: ['artist-casts'] });
       qc.invalidateQueries({ queryKey: ['eligible-artists'] });
       qc.invalidateQueries({ queryKey: ['artist-eligible-dates'] });
-      toast({ title: 'Artist removed from cast' });
+      toast.success('Artist removed from cast');
     },
-    onError: (e: any) => toast({ title: 'Error', description: e.message, variant: 'destructive' }),
+    onError: (e: any) => toast.error(e.message),
   });
 
   const toggleEligibility = useMutation({
@@ -175,7 +174,7 @@ export function CastDetailsSheet({ cast, open, onOpenChange, onArtistClick }: Pr
       qc.invalidateQueries({ queryKey: ['eligible-artists'] });
       qc.invalidateQueries({ queryKey: ['artist-eligible-dates'] });
     },
-    onError: (e: any) => toast({ title: 'Error', description: e.message, variant: 'destructive' }),
+    onError: (e: any) => toast.error(e.message),
   });
 
   const candidates = (artists ?? []).filter(a =>

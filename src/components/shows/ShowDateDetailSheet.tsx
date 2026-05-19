@@ -154,6 +154,7 @@ export function ShowDateDetailSheet({ showDateId, open, onOpenChange }: Props) {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['show-date-detail', showDateId] });
+      queryClient.invalidateQueries({ queryKey: ['show-dates'] });
       queryClient.invalidateQueries({ queryKey: ['eligible-artists'] });
       queryClient.invalidateQueries({ queryKey: ['artist-eligible-dates'] });
       toast.success('City updated');
