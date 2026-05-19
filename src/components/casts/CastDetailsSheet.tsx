@@ -136,7 +136,7 @@ export function CastDetailsSheet({ cast, open, onOpenChange, onArtistClick }: Pr
       qc.invalidateQueries({ queryKey: ['artist-eligible-dates'] });
       toast.success('Artist added to cast');
     },
-    onError: (e: any) => toast.error(e.message),
+    onError: (e: any) => toast.error('Failed to add artist', { description: e.message }),
   });
 
   const removeMember = useMutation({
@@ -152,7 +152,7 @@ export function CastDetailsSheet({ cast, open, onOpenChange, onArtistClick }: Pr
       qc.invalidateQueries({ queryKey: ['artist-eligible-dates'] });
       toast.success('Artist removed from cast');
     },
-    onError: (e: any) => toast.error(e.message),
+    onError: (e: any) => toast.error('Failed to remove artist', { description: e.message }),
   });
 
   const toggleEligibility = useMutation({
@@ -175,7 +175,7 @@ export function CastDetailsSheet({ cast, open, onOpenChange, onArtistClick }: Pr
       qc.invalidateQueries({ queryKey: ['artist-eligible-dates'] });
       toast.success('Eligibility updated');
     },
-    onError: (e: any) => toast.error(e.message),
+    onError: (e: any) => toast.error('Failed to update eligibility', { description: e.message }),
   });
 
   const candidates = (artists ?? []).filter(a =>
