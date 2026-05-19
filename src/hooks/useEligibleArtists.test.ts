@@ -147,6 +147,90 @@ describe("useEligibleArtists", () => {
     );
   });
 
+  it("deduplicates castIds when a cast appears in both show+city and per-date override", async () => {
+    vi.mocked(supabase.from).mockImplementation((table: string) => {
+      if (table === "show_cast_eligibility") {
+        return {
+          select: vi.fn().mockReturnValue({
+            eq: vi.fn().mockReturnValue({
+              eq: vi.fn().mockResolvedValue({
+                data: [{ cast_id: "cast-1" }],
+                error: null,
+              }),
+            }),
+          }),
+        } as any;
+      }
+      if (table === "show_date_cast_eligibility") {
+        return {
+          select: vi.fn().mockReturnValue({
+            eq: vi.fn().mockResolvedValue({
+              data: [{ cast_id: "cast-1" }], // same cast as show+city
+              error: null,
+            }),
+          }),
+        } as any;
+      }
+      if (table === "cast_members") {
+        return {
+          select: vi.fn().mockReturnValue({
+            in: vi.fn().mockResolvedValue({
+              data: [{ artist_id: "artist-1" }],
+              error: null,
+            }),
+          }),
+        } as any;
+      }
+      return {} as any;
+    });
+
+    const { result } = renderHook(
+      () => useEligibleArtists("show-1", "date-1", "city-1"),
+      { wrapper: makeWrapper() }
+    );
+
+    await waitFor(() => expect(result.current.isSuccess).toBe(true));
+    expect(result.current.data?.castIds).toEqual(["cast-1"]);
+    const castMembersCalls = vi.mocked(supabase.from).mock.calls.filter(([t]) => t === "cast_members");
+    expect(castMembersCalls.length).toBe(1);
+  });
+
+  it("returns override cast in castIds when only show_date_cast_eligibility has it (no city)", async () => {
+    vi.mocked(supabase.from).mockImplementation((table: string) => {
+      if (table === "show_date_cast_eligibility") {
+        return {
+          select: vi.fn().mockReturnValue({
+            eq: vi.fn().mockResolvedValue({
+              data: [{ cast_id: "cast-override" }],
+              error: null,
+            }),
+          }),
+        } as any;
+      }
+      if (table === "cast_members") {
+        return {
+          select: vi.fn().mockReturnValue({
+            in: vi.fn().mockResolvedValue({
+              data: [{ artist_id: "artist-override" }],
+              error: null,
+            }),
+          }),
+        } as any;
+      }
+      return {} as any;
+    });
+
+    const { result } = renderHook(
+      () => useEligibleArtists("show-1", "date-1", null), // no city → skip show_cast_eligibility
+      { wrapper: makeWrapper() }
+    );
+
+    await waitFor(() => expect(result.current.isSuccess).toBe(true));
+    expect(result.current.data?.castIds).toEqual(["cast-override"]);
+    expect(result.current.data?.artistIds?.has("artist-override")).toBe(true);
+    expect(vi.mocked(supabase.from)).not.toHaveBeenCalledWith("show_cast_eligibility");
+  });
+
   it("reacts to changed showDateId", async () => {
     const makeChain = (dateId: string) => ({
       select: vi.fn().mockReturnValue({
