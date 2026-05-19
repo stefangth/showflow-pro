@@ -153,7 +153,6 @@ export function ShowDateDetailSheet({ showDateId, open, onOpenChange }: Props) {
       if (error) throw error;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['bookings'] });
       queryClient.invalidateQueries({ queryKey: ['show-date-detail', showDateId] });
       queryClient.invalidateQueries({ queryKey: ['eligible-artists'] });
       queryClient.invalidateQueries({ queryKey: ['artist-eligible-dates'] });

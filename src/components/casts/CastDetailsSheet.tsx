@@ -135,6 +135,7 @@ export function CastDetailsSheet({ cast, open, onOpenChange, onArtistClick }: Pr
       qc.invalidateQueries({ queryKey: ['artist-casts'] });
       qc.invalidateQueries({ queryKey: ['eligible-artists'] });
       qc.invalidateQueries({ queryKey: ['artist-eligible-dates'] });
+      toast({ title: 'Artist added to cast' });
     },
     onError: (e: any) => toast({ title: 'Error', description: e.message, variant: 'destructive' }),
   });
@@ -150,6 +151,7 @@ export function CastDetailsSheet({ cast, open, onOpenChange, onArtistClick }: Pr
       qc.invalidateQueries({ queryKey: ['artist-casts'] });
       qc.invalidateQueries({ queryKey: ['eligible-artists'] });
       qc.invalidateQueries({ queryKey: ['artist-eligible-dates'] });
+      toast({ title: 'Artist removed from cast' });
     },
     onError: (e: any) => toast({ title: 'Error', description: e.message, variant: 'destructive' }),
   });
