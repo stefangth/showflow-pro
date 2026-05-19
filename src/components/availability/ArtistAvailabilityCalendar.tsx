@@ -220,7 +220,7 @@ export function ArtistAvailabilityCalendar({ artistId, eligibleDates }: Props) {
                     {format(day, 'EEE, dd/MM/yyyy')}
                   </p>
                   {isConfirmed ? (
-                    <p className="text-xs text-center text-success-foreground">
+                    <p className="text-xs text-center text-success">
                       Booking confirmed
                     </p>
                   ) : isSoftBooked ? (
