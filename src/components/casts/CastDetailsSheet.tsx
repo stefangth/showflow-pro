@@ -133,6 +133,8 @@ export function CastDetailsSheet({ cast, open, onOpenChange, onArtistClick }: Pr
       qc.invalidateQueries({ queryKey: ['cast-members', cast?.id] });
       qc.invalidateQueries({ queryKey: ['cast-members-counts'] });
       qc.invalidateQueries({ queryKey: ['artist-casts'] });
+      qc.invalidateQueries({ queryKey: ['eligible-artists'] });
+      qc.invalidateQueries({ queryKey: ['artist-eligible-dates'] });
     },
     onError: (e: any) => toast({ title: 'Error', description: e.message, variant: 'destructive' }),
   });
@@ -146,6 +148,8 @@ export function CastDetailsSheet({ cast, open, onOpenChange, onArtistClick }: Pr
       qc.invalidateQueries({ queryKey: ['cast-members', cast?.id] });
       qc.invalidateQueries({ queryKey: ['cast-members-counts'] });
       qc.invalidateQueries({ queryKey: ['artist-casts'] });
+      qc.invalidateQueries({ queryKey: ['eligible-artists'] });
+      qc.invalidateQueries({ queryKey: ['artist-eligible-dates'] });
     },
     onError: (e: any) => toast({ title: 'Error', description: e.message, variant: 'destructive' }),
   });
@@ -167,6 +171,7 @@ export function CastDetailsSheet({ cast, open, onOpenChange, onArtistClick }: Pr
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['cast-eligibility', cast?.id] });
       qc.invalidateQueries({ queryKey: ['eligible-artists'] });
+      qc.invalidateQueries({ queryKey: ['artist-eligible-dates'] });
     },
     onError: (e: any) => toast({ title: 'Error', description: e.message, variant: 'destructive' }),
   });

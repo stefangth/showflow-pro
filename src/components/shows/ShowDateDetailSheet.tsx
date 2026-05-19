@@ -155,6 +155,7 @@ export function ShowDateDetailSheet({ showDateId, open, onOpenChange }: Props) {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['bookings'] });
       queryClient.invalidateQueries({ queryKey: ['show-date-detail', showDateId] });
+      queryClient.invalidateQueries({ queryKey: ['eligible-artists'] });
       toast.success('City updated');
     },
     onError: (err: any) => toast.error(err.message),
@@ -365,18 +366,27 @@ export function ShowDateDetailSheet({ showDateId, open, onOpenChange }: Props) {
                     </div>
 
                     {(inheritedCastIds.size > 0 || overrideCastIds.size > 0) && (
-                      <div className="flex flex-wrap gap-1">
-                        {Array.from(inheritedCastIds).map(cid => (
-                          <Badge key={cid} variant="outline" className="text-xs">
-                            {casts?.find(c => c.id === cid)?.name}
-                            <span className="ml-1 opacity-60">inherited</span>
-                          </Badge>
-                        ))}
-                        {Array.from(overrideCastIds).map(cid => (
-                          <Badge key={cid} variant="secondary" className="text-xs">
-                            {casts?.find(c => c.id === cid)?.name}
-                          </Badge>
-                        ))}
+                      <div className="space-y-1">
+                        <div className="flex flex-wrap gap-1">
+                          {Array.from(inheritedCastIds).map(cid => (
+                            <Badge key={cid} variant="outline" className="text-xs">
+                              {casts?.find(c => c.id === cid)?.name}
+                              <span className="ml-1 opacity-60">
+                                inherited{showDate.city?.name ? ` via ${showDate.city.name}` : ''}
+                              </span>
+                            </Badge>
+                          ))}
+                          {Array.from(overrideCastIds).map(cid => (
+                            <Badge key={cid} variant="secondary" className="text-xs">
+                              {casts?.find(c => c.id === cid)?.name}
+                            </Badge>
+                          ))}
+                        </div>
+                        {inheritedCastIds.size > 0 && (
+                          <p className="text-xs text-muted-foreground">
+                            Inherited casts come from the city eligibility matrix in Settings → Casts. Update the city above or adjust cast eligibility there.
+                          </p>
+                        )}
                       </div>
                     )}
                   </CardContent>
