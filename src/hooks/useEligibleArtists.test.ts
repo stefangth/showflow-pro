@@ -226,6 +226,7 @@ describe("useEligibleArtists", () => {
     await waitFor(() => expect(result.current.isSuccess).toBe(true));
     expect(result.current.data?.castIds).toEqual(["cast-override"]);
     expect(result.current.data?.artistIds?.has("artist-override")).toBe(true);
+    expect(vi.mocked(supabase.from)).not.toHaveBeenCalledWith("show_cast_eligibility");
   });
 
   it("reacts to changed showDateId", async () => {
