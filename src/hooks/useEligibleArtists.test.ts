@@ -191,7 +191,6 @@ describe("useEligibleArtists", () => {
 
     await waitFor(() => expect(result.current.isSuccess).toBe(true));
     expect(result.current.data?.castIds).toEqual(["cast-1"]);
-    expect(result.current.data?.castIds.length).toBe(1);
   });
 
   it("returns override cast in castIds when only show_date_cast_eligibility has it (no city)", async () => {

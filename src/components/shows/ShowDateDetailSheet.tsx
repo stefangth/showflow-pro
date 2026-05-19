@@ -156,6 +156,7 @@ export function ShowDateDetailSheet({ showDateId, open, onOpenChange }: Props) {
       queryClient.invalidateQueries({ queryKey: ['bookings'] });
       queryClient.invalidateQueries({ queryKey: ['show-date-detail', showDateId] });
       queryClient.invalidateQueries({ queryKey: ['eligible-artists'] });
+      queryClient.invalidateQueries({ queryKey: ['artist-eligible-dates'] });
       toast.success('City updated');
     },
     onError: (err: any) => toast.error(err.message),
@@ -181,6 +182,7 @@ export function ShowDateDetailSheet({ showDateId, open, onOpenChange }: Props) {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['show-date-cast-eligibility', showDateId] });
       queryClient.invalidateQueries({ queryKey: ['eligible-artists'] });
+      queryClient.invalidateQueries({ queryKey: ['artist-eligible-dates'] });
     },
     onError: (err: any) => toast.error(err.message),
   });
