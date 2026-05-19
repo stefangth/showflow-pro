@@ -171,7 +171,7 @@ export function ShowDateDetailSheet({ showDateId, open, onOpenChange }: Props) {
         if (error) throw error;
       } else {
         const row = dateCastOverrides?.find(r => r.cast_id === castId);
-        if (!row) return;
+        if (!row) throw new Error('Cast override not found — try refreshing');
         const { error } = await supabase
           .from('show_date_cast_eligibility')
           .delete()
