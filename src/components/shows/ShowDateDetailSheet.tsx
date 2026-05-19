@@ -385,7 +385,7 @@ export function ShowDateDetailSheet({ showDateId, open, onOpenChange }: Props) {
                         </div>
                         {inheritedCastIds.size > 0 && (
                           <p className="text-xs text-muted-foreground">
-                            Inherited casts come from the city eligibility matrix in Settings → Casts. Update the city above or adjust cast eligibility there.
+                            Inherited casts come from the city eligibility matrix in Settings → Cities &amp; Casts. Update the city above or adjust cast eligibility there.
                           </p>
                         )}
                       </div>
