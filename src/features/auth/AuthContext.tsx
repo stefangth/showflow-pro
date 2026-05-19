@@ -7,9 +7,9 @@ import type { AppRole } from '@/config/app.config';
 const REALTIME_INVALIDATIONS: Array<{ table: string; keys: unknown[][] }> = [
   { table: 'bookings',                   keys: [['bookings']] },
   { table: 'show_dates',                 keys: [['show-dates'], ['dashboard-upcoming-dates']] },
-  { table: 'show_date_cast_eligibility', keys: [['show-date-cast-eligibility'], ['eligible-artists']] },
-  { table: 'show_cast_eligibility',      keys: [['cast-eligibility'], ['eligible-artists']] },
-  { table: 'cast_members',              keys: [['cast-members'], ['artist-casts'], ['my-cast-memberships'], ['cast-members-counts']] },
+  { table: 'show_date_cast_eligibility', keys: [['show-date-cast-eligibility'], ['eligible-artists'], ['artist-eligible-dates']] },
+  { table: 'show_cast_eligibility',      keys: [['cast-eligibility'], ['eligible-artists'], ['artist-eligible-dates']] },
+  { table: 'cast_members',              keys: [['cast-members'], ['artist-casts'], ['my-cast-memberships'], ['cast-members-counts'], ['artist-eligible-dates']] },
   { table: 'artists',                    keys: [['artists'], ['my-artist'], ['my-artist-producer']] },
   { table: 'shows',                      keys: [['show'], ['shows-for-eligibility'], ['shows-sub-programs']] },
   { table: 'casts',                      keys: [['casts']] },
