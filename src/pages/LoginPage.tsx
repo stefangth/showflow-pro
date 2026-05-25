@@ -83,7 +83,7 @@ export default function LoginPage() {
             </form>
 
             <p className="text-center text-xs text-muted-foreground">
-              New here? Sign in with Google to request access. An administrator will review your account before you can use the app.
+              New here? <a href="https://showflow.pro/signup">Book a demo</a>
             </p>
           </CardContent>
         </Card>
