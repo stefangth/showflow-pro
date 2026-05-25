@@ -24,7 +24,7 @@ function friendlyAuthError(message: string): string {
   if (m.includes('network') || m.includes('failed to fetch')) {
     return 'Network error. Check your connection and try again.';
   }
-  return message;
+  return 'Something went wrong. Please try again.';
 }
 
 export default function LoginPage() {
@@ -33,11 +33,14 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const emailRef = useRef<HTMLInputElement>(null);
+  const loadingRef = useRef(false);
   const { signIn } = useAuth();
   const navigate = useNavigate();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (loadingRef.current) return;
+    loadingRef.current = true;
     setLoading(true);
     setError(null);
     try {
@@ -48,6 +51,7 @@ export default function LoginPage() {
       setPassword('');
       requestAnimationFrame(() => emailRef.current?.focus());
     } finally {
+      loadingRef.current = false;
       setLoading(false);
     }
   };
@@ -64,17 +68,21 @@ export default function LoginPage() {
             <CardDescription>Sign in to manage your bookings</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
-            {error && (
-              <Alert variant="destructive" aria-live="assertive">
-                <AlertCircle className="h-4 w-4" />
-                <AlertDescription>{error}</AlertDescription>
-              </Alert>
-            )}
+            <Alert
+              variant="destructive"
+              aria-live="assertive"
+              aria-atomic="true"
+              className={!error ? 'hidden' : ''}
+            >
+              <AlertCircle className="h-4 w-4" />
+              <AlertDescription>{error ?? ''}</AlertDescription>
+            </Alert>
 
             <form onSubmit={handleSubmit} className="space-y-4">
               <div className="space-y-2">
-                <label className="text-sm font-medium">Email</label>
+                <label htmlFor="email" className="text-sm font-medium">Email</label>
                 <Input
+                  id="email"
                   ref={emailRef}
                   type="email"
                   value={email}
@@ -84,8 +92,9 @@ export default function LoginPage() {
                 />
               </div>
               <div className="space-y-2">
-                <label className="text-sm font-medium">Password</label>
+                <label htmlFor="password" className="text-sm font-medium">Password</label>
                 <Input
+                  id="password"
                   type="password"
                   value={password}
                   onChange={e => { setPassword(e.target.value); if (error) setError(null); }}
@@ -99,7 +108,15 @@ export default function LoginPage() {
             </form>
 
             <p className="text-center text-xs text-muted-foreground">
-              New here? <a href="https://showflow.pro/signup">Book a demo</a>
+              New here?{' '}
+              <a
+                href="https://showflow.pro/signup"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="underline text-foreground hover:text-primary"
+              >
+                Book a demo
+              </a>
             </p>
           </CardContent>
         </Card>
