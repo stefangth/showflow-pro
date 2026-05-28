@@ -5,6 +5,8 @@ import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { AuthProvider } from "@/features/auth/AuthContext";
 import { EditorProvider } from "@/features/editor/EditorContext";
+import { ConsentProvider } from "@/features/consent/ConsentContext";
+import { CookieConsentBanner } from "@/components/consent/CookieConsentBanner";
 import { ProtectedRoute } from "@/features/auth/ProtectedRoute";
 import AppLayout from "@/components/layout/AppLayout";
 import { ROUTES } from "@/config/app.config";
@@ -17,6 +19,8 @@ import SettingsPage from "./pages/SettingsPage";
 import ChatsListPage from "./pages/ChatsListPage";
 import ArtistsPage from "./pages/ArtistsPage";
 import UnsubscribePage from "./pages/UnsubscribePage";
+import PrivacyPage from "./pages/PrivacyPage";
+import ImpressumPage from "./pages/ImpressumPage";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -27,6 +31,7 @@ const App = () => (
       <Toaster />
       <Sonner />
       <BrowserRouter>
+        <ConsentProvider>
         <AuthProvider>
           <EditorProvider>
           <Routes>
@@ -41,10 +46,14 @@ const App = () => (
             <Route path={ROUTES.SETTINGS} element={<ProtectedRoute requiredRoles={['admin', 'producer']}><AppLayout><SettingsPage /></AppLayout></ProtectedRoute>} />
             <Route path={ROUTES.CHATS} element={<ProtectedRoute><AppLayout><ChatsListPage /></AppLayout></ProtectedRoute>} />
             <Route path="/unsubscribe" element={<UnsubscribePage />} />
+            <Route path={ROUTES.PRIVACY} element={<PrivacyPage />} />
+            <Route path={ROUTES.IMPRESSUM} element={<ImpressumPage />} />
             <Route path="*" element={<NotFound />} />
           </Routes>
           </EditorProvider>
         </AuthProvider>
+        <CookieConsentBanner />
+        </ConsentProvider>
       </BrowserRouter>
     </TooltipProvider>
   </QueryClientProvider>

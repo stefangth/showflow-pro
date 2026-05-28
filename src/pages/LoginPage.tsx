@@ -6,7 +6,9 @@ import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { AlertCircle } from 'lucide-react';
+import { Link } from 'react-router-dom';
 import { ROUTES, APP_META } from '@/config/app.config';
+import { useConsent } from '@/features/consent/ConsentContext';
 import { motion } from 'framer-motion';
 import { StageMark } from '@/components/brand/StageMark';
 
@@ -35,6 +37,7 @@ export default function LoginPage() {
   const emailRef = useRef<HTMLInputElement>(null);
   const loadingRef = useRef(false);
   const { signIn } = useAuth();
+  const { openPreferences } = useConsent();
   const navigate = useNavigate();
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -117,6 +120,19 @@ export default function LoginPage() {
               >
                 Book a demo
               </a>
+            </p>
+            <p className="text-center text-xs text-muted-foreground">
+              <Link to={ROUTES.PRIVACY} className="underline hover:text-foreground">
+                Privacy
+              </Link>
+              {' · '}
+              <Link to={ROUTES.IMPRESSUM} className="underline hover:text-foreground">
+                Impressum
+              </Link>
+              {' · '}
+              <button onClick={openPreferences} className="underline hover:text-foreground">
+                Cookie settings
+              </button>
             </p>
           </CardContent>
         </Card>
