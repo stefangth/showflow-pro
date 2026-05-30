@@ -6,7 +6,7 @@
 
 ## Current date
 
-2026-05-17
+2026-05-30
 
 ---
 
@@ -16,7 +16,7 @@
 |--------|---------|
 | `main` | Production — never push directly |
 | `dev` | Integration target for PRs |
-| `claude/update-documentation-CbfSj` | Current Claude Code session (docs update) |
+| `claude/stoic-johnson-r4Z6r` | Current Claude Code session (docs update) |
 
 ---
 
@@ -80,6 +80,11 @@ Edge functions additionally use `SUPABASE_SERVICE_ROLE_KEY` (set in Supabase das
 
 | Date | Change |
 |------|--------|
+| 2026-05-30 | Updated `CLAUDE.md` and `memory.md` — documented GDPR consent system (`features/consent/`, `components/consent/`), public PrivacyPage + ImpressumPage routes, `docs/legal/` directory, `ConsentProvider` app wrapper, and `useConsent()` usage pattern |
+| 2026-05-28 | Added GDPR privacy policy, impressum, and cookie consent system (#65) — `features/consent/ConsentContext`, `components/consent/CookieConsentBanner` + `CookieConsentDialog`, public PrivacyPage + ImpressumPage, `docs/legal/` with EN/DE markdown docs, login page footer links |
+| 2026-05-28 | Show inline error on failed login, hid Google sign-in button (#64) |
+| 2026-05-28 | Fixed cast inheritance invalidation chain (#62) — bookings query key busting |
+| 2026-05-28 | Fixed: hide block-date button when artist already has a booking (#60) |
 | 2026-05-17 | Updated `CLAUDE.md` and `memory.md` — corrected FLAGS→FEATURES, added editor module, artists/ dir, missing pages, ProtectedRoute prop name, clarified DB-stored booking settings |
 | 2026-04-26 | Restored `ArtistsPage` — re-wired routing and nav (admin + producer only) |
 | 2026-04-26 | Built `src/features/editor/` — admin-only UI editor mode (page access, column templates, table permissions stored in `app_settings`) |
