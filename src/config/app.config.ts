@@ -58,6 +58,7 @@ export const ROUTES = {
   CHATS: '/chats',
   PRIVACY: '/privacy',
   IMPRESSUM: '/impressum',
+  UNSUBSCRIBE: '/unsubscribe',
 } as const;
 
 /** Number of days after a show date that its chat is hidden from the UI */

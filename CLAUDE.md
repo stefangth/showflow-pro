@@ -76,6 +76,7 @@ src/
     calendar/      # EntityCalendar (shared month grid)
     casts/         # Cast grouping UI (dialog, sheet, section)
     chat/          # ChatPanel, MessageBubble (per-show-date threads)
+    consent/       # CookieConsentBanner (bottom-fixed GDPR banner), CookieConsentDialog (per-category toggles)
     dashboard/     # Role-specific dashboards (ArtistDashboard, …)
     filters/       # Reusable filter/sort/view-toggle controls
     shows/         # ShowDateDetailSheet — the full per-date booking management surface
@@ -85,6 +86,9 @@ src/
     app.config.ts  # Feature flags (FEATURES), route constants (ROUTES), BOOKING_CONFIG, CHAT_ARCHIVE_DAYS
   features/
     auth/          # AuthContext, ProtectedRoute, ApprovalGate, role helpers
+    consent/       # ConsentContext, ConsentProvider, useConsent hook — localStorage-backed GDPR consent state
+                   #   (key: showflow.consent.v1; categories: analytics, sessionReplay, errorTracking)
+                   #   ConsentProvider wraps the routing tree (inside BrowserRouter, outside AuthProvider/EditorProvider).
     editor/        # Admin-only UI editor: EditorContext, EditorToolbar, EditorSidePanel,
                    #   ColumnLayoutEditor, columnRegistries, types.
                    #   Persists page access / column templates / table permissions in
@@ -105,11 +109,15 @@ src/
   pages/           # One file per route, default-exported
                    #   Key pages: DashboardPage, ShowsBookingsPage (ROUTES.BOOKINGS),
                    #   ArtistsPage (admin+producer), AvailabilityPage (artist),
-                   #   AdminPage, SettingsPage, ChatsListPage, UnsubscribePage (public)
+                   #   AdminPage, SettingsPage, ChatsListPage
+                   #   Public pages (no auth): UnsubscribePage, PrivacyPage, ImpressumPage
                    #   ROUTES.PROFILE and ROUTES.RESET_PASSWORD are defined but have
                    #   no pages yet — reserved for future implementation.
                    #   /signup redirects to /login (no standalone signup page).
   types/           # Domain types extending Supabase row types
+docs/
+  app-logic.md    # Domain guide (roles, data model, booking flow) — for admins/producers
+  legal/          # Privacy policy + impressum in EN/DE (served by PrivacyPage, ImpressumPage)
 supabase/
   functions/       # Deno edge functions
     _shared/transactional-email-templates/  # React Email templates + registry
@@ -133,6 +141,8 @@ supabase/
 - **Airtable sync is mocked.** The polling loop is not wired up; the Settings page toggles a flag the sync worker will read once implemented.
 - **Feature flags** live in `app.config.ts` as the `FEATURES` object. Check with `if (FEATURES.FEATURE_NAME) { ... }`. Wrap entire feature blocks, not individual lines. Don't build UI for a flag that's `false` unless wiring it up in the same change.
 - **Admin-only editor mode:** `EditorProvider` (wraps the entire app in `App.tsx`) exposes `isEditorMode`. Admins in editor mode bypass route-level role gates — `ProtectedRoute` reads `pageAccess` from `useEditorConfig()` and uses DB-stored role overrides instead of the `requiredRoles` prop. Never use `isEditorMode` to skip server-side RLS checks.
+- **GDPR consent system:** `ConsentProvider` wraps the routing tree in App.tsx (inside BrowserRouter, outside AuthProvider/EditorProvider). `CookieConsentBanner` is rendered globally inside `ConsentProvider`; it is visible when `!hasDecided` and while the preferences dialog is closed (`!preferencesOpen`). Consent choices (analytics, sessionReplay, errorTracking) are persisted in `localStorage` under `showflow.consent.v1`. Read choices via `useConsent()`. Only wire analytics/session-replay/error-tracking SDKs based on the returned flags — never call them unconditionally.
+- **Public routes:** `ROUTES.PRIVACY` (`/privacy`), `ROUTES.IMPRESSUM` (`/impressum`), and `ROUTES.UNSUBSCRIBE` (`/unsubscribe`) are rendered outside `ProtectedRoute` — no auth required. The legal docs are loaded from `docs/legal/*.md` via Vite `?raw` imports and rendered with `ReactMarkdown` + `remarkGfm`.
 
 ### Calendar conventions
 
@@ -255,6 +265,7 @@ Suggested emails:
 | `src/config/app.config.ts` | FEATURES flags, ROUTES, BOOKING_CONFIG (`SOFT_BOOK_EXPIRY_HOURS`), SYNC_CONFIG, CHAT_ARCHIVE_DAYS |
 | `src/integrations/supabase/types.ts` | Auto-generated DB types — read only |
 | `src/features/auth/AuthContext.tsx` | Auth state, role helpers, approval status |
+| `src/features/consent/ConsentContext.tsx` | GDPR consent state (analytics / sessionReplay / errorTracking) |
 | `src/features/editor/EditorContext.tsx` | Editor mode state, page access and column/permission config (admin only) |
 | `src/hooks/` | All domain hooks — reuse before writing new queries |
 | `src/types/index.ts` | Domain type extensions on top of Supabase types |
