@@ -45,7 +45,7 @@ const App = () => (
             <Route path={ROUTES.ADMIN} element={<ProtectedRoute requiredRoles={['admin']}><AppLayout><AdminPage /></AppLayout></ProtectedRoute>} />
             <Route path={ROUTES.SETTINGS} element={<ProtectedRoute requiredRoles={['admin', 'producer']}><AppLayout><SettingsPage /></AppLayout></ProtectedRoute>} />
             <Route path={ROUTES.CHATS} element={<ProtectedRoute><AppLayout><ChatsListPage /></AppLayout></ProtectedRoute>} />
-            <Route path="/unsubscribe" element={<UnsubscribePage />} />
+            <Route path={ROUTES.UNSUBSCRIBE} element={<UnsubscribePage />} />
             <Route path={ROUTES.PRIVACY} element={<PrivacyPage />} />
             <Route path={ROUTES.IMPRESSUM} element={<ImpressumPage />} />
             <Route path="*" element={<NotFound />} />

@@ -86,9 +86,9 @@ src/
     app.config.ts  # Feature flags (FEATURES), route constants (ROUTES), BOOKING_CONFIG, CHAT_ARCHIVE_DAYS
   features/
     auth/          # AuthContext, ProtectedRoute, ApprovalGate, role helpers
-    consent/       # ConsentContext — localStorage-backed GDPR consent state
+    consent/       # ConsentContext, ConsentProvider, useConsent hook — localStorage-backed GDPR consent state
                    #   (key: showflow.consent.v1; categories: analytics, sessionReplay, errorTracking)
-                   #   ConsentProvider wraps the entire app in App.tsx.
+                   #   ConsentProvider wraps the routing tree (inside BrowserRouter, outside AuthProvider/EditorProvider).
     editor/        # Admin-only UI editor: EditorContext, EditorToolbar, EditorSidePanel,
                    #   ColumnLayoutEditor, columnRegistries, types.
                    #   Persists page access / column templates / table permissions in
@@ -141,8 +141,8 @@ supabase/
 - **Airtable sync is mocked.** The polling loop is not wired up; the Settings page toggles a flag the sync worker will read once implemented.
 - **Feature flags** live in `app.config.ts` as the `FEATURES` object. Check with `if (FEATURES.FEATURE_NAME) { ... }`. Wrap entire feature blocks, not individual lines. Don't build UI for a flag that's `false` unless wiring it up in the same change.
 - **Admin-only editor mode:** `EditorProvider` (wraps the entire app in `App.tsx`) exposes `isEditorMode`. Admins in editor mode bypass route-level role gates — `ProtectedRoute` reads `pageAccess` from `useEditorConfig()` and uses DB-stored role overrides instead of the `requiredRoles` prop. Never use `isEditorMode` to skip server-side RLS checks.
-- **GDPR consent system:** `ConsentProvider` wraps the entire app. `CookieConsentBanner` is rendered globally and fires until the user decides. Consent choices (analytics, sessionReplay, errorTracking) are persisted in `localStorage` under `showflow.consent.v1`. Read choices via `useConsent()`. Only wire analytics/session-replay/error-tracking SDKs based on the returned flags — never call them unconditionally.
-- **Public routes:** `ROUTES.PRIVACY` (`/privacy`), `ROUTES.IMPRESSUM` (`/impressum`), and `/unsubscribe` are rendered outside `ProtectedRoute` — no auth required. The legal docs are loaded from `docs/legal/*.md` as raw imports.
+- **GDPR consent system:** `ConsentProvider` wraps the routing tree in App.tsx (inside BrowserRouter, outside AuthProvider/EditorProvider). `CookieConsentBanner` is rendered globally inside `ConsentProvider`; it is visible when `!hasDecided` and while the preferences dialog is closed (`!preferencesOpen`). Consent choices (analytics, sessionReplay, errorTracking) are persisted in `localStorage` under `showflow.consent.v1`. Read choices via `useConsent()`. Only wire analytics/session-replay/error-tracking SDKs based on the returned flags — never call them unconditionally.
+- **Public routes:** `ROUTES.PRIVACY` (`/privacy`), `ROUTES.IMPRESSUM` (`/impressum`), and `ROUTES.UNSUBSCRIBE` (`/unsubscribe`) are rendered outside `ProtectedRoute` — no auth required. The legal docs are loaded from `docs/legal/*.md` via Vite `?raw` imports and rendered with `ReactMarkdown` + `remarkGfm`.
 
 ### Calendar conventions
 
