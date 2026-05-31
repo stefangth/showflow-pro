@@ -15,10 +15,8 @@ function json(body: unknown, status = 200): Response {
 /** Max concurrent open-offer-tier invocations per batch to avoid exhausting the DB connection pool. */
 const OFFER_TIER_BATCH_SIZE = 10
 
-async function openOfferTierBatch(
-  admin: ReturnType<typeof createClient>,
-  ids: string[],
-): Promise<number> {
+// deno-lint-ignore no-explicit-any
+async function openOfferTierBatch(admin: any, ids: string[]): Promise<number> {
   let opened = 0
   for (let i = 0; i < ids.length; i += OFFER_TIER_BATCH_SIZE) {
     const batch = ids.slice(i, i + OFFER_TIER_BATCH_SIZE)
