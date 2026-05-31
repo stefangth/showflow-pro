@@ -1065,7 +1065,7 @@ export default function SettingsPage() {
             <CardHeader>
               <CardTitle className="font-display">Airtable Sync</CardTitle>
               <CardDescription>
-                Pull show schedules from Airtable on a regular interval. Enabling the toggle will start the polling loop — make sure the Airtable base ID, table name, and API key secret are configured first.
+                Pull show schedules from Airtable on a regular interval. The sync runs on a pg_cron schedule — enable this toggle to allow the cron job to process records. Make sure the Airtable base ID, table name, and API key secret are configured first.
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
@@ -1119,7 +1119,7 @@ export default function SettingsPage() {
             <CardHeader>
               <CardTitle className="font-display">Filter Mappings (Airtable)</CardTitle>
               <CardDescription>
-                Map Showflow filter fields to your Airtable column names. These will be active once the sync worker is wired up.
+                Map Showflow filter fields to your Airtable column names. Used by the Airtable poll to match incoming field names.
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">

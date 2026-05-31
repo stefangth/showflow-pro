@@ -84,6 +84,13 @@ Deno.serve(async (req) => {
   if (!airtableRes.ok) {
     const errBody = await airtableRes.text()
     console.error('airtable-poll: Airtable API error', { status: airtableRes.status, body: errBody })
+    await admin.from('airtable_sync_log').insert({
+      sync_type: 'airtable_poll',
+      status: 'error',
+      records_processed: 0,
+      error_details: `Airtable API error: ${airtableRes.status}`,
+      synced_at: new Date().toISOString(),
+    })
     return json({ error: `Airtable API error: ${airtableRes.status}` }, 502)
   }
 
@@ -91,6 +98,12 @@ Deno.serve(async (req) => {
   const records: Array<{ id: string; fields: Record<string, any> }> = airtableData.records ?? []
 
   if (records.length === 0) {
+    await admin.from('airtable_sync_log').insert({
+      sync_type: 'airtable_poll',
+      status: 'success',
+      records_processed: 0,
+      synced_at: new Date().toISOString(),
+    })
     return json({ processed: 0, new_dates: 0, tiers_opened: 0 })
   }
 
@@ -205,6 +218,13 @@ Deno.serve(async (req) => {
       }
     }
   }
+
+  await admin.from('airtable_sync_log').insert({
+    sync_type: 'airtable_poll',
+    status: 'success',
+    records_processed: processed,
+    synced_at: new Date().toISOString(),
+  })
 
   return json({ processed, new_dates: newDates, tiers_opened: tiersOpened })
 })
