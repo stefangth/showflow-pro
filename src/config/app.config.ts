@@ -5,7 +5,7 @@
 
 /** Feature flags to enable/disable modules */
 export const FEATURES = {
-  /** Enable Airtable sync polling (mocked for now) */
+  /** Enable Airtable sync polling */
   AIRTABLE_SYNC: false,
   /** Enable auto-suggest booking engine */
   AUTO_SUGGEST: true,

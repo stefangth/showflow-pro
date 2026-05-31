@@ -245,7 +245,7 @@ export default function AdminPage() {
                 )) : (
                   <div className="text-center py-8">
                     <Database className="h-10 w-10 mx-auto text-muted-foreground opacity-30 mb-3" />
-                    <p className="text-sm text-muted-foreground">Airtable sync is currently mocked. Enable it in app config to start syncing.</p>
+                    <p className="text-sm text-muted-foreground">No sync events yet. Enable Airtable sync in Settings to start syncing.</p>
                   </div>
                 )}
               </div>

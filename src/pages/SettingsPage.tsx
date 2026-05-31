@@ -758,7 +758,7 @@ export default function SettingsPage() {
             <CardHeader>
               <CardTitle className="font-display">Cities</CardTitle>
               <CardDescription>
-                Pulled from Airtable once sync is wired — currently editable for mock data. Cities are used to scope cast eligibility per show.
+                Cities are used to scope cast eligibility per show.
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-3">
@@ -1065,7 +1065,7 @@ export default function SettingsPage() {
             <CardHeader>
               <CardTitle className="font-display">Airtable Sync</CardTitle>
               <CardDescription>
-                Pull show schedules from Airtable on a regular interval. Sync is currently mocked — enabling it will start the polling loop once the integration is wired up.
+                Pull show schedules from Airtable on a regular interval. Enabling the toggle will start the polling loop once the integration is wired up.
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
@@ -1119,7 +1119,7 @@ export default function SettingsPage() {
             <CardHeader>
               <CardTitle className="font-display">Filter Mappings (Airtable)</CardTitle>
               <CardDescription>
-                Map Showflow filter fields to your Airtable column names. Mock for now — these will be used once the sync worker is wired up.
+                Map Showflow filter fields to your Airtable column names. These will be active once the sync worker is wired up.
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
