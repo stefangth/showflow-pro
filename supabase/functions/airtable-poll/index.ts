@@ -86,6 +86,7 @@ Deno.serve(async (req) => {
   const { data: shows } = await admin
     .from('shows')
     .select('id, program, sub_program, airtable_record_id')
+    .limit(10000)
 
   const showsByAirtableId = new Map<string, string>()
   const showsByName = new Map<string, string>()
@@ -98,6 +99,7 @@ Deno.serve(async (req) => {
   const { data: citiesRows } = await admin
     .from('cities')
     .select('id, name')
+    .limit(10000)
 
   const citiesByName = new Map<string, string>()
   for (const c of citiesRows ?? []) {
@@ -108,6 +110,7 @@ Deno.serve(async (req) => {
   const { data: existingDates } = await admin
     .from('show_dates')
     .select('id, airtable_record_id')
+    .not('airtable_record_id', 'is', null)
     .limit(10000)
   const existingByAirtableId = new Map<string, string>(
     (existingDates ?? [])
@@ -123,8 +126,11 @@ Deno.serve(async (req) => {
   let newDates = 0
   const newDateIds: string[] = []
   let offset: string | undefined = undefined
+  let pageCount = 0
+  const MAX_PAGES = 100
 
   do {
+    pageCount += 1
     const url = offset ? `${airtableBaseUrl}&offset=${encodeURIComponent(offset)}` : airtableBaseUrl
     const airtableRes = await fetch(url, {
       headers: { Authorization: `Bearer ${airtableApiKey}` },
@@ -212,7 +218,11 @@ Deno.serve(async (req) => {
         existingByAirtableId.set(airtableRecordId, inserted.id)
       }
     }
-  } while (offset)
+  } while (offset && pageCount < MAX_PAGES)
+
+  if (pageCount >= MAX_PAGES) {
+    console.warn('airtable-poll: reached MAX_PAGES limit; sync may be incomplete')
+  }
 
   // ── Open tier-1 offers in batches to avoid saturating the DB connection pool ──
   let tiersOpened = 0
