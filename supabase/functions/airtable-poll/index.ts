@@ -108,6 +108,7 @@ Deno.serve(async (req) => {
   const { data: existingDates } = await admin
     .from('show_dates')
     .select('id, airtable_record_id')
+    .limit(10000)
   const existingByAirtableId = new Map<string, string>(
     (existingDates ?? [])
       .filter((r: any) => r.airtable_record_id)
@@ -204,9 +205,9 @@ Deno.serve(async (req) => {
         continue
       }
 
-      processed += 1
-      newDates += 1
       if (inserted?.id) {
+        processed += 1
+        newDates += 1
         newDateIds.push(inserted.id)
         existingByAirtableId.set(airtableRecordId, inserted.id)
       }
@@ -239,7 +240,7 @@ Deno.serve(async (req) => {
   const tiersFailed = newDateIds.length - tiersOpened
   await admin.from('airtable_sync_log').insert({
     sync_type: 'airtable_poll',
-    status: tiersFailed > 0 && tiersOpened === 0 ? 'partial' : 'success',
+    status: tiersFailed > 0 ? 'partial' : 'success',
     records_processed: processed,
     error_details: tiersFailed > 0 ? `${tiersFailed} of ${newDateIds.length} open-offer-tier calls failed` : null,
     synced_at: new Date().toISOString(),
