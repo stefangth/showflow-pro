@@ -12,6 +12,9 @@ function json(body: unknown, status = 200): Response {
   })
 }
 
+/** Max records fetched per cron run — keeps memory and wall-clock time bounded. */
+const MAX_RECORDS_PER_RUN = 500
+
 /**
  * Polls Airtable for show date records, upserts into show_dates,
  * and calls open-offer-tier (tier 1) for each newly inserted date.
@@ -67,20 +70,24 @@ Deno.serve(async (req) => {
     return json({ skipped: true, reason: 'airtable_base_id or airtable_table_name not configured' })
   }
 
+  if (!/^app[A-Za-z0-9]{14}$/.test(baseId)) {
+    return json({ error: 'airtable_base_id has unexpected format; expected appXXXXXXXXXXXXXX' }, 500)
+  }
+
   const airtableApiKey = Deno.env.get('AIRTABLE_API_KEY')
   if (!airtableApiKey) {
     return json({ error: 'AIRTABLE_API_KEY secret not set' }, 500)
   }
 
-  // ── Fetch all records from Airtable (paginated) ───────────────────────
+  // ── Fetch all records from Airtable (paginated, capped) ───────────────────
   const encodedTable = encodeURIComponent(tableName)
-  const airtableBaseUrl = `https://api.airtable.com/v0/${baseId}/${encodedTable}?view=Grid%20view`
+  const airtableBaseUrl = `https://api.airtable.com/v0/${baseId}/${encodedTable}?view=Grid%20view&maxRecords=${MAX_RECORDS_PER_RUN}`
 
   const records: Array<{ id: string; fields: Record<string, any> }> = []
   let offset: string | undefined = undefined
 
   do {
-    const url = offset ? `${airtableBaseUrl}&offset=${offset}` : airtableBaseUrl
+    const url = offset ? `${airtableBaseUrl}&offset=${encodeURIComponent(offset)}` : airtableBaseUrl
     const airtableRes = await fetch(url, {
       headers: { Authorization: `Bearer ${airtableApiKey}` },
     })
@@ -139,7 +146,7 @@ Deno.serve(async (req) => {
   // ── Upsert show_dates ──────────────────────────────────────────────────
   let processed = 0
   let newDates = 0
-  let tiersOpened = 0
+  const newDateIds: string[] = []
 
   for (const record of records) {
     const fields = record.fields
@@ -208,19 +215,27 @@ Deno.serve(async (req) => {
 
     processed += 1
     newDates += 1
+    if (inserted?.id) newDateIds.push(inserted.id)
+  }
 
-    // Open tier-1 offers for the new show date
-    if (inserted?.id) {
-      try {
-        await admin.functions.invoke('open-offer-tier', {
-          body: { show_date_id: inserted.id, tier: 1 },
-        })
-        tiersOpened += 1
-      } catch (e) {
-        console.error('airtable-poll: open-offer-tier failed', {
-          showDateId: inserted.id,
-          error: (e as Error).message,
-        })
+  // ── Open tier-1 offers for all new dates in parallel ─────────────────────
+  let tiersOpened = 0
+  if (newDateIds.length > 0) {
+    const tierResults = await Promise.allSettled(
+      newDateIds.map(id => admin.functions.invoke('open-offer-tier', {
+        body: { show_date_id: id, tier: 1 },
+      }))
+    )
+    for (const result of tierResults) {
+      if (result.status === 'fulfilled') {
+        const { error: invokeErr } = result.value
+        if (invokeErr) {
+          console.error('airtable-poll: open-offer-tier failed', { error: invokeErr })
+        } else {
+          tiersOpened += 1
+        }
+      } else {
+        console.error('airtable-poll: open-offer-tier threw', { reason: result.reason })
       }
     }
   }
