@@ -49,7 +49,7 @@ Deno.serve(async (req) => {
   const { data: settingsRows } = await admin
     .from('app_settings')
     .select('key, value')
-    .in('key', ['airtable_sync_enabled', 'airtable_base_id', 'airtable_table_name', 'airtable_poll_interval_minutes'])
+    .in('key', ['airtable_sync_enabled', 'airtable_base_id', 'airtable_table_name'])
 
   const settings: Record<string, any> = {}
   for (const row of settingsRows ?? []) {

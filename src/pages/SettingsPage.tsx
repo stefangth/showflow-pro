@@ -1080,16 +1080,7 @@ export default function SettingsPage() {
                 />
               </div>
               <Separator />
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label>Poll interval (minutes)</Label>
-                  <Input
-                    type="number"
-                    min={1}
-                    value={get('airtable_poll_interval_minutes', 5)}
-                    onChange={e => set('airtable_poll_interval_minutes', Number(e.target.value))}
-                  />
-                </div>
+              <div className="grid grid-cols-1 gap-4">
                 <div className="space-y-2">
                   <Label>Airtable base ID</Label>
                   <Input
@@ -1098,7 +1089,7 @@ export default function SettingsPage() {
                     onChange={e => set('airtable_base_id', e.target.value)}
                   />
                 </div>
-                <div className="space-y-2 sm:col-span-2">
+                <div className="space-y-2">
                   <Label>Airtable table name</Label>
                   <Input
                     placeholder="Shows"
