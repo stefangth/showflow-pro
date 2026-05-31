@@ -85,15 +85,12 @@ Deno.serve(async (req) => {
   // `shows` has no `name` column; fall back to `program` as the display key.
   const { data: shows } = await admin
     .from('shows')
-    .select('id, program, sub_program, airtable_record_id')
+    .select('id, program, sub_program')
     .limit(10000)
 
-  const showsByAirtableId = new Map<string, string>()
   const showsByName = new Map<string, string>()
   for (const s of shows ?? []) {
-    const sAny = s as any
-    if (sAny.airtable_record_id) showsByAirtableId.set(sAny.airtable_record_id, s.id)
-    if (sAny.program) showsByName.set(String(sAny.program).toLowerCase(), s.id)
+    if (s.program) showsByName.set(String(s.program).toLowerCase(), s.id)
   }
 
   const { data: citiesRows } = await admin
@@ -159,18 +156,15 @@ Deno.serve(async (req) => {
       const dateValue = fields['Date'] ?? fields['date'] ?? fields['Show Date'] ?? null
       if (!dateValue) continue
 
-      const showAirtableId = fields['Show ID'] ?? fields['show_id'] ?? null
       const showName = fields['Show'] ?? fields['show'] ?? fields['Show Name'] ?? null
 
       let showId: string | null = null
-      if (showAirtableId && showsByAirtableId.has(String(showAirtableId))) {
-        showId = showsByAirtableId.get(String(showAirtableId))!
-      } else if (showName && showsByName.has(String(showName).toLowerCase())) {
+      if (showName && showsByName.has(String(showName).toLowerCase())) {
         showId = showsByName.get(String(showName).toLowerCase())!
       }
 
       if (!showId) {
-        console.warn('airtable-poll: could not resolve show for record', { airtableRecordId, showAirtableId, showName })
+        console.warn('airtable-poll: could not resolve show for record', { airtableRecordId, showName })
         continue
       }
 
