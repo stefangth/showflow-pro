@@ -12,9 +12,6 @@ function json(body: unknown, status = 200): Response {
   })
 }
 
-/** Max records fetched per cron run — keeps memory and wall-clock time bounded. */
-const MAX_RECORDS_PER_RUN = 500
-
 /**
  * Polls Airtable for show date records, upserts into show_dates,
  * and calls open-offer-tier (tier 1) for each newly inserted date.
@@ -79,48 +76,7 @@ Deno.serve(async (req) => {
     return json({ error: 'AIRTABLE_API_KEY secret not set' }, 500)
   }
 
-  // ── Fetch all records from Airtable (paginated, capped) ───────────────────
-  const encodedTable = encodeURIComponent(tableName)
-  const airtableBaseUrl = `https://api.airtable.com/v0/${baseId}/${encodedTable}?view=Grid%20view&maxRecords=${MAX_RECORDS_PER_RUN}`
-
-  const records: Array<{ id: string; fields: Record<string, any> }> = []
-  let offset: string | undefined = undefined
-
-  do {
-    const url = offset ? `${airtableBaseUrl}&offset=${encodeURIComponent(offset)}` : airtableBaseUrl
-    const airtableRes = await fetch(url, {
-      headers: { Authorization: `Bearer ${airtableApiKey}` },
-    })
-
-    if (!airtableRes.ok) {
-      const errBody = await airtableRes.text()
-      console.error('airtable-poll: Airtable API error', { status: airtableRes.status, body: errBody })
-      await admin.from('airtable_sync_log').insert({
-        sync_type: 'airtable_poll',
-        status: 'error',
-        records_processed: 0,
-        error_details: `Airtable API error ${airtableRes.status}: ${errBody}`,
-        synced_at: new Date().toISOString(),
-      })
-      return json({ error: `Airtable API error: ${airtableRes.status}` }, 502)
-    }
-
-    const page = await airtableRes.json()
-    records.push(...(page.records ?? []))
-    offset = page.offset
-  } while (offset)
-
-  if (records.length === 0) {
-    await admin.from('airtable_sync_log').insert({
-      sync_type: 'airtable_poll',
-      status: 'success',
-      records_processed: 0,
-      synced_at: new Date().toISOString(),
-    })
-    return json({ processed: 0, new_dates: 0, tiers_opened: 0 })
-  }
-
-  // ── Load shows (keyed by airtable_record_id and by program) and cities (by name) ─
+  // ── Load shows and cities once before paging ──────────────────────────────
   // `shows` has no `name` column; fall back to `program` as the display key.
   const { data: shows } = await admin
     .from('shows')
@@ -143,80 +99,101 @@ Deno.serve(async (req) => {
     citiesByName.set(c.name.toLowerCase(), c.id)
   }
 
-  // ── Upsert show_dates ──────────────────────────────────────────────────
+  // ── Fetch pages and process records immediately (no full-buffer) ──────────
+  const encodedTable = encodeURIComponent(tableName)
+  const airtableBaseUrl = `https://api.airtable.com/v0/${baseId}/${encodedTable}?view=Grid%20view`
+
   let processed = 0
   let newDates = 0
   const newDateIds: string[] = []
+  let offset: string | undefined = undefined
 
-  for (const record of records) {
-    const fields = record.fields
-    const airtableRecordId = record.id
+  do {
+    const url = offset ? `${airtableBaseUrl}&offset=${encodeURIComponent(offset)}` : airtableBaseUrl
+    const airtableRes = await fetch(url, {
+      headers: { Authorization: `Bearer ${airtableApiKey}` },
+    })
 
-    // Resolve date
-    const dateValue = fields['Date'] ?? fields['date'] ?? fields['Show Date'] ?? null
-    if (!dateValue) continue
-
-    // Resolve show_id — prefer airtable_record_id match, fallback to name
-    const showAirtableId = fields['Show ID'] ?? fields['show_id'] ?? null
-    const showName = fields['Show'] ?? fields['show'] ?? fields['Show Name'] ?? null
-
-    let showId: string | null = null
-    if (showAirtableId && showsByAirtableId.has(String(showAirtableId))) {
-      showId = showsByAirtableId.get(String(showAirtableId))!
-    } else if (showName && showsByName.has(String(showName).toLowerCase())) {
-      showId = showsByName.get(String(showName).toLowerCase())!
-    }
-
-    if (!showId) {
-      console.warn('airtable-poll: could not resolve show for record', { airtableRecordId, showAirtableId, showName })
-      continue
-    }
-
-    // Resolve city_id
-    const cityName = fields['City'] ?? fields['city'] ?? null
-    let cityId: string | null = null
-    if (cityName && citiesByName.has(String(cityName).toLowerCase())) {
-      cityId = citiesByName.get(String(cityName).toLowerCase())!
-    }
-
-    // Check if this airtable_record_id already exists
-    const { data: existing } = await (admin as any)
-      .from('show_dates')
-      .select('id')
-      .eq('airtable_record_id', airtableRecordId)
-      .maybeSingle()
-
-    if (existing) {
-      // Update non-identifying fields to stay in sync with Airtable
-      await admin
-        .from('show_dates')
-        .update({ date: dateValue, city_id: cityId })
-        .eq('id', existing.id)
-      processed += 1
-      continue
-    }
-
-    // Insert new show_date
-    const { data: inserted, error: insertErr } = await admin
-      .from('show_dates')
-      .insert({
-        show_id: showId,
-        date: dateValue,
-        airtable_record_id: airtableRecordId,
-        city_id: cityId,
+    if (!airtableRes.ok) {
+      const errBody = await airtableRes.text()
+      console.error('airtable-poll: Airtable API error', { status: airtableRes.status, body: errBody })
+      await admin.from('airtable_sync_log').insert({
+        sync_type: 'airtable_poll',
+        status: 'error',
+        records_processed: processed,
+        error_details: `Airtable API error ${airtableRes.status}: ${errBody}`,
+        synced_at: new Date().toISOString(),
       })
-      .select('id')
-      .single()
-
-    if (insertErr) {
-      console.error('airtable-poll: insert error', { airtableRecordId, error: insertErr.message })
-      continue
+      return json({ error: `Airtable API error: ${airtableRes.status}` }, 502)
     }
 
-    processed += 1
-    newDates += 1
-    if (inserted?.id) newDateIds.push(inserted.id)
-  }
+    const page = await airtableRes.json()
+    offset = page.offset
+
+    for (const record of (page.records ?? []) as Array<{ id: string; fields: Record<string, any> }>) {
+      const fields = record.fields
+      const airtableRecordId = record.id
+
+      const dateValue = fields['Date'] ?? fields['date'] ?? fields['Show Date'] ?? null
+      if (!dateValue) continue
+
+      const showAirtableId = fields['Show ID'] ?? fields['show_id'] ?? null
+      const showName = fields['Show'] ?? fields['show'] ?? fields['Show Name'] ?? null
+
+      let showId: string | null = null
+      if (showAirtableId && showsByAirtableId.has(String(showAirtableId))) {
+        showId = showsByAirtableId.get(String(showAirtableId))!
+      } else if (showName && showsByName.has(String(showName).toLowerCase())) {
+        showId = showsByName.get(String(showName).toLowerCase())!
+      }
+
+      if (!showId) {
+        console.warn('airtable-poll: could not resolve show for record', { airtableRecordId, showAirtableId, showName })
+        continue
+      }
+
+      const cityName = fields['City'] ?? fields['city'] ?? null
+      let cityId: string | null = null
+      if (cityName && citiesByName.has(String(cityName).toLowerCase())) {
+        cityId = citiesByName.get(String(cityName).toLowerCase())!
+      }
+
+      const { data: existing } = await (admin as any)
+        .from('show_dates')
+        .select('id')
+        .eq('airtable_record_id', airtableRecordId)
+        .maybeSingle()
+
+      if (existing) {
+        await admin
+          .from('show_dates')
+          .update({ date: dateValue, city_id: cityId })
+          .eq('id', existing.id)
+        processed += 1
+        continue
+      }
+
+      const { data: inserted, error: insertErr } = await admin
+        .from('show_dates')
+        .insert({
+          show_id: showId,
+          date: dateValue,
+          airtable_record_id: airtableRecordId,
+          city_id: cityId,
+        })
+        .select('id')
+        .single()
+
+      if (insertErr) {
+        console.error('airtable-poll: insert error', { airtableRecordId, error: insertErr.message })
+        continue
+      }
+
+      processed += 1
+      newDates += 1
+      if (inserted?.id) newDateIds.push(inserted.id)
+    }
+  } while (offset)
 
   // ── Open tier-1 offers for all new dates in parallel ─────────────────────
   let tiersOpened = 0
