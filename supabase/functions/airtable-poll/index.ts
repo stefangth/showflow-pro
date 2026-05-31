@@ -15,6 +15,34 @@ function json(body: unknown, status = 200): Response {
 /** Max concurrent open-offer-tier invocations per batch to avoid exhausting the DB connection pool. */
 const OFFER_TIER_BATCH_SIZE = 10
 
+async function openOfferTierBatch(
+  admin: ReturnType<typeof createClient>,
+  ids: string[],
+): Promise<number> {
+  let opened = 0
+  for (let i = 0; i < ids.length; i += OFFER_TIER_BATCH_SIZE) {
+    const batch = ids.slice(i, i + OFFER_TIER_BATCH_SIZE)
+    const results = await Promise.allSettled(
+      batch.map(id => admin.functions.invoke('open-offer-tier', {
+        body: { show_date_id: id, tier: 1 },
+      }))
+    )
+    for (const result of results) {
+      if (result.status === 'fulfilled') {
+        const { error: invokeErr } = result.value
+        if (invokeErr) {
+          console.error('airtable-poll: open-offer-tier failed', { error: invokeErr })
+        } else {
+          opened += 1
+        }
+      } else {
+        console.error('airtable-poll: open-offer-tier threw', { reason: result.reason })
+      }
+    }
+  }
+  return opened
+}
+
 /**
  * Polls Airtable for show date records, upserts into show_dates,
  * and calls open-offer-tier (tier 1) for each newly inserted date.
@@ -70,19 +98,32 @@ Deno.serve(async (req) => {
     return json({ skipped: true, reason: 'airtable_base_id or airtable_table_name not configured' })
   }
 
-  // Airtable base IDs start with "app" followed by at least 10 alphanumeric chars.
-  // Exact length varies (17–18 chars observed), so we use a minimum rather than exact match.
-  if (!/^app[A-Za-z0-9]{10,}$/.test(baseId)) {
-    return json({ error: 'airtable_base_id has unexpected format; expected appXXXXXXXXXXXXXX' }, 500)
+  // Airtable base IDs: "app" + at least 14 alphanumeric chars (standard format is 17 chars total).
+  if (!/^app[A-Za-z0-9]{14,}$/.test(baseId)) {
+    await admin.from('airtable_sync_log').insert({
+      sync_type: 'airtable_poll',
+      status: 'error',
+      records_processed: 0,
+      error_details: 'airtable_base_id has unexpected format; expected app + 14 alphanumeric chars',
+      synced_at: new Date().toISOString(),
+    })
+    return json({ error: 'airtable_base_id has unexpected format; expected app + 14 alphanumeric chars' }, 422)
   }
 
   const airtableApiKey = Deno.env.get('AIRTABLE_API_KEY')
   if (!airtableApiKey) {
-    return json({ error: 'AIRTABLE_API_KEY secret not set' }, 500)
+    await admin.from('airtable_sync_log').insert({
+      sync_type: 'airtable_poll',
+      status: 'error',
+      records_processed: 0,
+      error_details: 'AIRTABLE_API_KEY secret not set',
+      synced_at: new Date().toISOString(),
+    })
+    return json({ error: 'AIRTABLE_API_KEY secret not set' }, 422)
   }
 
   // ── Load lookup tables once before paging ─────────────────────────────────
-  // `shows` has no `name` column; fall back to `program` as the display key.
+  // Keyed on "program|sub_program" to disambiguate shows that share a program name.
   const { data: shows } = await admin
     .from('shows')
     .select('id, program, sub_program')
@@ -90,7 +131,10 @@ Deno.serve(async (req) => {
 
   const showsByName = new Map<string, string>()
   for (const s of shows ?? []) {
-    if (s.program) showsByName.set(String(s.program).toLowerCase(), s.id)
+    if (s.program) {
+      const key = `${String(s.program).toLowerCase()}|${s.sub_program ? String(s.sub_program).toLowerCase() : ''}`
+      showsByName.set(key, s.id)
+    }
   }
 
   const { data: citiesRows } = await admin
@@ -104,16 +148,25 @@ Deno.serve(async (req) => {
   }
 
   // Bulk-load all existing show_dates keyed by airtable_record_id to avoid N+1 SELECTs.
-  const { data: existingDates } = await admin
-    .from('show_dates')
-    .select('id, airtable_record_id')
-    .not('airtable_record_id', 'is', null)
-    .limit(10000)
-  const existingByAirtableId = new Map<string, string>(
-    (existingDates ?? [])
-      .filter((r: any) => r.airtable_record_id)
-      .map((r: any) => [r.airtable_record_id as string, r.id as string])
-  )
+  // Paginated via .range() so tables larger than PostgREST's 1 000-row default are fully loaded.
+  const existingByAirtableId = new Map<string, string>()
+  {
+    const PAGE_SIZE = 1000
+    let page = 0
+    while (true) {
+      const { data: batch } = await admin
+        .from('show_dates')
+        .select('id, airtable_record_id')
+        .not('airtable_record_id', 'is', null)
+        .range(page * PAGE_SIZE, (page + 1) * PAGE_SIZE - 1)
+      if (!batch || batch.length === 0) break
+      for (const r of batch as any[]) {
+        if (r.airtable_record_id) existingByAirtableId.set(r.airtable_record_id as string, r.id as string)
+      }
+      if (batch.length < PAGE_SIZE) break
+      page += 1
+    }
+  }
 
   // ── Fetch pages and process records immediately (no full-buffer) ──────────
   const encodedTable = encodeURIComponent(tableName)
@@ -121,6 +174,7 @@ Deno.serve(async (req) => {
 
   let processed = 0
   let newDates = 0
+  let skippedRecords = 0
   const newDateIds: string[] = []
   let offset: string | undefined = undefined
   let pageCount = 0
@@ -136,6 +190,8 @@ Deno.serve(async (req) => {
     if (!airtableRes.ok) {
       const errBody = (await airtableRes.text()).slice(0, 500)
       console.error('airtable-poll: Airtable API error', { status: airtableRes.status, body: errBody })
+      // Flush already-inserted dates so they get offers before aborting.
+      await openOfferTierBatch(admin, newDateIds)
       await admin.from('airtable_sync_log').insert({
         sync_type: 'airtable_poll',
         status: 'error',
@@ -157,14 +213,19 @@ Deno.serve(async (req) => {
       if (!dateValue) continue
 
       const showName = fields['Show'] ?? fields['show'] ?? fields['Show Name'] ?? null
+      const showSubProgram = fields['Sub Program'] ?? fields['sub_program'] ?? null
 
       let showId: string | null = null
-      if (showName && showsByName.has(String(showName).toLowerCase())) {
-        showId = showsByName.get(String(showName).toLowerCase())!
+      if (showName) {
+        const nameKey = String(showName).toLowerCase()
+        const subKey = showSubProgram ? String(showSubProgram).toLowerCase() : ''
+        // Prefer exact (program, sub_program) match; fall back to program-only (sub_program absent in DB).
+        showId = showsByName.get(`${nameKey}|${subKey}`) ?? showsByName.get(`${nameKey}|`) ?? null
       }
 
       if (!showId) {
         console.warn('airtable-poll: could not resolve show for record', { airtableRecordId, showName })
+        skippedRecords += 1
         continue
       }
 
@@ -174,12 +235,14 @@ Deno.serve(async (req) => {
         cityId = citiesByName.get(String(cityName).toLowerCase())!
       }
 
+      const session1 = fields['Session 1'] ?? fields['session_1'] ?? fields['Start Time'] ?? '00:00'
+
       const existingId = existingByAirtableId.get(airtableRecordId)
 
       if (existingId) {
         const { error: updateErr } = await admin
           .from('show_dates')
-          .update({ date: dateValue, city_id: cityId })
+          .update({ date: dateValue, city_id: cityId, show_id: showId })
           .eq('id', existingId)
         if (updateErr) {
           console.error('airtable-poll: update error', { airtableRecordId, error: updateErr.message })
@@ -196,6 +259,7 @@ Deno.serve(async (req) => {
           date: dateValue,
           airtable_record_id: airtableRecordId,
           city_id: cityId,
+          session_1: session1,
         })
         .select('id')
         .single()
@@ -214,41 +278,28 @@ Deno.serve(async (req) => {
     }
   } while (offset && pageCount < MAX_PAGES)
 
-  if (pageCount >= MAX_PAGES) {
+  // Only warn/flag truncation if the loop exited because of the page cap, not because pages ran out.
+  const truncated = pageCount >= MAX_PAGES && !!offset
+  if (truncated) {
     console.warn('airtable-poll: reached MAX_PAGES limit; sync may be incomplete')
   }
 
   // ── Open tier-1 offers in batches to avoid saturating the DB connection pool ──
-  let tiersOpened = 0
-  for (let i = 0; i < newDateIds.length; i += OFFER_TIER_BATCH_SIZE) {
-    const batch = newDateIds.slice(i, i + OFFER_TIER_BATCH_SIZE)
-    const results = await Promise.allSettled(
-      batch.map(id => admin.functions.invoke('open-offer-tier', {
-        body: { show_date_id: id, tier: 1 },
-      }))
-    )
-    for (const result of results) {
-      if (result.status === 'fulfilled') {
-        const { error: invokeErr } = result.value
-        if (invokeErr) {
-          console.error('airtable-poll: open-offer-tier failed', { error: invokeErr })
-        } else {
-          tiersOpened += 1
-        }
-      } else {
-        console.error('airtable-poll: open-offer-tier threw', { reason: result.reason })
-      }
-    }
-  }
+  const tiersOpened = await openOfferTierBatch(admin, newDateIds)
 
   const tiersFailed = newDateIds.length - tiersOpened
+  const errorParts: string[] = []
+  if (truncated) errorParts.push(`Reached MAX_PAGES (${MAX_PAGES}); sync is incomplete`)
+  if (tiersFailed > 0) errorParts.push(`${tiersFailed} of ${newDateIds.length} open-offer-tier calls failed`)
+  if (skippedRecords > 0) errorParts.push(`${skippedRecords} records skipped (unresolved show)`)
+
   await admin.from('airtable_sync_log').insert({
     sync_type: 'airtable_poll',
-    status: tiersFailed > 0 ? 'partial' : 'success',
+    status: errorParts.length > 0 ? 'partial' : 'success',
     records_processed: processed,
-    error_details: tiersFailed > 0 ? `${tiersFailed} of ${newDateIds.length} open-offer-tier calls failed` : null,
+    error_details: errorParts.length > 0 ? errorParts.join('; ') : null,
     synced_at: new Date().toISOString(),
   })
 
-  return json({ processed, new_dates: newDates, tiers_opened: tiersOpened })
+  return json({ processed, new_dates: newDates, tiers_opened: tiersOpened, skipped: skippedRecords })
 })
