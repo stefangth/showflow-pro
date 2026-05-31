@@ -5,8 +5,6 @@
 
 /** Feature flags to enable/disable modules */
 export const FEATURES = {
-  /** Enable Airtable sync polling (mocked for now) */
-  AIRTABLE_SYNC: false,
   /** Enable auto-suggest booking engine */
   AUTO_SUGGEST: true,
   /** Enable in-app notifications */
@@ -15,16 +13,6 @@ export const FEATURES = {
   UNDERSTUDY: true,
   /** Enable booking audit trail */
   AUDIT_TRAIL: true,
-} as const;
-
-/** Airtable sync configuration */
-export const SYNC_CONFIG = {
-  /** Polling interval in milliseconds (default: 5 minutes) */
-  POLL_INTERVAL_MS: 5 * 60 * 1000,
-  /** Cache TTL before data is considered stale (default: 24 hours) */
-  CACHE_TTL_MS: 24 * 60 * 60 * 1000,
-  /** Max records per sync batch */
-  BATCH_SIZE: 100,
 } as const;
 
 /** Booking engine configuration */
