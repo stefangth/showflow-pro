@@ -758,7 +758,7 @@ export default function SettingsPage() {
             <CardHeader>
               <CardTitle className="font-display">Cities</CardTitle>
               <CardDescription>
-                Pulled from Airtable once sync is wired — currently editable for mock data. Cities are used to scope cast eligibility per show.
+                Cities are used to scope cast eligibility per show.
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-3">
@@ -1065,7 +1065,7 @@ export default function SettingsPage() {
             <CardHeader>
               <CardTitle className="font-display">Airtable Sync</CardTitle>
               <CardDescription>
-                Pull show schedules from Airtable on a regular interval. Sync is currently mocked — enabling it will start the polling loop once the integration is wired up.
+                Pull show schedules from Airtable on a regular interval. The sync runs on a pg_cron schedule — enable this toggle to allow the cron job to process records. Make sure the Airtable base ID, table name, and API key secret are configured first.
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
@@ -1080,16 +1080,7 @@ export default function SettingsPage() {
                 />
               </div>
               <Separator />
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label>Poll interval (minutes)</Label>
-                  <Input
-                    type="number"
-                    min={1}
-                    value={get('airtable_poll_interval_minutes', 5)}
-                    onChange={e => set('airtable_poll_interval_minutes', Number(e.target.value))}
-                  />
-                </div>
+              <div className="grid grid-cols-1 gap-4">
                 <div className="space-y-2">
                   <Label>Airtable base ID</Label>
                   <Input
@@ -1098,7 +1089,7 @@ export default function SettingsPage() {
                     onChange={e => set('airtable_base_id', e.target.value)}
                   />
                 </div>
-                <div className="space-y-2 sm:col-span-2">
+                <div className="space-y-2">
                   <Label>Airtable table name</Label>
                   <Input
                     placeholder="Shows"
@@ -1119,7 +1110,7 @@ export default function SettingsPage() {
             <CardHeader>
               <CardTitle className="font-display">Filter Mappings (Airtable)</CardTitle>
               <CardDescription>
-                Map Showflow filter fields to your Airtable column names. Mock for now — these will be used once the sync worker is wired up.
+                Map Showflow filter fields to your Airtable column names. Used by the Airtable poll to match incoming field names.
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
