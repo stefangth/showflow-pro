@@ -20,7 +20,6 @@ function json(body: unknown, status = 200): Response {
  *   - airtable_sync_enabled (bool)
  *   - airtable_base_id
  *   - airtable_table_name
- *   - airtable_poll_interval_minutes
  *
  * Reads AIRTABLE_API_KEY from Deno.env (Supabase secret).
  *
@@ -73,29 +72,36 @@ Deno.serve(async (req) => {
     return json({ error: 'AIRTABLE_API_KEY secret not set' }, 500)
   }
 
-  // ── Fetch records from Airtable ────────────────────────────────────────
+  // ── Fetch all records from Airtable (paginated) ───────────────────────
   const encodedTable = encodeURIComponent(tableName)
-  const airtableUrl = `https://api.airtable.com/v0/${baseId}/${encodedTable}?view=Grid%20view`
+  const airtableBaseUrl = `https://api.airtable.com/v0/${baseId}/${encodedTable}?view=Grid%20view`
 
-  const airtableRes = await fetch(airtableUrl, {
-    headers: { Authorization: `Bearer ${airtableApiKey}` },
-  })
+  const records: Array<{ id: string; fields: Record<string, any> }> = []
+  let offset: string | undefined = undefined
 
-  if (!airtableRes.ok) {
-    const errBody = await airtableRes.text()
-    console.error('airtable-poll: Airtable API error', { status: airtableRes.status, body: errBody })
-    await admin.from('airtable_sync_log').insert({
-      sync_type: 'airtable_poll',
-      status: 'error',
-      records_processed: 0,
-      error_details: `Airtable API error: ${airtableRes.status}`,
-      synced_at: new Date().toISOString(),
+  do {
+    const url = offset ? `${airtableBaseUrl}&offset=${offset}` : airtableBaseUrl
+    const airtableRes = await fetch(url, {
+      headers: { Authorization: `Bearer ${airtableApiKey}` },
     })
-    return json({ error: `Airtable API error: ${airtableRes.status}` }, 502)
-  }
 
-  const airtableData = await airtableRes.json()
-  const records: Array<{ id: string; fields: Record<string, any> }> = airtableData.records ?? []
+    if (!airtableRes.ok) {
+      const errBody = await airtableRes.text()
+      console.error('airtable-poll: Airtable API error', { status: airtableRes.status, body: errBody })
+      await admin.from('airtable_sync_log').insert({
+        sync_type: 'airtable_poll',
+        status: 'error',
+        records_processed: 0,
+        error_details: `Airtable API error ${airtableRes.status}: ${errBody}`,
+        synced_at: new Date().toISOString(),
+      })
+      return json({ error: `Airtable API error: ${airtableRes.status}` }, 502)
+    }
+
+    const page = await airtableRes.json()
+    records.push(...(page.records ?? []))
+    offset = page.offset
+  } while (offset)
 
   if (records.length === 0) {
     await admin.from('airtable_sync_log').insert({
