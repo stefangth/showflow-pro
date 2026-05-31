@@ -117,7 +117,7 @@ Deno.serve(async (req) => {
       error_details: 'AIRTABLE_API_KEY secret not set',
       synced_at: new Date().toISOString(),
     })
-    return json({ error: 'AIRTABLE_API_KEY secret not set' }, 422)
+    return json({ error: 'AIRTABLE_API_KEY secret not set' }, 500)
   }
 
   // ── Load lookup tables once before paging ─────────────────────────────────
@@ -131,6 +131,9 @@ Deno.serve(async (req) => {
   for (const s of shows ?? []) {
     if (s.program) {
       const key = `${String(s.program).toLowerCase()}|${s.sub_program ? String(s.sub_program).toLowerCase() : ''}`
+      if (showsByName.has(key)) {
+        console.warn('airtable-poll: duplicate (program, sub_program) key in shows; last one wins', { key })
+      }
       showsByName.set(key, s.id)
     }
   }
@@ -189,7 +192,7 @@ Deno.serve(async (req) => {
       const errBody = (await airtableRes.text()).slice(0, 500)
       console.error('airtable-poll: Airtable API error', { status: airtableRes.status, body: errBody })
       // Flush already-inserted dates so they get offers before aborting.
-      await openOfferTierBatch(admin, newDateIds)
+      const partialTiersOpened = await openOfferTierBatch(admin, newDateIds)
       await admin.from('airtable_sync_log').insert({
         sync_type: 'airtable_poll',
         status: 'error',
@@ -197,7 +200,7 @@ Deno.serve(async (req) => {
         error_details: `Airtable API error ${airtableRes.status}: ${errBody}`,
         synced_at: new Date().toISOString(),
       })
-      return json({ error: `Airtable API error: ${airtableRes.status}` }, 502)
+      return json({ error: `Airtable API error: ${airtableRes.status}`, new_dates: newDates, tiers_opened: partialTiersOpened }, 502)
     }
 
     const page = await airtableRes.json()
@@ -233,14 +236,18 @@ Deno.serve(async (req) => {
         cityId = citiesByName.get(String(cityName).toLowerCase())!
       }
 
-      const session1 = fields['Session 1'] ?? fields['session_1'] ?? fields['Start Time'] ?? '00:00'
+      const rawSession1 = fields['Session 1'] ?? fields['session_1'] ?? fields['Start Time']
+      const session1Match = rawSession1 ? String(rawSession1).match(/T?(\d{2}:\d{2})(:\d{2})?/) : null
+      const session1 = session1Match ? session1Match[1] : '00:00'
 
       const existingId = existingByAirtableId.get(airtableRecordId)
 
       if (existingId) {
+        const updatePayload: Record<string, unknown> = { date: dateValue, session_1: session1 }
+        if (cityId !== null) updatePayload.city_id = cityId
         const { error: updateErr } = await admin
           .from('show_dates')
-          .update({ date: dateValue, city_id: cityId, show_id: showId })
+          .update(updatePayload)
           .eq('id', existingId)
         if (updateErr) {
           console.error('airtable-poll: update error', { airtableRecordId, error: updateErr.message })
@@ -272,6 +279,8 @@ Deno.serve(async (req) => {
         newDates += 1
         newDateIds.push(inserted.id)
         existingByAirtableId.set(airtableRecordId, inserted.id)
+      } else {
+        console.warn('airtable-poll: insert returned no id without error', { airtableRecordId })
       }
     }
   } while (offset && pageCount < MAX_PAGES)
@@ -286,16 +295,18 @@ Deno.serve(async (req) => {
   const tiersOpened = await openOfferTierBatch(admin, newDateIds)
 
   const tiersFailed = newDateIds.length - tiersOpened
-  const errorParts: string[] = []
-  if (truncated) errorParts.push(`Reached MAX_PAGES (${MAX_PAGES}); sync is incomplete`)
-  if (tiersFailed > 0) errorParts.push(`${tiersFailed} of ${newDateIds.length} open-offer-tier calls failed`)
-  if (skippedRecords > 0) errorParts.push(`${skippedRecords} records skipped (unresolved show)`)
+  const statusParts: string[] = []
+  if (truncated) statusParts.push(`Reached MAX_PAGES (${MAX_PAGES}); sync is incomplete`)
+  if (tiersFailed > 0) statusParts.push(`${tiersFailed} of ${newDateIds.length} open-offer-tier calls failed`)
+
+  const infoParts: string[] = [...statusParts]
+  if (skippedRecords > 0) infoParts.push(`${skippedRecords} records skipped (unresolved show)`)
 
   await admin.from('airtable_sync_log').insert({
     sync_type: 'airtable_poll',
-    status: errorParts.length > 0 ? 'partial' : 'success',
+    status: statusParts.length > 0 ? 'partial' : 'success',
     records_processed: processed,
-    error_details: errorParts.length > 0 ? errorParts.join('; ') : null,
+    error_details: infoParts.length > 0 ? infoParts.join('; ') : null,
     synced_at: new Date().toISOString(),
   })
 
