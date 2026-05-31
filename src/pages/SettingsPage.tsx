@@ -1065,7 +1065,7 @@ export default function SettingsPage() {
             <CardHeader>
               <CardTitle className="font-display">Airtable Sync</CardTitle>
               <CardDescription>
-                Pull show schedules from Airtable on a regular interval. Enabling the toggle will start the polling loop once the integration is wired up.
+                Pull show schedules from Airtable on a regular interval. Enabling the toggle will start the polling loop — make sure the Airtable base ID, table name, and API key secret are configured first.
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
