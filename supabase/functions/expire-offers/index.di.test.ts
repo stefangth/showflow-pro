@@ -489,15 +489,15 @@ Deno.test("expire-offers: empty producers → falls back to admin users", async 
   assertEquals(recipientIds, ["admin-1", "admin-2"]);
 });
 
-Deno.test("expire-offers: duplicate recipient ids are NOT deduped (characterization test)", async () => {
-  // characterization: the handler does not dedupe recipient IDs; if resolve_show_assignments
-  // returns duplicates, multiple notifications are written for the same user.
-  // Doc-gap: the spec says "dedupe duplicate ids" but the handler has no dedup step.
+Deno.test("expire-offers: dedupes duplicate producer ids → one notification + one email per user", async () => {
+  // When resolve_show_assignments returns the same producer_user_id twice, the handler
+  // dedupes via [...new Set(recipientIds)] so only ONE notification row and ONE email
+  // are produced for that user — consistent with tier-at-risk-watcher.
   const producers = [
     { producer_user_id: "prod-1" },
     { producer_user_id: "prod-1" }, // duplicate
   ];
-  const { deps, calls } = makeFakeDeps({
+  const { deps, calls, invokeCalls } = makeFakeDeps({
     tables: {
       app_settings: appSettingsSeed(DEFAULT_SLOTS),
       show_date_offer_tiers: { data: [OPEN_TIER], error: null },
@@ -517,8 +517,13 @@ Deno.test("expire-offers: duplicate recipient ids are NOT deduped (characterizat
 
   const notifInsert = calls.find((c) => c.table === "notifications" && c.method === "insert");
   const rows = notifInsert?.args[0] as Array<{ user_id: string }>;
-  // characterization: actual behavior inserts 2 rows (no dedup), not 1
-  assertEquals(rows.length, 2, "characterization: handler does not dedup — 2 rows inserted for same user");
+  // After dedup: exactly 1 notification row for prod-1
+  assertEquals(rows.length, 1, "deduped: only 1 notification row for the same user");
+  assertEquals(rows[0].user_id, "prod-1");
+  // After dedup: exactly 1 email for prod-1
+  const emailCalls = invokeCalls.filter((c) => c.name === "send-transactional-email");
+  assertEquals(emailCalls.length, 1, "deduped: only 1 email sent for the same user");
+  assertEquals((emailCalls[0].body as { recipient_email: string }).recipient_email, "prod1@example.com");
 });
 
 // ─── Notification payload shape ───────────────────────────────────────────────

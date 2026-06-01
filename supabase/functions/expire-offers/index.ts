@@ -84,6 +84,7 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
       const { data: admins } = await admin.from('user_roles').select('user_id').eq('role', 'admin')
       recipientIds = (admins ?? []).map((a: any) => a.user_id)
     }
+    recipientIds = [...new Set(recipientIds)]
 
     const message = `Tier ${row.tier} for ${program ?? 'show'} on ${(sd as any).date} expired with ${accepted}/${requiredSlots} slots filled — open the next tier.`
 
