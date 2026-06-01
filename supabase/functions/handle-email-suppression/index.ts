@@ -6,7 +6,8 @@ import { realDeps, type Deps } from "../_shared/deps.ts";
 async function verifyResendWebhook(
   req: Request,
   rawBody: string,
-  secret: string
+  secret: string,
+  nowMs: number
 ): Promise<void> {
   const webhookId = req.headers.get('webhook-id')
   const webhookTimestamp = req.headers.get('webhook-timestamp')
@@ -17,7 +18,7 @@ async function verifyResendWebhook(
   }
 
   const ts = parseInt(webhookTimestamp, 10)
-  if (isNaN(ts) || Math.abs(Math.floor(Date.now() / 1000) - ts) > 300) {
+  if (isNaN(ts) || Math.abs(Math.floor(nowMs / 1000) - ts) > 300) {
     throw Object.assign(new Error('Stale webhook timestamp'), { code: 'stale_timestamp' })
   }
 
@@ -90,7 +91,7 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
   const rawBody = await req.text()
 
   try {
-    await verifyResendWebhook(req, rawBody, webhookSecret)
+    await verifyResendWebhook(req, rawBody, webhookSecret, deps.now().getTime())
   } catch (err: any) {
     const code = err.code ?? 'verification_failed'
     if (code === 'missing_headers' || code === 'invalid_signature') {
