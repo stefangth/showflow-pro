@@ -6,7 +6,7 @@
 
 ## Current date
 
-2026-05-30
+2026-06-01
 
 ---
 
@@ -16,7 +16,7 @@
 |--------|---------|
 | `main` | Production — never push directly |
 | `dev` | Integration target for PRs |
-| `claude/stoic-johnson-r4Z6r` | Current Claude Code session (docs update) |
+| `claude/tender-bohr-sdqvC` | Current Claude Code session (docs audit) |
 
 ---
 
@@ -30,7 +30,6 @@ _(nothing active)_
 
 | Flag | Value | Notes |
 |------|-------|-------|
-| `AIRTABLE_SYNC` | `false` | Polling loop not wired; Settings page toggles a flag the future sync worker will read |
 | `AUTO_SUGGEST` | `true` | Scoring weights not yet in static config; logic lives in edge functions |
 | `NOTIFICATIONS` | `true` | `notifications` table present in DB |
 | `UNDERSTUDY` | `true` | Auto-promote on primary cancellation |
@@ -44,7 +43,6 @@ _(nothing active)_
 |-------|--------|-------|
 | No seed-test-data edge function | Dev setup friction | AGENTS.md referenced it but it was never built; create test accounts manually via signup + admin approval |
 | Near-zero test coverage | Risk | Only `src/test/example.test.ts` exists (trivial assertion); no component or integration tests |
-| Airtable sync fully mocked | Feature gap | Real polling loop not implemented |
 
 ---
 
@@ -80,6 +78,8 @@ Edge functions additionally use `SUPABASE_SERVICE_ROLE_KEY` (set in Supabase das
 
 | Date | Change |
 |------|--------|
+| 2026-06-01 | Updated `CLAUDE.md` and `memory.md` — removed stale `SYNC_CONFIG` reference (deleted in #68), noted `PendingApprovalScreen`/`RejectedScreen` live in `src/pages/`, removed `AIRTABLE_SYNC` feature flag (deleted), removed "Airtable sync mocked" known issue (now implemented via `airtable-poll` scheduled edge function) |
+| 2026-06-01 | Remove mock data from database and UI strings (#68) — wired up `airtable-poll` edge function with real Airtable API calls scheduled via pg_cron (`*/5 * * * *`); removed `AIRTABLE_SYNC` feature flag and `SYNC_CONFIG` constants from `app.config.ts` |
 | 2026-05-30 | Updated `CLAUDE.md` and `memory.md` — documented GDPR consent system (`features/consent/`, `components/consent/`), public PrivacyPage + ImpressumPage routes, `docs/legal/` directory, `ConsentProvider` app wrapper, and `useConsent()` usage pattern |
 | 2026-05-28 | Added GDPR privacy policy, impressum, and cookie consent system (#65) — `features/consent/ConsentContext`, `components/consent/CookieConsentBanner` + `CookieConsentDialog`, public PrivacyPage + ImpressumPage, `docs/legal/` with EN/DE markdown docs, login page footer links |
 | 2026-05-28 | Show inline error on failed login, hid Google sign-in button (#64) |

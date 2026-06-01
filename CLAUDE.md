@@ -111,6 +111,8 @@ src/
                    #   ArtistsPage (admin+producer), AvailabilityPage (artist),
                    #   AdminPage, SettingsPage, ChatsListPage
                    #   Public pages (no auth): UnsubscribePage, PrivacyPage, ImpressumPage
+                   #   Approval screens: PendingApprovalScreen, RejectedScreen — rendered
+                   #   by ApprovalGate (in features/auth/), not registered as routes
                    #   ROUTES.PROFILE and ROUTES.RESET_PASSWORD are defined but have
                    #   no pages yet — reserved for future implementation.
                    #   /signup redirects to /login (no standalone signup page).
@@ -262,7 +264,7 @@ Suggested emails:
 
 | File | Purpose |
 |------|---------|
-| `src/config/app.config.ts` | FEATURES flags, ROUTES, BOOKING_CONFIG (`SOFT_BOOK_EXPIRY_HOURS`), SYNC_CONFIG, CHAT_ARCHIVE_DAYS |
+| `src/config/app.config.ts` | FEATURES flags, ROUTES, BOOKING_CONFIG (`SOFT_BOOK_EXPIRY_HOURS`), CHAT_ARCHIVE_DAYS |
 | `src/integrations/supabase/types.ts` | Auto-generated DB types — read only |
 | `src/features/auth/AuthContext.tsx` | Auth state, role helpers, approval status |
 | `src/features/consent/ConsentContext.tsx` | GDPR consent state (analytics / sessionReplay / errorTracking) |
