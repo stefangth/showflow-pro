@@ -7,11 +7,12 @@ import { dedupeProgramPairs, type ProgramPair } from "@/lib/settings";
 export async function fetchProgramSubProgramPairs(
   client: SupabaseClient<Database>,
 ): Promise<ProgramPair[]> {
-  const { data } = await client
+  const { data, error } = await client
     .from("shows")
     .select("program, sub_program")
     .not("program", "is", null)
     .not("sub_program", "is", null);
+  if (error) throw error;
   return dedupeProgramPairs(data ?? []);
 }
 
@@ -19,10 +20,11 @@ export async function fetchProgramSubProgramPairs(
 export async function fetchSlotDefaults(
   client: SupabaseClient<Database>,
 ): Promise<NestedSlotDefaults> {
-  const { data } = await client
+  const { data, error } = await client
     .from("app_settings")
     .select("value")
     .eq("key", "sub_program_slots_defaults")
     .maybeSingle();
+  if (error) throw error;
   return (data?.value ?? {}) as NestedSlotDefaults;
 }

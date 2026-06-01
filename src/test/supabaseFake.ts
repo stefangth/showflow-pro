@@ -27,8 +27,12 @@ const CHAIN_METHODS = [
 /** Terminal methods that resolve to the seeded result. */
 const TERMINAL_METHODS = ["single", "maybeSingle"] as const;
 
-/** Resolve the result for a table seed given a local eq map. */
-function resolveSeed(seed: TableSeed, localEq: Record<string, unknown>): { data: unknown; error: unknown } {
+/** Resolve the result for a table seed given a local eq map and in-filter map. */
+function resolveSeed(
+  seed: TableSeed,
+  localEq: Record<string, unknown>,
+  localIn: Record<string, unknown[]> = {},
+): { data: unknown; error: unknown } {
   if (Array.isArray(seed)) {
     // Find first entry whose every `when` key/value matches localEq
     const matched = seed.find((entry) =>
@@ -45,8 +49,26 @@ function resolveSeed(seed: TableSeed, localEq: Record<string, unknown>): { data:
     }
     return { data: [], error: null };
   }
-  // Single-object seed (backward-compatible)
-  return seed as { data: unknown; error: unknown };
+  // Single-object seed (backward-compatible).
+  // Apply in() filtering so that .in("role", ["admin"]) correctly excludes rows
+  // where the field value is not in the allowed set. Mirrors the Deno fake.
+  const { data, error } = seed as { data: unknown; error: unknown };
+  if (data !== null && data !== undefined && Object.keys(localIn).length > 0) {
+    const applyInFilter = (row: Record<string, unknown>): boolean =>
+      Object.entries(localIn).every(([col, allowed]) => allowed.includes(row[col]));
+
+    if (Array.isArray(data)) {
+      // Filter the array and return only matching rows
+      const filtered = (data as Record<string, unknown>[]).filter(applyInFilter);
+      return { data: filtered.length > 0 ? filtered : null, error };
+    } else if (typeof data === "object") {
+      // Single object: return null if it doesn't satisfy the in() constraint
+      if (!applyInFilter(data as Record<string, unknown>)) {
+        return { data: null, error };
+      }
+    }
+  }
+  return { data, error };
 }
 
 /**
@@ -66,6 +88,8 @@ export function createFakeSupabase(seed: Record<string, TableSeed> = {}) {
     const tableSeed: TableSeed = seed[table] ?? { data: [], error: null };
     // Local eq map — populated as .eq() calls are chained, used for array-seed matching
     const localEq: Record<string, unknown> = {};
+    // Local in map — populated as .in() calls are chained, used for membership filtering
+    const localIn: Record<string, unknown[]> = {};
     const chain: Record<string, unknown> = {};
 
     for (const m of CHAIN_METHODS) {
@@ -75,18 +99,22 @@ export function createFakeSupabase(seed: Record<string, TableSeed> = {}) {
         if (m === "eq" && args.length >= 2) {
           localEq[String(args[0])] = args[1];
         }
+        // Track in() args locally for membership filtering
+        if (m === "in" && args.length >= 2 && Array.isArray(args[1])) {
+          localIn[String(args[0])] = args[1] as unknown[];
+        }
         return chain;
       };
     }
     for (const m of TERMINAL_METHODS) {
       chain[m] = (...args: unknown[]) => {
         calls.push({ table, method: m, args });
-        return Promise.resolve(resolveSeed(tableSeed, localEq));
+        return Promise.resolve(resolveSeed(tableSeed, localEq, localIn));
       };
     }
     // Make the builder awaitable (thenable) so `await fake.from(t).select()...` resolves.
     chain.then = (onFulfilled: (v: unknown) => unknown, onRejected?: (e: unknown) => unknown) =>
-      Promise.resolve(resolveSeed(tableSeed, localEq)).then(onFulfilled, onRejected);
+      Promise.resolve(resolveSeed(tableSeed, localEq, localIn)).then(onFulfilled, onRejected);
 
     return chain;
   }

@@ -15,6 +15,11 @@ describe("fetchProgramSubProgramPairs", () => {
     expect(fake.calls).toContainEqual({ table: "shows", method: "not", args: ["program", "is", null] });
     expect(fake.calls).toContainEqual({ table: "shows", method: "not", args: ["sub_program", "is", null] });
   });
+
+  it("throws on error", async () => {
+    const fake = createFakeSupabase({ shows: { data: null, error: { message: "boom" } } });
+    await expect(fetchProgramSubProgramPairs(fake as never)).rejects.toBeTruthy();
+  });
 });
 
 describe("fetchSlotDefaults", () => {
@@ -27,5 +32,9 @@ describe("fetchSlotDefaults", () => {
   it("returns {} when no row", async () => {
     const fake = createFakeSupabase({ app_settings: { data: null, error: null } });
     expect(await fetchSlotDefaults(fake as never)).toEqual({});
+  });
+  it("throws on error", async () => {
+    const fake = createFakeSupabase({ app_settings: { data: null, error: { message: "boom" } } });
+    await expect(fetchSlotDefaults(fake as never)).rejects.toBeTruthy();
   });
 });

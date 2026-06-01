@@ -62,3 +62,34 @@ describe("createFakeSupabase — match-based seeding", () => {
     expect(await fake.from("artists").select("*").eq("id", "a1").maybeSingle()).toEqual({ data: { id: "a1" }, error: null });
   });
 });
+
+describe("createFakeSupabase — in() membership filtering", () => {
+  it("returns only rows whose column value is in the allowed set", async () => {
+    const fake = createFakeSupabase({
+      user_roles: {
+        data: [
+          { user_id: "u1", role: "artist" },
+          { user_id: "u2", role: "admin" },
+          { user_id: "u3", role: "producer" },
+        ],
+        error: null,
+      },
+    });
+    const res = await fake.from("user_roles").select("*").in("role", ["admin", "producer"]);
+    expect(res).toEqual({
+      data: [
+        { user_id: "u2", role: "admin" },
+        { user_id: "u3", role: "producer" },
+      ],
+      error: null,
+    });
+  });
+
+  it("returns null when no row matches the in() set", async () => {
+    const fake = createFakeSupabase({
+      user_roles: { data: [{ user_id: "u1", role: "artist" }], error: null },
+    });
+    const res = await fake.from("user_roles").select("*").in("role", ["admin", "producer"]);
+    expect(res).toEqual({ data: null, error: null });
+  });
+});
