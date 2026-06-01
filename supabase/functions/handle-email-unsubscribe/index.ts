@@ -1,34 +1,15 @@
-import { createClient } from 'npm:@supabase/supabase-js@2'
+import { preflight, json } from "../_shared/http.ts";
+import { realDeps, type Deps } from "../_shared/deps.ts";
 
-const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers':
-    'authorization, x-client-info, apikey, content-type',
-}
-
-function jsonResponse(data: Record<string, unknown>, status = 200): Response {
-  return new Response(JSON.stringify(data), {
-    status,
-    headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-  })
-}
-
-Deno.serve(async (req) => {
+export async function handle(req: Request, deps: Deps): Promise<Response> {
   // Handle CORS preflight
-  if (req.method === 'OPTIONS') {
-    return new Response(null, { headers: corsHeaders })
-  }
+  if (req.method === 'OPTIONS') return preflight();
 
   if (req.method !== 'GET' && req.method !== 'POST') {
-    return jsonResponse({ error: 'Method not allowed' }, 405)
+    return json({ error: 'Method not allowed' }, 405)
   }
 
-  const supabaseUrl = Deno.env.get('SUPABASE_URL')
-  const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')
-
-  if (!supabaseUrl || !supabaseServiceKey) {
-    return jsonResponse({ error: 'Server configuration error' }, 500)
-  }
+  const admin = deps.admin;
 
   // Extract token from query params (GET) or body (POST)
   const url = new URL(req.url)
@@ -64,36 +45,34 @@ Deno.serve(async (req) => {
   }
 
   if (!token) {
-    return jsonResponse({ error: 'Token is required' }, 400)
+    return json({ error: 'Token is required' }, 400)
   }
 
-  const supabase = createClient(supabaseUrl, supabaseServiceKey)
-
   // Look up the token
-  const { data: tokenRecord, error: lookupError } = await supabase
+  const { data: tokenRecord, error: lookupError } = await admin
     .from('email_unsubscribe_tokens')
     .select('*')
     .eq('token', token)
     .maybeSingle()
 
   if (lookupError || !tokenRecord) {
-    return jsonResponse({ error: 'Invalid or expired token' }, 404)
+    return json({ error: 'Invalid or expired token' }, 404)
   }
 
   if (tokenRecord.used_at) {
-    return jsonResponse({ valid: false, reason: 'already_unsubscribed' })
+    return json({ valid: false, reason: 'already_unsubscribed' })
   }
 
   // GET: Validate token (the app's unsubscribe page calls this on load)
   if (req.method === 'GET') {
-    return jsonResponse({ valid: true })
+    return json({ valid: true })
   }
 
   // POST: Process the unsubscribe
   // Atomic check-and-update to avoid TOCTOU race
-  const { data: updated, error: updateError } = await supabase
+  const { data: updated, error: updateError } = await admin
     .from('email_unsubscribe_tokens')
-    .update({ used_at: new Date().toISOString() })
+    .update({ used_at: deps.now().toISOString() })
     .eq('token', token)
     .is('used_at', null)
     .select()
@@ -101,15 +80,15 @@ Deno.serve(async (req) => {
 
   if (updateError) {
     console.error('Failed to mark token as used', { error: updateError, token })
-    return jsonResponse({ error: 'Failed to process unsubscribe' }, 500)
+    return json({ error: 'Failed to process unsubscribe' }, 500)
   }
 
   if (!updated) {
-    return jsonResponse({ success: false, reason: 'already_unsubscribed' })
+    return json({ success: false, reason: 'already_unsubscribed' })
   }
 
   // Add email to suppressed list (upsert to handle duplicates)
-  const { error: suppressError } = await supabase
+  const { error: suppressError } = await admin
     .from('suppressed_emails')
     .upsert(
       { email: tokenRecord.email.toLowerCase(), reason: 'unsubscribe' },
@@ -121,10 +100,12 @@ Deno.serve(async (req) => {
       error: suppressError,
       email: tokenRecord.email,
     })
-    return jsonResponse({ error: 'Failed to process unsubscribe' }, 500)
+    return json({ error: 'Failed to process unsubscribe' }, 500)
   }
 
   console.log('Email unsubscribed', { email: tokenRecord.email })
 
-  return jsonResponse({ success: true })
-})
+  return json({ success: true })
+}
+
+if (import.meta.main) Deno.serve((req) => handle(req, realDeps()));
