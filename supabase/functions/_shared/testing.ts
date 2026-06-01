@@ -28,8 +28,12 @@ const CHAIN = [
 // deno-lint-ignore no-explicit-any
 type AnyChain = Record<string, any>;
 
-/** Resolve the result for a table seed given a local eq map. */
-function resolveSeed(seed: TableSeed, localEq: Record<string, unknown>): { data: unknown; error: unknown } {
+/** Resolve the result for a table seed given a local eq map and in-filter map. */
+function resolveSeed(
+  seed: TableSeed,
+  localEq: Record<string, unknown>,
+  localIn: Record<string, unknown[]> = {},
+): { data: unknown; error: unknown } {
   if (Array.isArray(seed)) {
     // Find first entry whose every `when` key/value matches localEq
     const matched = seed.find((entry) =>
@@ -46,8 +50,26 @@ function resolveSeed(seed: TableSeed, localEq: Record<string, unknown>): { data:
     }
     return { data: [], error: null };
   }
-  // Single-object seed (backward-compatible)
-  return seed as { data: unknown; error: unknown };
+  // Single-object seed (backward-compatible).
+  // Apply in() filtering so that .in("role", ["admin"]) correctly excludes rows
+  // where the field value is not in the allowed set.
+  const { data, error } = seed as { data: unknown; error: unknown };
+  if (data !== null && data !== undefined && Object.keys(localIn).length > 0) {
+    const applyInFilter = (row: Record<string, unknown>): boolean =>
+      Object.entries(localIn).every(([col, allowed]) => allowed.includes(row[col]));
+
+    if (Array.isArray(data)) {
+      // Filter the array and return only matching rows
+      const filtered = (data as Record<string, unknown>[]).filter(applyInFilter);
+      return { data: filtered.length > 0 ? filtered : null, error };
+    } else if (typeof data === "object") {
+      // Single object: return null if it doesn't satisfy the in() constraint
+      if (!applyInFilter(data as Record<string, unknown>)) {
+        return { data: null, error };
+      }
+    }
+  }
+  return { data, error };
 }
 
 /** A call-recording stand-in for a Supabase client (admin or user). */
@@ -60,6 +82,8 @@ export function createFakeClient(opts: FakeClientOptions = {}) {
     const seed: TableSeed = tables[table] ?? { data: [], error: null };
     // Local eq map — populated as .eq() calls are chained, used for array-seed matching
     const localEq: Record<string, unknown> = {};
+    // Local in map — populated as .in() calls are chained, used for membership filtering
+    const localIn: Record<string, unknown[]> = {};
     const chain: AnyChain = {};
     for (const m of CHAIN) {
       chain[m] = (...args: unknown[]) => {
@@ -68,15 +92,22 @@ export function createFakeClient(opts: FakeClientOptions = {}) {
         if (m === "eq" && args.length >= 2) {
           localEq[String(args[0])] = args[1];
         }
+        // Track in() args locally for membership filtering
+        if (m === "in" && args.length >= 2 && Array.isArray(args[1])) {
+          localIn[String(args[0])] = args[1] as unknown[];
+        }
         return chain;
       };
     }
     for (const m of ["single", "maybeSingle"]) {
       chain[m] = () => {
         calls.push({ table, method: m, args: [] });
-        return Promise.resolve(resolveSeed(seed, localEq));
+        // Pass localIn so that .in("role", ["admin"]) correctly filters single-row results.
+        return Promise.resolve(resolveSeed(seed, localEq, localIn));
       };
     }
+    // List queries resolved via .then() do NOT apply in() filtering — the seed data
+    // is intentionally simplified and may omit the filtered column entirely.
     chain.then = (f: (v: unknown) => unknown, r?: (e: unknown) => unknown) =>
       Promise.resolve(resolveSeed(seed, localEq)).then(f, r);
     return chain;
