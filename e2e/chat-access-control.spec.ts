@@ -137,7 +137,9 @@ test.describe("Chat access control — booking status gates chat participation",
 
     const body = `e2e-chat-hello-${Date.now()}`;
     await input.fill(body);
-    await page.getByRole("button", { name: /send/i }).click();
+    // The send button is an icon-only submit (no accessible name); submit the
+    // single-line input's form by pressing Enter instead.
+    await input.press("Enter");
 
     // Message appears in the thread...
     await expect(page.getByText(body)).toBeVisible({ timeout: 10_000 });

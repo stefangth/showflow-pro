@@ -25,4 +25,17 @@ Task 11 (config) is committed and inert (CI still runs `npm test`, not `--covera
 3. Commit `package.json` + `package-lock.json` + `ci.yml` together. If the starting thresholds (statements 25 / branches 60 / functions 40 / lines 25) are above the measured numbers, lower them to just under actual — never disable the gate.
 
 ## Findings / bugs
-- (none yet)
+
+### CI matrix first-run results (PR #70)
+First time the full CI matrix ran on a PR to main. Lint + Unit (Vitest) passed → Phase A (types regen, cast removal, coverage config) fully CI-validated. Failures + fixes:
+
+**Pre-existing bugs surfaced (not caused by Part 3):**
+1. **Deno function-tests CI job never resolved npm deps.** `_shared/deps.ts` imports `npm:@supabase/supabase-js@2`, but the root `package.json` forces Deno into node_modules mode and the job never populated `node_modules` → "Could not find @supabase/supabase-js in a node_modules folder". FIXED: added `--node-modules-dir=none` to the `deno test` command so Deno uses its global npm cache. (Locally confirmed the flag resolves the import.)
+2. **`booking-lifecycle.spec.ts` strict-mode double-match.** `getByText(/offer accepted/i)` matched both the sonner toast div and its aria-live announcement. FIXED: `.first()`.
+
+**Part 3 test fixes:**
+3. pgTAP `resolve_show_assignments.sql` + `recompute_and_timestamps.sql`: invalid UUID literals (non-hex mnemonic segments `sa00`/`rc00`) killed the fixtures → "planned N ran 0". FIXED: hex-only UUIDs (`sa00`→`5a00`, `rc00`→`bc00`).
+4. pgTAP `offer_engine_tables.sql`: producer-INSERT assertion collided with a pre-seeded `(cast,city)` pair (unique constraint). FIXED: added a fresh city fixture and inserted a non-colliding pair.
+5. e2e `chat-access-control.spec.ts`: send button is icon-only (no accessible name) → `name:/send/i` click timed out. FIXED: submit the form via `input.press("Enter")`.
+
+eligibility-gating e2e passed on the first run.
