@@ -1,46 +1,15 @@
-import { createClient } from 'npm:@supabase/supabase-js@2'
+import { preflight, json } from "../_shared/http.ts";
+import { isServiceRole, requireRole } from "../_shared/auth.ts";
+import { realDeps, type Deps } from "../_shared/deps.ts";
 
-const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-}
+export async function handle(req: Request, deps: Deps): Promise<Response> {
+  if (req.method === "OPTIONS") return preflight();
 
-function json(body: unknown, status = 200): Response {
-  return new Response(JSON.stringify(body), {
-    status,
-    headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-  })
-}
+  const admin = deps.admin;
 
-Deno.serve(async (req) => {
-  if (req.method === 'OPTIONS') return new Response(null, { headers: corsHeaders })
-
-  const supabaseUrl = Deno.env.get('SUPABASE_URL')!
-  const serviceKey  = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
-  const anonKey     = Deno.env.get('SUPABASE_ANON_KEY')!
-
-  // Callers may use either a user JWT (admin/producer) or the service role key
-  const authHeader = req.headers.get('Authorization') ?? ''
-  const isServiceRole = authHeader === `Bearer ${serviceKey}`
-
-  if (!isServiceRole) {
-    if (!authHeader.startsWith('Bearer ')) return json({ error: 'Unauthorized' }, 401)
-
-    const userClient = createClient(supabaseUrl, anonKey, {
-      global: { headers: { Authorization: authHeader } },
-    })
-    const token = authHeader.replace('Bearer ', '')
-    const { data: claimsData } = await userClient.auth.getClaims(token)
-    if (!claimsData?.claims) return json({ error: 'Unauthorized' }, 401)
-
-    const admin = createClient(supabaseUrl, serviceKey)
-    const { data: roleRow } = await admin
-      .from('user_roles')
-      .select('role')
-      .eq('user_id', claimsData.claims.sub)
-      .in('role', ['admin', 'producer'])
-      .maybeSingle()
-    if (!roleRow) return json({ error: 'Forbidden — admin or producer required' }, 403)
+  if (!isServiceRole(deps, req)) {
+    const auth = await requireRole(deps, req, ["admin", "producer"]);
+    if (!auth.ok) return auth.response;
   }
 
   let show_date_id: string
@@ -55,8 +24,6 @@ Deno.serve(async (req) => {
   } catch {
     return json({ error: 'Invalid JSON' }, 400)
   }
-
-  const admin = createClient(supabaseUrl, serviceKey)
 
   // Fetch show date
   const { data: showDate, error: sdErr } = await admin
@@ -173,7 +140,7 @@ Deno.serve(async (req) => {
     return json({ offers_created: 0, message: 'All eligible artists already have offers or are blocked' })
   }
 
-  const offeredAt = new Date()
+  const offeredAt = deps.now()
 
   // Batch insert suggested bookings. Pre-filtering (alreadyBookedIds /
   // blockedArtistIds) handles deduplication — bookings has no UNIQUE
@@ -216,4 +183,6 @@ Deno.serve(async (req) => {
   console.log('open-offer-tier complete', { show_date_id, tier, offersCreated })
 
   return json({ offers_created: offersCreated })
-})
+}
+
+if (import.meta.main) Deno.serve((req) => handle(req, realDeps()));
