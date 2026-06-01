@@ -5,6 +5,24 @@ export type AuthOutcome =
   | { ok: true; userId: string | null }
   | { ok: false; response: Response };
 
+/**
+ * Constant-time string comparison. Guards against timing side-channels when
+ * comparing secrets. We short-circuit on unequal lengths first (length is not
+ * secret), then XOR-accumulate every byte so the loop runs for the full length
+ * regardless of where (or whether) the bytes differ.
+ */
+export function constantTimeEqual(a: string, b: string): boolean {
+  const enc = new TextEncoder();
+  const aBytes = enc.encode(a);
+  const bBytes = enc.encode(b);
+  if (aBytes.length !== bBytes.length) return false;
+  let diff = 0;
+  for (let i = 0; i < aBytes.length; i++) {
+    diff |= aBytes[i] ^ bBytes[i];
+  }
+  return diff === 0;
+}
+
 /** True when the request carries the service-role key as its bearer token. */
 export function isServiceRole(deps: Deps, req: Request): boolean {
   const authHeader = req.headers.get("Authorization") ?? "";
@@ -35,7 +53,7 @@ export async function requireCronOrRole(deps: Deps, req: Request, roles: string[
     const { data: setting } = await deps.admin
       .from("app_settings").select("value").eq("key", "cron_secret").maybeSingle();
     const stored = ((setting as { value?: string } | null)?.value as string | null) ?? "";
-    if (cronSecret !== stored) return { ok: false, response: json({ error: "Unauthorized" }, 401) };
+    if (!constantTimeEqual(cronSecret, stored)) return { ok: false, response: json({ error: "Unauthorized" }, 401) };
     return { ok: true, userId: null };
   }
   return requireRole(deps, req, roles);

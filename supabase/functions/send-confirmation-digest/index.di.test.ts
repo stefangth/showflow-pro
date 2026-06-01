@@ -202,6 +202,39 @@ Deno.test("send-confirmation-digest: idempotency key includes artistId and UTC h
   assertEquals(msg.idempotency_key, "confirmation-digest-artist-xyz-2026-06-01T18");
 });
 
+Deno.test("send-confirmation-digest: idempotency key derives from the CAPTURED now for ALL artists in one run", async () => {
+  // Regression for Finding 4: the key (and the confirmation_digest_sent_at stamp)
+  // must use the single captured `now`, not a fresh deps.now() per artist. With a
+  // fixed clock, every artist's key shares the same hour prefix derived from `now`.
+  const now = BERLIN_20_CEST; // 2026-06-01T18:00:00.000Z → slice(0,13) = "2026-06-01T18"
+  const hourPrefix = now.toISOString().slice(0, 13);
+  const bookings = [
+    {
+      id: "b1", artist_id: "a1",
+      artists: { id: "a1", name: "Alice", email: "alice@x.com" },
+      show_dates: { date: "2026-06-10", shows: { program: "P", sub_program: "S" }, cities: { name: "Berlin" } },
+    },
+    {
+      id: "b2", artist_id: "a2",
+      artists: { id: "a2", name: "Bob", email: "bob@x.com" },
+      show_dates: { date: "2026-06-11", shows: { program: "P", sub_program: "S" }, cities: { name: "Hamburg" } },
+    },
+  ];
+  const { deps, invokeCalls } = baseDeps({ bookings: { data: bookings, error: null } }, now);
+  await handle(makeRequest({ headers: cronOK }), deps);
+
+  const emailCalls = invokeCalls.filter((c) => c.name === "send-transactional-email");
+  assertEquals(emailCalls.length, 2);
+  const byArtist = new Map(
+    emailCalls.map((c) => {
+      const m = c.body as { recipient_email: string; idempotency_key?: string };
+      return [m.recipient_email, m.idempotency_key];
+    }),
+  );
+  assertEquals(byArtist.get("alice@x.com"), `confirmation-digest-a1-${hourPrefix}`);
+  assertEquals(byArtist.get("bob@x.com"), `confirmation-digest-a2-${hourPrefix}`);
+});
+
 // =============================================================================
 // SHOW NAME FORMATTING
 // =============================================================================

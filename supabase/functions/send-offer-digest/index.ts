@@ -145,7 +145,7 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
           displayName: entry.displayName,
           offers: entry.offers,
         },
-        idempotency_key: `offer-digest-${artistId}-${deps.now().toISOString().slice(0, 13)}`,
+        idempotency_key: `offer-digest-${artistId}-${now.toISOString().slice(0, 13)}`,
       })
 
       // Stamp digest_sent_at and set offer_expires_at on these bookings.

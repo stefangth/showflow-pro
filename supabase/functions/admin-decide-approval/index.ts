@@ -41,7 +41,7 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
       p_decision:         decision,
       p_role:             role,
       p_rejection_reason: rejection_reason,
-      p_decided_by:       auth.userId,
+      p_decided_by:       auth.userId!, // requireRole always returns a non-null userId
     });
     if (rpcErr) throw rpcErr;
 

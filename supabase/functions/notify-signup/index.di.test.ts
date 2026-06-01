@@ -18,6 +18,16 @@ import type { EmailMessage } from "../_shared/deps.ts";
 import { handle } from "./index.ts";
 
 // ---------------------------------------------------------------------------
+// Auth helpers (fail-closed gate: webhook secret OR service-role required)
+// ---------------------------------------------------------------------------
+
+const WEBHOOK_SECRET = "wh-secret-123";
+/** Header that authorizes a webhook caller. */
+const authHeaders = { "x-supabase-webhook-secret": WEBHOOK_SECRET };
+/** envVars that make the webhook secret available to the handler. */
+const authEnv = { SUPABASE_WEBHOOK_SECRET: WEBHOOK_SECRET };
+
+// ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
 
@@ -34,6 +44,7 @@ function makeRecord(overrides: Record<string, unknown> = {}): Record<string, unk
 
 function twoAdminSetup() {
   return makeFakeDeps({
+    envVars: authEnv,
     usersById: {
       "admin-1": { email: "admin1@example.com" },
       "admin-2": { email: "admin2@example.com" },
@@ -55,26 +66,26 @@ function twoAdminSetup() {
 // ---------------------------------------------------------------------------
 
 Deno.test("notify-signup/DI: empty body → 400 with error", async () => {
-  const { deps } = makeFakeDeps();
-  const res = await handle(makeRequest({ body: {} }), deps);
+  const { deps } = makeFakeDeps({ envVars: authEnv });
+  const res = await handle(makeRequest({ headers: authHeaders, body: {} }), deps);
   assertEquals(res.status, 400);
   const body = await res.json() as Record<string, unknown>;
   assertExists(body.error, "response body should contain 'error' key");
 });
 
 Deno.test("notify-signup/DI: record without id → 400", async () => {
-  const { deps } = makeFakeDeps();
+  const { deps } = makeFakeDeps({ envVars: authEnv });
   const res = await handle(
-    makeRequest({ body: { record: { email: "x@y.com" } } }),
+    makeRequest({ headers: authHeaders, body: { record: { email: "x@y.com" } } }),
     deps,
   );
   assertEquals(res.status, 400);
 });
 
 Deno.test("notify-signup/DI: record without email → 400", async () => {
-  const { deps } = makeFakeDeps();
+  const { deps } = makeFakeDeps({ envVars: authEnv });
   const res = await handle(
-    makeRequest({ body: { record: { id: "ap-001" } } }),
+    makeRequest({ headers: authHeaders, body: { record: { id: "ap-001" } } }),
     deps,
   );
   assertEquals(res.status, 400);
@@ -89,7 +100,7 @@ Deno.test("notify-signup/DI: flat payload (no .record wrapper) is accepted", asy
   // should fall back to `payload` itself when `payload.record` is absent.
   const { deps } = twoAdminSetup();
   const res = await handle(
-    makeRequest({ body: makeRecord() }),
+    makeRequest({ headers: authHeaders, body: makeRecord() }),
     deps,
   );
   assertEquals(res.status, 200);
@@ -103,9 +114,9 @@ Deno.test("notify-signup/DI: flat payload (no .record wrapper) is accepted", asy
 // ---------------------------------------------------------------------------
 
 Deno.test("notify-signup/DI: status='approved' → 200 { skipped: 'not pending' }", async () => {
-  const { deps, invokeCalls } = makeFakeDeps();
+  const { deps, invokeCalls } = makeFakeDeps({ envVars: authEnv });
   const res = await handle(
-    makeRequest({ body: { record: makeRecord({ status: "approved" }) } }),
+    makeRequest({ headers: authHeaders, body: { record: makeRecord({ status: "approved" }) } }),
     deps,
   );
   assertEquals(res.status, 200);
@@ -117,9 +128,9 @@ Deno.test("notify-signup/DI: status='approved' → 200 { skipped: 'not pending' 
 });
 
 Deno.test("notify-signup/DI: status='rejected' → 200 { skipped: 'not pending' }, no emails", async () => {
-  const { deps, invokeCalls } = makeFakeDeps();
+  const { deps, invokeCalls } = makeFakeDeps({ envVars: authEnv });
   const res = await handle(
-    makeRequest({ body: { record: makeRecord({ status: "rejected" }) } }),
+    makeRequest({ headers: authHeaders, body: { record: makeRecord({ status: "rejected" }) } }),
     deps,
   );
   assertEquals(res.status, 200);
@@ -135,7 +146,7 @@ Deno.test("notify-signup/DI: record with no status field is treated as pending",
   const recordNoStatus = makeRecord();
   delete (recordNoStatus as Record<string, unknown>).status;
   const res = await handle(
-    makeRequest({ body: { record: recordNoStatus } }),
+    makeRequest({ headers: authHeaders, body: { record: recordNoStatus } }),
     deps,
   );
   assertEquals(res.status, 200);
@@ -152,6 +163,7 @@ Deno.test("notify-signup/DI: 2 admins → 2 sendEmail calls with template 'new-s
 
   const res = await handle(
     makeRequest({
+      headers: authHeaders,
       body: {
         record: makeRecord({
           id: "ap-001",
@@ -200,6 +212,7 @@ Deno.test("notify-signup/DI: 2 admins → 2 sendEmail calls with template 'new-s
 
 Deno.test("notify-signup/DI: display_name absent → signupName falls back to email", async () => {
   const { deps, invokeCalls } = makeFakeDeps({
+    envVars: authEnv,
     usersById: { "admin-1": { email: "admin@example.com" } },
     tables: {
       user_roles: { data: [{ user_id: "admin-1", role: "admin" }], error: null },
@@ -209,7 +222,7 @@ Deno.test("notify-signup/DI: display_name absent → signupName falls back to em
   const record = makeRecord({ display_name: undefined, email: "fallback@example.com" });
   delete (record as Record<string, unknown>).display_name;
 
-  await handle(makeRequest({ body: { record } }), deps);
+  await handle(makeRequest({ headers: authHeaders, body: { record } }), deps);
 
   assertEquals(invokeCalls.length, 1);
   const msg = invokeCalls[0].body as EmailMessage;
@@ -219,6 +232,7 @@ Deno.test("notify-signup/DI: display_name absent → signupName falls back to em
 
 Deno.test("notify-signup/DI: requested_role absent → defaults to 'artist' in templateData", async () => {
   const { deps, invokeCalls } = makeFakeDeps({
+    envVars: authEnv,
     usersById: { "admin-1": { email: "admin@example.com" } },
     tables: {
       user_roles: { data: [{ user_id: "admin-1", role: "admin" }], error: null },
@@ -228,7 +242,7 @@ Deno.test("notify-signup/DI: requested_role absent → defaults to 'artist' in t
   const record = makeRecord({ requested_role: undefined });
   delete (record as Record<string, unknown>).requested_role;
 
-  await handle(makeRequest({ body: { record } }), deps);
+  await handle(makeRequest({ headers: authHeaders, body: { record } }), deps);
 
   assertEquals(invokeCalls.length, 1);
   const msg = invokeCalls[0].body as EmailMessage;
@@ -237,6 +251,7 @@ Deno.test("notify-signup/DI: requested_role absent → defaults to 'artist' in t
 
 Deno.test("notify-signup/DI: idempotency_key is signup-<record.id>-<admin.id>", async () => {
   const { deps, invokeCalls } = makeFakeDeps({
+    envVars: authEnv,
     usersById: { "admin-abc": { email: "admin@example.com" } },
     tables: {
       user_roles: { data: [{ user_id: "admin-abc", role: "admin" }], error: null },
@@ -244,7 +259,7 @@ Deno.test("notify-signup/DI: idempotency_key is signup-<record.id>-<admin.id>", 
   });
 
   await handle(
-    makeRequest({ body: { record: makeRecord({ id: "ap-xyz" }) } }),
+    makeRequest({ headers: authHeaders, body: { record: makeRecord({ id: "ap-xyz" }) } }),
     deps,
   );
 
@@ -260,6 +275,7 @@ Deno.test("notify-signup/DI: idempotency_key is signup-<record.id>-<admin.id>", 
 
 Deno.test("notify-signup/DI: admin without email → skipped, notified count = 1 (not 2)", async () => {
   const { deps, invokeCalls } = makeFakeDeps({
+    envVars: authEnv,
     usersById: {
       "admin-1": { email: "admin1@example.com" },
       "admin-2": {}, // no email
@@ -276,7 +292,7 @@ Deno.test("notify-signup/DI: admin without email → skipped, notified count = 1
   });
 
   const res = await handle(
-    makeRequest({ body: { record: makeRecord() } }),
+    makeRequest({ headers: authHeaders, body: { record: makeRecord() } }),
     deps,
   );
 
@@ -313,7 +329,7 @@ Deno.test("notify-signup/DI: sendEmail throws for one admin → still 200, notif
   };
 
   const res = await handle(
-    makeRequest({ body: { record: makeRecord() } }),
+    makeRequest({ headers: authHeaders, body: { record: makeRecord() } }),
     throwingDeps,
   );
 
@@ -336,7 +352,7 @@ Deno.test("notify-signup/DI: all sendEmail calls throw → 200 { ok: true, notif
   };
 
   const res = await handle(
-    makeRequest({ body: { record: makeRecord() } }),
+    makeRequest({ headers: authHeaders, body: { record: makeRecord() } }),
     throwingDeps,
   );
 
@@ -351,12 +367,13 @@ Deno.test("notify-signup/DI: all sendEmail calls throw → 200 { ok: true, notif
 
 Deno.test("notify-signup/DI: no admins in user_roles → 200 { ok: true, notified: 0 }", async () => {
   const { deps, invokeCalls } = makeFakeDeps({
+    envVars: authEnv,
     usersById: {},
     tables: { user_roles: { data: [], error: null } },
   });
 
   const res = await handle(
-    makeRequest({ body: { record: makeRecord() } }),
+    makeRequest({ headers: authHeaders, body: { record: makeRecord() } }),
     deps,
   );
 
@@ -374,4 +391,88 @@ Deno.test("notify-signup/DI: OPTIONS → 200 or 204", async () => {
   const { deps } = makeFakeDeps();
   const res = await handle(makeRequest({ method: "OPTIONS" }), deps);
   assertEquals(res.status === 200 || res.status === 204, true);
+});
+
+// ---------------------------------------------------------------------------
+// 9. Fail-closed auth gate (Finding 1)
+//    - No secret + non-service-role → 401, NO email
+//    - Wrong secret → 401, NO email
+//    - Correct webhook secret → proceeds (200, emails sent)
+//    - Service-role caller (no webhook secret) → proceeds
+//    - SUPABASE_WEBHOOK_SECRET unset + non-service-role → 401 (no fail-open)
+// ---------------------------------------------------------------------------
+
+Deno.test("notify-signup/DI: no secret + non-service-role → 401 and NO email sent", async () => {
+  const { deps, invokeCalls } = twoAdminSetup(); // env has the secret, request does not present it
+  const res = await handle(
+    makeRequest({ body: { record: makeRecord() } }), // no x-supabase-webhook-secret header
+    deps,
+  );
+  assertEquals(res.status, 401);
+  const body = await res.json() as Record<string, unknown>;
+  assertEquals(body, { error: "Unauthorized" });
+  // Critical: no email may be sent on an unauthorized call
+  assertEquals(invokeCalls.length, 0);
+});
+
+Deno.test("notify-signup/DI: wrong webhook secret → 401 and NO email sent", async () => {
+  const { deps, invokeCalls } = twoAdminSetup();
+  const res = await handle(
+    makeRequest({
+      headers: { "x-supabase-webhook-secret": "totally-wrong-secret" },
+      body: { record: makeRecord() },
+    }),
+    deps,
+  );
+  assertEquals(res.status, 401);
+  assertEquals(invokeCalls.length, 0);
+});
+
+Deno.test("notify-signup/DI: correct webhook secret → proceeds (200, emails sent)", async () => {
+  const { deps, invokeCalls } = twoAdminSetup();
+  const res = await handle(
+    makeRequest({ headers: authHeaders, body: { record: makeRecord() } }),
+    deps,
+  );
+  assertEquals(res.status, 200);
+  const body = await res.json() as Record<string, unknown>;
+  assertEquals(body, { ok: true, notified: 2 });
+  assertEquals(invokeCalls.length, 2);
+});
+
+Deno.test("notify-signup/DI: service-role caller (no webhook secret) → proceeds", async () => {
+  // No SUPABASE_WEBHOOK_SECRET in env, but the caller presents the service-role key.
+  const { deps, invokeCalls } = makeFakeDeps({
+    envVars: { SUPABASE_SERVICE_ROLE_KEY: "svc-key" },
+    usersById: { "admin-1": { email: "admin1@example.com" } },
+    tables: {
+      user_roles: { data: [{ user_id: "admin-1", role: "admin" }], error: null },
+    },
+  });
+  const res = await handle(
+    makeRequest({ headers: { Authorization: "Bearer svc-key" }, body: { record: makeRecord() } }),
+    deps,
+  );
+  assertEquals(res.status, 200);
+  assertEquals(invokeCalls.length, 1);
+});
+
+Deno.test("notify-signup/DI: SUPABASE_WEBHOOK_SECRET unset + non-service-role → 401 (fail-closed, no fail-open)", async () => {
+  // Env has neither the webhook secret nor a service-role key; request presents a
+  // header value but there is nothing to validate it against. Must reject.
+  const { deps, invokeCalls } = makeFakeDeps({
+    usersById: { "admin-1": { email: "admin1@example.com" } },
+    tables: {
+      user_roles: { data: [{ user_id: "admin-1", role: "admin" }], error: null },
+    },
+  });
+  const res = await handle(
+    makeRequest({
+      headers: { "x-supabase-webhook-secret": "anything" },
+      body: { record: makeRecord() },
+    }),
+    deps,
+  );
+  assertEquals(res.status, 401);
+  assertEquals(invokeCalls.length, 0);
 });

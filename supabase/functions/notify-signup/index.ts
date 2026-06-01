@@ -1,12 +1,37 @@
 import { preflight, json } from "../_shared/http.ts";
+import { constantTimeEqual, isServiceRole } from "../_shared/auth.ts";
 import { realDeps, type Deps } from "../_shared/deps.ts";
 
 /**
  * Called by a database webhook on user_approvals INSERT.
  * Notifies all admins by sending a transactional email.
+ *
+ * Auth (fail-closed): accept only when the caller presents the Supabase webhook
+ * secret (header `x-supabase-webhook-secret` matching SUPABASE_WEBHOOK_SECRET) OR
+ * is the service-role caller (internal edge functions may invoke this). If neither,
+ * reject with 401. We never fail open: a missing/empty SUPABASE_WEBHOOK_SECRET that
+ * also isn't a service-role caller is rejected and logged as a misconfiguration.
  */
+function isAuthorizedCaller(req: Request, deps: Deps): boolean {
+  if (isServiceRole(deps, req)) return true;
+
+  const provided = req.headers.get("x-supabase-webhook-secret") ?? "";
+  const expected = deps.env("SUPABASE_WEBHOOK_SECRET") ?? "";
+  if (expected === "") {
+    console.error(
+      "notify-signup: SUPABASE_WEBHOOK_SECRET is not set and caller is not service-role — rejecting (fail-closed). Configure the webhook secret.",
+    );
+    return false;
+  }
+  return constantTimeEqual(provided, expected);
+}
+
 export async function handle(req: Request, deps: Deps): Promise<Response> {
   if (req.method === "OPTIONS") return preflight();
+
+  if (!isAuthorizedCaller(req, deps)) {
+    return json({ error: "Unauthorized" }, 401);
+  }
 
   try {
     const admin = deps.admin;

@@ -21,6 +21,11 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
   const auth = await requireCronOrRole(deps, req, ["admin", "producer"]);
   if (!auth.ok) return auth.response;
 
+  // Capture the clock once so the idempotency key and the digest stamp are
+  // derived from a single instant (a run straddling a UTC hour boundary must
+  // not produce inconsistent keys/stamps).
+  const now = deps.now()
+
   // ── Berlin hour gate ─────────────────────────────────────────────────────
   const { data: hourSetting } = await admin
     .from('app_settings')
@@ -34,7 +39,7 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
       timeZone: 'Europe/Berlin',
       hour: 'numeric',
       hour12: false,
-    }).format(deps.now()),
+    }).format(now),
     10,
   )
 
@@ -112,12 +117,12 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
           displayName: entry.displayName,
           bookings: entry.bookings,
         },
-        idempotency_key: `confirmation-digest-${artistId}-${deps.now().toISOString().slice(0, 13)}`,
+        idempotency_key: `confirmation-digest-${artistId}-${now.toISOString().slice(0, 13)}`,
       })
 
       const { error: stampErr } = await admin
         .from('bookings')
-        .update({ confirmation_digest_sent_at: deps.now().toISOString() })
+        .update({ confirmation_digest_sent_at: now.toISOString() })
         .in('id', entry.bookingIds)
 
       if (stampErr) {

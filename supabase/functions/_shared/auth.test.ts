@@ -1,6 +1,6 @@
 import { assertEquals } from "./test-asserts.ts";
 import { makeFakeDeps, makeRequest } from "./testing.ts";
-import { requireRole, requireCronOrRole, isServiceRole } from "./auth.ts";
+import { requireRole, requireCronOrRole, isServiceRole, constantTimeEqual } from "./auth.ts";
 
 Deno.test("requireRole rejects a request with no Bearer token (401)", async () => {
   const { deps } = makeFakeDeps();
@@ -35,6 +35,22 @@ Deno.test("requireCronOrRole rejects a wrong cron secret (401)", async () => {
   const out = await requireCronOrRole(deps, makeRequest({ headers: { "X-Cron-Secret": "nope" } }), ["admin"]);
   assertEquals(out.ok, false);
   if (!out.ok) assertEquals(out.response.status, 401);
+});
+
+Deno.test("requireCronOrRole rejects a wrong secret of the SAME length (401)", async () => {
+  // "secret123" and "secret124" are both 9 chars — exercises the constant-time
+  // compare's equal-length branch (timingSafeEqual must run and return false).
+  const { deps } = makeFakeDeps({ tables: { app_settings: { data: { value: "secret123" }, error: null } } });
+  const out = await requireCronOrRole(deps, makeRequest({ headers: { "X-Cron-Secret": "secret124" } }), ["admin"]);
+  assertEquals(out.ok, false);
+  if (!out.ok) assertEquals(out.response.status, 401);
+});
+
+Deno.test("constantTimeEqual: equal strings → true, unequal (same/diff length) → false", () => {
+  assertEquals(constantTimeEqual("abc", "abc"), true);
+  assertEquals(constantTimeEqual("abc", "abd"), false); // same length, differs
+  assertEquals(constantTimeEqual("abc", "abcd"), false); // different length
+  assertEquals(constantTimeEqual("", ""), true);
 });
 
 Deno.test("isServiceRole detects the service-role bearer token", () => {
