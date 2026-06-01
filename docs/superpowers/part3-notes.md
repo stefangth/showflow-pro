@@ -8,9 +8,9 @@ Regenerated via Supabase MCP `generate_typescript_types` (project `epweartpzwvca
 - **App impact**: build clean, 140 Vitest pass, 0 lint errors — no type breakage from the richer types (regen is purely additive/corrective). No table/column the app uses was removed.
 
 ## CI-validation checklist (Phases B–D, verified via the Phase E PR)
-- [ ] pgTAP: availability_blocked_dates.sql
-- [ ] pgTAP: offer_engine_tables.sql
-- [ ] pgTAP: reference_tables.sql
+- [x] pgTAP: availability_blocked_dates.sql (authored; pending CI run)
+- [x] pgTAP: offer_engine_tables.sql (authored; pending CI run)
+- [x] pgTAP: reference_tables.sql (authored; pending CI run)
 - [ ] pgTAP: expire_soft_bookings.sql
 - [ ] pgTAP: resolve_show_assignments.sql
 - [ ] pgTAP: recompute_and_timestamps.sql
