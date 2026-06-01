@@ -9,6 +9,13 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
     return json({ error: 'Method not allowed' }, 405)
   }
 
+  const supabaseUrl = deps.env('SUPABASE_URL')
+  const supabaseServiceKey = deps.env('SUPABASE_SERVICE_ROLE_KEY')
+
+  if (!supabaseUrl || !supabaseServiceKey) {
+    return json({ error: 'Server configuration error' }, 500)
+  }
+
   const admin = deps.admin;
 
   // Extract token from query params (GET) or body (POST)
