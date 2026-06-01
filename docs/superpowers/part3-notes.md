@@ -16,7 +16,13 @@ Regenerated via Supabase MCP `generate_typescript_types` (project `epweartpzwvca
 - [x] pgTAP: recompute_and_timestamps.sql (authored; pending CI run)
 - [x] e2e: eligibility-gating.spec.ts (authored; pending CI run)
 - [x] e2e: chat-access-control.spec.ts (authored; pending CI run)
-- [ ] coverage gate green in CI
+- [~] coverage gate: config done (vitest.config.ts coverage block + thresholds + `coverage/` gitignored). ACTIVATION PENDING — see below.
+
+### Coverage gate — activation step (requires an npm environment)
+Task 11 (config) is committed and inert (CI still runs `npm test`, not `--coverage`). To activate the gate, in an environment with `npm` (this dev machine has only Deno — no npm/node, so the lockfile can't be synced here):
+1. `npm install -D @vitest/coverage-v8@^3.2.4` (updates `package.json` AND `package-lock.json` — both must land together or `npm ci` breaks every CI job).
+2. In `.github/workflows/ci.yml`, change the unit-tests job step from `npm test` to `npm run test:coverage` (script already exists = `vitest run --coverage`); the thresholds in vitest.config make it fail-on-regression.
+3. Commit `package.json` + `package-lock.json` + `ci.yml` together. If the starting thresholds (statements 25 / branches 60 / functions 40 / lines 25) are above the measured numbers, lower them to just under actual — never disable the gate.
 
 ## Findings / bugs
 - (none yet)
