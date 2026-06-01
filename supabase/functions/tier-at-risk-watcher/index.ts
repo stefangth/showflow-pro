@@ -28,23 +28,30 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
     .is('closed_at', null)
 
   if (tiersErr) return json({ error: tiersErr.message }, 500)
-  if (!openTiers || openTiers.length === 0) return json({ at_risk_count: 0 })
 
-  // Load slot defaults
+  // Load existing tier_at_risk notifications so we can:
+  //   1. Skip re-creating one that already exists for (tier, user) — preserves read state
+  //   2. Delete ones whose tier has since recovered (including tiers that have closed entirely)
+  //
+  // NOTE: This must happen BEFORE the empty-tiers early-exit so that stale notifications
+  // are cleared even when all open tiers have since been closed (closed_at set).
+  const { data: existingTierAtRiskNotifs } = await admin
+    .from('notifications')
+    .select('id, user_id, related_entity_id')
+    .eq('type', 'tier_at_risk')
+
+  // If there are no open tiers and no stale notifications, skip all further work.
+  if ((!openTiers || openTiers.length === 0) && (existingTierAtRiskNotifs ?? []).length === 0) {
+    return json({ at_risk_count: 0, cleared: 0 })
+  }
+
+  // Load slot defaults (only needed when we have open tiers to evaluate)
   const { data: slotsSetting } = await admin
     .from('app_settings')
     .select('value')
     .eq('key', 'sub_program_slots_defaults')
     .maybeSingle()
   const slotDefaults = (slotsSetting?.value as Record<string, Record<string, { main_cast: number; understudies: number }>>) ?? {}
-
-  // Load existing tier_at_risk notifications so we can:
-  //   1. Skip re-creating one that already exists for (tier, user) — preserves read state
-  //   2. Delete ones whose tier has since recovered
-  const { data: existingTierAtRiskNotifs } = await admin
-    .from('notifications')
-    .select('id, user_id, related_entity_id')
-    .eq('type', 'tier_at_risk')
 
   const existingKeySet = new Set<string>()
   for (const n of (existingTierAtRiskNotifs ?? []) as Array<{ id: string; user_id: string; related_entity_id: string }>) {
