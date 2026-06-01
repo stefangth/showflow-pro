@@ -48,6 +48,13 @@ export function computeInheritedCastIds(
   return new Set((eligibilityCastIds ?? []).filter((cid) => !overrideCastIds.has(cid)));
 }
 
+/** Update payload for a booking status transition. */
+export interface BookingStatusUpdate {
+  status: string;
+  confirmed_at?: string;
+  cancelled_at?: string;
+}
+
 /**
  * Build the `bookings` update payload for a status transition.
  *
@@ -55,8 +62,8 @@ export function computeInheritedCastIds(
  * confirmed_at / cancelled_at and never clears a stale stamp on the reverse
  * transition. See part2-bug-log.md ("booking timestamp never cleared").
  */
-export function bookingStatusUpdate(status: string, now: Date): Record<string, unknown> {
-  const updates: Record<string, unknown> = { status };
+export function bookingStatusUpdate(status: string, now: Date): BookingStatusUpdate {
+  const updates: BookingStatusUpdate = { status };
   if (status === "confirmed") updates.confirmed_at = now.toISOString();
   if (status === "cancelled") updates.cancelled_at = now.toISOString();
   return updates;

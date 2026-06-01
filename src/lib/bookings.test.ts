@@ -38,6 +38,24 @@ describe("deriveBookingGroups", () => {
     expect(deriveBookingGroups(null).active).toEqual([]);
     expect(deriveBookingGroups(undefined).bookedArtistIds.size).toBe(0);
   });
+
+  it("dedupes artist ids that appear in multiple active bookings", () => {
+    const groups = deriveBookingGroups([
+      b({ artist_id: "a1", status: "soft_booked" }),
+      b({ artist_id: "a1", status: "confirmed" }),
+    ]);
+    expect(groups.bookedArtistIds.size).toBe(1);
+    expect(groups.bookedArtistIds.has("a1")).toBe(true);
+  });
+
+  it("excludes cancelled rows from the main and understudy arrays directly", () => {
+    const groups = deriveBookingGroups([
+      b({ artist_id: "a1", status: "cancelled", is_understudy: false }),
+      b({ artist_id: "a2", status: "cancelled", is_understudy: true }),
+    ]);
+    expect(groups.main).toHaveLength(0);
+    expect(groups.understudy).toHaveLength(0);
+  });
 });
 
 describe("computeInheritedCastIds", () => {
