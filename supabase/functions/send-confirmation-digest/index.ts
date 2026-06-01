@@ -1,66 +1,40 @@
-import { createClient } from 'npm:@supabase/supabase-js@2'
+import { preflight, json } from "../_shared/http.ts";
+import { requireCronOrRole } from "../_shared/auth.ts";
+import { realDeps, type Deps } from "../_shared/deps.ts";
 
-const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-cron-secret',
-}
+/**
+ * Daily confirmation digest:
+ *   Fires hourly (via pg_cron). Checks if Berlin local hour matches
+ *   `confirmation_digest_hour_berlin` (default 20). If so, groups all
+ *   confirmed bookings without a confirmation_digest_sent_at stamp by artist
+ *   and sends one email per artist, then stamps confirmation_digest_sent_at = now()
+ *   on the bookings included.
+ *
+ * Auth: X-Cron-Secret header (pg_cron), or user JWT (admin/producer manual trigger).
+ */
+export async function handle(req: Request, deps: Deps): Promise<Response> {
+  if (req.method === 'OPTIONS') return preflight();
 
-function json(body: unknown, status = 200): Response {
-  return new Response(JSON.stringify(body), {
-    status,
-    headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-  })
-}
+  const admin = deps.admin;
 
-Deno.serve(async (req) => {
-  if (req.method === 'OPTIONS') return new Response(null, { headers: corsHeaders })
+  // ── Auth: X-Cron-Secret or user JWT ──────────────────────────────────────
+  const auth = await requireCronOrRole(deps, req, ["admin", "producer"]);
+  if (!auth.ok) return auth.response;
 
-  const supabaseUrl = Deno.env.get('SUPABASE_URL')!
-  const serviceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
-  const admin = createClient(supabaseUrl, serviceKey)
-
-  const cronSecret = req.headers.get('X-Cron-Secret')
-  if (cronSecret) {
-    const { data: secretSetting } = await admin
-      .from('app_settings')
-      .select('value')
-      .eq('key', 'cron_secret')
-      .maybeSingle()
-    const storedSecret = (secretSetting?.value as string | null) ?? ''
-    if (cronSecret !== storedSecret) return json({ error: 'Unauthorized' }, 401)
-  } else {
-    const authHeader = req.headers.get('Authorization')
-    if (!authHeader?.startsWith('Bearer ')) return json({ error: 'Unauthorized' }, 401)
-
-    const anonKey = Deno.env.get('SUPABASE_ANON_KEY')!
-    const userClient = createClient(supabaseUrl, anonKey, {
-      global: { headers: { Authorization: authHeader } },
-    })
-    const { data: { user }, error: authError } = await userClient.auth.getUser()
-    if (authError || !user) return json({ error: 'Unauthorized' }, 401)
-
-    const { data: roleRow } = await admin
-      .from('user_roles')
-      .select('role')
-      .eq('user_id', user.id)
-      .in('role', ['admin', 'producer'])
-      .maybeSingle()
-    if (!roleRow) return json({ error: 'Forbidden' }, 403)
-  }
-
+  // ── Berlin hour gate ─────────────────────────────────────────────────────
   const { data: hourSetting } = await admin
     .from('app_settings')
     .select('value')
     .eq('key', 'confirmation_digest_hour_berlin')
     .maybeSingle()
-  const targetHour = (hourSetting?.value as number | null) ?? 20
+  const targetHour = typeof hourSetting?.value === 'number' ? hourSetting.value : 20
 
   const berlinHour = parseInt(
     new Intl.DateTimeFormat('en', {
       timeZone: 'Europe/Berlin',
       hour: 'numeric',
       hour12: false,
-    }).format(new Date()),
+    }).format(deps.now()),
     10,
   )
 
@@ -131,21 +105,19 @@ Deno.serve(async (req) => {
 
   for (const [artistId, entry] of grouped) {
     try {
-      await admin.functions.invoke('send-transactional-email', {
-        body: {
-          template_name: 'artist-confirmation-digest',
-          recipient_email: entry.recipientEmail,
-          templateData: {
-            displayName: entry.displayName,
-            bookings: entry.bookings,
-          },
-          idempotency_key: `confirmation-digest-${artistId}-${new Date().toISOString().slice(0, 13)}`,
+      await deps.sendEmail({
+        template_name: 'artist-confirmation-digest',
+        recipient_email: entry.recipientEmail,
+        templateData: {
+          displayName: entry.displayName,
+          bookings: entry.bookings,
         },
+        idempotency_key: `confirmation-digest-${artistId}-${deps.now().toISOString().slice(0, 13)}`,
       })
 
       const { error: stampErr } = await admin
         .from('bookings')
-        .update({ confirmation_digest_sent_at: new Date().toISOString() })
+        .update({ confirmation_digest_sent_at: deps.now().toISOString() })
         .in('id', entry.bookingIds)
 
       if (stampErr) {
@@ -159,4 +131,6 @@ Deno.serve(async (req) => {
   }
 
   return json({ digests_sent: digestsSent })
-})
+}
+
+if (import.meta.main) Deno.serve((req) => handle(req, realDeps()));
