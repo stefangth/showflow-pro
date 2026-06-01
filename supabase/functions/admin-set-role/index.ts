@@ -34,11 +34,17 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
     } else {
       // Prevent removing the last admin
       if (body.role === 'admin') {
-        const { count } = await admin
+        const { count, error: countErr } = await admin
           .from('user_roles')
           .select('*', { count: 'exact', head: true })
           .eq('role', 'admin');
-        if ((count ?? 0) <= 1) {
+        // A null count means the count query errored (network blip, schema cache
+        // miss, RLS). Treat it as an explicit error state — not as "0 admins" —
+        // so we don't wrongly block every admin removal with a misleading message.
+        if (countErr || count === null) {
+          return json({ error: 'Could not verify admin count' }, 500);
+        }
+        if (count <= 1) {
           return json({ error: 'Cannot remove the last admin' }, 400);
         }
       }

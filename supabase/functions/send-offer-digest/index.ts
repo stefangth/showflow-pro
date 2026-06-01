@@ -28,6 +28,9 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
     .maybeSingle()
   const targetHour = typeof hourSetting?.value === 'number' ? hourSetting.value : 19
 
+  // `% 24` normalizes the hour: some V8/Deno builds format midnight as '24'
+  // (rather than '0'), which would make a configured targetHour of 0 (midnight
+  // Berlin) never match and silently suppress the digest.
   const berlinHour = parseInt(
     new Intl.DateTimeFormat('en', {
       timeZone: 'Europe/Berlin',
@@ -35,7 +38,7 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
       hour12: false,
     }).format(deps.now()),
     10,
-  )
+  ) % 24
 
   if (berlinHour !== targetHour) {
     return json({ skipped: true, reason: `Berlin hour is ${berlinHour}, target is ${targetHour}` })

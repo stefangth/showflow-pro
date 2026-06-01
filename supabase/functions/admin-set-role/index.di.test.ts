@@ -281,3 +281,57 @@ Deno.test("prevent-last-admin: 2 admins exist → remove allowed → 200", async
   const body = await res.json();
   assertEquals(body, { ok: true });
 });
+
+// ---------------------------------------------------------------------------
+// BUG-002 (count-null guard): when the admin-count query errors, Supabase
+// returns `{ count: null, error: {...} }`. The guard must NOT misread this as
+// "0 admins" (which would block every removal with a misleading message) — it
+// must surface an explicit "Could not verify admin count" 500.
+//
+// The `user_roles` seed is shared between the requireRole auth read and the
+// count query, so we monkey-patch only the count query's `.then()` to return a
+// null count + error (mirroring the duplicate-key insert test pattern above).
+// ---------------------------------------------------------------------------
+
+Deno.test("prevent-last-admin: count query errors (count:null) → 500 'Could not verify admin count'", async () => {
+  const { deps } = makeFakeDeps(adminCallerSeed());
+
+  let countCalled = false;
+  // deno-lint-ignore no-explicit-any
+  const adminAny = deps.admin as any;
+  const originalFrom = adminAny.from.bind(adminAny);
+  adminAny.from = (table: string) => {
+    // deno-lint-ignore no-explicit-any
+    const chain: any = originalFrom(table);
+    if (table === "user_roles") {
+      // The count query is the one that chains .select("*", { count, head }).
+      // Intercept .select() with a count option and override its .then().
+      // deno-lint-ignore no-explicit-any
+      const origSelect = chain.select.bind(chain) as (...a: any[]) => any;
+      // deno-lint-ignore no-explicit-any
+      chain.select = (...selArgs: any[]) => {
+        // deno-lint-ignore no-explicit-any
+        const inner: any = origSelect(...selArgs);
+        const opts = selArgs[1] as { count?: string; head?: boolean } | undefined;
+        if (opts?.head === true) {
+          countCalled = true;
+          // deno-lint-ignore no-explicit-any
+          inner.then = (f: any) =>
+            Promise.resolve({
+              data: null,
+              count: null,
+              error: { message: "schema cache miss" },
+            }).then(f);
+        }
+        return inner;
+      };
+    }
+    return chain;
+  };
+
+  const res = await handle(adminReq({ user_id: "u1", role: "admin", action: "remove" }), deps);
+  assertEquals(res.status, 500);
+  assertEquals(countCalled, true);
+  const body = await res.json();
+  assertEquals(body.error, "Could not verify admin count");
+});

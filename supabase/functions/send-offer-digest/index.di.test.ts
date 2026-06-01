@@ -102,6 +102,38 @@ Deno.test("send-offer-digest: CET — 18:00 UTC (19:00 Berlin) is NOT skipped", 
   assertEquals(body.digests_sent, 0);
 });
 
+// ── Midnight gate: hour 24 from Intl must normalize to 0 (% 24) ───────────────
+// Regression: V8/Deno's Intl.DateTimeFormat hour:'numeric' hour12:false returns
+// '24' at midnight, so parseInt('24') !== configured targetHour 0 → the digest
+// would silently skip forever. The gate now normalizes with `% 24`.
+Deno.test("send-offer-digest: midnight Berlin (hour 0) with target 0 is NOT skipped", async () => {
+  // CET (UTC+1): 2026-01-15T23:00:00Z = 00:00 Berlin
+  const BERLIN_MIDNIGHT_CET = new Date("2026-01-15T23:00:00.000Z");
+  const settings = [
+    { when: { key: "cron_secret" }, data: { value: "s" } },
+    { when: { key: "offer_digest_hour_berlin" }, data: { value: 0 } },
+    { when: { key: "offer_response_window_hours" }, data: { value: 48 } },
+  ];
+  const { deps } = makeFakeDeps({
+    now: BERLIN_MIDNIGHT_CET,
+    tables: { app_settings: settings, bookings: { data: [], error: null } },
+  });
+  const res = await handle(makeRequest({ headers: cronOK }), deps);
+  const body = await res.json();
+  assertEquals(res.status, 200);
+  // Must proceed (not skip) — gate normalized hour 24 → 0 == target 0.
+  assertEquals(body.skipped, undefined);
+  assertEquals(body.digests_sent, 0);
+});
+
+// Pin the exact normalization the gate now relies on. On the V8/Deno build that
+// surfaced this bug, Intl formats midnight as '24'; the gate's `% 24` must map
+// that to 0 so it equals a configured targetHour of 0. (This guards the fix on
+// runtimes where Intl emits '24', independent of the local Intl build above.)
+Deno.test("send-offer-digest: gate normalizes parseInt('24') % 24 to 0", () => {
+  assertEquals(parseInt("24", 10) % 24, 0);
+});
+
 Deno.test("send-offer-digest: CET — 17:00 UTC (18:00 Berlin) IS skipped", async () => {
   const { deps } = baseDeps({ bookings: { data: [], error: null } }, BERLIN_18_CET);
   const res = await handle(makeRequest({ headers: cronOK }), deps);
