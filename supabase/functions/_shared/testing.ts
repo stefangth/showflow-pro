@@ -2,8 +2,11 @@ import type { Deps, EmailMessage, InvokeResult } from "./deps.ts";
 
 export interface RecordedCall { table: string; method: string; args: unknown[]; }
 
-/** A single seed: the result returned for every query to a table (backward-compatible form). */
-export type SingleSeed = { data?: unknown; error?: unknown };
+/** A single seed: the result returned for every query to a table (backward-compatible form).
+ *  `count` is optional and models the `{ count: N }` shape returned by Supabase for
+ *  `select("*", { count: "exact", head: true })` queries. Without it, handlers that
+ *  destructure `{ count }` would receive `undefined` (BUG-001 fix). */
+export type SingleSeed = { data?: unknown; error?: unknown; count?: number };
 
 /** One entry in an array seed — `when` is matched against recorded eq() args. */
 export type ArraySeedEntry = { when?: Record<string, unknown>; data?: unknown; error?: unknown };
@@ -33,7 +36,7 @@ function resolveSeed(
   seed: TableSeed,
   localEq: Record<string, unknown>,
   localIn: Record<string, unknown[]> = {},
-): { data: unknown; error: unknown } {
+): { data: unknown; error: unknown; count?: number } {
   if (Array.isArray(seed)) {
     // Find first entry whose every `when` key/value matches localEq
     const matched = seed.find((entry) =>
@@ -53,7 +56,10 @@ function resolveSeed(
   // Single-object seed (backward-compatible).
   // Apply in() filtering so that .in("role", ["admin"]) correctly excludes rows
   // where the field value is not in the allowed set.
-  const { data, error } = seed as { data: unknown; error: unknown };
+  const { data, error, count } = seed as { data: unknown; error: unknown; count?: number };
+  // Only include `count` in the result when explicitly set in the seed (omit the key
+  // entirely when undefined so backward-compatible deep-equality checks stay green).
+  const countField = count !== undefined ? { count } : {};
   if (data !== null && data !== undefined && Object.keys(localIn).length > 0) {
     const applyInFilter = (row: Record<string, unknown>): boolean =>
       Object.entries(localIn).every(([col, allowed]) => allowed.includes(row[col]));
@@ -61,15 +67,15 @@ function resolveSeed(
     if (Array.isArray(data)) {
       // Filter the array and return only matching rows
       const filtered = (data as Record<string, unknown>[]).filter(applyInFilter);
-      return { data: filtered.length > 0 ? filtered : null, error };
+      return { data: filtered.length > 0 ? filtered : null, error, ...countField };
     } else if (typeof data === "object") {
       // Single object: return null if it doesn't satisfy the in() constraint
       if (!applyInFilter(data as Record<string, unknown>)) {
-        return { data: null, error };
+        return { data: null, error, ...countField };
       }
     }
   }
-  return { data, error };
+  return { data, error, ...countField };
 }
 
 /** A call-recording stand-in for a Supabase client (admin or user). */
