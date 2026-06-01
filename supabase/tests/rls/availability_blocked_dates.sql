@@ -14,8 +14,9 @@
 --   aaaaaaaa-aaaa-0004-…  artist B user
 --   bbbbbbbb-bbbb-0001-…  artist A profile row
 --   bbbbbbbb-bbbb-0002-…  artist B profile row
---   eeeeeeee-eeee-0001-…  blocked_date: artist A
+--   eeeeeeee-eeee-0001-…  blocked_date: artist A (deleted in Test 3)
 --   eeeeeeee-eeee-0002-…  blocked_date: artist B
+--   eeeeeeee-eeee-0003-…  blocked_date: artist A (survives; used by cross-artist Test 4)
 
 BEGIN;
 
@@ -51,7 +52,8 @@ INSERT INTO public.artists (id, name, user_id) VALUES
 
 INSERT INTO public.blocked_dates (id, artist_id, date, reason) VALUES
   ('eeeeeeee-eeee-0001-0000-000000000000', 'bbbbbbbb-bbbb-0001-0000-000000000000', '2099-03-01', 'Artist A vacation'),
-  ('eeeeeeee-eeee-0002-0000-000000000000', 'bbbbbbbb-bbbb-0002-0000-000000000000', '2099-03-02', 'Artist B vacation');
+  ('eeeeeeee-eeee-0002-0000-000000000000', 'bbbbbbbb-bbbb-0002-0000-000000000000', '2099-03-02', 'Artist B vacation'),
+  ('eeeeeeee-eeee-0003-0000-000000000000', 'bbbbbbbb-bbbb-0001-0000-000000000000', '2099-03-03', 'Artist A vacation (survives for cross-artist test)');
 
 SET session_replication_role = DEFAULT;
 
@@ -104,15 +106,17 @@ SELECT is(
 -- Cross-artist isolation (the key data-exposure guard)
 -- ────────────────────────────────────────────────────────────────────────────
 
--- 4. Artist B cannot SELECT artist A's blocked_date (USING artist→user check)
+-- 4. Artist B cannot SELECT artist A's blocked_date (USING artist→user check).
+--    Queries artist A's surviving row (eeeeeeee-eeee-0003) under artist B's JWT;
+--    the row exists, so count = 0 can only come from the RLS USING clause.
 SELECT set_config('request.jwt.claims', '{"sub":"aaaaaaaa-aaaa-0004-0000-000000000000","role":"authenticated"}', true);
 SET LOCAL ROLE authenticated;
 
 SELECT is(
   (SELECT count(*)::int FROM public.blocked_dates
-   WHERE id = 'eeeeeeee-eeee-0002-0000-000000000000'),
-  1,
-  'artist B sees own blocked_date'
+   WHERE id = 'eeeeeeee-eeee-0003-0000-000000000000'),
+  0,
+  'artist B cannot SELECT artist A blocked_date'
 );
 
 RESET ROLE;

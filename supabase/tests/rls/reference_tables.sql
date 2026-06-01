@@ -31,7 +31,8 @@
 --   aaaaaaaa-aaaa-0003-…  artist user
 --   bbbbbbbb-bbbb-0001-…  artist profile row
 --   cccccccc-cccc-0001-…  cast
---   cccccccc-cccc-0002-…  skill
+--   cccccccc-cccc-0002-…  skill (paired with artist in Test 9)
+--   cccccccc-cccc-0003-…  skill (unpaired; used by artist-denied Test 11)
 --   eeeeeeee-eeee-0001-…  cast_members row
 --   eeeeeeee-eeee-0002-…  app_settings row
 
@@ -66,7 +67,9 @@ INSERT INTO public.casts (id, name)
 VALUES ('cccccccc-cccc-0001-0000-000000000000', 'RT Cast');
 
 INSERT INTO public.skills (id, name)
-VALUES ('cccccccc-cccc-0002-0000-000000000000', 'RT Skill');
+VALUES
+  ('cccccccc-cccc-0002-0000-000000000000', 'RT Skill'),
+  ('cccccccc-cccc-0003-0000-000000000000', 'RT Skill 2');
 
 INSERT INTO public.cast_members (id, cast_id, artist_id)
 VALUES ('eeeeeeee-eeee-0001-0000-000000000000', 'cccccccc-cccc-0001-0000-000000000000', 'bbbbbbbb-bbbb-0001-0000-000000000000');
@@ -224,14 +227,19 @@ SELECT is(
 
 RESET ROLE;
 
--- 11. Artist cannot INSERT an artist_skill
+-- 11. Artist cannot INSERT an artist_skill.
+--     Uses skill cccccccc-cccc-0003 (not yet paired with this artist) so the only
+--     possible failure is the RLS write policy — not the composite-PK unique
+--     violation that would mask it if we reused the Test 9 pair. Asserts the
+--     specific RLS-denial SQLSTATE 42501.
 SELECT set_config('request.jwt.claims', '{"sub":"aaaaaaaa-aaaa-0003-0000-000000000000","role":"authenticated"}', true);
 SET LOCAL ROLE authenticated;
 
 SELECT throws_ok(
   $$INSERT INTO public.artist_skills (artist_id, skill_id)
-    VALUES ('bbbbbbbb-bbbb-0001-0000-000000000000', 'cccccccc-cccc-0002-0000-000000000000')$$,
-  null, null,
+    VALUES ('bbbbbbbb-bbbb-0001-0000-000000000000', 'cccccccc-cccc-0003-0000-000000000000')$$,
+  '42501',
+  null,
   'artist cannot INSERT an artist_skill'
 );
 
