@@ -217,11 +217,27 @@ When adding a new page:
 
 ### Testing
 
-- Framework: Vitest + jsdom + @testing-library/react. Setup in `src/test/setup.ts`.
-- Co-locate tests beside the file they test: `Foo.test.tsx` next to `Foo.tsx`.
-- Unit-test pure functions and hooks; mock the Supabase client via `vi.mock('../../integrations/supabase/client')`.
-- Component tests: render + simulate user interaction + assert on accessible queries (`getByRole`, `getByText`).
-- Never test implementation details (internal state, private methods).
+**Test-first is the default.** For any new logic (a pure function, a data-access function, an edge-function branch), write the failing test before the implementation. Bug fixes start with a failing regression test that reproduces the bug.
+
+**The five test layers and when to use each:**
+
+| Layer | Tool | Runs via | Use for |
+|---|---|---|---|
+| Unit / hook | Vitest + jsdom + @testing-library/react | `npx vitest run` | Pure functions, data-access functions, hooks, components |
+| Database | pgTAP | `supabase test db` | Triggers, RLS policies, RPCs (`supabase/tests/`) |
+| Edge function | Deno test | `deno test --allow-all supabase/functions/` | Edge-function handlers + shared modules |
+| End-to-end | Playwright | `npx playwright test --config=e2e/playwright.config.ts` | Critical cross-stack flows |
+
+CI runs all of these (`.github/workflows/ci.yml`).
+
+**Hard rule: tests import the real module.** Never re-implement production logic inside a test file. If logic is hard to import, that is a signal to extract it — not to copy it into the test.
+
+**Frontend pattern — data-access extraction:** Put Supabase reads/writes in `src/data/<domain>.ts` as `fetchX(client, args)` / `mutateX(client, args)` functions that take the client as a parameter. Hooks are thin wrappers that pass the `supabase` singleton. Test the data-access functions with the call-recording fake client in `src/test/supabaseFake.ts`, and use `src/test/renderWithProviders.tsx` + `src/test/fixtures.ts` for hook/component tests. Do not hand-roll `vi.mock('@/integrations/supabase/client')` chains.
+
+**Backend pattern — dependency injection:** Each edge function exports `handle(req, deps)` and only wires `Deno.serve((req) => handle(req, realDeps()))` at the bottom. `Deps` (in `supabase/functions/_shared/deps.ts`) carries the Supabase clients, `env`, `now`, `invokeFunction`/`sendEmail`, and `fetch`. Tests import `handle` and pass `makeFakeDeps(...)` from `supabase/functions/_shared/testing.ts`. Use the shared `_shared/http.ts` (CORS + json) and `_shared/auth.ts` (requireRole / requireCronOrRole / isServiceRole) helpers — do not re-inline CORS, client creation, or auth.
+
+- Co-locate tests beside the file they test.
+- Test behavior, never implementation details (internal state, private methods).
 
 ### Database changes
 
@@ -287,3 +303,6 @@ Suggested emails:
 - Letting artists declare availability on dates outside `useArtistEligibleDates`.
 - Coupling client logic to a specific tenant or production brand — the platform is product-agnostic.
 - Using ad-hoc `useState` loading flags when React Query's `isLoading` / `isError` will do.
+- Re-implementing production logic inside a test file (tests must import the real module).
+- Constructing a Supabase client, CORS headers, or auth checks inline in an edge function instead of using `realDeps()` / `_shared/http.ts` / `_shared/auth.ts`.
+- Hand-rolling `vi.mock('@/integrations/supabase/client')` chains instead of the `src/test/` harness.
