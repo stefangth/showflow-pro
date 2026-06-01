@@ -64,8 +64,11 @@ VALUES ('cccccccc-cccc-0001-0000-000000000000', 'theatre', 'musical');
 INSERT INTO public.casts (id, name)
 VALUES ('cccccccc-cccc-0002-0000-000000000000', 'OE Cast');
 
-INSERT INTO public.cities (id, name)
-VALUES ('cccccccc-cccc-0003-0000-000000000000', 'OE City');
+INSERT INTO public.cities (id, name) VALUES
+  ('cccccccc-cccc-0003-0000-000000000000', 'OE City'),
+  -- second city used by test 2's producer INSERT so the (cast_id, city_id)
+  -- unique constraint is not violated against the seeded priority-1 row
+  ('cccccccc-cccc-0004-0000-000000000000', 'OE City Two');
 
 INSERT INTO public.show_dates (id, show_id, date, session_1) VALUES
   ('dddddddd-dddd-0001-0000-000000000000', 'cccccccc-cccc-0001-0000-000000000000', '2099-04-01', '20:00'::time),
@@ -106,7 +109,7 @@ SET LOCAL ROLE authenticated;
 
 SELECT lives_ok(
   $$INSERT INTO public.cast_city_priority (cast_id, city_id, priority)
-    VALUES ('cccccccc-cccc-0002-0000-000000000000', 'cccccccc-cccc-0003-0000-000000000000', 2)$$,
+    VALUES ('cccccccc-cccc-0002-0000-000000000000', 'cccccccc-cccc-0004-0000-000000000000', 2)$$,
   'producer can INSERT cast_city_priority'
 );
 

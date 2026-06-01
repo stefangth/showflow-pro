@@ -21,8 +21,8 @@
 --     so a NULL column only contributes via the explicit "IS NULL" arms.
 --
 -- UUID legend (all test-only, rolled back at end):
---   aaaaaaaa-sa00-000N-…  producer auth.users (one per specificity tier)
---   11111111-sa00-000N-…  cities
+--   aaaaaaaa-5a00-000N-…  producer auth.users (one per specificity tier)
+--   11111111-5a00-000N-…  cities
 
 BEGIN;
 
@@ -39,14 +39,14 @@ SET session_replication_role = replica;
 
 INSERT INTO auth.users (id, aud, role, email, email_confirmed_at, raw_app_meta_data, raw_user_meta_data, created_at, updated_at)
 VALUES
-  ('aaaaaaaa-sa00-0001-0000-000000000000', 'authenticated', 'authenticated', 'sa-prod-full@test.com', now(), '{"provider":"email"}'::jsonb, '{}'::jsonb, now(), now()),
-  ('aaaaaaaa-sa00-0002-0000-000000000000', 'authenticated', 'authenticated', 'sa-prod-city@test.com', now(), '{"provider":"email"}'::jsonb, '{}'::jsonb, now(), now()),
-  ('aaaaaaaa-sa00-0003-0000-000000000000', 'authenticated', 'authenticated', 'sa-prod-sub@test.com',  now(), '{"provider":"email"}'::jsonb, '{}'::jsonb, now(), now()),
-  ('aaaaaaaa-sa00-0004-0000-000000000000', 'authenticated', 'authenticated', 'sa-prod-prog@test.com', now(), '{"provider":"email"}'::jsonb, '{}'::jsonb, now(), now());
+  ('aaaaaaaa-5a00-0001-0000-000000000000', 'authenticated', 'authenticated', 'sa-prod-full@test.com', now(), '{"provider":"email"}'::jsonb, '{}'::jsonb, now(), now()),
+  ('aaaaaaaa-5a00-0002-0000-000000000000', 'authenticated', 'authenticated', 'sa-prod-city@test.com', now(), '{"provider":"email"}'::jsonb, '{}'::jsonb, now(), now()),
+  ('aaaaaaaa-5a00-0003-0000-000000000000', 'authenticated', 'authenticated', 'sa-prod-sub@test.com',  now(), '{"provider":"email"}'::jsonb, '{}'::jsonb, now(), now()),
+  ('aaaaaaaa-5a00-0004-0000-000000000000', 'authenticated', 'authenticated', 'sa-prod-prog@test.com', now(), '{"provider":"email"}'::jsonb, '{}'::jsonb, now(), now());
 
 INSERT INTO public.cities (id, name) VALUES
-  ('11111111-sa00-0001-0000-000000000000', 'SA City One'),
-  ('11111111-sa00-0002-0000-000000000000', 'SA City Two');
+  ('11111111-5a00-0001-0000-000000000000', 'SA City One'),
+  ('11111111-5a00-0002-0000-000000000000', 'SA City Two');
 
 -- One assignment per specificity tier, all for program = 'theatre':
 --   producer 1: sub_program='musical', city=One   → tier 4 for (theatre, musical, One)
@@ -54,10 +54,10 @@ INSERT INTO public.cities (id, name) VALUES
 --   producer 3: sub_program='musical', city=NULL  → tier 2 for (theatre, musical, *)
 --   producer 4: sub_program=NULL,      city=NULL  → tier 1 for (theatre, *, *)
 INSERT INTO public.show_assignments (producer_user_id, program, sub_program, city_id) VALUES
-  ('aaaaaaaa-sa00-0001-0000-000000000000', 'theatre', 'musical', '11111111-sa00-0001-0000-000000000000'),
-  ('aaaaaaaa-sa00-0002-0000-000000000000', 'theatre', NULL,      '11111111-sa00-0001-0000-000000000000'),
-  ('aaaaaaaa-sa00-0003-0000-000000000000', 'theatre', 'musical', NULL),
-  ('aaaaaaaa-sa00-0004-0000-000000000000', 'theatre', NULL,      NULL);
+  ('aaaaaaaa-5a00-0001-0000-000000000000', 'theatre', 'musical', '11111111-5a00-0001-0000-000000000000'),
+  ('aaaaaaaa-5a00-0002-0000-000000000000', 'theatre', NULL,      '11111111-5a00-0001-0000-000000000000'),
+  ('aaaaaaaa-5a00-0003-0000-000000000000', 'theatre', 'musical', NULL),
+  ('aaaaaaaa-5a00-0004-0000-000000000000', 'theatre', NULL,      NULL);
 
 SET session_replication_role = DEFAULT;
 
@@ -67,12 +67,12 @@ SET session_replication_role = DEFAULT;
 -- ────────────────────────────────────────────────────────────────────────────
 SELECT results_eq(
   $$ SELECT producer_user_id, specificity
-     FROM public.resolve_show_assignments('theatre', 'musical', '11111111-sa00-0001-0000-000000000000') $$,
+     FROM public.resolve_show_assignments('theatre', 'musical', '11111111-5a00-0001-0000-000000000000') $$,
   $$ VALUES
-       ('aaaaaaaa-sa00-0001-0000-000000000000'::uuid, 4),
-       ('aaaaaaaa-sa00-0002-0000-000000000000'::uuid, 3),
-       ('aaaaaaaa-sa00-0003-0000-000000000000'::uuid, 2),
-       ('aaaaaaaa-sa00-0004-0000-000000000000'::uuid, 1) $$,
+       ('aaaaaaaa-5a00-0001-0000-000000000000'::uuid, 4),
+       ('aaaaaaaa-5a00-0002-0000-000000000000'::uuid, 3),
+       ('aaaaaaaa-5a00-0003-0000-000000000000'::uuid, 2),
+       ('aaaaaaaa-5a00-0004-0000-000000000000'::uuid, 1) $$,
   'full (program+sub_program+city) call returns all tiers, most-specific first'
 );
 
@@ -80,13 +80,13 @@ SELECT results_eq(
 -- Test 2: the most-specific row is the top result (specificity 4).
 -- ────────────────────────────────────────────────────────────────────────────
 SELECT is(
-  (SELECT producer_user_id FROM public.resolve_show_assignments('theatre', 'musical', '11111111-sa00-0001-0000-000000000000') ORDER BY specificity DESC LIMIT 1),
-  'aaaaaaaa-sa00-0001-0000-000000000000'::uuid,
+  (SELECT producer_user_id FROM public.resolve_show_assignments('theatre', 'musical', '11111111-5a00-0001-0000-000000000000') ORDER BY specificity DESC LIMIT 1),
+  'aaaaaaaa-5a00-0001-0000-000000000000'::uuid,
   'most-specific (program+sub_program+city) match wins'
 );
 
 SELECT is(
-  (SELECT max(specificity) FROM public.resolve_show_assignments('theatre', 'musical', '11111111-sa00-0001-0000-000000000000')),
+  (SELECT max(specificity) FROM public.resolve_show_assignments('theatre', 'musical', '11111111-5a00-0001-0000-000000000000')),
   4,
   'top match has the highest possible specificity (4)'
 );
@@ -94,11 +94,11 @@ SELECT is(
 -- ────────────────────────────────────────────────────────────────────────────
 -- Test 3: with the tier-4 row removed, the call falls back to tier 3 as the top.
 -- ────────────────────────────────────────────────────────────────────────────
-DELETE FROM public.show_assignments WHERE producer_user_id = 'aaaaaaaa-sa00-0001-0000-000000000000';
+DELETE FROM public.show_assignments WHERE producer_user_id = 'aaaaaaaa-5a00-0001-0000-000000000000';
 
 SELECT is(
-  (SELECT producer_user_id FROM public.resolve_show_assignments('theatre', 'musical', '11111111-sa00-0001-0000-000000000000') ORDER BY specificity DESC LIMIT 1),
-  'aaaaaaaa-sa00-0002-0000-000000000000'::uuid,
+  (SELECT producer_user_id FROM public.resolve_show_assignments('theatre', 'musical', '11111111-5a00-0001-0000-000000000000') ORDER BY specificity DESC LIMIT 1),
+  'aaaaaaaa-5a00-0002-0000-000000000000'::uuid,
   'removing the tier-4 row falls back to the next specificity (tier 3, program+city)'
 );
 
@@ -110,10 +110,10 @@ SELECT is(
 -- ────────────────────────────────────────────────────────────────────────────
 SELECT results_eq(
   $$ SELECT producer_user_id, specificity
-     FROM public.resolve_show_assignments('theatre', 'musical', '11111111-sa00-0002-0000-000000000000') $$,
+     FROM public.resolve_show_assignments('theatre', 'musical', '11111111-5a00-0002-0000-000000000000') $$,
   $$ VALUES
-       ('aaaaaaaa-sa00-0003-0000-000000000000'::uuid, 2),
-       ('aaaaaaaa-sa00-0004-0000-000000000000'::uuid, 1) $$,
+       ('aaaaaaaa-5a00-0003-0000-000000000000'::uuid, 2),
+       ('aaaaaaaa-5a00-0004-0000-000000000000'::uuid, 1) $$,
   'a city with no city-specific row matches only the NULL-city rows (tiers 2 and 1)'
 );
 
@@ -121,7 +121,7 @@ SELECT results_eq(
 -- Test 5: no match for an unknown program → empty set.
 -- ────────────────────────────────────────────────────────────────────────────
 SELECT is(
-  (SELECT count(*)::int FROM public.resolve_show_assignments('opera', 'classical', '11111111-sa00-0001-0000-000000000000')),
+  (SELECT count(*)::int FROM public.resolve_show_assignments('opera', 'classical', '11111111-5a00-0001-0000-000000000000')),
   0,
   'unknown program → empty result set'
 );
