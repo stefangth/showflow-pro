@@ -66,13 +66,17 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
     return json({ error: 'Invalid or expired token' }, 404)
   }
 
-  if (tokenRecord.used_at) {
-    return json({ valid: false, reason: 'already_unsubscribed' })
-  }
-
   // GET: Validate token (the app's unsubscribe page calls this on load)
   if (req.method === 'GET') {
+    if (tokenRecord.used_at) {
+      return json({ valid: false, reason: 'already_unsubscribed' })
+    }
     return json({ valid: true })
+  }
+
+  // POST: already-used pre-check (avoids the atomic update round-trip for the common case)
+  if (tokenRecord.used_at) {
+    return json({ success: false, reason: 'already_unsubscribed' })
   }
 
   // POST: Process the unsubscribe
