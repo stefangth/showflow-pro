@@ -461,7 +461,7 @@ Deno.test("airtable-poll: accepts alternate field name variants (date/show/city/
       const originalInsert = chain.insert.bind(chain);
       chain.insert = (payload: unknown) => {
         insertedPayloads.push(payload);
-        return originalInsert(payload);
+        return (originalInsert as (x: unknown) => ReturnType<typeof originalInsert>)(payload);
       };
     }
     return chain;
@@ -509,7 +509,7 @@ Deno.test("airtable-poll: session_1 defaults to 00:00 when field missing", async
     const chain = originalFrom(table);
     if (table === "show_dates") {
       const orig = chain.insert.bind(chain);
-      chain.insert = (p: unknown) => { insertedPayloads.push(p); return orig(p); };
+      chain.insert = (p: unknown) => { insertedPayloads.push(p); return (orig as (x: unknown) => ReturnType<typeof orig>)(p); };
     }
     return chain;
   };
@@ -554,7 +554,7 @@ Deno.test("airtable-poll: city_id is null when city not in DB", async () => {
     const chain = originalFrom(table);
     if (table === "show_dates") {
       const orig = chain.insert.bind(chain);
-      chain.insert = (p: unknown) => { insertedPayloads.push(p); return orig(p); };
+      chain.insert = (p: unknown) => { insertedPayloads.push(p); return (orig as (x: unknown) => ReturnType<typeof orig>)(p); };
     }
     return chain;
   };
@@ -602,7 +602,7 @@ Deno.test("airtable-poll: record without Date field is skipped entirely", async 
     const chain = originalFrom(table);
     if (table === "show_dates") {
       const orig = chain.insert.bind(chain);
-      chain.insert = (p: unknown) => { insertedPayloads.push(p); return orig(p); };
+      chain.insert = (p: unknown) => { insertedPayloads.push(p); return (orig as (x: unknown) => ReturnType<typeof orig>)(p); };
     }
     return chain;
   };
@@ -654,7 +654,7 @@ Deno.test("airtable-poll: resolves show by (program, sub_program) key — exact 
     const chain = originalFrom(table);
     if (table === "show_dates") {
       const orig = chain.insert.bind(chain);
-      chain.insert = (p: unknown) => { insertedPayloads.push(p); return orig(p); };
+      chain.insert = (p: unknown) => { insertedPayloads.push(p); return (orig as (x: unknown) => ReturnType<typeof orig>)(p); };
     }
     return chain;
   };
@@ -702,7 +702,7 @@ Deno.test("airtable-poll: falls back to program-only match when sub_program abse
     const chain = originalFrom(table);
     if (table === "show_dates") {
       const orig = chain.insert.bind(chain);
-      chain.insert = (p: unknown) => { insertedPayloads.push(p); return orig(p); };
+      chain.insert = (p: unknown) => { insertedPayloads.push(p); return (orig as (x: unknown) => ReturnType<typeof orig>)(p); };
     }
     return chain;
   };
@@ -750,7 +750,7 @@ Deno.test("airtable-poll: unresolvable show → record skipped, skipped count in
     const chain = originalFrom(table);
     if (table === "show_dates") {
       const orig = chain.insert.bind(chain);
-      chain.insert = (p: unknown) => { insertedPayloads.push(p); return orig(p); };
+      chain.insert = (p: unknown) => { insertedPayloads.push(p); return (orig as (x: unknown) => ReturnType<typeof orig>)(p); };
     }
     return chain;
   };
@@ -809,9 +809,10 @@ Deno.test("airtable-poll: new date → invokeFunction('open-offer-tier', { show_
       const originalInsert = chain.insert.bind(chain);
       chain.insert = (payload: unknown) => {
         insertCalled = true;
-        const insertChain = originalInsert(payload);
+        const insertChain = (originalInsert as (x: unknown) => ReturnType<typeof originalInsert>)(payload);
         // Override single() to return our fake inserted id
-        insertChain.single = () =>
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        (insertChain as any).single = () =>
           Promise.resolve({ data: { id: "new-date-uuid-001" }, error: null });
         return insertChain;
       };
@@ -876,7 +877,7 @@ Deno.test("airtable-poll: existing date → update only, NO invokeFunction call"
       const originalUpdate = chain.update.bind(chain);
       chain.update = (payload: unknown) => {
         updateArgs.push(payload);
-        return originalUpdate(payload);
+        return (originalUpdate as (x: unknown) => ReturnType<typeof originalUpdate>)(payload);
       };
     }
     return chain;
@@ -979,12 +980,14 @@ Deno.test("airtable-poll: one invokeFunction rejection → others still run, sti
     const chain = originalFrom(table);
     if (table === "show_dates") {
       const originalInsert = chain.insert.bind(chain);
-      chain.insert = (payload: Record<string, unknown>) => {
-        const airtableId = payload.airtable_record_id as string;
+      chain.insert = (payload: unknown) => {
+        const p = payload as Record<string, unknown>;
+        const airtableId = p.airtable_record_id as string;
         insertOrder.push(airtableId);
         const uuid = recordToUuid[airtableId] ?? "uuid-unknown";
-        const insertChain = originalInsert(payload);
-        insertChain.single = () =>
+        const insertChain = (originalInsert as (x: unknown) => ReturnType<typeof originalInsert>)(payload);
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        (insertChain as any).single = () =>
           Promise.resolve({ data: { id: uuid }, error: null });
         return insertChain;
       };
@@ -1084,7 +1087,7 @@ Deno.test("airtable-poll: inserts a success row into airtable_sync_log on clean 
     const chain = originalFrom(table);
     if (table === "airtable_sync_log") {
       const orig = chain.insert.bind(chain);
-      chain.insert = (p: unknown) => { syncLogInserts.push(p); return orig(p); };
+      chain.insert = (p: unknown) => { syncLogInserts.push(p); return (orig as (x: unknown) => ReturnType<typeof orig>)(p); };
     }
     return chain;
   };
@@ -1126,7 +1129,7 @@ Deno.test("airtable-poll: inserts an error row into airtable_sync_log on Airtabl
     const chain = originalFrom(table);
     if (table === "airtable_sync_log") {
       const orig = chain.insert.bind(chain);
-      chain.insert = (p: unknown) => { syncLogInserts.push(p); return orig(p); };
+      chain.insert = (p: unknown) => { syncLogInserts.push(p); return (orig as (x: unknown) => ReturnType<typeof orig>)(p); };
     }
     return chain;
   };
@@ -1166,7 +1169,7 @@ Deno.test("airtable-poll: synced_at uses deps.now() (fixed to 2026-06-01T12:00:0
     const chain = originalFrom(table);
     if (table === "airtable_sync_log") {
       const orig = chain.insert.bind(chain);
-      chain.insert = (p: unknown) => { syncLogInserts.push(p); return orig(p); };
+      chain.insert = (p: unknown) => { syncLogInserts.push(p); return (orig as (x: unknown) => ReturnType<typeof orig>)(p); };
     }
     return chain;
   };
