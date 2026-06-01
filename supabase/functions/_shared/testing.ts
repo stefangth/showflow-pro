@@ -1,8 +1,18 @@
 import type { Deps, EmailMessage, InvokeResult } from "./deps.ts";
 
 export interface RecordedCall { table: string; method: string; args: unknown[]; }
+
+/** A single seed: the result returned for every query to a table (backward-compatible form). */
+export type SingleSeed = { data?: unknown; error?: unknown };
+
+/** One entry in an array seed — `when` is matched against recorded eq() args. */
+export type ArraySeedEntry = { when?: Record<string, unknown>; data?: unknown; error?: unknown };
+
+/** Per-table seed: either a single result object or a match-based array. */
+export type TableSeed = SingleSeed | ArraySeedEntry[];
+
 export interface FakeClientOptions {
-  tables?: Record<string, { data?: unknown; error?: unknown }>;
+  tables?: Record<string, TableSeed>;
   rpcs?: Record<string, { data?: unknown; error?: unknown }>;
   authUser?: { id: string } | null;
   claims?: { sub: string } | null;
@@ -18,6 +28,28 @@ const CHAIN = [
 // deno-lint-ignore no-explicit-any
 type AnyChain = Record<string, any>;
 
+/** Resolve the result for a table seed given a local eq map. */
+function resolveSeed(seed: TableSeed, localEq: Record<string, unknown>): { data: unknown; error: unknown } {
+  if (Array.isArray(seed)) {
+    // Find first entry whose every `when` key/value matches localEq
+    const matched = seed.find((entry) =>
+      entry.when !== undefined &&
+      Object.entries(entry.when).every(([k, v]) => localEq[k] === v)
+    );
+    if (matched) {
+      return { data: "data" in matched ? matched.data : [], error: matched.error ?? null };
+    }
+    // Fall back to first entry with no `when`
+    const fallback = seed.find((entry) => entry.when === undefined);
+    if (fallback) {
+      return { data: "data" in fallback ? fallback.data : [], error: fallback.error ?? null };
+    }
+    return { data: [], error: null };
+  }
+  // Single-object seed (backward-compatible)
+  return seed as { data: unknown; error: unknown };
+}
+
 /** A call-recording stand-in for a Supabase client (admin or user). */
 export function createFakeClient(opts: FakeClientOptions = {}) {
   const calls: RecordedCall[] = [];
@@ -25,16 +57,28 @@ export function createFakeClient(opts: FakeClientOptions = {}) {
   const rpcs = opts.rpcs ?? {};
 
   function builder(table: string): AnyChain {
-    const result = tables[table] ?? { data: [], error: null };
+    const seed: TableSeed = tables[table] ?? { data: [], error: null };
+    // Local eq map — populated as .eq() calls are chained, used for array-seed matching
+    const localEq: Record<string, unknown> = {};
     const chain: AnyChain = {};
     for (const m of CHAIN) {
-      chain[m] = (...args: unknown[]) => { calls.push({ table, method: m, args }); return chain; };
+      chain[m] = (...args: unknown[]) => {
+        calls.push({ table, method: m, args });
+        // Track eq() args locally for match-based seed resolution
+        if (m === "eq" && args.length >= 2) {
+          localEq[String(args[0])] = args[1];
+        }
+        return chain;
+      };
     }
     for (const m of ["single", "maybeSingle"]) {
-      chain[m] = () => { calls.push({ table, method: m, args: [] }); return Promise.resolve(result); };
+      chain[m] = () => {
+        calls.push({ table, method: m, args: [] });
+        return Promise.resolve(resolveSeed(seed, localEq));
+      };
     }
     chain.then = (f: (v: unknown) => unknown, r?: (e: unknown) => unknown) =>
-      Promise.resolve(result).then(f, r);
+      Promise.resolve(resolveSeed(seed, localEq)).then(f, r);
     return chain;
   }
 
