@@ -394,12 +394,14 @@ Deno.test("notify-signup/DI: OPTIONS → 200 or 204", async () => {
 });
 
 // ---------------------------------------------------------------------------
-// 9. Fail-closed auth gate (Finding 1)
-//    - No secret + non-service-role → 401, NO email
-//    - Wrong secret → 401, NO email
-//    - Correct webhook secret → proceeds (200, emails sent)
+// 9. Enforce-when-configured auth gate (Finding 1)
+//    - Secret configured + no header + non-service-role → 401, NO email
+//    - Secret configured + wrong secret → 401, NO email
+//    - Secret configured + correct webhook secret → proceeds (200, emails sent)
 //    - Service-role caller (no webhook secret) → proceeds
-//    - SUPABASE_WEBHOOK_SECRET unset + non-service-role → 401 (no fail-open)
+//    - SUPABASE_WEBHOOK_SECRET unset + non-service-role → ALLOWED (transitional
+//      fail-open; preserves the handle_new_user trigger until the deferred
+//      migration configures the secret)
 // ---------------------------------------------------------------------------
 
 Deno.test("notify-signup/DI: no secret + non-service-role → 401 and NO email sent", async () => {
@@ -457,9 +459,12 @@ Deno.test("notify-signup/DI: service-role caller (no webhook secret) → proceed
   assertEquals(invokeCalls.length, 1);
 });
 
-Deno.test("notify-signup/DI: SUPABASE_WEBHOOK_SECRET unset + non-service-role → 401 (fail-closed, no fail-open)", async () => {
-  // Env has neither the webhook secret nor a service-role key; request presents a
-  // header value but there is nothing to validate it against. Must reject.
+Deno.test("notify-signup/DI: SUPABASE_WEBHOOK_SECRET unset + non-service-role → ALLOWED (transitional fail-open)", async () => {
+  // Env has neither the webhook secret nor a service-role key — this mirrors the
+  // current production handle_new_user() trigger, which POSTs with no secret. Until
+  // the deferred migration configures SUPABASE_WEBHOOK_SECRET, the gate must allow
+  // the call so admin-signup emails keep flowing. Once the secret is set, the
+  // "secret configured + no header" test above proves the gate becomes strict.
   const { deps, invokeCalls } = makeFakeDeps({
     usersById: { "admin-1": { email: "admin1@example.com" } },
     tables: {
@@ -468,11 +473,14 @@ Deno.test("notify-signup/DI: SUPABASE_WEBHOOK_SECRET unset + non-service-role �
   });
   const res = await handle(
     makeRequest({
-      headers: { "x-supabase-webhook-secret": "anything" },
+      // No header at all — the realistic trigger case. The handler must still process.
       body: { record: makeRecord() },
     }),
     deps,
   );
-  assertEquals(res.status, 401);
-  assertEquals(invokeCalls.length, 0);
+  assertEquals(res.status, 200);
+  const body = await res.json() as Record<string, unknown>;
+  // It processed normally and emailed the single configured admin.
+  assertEquals(body, { ok: true, notified: 1 });
+  assertEquals(invokeCalls.length, 1);
 });

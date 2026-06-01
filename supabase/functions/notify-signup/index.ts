@@ -6,11 +6,18 @@ import { realDeps, type Deps } from "../_shared/deps.ts";
  * Called by a database webhook on user_approvals INSERT.
  * Notifies all admins by sending a transactional email.
  *
- * Auth (fail-closed): accept only when the caller presents the Supabase webhook
- * secret (header `x-supabase-webhook-secret` matching SUPABASE_WEBHOOK_SECRET) OR
- * is the service-role caller (internal edge functions may invoke this). If neither,
- * reject with 401. We never fail open: a missing/empty SUPABASE_WEBHOOK_SECRET that
- * also isn't a service-role caller is rejected and logged as a misconfiguration.
+ * Auth (enforce-when-configured):
+ *   1. A service-role caller (internal edge functions may invoke this) is always allowed.
+ *   2. Otherwise, if SUPABASE_WEBHOOK_SECRET is configured (non-empty), require the
+ *      caller to present a matching `x-supabase-webhook-secret` header (constant-time
+ *      compare); reject with 401 on mismatch. This is fail-closed once the secret exists.
+ *   3. If SUPABASE_WEBHOOK_SECRET is NOT configured (empty), allow the call but log a
+ *      warning. This is a TRANSITIONAL fail-open: the real production caller is the
+ *      `handle_new_user()` Postgres trigger, which currently POSTs with no secret. A
+ *      deferred migration will set SUPABASE_WEBHOOK_SECRET and have the trigger send it;
+ *      once that lands, branch (2) makes this gate effectively strict and this fail-open
+ *      branch becomes dead. Allowing here preserves current prod admin-signup emails
+ *      until the migration is deployed.
  */
 function isAuthorizedCaller(req: Request, deps: Deps): boolean {
   if (isServiceRole(deps, req)) return true;
@@ -18,10 +25,14 @@ function isAuthorizedCaller(req: Request, deps: Deps): boolean {
   const provided = req.headers.get("x-supabase-webhook-secret") ?? "";
   const expected = deps.env("SUPABASE_WEBHOOK_SECRET") ?? "";
   if (expected === "") {
-    console.error(
-      "notify-signup: SUPABASE_WEBHOOK_SECRET is not set and caller is not service-role — rejecting (fail-closed). Configure the webhook secret.",
+    // Transitional fail-open: see doc comment above. Remove once the deferred
+    // migration configures SUPABASE_WEBHOOK_SECRET and the handle_new_user trigger
+    // forwards it — at that point branch below enforces it strictly.
+    console.warn(
+      "notify-signup: running UNAUTHENTICATED because SUPABASE_WEBHOOK_SECRET is unset (transitional). " +
+        "Configure the webhook secret to enforce caller auth.",
     );
-    return false;
+    return true;
   }
   return constantTimeEqual(provided, expected);
 }
