@@ -7,15 +7,15 @@ Regenerated via Supabase MCP `generate_typescript_types` (project `epweartpzwvca
 - **Function signatures added**: `expire_soft_bookings`, `resolve_show_assignments` (Args/Returns), `get_column_descriptions`, `compute_show_date_status`, `is_chat_participant`, `has_role`, `decide_user_approval`.
 - **App impact**: build clean, 140 Vitest pass, 0 lint errors — no type breakage from the richer types (regen is purely additive/corrective). No table/column the app uses was removed.
 
-## CI-validation checklist (Phases B–D, verified via the Phase E PR)
-- [x] pgTAP: availability_blocked_dates.sql (authored; pending CI run)
-- [x] pgTAP: offer_engine_tables.sql (authored; pending CI run)
-- [x] pgTAP: reference_tables.sql (authored; pending CI run)
-- [x] pgTAP: expire_soft_bookings.sql (authored; pending CI run)
-- [x] pgTAP: resolve_show_assignments.sql (authored; pending CI run)
-- [x] pgTAP: recompute_and_timestamps.sql (authored; pending CI run)
-- [x] e2e: eligibility-gating.spec.ts (authored; pending CI run)
-- [x] e2e: chat-access-control.spec.ts (authored; pending CI run)
+## CI-validation checklist (Phases B–D — validated via PR #70, full matrix GREEN on re-run)
+- [x] pgTAP: availability_blocked_dates.sql (CI green)
+- [x] pgTAP: offer_engine_tables.sql (CI green)
+- [x] pgTAP: reference_tables.sql (CI green)
+- [x] pgTAP: expire_soft_bookings.sql (CI green)
+- [x] pgTAP: resolve_show_assignments.sql (CI green)
+- [x] pgTAP: recompute_and_timestamps.sql (CI green)
+- [x] e2e: eligibility-gating.spec.ts (CI green)
+- [x] e2e: chat-access-control.spec.ts (CI green)
 - [~] coverage gate: config done (vitest.config.ts coverage block + thresholds + `coverage/` gitignored). ACTIVATION PENDING — see below.
 
 ### Coverage gate — activation step (requires an npm environment)
