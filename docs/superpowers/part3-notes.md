@@ -11,9 +11,9 @@ Regenerated via Supabase MCP `generate_typescript_types` (project `epweartpzwvca
 - [x] pgTAP: availability_blocked_dates.sql (authored; pending CI run)
 - [x] pgTAP: offer_engine_tables.sql (authored; pending CI run)
 - [x] pgTAP: reference_tables.sql (authored; pending CI run)
-- [ ] pgTAP: expire_soft_bookings.sql
-- [ ] pgTAP: resolve_show_assignments.sql
-- [ ] pgTAP: recompute_and_timestamps.sql
+- [x] pgTAP: expire_soft_bookings.sql (authored; pending CI run)
+- [x] pgTAP: resolve_show_assignments.sql (authored; pending CI run)
+- [x] pgTAP: recompute_and_timestamps.sql (authored; pending CI run)
 - [ ] e2e: eligibility-gating.spec.ts
 - [ ] e2e: chat-access-control.spec.ts
 - [ ] coverage gate green in CI
