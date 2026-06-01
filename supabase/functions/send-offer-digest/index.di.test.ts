@@ -446,7 +446,7 @@ Deno.test("send-offer-digest: sendEmail throws → digests_sent not incremented,
 
 // ── Atomicity: stamp failure — at-least-once verdict ─────────────────────────
 
-Deno.test("send-offer-digest: atomicity characterization — harness limitation for stamp-failure path", async () => {
+Deno.test({ name: "send-offer-digest: atomicity characterization — harness limitation for stamp-failure path (SKIPPED: harness cannot fail UPDATE while SELECT succeeds on same table — needs live integration test)", ignore: true, fn: async () => {
   // NOTE: design-limitation (MED) — at-least-once email risk.
   //
   // The current harness cannot make the SELECT succeed and the UPDATE fail on the
@@ -468,8 +468,8 @@ Deno.test("send-offer-digest: atomicity characterization — harness limitation 
   // as a known gap. See part1-bug-log.md row "at-least-once email on stamp failure".
   //
   // This test is a no-op assertion confirming the characterization is understood.
-  assertEquals(true, true);
-});
+  // body intentionally empty — ignored test; see comment above
+}});
 
 // ── Idempotency key format ────────────────────────────────────────────────────
 

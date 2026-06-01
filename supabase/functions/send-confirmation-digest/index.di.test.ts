@@ -484,7 +484,7 @@ Deno.test("send-confirmation-digest: query error → 500 response", async () => 
 // STAMP-FAILURE AT-LEAST-ONCE CHARACTERIZATION
 // =============================================================================
 
-Deno.test("send-confirmation-digest: atomicity characterization — stamp failure after successful email (design-limitation, matches send-offer-digest)", async () => {
+Deno.test({ name: "send-confirmation-digest: atomicity characterization — stamp failure after successful email (design-limitation, matches send-offer-digest) (SKIPPED: harness cannot fail UPDATE while SELECT succeeds on same table — needs live integration test)", ignore: true, fn: async () => {
   // characterization: at-least-once email risk — same design as send-offer-digest.
   //
   // The handler (index.ts, ~lines 118-125):
@@ -509,8 +509,8 @@ Deno.test("send-confirmation-digest: atomicity characterization — stamp failur
   // on the same table (the entire chain resolves from one seed). So we assert the documented
   // source behavior here as a characterization; a live integration test would be needed to
   // exercise this path end-to-end.
-  assertEquals(true, true); // no-op — see comment above
-});
+  // body intentionally empty — ignored test; see comment above
+}});
 
 // =============================================================================
 // RESPONSE SHAPE
