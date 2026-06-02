@@ -19,7 +19,7 @@ export function CookieConsentBanner() {
         >
           <div className="mx-auto flex max-w-5xl flex-col gap-3 sm:flex-row sm:items-center sm:gap-6">
             <p className="flex-1 text-sm text-muted-foreground">
-              We use a single privacy-friendly analytics cookie to understand how this site is used. No tracking, no ads. See our Privacy Policy.{' '}
+              We use a single privacy-friendly analytics cookie to understand how this site is used. No tracking, no ads. See our {' '}
               <Link to={ROUTES.PRIVACY} className="underline text-foreground hover:text-primary whitespace-nowrap">
                 Privacy policy
               </Link>
