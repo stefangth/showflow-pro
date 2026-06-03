@@ -8,6 +8,7 @@ import { useSettingsWarnings } from '@/hooks/useSettingsWarnings';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/features/auth/AuthContext';
+import { fetchOrgProducers } from '@/data/orgs';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -402,7 +403,7 @@ function BookingEngineTab({ get, set }: { get: (key: string, fallback?: any) => 
 // ─── SettingsPage ────────────────────────────────────────────────────────────
 
 export default function SettingsPage() {
-  const { hasRole } = useAuth();
+  const { hasRole, currentOrg } = useAuth();
   const qc = useQueryClient();
 
   const { data: settings, isLoading } = useQuery({
@@ -584,7 +585,6 @@ export default function SettingsPage() {
 
   // show_assignments — production ownership routing
   type ShowAssignmentRow = { id: string; producer_user_id: string; program: string; sub_program: string | null; city_id: string | null };
-  type ProducerUser = { user_id: string; display_name: string | null };
 
   const { data: showAssignments } = useQuery({
     queryKey: ['show-assignments'],
@@ -600,21 +600,9 @@ export default function SettingsPage() {
   });
 
   const { data: producerUsers } = useQuery({
-    queryKey: ['producer-users'],
-    enabled: canEnter,
-    queryFn: async () => {
-      const { data: roleRows } = await supabase
-        .from('user_roles')
-        .select('user_id')
-        .in('role', ['producer', 'admin']);
-      const userIds = (roleRows ?? []).map((r: any) => r.user_id);
-      if (userIds.length === 0) return [] as ProducerUser[];
-      const { data: profileRows } = await supabase
-        .from('profiles')
-        .select('user_id, display_name')
-        .in('user_id', userIds);
-      return (profileRows ?? []) as ProducerUser[];
-    },
+    queryKey: ['producer-users', currentOrg?.id],
+    enabled: canEnter && !!currentOrg,
+    queryFn: () => fetchOrgProducers(supabase, currentOrg!.id),
   });
 
   useEffect(() => {

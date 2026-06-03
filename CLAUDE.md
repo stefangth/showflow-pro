@@ -68,7 +68,7 @@ These are public values (anon key, not service role). Never commit `.env`. The s
 ```
 src/
   components/
-    admin/         # Admin-only UI (ApprovalsTab, etc.)
+    admin/         # Admin-only UI (InvitesTab — org invite management, etc.)
     artists/       # ArtistProfileSheet
     availability/  # ArtistAvailabilityCalendar, AvailabilityPicker, OfferResponseButtons
     bookings/      # ArtistBookingsView and booking surfaces
@@ -85,7 +85,8 @@ src/
   config/
     app.config.ts  # Feature flags (FEATURES), route constants (ROUTES), BOOKING_CONFIG, CHAT_ARCHIVE_DAYS
   features/
-    auth/          # AuthContext, ProtectedRoute, ApprovalGate, role helpers
+    auth/          # AuthContext (org-aware: currentOrg/orgs/switchOrg), ProtectedRoute
+                   #   (org gate → NoOrgScreen / SuspendedOrgScreen), orgRoles helper
     consent/       # ConsentContext, ConsentProvider, useConsent hook — localStorage-backed GDPR consent state
                    #   (key: showflow.consent.v1; categories: analytics, sessionReplay, errorTracking)
                    #   ConsentProvider wraps the routing tree (inside BrowserRouter, outside AuthProvider/EditorProvider).
@@ -128,9 +129,9 @@ supabase/
 
 - **Single source of truth for routes/flags:** `src/config/app.config.ts`. Reference `ROUTES.X` rather than string literals. `CHAT_ARCHIVE_DAYS` (30) hides chats from the list and gates write access after a show date passes (chats older than 30 days are hidden from `ChatsListPage` for non-admins and made read-only in `ChatPanel`). Note: `ROUTES.SHOWS` (`/shows`) has been removed — the `/shows` path no longer exists.
 - **Admin-tunable settings live in the DB:** the `app_settings` table (key/value JSONB) is edited via the Settings page. Static developer-only constants stay in `app.config.ts`.
-- **Signup is admin-gated.** New users land in `user_approvals` with status `pending`; `ApprovalGate` (inside `ProtectedRoute`) renders `PendingApprovalScreen` / `RejectedScreen` until an admin decides via the `admin-decide-approval` edge function. Role is assigned at approval time and inserted into `user_roles`.
+- **Onboarding is invite-only.** There is no public signup and no approval queue. An org admin invites a person by email via the `create-invitation` edge function (inserts `org_invitations` + sends the `org-invitation` email with an `/accept-invite?token=` link); the invitee accepts via the `accept_invitation` SECURITY DEFINER RPC, which writes their `org_memberships` row. `ProtectedRoute` gates on membership: no active org → `NoOrgScreen`; suspended org → `SuspendedOrgScreen`. (The old `user_approvals` / `ApprovalGate` / `admin-decide-approval` flow was retired.)
 - **Role checks are always server-enforced via RLS.** The client `useAuth().hasRole(...)` is for UX only (hiding nav, gating pages); never trust it for data access.
-- **Roles live in `user_roles`**, never on `profiles`. Always check via the `has_role(uuid, app_role)` security-definer function in policies.
+- **Roles live in `org_memberships`** (per-org: `(org_id, user_id, role)`), never on `profiles`. Check via the `has_org_role(uuid, org_id, app_role)` / `is_org_member(uuid, org_id)` security-definer functions in policies (both short-circuit on `is_super_admin`). The old global `user_roles` table + `has_role()` were dropped. `AuthContext` derives the active org's roles, so `useAuth().hasRole()` keeps its signature.
 - **Chat is per show-date.** One `chats` row per `show_date_id`; participation is gated by `is_chat_participant(chat_id, user_id)` (admins, producers, and artists booked/soft-booked for that date). After `CHAT_ARCHIVE_DAYS` days, chats are hidden from `ChatsListPage` for non-admins and become read-only in `ChatPanel` (admins can still view the archived thread).
 - **Artist availability is gated by eligibility.** Artists can only declare availability on dates returned by `useArtistEligibleDates` (derived from cast eligibility). Non-eligible dates render non-interactively in the calendar.
 - **`show_dates.status` is DB-computed.** A Postgres trigger (`sync_show_date_status_trigger` on `bookings`) automatically sets status to `open | partially_filled | fully_filled` based on confirmed booking counts vs the `main_cast` + `understudies` thresholds in `app_settings.sub_program_slots_defaults` (keyed by `(program, sub_program)`). Only `cancelled` is set by mutations directly. Do not set status manually in client code. A second trigger on `app_settings` recomputes all show_dates when slot defaults change; a third on `shows` does so when a show's `program` or `sub_program` is updated.
@@ -189,12 +190,12 @@ When adding a new page:
 ### Edge functions
 
 - One folder per function under `supabase/functions/<name>/index.ts`. Current categories:
-  - **Admin ops:** `admin-list-users`, `admin-set-role`, `admin-decide-approval`
-  - **Signup notifications:** `notify-signup`
+  - **Admin ops:** `admin-list-users`, `admin-set-role` (both org-scoped via `?org_id` / body `org_id`).
+  - **Invitations:** `create-invitation` (org admin → insert `org_invitations` + send the `org-invitation` email). Acceptance is the `accept_invitation` RPC, not an edge function.
   - **Transactional email:** `send-transactional-email`, `preview-transactional-email`, `handle-email-suppression`, `handle-email-unsubscribe`. New templates must be registered in `_shared/transactional-email-templates/registry.ts`.
   - **Booking engine:** `open-offer-tier` (create suggested bookings), `expire-offers` (hourly expiry), `send-offer-digest` (daily 19:00 Berlin), `send-confirmation-digest` (daily 20:00 Berlin).
   - **Watchers:** `tier-at-risk-watcher` — scans open offer tiers and fires an in-app `tier_at_risk` notification when remaining pending + accepted < required slots. Idempotent (one notification per date/tier). No email; visual only.
-- Use the service role key only when bypassing RLS is intentional (admin endpoints). Always re-verify the caller's role server-side first (see `admin-decide-approval` for the pattern).
+- Use the service role key only when bypassing RLS is intentional (admin endpoints). Always re-verify the caller's role server-side first via `requireRole` (any-org) or `requireOrgRole(org_id, [...])` (org-scoped) from `_shared/auth.ts` — see `admin-set-role` / `create-invitation` for the pattern.
 - Read secrets via `Deno.env.get('SECRET_NAME')`.
 
 ### Notification system
@@ -242,7 +243,7 @@ CI runs all of these (`.github/workflows/ci.yml`).
 ### Database changes
 
 - Schema changes go through the migration tool — never hand-edit `supabase/migrations/` or `src/integrations/supabase/types.ts`.
-- Every new table needs RLS enabled and explicit policies. Default to `authenticated` role; restrict writes by `has_role(...)`.
+- Every new table needs RLS enabled and explicit policies. Default to `authenticated` role; on tenant tables restrict reads by `is_org_member(auth.uid(), org_id)` and writes by `has_org_role(auth.uid(), org_id, ...)` (the uniform org-isolation template), plus the RESTRICTIVE `org_isolation` policy.
 - Use the `update_updated_at_column()` trigger on tables with `updated_at`.
 
 ---
@@ -263,7 +264,7 @@ A booking moves through: `suggested → soft_booked → confirmed` (or `cancelle
 
 ## Test accounts (development only)
 
-Test accounts are created manually through the standard signup flow and then approved via the admin panel. There is no automated seeding function — you must create and approve accounts yourself in the dev environment.
+Onboarding is invite-only, so there is no public signup. Bootstrap the first org admin out-of-band: create the auth user (Supabase dashboard), then insert an `org_memberships` row for the bootstrap org (`00000000-0000-0000-0000-00000000b007`) with role `admin` (Supabase SQL editor, or the `admin-set-role` function). That admin then invites producers/artists from **Admin → Invites**; each invitee accepts via the emailed `/accept-invite?token=` link. There is no automated seeding function.
 
 Suggested emails:
 - `test-admin@showflowpro.com`
@@ -280,7 +281,7 @@ Suggested emails:
 |------|---------|
 | `src/config/app.config.ts` | FEATURES flags, ROUTES, BOOKING_CONFIG (`SOFT_BOOK_EXPIRY_HOURS`), SYNC_CONFIG, CHAT_ARCHIVE_DAYS |
 | `src/integrations/supabase/types.ts` | Auto-generated DB types — read only |
-| `src/features/auth/AuthContext.tsx` | Auth state, role helpers, approval status |
+| `src/features/auth/AuthContext.tsx` | Auth state, org-scoped role helpers, `currentOrg`/`orgs`/`switchOrg` |
 | `src/features/consent/ConsentContext.tsx` | GDPR consent state (analytics / sessionReplay / errorTracking) |
 | `src/features/editor/EditorContext.tsx` | Editor mode state, page access and column/permission config (admin only) |
 | `src/hooks/` | All domain hooks — reuse before writing new queries |

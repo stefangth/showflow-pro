@@ -3,6 +3,8 @@ import type { Database } from "@/integrations/supabase/types";
 type ArtistRow = Database["public"]["Tables"]["artists"]["Row"];
 type ShowDateRow = Database["public"]["Tables"]["show_dates"]["Row"];
 type BookingRow = Database["public"]["Tables"]["bookings"]["Row"];
+type OrgRow = Database["public"]["Tables"]["organizations"]["Row"];
+type MembershipRow = Database["public"]["Tables"]["org_memberships"]["Row"];
 
 let seq = 0;
 /** Deterministic-but-unique id generator (no Math.random / Date in fixtures). */
@@ -19,7 +21,9 @@ export function anArtist(overrides: Partial<ArtistRow> = {}): ArtistRow {
     email: "artist@example.com",
     phone: null,
     bio: null,
+    cast_role: null,
     status: "active",
+    org_id: id("org"),
     user_id: id("user"),
     created_at: ISO,
     updated_at: ISO,
@@ -39,6 +43,7 @@ export function aShowDate(overrides: Partial<ShowDateRow> = {}): ShowDateRow {
     venue: null,
     notes: null,
     airtable_record_id: null,
+    org_id: id("org"),
     status: "open",
     created_at: ISO,
     updated_at: ISO,
@@ -58,8 +63,38 @@ export function aBooking(overrides: Partial<BookingRow> = {}): BookingRow {
     cancellation_reason: null,
     cancelled_at: null,
     confirmed_at: null,
+    offer_tier: null,
+    offered_at: null,
+    offer_expires_at: null,
+    digest_sent_at: null,
+    confirmation_digest_sent_at: null,
+    org_id: id("org"),
     created_at: ISO,
     updated_at: ISO,
+    ...overrides,
+  };
+}
+
+export function anOrganization(overrides: Partial<OrgRow> = {}): OrgRow {
+  return {
+    id: id("org"),
+    name: "Test Org",
+    slug: id("slug"),
+    status: "active",
+    created_by: null,
+    created_at: ISO,
+    updated_at: ISO,
+    ...overrides,
+  };
+}
+
+export function aMembership(overrides: Partial<MembershipRow> = {}): MembershipRow {
+  return {
+    id: id("mem"),
+    org_id: id("org"),
+    user_id: id("user"),
+    role: "producer",
+    created_at: ISO,
     ...overrides,
   };
 }

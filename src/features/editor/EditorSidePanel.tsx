@@ -221,7 +221,7 @@ function PermissionsTab({
   const set = (tableKey: string, role: AppRole, level: TablePermissionLevel) => {
     setDraft(prev => ({
       ...prev,
-      [tableKey]: { ...(prev[tableKey] ?? {}), [role]: level },
+      [tableKey]: { ...(prev[tableKey] ?? {}), [role]: level } as Record<AppRole, TablePermissionLevel>,
     }));
   };
 

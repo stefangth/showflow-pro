@@ -17,6 +17,18 @@ export interface RecordedCall {
   args: unknown[];
 }
 
+/** Chainable query builder: every chain method returns the same builder, the
+ *  terminal methods resolve to a result, and the builder itself is awaitable. */
+type ChainFn = (...args: unknown[]) => FakeChain;
+type TerminalFn = (...args: unknown[]) => Promise<FakeResult>;
+export interface FakeChain extends PromiseLike<FakeResult> {
+  select: ChainFn; insert: ChainFn; update: ChainFn; upsert: ChainFn; delete: ChainFn;
+  eq: ChainFn; neq: ChainFn; gt: ChainFn; gte: ChainFn; lt: ChainFn; lte: ChainFn;
+  in: ChainFn; is: ChainFn; or: ChainFn; not: ChainFn; match: ChainFn;
+  order: ChainFn; limit: ChainFn; range: ChainFn; filter: ChainFn; contains: ChainFn; overlaps: ChainFn;
+  single: TerminalFn; maybeSingle: TerminalFn;
+}
+
 /** Chainable query-builder methods that return `this` and record their call. */
 const CHAIN_METHODS = [
   "select", "insert", "update", "upsert", "delete",
@@ -84,7 +96,7 @@ function resolveSeed(
 export function createFakeSupabase(seed: Record<string, TableSeed> = {}) {
   const calls: RecordedCall[] = [];
 
-  function builder(table: string) {
+  function builder(table: string): FakeChain {
     const tableSeed: TableSeed = seed[table] ?? { data: [], error: null };
     // Local eq map — populated as .eq() calls are chained, used for array-seed matching
     const localEq: Record<string, unknown> = {};
@@ -116,7 +128,7 @@ export function createFakeSupabase(seed: Record<string, TableSeed> = {}) {
     chain.then = (onFulfilled: (v: unknown) => unknown, onRejected?: (e: unknown) => unknown) =>
       Promise.resolve(resolveSeed(tableSeed, localEq, localIn)).then(onFulfilled, onRejected);
 
-    return chain;
+    return chain as unknown as FakeChain;
   }
 
   return {
@@ -128,6 +140,13 @@ export function createFakeSupabase(seed: Record<string, TableSeed> = {}) {
     rpc(name: string, params?: unknown) {
       calls.push({ table: `rpc:${name}`, method: "rpc", args: [params] });
       return Promise.resolve(seed[`rpc:${name}`] ?? { data: null, error: null });
+    },
+    functions: {
+      // Seed an edge-function result under `fn:<name>` (e.g. `fn:create-invitation`).
+      invoke(name: string, opts?: { body?: unknown }) {
+        calls.push({ table: `fn:${name}`, method: "invoke", args: [opts?.body] });
+        return Promise.resolve(seed[`fn:${name}`] ?? { data: null, error: null });
+      },
     },
   };
 }

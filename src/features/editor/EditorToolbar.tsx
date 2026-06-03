@@ -15,7 +15,6 @@ interface IamUser {
   id: string;
   email: string | null;
   roles: AppRole[];
-  approval_status: string | null;
 }
 
 export function EditorToolbar() {
@@ -31,7 +30,7 @@ export function EditorToolbar() {
       const { data, error } = await supabase.functions.invoke('admin-list-users');
       if (error) throw error;
       return ((data?.users ?? []) as IamUser[])
-        .filter(u => u.approval_status === 'approved' && u.email)
+        .filter(u => u.email)
         .sort((a, b) => (a.email ?? '').localeCompare(b.email ?? ''));
     },
     staleTime: 60_000,
