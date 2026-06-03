@@ -44,7 +44,6 @@ interface AuthContextType {
   switchOrg: (orgId: string) => void;
   loading: boolean;
   signIn: (email: string, password: string) => Promise<void>;
-  signInWithGoogle: () => Promise<void>;
   signOut: () => Promise<void>;
   hasRole: (role: AppRole) => boolean;
   /** Set by EditorContext to simulate a different role in the UI. Never affects DB access. */
@@ -153,14 +152,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (error) throw error;
   };
 
-  const signInWithGoogle = async () => {
-    const { error } = await supabase.auth.signInWithOAuth({
-      provider: 'google',
-      options: { redirectTo: `${window.location.origin}/dashboard` },
-    });
-    if (error) throw error;
-  };
-
   const signOut = async () => {
     setViewAsRole(null);
     setViewAsUserState(null);
@@ -176,7 +167,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   return (
-    <AuthContext.Provider value={{ user, session, roles, memberships, orgs, currentOrg, switchOrg, loading, signIn, signInWithGoogle, signOut, hasRole, viewAsRole, setViewAsRole, viewAsUser, setViewAsUser }}>
+    <AuthContext.Provider value={{ user, session, roles, memberships, orgs, currentOrg, switchOrg, loading, signIn, signOut, hasRole, viewAsRole, setViewAsRole, viewAsUser, setViewAsUser }}>
       {children}
     </AuthContext.Provider>
   );
