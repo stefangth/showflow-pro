@@ -3,6 +3,9 @@ project_id = "epweartpzwvcasrzyueh"
 [functions.admin-list-users]
 verify_jwt = true
 
+[functions.create-invitation]
+verify_jwt = true
+
 [functions.send-transactional-email]
 verify_jwt = true
 
