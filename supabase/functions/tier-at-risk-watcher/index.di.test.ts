@@ -87,14 +87,14 @@ Deno.test("tier-at-risk-watcher DI: missing auth header → 401", async () => {
 });
 
 Deno.test("tier-at-risk-watcher DI: producer JWT with valid role → 200", async () => {
-  // Seed user_roles so requireRole finds the producer role for user "prod-1"
+  // Seed org_memberships so requireRole finds the producer role for user "prod-1"
   const { deps } = makeFakeDeps({
     authUser: { id: "prod-1" },
     tables: {
       app_settings: makeBaseSettings(),
       show_date_offer_tiers: { data: [], error: null },
-      // requireRole calls .from('user_roles').select('role').eq('user_id', ...).in(...).maybeSingle()
-      user_roles: { data: { role: "producer" }, error: null },
+      // requireRole calls .from('org_memberships').select('role').eq('user_id', ...).in(...).maybeSingle()
+      org_memberships: { data: { role: "producer" }, error: null },
     },
   });
   const res = await handle(
@@ -112,7 +112,7 @@ Deno.test("tier-at-risk-watcher DI: admin JWT with valid role → 200", async ()
     tables: {
       app_settings: makeBaseSettings(),
       show_date_offer_tiers: { data: [], error: null },
-      user_roles: { data: { role: "admin" }, error: null },
+      org_memberships: { data: { role: "admin" }, error: null },
     },
   });
   const res = await handle(
@@ -127,8 +127,8 @@ Deno.test("tier-at-risk-watcher DI: JWT user with no matching role → 403", asy
     authUser: { id: "artist-1" },
     tables: {
       app_settings: makeBaseSettings(),
-      // user_roles returns null (no matching admin/producer role)
-      user_roles: { data: null, error: null },
+      // org_memberships returns null (no matching admin/producer role)
+      org_memberships: { data: null, error: null },
     },
   });
   const res = await handle(

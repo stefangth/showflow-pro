@@ -82,7 +82,7 @@ Deno.test("expire-offers: admin JWT is accepted", async () => {
     tables: {
       app_settings: appSettingsSeed(DEFAULT_SLOTS),
       show_date_offer_tiers: { data: [], error: null },
-      user_roles: { data: { role: "admin" }, error: null },
+      org_memberships: { data: { role: "admin" }, error: null },
     },
     rpcs: { expire_soft_bookings: { data: null, error: null } },
     authUser: { id: "user-admin-1" },
@@ -99,7 +99,7 @@ Deno.test("expire-offers: producer JWT is accepted", async () => {
     tables: {
       app_settings: appSettingsSeed(DEFAULT_SLOTS),
       show_date_offer_tiers: { data: [], error: null },
-      user_roles: { data: { role: "producer" }, error: null },
+      org_memberships: { data: { role: "producer" }, error: null },
     },
     rpcs: { expire_soft_bookings: { data: null, error: null } },
     authUser: { id: "user-producer-1" },

@@ -24,9 +24,6 @@ INSERT INTO public.organizations (id, name, slug) VALUES
 INSERT INTO public.platform_admins (user_id) VALUES ('aaaaaaaa-aaaa-0001-0000-000000000000');
 
 -- GLOBAL producer role (drives the permissive write policies) …
-INSERT INTO public.user_roles (user_id, role) VALUES
-  ('aaaaaaaa-aaaa-00a2-0000-000000000000','producer'),
-  ('aaaaaaaa-aaaa-00b2-0000-000000000000','producer');
 -- … but per-org membership is what the restrictive isolation policy checks.
 INSERT INTO public.org_memberships (org_id, user_id, role) VALUES
   ('00000000-0000-0000-0000-00000000a000','aaaaaaaa-aaaa-00a2-0000-000000000000','producer'),

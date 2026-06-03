@@ -45,11 +45,6 @@ VALUES
   ('aaaaaaaa-aaaa-0003-0000-000000000000', 'authenticated', 'authenticated', 'rls-ch-artista@test.com',  now(), '{"provider":"email"}'::jsonb, '{}'::jsonb, now(), now()),
   ('aaaaaaaa-aaaa-0004-0000-000000000000', 'authenticated', 'authenticated', 'rls-ch-artistb@test.com',  now(), '{"provider":"email"}'::jsonb, '{}'::jsonb, now(), now());
 
-INSERT INTO public.user_roles (user_id, role) VALUES
-  ('aaaaaaaa-aaaa-0001-0000-000000000000', 'admin'::app_role),
-  ('aaaaaaaa-aaaa-0002-0000-000000000000', 'producer'::app_role),
-  ('aaaaaaaa-aaaa-0003-0000-000000000000', 'artist'::app_role),
-  ('aaaaaaaa-aaaa-0004-0000-000000000000', 'artist'::app_role);
 
 -- Phase 1B: is_chat_participant now checks has_org_role (no global fallback), so
 -- staff need bootstrap-org memberships. Domain rows below default to the bootstrap
