@@ -5,6 +5,7 @@ import { useAuth } from '@/features/auth/AuthContext';
 import { APP_META, ROUTES } from '@/config/app.config';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import {
@@ -81,7 +82,7 @@ export default function AppLayout({ children }: AppLayoutProps) {
   const SidebarContent = () => (
     <div className="flex flex-col h-full">
       {/* Logo */}
-      <div className="flex items-center gap-2.5 px-3.5 py-4 border-b border-border">
+      <div className="flex items-center gap-2.5 px-3.5 py-4 border-b border-sidebar-border">
         <StageMark variant="tile" size={32} className="shrink-0" />
         {!collapsed && (
           <span className="font-display text-[15px] font-semibold tracking-[-0.02em] truncate">
@@ -105,13 +106,13 @@ export default function AppLayout({ children }: AppLayoutProps) {
                   'flex items-center gap-2.5 rounded-[7px] px-2.5 py-2 text-[13px] font-medium transition-colors',
                   hiddenForRole ? 'opacity-40' : '',
                   isActive
-                    ? 'bg-accent-50 text-accent-600 dark:bg-accent-900/30 dark:text-accent-200'
-                    : 'text-muted-foreground hover:bg-muted hover:text-foreground'
+                    ? 'bg-sidebar-accent text-sidebar-accent-foreground font-semibold'
+                    : 'text-sidebar-foreground/70 hover:bg-foreground/[0.04] hover:text-sidebar-foreground'
                 )
               }
             >
               <span className="relative shrink-0">
-                <item.icon className="h-[18px] w-[18px]" />
+                <item.icon className="h-[14px] w-[14px]" />
                 {showWarningDot && (
                   <span className="absolute -top-0.5 -right-0.5 h-1.5 w-1.5 rounded-full bg-destructive ring-2 ring-background" />
                 )}
@@ -133,18 +134,27 @@ export default function AppLayout({ children }: AppLayoutProps) {
       </nav>
 
       {/* User section */}
-      <div className="border-t border-border px-2 py-3 space-y-1">
+      <div className="border-t border-sidebar-border px-2 py-3 space-y-1">
         {!collapsed && (
-          <div className="px-2.5 mb-1.5">
-            <p className="text-[13px] font-medium truncate">{user?.email}</p>
-            <p className="text-[11px] text-muted-foreground capitalize">{roles.join(', ') || 'No role'}</p>
+          <div className="px-1.5 mb-1.5 space-y-1.5">
+            <div className="flex items-center gap-2.5">
+              <Avatar className="h-7 w-7">
+                <AvatarFallback seed={user?.email ?? ''}>
+                  {(user?.email ?? '?').slice(0, 2).toUpperCase()}
+                </AvatarFallback>
+              </Avatar>
+              <div className="flex-1 min-w-0">
+                <p className="text-[12px] font-semibold truncate">{user?.email}</p>
+                <p className="text-[10px] text-muted-foreground capitalize truncate">{roles.join(', ') || 'No role'}</p>
+              </div>
+            </div>
             {viewAsRole && isEditorMode && !viewAsUser && (
-              <Badge variant="outline" className="mt-1 border-warning text-warning">
+              <Badge variant="outline" className="border-warning text-warning">
                 Viewing as: {viewAsRole}
               </Badge>
             )}
             {viewAsUser && isEditorMode && (
-              <div className="mt-1 space-y-0.5">
+              <div className="space-y-0.5">
                 <Badge variant="outline" className="border-warning text-warning">
                   Viewing as: {viewAsUser.roles.join(', ') || 'no role'}
                 </Badge>
@@ -156,10 +166,10 @@ export default function AppLayout({ children }: AppLayoutProps) {
         <Button
           variant="ghost"
           size="sm"
-          className="w-full justify-start gap-2.5 text-muted-foreground hover:text-foreground"
+          className="w-full justify-start gap-2.5 text-sidebar-foreground/70 hover:bg-foreground/[0.04] hover:text-sidebar-foreground"
           onClick={handleSignOut}
         >
-          <LogOut className="h-[18px] w-[18px]" />
+          <LogOut className="h-[14px] w-[14px]" />
           {!collapsed && 'Sign Out'}
         </Button>
       </div>
@@ -171,7 +181,7 @@ export default function AppLayout({ children }: AppLayoutProps) {
       {/* Desktop sidebar */}
       <aside
         className={cn(
-          'hidden lg:flex flex-col border-r border-border bg-card transition-all duration-300 shrink-0',
+          'hidden lg:flex flex-col border-r border-sidebar-border bg-sidebar transition-all duration-300 shrink-0',
           collapsed ? 'w-[68px]' : 'w-[220px]'
         )}
       >
@@ -179,7 +189,7 @@ export default function AppLayout({ children }: AppLayoutProps) {
         <button
           onClick={() => setCollapsed(!collapsed)}
           aria-label={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
-          className="flex items-center justify-center py-3 border-t border-border hover:bg-muted transition-colors"
+          className="flex items-center justify-center py-3 border-t border-sidebar-border hover:bg-foreground/[0.04] transition-colors"
         >
           {collapsed ? <ChevronRight className="h-4 w-4" /> : <ChevronLeft className="h-4 w-4" />}
         </button>
@@ -193,7 +203,7 @@ export default function AppLayout({ children }: AppLayoutProps) {
             onClick={() => setMobileOpen(false)}
             aria-hidden="true"
           />
-          <aside className="relative w-[220px] h-full bg-card shadow-elev3">
+          <aside className="relative w-[220px] h-full bg-sidebar shadow-elev3">
             <SidebarContent />
           </aside>
         </div>
@@ -202,7 +212,7 @@ export default function AppLayout({ children }: AppLayoutProps) {
       {/* Main content */}
       <div className="flex-1 flex flex-col min-w-0">
         {/* Top bar — 52 px */}
-        <header className="flex items-center justify-between h-[52px] px-4 border-b border-border bg-card shrink-0">
+        <header className="flex items-center justify-between h-[52px] px-6 border-b border-border bg-card shrink-0">
           <button
             className="lg:hidden p-1 -ml-1 rounded-md hover:bg-muted transition-colors"
             onClick={() => setMobileOpen(true)}
