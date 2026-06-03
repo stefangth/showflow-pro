@@ -3,6 +3,12 @@
 -- column DEFAULT routes any insert that omits org_id into this org, and existing
 -- role-holders are enrolled here. Phase 1 removes the DEFAULTs once the client sets
 -- org_id explicitly. Greenfield: on a fresh DB the backfill selects zero rows.
+--
+-- PURELY ADDITIVE: this migration only ADDS columns. The uniqueness swaps
+-- (artists → UNIQUE(org_id,user_id); app_settings → per-(org,key) + platform-NULL)
+-- are intentionally DEFERRED to the phase that also updates every `ON CONFLICT (key)`
+-- / upsert call site. Dropping app_settings' UNIQUE(key) here breaks existing
+-- `INSERT ... ON CONFLICT (key)` upserts (caught by the trigger pgTAP suite in CI).
 
 insert into public.organizations (id, name, slug)
 values ('00000000-0000-0000-0000-00000000b007','Bootstrap Org','bootstrap');
@@ -13,8 +19,8 @@ select '00000000-0000-0000-0000-00000000b007', user_id, role
 from public.user_roles
 on conflict (org_id, user_id, role) do nothing;
 
--- Add org_id NOT NULL DEFAULT bootstrap + FK + index to each tenant table.
--- app_settings is handled separately below (nullable org_id = platform default).
+-- Add org_id NOT NULL DEFAULT bootstrap + FK + index to EVERY tenant table
+-- (including app_settings and artists — uniqueness unchanged).
 do $$
 declare
   t text;
@@ -24,7 +30,7 @@ declare
     'show_date_cast_eligibility','bookings','booking_audit_log','casts',
     'cast_members','cast_city_priority','cities','skills','artist_skills',
     'blocked_dates','show_assignments','chats','chat_messages',
-    'notifications','airtable_sync_log','artists'
+    'notifications','airtable_sync_log','artists','app_settings'
   ];
 begin
   foreach t in array tbls loop
@@ -36,18 +42,3 @@ begin
       'idx_'||t||'_org', t);
   end loop;
 end $$;
-
--- artists: replace global UNIQUE(user_id) with per-org uniqueness.
-alter table public.artists drop constraint if exists artists_user_id_key;
-drop index if exists public.artists_user_id_key;
-create unique index artists_org_user_uniq
-  on public.artists(org_id, user_id) where user_id is not null;
-
--- app_settings: nullable org_id (NULL = platform default); per-(org,key) uniqueness.
-alter table public.app_settings add column if not exists org_id uuid references public.organizations(id);
-create index if not exists idx_app_settings_org on public.app_settings(org_id);
-alter table public.app_settings drop constraint if exists app_settings_key_key;
-drop index if exists public.app_settings_key_key;
-create unique index app_settings_platform_key on public.app_settings(key) where org_id is null;
-create unique index app_settings_org_key       on public.app_settings(org_id, key) where org_id is not null;
--- Existing global settings rows keep org_id = NULL → they become the platform defaults.
