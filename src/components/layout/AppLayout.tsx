@@ -222,7 +222,7 @@ export default function AppLayout({ children }: AppLayoutProps) {
       {/* Main content */}
       <div className="flex-1 flex flex-col min-w-0">
         {/* Top bar — 52 px */}
-        <header className="flex items-center gap-3 h-[52px] px-6 border-b-[0.5px] border-border bg-card shrink-0">
+        <header className="flex items-center gap-3 h-[52px] px-6 border-b-[0.5px] border-border bg-background shrink-0">
           <button
             className="lg:hidden p-1 -ml-1 rounded-md hover:bg-muted transition-colors"
             onClick={() => setMobileOpen(true)}
