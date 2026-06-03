@@ -93,7 +93,7 @@ export default function AppLayout({ children }: AppLayoutProps) {
     <div className="flex flex-col h-full">
       {/* Logo */}
       <div className="flex items-center gap-2.5 px-3.5 py-4 border-b-[0.5px] border-sidebar-border">
-        <StageMark variant="tile" size={32} className="shrink-0" />
+        <StageMark variant="mark" size={32} className="shrink-0" />
         {!collapsed && (
           <span className="font-display text-[15px] font-semibold tracking-[-0.02em] truncate">
             {APP_META.NAME}
@@ -231,7 +231,7 @@ export default function AppLayout({ children }: AppLayoutProps) {
             <Menu className="h-5 w-5" />
           </button>
           <div className="lg:hidden flex items-center gap-2">
-            <StageMark variant="tile" size={24} />
+            <StageMark variant="mark" size={24} />
             <span className="font-display font-semibold text-[15px] tracking-[-0.02em]">{APP_META.NAME}</span>
           </div>
 
