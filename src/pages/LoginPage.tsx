@@ -1,5 +1,5 @@
 import { useRef, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '@/features/auth/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -39,6 +39,7 @@ export default function LoginPage() {
   const { signIn } = useAuth();
   const { openPreferences } = useConsent();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -48,7 +49,9 @@ export default function LoginPage() {
     setError(null);
     try {
       await signIn(email, password);
-      navigate(ROUTES.DASHBOARD);
+      // Honor a relative ?redirect= (e.g. the accept-invite flow); never an absolute/external URL.
+      const redirect = searchParams.get('redirect');
+      navigate(redirect && redirect.startsWith('/') && !redirect.startsWith('//') ? redirect : ROUTES.DASHBOARD);
     } catch (err: any) {
       setError(friendlyAuthError(err?.message ?? 'Something went wrong. Please try again.'));
       setPassword('');

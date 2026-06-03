@@ -141,6 +141,13 @@ export function createFakeSupabase(seed: Record<string, TableSeed> = {}) {
       calls.push({ table: `rpc:${name}`, method: "rpc", args: [params] });
       return Promise.resolve(seed[`rpc:${name}`] ?? { data: null, error: null });
     },
+    functions: {
+      // Seed an edge-function result under `fn:<name>` (e.g. `fn:create-invitation`).
+      invoke(name: string, opts?: { body?: unknown }) {
+        calls.push({ table: `fn:${name}`, method: "invoke", args: [opts?.body] });
+        return Promise.resolve(seed[`fn:${name}`] ?? { data: null, error: null });
+      },
+    },
   };
 }
 
