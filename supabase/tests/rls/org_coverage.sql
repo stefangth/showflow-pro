@@ -17,8 +17,8 @@ INSERT INTO _tenant_tables(name) VALUES
   ('blocked_dates'),('show_assignments'),('chats'),('chat_messages'),
   ('notifications'),('airtable_sync_log'),('artists'),('app_settings');
 
--- 21 tables × 2 assertions
-SELECT plan(42);
+-- 21 tables × 3 assertions
+SELECT plan(63);
 
 -- 1) org_id column present on every tenant table
 SELECT is(
@@ -36,6 +36,14 @@ SELECT is(
     WHERE n.nspname='public' AND c.relname = tt.name),
   1,
   tt.name || ' has RLS enabled')
+FROM _tenant_tables tt
+ORDER BY tt.name;
+
+-- 3) the RESTRICTIVE org_isolation policy is present on every tenant table
+SELECT ok(
+  EXISTS (SELECT 1 FROM pg_policies
+          WHERE schemaname='public' AND tablename = tt.name AND policyname='org_isolation'),
+  tt.name || ' has org_isolation policy')
 FROM _tenant_tables tt
 ORDER BY tt.name;
 
