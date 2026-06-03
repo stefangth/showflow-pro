@@ -61,8 +61,9 @@ SELECT lives_ok(
 RESET ROLE;
 
 -- ── uniqueness ──
--- same key allowed across two different orgs (org B row inserted above)
-SELECT is((SELECT count(DISTINCT org_id)::int FROM public.app_settings WHERE key='demo_key'),3,'demo_key exists for NULL, org A, org B');
+-- same key allowed across two different orgs + the platform row (3 rows total).
+-- NOTE: count(DISTINCT org_id) would ignore the NULL row — count rows instead.
+SELECT is((SELECT count(*)::int FROM public.app_settings WHERE key='demo_key'),3,'demo_key exists for NULL, org A, org B');
 -- duplicate platform row for a key is rejected (NULLS NOT DISTINCT)
 SELECT throws_ok(
   $$INSERT INTO public.app_settings (org_id, key, value) VALUES (NULL,'demo_key','"dup"'::jsonb)$$,
