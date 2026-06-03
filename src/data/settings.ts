@@ -26,5 +26,5 @@ export async function fetchSlotDefaults(
     .eq("key", "sub_program_slots_defaults")
     .maybeSingle();
   if (error) throw error;
-  return (data?.value ?? {}) as NestedSlotDefaults;
+  return (data?.value ?? {}) as unknown as NestedSlotDefaults;
 }

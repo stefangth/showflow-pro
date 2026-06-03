@@ -1,5 +1,6 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
+import type { Database } from '@/integrations/supabase/types';
 import { Button } from '@/components/ui/button';
 import { Check, X } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
@@ -19,7 +20,7 @@ export function OfferResponseButtons({ bookingId, size = 'default' }: Props) {
 
   const respond = useMutation({
     mutationFn: async (accept: boolean) => {
-      const updates: Record<string, unknown> = {
+      const updates: Database['public']['Tables']['bookings']['Update'] = {
         status: accept ? 'soft_booked' : 'cancelled',
       };
       if (!accept) {

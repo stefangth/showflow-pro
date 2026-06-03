@@ -1,6 +1,7 @@
 import { Navigate, useLocation } from 'react-router-dom';
 import { useAuth } from './AuthContext';
-import { ApprovalGate } from './ApprovalGate';
+import NoOrgScreen from '@/pages/NoOrgScreen';
+import SuspendedOrgScreen from '@/pages/SuspendedOrgScreen';
 import type { AppRole } from '@/config/app.config';
 import { ROUTES } from '@/config/app.config';
 import { DEFAULT_PAGE_ACCESS } from '@/features/editor/types';
@@ -12,7 +13,7 @@ interface ProtectedRouteProps {
 }
 
 export function ProtectedRoute({ children, requiredRoles }: ProtectedRouteProps) {
-  const { user, loading, roles, approvalStatus } = useAuth();
+  const { user, loading, roles, currentOrg } = useAuth();
   const { isEditorMode, pageAccess } = useEditorConfig();
   const location = useLocation();
 
@@ -28,15 +29,18 @@ export function ProtectedRoute({ children, requiredRoles }: ProtectedRouteProps)
     return <Navigate to={ROUTES.LOGIN} replace />;
   }
 
-  // Block access until admin approval (or legacy fallback). Role checks only apply once approved.
-  if (approvalStatus !== 'approved' && approvalStatus !== 'unknown') {
-    return <ApprovalGate>{children}</ApprovalGate>;
+  // Invite-only: access is org membership. No active org → ask for an invite.
+  if (!currentOrg) {
+    return <NoOrgScreen />;
+  }
+  if (currentOrg.status === 'suspended') {
+    return <SuspendedOrgScreen />;
   }
 
   // Admins in editor mode bypass all route role gates — they can navigate anywhere.
   const isRealAdmin = roles.includes('admin');
   if (isEditorMode && isRealAdmin) {
-    return <ApprovalGate>{children}</ApprovalGate>;
+    return <>{children}</>;
   }
 
   // Determine effective required roles: prefer DB-configured access, fall back to prop/defaults.
@@ -50,5 +54,5 @@ export function ProtectedRoute({ children, requiredRoles }: ProtectedRouteProps)
     }
   }
 
-  return <ApprovalGate>{children}</ApprovalGate>;
+  return <>{children}</>;
 }

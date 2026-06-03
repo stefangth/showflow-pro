@@ -82,7 +82,7 @@ Deno.test("expire-offers: admin JWT is accepted", async () => {
     tables: {
       app_settings: appSettingsSeed(DEFAULT_SLOTS),
       show_date_offer_tiers: { data: [], error: null },
-      user_roles: { data: { role: "admin" }, error: null },
+      org_memberships: { data: { role: "admin" }, error: null },
     },
     rpcs: { expire_soft_bookings: { data: null, error: null } },
     authUser: { id: "user-admin-1" },
@@ -99,7 +99,7 @@ Deno.test("expire-offers: producer JWT is accepted", async () => {
     tables: {
       app_settings: appSettingsSeed(DEFAULT_SLOTS),
       show_date_offer_tiers: { data: [], error: null },
-      user_roles: { data: { role: "producer" }, error: null },
+      org_memberships: { data: { role: "producer" }, error: null },
     },
     rpcs: { expire_soft_bookings: { data: null, error: null } },
     authUser: { id: "user-producer-1" },
@@ -205,7 +205,7 @@ Deno.test("expire-offers: requiredSlots = main_cast + understudies from slot con
       show_dates: { data: SHOW_DATE, error: null },
       bookings: { data: [], error: null },
       notifications: { data: null, error: null },
-      user_roles: { data: [{ user_id: "admin-1" }], error: null },
+      org_memberships: { data: [{ user_id: "admin-1" }], error: null },
     },
     rpcs: {
       expire_soft_bookings: { data: null, error: null },
@@ -281,7 +281,7 @@ Deno.test("expire-offers: boundary — offer_expires_at exactly == now → NOT p
       show_dates: { data: SHOW_DATE, error: null },
       bookings: { data: bookings, error: null },
       notifications: { data: null, error: null },
-      user_roles: { data: [{ user_id: "admin-1" }], error: null },
+      org_memberships: { data: [{ user_id: "admin-1" }], error: null },
     },
     rpcs: {
       expire_soft_bookings: { data: null, error: null },
@@ -408,7 +408,7 @@ Deno.test("expire-offers: cancelled bookings do NOT count toward accepted", asyn
       show_dates: { data: SHOW_DATE, error: null },
       bookings: { data: bookings, error: null },
       notifications: { data: null, error: null },
-      user_roles: { data: [{ user_id: "admin-1" }], error: null },
+      org_memberships: { data: [{ user_id: "admin-1" }], error: null },
     },
     rpcs: {
       expire_soft_bookings: { data: null, error: null },
@@ -467,7 +467,7 @@ Deno.test("expire-offers: empty producers → falls back to admin users", async 
       show_dates: { data: SHOW_DATE, error: null },
       bookings: { data: [], error: null },
       notifications: { data: null, error: null },
-      user_roles: { data: [{ user_id: "admin-1" }, { user_id: "admin-2" }], error: null },
+      org_memberships: { data: [{ user_id: "admin-1" }, { user_id: "admin-2" }], error: null },
     },
     rpcs: {
       expire_soft_bookings: { data: null, error: null },
@@ -536,7 +536,7 @@ Deno.test("expire-offers: notification row has correct fields", async () => {
       show_dates: { data: SHOW_DATE, error: null },
       bookings: { data: [], error: null },
       notifications: { data: null, error: null },
-      user_roles: { data: [{ user_id: "admin-1" }], error: null },
+      org_memberships: { data: [{ user_id: "admin-1" }], error: null },
     },
     rpcs: {
       expire_soft_bookings: { data: null, error: null },
@@ -655,7 +655,7 @@ Deno.test("expire-offers: stamps escalation_notified_at on the tier (idempotency
       show_dates: { data: SHOW_DATE, error: null },
       bookings: { data: [], error: null },
       notifications: { data: null, error: null },
-      user_roles: { data: [{ user_id: "admin-1" }], error: null },
+      org_memberships: { data: [{ user_id: "admin-1" }], error: null },
     },
     rpcs: {
       expire_soft_bookings: { data: null, error: null },
@@ -707,7 +707,7 @@ Deno.test("expire-offers: response body expired:true on success with escalations
       show_dates: { data: SHOW_DATE, error: null },
       bookings: { data: [], error: null },
       notifications: { data: null, error: null },
-      user_roles: { data: [{ user_id: "admin-1" }], error: null },
+      org_memberships: { data: [{ user_id: "admin-1" }], error: null },
     },
     rpcs: {
       expire_soft_bookings: { data: null, error: null },
@@ -732,7 +732,7 @@ Deno.test("expire-offers: no notifications insert when no recipients", async () 
       show_dates: { data: SHOW_DATE, error: null },
       bookings: { data: [], error: null },
       notifications: { data: null, error: null },
-      user_roles: { data: [], error: null }, // no admins
+      org_memberships: { data: [], error: null }, // no admins
     },
     rpcs: {
       expire_soft_bookings: { data: null, error: null },

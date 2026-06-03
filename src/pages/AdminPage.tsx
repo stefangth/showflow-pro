@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { useQuery, useQueryClient, useMutation } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/features/auth/AuthContext';
@@ -11,8 +11,8 @@ import { Check, Settings as SettingsIcon } from 'lucide-react';
 import { format } from 'date-fns';
 import { Users, Activity, Database } from 'lucide-react';
 import { useSearchParams } from 'react-router-dom';
-import { ApprovalsTab } from '@/components/admin/ApprovalsTab';
 import { useToast } from '@/hooks/use-toast';
+import { InvitesTab } from '@/components/admin/InvitesTab';
 import { cn } from '@/lib/utils';
 
 const ALL_ROLES: Array<'admin' | 'producer' | 'artist'> = ['admin', 'producer', 'artist'];
@@ -23,26 +23,13 @@ type IamUser = {
   created_at: string;
   last_sign_in_at: string | null;
   roles: string[];
-  approval_status: 'pending' | 'approved' | 'rejected' | null;
 };
 
 export default function AdminPage() {
   const { hasRole } = useAuth();
-  const qc = useQueryClient();
   const [params, setParams] = useSearchParams();
-  const initialTab = params.get('tab') || 'approvals';
+  const initialTab = params.get('tab') || 'invites';
   const [tab, setTab] = useState(initialTab);
-
-  const { data: pendingCount } = useQuery({
-    queryKey: ['user-approvals', 'count'],
-    queryFn: async () => {
-      const { count } = await supabase
-        .from('user_approvals')
-        .select('*', { count: 'exact', head: true })
-        .eq('status', 'pending');
-      return count ?? 0;
-    },
-  });
 
   const { data: iamUsers } = useQuery({
     queryKey: ['admin-iam-users'],
@@ -90,18 +77,6 @@ export default function AdminPage() {
     },
   });
 
-  // Realtime invalidation for approvals (drives badge count)
-  useEffect(() => {
-    const channel = supabase
-      .channel('admin-page-approvals')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'user_approvals' }, () => {
-        qc.invalidateQueries({ queryKey: ['user-approvals'] });
-        qc.invalidateQueries({ queryKey: ['admin-iam-users'] });
-      })
-      .subscribe();
-    return () => { supabase.removeChannel(channel); };
-  }, [qc]);
-
   const handleTabChange = (v: string) => {
     setTab(v);
     setParams((p) => { p.set('tab', v); return p; }, { replace: true });
@@ -142,19 +117,14 @@ export default function AdminPage() {
 
       <Tabs value={tab} onValueChange={handleTabChange}>
         <TabsList>
-          <TabsTrigger value="approvals" className="relative">
-            Approvals
-            {pendingCount && pendingCount > 0 ? (
-              <Badge variant="destructive" className="ml-2 h-5 min-w-5 px-1.5 text-xs">{pendingCount}</Badge>
-            ) : null}
-          </TabsTrigger>
+          <TabsTrigger value="invites">Invites</TabsTrigger>
           <TabsTrigger value="users">Users</TabsTrigger>
           <TabsTrigger value="audit">Audit Log</TabsTrigger>
           <TabsTrigger value="sync">Sync Status</TabsTrigger>
         </TabsList>
 
-        <TabsContent value="approvals" className="mt-4">
-          <ApprovalsTab />
+        <TabsContent value="invites" className="mt-4">
+          <InvitesTab />
         </TabsContent>
 
         <TabsContent value="users" className="mt-4">
@@ -172,18 +142,6 @@ export default function AdminPage() {
                       </p>
                     </div>
                     <div className="flex items-center gap-1 flex-wrap">
-                      {u.approval_status && (
-                        <Badge
-                          variant="outline"
-                          className={
-                            u.approval_status === 'approved' ? 'border-success text-success' :
-                            u.approval_status === 'rejected' ? 'border-destructive text-destructive' :
-                            'border-warning text-warning'
-                          }
-                        >
-                          {u.approval_status}
-                        </Badge>
-                      )}
                       {u.roles.length > 0 ? (
                         u.roles.map(r => (
                           <Badge key={r} variant="secondary" className="text-xs capitalize">{r}</Badge>

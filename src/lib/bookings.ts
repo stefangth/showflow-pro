@@ -3,6 +3,8 @@
  * No Supabase, no React — safe to unit-test directly.
  */
 
+import type { Database } from "@/integrations/supabase/types";
+
 export interface BookingLike {
   artist_id: string;
   status: string;
@@ -50,7 +52,7 @@ export function computeInheritedCastIds(
 
 /** Update payload for a booking status transition. */
 export interface BookingStatusUpdate {
-  status: string;
+  status: Database["public"]["Enums"]["booking_status"];
   confirmed_at?: string;
   cancelled_at?: string;
 }
@@ -63,7 +65,7 @@ export interface BookingStatusUpdate {
  * transition. See part2-bug-log.md ("booking timestamp never cleared").
  */
 export function bookingStatusUpdate(status: string, now: Date): BookingStatusUpdate {
-  const updates: BookingStatusUpdate = { status };
+  const updates: BookingStatusUpdate = { status: status as Database["public"]["Enums"]["booking_status"] };
   if (status === "confirmed") updates.confirmed_at = now.toISOString();
   if (status === "cancelled") updates.cancelled_at = now.toISOString();
   return updates;

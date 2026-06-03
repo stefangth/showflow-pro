@@ -30,7 +30,12 @@ export function isServiceRole(deps: Deps, req: Request): boolean {
   return serviceKey !== "" && authHeader === `Bearer ${serviceKey}`;
 }
 
-/** Validate a user JWT and require one of `roles`. */
+/**
+ * Validate a user JWT and require one of `roles` in ANY org (coarse gate).
+ *
+ * org_memberships can hold many rows per user (multi-org), so we cap at one row to
+ * avoid PostgREST's "multiple rows returned" error on .maybeSingle().
+ */
 export async function requireRole(deps: Deps, req: Request, roles: string[]): Promise<AuthOutcome> {
   const authHeader = req.headers.get("Authorization");
   if (!authHeader?.startsWith("Bearer ")) {
@@ -40,7 +45,30 @@ export async function requireRole(deps: Deps, req: Request, roles: string[]): Pr
   if (error || !user) return { ok: false, response: json({ error: "Unauthorized" }, 401) };
 
   const { data: roleRow } = await deps.admin
-    .from("user_roles").select("role").eq("user_id", user.id).in("role", roles).maybeSingle();
+    .from("org_memberships").select("role").eq("user_id", user.id).in("role", roles).limit(1).maybeSingle();
+  if (!roleRow) return { ok: false, response: json({ error: "Forbidden" }, 403) };
+
+  return { ok: true, userId: user.id };
+}
+
+/**
+ * Validate a user JWT and require one of `roles` WITHIN a specific org.
+ *
+ * Used by org-scoped admin endpoints (e.g. admin-set-role) so an admin of one org
+ * cannot act on another. Super-admin (platform_admins) bypass is added with the
+ * Phase 4 console; for now authority is org membership only.
+ */
+export async function requireOrgRole(deps: Deps, req: Request, orgId: string, roles: string[]): Promise<AuthOutcome> {
+  const authHeader = req.headers.get("Authorization");
+  if (!authHeader?.startsWith("Bearer ")) {
+    return { ok: false, response: json({ error: "Unauthorized" }, 401) };
+  }
+  const { data: { user }, error } = await deps.userClient(authHeader).auth.getUser();
+  if (error || !user) return { ok: false, response: json({ error: "Unauthorized" }, 401) };
+
+  const { data: roleRow } = await deps.admin
+    .from("org_memberships").select("role")
+    .eq("user_id", user.id).eq("org_id", orgId).in("role", roles).limit(1).maybeSingle();
   if (!roleRow) return { ok: false, response: json({ error: "Forbidden" }, 403) };
 
   return { ok: true, userId: user.id };

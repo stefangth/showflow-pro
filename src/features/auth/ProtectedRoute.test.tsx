@@ -14,16 +14,20 @@ vi.mock("../editor/EditorContext", () => ({
   useEditorConfig: vi.fn(() => ({ isEditorMode: false, pageAccess: {} })),
 }));
 
-// ApprovalGate passes children when approvalStatus is 'approved'/'unknown'
-vi.mock("./ApprovalGate", () => ({
-  ApprovalGate: ({ children }: { children: React.ReactNode }) =>
-    React.createElement(React.Fragment, null, children),
+// The org-gate screens are stubbed to identifiable text so we assert which gate fired.
+vi.mock("@/pages/NoOrgScreen", () => ({
+  default: () => React.createElement("div", null, "No Org Screen"),
+}));
+vi.mock("@/pages/SuspendedOrgScreen", () => ({
+  default: () => React.createElement("div", null, "Suspended Screen"),
 }));
 
 import { useAuth } from "./AuthContext";
 import { useEditorConfig } from "../editor/EditorContext";
 
 // ── Helpers ───────────────────────────────────────────────────────────────
+
+const ACTIVE_ORG = { id: "org-1", name: "Acme", slug: "acme", status: "active" };
 
 function renderProtected(
   {
@@ -52,8 +56,10 @@ function renderProtected(
             path,
             element: React.createElement(
               ProtectedRoute,
-              { requiredRoles: requiredRoles as any },
-              React.createElement("div", null, "Protected Content")
+              {
+                requiredRoles: requiredRoles as any,
+                children: React.createElement("div", null, "Protected Content"),
+              }
             ),
           }
         )
@@ -76,12 +82,11 @@ describe("ProtectedRoute", () => {
       user: null,
       loading: true,
       roles: [],
-      approvalStatus: "unknown",
+      currentOrg: null,
     } as any);
 
     renderProtected();
 
-    // The loading spinner renders (no text, just a div with animate-spin)
     expect(document.querySelector(".animate-spin")).toBeTruthy();
   });
 
@@ -90,7 +95,7 @@ describe("ProtectedRoute", () => {
       user: null,
       loading: false,
       roles: [],
-      approvalStatus: "unknown",
+      currentOrg: null,
     } as any);
 
     renderProtected();
@@ -98,12 +103,38 @@ describe("ProtectedRoute", () => {
     expect(screen.getByText("Login Page")).toBeTruthy();
   });
 
-  it("renders children for authenticated user with no role restriction", () => {
+  it("shows the no-org screen when the user has no active org", () => {
+    vi.mocked(useAuth).mockReturnValue({
+      user: { id: "user-1" } as any,
+      loading: false,
+      roles: [],
+      currentOrg: null,
+    } as any);
+
+    renderProtected();
+
+    expect(screen.getByText("No Org Screen")).toBeTruthy();
+  });
+
+  it("shows the suspended screen when the active org is suspended", () => {
+    vi.mocked(useAuth).mockReturnValue({
+      user: { id: "user-1" } as any,
+      loading: false,
+      roles: ["producer"],
+      currentOrg: { ...ACTIVE_ORG, status: "suspended" },
+    } as any);
+
+    renderProtected({ requiredRoles: ["producer"] });
+
+    expect(screen.getByText("Suspended Screen")).toBeTruthy();
+  });
+
+  it("renders children for an authenticated org member with no role restriction", () => {
     vi.mocked(useAuth).mockReturnValue({
       user: { id: "user-1" } as any,
       loading: false,
       roles: ["artist"],
-      approvalStatus: "approved",
+      currentOrg: ACTIVE_ORG,
     } as any);
 
     renderProtected();
@@ -116,7 +147,7 @@ describe("ProtectedRoute", () => {
       user: { id: "user-1" } as any,
       loading: false,
       roles: ["producer"],
-      approvalStatus: "approved",
+      currentOrg: ACTIVE_ORG,
     } as any);
 
     renderProtected({ requiredRoles: ["admin", "producer"] });
@@ -129,7 +160,7 @@ describe("ProtectedRoute", () => {
       user: { id: "user-1" } as any,
       loading: false,
       roles: ["artist"],
-      approvalStatus: "approved",
+      currentOrg: ACTIVE_ORG,
     } as any);
 
     renderProtected({ requiredRoles: ["admin"] });
@@ -142,7 +173,7 @@ describe("ProtectedRoute", () => {
       user: { id: "user-admin" } as any,
       loading: false,
       roles: ["admin"],
-      approvalStatus: "approved",
+      currentOrg: ACTIVE_ORG,
     } as any);
     vi.mocked(useEditorConfig).mockReturnValue({
       isEditorMode: true,
@@ -151,7 +182,6 @@ describe("ProtectedRoute", () => {
 
     renderProtected({ requiredRoles: ["producer"] });
 
-    // Admin in editor mode bypasses role gates
     expect(screen.getByText("Protected Content")).toBeTruthy();
   });
 
@@ -160,7 +190,7 @@ describe("ProtectedRoute", () => {
       user: { id: "user-1" } as any,
       loading: false,
       roles: ["artist"],
-      approvalStatus: "approved",
+      currentOrg: ACTIVE_ORG,
     } as any);
     vi.mocked(useEditorConfig).mockReturnValue({
       isEditorMode: true,
@@ -169,7 +199,6 @@ describe("ProtectedRoute", () => {
 
     renderProtected({ requiredRoles: ["admin"] });
 
-    // Non-admin in editor mode still redirects
     expect(screen.getByText("Dashboard")).toBeTruthy();
   });
 });
