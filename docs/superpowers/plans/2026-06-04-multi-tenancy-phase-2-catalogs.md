@@ -87,7 +87,7 @@ All multi-tenancy migrations through `20260603150000` are applied. Before writin
 - `supabase/tests/db/seed_and_catalog_isolation.sql` (2D) — seed copies template per-org; catalog isolation; per-org uniqueness.
 
 **pgTAP tests modified (2A):**
-- `supabase/tests/triggers/compute_show_date_status.sql`, `supabase/tests/triggers/recompute_and_timestamps.sql` — `ON CONFLICT (key)` → `ON CONFLICT (org_id, key)`.
+- **All five** trigger tests that insert `sub_program_slots_defaults` via `ON CONFLICT (key)` → `ON CONFLICT (org_id, key)`: `compute_show_date_status.sql`, `recompute_and_timestamps.sql`, `promote_understudy_on_cancellation.sql`, `notify_booking_transition.sql`, `auto_cancel_on_slot_fill.sql`. (The latter three were found during execution — each inserts the slot-defaults row before any `show_dates` exist, so the new INSERT-firing cascade is a no-op.)
 - `supabase/tests/rls/reference_tables.sql` — add a "member reads platform default" assertion if the file asserts `app_settings` reads (verify in 2A Task 5).
 
 **Frontend created/modified:**

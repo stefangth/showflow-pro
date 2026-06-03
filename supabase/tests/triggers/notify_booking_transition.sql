@@ -32,7 +32,7 @@ VALUES (
   'sub_program_slots_defaults',
   '{"theatre":{"musical":{"main_cast":10,"understudies":10}}}'::jsonb
 )
-ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value;
+ON CONFLICT (org_id, key) DO UPDATE SET value = EXCLUDED.value;
 
 SET session_replication_role = replica;
 

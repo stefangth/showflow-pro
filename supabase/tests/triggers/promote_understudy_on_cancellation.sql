@@ -23,7 +23,7 @@ VALUES (
   'sub_program_slots_defaults',
   '{"theatre":{"musical":{"main_cast":1,"understudies":1}}}'::jsonb
 )
-ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value;
+ON CONFLICT (org_id, key) DO UPDATE SET value = EXCLUDED.value;
 
 -- Admin user required for the booking_ready_to_confirm fallback notification
 -- (no show_assignments exist in this test, so the trigger falls back to admins).

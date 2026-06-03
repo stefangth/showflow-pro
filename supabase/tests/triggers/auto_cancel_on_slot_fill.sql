@@ -23,7 +23,7 @@ VALUES (
   'sub_program_slots_defaults',
   '{"theatre":{"musical":{"main_cast":2,"understudies":1}}}'::jsonb
 )
-ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value;
+ON CONFLICT (org_id, key) DO UPDATE SET value = EXCLUDED.value;
 
 INSERT INTO public.artists (id, name) VALUES
   ('bbbbbbbb-ac00-0001-0000-000000000000', 'AC Artist 1'),
