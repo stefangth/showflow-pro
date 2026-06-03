@@ -1,8 +1,10 @@
-import { createContext, useContext, useEffect, useState, type ReactNode } from 'react';
+import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import type { User, Session } from '@supabase/supabase-js';
 import type { AppRole } from '@/config/app.config';
+import { fetchMyMemberships, type Membership, type Organization } from '@/data/orgs';
+import { rolesForOrg } from './orgRoles';
 
 const REALTIME_INVALIDATIONS: Array<{ table: string; keys: unknown[][] }> = [
   { table: 'bookings',                   keys: [['bookings']] },
@@ -35,6 +37,14 @@ interface AuthContextType {
   user: User | null;
   session: Session | null;
   roles: AppRole[];
+  /** Org memberships for the signed-in user (all orgs). */
+  memberships: Membership[];
+  /** Organizations the user belongs to (deduped). */
+  orgs: Organization[];
+  /** The active organization (switcher selection), or null if the user has none. */
+  currentOrg: Organization | null;
+  /** Switch the active org; persists the choice and refetches org-scoped data. */
+  switchOrg: (orgId: string) => void;
   loading: boolean;
   approvalStatus: ApprovalStatus;
   approvalReason: string | null;
@@ -56,7 +66,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const queryClient = useQueryClient();
   const [user, setUser] = useState<User | null>(null);
   const [session, setSession] = useState<Session | null>(null);
-  const [roles, setRoles] = useState<AppRole[]>([]);
+  const [memberships, setMemberships] = useState<Membership[]>([]);
+  const [currentOrgId, setCurrentOrgId] = useState<string | null>(
+    () => localStorage.getItem('showflow.currentOrg'),
+  );
   const [loading, setLoading] = useState(true);
   const [approvalStatus, setApprovalStatus] = useState<ApprovalStatus>('unknown');
   const [approvalReason, setApprovalReason] = useState<string | null>(null);
@@ -68,13 +81,31 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (u) setViewAsRole(null);
   };
 
-  /** Fetch user roles from user_roles table */
-  const fetchRoles = async (userId: string) => {
-    const { data } = await supabase
-      .from('user_roles')
-      .select('role')
-      .eq('user_id', userId);
-    setRoles(data?.map(r => r.role as AppRole) ?? []);
+  const orgs = useMemo<Organization[]>(() => {
+    const byId = new Map<string, Organization>();
+    for (const m of memberships) if (m.organizations) byId.set(m.organizations.id, m.organizations);
+    return Array.from(byId.values());
+  }, [memberships]);
+
+  const currentOrg = orgs.find((o) => o.id === currentOrgId) ?? orgs[0] ?? null;
+  /** Roles are scoped to the active org, so hasRole() keeps its signature. */
+  const roles = rolesForOrg(memberships, currentOrg?.id ?? null);
+
+  const switchOrg = (orgId: string) => {
+    setCurrentOrgId(orgId);
+    localStorage.setItem('showflow.currentOrg', orgId);
+    queryClient.invalidateQueries();
+  };
+
+  /** Fetch the user's org memberships; default the active org on first load. */
+  const fetchMemberships = async (userId: string) => {
+    try {
+      const data = await fetchMyMemberships(supabase, userId);
+      setMemberships(data);
+      setCurrentOrgId((prev) => prev ?? data[0]?.org_id ?? null);
+    } catch {
+      setMemberships([]);
+    }
   };
 
   /** Fetch approval row; missing row = treat as approved (legacy users). */
@@ -100,11 +131,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setUser(session?.user ?? null);
         if (session?.user) {
           setTimeout(() => {
-            fetchRoles(session.user.id);
+            fetchMemberships(session.user.id);
             fetchApproval(session.user.id);
           }, 0);
         } else {
-          setRoles([]);
+          setMemberships([]);
+          setCurrentOrgId(null);
+          localStorage.removeItem('showflow.currentOrg');
           setApprovalStatus('unknown');
           setApprovalReason(null);
           setViewAsRole(null);
@@ -119,7 +152,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setSession(session);
       setUser(session?.user ?? null);
       if (session?.user) {
-        fetchRoles(session.user.id);
+        fetchMemberships(session.user.id);
         fetchApproval(session.user.id);
       }
       setLoading(false);
@@ -140,8 +173,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           const next = payload.new as { status: ApprovalStatus; rejection_reason: string | null };
           setApprovalStatus(next.status);
           setApprovalReason(next.rejection_reason);
-          // Refresh roles since approval may have just granted one
-          fetchRoles(user.id);
+          // Refresh memberships since approval may have just granted access
+          fetchMemberships(user.id);
         }
       )
       .subscribe();
