@@ -18,6 +18,7 @@ import { useSettingsWarnings } from '@/hooks/useSettingsWarnings';
 import { useEditorConfig } from '@/features/editor/EditorContext';
 import { EditorToolbar, EditorModeToggle } from '@/features/editor/EditorToolbar';
 import { StageMark } from '@/components/brand/StageMark';
+import { OrgSwitcher } from '@/components/layout/OrgSwitcher';
 import { NotificationsList } from '@/components/layout/NotificationsList';
 import { useNotifications } from '@/hooks/useNotifications';
 
@@ -94,6 +95,11 @@ export default function AppLayout({ children }: AppLayoutProps) {
             {APP_META.NAME}
           </span>
         )}
+      </div>
+
+      {/* Org switcher */}
+      <div className="px-2 py-2 border-b-[0.5px] border-sidebar-border">
+        <OrgSwitcher collapsed={collapsed} />
       </div>
 
       {/* Nav links */}
