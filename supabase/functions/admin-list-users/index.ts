@@ -1,5 +1,6 @@
 import { preflight, json } from "../_shared/http.ts";
 import { requireRole } from "../_shared/auth.ts";
+import { BOOTSTRAP_ORG_ID } from "../_shared/constants.ts";
 import { realDeps, type Deps } from "../_shared/deps.ts";
 
 export async function handle(req: Request, deps: Deps): Promise<Response> {
@@ -10,6 +11,9 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
     if (!auth.ok) return auth.response;
 
     const admin = deps.admin;
+    // Roles are reported for one org (defaults to the bootstrap org during the
+    // transition). The org switcher will pass ?org_id=<active org> in Phase 1C.
+    const orgId = new URL(req.url).searchParams.get("org_id") ?? BOOTSTRAP_ORG_ID;
 
     // List all auth users (paginated; we cap at 1000 for now)
     const { data: usersPage, error: listErr } = await admin.auth.admin.listUsers({ page: 1, perPage: 1000 });
@@ -18,7 +22,7 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
     const userIds = usersPage.users.map(u => u.id);
 
     const [{ data: rolesData }, { data: approvalsData }] = await Promise.all([
-      admin.from('user_roles').select('user_id, role').in('user_id', userIds.length ? userIds : ['00000000-0000-0000-0000-000000000000']),
+      admin.from('org_memberships').select('user_id, role').eq('org_id', orgId).in('user_id', userIds.length ? userIds : ['00000000-0000-0000-0000-000000000000']),
       admin.from('user_approvals').select('user_id, status').in('user_id', userIds.length ? userIds : ['00000000-0000-0000-0000-000000000000']),
     ]);
 
