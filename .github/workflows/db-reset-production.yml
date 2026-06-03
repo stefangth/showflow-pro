@@ -1,0 +1,65 @@
+name: DB reset (production) — MANUAL · DESTRUCTIVE
+
+# One-off, manually-dispatched workflow to re-baseline the PRODUCTION Supabase
+# database to the repo's migrations.
+#
+# Why: production's recorded migration history diverged from the repo (the
+# migrations were re-timestamped at some point), so the integration's `db push`
+# refuses to apply anything ("Remote migration versions not found in local
+# migrations directory"). `db reset` drops the remote database and re-applies every
+# migration cleanly, bypassing the divergence and giving production exactly the
+# repo's (validated) schema.
+#
+# ⚠️ DESTRUCTIVE: wipes the production database. Safe here only because it is
+# greenfield (no operational data). Take a snapshot first if that ever changes.
+#
+# Required repository secrets:
+#   SUPABASE_ACCESS_TOKEN  — a Supabase personal access token
+#                            (https://supabase.com/dashboard/account/tokens)
+#   SUPABASE_DB_PASSWORD   — the production project's database password
+#                            (Dashboard → Project → Settings → Database)
+
+on:
+  workflow_dispatch:
+    inputs:
+      confirm:
+        description: 'Type RESET to confirm dropping + re-applying ALL migrations on PRODUCTION.'
+        required: true
+        type: string
+
+concurrency:
+  group: db-reset-production
+  cancel-in-progress: false
+
+jobs:
+  reset:
+    name: Reset production database
+    runs-on: ubuntu-latest
+    if: ${{ github.event.inputs.confirm == 'RESET' }}
+    env:
+      SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+      SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
+      PROJECT_REF: epweartpzwvcasrzyueh
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: supabase/setup-cli@v1
+        with:
+          # Pinned to match the rest of CI.
+          version: 2.98.2
+
+      - name: Link to the production project
+        run: supabase link --project-ref "$PROJECT_REF"
+
+      - name: Show current migration state (before)
+        run: supabase migration list --linked || true
+
+      - name: Reset production database (drop + re-apply all migrations)
+        run: |
+          set -o pipefail
+          # `db reset --linked` prompts for confirmation; answer it non-interactively.
+          # --no-seed because there is no supabase/seed.sql.
+          echo "y" | supabase db reset --linked --no-seed
+
+      - name: Verify migration state (after)
+        run: supabase migration list --linked
