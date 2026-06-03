@@ -52,8 +52,10 @@ function renderProtected(
             path,
             element: React.createElement(
               ProtectedRoute,
-              { requiredRoles: requiredRoles as any },
-              React.createElement("div", null, "Protected Content")
+              {
+                requiredRoles: requiredRoles as any,
+                children: React.createElement("div", null, "Protected Content"),
+              }
             ),
           }
         )
