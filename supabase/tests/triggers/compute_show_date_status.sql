@@ -29,7 +29,7 @@ VALUES (
   'sub_program_slots_defaults',
   '{"theatre": {"musical": {"main_cast": 2, "understudies": 1}}}'::jsonb
 )
-ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value;
+ON CONFLICT (org_id, key) DO UPDATE SET value = EXCLUDED.value;
 
 -- Configured show
 INSERT INTO public.shows (id, program, sub_program)
