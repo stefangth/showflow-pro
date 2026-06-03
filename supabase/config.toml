@@ -1,12 +1,6 @@
 project_id = "epweartpzwvcasrzyueh"
 
-[functions.notify-signup]
-verify_jwt = false
-
 [functions.admin-list-users]
-verify_jwt = true
-
-[functions.admin-decide-approval]
 verify_jwt = true
 
 [functions.send-transactional-email]

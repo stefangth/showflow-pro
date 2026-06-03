@@ -21,18 +21,13 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
 
     const userIds = usersPage.users.map(u => u.id);
 
-    const [{ data: rolesData }, { data: approvalsData }] = await Promise.all([
-      admin.from('org_memberships').select('user_id, role').eq('org_id', orgId).in('user_id', userIds.length ? userIds : ['00000000-0000-0000-0000-000000000000']),
-      admin.from('user_approvals').select('user_id, status').in('user_id', userIds.length ? userIds : ['00000000-0000-0000-0000-000000000000']),
-    ]);
+    const { data: rolesData } = await admin
+      .from('org_memberships').select('user_id, role').eq('org_id', orgId)
+      .in('user_id', userIds.length ? userIds : ['00000000-0000-0000-0000-000000000000']);
 
     const rolesByUser: Record<string, string[]> = {};
     for (const r of rolesData ?? []) {
       (rolesByUser[r.user_id] ??= []).push(r.role);
-    }
-    const approvalByUser: Record<string, string> = {};
-    for (const a of approvalsData ?? []) {
-      approvalByUser[a.user_id] = a.status;
     }
 
     const users = usersPage.users.map(u => ({
@@ -41,7 +36,6 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
       created_at: u.created_at,
       last_sign_in_at: u.last_sign_in_at,
       roles: rolesByUser[u.id] ?? [],
-      approval_status: approvalByUser[u.id] ?? null,
     }));
 
     return json({ users });

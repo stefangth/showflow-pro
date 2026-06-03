@@ -22,7 +22,6 @@ Deno.test("admin-list-users: admin JWT → 200", async () => {
       // Same seed is used by requireRole (.maybeSingle → truthy array passes !roleRow check)
       // and by the parallel org_memberships fetch (array is iterable).
       org_memberships: { data: [{ user_id: "u1", role: "admin" }], error: null },
-      user_approvals: { data: [], error: null },
     },
   });
   const res = await handle(makeRequest({ method: "GET", headers: { Authorization: "Bearer jwt" } }), deps);
