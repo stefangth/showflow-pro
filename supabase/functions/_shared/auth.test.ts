@@ -10,38 +10,17 @@ Deno.test("requireRole rejects a request with no Bearer token (401)", async () =
 });
 
 Deno.test("requireRole rejects a valid user lacking the role (403)", async () => {
-  const { deps } = makeFakeDeps({ authUser: { id: "u1" }, tables: { user_roles: { data: null, error: null } } });
+  const { deps } = makeFakeDeps({ authUser: { id: "u1" }, tables: { org_memberships: { data: null, error: null } } });
   const out = await requireRole(deps, makeRequest({ headers: { Authorization: "Bearer jwt" } }), ["admin"]);
   assertEquals(out.ok, false);
   if (!out.ok) assertEquals(out.response.status, 403);
 });
 
-Deno.test("requireRole accepts a user with the role and returns userId", async () => {
-  const { deps } = makeFakeDeps({ authUser: { id: "u1" }, tables: { user_roles: { data: { role: "admin" }, error: null } } });
+Deno.test("requireRole accepts a user whose role is in org_memberships and returns userId", async () => {
+  const { deps } = makeFakeDeps({ authUser: { id: "u1" }, tables: { org_memberships: { data: { role: "admin" }, error: null } } });
   const out = await requireRole(deps, makeRequest({ headers: { Authorization: "Bearer jwt" } }), ["admin", "producer"]);
   assertEquals(out.ok, true);
   if (out.ok) assertEquals(out.userId, "u1");
-});
-
-Deno.test("requireRole accepts a user whose role is in org_memberships (no user_roles row)", async () => {
-  const { deps } = makeFakeDeps({ authUser: { id: "u1" }, tables: { org_memberships: { data: { role: "admin" }, error: null } } });
-  const out = await requireRole(deps, makeRequest({ headers: { Authorization: "Bearer jwt" } }), ["admin"]);
-  assertEquals(out.ok, true);
-  if (out.ok) assertEquals(out.userId, "u1");
-});
-
-Deno.test("requireRole falls back to legacy user_roles when org_memberships has no match", async () => {
-  // org_memberships unseeded → no row; the user_roles fallback grants the role.
-  const { deps } = makeFakeDeps({ authUser: { id: "u1" }, tables: { user_roles: { data: { role: "producer" }, error: null } } });
-  const out = await requireRole(deps, makeRequest({ headers: { Authorization: "Bearer jwt" } }), ["producer"]);
-  assertEquals(out.ok, true);
-});
-
-Deno.test("requireRole rejects when neither org_memberships nor user_roles match (403)", async () => {
-  const { deps } = makeFakeDeps({ authUser: { id: "u1" }, tables: { org_memberships: { data: null, error: null }, user_roles: { data: null, error: null } } });
-  const out = await requireRole(deps, makeRequest({ headers: { Authorization: "Bearer jwt" } }), ["admin"]);
-  assertEquals(out.ok, false);
-  if (!out.ok) assertEquals(out.response.status, 403);
 });
 
 Deno.test("requireOrgRole rejects a request with no Bearer token (401)", async () => {

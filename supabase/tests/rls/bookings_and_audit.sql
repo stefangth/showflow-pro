@@ -48,11 +48,6 @@ VALUES
   ('aaaaaaaa-aaaa-0003-0000-000000000000', 'authenticated', 'authenticated', 'rls-bk-artista@test.com',  now(), '{"provider":"email"}'::jsonb, '{}'::jsonb, now(), now()),
   ('aaaaaaaa-aaaa-0004-0000-000000000000', 'authenticated', 'authenticated', 'rls-bk-artistb@test.com',  now(), '{"provider":"email"}'::jsonb, '{}'::jsonb, now(), now());
 
-INSERT INTO public.user_roles (user_id, role) VALUES
-  ('aaaaaaaa-aaaa-0001-0000-000000000000', 'admin'::app_role),
-  ('aaaaaaaa-aaaa-0002-0000-000000000000', 'producer'::app_role),
-  ('aaaaaaaa-aaaa-0003-0000-000000000000', 'artist'::app_role),
-  ('aaaaaaaa-aaaa-0004-0000-000000000000', 'artist'::app_role);
 
 -- Phase 1B: role-gating is now org-scoped (has_org_role). Domain rows below default
 -- to the bootstrap org, so mirror the roles as bootstrap-org memberships.

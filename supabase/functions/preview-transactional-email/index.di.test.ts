@@ -27,7 +27,7 @@ function adminDeps() {
   return makeFakeDeps({
     authUser: { id: "admin-user" },
     tables: {
-      user_roles: { data: [{ user_id: "admin-user", role: "admin" }], error: null },
+      org_memberships: { data: [{ user_id: "admin-user", role: "admin" }], error: null },
     },
   }).deps;
 }
@@ -36,7 +36,7 @@ function producerDeps() {
   return makeFakeDeps({
     authUser: { id: "producer-user" },
     tables: {
-      user_roles: { data: [{ user_id: "producer-user", role: "producer" }], error: null },
+      org_memberships: { data: [{ user_id: "producer-user", role: "producer" }], error: null },
     },
   }).deps;
 }
@@ -45,7 +45,7 @@ function artistDeps() {
   return makeFakeDeps({
     authUser: { id: "artist-user" },
     tables: {
-      user_roles: { data: [{ user_id: "artist-user", role: "artist" }], error: null },
+      org_memberships: { data: [{ user_id: "artist-user", role: "artist" }], error: null },
     },
   }).deps;
 }
@@ -73,7 +73,7 @@ Deno.test("preview-transactional-email DI: no auth header → 401", async () => 
 Deno.test("preview-transactional-email DI: auth header without Bearer prefix → 401", async () => {
   const { deps } = makeFakeDeps({
     authUser: { id: "u1" },
-    tables: { user_roles: { data: [{ user_id: "u1", role: "admin" }], error: null } },
+    tables: { org_memberships: { data: [{ user_id: "u1", role: "admin" }], error: null } },
   });
   const res = await handle(
     makeRequest({ headers: { Authorization: "jwt-no-prefix" }, body: {} }),
@@ -90,7 +90,7 @@ Deno.test("preview-transactional-email DI: artist role → 403", async () => {
 Deno.test("preview-transactional-email DI: no role row → 403", async () => {
   const { deps } = makeFakeDeps({
     authUser: { id: "u-no-role" },
-    tables: { user_roles: { data: null, error: null } },
+    tables: { org_memberships: { data: null, error: null } },
   });
   const res = await handle(authedPostRequest(), deps);
   assertEquals(res.status, 403);
