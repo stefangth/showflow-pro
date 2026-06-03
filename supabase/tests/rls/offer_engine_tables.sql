@@ -50,10 +50,6 @@ VALUES
   ('aaaaaaaa-aaaa-0002-0000-000000000000', 'authenticated', 'authenticated', 'rls-oe-producer@test.com', now(), '{"provider":"email"}'::jsonb, '{}'::jsonb, now(), now()),
   ('aaaaaaaa-aaaa-0003-0000-000000000000', 'authenticated', 'authenticated', 'rls-oe-artist@test.com',   now(), '{"provider":"email"}'::jsonb, '{}'::jsonb, now(), now());
 
-INSERT INTO public.user_roles (user_id, role) VALUES
-  ('aaaaaaaa-aaaa-0001-0000-000000000000', 'admin'::app_role),
-  ('aaaaaaaa-aaaa-0002-0000-000000000000', 'producer'::app_role),
-  ('aaaaaaaa-aaaa-0003-0000-000000000000', 'artist'::app_role);
 
 -- Phase 1B: org-scoped role-gating — mirror roles as bootstrap-org memberships.
 INSERT INTO public.org_memberships (org_id, user_id, role) VALUES

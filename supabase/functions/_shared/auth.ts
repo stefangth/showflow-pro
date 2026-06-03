@@ -33,10 +33,6 @@ export function isServiceRole(deps: Deps, req: Request): boolean {
 /**
  * Validate a user JWT and require one of `roles` in ANY org (coarse gate).
  *
- * Reads org_memberships, falling back to the legacy global user_roles table during
- * the single→multi-tenant transition so pre-migration roles keep working. The
- * fallback (and user_roles itself) is removed once the table is dropped.
- *
  * org_memberships can hold many rows per user (multi-org), so we cap at one row to
  * avoid PostgREST's "multiple rows returned" error on .maybeSingle().
  */
@@ -48,16 +44,11 @@ export async function requireRole(deps: Deps, req: Request, roles: string[]): Pr
   const { data: { user }, error } = await deps.userClient(authHeader).auth.getUser();
   if (error || !user) return { ok: false, response: json({ error: "Unauthorized" }, 401) };
 
-  const { data: orgRow } = await deps.admin
+  const { data: roleRow } = await deps.admin
     .from("org_memberships").select("role").eq("user_id", user.id).in("role", roles).limit(1).maybeSingle();
-  if (orgRow) return { ok: true, userId: user.id };
+  if (!roleRow) return { ok: false, response: json({ error: "Forbidden" }, 403) };
 
-  // Transition fallback: accept a matching legacy global role. Removed with user_roles.
-  const { data: legacyRow } = await deps.admin
-    .from("user_roles").select("role").eq("user_id", user.id).in("role", roles).limit(1).maybeSingle();
-  if (legacyRow) return { ok: true, userId: user.id };
-
-  return { ok: false, response: json({ error: "Forbidden" }, 403) };
+  return { ok: true, userId: user.id };
 }
 
 /**

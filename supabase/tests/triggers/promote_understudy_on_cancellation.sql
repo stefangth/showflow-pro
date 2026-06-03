@@ -34,8 +34,6 @@ VALUES
   ('aaaaaaaa-0d00-0002-0000-000000000000', 'authenticated', 'authenticated', 'up-artist2@test.com', now(), '{"provider":"email"}'::jsonb, '{}'::jsonb, now(), now());
 SET session_replication_role = DEFAULT;
 
-INSERT INTO public.user_roles (user_id, role)
-VALUES ('aaaaaaaa-0d00-0001-0000-000000000000', 'admin'::app_role);
 
 -- Phase 1B: org-scoped role-gating — mirror role as a bootstrap-org membership.
 INSERT INTO public.org_memberships (org_id, user_id, role)
