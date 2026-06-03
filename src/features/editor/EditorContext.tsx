@@ -2,6 +2,7 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useState, t
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
+import type { Json } from '@/integrations/supabase/types';
 import { useAuth } from '@/features/auth/AuthContext';
 import type { AppRole } from '@/config/app.config';
 import { resolveColumnTemplate, pageColumnDefs, COMPUTED_LABELS } from './columnRegistries';
@@ -94,7 +95,7 @@ export function EditorProvider({ children }: { children: ReactNode }) {
   const upsertSetting = useCallback(async (key: string, value: unknown) => {
     const { error } = await supabase
       .from('app_settings')
-      .upsert({ key, value }, { onConflict: 'key' });
+      .upsert({ key, value: value as Json }, { onConflict: 'key' });
     if (error) throw error;
     qc.invalidateQueries({ queryKey: ['app-settings', 'editor'] });
   }, [qc]);

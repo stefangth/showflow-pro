@@ -26,6 +26,29 @@ jobs:
 
       - run: npm run lint
 
+  # ── 1b. Typecheck (tsc) ────────────────────────────────────────────────────
+  # eslint does not type-check. This catches type-level breakage that lint
+  # misses — e.g. reading a property that was removed from an interface, or a
+  # dangling import after a file is deleted. Dev-targeted PRs do not run the
+  # build (only the main-only e2e job does), so without this a type error could
+  # slip through to a much later stage. Uses the app project's own config
+  # (noEmit already set), which includes src/.
+  typecheck:
+    name: Typecheck
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - run: npm ci
+
+      - name: Typecheck (tsc --noEmit)
+        run: npx tsc -p tsconfig.app.json --noEmit
+
   # ── 2. Unit / hook tests (Vitest) ──────────────────────────────────────────
   unit-tests:
     name: Unit tests
