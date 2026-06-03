@@ -17,6 +17,10 @@ VALUES
 INSERT INTO public.user_roles (user_id, role)
 VALUES ('aaaaaaaa-ac00-0002-0000-000000000000', 'artist'::app_role);
 
+-- Phase 1B: org-scoped role-gating — mirror role as a bootstrap-org membership.
+INSERT INTO public.org_memberships (org_id, user_id, role)
+VALUES ('00000000-0000-0000-0000-00000000b007','aaaaaaaa-ac00-0002-0000-000000000000','artist');
+
 INSERT INTO public.user_approvals (id, user_id, email, status, requested_role)
 VALUES
   ('bbbbbbbb-ac00-0001-0000-000000000000', 'aaaaaaaa-ac00-0001-0000-000000000000', 'rpc-approve@test.com', 'pending'::approval_status, 'artist'::app_role),

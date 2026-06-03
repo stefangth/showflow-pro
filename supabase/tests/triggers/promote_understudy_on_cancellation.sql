@@ -37,6 +37,10 @@ SET session_replication_role = DEFAULT;
 INSERT INTO public.user_roles (user_id, role)
 VALUES ('aaaaaaaa-0d00-0001-0000-000000000000', 'admin'::app_role);
 
+-- Phase 1B: org-scoped role-gating — mirror role as a bootstrap-org membership.
+INSERT INTO public.org_memberships (org_id, user_id, role)
+VALUES ('00000000-0000-0000-0000-00000000b007','aaaaaaaa-0d00-0001-0000-000000000000','admin');
+
 -- Artist 2 has a user_id so the understudy_promoted notification path is exercised
 INSERT INTO public.artists (id, name, user_id) VALUES
   ('bbbbbbbb-0d00-0001-0000-000000000000', 'UP Artist 1', NULL),
