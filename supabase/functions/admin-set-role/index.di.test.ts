@@ -1,23 +1,29 @@
 /**
- * Deep DI tests for admin-set-role — asserts the full documented contract.
+ * Deep DI tests for admin-set-role — asserts the full documented contract
+ * (now org-scoped: roles live in org_memberships, keyed by (org_id, user_id, role)).
  *
  * Seeding notes
  * -------------
- * `requireRole` (in _shared/auth.ts) calls:
- *   admin.from("user_roles").select("role").eq("user_id", user.id).in("role", roles).maybeSingle()
+ * `requireOrgRole` (in _shared/auth.ts) calls:
+ *   admin.from("org_memberships").select("role")
+ *     .eq("user_id", user.id).eq("org_id", orgId).in("role", roles).limit(1).maybeSingle()
  * The fake's `maybeSingle` applies the localIn filter from testing.ts, so we seed
- * user_roles as a SingleSeed `{ data: [...], error: null }` and the .in("role",["admin"])
- * filter keeps only rows whose `role` is in that list.
+ * org_memberships as a SingleSeed `{ data: [...], error: null }` and the
+ * .in("role",["admin"]) filter keeps only rows whose `role` is in that list.
  *
  * The last-admin guard calls:
- *   admin.from("user_roles").select("*", { count:"exact", head:true }).eq("role","admin")
- * and destructures `{ count }` from the result via the `.then()` path. The fake's
- * `SingleSeed` type now supports an optional `count` field (BUG-001 fix in testing.ts)
- * so tests can seed `{ ..., count: N }` and the guard will receive the correct value.
+ *   admin.from("org_memberships").select("*", { count:"exact", head:true })
+ *     .eq("org_id", orgId).eq("role","admin")
+ * and destructures `{ count }` from the result via the `.then()` path, so tests
+ * seed `{ ..., count: N }` and the guard receives that value.
+ *
+ * With no body.org_id, the handler targets the bootstrap org, so writes are
+ * asserted against BOOTSTRAP_ORG_ID.
  */
 
 import { assertEquals, assertExists } from "../_shared/test-asserts.ts";
 import { makeFakeDeps, makeRequest } from "../_shared/testing.ts";
+import { BOOTSTRAP_ORG_ID } from "../_shared/constants.ts";
 import { handle } from "./index.ts";
 
 // ---------------------------------------------------------------------------
@@ -33,16 +39,16 @@ function adminReq(body: unknown): Request {
 }
 
 /**
- * Build a makeFakeDeps seed that authenticates `u1` as admin.
- * `user_roles` seed is a single array of rows; the fake applies .in("role",["admin"])
+ * Build a makeFakeDeps seed that authenticates `u1` as an admin of the bootstrap org.
+ * `org_memberships` seed is a single array of rows; the fake applies .in("role",["admin"])
  * filtering in maybeSingle(), so rows with other roles are excluded.
  */
-function adminCallerSeed(extraRoles: Array<{ user_id: string; role: string }> = []) {
+function adminCallerSeed(extraRows: Array<{ user_id: string; org_id?: string; role: string }> = []) {
   return {
     authUser: { id: "u1" },
     tables: {
-      user_roles: {
-        data: [{ user_id: "u1", role: "admin" }, ...extraRoles],
+      org_memberships: {
+        data: [{ user_id: "u1", org_id: BOOTSTRAP_ORG_ID, role: "admin" }, ...extraRows],
         error: null,
       },
     },
@@ -64,12 +70,12 @@ Deno.test("no Authorization header → 401", async () => {
   assertExists(body.error);
 });
 
-Deno.test("valid JWT but not admin → 403", async () => {
+Deno.test("valid JWT but not an admin of the org → 403", async () => {
   const { deps } = makeFakeDeps({
     authUser: { id: "u1" },
     tables: {
-      // u1 has only 'artist' role — .in("role",["admin"]) filter excludes it → no roleRow → 403
-      user_roles: { data: [{ user_id: "u1", role: "artist" }], error: null },
+      // u1 is only an 'artist' in the org — .in("role",["admin"]) excludes it → 403
+      org_memberships: { data: [{ user_id: "u1", org_id: BOOTSTRAP_ORG_ID, role: "artist" }], error: null },
     },
   });
   const res = await handle(adminReq({ user_id: "u2", role: "artist", action: "add" }), deps);
@@ -116,30 +122,40 @@ Deno.test("invalid role value → 400", async () => {
 // action='add'
 // ---------------------------------------------------------------------------
 
-Deno.test("action='add': inserts user_roles row → 200 ok:true", async () => {
+Deno.test("action='add': inserts org_memberships row in the bootstrap org → 200 ok:true", async () => {
   const { deps, calls } = makeFakeDeps(adminCallerSeed());
   const res = await handle(adminReq({ user_id: "u2", role: "artist", action: "add" }), deps);
   assertEquals(res.status, 200);
   const body = await res.json();
   assertEquals(body, { ok: true });
 
-  // Assert that an insert was recorded on user_roles with the exact payload
-  const insertCall = calls.find((c) => c.table === "user_roles" && c.method === "insert");
+  // Assert that an insert was recorded on org_memberships with the exact payload
+  const insertCall = calls.find((c) => c.table === "org_memberships" && c.method === "insert");
   assertExists(insertCall);
-  assertEquals(insertCall.args[0], { user_id: "u2", role: "artist" });
+  assertEquals(insertCall.args[0], { org_id: BOOTSTRAP_ORG_ID, user_id: "u2", role: "artist" });
+});
+
+Deno.test("action='add': honors an explicit org_id", async () => {
+  // Caller u1 is an admin (the fake doesn't filter by org_id, so the same admin
+  // seed authorizes); assert the write targets the requested org.
+  const { deps, calls } = makeFakeDeps(adminCallerSeed());
+  const res = await handle(adminReq({ user_id: "u2", role: "producer", action: "add", org_id: "org-xyz" }), deps);
+  assertEquals(res.status, 200);
+  const insertCall = calls.find((c) => c.table === "org_memberships" && c.method === "insert");
+  assertExists(insertCall);
+  assertEquals(insertCall.args[0], { org_id: "org-xyz", user_id: "u2", role: "producer" });
 });
 
 Deno.test("action='add': unique-violation error is swallowed (idempotent) → 200", async () => {
   /**
-   * characterization: The fake client shares one seed per table name. Both the
-   * requireRole maybeSingle() read and the insert .then() resolve against the
-   * same `user_roles` seed. We cannot simultaneously seed a valid admin row (for
+   * The fake client shares one seed per table name. Both the requireOrgRole
+   * maybeSingle() read and the insert .then() resolve against the same
+   * `org_memberships` seed. We cannot simultaneously seed a valid admin row (for
    * auth) AND a duplicate-key error (for the insert) via the static seed.
    *
    * Workaround: start with a valid admin seed (for auth to pass), then monkey-patch
    * the admin client's `.from()` to intercept the insert chain specifically and
-   * override its `.then()` to return a duplicate-key error. This verifies the
-   * /duplicate|unique/i regex swallow path without touching the auth path.
+   * override its `.then()` to return a duplicate-key error.
    */
   const { deps } = makeFakeDeps(adminCallerSeed());
 
@@ -150,7 +166,7 @@ Deno.test("action='add': unique-violation error is swallowed (idempotent) → 20
   adminAny.from = (table: string) => {
     // deno-lint-ignore no-explicit-any
     const chain: any = originalFrom(table);
-    if (table === "user_roles") {
+    if (table === "org_memberships") {
       // deno-lint-ignore no-explicit-any
       const origInsert = chain.insert.bind(chain) as (row: any) => any;
       // deno-lint-ignore no-explicit-any
@@ -158,8 +174,6 @@ Deno.test("action='add': unique-violation error is swallowed (idempotent) → 20
         insertCalled = true;
         // deno-lint-ignore no-explicit-any
         const innerChain: any = origInsert(row);
-        // Override .then() to return a duplicate-key error for this insert
-        // deno-lint-ignore no-explicit-any
         innerChain.then = (f: any) =>
           Promise.resolve({
             data: null,
@@ -179,7 +193,6 @@ Deno.test("action='add': unique-violation error is swallowed (idempotent) → 20
 });
 
 Deno.test("action='add': non-unique insert error bubbles → 500", async () => {
-  // A non-duplicate/unique error must NOT be swallowed — it should propagate as 500
   let insertCalled = false;
   const { deps } = makeFakeDeps(adminCallerSeed());
   // deno-lint-ignore no-explicit-any
@@ -188,7 +201,7 @@ Deno.test("action='add': non-unique insert error bubbles → 500", async () => {
   adminAny2.from = (table: string) => {
     // deno-lint-ignore no-explicit-any
     const chain: any = originalFrom2(table);
-    if (table === "user_roles") {
+    if (table === "org_memberships") {
       // deno-lint-ignore no-explicit-any
       const origInsert = chain.insert.bind(chain) as (row: any) => any;
       // deno-lint-ignore no-explicit-any
@@ -196,7 +209,6 @@ Deno.test("action='add': non-unique insert error bubbles → 500", async () => {
         insertCalled = true;
         // deno-lint-ignore no-explicit-any
         const innerChain: any = origInsert(row);
-        // deno-lint-ignore no-explicit-any
         innerChain.then = (f: any) =>
           Promise.resolve({ data: null, error: { message: "foreign key violation" } }).then(f);
         return innerChain;
@@ -214,45 +226,41 @@ Deno.test("action='add': non-unique insert error bubbles → 500", async () => {
 // action='remove' — non-admin role
 // ---------------------------------------------------------------------------
 
-Deno.test("action='remove': deletes the correct user_roles row → 200", async () => {
+Deno.test("action='remove': deletes the correct org_memberships row → 200", async () => {
   const { deps, calls } = makeFakeDeps(adminCallerSeed());
   const res = await handle(adminReq({ user_id: "u3", role: "producer", action: "remove" }), deps);
   assertEquals(res.status, 200);
   const body = await res.json();
   assertEquals(body, { ok: true });
 
-  // Assert delete was recorded on user_roles with eq("user_id","u3") and eq("role","producer")
-  const eqCalls = calls.filter((c) => c.table === "user_roles" && c.method === "eq");
+  // Assert delete was scoped by org_id, user_id, and role
+  const eqCalls = calls.filter((c) => c.table === "org_memberships" && c.method === "eq");
+  const hasOrgFilter = eqCalls.some((c) => c.args[0] === "org_id" && c.args[1] === BOOTSTRAP_ORG_ID);
   const hasUserIdFilter = eqCalls.some((c) => c.args[0] === "user_id" && c.args[1] === "u3");
   const hasRoleFilter = eqCalls.some((c) => c.args[0] === "role" && c.args[1] === "producer");
+  assertEquals(hasOrgFilter, true);
   assertEquals(hasUserIdFilter, true);
   assertEquals(hasRoleFilter, true);
 
-  const deleteCall = calls.find((c) => c.table === "user_roles" && c.method === "delete");
+  const deleteCall = calls.find((c) => c.table === "org_memberships" && c.method === "delete");
   assertExists(deleteCall);
 });
 
 // ---------------------------------------------------------------------------
-// action='remove' + role='admin' — prevent-last-admin guard
+// action='remove' + role='admin' — prevent-last-admin guard (scoped to the org)
 //
 // The guard queries:
-//   admin.from("user_roles").select("*", { count:"exact", head:true }).eq("role","admin")
+//   admin.from("org_memberships").select("*", { count:"exact", head:true })
+//     .eq("org_id", orgId).eq("role","admin")
 // and blocks if (count ?? 0) <= 1.
-//
-// BUG-001 (FIXED): The fake client's `.then()` path previously returned only
-// `{ data, error }`, so `count` was always `undefined` → `(0 <= 1)` → the guard
-// always fired and blocked any admin removal, even when multiple admins existed.
-//
-// Fix: `SingleSeed` in testing.ts now supports an optional `count` field which
-// `resolveSeed` and `.then()` propagate through. Tests seed `count: N` accordingly.
 // ---------------------------------------------------------------------------
 
-Deno.test("prevent-last-admin: only 1 admin remains → remove blocked → 400", async () => {
+Deno.test("prevent-last-admin: only 1 admin remains in the org → remove blocked → 400", async () => {
   const { deps } = makeFakeDeps({
     authUser: { id: "u1" },
     tables: {
       // 1 admin row; count:1 tells the guard there is only one admin left
-      user_roles: { data: [{ user_id: "u1", role: "admin" }], error: null, count: 1 },
+      org_memberships: { data: [{ user_id: "u1", org_id: BOOTSTRAP_ORG_ID, role: "admin" }], error: null, count: 1 },
     },
   });
 
@@ -262,14 +270,16 @@ Deno.test("prevent-last-admin: only 1 admin remains → remove blocked → 400",
   assertEquals(body.error, "Cannot remove the last admin");
 });
 
-Deno.test("prevent-last-admin: 2 admins exist → remove allowed → 200", async () => {
-  // Regression guard for BUG-001: with count:2 seeded, the guard must NOT block.
+Deno.test("prevent-last-admin: 2 admins exist in the org → remove allowed → 200", async () => {
   const { deps } = makeFakeDeps({
     authUser: { id: "u1" },
     tables: {
       // 2 admin rows; count:2 → guard condition (count <= 1) is false → allowed
-      user_roles: {
-        data: [{ user_id: "u1", role: "admin" }, { user_id: "u2", role: "admin" }],
+      org_memberships: {
+        data: [
+          { user_id: "u1", org_id: BOOTSTRAP_ORG_ID, role: "admin" },
+          { user_id: "u2", org_id: BOOTSTRAP_ORG_ID, role: "admin" },
+        ],
         error: null,
         count: 2,
       },
@@ -283,14 +293,9 @@ Deno.test("prevent-last-admin: 2 admins exist → remove allowed → 200", async
 });
 
 // ---------------------------------------------------------------------------
-// BUG-002 (count-null guard): when the admin-count query errors, Supabase
-// returns `{ count: null, error: {...} }`. The guard must NOT misread this as
-// "0 admins" (which would block every removal with a misleading message) — it
-// must surface an explicit "Could not verify admin count" 500.
-//
-// The `user_roles` seed is shared between the requireRole auth read and the
-// count query, so we monkey-patch only the count query's `.then()` to return a
-// null count + error (mirroring the duplicate-key insert test pattern above).
+// count-null guard: when the admin-count query errors, Supabase returns
+// `{ count: null, error: {...} }`. The guard must surface an explicit
+// "Could not verify admin count" 500 rather than misreading null as "0 admins".
 // ---------------------------------------------------------------------------
 
 Deno.test("prevent-last-admin: count query errors (count:null) → 500 'Could not verify admin count'", async () => {
@@ -303,9 +308,8 @@ Deno.test("prevent-last-admin: count query errors (count:null) → 500 'Could no
   adminAny.from = (table: string) => {
     // deno-lint-ignore no-explicit-any
     const chain: any = originalFrom(table);
-    if (table === "user_roles") {
+    if (table === "org_memberships") {
       // The count query is the one that chains .select("*", { count, head }).
-      // Intercept .select() with a count option and override its .then().
       // deno-lint-ignore no-explicit-any
       const origSelect = chain.select.bind(chain) as (...a: any[]) => any;
       // deno-lint-ignore no-explicit-any
@@ -315,7 +319,6 @@ Deno.test("prevent-last-admin: count query errors (count:null) → 500 'Could no
         const opts = selArgs[1] as { count?: string; head?: boolean } | undefined;
         if (opts?.head === true) {
           countCalled = true;
-          // deno-lint-ignore no-explicit-any
           inner.then = (f: any) =>
             Promise.resolve({
               data: null,

@@ -17,7 +17,7 @@ Deno.test("admin-set-role: no auth → 401", async () => {
 Deno.test("admin-set-role: admin adds a role → 200", async () => {
   const { deps } = makeFakeDeps({
     authUser: { id: "u1" },
-    tables: { user_roles: { data: [{ user_id: "u1", role: "admin" }], error: null } },
+    tables: { org_memberships: { data: [{ user_id: "u1", role: "admin" }], error: null } },
   });
   const res = await handle(makeRequest({ headers: { Authorization: "Bearer jwt" }, body: { user_id: "u2", role: "artist", action: "add" } }), deps);
   assertEquals(res.status, 200);

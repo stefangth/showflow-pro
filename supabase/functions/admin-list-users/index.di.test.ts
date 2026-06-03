@@ -34,7 +34,7 @@ function adminRequest(): Request {
 type UsersById = Record<string, any>;
 
 // Build deps where u1 is a valid admin caller.
-// usersById feeds listUsers(); user_roles feeds both requireRole (the
+// usersById feeds listUsers(); org_memberships feeds both requireRole (the
 // admin-caller check) and the parallel fetch in the handler body.
 function makeAdminDeps(
   extraUsers: UsersById,
@@ -49,7 +49,7 @@ function makeAdminDeps(
     authUser: { id: "u1" },
     usersById: usersById as Record<string, { email?: string }>,
     tables: {
-      user_roles: {
+      org_memberships: {
         data: [
           { user_id: "u1", role: "admin" },
           ...extraRoles,
@@ -96,7 +96,7 @@ Deno.test("admin-list-users DI: valid JWT but role=producer → 403", async () =
   const { deps } = makeFakeDeps({
     authUser: { id: "u2" },
     tables: {
-      user_roles: { data: [{ user_id: "u2", role: "producer" }], error: null },
+      org_memberships: { data: [{ user_id: "u2", role: "producer" }], error: null },
       user_approvals: { data: [], error: null },
     },
     usersById: {},
@@ -111,7 +111,7 @@ Deno.test("admin-list-users DI: valid JWT but role=artist → 403", async () => 
   const { deps } = makeFakeDeps({
     authUser: { id: "u3" },
     tables: {
-      user_roles: { data: [{ user_id: "u3", role: "artist" }], error: null },
+      org_memberships: { data: [{ user_id: "u3", role: "artist" }], error: null },
       user_approvals: { data: [], error: null },
     },
     usersById: {},
@@ -126,7 +126,7 @@ Deno.test("admin-list-users DI: valid JWT but no role row at all → 403", async
   const { deps } = makeFakeDeps({
     authUser: { id: "u4" },
     tables: {
-      user_roles: { data: [], error: null },
+      org_memberships: { data: [], error: null },
       user_approvals: { data: [], error: null },
     },
     usersById: {},
@@ -233,7 +233,7 @@ Deno.test("admin-list-users DI: user with multiple roles has all roles in array"
 
 Deno.test("admin-list-users DI: admin with empty auth store → 200 { users: [] }", async () => {
   // Admin u1 is the caller but usersById is empty, so listUsers returns no users.
-  // However requireRole uses the admin client's user_roles table, not listUsers.
+  // However requireRole uses the admin client's org_memberships table, not listUsers.
   // So the gate still passes, and the body users list is empty.
   //
   // NOTE: The fake listUsers() ignores pagination args (page, perPage) entirely.
@@ -245,7 +245,7 @@ Deno.test("admin-list-users DI: admin with empty auth store → 200 { users: [] 
     authUser: { id: "u1" },
     usersById: {}, // empty — listUsers returns { users: [] }
     tables: {
-      user_roles: { data: [{ user_id: "u1", role: "admin" }], error: null },
+      org_memberships: { data: [{ user_id: "u1", role: "admin" }], error: null },
       user_approvals: { data: [], error: null },
     },
   });
