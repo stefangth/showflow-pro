@@ -14,12 +14,6 @@ vi.mock("../editor/EditorContext", () => ({
   useEditorConfig: vi.fn(() => ({ isEditorMode: false, pageAccess: {} })),
 }));
 
-// ApprovalGate passes children when approvalStatus is 'approved'/'unknown'
-vi.mock("./ApprovalGate", () => ({
-  ApprovalGate: ({ children }: { children: React.ReactNode }) =>
-    React.createElement(React.Fragment, null, children),
-}));
-
 import { useAuth } from "./AuthContext";
 import { useEditorConfig } from "../editor/EditorContext";
 
@@ -77,9 +71,7 @@ describe("ProtectedRoute", () => {
     vi.mocked(useAuth).mockReturnValue({
       user: null,
       loading: true,
-      roles: [],
-      approvalStatus: "unknown",
-    } as any);
+      roles: [],    } as any);
 
     renderProtected();
 
@@ -91,9 +83,7 @@ describe("ProtectedRoute", () => {
     vi.mocked(useAuth).mockReturnValue({
       user: null,
       loading: false,
-      roles: [],
-      approvalStatus: "unknown",
-    } as any);
+      roles: [],    } as any);
 
     renderProtected();
 
@@ -104,9 +94,7 @@ describe("ProtectedRoute", () => {
     vi.mocked(useAuth).mockReturnValue({
       user: { id: "user-1" } as any,
       loading: false,
-      roles: ["artist"],
-      approvalStatus: "approved",
-    } as any);
+      roles: ["artist"],    } as any);
 
     renderProtected();
 
@@ -117,9 +105,7 @@ describe("ProtectedRoute", () => {
     vi.mocked(useAuth).mockReturnValue({
       user: { id: "user-1" } as any,
       loading: false,
-      roles: ["producer"],
-      approvalStatus: "approved",
-    } as any);
+      roles: ["producer"],    } as any);
 
     renderProtected({ requiredRoles: ["admin", "producer"] });
 
@@ -130,9 +116,7 @@ describe("ProtectedRoute", () => {
     vi.mocked(useAuth).mockReturnValue({
       user: { id: "user-1" } as any,
       loading: false,
-      roles: ["artist"],
-      approvalStatus: "approved",
-    } as any);
+      roles: ["artist"],    } as any);
 
     renderProtected({ requiredRoles: ["admin"] });
 
@@ -143,9 +127,7 @@ describe("ProtectedRoute", () => {
     vi.mocked(useAuth).mockReturnValue({
       user: { id: "user-admin" } as any,
       loading: false,
-      roles: ["admin"],
-      approvalStatus: "approved",
-    } as any);
+      roles: ["admin"],    } as any);
     vi.mocked(useEditorConfig).mockReturnValue({
       isEditorMode: true,
       pageAccess: {},
@@ -161,9 +143,7 @@ describe("ProtectedRoute", () => {
     vi.mocked(useAuth).mockReturnValue({
       user: { id: "user-1" } as any,
       loading: false,
-      roles: ["artist"],
-      approvalStatus: "approved",
-    } as any);
+      roles: ["artist"],    } as any);
     vi.mocked(useEditorConfig).mockReturnValue({
       isEditorMode: true,
       pageAccess: {},

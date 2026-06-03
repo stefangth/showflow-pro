@@ -18,14 +18,11 @@ const REALTIME_INVALIDATIONS: Array<{ table: string; keys: unknown[][] }> = [
   { table: 'cities',                     keys: [['cities']] },
   { table: 'app_settings',               keys: [['app-settings']] },
   { table: 'profiles',                   keys: [['chat-author-profiles']] },
-  { table: 'user_approvals',             keys: [['user-approvals'], ['admin-iam-users']] },
   { table: 'chat_messages',              keys: [['chat-messages']] },
   { table: 'chats',                      keys: [['chat'], ['my-chats']] },
   { table: 'booking_audit_log',          keys: [['admin-audit']] },
   { table: 'airtable_sync_log',          keys: [['admin-sync']] },
 ];
-
-export type ApprovalStatus = 'pending' | 'approved' | 'rejected' | 'unknown';
 
 export interface ViewAsUser {
   id: string;
@@ -46,8 +43,6 @@ interface AuthContextType {
   /** Switch the active org; persists the choice and refetches org-scoped data. */
   switchOrg: (orgId: string) => void;
   loading: boolean;
-  approvalStatus: ApprovalStatus;
-  approvalReason: string | null;
   signIn: (email: string, password: string) => Promise<void>;
   signInWithGoogle: () => Promise<void>;
   signOut: () => Promise<void>;
@@ -71,8 +66,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     () => localStorage.getItem('showflow.currentOrg'),
   );
   const [loading, setLoading] = useState(true);
-  const [approvalStatus, setApprovalStatus] = useState<ApprovalStatus>('unknown');
-  const [approvalReason, setApprovalReason] = useState<string | null>(null);
   const [viewAsRole, setViewAsRole] = useState<AppRole | null>(null);
   const [viewAsUser, setViewAsUserState] = useState<ViewAsUser | null>(null);
 
@@ -108,22 +101,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   };
 
-  /** Fetch approval row; missing row = treat as approved (legacy users). */
-  const fetchApproval = async (userId: string) => {
-    const { data } = await supabase
-      .from('user_approvals')
-      .select('status, rejection_reason')
-      .eq('user_id', userId)
-      .maybeSingle();
-    if (!data) {
-      setApprovalStatus('approved');
-      setApprovalReason(null);
-    } else {
-      setApprovalStatus(data.status as ApprovalStatus);
-      setApprovalReason(data.rejection_reason ?? null);
-    }
-  };
-
   useEffect(() => {
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (_event, session) => {
@@ -132,14 +109,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         if (session?.user) {
           setTimeout(() => {
             fetchMemberships(session.user.id);
-            fetchApproval(session.user.id);
           }, 0);
         } else {
           setMemberships([]);
           setCurrentOrgId(null);
           localStorage.removeItem('showflow.currentOrg');
-          setApprovalStatus('unknown');
-          setApprovalReason(null);
           setViewAsRole(null);
           setViewAsUserState(null);
           localStorage.removeItem('showflow_editor_mode');
@@ -153,33 +127,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setUser(session?.user ?? null);
       if (session?.user) {
         fetchMemberships(session.user.id);
-        fetchApproval(session.user.id);
       }
       setLoading(false);
     });
 
     return () => subscription.unsubscribe();
   }, []);
-
-  // Realtime: react to approval decisions immediately
-  useEffect(() => {
-    if (!user) return;
-    const channel = supabase
-      .channel(`user-approval-${user.id}`)
-      .on(
-        'postgres_changes',
-        { event: 'UPDATE', schema: 'public', table: 'user_approvals', filter: `user_id=eq.${user.id}` },
-        (payload) => {
-          const next = payload.new as { status: ApprovalStatus; rejection_reason: string | null };
-          setApprovalStatus(next.status);
-          setApprovalReason(next.rejection_reason);
-          // Refresh memberships since approval may have just granted access
-          fetchMemberships(user.id);
-        }
-      )
-      .subscribe();
-    return () => { supabase.removeChannel(channel); };
-  }, [user]);
 
   // Realtime: global cache invalidation for all queried tables
   useEffect(() => {
@@ -223,7 +176,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   return (
-    <AuthContext.Provider value={{ user, session, roles, memberships, orgs, currentOrg, switchOrg, loading, approvalStatus, approvalReason, signIn, signInWithGoogle, signOut, hasRole, viewAsRole, setViewAsRole, viewAsUser, setViewAsUser }}>
+    <AuthContext.Provider value={{ user, session, roles, memberships, orgs, currentOrg, switchOrg, loading, signIn, signInWithGoogle, signOut, hasRole, viewAsRole, setViewAsRole, viewAsUser, setViewAsUser }}>
       {children}
     </AuthContext.Provider>
   );
