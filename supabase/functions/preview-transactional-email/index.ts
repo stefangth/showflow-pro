@@ -1,65 +1,18 @@
 import * as React from 'npm:react@18.3.1'
 import { renderAsync } from 'npm:@react-email/components@0.0.22'
-import { createClient } from 'npm:@supabase/supabase-js@2'
 import { TEMPLATES } from '../_shared/transactional-email-templates/registry.ts'
-
-const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, content-type',
-}
+import { preflight, json } from "../_shared/http.ts";
+import { requireRole } from "../_shared/auth.ts";
+import { realDeps, type Deps } from "../_shared/deps.ts";
 
 // Renders registered templates with optional per-template overrides.
 // Auth: Supabase JWT — admin or producer role required.
 
-Deno.serve(async (req) => {
-  if (req.method === 'OPTIONS') {
-    return new Response(null, { headers: corsHeaders })
-  }
+export async function handle(req: Request, deps: Deps): Promise<Response> {
+  if (req.method === 'OPTIONS') return preflight();
 
-  const supabaseUrl = Deno.env.get('SUPABASE_URL')
-  const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')
-
-  if (!supabaseUrl || !supabaseServiceKey) {
-    return new Response(
-      JSON.stringify({ error: 'Server configuration error' }),
-      { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-    )
-  }
-
-  // Verify JWT — admin or producer
-  const authHeader = req.headers.get('Authorization')
-  if (!authHeader) {
-    return new Response(JSON.stringify({ error: 'Unauthorized' }), {
-      status: 401,
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-    })
-  }
-
-  const userClient = createClient(supabaseUrl, Deno.env.get('SUPABASE_ANON_KEY') ?? '', {
-    global: { headers: { Authorization: authHeader } },
-  })
-
-  const { data: { user }, error: authError } = await userClient.auth.getUser()
-  if (authError || !user) {
-    return new Response(JSON.stringify({ error: 'Unauthorized' }), {
-      status: 401,
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-    })
-  }
-
-  const admin = createClient(supabaseUrl, supabaseServiceKey)
-  const { data: roleRows } = await admin
-    .from('user_roles')
-    .select('role')
-    .eq('user_id', user.id)
-    .in('role', ['admin', 'producer'])
-
-  if (!roleRows || roleRows.length === 0) {
-    return new Response(JSON.stringify({ error: 'Forbidden' }), {
-      status: 403,
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-    })
-  }
+  const auth = await requireRole(deps, req, ["admin", "producer"]);
+  if (!auth.ok) return auth.response;
 
   // Parse body
   let templateName: string | undefined
@@ -154,8 +107,7 @@ Deno.serve(async (req) => {
     }
   }
 
-  return new Response(JSON.stringify({ templates: results }), {
-    status: 200,
-    headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-  })
-})
+  return json({ templates: results })
+}
+
+if (import.meta.main) Deno.serve((req) => handle(req, realDeps()));

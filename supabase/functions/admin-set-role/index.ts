@@ -1,9 +1,6 @@
-import { createClient } from 'npm:@supabase/supabase-js@2';
-
-const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-};
+import { preflight, json } from "../_shared/http.ts";
+import { requireRole } from "../_shared/auth.ts";
+import { realDeps, type Deps } from "../_shared/deps.ts";
 
 type Body = {
   user_id: string;
@@ -11,62 +8,21 @@ type Body = {
   action: 'add' | 'remove';
 };
 
-Deno.serve(async (req) => {
-  if (req.method === 'OPTIONS') return new Response(null, { headers: corsHeaders });
+export async function handle(req: Request, deps: Deps): Promise<Response> {
+  if (req.method === "OPTIONS") return preflight();
 
   try {
-    const authHeader = req.headers.get('Authorization');
-    if (!authHeader?.startsWith('Bearer ')) {
-      return new Response(JSON.stringify({ error: 'Unauthorized' }), {
-        status: 401,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
-    }
+    const auth = await requireRole(deps, req, ["admin"]);
+    if (!auth.ok) return auth.response;
 
-    const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
-    const anonKey = Deno.env.get('SUPABASE_ANON_KEY')!;
-    const serviceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
-
-    // Verify caller is admin
-    const userClient = createClient(supabaseUrl, anonKey, {
-      global: { headers: { Authorization: authHeader } },
-    });
-    const token = authHeader.replace('Bearer ', '');
-    const { data: claimsData, error: claimsErr } = await userClient.auth.getClaims(token);
-    if (claimsErr || !claimsData?.claims) {
-      return new Response(JSON.stringify({ error: 'Unauthorized' }), {
-        status: 401,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
-    }
-    const callerId = claimsData.claims.sub as string;
-
-    const admin = createClient(supabaseUrl, serviceKey);
-    const { data: roleCheck } = await admin
-      .from('user_roles')
-      .select('role')
-      .eq('user_id', callerId)
-      .eq('role', 'admin')
-      .maybeSingle();
-    if (!roleCheck) {
-      return new Response(JSON.stringify({ error: 'Forbidden — admin only' }), {
-        status: 403,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
-    }
+    const admin = deps.admin;
 
     const body = (await req.json()) as Body;
     if (!body?.user_id || !body?.role || !['add', 'remove'].includes(body.action)) {
-      return new Response(JSON.stringify({ error: 'Invalid payload' }), {
-        status: 400,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
+      return json({ error: 'Invalid payload' }, 400);
     }
     if (!['admin', 'producer', 'artist'].includes(body.role)) {
-      return new Response(JSON.stringify({ error: 'Invalid role' }), {
-        status: 400,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
+      return json({ error: 'Invalid role' }, 400);
     }
 
     if (body.action === 'add') {
@@ -78,15 +34,18 @@ Deno.serve(async (req) => {
     } else {
       // Prevent removing the last admin
       if (body.role === 'admin') {
-        const { count } = await admin
+        const { count, error: countErr } = await admin
           .from('user_roles')
           .select('*', { count: 'exact', head: true })
           .eq('role', 'admin');
-        if ((count ?? 0) <= 1) {
-          return new Response(
-            JSON.stringify({ error: 'Cannot remove the last admin' }),
-            { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-          );
+        // A null count means the count query errored (network blip, schema cache
+        // miss, RLS). Treat it as an explicit error state — not as "0 admins" —
+        // so we don't wrongly block every admin removal with a misleading message.
+        if (countErr || count === null) {
+          return json({ error: 'Could not verify admin count' }, 500);
+        }
+        if (count <= 1) {
+          return json({ error: 'Cannot remove the last admin' }, 400);
         }
       }
       const { error } = await admin
@@ -97,14 +56,11 @@ Deno.serve(async (req) => {
       if (error) throw error;
     }
 
-    return new Response(JSON.stringify({ ok: true }), {
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-    });
+    return json({ ok: true });
   } catch (e) {
     console.error('admin-set-role error', e);
-    return new Response(JSON.stringify({ error: (e as Error).message }), {
-      status: 500,
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-    });
+    return json({ error: (e as Error).message }, 500);
   }
-});
+}
+
+if (import.meta.main) Deno.serve((req) => handle(req, realDeps()));

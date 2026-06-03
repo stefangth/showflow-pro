@@ -20,7 +20,7 @@ export function AvailabilityPicker({ artistId, date, size = 'default' }: Props) 
   const { data: block } = useQuery({
     queryKey: ['blocked-dates', 'cell', artistId, date],
     queryFn: async () => {
-      const { data } = await (supabase as any)
+      const { data } = await supabase
         .from('blocked_dates')
         .select('id')
         .eq('artist_id', artistId)
@@ -33,10 +33,10 @@ export function AvailabilityPicker({ artistId, date, size = 'default' }: Props) 
   const toggle = useMutation({
     mutationFn: async () => {
       if (block) {
-        const { error } = await (supabase as any).from('blocked_dates').delete().eq('id', block.id);
+        const { error } = await supabase.from('blocked_dates').delete().eq('id', block.id);
         if (error) throw error;
       } else {
-        const { error } = await (supabase as any).from('blocked_dates').insert({ artist_id: artistId, date });
+        const { error } = await supabase.from('blocked_dates').insert({ artist_id: artistId, date });
         if (error) throw error;
       }
     },

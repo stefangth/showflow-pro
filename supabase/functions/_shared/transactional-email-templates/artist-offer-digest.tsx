@@ -40,9 +40,7 @@ const ArtistOfferDigest = ({ displayName, offers = [], _intro, _cta_label, _foot
   return (
     <Html lang="en" dir="ltr">
       <Head />
-      <Preview>
-        You have {n} pending offer{n === 1 ? '' : 's'} on {SITE_NAME}
-      </Preview>
+      <Preview>{`You have ${n} pending offer${n === 1 ? '' : 's'} on ${SITE_NAME}`}</Preview>
       <Body style={main}>
         <Container style={container}>
           <Heading style={h1}>

@@ -1,11 +1,13 @@
-import { createClient } from 'npm:@supabase/supabase-js@2'
+import { json } from "../_shared/http.ts";
+import { realDeps, type Deps } from "../_shared/deps.ts";
 
 // Resend uses Standard Webhooks (https://www.standardwebhooks.com/)
 // The signing secret is base64-encoded; verification uses HMAC-SHA256.
 async function verifyResendWebhook(
   req: Request,
   rawBody: string,
-  secret: string
+  secret: string,
+  nowMs: number
 ): Promise<void> {
   const webhookId = req.headers.get('webhook-id')
   const webhookTimestamp = req.headers.get('webhook-timestamp')
@@ -16,7 +18,7 @@ async function verifyResendWebhook(
   }
 
   const ts = parseInt(webhookTimestamp, 10)
-  if (isNaN(ts) || Math.abs(Math.floor(Date.now() / 1000) - ts) > 300) {
+  if (isNaN(ts) || Math.abs(Math.floor(nowMs / 1000) - ts) > 300) {
     throw Object.assign(new Error('Stale webhook timestamp'), { code: 'stale_timestamp' })
   }
 
@@ -60,13 +62,6 @@ function mapEventToReason(eventType: string): 'bounce' | 'complaint' | null {
   return null
 }
 
-function jsonResponse(data: Record<string, unknown>, status = 200): Response {
-  return new Response(JSON.stringify(data), {
-    status,
-    headers: { 'Content-Type': 'application/json' },
-  })
-}
-
 function mapReasonToStatus(reason: string): 'bounced' | 'complained' | 'suppressed' {
   if (reason === 'bounce') return 'bounced'
   if (reason === 'complaint') return 'complained'
@@ -79,62 +74,62 @@ function mapReasonToMessage(reason: string): string {
   return 'Email suppressed'
 }
 
-Deno.serve(async (req) => {
+export async function handle(req: Request, deps: Deps): Promise<Response> {
   if (req.method !== 'POST') {
-    return jsonResponse({ error: 'Method not allowed' }, 405)
+    return json({ error: 'Method not allowed' }, 405)
   }
 
-  const webhookSecret = Deno.env.get('RESEND_WEBHOOK_SECRET')
-  const supabaseUrl = Deno.env.get('SUPABASE_URL')
-  const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')
+  const webhookSecret = deps.env('RESEND_WEBHOOK_SECRET')
+  const supabaseUrl = deps.env('SUPABASE_URL')
+  const supabaseServiceKey = deps.env('SUPABASE_SERVICE_ROLE_KEY')
 
   if (!webhookSecret || !supabaseUrl || !supabaseServiceKey) {
     console.error('Missing required environment variables')
-    return jsonResponse({ error: 'Server configuration error' }, 500)
+    return json({ error: 'Server configuration error' }, 500)
   }
 
   const rawBody = await req.text()
 
   try {
-    await verifyResendWebhook(req, rawBody, webhookSecret)
+    await verifyResendWebhook(req, rawBody, webhookSecret, deps.now().getTime())
   } catch (err: any) {
     const code = err.code ?? 'verification_failed'
     if (code === 'missing_headers' || code === 'invalid_signature') {
       console.error('Webhook verification failed', { code, message: err.message })
-      return jsonResponse({ error: 'Invalid signature' }, 401)
+      return json({ error: 'Invalid signature' }, 401)
     }
     if (code === 'stale_timestamp') {
       console.error('Stale webhook timestamp')
-      return jsonResponse({ error: 'Stale timestamp' }, 401)
+      return json({ error: 'Stale timestamp' }, 401)
     }
     console.error('Unexpected error during webhook verification', { error: err })
-    return jsonResponse({ error: 'Internal error' }, 500)
+    return json({ error: 'Internal error' }, 500)
   }
 
   let payload: ResendWebhookPayload
   try {
     payload = JSON.parse(rawBody)
   } catch {
-    return jsonResponse({ error: 'Invalid JSON payload' }, 400)
+    return json({ error: 'Invalid JSON payload' }, 400)
   }
 
   const reason = mapEventToReason(payload.type)
   if (!reason) {
     // Not a suppression event — acknowledge and ignore
-    return jsonResponse({ success: true, ignored: true })
+    return json({ success: true, ignored: true })
   }
 
   // Resend delivers the recipient in data.to[0]
   const recipientEmail = payload.data?.to?.[0]
   if (!recipientEmail) {
     console.error('Missing recipient in Resend webhook payload', { type: payload.type })
-    return jsonResponse({ error: 'Missing recipient' }, 400)
+    return json({ error: 'Missing recipient' }, 400)
   }
 
-  const supabase = createClient(supabaseUrl, supabaseServiceKey)
+  const admin = deps.admin;
   const normalizedEmail = recipientEmail.toLowerCase()
 
-  const { error: suppressError } = await supabase
+  const { error: suppressError } = await admin
     .from('suppressed_emails')
     .upsert(
       { email: normalizedEmail, reason, metadata: { resend_email_id: payload.data?.email_id } },
@@ -146,10 +141,10 @@ Deno.serve(async (req) => {
       error: suppressError,
       email_redacted: normalizedEmail[0] + '***@' + normalizedEmail.split('@')[1],
     })
-    return jsonResponse({ error: 'Failed to write suppression' }, 500)
+    return json({ error: 'Failed to write suppression' }, 500)
   }
 
-  const { error: insertError } = await supabase.from('email_send_log').insert({
+  const { error: insertError } = await admin.from('email_send_log').insert({
     message_id: payload.data?.email_id ?? null,
     template_name: 'system',
     recipient_email: normalizedEmail,
@@ -167,5 +162,7 @@ Deno.serve(async (req) => {
     event_type: payload.type,
   })
 
-  return jsonResponse({ success: true })
-})
+  return json({ success: true })
+}
+
+if (import.meta.main) Deno.serve((req) => handle(req, realDeps()));

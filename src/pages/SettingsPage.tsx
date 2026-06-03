@@ -526,7 +526,7 @@ export default function SettingsPage() {
     queryKey: ['cast-city-priority'],
     enabled: canEnter,
     queryFn: async () => {
-      const { data, error } = await (supabase as any)
+      const { data, error } = await supabase
         .from('cast_city_priority')
         .select('id, cast_id, city_id, priority')
         .order('city_id')
@@ -553,7 +553,7 @@ export default function SettingsPage() {
 
   const addCastPriority = useMutation({
     mutationFn: async () => {
-      const { error } = await (supabase as any).from('cast_city_priority').insert({
+      const { error } = await supabase.from('cast_city_priority').insert({
         city_id: newPriorityCityId,
         cast_id: newPriorityCastId,
         priority: newPriorityValue,
@@ -572,7 +572,7 @@ export default function SettingsPage() {
 
   const deleteCastPriority = useMutation({
     mutationFn: async (id: string) => {
-      const { error } = await (supabase as any).from('cast_city_priority').delete().eq('id', id);
+      const { error } = await supabase.from('cast_city_priority').delete().eq('id', id);
       if (error) throw error;
     },
     onSuccess: () => {
@@ -590,7 +590,7 @@ export default function SettingsPage() {
     queryKey: ['show-assignments'],
     enabled: canEnter,
     queryFn: async () => {
-      const { data, error } = await (supabase as any)
+      const { data, error } = await supabase
         .from('show_assignments')
         .select('id, producer_user_id, program, sub_program, city_id')
         .order('program').order('sub_program').order('created_at');
@@ -635,7 +635,7 @@ export default function SettingsPage() {
 
   const addAssignment = useMutation({
     mutationFn: async () => {
-      const { error } = await (supabase as any).from('show_assignments').insert({
+      const { error } = await supabase.from('show_assignments').insert({
         producer_user_id: newAssignUserId,
         program: newAssignProgram,
         sub_program: newAssignSubProgram || null,
@@ -656,7 +656,7 @@ export default function SettingsPage() {
 
   const deleteAssignment = useMutation({
     mutationFn: async (id: string) => {
-      const { error } = await (supabase as any).from('show_assignments').delete().eq('id', id);
+      const { error } = await supabase.from('show_assignments').delete().eq('id', id);
       if (error) throw error;
     },
     onSuccess: () => {

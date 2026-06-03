@@ -68,7 +68,9 @@ test.describe("Flow B — booking lifecycle", () => {
     await expect(acceptButton).toBeVisible({ timeout: 15_000 });
     await acceptButton.click();
 
-    await expect(page.getByText(/offer accepted/i)).toBeVisible({ timeout: 10_000 });
+    // sonner renders the toast text twice (visible div + aria-live announcement),
+    // so scope to the first match to avoid a strict-mode violation.
+    await expect(page.getByText(/offer accepted/i).first()).toBeVisible({ timeout: 10_000 });
 
     const booking = await getLatestBooking(fixture.artistId);
     expect(booking?.status).toBe("soft_booked");
