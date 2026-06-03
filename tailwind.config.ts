@@ -93,10 +93,6 @@ export default {
         md: "calc(var(--radius) - 2px)",
         sm: "calc(var(--radius) - 4px)",
       },
-      borderWidth: {
-        /* shell-wide hairline: unsuffixed `border`/`border-x` render 0.5px */
-        DEFAULT: "0.5px",
-      },
       boxShadow: {
         elev1: "var(--shadow-1)",
         elev2: "var(--shadow-2)",
