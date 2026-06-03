@@ -46,7 +46,7 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
   for (const row of openTiers as Array<{ id: string; show_date_id: string; tier: number }>) {
     const { data: sd } = await admin
       .from('show_dates')
-      .select('id, date, city_id, show:shows(program, sub_program)')
+      .select('id, date, city_id, org_id, show:shows(program, sub_program)')
       .eq('id', row.show_date_id)
       .maybeSingle()
     if (!sd) continue
@@ -81,7 +81,9 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
     })
     let recipientIds = (producers ?? []).map((p: any) => p.producer_user_id)
     if (recipientIds.length === 0) {
-      const { data: admins } = await admin.from('user_roles').select('user_id').eq('role', 'admin')
+      // Fallback: notify admins OF THIS show_date's org (not every org's admins).
+      const { data: admins } = await admin.from('org_memberships').select('user_id')
+        .eq('org_id', (sd as any).org_id).eq('role', 'admin')
       recipientIds = (admins ?? []).map((a: any) => a.user_id)
     }
     recipientIds = [...new Set(recipientIds)]
