@@ -51,6 +51,15 @@ INSERT INTO public.user_roles (user_id, role) VALUES
   ('aaaaaaaa-aaaa-0003-0000-000000000000', 'artist'::app_role),
   ('aaaaaaaa-aaaa-0004-0000-000000000000', 'artist'::app_role);
 
+-- Phase 1B: is_chat_participant now checks has_org_role (no global fallback), so
+-- staff need bootstrap-org memberships. Domain rows below default to the bootstrap
+-- org, so the chat's show_date.org_id matches.
+INSERT INTO public.org_memberships (org_id, user_id, role) VALUES
+  ('00000000-0000-0000-0000-00000000b007','aaaaaaaa-aaaa-0001-0000-000000000000','admin'),
+  ('00000000-0000-0000-0000-00000000b007','aaaaaaaa-aaaa-0002-0000-000000000000','producer'),
+  ('00000000-0000-0000-0000-00000000b007','aaaaaaaa-aaaa-0003-0000-000000000000','artist'),
+  ('00000000-0000-0000-0000-00000000b007','aaaaaaaa-aaaa-0004-0000-000000000000','artist');
+
 INSERT INTO public.artists (id, name, user_id) VALUES
   ('bbbbbbbb-bbbb-0001-0000-000000000000', 'Chat Artist A', 'aaaaaaaa-aaaa-0003-0000-000000000000'),
   ('bbbbbbbb-bbbb-0002-0000-000000000000', 'Chat Artist B', 'aaaaaaaa-aaaa-0004-0000-000000000000');

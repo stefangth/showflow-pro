@@ -60,6 +60,12 @@ INSERT INTO public.user_roles (user_id, role) VALUES
   ('aaaaaaaa-aaaa-0002-0000-000000000000', 'producer'::app_role),
   ('aaaaaaaa-aaaa-0003-0000-000000000000', 'artist'::app_role);
 
+-- Phase 1B: org-scoped role-gating — mirror roles as bootstrap-org memberships.
+INSERT INTO public.org_memberships (org_id, user_id, role) VALUES
+  ('00000000-0000-0000-0000-00000000b007','aaaaaaaa-aaaa-0001-0000-000000000000','admin'),
+  ('00000000-0000-0000-0000-00000000b007','aaaaaaaa-aaaa-0002-0000-000000000000','producer'),
+  ('00000000-0000-0000-0000-00000000b007','aaaaaaaa-aaaa-0003-0000-000000000000','artist');
+
 INSERT INTO public.artists (id, name, user_id) VALUES
   ('bbbbbbbb-bbbb-0001-0000-000000000000', 'RT Artist', 'aaaaaaaa-aaaa-0003-0000-000000000000');
 
