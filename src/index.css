@@ -50,12 +50,12 @@
     --radius: 0.625rem;
 
     /* ── Sidebar ── */
-    --sidebar-background: 0 0% 100%;
+    --sidebar-background: 36 27% 92%;  /* #F1EEE6 recessed warm rail */
     --sidebar-foreground: 256 20% 9%;
     --sidebar-primary: 249 90% 66%;
     --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 249 100% 97%;    /* accent-50 active row tint */
-    --sidebar-accent-foreground: 249 67% 56%;
+    --sidebar-accent: 249 100% 93%;    /* accent-100 active row tint */
+    --sidebar-accent-foreground: 249 53% 45%;  /* accent-700 active row text */
     --sidebar-border: 30 12% 89%;
     --sidebar-ring: 249 90% 66%;
 
@@ -123,12 +123,12 @@
     --ring: 249 90% 66%;
 
     /* ── Sidebar ── */
-    --sidebar-background: 252 11% 9%;
+    --sidebar-background: 260 12% 4%;  /* #0A090C recessed rail (darker than card) */
     --sidebar-foreground: 36 18% 95%;
     --sidebar-primary: 249 90% 66%;
     --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 249 56% 23%;     /* accent-900 */
-    --sidebar-accent-foreground: 249 100% 93%;
+    --sidebar-accent: 249 55% 34%;     /* accent-800 active row tint */
+    --sidebar-accent-foreground: 249 100% 87%;  /* accent-200 active row text */
     --sidebar-border: 252 11% 17%;
     --sidebar-ring: 249 90% 66%;
 
