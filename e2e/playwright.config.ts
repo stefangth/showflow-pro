@@ -3,9 +3,10 @@ import { defineConfig, devices } from "@playwright/test";
 /**
  * Playwright E2E configuration for Showflow Pro.
  *
- * Two happy-path specs:
- *   - signup-approval.spec.ts — Flow A
- *   - booking-lifecycle.spec.ts — Flow B
+ * Cross-stack specs (auto-discovered):
+ *   - booking-lifecycle.spec.ts
+ *   - chat-access-control.spec.ts
+ *   - eligibility-gating.spec.ts
  *
  * Required env (set by CI from secrets):
  *   SUPABASE_URL                  — Supabase project URL the dev server points at
