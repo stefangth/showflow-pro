@@ -35,16 +35,6 @@ const ROUTE_TO_FILE: Record<string, string> = {
   [ROUTES.CHATS]:        'ChatsListPage.tsx',
 };
 
-const ROUTE_TO_LABEL: Record<string, string> = {
-  [ROUTES.DASHBOARD]:    'Dashboard',
-  [ROUTES.BOOKINGS]:     'Shows & Bookings',
-  [ROUTES.ARTISTS]:      'Artists',
-  [ROUTES.AVAILABILITY]: 'Availability',
-  [ROUTES.ADMIN]:        'Admin',
-  [ROUTES.SETTINGS]:     'Settings',
-  [ROUTES.CHATS]:        'Chats',
-};
-
 const navItems = [
   { to: ROUTES.DASHBOARD, icon: LayoutDashboard, label: 'Dashboard' },
   { to: ROUTES.BOOKINGS, icon: BookOpen, label: 'Shows & Bookings', roles: ['admin', 'producer'] as string[] },
@@ -54,6 +44,11 @@ const navItems = [
   { to: ROUTES.ADMIN, icon: Shield, label: 'Admin', roles: ['admin'] as string[] },
   { to: ROUTES.SETTINGS, icon: Settings, label: 'Settings', roles: ['admin', 'producer'] as string[] },
 ];
+
+// Derived from navItems so breadcrumb labels can't drift from the nav.
+const ROUTE_TO_LABEL: Record<string, string> = Object.fromEntries(
+  navItems.map(item => [item.to, item.label])
+);
 
 export default function AppLayout({ children }: AppLayoutProps) {
   const { user, signOut, roles, hasRole, viewAsRole, viewAsUser } = useAuth();
@@ -150,7 +145,7 @@ export default function AppLayout({ children }: AppLayoutProps) {
             <div className="flex items-center gap-2.5">
               <Avatar className="h-7 w-7">
                 <AvatarFallback seed={user?.email ?? ''}>
-                  {(user?.email ?? '?').slice(0, 2).toUpperCase()}
+                  {(user?.email?.split('@')[0] ?? '?').slice(0, 2).toUpperCase()}
                 </AvatarFallback>
               </Avatar>
               <div className="flex-1 min-w-0">
@@ -235,10 +230,10 @@ export default function AppLayout({ children }: AppLayoutProps) {
             <span className="font-display font-semibold text-[15px] tracking-[-0.02em]">{APP_META.NAME}</span>
           </div>
 
-          {/* Breadcrumb — clickable page path (desktop) */}
+          {/* Breadcrumb — current page path (desktop) */}
           <nav aria-label="Breadcrumb" className="hidden lg:flex items-center gap-1.5 text-[13px] min-w-0">
             {location.pathname === ROUTES.DASHBOARD ? (
-              <span className="font-medium text-foreground">Dashboard</span>
+              <span aria-current="page" className="font-medium text-foreground">Dashboard</span>
             ) : (
               <>
                 <Link
@@ -247,14 +242,14 @@ export default function AppLayout({ children }: AppLayoutProps) {
                 >
                   Home
                 </Link>
-                <ChevronRight className="h-3.5 w-3.5 shrink-0 text-muted-foreground/50" aria-hidden="true" />
-                <Link
-                  to={location.pathname}
-                  aria-current="page"
-                  className="truncate font-medium text-foreground hover:text-accent-600 transition-colors"
-                >
-                  {ROUTE_TO_LABEL[location.pathname] ?? 'Page'}
-                </Link>
+                {ROUTE_TO_LABEL[location.pathname] && (
+                  <>
+                    <ChevronRight className="h-3.5 w-3.5 shrink-0 text-muted-foreground/50" aria-hidden="true" />
+                    <span aria-current="page" className="truncate font-medium text-foreground">
+                      {ROUTE_TO_LABEL[location.pathname]}
+                    </span>
+                  </>
+                )}
               </>
             )}
           </nav>
