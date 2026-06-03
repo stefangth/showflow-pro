@@ -117,7 +117,12 @@ jobs:
           deno-version: v2.5.6
 
       - name: Run Deno function tests
-        run: deno test --allow-all supabase/functions/
+        # `--node-modules-dir=none` makes Deno resolve `npm:` specifiers (e.g.
+        # `npm:@supabase/supabase-js@2` in _shared/deps.ts) from its own global
+        # cache instead of expecting a local node_modules/. The root package.json
+        # otherwise forces Deno into node_modules mode, which this job does not
+        # populate (no npm ci), causing "Could not find ... in a node_modules folder".
+        run: deno test --allow-all --node-modules-dir=none supabase/functions/
 
   # ── 5. End-to-end tests (Playwright) ──────────────────────────────────────
   # Two scripted happy paths (signup→approval, booking lifecycle). Only runs

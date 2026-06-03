@@ -111,7 +111,7 @@ function ArtistAvailability() {
     queryKey: ['blocked-dates', artist?.id],
     enabled: !!artist?.id,
     queryFn: async () => {
-      const { data, error } = await (supabase as any)
+      const { data, error } = await supabase
         .from('blocked_dates')
         .select('id, date, reason')
         .eq('artist_id', artist!.id)
@@ -126,7 +126,7 @@ function ArtistAvailability() {
 
   const addBlock = useMutation({
     mutationFn: async () => {
-      const { error } = await (supabase as any).from('blocked_dates').insert({
+      const { error } = await supabase.from('blocked_dates').insert({
         artist_id: artist!.id,
         date: newBlockDate,
         reason: newBlockReason || null,
@@ -144,7 +144,7 @@ function ArtistAvailability() {
 
   const removeBlock = useMutation({
     mutationFn: async (id: string) => {
-      const { error } = await (supabase as any).from('blocked_dates').delete().eq('id', id);
+      const { error } = await supabase.from('blocked_dates').delete().eq('id', id);
       if (error) throw error;
     },
     onSuccess: () => {

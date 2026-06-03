@@ -140,37 +140,31 @@ export type Database = {
         }
         Relationships: []
       }
-      availability: {
+      blocked_dates: {
         Row: {
           artist_id: string
           created_at: string
           date: string
           id: string
-          recurrence_rule: string | null
-          status: Database["public"]["Enums"]["availability_status"]
-          updated_at: string
+          reason: string | null
         }
         Insert: {
           artist_id: string
           created_at?: string
           date: string
           id?: string
-          recurrence_rule?: string | null
-          status?: Database["public"]["Enums"]["availability_status"]
-          updated_at?: string
+          reason?: string | null
         }
         Update: {
           artist_id?: string
           created_at?: string
           date?: string
           id?: string
-          recurrence_rule?: string | null
-          status?: Database["public"]["Enums"]["availability_status"]
-          updated_at?: string
+          reason?: string | null
         }
         Relationships: [
           {
-            foreignKeyName: "availability_artist_id_fkey"
+            foreignKeyName: "blocked_dates_artist_id_fkey"
             columns: ["artist_id"]
             isOneToOne: false
             referencedRelation: "artists"
@@ -225,11 +219,16 @@ export type Database = {
           booked_by: string | null
           cancellation_reason: string | null
           cancelled_at: string | null
+          confirmation_digest_sent_at: string | null
           confirmed_at: string | null
           created_at: string
+          digest_sent_at: string | null
           id: string
           is_understudy: boolean
           notes: string | null
+          offer_expires_at: string | null
+          offer_tier: number | null
+          offered_at: string | null
           show_date_id: string
           status: Database["public"]["Enums"]["booking_status"]
           updated_at: string
@@ -239,11 +238,16 @@ export type Database = {
           booked_by?: string | null
           cancellation_reason?: string | null
           cancelled_at?: string | null
+          confirmation_digest_sent_at?: string | null
           confirmed_at?: string | null
           created_at?: string
+          digest_sent_at?: string | null
           id?: string
           is_understudy?: boolean
           notes?: string | null
+          offer_expires_at?: string | null
+          offer_tier?: number | null
+          offered_at?: string | null
           show_date_id: string
           status?: Database["public"]["Enums"]["booking_status"]
           updated_at?: string
@@ -253,11 +257,16 @@ export type Database = {
           booked_by?: string | null
           cancellation_reason?: string | null
           cancelled_at?: string | null
+          confirmation_digest_sent_at?: string | null
           confirmed_at?: string | null
           created_at?: string
+          digest_sent_at?: string | null
           id?: string
           is_understudy?: boolean
           notes?: string | null
+          offer_expires_at?: string | null
+          offer_tier?: number | null
+          offered_at?: string | null
           show_date_id?: string
           status?: Database["public"]["Enums"]["booking_status"]
           updated_at?: string
@@ -279,24 +288,69 @@ export type Database = {
           },
         ]
       }
+      cast_city_priority: {
+        Row: {
+          cast_id: string
+          city_id: string
+          created_at: string
+          id: string
+          priority: number
+          updated_at: string
+        }
+        Insert: {
+          cast_id: string
+          city_id: string
+          created_at?: string
+          id?: string
+          priority: number
+          updated_at?: string
+        }
+        Update: {
+          cast_id?: string
+          city_id?: string
+          created_at?: string
+          id?: string
+          priority?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "cast_city_priority_cast_id_fkey"
+            columns: ["cast_id"]
+            isOneToOne: false
+            referencedRelation: "casts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "cast_city_priority_city_id_fkey"
+            columns: ["city_id"]
+            isOneToOne: false
+            referencedRelation: "cities"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       cast_members: {
         Row: {
           artist_id: string
           cast_id: string
           created_at: string
           id: string
+          role: string | null
         }
         Insert: {
           artist_id: string
           cast_id: string
           created_at?: string
           id?: string
+          role?: string | null
         }
         Update: {
           artist_id?: string
           cast_id?: string
           created_at?: string
           id?: string
+          role?: string | null
         }
         Relationships: [
           {
@@ -547,6 +601,41 @@ export type Database = {
         }
         Relationships: []
       }
+      show_assignments: {
+        Row: {
+          city_id: string | null
+          created_at: string
+          id: string
+          producer_user_id: string
+          program: string
+          sub_program: string | null
+        }
+        Insert: {
+          city_id?: string | null
+          created_at?: string
+          id?: string
+          producer_user_id: string
+          program: string
+          sub_program?: string | null
+        }
+        Update: {
+          city_id?: string | null
+          created_at?: string
+          id?: string
+          producer_user_id?: string
+          program?: string
+          sub_program?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "show_assignments_city_id_fkey"
+            columns: ["city_id"]
+            isOneToOne: false
+            referencedRelation: "cities"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       show_cast_eligibility: {
         Row: {
           cast_id: string
@@ -622,6 +711,44 @@ export type Database = {
           },
           {
             foreignKeyName: "show_date_cast_eligibility_show_date_id_fkey"
+            columns: ["show_date_id"]
+            isOneToOne: false
+            referencedRelation: "show_dates"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      show_date_offer_tiers: {
+        Row: {
+          closed_at: string | null
+          escalation_notified_at: string | null
+          id: string
+          opened_at: string
+          opened_by: string | null
+          show_date_id: string
+          tier: number
+        }
+        Insert: {
+          closed_at?: string | null
+          escalation_notified_at?: string | null
+          id?: string
+          opened_at?: string
+          opened_by?: string | null
+          show_date_id: string
+          tier: number
+        }
+        Update: {
+          closed_at?: string | null
+          escalation_notified_at?: string | null
+          id?: string
+          opened_at?: string
+          opened_by?: string | null
+          show_date_id?: string
+          tier?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "show_date_offer_tiers_show_date_id_fkey"
             columns: ["show_date_id"]
             isOneToOne: false
             referencedRelation: "show_dates"
@@ -853,6 +980,7 @@ export type Database = {
         Returns: undefined
       }
       expire_soft_bookings: { Args: never; Returns: undefined }
+      get_column_descriptions: { Args: never; Returns: Json }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
@@ -863,6 +991,13 @@ export type Database = {
       is_chat_participant: {
         Args: { _chat_id: string; _user_id: string }
         Returns: boolean
+      }
+      resolve_show_assignments: {
+        Args: { p_city_id: string; p_program: string; p_sub_program: string }
+        Returns: {
+          producer_user_id: string
+          specificity: number
+        }[]
       }
     }
     Enums: {

@@ -1,29 +1,15 @@
-import { createClient } from 'npm:@supabase/supabase-js@2'
-
-const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-cron-secret',
-}
-
-function json(body: unknown, status = 200): Response {
-  return new Response(JSON.stringify(body), {
-    status,
-    headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-  })
-}
+import { preflight, json } from "../_shared/http.ts";
+import { realDeps, type Deps } from "../_shared/deps.ts";
 
 /** Max concurrent open-offer-tier invocations per batch to avoid exhausting the DB connection pool. */
 const OFFER_TIER_BATCH_SIZE = 10
 
-// deno-lint-ignore no-explicit-any
-async function openOfferTierBatch(admin: any, ids: string[]): Promise<number> {
+async function openOfferTierBatch(deps: Deps, ids: string[]): Promise<number> {
   let opened = 0
   for (let i = 0; i < ids.length; i += OFFER_TIER_BATCH_SIZE) {
     const batch = ids.slice(i, i + OFFER_TIER_BATCH_SIZE)
     const results = await Promise.allSettled(
-      batch.map(id => admin.functions.invoke('open-offer-tier', {
-        body: { show_date_id: id, tier: 1 },
-      }))
+      batch.map(id => deps.invokeFunction('open-offer-tier', { show_date_id: id, tier: 1 }))
     )
     for (const result of results) {
       if (result.status === 'fulfilled') {
@@ -54,12 +40,10 @@ async function openOfferTierBatch(admin: any, ids: string[]): Promise<number> {
  *
  * Auth: X-Cron-Secret header (pg_cron). Cron-only — no user JWT.
  */
-Deno.serve(async (req) => {
-  if (req.method === 'OPTIONS') return new Response(null, { headers: corsHeaders })
+export async function handle(req: Request, deps: Deps): Promise<Response> {
+  if (req.method === 'OPTIONS') return preflight();
 
-  const supabaseUrl = Deno.env.get('SUPABASE_URL')!
-  const serviceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
-  const admin = createClient(supabaseUrl, serviceKey)
+  const admin = deps.admin;
 
   // ── Auth: X-Cron-Secret ──────────────────────────────────────────────────
   const cronSecretHeader = req.headers.get('X-Cron-Secret')
@@ -103,19 +87,19 @@ Deno.serve(async (req) => {
       status: 'error',
       records_processed: 0,
       error_details: 'airtable_base_id has unexpected format; expected app + 14 alphanumeric chars',
-      synced_at: new Date().toISOString(),
+      synced_at: deps.now().toISOString(),
     })
     return json({ error: 'airtable_base_id has unexpected format; expected app + 14 alphanumeric chars' }, 422)
   }
 
-  const airtableApiKey = Deno.env.get('AIRTABLE_API_KEY')
+  const airtableApiKey = deps.env('AIRTABLE_API_KEY')
   if (!airtableApiKey) {
     await admin.from('airtable_sync_log').insert({
       sync_type: 'airtable_poll',
       status: 'error',
       records_processed: 0,
       error_details: 'AIRTABLE_API_KEY secret not set',
-      synced_at: new Date().toISOString(),
+      synced_at: deps.now().toISOString(),
     })
     return json({ error: 'AIRTABLE_API_KEY secret not set' }, 500)
   }
@@ -183,8 +167,8 @@ Deno.serve(async (req) => {
 
   do {
     pageCount += 1
-    const url = offset ? `${airtableBaseUrl}&offset=${encodeURIComponent(offset)}` : airtableBaseUrl
-    const airtableRes = await fetch(url, {
+    const url: string = offset ? `${airtableBaseUrl}&offset=${encodeURIComponent(offset)}` : airtableBaseUrl
+    const airtableRes: Response = await deps.fetch(url, {
       headers: { Authorization: `Bearer ${airtableApiKey}` },
     })
 
@@ -192,21 +176,21 @@ Deno.serve(async (req) => {
       const errBody = (await airtableRes.text()).slice(0, 500)
       console.error('airtable-poll: Airtable API error', { status: airtableRes.status, body: errBody })
       // Flush already-inserted dates so they get offers before aborting.
-      const partialTiersOpened = await openOfferTierBatch(admin, newDateIds)
+      const partialTiersOpened = await openOfferTierBatch(deps, newDateIds)
       await admin.from('airtable_sync_log').insert({
         sync_type: 'airtable_poll',
         status: 'error',
         records_processed: processed,
         error_details: `Airtable API error ${airtableRes.status}: ${errBody}`,
-        synced_at: new Date().toISOString(),
+        synced_at: deps.now().toISOString(),
       })
       return json({ error: `Airtable API error: ${airtableRes.status}`, new_dates: newDates, tiers_opened: partialTiersOpened }, 502)
     }
 
-    const page = await airtableRes.json()
-    offset = page.offset
+    const airtablePageData = await airtableRes.json()
+    offset = airtablePageData.offset
 
-    for (const record of (page.records ?? []) as Array<{ id: string; fields: Record<string, any> }>) {
+    for (const record of (airtablePageData.records ?? []) as Array<{ id: string; fields: Record<string, any> }>) {
       const fields = record.fields
       const airtableRecordId = record.id
 
@@ -292,7 +276,7 @@ Deno.serve(async (req) => {
   }
 
   // ── Open tier-1 offers in batches to avoid saturating the DB connection pool ──
-  const tiersOpened = await openOfferTierBatch(admin, newDateIds)
+  const tiersOpened = await openOfferTierBatch(deps, newDateIds)
 
   const tiersFailed = newDateIds.length - tiersOpened
   const statusParts: string[] = []
@@ -307,8 +291,10 @@ Deno.serve(async (req) => {
     status: statusParts.length > 0 ? 'partial' : 'success',
     records_processed: processed,
     error_details: infoParts.length > 0 ? infoParts.join('; ') : null,
-    synced_at: new Date().toISOString(),
+    synced_at: deps.now().toISOString(),
   })
 
   return json({ processed, new_dates: newDates, tiers_opened: tiersOpened, skipped: skippedRecords })
-})
+}
+
+if (import.meta.main) Deno.serve((req) => handle(req, realDeps()));

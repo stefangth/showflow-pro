@@ -17,6 +17,7 @@ import { cn } from '@/lib/utils';
 import { showLabel } from '@/types';
 import { useEligibleArtists } from '@/hooks/useEligibleArtists';
 import { useSubProgramSlots, effectiveSlots } from '@/hooks/useSubProgramSlots';
+import { deriveBookingGroups, computeInheritedCastIds, bookingStatusUpdate } from '@/lib/bookings';
 import { ChatPanel } from '@/components/chat/ChatPanel';
 import type { Booking, Artist, City, Cast } from '@/types';
 
@@ -114,34 +115,22 @@ export function ShowDateDetailSheet({ showDateId, open, onOpenChange }: Props) {
 
   const { data: eligibility } = useEligibleArtists(showId, showDateId, cityId);
 
-  const activeBookings = useMemo(
-    () => (bookingsForDate ?? []).filter(b => b.status !== 'cancelled'),
-    [bookingsForDate]
-  );
-  const mainBookings = useMemo(() => activeBookings.filter(b => !b.is_understudy), [activeBookings]);
-  const understudyBookings = useMemo(() => activeBookings.filter(b => b.is_understudy), [activeBookings]);
-
-  const bookedArtistIds = useMemo(
-    () => new Set(activeBookings.map(b => b.artist_id)),
-    [activeBookings]
-  );
+  const {
+    active: activeBookings,
+    main: mainBookings,
+    understudy: understudyBookings,
+    bookedArtistIds,
+    confirmedMainCount,
+    confirmedUnderstudyCount,
+  } = useMemo(() => deriveBookingGroups(bookingsForDate ?? []), [bookingsForDate]);
 
   const overrideCastIds = useMemo(
     () => new Set((dateCastOverrides ?? []).map(r => r.cast_id)),
     [dateCastOverrides]
   );
   const inheritedCastIds = useMemo(
-    () => new Set((eligibility?.castIds ?? []).filter(cid => !overrideCastIds.has(cid))),
+    () => computeInheritedCastIds(eligibility?.castIds, overrideCastIds),
     [eligibility, overrideCastIds]
-  );
-
-  const confirmedMainCount = useMemo(
-    () => activeBookings.filter(b => b.status === 'confirmed' && !b.is_understudy).length,
-    [activeBookings]
-  );
-  const confirmedUnderstudyCount = useMemo(
-    () => activeBookings.filter(b => b.status === 'confirmed' && b.is_understudy).length,
-    [activeBookings]
   );
 
   const updateDateCity = useMutation({
@@ -208,9 +197,7 @@ export function ShowDateDetailSheet({ showDateId, open, onOpenChange }: Props) {
 
   const updateBookingStatus = useMutation({
     mutationFn: async ({ bookingId, status }: { bookingId: string; status: string }) => {
-      const updates: Record<string, unknown> = { status };
-      if (status === 'confirmed') updates.confirmed_at = new Date().toISOString();
-      if (status === 'cancelled') updates.cancelled_at = new Date().toISOString();
+      const updates = bookingStatusUpdate(status, new Date());
       const { error } = await supabase.from('bookings').update(updates).eq('id', bookingId);
       if (error) throw error;
     },

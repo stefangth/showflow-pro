@@ -34,7 +34,7 @@ const CastEscalationRequested = ({ program, date, tier, accepted, required, _int
   return (
   <Html lang="en" dir="ltr">
     <Head />
-    <Preview>Cast escalation needed — Tier {tier} for {program} on {date}</Preview>
+    <Preview>{`Cast escalation needed — Tier ${tier ?? '—'} for ${program ?? 'a show'} on ${date ?? '—'}`}</Preview>
     <Body style={main}>
       <Container style={container}>
         <Heading style={h1}>Cast escalation needed</Heading>
