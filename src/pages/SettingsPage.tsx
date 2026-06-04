@@ -22,6 +22,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { toast } from 'sonner';
 import { Settings as SettingsIcon, Database, Bell, Wand2, Save, SlidersHorizontal, MapPin, Plus, Trash2, Clock, AlertTriangle, BookOpen, UserCog, Eye } from 'lucide-react';
+import { upsertOrgSetting } from '@/data/settings';
 import type { City, Cast } from '@/types';
 import type { SubProgramSlotConfig, NestedSlotDefaults } from '@/hooks/useSubProgramSlots';
 
@@ -52,11 +53,8 @@ const PAGES: ('shows' | 'artists' | 'bookings')[] = ['shows', 'artists', 'bookin
 const ROLES: ('producer' | 'artist')[] = ['producer', 'artist'];
 
 type SettingRow = {
-  id: string;
   key: string;
   value: any;
-  description: string | null;
-  updated_at: string;
 };
 
 type ProgramSubProgramPair = { program: string; sub_program: string };
@@ -404,14 +402,23 @@ function BookingEngineTab({ get, set }: { get: (key: string, fallback?: any) => 
 
 export default function SettingsPage() {
   const { hasRole, currentOrg } = useAuth();
+  const orgId = currentOrg?.id ?? null;
   const qc = useQueryClient();
 
   const { data: settings, isLoading } = useQuery({
-    queryKey: ['app-settings'],
+    queryKey: ['app-settings', 'all', orgId],
     queryFn: async () => {
-      const { data, error } = await supabase.from('app_settings').select('*').order('key');
+      let q = supabase.from('app_settings').select('key, value, org_id');
+      q = orgId ? q.or(`org_id.eq.${orgId},org_id.is.null`) : q.is('org_id', null);
+      const { data, error } = await q;
       if (error) throw error;
-      return (data ?? []) as SettingRow[];
+      // resolve: org row wins over platform row, per key
+      const byKey = new Map<string, { value: unknown; org_id: string | null }>();
+      for (const r of (data ?? []) as { key: string; value: unknown; org_id: string | null }[]) {
+        const prev = byKey.get(r.key);
+        if (!prev || (r.org_id !== null && prev.org_id === null)) byKey.set(r.key, { value: r.value, org_id: r.org_id });
+      }
+      return Array.from(byKey.entries()).map(([key, v]) => ({ key, value: v.value })) as SettingRow[];
     },
   });
 
@@ -427,12 +434,9 @@ export default function SettingsPage() {
 
   const saveMutation = useMutation({
     mutationFn: async (updates: { key: string; value: any }[]) => {
+      if (!orgId) throw new Error('No active organization');
       for (const u of updates) {
-        const { error } = await supabase
-          .from('app_settings')
-          .update({ value: u.value })
-          .eq('key', u.key);
-        if (error) throw error;
+        await upsertOrgSetting(supabase, orgId, u.key, u.value);
       }
     },
     onSuccess: () => {
