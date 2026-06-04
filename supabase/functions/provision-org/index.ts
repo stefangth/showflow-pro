@@ -1,6 +1,7 @@
 import { preflight, json } from "../_shared/http.ts";
 import { requireSuperAdmin } from "../_shared/auth.ts";
 import { realDeps, type Deps } from "../_shared/deps.ts";
+import { deliverOrgInvitation } from "../_shared/invitations.ts";
 
 type Body = {
   name: string;
@@ -37,30 +38,20 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
       return json({ error: (error as Error).message ?? "Could not provision org" }, 500);
     }
     const { org_id, token } = data as { org_id: string; token: string };
-    const acceptUrl = `${appOrigin}/accept-invite?token=${token}`;
 
-    // Bootstrap the first admin's account so they can authenticate + accept.
+    // Bootstrap + branded invite via the unified helper (net-new gets an account + set-password link).
     try {
-      let exists = false;
-      for (let page = 1; ; page++) {
-        const { data: list } = await deps.admin.auth.admin.listUsers({ page, perPage: 200 });
-        const users = list?.users ?? [];
-        if (users.some((u: { email?: string }) => u.email?.toLowerCase() === email)) { exists = true; break; }
-        if (users.length < 200) break;
-      }
-      if (!exists) {
-        // Net-new: Supabase invite email carries a magic link → redirect to accept-invite.
-        await deps.admin.auth.admin.inviteUserByEmail(email, { redirectTo: acceptUrl });
-      } else {
-        // Existing user: send our branded org-invitation email with the accept link.
-        const inviter = auth.userId ? await deps.admin.auth.admin.getUserById(auth.userId) : null;
-        await deps.sendEmail({
-          template_name: "org-invitation",
-          recipient_email: email,
-          templateData: { orgName: name, role, token, inviterEmail: inviter?.data?.user?.email ?? undefined },
-          idempotency_key: `org-invitation-${org_id}`,
-        });
-      }
+      const inviter = auth.userId ? await deps.admin.auth.admin.getUserById(auth.userId) : null;
+      await deliverOrgInvitation(deps, {
+        email,
+        orgName: name,
+        role,
+        token,
+        inviterEmail: inviter?.data?.user?.email ?? undefined,
+        appOrigin,
+        idempotencyKey: `org-invitation-${org_id}`,
+        orgId: org_id,
+      });
     } catch (e) {
       console.error("provision-org: invite delivery failed", (e as Error).message);
     }

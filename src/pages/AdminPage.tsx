@@ -13,6 +13,7 @@ import { Users, Activity, Database } from 'lucide-react';
 import { useSearchParams } from 'react-router-dom';
 import { useToast } from '@/hooks/use-toast';
 import { InvitesTab } from '@/components/admin/InvitesTab';
+import { MembersTab } from '@/components/admin/MembersTab';
 import { cn } from '@/lib/utils';
 
 const ALL_ROLES: Array<'admin' | 'producer' | 'artist'> = ['admin', 'producer', 'artist'];
@@ -118,6 +119,7 @@ export default function AdminPage() {
       <Tabs value={tab} onValueChange={handleTabChange}>
         <TabsList>
           <TabsTrigger value="invites">Invites</TabsTrigger>
+          <TabsTrigger value="members">Members</TabsTrigger>
           <TabsTrigger value="users">Users</TabsTrigger>
           <TabsTrigger value="audit">Audit Log</TabsTrigger>
           <TabsTrigger value="sync">Sync Status</TabsTrigger>
@@ -125,6 +127,10 @@ export default function AdminPage() {
 
         <TabsContent value="invites" className="mt-4">
           <InvitesTab />
+        </TabsContent>
+
+        <TabsContent value="members" className="mt-4">
+          <MembersTab />
         </TabsContent>
 
         <TabsContent value="users" className="mt-4">

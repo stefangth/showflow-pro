@@ -2,14 +2,14 @@ import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/features/auth/AuthContext';
-import { fetchOrgInvitations, createInvitation, revokeInvitation, acceptInviteUrl } from '@/data/invitations';
+import { fetchOrgInvitations, createInvitation, revokeInvitation, resendInvitation, acceptInviteUrl } from '@/data/invitations';
 import type { AppRole } from '@/config/app.config';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Copy, X } from 'lucide-react';
+import { Copy, X, RefreshCw } from 'lucide-react';
 import { toast } from 'sonner';
 
 /** Org-admin invite management: send invites, list them, copy the accept link, revoke. */
@@ -44,6 +44,12 @@ export function InvitesTab() {
     onError: (e: any) => toast.error(e?.message ?? 'Could not revoke invitation'),
   });
 
+  const resend = useMutation({
+    mutationFn: (id: string) => resendInvitation(supabase, id),
+    onSuccess: () => toast.success('Invitation re-sent'),
+    onError: (e: any) => toast.error(e?.message ?? 'Could not resend invitation'),
+  });
+
   const copyLink = async (token: string) => {
     try {
       await navigator.clipboard?.writeText(acceptInviteUrl(token));
@@ -58,7 +64,13 @@ export function InvitesTab() {
       <CardHeader><CardTitle className="font-display">Invitations</CardTitle></CardHeader>
       <CardContent className="space-y-4">
         <form
-          onSubmit={(e) => { e.preventDefault(); if (email.trim() && currentOrg) create.mutate(); }}
+          onSubmit={(e) => {
+            e.preventDefault();
+            const value = email.trim();
+            if (!currentOrg) return;
+            if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value)) { toast.error('Enter a valid email address'); return; }
+            create.mutate();
+          }}
           className="flex flex-col sm:flex-row gap-2"
         >
           <Input
@@ -91,6 +103,9 @@ export function InvitesTab() {
                   <>
                     <Button size="sm" variant="ghost" className="h-7 px-2" onClick={() => copyLink(inv.token)} aria-label="Copy invite link">
                       <Copy className="h-3.5 w-3.5" />
+                    </Button>
+                    <Button size="sm" variant="ghost" className="h-7 px-2" onClick={() => resend.mutate(inv.id)} aria-label="Resend invitation">
+                      <RefreshCw className="h-3.5 w-3.5" />
                     </Button>
                     <Button size="sm" variant="ghost" className="h-7 px-2" onClick={() => revoke.mutate(inv.id)} aria-label="Revoke invitation">
                       <X className="h-3.5 w-3.5" />

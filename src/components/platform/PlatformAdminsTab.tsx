@@ -9,11 +9,16 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 export function PlatformAdminsTab() {
   const qc = useQueryClient();
   const { user } = useAuth();
   const [email, setEmail] = useState("");
+  const [toRemove, setToRemove] = useState<{ user_id: string; email: string } | null>(null);
   const { data: admins, isLoading, isError, error } = useQuery({ queryKey: ["platform", "admins"], queryFn: () => fetchPlatformAdmins(supabase) });
 
   const add = useMutation({
@@ -42,12 +47,24 @@ export function PlatformAdminsTab() {
             <div key={a.user_id} className="flex items-center justify-between p-3 rounded-lg border border-border text-sm">
               <span className="truncate">{a.email}</span>
               <Button size="sm" variant="ghost" disabled={a.user_id === user?.id}
-                onClick={() => { if (confirm(`Remove ${a.email} as platform admin?`)) remove.mutate(a.user_id); }}>
+                onClick={() => setToRemove({ user_id: a.user_id, email: a.email })}>
                 {a.user_id === user?.id ? "You" : "Remove"}
               </Button>
             </div>
           ))}
         </div>
+        <AlertDialog open={toRemove !== null} onOpenChange={(o) => !o && setToRemove(null)}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Remove platform admin?</AlertDialogTitle>
+              <AlertDialogDescription>{toRemove?.email} will lose access to the platform console.</AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Cancel</AlertDialogCancel>
+              <AlertDialogAction onClick={() => { if (toRemove) remove.mutate(toRemove.user_id); setToRemove(null); }}>Remove</AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
       </CardContent>
     </Card>
   );

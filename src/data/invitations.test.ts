@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { createFakeSupabase } from "@/test/supabaseFake";
-import { createInvitation, fetchOrgInvitations, revokeInvitation, acceptInvitation, acceptInviteUrl } from "./invitations";
+import { createInvitation, fetchOrgInvitations, revokeInvitation, acceptInvitation, acceptInviteUrl, resendInvitation } from "./invitations";
 
 const INV = { id: "inv1", org_id: "o1", email: "x@y.com", role: "producer", status: "pending", token: "tok123", expires_at: "2099-01-01" };
 
@@ -12,7 +12,7 @@ describe("createInvitation", () => {
     expect(fake.calls).toContainEqual({
       table: "fn:create-invitation",
       method: "invoke",
-      args: [{ org_id: "o1", email: "x@y.com", role: "producer" }],
+      args: [{ org_id: "o1", email: "x@y.com", role: "producer", app_origin: window.location.origin }],
     });
   });
 
@@ -74,5 +74,22 @@ describe("acceptInvitation", () => {
 describe("acceptInviteUrl", () => {
   it("builds an /accept-invite link carrying the token", () => {
     expect(acceptInviteUrl("abc")).toContain("/accept-invite?token=abc");
+  });
+});
+
+describe("resendInvitation", () => {
+  it("invokes resend-invitation with invitation_id and app_origin", async () => {
+    const fake = createFakeSupabase({ "fn:resend-invitation": { data: { ok: true }, error: null } });
+    await resendInvitation(fake as never, "inv-9");
+    expect(fake.calls).toContainEqual({
+      table: "fn:resend-invitation",
+      method: "invoke",
+      args: [{ invitation_id: "inv-9", app_origin: window.location.origin }],
+    });
+  });
+
+  it("throws when the invoke errors", async () => {
+    const fake = createFakeSupabase({ "fn:resend-invitation": { data: null, error: { message: "boom" } } });
+    await expect(resendInvitation(fake as never, "inv-9")).rejects.toBeTruthy();
   });
 });

@@ -108,6 +108,11 @@ export default function LoginPage() {
                   required
                 />
               </div>
+              <div className="text-right -mt-1">
+                <Link to={ROUTES.RESET_PASSWORD} className="text-xs text-muted-foreground underline hover:text-foreground">
+                  Forgot password?
+                </Link>
+              </div>
               <Button type="submit" className="w-full" disabled={loading}>
                 {loading ? 'Signing in...' : 'Sign In'}
               </Button>
