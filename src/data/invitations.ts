@@ -29,7 +29,7 @@ export async function createInvitation(
   args: { orgId: string; email: string; role: AppRole },
 ): Promise<Invitation> {
   const { data, error } = await client.functions.invoke("create-invitation", {
-    body: { org_id: args.orgId, email: args.email, role: args.role },
+    body: { org_id: args.orgId, email: args.email, role: args.role, app_origin: window.location.origin },
   });
   if (error) throw error;
   const payload = data as { error?: string; invitation?: Invitation };
@@ -75,4 +75,15 @@ export async function acceptInvitation(
   const { data, error } = await client.rpc("accept_invitation", { p_token: token });
   if (error) throw error;
   return data as string;
+}
+
+/** Re-send a pending org invitation (org admin or super-admin). */
+export async function resendInvitation(
+  client: SupabaseClient<Database>,
+  invitationId: string,
+): Promise<void> {
+  const { error } = await client.functions.invoke("resend-invitation", {
+    body: { invitation_id: invitationId, app_origin: window.location.origin },
+  });
+  if (error) throw error;
 }
