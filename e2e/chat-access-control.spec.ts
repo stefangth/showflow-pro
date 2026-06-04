@@ -23,7 +23,7 @@
  */
 import { expect, test } from "@playwright/test";
 import { loginAsAndAwaitDashboard, navViaSidebar } from "./helpers/auth";
-import { deleteUserByEmail, ensureUserWithRole } from "./helpers/users";
+import { deleteUserByEmail, ensureUserWithRole, BOOTSTRAP_ORG_ID } from "./helpers/users";
 import { adminClient, tagEmail, E2E_TAG } from "./helpers/supabase";
 import {
   cleanupBookingFixture,
@@ -71,6 +71,7 @@ test.describe("Chat access control — booking status gates chat participation",
         name: `${E2E_TAG}-artist-outsider`,
         user_id: outsiderUser.id,
         email: outsiderUser.email,
+        org_id: BOOTSTRAP_ORG_ID,
       })
       .select("id")
       .single();

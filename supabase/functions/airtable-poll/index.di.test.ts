@@ -1,27 +1,29 @@
 /**
- * Deep DI tests for airtable-poll handler.
+ * Deep DI tests for airtable-poll handler (per-org model).
+ *
+ * The handler loops ACTIVE orgs; for each it resolves airtable_sync_enabled /
+ * airtable_base_id / airtable_table_name (org override ?? platform default) and
+ * the Vault key via the get_org_airtable_key RPC, then runs syncOrg. These tests
+ * exercise syncOrg through handle() with a single enabled+keyed org (ORG).
  *
  * Coverage:
  *  - Auth (cron-secret: missing, wrong, correct)
- *  - Sync disabled → skipped response
- *  - Missing base/table config → skipped
- *  - Invalid baseId format → 422
- *  - Missing AIRTABLE_API_KEY → 500
- *  - Fetch URL and Authorization header shape
+ *  - Sync disabled / missing base / missing table → org skipped (orgs_synced 0)
+ *  - Invalid baseId format → org skipped, sync_log error row carries org_id
+ *  - No Vault key → org skipped, no fetch
+ *  - Fetch URL and Authorization header shape (key from the Vault RPC)
  *  - Field mapping: Date, Show, Sub Program, City, Session 1 variants
  *  - Show name resolution (program|sub_program key, fallback to program-only)
- *  - Unresolvable show → skipped record, count in response
+ *  - Unresolvable show → skipped record, count in totals
  *  - New-date detection: insert + invokeFunction('open-offer-tier')
  *  - Existing-date detection: update only, no invokeFunction call
- *  - Response shape: { processed, new_dates, tiers_opened, skipped }
+ *  - Totals shape: { orgs_synced, processed, new_dates, tiers_opened, skipped }
  *  - Batch resilience: one invokeFunction reject → others still run, still 200
- *  - Airtable API error → 502 with partial data
- *  - airtable_sync_log written on success and error
+ *  - Airtable API error → run still 200 with orgs_synced 0; sync_log error row w/ org_id
+ *  - airtable_sync_log written (with org_id) on success and error
  *
  * NOT COVERED (noted):
  *  - Multi-page Airtable pagination (offset handling) — single-page only tested.
- *    The pagination loop is syntactically simple (do/while offset) but a full
- *    mock requires chaining multiple fetch responses; left for follow-up.
  *    See bug-log row: COVERAGE-GAP-01.
  */
 
@@ -31,11 +33,13 @@ import { handle } from "./index.ts";
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
 
-/** Minimal valid app_settings seed that enables sync */
-const BASE_SETTINGS_DATA = [
-  { key: "airtable_sync_enabled", value: true },
-  { key: "airtable_base_id", value: "appABCDEFGHIJKLMNO" }, // 17-char valid format
-  { key: "airtable_table_name", value: "ShowDates" },
+const ORG = "00000000-0000-0000-0000-0000000000a1";
+
+/** Per-key app_settings resolver rows that enable sync for ORG. */
+const ENABLED_SETTINGS = [
+  { when: { key: "airtable_sync_enabled" }, data: [{ org_id: ORG, value: true }] },
+  { when: { key: "airtable_base_id" }, data: [{ org_id: ORG, value: "appABCDEFGHIJKLMNO" }] }, // 17-char valid format
+  { when: { key: "airtable_table_name" }, data: [{ org_id: ORG, value: "ShowDates" }] },
 ];
 
 /** Airtable API response with one record */
@@ -81,21 +85,21 @@ function makeHappyDeps(opts: {
     (() => Promise.resolve(makeAirtableResponse(airtableRecords)) as Promise<Response>);
 
   const { deps, invokeCalls, calls } = makeFakeDeps({
-    envVars: { AIRTABLE_API_KEY: "fake-api-key" },
     tables: {
       // app_settings:
-      //   - maybeSingle() on key='cron_secret' → value "secret123"
-      //   - .then() on .in('key', [...]) → settings rows (fallback, no `when`)
+      //   - maybeSingle() on key='cron_secret' (platform row) → value "secret123"
+      //   - resolver rows for sync config, scoped to ORG
       app_settings: [
         { when: { key: "cron_secret" }, data: { value: "secret123" } },
-        { data: BASE_SETTINGS_DATA }, // fallback for .in() query
+        ...ENABLED_SETTINGS,
       ],
-      // shows: loaded once via .select('id, program, sub_program').limit(10000)
+      organizations: { data: [{ id: ORG }], error: null },
+      // shows: loaded once per org via .select('id, program, sub_program').eq('org_id', ORG).limit(10000)
       shows: {
         data: [{ id: "show-uuid-1", program: "TestShow", sub_program: null }],
         error: null,
       },
-      // cities: loaded once
+      // cities: loaded once per org
       cities: {
         data: [{ id: "city-uuid-berlin", name: "Berlin" }],
         error: null,
@@ -105,17 +109,13 @@ function makeHappyDeps(opts: {
         data: existingShowDates,
         error: null,
       },
-      // For insert → .select('id').single() → fake client returns the seed
-      // We override below with a separate client that returns an inserted id.
       // airtable_sync_log: just accept insert silently
       airtable_sync_log: { data: null, error: null },
     },
+    rpcs: { get_org_airtable_key: { data: "key", error: null } },
     fetchImpl: resolvedFetchImpl,
   });
 
-  // The fake client returns whatever the seed says for `show_dates`.
-  // But after insert we need .select('id').single() to resolve with an id.
-  // Patch invokeFunction to record real invocations AND still resolve.
   return { deps, invokeCalls, calls };
 }
 
@@ -148,7 +148,6 @@ Deno.test("airtable-poll: wrong X-Cron-Secret → 401", async () => {
     tables: {
       app_settings: [
         { when: { key: "cron_secret" }, data: { value: "secret123" } },
-        { data: [] }, // fallback (never reached, but avoids seed error)
       ],
     },
   });
@@ -166,7 +165,6 @@ Deno.test("airtable-poll: null stored secret treated as empty string — non-emp
       app_settings: [
         // maybeSingle() returns null data when no row
         { when: { key: "cron_secret" }, data: null },
-        { data: [] },
       ],
     },
   });
@@ -177,122 +175,132 @@ Deno.test("airtable-poll: null stored secret treated as empty string — non-emp
   assertEquals(res.status, 401);
 });
 
-// ─── Sync-disabled / misconfigured paths ─────────────────────────────────────
+// ─── Per-org skip paths (disabled / unconfigured / bad base / no key) ─────────
 
-Deno.test("airtable-poll: sync disabled → 200 skipped", async () => {
+Deno.test("airtable-poll: org with sync disabled → 200, org skipped", async () => {
   const { deps } = makeFakeDeps({
     tables: {
       app_settings: [
         { when: { key: "cron_secret" }, data: { value: "secret123" } },
-        {
-          data: [
-            { key: "airtable_sync_enabled", value: false },
-          ],
-        },
+        { when: { key: "airtable_sync_enabled" }, data: [{ org_id: ORG, value: false }] },
+        { when: { key: "airtable_base_id" }, data: [{ org_id: ORG, value: "appABCDEFGHIJKLMNO" }] },
+        { when: { key: "airtable_table_name" }, data: [{ org_id: ORG, value: "ShowDates" }] },
       ],
+      organizations: { data: [{ id: ORG }], error: null },
     },
+    rpcs: { get_org_airtable_key: { data: "key", error: null } },
   });
   const res = await handle(authReq(), deps);
   assertEquals(res.status, 200);
   const body = await res.json();
-  assertEquals(body.skipped, true);
-  assertEquals(body.reason, "sync disabled");
+  assertEquals(body.orgs_synced, 0);
 });
 
-Deno.test("airtable-poll: missing base_id → 200 skipped", async () => {
+Deno.test("airtable-poll: org missing base_id → 200, org skipped", async () => {
   const { deps } = makeFakeDeps({
     tables: {
       app_settings: [
         { when: { key: "cron_secret" }, data: { value: "secret123" } },
-        {
-          data: [
-            { key: "airtable_sync_enabled", value: true },
-            // no airtable_base_id row
-            { key: "airtable_table_name", value: "ShowDates" },
-          ],
-        },
+        { when: { key: "airtable_sync_enabled" }, data: [{ org_id: ORG, value: true }] },
+        // no airtable_base_id row for ORG → resolver returns null fallback
+        { when: { key: "airtable_base_id" }, data: [{ org_id: null, value: null }] },
+        { when: { key: "airtable_table_name" }, data: [{ org_id: ORG, value: "ShowDates" }] },
       ],
+      organizations: { data: [{ id: ORG }], error: null },
     },
+    rpcs: { get_org_airtable_key: { data: "key", error: null } },
   });
   const res = await handle(authReq(), deps);
   assertEquals(res.status, 200);
   const body = await res.json();
-  assertEquals(body.skipped, true);
-  assertEquals(body.reason, "airtable_base_id or airtable_table_name not configured");
+  assertEquals(body.orgs_synced, 0);
 });
 
-Deno.test("airtable-poll: missing table_name → 200 skipped", async () => {
+Deno.test("airtable-poll: org missing table_name → 200, org skipped", async () => {
   const { deps } = makeFakeDeps({
     tables: {
       app_settings: [
         { when: { key: "cron_secret" }, data: { value: "secret123" } },
-        {
-          data: [
-            { key: "airtable_sync_enabled", value: true },
-            { key: "airtable_base_id", value: "appABCDEFGHIJKLMNO" },
-            // no airtable_table_name row
-          ],
-        },
+        { when: { key: "airtable_sync_enabled" }, data: [{ org_id: ORG, value: true }] },
+        { when: { key: "airtable_base_id" }, data: [{ org_id: ORG, value: "appABCDEFGHIJKLMNO" }] },
+        // no airtable_table_name row for ORG → resolver returns null fallback
+        { when: { key: "airtable_table_name" }, data: [{ org_id: null, value: null }] },
       ],
+      organizations: { data: [{ id: ORG }], error: null },
     },
+    rpcs: { get_org_airtable_key: { data: "key", error: null } },
   });
   const res = await handle(authReq(), deps);
   assertEquals(res.status, 200);
   const body = await res.json();
-  assertEquals(body.skipped, true);
+  assertEquals(body.orgs_synced, 0);
 });
 
-Deno.test("airtable-poll: invalid base_id format → 422", async () => {
+Deno.test("airtable-poll: invalid base_id format → 200, org skipped, sync_log error row with org_id", async () => {
+  const syncLogInserts: unknown[] = [];
   const { deps } = makeFakeDeps({
     tables: {
       app_settings: [
         { when: { key: "cron_secret" }, data: { value: "secret123" } },
-        {
-          data: [
-            { key: "airtable_sync_enabled", value: true },
-            { key: "airtable_base_id", value: "NOTVALIDFORMAT" }, // doesn't start with 'app'
-            { key: "airtable_table_name", value: "ShowDates" },
-          ],
-        },
+        { when: { key: "airtable_sync_enabled" }, data: [{ org_id: ORG, value: true }] },
+        { when: { key: "airtable_base_id" }, data: [{ org_id: ORG, value: "NOTVALIDFORMAT" }] }, // doesn't start with 'app'
+        { when: { key: "airtable_table_name" }, data: [{ org_id: ORG, value: "ShowDates" }] },
       ],
+      organizations: { data: [{ id: ORG }], error: null },
       airtable_sync_log: { data: null, error: null },
     },
+    rpcs: { get_org_airtable_key: { data: "key", error: null } },
   });
+
+  const originalFrom = deps.admin.from.bind(deps.admin);
+  (deps.admin as any).from = (table: string) => {
+    const chain = originalFrom(table);
+    if (table === "airtable_sync_log") {
+      const orig = chain.insert.bind(chain);
+      chain.insert = (p: unknown) => { syncLogInserts.push(p); return (orig as (x: unknown) => ReturnType<typeof orig>)(p); };
+    }
+    return chain;
+  };
+
   const res = await handle(authReq(), deps);
-  assertEquals(res.status, 422);
+  assertEquals(res.status, 200);
   const body = await res.json();
-  assertExists(body.error);
+  assertEquals(body.orgs_synced, 0);
+  // The bad-base path logs an error row carrying org_id.
+  assertEquals(syncLogInserts.length, 1);
+  const logRow = syncLogInserts[0] as Record<string, unknown>;
+  assertEquals(logRow.org_id, ORG);
+  assertEquals(logRow.status, "error");
+  assertExists(logRow.error_details);
 });
 
-Deno.test("airtable-poll: missing AIRTABLE_API_KEY → 500", async () => {
+Deno.test("airtable-poll: org with no Vault key → 200, org skipped, no fetch", async () => {
+  let fetched = 0;
   const { deps } = makeFakeDeps({
-    // No envVars → env('AIRTABLE_API_KEY') returns undefined
     tables: {
       app_settings: [
         { when: { key: "cron_secret" }, data: { value: "secret123" } },
-        {
-          data: [
-            { key: "airtable_sync_enabled", value: true },
-            { key: "airtable_base_id", value: "appABCDEFGHIJKLMNO" },
-            { key: "airtable_table_name", value: "ShowDates" },
-          ],
-        },
+        ...ENABLED_SETTINGS,
       ],
+      organizations: { data: [{ id: ORG }], error: null },
       shows: { data: [], error: null },
       cities: { data: [], error: null },
       show_dates: { data: [], error: null },
       airtable_sync_log: { data: null, error: null },
     },
+    rpcs: { get_org_airtable_key: { data: null, error: null } }, // no key
+    fetchImpl: () => { fetched++; return Promise.resolve(makeAirtableResponse([])) as Promise<Response>; },
   });
   const res = await handle(authReq(), deps);
-  assertEquals(res.status, 500);
+  assertEquals(res.status, 200);
   const body = await res.json();
-  assertEquals(body.error, "AIRTABLE_API_KEY secret not set");
+  assertEquals(body.orgs_synced, 0);
+  assertEquals(fetched, 0);
 });
 
 // ─── Fetch URL and Authorization header ──────────────────────────────────────
 
-Deno.test("airtable-poll: fetch called with correct Airtable URL and Bearer token", async () => {
+Deno.test("airtable-poll: fetch called with correct Airtable URL and Bearer token (key from Vault)", async () => {
   const capturedRequests: Array<{ url: string; init: RequestInit }> = [];
 
   const fetchImpl: typeof fetch = (url, init) => {
@@ -301,23 +309,20 @@ Deno.test("airtable-poll: fetch called with correct Airtable URL and Bearer toke
   };
 
   const { deps } = makeFakeDeps({
-    envVars: { AIRTABLE_API_KEY: "my-api-key-xyz" },
     tables: {
       app_settings: [
         { when: { key: "cron_secret" }, data: { value: "secret123" } },
-        {
-          data: [
-            { key: "airtable_sync_enabled", value: true },
-            { key: "airtable_base_id", value: "appABCDEFGHIJKLMNO" },
-            { key: "airtable_table_name", value: "My Table" },
-          ],
-        },
+        { when: { key: "airtable_sync_enabled" }, data: [{ org_id: ORG, value: true }] },
+        { when: { key: "airtable_base_id" }, data: [{ org_id: ORG, value: "appABCDEFGHIJKLMNO" }] },
+        { when: { key: "airtable_table_name" }, data: [{ org_id: ORG, value: "My Table" }] },
       ],
+      organizations: { data: [{ id: ORG }], error: null },
       shows: { data: [], error: null },
       cities: { data: [], error: null },
       show_dates: { data: [], error: null },
       airtable_sync_log: { data: null, error: null },
     },
+    rpcs: { get_org_airtable_key: { data: "my-api-key-xyz", error: null } },
     fetchImpl,
   });
 
@@ -347,7 +352,7 @@ Deno.test("airtable-poll: fetch called with correct Airtable URL and Bearer toke
     `URL should include view param: ${url}`,
   );
 
-  // Authorization header: Bearer <key>
+  // Authorization header: Bearer <key from Vault RPC>
   const headers = init.headers as Record<string, string>;
   assertExists(headers, "fetch headers should be set");
   assertEquals(
@@ -372,25 +377,8 @@ Deno.test("airtable-poll: maps Date/Show/City/Session fields and inserts show_da
     }),
   ];
 
-  const { deps, calls } = makeFakeDeps({
-    envVars: { AIRTABLE_API_KEY: "key" },
-    tables: {
-      app_settings: [
-        { when: { key: "cron_secret" }, data: { value: "secret123" } },
-        { data: BASE_SETTINGS_DATA },
-      ],
-      shows: {
-        data: [{ id: "show-uuid-1", program: "TestShow", sub_program: null }],
-        error: null,
-      },
-      cities: {
-        data: [{ id: "city-uuid-berlin", name: "Berlin" }],
-        error: null,
-      },
-      show_dates: { data: [], error: null },
-      airtable_sync_log: { data: null, error: null },
-    },
-    fetchImpl: () => Promise.resolve(makeAirtableResponse(records)) as Promise<Response>,
+  const { deps } = makeHappyDeps({
+    airtableRecords: records,
   });
 
   // Wrap the admin client's from() to capture insert args
@@ -419,6 +407,8 @@ Deno.test("airtable-poll: maps Date/Show/City/Session fields and inserts show_da
   assertEquals(payload.airtable_record_id, "recABC123");
   assertEquals(payload.city_id, "city-uuid-berlin");
   assertEquals(payload.session_1, "19:30"); // extracted HH:MM from T19:30:00
+  // org_id is NOT set on the insert payload — the derive trigger stamps it.
+  assertEquals("org_id" in payload, false);
 });
 
 Deno.test("airtable-poll: accepts alternate field name variants (date/show/city/session_1)", async () => {
@@ -433,26 +423,7 @@ Deno.test("airtable-poll: accepts alternate field name variants (date/show/city/
     }),
   ];
 
-  const { deps } = makeFakeDeps({
-    envVars: { AIRTABLE_API_KEY: "key" },
-    tables: {
-      app_settings: [
-        { when: { key: "cron_secret" }, data: { value: "secret123" } },
-        { data: BASE_SETTINGS_DATA },
-      ],
-      shows: {
-        data: [{ id: "show-uuid-1", program: "TestShow", sub_program: null }],
-        error: null,
-      },
-      cities: {
-        data: [{ id: "city-uuid-berlin", name: "Berlin" }],
-        error: null,
-      },
-      show_dates: { data: [], error: null },
-      airtable_sync_log: { data: null, error: null },
-    },
-    fetchImpl: () => Promise.resolve(makeAirtableResponse(records)) as Promise<Response>,
-  });
+  const { deps } = makeHappyDeps({ airtableRecords: records });
 
   const originalFrom = deps.admin.from.bind(deps.admin);
   (deps.admin as any).from = (table: string) => {
@@ -486,23 +457,7 @@ Deno.test("airtable-poll: session_1 defaults to 00:00 when field missing", async
     }),
   ];
 
-  const { deps } = makeFakeDeps({
-    envVars: { AIRTABLE_API_KEY: "key" },
-    tables: {
-      app_settings: [
-        { when: { key: "cron_secret" }, data: { value: "secret123" } },
-        { data: BASE_SETTINGS_DATA },
-      ],
-      shows: {
-        data: [{ id: "show-uuid-1", program: "TestShow", sub_program: null }],
-        error: null,
-      },
-      cities: { data: [], error: null },
-      show_dates: { data: [], error: null },
-      airtable_sync_log: { data: null, error: null },
-    },
-    fetchImpl: () => Promise.resolve(makeAirtableResponse(records)) as Promise<Response>,
-  });
+  const { deps } = makeHappyDeps({ airtableRecords: records });
 
   const originalFrom = deps.admin.from.bind(deps.admin);
   (deps.admin as any).from = (table: string) => {
@@ -531,23 +486,7 @@ Deno.test("airtable-poll: city_id is null when city not in DB", async () => {
     }),
   ];
 
-  const { deps } = makeFakeDeps({
-    envVars: { AIRTABLE_API_KEY: "key" },
-    tables: {
-      app_settings: [
-        { when: { key: "cron_secret" }, data: { value: "secret123" } },
-        { data: BASE_SETTINGS_DATA },
-      ],
-      shows: {
-        data: [{ id: "show-uuid-1", program: "TestShow", sub_program: null }],
-        error: null,
-      },
-      cities: { data: [{ id: "city-berlin", name: "Berlin" }], error: null }, // Atlantis not here
-      show_dates: { data: [], error: null },
-      airtable_sync_log: { data: null, error: null },
-    },
-    fetchImpl: () => Promise.resolve(makeAirtableResponse(records)) as Promise<Response>,
-  });
+  const { deps } = makeHappyDeps({ airtableRecords: records });
 
   const originalFrom = deps.admin.from.bind(deps.admin);
   (deps.admin as any).from = (table: string) => {
@@ -579,23 +518,7 @@ Deno.test("airtable-poll: record without Date field is skipped entirely", async 
     }),
   ];
 
-  const { deps } = makeFakeDeps({
-    envVars: { AIRTABLE_API_KEY: "key" },
-    tables: {
-      app_settings: [
-        { when: { key: "cron_secret" }, data: { value: "secret123" } },
-        { data: BASE_SETTINGS_DATA },
-      ],
-      shows: {
-        data: [{ id: "show-uuid-1", program: "TestShow", sub_program: null }],
-        error: null,
-      },
-      cities: { data: [], error: null },
-      show_dates: { data: [], error: null },
-      airtable_sync_log: { data: null, error: null },
-    },
-    fetchImpl: () => Promise.resolve(makeAirtableResponse(records)) as Promise<Response>,
-  });
+  const { deps } = makeHappyDeps({ airtableRecords: records });
 
   const originalFrom = deps.admin.from.bind(deps.admin);
   (deps.admin as any).from = (table: string) => {
@@ -629,12 +552,12 @@ Deno.test("airtable-poll: resolves show by (program, sub_program) key — exact 
   ];
 
   const { deps } = makeFakeDeps({
-    envVars: { AIRTABLE_API_KEY: "key" },
     tables: {
       app_settings: [
         { when: { key: "cron_secret" }, data: { value: "secret123" } },
-        { data: BASE_SETTINGS_DATA },
+        ...ENABLED_SETTINGS,
       ],
+      organizations: { data: [{ id: ORG }], error: null },
       shows: {
         data: [
           { id: "show-generic", program: "TestShow", sub_program: null },
@@ -646,6 +569,7 @@ Deno.test("airtable-poll: resolves show by (program, sub_program) key — exact 
       show_dates: { data: [], error: null },
       airtable_sync_log: { data: null, error: null },
     },
+    rpcs: { get_org_airtable_key: { data: "key", error: null } },
     fetchImpl: () => Promise.resolve(makeAirtableResponse(records)) as Promise<Response>,
   });
 
@@ -678,12 +602,12 @@ Deno.test("airtable-poll: falls back to program-only match when sub_program abse
   ];
 
   const { deps } = makeFakeDeps({
-    envVars: { AIRTABLE_API_KEY: "key" },
     tables: {
       app_settings: [
         { when: { key: "cron_secret" }, data: { value: "secret123" } },
-        { data: BASE_SETTINGS_DATA },
+        ...ENABLED_SETTINGS,
       ],
+      organizations: { data: [{ id: ORG }], error: null },
       shows: {
         data: [
           { id: "show-generic", program: "TestShow", sub_program: null }, // only program-only row
@@ -694,6 +618,7 @@ Deno.test("airtable-poll: falls back to program-only match when sub_program abse
       show_dates: { data: [], error: null },
       airtable_sync_log: { data: null, error: null },
     },
+    rpcs: { get_org_airtable_key: { data: "key", error: null } },
     fetchImpl: () => Promise.resolve(makeAirtableResponse(records)) as Promise<Response>,
   });
 
@@ -713,7 +638,7 @@ Deno.test("airtable-poll: falls back to program-only match when sub_program abse
   assertEquals(payload.show_id, "show-generic");
 });
 
-Deno.test("airtable-poll: unresolvable show → record skipped, skipped count in response", async () => {
+Deno.test("airtable-poll: unresolvable show → record skipped, skipped count in totals", async () => {
   const insertedPayloads: unknown[] = [];
 
   const records = [
@@ -727,23 +652,7 @@ Deno.test("airtable-poll: unresolvable show → record skipped, skipped count in
     }),
   ];
 
-  const { deps } = makeFakeDeps({
-    envVars: { AIRTABLE_API_KEY: "key" },
-    tables: {
-      app_settings: [
-        { when: { key: "cron_secret" }, data: { value: "secret123" } },
-        { data: BASE_SETTINGS_DATA },
-      ],
-      shows: {
-        data: [{ id: "show-uuid-1", program: "TestShow", sub_program: null }],
-        error: null,
-      },
-      cities: { data: [], error: null },
-      show_dates: { data: [], error: null },
-      airtable_sync_log: { data: null, error: null },
-    },
-    fetchImpl: () => Promise.resolve(makeAirtableResponse(records)) as Promise<Response>,
-  });
+  const { deps } = makeHappyDeps({ airtableRecords: records });
 
   const originalFrom = deps.admin.from.bind(deps.admin);
   (deps.admin as any).from = (table: string) => {
@@ -767,40 +676,13 @@ Deno.test("airtable-poll: unresolvable show → record skipped, skipped count in
 // ─── New-date detection: invokeFunction ──────────────────────────────────────
 
 Deno.test("airtable-poll: new date → invokeFunction('open-offer-tier', { show_date_id, tier: 1 })", async () => {
-  // The fake client's insert().select().single() returns the seed for show_dates.
-  // The seed `data: []` — but the handler checks `inserted?.id`.
-  // To make the handler believe an insert happened with an id, we need the seed
-  // to return { data: { id: 'new-date-uuid' }, error: null }.
-  const { deps, invokeCalls } = makeFakeDeps({
-    envVars: { AIRTABLE_API_KEY: "key" },
-    tables: {
-      app_settings: [
-        { when: { key: "cron_secret" }, data: { value: "secret123" } },
-        { data: BASE_SETTINGS_DATA },
-      ],
-      shows: {
-        data: [{ id: "show-uuid-1", program: "TestShow", sub_program: null }],
-        error: null,
-      },
-      cities: { data: [], error: null },
-      // show_dates seed: used for BOTH the bulk-load (range()) AND insert().select().single()
-      // The bulk-load uses .then() (returns data as-is), insert uses .single().
-      // For the bulk-load we want an empty array (no existing); for insert we want { id }.
-      // The fake client can't distinguish these — so we override after creation.
-      show_dates: { data: [], error: null },
-      airtable_sync_log: { data: null, error: null },
-    },
-    fetchImpl: () =>
-      Promise.resolve(
-        makeAirtableResponse([
-          makeRecord("recNEW001", { Date: "2026-07-15", Show: "TestShow" }),
-        ]),
-      ) as Promise<Response>,
+  const { deps, invokeCalls } = makeHappyDeps({
+    airtableRecords: [
+      makeRecord("recNEW001", { Date: "2026-07-15", Show: "TestShow" }),
+    ],
   });
 
   // Override show_dates to make insert().select().single() return a new id.
-  // We patch the client so that if the method chain includes 'insert', single()
-  // resolves with an id.
   let insertCalled = false;
   const originalFrom = deps.admin.from.bind(deps.admin);
   (deps.admin as any).from = (table: string) => {
@@ -824,13 +706,15 @@ Deno.test("airtable-poll: new date → invokeFunction('open-offer-tier', { show_
   assertEquals(res.status, 200);
 
   const body = await res.json();
-  // Verify response shape
-  assertExists(body.processed, "response should have 'processed'");
-  assertExists(body.new_dates !== undefined, "response should have 'new_dates'");
-  assertExists(body.tiers_opened !== undefined, "response should have 'tiers_opened'");
-  assertExists(body.skipped !== undefined, "response should have 'skipped'");
+  // Verify totals shape
+  assertEquals(typeof body.orgs_synced, "number");
+  assertEquals(typeof body.processed, "number");
+  assertEquals(typeof body.new_dates, "number");
+  assertEquals(typeof body.tiers_opened, "number");
+  assertEquals(typeof body.skipped, "number");
 
   assertEquals(insertCalled, true, "insert should have been called");
+  assertEquals(body.orgs_synced, 1);
   assertEquals(body.new_dates, 1);
 
   // invokeFunction should have been called with open-offer-tier
@@ -848,26 +732,9 @@ Deno.test("airtable-poll: existing date → update only, NO invokeFunction call"
     makeRecord("recEXISTING", { Date: "2026-07-20", Show: "TestShow" }),
   ];
 
-  const { deps, invokeCalls } = makeFakeDeps({
-    envVars: { AIRTABLE_API_KEY: "key" },
-    tables: {
-      app_settings: [
-        { when: { key: "cron_secret" }, data: { value: "secret123" } },
-        { data: BASE_SETTINGS_DATA },
-      ],
-      shows: {
-        data: [{ id: "show-uuid-1", program: "TestShow", sub_program: null }],
-        error: null,
-      },
-      cities: { data: [], error: null },
-      // show_dates: the existing row is loaded during bulk-load
-      show_dates: {
-        data: [{ id: "existing-uuid-001", airtable_record_id: "recEXISTING" }],
-        error: null,
-      },
-      airtable_sync_log: { data: null, error: null },
-    },
-    fetchImpl: () => Promise.resolve(makeAirtableResponse(records)) as Promise<Response>,
+  const { deps, invokeCalls } = makeHappyDeps({
+    airtableRecords: records,
+    existingShowDates: [{ id: "existing-uuid-001", airtable_record_id: "recEXISTING" }],
   });
 
   const originalFrom = deps.admin.from.bind(deps.admin);
@@ -900,21 +767,22 @@ Deno.test("airtable-poll: existing date → update only, NO invokeFunction call"
   assertExists(updatePayload.session_1 !== undefined, "update payload should have session_1");
 });
 
-// ─── Response shape ───────────────────────────────────────────────────────────
+// ─── Totals shape ─────────────────────────────────────────────────────────────
 
-Deno.test("airtable-poll: response contains all required fields on success (0 records)", async () => {
+Deno.test("airtable-poll: totals contain all required fields on success (0 records)", async () => {
   const { deps } = makeFakeDeps({
-    envVars: { AIRTABLE_API_KEY: "key" },
     tables: {
       app_settings: [
         { when: { key: "cron_secret" }, data: { value: "secret123" } },
-        { data: BASE_SETTINGS_DATA },
+        ...ENABLED_SETTINGS,
       ],
+      organizations: { data: [{ id: ORG }], error: null },
       shows: { data: [], error: null },
       cities: { data: [], error: null },
       show_dates: { data: [], error: null },
       airtable_sync_log: { data: null, error: null },
     },
+    rpcs: { get_org_airtable_key: { data: "key", error: null } },
     fetchImpl: () => Promise.resolve(makeAirtableResponse([])) as Promise<Response>,
   });
 
@@ -922,13 +790,15 @@ Deno.test("airtable-poll: response contains all required fields on success (0 re
   assertEquals(res.status, 200);
   const body = await res.json();
 
-  // All four required fields
+  // All required fields
+  assertEquals(typeof body.orgs_synced, "number");
   assertEquals(typeof body.processed, "number");
   assertEquals(typeof body.new_dates, "number");
   assertEquals(typeof body.tiers_opened, "number");
   assertEquals(typeof body.skipped, "number");
 
-  // Empty run values
+  // One org ran but produced no records
+  assertEquals(body.orgs_synced, 1);
   assertEquals(body.processed, 0);
   assertEquals(body.new_dates, 0);
   assertEquals(body.tiers_opened, 0);
@@ -942,7 +812,7 @@ Deno.test("airtable-poll: one invokeFunction rejection → others still run, sti
    * Seed 3 new records. Override invokeFunction so the second one rejects.
    * Assert: response is 200, tiers_opened = 2 (not 3), processed = 3.
    */
-  const newDates = [
+  const newRecords = [
     makeRecord("recBATCH001", { Date: "2026-08-01", Show: "TestShow" }),
     makeRecord("recBATCH002", { Date: "2026-08-02", Show: "TestShow" }),
     makeRecord("recBATCH003", { Date: "2026-08-03", Show: "TestShow" }),
@@ -956,23 +826,7 @@ Deno.test("airtable-poll: one invokeFunction rejection → others still run, sti
   };
   const insertOrder: string[] = [];
 
-  const { deps, invokeCalls } = makeFakeDeps({
-    envVars: { AIRTABLE_API_KEY: "key" },
-    tables: {
-      app_settings: [
-        { when: { key: "cron_secret" }, data: { value: "secret123" } },
-        { data: BASE_SETTINGS_DATA },
-      ],
-      shows: {
-        data: [{ id: "show-uuid-1", program: "TestShow", sub_program: null }],
-        error: null,
-      },
-      cities: { data: [], error: null },
-      show_dates: { data: [], error: null },
-      airtable_sync_log: { data: null, error: null },
-    },
-    fetchImpl: () => Promise.resolve(makeAirtableResponse(newDates)) as Promise<Response>,
-  });
+  const { deps, invokeCalls } = makeHappyDeps({ airtableRecords: newRecords });
 
   // Patch insert to return distinct UUIDs per airtable_record_id
   const originalFrom = deps.admin.from.bind(deps.admin);
@@ -1033,19 +887,20 @@ Deno.test("airtable-poll: one invokeFunction rejection → others still run, sti
 
 // ─── Airtable API error ───────────────────────────────────────────────────────
 
-Deno.test("airtable-poll: Airtable API error → 502 with new_dates and tiers_opened", async () => {
+Deno.test("airtable-poll: Airtable API error → run still 200, org skipped (orgs_synced 0)", async () => {
   const { deps } = makeFakeDeps({
-    envVars: { AIRTABLE_API_KEY: "key" },
     tables: {
       app_settings: [
         { when: { key: "cron_secret" }, data: { value: "secret123" } },
-        { data: BASE_SETTINGS_DATA },
+        ...ENABLED_SETTINGS,
       ],
+      organizations: { data: [{ id: ORG }], error: null },
       shows: { data: [], error: null },
       cities: { data: [], error: null },
       show_dates: { data: [], error: null },
       airtable_sync_log: { data: null, error: null },
     },
+    rpcs: { get_org_airtable_key: { data: "key", error: null } },
     // Return a non-ok response from Airtable
     fetchImpl: () =>
       Promise.resolve(
@@ -1054,31 +909,31 @@ Deno.test("airtable-poll: Airtable API error → 502 with new_dates and tiers_op
   });
 
   const res = await handle(authReq(), deps);
-  assertEquals(res.status, 502);
+  // syncOrg throws on the Airtable error; handle() logs + continues → still 200.
+  assertEquals(res.status, 200);
   const body = await res.json();
-  assertExists(body.error);
-  // Response includes partial data even on Airtable error
-  assertEquals(typeof body.new_dates, "number");
-  assertEquals(typeof body.tiers_opened, "number");
+  // The one org failed before completing, so it's not counted as synced.
+  assertEquals(body.orgs_synced, 0);
 });
 
 // ─── airtable_sync_log written ────────────────────────────────────────────────
 
-Deno.test("airtable-poll: inserts a success row into airtable_sync_log on clean run", async () => {
+Deno.test("airtable-poll: inserts a success row (with org_id) into airtable_sync_log on clean run", async () => {
   const syncLogInserts: unknown[] = [];
 
   const { deps } = makeFakeDeps({
-    envVars: { AIRTABLE_API_KEY: "key" },
     tables: {
       app_settings: [
         { when: { key: "cron_secret" }, data: { value: "secret123" } },
-        { data: BASE_SETTINGS_DATA },
+        ...ENABLED_SETTINGS,
       ],
+      organizations: { data: [{ id: ORG }], error: null },
       shows: { data: [], error: null },
       cities: { data: [], error: null },
       show_dates: { data: [], error: null },
       airtable_sync_log: { data: null, error: null },
     },
+    rpcs: { get_org_airtable_key: { data: "key", error: null } },
     fetchImpl: () => Promise.resolve(makeAirtableResponse([])) as Promise<Response>,
   });
 
@@ -1097,6 +952,7 @@ Deno.test("airtable-poll: inserts a success row into airtable_sync_log on clean 
 
   assertEquals(syncLogInserts.length, 1, "airtable_sync_log should be written exactly once");
   const logRow = syncLogInserts[0] as Record<string, unknown>;
+  assertEquals(logRow.org_id, ORG);
   assertEquals(logRow.sync_type, "airtable_poll");
   assertEquals(logRow.status, "success");
   assertEquals(logRow.records_processed, 0);
@@ -1105,21 +961,22 @@ Deno.test("airtable-poll: inserts a success row into airtable_sync_log on clean 
   assertEquals(typeof logRow.synced_at, "string");
 });
 
-Deno.test("airtable-poll: inserts an error row into airtable_sync_log on Airtable API error", async () => {
+Deno.test("airtable-poll: inserts an error row (with org_id) into airtable_sync_log on Airtable API error", async () => {
   const syncLogInserts: unknown[] = [];
 
   const { deps } = makeFakeDeps({
-    envVars: { AIRTABLE_API_KEY: "key" },
     tables: {
       app_settings: [
         { when: { key: "cron_secret" }, data: { value: "secret123" } },
-        { data: BASE_SETTINGS_DATA },
+        ...ENABLED_SETTINGS,
       ],
+      organizations: { data: [{ id: ORG }], error: null },
       shows: { data: [], error: null },
       cities: { data: [], error: null },
       show_dates: { data: [], error: null },
       airtable_sync_log: { data: null, error: null },
     },
+    rpcs: { get_org_airtable_key: { data: "key", error: null } },
     fetchImpl: () =>
       Promise.resolve(new Response("Forbidden", { status: 403 })) as Promise<Response>,
   });
@@ -1135,10 +992,12 @@ Deno.test("airtable-poll: inserts an error row into airtable_sync_log on Airtabl
   };
 
   const res = await handle(authReq(), deps);
-  assertEquals(res.status, 502);
+  // run continues past the failed org
+  assertEquals(res.status, 200);
 
   assertEquals(syncLogInserts.length, 1);
   const logRow = syncLogInserts[0] as Record<string, unknown>;
+  assertEquals(logRow.org_id, ORG);
   assertEquals(logRow.sync_type, "airtable_poll");
   assertEquals(logRow.status, "error");
   assertExists(logRow.error_details);
@@ -1149,18 +1008,19 @@ Deno.test("airtable-poll: synced_at uses deps.now() (fixed to 2026-06-01T12:00:0
   const fixedNow = new Date("2026-06-01T12:00:00.000Z");
 
   const { deps } = makeFakeDeps({
-    envVars: { AIRTABLE_API_KEY: "key" },
     now: fixedNow,
     tables: {
       app_settings: [
         { when: { key: "cron_secret" }, data: { value: "secret123" } },
-        { data: BASE_SETTINGS_DATA },
+        ...ENABLED_SETTINGS,
       ],
+      organizations: { data: [{ id: ORG }], error: null },
       shows: { data: [], error: null },
       cities: { data: [], error: null },
       show_dates: { data: [], error: null },
       airtable_sync_log: { data: null, error: null },
     },
+    rpcs: { get_org_airtable_key: { data: "key", error: null } },
     fetchImpl: () => Promise.resolve(makeAirtableResponse([])) as Promise<Response>,
   });
 

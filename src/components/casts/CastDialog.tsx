@@ -12,7 +12,7 @@ import { useToast } from '@/hooks/use-toast';
 import { Plus } from 'lucide-react';
 
 export function CastDialog() {
-  const { user, roles } = useAuth();
+  const { user, roles, currentOrg } = useAuth();
   const { isEditorMode } = useEditorConfig();
   const isRealAdmin = roles.includes('admin');
   const { toast } = useToast();
@@ -23,10 +23,12 @@ export function CastDialog() {
 
   const create = useMutation({
     mutationFn: async () => {
+      if (!currentOrg) throw new Error('No active organization');
       const { error } = await supabase.from('casts').insert({
         name,
         description: description || null,
         created_by: user?.id ?? null,
+        org_id: currentOrg.id,
       });
       if (error) throw error;
     },
@@ -60,7 +62,7 @@ export function CastDialog() {
         >
           <Input placeholder="Cast name (e.g. Berlin A-Team)" value={name} onChange={e => setName(e.target.value)} required />
           <Textarea placeholder="Description (optional)" value={description} onChange={e => setDescription(e.target.value)} />
-          <Button type="submit" className="w-full" disabled={create.isPending || !name.trim()}>
+          <Button type="submit" className="w-full" disabled={create.isPending || !name.trim() || !currentOrg}>
             {create.isPending ? 'Creating…' : 'Create'}
           </Button>
         </form>

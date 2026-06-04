@@ -23,21 +23,21 @@ VALUES (
   'sub_program_slots_defaults',
   '{"theatre":{"musical":{"main_cast":2,"understudies":1}}}'::jsonb
 )
-ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value;
+ON CONFLICT (org_id, key) DO UPDATE SET value = EXCLUDED.value;
 
-INSERT INTO public.artists (id, name) VALUES
-  ('bbbbbbbb-ac00-0001-0000-000000000000', 'AC Artist 1'),
-  ('bbbbbbbb-ac00-0002-0000-000000000000', 'AC Artist 2'),
-  ('bbbbbbbb-ac00-0003-0000-000000000000', 'AC Artist 3'),
-  ('bbbbbbbb-ac00-0004-0000-000000000000', 'AC Artist 4'),
-  ('bbbbbbbb-ac00-0005-0000-000000000000', 'AC Artist 5'),
-  ('bbbbbbbb-ac00-0006-0000-000000000000', 'AC Artist 6');
+INSERT INTO public.artists (id, name, org_id) VALUES
+  ('bbbbbbbb-ac00-0001-0000-000000000000', 'AC Artist 1', '00000000-0000-0000-0000-00000000b007'),
+  ('bbbbbbbb-ac00-0002-0000-000000000000', 'AC Artist 2', '00000000-0000-0000-0000-00000000b007'),
+  ('bbbbbbbb-ac00-0003-0000-000000000000', 'AC Artist 3', '00000000-0000-0000-0000-00000000b007'),
+  ('bbbbbbbb-ac00-0004-0000-000000000000', 'AC Artist 4', '00000000-0000-0000-0000-00000000b007'),
+  ('bbbbbbbb-ac00-0005-0000-000000000000', 'AC Artist 5', '00000000-0000-0000-0000-00000000b007'),
+  ('bbbbbbbb-ac00-0006-0000-000000000000', 'AC Artist 6', '00000000-0000-0000-0000-00000000b007');
 
-INSERT INTO public.shows (id, program, sub_program)
-VALUES ('cccccccc-ac00-0001-0000-000000000000', 'theatre', 'musical');
+INSERT INTO public.shows (id, program, sub_program, org_id)
+VALUES ('cccccccc-ac00-0001-0000-000000000000', 'theatre', 'musical', '00000000-0000-0000-0000-00000000b007');
 
-INSERT INTO public.show_dates (id, show_id, date, session_1)
-VALUES ('dddddddd-ac00-0001-0000-000000000000', 'cccccccc-ac00-0001-0000-000000000000', '2099-06-01', '19:00'::time);
+INSERT INTO public.show_dates (id, show_id, date, session_1, org_id)
+VALUES ('dddddddd-ac00-0001-0000-000000000000', 'cccccccc-ac00-0001-0000-000000000000', '2099-06-01', '19:00'::time, '00000000-0000-0000-0000-00000000b007');
 
 -- ────────────────────────────────────────────────────────────────────────────
 -- Test 1: When main slot fills, remaining suggested bookings are cancelled
@@ -45,10 +45,10 @@ VALUES ('dddddddd-ac00-0001-0000-000000000000', 'cccccccc-ac00-0001-0000-0000000
 -- ────────────────────────────────────────────────────────────────────────────
 -- Start: 3 suggested main-cast bookings (capacity = 2).
 -- Confirm artist 1 → triggers; confirm artist 2 → fills slot → cancels artist 3.
-INSERT INTO public.bookings (id, show_date_id, artist_id, status, is_understudy) VALUES
-  ('eeeeeeee-ac00-0001-0000-000000000000', 'dddddddd-ac00-0001-0000-000000000000', 'bbbbbbbb-ac00-0001-0000-000000000000', 'suggested', false),
-  ('eeeeeeee-ac00-0002-0000-000000000000', 'dddddddd-ac00-0001-0000-000000000000', 'bbbbbbbb-ac00-0002-0000-000000000000', 'suggested', false),
-  ('eeeeeeee-ac00-0003-0000-000000000000', 'dddddddd-ac00-0001-0000-000000000000', 'bbbbbbbb-ac00-0003-0000-000000000000', 'suggested', false);
+INSERT INTO public.bookings (id, show_date_id, artist_id, status, is_understudy, org_id) VALUES
+  ('eeeeeeee-ac00-0001-0000-000000000000', 'dddddddd-ac00-0001-0000-000000000000', 'bbbbbbbb-ac00-0001-0000-000000000000', 'suggested', false, '00000000-0000-0000-0000-00000000b007'),
+  ('eeeeeeee-ac00-0002-0000-000000000000', 'dddddddd-ac00-0001-0000-000000000000', 'bbbbbbbb-ac00-0002-0000-000000000000', 'suggested', false, '00000000-0000-0000-0000-00000000b007'),
+  ('eeeeeeee-ac00-0003-0000-000000000000', 'dddddddd-ac00-0001-0000-000000000000', 'bbbbbbbb-ac00-0003-0000-000000000000', 'suggested', false, '00000000-0000-0000-0000-00000000b007');
 
 -- Confirm first artist (slot not yet full, no auto-cancel)
 UPDATE public.bookings SET status = 'confirmed' WHERE id = 'eeeeeeee-ac00-0001-0000-000000000000';
@@ -74,14 +74,14 @@ SELECT isnt(
 -- Test 3: Higher offer_tier bookings get reason 'tier_superseded'
 -- ────────────────────────────────────────────────────────────────────────────
 -- Use a fresh show_date for isolation.
-INSERT INTO public.show_dates (id, show_id, date, session_1)
-VALUES ('dddddddd-ac00-0002-0000-000000000000', 'cccccccc-ac00-0001-0000-000000000000', '2099-06-02', '19:00'::time);
+INSERT INTO public.show_dates (id, show_id, date, session_1, org_id)
+VALUES ('dddddddd-ac00-0002-0000-000000000000', 'cccccccc-ac00-0001-0000-000000000000', '2099-06-02', '19:00'::time, '00000000-0000-0000-0000-00000000b007');
 
 -- tier 1 bookings get confirmed (fill slot), tier 2 booking should be 'tier_superseded'
-INSERT INTO public.bookings (id, show_date_id, artist_id, status, is_understudy, offer_tier) VALUES
-  ('eeeeeeee-ac00-0004-0000-000000000000', 'dddddddd-ac00-0002-0000-000000000000', 'bbbbbbbb-ac00-0001-0000-000000000000', 'suggested', false, 1),
-  ('eeeeeeee-ac00-0005-0000-000000000000', 'dddddddd-ac00-0002-0000-000000000000', 'bbbbbbbb-ac00-0002-0000-000000000000', 'suggested', false, 1),
-  ('eeeeeeee-ac00-0006-0000-000000000000', 'dddddddd-ac00-0002-0000-000000000000', 'bbbbbbbb-ac00-0003-0000-000000000000', 'suggested', false, 2);
+INSERT INTO public.bookings (id, show_date_id, artist_id, status, is_understudy, offer_tier, org_id) VALUES
+  ('eeeeeeee-ac00-0004-0000-000000000000', 'dddddddd-ac00-0002-0000-000000000000', 'bbbbbbbb-ac00-0001-0000-000000000000', 'suggested', false, 1, '00000000-0000-0000-0000-00000000b007'),
+  ('eeeeeeee-ac00-0005-0000-000000000000', 'dddddddd-ac00-0002-0000-000000000000', 'bbbbbbbb-ac00-0002-0000-000000000000', 'suggested', false, 1, '00000000-0000-0000-0000-00000000b007'),
+  ('eeeeeeee-ac00-0006-0000-000000000000', 'dddddddd-ac00-0002-0000-000000000000', 'bbbbbbbb-ac00-0003-0000-000000000000', 'suggested', false, 2, '00000000-0000-0000-0000-00000000b007');
 
 UPDATE public.bookings SET status = 'confirmed' WHERE id = 'eeeeeeee-ac00-0004-0000-000000000000';
 UPDATE public.bookings SET status = 'confirmed' WHERE id = 'eeeeeeee-ac00-0005-0000-000000000000';
@@ -106,13 +106,13 @@ SELECT is(
 -- ────────────────────────────────────────────────────────────────────────────
 -- Test 5: Main-cast fill does NOT cancel understudy bookings
 -- ────────────────────────────────────────────────────────────────────────────
-INSERT INTO public.show_dates (id, show_id, date, session_1)
-VALUES ('dddddddd-ac00-0003-0000-000000000000', 'cccccccc-ac00-0001-0000-000000000000', '2099-06-03', '19:00'::time);
+INSERT INTO public.show_dates (id, show_id, date, session_1, org_id)
+VALUES ('dddddddd-ac00-0003-0000-000000000000', 'cccccccc-ac00-0001-0000-000000000000', '2099-06-03', '19:00'::time, '00000000-0000-0000-0000-00000000b007');
 
-INSERT INTO public.bookings (id, show_date_id, artist_id, status, is_understudy) VALUES
-  ('eeeeeeee-ac00-0007-0000-000000000000', 'dddddddd-ac00-0003-0000-000000000000', 'bbbbbbbb-ac00-0001-0000-000000000000', 'suggested', false),
-  ('eeeeeeee-ac00-0008-0000-000000000000', 'dddddddd-ac00-0003-0000-000000000000', 'bbbbbbbb-ac00-0002-0000-000000000000', 'suggested', false),
-  ('eeeeeeee-ac00-0009-0000-000000000000', 'dddddddd-ac00-0003-0000-000000000000', 'bbbbbbbb-ac00-0004-0000-000000000000', 'suggested', true);
+INSERT INTO public.bookings (id, show_date_id, artist_id, status, is_understudy, org_id) VALUES
+  ('eeeeeeee-ac00-0007-0000-000000000000', 'dddddddd-ac00-0003-0000-000000000000', 'bbbbbbbb-ac00-0001-0000-000000000000', 'suggested', false, '00000000-0000-0000-0000-00000000b007'),
+  ('eeeeeeee-ac00-0008-0000-000000000000', 'dddddddd-ac00-0003-0000-000000000000', 'bbbbbbbb-ac00-0002-0000-000000000000', 'suggested', false, '00000000-0000-0000-0000-00000000b007'),
+  ('eeeeeeee-ac00-0009-0000-000000000000', 'dddddddd-ac00-0003-0000-000000000000', 'bbbbbbbb-ac00-0004-0000-000000000000', 'suggested', true, '00000000-0000-0000-0000-00000000b007');
 
 UPDATE public.bookings SET status = 'confirmed' WHERE id = 'eeeeeeee-ac00-0007-0000-000000000000';
 UPDATE public.bookings SET status = 'confirmed' WHERE id = 'eeeeeeee-ac00-0008-0000-000000000000';
@@ -126,13 +126,13 @@ SELECT is(
 -- ────────────────────────────────────────────────────────────────────────────
 -- Test 6: Understudy fill does NOT cancel main-cast bookings
 -- ────────────────────────────────────────────────────────────────────────────
-INSERT INTO public.show_dates (id, show_id, date, session_1)
-VALUES ('dddddddd-ac00-0004-0000-000000000000', 'cccccccc-ac00-0001-0000-000000000000', '2099-06-04', '19:00'::time);
+INSERT INTO public.show_dates (id, show_id, date, session_1, org_id)
+VALUES ('dddddddd-ac00-0004-0000-000000000000', 'cccccccc-ac00-0001-0000-000000000000', '2099-06-04', '19:00'::time, '00000000-0000-0000-0000-00000000b007');
 
-INSERT INTO public.bookings (id, show_date_id, artist_id, status, is_understudy) VALUES
-  ('eeeeeeee-ac00-0010-0000-000000000000', 'dddddddd-ac00-0004-0000-000000000000', 'bbbbbbbb-ac00-0001-0000-000000000000', 'suggested', false),
-  ('eeeeeeee-ac00-0011-0000-000000000000', 'dddddddd-ac00-0004-0000-000000000000', 'bbbbbbbb-ac00-0004-0000-000000000000', 'suggested', true),
-  ('eeeeeeee-ac00-0012-0000-000000000000', 'dddddddd-ac00-0004-0000-000000000000', 'bbbbbbbb-ac00-0005-0000-000000000000', 'suggested', true);
+INSERT INTO public.bookings (id, show_date_id, artist_id, status, is_understudy, org_id) VALUES
+  ('eeeeeeee-ac00-0010-0000-000000000000', 'dddddddd-ac00-0004-0000-000000000000', 'bbbbbbbb-ac00-0001-0000-000000000000', 'suggested', false, '00000000-0000-0000-0000-00000000b007'),
+  ('eeeeeeee-ac00-0011-0000-000000000000', 'dddddddd-ac00-0004-0000-000000000000', 'bbbbbbbb-ac00-0004-0000-000000000000', 'suggested', true, '00000000-0000-0000-0000-00000000b007'),
+  ('eeeeeeee-ac00-0012-0000-000000000000', 'dddddddd-ac00-0004-0000-000000000000', 'bbbbbbbb-ac00-0005-0000-000000000000', 'suggested', true, '00000000-0000-0000-0000-00000000b007');
 
 -- Confirm understudy (fills 1 of 1 understudy slots)
 UPDATE public.bookings SET status = 'confirmed' WHERE id = 'eeeeeeee-ac00-0011-0000-000000000000';
@@ -159,13 +159,13 @@ SELECT is(
 -- Test 8: Trigger does NOT fire on INSERT (only on UPDATE)
 -- ────────────────────────────────────────────────────────────────────────────
 -- Insert a booking directly as 'confirmed' — should not cancel other bookings.
-INSERT INTO public.show_dates (id, show_id, date, session_1)
-VALUES ('dddddddd-ac00-0005-0000-000000000000', 'cccccccc-ac00-0001-0000-000000000000', '2099-06-05', '19:00'::time);
+INSERT INTO public.show_dates (id, show_id, date, session_1, org_id)
+VALUES ('dddddddd-ac00-0005-0000-000000000000', 'cccccccc-ac00-0001-0000-000000000000', '2099-06-05', '19:00'::time, '00000000-0000-0000-0000-00000000b007');
 
-INSERT INTO public.bookings (id, show_date_id, artist_id, status, is_understudy) VALUES
-  ('eeeeeeee-ac00-0013-0000-000000000000', 'dddddddd-ac00-0005-0000-000000000000', 'bbbbbbbb-ac00-0001-0000-000000000000', 'suggested', false),
-  ('eeeeeeee-ac00-0014-0000-000000000000', 'dddddddd-ac00-0005-0000-000000000000', 'bbbbbbbb-ac00-0002-0000-000000000000', 'suggested', false),
-  ('eeeeeeee-ac00-0015-0000-000000000000', 'dddddddd-ac00-0005-0000-000000000000', 'bbbbbbbb-ac00-0003-0000-000000000000', 'confirmed', false);
+INSERT INTO public.bookings (id, show_date_id, artist_id, status, is_understudy, org_id) VALUES
+  ('eeeeeeee-ac00-0013-0000-000000000000', 'dddddddd-ac00-0005-0000-000000000000', 'bbbbbbbb-ac00-0001-0000-000000000000', 'suggested', false, '00000000-0000-0000-0000-00000000b007'),
+  ('eeeeeeee-ac00-0014-0000-000000000000', 'dddddddd-ac00-0005-0000-000000000000', 'bbbbbbbb-ac00-0002-0000-000000000000', 'suggested', false, '00000000-0000-0000-0000-00000000b007'),
+  ('eeeeeeee-ac00-0015-0000-000000000000', 'dddddddd-ac00-0005-0000-000000000000', 'bbbbbbbb-ac00-0003-0000-000000000000', 'confirmed', false, '00000000-0000-0000-0000-00000000b007');
 
 SELECT is(
   (SELECT status::text FROM public.bookings WHERE id = 'eeeeeeee-ac00-0013-0000-000000000000'),
@@ -176,13 +176,13 @@ SELECT is(
 -- ────────────────────────────────────────────────────────────────────────────
 -- Test 9: When slot is not yet full, no cancellation happens
 -- ────────────────────────────────────────────────────────────────────────────
-INSERT INTO public.show_dates (id, show_id, date, session_1)
-VALUES ('dddddddd-ac00-0006-0000-000000000000', 'cccccccc-ac00-0001-0000-000000000000', '2099-06-06', '19:00'::time);
+INSERT INTO public.show_dates (id, show_id, date, session_1, org_id)
+VALUES ('dddddddd-ac00-0006-0000-000000000000', 'cccccccc-ac00-0001-0000-000000000000', '2099-06-06', '19:00'::time, '00000000-0000-0000-0000-00000000b007');
 
-INSERT INTO public.bookings (id, show_date_id, artist_id, status, is_understudy) VALUES
-  ('eeeeeeee-ac00-0016-0000-000000000000', 'dddddddd-ac00-0006-0000-000000000000', 'bbbbbbbb-ac00-0001-0000-000000000000', 'suggested', false),
-  ('eeeeeeee-ac00-0017-0000-000000000000', 'dddddddd-ac00-0006-0000-000000000000', 'bbbbbbbb-ac00-0002-0000-000000000000', 'suggested', false),
-  ('eeeeeeee-ac00-0018-0000-000000000000', 'dddddddd-ac00-0006-0000-000000000000', 'bbbbbbbb-ac00-0003-0000-000000000000', 'suggested', false);
+INSERT INTO public.bookings (id, show_date_id, artist_id, status, is_understudy, org_id) VALUES
+  ('eeeeeeee-ac00-0016-0000-000000000000', 'dddddddd-ac00-0006-0000-000000000000', 'bbbbbbbb-ac00-0001-0000-000000000000', 'suggested', false, '00000000-0000-0000-0000-00000000b007'),
+  ('eeeeeeee-ac00-0017-0000-000000000000', 'dddddddd-ac00-0006-0000-000000000000', 'bbbbbbbb-ac00-0002-0000-000000000000', 'suggested', false, '00000000-0000-0000-0000-00000000b007'),
+  ('eeeeeeee-ac00-0018-0000-000000000000', 'dddddddd-ac00-0006-0000-000000000000', 'bbbbbbbb-ac00-0003-0000-000000000000', 'suggested', false, '00000000-0000-0000-0000-00000000b007');
 
 -- Only confirm ONE artist (need 2 for main_cast), slot not full
 UPDATE public.bookings SET status = 'confirmed' WHERE id = 'eeeeeeee-ac00-0016-0000-000000000000';
@@ -201,13 +201,13 @@ SELECT is(
 -- ────────────────────────────────────────────────────────────────────────────
 -- Use the date from test 1 where 2 are confirmed and 1 is already cancelled.
 -- A no-op update on an already-confirmed booking should not alter others.
-INSERT INTO public.show_dates (id, show_id, date, session_1)
-VALUES ('dddddddd-ac00-0007-0000-000000000000', 'cccccccc-ac00-0001-0000-000000000000', '2099-06-07', '19:00'::time);
+INSERT INTO public.show_dates (id, show_id, date, session_1, org_id)
+VALUES ('dddddddd-ac00-0007-0000-000000000000', 'cccccccc-ac00-0001-0000-000000000000', '2099-06-07', '19:00'::time, '00000000-0000-0000-0000-00000000b007');
 
-INSERT INTO public.bookings (id, show_date_id, artist_id, status, is_understudy) VALUES
-  ('eeeeeeee-ac00-0019-0000-000000000000', 'dddddddd-ac00-0007-0000-000000000000', 'bbbbbbbb-ac00-0001-0000-000000000000', 'confirmed', false),
-  ('eeeeeeee-ac00-0020-0000-000000000000', 'dddddddd-ac00-0007-0000-000000000000', 'bbbbbbbb-ac00-0002-0000-000000000000', 'confirmed', false),
-  ('eeeeeeee-ac00-0021-0000-000000000000', 'dddddddd-ac00-0007-0000-000000000000', 'bbbbbbbb-ac00-0003-0000-000000000000', 'suggested', false);
+INSERT INTO public.bookings (id, show_date_id, artist_id, status, is_understudy, org_id) VALUES
+  ('eeeeeeee-ac00-0019-0000-000000000000', 'dddddddd-ac00-0007-0000-000000000000', 'bbbbbbbb-ac00-0001-0000-000000000000', 'confirmed', false, '00000000-0000-0000-0000-00000000b007'),
+  ('eeeeeeee-ac00-0020-0000-000000000000', 'dddddddd-ac00-0007-0000-000000000000', 'bbbbbbbb-ac00-0002-0000-000000000000', 'confirmed', false, '00000000-0000-0000-0000-00000000b007'),
+  ('eeeeeeee-ac00-0021-0000-000000000000', 'dddddddd-ac00-0007-0000-000000000000', 'bbbbbbbb-ac00-0003-0000-000000000000', 'suggested', false, '00000000-0000-0000-0000-00000000b007');
 
 -- Re-confirm an already-confirmed booking — trigger guard: OLD.status = 'confirmed' → RETURN NULL
 UPDATE public.bookings SET notes = 'idempotency check' WHERE id = 'eeeeeeee-ac00-0019-0000-000000000000';

@@ -13,7 +13,7 @@ interface ProtectedRouteProps {
 }
 
 export function ProtectedRoute({ children, requiredRoles }: ProtectedRouteProps) {
-  const { user, loading, roles, currentOrg } = useAuth();
+  const { user, loading, roles, currentOrg, isSuperAdmin } = useAuth();
   const { isEditorMode, pageAccess } = useEditorConfig();
   const location = useLocation();
 
@@ -29,17 +29,24 @@ export function ProtectedRoute({ children, requiredRoles }: ProtectedRouteProps)
     return <Navigate to={ROUTES.LOGIN} replace />;
   }
 
-  // Invite-only: access is org membership. No active org → ask for an invite.
+  // Invite-only: access is org membership. No active org → ask for an invite
+  // (super-admins go to the console instead of being trapped).
   if (!currentOrg) {
-    return <NoOrgScreen />;
+    return isSuperAdmin ? <Navigate to={ROUTES.PLATFORM} replace /> : <NoOrgScreen />;
   }
-  if (currentOrg.status === 'suspended') {
+  // Super-admins may enter a suspended org (god-mode); members cannot.
+  if (currentOrg.status === 'suspended' && !isSuperAdmin) {
     return <SuspendedOrgScreen />;
   }
 
   // Admins in editor mode bypass all route role gates — they can navigate anywhere.
   const isRealAdmin = roles.includes('admin');
   if (isEditorMode && isRealAdmin) {
+    return <>{children}</>;
+  }
+
+  // Platform admins (god-mode) bypass org role gates, like editor-mode admins.
+  if (isSuperAdmin) {
     return <>{children}</>;
   }
 
@@ -54,5 +61,20 @@ export function ProtectedRoute({ children, requiredRoles }: ProtectedRouteProps)
     }
   }
 
+  return <>{children}</>;
+}
+
+/** Gate for the /platform console: platform admins only, no org gating. */
+export function PlatformRoute({ children }: { children: React.ReactNode }) {
+  const { user, loading, isSuperAdmin } = useAuth();
+  if (loading) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-background">
+        <div className="animate-spin h-8 w-8 border-4 border-primary border-t-transparent rounded-full" />
+      </div>
+    );
+  }
+  if (!user) return <Navigate to={ROUTES.LOGIN} replace />;
+  if (!isSuperAdmin) return <Navigate to={ROUTES.DASHBOARD} replace />;
   return <>{children}</>;
 }

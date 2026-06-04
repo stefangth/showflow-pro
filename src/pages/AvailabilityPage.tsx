@@ -16,6 +16,7 @@ import { TimeframeFilter, type TimeframeValue } from '@/components/filters/Timef
 import { SortControl, type SortValue } from '@/components/filters/SortControl';
 import { ViewToggle, type ViewMode } from '@/components/filters/ViewToggle';
 import { applySort, inTimeframe } from '@/components/filters/filterUtils';
+import { useAuth } from '@/features/auth/AuthContext';
 import { useArtistEligibleDates } from '@/hooks/useArtistEligibleDates';
 import { useMyArtist } from '@/hooks/useMyArtist';
 import { ArtistAvailabilityCalendar } from '@/components/availability/ArtistAvailabilityCalendar';
@@ -50,6 +51,7 @@ export default function AvailabilityPage() {
  * Artist view — eligibility-scoped list + calendar + blocked dates
  * ============================================================ */
 function ArtistAvailability() {
+  const { currentOrg } = useAuth();
   const { data: artist } = useMyArtist();
   const { data: eligibleDates, isLoading } = useArtistEligibleDates();
   const { orderedColumns, visibleCount } = useColumnTemplate('availability');
@@ -126,10 +128,12 @@ function ArtistAvailability() {
 
   const addBlock = useMutation({
     mutationFn: async () => {
+      if (!currentOrg) throw new Error('No active organization');
       const { error } = await supabase.from('blocked_dates').insert({
         artist_id: artist!.id,
         date: newBlockDate,
         reason: newBlockReason || null,
+        org_id: currentOrg.id,
       });
       if (error) throw error;
     },

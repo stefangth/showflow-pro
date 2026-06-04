@@ -173,16 +173,20 @@ A new org inherits sensible defaults with zero config and overrides only what it
 |---|---|
 | `send-offer-digest`, `send-confirmation-digest` | Group by `(org, artist)`; gate each org by its own digest hour; render with that org's email overrides. |
 | `expire-offers`, `tier-at-risk-watcher` | Iterate orgs; read each org's `sub_program_slots_defaults`; per-`show_date`/tier logic already org-scoped via `org_id`. |
-| `airtable-poll` | Iterate only orgs with `airtable_sync_enabled`; use each org's base/table; stamp inserted `show_dates` with that `org_id`. |
-| `open-offer-tier` | Derive `org_id` from the `show_date`; thread into created bookings + tiers. |
-| `admin-set-role` | Becomes "set role within an org" → writes `org_memberships`, guarded by `has_org_role(caller, org, 'admin')`. |
-| `admin-list-users` | Scoped to the caller's org. |
+| `airtable-poll` | Iterate only orgs with `airtable_sync_enabled`; use each org's base/table **and per-org API key (stored in Supabase Vault, not member-readable `app_settings`); skip orgs with no key**; stamp inserted `show_dates` with that `org_id`. |
+| `open-offer-tier` | Derive `org_id` from the `show_date`; created bookings + tiers get it from the §7.4 triggers (the function need not thread it manually). |
+| `admin-set-role` | Becomes "set role within an org" → writes `org_memberships`, guarded by `has_org_role(caller, org, 'admin')`. **(Already shipped during the `user_roles` retirement.)** |
+| `admin-list-users` | Scoped to the caller's org. **(Already shipped during the `user_roles` retirement.)** |
 | `admin-decide-approval` | Retired → replaced by `accept_invitation`. `notify-signup` → "invite accepted" notice to that org's admins. |
 | `send-transactional-email`, suppression/unsubscribe | Mostly unchanged (person-level); template overrides resolved per-org. |
 
-Booking-engine triggers (`compute_show_date_status`, `resolve_show_assignments`, `auto_cancel_on_slot_fill`, `promote_understudy_on_cancellation`, `notify_booking_transition`) operate on rows that now carry `org_id`; the only edits are reading the right org's slot defaults and keeping notifications inside the org. `cron_secret` stays platform-level.
+Booking-engine triggers (`compute_show_date_status`, `resolve_show_assignments`, `auto_cancel_on_slot_fill`, `promote_understudy_on_cancellation`, `notify_booking_transition`) operate on rows that now carry `org_id`; the only edits are reading the right org's slot defaults and keeping notifications inside the org. `cron_secret` stays platform-level (Phase 3 hardens its reads to the `org_id IS NULL` row so a stray per-org override can never shadow it).
 
 **Service-role functions bypass RLS, so each re-verifies the caller's org membership + role server-side before acting** — the existing `admin-decide-approval` pattern, now org-aware. (DI: `handle(req, deps)` + `makeFakeDeps` keeps all of this unit-testable.)
+
+### 7.4 `org_id` stamping — derive-from-parent triggers (Phase 3)
+
+Tenant **child** rows acquire `org_id` from a `BEFORE INSERT` trigger that copies it from the row's FK parent (`show_dates`←`shows`; `bookings`/`show_date_offer_tiers`/`show_date_cast_eligibility`/`chats`←`show_dates`; `chat_messages`←`chats`; `cast_members`/`cast_city_priority`←`casts`; `artist_skills`/`blocked_dates`←`artists`; `show_cast_eligibility`←`shows`). The few rows with no single FK parent (`notifications`, `airtable_sync_log`) are stamped explicitly by their writer. Phase 3 then **drops the bootstrap-org column DEFAULT** from every tenant table — Phase 0 added it so the single-org app kept working, but it must be gone before real orgs exist (else stray writes silently land in the bootstrap org). Net effect: `org_id` is correct **by construction** on every write path — client *and* edge — with no per-call code, and a row landing in the wrong org becomes structurally impossible. Backed by the §12 pgTAP parent↔child consistency check. A per-org **settings resolver** for edge functions (`_shared/settings.ts`, mirroring `src/data/settings.ts` + the SQL `get_org_setting`) supplies each org's effective config to the cron loops.
 
 ---
 
@@ -195,6 +199,17 @@ Booking-engine triggers (`compute_show_date_status`, `resolve_show_assignments`,
 - **Metrics** — one super-admin-only SQL view/RPC `platform_org_stats` aggregating per-org members, active artists, bookings-30d, last activity. The only cross-tenant read path, callable only by super-admin.
 
 The org-scoped app gains just the **sidebar org switcher**; everything else renders scoped to the active org.
+
+### 8.1 Phase-4 implementation decisions (locked 2026-06-04)
+
+The console is a **self-service platform-admin surface**, not view-only. These refinements extend and lock §8:
+
+- **`provision_org(p_name, p_slug, p_admin_email, p_role default 'admin')`** — `SECURITY DEFINER`, `is_super_admin`-guarded; runs insert-org → `seed_org_starter_catalog(org)` → insert first-admin `org_invitations` in **one transaction** and returns `(org_id, token)`. Wrapped by a `provision-org` **edge function** (DI + a new `requireSuperAdmin`) that, after the RPC, **bootstraps the invitee's auth account** via the Supabase admin API (`inviteUserByEmail`/`createUser`) so a brand-new org's first admin can actually log in and accept, then sends the `org-invitation` email. This closes the invite-only gap where a net-new first admin has no account to authenticate with.
+- **`platform_org_stats()`** — `SECURITY DEFINER`, `is_super_admin`-guarded; one row per org: `member_count` (distinct `org_memberships.user_id`), `active_artist_count` (`artists.status = 'active'`), `bookings_30d` (`bookings.created_at >= now() - 30d`), `last_activity_at` (`greatest()` of latest booking / show_date / chat_message). The only cross-tenant read path.
+- **God-mode = all-orgs switcher** (owner choice): for super-admins `AuthContext.orgs` = **all** `organizations`; `switchOrg`/`currentOrg` then work unchanged. `AuthContext` gains `isSuperAdmin`, and **`hasRole()` short-circuits to `true` for super-admins** (mirrors the server RLS short-circuit) so the full org UI renders inside any entered org. A super-admin with no memberships still reaches `/platform`, and the **suspended-org gate exempts super-admins** so they can Enter a suspended org.
+- **Self-service surfaces in the console** (all chosen): **edit org** (name/slug via the `organizations` RLS write policy); **manage platform admins** (`add_platform_admin(email)` / `remove_platform_admin(uid)` `SECURITY DEFINER` RPCs, `is_super_admin`-guarded, with a **last-admin guard** + self-demote guard; email→uid resolved server-side from `auth.users`); **platform-defaults + starter-catalog editor** (upsert `app_settings` rows where `org_id IS NULL`, incl. `starter_catalog_template` — permitted because the asymmetric app_settings write CHECK resolves via `is_org_member`, which short-circuits on `is_super_admin`); **first-admin invite lifecycle** (status + resend + revoke per org row, reusing `org_invitations` + the invitation data layer).
+- **Route/UI:** `ROUTES.PLATFORM = '/platform'`; a super-admin route gate (no No-Org/Suspended trap); a super-admin-only sidebar nav item; `src/pages/PlatformPage.tsx` (Organizations / Platform Admins / Platform Defaults sections) + `src/components/platform/*`; data-access in `src/data/platform.ts`.
+- **Folded-in cleanups:** per-org **catalog read query-key scoping** (`['skills' | 'cities' | 'casts' | 'cast-city-priority' | 'shows-program-sub-programs', orgId]`); and **dev→main promotion** as Phase 4's fenced closing step (its own PR — main's Supabase branch was `MIGRATIONS_FAILED`, so it may need the manual production DB-reset workflow first).
 
 ---
 
@@ -226,7 +241,7 @@ The pgTAP isolation + coverage tests are **written before the migration** (they 
 
 ---
 
-## 11. Phasing — five phases, each ends green
+## 11. Phasing — six phases, each ends green
 
 A single **bootstrap org** keeps the existing UI working through every phase, so the app never breaks mid-flight.
 
@@ -235,8 +250,9 @@ A single **bootstrap org** keeps the existing UI working through every phase, so
 | **0 · Foundation** | Platform tables · `org_id`+FK everywhere · 3 helpers · uniform RLS · bootstrap org | Isolation suite ★ + coverage test; app still builds (defaults to bootstrap org) |
 | **1 · Auth + switcher** | AuthContext org context · ProtectedRoute · org switcher · invite→accept · empty states | Vitest (auth) + e2e (invite, switch); isolation still green |
 | **2 · Catalogs** | Starter-template seeding · per-org settings resolver · per-org editor config | Vitest (resolver) + pgTAP (per-org settings) |
-| **3 · Backend** | Cron loops over orgs · per-(org,artist) digests · Airtable per-org · admin fns org-scoped | Deno `handle()` + fake deps; per-org digest gating |
-| **4 · Console** | `/platform` · provision/suspend · god-mode Enter · metrics view | E2e provision→invite→login; super-admin-only access |
+| **3 · Backend** | Cron loops over orgs · per-(org,artist) digests · per-org email overrides · Airtable per-org (Vault keys) · derive-`org_id` triggers + drop bootstrap DEFAULTs · edge settings resolver · `types.ts` regen *(admin fns already org-scoped)* | Deno `handle()` + fake deps; per-org digest gating; pgTAP derive-triggers + parent↔child consistency |
+| **4 · Console** | `/platform` super-admin console: `provision_org` + invitee account-bootstrap · god-mode Enter (all-orgs switcher) · suspend/reactivate · `platform_org_stats` metrics · **self-service**: edit-org, manage platform-admins, platform-defaults + starter-catalog editor, first-admin invite lifecycle · catalog query-key scoping · **dev→main** promotion (closing) | E2e provision→invite→login; super-admin-only `/platform`; pgTAP for `provision_org` / `platform_org_stats` / admin-mgmt last-admin guard |
+| **5 · Self-service polish** | `/profile` (edit display name / avatar / phone) · `/reset-password` (request + set) · remove member from org · org-admin resend-invite | Vitest + e2e (profile edit, password-reset round-trip, member removal) |
 
 The riskiest part (isolation) ships **first** and is **proven by tests before any UI exists**.
 
@@ -246,7 +262,8 @@ The riskiest part (isolation) ships **first** and is **proven by tests before an
 
 - **Accepted risk — unaudited god-mode.** Super-admin access is unlogged and not MFA-gated, by explicit owner decision (offered audit-log + MFA twice; declined). This weakens the privacy/GDPR/DPA story given the app already runs a consent system. **Revisit before onboarding regulated or enterprise customers.** The single helper design makes adding an audit wrapper a one-function change later.
 - **Per-org catalog re-entry.** Fully-separate artist profiles mean a multi-org artist re-enters skills/availability per org and manages availability per org. This is the deliberate price of the strongest privacy guarantee (chosen in §2.2). Starter-template catalogs reduce org-setup friction but not per-artist re-entry.
-- **Denormalized `org_id`** must stay consistent with parents (e.g., a `booking`'s `org_id` must equal its `show_date`'s). Enforced by setting it server-side/in triggers, never from client input, plus a pgTAP consistency check.
+- **Denormalized `org_id`** must stay consistent with parents (e.g., a `booking`'s `org_id` must equal its `show_date`'s). Enforced by the Phase-3 derive-from-parent `BEFORE INSERT` triggers (§7.4) — never from client input — plus a pgTAP consistency check; the bootstrap column DEFAULT is dropped once the triggers are in place.
+- **Per-org Airtable secrets in Vault.** Per-org API keys live in Supabase Vault (read by `airtable-poll` via a service-role-only `SECURITY DEFINER` getter; written via an org-admin-guarded setter), keeping them out of member-readable `app_settings`. This is the first use of Vault in the project; the `cron_secret` remains a platform-level `app_settings` value.
 
 ---
 
@@ -255,6 +272,9 @@ The riskiest part (isolation) ships **first** and is **proven by tests before an
 - **Billing / plans / seat limits** — separate subsystem, later.
 - **Per-org branding** (logo/colors) — cosmetic; the shared-domain model makes it optional.
 - **Per-org subdomains / white-label** — the design keeps org context cleanly separable so this can layer on without rework, but it is not built now.
+- **Producer show-date creation UI** — a domain feature, not multi-tenancy (the create-show-date flow was intentionally removed earlier); tracked as a separate effort outside this initiative.
+
+> Note: user-facing self-service (`/profile`, `/reset-password`, member removal, org-admin resend-invite) is **not** out of scope — it is **deferred to Phase 5** (§11), to keep Phase 4 focused on the platform console.
 
 ---
 

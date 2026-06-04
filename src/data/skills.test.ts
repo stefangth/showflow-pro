@@ -32,8 +32,14 @@ describe("fetchArtistSkills", () => {
 describe("createSkill", () => {
   it("trims the name and inserts it", async () => {
     const fake = createFakeSupabase({ skills: { data: { id: "s9", name: "Juggling" }, error: null } });
-    const result = await createSkill(fake as never, "  Juggling  ");
+    const result = await createSkill(fake as never, "  Juggling  ", "o1");
     expect(result).toEqual({ id: "s9", name: "Juggling" });
-    expect(fake.calls).toContainEqual({ table: "skills", method: "insert", args: [{ name: "Juggling" }] });
+    expect(fake.calls).toContainEqual({ table: "skills", method: "insert", args: [{ name: "Juggling", org_id: "o1" }] });
+  });
+
+  it("inserts a skill scoped to the given org", async () => {
+    const fake = createFakeSupabase({ skills: { data: { id: "s1", name: "Vocals" }, error: null } });
+    await createSkill(fake as never, "Vocals", "o1");
+    expect(fake.calls).toContainEqual({ table: "skills", method: "insert", args: [{ name: "Vocals", org_id: "o1" }] });
   });
 });

@@ -20,6 +20,8 @@ export interface FakeClientOptions {
   authUser?: { id: string } | null;
   claims?: { sub: string } | null;
   usersById?: Record<string, { email?: string }>;
+  /** Seeded result for auth.admin.inviteUserByEmail (default: a new user). */
+  inviteResult?: { data?: unknown; error?: unknown };
 }
 
 const CHAIN = [
@@ -105,13 +107,20 @@ export function createFakeClient(opts: FakeClientOptions = {}) {
         return chain;
       };
     }
-    for (const m of ["single", "maybeSingle"]) {
-      chain[m] = () => {
-        calls.push({ table, method: m, args: [] });
-        // Pass localIn so that .in("role", ["admin"]) correctly filters single-row results.
-        return Promise.resolve(resolveSeed(seed, localEq, localIn));
-      };
-    }
+    chain["single"] = () => {
+      calls.push({ table, method: "single", args: [] });
+      return Promise.resolve(resolveSeed(seed, localEq, localIn));
+    };
+    chain["maybeSingle"] = () => {
+      calls.push({ table, method: "maybeSingle", args: [] });
+      const result = resolveSeed(seed, localEq, localIn);
+      // Real Supabase .maybeSingle() returns null (never []) when there are no rows.
+      // Normalise an empty-array result so that `if (row)` guards work correctly.
+      const normalised = Array.isArray(result.data) && (result.data as unknown[]).length === 0
+        ? { ...result, data: null }
+        : result;
+      return Promise.resolve(normalised);
+    };
     // List queries resolved via .then() do NOT apply in() filtering — the seed data
     // is intentionally simplified and may omit the filtered column entirely.
     chain.then = (f: (v: unknown) => unknown, r?: (e: unknown) => unknown) =>
@@ -133,6 +142,8 @@ export function createFakeClient(opts: FakeClientOptions = {}) {
           Promise.resolve({ data: { user: opts.usersById?.[id] ? { id, ...opts.usersById[id] } : null }, error: null }),
         listUsers: () =>
           Promise.resolve({ data: { users: Object.entries(opts.usersById ?? {}).map(([id, u]) => ({ id, ...u })) }, error: null }),
+        inviteUserByEmail: (email: string, _opts?: unknown) =>
+          Promise.resolve(opts.inviteResult ?? { data: { user: { id: "invited", email } }, error: null }),
       },
     },
     functions: { invoke: (_n: string, _o: unknown) => Promise.resolve({ data: null, error: null }) },

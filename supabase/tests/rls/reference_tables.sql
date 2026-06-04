@@ -62,19 +62,19 @@ INSERT INTO public.org_memberships (org_id, user_id, role) VALUES
   ('00000000-0000-0000-0000-00000000b007','aaaaaaaa-aaaa-0002-0000-000000000000','producer'),
   ('00000000-0000-0000-0000-00000000b007','aaaaaaaa-aaaa-0003-0000-000000000000','artist');
 
-INSERT INTO public.artists (id, name, user_id) VALUES
-  ('bbbbbbbb-bbbb-0001-0000-000000000000', 'RT Artist', 'aaaaaaaa-aaaa-0003-0000-000000000000');
+INSERT INTO public.artists (id, name, user_id, org_id) VALUES
+  ('bbbbbbbb-bbbb-0001-0000-000000000000', 'RT Artist', 'aaaaaaaa-aaaa-0003-0000-000000000000', '00000000-0000-0000-0000-00000000b007');
 
-INSERT INTO public.casts (id, name)
-VALUES ('cccccccc-cccc-0001-0000-000000000000', 'RT Cast');
+INSERT INTO public.casts (id, name, org_id)
+VALUES ('cccccccc-cccc-0001-0000-000000000000', 'RT Cast', '00000000-0000-0000-0000-00000000b007');
 
-INSERT INTO public.skills (id, name)
+INSERT INTO public.skills (id, name, org_id)
 VALUES
-  ('cccccccc-cccc-0002-0000-000000000000', 'RT Skill'),
-  ('cccccccc-cccc-0003-0000-000000000000', 'RT Skill 2');
+  ('cccccccc-cccc-0002-0000-000000000000', 'RT Skill', '00000000-0000-0000-0000-00000000b007'),
+  ('cccccccc-cccc-0003-0000-000000000000', 'RT Skill 2', '00000000-0000-0000-0000-00000000b007');
 
-INSERT INTO public.cast_members (id, cast_id, artist_id)
-VALUES ('eeeeeeee-eeee-0001-0000-000000000000', 'cccccccc-cccc-0001-0000-000000000000', 'bbbbbbbb-bbbb-0001-0000-000000000000');
+INSERT INTO public.cast_members (id, cast_id, artist_id, org_id)
+VALUES ('eeeeeeee-eeee-0001-0000-000000000000', 'cccccccc-cccc-0001-0000-000000000000', 'bbbbbbbb-bbbb-0001-0000-000000000000', '00000000-0000-0000-0000-00000000b007');
 
 INSERT INTO public.app_settings (id, key, value, description)
 VALUES ('eeeeeeee-eeee-0002-0000-000000000000', 'rls_rt_test_key', '"v1"'::jsonb, 'reference_tables.sql test row');
@@ -103,7 +103,7 @@ SELECT set_config('request.jwt.claims', '{"sub":"aaaaaaaa-aaaa-0002-0000-0000000
 SET LOCAL ROLE authenticated;
 
 SELECT lives_ok(
-  $$INSERT INTO public.casts (name) VALUES ('Producer Cast')$$,
+  $$INSERT INTO public.casts (name, org_id) VALUES ('Producer Cast', '00000000-0000-0000-0000-00000000b007')$$,
   'producer can INSERT a cast'
 );
 
@@ -114,7 +114,7 @@ SELECT set_config('request.jwt.claims', '{"sub":"aaaaaaaa-aaaa-0003-0000-0000000
 SET LOCAL ROLE authenticated;
 
 SELECT throws_ok(
-  $$INSERT INTO public.casts (name) VALUES ('Artist Cast')$$,
+  $$INSERT INTO public.casts (name, org_id) VALUES ('Artist Cast', '00000000-0000-0000-0000-00000000b007')$$,
   '42501',
   null,
   'artist cannot INSERT a cast'
@@ -144,8 +144,8 @@ SELECT set_config('request.jwt.claims', '{"sub":"aaaaaaaa-aaaa-0003-0000-0000000
 SET LOCAL ROLE authenticated;
 
 SELECT throws_ok(
-  $$INSERT INTO public.cast_members (cast_id, artist_id)
-    VALUES ('cccccccc-cccc-0001-0000-000000000000', 'bbbbbbbb-bbbb-0001-0000-000000000000')$$,
+  $$INSERT INTO public.cast_members (cast_id, artist_id, org_id)
+    VALUES ('cccccccc-cccc-0001-0000-000000000000', 'bbbbbbbb-bbbb-0001-0000-000000000000', '00000000-0000-0000-0000-00000000b007')$$,
   '42501',
   null,
   'artist cannot INSERT a cast_member'
@@ -191,7 +191,7 @@ SELECT set_config('request.jwt.claims', '{"sub":"aaaaaaaa-aaaa-0003-0000-0000000
 SET LOCAL ROLE authenticated;
 
 SELECT throws_ok(
-  $$INSERT INTO public.skills (name) VALUES ('Artist Skill')$$,
+  $$INSERT INTO public.skills (name, org_id) VALUES ('Artist Skill', '00000000-0000-0000-0000-00000000b007')$$,
   '42501',
   null,
   'artist cannot INSERT a skill'
@@ -208,8 +208,8 @@ SELECT set_config('request.jwt.claims', '{"sub":"aaaaaaaa-aaaa-0002-0000-0000000
 SET LOCAL ROLE authenticated;
 
 SELECT lives_ok(
-  $$INSERT INTO public.artist_skills (artist_id, skill_id)
-    VALUES ('bbbbbbbb-bbbb-0001-0000-000000000000', 'cccccccc-cccc-0002-0000-000000000000')$$,
+  $$INSERT INTO public.artist_skills (artist_id, skill_id, org_id)
+    VALUES ('bbbbbbbb-bbbb-0001-0000-000000000000', 'cccccccc-cccc-0002-0000-000000000000', '00000000-0000-0000-0000-00000000b007')$$,
   'producer can INSERT an artist_skill'
 );
 
@@ -238,8 +238,8 @@ SELECT set_config('request.jwt.claims', '{"sub":"aaaaaaaa-aaaa-0003-0000-0000000
 SET LOCAL ROLE authenticated;
 
 SELECT throws_ok(
-  $$INSERT INTO public.artist_skills (artist_id, skill_id)
-    VALUES ('bbbbbbbb-bbbb-0001-0000-000000000000', 'cccccccc-cccc-0003-0000-000000000000')$$,
+  $$INSERT INTO public.artist_skills (artist_id, skill_id, org_id)
+    VALUES ('bbbbbbbb-bbbb-0001-0000-000000000000', 'cccccccc-cccc-0003-0000-000000000000', '00000000-0000-0000-0000-00000000b007')$$,
   '42501',
   null,
   'artist cannot INSERT an artist_skill'

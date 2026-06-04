@@ -40,37 +40,37 @@ VALUES (
   'sub_program_slots_defaults',
   '{"theatre":{"musical":{"main_cast":1,"understudies":0}}}'::jsonb
 )
-ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value;
+ON CONFLICT (org_id, key) DO UPDATE SET value = EXCLUDED.value;
 
 -- Configured show used for the settings-cascade test.
-INSERT INTO public.shows (id, program, sub_program)
-VALUES ('cccccccc-bc00-0001-0000-000000000000', 'theatre', 'musical');
+INSERT INTO public.shows (id, program, sub_program, org_id)
+VALUES ('cccccccc-bc00-0001-0000-000000000000', 'theatre', 'musical', '00000000-0000-0000-0000-00000000b007');
 
 -- A second show whose program/sub_program we will flip for the show-cascade test.
 -- It starts as theatre/comedy (UNCONFIGURED in settings → cannot reach fully_filled),
 -- then is changed to theatre/musical (CONFIGURED with cap 1) → should flip to fully_filled.
-INSERT INTO public.shows (id, program, sub_program)
-VALUES ('cccccccc-bc00-0002-0000-000000000000', 'theatre', 'comedy');
+INSERT INTO public.shows (id, program, sub_program, org_id)
+VALUES ('cccccccc-bc00-0002-0000-000000000000', 'theatre', 'comedy', '00000000-0000-0000-0000-00000000b007');
 
-INSERT INTO public.artists (id, name) VALUES
-  ('bbbbbbbb-bc00-0001-0000-000000000000', 'RC Artist 1'),
-  ('bbbbbbbb-bc00-0002-0000-000000000000', 'RC Artist 2');
+INSERT INTO public.artists (id, name, org_id) VALUES
+  ('bbbbbbbb-bc00-0001-0000-000000000000', 'RC Artist 1', '00000000-0000-0000-0000-00000000b007'),
+  ('bbbbbbbb-bc00-0002-0000-000000000000', 'RC Artist 2', '00000000-0000-0000-0000-00000000b007');
 
 -- show_date for show 1 with ONE confirmed main booking. With cap main_cast=1 it is
 -- fully_filled (the bookings trigger recomputes on insert).
-INSERT INTO public.show_dates (id, show_id, date, session_1)
-VALUES ('dddddddd-bc00-0001-0000-000000000000', 'cccccccc-bc00-0001-0000-000000000000', '2099-08-01', '19:00'::time);
+INSERT INTO public.show_dates (id, show_id, date, session_1, org_id)
+VALUES ('dddddddd-bc00-0001-0000-000000000000', 'cccccccc-bc00-0001-0000-000000000000', '2099-08-01', '19:00'::time, '00000000-0000-0000-0000-00000000b007');
 
-INSERT INTO public.bookings (id, show_date_id, artist_id, status, is_understudy)
-VALUES ('eeeeeeee-bc00-0001-0000-000000000000', 'dddddddd-bc00-0001-0000-000000000000', 'bbbbbbbb-bc00-0001-0000-000000000000', 'confirmed', false);
+INSERT INTO public.bookings (id, show_date_id, artist_id, status, is_understudy, org_id)
+VALUES ('eeeeeeee-bc00-0001-0000-000000000000', 'dddddddd-bc00-0001-0000-000000000000', 'bbbbbbbb-bc00-0001-0000-000000000000', 'confirmed', false, '00000000-0000-0000-0000-00000000b007');
 
 -- show_date for show 2 with ONE confirmed main booking. Show is theatre/comedy
 -- (unconfigured) so status is partially_filled until the show's sub_program flips.
-INSERT INTO public.show_dates (id, show_id, date, session_1)
-VALUES ('dddddddd-bc00-0002-0000-000000000000', 'cccccccc-bc00-0002-0000-000000000000', '2099-08-02', '19:00'::time);
+INSERT INTO public.show_dates (id, show_id, date, session_1, org_id)
+VALUES ('dddddddd-bc00-0002-0000-000000000000', 'cccccccc-bc00-0002-0000-000000000000', '2099-08-02', '19:00'::time, '00000000-0000-0000-0000-00000000b007');
 
-INSERT INTO public.bookings (id, show_date_id, artist_id, status, is_understudy)
-VALUES ('eeeeeeee-bc00-0002-0000-000000000000', 'dddddddd-bc00-0002-0000-000000000000', 'bbbbbbbb-bc00-0002-0000-000000000000', 'confirmed', false);
+INSERT INTO public.bookings (id, show_date_id, artist_id, status, is_understudy, org_id)
+VALUES ('eeeeeeee-bc00-0002-0000-000000000000', 'dddddddd-bc00-0002-0000-000000000000', 'bbbbbbbb-bc00-0002-0000-000000000000', 'confirmed', false, '00000000-0000-0000-0000-00000000b007');
 
 -- Sanity: starting states (not counted in plan, asserted as test 1 / baseline).
 SELECT is(

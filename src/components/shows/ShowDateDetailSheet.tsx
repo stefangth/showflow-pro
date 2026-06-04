@@ -37,7 +37,7 @@ const BOOKING_STATUS_STYLE: Record<string, string> = {
 };
 
 export function ShowDateDetailSheet({ showDateId, open, onOpenChange }: Props) {
-  const { hasRole, user, roles } = useAuth();
+  const { hasRole, user, roles, currentOrg } = useAuth();
   const { isEditorMode } = useEditorConfig();
   const isRealAdmin = roles.includes('admin');
   const queryClient = useQueryClient();
@@ -81,7 +81,7 @@ export function ShowDateDetailSheet({ showDateId, open, onOpenChange }: Props) {
   });
 
   const { data: cities } = useQuery({
-    queryKey: ['cities'],
+    queryKey: ['cities', currentOrg?.id],
     enabled: canManage,
     queryFn: async () => {
       const { data, error } = await supabase.from('cities').select('*').order('name');
@@ -91,7 +91,7 @@ export function ShowDateDetailSheet({ showDateId, open, onOpenChange }: Props) {
   });
 
   const { data: casts } = useQuery({
-    queryKey: ['casts'],
+    queryKey: ['casts', currentOrg?.id],
     enabled: canManage,
     queryFn: async () => {
       const { data, error } = await supabase.from('casts').select('*').order('name');
@@ -153,10 +153,11 @@ export function ShowDateDetailSheet({ showDateId, open, onOpenChange }: Props) {
 
   const toggleDateCast = useMutation({
     mutationFn: async ({ castId, on }: { castId: string; on: boolean }) => {
+      if (!currentOrg) throw new Error('No active organization');
       if (on) {
         const { error } = await supabase
           .from('show_date_cast_eligibility')
-          .insert({ show_date_id: showDateId!, cast_id: castId });
+          .insert({ show_date_id: showDateId!, cast_id: castId, org_id: currentOrg.id });
         if (error) throw error;
       } else {
         const row = dateCastOverrides?.find(r => r.cast_id === castId);
@@ -179,12 +180,14 @@ export function ShowDateDetailSheet({ showDateId, open, onOpenChange }: Props) {
 
   const createBooking = useMutation({
     mutationFn: async ({ artistId, isUnderstudy = false }: { artistId: string; isUnderstudy?: boolean }) => {
+      if (!currentOrg) throw new Error('No active organization');
       const { error } = await supabase.from('bookings').insert({
         show_date_id: showDateId!,
         artist_id: artistId,
         status: 'soft_booked',
         is_understudy: isUnderstudy,
         booked_by: user!.id,
+        org_id: currentOrg.id,
       });
       if (error) throw error;
     },
