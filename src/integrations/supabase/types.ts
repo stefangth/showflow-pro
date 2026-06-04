@@ -1190,6 +1190,15 @@ export type Database = {
       }
       is_org_member: { Args: { _org: string; _uid: string }; Returns: boolean }
       is_super_admin: { Args: { _uid: string }; Returns: boolean }
+      list_org_members: {
+        Args: { p_org: string }
+        Returns: {
+          display_name: string
+          email: string
+          roles: Database["public"]["Enums"]["app_role"][]
+          user_id: string
+        }[]
+      }
       list_platform_admins: {
         Args: never
         Returns: {
@@ -1219,6 +1228,10 @@ export type Database = {
           p_slug: string
         }
         Returns: Json
+      }
+      remove_org_member: {
+        Args: { p_org: string; p_user: string }
+        Returns: undefined
       }
       remove_platform_admin: { Args: { p_user_id: string }; Returns: undefined }
       resolve_show_assignments: {
