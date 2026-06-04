@@ -84,7 +84,7 @@ export function CastDetailsSheet({ cast, open, onOpenChange, onArtistClick }: Pr
 
   // Eligibility (cities × shows)
   const { data: cities } = useQuery({
-    queryKey: ['cities'],
+    queryKey: ['cities', currentOrg?.id],
     queryFn: async () => {
       const { data, error } = await supabase.from('cities').select('*').order('name');
       if (error) throw error;

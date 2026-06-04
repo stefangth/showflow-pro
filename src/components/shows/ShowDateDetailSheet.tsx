@@ -81,7 +81,7 @@ export function ShowDateDetailSheet({ showDateId, open, onOpenChange }: Props) {
   });
 
   const { data: cities } = useQuery({
-    queryKey: ['cities'],
+    queryKey: ['cities', currentOrg?.id],
     enabled: canManage,
     queryFn: async () => {
       const { data, error } = await supabase.from('cities').select('*').order('name');
@@ -91,7 +91,7 @@ export function ShowDateDetailSheet({ showDateId, open, onOpenChange }: Props) {
   });
 
   const { data: casts } = useQuery({
-    queryKey: ['casts'],
+    queryKey: ['casts', currentOrg?.id],
     enabled: canManage,
     queryFn: async () => {
       const { data, error } = await supabase.from('casts').select('*').order('name');

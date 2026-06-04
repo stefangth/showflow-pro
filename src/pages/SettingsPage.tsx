@@ -466,7 +466,7 @@ export default function SettingsPage() {
 
   // Cities (available to producers + admins)
   const { data: cities } = useQuery({
-    queryKey: ['cities'],
+    queryKey: ['cities', currentOrg?.id],
     enabled: canEnter,
     queryFn: async () => {
       const { data, error } = await supabase.from('cities').select('*').order('name');
@@ -494,7 +494,7 @@ export default function SettingsPage() {
   });
 
   const { data: showProgramSubProgramPairs } = useQuery({
-    queryKey: ['shows-program-sub-programs'],
+    queryKey: ['shows-program-sub-programs', currentOrg?.id],
     enabled: canEnter,
     queryFn: async () => {
       const { data, error } = await supabase
@@ -518,7 +518,7 @@ export default function SettingsPage() {
   });
 
   const { data: casts } = useQuery({
-    queryKey: ['casts'],
+    queryKey: ['casts', currentOrg?.id],
     enabled: canEnter,
     queryFn: async () => {
       const { data, error } = await supabase.from('casts').select('*').order('name');
@@ -542,7 +542,7 @@ export default function SettingsPage() {
   type CastCityPriorityRow = { id: string; cast_id: string; city_id: string; priority: number };
 
   const { data: castCityPriorities } = useQuery({
-    queryKey: ['cast-city-priority'],
+    queryKey: ['cast-city-priority', currentOrg?.id],
     enabled: canEnter,
     queryFn: async () => {
       const { data, error } = await supabase

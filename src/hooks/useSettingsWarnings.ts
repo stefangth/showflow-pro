@@ -13,7 +13,7 @@ export function useSettingsWarnings(): SettingsWarnings {
   const orgId = currentOrg?.id ?? null;
 
   const { data: pairs } = useQuery({
-    queryKey: ['shows-program-sub-programs'],
+    queryKey: ['shows-program-sub-programs', currentOrg?.id],
     enabled: canView,
     queryFn: () => fetchProgramSubProgramPairs(supabase),
     staleTime: 60_000,
