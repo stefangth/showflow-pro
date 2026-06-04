@@ -22,6 +22,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { toast } from 'sonner';
 import { Settings as SettingsIcon, Database, Bell, Wand2, Save, SlidersHorizontal, MapPin, Plus, Trash2, Clock, AlertTriangle, BookOpen, UserCog, Eye } from 'lucide-react';
+import { upsertOrgSetting } from '@/data/settings';
 import type { City, Cast } from '@/types';
 import type { SubProgramSlotConfig, NestedSlotDefaults } from '@/hooks/useSubProgramSlots';
 
@@ -52,11 +53,8 @@ const PAGES: ('shows' | 'artists' | 'bookings')[] = ['shows', 'artists', 'bookin
 const ROLES: ('producer' | 'artist')[] = ['producer', 'artist'];
 
 type SettingRow = {
-  id: string;
   key: string;
   value: any;
-  description: string | null;
-  updated_at: string;
 };
 
 type ProgramSubProgramPair = { program: string; sub_program: string };
@@ -404,14 +402,23 @@ function BookingEngineTab({ get, set }: { get: (key: string, fallback?: any) => 
 
 export default function SettingsPage() {
   const { hasRole, currentOrg } = useAuth();
+  const orgId = currentOrg?.id ?? null;
   const qc = useQueryClient();
 
   const { data: settings, isLoading } = useQuery({
-    queryKey: ['app-settings'],
+    queryKey: ['app-settings', 'all', orgId],
     queryFn: async () => {
-      const { data, error } = await supabase.from('app_settings').select('*').order('key');
+      let q = supabase.from('app_settings').select('key, value, org_id');
+      q = orgId ? q.or(`org_id.eq.${orgId},org_id.is.null`) : q.is('org_id', null);
+      const { data, error } = await q;
       if (error) throw error;
-      return (data ?? []) as SettingRow[];
+      // resolve: org row wins over platform row, per key
+      const byKey = new Map<string, { value: unknown; org_id: string | null }>();
+      for (const r of (data ?? []) as { key: string; value: unknown; org_id: string | null }[]) {
+        const prev = byKey.get(r.key);
+        if (!prev || (r.org_id !== null && prev.org_id === null)) byKey.set(r.key, { value: r.value, org_id: r.org_id });
+      }
+      return Array.from(byKey.entries()).map(([key, v]) => ({ key, value: v.value })) as SettingRow[];
     },
   });
 
@@ -427,12 +434,9 @@ export default function SettingsPage() {
 
   const saveMutation = useMutation({
     mutationFn: async (updates: { key: string; value: any }[]) => {
+      if (!orgId) throw new Error('No active organization');
       for (const u of updates) {
-        const { error } = await supabase
-          .from('app_settings')
-          .update({ value: u.value })
-          .eq('key', u.key);
-        if (error) throw error;
+        await upsertOrgSetting(supabase, orgId, u.key, u.value);
       }
     },
     onSuccess: () => {
@@ -442,6 +446,19 @@ export default function SettingsPage() {
     onError: (e: any) => toast.error(e.message ?? 'Failed to save'),
   });
 
+  // Airtable API key (write-only; stored in Vault via set_org_airtable_key RPC)
+  const [airtableKey, setAirtableKey] = useState('');
+  const saveAirtableKey = useMutation({
+    mutationFn: async () => {
+      if (!currentOrg) throw new Error('No active organization');
+      if (!airtableKey.trim()) throw new Error('Enter an API key');
+      const { error } = await supabase.rpc('set_org_airtable_key', { _org: currentOrg.id, _key: airtableKey.trim() });
+      if (error) throw error;
+    },
+    onSuccess: () => { setAirtableKey(''); toast.success('Airtable API key saved'); },
+    onError: (e: any) => toast.error(e.message ?? 'Failed to save Airtable key'),
+  });
+
   const isAdmin = hasRole('admin');
   const isProducer = hasRole('producer');
   const canEnter = isAdmin || isProducer;
@@ -449,7 +466,7 @@ export default function SettingsPage() {
 
   // Cities (available to producers + admins)
   const { data: cities } = useQuery({
-    queryKey: ['cities'],
+    queryKey: ['cities', currentOrg?.id],
     enabled: canEnter,
     queryFn: async () => {
       const { data, error } = await supabase.from('cities').select('*').order('name');
@@ -460,7 +477,8 @@ export default function SettingsPage() {
   const [newCity, setNewCity] = useState('');
   const addCity = useMutation({
     mutationFn: async (name: string) => {
-      const { error } = await supabase.from('cities').insert({ name });
+      if (!orgId) throw new Error('No active organization');
+      const { error } = await supabase.from('cities').insert({ name, org_id: orgId });
       if (error) throw error;
     },
     onSuccess: () => { qc.invalidateQueries({ queryKey: ['cities'] }); setNewCity(''); toast.success('City added'); },
@@ -476,7 +494,7 @@ export default function SettingsPage() {
   });
 
   const { data: showProgramSubProgramPairs } = useQuery({
-    queryKey: ['shows-program-sub-programs'],
+    queryKey: ['shows-program-sub-programs', currentOrg?.id],
     enabled: canEnter,
     queryFn: async () => {
       const { data, error } = await supabase
@@ -500,7 +518,7 @@ export default function SettingsPage() {
   });
 
   const { data: casts } = useQuery({
-    queryKey: ['casts'],
+    queryKey: ['casts', currentOrg?.id],
     enabled: canEnter,
     queryFn: async () => {
       const { data, error } = await supabase.from('casts').select('*').order('name');
@@ -524,7 +542,7 @@ export default function SettingsPage() {
   type CastCityPriorityRow = { id: string; cast_id: string; city_id: string; priority: number };
 
   const { data: castCityPriorities } = useQuery({
-    queryKey: ['cast-city-priority'],
+    queryKey: ['cast-city-priority', currentOrg?.id],
     enabled: canEnter,
     queryFn: async () => {
       const { data, error } = await supabase
@@ -554,10 +572,12 @@ export default function SettingsPage() {
 
   const addCastPriority = useMutation({
     mutationFn: async () => {
+      if (!orgId) throw new Error('No active organization');
       const { error } = await supabase.from('cast_city_priority').insert({
         city_id: newPriorityCityId,
         cast_id: newPriorityCastId,
         priority: newPriorityValue,
+        org_id: orgId,
       });
       if (error) throw error;
     },
@@ -623,11 +643,13 @@ export default function SettingsPage() {
 
   const addAssignment = useMutation({
     mutationFn: async () => {
+      if (!currentOrg) throw new Error('No active organization');
       const { error } = await supabase.from('show_assignments').insert({
         producer_user_id: newAssignUserId,
         program: newAssignProgram,
         sub_program: newAssignSubProgram || null,
         city_id: newAssignCityId || null,
+        org_id: currentOrg.id,
       });
       if (error) throw error;
     },
@@ -1086,9 +1108,16 @@ export default function SettingsPage() {
                   />
                 </div>
               </div>
-              <p className="text-xs text-muted-foreground">
-                The Airtable API key is stored as a Supabase secret, not here. Add or rotate it from the Edge Functions secrets panel.
-              </p>
+              {/* Write-only: the key is stored in Vault and never read back into the UI. */}
+              <div className="space-y-2">
+                <Label htmlFor="airtable-key">Airtable API key</Label>
+                <div className="flex gap-2">
+                  <Input id="airtable-key" type="password" autoComplete="off" placeholder="key… (write-only)"
+                    value={airtableKey} onChange={(e) => setAirtableKey(e.target.value)} />
+                  <Button onClick={() => saveAirtableKey.mutate()} disabled={saveAirtableKey.isPending}>Save key</Button>
+                </div>
+                <p className="text-sm text-muted-foreground">Stored encrypted; never displayed. Required for Airtable sync.</p>
+              </div>
             </CardContent>
           </Card>
         </TabsContent>

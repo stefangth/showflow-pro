@@ -32,7 +32,7 @@ VALUES (
   'sub_program_slots_defaults',
   '{"theatre":{"musical":{"main_cast":10,"understudies":10}}}'::jsonb
 )
-ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value;
+ON CONFLICT (org_id, key) DO UPDATE SET value = EXCLUDED.value;
 
 SET session_replication_role = replica;
 
@@ -49,30 +49,30 @@ INSERT INTO public.org_memberships (org_id, user_id, role) VALUES
   ('00000000-0000-0000-0000-00000000b007','aaaaaaaa-ab00-0002-0000-000000000000','producer'),
   ('00000000-0000-0000-0000-00000000b007','aaaaaaaa-ab00-0003-0000-000000000000','artist');
 
-INSERT INTO public.artists (id, name, user_id)
-VALUES ('bbbbbbbb-ab00-0001-0000-000000000000', 'NBT Artist', 'aaaaaaaa-ab00-0003-0000-000000000000');
+INSERT INTO public.artists (id, name, user_id, org_id)
+VALUES ('bbbbbbbb-ab00-0001-0000-000000000000', 'NBT Artist', 'aaaaaaaa-ab00-0003-0000-000000000000', '00000000-0000-0000-0000-00000000b007');
 
-INSERT INTO public.shows (id, program, sub_program)
-VALUES ('cccccccc-ab00-0001-0000-000000000000', 'theatre', 'musical');
+INSERT INTO public.shows (id, program, sub_program, org_id)
+VALUES ('cccccccc-ab00-0001-0000-000000000000', 'theatre', 'musical', '00000000-0000-0000-0000-00000000b007');
 
-INSERT INTO public.show_dates (id, show_id, date, session_1)
-VALUES ('dddddddd-ab00-0001-0000-000000000000', 'cccccccc-ab00-0001-0000-000000000000', '2099-07-01', '19:00'::time);
+INSERT INTO public.show_dates (id, show_id, date, session_1, org_id)
+VALUES ('dddddddd-ab00-0001-0000-000000000000', 'cccccccc-ab00-0001-0000-000000000000', '2099-07-01', '19:00'::time, '00000000-0000-0000-0000-00000000b007');
 
 -- Booking 1: will be transitioned suggested → soft_booked
-INSERT INTO public.bookings (id, show_date_id, artist_id, status, is_understudy)
-VALUES ('eeeeeeee-ab00-0001-0000-000000000000', 'dddddddd-ab00-0001-0000-000000000000', 'bbbbbbbb-ab00-0001-0000-000000000000', 'suggested', false);
+INSERT INTO public.bookings (id, show_date_id, artist_id, status, is_understudy, org_id)
+VALUES ('eeeeeeee-ab00-0001-0000-000000000000', 'dddddddd-ab00-0001-0000-000000000000', 'bbbbbbbb-ab00-0001-0000-000000000000', 'suggested', false, '00000000-0000-0000-0000-00000000b007');
 
 -- Booking 2: will be transitioned soft_booked → confirmed
-INSERT INTO public.bookings (id, show_date_id, artist_id, status, is_understudy)
-VALUES ('eeeeeeee-ab00-0002-0000-000000000000', 'dddddddd-ab00-0001-0000-000000000000', 'bbbbbbbb-ab00-0001-0000-000000000000', 'soft_booked', false);
+INSERT INTO public.bookings (id, show_date_id, artist_id, status, is_understudy, org_id)
+VALUES ('eeeeeeee-ab00-0002-0000-000000000000', 'dddddddd-ab00-0001-0000-000000000000', 'bbbbbbbb-ab00-0001-0000-000000000000', 'soft_booked', false, '00000000-0000-0000-0000-00000000b007');
 
 -- Booking 3: no status change (notes update only)
-INSERT INTO public.bookings (id, show_date_id, artist_id, status, is_understudy)
-VALUES ('eeeeeeee-ab00-0003-0000-000000000000', 'dddddddd-ab00-0001-0000-000000000000', 'bbbbbbbb-ab00-0001-0000-000000000000', 'suggested', false);
+INSERT INTO public.bookings (id, show_date_id, artist_id, status, is_understudy, org_id)
+VALUES ('eeeeeeee-ab00-0003-0000-000000000000', 'dddddddd-ab00-0001-0000-000000000000', 'bbbbbbbb-ab00-0001-0000-000000000000', 'suggested', false, '00000000-0000-0000-0000-00000000b007');
 
 -- Booking 4: suggested → cancelled
-INSERT INTO public.bookings (id, show_date_id, artist_id, status, is_understudy)
-VALUES ('eeeeeeee-ab00-0004-0000-000000000000', 'dddddddd-ab00-0001-0000-000000000000', 'bbbbbbbb-ab00-0001-0000-000000000000', 'suggested', false);
+INSERT INTO public.bookings (id, show_date_id, artist_id, status, is_understudy, org_id)
+VALUES ('eeeeeeee-ab00-0004-0000-000000000000', 'dddddddd-ab00-0001-0000-000000000000', 'bbbbbbbb-ab00-0001-0000-000000000000', 'suggested', false, '00000000-0000-0000-0000-00000000b007');
 
 SET session_replication_role = DEFAULT;
 

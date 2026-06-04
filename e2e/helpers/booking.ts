@@ -12,7 +12,7 @@
  *     override used by `open-offer-tier` when `tier=99`.
  */
 import { adminClient, E2E_TAG } from "./supabase";
-import { ensureUserWithRole, type SeededUser } from "./users";
+import { ensureUserWithRole, BOOTSTRAP_ORG_ID, type SeededUser } from "./users";
 
 export interface BookingFixture {
   cityId: string;
@@ -45,7 +45,7 @@ export async function seedBookingFixture(opts: SeedOptions): Promise<BookingFixt
 
   const { data: city, error: cityErr } = await admin
     .from("cities")
-    .insert({ name: `${E2E_TAG}-city` })
+    .insert({ name: `${E2E_TAG}-city`, org_id: BOOTSTRAP_ORG_ID })
     .select("id")
     .single();
   if (cityErr || !city) throw new Error(`seed city failed: ${cityErr?.message}`);
@@ -55,6 +55,7 @@ export async function seedBookingFixture(opts: SeedOptions): Promise<BookingFixt
     .insert({
       program: `${E2E_TAG}-program`,
       sub_program: `${E2E_TAG}-sub`,
+      org_id: BOOTSTRAP_ORG_ID,
     })
     .select("id")
     .single();
@@ -62,7 +63,7 @@ export async function seedBookingFixture(opts: SeedOptions): Promise<BookingFixt
 
   const { data: cast, error: castErr } = await admin
     .from("casts")
-    .insert({ name: `${E2E_TAG}-cast` })
+    .insert({ name: `${E2E_TAG}-cast`, org_id: BOOTSTRAP_ORG_ID })
     .select("id")
     .single();
   if (castErr || !cast) throw new Error(`seed cast failed: ${castErr?.message}`);
@@ -73,6 +74,7 @@ export async function seedBookingFixture(opts: SeedOptions): Promise<BookingFixt
       name: `${E2E_TAG}-artist`,
       user_id: artistUser.id,
       email: artistUser.email,
+      org_id: BOOTSTRAP_ORG_ID,
     })
     .select("id")
     .single();

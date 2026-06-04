@@ -23,7 +23,7 @@ interface Props {
 }
 
 export function CastDetailsSheet({ cast, open, onOpenChange, onArtistClick }: Props) {
-  const { hasRole, roles } = useAuth();
+  const { hasRole, roles, currentOrg } = useAuth();
   const { isEditorMode } = useEditorConfig();
   const isRealAdmin = roles.includes('admin');
   const canManage = hasRole('admin') || hasRole('producer');
@@ -84,7 +84,7 @@ export function CastDetailsSheet({ cast, open, onOpenChange, onArtistClick }: Pr
 
   // Eligibility (cities × shows)
   const { data: cities } = useQuery({
-    queryKey: ['cities'],
+    queryKey: ['cities', currentOrg?.id],
     queryFn: async () => {
       const { data, error } = await supabase.from('cities').select('*').order('name');
       if (error) throw error;
@@ -125,7 +125,8 @@ export function CastDetailsSheet({ cast, open, onOpenChange, onArtistClick }: Pr
 
   const addMember = useMutation({
     mutationFn: async (artistId: string) => {
-      const { error } = await supabase.from('cast_members').insert({ cast_id: cast!.id, artist_id: artistId });
+      if (!currentOrg) throw new Error('No active organization');
+      const { error } = await supabase.from('cast_members').insert({ cast_id: cast!.id, artist_id: artistId, org_id: currentOrg.id });
       if (error) throw error;
     },
     onSuccess: () => {
@@ -157,10 +158,11 @@ export function CastDetailsSheet({ cast, open, onOpenChange, onArtistClick }: Pr
 
   const toggleEligibility = useMutation({
     mutationFn: async ({ cityId, showId, on }: { cityId: string; showId: string; on: boolean }) => {
+      if (!currentOrg) throw new Error('No active organization');
       if (on) {
         const { error } = await supabase
           .from('show_cast_eligibility')
-          .insert({ show_id: showId, city_id: cityId, cast_id: cast!.id });
+          .insert({ show_id: showId, city_id: cityId, cast_id: cast!.id, org_id: currentOrg.id });
         if (error) throw error;
       } else {
         const rowId = eligibilityMap.get(`${cityId}:${showId}`);

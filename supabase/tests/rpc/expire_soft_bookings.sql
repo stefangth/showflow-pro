@@ -34,18 +34,18 @@ SELECT plan(8);
 
 SET session_replication_role = replica;
 
-INSERT INTO public.shows (id, program, sub_program)
-VALUES ('cccccccc-ed00-0001-0000-000000000000', 'theatre', 'musical');
+INSERT INTO public.shows (id, program, sub_program, org_id)
+VALUES ('cccccccc-ed00-0001-0000-000000000000', 'theatre', 'musical', '00000000-0000-0000-0000-00000000b007');
 
-INSERT INTO public.show_dates (id, show_id, date, session_1)
-VALUES ('dddddddd-ed00-0001-0000-000000000000', 'cccccccc-ed00-0001-0000-000000000000', '2099-07-01', '19:00'::time);
+INSERT INTO public.show_dates (id, show_id, date, session_1, org_id)
+VALUES ('dddddddd-ed00-0001-0000-000000000000', 'cccccccc-ed00-0001-0000-000000000000', '2099-07-01', '19:00'::time, '00000000-0000-0000-0000-00000000b007');
 
-INSERT INTO public.artists (id, name) VALUES
-  ('bbbbbbbb-ed00-0001-0000-000000000000', 'ED Artist 1'),
-  ('bbbbbbbb-ed00-0002-0000-000000000000', 'ED Artist 2'),
-  ('bbbbbbbb-ed00-0003-0000-000000000000', 'ED Artist 3'),
-  ('bbbbbbbb-ed00-0004-0000-000000000000', 'ED Artist 4'),
-  ('bbbbbbbb-ed00-0005-0000-000000000000', 'ED Artist 5');
+INSERT INTO public.artists (id, name, org_id) VALUES
+  ('bbbbbbbb-ed00-0001-0000-000000000000', 'ED Artist 1', '00000000-0000-0000-0000-00000000b007'),
+  ('bbbbbbbb-ed00-0002-0000-000000000000', 'ED Artist 2', '00000000-0000-0000-0000-00000000b007'),
+  ('bbbbbbbb-ed00-0003-0000-000000000000', 'ED Artist 3', '00000000-0000-0000-0000-00000000b007'),
+  ('bbbbbbbb-ed00-0004-0000-000000000000', 'ED Artist 4', '00000000-0000-0000-0000-00000000b007'),
+  ('bbbbbbbb-ed00-0005-0000-000000000000', 'ED Artist 5', '00000000-0000-0000-0000-00000000b007');
 
 -- Booking 1: suggested + PAST expiry            → should expire
 -- Booking 2: soft_booked + PAST expiry          → should expire
@@ -54,12 +54,12 @@ INSERT INTO public.artists (id, name) VALUES
 -- Booking 5: confirmed + PAST expiry            → untouched (status not in set)
 -- Seed updated_at deliberately in the past so we can assert it advances on
 -- changed rows and is unchanged on untouched rows.
-INSERT INTO public.bookings (id, show_date_id, artist_id, status, is_understudy, offer_expires_at, updated_at) VALUES
-  ('eeeeeeee-ed00-0001-0000-000000000000', 'dddddddd-ed00-0001-0000-000000000000', 'bbbbbbbb-ed00-0001-0000-000000000000', 'suggested',   false, now() - interval '1 hour', now() - interval '2 days'),
-  ('eeeeeeee-ed00-0002-0000-000000000000', 'dddddddd-ed00-0001-0000-000000000000', 'bbbbbbbb-ed00-0002-0000-000000000000', 'soft_booked', false, now() - interval '1 hour', now() - interval '2 days'),
-  ('eeeeeeee-ed00-0003-0000-000000000000', 'dddddddd-ed00-0001-0000-000000000000', 'bbbbbbbb-ed00-0003-0000-000000000000', 'suggested',   false, now() + interval '1 day',  now() - interval '2 days'),
-  ('eeeeeeee-ed00-0004-0000-000000000000', 'dddddddd-ed00-0001-0000-000000000000', 'bbbbbbbb-ed00-0004-0000-000000000000', 'suggested',   false, NULL,                       now() - interval '2 days'),
-  ('eeeeeeee-ed00-0005-0000-000000000000', 'dddddddd-ed00-0001-0000-000000000000', 'bbbbbbbb-ed00-0005-0000-000000000000', 'confirmed',   false, now() - interval '1 hour', now() - interval '2 days');
+INSERT INTO public.bookings (id, show_date_id, artist_id, status, is_understudy, offer_expires_at, updated_at, org_id) VALUES
+  ('eeeeeeee-ed00-0001-0000-000000000000', 'dddddddd-ed00-0001-0000-000000000000', 'bbbbbbbb-ed00-0001-0000-000000000000', 'suggested',   false, now() - interval '1 hour', now() - interval '2 days', '00000000-0000-0000-0000-00000000b007'),
+  ('eeeeeeee-ed00-0002-0000-000000000000', 'dddddddd-ed00-0001-0000-000000000000', 'bbbbbbbb-ed00-0002-0000-000000000000', 'soft_booked', false, now() - interval '1 hour', now() - interval '2 days', '00000000-0000-0000-0000-00000000b007'),
+  ('eeeeeeee-ed00-0003-0000-000000000000', 'dddddddd-ed00-0001-0000-000000000000', 'bbbbbbbb-ed00-0003-0000-000000000000', 'suggested',   false, now() + interval '1 day',  now() - interval '2 days', '00000000-0000-0000-0000-00000000b007'),
+  ('eeeeeeee-ed00-0004-0000-000000000000', 'dddddddd-ed00-0001-0000-000000000000', 'bbbbbbbb-ed00-0004-0000-000000000000', 'suggested',   false, NULL,                       now() - interval '2 days', '00000000-0000-0000-0000-00000000b007'),
+  ('eeeeeeee-ed00-0005-0000-000000000000', 'dddddddd-ed00-0001-0000-000000000000', 'bbbbbbbb-ed00-0005-0000-000000000000', 'confirmed',   false, now() - interval '1 hour', now() - interval '2 days', '00000000-0000-0000-0000-00000000b007');
 
 SET session_replication_role = DEFAULT;
 

@@ -55,31 +55,31 @@ INSERT INTO public.org_memberships (org_id, user_id, role) VALUES
   ('00000000-0000-0000-0000-00000000b007','aaaaaaaa-aaaa-0003-0000-000000000000','artist'),
   ('00000000-0000-0000-0000-00000000b007','aaaaaaaa-aaaa-0004-0000-000000000000','artist');
 
-INSERT INTO public.artists (id, name, user_id) VALUES
-  ('bbbbbbbb-bbbb-0001-0000-000000000000', 'Chat Artist A', 'aaaaaaaa-aaaa-0003-0000-000000000000'),
-  ('bbbbbbbb-bbbb-0002-0000-000000000000', 'Chat Artist B', 'aaaaaaaa-aaaa-0004-0000-000000000000');
+INSERT INTO public.artists (id, name, user_id, org_id) VALUES
+  ('bbbbbbbb-bbbb-0001-0000-000000000000', 'Chat Artist A', 'aaaaaaaa-aaaa-0003-0000-000000000000', '00000000-0000-0000-0000-00000000b007'),
+  ('bbbbbbbb-bbbb-0002-0000-000000000000', 'Chat Artist B', 'aaaaaaaa-aaaa-0004-0000-000000000000', '00000000-0000-0000-0000-00000000b007');
 
-INSERT INTO public.shows (id, program, sub_program)
-VALUES ('cccccccc-cccc-0001-0000-000000000000', 'theatre', 'musical');
+INSERT INTO public.shows (id, program, sub_program, org_id)
+VALUES ('cccccccc-cccc-0001-0000-000000000000', 'theatre', 'musical', '00000000-0000-0000-0000-00000000b007');
 
-INSERT INTO public.show_dates (id, show_id, date, session_1)
-VALUES ('dddddddd-dddd-0001-0000-000000000000', 'cccccccc-cccc-0001-0000-000000000000', '2099-02-01', '20:00'::time);
+INSERT INTO public.show_dates (id, show_id, date, session_1, org_id)
+VALUES ('dddddddd-dddd-0001-0000-000000000000', 'cccccccc-cccc-0001-0000-000000000000', '2099-02-01', '20:00'::time, '00000000-0000-0000-0000-00000000b007');
 
 -- Artist A is soft_booked main-cast → participant.
 -- Artist B is suggested understudy → not a participant.
 -- is_understudy differs deliberately: slot_fill_auto_cancel_trigger only cancels
 -- bookings with the SAME is_understudy value, so confirming artist B's understudy
 -- slot (in tests 5-7) cannot cancel artist A's main-cast booking.
-INSERT INTO public.bookings (id, show_date_id, artist_id, status, is_understudy) VALUES
-  ('eeeeeeee-eeee-0001-0000-000000000000', 'dddddddd-dddd-0001-0000-000000000000', 'bbbbbbbb-bbbb-0001-0000-000000000000', 'soft_booked'::booking_status, false),
-  ('eeeeeeee-eeee-0002-0000-000000000000', 'dddddddd-dddd-0001-0000-000000000000', 'bbbbbbbb-bbbb-0002-0000-000000000000', 'suggested'::booking_status, true);
+INSERT INTO public.bookings (id, show_date_id, artist_id, status, is_understudy, org_id) VALUES
+  ('eeeeeeee-eeee-0001-0000-000000000000', 'dddddddd-dddd-0001-0000-000000000000', 'bbbbbbbb-bbbb-0001-0000-000000000000', 'soft_booked'::booking_status, false, '00000000-0000-0000-0000-00000000b007'),
+  ('eeeeeeee-eeee-0002-0000-000000000000', 'dddddddd-dddd-0001-0000-000000000000', 'bbbbbbbb-bbbb-0002-0000-000000000000', 'suggested'::booking_status, true, '00000000-0000-0000-0000-00000000b007');
 
-INSERT INTO public.chats (id, show_date_id)
-VALUES ('ffffffff-ffff-0001-0000-000000000000', 'dddddddd-dddd-0001-0000-000000000000');
+INSERT INTO public.chats (id, show_date_id, org_id)
+VALUES ('ffffffff-ffff-0001-0000-000000000000', 'dddddddd-dddd-0001-0000-000000000000', '00000000-0000-0000-0000-00000000b007');
 
 -- Seed message authored by admin (user_id has no FK on chat_messages)
-INSERT INTO public.chat_messages (id, chat_id, user_id, body)
-VALUES ('ffffffff-ffff-0002-0000-000000000000', 'ffffffff-ffff-0001-0000-000000000000', 'aaaaaaaa-aaaa-0001-0000-000000000000', 'Hello from admin');
+INSERT INTO public.chat_messages (id, chat_id, user_id, body, org_id)
+VALUES ('ffffffff-ffff-0002-0000-000000000000', 'ffffffff-ffff-0001-0000-000000000000', 'aaaaaaaa-aaaa-0001-0000-000000000000', 'Hello from admin', '00000000-0000-0000-0000-00000000b007');
 
 SET session_replication_role = DEFAULT;
 
@@ -253,11 +253,12 @@ SELECT set_config('request.jwt.claims', '{"sub":"aaaaaaaa-aaaa-0003-0000-0000000
 SET LOCAL ROLE authenticated;
 
 SELECT lives_ok(
-  $$INSERT INTO public.chat_messages (chat_id, user_id, body)
+  $$INSERT INTO public.chat_messages (chat_id, user_id, body, org_id)
     VALUES (
       'ffffffff-ffff-0001-0000-000000000000',
       'aaaaaaaa-aaaa-0003-0000-000000000000',
-      'Artist A says hello'
+      'Artist A says hello',
+      '00000000-0000-0000-0000-00000000b007'
     )$$,
   'artist A (participant) can INSERT a chat message'
 );
@@ -269,11 +270,12 @@ SELECT set_config('request.jwt.claims', '{"sub":"aaaaaaaa-aaaa-0004-0000-0000000
 SET LOCAL ROLE authenticated;
 
 SELECT throws_ok(
-  $$INSERT INTO public.chat_messages (chat_id, user_id, body)
+  $$INSERT INTO public.chat_messages (chat_id, user_id, body, org_id)
     VALUES (
       'ffffffff-ffff-0001-0000-000000000000',
       'aaaaaaaa-aaaa-0004-0000-000000000000',
-      'Artist B tries to post'
+      'Artist B tries to post',
+      '00000000-0000-0000-0000-00000000b007'
     )$$,
   null, null,
   'artist B (not a participant) cannot INSERT a chat message'

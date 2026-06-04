@@ -791,6 +791,46 @@ Deno.test("happy path: Resend body includes a non-empty subject", async () => {
 //     (safety fallback in handler — documents the actual behavior)
 // ===========================================================================
 
+// ===========================================================================
+// 14. Per-org from-address override
+// ===========================================================================
+
+Deno.test("send-transactional-email: uses the org's resend_from_address override", async () => {
+  const ORG = "00000000-0000-0000-0000-0000000000a1";
+  const { deps } = makeFakeDeps({
+    envVars: {
+      SUPABASE_URL: "https://x.supabase.co",
+      SUPABASE_SERVICE_ROLE_KEY: "svc",
+      RESEND_API_KEY: "re_key",
+    },
+    tables: {
+      suppressed_emails: { data: null, error: null },
+      email_unsubscribe_tokens: { data: { token: "tok", used_at: null }, error: null },
+      email_send_log: { data: null, error: null },
+      app_settings: [
+        { when: { key: "resend_from_address" }, data: [{ org_id: ORG, value: "Org A <a@org-a.com>" }, { org_id: null, value: "Showflow Pro <noreply@showflow.pro>" }] },
+        { when: { key: "email_template_overrides" }, data: [{ org_id: null, value: {} }] },
+      ],
+    },
+    fetchImpl: () => Promise.resolve(new Response(JSON.stringify({ id: "re_1" }), { status: 200 })),
+  });
+
+  let sentFrom = "";
+  const baseFetch = deps.fetch;
+  deps.fetch = (url, init) => {
+    if (String(url).includes("api.resend.com")) {
+      sentFrom = JSON.parse(String((init as RequestInit).body)).from;
+    }
+    return baseFetch(url, init);
+  };
+
+  const res = await handle(makeRequest({
+    body: { template_name: "artist-offer-digest", recipient_email: "jo@x.com", org_id: ORG, templateData: { displayName: "Jo", offers: [] } },
+  }), deps);
+  assertEquals(res.status, 200);
+  assertEquals(sentFrom, "Org A <a@org-a.com>");
+});
+
 Deno.test("characterization: used token + not suppressed → returns { success: false, reason: 'email_suppressed' }", async () => {
   // characterization: when existingToken.used_at is set and the email is NOT suppressed,
   // the handler's safety fallback (line ~131-133 in index.ts) returns email_suppressed anyway.

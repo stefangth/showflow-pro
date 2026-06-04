@@ -57,34 +57,34 @@ INSERT INTO public.org_memberships (org_id, user_id, role) VALUES
   ('00000000-0000-0000-0000-00000000b007','aaaaaaaa-aaaa-0002-0000-000000000000','producer'),
   ('00000000-0000-0000-0000-00000000b007','aaaaaaaa-aaaa-0003-0000-000000000000','artist');
 
-INSERT INTO public.artists (id, name, user_id) VALUES
-  ('bbbbbbbb-bbbb-0001-0000-000000000000', 'OE Artist', 'aaaaaaaa-aaaa-0003-0000-000000000000');
+INSERT INTO public.artists (id, name, user_id, org_id) VALUES
+  ('bbbbbbbb-bbbb-0001-0000-000000000000', 'OE Artist', 'aaaaaaaa-aaaa-0003-0000-000000000000', '00000000-0000-0000-0000-00000000b007');
 
-INSERT INTO public.shows (id, program, sub_program)
-VALUES ('cccccccc-cccc-0001-0000-000000000000', 'theatre', 'musical');
+INSERT INTO public.shows (id, program, sub_program, org_id)
+VALUES ('cccccccc-cccc-0001-0000-000000000000', 'theatre', 'musical', '00000000-0000-0000-0000-00000000b007');
 
-INSERT INTO public.casts (id, name)
-VALUES ('cccccccc-cccc-0002-0000-000000000000', 'OE Cast');
+INSERT INTO public.casts (id, name, org_id)
+VALUES ('cccccccc-cccc-0002-0000-000000000000', 'OE Cast', '00000000-0000-0000-0000-00000000b007');
 
-INSERT INTO public.cities (id, name) VALUES
-  ('cccccccc-cccc-0003-0000-000000000000', 'OE City'),
+INSERT INTO public.cities (id, name, org_id) VALUES
+  ('cccccccc-cccc-0003-0000-000000000000', 'OE City', '00000000-0000-0000-0000-00000000b007'),
   -- second city used by test 2's producer INSERT so the (cast_id, city_id)
   -- unique constraint is not violated against the seeded priority-1 row
-  ('cccccccc-cccc-0004-0000-000000000000', 'OE City Two');
+  ('cccccccc-cccc-0004-0000-000000000000', 'OE City Two', '00000000-0000-0000-0000-00000000b007');
 
-INSERT INTO public.show_dates (id, show_id, date, session_1) VALUES
-  ('dddddddd-dddd-0001-0000-000000000000', 'cccccccc-cccc-0001-0000-000000000000', '2099-04-01', '20:00'::time),
+INSERT INTO public.show_dates (id, show_id, date, session_1, org_id) VALUES
+  ('dddddddd-dddd-0001-0000-000000000000', 'cccccccc-cccc-0001-0000-000000000000', '2099-04-01', '20:00'::time, '00000000-0000-0000-0000-00000000b007'),
   -- second date used in test 10 so the (show_date_id, cast_id) unique constraint holds
-  ('dddddddd-dddd-0002-0000-000000000000', 'cccccccc-cccc-0001-0000-000000000000', '2099-04-02', '20:00'::time);
+  ('dddddddd-dddd-0002-0000-000000000000', 'cccccccc-cccc-0001-0000-000000000000', '2099-04-02', '20:00'::time, '00000000-0000-0000-0000-00000000b007');
 
-INSERT INTO public.cast_city_priority (id, cast_id, city_id, priority)
-VALUES ('eeeeeeee-eeee-0001-0000-000000000000', 'cccccccc-cccc-0002-0000-000000000000', 'cccccccc-cccc-0003-0000-000000000000', 1);
+INSERT INTO public.cast_city_priority (id, cast_id, city_id, priority, org_id)
+VALUES ('eeeeeeee-eeee-0001-0000-000000000000', 'cccccccc-cccc-0002-0000-000000000000', 'cccccccc-cccc-0003-0000-000000000000', 1, '00000000-0000-0000-0000-00000000b007');
 
-INSERT INTO public.show_date_offer_tiers (id, show_date_id, tier)
-VALUES ('eeeeeeee-eeee-0002-0000-000000000000', 'dddddddd-dddd-0001-0000-000000000000', 1);
+INSERT INTO public.show_date_offer_tiers (id, show_date_id, tier, org_id)
+VALUES ('eeeeeeee-eeee-0002-0000-000000000000', 'dddddddd-dddd-0001-0000-000000000000', 1, '00000000-0000-0000-0000-00000000b007');
 
-INSERT INTO public.show_date_cast_eligibility (id, show_date_id, cast_id)
-VALUES ('eeeeeeee-eeee-0003-0000-000000000000', 'dddddddd-dddd-0001-0000-000000000000', 'cccccccc-cccc-0002-0000-000000000000');
+INSERT INTO public.show_date_cast_eligibility (id, show_date_id, cast_id, org_id)
+VALUES ('eeeeeeee-eeee-0003-0000-000000000000', 'dddddddd-dddd-0001-0000-000000000000', 'cccccccc-cccc-0002-0000-000000000000', '00000000-0000-0000-0000-00000000b007');
 
 SET session_replication_role = DEFAULT;
 
@@ -110,8 +110,8 @@ SELECT set_config('request.jwt.claims', '{"sub":"aaaaaaaa-aaaa-0002-0000-0000000
 SET LOCAL ROLE authenticated;
 
 SELECT lives_ok(
-  $$INSERT INTO public.cast_city_priority (cast_id, city_id, priority)
-    VALUES ('cccccccc-cccc-0002-0000-000000000000', 'cccccccc-cccc-0004-0000-000000000000', 2)$$,
+  $$INSERT INTO public.cast_city_priority (cast_id, city_id, priority, org_id)
+    VALUES ('cccccccc-cccc-0002-0000-000000000000', 'cccccccc-cccc-0004-0000-000000000000', 2, '00000000-0000-0000-0000-00000000b007')$$,
   'producer can INSERT cast_city_priority'
 );
 
@@ -134,8 +134,8 @@ SELECT set_config('request.jwt.claims', '{"sub":"aaaaaaaa-aaaa-0003-0000-0000000
 SET LOCAL ROLE authenticated;
 
 SELECT throws_ok(
-  $$INSERT INTO public.cast_city_priority (cast_id, city_id, priority)
-    VALUES ('cccccccc-cccc-0002-0000-000000000000', 'cccccccc-cccc-0003-0000-000000000000', 3)$$,
+  $$INSERT INTO public.cast_city_priority (cast_id, city_id, priority, org_id)
+    VALUES ('cccccccc-cccc-0002-0000-000000000000', 'cccccccc-cccc-0003-0000-000000000000', 3, '00000000-0000-0000-0000-00000000b007')$$,
   '42501',
   null,
   'artist cannot INSERT cast_city_priority'
@@ -165,8 +165,8 @@ SELECT set_config('request.jwt.claims', '{"sub":"aaaaaaaa-aaaa-0002-0000-0000000
 SET LOCAL ROLE authenticated;
 
 SELECT lives_ok(
-  $$INSERT INTO public.show_date_offer_tiers (show_date_id, tier)
-    VALUES ('dddddddd-dddd-0001-0000-000000000000', 2)$$,
+  $$INSERT INTO public.show_date_offer_tiers (show_date_id, tier, org_id)
+    VALUES ('dddddddd-dddd-0001-0000-000000000000', 2, '00000000-0000-0000-0000-00000000b007')$$,
   'producer can INSERT show_date_offer_tiers'
 );
 
@@ -177,8 +177,8 @@ SELECT set_config('request.jwt.claims', '{"sub":"aaaaaaaa-aaaa-0003-0000-0000000
 SET LOCAL ROLE authenticated;
 
 SELECT throws_ok(
-  $$INSERT INTO public.show_date_offer_tiers (show_date_id, tier)
-    VALUES ('dddddddd-dddd-0001-0000-000000000000', 3)$$,
+  $$INSERT INTO public.show_date_offer_tiers (show_date_id, tier, org_id)
+    VALUES ('dddddddd-dddd-0001-0000-000000000000', 3, '00000000-0000-0000-0000-00000000b007')$$,
   '42501',
   null,
   'artist cannot INSERT show_date_offer_tiers'
@@ -226,8 +226,8 @@ SET LOCAL ROLE authenticated;
 -- Uses the second show_date seeded above so the (show_date_id, cast_id)
 -- unique constraint holds.
 SELECT lives_ok(
-  $$INSERT INTO public.show_date_cast_eligibility (show_date_id, cast_id)
-    VALUES ('dddddddd-dddd-0002-0000-000000000000', 'cccccccc-cccc-0002-0000-000000000000')$$,
+  $$INSERT INTO public.show_date_cast_eligibility (show_date_id, cast_id, org_id)
+    VALUES ('dddddddd-dddd-0002-0000-000000000000', 'cccccccc-cccc-0002-0000-000000000000', '00000000-0000-0000-0000-00000000b007')$$,
   'admin can INSERT show_date_cast_eligibility'
 );
 
@@ -238,8 +238,8 @@ SELECT set_config('request.jwt.claims', '{"sub":"aaaaaaaa-aaaa-0003-0000-0000000
 SET LOCAL ROLE authenticated;
 
 SELECT throws_ok(
-  $$INSERT INTO public.show_date_cast_eligibility (show_date_id, cast_id)
-    VALUES ('dddddddd-dddd-0001-0000-000000000000', 'cccccccc-cccc-0002-0000-000000000000')$$,
+  $$INSERT INTO public.show_date_cast_eligibility (show_date_id, cast_id, org_id)
+    VALUES ('dddddddd-dddd-0001-0000-000000000000', 'cccccccc-cccc-0002-0000-000000000000', '00000000-0000-0000-0000-00000000b007')$$,
   '42501',
   null,
   'artist cannot INSERT show_date_cast_eligibility'

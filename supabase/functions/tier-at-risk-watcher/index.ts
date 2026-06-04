@@ -1,6 +1,9 @@
 import { preflight, json } from "../_shared/http.ts";
 import { requireCronOrRole } from "../_shared/auth.ts";
 import { realDeps, type Deps } from "../_shared/deps.ts";
+import { resolveOrgSetting } from "../_shared/settings.ts";
+
+type SlotDefaults = Record<string, Record<string, { main_cast: number; understudies: number }>>;
 
 /**
  * Scans all open offer tiers and emits a `tier_at_risk` notification when a
@@ -45,13 +48,22 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
     return json({ at_risk_count: 0, cleared: 0 })
   }
 
-  // Load slot defaults (only needed when we have open tiers to evaluate)
-  const { data: slotsSetting } = await admin
-    .from('app_settings')
-    .select('value')
-    .eq('key', 'sub_program_slots_defaults')
-    .maybeSingle()
-  const slotDefaults = (slotsSetting?.value as Record<string, Record<string, { main_cast: number; understudies: number }>>) ?? {}
+  // Per-org slot-defaults cache (one resolveOrgSetting call per org encountered).
+  const slotCache = new Map<string, SlotDefaults>();
+  const slotsForOrg = async (orgId: string): Promise<SlotDefaults> => {
+    if (!slotCache.has(orgId)) {
+      try {
+        slotCache.set(orgId, await resolveOrgSetting<SlotDefaults>(admin, orgId, 'sub_program_slots_defaults', {}));
+      } catch (e) {
+        // A settings read failure for one org must not abort the whole run; treat as
+        // unconfigured (the tier is then skipped via the !slotCfg guard) and move on.
+        // Cached as {} for THIS invocation only; the next cron run retries fresh.
+        console.error('tier-at-risk-watcher: slot settings read failed', { org: orgId, error: (e as Error).message });
+        slotCache.set(orgId, {} as SlotDefaults);
+      }
+    }
+    return slotCache.get(orgId)!;
+  };
 
   const existingKeySet = new Set<string>()
   for (const n of (existingTierAtRiskNotifs ?? []) as Array<{ id: string; user_id: string; related_entity_id: string }>) {
@@ -72,6 +84,7 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
 
     const program = (sd as any).show?.program
     const subProgram = (sd as any).show?.sub_program
+    const slotDefaults = await slotsForOrg((sd as any).org_id);
     const slotCfg = slotDefaults?.[program]?.[subProgram]
     if (!slotCfg) continue
     const requiredSlots = slotCfg.main_cast + slotCfg.understudies
@@ -98,6 +111,7 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
       p_program: program ?? '',
       p_sub_program: subProgram,
       p_city_id: (sd as any).city_id,
+      p_org: (sd as any).org_id,
     })
 
     let recipientIds = Array.from(new Set((producers ?? []).map((p: any) => p.producer_user_id)))
@@ -114,6 +128,7 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
     const newRows = (recipientIds as string[])
       .filter(uid => !existingKeySet.has(`${row.id}::${uid}`))
       .map(uid => ({
+        org_id: (sd as any).org_id,
         user_id: uid,
         type: 'tier_at_risk',
         title: 'Tier at risk',
