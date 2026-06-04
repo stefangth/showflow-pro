@@ -446,6 +446,19 @@ export default function SettingsPage() {
     onError: (e: any) => toast.error(e.message ?? 'Failed to save'),
   });
 
+  // Airtable API key (write-only; stored in Vault via set_org_airtable_key RPC)
+  const [airtableKey, setAirtableKey] = useState('');
+  const saveAirtableKey = useMutation({
+    mutationFn: async () => {
+      if (!currentOrg) throw new Error('No active organization');
+      if (!airtableKey.trim()) throw new Error('Enter an API key');
+      const { error } = await supabase.rpc('set_org_airtable_key' as never, { _org: currentOrg.id, _key: airtableKey.trim() } as never);
+      if (error) throw error;
+    },
+    onSuccess: () => { setAirtableKey(''); toast.success('Airtable API key saved'); },
+    onError: (e: any) => toast.error(e.message ?? 'Failed to save Airtable key'),
+  });
+
   const isAdmin = hasRole('admin');
   const isProducer = hasRole('producer');
   const canEnter = isAdmin || isProducer;
@@ -1093,9 +1106,16 @@ export default function SettingsPage() {
                   />
                 </div>
               </div>
-              <p className="text-xs text-muted-foreground">
-                The Airtable API key is stored as a Supabase secret, not here. Add or rotate it from the Edge Functions secrets panel.
-              </p>
+              {/* Write-only: the key is stored in Vault and never read back into the UI. */}
+              <div className="space-y-2">
+                <Label htmlFor="airtable-key">Airtable API key</Label>
+                <div className="flex gap-2">
+                  <Input id="airtable-key" type="password" autoComplete="off" placeholder="key… (write-only)"
+                    value={airtableKey} onChange={(e) => setAirtableKey(e.target.value)} />
+                  <Button onClick={() => saveAirtableKey.mutate()} disabled={saveAirtableKey.isPending}>Save key</Button>
+                </div>
+                <p className="text-sm text-muted-foreground">Stored encrypted; never displayed. Required for Airtable sync.</p>
+              </div>
             </CardContent>
           </Card>
         </TabsContent>
