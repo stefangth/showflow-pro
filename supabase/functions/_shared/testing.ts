@@ -22,6 +22,8 @@ export interface FakeClientOptions {
   usersById?: Record<string, { email?: string }>;
   /** Seeded result for auth.admin.inviteUserByEmail (default: a new user). */
   inviteResult?: { data?: unknown; error?: unknown };
+  /** Seeded result for auth.admin.generateLink (default: an invite action link). */
+  generateLinkResult?: { data?: unknown; error?: unknown };
 }
 
 const CHAIN = [
@@ -144,6 +146,8 @@ export function createFakeClient(opts: FakeClientOptions = {}) {
           Promise.resolve({ data: { users: Object.entries(opts.usersById ?? {}).map(([id, u]) => ({ id, ...u })) }, error: null }),
         inviteUserByEmail: (email: string, _opts?: unknown) =>
           Promise.resolve(opts.inviteResult ?? { data: { user: { id: "invited", email } }, error: null }),
+        generateLink: (_params: unknown) =>
+          Promise.resolve(opts.generateLinkResult ?? { data: { properties: { action_link: "https://link.test/invite" } }, error: null }),
       },
     },
     functions: { invoke: (_n: string, _o: unknown) => Promise.resolve({ data: null, error: null }) },
