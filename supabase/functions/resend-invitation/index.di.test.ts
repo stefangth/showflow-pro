@@ -27,3 +27,15 @@ Deno.test("resend-invitation: opaque 403 for unknown invitation (no existence le
   const res = await handle(makeRequest({ headers: { Authorization: "Bearer x" }, body: { invitation_id: "nope" } }), deps);
   assertEquals(res.status, 403);
 });
+
+Deno.test("resend-invitation: 409 for a non-pending invitation", async () => {
+  const { deps } = makeFakeDeps({
+    authUser: { id: "u1" },
+    tables: {
+      platform_admins: { data: { user_id: "u1" }, error: null },
+      org_invitations: { data: { id: "inv1", org_id: "org1", email: "a@acme.com", role: "admin", token: "tok", status: "accepted" }, error: null },
+    },
+  });
+  const res = await handle(makeRequest({ headers: { Authorization: "Bearer x" }, body: { invitation_id: "inv1" } }), deps);
+  assertEquals(res.status, 409);
+});

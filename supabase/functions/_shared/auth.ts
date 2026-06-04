@@ -66,17 +66,18 @@ export async function requireOrgRole(deps: Deps, req: Request, orgId: string, ro
   const { data: { user }, error } = await deps.userClient(authHeader).auth.getUser();
   if (error || !user) return { ok: false, response: json({ error: "Unauthorized" }, 401) };
 
-  // Platform admins pass every org gate (mirrors the SQL is_super_admin short-circuit).
+  // Common path first: an org membership with one of the required roles.
+  const { data: roleRow } = await deps.admin
+    .from("org_memberships").select("role")
+    .eq("user_id", user.id).eq("org_id", orgId).in("role", roles).limit(1).maybeSingle();
+  if (roleRow) return { ok: true, userId: user.id };
+
+  // Fallback (rare): platform admins pass every org gate (mirrors the SQL is_super_admin short-circuit).
   const { data: superRow } = await deps.admin
     .from("platform_admins").select("user_id").eq("user_id", user.id).maybeSingle();
   if (superRow) return { ok: true, userId: user.id };
 
-  const { data: roleRow } = await deps.admin
-    .from("org_memberships").select("role")
-    .eq("user_id", user.id).eq("org_id", orgId).in("role", roles).limit(1).maybeSingle();
-  if (!roleRow) return { ok: false, response: json({ error: "Forbidden" }, 403) };
-
-  return { ok: true, userId: user.id };
+  return { ok: false, response: json({ error: "Forbidden" }, 403) };
 }
 
 /**

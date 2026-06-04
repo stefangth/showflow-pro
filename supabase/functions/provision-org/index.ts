@@ -41,8 +41,13 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
 
     // Bootstrap the first admin's account so they can authenticate + accept.
     try {
-      const { data: list } = await deps.admin.auth.admin.listUsers();
-      const exists = (list?.users ?? []).some((u: { email?: string }) => u.email?.toLowerCase() === email);
+      let exists = false;
+      for (let page = 1; ; page++) {
+        const { data: list } = await deps.admin.auth.admin.listUsers({ page, perPage: 200 });
+        const users = list?.users ?? [];
+        if (users.some((u: { email?: string }) => u.email?.toLowerCase() === email)) { exists = true; break; }
+        if (users.length < 200) break;
+      }
       if (!exists) {
         // Net-new: Supabase invite email carries a magic link → redirect to accept-invite.
         await deps.admin.auth.admin.inviteUserByEmail(email, { redirectTo: acceptUrl });

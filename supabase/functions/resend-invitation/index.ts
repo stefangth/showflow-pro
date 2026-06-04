@@ -32,7 +32,7 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
       template_name: "org-invitation",
       recipient_email: invite.email,
       templateData: { orgName: org?.name ?? undefined, role: invite.role, token: invite.token },
-      idempotency_key: `org-invitation-resend-${invite.id}-${Date.now()}`,
+      idempotency_key: `org-invitation-resend-${invite.id}`,
     });
 
     return json({ ok: true });
