@@ -44,20 +44,20 @@ VALUES
   ('aaaaaaaa-5a00-0003-0000-000000000000', 'authenticated', 'authenticated', 'sa-prod-sub@test.com',  now(), '{"provider":"email"}'::jsonb, '{}'::jsonb, now(), now()),
   ('aaaaaaaa-5a00-0004-0000-000000000000', 'authenticated', 'authenticated', 'sa-prod-prog@test.com', now(), '{"provider":"email"}'::jsonb, '{}'::jsonb, now(), now());
 
-INSERT INTO public.cities (id, name) VALUES
-  ('11111111-5a00-0001-0000-000000000000', 'SA City One'),
-  ('11111111-5a00-0002-0000-000000000000', 'SA City Two');
+INSERT INTO public.cities (id, name, org_id) VALUES
+  ('11111111-5a00-0001-0000-000000000000', 'SA City One', '00000000-0000-0000-0000-00000000b007'),
+  ('11111111-5a00-0002-0000-000000000000', 'SA City Two', '00000000-0000-0000-0000-00000000b007');
 
 -- One assignment per specificity tier, all for program = 'theatre':
 --   producer 1: sub_program='musical', city=One   → tier 4 for (theatre, musical, One)
 --   producer 2: sub_program=NULL,      city=One   → tier 3 for (theatre, *, One)
 --   producer 3: sub_program='musical', city=NULL  → tier 2 for (theatre, musical, *)
 --   producer 4: sub_program=NULL,      city=NULL  → tier 1 for (theatre, *, *)
-INSERT INTO public.show_assignments (producer_user_id, program, sub_program, city_id) VALUES
-  ('aaaaaaaa-5a00-0001-0000-000000000000', 'theatre', 'musical', '11111111-5a00-0001-0000-000000000000'),
-  ('aaaaaaaa-5a00-0002-0000-000000000000', 'theatre', NULL,      '11111111-5a00-0001-0000-000000000000'),
-  ('aaaaaaaa-5a00-0003-0000-000000000000', 'theatre', 'musical', NULL),
-  ('aaaaaaaa-5a00-0004-0000-000000000000', 'theatre', NULL,      NULL);
+INSERT INTO public.show_assignments (producer_user_id, program, sub_program, city_id, org_id) VALUES
+  ('aaaaaaaa-5a00-0001-0000-000000000000', 'theatre', 'musical', '11111111-5a00-0001-0000-000000000000', '00000000-0000-0000-0000-00000000b007'),
+  ('aaaaaaaa-5a00-0002-0000-000000000000', 'theatre', NULL,      '11111111-5a00-0001-0000-000000000000', '00000000-0000-0000-0000-00000000b007'),
+  ('aaaaaaaa-5a00-0003-0000-000000000000', 'theatre', 'musical', NULL, '00000000-0000-0000-0000-00000000b007'),
+  ('aaaaaaaa-5a00-0004-0000-000000000000', 'theatre', NULL,      NULL, '00000000-0000-0000-0000-00000000b007');
 
 SET session_replication_role = DEFAULT;
 
