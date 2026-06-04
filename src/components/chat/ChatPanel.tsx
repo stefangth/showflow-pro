@@ -21,7 +21,7 @@ interface Props {
 type MessageRow = { id: string; chat_id: string; user_id: string; body: string; created_at: string };
 
 export function ChatPanel({ showDateId, showDate }: Props) {
-  const { user, hasRole } = useAuth();
+  const { user, hasRole, currentOrg } = useAuth();
   const { toast } = useToast();
   const qc = useQueryClient();
   const [draft, setDraft] = useState('');
@@ -47,9 +47,10 @@ export function ChatPanel({ showDateId, showDate }: Props) {
         .eq('show_date_id', showDateId)
         .maybeSingle();
       if (existing) return existing;
+      if (!currentOrg) throw new Error('No active organization');
       const { data: created, error } = await supabase
         .from('chats')
-        .insert({ show_date_id: showDateId, created_by: user?.id ?? null })
+        .insert({ show_date_id: showDateId, created_by: user?.id ?? null, org_id: currentOrg.id })
         .select()
         .single();
       if (error) throw error;
@@ -105,10 +106,11 @@ export function ChatPanel({ showDateId, showDate }: Props) {
 
   const send = useMutation({
     mutationFn: async () => {
+      if (!currentOrg) throw new Error('No active organization');
       const body = draft.trim();
       if (!body || !chat || !user) return;
       const { error } = await supabase.from('chat_messages').insert({
-        chat_id: chat.id, user_id: user.id, body,
+        chat_id: chat.id, user_id: user.id, body, org_id: currentOrg.id,
       });
       if (error) throw error;
     },

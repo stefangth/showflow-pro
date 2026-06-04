@@ -40,27 +40,27 @@ INSERT INTO public.org_memberships (org_id, user_id, role)
 VALUES ('00000000-0000-0000-0000-00000000b007','aaaaaaaa-0d00-0001-0000-000000000000','admin');
 
 -- Artist 2 has a user_id so the understudy_promoted notification path is exercised
-INSERT INTO public.artists (id, name, user_id) VALUES
-  ('bbbbbbbb-0d00-0001-0000-000000000000', 'UP Artist 1', NULL),
-  ('bbbbbbbb-0d00-0002-0000-000000000000', 'UP Artist 2', 'aaaaaaaa-0d00-0002-0000-000000000000'),
-  ('bbbbbbbb-0d00-0003-0000-000000000000', 'UP Artist 3', NULL),
-  ('bbbbbbbb-0d00-0004-0000-000000000000', 'UP Artist 4', NULL),
-  ('bbbbbbbb-0d00-0005-0000-000000000000', 'UP Artist 5', NULL),
-  ('bbbbbbbb-0d00-0006-0000-000000000000', 'UP Artist 6', NULL);
+INSERT INTO public.artists (id, name, user_id, org_id) VALUES
+  ('bbbbbbbb-0d00-0001-0000-000000000000', 'UP Artist 1', NULL, '00000000-0000-0000-0000-00000000b007'),
+  ('bbbbbbbb-0d00-0002-0000-000000000000', 'UP Artist 2', 'aaaaaaaa-0d00-0002-0000-000000000000', '00000000-0000-0000-0000-00000000b007'),
+  ('bbbbbbbb-0d00-0003-0000-000000000000', 'UP Artist 3', NULL, '00000000-0000-0000-0000-00000000b007'),
+  ('bbbbbbbb-0d00-0004-0000-000000000000', 'UP Artist 4', NULL, '00000000-0000-0000-0000-00000000b007'),
+  ('bbbbbbbb-0d00-0005-0000-000000000000', 'UP Artist 5', NULL, '00000000-0000-0000-0000-00000000b007'),
+  ('bbbbbbbb-0d00-0006-0000-000000000000', 'UP Artist 6', NULL, '00000000-0000-0000-0000-00000000b007');
 
-INSERT INTO public.shows (id, program, sub_program)
-VALUES ('cccccccc-0d00-0001-0000-000000000000', 'theatre', 'musical');
+INSERT INTO public.shows (id, program, sub_program, org_id)
+VALUES ('cccccccc-0d00-0001-0000-000000000000', 'theatre', 'musical', '00000000-0000-0000-0000-00000000b007');
 
 -- ────────────────────────────────────────────────────────────────────────────
 -- Test 1: Confirmed main-cast cancelled → soft_booked understudy promoted
 --         to confirmed with is_understudy = false
 -- ────────────────────────────────────────────────────────────────────────────
-INSERT INTO public.show_dates (id, show_id, date, session_1)
-VALUES ('dddddddd-0d00-0001-0000-000000000000', 'cccccccc-0d00-0001-0000-000000000000', '2099-07-01', '19:00'::time);
+INSERT INTO public.show_dates (id, show_id, date, session_1, org_id)
+VALUES ('dddddddd-0d00-0001-0000-000000000000', 'cccccccc-0d00-0001-0000-000000000000', '2099-07-01', '19:00'::time, '00000000-0000-0000-0000-00000000b007');
 
-INSERT INTO public.bookings (id, show_date_id, artist_id, status, is_understudy) VALUES
-  ('eeeeeeee-0d00-0001-0000-000000000000', 'dddddddd-0d00-0001-0000-000000000000', 'bbbbbbbb-0d00-0001-0000-000000000000', 'confirmed', false),
-  ('eeeeeeee-0d00-0002-0000-000000000000', 'dddddddd-0d00-0001-0000-000000000000', 'bbbbbbbb-0d00-0002-0000-000000000000', 'soft_booked', true);
+INSERT INTO public.bookings (id, show_date_id, artist_id, status, is_understudy, org_id) VALUES
+  ('eeeeeeee-0d00-0001-0000-000000000000', 'dddddddd-0d00-0001-0000-000000000000', 'bbbbbbbb-0d00-0001-0000-000000000000', 'confirmed', false, '00000000-0000-0000-0000-00000000b007'),
+  ('eeeeeeee-0d00-0002-0000-000000000000', 'dddddddd-0d00-0001-0000-000000000000', 'bbbbbbbb-0d00-0002-0000-000000000000', 'soft_booked', true, '00000000-0000-0000-0000-00000000b007');
 
 UPDATE public.bookings SET status = 'cancelled' WHERE id = 'eeeeeeee-0d00-0001-0000-000000000000';
 
@@ -106,12 +106,12 @@ SELECT ok(
 -- Test 3: Confirmed main-cast cancelled → suggested understudy promoted
 --         to soft_booked with is_understudy = false
 -- ────────────────────────────────────────────────────────────────────────────
-INSERT INTO public.show_dates (id, show_id, date, session_1)
-VALUES ('dddddddd-0d00-0002-0000-000000000000', 'cccccccc-0d00-0001-0000-000000000000', '2099-07-02', '19:00'::time);
+INSERT INTO public.show_dates (id, show_id, date, session_1, org_id)
+VALUES ('dddddddd-0d00-0002-0000-000000000000', 'cccccccc-0d00-0001-0000-000000000000', '2099-07-02', '19:00'::time, '00000000-0000-0000-0000-00000000b007');
 
-INSERT INTO public.bookings (id, show_date_id, artist_id, status, is_understudy) VALUES
-  ('eeeeeeee-0d00-0003-0000-000000000000', 'dddddddd-0d00-0002-0000-000000000000', 'bbbbbbbb-0d00-0001-0000-000000000000', 'confirmed', false),
-  ('eeeeeeee-0d00-0004-0000-000000000000', 'dddddddd-0d00-0002-0000-000000000000', 'bbbbbbbb-0d00-0003-0000-000000000000', 'suggested', true);
+INSERT INTO public.bookings (id, show_date_id, artist_id, status, is_understudy, org_id) VALUES
+  ('eeeeeeee-0d00-0003-0000-000000000000', 'dddddddd-0d00-0002-0000-000000000000', 'bbbbbbbb-0d00-0001-0000-000000000000', 'confirmed', false, '00000000-0000-0000-0000-00000000b007'),
+  ('eeeeeeee-0d00-0004-0000-000000000000', 'dddddddd-0d00-0002-0000-000000000000', 'bbbbbbbb-0d00-0003-0000-000000000000', 'suggested', true, '00000000-0000-0000-0000-00000000b007');
 
 UPDATE public.bookings SET status = 'cancelled' WHERE id = 'eeeeeeee-0d00-0003-0000-000000000000';
 
@@ -149,13 +149,13 @@ SELECT ok(
 -- Test 4: When both soft_booked and suggested understudies exist,
 --         soft_booked is preferred
 -- ────────────────────────────────────────────────────────────────────────────
-INSERT INTO public.show_dates (id, show_id, date, session_1)
-VALUES ('dddddddd-0d00-0003-0000-000000000000', 'cccccccc-0d00-0001-0000-000000000000', '2099-07-03', '19:00'::time);
+INSERT INTO public.show_dates (id, show_id, date, session_1, org_id)
+VALUES ('dddddddd-0d00-0003-0000-000000000000', 'cccccccc-0d00-0001-0000-000000000000', '2099-07-03', '19:00'::time, '00000000-0000-0000-0000-00000000b007');
 
-INSERT INTO public.bookings (id, show_date_id, artist_id, status, is_understudy, created_at) VALUES
-  ('eeeeeeee-0d00-0005-0000-000000000000', 'dddddddd-0d00-0003-0000-000000000000', 'bbbbbbbb-0d00-0001-0000-000000000000', 'confirmed',  false, now()),
-  ('eeeeeeee-0d00-0006-0000-000000000000', 'dddddddd-0d00-0003-0000-000000000000', 'bbbbbbbb-0d00-0004-0000-000000000000', 'suggested',  true,  now() - interval '1 hour'),
-  ('eeeeeeee-0d00-0007-0000-000000000000', 'dddddddd-0d00-0003-0000-000000000000', 'bbbbbbbb-0d00-0005-0000-000000000000', 'soft_booked', true,  now());
+INSERT INTO public.bookings (id, show_date_id, artist_id, status, is_understudy, created_at, org_id) VALUES
+  ('eeeeeeee-0d00-0005-0000-000000000000', 'dddddddd-0d00-0003-0000-000000000000', 'bbbbbbbb-0d00-0001-0000-000000000000', 'confirmed',  false, now(), '00000000-0000-0000-0000-00000000b007'),
+  ('eeeeeeee-0d00-0006-0000-000000000000', 'dddddddd-0d00-0003-0000-000000000000', 'bbbbbbbb-0d00-0004-0000-000000000000', 'suggested',  true,  now() - interval '1 hour', '00000000-0000-0000-0000-00000000b007'),
+  ('eeeeeeee-0d00-0007-0000-000000000000', 'dddddddd-0d00-0003-0000-000000000000', 'bbbbbbbb-0d00-0005-0000-000000000000', 'soft_booked', true,  now(), '00000000-0000-0000-0000-00000000b007');
 
 UPDATE public.bookings SET status = 'cancelled' WHERE id = 'eeeeeeee-0d00-0005-0000-000000000000';
 
@@ -179,13 +179,13 @@ SELECT is(
 -- ────────────────────────────────────────────────────────────────────────────
 -- Test 5: When multiple soft_booked understudies exist, oldest is picked
 -- ────────────────────────────────────────────────────────────────────────────
-INSERT INTO public.show_dates (id, show_id, date, session_1)
-VALUES ('dddddddd-0d00-0004-0000-000000000000', 'cccccccc-0d00-0001-0000-000000000000', '2099-07-04', '19:00'::time);
+INSERT INTO public.show_dates (id, show_id, date, session_1, org_id)
+VALUES ('dddddddd-0d00-0004-0000-000000000000', 'cccccccc-0d00-0001-0000-000000000000', '2099-07-04', '19:00'::time, '00000000-0000-0000-0000-00000000b007');
 
-INSERT INTO public.bookings (id, show_date_id, artist_id, status, is_understudy, created_at) VALUES
-  ('eeeeeeee-0d00-0008-0000-000000000000', 'dddddddd-0d00-0004-0000-000000000000', 'bbbbbbbb-0d00-0001-0000-000000000000', 'confirmed',  false, now()),
-  ('eeeeeeee-0d00-0009-0000-000000000000', 'dddddddd-0d00-0004-0000-000000000000', 'bbbbbbbb-0d00-0002-0000-000000000000', 'soft_booked', true,  now() - interval '2 hours'),
-  ('eeeeeeee-0d00-0010-0000-000000000000', 'dddddddd-0d00-0004-0000-000000000000', 'bbbbbbbb-0d00-0003-0000-000000000000', 'soft_booked', true,  now() - interval '1 hour');
+INSERT INTO public.bookings (id, show_date_id, artist_id, status, is_understudy, created_at, org_id) VALUES
+  ('eeeeeeee-0d00-0008-0000-000000000000', 'dddddddd-0d00-0004-0000-000000000000', 'bbbbbbbb-0d00-0001-0000-000000000000', 'confirmed',  false, now(), '00000000-0000-0000-0000-00000000b007'),
+  ('eeeeeeee-0d00-0009-0000-000000000000', 'dddddddd-0d00-0004-0000-000000000000', 'bbbbbbbb-0d00-0002-0000-000000000000', 'soft_booked', true,  now() - interval '2 hours', '00000000-0000-0000-0000-00000000b007'),
+  ('eeeeeeee-0d00-0010-0000-000000000000', 'dddddddd-0d00-0004-0000-000000000000', 'bbbbbbbb-0d00-0003-0000-000000000000', 'soft_booked', true,  now() - interval '1 hour', '00000000-0000-0000-0000-00000000b007');
 
 UPDATE public.bookings SET status = 'cancelled' WHERE id = 'eeeeeeee-0d00-0008-0000-000000000000';
 
@@ -225,12 +225,12 @@ SELECT is(
 -- Test 7: Trigger does NOT fire when a soft_booked (not confirmed) booking
 --         is cancelled
 -- ────────────────────────────────────────────────────────────────────────────
-INSERT INTO public.show_dates (id, show_id, date, session_1)
-VALUES ('dddddddd-0d00-0005-0000-000000000000', 'cccccccc-0d00-0001-0000-000000000000', '2099-07-05', '19:00'::time);
+INSERT INTO public.show_dates (id, show_id, date, session_1, org_id)
+VALUES ('dddddddd-0d00-0005-0000-000000000000', 'cccccccc-0d00-0001-0000-000000000000', '2099-07-05', '19:00'::time, '00000000-0000-0000-0000-00000000b007');
 
-INSERT INTO public.bookings (id, show_date_id, artist_id, status, is_understudy) VALUES
-  ('eeeeeeee-0d00-0011-0000-000000000000', 'dddddddd-0d00-0005-0000-000000000000', 'bbbbbbbb-0d00-0001-0000-000000000000', 'soft_booked', false),
-  ('eeeeeeee-0d00-0012-0000-000000000000', 'dddddddd-0d00-0005-0000-000000000000', 'bbbbbbbb-0d00-0002-0000-000000000000', 'soft_booked', true);
+INSERT INTO public.bookings (id, show_date_id, artist_id, status, is_understudy, org_id) VALUES
+  ('eeeeeeee-0d00-0011-0000-000000000000', 'dddddddd-0d00-0005-0000-000000000000', 'bbbbbbbb-0d00-0001-0000-000000000000', 'soft_booked', false, '00000000-0000-0000-0000-00000000b007'),
+  ('eeeeeeee-0d00-0012-0000-000000000000', 'dddddddd-0d00-0005-0000-000000000000', 'bbbbbbbb-0d00-0002-0000-000000000000', 'soft_booked', true, '00000000-0000-0000-0000-00000000b007');
 
 UPDATE public.bookings SET status = 'cancelled' WHERE id = 'eeeeeeee-0d00-0011-0000-000000000000';
 
@@ -244,12 +244,12 @@ SELECT is(
 -- Test 8: Trigger does NOT fire when an understudy (is_understudy = true)
 --         booking is cancelled
 -- ────────────────────────────────────────────────────────────────────────────
-INSERT INTO public.show_dates (id, show_id, date, session_1)
-VALUES ('dddddddd-0d00-0006-0000-000000000000', 'cccccccc-0d00-0001-0000-000000000000', '2099-07-06', '19:00'::time);
+INSERT INTO public.show_dates (id, show_id, date, session_1, org_id)
+VALUES ('dddddddd-0d00-0006-0000-000000000000', 'cccccccc-0d00-0001-0000-000000000000', '2099-07-06', '19:00'::time, '00000000-0000-0000-0000-00000000b007');
 
-INSERT INTO public.bookings (id, show_date_id, artist_id, status, is_understudy) VALUES
-  ('eeeeeeee-0d00-0013-0000-000000000000', 'dddddddd-0d00-0006-0000-000000000000', 'bbbbbbbb-0d00-0001-0000-000000000000', 'confirmed', true),
-  ('eeeeeeee-0d00-0014-0000-000000000000', 'dddddddd-0d00-0006-0000-000000000000', 'bbbbbbbb-0d00-0002-0000-000000000000', 'soft_booked', true);
+INSERT INTO public.bookings (id, show_date_id, artist_id, status, is_understudy, org_id) VALUES
+  ('eeeeeeee-0d00-0013-0000-000000000000', 'dddddddd-0d00-0006-0000-000000000000', 'bbbbbbbb-0d00-0001-0000-000000000000', 'confirmed', true, '00000000-0000-0000-0000-00000000b007'),
+  ('eeeeeeee-0d00-0014-0000-000000000000', 'dddddddd-0d00-0006-0000-000000000000', 'bbbbbbbb-0d00-0002-0000-000000000000', 'soft_booked', true, '00000000-0000-0000-0000-00000000b007');
 
 UPDATE public.bookings SET status = 'cancelled' WHERE id = 'eeeeeeee-0d00-0013-0000-000000000000';
 
@@ -262,12 +262,12 @@ SELECT is(
 -- ────────────────────────────────────────────────────────────────────────────
 -- Test 9: No understudy available → no error, other bookings unchanged
 -- ────────────────────────────────────────────────────────────────────────────
-INSERT INTO public.show_dates (id, show_id, date, session_1)
-VALUES ('dddddddd-0d00-0007-0000-000000000000', 'cccccccc-0d00-0001-0000-000000000000', '2099-07-07', '19:00'::time);
+INSERT INTO public.show_dates (id, show_id, date, session_1, org_id)
+VALUES ('dddddddd-0d00-0007-0000-000000000000', 'cccccccc-0d00-0001-0000-000000000000', '2099-07-07', '19:00'::time, '00000000-0000-0000-0000-00000000b007');
 
-INSERT INTO public.bookings (id, show_date_id, artist_id, status, is_understudy) VALUES
-  ('eeeeeeee-0d00-0015-0000-000000000000', 'dddddddd-0d00-0007-0000-000000000000', 'bbbbbbbb-0d00-0001-0000-000000000000', 'confirmed', false),
-  ('eeeeeeee-0d00-0016-0000-000000000000', 'dddddddd-0d00-0007-0000-000000000000', 'bbbbbbbb-0d00-0002-0000-000000000000', 'suggested', false);
+INSERT INTO public.bookings (id, show_date_id, artist_id, status, is_understudy, org_id) VALUES
+  ('eeeeeeee-0d00-0015-0000-000000000000', 'dddddddd-0d00-0007-0000-000000000000', 'bbbbbbbb-0d00-0001-0000-000000000000', 'confirmed', false, '00000000-0000-0000-0000-00000000b007'),
+  ('eeeeeeee-0d00-0016-0000-000000000000', 'dddddddd-0d00-0007-0000-000000000000', 'bbbbbbbb-0d00-0002-0000-000000000000', 'suggested', false, '00000000-0000-0000-0000-00000000b007');
 
 UPDATE public.bookings SET status = 'cancelled' WHERE id = 'eeeeeeee-0d00-0015-0000-000000000000';
 
@@ -281,12 +281,12 @@ SELECT is(
 -- ────────────────────────────────────────────────────────────────────────────
 -- Test 10: Trigger does NOT fire on INSERT (only on UPDATE)
 -- ────────────────────────────────────────────────────────────────────────────
-INSERT INTO public.show_dates (id, show_id, date, session_1)
-VALUES ('dddddddd-0d00-0008-0000-000000000000', 'cccccccc-0d00-0001-0000-000000000000', '2099-07-08', '19:00'::time);
+INSERT INTO public.show_dates (id, show_id, date, session_1, org_id)
+VALUES ('dddddddd-0d00-0008-0000-000000000000', 'cccccccc-0d00-0001-0000-000000000000', '2099-07-08', '19:00'::time, '00000000-0000-0000-0000-00000000b007');
 
-INSERT INTO public.bookings (id, show_date_id, artist_id, status, is_understudy) VALUES
-  ('eeeeeeee-0d00-0017-0000-000000000000', 'dddddddd-0d00-0008-0000-000000000000', 'bbbbbbbb-0d00-0001-0000-000000000000', 'cancelled', false),
-  ('eeeeeeee-0d00-0018-0000-000000000000', 'dddddddd-0d00-0008-0000-000000000000', 'bbbbbbbb-0d00-0002-0000-000000000000', 'soft_booked', true);
+INSERT INTO public.bookings (id, show_date_id, artist_id, status, is_understudy, org_id) VALUES
+  ('eeeeeeee-0d00-0017-0000-000000000000', 'dddddddd-0d00-0008-0000-000000000000', 'bbbbbbbb-0d00-0001-0000-000000000000', 'cancelled', false, '00000000-0000-0000-0000-00000000b007'),
+  ('eeeeeeee-0d00-0018-0000-000000000000', 'dddddddd-0d00-0008-0000-000000000000', 'bbbbbbbb-0d00-0002-0000-000000000000', 'soft_booked', true, '00000000-0000-0000-0000-00000000b007');
 
 -- Inserted directly as cancelled — trigger should not have fired
 SELECT is(

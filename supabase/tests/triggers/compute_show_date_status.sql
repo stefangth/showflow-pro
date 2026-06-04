@@ -32,25 +32,25 @@ VALUES (
 ON CONFLICT (org_id, key) DO UPDATE SET value = EXCLUDED.value;
 
 -- Configured show
-INSERT INTO public.shows (id, program, sub_program)
-VALUES ('11111111-1111-1111-1111-111111111111', 'theatre', 'musical');
+INSERT INTO public.shows (id, program, sub_program, org_id)
+VALUES ('11111111-1111-1111-1111-111111111111', 'theatre', 'musical', '00000000-0000-0000-0000-00000000b007');
 
 -- Unconfigured show (program/sub_program with no entry in settings)
-INSERT INTO public.shows (id, program, sub_program)
-VALUES ('11111111-1111-1111-1111-111111111112', 'theatre', 'comedy');
+INSERT INTO public.shows (id, program, sub_program, org_id)
+VALUES ('11111111-1111-1111-1111-111111111112', 'theatre', 'comedy', '00000000-0000-0000-0000-00000000b007');
 
 -- Four artists for stacking bookings on the same date
-INSERT INTO public.artists (id, name) VALUES
-  ('aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaa01', 'Artist 1'),
-  ('aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaa02', 'Artist 2'),
-  ('aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaa03', 'Artist 3'),
-  ('aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaa04', 'Artist 4');
+INSERT INTO public.artists (id, name, org_id) VALUES
+  ('aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaa01', 'Artist 1', '00000000-0000-0000-0000-00000000b007'),
+  ('aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaa02', 'Artist 2', '00000000-0000-0000-0000-00000000b007'),
+  ('aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaa03', 'Artist 3', '00000000-0000-0000-0000-00000000b007'),
+  ('aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaa04', 'Artist 4', '00000000-0000-0000-0000-00000000b007');
 
 -- ────────────────────────────────────────────────────────────────────────────
 -- Test 1: Configured, no bookings → 'open'
 -- ────────────────────────────────────────────────────────────────────────────
-INSERT INTO public.show_dates (id, show_id, date, session_1)
-VALUES ('22222222-0000-0000-0000-000000000001', '11111111-1111-1111-1111-111111111111', '2026-06-01', '19:00'::time);
+INSERT INTO public.show_dates (id, show_id, date, session_1, org_id)
+VALUES ('22222222-0000-0000-0000-000000000001', '11111111-1111-1111-1111-111111111111', '2026-06-01', '19:00'::time, '00000000-0000-0000-0000-00000000b007');
 
 -- No booking trigger fires (no bookings). Call the function directly.
 SELECT public.compute_show_date_status('22222222-0000-0000-0000-000000000001'::uuid);
@@ -64,11 +64,11 @@ SELECT is(
 -- ────────────────────────────────────────────────────────────────────────────
 -- Test 2: One suggested booking → 'partially_filled'
 -- ────────────────────────────────────────────────────────────────────────────
-INSERT INTO public.show_dates (id, show_id, date, session_1)
-VALUES ('22222222-0000-0000-0000-000000000002', '11111111-1111-1111-1111-111111111111', '2026-06-02', '19:00'::time);
+INSERT INTO public.show_dates (id, show_id, date, session_1, org_id)
+VALUES ('22222222-0000-0000-0000-000000000002', '11111111-1111-1111-1111-111111111111', '2026-06-02', '19:00'::time, '00000000-0000-0000-0000-00000000b007');
 
-INSERT INTO public.bookings (show_date_id, artist_id, status, is_understudy)
-VALUES ('22222222-0000-0000-0000-000000000002', 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaa01', 'suggested', false);
+INSERT INTO public.bookings (show_date_id, artist_id, status, is_understudy, org_id)
+VALUES ('22222222-0000-0000-0000-000000000002', 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaa01', 'suggested', false, '00000000-0000-0000-0000-00000000b007');
 
 SELECT is(
   (SELECT status::text FROM public.show_dates WHERE id = '22222222-0000-0000-0000-000000000002'),
@@ -79,13 +79,13 @@ SELECT is(
 -- ────────────────────────────────────────────────────────────────────────────
 -- Test 3: Exact capacity (2 main + 1 understudy confirmed) → 'fully_filled'
 -- ────────────────────────────────────────────────────────────────────────────
-INSERT INTO public.show_dates (id, show_id, date, session_1)
-VALUES ('22222222-0000-0000-0000-000000000003', '11111111-1111-1111-1111-111111111111', '2026-06-03', '19:00'::time);
+INSERT INTO public.show_dates (id, show_id, date, session_1, org_id)
+VALUES ('22222222-0000-0000-0000-000000000003', '11111111-1111-1111-1111-111111111111', '2026-06-03', '19:00'::time, '00000000-0000-0000-0000-00000000b007');
 
-INSERT INTO public.bookings (show_date_id, artist_id, status, is_understudy) VALUES
-  ('22222222-0000-0000-0000-000000000003', 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaa01', 'confirmed', false),
-  ('22222222-0000-0000-0000-000000000003', 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaa02', 'confirmed', false),
-  ('22222222-0000-0000-0000-000000000003', 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaa03', 'confirmed', true);
+INSERT INTO public.bookings (show_date_id, artist_id, status, is_understudy, org_id) VALUES
+  ('22222222-0000-0000-0000-000000000003', 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaa01', 'confirmed', false, '00000000-0000-0000-0000-00000000b007'),
+  ('22222222-0000-0000-0000-000000000003', 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaa02', 'confirmed', false, '00000000-0000-0000-0000-00000000b007'),
+  ('22222222-0000-0000-0000-000000000003', 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaa03', 'confirmed', true, '00000000-0000-0000-0000-00000000b007');
 
 SELECT is(
   (SELECT status::text FROM public.show_dates WHERE id = '22222222-0000-0000-0000-000000000003'),
@@ -96,12 +96,12 @@ SELECT is(
 -- ────────────────────────────────────────────────────────────────────────────
 -- Test 4: Main cast met but understudy missing → 'partially_filled'
 -- ────────────────────────────────────────────────────────────────────────────
-INSERT INTO public.show_dates (id, show_id, date, session_1)
-VALUES ('22222222-0000-0000-0000-000000000004', '11111111-1111-1111-1111-111111111111', '2026-06-04', '19:00'::time);
+INSERT INTO public.show_dates (id, show_id, date, session_1, org_id)
+VALUES ('22222222-0000-0000-0000-000000000004', '11111111-1111-1111-1111-111111111111', '2026-06-04', '19:00'::time, '00000000-0000-0000-0000-00000000b007');
 
-INSERT INTO public.bookings (show_date_id, artist_id, status, is_understudy) VALUES
-  ('22222222-0000-0000-0000-000000000004', 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaa01', 'confirmed', false),
-  ('22222222-0000-0000-0000-000000000004', 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaa02', 'confirmed', false);
+INSERT INTO public.bookings (show_date_id, artist_id, status, is_understudy, org_id) VALUES
+  ('22222222-0000-0000-0000-000000000004', 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaa01', 'confirmed', false, '00000000-0000-0000-0000-00000000b007'),
+  ('22222222-0000-0000-0000-000000000004', 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaa02', 'confirmed', false, '00000000-0000-0000-0000-00000000b007');
 
 SELECT is(
   (SELECT status::text FROM public.show_dates WHERE id = '22222222-0000-0000-0000-000000000004'),
@@ -112,14 +112,14 @@ SELECT is(
 -- ────────────────────────────────────────────────────────────────────────────
 -- Test 5: Over capacity on main (3 confirmed main, 1 understudy) → 'fully_filled'
 -- ────────────────────────────────────────────────────────────────────────────
-INSERT INTO public.show_dates (id, show_id, date, session_1)
-VALUES ('22222222-0000-0000-0000-000000000005', '11111111-1111-1111-1111-111111111111', '2026-06-05', '19:00'::time);
+INSERT INTO public.show_dates (id, show_id, date, session_1, org_id)
+VALUES ('22222222-0000-0000-0000-000000000005', '11111111-1111-1111-1111-111111111111', '2026-06-05', '19:00'::time, '00000000-0000-0000-0000-00000000b007');
 
-INSERT INTO public.bookings (show_date_id, artist_id, status, is_understudy) VALUES
-  ('22222222-0000-0000-0000-000000000005', 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaa01', 'confirmed', false),
-  ('22222222-0000-0000-0000-000000000005', 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaa02', 'confirmed', false),
-  ('22222222-0000-0000-0000-000000000005', 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaa03', 'confirmed', false),
-  ('22222222-0000-0000-0000-000000000005', 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaa04', 'confirmed', true);
+INSERT INTO public.bookings (show_date_id, artist_id, status, is_understudy, org_id) VALUES
+  ('22222222-0000-0000-0000-000000000005', 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaa01', 'confirmed', false, '00000000-0000-0000-0000-00000000b007'),
+  ('22222222-0000-0000-0000-000000000005', 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaa02', 'confirmed', false, '00000000-0000-0000-0000-00000000b007'),
+  ('22222222-0000-0000-0000-000000000005', 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaa03', 'confirmed', false, '00000000-0000-0000-0000-00000000b007'),
+  ('22222222-0000-0000-0000-000000000005', 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaa04', 'confirmed', true, '00000000-0000-0000-0000-00000000b007');
 
 SELECT is(
   (SELECT status::text FROM public.show_dates WHERE id = '22222222-0000-0000-0000-000000000005'),
@@ -130,13 +130,13 @@ SELECT is(
 -- ────────────────────────────────────────────────────────────────────────────
 -- Test 6: 'cancelled' is never overwritten
 -- ────────────────────────────────────────────────────────────────────────────
-INSERT INTO public.show_dates (id, show_id, date, session_1, status)
-VALUES ('22222222-0000-0000-0000-000000000006', '11111111-1111-1111-1111-111111111111', '2026-06-06', '19:00'::time, 'cancelled');
+INSERT INTO public.show_dates (id, show_id, date, session_1, status, org_id)
+VALUES ('22222222-0000-0000-0000-000000000006', '11111111-1111-1111-1111-111111111111', '2026-06-06', '19:00'::time, 'cancelled', '00000000-0000-0000-0000-00000000b007');
 
-INSERT INTO public.bookings (show_date_id, artist_id, status, is_understudy) VALUES
-  ('22222222-0000-0000-0000-000000000006', 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaa01', 'confirmed', false),
-  ('22222222-0000-0000-0000-000000000006', 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaa02', 'confirmed', false),
-  ('22222222-0000-0000-0000-000000000006', 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaa03', 'confirmed', true);
+INSERT INTO public.bookings (show_date_id, artist_id, status, is_understudy, org_id) VALUES
+  ('22222222-0000-0000-0000-000000000006', 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaa01', 'confirmed', false, '00000000-0000-0000-0000-00000000b007'),
+  ('22222222-0000-0000-0000-000000000006', 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaa02', 'confirmed', false, '00000000-0000-0000-0000-00000000b007'),
+  ('22222222-0000-0000-0000-000000000006', 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaa03', 'confirmed', true, '00000000-0000-0000-0000-00000000b007');
 
 SELECT is(
   (SELECT status::text FROM public.show_dates WHERE id = '22222222-0000-0000-0000-000000000006'),
@@ -147,13 +147,13 @@ SELECT is(
 -- ────────────────────────────────────────────────────────────────────────────
 -- Test 7: Unconfigured (program, sub_program) → caps at 'partially_filled'
 -- ────────────────────────────────────────────────────────────────────────────
-INSERT INTO public.show_dates (id, show_id, date, session_1)
-VALUES ('22222222-0000-0000-0000-000000000007', '11111111-1111-1111-1111-111111111112', '2026-06-07', '19:00'::time);
+INSERT INTO public.show_dates (id, show_id, date, session_1, org_id)
+VALUES ('22222222-0000-0000-0000-000000000007', '11111111-1111-1111-1111-111111111112', '2026-06-07', '19:00'::time, '00000000-0000-0000-0000-00000000b007');
 
-INSERT INTO public.bookings (show_date_id, artist_id, status, is_understudy) VALUES
-  ('22222222-0000-0000-0000-000000000007', 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaa01', 'confirmed', false),
-  ('22222222-0000-0000-0000-000000000007', 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaa02', 'confirmed', false),
-  ('22222222-0000-0000-0000-000000000007', 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaa03', 'confirmed', true);
+INSERT INTO public.bookings (show_date_id, artist_id, status, is_understudy, org_id) VALUES
+  ('22222222-0000-0000-0000-000000000007', 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaa01', 'confirmed', false, '00000000-0000-0000-0000-00000000b007'),
+  ('22222222-0000-0000-0000-000000000007', 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaa02', 'confirmed', false, '00000000-0000-0000-0000-00000000b007'),
+  ('22222222-0000-0000-0000-000000000007', 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaa03', 'confirmed', true, '00000000-0000-0000-0000-00000000b007');
 
 SELECT is(
   (SELECT status::text FROM public.show_dates WHERE id = '22222222-0000-0000-0000-000000000007'),
@@ -164,13 +164,13 @@ SELECT is(
 -- ────────────────────────────────────────────────────────────────────────────
 -- Test 8: Cancelled bookings do not count toward thresholds
 -- ────────────────────────────────────────────────────────────────────────────
-INSERT INTO public.show_dates (id, show_id, date, session_1)
-VALUES ('22222222-0000-0000-0000-000000000008', '11111111-1111-1111-1111-111111111111', '2026-06-08', '19:00'::time);
+INSERT INTO public.show_dates (id, show_id, date, session_1, org_id)
+VALUES ('22222222-0000-0000-0000-000000000008', '11111111-1111-1111-1111-111111111111', '2026-06-08', '19:00'::time, '00000000-0000-0000-0000-00000000b007');
 
-INSERT INTO public.bookings (show_date_id, artist_id, status, is_understudy) VALUES
-  ('22222222-0000-0000-0000-000000000008', 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaa01', 'confirmed', false),
-  ('22222222-0000-0000-0000-000000000008', 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaa02', 'cancelled', false),
-  ('22222222-0000-0000-0000-000000000008', 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaa03', 'cancelled', true);
+INSERT INTO public.bookings (show_date_id, artist_id, status, is_understudy, org_id) VALUES
+  ('22222222-0000-0000-0000-000000000008', 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaa01', 'confirmed', false, '00000000-0000-0000-0000-00000000b007'),
+  ('22222222-0000-0000-0000-000000000008', 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaa02', 'cancelled', false, '00000000-0000-0000-0000-00000000b007'),
+  ('22222222-0000-0000-0000-000000000008', 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaa03', 'cancelled', true, '00000000-0000-0000-0000-00000000b007');
 
 SELECT is(
   (SELECT status::text FROM public.show_dates WHERE id = '22222222-0000-0000-0000-000000000008'),

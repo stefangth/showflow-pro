@@ -72,9 +72,7 @@ export async function acceptInvitation(
   client: SupabaseClient<Database>,
   token: string,
 ): Promise<string> {
-  // `accept_invitation` isn't in the committed generated types yet (types.ts is
-  // regenerated in the finalize pass); cast at the boundary so the RPC resolves.
-  const { data, error } = await (client.rpc as any)("accept_invitation", { p_token: token });
+  const { data, error } = await client.rpc("accept_invitation", { p_token: token });
   if (error) throw error;
   return data as string;
 }

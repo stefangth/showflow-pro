@@ -3,6 +3,7 @@ import { createClient, type SupabaseClient } from "npm:@supabase/supabase-js@2";
 export interface EmailMessage {
   template_name: string;
   recipient_email: string;
+  org_id?: string;
   templateData?: Record<string, unknown>;
   idempotency_key?: string;
 }
