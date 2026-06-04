@@ -89,3 +89,17 @@ export async function deleteUserByEmail(email: string): Promise<void> {
   const admin = adminClient();
   await admin.auth.admin.deleteUser(existing.id);
 }
+
+/** Ensure a user exists, knows `password`, and is a platform (super) admin. */
+export async function ensurePlatformAdmin(email: string, password: string): Promise<SeededUser> {
+  const admin = adminClient();
+  let existing = await findUserByEmail(email);
+  if (!existing) {
+    const created = await createConfirmedUser(email, password);
+    existing = { id: created.id };
+  } else {
+    await admin.auth.admin.updateUserById(existing.id, { password });
+  }
+  await admin.from("platform_admins").upsert({ user_id: existing.id });
+  return { id: existing.id, email, password };
+}
