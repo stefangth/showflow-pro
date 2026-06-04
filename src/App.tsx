@@ -18,6 +18,7 @@ import AvailabilityPage from "./pages/AvailabilityPage";
 import AdminPage from "./pages/AdminPage";
 import SettingsPage from "./pages/SettingsPage";
 import ChatsListPage from "./pages/ChatsListPage";
+import ProfilePage from "./pages/ProfilePage";
 import ArtistsPage from "./pages/ArtistsPage";
 import UnsubscribePage from "./pages/UnsubscribePage";
 import PrivacyPage from "./pages/PrivacyPage";
@@ -47,6 +48,7 @@ const App = () => (
             <Route path={ROUTES.ADMIN} element={<ProtectedRoute requiredRoles={['admin']}><AppLayout><AdminPage /></AppLayout></ProtectedRoute>} />
             <Route path={ROUTES.SETTINGS} element={<ProtectedRoute requiredRoles={['admin', 'producer']}><AppLayout><SettingsPage /></AppLayout></ProtectedRoute>} />
             <Route path={ROUTES.CHATS} element={<ProtectedRoute><AppLayout><ChatsListPage /></AppLayout></ProtectedRoute>} />
+            <Route path={ROUTES.PROFILE} element={<ProtectedRoute><AppLayout><ProfilePage /></AppLayout></ProtectedRoute>} />
             <Route path={ROUTES.PLATFORM} element={<PlatformRoute><AppLayout><PlatformPage /></AppLayout></PlatformRoute>} />
             <Route path={ROUTES.ACCEPT_INVITE} element={<AcceptInvitePage />} />
             <Route path={ROUTES.UNSUBSCRIBE} element={<UnsubscribePage />} />
