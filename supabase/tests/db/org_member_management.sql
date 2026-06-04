@@ -1,7 +1,7 @@
 -- Phase 5: org member management RPC guards.
 BEGIN;
 CREATE EXTENSION IF NOT EXISTS pgtap WITH SCHEMA extensions;
-SELECT plan(8);
+SELECT plan(7);
 
 -- Seed one org + users: org A has admin a1 + admin a2 + producer p1.
 SET session_replication_role = replica;
