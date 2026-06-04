@@ -24,6 +24,7 @@ import UnsubscribePage from "./pages/UnsubscribePage";
 import PrivacyPage from "./pages/PrivacyPage";
 import ImpressumPage from "./pages/ImpressumPage";
 import AcceptInvitePage from "./pages/AcceptInvitePage";
+import ResetPasswordPage from "./pages/ResetPasswordPage";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -51,6 +52,7 @@ const App = () => (
             <Route path={ROUTES.PROFILE} element={<ProtectedRoute><AppLayout><ProfilePage /></AppLayout></ProtectedRoute>} />
             <Route path={ROUTES.PLATFORM} element={<PlatformRoute><AppLayout><PlatformPage /></AppLayout></PlatformRoute>} />
             <Route path={ROUTES.ACCEPT_INVITE} element={<AcceptInvitePage />} />
+            <Route path={ROUTES.RESET_PASSWORD} element={<ResetPasswordPage />} />
             <Route path={ROUTES.UNSUBSCRIBE} element={<UnsubscribePage />} />
             <Route path={ROUTES.PRIVACY} element={<PrivacyPage />} />
             <Route path={ROUTES.IMPRESSUM} element={<ImpressumPage />} />
