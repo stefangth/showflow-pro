@@ -11,7 +11,7 @@ Deno.test("create-invitation: OPTIONS returns preflight", async () => {
 Deno.test("create-invitation: no auth → 401", async () => {
   const { deps } = makeFakeDeps();
   const res = await handle(
-    makeRequest({ headers: {}, body: { org_id: "org-1", email: "x@y.com", role: "producer" } }),
+    makeRequest({ headers: {}, body: { org_id: "org-1", email: "x@y.com", role: "producer", app_origin: "https://app.test" } }),
     deps,
   );
   assertEquals(res.status, 401);
@@ -27,7 +27,7 @@ Deno.test("create-invitation: org admin → 200", async () => {
     },
   });
   const res = await handle(
-    makeRequest({ headers: { Authorization: "Bearer jwt" }, body: { org_id: "org-1", email: "x@y.com", role: "producer" } }),
+    makeRequest({ headers: { Authorization: "Bearer jwt" }, body: { org_id: "org-1", email: "x@y.com", role: "producer", app_origin: "https://app.test" } }),
     deps,
   );
   assertEquals(res.status, 200);

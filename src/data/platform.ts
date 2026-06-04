@@ -92,12 +92,6 @@ export async function removePlatformAdmin(client: SupabaseClient<Database>, user
   if (error) throw error;
 }
 
-/** Re-send a first-admin invitation email. */
-export async function resendInvitation(client: SupabaseClient<Database>, invitationId: string): Promise<void> {
-  const { error } = await client.functions.invoke("resend-invitation", { body: { invitation_id: invitationId } });
-  if (error) throw error;
-}
-
 /** Upsert a platform-default setting (org_id IS NULL). Super-admin only via app_settings RLS. */
 export async function savePlatformSetting(client: SupabaseClient<Database>, key: string, value: Json): Promise<void> {
   const { error } = await client.from("app_settings").upsert({ org_id: null, key, value }, { onConflict: "org_id,key" });
