@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { createFakeSupabase } from "@/test/supabaseFake";
-import { fetchProgramSubProgramPairs, fetchSlotDefaults } from "./settings";
+import { fetchProgramSubProgramPairs, resolveOrgSetting, upsertOrgSetting } from "./settings";
 
 describe("fetchProgramSubProgramPairs", () => {
   it("selects non-null program/sub_program from shows and dedupes", async () => {
@@ -22,19 +22,50 @@ describe("fetchProgramSubProgramPairs", () => {
   });
 });
 
-describe("fetchSlotDefaults", () => {
-  it("returns the value object", async () => {
-    const value = { A: { x: { main_cast: 2, understudies: 1 } } };
-    const fake = createFakeSupabase({ app_settings: { data: { value }, error: null } });
-    expect(await fetchSlotDefaults(fake as never)).toEqual(value);
-    expect(fake.calls).toContainEqual({ table: "app_settings", method: "eq", args: ["key", "sub_program_slots_defaults"] });
+describe("resolveOrgSetting", () => {
+  it("returns the org override when present", async () => {
+    const fake = createFakeSupabase({
+      app_settings: { data: [{ org_id: "o1", value: "orgA" }, { org_id: null, value: "plat" }], error: null },
+    });
+    expect(await resolveOrgSetting(fake as never, "o1", "k", "def")).toBe("orgA");
   });
-  it("returns {} when no row", async () => {
-    const fake = createFakeSupabase({ app_settings: { data: null, error: null } });
-    expect(await fetchSlotDefaults(fake as never)).toEqual({});
+
+  it("falls back to the platform default (org_id null) when no override", async () => {
+    const fake = createFakeSupabase({
+      app_settings: { data: [{ org_id: null, value: "plat" }], error: null },
+    });
+    expect(await resolveOrgSetting(fake as never, "o1", "k", "def")).toBe("plat");
   });
-  it("throws on error", async () => {
+
+  it("returns the fallback when no row matches", async () => {
+    const fake = createFakeSupabase({ app_settings: { data: [], error: null } });
+    expect(await resolveOrgSetting(fake as never, "o1", "k", "def")).toBe("def");
+  });
+
+  it("queries platform-only with .is when orgId is null", async () => {
+    const fake = createFakeSupabase({ app_settings: { data: [{ org_id: null, value: "plat" }], error: null } });
+    expect(await resolveOrgSetting(fake as never, null, "k", "def")).toBe("plat");
+    expect(fake.calls).toContainEqual({ table: "app_settings", method: "is", args: ["org_id", null] });
+  });
+
+  it("throws on query error", async () => {
     const fake = createFakeSupabase({ app_settings: { data: null, error: { message: "boom" } } });
-    await expect(fetchSlotDefaults(fake as never)).rejects.toBeTruthy();
+    await expect(resolveOrgSetting(fake as never, "o1", "k", "def")).rejects.toBeTruthy();
+  });
+});
+
+describe("upsertOrgSetting", () => {
+  it("upserts with org_id + key and conflict target org_id,key", async () => {
+    const fake = createFakeSupabase({ app_settings: { data: null, error: null } });
+    await upsertOrgSetting(fake as never, "o1", "k", { a: 1 } as never);
+    expect(fake.calls).toContainEqual({
+      table: "app_settings", method: "upsert",
+      args: [{ org_id: "o1", key: "k", value: { a: 1 } }, { onConflict: "org_id,key" }],
+    });
+  });
+
+  it("throws on upsert error", async () => {
+    const fake = createFakeSupabase({ app_settings: { data: null, error: { message: "no" } } });
+    await expect(upsertOrgSetting(fake as never, "o1", "k", {} as never)).rejects.toBeTruthy();
   });
 });
