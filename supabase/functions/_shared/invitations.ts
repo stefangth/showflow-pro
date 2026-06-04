@@ -15,7 +15,10 @@ export interface DeliverInviteArgs {
 export async function userExistsByEmail(deps: Deps, email: string): Promise<boolean> {
   const target = email.toLowerCase();
   for (let page = 1; ; page++) {
-    const { data: list } = await deps.admin.auth.admin.listUsers({ page, perPage: 200 });
+    const { data: list, error } = await deps.admin.auth.admin.listUsers({ page, perPage: 200 });
+    // A swallowed error returns users:[] → an existing user would be misrouted through the
+    // net-new path and get a duplicate account. Fail loudly instead.
+    if (error) throw error;
     const users = (list?.users ?? []) as Array<{ email?: string }>;
     if (users.some((u) => u.email?.toLowerCase() === target)) return true;
     if (users.length < 200) return false;
