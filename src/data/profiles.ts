@@ -50,3 +50,19 @@ export async function updateMyPassword(
   const { error } = await client.auth.updateUser({ password: args.newPassword });
   if (error) throw error;
 }
+
+/** Send a password-recovery email (Supabase built-in), returning the user to `redirectTo`. */
+export async function requestPasswordReset(
+  client: SupabaseClient<Database>,
+  email: string,
+  redirectTo: string,
+): Promise<void> {
+  const { error } = await client.auth.resetPasswordForEmail(email, { redirectTo });
+  if (error) throw error;
+}
+
+/** Set a new password for the user in the current (recovery/invite) session. */
+export async function setNewPassword(client: SupabaseClient<Database>, newPassword: string): Promise<void> {
+  const { error } = await client.auth.updateUser({ password: newPassword });
+  if (error) throw error;
+}

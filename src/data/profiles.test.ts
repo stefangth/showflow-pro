@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { createFakeSupabase } from "@/test/supabaseFake";
-import { fetchMyProfile, updateMyProfile, updateMyPassword } from "./profiles";
+import { fetchMyProfile, updateMyProfile, updateMyPassword, requestPasswordReset, setNewPassword } from "./profiles";
 
 const aProfile = { user_id: "u1", display_name: "Ada", phone: "123", email: "ada@x.com", avatar_url: null };
 
@@ -52,5 +52,25 @@ describe("updateMyPassword", () => {
       updateMyPassword(fake as never, { email: "ada@x.com", currentPassword: "bad", newPassword: "newpass12" }),
     ).rejects.toThrow(/current password is incorrect/i);
     expect(fake.calls.find((c) => c.method === "updateUser")).toBeUndefined();
+  });
+});
+
+describe("requestPasswordReset", () => {
+  it("calls resetPasswordForEmail with the redirect", async () => {
+    const fake = createFakeSupabase({ "auth:resetPasswordForEmail": { data: {}, error: null } });
+    await requestPasswordReset(fake as never, "ada@x.com", "https://app/reset-password");
+    expect(fake.calls).toContainEqual({ table: "auth", method: "resetPasswordForEmail", args: ["ada@x.com", { redirectTo: "https://app/reset-password" }] });
+  });
+});
+
+describe("setNewPassword", () => {
+  it("calls updateUser with the new password", async () => {
+    const fake = createFakeSupabase({ "auth:updateUser": { data: { user: { id: "u1" } }, error: null } });
+    await setNewPassword(fake as never, "brandnewpass");
+    expect(fake.calls).toContainEqual({ table: "auth", method: "updateUser", args: [{ password: "brandnewpass" }] });
+  });
+  it("throws on error", async () => {
+    const fake = createFakeSupabase({ "auth:updateUser": { data: { user: null }, error: { message: "weak" } } });
+    await expect(setNewPassword(fake as never, "x")).rejects.toBeTruthy();
   });
 });
