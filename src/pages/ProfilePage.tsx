@@ -70,7 +70,7 @@ export default function ProfilePage() {
             >
               <div className="space-y-1.5">
                 <Label htmlFor="email">Email</Label>
-                <Input id="email" value={profile?.email ?? user?.email ?? ""} disabled />
+                <Input id="email" value={user?.email ?? ""} disabled />
               </div>
               <div className="space-y-1.5">
                 <Label htmlFor="display_name">Display name</Label>

@@ -5,7 +5,6 @@ export interface MyProfile {
   user_id: string;
   display_name: string | null;
   phone: string | null;
-  email: string | null;
   avatar_url: string | null;
 }
 
@@ -16,7 +15,7 @@ export async function fetchMyProfile(
 ): Promise<MyProfile | null> {
   const { data, error } = await client
     .from("profiles")
-    .select("user_id, display_name, phone, email, avatar_url")
+    .select("user_id, display_name, phone, avatar_url")
     .eq("user_id", userId)
     .maybeSingle();
   if (error) throw error;

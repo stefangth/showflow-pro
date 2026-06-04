@@ -1,6 +1,6 @@
 import { expect, test } from "@playwright/test";
 import { adminClient, tagEmail } from "./helpers/supabase";
-import { ensureUserWithRole, deleteUserByEmail } from "./helpers/users";
+import { ensureUserWithRole, deleteUserByEmail, findUserByEmail } from "./helpers/users";
 import { loginAsAndAwaitDashboard, loginAs } from "./helpers/auth";
 
 const EMAIL = tagEmail("phase5-profile", "fixed");
@@ -14,12 +14,13 @@ test.describe("Profile self-service", () => {
   test.afterAll(async () => { await deleteUserByEmail(EMAIL); });
 
   test("edits display name (DB is the oracle)", async ({ page }) => {
+    const u = await findUserByEmail(EMAIL);
     await loginAsAndAwaitDashboard(page, EMAIL, PASSWORD);
     await page.goto("/profile");
     await page.getByLabel("Display name").fill("Phase Five Tester");
     await page.getByRole("button", { name: /^save$/i }).click();
     await expect(async () => {
-      const { data } = await adminClient().from("profiles").select("display_name").eq("email", EMAIL).single();
+      const { data } = await adminClient().from("profiles").select("display_name").eq("user_id", u!.id).single();
       expect(data?.display_name).toBe("Phase Five Tester");
     }).toPass({ timeout: 15_000 });
   });
