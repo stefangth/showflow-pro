@@ -6,8 +6,9 @@ import { fetchSkills, fetchArtistSkills, createSkill, type Skill } from '@/data/
 export type { Skill };
 
 export function useSkills() {
+  const { currentOrg } = useAuth();
   return useQuery({
-    queryKey: ['skills'],
+    queryKey: ['skills', currentOrg?.id],
     queryFn: () => fetchSkills(supabase),
   });
 }
