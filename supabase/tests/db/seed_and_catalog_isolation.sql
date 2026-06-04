@@ -40,12 +40,12 @@ SELECT throws_ok(
 -- …but artists uniqueness is per (org,user): same user can be an artist in both orgs
 SET session_replication_role = replica;
 INSERT INTO auth.users (id, aud, role, email, email_confirmed_at, raw_app_meta_data, raw_user_meta_data, created_at, updated_at)
-VALUES ('aaaaaaaa-aaaa-0cu1-0000-000000000000','authenticated','authenticated','cu1@test.com',now(),'{"provider":"email"}','{}',now(),now());
+VALUES ('aaaaaaaa-aaaa-0c01-0000-000000000000','authenticated','authenticated','cu1@test.com',now(),'{"provider":"email"}','{}',now(),now());
 SET session_replication_role = DEFAULT;
 SELECT lives_ok(
   $$INSERT INTO public.artists (org_id, user_id, name) VALUES
-      ('00000000-0000-0000-0000-0000000ca000','aaaaaaaa-aaaa-0cu1-0000-000000000000','A'),
-      ('00000000-0000-0000-0000-0000000cb000','aaaaaaaa-aaaa-0cu1-0000-000000000000','A')$$,
+      ('00000000-0000-0000-0000-0000000ca000','aaaaaaaa-aaaa-0c01-0000-000000000000','A'),
+      ('00000000-0000-0000-0000-0000000cb000','aaaaaaaa-aaaa-0c01-0000-000000000000','A')$$,
   'same user can be an artist in two orgs');
 
 SELECT * FROM finish();
