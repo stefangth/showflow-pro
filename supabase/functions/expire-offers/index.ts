@@ -91,6 +91,7 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
       p_program: program ?? '',
       p_sub_program: subProgram,
       p_city_id: (sd as any).city_id,
+      p_org: (sd as any).org_id,
     })
     let recipientIds = (producers ?? []).map((p: any) => p.producer_user_id)
     if (recipientIds.length === 0) {
