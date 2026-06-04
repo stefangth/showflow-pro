@@ -1167,6 +1167,7 @@ export type Database = {
     }
     Functions: {
       accept_invitation: { Args: { p_token: string }; Returns: string }
+      add_platform_admin: { Args: { p_email: string }; Returns: string }
       compute_show_date_status: {
         Args: { p_show_date_id: string }
         Returns: undefined
@@ -1189,6 +1190,37 @@ export type Database = {
       }
       is_org_member: { Args: { _org: string; _uid: string }; Returns: boolean }
       is_super_admin: { Args: { _uid: string }; Returns: boolean }
+      list_platform_admins: {
+        Args: never
+        Returns: {
+          created_at: string
+          email: string
+          user_id: string
+        }[]
+      }
+      platform_org_stats: {
+        Args: never
+        Returns: {
+          active_artist_count: number
+          bookings_30d: number
+          last_activity_at: string
+          member_count: number
+          name: string
+          org_id: string
+          slug: string
+          status: string
+        }[]
+      }
+      provision_org: {
+        Args: {
+          p_admin_email: string
+          p_name: string
+          p_role?: Database["public"]["Enums"]["app_role"]
+          p_slug: string
+        }
+        Returns: Json
+      }
+      remove_platform_admin: { Args: { p_user_id: string }; Returns: undefined }
       resolve_show_assignments: {
         Args: {
           p_city_id: string
