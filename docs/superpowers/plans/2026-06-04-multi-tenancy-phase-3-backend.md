@@ -17,7 +17,7 @@ This machine has **Deno only** — no Node, no Supabase CLI, no Docker (see memo
 | Layer | How to run | When |
 |---|---|---|
 | Deno edge-fn tests | `deno test --allow-all supabase/functions/<fn>/` (runs locally) | Every TDD step in Parts 1, 3–8 |
-| Migrations | Apply via Supabase MCP `apply_migration(project_id="epweartpzwvcasrzyueh", name, query)` **and** commit the SQL as a new file under `supabase/migrations/` so the PR's Supabase preview branch + CI replay it. Never edit an existing migration. | Parts 2, 8, 9 |
+| Migrations | **Author** each migration as a new timestamped file under `supabase/migrations/` and commit it. On push, the PR's Supabase **preview branch** + CI's `supabase test db` apply and verify it. **Do NOT `apply_migration` against the live project `epweartpzwvcasrzyueh`** — it is the only/prod project (no separate dev DB; "main lags dev" because dev migrations live only on preview branches until merge). If you must dry-run SQL, create a throwaway preview branch via MCP `create_branch` first. Never edit an existing migration. | Parts 2, 8, 9 |
 | pgTAP | CI job `supabase test db` (runs on PR). New files under `supabase/tests/**` are auto-discovered. | Parts 2, 8, 9 |
 | Vitest (frontend) | CI (no Node locally) — push and read `gh pr checks` | Part 8 (Settings UI) |
 | Typecheck (`tsc --noEmit`) | CI Typecheck job | every PR |
@@ -387,7 +387,7 @@ to:
 
 - [ ] **Step 5: Apply the migration**
 
-Apply via Supabase MCP: `apply_migration(project_id="epweartpzwvcasrzyueh", name="org_id_derivation_triggers", query=<the file contents>)`, and ensure the file is committed under `supabase/migrations/` so CI/preview replay it.
+Save the SQL as `supabase/migrations/20260604130000_org_id_derivation_triggers.sql` and commit. Do **not** apply to the live project — push and let the PR's Supabase preview branch + CI's `supabase test db` apply and verify it (see the environment table).
 
 - [ ] **Step 6: (CI) verify pgTAP passes**
 
@@ -1129,7 +1129,7 @@ revoke all on function public.get_org_airtable_key(uuid) from public, authentica
 grant execute on function public.get_org_airtable_key(uuid) to service_role;
 ```
 
-- [ ] **Step 3: Apply + (CI) verify** — apply via MCP `apply_migration(name="org_airtable_vault", …)`, commit the file, push; confirm `supabase test db` is green for `org_airtable_key.sql`.
+- [ ] **Step 3: Commit + (CI) verify** — save as `supabase/migrations/20260604131000_org_airtable_vault.sql`, commit, push. The PR preview branch + CI apply it; confirm `supabase test db` is green for `org_airtable_key.sql`. Do **not** apply to the live project.
 
 - [ ] **Step 4: Commit**
 
@@ -1568,7 +1568,7 @@ begin
 end $$;
 ```
 
-- [ ] **Step 4: Apply + (CI) verify** — apply via MCP `apply_migration(name="drop_bootstrap_org_defaults", …)`, commit, push. Confirm the FULL pgTAP suite is green: the new consistency test, the Part-2 derivation test, **and the existing isolation + coverage suites**. Then exercise the edge functions' Deno suite once more (`deno test --allow-all supabase/functions/`) — nothing should regress.
+- [ ] **Step 4: Commit + (CI) verify** — save as `supabase/migrations/20260604132000_drop_bootstrap_org_defaults.sql`, commit, push. The preview branch + CI apply it. Confirm the FULL pgTAP suite is green: the new consistency test, the Part-2 derivation test, **and the existing isolation + coverage suites**. Then exercise the edge functions' Deno suite once more (`deno test --allow-all supabase/functions/`) — nothing should regress. Do **not** apply to the live project.
 
 > If any pgTAP fixture inserts a root row (shows/artists/etc.) without `org_id` relying on the old default, it will now fail with a NOT NULL violation. Fix those fixtures to supply `org_id` (the isolation/coverage suites already seed it explicitly; this mainly affects older trigger fixtures).
 
