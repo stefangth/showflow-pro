@@ -32,3 +32,21 @@ export async function updateMyProfile(
   const { error } = await client.from("profiles").update(patch).eq("user_id", userId);
   if (error) throw error;
 }
+
+/**
+ * Change the signed-in user's password. Supabase's updateUser does NOT verify the
+ * current password, so we re-authenticate with it first (a wrong password fails here,
+ * before any change is made).
+ */
+export async function updateMyPassword(
+  client: SupabaseClient<Database>,
+  args: { email: string; currentPassword: string; newPassword: string },
+): Promise<void> {
+  const { error: verifyErr } = await client.auth.signInWithPassword({
+    email: args.email,
+    password: args.currentPassword,
+  });
+  if (verifyErr) throw new Error("Current password is incorrect");
+  const { error } = await client.auth.updateUser({ password: args.newPassword });
+  if (error) throw error;
+}

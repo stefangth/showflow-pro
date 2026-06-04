@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { createFakeSupabase } from "@/test/supabaseFake";
-import { fetchMyProfile, updateMyProfile } from "./profiles";
+import { fetchMyProfile, updateMyProfile, updateMyPassword } from "./profiles";
 
 const aProfile = { user_id: "u1", display_name: "Ada", phone: "123", email: "ada@x.com", avatar_url: null };
 
@@ -30,5 +30,27 @@ describe("updateMyProfile", () => {
   it("throws on error", async () => {
     const fake = createFakeSupabase({ profiles: { data: null, error: { message: "boom" } } });
     await expect(updateMyProfile(fake as never, "u1", { display_name: "x" })).rejects.toBeTruthy();
+  });
+});
+
+describe("updateMyPassword", () => {
+  it("verifies the current password then updates to the new one", async () => {
+    const fake = createFakeSupabase({
+      "auth:signInWithPassword": { data: { user: { id: "u1" } }, error: null },
+      "auth:updateUser": { data: { user: { id: "u1" } }, error: null },
+    });
+    await updateMyPassword(fake as never, { email: "ada@x.com", currentPassword: "old", newPassword: "newpass12" });
+    expect(fake.calls).toContainEqual({ table: "auth", method: "signInWithPassword", args: [{ email: "ada@x.com", password: "old" }] });
+    expect(fake.calls).toContainEqual({ table: "auth", method: "updateUser", args: [{ password: "newpass12" }] });
+  });
+
+  it("rejects with a clear message when the current password is wrong (and never updates)", async () => {
+    const fake = createFakeSupabase({
+      "auth:signInWithPassword": { data: { user: null }, error: { message: "Invalid login credentials" } },
+    });
+    await expect(
+      updateMyPassword(fake as never, { email: "ada@x.com", currentPassword: "bad", newPassword: "newpass12" }),
+    ).rejects.toThrow(/current password is incorrect/i);
+    expect(fake.calls.find((c) => c.method === "updateUser")).toBeUndefined();
   });
 });
