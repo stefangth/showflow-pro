@@ -12,19 +12,25 @@ const BERLIN_19_CET = new Date("2026-01-15T18:00:00.000Z");
 // CET: 2026-01-15T17:00:00Z = 18:00 Berlin — should skip
 const BERLIN_18_CET = new Date("2026-01-15T17:00:00.000Z");
 
+const ORG_1 = "00000000-0000-0000-0000-0000000000a1";
+const ORG_2 = "00000000-0000-0000-0000-0000000000a2";
 const cronOK = { "X-Cron-Secret": "s" };
 
-// ── Shared settings seed (per-key, using array/when form) ─────────────────────
+// app_settings: cron_secret via maybeSingle (object); hour/window via resolver (rows).
 const APP_SETTINGS_SEED = [
   { when: { key: "cron_secret" }, data: { value: "s" } },
-  { when: { key: "offer_digest_hour_berlin" }, data: { value: 19 } },
-  { when: { key: "offer_response_window_hours" }, data: { value: 48 } },
+  { when: { key: "offer_digest_hour_berlin" }, data: [{ org_id: null, value: 19 }] },
+  { when: { key: "offer_response_window_hours" }, data: [{ org_id: null, value: 48 }] },
 ];
 
 function baseDeps(extraTables: Record<string, unknown> = {}, now = BERLIN_19_CEST) {
   return makeFakeDeps({
     now,
-    tables: { app_settings: APP_SETTINGS_SEED, ...extraTables },
+    tables: {
+      app_settings: APP_SETTINGS_SEED,
+      organizations: { data: [{ id: ORG_1 }], error: null },
+      ...extraTables,
+    },
   });
 }
 
@@ -111,12 +117,16 @@ Deno.test("send-offer-digest: midnight Berlin (hour 0) with target 0 is NOT skip
   const BERLIN_MIDNIGHT_CET = new Date("2026-01-15T23:00:00.000Z");
   const settings = [
     { when: { key: "cron_secret" }, data: { value: "s" } },
-    { when: { key: "offer_digest_hour_berlin" }, data: { value: 0 } },
-    { when: { key: "offer_response_window_hours" }, data: { value: 48 } },
+    { when: { key: "offer_digest_hour_berlin" }, data: [{ org_id: null, value: 0 }] },
+    { when: { key: "offer_response_window_hours" }, data: [{ org_id: null, value: 48 }] },
   ];
   const { deps } = makeFakeDeps({
     now: BERLIN_MIDNIGHT_CET,
-    tables: { app_settings: settings, bookings: { data: [], error: null } },
+    tables: {
+      app_settings: settings,
+      organizations: { data: [{ id: ORG_1 }], error: null },
+      bookings: { data: [], error: null },
+    },
   });
   const res = await handle(makeRequest({ headers: cronOK }), deps);
   const body = await res.json();
@@ -148,12 +158,15 @@ Deno.test("send-offer-digest: reads offer_digest_hour_berlin from app_settings",
   // Set the target hour to 20 (not 19). With now=19:00 Berlin it should skip.
   const settings = [
     { when: { key: "cron_secret" }, data: { value: "s" } },
-    { when: { key: "offer_digest_hour_berlin" }, data: { value: 20 } },
-    { when: { key: "offer_response_window_hours" }, data: { value: 48 } },
+    { when: { key: "offer_digest_hour_berlin" }, data: [{ org_id: null, value: 20 }] },
+    { when: { key: "offer_response_window_hours" }, data: [{ org_id: null, value: 48 }] },
   ];
   const { deps } = makeFakeDeps({
     now: BERLIN_19_CEST, // 19:00 Berlin
-    tables: { app_settings: settings },
+    tables: {
+      app_settings: settings,
+      organizations: { data: [{ id: ORG_1 }], error: null },
+    },
   });
   const res = await handle(makeRequest({ headers: cronOK }), deps);
   const body = await res.json();
@@ -165,8 +178,8 @@ Deno.test("send-offer-digest: reads offer_response_window_hours from app_setting
   // Use 72h window instead of default 48h
   const settings = [
     { when: { key: "cron_secret" }, data: { value: "s" } },
-    { when: { key: "offer_digest_hour_berlin" }, data: { value: 19 } },
-    { when: { key: "offer_response_window_hours" }, data: { value: 72 } },
+    { when: { key: "offer_digest_hour_berlin" }, data: [{ org_id: null, value: 19 }] },
+    { when: { key: "offer_response_window_hours" }, data: [{ org_id: null, value: 72 }] },
   ];
   const now = BERLIN_19_CEST; // 2026-06-01T17:00:00Z
   const expectedExpiresAt = new Date(now.getTime() + 72 * 60 * 60 * 1000).toISOString();
@@ -178,7 +191,11 @@ Deno.test("send-offer-digest: reads offer_response_window_hours from app_setting
   }];
   const { deps, calls } = makeFakeDeps({
     now,
-    tables: { app_settings: settings, bookings: { data: pending, error: null } },
+    tables: {
+      app_settings: settings,
+      organizations: { data: [{ id: ORG_1 }], error: null },
+      bookings: { data: pending, error: null },
+    },
   });
   const res = await handle(makeRequest({ headers: cronOK }), deps);
   assertEquals(res.status, 200);
@@ -195,13 +212,17 @@ Deno.test("send-offer-digest: defaults offer_digest_hour_berlin to 19 when not c
   // Only seed cron_secret; digest_hour will return no data
   const settings = [
     { when: { key: "cron_secret" }, data: { value: "s" } },
-    // No entry for offer_digest_hour_berlin → maybeSingle returns { data: null }
-    { when: { key: "offer_response_window_hours" }, data: { value: 48 } },
+    // No entry for offer_digest_hour_berlin → resolver returns fallback 19
+    { when: { key: "offer_response_window_hours" }, data: [{ org_id: null, value: 48 }] },
   ];
   // Now = 19:00 Berlin CEST — should not skip (default is 19)
   const { deps } = makeFakeDeps({
     now: BERLIN_19_CEST,
-    tables: { app_settings: settings, bookings: { data: [], error: null } },
+    tables: {
+      app_settings: settings,
+      organizations: { data: [{ id: ORG_1 }], error: null },
+      bookings: { data: [], error: null },
+    },
   });
   const res = await handle(makeRequest({ headers: cronOK }), deps);
   const body = await res.json();
@@ -213,7 +234,7 @@ Deno.test("send-offer-digest: defaults offer_digest_hour_berlin to 19 when not c
 Deno.test("send-offer-digest: defaults offer_response_window_hours to 48 when not configured", async () => {
   const settings = [
     { when: { key: "cron_secret" }, data: { value: "s" } },
-    { when: { key: "offer_digest_hour_berlin" }, data: { value: 19 } },
+    { when: { key: "offer_digest_hour_berlin" }, data: [{ org_id: null, value: 19 }] },
     // No entry for offer_response_window_hours → will use default 48
   ];
   const now = BERLIN_19_CEST;
@@ -226,7 +247,11 @@ Deno.test("send-offer-digest: defaults offer_response_window_hours to 48 when no
   }];
   const { deps, calls } = makeFakeDeps({
     now,
-    tables: { app_settings: settings, bookings: { data: pending, error: null } },
+    tables: {
+      app_settings: settings,
+      organizations: { data: [{ id: ORG_1 }], error: null },
+      bookings: { data: pending, error: null },
+    },
   });
   await handle(makeRequest({ headers: cronOK }), deps);
 
@@ -383,54 +408,23 @@ Deno.test("send-offer-digest: stamp update targets all booking IDs for that arti
 
 // ── Atomicity: stamp failure → don't count that artist ───────────────────────
 
-Deno.test("send-offer-digest: stamp error → digests_sent NOT incremented for that artist", async () => {
+Deno.test("send-offer-digest: query error → logs and continues, returns digests_sent 0", async () => {
   // NOTE: The fake client cannot distinguish SELECT vs UPDATE on the same table using the
-  // array-seed `when` form (which only matches eq() args). The stamp uses .in(), not .eq(),
-  // so a when-match for the update is not possible with the current harness.
-  //
-  // We work around this by seeding bookings as a single-object seed that returns an error
-  // for ALL operations. This causes the initial SELECT to also fail, which means the handler
-  // returns a 500 before reaching the stamp. This reveals a harness limitation: we cannot
-  // selectively fail only the stamp UPDATE while letting the SELECT succeed.
-  //
-  // Instead, we test the documented at-least-once behavior as a characterization test
-  // using a custom sendEmail that fails, verifying the handler catches exceptions and
-  // continues (digests_sent stays 0 for the artist whose email threw).
-  //
-  // NOTE: at-least-once email risk — if sendEmail succeeds but the stamp UPDATE fails,
-  // the handler logs and continues without incrementing digests_sent. The same bookings
-  // (digest_sent_at still null) will be re-queried next run, resulting in a DUPLICATE EMAIL.
-  // The idempotency_key `offer-digest-<artistId>-<YYYY-MM-DDTHH>` provides protection
-  // IF the email provider (Resend) honours it within the same hour. If the stamp fails
-  // at 19:01 and retries at 20:00 the next day, the idempotency key changes and the
-  // duplicate WILL be sent. This is a MED design-limitation (documented in bug log).
-
-  const pending = [{
-    id: "b1", artist_id: "a1",
-    artists: { id: "a1", name: "Jo", email: "jo@x.com" },
-    show_dates: { date: "2026-06-10", shows: { program: "P", sub_program: "S" }, cities: { name: "Berlin" } },
-  }];
-
-  // Simulate stamp failure by intercepting via a custom deps that has a sendEmail
-  // which succeeds but then we need the bookings update to fail.
-  // We use a two-table seed approach: provide the SELECT result via the default
-  // seed fallback (no `when`) and an explicit error seed is not distinguishable.
-  //
-  // Current harness limitation: a single-table seed returns the SAME result for
-  // both SELECT (resolves via .then) and UPDATE (also resolves via .then on same chain).
-  // So seeding bookings with { error: { message: "stamp failed" } } causes the SELECT
-  // to also return an error, making the handler return 500 before stamp.
-  //
-  // characterization: the handler returns 500 on query error (not stamp error)
+  // array-seed `when` form (which only matches eq() args). Seeding bookings with an error
+  // causes the initial SELECT to return an error. The new per-org handler logs and
+  // continues (does not return 500), resulting in digests_sent: 0.
   const { deps } = makeFakeDeps({
     now: BERLIN_19_CEST,
     tables: {
       app_settings: APP_SETTINGS_SEED,
+      organizations: { data: [{ id: ORG_1 }], error: null },
       bookings: { data: null, error: { message: "db error" } },
     },
   });
   const res = await handle(makeRequest({ headers: cronOK }), deps);
-  assertEquals(res.status, 500);
+  assertEquals(res.status, 200);
+  const body = await res.json();
+  assertEquals(body.digests_sent, 0);
 });
 
 Deno.test("send-offer-digest: sendEmail throws → digests_sent not incremented, handler still returns 200", async () => {
@@ -445,6 +439,7 @@ Deno.test("send-offer-digest: sendEmail throws → digests_sent not incremented,
   const { client, calls } = (await import("../_shared/testing.ts")).createFakeClient({
     tables: {
       app_settings: APP_SETTINGS_SEED,
+      organizations: { data: [{ id: ORG_1 }], error: null },
       bookings: { data: pending, error: null },
     },
   });
@@ -492,12 +487,12 @@ Deno.test({ name: "send-offer-digest: atomicity characterization — harness lim
   // This means: if sendEmail succeeds but .update() returns an error, the handler
   // logs the error and does NOT increment digests_sent. The booking retains
   // digest_sent_at = null and will be re-queried on the next run, sending a
-  // duplicate email. The idempotency_key `offer-digest-<artistId>-YYYY-MM-DDTHH`
+  // duplicate email. The idempotency_key `offer-digest-<orgId>-<artistId>-YYYY-MM-DDTHH`
   // only prevents duplicates within the same UTC hour. A stamp failure at 19:01
   // and a retry at the next day's 19:00 run will produce an unavoidable duplicate.
   //
   // Verdict: ACCEPTABLE for low-volume digest (rare infra failures), but documented
-  // as a known gap. See part1-bug-log.md row "at-least-once email on stamp failure".
+  // as a known gap.
   //
   // This test is a no-op assertion confirming the characterization is understood.
   // body intentionally empty — ignored test; see comment above
@@ -505,7 +500,7 @@ Deno.test({ name: "send-offer-digest: atomicity characterization — harness lim
 
 // ── Idempotency key format ────────────────────────────────────────────────────
 
-Deno.test("send-offer-digest: idempotency key includes artistId and UTC hour slice", async () => {
+Deno.test("send-offer-digest: idempotency key includes orgId, artistId and UTC hour slice", async () => {
   const now = BERLIN_19_CEST; // 2026-06-01T17:00:00.000Z
   const pending = [{
     id: "b1", artist_id: "artist-xyz",
@@ -518,9 +513,9 @@ Deno.test("send-offer-digest: idempotency key includes artistId and UTC hour sli
   const emailCall = invokeCalls.find((c) => c.name === "send-transactional-email");
   assertExists(emailCall);
   const msg = emailCall!.body as { idempotency_key?: string };
-  // Key must follow pattern: offer-digest-<artistId>-<YYYY-MM-DDTHH>
+  // Key must follow pattern: offer-digest-<orgId>-<artistId>-<YYYY-MM-DDTHH>
   // now.toISOString().slice(0, 13) = "2026-06-01T17"
-  assertEquals(msg.idempotency_key, "offer-digest-artist-xyz-2026-06-01T17");
+  assertEquals(msg.idempotency_key, `offer-digest-${ORG_1}-artist-xyz-2026-06-01T17`);
 });
 
 Deno.test("send-offer-digest: idempotency key derives from the CAPTURED now for ALL artists in one run", async () => {
@@ -553,8 +548,8 @@ Deno.test("send-offer-digest: idempotency key derives from the CAPTURED now for 
       return [m.recipient_email, m.idempotency_key];
     }),
   );
-  assertEquals(byArtist.get("alice@x.com"), `offer-digest-a1-${hourPrefix}`);
-  assertEquals(byArtist.get("bob@x.com"), `offer-digest-a2-${hourPrefix}`);
+  assertEquals(byArtist.get("alice@x.com"), `offer-digest-${ORG_1}-a1-${hourPrefix}`);
+  assertEquals(byArtist.get("bob@x.com"), `offer-digest-${ORG_1}-a2-${hourPrefix}`);
 });
 
 // ── Show name formatting ──────────────────────────────────────────────────────
@@ -620,4 +615,46 @@ Deno.test("send-offer-digest: email uses template 'artist-offer-digest'", async 
   const msg = emailCall!.body as { template_name: string; recipient_email: string };
   assertEquals(msg.template_name, "artist-offer-digest");
   assertEquals(msg.recipient_email, "jo@x.com");
+});
+
+// ── Per-org tests ─────────────────────────────────────────────────────────────
+
+Deno.test("send-offer-digest: only orgs whose digest hour == Berlin hour are processed", async () => {
+  // ORG_1 hour 19 (matches now=19:00), ORG_2 hour 20 (skipped).
+  const { deps, invokeCalls } = makeFakeDeps({
+    now: BERLIN_19_CEST,
+    tables: {
+      organizations: { data: [{ id: ORG_1 }, { id: ORG_2 }], error: null },
+      app_settings: [
+        { when: { key: "cron_secret" }, data: { value: "s" } },
+        { when: { key: "offer_digest_hour_berlin" }, data: [{ org_id: ORG_2, value: 20 }, { org_id: null, value: 19 }] },
+        { when: { key: "offer_response_window_hours" }, data: [{ org_id: null, value: 48 }] },
+      ],
+      // bookings seeded per org via `when` on org_id
+      bookings: [
+        { when: { org_id: ORG_1 }, data: [{ id: "b1", artist_id: "a1", artists: { id: "a1", name: "Jo", email: "jo@x.com" }, show_dates: { date: "2026-06-10", shows: { program: "P", sub_program: "S" }, cities: { name: "Berlin" } } }] },
+        { when: { org_id: ORG_2 }, data: [{ id: "b2", artist_id: "a2", artists: { id: "a2", name: "Mo", email: "mo@x.com" }, show_dates: null }] },
+      ],
+    },
+  });
+  const res = await handle(makeRequest({ headers: cronOK }), deps);
+  const body = await res.json();
+  assertEquals(body.digests_sent, 1); // only ORG_1
+  const emails = invokeCalls.filter((c) => c.name === "send-transactional-email");
+  assertEquals(emails.length, 1);
+  assertEquals((emails[0].body as { recipient_email: string }).recipient_email, "jo@x.com");
+  assertEquals((emails[0].body as { org_id?: string }).org_id, ORG_1);
+});
+
+Deno.test("send-offer-digest: no active org matches the hour → skipped", async () => {
+  const { deps } = makeFakeDeps({
+    now: BERLIN_18_CEST, // 18:00, default target 19
+    tables: {
+      organizations: { data: [{ id: ORG_1 }], error: null },
+      app_settings: APP_SETTINGS_SEED,
+    },
+  });
+  const res = await handle(makeRequest({ headers: cronOK }), deps);
+  const body = await res.json();
+  assertEquals(body.skipped, true);
 });
