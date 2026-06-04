@@ -62,12 +62,12 @@ test.describe("Platform console", () => {
       .from("org_invitations").select("token").eq("org_id", org!.id).eq("status", "pending").single();
     expect(invite?.token).toBeTruthy();
 
-    // Invitee logs in and accepts via the token link.
+    // Invitee logs in (no membership yet → no-org dashboard), then the token link
+    // auto-accepts on load (AcceptInvitePage calls accept_invitation once authenticated).
     await signOut(page);
     await loginAs(page, INVITEE_EMAIL, INVITEE_PASSWORD);
+    await expect(page).not.toHaveURL(/\/login/, { timeout: 15_000 });
     await page.goto(`/accept-invite?token=${invite!.token}`);
-    const acceptBtn = page.getByRole("button", { name: /accept|join/i });
-    if (await acceptBtn.isVisible().catch(() => false)) await acceptBtn.click();
 
     // Membership exists (DB is the oracle).
     await expect(async () => {
