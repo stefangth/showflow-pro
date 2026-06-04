@@ -11,7 +11,7 @@ import { adminClient } from "./supabase";
 import type { AppRole } from "../../src/config/app.config";
 
 /** The single bootstrap org all pre-multi-tenant data lives in (mirrors the DB default). */
-const BOOTSTRAP_ORG_ID = "00000000-0000-0000-0000-00000000b007";
+export const BOOTSTRAP_ORG_ID = "00000000-0000-0000-0000-00000000b007";
 
 export interface SeededUser {
   id: string;

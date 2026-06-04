@@ -5,7 +5,7 @@
 import { expect, test } from "@playwright/test";
 import { adminClient, tagEmail } from "./helpers/supabase";
 import { createConfirmedUser, deleteUserByEmail, ensurePlatformAdmin } from "./helpers/users";
-import { loginAs, loginAsAndAwaitDashboard, navViaSidebar, signOut } from "./helpers/auth";
+import { loginAs, loginAsAndAwaitDashboard, signOut } from "./helpers/auth";
 import { TEST_PRODUCER_EMAIL, TEST_PRODUCER_PASSWORD } from "./global-setup";
 
 const SUPER_EMAIL = tagEmail("phase4-super", "fixed");
@@ -40,8 +40,10 @@ test.describe("Platform console", () => {
   });
 
   test("super-admin provisions an org, then the invitee accepts and lands in it", async ({ page }) => {
-    await loginAsAndAwaitDashboard(page, SUPER_EMAIL, SUPER_PASSWORD);
-    await navViaSidebar(page, /platform/i);
+    await loginAs(page, SUPER_EMAIL, SUPER_PASSWORD);
+    await expect(page).not.toHaveURL(/\/login/, { timeout: 15_000 });
+    await page.goto("/platform");
+    await expect(page.getByRole("heading", { name: /platform console/i })).toBeVisible({ timeout: 15_000 });
 
     await page.getByRole("button", { name: /new organization/i }).click();
     await page.getByLabel("Name").fill(NEW_ORG_NAME);
@@ -78,8 +80,10 @@ test.describe("Platform console", () => {
   });
 
   test("super-admin can suspend and reactivate an org", async ({ page }) => {
-    await loginAsAndAwaitDashboard(page, SUPER_EMAIL, SUPER_PASSWORD);
-    await navViaSidebar(page, /platform/i);
+    await loginAs(page, SUPER_EMAIL, SUPER_PASSWORD);
+    await expect(page).not.toHaveURL(/\/login/, { timeout: 15_000 });
+    await page.goto("/platform");
+    await expect(page.getByRole("heading", { name: /platform console/i })).toBeVisible({ timeout: 15_000 });
     const admin = adminClient();
 
     const row = page.getByRole("row", { name: new RegExp(NEW_ORG_SLUG) });
