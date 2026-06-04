@@ -29,7 +29,7 @@ type BookingJoin = {
 type SkillJoin = { artist_id: string; skill: { id: string; name: string } | null };
 
 export default function ArtistsPage() {
-  const { hasRole } = useAuth();
+  const { hasRole, currentOrg } = useAuth();
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const { canSee } = useFilterVisibility('artists');
@@ -100,11 +100,13 @@ export default function ArtistsPage() {
 
   const createArtist = useMutation({
     mutationFn: async () => {
+      if (!currentOrg) throw new Error('No active organization');
       const { error } = await supabase.from('artists').insert({
         name: form.name,
         email: form.email || null,
         phone: form.phone || null,
         bio: form.bio || null,
+        org_id: currentOrg.id,
       });
       if (error) throw error;
     },

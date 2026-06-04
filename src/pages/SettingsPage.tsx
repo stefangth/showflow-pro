@@ -643,11 +643,13 @@ export default function SettingsPage() {
 
   const addAssignment = useMutation({
     mutationFn: async () => {
+      if (!currentOrg) throw new Error('No active organization');
       const { error } = await supabase.from('show_assignments').insert({
         producer_user_id: newAssignUserId,
         program: newAssignProgram,
         sub_program: newAssignSubProgram || null,
         city_id: newAssignCityId || null,
+        org_id: currentOrg.id,
       });
       if (error) throw error;
     },
