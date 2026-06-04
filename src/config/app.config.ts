@@ -48,6 +48,7 @@ export const ROUTES = {
   IMPRESSUM: '/impressum',
   UNSUBSCRIBE: '/unsubscribe',
   ACCEPT_INVITE: '/accept-invite',
+  PLATFORM: '/platform',
 } as const;
 
 /** Number of days after a show date that its chat is hidden from the UI */

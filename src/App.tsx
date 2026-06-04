@@ -7,7 +7,8 @@ import { AuthProvider } from "@/features/auth/AuthContext";
 import { EditorProvider } from "@/features/editor/EditorContext";
 import { ConsentProvider } from "@/features/consent/ConsentContext";
 import { CookieConsentBanner } from "@/components/consent/CookieConsentBanner";
-import { ProtectedRoute } from "@/features/auth/ProtectedRoute";
+import { ProtectedRoute, PlatformRoute } from "@/features/auth/ProtectedRoute";
+import PlatformPage from "./pages/PlatformPage";
 import AppLayout from "@/components/layout/AppLayout";
 import { ROUTES } from "@/config/app.config";
 import LoginPage from "./pages/LoginPage";
@@ -46,6 +47,7 @@ const App = () => (
             <Route path={ROUTES.ADMIN} element={<ProtectedRoute requiredRoles={['admin']}><AppLayout><AdminPage /></AppLayout></ProtectedRoute>} />
             <Route path={ROUTES.SETTINGS} element={<ProtectedRoute requiredRoles={['admin', 'producer']}><AppLayout><SettingsPage /></AppLayout></ProtectedRoute>} />
             <Route path={ROUTES.CHATS} element={<ProtectedRoute><AppLayout><ChatsListPage /></AppLayout></ProtectedRoute>} />
+            <Route path={ROUTES.PLATFORM} element={<PlatformRoute><AppLayout><PlatformPage /></AppLayout></PlatformRoute>} />
             <Route path={ROUTES.ACCEPT_INVITE} element={<AcceptInvitePage />} />
             <Route path={ROUTES.UNSUBSCRIBE} element={<UnsubscribePage />} />
             <Route path={ROUTES.PRIVACY} element={<PrivacyPage />} />
