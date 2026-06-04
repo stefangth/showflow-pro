@@ -1190,7 +1190,12 @@ export type Database = {
       is_org_member: { Args: { _org: string; _uid: string }; Returns: boolean }
       is_super_admin: { Args: { _uid: string }; Returns: boolean }
       resolve_show_assignments: {
-        Args: { p_city_id: string; p_program: string; p_sub_program: string }
+        Args: {
+          p_city_id: string
+          p_org: string
+          p_program: string
+          p_sub_program: string
+        }
         Returns: {
           producer_user_id: string
           specificity: number
