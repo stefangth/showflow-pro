@@ -1,5 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/features/auth/AuthContext';
+import { fetchSlotDefaults } from '@/data/settings';
 
 export interface SubProgramSlotConfig {
   main_cast: number;
@@ -13,17 +15,11 @@ export interface SubProgramSlotConfig {
 export type NestedSlotDefaults = Record<string, Record<string, SubProgramSlotConfig>>;
 
 export function useSubProgramSlots(): NestedSlotDefaults {
+  const { currentOrg } = useAuth();
+  const orgId = currentOrg?.id ?? null;
   const { data } = useQuery({
-    queryKey: ['app-settings', 'sub_program_slots_defaults'],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from('app_settings')
-        .select('value')
-        .eq('key', 'sub_program_slots_defaults')
-        .maybeSingle();
-      if (error) throw error;
-      return (data?.value ?? {}) as unknown as NestedSlotDefaults;
-    },
+    queryKey: ['app-settings', 'sub_program_slots_defaults', orgId],
+    queryFn: () => fetchSlotDefaults(supabase, orgId),
   });
   return data ?? {};
 }
