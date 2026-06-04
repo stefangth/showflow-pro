@@ -3,6 +3,7 @@ import { renderAsync } from 'npm:@react-email/components@0.0.22'
 import { TEMPLATES } from '../_shared/transactional-email-templates/registry.ts'
 import { preflight, json } from "../_shared/http.ts";
 import { realDeps, type Deps } from "../_shared/deps.ts";
+import { resolveOrgSetting } from "../_shared/settings.ts";
 
 function generateToken(): string {
   const bytes = new Uint8Array(32)
@@ -29,12 +30,14 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
   let idempotencyKey: string
   let messageId: string
   let templateData: Record<string, any> = {}
+  let orgId: string | null = null
   try {
     const body = await req.json()
     templateName = body.templateName || body.template_name
     recipientEmail = body.recipientEmail || body.recipient_email
     messageId = crypto.randomUUID()
     idempotencyKey = body.idempotencyKey || body.idempotency_key || messageId
+    orgId = body.org_id ?? body.orgId ?? null
     if (body.templateData && typeof body.templateData === 'object') {
       templateData = body.templateData
     }
@@ -139,23 +142,12 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
       ? template.subject(templateData)
       : template.subject
 
-  // Read from address and template overrides from app_settings
-  const { data: fromSetting } = await admin
-    .from('app_settings')
-    .select('value')
-    .eq('key', 'resend_from_address')
-    .maybeSingle()
+  // Read from-address and template overrides for this org (org override ?? platform default).
+  const fromAddress = await resolveOrgSetting<string>(
+    admin, orgId, 'resend_from_address', 'Showflow Pro <noreply@showflow.pro>')
 
-  const fromAddress =
-    (fromSetting?.value as string | null) ?? 'Showflow Pro <noreply@showflow.pro>'
-
-  const { data: overridesSetting } = await admin
-    .from('app_settings')
-    .select('value')
-    .eq('key', 'email_template_overrides')
-    .maybeSingle()
-
-  const overrides = (overridesSetting?.value as Record<string, any> | null) ?? {}
+  const overrides = await resolveOrgSetting<Record<string, any>>(
+    admin, orgId, 'email_template_overrides', {})
   const templateOverride = overrides[templateName] ?? {}
 
   // Apply subject override
