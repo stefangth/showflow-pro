@@ -5,6 +5,7 @@ import { supabase } from '@/integrations/supabase/client';
 import type { Json } from '@/integrations/supabase/types';
 import { useAuth } from '@/features/auth/AuthContext';
 import { upsertOrgSetting } from '@/data/settings';
+import { resolveEditorRows, type EditorSettingRow } from './orgEditorConfig';
 import type { AppRole } from '@/config/app.config';
 import { resolveColumnTemplate, pageColumnDefs, COMPUTED_LABELS } from './columnRegistries';
 import {
@@ -80,16 +81,7 @@ export function EditorProvider({ children }: { children: ReactNode }) {
         .in('key', ['editor_page_access', 'editor_column_templates', 'editor_table_permissions']);
       q = orgId ? q.or(`org_id.eq.${orgId},org_id.is.null`) : q.is('org_id', null);
       const { data } = await q;
-      // org row wins over platform row, per key
-      const byKey = new Map<string, unknown>();
-      for (const r of (data ?? []) as { key: string; value: unknown; org_id: string | null }[]) {
-        if (!byKey.has(r.key) || r.org_id !== null) byKey.set(r.key, r.value);
-      }
-      return {
-        pageAccess: (byKey.get('editor_page_access') ?? {}) as PageAccessConfig,
-        columnTemplates: (byKey.get('editor_column_templates') ?? {}) as ColumnTemplates,
-        tablePermissions: (byKey.get('editor_table_permissions') ?? {}) as TablePermissions,
-      };
+      return resolveEditorRows((data ?? []) as EditorSettingRow[]);
     },
     staleTime: 30_000,
   });
