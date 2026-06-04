@@ -8,15 +8,15 @@ import {
   type NestedSlotDefaults,
 } from "./useSubProgramSlots";
 
-// ── Mock Supabase client ──────────────────────────────────────────────────
+// useSubProgramSlots is now a thin wrapper: it reads the active org from useAuth and
+// delegates to fetchSlotDefaults (the resolver is unit-tested in src/data/settings.test.ts).
+// Mock those two boundaries; supabase is only passed through, never exercised here.
+vi.mock("@/integrations/supabase/client", () => ({ supabase: {} }));
+vi.mock("@/features/auth/AuthContext", () => ({ useAuth: vi.fn() }));
+vi.mock("@/data/settings", () => ({ fetchSlotDefaults: vi.fn() }));
 
-vi.mock("@/integrations/supabase/client", () => ({
-  supabase: {
-    from: vi.fn(),
-  },
-}));
-
-import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/features/auth/AuthContext";
+import { fetchSlotDefaults } from "@/data/settings";
 
 function makeWrapper() {
   const queryClient = new QueryClient({
@@ -75,22 +75,14 @@ describe("effectiveSlots", () => {
 describe("useSubProgramSlots", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    vi.mocked(useAuth).mockReturnValue({ currentOrg: { id: "org-1" } } as never);
   });
 
-  it("returns slot defaults from app_settings", async () => {
+  it("resolves slot defaults for the active org", async () => {
     const mockDefaults: NestedSlotDefaults = {
       theatre: { musical: { main_cast: 2, understudies: 1 } },
     };
-
-    const mockChain = {
-      select: vi.fn().mockReturnThis(),
-      eq: vi.fn().mockReturnThis(),
-      maybeSingle: vi.fn().mockResolvedValue({
-        data: { value: mockDefaults },
-        error: null,
-      }),
-    };
-    vi.mocked(supabase.from).mockReturnValue(mockChain as any);
+    vi.mocked(fetchSlotDefaults).mockResolvedValue(mockDefaults);
 
     const { result } = renderHook(() => useSubProgramSlots(), {
       wrapper: makeWrapper(),
@@ -99,15 +91,25 @@ describe("useSubProgramSlots", () => {
     await waitFor(() => {
       expect(result.current).toEqual(mockDefaults);
     });
+    expect(fetchSlotDefaults).toHaveBeenCalledWith(expect.anything(), "org-1");
   });
 
-  it("returns empty object when app_settings has no row", async () => {
-    const mockChain = {
-      select: vi.fn().mockReturnThis(),
-      eq: vi.fn().mockReturnThis(),
-      maybeSingle: vi.fn().mockResolvedValue({ data: null, error: null }),
-    };
-    vi.mocked(supabase.from).mockReturnValue(mockChain as any);
+  it("passes null org when there is no active org", async () => {
+    vi.mocked(useAuth).mockReturnValue({ currentOrg: null } as never);
+    vi.mocked(fetchSlotDefaults).mockResolvedValue({});
+
+    const { result } = renderHook(() => useSubProgramSlots(), {
+      wrapper: makeWrapper(),
+    });
+
+    await waitFor(() => {
+      expect(result.current).toEqual({});
+    });
+    expect(fetchSlotDefaults).toHaveBeenCalledWith(expect.anything(), null);
+  });
+
+  it("returns empty object when the resolver returns none", async () => {
+    vi.mocked(fetchSlotDefaults).mockResolvedValue({});
 
     const { result } = renderHook(() => useSubProgramSlots(), {
       wrapper: makeWrapper(),
@@ -118,21 +120,14 @@ describe("useSubProgramSlots", () => {
     });
   });
 
-  it("throws when query fails", async () => {
-    const mockChain = {
-      select: vi.fn().mockReturnThis(),
-      eq: vi.fn().mockReturnThis(),
-      maybeSingle: vi
-        .fn()
-        .mockResolvedValue({ data: null, error: new Error("DB error") }),
-    };
-    vi.mocked(supabase.from).mockReturnValue(mockChain as any);
+  it("returns empty object when the query fails", async () => {
+    vi.mocked(fetchSlotDefaults).mockRejectedValue(new Error("DB error"));
 
     const { result } = renderHook(() => useSubProgramSlots(), {
       wrapper: makeWrapper(),
     });
 
-    // The hook returns {} as fallback even on error (data ?? {})
+    // The hook returns {} as fallback even on error (data ?? {}).
     await waitFor(() => {
       expect(result.current).toEqual({});
     });

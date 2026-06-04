@@ -1,6 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/features/auth/AuthContext';
+import { resolveOrgSetting } from '@/data/settings';
 
 export type FilterPage = 'shows' | 'artists' | 'bookings';
 export type FilterKey = 'program' | 'timeframe' | 'sort' | 'status';
@@ -14,21 +15,14 @@ const FALLBACK: Visibility = {
 };
 
 export function useFilterVisibility(page: FilterPage) {
-  const { hasRole } = useAuth();
+  const { hasRole, currentOrg } = useAuth();
   const isAdmin = hasRole('admin');
   const role: 'producer' | 'artist' = hasRole('producer') ? 'producer' : 'artist';
+  const orgId = currentOrg?.id ?? null;
 
   const { data } = useQuery({
-    queryKey: ['app-settings', 'filters_visibility'],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from('app_settings')
-        .select('value')
-        .eq('key', 'filters_visibility')
-        .maybeSingle();
-      if (error) throw error;
-      return (data?.value as unknown as Visibility) ?? FALLBACK;
-    },
+    queryKey: ['app-settings', 'filters_visibility', orgId],
+    queryFn: () => resolveOrgSetting(supabase, orgId, 'filters_visibility', FALLBACK as Visibility),
     staleTime: 60_000,
   });
 

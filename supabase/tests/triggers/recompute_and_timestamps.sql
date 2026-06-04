@@ -40,7 +40,7 @@ VALUES (
   'sub_program_slots_defaults',
   '{"theatre":{"musical":{"main_cast":1,"understudies":0}}}'::jsonb
 )
-ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value;
+ON CONFLICT (org_id, key) DO UPDATE SET value = EXCLUDED.value;
 
 -- Configured show used for the settings-cascade test.
 INSERT INTO public.shows (id, program, sub_program)

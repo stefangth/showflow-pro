@@ -23,7 +23,7 @@ interface Props {
 }
 
 export function CastDetailsSheet({ cast, open, onOpenChange, onArtistClick }: Props) {
-  const { hasRole, roles } = useAuth();
+  const { hasRole, roles, currentOrg } = useAuth();
   const { isEditorMode } = useEditorConfig();
   const isRealAdmin = roles.includes('admin');
   const canManage = hasRole('admin') || hasRole('producer');
@@ -125,7 +125,8 @@ export function CastDetailsSheet({ cast, open, onOpenChange, onArtistClick }: Pr
 
   const addMember = useMutation({
     mutationFn: async (artistId: string) => {
-      const { error } = await supabase.from('cast_members').insert({ cast_id: cast!.id, artist_id: artistId });
+      if (!currentOrg) throw new Error('No active organization');
+      const { error } = await supabase.from('cast_members').insert({ cast_id: cast!.id, artist_id: artistId, org_id: currentOrg.id });
       if (error) throw error;
     },
     onSuccess: () => {

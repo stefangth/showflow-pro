@@ -26,15 +26,16 @@ export async function fetchArtistSkills(
     .sort((a, b) => a.name.localeCompare(b.name));
 }
 
-/** Create a skill from a (trimmed) name. */
+/** Create a skill from a (trimmed) name, scoped to the given org. */
 export async function createSkill(
   client: SupabaseClient<Database>,
   name: string,
+  orgId: string,
 ): Promise<Skill> {
   const trimmed = name.trim();
   const { data, error } = await client
     .from("skills")
-    .insert({ name: trimmed })
+    .insert({ name: trimmed, org_id: orgId })
     .select("id, name")
     .single();
   if (error) throw error;

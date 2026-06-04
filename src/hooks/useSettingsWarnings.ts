@@ -8,8 +8,9 @@ import { fetchProgramSubProgramPairs, fetchSlotDefaults } from '@/data/settings'
 export type { SettingsWarnings };
 
 export function useSettingsWarnings(): SettingsWarnings {
-  const { hasRole } = useAuth();
+  const { hasRole, currentOrg } = useAuth();
   const canView = hasRole('admin') || hasRole('producer');
+  const orgId = currentOrg?.id ?? null;
 
   const { data: pairs } = useQuery({
     queryKey: ['shows-program-sub-programs'],
@@ -19,9 +20,9 @@ export function useSettingsWarnings(): SettingsWarnings {
   });
 
   const { data: slotsSetting } = useQuery({
-    queryKey: ['app-settings', 'sub_program_slots_defaults'],
+    queryKey: ['app-settings', 'sub_program_slots_defaults', orgId],
     enabled: canView,
-    queryFn: () => fetchSlotDefaults(supabase),
+    queryFn: () => fetchSlotDefaults(supabase, orgId),
     staleTime: 30_000,
   });
 
