@@ -55,8 +55,8 @@ export async function requireRole(deps: Deps, req: Request, roles: string[]): Pr
  * Validate a user JWT and require one of `roles` WITHIN a specific org.
  *
  * Used by org-scoped admin endpoints (e.g. admin-set-role) so an admin of one org
- * cannot act on another. Super-admin (platform_admins) bypass is added with the
- * Phase 4 console; for now authority is org membership only.
+ * cannot act on another. Platform admins (super-admins) bypass the org gate so
+ * god-mode works on org-scoped endpoints (mirrors the SQL is_super_admin short-circuit).
  */
 export async function requireOrgRole(deps: Deps, req: Request, orgId: string, roles: string[]): Promise<AuthOutcome> {
   const authHeader = req.headers.get("Authorization");
@@ -66,10 +66,34 @@ export async function requireOrgRole(deps: Deps, req: Request, orgId: string, ro
   const { data: { user }, error } = await deps.userClient(authHeader).auth.getUser();
   if (error || !user) return { ok: false, response: json({ error: "Unauthorized" }, 401) };
 
+  // Platform admins pass every org gate (mirrors the SQL is_super_admin short-circuit).
+  const { data: superRow } = await deps.admin
+    .from("platform_admins").select("user_id").eq("user_id", user.id).maybeSingle();
+  if (superRow) return { ok: true, userId: user.id };
+
   const { data: roleRow } = await deps.admin
     .from("org_memberships").select("role")
     .eq("user_id", user.id).eq("org_id", orgId).in("role", roles).limit(1).maybeSingle();
   if (!roleRow) return { ok: false, response: json({ error: "Forbidden" }, 403) };
+
+  return { ok: true, userId: user.id };
+}
+
+/**
+ * Validate a user JWT and require the caller to be a platform admin (super-admin).
+ * Used by /platform edge endpoints (provision-org).
+ */
+export async function requireSuperAdmin(deps: Deps, req: Request): Promise<AuthOutcome> {
+  const authHeader = req.headers.get("Authorization");
+  if (!authHeader?.startsWith("Bearer ")) {
+    return { ok: false, response: json({ error: "Unauthorized" }, 401) };
+  }
+  const { data: { user }, error } = await deps.userClient(authHeader).auth.getUser();
+  if (error || !user) return { ok: false, response: json({ error: "Unauthorized" }, 401) };
+
+  const { data: row } = await deps.admin
+    .from("platform_admins").select("user_id").eq("user_id", user.id).maybeSingle();
+  if (!row) return { ok: false, response: json({ error: "Forbidden" }, 403) };
 
   return { ok: true, userId: user.id };
 }
