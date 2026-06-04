@@ -16,12 +16,15 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
       .select("id, org_id, email, role, token, status")
       .eq("id", body.invitation_id)
       .maybeSingle();
-    if (!invite) return json({ error: "Invitation not found" }, 404);
-    if (invite.status !== "pending") return json({ error: "Invitation is not pending" }, 409);
 
-    // Org admin OR platform admin (requireOrgRole short-circuits for super-admins).
+    // Authorize BEFORE disclosing anything. If the invite doesn't exist we cannot
+    // org-scope the check, so return the same 403 an unauthorized caller gets — no
+    // existence/status signal leaks to non-admins. (requireOrgRole short-circuits for super-admins.)
+    if (!invite) return json({ error: "Forbidden" }, 403);
     const auth = await requireOrgRole(deps, req, invite.org_id, ["admin"]);
     if (!auth.ok) return auth.response;
+
+    if (invite.status !== "pending") return json({ error: "Invitation is not pending" }, 409);
 
     const { data: org } = await deps.admin
       .from("organizations").select("name").eq("id", invite.org_id).maybeSingle();

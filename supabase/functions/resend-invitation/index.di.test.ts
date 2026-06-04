@@ -16,7 +16,7 @@ Deno.test("resend-invitation: super-admin re-sends the invite email", async () =
   assertEquals(invokeCalls.filter((c) => c.name === "send-transactional-email").length, 1);
 });
 
-Deno.test("resend-invitation: 404 for unknown invitation", async () => {
+Deno.test("resend-invitation: opaque 403 for unknown invitation (no existence leak)", async () => {
   const { deps } = makeFakeDeps({
     authUser: { id: "u1" },
     tables: {
@@ -25,5 +25,5 @@ Deno.test("resend-invitation: 404 for unknown invitation", async () => {
     },
   });
   const res = await handle(makeRequest({ headers: { Authorization: "Bearer x" }, body: { invitation_id: "nope" } }), deps);
-  assertEquals(res.status, 404);
+  assertEquals(res.status, 403);
 });

@@ -14,6 +14,9 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
   if (req.method === "OPTIONS") return preflight();
 
   try {
+    const auth = await requireSuperAdmin(deps, req);
+    if (!auth.ok) return auth.response;
+
     const body = (await req.json().catch(() => null)) as Body | null;
     const name = body?.name?.trim();
     const slug = body?.slug?.trim().toLowerCase();
@@ -22,9 +25,6 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
     const appOrigin = body?.app_origin?.replace(/\/$/, "");
     if (!name || !slug || !email || !appOrigin) return json({ error: "Invalid payload" }, 400);
     if (!["admin", "producer", "artist"].includes(role)) return json({ error: "Invalid role" }, 400);
-
-    const auth = await requireSuperAdmin(deps, req);
-    if (!auth.ok) return auth.response;
 
     // Atomic DB work runs as the caller (auth.uid() = the super-admin) so provision_org's
     // internal is_super_admin check passes; SECURITY DEFINER does the privileged inserts.
