@@ -907,11 +907,16 @@ SET session_replication_role = replica;
 INSERT INTO public.organizations (id, name, slug) VALUES
   ('00000000-0000-0000-0000-0000000ca000','Cat A','cat-a'),
   ('00000000-0000-0000-0000-0000000cb000','Cat B','cat-b');
--- platform starter template (mirrors the migration seed; explicit here so the test is hermetic)
+-- Platform starter template + slot defaults. The 2D migration ALREADY seeds a
+-- starter_catalog_template platform row, so UPSERT to override it with this test's
+-- deterministic 2-skill template (keeps the count assertions below exact). Unique is
+-- (org_id,key) NULLS NOT DISTINCT, so a plain INSERT of (NULL,'starter_catalog_template')
+-- would 23505 against the migration's seed.
 INSERT INTO public.app_settings (org_id, key, value) VALUES
   (NULL, 'starter_catalog_template',
    '{"skills":["Vocals","Dance"],"cities":[],"casts":[{"name":"Main Cast","description":null}]}'::jsonb),
-  (NULL, 'sub_program_slots_defaults', '{"theatre":{"musical":{"main_cast":1,"understudies":0}}}'::jsonb);
+  (NULL, 'sub_program_slots_defaults', '{"theatre":{"musical":{"main_cast":1,"understudies":0}}}'::jsonb)
+ON CONFLICT (org_id, key) DO UPDATE SET value = EXCLUDED.value;
 SET session_replication_role = DEFAULT;
 
 SELECT public.seed_org_starter_catalog('00000000-0000-0000-0000-0000000ca000');
