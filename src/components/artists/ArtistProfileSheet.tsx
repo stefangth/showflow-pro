@@ -24,7 +24,7 @@ interface Props {
 const STATUS_OPTIONS: ArtistStatus[] = ['active', 'inactive', 'on_leave'];
 
 export function ArtistProfileSheet({ artistId, open, onOpenChange }: Props) {
-  const { hasRole, roles } = useAuth();
+  const { hasRole, roles, currentOrg } = useAuth();
   const { isEditorMode } = useEditorConfig();
   const isRealAdmin = roles.includes('admin');
   const { toast } = useToast();
@@ -74,6 +74,7 @@ export function ArtistProfileSheet({ artistId, open, onOpenChange }: Props) {
 
   const save = useMutation({
     mutationFn: async () => {
+      if (!currentOrg) throw new Error('No active organization');
       const { error: updateErr } = await supabase
         .from('artists')
         .update({
@@ -94,7 +95,7 @@ export function ArtistProfileSheet({ artistId, open, onOpenChange }: Props) {
       if (toAdd.length) {
         const { error } = await supabase
           .from('artist_skills')
-          .insert(toAdd.map((s) => ({ artist_id: artistId!, skill_id: s.id })));
+          .insert(toAdd.map((s) => ({ artist_id: artistId!, skill_id: s.id, org_id: currentOrg.id })));
         if (error) throw error;
       }
       if (toRemove.length) {
