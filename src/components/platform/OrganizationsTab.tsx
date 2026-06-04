@@ -10,6 +10,7 @@ import { formatLastActivity } from "./platformFormat";
 import { NewOrgDialog } from "./NewOrgDialog";
 import { EditOrgDialog } from "./EditOrgDialog";
 import { OrgInvitePopover } from "./OrgInvitePopover";
+import { OrgMembersPopover } from "./OrgMembersPopover";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -63,6 +64,7 @@ export function OrganizationsTab() {
               <TableCell className="text-right">
                 <div className="flex items-center justify-end gap-1">
                   <OrgInvitePopover orgId={o.org_id} />
+                  <OrgMembersPopover orgId={o.org_id} />
                   <Button size="sm" variant="ghost" onClick={() => setEditing(o)} aria-label="Edit org"><Pencil className="h-3.5 w-3.5" /></Button>
                   <Button size="sm" variant="ghost" aria-label={o.status === "suspended" ? "Reactivate" : "Suspend"}
                     onClick={() => statusMutation.mutate({ id: o.org_id, status: o.status === "suspended" ? "active" : "suspended" })}>
