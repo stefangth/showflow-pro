@@ -20,7 +20,7 @@
  *  - Multiple tiers: mixed at-risk + healthy, counts correct
  */
 
-import { assertEquals } from "../_shared/test-asserts.ts";
+import { assertEquals, assertExists } from "../_shared/test-asserts.ts";
 import { makeFakeDeps, makeRequest } from "../_shared/testing.ts";
 import { handle } from "./index.ts";
 
@@ -31,15 +31,16 @@ const CRON_WRONG = { "X-Cron-Secret": "bad" };
 
 /**
  * The handler reads app_settings twice in sequence:
- *   1. key=cron_secret  (auth check)
- *   2. key=sub_program_slots_defaults  (slot config)
+ *   1. key=cron_secret  (auth check, maybeSingle → single-object seed)
+ *   2. key=sub_program_slots_defaults  (resolveOrgSetting → .or().then() → row-array seed)
  *
  * We seed app_settings as a match array so each eq('key', X) resolves correctly.
+ * sub_program_slots_defaults uses the row-array form required by resolveOrgSetting.
  */
 function makeBaseSettings(slotDefaults: Record<string, unknown> = {}) {
   return [
     { when: { key: "cron_secret" }, data: { value: "secret-val" } },
-    { when: { key: "sub_program_slots_defaults" }, data: { value: slotDefaults } },
+    { when: { key: "sub_program_slots_defaults" }, data: [{ org_id: null, value: slotDefaults }] },
   ];
 }
 
@@ -49,11 +50,12 @@ function makeTier(id: string, showDateId: string, tier = 1) {
 }
 
 /** A show_date row with nested show. */
-function makeShowDate(id: string, program: string, subProgram: string, date = "2026-07-01") {
+function makeShowDate(id: string, program: string, subProgram: string, date = "2026-07-01", orgId = "00000000-0000-0000-0000-000000000001") {
   return {
     id,
     date,
     city_id: "city-1",
+    org_id: orgId,
     show: { program, sub_program: subProgram },
   };
 }
@@ -926,4 +928,50 @@ Deno.test("tier-at-risk-watcher DI: show_date not found → tier skipped gracefu
 
   const insertCalls = calls.filter((c) => c.table === "notifications" && c.method === "insert");
   assertEquals(insertCalls.length, 0, "no notification for orphaned tier");
+});
+
+// ── Part 7: per-org slot defaults + notification org_id ───────────────────────
+
+Deno.test("tier-at-risk-watcher DI: resolves slot defaults per show_date org and stamps notification org_id", async () => {
+  const ORG = "00000000-0000-0000-0000-0000000000b7";
+  const tierId = "tier-org";
+  const sdId = "sd-org";
+
+  const { deps } = makeFakeDeps({
+    tables: {
+      app_settings: [
+        { when: { key: "cron_secret" }, data: { value: "secret-val" } },
+        // row-array form required by resolveOrgSetting (org override ?? platform default)
+        { when: { key: "sub_program_slots_defaults" }, data: [{ org_id: null, value: { P: { S: { main_cast: 2, understudies: 0 } } } }] },
+      ],
+      show_date_offer_tiers: { data: [makeTier(tierId, sdId)], error: null },
+      notifications: { data: [], error: null },
+      // show_date belongs to ORG
+      show_dates: { data: makeShowDate(sdId, "P", "S", "2026-07-01", ORG), error: null },
+      // one suggested booking; requiredSlots=2, pending=1 → at risk
+      bookings: { data: [{ status: "suggested" }], error: null },
+      // admin fallback (resolve_show_assignments returns empty)
+      org_memberships: { data: [{ user_id: "admin-1" }], error: null },
+    },
+    rpcs: { resolve_show_assignments: { data: [], error: null } },
+  });
+
+  // Capture the notifications insert payload.
+  let notifPayload: any = null;
+  const originalFrom = deps.admin.from.bind(deps.admin);
+  (deps.admin as any).from = (t: string) => {
+    const chain = originalFrom(t);
+    if (t === "notifications") {
+      const orig = chain.insert.bind(chain);
+      chain.insert = (p: unknown) => { notifPayload = p; return (orig as (x: unknown) => ReturnType<typeof orig>)(p); };
+    }
+    return chain;
+  };
+
+  const res = await handle(makeRequest({ headers: CRON_OK }), deps);
+  assertEquals(res.status, 200);
+  const body = await res.json();
+  assertEquals(body.at_risk_count, 1, "tier is at-risk");
+  assertExists(notifPayload, "notification must be inserted");
+  assertEquals(notifPayload[0].org_id, ORG, "notification must carry the show_date's org_id");
 });
