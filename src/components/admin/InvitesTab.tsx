@@ -64,7 +64,13 @@ export function InvitesTab() {
       <CardHeader><CardTitle className="font-display">Invitations</CardTitle></CardHeader>
       <CardContent className="space-y-4">
         <form
-          onSubmit={(e) => { e.preventDefault(); if (email.trim() && currentOrg) create.mutate(); }}
+          onSubmit={(e) => {
+            e.preventDefault();
+            const value = email.trim();
+            if (!currentOrg) return;
+            if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value)) { toast.error('Enter a valid email address'); return; }
+            create.mutate();
+          }}
           className="flex flex-col sm:flex-row gap-2"
         >
           <Input
