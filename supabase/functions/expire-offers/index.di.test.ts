@@ -1,4 +1,4 @@
-import { assertEquals } from "../_shared/test-asserts.ts";
+import { assertEquals, assertExists } from "../_shared/test-asserts.ts";
 import { makeFakeDeps, makeRequest } from "../_shared/testing.ts";
 import { handle } from "./index.ts";
 
@@ -26,7 +26,8 @@ function cronReq() {
 function appSettingsSeed(slots: Record<string, Record<string, { main_cast: number; understudies: number }>>) {
   return [
     { when: { key: "cron_secret" }, data: { value: CRON_SECRET }, error: null },
-    { when: { key: "sub_program_slots_defaults" }, data: { value: slots }, error: null },
+    // row-array form required by resolveOrgSetting (org override ?? platform default)
+    { when: { key: "sub_program_slots_defaults" }, data: [{ org_id: null, value: slots }] },
   ];
 }
 
@@ -41,6 +42,7 @@ const SHOW_DATE = {
   id: "sd-1",
   date: "2026-07-01",
   city_id: "city-1",
+  org_id: "00000000-0000-0000-0000-000000000001",
   show: { program: "Ballet", sub_program: "Matinée" },
 };
 
@@ -751,4 +753,43 @@ Deno.test("expire-offers: no notifications insert when no recipients", async () 
     (c) => c.table === "show_date_offer_tiers" && c.method === "update",
   );
   assertEquals(updateCall !== undefined, true);
+});
+
+// ─── Per-org slot defaults + notification org_id (Part 6) ─────────────────────
+
+Deno.test("expire-offers: resolves slot defaults per the show_date's org and stamps notification org_id", async () => {
+  const ORG = "00000000-0000-0000-0000-0000000000a1";
+  const { deps } = makeFakeDeps({
+    now: new Date("2026-06-01T12:00:00.000Z"),
+    tables: {
+      app_settings: [
+        { when: { key: "cron_secret" }, data: { value: "s" } },
+        // resolver row form — P/S needs 1 slot, so an expired tier with 0 accepted escalates
+        { when: { key: "sub_program_slots_defaults" }, data: [{ org_id: null, value: { P: { S: { main_cast: 1, understudies: 0 } } } }] },
+      ],
+      show_date_offer_tiers: { data: [{ id: "t1", show_date_id: "sd1", tier: 1, escalation_notified_at: null }], error: null },
+      show_dates: { data: { id: "sd1", date: "2026-06-10", city_id: "c1", org_id: ORG, show: { program: "P", sub_program: "S" } }, error: null },
+      bookings: { data: [{ status: "suggested", offer_expires_at: "2026-05-01T00:00:00Z" }], error: null }, // expired, 0 accepted
+      org_memberships: { data: [{ user_id: "admin-1" }], error: null }, // admin fallback (resolve_show_assignments empty)
+      notifications: { data: null, error: null },
+    },
+    rpcs: { expire_soft_bookings: { data: null, error: null }, resolve_show_assignments: { data: [], error: null } },
+  });
+
+  // Capture the notifications insert payload.
+  let notifPayload: any = null;
+  const originalFrom = deps.admin.from.bind(deps.admin);
+  (deps.admin as any).from = (t: string) => {
+    const chain = originalFrom(t);
+    if (t === "notifications") {
+      const orig = chain.insert.bind(chain);
+      chain.insert = (p: unknown) => { notifPayload = p; return (orig as (x: unknown) => ReturnType<typeof orig>)(p); };
+    }
+    return chain;
+  };
+
+  const res = await handle(makeRequest({ headers: { "X-Cron-Secret": "s" } }), deps);
+  assertEquals(res.status, 200);
+  assertExists(notifPayload); // escalation fired
+  assertEquals(notifPayload[0].org_id, ORG); // notification carries the show_date's org_id
 });

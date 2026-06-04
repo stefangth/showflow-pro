@@ -57,32 +57,33 @@ INSERT INTO public.org_memberships (org_id, user_id, role) VALUES
   ('00000000-0000-0000-0000-00000000b007','aaaaaaaa-aaaa-0003-0000-000000000000','artist'),
   ('00000000-0000-0000-0000-00000000b007','aaaaaaaa-aaaa-0004-0000-000000000000','artist');
 
-INSERT INTO public.artists (id, name, user_id) VALUES
-  ('bbbbbbbb-bbbb-0001-0000-000000000000', 'RLS Artist A', 'aaaaaaaa-aaaa-0003-0000-000000000000'),
-  ('bbbbbbbb-bbbb-0002-0000-000000000000', 'RLS Artist B', 'aaaaaaaa-aaaa-0004-0000-000000000000');
+INSERT INTO public.artists (id, name, user_id, org_id) VALUES
+  ('bbbbbbbb-bbbb-0001-0000-000000000000', 'RLS Artist A', 'aaaaaaaa-aaaa-0003-0000-000000000000', '00000000-0000-0000-0000-00000000b007'),
+  ('bbbbbbbb-bbbb-0002-0000-000000000000', 'RLS Artist B', 'aaaaaaaa-aaaa-0004-0000-000000000000', '00000000-0000-0000-0000-00000000b007');
 
-INSERT INTO public.shows (id, program, sub_program)
-VALUES ('cccccccc-cccc-0001-0000-000000000000', 'theatre', 'musical');
+INSERT INTO public.shows (id, program, sub_program, org_id)
+VALUES ('cccccccc-cccc-0001-0000-000000000000', 'theatre', 'musical', '00000000-0000-0000-0000-00000000b007');
 
-INSERT INTO public.show_dates (id, show_id, date, session_1)
-VALUES ('dddddddd-dddd-0001-0000-000000000000', 'cccccccc-cccc-0001-0000-000000000000', '2099-01-01', '20:00'::time);
+INSERT INTO public.show_dates (id, show_id, date, session_1, org_id)
+VALUES ('dddddddd-dddd-0001-0000-000000000000', 'cccccccc-cccc-0001-0000-000000000000', '2099-01-01', '20:00'::time, '00000000-0000-0000-0000-00000000b007');
 
-INSERT INTO public.bookings (id, show_date_id, artist_id, status, is_understudy) VALUES
-  ('eeeeeeee-eeee-0001-0000-000000000000', 'dddddddd-dddd-0001-0000-000000000000', 'bbbbbbbb-bbbb-0001-0000-000000000000', 'suggested'::booking_status, false),
-  ('eeeeeeee-eeee-0002-0000-000000000000', 'dddddddd-dddd-0001-0000-000000000000', 'bbbbbbbb-bbbb-0002-0000-000000000000', 'suggested'::booking_status, false),
-  ('eeeeeeee-eeee-0003-0000-000000000000', 'dddddddd-dddd-0001-0000-000000000000', 'bbbbbbbb-bbbb-0001-0000-000000000000', 'suggested'::booking_status, false),
-  ('eeeeeeee-eeee-0004-0000-000000000000', 'dddddddd-dddd-0001-0000-000000000000', 'bbbbbbbb-bbbb-0001-0000-000000000000', 'suggested'::booking_status, false),
-  ('eeeeeeee-eeee-0005-0000-000000000000', 'dddddddd-dddd-0001-0000-000000000000', 'bbbbbbbb-bbbb-0001-0000-000000000000', 'confirmed'::booking_status, false),
-  ('eeeeeeee-eeee-0006-0000-000000000000', 'dddddddd-dddd-0001-0000-000000000000', 'bbbbbbbb-bbbb-0001-0000-000000000000', 'suggested'::booking_status, false);
+INSERT INTO public.bookings (id, show_date_id, artist_id, status, is_understudy, org_id) VALUES
+  ('eeeeeeee-eeee-0001-0000-000000000000', 'dddddddd-dddd-0001-0000-000000000000', 'bbbbbbbb-bbbb-0001-0000-000000000000', 'suggested'::booking_status, false, '00000000-0000-0000-0000-00000000b007'),
+  ('eeeeeeee-eeee-0002-0000-000000000000', 'dddddddd-dddd-0001-0000-000000000000', 'bbbbbbbb-bbbb-0002-0000-000000000000', 'suggested'::booking_status, false, '00000000-0000-0000-0000-00000000b007'),
+  ('eeeeeeee-eeee-0003-0000-000000000000', 'dddddddd-dddd-0001-0000-000000000000', 'bbbbbbbb-bbbb-0001-0000-000000000000', 'suggested'::booking_status, false, '00000000-0000-0000-0000-00000000b007'),
+  ('eeeeeeee-eeee-0004-0000-000000000000', 'dddddddd-dddd-0001-0000-000000000000', 'bbbbbbbb-bbbb-0001-0000-000000000000', 'suggested'::booking_status, false, '00000000-0000-0000-0000-00000000b007'),
+  ('eeeeeeee-eeee-0005-0000-000000000000', 'dddddddd-dddd-0001-0000-000000000000', 'bbbbbbbb-bbbb-0001-0000-000000000000', 'confirmed'::booking_status, false, '00000000-0000-0000-0000-00000000b007'),
+  ('eeeeeeee-eeee-0006-0000-000000000000', 'dddddddd-dddd-0001-0000-000000000000', 'bbbbbbbb-bbbb-0001-0000-000000000000', 'suggested'::booking_status, false, '00000000-0000-0000-0000-00000000b007');
 
-INSERT INTO public.booking_audit_log (id, booking_id, action, old_status, new_status, performed_by)
+INSERT INTO public.booking_audit_log (id, booking_id, action, old_status, new_status, performed_by, org_id)
 VALUES (
   'ffffffff-ffff-0001-0000-000000000000',
   'eeeeeeee-eeee-0001-0000-000000000000',
   'status_change',
   'suggested'::booking_status,
   'soft_booked'::booking_status,
-  'aaaaaaaa-aaaa-0001-0000-000000000000'
+  'aaaaaaaa-aaaa-0001-0000-000000000000',
+  '00000000-0000-0000-0000-00000000b007'
 );
 
 SET session_replication_role = DEFAULT;
@@ -148,12 +149,13 @@ SELECT set_config('request.jwt.claims', '{"sub":"aaaaaaaa-aaaa-0003-0000-0000000
 SET LOCAL ROLE authenticated;
 
 SELECT throws_ok(
-  $$INSERT INTO public.bookings (show_date_id, artist_id, status, is_understudy)
+  $$INSERT INTO public.bookings (show_date_id, artist_id, status, is_understudy, org_id)
     VALUES (
       'dddddddd-dddd-0001-0000-000000000000',
       'bbbbbbbb-bbbb-0001-0000-000000000000',
       'suggested',
-      false
+      false,
+      '00000000-0000-0000-0000-00000000b007'
     )$$,
   null, null,
   'artist cannot insert booking directly'

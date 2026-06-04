@@ -12,18 +12,25 @@ const BERLIN_20_CET = new Date("2026-01-15T19:00:00.000Z");
 // CET: 2026-01-15T18:00:00Z = 19:00 Berlin — should skip
 const BERLIN_19_CET = new Date("2026-01-15T18:00:00.000Z");
 
+const ORG_1 = "00000000-0000-0000-0000-0000000000a1";
+const ORG_2 = "00000000-0000-0000-0000-0000000000a2";
 const cronOK = { "X-Cron-Secret": "s" };
 
 // ── Shared settings seed (per-key, using array/when form) ─────────────────────
+// cron_secret: maybeSingle (single-object form); confirmation_digest_hour_berlin: resolver row-array form.
 const APP_SETTINGS_SEED = [
   { when: { key: "cron_secret" }, data: { value: "s" } },
-  { when: { key: "confirmation_digest_hour_berlin" }, data: { value: 20 } },
+  { when: { key: "confirmation_digest_hour_berlin" }, data: [{ org_id: null, value: 20 }] },
 ];
 
 function baseDeps(extraTables: Record<string, unknown> = {}, now = BERLIN_20_CEST) {
   return makeFakeDeps({
     now,
-    tables: { app_settings: APP_SETTINGS_SEED, ...extraTables },
+    tables: {
+      app_settings: APP_SETTINGS_SEED,
+      organizations: { data: [{ id: ORG_1 }], error: null },
+      ...extraTables,
+    },
   });
 }
 
@@ -109,11 +116,14 @@ Deno.test("send-confirmation-digest: reads confirmation_digest_hour_berlin from 
   // Set target hour to 21; now is 20:00 Berlin → should skip
   const settings = [
     { when: { key: "cron_secret" }, data: { value: "s" } },
-    { when: { key: "confirmation_digest_hour_berlin" }, data: { value: 21 } },
+    { when: { key: "confirmation_digest_hour_berlin" }, data: [{ org_id: null, value: 21 }] },
   ];
   const { deps } = makeFakeDeps({
     now: BERLIN_20_CEST, // 20:00 Berlin
-    tables: { app_settings: settings },
+    tables: {
+      app_settings: settings,
+      organizations: { data: [{ id: ORG_1 }], error: null },
+    },
   });
   const res = await handle(makeRequest({ headers: cronOK }), deps);
   const body = await res.json();
@@ -122,14 +132,18 @@ Deno.test("send-confirmation-digest: reads confirmation_digest_hour_berlin from 
 });
 
 Deno.test("send-confirmation-digest: defaults confirmation_digest_hour_berlin to 20 when not configured", async () => {
-  // Only seed cron_secret; digest_hour returns no data → handler should default to 20
+  // Only seed cron_secret; digest_hour returns no data → resolver returns fallback 20
   const settings = [
     { when: { key: "cron_secret" }, data: { value: "s" } },
-    // No entry for confirmation_digest_hour_berlin → maybeSingle returns { data: null }
+    // No entry for confirmation_digest_hour_berlin → resolver returns fallback 20
   ];
   const { deps } = makeFakeDeps({
     now: BERLIN_20_CEST, // 20:00 Berlin
-    tables: { app_settings: settings, bookings: { data: [], error: null } },
+    tables: {
+      app_settings: settings,
+      organizations: { data: [{ id: ORG_1 }], error: null },
+      bookings: { data: [], error: null },
+    },
   });
   const res = await handle(makeRequest({ headers: cronOK }), deps);
   const body = await res.json();
@@ -197,9 +211,9 @@ Deno.test("send-confirmation-digest: idempotency key includes artistId and UTC h
   const emailCall = invokeCalls.find((c) => c.name === "send-transactional-email");
   assertExists(emailCall);
   const msg = emailCall!.body as { idempotency_key?: string };
-  // Key: confirmation-digest-<artistId>-<YYYY-MM-DDTHH>
+  // Key: confirmation-digest-<orgId>-<artistId>-<YYYY-MM-DDTHH>
   // now.toISOString().slice(0,13) = "2026-06-01T18"
-  assertEquals(msg.idempotency_key, "confirmation-digest-artist-xyz-2026-06-01T18");
+  assertEquals(msg.idempotency_key, `confirmation-digest-${ORG_1}-artist-xyz-2026-06-01T18`);
 });
 
 Deno.test("send-confirmation-digest: idempotency key derives from the CAPTURED now for ALL artists in one run", async () => {
@@ -231,8 +245,8 @@ Deno.test("send-confirmation-digest: idempotency key derives from the CAPTURED n
       return [m.recipient_email, m.idempotency_key];
     }),
   );
-  assertEquals(byArtist.get("alice@x.com"), `confirmation-digest-a1-${hourPrefix}`);
-  assertEquals(byArtist.get("bob@x.com"), `confirmation-digest-a2-${hourPrefix}`);
+  assertEquals(byArtist.get("alice@x.com"), `confirmation-digest-${ORG_1}-a1-${hourPrefix}`);
+  assertEquals(byArtist.get("bob@x.com"), `confirmation-digest-${ORG_1}-a2-${hourPrefix}`);
 });
 
 // =============================================================================
@@ -470,6 +484,7 @@ Deno.test("send-confirmation-digest: sendEmail throws → digests_sent not incre
   const { client, calls } = (await import("../_shared/testing.ts")).createFakeClient({
     tables: {
       app_settings: APP_SETTINGS_SEED,
+      organizations: { data: [{ id: ORG_1 }], error: null },
       bookings: { data: bookings, error: null },
     },
   });
@@ -501,16 +516,23 @@ Deno.test("send-confirmation-digest: sendEmail throws → digests_sent not incre
   assertEquals(stampCall, undefined);
 });
 
-Deno.test("send-confirmation-digest: query error → 500 response", async () => {
+Deno.test("send-confirmation-digest: query error → logs and continues, returns digests_sent 0", async () => {
+  // NOTE: The fake client cannot distinguish SELECT vs UPDATE on the same table using the
+  // array-seed `when` form. Seeding bookings with an error causes the initial SELECT to return
+  // an error. The new per-org handler logs and continues (does not return 500),
+  // resulting in digests_sent: 0.
   const { deps } = makeFakeDeps({
     now: BERLIN_20_CEST,
     tables: {
       app_settings: APP_SETTINGS_SEED,
+      organizations: { data: [{ id: ORG_1 }], error: null },
       bookings: { data: null, error: { message: "db error" } },
     },
   });
   const res = await handle(makeRequest({ headers: cronOK }), deps);
-  assertEquals(res.status, 500);
+  assertEquals(res.status, 200);
+  const body = await res.json();
+  assertEquals(body.digests_sent, 0);
 });
 
 // =============================================================================
@@ -574,11 +596,15 @@ Deno.test("send-confirmation-digest: midnight Berlin (hour 0) with target 0 is N
   const BERLIN_MIDNIGHT_CET = new Date("2026-01-15T23:00:00.000Z");
   const settings = [
     { when: { key: "cron_secret" }, data: { value: "s" } },
-    { when: { key: "confirmation_digest_hour_berlin" }, data: { value: 0 } },
+    { when: { key: "confirmation_digest_hour_berlin" }, data: [{ org_id: null, value: 0 }] },
   ];
   const { deps } = makeFakeDeps({
     now: BERLIN_MIDNIGHT_CET,
-    tables: { app_settings: settings, bookings: { data: [], error: null } },
+    tables: {
+      app_settings: settings,
+      organizations: { data: [{ id: ORG_1 }], error: null },
+      bookings: { data: [], error: null },
+    },
   });
   const res = await handle(makeRequest({ headers: cronOK }), deps);
   const body = await res.json();
@@ -594,4 +620,45 @@ Deno.test("send-confirmation-digest: midnight Berlin (hour 0) with target 0 is N
 // runtimes where Intl emits '24', independent of the local Intl build above.)
 Deno.test("send-confirmation-digest: gate normalizes parseInt('24') % 24 to 0", () => {
   assertEquals(parseInt("24", 10) % 24, 0);
+});
+
+// ── Per-org tests ─────────────────────────────────────────────────────────────
+
+Deno.test("send-confirmation-digest: only orgs whose confirmation_digest_hour_berlin == Berlin hour are processed", async () => {
+  // ORG_1 hour 20 (matches now=20:00 Berlin), ORG_2 hour 21 (skipped).
+  const { deps, invokeCalls } = makeFakeDeps({
+    now: BERLIN_20_CEST,
+    tables: {
+      organizations: { data: [{ id: ORG_1 }, { id: ORG_2 }], error: null },
+      app_settings: [
+        { when: { key: "cron_secret" }, data: { value: "s" } },
+        { when: { key: "confirmation_digest_hour_berlin" }, data: [{ org_id: ORG_2, value: 21 }, { org_id: null, value: 20 }] },
+      ],
+      // bookings seeded per org via `when` on org_id
+      bookings: [
+        { when: { org_id: ORG_1 }, data: [{ id: "b1", artist_id: "a1", artists: { id: "a1", name: "Jo", email: "jo@x.com" }, show_dates: { date: "2026-06-10", shows: { program: "P", sub_program: "S" }, cities: { name: "Berlin" } } }] },
+        { when: { org_id: ORG_2 }, data: [{ id: "b2", artist_id: "a2", artists: { id: "a2", name: "Mo", email: "mo@x.com" }, show_dates: null }] },
+      ],
+    },
+  });
+  const res = await handle(makeRequest({ headers: cronOK }), deps);
+  const body = await res.json();
+  assertEquals(body.digests_sent, 1); // only ORG_1
+  const emails = invokeCalls.filter((c) => c.name === "send-transactional-email");
+  assertEquals(emails.length, 1);
+  assertEquals((emails[0].body as { recipient_email: string }).recipient_email, "jo@x.com");
+  assertEquals((emails[0].body as { org_id?: string }).org_id, ORG_1);
+});
+
+Deno.test("send-confirmation-digest: no active org matches the hour → skipped", async () => {
+  const { deps } = makeFakeDeps({
+    now: BERLIN_19_CEST, // 19:00 Berlin, default target is 20
+    tables: {
+      organizations: { data: [{ id: ORG_1 }], error: null },
+      app_settings: APP_SETTINGS_SEED,
+    },
+  });
+  const res = await handle(makeRequest({ headers: cronOK }), deps);
+  const body = await res.json();
+  assertEquals(body.skipped, true);
 });

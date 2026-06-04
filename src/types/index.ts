@@ -12,7 +12,6 @@ export type BookingInsert = Database['public']['Tables']['bookings']['Insert'];
 export type BookingAuditLog = Database['public']['Tables']['booking_audit_log']['Row'];
 export type Notification = Database['public']['Tables']['notifications']['Row'];
 export type Profile = Database['public']['Tables']['profiles']['Row'];
-export type UserRole = Database['public']['Tables']['user_roles']['Row'];
 export type AirtableSyncLog = Database['public']['Tables']['airtable_sync_log']['Row'];
 export type City = Database['public']['Tables']['cities']['Row'];
 export type Cast = Database['public']['Tables']['casts']['Row'];

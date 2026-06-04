@@ -158,10 +158,11 @@ export function CastDetailsSheet({ cast, open, onOpenChange, onArtistClick }: Pr
 
   const toggleEligibility = useMutation({
     mutationFn: async ({ cityId, showId, on }: { cityId: string; showId: string; on: boolean }) => {
+      if (!currentOrg) throw new Error('No active organization');
       if (on) {
         const { error } = await supabase
           .from('show_cast_eligibility')
-          .insert({ show_id: showId, city_id: cityId, cast_id: cast!.id });
+          .insert({ show_id: showId, city_id: cityId, cast_id: cast!.id, org_id: currentOrg.id });
         if (error) throw error;
       } else {
         const rowId = eligibilityMap.get(`${cityId}:${showId}`);

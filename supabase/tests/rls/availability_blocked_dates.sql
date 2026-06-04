@@ -48,14 +48,14 @@ INSERT INTO public.org_memberships (org_id, user_id, role) VALUES
   ('00000000-0000-0000-0000-00000000b007','aaaaaaaa-aaaa-0003-0000-000000000000','artist'),
   ('00000000-0000-0000-0000-00000000b007','aaaaaaaa-aaaa-0004-0000-000000000000','artist');
 
-INSERT INTO public.artists (id, name, user_id) VALUES
-  ('bbbbbbbb-bbbb-0001-0000-000000000000', 'BD Artist A', 'aaaaaaaa-aaaa-0003-0000-000000000000'),
-  ('bbbbbbbb-bbbb-0002-0000-000000000000', 'BD Artist B', 'aaaaaaaa-aaaa-0004-0000-000000000000');
+INSERT INTO public.artists (id, name, user_id, org_id) VALUES
+  ('bbbbbbbb-bbbb-0001-0000-000000000000', 'BD Artist A', 'aaaaaaaa-aaaa-0003-0000-000000000000', '00000000-0000-0000-0000-00000000b007'),
+  ('bbbbbbbb-bbbb-0002-0000-000000000000', 'BD Artist B', 'aaaaaaaa-aaaa-0004-0000-000000000000', '00000000-0000-0000-0000-00000000b007');
 
-INSERT INTO public.blocked_dates (id, artist_id, date, reason) VALUES
-  ('eeeeeeee-eeee-0001-0000-000000000000', 'bbbbbbbb-bbbb-0001-0000-000000000000', '2099-03-01', 'Artist A vacation'),
-  ('eeeeeeee-eeee-0002-0000-000000000000', 'bbbbbbbb-bbbb-0002-0000-000000000000', '2099-03-02', 'Artist B vacation'),
-  ('eeeeeeee-eeee-0003-0000-000000000000', 'bbbbbbbb-bbbb-0001-0000-000000000000', '2099-03-03', 'Artist A vacation (survives for cross-artist test)');
+INSERT INTO public.blocked_dates (id, artist_id, date, reason, org_id) VALUES
+  ('eeeeeeee-eeee-0001-0000-000000000000', 'bbbbbbbb-bbbb-0001-0000-000000000000', '2099-03-01', 'Artist A vacation', '00000000-0000-0000-0000-00000000b007'),
+  ('eeeeeeee-eeee-0002-0000-000000000000', 'bbbbbbbb-bbbb-0002-0000-000000000000', '2099-03-02', 'Artist B vacation', '00000000-0000-0000-0000-00000000b007'),
+  ('eeeeeeee-eeee-0003-0000-000000000000', 'bbbbbbbb-bbbb-0001-0000-000000000000', '2099-03-03', 'Artist A vacation (survives for cross-artist test)', '00000000-0000-0000-0000-00000000b007');
 
 SET session_replication_role = DEFAULT;
 
@@ -81,8 +81,8 @@ SELECT set_config('request.jwt.claims', '{"sub":"aaaaaaaa-aaaa-0003-0000-0000000
 SET LOCAL ROLE authenticated;
 
 SELECT lives_ok(
-  $$INSERT INTO public.blocked_dates (artist_id, date, reason)
-    VALUES ('bbbbbbbb-bbbb-0001-0000-000000000000', '2099-03-10', 'Artist A self-insert')$$,
+  $$INSERT INTO public.blocked_dates (artist_id, date, reason, org_id)
+    VALUES ('bbbbbbbb-bbbb-0001-0000-000000000000', '2099-03-10', 'Artist A self-insert', '00000000-0000-0000-0000-00000000b007')$$,
   'artist A can INSERT own blocked_date'
 );
 
@@ -141,8 +141,8 @@ SELECT set_config('request.jwt.claims', '{"sub":"aaaaaaaa-aaaa-0003-0000-0000000
 SET LOCAL ROLE authenticated;
 
 SELECT throws_ok(
-  $$INSERT INTO public.blocked_dates (artist_id, date, reason)
-    VALUES ('bbbbbbbb-bbbb-0002-0000-000000000000', '2099-03-20', 'A blocks B')$$,
+  $$INSERT INTO public.blocked_dates (artist_id, date, reason, org_id)
+    VALUES ('bbbbbbbb-bbbb-0002-0000-000000000000', '2099-03-20', 'A blocks B', '00000000-0000-0000-0000-00000000b007')$$,
   '42501',
   null,
   'artist A cannot INSERT a blocked_date for artist B (WITH CHECK violation)'

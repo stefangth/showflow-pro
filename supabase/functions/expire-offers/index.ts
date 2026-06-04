@@ -1,6 +1,9 @@
 import { preflight, json } from "../_shared/http.ts";
 import { requireCronOrRole } from "../_shared/auth.ts";
 import { realDeps, type Deps } from "../_shared/deps.ts";
+import { resolveOrgSetting } from "../_shared/settings.ts";
+
+type SlotDefaults = Record<string, Record<string, { main_cast: number; understudies: number }>>;
 
 /**
  * Hourly job:
@@ -33,13 +36,22 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
 
   if (!openTiers || openTiers.length === 0) return json({ expired: true, escalations: 0 })
 
-  // Slot defaults
-  const { data: slotsSetting } = await admin
-    .from('app_settings')
-    .select('value')
-    .eq('key', 'sub_program_slots_defaults')
-    .maybeSingle()
-  const slotDefaults = (slotsSetting?.value as Record<string, Record<string, { main_cast: number; understudies: number }>>) ?? {}
+  // Per-org slot-defaults cache (one resolveOrgSetting call per org encountered).
+  const slotCache = new Map<string, SlotDefaults>();
+  const slotsForOrg = async (orgId: string): Promise<SlotDefaults> => {
+    if (!slotCache.has(orgId)) {
+      try {
+        slotCache.set(orgId, await resolveOrgSetting<SlotDefaults>(admin, orgId, 'sub_program_slots_defaults', {}));
+      } catch (e) {
+        // A settings read failure for one org must not abort the whole run; treat as
+        // unconfigured (the tier is then skipped via the !slotCfg guard) and move on.
+        // Cached as {} for THIS invocation only; the next hourly cron run retries fresh.
+        console.error('expire-offers: slot settings read failed', { org: orgId, error: (e as Error).message });
+        slotCache.set(orgId, {} as SlotDefaults);
+      }
+    }
+    return slotCache.get(orgId)!;
+  };
 
   let escalated = 0
 
@@ -53,6 +65,7 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
 
     const program = (sd as any).show?.program
     const subProgram = (sd as any).show?.sub_program
+    const slotDefaults = await slotsForOrg((sd as any).org_id);
     const slotCfg = slotDefaults?.[program]?.[subProgram]
     if (!slotCfg) continue
     const requiredSlots = slotCfg.main_cast + slotCfg.understudies
@@ -78,6 +91,7 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
       p_program: program ?? '',
       p_sub_program: subProgram,
       p_city_id: (sd as any).city_id,
+      p_org: (sd as any).org_id,
     })
     let recipientIds = (producers ?? []).map((p: any) => p.producer_user_id)
     if (recipientIds.length === 0) {
@@ -91,6 +105,7 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
     const message = `Tier ${row.tier} for ${program ?? 'show'} on ${(sd as any).date} expired with ${accepted}/${requiredSlots} slots filled — open the next tier.`
 
     const notifRows = recipientIds.map((uid: string) => ({
+      org_id: (sd as any).org_id,
       user_id: uid,
       type: 'cast_escalation_requested',
       title: 'Escalation needed',

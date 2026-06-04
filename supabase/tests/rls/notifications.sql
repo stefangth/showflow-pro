@@ -47,12 +47,12 @@ INSERT INTO public.org_memberships (org_id, user_id, role) VALUES
   ('00000000-0000-0000-0000-00000000b007','aaaaaaaa-aaaa-0004-0000-000000000000','artist');
 
 -- One notification per artist for isolation in SELECT tests
-INSERT INTO public.notifications (id, user_id, type, title, message)
+INSERT INTO public.notifications (id, user_id, type, title, message, org_id)
 VALUES
   ('ffffffff-0001-0000-0000-000000000000', 'aaaaaaaa-aaaa-0003-0000-000000000000',
-   'booking_confirmed', 'Booking confirmed', 'Your slot is confirmed.'),
+   'booking_confirmed', 'Booking confirmed', 'Your slot is confirmed.', '00000000-0000-0000-0000-00000000b007'),
   ('ffffffff-0002-0000-0000-000000000000', 'aaaaaaaa-aaaa-0004-0000-000000000000',
-   'booking_confirmed', 'Booking confirmed', 'Your slot is confirmed.');
+   'booking_confirmed', 'Booking confirmed', 'Your slot is confirmed.', '00000000-0000-0000-0000-00000000b007');
 
 SET session_replication_role = DEFAULT;
 
@@ -95,8 +95,8 @@ SELECT set_config('request.jwt.claims', '{"sub":"aaaaaaaa-aaaa-0001-0000-0000000
 SET LOCAL ROLE authenticated;
 
 SELECT lives_ok(
-  $$INSERT INTO public.notifications (user_id, type, title, message)
-    VALUES ('aaaaaaaa-aaaa-0003-0000-000000000000', 'test', 'Test', 'Test msg')$$,
+  $$INSERT INTO public.notifications (user_id, type, title, message, org_id)
+    VALUES ('aaaaaaaa-aaaa-0003-0000-000000000000', 'test', 'Test', 'Test msg', '00000000-0000-0000-0000-00000000b007')$$,
   'admin can insert notification'
 );
 
@@ -107,8 +107,8 @@ SELECT set_config('request.jwt.claims', '{"sub":"aaaaaaaa-aaaa-0002-0000-0000000
 SET LOCAL ROLE authenticated;
 
 SELECT lives_ok(
-  $$INSERT INTO public.notifications (user_id, type, title, message)
-    VALUES ('aaaaaaaa-aaaa-0003-0000-000000000000', 'test', 'Test', 'Test msg')$$,
+  $$INSERT INTO public.notifications (user_id, type, title, message, org_id)
+    VALUES ('aaaaaaaa-aaaa-0003-0000-000000000000', 'test', 'Test', 'Test msg', '00000000-0000-0000-0000-00000000b007')$$,
   'producer can insert notification'
 );
 
@@ -119,8 +119,8 @@ SELECT set_config('request.jwt.claims', '{"sub":"aaaaaaaa-aaaa-0003-0000-0000000
 SET LOCAL ROLE authenticated;
 
 SELECT throws_ok(
-  $$INSERT INTO public.notifications (user_id, type, title, message)
-    VALUES ('aaaaaaaa-aaaa-0003-0000-000000000000', 'test', 'Self-notify', 'Bad')$$,
+  $$INSERT INTO public.notifications (user_id, type, title, message, org_id)
+    VALUES ('aaaaaaaa-aaaa-0003-0000-000000000000', 'test', 'Self-notify', 'Bad', '00000000-0000-0000-0000-00000000b007')$$,
   null, null,
   'artist cannot insert notification'
 );

@@ -27,7 +27,7 @@ export type Database = {
         Insert: {
           error_details?: string | null
           id?: string
-          org_id?: string
+          org_id: string
           records_processed?: number | null
           status: string
           sync_type: string
@@ -103,7 +103,7 @@ export type Database = {
         Insert: {
           artist_id: string
           created_at?: string
-          org_id?: string
+          org_id: string
           skill_id: string
         }
         Update: {
@@ -157,7 +157,7 @@ export type Database = {
           email?: string | null
           id?: string
           name: string
-          org_id?: string
+          org_id: string
           phone?: string | null
           status?: Database["public"]["Enums"]["artist_status"]
           updated_at?: string
@@ -200,7 +200,7 @@ export type Database = {
           created_at?: string
           date: string
           id?: string
-          org_id?: string
+          org_id: string
           reason?: string | null
         }
         Update: {
@@ -248,7 +248,7 @@ export type Database = {
           id?: string
           new_status?: Database["public"]["Enums"]["booking_status"] | null
           old_status?: Database["public"]["Enums"]["booking_status"] | null
-          org_id?: string
+          org_id: string
           performed_by?: string | null
         }
         Update: {
@@ -315,7 +315,7 @@ export type Database = {
           offer_expires_at?: string | null
           offer_tier?: number | null
           offered_at?: string | null
-          org_id?: string
+          org_id: string
           show_date_id: string
           status?: Database["public"]["Enums"]["booking_status"]
           updated_at?: string
@@ -379,7 +379,7 @@ export type Database = {
           city_id: string
           created_at?: string
           id?: string
-          org_id?: string
+          org_id: string
           priority: number
           updated_at?: string
         }
@@ -429,7 +429,7 @@ export type Database = {
           cast_id: string
           created_at?: string
           id?: string
-          org_id?: string
+          org_id: string
         }
         Update: {
           artist_id?: string
@@ -478,7 +478,7 @@ export type Database = {
           description?: string | null
           id?: string
           name: string
-          org_id?: string
+          org_id: string
           updated_at?: string
         }
         Update: {
@@ -514,7 +514,7 @@ export type Database = {
           chat_id: string
           created_at?: string
           id?: string
-          org_id?: string
+          org_id: string
           user_id: string
         }
         Update: {
@@ -554,7 +554,7 @@ export type Database = {
           created_at?: string
           created_by?: string | null
           id?: string
-          org_id?: string
+          org_id: string
           show_date_id: string
         }
         Update: {
@@ -594,7 +594,7 @@ export type Database = {
           created_at?: string
           id?: string
           name: string
-          org_id?: string
+          org_id: string
         }
         Update: {
           airtable_record_id?: string | null
@@ -630,7 +630,7 @@ export type Database = {
           created_at?: string
           id?: string
           message?: string | null
-          org_id?: string
+          org_id: string
           read?: boolean
           related_entity_id?: string | null
           related_entity_type?: string | null
@@ -828,7 +828,7 @@ export type Database = {
           city_id?: string | null
           created_at?: string
           id?: string
-          org_id?: string
+          org_id: string
           producer_user_id: string
           program: string
           sub_program?: string | null
@@ -873,7 +873,7 @@ export type Database = {
           city_id: string
           created_at?: string
           id?: string
-          org_id?: string
+          org_id: string
           show_id: string
         }
         Update: {
@@ -927,7 +927,7 @@ export type Database = {
           cast_id: string
           created_at?: string
           id?: string
-          org_id?: string
+          org_id: string
           show_date_id: string
         }
         Update: {
@@ -978,7 +978,7 @@ export type Database = {
           id?: string
           opened_at?: string
           opened_by?: string | null
-          org_id?: string
+          org_id: string
           show_date_id: string
           tier: number
         }
@@ -1033,7 +1033,7 @@ export type Database = {
           date: string
           id?: string
           notes?: string | null
-          org_id?: string
+          org_id: string
           session_1: string
           session_2?: string | null
           session_3?: string | null
@@ -1102,7 +1102,7 @@ export type Database = {
           created_by?: string | null
           description?: string | null
           id?: string
-          org_id?: string
+          org_id: string
           program?: string | null
           required_skills?: string[] | null
           status?: Database["public"]["Enums"]["show_status"]
@@ -1143,7 +1143,7 @@ export type Database = {
           created_at?: string
           id?: string
           name: string
-          org_id?: string
+          org_id: string
         }
         Update: {
           created_at?: string
@@ -1161,102 +1161,25 @@ export type Database = {
           },
         ]
       }
-      user_approvals: {
-        Row: {
-          created_at: string
-          decided_at: string | null
-          decided_by: string | null
-          display_name: string | null
-          email: string
-          id: string
-          rejection_reason: string | null
-          requested_role: Database["public"]["Enums"]["app_role"]
-          status: Database["public"]["Enums"]["approval_status"]
-          updated_at: string
-          user_id: string
-        }
-        Insert: {
-          created_at?: string
-          decided_at?: string | null
-          decided_by?: string | null
-          display_name?: string | null
-          email: string
-          id?: string
-          rejection_reason?: string | null
-          requested_role?: Database["public"]["Enums"]["app_role"]
-          status?: Database["public"]["Enums"]["approval_status"]
-          updated_at?: string
-          user_id: string
-        }
-        Update: {
-          created_at?: string
-          decided_at?: string | null
-          decided_by?: string | null
-          display_name?: string | null
-          email?: string
-          id?: string
-          rejection_reason?: string | null
-          requested_role?: Database["public"]["Enums"]["app_role"]
-          status?: Database["public"]["Enums"]["approval_status"]
-          updated_at?: string
-          user_id?: string
-        }
-        Relationships: []
-      }
-      user_roles: {
-        Row: {
-          created_at: string
-          id: string
-          role: Database["public"]["Enums"]["app_role"]
-          user_id: string
-        }
-        Insert: {
-          created_at?: string
-          id?: string
-          role: Database["public"]["Enums"]["app_role"]
-          user_id: string
-        }
-        Update: {
-          created_at?: string
-          id?: string
-          role?: Database["public"]["Enums"]["app_role"]
-          user_id?: string
-        }
-        Relationships: []
-      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
+      accept_invitation: { Args: { p_token: string }; Returns: string }
       compute_show_date_status: {
         Args: { p_show_date_id: string }
         Returns: undefined
       }
-      decide_user_approval: {
-        Args: {
-          p_approval_id: string
-          p_decided_by?: string
-          p_decision: string
-          p_rejection_reason?: string
-          p_role: string
-        }
-        Returns: undefined
-      }
       expire_soft_bookings: { Args: never; Returns: undefined }
       get_column_descriptions: { Args: never; Returns: Json }
+      get_org_airtable_key: { Args: { _org: string }; Returns: string }
+      get_org_setting: { Args: { _key: string; _org: string }; Returns: Json }
       has_org_role: {
         Args: {
           _org: string
           _role: Database["public"]["Enums"]["app_role"]
           _uid: string
-        }
-        Returns: boolean
-      }
-      has_role: {
-        Args: {
-          _role: Database["public"]["Enums"]["app_role"]
-          _user_id: string
         }
         Returns: boolean
       }
@@ -1267,16 +1190,25 @@ export type Database = {
       is_org_member: { Args: { _org: string; _uid: string }; Returns: boolean }
       is_super_admin: { Args: { _uid: string }; Returns: boolean }
       resolve_show_assignments: {
-        Args: { p_city_id: string; p_program: string; p_sub_program: string }
+        Args: {
+          p_city_id: string
+          p_org: string
+          p_program: string
+          p_sub_program: string
+        }
         Returns: {
           producer_user_id: string
           specificity: number
         }[]
       }
+      seed_org_starter_catalog: { Args: { _org: string }; Returns: undefined }
+      set_org_airtable_key: {
+        Args: { _key: string; _org: string }
+        Returns: undefined
+      }
     }
     Enums: {
       app_role: "admin" | "producer" | "artist"
-      approval_status: "pending" | "approved" | "rejected"
       artist_status: "active" | "inactive" | "on_leave"
       availability_status: "available" | "unavailable" | "tentative"
       booking_status: "suggested" | "soft_booked" | "confirmed" | "cancelled"
@@ -1414,7 +1346,6 @@ export const Constants = {
   public: {
     Enums: {
       app_role: ["admin", "producer", "artist"],
-      approval_status: ["pending", "approved", "rejected"],
       artist_status: ["active", "inactive", "on_leave"],
       availability_status: ["available", "unavailable", "tentative"],
       booking_status: ["suggested", "soft_booked", "confirmed", "cancelled"],

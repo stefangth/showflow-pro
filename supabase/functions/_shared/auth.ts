@@ -79,7 +79,7 @@ export async function requireCronOrRole(deps: Deps, req: Request, roles: string[
   const cronSecret = req.headers.get("X-Cron-Secret");
   if (cronSecret) {
     const { data: setting } = await deps.admin
-      .from("app_settings").select("value").eq("key", "cron_secret").maybeSingle();
+      .from("app_settings").select("value").eq("key", "cron_secret").is("org_id", null).maybeSingle();
     const stored = ((setting as { value?: string } | null)?.value as string | null) ?? "";
     if (!constantTimeEqual(cronSecret, stored)) return { ok: false, response: json({ error: "Unauthorized" }, 401) };
     return { ok: true, userId: null };

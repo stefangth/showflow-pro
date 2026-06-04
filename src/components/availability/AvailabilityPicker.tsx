@@ -1,5 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/features/auth/AuthContext';
 import { Button } from '@/components/ui/button';
 import { BanIcon } from 'lucide-react';
 
@@ -15,6 +16,7 @@ interface Props {
  * Used in the calendar popover and availability page table.
  */
 export function AvailabilityPicker({ artistId, date, size = 'default' }: Props) {
+  const { currentOrg } = useAuth();
   const qc = useQueryClient();
 
   const { data: block } = useQuery({
@@ -32,11 +34,12 @@ export function AvailabilityPicker({ artistId, date, size = 'default' }: Props) 
 
   const toggle = useMutation({
     mutationFn: async () => {
+      if (!currentOrg) throw new Error('No active organization');
       if (block) {
         const { error } = await supabase.from('blocked_dates').delete().eq('id', block.id);
         if (error) throw error;
       } else {
-        const { error } = await supabase.from('blocked_dates').insert({ artist_id: artistId, date });
+        const { error } = await supabase.from('blocked_dates').insert({ artist_id: artistId, date, org_id: currentOrg.id });
         if (error) throw error;
       }
     },
