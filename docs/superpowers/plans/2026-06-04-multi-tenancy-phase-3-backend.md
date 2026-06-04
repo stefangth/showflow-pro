@@ -1634,6 +1634,7 @@ Expected GREEN gates: Typecheck, lint, vitest, **Deno** (per-org digests/airtabl
 
 ## Self-Review notes (for the implementer)
 
+- **Resilience pattern for every per-org loop (Parts 4–8):** `getActiveOrgs` and `resolveOrgSetting` THROW on a DB error (they don't return an error object). A cron job must not let one org's transient fault abort the rest. So: wrap the `getActiveOrgs` call in try/catch and return a logged `500` on failure (nothing to process); wrap the per-org settings resolution (and, in airtable-poll, the per-org config reads + `get_org_airtable_key` rpc) in try/catch that **logs and `continue`s** to the next org. The per-item inner work (per-artist email send, per-record sync) keeps its own narrower try/catch. This was applied to `send-offer-digest` in Part 4 — mirror it in Parts 5, 6, 7, 8.
 - **Settings shape in tests:** the resolver reads via `.eq('key',K).or('org_id.eq.X,org_id.is.null')`, so seed those keys as **array rows** `data: [{ org_id, value }]`. Keys read via `.maybeSingle()` (`cron_secret`) stay **single objects** `data: { value }`. A single `app_settings` array seed can hold both forms (one `when` entry each).
 - **`getActiveOrgs` everywhere:** every cron loop seeds `organizations` in tests — forgetting it yields zero orgs and a misleading "skipped"/empty result.
 - **Overwrite-always triggers** may correct older pgTAP fixtures that deliberately set a mismatched child `org_id`; that's expected — align the fixture to the parent.
