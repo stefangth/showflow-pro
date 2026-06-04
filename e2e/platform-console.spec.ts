@@ -88,6 +88,7 @@ test.describe("Platform console", () => {
 
     const row = page.getByRole("row", { name: new RegExp(NEW_ORG_SLUG) });
     await row.getByRole("button", { name: /suspend/i }).click();
+    await page.getByRole("button", { name: /^suspend$/i }).last().click(); // confirm in the AlertDialog
     await expect(async () => {
       const { data } = await admin.from("organizations").select("status").eq("slug", NEW_ORG_SLUG).single();
       expect(data?.status).toBe("suspended");

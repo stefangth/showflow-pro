@@ -17,12 +17,17 @@ import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { LogIn, Pause, Play, Pencil } from "lucide-react";
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 export function OrganizationsTab() {
   const qc = useQueryClient();
   const navigate = useNavigate();
   const { switchOrg } = useAuth();
   const [editing, setEditing] = useState<OrgStat | null>(null);
+  const [toSuspend, setToSuspend] = useState<OrgStat | null>(null);
 
   const { data: orgs, isLoading, isError, error } = useQuery({
     queryKey: ["platform", "org-stats"],
@@ -67,7 +72,9 @@ export function OrganizationsTab() {
                   <OrgMembersPopover orgId={o.org_id} />
                   <Button size="sm" variant="ghost" onClick={() => setEditing(o)} aria-label="Edit org"><Pencil className="h-3.5 w-3.5" /></Button>
                   <Button size="sm" variant="ghost" aria-label={o.status === "suspended" ? "Reactivate" : "Suspend"}
-                    onClick={() => statusMutation.mutate({ id: o.org_id, status: o.status === "suspended" ? "active" : "suspended" })}>
+                    onClick={() => o.status === "suspended"
+                      ? statusMutation.mutate({ id: o.org_id, status: "active" })
+                      : setToSuspend(o)}>
                     {o.status === "suspended" ? <Play className="h-3.5 w-3.5" /> : <Pause className="h-3.5 w-3.5" />}
                   </Button>
                   <Button size="sm" variant="outline" onClick={() => enter(o.org_id)}><LogIn className="h-3.5 w-3.5 mr-1" />Enter</Button>
@@ -79,6 +86,18 @@ export function OrganizationsTab() {
         </TableBody>
       </Table>
       <EditOrgDialog org={editing} onClose={() => setEditing(null)} />
+      <AlertDialog open={toSuspend !== null} onOpenChange={(o) => !o && setToSuspend(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Suspend organization?</AlertDialogTitle>
+            <AlertDialogDescription>Members of {toSuspend?.name} will be blocked from acting until you reactivate it. Data is preserved.</AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={() => { if (toSuspend) statusMutation.mutate({ id: toSuspend.org_id, status: "suspended" }); setToSuspend(null); }}>Suspend</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
