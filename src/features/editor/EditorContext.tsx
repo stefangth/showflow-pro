@@ -4,6 +4,7 @@ import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import type { Json } from '@/integrations/supabase/types';
 import { useAuth } from '@/features/auth/AuthContext';
+import { upsertOrgSetting } from '@/data/settings';
 import type { AppRole } from '@/config/app.config';
 import { resolveColumnTemplate, pageColumnDefs, COMPUTED_LABELS } from './columnRegistries';
 import {
@@ -45,8 +46,9 @@ interface EditorContextType {
 const EditorContext = createContext<EditorContextType | undefined>(undefined);
 
 export function EditorProvider({ children }: { children: ReactNode }) {
-  const { roles } = useAuth();
+  const { roles, currentOrg } = useAuth();
   const isRealAdmin = roles.includes('admin');
+  const orgId = currentOrg?.id ?? null;
   const qc = useQueryClient();
 
   const [isEditorMode, setIsEditorMode] = useState(
@@ -70,19 +72,23 @@ export function EditorProvider({ children }: { children: ReactNode }) {
     }
   }, [isRealAdmin, isEditorMode]);
 
-  // Fetch editor configs — piggybacking on the existing app-settings cache key
+  // Fetch editor configs — org-scoped (override ?? platform default), keyed by orgId
   const { data: rawSettings, isLoading: isConfigLoading } = useQuery({
-    queryKey: ['app-settings', 'editor'],
+    queryKey: ['app-settings', 'editor', orgId],
     queryFn: async () => {
-      const { data } = await supabase
-        .from('app_settings')
-        .select('key, value')
+      let q = supabase.from('app_settings').select('key, value, org_id')
         .in('key', ['editor_page_access', 'editor_column_templates', 'editor_table_permissions']);
-      const map = Object.fromEntries((data ?? []).map(r => [r.key, r.value]));
+      q = orgId ? q.or(`org_id.eq.${orgId},org_id.is.null`) : q.is('org_id', null);
+      const { data } = await q;
+      // org row wins over platform row, per key
+      const byKey = new Map<string, unknown>();
+      for (const r of (data ?? []) as { key: string; value: unknown; org_id: string | null }[]) {
+        if (!byKey.has(r.key) || r.org_id !== null) byKey.set(r.key, r.value);
+      }
       return {
-        pageAccess: (map['editor_page_access'] ?? {}) as PageAccessConfig,
-        columnTemplates: (map['editor_column_templates'] ?? {}) as ColumnTemplates,
-        tablePermissions: (map['editor_table_permissions'] ?? {}) as TablePermissions,
+        pageAccess: (byKey.get('editor_page_access') ?? {}) as PageAccessConfig,
+        columnTemplates: (byKey.get('editor_column_templates') ?? {}) as ColumnTemplates,
+        tablePermissions: (byKey.get('editor_table_permissions') ?? {}) as TablePermissions,
       };
     },
     staleTime: 30_000,
@@ -93,12 +99,10 @@ export function EditorProvider({ children }: { children: ReactNode }) {
   const tablePermissions = useMemo<TablePermissions>(() => rawSettings?.tablePermissions ?? {}, [rawSettings]);
 
   const upsertSetting = useCallback(async (key: string, value: unknown) => {
-    const { error } = await supabase
-      .from('app_settings')
-      .upsert({ key, value: value as Json }, { onConflict: 'key' });
-    if (error) throw error;
-    qc.invalidateQueries({ queryKey: ['app-settings', 'editor'] });
-  }, [qc]);
+    if (!orgId) throw new Error('No active organization');
+    await upsertOrgSetting(supabase, orgId, key, value as Json);
+    qc.invalidateQueries({ queryKey: ['app-settings', 'editor', orgId] });
+  }, [qc, orgId]);
 
   const { mutateAsync: mutatePageAccess } = useMutation({
     mutationFn: (config: PageAccessConfig) => upsertSetting('editor_page_access', config),
