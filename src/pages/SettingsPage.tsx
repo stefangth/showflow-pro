@@ -464,7 +464,8 @@ export default function SettingsPage() {
   const [newCity, setNewCity] = useState('');
   const addCity = useMutation({
     mutationFn: async (name: string) => {
-      const { error } = await supabase.from('cities').insert({ name });
+      if (!orgId) throw new Error('No active organization');
+      const { error } = await supabase.from('cities').insert({ name, org_id: orgId });
       if (error) throw error;
     },
     onSuccess: () => { qc.invalidateQueries({ queryKey: ['cities'] }); setNewCity(''); toast.success('City added'); },
@@ -558,10 +559,12 @@ export default function SettingsPage() {
 
   const addCastPriority = useMutation({
     mutationFn: async () => {
+      if (!orgId) throw new Error('No active organization');
       const { error } = await supabase.from('cast_city_priority').insert({
         city_id: newPriorityCityId,
         cast_id: newPriorityCastId,
         priority: newPriorityValue,
+        org_id: orgId,
       });
       if (error) throw error;
     },
