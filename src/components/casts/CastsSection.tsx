@@ -13,12 +13,12 @@ interface CastsSectionProps {
 }
 
 export function CastsSection({ onArtistClick }: CastsSectionProps = {}) {
-  const { hasRole } = useAuth();
+  const { hasRole, currentOrg } = useAuth();
   const canManage = hasRole('admin') || hasRole('producer');
   const [activeCast, setActiveCast] = useState<Cast | null>(null);
 
   const { data: casts } = useQuery({
-    queryKey: ['casts'],
+    queryKey: ['casts', currentOrg?.id],
     queryFn: async () => {
       const { data, error } = await supabase.from('casts').select('*').order('name');
       if (error) throw error;

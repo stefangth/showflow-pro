@@ -4,7 +4,8 @@ import { supabase } from '@/integrations/supabase/client';
 import type { User, Session } from '@supabase/supabase-js';
 import type { AppRole } from '@/config/app.config';
 import { fetchMyMemberships, type Membership, type Organization } from '@/data/orgs';
-import { rolesForOrg } from './orgRoles';
+import { fetchIsSuperAdmin, fetchAllOrgs } from '@/data/platform';
+import { rolesForOrg, effectiveHasRole, effectiveOrgs } from './orgRoles';
 
 const REALTIME_INVALIDATIONS: Array<{ table: string; keys: unknown[][] }> = [
   { table: 'bookings',                   keys: [['bookings']] },
@@ -40,6 +41,8 @@ interface AuthContextType {
   orgs: Organization[];
   /** The active organization (switcher selection), or null if the user has none. */
   currentOrg: Organization | null;
+  /** True if the signed-in user is a platform (super) admin. */
+  isSuperAdmin: boolean;
   /** Switch the active org; persists the choice and refetches org-scoped data. */
   switchOrg: (orgId: string) => void;
   loading: boolean;
@@ -64,6 +67,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [currentOrgId, setCurrentOrgId] = useState<string | null>(
     () => localStorage.getItem('showflow.currentOrg'),
   );
+  const [isSuperAdmin, setIsSuperAdmin] = useState(false);
+  const [allOrgs, setAllOrgs] = useState<Organization[]>([]);
   const [loading, setLoading] = useState(true);
   const [viewAsRole, setViewAsRole] = useState<AppRole | null>(null);
   const [viewAsUser, setViewAsUserState] = useState<ViewAsUser | null>(null);
@@ -73,12 +78,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (u) setViewAsRole(null);
   };
 
-  const orgs = useMemo<Organization[]>(() => {
+  const membershipOrgs = useMemo<Organization[]>(() => {
     const byId = new Map<string, Organization>();
     for (const m of memberships) if (m.organizations) byId.set(m.organizations.id, m.organizations);
     return Array.from(byId.values());
   }, [memberships]);
 
+  const orgs = effectiveOrgs(isSuperAdmin, allOrgs, membershipOrgs);
   const currentOrg = orgs.find((o) => o.id === currentOrgId) ?? orgs[0] ?? null;
   /** Roles are scoped to the active org, so hasRole() keeps its signature. */
   const roles = rolesForOrg(memberships, currentOrg?.id ?? null);
@@ -89,14 +95,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     queryClient.invalidateQueries();
   };
 
-  /** Fetch the user's org memberships; default the active org on first load. */
-  const fetchMemberships = async (userId: string) => {
+  /** Fetch memberships + super-admin status (+ all orgs for super-admins); default the active org. */
+  const loadIdentity = async (userId: string) => {
     try {
       const data = await fetchMyMemberships(supabase, userId);
       setMemberships(data);
       setCurrentOrgId((prev) => prev ?? data[0]?.org_id ?? null);
     } catch {
       setMemberships([]);
+    }
+    try {
+      const su = await fetchIsSuperAdmin(supabase, userId);
+      setIsSuperAdmin(su);
+      setAllOrgs(su ? await fetchAllOrgs(supabase) : []);
+    } catch {
+      setIsSuperAdmin(false);
+      setAllOrgs([]);
     }
   };
 
@@ -107,11 +121,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setUser(session?.user ?? null);
         if (session?.user) {
           setTimeout(() => {
-            fetchMemberships(session.user.id);
+            loadIdentity(session.user.id);
           }, 0);
         } else {
           setMemberships([]);
           setCurrentOrgId(null);
+          setIsSuperAdmin(false);
+          setAllOrgs([]);
           localStorage.removeItem('showflow.currentOrg');
           setViewAsRole(null);
           setViewAsUserState(null);
@@ -125,7 +141,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setSession(session);
       setUser(session?.user ?? null);
       if (session?.user) {
-        fetchMemberships(session.user.id);
+        loadIdentity(session.user.id);
       }
       setLoading(false);
     });
@@ -160,14 +176,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (error) throw error;
   };
 
-  const hasRole = (role: AppRole) => {
-    if (viewAsUser) return viewAsUser.roles.includes(role);
-    if (viewAsRole !== null) return role === viewAsRole;
-    return roles.includes(role);
-  };
+  const hasRole = (role: AppRole) =>
+    effectiveHasRole({ isSuperAdmin, viewAsUser, viewAsRole, roles, role });
 
   return (
-    <AuthContext.Provider value={{ user, session, roles, memberships, orgs, currentOrg, switchOrg, loading, signIn, signOut, hasRole, viewAsRole, setViewAsRole, viewAsUser, setViewAsUser }}>
+    <AuthContext.Provider value={{ user, session, roles, memberships, orgs, currentOrg, isSuperAdmin, switchOrg, loading, signIn, signOut, hasRole, viewAsRole, setViewAsRole, viewAsUser, setViewAsUser }}>
       {children}
     </AuthContext.Provider>
   );

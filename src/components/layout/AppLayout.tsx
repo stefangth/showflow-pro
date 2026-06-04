@@ -8,11 +8,8 @@ import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
-import {
-  LayoutDashboard, BookOpen,
-  Clock, Settings, Shield, LogOut, Bell, ChevronLeft, ChevronRight, Menu,
-  MessageSquare, Users, EyeOff,
-} from 'lucide-react';
+import { Settings, LogOut, Bell, ChevronLeft, ChevronRight, Menu, EyeOff } from 'lucide-react';
+import { NAV_ITEMS, visibleNavItems } from '@/components/layout/navItems';
 import { cn } from '@/lib/utils';
 import { useSettingsWarnings } from '@/hooks/useSettingsWarnings';
 import { useEditorConfig } from '@/features/editor/EditorContext';
@@ -36,23 +33,10 @@ const ROUTE_TO_FILE: Record<string, string> = {
   [ROUTES.CHATS]:        'ChatsListPage.tsx',
 };
 
-const navItems = [
-  { to: ROUTES.DASHBOARD, icon: LayoutDashboard, label: 'Dashboard' },
-  { to: ROUTES.BOOKINGS, icon: BookOpen, label: 'Shows & Bookings', roles: ['admin', 'producer'] as string[] },
-  { to: ROUTES.ARTISTS, icon: Users, label: 'Artists', roles: ['admin', 'producer'] as string[] },
-  { to: ROUTES.AVAILABILITY, icon: Clock, label: 'Availability', roles: ['artist'] as string[] },
-  { to: ROUTES.CHATS, icon: MessageSquare, label: 'Chats' },
-  { to: ROUTES.ADMIN, icon: Shield, label: 'Admin', roles: ['admin'] as string[] },
-  { to: ROUTES.SETTINGS, icon: Settings, label: 'Settings', roles: ['admin', 'producer'] as string[] },
-];
-
-// Derived from navItems so breadcrumb labels can't drift from the nav.
-const ROUTE_TO_LABEL: Record<string, string> = Object.fromEntries(
-  navItems.map(item => [item.to, item.label])
-);
+const ROUTE_TO_LABEL: Record<string, string> = Object.fromEntries(NAV_ITEMS.map((i) => [i.to, i.label]));
 
 export default function AppLayout({ children }: AppLayoutProps) {
-  const { user, signOut, roles, hasRole, viewAsRole, viewAsUser } = useAuth();
+  const { user, signOut, roles, hasRole, viewAsRole, viewAsUser, isSuperAdmin } = useAuth();
   const { isEditorMode } = useEditorConfig();
   const navigate = useNavigate();
   const location = useLocation();
@@ -70,14 +54,9 @@ export default function AppLayout({ children }: AppLayoutProps) {
     navigate(ROUTES.LOGIN);
   };
 
-  const filteredNav = (isEditorMode && isRealAdmin)
-    ? navItems
-    : navItems.filter(item => {
-        if (!item.roles) return true;
-        return item.roles.some(r => hasRole(r as any));
-      });
+  const filteredNav = visibleNavItems(NAV_ITEMS, { isEditorMode, isRealAdmin, isSuperAdmin, hasRole: (r) => hasRole(r as any) });
 
-  const isHiddenForViewAs = (item: typeof navItems[0]) => {
+  const isHiddenForViewAs = (item: typeof NAV_ITEMS[number]) => {
     if (!isEditorMode) return false;
     if (!item.roles) return false;
     if (viewAsUser) return !item.roles.some(r => viewAsUser.roles.includes(r as any));

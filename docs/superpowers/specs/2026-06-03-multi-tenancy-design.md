@@ -200,6 +200,17 @@ Tenant **child** rows acquire `org_id` from a `BEFORE INSERT` trigger that copie
 
 The org-scoped app gains just the **sidebar org switcher**; everything else renders scoped to the active org.
 
+### 8.1 Phase-4 implementation decisions (locked 2026-06-04)
+
+The console is a **self-service platform-admin surface**, not view-only. These refinements extend and lock §8:
+
+- **`provision_org(p_name, p_slug, p_admin_email, p_role default 'admin')`** — `SECURITY DEFINER`, `is_super_admin`-guarded; runs insert-org → `seed_org_starter_catalog(org)` → insert first-admin `org_invitations` in **one transaction** and returns `(org_id, token)`. Wrapped by a `provision-org` **edge function** (DI + a new `requireSuperAdmin`) that, after the RPC, **bootstraps the invitee's auth account** via the Supabase admin API (`inviteUserByEmail`/`createUser`) so a brand-new org's first admin can actually log in and accept, then sends the `org-invitation` email. This closes the invite-only gap where a net-new first admin has no account to authenticate with.
+- **`platform_org_stats()`** — `SECURITY DEFINER`, `is_super_admin`-guarded; one row per org: `member_count` (distinct `org_memberships.user_id`), `active_artist_count` (`artists.status = 'active'`), `bookings_30d` (`bookings.created_at >= now() - 30d`), `last_activity_at` (`greatest()` of latest booking / show_date / chat_message). The only cross-tenant read path.
+- **God-mode = all-orgs switcher** (owner choice): for super-admins `AuthContext.orgs` = **all** `organizations`; `switchOrg`/`currentOrg` then work unchanged. `AuthContext` gains `isSuperAdmin`, and **`hasRole()` short-circuits to `true` for super-admins** (mirrors the server RLS short-circuit) so the full org UI renders inside any entered org. A super-admin with no memberships still reaches `/platform`, and the **suspended-org gate exempts super-admins** so they can Enter a suspended org.
+- **Self-service surfaces in the console** (all chosen): **edit org** (name/slug via the `organizations` RLS write policy); **manage platform admins** (`add_platform_admin(email)` / `remove_platform_admin(uid)` `SECURITY DEFINER` RPCs, `is_super_admin`-guarded, with a **last-admin guard** + self-demote guard; email→uid resolved server-side from `auth.users`); **platform-defaults + starter-catalog editor** (upsert `app_settings` rows where `org_id IS NULL`, incl. `starter_catalog_template` — permitted because the asymmetric app_settings write CHECK resolves via `is_org_member`, which short-circuits on `is_super_admin`); **first-admin invite lifecycle** (status + resend + revoke per org row, reusing `org_invitations` + the invitation data layer).
+- **Route/UI:** `ROUTES.PLATFORM = '/platform'`; a super-admin route gate (no No-Org/Suspended trap); a super-admin-only sidebar nav item; `src/pages/PlatformPage.tsx` (Organizations / Platform Admins / Platform Defaults sections) + `src/components/platform/*`; data-access in `src/data/platform.ts`.
+- **Folded-in cleanups:** per-org **catalog read query-key scoping** (`['skills' | 'cities' | 'casts' | 'cast-city-priority' | 'shows-program-sub-programs', orgId]`); and **dev→main promotion** as Phase 4's fenced closing step (its own PR — main's Supabase branch was `MIGRATIONS_FAILED`, so it may need the manual production DB-reset workflow first).
+
 ---
 
 ## 9. Testing strategy (test-first)
@@ -230,7 +241,7 @@ The pgTAP isolation + coverage tests are **written before the migration** (they 
 
 ---
 
-## 11. Phasing — five phases, each ends green
+## 11. Phasing — six phases, each ends green
 
 A single **bootstrap org** keeps the existing UI working through every phase, so the app never breaks mid-flight.
 
@@ -240,7 +251,8 @@ A single **bootstrap org** keeps the existing UI working through every phase, so
 | **1 · Auth + switcher** | AuthContext org context · ProtectedRoute · org switcher · invite→accept · empty states | Vitest (auth) + e2e (invite, switch); isolation still green |
 | **2 · Catalogs** | Starter-template seeding · per-org settings resolver · per-org editor config | Vitest (resolver) + pgTAP (per-org settings) |
 | **3 · Backend** | Cron loops over orgs · per-(org,artist) digests · per-org email overrides · Airtable per-org (Vault keys) · derive-`org_id` triggers + drop bootstrap DEFAULTs · edge settings resolver · `types.ts` regen *(admin fns already org-scoped)* | Deno `handle()` + fake deps; per-org digest gating; pgTAP derive-triggers + parent↔child consistency |
-| **4 · Console** | `/platform` · provision/suspend · god-mode Enter · metrics view | E2e provision→invite→login; super-admin-only access |
+| **4 · Console** | `/platform` super-admin console: `provision_org` + invitee account-bootstrap · god-mode Enter (all-orgs switcher) · suspend/reactivate · `platform_org_stats` metrics · **self-service**: edit-org, manage platform-admins, platform-defaults + starter-catalog editor, first-admin invite lifecycle · catalog query-key scoping · **dev→main** promotion (closing) | E2e provision→invite→login; super-admin-only `/platform`; pgTAP for `provision_org` / `platform_org_stats` / admin-mgmt last-admin guard |
+| **5 · Self-service polish** | `/profile` (edit display name / avatar / phone) · `/reset-password` (request + set) · remove member from org · org-admin resend-invite | Vitest + e2e (profile edit, password-reset round-trip, member removal) |
 
 The riskiest part (isolation) ships **first** and is **proven by tests before any UI exists**.
 
@@ -260,6 +272,9 @@ The riskiest part (isolation) ships **first** and is **proven by tests before an
 - **Billing / plans / seat limits** — separate subsystem, later.
 - **Per-org branding** (logo/colors) — cosmetic; the shared-domain model makes it optional.
 - **Per-org subdomains / white-label** — the design keeps org context cleanly separable so this can layer on without rework, but it is not built now.
+- **Producer show-date creation UI** — a domain feature, not multi-tenancy (the create-show-date flow was intentionally removed earlier); tracked as a separate effort outside this initiative.
+
+> Note: user-facing self-service (`/profile`, `/reset-password`, member removal, org-admin resend-invite) is **not** out of scope — it is **deferred to Phase 5** (§11), to keep Phase 4 focused on the platform console.
 
 ---
 
