@@ -452,7 +452,7 @@ export default function SettingsPage() {
     mutationFn: async () => {
       if (!currentOrg) throw new Error('No active organization');
       if (!airtableKey.trim()) throw new Error('Enter an API key');
-      const { error } = await supabase.rpc('set_org_airtable_key' as never, { _org: currentOrg.id, _key: airtableKey.trim() } as never);
+      const { error } = await supabase.rpc('set_org_airtable_key', { _org: currentOrg.id, _key: airtableKey.trim() });
       if (error) throw error;
     },
     onSuccess: () => { setAirtableKey(''); toast.success('Airtable API key saved'); },
