@@ -2,6 +2,7 @@ import { expect, test } from "@playwright/test";
 import { adminClient, tagEmail } from "./helpers/supabase";
 import { ensureUserWithRole, deleteUserByEmail } from "./helpers/users";
 import { loginAs } from "./helpers/auth";
+import { seedConsent } from "./helpers/consent";
 
 const EMAIL = tagEmail("phase5-reset", "fixed");
 const OLD_PASSWORD = "E2eReset!1old";
@@ -10,6 +11,7 @@ const NEW_PASSWORD = "E2eReset!2new";
 test.describe.configure({ mode: "serial" });
 
 test.describe("Password reset", () => {
+  test.beforeEach(async ({ page }) => { await seedConsent(page); });
   test.beforeAll(async () => { await ensureUserWithRole(EMAIL, OLD_PASSWORD, "producer"); });
   test.afterAll(async () => { await deleteUserByEmail(EMAIL); });
 

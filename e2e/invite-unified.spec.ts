@@ -2,6 +2,7 @@ import { expect, test } from "@playwright/test";
 import { adminClient, tagEmail } from "./helpers/supabase";
 import { ensureUserWithRole, deleteUserByEmail, findUserByEmail, BOOTSTRAP_ORG_ID } from "./helpers/users";
 import { loginAsAndAwaitDashboard, loginAs } from "./helpers/auth";
+import { seedConsent } from "./helpers/consent";
 
 const ADMIN_EMAIL = tagEmail("phase5-invadmin", "fixed");
 const ADMIN_PASSWORD = "E2eInvAdmin!1";
@@ -12,6 +13,7 @@ const INVITEE_PASSWORD = "E2eInvitee!1";
 test.describe.configure({ mode: "serial" });
 
 test.describe("Unified invite — net-new invitee", () => {
+  test.beforeEach(async ({ page }) => { await seedConsent(page); });
   test.beforeAll(async () => {
     await ensureUserWithRole(ADMIN_EMAIL, ADMIN_PASSWORD, "admin");
     await deleteUserByEmail(NEW_INVITEE); // ensure truly net-new
