@@ -37,6 +37,8 @@ test.describe("Password reset", () => {
     await page.getByLabel("New password", { exact: true }).fill(NEW_PASSWORD);
     await page.getByLabel("Confirm new password").fill(NEW_PASSWORD);
     await page.getByRole("button", { name: /set password/i }).click();
+    // Wait for the change to actually persist before logging in with the new password.
+    await expect(page.getByText(/password updated/i).first()).toBeVisible({ timeout: 15_000 });
 
     await page.context().clearCookies();
     await loginAs(page, EMAIL, NEW_PASSWORD);

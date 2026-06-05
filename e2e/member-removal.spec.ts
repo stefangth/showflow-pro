@@ -30,9 +30,9 @@ test.describe("Member removal", () => {
     // The member has no display name, so MembersTab shows the email on both the name and
     // sub-text lines — match the first.
     await expect(page.getByText(MEMBER_EMAIL).first()).toBeVisible({ timeout: 15_000 });
-    // MembersTab renders rows as <div>s (not a <table>). The admin's own row shows a
-    // disabled "You" button, so the only enabled "Remove" is the member's.
-    await page.getByRole("button", { name: /^remove$/i }).first().click();
+    // The shared bootstrap org has many members, so scope the Remove click to the member's
+    // own row (grandparent of the email text), then confirm in the dialog.
+    await page.getByText(MEMBER_EMAIL).first().locator("xpath=../..").getByRole("button", { name: /^remove$/i }).click();
     await page.getByRole("alertdialog").getByRole("button", { name: /^remove$/i }).click(); // AlertDialog confirm
 
     await expect(async () => {
