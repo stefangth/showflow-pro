@@ -25,11 +25,19 @@ export default function ResetPasswordPage() {
   });
   const [email, setEmail] = useState("");
   const [sending, setSending] = useState(false);
+  // True once the recovery/invite session is established — gates the set-password submit
+  // so it cannot run before updateUser has a session to act on.
+  const [ready, setReady] = useState(false);
 
-  // A recovery/invite link may resolve the session slightly after mount; flip to set-mode then.
   useEffect(() => {
-    const { data: sub } = supabase.auth.onAuthStateChange((event) => {
-      if (event === "PASSWORD_RECOVERY") setMode("set");
+    // The link may resolve the session slightly after mount; reflect both the
+    // PASSWORD_RECOVERY (reset) and SIGNED_IN (invite) arrivals, plus any existing session.
+    supabase.auth.getSession().then(({ data }) => { if (data.session) setReady(true); });
+    const { data: sub } = supabase.auth.onAuthStateChange((event, session) => {
+      if (event === "PASSWORD_RECOVERY" || (event === "SIGNED_IN" && session)) {
+        setMode("set");
+        setReady(true);
+      }
     });
     return () => sub.subscription.unsubscribe();
   }, []);
@@ -84,7 +92,7 @@ export default function ResetPasswordPage() {
                 <Input id="confirm" type="password" {...form.register("confirm")} />
                 {form.formState.errors.confirm && <p className="text-xs text-destructive">{form.formState.errors.confirm.message}</p>}
               </div>
-              <Button type="submit" className="w-full" disabled={form.formState.isSubmitting}>Set password</Button>
+              <Button type="submit" className="w-full" disabled={!ready || form.formState.isSubmitting}>Set password</Button>
             </form>
           ) : (
             <form onSubmit={onRequest} className="space-y-4">
