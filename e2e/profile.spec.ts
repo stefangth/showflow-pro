@@ -29,7 +29,7 @@ test.describe("Profile self-service", () => {
     await loginAsAndAwaitDashboard(page, EMAIL, PASSWORD);
     await page.goto("/profile");
     await page.getByLabel("Current password").fill(PASSWORD);
-    await page.getByLabel("New password").fill(NEW_PASSWORD);
+    await page.getByLabel("New password", { exact: true }).fill(NEW_PASSWORD);
     await page.getByLabel("Confirm new password").fill(NEW_PASSWORD);
     await page.getByRole("button", { name: /change password/i }).click();
     await expect(page.getByText(/password changed/i)).toBeVisible({ timeout: 15_000 });

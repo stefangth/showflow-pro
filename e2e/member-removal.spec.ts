@@ -25,7 +25,9 @@ test.describe("Member removal", () => {
     await loginAsAndAwaitDashboard(page, ADMIN_EMAIL, ADMIN_PASSWORD);
     await page.goto("/admin?tab=members");
 
-    await expect(page.getByText(MEMBER_EMAIL)).toBeVisible({ timeout: 15_000 });
+    // The member has no display name, so MembersTab shows the email on both the name and
+    // sub-text lines — match the first.
+    await expect(page.getByText(MEMBER_EMAIL).first()).toBeVisible({ timeout: 15_000 });
     // MembersTab renders rows as <div>s (not a <table>). The admin's own row shows a
     // disabled "You" button, so the only enabled "Remove" is the member's.
     await page.getByRole("button", { name: /^remove$/i }).first().click();

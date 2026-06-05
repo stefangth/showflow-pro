@@ -32,7 +32,7 @@ test.describe("Password reset", () => {
 
     await page.goto(link);
     await expect(page.getByRole("heading", { name: /set a new password/i })).toBeVisible({ timeout: 15_000 });
-    await page.getByLabel("New password").fill(NEW_PASSWORD);
+    await page.getByLabel("New password", { exact: true }).fill(NEW_PASSWORD);
     await page.getByLabel("Confirm new password").fill(NEW_PASSWORD);
     await page.getByRole("button", { name: /set password/i }).click();
 
