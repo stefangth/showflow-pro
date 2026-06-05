@@ -42,7 +42,9 @@ test.describe("Unified invite — net-new invitee", () => {
       .from("org_invitations").select("token").eq("email", NEW_INVITEE).eq("status", "pending").single();
     expect(invite?.token).toBeTruthy();
     const u = await findUserByEmail(NEW_INVITEE);
-    await admin.auth.admin.updateUserById(u!.id, { password: INVITEE_PASSWORD });
+    // generateLink('invite') leaves the email unconfirmed (production confirms it via the
+    // action-link click, which this test shortcuts); confirm it so signInWithPassword works.
+    await admin.auth.admin.updateUserById(u!.id, { password: INVITEE_PASSWORD, email_confirm: true });
 
     // Invitee authenticates and accepts.
     await page.context().clearCookies();
