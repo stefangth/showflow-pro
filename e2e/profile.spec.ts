@@ -2,6 +2,7 @@ import { expect, test } from "@playwright/test";
 import { adminClient, tagEmail } from "./helpers/supabase";
 import { ensureUserWithRole, deleteUserByEmail, findUserByEmail } from "./helpers/users";
 import { loginAsAndAwaitDashboard, loginAs } from "./helpers/auth";
+import { seedConsent } from "./helpers/consent";
 
 const EMAIL = tagEmail("phase5-profile", "fixed");
 const PASSWORD = "E2eProfile!1";
@@ -10,6 +11,7 @@ const NEW_PASSWORD = "E2eProfile!2new";
 test.describe.configure({ mode: "serial" });
 
 test.describe("Profile self-service", () => {
+  test.beforeEach(async ({ page }) => { await seedConsent(page); });
   test.beforeAll(async () => { await ensureUserWithRole(EMAIL, PASSWORD, "producer"); });
   test.afterAll(async () => { await deleteUserByEmail(EMAIL); });
 

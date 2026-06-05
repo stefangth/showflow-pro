@@ -2,6 +2,7 @@ import { expect, test } from "@playwright/test";
 import { adminClient, tagEmail } from "./helpers/supabase";
 import { ensureUserWithRole, deleteUserByEmail, findUserByEmail, BOOTSTRAP_ORG_ID } from "./helpers/users";
 import { loginAsAndAwaitDashboard } from "./helpers/auth";
+import { seedConsent } from "./helpers/consent";
 
 const ADMIN_EMAIL = tagEmail("phase5-rmadmin", "fixed");
 const ADMIN_PASSWORD = "E2eRmAdmin!1";
@@ -11,6 +12,7 @@ const MEMBER_PASSWORD = "E2eRmMember!1";
 test.describe.configure({ mode: "serial" });
 
 test.describe("Member removal", () => {
+  test.beforeEach(async ({ page }) => { await seedConsent(page); });
   test.beforeAll(async () => {
     await ensureUserWithRole(ADMIN_EMAIL, ADMIN_PASSWORD, "admin");
     await ensureUserWithRole(MEMBER_EMAIL, MEMBER_PASSWORD, "producer");
@@ -31,7 +33,7 @@ test.describe("Member removal", () => {
     // MembersTab renders rows as <div>s (not a <table>). The admin's own row shows a
     // disabled "You" button, so the only enabled "Remove" is the member's.
     await page.getByRole("button", { name: /^remove$/i }).first().click();
-    await page.getByRole("button", { name: /^remove$/i }).last().click(); // AlertDialog confirm
+    await page.getByRole("alertdialog").getByRole("button", { name: /^remove$/i }).click(); // AlertDialog confirm
 
     await expect(async () => {
       const { count } = await adminClient()
