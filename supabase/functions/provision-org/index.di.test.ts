@@ -13,30 +13,34 @@ Deno.test("provision-org: 403 for non-super-admin", async () => {
   assertEquals(res.status, 403);
 });
 
-Deno.test("provision-org: net-new admin → RPC + inviteUserByEmail, returns org_id", async () => {
+Deno.test("provision-org: net-new admin → RPC + branded email with actionLink, returns org_id", async () => {
   const { deps, invokeCalls } = makeFakeDeps({
     authUser: { id: "u1" },
     tables: { platform_admins: { data: { user_id: "u1" }, error: null } },
     rpcs: { provision_org: { data: { org_id: "org-9", token: "tok-9" }, error: null } },
-    usersById: {}, // no existing user with that email → invite path
+    usersById: {}, // net-new
+    generateLinkResult: { data: { properties: { action_link: "https://app.test/reset-password?redirect=x" } }, error: null },
   });
   const res = await handle(makeRequest({ headers: { Authorization: "Bearer x" }, body }), deps);
   assertEquals(res.status, 200);
   assertEquals((await res.json()).org_id, "org-9");
-  // net-new path does NOT send our org-invitation email (Supabase invite handles it)
-  assertEquals(invokeCalls.filter((c) => c.name === "send-transactional-email").length, 0);
+  const sent = invokeCalls.filter((c) => c.name === "send-transactional-email");
+  assertEquals(sent.length, 1);
+  assertEquals((sent[0].body as { templateData: { actionLink?: string } }).templateData.actionLink, "https://app.test/reset-password?redirect=x");
 });
 
-Deno.test("provision-org: existing admin → sends org-invitation email", async () => {
+Deno.test("provision-org: existing admin → branded email with NO actionLink", async () => {
   const { deps, invokeCalls } = makeFakeDeps({
     authUser: { id: "u1" },
     tables: { platform_admins: { data: { user_id: "u1" }, error: null } },
     rpcs: { provision_org: { data: { org_id: "org-9", token: "tok-9" }, error: null } },
-    usersById: { u2: { email: "a@acme.com" } }, // existing user → email path
+    usersById: { u2: { email: "a@acme.com" } }, // existing
   });
   const res = await handle(makeRequest({ headers: { Authorization: "Bearer x" }, body }), deps);
   assertEquals(res.status, 200);
-  assertEquals(invokeCalls.filter((c) => c.name === "send-transactional-email").length, 1);
+  const sent = invokeCalls.filter((c) => c.name === "send-transactional-email");
+  assertEquals(sent.length, 1);
+  assertEquals((sent[0].body as { templateData: { actionLink?: string } }).templateData.actionLink, undefined);
 });
 
 Deno.test("provision-org: 409 on duplicate slug", async () => {

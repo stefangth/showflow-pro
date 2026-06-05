@@ -13,15 +13,16 @@ interface Props {
   role?: string
   inviterEmail?: string
   token?: string
+  actionLink?: string
   // Template-override support (applied by send-transactional-email).
   _intro?: string
   _cta_label?: string
   _footer?: string
 }
 
-const OrgInvitationEmail = ({ orgName, role, inviterEmail, token, _intro, _cta_label, _footer }: Props) => {
+const OrgInvitationEmail = ({ orgName, role, inviterEmail, token, actionLink, _intro, _cta_label, _footer }: Props) => {
   const org = orgName || 'an organization'
-  const acceptUrl = token ? `${APP_URL}/accept-invite?token=${token}` : APP_URL
+  const acceptUrl = actionLink || (token ? `${APP_URL}/accept-invite?token=${token}` : APP_URL)
   const introText = _intro ||
     `You've been invited to join ${org} on ${SITE_NAME}${role ? ` as ${role}` : ''}. ` +
     `Accept the invitation to set up your account and get started.`

@@ -4,6 +4,7 @@ import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { resolveOrgSetting } from "@/data/settings";
 import { savePlatformSetting, EMPTY_STARTER_TEMPLATE, type StarterCatalogTemplate } from "@/data/platform";
+import type { Json } from "@/integrations/supabase/types";
 import { parseLines, serializeLines, parseCasts, serializeCasts } from "./templateText";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -32,7 +33,7 @@ export function PlatformDefaultsTab() {
   const save = useMutation({
     mutationFn: () => savePlatformSetting(supabase, "starter_catalog_template", {
       skills: parseLines(skills), cities: parseLines(cities), casts: parseCasts(casts),
-    } as never),
+    } as unknown as Json),
     onSuccess: () => { qc.invalidateQueries({ queryKey: ["platform", "starter-template"] }); toast.success("Starter catalog saved"); },
     onError: (e: Error) => toast.error(e.message),
   });
