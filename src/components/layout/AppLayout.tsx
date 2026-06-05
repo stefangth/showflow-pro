@@ -8,7 +8,7 @@ import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
-import { Settings, LogOut, Bell, ChevronLeft, ChevronRight, Menu, EyeOff } from 'lucide-react';
+import { Settings, LogOut, Bell, ChevronLeft, ChevronRight, Menu, EyeOff, User } from 'lucide-react';
 import { NAV_ITEMS, visibleNavItems } from '@/components/layout/navItems';
 import { cn } from '@/lib/utils';
 import { useSettingsWarnings } from '@/hooks/useSettingsWarnings';
@@ -153,6 +153,15 @@ export default function AppLayout({ children }: AppLayoutProps) {
             )}
           </div>
         )}
+        <Button
+          variant="ghost"
+          size="sm"
+          className="w-full justify-start gap-2.5 text-sidebar-foreground/70 hover:bg-foreground/[0.04] hover:text-sidebar-foreground"
+          onClick={() => navigate(ROUTES.PROFILE)}
+        >
+          <User className="h-[14px] w-[14px]" />
+          {!collapsed && 'Profile'}
+        </Button>
         <Button
           variant="ghost"
           size="sm"

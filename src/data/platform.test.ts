@@ -3,7 +3,7 @@ import { createFakeSupabase } from "@/test/supabaseFake";
 import {
   fetchIsSuperAdmin, fetchAllOrgs, fetchPlatformOrgStats, provisionOrg,
   setOrgStatus, updateOrg, fetchPlatformAdmins, addPlatformAdmin,
-  removePlatformAdmin, resendInvitation, savePlatformSetting,
+  removePlatformAdmin, savePlatformSetting,
 } from "./platform";
 
 describe("data/platform", () => {
@@ -57,12 +57,6 @@ describe("data/platform", () => {
     expect(await fetchPlatformAdmins(fake as never)).toHaveLength(1);
     expect(fake.calls).toContainEqual({ table: "rpc:add_platform_admin", method: "rpc", args: [{ p_email: "a@b.c" }] });
     expect(fake.calls).toContainEqual({ table: "rpc:remove_platform_admin", method: "rpc", args: [{ p_user_id: "u2" }] });
-  });
-
-  it("resendInvitation invokes the edge function", async () => {
-    const fake = createFakeSupabase({ "fn:resend-invitation": { data: { ok: true }, error: null } });
-    await resendInvitation(fake as never, "inv1");
-    expect(fake.calls).toContainEqual({ table: "fn:resend-invitation", method: "invoke", args: [{ invitation_id: "inv1" }] });
   });
 
   it("savePlatformSetting upserts a NULL-org row", async () => {

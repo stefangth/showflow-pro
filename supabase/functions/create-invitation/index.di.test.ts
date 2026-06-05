@@ -4,10 +4,11 @@
  * Contract:
  *  - OPTIONS → preflight
  *  - no Bearer → 401
- *  - invalid payload (missing org_id/email/role) → 400; invalid role → 400
+ *  - invalid payload (missing org_id/email/role/app_origin) → 400; invalid email/role → 400
  *  - caller not an admin of the target org → 403
  *  - admin → 200 { ok, invitation }; inserts org_invitations with the (lowercased)
- *    email + invited_by = caller; sends the 'org-invitation' email to the invitee.
+ *    email + invited_by = caller; delivers the 'org-invitation' email to the invitee
+ *    (net-new invitees get an actionLink via the unified deliverOrgInvitation helper).
  *
  * requireOrgRole reads org_memberships (eq user_id, eq org_id, in role, maybeSingle);
  * the fake's maybeSingle applies the .in("role",[...]) filter, so a single seed row
@@ -18,7 +19,9 @@ import { assertEquals, assertExists } from "../_shared/test-asserts.ts";
 import { makeFakeDeps, makeRequest } from "../_shared/testing.ts";
 import { handle } from "./index.ts";
 
-function adminDeps() {
+const APP_ORIGIN = "https://app.test";
+
+function adminDeps(extra: Record<string, unknown> = {}) {
   return makeFakeDeps({
     authUser: { id: "u1" },
     usersById: { u1: { email: "admin@acme.test" } },
@@ -30,11 +33,13 @@ function adminDeps() {
       },
       organizations: { data: { name: "Acme" }, error: null },
     },
+    ...extra,
   });
 }
 
-function inviteReq(body: unknown) {
-  return makeRequest({ headers: { Authorization: "Bearer jwt" }, body });
+/** A request whose body always carries app_origin (per-test fields override / extend it). */
+function inviteReq(body: Record<string, unknown>) {
+  return makeRequest({ headers: { Authorization: "Bearer jwt" }, body: { app_origin: APP_ORIGIN, ...body } });
 }
 
 Deno.test("create-invitation DI: OPTIONS → preflight", async () => {
@@ -45,7 +50,7 @@ Deno.test("create-invitation DI: OPTIONS → preflight", async () => {
 
 Deno.test("create-invitation DI: no Bearer token → 401", async () => {
   const { deps } = makeFakeDeps();
-  const res = await handle(makeRequest({ headers: {}, body: { org_id: "org-1", email: "x@y.com", role: "producer" } }), deps);
+  const res = await handle(makeRequest({ headers: {}, body: { org_id: "org-1", email: "x@y.com", role: "producer", app_origin: APP_ORIGIN } }), deps);
   assertEquals(res.status, 401);
 });
 
@@ -55,9 +60,21 @@ Deno.test("create-invitation DI: missing email → 400", async () => {
   assertEquals(res.status, 400);
 });
 
+Deno.test("create-invitation DI: missing app_origin → 400", async () => {
+  const { deps } = adminDeps();
+  const res = await handle(makeRequest({ headers: { Authorization: "Bearer jwt" }, body: { org_id: "org-1", email: "x@y.com", role: "producer" } }), deps);
+  assertEquals(res.status, 400);
+});
+
 Deno.test("create-invitation DI: invalid role → 400", async () => {
   const { deps } = adminDeps();
   const res = await handle(inviteReq({ org_id: "org-1", email: "x@y.com", role: "superuser" }), deps);
+  assertEquals(res.status, 400);
+});
+
+Deno.test("create-invitation DI: malformed email → 400", async () => {
+  const { deps } = adminDeps();
+  const res = await handle(inviteReq({ org_id: "org-1", email: "not-an-email", role: "producer" }), deps);
   assertEquals(res.status, 400);
 });
 
@@ -102,4 +119,16 @@ Deno.test("create-invitation DI: sends the org-invitation email to the invitee w
   assertEquals(msg.templateData.token, "tok123");
   assertEquals(msg.templateData.orgName, "Acme");
   assertEquals(msg.templateData.inviterEmail, "admin@acme.test");
+});
+
+Deno.test("create-invitation DI: net-new invitee → branded email WITH actionLink", async () => {
+  const { deps, invokeCalls } = adminDeps({
+    usersById: {}, // invitee is net-new (no existing auth user)
+    generateLinkResult: { data: { properties: { action_link: "https://app.test/reset-password?redirect=x" } }, error: null },
+  });
+  const res = await handle(inviteReq({ org_id: "org-1", email: "invitee@x.com", role: "producer" }), deps);
+  assertEquals(res.status, 200);
+  const emails = invokeCalls.filter((c) => c.name === "send-transactional-email");
+  assertEquals(emails.length, 1);
+  assertEquals((emails[0].body as { templateData: { actionLink?: string } }).templateData.actionLink, "https://app.test/reset-password?redirect=x");
 });
