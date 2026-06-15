@@ -68,7 +68,8 @@ These are public values (anon key, not service role). Never commit `.env`. The s
 ```
 src/
   components/
-    admin/         # Admin-only UI (InvitesTab — org invite management, etc.)
+    admin/         # Admin-only UI (InvitesTab — org invite management;
+                   #   MembersTab — org member list + removal)
     artists/       # ArtistProfileSheet
     availability/  # ArtistAvailabilityCalendar, AvailabilityPicker, OfferResponseButtons
     bookings/      # ArtistBookingsView and booking surfaces
@@ -79,14 +80,25 @@ src/
     consent/       # CookieConsentBanner (bottom-fixed GDPR banner), CookieConsentDialog (per-category toggles)
     dashboard/     # Role-specific dashboards (ArtistDashboard, …)
     filters/       # Reusable filter/sort/view-toggle controls
+    platform/      # Super-admin platform console UI (OrganizationsTab, PlatformAdminsTab,
+                   #   PlatformDefaultsTab, EditOrgDialog, NewOrgDialog, OrgInvitePopover,
+                   #   OrgMembersPopover) + pure utilities (platformFormat.ts, templateText.ts)
     shows/         # ShowDateDetailSheet — the full per-date booking management surface
     layout/        # AppLayout (sidebar + topbar shell), NotificationsList (notification bell popover)
     ui/            # shadcn primitives — DO NOT edit by hand, regenerate via shadcn
   config/
     app.config.ts  # Feature flags (FEATURES), route constants (ROUTES), BOOKING_CONFIG, CHAT_ARCHIVE_DAYS
+  data/            # Data-access layer: fetchX(client, args) / mutateX(client, args) functions
+                   #   that take the Supabase client as a parameter. Hooks are thin wrappers.
+                   #   Domains: artists, invitations, members, notifications, orgs, platform,
+                   #   profiles, settings, skills. Test with supabaseFake.ts (never vi.mock the client).
   features/
-    auth/          # AuthContext (org-aware: currentOrg/orgs/switchOrg), ProtectedRoute
-                   #   (org gate → NoOrgScreen / SuspendedOrgScreen), orgRoles helper
+    auth/          # AuthContext (org-aware: currentOrg/orgs/switchOrg, isSuperAdmin),
+                   #   ProtectedRoute (org gate → NoOrgScreen / SuspendedOrgScreen;
+                   #   super-admins bypass org gate and suspended-org check),
+                   #   PlatformRoute (super-admin-only gate for /platform, no org required),
+                   #   orgRoles.ts (multi-org role utilities),
+                   #   resetPassword.ts (pure hash-parse / redirect-safety / schema helpers)
     consent/       # ConsentContext, ConsentProvider, useConsent hook — localStorage-backed GDPR consent state
                    #   (key: showflow.consent.v1; categories: analytics, sessionReplay, errorTracking)
                    #   ConsentProvider wraps the routing tree (inside BrowserRouter, outside AuthProvider/EditorProvider).
@@ -99,21 +111,24 @@ src/
   hooks/           # Domain hooks (useMyArtist, useEligibleArtists, useChatParticipant,
                    #   useArtistEligibleDates, useSubProgramSlots, useSettingsWarnings,
                    #   useSkills/useArtistSkills, useNotifications/useMarkNotificationRead/
-                   #   useMarkAllNotificationsRead) + UI hooks (use-mobile, use-toast)
+                   #   useMarkAllNotificationsRead, useMyProfile/useUpdateMyProfile,
+                   #   useOrgMembers/useRemoveOrgMember) + UI hooks (use-mobile, use-toast)
   integrations/
     supabase/
       client.ts    # Single shared Supabase client
       types.ts     # AUTO-GENERATED — never edit
   lib/             # Shared utilities: utils.ts (cn helper), dates.ts (parseDateOnly,
                    #   formatDateDMY, formatDateWithWeekday, toDateKey — all timezone-safe),
-                   #   avatar.ts
+                   #   avatar.ts, bookings.ts, settings.ts (dedupeProgramPairs, effectiveSlots)
   pages/           # One file per route, default-exported
                    #   Key pages: DashboardPage, ShowsBookingsPage (ROUTES.BOOKINGS),
                    #   ArtistsPage (admin+producer), AvailabilityPage (artist),
                    #   AdminPage, SettingsPage, ChatsListPage
-                   #   Public pages (no auth): UnsubscribePage, PrivacyPage, ImpressumPage
-                   #   ROUTES.PROFILE and ROUTES.RESET_PASSWORD are defined but have
-                   #   no pages yet — reserved for future implementation.
+                   #   ProfilePage (ROUTES.PROFILE) — user profile + in-app password change
+                   #   ResetPasswordPage (ROUTES.RESET_PASSWORD) — request + set (public, no auth)
+                   #   PlatformPage (ROUTES.PLATFORM) — super-admin console; uses PlatformRoute
+                   #   Public pages (no auth): UnsubscribePage, PrivacyPage, ImpressumPage,
+                   #   AcceptInvitePage, ResetPasswordPage
                    #   /signup redirects to /login (no standalone signup page).
   types/           # Domain types extending Supabase row types
 docs/
@@ -128,10 +143,11 @@ supabase/
 ### Key decisions
 
 - **Single source of truth for routes/flags:** `src/config/app.config.ts`. Reference `ROUTES.X` rather than string literals. `CHAT_ARCHIVE_DAYS` (30) hides chats from the list and gates write access after a show date passes (chats older than 30 days are hidden from `ChatsListPage` for non-admins and made read-only in `ChatPanel`). Note: `ROUTES.SHOWS` (`/shows`) has been removed — the `/shows` path no longer exists.
-- **Admin-tunable settings live in the DB:** the `app_settings` table (key/value JSONB) is edited via the Settings page. Static developer-only constants stay in `app.config.ts`.
+- **Admin-tunable settings live in the DB:** the `app_settings` table (key/value JSONB, `org_id` column) is edited via the Settings page. Static developer-only constants stay in `app.config.ts`. Settings are **per-org with platform-default fallback**: `get_org_setting(_key, _org)` (DB) / `resolveOrgSetting(client, orgId, key, fallback)` (frontend in `src/data/settings.ts`; edge functions in `_shared/settings.ts`) returns the org's own row when it exists, otherwise the platform-default row (`org_id IS NULL`). Write org overrides with `upsertOrgSetting`; write platform defaults with `savePlatformSetting` (super-admin only). The schema key is `ON CONFLICT (org_id, key)`.
 - **Onboarding is invite-only.** There is no public signup and no approval queue. An org admin invites a person by email via the `create-invitation` edge function (inserts `org_invitations` + sends the `org-invitation` email with an `/accept-invite?token=` link); the invitee accepts via the `accept_invitation` SECURITY DEFINER RPC, which writes their `org_memberships` row. `ProtectedRoute` gates on membership: no active org → `NoOrgScreen`; suspended org → `SuspendedOrgScreen`. (The old `user_approvals` / `ApprovalGate` / `admin-decide-approval` flow was retired.)
 - **Role checks are always server-enforced via RLS.** The client `useAuth().hasRole(...)` is for UX only (hiding nav, gating pages); never trust it for data access.
 - **Roles live in `org_memberships`** (per-org: `(org_id, user_id, role)`), never on `profiles`. Check via the `has_org_role(uuid, org_id, app_role)` / `is_org_member(uuid, org_id)` security-definer functions in policies (both short-circuit on `is_super_admin`). The old global `user_roles` table + `has_role()` were dropped. `AuthContext` derives the active org's roles, so `useAuth().hasRole()` keeps its signature.
+- **Super-admins (`platform_admins` table) bypass org gates.** `is_super_admin(_uid)` is a SECURITY DEFINER function used by RLS and by `requireOrgRole` / `requireSuperAdmin` in `_shared/auth.ts`. In the frontend `AuthContext` this surfaces as `isSuperAdmin: boolean`. Super-admins: (a) skip `ProtectedRoute`'s org-membership and suspended-org checks; (b) see all orgs in the switcher via `fetchAllOrgs`; (c) can enter `/platform` (gated by `PlatformRoute`). Manage super-admins via `add_platform_admin(email)` / `remove_platform_admin(user_id)` RPCs (last-admin guard is race-resistant). Edge endpoints that need super-admin authority call `requireSuperAdmin(deps, req)` from `_shared/auth.ts`.
 - **Chat is per show-date.** One `chats` row per `show_date_id`; participation is gated by `is_chat_participant(chat_id, user_id)` (admins, producers, and artists booked/soft-booked for that date). After `CHAT_ARCHIVE_DAYS` days, chats are hidden from `ChatsListPage` for non-admins and become read-only in `ChatPanel` (admins can still view the archived thread).
 - **Artist availability is gated by eligibility.** Artists can only declare availability on dates returned by `useArtistEligibleDates` (derived from cast eligibility). Non-eligible dates render non-interactively in the calendar.
 - **`show_dates.status` is DB-computed.** A Postgres trigger (`sync_show_date_status_trigger` on `bookings`) automatically sets status to `open | partially_filled | fully_filled` based on confirmed booking counts vs the `main_cast` + `understudies` thresholds in `app_settings.sub_program_slots_defaults` (keyed by `(program, sub_program)`). Only `cancelled` is set by mutations directly. Do not set status manually in client code. A second trigger on `app_settings` recomputes all show_dates when slot defaults change; a third on `shows` does so when a show's `program` or `sub_program` is updated.
@@ -139,11 +155,11 @@ supabase/
 - **No UI for creating show dates.** The create-show-date flow was intentionally removed. New show_dates must be inserted via the Supabase dashboard or a future admin-only flow.
 - **Booking detail surface: `ShowDateDetailSheet`.** The full booking management experience (date config, assigned artists, available artists, chat) lives in `src/components/shows/ShowDateDetailSheet.tsx`. There is no standalone `/shows/:id` page — `ShowDetailPage` and `ShowDetailSheet` have been deleted.
 - **Audit trail:** all booking status changes append to `booking_audit_log`. Never delete from this table.
-- **Airtable sync is implemented.** The `airtable-poll` edge function upserts `show_dates` from Airtable and is scheduled via pg_cron (`*/5 * * * *`). Enable it by setting `airtable_sync_enabled = true` in app_settings (via Settings → Airtable) and configuring `airtable_base_id`, `airtable_table_name`, and the `AIRTABLE_API_KEY` edge function secret.
+- **Airtable sync is org-aware.** The `airtable-poll` edge function upserts `show_dates` from Airtable and is scheduled via pg_cron (`*/5 * * * *`). Enable per-org by setting `airtable_sync_enabled = true` in `app_settings` for that org (via Settings → Airtable) and configuring `airtable_base_id`, `airtable_table_name`. The Airtable API key is stored per-org in **Supabase Vault** (not a global edge function secret) — see the `get_org_airtable_key` / `set_org_airtable_key` RPCs and the `20260604131000_org_airtable_vault.sql` migration.
 - **Feature flags** live in `app.config.ts` as the `FEATURES` object. Check with `if (FEATURES.FEATURE_NAME) { ... }`. Wrap entire feature blocks, not individual lines. Don't build UI for a flag that's `false` unless wiring it up in the same change.
 - **Admin-only editor mode:** `EditorProvider` (wraps the entire app in `App.tsx`) exposes `isEditorMode`. Admins in editor mode bypass route-level role gates — `ProtectedRoute` reads `pageAccess` from `useEditorConfig()` and uses DB-stored role overrides instead of the `requiredRoles` prop. Never use `isEditorMode` to skip server-side RLS checks.
 - **GDPR consent system:** `ConsentProvider` wraps the routing tree in App.tsx (inside BrowserRouter, outside AuthProvider/EditorProvider). `CookieConsentBanner` is rendered globally inside `ConsentProvider`; it is visible when `!hasDecided` and while the preferences dialog is closed (`!preferencesOpen`). Consent choices (analytics, sessionReplay, errorTracking) are persisted in `localStorage` under `showflow.consent.v1`. Read choices via `useConsent()`. Only wire analytics/session-replay/error-tracking SDKs based on the returned flags — never call them unconditionally.
-- **Public routes:** `ROUTES.PRIVACY` (`/privacy`), `ROUTES.IMPRESSUM` (`/impressum`), and `ROUTES.UNSUBSCRIBE` (`/unsubscribe`) are rendered outside `ProtectedRoute` — no auth required. The legal docs are loaded from `docs/legal/*.md` via Vite `?raw` imports and rendered with `ReactMarkdown` + `remarkGfm`.
+- **Public routes:** `ROUTES.PRIVACY` (`/privacy`), `ROUTES.IMPRESSUM` (`/impressum`), `ROUTES.UNSUBSCRIBE` (`/unsubscribe`), `ROUTES.ACCEPT_INVITE` (`/accept-invite`), and `ROUTES.RESET_PASSWORD` (`/reset-password`) are rendered outside `ProtectedRoute` — no auth required. The legal docs are loaded from `docs/legal/*.md` via Vite `?raw` imports and rendered with `ReactMarkdown` + `remarkGfm`.
 
 ### Calendar conventions
 
@@ -193,9 +209,10 @@ When adding a new page:
   - **Admin ops:** `admin-list-users`, `admin-set-role` (both org-scoped via `?org_id` / body `org_id`).
   - **Invitations:** `create-invitation` (org admin → insert `org_invitations` + send the `org-invitation` email). Acceptance is the `accept_invitation` RPC, not an edge function.
   - **Transactional email:** `send-transactional-email`, `preview-transactional-email`, `handle-email-suppression`, `handle-email-unsubscribe`. New templates must be registered in `_shared/transactional-email-templates/registry.ts`.
-  - **Booking engine:** `open-offer-tier` (create suggested bookings), `expire-offers` (hourly expiry), `send-offer-digest` (daily 19:00 Berlin), `send-confirmation-digest` (daily 20:00 Berlin).
+  - **Booking engine:** `open-offer-tier` (create suggested bookings), `expire-offers` (hourly expiry), `send-offer-digest` (daily 19:00 Berlin), `send-confirmation-digest` (daily 20:00 Berlin). All cron functions are org-aware: they iterate active orgs via `getActiveOrgs(admin)` from `_shared/settings.ts` and resolve settings per-org with `resolveOrgSetting`.
   - **Watchers:** `tier-at-risk-watcher` — scans open offer tiers and fires an in-app `tier_at_risk` notification when remaining pending + accepted < required slots. Idempotent (one notification per date/tier). No email; visual only.
-- Use the service role key only when bypassing RLS is intentional (admin endpoints). Always re-verify the caller's role server-side first via `requireRole` (any-org) or `requireOrgRole(org_id, [...])` (org-scoped) from `_shared/auth.ts` — see `admin-set-role` / `create-invitation` for the pattern.
+  - **Platform (super-admin):** `provision-org` (atomic org creation + catalog seeding + first-admin invite, requires super-admin); `resend-invitation` (resend an existing `org_invitations` row's email).
+- Use the service role key only when bypassing RLS is intentional (admin endpoints). Always re-verify the caller's role server-side first via `requireRole` (any-org), `requireOrgRole(org_id, [...])` (org-scoped), or `requireSuperAdmin` (platform-admin endpoints) from `_shared/auth.ts` — see `admin-set-role` / `create-invitation` / `provision-org` for patterns. `requireOrgRole` automatically accepts super-admins so god-mode works on org-scoped endpoints.
 - Read secrets via `Deno.env.get('SECRET_NAME')`.
 
 ### Notification system
@@ -235,7 +252,7 @@ CI runs all of these (`.github/workflows/ci.yml`).
 
 **Frontend pattern — data-access extraction:** Put Supabase reads/writes in `src/data/<domain>.ts` as `fetchX(client, args)` / `mutateX(client, args)` functions that take the client as a parameter. Hooks are thin wrappers that pass the `supabase` singleton. Test the data-access functions with the call-recording fake client in `src/test/supabaseFake.ts`, and use `src/test/renderWithProviders.tsx` + `src/test/fixtures.ts` for hook/component tests. Do not hand-roll `vi.mock('@/integrations/supabase/client')` chains.
 
-**Backend pattern — dependency injection:** Each edge function exports `handle(req, deps)` and only wires `Deno.serve((req) => handle(req, realDeps()))` at the bottom. `Deps` (in `supabase/functions/_shared/deps.ts`) carries the Supabase clients, `env`, `now`, `invokeFunction`/`sendEmail`, and `fetch`. Tests import `handle` and pass `makeFakeDeps(...)` from `supabase/functions/_shared/testing.ts`. Use the shared `_shared/http.ts` (CORS + json) and `_shared/auth.ts` (requireRole / requireCronOrRole / isServiceRole) helpers — do not re-inline CORS, client creation, or auth.
+**Backend pattern — dependency injection:** Each edge function exports `handle(req, deps)` and only wires `Deno.serve((req) => handle(req, realDeps()))` at the bottom. `Deps` (in `supabase/functions/_shared/deps.ts`) carries the Supabase clients, `env`, `now`, `invokeFunction`/`sendEmail`, and `fetch`. Tests import `handle` and pass `makeFakeDeps(...)` from `supabase/functions/_shared/testing.ts`. Use the shared `_shared/http.ts` (CORS + json), `_shared/auth.ts` (requireRole / requireOrgRole / requireSuperAdmin / requireCronOrRole / isServiceRole), and `_shared/settings.ts` (resolveOrgSetting / getActiveOrgs) helpers — do not re-inline CORS, client creation, auth, or settings resolution.
 
 - Co-locate tests beside the file they test.
 - Test behavior, never implementation details (internal state, private methods).
@@ -279,16 +296,24 @@ Suggested emails:
 
 | File | Purpose |
 |------|---------|
-| `src/config/app.config.ts` | FEATURES flags, ROUTES, BOOKING_CONFIG (`SOFT_BOOK_EXPIRY_HOURS`), SYNC_CONFIG, CHAT_ARCHIVE_DAYS |
+| `src/config/app.config.ts` | FEATURES flags, ROUTES, BOOKING_CONFIG (`SOFT_BOOK_EXPIRY_HOURS`), CHAT_ARCHIVE_DAYS |
 | `src/integrations/supabase/types.ts` | Auto-generated DB types — read only |
-| `src/features/auth/AuthContext.tsx` | Auth state, org-scoped role helpers, `currentOrg`/`orgs`/`switchOrg` |
+| `src/features/auth/AuthContext.tsx` | Auth state, org-scoped role helpers, `currentOrg`/`orgs`/`switchOrg`, `isSuperAdmin` |
+| `src/features/auth/resetPassword.ts` | Pure helpers for reset-password flow (hash parse, redirect safety, schema) |
 | `src/features/consent/ConsentContext.tsx` | GDPR consent state (analytics / sessionReplay / errorTracking) |
 | `src/features/editor/EditorContext.tsx` | Editor mode state, page access and column/permission config (admin only) |
+| `src/data/settings.ts` | `resolveOrgSetting` / `upsertOrgSetting` — org-aware settings resolver (frontend) |
+| `src/data/platform.ts` | Super-admin data access: `fetchAllOrgs`, `provisionOrg`, `fetchPlatformOrgStats`, platform admin CRUD |
+| `src/data/profiles.ts` | `fetchMyProfile` / `updateMyProfile` / `updateMyPassword` |
+| `src/data/members.ts` | `fetchOrgMembers` / `removeOrgMember` (via `list_org_members` / `remove_org_member` RPCs) |
 | `src/hooks/` | All domain hooks — reuse before writing new queries |
 | `src/types/index.ts` | Domain type extensions on top of Supabase types |
+| `supabase/functions/_shared/settings.ts` | `resolveOrgSetting` + `getActiveOrgs` — org-aware settings for edge functions |
+| `supabase/functions/_shared/auth.ts` | `requireRole` / `requireOrgRole` / `requireSuperAdmin` / `requireCronOrRole` |
+| `supabase/functions/provision-org/index.ts` | Atomic org creation + catalog seed + first-admin invite (super-admin) |
 | `supabase/functions/send-offer-digest/index.ts` | Daily offer digest (Berlin 19:00 gate) |
 | `supabase/functions/send-confirmation-digest/index.ts` | Daily confirmation digest (Berlin 20:00 gate) |
-| `supabase/functions/airtable-poll/index.ts` | Airtable → show_dates sync |
+| `supabase/functions/airtable-poll/index.ts` | Org-aware Airtable → show_dates sync (per-org Vault key) |
 | `supabase/functions/open-offer-tier/index.ts` | Creates suggested bookings for a date/tier |
 | `supabase/functions/tier-at-risk-watcher/index.ts` | In-app notification when a tier can no longer fill before deadline |
 
