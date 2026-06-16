@@ -1,7 +1,7 @@
 -- One active (non-cancelled) booking per (show_date, artist) is a DB guarantee.
 BEGIN;
 CREATE EXTENSION IF NOT EXISTS pgtap WITH SCHEMA extensions;
-SELECT plan(3);
+SELECT plan(5);
 
 INSERT INTO public.organizations (id, name, slug)
   VALUES ('11111111-1111-1111-1111-111111111111', 'Org A', 'org-a-active-uniq');
@@ -9,8 +9,12 @@ INSERT INTO public.shows (id, org_id, program, sub_program, status)
   VALUES ('22222222-2222-2222-2222-222222222222', '11111111-1111-1111-1111-111111111111', 'TJE', 'TJE: Murder', 'active');
 INSERT INTO public.show_dates (id, show_id, date, session_1)
   VALUES ('33333333-3333-3333-3333-333333333333', '22222222-2222-2222-2222-222222222222', '2026-07-01', '19:00');
+INSERT INTO public.show_dates (id, show_id, date, session_1)
+  VALUES ('3a3a3a3a-3a3a-3a3a-3a3a-3a3a3a3a3a3a', '22222222-2222-2222-2222-222222222222', '2026-07-02', '19:00');
 INSERT INTO public.artists (id, org_id, name, status)
   VALUES ('44444444-4444-4444-4444-444444444444', '11111111-1111-1111-1111-111111111111', 'Artist One', 'active');
+INSERT INTO public.artists (id, org_id, name, status)
+  VALUES ('ffffffff-ffff-ffff-ffff-ffffffffffff', '11111111-1111-1111-1111-111111111111', 'Artist Two', 'active');
 INSERT INTO public.bookings (id, show_date_id, artist_id, status)
   VALUES ('55555555-5555-5555-5555-555555555555', '33333333-3333-3333-3333-333333333333', '44444444-4444-4444-4444-444444444444', 'suggested');
 
@@ -33,6 +37,18 @@ SELECT lives_ok(
   $$ INSERT INTO public.bookings (show_date_id, artist_id, status)
      VALUES ('33333333-3333-3333-3333-333333333333', '44444444-4444-4444-4444-444444444444', 'suggested') $$,
   're-offer after cancellation is allowed');
+
+-- 4) a DIFFERENT artist on the SAME date is allowed (index does not over-constrain)
+SELECT lives_ok(
+  $$ INSERT INTO public.bookings (show_date_id, artist_id, status)
+     VALUES ('33333333-3333-3333-3333-333333333333', 'ffffffff-ffff-ffff-ffff-ffffffffffff', 'suggested') $$,
+  'different artist on the same date is allowed');
+
+-- 5) the SAME artist on a DIFFERENT date is allowed
+SELECT lives_ok(
+  $$ INSERT INTO public.bookings (show_date_id, artist_id, status)
+     VALUES ('3a3a3a3a-3a3a-3a3a-3a3a-3a3a3a3a3a3a', '44444444-4444-4444-4444-444444444444', 'suggested') $$,
+  'same artist on a different date is allowed');
 
 SELECT * FROM finish();
 ROLLBACK;
