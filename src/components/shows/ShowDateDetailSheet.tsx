@@ -16,7 +16,7 @@ import { MapPin, Clock, Users, Check, ChevronsUpDown } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { showLabel } from '@/types';
 import { useEligibleArtists } from '@/hooks/useEligibleArtists';
-import { useSubProgramSlots, effectiveSlots } from '@/hooks/useSubProgramSlots';
+import { showSlots } from '@/lib/settings';
 import { deriveBookingGroups, computeInheritedCastIds, bookingStatusUpdate } from '@/lib/bookings';
 import { ChatPanel } from '@/components/chat/ChatPanel';
 import type { Booking, Artist, City, Cast } from '@/types';
@@ -51,7 +51,7 @@ export function ShowDateDetailSheet({ showDateId, open, onOpenChange }: Props) {
         .from('show_dates')
         .select(`
           id, date, session_1, session_2, session_3, venue, status, notes, city_id, show_id,
-          show:shows(id, program, sub_program),
+          show:shows(id, program, sub_program, main_cast_slots, understudy_slots),
           city:cities(id, name)
         `)
         .eq('id', showDateId!)
@@ -63,8 +63,7 @@ export function ShowDateDetailSheet({ showDateId, open, onOpenChange }: Props) {
 
   const showId = showDate?.show_id ?? null;
   const cityId = showDate?.city_id ?? null;
-  const slotDefaults = useSubProgramSlots();
-  const slotConfig = effectiveSlots(slotDefaults, showDate?.show?.program, showDate?.show?.sub_program);
+  const slotConfig = showSlots(showDate?.show);
 
   const { data: bookingsForDate } = useQuery({
     queryKey: ['bookings', 'for-date', showDateId],

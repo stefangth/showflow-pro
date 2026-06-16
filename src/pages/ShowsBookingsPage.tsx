@@ -19,7 +19,7 @@ import { EntityCalendar } from '@/components/calendar/EntityCalendar';
 import { applySort, inTimeframe } from '@/components/filters/filterUtils';
 import { ArtistBookingsView } from '@/components/bookings/ArtistBookingsView';
 import { ShowDateDetailSheet } from '@/components/shows/ShowDateDetailSheet';
-import { useSubProgramSlots, effectiveSlots } from '@/hooks/useSubProgramSlots';
+import { showSlots } from '@/lib/settings';
 import { showLabel } from '@/types';
 import { useColumnTemplate, useEditorConfig } from '@/features/editor/EditorContext';
 import { useColumnHeaders } from '@/features/editor/useColumnHeaders';
@@ -31,6 +31,8 @@ type ShowRef = {
   sub_program: string | null;
   required_skills: string[] | null;
   status: 'active' | 'archived' | 'draft';
+  main_cast_slots: number | null;
+  understudy_slots: number | null;
 };
 
 type CityRef = { id: string; name: string } | null;
@@ -91,7 +93,6 @@ function ProducerShowsBookings() {
   const [programs, setPrograms] = useState<string[]>([]);
   const [timeframe, setTimeframe] = useState<TimeframeValue>({ from: null, to: null });
   const [statusFilter, setStatusFilter] = useState<'all' | DisplayStatus>('all');
-  const slotDefaults = useSubProgramSlots();
   const [sort, setSort] = useState<SortValue>('chrono_asc');
   const [view, setView] = useState<ViewMode>('list');
   const [activeShowDateId, setActiveShowDateId] = useState<string | null>(null);
@@ -153,7 +154,7 @@ function ProducerShowsBookings() {
         .from('show_dates')
         .select(`
           id, date, session_1, session_2, session_3, venue, status, notes, city_id, show_id,
-          show:shows(id, program, sub_program, required_skills, status),
+          show:shows(id, program, sub_program, required_skills, status, main_cast_slots, understudy_slots),
           city:cities(id, name)
         `)
         .order('date', { ascending: true });
@@ -169,7 +170,7 @@ function ProducerShowsBookings() {
   }, [showDates]);
 
   const displayStatus = (sd: ShowDateRow): DisplayStatus => {
-    if (sd.status === 'open' && !effectiveSlots(slotDefaults, sd.show?.program, sd.show?.sub_program)) {
+    if (sd.status === 'open' && !showSlots(sd.show)) {
       return 'unconfigured';
     }
     return sd.status;
@@ -199,7 +200,7 @@ function ProducerShowsBookings() {
       sd => new Date(sd.date + 'T00:00:00')
     );
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [showDates, search, programs, timeframe, statusFilter, sort, slotDefaults]);
+  }, [showDates, search, programs, timeframe, statusFilter, sort]);
 
   const calendarItems = useMemo(() =>
     filtered.map(sd => ({ showDate: sd, date: new Date(sd.date + 'T00:00:00') })),
@@ -273,7 +274,7 @@ function ProducerShowsBookings() {
               </TableHeader>
               <TableBody>
                 {filtered.map(sd => {
-                  const slotConfig = effectiveSlots(slotDefaults, sd.show?.program, sd.show?.sub_program);
+                  const slotConfig = showSlots(sd.show);
                   const status = displayStatus(sd);
                   const counts = bookingCounts?.get(sd.id);
                   const cellFor = (colId: string) => {
