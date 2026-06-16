@@ -14,10 +14,11 @@ export async function fetchShowsWithSlots(
   client: SupabaseClient<Database>,
   orgId: string | null,
 ): Promise<ShowWithSlots[]> {
+  if (!orgId) return [];
   const { data, error } = await client
     .from("shows")
     .select("id, program, sub_program, main_cast_slots, understudy_slots")
-    .eq("org_id", orgId as string)
+    .eq("org_id", orgId)
     .order("program")
     .order("sub_program");
   if (error) throw error;

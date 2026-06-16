@@ -39,6 +39,13 @@ describe("fetchShowsWithSlots", () => {
     expect(result).toEqual([]);
   });
 
+  it("returns empty without querying shows when orgId is null", async () => {
+    const fake = createFakeSupabase({ shows: { data: [{ id: "s1" }], error: null } });
+    const result = await fetchShowsWithSlots(fake as never, null);
+    expect(result).toEqual([]);
+    expect(fake.calls.some((c) => c.table === "shows")).toBe(false);
+  });
+
   it("throws on error", async () => {
     const fake = createFakeSupabase({ shows: { data: null, error: { message: "boom" } } });
     await expect(fetchShowsWithSlots(fake as never, "org-1")).rejects.toBeTruthy();
