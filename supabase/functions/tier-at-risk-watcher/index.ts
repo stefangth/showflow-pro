@@ -1,9 +1,6 @@
 import { preflight, json } from "../_shared/http.ts";
 import { requireCronOrRole } from "../_shared/auth.ts";
 import { realDeps, type Deps } from "../_shared/deps.ts";
-import { resolveOrgSetting } from "../_shared/settings.ts";
-
-type SlotDefaults = Record<string, Record<string, { main_cast: number; understudies: number }>>;
 
 /**
  * Scans all open offer tiers and emits a `tier_at_risk` notification when a
@@ -48,23 +45,6 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
     return json({ at_risk_count: 0, cleared: 0 })
   }
 
-  // Per-org slot-defaults cache (one resolveOrgSetting call per org encountered).
-  const slotCache = new Map<string, SlotDefaults>();
-  const slotsForOrg = async (orgId: string): Promise<SlotDefaults> => {
-    if (!slotCache.has(orgId)) {
-      try {
-        slotCache.set(orgId, await resolveOrgSetting<SlotDefaults>(admin, orgId, 'sub_program_slots_defaults', {}));
-      } catch (e) {
-        // A settings read failure for one org must not abort the whole run; treat as
-        // unconfigured (the tier is then skipped via the !slotCfg guard) and move on.
-        // Cached as {} for THIS invocation only; the next cron run retries fresh.
-        console.error('tier-at-risk-watcher: slot settings read failed', { org: orgId, error: (e as Error).message });
-        slotCache.set(orgId, {} as SlotDefaults);
-      }
-    }
-    return slotCache.get(orgId)!;
-  };
-
   const existingKeySet = new Set<string>()
   for (const n of (existingTierAtRiskNotifs ?? []) as Array<{ id: string; user_id: string; related_entity_id: string }>) {
     existingKeySet.add(`${n.related_entity_id}::${n.user_id}`)
@@ -74,20 +54,23 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
   let atRiskCount = 0
 
   for (const row of openTiers as Array<{ id: string; show_date_id: string; tier: number }>) {
-    // Resolve show date + show meta
+    // Resolve show date + show meta (including slot capacity columns)
     const { data: sd } = await admin
       .from('show_dates')
-      .select('id, date, city_id, org_id, show:shows(program, sub_program)')
+      .select('id, date, city_id, org_id, show:shows(program, sub_program, main_cast_slots, understudy_slots)')
       .eq('id', row.show_date_id)
       .maybeSingle()
     if (!sd) continue
 
     const program = (sd as any).show?.program
     const subProgram = (sd as any).show?.sub_program
-    const slotDefaults = await slotsForOrg((sd as any).org_id);
-    const slotCfg = slotDefaults?.[program]?.[subProgram]
-    if (!slotCfg) continue
-    const requiredSlots = slotCfg.main_cast + slotCfg.understudies
+    const mainCastSlots: number | null = (sd as any).show?.main_cast_slots ?? null
+    const understudySlots: number | null = (sd as any).show?.understudy_slots ?? null
+
+    // NULL slot columns = unconfigured show; skip (mirrors old behaviour when the
+    // sub_program_slots_defaults JSON had no entry for this program/sub_program).
+    if (mainCastSlots === null || understudySlots === null) continue
+    const requiredSlots = mainCastSlots + understudySlots
     if (requiredSlots === 0) continue
 
     // Count for this show_date, this tier

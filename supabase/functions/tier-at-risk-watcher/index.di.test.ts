@@ -30,17 +30,13 @@ const CRON_OK = { "X-Cron-Secret": "secret-val" };
 const CRON_WRONG = { "X-Cron-Secret": "bad" };
 
 /**
- * The handler reads app_settings twice in sequence:
- *   1. key=cron_secret  (auth check, maybeSingle → single-object seed)
- *   2. key=sub_program_slots_defaults  (resolveOrgSetting → .or().then() → row-array seed)
- *
- * We seed app_settings as a match array so each eq('key', X) resolves correctly.
- * sub_program_slots_defaults uses the row-array form required by resolveOrgSetting.
+ * The handler reads app_settings for the cron_secret check only.
+ * Slot capacity now lives on shows.main_cast_slots / shows.understudy_slots,
+ * not in app_settings.sub_program_slots_defaults.
  */
-function makeBaseSettings(slotDefaults: Record<string, unknown> = {}) {
+function makeBaseSettings() {
   return [
     { when: { key: "cron_secret" }, data: { value: "secret-val" } },
-    { when: { key: "sub_program_slots_defaults" }, data: [{ org_id: null, value: slotDefaults }] },
   ];
 }
 
@@ -49,25 +45,27 @@ function makeTier(id: string, showDateId: string, tier = 1) {
   return { id, show_date_id: showDateId, tier };
 }
 
-/** A show_date row with nested show. */
-function makeShowDate(id: string, program: string, subProgram: string, date = "2026-07-01", orgId = "00000000-0000-0000-0000-000000000001") {
+/**
+ * A show_date row with nested show.
+ * mainCastSlots / understudySlots default to 2/1 so most tests have 3 required slots.
+ * Pass null to simulate an unconfigured show.
+ */
+function makeShowDate(
+  id: string,
+  program: string,
+  subProgram: string,
+  date = "2026-07-01",
+  orgId = "00000000-0000-0000-0000-000000000001",
+  mainCastSlots: number | null = 2,
+  understudySlots: number | null = 1,
+) {
   return {
     id,
     date,
     city_id: "city-1",
     org_id: orgId,
-    show: { program, sub_program: subProgram },
+    show: { program, sub_program: subProgram, main_cast_slots: mainCastSlots, understudy_slots: understudySlots },
   };
-}
-
-/** Build slot defaults for a program/sub_program. */
-function makeSlotDefaults(
-  program: string,
-  subProgram: string,
-  mainCast: number,
-  understudies: number,
-) {
-  return { [program]: { [subProgram]: { main_cast: mainCast, understudies: understudies } } };
 }
 
 // ── Auth tests ────────────────────────────────────────────────────────────────
@@ -159,13 +157,13 @@ Deno.test("tier-at-risk-watcher DI: no open tiers and no stale notifs → { at_r
 });
 
 Deno.test("tier-at-risk-watcher DI: at-risk tier → response includes at_risk_count:1 and cleared:0", async () => {
-  const slots = makeSlotDefaults("MusicalA", "MainShow", 2, 1); // need 3 slots
+  // makeShowDate defaults: main_cast_slots=2, understudy_slots=1 → need 3 slots
   const tierId = "tier-abc";
   const sdId = "sd-abc";
 
   const { deps } = makeFakeDeps({
     tables: {
-      app_settings: makeBaseSettings(slots),
+      app_settings: makeBaseSettings(),
       show_date_offer_tiers: { data: [makeTier(tierId, sdId)], error: null },
       notifications: { data: [], error: null }, // no existing notifs
       show_dates: { data: makeShowDate(sdId, "MusicalA", "MainShow"), error: null },
@@ -200,18 +198,18 @@ Deno.test("tier-at-risk-watcher DI: DB error fetching tiers → 500", async () =
 
 // ── Slot configuration edge cases ─────────────────────────────────────────────
 
-Deno.test("tier-at-risk-watcher DI: unconfigured slot (no slotDefaults entry) → tier skipped, no notification", async () => {
-  // slots only configured for "OtherShow" but tier is for "MusicalA"
-  const slots = makeSlotDefaults("OtherShow", "Main", 2, 1);
+Deno.test("tier-at-risk-watcher DI: unconfigured slot (null main_cast_slots) → tier skipped, no notification", async () => {
+  // NULL slot columns = show not configured; handler must skip the tier.
   const tierId = "tier-unconf";
   const sdId = "sd-unconf";
 
   const { deps, calls } = makeFakeDeps({
     tables: {
-      app_settings: makeBaseSettings(slots),
+      app_settings: makeBaseSettings(),
       show_date_offer_tiers: { data: [makeTier(tierId, sdId)], error: null },
       notifications: { data: [], error: null },
-      show_dates: { data: makeShowDate(sdId, "MusicalA", "SubProg"), error: null },
+      // null slot columns → unconfigured
+      show_dates: { data: makeShowDate(sdId, "MusicalA", "SubProg", "2026-07-01", "00000000-0000-0000-0000-000000000001", null, null), error: null },
       bookings: { data: [], error: null },
     },
     rpcs: { resolve_show_assignments: { data: [], error: null } },
@@ -227,17 +225,17 @@ Deno.test("tier-at-risk-watcher DI: unconfigured slot (no slotDefaults entry) �
   assertEquals(insertCalls.length, 0, "no notification inserted for unconfigured tier");
 });
 
-Deno.test("tier-at-risk-watcher DI: requiredSlots = 0 (main_cast:0 + understudies:0) → tier skipped", async () => {
-  const slots = makeSlotDefaults("MusicalA", "MainShow", 0, 0); // 0+0=0 → skip
+Deno.test("tier-at-risk-watcher DI: requiredSlots = 0 (main_cast_slots:0 + understudy_slots:0) → tier skipped", async () => {
+  // 0+0=0 → skip (configured but zero capacity)
   const tierId = "tier-zero";
   const sdId = "sd-zero";
 
   const { deps, calls } = makeFakeDeps({
     tables: {
-      app_settings: makeBaseSettings(slots),
+      app_settings: makeBaseSettings(),
       show_date_offer_tiers: { data: [makeTier(tierId, sdId)], error: null },
       notifications: { data: [], error: null },
-      show_dates: { data: makeShowDate(sdId, "MusicalA", "MainShow"), error: null },
+      show_dates: { data: makeShowDate(sdId, "MusicalA", "MainShow", "2026-07-01", "00000000-0000-0000-0000-000000000001", 0, 0), error: null },
       bookings: { data: [], error: null },
     },
     rpcs: { resolve_show_assignments: { data: [], error: null } },
@@ -254,13 +252,13 @@ Deno.test("tier-at-risk-watcher DI: requiredSlots = 0 (main_cast:0 + understudie
 // ── At-risk detection ─────────────────────────────────────────────────────────
 
 Deno.test("tier-at-risk-watcher DI: healthy tier (pending+accepted >= required) → no notification", async () => {
-  const slots = makeSlotDefaults("MusicalA", "MainShow", 2, 1); // need 3
+  // makeShowDate defaults: main_cast_slots=2, understudy_slots=1 → need 3
   const tierId = "tier-healthy";
   const sdId = "sd-healthy";
 
   const { deps, calls } = makeFakeDeps({
     tables: {
-      app_settings: makeBaseSettings(slots),
+      app_settings: makeBaseSettings(),
       show_date_offer_tiers: { data: [makeTier(tierId, sdId)], error: null },
       notifications: { data: [], error: null },
       show_dates: { data: makeShowDate(sdId, "MusicalA", "MainShow"), error: null },
@@ -287,16 +285,16 @@ Deno.test("tier-at-risk-watcher DI: healthy tier (pending+accepted >= required) 
 });
 
 Deno.test("tier-at-risk-watcher DI: at-risk — only 'suggested' statuses count as pending", async () => {
-  const slots = makeSlotDefaults("MusicalA", "MainShow", 2, 0); // need 2
+  // main_cast_slots=2, understudy_slots=0 → need 2
   const tierId = "tier-pend";
   const sdId = "sd-pend";
 
   const { deps, calls } = makeFakeDeps({
     tables: {
-      app_settings: makeBaseSettings(slots),
+      app_settings: makeBaseSettings(),
       show_date_offer_tiers: { data: [makeTier(tierId, sdId)], error: null },
       notifications: { data: [], error: null },
-      show_dates: { data: makeShowDate(sdId, "MusicalA", "MainShow"), error: null },
+      show_dates: { data: makeShowDate(sdId, "MusicalA", "MainShow", "2026-07-01", "00000000-0000-0000-0000-000000000001", 2, 0), error: null },
       // Only 'cancelled' bookings — pending=0, accepted=0, need 2 → at-risk
       bookings: { data: [{ status: "cancelled" }, { status: "cancelled" }], error: null },
     },
@@ -312,16 +310,16 @@ Deno.test("tier-at-risk-watcher DI: at-risk — only 'suggested' statuses count 
 });
 
 Deno.test("tier-at-risk-watcher DI: 'soft_booked' and 'confirmed' both count as accepted", async () => {
-  const slots = makeSlotDefaults("MusicalA", "MainShow", 0, 2); // need 2
+  // main_cast_slots=0, understudy_slots=2 → need 2
   const tierId = "tier-accepted";
   const sdId = "sd-accepted";
 
   const { deps, calls } = makeFakeDeps({
     tables: {
-      app_settings: makeBaseSettings(slots),
+      app_settings: makeBaseSettings(),
       show_date_offer_tiers: { data: [makeTier(tierId, sdId)], error: null },
       notifications: { data: [], error: null },
-      show_dates: { data: makeShowDate(sdId, "MusicalA", "MainShow"), error: null },
+      show_dates: { data: makeShowDate(sdId, "MusicalA", "MainShow", "2026-07-01", "00000000-0000-0000-0000-000000000001", 0, 2), error: null },
       // 1 soft_booked + 1 confirmed = 2 >= 2 required → healthy
       bookings: {
         data: [{ status: "soft_booked" }, { status: "confirmed" }],
@@ -342,16 +340,16 @@ Deno.test("tier-at-risk-watcher DI: 'soft_booked' and 'confirmed' both count as 
 // ── Notification insertion fields ─────────────────────────────────────────────
 
 Deno.test("tier-at-risk-watcher DI: at-risk notification has correct fields", async () => {
-  const slots = makeSlotDefaults("MusicalA", "MainShow", 3, 0); // need 3
+  // main_cast_slots=3, understudy_slots=0 → need 3
   const tierId = "tier-fields";
   const sdId = "sd-fields";
 
   const { deps, calls } = makeFakeDeps({
     tables: {
-      app_settings: makeBaseSettings(slots),
+      app_settings: makeBaseSettings(),
       show_date_offer_tiers: { data: [makeTier(tierId, sdId, 2)], error: null },
       notifications: { data: [], error: null },
-      show_dates: { data: makeShowDate(sdId, "MusicalA", "MainShow", "2026-08-15"), error: null },
+      show_dates: { data: makeShowDate(sdId, "MusicalA", "MainShow", "2026-08-15", "00000000-0000-0000-0000-000000000001", 3, 0), error: null },
       bookings: { data: [{ status: "suggested" }], error: null }, // 1 < 3 → at-risk
     },
     rpcs: { resolve_show_assignments: { data: [{ producer_user_id: "prod-x" }], error: null } },
@@ -385,7 +383,7 @@ Deno.test("tier-at-risk-watcher DI: at-risk notification has correct fields", as
 // ── Idempotency ───────────────────────────────────────────────────────────────
 
 Deno.test("tier-at-risk-watcher DI: idempotency — existing (tier, user) notif → no duplicate insert", async () => {
-  const slots = makeSlotDefaults("MusicalA", "MainShow", 3, 0);
+  // makeShowDate defaults: main_cast_slots=2, understudy_slots=1 → need 3
   const tierId = "tier-idem";
   const sdId = "sd-idem";
 
@@ -398,7 +396,7 @@ Deno.test("tier-at-risk-watcher DI: idempotency — existing (tier, user) notif 
 
   const { deps, calls } = makeFakeDeps({
     tables: {
-      app_settings: makeBaseSettings(slots),
+      app_settings: makeBaseSettings(),
       show_date_offer_tiers: { data: [makeTier(tierId, sdId)], error: null },
       notifications: { data: [existingNotif], error: null },
       show_dates: { data: makeShowDate(sdId, "MusicalA", "MainShow"), error: null },
@@ -419,7 +417,7 @@ Deno.test("tier-at-risk-watcher DI: idempotency — existing (tier, user) notif 
 });
 
 Deno.test("tier-at-risk-watcher DI: partial idempotency — one user has existing notif, one does not → only new one inserted", async () => {
-  const slots = makeSlotDefaults("MusicalA", "MainShow", 3, 0);
+  // makeShowDate defaults: main_cast_slots=2, understudy_slots=1 → need 3
   const tierId = "tier-partial";
   const sdId = "sd-partial";
 
@@ -432,7 +430,7 @@ Deno.test("tier-at-risk-watcher DI: partial idempotency — one user has existin
 
   const { deps, calls } = makeFakeDeps({
     tables: {
-      app_settings: makeBaseSettings(slots),
+      app_settings: makeBaseSettings(),
       show_date_offer_tiers: { data: [makeTier(tierId, sdId)], error: null },
       notifications: { data: [existingNotif], error: null },
       show_dates: { data: makeShowDate(sdId, "MusicalA", "MainShow"), error: null },
@@ -459,13 +457,13 @@ Deno.test("tier-at-risk-watcher DI: partial idempotency — one user has existin
 // ── Deduplication of producer IDs ─────────────────────────────────────────────
 
 Deno.test("tier-at-risk-watcher DI: duplicate producer_user_id from RPC → one notification per unique user", async () => {
-  const slots = makeSlotDefaults("MusicalA", "MainShow", 3, 0);
+  // makeShowDate defaults: main_cast_slots=2, understudy_slots=1 → need 3
   const tierId = "tier-dedup";
   const sdId = "sd-dedup";
 
   const { deps, calls } = makeFakeDeps({
     tables: {
-      app_settings: makeBaseSettings(slots),
+      app_settings: makeBaseSettings(),
       show_date_offer_tiers: { data: [makeTier(tierId, sdId)], error: null },
       notifications: { data: [], error: null },
       show_dates: { data: makeShowDate(sdId, "MusicalA", "MainShow"), error: null },
@@ -500,13 +498,13 @@ Deno.test("tier-at-risk-watcher DI: duplicate producer_user_id from RPC → one 
 // ── Admin fallback ────────────────────────────────────────────────────────────
 
 Deno.test("tier-at-risk-watcher DI: empty producers from RPC → falls back to admin users", async () => {
-  const slots = makeSlotDefaults("MusicalA", "MainShow", 3, 0);
+  // makeShowDate defaults: main_cast_slots=2, understudy_slots=1 → need 3
   const tierId = "tier-fallback";
   const sdId = "sd-fallback";
 
   const { deps, calls } = makeFakeDeps({
     tables: {
-      app_settings: makeBaseSettings(slots),
+      app_settings: makeBaseSettings(),
       show_date_offer_tiers: { data: [makeTier(tierId, sdId)], error: null },
       notifications: { data: [], error: null },
       show_dates: { data: makeShowDate(sdId, "MusicalA", "MainShow"), error: null },
@@ -534,13 +532,13 @@ Deno.test("tier-at-risk-watcher DI: empty producers from RPC → falls back to a
 });
 
 Deno.test("tier-at-risk-watcher DI: null producers from RPC → falls back to admin users", async () => {
-  const slots = makeSlotDefaults("MusicalA", "MainShow", 3, 0);
+  // makeShowDate defaults: main_cast_slots=2, understudy_slots=1 → need 3
   const tierId = "tier-null-prod";
   const sdId = "sd-null-prod";
 
   const { deps, calls } = makeFakeDeps({
     tables: {
-      app_settings: makeBaseSettings(slots),
+      app_settings: makeBaseSettings(),
       show_date_offer_tiers: { data: [makeTier(tierId, sdId)], error: null },
       notifications: { data: [], error: null },
       show_dates: { data: makeShowDate(sdId, "MusicalA", "MainShow"), error: null },
@@ -563,7 +561,7 @@ Deno.test("tier-at-risk-watcher DI: null producers from RPC → falls back to ad
 // ── Recovery (delete cleared notifications) ───────────────────────────────────
 
 Deno.test("tier-at-risk-watcher DI: recovered tier → its notification is deleted", async () => {
-  const slots = makeSlotDefaults("MusicalA", "MainShow", 2, 0); // need 2
+  // main_cast_slots=2, understudy_slots=0 → need 2
   const tierId = "tier-recovered";
   const sdId = "sd-recovered";
 
@@ -576,10 +574,10 @@ Deno.test("tier-at-risk-watcher DI: recovered tier → its notification is delet
 
   const { deps, calls } = makeFakeDeps({
     tables: {
-      app_settings: makeBaseSettings(slots),
+      app_settings: makeBaseSettings(),
       show_date_offer_tiers: { data: [makeTier(tierId, sdId)], error: null },
       notifications: { data: [existingNotif], error: null },
-      show_dates: { data: makeShowDate(sdId, "MusicalA", "MainShow"), error: null },
+      show_dates: { data: makeShowDate(sdId, "MusicalA", "MainShow", "2026-07-01", "00000000-0000-0000-0000-000000000001", 2, 0), error: null },
       // Now healthy: 2 accepted >= 2 required → tier is recovered
       bookings: { data: [{ status: "soft_booked" }, { status: "confirmed" }], error: null },
     },
@@ -607,7 +605,7 @@ Deno.test("tier-at-risk-watcher DI: recovered tier → its notification is delet
 });
 
 Deno.test("tier-at-risk-watcher DI: still-at-risk tier's notification is NOT deleted", async () => {
-  const slots = makeSlotDefaults("MusicalA", "MainShow", 3, 0); // need 3
+  // makeShowDate defaults: main_cast_slots=2, understudy_slots=1 → need 3
   const tierId = "tier-still-at-risk";
   const sdId = "sd-still";
 
@@ -619,7 +617,7 @@ Deno.test("tier-at-risk-watcher DI: still-at-risk tier's notification is NOT del
 
   const { deps, calls } = makeFakeDeps({
     tables: {
-      app_settings: makeBaseSettings(slots),
+      app_settings: makeBaseSettings(),
       show_date_offer_tiers: { data: [makeTier(tierId, sdId)], error: null },
       notifications: { data: [existingNotif], error: null },
       show_dates: { data: makeShowDate(sdId, "MusicalA", "MainShow"), error: null },
@@ -640,7 +638,7 @@ Deno.test("tier-at-risk-watcher DI: still-at-risk tier's notification is NOT del
 });
 
 Deno.test("tier-at-risk-watcher DI: recovery precision — at-risk tier preserved, recovered tier deleted", async () => {
-  const slots = makeSlotDefaults("MusicalA", "MainShow", 2, 0);
+  // main_cast_slots=2, understudy_slots=0 → need 2
 
   const atRiskTierId = "tier-still-risk";
   const recoveredTierId = "tier-now-ok";
@@ -659,7 +657,7 @@ Deno.test("tier-at-risk-watcher DI: recovery precision — at-risk tier preserve
   // For bookings: eq('show_date_id', sd-risk) and eq('show_date_id', sd-ok)
   const { deps, calls } = makeFakeDeps({
     tables: {
-      app_settings: makeBaseSettings(slots),
+      app_settings: makeBaseSettings(),
       show_date_offer_tiers: {
         data: [
           makeTier(atRiskTierId, sdIdRisk, 1),
@@ -669,8 +667,8 @@ Deno.test("tier-at-risk-watcher DI: recovery precision — at-risk tier preserve
       },
       notifications: { data: existingNotifs, error: null },
       show_dates: [
-        { when: { id: sdIdRisk }, data: makeShowDate(sdIdRisk, "MusicalA", "MainShow") },
-        { when: { id: sdIdOk }, data: makeShowDate(sdIdOk, "MusicalA", "MainShow") },
+        { when: { id: sdIdRisk }, data: makeShowDate(sdIdRisk, "MusicalA", "MainShow", "2026-07-01", "00000000-0000-0000-0000-000000000001", 2, 0) },
+        { when: { id: sdIdOk }, data: makeShowDate(sdIdOk, "MusicalA", "MainShow", "2026-07-01", "00000000-0000-0000-0000-000000000001", 2, 0) },
       ],
       bookings: [
         // at-risk: show_date_id matches sdIdRisk → 0 bookings
@@ -701,18 +699,19 @@ Deno.test("tier-at-risk-watcher DI: recovery precision — at-risk tier preserve
 // ── Lifecycle test ────────────────────────────────────────────────────────────
 
 Deno.test("tier-at-risk-watcher DI: lifecycle — at-risk creates notif, recovered deletes it, re-at-risk recreates it", async () => {
-  const slots = makeSlotDefaults("MusicalA", "MainShow", 2, 0);
+  // main_cast_slots=2, understudy_slots=0 → need 2
   const tierId = "tier-lifecycle";
   const sdId = "sd-lifecycle";
+  const sdRow = makeShowDate(sdId, "MusicalA", "MainShow", "2026-07-01", "00000000-0000-0000-0000-000000000001", 2, 0);
 
   // Phase 1: at-risk, no existing notification
   {
     const { deps, calls } = makeFakeDeps({
       tables: {
-        app_settings: makeBaseSettings(slots),
+        app_settings: makeBaseSettings(),
         show_date_offer_tiers: { data: [makeTier(tierId, sdId)], error: null },
         notifications: { data: [], error: null },
-        show_dates: { data: makeShowDate(sdId, "MusicalA", "MainShow"), error: null },
+        show_dates: { data: sdRow, error: null },
         bookings: { data: [{ status: "suggested" }], error: null }, // 1 < 2 → at-risk
       },
       rpcs: { resolve_show_assignments: { data: [{ producer_user_id: "prod-1" }], error: null } },
@@ -731,10 +730,10 @@ Deno.test("tier-at-risk-watcher DI: lifecycle — at-risk creates notif, recover
     const existingNotif = { id: "notif-1", user_id: "prod-1", related_entity_id: tierId };
     const { deps, calls } = makeFakeDeps({
       tables: {
-        app_settings: makeBaseSettings(slots),
+        app_settings: makeBaseSettings(),
         show_date_offer_tiers: { data: [makeTier(tierId, sdId)], error: null },
         notifications: { data: [existingNotif], error: null },
-        show_dates: { data: makeShowDate(sdId, "MusicalA", "MainShow"), error: null },
+        show_dates: { data: sdRow, error: null },
         bookings: { data: [{ status: "confirmed" }, { status: "confirmed" }], error: null }, // 2 >= 2 → healthy
       },
       rpcs: { resolve_show_assignments: { data: [{ producer_user_id: "prod-1" }], error: null } },
@@ -752,10 +751,10 @@ Deno.test("tier-at-risk-watcher DI: lifecycle — at-risk creates notif, recover
   {
     const { deps, calls } = makeFakeDeps({
       tables: {
-        app_settings: makeBaseSettings(slots),
+        app_settings: makeBaseSettings(),
         show_date_offer_tiers: { data: [makeTier(tierId, sdId)], error: null },
         notifications: { data: [], error: null }, // notification was deleted
-        show_dates: { data: makeShowDate(sdId, "MusicalA", "MainShow"), error: null },
+        show_dates: { data: sdRow, error: null },
         bookings: { data: [{ status: "suggested" }], error: null }, // 1 < 2 → at-risk again
       },
       rpcs: { resolve_show_assignments: { data: [{ producer_user_id: "prod-1" }], error: null } },
@@ -772,7 +771,7 @@ Deno.test("tier-at-risk-watcher DI: lifecycle — at-risk creates notif, recover
 // ── Multiple tiers ────────────────────────────────────────────────────────────
 
 Deno.test("tier-at-risk-watcher DI: multiple tiers — mixed at-risk + healthy, counts are correct", async () => {
-  const slots = makeSlotDefaults("MusicalA", "MainShow", 2, 0);
+  // main_cast_slots=2, understudy_slots=0 → need 2
 
   const tier1Id = "tier-multi-1";
   const tier2Id = "tier-multi-2";
@@ -780,10 +779,11 @@ Deno.test("tier-at-risk-watcher DI: multiple tiers — mixed at-risk + healthy, 
   const sd1 = "sd-multi-1";
   const sd2 = "sd-multi-2";
   const sd3 = "sd-multi-3";
+  const org = "00000000-0000-0000-0000-000000000001";
 
   const { deps, calls } = makeFakeDeps({
     tables: {
-      app_settings: makeBaseSettings(slots),
+      app_settings: makeBaseSettings(),
       show_date_offer_tiers: {
         data: [
           makeTier(tier1Id, sd1, 1), // at-risk
@@ -794,9 +794,9 @@ Deno.test("tier-at-risk-watcher DI: multiple tiers — mixed at-risk + healthy, 
       },
       notifications: { data: [], error: null },
       show_dates: [
-        { when: { id: sd1 }, data: makeShowDate(sd1, "MusicalA", "MainShow") },
-        { when: { id: sd2 }, data: makeShowDate(sd2, "MusicalA", "MainShow") },
-        { when: { id: sd3 }, data: makeShowDate(sd3, "MusicalA", "MainShow") },
+        { when: { id: sd1 }, data: makeShowDate(sd1, "MusicalA", "MainShow", "2026-07-01", org, 2, 0) },
+        { when: { id: sd2 }, data: makeShowDate(sd2, "MusicalA", "MainShow", "2026-07-01", org, 2, 0) },
+        { when: { id: sd3 }, data: makeShowDate(sd3, "MusicalA", "MainShow", "2026-07-01", org, 2, 0) },
       ],
       bookings: [
         { when: { show_date_id: sd1 }, data: [{ status: "suggested" }] }, // 1 < 2 → at-risk
@@ -825,7 +825,7 @@ Deno.test("tier-at-risk-watcher DI: recovery only deletes tier_at_risk type noti
   // based on their related_entity_id. The filter is on the type at query time;
   // all records returned from the notification query are tier_at_risk type.
   // This test verifies that a recovered tier's notification gets exactly the right id deleted.
-  const slots = makeSlotDefaults("MusicalA", "MainShow", 2, 0);
+  // main_cast_slots=2, understudy_slots=0 → need 2
   const recoveredTierId = "tier-recovery-exact";
   const sdId = "sd-recovery-exact";
 
@@ -836,10 +836,10 @@ Deno.test("tier-at-risk-watcher DI: recovery only deletes tier_at_risk type noti
 
   const { deps, calls } = makeFakeDeps({
     tables: {
-      app_settings: makeBaseSettings(slots),
+      app_settings: makeBaseSettings(),
       show_date_offer_tiers: { data: [makeTier(recoveredTierId, sdId)], error: null },
       notifications: { data: existingNotifs, error: null },
-      show_dates: { data: makeShowDate(sdId, "MusicalA", "MainShow"), error: null },
+      show_dates: { data: makeShowDate(sdId, "MusicalA", "MainShow", "2026-07-01", "00000000-0000-0000-0000-000000000001", 2, 0), error: null },
       // Recovered: 2 confirmed >= 2 required
       bookings: { data: [{ status: "confirmed" }, { status: "confirmed" }], error: null },
     },
@@ -906,13 +906,12 @@ Deno.test("tier-at-risk-watcher DI: stale notifications for closed tiers ARE cle
 // ── Missing show_date row (show_date deleted after tier opened) ───────────────
 
 Deno.test("tier-at-risk-watcher DI: show_date not found → tier skipped gracefully", async () => {
-  const slots = makeSlotDefaults("MusicalA", "MainShow", 2, 0);
   const tierId = "tier-orphan";
   const sdId = "sd-orphan";
 
   const { deps, calls } = makeFakeDeps({
     tables: {
-      app_settings: makeBaseSettings(slots),
+      app_settings: makeBaseSettings(),
       show_date_offer_tiers: { data: [makeTier(tierId, sdId)], error: null },
       notifications: { data: [], error: null },
       // show_date not found (deleted or orphaned)
@@ -930,24 +929,20 @@ Deno.test("tier-at-risk-watcher DI: show_date not found → tier skipped gracefu
   assertEquals(insertCalls.length, 0, "no notification for orphaned tier");
 });
 
-// ── Part 7: per-org slot defaults + notification org_id ───────────────────────
+// ── Part 7: slot columns from shows + notification org_id ─────────────────────
 
-Deno.test("tier-at-risk-watcher DI: resolves slot defaults per show_date org and stamps notification org_id", async () => {
+Deno.test("tier-at-risk-watcher DI: reads slot capacity from shows columns and stamps notification org_id", async () => {
   const ORG = "00000000-0000-0000-0000-0000000000b7";
   const tierId = "tier-org";
   const sdId = "sd-org";
 
   const { deps } = makeFakeDeps({
     tables: {
-      app_settings: [
-        { when: { key: "cron_secret" }, data: { value: "secret-val" } },
-        // row-array form required by resolveOrgSetting (org override ?? platform default)
-        { when: { key: "sub_program_slots_defaults" }, data: [{ org_id: null, value: { P: { S: { main_cast: 2, understudies: 0 } } } }] },
-      ],
+      app_settings: makeBaseSettings(),
       show_date_offer_tiers: { data: [makeTier(tierId, sdId)], error: null },
       notifications: { data: [], error: null },
-      // show_date belongs to ORG
-      show_dates: { data: makeShowDate(sdId, "P", "S", "2026-07-01", ORG), error: null },
+      // show_date belongs to ORG; main_cast_slots=2, understudy_slots=0 → need 2
+      show_dates: { data: makeShowDate(sdId, "P", "S", "2026-07-01", ORG, 2, 0), error: null },
       // one suggested booking; requiredSlots=2, pending=1 → at risk
       bookings: { data: [{ status: "suggested" }], error: null },
       // admin fallback (resolve_show_assignments returns empty)
