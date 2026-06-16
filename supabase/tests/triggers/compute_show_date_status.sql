@@ -1,15 +1,15 @@
 -- Tests for public.compute_show_date_status() and the sync_show_date_status_trigger
--- (defined in 20260514000000_slots_from_settings.sql, patched by 20260514150000_fix_zero_slot_status.sql).
+-- (defined in migrations; updated in Phase 1b-DB to read slots from shows columns).
 --
 -- The function:
---   - reads main_cast / understudies from app_settings.sub_program_slots_defaults[program][sub_program]
+--   - reads main_cast_slots / understudy_slots from shows.main_cast_slots / shows.understudy_slots
 --   - counts confirmed bookings on the show_date, split by is_understudy
 --   - sets show_dates.status to:
 --       'fully_filled'     if confirmed_main >= main_cap AND confirmed_us >= us_cap
 --       'partially_filled' if any non-cancelled booking exists
 --       'open'             otherwise
 --   - never overwrites 'cancelled'
---   - when (program, sub_program) is unconfigured, never reaches 'fully_filled'
+--   - when main_cast_slots or understudy_slots is NULL, never reaches 'fully_filled'
 
 BEGIN;
 
@@ -23,19 +23,11 @@ SELECT plan(8);
 -- Shared fixtures
 -- ────────────────────────────────────────────────────────────────────────────
 
--- Slot defaults: theatre/musical needs 2 main + 1 understudy
-INSERT INTO public.app_settings (key, value)
-VALUES (
-  'sub_program_slots_defaults',
-  '{"theatre": {"musical": {"main_cast": 2, "understudies": 1}}}'::jsonb
-)
-ON CONFLICT (org_id, key) DO UPDATE SET value = EXCLUDED.value;
+-- Configured show: theatre/musical needs 2 main + 1 understudy (columns on shows)
+INSERT INTO public.shows (id, program, sub_program, main_cast_slots, understudy_slots, org_id)
+VALUES ('11111111-1111-1111-1111-111111111111', 'theatre', 'musical', 2, 1, '00000000-0000-0000-0000-00000000b007');
 
--- Configured show
-INSERT INTO public.shows (id, program, sub_program, org_id)
-VALUES ('11111111-1111-1111-1111-111111111111', 'theatre', 'musical', '00000000-0000-0000-0000-00000000b007');
-
--- Unconfigured show (program/sub_program with no entry in settings)
+-- Unconfigured show: NULL slots → cannot reach fully_filled
 INSERT INTO public.shows (id, program, sub_program, org_id)
 VALUES ('11111111-1111-1111-1111-111111111112', 'theatre', 'comedy', '00000000-0000-0000-0000-00000000b007');
 

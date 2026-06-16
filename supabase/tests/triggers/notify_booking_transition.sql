@@ -11,7 +11,7 @@
 --   aaaaaaaa-ab00-0003-…  artist user
 --   bbbbbbbb-ab00-0001-…  artist profile row
 --   cccccccc-ab00-0001-…  show
---   dddddddd-ab00-0001-…  show_date
+--   dddddddd-ab00-000N-…  show_dates (one per booking — avoids bookings_active_artist_date_uniq)
 --   eeeeeeee-ab00-000N-…  bookings
 
 BEGIN;
@@ -24,15 +24,8 @@ SELECT plan(8);
 -- Fixtures (superuser; bypass FK triggers with replica role)
 -- ────────────────────────────────────────────────────────────────────────────
 -- Set slot capacity high enough that slot_fill_auto_cancel_trigger never
--- fires during this test. Without this, confirming booking 2 hits the NULL
--- guard bug (empty app_settings → v_main_cast = NULL → guard evaluates to
--- NULL not TRUE → falls through to cancel other bookings → test 7 fails).
-INSERT INTO public.app_settings (key, value)
-VALUES (
-  'sub_program_slots_defaults',
-  '{"theatre":{"musical":{"main_cast":10,"understudies":10}}}'::jsonb
-)
-ON CONFLICT (org_id, key) DO UPDATE SET value = EXCLUDED.value;
+-- fires during this test (10 main + 10 understudies; test only confirms 1 booking).
+-- Slots are now columns on shows, set during INSERT below.
 
 SET session_replication_role = replica;
 
@@ -52,11 +45,17 @@ INSERT INTO public.org_memberships (org_id, user_id, role) VALUES
 INSERT INTO public.artists (id, name, user_id, org_id)
 VALUES ('bbbbbbbb-ab00-0001-0000-000000000000', 'NBT Artist', 'aaaaaaaa-ab00-0003-0000-000000000000', '00000000-0000-0000-0000-00000000b007');
 
-INSERT INTO public.shows (id, program, sub_program, org_id)
-VALUES ('cccccccc-ab00-0001-0000-000000000000', 'theatre', 'musical', '00000000-0000-0000-0000-00000000b007');
+-- High slot capacity so slot_fill_auto_cancel_trigger never fires here
+INSERT INTO public.shows (id, program, sub_program, main_cast_slots, understudy_slots, org_id)
+VALUES ('cccccccc-ab00-0001-0000-000000000000', 'theatre', 'musical', 10, 10, '00000000-0000-0000-0000-00000000b007');
 
-INSERT INTO public.show_dates (id, show_id, date, session_1, org_id)
-VALUES ('dddddddd-ab00-0001-0000-000000000000', 'cccccccc-ab00-0001-0000-000000000000', '2099-07-01', '19:00'::time, '00000000-0000-0000-0000-00000000b007');
+-- Each booking gets its own show_date to satisfy bookings_active_artist_date_uniq
+-- (only one active booking per (show_date, artist) is allowed).
+INSERT INTO public.show_dates (id, show_id, date, session_1, org_id) VALUES
+  ('dddddddd-ab00-0001-0000-000000000000', 'cccccccc-ab00-0001-0000-000000000000', '2099-07-01', '19:00'::time, '00000000-0000-0000-0000-00000000b007'),
+  ('dddddddd-ab00-0002-0000-000000000000', 'cccccccc-ab00-0001-0000-000000000000', '2099-07-02', '19:00'::time, '00000000-0000-0000-0000-00000000b007'),
+  ('dddddddd-ab00-0003-0000-000000000000', 'cccccccc-ab00-0001-0000-000000000000', '2099-07-03', '19:00'::time, '00000000-0000-0000-0000-00000000b007'),
+  ('dddddddd-ab00-0004-0000-000000000000', 'cccccccc-ab00-0001-0000-000000000000', '2099-07-04', '19:00'::time, '00000000-0000-0000-0000-00000000b007');
 
 -- Booking 1: will be transitioned suggested → soft_booked
 INSERT INTO public.bookings (id, show_date_id, artist_id, status, is_understudy, org_id)
@@ -64,15 +63,15 @@ VALUES ('eeeeeeee-ab00-0001-0000-000000000000', 'dddddddd-ab00-0001-0000-0000000
 
 -- Booking 2: will be transitioned soft_booked → confirmed
 INSERT INTO public.bookings (id, show_date_id, artist_id, status, is_understudy, org_id)
-VALUES ('eeeeeeee-ab00-0002-0000-000000000000', 'dddddddd-ab00-0001-0000-000000000000', 'bbbbbbbb-ab00-0001-0000-000000000000', 'soft_booked', false, '00000000-0000-0000-0000-00000000b007');
+VALUES ('eeeeeeee-ab00-0002-0000-000000000000', 'dddddddd-ab00-0002-0000-000000000000', 'bbbbbbbb-ab00-0001-0000-000000000000', 'soft_booked', false, '00000000-0000-0000-0000-00000000b007');
 
 -- Booking 3: no status change (notes update only)
 INSERT INTO public.bookings (id, show_date_id, artist_id, status, is_understudy, org_id)
-VALUES ('eeeeeeee-ab00-0003-0000-000000000000', 'dddddddd-ab00-0001-0000-000000000000', 'bbbbbbbb-ab00-0001-0000-000000000000', 'suggested', false, '00000000-0000-0000-0000-00000000b007');
+VALUES ('eeeeeeee-ab00-0003-0000-000000000000', 'dddddddd-ab00-0003-0000-000000000000', 'bbbbbbbb-ab00-0001-0000-000000000000', 'suggested', false, '00000000-0000-0000-0000-00000000b007');
 
 -- Booking 4: suggested → cancelled
 INSERT INTO public.bookings (id, show_date_id, artist_id, status, is_understudy, org_id)
-VALUES ('eeeeeeee-ab00-0004-0000-000000000000', 'dddddddd-ab00-0001-0000-000000000000', 'bbbbbbbb-ab00-0001-0000-000000000000', 'suggested', false, '00000000-0000-0000-0000-00000000b007');
+VALUES ('eeeeeeee-ab00-0004-0000-000000000000', 'dddddddd-ab00-0004-0000-000000000000', 'bbbbbbbb-ab00-0001-0000-000000000000', 'suggested', false, '00000000-0000-0000-0000-00000000b007');
 
 SET session_replication_role = DEFAULT;
 
