@@ -42,9 +42,9 @@ Concretely:
 2. **`shows` is the canonical program entity.** Slot capacity (main cast / understudies) moves
    onto `shows` columns; the `app_settings.sub_program_slots_defaults` JSON retires. **No
    separate `programs` table is introduced.** `venue` stays as **synced text** on `show_dates`
-   because nothing joins on it. The unused `session_3` column is dropped.
+   because nothing joins on it.
 
-3. **Mapping is schema-driven, with a manual fallback.** Showflow reads the Airtable base schema
+3. **Mapping is schema-driven, with a manual fallback.** Showflow reads the Airtable base list and schema
    (tables, fields, single-select option sets) **server-side** — the Personal Access Token stays
    in Supabase Vault and is never exposed to the browser — and presents the admin dropdowns to
    bind each Showflow field to an Airtable field. **Manually typed field names are the fallback**,
@@ -130,7 +130,7 @@ grows real attributes such as address or capacity (promote the synced text to a 
 1. [ ] Spec the sync engine — `docs/superpowers/specs/2026-06-16-airtable-sync-engine-design.md`.
 2. [ ] **Phase 1:** add slot columns to `shows`; migrate `sub_program_slots_defaults` → `shows`;
    retire the JSON and its recompute trigger; add the `bookings` duplicate guard and the
-   artist↔org consistency guard; drop the unused `session_3` column.
+   artist↔org consistency guard.
 3. [ ] **Phase 2:** schema-read edge function + mapping/linking UI in Settings (replacing the dead
    "Filter Mappings" box); manual-typed fallback when scope is missing.
 4. [ ] **Phase 3:** rewrite `airtable-poll` off the saved mapping; extend `airtable_sync_log` +

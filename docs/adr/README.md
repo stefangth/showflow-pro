@@ -61,3 +61,4 @@ as reconstructed.
 | [0006](0006-db-computed-show-date-status.md) | `show_dates.status` computed in the database by triggers | 2026-05-13 | Accepted |
 | [0007](0007-drop-availability-for-blocked-dates.md) | Drop `availability` in favour of `blocked_dates` | 2026-05-14 | Accepted |
 | [0008](0008-no-show-date-creation-ui.md) | No in-app UI for creating show dates | pre-2026-06-03 | Accepted |
+| [0009](0009-extensible-synced-fields.md) | Extensible synced fields via per-entity JSONB + registry (not dynamic DDL) | 2026-06-16 | Accepted |
