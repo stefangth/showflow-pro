@@ -12,8 +12,8 @@
 
 ## File Structure
 
-- `supabase/migrations/20260616120000_bookings_active_unique.sql` — **new.** Partial unique index on `bookings(show_date_id, artist_id) WHERE status <> 'cancelled'`.
-- `supabase/migrations/20260616120100_bookings_artist_org_guard.sql` — **new.** `derive_org_id_for_booking()` function + retarget the `trg_derive_org_id` trigger on `bookings`.
+- `supabase/migrations/20260616161112_bookings_active_unique.sql` — **new.** Partial unique index on `bookings(show_date_id, artist_id) WHERE status <> 'cancelled'`.
+- `supabase/migrations/20260616162454_bookings_artist_org_guard.sql` — **new.** `derive_org_id_for_booking()` function + retarget the `trg_derive_org_id` trigger on `bookings`.
 - `supabase/tests/db/bookings_active_unique.sql` — **new.** pgTAP for guard 1.
 - `supabase/tests/db/bookings_artist_org_guard.sql` — **new.** pgTAP for guard 2.
 - `CLAUDE.md` — **modify.** One line in the booking-rules section documenting the two guards.
@@ -26,7 +26,7 @@ Fixture UUIDs used across the tests (all valid hex): org A `11111111-…`, show 
 
 **Files:**
 - Create: `supabase/tests/db/bookings_active_unique.sql`
-- Create: `supabase/migrations/20260616120000_bookings_active_unique.sql`
+- Create: `supabase/migrations/20260616161112_bookings_active_unique.sql`
 
 - [ ] **Step 1: Write the failing test**
 
@@ -80,7 +80,7 @@ Expected: assertion 1 reports `not ok 1 - second active booking … is rejected`
 
 - [ ] **Step 3: Write the migration**
 
-Create `supabase/migrations/20260616120000_bookings_active_unique.sql`:
+Create `supabase/migrations/20260616161112_bookings_active_unique.sql`:
 
 ```sql
 -- At most one active (non-cancelled) booking per (show_date, artist).
@@ -102,7 +102,7 @@ Expected: `ok 1`, `ok 2`, `ok 3` and a final `# Looks like you ran 3 tests` / no
 - [ ] **Step 5: Commit**
 
 ```bash
-git add supabase/migrations/20260616120000_bookings_active_unique.sql supabase/tests/db/bookings_active_unique.sql
+git add supabase/migrations/20260616161112_bookings_active_unique.sql supabase/tests/db/bookings_active_unique.sql
 git commit -m "feat(db): guarantee one active booking per (show_date, artist)" \
   -m "Co-Authored-By: Claude Opus 4.8 (1M context) <noreply@anthropic.com>"
 ```
@@ -113,7 +113,7 @@ git commit -m "feat(db): guarantee one active booking per (show_date, artist)" \
 
 **Files:**
 - Create: `supabase/tests/db/bookings_artist_org_guard.sql`
-- Create: `supabase/migrations/20260616120100_bookings_artist_org_guard.sql`
+- Create: `supabase/migrations/20260616162454_bookings_artist_org_guard.sql`
 
 Context: today the `trg_derive_org_id` trigger on `bookings` runs the shared `derive_org_id_from_show_date_id()`, which only copies `org_id` from the show_date — nothing checks the artist's org. We give `bookings` a dedicated function that derives **and** guards; the shared function stays for `show_date_offer_tiers` / `show_date_cast_eligibility` / `chats`.
 
@@ -167,7 +167,7 @@ Expected: `not ok 1 - booking an out-of-org artist is rejected` (no guard yet �
 
 - [ ] **Step 3: Write the migration**
 
-Create `supabase/migrations/20260616120100_bookings_artist_org_guard.sql`:
+Create `supabase/migrations/20260616162454_bookings_artist_org_guard.sql`:
 
 ```sql
 -- Bookings derive org_id from their show_date AND must reference an artist in the
@@ -211,7 +211,7 @@ Expected: all `ok` (6 assertions).
 - [ ] **Step 5: Commit**
 
 ```bash
-git add supabase/migrations/20260616120100_bookings_artist_org_guard.sql supabase/tests/db/bookings_artist_org_guard.sql
+git add supabase/migrations/20260616162454_bookings_artist_org_guard.sql supabase/tests/db/bookings_artist_org_guard.sql
 git commit -m "feat(db): reject bookings whose artist is in a different org than the show_date" \
   -m "Co-Authored-By: Claude Opus 4.8 (1M context) <noreply@anthropic.com>"
 ```
