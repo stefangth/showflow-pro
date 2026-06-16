@@ -18,13 +18,6 @@ SELECT plan(16);
 -- Shared fixtures
 -- ────────────────────────────────────────────────────────────────────────────
 
-INSERT INTO public.app_settings (key, value)
-VALUES (
-  'sub_program_slots_defaults',
-  '{"theatre":{"musical":{"main_cast":1,"understudies":1}}}'::jsonb
-)
-ON CONFLICT (org_id, key) DO UPDATE SET value = EXCLUDED.value;
-
 -- Admin user required for the booking_ready_to_confirm fallback notification
 -- (no show_assignments exist in this test, so the trigger falls back to admins).
 SET session_replication_role = replica;
@@ -48,8 +41,9 @@ INSERT INTO public.artists (id, name, user_id, org_id) VALUES
   ('bbbbbbbb-0d00-0005-0000-000000000000', 'UP Artist 5', NULL, '00000000-0000-0000-0000-00000000b007'),
   ('bbbbbbbb-0d00-0006-0000-000000000000', 'UP Artist 6', NULL, '00000000-0000-0000-0000-00000000b007');
 
-INSERT INTO public.shows (id, program, sub_program, org_id)
-VALUES ('cccccccc-0d00-0001-0000-000000000000', 'theatre', 'musical', '00000000-0000-0000-0000-00000000b007');
+-- Slot capacity: 1 main + 1 understudy, set directly on the shows row
+INSERT INTO public.shows (id, program, sub_program, main_cast_slots, understudy_slots, org_id)
+VALUES ('cccccccc-0d00-0001-0000-000000000000', 'theatre', 'musical', 1, 1, '00000000-0000-0000-0000-00000000b007');
 
 -- ────────────────────────────────────────────────────────────────────────────
 -- Test 1: Confirmed main-cast cancelled → soft_booked understudy promoted
