@@ -22,5 +22,5 @@ END;
 $$;
 
 DROP TRIGGER IF EXISTS trg_derive_org_id ON public.bookings;
-CREATE TRIGGER trg_derive_org_id BEFORE INSERT ON public.bookings
+CREATE TRIGGER trg_derive_org_id BEFORE INSERT OR UPDATE OF artist_id, show_date_id ON public.bookings
   FOR EACH ROW EXECUTE FUNCTION public.derive_org_id_for_booking();

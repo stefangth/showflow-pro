@@ -1,36 +1,66 @@
--- A booking's artist must belong to the same org as its show_date.
+-- A booking's artist must belong to the same org as its show_date — on INSERT and UPDATE.
 BEGIN;
 CREATE EXTENSION IF NOT EXISTS pgtap WITH SCHEMA extensions;
-SELECT plan(2);
+SELECT plan(5);
 
--- Org A: a show + date
+-- Org A: a show with two dates and two artists
 INSERT INTO public.organizations (id, name, slug)
   VALUES ('11111111-1111-1111-1111-111111111111', 'Org A', 'org-a-artist-guard');
 INSERT INTO public.shows (id, org_id, program, sub_program, status)
   VALUES ('22222222-2222-2222-2222-222222222222', '11111111-1111-1111-1111-111111111111', 'TJE', 'TJE: Murder', 'active');
 INSERT INTO public.show_dates (id, show_id, date, session_1)
   VALUES ('33333333-3333-3333-3333-333333333333', '22222222-2222-2222-2222-222222222222', '2026-07-01', '19:00');
--- Same-org artist (positive case)
+INSERT INTO public.show_dates (id, show_id, date, session_1)
+  VALUES ('3a3a3a3a-3a3a-3a3a-3a3a-3a3a3a3a3a3a', '22222222-2222-2222-2222-222222222222', '2026-07-02', '19:00');
 INSERT INTO public.artists (id, org_id, name, status)
-  VALUES ('44444444-4444-4444-4444-444444444444', '11111111-1111-1111-1111-111111111111', 'Same Org Artist', 'active');
--- Org B: an artist that must NOT be bookable onto Org A's date
+  VALUES ('44444444-4444-4444-4444-444444444444', '11111111-1111-1111-1111-111111111111', 'Org A Artist One', 'active');
+INSERT INTO public.artists (id, org_id, name, status)
+  VALUES ('4b4b4b4b-4b4b-4b4b-4b4b-4b4b4b4b4b4b', '11111111-1111-1111-1111-111111111111', 'Org A Artist Two', 'active');
+-- Org B: a show, a date, and an artist (all foreign to Org A)
 INSERT INTO public.organizations (id, name, slug)
   VALUES ('66666666-6666-6666-6666-666666666666', 'Org B', 'org-b-artist-guard');
+INSERT INTO public.shows (id, org_id, program, sub_program, status)
+  VALUES ('88888888-8888-8888-8888-888888888888', '66666666-6666-6666-6666-666666666666', 'BOL', 'BOL: PP', 'active');
+INSERT INTO public.show_dates (id, show_id, date, session_1)
+  VALUES ('99999999-9999-9999-9999-999999999999', '88888888-8888-8888-8888-888888888888', '2026-07-03', '19:00');
 INSERT INTO public.artists (id, org_id, name, status)
-  VALUES ('77777777-7777-7777-7777-777777777777', '66666666-6666-6666-6666-666666666666', 'Cross Org Artist', 'active');
+  VALUES ('77777777-7777-7777-7777-777777777777', '66666666-6666-6666-6666-666666666666', 'Org B Artist', 'active');
+-- A valid Org A booking to mutate in the UPDATE tests (Org A artist two on Org A date two)
+INSERT INTO public.bookings (id, show_date_id, artist_id, status)
+  VALUES ('55555555-5555-5555-5555-555555555555', '3a3a3a3a-3a3a-3a3a-3a3a-3a3a3a3a3a3a', '4b4b4b4b-4b4b-4b4b-4b4b-4b4b4b4b4b4b', 'suggested');
 
--- 1) booking Org A's date with Org B's artist is rejected
+-- 1) INSERT: Org A date with Org B artist is rejected
 SELECT throws_ok(
   $$ INSERT INTO public.bookings (show_date_id, artist_id, status)
      VALUES ('33333333-3333-3333-3333-333333333333', '77777777-7777-7777-7777-777777777777', 'suggested') $$,
   'P0001', NULL,
-  'booking an out-of-org artist is rejected');
+  'INSERT: out-of-org artist is rejected');
 
--- 2) booking with a same-org artist succeeds
+-- 2) INSERT: same-org artist succeeds
 SELECT lives_ok(
   $$ INSERT INTO public.bookings (show_date_id, artist_id, status)
      VALUES ('33333333-3333-3333-3333-333333333333', '44444444-4444-4444-4444-444444444444', 'suggested') $$,
-  'booking a same-org artist succeeds');
+  'INSERT: same-org artist succeeds');
+
+-- 3) UPDATE: reassigning artist_id to an out-of-org artist is rejected
+SELECT throws_ok(
+  $$ UPDATE public.bookings SET artist_id = '77777777-7777-7777-7777-777777777777'
+     WHERE id = '55555555-5555-5555-5555-555555555555' $$,
+  'P0001', NULL,
+  'UPDATE: reassigning to an out-of-org artist is rejected');
+
+-- 4) UPDATE: moving the booking to an out-of-org date is rejected
+SELECT throws_ok(
+  $$ UPDATE public.bookings SET show_date_id = '99999999-9999-9999-9999-999999999999'
+     WHERE id = '55555555-5555-5555-5555-555555555555' $$,
+  'P0001', NULL,
+  'UPDATE: moving the booking to an out-of-org date is rejected');
+
+-- 5) UPDATE: moving the booking to another same-org date succeeds
+SELECT lives_ok(
+  $$ UPDATE public.bookings SET show_date_id = '33333333-3333-3333-3333-333333333333'
+     WHERE id = '55555555-5555-5555-5555-555555555555' $$,
+  'UPDATE: moving the booking to a same-org date succeeds');
 
 SELECT * FROM finish();
 ROLLBACK;
