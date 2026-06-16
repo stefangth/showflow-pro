@@ -64,16 +64,23 @@ INSERT INTO public.artists (id, name, user_id, org_id) VALUES
 INSERT INTO public.shows (id, program, sub_program, org_id)
 VALUES ('cccccccc-cccc-0001-0000-000000000000', 'theatre', 'musical', '00000000-0000-0000-0000-00000000b007');
 
-INSERT INTO public.show_dates (id, show_id, date, session_1, org_id)
-VALUES ('dddddddd-dddd-0001-0000-000000000000', 'cccccccc-cccc-0001-0000-000000000000', '2099-01-01', '20:00'::time, '00000000-0000-0000-0000-00000000b007');
+-- Distinct show_dates so each artist-A booking below is on its own date — the new
+-- bookings_active_artist_date_uniq index allows only one active booking per
+-- (show_date, artist). The policy assertions key off booking IDs + roles, not the date.
+INSERT INTO public.show_dates (id, show_id, date, session_1, org_id) VALUES
+  ('dddddddd-dddd-0001-0000-000000000000', 'cccccccc-cccc-0001-0000-000000000000', '2099-01-01', '20:00'::time, '00000000-0000-0000-0000-00000000b007'),
+  ('dddddddd-dddd-0002-0000-000000000000', 'cccccccc-cccc-0001-0000-000000000000', '2099-01-02', '20:00'::time, '00000000-0000-0000-0000-00000000b007'),
+  ('dddddddd-dddd-0003-0000-000000000000', 'cccccccc-cccc-0001-0000-000000000000', '2099-01-03', '20:00'::time, '00000000-0000-0000-0000-00000000b007'),
+  ('dddddddd-dddd-0004-0000-000000000000', 'cccccccc-cccc-0001-0000-000000000000', '2099-01-04', '20:00'::time, '00000000-0000-0000-0000-00000000b007'),
+  ('dddddddd-dddd-0005-0000-000000000000', 'cccccccc-cccc-0001-0000-000000000000', '2099-01-05', '20:00'::time, '00000000-0000-0000-0000-00000000b007');
 
 INSERT INTO public.bookings (id, show_date_id, artist_id, status, is_understudy, org_id) VALUES
   ('eeeeeeee-eeee-0001-0000-000000000000', 'dddddddd-dddd-0001-0000-000000000000', 'bbbbbbbb-bbbb-0001-0000-000000000000', 'suggested'::booking_status, false, '00000000-0000-0000-0000-00000000b007'),
   ('eeeeeeee-eeee-0002-0000-000000000000', 'dddddddd-dddd-0001-0000-000000000000', 'bbbbbbbb-bbbb-0002-0000-000000000000', 'suggested'::booking_status, false, '00000000-0000-0000-0000-00000000b007'),
-  ('eeeeeeee-eeee-0003-0000-000000000000', 'dddddddd-dddd-0001-0000-000000000000', 'bbbbbbbb-bbbb-0001-0000-000000000000', 'suggested'::booking_status, false, '00000000-0000-0000-0000-00000000b007'),
-  ('eeeeeeee-eeee-0004-0000-000000000000', 'dddddddd-dddd-0001-0000-000000000000', 'bbbbbbbb-bbbb-0001-0000-000000000000', 'suggested'::booking_status, false, '00000000-0000-0000-0000-00000000b007'),
-  ('eeeeeeee-eeee-0005-0000-000000000000', 'dddddddd-dddd-0001-0000-000000000000', 'bbbbbbbb-bbbb-0001-0000-000000000000', 'confirmed'::booking_status, false, '00000000-0000-0000-0000-00000000b007'),
-  ('eeeeeeee-eeee-0006-0000-000000000000', 'dddddddd-dddd-0001-0000-000000000000', 'bbbbbbbb-bbbb-0001-0000-000000000000', 'suggested'::booking_status, false, '00000000-0000-0000-0000-00000000b007');
+  ('eeeeeeee-eeee-0003-0000-000000000000', 'dddddddd-dddd-0002-0000-000000000000', 'bbbbbbbb-bbbb-0001-0000-000000000000', 'suggested'::booking_status, false, '00000000-0000-0000-0000-00000000b007'),
+  ('eeeeeeee-eeee-0004-0000-000000000000', 'dddddddd-dddd-0003-0000-000000000000', 'bbbbbbbb-bbbb-0001-0000-000000000000', 'suggested'::booking_status, false, '00000000-0000-0000-0000-00000000b007'),
+  ('eeeeeeee-eeee-0005-0000-000000000000', 'dddddddd-dddd-0004-0000-000000000000', 'bbbbbbbb-bbbb-0001-0000-000000000000', 'confirmed'::booking_status, false, '00000000-0000-0000-0000-00000000b007'),
+  ('eeeeeeee-eeee-0006-0000-000000000000', 'dddddddd-dddd-0005-0000-000000000000', 'bbbbbbbb-bbbb-0001-0000-000000000000', 'suggested'::booking_status, false, '00000000-0000-0000-0000-00000000b007');
 
 INSERT INTO public.booking_audit_log (id, booking_id, action, old_status, new_status, performed_by, org_id)
 VALUES (
