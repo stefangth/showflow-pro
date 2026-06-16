@@ -97,7 +97,7 @@ src/
                    #   editor_table_permissions). EditorProvider wraps the whole app.
                    #   Read-only hook for page components: useEditorConfig().
   hooks/           # Domain hooks (useMyArtist, useEligibleArtists, useChatParticipant,
-                   #   useArtistEligibleDates, useSubProgramSlots, useSettingsWarnings,
+                   #   useArtistEligibleDates, useSettingsWarnings,
                    #   useSkills/useArtistSkills, useNotifications/useMarkNotificationRead/
                    #   useMarkAllNotificationsRead) + UI hooks (use-mobile, use-toast)
   integrations/
@@ -135,7 +135,7 @@ supabase/
 - **Chat is per show-date.** One `chats` row per `show_date_id`; participation is gated by `is_chat_participant(chat_id, user_id)` (admins, producers, and artists booked/soft-booked for that date). After `CHAT_ARCHIVE_DAYS` days, chats are hidden from `ChatsListPage` for non-admins and become read-only in `ChatPanel` (admins can still view the archived thread).
 - **Artist availability is gated by eligibility.** Artists can only declare availability on dates returned by `useArtistEligibleDates` (derived from cast eligibility). Non-eligible dates render non-interactively in the calendar.
 - **`show_dates.status` is DB-computed.** A Postgres trigger (`sync_show_date_status_trigger` on `bookings`) automatically sets status to `open | partially_filled | fully_filled` based on confirmed booking counts vs the `main_cast_slots` + `understudy_slots` columns on `shows`. Only `cancelled` is set by mutations directly. Do not set status manually in client code. A trigger on `shows` recomputes that show's dates when its `program`, `sub_program`, `main_cast_slots`, or `understudy_slots` change.
-- **Slot capacity lives on `shows`.** Each show row (one `(program, sub_program)`) carries `main_cast_slots` and `understudy_slots` (nullable smallint; `NULL` = unconfigured → the date never reaches `fully_filled` and the UI shows an "Unconfigured" badge). There is no `slots_per_date` column and no `app_settings.sub_program_slots_defaults` (retired in Phase 1b-DB). *(Frontend note: the slot-reader hooks `useSubProgramSlots`/`effectiveSlots` still read the old setting until Phase 1b-frontend; on greenfield this is inert.)*
+- **Slot capacity lives on `shows`.** Each show row carries `main_cast_slots` and `understudy_slots` (nullable smallint; `NULL` = unconfigured → the date never reaches `fully_filled` and the UI shows an "Unconfigured" badge). There is no `slots_per_date` column and no `app_settings.sub_program_slots_defaults`. The frontend reads these columns via `showSlots(show)` (from `src/lib/settings.ts`) on the already-joined show row — no separate query needed.
 - **No UI for creating show dates.** The create-show-date flow was intentionally removed. New show_dates must be inserted via the Supabase dashboard or a future admin-only flow.
 - **Booking detail surface: `ShowDateDetailSheet`.** The full booking management experience (date config, assigned artists, available artists, chat) lives in `src/components/shows/ShowDateDetailSheet.tsx`. There is no standalone `/shows/:id` page — `ShowDetailPage` and `ShowDetailSheet` have been deleted.
 - **Audit trail:** all booking status changes append to `booking_audit_log`. Never delete from this table.
@@ -169,7 +169,7 @@ supabase/
   - **`['availability', ...]`** — everything that reads from the `availability` table (e.g. `['availability', 'cell', artistId, date]`, `['availability', 'available', dateId]`).
 - **Invalidation rule:** Mutations that write to `bookings` invalidate `['bookings']` (prefix match, catches all sub-keys). Mutations that write to `availability` invalidate `['availability']`. This is the only pattern that stays correct as new consumers are added. Never list individual sub-keys in a mutation — always bust the whole domain.
 - **Supabase Realtime is enabled** on all primary tables. Booking status changes propagate automatically to subscribed clients.
-- Prefer the existing domain hooks in `src/hooks/` (`useMyArtist`, `useEligibleArtists`, `useArtistEligibleDates`, `useChatParticipant`, `useSubProgramSlots`, `useSettingsWarnings`, `useSkills`/`useArtistSkills`, `useNotifications`) over duplicating Supabase queries inline.
+- Prefer the existing domain hooks in `src/hooks/` (`useMyArtist`, `useEligibleArtists`, `useArtistEligibleDates`, `useChatParticipant`, `useSettingsWarnings`, `useSkills`/`useArtistSkills`, `useNotifications`) over duplicating Supabase queries inline.
 - Never call Supabase from a component effect when a query will do.
 - Side effects on success → `sonner` toast (`toast.success`, `toast.error`).
 

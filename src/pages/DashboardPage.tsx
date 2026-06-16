@@ -12,7 +12,7 @@ import { motion } from 'framer-motion';
 import { addDays, format } from 'date-fns';
 import { toast } from 'sonner';
 import { ArtistDashboard } from '@/components/dashboard/ArtistDashboard';
-import { useSubProgramSlots, effectiveSlots } from '@/hooks/useSubProgramSlots';
+import { showSlots } from '@/lib/settings';
 import { formatDateDMY } from '@/lib/dates';
 import { showLabel } from '@/types';
 
@@ -21,6 +21,7 @@ const fadeUp = {
   animate: { opacity: 1, y: 0 },
 };
 
+type ShowRef = { program: string | null; sub_program: string | null; main_cast_slots: number | null; understudy_slots: number | null };
 type DateRow = { id: string; date: string; show_id: string };
 type BookingLite = { show_date_id: string; status: string };
 type SoftBookedRow = {
@@ -48,19 +49,17 @@ function ProducerDashboard() {
   const qc = useQueryClient();
   const [selected, setSelected] = useState<Set<string>>(new Set());
 
-  const slotDefaults = useSubProgramSlots();
-
   const { data: upcomingDates } = useQuery({
     queryKey: ['dashboard-upcoming-dates', todayStr],
     queryFn: async () => {
       const { data, error } = await supabase
         .from('show_dates')
-        .select('id, date, show_id, show:shows(program, sub_program)')
+        .select('id, date, show_id, show:shows(program, sub_program, main_cast_slots, understudy_slots)')
         .gte('date', todayStr)
         .neq('status', 'cancelled')
         .order('date', { ascending: true });
       if (error) throw error;
-      return (data ?? []) as unknown as (DateRow & { show: { program: string | null; sub_program: string | null } })[];
+      return (data ?? []) as unknown as (DateRow & { show: ShowRef })[];
     },
   });
 
@@ -148,8 +147,8 @@ function ProducerDashboard() {
     const dates = (upcomingDates ?? []).filter(d => !untilStr || d.date <= untilStr);
     const total = dates.length;
     const fullyConfirmed = dates.filter(d => {
-      const cfg = effectiveSlots(slotDefaults, d.show?.program, d.show?.sub_program);
-      if (!cfg) return false; // unconfigured pairs cannot count as fully confirmed
+      const cfg = showSlots(d.show);
+      if (!cfg) return false; // unconfigured shows cannot count as fully confirmed
       const totalSlots = cfg.main_cast + cfg.understudies;
       return (confirmedCountByDate.get(d.id) ?? 0) >= totalSlots;
     }).length;
