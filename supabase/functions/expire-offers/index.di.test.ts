@@ -20,30 +20,22 @@ function cronReq() {
 }
 
 /**
- * Standard match-based app_settings seed that answers both reads the handler
- * does: (1) .eq('key','cron_secret') and (2) .eq('key','sub_program_slots_defaults').
+ * Standard match-based app_settings seed that answers the cron_secret read
+ * the handler does. Slot capacity now lives on shows columns, not app_settings.
  */
-function appSettingsSeed(slots: Record<string, Record<string, { main_cast: number; understudies: number }>>) {
+function appSettingsSeed() {
   return [
     { when: { key: "cron_secret" }, data: { value: CRON_SECRET }, error: null },
-    // row-array form required by resolveOrgSetting (org override ?? platform default)
-    { when: { key: "sub_program_slots_defaults" }, data: [{ org_id: null, value: slots }] },
   ];
 }
 
-const DEFAULT_SLOTS = {
-  "Ballet": {
-    "Matinée": { main_cast: 2, understudies: 1 },
-  },
-};
-
-/** Minimal show_date row */
+/** Minimal show_date row — slot capacity lives on the nested show columns. */
 const SHOW_DATE = {
   id: "sd-1",
   date: "2026-07-01",
   city_id: "city-1",
   org_id: "00000000-0000-0000-0000-000000000001",
-  show: { program: "Ballet", sub_program: "Matinée" },
+  show: { program: "Ballet", sub_program: "Matinée", main_cast_slots: 2, understudy_slots: 1 },
 };
 
 /** Minimal open tier row */
@@ -82,7 +74,7 @@ Deno.test("expire-offers: runs expiry RPC and reports zero escalations when no o
 Deno.test("expire-offers: admin JWT is accepted", async () => {
   const { deps } = makeFakeDeps({
     tables: {
-      app_settings: appSettingsSeed(DEFAULT_SLOTS),
+      app_settings: appSettingsSeed(),
       show_date_offer_tiers: { data: [], error: null },
       org_memberships: { data: { role: "admin" }, error: null },
     },
@@ -99,7 +91,7 @@ Deno.test("expire-offers: admin JWT is accepted", async () => {
 Deno.test("expire-offers: producer JWT is accepted", async () => {
   const { deps } = makeFakeDeps({
     tables: {
-      app_settings: appSettingsSeed(DEFAULT_SLOTS),
+      app_settings: appSettingsSeed(),
       show_date_offer_tiers: { data: [], error: null },
       org_memberships: { data: { role: "producer" }, error: null },
     },
@@ -115,7 +107,7 @@ Deno.test("expire-offers: producer JWT is accepted", async () => {
 
 Deno.test("expire-offers: no auth credentials returns 401", async () => {
   const { deps } = makeFakeDeps({
-    tables: { app_settings: appSettingsSeed(DEFAULT_SLOTS) },
+    tables: { app_settings: appSettingsSeed() },
     rpcs: { expire_soft_bookings: { data: null, error: null } },
   });
   const res = await handle(makeRequest(), deps);
@@ -126,7 +118,7 @@ Deno.test("expire-offers: no auth credentials returns 401", async () => {
 
 Deno.test("expire-offers: expire_soft_bookings RPC error → 500 with message", async () => {
   const { deps } = makeFakeDeps({
-    tables: { app_settings: appSettingsSeed(DEFAULT_SLOTS) },
+    tables: { app_settings: appSettingsSeed() },
     rpcs: { expire_soft_bookings: { data: null, error: { message: "boom" } } },
   });
   const res = await handle(cronReq(), deps);
@@ -140,7 +132,7 @@ Deno.test("expire-offers: expire_soft_bookings RPC error → 500 with message", 
 Deno.test("expire-offers: empty open tiers → escalations: 0", async () => {
   const { deps, calls } = makeFakeDeps({
     tables: {
-      app_settings: appSettingsSeed(DEFAULT_SLOTS),
+      app_settings: appSettingsSeed(),
       show_date_offer_tiers: { data: [], error: null },
     },
     rpcs: { expire_soft_bookings: { data: null, error: null } },
@@ -155,12 +147,17 @@ Deno.test("expire-offers: empty open tiers → escalations: 0", async () => {
 
 // ─── Slot config absent → skip tier ──────────────────────────────────────────
 
-Deno.test("expire-offers: tier with unknown program/sub_program → no escalation", async () => {
+Deno.test("expire-offers: tier with unconfigured show (null main_cast_slots) → no escalation", async () => {
+  // NULL slot columns = show is not configured yet; handler skips the tier.
+  const showDateUnconfigured = {
+    ...SHOW_DATE,
+    show: { program: "Ballet", sub_program: "Matinée", main_cast_slots: null, understudy_slots: null },
+  };
   const { deps } = makeFakeDeps({
     tables: {
-      app_settings: appSettingsSeed({ /* empty — no Ballet config */ }),
+      app_settings: appSettingsSeed(),
       show_date_offer_tiers: { data: [OPEN_TIER], error: null },
-      show_dates: { data: SHOW_DATE, error: null },
+      show_dates: { data: showDateUnconfigured, error: null },
       bookings: { data: [], error: null },
     },
     rpcs: {
@@ -174,14 +171,17 @@ Deno.test("expire-offers: tier with unknown program/sub_program → no escalatio
   assertEquals((await res.json()).escalations, 0);
 });
 
-Deno.test("expire-offers: tier with program present but wrong sub_program → no escalation", async () => {
-  const slots = { "Ballet": { "Evening": { main_cast: 2, understudies: 1 } } };
-  // SHOW_DATE has sub_program "Matinée" which is NOT in the config
+Deno.test("expire-offers: tier with only one slot column null → no escalation", async () => {
+  // Even if main_cast_slots is set, null understudy_slots = unconfigured → skip.
+  const showDatePartial = {
+    ...SHOW_DATE,
+    show: { program: "Ballet", sub_program: "Matinée", main_cast_slots: 2, understudy_slots: null },
+  };
   const { deps } = makeFakeDeps({
     tables: {
-      app_settings: appSettingsSeed(slots),
+      app_settings: appSettingsSeed(),
       show_date_offer_tiers: { data: [OPEN_TIER], error: null },
-      show_dates: { data: SHOW_DATE, error: null },
+      show_dates: { data: showDatePartial, error: null },
       bookings: { data: [], error: null },
     },
     rpcs: {
@@ -197,12 +197,12 @@ Deno.test("expire-offers: tier with program present but wrong sub_program → no
 
 // ─── requiredSlots calculation ────────────────────────────────────────────────
 
-Deno.test("expire-offers: requiredSlots = main_cast + understudies from slot config", async () => {
-  // main_cast=2, understudies=1 → requiredSlots=3
+Deno.test("expire-offers: requiredSlots = main_cast_slots + understudy_slots from shows columns", async () => {
+  // SHOW_DATE has main_cast_slots=2, understudy_slots=1 → requiredSlots=3
   // With 0 accepted and 0 pending → should escalate
   const { deps, calls } = makeFakeDeps({
     tables: {
-      app_settings: appSettingsSeed(DEFAULT_SLOTS),
+      app_settings: appSettingsSeed(),
       show_date_offer_tiers: { data: [OPEN_TIER], error: null },
       show_dates: { data: SHOW_DATE, error: null },
       bookings: { data: [], error: null },
@@ -234,7 +234,7 @@ Deno.test("expire-offers: pending (non-expired) suggested booking → no escalat
   ];
   const { deps } = makeFakeDeps({
     tables: {
-      app_settings: appSettingsSeed(DEFAULT_SLOTS),
+      app_settings: appSettingsSeed(),
       show_date_offer_tiers: { data: [OPEN_TIER], error: null },
       show_dates: { data: SHOW_DATE, error: null },
       bookings: { data: bookings, error: null },
@@ -254,7 +254,7 @@ Deno.test("expire-offers: suggested booking with null offer_expires_at → treat
   const bookings = [{ status: "suggested", offer_expires_at: null }];
   const { deps } = makeFakeDeps({
     tables: {
-      app_settings: appSettingsSeed(DEFAULT_SLOTS),
+      app_settings: appSettingsSeed(),
       show_date_offer_tiers: { data: [OPEN_TIER], error: null },
       show_dates: { data: SHOW_DATE, error: null },
       bookings: { data: bookings, error: null },
@@ -278,7 +278,7 @@ Deno.test("expire-offers: boundary — offer_expires_at exactly == now → NOT p
   const bookings = [{ status: "suggested", offer_expires_at: exactlyNow }];
   const { deps } = makeFakeDeps({
     tables: {
-      app_settings: appSettingsSeed(DEFAULT_SLOTS),
+      app_settings: appSettingsSeed(),
       show_date_offer_tiers: { data: [OPEN_TIER], error: null },
       show_dates: { data: SHOW_DATE, error: null },
       bookings: { data: bookings, error: null },
@@ -303,7 +303,7 @@ Deno.test("expire-offers: boundary — offer_expires_at 1ms in the future → st
   const bookings = [{ status: "suggested", offer_expires_at: oneMillisLater }];
   const { deps } = makeFakeDeps({
     tables: {
-      app_settings: appSettingsSeed(DEFAULT_SLOTS),
+      app_settings: appSettingsSeed(),
       show_date_offer_tiers: { data: [OPEN_TIER], error: null },
       show_dates: { data: SHOW_DATE, error: null },
       bookings: { data: bookings, error: null },
@@ -330,7 +330,7 @@ Deno.test("expire-offers: accepted (soft_booked) meets requiredSlots → no esca
   ];
   const { deps } = makeFakeDeps({
     tables: {
-      app_settings: appSettingsSeed(DEFAULT_SLOTS),
+      app_settings: appSettingsSeed(),
       show_date_offer_tiers: { data: [OPEN_TIER], error: null },
       show_dates: { data: SHOW_DATE, error: null },
       bookings: { data: bookings, error: null },
@@ -355,7 +355,7 @@ Deno.test("expire-offers: accepted (confirmed) meets requiredSlots → no escala
   ];
   const { deps } = makeFakeDeps({
     tables: {
-      app_settings: appSettingsSeed(DEFAULT_SLOTS),
+      app_settings: appSettingsSeed(),
       show_date_offer_tiers: { data: [OPEN_TIER], error: null },
       show_dates: { data: SHOW_DATE, error: null },
       bookings: { data: bookings, error: null },
@@ -380,7 +380,7 @@ Deno.test("expire-offers: mix of soft_booked + confirmed counts toward accepted"
   ];
   const { deps } = makeFakeDeps({
     tables: {
-      app_settings: appSettingsSeed(DEFAULT_SLOTS),
+      app_settings: appSettingsSeed(),
       show_date_offer_tiers: { data: [OPEN_TIER], error: null },
       show_dates: { data: SHOW_DATE, error: null },
       bookings: { data: bookings, error: null },
@@ -405,7 +405,7 @@ Deno.test("expire-offers: cancelled bookings do NOT count toward accepted", asyn
   ];
   const { deps } = makeFakeDeps({
     tables: {
-      app_settings: appSettingsSeed(DEFAULT_SLOTS),
+      app_settings: appSettingsSeed(),
       show_date_offer_tiers: { data: [OPEN_TIER], error: null },
       show_dates: { data: SHOW_DATE, error: null },
       bookings: { data: bookings, error: null },
@@ -433,7 +433,7 @@ Deno.test("expire-offers: producers resolved → notification sent to each produ
   ];
   const { deps, calls } = makeFakeDeps({
     tables: {
-      app_settings: appSettingsSeed(DEFAULT_SLOTS),
+      app_settings: appSettingsSeed(),
       show_date_offer_tiers: { data: [OPEN_TIER], error: null },
       show_dates: { data: SHOW_DATE, error: null },
       bookings: { data: [], error: null },
@@ -464,7 +464,7 @@ Deno.test("expire-offers: producers resolved → notification sent to each produ
 Deno.test("expire-offers: empty producers → falls back to admin users", async () => {
   const { deps, calls } = makeFakeDeps({
     tables: {
-      app_settings: appSettingsSeed(DEFAULT_SLOTS),
+      app_settings: appSettingsSeed(),
       show_date_offer_tiers: { data: [OPEN_TIER], error: null },
       show_dates: { data: SHOW_DATE, error: null },
       bookings: { data: [], error: null },
@@ -501,7 +501,7 @@ Deno.test("expire-offers: dedupes duplicate producer ids → one notification + 
   ];
   const { deps, calls, invokeCalls } = makeFakeDeps({
     tables: {
-      app_settings: appSettingsSeed(DEFAULT_SLOTS),
+      app_settings: appSettingsSeed(),
       show_date_offer_tiers: { data: [OPEN_TIER], error: null },
       show_dates: { data: SHOW_DATE, error: null },
       bookings: { data: [], error: null },
@@ -533,7 +533,7 @@ Deno.test("expire-offers: dedupes duplicate producer ids → one notification + 
 Deno.test("expire-offers: notification row has correct fields", async () => {
   const { deps, calls } = makeFakeDeps({
     tables: {
-      app_settings: appSettingsSeed(DEFAULT_SLOTS),
+      app_settings: appSettingsSeed(),
       show_date_offer_tiers: { data: [OPEN_TIER], error: null },
       show_dates: { data: SHOW_DATE, error: null },
       bookings: { data: [], error: null },
@@ -566,7 +566,7 @@ Deno.test("expire-offers: notification row has correct fields", async () => {
 Deno.test("expire-offers: sends an email per recipient via sendEmail", async () => {
   const { deps, invokeCalls } = makeFakeDeps({
     tables: {
-      app_settings: appSettingsSeed(DEFAULT_SLOTS),
+      app_settings: appSettingsSeed(),
       show_date_offer_tiers: { data: [OPEN_TIER], error: null },
       show_dates: { data: SHOW_DATE, error: null },
       bookings: { data: [], error: null },
@@ -592,7 +592,7 @@ Deno.test("expire-offers: email failure does not abort the loop (best-effort)", 
   // Wrap sendEmail to throw
   const { deps, calls } = makeFakeDeps({
     tables: {
-      app_settings: appSettingsSeed(DEFAULT_SLOTS),
+      app_settings: appSettingsSeed(),
       show_date_offer_tiers: { data: [OPEN_TIER], error: null },
       show_dates: { data: SHOW_DATE, error: null },
       bookings: { data: [], error: null },
@@ -622,7 +622,7 @@ Deno.test("expire-offers: recipient with no email in auth → skipped for email,
   // usersById missing prod-1 → getUserById returns null user → email lookup skipped
   const { deps, calls, invokeCalls } = makeFakeDeps({
     tables: {
-      app_settings: appSettingsSeed(DEFAULT_SLOTS),
+      app_settings: appSettingsSeed(),
       show_date_offer_tiers: { data: [OPEN_TIER], error: null },
       show_dates: { data: SHOW_DATE, error: null },
       bookings: { data: [], error: null },
@@ -652,7 +652,7 @@ Deno.test("expire-offers: recipient with no email in auth → skipped for email,
 Deno.test("expire-offers: stamps escalation_notified_at on the tier (idempotency)", async () => {
   const { deps, calls } = makeFakeDeps({
     tables: {
-      app_settings: appSettingsSeed(DEFAULT_SLOTS),
+      app_settings: appSettingsSeed(),
       show_date_offer_tiers: { data: [OPEN_TIER], error: null },
       show_dates: { data: SHOW_DATE, error: null },
       bookings: { data: [], error: null },
@@ -681,7 +681,7 @@ Deno.test("expire-offers: open tier query filters by escalation_notified_at IS N
   // characterization: already-escalated tiers excluded via .is('escalation_notified_at', null) in the query
   const { deps, calls } = makeFakeDeps({
     tables: {
-      app_settings: appSettingsSeed(DEFAULT_SLOTS),
+      app_settings: appSettingsSeed(),
       show_date_offer_tiers: { data: [], error: null },
     },
     rpcs: { expire_soft_bookings: { data: null, error: null } },
@@ -704,7 +704,7 @@ Deno.test("expire-offers: open tier query filters by escalation_notified_at IS N
 Deno.test("expire-offers: response body expired:true on success with escalations", async () => {
   const { deps } = makeFakeDeps({
     tables: {
-      app_settings: appSettingsSeed(DEFAULT_SLOTS),
+      app_settings: appSettingsSeed(),
       show_date_offer_tiers: { data: [OPEN_TIER], error: null },
       show_dates: { data: SHOW_DATE, error: null },
       bookings: { data: [], error: null },
@@ -729,7 +729,7 @@ Deno.test("expire-offers: no notifications insert when no recipients", async () 
   // resolve_show_assignments empty AND no admin rows → no notifications
   const { deps, calls } = makeFakeDeps({
     tables: {
-      app_settings: appSettingsSeed(DEFAULT_SLOTS),
+      app_settings: appSettingsSeed(),
       show_date_offer_tiers: { data: [OPEN_TIER], error: null },
       show_dates: { data: SHOW_DATE, error: null },
       bookings: { data: [], error: null },
@@ -755,20 +755,19 @@ Deno.test("expire-offers: no notifications insert when no recipients", async () 
   assertEquals(updateCall !== undefined, true);
 });
 
-// ─── Per-org slot defaults + notification org_id (Part 6) ─────────────────────
+// ─── Slot columns from shows + notification org_id (Part 6) ──────────────────
 
-Deno.test("expire-offers: resolves slot defaults per the show_date's org and stamps notification org_id", async () => {
+Deno.test("expire-offers: reads slot capacity from shows columns and stamps notification org_id", async () => {
   const ORG = "00000000-0000-0000-0000-0000000000a1";
   const { deps } = makeFakeDeps({
     now: new Date("2026-06-01T12:00:00.000Z"),
     tables: {
       app_settings: [
         { when: { key: "cron_secret" }, data: { value: "s" } },
-        // resolver row form — P/S needs 1 slot, so an expired tier with 0 accepted escalates
-        { when: { key: "sub_program_slots_defaults" }, data: [{ org_id: null, value: { P: { S: { main_cast: 1, understudies: 0 } } } }] },
       ],
       show_date_offer_tiers: { data: [{ id: "t1", show_date_id: "sd1", tier: 1, escalation_notified_at: null }], error: null },
-      show_dates: { data: { id: "sd1", date: "2026-06-10", city_id: "c1", org_id: ORG, show: { program: "P", sub_program: "S" } }, error: null },
+      // Slot capacity lives on the show row: main_cast_slots=1, understudy_slots=0 → requiredSlots=1
+      show_dates: { data: { id: "sd1", date: "2026-06-10", city_id: "c1", org_id: ORG, show: { program: "P", sub_program: "S", main_cast_slots: 1, understudy_slots: 0 } }, error: null },
       bookings: { data: [{ status: "suggested", offer_expires_at: "2026-05-01T00:00:00Z" }], error: null }, // expired, 0 accepted
       org_memberships: { data: [{ user_id: "admin-1" }], error: null }, // admin fallback (resolve_show_assignments empty)
       notifications: { data: null, error: null },

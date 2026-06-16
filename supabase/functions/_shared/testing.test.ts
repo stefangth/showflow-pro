@@ -40,14 +40,14 @@ Deno.test("fake client: array seed returns the entry whose `when` matches the re
     tables: {
       app_settings: [
         { when: { key: "cron_secret" }, data: { value: "s" }, error: null },
-        { when: { key: "sub_program_slots_defaults" }, data: { value: { t: {} } }, error: null },
+        { when: { key: "airtable_sync_enabled" }, data: { value: true }, error: null },
       ],
     },
   });
   const a = await client.from("app_settings").select("value").eq("key", "cron_secret").maybeSingle();
-  const b = await client.from("app_settings").select("value").eq("key", "sub_program_slots_defaults").maybeSingle();
+  const b = await client.from("app_settings").select("value").eq("key", "airtable_sync_enabled").maybeSingle();
   assertEquals(a, { data: { value: "s" }, error: null });
-  assertEquals(b, { data: { value: { t: {} } }, error: null });
+  assertEquals(b, { data: { value: true }, error: null });
 });
 
 Deno.test("fake client: array seed falls back to an entry with no `when` (default)", async () => {
