@@ -252,6 +252,8 @@ CI runs all of these (`.github/workflows/ci.yml`).
 
 A booking moves through: `suggested → soft_booked → confirmed` (or `cancelled` from any state).
 
+**DB-enforced integrity:** at most one *active* (non-cancelled) booking exists per `(show_date_id, artist_id)` (partial unique index `bookings_active_artist_date_uniq`); and a booking's artist must belong to the same org as its show_date — enforced by the `derive_org_id_for_booking()` trigger, which re-derives `org_id` and re-checks on INSERT and on any UPDATE of `artist_id`/`show_date_id`. Don't rely on application-side dedup alone.
+
 - Offers are created by `open-offer-tier` edge function (call after new show_date creation or manually).
 - Artists have a configurable response window (default 48h) to respond; `expire-offers` runs hourly. The window duration, digest send hours (Berlin time), and other booking engine settings are stored in `app_settings` (editable via Settings → Booking Engine), not hardcoded in `app.config.ts`.
 - Artists receive a daily offer digest email at the configured hour (default 19:00 Berlin).
