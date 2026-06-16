@@ -1,19 +1,41 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database, Json } from "@/integrations/supabase/types";
-import type { NestedSlotDefaults } from "@/hooks/useSubProgramSlots";
-import { dedupeProgramPairs, type ProgramPair } from "@/lib/settings";
 
-/** Distinct (program, sub_program) pairs across all shows. */
-export async function fetchProgramSubProgramPairs(
+export interface ShowWithSlots {
+  id: string;
+  program: string | null;
+  sub_program: string | null;
+  main_cast_slots: number | null;
+  understudy_slots: number | null;
+}
+
+/** Fetch all shows for an org with their slot columns, ordered by program then sub_program. */
+export async function fetchShowsWithSlots(
   client: SupabaseClient<Database>,
-): Promise<ProgramPair[]> {
+  orgId: string | null,
+): Promise<ShowWithSlots[]> {
   const { data, error } = await client
     .from("shows")
-    .select("program, sub_program")
-    .not("program", "is", null)
-    .not("sub_program", "is", null);
+    .select("id, program, sub_program, main_cast_slots, understudy_slots")
+    .eq("org_id", orgId as string)
+    .order("program")
+    .order("sub_program");
   if (error) throw error;
-  return dedupeProgramPairs(data ?? []);
+  return (data ?? []) as ShowWithSlots[];
+}
+
+/** Update slot columns on a single show. Pass null to clear a column. */
+export async function updateShowSlots(
+  client: SupabaseClient<Database>,
+  showId: string,
+  mainCast: number | null,
+  understudies: number | null,
+): Promise<void> {
+  const { error } = await client
+    .from("shows")
+    .update({ main_cast_slots: mainCast, understudy_slots: understudies })
+    .eq("id", showId);
+  if (error) throw error;
 }
 
 interface SettingRow { org_id: string | null; value: unknown }
@@ -51,12 +73,4 @@ export async function upsertOrgSetting(
     .from("app_settings")
     .upsert({ org_id: orgId, key, value }, { onConflict: "org_id,key" });
   if (error) throw error;
-}
-
-/** The sub_program_slots_defaults effective for an org (or {}). */
-export async function fetchSlotDefaults(
-  client: SupabaseClient<Database>,
-  orgId: string | null,
-): Promise<NestedSlotDefaults> {
-  return resolveOrgSetting<NestedSlotDefaults>(client, orgId, "sub_program_slots_defaults", {});
 }

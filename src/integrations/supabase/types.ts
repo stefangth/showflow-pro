@@ -1089,11 +1089,13 @@ export type Database = {
           created_by: string | null
           description: string | null
           id: string
+          main_cast_slots: number | null
           org_id: string
           program: string | null
           required_skills: string[] | null
           status: Database["public"]["Enums"]["show_status"]
           sub_program: string | null
+          understudy_slots: number | null
           updated_at: string
         }
         Insert: {
@@ -1102,11 +1104,13 @@ export type Database = {
           created_by?: string | null
           description?: string | null
           id?: string
+          main_cast_slots?: number | null
           org_id: string
           program?: string | null
           required_skills?: string[] | null
           status?: Database["public"]["Enums"]["show_status"]
           sub_program?: string | null
+          understudy_slots?: number | null
           updated_at?: string
         }
         Update: {
@@ -1115,11 +1119,13 @@ export type Database = {
           created_by?: string | null
           description?: string | null
           id?: string
+          main_cast_slots?: number | null
           org_id?: string
           program?: string | null
           required_skills?: string[] | null
           status?: Database["public"]["Enums"]["show_status"]
           sub_program?: string | null
+          understudy_slots?: number | null
           updated_at?: string
         }
         Relationships: [

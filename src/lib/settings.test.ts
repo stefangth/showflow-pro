@@ -1,42 +1,89 @@
 import { describe, it, expect } from "vitest";
-import { dedupeProgramPairs, computeSchedulingWarnings } from "./settings";
+import { showSlots, computeSchedulingWarnings } from "./settings";
 
-describe("dedupeProgramPairs", () => {
-  it("dedupes by (program, sub_program) and drops null pairs", () => {
-    const out = dedupeProgramPairs([
-      { program: "A", sub_program: "x" },
-      { program: "A", sub_program: "x" },
-      { program: "A", sub_program: "y" },
-      { program: null, sub_program: "z" },
-      { program: "B", sub_program: null },
-    ]);
-    expect(out).toEqual([
-      { program: "A", sub_program: "x" },
-      { program: "A", sub_program: "y" },
-    ]);
+describe("showSlots", () => {
+  it("returns null when show is null", () => {
+    expect(showSlots(null)).toBeNull();
+  });
+
+  it("returns null when show is undefined", () => {
+    expect(showSlots(undefined)).toBeNull();
+  });
+
+  it("returns null when main_cast_slots is null", () => {
+    expect(showSlots({ main_cast_slots: null, understudy_slots: 1 })).toBeNull();
+  });
+
+  it("returns null when understudy_slots is null", () => {
+    expect(showSlots({ main_cast_slots: 2, understudy_slots: null })).toBeNull();
+  });
+
+  it("returns null when both columns are null", () => {
+    expect(showSlots({ main_cast_slots: null, understudy_slots: null })).toBeNull();
+  });
+
+  it("returns SlotCounts when both columns are set", () => {
+    expect(showSlots({ main_cast_slots: 2, understudy_slots: 1 })).toEqual({
+      main_cast: 2,
+      understudies: 1,
+    });
+  });
+
+  it("treats explicit 0/0 as configured (not null)", () => {
+    expect(showSlots({ main_cast_slots: 0, understudy_slots: 0 })).toEqual({
+      main_cast: 0,
+      understudies: 0,
+    });
   });
 });
 
 describe("computeSchedulingWarnings", () => {
-  const pairs = [
-    { program: "A", sub_program: "x" },
-    { program: "A", sub_program: "y" },
-  ];
-  it("counts pairs with no slot defaults configured", () => {
-    const defaults = { A: { x: { main_cast: 2, understudies: 1 } } };
-    const w = computeSchedulingWarnings(pairs, defaults);
-    expect(w.schedulingWarnings).toBe(1); // A/y is unconfigured
-    expect(w.hasAnyWarning).toBe(true);
-  });
-  it("reports zero when all pairs are configured", () => {
-    const defaults = {
-      A: { x: { main_cast: 2, understudies: 1 }, y: { main_cast: 1, understudies: 0 } },
-    };
-    const w = computeSchedulingWarnings(pairs, defaults);
+  it("returns zero for empty array", () => {
+    const w = computeSchedulingWarnings([]);
     expect(w.schedulingWarnings).toBe(0);
     expect(w.hasAnyWarning).toBe(false);
   });
-  it("handles null inputs", () => {
-    expect(computeSchedulingWarnings(null, null).schedulingWarnings).toBe(0);
+
+  it("returns zero for null input", () => {
+    const w = computeSchedulingWarnings(null);
+    expect(w.schedulingWarnings).toBe(0);
+    expect(w.hasAnyWarning).toBe(false);
+  });
+
+  it("counts shows where main_cast_slots is null", () => {
+    const w = computeSchedulingWarnings([
+      { main_cast_slots: null, understudy_slots: 1 },
+      { main_cast_slots: 2, understudy_slots: 1 },
+    ]);
+    expect(w.schedulingWarnings).toBe(1);
+    expect(w.hasAnyWarning).toBe(true);
+  });
+
+  it("counts shows where understudy_slots is null", () => {
+    const w = computeSchedulingWarnings([
+      { main_cast_slots: 2, understudy_slots: null },
+      { main_cast_slots: 2, understudy_slots: 1 },
+    ]);
+    expect(w.schedulingWarnings).toBe(1);
+    expect(w.hasAnyWarning).toBe(true);
+  });
+
+  it("counts each show with any null column once", () => {
+    const w = computeSchedulingWarnings([
+      { main_cast_slots: null, understudy_slots: null },
+      { main_cast_slots: null, understudy_slots: 1 },
+      { main_cast_slots: 2, understudy_slots: 1 },
+    ]);
+    expect(w.schedulingWarnings).toBe(2);
+    expect(w.hasAnyWarning).toBe(true);
+  });
+
+  it("reports zero when all shows are configured", () => {
+    const w = computeSchedulingWarnings([
+      { main_cast_slots: 2, understudy_slots: 1 },
+      { main_cast_slots: 0, understudy_slots: 0 },
+    ]);
+    expect(w.schedulingWarnings).toBe(0);
+    expect(w.hasAnyWarning).toBe(false);
   });
 });
