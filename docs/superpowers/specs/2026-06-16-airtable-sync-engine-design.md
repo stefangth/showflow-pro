@@ -66,7 +66,7 @@ integrity gaps are closed.
 Admin (Settings)                     Edge functions (service role)             Postgres
 ─────────────────                    ─────────────────────────────            ──────────
  1. paste PAT  ───────────────────▶  set_org_airtable_key  ───────────────▶  Vault (encrypted)
- 2. "Load schema" ────────────────▶  airtable-describe-base
+ 2. "Load schema" ────────────────▶  airtable-schema
                                        └─ get_org_airtable_key (Vault)
                                        └─ Airtable Meta API (tables/fields/options)
                                      ◀─ {tables, fields, options, schemaAccessible}
@@ -104,15 +104,19 @@ server-side with the Vault key.
 - Add `airtable_city_key text`, unique per org (partial unique where not null) — the catalog link.
 
 **`show_dates`**
-- Drop `session_3` (Airtable carries two sessions; YAGNI).
-- Keep `session_1`, `session_2` (now both mapped, from "1. Show"/"2. Show"), `venue` (synced text),
-  and the unique `airtable_record_id` (idempotent upsert key).
+- Keep `session_1`, `session_2`, **and `session_3`** (all retained). `session_1`/`session_2` map
+  from "1. Show"/"2. Show"; `session_3` maps only if a third session field is configured (it stays
+  untouched for Fever's two-session base). `venue` stays synced text; the unique `airtable_record_id`
+  remains the idempotent upsert key.
 
 **`app_settings` (per-org keys)**
-- New `airtable_field_map` (JSON): e.g.
-  `{ "date": "Datum", "program": "Program", "sub_program": "Sub-Programm", "city": "City", "venue": "Venue", "session_1": "1. Show", "session_2": "2. Show" }`.
-- Keep `airtable_base_id`, `airtable_table_name`, `airtable_sync_enabled`.
+- New `airtable_field_map` (JSON), written by the mapping UI — never hand-edited as raw JSON: e.g.
+  `{ "date": "Datum", "program": "Program", "sub_program": "Sub-Programm", "city": "City", "venue": "Venue", "session_1": "1. Show", "session_2": "2. Show", "session_3": null }` (`session_3` optional).
+- Keep `airtable_base_id`, `airtable_table_name`, `airtable_sync_enabled` — but in the happy path
+  `base_id`/`table_name` are **chosen from dropdowns populated from the PAT** (§7/§8), not typed.
 - **Remove** the dead `filter_mappings` key and its Settings UI.
+- All these per-org keys are edited through the Settings → Airtable Sync UI (§8); there is no
+  raw-JSON editing surface.
 
 **`airtable_sync_log` (summary — extended)**
 - Add `imported_count int`, `new_count int`, `updated_count int`, `held_count int`,
@@ -131,6 +135,11 @@ server-side with the Vault key.
 - `bookings`: `CREATE UNIQUE INDEX … ON bookings (show_date_id, artist_id) WHERE status <> 'cancelled'`.
 - `derive_org_id_from_show_date_id()` (bookings): also `RAISE` if the row's `artist_id` resolves to
   a different `org_id` than the derived one — closes the cross-org artist gap.
+
+**Custom (extensible) fields (Phase 6 — see §14)**
+- `show_dates.custom jsonb not null default '{}'` (synced extras bag; `artists`/`shows` get one
+  later, additively).
+- New `custom_field_definitions` table (per-org, per-entity, typed; `UNIQUE (org_id, entity, key)`).
 
 ## 6. The mapping model
 
@@ -151,36 +160,52 @@ automated poll *never* creates a `shows` or `cities` row — it only resolves ag
 
 ## 7. Schema-read edge function + fallback
 
-**New function: `airtable-describe-base`** (`supabase/functions/airtable-describe-base/`)
-- Auth: user JWT, `requireOrgRole(org_id, ['admin'])`.
-- Reads the org PAT via `get_org_airtable_key`; calls the Airtable Meta API
-  `GET https://api.airtable.com/v0/meta/bases/{baseId}/tables`.
-- Returns `{ schemaAccessible: true, tables: [{ id, name, fields: [{ name, type, options? }] }] }`.
-- If the Meta API responds 403 / insufficient scope, return `{ schemaAccessible: false }` (no
-  error toast — it's an expected fallback signal). The PAT is never included in the response.
+**New function: `airtable-schema`** (`supabase/functions/airtable-schema/`)
+- Auth: user JWT, `requireOrgRole(org_id, ['admin'])`. Reads the org PAT via `get_org_airtable_key`;
+  the PAT is never returned to the client.
+- Two modes — a single Airtable scope (`schema.bases:read`) gates both:
+  - **No `baseId`** → `GET https://api.airtable.com/v0/meta/bases` →
+    `{ schemaAccessible: true, bases: [{ id, name }] }`, so the admin never types a base ID.
+  - **With `baseId`** → `GET …/meta/bases/{baseId}/tables` →
+    `{ schemaAccessible: true, tables: [{ id, name, fields: [{ name, type, options? }] }] }`.
+- On 403 / insufficient scope, return `{ schemaAccessible: false }` (expected fallback signal, not
+  an error). Because one scope gates both calls, a PAT unlocks the whole guided flow (base → table →
+  fields) or none of it → a single, unified manual fallback.
 - Follows the project DI pattern: `handle(req, deps)` + `realDeps()`; shared `http.ts`/`auth.ts`.
 
-**Fallback behavior:** when `schemaAccessible` is false, the mapping UI renders typed text inputs
-for field names (today's manual style) and skips option-linking dropdowns (the admin links by
-typing option values, or the run holds-and-reports until links exist). A banner explains that
-granting the PAT `schema.bases:read` scope unlocks the guided selector.
+**Fallback behavior:** when `schemaAccessible` is false, the mapping UI renders **typed inputs for
+base ID, table name, and field names** (today's manual style) and skips option-linking dropdowns
+(the admin types option values, or the run holds-and-reports until links exist). A banner explains
+that granting the PAT `schema.bases:read` scope unlocks the guided selector (base / table / field
+dropdowns).
 
 ## 8. Settings UI (Admin → Airtable Sync)
 
 Replaces the current Airtable tab + deletes the "Filter Mappings" card.
 
-1. **Connection** — base ID, table name, write-only key (unchanged), enable toggle.
-2. **Field mapping** — a "Load schema from Airtable" button calls `airtable-describe-base`.
-   - Success: a dropdown per Showflow field (Date, Program, Sub-program, City, Venue, Session 1,
-     Session 2), options = the table's fields. Saves to `airtable_field_map`.
-   - Fallback: typed inputs, with the scope banner.
+1. **Connection** — paste the write-only key + enable toggle; then pick **base** and **table** from
+   dropdowns populated by `airtable-schema` from the PAT (no typing base IDs). Falls back to typed
+   base ID + table name only when scope is missing.
+2. **Field mapping** — a dropdown per Showflow field (Date, Program, Sub-program, City, Venue,
+   Session 1, Session 2, **Session 3 — optional**), options = the selected table's fields. Saves to
+   `airtable_field_map`. Fallback: typed field-name inputs, with the scope banner.
 3. **Catalog links** — lists the chosen Program/Sub-program and City fields' options; each row links
    to (or imports as) a Showflow show / city, with slot-count inputs on shows. Unlinked options are
    flagged.
 4. **Last sync report** — reads `airtable_sync_log` + `airtable_sync_record_log`: counts, and a
    table of held records with their reason and a deep link to the Airtable record.
 
+Any Airtable field *not* bound to a core field shows a **"capture as custom field"** toggle here
+(type pre-filled from Airtable; filterable/sortable) — see §14.
+
 ## 9. Sync engine rewrite (`airtable-poll`)
+
+**This replaces the current `airtable-poll` in place** — same function, same cron (`*/5 * * * *`),
+same `X-Cron-Secret` auth, same per-org loop, the Vault key fetch (`get_org_airtable_key`),
+pagination, and batched tier-1 offer opening are all **kept**. What changes: it reads
+`airtable_field_map` + the selected base/table from `app_settings` (per-org via `resolveOrgSetting`),
+resolves shows/cities against the **linked catalog keys** from §8, and writes the new sync records.
+No parallel function, no cron change.
 
 Per org, per record:
 1. `date ← record[field_map.date]`. Missing → `held_unresolved` (reason "missing date").
@@ -189,7 +214,7 @@ Per org, per record:
    `"program '<value>' not linked"`).
 3. Resolve city: `cities` by `airtable_city_key`. No link → import with `city_id = NULL` and note
    it on the record log (city is non-fatal; date still imports).
-4. Carry `venue` (text), `session_1`, `session_2` (parsed times).
+4. Carry `venue` (text), `session_1`, `session_2`, and `session_3` if mapped (parsed times).
 5. Upsert `show_dates` on `airtable_record_id` (insert = `imported_new`, update = `updated`).
    `org_id` is set by the derive trigger.
 6. Append an `airtable_sync_record_log` row for the outcome.
@@ -216,7 +241,7 @@ imported from a non-empty table. Run `status`: `success` only when `held_count =
 
 - **Unit (vitest):** field-map resolution + option-link resolution as pure functions
   (`src/data/airtableMapping.ts`), incl. missing-field, unlinked-option, null-city, time-parse.
-- **Edge (Deno):** `airtable-describe-base.handle` with `makeFakeDeps` — schema success, 403 → 
+- **Edge (Deno):** `airtable-schema.handle` with `makeFakeDeps` — list-bases mode, describe-base mode, 403 → 
   `schemaAccessible:false`, PAT never leaked. `airtable-poll.handle` fed a fake Airtable page using
   the **real** field names (`Datum`/`Program`/…) asserting rows land + held items logged + a sync
   report row written (the regression test for today's silent no-op).
@@ -231,13 +256,16 @@ imported from a non-empty table. Run `status`: `success` only when `held_count =
 
 1. **Foundation (DB):** slot columns on `shows`; migrate `sub_program_slots_defaults` → `shows`;
    retrofit `sync_show_date_status`; drop the JSON + its recompute trigger; `bookings` dup guard;
-   artist↔org guard; drop `session_3`. Update CLAUDE.md/app-logic.md slot + booking sections.
+   artist↔org guard. Update CLAUDE.md/app-logic.md slot + booking sections.
 2. **Mapping model:** `airtable-describe-base` function; `airtable_field_map` + `airtable_key`
    columns; Settings field-mapping + catalog-linking UI; delete `filter_mappings`. Docs.
 3. **Sync rewrite + observability:** rewrite `airtable-poll` off the map/links; extend
    `airtable_sync_log`; add `airtable_sync_record_log`; sync report UI + admin notification. Docs.
 4. **Cities & venue polish:** city linking UX; confirm `venue`/`session_2` carry through. Docs.
 5. **Identity/contact dedup:** collapse `profiles`/`artists` contact fields (separate, independent).
+6. **Custom (extensible) synced fields:** `show_dates.custom jsonb` + `custom_field_definitions`
+   table; the capture toggle in the mapping UI; typed/filterable/sortable via the editor + filter
+   system; built to generalize to artists/shows (§14).
 
 App-logic.md also needs its stale `availability` / `user_roles` / approval-flow sections corrected
 (they describe dropped objects) — folded into Phase 1's docs pass.
@@ -250,3 +278,63 @@ App-logic.md also needs its stale `availability` / `user_roles` / approval-flow 
   unique across programs (true in the sample). If not, link on the `(program, sub_program)` pair.
 - **Slot defaults on bulk import:** import with NULL slots ("needs config") vs a default. Lean: NULL,
   so it's a deliberate, visible config step.
+
+## 14. Custom (extensible) synced fields — Phase 6
+
+Lets an org admin capture Airtable fields beyond Showflow's core schema as **typed, filterable,
+sortable** custom fields — built to generalize across record types, starting with `show_dates`.
+Records the decision in [ADR-0009](../../adr/0009-extensible-synced-fields.md).
+
+**Storage**
+- Per-entity value bag: `show_dates.custom jsonb not null default '{}'` (add `artists.custom` /
+  `shows.custom` later, additively, when needed). Per-row JSONB is naturally org-scoped — a key only
+  exists on the rows that have it, so there is **no shared-schema pollution across tenants**. That is
+  the reason this is JSONB rather than per-tenant columns (ADR-0009 + the pooled model, ADR-0003).
+- New table **`custom_field_definitions`** (per-org config): `id`, `org_id`, `entity`
+  (`show_dates` | `artists` | `shows`), `key`, `label`, `type` (`text|number|date|boolean|select`),
+  `source` (`airtable`), `source_field` (the Airtable field name), `options jsonb` (for `select`),
+  `filterable bool`, `sortable bool`, timestamps. `UNIQUE (org_id, entity, key)`. Org-isolation RLS +
+  admin write, same template as every tenant table. A table (not `app_settings` JSON like the other
+  editor config) because definitions are relational and typed, need a uniqueness constraint, and are
+  read by both the sync and the filter/sort layer.
+
+**Typing (auto from Airtable)**
+- §7's schema read already returns each Airtable field's type, so a captured field's `type` defaults
+  from Airtable (`number`→number, `date`→date, `singleSelect`→select + its options, else text);
+  the admin can override. Type drives correct sort/filter (numbers as numbers, dates as dates) —
+  values are cast per `type`, e.g. `(custom->>'capacity')::numeric`.
+
+**Surfacing (reuses the editor)**
+- Custom fields extend the existing column system: `pageColumnDefs` gains a custom column per
+  definition for the page's entity (a `{ kind: 'custom', key, type }` marker), flowing through the
+  same `resolveColumnTemplate` + visibility/order/role machinery and the per-org `orgEditorConfig`.
+  They render alongside core columns; cells read `row.custom[key]` and format by type. No parallel
+  column system.
+
+**Filter & sort**
+- Filterable/sortable definitions wire into the existing filter controls; the filter builder reads
+  `type` to produce the right predicate + cast. Performance: a GIN index on each `custom` column,
+  plus optional expression indexes (`((custom->>'<key>')::<type>)`) for hot filtered/sorted fields.
+
+**Sync wiring**
+- After core resolution, `airtable-poll` loads the org's `custom_field_definitions` where
+  `source='airtable'` and writes `record[source_field]` into `<entity>.custom[key]`, coerced by
+  `type`. Custom fields are **non-fatal**: a missing/blank value just leaves the key absent — it
+  never holds or drops a date.
+
+**Boundary (unchanged from discussion)**
+- Custom fields are **display/filter/sort metadata — they do not drive booking logic** (eligibility,
+  offers, slots, status run on core columns). If one becomes load-bearing, a developer **promotes it
+  to a real typed column** via the normal migration path. JSONB for the long tail; a real column when
+  it earns it.
+
+**Tests**
+- pgTAP: `custom_field_definitions` RLS/org-isolation + `UNIQUE(org_id,entity,key)`; `custom` default.
+  Unit: type coercion + filter-predicate building. Edge: `airtable-poll` writes the custom bag from
+  defined fields. Component: editor lists custom columns; filter/sort honor type. E2E: admin captures
+  an extra Airtable field → it appears, filters, and sorts.
+
+**Generalization**
+- `show_dates` ships first. Extending to `artists`/`shows` is additive: add a `custom jsonb` column
+  to that table and allow its `entity` value — the definitions table, editor pathway, and filter/sort
+  layer already handle it.
