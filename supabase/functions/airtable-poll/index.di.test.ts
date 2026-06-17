@@ -12,15 +12,17 @@
  *  - Invalid baseId format → org skipped, sync_log error row carries org_id
  *  - No Vault key → org skipped, no fetch
  *  - Fetch URL and Authorization header shape (key from the Vault RPC)
- *  - Field mapping: Date, Show, Sub Program, City, Session 1 variants
- *  - Show name resolution (program|sub_program key, fallback to program-only)
- *  - Unresolvable show → skipped record, count in totals
+ *  - Field mapping driven by app_settings.airtable_field_map (Date/SubProgram/City/Session)
+ *  - Show resolution by airtable_program_key; city by airtable_city_key (strict, no name match)
+ *  - Unresolvable show → record held, held count in totals
+ *  - Unlinked city → city_id null + non-fatal note in the per-record log
  *  - New-date detection: insert + invokeFunction('open-offer-tier')
  *  - Existing-date detection: update only, no invokeFunction call
- *  - Totals shape: { orgs_synced, processed, new_dates, tiers_opened, skipped }
+ *  - Totals shape: { orgs_synced, processed, new_dates, updated, held, tiers_opened }
  *  - Batch resilience: one invokeFunction reject → others still run, still 200
  *  - Airtable API error → run still 200 with orgs_synced 0; sync_log error row w/ org_id
  *  - airtable_sync_log written (with org_id) on success and error
+ *  - Per-record airtable_sync_record_log written; admin notification when held set changes
  *
  * NOT COVERED (noted):
  *  - Multi-page Airtable pagination (offset handling) — single-page only tested.
@@ -40,6 +42,7 @@ const ENABLED_SETTINGS = [
   { when: { key: "airtable_sync_enabled" }, data: [{ org_id: ORG, value: true }] },
   { when: { key: "airtable_base_id" }, data: [{ org_id: ORG, value: "appABCDEFGHIJKLMNO" }] }, // 17-char valid format
   { when: { key: "airtable_table_name" }, data: [{ org_id: ORG, value: "ShowDates" }] },
+  { when: { key: "airtable_field_map" }, data: [{ org_id: ORG, value: { date: "Date", sub_program: "SubProgram", city: "City", session_1: "Session 1", session_2: "Session 2" } }] },
 ];
 
 /** Airtable API response with one record */
@@ -71,7 +74,7 @@ function makeHappyDeps(opts: {
     airtableRecords = [
       makeRecord("recNEW001", {
         Date: "2026-07-15",
-        Show: "TestShow",
+        SubProgram: "TestShow",
         City: "Berlin",
         "Session 1": "T20:00:00",
       }),
@@ -94,14 +97,14 @@ function makeHappyDeps(opts: {
         ...ENABLED_SETTINGS,
       ],
       organizations: { data: [{ id: ORG }], error: null },
-      // shows: loaded once per org via .select('id, program, sub_program').eq('org_id', ORG).limit(10000)
+      // shows: loaded once per org via .select('id, airtable_program_key').eq('org_id', ORG).limit(10000)
       shows: {
-        data: [{ id: "show-uuid-1", program: "TestShow", sub_program: null }],
+        data: [{ id: "show-uuid-1", airtable_program_key: "TestShow" }],
         error: null,
       },
-      // cities: loaded once per org
+      // cities: loaded once per org, keyed by airtable_city_key
       cities: {
-        data: [{ id: "city-uuid-berlin", name: "Berlin" }],
+        data: [{ id: "city-uuid-berlin", airtable_city_key: "Berlin" }],
         error: null,
       },
       // show_dates: existing rows keyed by airtable_record_id
@@ -109,8 +112,11 @@ function makeHappyDeps(opts: {
         data: existingShowDates,
         error: null,
       },
-      // airtable_sync_log: just accept insert silently
-      airtable_sync_log: { data: null, error: null },
+      // airtable_sync_log: insert now does .select('id').single(); also serves the prev-log maybeSingle()
+      airtable_sync_log: { data: { id: "log-1" }, error: null },
+      airtable_sync_record_log: { data: [], error: null },
+      org_memberships: { data: [], error: null },
+      notifications: { data: null, error: null },
     },
     rpcs: { get_org_airtable_key: { data: "key", error: null } },
     fetchImpl: resolvedFetchImpl,
@@ -315,12 +321,16 @@ Deno.test("airtable-poll: fetch called with correct Airtable URL and Bearer toke
         { when: { key: "airtable_sync_enabled" }, data: [{ org_id: ORG, value: true }] },
         { when: { key: "airtable_base_id" }, data: [{ org_id: ORG, value: "appABCDEFGHIJKLMNO" }] },
         { when: { key: "airtable_table_name" }, data: [{ org_id: ORG, value: "My Table" }] },
+        { when: { key: "airtable_field_map" }, data: [{ org_id: ORG, value: { date: "Date", sub_program: "SubProgram" } }] },
       ],
       organizations: { data: [{ id: ORG }], error: null },
       shows: { data: [], error: null },
       cities: { data: [], error: null },
       show_dates: { data: [], error: null },
-      airtable_sync_log: { data: null, error: null },
+      airtable_sync_log: { data: { id: "log-1" }, error: null },
+      airtable_sync_record_log: { data: [], error: null },
+      org_memberships: { data: [], error: null },
+      notifications: { data: null, error: null },
     },
     rpcs: { get_org_airtable_key: { data: "my-api-key-xyz", error: null } },
     fetchImpl,
@@ -371,7 +381,7 @@ Deno.test("airtable-poll: maps Date/Show/City/Session fields and inserts show_da
   const records = [
     makeRecord("recABC123", {
       Date: "2026-08-20",
-      Show: "TestShow",
+      SubProgram: "TestShow",
       City: "Berlin",
       "Session 1": "T19:30:00",
     }),
@@ -411,49 +421,14 @@ Deno.test("airtable-poll: maps Date/Show/City/Session fields and inserts show_da
   assertEquals("org_id" in payload, false);
 });
 
-Deno.test("airtable-poll: accepts alternate field name variants (date/show/city/session_1)", async () => {
-  const insertedPayloads: unknown[] = [];
-
-  const records = [
-    makeRecord("recVAR001", {
-      date: "2026-09-01", // lowercase 'date'
-      show: "TestShow", // lowercase 'show'
-      city: "berlin", // lowercase city name
-      session_1: "14:00", // lowercase session_1 (no T prefix)
-    }),
-  ];
-
-  const { deps } = makeHappyDeps({ airtableRecords: records });
-
-  const originalFrom = deps.admin.from.bind(deps.admin);
-  (deps.admin as any).from = (table: string) => {
-    const chain = originalFrom(table);
-    if (table === "show_dates") {
-      const originalInsert = chain.insert.bind(chain);
-      chain.insert = (payload: unknown) => {
-        insertedPayloads.push(payload);
-        return (originalInsert as (x: unknown) => ReturnType<typeof originalInsert>)(payload);
-      };
-    }
-    return chain;
-  };
-
-  const res = await handle(authReq(), deps);
-  assertEquals(res.status, 200);
-  assertEquals(insertedPayloads.length >= 1, true, "Expected insert with lowercase field names");
-  const payload = insertedPayloads[0] as Record<string, unknown>;
-  assertEquals(payload.date, "2026-09-01");
-  assertEquals(payload.session_1, "14:00");
-});
-
 Deno.test("airtable-poll: session_1 defaults to 00:00 when field missing", async () => {
   const insertedPayloads: unknown[] = [];
 
   const records = [
     makeRecord("recNOSESSION", {
       Date: "2026-10-10",
-      Show: "TestShow",
-      // No Session 1 / session_1 / Start Time field
+      SubProgram: "TestShow",
+      // No Session 1 field → session_1 defaults to "00:00"
     }),
   ];
 
@@ -481,7 +456,7 @@ Deno.test("airtable-poll: city_id is null when city not in DB", async () => {
   const records = [
     makeRecord("recNOCITY001", {
       Date: "2026-11-01",
-      Show: "TestShow",
+      SubProgram: "TestShow",
       City: "Atlantis", // not in cities table
     }),
   ];
@@ -504,17 +479,17 @@ Deno.test("airtable-poll: city_id is null when city not in DB", async () => {
   assertEquals(payload.city_id, null);
 });
 
-Deno.test("airtable-poll: record without Date field is skipped entirely", async () => {
+Deno.test("airtable-poll: record without Date field is held, not inserted", async () => {
   const insertedPayloads: unknown[] = [];
 
   const records = [
     makeRecord("recNODATE001", {
-      Show: "TestShow",
-      // No Date field
+      SubProgram: "TestShow",
+      // No Date field → held_unresolved
     }),
     makeRecord("recWITHDATE", {
       Date: "2026-12-01",
-      Show: "TestShow",
+      SubProgram: "TestShow",
     }),
   ];
 
@@ -538,117 +513,19 @@ Deno.test("airtable-poll: record without Date field is skipped entirely", async 
   assertEquals(payload.airtable_record_id, "recWITHDATE");
 });
 
-// ─── Show name resolution ─────────────────────────────────────────────────────
+// ─── Show resolution by airtable_program_key (held when unlinked) ─────────────
 
-Deno.test("airtable-poll: resolves show by (program, sub_program) key — exact match wins", async () => {
-  const insertedPayloads: unknown[] = [];
-
-  const records = [
-    makeRecord("recSUBPROG001", {
-      Date: "2026-07-01",
-      Show: "TestShow",
-      "Sub Program": "Alpha",
-    }),
-  ];
-
-  const { deps } = makeFakeDeps({
-    tables: {
-      app_settings: [
-        { when: { key: "cron_secret" }, data: { value: "secret123" } },
-        ...ENABLED_SETTINGS,
-      ],
-      organizations: { data: [{ id: ORG }], error: null },
-      shows: {
-        data: [
-          { id: "show-generic", program: "TestShow", sub_program: null },
-          { id: "show-alpha", program: "TestShow", sub_program: "Alpha" },
-        ],
-        error: null,
-      },
-      cities: { data: [], error: null },
-      show_dates: { data: [], error: null },
-      airtable_sync_log: { data: null, error: null },
-    },
-    rpcs: { get_org_airtable_key: { data: "key", error: null } },
-    fetchImpl: () => Promise.resolve(makeAirtableResponse(records)) as Promise<Response>,
-  });
-
-  const originalFrom = deps.admin.from.bind(deps.admin);
-  (deps.admin as any).from = (table: string) => {
-    const chain = originalFrom(table);
-    if (table === "show_dates") {
-      const orig = chain.insert.bind(chain);
-      chain.insert = (p: unknown) => { insertedPayloads.push(p); return (orig as (x: unknown) => ReturnType<typeof orig>)(p); };
-    }
-    return chain;
-  };
-
-  await handle(authReq(), deps);
-  assertEquals(insertedPayloads.length >= 1, true);
-  const payload = insertedPayloads[0] as Record<string, unknown>;
-  // Exact (program, sub_program) match should win
-  assertEquals(payload.show_id, "show-alpha");
-});
-
-Deno.test("airtable-poll: falls back to program-only match when sub_program absent in DB", async () => {
-  const insertedPayloads: unknown[] = [];
-
-  const records = [
-    makeRecord("recFALLBACK", {
-      Date: "2026-07-02",
-      Show: "TestShow",
-      "Sub Program": "Beta", // DB has no Beta sub_program row
-    }),
-  ];
-
-  const { deps } = makeFakeDeps({
-    tables: {
-      app_settings: [
-        { when: { key: "cron_secret" }, data: { value: "secret123" } },
-        ...ENABLED_SETTINGS,
-      ],
-      organizations: { data: [{ id: ORG }], error: null },
-      shows: {
-        data: [
-          { id: "show-generic", program: "TestShow", sub_program: null }, // only program-only row
-        ],
-        error: null,
-      },
-      cities: { data: [], error: null },
-      show_dates: { data: [], error: null },
-      airtable_sync_log: { data: null, error: null },
-    },
-    rpcs: { get_org_airtable_key: { data: "key", error: null } },
-    fetchImpl: () => Promise.resolve(makeAirtableResponse(records)) as Promise<Response>,
-  });
-
-  const originalFrom = deps.admin.from.bind(deps.admin);
-  (deps.admin as any).from = (table: string) => {
-    const chain = originalFrom(table);
-    if (table === "show_dates") {
-      const orig = chain.insert.bind(chain);
-      chain.insert = (p: unknown) => { insertedPayloads.push(p); return (orig as (x: unknown) => ReturnType<typeof orig>)(p); };
-    }
-    return chain;
-  };
-
-  await handle(authReq(), deps);
-  assertEquals(insertedPayloads.length >= 1, true);
-  const payload = insertedPayloads[0] as Record<string, unknown>;
-  assertEquals(payload.show_id, "show-generic");
-});
-
-Deno.test("airtable-poll: unresolvable show → record skipped, skipped count in totals", async () => {
+Deno.test("airtable-poll: unresolvable show → record held, held count in totals", async () => {
   const insertedPayloads: unknown[] = [];
 
   const records = [
     makeRecord("recUNKNOWN", {
       Date: "2026-07-03",
-      Show: "UnknownShow",
+      SubProgram: "UnknownShow", // no show has this airtable_program_key → held
     }),
     makeRecord("recKNOWN", {
       Date: "2026-07-04",
-      Show: "TestShow",
+      SubProgram: "TestShow", // linked to show-uuid-1
     }),
   ];
 
@@ -667,10 +544,10 @@ Deno.test("airtable-poll: unresolvable show → record skipped, skipped count in
   const res = await handle(authReq(), deps);
   assertEquals(res.status, 200);
   const body = await res.json();
-  // Only 1 of 2 records should result in an insert (the known show)
+  // Only the linked record results in an insert.
   assertEquals(insertedPayloads.length, 1);
-  // The skipped count should be 1 (unresolved show)
-  assertEquals(body.skipped, 1);
+  // The held count should be 1 (unlinked program).
+  assertEquals(body.held, 1);
 });
 
 // ─── New-date detection: invokeFunction ──────────────────────────────────────
@@ -678,7 +555,7 @@ Deno.test("airtable-poll: unresolvable show → record skipped, skipped count in
 Deno.test("airtable-poll: new date → invokeFunction('open-offer-tier', { show_date_id, tier: 1 })", async () => {
   const { deps, invokeCalls } = makeHappyDeps({
     airtableRecords: [
-      makeRecord("recNEW001", { Date: "2026-07-15", Show: "TestShow" }),
+      makeRecord("recNEW001", { Date: "2026-07-15", SubProgram: "TestShow" }),
     ],
   });
 
@@ -710,8 +587,9 @@ Deno.test("airtable-poll: new date → invokeFunction('open-offer-tier', { show_
   assertEquals(typeof body.orgs_synced, "number");
   assertEquals(typeof body.processed, "number");
   assertEquals(typeof body.new_dates, "number");
+  assertEquals(typeof body.updated, "number");
+  assertEquals(typeof body.held, "number");
   assertEquals(typeof body.tiers_opened, "number");
-  assertEquals(typeof body.skipped, "number");
 
   assertEquals(insertCalled, true, "insert should have been called");
   assertEquals(body.orgs_synced, 1);
@@ -729,7 +607,7 @@ Deno.test("airtable-poll: existing date → update only, NO invokeFunction call"
   const updateArgs: unknown[] = [];
 
   const records = [
-    makeRecord("recEXISTING", { Date: "2026-07-20", Show: "TestShow" }),
+    makeRecord("recEXISTING", { Date: "2026-07-20", SubProgram: "TestShow" }),
   ];
 
   const { deps, invokeCalls } = makeHappyDeps({
@@ -760,11 +638,12 @@ Deno.test("airtable-poll: existing date → update only, NO invokeFunction call"
   const offerCalls = invokeCalls.filter((c) => c.name === "open-offer-tier");
   assertEquals(offerCalls.length, 0);
 
-  // Update should have been called with date and session_1
+  // Update should have been called with the new date. session_1 is only set on the
+  // update payload when mapped & parseable; this record has no Session 1, so it is absent.
   assertEquals(updateArgs.length >= 1, true, "update should have been called");
   const updatePayload = updateArgs[0] as Record<string, unknown>;
   assertEquals(updatePayload.date, "2026-07-20");
-  assertExists(updatePayload.session_1 !== undefined, "update payload should have session_1");
+  assertEquals("session_1" in updatePayload, false);
 });
 
 // ─── Totals shape ─────────────────────────────────────────────────────────────
@@ -780,7 +659,10 @@ Deno.test("airtable-poll: totals contain all required fields on success (0 recor
       shows: { data: [], error: null },
       cities: { data: [], error: null },
       show_dates: { data: [], error: null },
-      airtable_sync_log: { data: null, error: null },
+      airtable_sync_log: { data: { id: "log-1" }, error: null },
+      airtable_sync_record_log: { data: [], error: null },
+      org_memberships: { data: [], error: null },
+      notifications: { data: null, error: null },
     },
     rpcs: { get_org_airtable_key: { data: "key", error: null } },
     fetchImpl: () => Promise.resolve(makeAirtableResponse([])) as Promise<Response>,
@@ -790,19 +672,21 @@ Deno.test("airtable-poll: totals contain all required fields on success (0 recor
   assertEquals(res.status, 200);
   const body = await res.json();
 
-  // All required fields
+  // All required fields (new totals shape — no `skipped`)
   assertEquals(typeof body.orgs_synced, "number");
   assertEquals(typeof body.processed, "number");
   assertEquals(typeof body.new_dates, "number");
+  assertEquals(typeof body.updated, "number");
+  assertEquals(typeof body.held, "number");
   assertEquals(typeof body.tiers_opened, "number");
-  assertEquals(typeof body.skipped, "number");
 
   // One org ran but produced no records
   assertEquals(body.orgs_synced, 1);
   assertEquals(body.processed, 0);
   assertEquals(body.new_dates, 0);
+  assertEquals(body.updated, 0);
+  assertEquals(body.held, 0);
   assertEquals(body.tiers_opened, 0);
-  assertEquals(body.skipped, 0);
 });
 
 // ─── Batch resilience ─────────────────────────────────────────────────────────
@@ -813,9 +697,9 @@ Deno.test("airtable-poll: one invokeFunction rejection → others still run, sti
    * Assert: response is 200, tiers_opened = 2 (not 3), processed = 3.
    */
   const newRecords = [
-    makeRecord("recBATCH001", { Date: "2026-08-01", Show: "TestShow" }),
-    makeRecord("recBATCH002", { Date: "2026-08-02", Show: "TestShow" }),
-    makeRecord("recBATCH003", { Date: "2026-08-03", Show: "TestShow" }),
+    makeRecord("recBATCH001", { Date: "2026-08-01", SubProgram: "TestShow" }),
+    makeRecord("recBATCH002", { Date: "2026-08-02", SubProgram: "TestShow" }),
+    makeRecord("recBATCH003", { Date: "2026-08-03", SubProgram: "TestShow" }),
   ];
 
   // Map from record id -> generated show_date uuid
@@ -887,7 +771,8 @@ Deno.test("airtable-poll: one invokeFunction rejection → others still run, sti
 
 // ─── Airtable API error ───────────────────────────────────────────────────────
 
-Deno.test("airtable-poll: Airtable API error → run still 200, org skipped (orgs_synced 0)", async () => {
+Deno.test("airtable-poll: Airtable API error → run still 200, org skipped (orgs_synced 0), error log row", async () => {
+  const syncLogInserts: unknown[] = [];
   const { deps } = makeFakeDeps({
     tables: {
       app_settings: [
@@ -898,27 +783,45 @@ Deno.test("airtable-poll: Airtable API error → run still 200, org skipped (org
       shows: { data: [], error: null },
       cities: { data: [], error: null },
       show_dates: { data: [], error: null },
-      airtable_sync_log: { data: null, error: null },
+      airtable_sync_log: { data: { id: "log-1" }, error: null },
+      airtable_sync_record_log: { data: [], error: null },
+      org_memberships: { data: [], error: null },
+      notifications: { data: null, error: null },
     },
     rpcs: { get_org_airtable_key: { data: "key", error: null } },
     // Return a non-ok response from Airtable
     fetchImpl: () =>
       Promise.resolve(
-        new Response("Unauthorized", { status: 401 }),
+        new Response("Unauthorized", { status: 500 }),
       ) as Promise<Response>,
   });
 
+  const originalFrom = deps.admin.from.bind(deps.admin);
+  (deps.admin as any).from = (table: string) => {
+    const chain = originalFrom(table);
+    if (table === "airtable_sync_log") {
+      const orig = chain.insert.bind(chain);
+      chain.insert = (p: unknown) => { syncLogInserts.push(p); return (orig as (x: unknown) => ReturnType<typeof orig>)(p); };
+    }
+    return chain;
+  };
+
+  // syncOrg throws on the Airtable error; handle() catches + continues → still 200 (no throw out of handle()).
   const res = await handle(authReq(), deps);
-  // syncOrg throws on the Airtable error; handle() logs + continues → still 200.
   assertEquals(res.status, 200);
   const body = await res.json();
   // The one org failed before completing, so it's not counted as synced.
   assertEquals(body.orgs_synced, 0);
+  // A visible error log row was written carrying org_id, before the throw.
+  assertEquals(syncLogInserts.length, 1);
+  const logRow = syncLogInserts[0] as Record<string, unknown>;
+  assertEquals(logRow.org_id, ORG);
+  assertEquals(logRow.status, "error");
 });
 
 // ─── airtable_sync_log written ────────────────────────────────────────────────
 
-Deno.test("airtable-poll: inserts a success row (with org_id) into airtable_sync_log on clean run", async () => {
+Deno.test("airtable-poll: inserts a success row (with org_id + zero counts) into airtable_sync_log on clean run", async () => {
   const syncLogInserts: unknown[] = [];
 
   const { deps } = makeFakeDeps({
@@ -931,7 +834,10 @@ Deno.test("airtable-poll: inserts a success row (with org_id) into airtable_sync
       shows: { data: [], error: null },
       cities: { data: [], error: null },
       show_dates: { data: [], error: null },
-      airtable_sync_log: { data: null, error: null },
+      airtable_sync_log: { data: { id: "log-1" }, error: null },
+      airtable_sync_record_log: { data: [], error: null },
+      org_memberships: { data: [], error: null },
+      notifications: { data: null, error: null },
     },
     rpcs: { get_org_airtable_key: { data: "key", error: null } },
     fetchImpl: () => Promise.resolve(makeAirtableResponse([])) as Promise<Response>,
@@ -956,6 +862,8 @@ Deno.test("airtable-poll: inserts a success row (with org_id) into airtable_sync
   assertEquals(logRow.sync_type, "airtable_poll");
   assertEquals(logRow.status, "success");
   assertEquals(logRow.records_processed, 0);
+  assertEquals(logRow.imported_count, 0);
+  assertEquals(logRow.held_count, 0);
   // synced_at should be a valid ISO string
   assertExists(logRow.synced_at);
   assertEquals(typeof logRow.synced_at, "string");
@@ -974,11 +882,14 @@ Deno.test("airtable-poll: inserts an error row (with org_id) into airtable_sync_
       shows: { data: [], error: null },
       cities: { data: [], error: null },
       show_dates: { data: [], error: null },
-      airtable_sync_log: { data: null, error: null },
+      airtable_sync_log: { data: { id: "log-1" }, error: null },
+      airtable_sync_record_log: { data: [], error: null },
+      org_memberships: { data: [], error: null },
+      notifications: { data: null, error: null },
     },
     rpcs: { get_org_airtable_key: { data: "key", error: null } },
     fetchImpl: () =>
-      Promise.resolve(new Response("Forbidden", { status: 403 })) as Promise<Response>,
+      Promise.resolve(new Response("Forbidden", { status: 500 })) as Promise<Response>,
   });
 
   const originalFrom = deps.admin.from.bind(deps.admin);
@@ -1018,7 +929,10 @@ Deno.test("airtable-poll: synced_at uses deps.now() (fixed to 2026-06-01T12:00:0
       shows: { data: [], error: null },
       cities: { data: [], error: null },
       show_dates: { data: [], error: null },
-      airtable_sync_log: { data: null, error: null },
+      airtable_sync_log: { data: { id: "log-1" }, error: null },
+      airtable_sync_record_log: { data: [], error: null },
+      org_memberships: { data: [], error: null },
+      notifications: { data: null, error: null },
     },
     rpcs: { get_org_airtable_key: { data: "key", error: null } },
     fetchImpl: () => Promise.resolve(makeAirtableResponse([])) as Promise<Response>,
@@ -1038,6 +952,122 @@ Deno.test("airtable-poll: synced_at uses deps.now() (fixed to 2026-06-01T12:00:0
   assertEquals(syncLogInserts.length, 1);
   const logRow = syncLogInserts[0] as Record<string, unknown>;
   assertEquals(logRow.synced_at, fixedNow.toISOString());
+});
+
+// ─── Unlinked city is non-fatal + noted ───────────────────────────────────────
+
+Deno.test("airtable-poll: unlinked city is non-fatal — record still imports with city_id null + a note", async () => {
+  const insertedPayloads: unknown[] = [];
+  const recordLogInserts: unknown[] = [];
+
+  const records = [
+    makeRecord("recCITYUNLINKED", {
+      Date: "2026-09-09",
+      SubProgram: "TestShow", // linked → show-uuid-1
+      City: "Atlantis", // not in cities → unlinked
+    }),
+  ];
+
+  const { deps } = makeHappyDeps({ airtableRecords: records });
+
+  const originalFrom = deps.admin.from.bind(deps.admin);
+  (deps.admin as any).from = (table: string) => {
+    const chain = originalFrom(table);
+    if (table === "show_dates") {
+      const originalInsert = chain.insert.bind(chain);
+      chain.insert = (payload: unknown) => {
+        const p = payload as Record<string, unknown>;
+        insertedPayloads.push(p);
+        const insertChain = (originalInsert as (x: unknown) => ReturnType<typeof originalInsert>)(payload);
+        // Give the inserted row a stable id so it counts as a new date.
+        (insertChain as any).single = () => Promise.resolve({ data: { id: `sd-${p.airtable_record_id}` }, error: null });
+        return insertChain;
+      };
+    }
+    if (table === "airtable_sync_record_log") {
+      const orig = chain.insert.bind(chain);
+      chain.insert = (p: unknown) => { recordLogInserts.push(p); return (orig as (x: unknown) => ReturnType<typeof orig>)(p); };
+    }
+    return chain;
+  };
+
+  const res = await handle(authReq(), deps);
+  assertEquals(res.status, 200);
+  const body = await res.json();
+
+  // The record STILL imports (unlinked city is non-fatal), with city_id null.
+  assertEquals(insertedPayloads.length, 1);
+  const payload = insertedPayloads[0] as Record<string, unknown>;
+  assertEquals(payload.show_id, "show-uuid-1");
+  assertEquals(payload.city_id, null);
+  assertEquals(body.held, 0);
+  assertEquals(body.new_dates, 1);
+
+  // The per-record log row notes the city wasn't linked, with action imported_new.
+  assertEquals(recordLogInserts.length, 1);
+  const rows = recordLogInserts[0] as Array<Record<string, unknown>>;
+  const row = rows.find((r) => r.airtable_record_id === "recCITYUNLINKED");
+  assertExists(row);
+  assertEquals(row!.action, "imported_new");
+  assertEquals(String(row!.reason).includes("Atlantis"), true, `reason should mention the unlinked city: ${row!.reason}`);
+  assertEquals(String(row!.reason).includes("not linked"), true, `reason should note the city is not linked: ${row!.reason}`);
+});
+
+// ─── Held-set change → admin notification ──────────────────────────────────────
+
+Deno.test("airtable-poll: a newly-held record notifies org admins (one notification per admin)", async () => {
+  const notificationInserts: unknown[] = [];
+
+  const records = [
+    makeRecord("recNEWHELD", {
+      Date: "2026-09-10",
+      SubProgram: "NeverLinkedShow", // unlinked → held
+    }),
+  ];
+
+  // Seed an admin recipient and an empty previous-run held set (prev log exists with held_count 0,
+  // and the previous held-record select returns []), so this held record is NEW vs. the last run.
+  const { deps } = makeFakeDeps({
+    tables: {
+      app_settings: [
+        { when: { key: "cron_secret" }, data: { value: "secret123" } },
+        ...ENABLED_SETTINGS,
+      ],
+      organizations: { data: [{ id: ORG }], error: null },
+      shows: { data: [{ id: "show-uuid-1", airtable_program_key: "TestShow" }], error: null },
+      cities: { data: [{ id: "city-uuid-berlin", airtable_city_key: "Berlin" }], error: null },
+      show_dates: { data: [], error: null },
+      airtable_sync_log: { data: { id: "log-1" }, error: null },
+      airtable_sync_record_log: { data: [], error: null }, // prev-run held set is empty
+      org_memberships: { data: [{ user_id: "admin-1" }], error: null },
+      notifications: { data: null, error: null },
+    },
+    rpcs: { get_org_airtable_key: { data: "key", error: null } },
+    fetchImpl: () => Promise.resolve(makeAirtableResponse(records)) as Promise<Response>,
+  });
+
+  const originalFrom = deps.admin.from.bind(deps.admin);
+  (deps.admin as any).from = (table: string) => {
+    const chain = originalFrom(table);
+    if (table === "notifications") {
+      const orig = chain.insert.bind(chain);
+      chain.insert = (p: unknown) => { notificationInserts.push(p); return (orig as (x: unknown) => ReturnType<typeof orig>)(p); };
+    }
+    return chain;
+  };
+
+  const res = await handle(authReq(), deps);
+  assertEquals(res.status, 200);
+  const body = await res.json();
+  assertEquals(body.held, 1);
+
+  // Exactly one notifications insert, carrying a row for admin-1 tied to this sync log.
+  assertEquals(notificationInserts.length, 1, "admins should be notified exactly once");
+  const rows = notificationInserts[0] as Array<Record<string, unknown>>;
+  assertEquals(rows.length, 1);
+  assertEquals(rows[0].user_id, "admin-1");
+  assertEquals(rows[0].type, "airtable_sync_held");
+  assertEquals(rows[0].related_entity_id, "log-1");
 });
 
 // ─── OPTIONS preflight ────────────────────────────────────────────────────────

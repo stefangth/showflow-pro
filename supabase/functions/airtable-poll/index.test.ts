@@ -1,108 +1,117 @@
 /**
- * Contract tests for airtable-poll edge function.
+ * Contract tests for the airtable-poll edge function.
  *
- * Airtable is represented by a stubbed response object here; these tests avoid
- * live Airtable/Supabase calls while documenting the sync contract. Tests that
- * represent the not-yet-wired live sync path are skipped in CI until that path
- * is promoted to a real integration environment.
+ * These exercise the REAL `handle` (no re-implemented model) against the
+ * field-map/key contract: resolution is driven by app_settings.airtable_field_map +
+ * the catalog-link keys (shows.airtable_program_key, cities.airtable_city_key), and the
+ * outcome vocabulary is imported_new / updated / held_unresolved (no "skipped").
  */
 import { assertEquals } from "../_shared/test-asserts.ts";
+import { makeFakeDeps, makeRequest } from "../_shared/testing.ts";
+import { handle } from "./index.ts";
 
-const skipInCi = Deno.env.get("CI") === "true";
+const ORG = "00000000-0000-0000-0000-0000000000c1";
 
-type AirtableRecord = { id: string; fields: Record<string, unknown> };
-type PollSettings = {
-  airtable_sync_enabled?: boolean;
-  airtable_base_id?: string;
-  airtable_table_name?: string;
-};
+const FIELD_MAP = { date: "Date", sub_program: "SubProgram", city: "City" };
 
-type PollContractResult =
-  | { skipped: true; reason: string }
-  | { processed: number; new_dates: number; tiers_opened: number };
-
-function applyAirtablePollContract(
-  settings: PollSettings,
-  records: AirtableRecord[],
-): PollContractResult {
-  if (!settings.airtable_sync_enabled) {
-    return { skipped: true, reason: "sync disabled" };
-  }
-
-  if (!settings.airtable_base_id || !settings.airtable_table_name) {
-    return {
-      skipped: true,
-      reason: "airtable_base_id or airtable_table_name not configured",
-    };
-  }
-
-  const processableRecords = records.filter((record) =>
-    Boolean(
-      record.fields.Date ?? record.fields.date ?? record.fields["Show Date"],
-    )
-  );
-
-  return {
-    processed: processableRecords.length,
-    new_dates: processableRecords.length,
-    tiers_opened: processableRecords.length,
-  };
+function airtableResponse(records: unknown[]) {
+  return new Response(JSON.stringify({ records }), { status: 200, headers: { "Content-Type": "application/json" } });
 }
 
-Deno.test({
-  name: "airtable-poll: disabled flag short-circuits before reading records",
-  ignore: skipInCi,
-  fn() {
-    const result = applyAirtablePollContract(
-      {
-        airtable_sync_enabled: false,
-        airtable_base_id: "app123",
-        airtable_table_name: "Shows",
-      },
-      [{ id: "rec1", fields: { Date: "2026-06-01" } }],
-    );
-
-    assertEquals(result, { skipped: true, reason: "sync disabled" });
-  },
-});
-
-Deno.test({
-  name:
-    "airtable-poll: contract maps stub records to processed dates and tier openings",
-  ignore: skipInCi,
-  fn() {
-    const stubResponse = {
-      records: [
-        {
-          id: "rec-new-1",
-          fields: { Date: "2026-06-01", Show: "Magic", City: "Berlin" },
-        },
-        {
-          id: "rec-new-2",
-          fields: { "Show Date": "2026-06-02", Show: "Magic", City: "Hamburg" },
-        },
-        { id: "rec-missing-date", fields: { Show: "Magic" } },
+/** Seed an enabled+keyed ORG with one linked show + city, plus the log/notify tables. */
+function seededDeps(records: unknown[], fetchImpl?: typeof fetch) {
+  return makeFakeDeps({
+    tables: {
+      app_settings: [
+        { when: { key: "cron_secret" }, data: { value: "secret123" } },
+        { when: { key: "airtable_sync_enabled" }, data: [{ org_id: ORG, value: true }] },
+        { when: { key: "airtable_base_id" }, data: [{ org_id: ORG, value: "appABCDEFGHIJKLMNO" }] },
+        { when: { key: "airtable_table_name" }, data: [{ org_id: ORG, value: "Shows" }] },
+        { when: { key: "airtable_field_map" }, data: [{ org_id: ORG, value: FIELD_MAP }] },
       ],
-    } satisfies { records: AirtableRecord[] };
+      organizations: { data: [{ id: ORG }], error: null },
+      shows: { data: [{ id: "show-magic", airtable_program_key: "Magic" }], error: null },
+      cities: { data: [{ id: "city-berlin", airtable_city_key: "Berlin" }], error: null },
+      show_dates: { data: [], error: null },
+      airtable_sync_log: { data: { id: "log-1" }, error: null },
+      airtable_sync_record_log: { data: [], error: null },
+      org_memberships: { data: [], error: null },
+      notifications: { data: null, error: null },
+    },
+    rpcs: { get_org_airtable_key: { data: "key", error: null } },
+    fetchImpl: fetchImpl ?? (() => Promise.resolve(airtableResponse(records)) as Promise<Response>),
+  });
+}
 
-    const result = applyAirtablePollContract(
-      {
-        airtable_sync_enabled: true,
-        airtable_base_id: "app123",
-        airtable_table_name: "Shows",
-      },
-      stubResponse.records,
-    );
+const authReq = () => makeRequest({ method: "POST", headers: { "X-Cron-Secret": "secret123" } });
 
-    assertEquals(result, { processed: 2, new_dates: 2, tiers_opened: 2 });
-  },
+Deno.test("airtable-poll contract: disabled flag short-circuits — org not synced", async () => {
+  const { deps } = makeFakeDeps({
+    tables: {
+      app_settings: [
+        { when: { key: "cron_secret" }, data: { value: "secret123" } },
+        { when: { key: "airtable_sync_enabled" }, data: [{ org_id: ORG, value: false }] },
+        { when: { key: "airtable_base_id" }, data: [{ org_id: ORG, value: "appABCDEFGHIJKLMNO" }] },
+        { when: { key: "airtable_table_name" }, data: [{ org_id: ORG, value: "Shows" }] },
+        { when: { key: "airtable_field_map" }, data: [{ org_id: ORG, value: FIELD_MAP }] },
+      ],
+      organizations: { data: [{ id: ORG }], error: null },
+    },
+    rpcs: { get_org_airtable_key: { data: "key", error: null } },
+  });
+  const res = await handle(authReq(), deps);
+  assertEquals(res.status, 200);
+  const body = await res.json();
+  assertEquals(body.orgs_synced, 0);
 });
 
-Deno.test({
-  name: "airtable-poll: missing cron secret is unauthorized",
-  ignore: skipInCi,
-  fn() {
-    const cronSecretHeader: string | null = null;
-    assertEquals(cronSecretHeader === null, true);
-  },
+Deno.test("airtable-poll contract: key-linked records import; missing-date / unlinked-program records are held", async () => {
+  const insertedPayloads: unknown[] = [];
+  const records = [
+    // linked program key "Magic" + linked city "Berlin" → imported_new
+    { id: "rec-new-1", fields: { Date: "2026-06-01", SubProgram: "Magic", City: "Berlin" } },
+    // missing date → held_unresolved
+    { id: "rec-missing-date", fields: { SubProgram: "Magic" } },
+    // unlinked program key → held_unresolved
+    { id: "rec-unlinked", fields: { Date: "2026-06-02", SubProgram: "NotLinked" } },
+  ];
+
+  const { deps } = seededDeps(records);
+  const originalFrom = deps.admin.from.bind(deps.admin);
+  (deps.admin as any).from = (table: string) => {
+    const chain = originalFrom(table);
+    if (table === "show_dates") {
+      const originalInsert = chain.insert.bind(chain);
+      chain.insert = (payload: unknown) => {
+        const p = payload as Record<string, unknown>;
+        insertedPayloads.push(p);
+        const insertChain = (originalInsert as (x: unknown) => ReturnType<typeof originalInsert>)(payload);
+        (insertChain as any).single = () => Promise.resolve({ data: { id: `sd-${p.airtable_record_id}` }, error: null });
+        return insertChain;
+      };
+    }
+    return chain;
+  };
+
+  const res = await handle(authReq(), deps);
+  assertEquals(res.status, 200);
+  const body = await res.json();
+
+  // Only the key-linked record imports; the other two are held (not "skipped").
+  assertEquals(insertedPayloads.length, 1);
+  const payload = insertedPayloads[0] as Record<string, unknown>;
+  assertEquals(payload.show_id, "show-magic");
+  assertEquals(payload.city_id, "city-berlin");
+  assertEquals(payload.airtable_record_id, "rec-new-1");
+  assertEquals(body.orgs_synced, 1);
+  assertEquals(body.new_dates, 1);
+  assertEquals(body.held, 2);
+});
+
+Deno.test("airtable-poll contract: missing cron secret is unauthorized", async () => {
+  const { deps } = makeFakeDeps({
+    tables: { app_settings: [{ when: { key: "cron_secret" }, data: { value: "secret123" } }] },
+  });
+  const res = await handle(makeRequest({ method: "POST" }), deps);
+  assertEquals(res.status, 401);
 });
