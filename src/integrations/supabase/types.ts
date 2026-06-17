@@ -16,31 +16,46 @@ export type Database = {
     Tables: {
       airtable_sync_log: {
         Row: {
+          details: Json | null
           error_details: string | null
+          held_count: number | null
           id: string
+          imported_count: number | null
+          new_count: number | null
           org_id: string
           records_processed: number | null
           status: string
           sync_type: string
           synced_at: string
+          updated_count: number | null
         }
         Insert: {
+          details?: Json | null
           error_details?: string | null
+          held_count?: number | null
           id?: string
+          imported_count?: number | null
+          new_count?: number | null
           org_id: string
           records_processed?: number | null
           status: string
           sync_type: string
           synced_at?: string
+          updated_count?: number | null
         }
         Update: {
+          details?: Json | null
           error_details?: string | null
+          held_count?: number | null
           id?: string
+          imported_count?: number | null
+          new_count?: number | null
           org_id?: string
           records_processed?: number | null
           status?: string
           sync_type?: string
           synced_at?: string
+          updated_count?: number | null
         }
         Relationships: [
           {
@@ -48,6 +63,64 @@ export type Database = {
             columns: ["org_id"]
             isOneToOne: false
             referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      airtable_sync_record_log: {
+        Row: {
+          action: string
+          airtable_record_id: string | null
+          created_at: string
+          id: string
+          org_id: string
+          raw_fields: Json | null
+          reason: string | null
+          show_date_id: string | null
+          sync_log_id: string
+        }
+        Insert: {
+          action: string
+          airtable_record_id?: string | null
+          created_at?: string
+          id?: string
+          org_id: string
+          raw_fields?: Json | null
+          reason?: string | null
+          show_date_id?: string | null
+          sync_log_id: string
+        }
+        Update: {
+          action?: string
+          airtable_record_id?: string | null
+          created_at?: string
+          id?: string
+          org_id?: string
+          raw_fields?: Json | null
+          reason?: string | null
+          show_date_id?: string | null
+          sync_log_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "airtable_sync_record_log_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "airtable_sync_record_log_show_date_id_fkey"
+            columns: ["show_date_id"]
+            isOneToOne: false
+            referencedRelation: "show_dates"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "airtable_sync_record_log_sync_log_id_fkey"
+            columns: ["sync_log_id"]
+            isOneToOne: false
+            referencedRelation: "airtable_sync_log"
             referencedColumns: ["id"]
           },
         ]
