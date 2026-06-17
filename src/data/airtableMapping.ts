@@ -25,21 +25,6 @@ export const SHOWFLOW_FIELDS: ShowflowFieldDef[] = [
   { key: "session_3", label: "Session 3", optional: true },
 ];
 
-const clean = (v: string | null | undefined): string | null => {
-  const t = (v ?? "").trim();
-  return t.length ? t : null;
-};
-
-/** Grain-agnostic program link key. program present → "program|sub_program"; else the sub_program
- *  value alone. Returns null when neither yields content. Must match the Phase 3 poll's resolver. */
-export function buildProgramKey(program: string | null | undefined, subProgram: string | null | undefined): string | null {
-  const p = clean(program);
-  const s = clean(subProgram);
-  if (p && s) return `${p}|${s}`;
-  return s ?? p;
-}
-
-/** City link key — the city option value, trimmed. */
-export function buildCityKey(city: string | null | undefined): string | null {
-  return clean(city);
-}
+// Single source of truth (ADR-0010): the link-key helpers live in the shared edge module so the
+// poll and this UI compose keys identically. Re-exported here so frontend imports are unchanged.
+export { buildProgramKey, buildCityKey } from "../../supabase/functions/_shared/airtableKey.ts";
