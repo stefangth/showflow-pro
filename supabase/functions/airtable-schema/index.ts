@@ -55,6 +55,8 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
     const headers = { Authorization: `Bearer ${apiKey as string}` };
 
     // ── Mode B: describe one base's tables + fields ───────────────────────────
+    // The tables endpoint returns every table in one response (not offset-paginated,
+    // unlike /meta/bases below), so there is no page loop here.
     if (body?.baseId) {
       const res = await deps.fetch(`${AIRTABLE_META}/bases/${encodeURIComponent(body.baseId)}/tables`, { headers });
       const fail = await airtableFailure(res, "Airtable schema read failed");
