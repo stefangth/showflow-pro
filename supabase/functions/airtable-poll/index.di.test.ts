@@ -253,7 +253,7 @@ Deno.test("airtable-poll: invalid base_id format → 200, org skipped, sync_log 
         { when: { key: "airtable_table_name" }, data: [{ org_id: ORG, value: "ShowDates" }] },
       ],
       organizations: { data: [{ id: ORG }], error: null },
-      airtable_sync_log: { data: null, error: null },
+      airtable_sync_log: { data: { id: "log-1" }, error: null },
     },
     rpcs: { get_org_airtable_key: { data: "key", error: null } },
   });
@@ -292,7 +292,7 @@ Deno.test("airtable-poll: org with no Vault key → 200, org skipped, no fetch",
       shows: { data: [], error: null },
       cities: { data: [], error: null },
       show_dates: { data: [], error: null },
-      airtable_sync_log: { data: null, error: null },
+      airtable_sync_log: { data: { id: "log-1" }, error: null },
     },
     rpcs: { get_org_airtable_key: { data: null, error: null } }, // no key
     fetchImpl: () => { fetched++; return Promise.resolve(makeAirtableResponse([])) as Promise<Response>; },
@@ -374,7 +374,7 @@ Deno.test("airtable-poll: fetch called with correct Airtable URL and Bearer toke
 
 // ─── Field mapping ────────────────────────────────────────────────────────────
 
-Deno.test("airtable-poll: maps Date/Show/City/Session fields and inserts show_date", async () => {
+Deno.test("airtable-poll: maps Date/SubProgram/City/Session fields and inserts show_date", async () => {
   const insertedPayloads: unknown[] = [];
 
   // We intercept the insert by wrapping the fake client's from() method
