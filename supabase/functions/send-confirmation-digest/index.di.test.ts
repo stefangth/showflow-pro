@@ -662,3 +662,57 @@ Deno.test("send-confirmation-digest: no active org matches the hour → skipped"
   const body = await res.json();
   assertEquals(body.skipped, true);
 });
+
+// ── ADR-0011: registered artist → login email first ───────────────────────────
+// BERLIN_20_CEST and ORG_1 are already defined above; reuse them.
+// CONF_SETTINGS: confirmation-digest-specific settings seed for these tests.
+const CONF_SETTINGS = [
+  { when: { key: "cron_secret" }, data: { value: "s" } },
+  { when: { key: "confirmation_digest_hour_berlin" }, data: [{ org_id: null, value: 20 }] },
+];
+
+Deno.test("send-confirmation-digest: registered artist → login email wins; greeting uses display_name", async () => {
+  const confirmed = [{
+    id: "b1", artist_id: "a1",
+    artists: { id: "a1", name: "Talent Label", email: "booking@x.com", user_id: "u1" },
+    show_dates: { date: "2026-06-10", shows: { program: "P", sub_program: "S" }, cities: { name: "Berlin" } },
+  }];
+  const { deps, invokeCalls } = makeFakeDeps({
+    now: BERLIN_20_CEST,
+    tables: {
+      app_settings: CONF_SETTINGS,
+      organizations: { data: [{ id: ORG_1 }], error: null },
+      bookings: { data: confirmed, error: null },
+    },
+    rpcs: { resolve_user_contacts: { data: [{ user_id: "u1", email: "login@x.com", display_name: "Ada Lovelace" }] } },
+  });
+  const res = await handle(makeRequest({ headers: cronOK }), deps);
+  assertEquals((await res.json()).digests_sent, 1);
+  const email = invokeCalls.find((c) => c.name === "send-transactional-email");
+  assertExists(email);
+  const msg = email!.body as { recipient_email: string; templateData?: { displayName?: string } };
+  assertEquals(msg.recipient_email, "login@x.com");
+  assertEquals(msg.templateData?.displayName, "Ada Lovelace");
+});
+
+Deno.test("send-confirmation-digest: registered artist with blank booking email → delivered at login email (gap regression)", async () => {
+  const confirmed = [{
+    id: "b1", artist_id: "a1",
+    artists: { id: "a1", name: "Talent", email: null, user_id: "u1" },
+    show_dates: { date: "2026-06-10", shows: { program: "P", sub_program: "S" }, cities: { name: "Berlin" } },
+  }];
+  const { deps, invokeCalls } = makeFakeDeps({
+    now: BERLIN_20_CEST,
+    tables: {
+      app_settings: CONF_SETTINGS,
+      organizations: { data: [{ id: ORG_1 }], error: null },
+      bookings: { data: confirmed, error: null },
+    },
+    rpcs: { resolve_user_contacts: { data: [{ user_id: "u1", email: "login@x.com", display_name: null }] } },
+  });
+  const res = await handle(makeRequest({ headers: cronOK }), deps);
+  assertEquals((await res.json()).digests_sent, 1);
+  const email = invokeCalls.find((c) => c.name === "send-transactional-email");
+  assertExists(email);
+  assertEquals((email!.body as { recipient_email: string }).recipient_email, "login@x.com");
+});

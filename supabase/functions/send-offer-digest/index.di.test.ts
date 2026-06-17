@@ -658,3 +658,69 @@ Deno.test("send-offer-digest: no active org matches the hour → skipped", async
   const body = await res.json();
   assertEquals(body.skipped, true);
 });
+
+// ── ADR-0011: registered artist → login email first ───────────────────────────
+
+Deno.test("send-offer-digest: registered artist → login email wins; greeting uses display_name", async () => {
+  const pending = [{
+    id: "b1", artist_id: "a1",
+    artists: { id: "a1", name: "Talent Label", email: "booking@x.com", user_id: "u1" },
+    show_dates: { date: "2026-06-10", shows: { program: "P", sub_program: "S" }, cities: { name: "Berlin" } },
+  }];
+  const { deps, invokeCalls } = makeFakeDeps({
+    now: BERLIN_19_CEST,
+    tables: {
+      app_settings: APP_SETTINGS_SEED,
+      organizations: { data: [{ id: ORG_1 }], error: null },
+      bookings: { data: pending, error: null },
+    },
+    rpcs: { resolve_user_contacts: { data: [{ user_id: "u1", email: "login@x.com", display_name: "Ada Lovelace" }] } },
+  });
+  const res = await handle(makeRequest({ headers: cronOK }), deps);
+  assertEquals((await res.json()).digests_sent, 1);
+  const email = invokeCalls.find((c) => c.name === "send-transactional-email");
+  assertExists(email);
+  const msg = email!.body as { recipient_email: string; templateData?: { displayName?: string } };
+  assertEquals(msg.recipient_email, "login@x.com");
+  assertEquals(msg.templateData?.displayName, "Ada Lovelace");
+});
+
+Deno.test("send-offer-digest: unregistered artist (no user_id) → booking email + talent label", async () => {
+  const pending = [{
+    id: "b1", artist_id: "a1",
+    artists: { id: "a1", name: "External Act", email: "booking@x.com", user_id: null },
+    show_dates: { date: "2026-06-10", shows: { program: "P", sub_program: "S" }, cities: { name: "Berlin" } },
+  }];
+  const { deps, invokeCalls } = baseDeps({ bookings: { data: pending, error: null } });
+  const res = await handle(makeRequest({ headers: cronOK }), deps);
+  assertEquals((await res.json()).digests_sent, 1);
+  const email = invokeCalls.find((c) => c.name === "send-transactional-email");
+  assertExists(email);
+  const msg = email!.body as { recipient_email: string; templateData?: { displayName?: string } };
+  assertEquals(msg.recipient_email, "booking@x.com");
+  assertEquals(msg.templateData?.displayName, "External Act");
+});
+
+Deno.test("send-offer-digest: registered artist with blank booking email → delivered at login email (gap regression)", async () => {
+  const pending = [{
+    id: "b1", artist_id: "a1",
+    artists: { id: "a1", name: "Talent", email: null, user_id: "u1" },
+    show_dates: { date: "2026-06-10", shows: { program: "P", sub_program: "S" }, cities: { name: "Berlin" } },
+  }];
+  const { deps, invokeCalls } = makeFakeDeps({
+    now: BERLIN_19_CEST,
+    tables: {
+      app_settings: APP_SETTINGS_SEED,
+      organizations: { data: [{ id: ORG_1 }], error: null },
+      bookings: { data: pending, error: null },
+    },
+    rpcs: { resolve_user_contacts: { data: [{ user_id: "u1", email: "login@x.com", display_name: null }] } },
+  });
+  const res = await handle(makeRequest({ headers: cronOK }), deps);
+  assertEquals((await res.json()).digests_sent, 1);
+  const email = invokeCalls.find((c) => c.name === "send-transactional-email");
+  assertExists(email);
+  const msg = email!.body as { recipient_email: string; templateData?: { displayName?: string } };
+  assertEquals(msg.recipient_email, "login@x.com");
+  assertEquals(msg.templateData?.displayName, "Talent");
+});
