@@ -15,7 +15,7 @@ import { fetchAirtableBases, fetchAirtableTables, type AirtableTable } from "@/d
 import { SHOWFLOW_FIELDS, buildProgramKey, buildCityKey, type AirtableFieldMap } from "@/data/airtableMapping";
 import { fetchShowsForLinking, linkShowAirtableKey, importShowsFromOptions } from "@/data/settings";
 import { fetchCitiesForLinking, linkCityAirtableKey, importCitiesFromOptions } from "@/data/cities";
-import { fetchLatestSyncLog, fetchHeldRecords } from "@/data/airtableSync";
+import { fetchLatestSyncLog, fetchUnresolvedRecords, type UnresolvedRecord } from "@/data/airtableSync";
 
 interface Props {
   orgId: string | null;
@@ -73,13 +73,29 @@ export function AirtableSyncTab({ orgId, get, set }: Props) {
 
   // ── Last sync report ────────────────────────────────────────────────────────
   const syncLogQ = useQuery({ queryKey: ["airtable", "sync-log", orgId], enabled: !!orgId, queryFn: () => fetchLatestSyncLog(supabase, orgId) });
-  const heldQ = useQuery({
-    queryKey: ["airtable", "held", syncLogQ.data?.id ?? null],
+  const unresolvedQ = useQuery({
+    queryKey: ["airtable", "unresolved", syncLogQ.data?.id ?? null],
     enabled: !!syncLogQ.data?.id,
-    queryFn: () => fetchHeldRecords(supabase, syncLogQ.data?.id ?? null),
+    queryFn: () => fetchUnresolvedRecords(supabase, syncLogQ.data?.id ?? null),
   });
   const baseId = get("airtable_base_id", "") as string;
   const recordUrl = (recId: string) => (baseId ? `https://airtable.com/${baseId}/${recId}` : undefined);
+  const unresolved = unresolvedQ.data ?? [];
+  const heldRecords = unresolved.filter((r) => r.action === "held_unresolved");
+  const erroredRecords = unresolved.filter((r) => r.action === "error");
+  const renderRecordRow = (r: UnresolvedRecord) => (
+    <div key={r.id} className="flex items-center justify-between gap-2 border-t border-border pt-2 text-sm">
+      <div className="min-w-0">
+        <div className="font-medium truncate">{r.reason ?? "Unresolved"}</div>
+        <div className="text-xs text-muted-foreground">{new Date(r.created_at).toLocaleString()}</div>
+      </div>
+      {r.airtable_record_id && (
+        recordUrl(r.airtable_record_id)
+          ? <a className="text-xs underline shrink-0" href={recordUrl(r.airtable_record_id)} target="_blank" rel="noreferrer">{r.airtable_record_id}</a>
+          : <span className="text-xs text-muted-foreground shrink-0">{r.airtable_record_id}</span>
+      )}
+    </div>
+  );
 
   /** Distinct option names from a mapped singleSelect field. */
   const optionNames = (fieldName: string | null | undefined): string[] => {
@@ -288,7 +304,7 @@ export function AirtableSyncTab({ orgId, get, set }: Props) {
       <Card>
         <CardHeader>
           <CardTitle className="font-display">Last sync report</CardTitle>
-          <CardDescription>The most recent Airtable poll. Held records were not matched to a linked program — link the option above and they import on the next run.</CardDescription>
+          <CardDescription>The most recent Airtable poll. Held records were not matched to a linked program — link the option above and they import on the next run. Errored records hit a write error and are worth investigating.</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           {!syncLogQ.data ? (
@@ -305,22 +321,16 @@ export function AirtableSyncTab({ orgId, get, set }: Props) {
               {syncLogQ.data.error_details && (
                 <p className="text-sm text-muted-foreground">{syncLogQ.data.error_details}</p>
               )}
-              {(heldQ.data ?? []).length > 0 && (
+              {heldRecords.length > 0 && (
                 <div className="space-y-2">
                   <h4 className="font-display font-semibold text-sm">Held records</h4>
-                  {(heldQ.data ?? []).map((r) => (
-                    <div key={r.id} className="flex items-center justify-between gap-2 border-t border-border pt-2 text-sm">
-                      <div className="min-w-0">
-                        <div className="font-medium truncate">{r.reason ?? "Unresolved"}</div>
-                        <div className="text-xs text-muted-foreground">{new Date(r.created_at).toLocaleString()}</div>
-                      </div>
-                      {r.airtable_record_id && (
-                        recordUrl(r.airtable_record_id)
-                          ? <a className="text-xs underline shrink-0" href={recordUrl(r.airtable_record_id)} target="_blank" rel="noreferrer">{r.airtable_record_id}</a>
-                          : <span className="text-xs text-muted-foreground shrink-0">{r.airtable_record_id}</span>
-                      )}
-                    </div>
-                  ))}
+                  {heldRecords.map(renderRecordRow)}
+                </div>
+              )}
+              {erroredRecords.length > 0 && (
+                <div className="space-y-2">
+                  <h4 className="font-display font-semibold text-sm">Errored records</h4>
+                  {erroredRecords.map(renderRecordRow)}
                 </div>
               )}
             </>
