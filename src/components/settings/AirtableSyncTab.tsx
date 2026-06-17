@@ -15,6 +15,7 @@ import { fetchAirtableBases, fetchAirtableTables, type AirtableTable } from "@/d
 import { SHOWFLOW_FIELDS, buildProgramKey, buildCityKey, type AirtableFieldMap } from "@/data/airtableMapping";
 import { fetchShowsForLinking, linkShowAirtableKey, importShowsFromOptions } from "@/data/settings";
 import { fetchCitiesForLinking, linkCityAirtableKey, importCitiesFromOptions } from "@/data/cities";
+import { fetchLatestSyncLog, fetchHeldRecords } from "@/data/airtableSync";
 
 interface Props {
   orgId: string | null;
@@ -69,6 +70,16 @@ export function AirtableSyncTab({ orgId, get, set }: Props) {
   // ── Catalog data + option resolution ────────────────────────────────────────
   const showsQ = useQuery({ queryKey: ["shows", "linking", orgId], enabled: !!orgId, queryFn: () => fetchShowsForLinking(supabase, orgId) });
   const citiesQ = useQuery({ queryKey: ["cities", "linking", orgId], enabled: !!orgId, queryFn: () => fetchCitiesForLinking(supabase, orgId) });
+
+  // ── Last sync report ────────────────────────────────────────────────────────
+  const syncLogQ = useQuery({ queryKey: ["airtable", "sync-log", orgId], enabled: !!orgId, queryFn: () => fetchLatestSyncLog(supabase, orgId) });
+  const heldQ = useQuery({
+    queryKey: ["airtable", "held", syncLogQ.data?.id ?? null],
+    enabled: !!syncLogQ.data?.id,
+    queryFn: () => fetchHeldRecords(supabase, syncLogQ.data?.id ?? null),
+  });
+  const baseId = get("airtable_base_id", "") as string;
+  const recordUrl = (recId: string) => (baseId ? `https://airtable.com/${baseId}/${recId}` : undefined);
 
   /** Distinct option names from a mapped singleSelect field. */
   const optionNames = (fieldName: string | null | undefined): string[] => {
@@ -272,6 +283,47 @@ export function AirtableSyncTab({ orgId, get, set }: Props) {
           </CardContent>
         </Card>
       )}
+
+      {/* ── Last sync report ───────────────────────────────────────────────── */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="font-display">Last sync report</CardTitle>
+          <CardDescription>The most recent Airtable poll. Held records were not matched to a linked program — link the option above and they import on the next run.</CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          {!syncLogQ.data ? (
+            <p className="text-sm text-muted-foreground">No sync has run yet for this organization.</p>
+          ) : (
+            <>
+              <div className="flex flex-wrap gap-4 text-sm">
+                <div><span className="text-muted-foreground">Status </span><Badge variant={syncLogQ.data.status === "success" ? "secondary" : "outline"}>{syncLogQ.data.status}</Badge></div>
+                <div><span className="text-muted-foreground">Imported </span><strong>{syncLogQ.data.imported_count ?? 0}</strong></div>
+                <div><span className="text-muted-foreground">New </span><strong>{syncLogQ.data.new_count ?? 0}</strong></div>
+                <div><span className="text-muted-foreground">Updated </span><strong>{syncLogQ.data.updated_count ?? 0}</strong></div>
+                <div><span className="text-muted-foreground">Held </span><strong>{syncLogQ.data.held_count ?? 0}</strong></div>
+              </div>
+              {(heldQ.data ?? []).length > 0 && (
+                <div className="space-y-2">
+                  <h4 className="font-display font-semibold text-sm">Held records</h4>
+                  {(heldQ.data ?? []).map((r) => (
+                    <div key={r.id} className="flex items-center justify-between gap-2 border-t border-border pt-2 text-sm">
+                      <div className="min-w-0">
+                        <div className="font-medium truncate">{r.reason ?? "Unresolved"}</div>
+                        <div className="text-xs text-muted-foreground">{new Date(r.created_at).toLocaleString()}</div>
+                      </div>
+                      {r.airtable_record_id && (
+                        recordUrl(r.airtable_record_id)
+                          ? <a className="text-xs underline shrink-0" href={recordUrl(r.airtable_record_id)} target="_blank" rel="noreferrer">{r.airtable_record_id}</a>
+                          : <span className="text-xs text-muted-foreground shrink-0">{r.airtable_record_id}</span>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </>
+          )}
+        </CardContent>
+      </Card>
     </div>
   );
 }

@@ -19,8 +19,13 @@ vi.mock("@/data/cities", () => ({
   linkCityAirtableKey: vi.fn(),
   importCitiesFromOptions: vi.fn(),
 }));
+vi.mock("@/data/airtableSync", () => ({
+  fetchLatestSyncLog: vi.fn(() => Promise.resolve(null)),
+  fetchHeldRecords: vi.fn(() => Promise.resolve([])),
+}));
 
 import { fetchAirtableBases } from "@/data/airtableSchema";
+import { fetchLatestSyncLog, fetchHeldRecords } from "@/data/airtableSync";
 
 function renderTab(initial: Record<string, unknown> = {}) {
   const draft: Record<string, unknown> = { ...initial };
@@ -60,5 +65,29 @@ describe("AirtableSyncTab", () => {
     renderTab();
     expect(screen.queryByText("Field mapping")).not.toBeInTheDocument();
     expect(screen.queryByText("Catalog links")).not.toBeInTheDocument();
+  });
+});
+
+describe("AirtableSyncTab — last sync report", () => {
+  beforeEach(() => vi.clearAllMocks());
+
+  it("renders summary counts and held records from the latest log", async () => {
+    (fetchLatestSyncLog as ReturnType<typeof vi.fn>).mockResolvedValue({
+      id: "log-1", status: "partial", imported_count: 3, new_count: 2, updated_count: 1, held_count: 1, error_details: null, synced_at: "2026-06-17T10:00:00Z",
+    });
+    (fetchHeldRecords as ReturnType<typeof vi.fn>).mockResolvedValue([
+      { id: "r1", airtable_record_id: "recHELD", reason: "program 'X' not linked", created_at: "2026-06-17T10:00:00Z" },
+    ]);
+    renderTab();
+    expect(await screen.findByText("Last sync report")).toBeInTheDocument();
+    expect(await screen.findByText("program 'X' not linked")).toBeInTheDocument();
+    expect(screen.getByText("recHELD")).toBeInTheDocument();
+  });
+
+  it("shows an empty state when the org has never synced", async () => {
+    (fetchLatestSyncLog as ReturnType<typeof vi.fn>).mockResolvedValue(null);
+    (fetchHeldRecords as ReturnType<typeof vi.fn>).mockResolvedValue([]);
+    renderTab();
+    expect(await screen.findByText(/No sync has run yet/i)).toBeInTheDocument();
   });
 });
