@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { buildProgramKey, buildCityKey, normalizeCityName, SHOWFLOW_FIELDS, planCityReconciliation } from "./airtableMapping";
+import { buildProgramKey, buildCityKey, normalizeCityName, SHOWFLOW_FIELDS, planCityReconciliation, groupDuplicateCities } from "./airtableMapping";
 
 describe("airtableMapping key helpers", () => {
   it("buildProgramKey uses sub_program alone when program value is absent", () => {
@@ -57,5 +57,24 @@ describe("planCityReconciliation", () => {
   it("ignores blank options", () => {
     const plan = planCityReconciliation(["   ", ""], existing);
     expect(plan).toEqual({ toLink: [], toCreate: [] });
+  });
+});
+
+describe("groupDuplicateCities", () => {
+  it("groups cities whose names normalize the same (>1 only)", () => {
+    const groups = groupDuplicateCities([
+      { id: "a", name: "Berlin", airtable_city_key: "berlin" },
+      { id: "b", name: "berlin", airtable_city_key: null },
+      { id: "c", name: "Hamburg", airtable_city_key: null },
+    ]);
+    expect(groups).toEqual([
+      { norm: "berlin", cities: [
+        { id: "a", name: "Berlin", airtable_city_key: "berlin" },
+        { id: "b", name: "berlin", airtable_city_key: null },
+      ] },
+    ]);
+  });
+  it("returns [] when there are no duplicates", () => {
+    expect(groupDuplicateCities([{ id: "a", name: "Berlin", airtable_city_key: null }])).toEqual([]);
   });
 });
