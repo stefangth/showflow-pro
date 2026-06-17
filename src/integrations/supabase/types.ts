@@ -1292,6 +1292,10 @@ export type Database = {
           user_id: string
         }[]
       }
+      merge_cities: {
+        Args: { p_losers: string[]; p_survivor: string }
+        Returns: undefined
+      }
       platform_org_stats: {
         Args: never
         Returns: {
