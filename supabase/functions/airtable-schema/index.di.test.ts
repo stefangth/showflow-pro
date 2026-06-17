@@ -159,3 +159,72 @@ Deno.test("airtable-schema: Airtable 401 (bad PAT) → 400 error", async () => {
   assertEquals(res.status, 400);
   assertExists((await res.json()).error);
 });
+
+// ─── Describe base (tables + fields) ─────────────────────────────────────────────
+
+Deno.test("airtable-schema: describe base → tables + fields with options, correct URL", async () => {
+  const urls: string[] = [];
+  const fetchImpl: typeof fetch = (url) => {
+    urls.push(String(url));
+    // Mirrors the real German base (Datum / Program / 1. Show) per spec §3.
+    return Promise.resolve(airtableJson({
+      tables: [{
+        id: "tblEvents",
+        name: "Events",
+        primaryFieldId: "fldDate",
+        fields: [
+          { id: "fldDate", name: "Datum", type: "date" },
+          { id: "fldProg", name: "Program", type: "singleSelect", options: { choices: [{ id: "selA", name: "TJE: Murder", color: "blueLight2" }] } },
+          { id: "fldShow1", name: "1. Show", type: "singleLineText" },
+        ],
+        views: [{ id: "viwGrid", name: "Grid view", type: "grid" }],
+      }],
+    })) as Promise<Response>;
+  };
+  const { deps } = adminDeps({ fetchImpl });
+  const res = await handle(adminReq({ org_id: ORG, baseId: "appKg8xpplxd49Bo6" }), deps);
+  assertEquals(res.status, 200);
+  const body = await res.json();
+  assertEquals(body.schemaAccessible, true);
+  // correct describe-base URL (not the list-bases URL)
+  assertEquals(urls[0], "https://api.airtable.com/v0/meta/bases/appKg8xpplxd49Bo6/tables");
+  assertEquals(body.tables.length, 1);
+  assertEquals(body.tables[0].id, "tblEvents");
+  assertEquals(body.tables[0].name, "Events");
+  assertEquals(body.tables[0].fields.length, 3);
+  // field shape is exactly { id, name, type } when no options are present
+  assertEquals(body.tables[0].fields[0], { id: "fldDate", name: "Datum", type: "date" });
+  // singleSelect options.choices are preserved verbatim (needed later for option-linking + §14)
+  assertEquals(body.tables[0].fields[1].options.choices[0].name, "TJE: Murder");
+  // the table's `views` are dropped — not part of our contract
+  assertEquals("views" in body.tables[0], false);
+});
+
+Deno.test("airtable-schema: describe base 403 (missing scope) → { schemaAccessible: false }", async () => {
+  const { deps } = adminDeps({
+    fetchImpl: () => Promise.resolve(new Response("", { status: 403 })) as Promise<Response>,
+  });
+  const res = await handle(adminReq({ org_id: ORG, baseId: "appXXX" }), deps);
+  assertEquals(res.status, 200);
+  assertEquals((await res.json()).schemaAccessible, false);
+});
+
+Deno.test("airtable-schema: describe base never leaks the PAT", async () => {
+  const { deps } = adminDeps({
+    fetchImpl: () => Promise.resolve(airtableJson({ tables: [] })) as Promise<Response>,
+  });
+  const res = await handle(adminReq({ org_id: ORG, baseId: "appXXX" }), deps);
+  assertEquals(JSON.stringify(await res.json()).includes(PAT), false);
+});
+
+Deno.test("airtable-schema: non-403/401 Airtable error → 502 with detail", async () => {
+  // Covers the airtableFailure 502 branch (now serving both modes). List-bases mode.
+  const { deps } = adminDeps({
+    fetchImpl: () => Promise.resolve(new Response("Service Unavailable", { status: 503 })) as Promise<Response>,
+  });
+  const res = await handle(adminReq({ org_id: ORG }), deps);
+  assertEquals(res.status, 502);
+  const body = await res.json();
+  assertExists(body.error);
+  assertEquals(body.detail, "Service Unavailable");
+});

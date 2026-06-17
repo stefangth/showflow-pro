@@ -10,6 +10,8 @@ const AIRTABLE_META = "https://api.airtable.com/v0/meta";
 const MAX_BASE_PAGES = 10;
 
 interface AirtableBase { id: string; name: string; permissionLevel?: string }
+interface AirtableField { id: string; name: string; type: string; options?: Record<string, unknown> }
+interface AirtableTable { id: string; name: string; fields?: AirtableField[] }
 
 /** Map a non-OK Airtable Meta response to a client response.
  *  403 (missing schema.bases:read scope) is the EXPECTED manual-fallback signal,
@@ -31,7 +33,8 @@ async function airtableFailure(res: Response, label: string): Promise<Response |
  * server-side — it is NEVER returned to the client.
  *
  * Modes (one Airtable scope, schema.bases:read, gates both):
- *  - body has no baseId → list accessible bases.
+ *  - body has no baseId → list accessible bases  → { schemaAccessible: true, bases: [{ id, name }] }.
+ *  - body has a baseId  → describe that base      → { schemaAccessible: true, tables: [{ id, name, fields: [{ id, name, type, options? }] }] }.
  *  - Airtable 403 (no scope) → { schemaAccessible: false } so the UI falls back to typed inputs.
  */
 export async function handle(req: Request, deps: Deps): Promise<Response> {
@@ -50,6 +53,25 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
     const { data: apiKey } = await deps.admin.rpc("get_org_airtable_key", { _org: orgId });
     if (!apiKey) return json({ error: "No Airtable key configured for this organization" }, 400);
     const headers = { Authorization: `Bearer ${apiKey as string}` };
+
+    // ── Mode B: describe one base's tables + fields ───────────────────────────
+    if (body?.baseId) {
+      const res = await deps.fetch(`${AIRTABLE_META}/bases/${encodeURIComponent(body.baseId)}/tables`, { headers });
+      const fail = await airtableFailure(res, "Airtable schema read failed");
+      if (fail) return fail;
+      const data = (await res.json()) as { tables?: AirtableTable[] };
+      const tables = (data.tables ?? []).map((t) => ({
+        id: t.id,
+        name: t.name,
+        fields: (t.fields ?? []).map((f) => ({
+          id: f.id,
+          name: f.name,
+          type: f.type,
+          ...(f.options ? { options: f.options } : {}),
+        })),
+      }));
+      return json({ schemaAccessible: true, tables });
+    }
 
     // ── List accessible bases (offset-paginated) ──────────────────────────────
     const bases: Array<{ id: string; name: string }> = [];
