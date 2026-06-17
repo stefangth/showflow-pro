@@ -142,6 +142,12 @@ export function AirtableSyncTab({ orgId, get, set }: Props) {
     onSuccess: () => { qc.invalidateQueries({ queryKey: ["cities"] }); toast.success("Unlinked"); },
     onError: (e: unknown) => toast.error((e as Error).message ?? "Unlink failed"),
   });
+  const linkCity = useMutation({
+    mutationFn: ({ cityId, key }: { cityId: string; key: string }) => linkCityAirtableKey(supabase, cityId, key),
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ["cities"] }); toast.success("Linked"); },
+    onError: (e: unknown) => toast.error((e as Error).message ?? "Link failed"),
+  });
+  const unlinkedCities = (citiesQ.data ?? []).filter((c) => !c.airtable_city_key);
 
   return (
     <div className="space-y-6">
@@ -288,7 +294,21 @@ export function AirtableSyncTab({ orgId, get, set }: Props) {
                       <span className="text-sm font-medium">{name}</span>
                       {city
                         ? <div className="flex items-center gap-2"><Badge variant="secondary">linked</Badge><Button size="sm" variant="ghost" onClick={() => unlinkCity.mutate(city.id)} disabled={unlinkCity.isPending}>Unlink</Button></div>
-                        : <Badge variant="outline">unlinked</Badge>}
+                        : (
+                          <div className="flex items-center gap-2">
+                            <Badge variant="outline">unlinked</Badge>
+                            {unlinkedCities.length > 0 && key && (
+                              <Select onValueChange={(cityId) => linkCity.mutate({ cityId, key: key! })} disabled={linkCity.isPending}>
+                                <SelectTrigger className="h-8 w-[200px]" aria-label={`link ${name} to an existing city`}>
+                                  <SelectValue placeholder="Link to existing…" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  {unlinkedCities.map((c) => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
+                                </SelectContent>
+                              </Select>
+                            )}
+                          </div>
+                        )}
                     </div>
                   );
                 }) : <p className="text-sm text-muted-foreground">No options on the mapped City field.</p>}
