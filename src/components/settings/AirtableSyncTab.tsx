@@ -12,7 +12,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import { fetchAirtableBases, fetchAirtableTables, type AirtableTable } from "@/data/airtableSchema";
-import { SHOWFLOW_FIELDS, buildProgramKey, buildCityKey, type AirtableFieldMap } from "@/data/airtableMapping";
+import { SHOWFLOW_FIELDS, buildProgramKey, buildCityKey, planCityReconciliation, type AirtableFieldMap } from "@/data/airtableMapping";
 import { fetchShowsForLinking, linkShowAirtableKey, importShowsFromOptions } from "@/data/settings";
 import { fetchCitiesForLinking, linkCityAirtableKey, importCitiesFromOptions } from "@/data/cities";
 import { fetchLatestSyncLog, fetchUnresolvedRecords, type UnresolvedRecord } from "@/data/airtableSync";
@@ -125,11 +125,9 @@ export function AirtableSyncTab({ orgId, get, set }: Props) {
   });
   const importCities = useMutation({
     mutationFn: async () => {
-      const rows = cityOptions
-        .map((name) => ({ name, key: buildCityKey(name) }))
-        .filter((r) => r.key && !cityByKey.has(r.key))
-        .map((r) => ({ name: r.name, key: r.key! }));
-      await importCitiesFromOptions(supabase, orgId!, rows);
+      const plan = planCityReconciliation(cityOptions, citiesQ.data ?? []);
+      for (const l of plan.toLink) await linkCityAirtableKey(supabase, l.cityId, l.key);
+      await importCitiesFromOptions(supabase, orgId!, plan.toCreate);
     },
     onSuccess: () => { qc.invalidateQueries({ queryKey: ["cities"] }); toast.success("Imported city options"); },
     onError: (e: unknown) => toast.error((e as Error).message ?? "Import failed"),
