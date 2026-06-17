@@ -55,29 +55,39 @@ async function openOfferTierBatch(deps: Deps, ids: string[]): Promise<number> {
   return opened;
 }
 
-/** Notify org admins when the held set changes vs. the previous run. */
-async function notifyAdminsIfHeldChanged(
+/** Notify org admins when a sync problem is NEW or worse vs. the previous run:
+ *  a newly-held record (or rising held count), OR a non-empty table that just stopped
+ *  importing anything (catches all-error / all-held / all-stale runs). Quiet while a
+ *  known problem persists unchanged. The report UI always shows the current full state. */
+async function notifyAdminsOnSyncProblem(
   deps: Deps,
   orgId: string,
   syncLogId: string,
-  heldIds: string[],
-  prevHeldIds: Set<string>,
-  prevHeldCount: number,
+  cur: { heldIds: string[]; importedZeroFromNonEmpty: boolean },
+  prev: { heldIds: Set<string>; heldCount: number; imported: number; exists: boolean },
 ): Promise<void> {
-  if (heldIds.length === 0) return;
-  const hasNewHeld = heldIds.some((id) => !prevHeldIds.has(id));
-  if (!hasNewHeld && heldIds.length <= prevHeldCount) return; // nothing newly broken
+  const problem = cur.heldIds.length > 0 || cur.importedZeroFromNonEmpty;
+  if (!problem) return;
+  const hasNewHeld = cur.heldIds.some((id) => !prev.heldIds.has(id));
+  // heldCount safety net covers the rare case where prev's held_count column and its
+  // record-log rows disagree (data drift); hasNewHeld covers the normal path.
+  const heldWorse = hasNewHeld || cur.heldIds.length > prev.heldCount;
+  // Only alarm on zero-import when the previous run was importing (or this is the first run).
+  const newlyZeroImport = cur.importedZeroFromNonEmpty && (!prev.exists || prev.imported > 0);
+  if (!heldWorse && !newlyZeroImport) return;
 
   const { data: admins } = await deps.admin.from("org_memberships").select("user_id").eq("org_id", orgId).eq("role", "admin");
   const recipients = Array.from(new Set((admins ?? []).map((a: { user_id: string }) => a.user_id)));
   if (recipients.length === 0) return;
 
-  const message = `${heldIds.length} Airtable record(s) couldn't be matched and were held. Review the Last sync report in Settings → Airtable.`;
+  const message = cur.heldIds.length > 0
+    ? `${cur.heldIds.length} Airtable record(s) couldn't be matched and were held. Review the Last sync report in Settings → Airtable.`
+    : `The Airtable sync imported 0 records from a non-empty table. Review the Last sync report in Settings → Airtable.`;
   await deps.admin.from("notifications").insert(recipients.map((uid) => ({
     org_id: orgId,
     user_id: uid,
     type: "airtable_sync_held",
-    title: "Airtable sync: records held",
+    title: "Airtable sync: needs attention",
     message,
     related_entity_type: "airtable_sync_log",
     related_entity_id: syncLogId,
@@ -205,25 +215,29 @@ async function syncOrg(deps: Deps, orgId: string, baseId: string, tableName: str
 
   // Previous run's held set (fetched BEFORE inserting this run's log) for change-only notify.
   const { data: prevLog } = await admin
-    .from("airtable_sync_log").select("id, held_count")
+    .from("airtable_sync_log").select("id, held_count, imported_count")
     .eq("org_id", orgId).eq("sync_type", "airtable_poll")
     .order("synced_at", { ascending: false }).limit(1).maybeSingle();
   let prevHeldIds = new Set<string>();
   let prevHeldCount = 0;
+  let prevImported = 0;
   if (prevLog?.id) {
     prevHeldCount = (prevLog.held_count as number | null) ?? 0;
+    prevImported = (prevLog.imported_count as number | null) ?? 0;
     const { data: prevHeld } = await admin
       .from("airtable_sync_record_log").select("airtable_record_id")
       .eq("sync_log_id", prevLog.id).eq("action", "held_unresolved");
     prevHeldIds = new Set((prevHeld ?? []).map((r: { airtable_record_id: string | null }) => r.airtable_record_id ?? ""));
   }
 
-  const status = apiError ? "error" : (held > 0 ? "partial" : "success");
+  const errored = outcomes.filter((o) => o.action === "error").length;
+  const status = apiError ? "error" : (held > 0 || errored > 0 ? "partial" : "success");
   const parts: string[] = [];
   if (apiError) parts.push(apiError);
   if (truncated) parts.push(`Reached MAX_PAGES (${MAX_PAGES}); sync is incomplete`);
   if (tiersFailed > 0) parts.push(`${tiersFailed} of ${newDateIds.length} open-offer-tier calls failed`);
   if (held > 0) parts.push(`${held} record(s) held (unresolved)`);
+  if (errored > 0) parts.push(`${errored} record(s) errored`);
 
   const { data: logRow } = await admin.from("airtable_sync_log").insert({
     org_id: orgId,
@@ -234,7 +248,7 @@ async function syncOrg(deps: Deps, orgId: string, baseId: string, tableName: str
     new_count: newDates,
     updated_count: updated,
     held_count: held,
-    details: { truncated, new: newDates, updated, held, records_seen: recordsSeen },
+    details: { truncated, new: newDates, updated, held, errored, records_seen: recordsSeen },
     error_details: parts.length ? parts.join("; ") : null,
     synced_at: deps.now().toISOString(),
   }).select("id").single();
@@ -250,7 +264,12 @@ async function syncOrg(deps: Deps, orgId: string, baseId: string, tableName: str
       reason: o.reason,
       raw_fields: o.raw_fields,
     })));
-    await notifyAdminsIfHeldChanged(deps, orgId, syncLogId, heldIds, prevHeldIds, prevHeldCount);
+    const importedZeroFromNonEmpty = recordsSeen > 0 && processed === 0;
+    await notifyAdminsOnSyncProblem(
+      deps, orgId, syncLogId,
+      { heldIds, importedZeroFromNonEmpty },
+      { heldIds: prevHeldIds, heldCount: prevHeldCount, imported: prevImported, exists: !!prevLog?.id },
+    );
   }
 
   if (apiError) {
