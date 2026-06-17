@@ -41,7 +41,7 @@ integrity gaps are closed.
 **Non-goals (this initiative)**
 - Two-way sync / authoring shows inside Showflow (Airtable stays the system of record — ADR-0001).
 - Touching the casts / eligibility model beyond what `shows` consolidation requires.
-- Identity/contact deduplication (`profiles`/`artists`) — it's Phase 5 and largely independent.
+- Identity/contact ownership (`profiles`/`artists`) — it's Phase 5 (specced & built separately, ADR-0011) and largely independent.
 - A `venues` table — `venue` stays synced text until it needs attributes (ADR-0001 "Revisit if").
 
 ## 3. Current state (what's broken — for context)
