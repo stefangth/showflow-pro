@@ -75,3 +75,46 @@ export async function upsertOrgSetting(
     .upsert({ org_id: orgId, key, value }, { onConflict: "org_id,key" });
   if (error) throw error;
 }
+
+export interface ShowLink extends ShowWithSlots { airtable_program_key: string | null }
+
+/** Org's shows with slots + Airtable link key, for the catalog-linking UI. */
+export async function fetchShowsForLinking(
+  client: SupabaseClient<Database>,
+  orgId: string | null,
+): Promise<ShowLink[]> {
+  if (!orgId) return [];
+  const { data, error } = await client
+    .from("shows")
+    .select("id, program, sub_program, main_cast_slots, understudy_slots, airtable_program_key")
+    .eq("org_id", orgId).order("program").order("sub_program");
+  if (error) throw error;
+  return (data ?? []) as ShowLink[];
+}
+
+/** Link (or, with null, unlink) a show to an Airtable program-option key. */
+export async function linkShowAirtableKey(
+  client: SupabaseClient<Database>,
+  showId: string,
+  key: string | null,
+): Promise<void> {
+  const { error } = await client.from("shows").update({ airtable_program_key: key }).eq("id", showId);
+  if (error) throw error;
+}
+
+/** Bulk-create shows from Airtable Program options. Slots start NULL ("needs config"); status active.
+ *  Pass only unlinked options (caller dedupes against existing airtable_program_key). */
+export async function importShowsFromOptions(
+  client: SupabaseClient<Database>,
+  orgId: string,
+  rows: Array<{ program: string | null; sub_program: string | null; key: string }>,
+): Promise<void> {
+  if (!rows.length) return;
+  const { error } = await client.from("shows").insert(
+    rows.map((r) => ({
+      org_id: orgId, program: r.program, sub_program: r.sub_program,
+      airtable_program_key: r.key, main_cast_slots: null, understudy_slots: null, status: "active" as const,
+    })),
+  );
+  if (error) throw error;
+}

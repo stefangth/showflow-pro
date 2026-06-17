@@ -23,6 +23,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { toast } from 'sonner';
 import { Settings as SettingsIcon, Database, Bell, Wand2, Save, SlidersHorizontal, MapPin, Plus, Trash2, Clock, AlertTriangle, BookOpen, UserCog, Eye } from 'lucide-react';
 import { upsertOrgSetting, fetchShowsWithSlots, updateShowSlots, type ShowWithSlots } from '@/data/settings';
+import { AirtableSyncTab } from '@/components/settings/AirtableSyncTab';
 import type { City, Cast } from '@/types';
 
 const EMAIL_TEMPLATE_KEYS = [
@@ -393,19 +394,6 @@ export default function SettingsPage() {
       toast.success('Settings saved');
     },
     onError: (e: any) => toast.error(e.message ?? 'Failed to save'),
-  });
-
-  // Airtable API key (write-only; stored in Vault via set_org_airtable_key RPC)
-  const [airtableKey, setAirtableKey] = useState('');
-  const saveAirtableKey = useMutation({
-    mutationFn: async () => {
-      if (!currentOrg) throw new Error('No active organization');
-      if (!airtableKey.trim()) throw new Error('Enter an API key');
-      const { error } = await supabase.rpc('set_org_airtable_key', { _org: currentOrg.id, _key: airtableKey.trim() });
-      if (error) throw error;
-    },
-    onSuccess: () => { setAirtableKey(''); toast.success('Airtable API key saved'); },
-    onError: (e: any) => toast.error(e.message ?? 'Failed to save Airtable key'),
   });
 
   const isAdmin = hasRole('admin');
@@ -1016,79 +1004,10 @@ export default function SettingsPage() {
         </TabsContent>
 
         <TabsContent value="airtable" className="mt-4">
-          <Card>
-            <CardHeader>
-              <CardTitle className="font-display">Airtable Sync</CardTitle>
-              <CardDescription>
-                Pull show schedules from Airtable on a regular interval. The sync runs on a pg_cron schedule — enable this toggle to allow the cron job to process records. Make sure the Airtable base ID, table name, and API key secret are configured first.
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <Label className="font-medium">Enable Airtable sync</Label>
-                  <p className="text-xs text-muted-foreground mt-0.5">Turn polling on or off globally.</p>
-                </div>
-                <Switch
-                  checked={!!get('airtable_sync_enabled', false)}
-                  onCheckedChange={v => set('airtable_sync_enabled', v)}
-                />
-              </div>
-              <Separator />
-              <div className="grid grid-cols-1 gap-4">
-                <div className="space-y-2">
-                  <Label>Airtable base ID</Label>
-                  <Input
-                    placeholder="app1234567890"
-                    value={get('airtable_base_id', '')}
-                    onChange={e => set('airtable_base_id', e.target.value)}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label>Airtable table name</Label>
-                  <Input
-                    placeholder="Shows"
-                    value={get('airtable_table_name', '')}
-                    onChange={e => set('airtable_table_name', e.target.value)}
-                  />
-                </div>
-              </div>
-              {/* Write-only: the key is stored in Vault and never read back into the UI. */}
-              <div className="space-y-2">
-                <Label htmlFor="airtable-key">Airtable API key</Label>
-                <div className="flex gap-2">
-                  <Input id="airtable-key" type="password" autoComplete="off" placeholder="key… (write-only)"
-                    value={airtableKey} onChange={(e) => setAirtableKey(e.target.value)} />
-                  <Button onClick={() => saveAirtableKey.mutate()} disabled={saveAirtableKey.isPending}>Save key</Button>
-                </div>
-                <p className="text-sm text-muted-foreground">Stored encrypted; never displayed. Required for Airtable sync.</p>
-              </div>
-            </CardContent>
-          </Card>
+          <AirtableSyncTab orgId={orgId} get={get} set={set} />
         </TabsContent>
 
         <TabsContent value="filters" className="mt-4 space-y-6">
-          <Card>
-            <CardHeader>
-              <CardTitle className="font-display">Filter Mappings (Airtable)</CardTitle>
-              <CardDescription>
-                Map Showflow filter fields to your Airtable column names. Used by the Airtable poll to match incoming field names.
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              {(['program', 'timeframe', 'sort_field', 'status'] as const).map(field => (
-                <div key={field} className="grid grid-cols-1 sm:grid-cols-[160px_1fr] gap-3 items-center">
-                  <Label className="capitalize">{field.replace('_', ' ')}</Label>
-                  <Input
-                    placeholder="Airtable column name"
-                    value={(get('filter_mappings', {})?.[field]) ?? ''}
-                    onChange={e => set('filter_mappings', { ...(get('filter_mappings', {}) ?? {}), [field]: e.target.value })}
-                  />
-                </div>
-              ))}
-            </CardContent>
-          </Card>
-
           <Card>
             <CardHeader>
               <CardTitle className="font-display">Filter Visibility per Role</CardTitle>
