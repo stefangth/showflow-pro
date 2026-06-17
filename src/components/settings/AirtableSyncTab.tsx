@@ -12,10 +12,11 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import { fetchAirtableBases, fetchAirtableTables, type AirtableTable } from "@/data/airtableSchema";
-import { SHOWFLOW_FIELDS, buildProgramKey, buildCityKey, planCityReconciliation, type AirtableFieldMap } from "@/data/airtableMapping";
+import { SHOWFLOW_FIELDS, buildProgramKey, buildCityKey, planCityReconciliation, groupDuplicateCities, type AirtableFieldMap } from "@/data/airtableMapping";
 import { fetchShowsForLinking, linkShowAirtableKey, importShowsFromOptions } from "@/data/settings";
-import { fetchCitiesForLinking, linkCityAirtableKey, importCitiesFromOptions } from "@/data/cities";
+import { fetchCitiesForLinking, linkCityAirtableKey, importCitiesFromOptions, mergeCities } from "@/data/cities";
 import { fetchLatestSyncLog, fetchUnresolvedRecords, type UnresolvedRecord } from "@/data/airtableSync";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 
 interface Props {
   orgId: string | null;
@@ -34,6 +35,7 @@ export function AirtableSyncTab({ orgId, get, set }: Props) {
   const [schemaState, setSchemaState] = useState<"idle" | "accessible" | "fallback">("idle");
   const [bases, setBases] = useState<{ id: string; name: string }[]>([]);
   const [tables, setTables] = useState<AirtableTable[]>([]);
+  const [survivorByNorm, setSurvivorByNorm] = useState<Record<string, string>>({});
 
   const fieldMap = (get("airtable_field_map", {}) ?? {}) as AirtableFieldMap;
   const setField = (key: keyof AirtableFieldMap, value: string | null) =>
@@ -148,6 +150,23 @@ export function AirtableSyncTab({ orgId, get, set }: Props) {
     onError: (e: unknown) => toast.error((e as Error).message ?? "Link failed"),
   });
   const unlinkedCities = (citiesQ.data ?? []).filter((c) => !c.airtable_city_key);
+
+  const dupeGroups = groupDuplicateCities(citiesQ.data ?? []);
+  const survivorFor = (g: { norm: string; cities: { id: string; airtable_city_key: string | null }[] }) =>
+    survivorByNorm[g.norm] ?? (g.cities.find((c) => c.airtable_city_key)?.id ?? g.cities[0].id);
+  const mergeMut = useMutation({
+    mutationFn: ({ survivor, losers }: { survivor: string; losers: string[] }) => mergeCities(supabase, survivor, losers),
+    onSuccess: () => {
+      // merge_cities repoints city_id on show_dates + show_cast_eligibility, so bust every
+      // cache that reads those: cities, bookings, and the eligibility-derived queries.
+      qc.invalidateQueries({ queryKey: ["cities"] });
+      qc.invalidateQueries({ queryKey: ["bookings"] });
+      qc.invalidateQueries({ queryKey: ["eligible-artists"] });
+      qc.invalidateQueries({ queryKey: ["artist-eligible-dates"] });
+      toast.success("Merged duplicate cities");
+    },
+    onError: (e: unknown) => toast.error((e as Error).message ?? "Merge failed"),
+  });
 
   return (
     <div className="space-y-6">
@@ -314,6 +333,55 @@ export function AirtableSyncTab({ orgId, get, set }: Props) {
                 }) : <p className="text-sm text-muted-foreground">No options on the mapped City field.</p>}
               </div>
             )}
+          </CardContent>
+        </Card>
+      )}
+
+      {/* ── Duplicate cities ───────────────────────────────────────────────── */}
+      {dupeGroups.length > 0 && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="font-display">Duplicate cities</CardTitle>
+            <CardDescription>Cities whose names match (ignoring case/spacing). Pick the one to keep and merge — its bookings, eligibility, and producer routing are preserved; the others are removed.</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-6">
+            {dupeGroups.map((g) => {
+              const survivor = survivorFor(g);
+              const losers = g.cities.filter((c) => c.id !== survivor).map((c) => c.id);
+              return (
+                <div key={g.norm} className="space-y-2 border-t border-border pt-3">
+                  <div className="flex items-center justify-between gap-2">
+                    <div className="text-sm">
+                      <span className="text-muted-foreground">Keep </span>
+                      <Select value={survivor} onValueChange={(v) => setSurvivorByNorm((m) => ({ ...m, [g.norm]: v }))}>
+                        <SelectTrigger className="inline-flex h-8 w-[220px]" aria-label={`survivor for ${g.norm}`}><SelectValue /></SelectTrigger>
+                        <SelectContent>
+                          {g.cities.map((c) => <SelectItem key={c.id} value={c.id}>{c.name}{c.airtable_city_key ? " (linked)" : ""}</SelectItem>)}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <AlertDialog>
+                      <AlertDialogTrigger asChild>
+                        <Button size="sm" variant="destructive" disabled={mergeMut.isPending}>Merge</Button>
+                      </AlertDialogTrigger>
+                      <AlertDialogContent>
+                        <AlertDialogHeader>
+                          <AlertDialogTitle>Merge {g.cities.length} cities into one?</AlertDialogTitle>
+                          <AlertDialogDescription>{losers.length} duplicate row(s) will be removed and their references repointed to the kept city. This cannot be undone.</AlertDialogDescription>
+                        </AlertDialogHeader>
+                        <AlertDialogFooter>
+                          <AlertDialogCancel>Cancel</AlertDialogCancel>
+                          <AlertDialogAction onClick={() => mergeMut.mutate({ survivor, losers })}>Merge cities</AlertDialogAction>
+                        </AlertDialogFooter>
+                      </AlertDialogContent>
+                    </AlertDialog>
+                  </div>
+                  <ul className="text-xs text-muted-foreground">
+                    {g.cities.map((c) => <li key={c.id}>{c.name}{c.id === survivor ? " — kept" : " — removed"}</li>)}
+                  </ul>
+                </div>
+              );
+            })}
           </CardContent>
         </Card>
       )}
