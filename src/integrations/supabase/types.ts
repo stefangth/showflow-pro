@@ -1335,6 +1335,14 @@ export type Database = {
           specificity: number
         }[]
       }
+      resolve_user_contacts: {
+        Args: { p_user_ids: string[] }
+        Returns: {
+          display_name: string
+          email: string
+          user_id: string
+        }[]
+      }
       seed_org_starter_catalog: { Args: { _org: string }; Returns: undefined }
       set_org_airtable_key: {
         Args: { _key: string; _org: string }
