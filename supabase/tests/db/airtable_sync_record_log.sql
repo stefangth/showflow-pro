@@ -5,11 +5,11 @@ CREATE EXTENSION IF NOT EXISTS pgtap WITH SCHEMA extensions;
 SELECT plan(5);
 
 INSERT INTO public.organizations (id, name, slug) VALUES
-  ('11111111-1111-1111-1111-111111111111', 'Org A', 'org-a-syncrec');
+  ('cccccccc-cccc-cccc-cccc-cccccccccccc', 'Org A', 'org-a-syncrec');
 
 INSERT INTO public.airtable_sync_log (id, org_id, sync_type, status, synced_at)
   VALUES ('aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa',
-          '11111111-1111-1111-1111-111111111111', 'airtable_poll', 'partial', now());
+          'cccccccc-cccc-cccc-cccc-cccccccccccc', 'airtable_poll', 'partial', now());
 
 -- 1) RLS is enabled on the table
 SELECT is(
@@ -22,13 +22,13 @@ INSERT INTO public.airtable_sync_record_log (sync_log_id, airtable_record_id, ac
   VALUES ('aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa', 'recTEST1', 'held_unresolved', 'program ''X'' not linked');
 SELECT is(
   (SELECT org_id FROM public.airtable_sync_record_log WHERE airtable_record_id = 'recTEST1'),
-  '11111111-1111-1111-1111-111111111111'::uuid,
+  'cccccccc-cccc-cccc-cccc-cccccccccccc'::uuid,
   'org_id is derived from the parent sync_log row');
 
 -- 3) the action CHECK rejects an unknown action
 SELECT throws_ok(
-  $$ INSERT INTO public.airtable_sync_record_log (sync_log_id, action)
-     VALUES ('aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa', 'bogus') $$,
+  $$ INSERT INTO public.airtable_sync_record_log (sync_log_id, airtable_record_id, action)
+     VALUES ('aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa', 'recBOGUS', 'bogus') $$,
   '23514', NULL,
   'action CHECK rejects values outside the allowed set');
 
