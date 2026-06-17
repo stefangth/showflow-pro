@@ -104,7 +104,7 @@ function makeHappyDeps(opts: {
       },
       // cities: loaded once per org, keyed by airtable_city_key
       cities: {
-        data: [{ id: "city-uuid-berlin", airtable_city_key: "Berlin" }],
+        data: [{ id: "city-uuid-berlin", airtable_city_key: "berlin" }],
         error: null,
       },
       // show_dates: existing rows keyed by airtable_record_id
@@ -1035,7 +1035,7 @@ Deno.test("airtable-poll: a newly-held record notifies org admins (one notificat
       ],
       organizations: { data: [{ id: ORG }], error: null },
       shows: { data: [{ id: "show-uuid-1", airtable_program_key: "TestShow" }], error: null },
-      cities: { data: [{ id: "city-uuid-berlin", airtable_city_key: "Berlin" }], error: null },
+      cities: { data: [{ id: "city-uuid-berlin", airtable_city_key: "berlin" }], error: null },
       show_dates: { data: [], error: null },
       airtable_sync_log: { data: { id: "log-1" }, error: null },
       airtable_sync_record_log: { data: [], error: null }, // prev-run held set is empty
