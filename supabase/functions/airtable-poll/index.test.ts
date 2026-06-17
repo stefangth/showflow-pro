@@ -31,7 +31,7 @@ function seededDeps(records: unknown[], fetchImpl?: typeof fetch) {
       ],
       organizations: { data: [{ id: ORG }], error: null },
       shows: { data: [{ id: "show-magic", airtable_program_key: "Magic" }], error: null },
-      cities: { data: [{ id: "city-berlin", airtable_city_key: "Berlin" }], error: null },
+      cities: { data: [{ id: "city-berlin", airtable_city_key: "berlin" }], error: null },
       show_dates: { data: [], error: null },
       airtable_sync_log: { data: { id: "log-1" }, error: null },
       airtable_sync_record_log: { data: [], error: null },

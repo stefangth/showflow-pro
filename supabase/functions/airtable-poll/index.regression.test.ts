@@ -18,6 +18,7 @@ const FIELD_MAP = {
   venue: "Venue",
   session_1: "1. Show",
   session_2: "2. Show",
+  session_3: "3. Show",
 };
 
 function airtableResponse(records: unknown[]) {
@@ -31,7 +32,7 @@ function seededDeps() {
 
   const records = [
     // linked: Sub-Programm "Candlelight Classics" matches a show airtable_program_key
-    { id: "recLINKED", fields: { Datum: "2026-07-15", Program: "Candlelight", "Sub-Programm": "Candlelight Classics", City: "Berlin", "1. Show": "T19:00:00", "2. Show": "T21:30:00" } },
+    { id: "recLINKED", fields: { Datum: "2026-07-15", Program: "Candlelight", "Sub-Programm": "Candlelight Classics", City: "BERLIN", Venue: "Tempodrom", "1. Show": "T19:00:00", "2. Show": "T21:30:00", "3. Show": "T23:00:00" } },
     // unlinked: no show has this key → held
     { id: "recHELD", fields: { Datum: "2026-07-16", Program: "Candlelight", "Sub-Programm": "Unmapped Program", City: "Berlin" } },
     // missing date → held
@@ -49,7 +50,7 @@ function seededDeps() {
       ],
       organizations: { data: [{ id: ORG }], error: null },
       shows: { data: [{ id: "show-cc", airtable_program_key: "Candlelight Classics" }], error: null },
-      cities: { data: [{ id: "city-berlin", airtable_city_key: "Berlin" }], error: null },
+      cities: { data: [{ id: "city-berlin", airtable_city_key: "berlin" }], error: null },
       show_dates: { data: [], error: null },
       // .insert(...).select('id').single() returns this id; .maybeSingle() (prev-log fetch) also returns it.
       airtable_sync_log: { data: { id: "log-1" }, error: null },
@@ -102,9 +103,11 @@ Deno.test("airtable-poll regression: German field names import linked rows + hol
   assertEquals(sd.show_id, "show-cc");
   assertEquals(sd.date, "2026-07-15");
   assertEquals(sd.airtable_record_id, "recLINKED");
-  assertEquals(sd.city_id, "city-berlin");
   assertEquals(sd.session_1, "19:00");
   assertEquals(sd.session_2, "21:30");
+  assertEquals(sd.session_3, "23:00");
+  assertEquals(sd.venue, "Tempodrom");
+  assertEquals(sd.city_id, "city-berlin"); // 'BERLIN' resolved to the 'berlin' link key — case-insensitive
 
   // 2) the summary log was written with correct counts + partial status (held > 0)
   assertEquals(syncLogInserts.length, 1);
