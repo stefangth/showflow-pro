@@ -716,3 +716,46 @@ Deno.test("send-confirmation-digest: registered artist with blank booking email 
   assertExists(email);
   assertEquals((email!.body as { recipient_email: string }).recipient_email, "login@x.com");
 });
+
+Deno.test("send-confirmation-digest: resolve_user_contacts RPC error → non-fatal, falls back to booking email", async () => {
+  const confirmed = [{
+    id: "b1", artist_id: "a1",
+    artists: { id: "a1", name: "Talent", email: "booking@x.com", user_id: "u1" },
+    show_dates: { date: "2026-06-10", shows: { program: "P", sub_program: "S" }, cities: { name: "Berlin" } },
+  }];
+  const { deps, invokeCalls } = makeFakeDeps({
+    now: BERLIN_20_CEST,
+    tables: {
+      app_settings: CONF_SETTINGS,
+      organizations: { data: [{ id: ORG_1 }], error: null },
+      bookings: { data: confirmed, error: null },
+    },
+    rpcs: { resolve_user_contacts: { error: { message: "rpc down" } } },
+  });
+  const res = await handle(makeRequest({ headers: cronOK }), deps);
+  assertEquals((await res.json()).digests_sent, 1);
+  const email = invokeCalls.find((c) => c.name === "send-transactional-email");
+  assertExists(email);
+  assertEquals((email!.body as { recipient_email: string }).recipient_email, "booking@x.com");
+});
+
+Deno.test("send-confirmation-digest: unregistered artist (no user_id) → booking email", async () => {
+  const confirmed = [{
+    id: "b1", artist_id: "a1",
+    artists: { id: "a1", name: "External", email: "booking@x.com", user_id: null },
+    show_dates: { date: "2026-06-10", shows: { program: "P", sub_program: "S" }, cities: { name: "Berlin" } },
+  }];
+  const { deps, invokeCalls } = makeFakeDeps({
+    now: BERLIN_20_CEST,
+    tables: {
+      app_settings: CONF_SETTINGS,
+      organizations: { data: [{ id: ORG_1 }], error: null },
+      bookings: { data: confirmed, error: null },
+    },
+  });
+  const res = await handle(makeRequest({ headers: cronOK }), deps);
+  assertEquals((await res.json()).digests_sent, 1);
+  const email = invokeCalls.find((c) => c.name === "send-transactional-email");
+  assertExists(email);
+  assertEquals((email!.body as { recipient_email: string }).recipient_email, "booking@x.com");
+});

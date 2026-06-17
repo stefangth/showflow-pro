@@ -724,3 +724,25 @@ Deno.test("send-offer-digest: registered artist with blank booking email → del
   assertEquals(msg.recipient_email, "login@x.com");
   assertEquals(msg.templateData?.displayName, "Talent");
 });
+
+Deno.test("send-offer-digest: resolve_user_contacts RPC error → non-fatal, falls back to booking email", async () => {
+  const pending = [{
+    id: "b1", artist_id: "a1",
+    artists: { id: "a1", name: "Talent", email: "booking@x.com", user_id: "u1" },
+    show_dates: { date: "2026-06-10", shows: { program: "P", sub_program: "S" }, cities: { name: "Berlin" } },
+  }];
+  const { deps, invokeCalls } = makeFakeDeps({
+    now: BERLIN_19_CEST,
+    tables: {
+      app_settings: APP_SETTINGS_SEED,
+      organizations: { data: [{ id: ORG_1 }], error: null },
+      bookings: { data: pending, error: null },
+    },
+    rpcs: { resolve_user_contacts: { error: { message: "rpc down" } } },
+  });
+  const res = await handle(makeRequest({ headers: cronOK }), deps);
+  assertEquals((await res.json()).digests_sent, 1);
+  const email = invokeCalls.find((c) => c.name === "send-transactional-email");
+  assertExists(email);
+  assertEquals((email!.body as { recipient_email: string }).recipient_email, "booking@x.com");
+});
