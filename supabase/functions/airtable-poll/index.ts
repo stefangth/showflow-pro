@@ -1,230 +1,324 @@
 import { preflight, json } from "../_shared/http.ts";
 import { realDeps, type Deps } from "../_shared/deps.ts";
 import { getActiveOrgs, resolveOrgSetting } from "../_shared/settings.ts";
+import { buildProgramKey, buildCityKey } from "../_shared/airtableKey.ts";
 
 /** Max concurrent open-offer-tier invocations per batch to avoid exhausting the DB connection pool. */
 const OFFER_TIER_BATCH_SIZE = 10;
+const MAX_PAGES = 100;
+
+/** Which Airtable field feeds each Showflow field (per-org, from app_settings.airtable_field_map). */
+interface FieldMap {
+  date?: string | null;
+  program?: string | null;
+  sub_program?: string | null;
+  city?: string | null;
+  venue?: string | null;
+  session_1?: string | null;
+  session_2?: string | null;
+  session_3?: string | null;
+}
+
+type RecordAction = "imported_new" | "updated" | "held_unresolved" | "error";
+interface RecordOutcome {
+  airtable_record_id: string;
+  action: RecordAction;
+  show_date_id: string | null;
+  reason: string | null;
+  raw_fields: Record<string, unknown>;
+}
+interface OrgSyncResult { processed: number; new_dates: number; updated: number; held: number; tiers_opened: number }
+
+/** Extract HH:MM from an Airtable time/ISO value; null when absent/unparseable. */
+function parseTime(raw: unknown): string | null {
+  if (raw === null || raw === undefined) return null;
+  const m = String(raw).match(/T?(\d{2}:\d{2})(:\d{2})?/);
+  return m ? m[1] : null;
+}
 
 async function openOfferTierBatch(deps: Deps, ids: string[]): Promise<number> {
   let opened = 0;
   for (let i = 0; i < ids.length; i += OFFER_TIER_BATCH_SIZE) {
     const batch = ids.slice(i, i + OFFER_TIER_BATCH_SIZE);
     const results = await Promise.allSettled(
-      batch.map((id) => deps.invokeFunction('open-offer-tier', { show_date_id: id, tier: 1 })),
+      batch.map((id) => deps.invokeFunction("open-offer-tier", { show_date_id: id, tier: 1 })),
     );
     for (const result of results) {
-      if (result.status === 'fulfilled') {
-        if (result.value.error) console.error('airtable-poll: open-offer-tier failed', { error: result.value.error });
+      if (result.status === "fulfilled") {
+        if (result.value.error) console.error("airtable-poll: open-offer-tier failed", { error: result.value.error });
         else opened += 1;
       } else {
-        console.error('airtable-poll: open-offer-tier threw', { reason: result.reason });
+        console.error("airtable-poll: open-offer-tier threw", { reason: result.reason });
       }
     }
   }
   return opened;
 }
 
-interface OrgSyncResult { processed: number; new_dates: number; tiers_opened: number; skipped: number }
+/** Notify org admins when the held set changes vs. the previous run. */
+async function notifyAdminsIfHeldChanged(
+  deps: Deps,
+  orgId: string,
+  syncLogId: string,
+  heldIds: string[],
+  prevHeldIds: Set<string>,
+  prevHeldCount: number,
+): Promise<void> {
+  if (heldIds.length === 0) return;
+  const hasNewHeld = heldIds.some((id) => !prevHeldIds.has(id));
+  if (!hasNewHeld && heldIds.length <= prevHeldCount) return; // nothing newly broken
 
-/** Sync one org's Airtable base into its show_dates. org_id on show_dates comes
- *  from the derive trigger (parent show); the lookup maps are org-scoped here so
- *  a record only ever matches THIS org's shows/cities. */
-async function syncOrg(deps: Deps, orgId: string, baseId: string, tableName: string, apiKey: string): Promise<OrgSyncResult> {
+  const { data: admins } = await deps.admin.from("org_memberships").select("user_id").eq("org_id", orgId).eq("role", "admin");
+  const recipients = Array.from(new Set((admins ?? []).map((a: { user_id: string }) => a.user_id)));
+  if (recipients.length === 0) return;
+
+  const message = `${heldIds.length} Airtable record(s) couldn't be matched and were held. Review the Last sync report in Settings → Airtable.`;
+  await deps.admin.from("notifications").insert(recipients.map((uid) => ({
+    org_id: orgId,
+    user_id: uid,
+    type: "airtable_sync_held",
+    title: "Airtable sync: records held",
+    message,
+    related_entity_type: "airtable_sync_log",
+    related_entity_id: syncLogId,
+  })));
+}
+
+/** Sync one org's Airtable base into its show_dates using the field map + catalog-link keys.
+ *  Resolution is STRICT: shows/cities resolve only by airtable_program_key / airtable_city_key;
+ *  anything unlinked is held (city is non-fatal). org_id on show_dates / record logs comes from
+ *  derive triggers. Throws on Airtable API error (after logging) so handle() skips counting it. */
+async function syncOrg(deps: Deps, orgId: string, baseId: string, tableName: string, apiKey: string, fieldMap: FieldMap): Promise<OrgSyncResult> {
   const admin = deps.admin;
 
-  // ── Load lookup tables once before paging (org-scoped) ────────────────────
-  // Keyed on "program|sub_program" to disambiguate shows that share a program name.
-  const { data: shows } = await admin.from('shows').select('id, program, sub_program').eq('org_id', orgId).limit(10000);
-  const showsByName = new Map<string, string>();
-  for (const s of shows ?? []) {
-    if (s.program) {
-      const key = `${String(s.program).toLowerCase()}|${s.sub_program ? String(s.sub_program).toLowerCase() : ''}`;
-      if (showsByName.has(key)) {
-        console.warn('airtable-poll: duplicate (program, sub_program) key in shows; last one wins', { key });
-      }
-      showsByName.set(key, s.id);
-    }
+  // ── Linked-catalog lookup maps (key → id). No name fallback, no lowercasing. ──
+  const { data: shows } = await admin.from("shows").select("id, airtable_program_key").eq("org_id", orgId).limit(10000);
+  const showByKey = new Map<string, string>();
+  for (const s of (shows ?? []) as Array<{ id: string; airtable_program_key: string | null }>) {
+    if (s.airtable_program_key) showByKey.set(s.airtable_program_key, s.id);
+  }
+  const { data: citiesRows } = await admin.from("cities").select("id, airtable_city_key").eq("org_id", orgId).limit(10000);
+  const cityByKey = new Map<string, string>();
+  for (const c of (citiesRows ?? []) as Array<{ id: string; airtable_city_key: string | null }>) {
+    if (c.airtable_city_key) cityByKey.set(c.airtable_city_key, c.id);
   }
 
-  const { data: citiesRows } = await admin.from('cities').select('id, name').eq('org_id', orgId).limit(10000);
-  const citiesByName = new Map<string, string>();
-  for (const c of citiesRows ?? []) citiesByName.set(c.name.toLowerCase(), c.id);
-
-  // Bulk-load all existing show_dates keyed by airtable_record_id to avoid N+1 SELECTs.
-  // Paginated via .range() so tables larger than PostgREST's 1 000-row default are fully loaded.
+  // Existing show_dates keyed by airtable_record_id (paginated to clear PostgREST's 1000-row cap).
   const existingByAirtableId = new Map<string, string>();
   {
     const PAGE_SIZE = 1000;
     let page = 0;
     while (true) {
       const { data: batch } = await admin
-        .from('show_dates').select('id, airtable_record_id')
-        .eq('org_id', orgId).not('airtable_record_id', 'is', null)
+        .from("show_dates").select("id, airtable_record_id")
+        .eq("org_id", orgId).not("airtable_record_id", "is", null)
         .range(page * PAGE_SIZE, (page + 1) * PAGE_SIZE - 1);
       if (!batch || batch.length === 0) break;
-      for (const r of batch as any[]) if (r.airtable_record_id) existingByAirtableId.set(r.airtable_record_id as string, r.id as string);
+      for (const r of batch as Array<{ id: string; airtable_record_id: string | null }>) {
+        if (r.airtable_record_id) existingByAirtableId.set(r.airtable_record_id, r.id);
+      }
       if (batch.length < PAGE_SIZE) break;
       page += 1;
     }
   }
 
-  // ── Fetch pages and process records immediately (no full-buffer) ──────────
+  // ── Page through Airtable, classify each record ───────────────────────────
   const encodedTable = encodeURIComponent(tableName);
   const airtableBaseUrl = `https://api.airtable.com/v0/${baseId}/${encodedTable}?view=Grid%20view`;
-  let processed = 0, newDates = 0, skippedRecords = 0;
+  const outcomes: RecordOutcome[] = [];
   const newDateIds: string[] = [];
+  let processed = 0, newDates = 0, updated = 0, held = 0, recordsSeen = 0;
   let offset: string | undefined;
   let pageCount = 0;
-  const MAX_PAGES = 100;
+  let apiError: string | null = null;
 
   do {
     pageCount += 1;
     const url = offset ? `${airtableBaseUrl}&offset=${encodeURIComponent(offset)}` : airtableBaseUrl;
-    const airtableRes = await deps.fetch(url, { headers: { Authorization: `Bearer ${apiKey}` } });
-    if (!airtableRes.ok) {
-      const errBody = (await airtableRes.text()).slice(0, 500);
-      console.error('airtable-poll: Airtable API error', { org: orgId, status: airtableRes.status, body: errBody });
-      // Flush already-inserted dates so they get offers before aborting this org.
-      const partial = await openOfferTierBatch(deps, newDateIds);
-      await admin.from('airtable_sync_log').insert({ org_id: orgId, sync_type: 'airtable_poll', status: 'error', records_processed: processed, error_details: `Airtable API error ${airtableRes.status}: ${errBody}`, synced_at: deps.now().toISOString() });
-      throw { httpStatus: 502, body: { error: `Airtable API error: ${airtableRes.status}`, org_id: orgId, new_dates: newDates, tiers_opened: partial } };
+    const res = await deps.fetch(url, { headers: { Authorization: `Bearer ${apiKey}` } });
+    if (!res.ok) {
+      const body = (await res.text()).slice(0, 500);
+      apiError = `Airtable API error ${res.status}: ${body}`;
+      console.error("airtable-poll: Airtable API error", { org: orgId, status: res.status, body });
+      break;
     }
-    const pageData = await airtableRes.json();
+    const pageData = await res.json();
     offset = pageData.offset;
-    for (const record of (pageData.records ?? []) as Array<{ id: string; fields: Record<string, any> }>) {
+    for (const record of (pageData.records ?? []) as Array<{ id: string; fields: Record<string, unknown> }>) {
+      recordsSeen += 1;
       const fields = record.fields;
-      const airtableRecordId = record.id;
-      const dateValue = fields['Date'] ?? fields['date'] ?? fields['Show Date'] ?? null;
-      if (!dateValue) continue;
-      const showName = fields['Show'] ?? fields['show'] ?? fields['Show Name'] ?? null;
-      const showSubProgram = fields['Sub Program'] ?? fields['sub_program'] ?? null;
-      let showId: string | null = null;
-      if (showName) {
-        const nameKey = String(showName).toLowerCase();
-        const subKey = showSubProgram ? String(showSubProgram).toLowerCase() : '';
-        // Prefer exact (program, sub_program) match; fall back to program-only (sub_program absent in DB).
-        showId = showsByName.get(`${nameKey}|${subKey}`) ?? showsByName.get(`${nameKey}|`) ?? null;
-      }
-      if (!showId) {
-        console.warn('airtable-poll: could not resolve show for record', { org: orgId, airtableRecordId, showName });
-        skippedRecords += 1;
-        continue;
-      }
-      const cityName = fields['City'] ?? fields['city'] ?? null;
-      let cityId: string | null = null;
-      if (cityName && citiesByName.has(String(cityName).toLowerCase())) cityId = citiesByName.get(String(cityName).toLowerCase())!;
-      const rawSession1 = fields['Session 1'] ?? fields['session_1'] ?? fields['Start Time'];
-      const m = rawSession1 ? String(rawSession1).match(/T?(\d{2}:\d{2})(:\d{2})?/) : null;
-      const session1 = m ? m[1] : '00:00';
+      const id = record.id;
 
-      const existingId = existingByAirtableId.get(airtableRecordId);
+      const dateValue = fieldMap.date ? fields[fieldMap.date] ?? null : null;
+      if (!dateValue) { held += 1; outcomes.push({ airtable_record_id: id, action: "held_unresolved", show_date_id: null, reason: "missing date", raw_fields: fields }); continue; }
+
+      const subProgramValue = fieldMap.sub_program ? fields[fieldMap.sub_program] ?? null : null;
+      const programKey = buildProgramKey(null, subProgramValue == null ? null : String(subProgramValue));
+      const showId = programKey ? showByKey.get(programKey) ?? null : null;
+      if (!showId) { held += 1; outcomes.push({ airtable_record_id: id, action: "held_unresolved", show_date_id: null, reason: `program '${subProgramValue ?? ""}' not linked`, raw_fields: fields }); continue; }
+
+      const cityValue = fieldMap.city ? fields[fieldMap.city] ?? null : null;
+      const cityKey = buildCityKey(cityValue == null ? null : String(cityValue));
+      const cityId = cityKey ? cityByKey.get(cityKey) ?? null : null;
+      const cityNote = cityValue && !cityId ? `city '${cityValue}' not linked` : null;
+
+      const session1 = fieldMap.session_1 ? parseTime(fields[fieldMap.session_1]) : null;
+      const session2 = fieldMap.session_2 ? parseTime(fields[fieldMap.session_2]) : null;
+      const session3 = fieldMap.session_3 ? parseTime(fields[fieldMap.session_3]) : null;
+      const venue = fieldMap.venue ? (fields[fieldMap.venue] ?? null) : null;
+
+      const existingId = existingByAirtableId.get(id);
       if (existingId) {
-        const payload: Record<string, unknown> = { date: dateValue, session_1: session1 };
+        const payload: Record<string, unknown> = { date: dateValue };
+        if (session1 !== null) payload.session_1 = session1;
+        if (session2 !== null) payload.session_2 = session2;
+        if (session3 !== null) payload.session_3 = session3;
+        if (venue !== null) payload.venue = venue;
         if (cityId !== null) payload.city_id = cityId;
-        const { error } = await admin.from('show_dates').update(payload).eq('id', existingId);
-        if (error) {
-          console.error('airtable-poll: update error', { org: orgId, airtableRecordId, error: error.message });
-          continue;
-        }
-        processed += 1;
+        const { error } = await admin.from("show_dates").update(payload).eq("id", existingId);
+        if (error) { outcomes.push({ airtable_record_id: id, action: "error", show_date_id: existingId, reason: error.message, raw_fields: fields }); continue; }
+        processed += 1; updated += 1;
+        outcomes.push({ airtable_record_id: id, action: "updated", show_date_id: existingId, reason: cityNote, raw_fields: fields });
         continue;
       }
-      // org_id is set by the derive trigger from show_id.
-      const { data: inserted, error: insertErr } = await admin.from('show_dates')
-        .insert({ show_id: showId, date: dateValue, airtable_record_id: airtableRecordId, city_id: cityId, session_1: session1 })
-        .select('id').single();
-      if (insertErr) {
-        console.error('airtable-poll: insert error', { org: orgId, airtableRecordId, error: insertErr.message });
-        continue;
-      }
-      if (inserted?.id) {
-        processed += 1;
-        newDates += 1;
-        newDateIds.push(inserted.id);
-        existingByAirtableId.set(airtableRecordId, inserted.id);
-      } else {
-        console.warn('airtable-poll: insert returned no id without error', { org: orgId, airtableRecordId });
-      }
+
+      // org_id is set by the derive trigger from show_id. session_1 is NOT NULL → default 00:00.
+      const insertPayload: Record<string, unknown> = { show_id: showId, date: dateValue, airtable_record_id: id, city_id: cityId, session_1: session1 ?? "00:00" };
+      if (session2 !== null) insertPayload.session_2 = session2;
+      if (session3 !== null) insertPayload.session_3 = session3;
+      if (venue !== null) insertPayload.venue = venue;
+      const { data: inserted, error: insertErr } = await admin.from("show_dates").insert(insertPayload).select("id").single();
+      if (insertErr || !inserted?.id) { outcomes.push({ airtable_record_id: id, action: "error", show_date_id: null, reason: insertErr?.message ?? "insert returned no id", raw_fields: fields }); continue; }
+      processed += 1; newDates += 1;
+      newDateIds.push(inserted.id);
+      existingByAirtableId.set(id, inserted.id);
+      outcomes.push({ airtable_record_id: id, action: "imported_new", show_date_id: inserted.id, reason: cityNote, raw_fields: fields });
     }
-  } while (offset && pageCount < MAX_PAGES);
+  } while (!apiError && offset && pageCount < MAX_PAGES);
 
-  // Only warn/flag truncation if the loop exited because of the page cap, not because pages ran out.
   const truncated = pageCount >= MAX_PAGES && !!offset;
-  if (truncated) console.warn('airtable-poll: reached MAX_PAGES limit; sync may be incomplete', { org: orgId });
+  if (truncated) console.warn("airtable-poll: reached MAX_PAGES limit; sync may be incomplete", { org: orgId });
 
-  // ── Open tier-1 offers in batches to avoid saturating the DB connection pool ──
+  // Flush tier-1 offers for new dates (resilient batch).
   const tiersOpened = await openOfferTierBatch(deps, newDateIds);
   const tiersFailed = newDateIds.length - tiersOpened;
+
+  // Previous run's held set (fetched BEFORE inserting this run's log) for change-only notify.
+  const { data: prevLog } = await admin
+    .from("airtable_sync_log").select("id, held_count")
+    .eq("org_id", orgId).eq("sync_type", "airtable_poll")
+    .order("synced_at", { ascending: false }).limit(1).maybeSingle();
+  let prevHeldIds = new Set<string>();
+  let prevHeldCount = 0;
+  if (prevLog?.id) {
+    prevHeldCount = (prevLog.held_count as number | null) ?? 0;
+    const { data: prevHeld } = await admin
+      .from("airtable_sync_record_log").select("airtable_record_id")
+      .eq("sync_log_id", prevLog.id).eq("action", "held_unresolved");
+    prevHeldIds = new Set((prevHeld ?? []).map((r: { airtable_record_id: string | null }) => r.airtable_record_id ?? ""));
+  }
+
+  const status = apiError ? "error" : (held > 0 ? "partial" : "success");
   const parts: string[] = [];
+  if (apiError) parts.push(apiError);
   if (truncated) parts.push(`Reached MAX_PAGES (${MAX_PAGES}); sync is incomplete`);
   if (tiersFailed > 0) parts.push(`${tiersFailed} of ${newDateIds.length} open-offer-tier calls failed`);
-  if (skippedRecords > 0) parts.push(`${skippedRecords} records skipped (unresolved show)`);
-  await admin.from('airtable_sync_log').insert({ org_id: orgId, sync_type: 'airtable_poll', status: (truncated || tiersFailed > 0) ? 'partial' : 'success', records_processed: processed, error_details: parts.length ? parts.join('; ') : null, synced_at: deps.now().toISOString() });
+  if (held > 0) parts.push(`${held} record(s) held (unresolved)`);
 
-  return { processed, new_dates: newDates, tiers_opened: tiersOpened, skipped: skippedRecords };
+  const { data: logRow } = await admin.from("airtable_sync_log").insert({
+    org_id: orgId,
+    sync_type: "airtable_poll",
+    status,
+    records_processed: processed,
+    imported_count: processed,
+    new_count: newDates,
+    updated_count: updated,
+    held_count: held,
+    details: { truncated, new: newDates, updated, held, records_seen: recordsSeen },
+    error_details: parts.length ? parts.join("; ") : null,
+    synced_at: deps.now().toISOString(),
+  }).select("id").single();
+  const syncLogId = (logRow as { id?: string } | null)?.id ?? null;
+
+  const heldIds = outcomes.filter((o) => o.action === "held_unresolved").map((o) => o.airtable_record_id);
+  if (syncLogId && outcomes.length) {
+    await admin.from("airtable_sync_record_log").insert(outcomes.map((o) => ({
+      sync_log_id: syncLogId,
+      airtable_record_id: o.airtable_record_id,
+      action: o.action,
+      show_date_id: o.show_date_id,
+      reason: o.reason,
+      raw_fields: o.raw_fields,
+    })));
+    await notifyAdminsIfHeldChanged(deps, orgId, syncLogId, heldIds, prevHeldIds, prevHeldCount);
+  }
+
+  if (apiError) {
+    throw { httpStatus: 502, body: { error: apiError, org_id: orgId, new_dates: newDates, tiers_opened: tiersOpened } };
+  }
+  return { processed, new_dates: newDates, updated, held, tiers_opened: tiersOpened };
 }
 
 /**
- * Polls Airtable for show date records per ACTIVE org and upserts into show_dates,
- * then calls open-offer-tier (tier 1) for each newly inserted date.
+ * Polls Airtable per ACTIVE org, resolving records against the org's field map + catalog-link keys,
+ * upserting show_dates, logging every record's outcome, and opening tier-1 offers for new dates.
  *
- * For each active org it resolves, from app_settings (org override ?? platform default):
- *   - airtable_sync_enabled (bool) — skip the org when false
- *   - airtable_base_id / airtable_table_name — skip when unconfigured or base has a bad format
- * and reads that org's Airtable API key from the Vault via the get_org_airtable_key
- * service-role RPC — skip the org when no key is configured.
- *
- * One org's settings/key/Airtable failure never aborts the others (per-org loop
- * body is wrapped: log + continue). Returns totals across all synced orgs.
+ * Per active org it resolves (org override ?? platform default): airtable_sync_enabled,
+ * airtable_base_id, airtable_table_name, airtable_field_map; and the Vault key via get_org_airtable_key.
+ * An enabled-but-misconfigured org (bad base / missing base|table|key) leaves a visible error log row.
+ * Disabled orgs are skipped silently. One org's failure never aborts the others.
  *
  * Auth: X-Cron-Secret header (pg_cron, platform cron_secret row). Cron-only — no user JWT.
  */
 export async function handle(req: Request, deps: Deps): Promise<Response> {
-  if (req.method === 'OPTIONS') return preflight();
+  if (req.method === "OPTIONS") return preflight();
   const admin = deps.admin;
 
-  // ── Auth: X-Cron-Secret (hardened to the platform cron_secret row) ────────
-  const cronSecretHeader = req.headers.get('X-Cron-Secret');
-  if (!cronSecretHeader) return json({ error: 'Unauthorized' }, 401);
+  const cronSecretHeader = req.headers.get("X-Cron-Secret");
+  if (!cronSecretHeader) return json({ error: "Unauthorized" }, 401);
   const { data: secretSetting } = await admin
-    .from('app_settings').select('value').eq('key', 'cron_secret').is('org_id', null).maybeSingle();
-  if (cronSecretHeader !== ((secretSetting?.value as string | null) ?? '')) return json({ error: 'Unauthorized' }, 401);
+    .from("app_settings").select("value").eq("key", "cron_secret").is("org_id", null).maybeSingle();
+  if (cronSecretHeader !== ((secretSetting?.value as string | null) ?? "")) return json({ error: "Unauthorized" }, 401);
 
   let orgs: Array<{ id: string }>;
   try {
     orgs = await getActiveOrgs(admin);
   } catch (e) {
-    console.error('airtable-poll: failed to fetch active orgs', { error: (e as Error).message });
-    return json({ error: 'failed to fetch active orgs' }, 500);
+    console.error("airtable-poll: failed to fetch active orgs", { error: (e as Error).message });
+    return json({ error: "failed to fetch active orgs" }, 500);
   }
 
-  const totals = { orgs_synced: 0, processed: 0, new_dates: 0, tiers_opened: 0, skipped: 0 };
+  const totals = { orgs_synced: 0, processed: 0, new_dates: 0, updated: 0, held: 0, tiers_opened: 0 };
 
   for (const org of orgs) {
-    // One org's settings/key/Airtable failure must never abort the others.
     try {
-      const enabled = await resolveOrgSetting<boolean>(admin, org.id, 'airtable_sync_enabled', false);
-      if (!enabled) continue;
-      const baseId = await resolveOrgSetting<string | null>(admin, org.id, 'airtable_base_id', null);
-      const tableName = await resolveOrgSetting<string | null>(admin, org.id, 'airtable_table_name', null);
-      if (!baseId || !tableName) continue;
-      // Airtable base IDs: "app" + at least 14 alphanumeric chars (standard format is 17 chars total).
-      if (!/^app[A-Za-z0-9]{14,}$/.test(baseId)) {
-        await admin.from('airtable_sync_log').insert({ org_id: org.id, sync_type: 'airtable_poll', status: 'error', records_processed: 0, error_details: 'airtable_base_id has unexpected format; expected app + 14 alphanumeric chars', synced_at: deps.now().toISOString() });
-        continue;
-      }
-      const { data: apiKey } = await admin.rpc('get_org_airtable_key', { _org: org.id });
-      if (!apiKey) continue; // sync enabled but no key configured
+      const enabled = await resolveOrgSetting<boolean>(admin, org.id, "airtable_sync_enabled", false);
+      if (!enabled) continue; // intentionally off → skip silently
 
-      const r = await syncOrg(deps, org.id, baseId, tableName, apiKey as string);
+      const baseId = await resolveOrgSetting<string | null>(admin, org.id, "airtable_base_id", null);
+      const tableName = await resolveOrgSetting<string | null>(admin, org.id, "airtable_table_name", null);
+      const fieldMap = await resolveOrgSetting<FieldMap>(admin, org.id, "airtable_field_map", {});
+
+      const logMisconfig = (detail: string) =>
+        admin.from("airtable_sync_log").insert({ org_id: org.id, sync_type: "airtable_poll", status: "error", records_processed: 0, imported_count: 0, new_count: 0, updated_count: 0, held_count: 0, error_details: detail, synced_at: deps.now().toISOString() });
+
+      if (!baseId || !tableName) { await logMisconfig("Airtable sync enabled but base_id or table_name is not configured"); continue; }
+      if (!/^app[A-Za-z0-9]{14,}$/.test(baseId)) { await logMisconfig("airtable_base_id has unexpected format; expected app + 14 alphanumeric chars"); continue; }
+      if (!fieldMap?.date || !fieldMap?.sub_program) { await logMisconfig("Airtable field map incomplete: 'date' and 'sub_program' must be mapped"); continue; }
+
+      const { data: apiKey } = await admin.rpc("get_org_airtable_key", { _org: org.id });
+      if (!apiKey) { await logMisconfig("Airtable sync enabled but no API key is configured in the Vault"); continue; }
+
+      const r = await syncOrg(deps, org.id, baseId, tableName, apiKey as string, fieldMap);
       totals.orgs_synced += 1;
       totals.processed += r.processed;
       totals.new_dates += r.new_dates;
+      totals.updated += r.updated;
+      totals.held += r.held;
       totals.tiers_opened += r.tiers_opened;
-      totals.skipped += r.skipped;
     } catch (e) {
-      console.error('airtable-poll: org sync failed', { org: org.id, error: (e as { body?: unknown })?.body ?? (e as Error).message });
-      // continue with the next org; any sync_log error row was already recorded inside syncOrg.
+      console.error("airtable-poll: org sync failed", { org: org.id, error: (e as { body?: unknown })?.body ?? (e as Error).message });
+      // continue; any sync_log row was already written inside syncOrg / the misconfig guards.
     }
   }
 
