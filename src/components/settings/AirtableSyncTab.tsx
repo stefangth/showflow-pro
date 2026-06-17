@@ -302,6 +302,9 @@ export function AirtableSyncTab({ orgId, get, set }: Props) {
                 <div><span className="text-muted-foreground">Updated </span><strong>{syncLogQ.data.updated_count ?? 0}</strong></div>
                 <div><span className="text-muted-foreground">Held </span><strong>{syncLogQ.data.held_count ?? 0}</strong></div>
               </div>
+              {syncLogQ.data.error_details && (
+                <p className="text-sm text-muted-foreground">{syncLogQ.data.error_details}</p>
+              )}
               {(heldQ.data ?? []).length > 0 && (
                 <div className="space-y-2">
                   <h4 className="font-display font-semibold text-sm">Held records</h4>
