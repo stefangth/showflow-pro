@@ -2,6 +2,7 @@ import { preflight, json } from "../_shared/http.ts";
 import { requireCronOrRole } from "../_shared/auth.ts";
 import { realDeps, type Deps } from "../_shared/deps.ts";
 import { getActiveOrgs, resolveOrgSetting } from "../_shared/settings.ts";
+import { resolveContactEmail, resolveAccountDisplayName } from "../_shared/identity.ts";
 
 /**
  * Daily offer digest (hourly cron). For each ACTIVE org whose own
@@ -63,7 +64,7 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
       .select(`
         id,
         artist_id,
-        artists ( id, name, email ),
+        artists ( id, name, email, user_id ),
         show_dates ( date, shows ( program, sub_program ), cities ( name ) )
       `)
       .eq('org_id', org.id)
@@ -74,18 +75,37 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
     if (queryErr) { console.error('send-offer-digest: query error', { org: org.id, error: queryErr.message }); continue; }
     if (!pendingBookings || pendingBookings.length === 0) continue;
 
+    // ADR-0011: registered artists are addressed at their login (auth) email; the
+    // booking email is the fallback (and the only address an unregistered artist has).
+    const userIds = [...new Set(
+      (pendingBookings as any[]).map((b) => b.artists?.user_id).filter((id: unknown): id is string => !!id),
+    )];
+    const byUser = new Map<string, { email: string | null; display_name: string | null }>();
+    if (userIds.length > 0) {
+      const { data: contacts, error: contactsErr } = await admin.rpc('resolve_user_contacts', { p_user_ids: userIds });
+      if (contactsErr) {
+        // Non-fatal: fall back to booking emails for this org's artists.
+        console.error('send-offer-digest: resolve_user_contacts failed', { org: org.id, error: contactsErr.message });
+      } else {
+        for (const c of (contacts ?? []) as Array<{ user_id: string; email: string | null; display_name: string | null }>) {
+          byUser.set(c.user_id, { email: c.email, display_name: c.display_name });
+        }
+      }
+    }
+
     type GroupedEntry = { recipientEmail: string; displayName: string; bookingIds: string[]; offers: Array<{ show: string; date: string; city: string; expires: string }> };
     const grouped = new Map<string, GroupedEntry>();
     for (const b of pendingBookings as any[]) {
       const artist = b.artists;
-      const recipientEmail = artist?.email;
+      const acct = artist?.user_id ? byUser.get(artist.user_id) : undefined;
+      const recipientEmail = resolveContactEmail({ authEmail: acct?.email, bookingEmail: artist?.email });
       if (!recipientEmail) continue;
       const sd = b.show_dates;
       const program = sd?.shows?.program;
       const subProgram = sd?.shows?.sub_program;
       const show = program ? (subProgram ? `${program} — ${subProgram}` : program) : 'Unknown show';
       if (!grouped.has(b.artist_id)) {
-        grouped.set(b.artist_id, { recipientEmail, displayName: artist?.name ?? '', bookingIds: [], offers: [] });
+        grouped.set(b.artist_id, { recipientEmail, displayName: resolveAccountDisplayName({ displayName: acct?.display_name, artistName: artist?.name }), bookingIds: [], offers: [] });
       }
       const entry = grouped.get(b.artist_id)!;
       entry.bookingIds.push(b.id);

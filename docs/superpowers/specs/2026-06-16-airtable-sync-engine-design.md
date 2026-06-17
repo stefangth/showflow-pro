@@ -41,7 +41,7 @@ integrity gaps are closed.
 **Non-goals (this initiative)**
 - Two-way sync / authoring shows inside Showflow (Airtable stays the system of record — ADR-0001).
 - Touching the casts / eligibility model beyond what `shows` consolidation requires.
-- Identity/contact deduplication (`profiles`/`artists`) — it's Phase 5 and largely independent.
+- Identity/contact ownership (`profiles`/`artists`) — it's Phase 5 (specced & built separately, ADR-0011) and largely independent.
 - A `venues` table — `venue` stays synced text until it needs attributes (ADR-0001 "Revisit if").
 
 ## 3. Current state (what's broken — for context)
@@ -262,7 +262,9 @@ imported from a non-empty table. Run `status`: `success` only when `held_count =
 3. **Sync rewrite + observability:** rewrite `airtable-poll` off the map/links; extend
    `airtable_sync_log`; add `airtable_sync_record_log`; sync report UI + admin notification. Docs.
 4. **Cities & venue polish:** city linking UX; confirm `venue`/`session_2` carry through. Docs.
-5. **Identity/contact dedup:** collapse `profiles`/`artists` contact fields (separate, independent).
+5. **Identity/contact ownership:** formalize the two-population model (no merge, no column drops);
+   enforce the login-email-first rule in the digests; add a "Linked account" panel. See ADR-0011 +
+   the Phase 5 design spec (`2026-06-17-phase-5-identity-contact-design.md`).
 6. **Custom (extensible) synced fields:** `show_dates.custom jsonb` + `custom_field_definitions`
    table; the capture toggle in the mapping UI; typed/filterable/sortable via the editor + filter
    system; built to generalize to artists/shows (§14).
