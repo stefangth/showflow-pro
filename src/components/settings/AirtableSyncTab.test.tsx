@@ -84,6 +84,16 @@ describe("AirtableSyncTab — last sync report", () => {
     expect(screen.getByText("recHELD")).toBeInTheDocument();
   });
 
+  it("renders error_details when present", async () => {
+    (fetchLatestSyncLog as ReturnType<typeof vi.fn>).mockResolvedValue({
+      id: "log-2", status: "partial", imported_count: 0, new_count: 0, updated_count: 0, held_count: 0,
+      error_details: "2 record(s) errored", synced_at: "2026-06-17T10:00:00Z",
+    });
+    (fetchHeldRecords as ReturnType<typeof vi.fn>).mockResolvedValue([]);
+    renderTab();
+    expect(await screen.findByText("2 record(s) errored")).toBeInTheDocument();
+  });
+
   it("shows an empty state when the org has never synced", async () => {
     (fetchLatestSyncLog as ReturnType<typeof vi.fn>).mockResolvedValue(null);
     (fetchHeldRecords as ReturnType<typeof vi.fn>).mockResolvedValue([]);
