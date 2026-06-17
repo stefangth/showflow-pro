@@ -1,3 +1,5 @@
+import { normalizeCityName, buildCityKey } from "../../supabase/functions/_shared/airtableKey.ts";
+
 /** Which Showflow field each Airtable field name maps to. Stored in app_settings.airtable_field_map.
  *  Values are Airtable field NAMES (matched against the schema-read field list) or null/absent. */
 export interface AirtableFieldMap {
@@ -27,4 +29,53 @@ export const SHOWFLOW_FIELDS: ShowflowFieldDef[] = [
 
 // Single source of truth (ADR-0010): the link-key helpers live in the shared edge module so the
 // poll and this UI compose keys identically. Re-exported here so frontend imports are unchanged.
-export { buildProgramKey, buildCityKey } from "../../supabase/functions/_shared/airtableKey.ts";
+export { buildProgramKey, buildCityKey, normalizeCityName } from "../../supabase/functions/_shared/airtableKey.ts";
+
+/** A catalog city row, minimal shape needed for reconciliation/dedup (structural — no import cycle). */
+export interface CityRowLike { id: string; name: string; airtable_city_key: string | null }
+
+export interface CityReconciliation {
+  /** existing unlinked cities to attach a key to (a name match) */
+  toLink: Array<{ cityId: string; key: string }>;
+  /** genuinely-new options to create */
+  toCreate: Array<{ name: string; key: string }>;
+}
+
+/** Decide, per Airtable city option, whether to link it to an existing same-name city or create
+ *  a new one — so "Import all" never creates a case/whitespace duplicate of a seeded city.
+ *  Pure: no client, no side effects. */
+export function planCityReconciliation(options: string[], existing: CityRowLike[]): CityReconciliation {
+  const linkedKeys = new Set<string>();
+  const unlinkedByNorm = new Map<string, CityRowLike>();
+  for (const c of existing) {
+    if (c.airtable_city_key) { linkedKeys.add(c.airtable_city_key); continue; }
+    const norm = normalizeCityName(c.name);
+    if (norm && !unlinkedByNorm.has(norm)) unlinkedByNorm.set(norm, c); // first unlinked match wins
+  }
+  const toLink: CityReconciliation["toLink"] = [];
+  const toCreate: CityReconciliation["toCreate"] = [];
+  const seen = new Set<string>();
+  for (const opt of options) {
+    const key = buildCityKey(opt);
+    if (!key || seen.has(key)) continue;
+    seen.add(key);
+    if (linkedKeys.has(key)) continue;          // already linked
+    const match = unlinkedByNorm.get(key);      // key === normalizeCityName(opt)
+    if (match) { toLink.push({ cityId: match.id, key }); unlinkedByNorm.delete(key); }
+    else toCreate.push({ name: opt, key });
+  }
+  return { toLink, toCreate };
+}
+
+/** Cities whose names normalize to the same value, as groups of size >1 (duplicate detection). */
+export function groupDuplicateCities(cities: CityRowLike[]): Array<{ norm: string; cities: CityRowLike[] }> {
+  const byNorm = new Map<string, CityRowLike[]>();
+  for (const c of cities) {
+    const norm = normalizeCityName(c.name);
+    if (!norm) continue;
+    (byNorm.get(norm) ?? byNorm.set(norm, []).get(norm)!).push(c);
+  }
+  return Array.from(byNorm.entries())
+    .filter(([, list]) => list.length > 1)
+    .map(([norm, list]) => ({ norm, cities: list }));
+}
