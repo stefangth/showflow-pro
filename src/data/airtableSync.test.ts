@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { createFakeSupabase } from "@/test/supabaseFake";
-import { fetchLatestSyncLog, fetchHeldRecords } from "./airtableSync";
+import { fetchLatestSyncLog, fetchUnresolvedRecords } from "./airtableSync";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "@/integrations/supabase/types";
 
@@ -20,16 +20,21 @@ describe("airtableSync data fns", () => {
     expect(out?.held_count).toBe(4);
   });
 
-  it("fetchHeldRecords returns only the held rows for a log", async () => {
-    const held = [{ id: "r1", airtable_record_id: "recA", reason: "program 'X' not linked", created_at: "2026-06-17T10:00:00Z", raw_fields: {} }];
-    const fake = createFakeSupabase({ airtable_sync_record_log: { data: held, error: null } });
-    const out = await fetchHeldRecords(asClient(fake), "log-1");
-    expect(out).toHaveLength(1);
-    expect(out[0].airtable_record_id).toBe("recA");
+  it("fetchUnresolvedRecords returns held + errored rows (excludes imported/updated) with their action", async () => {
+    const rows = [
+      { id: "r1", airtable_record_id: "recA", reason: "program 'X' not linked", created_at: "2026-06-17T10:00:00Z", action: "held_unresolved" },
+      { id: "r2", airtable_record_id: "recB", reason: "insert failed: duplicate key", created_at: "2026-06-17T10:01:00Z", action: "error" },
+      { id: "r3", airtable_record_id: "recC", reason: null, created_at: "2026-06-17T10:02:00Z", action: "imported_new" },
+    ];
+    const fake = createFakeSupabase({ airtable_sync_record_log: { data: rows, error: null } });
+    const out = await fetchUnresolvedRecords(asClient(fake), "log-1");
+    // The .in("action", [...]) filter excludes the imported_new row.
+    expect(out).toHaveLength(2);
+    expect(out.map((r) => r.action).sort()).toEqual(["error", "held_unresolved"]);
   });
 
-  it("fetchHeldRecords returns [] when syncLogId is null", async () => {
+  it("fetchUnresolvedRecords returns [] when syncLogId is null", async () => {
     const fake = createFakeSupabase({});
-    expect(await fetchHeldRecords(asClient(fake), null)).toEqual([]);
+    expect(await fetchUnresolvedRecords(asClient(fake), null)).toEqual([]);
   });
 });

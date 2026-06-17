@@ -12,11 +12,14 @@ export interface SyncLogSummary {
   synced_at: string;
 }
 
-export interface HeldRecord {
+export interface UnresolvedRecord {
   id: string;
   airtable_record_id: string | null;
   reason: string | null;
   created_at: string;
+  /** `held_unresolved` = option not linked (link it and it imports next run);
+   *  `error` = a DB write failed for this record (investigate). */
+  action: "held_unresolved" | "error";
 }
 
 /** The org's most recent airtable_sync_log row, or null if it has never synced. */
@@ -34,17 +37,19 @@ export async function fetchLatestSyncLog(
   return (data ?? null) as SyncLogSummary | null;
 }
 
-/** Held (unresolved) records for a given sync-log run, newest first. */
-export async function fetchHeldRecords(
+/** Unresolved records for a given sync-log run, newest first: both `held_unresolved`
+ *  (option not linked) and `error` (DB write failed). The `action` field lets the UI
+ *  split them — imported/updated rows are excluded. */
+export async function fetchUnresolvedRecords(
   client: SupabaseClient<Database>,
   syncLogId: string | null,
-): Promise<HeldRecord[]> {
+): Promise<UnresolvedRecord[]> {
   if (!syncLogId) return [];
   const { data, error } = await client
     .from("airtable_sync_record_log")
-    .select("id, airtable_record_id, reason, created_at")
-    .eq("sync_log_id", syncLogId).eq("action", "held_unresolved")
+    .select("id, airtable_record_id, reason, created_at, action")
+    .eq("sync_log_id", syncLogId).in("action", ["held_unresolved", "error"])
     .order("created_at", { ascending: false });
   if (error) throw error;
-  return (data ?? []) as HeldRecord[];
+  return (data ?? []) as UnresolvedRecord[];
 }

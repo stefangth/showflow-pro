@@ -21,11 +21,11 @@ vi.mock("@/data/cities", () => ({
 }));
 vi.mock("@/data/airtableSync", () => ({
   fetchLatestSyncLog: vi.fn(() => Promise.resolve(null)),
-  fetchHeldRecords: vi.fn(() => Promise.resolve([])),
+  fetchUnresolvedRecords: vi.fn(() => Promise.resolve([])),
 }));
 
 import { fetchAirtableBases } from "@/data/airtableSchema";
-import { fetchLatestSyncLog, fetchHeldRecords } from "@/data/airtableSync";
+import { fetchLatestSyncLog, fetchUnresolvedRecords } from "@/data/airtableSync";
 
 function renderTab(initial: Record<string, unknown> = {}) {
   const draft: Record<string, unknown> = { ...initial };
@@ -75,13 +75,27 @@ describe("AirtableSyncTab — last sync report", () => {
     (fetchLatestSyncLog as ReturnType<typeof vi.fn>).mockResolvedValue({
       id: "log-1", status: "partial", imported_count: 3, new_count: 2, updated_count: 1, held_count: 1, error_details: null, synced_at: "2026-06-17T10:00:00Z",
     });
-    (fetchHeldRecords as ReturnType<typeof vi.fn>).mockResolvedValue([
-      { id: "r1", airtable_record_id: "recHELD", reason: "program 'X' not linked", created_at: "2026-06-17T10:00:00Z" },
+    (fetchUnresolvedRecords as ReturnType<typeof vi.fn>).mockResolvedValue([
+      { id: "r1", airtable_record_id: "recHELD", reason: "program 'X' not linked", created_at: "2026-06-17T10:00:00Z", action: "held_unresolved" },
     ]);
     renderTab();
     expect(await screen.findByText("Last sync report")).toBeInTheDocument();
+    expect(await screen.findByText("Held records")).toBeInTheDocument();
     expect(await screen.findByText("program 'X' not linked")).toBeInTheDocument();
     expect(screen.getByText("recHELD")).toBeInTheDocument();
+  });
+
+  it("renders errored records in their own subsection", async () => {
+    (fetchLatestSyncLog as ReturnType<typeof vi.fn>).mockResolvedValue({
+      id: "log-3", status: "partial", imported_count: 0, new_count: 0, updated_count: 0, held_count: 0, error_details: "1 record(s) errored", synced_at: "2026-06-17T10:00:00Z",
+    });
+    (fetchUnresolvedRecords as ReturnType<typeof vi.fn>).mockResolvedValue([
+      { id: "e1", airtable_record_id: "recERR", reason: "insert failed: duplicate key", created_at: "2026-06-17T10:00:00Z", action: "error" },
+    ]);
+    renderTab();
+    expect(await screen.findByText("Errored records")).toBeInTheDocument();
+    expect(await screen.findByText("insert failed: duplicate key")).toBeInTheDocument();
+    expect(screen.getByText("recERR")).toBeInTheDocument();
   });
 
   it("renders error_details when present", async () => {
@@ -89,14 +103,14 @@ describe("AirtableSyncTab — last sync report", () => {
       id: "log-2", status: "partial", imported_count: 0, new_count: 0, updated_count: 0, held_count: 0,
       error_details: "2 record(s) errored", synced_at: "2026-06-17T10:00:00Z",
     });
-    (fetchHeldRecords as ReturnType<typeof vi.fn>).mockResolvedValue([]);
+    (fetchUnresolvedRecords as ReturnType<typeof vi.fn>).mockResolvedValue([]);
     renderTab();
     expect(await screen.findByText("2 record(s) errored")).toBeInTheDocument();
   });
 
   it("shows an empty state when the org has never synced", async () => {
     (fetchLatestSyncLog as ReturnType<typeof vi.fn>).mockResolvedValue(null);
-    (fetchHeldRecords as ReturnType<typeof vi.fn>).mockResolvedValue([]);
+    (fetchUnresolvedRecords as ReturnType<typeof vi.fn>).mockResolvedValue([]);
     renderTab();
     expect(await screen.findByText(/No sync has run yet/i)).toBeInTheDocument();
   });
