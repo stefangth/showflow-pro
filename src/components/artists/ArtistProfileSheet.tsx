@@ -13,6 +13,8 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { TagInput, type TagOption } from '@/components/ui/tag-input';
 import { useToast } from '@/hooks/use-toast';
 import { useSkills, useArtistSkills, useCreateSkill, type Skill } from '@/hooks/useSkills';
+import { useOrgMembers } from '@/hooks/useOrgMembers';
+import { LinkedAccountPanel } from './LinkedAccountPanel';
 import type { Artist, ArtistStatus } from '@/types';
 
 interface Props {
@@ -30,6 +32,12 @@ export function ArtistProfileSheet({ artistId, open, onOpenChange }: Props) {
   const { toast } = useToast();
   const qc = useQueryClient();
   const canEdit = hasRole('admin') || hasRole('producer');
+  const isAdmin = hasRole('admin');
+  // Reuse the admin-only member list (list_org_members) to resolve the linked account.
+  // Only enabled for admins — producers get the badge only (no PII), per ADR-0011.
+  const { data: orgMembers, isLoading: membersLoading } = useOrgMembers(
+    isAdmin ? currentOrg?.id : null,
+  );
 
   const { data: artist, isLoading } = useQuery({
     queryKey: ['artists', 'detail', artistId],
@@ -44,6 +52,11 @@ export function ArtistProfileSheet({ artistId, open, onOpenChange }: Props) {
   const { data: allSkills } = useSkills();
   const { data: artistSkills } = useArtistSkills(artistId);
   const createSkill = useCreateSkill();
+
+  // Resolve the linked login account for the LinkedAccountPanel (admin-only).
+  const linkedMember = artist?.user_id && orgMembers
+    ? orgMembers.find((m) => m.user_id === artist.user_id)
+    : undefined;
 
   const [form, setForm] = useState({
     name: '',
@@ -225,6 +238,14 @@ export function ArtistProfileSheet({ artistId, open, onOpenChange }: Props) {
                 </div>
               )}
             </div>
+
+            <LinkedAccountPanel
+              userId={artist.user_id}
+              bookingEmail={artist.email}
+              account={linkedMember ? { email: linkedMember.email, display_name: linkedMember.display_name } : undefined}
+              accountLoading={isAdmin && !!artist.user_id && membersLoading}
+              canSeeAccount={isAdmin}
+            />
 
             {canEdit && (
               <div className="flex justify-end gap-2 pt-2">
