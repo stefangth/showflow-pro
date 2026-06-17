@@ -576,6 +576,12 @@ $$;
 
 revoke all on function public.merge_cities(uuid, uuid[]) from public;
 grant execute on function public.merge_cities(uuid, uuid[]) to authenticated;
+
+-- One-time normalization: lowercase any city keys written by the old case-preserving buildCityKey
+-- so the now-case-insensitive resolution (Task 1) keeps matching them. No-op in prod today
+-- (0 linked cities) but closes the window where a city linked on old code wouldn't resolve.
+update public.cities set airtable_city_key = lower(btrim(airtable_city_key))
+ where airtable_city_key is not null and airtable_city_key <> lower(btrim(airtable_city_key));
 ```
 
 - [ ] **Step 2: Local smoke test via the MCP (BEGIN/ROLLBACK).** Run this through `execute_sql` to prove repoint + delete on real schema without persisting. Replace UUIDs with fresh ones; it must return `survivor_dates = 1` and `loser_exists = 0`:
