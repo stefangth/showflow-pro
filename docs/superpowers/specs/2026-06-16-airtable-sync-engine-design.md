@@ -257,7 +257,7 @@ imported from a non-empty table. Run `status`: `success` only when `held_count =
 1. **Foundation (DB):** slot columns on `shows`; migrate `sub_program_slots_defaults` → `shows`;
    retrofit `sync_show_date_status`; drop the JSON + its recompute trigger; `bookings` dup guard;
    artist↔org guard. Update CLAUDE.md/app-logic.md slot + booking sections.
-2. **Mapping model:** `airtable-describe-base` function; `airtable_field_map` + `airtable_key`
+2. **Mapping model:** `airtable-schema` function; `airtable_field_map` + `airtable_key`
    columns; Settings field-mapping + catalog-linking UI; delete `filter_mappings`. Docs.
 3. **Sync rewrite + observability:** rewrite `airtable-poll` off the map/links; extend
    `airtable_sync_log`; add `airtable_sync_record_log`; sync report UI + admin notification. Docs.
