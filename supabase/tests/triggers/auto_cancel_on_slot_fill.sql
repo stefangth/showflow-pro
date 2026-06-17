@@ -18,13 +18,6 @@ SELECT plan(10);
 -- Shared fixtures
 -- ────────────────────────────────────────────────────────────────────────────
 
-INSERT INTO public.app_settings (key, value)
-VALUES (
-  'sub_program_slots_defaults',
-  '{"theatre":{"musical":{"main_cast":2,"understudies":1}}}'::jsonb
-)
-ON CONFLICT (org_id, key) DO UPDATE SET value = EXCLUDED.value;
-
 INSERT INTO public.artists (id, name, org_id) VALUES
   ('bbbbbbbb-ac00-0001-0000-000000000000', 'AC Artist 1', '00000000-0000-0000-0000-00000000b007'),
   ('bbbbbbbb-ac00-0002-0000-000000000000', 'AC Artist 2', '00000000-0000-0000-0000-00000000b007'),
@@ -33,8 +26,9 @@ INSERT INTO public.artists (id, name, org_id) VALUES
   ('bbbbbbbb-ac00-0005-0000-000000000000', 'AC Artist 5', '00000000-0000-0000-0000-00000000b007'),
   ('bbbbbbbb-ac00-0006-0000-000000000000', 'AC Artist 6', '00000000-0000-0000-0000-00000000b007');
 
-INSERT INTO public.shows (id, program, sub_program, org_id)
-VALUES ('cccccccc-ac00-0001-0000-000000000000', 'theatre', 'musical', '00000000-0000-0000-0000-00000000b007');
+-- Slot capacity: 2 main + 1 understudy, set directly on the shows row
+INSERT INTO public.shows (id, program, sub_program, main_cast_slots, understudy_slots, org_id)
+VALUES ('cccccccc-ac00-0001-0000-000000000000', 'theatre', 'musical', 2, 1, '00000000-0000-0000-0000-00000000b007');
 
 INSERT INTO public.show_dates (id, show_id, date, session_1, org_id)
 VALUES ('dddddddd-ac00-0001-0000-000000000000', 'cccccccc-ac00-0001-0000-000000000000', '2099-06-01', '19:00'::time, '00000000-0000-0000-0000-00000000b007');

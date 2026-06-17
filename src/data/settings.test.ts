@@ -1,24 +1,86 @@
 import { describe, it, expect } from "vitest";
 import { createFakeSupabase } from "@/test/supabaseFake";
-import { fetchProgramSubProgramPairs, resolveOrgSetting, upsertOrgSetting } from "./settings";
+import { fetchShowsWithSlots, updateShowSlots, resolveOrgSetting, upsertOrgSetting } from "./settings";
 
-describe("fetchProgramSubProgramPairs", () => {
-  it("selects non-null program/sub_program from shows and dedupes", async () => {
+describe("fetchShowsWithSlots", () => {
+  it("selects the correct columns from shows filtered by org_id", async () => {
     const rows = [
-      { program: "A", sub_program: "x" },
-      { program: "A", sub_program: "x" },
+      { id: "s1", program: "A", sub_program: "x", main_cast_slots: 2, understudy_slots: 1 },
+      { id: "s2", program: "A", sub_program: "y", main_cast_slots: null, understudy_slots: null },
     ];
     const fake = createFakeSupabase({ shows: { data: rows, error: null } });
-    const result = await fetchProgramSubProgramPairs(fake as never);
-    expect(result).toEqual([{ program: "A", sub_program: "x" }]);
-    expect(fake.calls).toContainEqual({ table: "shows", method: "select", args: ["program, sub_program"] });
-    expect(fake.calls).toContainEqual({ table: "shows", method: "not", args: ["program", "is", null] });
-    expect(fake.calls).toContainEqual({ table: "shows", method: "not", args: ["sub_program", "is", null] });
+    const result = await fetchShowsWithSlots(fake as never, "org-1");
+    expect(result).toEqual(rows);
+    expect(fake.calls).toContainEqual({
+      table: "shows",
+      method: "select",
+      args: ["id, program, sub_program, main_cast_slots, understudy_slots"],
+    });
+    expect(fake.calls).toContainEqual({
+      table: "shows",
+      method: "eq",
+      args: ["org_id", "org-1"],
+    });
+    expect(fake.calls).toContainEqual({
+      table: "shows",
+      method: "order",
+      args: ["program"],
+    });
+    expect(fake.calls).toContainEqual({
+      table: "shows",
+      method: "order",
+      args: ["sub_program"],
+    });
+  });
+
+  it("returns empty array when no rows", async () => {
+    const fake = createFakeSupabase({ shows: { data: [], error: null } });
+    const result = await fetchShowsWithSlots(fake as never, "org-1");
+    expect(result).toEqual([]);
+  });
+
+  it("returns empty without querying shows when orgId is null", async () => {
+    const fake = createFakeSupabase({ shows: { data: [{ id: "s1" }], error: null } });
+    const result = await fetchShowsWithSlots(fake as never, null);
+    expect(result).toEqual([]);
+    expect(fake.calls.some((c) => c.table === "shows")).toBe(false);
   });
 
   it("throws on error", async () => {
     const fake = createFakeSupabase({ shows: { data: null, error: { message: "boom" } } });
-    await expect(fetchProgramSubProgramPairs(fake as never)).rejects.toBeTruthy();
+    await expect(fetchShowsWithSlots(fake as never, "org-1")).rejects.toBeTruthy();
+  });
+});
+
+describe("updateShowSlots", () => {
+  it("updates main_cast_slots and understudy_slots on the correct show", async () => {
+    const fake = createFakeSupabase({ shows: { data: null, error: null } });
+    await updateShowSlots(fake as never, "show-abc", 3, 1);
+    expect(fake.calls).toContainEqual({
+      table: "shows",
+      method: "update",
+      args: [{ main_cast_slots: 3, understudy_slots: 1 }],
+    });
+    expect(fake.calls).toContainEqual({
+      table: "shows",
+      method: "eq",
+      args: ["id", "show-abc"],
+    });
+  });
+
+  it("allows null values to clear slots", async () => {
+    const fake = createFakeSupabase({ shows: { data: null, error: null } });
+    await updateShowSlots(fake as never, "show-abc", null, null);
+    expect(fake.calls).toContainEqual({
+      table: "shows",
+      method: "update",
+      args: [{ main_cast_slots: null, understudy_slots: null }],
+    });
+  });
+
+  it("throws on update error", async () => {
+    const fake = createFakeSupabase({ shows: { data: null, error: { message: "fail" } } });
+    await expect(updateShowSlots(fake as never, "show-abc", 2, 0)).rejects.toBeTruthy();
   });
 });
 

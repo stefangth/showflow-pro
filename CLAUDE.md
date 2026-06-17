@@ -109,7 +109,7 @@ src/
                    #   editor_table_permissions). EditorProvider wraps the whole app.
                    #   Read-only hook for page components: useEditorConfig().
   hooks/           # Domain hooks (useMyArtist, useEligibleArtists, useChatParticipant,
-                   #   useArtistEligibleDates, useSubProgramSlots, useSettingsWarnings,
+                   #   useArtistEligibleDates, useSettingsWarnings,
                    #   useSkills/useArtistSkills, useNotifications/useMarkNotificationRead/
                    #   useMarkAllNotificationsRead, useMyProfile/useUpdateMyProfile,
                    #   useOrgMembers/useRemoveOrgMember) + UI hooks (use-mobile, use-toast)
@@ -150,8 +150,8 @@ supabase/
 - **Super-admins (`platform_admins` table) bypass org gates.** `is_super_admin(_uid)` is a SECURITY DEFINER function used by RLS and by `requireOrgRole` / `requireSuperAdmin` in `_shared/auth.ts`. In the frontend `AuthContext` this surfaces as `isSuperAdmin: boolean`. Super-admins: (a) skip `ProtectedRoute`'s org-membership and suspended-org checks; (b) see all orgs in the switcher via `fetchAllOrgs`; (c) can enter `/platform` (gated by `PlatformRoute`). Manage super-admins via `add_platform_admin(email)` / `remove_platform_admin(user_id)` RPCs (last-admin guard is race-resistant). Edge endpoints that need super-admin authority call `requireSuperAdmin(deps, req)` from `_shared/auth.ts`.
 - **Chat is per show-date.** One `chats` row per `show_date_id`; participation is gated by `is_chat_participant(chat_id, user_id)` (admins, producers, and artists booked/soft-booked for that date). After `CHAT_ARCHIVE_DAYS` days, chats are hidden from `ChatsListPage` for non-admins and become read-only in `ChatPanel` (admins can still view the archived thread).
 - **Artist availability is gated by eligibility.** Artists can only declare availability on dates returned by `useArtistEligibleDates` (derived from cast eligibility). Non-eligible dates render non-interactively in the calendar.
-- **`show_dates.status` is DB-computed.** A Postgres trigger (`sync_show_date_status_trigger` on `bookings`) automatically sets status to `open | partially_filled | fully_filled` based on confirmed booking counts vs the `main_cast` + `understudies` thresholds in `app_settings.sub_program_slots_defaults` (keyed by `(program, sub_program)`). Only `cancelled` is set by mutations directly. Do not set status manually in client code. A second trigger on `app_settings` recomputes all show_dates when slot defaults change; a third on `shows` does so when a show's `program` or `sub_program` is updated.
-- **Slot capacity comes from settings, not columns.** There is no `slots_per_date` column on `shows` or `show_dates`. Capacity for any date is `app_settings.sub_program_slots_defaults[program][sub_program]` (an object with `main_cast` and `understudies`). When a `(program, sub_program)` combination is unconfigured, the trigger leaves status as `open`/`partially_filled` (never `fully_filled`); the UI overrides the badge to "Unconfigured" via `useSubProgramSlots` + `effectiveSlots(defaults, program, subProgram)`.
+- **`show_dates.status` is DB-computed.** A Postgres trigger (`sync_show_date_status_trigger` on `bookings`) automatically sets status to `open | partially_filled | fully_filled` based on confirmed booking counts vs the `main_cast_slots` + `understudy_slots` columns on `shows`. Only `cancelled` is set by mutations directly. Do not set status manually in client code. A trigger on `shows` recomputes that show's dates when its `program`, `sub_program`, `main_cast_slots`, or `understudy_slots` change.
+- **Slot capacity lives on `shows`.** Each show row carries `main_cast_slots` and `understudy_slots` (nullable smallint; `NULL` = unconfigured → the date never reaches `fully_filled` and the UI shows an "Unconfigured" badge). There is no `slots_per_date` column and no `app_settings.sub_program_slots_defaults`. The frontend reads these columns via `showSlots(show)` (from `src/lib/settings.ts`) on the already-joined show row — no separate query needed.
 - **No UI for creating show dates.** The create-show-date flow was intentionally removed. New show_dates must be inserted via the Supabase dashboard or a future admin-only flow.
 - **Booking detail surface: `ShowDateDetailSheet`.** The full booking management experience (date config, assigned artists, available artists, chat) lives in `src/components/shows/ShowDateDetailSheet.tsx`. There is no standalone `/shows/:id` page — `ShowDetailPage` and `ShowDetailSheet` have been deleted.
 - **Audit trail:** all booking status changes append to `booking_audit_log`. Never delete from this table.
@@ -185,7 +185,7 @@ supabase/
   - **`['availability', ...]`** — everything that reads from the `availability` table (e.g. `['availability', 'cell', artistId, date]`, `['availability', 'available', dateId]`).
 - **Invalidation rule:** Mutations that write to `bookings` invalidate `['bookings']` (prefix match, catches all sub-keys). Mutations that write to `availability` invalidate `['availability']`. This is the only pattern that stays correct as new consumers are added. Never list individual sub-keys in a mutation — always bust the whole domain.
 - **Supabase Realtime is enabled** on all primary tables. Booking status changes propagate automatically to subscribed clients.
-- Prefer the existing domain hooks in `src/hooks/` (`useMyArtist`, `useEligibleArtists`, `useArtistEligibleDates`, `useChatParticipant`, `useSubProgramSlots`, `useSettingsWarnings`, `useSkills`/`useArtistSkills`, `useNotifications`) over duplicating Supabase queries inline.
+- Prefer the existing domain hooks in `src/hooks/` (`useMyArtist`, `useEligibleArtists`, `useArtistEligibleDates`, `useChatParticipant`, `useSettingsWarnings`, `useSkills`/`useArtistSkills`, `useNotifications`) over duplicating Supabase queries inline.
 - Never call Supabase from a component effect when a query will do.
 - Side effects on success → `sonner` toast (`toast.success`, `toast.error`).
 
@@ -268,6 +268,8 @@ CI runs all of these (`.github/workflows/ci.yml`).
 ## Booking workflow (domain rules)
 
 A booking moves through: `suggested → soft_booked → confirmed` (or `cancelled` from any state).
+
+**DB-enforced integrity:** at most one *active* (non-cancelled) booking exists per `(show_date_id, artist_id)` (partial unique index `bookings_active_artist_date_uniq`); and a booking's artist must belong to the same org as its show_date — enforced by the `derive_org_id_for_booking()` trigger, which re-derives `org_id` and re-checks on INSERT and on any UPDATE of `artist_id`/`show_date_id`. Don't rely on application-side dedup alone.
 
 - Offers are created by `open-offer-tier` edge function (call after new show_date creation or manually).
 - Artists have a configurable response window (default 48h) to respond; `expire-offers` runs hourly. The window duration, digest send hours (Berlin time), and other booking engine settings are stored in `app_settings` (editable via Settings → Booking Engine), not hardcoded in `app.config.ts`.

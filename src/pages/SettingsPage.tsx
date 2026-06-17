@@ -22,9 +22,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { toast } from 'sonner';
 import { Settings as SettingsIcon, Database, Bell, Wand2, Save, SlidersHorizontal, MapPin, Plus, Trash2, Clock, AlertTriangle, BookOpen, UserCog, Eye } from 'lucide-react';
-import { upsertOrgSetting } from '@/data/settings';
+import { upsertOrgSetting, fetchShowsWithSlots, updateShowSlots, type ShowWithSlots } from '@/data/settings';
 import type { City, Cast } from '@/types';
-import type { SubProgramSlotConfig, NestedSlotDefaults } from '@/hooks/useSubProgramSlots';
 
 const EMAIL_TEMPLATE_KEYS = [
   'signup-decision',
@@ -59,165 +58,115 @@ type SettingRow = {
 
 type ProgramSubProgramPair = { program: string; sub_program: string };
 
-function SubProgramSlotsEditor({
-  value,
-  onChange,
-  availablePairs,
-}: {
-  value: NestedSlotDefaults;
-  onChange: (v: NestedSlotDefaults) => void;
-  availablePairs: ProgramSubProgramPair[];
-}) {
-  const [newProgram, setNewProgram] = useState('');
-  const [newSubProgram, setNewSubProgram] = useState('');
-  const [newMainCast, setNewMainCast] = useState(1);
-  const [newUnderstudies, setNewUnderstudies] = useState(0);
+/** Per-show slot editor: renders a table of shows, each with two number inputs. */
+function ShowSlotsEditor({ orgId }: { orgId: string | null }) {
+  const qc = useQueryClient();
 
-  const isConfigured = (program: string, subProgram: string) => Boolean(value?.[program]?.[subProgram]);
-  const unconfigured = availablePairs.filter(p => !isConfigured(p.program, p.sub_program));
+  const { data: shows, isLoading } = useQuery({
+    queryKey: ['shows', 'with-slots', orgId],
+    enabled: !!orgId,
+    queryFn: () => fetchShowsWithSlots(supabase, orgId),
+  });
 
-  const programs = Array.from(new Set(availablePairs.map(p => p.program))).sort();
-  const subProgramsForNewProgram = newProgram
-    ? Array.from(new Set(unconfigured.filter(p => p.program === newProgram).map(p => p.sub_program))).sort()
-    : [];
+  // Local edits keyed by show id: { main_cast_slots, understudy_slots }
+  const [edits, setEdits] = useState<Record<string, { main: string; us: string }>>({});
 
-  const configuredPrograms = Object.keys(value ?? {}).sort();
-
-  function addRow() {
-    if (!newProgram || !newSubProgram) return;
-    const next: NestedSlotDefaults = { ...(value ?? {}) };
-    next[newProgram] = { ...(next[newProgram] ?? {}), [newSubProgram]: { main_cast: newMainCast, understudies: newUnderstudies } };
-    onChange(next);
-    setNewProgram('');
-    setNewSubProgram('');
-    setNewMainCast(1);
-    setNewUnderstudies(0);
-  }
-
-  function removeRow(program: string, subProgram: string) {
-    const next: NestedSlotDefaults = { ...(value ?? {}) };
-    if (next[program]) {
-      const { [subProgram]: _, ...rest } = next[program];
-      if (Object.keys(rest).length === 0) {
-        delete next[program];
-      } else {
-        next[program] = rest;
-      }
+  // Seed edits from fetched data whenever shows change
+  useEffect(() => {
+    if (!shows) return;
+    const next: Record<string, { main: string; us: string }> = {};
+    for (const s of shows) {
+      next[s.id] = {
+        main: s.main_cast_slots != null ? String(s.main_cast_slots) : '',
+        us: s.understudy_slots != null ? String(s.understudy_slots) : '',
+      };
     }
-    onChange(next);
+    setEdits(next);
+  }, [shows]);
+
+  const saveMutation = useMutation({
+    mutationFn: ({ showId, main, us }: { showId: string; main: number | null; us: number | null }) =>
+      updateShowSlots(supabase, showId, main, us),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['shows'] });
+      toast.success('Slots saved');
+    },
+    onError: (e: any) => toast.error(e.message ?? 'Failed to save'),
+  });
+
+  if (isLoading) return <p className="text-sm text-muted-foreground">Loading shows…</p>;
+
+  if (!shows || shows.length === 0) {
+    return (
+      <p className="text-sm text-muted-foreground">
+        Shows appear here once Airtable sync populates them.
+      </p>
+    );
   }
 
-  function updateConfig(program: string, subProgram: string, field: keyof SubProgramSlotConfig, n: number) {
-    const existing = value?.[program]?.[subProgram] ?? { main_cast: 0, understudies: 0 };
-    const next: NestedSlotDefaults = { ...(value ?? {}) };
-    next[program] = { ...(next[program] ?? {}), [subProgram]: { ...existing, [field]: n } };
-    onChange(next);
-  }
+  const unconfiguredCount = shows.filter(s => s.main_cast_slots == null || s.understudy_slots == null).length;
 
   return (
-    <div className="space-y-6">
-      {unconfigured.length > 0 && (
+    <div className="space-y-4">
+      {unconfiguredCount > 0 && (
         <Alert variant="destructive">
           <AlertTriangle className="h-4 w-4" />
           <AlertDescription>
-            Slot defaults missing for <strong>{unconfigured.length}</strong> program/sub-program combination{unconfigured.length === 1 ? '' : 's'}:{' '}
-            <strong>{unconfigured.map(p => `${p.program} / ${p.sub_program}`).join(', ')}</strong>.
-            Bookings for these cannot reach <em>fully filled</em> until defaults are set.
+            <strong>{unconfiguredCount}</strong> show{unconfiguredCount === 1 ? '' : 's'} ha{unconfiguredCount === 1 ? 's' : 've'} missing slot counts.
+            Bookings for these cannot reach <em>fully filled</em> until slots are set.
           </AlertDescription>
         </Alert>
       )}
-
-      {configuredPrograms.length === 0 && unconfigured.length === 0 && (
-        <p className="text-sm text-muted-foreground">No programs found — they will appear here once Airtable sync populates shows.</p>
-      )}
-
-      {configuredPrograms.map(program => {
-        const subPrograms = Object.entries(value[program] ?? {});
-        return (
-          <div key={program} className="space-y-2">
-            <h4 className="font-display font-semibold text-sm">{program}</h4>
-            <div className="grid grid-cols-[1fr_80px_80px_32px] gap-2 text-xs text-muted-foreground px-1">
-              <span>Sub-program</span>
-              <span className="text-center">Main cast</span>
-              <span className="text-center">Understudies</span>
-              <span />
+      <div className="grid grid-cols-[1fr_1fr_80px_80px_auto] gap-2 text-xs text-muted-foreground px-1">
+        <span>Program</span>
+        <span>Sub-program</span>
+        <span className="text-center">Main cast</span>
+        <span className="text-center">Understudies</span>
+        <span />
+      </div>
+      <div className="space-y-2">
+        {shows.map(show => {
+          const local = edits[show.id] ?? { main: '', us: '' };
+          const isDirty =
+            local.main !== (show.main_cast_slots != null ? String(show.main_cast_slots) : '') ||
+            local.us !== (show.understudy_slots != null ? String(show.understudy_slots) : '');
+          return (
+            <div key={show.id} className="grid grid-cols-[1fr_1fr_80px_80px_auto] items-center gap-2">
+              <span className="text-sm font-medium truncate">{show.program ?? '—'}</span>
+              <span className="text-sm text-muted-foreground truncate">{show.sub_program ?? '—'}</span>
+              <Input
+                type="number"
+                min={0}
+                className="text-center h-8"
+                value={local.main}
+                placeholder="—"
+                onChange={e => setEdits(d => ({ ...d, [show.id]: { ...d[show.id], main: e.target.value } }))}
+              />
+              <Input
+                type="number"
+                min={0}
+                className="text-center h-8"
+                value={local.us}
+                placeholder="—"
+                onChange={e => setEdits(d => ({ ...d, [show.id]: { ...d[show.id], us: e.target.value } }))}
+              />
+              <Button
+                size="sm"
+                variant={isDirty ? 'default' : 'outline'}
+                className="h-8 px-2"
+                disabled={saveMutation.isPending || !isDirty}
+                onClick={() => {
+                  const main = local.main === '' ? null : Number(local.main);
+                  const us = local.us === '' ? null : Number(local.us);
+                  saveMutation.mutate({ showId: show.id, main, us });
+                }}
+              >
+                <Save className="h-3.5 w-3.5" />
+              </Button>
             </div>
-            <div className="space-y-2">
-              {subPrograms.map(([subProgram, config]) => (
-                <div key={subProgram} className="grid grid-cols-[1fr_80px_80px_32px] items-center gap-2">
-                  <span className="text-sm font-medium truncate">{subProgram}</span>
-                  <Input
-                    type="number"
-                    min={0}
-                    className="text-center h-8"
-                    value={config.main_cast}
-                    onChange={e => updateConfig(program, subProgram, 'main_cast', Number(e.target.value) || 0)}
-                  />
-                  <Input
-                    type="number"
-                    min={0}
-                    className="text-center h-8"
-                    value={config.understudies}
-                    onChange={e => updateConfig(program, subProgram, 'understudies', Number(e.target.value) || 0)}
-                  />
-                  <button
-                    onClick={() => removeRow(program, subProgram)}
-                    className="text-muted-foreground hover:text-destructive p-1 rounded"
-                    aria-label={`Remove ${program} / ${subProgram}`}
-                  >
-                    <Trash2 className="h-3.5 w-3.5" />
-                  </button>
-                </div>
-              ))}
-            </div>
-          </div>
-        );
-      })}
-
-      {unconfigured.length > 0 && (
-        <form
-          className="grid grid-cols-[1fr_1fr_80px_80px_auto] gap-2 pt-1"
-          onSubmit={e => { e.preventDefault(); addRow(); }}
-        >
-          <Select value={newProgram} onValueChange={v => { setNewProgram(v); setNewSubProgram(''); }}>
-            <SelectTrigger className="h-8">
-              <SelectValue placeholder="Program…" />
-            </SelectTrigger>
-            <SelectContent>
-              {programs
-                .filter(p => unconfigured.some(u => u.program === p))
-                .map(p => <SelectItem key={p} value={p}>{p}</SelectItem>)}
-            </SelectContent>
-          </Select>
-          <Select value={newSubProgram} onValueChange={setNewSubProgram} disabled={!newProgram}>
-            <SelectTrigger className="h-8">
-              <SelectValue placeholder="Sub-program…" />
-            </SelectTrigger>
-            <SelectContent>
-              {subProgramsForNewProgram.map(sp => <SelectItem key={sp} value={sp}>{sp}</SelectItem>)}
-            </SelectContent>
-          </Select>
-          <Input
-            type="number"
-            min={0}
-            className="text-center h-8"
-            value={newMainCast}
-            onChange={e => setNewMainCast(Number(e.target.value) || 0)}
-            placeholder="Main"
-          />
-          <Input
-            type="number"
-            min={0}
-            className="text-center h-8"
-            value={newUnderstudies}
-            onChange={e => setNewUnderstudies(Number(e.target.value) || 0)}
-            placeholder="U/S"
-          />
-          <Button type="submit" variant="outline" size="sm" disabled={!newProgram || !newSubProgram} className="h-8">
-            <Plus className="h-4 w-4" />
-          </Button>
-        </form>
-      )}
+          );
+        })}
+      </div>
     </div>
   );
 }
@@ -1055,17 +1004,13 @@ export default function SettingsPage() {
 
           <Card>
             <CardHeader>
-              <CardTitle className="font-display">Default Slots by Program &amp; Sub-Program</CardTitle>
+              <CardTitle className="font-display">Slots per Show</CardTitle>
               <CardDescription>
-                Set the main cast and understudy slot counts for each program / sub-program combination. Combinations are sourced from existing shows. A date can only reach <em>fully filled</em> once its combination is configured.
+                Set the main cast and understudy slot counts for each show. A date can only reach <em>fully filled</em> once its show has both values set.
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <SubProgramSlotsEditor
-                value={get('sub_program_slots_defaults', {}) as NestedSlotDefaults}
-                onChange={v => set('sub_program_slots_defaults', v)}
-                availablePairs={showProgramSubProgramPairs ?? []}
-              />
+              <ShowSlotsEditor orgId={orgId} />
             </CardContent>
           </Card>
         </TabsContent>
