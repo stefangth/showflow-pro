@@ -142,7 +142,7 @@ Daily confirmation digest email (send-confirmation-digest, 20:00 Berlin):
 
 ### Slot counts and sub-program config
 
-Each sub-program (e.g. "Matinée", "Evening") must have a configured `main_cast` count and `understudies` count in `app_settings` (key: `sub_program_slots_defaults`). If a sub-program has no slot config, the show date status will never reach `fully_filled` and the UI shows an "Unconfigured" badge — configure missing sub-programs in **Settings → Scheduling**.
+Each **show** carries `main_cast_slots` and `understudy_slots` (one show = one `(program, sub_program)`). If a show's slots are `NULL` (unconfigured) the show date status never reaches `fully_filled` and the UI shows an "Unconfigured" badge — set the counts on the show in **Settings → Scheduling**.
 
 ### Offer expiry
 

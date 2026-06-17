@@ -39,8 +39,12 @@ SELECT is(
 
 INSERT INTO public.organizations (id, name, slug) VALUES
   ('00000000-0000-0000-0000-00000000de02', 'Other', 'other-org');
+-- A second date in the same org: this booking must not collide with booking 44444444
+-- on bookings_active_artist_date_uniq (one active booking per show_date+artist).
+INSERT INTO public.show_dates (id, show_id, date, session_1)
+VALUES ('33333333-0000-0000-0000-00000000de02', '11111111-0000-0000-0000-00000000de01', '2099-01-03', '19:00');
 INSERT INTO public.bookings (id, show_date_id, artist_id, status, is_understudy, org_id)
-VALUES ('66666666-0000-0000-0000-00000000de01', '33333333-0000-0000-0000-00000000de01',
+VALUES ('66666666-0000-0000-0000-00000000de01', '33333333-0000-0000-0000-00000000de02',
         '22222222-0000-0000-0000-00000000de01', 'soft_booked', false,
         '00000000-0000-0000-0000-00000000de02');
 SELECT is(

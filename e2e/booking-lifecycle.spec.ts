@@ -66,11 +66,21 @@ test.describe("Flow B — booking lifecycle", () => {
     // The row for our seeded date renders an Accept button via OfferResponseButtons.
     const acceptButton = page.getByRole("button", { name: /accept/i }).first();
     await expect(acceptButton).toBeVisible({ timeout: 15_000 });
-    await acceptButton.click();
 
-    // sonner renders the toast text twice (visible div + aria-live announcement),
-    // so scope to the first match to avoid a strict-mode violation.
-    await expect(page.getByText(/offer accepted/i).first()).toBeVisible({ timeout: 10_000 });
+    // The first click can land before React has wired the button's onClick handler
+    // (hydration race right after navigation), silently swallowing it — no PATCH
+    // fires and the offer stays "pending". Retry click → assert until the accept
+    // actually takes effect. The button disappears once the booking flips to
+    // soft_booked, so guard the re-click on its visibility (the toast is the success
+    // signal either way). sonner renders the toast text twice (visible div +
+    // aria-live announcement), so scope to the first match to avoid a strict-mode
+    // violation.
+    await expect(async () => {
+      if (await acceptButton.isVisible()) {
+        await acceptButton.click();
+      }
+      await expect(page.getByText(/offer accepted/i).first()).toBeVisible({ timeout: 2_000 });
+    }).toPass({ timeout: 20_000 });
 
     const booking = await getLatestBooking(fixture.artistId);
     expect(booking?.status).toBe("soft_booked");
