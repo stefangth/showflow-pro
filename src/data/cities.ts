@@ -38,3 +38,14 @@ export async function importCitiesFromOptions(
     .insert(rows.map((r) => ({ org_id: orgId, name: r.name, airtable_city_key: r.key })));
   if (error) throw error;
 }
+
+/** Merge duplicate cities: repoint every city_id FK from the losers to the survivor, then delete
+ *  the losers. Server-enforced admin-only (merge_cities RPC). */
+export async function mergeCities(
+  client: SupabaseClient<Database>,
+  survivorId: string,
+  loserIds: string[],
+): Promise<void> {
+  const { error } = await client.rpc("merge_cities", { p_survivor: survivorId, p_losers: loserIds });
+  if (error) throw error;
+}

@@ -66,3 +66,16 @@ export function planCityReconciliation(options: string[], existing: CityRowLike[
   }
   return { toLink, toCreate };
 }
+
+/** Cities whose names normalize to the same value, as groups of size >1 (duplicate detection). */
+export function groupDuplicateCities(cities: CityRowLike[]): Array<{ norm: string; cities: CityRowLike[] }> {
+  const byNorm = new Map<string, CityRowLike[]>();
+  for (const c of cities) {
+    const norm = normalizeCityName(c.name);
+    if (!norm) continue;
+    (byNorm.get(norm) ?? byNorm.set(norm, []).get(norm)!).push(c);
+  }
+  return Array.from(byNorm.entries())
+    .filter(([, list]) => list.length > 1)
+    .map(([norm, list]) => ({ norm, cities: list }));
+}

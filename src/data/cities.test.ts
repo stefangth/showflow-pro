@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { createFakeSupabase } from "@/test/supabaseFake";
-import { fetchCitiesForLinking, linkCityAirtableKey, importCitiesFromOptions } from "./cities";
+import { fetchCitiesForLinking, linkCityAirtableKey, importCitiesFromOptions, mergeCities } from "./cities";
 
 describe("cities data-access", () => {
   it("fetchCitiesForLinking selects link fields for the org", async () => {
@@ -34,5 +34,15 @@ describe("cities data-access", () => {
     const fake = createFakeSupabase({ cities: { data: null, error: null } });
     await importCitiesFromOptions(fake as never, "org-1", []);
     expect(fake.calls).toEqual([]);
+  });
+
+  it("mergeCities calls the merge_cities RPC with survivor + losers", async () => {
+    const fake = createFakeSupabase({ "rpc:merge_cities": { data: null, error: null } });
+    await mergeCities(fake as never, "survivor-1", ["loser-1", "loser-2"]);
+    expect(fake.calls).toContainEqual({ table: "rpc:merge_cities", method: "rpc", args: [{ p_survivor: "survivor-1", p_losers: ["loser-1", "loser-2"] }] });
+  });
+  it("mergeCities throws on RPC error", async () => {
+    const fake = createFakeSupabase({ "rpc:merge_cities": { data: null, error: { message: "not authorized" } } });
+    await expect(mergeCities(fake as never, "s", ["l"])).rejects.toMatchObject({ message: "not authorized" });
   });
 });
