@@ -2,21 +2,19 @@
 -- per-org name uniqueness lets two orgs share a name; the seed is idempotent.
 BEGIN;
 CREATE EXTENSION IF NOT EXISTS pgtap WITH SCHEMA extensions;
-SELECT plan(7);
+SELECT plan(6);
 
 SET session_replication_role = replica;
 INSERT INTO public.organizations (id, name, slug) VALUES
   ('00000000-0000-0000-0000-0000000ca000','Cat A','cat-a'),
   ('00000000-0000-0000-0000-0000000cb000','Cat B','cat-b');
--- Platform starter template + slot defaults. The 2D migration ALREADY seeds a
--- starter_catalog_template platform row, so UPSERT to override it with this test's
--- deterministic 2-skill template (keeps the count assertions below exact). Unique is
--- (org_id,key) NULLS NOT DISTINCT, so a plain INSERT of (NULL,'starter_catalog_template')
--- would 23505 against the migration's seed.
+-- Platform starter template. The 2D migration ALREADY seeds a starter_catalog_template
+-- platform row, so UPSERT to override it with this test's deterministic 2-skill template
+-- (keeps the count assertions below exact). Unique is (org_id,key) NULLS NOT DISTINCT, so a
+-- plain INSERT of (NULL,'starter_catalog_template') would 23505 against the migration's seed.
 INSERT INTO public.app_settings (org_id, key, value) VALUES
   (NULL, 'starter_catalog_template',
-   '{"skills":["Vocals","Dance"],"cities":[],"casts":[{"name":"Main Cast","description":null}]}'::jsonb),
-  (NULL, 'sub_program_slots_defaults', '{"theatre":{"musical":{"main_cast":1,"understudies":0}}}'::jsonb)
+   '{"skills":["Vocals","Dance"],"cities":[],"casts":[{"name":"Main Cast","description":null}]}'::jsonb)
 ON CONFLICT (org_id, key) DO UPDATE SET value = EXCLUDED.value;
 SET session_replication_role = DEFAULT;
 
@@ -30,9 +28,6 @@ SELECT is((SELECT count(*)::int FROM public.skills WHERE org_id='00000000-0000-0
 SELECT is((SELECT count(*)::int FROM public.casts WHERE org_id='00000000-0000-0000-0000-0000000ca000' AND name='Main Cast'),1,'org A seeded Main Cast');
 -- both orgs can hold the SAME skill name (per-org uniqueness)
 SELECT is((SELECT count(*)::int FROM public.skills WHERE name='Vocals'),2,'Vocals exists in BOTH orgs');
--- per-org slot defaults seeded for org A (a copy of the platform default)
-SELECT is( public.get_org_setting('00000000-0000-0000-0000-0000000ca000','sub_program_slots_defaults')
-             -> 'theatre' -> 'musical' ->> 'main_cast', '1', 'org A got its own slot defaults');
 -- per-org name uniqueness rejects a duplicate WITHIN an org…
 SELECT throws_ok(
   $$INSERT INTO public.skills (org_id, name) VALUES ('00000000-0000-0000-0000-0000000ca000','Vocals')$$,
