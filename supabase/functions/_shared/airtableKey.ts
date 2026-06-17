@@ -17,7 +17,15 @@ export function buildProgramKey(program: string | null | undefined, subProgram: 
   return s ?? p;
 }
 
-/** City link key — the city option value, trimmed. */
+/** Trim + locale-INDEPENDENT lowercase. Used for the city link key AND name-based
+ *  matching/dedup. toLowerCase (not toLocaleLowerCase) so the Deno poll and the browser UI
+ *  produce identical keys regardless of runtime locale — the ADR-0010 parity requirement. */
+export function normalizeCityName(v: string | null | undefined): string {
+  return (v ?? "").trim().toLowerCase();
+}
+
+/** City link key — the city option value, normalized (trim + lowercase). Null when blank. */
 export function buildCityKey(city: string | null | undefined): string | null {
-  return clean(city);
+  const n = normalizeCityName(city);
+  return n.length ? n : null;
 }

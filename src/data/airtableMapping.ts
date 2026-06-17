@@ -27,4 +27,4 @@ export const SHOWFLOW_FIELDS: ShowflowFieldDef[] = [
 
 // Single source of truth (ADR-0010): the link-key helpers live in the shared edge module so the
 // poll and this UI compose keys identically. Re-exported here so frontend imports are unchanged.
-export { buildProgramKey, buildCityKey } from "../../supabase/functions/_shared/airtableKey.ts";
+export { buildProgramKey, buildCityKey, normalizeCityName } from "../../supabase/functions/_shared/airtableKey.ts";
