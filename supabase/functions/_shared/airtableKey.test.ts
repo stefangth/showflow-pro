@@ -11,6 +11,12 @@ Deno.test("buildProgramKey: trims; null when nothing usable", () => {
   assertEquals(buildProgramKey(null, "  "), null);
   assertEquals(buildProgramKey("  ", null), null);
 });
+Deno.test("buildProgramKey: null when both inputs are undefined", () => {
+  assertEquals(buildProgramKey(undefined, undefined), null);
+});
+Deno.test("buildProgramKey: program value alone when sub-program absent", () => {
+  assertEquals(buildProgramKey("TJE", null), "TJE");
+});
 Deno.test("buildCityKey: trims; blank → null", () => {
   assertEquals(buildCityKey(" Berlin "), "Berlin");
   assertEquals(buildCityKey(""), null);
