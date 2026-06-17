@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { buildProgramKey, buildCityKey, SHOWFLOW_FIELDS } from "./airtableMapping";
+import { buildProgramKey, buildCityKey, normalizeCityName, SHOWFLOW_FIELDS } from "./airtableMapping";
 
 describe("airtableMapping key helpers", () => {
   it("buildProgramKey uses sub_program alone when program value is absent", () => {
@@ -12,9 +12,15 @@ describe("airtableMapping key helpers", () => {
     expect(buildProgramKey(null, "  ")).toBeNull();
     expect(buildProgramKey("  ", null)).toBeNull();
   });
-  it("buildCityKey trims; null/blank → null", () => {
-    expect(buildCityKey(" Berlin ")).toBe("Berlin");
+  it("buildCityKey lowercases + trims; null/blank → null", () => {
+    expect(buildCityKey(" Berlin ")).toBe("berlin");
+    expect(buildCityKey("BERLIN")).toBe("berlin");
     expect(buildCityKey("")).toBeNull();
+  });
+  it("normalizeCityName trims + lowercases, never null", () => {
+    expect(normalizeCityName(" Hamburg ")).toBe("hamburg");
+    expect(normalizeCityName(null)).toBe("");
+    expect(normalizeCityName(undefined)).toBe("");
   });
   it("SHOWFLOW_FIELDS lists the mappable core fields incl. optional session_3", () => {
     expect(SHOWFLOW_FIELDS.map((f) => f.key)).toEqual(
