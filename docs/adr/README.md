@@ -62,3 +62,4 @@ as reconstructed.
 | [0007](0007-drop-availability-for-blocked-dates.md) | Drop `availability` in favour of `blocked_dates` | 2026-05-14 | Accepted |
 | [0008](0008-no-show-date-creation-ui.md) | No in-app UI for creating show dates | pre-2026-06-03 | Accepted |
 | [0009](0009-extensible-synced-fields.md) | Extensible synced fields via per-entity JSONB + registry (not dynamic DDL) | 2026-06-16 | Accepted |
+| [0010](0010-catalog-link-keys.md) | Catalog links are per-org opaque-key columns; link grain lives in the mapping layer, not the schema | 2026-06-17 | Accepted |
