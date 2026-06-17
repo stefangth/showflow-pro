@@ -56,6 +56,19 @@ This separation matters because:
 
 An artist's list of dates they are explicitly blocking — dates when they should not receive offers regardless of their general availability status. One row per (artist, date). The `open-offer-tier` function filters out artists with a `blocked_dates` entry before creating offers. Artists manage blocked dates via the calendar UI.
 
+### Identity vs. booking contact
+
+A person can appear in two tables. **`profiles`** is their global login account (one per user:
+display name, personal phone, avatar). **`artists`** is their bookable talent record *inside an org*
+(talent name, booking email/phone, bio, status) — and it exists even for external artists with no
+login (`user_id` is empty). These are different real-world contacts, not duplicates, so they are
+kept separate (ADR-0011).
+
+When an invited person accepts, their artist row is linked to their login automatically (by email).
+For a linked (registered) artist, the offer/confirmation **digest emails go to their login email**
+first, falling back to the booking email; the admin can see the effective recipient in the artist's
+"Linked account" panel.
+
 ---
 
 ## Eligibility

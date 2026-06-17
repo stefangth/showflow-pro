@@ -262,7 +262,9 @@ imported from a non-empty table. Run `status`: `success` only when `held_count =
 3. **Sync rewrite + observability:** rewrite `airtable-poll` off the map/links; extend
    `airtable_sync_log`; add `airtable_sync_record_log`; sync report UI + admin notification. Docs.
 4. **Cities & venue polish:** city linking UX; confirm `venue`/`session_2` carry through. Docs.
-5. **Identity/contact dedup:** collapse `profiles`/`artists` contact fields (separate, independent).
+5. **Identity/contact ownership:** formalize the two-population model (no merge, no column drops);
+   enforce the login-email-first rule in the digests; add a "Linked account" panel. See ADR-0011 +
+   the Phase 5 design spec (`2026-06-17-phase-5-identity-contact-design.md`).
 6. **Custom (extensible) synced fields:** `show_dates.custom jsonb` + `custom_field_definitions`
    table; the capture toggle in the mapping UI; typed/filterable/sortable via the editor + filter
    system; built to generalize to artists/shows (§14).

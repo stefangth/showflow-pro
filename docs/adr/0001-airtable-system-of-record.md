@@ -136,6 +136,9 @@ grows real attributes such as address or capacity (promote the synced text to a 
 4. [ ] **Phase 3:** rewrite `airtable-poll` off the saved mapping; extend `airtable_sync_log` +
    add the per-record child table + the in-app sync report / notification.
 5. [ ] **Phase 4:** cities normalization via linking; confirm `venue` + `session_2` carry through.
-6. [ ] **Phase 5:** identity/contact deduplication (`profiles` / `artists`).
+6. [x] **Phase 5:** identity/contact **ownership** — `profiles` owns login-user identity; `artists`
+   owns the org-scoped talent record + booking contact (load-bearing for unregistered talent). No
+   merge, no column drops; enforced in the digests. Recorded in
+   [ADR-0011](0011-identity-contact-ownership.md).
 7. [ ] Update `CLAUDE.md` and `docs/app-logic.md` (including the stale `availability` / `user_roles`
    / approval-flow sections).
