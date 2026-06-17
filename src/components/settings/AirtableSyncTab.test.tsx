@@ -18,6 +18,7 @@ vi.mock("@/data/cities", () => ({
   fetchCitiesForLinking: vi.fn(() => Promise.resolve([])),
   linkCityAirtableKey: vi.fn(),
   importCitiesFromOptions: vi.fn(),
+  mergeCities: vi.fn(() => Promise.resolve()),
 }));
 vi.mock("@/data/airtableSync", () => ({
   fetchLatestSyncLog: vi.fn(() => Promise.resolve(null)),
@@ -26,6 +27,7 @@ vi.mock("@/data/airtableSync", () => ({
 
 import { fetchAirtableBases } from "@/data/airtableSchema";
 import { fetchLatestSyncLog, fetchUnresolvedRecords } from "@/data/airtableSync";
+import { fetchCitiesForLinking, mergeCities } from "@/data/cities";
 
 function renderTab(initial: Record<string, unknown> = {}) {
   const draft: Record<string, unknown> = { ...initial };
@@ -113,5 +115,29 @@ describe("AirtableSyncTab — last sync report", () => {
     (fetchUnresolvedRecords as ReturnType<typeof vi.fn>).mockResolvedValue([]);
     renderTab();
     expect(await screen.findByText(/No sync has run yet/i)).toBeInTheDocument();
+  });
+});
+
+describe("AirtableSyncTab — duplicate cities", () => {
+  beforeEach(() => vi.clearAllMocks());
+
+  it("surfaces a duplicate group and merges on confirm", async () => {
+    (fetchCitiesForLinking as ReturnType<typeof vi.fn>).mockResolvedValue([
+      { id: "c-a", name: "Berlin", airtable_city_key: "berlin" },
+      { id: "c-b", name: "berlin", airtable_city_key: null },
+    ]);
+    renderTab({ airtable_table_name: "Events", airtable_field_map: { city: "City" } });
+    expect(await screen.findByText(/Duplicate cities/i)).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Merge" }));          // dialog trigger
+    fireEvent.click(await screen.findByRole("button", { name: "Merge cities" })); // confirm action
+    await waitFor(() => expect(mergeCities).toHaveBeenCalledWith(expect.anything(), "c-a", ["c-b"]));
+  });
+
+  it("shows nothing when there are no duplicates", async () => {
+    (fetchCitiesForLinking as ReturnType<typeof vi.fn>).mockResolvedValue([
+      { id: "c-a", name: "Berlin", airtable_city_key: "berlin" },
+    ]);
+    renderTab({ airtable_table_name: "Events", airtable_field_map: { city: "City" } });
+    await waitFor(() => expect(screen.queryByText(/Duplicate cities/i)).not.toBeInTheDocument());
   });
 });
