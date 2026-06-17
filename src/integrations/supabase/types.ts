@@ -583,6 +583,7 @@ export type Database = {
       }
       cities: {
         Row: {
+          airtable_city_key: string | null
           airtable_record_id: string | null
           created_at: string
           id: string
@@ -590,6 +591,7 @@ export type Database = {
           org_id: string
         }
         Insert: {
+          airtable_city_key?: string | null
           airtable_record_id?: string | null
           created_at?: string
           id?: string
@@ -597,6 +599,7 @@ export type Database = {
           org_id: string
         }
         Update: {
+          airtable_city_key?: string | null
           airtable_record_id?: string | null
           created_at?: string
           id?: string
@@ -1084,6 +1087,7 @@ export type Database = {
       }
       shows: {
         Row: {
+          airtable_program_key: string | null
           category: string | null
           created_at: string
           created_by: string | null
@@ -1099,6 +1103,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          airtable_program_key?: string | null
           category?: string | null
           created_at?: string
           created_by?: string | null
@@ -1114,6 +1119,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          airtable_program_key?: string | null
           category?: string | null
           created_at?: string
           created_by?: string | null
