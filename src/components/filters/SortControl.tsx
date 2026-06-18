@@ -5,10 +5,13 @@ export type SortValue = 'alpha_asc' | 'alpha_desc' | 'chrono_asc' | 'chrono_desc
 
 interface Props<T extends string = SortValue> {
   value: T;
-  onChange: (v: T) => void;
+  // NoInfer keeps T inferred from `value` alone — without it, passing a
+  // `Dispatch<SetStateAction<SortValue>>` setter as onChange widens T to `string`
+  // and breaks every caller. (TS 5.4+)
+  onChange: (v: NoInfer<T>) => void;
   chronoLabel?: string;
   /** Extra sort options appended below the built-ins (e.g. custom sortable fields). */
-  extraOptions?: { value: T; label: string }[];
+  extraOptions?: { value: NoInfer<T>; label: string }[];
 }
 
 export function SortControl<T extends string = SortValue>({ value, onChange, chronoLabel = 'Date', extraOptions = [] }: Props<T>) {
