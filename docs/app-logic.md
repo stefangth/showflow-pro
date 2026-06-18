@@ -210,6 +210,19 @@ Transactional email uses the `send-transactional-email` edge function. Templates
 
 ---
 
+## Airtable Sync
+
+### Custom (Airtable-synced) fields
+
+Admins can capture extra Airtable fields as typed columns on show dates (Settings → Airtable Sync →
+Custom fields). They are stored in `show_dates.custom` (jsonb) and defined per-org in
+`custom_field_definitions`. They are **display / filter / sort metadata only** — they never drive
+eligibility, offers, slot capacity, or status. If a custom field becomes load-bearing for booking
+logic, **promote it to a real typed column** via a migration (add the column, backfill from
+`custom`, move the logic onto it) rather than reading `custom` in booking code.
+
+---
+
 ## Settings Reference
 
 | Setting | Location | Purpose |
