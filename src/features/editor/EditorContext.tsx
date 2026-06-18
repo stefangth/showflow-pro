@@ -7,7 +7,8 @@ import { useAuth } from '@/features/auth/AuthContext';
 import { upsertOrgSetting } from '@/data/settings';
 import { resolveEditorRows, type EditorSettingRow } from './orgEditorConfig';
 import type { AppRole } from '@/config/app.config';
-import { resolveColumnTemplate, pageColumnDefs, COMPUTED_LABELS } from './columnRegistries';
+import { resolveColumnTemplate, pageColumnDefs, COMPUTED_LABELS, customFieldDefToColumnDef, CUSTOM_FIELD_PAGES } from './columnRegistries';
+import { fetchCustomFieldDefs, type CustomFieldDefinition } from '@/data/customFields';
 import {
   DEFAULT_PAGE_ACCESS,
   DEFAULT_TABLE_PERMISSIONS,
@@ -42,6 +43,7 @@ interface EditorContextType {
   getColumnDefs: (pageKey: string) => ColumnDef[];
   getTablePermission: (tableKey: string, role: AppRole) => TablePermissionLevel;
   getColumnLabel: (colId: string) => string;
+  getCustomFieldDefs: (entity: string) => CustomFieldDefinition[];
 }
 
 const EditorContext = createContext<EditorContextType | undefined>(undefined);
@@ -90,6 +92,29 @@ export function EditorProvider({ children }: { children: ReactNode }) {
   const columnTemplates = useMemo<ColumnTemplates>(() => rawSettings?.columnTemplates ?? {}, [rawSettings]);
   const tablePermissions = useMemo<TablePermissions>(() => rawSettings?.tablePermissions ?? {}, [rawSettings]);
 
+  const { data: customFieldDefsRaw } = useQuery({
+    queryKey: ['custom-field-definitions', orgId],
+    enabled: !!orgId,
+    staleTime: 30_000,
+    queryFn: () => fetchCustomFieldDefs(supabase, { orgId }),
+  });
+  const customFieldDefs = useMemo<CustomFieldDefinition[]>(() => customFieldDefsRaw ?? [], [customFieldDefsRaw]);
+
+  const customDefsForPage = useCallback((pageKey: string): ColumnDef[] => {
+    const entity = CUSTOM_FIELD_PAGES[pageKey];
+    if (!entity) return [];
+    const base = pageColumnDefs(pageKey).length;
+    return customFieldDefs
+      .filter(d => d.entity === entity)
+      .map((d, i) => customFieldDefToColumnDef(d, base + i));
+  }, [customFieldDefs]);
+
+  const customLabelByColId = useMemo(() => {
+    const m = new Map<string, string>();
+    for (const d of customFieldDefs) m.set(`custom.${d.key}`, d.label);
+    return m;
+  }, [customFieldDefs]);
+
   const upsertSetting = useCallback(async (key: string, value: unknown) => {
     if (!orgId) throw new Error('No active organization');
     await upsertOrgSetting(supabase, orgId, key, value as Json);
@@ -135,14 +160,17 @@ export function EditorProvider({ children }: { children: ReactNode }) {
   }, [mutateTablePermissions, tablePermissions]);
 
   const getColumnTemplate = useCallback((pageKey: string, role: AppRole): ColumnTemplate[] =>
-    resolveColumnTemplate(pageKey, role, columnTemplates),
-    [columnTemplates]
+    resolveColumnTemplate(pageKey, role, columnTemplates, customDefsForPage(pageKey)),
+    [columnTemplates, customDefsForPage]
   );
 
   const getColumnDefs = useCallback((pageKey: string): ColumnDef[] =>
-    pageColumnDefs(pageKey),
-    []
+    [...pageColumnDefs(pageKey), ...customDefsForPage(pageKey)],
+    [customDefsForPage]
   );
+
+  const getCustomFieldDefs = useCallback((entity: string): CustomFieldDefinition[] =>
+    customFieldDefs.filter(d => d.entity === entity), [customFieldDefs]);
 
   const { data: columnDescriptions, error: columnDescriptionsError } = useQuery({
     queryKey: ['columns', 'descriptions'],
@@ -169,11 +197,12 @@ export function EditorProvider({ children }: { children: ReactNode }) {
   const getColumnLabel = useCallback(
     (colId: string) => {
       if (colId in COMPUTED_LABELS) return COMPUTED_LABELS[colId];
+      if (customLabelByColId.has(colId)) return customLabelByColId.get(colId)!;
       const dotIdx = colId.indexOf('.');
       const nameOnly = dotIdx !== -1 ? colId.slice(dotIdx + 1) : colId;
       return (columnDescriptions ?? {})[colId] ?? nameOnly;
     },
-    [columnDescriptions]
+    [columnDescriptions, customLabelByColId]
   );
 
   const getTablePermission = useCallback((tableKey: string, role: AppRole): TablePermissionLevel => {
@@ -199,12 +228,14 @@ export function EditorProvider({ children }: { children: ReactNode }) {
     getColumnDefs,
     getTablePermission,
     getColumnLabel,
+    getCustomFieldDefs,
   }), [
     isEditorMode,
     isSidePanelOpen,
     pageAccess, columnTemplates, tablePermissions, isConfigLoading,
     savePageAccess, saveColumnTemplate, saveTablePermission,
     getColumnTemplate, getColumnDefs, getTablePermission, getColumnLabel,
+    getCustomFieldDefs,
   ]);
 
   return <EditorContext.Provider value={value}>{children}</EditorContext.Provider>;
@@ -227,6 +258,7 @@ export function useEditorConfig() {
     getColumnDefs: ctx.getColumnDefs,
     getTablePermission: ctx.getTablePermission,
     getColumnLabel: ctx.getColumnLabel,
+    getCustomFieldDefs: ctx.getCustomFieldDefs,
   };
 }
 

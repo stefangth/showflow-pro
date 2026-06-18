@@ -11,6 +11,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
+import { Trash2 } from "lucide-react";
+import { fetchCustomFieldDefs, upsertCustomFieldDef, deleteCustomFieldDef } from "@/data/customFields";
+import { airtableTypeToCustomType, slugifyKey, type CustomFieldType } from "@/lib/customFields";
 import { fetchAirtableBases, fetchAirtableTables, type AirtableTable } from "@/data/airtableSchema";
 import { SHOWFLOW_FIELDS, buildProgramKey, buildCityKey, planCityReconciliation, groupDuplicateCities, type AirtableFieldMap } from "@/data/airtableMapping";
 import { fetchShowsForLinking, linkShowAirtableKey, importShowsFromOptions } from "@/data/settings";
@@ -151,6 +154,54 @@ export function AirtableSyncTab({ orgId, get, set }: Props) {
   });
   const unlinkedCities = (citiesQ.data ?? []).filter((c) => !c.airtable_city_key);
 
+  // ── Custom fields (definitions table; immediate mutations, not the settings draft) ──
+  const customFieldsQ = useQuery({
+    queryKey: ["custom-field-definitions", orgId, "show_dates"],
+    enabled: !!orgId,
+    queryFn: () => fetchCustomFieldDefs(supabase, { orgId, entity: "show_dates" }),
+  });
+  const customDefs = customFieldsQ.data ?? [];
+  const customBySourceField = new Set(customDefs.map((d) => d.source_field));
+  const mappedFieldNames = new Set(Object.values(fieldMap).filter(Boolean) as string[]);
+  const unboundFields = (selectedTable?.fields ?? []).filter(
+    (f) => !mappedFieldNames.has(f.name) && !customBySourceField.has(f.name),
+  );
+
+  const invalidateCustom = () => {
+    qc.invalidateQueries({ queryKey: ["custom-field-definitions", orgId, "show_dates"] });
+    qc.invalidateQueries({ queryKey: ["custom-field-definitions", orgId] }); // editor's query
+  };
+  const addCustom = useMutation({
+    mutationFn: (af: { name: string; type: string; options?: Record<string, unknown> }) => {
+      const type = airtableTypeToCustomType(af.type);
+      const options = type === "select"
+        ? ((af.options as { choices?: Array<{ name: string }> } | undefined)?.choices ?? []).map((c) => c.name)
+        : null;
+      return upsertCustomFieldDef(supabase, {
+        org_id: orgId!, entity: "show_dates", key: slugifyKey(af.name), label: af.name,
+        type, source_field: af.name, options,
+      });
+    },
+    onSuccess: () => { invalidateCustom(); toast.success("Custom field added"); },
+    onError: (e: unknown) => toast.error((e as Error).message ?? "Could not add custom field"),
+  });
+  const setCustomType = useMutation({
+    mutationFn: (args: { def: (typeof customDefs)[number]; type: CustomFieldType }) =>
+      upsertCustomFieldDef(supabase, {
+        org_id: orgId!, entity: "show_dates", key: args.def.key, label: args.def.label,
+        type: args.type, source_field: args.def.source_field,
+        options: args.def.options, filterable: args.def.filterable, sortable: args.def.sortable,
+      }),
+    onSuccess: () => { invalidateCustom(); toast.success("Updated"); },
+    onError: (e: unknown) => toast.error((e as Error).message ?? "Update failed"),
+  });
+  const removeCustom = useMutation({
+    mutationFn: (id: string) => deleteCustomFieldDef(supabase, id),
+    onSuccess: () => { invalidateCustom(); toast.success("Removed"); },
+    onError: (e: unknown) => toast.error((e as Error).message ?? "Remove failed"),
+  });
+  const CUSTOM_TYPES: CustomFieldType[] = ["text", "number", "date", "boolean", "select"];
+
   const dupeGroups = groupDuplicateCities(citiesQ.data ?? []);
   const survivorFor = (g: { norm: string; cities: { id: string; airtable_city_key: string | null }[] }) =>
     survivorByNorm[g.norm] ?? (g.cities.find((c) => c.airtable_city_key)?.id ?? g.cities[0].id);
@@ -265,6 +316,64 @@ export function AirtableSyncTab({ orgId, get, set }: Props) {
                 </Select>
               </div>
             ))}
+          </CardContent>
+        </Card>
+      )}
+
+      {/* ── Custom fields ──────────────────────────────────────────────────── */}
+      {selectedTable && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="font-display">Custom fields</CardTitle>
+            <CardDescription>
+              Capture extra Airtable fields as typed columns on show dates — shown, filtered, and sorted in the producer Shows &amp; Bookings table (toggle them on via the column editor). These are display metadata only; they never affect bookings, slots, or offers.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            {customDefs.length === 0 && (
+              <p className="text-sm text-muted-foreground">No custom fields yet.</p>
+            )}
+            {customDefs.map((d) => (
+              <div key={d.id} className="grid grid-cols-1 sm:grid-cols-[1fr_160px_auto] gap-3 items-center border-t border-border pt-3">
+                <div className="min-w-0">
+                  <div className="text-sm font-medium truncate">{d.label}</div>
+                  <div className="text-xs text-muted-foreground truncate">from “{d.source_field}”</div>
+                </div>
+                <Select value={d.type} onValueChange={(v) => setCustomType.mutate({ def: d, type: v as CustomFieldType })}>
+                  <SelectTrigger className="h-8" aria-label={`type for ${d.label}`}><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    {CUSTOM_TYPES.map((t) => <SelectItem key={t} value={t}>{t}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+                <Button size="sm" variant="ghost" onClick={() => removeCustom.mutate(d.id)} disabled={removeCustom.isPending} aria-label={`remove ${d.label}`}>
+                  <Trash2 className="h-4 w-4" />
+                </Button>
+              </div>
+            ))}
+            <Separator />
+            <div className="space-y-2">
+              <Label>Add a custom field from an unmapped Airtable field</Label>
+              <Select
+                value=""
+                onValueChange={(name) => {
+                  const af = selectedTable.fields.find((f) => f.name === name);
+                  if (!af) return;
+                  const key = slugifyKey(af.name);
+                  if (customDefs.some((d) => d.key === key)) {
+                    toast.error(`A custom field with key "${key}" already exists — rename or remove it first.`);
+                    return;
+                  }
+                  addCustom.mutate({ name: af.name, type: af.type, options: af.options });
+                }}
+                disabled={addCustom.isPending || unboundFields.length === 0}
+              >
+                <SelectTrigger><SelectValue placeholder={unboundFields.length ? "Pick an Airtable field…" : "No unmapped fields left"} /></SelectTrigger>
+                <SelectContent>
+                  {unboundFields.map((f) => <SelectItem key={f.id} value={f.name}>{f.name} <span className="text-muted-foreground">({f.type})</span></SelectItem>)}
+                </SelectContent>
+              </Select>
+              <p className="text-xs text-muted-foreground">Type is auto-detected from Airtable; adjust above if needed.</p>
+            </div>
           </CardContent>
         </Card>
       )}

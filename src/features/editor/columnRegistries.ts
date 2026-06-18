@@ -1,4 +1,5 @@
 import type { AppRole } from '@/config/app.config';
+import type { CustomFieldType } from '@/lib/customFields';
 import type { ColumnDef, ColumnTemplate, ColumnTemplates } from './types';
 
 /**
@@ -82,6 +83,25 @@ export const PAGE_COLUMN_SPECS: Record<string, PageColumnSpec> = {
   },
 };
 
+/** Pages that surface custom (Airtable-synced) columns, mapped to the entity they belong to.
+ *  Producer bookings table only this phase — custom fields never reach artist surfaces. */
+export const CUSTOM_FIELD_PAGES: Record<string, string> = { 'bookings-producer': 'show_dates' };
+
+/** Build a hidden custom ColumnDef from a definition's key+type. */
+export function customFieldDefToColumnDef(
+  def: { key: string; type: CustomFieldType }, order: number,
+): ColumnDef {
+  return {
+    id: `custom.${def.key}`,
+    table: 'custom',
+    column: def.key,
+    kind: 'custom',
+    customType: def.type,
+    defaultVisible: false,
+    defaultOrder: order,
+  };
+}
+
 /** Build the full ordered column list for a page from its spec. */
 export function pageColumnDefs(pageKey: string): ColumnDef[] {
   const spec = PAGE_COLUMN_SPECS[pageKey];
@@ -136,9 +156,10 @@ export const COLUMN_REGISTRIES: Record<string, ColumnDef[]> = new Proxy({} as Re
 export function resolveColumnTemplate(
   pageKey: string,
   role: AppRole,
-  savedTemplates: ColumnTemplates
+  savedTemplates: ColumnTemplates,
+  extraDefs: ColumnDef[] = [],
 ): ColumnTemplate[] {
-  const defs = pageColumnDefs(pageKey);
+  const defs = [...pageColumnDefs(pageKey), ...extraDefs];
   const saved = savedTemplates[pageKey]?.[role];
 
   if (!saved || saved.length === 0) {
