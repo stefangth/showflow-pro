@@ -24,6 +24,8 @@ import { showLabel } from '@/types';
 import { useColumnTemplate, useEditorConfig } from '@/features/editor/EditorContext';
 import { useColumnHeaders } from '@/features/editor/useColumnHeaders';
 import { ColumnLayoutEditor } from '@/features/editor/ColumnLayoutEditor';
+import { formatCustomValue, compareCustomValues, customFilterMatches, type CustomFilterState } from '@/lib/customFields';
+import { CustomFieldFilter, emptyCustomFilter } from '@/components/filters/CustomFieldFilter';
 
 type ShowRef = {
   id: string;
@@ -48,6 +50,7 @@ type ShowDateRow = {
   notes: string | null;
   city_id: string | null;
   show_id: string;
+  custom: Record<string, unknown> | null;
   show: ShowRef;
   city: CityRef;
 };
@@ -84,8 +87,15 @@ export default function ShowsBookingsPage() {
 function ProducerShowsBookings() {
   const { canSee } = useFilterVisibility('bookings');
   const { orderedColumns, visibleCount } = useColumnTemplate('bookings-producer');
-  const { isEditorMode } = useEditorConfig();
+  const { isEditorMode, getCustomFieldDefs } = useEditorConfig();
   const columnHeaders = useColumnHeaders(orderedColumns);
+  const customDefs = useMemo(() => getCustomFieldDefs('show_dates'), [getCustomFieldDefs]);
+  const customByColId = useMemo(
+    () => new Map(customDefs.map(d => [`custom.${d.key}`, d])),
+    [customDefs]
+  );
+  const filterableDefs = useMemo(() => customDefs.filter(d => d.filterable), [customDefs]);
+  const sortableDefs = useMemo(() => customDefs.filter(d => d.sortable), [customDefs]);
   const queryClient = useQueryClient();
   const [searchParams, setSearchParams] = useSearchParams();
 
@@ -93,7 +103,14 @@ function ProducerShowsBookings() {
   const [programs, setPrograms] = useState<string[]>([]);
   const [timeframe, setTimeframe] = useState<TimeframeValue>({ from: null, to: null });
   const [statusFilter, setStatusFilter] = useState<'all' | DisplayStatus>('all');
-  const [sort, setSort] = useState<SortValue>('chrono_asc');
+  type ProducerSort = SortValue | `custom:${string}`;
+  const [sort, setSort] = useState<ProducerSort>('chrono_asc');
+  const isCustomSort = (s: ProducerSort): s is `custom:${string}` => s.startsWith('custom:');
+  const sortExtraOptions = sortableDefs.flatMap(d => ([
+    { value: `custom:${d.key}:asc` as ProducerSort, label: `${d.label} ↑` },
+    { value: `custom:${d.key}:desc` as ProducerSort, label: `${d.label} ↓` },
+  ]));
+  const [customFilters, setCustomFilters] = useState<Record<string, CustomFilterState>>({});
   const [view, setView] = useState<ViewMode>('list');
   const [activeShowDateId, setActiveShowDateId] = useState<string | null>(null);
 
@@ -153,7 +170,7 @@ function ProducerShowsBookings() {
       const { data, error } = await supabase
         .from('show_dates')
         .select(`
-          id, date, session_1, session_2, session_3, venue, status, notes, city_id, show_id,
+          id, date, session_1, session_2, session_3, venue, status, notes, city_id, show_id, custom,
           show:shows(id, program, sub_program, required_skills, status, main_cast_slots, understudy_slots),
           city:cities(id, name)
         `)
@@ -195,12 +212,24 @@ function ProducerShowsBookings() {
     if (statusFilter !== 'all') {
       list = list.filter(sd => displayStatus(sd) === statusFilter);
     }
-    return applySort(list, sort,
+    for (const def of filterableDefs) {
+      const f = customFilters[`custom.${def.key}`];
+      if (f) list = list.filter(sd => customFilterMatches(sd.custom?.[def.key], def.type, f));
+    }
+    if (isCustomSort(sort)) {
+      const [, key, dir] = sort.split(':');
+      const def = customDefs.find(d => d.key === key);
+      if (def) {
+        const sign = dir === 'desc' ? -1 : 1;
+        return [...list].sort((a, b) => sign * compareCustomValues(a.custom?.[key], b.custom?.[key], def.type));
+      }
+    }
+    return applySort(list, sort as SortValue,
       sd => sd.show?.program ?? '',
       sd => new Date(sd.date + 'T00:00:00')
     );
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [showDates, search, programs, timeframe, statusFilter, sort]);
+  }, [showDates, search, programs, timeframe, statusFilter, sort, customFilters, filterableDefs, customDefs]);
 
   const calendarItems = useMemo(() =>
     filtered.map(sd => ({ showDate: sd, date: new Date(sd.date + 'T00:00:00') })),
@@ -251,7 +280,15 @@ function ProducerShowsBookings() {
         )}
         {canSee('program') && <ProgramFilter options={programOptions} value={programs} onChange={setPrograms} />}
         {canSee('timeframe') && <TimeframeFilter value={timeframe} onChange={setTimeframe} />}
-        {canSee('sort') && <SortControl value={sort} onChange={setSort} chronoLabel="Date" />}
+        {canSee('sort') && <SortControl value={sort} onChange={setSort} chronoLabel="Date" extraOptions={sortExtraOptions} />}
+        {filterableDefs.map(def => (
+          <CustomFieldFilter
+            key={def.id}
+            def={def}
+            value={customFilters[`custom.${def.key}`] ?? emptyCustomFilter(def.type)}
+            onChange={(v) => setCustomFilters(prev => ({ ...prev, [`custom.${def.key}`]: v }))}
+          />
+        ))}
         <div className="ml-auto"><ViewToggle value={view} onChange={setView} /></div>
       </div>
 
@@ -344,9 +381,21 @@ function ProducerShowsBookings() {
                           )}
                         </TableCell>
                       );
-                      default: return (
-                        <TableCell key={colId} className="text-xs text-muted-foreground">—</TableCell>
-                      );
+                      default: {
+                        // Custom (Airtable-synced) columns — display/filter/sort ONLY, never booking logic.
+                        if (colId.startsWith('custom.')) {
+                          const def = customByColId.get(colId);
+                          const val = sd.custom?.[colId.slice('custom.'.length)];
+                          return (
+                            <TableCell key={colId} className="text-sm whitespace-nowrap">
+                              {def ? formatCustomValue(val, def.type) : <span className="text-muted-foreground">—</span>}
+                            </TableCell>
+                          );
+                        }
+                        return (
+                          <TableCell key={colId} className="text-xs text-muted-foreground">—</TableCell>
+                        );
+                      }
                     }
                   };
                   return (

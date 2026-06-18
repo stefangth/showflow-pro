@@ -2,6 +2,7 @@ import { preflight, json } from "../_shared/http.ts";
 import { realDeps, type Deps } from "../_shared/deps.ts";
 import { getActiveOrgs, resolveOrgSetting } from "../_shared/settings.ts";
 import { buildProgramKey, buildCityKey } from "../_shared/airtableKey.ts";
+import { coerceCustomValue, type CustomFieldType } from "../_shared/customFields.ts";
 
 /** Max concurrent open-offer-tier invocations per batch to avoid exhausting the DB connection pool. */
 const OFFER_TIER_BATCH_SIZE = 10;
@@ -113,6 +114,24 @@ async function syncOrg(deps: Deps, orgId: string, baseId: string, tableName: str
     if (c.airtable_city_key) cityByKey.set(c.airtable_city_key, c.id);
   }
 
+  // ── Custom field definitions (display/filter/sort only — NEVER booking logic) ──
+  const { data: customDefsRaw } = await admin
+    .from("custom_field_definitions")
+    .select("key, source_field, type")
+    .eq("org_id", orgId).eq("entity", "show_dates").eq("source", "airtable");
+  const customDefs = (customDefsRaw ?? []) as Array<{ key: string; source_field: string; type: CustomFieldType }>;
+
+  /** Build the custom jsonb bag for one record. Non-fatal: bad/missing values are omitted. */
+  const buildCustom = (fields: Record<string, unknown>): Record<string, unknown> | undefined => {
+    if (customDefs.length === 0) return undefined;
+    const bag: Record<string, unknown> = {};
+    for (const def of customDefs) {
+      const coerced = coerceCustomValue(fields[def.source_field], def.type);
+      if (coerced.ok) bag[def.key] = coerced.value;
+    }
+    return bag;
+  };
+
   // Existing show_dates keyed by airtable_record_id (paginated to clear PostgREST's 1000-row cap).
   const existingByAirtableId = new Map<string, string>();
   {
@@ -185,6 +204,8 @@ async function syncOrg(deps: Deps, orgId: string, baseId: string, tableName: str
         if (session3 !== null) payload.session_3 = session3;
         if (venue !== null) payload.venue = venue;
         if (cityId !== null) payload.city_id = cityId;
+        const customBag = buildCustom(fields);
+        if (customBag !== undefined) payload.custom = customBag;
         const { error } = await admin.from("show_dates").update(payload).eq("id", existingId);
         if (error) { outcomes.push({ airtable_record_id: id, action: "error", show_date_id: existingId, reason: error.message, raw_fields: fields }); continue; }
         processed += 1; updated += 1;
@@ -197,6 +218,8 @@ async function syncOrg(deps: Deps, orgId: string, baseId: string, tableName: str
       if (session2 !== null) insertPayload.session_2 = session2;
       if (session3 !== null) insertPayload.session_3 = session3;
       if (venue !== null) insertPayload.venue = venue;
+      const customBagNew = buildCustom(fields);
+      if (customBagNew !== undefined) insertPayload.custom = customBagNew;
       const { data: inserted, error: insertErr } = await admin.from("show_dates").insert(insertPayload).select("id").single();
       if (insertErr || !inserted?.id) { outcomes.push({ airtable_record_id: id, action: "error", show_date_id: null, reason: insertErr?.message ?? "insert returned no id", raw_fields: fields }); continue; }
       processed += 1; newDates += 1;

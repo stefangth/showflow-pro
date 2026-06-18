@@ -1,12 +1,17 @@
 import type { AppRole } from '@/config/app.config';
+import type { CustomFieldType } from '@/lib/customFields';
 
 export interface ColumnDef {
   /** Namespaced id: `${table}.${column}`. */
   id: string;
-  /** Source table the column comes from (or `_computed` for derived cells). */
+  /** Source table the column comes from (or `_computed` / `custom`). */
   table: string;
-  /** Bare DB column name within the table. */
+  /** Bare DB column name within the table (or the custom key). */
   column: string;
+  /** Column kind. Defaults to 'static'; 'custom' for Airtable-synced custom fields. */
+  kind?: 'static' | 'custom';
+  /** Present when kind === 'custom' — drives client-side format/filter/sort. */
+  customType?: CustomFieldType;
   defaultVisible: boolean;
   defaultOrder: number;
 }

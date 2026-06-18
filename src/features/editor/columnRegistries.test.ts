@@ -3,7 +3,8 @@ import { readdirSync, readFileSync } from 'fs';
 import { dirname, join, resolve } from 'path';
 import { fileURLToPath } from 'url';
 import { describe, it, expect } from 'vitest';
-import { TABLE_COLUMNS, COMPUTED_LABELS } from './columnRegistries';
+import { TABLE_COLUMNS, COMPUTED_LABELS, resolveColumnTemplate, customFieldDefToColumnDef, CUSTOM_FIELD_PAGES } from './columnRegistries';
+import type { ColumnDef } from './types';
 
 describe('columnRegistries / RPC allowlist sync', () => {
   it('every non-_computed table in TABLE_COLUMNS appears in the get_column_descriptions allowlist', () => {
@@ -54,5 +55,42 @@ describe('COMPUTED_LABELS / TABLE_COLUMNS._computed sync', () => {
         `COMPUTED_LABELS is missing an entry for "${key}" — add it to columnRegistries.ts`
       ).toBe(true);
     }
+  });
+});
+
+const customCol: ColumnDef = customFieldDefToColumnDef({ key: 'capacity', type: 'number' }, 99);
+
+describe('customFieldDefToColumnDef', () => {
+  it('builds a hidden custom column with a custom.<key> id', () => {
+    expect(customCol).toEqual({
+      id: 'custom.capacity', table: 'custom', column: 'capacity',
+      kind: 'custom', customType: 'number', defaultVisible: false, defaultOrder: 99,
+    });
+  });
+});
+
+describe('CUSTOM_FIELD_PAGES', () => {
+  it('maps the producer bookings page to show_dates', () => {
+    expect(CUSTOM_FIELD_PAGES['bookings-producer']).toBe('show_dates');
+    expect(CUSTOM_FIELD_PAGES['availability']).toBeUndefined();
+  });
+});
+
+describe('resolveColumnTemplate with extraDefs', () => {
+  it('includes custom columns (hidden) when no saved template', () => {
+    const cols = resolveColumnTemplate('bookings-producer', 'producer', {}, [customCol]);
+    const custom = cols.find(c => c.columnId === 'custom.capacity');
+    expect(custom).toBeDefined();
+    expect(custom!.visible).toBe(false);
+  });
+
+  it('keeps a custom column that the saved template enabled', () => {
+    const saved = {
+      'bookings-producer': {
+        producer: [{ columnId: 'custom.capacity', visible: true, order: 0 }],
+      },
+    };
+    const cols = resolveColumnTemplate('bookings-producer', 'producer', saved, [customCol]);
+    expect(cols.find(c => c.columnId === 'custom.capacity')!.visible).toBe(true);
   });
 });
