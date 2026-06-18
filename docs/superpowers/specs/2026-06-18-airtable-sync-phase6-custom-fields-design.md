@@ -258,9 +258,12 @@ export const CUSTOM_FIELD_PAGES: Record<string, string> = { 'bookings-producer':
 - Add `customFieldDefs` (and a `getCustomFieldDefs(entity)` helper) to `useEditorConfig()`'s
   return so pages can read def metadata (type, options, filterable, sortable) for cells/filters/sort.
 
-`ColumnLayoutEditor` and `useColumnHeaders` need **no changes** — custom columns arrive through the
-same `getColumnTemplate` / `getColumnLabel` they already consume (hidden by default, toggleable).
-*(Verify `ColumnLayoutEditor` lists hidden columns for toggling — it does today.)*
+`useColumnHeaders` needs **no change** — it already reads `getColumnLabel` from context, which gets
+the `custom.*` branch. **`ColumnLayoutEditor` DOES need a change**: today it calls `pageColumnDefs` and
+`resolveColumnTemplate` *directly* (not via context), so it would never see custom columns. Switch it
+to consume `useEditorConfig().getColumnDefs(pageKey)` (for its `defs`/reset list) and
+`useEditor().getColumnTemplate(pageKey, role)` (for its draft) — both already include custom defs — so
+custom columns appear in the layout editor as hidden, toggleable chips.
 
 ## 9. Component 5 — Page render + client-side filter/sort (`ShowsBookingsPage.tsx`)
 
@@ -274,7 +277,7 @@ export type CustomFilterState =
   | { kind: 'text'; q: string }
   | { kind: 'select'; value: string | null }
   | { kind: 'number'; min: number | null; max: number | null }
-  | { kind: 'date'; from: Date | null; to: Date | null }
+  | { kind: 'date'; from: string | null; to: string | null }   // ISO 'YYYY-MM-DD'
   | { kind: 'boolean'; value: boolean | null };
 export function customFilterMatches(value: unknown, type: CustomFieldType, filter: CustomFilterState): boolean;
 ```
@@ -288,8 +291,9 @@ export function customFilterMatches(value: unknown, type: CustomFieldType, filte
   `formatCustomValue(sd.custom?.[colId.slice(7)], def.customType)`. (Comment the boundary invariant here.)
 - **Filter:** one generic `<CustomFieldFilter def value onChange>` (new
   `src/components/filters/CustomFieldFilter.tsx`) switching control by type — select→dropdown
-  (options from `def.options`), text→contains `Input`, number→min/max, date→reuse `TimeframeFilter`,
-  boolean→tri-state `Select`. Render one per `filterable` def in the filter bar; keep a
+  (options from `def.options`), text→contains `Input`, number→min/max `Input`s, date→two native
+  `<input type="date">` (from/to, ISO strings), boolean→tri-state `Select`. Render one per
+  `filterable` def in the filter bar; keep a
   `customFilters: Record<columnId, CustomFilterState>` state; AND each active predicate into the
   `filtered` memo via `customFilterMatches`.
 - **Sort (Fork B):** `SortControl` gains optional `extraOptions?: { value: string; label: string }[]`;
@@ -305,7 +309,7 @@ export function customFilterMatches(value: unknown, type: CustomFieldType, filte
 | **pgTAP** (CI) | `custom_field_definitions`: org-isolation (member sees own org rows only), admin-only write (producer/artist denied), `UNIQUE(org_id,entity,key)`, `key` CHECK rejects bad slugs, `entity`/`type`/`source` CHECKs; `show_dates.custom` defaults to `'{}'`. |
 | **Deno** | `coerceCustomValue` per type incl. reject paths; `airtable-poll` writes the `custom` bag, replace semantics, and stays non-fatal when a source field is missing/malformed (existing `makeFakeDeps` harness). |
 | **Vitest** | `lib/customFields` (`formatCustomValue`/`compareCustomValues`/`customFilterMatches` per type); `data/customFields` fetch/upsert/delete via `supabaseFake`; `resolveColumnTemplate` with `extraDefs` (custom survives validation, ordering, saved-template merge); `getColumnLabel` custom branch. |
-| **Component** (vitest + RTL) | Producer table renders a custom column; a custom filter narrows rows; a custom sort reorders rows. Use `renderWithProviders` + fixtures. |
+| **Component** (vitest + RTL) | `<CustomFieldFilter>` renders the correct control per type and emits `onChange`. (Full-page render is impractical — `ShowsBookingsPage` queries supabase inline and the harness forbids `vi.mock`-ing the client — so **row-level filter/sort correctness lives in the `lib/customFields` units**, not a page render.) |
 
 Test-first throughout (failing test before implementation), per CLAUDE.md.
 
