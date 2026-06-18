@@ -357,7 +357,13 @@ export function AirtableSyncTab({ orgId, get, set }: Props) {
                 value=""
                 onValueChange={(name) => {
                   const af = selectedTable.fields.find((f) => f.name === name);
-                  if (af) addCustom.mutate({ name: af.name, type: af.type, options: af.options });
+                  if (!af) return;
+                  const key = slugifyKey(af.name);
+                  if (customDefs.some((d) => d.key === key)) {
+                    toast.error(`A custom field with key "${key}" already exists — rename or remove it first.`);
+                    return;
+                  }
+                  addCustom.mutate({ name: af.name, type: af.type, options: af.options });
                 }}
                 disabled={addCustom.isPending || unboundFields.length === 0}
               >
