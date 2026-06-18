@@ -10,7 +10,7 @@ function airtableResponse(records: unknown[]) {
 }
 
 /** Seed an enabled+keyed ORG with one linked show + city AND two custom field defs. */
-function seededDeps(records: unknown[]) {
+function seededDeps(records: unknown[], showDatesData: unknown[] = []) {
   return makeFakeDeps({
     tables: {
       app_settings: [
@@ -23,7 +23,7 @@ function seededDeps(records: unknown[]) {
       organizations: { data: [{ id: ORG }], error: null },
       shows: { data: [{ id: "show-magic", airtable_program_key: "Magic" }], error: null },
       cities: { data: [{ id: "city-berlin", airtable_city_key: "berlin" }], error: null },
-      show_dates: { data: [], error: null },
+      show_dates: { data: showDatesData, error: null },
       custom_field_definitions: { data: [
         { key: "capacity", source_field: "Capacity", type: "number" },
         { key: "headliner", source_field: "Headliner", type: "text" },
@@ -62,6 +62,21 @@ function captureInserts(deps: ReturnType<typeof seededDeps>["deps"], captured: u
   };
 }
 
+/** Capture show_dates update payloads via the same from() override trick. */
+function captureUpdates(deps: ReturnType<typeof seededDeps>["deps"], captured: unknown[]) {
+  const originalFrom = deps.admin.from.bind(deps.admin);
+  // deno-lint-ignore no-explicit-any
+  (deps.admin as any).from = (table: string) => {
+    const chain = originalFrom(table);
+    if (table === "show_dates") {
+      const originalUpdate = chain.update.bind(chain);
+      // deno-lint-ignore no-explicit-any
+      (chain as any).update = (payload: unknown) => { captured.push(payload); return originalUpdate(payload as Record<string, unknown>); };
+    }
+    return chain;
+  };
+}
+
 Deno.test("airtable-poll custom: writes coerced custom bag on insert, omits missing/bad keys", async () => {
   const records = [
     { id: "rec-1", fields: { Date: "2026-06-01", SubProgram: "Magic", City: "Berlin", Capacity: "250", Headliner: "Houdini" } },
@@ -93,4 +108,20 @@ Deno.test("airtable-poll custom: a malformed custom value never holds/drops the 
   const body = await res.json();
   assertEquals(body.new_dates, 1);
   assertEquals((inserts[0] as Record<string, unknown>).custom, {});
+});
+
+Deno.test("airtable-poll custom: writes the coerced bag on update (replace semantics)", async () => {
+  const records = [
+    { id: "rec-up", fields: { Date: "2026-07-01", SubProgram: "Magic", City: "Berlin", Capacity: "300" } },
+  ];
+  // Seed an existing show_dates row so the record takes the UPDATE branch.
+  const { deps } = seededDeps(records, [{ id: "sd-existing", airtable_record_id: "rec-up" }]);
+  const updates: unknown[] = [];
+  captureUpdates(deps, updates);
+
+  const res = await handle(authReq(), deps);
+  const body = await res.json();
+  assertEquals(body.updated, 1);
+  // Headliner is absent from the record → omitted; only capacity is written.
+  assertEquals((updates[0] as Record<string, unknown>).custom, { capacity: 300 });
 });
