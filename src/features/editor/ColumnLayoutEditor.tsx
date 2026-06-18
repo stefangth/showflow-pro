@@ -7,7 +7,7 @@ import { Separator } from '@/components/ui/separator';
 import { useAuth } from '@/features/auth/AuthContext';
 import type { AppRole } from '@/config/app.config';
 import { useEditor, useEditorConfig } from './EditorContext';
-import { pageColumnDefs, resolveColumnTemplate, disambiguateLabels } from './columnRegistries';
+import { disambiguateLabels } from './columnRegistries';
 import type { ColumnTemplate } from './types';
 
 interface ColumnLayoutEditorProps {
@@ -21,8 +21,8 @@ interface ColumnLayoutEditorProps {
  */
 export function ColumnLayoutEditor({ pageKey }: ColumnLayoutEditorProps) {
   const { roles, viewAsRole } = useAuth();
-  const { isEditorMode, getColumnLabel } = useEditorConfig();
-  const { columnTemplates, saveColumnTemplate } = useEditor();
+  const { isEditorMode, getColumnLabel, getColumnDefs, getColumnTemplate } = useEditorConfig();
+  const { saveColumnTemplate } = useEditor();
 
   const [draft, setDraft] = useState<ColumnTemplate[]>([]);
   const [saving, setSaving] = useState(false);
@@ -35,13 +35,13 @@ export function ColumnLayoutEditor({ pageKey }: ColumnLayoutEditorProps) {
   const effectiveRole: AppRole = viewAsRole
     ?? (roles.includes('admin') ? 'admin' : roles.includes('producer') ? 'producer' : 'artist');
 
-  const defs = useMemo(() => pageColumnDefs(pageKey), [pageKey]);
+  const defs = useMemo(() => getColumnDefs(pageKey), [getColumnDefs, pageKey]);
 
   // Sync draft whenever role or saved templates change
   useEffect(() => {
-    setDraft(resolveColumnTemplate(pageKey, effectiveRole, columnTemplates));
+    setDraft(getColumnTemplate(pageKey, effectiveRole));
     setDirty(false);
-  }, [pageKey, effectiveRole, columnTemplates]);
+  }, [pageKey, effectiveRole, getColumnTemplate]);
 
   const sorted = useMemo(() => [...draft].sort((a, b) => a.order - b.order), [draft]);
 
