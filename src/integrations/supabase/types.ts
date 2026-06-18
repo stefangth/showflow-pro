@@ -689,6 +689,62 @@ export type Database = {
           },
         ]
       }
+      custom_field_definitions: {
+        Row: {
+          created_at: string
+          entity: string
+          filterable: boolean
+          id: string
+          key: string
+          label: string
+          options: Json | null
+          org_id: string
+          sortable: boolean
+          source: string
+          source_field: string
+          type: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          entity?: string
+          filterable?: boolean
+          id?: string
+          key: string
+          label: string
+          options?: Json | null
+          org_id: string
+          sortable?: boolean
+          source?: string
+          source_field: string
+          type: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          entity?: string
+          filterable?: boolean
+          id?: string
+          key?: string
+          label?: string
+          options?: Json | null
+          org_id?: string
+          sortable?: boolean
+          source?: string
+          source_field?: string
+          type?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "custom_field_definitions_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       notifications: {
         Row: {
           created_at: string
@@ -1090,6 +1146,7 @@ export type Database = {
           airtable_record_id: string | null
           city_id: string | null
           created_at: string
+          custom: Json
           date: string
           id: string
           notes: string | null
@@ -1106,6 +1163,7 @@ export type Database = {
           airtable_record_id?: string | null
           city_id?: string | null
           created_at?: string
+          custom?: Json
           date: string
           id?: string
           notes?: string | null
@@ -1122,6 +1180,7 @@ export type Database = {
           airtable_record_id?: string | null
           city_id?: string | null
           created_at?: string
+          custom?: Json
           date?: string
           id?: string
           notes?: string | null
@@ -1333,6 +1392,14 @@ export type Database = {
         Returns: {
           producer_user_id: string
           specificity: number
+        }[]
+      }
+      resolve_user_contacts: {
+        Args: { p_user_ids: string[] }
+        Returns: {
+          display_name: string
+          email: string
+          user_id: string
         }[]
       }
       seed_org_starter_catalog: { Args: { _org: string }; Returns: undefined }
