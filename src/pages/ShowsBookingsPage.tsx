@@ -89,13 +89,13 @@ function ProducerShowsBookings() {
   const { orderedColumns, visibleCount } = useColumnTemplate('bookings-producer');
   const { isEditorMode, getCustomFieldDefs } = useEditorConfig();
   const columnHeaders = useColumnHeaders(orderedColumns);
-  const customDefs = getCustomFieldDefs('show_dates');
+  const customDefs = useMemo(() => getCustomFieldDefs('show_dates'), [getCustomFieldDefs]);
   const customByColId = useMemo(
     () => new Map(customDefs.map(d => [`custom.${d.key}`, d])),
     [customDefs]
   );
-  const filterableDefs = customDefs.filter(d => d.filterable);
-  const sortableDefs = customDefs.filter(d => d.sortable);
+  const filterableDefs = useMemo(() => customDefs.filter(d => d.filterable), [customDefs]);
+  const sortableDefs = useMemo(() => customDefs.filter(d => d.sortable), [customDefs]);
   const queryClient = useQueryClient();
   const [searchParams, setSearchParams] = useSearchParams();
 
