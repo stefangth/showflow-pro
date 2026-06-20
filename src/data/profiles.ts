@@ -5,7 +5,6 @@ export interface MyProfile {
   user_id: string;
   display_name: string | null;
   phone: string | null;
-  avatar_url: string | null;
 }
 
 /** The signed-in user's global profile row (or null). */
@@ -15,7 +14,7 @@ export async function fetchMyProfile(
 ): Promise<MyProfile | null> {
   const { data, error } = await client
     .from("profiles")
-    .select("user_id, display_name, phone, avatar_url")
+    .select("user_id, display_name, phone")
     .eq("user_id", userId)
     .maybeSingle();
   if (error) throw error;

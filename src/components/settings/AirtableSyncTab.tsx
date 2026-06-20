@@ -316,6 +316,39 @@ export function AirtableSyncTab({ orgId, get, set }: Props) {
                 </Select>
               </div>
             ))}
+            {/* Cancellation mapping (status → cancelled + reason) */}
+            <div className="grid grid-cols-1 sm:grid-cols-[160px_1fr] gap-3 items-center">
+              <Label>Status field (optional)</Label>
+              <Select value={fieldMap.status_field ?? NONE} onValueChange={(v) => setField('status_field', v === NONE ? null : v)}>
+                <SelectTrigger><SelectValue placeholder="Not mapped" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value={NONE}>Not mapped</SelectItem>
+                  {selectedTable.fields.map((af) => <SelectItem key={af.id} value={af.name}>{af.name}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            </div>
+            {fieldMap.status_field && (
+              <div className="grid grid-cols-1 sm:grid-cols-[160px_1fr] gap-3 items-center">
+                <Label>"Cancelled" value</Label>
+                <Select value={fieldMap.cancelled_value ?? NONE} onValueChange={(v) => setField('cancelled_value', v === NONE ? null : v)}>
+                  <SelectTrigger><SelectValue placeholder="Pick the cancelled option" /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value={NONE}>None</SelectItem>
+                    {optionNames(fieldMap.status_field).map((name) => <SelectItem key={name} value={name}>{name}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
+            <div className="grid grid-cols-1 sm:grid-cols-[160px_1fr] gap-3 items-center">
+              <Label>Cancellation reason (optional)</Label>
+              <Select value={fieldMap.cancellation_reason_field ?? NONE} onValueChange={(v) => setField('cancellation_reason_field', v === NONE ? null : v)}>
+                <SelectTrigger><SelectValue placeholder="Not mapped" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value={NONE}>Not mapped</SelectItem>
+                  {selectedTable.fields.map((af) => <SelectItem key={af.id} value={af.name}>{af.name}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            </div>
           </CardContent>
         </Card>
       )}

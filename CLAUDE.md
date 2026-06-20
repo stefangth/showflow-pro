@@ -157,11 +157,11 @@ supabase/
 - **Booking detail surface: `ShowDateDetailSheet`.** The full booking management experience (date config, assigned artists, available artists, chat) lives in `src/components/shows/ShowDateDetailSheet.tsx`. There is no standalone `/shows/:id` page — `ShowDetailPage` and `ShowDetailSheet` have been deleted.
 - **Audit trail:** all booking status changes append to `booking_audit_log`. Never delete from this table.
 - **Identity vs. booking contact (ADR-0011).** `profiles` (global, per auth user) owns login-user
-  identity (`display_name`, personal `phone`, `avatar_url` reserved; login email is
+  identity (`display_name`, personal `phone`; login email is
   `auth.users.email`). `artists` (per org) owns the bookable talent record + booking contact
   (`name` = talent label, `email`/`phone` = booking contact, `bio`, `status`, `cast_role` reserved);
   `user_id` is nullable (unregistered/external talent have no profile, so their contact MUST live on
-  `artists`). The tables are **not** merged and **no** columns are dropped. The resolution rule lives
+  `artists`). The tables are **not** merged; `artists.cast_role` stays reserved (the once-reserved `profiles.avatar_url` was dropped 2026-06-20 — avatar feature cancelled). The resolution rule lives
   in `supabase/functions/_shared/identity.ts` (`resolveContactEmail` = login-email-first;
   `resolveAccountDisplayName` = display-name-first), re-exported by `src/lib/identity.ts`. The
   offer/confirmation digests address a registered artist at `coalesce(auth.users.email,

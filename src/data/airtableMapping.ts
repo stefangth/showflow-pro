@@ -11,6 +11,12 @@ export interface AirtableFieldMap {
   session_1?: string | null;
   session_2?: string | null;
   session_3?: string | null;
+  /** Airtable single-select field name whose value signals cancellation. */
+  status_field?: string | null;
+  /** The option string on status_field that means "cancelled". */
+  cancelled_value?: string | null;
+  /** Airtable field name holding the cancellation reason text. */
+  cancellation_reason_field?: string | null;
 }
 
 export interface ShowflowFieldDef { key: keyof AirtableFieldMap; label: string; optional?: boolean }
