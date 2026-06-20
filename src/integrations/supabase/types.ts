@@ -918,7 +918,6 @@ export type Database = {
       }
       profiles: {
         Row: {
-          avatar_url: string | null
           created_at: string
           display_name: string | null
           id: string
@@ -927,7 +926,6 @@ export type Database = {
           user_id: string
         }
         Insert: {
-          avatar_url?: string | null
           created_at?: string
           display_name?: string | null
           id?: string
@@ -936,7 +934,6 @@ export type Database = {
           user_id: string
         }
         Update: {
-          avatar_url?: string | null
           created_at?: string
           display_name?: string | null
           id?: string
@@ -1144,6 +1141,7 @@ export type Database = {
       show_dates: {
         Row: {
           airtable_record_id: string | null
+          cancellation_reason: string | null
           city_id: string | null
           created_at: string
           custom: Json
@@ -1161,6 +1159,7 @@ export type Database = {
         }
         Insert: {
           airtable_record_id?: string | null
+          cancellation_reason?: string | null
           city_id?: string | null
           created_at?: string
           custom?: Json
@@ -1178,6 +1177,7 @@ export type Database = {
         }
         Update: {
           airtable_record_id?: string | null
+          cancellation_reason?: string | null
           city_id?: string | null
           created_at?: string
           custom?: Json
@@ -1228,7 +1228,6 @@ export type Database = {
           main_cast_slots: number | null
           org_id: string
           program: string | null
-          required_skills: string[] | null
           status: Database["public"]["Enums"]["show_status"]
           sub_program: string | null
           understudy_slots: number | null
@@ -1244,7 +1243,6 @@ export type Database = {
           main_cast_slots?: number | null
           org_id: string
           program?: string | null
-          required_skills?: string[] | null
           status?: Database["public"]["Enums"]["show_status"]
           sub_program?: string | null
           understudy_slots?: number | null
@@ -1260,7 +1258,6 @@ export type Database = {
           main_cast_slots?: number | null
           org_id?: string
           program?: string | null
-          required_skills?: string[] | null
           status?: Database["public"]["Enums"]["show_status"]
           sub_program?: string | null
           understudy_slots?: number | null

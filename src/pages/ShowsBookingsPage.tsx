@@ -31,7 +31,6 @@ type ShowRef = {
   id: string;
   program: string | null;
   sub_program: string | null;
-  required_skills: string[] | null;
   status: 'active' | 'archived' | 'draft';
   main_cast_slots: number | null;
   understudy_slots: number | null;
@@ -48,6 +47,7 @@ type ShowDateRow = {
   venue: string | null;
   status: 'open' | 'partially_filled' | 'fully_filled' | 'cancelled';
   notes: string | null;
+  cancellation_reason: string | null;
   city_id: string | null;
   show_id: string;
   custom: Record<string, unknown> | null;
@@ -170,8 +170,8 @@ function ProducerShowsBookings() {
       const { data, error } = await supabase
         .from('show_dates')
         .select(`
-          id, date, session_1, session_2, session_3, venue, status, notes, city_id, show_id, custom,
-          show:shows(id, program, sub_program, required_skills, status, main_cast_slots, understudy_slots),
+          id, date, session_1, session_2, session_3, venue, status, notes, city_id, show_id, custom, cancellation_reason,
+          show:shows(id, program, sub_program, status, main_cast_slots, understudy_slots),
           city:cities(id, name)
         `)
         .order('date', { ascending: true });
@@ -354,6 +354,9 @@ function ProducerShowsBookings() {
                           <Badge variant="secondary" className={STATUS_STYLE[status] ?? STATUS_STYLE.open}>
                             {STATUS_LABEL[status] ?? status}
                           </Badge>
+                          {sd.status === 'cancelled' && sd.cancellation_reason && (
+                            <div className="mt-1 text-xs text-destructive">{sd.cancellation_reason}</div>
+                          )}
                         </TableCell>
                       );
                       case 'show_dates.notes': return (

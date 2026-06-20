@@ -2,7 +2,7 @@ import { describe, it, expect } from "vitest";
 import { createFakeSupabase } from "@/test/supabaseFake";
 import { fetchMyProfile, updateMyProfile, updateMyPassword, requestPasswordReset, setNewPassword } from "./profiles";
 
-const aProfile = { user_id: "u1", display_name: "Ada", phone: "123", avatar_url: null };
+const aProfile = { user_id: "u1", display_name: "Ada", phone: "123" };
 
 describe("fetchMyProfile", () => {
   it("selects the profile row by user_id and returns it", async () => {
