@@ -37,7 +37,7 @@ This is **not** about the existing per-booking `bookings.cancellation_reason` (a
    (a pending offer, soft-booked, or confirmed) also see the cancelled entry + reason in **My
    Bookings** — it is *not* hidden from them. The artist
    **availability** calendar and dashboard are unchanged (a dead date isn't an availability target;
-   the released artist still learns of it via the existing cancellation notification + My Bookings).
+   the released artist learns of it via My Bookings — there is no cancellation notification today, see the note in §4).
 
 ## Why this is safe (key invariant)
 
@@ -129,10 +129,12 @@ New `AFTER INSERT OR UPDATE` trigger on `show_dates`, firing
   existing transition trigger — audit trail preserved.
 - The `date_cancelled` reason doubles as the **display marker** for re-surfacing the entry to the
   released artist (see §6) — it cleanly distinguishes a date cancellation from a decline/expiry.
-- `notify_booking_transition` fires on each cascade-cancellation, so each released artist also gets
-  an in-app notification. (Verify volume during implementation; if too noisy, suppress it for the
-  cascade via the same GUC, matching the existing `app.promoting_understudy` handling in
-  [20260519010000](../../../supabase/migrations/20260519010000_patch_notify_booking_transition_guc.sql).)
+- **No in-app notification fires** on a date cancellation: `notify_booking_transition` only notifies
+  on `soft_booked→confirmed` and `suggested→soft_booked`, **not** on a transition to `cancelled`. So
+  **My Bookings is the sole delivery surface** for the released artist (verified during the final
+  review). A dedicated cancellation notification is a possible future enhancement — the
+  `app.cancelling_show_date` GUC makes it easy to target only cascade cancellations — but is out of
+  scope here.
 
 ### 5. Mapping UI (`AirtableSyncTab.tsx`)
 In the existing **Field mapping** card ([AirtableSyncTab.tsx:298](../../../src/components/settings/AirtableSyncTab.tsx)),
