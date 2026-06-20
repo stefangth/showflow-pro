@@ -11,6 +11,7 @@ import { EntityCalendar } from '@/components/calendar/EntityCalendar';
 import { applySort, inTimeframe } from '@/components/filters/filterUtils';
 import { ShowDateDetailSheet } from '@/components/shows/ShowDateDetailSheet';
 import { useArtistEligibleDates, type EligibleDate } from '@/hooks/useArtistEligibleDates';
+import { fetchMyCancelledDateBookings, mergeArtistCancelledDates, type CancelledDateEntry } from '@/data/artists';
 import { useMyArtist } from '@/hooks/useMyArtist';
 import { formatDateDMY, parseDateOnly } from '@/lib/dates';
 import { showLabel } from '@/types';
@@ -20,11 +21,20 @@ import { ColumnLayoutEditor } from '@/features/editor/ColumnLayoutEditor';
 
 type BookingLite = { show_date_id: string; status: string; is_understudy: boolean };
 
+/** A row in the artist Bookings view: an eligible date or a cancelled one the artist was booked on. */
+type DateRow = EligibleDate | CancelledDateEntry;
+
+/** True when the row is a cancelled date the artist had been booked on. */
+function isCancelledEntry(d: DateRow): d is CancelledDateEntry {
+  return (d as CancelledDateEntry).status === 'cancelled' && 'cancellation_reason' in d;
+}
+
 const STATUS_LABEL: Record<string, string> = {
   confirmed: 'Confirmed',
   soft_booked: 'Soft booked',
   suggested: 'Offer pending',
   unanswered: 'No offer yet',
+  cancelled: 'Cancelled',
 };
 
 const STATUS_STYLE: Record<string, string> = {
@@ -32,6 +42,7 @@ const STATUS_STYLE: Record<string, string> = {
   soft_booked: 'bg-warning/10 text-warning',
   suggested: 'bg-info/10 text-info',
   unanswered: 'bg-muted text-muted-foreground',
+  cancelled: 'bg-destructive/10 text-destructive',
 };
 
 /**
@@ -61,28 +72,39 @@ export function ArtistBookingsView() {
     },
   });
 
+  const { data: cancelledEntries } = useQuery({
+    queryKey: ['bookings', 'artist-cancelled', artist?.id],
+    enabled: !!artist?.id,
+    queryFn: () => fetchMyCancelledDateBookings(supabase, artist!.id),
+  });
+
   const bookingByDateId = useMemo(() => {
     const m = new Map<string, BookingLite>();
     myBookings?.forEach((b) => m.set(b.show_date_id, b));
     return m;
   }, [myBookings]);
 
-  const statusFor = (d: EligibleDate): string => {
+  const statusFor = (d: DateRow): string => {
+    if (isCancelledEntry(d)) return 'cancelled';
     const b = bookingByDateId.get(d.id);
     return b ? b.status : 'unanswered';
   };
 
-  const filtered = useMemo(() => {
-    const list = (eligibleDates ?? []).filter((d) =>
+  const filtered = useMemo<DateRow[]>(() => {
+    const eligibleFiltered = (eligibleDates ?? []).filter((d) =>
       inTimeframe(parseDateOnly(d.date), timeframe)
     );
+    const cancelledFiltered = (cancelledEntries ?? []).filter((d) =>
+      inTimeframe(parseDateOnly(d.date), timeframe)
+    );
+    const merged = mergeArtistCancelledDates(eligibleFiltered, cancelledFiltered);
     return applySort(
-      list,
+      merged,
       sort,
-      (d) => showLabel(d.show),
+      (d) => (d.show ? showLabel(d.show) : '—'),
       (d) => parseDateOnly(d.date)
     );
-  }, [eligibleDates, timeframe, sort]);
+  }, [eligibleDates, cancelledEntries, timeframe, sort]);
 
   const calendarItems = useMemo(
     () => filtered.map((d) => ({ date: parseDateOnly(d.date), eligible: d })),
@@ -130,6 +152,8 @@ export function ArtistBookingsView() {
               <TableBody>
                 {filtered.map((d) => {
                   const status = statusFor(d);
+                  const cancelled = isCancelledEntry(d);
+                  const eligible = cancelled ? null : (d as EligibleDate);
                   const cellFor = (colId: string) => {
                     switch (colId) {
                       case 'show_dates.date': return (
@@ -137,7 +161,11 @@ export function ArtistBookingsView() {
                           {formatDateDMY(d.date)}
                         </TableCell>
                       );
-                      case 'shows.program': return <TableCell key={colId}>{showLabel(d.show)}</TableCell>;
+                      case 'shows.program': return (
+                        <TableCell key={colId}>
+                          {d.show ? showLabel(d.show) : <span className="text-muted-foreground">—</span>}
+                        </TableCell>
+                      );
                       case 'shows.sub_program': return (
                         <TableCell key={colId}>{d.show?.sub_program ?? <span className="text-muted-foreground">—</span>}</TableCell>
                       );
@@ -147,16 +175,18 @@ export function ArtistBookingsView() {
                         </TableCell>
                       );
                       case 'show_dates.session_1': return (
-                        <TableCell key={colId} className="whitespace-nowrap">{d.session_1.slice(0, 5)}</TableCell>
+                        <TableCell key={colId} className="whitespace-nowrap">
+                          {d.session_1 ? d.session_1.slice(0, 5) : '—'}
+                        </TableCell>
                       );
                       case 'show_dates.session_2': return (
                         <TableCell key={colId} className="whitespace-nowrap">
-                          {d.session_2 ? d.session_2.slice(0, 5) : '—'}
+                          {eligible?.session_2 ? eligible.session_2.slice(0, 5) : '—'}
                         </TableCell>
                       );
                       case 'show_dates.session_3': return (
                         <TableCell key={colId} className="whitespace-nowrap">
-                          {d.session_3 ? d.session_3.slice(0, 5) : '—'}
+                          {eligible?.session_3 ? eligible.session_3.slice(0, 5) : '—'}
                         </TableCell>
                       );
                       case '_computed.my_status': return (
@@ -164,6 +194,9 @@ export function ArtistBookingsView() {
                           <Badge variant="secondary" className={STATUS_STYLE[status] ?? ''}>
                             {STATUS_LABEL[status] ?? status}
                           </Badge>
+                          {cancelled && d.cancellation_reason && (
+                            <div className="mt-1 text-xs text-destructive">{d.cancellation_reason}</div>
+                          )}
                         </TableCell>
                       );
                       default: return (
@@ -198,19 +231,24 @@ export function ArtistBookingsView() {
           getDate={(it) => it.date}
           emptyMessage="No eligible dates"
           renderItem={(it) => {
-            const status = statusFor(it.eligible);
+            const d = it.eligible;
+            const status = statusFor(d);
+            const cancelled = isCancelledEntry(d);
             return (
               <Card
                 className="hover:shadow-elev2 transition-shadow cursor-pointer"
-                onClick={() => setActiveShowDateId(it.eligible.id)}
+                onClick={() => setActiveShowDateId(d.id)}
               >
                 <CardContent className="py-3 flex items-center justify-between gap-3">
                   <div className="min-w-0">
-                    <p className="font-medium truncate">{showLabel(it.eligible.show)}</p>
+                    <p className="font-medium truncate">{d.show ? showLabel(d.show) : '—'}</p>
                     <p className="text-xs text-muted-foreground truncate">
-                      {it.eligible.venue ?? ''}
-                      {it.eligible.session_1 ? ` • ${it.eligible.session_1.slice(0, 5)}` : ''}
+                      {d.venue ?? ''}
+                      {d.session_1 ? ` • ${d.session_1.slice(0, 5)}` : ''}
                     </p>
+                    {cancelled && d.cancellation_reason && (
+                      <p className="text-xs text-destructive truncate">{d.cancellation_reason}</p>
+                    )}
                   </div>
                   <Badge variant="secondary" className={STATUS_STYLE[status] ?? ''}>
                     {STATUS_LABEL[status] ?? status}
