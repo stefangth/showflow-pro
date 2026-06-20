@@ -20,7 +20,7 @@ BEGIN;
 
 CREATE EXTENSION IF NOT EXISTS pgtap WITH SCHEMA extensions;
 
-SELECT plan(10);
+SELECT plan(11);
 
 -- ────────────────────────────────────────────────────────────────────────────
 -- Shared fixtures (as postgres superuser).
@@ -151,6 +151,15 @@ SELECT is(
   'released artist A can still SELECT their own cancelled booking');
 
 RESET ROLE;
+
+-- 11. INSERT branch: a show_date inserted already-cancelled fires the cascade harmlessly
+--     (no bookings yet). Locks the NEW-only WHEN + body guard for the INSERT path, which a
+--     combined INSERT/UPDATE trigger requires (OLD/TG_OP are illegal in the WHEN clause).
+SELECT lives_ok($$
+  INSERT INTO public.show_dates (id, show_id, date, session_1, status, org_id)
+  VALUES ('dddddddd-0c00-0002-0000-000000000000', 'cccccccc-0c00-0001-0000-000000000000',
+          '2099-09-02', '19:00'::time, 'cancelled', '00000000-0000-0000-0000-00000000b007')
+$$, 'inserting an already-cancelled show_date fires the cascade without error');
 
 SELECT * FROM finish();
 ROLLBACK;

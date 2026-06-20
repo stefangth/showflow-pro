@@ -38,6 +38,13 @@ COMMENT ON COLUMN public.show_dates.cancellation_reason IS
 CREATE OR REPLACE FUNCTION public.cascade_cancel_bookings_on_date_cancel()
 RETURNS TRIGGER LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $$
 BEGIN
+  -- Act only on the transition INTO cancelled. The trigger's WHEN filters to
+  -- NEW.status = 'cancelled' using NEW only: a combined INSERT/UPDATE trigger cannot
+  -- reference OLD or TG_OP in its WHEN clause (Postgres 42P17), so the "was it already
+  -- cancelled?" check lives here. On UPDATE, skip a no-op re-cancel; INSERT always proceeds.
+  IF TG_OP = 'UPDATE' AND OLD.status = 'cancelled'::show_date_status THEN
+    RETURN NEW;
+  END IF;
   PERFORM set_config('app.cancelling_show_date', 'true', true);
   UPDATE public.bookings
   SET status = 'cancelled'::booking_status, cancelled_at = now(),
@@ -51,8 +58,7 @@ DROP TRIGGER IF EXISTS cascade_cancel_bookings_on_date_cancel ON public.show_dat
 CREATE TRIGGER cascade_cancel_bookings_on_date_cancel
 AFTER INSERT OR UPDATE OF status ON public.show_dates
 FOR EACH ROW
-WHEN (NEW.status = 'cancelled'::show_date_status
-      AND (TG_OP = 'INSERT' OR OLD.status IS DISTINCT FROM 'cancelled'::show_date_status))
+WHEN (NEW.status = 'cancelled'::show_date_status)
 EXECUTE FUNCTION public.cascade_cancel_bookings_on_date_cancel();
 
 -- ---------------------------------------------------------------------------
