@@ -31,7 +31,6 @@ type ShowRef = {
   id: string;
   program: string | null;
   sub_program: string | null;
-  required_skills: string[] | null;
   status: 'active' | 'archived' | 'draft';
   main_cast_slots: number | null;
   understudy_slots: number | null;
@@ -171,7 +170,7 @@ function ProducerShowsBookings() {
         .from('show_dates')
         .select(`
           id, date, session_1, session_2, session_3, venue, status, notes, city_id, show_id, custom,
-          show:shows(id, program, sub_program, required_skills, status, main_cast_slots, understudy_slots),
+          show:shows(id, program, sub_program, status, main_cast_slots, understudy_slots),
           city:cities(id, name)
         `)
         .order('date', { ascending: true });
