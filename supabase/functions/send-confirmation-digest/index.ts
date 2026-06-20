@@ -195,6 +195,20 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
       if (notifErr) console.error('send-confirmation-digest: notification insert failed', { org: org.id, error: notifErr.message });
     }
 
+    // Consume the change log NOW — right after in-app delivery (the reliable channel) and
+    // BEFORE the best-effort email loop. The email loop makes N external calls and is the
+    // likeliest place to time out; stamping first stops a same-hour retry from re-inserting
+    // duplicate schedule_change notifications (email dedup is handled by idempotency_key).
+    // Net: change rows are consumed once notified in-app, independent of email success.
+    const consumedChangeIds = changeRows.map((r) => r.id);
+    if (consumedChangeIds.length > 0) {
+      const { error: digestStampErr } = await admin
+        .from('show_date_change_log')
+        .update({ digested_at: now.toISOString() })
+        .in('id', consumedChangeIds);
+      if (digestStampErr) console.error('send-confirmation-digest: change-log stamp failed', { org: org.id, error: digestStampErr.message });
+    }
+
     // One email per artist (confirmations + schedule changes folded). Best-effort.
     for (const [artistId, entry] of grouped) {
       try {
@@ -221,16 +235,6 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
       } catch (e) {
         console.error('send-confirmation-digest: email send failed', { org: org.id, artistId, error: (e as Error).message });
       }
-    }
-
-    // Stamp every consumed change-log row (incl. net-no-op ones) so they don't linger.
-    const consumedChangeIds = changeRows.map((r) => r.id);
-    if (consumedChangeIds.length > 0) {
-      const { error: digestStampErr } = await admin
-        .from('show_date_change_log')
-        .update({ digested_at: now.toISOString() })
-        .in('id', consumedChangeIds);
-      if (digestStampErr) console.error('send-confirmation-digest: change-log stamp failed', { org: org.id, error: digestStampErr.message });
     }
   }
 
