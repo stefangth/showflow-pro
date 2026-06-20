@@ -6,7 +6,7 @@
 --   * session_1 accepts NULL (incl. an all-null-sessions row)
 BEGIN;
 CREATE EXTENSION IF NOT EXISTS pgtap WITH SCHEMA extensions;
-SELECT plan(11);
+SELECT plan(12);
 
 INSERT INTO public.shows (id, program, sub_program, main_cast_slots, understudy_slots, org_id)
 VALUES ('cccccccc-0c10-0001-0000-000000000000', 'theatre', 'musical', 1, 1, '00000000-0000-0000-0000-00000000b007');
@@ -25,6 +25,9 @@ SELECT is((SELECT session_slot FROM public.show_date_change_log), 2::smallint, '
 DELETE FROM public.show_date_change_log;
 UPDATE public.show_dates SET session_1 = '18:30'::time WHERE id = 'dddddddd-0c10-0001-0000-000000000000';
 SELECT is((SELECT change_type FROM public.show_date_change_log), 'session_retimed', 'change → session_retimed');
+-- Pin the stored representation: time::text is 'HH:MM:SS', which the Task-1 digest
+-- helpers (fmtTime / classifySessionChange) consume. Guards against a silent regression.
+SELECT is((SELECT old_value || '→' || new_value FROM public.show_date_change_log), '19:00:00→18:30:00', 'retime stores HH:MM:SS old/new values');
 
 -- 3. session_1 removed (time → null)  [session_1 is now nullable]
 DELETE FROM public.show_date_change_log;
