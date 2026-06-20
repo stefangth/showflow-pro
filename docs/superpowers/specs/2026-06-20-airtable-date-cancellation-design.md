@@ -122,9 +122,9 @@ New `AFTER INSERT OR UPDATE` trigger on `show_dates`, firing
   understudy onto the dead date. Reuse the GUC pattern that function already uses for its own
   re-entrancy guard (`app.promoting_understudy`,
   [20260519000000:68,211](../../../supabase/migrations/20260519000000_promote_understudy_on_cancellation.sql)):
-  the cascade sets `set_config('app.cancelling_show_date','1',true)`, and we add **one** early-return
+  the cascade sets `set_config('app.cancelling_show_date','true',true)`, and we add **one** early-return
   check to `promote_understudy_on_cancellation` — `IF current_setting('app.cancelling_show_date',
-  true) = '1' THEN RETURN NEW` — so it no-ops during a date cancellation.
+  true) = 'true' THEN RETURN NULL` — so it no-ops during a date cancellation.
 - Idempotent (already-cancelled bookings are excluded). Writes to `booking_audit_log` via the
   existing transition trigger — audit trail preserved.
 - The `date_cancelled` reason doubles as the **display marker** for re-surfacing the entry to the

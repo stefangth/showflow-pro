@@ -26,7 +26,7 @@ type DateRow = EligibleDate | CancelledDateEntry;
 
 /** True when the row is a cancelled date the artist had been booked on. */
 function isCancelledEntry(d: DateRow): d is CancelledDateEntry {
-  return (d as CancelledDateEntry).status === 'cancelled' && 'cancellation_reason' in d;
+  return d.status === 'cancelled';
 }
 
 const STATUS_LABEL: Record<string, string> = {
@@ -153,7 +153,6 @@ export function ArtistBookingsView() {
                 {filtered.map((d) => {
                   const status = statusFor(d);
                   const cancelled = isCancelledEntry(d);
-                  const eligible = cancelled ? null : (d as EligibleDate);
                   const cellFor = (colId: string) => {
                     switch (colId) {
                       case 'show_dates.date': return (
@@ -181,12 +180,12 @@ export function ArtistBookingsView() {
                       );
                       case 'show_dates.session_2': return (
                         <TableCell key={colId} className="whitespace-nowrap">
-                          {eligible?.session_2 ? eligible.session_2.slice(0, 5) : '—'}
+                          {d.session_2 ? d.session_2.slice(0, 5) : '—'}
                         </TableCell>
                       );
                       case 'show_dates.session_3': return (
                         <TableCell key={colId} className="whitespace-nowrap">
-                          {eligible?.session_3 ? eligible.session_3.slice(0, 5) : '—'}
+                          {d.session_3 ? d.session_3.slice(0, 5) : '—'}
                         </TableCell>
                       );
                       case '_computed.my_status': return (

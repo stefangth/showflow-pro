@@ -22,6 +22,8 @@ export interface CancelledDateEntry {
   date: string;
   venue: string | null;
   session_1: string | null;
+  session_2: string | null;
+  session_3: string | null;
   status: "cancelled";
   cancellation_reason: string | null;
   show: { program: string | null; sub_program: string | null } | null;
@@ -35,7 +37,7 @@ export async function fetchMyCancelledDateBookings(
   const { data, error } = await client
     .from("bookings")
     .select(
-      "show_date_id, show_date:show_dates(id, date, venue, session_1, status, cancellation_reason, show:shows(program, sub_program))",
+      "show_date_id, show_date:show_dates(id, date, venue, session_1, session_2, session_3, status, cancellation_reason, show:shows(program, sub_program))",
     )
     .eq("artist_id", artistId)
     .eq("status", "cancelled")
