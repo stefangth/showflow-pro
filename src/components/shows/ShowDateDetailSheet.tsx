@@ -50,7 +50,7 @@ export function ShowDateDetailSheet({ showDateId, open, onOpenChange }: Props) {
       const { data, error } = await supabase
         .from('show_dates')
         .select(`
-          id, date, session_1, session_2, session_3, venue, status, notes, city_id, show_id,
+          id, date, session_1, session_2, session_3, venue, status, notes, city_id, show_id, cancellation_reason,
           show:shows(id, program, sub_program, main_cast_slots, understudy_slots),
           city:cities(id, name)
         `)
@@ -269,6 +269,15 @@ export function ShowDateDetailSheet({ showDateId, open, onOpenChange }: Props) {
                   <p className="text-sm text-muted-foreground italic">{showDate.notes}</p>
                 )}
               </div>
+
+              {showDate.status === 'cancelled' && (
+                <div className="rounded-lg border border-destructive/30 bg-destructive/10 p-3">
+                  <p className="text-sm font-medium text-destructive">Cancelled</p>
+                  {showDate.cancellation_reason && (
+                    <p className="text-sm text-destructive/90 mt-0.5">{showDate.cancellation_reason}</p>
+                  )}
+                </div>
+              )}
 
               {/* Slots summary */}
               <div className="rounded-lg border border-border p-4 space-y-2">
