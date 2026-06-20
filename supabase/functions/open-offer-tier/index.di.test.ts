@@ -15,6 +15,7 @@ const SHOW_DATE_OPEN = {
   city_id: "c1",
   date: "2026-07-10",
   status: "open",
+  session_1: "19:00", // ≥1 session so open-offer-tier's session gate is cleared
 };
 const SHOW_DATE_NO_CITY = {
   id: "d2",
@@ -22,6 +23,7 @@ const SHOW_DATE_NO_CITY = {
   city_id: null,
   date: "2026-07-11",
   status: "open",
+  session_1: "19:00", // ≥1 session so open-offer-tier's session gate is cleared
 };
 
 // ---------------------------------------------------------------------------
