@@ -1141,6 +1141,7 @@ export type Database = {
       show_dates: {
         Row: {
           airtable_record_id: string | null
+          cancellation_reason: string | null
           city_id: string | null
           created_at: string
           custom: Json
@@ -1158,6 +1159,7 @@ export type Database = {
         }
         Insert: {
           airtable_record_id?: string | null
+          cancellation_reason?: string | null
           city_id?: string | null
           created_at?: string
           custom?: Json
@@ -1175,6 +1177,7 @@ export type Database = {
         }
         Update: {
           airtable_record_id?: string | null
+          cancellation_reason?: string | null
           city_id?: string | null
           created_at?: string
           custom?: Json
