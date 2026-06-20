@@ -3,6 +3,7 @@ import { realDeps, type Deps } from "../_shared/deps.ts";
 import { getActiveOrgs, resolveOrgSetting } from "../_shared/settings.ts";
 import { buildProgramKey, buildCityKey } from "../_shared/airtableKey.ts";
 import { coerceCustomValue, type CustomFieldType } from "../_shared/customFields.ts";
+import { isCancelledStatus } from "../_shared/airtableStatus.ts";
 
 /** Max concurrent open-offer-tier invocations per batch to avoid exhausting the DB connection pool. */
 const OFFER_TIER_BATCH_SIZE = 10;
@@ -18,6 +19,12 @@ interface FieldMap {
   session_1?: string | null;
   session_2?: string | null;
   session_3?: string | null;
+  /** Airtable single-select field name whose value signals cancellation. */
+  status_field?: string | null;
+  /** The option string on status_field that means "cancelled". */
+  cancelled_value?: string | null;
+  /** Airtable field name holding the cancellation reason text. */
+  cancellation_reason_field?: string | null;
 }
 
 type RecordAction = "imported_new" | "updated" | "held_unresolved" | "error";
@@ -133,18 +140,18 @@ async function syncOrg(deps: Deps, orgId: string, baseId: string, tableName: str
   };
 
   // Existing show_dates keyed by airtable_record_id (paginated to clear PostgREST's 1000-row cap).
-  const existingByAirtableId = new Map<string, string>();
+  const existingByAirtableId = new Map<string, { id: string; status: string }>();
   {
     const PAGE_SIZE = 1000;
     let page = 0;
     while (true) {
       const { data: batch } = await admin
-        .from("show_dates").select("id, airtable_record_id")
+        .from("show_dates").select("id, airtable_record_id, status")
         .eq("org_id", orgId).not("airtable_record_id", "is", null)
         .range(page * PAGE_SIZE, (page + 1) * PAGE_SIZE - 1);
       if (!batch || batch.length === 0) break;
-      for (const r of batch as Array<{ id: string; airtable_record_id: string | null }>) {
-        if (r.airtable_record_id) existingByAirtableId.set(r.airtable_record_id, r.id);
+      for (const r of batch as Array<{ id: string; airtable_record_id: string | null; status: string }>) {
+        if (r.airtable_record_id) existingByAirtableId.set(r.airtable_record_id, { id: r.id, status: r.status });
       }
       if (batch.length < PAGE_SIZE) break;
       page += 1;
@@ -195,8 +202,12 @@ async function syncOrg(deps: Deps, orgId: string, baseId: string, tableName: str
       const session2 = fieldMap.session_2 ? parseTime(fields[fieldMap.session_2]) : null;
       const session3 = fieldMap.session_3 ? parseTime(fields[fieldMap.session_3]) : null;
       const venue = fieldMap.venue ? (fields[fieldMap.venue] ?? null) : null;
+      const statusRaw = fieldMap.status_field ? fields[fieldMap.status_field] ?? null : null;
+      const isCancelled = isCancelledStatus(statusRaw, fieldMap.cancelled_value);
+      const reason = fieldMap.cancellation_reason_field ? (fields[fieldMap.cancellation_reason_field] ?? null) : null;
 
-      const existingId = existingByAirtableId.get(id);
+      const existing = existingByAirtableId.get(id);
+      const existingId = existing?.id;
       if (existingId) {
         const payload: Record<string, unknown> = { date: dateValue };
         if (session1 !== null) payload.session_1 = session1;
@@ -206,6 +217,13 @@ async function syncOrg(deps: Deps, orgId: string, baseId: string, tableName: str
         if (cityId !== null) payload.city_id = cityId;
         const customBag = buildCustom(fields);
         if (customBag !== undefined) payload.custom = customBag;
+        if (isCancelled) {
+          payload.status = "cancelled";
+          payload.cancellation_reason = reason == null ? null : String(reason);
+        } else if (existing?.status === "cancelled") {
+          payload.status = "open";            // revival: bookings were released; date starts fresh
+          payload.cancellation_reason = null;
+        }
         const { error } = await admin.from("show_dates").update(payload).eq("id", existingId);
         if (error) { outcomes.push({ airtable_record_id: id, action: "error", show_date_id: existingId, reason: error.message, raw_fields: fields }); continue; }
         processed += 1; updated += 1;
@@ -220,11 +238,15 @@ async function syncOrg(deps: Deps, orgId: string, baseId: string, tableName: str
       if (venue !== null) insertPayload.venue = venue;
       const customBagNew = buildCustom(fields);
       if (customBagNew !== undefined) insertPayload.custom = customBagNew;
+      if (isCancelled) {
+        insertPayload.status = "cancelled";
+        insertPayload.cancellation_reason = reason == null ? null : String(reason);
+      }
       const { data: inserted, error: insertErr } = await admin.from("show_dates").insert(insertPayload).select("id").single();
       if (insertErr || !inserted?.id) { outcomes.push({ airtable_record_id: id, action: "error", show_date_id: null, reason: insertErr?.message ?? "insert returned no id", raw_fields: fields }); continue; }
       processed += 1; newDates += 1;
       newDateIds.push(inserted.id);
-      existingByAirtableId.set(id, inserted.id);
+      existingByAirtableId.set(id, { id: inserted.id, status: isCancelled ? "cancelled" : "open" });
       outcomes.push({ airtable_record_id: id, action: "imported_new", show_date_id: inserted.id, reason: cityNote, raw_fields: fields });
     }
   } while (!apiError && offset && pageCount < MAX_PAGES);
