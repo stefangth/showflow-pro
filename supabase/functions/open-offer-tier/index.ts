@@ -28,12 +28,18 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
   // Fetch show date
   const { data: showDate, error: sdErr } = await admin
     .from('show_dates')
-    .select('id, show_id, city_id, date, status')
+    .select('id, show_id, city_id, date, status, session_1, session_2, session_3')
     .eq('id', show_date_id)
     .maybeSingle()
 
   if (sdErr || !showDate) return json({ error: 'Show date not found' }, 404)
   if (showDate.status === 'cancelled') return json({ error: 'Show date is cancelled' }, 400)
+
+  if (!showDate.session_1 && !showDate.session_2 && !showDate.session_3) {
+    // ≥1-session rule: a times-TBD date is not yet bookable. Benign skip (200, not
+    // 400) so airtable-poll's batch caller does not log a false "offer-tier failed".
+    return json({ offers_created: 0, message: 'Show date has no sessions yet — offers not opened' })
+  }
 
   // Resolve eligible cast IDs for this tier
   let eligibleCastIds: string[]
