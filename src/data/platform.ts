@@ -98,13 +98,15 @@ export async function savePlatformSetting(client: SupabaseClient<Database>, key:
   if (error) throw error;
 }
 
-/** Shape of the platform/org booking-engine settings (mirrors BOOKING_ENGINE_DEFAULTS). */
-export interface BookingEngineDefaults {
-  offer_response_window_hours: number;
-  offer_digest_hour_berlin: number;
-  confirmation_digest_hour_berlin: number;
-  resend_from_address: string;
-}
+/**
+ * Shape of the platform/org booking-engine settings, derived from
+ * BOOKING_ENGINE_DEFAULTS so the type can't drift from the constant:
+ * numeric keys -> number, string keys -> string.
+ */
+export type BookingEngineDefaults = {
+  -readonly [K in keyof typeof BOOKING_ENGINE_DEFAULTS]:
+    (typeof BOOKING_ENGINE_DEFAULTS)[K] extends number ? number : string;
+};
 
 const BOOKING_DEFAULT_KEYS = Object.keys(BOOKING_ENGINE_DEFAULTS) as (keyof BookingEngineDefaults)[];
 
@@ -128,7 +130,12 @@ export async function fetchPlatformBookingDefaults(
   const out: BookingEngineDefaults = { ...BOOKING_ENGINE_DEFAULTS };
   for (const key of BOOKING_DEFAULT_KEYS) {
     const v = byKey.get(key);
-    if (v !== undefined && v !== null) (out as unknown as Record<string, unknown>)[key] = v;
+    // app_settings.value is JSONB (unknown at the type level); coerce to the declared
+    // kind so a value stored as e.g. "48" doesn't land mistyped as a string.
+    if (v !== undefined && v !== null) {
+      (out as unknown as Record<string, unknown>)[key] =
+        key === "resend_from_address" ? String(v) : Number(v);
+    }
   }
   return out;
 }
