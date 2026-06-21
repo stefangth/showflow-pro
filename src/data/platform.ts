@@ -128,7 +128,7 @@ export async function fetchPlatformBookingDefaults(
   const out: BookingEngineDefaults = { ...BOOKING_ENGINE_DEFAULTS };
   for (const key of BOOKING_DEFAULT_KEYS) {
     const v = byKey.get(key);
-    if (v !== undefined && v !== null) (out as Record<string, unknown>)[key] = v;
+    if (v !== undefined && v !== null) (out as unknown as Record<string, unknown>)[key] = v;
   }
   return out;
 }
