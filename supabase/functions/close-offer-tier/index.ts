@@ -63,8 +63,12 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
   }
   const closed = (closedRows?.length ?? 0) > 0;
 
+  // Only withdraw when THIS call actually closed the tier. If the tier was already
+  // closed (closed === false), there is nothing to "close + withdraw" — skip the
+  // cancellation rather than silently cancelling offers on a tier the caller was
+  // told "was not open". (The UI only offers Close on open tiers.)
   let withdrawn = 0;
-  if (withdraw) {
+  if (withdraw && closed) {
     const { data: cancelled, error: cErr } = await admin
       .from("bookings")
       .update({
@@ -77,8 +81,8 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
       .eq("status", "suggested")
       .select("id");
     if (cErr) {
-      // The tier is already closed (safe state); the withdraw retry failed.
-      console.error(`close-offer-tier: withdraw error (tier closed: ${closed})`, cErr);
+      // The tier is already closed (safe state); the withdraw failed.
+      console.error("close-offer-tier: withdraw error (tier already closed)", cErr);
       return json({ error: cErr.message }, 500);
     }
     withdrawn = cancelled?.length ?? 0;

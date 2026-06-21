@@ -138,14 +138,16 @@ Deno.test("close-offer-tier: close-tier DB error → 500", async () => {
   assertExists((await res.json()).error);
 });
 
-Deno.test("close-offer-tier: withdraw DB error → 500", async () => {
-  const { deps } = makeFakeDeps({
+Deno.test("close-offer-tier: withdraw:true on an already-closed tier skips the cancellation", async () => {
+  const { deps, calls } = makeFakeDeps({
     envVars,
-    tables: { bookings: { data: null, error: { message: "boom" } } },
+    tables: { show_date_offer_tiers: { data: [], error: null } }, // already closed / not open → 0 rows
   });
   const res = await handle(makeRequest({ headers: SVC, body: { show_date_id: "d1", tier: 1, withdraw: true } }), deps);
-  assertEquals(res.status, 500);
-  assertExists((await res.json()).error);
+  assertEquals(res.status, 200);
+  assertEquals(await res.json(), { closed: false, withdrawn: 0, message: "Tier was not open" });
+  // withdraw is gated on `closed` — no bookings are cancelled on a tier that wasn't open.
+  assertEquals(calls.some((c) => c.table === "bookings" && c.method === "update"), false);
 });
 
 // Partial-failure path (safe ordering): the tier is closed FIRST, then the
