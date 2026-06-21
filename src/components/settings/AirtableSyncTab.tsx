@@ -300,7 +300,7 @@ export function AirtableSyncTab({ orgId, get, set }: Props) {
           <CardHeader>
             <CardTitle className="font-display">Field mapping</CardTitle>
             <CardDescription>
-              Map each Showflow field to a column in <strong>{selectedTable.name}</strong>. Catalog links are keyed on the <strong>Sub-program</strong> option — map the Sub-program field to enable linking below.
+              Map each ShowFlow field to a column in <strong>{selectedTable.name}</strong>. Catalog links are keyed on the <strong>Sub-program</strong> option — map the Sub-program field to enable linking below.
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
@@ -417,7 +417,7 @@ export function AirtableSyncTab({ orgId, get, set }: Props) {
           <CardHeader>
             <CardTitle className="font-display">Catalog links</CardTitle>
             <CardDescription>
-              "Import all" creates a Showflow show/city for each unlinked Airtable option (new shows start with no slot config — set counts in the Shows tab). The sync resolves records against these links; anything unlinked is held, never dropped.
+              "Import all" creates a ShowFlow show/city for each unlinked Airtable option (new shows start with no slot config — set counts in the Shows tab). The sync resolves records against these links; anything unlinked is held, never dropped.
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-8">

@@ -44,7 +44,7 @@ export default function ProfilePage() {
     onError: (e: Error) => toast.error(e.message),
   });
 
-  useEffect(() => { document.title = "Profile · Showflow Pro"; }, []);
+  useEffect(() => { document.title = "Profile · ShowFlow"; }, []);
 
   return (
     <div className="space-y-6 max-w-xl">
