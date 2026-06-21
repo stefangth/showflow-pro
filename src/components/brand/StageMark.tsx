@@ -8,7 +8,7 @@ interface StageMarkProps {
 }
 
 /**
- * Proscenium arch + lighting beams — the Showflow Pro brand mark.
+ * Proscenium arch + lighting beams — the ShowFlow brand mark.
  * "mark" variant uses currentColor so it inherits theme (sidebar, topbar, etc.)
  * "tile" variant is the full violet rounded-square app icon.
  */

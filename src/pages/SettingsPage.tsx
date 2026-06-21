@@ -223,7 +223,7 @@ function BookingEngineTab({ get, set }: { get: (key: string, fallback?: any) => 
           <div className="space-y-2 max-w-sm">
             <Label>From address (Resend)</Label>
             <Input
-              placeholder="Showflow Pro <noreply@showflow.pro>"
+              placeholder="ShowFlow <noreply@showflow.pro>"
               value={get('resend_from_address', '')}
               onChange={e => set('resend_from_address', e.target.value)}
             />
@@ -1091,7 +1091,7 @@ export default function SettingsPage() {
             <CardHeader>
               <CardTitle className="font-display">App Logic Guide</CardTitle>
               <CardDescription>
-                How Showflow Pro works: roles, data model, eligibility, and the full availability → booking flow.
+                How ShowFlow works: roles, data model, eligibility, and the full availability → booking flow.
               </CardDescription>
             </CardHeader>
             <CardContent>

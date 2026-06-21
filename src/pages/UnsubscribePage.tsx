@@ -82,7 +82,7 @@ export default function UnsubscribePage() {
         {state.kind === 'valid' && (
           <>
             <p className="text-muted-foreground">
-              Click below to unsubscribe from Showflow Pro emails. You can still
+              Click below to unsubscribe from ShowFlow emails. You can still
               receive critical account-related messages.
             </p>
             <Button onClick={confirm} className="w-full">
