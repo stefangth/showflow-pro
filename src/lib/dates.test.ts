@@ -40,6 +40,10 @@ describe("formatTimestampDMY", () => {
   it("formats a UTC noon timestamp as dd/MM/yyyy", () => {
     expect(formatTimestampDMY("2026-06-21T12:00:00+00:00")).toBe("21/06/2026");
   });
+  it("uses the UTC calendar date (deterministic regardless of browser timezone)", () => {
+    // 23:30 UTC is still the 21st in UTC; a local-tz formatter could roll to the 22nd.
+    expect(formatTimestampDMY("2026-06-21T23:30:00Z")).toBe("21/06/2026");
+  });
 });
 
 describe("formatDateWithWeekday", () => {

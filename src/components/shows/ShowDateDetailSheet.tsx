@@ -479,7 +479,9 @@ export function ShowDateDetailSheet({ showDateId, open, onOpenChange }: Props) {
                     {/* Opened tiers */}
                     <div className="space-y-1.5">
                       <p className="text-xs text-muted-foreground uppercase tracking-wide">Opened tiers</p>
-                      {(openedQ.data ?? []).length === 0 ? (
+                      {openedQ.isLoading ? (
+                        <Skeleton className="h-5 w-40" />
+                      ) : (openedQ.data ?? []).length === 0 ? (
                         <p className="text-sm text-muted-foreground">No tiers opened yet.</p>
                       ) : (
                         <div className="flex flex-wrap gap-2">
