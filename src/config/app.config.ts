@@ -1,5 +1,5 @@
 /**
- * Showflow Pro — Central Application Configuration
+ * ShowFlow — Central Application Configuration
  * All feature flags, intervals, weights, and role definitions live here.
  */
 
@@ -56,7 +56,7 @@ export const CHAT_ARCHIVE_DAYS = 30;
 
 /** App metadata */
 export const APP_META = {
-  NAME: 'Showflow Pro',
+  NAME: 'ShowFlow',
   DESCRIPTION: 'Artist Booking SaaS for live show productions',
   VERSION: '1.0.0',
 } as const;
