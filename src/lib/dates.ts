@@ -17,6 +17,18 @@ export function formatDateDMY(input: string | Date): string {
   return format(d, 'dd/MM/yyyy');
 }
 
+/**
+ * Format a full ISO timestamp (e.g. a `timestamptz` column like
+ * `show_date_offer_tiers.opened_at`) as `dd/MM/yyyy`.
+ *
+ * Use this — NOT `formatDateDMY` — for timestamp values: `formatDateDMY` is for
+ * date-only `YYYY-MM-DD` strings and appends `T00:00:00`, which turns a full
+ * timestamp into an Invalid Date (and date-fns `format` then throws).
+ */
+export function formatTimestampDMY(input: string): string {
+  return format(new Date(input), 'dd/MM/yyyy');
+}
+
 /** Format with weekday + dd/MM/yyyy, e.g. `Mon, 23/04/2026`. */
 export function formatDateWithWeekday(input: string | Date): string {
   const d = typeof input === 'string' ? parseDateOnly(input) : input;

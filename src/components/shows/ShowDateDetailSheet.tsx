@@ -26,7 +26,7 @@ import {
   buildOfferTierOptions, offerResultToast, offerConfirmCopy,
   pendingOfferCount, closeConfirmCopy, closeResultToast,
 } from '@/lib/bookings';
-import { formatDateDMY } from '@/lib/dates';
+import { formatDateDMY, formatTimestampDMY } from '@/lib/dates';
 import { openOfferTier, fetchOfferTiers, fetchOpenedTiers, closeOfferTier } from '@/data/bookings';
 import { ChatPanel } from '@/components/chat/ChatPanel';
 import type { Booking, Artist, City, Cast } from '@/types';
@@ -475,8 +475,8 @@ export function ShowDateDetailSheet({ showDateId, open, onOpenChange }: Props) {
                                 {o.tier === 99 ? 'Ad-hoc casts' : `Tier ${o.tier}`}
                                 <span className="ml-1 opacity-60">
                                   {o.closedAt
-                                    ? `· closed ${formatDateDMY(o.closedAt)}`
-                                    : `· opened ${formatDateDMY(o.openedAt)}`}
+                                    ? `· closed ${formatTimestampDMY(o.closedAt)}`
+                                    : `· opened ${formatTimestampDMY(o.openedAt)}`}
                                 </span>
                               </span>
                               {!o.closedAt && (
