@@ -16,6 +16,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 
 export function PlatformDefaultsTab() {
   return (
@@ -78,7 +79,7 @@ function StarterCatalogCard() {
  */
 function BookingEngineDefaultsCard() {
   const qc = useQueryClient();
-  const { data, isLoading } = useQuery({
+  const { data, isLoading, isError, error } = useQuery({
     queryKey: ["platform", "booking-defaults"],
     queryFn: () => fetchPlatformBookingDefaults(supabase),
   });
@@ -87,7 +88,12 @@ function BookingEngineDefaultsCard() {
   useEffect(() => { if (data) setForm(data); }, [data]);
 
   const save = useMutation({
-    mutationFn: () => savePlatformBookingDefaults(supabase, form),
+    mutationFn: () => {
+      if (form.offer_response_window_hours < 1) {
+        throw new Error("Offer response window must be at least 1 hour");
+      }
+      return savePlatformBookingDefaults(supabase, form);
+    },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["platform", "booking-defaults"] });
       qc.invalidateQueries({ queryKey: ["app-settings"] }); // org Settings forms inherit these defaults
@@ -97,6 +103,7 @@ function BookingEngineDefaultsCard() {
   });
 
   if (isLoading) return <Skeleton className="h-64 w-full" />;
+  if (isError) return <Alert variant="destructive"><AlertDescription>{(error as Error).message}</AlertDescription></Alert>;
 
   return (
     <Card>
