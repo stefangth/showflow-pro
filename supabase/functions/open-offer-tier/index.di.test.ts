@@ -700,3 +700,35 @@ Deno.test("open-offer-tier: success response includes offers_created field", asy
   assertEquals("offers_created" in body, true, "response must have offers_created field");
   assertEquals(typeof body.offers_created, "number");
 });
+
+// ------ Re-open re-activates a closed tier (merge upsert) ------
+
+Deno.test("open-offer-tier: tier upsert merges closed_at:null + escalation_notified_at:null", async () => {
+  const fixedNow = new Date("2026-07-01T10:00:00.000Z");
+  const { deps, calls } = makeFakeDeps({
+    envVars,
+    now: fixedNow,
+    tables: {
+      show_dates: { data: SHOW_DATE_OPEN, error: null },
+      cast_city_priority: { data: [{ cast_id: "cast-a" }], error: null },
+      cast_members: { data: [{ artist_id: "art-1" }], error: null },
+      artists: { data: [{ id: "art-1" }], error: null },
+      bookings: bookingsSeed("d1", ["b1"]),
+      blocked_dates: { data: [], error: null },
+    },
+  });
+  await handle(makeRequest({ headers: SVC, body: { show_date_id: "d1", tier: 1 } }), deps);
+
+  const upsertCall = calls.find(
+    (c) => c.table === "show_date_offer_tiers" && c.method === "upsert"
+  );
+  assertExists(upsertCall, "show_date_offer_tiers upsert must be recorded");
+  const data = upsertCall!.args[0] as Record<string, unknown>;
+  assertEquals(data.closed_at, null, "re-open must clear closed_at");
+  assertEquals(data.escalation_notified_at, null, "re-open must reset escalation_notified_at");
+  assertEquals(data.opened_at, fixedNow.toISOString());
+
+  const opts = upsertCall!.args[1] as Record<string, unknown>;
+  assertEquals(opts.onConflict, "show_date_id,tier");
+  assertEquals("ignoreDuplicates" in opts, false, "merge upsert must not ignore duplicates");
+});
