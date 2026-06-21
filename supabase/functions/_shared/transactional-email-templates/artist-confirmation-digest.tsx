@@ -13,7 +13,7 @@ import {
 import type { TemplateEntry } from './registry.ts'
 import { digestEmailSubject } from '../scheduleChanges.ts'
 
-const SITE_NAME = 'Showflow Pro'
+const SITE_NAME = 'ShowFlow'
 
 interface BookingRow { show: string; date: string; city: string }
 interface ChangeRow { show: string; date: string; city: string; changes: string }

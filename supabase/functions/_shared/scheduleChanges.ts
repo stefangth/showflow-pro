@@ -94,5 +94,5 @@ export function describeDateChanges(c: CoalescedDateChange): string {
 /** Adaptive digest subject: neutral when the email carries more than confirmations. */
 export function digestEmailSubject(data: { scheduleChanges?: unknown[]; cancellations?: unknown[]; [key: string]: unknown }): string {
   const hasUpdates = (data.scheduleChanges?.length ?? 0) > 0 || (data.cancellations?.length ?? 0) > 0;
-  return hasUpdates ? "Your booking updates — Showflow Pro" : "Your bookings are confirmed — Showflow Pro";
+  return hasUpdates ? "Your booking updates — ShowFlow" : "Your bookings are confirmed — ShowFlow";
 }
