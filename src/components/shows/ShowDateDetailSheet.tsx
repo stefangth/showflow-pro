@@ -511,7 +511,9 @@ export function ShowDateDetailSheet({ showDateId, open, onOpenChange }: Props) {
                     </div>
 
                     {/* Open a tier */}
-                    {tierOptions.length === 0 ? (
+                    {tiersQ.isLoading ? (
+                      <Skeleton className="h-9 w-64" />
+                    ) : tierOptions.length === 0 ? (
                       <p className="text-sm text-muted-foreground">
                         No offer tiers configured for this city — set cast priorities in Settings → Cities &amp; Casts.
                       </p>

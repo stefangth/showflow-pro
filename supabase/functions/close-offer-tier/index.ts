@@ -58,7 +58,7 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
   // admin can re-run close to retry the withdraw). The reverse (cancel, then fail
   // to close) would leave cancelled offers under a still-open tier, which keeps
   // firing escalation/at-risk against zero pending.
-  const { data: closedRows, error: clErr } = await (admin as any)
+  const { data: closedRows, error: clErr } = await admin
     .from("show_date_offer_tiers")
     .update({ closed_at: deps.now().toISOString() })
     .eq("show_date_id", show_date_id)
