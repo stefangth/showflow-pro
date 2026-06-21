@@ -1,5 +1,13 @@
 import { describe, it, expect } from "vitest";
 import { deriveBookingGroups, computeInheritedCastIds, bookingStatusUpdate } from "./bookings";
+import {
+  buildOfferTierOptions,
+  offerResultToast,
+  offerConfirmCopy,
+  pendingOfferCount,
+  closeConfirmCopy,
+  closeResultToast,
+} from "./bookings";
 
 type B = { artist_id: string; status: string; is_understudy: boolean };
 const b = (o: Partial<B>): B => ({ artist_id: "a1", status: "suggested", is_understudy: false, ...o });
@@ -84,5 +92,100 @@ describe("bookingStatusUpdate", () => {
   });
   it("stamps no timestamp for soft_booked (characterizes current behavior — does NOT clear stale stamps)", () => {
     expect(bookingStatusUpdate("soft_booked", now)).toEqual({ status: "soft_booked" });
+  });
+});
+
+describe("buildOfferTierOptions", () => {
+  it("dedupes, sorts ascending, and labels tiers", () => {
+    expect(buildOfferTierOptions({ priorities: [2, 1, 2], hasAdHoc: false })).toEqual([
+      { value: 1, label: "Tier 1" },
+      { value: 2, label: "Tier 2" },
+    ]);
+  });
+  it("drops priorities below 1 and any stray 99, then appends Ad-hoc when present", () => {
+    expect(buildOfferTierOptions({ priorities: [0, 1, 99], hasAdHoc: true })).toEqual([
+      { value: 1, label: "Tier 1" },
+      { value: 99, label: "Ad-hoc casts" },
+    ]);
+  });
+  it("returns empty when no priorities and no ad-hoc", () => {
+    expect(buildOfferTierOptions({ priorities: [], hasAdHoc: false })).toEqual([]);
+  });
+});
+
+describe("offerResultToast", () => {
+  it("success with pluralized count when offers created", () => {
+    expect(offerResultToast({ offersCreated: 2 }, 1)).toEqual({ kind: "success", text: "Opened tier 1 — 2 offers created" });
+    expect(offerResultToast({ offersCreated: 1 }, 1)).toEqual({ kind: "success", text: "Opened tier 1 — 1 offer created" });
+  });
+  it("info with backend message when nothing created", () => {
+    expect(offerResultToast({ offersCreated: 0, message: "No casts at tier 2 for this city" }, 2))
+      .toEqual({ kind: "info", text: "No casts at tier 2 for this city" });
+  });
+  it("info with fallback when no message", () => {
+    expect(offerResultToast({ offersCreated: 0 }, 99)).toEqual({ kind: "info", text: "No new offers created" });
+  });
+});
+
+describe("offerConfirmCopy", () => {
+  it("first-open body has no re-open note", () => {
+    const c = offerConfirmCopy({ tier: 1, dateLabel: "10 Jul 2026", alreadyOpened: false });
+    expect(c.title).toBe("Open tier 1 offers?");
+    expect(c.body).toContain("10 Jul 2026");
+    expect(c.body).not.toContain("already been opened");
+  });
+  it("already-opened body adds the additive re-open note", () => {
+    const c = offerConfirmCopy({ tier: 2, dateLabel: "10 Jul 2026", alreadyOpened: true });
+    expect(c.body).toContain("Tier 2 has already been opened");
+  });
+  it("uses ad-hoc wording for tier 99", () => {
+    const c = offerConfirmCopy({ tier: 99, dateLabel: "10 Jul 2026", alreadyOpened: true });
+    expect(c.title).toBe("Open ad-hoc casts offers?");
+    expect(c.body).toContain("Ad-hoc casts have already been opened");
+  });
+});
+
+describe("pendingOfferCount", () => {
+  it("counts only suggested bookings for the given tier", () => {
+    const rows = [
+      { status: "suggested", offer_tier: 1 },
+      { status: "suggested", offer_tier: 1 },
+      { status: "soft_booked", offer_tier: 1 },
+      { status: "suggested", offer_tier: 2 },
+    ];
+    expect(pendingOfferCount(rows, 1)).toBe(2);
+    expect(pendingOfferCount(rows, 2)).toBe(1);
+    expect(pendingOfferCount(rows, 3)).toBe(0);
+  });
+});
+
+describe("closeConfirmCopy", () => {
+  it("withdraw caption names the pending count; both options explained", () => {
+    const c = closeConfirmCopy({ tier: 1, pendingCount: 3 });
+    expect(c.title).toBe("Close tier 1?");
+    expect(c.intro).toContain("stops the reminder");
+    expect(c.withdraw.caption).toContain("3 offers");
+    expect(c.keep.caption).toContain("3 unanswered offers");
+  });
+  it("zero pending uses the empty-count phrasing", () => {
+    const c = closeConfirmCopy({ tier: 2, pendingCount: 0 });
+    expect(c.withdraw.caption).toContain("No unanswered offers");
+    expect(c.keep.caption).toContain("just stops the alerts");
+  });
+  it("singularizes a single pending offer", () => {
+    const c = closeConfirmCopy({ tier: 1, pendingCount: 1 });
+    expect(c.withdraw.caption).toContain("1 offer ");
+  });
+});
+
+describe("closeResultToast", () => {
+  it("info when nothing happened", () => {
+    expect(closeResultToast({ closed: false, withdrawn: 0 }, 1)).toEqual({ kind: "info", text: "Tier was not open" });
+  });
+  it("success naming withdrawn count", () => {
+    expect(closeResultToast({ closed: true, withdrawn: 2 }, 1)).toEqual({ kind: "success", text: "Closed tier 1 — withdrew 2 offers" });
+  });
+  it("success without count when closed but nothing withdrawn", () => {
+    expect(closeResultToast({ closed: true, withdrawn: 0 }, 99)).toEqual({ kind: "success", text: "Closed ad-hoc casts" });
   });
 });
