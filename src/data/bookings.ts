@@ -1,7 +1,13 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "@/integrations/supabase/types";
 
-export interface OpenOfferTierResult { offersCreated: number; message?: string }
+export interface OpenOfferTierResult {
+  offersCreated: number;
+  message?: string;
+  /** True when offers were created but the tier tracking row failed to write —
+   *  escalation/at-risk won't see this round until the tier is re-opened. */
+  trackingWarning?: boolean;
+}
 
 /** Invoke the open-offer-tier edge function for one (show_date, tier). */
 export async function openOfferTier(
@@ -12,9 +18,11 @@ export async function openOfferTier(
     body: { show_date_id: args.showDateId, tier: args.tier },
   });
   if (error) throw error;
-  const payload = data as { offers_created?: number; message?: string; error?: string };
+  const payload = data as { offers_created?: number; message?: string; error?: string; tier_tracking_warning?: boolean };
   if (payload?.error) throw new Error(payload.error);
-  return { offersCreated: payload?.offers_created ?? 0, message: payload?.message };
+  const result: OpenOfferTierResult = { offersCreated: payload?.offers_created ?? 0, message: payload?.message };
+  if (payload?.tier_tracking_warning === true) result.trackingWarning = true;
+  return result;
 }
 
 /**

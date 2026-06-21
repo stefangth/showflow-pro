@@ -192,15 +192,17 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
       },
       { onConflict: 'show_date_id,tier' }
     )
-  // The tier row is now load-bearing for re-open (it clears closed_at). The
-  // bookings were already inserted, so don't fail the request — but surface a
-  // tier-upsert failure in the function logs instead of swallowing it.
+  // The tier row is now load-bearing for re-open (it clears closed_at) and is
+  // what expire-offers / tier-at-risk-watcher filter on. The bookings were
+  // already inserted, so don't fail the request — but if tracking failed, log it
+  // AND signal the caller so the producer knows escalation/at-risk may be broken
+  // for this round (re-opening the tier recovers it).
   if (tierErr) console.error('open-offer-tier: tier upsert error', tierErr)
 
   const offersCreated = inserted?.length ?? 0
-  console.log('open-offer-tier complete', { show_date_id, tier, offersCreated })
+  console.log('open-offer-tier complete', { show_date_id, tier, offersCreated, tierTracked: !tierErr })
 
-  return json({ offers_created: offersCreated })
+  return json({ offers_created: offersCreated, ...(tierErr ? { tier_tracking_warning: true } : {}) })
 }
 
 if (import.meta.main) Deno.serve((req) => handle(req, realDeps()));
