@@ -1,11 +1,19 @@
 import { preflight, json } from "../_shared/http.ts";
-import { isServiceRole, requireOrgRole } from "../_shared/auth.ts";
+import { isServiceRole, requireRole, requireOrgRole } from "../_shared/auth.ts";
 import { realDeps, type Deps } from "../_shared/deps.ts";
 
 export async function handle(req: Request, deps: Deps): Promise<Response> {
   if (req.method === "OPTIONS") return preflight();
 
   const admin = deps.admin;
+
+  // Coarse gate FIRST: fail unauthenticated / no-role callers before any
+  // admin-client DB read, so a valid UUID can't be used as a cross-org
+  // existence timing oracle. The org-scoped check happens after the fetch.
+  if (!isServiceRole(deps, req)) {
+    const preAuth = await requireRole(deps, req, ["admin", "producer"]);
+    if (!preAuth.ok) return preAuth.response;
+  }
 
   let show_date_id: string
   let tier: number
