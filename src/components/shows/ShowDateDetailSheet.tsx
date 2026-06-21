@@ -578,24 +578,28 @@ export function ShowDateDetailSheet({ showDateId, open, onOpenChange }: Props) {
                         <AlertDialogDescription>{closeCopy.intro}</AlertDialogDescription>
                       </AlertDialogHeader>
                       <div className="space-y-2">
-                        <button
-                          type="button"
-                          disabled={closeOffers.isPending}
-                          onClick={() => closeOffers.mutate({ tier: closeTarget, withdraw: true })}
-                          className="w-full text-left rounded-lg border border-border p-3 hover:bg-muted disabled:opacity-50"
-                        >
-                          <p className="text-sm font-medium">{closeCopy.withdraw.label}</p>
-                          <p className="text-xs text-muted-foreground mt-0.5">{closeCopy.withdraw.caption}</p>
-                        </button>
-                        <button
-                          type="button"
-                          disabled={closeOffers.isPending}
-                          onClick={() => closeOffers.mutate({ tier: closeTarget, withdraw: false })}
-                          className="w-full text-left rounded-lg border border-border p-3 hover:bg-muted disabled:opacity-50"
-                        >
-                          <p className="text-sm font-medium">{closeCopy.keep.label}</p>
-                          <p className="text-xs text-muted-foreground mt-0.5">{closeCopy.keep.caption}</p>
-                        </button>
+                        <AlertDialogAction asChild>
+                          <button
+                            type="button"
+                            disabled={closeOffers.isPending}
+                            onClick={() => closeOffers.mutate({ tier: closeTarget, withdraw: true })}
+                            className="w-full text-left rounded-lg border border-border p-3 hover:bg-muted disabled:opacity-50"
+                          >
+                            <p className="text-sm font-medium">{closeCopy.withdraw.label}</p>
+                            <p className="text-xs text-muted-foreground mt-0.5">{closeCopy.withdraw.caption}</p>
+                          </button>
+                        </AlertDialogAction>
+                        <AlertDialogAction asChild>
+                          <button
+                            type="button"
+                            disabled={closeOffers.isPending}
+                            onClick={() => closeOffers.mutate({ tier: closeTarget, withdraw: false })}
+                            className="w-full text-left rounded-lg border border-border p-3 hover:bg-muted disabled:opacity-50"
+                          >
+                            <p className="text-sm font-medium">{closeCopy.keep.label}</p>
+                            <p className="text-xs text-muted-foreground mt-0.5">{closeCopy.keep.caption}</p>
+                          </button>
+                        </AlertDialogAction>
                       </div>
                       <AlertDialogFooter>
                         <AlertDialogCancel>Cancel</AlertDialogCancel>

@@ -90,7 +90,12 @@ Deno.test("open-offer-tier: authenticated but not a member of the date's org →
     authUser: { id: "u1" },
     tables: {
       show_dates: { data: { ...SHOW_DATE_OPEN, org_id: "org-B" }, error: null },
-      org_memberships: { data: null, error: null }, // no membership in org-B
+      // Coarse requireRole (no org_id eq) → producer somewhere (passes);
+      // org-scoped requireOrgRole (org_id=org-B) → no row (fails) → 403.
+      org_memberships: [
+        { when: { org_id: "org-B" }, data: null, error: null },
+        { data: { role: "producer" }, error: null },
+      ],
       platform_admins: { data: null, error: null }, // not a super-admin
     },
   });
