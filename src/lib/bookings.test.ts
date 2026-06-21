@@ -185,4 +185,7 @@ describe("closeResultToast", () => {
   it("success without count when closed but nothing withdrawn", () => {
     expect(closeResultToast({ closed: true, withdrawn: 0 }, 99)).toEqual({ kind: "success", text: "Closed ad-hoc casts" });
   });
+  it("reports a withdraw against an already-closed tier without claiming a fresh close", () => {
+    expect(closeResultToast({ closed: false, withdrawn: 2 }, 1)).toEqual({ kind: "success", text: "Withdrew 2 offers from tier 1" });
+  });
 });
