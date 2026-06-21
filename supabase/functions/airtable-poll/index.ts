@@ -9,7 +9,7 @@ import { isCancelledStatus } from "../_shared/airtableStatus.ts";
 const OFFER_TIER_BATCH_SIZE = 10;
 const MAX_PAGES = 100;
 
-/** Which Airtable field feeds each Showflow field (per-org, from app_settings.airtable_field_map). */
+/** Which Airtable field feeds each ShowFlow field (per-org, from app_settings.airtable_field_map). */
 interface FieldMap {
   date?: string | null;
   program?: string | null;

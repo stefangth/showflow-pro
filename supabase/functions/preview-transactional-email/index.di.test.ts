@@ -234,7 +234,7 @@ Deno.test("preview-transactional-email DI: function subject resolved correctly (
   assertEquals(entry.status, "ready");
   // artist-confirmation-digest now has a FUNCTION subject; its previewData includes a
   // schedule change + a cancellation, so it resolves to the neutral "updates" subject.
-  assertEquals(entry.subject, "Your booking updates — Showflow Pro");
+  assertEquals(entry.subject, "Your booking updates — ShowFlow");
 });
 
 Deno.test("preview-transactional-email DI: function subject resolved correctly (signup-decision, approved preview)", async () => {
@@ -247,7 +247,7 @@ Deno.test("preview-transactional-email DI: function subject resolved correctly (
   const entry = templates[0];
   assertEquals(entry.status, "ready");
   // signup-decision's previewData has decision='approved', so subject should reflect that
-  assertEquals(entry.subject, "You're approved on Showflow Pro");
+  assertEquals(entry.subject, "You're approved on ShowFlow");
 });
 
 Deno.test("preview-transactional-email DI: function subject (cast-escalation-requested) uses previewData fields", async () => {
@@ -435,7 +435,7 @@ Deno.test("preview-transactional-email DI: whitespace-only subject override is i
   };
   assertEquals(templates[0].status, "ready");
   // Original string subject for new-signup-admin-notification
-  assertEquals(templates[0].subject, "New Showflow Pro signup awaiting approval");
+  assertEquals(templates[0].subject, "New ShowFlow signup awaiting approval");
 });
 
 Deno.test("preview-transactional-email DI: non-string subject override is ignored", async () => {
@@ -450,7 +450,7 @@ Deno.test("preview-transactional-email DI: non-string subject override is ignore
     templates: Array<{ subject: string; status: string }>;
   };
   assertEquals(templates[0].status, "ready");
-  assertEquals(templates[0].subject, "New Showflow Pro signup awaiting approval");
+  assertEquals(templates[0].subject, "New ShowFlow signup awaiting approval");
 });
 
 Deno.test("preview-transactional-email DI: intro override is applied to html render (no render error)", async () => {
