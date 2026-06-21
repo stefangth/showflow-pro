@@ -6,7 +6,7 @@ import { toDateKey } from '@/lib/dates';
 export type EligibleDate = {
   id: string;                 // show_date.id
   date: string;               // YYYY-MM-DD
-  session_1: string;
+  session_1: string | null;
   session_2: string | null;
   session_3: string | null;
   status: string;
