@@ -76,9 +76,53 @@ Deno.test("open-offer-tier: OPTIONS returns preflight", async () => {
 });
 
 Deno.test("open-offer-tier: no auth → 401", async () => {
-  const { deps } = makeFakeDeps({ envVars });
+  const { deps } = makeFakeDeps({
+    envVars,
+    tables: { show_dates: { data: { ...SHOW_DATE_OPEN, org_id: "org-1" }, error: null } },
+  });
   const res = await handle(makeRequest({ headers: {}, body: { show_date_id: "d1", tier: 1 } }), deps);
   assertEquals(res.status, 401);
+});
+
+Deno.test("open-offer-tier: authenticated but not a member of the date's org → 403", async () => {
+  const { deps, calls } = makeFakeDeps({
+    envVars,
+    authUser: { id: "u1" },
+    tables: {
+      show_dates: { data: { ...SHOW_DATE_OPEN, org_id: "org-B" }, error: null },
+      // Coarse requireRole (no org_id eq) → producer somewhere (passes);
+      // org-scoped requireOrgRole (org_id=org-B) → no row (fails) → 403.
+      org_memberships: [
+        { when: { org_id: "org-B" }, data: null, error: null },
+        { data: { role: "producer" }, error: null },
+      ],
+      platform_admins: { data: null, error: null }, // not a super-admin
+    },
+  });
+  const res = await handle(makeRequest({ headers: { Authorization: "Bearer user" }, body: { show_date_id: "d1", tier: 1 } }), deps);
+  assertEquals(res.status, 403);
+  // the org gate used the show_date's org_id, not any-org membership
+  assertEquals(
+    calls.some((c) => c.table === "org_memberships" && c.method === "eq" && c.args[0] === "org_id" && c.args[1] === "org-B"),
+    true,
+  );
+});
+
+Deno.test("open-offer-tier: admin/producer of the date's org → past the org gate", async () => {
+  const { deps } = makeFakeDeps({
+    envVars,
+    authUser: { id: "u1" },
+    tables: {
+      show_dates: { data: { ...SHOW_DATE_OPEN, org_id: "org-A" }, error: null },
+      org_memberships: { data: { role: "producer" }, error: null },
+      cast_city_priority: { data: [], error: null }, // past auth; stops at "no casts at tier"
+    },
+  });
+  const res = await handle(makeRequest({ headers: { Authorization: "Bearer user" }, body: { show_date_id: "d1", tier: 2 } }), deps);
+  assertEquals(res.status, 200);
+  const body = await res.json();
+  assertEquals(body.offers_created, 0);
+  assertExists(body.message);
 });
 
 Deno.test("open-offer-tier: service role + missing fields → 400", async () => {
@@ -699,4 +743,96 @@ Deno.test("open-offer-tier: success response includes offers_created field", asy
   const body = await res.json();
   assertEquals("offers_created" in body, true, "response must have offers_created field");
   assertEquals(typeof body.offers_created, "number");
+});
+
+// ------ Re-open re-activates a closed tier (merge upsert) ------
+
+Deno.test("open-offer-tier: tier upsert merges closed_at:null + escalation_notified_at:null", async () => {
+  const fixedNow = new Date("2026-07-01T10:00:00.000Z");
+  const { deps, calls } = makeFakeDeps({
+    envVars,
+    now: fixedNow,
+    tables: {
+      show_dates: { data: SHOW_DATE_OPEN, error: null },
+      cast_city_priority: { data: [{ cast_id: "cast-a" }], error: null },
+      cast_members: { data: [{ artist_id: "art-1" }], error: null },
+      artists: { data: [{ id: "art-1" }], error: null },
+      bookings: bookingsSeed("d1", ["b1"]),
+      blocked_dates: { data: [], error: null },
+    },
+  });
+  await handle(makeRequest({ headers: SVC, body: { show_date_id: "d1", tier: 1 } }), deps);
+
+  const upsertCall = calls.find(
+    (c) => c.table === "show_date_offer_tiers" && c.method === "upsert"
+  );
+  assertExists(upsertCall, "show_date_offer_tiers upsert must be recorded");
+  const data = upsertCall!.args[0] as Record<string, unknown>;
+  assertEquals(data.closed_at, null, "re-open must clear closed_at");
+  assertEquals(data.escalation_notified_at, null, "re-open must reset escalation_notified_at");
+  assertEquals(data.opened_at, fixedNow.toISOString());
+
+  const opts = upsertCall!.args[1] as Record<string, unknown>;
+  assertEquals(opts.onConflict, "show_date_id,tier");
+  assertEquals("ignoreDuplicates" in opts, false, "merge upsert must not ignore duplicates");
+});
+
+// ------ Session gate (≥1 session required) — ported from index.test.ts ------
+
+Deno.test("open-offer-tier: zero-session date is a benign skip — no offers, no insert", async () => {
+  const { deps, calls } = makeFakeDeps({
+    envVars,
+    tables: {
+      show_dates: {
+        data: { id: "d1", show_id: "s1", city_id: "c1", date: "2026-06-01", status: "open", session_1: null, session_2: null, session_3: null },
+        error: null,
+      },
+    },
+  });
+  const res = await handle(makeRequest({ headers: SVC, body: { show_date_id: "d1", tier: 1 } }), deps);
+  assertEquals(res.status, 200);
+  const body = await res.json();
+  assertEquals(body.offers_created, 0);
+  assertEquals(body.message, "Show date has no sessions yet — offers not opened");
+  assertEquals(calls.some((c) => c.table === "bookings" && c.method === "insert"), false);
+});
+
+Deno.test("open-offer-tier: a date with ≥1 session passes the session gate", async () => {
+  const { deps } = makeFakeDeps({
+    envVars,
+    tables: {
+      show_dates: {
+        data: { id: "d1", show_id: "s1", city_id: "c1", date: "2026-06-01", status: "open", session_1: "19:00:00", session_2: null, session_3: null },
+        error: null,
+      },
+      cast_city_priority: { data: [], error: null },
+    },
+  });
+  const res = await handle(makeRequest({ headers: SVC, body: { show_date_id: "d1", tier: 1 } }), deps);
+  const body = await res.json();
+  // Past the session gate; stops later for lack of priority casts (a different message).
+  assertEquals(body.message !== "Show date has no sessions yet — offers not opened", true);
+});
+
+// ------ Tier-tracking warning when the show_date_offer_tiers upsert fails ------
+
+Deno.test("open-offer-tier: tier upsert failure → offers still created + tier_tracking_warning", async () => {
+  const { deps } = makeFakeDeps({
+    envVars,
+    tables: {
+      show_dates: { data: SHOW_DATE_OPEN, error: null },
+      cast_city_priority: { data: [{ cast_id: "cast-a" }], error: null },
+      cast_members: { data: [{ artist_id: "art-1" }], error: null },
+      artists: { data: [{ id: "art-1" }], error: null },
+      bookings: bookingsSeed("d1", ["b1"]),
+      blocked_dates: { data: [], error: null },
+      // The tracking-row upsert fails after the bookings were already inserted.
+      show_date_offer_tiers: { data: null, error: { message: "tracking write failed" } },
+    },
+  });
+  const res = await handle(makeRequest({ headers: SVC, body: { show_date_id: "d1", tier: 1 } }), deps);
+  assertEquals(res.status, 200);
+  const body = await res.json();
+  assertEquals(body.offers_created, 1);
+  assertEquals(body.tier_tracking_warning, true);
 });

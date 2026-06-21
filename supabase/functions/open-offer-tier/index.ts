@@ -1,5 +1,5 @@
 import { preflight, json } from "../_shared/http.ts";
-import { isServiceRole, requireRole } from "../_shared/auth.ts";
+import { isServiceRole, requireRole, requireOrgRole } from "../_shared/auth.ts";
 import { realDeps, type Deps } from "../_shared/deps.ts";
 
 export async function handle(req: Request, deps: Deps): Promise<Response> {
@@ -7,9 +7,12 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
 
   const admin = deps.admin;
 
+  // Coarse gate FIRST: fail unauthenticated / no-role callers before any
+  // admin-client DB read, so a valid UUID can't be used as a cross-org
+  // existence timing oracle. The org-scoped check happens after the fetch.
   if (!isServiceRole(deps, req)) {
-    const auth = await requireRole(deps, req, ["admin", "producer"]);
-    if (!auth.ok) return auth.response;
+    const preAuth = await requireRole(deps, req, ["admin", "producer"]);
+    if (!preAuth.ok) return preAuth.response;
   }
 
   let show_date_id: string
@@ -25,14 +28,23 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
     return json({ error: 'Invalid JSON' }, 400)
   }
 
-  // Fetch show date
+  // Fetch show date (org_id drives the org-scoped auth check below).
   const { data: showDate, error: sdErr } = await admin
     .from('show_dates')
-    .select('id, show_id, city_id, date, status, session_1, session_2, session_3')
+    .select('id, show_id, city_id, date, status, session_1, session_2, session_3, org_id')
     .eq('id', show_date_id)
     .maybeSingle()
 
   if (sdErr || !showDate) return json({ error: 'Show date not found' }, 404)
+
+  // Org-scoped authorization: an admin/producer may only open offers for a date in
+  // their OWN org. Service-role (cron / airtable-poll) bypasses; requireOrgRole also
+  // accepts super-admins.
+  if (!isServiceRole(deps, req)) {
+    const auth = await requireOrgRole(deps, req, showDate.org_id, ["admin", "producer"])
+    if (!auth.ok) return auth.response
+  }
+
   if (showDate.status === 'cancelled') return json({ error: 'Show date is cancelled' }, 400)
 
   if (!showDate.session_1 && !showDate.session_2 && !showDate.session_3) {
@@ -176,19 +188,33 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
     return json({ error: insErr.message }, 500)
   }
 
-  // show_date_offer_tiers has a UNIQUE (show_date_id, tier) constraint, so
-  // the upsert is safe here.
-  await (admin as any)
+  // show_date_offer_tiers has a UNIQUE (show_date_id, tier) constraint. A MERGE
+  // upsert (no ignoreDuplicates) re-activates a tier that was previously closed:
+  // clears closed_at, refreshes opened_at, and resets escalation so the new
+  // round can escalate again. (close-offer-tier sets closed_at.)
+  const { error: tierErr } = await (admin as any)
     .from('show_date_offer_tiers')
     .upsert(
-      { show_date_id, tier, opened_at: offeredAt.toISOString() },
-      { onConflict: 'show_date_id,tier', ignoreDuplicates: true }
+      {
+        show_date_id,
+        tier,
+        opened_at: offeredAt.toISOString(),
+        closed_at: null,
+        escalation_notified_at: null,
+      },
+      { onConflict: 'show_date_id,tier' }
     )
+  // The tier row is now load-bearing for re-open (it clears closed_at) and is
+  // what expire-offers / tier-at-risk-watcher filter on. The bookings were
+  // already inserted, so don't fail the request — but if tracking failed, log it
+  // AND signal the caller so the producer knows escalation/at-risk may be broken
+  // for this round (re-opening the tier recovers it).
+  if (tierErr) console.error('open-offer-tier: tier upsert error', tierErr)
 
   const offersCreated = inserted?.length ?? 0
-  console.log('open-offer-tier complete', { show_date_id, tier, offersCreated })
+  console.log('open-offer-tier complete', { show_date_id, tier, offersCreated, tierTracked: !tierErr })
 
-  return json({ offers_created: offersCreated })
+  return json({ offers_created: offersCreated, ...(tierErr ? { tier_tracking_warning: true } : {}) })
 }
 
 if (import.meta.main) Deno.serve((req) => handle(req, realDeps()));

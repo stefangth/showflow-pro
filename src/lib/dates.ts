@@ -17,6 +17,22 @@ export function formatDateDMY(input: string | Date): string {
   return format(d, 'dd/MM/yyyy');
 }
 
+/**
+ * Format a full ISO timestamp (e.g. a `timestamptz` column like
+ * `show_date_offer_tiers.opened_at`) as `dd/MM/yyyy`, using the **UTC** calendar
+ * date so the result is deterministic across browser timezones.
+ *
+ * Use this — NOT `formatDateDMY` — for timestamp values: `formatDateDMY` is for
+ * date-only `YYYY-MM-DD` strings and appends `T00:00:00`, which turns a full
+ * timestamp into an Invalid Date (and date-fns `format` then throws). Pinning to
+ * UTC also avoids the per-user drift that a local-timezone `new Date(input)`
+ * would cause near midnight.
+ */
+export function formatTimestampDMY(input: string): string {
+  const d = new Date(input);
+  return format(new Date(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate()), 'dd/MM/yyyy');
+}
+
 /** Format with weekday + dd/MM/yyyy, e.g. `Mon, 23/04/2026`. */
 export function formatDateWithWeekday(input: string | Date): string {
   const d = typeof input === 'string' ? parseDateOnly(input) : input;

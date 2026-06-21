@@ -1,4 +1,4 @@
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { format } from 'date-fns';
 import { toast } from 'sonner';
@@ -11,13 +11,23 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger,
+} from '@/components/ui/alert-dialog';
 import { Skeleton } from '@/components/ui/skeleton';
 import { MapPin, Clock, Users, Check, ChevronsUpDown } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { showLabel } from '@/types';
 import { useEligibleArtists } from '@/hooks/useEligibleArtists';
 import { showSlots } from '@/lib/settings';
-import { deriveBookingGroups, computeInheritedCastIds, bookingStatusUpdate } from '@/lib/bookings';
+import {
+  deriveBookingGroups, computeInheritedCastIds, bookingStatusUpdate,
+  buildOfferTierOptions, offerResultToast, offerConfirmCopy,
+  pendingOfferCount, closeConfirmCopy, closeResultToast,
+} from '@/lib/bookings';
+import { formatDateDMY, formatTimestampDMY } from '@/lib/dates';
+import { openOfferTier, fetchOfferTiers, fetchOpenedTiers, closeOfferTier } from '@/data/bookings';
 import { ChatPanel } from '@/components/chat/ChatPanel';
 import type { Booking, Artist, City, Cast } from '@/types';
 
@@ -114,6 +124,44 @@ export function ShowDateDetailSheet({ showDateId, open, onOpenChange }: Props) {
 
   const { data: eligibility } = useEligibleArtists(showId, showDateId, cityId);
 
+  const tiersQ = useQuery({
+    queryKey: ['offer-tiers', 'available', showDateId, cityId],
+    enabled: canManage && !!showDateId,
+    queryFn: () => fetchOfferTiers(supabase, { cityId, showDateId: showDateId! }),
+  });
+  const openedQ = useQuery({
+    queryKey: ['offer-tiers', 'opened', showDateId],
+    enabled: canManage && !!showDateId,
+    queryFn: () => fetchOpenedTiers(supabase, showDateId!),
+  });
+
+  const [selectedTier, setSelectedTier] = useState<number | null>(null);
+  const [closeTarget, setCloseTarget] = useState<number | null>(null);
+
+  const tierOptions = useMemo(
+    () => buildOfferTierOptions(tiersQ.data ?? { priorities: [], hasAdHoc: false }),
+    [tiersQ.data]
+  );
+  // Fall back to the first option unless the explicit selection is still a valid
+  // option (e.g. a city change can drop the previously-selected tier).
+  const effectiveTier =
+    selectedTier != null && tierOptions.some(o => o.value === selectedTier)
+      ? selectedTier
+      : tierOptions[0]?.value ?? null;
+  const hasSession = !!(showDate?.session_1 || showDate?.session_2 || showDate?.session_3);
+  // True if the tier has EVER been opened (open or closed). Re-opening a closed
+  // tier should still show the additive "already opened" note — especially when it
+  // was closed with offers kept live, so the producer knows offers will coexist.
+  const alreadyOpened = (openedQ.data ?? []).some(o => o.tier === effectiveTier);
+
+  // Dialog copy via pure helpers, computed once (null until usable).
+  const confirmCopy = effectiveTier != null && showDate
+    ? offerConfirmCopy({ tier: effectiveTier, dateLabel: formatDateDMY(showDate.date), alreadyOpened })
+    : null;
+  const closeCopy = closeTarget !== null
+    ? closeConfirmCopy({ tier: closeTarget, pendingCount: pendingOfferCount(bookingsForDate ?? [], closeTarget) })
+    : null;
+
   const {
     active: activeBookings,
     main: mainBookings,
@@ -208,6 +256,33 @@ export function ShowDateDetailSheet({ showDateId, open, onOpenChange }: Props) {
       toast.success('Booking updated');
     },
     onError: (err: any) => toast.error(err.message),
+  });
+
+  const openOffers = useMutation({
+    mutationFn: (tier: number) => openOfferTier(supabase, { showDateId: showDateId!, tier }),
+    onSuccess: (res, tier) => {
+      const { kind, text } = offerResultToast(res, tier);
+      if (kind === 'success') toast.success(text); else toast.info(text);
+      if (res.trackingWarning) {
+        toast.error('Tier tracking failed to record — re-open the tier to restore escalation and at-risk alerts.');
+      }
+      queryClient.invalidateQueries({ queryKey: ['bookings'] });
+      queryClient.invalidateQueries({ queryKey: ['offer-tiers', 'opened', showDateId] });
+    },
+    onError: (err: any) => toast.error(err.message),
+  });
+
+  const closeOffers = useMutation({
+    mutationFn: ({ tier, withdraw }: { tier: number; withdraw: boolean }) =>
+      closeOfferTier(supabase, { showDateId: showDateId!, tier, withdraw }),
+    onSuccess: (res, { tier }) => {
+      const { kind, text } = closeResultToast(res, tier);
+      if (kind === 'success') toast.success(text); else toast.info(text);
+      queryClient.invalidateQueries({ queryKey: ['bookings'] });
+      queryClient.invalidateQueries({ queryKey: ['offer-tiers', 'opened', showDateId] });
+      setCloseTarget(null);
+    },
+    onError: (err: any) => { toast.error(err.message); setCloseTarget(null); },
   });
 
   const venue = showDate?.venue;
@@ -393,6 +468,148 @@ export function ShowDateDetailSheet({ showDateId, open, onOpenChange }: Props) {
                   </CardContent>
                 </Card>
               )}
+
+              {/* Offers */}
+              {canManage && showDate.status !== 'cancelled' && (
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="font-display text-base">Offers</CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    {/* Opened tiers */}
+                    <div className="space-y-1.5">
+                      <p className="text-xs text-muted-foreground uppercase tracking-wide">Opened tiers</p>
+                      {openedQ.isLoading ? (
+                        <Skeleton className="h-5 w-40" />
+                      ) : (openedQ.data ?? []).length === 0 ? (
+                        <p className="text-sm text-muted-foreground">No tiers opened yet.</p>
+                      ) : (
+                        <div className="flex flex-wrap gap-2">
+                          {(openedQ.data ?? []).map(o => (
+                            <Badge key={o.tier} variant="outline" className="flex items-center gap-2 py-1">
+                              <span>
+                                {o.tier === 99 ? 'Ad-hoc casts' : `Tier ${o.tier}`}
+                                <span className="ml-1 opacity-60">
+                                  {o.closedAt
+                                    ? `· closed ${formatTimestampDMY(o.closedAt)}`
+                                    : `· opened ${formatTimestampDMY(o.openedAt)}`}
+                                </span>
+                              </span>
+                              {!o.closedAt && (
+                                <button
+                                  type="button"
+                                  onClick={() => setCloseTarget(o.tier)}
+                                  className="text-destructive hover:underline text-xs"
+                                >
+                                  Close
+                                </button>
+                              )}
+                            </Badge>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Open a tier */}
+                    {tiersQ.isLoading ? (
+                      <Skeleton className="h-9 w-64" />
+                    ) : tierOptions.length === 0 ? (
+                      <p className="text-sm text-muted-foreground">
+                        No offer tiers configured for this city — set cast priorities in Settings → Cities &amp; Casts.
+                      </p>
+                    ) : (
+                      <div className="flex flex-wrap items-center gap-2">
+                        <Select
+                          value={effectiveTier != null ? String(effectiveTier) : undefined}
+                          onValueChange={v => setSelectedTier(Number(v))}
+                        >
+                          <SelectTrigger className="w-48">
+                            <SelectValue placeholder="Select tier" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {tierOptions.map(opt => (
+                              <SelectItem key={opt.value} value={String(opt.value)}>{opt.label}</SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+
+                        <AlertDialog>
+                          <AlertDialogTrigger asChild>
+                            <Button disabled={!hasSession || openOffers.isPending || effectiveTier == null}>
+                              {openOffers.isPending
+                                ? 'Opening…'
+                                : `Open ${effectiveTier === 99 ? 'ad-hoc casts' : `tier ${effectiveTier}`}`}
+                            </Button>
+                          </AlertDialogTrigger>
+                          <AlertDialogContent>
+                            {effectiveTier != null && confirmCopy && (
+                              <>
+                                <AlertDialogHeader>
+                                  <AlertDialogTitle>{confirmCopy.title}</AlertDialogTitle>
+                                  <AlertDialogDescription>{confirmCopy.body}</AlertDialogDescription>
+                                </AlertDialogHeader>
+                                <AlertDialogFooter>
+                                  <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                  <AlertDialogAction onClick={() => openOffers.mutate(effectiveTier)}>
+                                    Open offers
+                                  </AlertDialogAction>
+                                </AlertDialogFooter>
+                              </>
+                            )}
+                          </AlertDialogContent>
+                        </AlertDialog>
+
+                        {!hasSession && (
+                          <span className="text-xs text-muted-foreground">
+                            Add a session time before opening offers.
+                          </span>
+                        )}
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+              )}
+
+              {/* Close-tier confirmation (choose withdraw vs keep) */}
+              <AlertDialog open={closeTarget !== null} onOpenChange={(o) => { if (!o) setCloseTarget(null); }}>
+                <AlertDialogContent>
+                  {closeTarget !== null && closeCopy && (
+                    <>
+                      <AlertDialogHeader>
+                        <AlertDialogTitle>{closeCopy.title}</AlertDialogTitle>
+                        <AlertDialogDescription>{closeCopy.intro}</AlertDialogDescription>
+                      </AlertDialogHeader>
+                      <div className="space-y-2">
+                        <AlertDialogAction asChild>
+                          <button
+                            type="button"
+                            disabled={closeOffers.isPending}
+                            onClick={() => closeOffers.mutate({ tier: closeTarget, withdraw: true })}
+                            className="w-full text-left rounded-lg border border-border p-3 hover:bg-muted disabled:opacity-50"
+                          >
+                            <p className="text-sm font-medium">{closeCopy.withdraw.label}</p>
+                            <p className="text-xs text-muted-foreground mt-0.5">{closeCopy.withdraw.caption}</p>
+                          </button>
+                        </AlertDialogAction>
+                        <AlertDialogAction asChild>
+                          <button
+                            type="button"
+                            disabled={closeOffers.isPending}
+                            onClick={() => closeOffers.mutate({ tier: closeTarget, withdraw: false })}
+                            className="w-full text-left rounded-lg border border-border p-3 hover:bg-muted disabled:opacity-50"
+                          >
+                            <p className="text-sm font-medium">{closeCopy.keep.label}</p>
+                            <p className="text-xs text-muted-foreground mt-0.5">{closeCopy.keep.caption}</p>
+                          </button>
+                        </AlertDialogAction>
+                      </div>
+                      <AlertDialogFooter>
+                        <AlertDialogCancel>Cancel</AlertDialogCancel>
+                      </AlertDialogFooter>
+                    </>
+                  )}
+                </AlertDialogContent>
+              </AlertDialog>
 
               {/* Assigned Artists */}
               <Card>
