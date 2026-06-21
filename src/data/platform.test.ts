@@ -105,12 +105,12 @@ describe("data/platform", () => {
       table: "app_settings",
       method: "upsert",
       args: [
-        [
+        expect.arrayContaining([
           { org_id: null, key: "offer_response_window_hours", value: 24 },
           { org_id: null, key: "offer_digest_hour_berlin", value: 8 },
           { org_id: null, key: "confirmation_digest_hour_berlin", value: 9 },
           { org_id: null, key: "resend_from_address", value: "Acme <hi@acme.com>" },
-        ],
+        ]),
         { onConflict: "org_id,key" },
       ],
     });

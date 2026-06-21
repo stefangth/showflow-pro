@@ -1,6 +1,6 @@
 import { assertEquals } from "./test-asserts.ts";
 import { createFakeClient } from "./testing.ts";
-import { getActiveOrgs, resolveOrgSetting } from "./settings.ts";
+import { getActiveOrgs, resolveOrgSetting, BOOKING_ENGINE_DEFAULTS } from "./settings.ts";
 
 const ORG_A = "00000000-0000-0000-0000-0000000000a1";
 
@@ -41,4 +41,14 @@ Deno.test("resolveOrgSetting: returns the fallback when neither row exists", asy
 Deno.test("getActiveOrgs: returns active org ids", async () => {
   const admin = adminWith({ organizations: { data: [{ id: ORG_A }], error: null } });
   assertEquals(await getActiveOrgs(admin), [{ id: ORG_A }]);
+});
+
+// Guards FE<->edge drift: these MUST match src/config/app.config.ts BOOKING_ENGINE_DEFAULTS
+// (pinned there by src/config/app.config.test.ts). The two runtimes can't share an import,
+// so this is the cross-runtime sync gate.
+Deno.test("BOOKING_ENGINE_DEFAULTS mirrors the frontend contract", () => {
+  assertEquals(BOOKING_ENGINE_DEFAULTS.offer_response_window_hours, 48);
+  assertEquals(BOOKING_ENGINE_DEFAULTS.offer_digest_hour_berlin, 19);
+  assertEquals(BOOKING_ENGINE_DEFAULTS.confirmation_digest_hour_berlin, 20);
+  assertEquals(BOOKING_ENGINE_DEFAULTS.resend_from_address, "ShowFlow <noreply@showflow.pro>");
 });
