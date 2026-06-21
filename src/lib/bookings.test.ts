@@ -1,12 +1,8 @@
 import { describe, it, expect } from "vitest";
-import { deriveBookingGroups, computeInheritedCastIds, bookingStatusUpdate } from "./bookings";
 import {
-  buildOfferTierOptions,
-  offerResultToast,
-  offerConfirmCopy,
-  pendingOfferCount,
-  closeConfirmCopy,
-  closeResultToast,
+  deriveBookingGroups, computeInheritedCastIds, bookingStatusUpdate,
+  buildOfferTierOptions, offerResultToast, offerConfirmCopy,
+  pendingOfferCount, closeConfirmCopy, closeResultToast,
 } from "./bookings";
 
 type B = { artist_id: string; status: string; is_understudy: boolean };
@@ -174,6 +170,7 @@ describe("closeConfirmCopy", () => {
   });
   it("singularizes a single pending offer", () => {
     const c = closeConfirmCopy({ tier: 1, pendingCount: 1 });
+    // trailing space is intentional: the caption reads "1 offer no-one…" (singular, no "s")
     expect(c.withdraw.caption).toContain("1 offer ");
   });
 });
