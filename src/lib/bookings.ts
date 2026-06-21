@@ -70,3 +70,105 @@ export function bookingStatusUpdate(status: string, now: Date): BookingStatusUpd
   if (status === "cancelled") updates.cancelled_at = now.toISOString();
   return updates;
 }
+
+// ── Offer-tier UI helpers (open/close actions in ShowDateDetailSheet) ──────────
+
+export interface OfferTierOption { value: number; label: string }
+
+/** A tier's human noun, used across toasts and dialog copy. 99 = ad-hoc convention. */
+function tierNoun(tier: number): string {
+  return tier === 99 ? "ad-hoc casts" : `tier ${tier}`;
+}
+
+/** Dropdown options: deduped+sorted city tiers (drop <1 and stray 99), then Ad-hoc(99). */
+export function buildOfferTierOptions(
+  input: { priorities: number[]; hasAdHoc: boolean },
+): OfferTierOption[] {
+  const uniq = Array.from(new Set(input.priorities))
+    .filter((p) => Number.isFinite(p) && p >= 1 && p !== 99)
+    .sort((a, b) => a - b);
+  const opts: OfferTierOption[] = uniq.map((p) => ({ value: p, label: `Tier ${p}` }));
+  if (input.hasAdHoc) opts.push({ value: 99, label: "Ad-hoc casts" });
+  return opts;
+}
+
+/** Map an open-offer-tier result to a toast kind + text. */
+export function offerResultToast(
+  result: { offersCreated: number; message?: string },
+  tier: number,
+): { kind: "success" | "info"; text: string } {
+  if (result.offersCreated > 0) {
+    const n = result.offersCreated;
+    return { kind: "success", text: `Opened ${tierNoun(tier)} — ${n} offer${n === 1 ? "" : "s"} created` };
+  }
+  return { kind: "info", text: result.message ?? "No new offers created" };
+}
+
+/** Confirmation copy for opening a tier; re-open note explains the additive semantics. */
+export function offerConfirmCopy(
+  input: { tier: number; dateLabel: string; alreadyOpened: boolean },
+): { title: string; body: string } {
+  const noun = tierNoun(input.tier);
+  const base =
+    `This creates suggested bookings for all eligible artists in ${noun} for ${input.dateLabel}. ` +
+    `They'll be emailed in the next daily offer digest, and you can cancel any offer afterward.`;
+  const cap = input.tier === 99 ? "Ad-hoc casts have" : `Tier ${input.tier} has`;
+  const reopen = input.alreadyOpened
+    ? ` ${cap} already been opened — re-opening only adds offers for artists who don't have one yet.`
+    : "";
+  return { title: `Open ${noun} offers?`, body: base + reopen };
+}
+
+/** Count still-pending (suggested) offers for a tier — feeds the close dialog. */
+export function pendingOfferCount(
+  bookings: ReadonlyArray<{ status: string; offer_tier: number | null }>,
+  tier: number,
+): number {
+  return bookings.filter((b) => b.status === "suggested" && b.offer_tier === tier).length;
+}
+
+export interface CloseConfirmCopy {
+  title: string;
+  intro: string;
+  withdraw: { label: string; caption: string };
+  keep: { label: string; caption: string };
+}
+
+/** Jargon-free copy for the close dialog's two choices. */
+export function closeConfirmCopy(input: { tier: number; pendingCount: number }): CloseConfirmCopy {
+  const noun = tierNoun(input.tier);
+  const n = input.pendingCount;
+  const s = n === 1 ? "" : "s";
+  return {
+    title: `Close ${noun}?`,
+    intro: `Closing stops the reminder and at-risk alerts for ${noun}.`,
+    withdraw: {
+      label: "Withdraw unanswered offers",
+      caption: n > 0
+        ? `Cancels the ${n} offer${s} no-one has accepted yet, so those artists can't take a spot later. Anyone who already accepted keeps their spot.`
+        : "No unanswered offers to cancel. Anyone who already accepted keeps their spot.",
+    },
+    keep: {
+      label: "Keep offers open",
+      caption: n > 0
+        ? `Leaves the ${n} unanswered offer${s} live — artists can still accept until the offers expire.`
+        : "Nothing to withdraw — this just stops the alerts.",
+    },
+  };
+}
+
+/** Map a close-offer-tier result to a toast kind + text. */
+export function closeResultToast(
+  result: { closed: boolean; withdrawn: number; message?: string },
+  tier: number,
+): { kind: "success" | "info"; text: string } {
+  const noun = tierNoun(tier);
+  if (!result.closed && result.withdrawn === 0) {
+    return { kind: "info", text: result.message ?? "Tier was not open" };
+  }
+  if (result.withdrawn > 0) {
+    const n = result.withdrawn;
+    return { kind: "success", text: `Closed ${noun} — withdrew ${n} offer${n === 1 ? "" : "s"}` };
+  }
+  return { kind: "success", text: `Closed ${noun}` };
+}
