@@ -3,7 +3,7 @@ import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import appLogicMd from '../../docs/app-logic.md?raw';
 import { Link } from 'react-router-dom';
-import { ROUTES } from '@/config/app.config';
+import { ROUTES, BOOKING_ENGINE_DEFAULTS } from '@/config/app.config';
 import { useSettingsWarnings } from '@/hooks/useSettingsWarnings';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
@@ -223,7 +223,7 @@ function BookingEngineTab({ get, set }: { get: (key: string, fallback?: any) => 
           <div className="space-y-2 max-w-sm">
             <Label>From address (Resend)</Label>
             <Input
-              placeholder="ShowFlow <noreply@showflow.pro>"
+              placeholder={BOOKING_ENGINE_DEFAULTS.resend_from_address}
               value={get('resend_from_address', '')}
               onChange={e => set('resend_from_address', e.target.value)}
             />
@@ -236,7 +236,7 @@ function BookingEngineTab({ get, set }: { get: (key: string, fallback?: any) => 
               <Input
                 type="number"
                 min={1}
-                value={get('offer_response_window_hours', 48)}
+                value={get('offer_response_window_hours', BOOKING_ENGINE_DEFAULTS.offer_response_window_hours)}
                 onChange={e => set('offer_response_window_hours', Number(e.target.value))}
               />
               <p className="text-xs text-muted-foreground">Window an artist has to respond to an offer.</p>
@@ -247,7 +247,7 @@ function BookingEngineTab({ get, set }: { get: (key: string, fallback?: any) => 
                 type="number"
                 min={0}
                 max={23}
-                value={get('offer_digest_hour_berlin', 19)}
+                value={get('offer_digest_hour_berlin', BOOKING_ENGINE_DEFAULTS.offer_digest_hour_berlin)}
                 onChange={e => set('offer_digest_hour_berlin', Number(e.target.value))}
               />
             </div>
@@ -257,7 +257,7 @@ function BookingEngineTab({ get, set }: { get: (key: string, fallback?: any) => 
                 type="number"
                 min={0}
                 max={23}
-                value={get('confirmation_digest_hour_berlin', 20)}
+                value={get('confirmation_digest_hour_berlin', BOOKING_ENGINE_DEFAULTS.confirmation_digest_hour_berlin)}
                 onChange={e => set('confirmation_digest_hour_berlin', Number(e.target.value))}
               />
             </div>

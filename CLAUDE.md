@@ -88,7 +88,7 @@ src/
     layout/        # AppLayout (sidebar + topbar shell), NotificationsList (notification bell popover)
     ui/            # shadcn primitives — DO NOT edit by hand, regenerate via shadcn
   config/
-    app.config.ts  # Feature flags (FEATURES), route constants (ROUTES), BOOKING_CONFIG, CHAT_ARCHIVE_DAYS
+    app.config.ts  # Feature flags (FEATURES), route constants (ROUTES), BOOKING_ENGINE_DEFAULTS, CHAT_ARCHIVE_DAYS
   data/            # Data-access layer: fetchX(client, args) / mutateX(client, args) functions
                    #   that take the Supabase client as a parameter. Hooks are thin wrappers.
                    #   Domains: artists, invitations, members, notifications, orgs, platform,
@@ -311,7 +311,7 @@ Suggested emails:
 
 | File | Purpose |
 |------|---------|
-| `src/config/app.config.ts` | FEATURES flags, ROUTES, BOOKING_CONFIG (`SOFT_BOOK_EXPIRY_HOURS`), CHAT_ARCHIVE_DAYS |
+| `src/config/app.config.ts` | FEATURES flags, ROUTES, BOOKING_ENGINE_DEFAULTS (canonical booking-engine fallbacks; mirrors `_shared/settings.ts`), CHAT_ARCHIVE_DAYS |
 | `src/integrations/supabase/types.ts` | Auto-generated DB types — read only |
 | `src/features/auth/AuthContext.tsx` | Auth state, org-scoped role helpers, `currentOrg`/`orgs`/`switchOrg`, `isSuperAdmin` |
 | `src/features/auth/resetPassword.ts` | Pure helpers for reset-password flow (hash parse, redirect safety, schema) |

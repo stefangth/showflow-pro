@@ -4,6 +4,19 @@ import type { SupabaseClient } from "npm:@supabase/supabase-js@2";
 interface SettingRow { org_id: string | null; value: unknown }
 
 /**
+ * Canonical fallback defaults for the org-tunable booking-engine settings.
+ * Mirrors the frontend `src/config/app.config.ts` BOOKING_ENGINE_DEFAULTS — the
+ * two runtimes can't share an import, so keep them in sync. An org override or a
+ * platform default wins via resolveOrgSetting; these are the last-resort fallback.
+ */
+export const BOOKING_ENGINE_DEFAULTS = {
+  offer_response_window_hours: 48,
+  offer_digest_hour_berlin: 19,
+  confirmation_digest_hour_berlin: 20,
+  resend_from_address: "ShowFlow <noreply@showflow.pro>",
+} as const;
+
+/**
  * Effective value for a setting: the org's own row if present, else the platform
  * default (org_id IS NULL), else `fallback`. One round-trip. Mirrors the SQL
  * get_org_setting() and the frontend src/data/settings.ts:resolveOrgSetting().
