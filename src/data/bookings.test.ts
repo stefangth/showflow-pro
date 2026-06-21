@@ -31,6 +31,7 @@ describe("fetchOfferTiers", () => {
       show_date_cast_eligibility: { data: [{ id: "x" }], error: null },
     });
     const res = await fetchOfferTiers(fake as never, { cityId: "c1", showDateId: "d1" });
+    // Duplicates are intentionally preserved here — dedup is buildOfferTierOptions' job.
     expect(res).toEqual({ priorities: [1, 2, 1], hasAdHoc: true });
   });
   it("skips the priority query when there is no city", async () => {
@@ -49,6 +50,10 @@ describe("fetchOpenedTiers", () => {
     const res = await fetchOpenedTiers(fake as never, "d1");
     expect(res).toEqual([{ tier: 1, openedAt: "2026-07-01T00:00:00Z", closedAt: null }]);
   });
+  it("throws on DB error", async () => {
+    const fake = createFakeSupabase({ show_date_offer_tiers: { data: null, error: { message: "boom" } } });
+    await expect(fetchOpenedTiers(fake as never, "d1")).rejects.toBeTruthy();
+  });
 });
 
 describe("closeOfferTier", () => {
@@ -61,5 +66,9 @@ describe("closeOfferTier", () => {
   it("throws on a 200 body carrying { error }", async () => {
     const fake = createFakeSupabase({ "fn:close-offer-tier": { data: { error: "nope" }, error: null } });
     await expect(closeOfferTier(fake as never, { showDateId: "d1", tier: 1, withdraw: false })).rejects.toThrow("nope");
+  });
+  it("throws on transport error", async () => {
+    const fake = createFakeSupabase({ "fn:close-offer-tier": { data: null, error: { message: "network" } } });
+    await expect(closeOfferTier(fake as never, { showDateId: "d1", tier: 1, withdraw: false })).rejects.toBeTruthy();
   });
 });

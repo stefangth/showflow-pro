@@ -17,7 +17,14 @@ export async function openOfferTier(
   return { offersCreated: payload?.offers_created ?? 0, message: payload?.message };
 }
 
-/** Tiers that *can* be opened for a date: city priorities (raw) + ad-hoc presence. */
+/**
+ * Tiers that *can* be opened for a date.
+ * - `priorities`: RAW per-city priorities (duplicates preserved). Dedup/sort/labeling
+ *   is the consumer's job — see `buildOfferTierOptions` in `@/lib/bookings`.
+ * - `hasAdHoc`: whether the date has any per-date ("ad-hoc") cast assignments.
+ * A null `cityId` skips the priority query (priorities = []) but still checks ad-hoc,
+ * since ad-hoc casts are per-date, not per-city.
+ */
 export async function fetchOfferTiers(
   client: SupabaseClient<Database>,
   args: { cityId: string | null; showDateId: string },
@@ -29,8 +36,10 @@ export async function fetchOfferTiers(
       .select("priority")
       .eq("city_id", args.cityId);
     if (error) throw error;
+    // Raw — dedup happens downstream in buildOfferTierOptions.
     priorities = (data ?? []).map((r) => r.priority as number);
   }
+  // Any show_date_cast_eligibility row for this date means ad-hoc casts exist (tier 99).
   const { data: adHoc, error: adErr } = await client
     .from("show_date_cast_eligibility")
     .select("id")
