@@ -1,7 +1,7 @@
 import { preflight, json } from "../_shared/http.ts";
 import { requireCronOrRole } from "../_shared/auth.ts";
 import { realDeps, type Deps } from "../_shared/deps.ts";
-import { getActiveOrgs, resolveOrgSetting } from "../_shared/settings.ts";
+import { getActiveOrgs, resolveOrgSetting, BOOKING_ENGINE_DEFAULTS } from "../_shared/settings.ts";
 import { resolveContactEmail, resolveAccountDisplayName } from "../_shared/identity.ts";
 import { coalesceChangeRows, describeDateChanges, type ChangeLogRow } from "../_shared/scheduleChanges.ts";
 
@@ -43,7 +43,7 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
   for (const org of orgs) {
     let targetHour: number;
     try {
-      targetHour = await resolveOrgSetting<number>(admin, org.id, 'confirmation_digest_hour_berlin', 20);
+      targetHour = await resolveOrgSetting<number>(admin, org.id, 'confirmation_digest_hour_berlin', BOOKING_ENGINE_DEFAULTS.confirmation_digest_hour_berlin);
     } catch (e) {
       console.error('send-confirmation-digest: settings read failed', { org: org.id, error: (e as Error).message });
       continue;

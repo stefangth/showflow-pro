@@ -15,10 +15,25 @@ export const FEATURES = {
   AUDIT_TRAIL: true,
 } as const;
 
-/** Booking engine configuration */
-export const BOOKING_CONFIG = {
-  /** Hours before a soft-book auto-expires (default: 48h) */
-  SOFT_BOOK_EXPIRY_HOURS: 48,
+/**
+ * Canonical fallback defaults for the org-tunable booking-engine settings.
+ *
+ * These mirror the edge-function fallbacks in
+ * `supabase/functions/_shared/settings.ts` (BOOKING_ENGINE_DEFAULTS) — the two
+ * runtimes can't share an import, so keep them in sync. At runtime an org
+ * override (Settings → Booking Engine) or a platform default (Platform →
+ * Defaults) wins via resolveOrgSetting; these literals are the last-resort
+ * fallback used only when neither row exists.
+ */
+export const BOOKING_ENGINE_DEFAULTS = {
+  /** Hours an artist has to respond to an offer before it expires. */
+  offer_response_window_hours: 48,
+  /** Hour (Berlin, 0–23) the daily offer digest is sent. */
+  offer_digest_hour_berlin: 19,
+  /** Hour (Berlin, 0–23) the daily confirmation digest is sent. */
+  confirmation_digest_hour_berlin: 20,
+  /** Default Resend sender address for transactional email. */
+  resend_from_address: 'ShowFlow <noreply@showflow.pro>',
 } as const;
 
 /** Role definitions */
@@ -59,4 +74,6 @@ export const APP_META = {
   NAME: 'ShowFlow',
   DESCRIPTION: 'Artist Booking SaaS for live show productions',
   VERSION: '1.0.0',
+  /** Public marketing site — used for the "Book a demo" CTA on the login page. */
+  MARKETING_URL: 'https://showflow.pro',
 } as const;

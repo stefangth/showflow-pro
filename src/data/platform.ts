@@ -1,7 +1,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database, Json } from "@/integrations/supabase/types";
 import type { Organization } from "@/data/orgs";
-import type { AppRole } from "@/config/app.config";
+import { BOOKING_ENGINE_DEFAULTS, type AppRole } from "@/config/app.config";
 
 export interface OrgStat {
   org_id: string;
@@ -95,5 +95,59 @@ export async function removePlatformAdmin(client: SupabaseClient<Database>, user
 /** Upsert a platform-default setting (org_id IS NULL). Super-admin only via app_settings RLS. */
 export async function savePlatformSetting(client: SupabaseClient<Database>, key: string, value: Json): Promise<void> {
   const { error } = await client.from("app_settings").upsert({ org_id: null, key, value }, { onConflict: "org_id,key" });
+  if (error) throw error;
+}
+
+/** Shape of the platform/org booking-engine settings (mirrors BOOKING_ENGINE_DEFAULTS). */
+export interface BookingEngineDefaults {
+  offer_response_window_hours: number;
+  offer_digest_hour_berlin: number;
+  confirmation_digest_hour_berlin: number;
+  resend_from_address: string;
+}
+
+const BOOKING_DEFAULT_KEYS = Object.keys(BOOKING_ENGINE_DEFAULTS) as (keyof BookingEngineDefaults)[];
+
+/**
+ * Read the platform-default (org_id IS NULL) booking-engine settings in one
+ * query, falling back to the canonical code defaults for any key without a row.
+ * Powers the super-admin Platform → Defaults form.
+ */
+export async function fetchPlatformBookingDefaults(
+  client: SupabaseClient<Database>,
+): Promise<BookingEngineDefaults> {
+  const { data, error } = await client
+    .from("app_settings")
+    .select("key, value")
+    .is("org_id", null)
+    .in("key", BOOKING_DEFAULT_KEYS as string[]);
+  if (error) throw error;
+  const byKey = new Map(
+    ((data ?? []) as { key: string; value: unknown }[]).map((r) => [r.key, r.value]),
+  );
+  const out: BookingEngineDefaults = { ...BOOKING_ENGINE_DEFAULTS };
+  for (const key of BOOKING_DEFAULT_KEYS) {
+    const v = byKey.get(key);
+    if (v !== undefined && v !== null) (out as unknown as Record<string, unknown>)[key] = v;
+  }
+  return out;
+}
+
+/**
+ * Upsert ALL four platform-default booking-engine settings in one call (super-admin only).
+ * Writes every key (even unchanged ones), so saving materializes platform rows for keys
+ * that previously fell through to the code defaults — i.e. "Save" freezes the current
+ * values as explicit platform defaults. Intended: this is the form for setting them.
+ */
+export async function savePlatformBookingDefaults(
+  client: SupabaseClient<Database>,
+  values: BookingEngineDefaults,
+): Promise<void> {
+  const rows = BOOKING_DEFAULT_KEYS.map((key) => ({
+    org_id: null as string | null,
+    key: key as string,
+    value: values[key] as Json,
+  }));
+  const { error } = await client.from("app_settings").upsert(rows, { onConflict: "org_id,key" });
   if (error) throw error;
 }

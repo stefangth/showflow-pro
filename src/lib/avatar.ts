@@ -1,4 +1,9 @@
-/* Stable 6-colour avatar palette — deterministic from any string seed */
+/*
+ * Stable 6-colour avatar palette — deterministic from any string seed.
+ * These hex pairs are intentional DATA, not theme tokens: each avatar must keep
+ * the same tint across light/dark mode (a person's colour shouldn't change with
+ * the theme), so they are fixed here rather than pulled from index.css.
+ */
 const PALETTE = [
   { bg: "#EDE9FE", text: "#4738B0" }, // violet
   { bg: "#FFEDD5", text: "#C2410C" }, // amber-orange
