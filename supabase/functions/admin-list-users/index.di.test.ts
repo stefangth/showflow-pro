@@ -4,18 +4,22 @@
  * Contract under test (src: index.ts):
  *  - OPTIONS                              → 204 preflight
  *  - No Authorization header              → 401 { error: "Unauthorized" }
- *  - Valid JWT but role != admin           → 403 { error: "Forbidden" }
- *  - Admin JWT                            → 200 { users: [...] }
+ *  - Valid JWT, not an admin of the org    → 403 { error: "Forbidden" }
+ *  - Admin of the requested org           → 200 { users: [...] }
  *      · each user shaped as: { id, email, created_at, last_sign_in_at, roles: string[] }
  *      · users with org memberships have populated roles[]
  *      · users without memberships have roles: []
+ *  - Admin of a DIFFERENT org (?org_id)    → 403 (cross-org roster read blocked)
+ *  - Super-admin (no org role)            → 200 (platform_admins fallback)
  *  - listUsers called with page:1 / perPage:1000
  *  - empty auth store → 200 { users: [] }
  *
- * Roles are read from org_memberships for the requested org (default bootstrap).
+ * Authorization is org-scoped via requireOrgRole(org_id, ['admin']): roles are
+ * read from org_memberships for the requested org (?org_id; default bootstrap).
  */
 
 import { assertEquals, assertExists } from "../_shared/test-asserts.ts";
+import { BOOTSTRAP_ORG_ID } from "../_shared/constants.ts";
 import { makeFakeDeps, makeRequest } from "../_shared/testing.ts";
 import { handle } from "./index.ts";
 
@@ -217,4 +221,88 @@ Deno.test("admin-list-users DI: listUsers is called (pagination args not verifie
   const body = await res.json() as { users: Record<string, unknown>[] };
   const u8 = body.users.find((u) => u.id === "u8");
   assertExists(u8);
+});
+
+// ── cross-org isolation (issue #110 broader audit) ────────────────────────────
+//
+// The roster is org-scoped via requireOrgRole(org_id) — an admin of org A can no
+// longer pass ?org_id=<org B> and read org B's role roster. Mirrors the
+// open/close-offer-tier fix from PR #109. The org_id is taken from the ?org_id
+// query param (the app passes the caller's active org), defaulting to bootstrap.
+
+Deno.test("admin-list-users DI: admin of another org → 403 (cross-org roster read blocked)", async () => {
+  const { deps, calls } = makeFakeDeps({
+    authUser: { id: "u1" },
+    tables: {
+      // requireOrgRole(org-B): u1 has no membership row in org-B → fails. The
+      // no-`when` fallback row would let an any-org requireRole pass, so this is
+      // RED against the old code (200) and GREEN once org-scoped (403).
+      org_memberships: [
+        { when: { org_id: "org-B" }, data: null, error: null },
+        { data: [{ user_id: "u1", role: "admin" }], error: null },
+      ],
+      platform_admins: { data: null, error: null },
+    },
+    usersById: { u9: { email: "roster@org-b.test" } },
+  });
+  const req = makeRequest({
+    method: "GET",
+    headers: { Authorization: "Bearer jwt" },
+    url: "http://localhost/fn?org_id=org-B",
+  });
+  const res = await handle(req, deps);
+  assertEquals(res.status, 403);
+  const body = await res.json() as Record<string, unknown>;
+  assertEquals(body.error, "Forbidden");
+  // The org gate was evaluated against the REQUESTED org, not "any org".
+  assertEquals(
+    calls.some((c) =>
+      c.table === "org_memberships" && c.method === "eq" && c.args[0] === "org_id" && c.args[1] === "org-B"
+    ),
+    true,
+  );
+});
+
+Deno.test("admin-list-users DI: org_id from POST body is honored over the bootstrap default (app transport)", async () => {
+  // The app invokes via functions.invoke({ body: { org_id } }) (house convention).
+  // With no ?org_id query param, the body value must drive requireOrgRole — NOT the
+  // bootstrap default. u1 is an admin of org-B only (not bootstrap), so reading the
+  // body is what authorizes the call.
+  const { deps } = makeFakeDeps({
+    authUser: { id: "u1" },
+    tables: {
+      org_memberships: [
+        { when: { org_id: BOOTSTRAP_ORG_ID }, data: null, error: null }, // not a bootstrap admin
+        { when: { org_id: "org-B" }, data: [{ user_id: "u1", role: "admin" }], error: null },
+      ],
+      platform_admins: { data: null, error: null },
+    },
+    usersById: { u1: { email: "admin@org-b.test" } },
+  });
+  const res = await handle(
+    makeRequest({ method: "POST", headers: { Authorization: "Bearer jwt" }, body: { org_id: "org-B" } }),
+    deps,
+  );
+  assertEquals(res.status, 200);
+});
+
+Deno.test("admin-list-users DI: super-admin (no org role) → 200 via platform_admins fallback", async () => {
+  const { deps } = makeFakeDeps({
+    authUser: { id: "u1" },
+    tables: {
+      org_memberships: { data: [], error: null }, // u1 holds no org role anywhere
+      platform_admins: { data: [{ user_id: "u1" }], error: null },
+    },
+    usersById: { u1: { email: "super@platform.test" }, u2: { email: "member@org-z.test" } },
+  });
+  const req = makeRequest({
+    method: "GET",
+    headers: { Authorization: "Bearer jwt" },
+    url: "http://localhost/fn?org_id=org-Z",
+  });
+  const res = await handle(req, deps);
+  assertEquals(res.status, 200);
+  const body = await res.json() as { users: unknown[] };
+  assertEquals(Array.isArray(body.users), true);
+  assertEquals(body.users.length, 2);
 });
