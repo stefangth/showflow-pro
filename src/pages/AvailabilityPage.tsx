@@ -253,7 +253,7 @@ function ArtistAvailability() {
                         </TableCell>
                       );
                       case 'show_dates.session_1': return (
-                        <TableCell key={colId} className="whitespace-nowrap">{d.session_1.slice(0, 5)}</TableCell>
+                        <TableCell key={colId} className="whitespace-nowrap">{d.session_1 ? d.session_1.slice(0, 5) : '—'}</TableCell>
                       );
                       case 'show_dates.session_2': return (
                         <TableCell key={colId} className="whitespace-nowrap">

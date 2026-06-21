@@ -41,7 +41,7 @@ type CityRef = { id: string; name: string } | null;
 type ShowDateRow = {
   id: string;
   date: string;
-  session_1: string;
+  session_1: string | null;
   session_2: string | null;
   session_3: string | null;
   venue: string | null;
@@ -325,7 +325,7 @@ function ProducerShowsBookings() {
                         <TableCell key={colId} className="text-muted-foreground">{dayAbbr(sd.date)}</TableCell>
                       );
                       case 'show_dates.session_1': return (
-                        <TableCell key={colId} className="whitespace-nowrap">{sd.session_1.slice(0, 5)}</TableCell>
+                        <TableCell key={colId} className="whitespace-nowrap">{sd.session_1 ? sd.session_1.slice(0, 5) : '—'}</TableCell>
                       );
                       case 'show_dates.session_2': return (
                         <TableCell key={colId} className="whitespace-nowrap">
