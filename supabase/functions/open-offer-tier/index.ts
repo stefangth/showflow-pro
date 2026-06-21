@@ -176,13 +176,21 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
     return json({ error: insErr.message }, 500)
   }
 
-  // show_date_offer_tiers has a UNIQUE (show_date_id, tier) constraint, so
-  // the upsert is safe here.
+  // show_date_offer_tiers has a UNIQUE (show_date_id, tier) constraint. A MERGE
+  // upsert (no ignoreDuplicates) re-activates a tier that was previously closed:
+  // clears closed_at, refreshes opened_at, and resets escalation so the new
+  // round can escalate again. (close-offer-tier sets closed_at.)
   await (admin as any)
     .from('show_date_offer_tiers')
     .upsert(
-      { show_date_id, tier, opened_at: offeredAt.toISOString() },
-      { onConflict: 'show_date_id,tier', ignoreDuplicates: true }
+      {
+        show_date_id,
+        tier,
+        opened_at: offeredAt.toISOString(),
+        closed_at: null,
+        escalation_notified_at: null,
+      },
+      { onConflict: 'show_date_id,tier' }
     )
 
   const offersCreated = inserted?.length ?? 0
