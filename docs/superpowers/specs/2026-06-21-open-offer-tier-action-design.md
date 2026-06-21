@@ -1,4 +1,4 @@
-# Open offer tier — producer/admin action in ShowDateDetailSheet — design
+# Open / close offer tier — producer/admin actions in ShowDateDetailSheet — design
 
 **Status:** Approved (brainstorming complete)
 **Date:** 2026-06-21
@@ -12,271 +12,292 @@ original product audit Part 1 ("open-offer-tier is the booking engine's ignition
 ## Context & goal
 
 `open-offer-tier` ([supabase/functions/open-offer-tier/index.ts](../../../supabase/functions/open-offer-tier/index.ts))
-is the booking engine's ignition: it creates `suggested` bookings for a `(show_date, tier)`. It is
-**already authorized for `admin`/`producer`** callers (`requireRole(['admin','producer'])` for
-non-service-role) and **already enforces the ≥1-session gate** (a zero-session date returns a benign
+is the booking engine's ignition: it creates `suggested` bookings for a `(show_date, tier)` and upserts
+a `show_date_offer_tiers` row. It is **already authorized for `admin`/`producer`** callers and
+**already enforces the ≥1-session gate** (a zero-session date returns a benign
 `{ offers_created: 0, message: 'Show date has no sessions yet — offers not opened' }`). But **nothing
 in the frontend invokes it** — today it only auto-fires from `airtable-poll` for newly-imported dates,
-tier 1 only. Consequences:
+tier 1 only. There is also **no way to close a tier** from anywhere.
 
-- **Revival dead-end** (PR #107 reviewer #5): a date cancelled in Airtable and later un-cancelled
-  returns to `status='open'` with **no bookings** and no way to restart offers.
-- **Non-Airtable orgs** can't start the booking flow from the UI at all.
+The tier lifecycle, verified in code:
+- `show_date_offer_tiers.closed_at IS NULL` means a tier is **active in the pipeline**.
+- `expire-offers` (hourly) escalates **open** tiers (`closed_at IS NULL`, `escalation_notified_at IS
+  NULL`) that have expired unfilled → producer notification + email.
+- `tier-at-risk-watcher` fires/clears `tier_at_risk` notifications for **open** tiers only.
+- So **closing** a tier (`closed_at = now()`) stops escalation + at-risk alerts. Nothing currently
+  sets `closed_at`.
 
-**Goal:** add a producer/admin **"Open offer tier"** action to the date detail surface
-[ShowDateDetailSheet.tsx](../../../src/components/shows/ShowDateDetailSheet.tsx) that invokes
-`open-offer-tier` for the current `show_date`, lets the user choose the tier behind a **confirmation
-dialog**, **displays already-opened tiers**, surfaces the result via a `sonner` toast, and invalidates
-the `['bookings']` query domain.
+Consequences today: a revived date can't restart offers (reviewer #5); non-Airtable orgs can't start
+the flow from the UI; and once a tier is opened it can never be closed, so escalation/at-risk noise
+runs until the offers expire on their own.
+
+**Goal:** in [ShowDateDetailSheet.tsx](../../../src/components/shows/ShowDateDetailSheet.tsx) give
+producers/admins a guided **Offers card** that can:
+1. **Open** a chosen tier (behind a confirmation), surfacing the result via a `sonner` toast and
+   invalidating `['bookings']`;
+2. **Display already-opened tiers** with their state (opened / closed + date);
+3. **Close** an open tier, letting the producer choose **at close-time** — in plain language — whether
+   to withdraw the tier's unanswered offers or leave them live.
 
 ## Decisions (locked in brainstorming)
 
-1. **Frontend-only.** `open-offer-tier` needs **no change** — admin/producer auth and the ≥1-session
-   benign-skip already shipped (the latter via the sibling schedule-change-notifications task,
-   Component 2). The UI mirrors those guards for good UX and surfaces the function's `message`.
-2. **Guided Offers card.** A new `canManage`-only card above "Assigned Artists", with a **data-driven**
-   tier dropdown that lists only tiers that actually have casts for this date's city, plus an
-   **Ad-hoc casts (tier 99)** option when per-date casts exist. (Chosen over a fixed `1/2/3` dropdown
-   or a free number input — honest tier list, best fit for the revival case: empty assigned list +
-   obvious affordance.)
-3. **Tier model** (verified in code): tiers 1..N come from `cast_city_priority.priority` (per cast,
-   per city); **tier 99** is the ad-hoc convention for casts added to a single date via
-   `show_date_cast_eligibility` (no `cast_city_priority` row). `open-offer-tier` resolves both.
-4. **Confirmation before opening.** Opening offers fans out suggested bookings (emailed later via the
-   daily digest), so the action goes behind a shadcn `AlertDialog`. The dialog copy explains what
-   happens and, when re-opening an already-opened tier, that re-open is **additive** (the function
-   pre-filters artists who already have an offer/booking — re-opening is idempotent and
-   non-destructive).
-5. **Display already-opened tiers.** Read `show_date_offer_tiers` and show which tiers were opened
-   (with date), so the producer sees pipeline state and understands escalation / re-open. Read-only.
-6. **Logic lives in tested units.** New Supabase reads/writes go in `src/data/bookings.ts` (client
-   passed in; tested with `createFakeSupabase`); display/format/branch logic goes in pure helpers in
-   `src/lib/bookings.ts` (tested in `bookings.test.ts`). The component stays thin wiring — matching the
-   repo's data-access-extraction convention.
+1. **Guided Offers card**, `canManage`-only, above "Assigned Artists". Data-driven tier dropdown lists
+   only tiers that have casts for this date's city (`cast_city_priority.priority`), plus an **Ad-hoc
+   casts (tier 99)** option when per-date casts exist (`show_date_cast_eligibility`). (Chosen over a
+   fixed `1/2/3` dropdown or a free number input.)
+2. **Confirmation before opening** (shadcn `AlertDialog`); the copy explains that re-opening an
+   already-opened tier is **additive** (the function pre-filters artists who already have an
+   offer/booking — re-open is idempotent/non-destructive).
+3. **Display already-opened tiers** from `show_date_offer_tiers` (read-only); each **open** tier gets a
+   **Close** action.
+4. **Close is an edge function** `close-offer-tier` (mirrors `open-offer-tier`: server-enforced
+   admin/producer auth; service-role bypass for cron/tests). Rationale over a direct client mutation:
+   it centralizes "withdraw offers + mark closed" server-side and is **locally Deno-testable** (the dev
+   machine is Deno-only).
+5. **The producer chooses the close behavior at interaction time**, explained without jargon. The close
+   dialog offers two choices:
+   - **Withdraw unanswered offers** → cancel the tier's still-`suggested` bookings
+     (`status='cancelled', cancelled_at=now(), cancellation_reason='tier_closed'` — mirrors the existing
+     `expire_soft_bookings` cancel path). Soft-booked/confirmed artists keep their slot.
+   - **Keep offers open** → only set `closed_at`; pending offers stay live until they expire.
+   Implemented as a `withdraw: boolean` flag on `close-offer-tier`.
+6. **Open re-activates a closed tier.** Closing makes open/close symmetric, which exposes a latent trap:
+   `open-offer-tier` currently upserts the tier row with `ignoreDuplicates: true`, so re-opening a
+   *closed* tier would leave `closed_at` set (the tier stays invisible to escalation/at-risk forever).
+   Fix: the upsert becomes a **merge** that re-activates — `closed_at = null`, `opened_at = now()`,
+   `escalation_notified_at = null`. This is the only behavioral change to `open-offer-tier`.
+7. **Tier model** (verified): tiers 1..N from `cast_city_priority.priority` (per cast, per city);
+   **tier 99** = ad-hoc casts added to a single date via `show_date_cast_eligibility`. `bookings.offer_tier`
+   carries the tier (incl. 99), so close can target a tier's bookings precisely.
+8. **Logic lives in tested units.** Supabase reads/writes → `src/data/bookings.ts` (client passed in;
+   `createFakeSupabase`); display/format/branch logic → pure helpers in `src/lib/bookings.ts`. The
+   component stays thin wiring. Edge functions follow the DI pattern (`handle(req, deps)` + `makeFakeDeps`).
 
 ## Architecture & data flow
 
 ```
-ShowDateDetailSheet (canManage only, date not cancelled)
+ShowDateDetailSheet — Offers card (canManage && status != 'cancelled')
   │
-  ├─ useQuery ['offer-tiers','available', showDateId, cityId]
-  │     → fetchOfferTiers(supabase, {cityId, showDateId})
-  │         • cast_city_priority.priority WHERE city_id = cityId   → priorities[]
-  │         • show_date_cast_eligibility EXISTS WHERE show_date_id → hasAdHoc
-  │     → buildOfferTierOptions({priorities, hasAdHoc})  (pure: dedupe+sort, +Ad-hoc)
+  ├─ ['offer-tiers','available', showDateId, cityId] → fetchOfferTiers(supabase,{cityId,showDateId})
+  │     cast_city_priority.priority WHERE city_id → priorities[];  show_date_cast_eligibility → hasAdHoc
+  │     → buildOfferTierOptions({priorities,hasAdHoc})  (pure: dedupe+sort, drop 99, +Ad-hoc)
   │
-  ├─ useQuery ['offer-tiers','opened', showDateId]
-  │     → fetchOpenedTiers(supabase, showDateId)
-  │         • show_date_offer_tiers (tier, opened_at, closed_at)   → opened[]
-  │     → render badges: "Tier 1 · opened 19 Jun 2026"  (formatDateDMY)
+  ├─ ['offer-tiers','opened', showDateId] → fetchOpenedTiers(supabase, showDateId)
+  │     show_date_offer_tiers (tier, opened_at, closed_at) ordered by tier → opened[]
+  │     → per row: "Tier N · opened 19 Jun 2026"  (open → [Close] button) | "· closed 20 Jun 2026"
   │
-  └─ Tier <Select> + "Open tier N" button (= AlertDialogTrigger)
-        │  button disabled when: no session | mutation pending
-        ▼
-     <AlertDialog>  title/body = offerConfirmCopy({tier, dateLabel, alreadyOpened})  (pure)
-        │  AlertDialogAction →
-        ▼
-     useMutation → openOfferTier(supabase, {showDateId, tier})
-        • supabase.functions.invoke('open-offer-tier', { body: { show_date_id, tier } })
-        • throws on transport/non-2xx error or a 200 body carrying { error }
-        • returns { offersCreated, message? }
-        ▼
-     onSuccess:  toast[kind](text)   where {kind,text} = offerResultToast(result, tier)  (pure)
-                 invalidate ['bookings']                  → Assigned Artists shows new suggested rows
-                 invalidate ['offer-tiers','opened', showDateId]  → opened badges refresh
-     onError:    toast.error(err.message)
+  ├─ OPEN:  Select tier + "Open tier N" (AlertDialogTrigger)
+  │     confirm copy = offerConfirmCopy({tier,dateLabel,alreadyOpened})  (pure)
+  │     → openOfferTier(supabase,{showDateId,tier})
+  │         invoke('open-offer-tier',{body:{show_date_id,tier}}) → {offers_created} | {offers_created:0,message} | {error}
+  │     onSuccess: toast[kind](text)=offerResultToast(res,tier); invalidate ['bookings'] + ['offer-tiers','opened',id]
+  │     [open-offer-tier now MERGE-upserts the tier row: closed_at=null, opened_at=now, escalation_notified_at=null]
+  │
+  └─ CLOSE: per open tier, "Close" → controlled AlertDialog with TWO plain-language choices
+        pendingCount = pendingOfferCount(bookingsForDate, tier)   (pure: status==='suggested' && offer_tier===tier)
+        copy = closeConfirmCopy({tier, pendingCount})   (pure: title, intro, {withdraw|keep}{label,caption})
+        choice → closeOfferTier(supabase,{showDateId,tier,withdraw})
+            invoke('close-offer-tier',{body:{show_date_id,tier,withdraw}})
+              • if withdraw: UPDATE bookings SET status='cancelled',cancelled_at=now,
+                  cancellation_reason='tier_closed' WHERE show_date_id AND offer_tier=tier AND status='suggested'  → count
+              • UPDATE show_date_offer_tiers SET closed_at=now WHERE show_date_id AND tier
+              • → { closed, withdrawn } | { closed:false, message }
+        onSuccess: toast[kind](text)=closeResultToast(res,tier); invalidate ['bookings'] + ['offer-tiers','opened',id]
 ```
-
-`open-offer-tier` response shapes the UI consumes (verified in the function):
-- **Happy path:** `200 { offers_created: N }` → success toast.
-- **Benign skip:** `200 { offers_created: 0, message }` (no city / no casts at tier / all already
-  offered or blocked / no sessions) → **info** toast carrying `message`.
-- **Error:** non-2xx `{ error }` (cancelled date / bad input / not found / insert failure) →
-  `supabase.functions.invoke` returns a `FunctionsHttpError`; `toast.error` shows its (generic)
-  message. These are essentially unreachable from this UI (card hidden when cancelled; `show_date_id`
-  + `tier` always valid), so the generic message is acceptable rather than parsing `error.context`.
 
 ## Components
 
-### 1. `src/data/bookings.ts` (new) — Supabase boundary
+### 1. `close-offer-tier` edge function (new)
+
+`supabase/functions/close-offer-tier/index.ts` — DI pattern, mirroring `open-offer-tier`:
 
 ```ts
-import type { SupabaseClient } from "@supabase/supabase-js";
-import type { Database } from "@/integrations/supabase/types";
-
-export interface OpenOfferTierResult { offersCreated: number; message?: string }
-
-/** Invoke the open-offer-tier edge function for one (show_date, tier). */
-export async function openOfferTier(
-  client: SupabaseClient<Database>,
-  { showDateId, tier }: { showDateId: string; tier: number },
-): Promise<OpenOfferTierResult> {
-  const { data, error } = await client.functions.invoke("open-offer-tier", {
-    body: { show_date_id: showDateId, tier },
-  });
-  if (error) throw error;
-  const payload = data as { offers_created?: number; message?: string; error?: string };
-  if (payload?.error) throw new Error(payload.error);
-  return { offersCreated: payload?.offers_created ?? 0, message: payload?.message };
-}
-
-/** Tiers that *can* be opened for a date: city priorities + ad-hoc presence. */
-export async function fetchOfferTiers(
-  client: SupabaseClient<Database>,
-  { cityId, showDateId }: { cityId: string | null; showDateId: string },
-): Promise<{ priorities: number[]; hasAdHoc: boolean }> {
-  let priorities: number[] = [];
-  if (cityId) {
-    const { data, error } = await client
-      .from("cast_city_priority").select("priority").eq("city_id", cityId);
-    if (error) throw error;
-    priorities = (data ?? []).map((r) => r.priority as number);
+export async function handle(req: Request, deps: Deps): Promise<Response> {
+  if (req.method === "OPTIONS") return preflight();
+  const admin = deps.admin;
+  if (!isServiceRole(deps, req)) {
+    const auth = await requireRole(deps, req, ["admin", "producer"]);
+    if (!auth.ok) return auth.response;
   }
-  const { data: adHoc, error: adErr } = await client
-    .from("show_date_cast_eligibility").select("id").eq("show_date_id", showDateId).limit(1);
-  if (adErr) throw adErr;
-  return { priorities, hasAdHoc: (adHoc ?? []).length > 0 };
-}
+  let show_date_id: string, tier: number, withdraw: boolean;
+  try {
+    const body = await req.json();
+    show_date_id = body.show_date_id; tier = Number(body.tier); withdraw = body.withdraw === true;
+    if (!show_date_id || !tier || tier < 1) return json({ error: "show_date_id and tier (≥1) are required" }, 400);
+  } catch { return json({ error: "Invalid JSON" }, 400); }
 
-export interface OpenedTier { tier: number; openedAt: string; closedAt: string | null }
+  let withdrawn = 0;
+  if (withdraw) {
+    const { data: cancelled, error: cErr } = await admin
+      .from("bookings")
+      .update({ status: "cancelled", cancelled_at: deps.now().toISOString(), cancellation_reason: "tier_closed" })
+      .eq("show_date_id", show_date_id).eq("offer_tier", tier).eq("status", "suggested")
+      .select("id");
+    if (cErr) return json({ error: cErr.message }, 500);
+    withdrawn = cancelled?.length ?? 0;
+  }
 
-/** Tiers that *have* been opened for a date (read-only state display). */
-export async function fetchOpenedTiers(
-  client: SupabaseClient<Database>,
-  showDateId: string,
-): Promise<OpenedTier[]> {
-  const { data, error } = await client
+  const { data: closedRows, error: clErr } = await admin
     .from("show_date_offer_tiers")
-    .select("tier, opened_at, closed_at")
-    .eq("show_date_id", showDateId)
-    .order("tier", { ascending: true });
-  if (error) throw error;
-  return (data ?? []).map((r) => ({ tier: r.tier, openedAt: r.opened_at, closedAt: r.closed_at }));
+    .update({ closed_at: deps.now().toISOString() })
+    .eq("show_date_id", show_date_id).eq("tier", tier).is("closed_at", null)
+    .select("id");
+  if (clErr) return json({ error: clErr.message }, 500);
+
+  const closed = (closedRows?.length ?? 0) > 0;
+  if (!closed && withdrawn === 0) return json({ closed: false, withdrawn: 0, message: "Tier was not open" });
+  return json({ closed, withdrawn });
 }
 ```
 
-### 2. `src/lib/bookings.ts` (extend) — pure helpers
+- **Auth parity with `open-offer-tier`:** `requireRole` (any-org) + service-role bypass. Tightening to
+  `requireOrgRole` is deliberately **out of scope** — it would diverge from the sibling function; a
+  follow-up could harden both. The admin client bypasses RLS (intentional, like `open-offer-tier`).
+- Withdraw targets **only `suggested`** (un-answered) rows — never `soft_booked`/`confirmed`. Cancelling
+  fires the existing `sync_show_date_status_trigger` to recompute `show_dates.status` (correct).
+- `.is('closed_at', null)` makes re-closing an already-closed tier a benign no-op.
+- Benign `{ closed:false, message }` (200) when nothing happened (tier never opened / already closed and
+  nothing to withdraw) — surfaced to the producer as an info toast, never an error.
+
+### 2. `open-offer-tier` edit (re-activate on open)
+
+[open-offer-tier/index.ts:181-186](../../../supabase/functions/open-offer-tier/index.ts): replace the
+`ignoreDuplicates: true` upsert with a merge that re-activates the tier:
 
 ```ts
-export interface OfferTierOption { value: number; label: string }
-
-/** Build the tier dropdown options: deduped+sorted city tiers, then Ad-hoc(99) when present.
- *  99 is reserved for ad-hoc, so it is filtered out of priority-derived tiers. */
-export function buildOfferTierOptions(
-  { priorities, hasAdHoc }: { priorities: number[]; hasAdHoc: boolean },
-): OfferTierOption[] {
-  const uniq = Array.from(new Set(priorities))
-    .filter((p) => Number.isFinite(p) && p >= 1 && p !== 99)
-    .sort((a, b) => a - b);
-  const opts = uniq.map((p) => ({ value: p, label: `Tier ${p}` }));
-  if (hasAdHoc) opts.push({ value: 99, label: "Ad-hoc casts" });
-  return opts;
-}
-
-/** Map an open-offer-tier result to a toast kind + text. */
-export function offerResultToast(
-  result: { offersCreated: number; message?: string },
-  tier: number,
-): { kind: "success" | "info"; text: string } {
-  const t = tier === 99 ? "ad-hoc casts" : `tier ${tier}`;
-  if (result.offersCreated > 0) {
-    const n = result.offersCreated;
-    return { kind: "success", text: `Opened ${t} — ${n} offer${n === 1 ? "" : "s"} created` };
-  }
-  return { kind: "info", text: result.message ?? "No new offers created" };
-}
-
-/** Confirmation-dialog copy; re-open branch explains the additive semantics. */
-export function offerConfirmCopy(
-  { tier, dateLabel, alreadyOpened }: { tier: number; dateLabel: string; alreadyOpened: boolean },
-): { title: string; body: string } {
-  const t = tier === 99 ? "ad-hoc casts" : `tier ${tier}`;
-  const Cap = tier === 99 ? "Ad-hoc casts have" : `Tier ${tier} has`;
-  const base =
-    `This creates suggested bookings for all eligible artists in ${t} for ${dateLabel}. ` +
-    `They'll be emailed in the next daily offer digest, and you can cancel any offer afterward.`;
-  const reopen = alreadyOpened
-    ? ` ${Cap} already been opened — re-opening only adds offers for artists who don't have one yet.`
-    : "";
-  return { title: `Open ${t} offers?`, body: base + reopen };
-}
+await (admin as any).from("show_date_offer_tiers").upsert(
+  { show_date_id, tier, opened_at: offeredAt.toISOString(), closed_at: null, escalation_notified_at: null },
+  { onConflict: "show_date_id,tier" },   // merge (no ignoreDuplicates) → re-open clears closed_at
+);
 ```
 
-### 3. `ShowDateDetailSheet.tsx` (edit) — wiring only
+No other change to the function (auth, ≥1-session gate, candidate selection, insert all unchanged).
 
-Add `AlertDialog*` to the `@/components/ui/alert-dialog` import (pattern already used in
-`MembersTab`/`OrganizationsTab`), `formatDateDMY` from `@/lib/dates`, the three data-access fns, and
-the three pure helpers.
+### 3. `src/data/bookings.ts` (new) — Supabase boundary
 
-Inside the `canManage && showDate.status !== 'cancelled'` block, above "Assigned Artists":
+- `openOfferTier(client, { showDateId, tier }) → { offersCreated, message? }` — invoke
+  `open-offer-tier` with `{ show_date_id, tier }`; `if (error) throw error`; if a 200 body carries
+  `{ error }` throw it; else return `{ offersCreated: data.offers_created ?? 0, message: data.message }`.
+- `fetchOfferTiers(client, { cityId, showDateId }) → { priorities: number[]; hasAdHoc: boolean }` —
+  `cast_city_priority.priority` for the city (empty when no city) + `show_date_cast_eligibility` existence.
+- `fetchOpenedTiers(client, showDateId) → { tier, openedAt, closedAt }[]` — `show_date_offer_tiers`
+  ordered by tier.
+- `closeOfferTier(client, { showDateId, tier, withdraw }) → { closed: boolean; withdrawn: number; message? }`
+  — invoke `close-offer-tier` with `{ show_date_id, tier, withdraw }`; same error handling as
+  `openOfferTier`; return `{ closed: !!data.closed, withdrawn: data.withdrawn ?? 0, message: data.message }`.
 
-- `tiersQ = useQuery({ queryKey: ['offer-tiers','available', showDateId, cityId], enabled: canManage && !!showDateId, queryFn: () => fetchOfferTiers(supabase, { cityId, showDateId: showDateId! }) })`
-- `openedQ = useQuery({ queryKey: ['offer-tiers','opened', showDateId], enabled: canManage && !!showDateId, queryFn: () => fetchOpenedTiers(supabase, showDateId!) })`
-- `const options = buildOfferTierOptions(tiersQ.data ?? { priorities: [], hasAdHoc: false })`
-- `const [selectedTier, setSelectedTier] = useState<number | null>(null)`;
-  `const effectiveTier = selectedTier ?? options[0]?.value ?? null` (avoids stale state while options load).
-- `const hasSession = !!(showDate.session_1 || showDate.session_2 || showDate.session_3)`
-- `const alreadyOpened = (openedQ.data ?? []).some(o => o.tier === effectiveTier)`
-- `openOffers = useMutation({ mutationFn: () => openOfferTier(supabase, { showDateId: showDateId!, tier: effectiveTier! }), onSuccess: (res) => { const {kind,text} = offerResultToast(res, effectiveTier!); toast[kind](text); queryClient.invalidateQueries({ queryKey: ['bookings'] }); queryClient.invalidateQueries({ queryKey: ['offer-tiers','opened', showDateId] }); }, onError: (e:any) => toast.error(e.message) })`
+### 4. `src/lib/bookings.ts` (extend) — pure helpers
 
-Card body:
-- **Opened tiers:** `openedQ.data` → one badge per row: label `o.tier === 99 ? 'Ad-hoc casts' : `Tier ${o.tier}``, suffixed `· opened ${formatDateDMY(o.openedAt)}` (or `· closed ${formatDateDMY(o.closedAt)}` when set). Empty → muted "No tiers opened yet.".
-- **Open control:** if `options.length === 0` → muted helper "No offer tiers configured for this city — set cast priorities in Settings → Cities & Casts."; else a `Select` (value `String(effectiveTier)`, options mapped) + an `AlertDialog`:
-  - Trigger = `Button` labelled `` `Open ${effectiveTier === 99 ? 'ad-hoc casts' : 'tier ' + effectiveTier}` ``, `disabled={!hasSession || openOffers.isPending}`.
-  - When `!hasSession`: render a muted helper "Add a session time before opening offers." next to the disabled button.
-  - Content title/description from `offerConfirmCopy({ tier: effectiveTier, dateLabel: formatDateDMY(showDate.date), alreadyOpened })`.
-  - `AlertDialogAction onClick={() => openOffers.mutate()}` labelled "Open offers"; `AlertDialogCancel` "Cancel".
+- `buildOfferTierOptions({ priorities, hasAdHoc }) → { value, label }[]` — `Set` dedupe, keep `p>=1 &&
+  p!==99`, sort asc → `Tier N`; append `{ value: 99, label: 'Ad-hoc casts' }` when `hasAdHoc`.
+- `offerResultToast({ offersCreated, message }, tier) → { kind: 'success'|'info', text }` — `>0` →
+  success `Opened {tier} — N offer(s) created`; else info with `message` (fallback "No new offers
+  created"). `{tier}` renders as `ad-hoc casts` for 99 else `tier N`.
+- `offerConfirmCopy({ tier, dateLabel, alreadyOpened }) → { title, body }` — first-open vs already-opened
+  body; tier-99 wording.
+- `pendingOfferCount(bookings, tier) → number` — `bookings.filter(b => b.status==='suggested' &&
+  b.offer_tier===tier).length`.
+- `closeConfirmCopy({ tier, pendingCount }) → { title, intro, withdraw:{label,caption}, keep:{label,caption} }`
+  — **jargon-free** copy. `intro`: "Closing stops the reminder and at-risk alerts for {tier}."
+  `withdraw.caption` (pendingCount>0): "Cancels the N offer(s) no-one has accepted yet, so those artists
+  can't take a spot later. Anyone who already accepted keeps their spot." (and an empty-count variant).
+  `keep.caption` (pendingCount>0): "Leaves the N unanswered offer(s) live — artists can still accept
+  until the offers expire." (and an empty-count variant).
+- `closeResultToast({ closed, withdrawn, message }, tier) → { kind, text }` — `!closed && withdrawn===0`
+  → info (`message` ?? "Tier was not open"); `withdrawn>0` → success `Closed {tier} — withdrew N
+  offer(s)`; else success `Closed {tier}`.
 
-No change to the existing cancelled-banner / slots / date-config / assigned-artists / chat sections.
+### 5. `ShowDateDetailSheet.tsx` (edit) — wiring only
+
+Imports: `AlertDialog*` (pattern from `MembersTab`/`OrganizationsTab`), `formatDateDMY`, the four
+data-access fns, and the six pure helpers. The close choice needs **no new primitive** — it is rendered
+as two explained option buttons inside a **controlled** `AlertDialog`.
+
+New `canManage && showDate.status !== 'cancelled'` **Offers card** above "Assigned Artists":
+- Queries `tiersQ` (`['offer-tiers','available',…]`) and `openedQ` (`['offer-tiers','opened',…]`); both
+  `enabled: canManage && !!showDateId`.
+- `options = buildOfferTierOptions(tiersQ.data ?? {priorities:[],hasAdHoc:false})`;
+  `effectiveTier = selectedTier ?? options[0]?.value ?? null`;
+  `hasSession = !!(session_1||session_2||session_3)`;
+  `alreadyOpened = (openedQ.data??[]).some(o => o.tier===effectiveTier && !o.closedAt)`.
+- **Opened-tiers display:** `openedQ.data` → one badge per row: label `o.tier===99 ? 'Ad-hoc casts' :
+  \`Tier ${o.tier}\``, suffix `· opened ${formatDateDMY(o.openedAt)}` (or `· closed
+  ${formatDateDMY(o.closedAt)}`). Open rows (`!closedAt`) also render a small **Close** button. Empty →
+  muted "No tiers opened yet.".
+- **Open control:** `options.length===0` → muted helper "No offer tiers configured for this city — set
+  cast priorities in Settings → Cities & Casts."; else `Select` (value `String(effectiveTier)`) + an
+  `AlertDialog` whose trigger button `Open {tier}` is `disabled={!hasSession || openOffers.isPending}`
+  (muted "Add a session time before opening offers." when `!hasSession`); title/body from
+  `offerConfirmCopy`; `AlertDialogAction` → `openOffers.mutate()`.
+- **Close dialog (controlled):** local `{ open, tier }` state; opened by a tier's Close button. Body =
+  `closeConfirmCopy({ tier, pendingCount: pendingOfferCount(bookingsForDate ?? [], tier) })` rendered as
+  intro + two option buttons (Withdraw / Keep) each with its caption; clicking either calls
+  `closeOffers.mutate({ tier, withdraw })` then closes the dialog; `AlertDialogCancel` "Cancel".
+- **Mutations:**
+  - `openOffers`: `mutationFn: () => openOfferTier(supabase,{showDateId,tier:effectiveTier!})`;
+    onSuccess → `offerResultToast` toast + invalidate `['bookings']` and `['offer-tiers','opened',id]`;
+    onError → `toast.error`.
+  - `closeOffers`: `mutationFn: ({tier,withdraw}) => closeOfferTier(supabase,{showDateId,tier,withdraw})`;
+    onSuccess → `closeResultToast` toast + same invalidations; onError → `toast.error`.
+
+No change to the cancelled-banner / slots / date-config / assigned-artists / chat sections.
 
 ## Testing strategy (test-first)
 
-Local machine is **Deno-only**; vitest/tsc/eslint run in **CI** (`.github/workflows/ci.yml`). The
-edge function is untouched (its session/auth tests already exist in `open-offer-tier/index.di.test.ts`),
-so there is no new Deno test. New coverage is vitest, verified in CI.
+Dev machine is **Deno-only**; vitest/tsc/eslint run in **CI**. The edge functions are Deno-testable
+**locally**.
 
 | Layer | File | Covers |
 |---|---|---|
-| Data-access (vitest) | `src/data/bookings.test.ts` (new) | `openOfferTier` sends `{ show_date_id, tier }` and returns `offersCreated`/`message`; throws on transport `error`; throws on a 200 body `{ error }`. `fetchOfferTiers` returns `priorities` for the city + `hasAdHoc`; no city → `priorities: []`. `fetchOpenedTiers` maps rows to `{ tier, openedAt, closedAt }` ordered by tier. |
-| Pure helpers (vitest) | `src/lib/bookings.test.ts` (extend) | `buildOfferTierOptions` dedupes+sorts, drops 99 from priorities, appends Ad-hoc only when `hasAdHoc`, empty in → `[]`. `offerResultToast`: >0 → success with singular/plural "offer(s)"; 0 → info with message (and fallback). `offerConfirmCopy`: first-open vs already-opened body; tier-99 wording. |
+| Edge (Deno, local) | `supabase/functions/close-offer-tier/index.di.test.ts` (new) | OPTIONS preflight; no-auth → 401; bad/missing body → 400; `withdraw:true` cancels only `suggested` rows for the tier (status/cancelled_at/reason in the recorded update; count returned) and leaves soft_booked/confirmed; `withdraw:false` cancels nothing; closes the tier (`closed_at` update with `.is('closed_at',null)`); tier never open + no withdraw → benign `{closed:false,message}`; service-role bypass. |
+| Edge (Deno, local) | `supabase/functions/open-offer-tier/index.di.test.ts` (extend) | the tier upsert now merges with `closed_at:null` + `escalation_notified_at:null` (re-activation); existing happy-path/guard tests stay green. |
+| Data-access (vitest, CI) | `src/data/bookings.test.ts` (new) | `openOfferTier`/`closeOfferTier` send the right body and parse results; throw on transport `error` and on a 200 `{error}`. `fetchOfferTiers` (priorities + hasAdHoc; no-city). `fetchOpenedTiers` maps + orders. |
+| Pure helpers (vitest, CI) | `src/lib/bookings.test.ts` (extend) | `buildOfferTierOptions` (dedupe/sort/drop-99/ad-hoc/empty); `offerResultToast` (singular/plural, info+message); `offerConfirmCopy` (first vs re-open, 99); `pendingOfferCount`; `closeConfirmCopy` (count>0 vs 0, 99 wording); `closeResultToast` (withdrew N / closed / not-open). |
 
 **No full-component test for `ShowDateDetailSheet`:** its other queries call the `supabase` singleton
 inline (not data-access fns), so a render test would hit the real client — and mocking the client is
 against repo convention (CLAUDE.md: "never `vi.mock` the client"). The new behavior is fully covered by
-the data-access + pure-helper units above; the component is thin wiring over them. Manual verification
+the edge-function, data-access, and pure-helper units; the component is thin wiring. Manual verification
 in the running app + CI green is the acceptance bar.
 
 ## Risks & edge cases
 
-- **`functions.invoke` non-2xx error message** — supabase-js returns a generic `FunctionsHttpError`
-  (body in `error.context`), so true errors toast a generic message. Accepted: the UI hides the card
-  when cancelled and always sends valid input, so reachable outcomes are 200 (happy / benign-skip).
-- **Benign skips look like "nothing happened"** — surfaced explicitly via the **info** toast carrying
-  the function's `message` (e.g. "No casts configured at tier 2 for this city").
-- **Re-opening a tier** — non-destructive: the function pre-filters artists with an existing
-  offer/booking, so re-open only adds genuinely-missing offers; the confirm dialog says so.
-- **Stale selected tier** — `effectiveTier` falls back to the first option, so a city change that
-  reshapes options can't leave a tier selected that no longer exists.
-- **No city / no priorities / no ad-hoc** — `options` is empty → helper text instead of a dead button.
-- **Suggested rows appear immediately** — `deriveBookingGroups` treats `suggested` as active, so the
-  invalidated `['bookings']` query repopulates "Assigned Artists" right after opening.
-- **Query-key domains** — `['offer-tiers', …]` reads config/state tables (not `bookings`), so it is a
-  separate domain; the opened-tiers key is invalidated explicitly on success. `['bookings']` follows
-  the CLAUDE.md prefix-invalidation rule.
+- **`functions.invoke` non-2xx message** — supabase-js returns a generic `FunctionsHttpError` (body in
+  `error.context`); true errors toast a generic message. Reachable outcomes from this UI are 200
+  (happy / benign-skip), so acceptable; benign skips carry an explicit `message` shown via info toast.
+- **Withdraw is destructive but guarded** — only `suggested` rows, only the chosen tier, behind a
+  dialog that states the exact count and that accepted artists keep their slot. Cancelled rows are
+  recoverable by re-opening (they become free candidates again).
+- **Re-open after close** — the merged upsert clears `closed_at`/`escalation_notified_at` and refreshes
+  `opened_at`, so a re-opened tier is fully active again and can re-escalate. Verified by the extended
+  open-offer-tier Deno test.
+- **Stale selected tier** — `effectiveTier` falls back to the first option; a city change can't leave a
+  non-existent tier selected.
+- **Suggested rows appear/disappear immediately** — `deriveBookingGroups` treats `suggested` as active,
+  so opening repopulates and withdrawing removes rows from "Assigned Artists" after `['bookings']`
+  invalidation.
+- **Auth breadth** — `close-offer-tier` mirrors `open-offer-tier`'s any-org `requireRole` + service-role
+  bypass; not tightened here (parity), noted as a possible cross-cutting follow-up.
+- **Query-key domains** — `['offer-tiers', …]` reads config/state tables (not `bookings`); the opened
+  key is invalidated explicitly on open/close. `['bookings']` follows the CLAUDE.md prefix rule.
 
 ## File touch-list
 
-- `src/data/bookings.ts` (new) — `openOfferTier`, `fetchOfferTiers`, `fetchOpenedTiers`.
-- `src/data/bookings.test.ts` (new) — data-access tests with `createFakeSupabase`.
-- `src/lib/bookings.ts` (extend) — `buildOfferTierOptions`, `offerResultToast`, `offerConfirmCopy`.
-- `src/lib/bookings.test.ts` (extend) — pure-helper tests.
-- `src/components/shows/ShowDateDetailSheet.tsx` (edit) — Offers card (opened-tiers display + tier
-  Select + confirm dialog + mutation/invalidation).
+- `supabase/functions/close-offer-tier/index.ts` (new) + `index.di.test.ts` (new).
+- `supabase/functions/open-offer-tier/index.ts` (edit: merge upsert) + `index.di.test.ts` (extend).
+- `src/data/bookings.ts` (new) — `openOfferTier`, `fetchOfferTiers`, `fetchOpenedTiers`, `closeOfferTier`.
+- `src/data/bookings.test.ts` (new).
+- `src/lib/bookings.ts` (extend) — `buildOfferTierOptions`, `offerResultToast`, `offerConfirmCopy`,
+  `pendingOfferCount`, `closeConfirmCopy`, `closeResultToast`.
+- `src/lib/bookings.test.ts` (extend).
+- `src/components/shows/ShowDateDetailSheet.tsx` (edit) — Offers card (open + opened-tiers + close).
+
+No DB migration (uses existing `closed_at` / booking columns); no `types.ts` change.
 
 ## Non-goals (YAGNI)
 
-- No edge-function change (auth + ≥1-session benign-skip already shipped).
-- No "close tier" / escalation automation — opened-tiers display is read-only.
+- No escalation/at-risk automation changes beyond honoring `closed_at` (already honored).
 - No surfacing of `escalation_notified_at` / `opened_by` in the badges.
-- No confirmation-dialog "don't ask again" preference.
-- No refactor of the sheet's other inline `supabase` queries into data-access (out of scope).
+- No "re-open closed" as a distinct button — re-opening is the existing Open action (now re-activating).
+- No tightening of `open`/`close` auth to org-scoped (parity follow-up).
+- No confirmation "don't ask again" preference; no refactor of the sheet's other inline queries.
