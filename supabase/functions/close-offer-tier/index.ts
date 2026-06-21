@@ -1,5 +1,5 @@
 import { preflight, json } from "../_shared/http.ts";
-import { isServiceRole, requireRole } from "../_shared/auth.ts";
+import { isServiceRole, requireOrgRole } from "../_shared/auth.ts";
 import { realDeps, type Deps } from "../_shared/deps.ts";
 
 /**
@@ -9,17 +9,13 @@ import { realDeps, type Deps } from "../_shared/deps.ts";
  *     (mirrors expire_soft_bookings: status='cancelled', cancellation_reason='tier_closed').
  *     soft_booked/confirmed bookings are never touched.
  *
- * Auth: service-role bypass, else requireRole(['admin','producer']) — mirrors open-offer-tier.
+ * Auth: service-role bypass, else requireOrgRole(['admin','producer']) scoped to the
+ * date's OWN org (an admin/producer of org A cannot close org B's tiers).
  */
 export async function handle(req: Request, deps: Deps): Promise<Response> {
   if (req.method === "OPTIONS") return preflight();
 
   const admin = deps.admin;
-
-  if (!isServiceRole(deps, req)) {
-    const auth = await requireRole(deps, req, ["admin", "producer"]);
-    if (!auth.ok) return auth.response;
-  }
 
   let show_date_id: string;
   let tier: number;
@@ -35,6 +31,16 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
     }
   } catch {
     return json({ error: "Invalid JSON" }, 400);
+  }
+
+  // Org-scoped authorization (service-role / cron bypasses; super-admins accepted).
+  // Resolve the date's org and require the caller to hold the role IN THAT org.
+  if (!isServiceRole(deps, req)) {
+    const { data: sd } = await admin
+      .from("show_dates").select("org_id").eq("id", show_date_id).maybeSingle();
+    if (!sd) return json({ error: "Show date not found" }, 404);
+    const auth = await requireOrgRole(deps, req, sd.org_id, ["admin", "producer"]);
+    if (!auth.ok) return auth.response;
   }
 
   // Close the tier FIRST. The two writes aren't transactional, so order picks

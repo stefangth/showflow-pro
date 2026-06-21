@@ -76,9 +76,48 @@ Deno.test("open-offer-tier: OPTIONS returns preflight", async () => {
 });
 
 Deno.test("open-offer-tier: no auth → 401", async () => {
-  const { deps } = makeFakeDeps({ envVars });
+  const { deps } = makeFakeDeps({
+    envVars,
+    tables: { show_dates: { data: { ...SHOW_DATE_OPEN, org_id: "org-1" }, error: null } },
+  });
   const res = await handle(makeRequest({ headers: {}, body: { show_date_id: "d1", tier: 1 } }), deps);
   assertEquals(res.status, 401);
+});
+
+Deno.test("open-offer-tier: authenticated but not a member of the date's org → 403", async () => {
+  const { deps, calls } = makeFakeDeps({
+    envVars,
+    authUser: { id: "u1" },
+    tables: {
+      show_dates: { data: { ...SHOW_DATE_OPEN, org_id: "org-B" }, error: null },
+      org_memberships: { data: null, error: null }, // no membership in org-B
+      platform_admins: { data: null, error: null }, // not a super-admin
+    },
+  });
+  const res = await handle(makeRequest({ headers: { Authorization: "Bearer user" }, body: { show_date_id: "d1", tier: 1 } }), deps);
+  assertEquals(res.status, 403);
+  // the org gate used the show_date's org_id, not any-org membership
+  assertEquals(
+    calls.some((c) => c.table === "org_memberships" && c.method === "eq" && c.args[0] === "org_id" && c.args[1] === "org-B"),
+    true,
+  );
+});
+
+Deno.test("open-offer-tier: admin/producer of the date's org → past the org gate", async () => {
+  const { deps } = makeFakeDeps({
+    envVars,
+    authUser: { id: "u1" },
+    tables: {
+      show_dates: { data: { ...SHOW_DATE_OPEN, org_id: "org-A" }, error: null },
+      org_memberships: { data: { role: "producer" }, error: null },
+      cast_city_priority: { data: [], error: null }, // past auth; stops at "no casts at tier"
+    },
+  });
+  const res = await handle(makeRequest({ headers: { Authorization: "Bearer user" }, body: { show_date_id: "d1", tier: 2 } }), deps);
+  assertEquals(res.status, 200);
+  const body = await res.json();
+  assertEquals(body.offers_created, 0);
+  assertExists(body.message);
 });
 
 Deno.test("open-offer-tier: service role + missing fields → 400", async () => {
