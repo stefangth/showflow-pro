@@ -142,7 +142,12 @@ export function ShowDateDetailSheet({ showDateId, open, onOpenChange }: Props) {
     () => buildOfferTierOptions(tiersQ.data ?? { priorities: [], hasAdHoc: false }),
     [tiersQ.data]
   );
-  const effectiveTier = selectedTier ?? tierOptions[0]?.value ?? null;
+  // Fall back to the first option unless the explicit selection is still a valid
+  // option (e.g. a city change can drop the previously-selected tier).
+  const effectiveTier =
+    selectedTier != null && tierOptions.some(o => o.value === selectedTier)
+      ? selectedTier
+      : tierOptions[0]?.value ?? null;
   const hasSession = !!(showDate?.session_1 || showDate?.session_2 || showDate?.session_3);
   const alreadyOpened = (openedQ.data ?? []).some(o => o.tier === effectiveTier && !o.closedAt);
 
