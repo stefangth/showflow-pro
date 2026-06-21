@@ -808,7 +808,7 @@ Deno.test("send-transactional-email: uses the org's resend_from_address override
       email_unsubscribe_tokens: { data: { token: "tok", used_at: null }, error: null },
       email_send_log: { data: null, error: null },
       app_settings: [
-        { when: { key: "resend_from_address" }, data: [{ org_id: ORG, value: "Org A <a@org-a.com>" }, { org_id: null, value: "Showflow Pro <noreply@showflow.pro>" }] },
+        { when: { key: "resend_from_address" }, data: [{ org_id: ORG, value: "Org A <a@org-a.com>" }, { org_id: null, value: "ShowFlow <noreply@showflow.pro>" }] },
         { when: { key: "email_template_overrides" }, data: [{ org_id: null, value: {} }] },
       ],
     },

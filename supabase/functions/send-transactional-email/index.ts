@@ -144,7 +144,7 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
 
   // Read from-address and template overrides for this org (org override ?? platform default).
   const fromAddress = await resolveOrgSetting<string>(
-    admin, orgId, 'resend_from_address', 'Showflow Pro <noreply@showflow.pro>')
+    admin, orgId, 'resend_from_address', 'ShowFlow <noreply@showflow.pro>')
 
   const overrides = await resolveOrgSetting<Record<string, any>>(
     admin, orgId, 'email_template_overrides', {})

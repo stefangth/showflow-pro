@@ -13,7 +13,7 @@ import {
 } from 'npm:@react-email/components@0.0.22'
 import type { TemplateEntry } from './registry.ts'
 
-const SITE_NAME = 'Showflow Pro'
+const SITE_NAME = 'ShowFlow'
 const APPROVALS_URL = 'https://showflow.pro/admin?tab=approvals'
 
 interface Props {
@@ -69,7 +69,7 @@ const NewSignupAdminNotification = ({
 
 export const template = {
   component: NewSignupAdminNotification,
-  subject: 'New Showflow Pro signup awaiting approval',
+  subject: 'New ShowFlow signup awaiting approval',
   displayName: 'New signup — admin notification',
   previewData: {
     signupName: 'Jane Performer',
