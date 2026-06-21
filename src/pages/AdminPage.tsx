@@ -27,15 +27,19 @@ type IamUser = {
 };
 
 export default function AdminPage() {
-  const { hasRole } = useAuth();
+  const { hasRole, currentOrg } = useAuth();
   const [params, setParams] = useSearchParams();
   const initialTab = params.get('tab') || 'invites';
   const [tab, setTab] = useState(initialTab);
 
   const { data: iamUsers } = useQuery({
-    queryKey: ['admin-iam-users'],
+    // Keyed on the active org: the roster (and its roles) is org-scoped server-side,
+    // so switching orgs must refetch.
+    queryKey: ['admin-iam-users', currentOrg?.id],
     queryFn: async () => {
-      const { data, error } = await supabase.functions.invoke('admin-list-users');
+      const { data, error } = await supabase.functions.invoke('admin-list-users', {
+        body: { org_id: currentOrg?.id },
+      });
       if (error) throw error;
       return (data?.users ?? []) as IamUser[];
     },

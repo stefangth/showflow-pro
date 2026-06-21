@@ -18,16 +18,18 @@ interface IamUser {
 }
 
 export function EditorToolbar() {
-  const { roles, viewAsRole, setViewAsRole, viewAsUser, setViewAsUser } = useAuth();
+  const { roles, viewAsRole, setViewAsRole, viewAsUser, setViewAsUser, currentOrg } = useAuth();
   const { isEditorMode, enableEditorMode, disableEditorMode, isSidePanelOpen, setSidePanelOpen } = useEditor();
 
   const isRealAdmin = roles.includes('admin');
 
   const { data: iamUsers } = useQuery({
-    queryKey: ['admin-iam-users'],
+    queryKey: ['admin-iam-users', currentOrg?.id],
     enabled: isRealAdmin && isEditorMode,
     queryFn: async () => {
-      const { data, error } = await supabase.functions.invoke('admin-list-users');
+      const { data, error } = await supabase.functions.invoke('admin-list-users', {
+        body: { org_id: currentOrg?.id },
+      });
       if (error) throw error;
       return ((data?.users ?? []) as IamUser[])
         .filter(u => u.email)
