@@ -29,6 +29,7 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
     show_date_id = body.show_date_id;
     tier = Number(body.tier);
     withdraw = body.withdraw === true;
+    // tier 99 is the ad-hoc convention (see open-offer-tier); any tier ≥ 1 is closable.
     if (!show_date_id || !tier || tier < 1) {
       return json({ error: "show_date_id and tier (≥1) are required" }, 400);
     }
@@ -64,7 +65,10 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
     .is("closed_at", null)
     .select("id");
   if (clErr) {
-    console.error("close-offer-tier: close error", clErr);
+    // Withdraw (if any) already committed; the two writes aren't transactional.
+    // Surface the already-cancelled count so an orphaned-cancellations partial
+    // failure is diagnosable from the function logs.
+    console.error(`close-offer-tier: close error (bookings already cancelled: ${withdrawn})`, clErr);
     return json({ error: clErr.message }, 500);
   }
 
