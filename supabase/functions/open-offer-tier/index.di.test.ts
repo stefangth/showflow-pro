@@ -732,3 +732,40 @@ Deno.test("open-offer-tier: tier upsert merges closed_at:null + escalation_notif
   assertEquals(opts.onConflict, "show_date_id,tier");
   assertEquals("ignoreDuplicates" in opts, false, "merge upsert must not ignore duplicates");
 });
+
+// ------ Session gate (≥1 session required) — ported from index.test.ts ------
+
+Deno.test("open-offer-tier: zero-session date is a benign skip — no offers, no insert", async () => {
+  const { deps, calls } = makeFakeDeps({
+    envVars,
+    tables: {
+      show_dates: {
+        data: { id: "d1", show_id: "s1", city_id: "c1", date: "2026-06-01", status: "open", session_1: null, session_2: null, session_3: null },
+        error: null,
+      },
+    },
+  });
+  const res = await handle(makeRequest({ headers: SVC, body: { show_date_id: "d1", tier: 1 } }), deps);
+  assertEquals(res.status, 200);
+  const body = await res.json();
+  assertEquals(body.offers_created, 0);
+  assertEquals(body.message, "Show date has no sessions yet — offers not opened");
+  assertEquals(calls.some((c) => c.table === "bookings" && c.method === "insert"), false);
+});
+
+Deno.test("open-offer-tier: a date with ≥1 session passes the session gate", async () => {
+  const { deps } = makeFakeDeps({
+    envVars,
+    tables: {
+      show_dates: {
+        data: { id: "d1", show_id: "s1", city_id: "c1", date: "2026-06-01", status: "open", session_1: "19:00:00", session_2: null, session_3: null },
+        error: null,
+      },
+      cast_city_priority: { data: [], error: null },
+    },
+  });
+  const res = await handle(makeRequest({ headers: SVC, body: { show_date_id: "d1", tier: 1 } }), deps);
+  const body = await res.json();
+  // Past the session gate; stops later for lack of priority casts (a different message).
+  assertEquals(body.message !== "Show date has no sessions yet — offers not opened", true);
+});
