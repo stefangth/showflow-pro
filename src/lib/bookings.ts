@@ -163,12 +163,11 @@ export function closeResultToast(
   tier: number,
 ): { kind: "success" | "info"; text: string } {
   const noun = tierNoun(tier);
-  if (!result.closed && result.withdrawn === 0) {
-    return { kind: "info", text: result.message ?? "Tier was not open" };
-  }
-  if (result.withdrawn > 0) {
-    const n = result.withdrawn;
-    return { kind: "success", text: `Closed ${noun} — withdrew ${n} offer${n === 1 ? "" : "s"}` };
-  }
-  return { kind: "success", text: `Closed ${noun}` };
+  const n = result.withdrawn;
+  const s = n === 1 ? "" : "s";
+  if (result.closed && n > 0) return { kind: "success", text: `Closed ${noun} — withdrew ${n} offer${s}` };
+  if (result.closed) return { kind: "success", text: `Closed ${noun}` };
+  // Tier was already closed: re-closing only withdrew surviving (kept-live) offers.
+  if (n > 0) return { kind: "success", text: `Withdrew ${n} offer${s} from ${noun}` };
+  return { kind: "info", text: result.message ?? "Tier was not open" };
 }
