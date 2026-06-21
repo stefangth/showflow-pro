@@ -18,6 +18,10 @@ import { cn } from '@/lib/utils';
 
 const ALL_ROLES: Array<'admin' | 'producer' | 'artist'> = ['admin', 'producer', 'artist'];
 
+/** Row caps for the admin activity panels. */
+const AUDIT_LOG_LIMIT = 50;
+const SYNC_LOG_LIMIT = 20;
+
 type IamUser = {
   id: string;
   email: string;
@@ -53,7 +57,7 @@ export default function AdminPage() {
         .from('booking_audit_log')
         .select('*, booking:bookings(artist:artists(name))')
         .order('created_at', { ascending: false })
-        .limit(50);
+        .limit(AUDIT_LOG_LIMIT);
       return data ?? [];
     },
   });
@@ -65,7 +69,7 @@ export default function AdminPage() {
         .from('airtable_sync_log')
         .select('*')
         .order('synced_at', { ascending: false })
-        .limit(20);
+        .limit(SYNC_LOG_LIMIT);
       return data ?? [];
     },
   });

@@ -9,6 +9,7 @@ import { useArtistEligibleDates } from '@/hooks/useArtistEligibleDates';
 import { useMyArtist } from '@/hooks/useMyArtist';
 import { formatDateDMY } from '@/lib/dates';
 import { showLabel } from '@/types';
+import { ROUTES } from '@/config/app.config';
 
 type BookingLite = { show_date_id: string; status: string };
 type CastMembershipRow = { id: string; cast: { id: string; name: string } | null };
@@ -92,7 +93,7 @@ export function ArtistDashboard() {
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <Link to="/availability?filter=unanswered" className="block">
+        <Link to={`${ROUTES.AVAILABILITY}?filter=unanswered`} className="block">
           <Card className="hover:shadow-elev3 transition-shadow cursor-pointer h-full">
             <CardContent className="pt-6">
               <div className="flex items-start justify-between mb-4">
@@ -138,7 +139,7 @@ export function ArtistDashboard() {
                 {unanswered.slice(0, 8).map((d) => (
                   <Link
                     key={d.id}
-                    to="/availability?filter=unanswered"
+                    to={`${ROUTES.AVAILABILITY}?filter=unanswered`}
                     className="flex items-center justify-between p-2 rounded-md hover:bg-muted text-sm"
                   >
                     <div className="min-w-0">
