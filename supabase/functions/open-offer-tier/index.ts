@@ -180,7 +180,7 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
   // upsert (no ignoreDuplicates) re-activates a tier that was previously closed:
   // clears closed_at, refreshes opened_at, and resets escalation so the new
   // round can escalate again. (close-offer-tier sets closed_at.)
-  await (admin as any)
+  const { error: tierErr } = await (admin as any)
     .from('show_date_offer_tiers')
     .upsert(
       {
@@ -192,6 +192,10 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
       },
       { onConflict: 'show_date_id,tier' }
     )
+  // The tier row is now load-bearing for re-open (it clears closed_at). The
+  // bookings were already inserted, so don't fail the request — but surface a
+  // tier-upsert failure in the function logs instead of swallowing it.
+  if (tierErr) console.error('open-offer-tier: tier upsert error', tierErr)
 
   const offersCreated = inserted?.length ?? 0
   console.log('open-offer-tier complete', { show_date_id, tier, offersCreated })
