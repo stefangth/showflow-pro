@@ -210,9 +210,9 @@ async function syncOrg(deps: Deps, orgId: string, baseId: string, tableName: str
       const existingId = existing?.id;
       if (existingId) {
         const payload: Record<string, unknown> = { date: dateValue };
-        if (session1 !== null) payload.session_1 = session1;
-        if (session2 !== null) payload.session_2 = session2;
-        if (session3 !== null) payload.session_3 = session3;
+        if (fieldMap.session_1) payload.session_1 = session1;
+        if (fieldMap.session_2) payload.session_2 = session2;
+        if (fieldMap.session_3) payload.session_3 = session3;
         if (venue !== null) payload.venue = venue;
         if (cityId !== null) payload.city_id = cityId;
         const customBag = buildCustom(fields);
@@ -231,10 +231,11 @@ async function syncOrg(deps: Deps, orgId: string, baseId: string, tableName: str
         continue;
       }
 
-      // org_id is set by the derive trigger from show_id. session_1 is NOT NULL → default 00:00.
-      const insertPayload: Record<string, unknown> = { show_id: showId, date: dateValue, airtable_record_id: id, city_id: cityId, session_1: session1 ?? "00:00" };
-      if (session2 !== null) insertPayload.session_2 = session2;
-      if (session3 !== null) insertPayload.session_3 = session3;
+      // org_id is set by the derive trigger from show_id.
+      const insertPayload: Record<string, unknown> = { show_id: showId, date: dateValue, airtable_record_id: id, city_id: cityId };
+      if (fieldMap.session_1) insertPayload.session_1 = session1;
+      if (fieldMap.session_2) insertPayload.session_2 = session2;
+      if (fieldMap.session_3) insertPayload.session_3 = session3;
       if (venue !== null) insertPayload.venue = venue;
       const customBagNew = buildCustom(fields);
       if (customBagNew !== undefined) insertPayload.custom = customBagNew;

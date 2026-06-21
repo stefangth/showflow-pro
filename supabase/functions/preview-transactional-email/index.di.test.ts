@@ -223,7 +223,7 @@ Deno.test("preview-transactional-email DI: no templateName — producer gets sam
 
 // ── Subject resolution ────────────────────────────────────────────────────────
 
-Deno.test("preview-transactional-email DI: string subject resolved correctly (artist-confirmation-digest)", async () => {
+Deno.test("preview-transactional-email DI: function subject resolved correctly (artist-confirmation-digest, with updates)", async () => {
   const res = await handle(
     authedPostRequest({ templateName: "artist-confirmation-digest" }),
     adminDeps(),
@@ -232,8 +232,9 @@ Deno.test("preview-transactional-email DI: string subject resolved correctly (ar
   assertEquals(templates.length, 1);
   const entry = templates[0];
   assertEquals(entry.status, "ready");
-  // artist-confirmation-digest has a string subject (not a function)
-  assertEquals(entry.subject, "Your bookings are confirmed — Showflow Pro");
+  // artist-confirmation-digest now has a FUNCTION subject; its previewData includes a
+  // schedule change + a cancellation, so it resolves to the neutral "updates" subject.
+  assertEquals(entry.subject, "Your booking updates — Showflow Pro");
 });
 
 Deno.test("preview-transactional-email DI: function subject resolved correctly (signup-decision, approved preview)", async () => {

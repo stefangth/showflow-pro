@@ -1,179 +1,113 @@
 /**
- * Scenario tests for send-confirmation-digest edge function logic.
+ * Contract tests for send-confirmation-digest — exercises the REAL handle():
+ * confirmations + schedule changes folded into one per-artist email, in-app
+ * notifications for registered artists, and change-log stamping.
  *
- * These tests keep the Supabase/email boundary in memory while exercising the
- * production decisions that matter for the confirmation digest: Berlin timezone
- * scheduling, grouping one email per artist, skipping artists without email,
- * and atomically stamping exactly the booking ids that were included in a sent
- * digest.
+ * now = 2026-06-01T18:00:00Z → Berlin 20:00 → matches the default
+ * confirmation_digest_hour_berlin (20), so the org processes.
  */
 import { assertEquals } from "../_shared/test-asserts.ts";
+import { makeFakeDeps, makeRequest } from "../_shared/testing.ts";
+import { handle } from "./index.ts";
 
-function getBerlinHour(date: Date): number {
-  return parseInt(
-    new Intl.DateTimeFormat("en", {
-      timeZone: "Europe/Berlin",
-      hour: "numeric",
-      hour12: false,
-    }).format(date),
-    10,
-  );
-}
+const ORG = "00000000-0000-0000-0000-0000000000d1";
+const NOW = new Date("2026-06-01T18:00:00Z");
+const cronReq = () => makeRequest({ headers: { "X-Cron-Secret": "secret123" } });
 
-type ConfirmationRow = {
-  id: string;
-  artist_id: string;
-  artists: { id: string; name: string; email: string | null } | null;
-  show_dates: {
-    date: string;
-    shows: { program: string; sub_program: string | null } | null;
-    cities: { name: string } | null;
-  } | null;
-};
+// Two registered artists. A: a new confirmation + a session change. B: a cancellation.
+const A_USER = "aaaa1111-0000-0000-0000-000000000000";
+const B_USER = "bbbb2222-0000-0000-0000-000000000000";
 
-type ConfirmationDigest = {
-  artistId: string;
-  recipientEmail: string;
-  displayName: string;
-  bookingIds: string[];
-  bookings: Array<{ show: string; date: string; city: string }>;
-};
-
-function groupConfirmationDigests(
-  rows: ConfirmationRow[],
-): ConfirmationDigest[] {
-  const grouped = new Map<string, ConfirmationDigest>();
-
-  for (const row of rows) {
-    const recipientEmail = row.artists?.email;
-    if (!recipientEmail) continue;
-
-    const program = row.show_dates?.shows?.program;
-    const subProgram = row.show_dates?.shows?.sub_program;
-    const show = program
-      ? subProgram ? `${program} — ${subProgram}` : program
-      : "Unknown show";
-
-    if (!grouped.has(row.artist_id)) {
-      grouped.set(row.artist_id, {
-        artistId: row.artist_id,
-        recipientEmail,
-        displayName: row.artists?.name ?? "",
-        bookingIds: [],
-        bookings: [],
-      });
-    }
-
-    const digest = grouped.get(row.artist_id)!;
-    digest.bookingIds.push(row.id);
-    digest.bookings.push({
-      show,
-      date: row.show_dates?.date ?? "—",
-      city: row.show_dates?.cities?.name ?? "—",
-    });
-  }
-
-  return Array.from(grouped.values());
-}
-
-async function sendAndStampConfirmationDigests(
-  rows: ConfirmationRow[],
-  send: (digest: ConfirmationDigest) => Promise<void>,
-): Promise<{ digestsSent: number; stampedBookingIds: string[] }> {
-  const stampedBookingIds: string[] = [];
-  let digestsSent = 0;
-
-  for (const digest of groupConfirmationDigests(rows)) {
-    try {
-      await send(digest);
-      stampedBookingIds.push(...digest.bookingIds);
-      digestsSent += 1;
-    } catch {
-      // Mirrors production: failed emails are logged and not stamped.
-    }
-  }
-
-  return { digestsSent, stampedBookingIds };
-}
-
-Deno.test("Berlin hour gate handles spring DST transition", () => {
-  assertEquals(getBerlinHour(new Date("2026-03-29T00:30:00Z")), 1);
-  assertEquals(getBerlinHour(new Date("2026-03-29T01:30:00Z")), 3);
-});
-
-Deno.test("Berlin hour gate handles autumn DST transition", () => {
-  assertEquals(getBerlinHour(new Date("2026-10-25T00:30:00Z")), 2);
-  assertEquals(getBerlinHour(new Date("2026-10-25T01:30:00Z")), 2);
-  assertEquals(getBerlinHour(new Date("2026-10-25T02:30:00Z")), 3);
-});
-
-Deno.test("groups multiple confirmed bookings into one email per artist per run", () => {
-  const rows: ConfirmationRow[] = [
-    {
-      id: "booking-1",
-      artist_id: "artist-1",
-      artists: { id: "artist-1", name: "Ada", email: "ada@example.com" },
-      show_dates: {
-        date: "2026-06-01",
-        shows: { program: "Magic", sub_program: "Close-up" },
-        cities: { name: "Berlin" },
-      },
+function digestDeps() {
+  return makeFakeDeps({
+    now: NOW,
+    tables: {
+      app_settings: [{ when: { key: "cron_secret" }, data: { value: "secret123" } }],
+      organizations: { data: [{ id: ORG }], error: null },
+      bookings: [
+        // confirmations query (.eq status=confirmed)
+        { when: { status: "confirmed" }, data: [
+          { id: "bk-conf-A", artist_id: "art-A", artists: { id: "art-A", name: "Ada", email: "ada@ex.com", user_id: A_USER },
+            show_dates: { date: "2026-06-10", shows: { program: "Magic", sub_program: null }, cities: { name: "Berlin" } } },
+        ] },
+        // change-recipient query (.in show_date_id) — fallback (no `when`)
+        { data: [
+          { id: "bk-A2", artist_id: "art-A", show_date_id: "sd-change", status: "confirmed", cancellation_reason: null,
+            artists: { id: "art-A", name: "Ada", email: "ada@ex.com", user_id: A_USER } },
+          { id: "bk-B", artist_id: "art-B", show_date_id: "sd-cancel", status: "cancelled", cancellation_reason: "date_cancelled",
+            artists: { id: "art-B", name: "Ben", email: "ben@ex.com", user_id: B_USER } },
+        ] },
+      ],
+      show_date_change_log: { data: [
+        { id: "cl-1", show_date_id: "sd-change", change_type: "session_retimed", session_slot: 1, old_value: "19:00:00", new_value: "20:00:00", created_at: "2026-06-01T10:00:00Z",
+          show_dates: { date: "2026-06-12", status: "open", cancellation_reason: null, shows: { program: "Magic", sub_program: null }, cities: { name: "Berlin" } } },
+        { id: "cl-2", show_date_id: "sd-cancel", change_type: "cancelled", session_slot: null, old_value: null, new_value: null, created_at: "2026-06-01T11:00:00Z",
+          show_dates: { date: "2026-06-15", status: "cancelled", cancellation_reason: "Venue flooded", shows: { program: "Magic", sub_program: null }, cities: { name: "Hamburg" } } },
+      ], error: null },
+      notifications: { data: null, error: null },
     },
-    {
-      id: "booking-2",
-      artist_id: "artist-1",
-      artists: { id: "artist-1", name: "Ada", email: "ada@example.com" },
-      show_dates: {
-        date: "2026-06-02",
-        shows: { program: "Magic", sub_program: null },
-        cities: { name: "Hamburg" },
-      },
-    },
-  ];
-
-  const digests = groupConfirmationDigests(rows);
-  assertEquals(digests.length, 1);
-  assertEquals(digests[0].recipientEmail, "ada@example.com");
-  assertEquals(digests[0].bookingIds, ["booking-1", "booking-2"]);
-  assertEquals(digests[0].bookings.map((booking) => booking.show), [
-    "Magic — Close-up",
-    "Magic",
-  ]);
-});
-
-Deno.test("skips rows whose artist has no email", () => {
-  const digests = groupConfirmationDigests([
-    {
-      id: "booking-1",
-      artist_id: "artist-1",
-      artists: { id: "artist-1", name: "No Mail", email: null },
-      show_dates: null,
-    },
-  ]);
-
-  assertEquals(digests, []);
-});
-
-Deno.test("stamps only bookings whose confirmation digest email was sent", async () => {
-  const rows: ConfirmationRow[] = [
-    {
-      id: "booking-ok",
-      artist_id: "artist-ok",
-      artists: { id: "artist-ok", name: "Ok", email: "ok@example.com" },
-      show_dates: null,
-    },
-    {
-      id: "booking-fail",
-      artist_id: "artist-fail",
-      artists: { id: "artist-fail", name: "Fail", email: "fail@example.com" },
-      show_dates: null,
-    },
-  ];
-
-  const result = await sendAndStampConfirmationDigests(rows, async (digest) => {
-    if (digest.artistId === "artist-fail") throw new Error("email down");
+    rpcs: { resolve_user_contacts: { data: [
+      { user_id: A_USER, email: "ada@login.com", display_name: "Ada L" },
+      { user_id: B_USER, email: "ben@login.com", display_name: "Ben L" },
+    ], error: null } },
   });
+}
 
-  assertEquals(result.digestsSent, 1);
-  assertEquals(result.stampedBookingIds, ["booking-ok"]);
+Deno.test("folds confirmations + schedule changes into one email per artist", async () => {
+  const { deps, invokeCalls, calls } = digestDeps();
+  const res = await handle(cronReq(), deps);
+  assertEquals(res.status, 200);
+
+  const emails = invokeCalls.filter((c) => c.name === "send-transactional-email");
+  assertEquals(emails.length, 2);
+
+  const aEmail = emails.find((e) => (e.body as any).recipient_email === "ada@login.com")!.body as any;
+  assertEquals(aEmail.templateData.bookings.length, 1); // the confirmation
+  assertEquals(aEmail.templateData.scheduleChanges.length, 1); // the retime
+  assertEquals(aEmail.templateData.scheduleChanges[0].changes, "Session 1 now 20:00 (was 19:00)");
+  assertEquals(aEmail.templateData.cancellations.length, 0);
+
+  const bEmail = emails.find((e) => (e.body as any).recipient_email === "ben@login.com")!.body as any;
+  assertEquals(bEmail.templateData.bookings.length, 0);
+  assertEquals(bEmail.templateData.cancellations.length, 1);
+  assertEquals(bEmail.templateData.cancellations[0].reason, "Venue flooded");
+
+  // In-app notifications inserted for both registered artists.
+  const notifInsert = calls.find((c) => c.table === "notifications" && c.method === "insert");
+  assertEquals(!!notifInsert, true);
+  const rows = (notifInsert!.args[0] as any[]);
+  assertEquals(rows.length, 2);
+  assertEquals(rows.every((r) => r.type === "schedule_change"), true);
+
+  // Change-log rows stamped digested.
+  const stamped = calls.some((c) => c.table === "show_date_change_log" && c.method === "update");
+  assertEquals(stamped, true);
+});
+
+Deno.test("an org with only schedule changes (no confirmations) is still processed", async () => {
+  const { deps, invokeCalls } = makeFakeDeps({
+    now: NOW,
+    tables: {
+      app_settings: [{ when: { key: "cron_secret" }, data: { value: "secret123" } }],
+      organizations: { data: [{ id: ORG }], error: null },
+      bookings: [
+        { when: { status: "confirmed" }, data: [] },
+        { data: [
+          { id: "bk-B", artist_id: "art-B", show_date_id: "sd-cancel", status: "cancelled", cancellation_reason: "date_cancelled",
+            artists: { id: "art-B", name: "Ben", email: "ben@ex.com", user_id: B_USER } },
+        ] },
+      ],
+      show_date_change_log: { data: [
+        { id: "cl-2", show_date_id: "sd-cancel", change_type: "cancelled", session_slot: null, old_value: null, new_value: null, created_at: "2026-06-01T11:00:00Z",
+          show_dates: { date: "2026-06-15", status: "cancelled", cancellation_reason: null, shows: { program: "Magic", sub_program: null }, cities: { name: "Hamburg" } } },
+      ], error: null },
+      notifications: { data: null, error: null },
+    },
+    rpcs: { resolve_user_contacts: { data: [{ user_id: B_USER, email: "ben@login.com", display_name: "Ben L" }], error: null } },
+  });
+  const res = await handle(cronReq(), deps);
+  assertEquals(res.status, 200);
+  const emails = invokeCalls.filter((c) => c.name === "send-transactional-email");
+  assertEquals(emails.length, 1);
+  assertEquals((emails[0].body as any).recipient_email, "ben@login.com");
 });

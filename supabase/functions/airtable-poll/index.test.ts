@@ -207,3 +207,50 @@ Deno.test("airtable-poll contract: missing cron secret is unauthorized", async (
   const res = await handle(makeRequest({ method: "POST" }), deps);
   assertEquals(res.status, 401);
 });
+
+const SESSION_FIELD_MAP = { date: "Date", sub_program: "SubProgram", city: "City", session_1: "S1", session_2: "S2", session_3: "S3" };
+
+/** Wrap deps.admin.from so every show_dates INSERT payload is captured. */
+function captureShowDateInserts(deps: ReturnType<typeof makeFakeDeps>["deps"]): unknown[] {
+  const inserts: unknown[] = [];
+  const originalFrom = deps.admin.from.bind(deps.admin);
+  (deps.admin as any).from = (table: string) => {
+    const chain = originalFrom(table);
+    if (table === "show_dates") {
+      const originalInsert = chain.insert.bind(chain);
+      chain.insert = (payload: unknown) => {
+        inserts.push(payload);
+        const insertChain = (originalInsert as (x: unknown) => any)(payload);
+        (insertChain as any).single = () => Promise.resolve({ data: { id: "sd-new" }, error: null });
+        return insertChain;
+      };
+    }
+    return chain;
+  };
+  return inserts;
+}
+
+Deno.test("airtable-poll sessions: a mapped-but-emptied session clears the column to null", async () => {
+  // Existing date; Airtable keeps S1 but clears S2 (was set). The UPDATE must write session_2: null.
+  const records = [{ id: "rec-x", fields: { Date: "2026-06-01", SubProgram: "Magic", City: "Berlin", S1: "19:00" } }];
+  const { deps } = seededDepsWithExisting(records, { airtable_record_id: "rec-x", id: "sd-x", status: "open" }, SESSION_FIELD_MAP);
+  const updates = captureShowDateUpdates(deps);
+
+  const res = await handle(authReq(), deps);
+  assertEquals(res.status, 200);
+  const payload = updates[0] as Record<string, unknown>;
+  assertEquals(payload.session_1, "19:00");
+  assertEquals(payload.session_2, null); // mapped slot, empty Airtable cell → cleared
+  assertEquals(payload.session_3, null);
+});
+
+Deno.test("airtable-poll sessions: a brand-new date with no S1 inserts session_1 null (no 00:00 fabrication)", async () => {
+  const records = [{ id: "rec-new", fields: { Date: "2026-06-01", SubProgram: "Magic", City: "Berlin" } }];
+  const { deps } = seededDepsWithExisting(records, { airtable_record_id: "other", id: "sd-other", status: "open" }, SESSION_FIELD_MAP);
+  const inserts = captureShowDateInserts(deps);
+
+  const res = await handle(authReq(), deps);
+  assertEquals(res.status, 200);
+  const payload = inserts[0] as Record<string, unknown>;
+  assertEquals(payload.session_1, null);
+});
