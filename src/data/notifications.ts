@@ -3,7 +3,10 @@ import type { Database } from "@/integrations/supabase/types";
 
 type Notification = Database["public"]["Tables"]["notifications"]["Row"];
 
-/** Fetch the 50 newest notifications for a user. */
+/** Newest-N notifications fetched for the notification bell. */
+export const NOTIFICATIONS_LIMIT = 50;
+
+/** Fetch the newest notifications for a user (capped at NOTIFICATIONS_LIMIT). */
 export async function fetchNotifications(
   client: SupabaseClient<Database>,
   userId: string,
@@ -13,7 +16,7 @@ export async function fetchNotifications(
     .select("*")
     .eq("user_id", userId)
     .order("created_at", { ascending: false })
-    .limit(50);
+    .limit(NOTIFICATIONS_LIMIT);
   if (error) throw error;
   return (data ?? []) as Notification[];
 }

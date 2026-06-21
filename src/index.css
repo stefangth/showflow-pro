@@ -66,6 +66,17 @@
     --shadow-2: 0 1px 2px rgba(20, 18, 14, 0.04), 0 4px 10px rgba(20, 18, 14, 0.05);
     --shadow-3: 0 1px 2px rgba(20, 18, 14, 0.04), 0 8px 24px rgba(20, 18, 14, 0.08);
 
+    /* ── Auth hero (LoginPage immersive sign-in) — fixed brand art, theme-independent ── */
+    --auth-bg: #0a0912;
+    --auth-hero-gradient:
+      radial-gradient(120% 90% at 30% 14%, rgba(255, 150, 180, 0.16) 0%, rgba(255, 150, 180, 0) 46%),
+      linear-gradient(178deg, #0a1130 0%, #271a47 34%, #4c2a5e 56%, #8d3a5f 78%, #d7705f 100%);
+    --auth-scrim: linear-gradient(105deg, rgba(11, 9, 18, 0.88) 0%, rgba(11, 9, 18, 0.62) 34%, rgba(11, 9, 18, 0.3) 58%, rgba(11, 9, 18, 0.04) 100%);
+    --auth-top-fade: linear-gradient(180deg, rgba(11, 9, 18, 0.5), rgba(11, 9, 18, 0));
+    --auth-card: rgba(18, 16, 27, 0.55);
+    --auth-hairline: rgba(255, 255, 255, 0.1);
+    --auth-fg: #ffffff;
+
     /* ── Violet accent scale ── */
     --accent-50: 249 100% 97%;   /* #F4F1FF */
     --accent-100: 249 100% 93%;  /* #E5DEFF */
