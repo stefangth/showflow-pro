@@ -149,7 +149,18 @@ export function ShowDateDetailSheet({ showDateId, open, onOpenChange }: Props) {
       ? selectedTier
       : tierOptions[0]?.value ?? null;
   const hasSession = !!(showDate?.session_1 || showDate?.session_2 || showDate?.session_3);
-  const alreadyOpened = (openedQ.data ?? []).some(o => o.tier === effectiveTier && !o.closedAt);
+  // True if the tier has EVER been opened (open or closed). Re-opening a closed
+  // tier should still show the additive "already opened" note — especially when it
+  // was closed with offers kept live, so the producer knows offers will coexist.
+  const alreadyOpened = (openedQ.data ?? []).some(o => o.tier === effectiveTier);
+
+  // Dialog copy via pure helpers, computed once (null until usable).
+  const confirmCopy = effectiveTier != null && showDate
+    ? offerConfirmCopy({ tier: effectiveTier, dateLabel: formatDateDMY(showDate.date), alreadyOpened })
+    : null;
+  const closeCopy = closeTarget !== null
+    ? closeConfirmCopy({ tier: closeTarget, pendingCount: pendingOfferCount(bookingsForDate ?? [], closeTarget) })
+    : null;
 
   const {
     active: activeBookings,
@@ -252,6 +263,9 @@ export function ShowDateDetailSheet({ showDateId, open, onOpenChange }: Props) {
     onSuccess: (res, tier) => {
       const { kind, text } = offerResultToast(res, tier);
       if (kind === 'success') toast.success(text); else toast.info(text);
+      if (res.trackingWarning) {
+        toast.error('Tier tracking failed to record — re-open the tier to restore escalation and at-risk alerts.');
+      }
       queryClient.invalidateQueries({ queryKey: ['bookings'] });
       queryClient.invalidateQueries({ queryKey: ['offer-tiers', 'opened', showDateId] });
     },
@@ -524,15 +538,11 @@ export function ShowDateDetailSheet({ showDateId, open, onOpenChange }: Props) {
                             </Button>
                           </AlertDialogTrigger>
                           <AlertDialogContent>
-                            {effectiveTier != null && (
+                            {effectiveTier != null && confirmCopy && (
                               <>
                                 <AlertDialogHeader>
-                                  <AlertDialogTitle>
-                                    {offerConfirmCopy({ tier: effectiveTier, dateLabel: formatDateDMY(showDate.date), alreadyOpened }).title}
-                                  </AlertDialogTitle>
-                                  <AlertDialogDescription>
-                                    {offerConfirmCopy({ tier: effectiveTier, dateLabel: formatDateDMY(showDate.date), alreadyOpened }).body}
-                                  </AlertDialogDescription>
+                                  <AlertDialogTitle>{confirmCopy.title}</AlertDialogTitle>
+                                  <AlertDialogDescription>{confirmCopy.body}</AlertDialogDescription>
                                 </AlertDialogHeader>
                                 <AlertDialogFooter>
                                   <AlertDialogCancel>Cancel</AlertDialogCancel>
@@ -559,43 +569,37 @@ export function ShowDateDetailSheet({ showDateId, open, onOpenChange }: Props) {
               {/* Close-tier confirmation (choose withdraw vs keep) */}
               <AlertDialog open={closeTarget !== null} onOpenChange={(o) => { if (!o) setCloseTarget(null); }}>
                 <AlertDialogContent>
-                  {closeTarget !== null && (() => {
-                    const copy = closeConfirmCopy({
-                      tier: closeTarget,
-                      pendingCount: pendingOfferCount(bookingsForDate ?? [], closeTarget),
-                    });
-                    return (
-                      <>
-                        <AlertDialogHeader>
-                          <AlertDialogTitle>{copy.title}</AlertDialogTitle>
-                          <AlertDialogDescription>{copy.intro}</AlertDialogDescription>
-                        </AlertDialogHeader>
-                        <div className="space-y-2">
-                          <button
-                            type="button"
-                            disabled={closeOffers.isPending}
-                            onClick={() => closeOffers.mutate({ tier: closeTarget, withdraw: true })}
-                            className="w-full text-left rounded-lg border border-border p-3 hover:bg-muted disabled:opacity-50"
-                          >
-                            <p className="text-sm font-medium">{copy.withdraw.label}</p>
-                            <p className="text-xs text-muted-foreground mt-0.5">{copy.withdraw.caption}</p>
-                          </button>
-                          <button
-                            type="button"
-                            disabled={closeOffers.isPending}
-                            onClick={() => closeOffers.mutate({ tier: closeTarget, withdraw: false })}
-                            className="w-full text-left rounded-lg border border-border p-3 hover:bg-muted disabled:opacity-50"
-                          >
-                            <p className="text-sm font-medium">{copy.keep.label}</p>
-                            <p className="text-xs text-muted-foreground mt-0.5">{copy.keep.caption}</p>
-                          </button>
-                        </div>
-                        <AlertDialogFooter>
-                          <AlertDialogCancel>Cancel</AlertDialogCancel>
-                        </AlertDialogFooter>
-                      </>
-                    );
-                  })()}
+                  {closeTarget !== null && closeCopy && (
+                    <>
+                      <AlertDialogHeader>
+                        <AlertDialogTitle>{closeCopy.title}</AlertDialogTitle>
+                        <AlertDialogDescription>{closeCopy.intro}</AlertDialogDescription>
+                      </AlertDialogHeader>
+                      <div className="space-y-2">
+                        <button
+                          type="button"
+                          disabled={closeOffers.isPending}
+                          onClick={() => closeOffers.mutate({ tier: closeTarget, withdraw: true })}
+                          className="w-full text-left rounded-lg border border-border p-3 hover:bg-muted disabled:opacity-50"
+                        >
+                          <p className="text-sm font-medium">{closeCopy.withdraw.label}</p>
+                          <p className="text-xs text-muted-foreground mt-0.5">{closeCopy.withdraw.caption}</p>
+                        </button>
+                        <button
+                          type="button"
+                          disabled={closeOffers.isPending}
+                          onClick={() => closeOffers.mutate({ tier: closeTarget, withdraw: false })}
+                          className="w-full text-left rounded-lg border border-border p-3 hover:bg-muted disabled:opacity-50"
+                        >
+                          <p className="text-sm font-medium">{closeCopy.keep.label}</p>
+                          <p className="text-xs text-muted-foreground mt-0.5">{closeCopy.keep.caption}</p>
+                        </button>
+                      </div>
+                      <AlertDialogFooter>
+                        <AlertDialogCancel>Cancel</AlertDialogCancel>
+                      </AlertDialogFooter>
+                    </>
+                  )}
                 </AlertDialogContent>
               </AlertDialog>
 

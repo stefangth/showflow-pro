@@ -14,6 +14,11 @@ describe("openOfferTier", () => {
     const res = await openOfferTier(fake as never, { showDateId: "d1", tier: 2 });
     expect(res).toEqual({ offersCreated: 0, message: "No casts at tier 2 for this city" });
   });
+  it("surfaces tier_tracking_warning when the edge fn flags it", async () => {
+    const fake = createFakeSupabase({ "fn:open-offer-tier": { data: { offers_created: 1, tier_tracking_warning: true }, error: null } });
+    const res = await openOfferTier(fake as never, { showDateId: "d1", tier: 1 });
+    expect(res).toEqual({ offersCreated: 1, message: undefined, trackingWarning: true });
+  });
   it("throws on transport error", async () => {
     const fake = createFakeSupabase({ "fn:open-offer-tier": { data: null, error: { message: "network" } } });
     await expect(openOfferTier(fake as never, { showDateId: "d1", tier: 1 })).rejects.toBeTruthy();

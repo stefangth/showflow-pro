@@ -769,3 +769,26 @@ Deno.test("open-offer-tier: a date with ≥1 session passes the session gate", a
   // Past the session gate; stops later for lack of priority casts (a different message).
   assertEquals(body.message !== "Show date has no sessions yet — offers not opened", true);
 });
+
+// ------ Tier-tracking warning when the show_date_offer_tiers upsert fails ------
+
+Deno.test("open-offer-tier: tier upsert failure → offers still created + tier_tracking_warning", async () => {
+  const { deps } = makeFakeDeps({
+    envVars,
+    tables: {
+      show_dates: { data: SHOW_DATE_OPEN, error: null },
+      cast_city_priority: { data: [{ cast_id: "cast-a" }], error: null },
+      cast_members: { data: [{ artist_id: "art-1" }], error: null },
+      artists: { data: [{ id: "art-1" }], error: null },
+      bookings: bookingsSeed("d1", ["b1"]),
+      blocked_dates: { data: [], error: null },
+      // The tracking-row upsert fails after the bookings were already inserted.
+      show_date_offer_tiers: { data: null, error: { message: "tracking write failed" } },
+    },
+  });
+  const res = await handle(makeRequest({ headers: SVC, body: { show_date_id: "d1", tier: 1 } }), deps);
+  assertEquals(res.status, 200);
+  const body = await res.json();
+  assertEquals(body.offers_created, 1);
+  assertEquals(body.tier_tracking_warning, true);
+});
