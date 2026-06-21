@@ -237,3 +237,42 @@ Deno.test("offer insert payload includes the correct offer_expires_at", () => {
   assertEquals(rows[0].offer_tier, 2);
   assertEquals(rows[0].offer_expires_at, "2026-05-18T00:00:00.000Z");
 });
+
+// ── Integration tests against the real handle() ────────────────────────────
+
+import { makeFakeDeps, makeRequest } from "../_shared/testing.ts";
+import { handle } from "./index.ts";
+
+function svcReq(body: unknown) {
+  return makeRequest({ headers: { Authorization: "Bearer svc-key" }, body });
+}
+
+Deno.test("zero-session date is a benign skip — no offers opened", async () => {
+  const { deps, calls } = makeFakeDeps({
+    envVars: { SUPABASE_SERVICE_ROLE_KEY: "svc-key" },
+    tables: {
+      show_dates: { data: { id: "sd1", show_id: "s1", city_id: "c1", date: "2026-06-01", status: "open", session_1: null, session_2: null, session_3: null }, error: null },
+    },
+  });
+  const res = await handle(svcReq({ show_date_id: "sd1", tier: 1 }), deps);
+  assertEquals(res.status, 200);
+  const body = await res.json();
+  assertEquals(body.offers_created, 0);
+  assertEquals(body.message, "Show date has no sessions yet — offers not opened");
+  // No bookings were inserted.
+  assertEquals(calls.some((c) => c.table === "bookings" && c.method === "insert"), false);
+});
+
+Deno.test("date with a session passes the session gate", async () => {
+  const { deps } = makeFakeDeps({
+    envVars: { SUPABASE_SERVICE_ROLE_KEY: "svc-key" },
+    tables: {
+      show_dates: { data: { id: "sd1", show_id: "s1", city_id: "c1", date: "2026-06-01", status: "open", session_1: "19:00:00", session_2: null, session_3: null }, error: null },
+      cast_city_priority: { data: [], error: null },
+    },
+  });
+  const res = await handle(svcReq({ show_date_id: "sd1", tier: 1 }), deps);
+  const body = await res.json();
+  // Past the session gate; stops later for lack of priority casts (different message).
+  assertEquals(body.message !== "Show date has no sessions yet — offers not opened", true);
+});

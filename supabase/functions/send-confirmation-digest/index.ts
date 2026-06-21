@@ -3,12 +3,18 @@ import { requireCronOrRole } from "../_shared/auth.ts";
 import { realDeps, type Deps } from "../_shared/deps.ts";
 import { getActiveOrgs, resolveOrgSetting } from "../_shared/settings.ts";
 import { resolveContactEmail, resolveAccountDisplayName } from "../_shared/identity.ts";
+import { coalesceChangeRows, describeDateChanges, type ChangeLogRow } from "../_shared/scheduleChanges.ts";
+
+const ACTIVE_BOOKING_STATUSES = ["suggested", "soft_booked", "confirmed"];
 
 /**
- * Daily confirmation digest (hourly cron). For each ACTIVE org whose own
- * confirmation_digest_hour_berlin matches the current Berlin hour: group that
- * org's confirmed bookings without a confirmation_digest_sent_at stamp by artist,
- * send one email per artist (org email overrides), then stamp.
+ * Daily confirmation digest (hourly cron). For each ACTIVE org whose
+ * confirmation_digest_hour_berlin matches the current Berlin hour, send one email
+ * per artist that folds BOTH newly-confirmed bookings AND undigested schedule
+ * changes (cancellation / per-session add/remove/retime) on dates the artist is
+ * booked on, creating in-app schedule_change notifications for registered artists.
+ * In-app delivery happens before the (best-effort) email; change-log rows are
+ * stamped digested afterwards so they are not re-processed.
  * Auth: X-Cron-Secret (pg_cron) or admin/producer JWT.
  */
 export async function handle(req: Request, deps: Deps): Promise<Response> {
@@ -18,14 +24,7 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
   const auth = await requireCronOrRole(deps, req, ["admin", "producer"]);
   if (!auth.ok) return auth.response;
 
-  // Capture the clock once so the idempotency key and the digest stamp are
-  // derived from a single instant (a run straddling a UTC hour boundary must
-  // not produce inconsistent keys/stamps).
   const now = deps.now();
-
-  // `% 24` normalizes the hour: some V8/Deno builds format midnight as '24'
-  // (rather than '0'), which would make a configured targetHour of 0 (midnight
-  // Berlin) never match and silently suppress the digest.
   const berlinHour = parseInt(
     new Intl.DateTimeFormat('en', { timeZone: 'Europe/Berlin', hour: 'numeric', hour12: false }).format(now),
     10,
@@ -42,7 +41,6 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
   const processedOrgs: string[] = [];
 
   for (const org of orgs) {
-    // A per-org settings read failure must not abort the other orgs' digests.
     let targetHour: number;
     try {
       targetHour = await resolveOrgSetting<number>(admin, org.id, 'confirmation_digest_hour_berlin', 20);
@@ -53,7 +51,8 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
     if (berlinHour !== targetHour) continue;
     processedOrgs.push(org.id);
 
-    const { data: confirmedBookings, error: queryErr } = await admin
+    // ── Source 1: newly-confirmed bookings ──
+    const { data: confirmedRaw, error: queryErr } = await admin
       .from('bookings')
       .select(`
         id,
@@ -64,66 +63,174 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
       .eq('org_id', org.id)
       .eq('status', 'confirmed')
       .is('confirmation_digest_sent_at', null);
-
     if (queryErr) { console.error('send-confirmation-digest: query error', { org: org.id, error: queryErr.message }); continue; }
-    if (!confirmedBookings || confirmedBookings.length === 0) continue;
 
-    // ADR-0011: registered artists are addressed at their login (auth) email; the
-    // booking email is the fallback (and the only address an unregistered artist has).
-    const userIds = [...new Set(
-      (confirmedBookings as any[]).map((b) => b.artists?.user_id).filter((id: unknown): id is string => !!id),
-    )];
+    // ── Source 2: undigested schedule changes ──
+    const { data: changeRaw, error: changeErr } = await admin
+      .from('show_date_change_log')
+      .select(`
+        id, show_date_id, change_type, session_slot, old_value, new_value, created_at,
+        show_dates ( date, status, cancellation_reason, shows ( program, sub_program ), cities ( name ) )
+      `)
+      .eq('org_id', org.id)
+      .is('digested_at', null);
+    if (changeErr) { console.error('send-confirmation-digest: change-log query error', { org: org.id, error: changeErr.message }); continue; }
+
+    const confirmed = (confirmedRaw ?? []) as any[];
+    const changeRows = (changeRaw ?? []) as any[];
+    if (confirmed.length === 0 && changeRows.length === 0) continue;
+
+    // Show context per show_date (every row for a date joins to its current row).
+    const dateContext = new Map<string, { show: string; date: string; city: string; reason: string | null }>();
+    for (const r of changeRows) {
+      const sd = r.show_dates;
+      const program = sd?.shows?.program;
+      const subProgram = sd?.shows?.sub_program;
+      const show = program ? (subProgram ? `${program} — ${subProgram}` : program) : 'Unknown show';
+      dateContext.set(r.show_date_id, { show, date: sd?.date ?? '—', city: sd?.cities?.name ?? '—', reason: sd?.cancellation_reason ?? null });
+    }
+
+    const coalesced = coalesceChangeRows(changeRows.map((r): ChangeLogRow => ({
+      id: r.id, show_date_id: r.show_date_id, change_type: r.change_type,
+      session_slot: r.session_slot, old_value: r.old_value, new_value: r.new_value, created_at: r.created_at,
+    })));
+
+    // Recipients per affected date (one bookings query, partitioned in JS).
+    const affectedDateIds = coalesced.map((c) => c.showDateId);
+    let changeBookings: any[] = [];
+    if (affectedDateIds.length > 0) {
+      const { data } = await admin
+        .from('bookings')
+        .select('id, artist_id, show_date_id, status, cancellation_reason, artists ( id, name, email, user_id )')
+        .eq('org_id', org.id)
+        .in('show_date_id', affectedDateIds);
+      changeBookings = (data ?? []) as any[];
+    }
+    const bookingsByDate = new Map<string, any[]>();
+    for (const b of changeBookings) {
+      const list = bookingsByDate.get(b.show_date_id);
+      if (list) list.push(b); else bookingsByDate.set(b.show_date_id, [b]);
+    }
+
+    // ── ADR-0011: resolve login-first contacts for every artist across BOTH sources ──
+    const userIds = [...new Set([
+      ...confirmed.map((b) => b.artists?.user_id),
+      ...changeBookings.map((b) => b.artists?.user_id),
+    ].filter((id: unknown): id is string => !!id))];
     const byUser = new Map<string, { email: string | null; display_name: string | null }>();
     if (userIds.length > 0) {
       const { data: contacts, error: contactsErr } = await admin.rpc('resolve_user_contacts', { p_user_ids: userIds });
-      if (contactsErr) {
-        // Non-fatal: fall back to booking emails for this org's artists.
-        console.error('send-confirmation-digest: resolve_user_contacts failed', { org: org.id, error: contactsErr.message });
-      } else {
-        for (const c of (contacts ?? []) as Array<{ user_id: string; email: string | null; display_name: string | null }>) {
-          byUser.set(c.user_id, { email: c.email, display_name: c.display_name });
-        }
-      }
+      if (contactsErr) console.error('send-confirmation-digest: resolve_user_contacts failed', { org: org.id, error: contactsErr.message });
+      else for (const c of (contacts ?? []) as Array<{ user_id: string; email: string | null; display_name: string | null }>) byUser.set(c.user_id, { email: c.email, display_name: c.display_name });
     }
 
-    type GroupedEntry = { recipientEmail: string; displayName: string; bookingIds: string[]; bookings: Array<{ show: string; date: string; city: string }> };
+    type GroupedEntry = {
+      recipientEmail: string; displayName: string;
+      bookingIds: string[];
+      bookings: Array<{ show: string; date: string; city: string }>;
+      scheduleChanges: Array<{ show: string; date: string; city: string; changes: string }>;
+      cancellations: Array<{ show: string; date: string; city: string; reason: string | null }>;
+    };
     const grouped = new Map<string, GroupedEntry>();
-    for (const b of confirmedBookings as any[]) {
-      const artist = b.artists;
+    const ensureEntry = (artistId: string, artist: any): GroupedEntry | null => {
       const acct = artist?.user_id ? byUser.get(artist.user_id) : undefined;
       const recipientEmail = resolveContactEmail({ authEmail: acct?.email, bookingEmail: artist?.email });
-      if (!recipientEmail) continue;
+      if (!recipientEmail) return null;
+      let entry = grouped.get(artistId);
+      if (!entry) {
+        entry = {
+          recipientEmail,
+          displayName: resolveAccountDisplayName({ displayName: acct?.display_name, artistName: artist?.name }),
+          bookingIds: [], bookings: [], scheduleChanges: [], cancellations: [],
+        };
+        grouped.set(artistId, entry);
+      }
+      return entry;
+    };
+
+    // Confirmations
+    for (const b of confirmed) {
+      const entry = ensureEntry(b.artist_id, b.artists);
+      if (!entry) continue;
       const sd = b.show_dates;
       const program = sd?.shows?.program;
       const subProgram = sd?.shows?.sub_program;
       const show = program ? (subProgram ? `${program} — ${subProgram}` : program) : 'Unknown show';
-      if (!grouped.has(b.artist_id)) {
-        grouped.set(b.artist_id, { recipientEmail, displayName: resolveAccountDisplayName({ displayName: acct?.display_name, artistName: artist?.name }), bookingIds: [], bookings: [] });
-      }
-      const entry = grouped.get(b.artist_id)!;
       entry.bookingIds.push(b.id);
       entry.bookings.push({ show, date: sd?.date ?? '—', city: sd?.cities?.name ?? '—' });
     }
 
+    // Schedule changes + in-app notifications
+    const notificationRows: any[] = [];
+    for (const c of coalesced) {
+      const ctx = dateContext.get(c.showDateId) ?? { show: 'Unknown show', date: '—', city: '—', reason: null };
+      const dateBookings = bookingsByDate.get(c.showDateId) ?? [];
+      const recipients = c.cancelled
+        ? dateBookings.filter((b) => b.status === 'cancelled' && b.cancellation_reason === 'date_cancelled')
+        : dateBookings.filter((b) => ACTIVE_BOOKING_STATUSES.includes(b.status));
+      for (const b of recipients) {
+        const entry = ensureEntry(b.artist_id, b.artists);
+        if (entry) {
+          if (c.cancelled) entry.cancellations.push({ show: ctx.show, date: ctx.date, city: ctx.city, reason: ctx.reason });
+          else entry.scheduleChanges.push({ show: ctx.show, date: ctx.date, city: ctx.city, changes: describeDateChanges(c) });
+        }
+        // In-app for registered artists only (the reliable channel — created before email).
+        if (b.artists?.user_id) {
+          notificationRows.push({
+            org_id: org.id,
+            user_id: b.artists.user_id,
+            type: 'schedule_change',
+            title: c.cancelled ? 'Booking cancelled' : 'Schedule change',
+            message: c.cancelled
+              ? `Your booking for ${ctx.show} on ${ctx.date} was cancelled.`
+              : `${ctx.show} on ${ctx.date}: ${describeDateChanges(c)}`,
+            related_entity_type: 'show_date',
+            related_entity_id: c.showDateId,
+          });
+        }
+      }
+    }
+    if (notificationRows.length > 0) {
+      const { error: notifErr } = await admin.from('notifications').insert(notificationRows);
+      if (notifErr) console.error('send-confirmation-digest: notification insert failed', { org: org.id, error: notifErr.message });
+    }
+
+    // Consume the change log NOW — right after in-app delivery (the reliable channel) and
+    // BEFORE the best-effort email loop. The email loop makes N external calls and is the
+    // likeliest place to time out; stamping first stops a same-hour retry from re-inserting
+    // duplicate schedule_change notifications (email dedup is handled by idempotency_key).
+    // Net: change rows are consumed once notified in-app, independent of email success.
+    const consumedChangeIds = changeRows.map((r) => r.id);
+    if (consumedChangeIds.length > 0) {
+      const { error: digestStampErr } = await admin
+        .from('show_date_change_log')
+        .update({ digested_at: now.toISOString() })
+        .in('id', consumedChangeIds);
+      if (digestStampErr) console.error('send-confirmation-digest: change-log stamp failed', { org: org.id, error: digestStampErr.message });
+    }
+
+    // One email per artist (confirmations + schedule changes folded). Best-effort.
     for (const [artistId, entry] of grouped) {
       try {
         await deps.sendEmail({
           template_name: 'artist-confirmation-digest',
           recipient_email: entry.recipientEmail,
           org_id: org.id,
-          templateData: { displayName: entry.displayName, bookings: entry.bookings },
+          templateData: {
+            displayName: entry.displayName,
+            bookings: entry.bookings,
+            scheduleChanges: entry.scheduleChanges,
+            cancellations: entry.cancellations,
+          },
           idempotency_key: `confirmation-digest-${org.id}-${artistId}-${now.toISOString().slice(0, 13)}`,
         });
-        const { error: stampErr } = await admin
-          .from('bookings')
-          .update({ confirmation_digest_sent_at: now.toISOString() })
-          .in('id', entry.bookingIds);
-        if (stampErr) { console.error('send-confirmation-digest: stamp failed', { org: org.id, artistId, error: stampErr.message }); }
-        // NOTE: this preserves send-confirmation-digest's ORIGINAL single-tenant behavior —
-        // the email was sent, so the count rises even if the stamp errored. This intentionally
-        // differs from send-offer-digest, which `continue`s past the increment on a stamp error.
-        // The two have always differed here; aligning them is a behavior change out of scope for
-        // the multi-tenancy work (it would alter the digests_sent metric's meaning).
+        if (entry.bookingIds.length > 0) {
+          const { error: stampErr } = await admin
+            .from('bookings')
+            .update({ confirmation_digest_sent_at: now.toISOString() })
+            .in('id', entry.bookingIds);
+          if (stampErr) console.error('send-confirmation-digest: stamp failed', { org: org.id, artistId, error: stampErr.message });
+        }
         digestsSent += 1;
       } catch (e) {
         console.error('send-confirmation-digest: email send failed', { org: org.id, artistId, error: (e as Error).message });

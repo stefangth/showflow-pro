@@ -1090,6 +1090,57 @@ export type Database = {
           },
         ]
       }
+      show_date_change_log: {
+        Row: {
+          change_type: string
+          created_at: string
+          digested_at: string | null
+          id: string
+          new_value: string | null
+          old_value: string | null
+          org_id: string
+          session_slot: number | null
+          show_date_id: string
+        }
+        Insert: {
+          change_type: string
+          created_at?: string
+          digested_at?: string | null
+          id?: string
+          new_value?: string | null
+          old_value?: string | null
+          org_id: string
+          session_slot?: number | null
+          show_date_id: string
+        }
+        Update: {
+          change_type?: string
+          created_at?: string
+          digested_at?: string | null
+          id?: string
+          new_value?: string | null
+          old_value?: string | null
+          org_id?: string
+          session_slot?: number | null
+          show_date_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "show_date_change_log_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "show_date_change_log_show_date_id_fkey"
+            columns: ["show_date_id"]
+            isOneToOne: false
+            referencedRelation: "show_dates"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       show_date_offer_tiers: {
         Row: {
           closed_at: string | null
@@ -1149,7 +1200,7 @@ export type Database = {
           id: string
           notes: string | null
           org_id: string
-          session_1: string
+          session_1: string | null
           session_2: string | null
           session_3: string | null
           show_id: string
@@ -1167,7 +1218,7 @@ export type Database = {
           id?: string
           notes?: string | null
           org_id: string
-          session_1: string
+          session_1?: string | null
           session_2?: string | null
           session_3?: string | null
           show_id: string
@@ -1185,7 +1236,7 @@ export type Database = {
           id?: string
           notes?: string | null
           org_id?: string
-          session_1?: string
+          session_1?: string | null
           session_2?: string | null
           session_3?: string | null
           show_id?: string

@@ -421,14 +421,14 @@ Deno.test("airtable-poll: maps Date/SubProgram/City/Session fields and inserts s
   assertEquals("org_id" in payload, false);
 });
 
-Deno.test("airtable-poll: session_1 defaults to 00:00 when field missing", async () => {
+Deno.test("airtable-poll: session_1 is null when field missing (no 00:00 fabrication)", async () => {
   const insertedPayloads: unknown[] = [];
 
   const records = [
     makeRecord("recNOSESSION", {
       Date: "2026-10-10",
       SubProgram: "TestShow",
-      // No Session 1 field → session_1 defaults to "00:00"
+      // No Session 1 field → session_1 is null (mapped, but the Airtable cell is empty)
     }),
   ];
 
@@ -447,7 +447,7 @@ Deno.test("airtable-poll: session_1 defaults to 00:00 when field missing", async
   await handle(authReq(), deps);
   assertEquals(insertedPayloads.length >= 1, true);
   const payload = insertedPayloads[0] as Record<string, unknown>;
-  assertEquals(payload.session_1, "00:00");
+  assertEquals(payload.session_1, null);
 });
 
 Deno.test("airtable-poll: city_id is null when city not in DB", async () => {
@@ -638,12 +638,13 @@ Deno.test("airtable-poll: existing date → update only, NO invokeFunction call"
   const offerCalls = invokeCalls.filter((c) => c.name === "open-offer-tier");
   assertEquals(offerCalls.length, 0);
 
-  // Update should have been called with the new date. session_1 is only set on the
-  // update payload when mapped & parseable; this record has no Session 1, so it is absent.
+  // Update should have been called with the new date. session_1 is mapped, so it is
+  // written on every update — null here (the record has no Session 1), which is how a
+  // removed session clears in the DB.
   assertEquals(updateArgs.length >= 1, true, "update should have been called");
   const updatePayload = updateArgs[0] as Record<string, unknown>;
   assertEquals(updatePayload.date, "2026-07-20");
-  assertEquals("session_1" in updatePayload, false);
+  assertEquals(updatePayload.session_1, null);
 });
 
 // ─── Totals shape ─────────────────────────────────────────────────────────────
