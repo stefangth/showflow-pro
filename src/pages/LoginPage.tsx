@@ -13,15 +13,6 @@ import { StageMark } from '@/components/brand/StageMark';
 import { cn } from '@/lib/utils';
 import heroShow from '@/assets/auth/hero-show.jpg';
 
-/**
- * Dusk gradient lifted from the marketing hero — painted instantly under the
- * photo so the first frame is on-brand, and used as a graceful fallback if the
- * image ever fails to load.
- */
-const HERO_GRADIENT =
-  'radial-gradient(120% 90% at 30% 14%, rgba(255,150,180,0.16) 0%, rgba(255,150,180,0) 46%),' +
-  'linear-gradient(178deg, #0a1130 0%, #271a47 34%, #4c2a5e 56%, #8d3a5f 78%, #d7705f 100%)';
-
 function friendlyAuthError(message: string): string {
   const m = message.toLowerCase();
   if (m.includes('invalid login credentials')) {
@@ -76,9 +67,9 @@ export default function LoginPage() {
   return (
     // `dark` forces the immersive treatment regardless of the viewer's theme, so
     // the form primitives (Input/Button/Alert) inherit dark tokens automatically.
-    <div className="dark relative min-h-screen w-full overflow-hidden bg-[#0a0912]">
-      {/* Base dusk gradient — instant paint + fallback for the photo. */}
-      <div aria-hidden className="absolute inset-0" style={{ background: HERO_GRADIENT }} />
+    <div className="dark relative min-h-screen w-full overflow-hidden bg-[var(--auth-bg)]">
+      {/* Base dusk gradient (--auth-hero-gradient in index.css) — instant paint + photo fallback. */}
+      <div aria-hidden className="absolute inset-0" style={{ background: 'var(--auth-hero-gradient)' }} />
 
       {/* Hero photo — brightens/settles in on mount; static when reduced motion. */}
       <motion.img
@@ -97,15 +88,12 @@ export default function LoginPage() {
       <div
         aria-hidden
         className="absolute inset-0"
-        style={{
-          background:
-            'linear-gradient(105deg, rgba(11,9,18,0.88) 0%, rgba(11,9,18,0.62) 34%, rgba(11,9,18,0.30) 58%, rgba(11,9,18,0.04) 100%)',
-        }}
+        style={{ background: 'var(--auth-scrim)' }}
       />
       <div
         aria-hidden
         className="absolute inset-x-0 top-0 h-40"
-        style={{ background: 'linear-gradient(180deg, rgba(11,9,18,0.5), rgba(11,9,18,0))' }}
+        style={{ background: 'var(--auth-top-fade)' }}
       />
 
       {/* Content */}
@@ -120,18 +108,18 @@ export default function LoginPage() {
             {/* Wordmark */}
             <div className="mb-7 flex items-center gap-3">
               <StageMark variant="tile" size={36} />
-              <span className="font-display text-lg font-semibold tracking-tight text-white">
+              <span className="font-display text-lg font-semibold tracking-tight text-[var(--auth-fg)]">
                 {APP_META.NAME}
               </span>
             </div>
 
             {/* Headline over the photo */}
-            <h1 className="mb-7 max-w-sm font-display text-3xl font-semibold leading-[1.15] tracking-tight text-white sm:text-[34px]">
+            <h1 className="mb-7 max-w-sm font-display text-3xl font-semibold leading-[1.15] tracking-tight text-[var(--auth-fg)] sm:text-[34px]">
               Casting, scheduling and confirmations, all in one place.
             </h1>
 
             {/* Frosted glass sign-in card */}
-            <div className="rounded-2xl border border-white/10 bg-[rgba(18,16,27,0.55)] p-6 text-foreground shadow-2xl backdrop-blur-xl sm:p-7">
+            <div className="rounded-2xl border border-[var(--auth-hairline)] bg-[var(--auth-card)] p-6 text-foreground shadow-2xl backdrop-blur-xl sm:p-7">
               <div className="mb-5">
                 <h2 className="text-lg font-semibold">Sign in</h2>
                 <p className="mt-1 text-sm text-muted-foreground">Manage your bookings</p>
@@ -184,11 +172,11 @@ export default function LoginPage() {
                 </Button>
               </form>
 
-              <div className="mt-5 space-y-2 border-t border-white/10 pt-4">
+              <div className="mt-5 space-y-2 border-t border-[var(--auth-hairline)] pt-4">
                 <p className="text-center text-xs text-muted-foreground">
                   New here?{' '}
                   <a
-                    href="https://showflow.pro/signup"
+                    href={`${APP_META.MARKETING_URL}/signup`}
                     target="_blank"
                     rel="noopener noreferrer"
                     className="font-medium text-foreground underline-offset-2 hover:underline"

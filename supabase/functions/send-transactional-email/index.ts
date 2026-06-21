@@ -3,7 +3,7 @@ import { renderAsync } from 'npm:@react-email/components@0.0.22'
 import { TEMPLATES } from '../_shared/transactional-email-templates/registry.ts'
 import { preflight, json } from "../_shared/http.ts";
 import { realDeps, type Deps } from "../_shared/deps.ts";
-import { resolveOrgSetting } from "../_shared/settings.ts";
+import { resolveOrgSetting, BOOKING_ENGINE_DEFAULTS } from "../_shared/settings.ts";
 
 function generateToken(): string {
   const bytes = new Uint8Array(32)
@@ -144,7 +144,7 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
 
   // Read from-address and template overrides for this org (org override ?? platform default).
   const fromAddress = await resolveOrgSetting<string>(
-    admin, orgId, 'resend_from_address', 'ShowFlow <noreply@showflow.pro>')
+    admin, orgId, 'resend_from_address', BOOKING_ENGINE_DEFAULTS.resend_from_address)
 
   const overrides = await resolveOrgSetting<Record<string, any>>(
     admin, orgId, 'email_template_overrides', {})

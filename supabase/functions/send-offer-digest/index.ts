@@ -1,7 +1,7 @@
 import { preflight, json } from "../_shared/http.ts";
 import { requireCronOrRole } from "../_shared/auth.ts";
 import { realDeps, type Deps } from "../_shared/deps.ts";
-import { getActiveOrgs, resolveOrgSetting } from "../_shared/settings.ts";
+import { getActiveOrgs, resolveOrgSetting, BOOKING_ENGINE_DEFAULTS } from "../_shared/settings.ts";
 import { resolveContactEmail, resolveAccountDisplayName } from "../_shared/identity.ts";
 
 /**
@@ -39,7 +39,7 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
     let targetHour: number;
     let offerWindowHours: number;
     try {
-      targetHour = await resolveOrgSetting<number>(admin, org.id, 'offer_digest_hour_berlin', 19);
+      targetHour = await resolveOrgSetting<number>(admin, org.id, 'offer_digest_hour_berlin', BOOKING_ENGINE_DEFAULTS.offer_digest_hour_berlin);
     } catch (e) {
       console.error('send-offer-digest: settings read failed', { org: org.id, error: (e as Error).message });
       continue;
@@ -48,7 +48,7 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
     processedOrgs.push(org.id);
 
     try {
-      offerWindowHours = await resolveOrgSetting<number>(admin, org.id, 'offer_response_window_hours', 48);
+      offerWindowHours = await resolveOrgSetting<number>(admin, org.id, 'offer_response_window_hours', BOOKING_ENGINE_DEFAULTS.offer_response_window_hours);
     } catch (e) {
       console.error('send-offer-digest: settings read failed', { org: org.id, error: (e as Error).message });
       continue;
