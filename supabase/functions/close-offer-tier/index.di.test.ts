@@ -1,0 +1,113 @@
+import { assertEquals, assertExists } from "../_shared/test-asserts.ts";
+import { makeFakeDeps, makeRequest } from "../_shared/testing.ts";
+import { handle } from "./index.ts";
+
+const SVC = { Authorization: "Bearer svc" };
+const envVars = { SUPABASE_SERVICE_ROLE_KEY: "svc" };
+const NOW = new Date("2026-07-01T10:00:00.000Z");
+
+Deno.test("close-offer-tier: OPTIONS returns preflight", async () => {
+  const { deps } = makeFakeDeps({ envVars });
+  const res = await handle(makeRequest({ method: "OPTIONS" }), deps);
+  assertEquals(res.status === 200 || res.status === 204, true);
+});
+
+Deno.test("close-offer-tier: no auth → 401", async () => {
+  const { deps } = makeFakeDeps({ envVars });
+  const res = await handle(makeRequest({ headers: {}, body: { show_date_id: "d1", tier: 1 } }), deps);
+  assertEquals(res.status, 401);
+});
+
+Deno.test("close-offer-tier: missing fields → 400", async () => {
+  const { deps } = makeFakeDeps({ envVars });
+  const res = await handle(makeRequest({ headers: SVC, body: { tier: 0 } }), deps);
+  assertEquals(res.status, 400);
+});
+
+Deno.test("close-offer-tier: invalid JSON → 400", async () => {
+  const { deps } = makeFakeDeps({ envVars });
+  const req = new Request("http://localhost/fn", {
+    method: "POST",
+    headers: { ...SVC, "Content-Type": "application/json" },
+    body: "not json",
+  });
+  const res = await handle(req, deps);
+  assertEquals(res.status, 400);
+});
+
+Deno.test("close-offer-tier: withdraw:false closes tier, withdraws nothing", async () => {
+  const { deps, calls } = makeFakeDeps({
+    envVars,
+    now: NOW,
+    tables: { show_date_offer_tiers: { data: [{ id: "t1" }], error: null } },
+  });
+  const res = await handle(makeRequest({ headers: SVC, body: { show_date_id: "d1", tier: 1, withdraw: false } }), deps);
+  assertEquals(res.status, 200);
+  assertEquals(await res.json(), { closed: true, withdrawn: 0 });
+
+  const bookingsUpdate = calls.find((c) => c.table === "bookings" && c.method === "update");
+  assertEquals(bookingsUpdate, undefined, "no bookings update when withdraw:false");
+
+  const tierUpdate = calls.find((c) => c.table === "show_date_offer_tiers" && c.method === "update");
+  assertExists(tierUpdate);
+  assertEquals((tierUpdate!.args[0] as Record<string, unknown>).closed_at, NOW.toISOString());
+});
+
+Deno.test("close-offer-tier: withdraw:true cancels suggested rows (payload + count + filters)", async () => {
+  const { deps, calls } = makeFakeDeps({
+    envVars,
+    now: NOW,
+    tables: {
+      bookings: { data: [{ id: "b1" }, { id: "b2" }], error: null },
+      show_date_offer_tiers: { data: [{ id: "t1" }], error: null },
+    },
+  });
+  const res = await handle(makeRequest({ headers: SVC, body: { show_date_id: "d1", tier: 2, withdraw: true } }), deps);
+  assertEquals(res.status, 200);
+  assertEquals(await res.json(), { closed: true, withdrawn: 2 });
+
+  const bookingsUpdate = calls.find((c) => c.table === "bookings" && c.method === "update");
+  assertExists(bookingsUpdate);
+  const payload = bookingsUpdate!.args[0] as Record<string, unknown>;
+  assertEquals(payload.status, "cancelled");
+  assertEquals(payload.cancellation_reason, "tier_closed");
+  assertEquals(payload.cancelled_at, NOW.toISOString());
+
+  const eqArgs = calls.filter((c) => c.table === "bookings" && c.method === "eq").map((c) => c.args);
+  assertEquals(eqArgs.some((a) => a[0] === "show_date_id" && a[1] === "d1"), true);
+  assertEquals(eqArgs.some((a) => a[0] === "offer_tier" && a[1] === 2), true);
+  assertEquals(eqArgs.some((a) => a[0] === "status" && a[1] === "suggested"), true);
+});
+
+Deno.test("close-offer-tier: tier not open + no withdraw → benign closed:false", async () => {
+  const { deps } = makeFakeDeps({
+    envVars,
+    tables: { show_date_offer_tiers: { data: [], error: null } },
+  });
+  const res = await handle(makeRequest({ headers: SVC, body: { show_date_id: "d1", tier: 1, withdraw: false } }), deps);
+  assertEquals(res.status, 200);
+  const body = await res.json();
+  assertEquals(body.closed, false);
+  assertEquals(body.withdrawn, 0);
+  assertExists(body.message);
+});
+
+Deno.test("close-offer-tier: close-tier DB error → 500", async () => {
+  const { deps } = makeFakeDeps({
+    envVars,
+    tables: { show_date_offer_tiers: { data: null, error: { message: "boom" } } },
+  });
+  const res = await handle(makeRequest({ headers: SVC, body: { show_date_id: "d1", tier: 1, withdraw: false } }), deps);
+  assertEquals(res.status, 500);
+  assertExists((await res.json()).error);
+});
+
+Deno.test("close-offer-tier: withdraw DB error → 500", async () => {
+  const { deps } = makeFakeDeps({
+    envVars,
+    tables: { bookings: { data: null, error: { message: "boom" } } },
+  });
+  const res = await handle(makeRequest({ headers: SVC, body: { show_date_id: "d1", tier: 1, withdraw: true } }), deps);
+  assertEquals(res.status, 500);
+  assertExists((await res.json()).error);
+});
