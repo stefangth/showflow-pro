@@ -112,21 +112,22 @@ Deno.test("close-offer-tier: withdraw DB error → 500", async () => {
   assertExists((await res.json()).error);
 });
 
-// Partial-failure path: withdraw commits, then the tier-close write fails. The
-// two writes are not transactional, so the bookings are already cancelled — the
-// request still returns 500 (and logs the orphaned-cancellation count).
-Deno.test("close-offer-tier: withdraw succeeds but tier-close fails → 500 (bookings already cancelled)", async () => {
+// Partial-failure path (safe ordering): the tier is closed FIRST, then the
+// withdraw write fails. We're left with a closed tier whose suggested offers
+// survive — benign, since the watchers skip closed tiers. The request still
+// returns 500; the tier close was committed before the withdraw was attempted.
+Deno.test("close-offer-tier: tier closed but withdraw fails → 500 (tier already closed, safe state)", async () => {
   const { deps, calls } = makeFakeDeps({
     envVars,
     tables: {
-      bookings: { data: [{ id: "b1" }], error: null },
-      show_date_offer_tiers: { data: null, error: { message: "boom" } },
+      show_date_offer_tiers: { data: [{ id: "t1" }], error: null }, // close succeeds
+      bookings: { data: null, error: { message: "withdraw failed" } }, // withdraw fails
     },
   });
   const res = await handle(makeRequest({ headers: SVC, body: { show_date_id: "d1", tier: 1, withdraw: true } }), deps);
   assertEquals(res.status, 500);
   assertExists((await res.json()).error);
-  // The withdraw update ran before the failing tier close.
-  const bookingsUpdate = calls.find((c) => c.table === "bookings" && c.method === "update");
-  assertExists(bookingsUpdate, "bookings cancellation must have been attempted before the tier-close failure");
+  // The tier close ran (and succeeded) before the withdraw was attempted.
+  const tierUpdate = calls.find((c) => c.table === "show_date_offer_tiers" && c.method === "update");
+  assertExists(tierUpdate, "tier must be closed before attempting the withdraw");
 });

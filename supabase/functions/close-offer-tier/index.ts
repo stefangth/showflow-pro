@@ -37,6 +37,26 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
     return json({ error: "Invalid JSON" }, 400);
   }
 
+  // Close the tier FIRST. The two writes aren't transactional, so order picks
+  // which partial failure is safe: if the withdraw then fails we're left with a
+  // CLOSED tier whose suggested offers survive — benign, because expire-offers /
+  // tier-at-risk-watcher skip closed tiers (the offers expire naturally and an
+  // admin can re-run close to retry the withdraw). The reverse (cancel, then fail
+  // to close) would leave cancelled offers under a still-open tier, which keeps
+  // firing escalation/at-risk against zero pending.
+  const { data: closedRows, error: clErr } = await (admin as any)
+    .from("show_date_offer_tiers")
+    .update({ closed_at: deps.now().toISOString() })
+    .eq("show_date_id", show_date_id)
+    .eq("tier", tier)
+    .is("closed_at", null)
+    .select("id");
+  if (clErr) {
+    console.error("close-offer-tier: close error", clErr);
+    return json({ error: clErr.message }, 500);
+  }
+  const closed = (closedRows?.length ?? 0) > 0;
+
   let withdrawn = 0;
   if (withdraw) {
     const { data: cancelled, error: cErr } = await admin
@@ -51,28 +71,13 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
       .eq("status", "suggested")
       .select("id");
     if (cErr) {
-      console.error("close-offer-tier: withdraw error", cErr);
+      // The tier is already closed (safe state); the withdraw retry failed.
+      console.error(`close-offer-tier: withdraw error (tier closed: ${closed})`, cErr);
       return json({ error: cErr.message }, 500);
     }
     withdrawn = cancelled?.length ?? 0;
   }
 
-  const { data: closedRows, error: clErr } = await (admin as any)
-    .from("show_date_offer_tiers")
-    .update({ closed_at: deps.now().toISOString() })
-    .eq("show_date_id", show_date_id)
-    .eq("tier", tier)
-    .is("closed_at", null)
-    .select("id");
-  if (clErr) {
-    // Withdraw (if any) already committed; the two writes aren't transactional.
-    // Surface the already-cancelled count so an orphaned-cancellations partial
-    // failure is diagnosable from the function logs.
-    console.error(`close-offer-tier: close error (bookings already cancelled: ${withdrawn})`, clErr);
-    return json({ error: clErr.message }, 500);
-  }
-
-  const closed = (closedRows?.length ?? 0) > 0;
   if (!closed && withdrawn === 0) {
     return json({ closed: false, withdrawn: 0, message: "Tier was not open" });
   }
