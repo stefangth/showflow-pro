@@ -1,16 +1,11 @@
 import { preflight, json } from "../_shared/http.ts";
-import { isServiceRole, requireRole } from "../_shared/auth.ts";
+import { isServiceRole, requireOrgRole } from "../_shared/auth.ts";
 import { realDeps, type Deps } from "../_shared/deps.ts";
 
 export async function handle(req: Request, deps: Deps): Promise<Response> {
   if (req.method === "OPTIONS") return preflight();
 
   const admin = deps.admin;
-
-  if (!isServiceRole(deps, req)) {
-    const auth = await requireRole(deps, req, ["admin", "producer"]);
-    if (!auth.ok) return auth.response;
-  }
 
   let show_date_id: string
   let tier: number
@@ -25,14 +20,23 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
     return json({ error: 'Invalid JSON' }, 400)
   }
 
-  // Fetch show date
+  // Fetch show date (org_id drives the org-scoped auth check below).
   const { data: showDate, error: sdErr } = await admin
     .from('show_dates')
-    .select('id, show_id, city_id, date, status, session_1, session_2, session_3')
+    .select('id, show_id, city_id, date, status, session_1, session_2, session_3, org_id')
     .eq('id', show_date_id)
     .maybeSingle()
 
   if (sdErr || !showDate) return json({ error: 'Show date not found' }, 404)
+
+  // Org-scoped authorization: an admin/producer may only open offers for a date in
+  // their OWN org. Service-role (cron / airtable-poll) bypasses; requireOrgRole also
+  // accepts super-admins.
+  if (!isServiceRole(deps, req)) {
+    const auth = await requireOrgRole(deps, req, showDate.org_id, ["admin", "producer"])
+    if (!auth.ok) return auth.response
+  }
+
   if (showDate.status === 'cancelled') return json({ error: 'Show date is cancelled' }, 400)
 
   if (!showDate.session_1 && !showDate.session_2 && !showDate.session_3) {

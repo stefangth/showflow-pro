@@ -13,9 +13,45 @@ Deno.test("close-offer-tier: OPTIONS returns preflight", async () => {
 });
 
 Deno.test("close-offer-tier: no auth → 401", async () => {
-  const { deps } = makeFakeDeps({ envVars });
+  const { deps } = makeFakeDeps({
+    envVars,
+    tables: { show_dates: { data: { id: "d1", org_id: "org-1" }, error: null } },
+  });
   const res = await handle(makeRequest({ headers: {}, body: { show_date_id: "d1", tier: 1 } }), deps);
   assertEquals(res.status, 401);
+});
+
+Deno.test("close-offer-tier: authenticated but not a member of the date's org → 403 (no writes)", async () => {
+  const { deps, calls } = makeFakeDeps({
+    envVars,
+    authUser: { id: "u1" },
+    tables: {
+      show_dates: { data: { id: "d1", org_id: "org-B" }, error: null },
+      org_memberships: { data: null, error: null },
+      platform_admins: { data: null, error: null },
+    },
+  });
+  const res = await handle(makeRequest({ headers: { Authorization: "Bearer user" }, body: { show_date_id: "d1", tier: 1, withdraw: true } }), deps);
+  assertEquals(res.status, 403);
+  // org gate used the date's org_id; nothing was mutated
+  assertEquals(calls.some((c) => c.table === "org_memberships" && c.method === "eq" && c.args[0] === "org_id" && c.args[1] === "org-B"), true);
+  assertEquals(calls.some((c) => c.table === "show_date_offer_tiers" && c.method === "update"), false);
+  assertEquals(calls.some((c) => c.table === "bookings" && c.method === "update"), false);
+});
+
+Deno.test("close-offer-tier: admin/producer of the date's org → closes", async () => {
+  const { deps } = makeFakeDeps({
+    envVars,
+    authUser: { id: "u1" },
+    tables: {
+      show_dates: { data: { id: "d1", org_id: "org-A" }, error: null },
+      org_memberships: { data: { role: "producer" }, error: null },
+      show_date_offer_tiers: { data: [{ id: "t1" }], error: null },
+    },
+  });
+  const res = await handle(makeRequest({ headers: { Authorization: "Bearer user" }, body: { show_date_id: "d1", tier: 1, withdraw: false } }), deps);
+  assertEquals(res.status, 200);
+  assertEquals(await res.json(), { closed: true, withdrawn: 0 });
 });
 
 Deno.test("close-offer-tier: missing fields → 400", async () => {
