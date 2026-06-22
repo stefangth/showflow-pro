@@ -1279,6 +1279,7 @@ export type Database = {
           main_cast_slots: number | null
           org_id: string
           program: string | null
+          sort_order: number | null
           status: Database["public"]["Enums"]["show_status"]
           sub_program: string | null
           understudy_slots: number | null
@@ -1294,6 +1295,7 @@ export type Database = {
           main_cast_slots?: number | null
           org_id: string
           program?: string | null
+          sort_order?: number | null
           status?: Database["public"]["Enums"]["show_status"]
           sub_program?: string | null
           understudy_slots?: number | null
@@ -1309,6 +1311,7 @@ export type Database = {
           main_cast_slots?: number | null
           org_id?: string
           program?: string | null
+          sort_order?: number | null
           status?: Database["public"]["Enums"]["show_status"]
           sub_program?: string | null
           understudy_slots?: number | null
