@@ -3,7 +3,7 @@
 -- is not executable by `authenticated`.
 BEGIN;
 CREATE EXTENSION IF NOT EXISTS pgtap WITH SCHEMA extensions;
-SELECT plan(3);
+SELECT plan(8);
 
 SET session_replication_role = replica;
 INSERT INTO public.organizations (id, name, slug) VALUES
@@ -34,6 +34,45 @@ SELECT throws_ok(
   $$ SELECT public.set_org_airtable_key('00000000-0000-0000-0000-00000000a17a', 'key_xyz') $$,
   'forbidden',
   'non-admin cannot set the org airtable key');
+RESET ROLE;
+
+-- status as the org admin: key is present (set by the earlier setter test)
+SELECT set_config('request.jwt.claims', '{"sub":"00000000-0000-0000-0000-0000000ad317","role":"authenticated"}', true);
+SET LOCAL ROLE authenticated;
+SELECT is(
+  (SELECT present FROM public.get_org_airtable_key_status('00000000-0000-0000-0000-00000000a17a')),
+  true,
+  'org admin sees the key as present');
+RESET ROLE;
+
+-- status as a non-member is rejected
+SELECT set_config('request.jwt.claims', '{"sub":"00000000-0000-0000-0000-00000000beef","role":"authenticated"}', true);
+SET LOCAL ROLE authenticated;
+SELECT throws_ok(
+  $$ SELECT public.get_org_airtable_key_status('00000000-0000-0000-0000-00000000a17a') $$,
+  'forbidden',
+  'non-admin cannot read key status');
+RESET ROLE;
+
+-- delete as a non-member is rejected
+SELECT set_config('request.jwt.claims', '{"sub":"00000000-0000-0000-0000-00000000beef","role":"authenticated"}', true);
+SET LOCAL ROLE authenticated;
+SELECT throws_ok(
+  $$ SELECT public.delete_org_airtable_key('00000000-0000-0000-0000-00000000a17a') $$,
+  'forbidden',
+  'non-admin cannot delete the key');
+RESET ROLE;
+
+-- delete as the org admin succeeds, then the key reads as absent
+SELECT set_config('request.jwt.claims', '{"sub":"00000000-0000-0000-0000-0000000ad317","role":"authenticated"}', true);
+SET LOCAL ROLE authenticated;
+SELECT lives_ok(
+  $$ SELECT public.delete_org_airtable_key('00000000-0000-0000-0000-00000000a17a') $$,
+  'org admin can delete the key');
+SELECT is(
+  (SELECT present FROM public.get_org_airtable_key_status('00000000-0000-0000-0000-00000000a17a')),
+  false,
+  'key reads as absent after delete');
 RESET ROLE;
 
 SELECT * FROM finish();

@@ -11,7 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
-import { Trash2 } from "lucide-react";
+import { Trash2, CheckCircle2, KeyRound, Lock } from "lucide-react";
 import { fetchCustomFieldDefs, upsertCustomFieldDef, deleteCustomFieldDef } from "@/data/customFields";
 import { airtableTypeToCustomType, slugifyKey, type CustomFieldType } from "@/lib/customFields";
 import { fetchAirtableBases, fetchAirtableTables, type AirtableTable } from "@/data/airtableSchema";
@@ -19,6 +19,8 @@ import { SHOWFLOW_FIELDS, buildProgramKey, buildCityKey, planCityReconciliation,
 import { fetchShowsForLinking, linkShowAirtableKey, importShowsFromOptions } from "@/data/settings";
 import { fetchCitiesForLinking, linkCityAirtableKey, importCitiesFromOptions, mergeCities } from "@/data/cities";
 import { fetchLatestSyncLog, fetchUnresolvedRecords, type UnresolvedRecord } from "@/data/airtableSync";
+import { saveAirtableKey, fetchAirtableKeyStatus, deleteAirtableKey } from "@/data/airtableKey";
+import { formatDateDMY } from "@/lib/dates";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 
 interface Props {
@@ -35,6 +37,7 @@ const NONE = "__none__";
 export function AirtableSyncTab({ orgId, get, set }: Props) {
   const qc = useQueryClient();
   const [airtableKey, setAirtableKey] = useState("");
+  const [replacing, setReplacing] = useState(false);
   const [schemaState, setSchemaState] = useState<"idle" | "accessible" | "fallback">("idle");
   const [bases, setBases] = useState<{ id: string; name: string }[]>([]);
   const [tables, setTables] = useState<AirtableTable[]>([]);
@@ -46,16 +49,41 @@ export function AirtableSyncTab({ orgId, get, set }: Props) {
 
   const selectedTable = tables.find((t) => t.name === get("airtable_table_name", ""));
 
+  // ── API-key presence (status only; the key value is never read back) ─────────
+  const keyStatusQ = useQuery({
+    queryKey: ["airtable", "key-status", orgId],
+    enabled: !!orgId,
+    queryFn: () => fetchAirtableKeyStatus(supabase, orgId!),
+  });
+  const keyPresent = !!keyStatusQ.data?.present;
+
   // ── API key (Vault) + schema loading ────────────────────────────────────────
   const saveKey = useMutation({
     mutationFn: async () => {
       if (!orgId) throw new Error("No active organization");
       if (!airtableKey.trim()) throw new Error("Enter an API key");
-      const { error } = await supabase.rpc("set_org_airtable_key", { _org: orgId, _key: airtableKey.trim() });
-      if (error) throw error;
+      await saveAirtableKey(supabase, orgId, airtableKey.trim());
     },
-    onSuccess: () => { setAirtableKey(""); toast.success("Airtable API key saved"); },
+    onSuccess: () => {
+      setAirtableKey(""); setReplacing(false);
+      qc.invalidateQueries({ queryKey: ["airtable", "key-status", orgId] });
+      toast.success("Airtable API key saved");
+    },
     onError: (e: unknown) => toast.error((e as Error).message ?? "Failed to save Airtable key"),
+  });
+
+  const deleteKey = useMutation({
+    mutationFn: async () => {
+      if (!orgId) throw new Error("No active organization");
+      await deleteAirtableKey(supabase, orgId);
+    },
+    onSuccess: () => {
+      setAirtableKey(""); setReplacing(false);
+      setSchemaState("idle"); setBases([]); setTables([]);
+      qc.invalidateQueries({ queryKey: ["airtable", "key-status", orgId] });
+      toast.success("Airtable API key deleted");
+    },
+    onError: (e: unknown) => toast.error((e as Error).message ?? "Failed to delete Airtable key"),
   });
 
   const loadBases = useMutation({
@@ -226,10 +254,11 @@ export function AirtableSyncTab({ orgId, get, set }: Props) {
         <CardHeader>
           <CardTitle className="font-display">Airtable Sync</CardTitle>
           <CardDescription>
-            Pull show schedules from Airtable on a regular interval. The sync runs on a pg_cron schedule — enable this toggle to allow the cron job to process records. Save the key, then load the base/table from Airtable.
+            Pull show schedules from Airtable on a schedule. Follow the steps below: save your API key, load the base &amp; table, then map fields and link your catalog. Sync runs every few minutes once enabled.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">
+          {/* Enable toggle */}
           <div className="flex items-center justify-between">
             <div>
               <Label className="font-medium">Enable Airtable sync</Label>
@@ -237,21 +266,82 @@ export function AirtableSyncTab({ orgId, get, set }: Props) {
             </div>
             <Switch checked={!!get("airtable_sync_enabled", false)} onCheckedChange={(v) => set("airtable_sync_enabled", v)} />
           </div>
+
+          {!!get("airtable_sync_enabled", false) && !keyStatusQ.isLoading && !keyPresent && (
+            <Alert variant="destructive">
+              <AlertDescription>Sync is on but no API key is saved — the poll can't run until you add a key below.</AlertDescription>
+            </Alert>
+          )}
+
           <Separator />
-          {/* Write-only: the key is stored in Vault and never read back into the UI. */}
-          <div className="space-y-2">
-            <Label htmlFor="airtable-key">Airtable API key</Label>
-            <div className="flex gap-2">
-              <Input id="airtable-key" type="password" autoComplete="off" placeholder="key… (write-only)" value={airtableKey} onChange={(e) => setAirtableKey(e.target.value)} />
-              <Button onClick={() => saveKey.mutate()} disabled={saveKey.isPending}>Save key</Button>
+
+          {/* Step 1 — API key (write-only: stored in Vault, never read back into the UI) */}
+          <div className="space-y-3">
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="flex h-6 w-6 items-center justify-center rounded-full bg-muted text-xs font-medium text-muted-foreground">1</span>
+              <Label className="font-medium">API key</Label>
+              {keyStatusQ.isLoading ? null : keyPresent ? (
+                <Badge variant="secondary" className="gap-1"><CheckCircle2 className="h-3 w-3" /> Saved</Badge>
+              ) : (
+                <Badge variant="outline" className="gap-1 text-muted-foreground"><KeyRound className="h-3 w-3" /> Not set</Badge>
+              )}
+              {keyPresent && keyStatusQ.data?.updatedAt && (
+                <span className="text-xs text-muted-foreground">updated {formatDateDMY(new Date(keyStatusQ.data.updatedAt))}</span>
+              )}
             </div>
-            <p className="text-sm text-muted-foreground">Stored encrypted; never displayed. Required for Airtable sync.</p>
+
+            {keyPresent && !replacing ? (
+              <div className="flex items-center justify-between gap-2 rounded-md border border-border px-3 py-2">
+                <span className="flex items-center gap-2 text-sm text-muted-foreground"><Lock className="h-4 w-4" /> ••••••••••</span>
+                <div className="flex gap-2">
+                  <Button variant="outline" size="sm" onClick={() => setReplacing(true)}>Replace</Button>
+                  <AlertDialog>
+                    <AlertDialogTrigger asChild>
+                      <Button variant="ghost" size="sm" className="text-destructive hover:text-destructive" disabled={deleteKey.isPending}>
+                        <Trash2 className="mr-1 h-4 w-4" /> Delete
+                      </Button>
+                    </AlertDialogTrigger>
+                    <AlertDialogContent>
+                      <AlertDialogHeader>
+                        <AlertDialogTitle>Delete the Airtable API key?</AlertDialogTitle>
+                        <AlertDialogDescription>Sync stops working until a new key is saved. The key is removed from the encrypted vault. This cannot be undone.</AlertDialogDescription>
+                      </AlertDialogHeader>
+                      <AlertDialogFooter>
+                        <AlertDialogCancel>Cancel</AlertDialogCancel>
+                        <AlertDialogAction onClick={() => deleteKey.mutate()}>Delete key</AlertDialogAction>
+                      </AlertDialogFooter>
+                    </AlertDialogContent>
+                  </AlertDialog>
+                </div>
+              </div>
+            ) : (
+              <>
+                <div className="flex gap-2">
+                  <Input id="airtable-key" type="password" autoComplete="off" placeholder={keyPresent ? "Enter a new key…" : "key… (write-only)"} value={airtableKey} onChange={(e) => setAirtableKey(e.target.value)} />
+                  <Button onClick={() => saveKey.mutate()} disabled={saveKey.isPending}>{keyPresent ? "Update" : "Save key"}</Button>
+                  {keyPresent && replacing && (
+                    <Button variant="ghost" onClick={() => { setReplacing(false); setAirtableKey(""); }}>Cancel</Button>
+                  )}
+                </div>
+                <p className="text-sm text-muted-foreground">Stored encrypted in Vault; never displayed. Required for Airtable sync.</p>
+              </>
+            )}
           </div>
+
           <Separator />
+
+          {/* Step 2 — base & table */}
           <div className="space-y-4">
-            <Button variant="outline" onClick={() => loadBases.mutate()} disabled={loadBases.isPending || !orgId}>
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="flex h-6 w-6 items-center justify-center rounded-full bg-muted text-xs font-medium text-muted-foreground">2</span>
+              <Label className="font-medium">Base &amp; table</Label>
+              {schemaState === "accessible" && <Badge variant="secondary" className="gap-1"><CheckCircle2 className="h-3 w-3" /> Schema connected</Badge>}
+              {schemaState === "fallback" && <Badge variant="outline">Manual mode</Badge>}
+            </div>
+            <Button variant="outline" onClick={() => loadBases.mutate()} disabled={loadBases.isPending || !orgId || !keyPresent}>
               {loadBases.isPending ? "Loading…" : "Load from Airtable"}
             </Button>
+            {!keyPresent && <p className="text-xs text-muted-foreground">Save an API key first to load bases &amp; tables.</p>}
             {schemaState === "accessible" ? (
               <div className="grid grid-cols-1 gap-4">
                 <div className="space-y-2">
@@ -269,15 +359,13 @@ export function AirtableSyncTab({ orgId, get, set }: Props) {
                   </Select>
                 </div>
               </div>
-            ) : (
+            ) : schemaState === "fallback" ? (
               <>
-                {schemaState === "fallback" && (
-                  <Alert>
-                    <AlertDescription>
-                      Your Airtable key lacks the <code>schema.bases:read</code> scope. Grant it to pick base/table/fields from dropdowns; until then, type the names below.
-                    </AlertDescription>
-                  </Alert>
-                )}
+                <Alert>
+                  <AlertDescription>
+                    Your Airtable key lacks the <code>schema.bases:read</code> scope. Grant it to pick base/table/fields from dropdowns; until then, type the names below.
+                  </AlertDescription>
+                </Alert>
                 <div className="grid grid-cols-1 gap-4">
                   <div className="space-y-2">
                     <Label>Airtable base ID</Label>
@@ -289,7 +377,7 @@ export function AirtableSyncTab({ orgId, get, set }: Props) {
                   </div>
                 </div>
               </>
-            )}
+            ) : null}
           </div>
         </CardContent>
       </Card>
@@ -298,7 +386,7 @@ export function AirtableSyncTab({ orgId, get, set }: Props) {
       {selectedTable && (
         <Card>
           <CardHeader>
-            <CardTitle className="font-display">Field mapping</CardTitle>
+            <CardTitle className="font-display">3 · Field mapping</CardTitle>
             <CardDescription>
               Map each ShowFlow field to a column in <strong>{selectedTable.name}</strong>. Catalog links are keyed on the <strong>Sub-program</strong> option — map the Sub-program field to enable linking below.
             </CardDescription>
@@ -415,7 +503,7 @@ export function AirtableSyncTab({ orgId, get, set }: Props) {
       {selectedTable && (fieldMap.sub_program || fieldMap.city) && (
         <Card>
           <CardHeader>
-            <CardTitle className="font-display">Catalog links</CardTitle>
+            <CardTitle className="font-display">4 · Catalog links</CardTitle>
             <CardDescription>
               "Import all" creates a ShowFlow show/city for each unlinked Airtable option (new shows start with no slot config — set counts in the Shows tab). The sync resolves records against these links; anything unlinked is held, never dropped.
             </CardDescription>
