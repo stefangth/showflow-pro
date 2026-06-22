@@ -12,6 +12,7 @@ import { expect, test } from "@playwright/test";
 import { loginAs, loginAsAndAwaitDashboard, navViaSidebar } from "./helpers/auth";
 import { deleteUserByEmail } from "./helpers/users";
 import { tagEmail } from "./helpers/supabase";
+import { seedConsent } from "./helpers/consent";
 import {
   cleanupBookingFixture,
   confirmedNotificationsSince,
@@ -57,6 +58,14 @@ test.describe("Flow B — booking lifecycle", () => {
     await deleteUserByEmail(ARTIST_EMAIL);
   });
 
+  // Pre-decide cookie consent so the bottom-fixed CookieConsentBanner never
+  // renders. It overlaps page-bottom controls (intercepting Playwright clicks),
+  // and its "Accept all" button would otherwise also match the /accept/i offer
+  // locator below — making `.first()` ambiguous. Matches the other UI specs.
+  test.beforeEach(async ({ page }) => {
+    await seedConsent(page);
+  });
+
   test("artist sees the pending offer and accepts it", async ({ page }) => {
     await loginAsAndAwaitDashboard(page, ARTIST_EMAIL, ARTIST_PASSWORD);
     // Sidebar link is artist-gated → click it instead of goto'ing so we don't
@@ -64,24 +73,31 @@ test.describe("Flow B — booking lifecycle", () => {
     await navViaSidebar(page, /^availability$/i);
 
     // The row for our seeded date renders an Accept button via OfferResponseButtons.
+    // With consent pre-seeded (beforeEach) the cookie banner is gone, so /accept/i
+    // no longer matches its "Accept all" button — only offer Accept buttons remain.
+    // The fixture seeds one booking, so there's a single such button; .first() is
+    // defensive against a future fixture seeding more.
     const acceptButton = page.getByRole("button", { name: /accept/i }).first();
     await expect(acceptButton).toBeVisible({ timeout: 15_000 });
 
-    // The first click can land before React has wired the button's onClick handler
-    // (hydration race right after navigation), silently swallowing it — no PATCH
-    // fires and the offer stays "pending". Retry click → assert until the accept
-    // actually takes effect. The button disappears once the booking flips to
-    // soft_booked, so guard the re-click on its visibility (the toast is the success
-    // signal either way). sonner renders the toast text twice (visible div +
-    // aria-live announcement), so scope to the first match to avoid a strict-mode
-    // violation.
+    // Retry the click until it takes effect, then wait on DURABLE state — the
+    // Accept button disappearing — not the transient sonner toast. Accepting flips
+    // the booking out of "suggested", which unmounts OfferResponseButtons, so the
+    // button is gone for good: a monotonic signal `toPass` converges on. (The old
+    // toast assertion flaked because sonner auto-dismisses "Offer accepted", so a
+    // slow CI run could miss the 20s window. The deeper intermittent cause — the
+    // offer button rendering with bookingId=undefined and the accept erroring — was
+    // a React Query key collision fixed in AvailabilityPage/ArtistDashboard/
+    // ArtistBookingsView, not a test-timing issue.) Guarding the re-click on
+    // visibility stops us clicking once the accept lands, so no duplicate PATCH.
     await expect(async () => {
       if (await acceptButton.isVisible()) {
         await acceptButton.click();
       }
-      await expect(page.getByText(/offer accepted/i).first()).toBeVisible({ timeout: 2_000 });
+      await expect(acceptButton).toBeHidden({ timeout: 2_000 });
     }).toPass({ timeout: 20_000 });
 
+    // Ground-truth check on the persisted state the disappearing button stands in for.
     const booking = await getLatestBooking(fixture.artistId);
     expect(booking?.status).toBe("soft_booked");
   });
@@ -96,13 +112,24 @@ test.describe("Flow B — booking lifecycle", () => {
     await expect(dateRow).toBeVisible({ timeout: 15_000 });
     await dateRow.click();
 
-    // ShowDateDetailSheet renders a Confirm button on each soft_booked row.
+    // ShowDateDetailSheet renders a Confirm button only on a soft_booked row
+    // (`b.status === 'soft_booked' && …`), so it unmounts once the booking flips
+    // to confirmed — the same durable signal we lean on above. Retry the click
+    // (the sheet mounts its content after the row click, so the first click can
+    // race the button) and wait for it to disappear instead of the transient
+    // "Booking updated" toast. The fixture has one soft_booked booking, so a
+    // single Confirm button; .first() is defensive.
     const confirmButton = page.getByRole("button", { name: /^confirm$/i }).first();
     await expect(confirmButton).toBeVisible({ timeout: 15_000 });
-    await confirmButton.click();
 
-    await expect(page.getByText(/booking updated/i)).toBeVisible({ timeout: 10_000 });
+    await expect(async () => {
+      if (await confirmButton.isVisible()) {
+        await confirmButton.click();
+      }
+      await expect(confirmButton).toBeHidden({ timeout: 2_000 });
+    }).toPass({ timeout: 20_000 });
 
+    // Ground-truth check on the persisted state the disappearing button stands in for.
     const booking = await getLatestBooking(fixture.artistId);
     expect(booking?.status).toBe("confirmed");
   });

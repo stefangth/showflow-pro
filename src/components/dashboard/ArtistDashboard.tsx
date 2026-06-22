@@ -21,8 +21,11 @@ export function ArtistDashboard() {
   const { data: artist } = useMyArtist();
   const { data: eligibleDates } = useArtistEligibleDates();
 
+  // Distinct cache key per projection (this selects no `id`). A shared key let
+  // different `select` shapes clobber each other in the React Query cache — see
+  // the note in AvailabilityPage.
   const { data: myBookings } = useQuery({
-    queryKey: ['bookings', 'artist-all', artist?.id],
+    queryKey: ['bookings', 'artist-dashboard', artist?.id],
     enabled: !!artist?.id,
     queryFn: async () => {
       const { data } = await supabase

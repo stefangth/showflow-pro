@@ -75,8 +75,14 @@ function ArtistAvailability() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [filter]);
 
+  // NOTE: distinct cache key from the other artist-bookings queries. This one
+  // selects `id` (required to accept/decline an offer); ArtistDashboard and
+  // ArtistBookingsView select narrower, id-less shapes. React Query caches by
+  // key (not by `select`), so sharing one key let an id-less projection clobber
+  // this slot — OfferResponseButtons then fired `update().eq('id', undefined)`.
+  // Keep one key per projection.
   const { data: myBookings } = useQuery({
-    queryKey: ['bookings', 'artist-all', artist?.id],
+    queryKey: ['bookings', 'artist-offers', artist?.id],
     enabled: !!artist?.id,
     queryFn: async () => {
       const { data } = await supabase
