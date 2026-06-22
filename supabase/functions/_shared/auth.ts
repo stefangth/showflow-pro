@@ -54,7 +54,7 @@ export async function requireRole(deps: Deps, req: Request, roles: string[]): Pr
 /**
  * Validate a user JWT and require one of `roles` WITHIN a specific org.
  *
- * Used by org-scoped admin endpoints (e.g. admin-set-role) so an admin of one org
+ * Used by org-scoped admin endpoints (e.g. airtable-schema) so an admin of one org
  * cannot act on another. Platform admins (super-admins) bypass the org gate so
  * god-mode works on org-scoped endpoints (mirrors the SQL is_super_admin short-circuit).
  */
