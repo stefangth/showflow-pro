@@ -879,27 +879,6 @@ export default function SettingsPage() {
         <TabsContent value="scheduling" className="mt-4 space-y-6">
           <Card>
             <CardHeader>
-              <CardTitle className="font-display">Soft-Book Expiry</CardTitle>
-              <CardDescription>
-                Soft bookings that aren't confirmed within this window are automatically cancelled by a scheduled database job.
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-2 max-w-xs">
-                <Label>Expiry window (hours)</Label>
-                <Input
-                  type="number"
-                  min={1}
-                  value={get('soft_book_expiry_hours', 48)}
-                  onChange={e => set('soft_book_expiry_hours', Number(e.target.value))}
-                />
-                <p className="text-xs text-muted-foreground">Default: 48 hours. The job runs every hour on the hour.</p>
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader>
               <CardTitle className="font-display">Slots per Show</CardTitle>
               <CardDescription>
                 Set the main cast and understudy slot counts for each show. A date can only reach <em>fully filled</em> once its show has both values set.
