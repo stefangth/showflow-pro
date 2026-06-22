@@ -2,6 +2,18 @@
 
 What's new in ShowFlow, newest first.
 
+## 1.5.0 — June 22, 2026
+
+*Your data, your choices*
+
+### New
+- **Notification preferences** — Choose exactly how you hear about offers, confirmations, schedule changes, and alerts, with separate email and in-app switches for each. Critical account emails are always delivered.
+- **Download my data** — Export a complete copy of your personal data (profile, talent records, bookings, availability, messages, and notifications) as a JSON file from your profile.
+- **Delete account** — Permanently delete your account from your profile. Your personal details are removed while shared booking history is kept but de-identified.
+
+### Improved
+- **Organization tools (admins)** — Platform admins can now export an organization's full dataset and permanently delete an organization from the console.
+
 ## 1.4.0 — June 21, 2026
 
 *Integrations & automation*

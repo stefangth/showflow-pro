@@ -1,5 +1,33 @@
 [
   {
+    "version": "1.5.0",
+    "date": "2026-06-22",
+    "dateLabel": "June 22, 2026",
+    "title": "Your data, your choices",
+    "changes": {
+      "new": [
+        {
+          "title": "Notification preferences",
+          "description": "Choose exactly how you hear about offers, confirmations, schedule changes, and alerts, with separate email and in-app switches for each. Critical account emails are always delivered."
+        },
+        {
+          "title": "Download my data",
+          "description": "Export a complete copy of your personal data (profile, talent records, bookings, availability, messages, and notifications) as a JSON file from your profile."
+        },
+        {
+          "title": "Delete account",
+          "description": "Permanently delete your account from your profile. Your personal details are removed while shared booking history is kept but de-identified."
+        }
+      ],
+      "improved": [
+        {
+          "title": "Organization tools (admins)",
+          "description": "Platform admins can now export an organization's full dataset and permanently delete an organization from the console."
+        }
+      ]
+    }
+  },
+  {
     "version": "1.4.0",
     "date": "2026-06-21",
     "dateLabel": "June 21, 2026",
