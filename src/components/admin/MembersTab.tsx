@@ -56,11 +56,12 @@ export function MembersTab() {
                     return (
                       <button
                         key={r}
+                        disabled={setRole.isPending}
                         onClick={() => setRole.mutate(
                           { userId: m.user_id, role: r, action: has ? "remove" : "add" },
                           { onSuccess: () => toast.success("Role updated"), onError: (e) => toast.error((e as Error).message) },
                         )}
-                        className="flex items-center w-full px-2 py-1.5 text-sm rounded hover:bg-muted text-left capitalize"
+                        className="flex items-center w-full px-2 py-1.5 text-sm rounded hover:bg-muted text-left capitalize disabled:opacity-50 disabled:cursor-not-allowed"
                       >
                         <Check className={cn("h-4 w-4 mr-2", has ? "opacity-100" : "opacity-0")} />
                         {r}
