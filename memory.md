@@ -6,7 +6,7 @@
 
 ## Current date
 
-2026-06-08
+2026-06-22
 
 ---
 
@@ -15,8 +15,7 @@
 | Branch | Purpose |
 |--------|---------|
 | `main` | Production — never push directly |
-| `dev` | Integration target for PRs |
-| `claude/tender-bohr-rlyNm` | Current Claude Code session (docs update) |
+| `claude/tender-bohr-tk53cb` | Current Claude Code session (docs update) |
 
 ---
 
@@ -84,13 +83,21 @@ Edge functions additionally use `SUPABASE_SERVICE_ROLE_KEY` (set in Supabase das
 
 | Date | Change |
 |------|--------|
-| 2026-06-08 | Updated `CLAUDE.md` and `memory.md` — documented multi-tenancy phases 1–5 (per-org settings, super-admin model, platform console, `src/data/` layer, new hooks/pages/edge functions) |
-| 2026-06-05 | Multi-tenancy Phase 5 (#94) — ProfilePage + ResetPasswordPage implemented, `useMyProfile`, MembersTab, `resend-invitation` edge function, invite unification |
-| 2026-06-04 | Multi-tenancy Phase 4 (#92) — Platform console (`/platform` route, `PlatformPage`, `components/platform/`, `provision-org` edge function, super-admin model, `isSuperAdmin` in AuthContext) |
-| 2026-06-04 | Multi-tenancy Phase 3 (#91) — all cron/booking-engine edge functions org-aware, per-org Airtable Vault key, `org_id` derivation triggers, `_shared/settings.ts` |
-| 2026-06-04 | Multi-tenancy Phase 2 (#90) — `app_settings` per-org schema, `get_org_setting` DB function, `resolveOrgSetting` / `upsertOrgSetting` in frontend + edge, per-org editor config |
-| 2026-05-30 | Updated `CLAUDE.md` and `memory.md` — documented GDPR consent system |
+| 2026-06-22 | Updated `CLAUDE.md` and `memory.md` — documented custom fields, schedule-change notifications, offer tier management, `close-offer-tier`, show date cancellation via Airtable, new data domains and lib utilities, `APP_META`/`ROLES` constants |
+| 2026-06-22 | Centralize hardcoded values (#114/#115) — `BOOKING_ENGINE_DEFAULTS` in `app.config.ts`, `APP_META`, `ROLES`; Platform → Defaults tab (`fetchPlatformBookingDefaults` / `savePlatformBookingDefaults`) |
+| 2026-06-22 | Brand refactor (#112/#113) — brand written as "ShowFlow" across UI and transactional emails |
+| 2026-06-22 | Immersive login page (#111) — hero image, marketing CTA |
+| 2026-06-22 | Offer tier management (#109) — `close-offer-tier` edge function, Offers card with open/close actions in `ShowDateDetailSheet` |
+| 2026-06-20 | Schedule-change notifications — `show_date_change_log` table + trigger, `_shared/scheduleChanges.ts`, confirmation digest includes schedule-change section |
+| 2026-06-20 | Show date cancellation — `airtable-poll` sets `status='cancelled'` via `status_field`/`cancelled_value` field map; `cancellation_reason_field` optional |
+| 2026-06-18 | Custom fields (Phase 6) — `custom_field_definitions` table, `src/data/customFields.ts`, `src/lib/customFields.ts`, `CustomFieldFilter` component |
+| 2026-06-17 | Airtable sync cities + merge — `src/data/cities.ts`, `merge_cities` RPC, city-link auto-match on import |
+| 2026-06-17 | Airtable data-access modules — `src/data/airtableMapping.ts`, `airtableSchema.ts`, `airtableSync.ts` |
+| 2026-06-16 | Booking integrity guards — `bookings_active_artist_date_uniq` partial index, `derive_org_id_for_booking()` trigger |
+| 2026-06-08 | Updated `CLAUDE.md` and `memory.md` — documented multi-tenancy phases 1–5 |
+| 2026-06-05 | Multi-tenancy Phase 5 (#94) — ProfilePage + ResetPasswordPage, `useMyProfile`, MembersTab, `resend-invitation`, invite unification |
+| 2026-06-04 | Multi-tenancy Phase 4 (#92) — Platform console, `provision-org`, super-admin model |
+| 2026-06-04 | Multi-tenancy Phase 3 (#91) — org-aware cron/digests/email/Airtable, per-org Vault key |
+| 2026-06-04 | Multi-tenancy Phase 2 (#90) — `app_settings` per-org schema, `resolveOrgSetting` / `upsertOrgSetting` |
 | 2026-05-28 | Added GDPR privacy policy, impressum, and cookie consent system (#65) |
-| 2026-05-28 | Show inline error on failed login, hid Google sign-in button (#64) |
-| 2026-05-28 | Fixed cast inheritance invalidation chain (#62) |
 | 2026-04-26 | Created `CLAUDE.md`, `memory.md`; built `src/features/editor/`; restored `ArtistsPage` |
