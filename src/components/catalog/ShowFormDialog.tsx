@@ -24,7 +24,7 @@ const schema = z.object({
 }).refine((v) => !!(v.program || v.subProgram), { message: "Program or sub-program required", path: ["program"] });
 type FormValues = z.infer<typeof schema>;
 
-const toSlot = (s: string | undefined): number | null => (s && s.trim() !== "" ? parseInt(s, 10) : null);
+const toSlot = (s: string | undefined): number | null => (s != null && s.trim() !== "" ? parseInt(s, 10) : null);
 
 export function ShowFormDialog({
   open, onOpenChange, show, allShows, onSaved,
