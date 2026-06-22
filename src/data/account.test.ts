@@ -18,10 +18,25 @@ describe("deleteMyAccount", () => {
     expect(fake.calls).toContainEqual({ table: "fn:delete-my-account", method: "invoke", args: [{}] });
   });
 
-  it("throws a friendly message on the last-admin block", async () => {
+  it("throws a friendly message on the last-admin block (409 with error body)", async () => {
+    // the edge fn now returns 409; supabase-js surfaces it as a FunctionsHttpError
+    // whose `.context` is the Response carrying the JSON body.
     const fake = createFakeSupabase({
-      "fn:delete-my-account": { data: { error: "last_admin", org_name: "Acme" }, error: null },
+      "fn:delete-my-account": {
+        data: null,
+        error: { context: { json: async () => ({ error: "last_admin", org_name: "Acme" }) } },
+      },
     });
     await expect(deleteMyAccount(fake as never)).rejects.toThrow(/last admin of Acme/i);
+  });
+
+  it("translates a server failure code (500) into a friendly message", async () => {
+    const fake = createFakeSupabase({
+      "fn:delete-my-account": {
+        data: null,
+        error: { context: { json: async () => ({ error: "anonymize_failed" }) } },
+      },
+    });
+    await expect(deleteMyAccount(fake as never)).rejects.toThrow(/something went wrong removing your data/i);
   });
 });

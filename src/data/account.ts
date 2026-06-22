@@ -11,8 +11,18 @@ export async function exportMyData(client: SupabaseClient<Database>): Promise<un
 /** Permanently delete the current user's account (anonymize-and-retain + auth delete). */
 export async function deleteMyAccount(client: SupabaseClient<Database>): Promise<void> {
   const { data, error } = await client.functions.invoke("delete-my-account", { body: {} });
-  if (error) throw error;
-  const payload = data as { error?: string; org_name?: string } | null;
+  // Handled errors come back as 4xx/5xx with a JSON body. supabase-js surfaces those as
+  // `error` (FunctionsHttpError) with the Response in `error.context`; success/None as `data`.
+  let payload = (data ?? null) as { error?: string; org_name?: string } | null;
+  if (error) {
+    try {
+      const ctx = (error as { context?: Response }).context;
+      payload = ctx ? await ctx.json() : null;
+    } catch {
+      payload = null;
+    }
+    if (!payload?.error) throw error; // genuine transport / unknown error
+  }
   if (payload?.error) {
     if (payload.error === "last_admin") {
       throw new Error(
