@@ -83,7 +83,9 @@ src/
     platform/      # Super-admin platform console UI (OrganizationsTab, PlatformAdminsTab,
                    #   PlatformDefaultsTab, EditOrgDialog, NewOrgDialog, OrgInvitePopover,
                    #   OrgMembersPopover) + pure utilities (platformFormat.ts, templateText.ts)
-    shows/         # ShowDateDetailSheet — the full per-date booking management surface
+    catalog/       # Production catalog CRUD: ShowFormDialog (create/edit shows) + ProductionsPage support
+    shows/         # ShowDateDetailSheet — the full per-date booking management surface;
+                   #   ShowDateFormDialog — create/edit show_dates (in-app)
     settings/      # AirtableSyncTab — Settings → Airtable Sync tab (schema-driven mapping + catalog linking)
     layout/        # AppLayout (sidebar + topbar shell), NotificationsList (notification bell popover)
     ui/            # shadcn primitives — DO NOT edit by hand, regenerate via shadcn
@@ -92,7 +94,7 @@ src/
   data/            # Data-access layer: fetchX(client, args) / mutateX(client, args) functions
                    #   that take the Supabase client as a parameter. Hooks are thin wrappers.
                    #   Domains: artists, invitations, members, notifications, orgs, platform,
-                   #   profiles, settings, skills. Test with supabaseFake.ts (never vi.mock the client).
+                   #   profiles, settings, shows, showDates, skills. Test with supabaseFake.ts (never vi.mock the client).
   features/
     auth/          # AuthContext (org-aware: currentOrg/orgs/switchOrg, isSuperAdmin),
                    #   ProtectedRoute (org gate → NoOrgScreen / SuspendedOrgScreen;
@@ -113,16 +115,19 @@ src/
                    #   useArtistEligibleDates, useSettingsWarnings,
                    #   useSkills/useArtistSkills, useNotifications/useMarkNotificationRead/
                    #   useMarkAllNotificationsRead, useMyProfile/useUpdateMyProfile,
-                   #   useOrgMembers/useRemoveOrgMember) + UI hooks (use-mobile, use-toast)
+                   #   useOrgMembers/useRemoveOrgMember,
+                   #   useShows/useShowDates/useCities) + UI hooks (use-mobile, use-toast)
   integrations/
     supabase/
       client.ts    # Single shared Supabase client
       types.ts     # AUTO-GENERATED — never edit
   lib/             # Shared utilities: utils.ts (cn helper), dates.ts (parseDateOnly,
                    #   formatDateDMY, formatDateWithWeekday, toDateKey — all timezone-safe),
-                   #   avatar.ts, bookings.ts, settings.ts (dedupeProgramPairs, effectiveSlots)
+                   #   avatar.ts, bookings.ts, catalog.ts (isSyncedShow/Date, canHardDeleteShow/Date),
+                   #   settings.ts (dedupeProgramPairs, effectiveSlots)
   pages/           # One file per route, default-exported
                    #   Key pages: DashboardPage, ShowsBookingsPage (ROUTES.BOOKINGS),
+                   #   ProductionsPage (ROUTES.PRODUCTIONS) — admin+producer catalog CRUD + drag-reorder,
                    #   ArtistsPage (admin+producer), AvailabilityPage (artist),
                    #   AdminPage, SettingsPage, ChatsListPage
                    #   ProfilePage (ROUTES.PROFILE) — user profile + in-app password change
@@ -143,7 +148,7 @@ supabase/
 
 ### Key decisions
 
-- **Single source of truth for routes/flags:** `src/config/app.config.ts`. Reference `ROUTES.X` rather than string literals. `CHAT_ARCHIVE_DAYS` (30) hides chats from the list and gates write access after a show date passes (chats older than 30 days are hidden from `ChatsListPage` for non-admins and made read-only in `ChatPanel`). Note: `ROUTES.SHOWS` (`/shows`) has been removed — the `/shows` path no longer exists.
+- **Single source of truth for routes/flags:** `src/config/app.config.ts`. Reference `ROUTES.X` rather than string literals. `CHAT_ARCHIVE_DAYS` (30) hides chats from the list and gates write access after a show date passes (chats older than 30 days are hidden from `ChatsListPage` for non-admins and made read-only in `ChatPanel`). Note: `ROUTES.SHOWS` (`/shows`) has been removed — the `/shows` path no longer exists. `ROUTES.PRODUCTIONS` (`/productions`) is the in-app catalog management page (admin + producer).
 - **Admin-tunable settings live in the DB:** the `app_settings` table (key/value JSONB, `org_id` column) is edited via the Settings page. Static developer-only constants stay in `app.config.ts`. Settings are **per-org with platform-default fallback**: `get_org_setting(_key, _org)` (DB) / `resolveOrgSetting(client, orgId, key, fallback)` (frontend in `src/data/settings.ts`; edge functions in `_shared/settings.ts`) returns the org's own row when it exists, otherwise the platform-default row (`org_id IS NULL`). Write org overrides with `upsertOrgSetting`; write platform defaults with `savePlatformSetting` (super-admin only). The schema key is `ON CONFLICT (org_id, key)`.
 - **Onboarding is invite-only.** There is no public signup and no approval queue. An org admin invites a person by email via the `create-invitation` edge function (inserts `org_invitations` + sends the `org-invitation` email with an `/accept-invite?token=` link); the invitee accepts via the `accept_invitation` SECURITY DEFINER RPC, which writes their `org_memberships` row. `ProtectedRoute` gates on membership: no active org → `NoOrgScreen`; suspended org → `SuspendedOrgScreen`. (The old `user_approvals` / `ApprovalGate` / `admin-decide-approval` flow was retired.)
 - **Role checks are always server-enforced via RLS.** The client `useAuth().hasRole(...)` is for UX only (hiding nav, gating pages); never trust it for data access.
@@ -152,8 +157,8 @@ supabase/
 - **Chat is per show-date.** One `chats` row per `show_date_id`; participation is gated by `is_chat_participant(chat_id, user_id)` (admins, producers, and artists booked/soft-booked for that date). After `CHAT_ARCHIVE_DAYS` days, chats are hidden from `ChatsListPage` for non-admins and become read-only in `ChatPanel` (admins can still view the archived thread).
 - **Artist availability is gated by eligibility.** Artists can only declare availability on dates returned by `useArtistEligibleDates` (derived from cast eligibility). Non-eligible dates render non-interactively in the calendar.
 - **`show_dates.status` is DB-computed.** A Postgres trigger (`sync_show_date_status_trigger` on `bookings`) automatically sets status to `open | partially_filled | fully_filled` based on confirmed booking counts vs the `main_cast_slots` + `understudy_slots` columns on `shows`. Only `cancelled` is set by mutations directly. Do not set status manually in client code. A trigger on `shows` recomputes that show's dates when its `program`, `sub_program`, `main_cast_slots`, or `understudy_slots` change.
-- **Slot capacity lives on `shows`.** Each show row carries `main_cast_slots` and `understudy_slots` (nullable smallint; `NULL` = unconfigured → the date never reaches `fully_filled` and the UI shows an "Unconfigured" badge). There is no `slots_per_date` column and no `app_settings.sub_program_slots_defaults`. The frontend reads these columns via `showSlots(show)` (from `src/lib/settings.ts`) on the already-joined show row — no separate query needed.
-- **No UI for creating show dates.** The create-show-date flow was intentionally removed. New show_dates must be inserted via the Supabase dashboard or a future admin-only flow.
+- **Slot capacity lives on `shows`.** Each show row carries `main_cast_slots` and `understudy_slots` (nullable smallint; `NULL` = unconfigured → the date never reaches `fully_filled` and the UI shows an "Unconfigured" badge). There is no `slots_per_date` column and no `app_settings.sub_program_slots_defaults`. The frontend reads these columns via `showSlots(show)` (from `src/lib/settings.ts`) on the already-joined show row — no separate query needed. Slot configuration is edited on the **Productions** page (the old Settings → Scheduling editor was replaced by a pointer); `shows.sort_order` (smallint) drives the Productions drag-reorder.
+- **In-app catalog & date management.** Admins/producers create/edit/archive/reorder **productions** (`shows`) on the **Productions** page (`ROUTES.PRODUCTIONS`, `/productions`) and create/edit/cancel/delete **show_dates** via `ShowDateFormDialog` (create) + `ShowDateDetailSheet` (edit/cancel/delete). Airtable-synced rows are **locked** for the fields the poll manages (synced dates: date/sessions/venue/city/status read-only, notes editable; synced shows: program/sub_program read-only, slots/description/category editable); manual rows are fully editable. Deletes are gated: a date hard-deletes only with **zero bookings** (otherwise **Cancel**, which cascades booking release + notifies); a show hard-deletes only with **zero dates** (otherwise **Archive**) — note `show_dates.show_id` is `ON DELETE CASCADE`. Data-access: `src/data/shows.ts`, `src/data/showDates.ts`; pure guards: `src/lib/catalog.ts` (`isSyncedShow/Date`, `canHardDeleteShow/Date`).
 - **Booking detail surface: `ShowDateDetailSheet`.** The full booking management experience (date config, assigned artists, available artists, chat) lives in `src/components/shows/ShowDateDetailSheet.tsx`. There is no standalone `/shows/:id` page — `ShowDetailPage` and `ShowDetailSheet` have been deleted.
 - **Audit trail:** all booking status changes append to `booking_audit_log`. Never delete from this table.
 - **Identity vs. booking contact (ADR-0011).** `profiles` (global, per auth user) owns login-user
