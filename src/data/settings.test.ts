@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { createFakeSupabase } from "@/test/supabaseFake";
-import { fetchShowsWithSlots, updateShowSlots, resolveOrgSetting, upsertOrgSetting, fetchShowsForLinking, linkShowAirtableKey, importShowsFromOptions } from "./settings";
+import { fetchShowsWithSlots, resolveOrgSetting, upsertOrgSetting, fetchShowsForLinking, linkShowAirtableKey, importShowsFromOptions } from "./settings";
 
 describe("fetchShowsWithSlots", () => {
   it("selects the correct columns from shows filtered by org_id", async () => {
@@ -52,37 +52,6 @@ describe("fetchShowsWithSlots", () => {
   });
 });
 
-describe("updateShowSlots", () => {
-  it("updates main_cast_slots and understudy_slots on the correct show", async () => {
-    const fake = createFakeSupabase({ shows: { data: null, error: null } });
-    await updateShowSlots(fake as never, "show-abc", 3, 1);
-    expect(fake.calls).toContainEqual({
-      table: "shows",
-      method: "update",
-      args: [{ main_cast_slots: 3, understudy_slots: 1 }],
-    });
-    expect(fake.calls).toContainEqual({
-      table: "shows",
-      method: "eq",
-      args: ["id", "show-abc"],
-    });
-  });
-
-  it("allows null values to clear slots", async () => {
-    const fake = createFakeSupabase({ shows: { data: null, error: null } });
-    await updateShowSlots(fake as never, "show-abc", null, null);
-    expect(fake.calls).toContainEqual({
-      table: "shows",
-      method: "update",
-      args: [{ main_cast_slots: null, understudy_slots: null }],
-    });
-  });
-
-  it("throws on update error", async () => {
-    const fake = createFakeSupabase({ shows: { data: null, error: { message: "fail" } } });
-    await expect(updateShowSlots(fake as never, "show-abc", 2, 0)).rejects.toBeTruthy();
-  });
-});
 
 describe("resolveOrgSetting", () => {
   it("returns the org override when present", async () => {

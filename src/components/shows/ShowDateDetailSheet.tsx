@@ -9,6 +9,7 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sh
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import {
@@ -29,6 +30,9 @@ import {
 import { formatDateDMY, formatTimestampDMY } from '@/lib/dates';
 import { openOfferTier, fetchOfferTiers, fetchOpenedTiers, closeOfferTier } from '@/data/bookings';
 import { ChatPanel } from '@/components/chat/ChatPanel';
+import { ShowDateFormDialog } from '@/components/shows/ShowDateFormDialog';
+import { useCancelShowDate, useDeleteShowDate } from '@/hooks/useShowDates';
+import { isSyncedDate, canHardDeleteDate } from '@/lib/catalog';
 import type { Booking, Artist, City, Cast } from '@/types';
 
 interface Props {
@@ -60,7 +64,7 @@ export function ShowDateDetailSheet({ showDateId, open, onOpenChange }: Props) {
       const { data, error } = await supabase
         .from('show_dates')
         .select(`
-          id, date, session_1, session_2, session_3, venue, status, notes, city_id, show_id, cancellation_reason,
+          id, date, session_1, session_2, session_3, venue, status, notes, city_id, show_id, cancellation_reason, airtable_record_id,
           show:shows(id, program, sub_program, main_cast_slots, understudy_slots),
           city:cities(id, name)
         `)
@@ -137,6 +141,14 @@ export function ShowDateDetailSheet({ showDateId, open, onOpenChange }: Props) {
 
   const [selectedTier, setSelectedTier] = useState<number | null>(null);
   const [closeTarget, setCloseTarget] = useState<number | null>(null);
+  const [editOpen, setEditOpen] = useState(false);
+  const [cancelReason, setCancelReason] = useState('');
+  const cancelDate = useCancelShowDate();
+  const deleteDate = useDeleteShowDate();
+  const isAdmin = hasRole('admin');
+  const bookingCount = (bookingsForDate ?? []).filter((b: { status: string }) => b.status !== 'cancelled').length;
+  const synced = showDate ? isSyncedDate(showDate) : false;
+  const deletable = isAdmin && showDate ? canHardDeleteDate({ synced, bookingCount }) : false;
 
   const tierOptions = useMemo(
     () => buildOfferTierOptions(tiersQ.data ?? { priorities: [], hasAdHoc: false }),
@@ -469,6 +481,64 @@ export function ShowDateDetailSheet({ showDateId, open, onOpenChange }: Props) {
                 </Card>
               )}
 
+              {/* Date actions (edit / cancel / delete) */}
+              {canManage && showDate.status !== 'cancelled' && (
+                <div className="flex flex-wrap items-center gap-2">
+                  <Button variant="outline" size="sm" onClick={() => setEditOpen(true)}>
+                    {synced ? 'Edit notes' : 'Edit schedule'}
+                  </Button>
+
+                  <AlertDialog>
+                    <AlertDialogTrigger asChild>
+                      <Button variant="outline" size="sm">Cancel date</Button>
+                    </AlertDialogTrigger>
+                    <AlertDialogContent>
+                      <AlertDialogHeader>
+                        <AlertDialogTitle>Cancel this date?</AlertDialogTitle>
+                        <AlertDialogDescription>
+                          This releases all bookings for this date and notifies booked artists. Add a reason:
+                        </AlertDialogDescription>
+                      </AlertDialogHeader>
+                      <Input value={cancelReason} onChange={(e) => setCancelReason(e.target.value)} placeholder="Reason (e.g. venue lost)" />
+                      <AlertDialogFooter>
+                        <AlertDialogCancel>Keep date</AlertDialogCancel>
+                        <AlertDialogAction
+                          onClick={() => cancelDate.mutate({ id: showDate.id, reason: cancelReason },
+                            { onSuccess: () => { toast.success('Date cancelled'); onOpenChange(false); },
+                              onError: (e) => toast.error((e as Error).message) })}>
+                          Cancel date
+                        </AlertDialogAction>
+                      </AlertDialogFooter>
+                    </AlertDialogContent>
+                  </AlertDialog>
+
+                  {isAdmin && (
+                    <AlertDialog>
+                      <AlertDialogTrigger asChild>
+                        <Button variant="ghost" size="sm" className="text-destructive" disabled={!deletable}
+                          title={deletable ? 'Delete date' : synced ? "Synced dates can't be deleted — cancel instead" : 'Has bookings — cancel instead'}>
+                          Delete
+                        </Button>
+                      </AlertDialogTrigger>
+                      <AlertDialogContent>
+                        <AlertDialogHeader>
+                          <AlertDialogTitle>Delete this date?</AlertDialogTitle>
+                          <AlertDialogDescription>This permanently removes the date. This cannot be undone.</AlertDialogDescription>
+                        </AlertDialogHeader>
+                        <AlertDialogFooter>
+                          <AlertDialogCancel>Cancel</AlertDialogCancel>
+                          <AlertDialogAction onClick={() => deleteDate.mutate(showDate.id,
+                            { onSuccess: () => { toast.success('Date deleted'); onOpenChange(false); },
+                              onError: (e) => toast.error((e as Error).message) })}>
+                            Delete
+                          </AlertDialogAction>
+                        </AlertDialogFooter>
+                      </AlertDialogContent>
+                    </AlertDialog>
+                  )}
+                </div>
+              )}
+
               {/* Offers */}
               {canManage && showDate.status !== 'cancelled' && (
                 <Card>
@@ -702,6 +772,18 @@ export function ShowDateDetailSheet({ showDateId, open, onOpenChange }: Props) {
 
               {/* Chat */}
               <ChatPanel showDateId={showDate.id} showDate={showDate.date} />
+
+              <ShowDateFormDialog
+                open={editOpen}
+                onOpenChange={setEditOpen}
+                mode="edit"
+                showDate={{
+                  id: showDate.id, show_id: showDate.show_id, date: showDate.date,
+                  session_1: showDate.session_1, session_2: showDate.session_2, session_3: showDate.session_3,
+                  venue: showDate.venue, city_id: showDate.city_id, notes: showDate.notes,
+                  airtable_record_id: showDate.airtable_record_id, status: showDate.status,
+                }}
+              />
             </>
           )}
         </div>

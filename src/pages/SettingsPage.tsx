@@ -21,8 +21,8 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { toast } from 'sonner';
-import { Settings as SettingsIcon, Database, Bell, Wand2, Save, SlidersHorizontal, MapPin, Plus, Trash2, Clock, AlertTriangle, BookOpen, UserCog, Eye } from 'lucide-react';
-import { upsertOrgSetting, fetchShowsWithSlots, updateShowSlots, type ShowWithSlots } from '@/data/settings';
+import { Settings as SettingsIcon, Database, Bell, Wand2, Save, SlidersHorizontal, MapPin, Plus, Trash2, Clock, BookOpen, UserCog, Eye } from 'lucide-react';
+import { upsertOrgSetting } from '@/data/settings';
 import { AirtableSyncTab } from '@/components/settings/AirtableSyncTab';
 import type { City, Cast } from '@/types';
 
@@ -59,115 +59,21 @@ type SettingRow = {
 
 type ProgramSubProgramPair = { program: string; sub_program: string };
 
-/** Per-show slot editor: renders a table of shows, each with two number inputs. */
-function ShowSlotsEditor({ orgId }: { orgId: string | null }) {
-  const qc = useQueryClient();
-
-  const { data: shows, isLoading } = useQuery({
-    queryKey: ['shows', 'with-slots', orgId],
-    enabled: !!orgId,
-    queryFn: () => fetchShowsWithSlots(supabase, orgId),
-  });
-
-  // Local edits keyed by show id: { main_cast_slots, understudy_slots }
-  const [edits, setEdits] = useState<Record<string, { main: string; us: string }>>({});
-
-  // Seed edits from fetched data whenever shows change
-  useEffect(() => {
-    if (!shows) return;
-    const next: Record<string, { main: string; us: string }> = {};
-    for (const s of shows) {
-      next[s.id] = {
-        main: s.main_cast_slots != null ? String(s.main_cast_slots) : '',
-        us: s.understudy_slots != null ? String(s.understudy_slots) : '',
-      };
-    }
-    setEdits(next);
-  }, [shows]);
-
-  const saveMutation = useMutation({
-    mutationFn: ({ showId, main, us }: { showId: string; main: number | null; us: number | null }) =>
-      updateShowSlots(supabase, showId, main, us),
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ['shows'] });
-      toast.success('Slots saved');
-    },
-    onError: (e: any) => toast.error(e.message ?? 'Failed to save'),
-  });
-
-  if (isLoading) return <p className="text-sm text-muted-foreground">Loading shows…</p>;
-
-  if (!shows || shows.length === 0) {
-    return (
-      <p className="text-sm text-muted-foreground">
-        Shows appear here once Airtable sync populates them.
-      </p>
-    );
-  }
-
-  const unconfiguredCount = shows.filter(s => s.main_cast_slots == null || s.understudy_slots == null).length;
-
+function ShowSlotsEditor() {
+  const warn = useSettingsWarnings(); // returns { schedulingWarnings, hasAnyWarning } directly
   return (
-    <div className="space-y-4">
-      {unconfiguredCount > 0 && (
-        <Alert variant="destructive">
-          <AlertTriangle className="h-4 w-4" />
+    <div className="space-y-3">
+      {warn.schedulingWarnings > 0 ? (
+        <Alert>
           <AlertDescription>
-            <strong>{unconfiguredCount}</strong> show{unconfiguredCount === 1 ? '' : 's'} ha{unconfiguredCount === 1 ? 's' : 've'} missing slot counts.
-            Bookings for these cannot reach <em>fully filled</em> until slots are set.
+            {warn.schedulingWarnings} production(s) have no slot configuration. Bookings for these can't reach
+            <em> fully filled</em> until slots are set.
           </AlertDescription>
         </Alert>
-      )}
-      <div className="grid grid-cols-[1fr_1fr_80px_80px_auto] gap-2 text-xs text-muted-foreground px-1">
-        <span>Program</span>
-        <span>Sub-program</span>
-        <span className="text-center">Main cast</span>
-        <span className="text-center">Understudies</span>
-        <span />
-      </div>
-      <div className="space-y-2">
-        {shows.map(show => {
-          const local = edits[show.id] ?? { main: '', us: '' };
-          const isDirty =
-            local.main !== (show.main_cast_slots != null ? String(show.main_cast_slots) : '') ||
-            local.us !== (show.understudy_slots != null ? String(show.understudy_slots) : '');
-          return (
-            <div key={show.id} className="grid grid-cols-[1fr_1fr_80px_80px_auto] items-center gap-2">
-              <span className="text-sm font-medium truncate">{show.program ?? '—'}</span>
-              <span className="text-sm text-muted-foreground truncate">{show.sub_program ?? '—'}</span>
-              <Input
-                type="number"
-                min={0}
-                className="text-center h-8"
-                value={local.main}
-                placeholder="—"
-                onChange={e => setEdits(d => ({ ...d, [show.id]: { ...d[show.id], main: e.target.value } }))}
-              />
-              <Input
-                type="number"
-                min={0}
-                className="text-center h-8"
-                value={local.us}
-                placeholder="—"
-                onChange={e => setEdits(d => ({ ...d, [show.id]: { ...d[show.id], us: e.target.value } }))}
-              />
-              <Button
-                size="sm"
-                variant={isDirty ? 'default' : 'outline'}
-                className="h-8 px-2"
-                disabled={saveMutation.isPending || !isDirty}
-                onClick={() => {
-                  const main = local.main === '' ? null : Number(local.main);
-                  const us = local.us === '' ? null : Number(local.us);
-                  saveMutation.mutate({ showId: show.id, main, us });
-                }}
-              >
-                <Save className="h-3.5 w-3.5" />
-              </Button>
-            </div>
-          );
-        })}
-      </div>
+      ) : null}
+      <p className="text-sm text-muted-foreground">
+        Slot configuration has moved to the <Link to={ROUTES.PRODUCTIONS} className="text-primary underline">Productions</Link> page.
+      </p>
     </div>
   );
 }
@@ -998,7 +904,7 @@ export default function SettingsPage() {
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <ShowSlotsEditor orgId={orgId} />
+              <ShowSlotsEditor />
             </CardContent>
           </Card>
         </TabsContent>
