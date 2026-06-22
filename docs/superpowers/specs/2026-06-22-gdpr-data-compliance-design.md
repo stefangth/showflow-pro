@@ -191,7 +191,13 @@ Two distinct operations with **different** semantics:
 SQL half only:
 - `artists where user_id = p_user`: `name` → `'Deleted artist'`, `email`/`phone`/`bio` → `null`,
   `user_id` → `null` (across **all** orgs).
-- `chat_messages where user_id = p_user`: `user_id` → `null` (body retained as shared history).
+- `chat_messages where user_id = p_user`: **deleted.** (Originally designed as `user_id` → `null` to
+  retain the body as shared history, but `chat_messages.user_id` is `NOT NULL`; dropping that
+  constraint would ripple into chat RLS and the message-bubble UI's sender rendering — unplanned
+  surface. Deleting is simpler, is unambiguously GDPR-clean erasure, and chat is per-show-date and
+  auto-archived after `CHAT_ARCHIVE_DAYS` (30) days; the user also receives these messages in their
+  `export_my_data` output before deletion. Revisit via a nullable `user_id` + "Deleted user"
+  fallback if conversation continuity for remaining participants becomes important.)
 - `booking_audit_log where performed_by = p_user`: `performed_by` → `null` (row retained —
   never-delete honored).
 - Hard-delete `notifications`, availability/`blocked_dates` (by the user's artist rows),
