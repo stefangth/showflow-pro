@@ -29,3 +29,17 @@ export async function removeOrgMember(
   const { error } = await client.rpc("remove_org_member", { p_org: orgId, p_user: userId });
   if (error) throw error;
 }
+
+/** Add or remove a single role for a member (admin-only RPC; guards the last admin). */
+export async function setOrgMemberRole(
+  client: SupabaseClient<Database>,
+  orgId: string,
+  userId: string,
+  role: AppRole,
+  action: "add" | "remove",
+): Promise<void> {
+  const { error } = await client.rpc("set_org_member_role", {
+    p_org: orgId, p_user: userId, p_role: role, p_action: action,
+  });
+  if (error) throw error;
+}
