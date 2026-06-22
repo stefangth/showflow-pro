@@ -20,6 +20,12 @@ export async function deleteMyAccount(client: SupabaseClient<Database>): Promise
           `Appoint another admin or have the organization deleted first.`,
       );
     }
-    throw new Error(payload.error);
+    // Translate the edge function's internal error codes into a user-facing message.
+    const FRIENDLY: Record<string, string> = {
+      verify_failed: "We couldn't verify your account state. Please try again.",
+      anonymize_failed: "Something went wrong removing your data. No account was deleted — please try again.",
+      delete_failed: "Your data was removed but the account couldn't be deleted. Please contact support.",
+    };
+    throw new Error(FRIENDLY[payload.error] ?? payload.error);
   }
 }
