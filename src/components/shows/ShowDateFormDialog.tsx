@@ -209,12 +209,12 @@ export function ShowDateFormDialog({
           </div>
 
           {mode === "create" && (
-            <label className="flex items-center gap-2 text-sm">
-              <Checkbox checked={openOffers} disabled={!slotsConfigured} onCheckedChange={(c) => setOpenOffers(!!c)} />
-              <span className={slotsConfigured ? "" : "text-muted-foreground"}>
+            <div className="flex items-center gap-2 text-sm">
+              <Checkbox id="open-offers" checked={openOffers} disabled={!slotsConfigured} onCheckedChange={(c) => setOpenOffers(!!c)} />
+              <Label htmlFor="open-offers" className={`font-normal ${slotsConfigured ? "" : "text-muted-foreground"}`}>
                 Open tier-1 offers now{!slotsConfigured && " (configure slots first)"}
-              </span>
-            </label>
+              </Label>
+            </div>
           )}
 
           <DialogFooter>
