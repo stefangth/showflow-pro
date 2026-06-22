@@ -14,6 +14,16 @@ What's new in ShowFlow, newest first.
 ### Improved
 - **Organization tools (admins)** — Platform admins can now export an organization's full dataset and permanently delete an organization from the console.
 
+## 1.4.1 — June 22, 2026
+
+*Airtable sync fixes*
+
+### Fixed
+- **Airtable connection** — loading bases and tables from Airtable works again, and the automatic show-date sync is running.
+
+### Improved
+- **API key management** — the Airtable settings now show whether a key is saved and when it was last updated, and let you replace or delete it.
+
 ## 1.4.0 — June 21, 2026
 
 *Integrations & automation*

@@ -6,15 +6,53 @@ This document explains how the platform works: roles, data model, eligibility, a
 
 ## Roles and Access
 
-| Role | What they can do |
-|---|---|
-| **Admin** | Full access: approve users, manage casts, configure settings, manage bookings, view all data |
-| **Producer** | Manage shows and bookings, view artist availability, trigger and confirm bookings |
-| **Artist** | Declare availability, view their own eligible dates and booking status |
+Showflow Pro has **four roles across two scopes**. Three are *organization* roles — values of the `app_role` enum (`admin | producer | artist`) stored per-org in `org_memberships`, so the same person can hold different roles in different orgs. The fourth, **super-admin**, is a *platform* role: membership in the `platform_admins` table (not part of the enum) that bypasses org gates, sees every org, and is the only role that can reach the Platform console.
 
-### Signup and approval
+```mermaid
+flowchart TD
+  SA["Super-admin<br/>platform_admins · all orgs"]
 
-New accounts are not active immediately. Every signup lands in a `pending` state and a notification is sent to admins. An admin must approve or reject the account from the admin panel before the user can access any protected content. At approval time, the admin assigns a role. This role is stored in `user_roles` and enforced by Postgres RLS on every query — the client UI hides or shows UI based on role, but the database always enforces it independently.
+  subgraph ORG["Organization scope · org_memberships.role"]
+    direction LR
+    A["Admin<br/>members and invites<br/>casts · settings · all bookings"]
+    P["Producer<br/>productions and dates<br/>confirm bookings · view availability"]
+    R["Artist<br/>declare availability<br/>respond to offers · own bookings"]
+  end
+
+  SA -->|bypasses org gates| ORG
+```
+
+| Role | Scope | What they can do |
+|---|---|---|
+| **Super-admin** | Platform (global) | God-mode across every org: provision orgs, manage platform admins, plus everything an org admin can do. Bypasses the org-membership and suspended-org gates. |
+| **Admin** | One org | Full org control: invite/remove members, manage casts and eligibility, configure settings, manage all bookings, view all data. |
+| **Producer** | One org | Manage productions and show dates, trigger and confirm bookings, view artist availability. No member admin or platform access. |
+| **Artist** | One org | Declare availability on eligible dates, respond to offers, view their own bookings. |
+
+### Access by area
+
+| Area | Admin | Producer | Artist | Super-admin |
+|---|:--:|:--:|:--:|:--:|
+| Dashboard · Chats · Profile | ✅ | ✅ | ✅ | ✅ |
+| Shows & Bookings · Productions · Artists | ✅ | ✅ | — | ✅\* |
+| Settings | ✅ | ✅ | — | ✅\* |
+| Availability | — | — | ✅ | ✅\* |
+| Admin (invites & members) | ✅ | — | — | ✅\* |
+| Platform console | — | — | — | ✅ |
+
+\* Super-admins satisfy every org-role check in the UI (`effectiveHasRole` short-circuits to `true`); the `✅*` cells are reachable via that god-mode rather than an org membership. Nav and route gating live in `src/components/layout/navItems.ts` and `src/App.tsx`.
+
+### How roles are assigned and enforced
+
+Onboarding is **invite-only** — there is no public signup and no approval queue. An org admin invites a person by email (`create-invitation`); the invitee accepts via the emailed `/accept-invite?token=` link, which writes their `org_memberships` row (role chosen at invite time). The first super-admin is bootstrapped once per environment (see `docs/runbooks/first-super-admin-bootstrap.md`); thereafter super-admins provision orgs and their first admin from the Platform console.
+
+Roles are **always enforced server-side by Postgres RLS**, via the `has_org_role(uuid, org_id, app_role)` / `is_org_member(...)` / `is_super_admin(...)` security-definer functions. The client's `useAuth().hasRole(...)` only shapes the UI (hiding nav, gating pages) and is never trusted for data access.
+
+### Not roles (even though they look like one)
+
+- **View-as** (`viewAsRole` / `viewAsUser`) — editor-mode impersonation that lets an admin or super-admin preview the app as another role or a specific user. UI only; never bypasses RLS.
+- **`is_understudy`** — a per-booking flag (auto-promotes when a primary cancels), not a role.
+- **`artists.cast_role`** — a reserved, currently-unused column (ADR-0011).
 
 ---
 
@@ -26,7 +64,7 @@ The four core tables — `shows`, `show_dates`, `bookings`, and `availability` �
 
 ### `shows`
 
-A show is a production template: program name, sub-program, required skills, and status. One show row represents the production as a whole, not any specific performance date. Venues are set per show date (not on the show itself); slot capacity comes from `app_settings`, not from a column on this table.
+A show is a production template: program name, sub-program, and status. One show row represents the production as a whole, not any specific performance date. Venues are set per show date (not on the show itself); slot capacity lives in the `main_cast_slots` and `understudy_slots` columns on this table (`NULL` = unconfigured, so the date never reaches *fully filled*).
 
 ### `show_dates`
 
@@ -59,7 +97,7 @@ An artist's list of dates they are explicitly blocking — dates when they shoul
 ### Identity vs. booking contact
 
 A person can appear in two tables. **`profiles`** is their global login account (one per user:
-display name, personal phone, avatar). **`artists`** is their bookable talent record *inside an org*
+display name and personal phone — login email lives on `auth.users`, and avatars are deterministic initials, not a stored field). **`artists`** is their bookable talent record *inside an org*
 (talent name, booking email/phone, bio, status) — and it exists even for external artists with no
 login (`user_id` is empty). These are different real-world contacts, not duplicates, so they are
 kept separate (ADR-0011).
@@ -191,7 +229,7 @@ The promotion is recorded in `booking_audit_log` (action: `understudy_promoted`)
 | Partially Filled | Some bookings exist but confirmed main cast < required slots |
 | Fully Filled | Confirmed main cast ≥ required slots |
 | Cancelled | show_date.status = 'cancelled' |
-| Unconfigured | No slot config found for this sub-program |
+| Unconfigured | The show's `main_cast_slots` / `understudy_slots` are unset (`NULL`) |
 
 ### Availability status
 
@@ -240,13 +278,14 @@ logic, **promote it to a real typed column** via a migration (add the column, ba
 
 | Setting | Location | Purpose |
 |---|---|---|
-| `offer_response_window_hours` | Settings → Booking Engine | Hours after the offer digest email that an artist has to respond before the offer auto-expires (active setting; default 48 h) |
-| `soft_book_expiry_hours` | Settings → Scheduling | Legacy — superseded by `offer_response_window_hours`. Has no effect on current expiry logic. |
-| `sub_program_slots_defaults` | Settings → Scheduling | Main cast + understudy slot counts per sub-program |
-| `auto_suggest_enabled` | Settings → Booking Engine | Toggle auto-suggest globally |
-| `max_suggestions` | Settings → Booking Engine | Max candidates per slot |
-| `airtable_sync_enabled` | Settings → Airtable Sync | Enable/disable the Airtable polling loop (mocked) |
+| `offer_response_window_hours` | Settings → Booking Engine | Hours after the offer digest email that an artist has to respond before the offer auto-expires (default 48 h) |
+| `offer_digest_hour_berlin` | Settings → Booking Engine | Hour (Berlin, 0–23) the daily offer digest is sent (default 19) |
+| `confirmation_digest_hour_berlin` | Settings → Booking Engine | Hour (Berlin, 0–23) the daily confirmation digest is sent (default 20) |
+| `resend_from_address` | Settings → Booking Engine | Sender address used for transactional email |
+| `airtable_sync_enabled` | Settings → Airtable Sync | Enable/disable the per-org Airtable → `show_dates` polling cron |
 | `notifications_enabled` | Settings → Notifications | Toggle in-app notifications |
 | `filters_visibility` | Settings → Filters | Which filter controls producers and artists see on each page |
+
+Slot capacity is **not** an app setting — it lives in `shows.main_cast_slots` / `shows.understudy_slots`, edited via Settings → Scheduling (Slots per Show) or the Productions page. The `soft_book_expiry_hours`, `sub_program_slots_defaults`, `auto_suggest_enabled`, and `max_suggestions` settings have been retired (no longer read by any code).
 
 Static developer constants (feature flags, route definitions) live in `src/config/app.config.ts` and require a code deploy to change.

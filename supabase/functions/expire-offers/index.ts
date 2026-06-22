@@ -48,8 +48,7 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
     const mainCastSlots: number | null = (sd as any).show?.main_cast_slots ?? null
     const understudySlots: number | null = (sd as any).show?.understudy_slots ?? null
 
-    // NULL slot columns = unconfigured show; skip (mirrors old behaviour when the
-    // sub_program_slots_defaults JSON had no entry for this program/sub_program).
+    // NULL slot columns = unconfigured show; skip.
     if (mainCastSlots === null || understudySlots === null) continue
     const requiredSlots = mainCastSlots + understudySlots
 
