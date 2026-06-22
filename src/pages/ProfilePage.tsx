@@ -103,6 +103,7 @@ export default function ProfilePage() {
   const [confirmText, setConfirmText] = useState("");
   const [deleting, setDeleting] = useState(false);
   const confirmDelete = async () => {
+    if (confirmText !== "DELETE") return; // defense-in-depth beyond the disabled attr
     setDeleting(true);
     try {
       await deleteMyAccount(supabase);

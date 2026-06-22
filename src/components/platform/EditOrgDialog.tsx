@@ -46,6 +46,7 @@ export function EditOrgDialog({ org, onClose }: { org: OrgStat | null; onClose: 
   };
 
   const handleDelete = async () => {
+    if (confirmName !== org?.name) return; // defense-in-depth beyond the disabled attr
     setBusy(true);
     try {
       await deleteOrg(supabase, org!.org_id);
