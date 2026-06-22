@@ -16,7 +16,7 @@ const AUDIT_LOG_LIMIT = 50;
 const SYNC_LOG_LIMIT = 20;
 
 export default function AdminPage() {
-  const { hasRole, currentOrg } = useAuth();
+  const { hasRole } = useAuth();
   const [params, setParams] = useSearchParams();
   const initialTab = params.get('tab') || 'invites';
   const [tab, setTab] = useState(initialTab);
