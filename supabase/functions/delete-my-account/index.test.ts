@@ -10,7 +10,7 @@ Deno.test("blocks when the caller is the sole admin of an org", async () => {
     rpcs: { sole_admin_orgs: { data: [{ org_id: "o1", org_name: "Acme" }], error: null } },
   });
   const res = await handle(makeRequest({ headers: AUTH, body: {} }), deps);
-  assertEquals(res.status, 200);
+  assertEquals(res.status, 409);
   const body = await res.json();
   assertEquals(body.error, "last_admin");
   assertEquals(body.org_name, "Acme");
@@ -41,7 +41,7 @@ Deno.test("reports anonymize_failed and does not delete when anonymize errors", 
     },
   });
   const res = await handle(makeRequest({ headers: AUTH, body: {} }), deps);
-  assertEquals(res.status, 200);
+  assertEquals(res.status, 500);
   const body = await res.json();
   assertEquals(body.error, "anonymize_failed");
   assertEquals(body.success, undefined);
@@ -54,6 +54,6 @@ Deno.test("reports delete_failed when the auth delete errors", async () => {
     deleteUserResult: { data: null, error: { message: "auth down" } },
   });
   const res = await handle(makeRequest({ headers: AUTH, body: {} }), deps);
-  assertEquals(res.status, 200);
+  assertEquals(res.status, 500);
   assertEquals((await res.json()).error, "delete_failed");
 });
