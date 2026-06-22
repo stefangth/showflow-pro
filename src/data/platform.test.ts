@@ -5,6 +5,7 @@ import {
   setOrgStatus, updateOrg, fetchPlatformAdmins, addPlatformAdmin,
   removePlatformAdmin, savePlatformSetting,
   fetchPlatformBookingDefaults, savePlatformBookingDefaults,
+  exportOrgData, deleteOrg,
 } from "./platform";
 import { BOOKING_ENGINE_DEFAULTS } from "@/config/app.config";
 
@@ -114,5 +115,22 @@ describe("data/platform", () => {
         { onConflict: "org_id,key" },
       ],
     });
+  });
+});
+
+describe("exportOrgData", () => {
+  it("invokes export-org-data and returns the bundle", async () => {
+    const bundle = { schema_version: 1, organizations: [{ id: "o1" }] };
+    const fake = createFakeSupabase({ "fn:export-org-data": { data: { success: true, bundle }, error: null } });
+    expect(await exportOrgData(fake as never, "o1")).toEqual(bundle);
+    expect(fake.calls).toContainEqual({ table: "fn:export-org-data", method: "invoke", args: [{ org_id: "o1" }] });
+  });
+});
+
+describe("deleteOrg", () => {
+  it("calls the delete_org rpc with the org id", async () => {
+    const fake = createFakeSupabase({ "rpc:delete_org": { data: null, error: null } });
+    await deleteOrg(fake as never, "o1");
+    expect(fake.calls).toContainEqual({ table: "rpc:delete_org", method: "rpc", args: [{ p_org: "o1" }] });
   });
 });
