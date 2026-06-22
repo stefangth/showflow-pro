@@ -2,8 +2,8 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import { screen, fireEvent, waitFor } from "@testing-library/react";
 import { renderWithProviders } from "@/test/renderWithProviders";
 
-const createShowDate = vi.fn(() => Promise.resolve({ id: "d-new" }));
-const openOfferTier = vi.fn(() => Promise.resolve({ offersCreated: 1 }));
+const createShowDate = vi.fn((...a: unknown[]) => Promise.resolve({ id: "d-new" }));
+const openOfferTier = vi.fn((...a: unknown[]) => Promise.resolve({ offersCreated: 1 }));
 vi.mock("@/integrations/supabase/client", () => ({ supabase: {} }));
 vi.mock("@/features/auth/AuthContext", () => ({ useAuth: () => ({ currentOrg: { id: "org-1" }, user: { id: "u1" }, hasRole: () => true }) }));
 vi.mock("@/data/showDates", async (orig) => ({ ...(await orig<typeof import("@/data/showDates")>()), createShowDate: (...a: unknown[]) => createShowDate(...a), fetchShowDatesForShow: () => Promise.resolve([]) }));
