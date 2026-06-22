@@ -6,6 +6,7 @@ import { expect, test } from "@playwright/test";
 import { adminClient, tagEmail } from "./helpers/supabase";
 import { createConfirmedUser, deleteUserByEmail, ensurePlatformAdmin } from "./helpers/users";
 import { loginAs, loginAsAndAwaitDashboard, signOut } from "./helpers/auth";
+import { seedConsent } from "./helpers/consent";
 import { TEST_PRODUCER_EMAIL, TEST_PRODUCER_PASSWORD } from "./global-setup";
 
 const SUPER_EMAIL = tagEmail("phase4-super", "fixed");
@@ -30,6 +31,13 @@ test.describe("Platform console", () => {
     const admin = adminClient();
     await admin.from("organizations").delete().eq("slug", NEW_ORG_SLUG);
     await deleteUserByEmail(INVITEE_EMAIL);
+  });
+
+  // Pre-decide cookie consent so the bottom-fixed CookieConsentBanner never
+  // renders (it overlaps page-bottom controls and intercepts clicks). Matches
+  // the other UI specs.
+  test.beforeEach(async ({ page }) => {
+    await seedConsent(page);
   });
 
   test("non-super-admin cannot reach /platform", async ({ page }) => {
