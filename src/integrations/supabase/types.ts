@@ -745,6 +745,24 @@ export type Database = {
           },
         ]
       }
+      notification_preferences: {
+        Row: {
+          prefs: Json
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          prefs?: Json
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          prefs?: Json
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       notifications: {
         Row: {
           created_at: string
@@ -1363,6 +1381,7 @@ export type Database = {
     Functions: {
       accept_invitation: { Args: { p_token: string }; Returns: string }
       add_platform_admin: { Args: { p_email: string }; Returns: string }
+      category_of: { Args: { p_type: string }; Returns: string }
       compute_show_date_status: {
         Args: { p_show_date_id: string }
         Returns: undefined
@@ -1471,6 +1490,10 @@ export type Database = {
           p_user: string
         }
         Returns: undefined
+      }
+      should_notify: {
+        Args: { p_category: string; p_channel: string; p_user: string }
+        Returns: boolean
       }
     }
     Enums: {
