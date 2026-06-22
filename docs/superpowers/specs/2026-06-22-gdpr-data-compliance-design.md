@@ -65,8 +65,10 @@ still implement it in internal slices, but it lands together).
 
 1. **Self-serve data export** — any user downloads their own personal data as portable JSON
    (GDPR Art. 15 access + Art. 20 portability); a super-admin can export any org's full dataset.
-2. **Deletion** — any user can delete their own account (self-service); a super-admin can delete
-   an entire org. Both honor the never-delete audit rule via anonymize-and-retain.
+2. **Deletion** — any user can delete their own account (self-service, anonymize-and-retain); a
+   super-admin can delete an entire org (hard tenant teardown). Account deletion preserves the
+   org's de-identified audit trail; org deletion removes all of that org's data while leaving
+   members' global accounts intact.
 3. **Granular notification preferences** — a category × channel (email / in-app) matrix per user,
    with critical transactional email always sending.
 
@@ -86,10 +88,13 @@ still implement it in internal slices, but it lands together).
 ## Decisions (made during brainstorm)
 
 - **All three pillars, one cohesive release.**
-- **Erasure = anonymize-and-retain (tombstone).** Hard-delete the auth account, profile, and
-  purely-personal rows; anonymize shared/audit records (null the user link, replace embedded PII
-  with a generic tombstone). Audit trail stays intact but de-identified.
-- **Org deletion = super-admin only, immediate** tombstone purge.
+- **Account erasure = anonymize-and-retain (tombstone).** Hard-delete the auth account, profile,
+  and purely-personal rows; anonymize shared/audit records (null the user link, replace embedded
+  PII with a generic tombstone). The org's audit trail stays intact but de-identified.
+- **Org deletion = super-admin only, immediate** hard cascade of all org-scoped data (including
+  that org's `booking_audit_log` — the never-delete rule is **per-org-lifetime**, not a bar on
+  tenant teardown). Members keep their global accounts and data in other orgs. Implemented as a
+  pure `delete_org` RPC (no `auth.users` touch).
 - **Account deletion = self-service**, blocked by the **last-admin guard** (can't orphan an org;
   GDPR "legitimate grounds" limitation — hand off or have the org deleted first).
 - **Export = per-user self-serve JSON + super-admin per-org/global export.**
@@ -102,9 +107,12 @@ still implement it in internal slices, but it lands together).
 ### Architecture split
 
 Pure-SQL operations → `SECURITY DEFINER` RPCs (pgTAP-testable). Anything needing the auth admin
-API or that aggregates a large payload → edge functions (DI pattern, fake-deps-testable). This
-pillar adds **1 table**, **3 RPCs**, **3 new edge functions** + **1 edited** edge function, and
-frontend surfaces. Migrations are applied via the Supabase MCP `apply_migration` (records
+API or that aggregates a large payload → edge functions (DI pattern, fake-deps-testable). **Only
+account self-deletion needs the auth admin API** (deleting `auth.users`), so it is the one
+deletion path that is edge-function-fronted; org deletion touches no `auth.users` row and is a
+pure RPC. This pillar adds **1 table**, **4 RPCs** (`should_notify`, `export_my_data`,
+`anonymize_user`, `delete_org`), **2 new edge functions** (`delete-my-account`, `export-org-data`)
++ **1 edited** edge function (`send-transactional-email`), and frontend surfaces. Migrations are applied via the Supabase MCP `apply_migration` (records
 real-timestamp versions; name the files to match) and types regenerated via MCP; vitest / pgTAP /
 lint / build run in CI only (no local Node); the Deno suite runs locally with
 `--node-modules-dir=none`.
@@ -117,9 +125,9 @@ lint / build run in CI only (no local Node); the Deno suite runs locally with
 - `prefs` maps `category -> { "email": bool, "in_app": bool }`. **Opt-out model:** a missing row
   or missing key/channel = **enabled**, so existing users keep receiving everything until they
   change something.
-- RLS: enable + policies so a user `select`/`insert`/`update`s only `where user_id = auth.uid()`
-  (plus the RESTRICTIVE `org_isolation`? — N/A, this table has no `org_id`; it is user-scoped, not
-  tenant-scoped). Edge functions read via the service role.
+- RLS: enable + policies so a user `select`/`insert`/`update`s only `where user_id = auth.uid()`.
+  This table is **user-scoped, not tenant-scoped** (no `org_id`), so the RESTRICTIVE
+  `org_isolation` template does not apply. Edge functions read via the service role.
 
 **Category map** `src/config/notificationCategories.ts` (TS) — `type string -> category`, the
 single source of truth, mirrored by a SQL helper for trigger use. Proposed categories (final
@@ -167,35 +175,57 @@ channel boolean (true when absent). Pure SQL → pgTAP-tested.
 - Data access `src/data/platform.ts`: `exportOrgData(client, orgId)`; UI button in
   `EditOrgDialog` (Platform console) downloads the bundle.
 
-### Pillar 3 — Deletion (anonymize-and-retain)
+### Pillar 3 — Deletion
 
-**Core RPC `anonymize_user(p_user uuid)`** (`SECURITY DEFINER`, idempotent) — the SQL half only:
+Two distinct operations with **different** semantics:
+
+- **Account deletion (individual) = anonymize-and-retain.** The person leaves, but the org's
+  history/audit stays intact and de-identified. Honors the never-delete rule.
+- **Org deletion (whole tenant) = hard cascade teardown.** All of that org's rows are removed —
+  including *that org's* `booking_audit_log`. The never-delete rule is **per-org-lifetime**: it
+  forbids deleting audit rows during normal operation, not tearing down an entire tenant. Members
+  keep their **global** accounts (`profiles`, `auth.users`, `notification_preferences`) and any
+  data they have in **other** orgs.
+
+**Core RPC `anonymize_user(p_user uuid)`** (`SECURITY DEFINER`, idempotent) — account deletion's
+SQL half only:
 - `artists where user_id = p_user`: `name` → `'Deleted artist'`, `email`/`phone`/`bio` → `null`,
   `user_id` → `null` (across **all** orgs).
 - `chat_messages where user_id = p_user`: `user_id` → `null` (body retained as shared history).
 - `booking_audit_log where performed_by = p_user`: `performed_by` → `null` (row retained —
   never-delete honored).
 - Hard-delete `notifications`, availability/`blocked_dates` (by the user's artist rows),
-  `org_memberships`, and pending `org_invitations` for the user; delete `profiles where user_id =
-  p_user`.
+  `org_memberships`, pending `org_invitations` for the user, and `notification_preferences`;
+  delete `profiles where user_id = p_user`.
 - Does **not** touch `auth.users` (that is the edge function's job) and does **not** delete
   `bookings` (kept; the artist is already anonymized).
-- Guard: callable only by the account owner's edge function or a super-admin path — enforce via
-  `revoke from public/anon`, `grant execute to authenticated`, and an internal check that
-  `auth.uid() = p_user OR is_super_admin(auth.uid())`.
+- **Guard (security-critical):** `revoke from public/anon`, `grant execute to authenticated`, and
+  an internal `if not (auth.uid() = p_user or is_super_admin(auth.uid())) then raise 42501`.
+  Because the guard reads `auth.uid()`, **callers must invoke it with the caller's JWT-scoped
+  client, never the service-role admin client** (under the service role `auth.uid()` is null and
+  the guard would fail). The RPC is `SECURITY DEFINER`, so it still has the privileges to perform
+  every write — the guard only checks *identity*.
 
 **Edge function `delete-my-account`** (authenticated):
 - Run the **last-admin guard** (reuse the member-removal logic: block if the caller is the sole
-  admin of any org) → 409 with a clear "you are the last admin of <org>; appoint another admin or
-  have the org deleted first" message.
-- Call `anonymize_user(self)`, then `deps.admin.auth.admin.deleteUser(self)`.
+  admin of **any** org) → 409 with a clear "you are the last admin of <org>; appoint another admin
+  or have the org deleted first" message.
+- Call `anonymize_user(self)` **via the user's JWT client** (so the guard's `auth.uid() = self`
+  passes), then `deps.admin.auth.admin.deleteUser(self)` via the admin client.
+- Anonymize *before* `deleteUser` so a mid-way failure leaves a recoverable, re-runnable state.
 - Client: on success, sign out and route to login.
 
-**Edge function `delete-org`** (`requireSuperAdmin`):
-- Body `{ org_id }`. For every member of the org, call `anonymize_user(member)`; then delete the
-  `organizations` row (org-scoped rows cascade via existing FKs). One transaction where possible.
-- Data access `src/data/platform.ts`: `deleteOrg(client, orgId)`; UI in `EditOrgDialog` "Danger
-  zone" with a type-the-org-name confirm.
+**RPC `delete_org(p_org uuid)`** (`SECURITY DEFINER`, super-admin only — no edge function, no
+`auth.users` touch):
+- Guard: `if not is_super_admin(auth.uid()) then raise 42501`. `revoke from public/anon; grant
+  execute to authenticated` (super-admins are authenticated; the body re-checks).
+- In one transaction, delete all org-scoped rows for `p_org` in **FK-safe order** (children
+  first) — including `booking_audit_log where org_id = p_org` (explicit delete, not relying on a
+  cascade action we haven't verified) — then `delete from organizations where id = p_org`. Does
+  **not** delete any `auth.users`, `profiles`, or `notification_preferences` (global/user-scoped).
+  Members who were only in this org simply land on `NoOrgScreen` afterward.
+- Data access `src/data/platform.ts`: `deleteOrg(client, orgId)` → `rpc('delete_org', ...)`; UI in
+  `EditOrgDialog` "Danger zone" with a type-the-org-name confirm.
 
 ### Frontend surfaces (summary)
 
@@ -216,12 +246,15 @@ channel boolean (true when absent). Pure SQL → pgTAP-tested.
   export download wiring, delete confirm-gating + last-admin message); `EditOrgDialog` danger
   zone.
 - **pgTAP (CI)**: `anonymize_user` (artists anonymized, chat/audit `performed_by` nulled, personal
-  rows gone, `booking_audit_log` rows still present, idempotent on re-run); `export_my_data`
-  (returns only the caller's rows, has `schema_version`); `notification_preferences` RLS
-  (own-row-only); `should_notify` (true on missing row/key, respects an explicit `false`).
+  rows gone, `booking_audit_log` rows still present, idempotent on re-run; rejects a caller who is
+  neither the owner nor super-admin); `delete_org` (super-admin only — non-super-admin raises
+  `42501`; removes the org's rows incl. its `booking_audit_log`; leaves members' `profiles` /
+  `auth.users` and other orgs' data untouched); `export_my_data` (returns only the caller's rows,
+  has `schema_version`); `notification_preferences` RLS (own-row-only); `should_notify` (true on
+  missing row/key, respects an explicit `false`).
 - **Edge (Deno DI, `_shared/testing.ts`)**: `delete-my-account` (last-admin guard blocks; happy
-  path calls anonymize + `deleteUser`), `delete-org` (super-admin gate; non-super-admin 403),
-  `export-org-data` (gate + bundle shape), and the `send-transactional-email` category gate
+  path calls anonymize + `deleteUser`; anonymize precedes delete), `export-org-data` (super-admin
+  gate; non-super-admin 403; bundle shape), and the `send-transactional-email` category gate
   (suppressed-by-pref vs critical-always-sends vs unresolvable-recipient-fails-open). Run the
   **whole** `supabase/functions/` Deno suite afterward (per the `edge-fn-multi-test-files` memory).
 - **E2E (Playwright, optional)**: toggle a category off, download the export, open the
@@ -233,11 +266,11 @@ channel boolean (true when absent). Pure SQL → pgTAP-tested.
 - `supabase/migrations/<ts>_notification_preferences.sql` (table + RLS + `should_notify` +
   `update_updated_at` trigger)
 - `supabase/migrations/<ts>_anonymize_user.sql`
+- `supabase/migrations/<ts>_delete_org.sql`
 - `supabase/migrations/<ts>_export_my_data.sql`
 - `supabase/migrations/<ts>_trigger_notification_prefs.sql` (route notification-emitting triggers
   through `should_notify`)
 - `supabase/functions/delete-my-account/` (+ DI tests)
-- `supabase/functions/delete-org/` (+ DI tests)
 - `supabase/functions/export-org-data/` (+ DI tests)
 - `src/config/notificationCategories.ts` (+ test)
 - `src/data/notificationPreferences.ts` (+ test)
@@ -256,7 +289,10 @@ channel boolean (true when absent). Pure SQL → pgTAP-tested.
 - `package.json` + `src/config/app.config.ts` (`1.5.0`)
 - `public/changelog.md` (newest-first `1.5.0` block) + regenerate `public/changelog.json` via
   `deno run --allow-read --allow-write scripts/changelog-to-json.ts`
-- `CLAUDE.md` (new edge fns; the deletion/anonymization model; notification-prefs decision; export)
+- `CLAUDE.md` (new `delete-my-account` / `export-org-data` edge fns + `anonymize_user` /
+  `delete_org` / `export_my_data` / `should_notify` RPCs; the account-anonymize vs org-teardown
+  deletion model **and the per-org-lifetime `booking_audit_log` carve-out**; notification-prefs
+  decision; export)
 
 ## Edge cases & error handling
 
@@ -271,9 +307,14 @@ channel boolean (true when absent). Pure SQL → pgTAP-tested.
   the gate only ever *suppresses* a known non-critical category the user explicitly disabled.
 - **Last admin self-delete** — blocked with a clear message; the user can still be erased after
   handing off admin or having the org deleted.
-- **Org delete cascade** — rely on existing FKs after anonymizing members; verify no
-  `RESTRICT`/`NO ACTION` FK blocks the `organizations` delete (audit-log retains `org_id` but the
-  org row goes — confirm the audit-log FK is `set null` / nullable, not `restrict`).
+- **Org delete vs other orgs** — `delete_org` removes only `where org_id = p_org` rows + the org
+  row; a member in another org keeps that membership and all its data, and keeps their global
+  `profiles` / `auth.users` / `notification_preferences`. Members left in zero orgs land on
+  `NoOrgScreen` (no orphaned access).
+- **Org delete FK order** — `delete_org` deletes children before parents explicitly (including the
+  org's `booking_audit_log`), rather than relying on unverified cascade actions; the migration
+  must enumerate every org-scoped table so the final `organizations` delete can't be blocked by a
+  `RESTRICT`/`NO ACTION` FK.
 
 ## Risks & mitigations
 
@@ -285,8 +326,9 @@ channel boolean (true when absent). Pure SQL → pgTAP-tested.
   tests guard behavior. Default-on keeps current behavior for everyone until they opt out.
 - **Recipient→user resolution in the email gate** — if the address can't be mapped, fail open;
   never let pref logic block transactional mail.
-- **`booking_audit_log` FK to `organizations`** — confirm org delete doesn't violate a
-  `restrict`; if it does, null `org_id` for the deleted org's audit rows as part of `delete-org`
-  (still "never delete the row").
+- **Org teardown vs the never-delete rule** — `delete_org` *does* delete that org's
+  `booking_audit_log` rows; this is a deliberate, documented carve-out (per-org-lifetime
+  teardown), distinct from the bar on deleting audit rows during normal operation. Call it out in
+  `CLAUDE.md` so a future reader doesn't read it as a violation.
 - **Large org export** — keep `export-org-data` an edge function (streaming/256MB headroom) rather
   than an RPC; paginate internally if needed.
