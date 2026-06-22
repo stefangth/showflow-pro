@@ -18,6 +18,10 @@ import { assertEquals, assertExists } from "../_shared/test-asserts.ts";
 import { makeFakeDeps, makeRequest } from "../_shared/testing.ts";
 import { handle } from "./index.ts";
 
+// send-transactional-email now requires the service-role bearer (isServiceRole gate).
+const authedReq = (o: Parameters<typeof makeRequest>[0] = {}) =>
+  makeRequest({ ...o, headers: { Authorization: "Bearer service_role_svc", ...(o.headers ?? {}) } });
+
 // ---------------------------------------------------------------------------
 // Shared env — every real test seeds all three required vars.
 // ---------------------------------------------------------------------------
@@ -73,7 +77,7 @@ Deno.test("env guard: missing RESEND_API_KEY → 500", async () => {
     envVars: { SUPABASE_URL: "https://x", SUPABASE_SERVICE_ROLE_KEY: "svc" },
   });
   const res = await handle(
-    makeRequest({ body: { templateName: KNOWN_TEMPLATE, recipientEmail: "a@b.com" } }),
+    authedReq({ body: { templateName: KNOWN_TEMPLATE, recipientEmail: "a@b.com" } }),
     deps,
   );
   assertEquals(res.status, 500);
@@ -86,7 +90,7 @@ Deno.test("env guard: missing SUPABASE_URL → 500", async () => {
     envVars: { RESEND_API_KEY: "re_x", SUPABASE_SERVICE_ROLE_KEY: "svc" },
   });
   const res = await handle(
-    makeRequest({ body: { templateName: KNOWN_TEMPLATE, recipientEmail: "a@b.com" } }),
+    authedReq({ body: { templateName: KNOWN_TEMPLATE, recipientEmail: "a@b.com" } }),
     deps,
   );
   assertEquals(res.status, 500);
@@ -97,7 +101,7 @@ Deno.test("env guard: missing SUPABASE_SERVICE_ROLE_KEY → 500", async () => {
     envVars: { RESEND_API_KEY: "re_x", SUPABASE_URL: "https://x" },
   });
   const res = await handle(
-    makeRequest({ body: { templateName: KNOWN_TEMPLATE, recipientEmail: "a@b.com" } }),
+    authedReq({ body: { templateName: KNOWN_TEMPLATE, recipientEmail: "a@b.com" } }),
     deps,
   );
   assertEquals(res.status, 500);
@@ -107,7 +111,7 @@ Deno.test("env guard: all three env vars present — does not fail at env check"
   // Minimal: unknown template so we can stop early, just confirming it passes the guard.
   const { deps } = makeFakeDeps({ envVars: ENV });
   const res = await handle(
-    makeRequest({ body: { templateName: "nope", recipientEmail: "a@b.com" } }),
+    authedReq({ body: { templateName: "nope", recipientEmail: "a@b.com" } }),
     deps,
   );
   // 404 means it passed env check and reached template lookup.
@@ -121,7 +125,7 @@ Deno.test("env guard: all three env vars present — does not fail at env check"
 Deno.test("body: camelCase keys are accepted (templateName, recipientEmail)", async () => {
   const { deps } = makeFakeDeps({ envVars: ENV });
   const res = await handle(
-    makeRequest({ body: { templateName: KNOWN_TEMPLATE, recipientEmail: "a@b.com" } }),
+    authedReq({ body: { templateName: KNOWN_TEMPLATE, recipientEmail: "a@b.com" } }),
     deps,
   );
   // Unknown template gives 404; known template should not give 400 on field parsing.
@@ -138,7 +142,7 @@ Deno.test("body: snake_case keys work (template_name, recipient_email) — booki
     fetchImpl,
   });
   const res = await handle(
-    makeRequest({
+    authedReq({
       body: {
         template_name: KNOWN_TEMPLATE,
         recipient_email: "snake@test.com",
@@ -161,7 +165,7 @@ Deno.test("body: idempotency_key snake_case is accepted", async () => {
     fetchImpl,
   });
   const res = await handle(
-    makeRequest({
+    authedReq({
       body: {
         template_name: KNOWN_TEMPLATE,
         recipient_email: "idem@test.com",
@@ -188,7 +192,7 @@ Deno.test("body: idempotency_key snake_case is accepted", async () => {
 Deno.test("unknown template → 404 with error field", async () => {
   const { deps } = makeFakeDeps({ envVars: ENV });
   const res = await handle(
-    makeRequest({ body: { templateName: "does-not-exist", recipientEmail: "a@b.com" } }),
+    authedReq({ body: { templateName: "does-not-exist", recipientEmail: "a@b.com" } }),
     deps,
   );
   assertEquals(res.status, 404);
@@ -199,7 +203,7 @@ Deno.test("unknown template → 404 with error field", async () => {
 Deno.test("missing templateName → 400", async () => {
   const { deps } = makeFakeDeps({ envVars: ENV });
   const res = await handle(
-    makeRequest({ body: { recipientEmail: "a@b.com" } }),
+    authedReq({ body: { recipientEmail: "a@b.com" } }),
     deps,
   );
   assertEquals(res.status, 400);
@@ -227,7 +231,7 @@ Deno.test("FAIL-CLOSED SUPPRESSION: suppressed recipient must NOT call Resend", 
     fetchImpl,
   });
   const res = await handle(
-    makeRequest({
+    authedReq({
       body: { templateName: KNOWN_TEMPLATE, recipientEmail: "suppressed@test.com" },
     }),
     deps,
@@ -264,7 +268,7 @@ Deno.test("FAIL-CLOSED SUPPRESSION: suppression check is case-insensitive (upper
   });
   // Input is uppercase; handler normalizes via .toLowerCase() before the DB eq check.
   const res = await handle(
-    makeRequest({
+    authedReq({
       body: { templateName: KNOWN_TEMPLATE, recipientEmail: "UPPER@TEST.COM" },
     }),
     deps,
@@ -289,7 +293,7 @@ Deno.test("FAIL-CLOSED SUPPRESSION: suppressed recipient is logged with status=s
     fetchImpl,
   });
   await handle(
-    makeRequest({
+    authedReq({
       body: { templateName: KNOWN_TEMPLATE, recipientEmail: "sup2@test.com" },
     }),
     deps,
@@ -317,7 +321,7 @@ Deno.test("SUPPRESSION DB ERROR — FAIL CLOSED: query error must block the send
     fetchImpl,
   });
   const res = await handle(
-    makeRequest({
+    authedReq({
       body: { templateName: KNOWN_TEMPLATE, recipientEmail: "artist@test.com" },
     }),
     deps,
@@ -348,7 +352,7 @@ Deno.test("happy path: calls Resend POST https://api.resend.com/emails with Bear
     fetchImpl,
   });
   await handle(
-    makeRequest({
+    authedReq({
       body: { templateName: KNOWN_TEMPLATE, recipientEmail: "happy@test.com" },
     }),
     deps,
@@ -380,7 +384,7 @@ Deno.test("happy path: response body is { success: true, message_id: <resend_id>
     fetchImpl,
   });
   const res = await handle(
-    makeRequest({
+    authedReq({
       body: { templateName: KNOWN_TEMPLATE, recipientEmail: "resp@test.com" },
     }),
     deps,
@@ -399,7 +403,7 @@ Deno.test("happy path: Resend request body contains correct 'to' and content-typ
     fetchImpl,
   });
   await handle(
-    makeRequest({
+    authedReq({
       body: { templateName: KNOWN_TEMPLATE, recipientEmail: "tofield@test.com" },
     }),
     deps,
@@ -434,7 +438,7 @@ Deno.test("happy path: Resend request body includes List-Unsubscribe header", as
     fetchImpl,
   });
   await handle(
-    makeRequest({
+    authedReq({
       body: { templateName: KNOWN_TEMPLATE, recipientEmail: "unsub@test.com" },
     }),
     deps,
@@ -466,7 +470,7 @@ Deno.test("Resend 422 → function returns 500 with error field", async () => {
     fetchImpl,
   });
   const res = await handle(
-    makeRequest({
+    authedReq({
       body: { templateName: KNOWN_TEMPLATE, recipientEmail: "fail@test.com" },
     }),
     deps,
@@ -484,7 +488,7 @@ Deno.test("Resend 500 → function returns 500 with error field", async () => {
     fetchImpl,
   });
   const res = await handle(
-    makeRequest({
+    authedReq({
       body: { templateName: KNOWN_TEMPLATE, recipientEmail: "resend500@test.com" },
     }),
     deps,
@@ -502,7 +506,7 @@ Deno.test("Resend 503 → function returns 500, failure is logged to email_send_
     fetchImpl,
   });
   const res = await handle(
-    makeRequest({
+    authedReq({
       body: { templateName: KNOWN_TEMPLATE, recipientEmail: "log503@test.com" },
     }),
     deps,
@@ -529,7 +533,7 @@ Deno.test("email_send_log: written on successful send", async () => {
     fetchImpl,
   });
   await handle(
-    makeRequest({
+    authedReq({
       body: { templateName: KNOWN_TEMPLATE, recipientEmail: "logged@test.com" },
     }),
     deps,
@@ -556,7 +560,7 @@ Deno.test("email_send_log: log insert error must NOT prevent email delivery (non
     fetchImpl,
   });
   const res = await handle(
-    makeRequest({
+    authedReq({
       body: { templateName: KNOWN_TEMPLATE, recipientEmail: "nolog@test.com" },
     }),
     deps,
@@ -583,7 +587,7 @@ Deno.test("email_unsubscribe_tokens: queried before send (token lookup happens)"
     fetchImpl,
   });
   await handle(
-    makeRequest({
+    authedReq({
       body: { templateName: KNOWN_TEMPLATE, recipientEmail: "tokencheck@test.com" },
     }),
     deps,
@@ -657,7 +661,7 @@ Deno.test("email_unsubscribe_tokens: upsert happens when no existing token", asy
   };
 
   await handle(
-    makeRequest({
+    authedReq({
       body: { templateName: KNOWN_TEMPLATE, recipientEmail: "upsert@test.com" },
     }),
     baseDeps,
@@ -686,7 +690,7 @@ Deno.test("email_unsubscribe_tokens: existing non-used token is reused (no new u
     fetchImpl,
   });
   await handle(
-    makeRequest({
+    authedReq({
       body: { templateName: KNOWN_TEMPLATE, recipientEmail: "reuse@test.com" },
     }),
     deps,
@@ -712,7 +716,7 @@ Deno.test("email_unsubscribe_tokens: token lookup error → 500 (fail-closed)", 
     fetchImpl,
   });
   const res = await handle(
-    makeRequest({
+    authedReq({
       body: { templateName: KNOWN_TEMPLATE, recipientEmail: "tokerr@test.com" },
     }),
     deps,
@@ -731,7 +735,7 @@ Deno.test("email_unsubscribe_tokens: token lookup error → 500 (fail-closed)", 
 
 Deno.test("OPTIONS: returns CORS preflight (204 or 200)", async () => {
   const { deps } = makeFakeDeps({ envVars: ENV });
-  const res = await handle(makeRequest({ method: "OPTIONS" }), deps);
+  const res = await handle(authedReq({ method: "OPTIONS" }), deps);
   assertEquals(
     res.status === 204 || res.status === 200,
     true,
@@ -747,7 +751,7 @@ Deno.test("invalid JSON body → 400", async () => {
   const { deps } = makeFakeDeps({ envVars: ENV });
   const req = new Request("http://localhost/fn", {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: { "Content-Type": "application/json", Authorization: "Bearer service_role_svc" },
     body: "not valid json {{{",
   });
   const res = await handle(req, deps);
@@ -768,7 +772,7 @@ Deno.test("happy path: Resend body includes a non-empty subject", async () => {
     fetchImpl,
   });
   await handle(
-    makeRequest({
+    authedReq({
       body: {
         templateName: KNOWN_TEMPLATE,
         recipientEmail: "subj@test.com",
@@ -800,7 +804,7 @@ Deno.test("send-transactional-email: uses the org's resend_from_address override
   const { deps } = makeFakeDeps({
     envVars: {
       SUPABASE_URL: "https://x.supabase.co",
-      SUPABASE_SERVICE_ROLE_KEY: "svc",
+      SUPABASE_SERVICE_ROLE_KEY: "service_role_svc",
       RESEND_API_KEY: "re_key",
     },
     tables: {
@@ -824,7 +828,7 @@ Deno.test("send-transactional-email: uses the org's resend_from_address override
     return baseFetch(url, init);
   };
 
-  const res = await handle(makeRequest({
+  const res = await handle(authedReq({
     body: { template_name: "artist-offer-digest", recipient_email: "jo@x.com", org_id: ORG, templateData: { displayName: "Jo", offers: [] } },
   }), deps);
   assertEquals(res.status, 200);
@@ -849,7 +853,7 @@ Deno.test("characterization: used token + not suppressed → returns { success: 
     fetchImpl,
   });
   const res = await handle(
-    makeRequest({
+    authedReq({
       body: { templateName: KNOWN_TEMPLATE, recipientEmail: "used@test.com" },
     }),
     deps,

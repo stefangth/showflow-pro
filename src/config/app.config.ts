@@ -74,7 +74,7 @@ export const CHAT_ARCHIVE_DAYS = 30;
 export const APP_META = {
   NAME: 'ShowFlow',
   DESCRIPTION: 'Artist Booking SaaS for live show productions',
-  VERSION: '1.4.1',
+  VERSION: '1.5.0',
   /** Public marketing site — used for the "Book a demo" CTA on the login page. */
   MARKETING_URL: 'https://showflow.pro',
 } as const;
