@@ -1,6 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { render, screen, waitFor } from "@testing-library/react";
-import userEvent from "@testing-library/user-event";
+import { render, screen, waitFor, fireEvent } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 
 vi.mock("@/features/auth/AuthContext", () => ({ useAuth: () => ({ user: { id: "u1", email: "a@x.com" } }) }));
@@ -33,7 +32,7 @@ describe("ProfilePage data export", () => {
   it("calls exportMyData when the download button is clicked", async () => {
     render(wrap(<ProfilePage />));
     await waitFor(() => expect(screen.getByText("Your data")).toBeInTheDocument());
-    await userEvent.click(screen.getByRole("button", { name: /download my data/i }));
+    fireEvent.click(screen.getByRole("button", { name: /download my data/i }));
     await waitFor(() => expect(exportSpy).toHaveBeenCalled());
   });
 });

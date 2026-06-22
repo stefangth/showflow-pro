@@ -1,6 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { render, screen, waitFor } from "@testing-library/react";
-import userEvent from "@testing-library/user-event";
+import { render, screen, waitFor, fireEvent } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 
 vi.mock("@/integrations/supabase/client", () => ({ supabase: {} }));
@@ -28,18 +27,18 @@ describe("EditOrgDialog danger zone", () => {
 
   it("exports org data", async () => {
     render(wrap(<EditOrgDialog org={org} onClose={() => {}} />));
-    await userEvent.click(screen.getByRole("button", { name: /export org data/i }));
+    fireEvent.click(screen.getByRole("button", { name: /export org data/i }));
     await waitFor(() => expect(exportSpy).toHaveBeenCalled());
   });
 
   it("requires the org name before deleting", async () => {
     render(wrap(<EditOrgDialog org={org} onClose={() => {}} />));
-    await userEvent.click(screen.getByRole("button", { name: /delete organization/i }));
+    fireEvent.click(screen.getByRole("button", { name: /delete organization/i }));
     const confirm = await screen.findByRole("button", { name: /permanently delete/i });
     expect(confirm).toBeDisabled();
-    await userEvent.type(screen.getByPlaceholderText("Acme"), "Acme");
+    fireEvent.change(screen.getByPlaceholderText("Acme"), { target: { value: "Acme" } });
     expect(confirm).toBeEnabled();
-    await userEvent.click(confirm);
+    fireEvent.click(confirm);
     await waitFor(() => expect(deleteSpy).toHaveBeenCalled());
   });
 });

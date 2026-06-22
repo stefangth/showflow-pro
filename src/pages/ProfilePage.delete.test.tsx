@@ -1,6 +1,5 @@
 import { describe, it, expect, vi } from "vitest";
-import { render, screen, waitFor } from "@testing-library/react";
-import userEvent from "@testing-library/user-event";
+import { render, screen, waitFor, fireEvent } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 
 vi.mock("@/features/auth/AuthContext", () => ({ useAuth: () => ({ user: { id: "u1", email: "a@x.com" } }) }));
@@ -29,12 +28,12 @@ describe("ProfilePage delete account", () => {
   it("requires typing DELETE before confirming", async () => {
     render(wrap(<ProfilePage />));
     await waitFor(() => expect(screen.getByText("Delete account")).toBeInTheDocument());
-    await userEvent.click(screen.getByRole("button", { name: /delete account/i }));
+    fireEvent.click(screen.getByRole("button", { name: /delete account/i }));
     const confirm = await screen.findByRole("button", { name: /permanently delete/i });
     expect(confirm).toBeDisabled();
-    await userEvent.type(screen.getByPlaceholderText("DELETE"), "DELETE");
+    fireEvent.change(screen.getByPlaceholderText("DELETE"), { target: { value: "DELETE" } });
     expect(confirm).toBeEnabled();
-    await userEvent.click(confirm);
+    fireEvent.click(confirm);
     await waitFor(() => expect(deleteSpy).toHaveBeenCalled());
     // on success the user is signed out and routed to login
     await waitFor(() => expect(signOut).toHaveBeenCalled());
