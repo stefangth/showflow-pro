@@ -1,0 +1,146 @@
+[
+  {
+    "version": "1.4.0",
+    "date": "2026-06-21",
+    "dateLabel": "June 21, 2026",
+    "title": "Integrations & automation",
+    "changes": {
+      "new": [
+        {
+          "title": "Airtable sync",
+          "description": "keep show dates in sync with an Airtable base, including session times, added or removed dates, and cancellations."
+        },
+        {
+          "title": "Guided Airtable setup",
+          "description": "a step-by-step field-mapping screen links your programs and cities, automatically matching existing entries so you don't end up with duplicates."
+        },
+        {
+          "title": "Offer tier controls",
+          "description": "producers and admins can open and close offer tiers directly."
+        },
+        {
+          "title": "Schedule-change notifications",
+          "description": "the right people are alerted automatically when a date is cancelled or a session is added, removed, or re-timed."
+        }
+      ],
+      "improved": [
+        {
+          "title": "Redesigned login",
+          "description": "a new login page with a full-bleed hero image."
+        },
+        {
+          "title": "Email branding",
+          "description": "transactional emails now consistently use the \"ShowFlow\" name."
+        }
+      ]
+    }
+  },
+  {
+    "version": "1.3.0",
+    "date": "2026-06-05",
+    "dateLabel": "June 5, 2026",
+    "title": "Multi-organization platform",
+    "changes": {
+      "new": [
+        {
+          "title": "Multiple organizations",
+          "description": "shows, artists, and settings are isolated per organization, with a quick switcher for anyone who belongs to more than one."
+        },
+        {
+          "title": "Invite-only onboarding",
+          "description": "invite teammates by email and have them join through a secure link. (Public sign-up has been retired.)"
+        },
+        {
+          "title": "Your profile",
+          "description": "a profile page with in-app password changes, plus a self-service password reset."
+        },
+        {
+          "title": "Member management",
+          "description": "manage members and resend pending invitations."
+        },
+        {
+          "title": "Platform console",
+          "description": "a super-admin console for managing organizations."
+        }
+      ]
+    }
+  },
+  {
+    "version": "1.2.0",
+    "date": "2026-05-31",
+    "dateLabel": "May 31, 2026",
+    "title": "Privacy & polish",
+    "changes": {
+      "new": [
+        {
+          "title": "Cookie consent",
+          "description": "a GDPR consent system with granular toggles for analytics, session replay, and error tracking. Tracking runs only if you opt in."
+        },
+        {
+          "title": "Legal pages",
+          "description": "privacy policy and Impressum, available in English and German."
+        }
+      ],
+      "improved": [
+        {
+          "title": "Login feedback",
+          "description": "failed logins now show a clear inline error."
+        }
+      ]
+    }
+  },
+  {
+    "version": "1.1.0",
+    "date": "2026-05-19",
+    "dateLabel": "May 19, 2026",
+    "title": "Bookings & design system",
+    "changes": {
+      "new": [
+        {
+          "title": "Automated offers",
+          "description": "artists receive a daily digest of open offers with a response window; stale offers expire automatically, and a confirmation digest follows once they're booked."
+        },
+        {
+          "title": "Understudy auto-promotion",
+          "description": "understudies are promoted automatically when a confirmed artist drops out."
+        },
+        {
+          "title": "Availability for producers",
+          "description": "artist availability is surfaced to producers and feeds an auto-suggest booking engine."
+        }
+      ],
+      "improved": [
+        {
+          "title": "New design system",
+          "description": "a refreshed Showflow look across the app."
+        },
+        {
+          "title": "Clearer bookings view",
+          "description": "a flatter, date-first layout; individual sessions replace start/end times; slot capacity is easier to read."
+        },
+        {
+          "title": "Helpful table headers",
+          "description": "column descriptions now appear in table headers."
+        },
+        {
+          "title": "Smarter availability",
+          "description": "the \"block date\" action is hidden once an artist already has a booking."
+        }
+      ]
+    }
+  },
+  {
+    "version": "1.0.0",
+    "date": "2026-04-26",
+    "dateLabel": "April 26, 2026",
+    "title": "Initial release",
+    "changes": {
+      "new": [
+        {
+          "title": "Cast editing",
+          "description": "producers and admins can edit cast names and descriptions."
+        }
+      ]
+    }
+  }
+]

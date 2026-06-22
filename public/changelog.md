@@ -1,0 +1,61 @@
+# ShowFlow — Changelog
+
+What's new in ShowFlow, newest first.
+
+## 1.4.0 — June 21, 2026
+
+*Integrations & automation*
+
+### New
+- **Airtable sync** — keep show dates in sync with an Airtable base, including session times, added or removed dates, and cancellations.
+- **Guided Airtable setup** — a step-by-step field-mapping screen links your programs and cities, automatically matching existing entries so you don't end up with duplicates.
+- **Offer tier controls** — producers and admins can open and close offer tiers directly.
+- **Schedule-change notifications** — the right people are alerted automatically when a date is cancelled or a session is added, removed, or re-timed.
+
+### Improved
+- **Redesigned login** — a new login page with a full-bleed hero image.
+- **Email branding** — transactional emails now consistently use the "ShowFlow" name.
+
+## 1.3.0 — June 5, 2026
+
+*Multi-organization platform*
+
+### New
+- **Multiple organizations** — shows, artists, and settings are isolated per organization, with a quick switcher for anyone who belongs to more than one.
+- **Invite-only onboarding** — invite teammates by email and have them join through a secure link. (Public sign-up has been retired.)
+- **Your profile** — a profile page with in-app password changes, plus a self-service password reset.
+- **Member management** — manage members and resend pending invitations.
+- **Platform console** — a super-admin console for managing organizations.
+
+## 1.2.0 — May 31, 2026
+
+*Privacy & polish*
+
+### New
+- **Cookie consent** — a GDPR consent system with granular toggles for analytics, session replay, and error tracking. Tracking runs only if you opt in.
+- **Legal pages** — privacy policy and Impressum, available in English and German.
+
+### Improved
+- **Login feedback** — failed logins now show a clear inline error.
+
+## 1.1.0 — May 19, 2026
+
+*Bookings & design system*
+
+### New
+- **Automated offers** — artists receive a daily digest of open offers with a response window; stale offers expire automatically, and a confirmation digest follows once they're booked.
+- **Understudy auto-promotion** — understudies are promoted automatically when a confirmed artist drops out.
+- **Availability for producers** — artist availability is surfaced to producers and feeds an auto-suggest booking engine.
+
+### Improved
+- **New design system** — a refreshed Showflow look across the app.
+- **Clearer bookings view** — a flatter, date-first layout; individual sessions replace start/end times; slot capacity is easier to read.
+- **Helpful table headers** — column descriptions now appear in table headers.
+- **Smarter availability** — the "block date" action is hidden once an artist already has a booking.
+
+## 1.0.0 — April 26, 2026
+
+*Initial release*
+
+### New
+- **Cast editing** — producers and admins can edit cast names and descriptions.
