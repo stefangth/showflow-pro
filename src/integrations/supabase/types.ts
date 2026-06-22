@@ -1386,9 +1386,18 @@ export type Database = {
         Args: { p_show_date_id: string }
         Returns: undefined
       }
+      delete_org_airtable_key: { Args: { _org: string }; Returns: undefined }
       expire_soft_bookings: { Args: never; Returns: undefined }
+      export_my_data: { Args: never; Returns: Json }
       get_column_descriptions: { Args: never; Returns: Json }
       get_org_airtable_key: { Args: { _org: string }; Returns: string }
+      get_org_airtable_key_status: {
+        Args: { _org: string }
+        Returns: {
+          present: boolean
+          updated_at: string
+        }[]
+      }
       get_org_setting: { Args: { _key: string; _org: string }; Returns: Json }
       has_org_role: {
         Args: {
