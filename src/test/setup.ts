@@ -24,3 +24,13 @@ if (typeof globalThis !== "undefined" && !("ResizeObserver" in globalThis)) {
   }
   (globalThis as unknown as { ResizeObserver: unknown }).ResizeObserver = ResizeObserverStub;
 }
+
+// Radix UI primitives (Popover, Select, …) call these in jsdom, which doesn't
+// implement them — without the stubs, opening a popover/menu throws in tests.
+if (typeof Element !== "undefined") {
+  const proto = Element.prototype as unknown as Record<string, unknown>;
+  if (!proto.hasPointerCapture) proto.hasPointerCapture = () => false;
+  if (!proto.setPointerCapture) proto.setPointerCapture = () => {};
+  if (!proto.releasePointerCapture) proto.releasePointerCapture = () => {};
+  if (!proto.scrollIntoView) proto.scrollIntoView = () => {};
+}
