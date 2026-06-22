@@ -20,7 +20,10 @@ export function OrganizationTab() {
   const form = useForm<Values>({ resolver: zodResolver(schema), values: { name: currentOrg?.name ?? "" } });
 
   const mutation = useMutation({
-    mutationFn: (v: Values) => renameOrg(supabase, currentOrg!.id, v.name),
+    mutationFn: (v: Values) => {
+      if (!currentOrg) return Promise.resolve();
+      return renameOrg(supabase, currentOrg.id, v.name);
+    },
     onSuccess: async () => { await refreshOrgs(); toast.success("Organization renamed"); },
     onError: (e: Error) => toast.error(e.message),
   });
