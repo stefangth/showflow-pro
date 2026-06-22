@@ -4,6 +4,7 @@ import { TEMPLATES } from '../_shared/transactional-email-templates/registry.ts'
 import { preflight, json } from "../_shared/http.ts";
 import { realDeps, type Deps } from "../_shared/deps.ts";
 import { resolveOrgSetting, BOOKING_ENGINE_DEFAULTS } from "../_shared/settings.ts";
+import { categoryForTemplate } from "../_shared/notificationCategories.ts";
 
 function generateToken(): string {
   const bytes = new Uint8Array(32)
@@ -86,6 +87,35 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
       status: 'suppressed',
     })
     return json({ success: false, reason: 'email_suppressed' }, 200)
+  }
+
+  // Per-category email preference gate (fail-open). Critical/unmapped templates
+  // (invites, password reset) have no category and always send.
+  const prefCategory = categoryForTemplate(templateName)
+  if (prefCategory) {
+    const { data: prefUser } = await admin
+      .from('profiles')
+      .select('user_id')
+      .eq('user_id',
+        (await admin.auth.admin.listUsers()).data?.users?.find(
+          (u) => (u.email ?? '').toLowerCase() === effectiveRecipient.toLowerCase(),
+        )?.id ?? '00000000-0000-0000-0000-000000000000',
+      )
+      .maybeSingle()
+    if (prefUser?.user_id) {
+      const { data: wants, error: prefErr } = await admin.rpc('should_notify', {
+        p_user: prefUser.user_id, p_category: prefCategory, p_channel: 'email',
+      })
+      if (!prefErr && wants === false) {
+        await admin.from('email_send_log').insert({
+          message_id: messageId,
+          template_name: templateName,
+          recipient_email: effectiveRecipient,
+          status: 'suppressed',
+        })
+        return json({ success: false, reason: 'pref_disabled' }, 200)
+      }
+    }
   }
 
   // Get or create unsubscribe token
