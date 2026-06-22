@@ -87,7 +87,9 @@ export default function ProfilePage() {
       const a = document.createElement("a");
       a.href = url;
       a.download = `showflow-export-${new Date().toISOString().slice(0, 10)}.json`;
+      document.body.appendChild(a);
       a.click();
+      a.remove();
       URL.revokeObjectURL(url);
       toast.success("Your data has been downloaded");
     } catch (e) {
@@ -231,7 +233,7 @@ export default function ProfilePage() {
             Permanently delete your account. Your personal details are removed; shared booking
             history is kept but de-identified. This cannot be undone.
           </p>
-          <AlertDialog onOpenChange={(o) => { if (!o) setConfirmText(""); }}>
+          <AlertDialog onOpenChange={(o) => { if (!o) { setConfirmText(""); setDeleting(false); } }}>
             <AlertDialogTrigger asChild>
               <Button variant="destructive">Delete account</Button>
             </AlertDialogTrigger>
