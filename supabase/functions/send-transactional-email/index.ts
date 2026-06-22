@@ -5,6 +5,7 @@ import { preflight, json } from "../_shared/http.ts";
 import { realDeps, type Deps } from "../_shared/deps.ts";
 import { resolveOrgSetting, BOOKING_ENGINE_DEFAULTS } from "../_shared/settings.ts";
 import { categoryForTemplate } from "../_shared/notificationCategories.ts";
+import { isServiceRole } from "../_shared/auth.ts";
 
 function generateToken(): string {
   const bytes = new Uint8Array(32)
@@ -24,6 +25,13 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
   if (!supabaseUrl || !supabaseServiceKey || !resendApiKey) {
     console.error('Missing required environment variables')
     return json({ error: 'Server configuration error' }, 500)
+  }
+
+  // Caller authentication: this function wields the service-role email pipeline,
+  // so only internal service-role callers may invoke it (digests, invitations, the
+  // booking engine). A public (anon-key) call must not be able to send arbitrary mail.
+  if (!isServiceRole(deps, req)) {
+    return json({ error: 'Forbidden' }, 403)
   }
 
   let templateName: string
@@ -97,18 +105,12 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
     // returns only the first page; swap for a get_user_id_by_email RPC at scale.
     // A miss resolves to the zero-UUID sentinel below, so the gate fails open.
     const { data: usersPage } = await admin.auth.admin.listUsers()
-    const recipientUserId =
-      usersPage?.users?.find(
-        (u) => (u.email ?? '').toLowerCase() === effectiveRecipient.toLowerCase(),
-      )?.id ?? '00000000-0000-0000-0000-000000000000'
-    const { data: prefUser } = await admin
-      .from('profiles')
-      .select('user_id')
-      .eq('user_id', recipientUserId)
-      .maybeSingle()
-    if (prefUser?.user_id) {
+    const recipientUserId = usersPage?.users?.find(
+      (u) => (u.email ?? '').toLowerCase() === effectiveRecipient.toLowerCase(),
+    )?.id
+    if (recipientUserId) {
       const { data: wants, error: prefErr } = await admin.rpc('should_notify', {
-        p_user: prefUser.user_id, p_category: prefCategory, p_channel: 'email',
+        p_user: recipientUserId, p_category: prefCategory, p_channel: 'email',
       })
       if (!prefErr && wants === false) {
         await admin.from('email_send_log').insert({
@@ -119,6 +121,13 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
         })
         return json({ success: false, reason: 'pref_disabled' }, 200)
       }
+    } else {
+      // Recipient address couldn't be resolved to an account (e.g. it fell beyond
+      // listUsers()'s first page). The gate fails open here — log it so the gap is
+      // visible until the get_user_id_by_email RPC lands.
+      console.warn('email pref gate: unresolved recipient, sending unchecked', {
+        templateName, category: prefCategory,
+      })
     }
   }
 
