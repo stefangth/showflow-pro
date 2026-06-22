@@ -19,6 +19,8 @@ import { EntityCalendar } from '@/components/calendar/EntityCalendar';
 import { applySort, inTimeframe } from '@/components/filters/filterUtils';
 import { ArtistBookingsView } from '@/components/bookings/ArtistBookingsView';
 import { ShowDateDetailSheet } from '@/components/shows/ShowDateDetailSheet';
+import { ShowDateFormDialog } from '@/components/shows/ShowDateFormDialog';
+import { Button } from '@/components/ui/button';
 import { showSlots } from '@/lib/settings';
 import { showLabel } from '@/types';
 import { useColumnTemplate, useEditorConfig } from '@/features/editor/EditorContext';
@@ -113,6 +115,9 @@ function ProducerShowsBookings() {
   const [customFilters, setCustomFilters] = useState<Record<string, CustomFilterState>>({});
   const [view, setView] = useState<ViewMode>('list');
   const [activeShowDateId, setActiveShowDateId] = useState<string | null>(null);
+  const [newDateOpen, setNewDateOpen] = useState(false);
+  const { hasRole } = useAuth();
+  const canManage = hasRole('admin') || hasRole('producer');
 
   useEffect(() => {
     const status = searchParams.get('status');
@@ -250,9 +255,12 @@ function ProducerShowsBookings() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="font-display text-[32px] font-semibold tracking-tight">Shows &amp; Bookings</h1>
-        <p className="text-muted-foreground mt-1">All scheduled dates and cast status in one place.</p>
+      <div className="flex items-start justify-between gap-3">
+        <div>
+          <h1 className="font-display text-[32px] font-semibold tracking-tight">Shows &amp; Bookings</h1>
+          <p className="text-muted-foreground mt-1">All scheduled dates and cast status in one place.</p>
+        </div>
+        {canManage && <Button onClick={() => setNewDateOpen(true)}>New date</Button>}
       </div>
 
       <div className="flex flex-wrap items-center gap-3">
@@ -457,6 +465,7 @@ function ProducerShowsBookings() {
         open={!!activeShowDateId}
         onOpenChange={o => { if (!o) setActiveShowDateId(null); }}
       />
+      <ShowDateFormDialog open={newDateOpen} onOpenChange={setNewDateOpen} mode="create" />
     </div>
   );
 }
