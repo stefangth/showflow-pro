@@ -1,5 +1,25 @@
 [
   {
+    "version": "1.4.1",
+    "date": "2026-06-22",
+    "dateLabel": "June 22, 2026",
+    "title": "Airtable sync fixes",
+    "changes": {
+      "fixed": [
+        {
+          "title": "Airtable connection",
+          "description": "loading bases and tables from Airtable works again, and the automatic show-date sync is running."
+        }
+      ],
+      "improved": [
+        {
+          "title": "API key management",
+          "description": "the Airtable settings now show whether a key is saved and when it was last updated, and let you replace or delete it."
+        }
+      ]
+    }
+  },
+  {
     "version": "1.4.0",
     "date": "2026-06-21",
     "dateLabel": "June 21, 2026",
