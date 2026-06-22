@@ -24,8 +24,14 @@ vi.mock("@/data/airtableSync", () => ({
   fetchLatestSyncLog: vi.fn(() => Promise.resolve(null)),
   fetchUnresolvedRecords: vi.fn(() => Promise.resolve([])),
 }));
+vi.mock("@/data/airtableKey", () => ({
+  fetchAirtableKeyStatus: vi.fn(() => Promise.resolve({ present: false, updatedAt: null })),
+  saveAirtableKey: vi.fn(),
+  deleteAirtableKey: vi.fn(),
+}));
 
 import { fetchAirtableBases } from "@/data/airtableSchema";
+import { fetchAirtableKeyStatus } from "@/data/airtableKey";
 import { fetchLatestSyncLog, fetchUnresolvedRecords } from "@/data/airtableSync";
 import { fetchCitiesForLinking, mergeCities } from "@/data/cities";
 
@@ -39,26 +45,38 @@ function renderTab(initial: Record<string, unknown> = {}) {
 describe("AirtableSyncTab", () => {
   beforeEach(() => vi.clearAllMocks());
 
-  it("renders the connection card with typed base/table inputs by default", () => {
+  it("gates Load behind a saved key, with a hint", async () => {
+    (fetchAirtableKeyStatus as ReturnType<typeof vi.fn>).mockResolvedValue({ present: false, updatedAt: null });
     renderTab();
     expect(screen.getByText("Airtable Sync")).toBeInTheDocument();
-    expect(screen.getByPlaceholderText("app1234567890")).toBeInTheDocument();
-    expect(screen.getByPlaceholderText("Shows")).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Load from Airtable" })).toBeInTheDocument();
+    await waitFor(() => expect(screen.getByRole("button", { name: "Load from Airtable" })).toBeDisabled());
+    expect(screen.getByText(/Save an API key first/i)).toBeInTheDocument();
+  });
+
+  it("shows a saved-key status with Replace and Delete when a key exists", async () => {
+    (fetchAirtableKeyStatus as ReturnType<typeof vi.fn>).mockResolvedValue({ present: true, updatedAt: "2026-06-22T17:44:00Z" });
+    renderTab();
+    expect(await screen.findByText("Saved")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Replace" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /Delete/ })).toBeInTheDocument();
   });
 
   it("shows the scope banner + typed fallback when the key can't read schema", async () => {
+    (fetchAirtableKeyStatus as ReturnType<typeof vi.fn>).mockResolvedValue({ present: true, updatedAt: null });
     (fetchAirtableBases as ReturnType<typeof vi.fn>).mockResolvedValue({ schemaAccessible: false });
     renderTab();
+    await waitFor(() => expect(screen.getByRole("button", { name: "Load from Airtable" })).toBeEnabled());
     fireEvent.click(screen.getByRole("button", { name: "Load from Airtable" }));
     await waitFor(() => expect(screen.getByText(/schema\.bases:read/)).toBeInTheDocument());
-    // typed inputs remain available
+    // typed inputs appear in manual-fallback mode
     expect(screen.getByPlaceholderText("app1234567890")).toBeInTheDocument();
   });
 
   it("shows the Base selector label once schema is accessible", async () => {
+    (fetchAirtableKeyStatus as ReturnType<typeof vi.fn>).mockResolvedValue({ present: true, updatedAt: null });
     (fetchAirtableBases as ReturnType<typeof vi.fn>).mockResolvedValue({ schemaAccessible: true, bases: [{ id: "appA", name: "Fever Berlin" }] });
     renderTab();
+    await waitFor(() => expect(screen.getByRole("button", { name: "Load from Airtable" })).toBeEnabled());
     fireEvent.click(screen.getByRole("button", { name: "Load from Airtable" }));
     await waitFor(() => expect(screen.getByText("Base")).toBeInTheDocument());
   });
