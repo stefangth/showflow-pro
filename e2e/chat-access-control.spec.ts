@@ -25,6 +25,7 @@ import { expect, test } from "@playwright/test";
 import { loginAsAndAwaitDashboard, navViaSidebar } from "./helpers/auth";
 import { deleteUserByEmail, ensureUserWithRole, BOOTSTRAP_ORG_ID } from "./helpers/users";
 import { adminClient, tagEmail, E2E_TAG } from "./helpers/supabase";
+import { seedConsent } from "./helpers/consent";
 import {
   cleanupBookingFixture,
   seedBookingFixture,
@@ -120,6 +121,13 @@ test.describe("Chat access control — booking status gates chat participation",
     await cleanupBookingFixture();
     await deleteUserByEmail(PARTICIPANT_EMAIL);
     await deleteUserByEmail(OUTSIDER_EMAIL);
+  });
+
+  // Pre-decide cookie consent so the bottom-fixed CookieConsentBanner never
+  // renders (it overlaps page-bottom controls and intercepts clicks). Matches
+  // the other UI specs.
+  test.beforeEach(async ({ page }) => {
+    await seedConsent(page);
   });
 
   test("soft-booked artist can open the chat and post a message", async ({ page }) => {
