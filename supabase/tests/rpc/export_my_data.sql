@@ -1,7 +1,7 @@
 -- export_my_data: returns the caller's rows; arrays default to []; has schema_version.
 BEGIN;
 CREATE EXTENSION IF NOT EXISTS pgtap WITH SCHEMA extensions;
-SELECT plan(3);
+SELECT plan(4);
 
 SET session_replication_role = replica;
 INSERT INTO auth.users (id, aud, role, email, email_confirmed_at, raw_app_meta_data, raw_user_meta_data, created_at, updated_at)
@@ -14,7 +14,8 @@ SET LOCAL ROLE authenticated;
 
 SELECT is((public.export_my_data() -> 'account' ->> 'display_name'), 'Exie', 'account block present');
 SELECT is((public.export_my_data() -> 'artists')::text, '[]', 'no artists -> empty array');
-SELECT is((public.export_my_data() ->> 'schema_version'), '1', 'has schema_version');
+SELECT is((public.export_my_data() -> 'notification_preferences')::text, '[]', 'notification_preferences included (empty)');
+SELECT is((public.export_my_data() ->> 'schema_version'), '2', 'schema_version bumped to 2');
 
 RESET ROLE;
 SELECT * FROM finish();
