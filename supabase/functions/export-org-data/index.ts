@@ -2,9 +2,18 @@ import { preflight, json } from "../_shared/http.ts";
 import { realDeps, type Deps } from "../_shared/deps.ts";
 import { requireSuperAdmin } from "../_shared/auth.ts";
 
+// Every org-scoped table (mirrors delete_org's coverage) so a pre-deletion export
+// is not lossy. `organizations` is keyed by `id`; all others by `org_id`.
+// notification_preferences is intentionally absent — it is user-scoped (no org_id).
 const ORG_TABLES = [
-  "organizations", "org_memberships", "artists", "shows", "show_dates",
-  "bookings", "booking_audit_log", "chats", "chat_messages",
+  "organizations", "org_memberships", "org_invitations", "app_settings",
+  "artists", "artist_skills", "skills",
+  "casts", "cast_members", "cast_city_priority", "cities", "custom_field_definitions",
+  "shows", "show_dates", "show_assignments", "show_cast_eligibility",
+  "show_date_cast_eligibility", "show_date_change_log", "show_date_offer_tiers",
+  "bookings", "booking_audit_log", "blocked_dates",
+  "chats", "chat_messages", "notifications",
+  "airtable_sync_log", "airtable_sync_record_log",
 ];
 
 export async function handle(req: Request, deps: Deps): Promise<Response> {
