@@ -1,6 +1,5 @@
 import { describe, it, expect, vi } from "vitest";
-import { render, screen, waitFor } from "@testing-library/react";
-import userEvent from "@testing-library/user-event";
+import { render, screen, waitFor, fireEvent } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 
 vi.mock("@/features/auth/AuthContext", () => ({ useAuth: () => ({ user: { id: "u1", email: "a@x.com" } }) }));
@@ -33,7 +32,7 @@ describe("ProfilePage notification preferences", () => {
   it("writes the merged map when a switch is toggled", async () => {
     render(wrap(<ProfilePage />));
     await waitFor(() => expect(screen.getByText("Notifications")).toBeInTheDocument());
-    await userEvent.click(screen.getByLabelText("Booking offers email"));
+    fireEvent.click(screen.getByLabelText("Booking offers email"));
     expect(updateMutate).toHaveBeenCalledWith(
       expect.objectContaining({ booking_offers: expect.objectContaining({ email: true }) }),
       expect.anything(),
