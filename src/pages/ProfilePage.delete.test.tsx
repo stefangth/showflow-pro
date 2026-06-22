@@ -16,6 +16,8 @@ const deleteSpy = vi.fn().mockResolvedValue(undefined);
 vi.mock("@/data/account", () => ({ exportMyData: vi.fn(), deleteMyAccount: () => deleteSpy() }));
 const navigate = vi.fn();
 vi.mock("react-router-dom", () => ({ useNavigate: () => navigate }));
+const signOut = vi.fn().mockResolvedValue({ error: null });
+vi.mock("@/integrations/supabase/client", () => ({ supabase: { auth: { signOut: () => signOut() } } }));
 
 import ProfilePage from "./ProfilePage";
 
@@ -34,5 +36,8 @@ describe("ProfilePage delete account", () => {
     expect(confirm).toBeEnabled();
     await userEvent.click(confirm);
     await waitFor(() => expect(deleteSpy).toHaveBeenCalled());
+    // on success the user is signed out and routed to login
+    await waitFor(() => expect(signOut).toHaveBeenCalled());
+    await waitFor(() => expect(navigate).toHaveBeenCalledWith("/login"));
   });
 });

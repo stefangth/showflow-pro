@@ -14,6 +14,7 @@ vi.mock("@/hooks/useNotificationPreferences", () => ({
   useUpdateNotificationPreferences: () => ({ mutate: updateMutate, isPending: false }),
 }));
 vi.mock("react-router-dom", () => ({ useNavigate: () => vi.fn() }));
+vi.mock("@/integrations/supabase/client", () => ({ supabase: {} }));
 
 import ProfilePage from "./ProfilePage";
 
@@ -35,6 +36,7 @@ describe("ProfilePage notification preferences", () => {
     await userEvent.click(screen.getByLabelText("Booking offers email"));
     expect(updateMutate).toHaveBeenCalledWith(
       expect.objectContaining({ booking_offers: expect.objectContaining({ email: true }) }),
+      expect.anything(),
     );
   });
 });
