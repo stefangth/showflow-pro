@@ -93,14 +93,18 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
   // (invites, password reset) have no category and always send.
   const prefCategory = categoryForTemplate(templateName)
   if (prefCategory) {
+    // Resolve the recipient address -> auth user. TODO: pagination — listUsers()
+    // returns only the first page; swap for a get_user_id_by_email RPC at scale.
+    // A miss resolves to the zero-UUID sentinel below, so the gate fails open.
+    const { data: usersPage } = await admin.auth.admin.listUsers()
+    const recipientUserId =
+      usersPage?.users?.find(
+        (u) => (u.email ?? '').toLowerCase() === effectiveRecipient.toLowerCase(),
+      )?.id ?? '00000000-0000-0000-0000-000000000000'
     const { data: prefUser } = await admin
       .from('profiles')
       .select('user_id')
-      .eq('user_id',
-        (await admin.auth.admin.listUsers()).data?.users?.find(
-          (u) => (u.email ?? '').toLowerCase() === effectiveRecipient.toLowerCase(),
-        )?.id ?? '00000000-0000-0000-0000-000000000000',
-      )
+      .eq('user_id', recipientUserId)
       .maybeSingle()
     if (prefUser?.user_id) {
       const { data: wants, error: prefErr } = await admin.rpc('should_notify', {
