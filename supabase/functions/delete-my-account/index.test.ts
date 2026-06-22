@@ -31,3 +31,29 @@ Deno.test("rejects an unauthenticated request", async () => {
   const res = await handle(makeRequest({ headers: { "content-type": "application/json" }, body: {} }), deps);
   assertEquals(res.status, 401);
 });
+
+Deno.test("reports anonymize_failed and does not delete when anonymize errors", async () => {
+  const { deps } = makeFakeDeps({
+    authUser: { id: "u1" },
+    rpcs: {
+      sole_admin_orgs: { data: [], error: null },
+      anonymize_user: { data: null, error: { message: "permission denied" } },
+    },
+  });
+  const res = await handle(makeRequest({ headers: AUTH, body: {} }), deps);
+  assertEquals(res.status, 200);
+  const body = await res.json();
+  assertEquals(body.error, "anonymize_failed");
+  assertEquals(body.success, undefined);
+});
+
+Deno.test("reports delete_failed when the auth delete errors", async () => {
+  const { deps } = makeFakeDeps({
+    authUser: { id: "u1" },
+    rpcs: { sole_admin_orgs: { data: [], error: null }, anonymize_user: { data: null, error: null } },
+    deleteUserResult: { data: null, error: { message: "auth down" } },
+  });
+  const res = await handle(makeRequest({ headers: AUTH, body: {} }), deps);
+  assertEquals(res.status, 200);
+  assertEquals((await res.json()).error, "delete_failed");
+});
