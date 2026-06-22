@@ -45,6 +45,8 @@ interface AuthContextType {
   isSuperAdmin: boolean;
   /** Switch the active org; persists the choice and refetches org-scoped data. */
   switchOrg: (orgId: string) => void;
+  /** Re-fetch memberships/orgs for the signed-in user (e.g. after an org rename). */
+  refreshOrgs: () => Promise<void>;
   loading: boolean;
   signIn: (email: string, password: string) => Promise<void>;
   signOut: () => Promise<void>;
@@ -93,6 +95,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setCurrentOrgId(orgId);
     localStorage.setItem('showflow.currentOrg', orgId);
     queryClient.invalidateQueries();
+  };
+
+  const refreshOrgs = async () => {
+    if (user?.id) await loadIdentity(user.id);
   };
 
   /** Fetch memberships + super-admin status (+ all orgs for super-admins); default the active org. */
@@ -180,7 +186,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     effectiveHasRole({ isSuperAdmin, viewAsUser, viewAsRole, roles, role });
 
   return (
-    <AuthContext.Provider value={{ user, session, roles, memberships, orgs, currentOrg, isSuperAdmin, switchOrg, loading, signIn, signOut, hasRole, viewAsRole, setViewAsRole, viewAsUser, setViewAsUser }}>
+    <AuthContext.Provider value={{ user, session, roles, memberships, orgs, currentOrg, isSuperAdmin, switchOrg, refreshOrgs, loading, signIn, signOut, hasRole, viewAsRole, setViewAsRole, viewAsUser, setViewAsUser }}>
       {children}
     </AuthContext.Provider>
   );

@@ -1390,6 +1390,7 @@ export type Database = {
         Returns: {
           display_name: string
           email: string
+          last_sign_in_at: string
           roles: Database["public"]["Enums"]["app_role"][]
           user_id: string
         }[]
@@ -1433,6 +1434,10 @@ export type Database = {
         Returns: undefined
       }
       remove_platform_admin: { Args: { p_user_id: string }; Returns: undefined }
+      rename_org: {
+        Args: { p_name: string; p_org: string }
+        Returns: undefined
+      }
       resolve_show_assignments: {
         Args: {
           p_city_id: string
@@ -1456,6 +1461,15 @@ export type Database = {
       seed_org_starter_catalog: { Args: { _org: string }; Returns: undefined }
       set_org_airtable_key: {
         Args: { _key: string; _org: string }
+        Returns: undefined
+      }
+      set_org_member_role: {
+        Args: {
+          p_action: string
+          p_org: string
+          p_role: Database["public"]["Enums"]["app_role"]
+          p_user: string
+        }
         Returns: undefined
       }
     }

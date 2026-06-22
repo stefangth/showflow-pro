@@ -233,14 +233,14 @@ When adding a new page:
 ### Edge functions
 
 - One folder per function under `supabase/functions/<name>/index.ts`. Current categories:
-  - **Admin ops:** `admin-list-users`, `admin-set-role` (both org-scoped via `?org_id` / body `org_id`).
+  - **Admin ops:** `admin-list-users` (org-scoped via `?org_id` / body `org_id`). Member role changes are the `set_org_member_role` RPC (not an edge function).
   - **Invitations:** `create-invitation` (org admin → insert `org_invitations` + send the `org-invitation` email). Acceptance is the `accept_invitation` RPC, not an edge function.
   - **Airtable sync:** `airtable-schema` (admin-only, user-JWT via `requireOrgRole(org_id, ['admin'])`) reads the org's Airtable schema with the Vault PAT for the mapping UI — returns `{ schemaAccessible, bases }` (no `baseId` in body) or `{ schemaAccessible, tables }` (with `baseId`); an Airtable `403` (PAT missing the `schema.bases:read` scope) surfaces as `{ schemaAccessible: false }` so the UI falls back to typed inputs, and the PAT is never returned to the client. `airtable-poll` is the `*/5 * * * *` cron that upserts `show_dates` from each org's base (see the Airtable-sync decisions above).
   - **Transactional email:** `send-transactional-email`, `preview-transactional-email`, `handle-email-suppression`, `handle-email-unsubscribe`. New templates must be registered in `_shared/transactional-email-templates/registry.ts`.
   - **Booking engine:** `open-offer-tier` (create suggested bookings), `expire-offers` (hourly expiry), `send-offer-digest` (daily 19:00 Berlin), `send-confirmation-digest` (daily 20:00 Berlin). All cron functions are org-aware: they iterate active orgs via `getActiveOrgs(admin)` from `_shared/settings.ts` and resolve settings per-org with `resolveOrgSetting`.
   - **Watchers:** `tier-at-risk-watcher` — scans open offer tiers and fires an in-app `tier_at_risk` notification when remaining pending + accepted < required slots. Idempotent (one notification per date/tier). No email; visual only.
   - **Platform (super-admin):** `provision-org` (atomic org creation + catalog seeding + first-admin invite, requires super-admin); `resend-invitation` (resend an existing `org_invitations` row's email).
-- Use the service role key only when bypassing RLS is intentional (admin endpoints). Always re-verify the caller's role server-side first via `requireRole` (any-org), `requireOrgRole(org_id, [...])` (org-scoped), or `requireSuperAdmin` (platform-admin endpoints) from `_shared/auth.ts` — see `admin-set-role` / `create-invitation` / `provision-org` for patterns. `requireOrgRole` automatically accepts super-admins so god-mode works on org-scoped endpoints.
+- Use the service role key only when bypassing RLS is intentional (admin endpoints). Always re-verify the caller's role server-side first via `requireRole` (any-org), `requireOrgRole(org_id, [...])` (org-scoped), or `requireSuperAdmin` (platform-admin endpoints) from `_shared/auth.ts` — see `create-invitation` / `provision-org` for patterns. `requireOrgRole` automatically accepts super-admins so god-mode works on org-scoped endpoints.
 - Read secrets via `Deno.env.get('SECRET_NAME')`.
 
 ### Notification system
@@ -311,7 +311,7 @@ A booking moves through: `suggested → soft_booked → confirmed` (or `cancelle
 
 ## Test accounts (development only)
 
-Onboarding is invite-only, so there is no public signup. Bootstrap the first org admin out-of-band: create the auth user (Supabase dashboard), then insert an `org_memberships` row for the bootstrap org (`00000000-0000-0000-0000-00000000b007`) with role `admin` (Supabase SQL editor, or the `admin-set-role` function). That admin then invites producers/artists from **Admin → Invites**; each invitee accepts via the emailed `/accept-invite?token=` link. There is no automated seeding function.
+Onboarding is invite-only, so there is no public signup. **Bootstrap the first super-admin** once per environment — the only setup step that needs SQL — per the runbook at `docs/runbooks/first-super-admin-bootstrap.md`: create the auth user (Supabase dashboard), then `insert into public.platform_admins (user_id) select id from auth.users where lower(email) = lower('owner@example.com')`. Sign in and you land in the **Platform console**, where **Organizations → New organization** provisions an org (seeds its starter catalog + emails the first admin an `/accept-invite?token=` link) with no SQL. That admin then invites producers/artists from **Admin → Invites**; each invitee accepts via the emailed link. There is no automated seeding function.
 
 Suggested emails:
 - `test-admin@showflowpro.com`

@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { createFakeSupabase } from "@/test/supabaseFake";
-import { fetchMyMemberships, fetchOrgProducers } from "./orgs";
+import { fetchMyMemberships, fetchOrgProducers, renameOrg } from "./orgs";
 
 describe("fetchMyMemberships", () => {
   it("queries org_memberships by user_id and returns rows with the joined org", async () => {
@@ -73,5 +73,19 @@ describe("fetchOrgProducers", () => {
       org_memberships: { data: null, error: { message: "boom" } },
     });
     await expect(fetchOrgProducers(fake as never, "o1")).rejects.toBeTruthy();
+  });
+});
+
+describe("renameOrg", () => {
+  it("calls rename_org with org + name", async () => {
+    const fake = createFakeSupabase({ "rpc:rename_org": { data: null, error: null } });
+    await renameOrg(fake as never, "org-1", "New Name");
+    expect(fake.calls).toContainEqual({
+      table: "rpc:rename_org", method: "rpc", args: [{ p_org: "org-1", p_name: "New Name" }],
+    });
+  });
+  it("throws on error", async () => {
+    const fake = createFakeSupabase({ "rpc:rename_org": { data: null, error: { message: "Forbidden" } } });
+    await expect(renameOrg(fake as never, "org-1", "x")).rejects.toBeTruthy();
   });
 });
