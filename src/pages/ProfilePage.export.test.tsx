@@ -15,6 +15,7 @@ vi.mock("@/hooks/useNotificationPreferences", () => ({
 const exportSpy = vi.fn().mockResolvedValue({ schema_version: 1 });
 vi.mock("@/data/account", () => ({ exportMyData: () => exportSpy(), deleteMyAccount: vi.fn() }));
 vi.mock("react-router-dom", () => ({ useNavigate: () => vi.fn() }));
+vi.mock("@/integrations/supabase/client", () => ({ supabase: {} }));
 
 import ProfilePage from "./ProfilePage";
 
