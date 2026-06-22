@@ -22,6 +22,6 @@ describe("notification category model", () => {
 
   it("returns null for critical/unmapped templates (always send)", () => {
     expect(categoryForTemplate("org-invitation")).toBeNull();
-    expect(categoryForTemplate("password-reset")).toBeNull();
+    expect(categoryForTemplate("new-signup-admin-notification")).toBeNull();
   });
 });
