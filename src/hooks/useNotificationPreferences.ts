@@ -20,7 +20,10 @@ export function useUpdateNotificationPreferences() {
   const { user } = useAuth();
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (prefs: NotificationPrefs) => updateMyNotificationPreferences(supabase, user!.id, prefs),
+    mutationFn: (prefs: NotificationPrefs) => {
+      if (!user?.id) throw new Error("Not signed in");
+      return updateMyNotificationPreferences(supabase, user.id, prefs);
+    },
     onSuccess: () => qc.invalidateQueries({ queryKey: ["notification-preferences"] }),
   });
 }
