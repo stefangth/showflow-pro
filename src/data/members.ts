@@ -7,6 +7,7 @@ export interface OrgMember {
   email: string | null;
   display_name: string | null;
   roles: AppRole[];
+  last_sign_in_at: string | null;
 }
 
 /** Members of an org (admin-only RPC; aggregates a user's roles). */
