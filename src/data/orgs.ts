@@ -60,3 +60,13 @@ export async function fetchOrgProducers(
 
   return (profileRows ?? []) as OrgProducer[];
 }
+
+/** Rename the caller's org (admin-only RPC; name only — slug is left unchanged). */
+export async function renameOrg(
+  client: SupabaseClient<Database>,
+  orgId: string,
+  name: string,
+): Promise<void> {
+  const { error } = await client.rpc("rename_org", { p_org: orgId, p_name: name });
+  if (error) throw error;
+}

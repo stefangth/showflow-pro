@@ -21,9 +21,10 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { toast } from 'sonner';
-import { Settings as SettingsIcon, Database, Bell, Wand2, Save, SlidersHorizontal, MapPin, Plus, Trash2, Clock, BookOpen, UserCog, Eye } from 'lucide-react';
+import { Settings as SettingsIcon, Database, Bell, Wand2, Save, SlidersHorizontal, MapPin, Plus, Trash2, Clock, BookOpen, UserCog, Eye, Building2 } from 'lucide-react';
 import { upsertOrgSetting } from '@/data/settings';
 import { AirtableSyncTab } from '@/components/settings/AirtableSyncTab';
+import { OrganizationTab } from '@/components/settings/OrganizationTab';
 import type { City, Cast } from '@/types';
 
 const EMAIL_TEMPLATE_KEYS = [
@@ -588,8 +589,9 @@ export default function SettingsPage() {
         </div>
       )}
 
-      <Tabs defaultValue={isAdmin ? 'airtable' : 'scheduling'}>
+      <Tabs defaultValue={isAdmin ? 'organization' : 'scheduling'}>
         <TabsList>
+          {isAdmin && <TabsTrigger value="organization"><Building2 className="h-4 w-4 mr-2" />Organization</TabsTrigger>}
           {isAdmin && <TabsTrigger value="airtable"><Database className="h-4 w-4 mr-2" />Airtable Sync</TabsTrigger>}
           {isAdmin && <TabsTrigger value="filters"><SlidersHorizontal className="h-4 w-4 mr-2" />Filters</TabsTrigger>}
           <TabsTrigger value="casts-cities"><MapPin className="h-4 w-4 mr-2" />Casts & Cities</TabsTrigger>
@@ -908,6 +910,12 @@ export default function SettingsPage() {
             </CardContent>
           </Card>
         </TabsContent>
+
+        {isAdmin && (
+          <TabsContent value="organization" className="mt-4">
+            <OrganizationTab />
+          </TabsContent>
+        )}
 
         <TabsContent value="airtable" className="mt-4">
           <AirtableSyncTab orgId={orgId} get={get} set={set} />

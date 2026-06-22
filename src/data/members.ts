@@ -7,6 +7,7 @@ export interface OrgMember {
   email: string | null;
   display_name: string | null;
   roles: AppRole[];
+  last_sign_in_at: string | null;
 }
 
 /** Members of an org (admin-only RPC; aggregates a user's roles). */
@@ -26,5 +27,19 @@ export async function removeOrgMember(
   userId: string,
 ): Promise<void> {
   const { error } = await client.rpc("remove_org_member", { p_org: orgId, p_user: userId });
+  if (error) throw error;
+}
+
+/** Add or remove a single role for a member (admin-only RPC; guards the last admin). */
+export async function setOrgMemberRole(
+  client: SupabaseClient<Database>,
+  orgId: string,
+  userId: string,
+  role: AppRole,
+  action: "add" | "remove",
+): Promise<void> {
+  const { error } = await client.rpc("set_org_member_role", {
+    p_org: orgId, p_user: userId, p_role: role, p_action: action,
+  });
   if (error) throw error;
 }
