@@ -158,3 +158,18 @@ export async function savePlatformBookingDefaults(
   const { error } = await client.from("app_settings").upsert(rows, { onConflict: "org_id,key" });
   if (error) throw error;
 }
+
+/** Export an org's full dataset as a JSON bundle (super-admin only). */
+export async function exportOrgData(client: SupabaseClient<Database>, orgId: string): Promise<unknown> {
+  const { data, error } = await client.functions.invoke("export-org-data", { body: { org_id: orgId } });
+  if (error) throw error;
+  const payload = data as { error?: string; bundle?: unknown } | null;
+  if (payload?.error) throw new Error(payload.error);
+  return payload?.bundle;
+}
+
+/** Permanently delete an org and all its data (super-admin only, hard teardown). */
+export async function deleteOrg(client: SupabaseClient<Database>, orgId: string): Promise<void> {
+  const { error } = await client.rpc("delete_org", { p_org: orgId });
+  if (error) throw error;
+}
