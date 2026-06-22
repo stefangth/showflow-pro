@@ -1381,11 +1381,13 @@ export type Database = {
     Functions: {
       accept_invitation: { Args: { p_token: string }; Returns: string }
       add_platform_admin: { Args: { p_email: string }; Returns: string }
+      anonymize_user: { Args: { p_user: string }; Returns: undefined }
       category_of: { Args: { p_type: string }; Returns: string }
       compute_show_date_status: {
         Args: { p_show_date_id: string }
         Returns: undefined
       }
+      delete_org: { Args: { p_org: string }; Returns: undefined }
       delete_org_airtable_key: { Args: { _org: string }; Returns: undefined }
       expire_soft_bookings: { Args: never; Returns: undefined }
       export_my_data: { Args: never; Returns: Json }
@@ -1503,6 +1505,13 @@ export type Database = {
       should_notify: {
         Args: { p_category: string; p_channel: string; p_user: string }
         Returns: boolean
+      }
+      sole_admin_orgs: {
+        Args: { p_user: string }
+        Returns: {
+          org_id: string
+          org_name: string
+        }[]
       }
     }
     Enums: {
@@ -1657,3 +1666,4 @@ export const Constants = {
     },
   },
 } as const
+
