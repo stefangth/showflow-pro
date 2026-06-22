@@ -31,8 +31,7 @@ const CRON_WRONG = { "X-Cron-Secret": "bad" };
 
 /**
  * The handler reads app_settings for the cron_secret check only.
- * Slot capacity now lives on shows.main_cast_slots / shows.understudy_slots,
- * not in app_settings.sub_program_slots_defaults.
+ * Slot capacity lives on shows.main_cast_slots / shows.understudy_slots.
  */
 function makeBaseSettings() {
   return [
