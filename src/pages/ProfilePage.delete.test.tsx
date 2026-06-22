@@ -27,8 +27,9 @@ const wrap = (ui: React.ReactNode) => (
 describe("ProfilePage delete account", () => {
   it("requires typing DELETE before confirming", async () => {
     render(wrap(<ProfilePage />));
-    await waitFor(() => expect(screen.getByText("Delete account")).toBeInTheDocument());
-    fireEvent.click(screen.getByRole("button", { name: /delete account/i }));
+    // "Delete account" is both the card title and the trigger button — target the button by role.
+    const trigger = await screen.findByRole("button", { name: /delete account/i });
+    fireEvent.click(trigger);
     const confirm = await screen.findByRole("button", { name: /permanently delete/i });
     expect(confirm).toBeDisabled();
     fireEvent.change(screen.getByPlaceholderText("DELETE"), { target: { value: "DELETE" } });
