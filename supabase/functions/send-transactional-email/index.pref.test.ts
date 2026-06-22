@@ -1,4 +1,4 @@
-import { assertEquals } from "https://deno.land/std@0.224.0/assert/mod.ts";
+import { assertEquals, assertNotEquals } from "https://deno.land/std@0.224.0/assert/mod.ts";
 import { handle } from "./index.ts";
 import { makeFakeDeps, makeRequest } from "../_shared/testing.ts";
 
@@ -9,7 +9,7 @@ const ENV = {
 };
 
 Deno.test("skips send when the recipient disabled the template's category", async () => {
-  const { deps } = makeFakeDeps({
+  const { deps, calls } = makeFakeDeps({
     envVars: ENV,
     usersById: { "u1": { email: "artist@x.com" } },
     tables: {
@@ -26,6 +26,11 @@ Deno.test("skips send when the recipient disabled the template's category", asyn
   const res = await handle(req, deps);
   assertEquals(res.status, 200);
   assertEquals((await res.json()).reason, "pref_disabled");
+  // the suppression decision is recorded to email_send_log
+  assertEquals(
+    calls.some((c) => c.table === "email_send_log" && c.method === "insert"),
+    true,
+  );
 });
 
 Deno.test("critical template (no category) always proceeds past the gate", async () => {
@@ -45,5 +50,5 @@ Deno.test("critical template (no category) always proceeds past the gate", async
   });
   const res = await handle(req, deps);
   const body = await res.json();
-  assertEquals(body.reason === "pref_disabled", false);
+  assertNotEquals(body.reason, "pref_disabled");
 });
