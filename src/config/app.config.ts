@@ -52,6 +52,7 @@ export const ROUTES = {
   SIGNUP: '/signup',
   DASHBOARD: '/dashboard',
   BOOKINGS: '/bookings',
+  PRODUCTIONS: '/productions',
   ARTISTS: '/artists',
   AVAILABILITY: '/availability',
   ADMIN: '/admin',

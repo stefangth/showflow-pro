@@ -1,4 +1,4 @@
-import { LayoutDashboard, BookOpen, Clock, Settings, Shield, MessageSquare, Users, Building2 } from 'lucide-react';
+import { LayoutDashboard, BookOpen, Clock, Settings, Shield, MessageSquare, Users, Building2, Theater } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import { ROUTES } from '@/config/app.config';
 
@@ -13,6 +13,7 @@ export interface NavItem {
 export const NAV_ITEMS: NavItem[] = [
   { to: ROUTES.DASHBOARD, icon: LayoutDashboard, label: 'Dashboard' },
   { to: ROUTES.BOOKINGS, icon: BookOpen, label: 'Shows & Bookings', roles: ['admin', 'producer'] },
+  { to: ROUTES.PRODUCTIONS, icon: Theater, label: 'Productions', roles: ['admin', 'producer'] },
   { to: ROUTES.ARTISTS, icon: Users, label: 'Artists', roles: ['admin', 'producer'] },
   { to: ROUTES.AVAILABILITY, icon: Clock, label: 'Availability', roles: ['artist'] },
   { to: ROUTES.CHATS, icon: MessageSquare, label: 'Chats' },

@@ -25,19 +25,6 @@ export async function fetchShowsWithSlots(
   return (data ?? []) as ShowWithSlots[];
 }
 
-/** Update slot columns on a single show. Pass null to clear a column. */
-export async function updateShowSlots(
-  client: SupabaseClient<Database>,
-  showId: string,
-  mainCast: number | null,
-  understudies: number | null,
-): Promise<void> {
-  const { error } = await client
-    .from("shows")
-    .update({ main_cast_slots: mainCast, understudy_slots: understudies })
-    .eq("id", showId);
-  if (error) throw error;
-}
 
 interface SettingRow { org_id: string | null; value: unknown }
 
