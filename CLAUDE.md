@@ -311,7 +311,7 @@ A booking moves through: `suggested → soft_booked → confirmed` (or `cancelle
 
 ## Test accounts (development only)
 
-Onboarding is invite-only, so there is no public signup. Bootstrap the first org admin out-of-band: create the auth user (Supabase dashboard), then insert an `org_memberships` row for the bootstrap org (`00000000-0000-0000-0000-00000000b007`) with role `admin` (Supabase SQL editor, or the `admin-set-role` function). That admin then invites producers/artists from **Admin → Invites**; each invitee accepts via the emailed `/accept-invite?token=` link. There is no automated seeding function.
+Onboarding is invite-only, so there is no public signup. **Bootstrap the first super-admin** once per environment — the only setup step that needs SQL — per the runbook at `docs/runbooks/first-super-admin-bootstrap.md`: create the auth user (Supabase dashboard), then `insert into public.platform_admins (user_id) select id from auth.users where lower(email) = lower('owner@example.com')`. Sign in and you land in the **Platform console**, where **Organizations → New organization** provisions an org (seeds its starter catalog + emails the first admin an `/accept-invite?token=` link) with no SQL. That admin then invites producers/artists from **Admin → Invites**; each invitee accepts via the emailed link. There is no automated seeding function.
 
 Suggested emails:
 - `test-admin@showflowpro.com`
