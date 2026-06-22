@@ -13,7 +13,8 @@ functions" handoff that motivated this work.
 CLAUDE.md claims *"Edge functions deploy automatically when files in `supabase/functions/<name>/` change.
 No manual deploy step."* This is **false** for the live project (`epweartpzwvcasrzyueh`): there is no CI
 deploy step, so the deployed function set drifts from the repo. Functions must be pushed via the Supabase
-MCP `deploy_edge_function` (proven in PR #124 for `airtable-schema`/`airtable-poll`).
+MCP `deploy_edge_function` (proven in PR #124 for `airtable-schema`/`airtable-poll`). **Correcting that
+claim in CLAUDE.md is in scope here (Part 4)** — the misleading doc is why this outage went unnoticed.
 
 **Empirically verified this session** via `list_edge_functions` + credential-free `OPTIONS` probes
 (204 = deployed, 404 `NOT_FOUND` = undeployed, 200 on a repo-absent name = zombie):
@@ -37,7 +38,8 @@ MCP `deploy_edge_function` (proven in PR #124 for `airtable-schema`/`airtable-po
 
 **Goal:** (1) deploy the 6 functions to restore the booking engine; (2) safely remove the 3 zombies;
 (3) build cron-health monitoring (in-app + email alerts + a `/platform` dashboard) so a cron firing into
-a non-2xx can never again fail silently.
+a non-2xx can never again fail silently; (4) correct CLAUDE.md's false "auto-deploy" claim so the docs
+stop hiding the root cause.
 
 ## Decisions (locked in brainstorming)
 
@@ -201,6 +203,24 @@ stops (undeployed/erroring) its `cron_health_state` row goes `stale` and surface
   healthy/failing/stale), data-access `fetchCronHealth(client)` in `../../../src/data/platform.ts`, a
   `useCronHealth` query hook, and a new tab registered in `PlatformPage` (gated by `PlatformRoute`).
   Semantic tokens, shadcn `Badge`/`Table`, React Query `['platform','cron-health']`.
+
+## Part 4 — Correct CLAUDE.md's auto-deploy claim
+
+The doc that caused this — [../../../CLAUDE.md](../../../CLAUDE.md) **line 40**, under *Build / test / lint*:
+
+> Edge functions deploy automatically when files in `supabase/functions/<name>/` change. No manual deploy step.
+
+is false (there is no CI deploy step). Replace it with the truth + the real procedure, e.g.:
+
+> Edge functions are **not** auto-deployed — there is no CI deploy step. After changing any
+> `supabase/functions/<name>/`, deploy it explicitly via the Supabase MCP `deploy_edge_function`
+> (or `supabase functions deploy <name> --project-ref <project-id>`) and confirm with `list_edge_functions`.
+> Otherwise the deployed set silently drifts from the repo: undeployed functions 404, and any pg_cron job
+> targeting them fires into the void.
+
+This is the **only** auto-deploy assertion in CLAUDE.md (verified: it appears only at line 40; the
+`### Edge functions` conventions section makes no deploy claim). Pure documentation change — no code, no
+tests. (Mirrors the standing memory `edge-functions-not-auto-deployed`.)
 
 ## Testing
 
