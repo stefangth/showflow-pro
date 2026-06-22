@@ -59,8 +59,11 @@ export function ArtistBookingsView() {
   const [view, setView] = useState<ViewMode>('list');
   const [activeShowDateId, setActiveShowDateId] = useState<string | null>(null);
 
+  // Distinct cache key per projection (this selects `is_understudy`, not `id`).
+  // A shared key let different `select` shapes clobber each other in the React
+  // Query cache — see the note in AvailabilityPage.
   const { data: myBookings } = useQuery({
-    queryKey: ['bookings', 'artist-all', artist?.id],
+    queryKey: ['bookings', 'artist-bookings-view', artist?.id],
     enabled: !!artist?.id,
     queryFn: async () => {
       const { data } = await supabase
