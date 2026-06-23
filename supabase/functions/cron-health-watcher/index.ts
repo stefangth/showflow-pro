@@ -24,7 +24,7 @@ import { realDeps, type Deps } from "../_shared/deps.ts";
  * must be observed externally — the dashboard surfaces its `last_run_at` from
  * cron.job_run_details; if that ages, the watcher itself has stopped.
  *
- * Auth: X-Cron-Secret (pg_cron) or an admin JWT (manual trigger).
+ * Auth: X-Cron-Secret (pg_cron) only — platform-scoped, so no org-admin JWT fallback.
  */
 
 /** Jobs we expect to dispatch, with max silence (minutes) before the latest dispatch is 'stale'. */
@@ -57,7 +57,10 @@ type StateRow = {
 export async function handle(req: Request, deps: Deps): Promise<Response> {
   if (req.method === "OPTIONS") return preflight();
 
-  const auth = await requireCronOrRole(deps, req, ["admin"]);
+  // Platform-scoped watcher: cron-secret only, no org-role JWT fallback. An org-admin must not be able
+  // to trigger platform-wide super-admin alerts (this differs from the per-org cron watchers). Passing
+  // [] means the requireRole fallback matches no role, so only a valid X-Cron-Secret is accepted.
+  const auth = await requireCronOrRole(deps, req, []);
   if (!auth.ok) return auth.response;
 
   const admin = deps.admin;
@@ -140,8 +143,10 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
     assessed++;
 
     if (failing) {
-      await admin.from("cron_health_log").insert({ job_name: jobName, status_code: statusCode, error });
       if (!wasFailing) {
+        // Log once per failure incident (on the transition), not every run — a sustained outage would
+        // otherwise flood cron_health_log and make get_cron_health's recent_failures N copies of one event.
+        await admin.from("cron_health_log").insert({ job_name: jobName, status_code: statusCode, error });
         newlyFailing++;
         await alertSuperAdmins(deps, jobName, statusCode, error, prev?.last_ok_at ?? null);
       }
