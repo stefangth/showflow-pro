@@ -105,14 +105,16 @@ export function AirtableSyncTab({ orgId, get, set }: Props) {
     },
     onError: (e: unknown, v) => {
       setTables([]);
-      // Only the auto-load path has no other escape hatch. On a manual base switch the
-      // user is still in schema-accessible mode, so a transient error must NOT collapse
-      // the whole dropdown UI to text inputs.
-      if (v.auto) { setSchemaState("fallback"); setFallbackCause("error"); }
-      // Re-selecting the SAME base won't re-fire onValueChange, so give an explicit
-      // retry — otherwise a transient error leaves the Table dropdown empty/disabled.
+      if (v.auto) {
+        // Auto path has no dropdown to retry from; the fallback Alert is the single
+        // signal (it points the user to "Load from Airtable"). A toast would duplicate it.
+        setSchemaState("fallback"); setFallbackCause("error");
+        return;
+      }
+      // Manual path stays in dropdown mode. Re-selecting the SAME base won't re-fire
+      // onValueChange, so the toast Retry is the only inline way to retry that base.
       toast.error((e as Error).message ?? "Could not load tables", {
-        action: { label: "Retry", onClick: () => loadTables.mutate({ baseId: v.baseId, auto: v.auto }) },
+        action: { label: "Retry", onClick: () => loadTables.mutate({ baseId: v.baseId }) },
       });
     },
   });
