@@ -101,14 +101,17 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
   // (invites, password reset) have no category and always send.
   const prefCategory = categoryForTemplate(templateName)
   if (prefCategory) {
-    // Resolve the recipient address -> auth user. TODO: pagination — listUsers()
-    // returns only the first page; swap for a get_user_id_by_email RPC at scale.
-    // A miss resolves to the zero-UUID sentinel below, so the gate fails open.
-    const { data: usersPage } = await admin.auth.admin.listUsers()
-    const recipientUserId = usersPage?.users?.find(
-      (u) => (u.email ?? '').toLowerCase() === effectiveRecipient.toLowerCase(),
-    )?.id
-    if (recipientUserId) {
+    // Resolve the recipient address -> auth user via a service-role-only RPC
+    // (case-insensitive, reliable at any scale — replaces a first-page listUsers() scan).
+    const { data: recipientUserId, error: lookupErr } = await admin.rpc('get_user_id_by_email', {
+      p_email: effectiveRecipient,
+    })
+    if (lookupErr) {
+      // Lookup failed — fail open (send), but log so the gap is visible.
+      console.warn('email pref gate: recipient lookup failed, sending unchecked', {
+        templateName, category: prefCategory, error: lookupErr.message,
+      })
+    } else if (recipientUserId) {
       const { data: wants, error: prefErr } = await admin.rpc('should_notify', {
         p_user: recipientUserId, p_category: prefCategory, p_channel: 'email',
       })
@@ -121,14 +124,9 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
         })
         return json({ success: false, reason: 'pref_disabled' }, 200)
       }
-    } else {
-      // Recipient address couldn't be resolved to an account (e.g. it fell beyond
-      // listUsers()'s first page). The gate fails open here — log it so the gap is
-      // visible until the get_user_id_by_email RPC lands.
-      console.warn('email pref gate: unresolved recipient, sending unchecked', {
-        templateName, category: prefCategory,
-      })
     }
+    // else: no account for this address (external / booking-contact recipient) — there are
+    // no preferences to honor, so it sends.
   }
 
   // Get or create unsubscribe token
