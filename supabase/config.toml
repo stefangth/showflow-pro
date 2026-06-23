@@ -23,3 +23,29 @@ verify_jwt = true
 
 [functions.resend-invitation]
 verify_jwt = true
+
+# Booking engine (deployed 2026-06-22). Cron-invoked fns self-check X-Cron-Secret → verify_jwt = false.
+[functions.open-offer-tier]
+verify_jwt = true
+
+[functions.close-offer-tier]
+verify_jwt = true
+
+[functions.expire-offers]
+verify_jwt = false
+
+[functions.tier-at-risk-watcher]
+verify_jwt = false
+
+[functions.send-offer-digest]
+verify_jwt = false
+
+[functions.send-confirmation-digest]
+verify_jwt = false
+
+# GDPR self-service (PR #125). Caller's own JWT / super-admin.
+[functions.delete-my-account]
+verify_jwt = true
+
+[functions.export-org-data]
+verify_jwt = true
