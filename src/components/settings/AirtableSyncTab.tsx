@@ -98,7 +98,13 @@ export function AirtableSyncTab({ orgId, get, set }: Props) {
         toast.error("Couldn't read this base's tables — enter the table name manually.");
       }
     },
-    onError: (e: unknown) => toast.error((e as Error).message ?? "Could not load tables"),
+    onError: (e: unknown) => {
+      // A thrown fetch/edge error would otherwise strand the user on a disabled,
+      // empty Table dropdown — drop to manual entry so there's always a path forward.
+      setTables([]);
+      setSchemaState("fallback");
+      toast.error((e as Error).message ?? "Could not load tables");
+    },
   });
   const loadBases = useMutation({
     mutationFn: () => fetchAirtableBases(supabase, orgId!),
@@ -109,8 +115,11 @@ export function AirtableSyncTab({ orgId, get, set }: Props) {
         // If a base is already saved (from a prior session), load its tables now —
         // the Base dropdown's onValueChange only fires on a manual change, so without
         // this the Table dropdown stays empty and disabled for the persisted base.
+        // Clear any stale table options before re-fetching, but keep the persisted
+        // airtable_table_name — this path re-loads the SAME saved base, so the user's
+        // saved table selection must survive (unlike a manual base switch).
         const savedBase = get("airtable_base_id", "") as string;
-        if (savedBase && loadedBases.some((b) => b.id === savedBase)) loadTables.mutate(savedBase);
+        if (savedBase && loadedBases.some((b) => b.id === savedBase)) { setTables([]); loadTables.mutate(savedBase); }
       }
       else { setSchemaState("fallback"); toast.info("Airtable key can't read schema — enter base/table/field names manually."); }
     },
@@ -356,7 +365,7 @@ export function AirtableSyncTab({ orgId, get, set }: Props) {
               {schemaState === "fallback" && <Badge variant="outline">Manual mode</Badge>}
             </div>
             <Button variant="outline" onClick={() => loadBases.mutate()} disabled={loadBases.isPending || loadTables.isPending || !orgId || !keyPresent}>
-              {loadBases.isPending ? "Loading…" : "Load from Airtable"}
+              {loadBases.isPending || loadTables.isPending ? "Loading…" : "Load from Airtable"}
             </Button>
             {!keyPresent && <p className="text-xs text-muted-foreground">Save an API key first to load bases &amp; tables.</p>}
             {schemaState === "accessible" ? (

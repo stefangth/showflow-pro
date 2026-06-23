@@ -105,6 +105,17 @@ describe("AirtableSyncTab", () => {
     await waitFor(() => expect(screen.getByPlaceholderText("app1234567890")).toBeInTheDocument());
   });
 
+  it("drops to manual entry when the tables fetch throws (network/edge error)", async () => {
+    (fetchAirtableKeyStatus as ReturnType<typeof vi.fn>).mockResolvedValue({ present: true, updatedAt: null });
+    (fetchAirtableBases as ReturnType<typeof vi.fn>).mockResolvedValue({ schemaAccessible: true, bases: [{ id: "appA", name: "Fever Berlin" }] });
+    (fetchAirtableTables as ReturnType<typeof vi.fn>).mockRejectedValue(new Error("Network error"));
+    renderTab({ airtable_base_id: "appA" });
+    await waitFor(() => expect(screen.getByRole("button", { name: "Load from Airtable" })).toBeEnabled());
+    fireEvent.click(screen.getByRole("button", { name: "Load from Airtable" }));
+    // A thrown fetch must not strand the user on a disabled, empty Table dropdown.
+    await waitFor(() => expect(screen.getByPlaceholderText("app1234567890")).toBeInTheDocument());
+  });
+
   it("hides field-mapping and catalog-links until a table is selected", () => {
     renderTab();
     expect(screen.queryByText("Field mapping")).not.toBeInTheDocument();
