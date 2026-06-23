@@ -2,6 +2,13 @@
 
 What's new in ShowFlow, newest first.
 
+## 1.5.1 — June 23, 2026
+
+*Airtable sync fix*
+
+### Fixed
+- **Airtable table selection** — When a base was already saved, the table dropdown in Settings → Airtable Sync stayed empty and unselectable after loading. It now fills in automatically, with clearer guidance and a retry when a base's tables can't be read.
+
 ## 1.5.0 — June 22, 2026
 
 *Your data, your choices*
