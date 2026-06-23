@@ -97,7 +97,7 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
       // Latest dispatch is older than expected → the cron has stopped firing (or the
       // function never responded). A stale dispatch is a failure regardless of any old response.
       status = "stale";
-      statusCode = row.responded_at !== null ? row.status_code : null;
+      statusCode = null; // an old success code is meaningless for a staleness failure — avoid a red "stale (200)" badge
       error = row.responded_at === null
         ? `no response ${Math.round(ageMin)}m after dispatch`
         : `cron not firing (no dispatch in ${Math.round(ageMin)}m)`;
@@ -115,7 +115,7 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
     const failing = status !== "healthy";
     const wasFailing = prevStatus === "failing" || prevStatus === "stale";
 
-    await admin.from("cron_health_state").upsert({
+    const { error: upsertErr } = await admin.from("cron_health_state").upsert({
       job_name: jobName,
       status,
       last_status_code: statusCode,
@@ -130,6 +130,12 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
       alerted_at: failing ? (wasFailing ? (prev?.alerted_at ?? null) : now.toISOString()) : null,
       updated_at: now.toISOString(),
     }, { onConflict: "job_name" });
+    // Guard the write like the reads above: if the state didn't persist, skip alerting this run.
+    // Otherwise a dropped write leaves prevStatus stale ("healthy") and we'd re-alert every run (storm).
+    if (upsertErr) {
+      console.error("cron-health-watcher: state upsert failed, skipping alerts for", jobName, upsertErr);
+      continue;
+    }
 
     if (failing) {
       await admin.from("cron_health_log").insert({ job_name: jobName, status_code: statusCode, error });
@@ -168,9 +174,11 @@ async function notifyAll(
   ids: string[],
   title: string,
   message: string,
-  jobName: string,
 ): Promise<void> {
   if (ids.length === 0) return;
+  // related_entity_id is a uuid column — a job-name string throws "invalid input syntax for type
+  // uuid" and (because the error is logged, not thrown) would silently drop every alert. The job
+  // name is conveyed by related_entity_type + the message text instead.
   const { error } = await admin.from("notifications").insert(ids.map((uid) => ({
     user_id: uid,
     org_id: null,
@@ -178,9 +186,9 @@ async function notifyAll(
     title,
     message,
     related_entity_type: "cron_job",
-    related_entity_id: jobName,
+    related_entity_id: null,
   })));
-  if (error) console.error("cron-health-watcher: notification insert failed", { jobName, error });
+  if (error) console.error("cron-health-watcher: notification insert failed", { error });
 }
 
 /** Failure alert: in-app notification + email to every super-admin. */
@@ -200,7 +208,6 @@ async function alertSuperAdmins(
     ids,
     "Scheduled job failing",
     `${jobName} last returned ${statusCode ?? "no response"}${error ? ` (${error})` : ""}.`,
-    jobName,
   );
 
   // Email per super-admin (login-email via the service-role resolver).
@@ -228,7 +235,7 @@ async function alertSuperAdmins(
 /** Recovery: in-app notification only (no email — recovery is good news and avoids flapping-job email storms). */
 async function notifyRecovery(deps: Deps, jobName: string): Promise<void> {
   const ids = await superAdminIds(deps.admin);
-  await notifyAll(deps.admin, ids, "Scheduled job recovered", `${jobName} is responding normally again.`, jobName);
+  await notifyAll(deps.admin, ids, "Scheduled job recovered", `${jobName} is responding normally again.`);
 }
 
 if (import.meta.main) Deno.serve((req) => handle(req, realDeps()));

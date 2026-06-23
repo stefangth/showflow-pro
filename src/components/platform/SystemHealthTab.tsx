@@ -47,7 +47,7 @@ export function SystemHealthTab() {
             </div>
             <Badge variant={STATUS_VARIANT[j.status]}>
               {j.status}
-              {j.last_status_code ? ` (${j.last_status_code})` : ""}
+              {j.last_status_code != null ? ` (${j.last_status_code})` : ""}
             </Badge>
           </div>
         ))}
