@@ -98,17 +98,22 @@ export function AirtableSyncTab({ orgId, get, set }: Props) {
       // schemaState "accessible" would strand the user on a disabled, empty Table
       // dropdown with no escape hatch — drop to manual entry instead.
       if (!res.schemaAccessible) {
+        // The persistent Alert below (airtableFallbackMessage("per-base")) is the single
+        // signal — a simultaneous toast would just duplicate it in shorter, auto-dismissing form.
         setSchemaState("fallback"); setFallbackCause("per-base");
-        toast.error("Couldn't read this base's tables — enter the table name manually.");
       }
     },
     onError: (e: unknown, v) => {
       setTables([]);
       // Only the auto-load path has no other escape hatch. On a manual base switch the
-      // user is still in schema-accessible mode and can just retry another base, so a
-      // transient error must NOT collapse the whole dropdown UI to text inputs.
+      // user is still in schema-accessible mode, so a transient error must NOT collapse
+      // the whole dropdown UI to text inputs.
       if (v.auto) { setSchemaState("fallback"); setFallbackCause("error"); }
-      toast.error((e as Error).message ?? "Could not load tables");
+      // Re-selecting the SAME base won't re-fire onValueChange, so give an explicit
+      // retry — otherwise a transient error leaves the Table dropdown empty/disabled.
+      toast.error((e as Error).message ?? "Could not load tables", {
+        action: { label: "Retry", onClick: () => loadTables.mutate({ baseId: v.baseId, auto: v.auto }) },
+      });
     },
   });
   const loadBases = useMutation({
@@ -278,6 +283,9 @@ export function AirtableSyncTab({ orgId, get, set }: Props) {
     onError: (e: unknown) => toast.error((e as Error).message ?? "Merge failed"),
   });
 
+  // Either schema fetch (bases or the auto-fired tables) disables/relabels the Load button.
+  const isSchemaPending = loadBases.isPending || loadTables.isPending;
+
   return (
     <div className="space-y-6">
       {/* ── Connection ─────────────────────────────────────────────────────── */}
@@ -369,8 +377,8 @@ export function AirtableSyncTab({ orgId, get, set }: Props) {
               {schemaState === "accessible" && <Badge variant="secondary" className="gap-1"><CheckCircle2 className="h-3 w-3" /> Schema connected</Badge>}
               {schemaState === "fallback" && <Badge variant="outline">Manual mode</Badge>}
             </div>
-            <Button variant="outline" onClick={() => loadBases.mutate()} disabled={loadBases.isPending || loadTables.isPending || !orgId || !keyPresent}>
-              {loadBases.isPending || loadTables.isPending ? "Loading…" : "Load from Airtable"}
+            <Button variant="outline" onClick={() => loadBases.mutate()} disabled={isSchemaPending || !orgId || !keyPresent}>
+              {isSchemaPending ? "Loading…" : "Load from Airtable"}
             </Button>
             {!keyPresent && <p className="text-xs text-muted-foreground">Save an API key first to load bases &amp; tables.</p>}
             {schemaState === "accessible" ? (
