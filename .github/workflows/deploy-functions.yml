@@ -1,0 +1,66 @@
+name: Deploy Edge Functions (production)
+
+# Deploys every Supabase Edge Function in supabase/functions/ to the live project
+# whenever function code (or its config) lands on `main`. This is what makes
+# "edge functions deploy automatically" actually true: without it, functions merged
+# to main stay un-deployed and the frontend 404s when it invokes them (e.g. the GDPR
+# functions sat un-deployed after PR #125 until a manual MCP deploy).
+#
+# `supabase functions deploy` (no function name) deploys ALL functions under
+# supabase/functions/, skipping `_`-prefixed dirs (so _shared is left alone) and
+# bundling each function's transitive imports (../_shared/*, the react-email template
+# tree, etc.) from the checkout. It does NOT delete live functions that are absent
+# from the repo, so anything deployed out-of-band (e.g. cron-health-watcher) is left
+# untouched. Per-function `verify_jwt` is pinned in supabase/config.toml and applied
+# by the CLI on deploy, so public webhooks / cron callers keep working and
+# authenticated endpoints stay locked down.
+#
+# Trigger: push to main touching functions or their config, plus manual dispatch
+# (Actions -> this workflow -> Run workflow) for backfills / re-syncs.
+#
+# Required repository secret (already configured; shared with db-reset-production):
+#   SUPABASE_ACCESS_TOKEN — a Supabase personal access token
+#                           (https://supabase.com/dashboard/account/tokens)
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "supabase/functions/**"
+      - "supabase/config.toml"
+      - ".github/workflows/deploy-functions.yml"
+  workflow_dispatch:
+
+# Never run two deploys at once; let an in-flight deploy finish rather than
+# cancelling it midway (a half-applied deploy could leave functions inconsistent).
+concurrency:
+  group: deploy-functions
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  deploy:
+    name: Deploy functions to live project
+    runs-on: ubuntu-latest
+    env:
+      SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+      PROJECT_REF: epweartpzwvcasrzyueh
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: supabase/setup-cli@v1
+        with:
+          # Pinned to match the rest of CI (ci.yml, db-reset-production.yml).
+          version: 2.98.2
+
+      - name: Show Supabase CLI version
+        run: supabase --version
+
+      - name: Deploy all edge functions
+        # No function name → deploys every function under supabase/functions/.
+        # verify_jwt comes from supabase/config.toml (every function MUST be listed
+        # there; an unlisted function defaults to verify_jwt = true). Idempotent:
+        # re-deploying unchanged code just creates a new version.
+        run: supabase functions deploy --project-ref "$PROJECT_REF"

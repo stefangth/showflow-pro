@@ -37,7 +37,7 @@ npx vitest run       # unit tests (vitest + jsdom; setup in src/test/setup.ts)
 npm run test:watch   # vitest watch mode
 ```
 
-Edge functions are **not** reliably auto-deployed from this repo — there is no CI deploy step (`.github/workflows/ci.yml` only sets up the Supabase CLI for DB tests). New functions are never auto-created on the live project (they 404 until first deployed) and removed functions are never auto-deleted, so the deployed set drifts from the repo. After adding or changing `supabase/functions/<name>/`, deploy it explicitly — Supabase MCP `deploy_edge_function`, or `supabase functions deploy <name> --project-ref <project-id> --use-api` — and confirm with `list_edge_functions`.
+Edge functions deploy automatically **on merge to `main`** via `.github/workflows/deploy-functions.yml`: the Supabase CLI deploys every function in `supabase/functions/` to the live project (`epweartpzwvcasrzyueh`). No manual deploy step for changes that land on `main`. When you add a **new** function, give it a `[functions.<name>]` block in `supabase/config.toml` (default `verify_jwt = true`; set `false` for public webhooks and cron callers that use `X-Cron-Secret`) — an unlisted function would deploy with JWT verification forced on and break those callers. To deploy off-cycle (a backfill, or before a merge) run the workflow manually (Actions → "Deploy Edge Functions" → Run workflow) or use the Supabase MCP `deploy_edge_function`. Removing a function still needs a manual `supabase functions delete <name>` — the deploy never deletes.
 
 ---
 
