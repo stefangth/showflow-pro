@@ -29,8 +29,8 @@ import { realDeps, type Deps } from "../_shared/deps.ts";
 
 /** Jobs we expect to dispatch, with max silence (minutes) before the latest dispatch is 'stale'. */
 export const KNOWN_JOBS: Record<string, number> = {
-  "offer-digest": 1500,
-  "confirmation-digest": 1500,
+  "offer-digest": 1320, // max dispatch gap (cron 0 16-19 UTC → 1260m) + 60m buffer
+  "confirmation-digest": 1320, // max dispatch gap (cron 0 17-20 UTC → 1260m) + 60m buffer
   "expire-offers-hourly": 130,
   "tier-at-risk-hourly": 130,
   "airtable-poll": 30,
@@ -167,7 +167,13 @@ async function superAdminIds(admin: Deps["admin"]): Promise<string[]> {
 /**
  * Insert one in-app notification per super-admin (server-side — satisfies the no-bare-client-insert rule).
  * org_id is left null: cron-health is platform-level, not org-scoped (the notifications.org_id NOT NULL
- * constraint was dropped for exactly this). Errors are logged, not swallowed.
+ * constraint was dropped for exactly this).
+ *
+ * In-app delivery is best-effort: an insert error is logged but not thrown, so the email path (the
+ * guaranteed alert channel) still runs. Re-alerting is gated on the status transition (wasFailing), not
+ * on this insert, so a rare transient failure costs at most one missing in-app bell — the email still
+ * goes out. Per-channel delivery tracking would be the only way to retry just the bell, which isn't
+ * worth the added state for a supplementary channel.
  */
 async function notifyAll(
   admin: Deps["admin"],
@@ -223,7 +229,7 @@ async function alertSuperAdmins(
           status_code: statusCode ?? "no response",
           error: error ?? "",
           last_ok_at: lastOkAt ?? "unknown",
-          dashboard_url: "https://showflow.pro/platform",
+          dashboard_url: `${deps.env("APP_URL") ?? "https://showflow.pro"}/platform`,
         },
       });
     } catch (e) {
