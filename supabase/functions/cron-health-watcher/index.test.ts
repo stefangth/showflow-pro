@@ -18,7 +18,7 @@ Deno.test("cron-health-watcher: a non-2xx for a healthy job alerts once (in-app 
     tables: {
       app_settings: { data: { value: SECRET } },
       platform_admins: { data: [{ user_id: "super-1" }] },
-      cron_health_state: { data: [{ job_name: "offer-digest", status: "healthy", alerted_at: null, last_ok_at: "2026-06-22T19:00:00Z" }] },
+      cron_health_state: { data: [{ job_name: "offer-digest", status: "healthy", alerted_at: null, last_ok_at: "2026-06-22T19:00:00Z", consecutive_failures: 0 }] },
     },
     rpcs: {
       cron_health_scan: { data: [{ job_name: "offer-digest", request_id: 1, dispatched_at: recent, status_code: 404, timed_out: false, error_msg: null, responded_at: recent }] },
@@ -39,7 +39,7 @@ Deno.test("cron-health-watcher: does not re-alert a job already failing", async 
     tables: {
       app_settings: { data: { value: SECRET } },
       platform_admins: { data: [{ user_id: "super-1" }] },
-      cron_health_state: { data: [{ job_name: "offer-digest", status: "failing", alerted_at: "2026-06-23T09:00:00Z", last_ok_at: null }] },
+      cron_health_state: { data: [{ job_name: "offer-digest", status: "failing", alerted_at: "2026-06-23T09:00:00Z", last_ok_at: null, consecutive_failures: 2 }] },
     },
     rpcs: { cron_health_scan: { data: [{ job_name: "offer-digest", request_id: 2, dispatched_at: recent, status_code: 404, timed_out: false, error_msg: null, responded_at: recent }] } },
     now: NOW,
@@ -48,12 +48,27 @@ Deno.test("cron-health-watcher: does not re-alert a job already failing", async 
   assertEquals(invokeCalls.filter((c) => c.name === "send-transactional-email").length, 0);
 });
 
-Deno.test("cron-health-watcher: a 2xx for a failing job clears the alert (recovery)", async () => {
+Deno.test("cron-health-watcher: consecutive_failures increments from the previous value", async () => {
   const { deps, calls } = makeFakeDeps({
     tables: {
       app_settings: { data: { value: SECRET } },
       platform_admins: { data: [{ user_id: "super-1" }] },
-      cron_health_state: { data: [{ job_name: "offer-digest", status: "failing", alerted_at: "2026-06-23T09:00:00Z", last_ok_at: null }] },
+      cron_health_state: { data: [{ job_name: "offer-digest", status: "failing", alerted_at: "2026-06-23T09:00:00Z", last_ok_at: null, consecutive_failures: 3 }] },
+    },
+    rpcs: { cron_health_scan: { data: [{ job_name: "offer-digest", request_id: 4, dispatched_at: recent, status_code: 500, timed_out: false, error_msg: null, responded_at: recent }] } },
+    now: NOW,
+  });
+  await handle(cronReq(), deps);
+  const upsert = calls.find((c) => c.table === "cron_health_state" && c.method === "upsert");
+  assertEquals(((upsert?.args?.[0]) as { consecutive_failures?: number }).consecutive_failures, 4);
+});
+
+Deno.test("cron-health-watcher: a 2xx for a failing job clears the alert + notifies recovery (in-app, no email)", async () => {
+  const { deps, calls, invokeCalls } = makeFakeDeps({
+    tables: {
+      app_settings: { data: { value: SECRET } },
+      platform_admins: { data: [{ user_id: "super-1" }] },
+      cron_health_state: { data: [{ job_name: "offer-digest", status: "failing", alerted_at: "2026-06-23T09:00:00Z", last_ok_at: null, consecutive_failures: 3 }] },
     },
     rpcs: { cron_health_scan: { data: [{ job_name: "offer-digest", request_id: 3, dispatched_at: recent, status_code: 200, timed_out: false, error_msg: null, responded_at: recent }] } },
     now: NOW,
@@ -61,10 +76,13 @@ Deno.test("cron-health-watcher: a 2xx for a failing job clears the alert (recove
   const res = await handle(cronReq(), deps);
   assertEquals(res.status, 200);
   const upsert = calls.find((c) => c.table === "cron_health_state" && c.method === "upsert");
-  assertEquals(!!upsert, true);
-  const payload = (upsert?.args?.[0] ?? {}) as { status?: string; alerted_at?: string | null };
+  const payload = (upsert?.args?.[0] ?? {}) as { status?: string; alerted_at?: string | null; consecutive_failures?: number };
   assertEquals(payload.status, "healthy");
   assertEquals(payload.alerted_at, null);
+  assertEquals(payload.consecutive_failures, 0);
+  // recovery in-app notification, but NO email
+  assertEquals(calls.some((c) => c.table === "notifications" && c.method === "insert"), true);
+  assertEquals(invokeCalls.filter((c) => c.name === "send-transactional-email").length, 0);
 });
 
 Deno.test("cron-health-watcher: a job with no dispatch row is skipped (no false alert)", async () => {

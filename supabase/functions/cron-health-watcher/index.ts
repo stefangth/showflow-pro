@@ -7,7 +7,9 @@ import { realDeps, type Deps } from "../_shared/deps.ts";
  * (via cron_health_scan, which joins cron_health_dispatch -> net._http_response),
  * update cron_health_state, append failures to cron_health_log, and on a
  * transition INTO failure (healthy/unknown -> failing/stale) alert all super-admins
- * once (in-app notification + email). Idempotent via cron_health_state.alerted_at.
+ * once (in-app notification + email). On recovery (-> healthy) send an in-app
+ * notification only (no email — avoids flapping-job email storms). Idempotent via
+ * cron_health_state.alerted_at.
  *
  * A 404'd function cannot report its own absence, so health is observed from the
  * cron (caller) side. Jobs that have never dispatched are skipped (unknown) so a
@@ -35,7 +37,13 @@ type ScanRow = {
   error_msg: string | null;
   responded_at: string | null;
 };
-type StateRow = { job_name: string; status: string; alerted_at: string | null; last_ok_at: string | null };
+type StateRow = {
+  job_name: string;
+  status: string;
+  alerted_at: string | null;
+  last_ok_at: string | null;
+  consecutive_failures: number;
+};
 
 export async function handle(req: Request, deps: Deps): Promise<Response> {
   if (req.method === "OPTIONS") return preflight();
@@ -50,7 +58,7 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
   const byJob = new Map(((scan ?? []) as ScanRow[]).map((r) => [r.job_name, r]));
 
   const { data: stateData } = await admin
-    .from("cron_health_state").select("job_name, status, alerted_at, last_ok_at");
+    .from("cron_health_state").select("job_name, status, alerted_at, last_ok_at, consecutive_failures");
   const prevByJob = new Map(((stateData ?? []) as StateRow[]).map((s) => [s.job_name, s]));
 
   let newlyFailing = 0;
@@ -89,7 +97,7 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
       last_dispatched_at: row.dispatched_at,
       last_ok_at: status === "healthy" ? now.toISOString() : (prev?.last_ok_at ?? null),
       last_error: error,
-      consecutive_failures: failing ? 1 : 0,
+      consecutive_failures: failing ? (prev?.consecutive_failures ?? 0) + 1 : 0,
       alerted_at: failing ? (wasFailing ? (prev?.alerted_at ?? now.toISOString()) : now.toISOString()) : null,
       updated_at: now.toISOString(),
     }, { onConflict: "job_name" });
@@ -102,6 +110,7 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
       }
     } else if (wasFailing) {
       recovered++;
+      await notifyRecovery(deps, jobName);
     }
   }
 
@@ -114,6 +123,32 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
   return json({ checked: byJob.size, newly_failing: newlyFailing, recovered });
 }
 
+/** Super-admin user ids (platform_admins). */
+async function superAdminIds(admin: Deps["admin"]): Promise<string[]> {
+  const { data } = await admin.from("platform_admins").select("user_id");
+  return ((data ?? []) as { user_id: string }[]).map((a) => a.user_id);
+}
+
+/** Insert one in-app notification per super-admin (server-side — satisfies the no-bare-client-insert rule). */
+async function notifyAll(
+  admin: Deps["admin"],
+  ids: string[],
+  title: string,
+  message: string,
+  jobName: string,
+): Promise<void> {
+  if (ids.length === 0) return;
+  await admin.from("notifications").insert(ids.map((uid) => ({
+    user_id: uid,
+    type: "cron_health_alert",
+    title,
+    message,
+    related_entity_type: "cron_job",
+    related_entity_id: jobName,
+  })));
+}
+
+/** Failure alert: in-app notification + email to every super-admin. */
 async function alertSuperAdmins(
   deps: Deps,
   jobName: string,
@@ -122,19 +157,16 @@ async function alertSuperAdmins(
   lastOkAt: string | null,
 ): Promise<void> {
   const admin = deps.admin;
-  const { data: admins } = await admin.from("platform_admins").select("user_id");
-  const ids = ((admins ?? []) as { user_id: string }[]).map((a) => a.user_id);
+  const ids = await superAdminIds(admin);
   if (ids.length === 0) return;
 
-  // In-app notification per super-admin (server-side insert — satisfies the no-bare-client-insert rule).
-  await admin.from("notifications").insert(ids.map((uid) => ({
-    user_id: uid,
-    type: "cron_health_alert",
-    title: "Scheduled job failing",
-    message: `${jobName} last returned ${statusCode ?? "no response"}${error ? ` (${error})` : ""}.`,
-    related_entity_type: "cron_job",
-    related_entity_id: jobName,
-  })));
+  await notifyAll(
+    admin,
+    ids,
+    "Scheduled job failing",
+    `${jobName} last returned ${statusCode ?? "no response"}${error ? ` (${error})` : ""}.`,
+    jobName,
+  );
 
   // Email per super-admin (login-email via the service-role resolver).
   const { data: contacts } = await admin.rpc("resolve_user_contacts", { p_user_ids: ids });
@@ -156,6 +188,12 @@ async function alertSuperAdmins(
       console.error("cron-health-watcher: alert email failed", { jobName, error: (e as Error).message });
     }
   }
+}
+
+/** Recovery: in-app notification only (no email — recovery is good news and avoids flapping-job email storms). */
+async function notifyRecovery(deps: Deps, jobName: string): Promise<void> {
+  const ids = await superAdminIds(deps.admin);
+  await notifyAll(deps.admin, ids, "Scheduled job recovered", `${jobName} is responding normally again.`, jobName);
 }
 
 if (import.meta.main) Deno.serve((req) => handle(req, realDeps()));
