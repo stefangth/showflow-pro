@@ -69,6 +69,8 @@ Deno.test("cron-health-watcher: consecutive_failures increments from the previou
   await handle(cronReq(), deps);
   const upsert = calls.find((c) => c.table === "cron_health_state" && c.method === "upsert");
   assertEquals(((upsert?.args?.[0]) as { consecutive_failures?: number }).consecutive_failures, 4);
+  // An ongoing failure (wasFailing) logs nothing new — cron_health_log records one row per incident, not per run.
+  assertEquals(calls.filter((c) => c.table === "cron_health_log" && c.method === "insert").length, 0);
 });
 
 Deno.test("cron-health-watcher: a 2xx for a failing job clears the alert + notifies recovery (in-app, no email)", async () => {
