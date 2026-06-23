@@ -15,13 +15,14 @@ const ENV = {
 Deno.test("skips send when the recipient disabled the template's category", async () => {
   const { deps, calls } = makeFakeDeps({
     envVars: ENV,
-    usersById: { "u1": { email: "artist@x.com" } },
     tables: {
       suppressed_emails: { data: null, error: null },
-      profiles: { data: { user_id: "u1" }, error: null },
       email_send_log: { data: null, error: null },
     },
-    rpcs: { should_notify: { data: false, error: null } },
+    rpcs: {
+      get_user_id_by_email: { data: "u1", error: null },
+      should_notify: { data: false, error: null },
+    },
   });
   const req = authedReq({
     headers: { "content-type": "application/json" },
@@ -35,6 +36,26 @@ Deno.test("skips send when the recipient disabled the template's category", asyn
     calls.some((c) => c.table === "email_send_log" && c.method === "insert"),
     true,
   );
+});
+
+Deno.test("recipient with no account (external booking contact) is not gated", async () => {
+  const { deps } = makeFakeDeps({
+    envVars: ENV,
+    tables: {
+      suppressed_emails: { data: null, error: null },
+      email_unsubscribe_tokens: { data: { token: "tok", used_at: null }, error: null },
+      email_send_log: { data: null, error: null },
+    },
+    // no account for this address; should_notify would say false but must not be consulted
+    rpcs: { get_user_id_by_email: { data: null, error: null }, should_notify: { data: false, error: null } },
+    fetchImpl: () => Promise.resolve(new Response(JSON.stringify({ id: "re_1" }), { status: 200 })),
+  });
+  const req = authedReq({
+    headers: { "content-type": "application/json" },
+    body: { templateName: "artist-offer-digest", recipientEmail: "external@x.com" },
+  });
+  const res = await handle(req, deps);
+  assertNotEquals((await res.json()).reason, "pref_disabled");
 });
 
 Deno.test("critical template (no category) always proceeds past the gate", async () => {
