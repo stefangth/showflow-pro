@@ -94,6 +94,17 @@ describe("AirtableSyncTab", () => {
     await waitFor(() => expect(fetchAirtableTables).toHaveBeenCalledWith(expect.anything(), "org-1", "appA"));
   });
 
+  it("drops to manual entry when a base's tables can't be read (per-base 403)", async () => {
+    (fetchAirtableKeyStatus as ReturnType<typeof vi.fn>).mockResolvedValue({ present: true, updatedAt: null });
+    (fetchAirtableBases as ReturnType<typeof vi.fn>).mockResolvedValue({ schemaAccessible: true, bases: [{ id: "appA", name: "Fever Berlin" }] });
+    (fetchAirtableTables as ReturnType<typeof vi.fn>).mockResolvedValue({ schemaAccessible: false });
+    renderTab({ airtable_base_id: "appA" });
+    await waitFor(() => expect(screen.getByRole("button", { name: "Load from Airtable" })).toBeEnabled());
+    fireEvent.click(screen.getByRole("button", { name: "Load from Airtable" }));
+    // The Table dropdown can't populate, so the user must get the manual-entry escape hatch.
+    await waitFor(() => expect(screen.getByPlaceholderText("app1234567890")).toBeInTheDocument());
+  });
+
   it("hides field-mapping and catalog-links until a table is selected", () => {
     renderTab();
     expect(screen.queryByText("Field mapping")).not.toBeInTheDocument();
