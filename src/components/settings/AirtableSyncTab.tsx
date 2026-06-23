@@ -90,9 +90,13 @@ export function AirtableSyncTab({ orgId, get, set }: Props) {
     mutationFn: (baseId: string) => fetchAirtableTables(supabase, orgId!, baseId),
     onSuccess: (res) => {
       setTables(res.schemaAccessible ? res.tables ?? [] : []);
-      // A per-base 403 (schema unreadable for this base) would otherwise leave the
-      // Table dropdown silently empty and disabled — tell the user instead.
-      if (!res.schemaAccessible) toast.error("Couldn't read this base's tables — check the key's access to it.");
+      // The PAT can list bases but not THIS base's tables (per-base 403). Leaving
+      // schemaState "accessible" would strand the user on a disabled, empty Table
+      // dropdown with no escape hatch — drop to manual entry instead.
+      if (!res.schemaAccessible) {
+        setSchemaState("fallback");
+        toast.error("Couldn't read this base's tables — enter the table name manually.");
+      }
     },
     onError: (e: unknown) => toast.error((e as Error).message ?? "Could not load tables"),
   });
@@ -100,12 +104,13 @@ export function AirtableSyncTab({ orgId, get, set }: Props) {
     mutationFn: () => fetchAirtableBases(supabase, orgId!),
     onSuccess: (res) => {
       if (res.schemaAccessible) {
-        setSchemaState("accessible"); setBases(res.bases ?? []);
+        const loadedBases = res.bases ?? [];
+        setSchemaState("accessible"); setBases(loadedBases);
         // If a base is already saved (from a prior session), load its tables now —
         // the Base dropdown's onValueChange only fires on a manual change, so without
         // this the Table dropdown stays empty and disabled for the persisted base.
         const savedBase = get("airtable_base_id", "") as string;
-        if (savedBase && (res.bases ?? []).some((b) => b.id === savedBase)) loadTables.mutate(savedBase);
+        if (savedBase && loadedBases.some((b) => b.id === savedBase)) loadTables.mutate(savedBase);
       }
       else { setSchemaState("fallback"); toast.info("Airtable key can't read schema — enter base/table/field names manually."); }
     },
@@ -350,7 +355,7 @@ export function AirtableSyncTab({ orgId, get, set }: Props) {
               {schemaState === "accessible" && <Badge variant="secondary" className="gap-1"><CheckCircle2 className="h-3 w-3" /> Schema connected</Badge>}
               {schemaState === "fallback" && <Badge variant="outline">Manual mode</Badge>}
             </div>
-            <Button variant="outline" onClick={() => loadBases.mutate()} disabled={loadBases.isPending || !orgId || !keyPresent}>
+            <Button variant="outline" onClick={() => loadBases.mutate()} disabled={loadBases.isPending || loadTables.isPending || !orgId || !keyPresent}>
               {loadBases.isPending ? "Loading…" : "Load from Airtable"}
             </Button>
             {!keyPresent && <p className="text-xs text-muted-foreground">Save an API key first to load bases &amp; tables.</p>}
