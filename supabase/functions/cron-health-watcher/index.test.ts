@@ -30,6 +30,13 @@ Deno.test("cron-health-watcher: a non-2xx for a healthy job alerts once (in-app 
   const res = await handle(cronReq(), deps);
   assertEquals(res.status, 200);
   assertEquals(calls.some((c) => c.table === "notifications" && c.method === "insert"), true);
+  // related_entity_id is a uuid column and org_id is nullable — both MUST be null for a platform
+  // alert, else Postgres rejects the insert (uuid-cast error / not-null violation) and the alert
+  // silently never reaches super-admins.
+  const notif = calls.find((c) => c.table === "notifications" && c.method === "insert");
+  const rows = (notif?.args?.[0] ?? []) as Array<Record<string, unknown>>;
+  assertEquals(rows[0]?.related_entity_id, null);
+  assertEquals(rows[0]?.org_id, null);
   const email = invokeCalls.find((c) => c.name === "send-transactional-email");
   assertEquals((email?.body as { template_name?: string })?.template_name, "cron-health-alert");
   assertEquals((email?.body as { recipient_email?: string })?.recipient_email, "ops@test.com");
@@ -103,6 +110,9 @@ Deno.test("cron-health-watcher: a stale latest dispatch (cron stopped firing) is
   assertEquals(res.status, 200);
   const upsert = calls.find((c) => c.table === "cron_health_state" && c.method === "upsert");
   assertEquals(((upsert?.args?.[0]) as { status?: string }).status, "stale");
+  // The stale branch must NOT carry the last successful run's 200 — a red "stale (200)" badge
+  // reads as a false alarm. Status code is null for staleness failures.
+  assertEquals(((upsert?.args?.[0]) as { last_status_code?: number | null }).last_status_code, null);
   assertEquals(invokeCalls.filter((c) => c.name === "send-transactional-email").length, 1);
 });
 
