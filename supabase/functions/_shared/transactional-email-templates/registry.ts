@@ -15,6 +15,7 @@ import { template as castEscalationRequested } from './cast-escalation-requested
 import { template as artistOfferDigest } from './artist-offer-digest.tsx'
 import { template as artistConfirmationDigest } from './artist-confirmation-digest.tsx'
 import { template as orgInvitation } from './org-invitation.tsx'
+import { template as cronHealthAlert } from './cron-health-alert.tsx'
 
 export const TEMPLATES: Record<string, TemplateEntry> = {
   'new-signup-admin-notification': newSignupAdminNotification,
@@ -23,4 +24,5 @@ export const TEMPLATES: Record<string, TemplateEntry> = {
   'artist-offer-digest': artistOfferDigest,
   'artist-confirmation-digest': artistConfirmationDigest,
   'org-invitation': orgInvitation,
+  'cron-health-alert': cronHealthAlert,
 }
