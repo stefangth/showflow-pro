@@ -21,6 +21,7 @@ import { fetchCitiesForLinking, linkCityAirtableKey, importCitiesFromOptions, me
 import { fetchLatestSyncLog, fetchUnresolvedRecords, type UnresolvedRecord } from "@/data/airtableSync";
 import { saveAirtableKey, fetchAirtableKeyStatus, deleteAirtableKey } from "@/data/airtableKey";
 import { formatDateDMY } from "@/lib/dates";
+import { airtableFallbackMessage, type FallbackCause } from "@/lib/airtableFallback";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 
 interface Props {
@@ -39,6 +40,7 @@ export function AirtableSyncTab({ orgId, get, set }: Props) {
   const [airtableKey, setAirtableKey] = useState("");
   const [replacing, setReplacing] = useState(false);
   const [schemaState, setSchemaState] = useState<"idle" | "accessible" | "fallback">("idle");
+  const [fallbackCause, setFallbackCause] = useState<FallbackCause>("no-scope");
   const [bases, setBases] = useState<{ id: string; name: string }[]>([]);
   const [tables, setTables] = useState<AirtableTable[]>([]);
   const [survivorByNorm, setSurvivorByNorm] = useState<Record<string, string>>({});
@@ -87,22 +89,25 @@ export function AirtableSyncTab({ orgId, get, set }: Props) {
   });
 
   const loadTables = useMutation({
-    mutationFn: (baseId: string) => fetchAirtableTables(supabase, orgId!, baseId),
+    // `auto` marks the load auto-fired from loadBases for a saved base (no other
+    // escape hatch), versus a manual base switch (user is already in dropdown mode).
+    mutationFn: (v: { baseId: string; auto?: boolean }) => fetchAirtableTables(supabase, orgId!, v.baseId),
     onSuccess: (res) => {
       setTables(res.schemaAccessible ? res.tables ?? [] : []);
       // The PAT can list bases but not THIS base's tables (per-base 403). Leaving
       // schemaState "accessible" would strand the user on a disabled, empty Table
       // dropdown with no escape hatch — drop to manual entry instead.
       if (!res.schemaAccessible) {
-        setSchemaState("fallback");
+        setSchemaState("fallback"); setFallbackCause("per-base");
         toast.error("Couldn't read this base's tables — enter the table name manually.");
       }
     },
-    onError: (e: unknown) => {
-      // A thrown fetch/edge error would otherwise strand the user on a disabled,
-      // empty Table dropdown — drop to manual entry so there's always a path forward.
+    onError: (e: unknown, v) => {
       setTables([]);
-      setSchemaState("fallback");
+      // Only the auto-load path has no other escape hatch. On a manual base switch the
+      // user is still in schema-accessible mode and can just retry another base, so a
+      // transient error must NOT collapse the whole dropdown UI to text inputs.
+      if (v.auto) { setSchemaState("fallback"); setFallbackCause("error"); }
       toast.error((e as Error).message ?? "Could not load tables");
     },
   });
@@ -119,9 +124,9 @@ export function AirtableSyncTab({ orgId, get, set }: Props) {
         // airtable_table_name — this path re-loads the SAME saved base, so the user's
         // saved table selection must survive (unlike a manual base switch).
         const savedBase = get("airtable_base_id", "") as string;
-        if (savedBase && loadedBases.some((b) => b.id === savedBase)) { setTables([]); loadTables.mutate(savedBase); }
+        if (savedBase && loadedBases.some((b) => b.id === savedBase)) { setTables([]); loadTables.mutate({ baseId: savedBase, auto: true }); }
       }
-      else { setSchemaState("fallback"); toast.info("Airtable key can't read schema — enter base/table/field names manually."); }
+      else { setSchemaState("fallback"); setFallbackCause("no-scope"); toast.info("Airtable key can't read schema — enter base/table/field names manually."); }
     },
     onError: (e: unknown) => toast.error((e as Error).message ?? "Could not load Airtable bases"),
   });
@@ -372,7 +377,7 @@ export function AirtableSyncTab({ orgId, get, set }: Props) {
               <div className="grid grid-cols-1 gap-4">
                 <div className="space-y-2">
                   <Label>Base</Label>
-                  <Select value={get("airtable_base_id", "")} onValueChange={(v) => { set("airtable_base_id", v); setTables([]); set("airtable_table_name", ""); loadTables.mutate(v); }}>
+                  <Select value={get("airtable_base_id", "")} onValueChange={(v) => { set("airtable_base_id", v); setTables([]); set("airtable_table_name", ""); loadTables.mutate({ baseId: v }); }}>
                     <SelectTrigger><SelectValue placeholder="Select a base" /></SelectTrigger>
                     <SelectContent>{bases.map((b) => <SelectItem key={b.id} value={b.id}>{b.name}</SelectItem>)}</SelectContent>
                   </Select>
@@ -388,9 +393,7 @@ export function AirtableSyncTab({ orgId, get, set }: Props) {
             ) : schemaState === "fallback" ? (
               <>
                 <Alert>
-                  <AlertDescription>
-                    Your Airtable key lacks the <code>schema.bases:read</code> scope. Grant it to pick base/table/fields from dropdowns; until then, type the names below.
-                  </AlertDescription>
+                  <AlertDescription>{airtableFallbackMessage(fallbackCause)}</AlertDescription>
                 </Alert>
                 <div className="grid grid-cols-1 gap-4">
                   <div className="space-y-2">

@@ -103,6 +103,9 @@ describe("AirtableSyncTab", () => {
     fireEvent.click(screen.getByRole("button", { name: "Load from Airtable" }));
     // The Table dropdown can't populate, so the user must get the manual-entry escape hatch.
     await waitFor(() => expect(screen.getByPlaceholderText("app1234567890")).toBeInTheDocument());
+    // …with the per-base diagnosis, not a misleading "grant schema.bases:read" (the key has it).
+    expect(screen.getByText(/this specific base/i)).toBeInTheDocument();
+    expect(screen.queryByText(/schema\.bases:read/)).not.toBeInTheDocument();
   });
 
   it("drops to manual entry when the tables fetch throws (network/edge error)", async () => {
@@ -114,6 +117,9 @@ describe("AirtableSyncTab", () => {
     fireEvent.click(screen.getByRole("button", { name: "Load from Airtable" }));
     // A thrown fetch must not strand the user on a disabled, empty Table dropdown.
     await waitFor(() => expect(screen.getByPlaceholderText("app1234567890")).toBeInTheDocument());
+    // …and the copy must describe a transient failure, not blame the (valid) key scope.
+    expect(screen.getByText(/Couldn't reach Airtable/i)).toBeInTheDocument();
+    expect(screen.queryByText(/schema\.bases:read/)).not.toBeInTheDocument();
   });
 
   it("hides field-mapping and catalog-links until a table is selected", () => {
