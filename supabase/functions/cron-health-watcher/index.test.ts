@@ -5,6 +5,7 @@ import { makeFakeDeps, makeRequest } from "../_shared/testing.ts";
 const SECRET = "cron-secret";
 const NOW = new Date("2026-06-23T10:00:00.000Z");
 const recent = "2026-06-23T09:58:00.000Z"; // 2 min before NOW — within every maxSilence window
+const stale = "2026-06-21T10:00:00.000Z"; // 48h before NOW — older than every maxSilence window
 const cronReq = () => makeRequest({ headers: { "X-Cron-Secret": SECRET } });
 
 Deno.test("cron-health-watcher: wrong cron secret -> 401", async () => {
@@ -80,8 +81,55 @@ Deno.test("cron-health-watcher: a 2xx for a failing job clears the alert + notif
   assertEquals(payload.status, "healthy");
   assertEquals(payload.alerted_at, null);
   assertEquals(payload.consecutive_failures, 0);
-  // recovery in-app notification, but NO email
   assertEquals(calls.some((c) => c.table === "notifications" && c.method === "insert"), true);
+  assertEquals(invokeCalls.filter((c) => c.name === "send-transactional-email").length, 0);
+});
+
+Deno.test("cron-health-watcher: a stale latest dispatch (cron stopped firing) is flagged + alerts", async () => {
+  const { deps, calls, invokeCalls } = makeFakeDeps({
+    tables: {
+      app_settings: { data: { value: SECRET } },
+      platform_admins: { data: [{ user_id: "super-1" }] },
+      cron_health_state: { data: [{ job_name: "offer-digest", status: "healthy", alerted_at: null, last_ok_at: "2026-06-21T19:00:00Z", consecutive_failures: 0 }] },
+    },
+    rpcs: {
+      // Latest dispatch is 48h old with an OK response — the cron has stopped firing.
+      cron_health_scan: { data: [{ job_name: "offer-digest", request_id: 9, dispatched_at: stale, status_code: 200, timed_out: false, error_msg: null, responded_at: stale }] },
+      resolve_user_contacts: { data: [{ user_id: "super-1", email: "ops@test.com" }] },
+    },
+    now: NOW,
+  });
+  const res = await handle(cronReq(), deps);
+  assertEquals(res.status, 200);
+  const upsert = calls.find((c) => c.table === "cron_health_state" && c.method === "upsert");
+  assertEquals(((upsert?.args?.[0]) as { status?: string }).status, "stale");
+  assertEquals(invokeCalls.filter((c) => c.name === "send-transactional-email").length, 1);
+});
+
+Deno.test("cron-health-watcher: aborts 503 on a scan-RPC error (no false-healthy, no alert)", async () => {
+  const { deps, calls, invokeCalls } = makeFakeDeps({
+    tables: { app_settings: { data: { value: SECRET } }, platform_admins: { data: [{ user_id: "super-1" }] } },
+    rpcs: { cron_health_scan: { data: null, error: { message: "boom" } } },
+    now: NOW,
+  });
+  const res = await handle(cronReq(), deps);
+  assertEquals(res.status, 503);
+  assertEquals(invokeCalls.filter((c) => c.name === "send-transactional-email").length, 0);
+  assertEquals(calls.some((c) => c.table === "notifications" && c.method === "insert"), false);
+});
+
+Deno.test("cron-health-watcher: aborts 503 on a state-read error (prevents alert storm)", async () => {
+  const { deps, invokeCalls } = makeFakeDeps({
+    tables: {
+      app_settings: { data: { value: SECRET } },
+      platform_admins: { data: [{ user_id: "super-1" }] },
+      cron_health_state: { data: null, error: { message: "boom" } },
+    },
+    rpcs: { cron_health_scan: { data: [{ job_name: "offer-digest", request_id: 7, dispatched_at: recent, status_code: 404, timed_out: false, error_msg: null, responded_at: recent }] } },
+    now: NOW,
+  });
+  const res = await handle(cronReq(), deps);
+  assertEquals(res.status, 503);
   assertEquals(invokeCalls.filter((c) => c.name === "send-transactional-email").length, 0);
 });
 

@@ -49,3 +49,7 @@ verify_jwt = true
 
 [functions.export-org-data]
 verify_jwt = true
+
+# Cron-health watcher — X-Cron-Secret auth (same pattern as the cron fns above).
+[functions.cron-health-watcher]
+verify_jwt = false
