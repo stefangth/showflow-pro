@@ -1,4 +1,4 @@
-import { assertEquals, assertNotEquals } from "https://deno.land/std@0.224.0/assert/mod.ts";
+import { assertEquals } from "https://deno.land/std@0.224.0/assert/mod.ts";
 import { handle } from "./index.ts";
 import { makeFakeDeps, makeRequest } from "../_shared/testing.ts";
 
@@ -12,6 +12,10 @@ const ENV = {
   RESEND_API_KEY: "re_test",
 };
 
+// get_user_id_by_email returns a uuid that flows into should_notify(p_user uuid, …),
+// so the fixture must be a real uuid (the fake doesn't type-check args).
+const USER_ID = "00000000-0000-0000-0000-000000000001";
+
 Deno.test("skips send when the recipient disabled the template's category", async () => {
   const { deps, calls } = makeFakeDeps({
     envVars: ENV,
@@ -20,7 +24,7 @@ Deno.test("skips send when the recipient disabled the template's category", asyn
       email_send_log: { data: null, error: null },
     },
     rpcs: {
-      get_user_id_by_email: { data: "u1", error: null },
+      get_user_id_by_email: { data: USER_ID, error: null },
       should_notify: { data: false, error: null },
     },
   });
@@ -55,7 +59,30 @@ Deno.test("recipient with no account (external booking contact) is not gated", a
     body: { templateName: "artist-offer-digest", recipientEmail: "external@x.com" },
   });
   const res = await handle(req, deps);
-  assertNotEquals((await res.json()).reason, "pref_disabled");
+  assertEquals((await res.json()).success, true);
+});
+
+Deno.test("recipient lookup error fails open (sends, does not suppress)", async () => {
+  const { deps } = makeFakeDeps({
+    envVars: ENV,
+    tables: {
+      suppressed_emails: { data: null, error: null },
+      email_unsubscribe_tokens: { data: { token: "tok", used_at: null }, error: null },
+      email_send_log: { data: null, error: null },
+    },
+    // the lookup RPC errors → the gate must fail open (send), never suppress
+    rpcs: {
+      get_user_id_by_email: { data: null, error: { message: "boom" } },
+      should_notify: { data: false, error: null },
+    },
+    fetchImpl: () => Promise.resolve(new Response(JSON.stringify({ id: "re_1" }), { status: 200 })),
+  });
+  const req = authedReq({
+    headers: { "content-type": "application/json" },
+    body: { templateName: "artist-offer-digest", recipientEmail: "artist@x.com" },
+  });
+  const res = await handle(req, deps);
+  assertEquals((await res.json()).success, true);
 });
 
 Deno.test("critical template (no category) always proceeds past the gate", async () => {
@@ -74,6 +101,5 @@ Deno.test("critical template (no category) always proceeds past the gate", async
     body: { templateName: "org-invitation", recipientEmail: "x@x.com", templateData: { inviteUrl: "https://x", orgName: "X" } },
   });
   const res = await handle(req, deps);
-  const body = await res.json();
-  assertNotEquals(body.reason, "pref_disabled");
+  assertEquals((await res.json()).success, true);
 });
