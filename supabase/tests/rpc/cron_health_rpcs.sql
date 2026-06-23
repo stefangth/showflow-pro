@@ -14,7 +14,10 @@ INSERT INTO public.cron_health_state (job_name, status) VALUES ('offer-digest','
 SET session_replication_role = origin;
 
 -- scan() returns no rows when there are no dispatches (and does not error on the net join).
-SELECT is((SELECT count(*) FROM public.cron_health_scan())::int, 0, 'cron_health_scan returns 0 with no dispatches');
+-- Clear dispatch first for a deterministic empty state: in CI the cron_dispatch_capture
+-- schedules can fire during the test run and insert rows. This DELETE is rolled back below.
+DELETE FROM public.cron_health_dispatch;
+SELECT is((SELECT count(*) FROM public.cron_health_scan())::int, 0, 'cron_health_scan returns 0 when there are no dispatches');
 
 -- get_cron_health() is gated: a plain authenticated user gets zero rows even though state exists.
 SET LOCAL role authenticated;
