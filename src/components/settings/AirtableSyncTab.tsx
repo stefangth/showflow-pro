@@ -86,18 +86,30 @@ export function AirtableSyncTab({ orgId, get, set }: Props) {
     onError: (e: unknown) => toast.error((e as Error).message ?? "Failed to delete Airtable key"),
   });
 
+  const loadTables = useMutation({
+    mutationFn: (baseId: string) => fetchAirtableTables(supabase, orgId!, baseId),
+    onSuccess: (res) => {
+      setTables(res.schemaAccessible ? res.tables ?? [] : []);
+      // A per-base 403 (schema unreadable for this base) would otherwise leave the
+      // Table dropdown silently empty and disabled — tell the user instead.
+      if (!res.schemaAccessible) toast.error("Couldn't read this base's tables — check the key's access to it.");
+    },
+    onError: (e: unknown) => toast.error((e as Error).message ?? "Could not load tables"),
+  });
   const loadBases = useMutation({
     mutationFn: () => fetchAirtableBases(supabase, orgId!),
     onSuccess: (res) => {
-      if (res.schemaAccessible) { setSchemaState("accessible"); setBases(res.bases ?? []); }
+      if (res.schemaAccessible) {
+        setSchemaState("accessible"); setBases(res.bases ?? []);
+        // If a base is already saved (from a prior session), load its tables now —
+        // the Base dropdown's onValueChange only fires on a manual change, so without
+        // this the Table dropdown stays empty and disabled for the persisted base.
+        const savedBase = get("airtable_base_id", "") as string;
+        if (savedBase && (res.bases ?? []).some((b) => b.id === savedBase)) loadTables.mutate(savedBase);
+      }
       else { setSchemaState("fallback"); toast.info("Airtable key can't read schema — enter base/table/field names manually."); }
     },
     onError: (e: unknown) => toast.error((e as Error).message ?? "Could not load Airtable bases"),
-  });
-  const loadTables = useMutation({
-    mutationFn: (baseId: string) => fetchAirtableTables(supabase, orgId!, baseId),
-    onSuccess: (res) => setTables(res.schemaAccessible ? res.tables ?? [] : []),
-    onError: (e: unknown) => toast.error((e as Error).message ?? "Could not load tables"),
   });
 
   // ── Catalog data + option resolution ────────────────────────────────────────

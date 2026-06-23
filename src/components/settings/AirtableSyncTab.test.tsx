@@ -30,7 +30,7 @@ vi.mock("@/data/airtableKey", () => ({
   deleteAirtableKey: vi.fn(),
 }));
 
-import { fetchAirtableBases } from "@/data/airtableSchema";
+import { fetchAirtableBases, fetchAirtableTables } from "@/data/airtableSchema";
 import { fetchAirtableKeyStatus } from "@/data/airtableKey";
 import { fetchLatestSyncLog, fetchUnresolvedRecords } from "@/data/airtableSync";
 import { fetchCitiesForLinking, mergeCities } from "@/data/cities";
@@ -79,6 +79,19 @@ describe("AirtableSyncTab", () => {
     await waitFor(() => expect(screen.getByRole("button", { name: "Load from Airtable" })).toBeEnabled());
     fireEvent.click(screen.getByRole("button", { name: "Load from Airtable" }));
     await waitFor(() => expect(screen.getByText("Base")).toBeInTheDocument());
+  });
+
+  it("auto-loads tables for a base already saved in settings", async () => {
+    (fetchAirtableKeyStatus as ReturnType<typeof vi.fn>).mockResolvedValue({ present: true, updatedAt: null });
+    (fetchAirtableBases as ReturnType<typeof vi.fn>).mockResolvedValue({ schemaAccessible: true, bases: [{ id: "appA", name: "Fever Berlin" }] });
+    (fetchAirtableTables as ReturnType<typeof vi.fn>).mockResolvedValue({ schemaAccessible: true, tables: [{ id: "tbl1", name: "Events", fields: [] }] });
+    // A base is already persisted from a prior session.
+    renderTab({ airtable_base_id: "appA" });
+    await waitFor(() => expect(screen.getByRole("button", { name: "Load from Airtable" })).toBeEnabled());
+    fireEvent.click(screen.getByRole("button", { name: "Load from Airtable" }));
+    // Tables must be fetched without the user re-picking the base, so the Table
+    // dropdown isn't stuck disabled.
+    await waitFor(() => expect(fetchAirtableTables).toHaveBeenCalledWith(expect.anything(), "org-1", "appA"));
   });
 
   it("hides field-mapping and catalog-links until a table is selected", () => {
