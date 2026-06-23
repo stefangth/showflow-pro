@@ -1,6 +1,6 @@
 # ADR-0008: No in-app UI for creating show dates
 
-**Status:** Accepted
+**Status:** Superseded 2026-06-23 — in-app show-date creation shipped (see Amendment below)
 **Date:** removed pre-2026-06-03 *(the create flow was removed earlier; rationale recorded by the
 owner 2026-06-16)*
 **Deciders:** Stefan Schaal (platform owner)
@@ -44,4 +44,23 @@ Airtable has no self-serve way to add dates until a UI exists.
 ## Implementation (delivered)
 
 The create-show-date flow and `ShowDetailPage` / `ShowDetailSheet` were removed prior to the
-captured PR window; current state documented in CLAUDE.md ("No UI for creating show dates").
+captured PR window. *(Historical — no longer accurate; this decision has since been reversed, see the Amendment below.)*
+
+## Amendment — 2026-06-23 (Superseded)
+
+This decision is **reversed**. Showflow now ships an in-app create flow for show dates —
+`ShowDateFormDialog` (create), with edit/cancel/delete via `ShowDateDetailSheet` — delivered by
+**PR #118** ("in-app show & show-date management", merged 2026-06-22). This is exactly the
+*"revisit for customers who author shows in-app"* trigger the Decision named.
+
+The two authoring surfaces now **coexist**: Airtable-synced rows stay locked for the fields the poll
+manages (date/sessions/venue/city read-only) while manually-created rows are fully editable; deletes
+are gated (a date hard-deletes only with zero bookings, otherwise Cancel; a show only with zero
+dates, otherwise Archive). Current behavior lives in CLAUDE.md → *"In-app catalog & date
+management"*.
+
+[ADR-0001](0001-airtable-system-of-record.md) is unaffected: Airtable remains *a* system of record
+for orgs that author there, but is no longer the *only* path to creating show dates.
+
+> Per this directory's README, a reversal would normally be recorded as a **new** superseding ADR
+> rather than edited in place. It is recorded here in-place at the owner's direction.
