@@ -3,6 +3,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { OrganizationsTab } from "@/components/platform/OrganizationsTab";
 import { PlatformAdminsTab } from "@/components/platform/PlatformAdminsTab";
 import { PlatformDefaultsTab } from "@/components/platform/PlatformDefaultsTab";
+import { SystemHealthTab } from "@/components/platform/SystemHealthTab";
 
 export default function PlatformPage() {
   const [tab, setTab] = useState("orgs");
@@ -17,10 +18,12 @@ export default function PlatformPage() {
           <TabsTrigger value="orgs">Organizations</TabsTrigger>
           <TabsTrigger value="admins">Platform Admins</TabsTrigger>
           <TabsTrigger value="defaults">Platform Defaults</TabsTrigger>
+          <TabsTrigger value="health">System Health</TabsTrigger>
         </TabsList>
         <TabsContent value="orgs" className="mt-4"><OrganizationsTab /></TabsContent>
         <TabsContent value="admins" className="mt-4"><PlatformAdminsTab /></TabsContent>
         <TabsContent value="defaults" className="mt-4"><PlatformDefaultsTab /></TabsContent>
+        <TabsContent value="health" className="mt-4"><SystemHealthTab /></TabsContent>
       </Tabs>
     </div>
   );
