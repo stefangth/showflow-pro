@@ -49,12 +49,12 @@ export interface CronHealthRow {
 
 /** Per-cron health for the platform System Health tab (super-admin only, enforced inside the RPC). */
 export async function fetchCronHealth(client: SupabaseClient<Database>): Promise<CronHealthRow[]> {
-  // get_cron_health is a SECURITY DEFINER RPC added alongside the cron-health tables; the
-  // generated Database type lags new RPCs, so it is called untyped at this data-access boundary.
-  const rpc = client.rpc as unknown as (fn: string) => PromiseLike<{ data: CronHealthRow[] | null; error: { message: string } | null }>;
-  const { data, error } = await rpc("get_cron_health");
-  if (error) throw new Error(error.message);
-  return data ?? [];
+  // get_cron_health is a SECURITY DEFINER RPC added alongside the cron-health tables; the generated
+  // Database type lags new RPCs, so the name is cast and the result is cast at this boundary — same
+  // shape as fetchPlatformOrgStats below.
+  const { data, error } = await client.rpc("get_cron_health" as never);
+  if (error) throw error;
+  return (data ?? []) as unknown as CronHealthRow[];
 }
 
 /** Every organization (super-admin only; RLS short-circuits is_org_member). */
