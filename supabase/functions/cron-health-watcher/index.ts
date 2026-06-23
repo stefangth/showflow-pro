@@ -8,24 +8,33 @@ import { realDeps, type Deps } from "../_shared/deps.ts";
  * update cron_health_state, append failures to cron_health_log, and on a
  * transition INTO failure (healthy/unknown -> failing/stale) alert all super-admins
  * once (in-app notification + email). On recovery (-> healthy) send an in-app
- * notification only (no email — avoids flapping-job email storms). Idempotent via
- * cron_health_state.alerted_at.
+ * notification only (no email). Idempotent via cron_health_state.alerted_at.
  *
  * A 404'd function cannot report its own absence, so health is observed from the
- * cron (caller) side. Jobs that have never dispatched are skipped (unknown) so a
- * fresh system never false-alarms.
+ * cron (caller) side. Detection per known job:
+ *   - latest dispatch older than its max-silence window  -> stale (cron stopped firing,
+ *     or the function never responded), regardless of any older response;
+ *   - dispatched recently, no response yet               -> pending (skip, re-check next run);
+ *   - dispatched recently with a response                -> healthy (2xx) / failing (non-2xx/timeout);
+ *   - never dispatched                                   -> unknown (skip).
+ *
+ * SELF-MONITORING CAVEAT: this watcher cannot detect its OWN per-invocation failures
+ * from the dispatch path — by the time it runs, its own dispatch row is the freshest
+ * (response still in-flight), so it classifies itself pending and skips. Watcher liveness
+ * must be observed externally — the dashboard surfaces its `last_run_at` from
+ * cron.job_run_details; if that ages, the watcher itself has stopped.
  *
  * Auth: X-Cron-Secret (pg_cron) or an admin JWT (manual trigger).
  */
 
-/** Jobs we expect to dispatch, with max silence (minutes) before a still-unanswered dispatch is 'stale'. */
+/** Jobs we expect to dispatch, with max silence (minutes) before the latest dispatch is 'stale'. */
 export const KNOWN_JOBS: Record<string, number> = {
   "offer-digest": 1500,
   "confirmation-digest": 1500,
   "expire-offers-hourly": 130,
   "tier-at-risk-hourly": 130,
   "airtable-poll": 30,
-  "cron-health-watcher": 60,
+  "cron-health-watcher": 60, // displayed only; see SELF-MONITORING CAVEAT above.
 };
 
 type ScanRow = {
@@ -54,11 +63,22 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
   const admin = deps.admin;
   const now = deps.now();
 
-  const { data: scan } = await admin.rpc("cron_health_scan");
+  // Abort on read errors: a swallowed scan error would make a monitoring blackout look
+  // healthy, and a swallowed state-read error would treat every failing job as a fresh
+  // transition and re-alert all super-admins on every run (alert storm).
+  const { data: scan, error: scanErr } = await admin.rpc("cron_health_scan");
+  if (scanErr) {
+    console.error("cron-health-watcher: cron_health_scan failed, aborting", scanErr);
+    return json({ error: "scan_failed", detail: (scanErr as { message?: string }).message }, 503);
+  }
   const byJob = new Map(((scan ?? []) as ScanRow[]).map((r) => [r.job_name, r]));
 
-  const { data: stateData } = await admin
+  const { data: stateData, error: stateErr } = await admin
     .from("cron_health_state").select("job_name, status, alerted_at, last_ok_at, consecutive_failures");
+  if (stateErr) {
+    console.error("cron-health-watcher: state read failed, aborting to prevent alert storm", stateErr);
+    return json({ error: "state_read_failed", detail: (stateErr as { message?: string }).message }, 503);
+  }
   const prevByJob = new Map(((stateData ?? []) as StateRow[]).map((s) => [s.job_name, s]));
 
   let newlyFailing = 0;
@@ -73,10 +93,16 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
     let statusCode: number | null = null;
     let error: string | null = null;
 
-    if (row.responded_at === null) {
-      if (ageMin <= KNOWN_JOBS[jobName]) continue; // dispatched, awaiting response — re-check next run.
+    if (ageMin > KNOWN_JOBS[jobName]) {
+      // Latest dispatch is older than expected → the cron has stopped firing (or the
+      // function never responded). A stale dispatch is a failure regardless of any old response.
       status = "stale";
-      error = "no response from function";
+      statusCode = row.responded_at !== null ? row.status_code : null;
+      error = row.responded_at === null
+        ? `no response ${Math.round(ageMin)}m after dispatch`
+        : `cron not firing (no dispatch in ${Math.round(ageMin)}m)`;
+    } else if (row.responded_at === null) {
+      continue; // dispatched recently, response in-flight — re-check next run.
     } else {
       statusCode = row.status_code;
       const ok = !row.timed_out && statusCode !== null && statusCode >= 200 && statusCode < 300;
@@ -98,7 +124,10 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
       last_ok_at: status === "healthy" ? now.toISOString() : (prev?.last_ok_at ?? null),
       last_error: error,
       consecutive_failures: failing ? (prev?.consecutive_failures ?? 0) + 1 : 0,
-      alerted_at: failing ? (wasFailing ? (prev?.alerted_at ?? now.toISOString()) : now.toISOString()) : null,
+      // Only stamp alerted_at when an alert is actually sent (the !wasFailing transition below).
+      // When already failing, preserve the existing value (may be null if a prior write was lost) —
+      // never fabricate a timestamp.
+      alerted_at: failing ? (wasFailing ? (prev?.alerted_at ?? null) : now.toISOString()) : null,
       updated_at: now.toISOString(),
     }, { onConflict: "job_name" });
 
@@ -129,7 +158,11 @@ async function superAdminIds(admin: Deps["admin"]): Promise<string[]> {
   return ((data ?? []) as { user_id: string }[]).map((a) => a.user_id);
 }
 
-/** Insert one in-app notification per super-admin (server-side — satisfies the no-bare-client-insert rule). */
+/**
+ * Insert one in-app notification per super-admin (server-side — satisfies the no-bare-client-insert rule).
+ * org_id is left null: cron-health is platform-level, not org-scoped (the notifications.org_id NOT NULL
+ * constraint was dropped for exactly this). Errors are logged, not swallowed.
+ */
 async function notifyAll(
   admin: Deps["admin"],
   ids: string[],
@@ -138,14 +171,16 @@ async function notifyAll(
   jobName: string,
 ): Promise<void> {
   if (ids.length === 0) return;
-  await admin.from("notifications").insert(ids.map((uid) => ({
+  const { error } = await admin.from("notifications").insert(ids.map((uid) => ({
     user_id: uid,
+    org_id: null,
     type: "cron_health_alert",
     title,
     message,
     related_entity_type: "cron_job",
     related_entity_id: jobName,
   })));
+  if (error) console.error("cron-health-watcher: notification insert failed", { jobName, error });
 }
 
 /** Failure alert: in-app notification + email to every super-admin. */
