@@ -1,25 +1,81 @@
 project_id = "epweartpzwvcasrzyueh"
 
+# ─────────────────────────────────────────────────────────────────────────────
+# Edge function JWT verification — pinned per function.
+#
+# `supabase functions deploy` (.github/workflows/deploy-functions.yml) applies
+# these on every deploy. A function NOT listed here defaults to verify_jwt = true,
+# which would BREAK the public webhooks and the cron callers — so EVERY function in
+# supabase/functions/ must have a block below. These values mirror the live project
+# (epweartpzwvcasrzyueh); when you add a function, add its block here too.
+#
+#   verify_jwt = true  → the gateway requires a valid JWT (a user session OR the
+#                        service-role key, which is itself a signed JWT). The handler
+#                        still runs its own role check (requireRole / requireOrgRole /
+#                        requireSuperAdmin / isServiceRole).
+#   verify_jwt = false → no JWT required at the gateway. For public webhooks and for
+#                        cron callers that authenticate via the X-Cron-Secret header
+#                        (requireCronOrRole) instead of a JWT.
+# ─────────────────────────────────────────────────────────────────────────────
+
+# ── Authenticated: user session, or service-role key (a JWT) for server-to-server ──
 [functions.admin-list-users]
+verify_jwt = true
+
+[functions.airtable-schema]
+verify_jwt = true
+
+[functions.close-offer-tier]
 verify_jwt = true
 
 [functions.create-invitation]
 verify_jwt = true
 
-[functions.send-transactional-email]
+[functions.delete-my-account]
 verify_jwt = true
 
-[functions.preview-transactional-email]
-verify_jwt = false
+[functions.export-org-data]
+verify_jwt = true
 
-[functions.handle-email-unsubscribe]
-verify_jwt = false
-
-[functions.handle-email-suppression]
-verify_jwt = false
+[functions.open-offer-tier]
+verify_jwt = true
 
 [functions.provision-org]
 verify_jwt = true
 
 [functions.resend-invitation]
 verify_jwt = true
+
+# Service-role-only: the gateway accepts the service-role JWT; the handler's
+# isServiceRole gate then rejects ordinary user JWTs. Digests/invitations call it
+# server-to-server with the service role, so they pass.
+[functions.send-transactional-email]
+verify_jwt = true
+
+# ── Public (no JWT): webhooks + preview ──────────────────────────────────────
+[functions.handle-email-suppression]
+verify_jwt = false
+
+[functions.handle-email-unsubscribe]
+verify_jwt = false
+
+[functions.preview-transactional-email]
+verify_jwt = false
+
+# ── Cron-invoked: authenticate via the X-Cron-Secret header, not a JWT ───────
+# (requireCronOrRole also accepts an admin/producer JWT for manual triggers, which
+# the handler validates itself — so verify_jwt stays false for the cron path.)
+[functions.airtable-poll]
+verify_jwt = false
+
+[functions.expire-offers]
+verify_jwt = false
+
+[functions.send-offer-digest]
+verify_jwt = false
+
+[functions.send-confirmation-digest]
+verify_jwt = false
+
+[functions.tier-at-risk-watcher]
+verify_jwt = false
