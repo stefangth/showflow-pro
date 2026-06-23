@@ -68,6 +68,9 @@ verify_jwt = false
 [functions.airtable-poll]
 verify_jwt = false
 
+[functions.cron-health-watcher]
+verify_jwt = false
+
 [functions.expire-offers]
 verify_jwt = false
 

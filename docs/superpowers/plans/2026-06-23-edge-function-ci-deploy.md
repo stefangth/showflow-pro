@@ -5,6 +5,13 @@
 > there is no unit-testable logic here; validation is "the CI deploy run succeeds and
 > the functions verify live".
 
+> **Update (post-merge of PR #126):** while this was in flight, PR #126 merged to `main` —
+> it declared `verify_jwt` for the booking-engine + GDPR functions and added a 19th
+> function, `cron-health-watcher` (cron, `verify_jwt = false`). The function count below is
+> therefore **19**, not 18; `config.toml` was reconciled to the union (it still adds
+> `airtable-poll`/`airtable-schema`, which #126 left undeclared). PR #126 did **not** add a
+> deploy workflow, so this change remains the core deliverable.
+
 **Goal:** Make Supabase Edge Functions deploy automatically to the live project
 (`epweartpzwvcasrzyueh`) on every merge to `main`, so the deployed set never drifts
 behind the repo again — and make CLAUDE.md's "auto-deploy" claim actually true.
