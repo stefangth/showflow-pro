@@ -37,7 +37,7 @@ npx vitest run       # unit tests (vitest + jsdom; setup in src/test/setup.ts)
 npm run test:watch   # vitest watch mode
 ```
 
-Edge functions deploy automatically when files in `supabase/functions/<name>/` change. No manual deploy step.
+Edge functions are **not** reliably auto-deployed from this repo — there is no CI deploy step (`.github/workflows/ci.yml` only sets up the Supabase CLI for DB tests). New functions are never auto-created on the live project (they 404 until first deployed) and removed functions are never auto-deleted, so the deployed set drifts from the repo. After adding or changing `supabase/functions/<name>/`, deploy it explicitly — Supabase MCP `deploy_edge_function`, or `supabase functions deploy <name> --project-ref <project-id> --use-api` — and confirm with `list_edge_functions`.
 
 ---
 
