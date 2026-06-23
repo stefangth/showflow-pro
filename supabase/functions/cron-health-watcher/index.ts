@@ -83,6 +83,7 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
 
   let newlyFailing = 0;
   let recovered = 0;
+  let assessed = 0; // jobs actually classified this run — excludes never-dispatched and in-flight (no response yet)
 
   for (const jobName of Object.keys(KNOWN_JOBS)) {
     const row = byJob.get(jobName);
@@ -136,6 +137,7 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
       console.error("cron-health-watcher: state upsert failed, skipping alerts for", jobName, upsertErr);
       continue;
     }
+    assessed++;
 
     if (failing) {
       await admin.from("cron_health_log").insert({ job_name: jobName, status_code: statusCode, error });
@@ -155,7 +157,9 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
   await admin.from("cron_health_log").delete()
     .lt("observed_at", new Date(now.getTime() - 30 * 86_400_000).toISOString());
 
-  return json({ checked: byJob.size, newly_failing: newlyFailing, recovered });
+  // `checked` = jobs actually classified this run, not jobs with a dispatch row — an in-flight job
+  // (dispatched, no response yet) is skipped above and must not inflate the count.
+  return json({ checked: assessed, newly_failing: newlyFailing, recovered });
 }
 
 /** Super-admin user ids (platform_admins). */

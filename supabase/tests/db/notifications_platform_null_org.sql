@@ -8,7 +8,7 @@
 -- (so we needn't seed real users/orgs) — while the CHECK under test still fires.
 BEGIN;
 CREATE EXTENSION IF NOT EXISTS pgtap WITH SCHEMA extensions;
-SELECT plan(3);
+SELECT plan(4);
 
 SET session_replication_role = replica;
 
@@ -30,6 +30,16 @@ SELECT throws_ok(
   '23514',
   NULL,
   'null-org non-cron notification violates the platform-only CHECK'
+);
+
+-- The guard is an exact-value list, not a 'cron_%' prefix: a cron_-prefixed but non-allowlisted type
+-- must still be rejected when org_id is null (else it would be permanently invisible to its recipient).
+SELECT throws_ok(
+  $$ INSERT INTO public.notifications (user_id, org_id, type, title, read)
+     VALUES ('aaaaaaaa-0000-0000-0000-000000000001', NULL, 'cron_offboarding', 't', false) $$,
+  '23514',
+  NULL,
+  'null-org cron_-prefixed-but-unlisted notification still violates the platform-only CHECK'
 );
 
 SET session_replication_role = origin;

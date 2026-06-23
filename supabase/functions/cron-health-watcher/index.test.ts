@@ -116,6 +116,27 @@ Deno.test("cron-health-watcher: a stale latest dispatch (cron stopped firing) is
   assertEquals(invokeCalls.filter((c) => c.name === "send-transactional-email").length, 1);
 });
 
+Deno.test("cron-health-watcher: in-flight dispatches (no response yet) are not counted as checked", async () => {
+  const { deps } = makeFakeDeps({
+    tables: {
+      app_settings: { data: { value: SECRET } },
+      platform_admins: { data: [{ user_id: "super-1" }] },
+      cron_health_state: { data: [] },
+    },
+    rpcs: {
+      cron_health_scan: { data: [
+        { job_name: "offer-digest", request_id: 1, dispatched_at: recent, status_code: null, timed_out: null, error_msg: null, responded_at: null },
+        { job_name: "airtable-poll", request_id: 2, dispatched_at: recent, status_code: null, timed_out: null, error_msg: null, responded_at: null },
+      ] },
+    },
+    now: NOW,
+  });
+  const res = await handle(cronReq(), deps);
+  assertEquals(res.status, 200);
+  // Both dispatched recently with no response yet → skipped, so `checked` must be 0, not 2 (byJob.size).
+  assertEquals((await res.json()).checked, 0);
+});
+
 Deno.test("cron-health-watcher: aborts 503 on a scan-RPC error (no false-healthy, no alert)", async () => {
   const { deps, calls, invokeCalls } = makeFakeDeps({
     tables: { app_settings: { data: { value: SECRET } }, platform_admins: { data: [{ user_id: "super-1" }] } },
