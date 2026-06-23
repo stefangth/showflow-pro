@@ -35,6 +35,28 @@ export async function fetchIsSuperAdmin(client: SupabaseClient<Database>, userId
   return data === true;
 }
 
+export interface CronHealthRow {
+  job_name: string;
+  schedule: string | null;
+  status: "healthy" | "failing" | "stale" | "unknown";
+  last_status_code: number | null;
+  last_ok_at: string | null;
+  last_error: string | null;
+  consecutive_failures: number;
+  last_run_at: string | null;
+  recent_failures: { status_code: number | null; error: string | null; observed_at: string }[];
+}
+
+/** Per-cron health for the platform System Health tab (super-admin only, enforced inside the RPC). */
+export async function fetchCronHealth(client: SupabaseClient<Database>): Promise<CronHealthRow[]> {
+  // get_cron_health is a SECURITY DEFINER RPC added alongside the cron-health tables; the generated
+  // Database type lags new RPCs, so the name is cast and the result is cast at this boundary — same
+  // shape as fetchPlatformOrgStats below.
+  const { data, error } = await client.rpc("get_cron_health" as never);
+  if (error) throw error;
+  return (data ?? []) as unknown as CronHealthRow[];
+}
+
 /** Every organization (super-admin only; RLS short-circuits is_org_member). */
 export async function fetchAllOrgs(client: SupabaseClient<Database>): Promise<Organization[]> {
   const { data, error } = await client.from("organizations").select("id, name, slug, status").order("name");
