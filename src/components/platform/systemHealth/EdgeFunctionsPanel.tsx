@@ -7,8 +7,9 @@ const budget = { p95Ms: SYSTEM_HEALTH.p95BudgetMs, errorRate: SYSTEM_HEALTH.erro
 const CRON_FNS = new Set(Object.values(CRON_JOB_TO_FN));
 
 export function EdgeFunctionsPanel({ metrics }: { metrics: EdgeFnMetric[] }) {
-  const nonCron = metrics.filter((m) => !CRON_FNS.has(m.fn));
-  const rows = nonCron.length > 0 ? nonCron : metrics;
+  // Non-cron functions only — cron-invoked functions live in the Scheduled jobs panel, and
+  // double-listing them here would duplicate their status pills (and double-count health).
+  const rows = metrics.filter((m) => !CRON_FNS.has(m.fn));
   return (
     <Card>
       <CardHeader><CardTitle className="font-display text-base">Edge functions</CardTitle></CardHeader>
