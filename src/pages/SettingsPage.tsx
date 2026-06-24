@@ -897,7 +897,7 @@ export default function SettingsPage() {
         )}
 
         <TabsContent value="airtable" className="mt-4">
-          <AirtableSyncTab orgId={orgId} get={get} set={set} />
+          <AirtableSyncTab orgId={orgId} />
         </TabsContent>
 
         <TabsContent value="filters" className="mt-4 space-y-6">
