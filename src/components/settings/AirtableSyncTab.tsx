@@ -15,7 +15,7 @@ import { toast } from "sonner";
 import { Trash2, CheckCircle2, KeyRound, Lock, Loader2, AlertCircle } from "lucide-react";
 import { fetchCustomFieldDefs, upsertCustomFieldDef, deleteCustomFieldDef } from "@/data/customFields";
 import { airtableTypeToCustomType, slugifyKey, type CustomFieldType } from "@/lib/customFields";
-import { fetchAirtableBases, fetchAirtableTables } from "@/data/airtableSchema";
+import { fetchAirtableBases, fetchAirtableTables, fetchAirtableLinkedRecords } from "@/data/airtableSchema";
 import { SHOWFLOW_FIELDS, buildProgramKey, buildCityKey, planCityReconciliation, groupDuplicateCities, type AirtableFieldMap } from "@/data/airtableMapping";
 import { showLabel } from "@/types";
 import { fetchShowsForLinking, linkShowAirtableKey, importShowsFromOptions, upsertOrgSetting } from "@/data/settings";
@@ -158,6 +158,19 @@ export function AirtableSyncTab({ orgId }: Props) {
 
   const selectedTable = tables.find((t) => t.name === s.airtable_table_name);
 
+  // City may be a multipleRecordLinks field; if so, enumerate the linked table's records as options.
+  const cityField = selectedTable?.fields.find((f) => f.name === fieldMap.city);
+  const cityLinkedTableId = cityField?.type === "multipleRecordLinks"
+    ? ((cityField.options as { linkedTableId?: string } | undefined)?.linkedTableId ?? null)
+    : null;
+  const cityLinkedRecordsQ = useQuery({
+    queryKey: ["airtable", "linked-records", orgId, baseId, cityLinkedTableId],
+    enabled: !!orgId && !!baseId && !!cityLinkedTableId,
+    queryFn: () => fetchAirtableLinkedRecords(supabase, orgId!, baseId, cityLinkedTableId!),
+    staleTime: 5 * 60 * 1000,
+    retry: false,
+  });
+
   // ── API key (Vault) + schema loading ────────────────────────────────────────
   const saveKey = useMutation({
     mutationFn: async () => {
@@ -226,7 +239,9 @@ export function AirtableSyncTab({ orgId }: Props) {
   };
 
   const programOptions = optionNames(fieldMap.sub_program); // sub-program-only linking (current scope)
-  const cityOptions = optionNames(fieldMap.city);
+  const cityOptions = cityLinkedTableId
+    ? (cityLinkedRecordsQ.data?.records ?? []).map((r) => r.name)
+    : optionNames(fieldMap.city);
 
   const showByKey = new Map((showsQ.data ?? []).filter((s) => s.airtable_program_key).map((s) => [s.airtable_program_key!, s]));
   const cityByKey = new Map((citiesQ.data ?? []).filter((c) => c.airtable_city_key).map((c) => [c.airtable_city_key!, c]));
