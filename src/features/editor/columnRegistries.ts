@@ -175,7 +175,9 @@ export function resolveColumnTemplate(
   const saved = savedTemplates[pageKey]?.[role];
 
   if (!saved || saved.length === 0) {
-    return defs.map(d => ({ columnId: d.id, visible: d.defaultVisible, order: d.defaultOrder }));
+    return defs
+      .map(d => ({ columnId: d.id, visible: d.defaultVisible, order: d.defaultOrder }))
+      .sort((a, b) => a.order - b.order);
   }
 
   const validIds = new Set(defs.map(d => d.id));
