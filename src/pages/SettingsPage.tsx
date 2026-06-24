@@ -22,7 +22,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { toast } from 'sonner';
 import { Settings as SettingsIcon, Database, Bell, Wand2, Save, SlidersHorizontal, MapPin, Plus, Trash2, Clock, BookOpen, UserCog, Eye, Building2 } from 'lucide-react';
-import { upsertOrgSetting } from '@/data/settings';
+import { upsertOrgSetting, mergeOrgRows } from '@/data/settings';
 import { AirtableSyncTab } from '@/components/settings/AirtableSyncTab';
 import { OrganizationTab } from '@/components/settings/OrganizationTab';
 import type { City, Cast } from '@/types';
@@ -269,12 +269,8 @@ export default function SettingsPage() {
       q = orgId ? q.or(`org_id.eq.${orgId},org_id.is.null`) : q.is('org_id', null);
       const { data, error } = await q;
       if (error) throw error;
-      // resolve: org row wins over platform row, per key
-      const byKey = new Map<string, { value: unknown; org_id: string | null }>();
-      for (const r of (data ?? []) as { key: string; value: unknown; org_id: string | null }[]) {
-        const prev = byKey.get(r.key);
-        if (!prev || (r.org_id !== null && prev.org_id === null)) byKey.set(r.key, { value: r.value, org_id: r.org_id });
-      }
+      // resolve: org row wins over platform row, per key (shared helper)
+      const byKey = mergeOrgRows((data ?? []) as { key: string; value: unknown; org_id: string | null }[]);
       return Array.from(byKey.entries()).map(([key, v]) => ({ key, value: v.value })) as SettingRow[];
     },
   });

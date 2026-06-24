@@ -1,6 +1,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "@/integrations/supabase/types";
 import type { AirtableFieldMap } from "./airtableMapping";
+import { mergeOrgRows } from "./settings";
 
 /** The four Airtable settings the admin edits in the Airtable Sync tab. */
 export interface AirtableSettings {
@@ -40,11 +41,7 @@ export async function fetchAirtableSettings(
     .or(`org_id.eq.${orgId},org_id.is.null`);
   if (error) throw error;
 
-  const byKey = new Map<string, { value: unknown; org_id: string | null }>();
-  for (const r of (data ?? []) as { key: string; value: unknown; org_id: string | null }[]) {
-    const prev = byKey.get(r.key);
-    if (!prev || (r.org_id !== null && prev.org_id === null)) byKey.set(r.key, { value: r.value, org_id: r.org_id });
-  }
+  const byKey = mergeOrgRows((data ?? []) as { key: string; value: unknown; org_id: string | null }[]);
 
   return {
     airtable_sync_enabled: (byKey.get("airtable_sync_enabled")?.value as boolean) ?? DEFAULTS.airtable_sync_enabled,

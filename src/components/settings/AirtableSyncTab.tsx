@@ -10,6 +10,7 @@ import { Separator } from "@/components/ui/separator";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
+import { Skeleton } from "@/components/ui/skeleton";
 import { toast } from "sonner";
 import { Trash2, CheckCircle2, KeyRound, Lock, Loader2, AlertCircle } from "lucide-react";
 import { fetchCustomFieldDefs, upsertCustomFieldDef, deleteCustomFieldDef } from "@/data/customFields";
@@ -47,7 +48,6 @@ export function AirtableSyncTab({ orgId }: Props) {
   const [airtableKey, setAirtableKey] = useState("");
   const [replacing, setReplacing] = useState(false);
   const [survivorByNorm, setSurvivorByNorm] = useState<Record<string, string>>({});
-  const [saveState, setSaveState] = useState<"idle" | "saving" | "saved" | "error">("idle");
 
   // ── API-key presence (status only; the key value is never read back) ─────────
   const keyStatusQ = useQuery({
@@ -71,12 +71,12 @@ export function AirtableSyncTab({ orgId }: Props) {
   const saveSettings = useMutation({
     mutationFn: async (patch: Partial<AirtableSettings>) => {
       if (!orgId) throw new Error("No active organization");
-      for (const [key, value] of Object.entries(patch)) {
-        await upsertOrgSetting(supabase, orgId, key, value as Json);
-      }
+      // Each key is an independent (org_id,key) upsert — write them in parallel.
+      await Promise.all(
+        Object.entries(patch).map(([key, value]) => upsertOrgSetting(supabase, orgId, key, value as Json)),
+      );
     },
     onMutate: async (patch: Partial<AirtableSettings>) => {
-      setSaveState("saving");
       await qc.cancelQueries({ queryKey: SETTINGS_KEY });
       const prev = qc.getQueryData<AirtableSettings>(SETTINGS_KEY);
       qc.setQueryData<AirtableSettings>(SETTINGS_KEY, (p) => ({ ...(p ?? s), ...patch }));
@@ -84,19 +84,30 @@ export function AirtableSyncTab({ orgId }: Props) {
     },
     onError: (_e, _patch, ctx) => {
       if (ctx?.prev) qc.setQueryData(SETTINGS_KEY, ctx.prev);
-      setSaveState("error");
       toast.error("Couldn't save Airtable settings — your last change wasn't stored.");
+      // Reconcile against the DB only when we rolled back: an overlapping save may have
+      // snapshotted (then reverted) a different key's successful write. A clean success
+      // needs no refetch — its optimistic cache already matches the DB.
+      void qc.invalidateQueries({ queryKey: SETTINGS_KEY });
     },
-    onSuccess: () => setSaveState("saved"),
-    // Reconcile the optimistic cache against the DB once the write settles. Without
-    // this, two overlapping autosaves where the earlier one fails would leave the
-    // cache permanently diverged (a later success's value rolled back, never refetched).
-    onSettled: () => { void qc.invalidateQueries({ queryKey: SETTINGS_KEY }); },
   });
 
+  // Derive the status pill from the mutation itself. A single shared useState would let a
+  // late onSuccess from one in-flight save overwrite a newer save's error (and vice versa);
+  // React Query tracks the latest mutation's lifecycle correctly.
+  const saveState: "idle" | "saving" | "saved" | "error" =
+    saveSettings.isPending ? "saving"
+      : saveSettings.isError ? "error"
+        : saveSettings.isSuccess ? "saved"
+          : "idle";
+
   const fieldMap = (s.airtable_field_map ?? {}) as AirtableFieldMap;
-  const setField = (key: keyof AirtableFieldMap, value: string | null) =>
-    saveSettings.mutate({ airtable_field_map: { ...fieldMap, [key]: value } });
+  // Spread the live (optimistically-updated) cache, not the render-time `fieldMap`, so two
+  // rapid field changes before a re-render flush don't drop the first one's value.
+  const setField = (key: keyof AirtableFieldMap, value: string | null) => {
+    const current = (qc.getQueryData<AirtableSettings>(SETTINGS_KEY)?.airtable_field_map ?? {}) as AirtableFieldMap;
+    saveSettings.mutate({ airtable_field_map: { ...current, [key]: value } });
+  };
 
   // ── Schema (bases + tables): cached React Query so it survives tab unmount/remount.
   //    Auto-loads when a key is present — no manual "Load" click needed to see mappings.
@@ -455,6 +466,11 @@ export function AirtableSyncTab({ orgId }: Props) {
                   </div>
                 </div>
               </>
+            ) : schemaState === "loading" ? (
+              <div className="grid grid-cols-1 gap-4">
+                <Skeleton className="h-10 w-full" />
+                <Skeleton className="h-10 w-full" />
+              </div>
             ) : null}
           </div>
         </CardContent>
