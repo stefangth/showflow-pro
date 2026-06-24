@@ -40,6 +40,9 @@ verify_jwt = true
 [functions.open-offer-tier]
 verify_jwt = true
 
+[functions.platform-edge-metrics]
+verify_jwt = true
+
 [functions.provision-org]
 verify_jwt = true
 
