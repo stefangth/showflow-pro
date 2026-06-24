@@ -110,8 +110,8 @@ describe("AirtableSyncTab", () => {
   it("hides field-mapping and catalog-links until a table is selected", async () => {
     (fetchAirtableKeyStatus as ReturnType<typeof vi.fn>).mockResolvedValue({ present: false, updatedAt: null });
     renderTab();
-    expect(screen.queryByText("Field mapping")).not.toBeInTheDocument();
-    expect(screen.queryByText("Catalog links")).not.toBeInTheDocument();
+    expect(screen.queryByText(/Field mapping/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/Catalog links/)).not.toBeInTheDocument();
   });
 });
 

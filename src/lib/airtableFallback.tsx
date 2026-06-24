@@ -16,7 +16,7 @@ export function airtableFallbackMessage(cause: FallbackCause): ReactNode {
     case "per-base":
       return "Your key can't read this base's tables — it may not have access to this specific base. Enter the table name manually below.";
     case "error":
-      return 'Couldn\'t reach Airtable to read the schema. Enter the names manually below, or click "Load from Airtable" to retry.';
+      return 'Couldn\'t reach Airtable to read the schema. Enter the names manually below, or click "Refresh from Airtable" to retry.';
     case "no-scope":
       return (
         <>
