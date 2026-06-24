@@ -19,6 +19,24 @@ vi.mock("@/hooks/useShows", async (orig) => {
   return { ...real, useShows: () => ({ data: SHOWS, isLoading: false, isError: false }) };
 });
 
+vi.mock("@/features/editor/EditorContext", () => ({
+  useColumnTemplate: () => ({
+    orderedColumns: [
+      { columnId: "shows.program", visible: true, order: 0 },
+      { columnId: "shows.sub_program", visible: true, order: 1 },
+      { columnId: "shows.category", visible: true, order: 2 },
+      { columnId: "_computed.slots", visible: true, order: 3 },
+      { columnId: "_computed.date_count", visible: true, order: 4 },
+      { columnId: "shows.status", visible: true, order: 5 },
+    ],
+    isVisible: () => true,
+    visibleCount: 6,
+    activeRole: "admin",
+  }),
+  useEditorConfig: () => ({ isEditorMode: false, getColumnLabel: (id: string) => id }),
+}));
+vi.mock("@/features/editor/ColumnLayoutEditor", () => ({ ColumnLayoutEditor: () => null }));
+
 import ProductionsPage from "./ProductionsPage";
 
 describe("ProductionsPage", () => {
@@ -41,5 +59,14 @@ describe("ProductionsPage", () => {
     role = "producer-only"; // hasRole('admin') === false
     renderWithProviders(<ProductionsPage />);
     expect(screen.queryByTestId("delete-s1")).not.toBeInTheDocument();
+  });
+
+  it("renders configured columns with headers and a date count", () => {
+    renderWithProviders(<ProductionsPage />);
+    // header label comes from the mocked getColumnLabel (returns the column id)
+    expect(screen.getByText("shows.program")).toBeInTheDocument();
+    expect(screen.getByText("_computed.date_count")).toBeInTheDocument();
+    // date_count cell for the synced show (dateCount: 3)
+    expect(screen.getByText(/3 dates/)).toBeInTheDocument();
   });
 });
