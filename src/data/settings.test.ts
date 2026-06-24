@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { createFakeSupabase } from "@/test/supabaseFake";
-import { fetchShowsWithSlots, resolveOrgSetting, upsertOrgSetting, fetchShowsForLinking, linkShowAirtableKey, importShowsFromOptions } from "./settings";
+import { fetchShowsWithSlots, resolveOrgSetting, upsertOrgSetting, fetchShowsForLinking, linkShowAirtableKey, importShowsFromOptions, mergeOrgRows } from "./settings";
 
 describe("fetchShowsWithSlots", () => {
   it("selects the correct columns from shows filtered by org_id", async () => {
@@ -135,5 +135,31 @@ describe("shows linking data-access", () => {
     const fake = createFakeSupabase({ shows: { data: null, error: null } });
     await importShowsFromOptions(fake as never, "org-1", []);
     expect(fake.calls).toEqual([]);
+  });
+});
+
+describe("mergeOrgRows", () => {
+  it("prefers the org row over the platform default per key", () => {
+    const byKey = mergeOrgRows([
+      { key: "a", value: "platform", org_id: null },
+      { key: "a", value: "org", org_id: "org-1" },
+      { key: "b", value: "org-only", org_id: "org-1" },
+      { key: "c", value: "platform-only", org_id: null },
+    ]);
+    expect(byKey.get("a")?.value).toBe("org");
+    expect(byKey.get("b")?.value).toBe("org-only");
+    expect(byKey.get("c")?.value).toBe("platform-only");
+  });
+
+  it("is order-independent (org row wins even when it appears first)", () => {
+    const byKey = mergeOrgRows([
+      { key: "a", value: "org", org_id: "org-1" },
+      { key: "a", value: "platform", org_id: null },
+    ]);
+    expect(byKey.get("a")?.value).toBe("org");
+  });
+
+  it("returns an empty map for no rows", () => {
+    expect(mergeOrgRows([]).size).toBe(0);
   });
 });

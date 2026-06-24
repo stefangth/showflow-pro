@@ -2,6 +2,14 @@
 
 What's new in ShowFlow, newest first.
 
+## 1.5.2 — June 24, 2026
+
+*Airtable mapping reliability*
+
+### Fixed
+- **Airtable field mappings save automatically** — Mapping a field, choosing a base or table, or toggling sync in Settings → Airtable Sync now saves instantly, with a clear "Saving… / All changes saved" indicator. No separate Save click needed.
+- **Mappings stay visible when you switch tabs** — The Airtable Sync tab now remembers your loaded base and table, so your field mappings and catalog links no longer disappear when you leave the tab and come back.
+
 ## 1.5.1 — June 23, 2026
 
 *Airtable sync fix*
