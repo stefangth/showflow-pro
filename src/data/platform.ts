@@ -1,7 +1,8 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database, Json } from "@/integrations/supabase/types";
 import type { Organization } from "@/data/orgs";
-import { BOOKING_ENGINE_DEFAULTS, type AppRole } from "@/config/app.config";
+import type { EdgeFnMetric } from "@/lib/systemHealth";
+import { BOOKING_ENGINE_DEFAULTS, SYSTEM_HEALTH, type AppRole } from "@/config/app.config";
 
 export interface OrgStat {
   org_id: string;
@@ -55,6 +56,19 @@ export async function fetchCronHealth(client: SupabaseClient<Database>): Promise
   const { data, error } = await client.rpc("get_cron_health" as never);
   if (error) throw error;
   return (data ?? []) as unknown as CronHealthRow[];
+}
+
+/** Edge-function metrics for the System Health tab, via the super-admin platform-edge-metrics
+ *  proxy (Supabase Analytics API). Returns one row per function over the lookback window. */
+export async function fetchEdgeFnMetrics(
+  client: SupabaseClient<Database>,
+  windowMinutes: number = SYSTEM_HEALTH.windowMinutes,
+): Promise<EdgeFnMetric[]> {
+  const { data, error } = await client.functions.invoke("platform-edge-metrics", {
+    body: { window_minutes: windowMinutes },
+  });
+  if (error) throw error;
+  return (data as { functions?: EdgeFnMetric[] } | null)?.functions ?? [];
 }
 
 /** Every organization (super-admin only; RLS short-circuits is_org_member). */
