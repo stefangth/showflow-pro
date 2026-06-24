@@ -13,6 +13,7 @@ vi.mock("@/data/shows", async (orig) => ({ ...(await orig<typeof import("@/data/
 const SHOWS = [
   { id: "s1", program: "Manual", sub_program: null, category: null, description: null, status: "active", main_cast_slots: 2, understudy_slots: 1, airtable_program_key: null, sort_order: 1, dateCount: 0 },
   { id: "s2", program: "Imported", sub_program: null, category: null, description: null, status: "active", main_cast_slots: null, understudy_slots: null, airtable_program_key: "K", sort_order: 2, dateCount: 3 },
+  { id: "s3", program: "TJE", sub_program: "Murder", category: null, description: null, status: "active", main_cast_slots: 2, understudy_slots: 1, airtable_program_key: null, sort_order: 3, dateCount: 0 },
 ];
 vi.mock("@/hooks/useShows", async (orig) => {
   const real = await orig<typeof import("@/hooks/useShows")>();
@@ -41,6 +42,11 @@ import ProductionsPage from "./ProductionsPage";
 
 describe("ProductionsPage", () => {
   beforeEach(() => { vi.clearAllMocks(); role = "admin"; });
+
+  it("uses the full program – sub_program label for compound shows", () => {
+    renderWithProviders(<ProductionsPage />);
+    expect(screen.getByLabelText("Edit TJE – Murder")).toBeInTheDocument();
+  });
 
   it("renders rows and an unconfigured badge for null slots", () => {
     renderWithProviders(<ProductionsPage />);

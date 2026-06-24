@@ -5,6 +5,7 @@ import { useShows, useArchiveShow, useDeleteShow, useReorderShows, type ShowWith
 import { isSyncedShow, canHardDeleteShow } from "@/lib/catalog";
 import { showSlots } from "@/lib/settings";
 import { formatDateDMY } from "@/lib/dates";
+import { showLabel } from "@/types";
 import { ShowFormDialog } from "@/components/catalog/ShowFormDialog";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -117,7 +118,7 @@ export default function ProductionsPage() {
   const renderRow = (s: ShowWithStats, draggable: boolean) => {
     const synced = isSyncedShow(s);
     const deletable = isAdmin && canHardDeleteShow({ synced, dateCount: s.dateCount });
-    const label = s.program ?? s.sub_program ?? "production";
+    const label = showLabel(s);
     return (
       <div className="flex items-center gap-3 px-4 py-3 border-b last:border-b-0">
         {draggable && <GripVertical className="h-4 w-4 text-muted-foreground cursor-grab shrink-0" />}

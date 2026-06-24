@@ -186,16 +186,17 @@ async function syncOrg(deps: Deps, orgId: string, baseId: string, tableName: str
       const target = metaTables.find((t) => t.name === tableName);
       const fieldByName = new Map((target?.fields ?? []).map((f) => [f.name, f] as const));
       const primaryByTableId = new Map(metaTables.map((t) => [t.id, t.primaryFieldId] as const));
-      for (const key of ["venue", "city"] as const) {
+      // venue + city are independent — resolve their linked tables in parallel.
+      await Promise.all((["venue", "city"] as const).map(async (key) => {
         const fname = fieldMap[key];
-        if (!fname) continue;
+        if (!fname) return;
         const f = fieldByName.get(fname);
         const linkedTableId = f?.type === "multipleRecordLinks" ? f.options?.linkedTableId : undefined;
         const primaryFieldId = linkedTableId ? primaryByTableId.get(linkedTableId) : undefined;
         if (linkedTableId && primaryFieldId) {
           linkMaps[key] = await fetchLinkedNameMap(deps, baseId, linkedTableId, primaryFieldId, apiKey);
         }
-      }
+      }));
     }
   }
 
