@@ -26,11 +26,13 @@ type StatusFilter = "active" | "archived" | "all";
 
 const STATUS_LABEL: Record<string, string> = { active: "Active", archived: "Archived", draft: "Draft" };
 
-/** Tailwind width per productions column; the first visible column flexes (identity). */
-function colWidth(colId: string): string {
+/** Tailwind width for a productions column. The first visible column flexes (identity);
+ *  all others get a fixed width. */
+function colWidth(colId: string, isFirst: boolean): string {
+  if (isFirst) return "flex-1 min-w-0";
   switch (colId) {
     case "shows.program":
-    case "shows.sub_program": return "flex-1 min-w-0";
+    case "shows.sub_program": return "w-48 shrink-0";
     case "shows.category": return "w-40 shrink-0";
     case "_computed.slots":
     case "shows.main_cast_slots":
@@ -124,7 +126,7 @@ export default function ProductionsPage() {
         {visibleColumns.map((c) => (
           <div
             key={c.columnId}
-            className={`${colWidth(c.columnId)} text-sm ${c.columnId === firstColId ? "font-medium truncate" : "text-muted-foreground"}`}
+            className={`${colWidth(c.columnId, c.columnId === firstColId)} text-sm ${c.columnId === firstColId ? "font-medium truncate" : "text-muted-foreground"}`}
           >
             {cellContent(s, c.columnId)}
           </div>
@@ -191,7 +193,7 @@ export default function ProductionsPage() {
           <div className="flex items-center gap-3 px-4 py-2 border-b bg-muted/30 text-xs font-medium text-muted-foreground">
             {reorderable && <span className="h-4 w-4 shrink-0" aria-hidden />}
             {columnHeaders.map(({ columnId, headerLabel }) => (
-              <div key={columnId} className={colWidth(columnId)}>{headerLabel}</div>
+              <div key={columnId} className={colWidth(columnId, columnId === firstColId)}>{headerLabel}</div>
             ))}
             <span className="ml-auto w-[120px] shrink-0" aria-hidden />
           </div>
