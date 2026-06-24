@@ -2,6 +2,22 @@
 
 What's new in ShowFlow, newest first.
 
+## 1.6.0 — June 24, 2026
+
+*Productions table & Airtable sync improvements*
+
+### New
+- **Configurable Productions columns** — Admins can choose which columns appear on the Productions page, and in what order, per role.
+- **Link individual programs** — Link a single Airtable program option to an existing show, the same way cities already work.
+
+### Improved
+- **Clearer Airtable field mapping** — The field-mapping card now labels each side: your ShowFlow field versus the Airtable column it maps to.
+
+### Fixed
+- **Program & sub-program now show on Productions** — Imported shows display their name instead of a dash.
+- **Cities link from linked-record fields** — When Airtable stores City as a linked record, those cities can now be linked and kept in sync.
+- **Venue shows its name** — Venues display the real venue name instead of an internal Airtable record id.
+
 ## 1.5.2 — June 24, 2026
 
 *Airtable mapping reliability*

@@ -1,5 +1,43 @@
 [
   {
+    "version": "1.6.0",
+    "date": "2026-06-24",
+    "dateLabel": "June 24, 2026",
+    "title": "Productions table & Airtable sync improvements",
+    "changes": {
+      "new": [
+        {
+          "title": "Configurable Productions columns",
+          "description": "Admins can choose which columns appear on the Productions page, and in what order, per role."
+        },
+        {
+          "title": "Link individual programs",
+          "description": "Link a single Airtable program option to an existing show, the same way cities already work."
+        }
+      ],
+      "improved": [
+        {
+          "title": "Clearer Airtable field mapping",
+          "description": "The field-mapping card now labels each side: your ShowFlow field versus the Airtable column it maps to."
+        }
+      ],
+      "fixed": [
+        {
+          "title": "Program & sub-program now show on Productions",
+          "description": "Imported shows display their name instead of a dash."
+        },
+        {
+          "title": "Cities link from linked-record fields",
+          "description": "When Airtable stores City as a linked record, those cities can now be linked and kept in sync."
+        },
+        {
+          "title": "Venue shows its name",
+          "description": "Venues display the real venue name instead of an internal Airtable record id."
+        }
+      ]
+    }
+  },
+  {
     "version": "1.5.2",
     "date": "2026-06-24",
     "dateLabel": "June 24, 2026",
