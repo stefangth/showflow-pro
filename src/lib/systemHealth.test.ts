@@ -29,8 +29,8 @@ describe("deriveJobStatus", () => {
   it("is operational when healthy with no metrics yet", () => {
     expect(deriveJobStatus("healthy", null, BUDGET)).toBe("operational");
   });
-  it("maps cron 'unknown' to stale (neutral grey, never a false green)", () => {
-    expect(deriveJobStatus("unknown", metric({ p95Ms: 8000 }), BUDGET)).toBe("stale");
+  it("maps cron 'unknown' to pending (neutral, never a false green)", () => {
+    expect(deriveJobStatus("unknown", metric({ p95Ms: 8000 }), BUDGET)).toBe("pending");
   });
 });
 
@@ -54,6 +54,10 @@ describe("worstStatus", () => {
     expect(worstStatus(["operational", "degraded", "down"])).toBe("down");
     expect(worstStatus(["operational", "stale", "degraded"])).toBe("stale");
     expect(worstStatus([])).toBe("operational");
+  });
+  it("ranks pending below degraded so a never-assessed job can't mask a real signal", () => {
+    expect(worstStatus(["pending", "degraded"])).toBe("degraded");
+    expect(worstStatus(["operational", "pending"])).toBe("pending");
   });
 });
 

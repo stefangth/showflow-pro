@@ -6,7 +6,7 @@ import { DomainSummaryGrid } from "./systemHealth/DomainSummaryGrid";
 import { ScheduledJobsPanel } from "./systemHealth/ScheduledJobsPanel";
 import { EdgeFunctionsPanel } from "./systemHealth/EdgeFunctionsPanel";
 import {
-  deriveJobStatus, deriveEdgeFnStatus, worstStatus, CRON_JOB_TO_FN, type HealthState,
+  deriveJobStatus, deriveEdgeFnStatus, worstStatus, CRON_JOB_TO_FN, CRON_FNS, type HealthState,
 } from "@/lib/systemHealth";
 import { SYSTEM_HEALTH_BUDGET as budget } from "@/config/app.config";
 
@@ -23,23 +23,23 @@ export function SystemHealthTab() {
 
   const jobStates: HealthState[] = cronRows.map((c) =>
     deriveJobStatus(c.status, byFn.get(CRON_JOB_TO_FN[c.job_name] ?? c.job_name) ?? null, budget));
-  const cronFns = new Set(Object.values(CRON_JOB_TO_FN));
-  const edgeStates: HealthState[] = metrics.filter((m) => !cronFns.has(m.fn)).map((m) => deriveEdgeFnStatus(m, budget));
+  const edgeStates: HealthState[] = metrics.filter((m) => !CRON_FNS.has(m.fn)).map((m) => deriveEdgeFnStatus(m, budget));
 
   const jobsState = worstStatus(jobStates);
   const edgeState = worstStatus(edgeStates);
   const overall = worstStatus([jobsState, edgeState]);
 
-  const slowJobs = jobStates.filter((s) => s !== "operational").length;
+  // "Flagged" counts actionable states only — a never-assessed 'pending' job isn't a problem.
+  const flaggedJobs = jobStates.filter((s) => s === "degraded" || s === "down" || s === "stale").length;
   const detail = edge.isError
     ? "Latency metrics unavailable — showing scheduled-job status only"
-    : `${cronRows.length} jobs · ${slowJobs} need attention`;
+    : `${cronRows.length} jobs · ${flaggedJobs} need attention`;
 
   return (
     <div className="space-y-4">
       <OverallStatusBanner state={overall} detail={detail} />
       <DomainSummaryGrid domains={[
-        { key: "jobs", label: "Scheduled jobs", state: jobsState, detail: `${cronRows.length} jobs · ${slowJobs} flagged` },
+        { key: "jobs", label: "Scheduled jobs", state: jobsState, detail: edge.isError ? `${cronRows.length} jobs · latency n/a` : `${cronRows.length} jobs · ${flaggedJobs} flagged` },
         { key: "edge", label: "Edge functions", state: edgeState, detail: edge.isError ? "metrics unavailable" : `${metrics.length} active` },
       ]} />
       <ScheduledJobsPanel cronRows={cronRows} metrics={metrics} />

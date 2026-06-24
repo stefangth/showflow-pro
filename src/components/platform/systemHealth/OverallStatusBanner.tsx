@@ -4,6 +4,7 @@ import type { HealthState } from "@/lib/systemHealth";
 
 const SUMMARY: Record<HealthState, string> = {
   operational: "All systems operational",
+  pending: "Awaiting first health check",
   degraded: "Some systems degraded",
   down: "A system is down",
   stale: "A scheduled job has stopped firing",

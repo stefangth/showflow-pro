@@ -3,13 +3,15 @@ import { cn } from "@/lib/utils";
 import type { HealthState, EdgeFnMetric } from "@/lib/systemHealth";
 
 const LABEL: Record<HealthState, string> = {
-  operational: "Operational", degraded: "Degraded", down: "Down", stale: "Stale",
+  operational: "Operational", pending: "Pending", degraded: "Degraded", down: "Down", stale: "Stale",
 };
 const DOT: Record<HealthState, string> = {
-  operational: "bg-success", degraded: "bg-warning", down: "bg-destructive", stale: "bg-muted-foreground",
+  operational: "bg-success", pending: "bg-muted-foreground/50", degraded: "bg-warning",
+  down: "bg-destructive", stale: "bg-muted-foreground",
 };
 const PILL: Record<HealthState, string> = {
   operational: "border-success/30 text-success",
+  pending: "border-border text-muted-foreground",
   degraded: "border-warning/30 text-warning",
   down: "border-destructive/30 text-destructive",
   stale: "border-border text-muted-foreground",
@@ -24,8 +26,8 @@ export function StatusPill({ state }: { state: HealthState }) {
 }
 
 export function LatencyStat({ p95Ms }: { p95Ms: number | null }) {
-  const text = p95Ms === null ? "—" : `${(p95Ms / 1000).toFixed(1)}s`;
-  return <span className="tabular-nums text-muted-foreground">{p95Ms === null ? "—" : `p95 ${text}`}</span>;
+  const text = p95Ms === null ? "—" : `p95 ${(p95Ms / 1000).toFixed(1)}s`;
+  return <span className="tabular-nums text-muted-foreground">{text}</span>;
 }
 
 /** Up to 20 recent-outcome ticks (most-recent-first), colored by outcome. */
