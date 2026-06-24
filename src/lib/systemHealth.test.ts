@@ -29,6 +29,9 @@ describe("deriveJobStatus", () => {
   it("is operational when healthy with no metrics yet", () => {
     expect(deriveJobStatus("healthy", null, BUDGET)).toBe("operational");
   });
+  it("maps cron 'unknown' to stale (neutral grey, never a false green)", () => {
+    expect(deriveJobStatus("unknown", metric({ p95Ms: 8000 }), BUDGET)).toBe("stale");
+  });
 });
 
 describe("deriveEdgeFnStatus", () => {

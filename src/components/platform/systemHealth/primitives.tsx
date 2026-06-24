@@ -6,11 +6,11 @@ const LABEL: Record<HealthState, string> = {
   operational: "Operational", degraded: "Degraded", down: "Down", stale: "Stale",
 };
 const DOT: Record<HealthState, string> = {
-  operational: "bg-emerald-500", degraded: "bg-amber-500", down: "bg-destructive", stale: "bg-muted-foreground",
+  operational: "bg-success", degraded: "bg-warning", down: "bg-destructive", stale: "bg-muted-foreground",
 };
 const PILL: Record<HealthState, string> = {
-  operational: "border-emerald-500/30 text-emerald-600",
-  degraded: "border-amber-500/30 text-amber-600",
+  operational: "border-success/30 text-success",
+  degraded: "border-warning/30 text-warning",
   down: "border-destructive/30 text-destructive",
   stale: "border-border text-muted-foreground",
 };
@@ -32,7 +32,7 @@ export function LatencyStat({ p95Ms }: { p95Ms: number | null }) {
 export function RunTimeline({ metric, p95BudgetMs }: { metric: EdgeFnMetric | null; p95BudgetMs: number }) {
   const ticks = (metric?.recent ?? []).slice(0, 20);
   const tone = (o: { status: number; ms: number }) =>
-    o.status >= 500 ? "bg-destructive" : o.status >= 400 || o.ms > p95BudgetMs ? "bg-amber-500" : "bg-emerald-500";
+    o.status >= 500 ? "bg-destructive" : o.status >= 400 || o.ms > p95BudgetMs ? "bg-warning" : "bg-success";
   if (ticks.length === 0) return <span className="text-xs text-muted-foreground">no recent runs</span>;
   return (
     <span className="inline-flex items-center gap-px" aria-hidden>
