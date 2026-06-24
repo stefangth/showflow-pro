@@ -8,6 +8,7 @@ import { AirtableSyncTab } from "./AirtableSyncTab";
 vi.mock("@/data/airtableSchema", () => ({
   fetchAirtableBases: vi.fn(),
   fetchAirtableTables: vi.fn(),
+  fetchAirtableLinkedRecords: vi.fn(() => Promise.resolve({ schemaAccessible: true, records: [] })),
 }));
 vi.mock("@/data/settings", () => ({
   fetchShowsForLinking: vi.fn(() => Promise.resolve([])),
@@ -42,7 +43,7 @@ vi.mock("@/data/customFields", () => ({
   deleteCustomFieldDef: vi.fn(() => Promise.resolve()),
 }));
 
-import { fetchAirtableBases, fetchAirtableTables } from "@/data/airtableSchema";
+import { fetchAirtableBases, fetchAirtableTables, fetchAirtableLinkedRecords } from "@/data/airtableSchema";
 import { fetchAirtableKeyStatus } from "@/data/airtableKey";
 import { fetchLatestSyncLog, fetchUnresolvedRecords } from "@/data/airtableSync";
 import { fetchCitiesForLinking, mergeCities } from "@/data/cities";
@@ -288,5 +289,23 @@ describe("AirtableSyncTab — autosave", () => {
 
     expect(await screen.findByText("TJE: Murder")).toBeInTheDocument();
     expect(screen.getByLabelText("link TJE: Murder to an existing show")).toBeInTheDocument();
+  });
+
+  it("lists city options from a linked-record City field", async () => {
+    (fetchAirtableKeyStatus as ReturnType<typeof vi.fn>).mockResolvedValue({ present: true, updatedAt: null });
+    (fetchAirtableBases as ReturnType<typeof vi.fn>).mockResolvedValue({ schemaAccessible: true, bases: [{ id: "appX", name: "Base" }] });
+    (fetchAirtableTables as ReturnType<typeof vi.fn>).mockResolvedValue({
+      schemaAccessible: true,
+      tables: [{
+        id: "tbl", name: "Events",
+        fields: [{ id: "fCity", name: "City", type: "multipleRecordLinks", options: { linkedTableId: "tblCities" } }],
+      }],
+    });
+    (fetchAirtableLinkedRecords as ReturnType<typeof vi.fn>).mockResolvedValue({
+      schemaAccessible: true, records: [{ id: "recCity1", name: "Berlin" }],
+    });
+    renderTab({ airtable_base_id: "appX", airtable_table_name: "Events", airtable_field_map: { city: "City" } });
+
+    expect(await screen.findByText("Berlin")).toBeInTheDocument();
   });
 });
