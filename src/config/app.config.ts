@@ -36,6 +36,20 @@ export const BOOKING_ENGINE_DEFAULTS = {
   resend_from_address: 'ShowFlow <noreply@showflow.pro>',
 } as const;
 
+/** Platform System Health console thresholds (super-admin tab).
+ *  Mirrors the spec; tune p95BudgetMs from real cold-start data. */
+export const SYSTEM_HEALTH = {
+  /** Analytics lookback window (minutes). The Management API caps the range at 24h. */
+  windowMinutes: 1440,
+  /** Dashboard auto-refresh (ms). */
+  refetchMs: 60_000,
+  /** p95 latency (ms) above which an otherwise-healthy job/function reads as Degraded.
+   *  Deliberately cold-start tolerant — functions legitimately boot 3–10s. */
+  p95BudgetMs: 12_000,
+  /** Recent 5xx fraction (0..1) above which a job/function reads as Degraded. */
+  errorRateBudget: 0.05,
+} as const;
+
 /** Role definitions */
 export const ROLES = {
   ADMIN: 'admin',
