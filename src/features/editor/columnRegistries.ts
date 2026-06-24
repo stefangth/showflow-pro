@@ -19,17 +19,18 @@ export const TABLE_COLUMNS: Record<string, readonly string[]> = {
     'id', 'show_id', 'date', 'session_1', 'session_2', 'session_3', 'venue', 'city_id',
     'status', 'notes', 'airtable_record_id', 'created_at', 'updated_at',
   ],
-  shows: ['id', 'program', 'sub_program', 'status', 'created_by', 'created_at', 'updated_at'],
+  shows: ['id', 'program', 'sub_program', 'category', 'status', 'main_cast_slots', 'understudy_slots', 'sort_order', 'created_by', 'created_at', 'updated_at'],
   cities: ['id', 'name', 'airtable_record_id', 'created_at'],
   artists: ['id', 'user_id', 'name', 'email', 'phone', 'bio', 'status', 'created_at', 'updated_at'],
   // Computed/derived columns surfaced in the editor under a virtual table.
-  _computed: ['day', 'slots', 'my_status', 'blocked'],
+  _computed: ['day', 'slots', 'date_count', 'my_status', 'blocked'],
 };
 
 /** Human-readable labels for _computed virtual columns (no DB backing). */
 export const COMPUTED_LABELS: Record<string, string> = {
   '_computed.day': 'Day',
   '_computed.slots': 'Slots',
+  '_computed.date_count': 'Dates',
   '_computed.my_status': 'My status',
   '_computed.blocked': 'Availability',
 };
@@ -79,6 +80,17 @@ export const PAGE_COLUMN_SPECS: Record<string, PageColumnSpec> = {
       'show_dates.session_1',
       '_computed.my_status',
       '_computed.blocked',
+    ],
+  },
+  'shows-productions': {
+    tables: ['shows', '_computed'],
+    rendered: [
+      'shows.program',
+      'shows.sub_program',
+      'shows.category',
+      '_computed.slots',
+      '_computed.date_count',
+      'shows.status',
     ],
   },
 };
