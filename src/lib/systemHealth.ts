@@ -39,6 +39,7 @@ const errorRate = (m: EdgeFnMetric | null): number =>
 export function deriveJobStatus(cron: CronStatus, metric: EdgeFnMetric | null, budget: HealthBudget): HealthState {
   if (cron === "stale") return "stale";
   if (cron === "failing") return "down";
+  if (cron === "unknown") return "stale"; // never assessed yet (cron_health_state default) — neutral grey, not a false green
   if (metric) {
     if (errorRate(metric) > budget.errorRate) return "degraded";
     if (metric.p95Ms !== null && metric.p95Ms > budget.p95Ms) return "degraded";

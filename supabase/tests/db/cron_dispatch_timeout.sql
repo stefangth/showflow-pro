@@ -8,18 +8,34 @@ BEGIN;
 CREATE EXTENSION IF NOT EXISTS pgtap WITH SCHEMA extensions;
 SELECT plan(7);
 
-SELECT matches(command, 'timeout_milliseconds\s*:=\s*30000', 'airtable-poll dispatch sets a 30s timeout')
-  FROM cron.job WHERE jobname = 'airtable-poll';
-SELECT matches(command, 'timeout_milliseconds\s*:=\s*30000', 'offer-digest dispatch sets a 30s timeout')
-  FROM cron.job WHERE jobname = 'offer-digest';
-SELECT matches(command, 'timeout_milliseconds\s*:=\s*30000', 'confirmation-digest dispatch sets a 30s timeout')
-  FROM cron.job WHERE jobname = 'confirmation-digest';
-SELECT matches(command, 'timeout_milliseconds\s*:=\s*30000', 'expire-offers-hourly dispatch sets a 30s timeout')
-  FROM cron.job WHERE jobname = 'expire-offers-hourly';
-SELECT matches(command, 'timeout_milliseconds\s*:=\s*30000', 'tier-at-risk-hourly dispatch sets a 30s timeout')
-  FROM cron.job WHERE jobname = 'tier-at-risk-hourly';
-SELECT matches(command, 'timeout_milliseconds\s*:=\s*30000', 'cron-health-watcher dispatch sets a 30s timeout')
-  FROM cron.job WHERE jobname = 'cron-health-watcher';
+-- Per-job guards use ok(EXISTS(...)) rather than a set-returning matches() over a WHERE clause:
+-- if a job row were ABSENT, a `SELECT matches(...) FROM cron.job WHERE jobname='x'` returns zero
+-- rows and the assertion is silently SKIPPED (desyncing plan(7)), instead of failing. EXISTS makes
+-- a missing job an explicit failure.
+SELECT ok(
+  EXISTS(SELECT 1 FROM cron.job WHERE jobname = 'airtable-poll' AND command ~ 'timeout_milliseconds\s*:=\s*30000'),
+  'airtable-poll dispatch sets a 30s timeout'
+);
+SELECT ok(
+  EXISTS(SELECT 1 FROM cron.job WHERE jobname = 'offer-digest' AND command ~ 'timeout_milliseconds\s*:=\s*30000'),
+  'offer-digest dispatch sets a 30s timeout'
+);
+SELECT ok(
+  EXISTS(SELECT 1 FROM cron.job WHERE jobname = 'confirmation-digest' AND command ~ 'timeout_milliseconds\s*:=\s*30000'),
+  'confirmation-digest dispatch sets a 30s timeout'
+);
+SELECT ok(
+  EXISTS(SELECT 1 FROM cron.job WHERE jobname = 'expire-offers-hourly' AND command ~ 'timeout_milliseconds\s*:=\s*30000'),
+  'expire-offers-hourly dispatch sets a 30s timeout'
+);
+SELECT ok(
+  EXISTS(SELECT 1 FROM cron.job WHERE jobname = 'tier-at-risk-hourly' AND command ~ 'timeout_milliseconds\s*:=\s*30000'),
+  'tier-at-risk-hourly dispatch sets a 30s timeout'
+);
+SELECT ok(
+  EXISTS(SELECT 1 FROM cron.job WHERE jobname = 'cron-health-watcher' AND command ~ 'timeout_milliseconds\s*:=\s*30000'),
+  'cron-health-watcher dispatch sets a 30s timeout'
+);
 
 -- Aggregate guard: none of the six dispatch jobs may fall back to the implicit 5000ms default.
 SELECT is(
