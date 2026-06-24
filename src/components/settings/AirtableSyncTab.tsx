@@ -15,8 +15,9 @@ import { toast } from "sonner";
 import { Trash2, CheckCircle2, KeyRound, Lock, Loader2, AlertCircle } from "lucide-react";
 import { fetchCustomFieldDefs, upsertCustomFieldDef, deleteCustomFieldDef } from "@/data/customFields";
 import { airtableTypeToCustomType, slugifyKey, type CustomFieldType } from "@/lib/customFields";
-import { fetchAirtableBases, fetchAirtableTables } from "@/data/airtableSchema";
+import { fetchAirtableBases, fetchAirtableTables, fetchAirtableLinkedRecords } from "@/data/airtableSchema";
 import { SHOWFLOW_FIELDS, buildProgramKey, buildCityKey, planCityReconciliation, groupDuplicateCities, type AirtableFieldMap } from "@/data/airtableMapping";
+import { showLabel } from "@/types";
 import { fetchShowsForLinking, linkShowAirtableKey, importShowsFromOptions, upsertOrgSetting } from "@/data/settings";
 import { fetchAirtableSettings, type AirtableSettings } from "@/data/airtableSettings";
 import type { Json } from "@/integrations/supabase/types";
@@ -157,6 +158,19 @@ export function AirtableSyncTab({ orgId }: Props) {
 
   const selectedTable = tables.find((t) => t.name === s.airtable_table_name);
 
+  // City may be a multipleRecordLinks field; if so, enumerate the linked table's records as options.
+  const cityField = selectedTable?.fields.find((f) => f.name === fieldMap.city);
+  const cityLinkedTableId = cityField?.type === "multipleRecordLinks"
+    ? ((cityField.options as { linkedTableId?: string } | undefined)?.linkedTableId ?? null)
+    : null;
+  const cityLinkedRecordsQ = useQuery({
+    queryKey: ["airtable", "linked-records", orgId, baseId, cityLinkedTableId],
+    enabled: !!orgId && keyPresent && !!baseId && !!cityLinkedTableId,
+    queryFn: () => fetchAirtableLinkedRecords(supabase, orgId!, baseId, cityLinkedTableId!),
+    staleTime: 5 * 60 * 1000,
+    retry: false,
+  });
+
   // ── API key (Vault) + schema loading ────────────────────────────────────────
   const saveKey = useMutation({
     mutationFn: async () => {
@@ -181,6 +195,7 @@ export function AirtableSyncTab({ orgId }: Props) {
       setAirtableKey(""); setReplacing(false);
       qc.removeQueries({ queryKey: ["airtable", "bases", orgId] });
       qc.removeQueries({ queryKey: ["airtable", "tables", orgId] });
+      qc.removeQueries({ queryKey: ["airtable", "linked-records", orgId] });
       qc.invalidateQueries({ queryKey: ["airtable", "key-status", orgId] });
       toast.success("Airtable API key deleted");
     },
@@ -225,7 +240,9 @@ export function AirtableSyncTab({ orgId }: Props) {
   };
 
   const programOptions = optionNames(fieldMap.sub_program); // sub-program-only linking (current scope)
-  const cityOptions = optionNames(fieldMap.city);
+  const cityOptions = cityLinkedTableId
+    ? (cityLinkedRecordsQ.data?.records ?? []).map((r) => r.name)
+    : optionNames(fieldMap.city);
 
   const showByKey = new Map((showsQ.data ?? []).filter((s) => s.airtable_program_key).map((s) => [s.airtable_program_key!, s]));
   const cityByKey = new Map((citiesQ.data ?? []).filter((c) => c.airtable_city_key).map((c) => [c.airtable_city_key!, c]));
@@ -266,6 +283,12 @@ export function AirtableSyncTab({ orgId }: Props) {
     onSuccess: () => { qc.invalidateQueries({ queryKey: ["cities"] }); toast.success("Linked"); },
     onError: (e: unknown) => toast.error((e as Error).message ?? "Link failed"),
   });
+  const linkShow = useMutation({
+    mutationFn: ({ showId, key }: { showId: string; key: string }) => linkShowAirtableKey(supabase, showId, key),
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ["shows"] }); toast.success("Linked"); },
+    onError: (e: unknown) => toast.error((e as Error).message ?? "Link failed"),
+  });
+  const unlinkedShows = (showsQ.data ?? []).filter((sh) => !sh.airtable_program_key);
   const unlinkedCities = (citiesQ.data ?? []).filter((c) => !c.airtable_city_key);
 
   // ── Custom fields (definitions table; immediate mutations, not the settings draft) ──
@@ -489,6 +512,10 @@ export function AirtableSyncTab({ orgId }: Props) {
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
+            <div className="hidden sm:grid grid-cols-[160px_1fr] gap-3 text-xs font-medium uppercase tracking-wide text-muted-foreground">
+              <span>Showflow field</span>
+              <span>Airtable column</span>
+            </div>
             {SHOWFLOW_FIELDS.map((f) => (
               <div key={f.key} className="grid grid-cols-1 sm:grid-cols-[160px_1fr] gap-3 items-center">
                 <Label>{f.label}{f.optional ? " (optional)" : ""}</Label>
@@ -620,7 +647,21 @@ export function AirtableSyncTab({ orgId }: Props) {
                       <span className="text-sm font-medium">{name}</span>
                       {show
                         ? <div className="flex items-center gap-2"><Badge variant="secondary">linked</Badge><Button size="sm" variant="ghost" onClick={() => unlinkShow.mutate(show.id)} disabled={unlinkShow.isPending}>Unlink</Button></div>
-                        : <Badge variant="outline">unlinked</Badge>}
+                        : (
+                          <div className="flex items-center gap-2">
+                            <Badge variant="outline">unlinked</Badge>
+                            {unlinkedShows.length > 0 && key && (
+                              <Select onValueChange={(showId) => linkShow.mutate({ showId, key: key! })} disabled={linkShow.isPending}>
+                                <SelectTrigger className="h-8 w-[200px]" aria-label={`link ${name} to an existing show`}>
+                                  <SelectValue placeholder="Link to existing…" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  {unlinkedShows.map((sh) => <SelectItem key={sh.id} value={sh.id}>{showLabel(sh)}</SelectItem>)}
+                                </SelectContent>
+                              </Select>
+                            )}
+                          </div>
+                        )}
                     </div>
                   );
                 }) : <p className="text-sm text-muted-foreground">No options on the mapped Sub-program field.</p>}

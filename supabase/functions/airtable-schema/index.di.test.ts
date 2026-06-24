@@ -228,3 +228,38 @@ Deno.test("airtable-schema: non-403/401 Airtable error → 502 with detail", asy
   assertExists(body.error);
   assertEquals(body.detail, "Service Unavailable");
 });
+
+// ─── Linked records mode (baseId + linkedTableId) ────────────────────────────────
+
+Deno.test("airtable-schema: linked records → returns id+name from the linked table's primary field", async () => {
+  const urls: string[] = [];
+  const fetchImpl: typeof fetch = (url) => {
+    urls.push(String(url));
+    if (String(url).includes("/meta/bases/")) {
+      return Promise.resolve(airtableJson({
+        tables: [{ id: "tblCities", name: "Cities", primaryFieldId: "fldName", fields: [{ id: "fldName", name: "City", type: "singleLineText" }] }],
+      })) as Promise<Response>;
+    }
+    return Promise.resolve(airtableJson({
+      records: [
+        { id: "recA", fields: { fldName: "Berlin" } },
+        { id: "recB", fields: { fldName: "Paris" } },
+      ],
+    })) as Promise<Response>;
+  };
+  const { deps } = adminDeps({ fetchImpl });
+  const res = await handle(adminReq({ org_id: ORG, baseId: "appKg8xpplxd49Bo6", linkedTableId: "tblCities" }), deps);
+  assertEquals(res.status, 200);
+  const body = await res.json();
+  assertEquals(body.records, [{ id: "recA", name: "Berlin" }, { id: "recB", name: "Paris" }]);
+  assertEquals(urls[0], "https://api.airtable.com/v0/meta/bases/appKg8xpplxd49Bo6/tables");
+  assertEquals(urls[1].includes("/v0/appKg8xpplxd49Bo6/tblCities"), true);
+});
+
+Deno.test("airtable-schema: linked records with unknown linkedTableId → 404", async () => {
+  const { deps } = adminDeps({
+    fetchImpl: () => Promise.resolve(airtableJson({ tables: [{ id: "tblOther", name: "Other", primaryFieldId: "fldX" }] })) as Promise<Response>,
+  });
+  const res = await handle(adminReq({ org_id: ORG, baseId: "appXXX", linkedTableId: "tblMissing" }), deps);
+  assertEquals(res.status, 404);
+});

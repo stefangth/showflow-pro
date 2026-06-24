@@ -32,3 +32,21 @@ export async function fetchAirtableTables(
   if (payload?.error) throw new Error(payload.error);
   return { schemaAccessible: !!payload?.schemaAccessible, tables: payload?.tables };
 }
+
+export interface AirtableLinkedRecord { id: string; name: string }
+export interface LinkedRecordsResult { schemaAccessible: boolean; records?: AirtableLinkedRecord[] }
+
+/** List a linked table's records (id + primary-field name) via the airtable-schema edge fn
+ *  (linkedTableId mode). Used to enumerate link-field options for catalog linking. */
+export async function fetchAirtableLinkedRecords(
+  client: SupabaseClient<Database>,
+  orgId: string,
+  baseId: string,
+  linkedTableId: string,
+): Promise<LinkedRecordsResult> {
+  const { data, error } = await client.functions.invoke("airtable-schema", { body: { org_id: orgId, baseId, linkedTableId } });
+  if (error) throw error;
+  const payload = data as { error?: string; schemaAccessible?: boolean; records?: AirtableLinkedRecord[] };
+  if (payload?.error) throw new Error(payload.error);
+  return { schemaAccessible: !!payload?.schemaAccessible, records: payload?.records };
+}
