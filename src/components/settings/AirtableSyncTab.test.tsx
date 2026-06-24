@@ -45,52 +45,45 @@ function renderTab(initial: Record<string, unknown> = {}) {
 describe("AirtableSyncTab", () => {
   beforeEach(() => vi.clearAllMocks());
 
-  it("gates Load behind a saved key, with a hint", async () => {
+  it("gates the schema refresh behind a saved key, with a hint", async () => {
     (fetchAirtableKeyStatus as ReturnType<typeof vi.fn>).mockResolvedValue({ present: false, updatedAt: null });
     renderTab();
     expect(screen.getByText("Airtable Sync")).toBeInTheDocument();
-    await waitFor(() => expect(screen.getByRole("button", { name: "Load from Airtable" })).toBeDisabled());
+    await waitFor(() => expect(screen.getByRole("button", { name: "Refresh from Airtable" })).toBeDisabled());
     expect(screen.getByText(/Save an API key first/i)).toBeInTheDocument();
+    expect(fetchAirtableBases).not.toHaveBeenCalled();
   });
 
   it("shows a saved-key status with Replace and Delete when a key exists", async () => {
     (fetchAirtableKeyStatus as ReturnType<typeof vi.fn>).mockResolvedValue({ present: true, updatedAt: "2026-06-22T17:44:00Z" });
+    (fetchAirtableBases as ReturnType<typeof vi.fn>).mockResolvedValue({ schemaAccessible: true, bases: [] });
     renderTab();
-    expect(await screen.findByText("Saved")).toBeInTheDocument();
+    expect(await screen.findByText("Key saved")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Replace" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /Delete/ })).toBeInTheDocument();
+  });
+
+  it("auto-loads bases on mount when a key is present (no click)", async () => {
+    (fetchAirtableKeyStatus as ReturnType<typeof vi.fn>).mockResolvedValue({ present: true, updatedAt: null });
+    (fetchAirtableBases as ReturnType<typeof vi.fn>).mockResolvedValue({ schemaAccessible: true, bases: [{ id: "appA", name: "Fever Berlin" }] });
+    renderTab();
+    await waitFor(() => expect(fetchAirtableBases).toHaveBeenCalledWith(expect.anything(), "org-1"));
+    expect(await screen.findByText("Base")).toBeInTheDocument();
   });
 
   it("shows the scope banner + typed fallback when the key can't read schema", async () => {
     (fetchAirtableKeyStatus as ReturnType<typeof vi.fn>).mockResolvedValue({ present: true, updatedAt: null });
     (fetchAirtableBases as ReturnType<typeof vi.fn>).mockResolvedValue({ schemaAccessible: false });
     renderTab();
-    await waitFor(() => expect(screen.getByRole("button", { name: "Load from Airtable" })).toBeEnabled());
-    fireEvent.click(screen.getByRole("button", { name: "Load from Airtable" }));
     await waitFor(() => expect(screen.getByText(/schema\.bases:read/)).toBeInTheDocument());
-    // typed inputs appear in manual-fallback mode
     expect(screen.getByPlaceholderText("app1234567890")).toBeInTheDocument();
-  });
-
-  it("shows the Base selector label once schema is accessible", async () => {
-    (fetchAirtableKeyStatus as ReturnType<typeof vi.fn>).mockResolvedValue({ present: true, updatedAt: null });
-    (fetchAirtableBases as ReturnType<typeof vi.fn>).mockResolvedValue({ schemaAccessible: true, bases: [{ id: "appA", name: "Fever Berlin" }] });
-    renderTab();
-    await waitFor(() => expect(screen.getByRole("button", { name: "Load from Airtable" })).toBeEnabled());
-    fireEvent.click(screen.getByRole("button", { name: "Load from Airtable" }));
-    await waitFor(() => expect(screen.getByText("Base")).toBeInTheDocument());
   });
 
   it("auto-loads tables for a base already saved in settings", async () => {
     (fetchAirtableKeyStatus as ReturnType<typeof vi.fn>).mockResolvedValue({ present: true, updatedAt: null });
     (fetchAirtableBases as ReturnType<typeof vi.fn>).mockResolvedValue({ schemaAccessible: true, bases: [{ id: "appA", name: "Fever Berlin" }] });
     (fetchAirtableTables as ReturnType<typeof vi.fn>).mockResolvedValue({ schemaAccessible: true, tables: [{ id: "tbl1", name: "Events", fields: [] }] });
-    // A base is already persisted from a prior session.
     renderTab({ airtable_base_id: "appA" });
-    await waitFor(() => expect(screen.getByRole("button", { name: "Load from Airtable" })).toBeEnabled());
-    fireEvent.click(screen.getByRole("button", { name: "Load from Airtable" }));
-    // Tables must be fetched without the user re-picking the base, so the Table
-    // dropdown isn't stuck disabled.
     await waitFor(() => expect(fetchAirtableTables).toHaveBeenCalledWith(expect.anything(), "org-1", "appA"));
   });
 
@@ -99,11 +92,7 @@ describe("AirtableSyncTab", () => {
     (fetchAirtableBases as ReturnType<typeof vi.fn>).mockResolvedValue({ schemaAccessible: true, bases: [{ id: "appA", name: "Fever Berlin" }] });
     (fetchAirtableTables as ReturnType<typeof vi.fn>).mockResolvedValue({ schemaAccessible: false });
     renderTab({ airtable_base_id: "appA" });
-    await waitFor(() => expect(screen.getByRole("button", { name: "Load from Airtable" })).toBeEnabled());
-    fireEvent.click(screen.getByRole("button", { name: "Load from Airtable" }));
-    // The Table dropdown can't populate, so the user must get the manual-entry escape hatch.
     await waitFor(() => expect(screen.getByPlaceholderText("app1234567890")).toBeInTheDocument());
-    // …with the per-base diagnosis, not a misleading "grant schema.bases:read" (the key has it).
     expect(screen.getByText(/this specific base/i)).toBeInTheDocument();
     expect(screen.queryByText(/schema\.bases:read/)).not.toBeInTheDocument();
   });
@@ -113,16 +102,13 @@ describe("AirtableSyncTab", () => {
     (fetchAirtableBases as ReturnType<typeof vi.fn>).mockResolvedValue({ schemaAccessible: true, bases: [{ id: "appA", name: "Fever Berlin" }] });
     (fetchAirtableTables as ReturnType<typeof vi.fn>).mockRejectedValue(new Error("Network error"));
     renderTab({ airtable_base_id: "appA" });
-    await waitFor(() => expect(screen.getByRole("button", { name: "Load from Airtable" })).toBeEnabled());
-    fireEvent.click(screen.getByRole("button", { name: "Load from Airtable" }));
-    // A thrown fetch must not strand the user on a disabled, empty Table dropdown.
     await waitFor(() => expect(screen.getByPlaceholderText("app1234567890")).toBeInTheDocument());
-    // …and the copy must describe a transient failure, not blame the (valid) key scope.
     expect(screen.getByText(/Couldn't reach Airtable/i)).toBeInTheDocument();
     expect(screen.queryByText(/schema\.bases:read/)).not.toBeInTheDocument();
   });
 
-  it("hides field-mapping and catalog-links until a table is selected", () => {
+  it("hides field-mapping and catalog-links until a table is selected", async () => {
+    (fetchAirtableKeyStatus as ReturnType<typeof vi.fn>).mockResolvedValue({ present: false, updatedAt: null });
     renderTab();
     expect(screen.queryByText("Field mapping")).not.toBeInTheDocument();
     expect(screen.queryByText("Catalog links")).not.toBeInTheDocument();

@@ -14,7 +14,7 @@ import { toast } from "sonner";
 import { Trash2, CheckCircle2, KeyRound, Lock } from "lucide-react";
 import { fetchCustomFieldDefs, upsertCustomFieldDef, deleteCustomFieldDef } from "@/data/customFields";
 import { airtableTypeToCustomType, slugifyKey, type CustomFieldType } from "@/lib/customFields";
-import { fetchAirtableBases, fetchAirtableTables, type AirtableTable } from "@/data/airtableSchema";
+import { fetchAirtableBases, fetchAirtableTables } from "@/data/airtableSchema";
 import { SHOWFLOW_FIELDS, buildProgramKey, buildCityKey, planCityReconciliation, groupDuplicateCities, type AirtableFieldMap } from "@/data/airtableMapping";
 import { fetchShowsForLinking, linkShowAirtableKey, importShowsFromOptions } from "@/data/settings";
 import { fetchCitiesForLinking, linkCityAirtableKey, importCitiesFromOptions, mergeCities } from "@/data/cities";
@@ -39,17 +39,11 @@ export function AirtableSyncTab({ orgId, get, set }: Props) {
   const qc = useQueryClient();
   const [airtableKey, setAirtableKey] = useState("");
   const [replacing, setReplacing] = useState(false);
-  const [schemaState, setSchemaState] = useState<"idle" | "accessible" | "fallback">("idle");
-  const [fallbackCause, setFallbackCause] = useState<FallbackCause>("no-scope");
-  const [bases, setBases] = useState<{ id: string; name: string }[]>([]);
-  const [tables, setTables] = useState<AirtableTable[]>([]);
   const [survivorByNorm, setSurvivorByNorm] = useState<Record<string, string>>({});
 
   const fieldMap = (get("airtable_field_map", {}) ?? {}) as AirtableFieldMap;
   const setField = (key: keyof AirtableFieldMap, value: string | null) =>
     set("airtable_field_map", { ...fieldMap, [key]: value });
-
-  const selectedTable = tables.find((t) => t.name === get("airtable_table_name", ""));
 
   // ── API-key presence (status only; the key value is never read back) ─────────
   const keyStatusQ = useQuery({
@@ -58,6 +52,54 @@ export function AirtableSyncTab({ orgId, get, set }: Props) {
     queryFn: () => fetchAirtableKeyStatus(supabase, orgId!),
   });
   const keyPresent = !!keyStatusQ.data?.present;
+
+  // ── Schema (bases + tables): cached React Query so it survives tab unmount/remount.
+  //    Auto-loads when a key is present — no manual "Load" click needed to see mappings.
+  const baseId = get("airtable_base_id", "") as string;
+
+  const basesQ = useQuery({
+    queryKey: ["airtable", "bases", orgId],
+    enabled: !!orgId && keyPresent,
+    queryFn: () => fetchAirtableBases(supabase, orgId!),
+    staleTime: 5 * 60 * 1000,
+    retry: false,
+  });
+  const basesAccessible = basesQ.data?.schemaAccessible === true;
+
+  const tablesQ = useQuery({
+    queryKey: ["airtable", "tables", orgId, baseId],
+    enabled: !!orgId && keyPresent && basesAccessible && !!baseId,
+    queryFn: () => fetchAirtableTables(supabase, orgId!, baseId),
+    staleTime: 5 * 60 * 1000,
+    retry: false,
+  });
+
+  const bases = basesQ.data?.bases ?? [];
+  const tables = tablesQ.data?.tables ?? [];
+
+  // Derive the UI mode from the query states (was imperative setState before).
+  let schemaState: "idle" | "loading" | "accessible" | "fallback" = "idle";
+  let fallbackCause: FallbackCause = "no-scope";
+  if (!keyPresent) {
+    schemaState = "idle";
+  } else if (basesQ.isError) {
+    schemaState = "fallback"; fallbackCause = "error";
+  } else if (basesQ.isLoading || !basesQ.data) {
+    schemaState = "loading";
+  } else if (!basesAccessible) {
+    schemaState = "fallback"; fallbackCause = "no-scope";
+  } else if (baseId && tablesQ.isError) {
+    schemaState = "fallback"; fallbackCause = "error";
+  } else if (baseId && tablesQ.data && !tablesQ.data.schemaAccessible) {
+    schemaState = "fallback"; fallbackCause = "per-base";
+  } else {
+    schemaState = "accessible";
+  }
+
+  const isSchemaPending = basesQ.isFetching || tablesQ.isFetching;
+  const refreshSchema = () => { void basesQ.refetch(); if (baseId) void tablesQ.refetch(); };
+
+  const selectedTable = tables.find((t) => t.name === get("airtable_table_name", ""));
 
   // ── API key (Vault) + schema loading ────────────────────────────────────────
   const saveKey = useMutation({
@@ -81,61 +123,12 @@ export function AirtableSyncTab({ orgId, get, set }: Props) {
     },
     onSuccess: () => {
       setAirtableKey(""); setReplacing(false);
-      setSchemaState("idle"); setBases([]); setTables([]);
+      qc.removeQueries({ queryKey: ["airtable", "bases", orgId] });
+      qc.removeQueries({ queryKey: ["airtable", "tables", orgId] });
       qc.invalidateQueries({ queryKey: ["airtable", "key-status", orgId] });
       toast.success("Airtable API key deleted");
     },
     onError: (e: unknown) => toast.error((e as Error).message ?? "Failed to delete Airtable key"),
-  });
-
-  const loadTables = useMutation({
-    // `auto` marks the load auto-fired from loadBases for a saved base (no other
-    // escape hatch), versus a manual base switch (user is already in dropdown mode).
-    mutationFn: (v: { baseId: string; auto?: boolean }) => fetchAirtableTables(supabase, orgId!, v.baseId),
-    onSuccess: (res) => {
-      setTables(res.schemaAccessible ? res.tables ?? [] : []);
-      // The PAT can list bases but not THIS base's tables (per-base 403). Leaving
-      // schemaState "accessible" would strand the user on a disabled, empty Table
-      // dropdown with no escape hatch — drop to manual entry instead.
-      if (!res.schemaAccessible) {
-        // The persistent Alert below (airtableFallbackMessage("per-base")) is the single
-        // signal — a simultaneous toast would just duplicate it in shorter, auto-dismissing form.
-        setSchemaState("fallback"); setFallbackCause("per-base");
-      }
-    },
-    onError: (e: unknown, v) => {
-      setTables([]);
-      if (v.auto) {
-        // Auto path has no dropdown to retry from; the fallback Alert is the single
-        // signal (it points the user to "Load from Airtable"). A toast would duplicate it.
-        setSchemaState("fallback"); setFallbackCause("error");
-        return;
-      }
-      // Manual path stays in dropdown mode. Re-selecting the SAME base won't re-fire
-      // onValueChange, so the toast Retry is the only inline way to retry that base.
-      toast.error((e as Error).message ?? "Could not load tables", {
-        action: { label: "Retry", onClick: () => loadTables.mutate({ baseId: v.baseId }) },
-      });
-    },
-  });
-  const loadBases = useMutation({
-    mutationFn: () => fetchAirtableBases(supabase, orgId!),
-    onSuccess: (res) => {
-      if (res.schemaAccessible) {
-        const loadedBases = res.bases ?? [];
-        setSchemaState("accessible"); setBases(loadedBases);
-        // If a base is already saved (from a prior session), load its tables now —
-        // the Base dropdown's onValueChange only fires on a manual change, so without
-        // this the Table dropdown stays empty and disabled for the persisted base.
-        // Clear any stale table options before re-fetching, but keep the persisted
-        // airtable_table_name — this path re-loads the SAME saved base, so the user's
-        // saved table selection must survive (unlike a manual base switch).
-        const savedBase = get("airtable_base_id", "") as string;
-        if (savedBase && loadedBases.some((b) => b.id === savedBase)) { setTables([]); loadTables.mutate({ baseId: savedBase, auto: true }); }
-      }
-      else { setSchemaState("fallback"); setFallbackCause("no-scope"); toast.info("Airtable key can't read schema — enter base/table/field names manually."); }
-    },
-    onError: (e: unknown) => toast.error((e as Error).message ?? "Could not load Airtable bases"),
   });
 
   // ── Catalog data + option resolution ────────────────────────────────────────
@@ -149,7 +142,6 @@ export function AirtableSyncTab({ orgId, get, set }: Props) {
     enabled: !!syncLogQ.data?.id,
     queryFn: () => fetchUnresolvedRecords(supabase, syncLogQ.data?.id ?? null),
   });
-  const baseId = get("airtable_base_id", "") as string;
   const recordUrl = (recId: string) => (baseId ? `https://airtable.com/${baseId}/${recId}` : undefined);
   const unresolved = unresolvedQ.data ?? [];
   const heldRecords = unresolved.filter((r) => r.action === "held_unresolved");
@@ -285,9 +277,6 @@ export function AirtableSyncTab({ orgId, get, set }: Props) {
     onError: (e: unknown) => toast.error((e as Error).message ?? "Merge failed"),
   });
 
-  // Either schema fetch (bases or the auto-fired tables) disables/relabels the Load button.
-  const isSchemaPending = loadBases.isPending || loadTables.isPending;
-
   return (
     <div className="space-y-6">
       {/* ── Connection ─────────────────────────────────────────────────────── */}
@@ -322,7 +311,7 @@ export function AirtableSyncTab({ orgId, get, set }: Props) {
               <span className="flex h-6 w-6 items-center justify-center rounded-full bg-muted text-xs font-medium text-muted-foreground">1</span>
               <Label className="font-medium">API key</Label>
               {keyStatusQ.isLoading ? null : keyPresent ? (
-                <Badge variant="secondary" className="gap-1"><CheckCircle2 className="h-3 w-3" /> Saved</Badge>
+                <Badge variant="secondary" className="gap-1"><CheckCircle2 className="h-3 w-3" /> Key saved</Badge>
               ) : (
                 <Badge variant="outline" className="gap-1 text-muted-foreground"><KeyRound className="h-3 w-3" /> Not set</Badge>
               )}
@@ -379,15 +368,15 @@ export function AirtableSyncTab({ orgId, get, set }: Props) {
               {schemaState === "accessible" && <Badge variant="secondary" className="gap-1"><CheckCircle2 className="h-3 w-3" /> Schema connected</Badge>}
               {schemaState === "fallback" && <Badge variant="outline">Manual mode</Badge>}
             </div>
-            <Button variant="outline" onClick={() => loadBases.mutate()} disabled={isSchemaPending || !orgId || !keyPresent}>
-              {isSchemaPending ? "Loading…" : "Load from Airtable"}
+            <Button variant="outline" onClick={refreshSchema} disabled={isSchemaPending || !orgId || !keyPresent}>
+              {isSchemaPending ? "Loading…" : "Refresh from Airtable"}
             </Button>
             {!keyPresent && <p className="text-xs text-muted-foreground">Save an API key first to load bases &amp; tables.</p>}
             {schemaState === "accessible" ? (
               <div className="grid grid-cols-1 gap-4">
                 <div className="space-y-2">
                   <Label>Base</Label>
-                  <Select value={get("airtable_base_id", "")} onValueChange={(v) => { set("airtable_base_id", v); setTables([]); set("airtable_table_name", ""); loadTables.mutate({ baseId: v }); }}>
+                  <Select value={get("airtable_base_id", "")} onValueChange={(v) => { set("airtable_base_id", v); set("airtable_table_name", ""); }}>
                     <SelectTrigger><SelectValue placeholder="Select a base" /></SelectTrigger>
                     <SelectContent>{bases.map((b) => <SelectItem key={b.id} value={b.id}>{b.name}</SelectItem>)}</SelectContent>
                   </Select>
