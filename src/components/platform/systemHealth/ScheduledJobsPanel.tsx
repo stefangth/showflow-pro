@@ -1,10 +1,8 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { StatusPill, StatusDot, LatencyStat, RunTimeline } from "./primitives";
 import { deriveJobStatus, CRON_JOB_TO_FN, type EdgeFnMetric } from "@/lib/systemHealth";
-import { SYSTEM_HEALTH } from "@/config/app.config";
+import { SYSTEM_HEALTH_BUDGET as budget } from "@/config/app.config";
 import type { CronHealthRow } from "@/data/platform";
-
-const budget = { p95Ms: SYSTEM_HEALTH.p95BudgetMs, errorRate: SYSTEM_HEALTH.errorRateBudget };
 
 export function ScheduledJobsPanel({ cronRows, metrics }: { cronRows: CronHealthRow[]; metrics: EdgeFnMetric[] }) {
   const byFn = new Map(metrics.map((m) => [m.fn, m]));

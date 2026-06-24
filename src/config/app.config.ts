@@ -50,6 +50,13 @@ export const SYSTEM_HEALTH = {
   errorRateBudget: 0.05,
 } as const;
 
+/** Health budget for the systemHealth derivation functions — defined once, imported by every
+ *  System Health panel/shell so the object isn't redeclared per component. */
+export const SYSTEM_HEALTH_BUDGET = {
+  p95Ms: SYSTEM_HEALTH.p95BudgetMs,
+  errorRate: SYSTEM_HEALTH.errorRateBudget,
+};
+
 /** Role definitions */
 export const ROLES = {
   ADMIN: 'admin',
