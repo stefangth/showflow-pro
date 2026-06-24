@@ -34,9 +34,10 @@ async function airtableFailure(res: Response, label: string): Promise<Response |
  * The org PAT is read from the Vault via get_org_airtable_key and used only
  * server-side — it is NEVER returned to the client.
  *
- * Modes (one Airtable scope, schema.bases:read, gates both):
+ * Modes (one Airtable scope, schema.bases:read, gates all):
  *  - body has no baseId → list accessible bases  → { schemaAccessible: true, bases: [{ id, name }] }.
  *  - body has a baseId  → describe that base      → { schemaAccessible: true, tables: [{ id, name, fields: [{ id, name, type, options? }] }] }.
+ *  - body has baseId + linkedTableId → list that linked table's records → { schemaAccessible: true, records: [{ id, name }] }.
  *  - Airtable 403 (no scope) → { schemaAccessible: false } so the UI falls back to typed inputs.
  */
 export async function handle(req: Request, deps: Deps): Promise<Response> {
