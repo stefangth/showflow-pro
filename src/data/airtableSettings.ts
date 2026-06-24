@@ -31,14 +31,13 @@ const DEFAULTS: AirtableSettings = {
  */
 export async function fetchAirtableSettings(
   client: SupabaseClient<Database>,
-  orgId: string | null,
+  orgId: string,
 ): Promise<AirtableSettings> {
-  let q = client
+  const { data, error } = await client
     .from("app_settings")
     .select("key, value, org_id")
-    .in("key", AIRTABLE_SETTING_KEYS as unknown as string[]);
-  q = orgId ? q.or(`org_id.eq.${orgId},org_id.is.null`) : q.is("org_id", null);
-  const { data, error } = await q;
+    .in("key", AIRTABLE_SETTING_KEYS as unknown as string[])
+    .or(`org_id.eq.${orgId},org_id.is.null`);
   if (error) throw error;
 
   const byKey = new Map<string, { value: unknown; org_id: string | null }>();
