@@ -242,7 +242,11 @@ describe("AirtableSyncTab — autosave", () => {
     (fetchAirtableBases as ReturnType<typeof vi.fn>).mockResolvedValue({ schemaAccessible: true, bases: [] });
     (upsertOrgSetting as ReturnType<typeof vi.fn>).mockRejectedValueOnce(new Error("network"));
     renderTab();
-    fireEvent.click(await screen.findByRole("switch"));
+    const toggle = await screen.findByRole("switch");
+    expect(toggle).not.toBeChecked();
+    fireEvent.click(toggle);
     expect(await screen.findByText(/Couldn't save/i)).toBeInTheDocument();
+    // Rollback: the optimistically-flipped toggle returns to off after the failed save.
+    await waitFor(() => expect(screen.getByRole("switch")).not.toBeChecked());
   });
 });
