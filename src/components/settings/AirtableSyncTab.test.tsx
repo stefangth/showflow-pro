@@ -13,6 +13,13 @@ vi.mock("@/data/settings", () => ({
   fetchShowsForLinking: vi.fn(() => Promise.resolve([])),
   linkShowAirtableKey: vi.fn(),
   importShowsFromOptions: vi.fn(),
+  upsertOrgSetting: vi.fn(() => Promise.resolve()),
+}));
+vi.mock("@/data/airtableSettings", () => ({
+  fetchAirtableSettings: vi.fn(() =>
+    Promise.resolve({ airtable_sync_enabled: false, airtable_base_id: "", airtable_table_name: "", airtable_field_map: {} }),
+  ),
+  AIRTABLE_SETTING_KEYS: ["airtable_sync_enabled", "airtable_base_id", "airtable_table_name", "airtable_field_map"],
 }));
 vi.mock("@/data/cities", () => ({
   fetchCitiesForLinking: vi.fn(() => Promise.resolve([])),
@@ -34,12 +41,18 @@ import { fetchAirtableBases, fetchAirtableTables } from "@/data/airtableSchema";
 import { fetchAirtableKeyStatus } from "@/data/airtableKey";
 import { fetchLatestSyncLog, fetchUnresolvedRecords } from "@/data/airtableSync";
 import { fetchCitiesForLinking, mergeCities } from "@/data/cities";
+import { upsertOrgSetting } from "@/data/settings";
+import { fetchAirtableSettings } from "@/data/airtableSettings";
 
 function renderTab(initial: Record<string, unknown> = {}) {
-  const draft: Record<string, unknown> = { ...initial };
-  const get = (k: string, fb?: unknown) => draft[k] ?? fb;
-  const set = (k: string, v: unknown) => { draft[k] = v; };
-  return renderWithProviders(<AirtableSyncTab orgId="org-1" get={get} set={set} />);
+  (fetchAirtableSettings as ReturnType<typeof vi.fn>).mockResolvedValue({
+    airtable_sync_enabled: false,
+    airtable_base_id: "",
+    airtable_table_name: "",
+    airtable_field_map: {},
+    ...initial,
+  });
+  return renderWithProviders(<AirtableSyncTab orgId="org-1" />);
 }
 
 describe("AirtableSyncTab", () => {
@@ -184,5 +197,52 @@ describe("AirtableSyncTab — duplicate cities", () => {
     ]);
     renderTab({ airtable_table_name: "Events", airtable_field_map: { city: "City" } });
     await waitFor(() => expect(screen.queryByText(/Duplicate cities/i)).not.toBeInTheDocument());
+  });
+});
+
+describe("AirtableSyncTab — autosave", () => {
+  beforeEach(() => vi.clearAllMocks());
+
+  it("persists a field-mapping change immediately and shows saved status", async () => {
+    (fetchAirtableKeyStatus as ReturnType<typeof vi.fn>).mockResolvedValue({ present: true, updatedAt: null });
+    (fetchAirtableBases as ReturnType<typeof vi.fn>).mockResolvedValue({ schemaAccessible: true, bases: [{ id: "appA", name: "Base A" }] });
+    (fetchAirtableTables as ReturnType<typeof vi.fn>).mockResolvedValue({
+      schemaAccessible: true,
+      tables: [{ id: "tbl1", name: "Events", fields: [{ id: "fld1", name: "Show Date", type: "date" }] }],
+    });
+    renderTab({ airtable_base_id: "appA", airtable_table_name: "Events" });
+
+    const dateSelect = await screen.findByRole("combobox", { name: /^Date$/i });
+    fireEvent.click(dateSelect);
+    fireEvent.click(await screen.findByRole("option", { name: "Show Date" }));
+
+    await waitFor(() =>
+      expect(upsertOrgSetting).toHaveBeenCalledWith(
+        expect.anything(),
+        "org-1",
+        "airtable_field_map",
+        expect.objectContaining({ date: "Show Date" }),
+      ),
+    );
+    expect(await screen.findByText(/All changes saved/i)).toBeInTheDocument();
+  });
+
+  it("autosaves the enable toggle without a global Save click", async () => {
+    (fetchAirtableKeyStatus as ReturnType<typeof vi.fn>).mockResolvedValue({ present: true, updatedAt: null });
+    (fetchAirtableBases as ReturnType<typeof vi.fn>).mockResolvedValue({ schemaAccessible: true, bases: [] });
+    renderTab();
+    fireEvent.click(await screen.findByRole("switch"));
+    await waitFor(() =>
+      expect(upsertOrgSetting).toHaveBeenCalledWith(expect.anything(), "org-1", "airtable_sync_enabled", true),
+    );
+  });
+
+  it("surfaces an error and rolls back when a save fails", async () => {
+    (fetchAirtableKeyStatus as ReturnType<typeof vi.fn>).mockResolvedValue({ present: true, updatedAt: null });
+    (fetchAirtableBases as ReturnType<typeof vi.fn>).mockResolvedValue({ schemaAccessible: true, bases: [] });
+    (upsertOrgSetting as ReturnType<typeof vi.fn>).mockRejectedValueOnce(new Error("network"));
+    renderTab();
+    fireEvent.click(await screen.findByRole("switch"));
+    expect(await screen.findByText(/Couldn't save/i)).toBeInTheDocument();
   });
 });

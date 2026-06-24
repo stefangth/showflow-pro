@@ -11,12 +11,14 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
-import { Trash2, CheckCircle2, KeyRound, Lock } from "lucide-react";
+import { Trash2, CheckCircle2, KeyRound, Lock, Loader2, AlertCircle } from "lucide-react";
 import { fetchCustomFieldDefs, upsertCustomFieldDef, deleteCustomFieldDef } from "@/data/customFields";
 import { airtableTypeToCustomType, slugifyKey, type CustomFieldType } from "@/lib/customFields";
 import { fetchAirtableBases, fetchAirtableTables } from "@/data/airtableSchema";
 import { SHOWFLOW_FIELDS, buildProgramKey, buildCityKey, planCityReconciliation, groupDuplicateCities, type AirtableFieldMap } from "@/data/airtableMapping";
-import { fetchShowsForLinking, linkShowAirtableKey, importShowsFromOptions } from "@/data/settings";
+import { fetchShowsForLinking, linkShowAirtableKey, importShowsFromOptions, upsertOrgSetting } from "@/data/settings";
+import { fetchAirtableSettings, type AirtableSettings } from "@/data/airtableSettings";
+import type { Json } from "@/integrations/supabase/types";
 import { fetchCitiesForLinking, linkCityAirtableKey, importCitiesFromOptions, mergeCities } from "@/data/cities";
 import { fetchLatestSyncLog, fetchUnresolvedRecords, type UnresolvedRecord } from "@/data/airtableSync";
 import { saveAirtableKey, fetchAirtableKeyStatus, deleteAirtableKey } from "@/data/airtableKey";
@@ -26,24 +28,26 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 
 interface Props {
   orgId: string | null;
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  get: (key: string, fallback?: any) => any;
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  set: (key: string, value: any) => void;
 }
 
 /** shadcn Select cannot use "" as an item value, so "not mapped" needs a sentinel. */
 const NONE = "__none__";
 
-export function AirtableSyncTab({ orgId, get, set }: Props) {
+function AutosaveStatus({ state }: { state: "idle" | "saving" | "saved" | "error" }) {
+  if (state === "idle") return null;
+  if (state === "saving")
+    return <span className="flex items-center gap-1 text-xs text-muted-foreground"><Loader2 className="h-3 w-3 animate-spin" /> Saving…</span>;
+  if (state === "saved")
+    return <span className="flex items-center gap-1 text-xs text-muted-foreground"><CheckCircle2 className="h-3 w-3 text-primary" /> All changes saved</span>;
+  return <span className="flex items-center gap-1 text-xs text-destructive"><AlertCircle className="h-3 w-3" /> Couldn't save</span>;
+}
+
+export function AirtableSyncTab({ orgId }: Props) {
   const qc = useQueryClient();
   const [airtableKey, setAirtableKey] = useState("");
   const [replacing, setReplacing] = useState(false);
   const [survivorByNorm, setSurvivorByNorm] = useState<Record<string, string>>({});
-
-  const fieldMap = (get("airtable_field_map", {}) ?? {}) as AirtableFieldMap;
-  const setField = (key: keyof AirtableFieldMap, value: string | null) =>
-    set("airtable_field_map", { ...fieldMap, [key]: value });
+  const [saveState, setSaveState] = useState<"idle" | "saving" | "saved" | "error">("idle");
 
   // ── API-key presence (status only; the key value is never read back) ─────────
   const keyStatusQ = useQuery({
@@ -53,9 +57,46 @@ export function AirtableSyncTab({ orgId, get, set }: Props) {
   });
   const keyPresent = !!keyStatusQ.data?.present;
 
+  // ── Tab-owned settings + optimistic autosave (decoupled from the page draft) ──
+  const SETTINGS_KEY = ["airtable", "settings", orgId] as const;
+  const settingsQ = useQuery({
+    queryKey: SETTINGS_KEY,
+    enabled: !!orgId,
+    queryFn: () => fetchAirtableSettings(supabase, orgId!),
+  });
+  const s: AirtableSettings = settingsQ.data ?? {
+    airtable_sync_enabled: false, airtable_base_id: "", airtable_table_name: "", airtable_field_map: {},
+  };
+
+  const saveSettings = useMutation({
+    mutationFn: async (patch: Partial<AirtableSettings>) => {
+      if (!orgId) throw new Error("No active organization");
+      for (const [key, value] of Object.entries(patch)) {
+        await upsertOrgSetting(supabase, orgId, key, value as Json);
+      }
+    },
+    onMutate: async (patch: Partial<AirtableSettings>) => {
+      setSaveState("saving");
+      await qc.cancelQueries({ queryKey: SETTINGS_KEY });
+      const prev = qc.getQueryData<AirtableSettings>(SETTINGS_KEY);
+      qc.setQueryData<AirtableSettings>(SETTINGS_KEY, (p) => ({ ...(p ?? s), ...patch }));
+      return { prev };
+    },
+    onError: (_e, _patch, ctx) => {
+      if (ctx?.prev) qc.setQueryData(SETTINGS_KEY, ctx.prev);
+      setSaveState("error");
+      toast.error("Couldn't save Airtable settings — your last change wasn't stored.");
+    },
+    onSuccess: () => setSaveState("saved"),
+  });
+
+  const fieldMap = (s.airtable_field_map ?? {}) as AirtableFieldMap;
+  const setField = (key: keyof AirtableFieldMap, value: string | null) =>
+    saveSettings.mutate({ airtable_field_map: { ...fieldMap, [key]: value } });
+
   // ── Schema (bases + tables): cached React Query so it survives tab unmount/remount.
   //    Auto-loads when a key is present — no manual "Load" click needed to see mappings.
-  const baseId = get("airtable_base_id", "") as string;
+  const baseId = s.airtable_base_id;
 
   const basesQ = useQuery({
     queryKey: ["airtable", "bases", orgId],
@@ -99,7 +140,7 @@ export function AirtableSyncTab({ orgId, get, set }: Props) {
   const isSchemaPending = basesQ.isFetching || tablesQ.isFetching;
   const refreshSchema = () => { void basesQ.refetch(); if (baseId) void tablesQ.refetch(); };
 
-  const selectedTable = tables.find((t) => t.name === get("airtable_table_name", ""));
+  const selectedTable = tables.find((t) => t.name === s.airtable_table_name);
 
   // ── API key (Vault) + schema loading ────────────────────────────────────────
   const saveKey = useMutation({
@@ -282,10 +323,15 @@ export function AirtableSyncTab({ orgId, get, set }: Props) {
       {/* ── Connection ─────────────────────────────────────────────────────── */}
       <Card>
         <CardHeader>
-          <CardTitle className="font-display">Airtable Sync</CardTitle>
-          <CardDescription>
-            Pull show schedules from Airtable on a schedule. Follow the steps below: save your API key, load the base &amp; table, then map fields and link your catalog. Sync runs every few minutes once enabled.
-          </CardDescription>
+          <div className="flex items-start justify-between gap-3">
+            <div className="space-y-1.5">
+              <CardTitle className="font-display">Airtable Sync</CardTitle>
+              <CardDescription>
+                Pull show schedules from Airtable on a schedule. Follow the steps below: save your API key, load the base &amp; table, then map fields and link your catalog. Changes save automatically. Sync runs every few minutes once enabled.
+              </CardDescription>
+            </div>
+            <AutosaveStatus state={saveState} />
+          </div>
         </CardHeader>
         <CardContent className="space-y-6">
           {/* Enable toggle */}
@@ -294,10 +340,10 @@ export function AirtableSyncTab({ orgId, get, set }: Props) {
               <Label className="font-medium">Enable Airtable sync</Label>
               <p className="text-xs text-muted-foreground mt-0.5">Turn polling on or off globally.</p>
             </div>
-            <Switch checked={!!get("airtable_sync_enabled", false)} onCheckedChange={(v) => set("airtable_sync_enabled", v)} />
+            <Switch checked={!!s.airtable_sync_enabled} onCheckedChange={(v) => saveSettings.mutate({ airtable_sync_enabled: v })} />
           </div>
 
-          {!!get("airtable_sync_enabled", false) && !keyStatusQ.isLoading && !keyPresent && (
+          {!!s.airtable_sync_enabled && !keyStatusQ.isLoading && !keyPresent && (
             <Alert variant="destructive">
               <AlertDescription>Sync is on but no API key is saved — the poll can't run until you add a key below.</AlertDescription>
             </Alert>
@@ -376,14 +422,14 @@ export function AirtableSyncTab({ orgId, get, set }: Props) {
               <div className="grid grid-cols-1 gap-4">
                 <div className="space-y-2">
                   <Label>Base</Label>
-                  <Select value={get("airtable_base_id", "")} onValueChange={(v) => { set("airtable_base_id", v); set("airtable_table_name", ""); }}>
+                  <Select value={s.airtable_base_id} onValueChange={(v) => saveSettings.mutate({ airtable_base_id: v, airtable_table_name: "" })}>
                     <SelectTrigger><SelectValue placeholder="Select a base" /></SelectTrigger>
                     <SelectContent>{bases.map((b) => <SelectItem key={b.id} value={b.id}>{b.name}</SelectItem>)}</SelectContent>
                   </Select>
                 </div>
                 <div className="space-y-2">
                   <Label>Table</Label>
-                  <Select value={get("airtable_table_name", "")} onValueChange={(v) => set("airtable_table_name", v)} disabled={!tables.length}>
+                  <Select value={s.airtable_table_name} onValueChange={(v) => saveSettings.mutate({ airtable_table_name: v })} disabled={!tables.length}>
                     <SelectTrigger><SelectValue placeholder="Select a table" /></SelectTrigger>
                     <SelectContent>{tables.map((t) => <SelectItem key={t.id} value={t.name}>{t.name}</SelectItem>)}</SelectContent>
                   </Select>
@@ -397,11 +443,11 @@ export function AirtableSyncTab({ orgId, get, set }: Props) {
                 <div className="grid grid-cols-1 gap-4">
                   <div className="space-y-2">
                     <Label>Airtable base ID</Label>
-                    <Input placeholder="app1234567890" value={get("airtable_base_id", "")} onChange={(e) => set("airtable_base_id", e.target.value)} />
+                    <Input placeholder="app1234567890" defaultValue={s.airtable_base_id} key={`base-${s.airtable_base_id}`} onBlur={(e) => { if (e.target.value !== s.airtable_base_id) saveSettings.mutate({ airtable_base_id: e.target.value, airtable_table_name: "" }); }} />
                   </div>
                   <div className="space-y-2">
                     <Label>Airtable table name</Label>
-                    <Input placeholder="Shows" value={get("airtable_table_name", "")} onChange={(e) => set("airtable_table_name", e.target.value)} />
+                    <Input placeholder="Shows" defaultValue={s.airtable_table_name} key={`table-${s.airtable_table_name}`} onBlur={(e) => { if (e.target.value !== s.airtable_table_name) saveSettings.mutate({ airtable_table_name: e.target.value }); }} />
                   </div>
                 </div>
               </>
@@ -414,7 +460,10 @@ export function AirtableSyncTab({ orgId, get, set }: Props) {
       {selectedTable && (
         <Card>
           <CardHeader>
-            <CardTitle className="font-display">3 · Field mapping</CardTitle>
+            <div className="flex items-center justify-between gap-3">
+              <CardTitle className="font-display">3 · Field mapping</CardTitle>
+              <AutosaveStatus state={saveState} />
+            </div>
             <CardDescription>
               Map each ShowFlow field to a column in <strong>{selectedTable.name}</strong>. Catalog links are keyed on the <strong>Sub-program</strong> option — map the Sub-program field to enable linking below.
             </CardDescription>
@@ -424,7 +473,7 @@ export function AirtableSyncTab({ orgId, get, set }: Props) {
               <div key={f.key} className="grid grid-cols-1 sm:grid-cols-[160px_1fr] gap-3 items-center">
                 <Label>{f.label}{f.optional ? " (optional)" : ""}</Label>
                 <Select value={(fieldMap[f.key] as string | null) ?? NONE} onValueChange={(v) => setField(f.key, v === NONE ? null : v)}>
-                  <SelectTrigger><SelectValue placeholder="Not mapped" /></SelectTrigger>
+                  <SelectTrigger aria-label={f.label}><SelectValue placeholder="Not mapped" /></SelectTrigger>
                   <SelectContent>
                     <SelectItem value={NONE}>Not mapped</SelectItem>
                     {selectedTable.fields.map((af) => <SelectItem key={af.id} value={af.name}>{af.name}</SelectItem>)}
