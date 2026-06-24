@@ -36,6 +36,11 @@ vi.mock("@/data/airtableKey", () => ({
   saveAirtableKey: vi.fn(),
   deleteAirtableKey: vi.fn(),
 }));
+vi.mock("@/data/customFields", () => ({
+  fetchCustomFieldDefs: vi.fn(() => Promise.resolve([])),
+  upsertCustomFieldDef: vi.fn(() => Promise.resolve()),
+  deleteCustomFieldDef: vi.fn(() => Promise.resolve()),
+}));
 
 import { fetchAirtableBases, fetchAirtableTables } from "@/data/airtableSchema";
 import { fetchAirtableKeyStatus } from "@/data/airtableKey";

@@ -63,6 +63,23 @@ export async function upsertOrgSetting(
   if (error) throw error;
 }
 
+/**
+ * Reduce a batched `app_settings` read (multiple keys, org rows + platform defaults mixed)
+ * to the effective row per key: the org's own row (org_id = the org) wins over the platform
+ * default (org_id IS NULL). The canonical "org row wins" resolver shared by every multi-key
+ * reader (SettingsPage, fetchAirtableSettings) so the rule lives in one place.
+ */
+export function mergeOrgRows(
+  rows: { key: string; value: unknown; org_id: string | null }[],
+): Map<string, { value: unknown; org_id: string | null }> {
+  const byKey = new Map<string, { value: unknown; org_id: string | null }>();
+  for (const r of rows) {
+    const prev = byKey.get(r.key);
+    if (!prev || (r.org_id !== null && prev.org_id === null)) byKey.set(r.key, { value: r.value, org_id: r.org_id });
+  }
+  return byKey;
+}
+
 export interface ShowLink extends ShowWithSlots { airtable_program_key: string | null }
 
 /** Org's shows with slots + Airtable link key, for the catalog-linking UI. */
