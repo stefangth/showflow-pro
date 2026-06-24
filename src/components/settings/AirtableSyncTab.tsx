@@ -88,6 +88,10 @@ export function AirtableSyncTab({ orgId }: Props) {
       toast.error("Couldn't save Airtable settings — your last change wasn't stored.");
     },
     onSuccess: () => setSaveState("saved"),
+    // Reconcile the optimistic cache against the DB once the write settles. Without
+    // this, two overlapping autosaves where the earlier one fails would leave the
+    // cache permanently diverged (a later success's value rolled back, never refetched).
+    onSettled: () => { void qc.invalidateQueries({ queryKey: SETTINGS_KEY }); },
   });
 
   const fieldMap = (s.airtable_field_map ?? {}) as AirtableFieldMap;
