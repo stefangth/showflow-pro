@@ -131,6 +131,18 @@ describe("AirtableSyncTab", () => {
     expect(screen.queryByText(/Field mapping/)).not.toBeInTheDocument();
     expect(screen.queryByText(/Catalog links/)).not.toBeInTheDocument();
   });
+
+  it("field-mapping card shows Showflow-field vs Airtable-column headers", async () => {
+    (fetchAirtableKeyStatus as ReturnType<typeof vi.fn>).mockResolvedValue({ present: true, updatedAt: null });
+    (fetchAirtableBases as ReturnType<typeof vi.fn>).mockResolvedValue({ schemaAccessible: true, bases: [{ id: "appX", name: "Base" }] });
+    (fetchAirtableTables as ReturnType<typeof vi.fn>).mockResolvedValue({
+      schemaAccessible: true,
+      tables: [{ id: "tbl", name: "Events", fields: [{ id: "f1", name: "Datum", type: "date" }] }],
+    });
+    renderTab({ airtable_base_id: "appX", airtable_table_name: "Events" });
+    expect(await screen.findByText("Showflow field")).toBeInTheDocument();
+    expect(screen.getByText("Airtable column")).toBeInTheDocument();
+  });
 });
 
 describe("AirtableSyncTab — last sync report", () => {
