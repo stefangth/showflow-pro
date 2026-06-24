@@ -36,7 +36,8 @@ function aggregate(rows: RawRow[]): EdgeFnMetric[] {
   return [...byFn.entries()].map(([fn, rs]) => {
     const lat = rs.map((r) => Number(r.execution_time_ms)).filter((n) => Number.isFinite(n)).sort((a, b) => a - b);
     const pct = (p: number): number | null =>
-      lat.length === 0 ? null : lat[Math.min(lat.length - 1, Math.floor((p / 100) * lat.length))];
+      // Nearest-rank: ceil(p% * N) - 1. Plain floor returns the MAX for p95 when N is a multiple of 20.
+      lat.length === 0 ? null : lat[Math.min(lat.length - 1, Math.ceil((p / 100) * lat.length) - 1)];
     const sorted = [...rs].sort((a, b) => String(b.timestamp).localeCompare(String(a.timestamp)));
     const last = sorted[0];
     return {

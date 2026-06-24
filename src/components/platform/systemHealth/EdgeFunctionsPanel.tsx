@@ -1,9 +1,8 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { StatusPill, StatusDot, LatencyStat, RunTimeline } from "./primitives";
 import { deriveEdgeFnStatus, CRON_JOB_TO_FN, type EdgeFnMetric } from "@/lib/systemHealth";
-import { SYSTEM_HEALTH } from "@/config/app.config";
+import { SYSTEM_HEALTH_BUDGET as budget } from "@/config/app.config";
 
-const budget = { p95Ms: SYSTEM_HEALTH.p95BudgetMs, errorRate: SYSTEM_HEALTH.errorRateBudget };
 const CRON_FNS = new Set(Object.values(CRON_JOB_TO_FN));
 
 export function EdgeFunctionsPanel({ metrics }: { metrics: EdgeFnMetric[] }) {

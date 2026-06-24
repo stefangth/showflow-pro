@@ -8,9 +8,7 @@ import { EdgeFunctionsPanel } from "./systemHealth/EdgeFunctionsPanel";
 import {
   deriveJobStatus, deriveEdgeFnStatus, worstStatus, CRON_JOB_TO_FN, type HealthState,
 } from "@/lib/systemHealth";
-import { SYSTEM_HEALTH } from "@/config/app.config";
-
-const budget = { p95Ms: SYSTEM_HEALTH.p95BudgetMs, errorRate: SYSTEM_HEALTH.errorRateBudget };
+import { SYSTEM_HEALTH_BUDGET as budget } from "@/config/app.config";
 
 export function SystemHealthTab() {
   const cron = useCronHealth();

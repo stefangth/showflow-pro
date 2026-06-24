@@ -93,3 +93,19 @@ Deno.test("window is clamped to <= 24h", async () => {
   const hours = (end.getTime() - start.getTime()) / 3_600_000;
   assertEquals(hours <= 24.0001, true);
 });
+
+Deno.test("p95 uses nearest-rank, not the max, when N is a multiple of 20", async () => {
+  // 20 invocations with latencies 1000..20000ms. p95 nearest-rank = ceil(0.95*20)-1 = index 18 = 19000,
+  // NOT the max (20000) that a plain Math.floor would pick.
+  const rows = Array.from({ length: 20 }, (_, i) => ({
+    function_name: "airtable-poll", status_code: 200, execution_time_ms: (i + 1) * 1000,
+    timestamp: `2026-06-24T09:${String(i).padStart(2, "0")}:00Z`,
+  }));
+  const fetchImpl = (() => Promise.resolve(new Response(JSON.stringify({ result: rows }), { status: 200 }))) as unknown as typeof fetch;
+  const { deps } = superDeps(fetchImpl);
+  const res = await handle(superReq({ window_minutes: 60 }), deps);
+  const body = await res.json() as { functions: Array<Record<string, unknown>> };
+  const poll = body.functions.find((f) => f.fn === "airtable-poll")!;
+  assertEquals(poll.p95Ms, 19000);
+  assertEquals(poll.p50Ms, 10000);
+});
