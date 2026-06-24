@@ -1,9 +1,7 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { StatusPill, StatusDot, LatencyStat, RunTimeline } from "./primitives";
-import { deriveEdgeFnStatus, CRON_JOB_TO_FN, type EdgeFnMetric } from "@/lib/systemHealth";
+import { deriveEdgeFnStatus, CRON_FNS, type EdgeFnMetric } from "@/lib/systemHealth";
 import { SYSTEM_HEALTH_BUDGET as budget } from "@/config/app.config";
-
-const CRON_FNS = new Set(Object.values(CRON_JOB_TO_FN));
 
 export function EdgeFunctionsPanel({ metrics }: { metrics: EdgeFnMetric[] }) {
   // Non-cron functions only — cron-invoked functions live in the Scheduled jobs panel, and

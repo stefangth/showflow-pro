@@ -16,7 +16,7 @@ export function useEdgeFnMetrics() {
     queryKey: ["platform", "edge-metrics", SYSTEM_HEALTH.windowMinutes],
     queryFn: () => fetchEdgeFnMetrics(supabase, SYSTEM_HEALTH.windowMinutes),
     refetchInterval: SYSTEM_HEALTH.refetchMs,
-    staleTime: SYSTEM_HEALTH.refetchMs, // cap calls — the Analytics PAT is rate-limited to 60/min.
+    staleTime: Infinity, // the interval is the sole fetch driver — no extra mount/focus refetches (the Analytics PAT is rate-limited to 60/min).
     // Latency is supplementary — a metrics outage must not blank the tab (panels show cron status only).
     retry: 1,
   });
