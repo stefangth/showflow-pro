@@ -224,7 +224,9 @@ describe("AirtableSyncTab — autosave", () => {
         expect.objectContaining({ date: "Show Date" }),
       ),
     );
-    expect(await screen.findByText(/All changes saved/i)).toBeInTheDocument();
+    // The save-status pill renders in both the connection and field-mapping card
+    // headers, so when the mapping card is visible there are two — assert ≥1.
+    expect((await screen.findAllByText(/All changes saved/i)).length).toBeGreaterThan(0);
   });
 
   it("autosaves the enable toggle without a global Save click", async () => {
