@@ -489,6 +489,10 @@ export function AirtableSyncTab({ orgId }: Props) {
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
+            <div className="hidden sm:grid grid-cols-[160px_1fr] gap-3 text-xs font-medium uppercase tracking-wide text-muted-foreground">
+              <span>Showflow field</span>
+              <span>Airtable column</span>
+            </div>
             {SHOWFLOW_FIELDS.map((f) => (
               <div key={f.key} className="grid grid-cols-1 sm:grid-cols-[160px_1fr] gap-3 items-center">
                 <Label>{f.label}{f.optional ? " (optional)" : ""}</Label>
