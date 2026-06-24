@@ -96,10 +96,8 @@ export default function ProductionsPage() {
       case "shows.main_cast_slots": return s.main_cast_slots ?? <span className="text-muted-foreground">—</span>;
       case "shows.understudy_slots": return s.understudy_slots ?? <span className="text-muted-foreground">—</span>;
       case "shows.sort_order": return s.sort_order ?? <span className="text-muted-foreground">—</span>;
-      case "shows.created_at": {
-        const ts = (s as ShowWithStats & { created_at?: string }).created_at;
-        return ts ? formatDateDMY(ts) : "—";
-      }
+      case "shows.created_at":
+        return s.created_at ? formatDateDMY(s.created_at.slice(0, 10)) : <span className="text-muted-foreground">—</span>;
       case "_computed.slots":
         return slots
           ? <span className="tabular-nums">{slots.main_cast} + {slots.understudies}</span>

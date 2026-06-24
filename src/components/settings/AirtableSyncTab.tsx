@@ -165,7 +165,7 @@ export function AirtableSyncTab({ orgId }: Props) {
     : null;
   const cityLinkedRecordsQ = useQuery({
     queryKey: ["airtable", "linked-records", orgId, baseId, cityLinkedTableId],
-    enabled: !!orgId && !!baseId && !!cityLinkedTableId,
+    enabled: !!orgId && keyPresent && !!baseId && !!cityLinkedTableId,
     queryFn: () => fetchAirtableLinkedRecords(supabase, orgId!, baseId, cityLinkedTableId!),
     staleTime: 5 * 60 * 1000,
     retry: false,
@@ -195,6 +195,7 @@ export function AirtableSyncTab({ orgId }: Props) {
       setAirtableKey(""); setReplacing(false);
       qc.removeQueries({ queryKey: ["airtable", "bases", orgId] });
       qc.removeQueries({ queryKey: ["airtable", "tables", orgId] });
+      qc.removeQueries({ queryKey: ["airtable", "linked-records", orgId] });
       qc.invalidateQueries({ queryKey: ["airtable", "key-status", orgId] });
       toast.success("Airtable API key deleted");
     },
