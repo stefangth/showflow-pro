@@ -17,6 +17,7 @@ import { fetchCustomFieldDefs, upsertCustomFieldDef, deleteCustomFieldDef } from
 import { airtableTypeToCustomType, slugifyKey, type CustomFieldType } from "@/lib/customFields";
 import { fetchAirtableBases, fetchAirtableTables } from "@/data/airtableSchema";
 import { SHOWFLOW_FIELDS, buildProgramKey, buildCityKey, planCityReconciliation, groupDuplicateCities, type AirtableFieldMap } from "@/data/airtableMapping";
+import { showLabel } from "@/types";
 import { fetchShowsForLinking, linkShowAirtableKey, importShowsFromOptions, upsertOrgSetting } from "@/data/settings";
 import { fetchAirtableSettings, type AirtableSettings } from "@/data/airtableSettings";
 import type { Json } from "@/integrations/supabase/types";
@@ -266,6 +267,12 @@ export function AirtableSyncTab({ orgId }: Props) {
     onSuccess: () => { qc.invalidateQueries({ queryKey: ["cities"] }); toast.success("Linked"); },
     onError: (e: unknown) => toast.error((e as Error).message ?? "Link failed"),
   });
+  const linkShow = useMutation({
+    mutationFn: ({ showId, key }: { showId: string; key: string }) => linkShowAirtableKey(supabase, showId, key),
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ["shows"] }); toast.success("Linked"); },
+    onError: (e: unknown) => toast.error((e as Error).message ?? "Link failed"),
+  });
+  const unlinkedShows = (showsQ.data ?? []).filter((sh) => !sh.airtable_program_key);
   const unlinkedCities = (citiesQ.data ?? []).filter((c) => !c.airtable_city_key);
 
   // ── Custom fields (definitions table; immediate mutations, not the settings draft) ──
@@ -624,7 +631,21 @@ export function AirtableSyncTab({ orgId }: Props) {
                       <span className="text-sm font-medium">{name}</span>
                       {show
                         ? <div className="flex items-center gap-2"><Badge variant="secondary">linked</Badge><Button size="sm" variant="ghost" onClick={() => unlinkShow.mutate(show.id)} disabled={unlinkShow.isPending}>Unlink</Button></div>
-                        : <Badge variant="outline">unlinked</Badge>}
+                        : (
+                          <div className="flex items-center gap-2">
+                            <Badge variant="outline">unlinked</Badge>
+                            {unlinkedShows.length > 0 && key && (
+                              <Select onValueChange={(showId) => linkShow.mutate({ showId, key: key! })} disabled={linkShow.isPending}>
+                                <SelectTrigger className="h-8 w-[200px]" aria-label={`link ${name} to an existing show`}>
+                                  <SelectValue placeholder="Link to existing…" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  {unlinkedShows.map((sh) => <SelectItem key={sh.id} value={sh.id}>{showLabel(sh)}</SelectItem>)}
+                                </SelectContent>
+                              </Select>
+                            )}
+                          </div>
+                        )}
                     </div>
                   );
                 }) : <p className="text-sm text-muted-foreground">No options on the mapped Sub-program field.</p>}
