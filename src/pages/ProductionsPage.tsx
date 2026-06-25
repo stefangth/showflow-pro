@@ -4,6 +4,7 @@ import { useAuth } from "@/features/auth/AuthContext";
 import { useShows, useArchiveShow, useDeleteShow, useReorderShows, type ShowWithStats } from "@/hooks/useShows";
 import { isSyncedShow, canHardDeleteShow } from "@/lib/catalog";
 import { showSlots } from "@/lib/settings";
+import { formatDateDMY } from "@/lib/dates";
 import { showLabel } from "@/types";
 import { ShowFormDialog } from "@/components/catalog/ShowFormDialog";
 import { Card, CardContent } from "@/components/ui/card";
@@ -18,8 +19,30 @@ import {
 } from "@/components/ui/alert-dialog";
 import { toast } from "sonner";
 import { GripVertical, Pencil, Archive, ArchiveRestore, Trash2 } from "lucide-react";
+import { useColumnTemplate } from "@/features/editor/EditorContext";
+import { useColumnHeaders } from "@/features/editor/useColumnHeaders";
+import { ColumnLayoutEditor } from "@/features/editor/ColumnLayoutEditor";
 
 type StatusFilter = "active" | "archived" | "all";
+
+const STATUS_LABEL: Record<string, string> = { active: "Active", archived: "Archived", draft: "Draft" };
+
+/** Tailwind width for a productions column. The first visible column flexes (identity);
+ *  all others get a fixed width. */
+function colWidth(colId: string, isFirst: boolean): string {
+  if (isFirst) return "flex-1 min-w-0";
+  switch (colId) {
+    case "shows.program":
+    case "shows.sub_program": return "w-48 shrink-0";
+    case "shows.category": return "w-40 shrink-0";
+    case "_computed.slots":
+    case "shows.main_cast_slots":
+    case "shows.understudy_slots": return "w-28 shrink-0";
+    case "_computed.date_count": return "w-20 shrink-0";
+    case "shows.status": return "w-32 shrink-0";
+    default: return "w-32 shrink-0";
+  }
+}
 
 export default function ProductionsPage() {
   const { hasRole } = useAuth();
@@ -28,6 +51,11 @@ export default function ProductionsPage() {
   const archive = useArchiveShow();
   const del = useDeleteShow();
   const reorder = useReorderShows();
+
+  const { orderedColumns } = useColumnTemplate("shows-productions");
+  const columnHeaders = useColumnHeaders(orderedColumns);
+  const visibleColumns = useMemo(() => orderedColumns.filter((c) => c.visible), [orderedColumns]);
+  const firstColId = visibleColumns[0]?.columnId;
 
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("active");
   const [formOpen, setFormOpen] = useState(false);
@@ -44,7 +72,6 @@ export default function ProductionsPage() {
 
   const openCreate = () => { setEditing(null); setFormOpen(true); };
   const openEdit = (s: ShowWithStats) => { setEditing(s); setFormOpen(true); };
-
   const persistOrder = () => reorder.mutate(order.map((s) => s.id));
 
   const onDelete = (s: ShowWithStats) =>
@@ -61,27 +88,50 @@ export default function ProductionsPage() {
     return <Alert variant="destructive"><AlertDescription>Failed to load productions.</AlertDescription></Alert>;
   }
 
-  const renderRow = (s: ShowWithStats, draggable: boolean) => {
+  const cellContent = (s: ShowWithStats, colId: string) => {
     const slots = showSlots(s);
+    switch (colId) {
+      case "shows.program": return s.program || <span className="text-muted-foreground">—</span>;
+      case "shows.sub_program": return s.sub_program || <span className="text-muted-foreground">—</span>;
+      case "shows.category": return s.category || <span className="text-muted-foreground">—</span>;
+      case "shows.main_cast_slots": return s.main_cast_slots ?? <span className="text-muted-foreground">—</span>;
+      case "shows.understudy_slots": return s.understudy_slots ?? <span className="text-muted-foreground">—</span>;
+      case "shows.sort_order": return s.sort_order ?? <span className="text-muted-foreground">—</span>;
+      case "shows.created_at":
+        return s.created_at ? formatDateDMY(s.created_at.slice(0, 10)) : <span className="text-muted-foreground">—</span>;
+      case "_computed.slots":
+        return slots
+          ? <span className="tabular-nums">{slots.main_cast} + {slots.understudies}</span>
+          : <Badge variant="secondary" className="bg-destructive/10 text-destructive text-xs">Unconfigured</Badge>;
+      case "_computed.date_count": return `${s.dateCount} date${s.dateCount === 1 ? "" : "s"}`;
+      case "shows.status":
+        return (
+          <div className="flex items-center gap-1">
+            {isSyncedShow(s) && <Badge variant="secondary" className="bg-muted text-muted-foreground text-xs">Synced</Badge>}
+            <Badge variant="secondary" className="text-xs">{STATUS_LABEL[s.status] ?? s.status}</Badge>
+          </div>
+        );
+      default: return <span className="text-muted-foreground">—</span>;
+    }
+  };
+
+  const renderRow = (s: ShowWithStats, draggable: boolean) => {
     const synced = isSyncedShow(s);
     const deletable = isAdmin && canHardDeleteShow({ synced, dateCount: s.dateCount });
+    const label = showLabel(s);
     return (
       <div className="flex items-center gap-3 px-4 py-3 border-b last:border-b-0">
         {draggable && <GripVertical className="h-4 w-4 text-muted-foreground cursor-grab shrink-0" />}
-        <div className="min-w-0 flex-1">
-          <p className="font-medium truncate">{showLabel(s)}</p>
-          <p className="text-xs text-muted-foreground truncate">{s.category || "—"}</p>
-        </div>
-        <div className="w-28 text-sm tabular-nums text-muted-foreground">
-          {slots ? `${slots.main_cast} + ${slots.understudies}` : <Badge variant="secondary" className="bg-destructive/10 text-destructive text-xs">Unconfigured</Badge>}
-        </div>
-        <div className="w-20 text-sm text-muted-foreground">{s.dateCount} date{s.dateCount === 1 ? "" : "s"}</div>
-        <div className="w-24">
-          {synced && <Badge variant="secondary" className="bg-muted text-muted-foreground text-xs">Synced</Badge>}
-          {s.status === "archived" && <Badge variant="secondary" className="text-xs">Archived</Badge>}
-        </div>
-        <div className="flex items-center gap-1 shrink-0">
-          <Button variant="ghost" size="icon" onClick={() => openEdit(s)} aria-label={`Edit ${showLabel(s)}`}><Pencil className="h-4 w-4" /></Button>
+        {visibleColumns.map((c) => (
+          <div
+            key={c.columnId}
+            className={`${colWidth(c.columnId, c.columnId === firstColId)} text-sm ${c.columnId === firstColId ? "font-medium truncate" : "text-muted-foreground"}`}
+          >
+            {cellContent(s, c.columnId)}
+          </div>
+        ))}
+        <div className="ml-auto flex items-center gap-1 shrink-0">
+          <Button variant="ghost" size="icon" onClick={() => openEdit(s)} aria-label={`Edit ${label}`}><Pencil className="h-4 w-4" /></Button>
           <Button variant="ghost" size="icon" onClick={() => onArchive(s, s.status !== "archived")} aria-label="Toggle archive">
             {s.status === "archived" ? <ArchiveRestore className="h-4 w-4" /> : <Archive className="h-4 w-4" />}
           </Button>
@@ -96,7 +146,7 @@ export default function ProductionsPage() {
               <AlertDialogContent>
                 <AlertDialogHeader>
                   <AlertDialogTitle>Delete this production?</AlertDialogTitle>
-                  <AlertDialogDescription>This permanently removes "{showLabel(s)}". This cannot be undone.</AlertDialogDescription>
+                  <AlertDialogDescription>This permanently removes "{label}". This cannot be undone.</AlertDialogDescription>
                 </AlertDialogHeader>
                 <AlertDialogFooter>
                   <AlertDialogCancel>Cancel</AlertDialogCancel>
@@ -131,12 +181,21 @@ export default function ProductionsPage() {
         </Select>
       </div>
 
+      <ColumnLayoutEditor pageKey="shows-productions" />
+
       {isLoading ? (
         <div className="space-y-2">{[1, 2, 3].map((i) => <Skeleton key={i} className="h-14 w-full" />)}</div>
       ) : (order.length === 0 ? (
         <Card><CardContent className="py-12 text-center text-muted-foreground">No productions yet. Create your first one.</CardContent></Card>
       ) : (
         <Card><CardContent className="p-0">
+          <div className="flex items-center gap-3 px-4 py-2 border-b bg-muted/30 text-xs font-medium text-muted-foreground">
+            {reorderable && <span className="h-4 w-4 shrink-0" aria-hidden />}
+            {columnHeaders.map(({ columnId, headerLabel }) => (
+              <div key={columnId} className={colWidth(columnId, columnId === firstColId)}>{headerLabel}</div>
+            ))}
+            <span className="ml-auto w-[120px] shrink-0" aria-hidden />
+          </div>
           {reorderable ? (
             <Reorder.Group axis="y" values={order} onReorder={setOrder}>
               {order.map((s) => (

@@ -8,6 +8,7 @@ import { AirtableSyncTab } from "./AirtableSyncTab";
 vi.mock("@/data/airtableSchema", () => ({
   fetchAirtableBases: vi.fn(),
   fetchAirtableTables: vi.fn(),
+  fetchAirtableLinkedRecords: vi.fn(() => Promise.resolve({ schemaAccessible: true, records: [] })),
 }));
 vi.mock("@/data/settings", () => ({
   fetchShowsForLinking: vi.fn(() => Promise.resolve([])),
@@ -42,11 +43,11 @@ vi.mock("@/data/customFields", () => ({
   deleteCustomFieldDef: vi.fn(() => Promise.resolve()),
 }));
 
-import { fetchAirtableBases, fetchAirtableTables } from "@/data/airtableSchema";
+import { fetchAirtableBases, fetchAirtableTables, fetchAirtableLinkedRecords } from "@/data/airtableSchema";
 import { fetchAirtableKeyStatus } from "@/data/airtableKey";
 import { fetchLatestSyncLog, fetchUnresolvedRecords } from "@/data/airtableSync";
 import { fetchCitiesForLinking, mergeCities } from "@/data/cities";
-import { upsertOrgSetting } from "@/data/settings";
+import { upsertOrgSetting, fetchShowsForLinking } from "@/data/settings";
 import { fetchAirtableSettings } from "@/data/airtableSettings";
 
 function renderTab(initial: Record<string, unknown> = {}) {
@@ -130,6 +131,18 @@ describe("AirtableSyncTab", () => {
     renderTab();
     expect(screen.queryByText(/Field mapping/)).not.toBeInTheDocument();
     expect(screen.queryByText(/Catalog links/)).not.toBeInTheDocument();
+  });
+
+  it("field-mapping card shows Showflow-field vs Airtable-column headers", async () => {
+    (fetchAirtableKeyStatus as ReturnType<typeof vi.fn>).mockResolvedValue({ present: true, updatedAt: null });
+    (fetchAirtableBases as ReturnType<typeof vi.fn>).mockResolvedValue({ schemaAccessible: true, bases: [{ id: "appX", name: "Base" }] });
+    (fetchAirtableTables as ReturnType<typeof vi.fn>).mockResolvedValue({
+      schemaAccessible: true,
+      tables: [{ id: "tbl", name: "Events", fields: [{ id: "f1", name: "Datum", type: "date" }] }],
+    });
+    renderTab({ airtable_base_id: "appX", airtable_table_name: "Events" });
+    expect(await screen.findByText("Showflow field")).toBeInTheDocument();
+    expect(screen.getByText("Airtable column")).toBeInTheDocument();
   });
 });
 
@@ -255,5 +268,44 @@ describe("AirtableSyncTab — autosave", () => {
     expect(await screen.findByText(/Couldn't save/i)).toBeInTheDocument();
     // Rollback: the optimistically-flipped toggle returns to off after the failed save.
     await waitFor(() => expect(screen.getByRole("switch")).not.toBeChecked());
+  });
+
+  it("offers 'Link to existing' for an unlinked program option", async () => {
+    (fetchAirtableKeyStatus as ReturnType<typeof vi.fn>).mockResolvedValue({ present: true, updatedAt: null });
+    (fetchAirtableBases as ReturnType<typeof vi.fn>).mockResolvedValue({ schemaAccessible: true, bases: [{ id: "appX", name: "Base" }] });
+    (fetchAirtableTables as ReturnType<typeof vi.fn>).mockResolvedValue({
+      schemaAccessible: true,
+      tables: [{
+        id: "tbl", name: "Events",
+        fields: [
+          { id: "fS", name: "Sub", type: "singleSelect", options: { choices: [{ id: "c1", name: "TJE: Murder" }] } },
+        ],
+      }],
+    });
+    (fetchShowsForLinking as ReturnType<typeof vi.fn>).mockResolvedValue([
+      { id: "show-1", program: "Existing", sub_program: null, main_cast_slots: 2, understudy_slots: 1, airtable_program_key: null },
+    ]);
+    renderTab({ airtable_base_id: "appX", airtable_table_name: "Events", airtable_field_map: { sub_program: "Sub" } });
+
+    expect(await screen.findByText("TJE: Murder")).toBeInTheDocument();
+    expect(screen.getByLabelText("link TJE: Murder to an existing show")).toBeInTheDocument();
+  });
+
+  it("lists city options from a linked-record City field", async () => {
+    (fetchAirtableKeyStatus as ReturnType<typeof vi.fn>).mockResolvedValue({ present: true, updatedAt: null });
+    (fetchAirtableBases as ReturnType<typeof vi.fn>).mockResolvedValue({ schemaAccessible: true, bases: [{ id: "appX", name: "Base" }] });
+    (fetchAirtableTables as ReturnType<typeof vi.fn>).mockResolvedValue({
+      schemaAccessible: true,
+      tables: [{
+        id: "tbl", name: "Events",
+        fields: [{ id: "fCity", name: "City", type: "multipleRecordLinks", options: { linkedTableId: "tblCities" } }],
+      }],
+    });
+    (fetchAirtableLinkedRecords as ReturnType<typeof vi.fn>).mockResolvedValue({
+      schemaAccessible: true, records: [{ id: "recCity1", name: "Berlin" }],
+    });
+    renderTab({ airtable_base_id: "appX", airtable_table_name: "Events", airtable_field_map: { city: "City" } });
+
+    expect(await screen.findByText("Berlin")).toBeInTheDocument();
   });
 });

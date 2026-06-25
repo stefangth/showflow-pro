@@ -14,6 +14,7 @@ export interface ShowRow {
   understudy_slots: number | null;
   airtable_program_key: string | null;
   sort_order: number | null;
+  created_at?: string;
 }
 export interface ShowWithStats extends ShowRow { dateCount: number }
 
@@ -38,7 +39,7 @@ export interface UpdateShowPatch {
 }
 
 const SHOW_COLS =
-  "id, program, sub_program, category, description, status, main_cast_slots, understudy_slots, airtable_program_key, sort_order";
+  "id, program, sub_program, category, description, status, main_cast_slots, understudy_slots, airtable_program_key, sort_order, created_at";
 
 /** Org's shows ordered for display, each with its non-cancelled date count. */
 export async function fetchShowsWithStats(
