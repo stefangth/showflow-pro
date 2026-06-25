@@ -2,12 +2,14 @@ import { preflight, json } from "../_shared/http.ts";
 import { requireOrgRole } from "../_shared/auth.ts";
 import { realDeps, type Deps } from "../_shared/deps.ts";
 
-type Body = { org_id?: string; baseId?: string };
+type Body = { org_id?: string; baseId?: string; linkedTableId?: string };
 
 const AIRTABLE_META = "https://api.airtable.com/v0/meta";
+const AIRTABLE_DATA = "https://api.airtable.com/v0";
 /** meta/bases returns <=1000 bases/page; cap the offset loop so a pathological
  *  response can never spin forever (mirrors airtable-poll's MAX_PAGES guard). */
 const MAX_BASE_PAGES = 10;
+const MAX_RECORD_PAGES = 50;
 
 interface AirtableBase { id: string; name: string; permissionLevel?: string }
 interface AirtableField { id: string; name: string; type: string; options?: Record<string, unknown> }
@@ -32,9 +34,10 @@ async function airtableFailure(res: Response, label: string): Promise<Response |
  * The org PAT is read from the Vault via get_org_airtable_key and used only
  * server-side — it is NEVER returned to the client.
  *
- * Modes (one Airtable scope, schema.bases:read, gates both):
+ * Modes (one Airtable scope, schema.bases:read, gates all):
  *  - body has no baseId → list accessible bases  → { schemaAccessible: true, bases: [{ id, name }] }.
  *  - body has a baseId  → describe that base      → { schemaAccessible: true, tables: [{ id, name, fields: [{ id, name, type, options? }] }] }.
+ *  - body has baseId + linkedTableId → list that linked table's records → { schemaAccessible: true, records: [{ id, name }] }.
  *  - Airtable 403 (no scope) → { schemaAccessible: false } so the UI falls back to typed inputs.
  */
 export async function handle(req: Request, deps: Deps): Promise<Response> {
@@ -53,6 +56,41 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
     const { data: apiKey } = await deps.admin.rpc("get_org_airtable_key", { _org: orgId });
     if (!apiKey) return json({ error: "No Airtable key configured for this organization" }, 400);
     const headers = { Authorization: `Bearer ${apiKey as string}` };
+
+    // ── Mode C: list a linked table's records (id + primary-field name) ───────
+    if (body?.baseId && body?.linkedTableId) {
+      const schemaRes = await deps.fetch(`${AIRTABLE_META}/bases/${encodeURIComponent(body.baseId)}/tables`, { headers });
+      const schemaFail = await airtableFailure(schemaRes, "Airtable schema read failed");
+      if (schemaFail) return schemaFail;
+      const schemaData = (await schemaRes.json()) as { tables?: Array<{ id: string; primaryFieldId?: string }> };
+      const linked = (schemaData.tables ?? []).find((t) => t.id === body.linkedTableId);
+      if (!linked?.primaryFieldId) return json({ error: "Linked table not found in base schema" }, 404);
+      const primaryFieldId = linked.primaryFieldId;
+
+      const records: Array<{ id: string; name: string }> = [];
+      let offset: string | undefined;
+      let pages = 0;
+      do {
+        const params = new URLSearchParams({ returnFieldsByFieldId: "true" });
+        params.append("fields[]", primaryFieldId);
+        if (offset) params.set("offset", offset);
+        const recRes = await deps.fetch(
+          `${AIRTABLE_DATA}/${encodeURIComponent(body.baseId)}/${encodeURIComponent(body.linkedTableId)}?${params.toString()}`,
+          { headers },
+        );
+        const recFail = await airtableFailure(recRes, "Airtable records read failed");
+        if (recFail) return recFail;
+        const data = (await recRes.json()) as { records?: Array<{ id: string; fields?: Record<string, unknown> }>; offset?: string };
+        for (const r of data.records ?? []) {
+          const v = r.fields?.[primaryFieldId];
+          if (v != null && String(v) !== "") records.push({ id: r.id, name: String(v) });
+        }
+        offset = data.offset;
+        pages += 1;
+      } while (offset && pages < MAX_RECORD_PAGES);
+
+      return json({ schemaAccessible: true, records });
+    }
 
     // ── Mode B: describe one base's tables + fields ───────────────────────────
     // The tables endpoint returns every table in one response (not offset-paginated,

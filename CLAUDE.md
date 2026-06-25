@@ -226,7 +226,7 @@ When adding a new page:
 
 - **Use semantic tokens only**: `bg-background`, `text-foreground`, `text-primary`, `border-border`, etc. Never hardcode colors like `bg-white` or `text-black` in components.
 - All design tokens live in `src/index.css` (HSL only) and `tailwind.config.ts`.
-- Display font: `font-display` (Space Grotesk). Body: default Inter.
+- Display font: `font-display` (Geist). Body: default Geist (`font-sans`); mono: `font-mono` (Geist Mono). Fonts are loaded in `index.html` and set in `tailwind.config.ts`.
 - Match the existing component patterns: `Card` for grouped content, `Tabs` for sectioned admin UIs, `Badge` for status pills.
 
 ### TypeScript

@@ -44,6 +44,61 @@ function parseTime(raw: unknown): string | null {
   return m ? m[1] : null;
 }
 
+interface MetaField { id: string; name: string; type: string; options?: { linkedTableId?: string } }
+interface MetaTable { id: string; name: string; primaryFieldId?: string; fields?: MetaField[] }
+
+/** Fetch the base's table schema (meta API). Returns null if unavailable (e.g. the PAT lacks
+ *  schema scope) — callers then fall back to passthrough, preserving current behavior. */
+async function fetchBaseTables(deps: Deps, baseId: string, apiKey: string): Promise<MetaTable[] | null> {
+  try {
+    const res = await deps.fetch(`https://api.airtable.com/v0/meta/bases/${baseId}/tables`, { headers: { Authorization: `Bearer ${apiKey}` } });
+    if (!res.ok) { console.warn("airtable-poll: base schema unavailable", { baseId, status: res.status }); return null; }
+    const data = await res.json();
+    return Array.isArray(data?.tables) ? (data.tables as MetaTable[]) : null;
+  } catch (e) {
+    console.warn("airtable-poll: base schema fetch threw", { baseId, error: (e as Error).message });
+    return null;
+  }
+}
+
+/** Build a recordId → primary-field-name map for one linked table. Best-effort; partial/empty on error. */
+async function fetchLinkedNameMap(deps: Deps, baseId: string, linkedTableId: string, primaryFieldId: string, apiKey: string): Promise<Map<string, string>> {
+  const map = new Map<string, string>();
+  let offset: string | undefined;
+  let pages = 0;
+  do {
+    const params = new URLSearchParams({ returnFieldsByFieldId: "true" });
+    params.append("fields[]", primaryFieldId);
+    if (offset) params.set("offset", offset);
+    const res = await deps.fetch(`https://api.airtable.com/v0/${baseId}/${encodeURIComponent(linkedTableId)}?${params.toString()}`, { headers: { Authorization: `Bearer ${apiKey}` } });
+    if (!res.ok) { console.warn("airtable-poll: linked table fetch failed", { linkedTableId, status: res.status }); break; }
+    const data = await res.json();
+    for (const r of (data.records ?? []) as Array<{ id: string; fields?: Record<string, unknown> }>) {
+      const v = r.fields?.[primaryFieldId];
+      if (v != null) map.set(r.id, String(v));
+    }
+    offset = data.offset;
+    pages += 1;
+  } while (offset && pages < MAX_PAGES);
+  return map;
+}
+
+/** Resolve an Airtable cell to display name(s). With a linkMap (multipleRecordLinks field), record
+ *  IDs → names (unknown IDs dropped). Without one (text/select), values pass through as strings. */
+function resolveNames(raw: unknown, linkMap?: Map<string, string>): string[] {
+  if (raw == null) return [];
+  const arr = Array.isArray(raw) ? raw : [raw];
+  const out: string[] = [];
+  for (const v of arr) {
+    if (linkMap) {
+      if (typeof v === "string" && linkMap.has(v)) out.push(linkMap.get(v)!);
+    } else if (typeof v === "string" || typeof v === "number") {
+      out.push(String(v));
+    }
+  }
+  return out;
+}
+
 async function openOfferTierBatch(deps: Deps, ids: string[]): Promise<number> {
   let opened = 0;
   for (let i = 0; i < ids.length; i += OFFER_TIER_BATCH_SIZE) {
@@ -121,6 +176,30 @@ async function syncOrg(deps: Deps, orgId: string, baseId: string, tableName: str
     if (c.airtable_city_key) cityByKey.set(c.airtable_city_key, c.id);
   }
 
+  // ── Resolve linked-record fields (venue/city) to display names when mapped to a
+  //    multipleRecordLinks Airtable field. Best-effort: if the schema is unavailable,
+  //    linkMaps stay empty and values pass through unchanged. ──
+  const linkMaps: { venue?: Map<string, string>; city?: Map<string, string> } = {};
+  if (fieldMap.venue || fieldMap.city) {
+    const metaTables = await fetchBaseTables(deps, baseId, apiKey);
+    if (metaTables) {
+      const target = metaTables.find((t) => t.name === tableName);
+      const fieldByName = new Map((target?.fields ?? []).map((f) => [f.name, f] as const));
+      const primaryByTableId = new Map(metaTables.map((t) => [t.id, t.primaryFieldId] as const));
+      // venue + city are independent — resolve their linked tables in parallel.
+      await Promise.all((["venue", "city"] as const).map(async (key) => {
+        const fname = fieldMap[key];
+        if (!fname) return;
+        const f = fieldByName.get(fname);
+        const linkedTableId = f?.type === "multipleRecordLinks" ? f.options?.linkedTableId : undefined;
+        const primaryFieldId = linkedTableId ? primaryByTableId.get(linkedTableId) : undefined;
+        if (linkedTableId && primaryFieldId) {
+          linkMaps[key] = await fetchLinkedNameMap(deps, baseId, linkedTableId, primaryFieldId, apiKey);
+        }
+      }));
+    }
+  }
+
   // ── Custom field definitions (display/filter/sort only — NEVER booking logic) ──
   const { data: customDefsRaw } = await admin
     .from("custom_field_definitions")
@@ -193,15 +272,17 @@ async function syncOrg(deps: Deps, orgId: string, baseId: string, tableName: str
       const showId = programKey ? showByKey.get(programKey) ?? null : null;
       if (!showId) { held += 1; outcomes.push({ airtable_record_id: id, action: "held_unresolved", show_date_id: null, reason: `program '${subProgramValue ?? ""}' not linked`, raw_fields: fields }); continue; }
 
-      const cityValue = fieldMap.city ? fields[fieldMap.city] ?? null : null;
-      const cityKey = buildCityKey(cityValue == null ? null : String(cityValue));
+      const cityNames = fieldMap.city ? resolveNames(fields[fieldMap.city], linkMaps.city) : [];
+      const cityRawName = cityNames[0] ?? null;
+      const cityKey = buildCityKey(cityRawName);
       const cityId = cityKey ? cityByKey.get(cityKey) ?? null : null;
-      const cityNote = cityValue && !cityId ? `city '${cityValue}' not linked` : null;
+      const cityNote = cityRawName && !cityId ? `city '${cityRawName}' not linked` : null;
 
       const session1 = fieldMap.session_1 ? parseTime(fields[fieldMap.session_1]) : null;
       const session2 = fieldMap.session_2 ? parseTime(fields[fieldMap.session_2]) : null;
       const session3 = fieldMap.session_3 ? parseTime(fields[fieldMap.session_3]) : null;
-      const venue = fieldMap.venue ? (fields[fieldMap.venue] ?? null) : null;
+      const venueNames = fieldMap.venue ? resolveNames(fields[fieldMap.venue], linkMaps.venue) : [];
+      const venue = venueNames.length ? venueNames.join(", ") : null;
       const statusRaw = fieldMap.status_field ? fields[fieldMap.status_field] ?? null : null;
       const isCancelled = isCancelledStatus(statusRaw, fieldMap.cancelled_value);
       const reason = fieldMap.cancellation_reason_field ? (fields[fieldMap.cancellation_reason_field] ?? null) : null;
