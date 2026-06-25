@@ -12,7 +12,7 @@ const buttonVariants = cva(
       variant: {
         /* Violet primary */
         default:
-          "bg-primary text-primary-foreground shadow-elev1 hover:bg-accent-600 active:bg-accent-700",
+          "bg-primary text-primary-foreground shadow-elev1 hover:bg-primary-hover active:bg-primary-active",
         /* Surface secondary with hairline border */
         secondary:
           "bg-card text-foreground border border-border shadow-elev1 hover:bg-muted active:bg-muted/80",
