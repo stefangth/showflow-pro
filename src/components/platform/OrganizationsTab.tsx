@@ -42,7 +42,7 @@ export function OrganizationsTab() {
 
   const enter = (orgId: string) => { switchOrg(orgId); navigate(ROUTES.DASHBOARD); };
 
-  if (isLoading) return <div className="space-y-2">{[0, 1, 2].map((i) => <Skeleton key={i} className="h-[34px] w-full" />)}</div>;
+  if (isLoading) return <div className="space-y-2">{[0, 1, 2].map((i) => <Skeleton key={i} className="h-[var(--row-h)] w-full" />)}</div>;
   if (isError) return <Alert variant="destructive"><AlertDescription>{(error as Error).message}</AlertDescription></Alert>;
 
   return (
