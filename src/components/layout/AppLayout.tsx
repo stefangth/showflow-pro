@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { NavLink, Link } from 'react-router-dom';
 import { useAuth } from '@/features/auth/AuthContext';
@@ -51,6 +51,10 @@ export default function AppLayout({ children }: AppLayoutProps) {
   const { data: notifications = [] } = useNotifications();
   const { data: myProfile } = useMyProfile();
   const navCounts = useNavCounts();
+
+  // The account-menu Popover lives only in the expanded sidebar. Reset its open
+  // state when collapsing so it doesn't auto-pop on the next expand.
+  useEffect(() => { if (collapsed) setProfileMenuOpen(false); }, [collapsed]);
 
   const isRealAdmin = roles.includes('admin');
   const unreadCount = notifications.filter(n => !n.read).length;
@@ -200,13 +204,13 @@ export default function AppLayout({ children }: AppLayoutProps) {
                 </PopoverTrigger>
                 <PopoverContent align="end" side="top" sideOffset={8} className="w-44 p-1">
                   <button
-                    className="flex w-full items-center gap-2.5 rounded-md px-2.5 py-2 text-[13px] text-foreground hover:bg-foreground/[0.05] transition-colors"
+                    className="flex w-full items-center gap-2.5 rounded-md px-2.5 py-2 text-[13px] text-foreground hover:bg-muted transition-colors"
                     onClick={() => { setProfileMenuOpen(false); navigate(ROUTES.PROFILE); }}
                   >
                     <User className="h-[14px] w-[14px]" /> Profile
                   </button>
                   <button
-                    className="flex w-full items-center gap-2.5 rounded-md px-2.5 py-2 text-[13px] text-foreground hover:bg-foreground/[0.05] transition-colors"
+                    className="flex w-full items-center gap-2.5 rounded-md px-2.5 py-2 text-[13px] text-foreground hover:bg-muted transition-colors"
                     onClick={() => { setProfileMenuOpen(false); handleSignOut(); }}
                   >
                     <LogOut className="h-[14px] w-[14px]" /> Sign out
