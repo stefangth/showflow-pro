@@ -14,9 +14,15 @@
     --popover: 0 0% 100%;
     --popover-foreground: 256 20% 9%;
 
-    /* ── Primary (violet accent-500) ── */
-    --primary: 249 90% 66%;            /* #6E5CF6 */
+    /* ── Primary (violet accent-500) ──
+       Interactive states are their own semantic tokens, NOT raw accent
+       scale stops — so a dark-mode role re-pitch of the scale can never
+       silently break button contrast. White foreground holds AA on all
+       three in both modes. */
+    --primary: 249 90% 66%;            /* #6E5CF6 accent-500 */
     --primary-foreground: 0 0% 100%;
+    --primary-hover: 249 67% 56%;      /* #5848D8 accent-600 */
+    --primary-active: 249 53% 45%;     /* #4738B0 accent-700 */
 
     /* ── Secondary surface ── */
     --secondary: 36 27% 93%;
@@ -62,9 +68,84 @@
     /* ── Raw tokens (used directly in CSS, not through Tailwind hsl()) ── */
     --line: rgba(20, 18, 14, 0.08);
     --line-strong: rgba(20, 18, 14, 0.14);
+    --shadow-0: none;
     --shadow-1: 0 1px 2px rgba(20, 18, 14, 0.05);
     --shadow-2: 0 1px 2px rgba(20, 18, 14, 0.04), 0 4px 10px rgba(20, 18, 14, 0.05);
     --shadow-3: 0 1px 2px rgba(20, 18, 14, 0.04), 0 8px 24px rgba(20, 18, 14, 0.08);
+    --shadow-4: 0 24px 48px rgba(20, 18, 14, 0.16);
+    --shadow-inset: inset 0 0 0 0.5px rgba(20, 18, 14, 0.06), inset 0 1px 0 rgba(20, 18, 14, 0.03);
+    --veil: rgba(20, 18, 14, 0.18);
+
+    /* ── Surface-3 (segmented track, neutral badge) ── */
+    --surface-3: #EFEDE7;
+
+    /* ── Neutral aliases — bridge canonical DS names to the shadcn neutrals;
+       defined once here, auto-track .dark via inner var() re-resolution. ── */
+    --bg:         hsl(var(--background));
+    --surface:    hsl(var(--card));
+    --surface-2:  hsl(var(--muted));
+    --text:       hsl(var(--foreground));
+    --text-muted: hsl(var(--muted-foreground));
+    --text-faint: #8B8A85;
+
+    /* ── Semantic color scale (raw, for badge patterns and state tones) ──
+       Badge pattern = tint bg (-100) + text (-600). The -500 stops are the
+       saturated base hue, intended ONLY as a solid fill / dot / icon paired
+       with white text — that reads on both light and dark grounds, so -500
+       is intentionally mode-agnostic and has no .dark override. Never use a
+       -500 stop as text-on-surface; use -600 (which IS overridden for dark). */
+    --green-500: #16A34A;
+    --green-600: #157F3D;
+    --green-100: #E7F5EC;
+    --amber-500: #D97706;
+    --amber-600: #9A6314;
+    --amber-100: #FCF1DA;
+    --red-500: #DC2626;
+    --red-600: #A02323;
+    --red-100: #FCEAEA;
+
+    /* ── Radius scale (concentric — never reverse) ── */
+    --radius-xs:   4px;    /* tags, badges, inline chips */
+    --radius-s:    6px;    /* inputs, status dots */
+    --radius-m:    8px;    /* buttons */
+    --radius-l:    10px;   /* cards */
+    --radius-xl:   14px;   /* hero cards, sheets */
+    --radius-xxl:  20px;   /* app icons */
+    --radius-pill: 999px;  /* capsules (rare — badges use xs) */
+
+    /* ── Spacing / motion / density ──
+       These are CSS-only primitives — for hand-written CSS and framer-motion,
+       NOT Tailwind utilities. They are deliberately NOT wired into the Tailwind
+       config: --space-* would shadow Tailwind's numeric spacing scale (DS
+       space-1=2px vs Tailwind 1=4px) and --ease-/--dur- would override the
+       built-in ease-out/duration utilities, silently changing existing classes
+       app-wide. Consume via var(): `style={{ padding: 'var(--space-6)' }}` or
+       `transition: background var(--dur-fast) var(--ease-out)`. There is no
+       `p-space-6` / `duration-fast` utility — use Tailwind's native scales for
+       utility classes, these tokens for raw CSS. */
+    /* Spacing · 0-anchored doubling-ish scale */
+    --space-0:  0;
+    --space-1:  2px;
+    --space-2:  4px;
+    --space-3:  6px;
+    --space-4:  8px;
+    --space-5:  12px;
+    --space-6:  16px;   /* default inside cards */
+    --space-7:  24px;   /* between sections */
+    --space-8:  32px;
+    --space-9:  48px;   /* between document blocks */
+    --space-10: 64px;
+
+    /* ── Motion ── */
+    --ease-out:    cubic-bezier(.2, .7, .2, 1);
+    --ease-in-out: cubic-bezier(.4, 0, .2, 1);
+    --dur-fast:    120ms;
+    --dur-base:    180ms;
+    --dur-slow:    260ms;
+
+    /* ── Density — regular default; add class="compact" to opt in ── */
+    --row-h: 34px;
+    --btn-h: 36px;
 
     /* ── Auth hero (LoginPage immersive sign-in) — fixed brand art, theme-independent ── */
     --auth-bg: #0a0912;
@@ -76,56 +157,6 @@
     --auth-card: rgba(18, 16, 27, 0.55);
     --auth-hairline: rgba(255, 255, 255, 0.1);
     --auth-fg: #ffffff;
-
-    /* ── DS canonical tokens (settings/platform alignment) ── */
-    /* Primary interactive states — semantic, NOT raw accent stops, so a dark
-       role re-pitch can never break button contrast (white text AA on both). */
-    --primary-hover:  249 67% 56%;     /* accent-600 */
-    --primary-active: 249 53% 45%;     /* accent-700 */
-
-    /* Neutral aliases — bridge canonical DS names to the shadcn neutrals; the
-       inner var() re-resolves per element, so these auto-track light/dark. */
-    --bg:         hsl(var(--background));
-    --surface:    hsl(var(--card));
-    --surface-2:  hsl(var(--muted));
-    --surface-3:  #EFEDE7;             /* segmented track / neutral badge */
-    --text:       hsl(var(--foreground));
-    --text-muted: hsl(var(--muted-foreground));
-    --text-faint: #8B8A85;
-
-    /* Elevation extras + modal scrim */
-    --shadow-0:     none;
-    --shadow-4:     0 24px 48px rgba(20, 18, 14, 0.16);
-    --shadow-inset: inset 0 0 0 0.5px rgba(20, 18, 14, 0.06), inset 0 1px 0 rgba(20, 18, 14, 0.03);
-    --veil:         rgba(20, 18, 14, 0.18);
-
-    /* Semantic tint scale (raw hex). Badge/alert pattern = -100 bg + -600 text.
-       -500 is the solid base (white text), intentionally mode-agnostic. */
-    --green-500: #16A34A;  --green-600: #157F3D;  --green-100: #E7F5EC;
-    --amber-500: #D97706;  --amber-600: #9A6314;  --amber-100: #FCF1DA;
-    --red-500:   #DC2626;  --red-600:   #A02323;  --red-100:   #FCEAEA;
-
-    /* Radius scale (concentric). Collision-free t-shirt keys; NOT wired into
-       Tailwind (would resize rounded-xl/2xl). */
-    --radius-xs:   4px;
-    --radius-s:    6px;
-    --radius-m:    8px;
-    --radius-l:    10px;
-    --radius-xl:   14px;
-    --radius-xxl:  20px;
-    --radius-pill: 999px;
-
-    /* Spacing / motion / density — CSS-only primitives (consume via var(),
-       never as Tailwind utilities). */
-    --space-0: 0;    --space-1: 2px;  --space-2: 4px;  --space-3: 6px;  --space-4: 8px;
-    --space-5: 12px; --space-6: 16px; --space-7: 24px; --space-8: 32px;
-    --space-9: 48px; --space-10: 64px;
-
-    --ease-out:    cubic-bezier(.2, .7, .2, 1);
-    --ease-in-out: cubic-bezier(.4, 0, .2, 1);
-    --dur-fast: 120ms;  --dur-base: 180ms;  --dur-slow: 260ms;
-
-    --row-h: 34px;  --btn-h: 36px;
 
     /* ── Violet accent scale (literal hex — IMMUTABLE across light/dark) ──
        Read directly as colors (var(--accent-500)) AND via Tailwind utilities
@@ -154,9 +185,15 @@
     --popover: 252 11% 9%;
     --popover-foreground: 36 18% 95%;
 
-    /* ── Primary ── */
+    /* ── Primary ──
+       Interactive states stay on the true accent-600/700 (darker violets) in
+       dark too — darkening on hover/active keeps white-foreground contrast at
+       AA. The spec's "primary hover brightens" note is aesthetic; it can't
+       hold ≥4.5:1 with white text, so accessibility wins. */
     --primary: 249 90% 66%;            /* #6E5CF6 stays vibrant in dark */
     --primary-foreground: 0 0% 100%;
+    --primary-hover: 249 67% 56%;      /* #5848D8 accent-600 */
+    --primary-active: 249 53% 45%;     /* #4738B0 accent-700 */
 
     /* ── Secondary ── */
     --secondary: 252 11% 14%;
@@ -187,40 +224,45 @@
     --ring: 249 90% 66%;
 
     /* ── Sidebar ── */
-    --sidebar-background: 260 12% 4%;  /* #0A090C recessed rail (darker than card) */
+    --sidebar-background: 252 11% 12%; /* #1C1B22 = surface-2 in dark */
     --sidebar-foreground: 36 18% 95%;
     --sidebar-primary: 249 90% 66%;
     --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 249 55% 34%;     /* accent-800 active row tint */
-    --sidebar-accent-foreground: 249 100% 87%;  /* accent-200 active row text */
+    --sidebar-accent: 252 34% 21%;     /* ≈ rgba(110,92,246,.20) on dark surface */
+    --sidebar-accent-foreground: 252 100% 87%;  /* #C9BCFF = dark accent-700 */
     --sidebar-border: 252 11% 17%;
     --sidebar-ring: 249 90% 66%;
 
     /* ── Raw tokens ── */
     --line: rgba(255, 255, 255, 0.08);
     --line-strong: rgba(255, 255, 255, 0.14);
-    --shadow-1: 0 1px 2px rgba(0, 0, 0, 0.3);
-    --shadow-2: 0 1px 2px rgba(0, 0, 0, 0.4), 0 12px 32px rgba(0, 0, 0, 0.45);
-    --shadow-3: 0 1px 2px rgba(0, 0, 0, 0.4), 0 16px 48px rgba(0, 0, 0, 0.6);
+    --shadow-0: none;
+    --shadow-1: 0 1px 2px rgba(0, 0, 0, 0.40);
+    --shadow-2: 0 1px 2px rgba(0, 0, 0, 0.34), 0 4px 10px rgba(0, 0, 0, 0.40);
+    --shadow-3: 0 1px 2px rgba(0, 0, 0, 0.34), 0 8px 24px rgba(0, 0, 0, 0.50);
+    --shadow-4: 0 24px 48px rgba(0, 0, 0, 0.60);
+    --shadow-inset: inset 0 0 0 0.5px rgba(255, 255, 255, 0.06), inset 0 1px 0 rgba(255, 255, 255, 0.04);
+    --veil: rgba(0, 0, 0, 0.55);
 
-    /* ── DS canonical tokens — dark overrides ── */
-    --primary-hover:  249 67% 56%;     /* accent-600 — stays dark for white-text AA */
-    --primary-active: 249 53% 45%;     /* accent-700 */
-
-    --surface-3:  #24232B;
+    /* ── Surface-3 ── */
+    --surface-3: #24232B;
     --text-faint: #6F6E6A;
 
-    --shadow-0:     none;
-    --shadow-4:     0 24px 48px rgba(0, 0, 0, 0.60);
-    --shadow-inset: inset 0 0 0 0.5px rgba(255, 255, 255, 0.06), inset 0 1px 0 rgba(255, 255, 255, 0.04);
-    --veil:         rgba(0, 0, 0, 0.55);
+    /* ── Semantic dark overrides — tint-bg + text badge pattern stays legible ── */
+    --green-600: #5DD88A;
+    --green-100: rgba(34, 197, 94, 0.15);
+    --amber-600: #F2B23C;
+    --amber-100: rgba(217, 119, 6, 0.16);
+    --red-600: #F4756F;
+    --red-100: rgba(220, 38, 38, 0.18);
 
-    /* Tints flip on -100/-600 so the pattern stays legible; -500 unchanged. */
-    --green-600: #5DD88A;  --green-100: rgba(34, 197, 94, 0.15);
-    --amber-600: #F2B23C;  --amber-100: rgba(217, 119, 6, 0.16);
-    --red-600:   #F4756F;  --red-100:   rgba(220, 38, 38, 0.18);
-
-    /* ── Accent scale — IMMUTABLE across modes (identical hex to :root) ── */
+    /* ── Accent scale — IMMUTABLE across modes (identical hex to :root) ──
+       The 50–900 stops never change between light and dark. Components read
+       these as fixed palette values (e.g. `bg-accent-50 text-accent-700` on
+       the accent badge, `bg-primary-hover` ← accent-600 on buttons). Dark-mode
+       ROLE shifts (lifted active-nav text/tint) live in semantic tokens
+       (--sidebar-accent / --sidebar-accent-foreground), never in the scale —
+       mutating a stop here silently breaks every consumer that reads it. */
     --accent-50:  #F4F1FF;
     --accent-100: #E5DEFF;
     --accent-200: #CABBFF;
