@@ -35,4 +35,13 @@ describe('accent scale hex conversion', () => {
     expect(tw).not.toMatch(/hsl\(var\(--accent-\d/);
     expect(tw).toMatch(/var\(--accent-500\)/);
   });
+
+  it('accent scale stops are hex and identical across :root and .dark', () => {
+    const stops = ['50','100','200','300','400','500','600','700','800','900'];
+    for (const s of stops) {
+      const vals = [...css.matchAll(new RegExp(`--accent-${s}:\\s*(#[0-9A-Fa-f]{6})`, 'g'))].map((m) => m[1]);
+      expect(vals.length, `--accent-${s} should be a 6-digit hex in both :root and .dark`).toBe(2);
+      expect(vals[0]).toBe(vals[1]);
+    }
+  });
 });
