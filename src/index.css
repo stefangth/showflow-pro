@@ -288,5 +288,9 @@
   body {
     @apply bg-background text-foreground font-sans;
     font-family: 'Geist', system-ui, sans-serif;
+    /* Match the design mock's crispness: grayscale smoothing renders Geist
+       lighter/cleaner than macOS's default subpixel antialiasing. */
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
   }
 }
