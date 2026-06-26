@@ -15,18 +15,19 @@ const badgeVariants = cva(
         secondary:
           "border-transparent bg-secondary text-secondary-foreground hover:bg-secondary/80",
         destructive:
-          "border-transparent bg-destructive text-destructive-foreground hover:bg-destructive/80",
+          "border-transparent bg-[var(--red-100)] text-[var(--red-600)]",
         outline: "text-foreground",
 
         /* Design-system tone variants */
         confirmed:
-          "border-success/30 bg-success/10 text-success",
+          "border-transparent bg-[var(--green-100)] text-[var(--green-600)]",
         hold:
-          "border-warning/30 bg-warning/10 text-warning",
+          "border-transparent bg-[var(--amber-100)] text-[var(--amber-600)]",
+        /* "at-risk / degraded" — amber, distinct from destructive's red */
         risk:
-          "border-destructive/30 bg-destructive/10 text-destructive",
+          "border-transparent bg-[var(--amber-100)] text-[var(--amber-600)]",
         accent:
-          "border-accent-500/30 bg-accent-50 text-accent-700",
+          "border-accent-200 bg-accent-50 text-accent-700",
         neutral:
           "border-border bg-muted text-muted-foreground",
       },
