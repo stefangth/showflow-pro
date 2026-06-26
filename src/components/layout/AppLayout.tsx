@@ -21,6 +21,7 @@ import { NotificationsList } from '@/components/layout/NotificationsList';
 import { useNotifications } from '@/hooks/useNotifications';
 import { useNavCounts } from '@/hooks/useNavCounts';
 import { useMyProfile } from '@/hooks/useMyProfile';
+import { toast } from 'sonner';
 
 interface AppLayoutProps {
   children: React.ReactNode;
@@ -68,8 +69,12 @@ export default function AppLayout({ children }: AppLayoutProps) {
   const profileSubtitle = currentOrg ? `${roleLabel} · ${currentOrg.name}` : roleLabel;
 
   const handleSignOut = async () => {
-    await signOut();
-    navigate(ROUTES.LOGIN);
+    try {
+      await signOut();
+      navigate(ROUTES.LOGIN);
+    } catch {
+      toast.error('Sign out failed — please try again.');
+    }
   };
 
   const filteredNav = visibleNavItems(NAV_ITEMS, { isEditorMode, isRealAdmin, isSuperAdmin, hasRole: (r) => hasRole(r as any) });
