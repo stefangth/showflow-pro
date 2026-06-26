@@ -23,8 +23,9 @@ const badgeVariants = cva(
           "border-transparent bg-[var(--green-100)] text-[var(--green-600)]",
         hold:
           "border-transparent bg-[var(--amber-100)] text-[var(--amber-600)]",
+        /* "at-risk / degraded" — amber, distinct from destructive's red */
         risk:
-          "border-transparent bg-[var(--red-100)] text-[var(--red-600)]",
+          "border-transparent bg-[var(--amber-100)] text-[var(--amber-600)]",
         accent:
           "border-accent-200 bg-accent-50 text-accent-700",
         neutral:

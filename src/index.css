@@ -74,7 +74,7 @@
     --shadow-3: 0 1px 2px rgba(20, 18, 14, 0.04), 0 8px 24px rgba(20, 18, 14, 0.08);
     --shadow-4: 0 24px 48px rgba(20, 18, 14, 0.16);
     --shadow-inset: inset 0 0 0 0.5px rgba(20, 18, 14, 0.06), inset 0 1px 0 rgba(20, 18, 14, 0.03);
-    --veil: rgba(20, 18, 14, 0.18);
+    --veil: rgba(20, 18, 14, 0.18);   /* intentional light-touch modal scrim (DS value) — verify on preview */
 
     /* ── Surface-3 (segmented track, neutral badge) ── */
     --surface-3: #EFEDE7;
@@ -87,6 +87,9 @@
     --text:       hsl(var(--foreground));
     --text-muted: hsl(var(--muted-foreground));
     --text-faint: #8B8A85;
+
+    /* ── Component surface tints (semantic, mode-flipping) ── */
+    --notification-unread: var(--accent-50);   /* unread-row tint (light) */
 
     /* ── Semantic color scale (raw, for badge patterns and state tones) ──
        Badge pattern = tint bg (-100) + text (-600). The -500 stops are the
@@ -247,6 +250,7 @@
     /* ── Surface-3 ── */
     --surface-3: #24232B;
     --text-faint: #6F6E6A;
+    --notification-unread: rgba(110, 92, 246, 0.12);   /* subtle violet wash (dark) */
 
     /* ── Semantic dark overrides — tint-bg + text badge pattern stays legible ── */
     --green-600: #5DD88A;

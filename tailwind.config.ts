@@ -47,6 +47,9 @@ export default {
         accent: {
           DEFAULT: "hsl(var(--accent))",
           foreground: "hsl(var(--accent-foreground))",
+          /* Accent stops are plain hex vars (not hsl channels): Tailwind /opacity
+             modifiers (e.g. bg-accent-500/20) silently produce NO opacity here.
+             Use a solid stop, or bg-[rgba(...)] / a dedicated token, for alpha. */
           50:  "var(--accent-50)",
           100: "var(--accent-100)",
           200: "var(--accent-200)",

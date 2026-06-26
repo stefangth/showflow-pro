@@ -52,7 +52,7 @@ export function NotificationsList() {
               onClick={() => !n.read && markRead.mutate(n.id)}
               className={cn(
                 'w-full text-left px-4 py-3 border-b border-border last:border-0 transition-colors hover:bg-muted',
-                !n.read && 'bg-accent-50 dark:bg-[rgba(110,92,246,0.12)]',
+                !n.read && 'bg-[var(--notification-unread)]',
               )}
             >
               <div className="flex items-start gap-2">
