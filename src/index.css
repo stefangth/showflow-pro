@@ -127,17 +127,20 @@
 
     --row-h: 34px;  --btn-h: 36px;
 
-    /* ── Violet accent scale ── */
-    --accent-50: 249 100% 97%;   /* #F4F1FF */
-    --accent-100: 249 100% 93%;  /* #E5DEFF */
-    --accent-200: 249 100% 87%;  /* #CABBFF */
-    --accent-300: 249 100% 78%;  /* #A88EFF */
-    --accent-400: 249 88% 70%;   /* #8A6DF6 */
-    --accent-500: 249 90% 66%;   /* #6E5CF6 */
-    --accent-600: 249 67% 56%;   /* #5848D8 */
-    --accent-700: 249 53% 45%;   /* #4738B0 */
-    --accent-800: 249 55% 34%;   /* #322685 */
-    --accent-900: 249 56% 23%;   /* #1E175A */
+    /* ── Violet accent scale (literal hex — IMMUTABLE across light/dark) ──
+       Read directly as colors (var(--accent-500)) AND via Tailwind utilities
+       (bg-accent-500 → var(--accent-500)). Never re-pitch a stop per mode;
+       dark role shifts live in --primary-hover/active and --sidebar-accent*. */
+    --accent-50:  #F4F1FF;
+    --accent-100: #E5DEFF;
+    --accent-200: #CABBFF;
+    --accent-300: #A88EFF;
+    --accent-400: #8A6DF6;
+    --accent-500: #6E5CF6;
+    --accent-600: #5848D8;
+    --accent-700: #4738B0;
+    --accent-800: #322685;
+    --accent-900: #1E175A;
   }
 
   .dark {
@@ -217,17 +220,17 @@
     --amber-600: #F2B23C;  --amber-100: rgba(217, 119, 6, 0.16);
     --red-600:   #F4756F;  --red-100:   rgba(220, 38, 38, 0.18);
 
-    /* ── Accent scale (unchanged — perceptually stable) ── */
-    --accent-50: 249 100% 97%;
-    --accent-100: 249 100% 93%;
-    --accent-200: 249 100% 87%;
-    --accent-300: 249 100% 78%;
-    --accent-400: 249 88% 70%;
-    --accent-500: 249 90% 66%;
-    --accent-600: 249 67% 56%;
-    --accent-700: 249 53% 45%;
-    --accent-800: 249 55% 34%;
-    --accent-900: 249 56% 23%;
+    /* ── Accent scale — IMMUTABLE across modes (identical hex to :root) ── */
+    --accent-50:  #F4F1FF;
+    --accent-100: #E5DEFF;
+    --accent-200: #CABBFF;
+    --accent-300: #A88EFF;
+    --accent-400: #8A6DF6;
+    --accent-500: #6E5CF6;
+    --accent-600: #5848D8;
+    --accent-700: #4738B0;
+    --accent-800: #322685;
+    --accent-900: #1E175A;
   }
 }
 

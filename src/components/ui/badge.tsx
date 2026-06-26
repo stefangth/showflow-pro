@@ -26,7 +26,7 @@ const badgeVariants = cva(
         risk:
           "border-destructive/30 bg-destructive/10 text-destructive",
         accent:
-          "border-accent-500/30 bg-accent-50 text-accent-700",
+          "border-accent-200 bg-accent-50 text-accent-700",
         neutral:
           "border-border bg-muted text-muted-foreground",
       },
