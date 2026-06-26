@@ -84,13 +84,13 @@ export default function AppLayout({ children }: AppLayoutProps) {
       <div className="flex items-center gap-2.5 px-3.5 py-4 border-b-[0.5px] border-sidebar-border">
         <StageMark variant="mark" size={32} className="shrink-0" />
         {!collapsed && (
-          <div className="flex items-baseline gap-1.5 min-w-0">
+          <div className="flex flex-1 items-baseline gap-1.5 min-w-0">
             {/* ShowFlow product wordmark — two-tone is intentional brand styling */}
             <span className="font-display text-[15px] font-semibold tracking-[-0.02em] truncate">
               <span className="text-foreground">Show</span>
               <span className="text-primary">Flow</span>
             </span>
-            <span className="shrink-0 rounded border border-border px-1 py-px font-mono text-[9px] font-medium tabular-nums text-muted-foreground">
+            <span className="ml-auto shrink-0 rounded border border-border px-1 py-px font-mono text-[9px] font-medium tabular-nums text-muted-foreground">
               v{APP_META.VERSION}
             </span>
           </div>
