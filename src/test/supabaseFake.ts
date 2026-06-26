@@ -1,8 +1,9 @@
-/** A single seed: the result returned for every query to a table (backward-compatible form). */
-export type SingleSeed = { data?: unknown; error?: unknown };
+/** A single seed: the result returned for every query to a table (backward-compatible form).
+ *  `count` mirrors PostgREST head-count queries (`select("*", { count: "exact", head: true })`). */
+export type SingleSeed = { data?: unknown; error?: unknown; count?: number | null };
 
 /** One entry in an array seed — `when` is matched against recorded eq() args. */
-export type ArraySeedEntry = { when?: Record<string, unknown>; data?: unknown; error?: unknown };
+export type ArraySeedEntry = { when?: Record<string, unknown>; data?: unknown; error?: unknown; count?: number | null };
 
 /** Per-table seed: either a single result object or a match-based array. */
 export type TableSeed = SingleSeed | ArraySeedEntry[];
@@ -10,6 +11,7 @@ export type TableSeed = SingleSeed | ArraySeedEntry[];
 export interface FakeResult {
   data?: unknown;
   error?: unknown;
+  count?: number | null;
 }
 export interface RecordedCall {
   table: string;
@@ -44,7 +46,7 @@ function resolveSeed(
   seed: TableSeed,
   localEq: Record<string, unknown>,
   localIn: Record<string, unknown[]> = {},
-): { data: unknown; error: unknown } {
+): { data: unknown; error: unknown; count: number | null } {
   if (Array.isArray(seed)) {
     // Find first entry whose every `when` key/value matches localEq
     const matched = seed.find((entry) =>
@@ -52,19 +54,19 @@ function resolveSeed(
       Object.entries(entry.when).every(([k, v]) => localEq[k] === v)
     );
     if (matched) {
-      return { data: "data" in matched ? matched.data : [], error: matched.error ?? null };
+      return { data: "data" in matched ? matched.data : [], error: matched.error ?? null, count: matched.count ?? null };
     }
     // Fall back to first entry with no `when`
     const fallback = seed.find((entry) => entry.when === undefined);
     if (fallback) {
-      return { data: "data" in fallback ? fallback.data : [], error: fallback.error ?? null };
+      return { data: "data" in fallback ? fallback.data : [], error: fallback.error ?? null, count: fallback.count ?? null };
     }
-    return { data: [], error: null };
+    return { data: [], error: null, count: null };
   }
   // Single-object seed (backward-compatible).
   // Apply in() filtering so that .in("role", ["admin"]) correctly excludes rows
   // where the field value is not in the allowed set. Mirrors the Deno fake.
-  const { data, error } = seed as { data: unknown; error: unknown };
+  const { data, error, count = null } = seed as SingleSeed;
   if (data !== null && data !== undefined && Object.keys(localIn).length > 0) {
     const applyInFilter = (row: Record<string, unknown>): boolean =>
       Object.entries(localIn).every(([col, allowed]) => allowed.includes(row[col]));
@@ -72,15 +74,15 @@ function resolveSeed(
     if (Array.isArray(data)) {
       // Filter the array and return only matching rows
       const filtered = (data as Record<string, unknown>[]).filter(applyInFilter);
-      return { data: filtered.length > 0 ? filtered : null, error };
+      return { data: filtered.length > 0 ? filtered : null, error, count };
     } else if (typeof data === "object") {
       // Single object: return null if it doesn't satisfy the in() constraint
       if (!applyInFilter(data as Record<string, unknown>)) {
-        return { data: null, error };
+        return { data: null, error, count };
       }
     }
   }
-  return { data, error };
+  return { data, error, count };
 }
 
 /**

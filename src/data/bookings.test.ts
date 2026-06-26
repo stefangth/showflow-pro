@@ -79,18 +79,20 @@ describe("closeOfferTier", () => {
 });
 
 describe("fetchPendingConfirmationsCount", () => {
-  it("counts soft_booked bookings for the org", async () => {
+  it("counts soft_booked bookings for the org via a head count", async () => {
     const fake = createFakeSupabase({
-      bookings: { data: [{ id: "b1" }, { id: "b2" }, { id: "b3" }], error: null },
+      bookings: { data: null, count: 3, error: null },
     });
     const n = await fetchPendingConfirmationsCount(fake as never, "org-1");
     expect(n).toBe(3);
+    // Server-side count: no row data transferred (head: true).
+    expect(fake.calls).toContainEqual({ table: "bookings", method: "select", args: ["*", { count: "exact", head: true }] });
     expect(fake.calls).toContainEqual({ table: "bookings", method: "eq", args: ["org_id", "org-1"] });
     expect(fake.calls).toContainEqual({ table: "bookings", method: "eq", args: ["status", "soft_booked"] });
   });
 
-  it("returns 0 when none", async () => {
-    const fake = createFakeSupabase({ bookings: { data: [], error: null } });
+  it("returns 0 when count is null", async () => {
+    const fake = createFakeSupabase({ bookings: { data: null, count: null, error: null } });
     expect(await fetchPendingConfirmationsCount(fake as never, "org-1")).toBe(0);
   });
 
@@ -101,18 +103,19 @@ describe("fetchPendingConfirmationsCount", () => {
 });
 
 describe("fetchMyOpenOffersCount", () => {
-  it("counts suggested bookings for the artist", async () => {
+  it("counts suggested bookings for the artist via a head count", async () => {
     const fake = createFakeSupabase({
-      bookings: { data: [{ id: "b1" }, { id: "b2" }], error: null },
+      bookings: { data: null, count: 2, error: null },
     });
     const n = await fetchMyOpenOffersCount(fake as never, "artist-1");
     expect(n).toBe(2);
+    expect(fake.calls).toContainEqual({ table: "bookings", method: "select", args: ["*", { count: "exact", head: true }] });
     expect(fake.calls).toContainEqual({ table: "bookings", method: "eq", args: ["artist_id", "artist-1"] });
     expect(fake.calls).toContainEqual({ table: "bookings", method: "eq", args: ["status", "suggested"] });
   });
 
-  it("returns 0 when none", async () => {
-    const fake = createFakeSupabase({ bookings: { data: [], error: null } });
+  it("returns 0 when count is null", async () => {
+    const fake = createFakeSupabase({ bookings: { data: null, count: null, error: null } });
     expect(await fetchMyOpenOffersCount(fake as never, "artist-1")).toBe(0);
   });
 });
