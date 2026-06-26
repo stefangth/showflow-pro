@@ -94,9 +94,11 @@ export default {
         sm: "calc(var(--radius) - 4px)",
       },
       boxShadow: {
+        elev0: "var(--shadow-0)",
         elev1: "var(--shadow-1)",
         elev2: "var(--shadow-2)",
         elev3: "var(--shadow-3)",
+        elev4: "var(--shadow-4)",
       },
       keyframes: {
         "accordion-down": {
