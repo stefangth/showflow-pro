@@ -30,6 +30,7 @@ interface AppLayoutProps {
 const ROUTE_TO_FILE: Record<string, string> = {
   [ROUTES.DASHBOARD]:    'DashboardPage.tsx',
   [ROUTES.BOOKINGS]:     'ShowsBookingsPage.tsx',
+  [ROUTES.PRODUCTIONS]:  'ProductionsPage.tsx',
   [ROUTES.ARTISTS]:      'ArtistsPage.tsx',
   [ROUTES.AVAILABILITY]: 'AvailabilityPage.tsx',
   [ROUTES.ADMIN]:        'AdminPage.tsx',
