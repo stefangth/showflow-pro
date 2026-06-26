@@ -3,6 +3,7 @@ import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 
 const css = readFileSync(resolve(process.cwd(), 'src/index.css'), 'utf8');
+const tw = readFileSync(resolve(process.cwd(), 'tailwind.config.ts'), 'utf8');
 
 describe('DS canonical token foundation', () => {
   it('defines neutral aliases', () => {
@@ -21,5 +22,17 @@ describe('DS canonical token foundation', () => {
     for (const t of ['--red-100:', '--red-600:', '--green-100:', '--green-600:', '--amber-100:', '--amber-600:']) {
       expect(css, `missing ${t}`).toContain(t);
     }
+  });
+});
+
+describe('accent scale hex conversion', () => {
+  it('accent stops are hex, not HSL triplets', () => {
+    expect(css).toMatch(/--accent-500:\s*#6E5CF6/i);
+    expect(css).not.toMatch(/--accent-500:\s*\d+\s+\d+%\s+\d+%/);
+  });
+
+  it('tailwind consumes the accent scale as raw var(), not hsl()', () => {
+    expect(tw).not.toMatch(/hsl\(var\(--accent-\d/);
+    expect(tw).toMatch(/var\(--accent-500\)/);
   });
 });
