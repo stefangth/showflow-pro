@@ -25,10 +25,10 @@ describe('Badge', () => {
     expect(screen.getByText('h').className).toContain('var(--amber-600)');
   });
 
-  it('risk uses the DS red tint pattern', () => {
+  it('risk uses the DS amber tint pattern', () => {
     render(<Badge variant="risk">r</Badge>);
     const el = screen.getByText('r');
-    expect(el.className).toContain('var(--red-100)');
-    expect(el.className).toContain('var(--red-600)');
+    expect(el.className).toContain('var(--amber-100)');
+    expect(el.className).toContain('var(--amber-600)');
   });
 });
