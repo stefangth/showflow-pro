@@ -89,7 +89,7 @@
     --text-faint: #8B8A85;
 
     /* ── Component surface tints (semantic, mode-flipping) ── */
-    --notification-unread: var(--accent-50);   /* unread-row tint (light) */
+    --notification-unread: #F4F1FF;   /* unread-row tint (light) — accent-50; literal so both modes are independently readable */
 
     /* ── Semantic color scale (raw, for badge patterns and state tones) ──
        Badge pattern = tint bg (-100) + text (-600). The -500 stops are the

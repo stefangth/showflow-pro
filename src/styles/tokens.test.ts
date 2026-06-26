@@ -5,7 +5,7 @@ import { resolve } from 'node:path';
 const css = readFileSync(resolve(process.cwd(), 'src/index.css'), 'utf8');
 const tw = readFileSync(resolve(process.cwd(), 'tailwind.config.ts'), 'utf8');
 
-describe('DS canonical token foundation', () => {
+describe('DS canonical token source presence (string-match only)', () => {
   it('defines neutral aliases', () => {
     for (const t of ['--bg:', '--surface:', '--surface-2:', '--surface-3:', '--text:', '--text-muted:', '--text-faint:']) {
       expect(css, `missing ${t}`).toContain(t);
@@ -25,7 +25,7 @@ describe('DS canonical token foundation', () => {
   });
 });
 
-describe('accent scale hex conversion', () => {
+describe('accent scale hex conversion (source format check)', () => {
   it('accent stops are hex, not HSL triplets', () => {
     expect(css).toMatch(/--accent-500:\s*#6E5CF6/i);
     expect(css).not.toMatch(/--accent-500:\s*\d+\s+\d+%\s+\d+%/);
