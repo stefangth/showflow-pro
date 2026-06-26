@@ -7,6 +7,7 @@ describe('Input', () => {
     render(<Input aria-label="field" />);
     const el = screen.getByLabelText('field');
     expect(el.className).toContain('rounded-[6px]');
-    expect(el.className).toContain('border-[0.5px]');
+    // hairline rendered via inset box-shadow (reliable sub-pixel at all densities)
+    expect(el.className).toContain('inset_0_0_0_0.5px');
   });
 });
