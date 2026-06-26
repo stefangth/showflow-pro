@@ -285,8 +285,12 @@ export default function AppLayout({ children }: AppLayoutProps) {
           </button>
           <div className="lg:hidden flex items-center gap-2">
             <StageMark variant="mark" size={24} />
-            <span className="font-display font-semibold text-[15px] tracking-[-0.02em]">{APP_META.NAME}</span>
-            <span className="text-[10px] font-medium text-muted-foreground tabular-nums">v{APP_META.VERSION}</span>
+            <span className="font-display font-semibold text-[15px] tracking-[-0.02em]">
+              <span className="text-foreground">Show</span><span className="text-primary">Flow</span>
+            </span>
+            <span className="rounded border border-border px-1 py-px font-mono text-[9px] font-medium tabular-nums text-muted-foreground">
+              v{APP_META.VERSION}
+            </span>
           </div>
 
           {/* Breadcrumb — current page path (desktop) */}
