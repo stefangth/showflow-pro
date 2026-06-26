@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { NavLink, Link } from 'react-router-dom';
 import { useAuth } from '@/features/auth/AuthContext';
-import { APP_META, ROUTES } from '@/config/app.config';
+import { ROUTES } from '@/config/app.config';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
@@ -15,6 +15,7 @@ import { useSettingsWarnings } from '@/hooks/useSettingsWarnings';
 import { useEditorConfig } from '@/features/editor/EditorContext';
 import { EditorToolbar, EditorModeToggle } from '@/features/editor/EditorToolbar';
 import { StageMark } from '@/components/brand/StageMark';
+import { BrandWordmark } from '@/components/brand/BrandWordmark';
 import { OrgSwitcher } from '@/components/layout/OrgSwitcher';
 import { NotificationsList } from '@/components/layout/NotificationsList';
 import { useNotifications } from '@/hooks/useNotifications';
@@ -83,18 +84,7 @@ export default function AppLayout({ children }: AppLayoutProps) {
       {/* Logo */}
       <div className="flex items-center gap-2.5 px-3.5 py-4 border-b-[0.5px] border-sidebar-border">
         <StageMark variant="mark" size={32} className="shrink-0" />
-        {!collapsed && (
-          <div className="flex flex-1 items-baseline gap-1.5 min-w-0">
-            {/* ShowFlow product wordmark — two-tone is intentional brand styling */}
-            <span className="font-display text-[15px] font-semibold tracking-[-0.02em] truncate">
-              <span className="text-foreground">Show</span>
-              <span className="text-primary">Flow</span>
-            </span>
-            <span className="ml-auto shrink-0 rounded border border-border px-1 py-px font-mono text-[9px] font-medium tabular-nums text-muted-foreground">
-              v{APP_META.VERSION}
-            </span>
-          </div>
-        )}
+        {!collapsed && <BrandWordmark className="flex-1" />}
       </div>
 
       {/* Org switcher */}
@@ -132,11 +122,15 @@ export default function AppLayout({ children }: AppLayoutProps) {
                 >
                   <span className="relative shrink-0">
                     <item.icon className="h-[14px] w-[14px]" />
-                    {showWarningDot && (
-                      <span className="absolute -top-0.5 -right-0.5 h-1.5 w-1.5 rounded-full bg-destructive ring-2 ring-background" />
-                    )}
-                    {collapsed && badgeCount > 0 && (
-                      <span className="absolute -top-0.5 -right-0.5 h-1.5 w-1.5 rounded-full bg-primary ring-2 ring-background" />
+                    {/* One corner dot. Warning (destructive) wins over the collapsed
+                        count dot (primary) so a config warning is never painted over. */}
+                    {(showWarningDot || (collapsed && badgeCount > 0)) && (
+                      <span
+                        className={cn(
+                          'absolute -top-0.5 -right-0.5 h-1.5 w-1.5 rounded-full ring-2 ring-background',
+                          showWarningDot ? 'bg-destructive' : 'bg-primary',
+                        )}
+                      />
                     )}
                     {hiddenForRole && !collapsed && (
                       <EyeOff className="absolute -bottom-1 -right-1 h-2.5 w-2.5 text-muted-foreground" />
@@ -262,7 +256,7 @@ export default function AppLayout({ children }: AppLayoutProps) {
       {mobileOpen && (
         <div className="fixed inset-0 z-50 lg:hidden">
           <div
-            className="absolute inset-0 bg-black/50"
+            className="absolute inset-0 bg-[var(--veil)]"
             onClick={() => setMobileOpen(false)}
             aria-hidden="true"
           />
@@ -285,12 +279,7 @@ export default function AppLayout({ children }: AppLayoutProps) {
           </button>
           <div className="lg:hidden flex items-center gap-2">
             <StageMark variant="mark" size={24} />
-            <span className="font-display font-semibold text-[15px] tracking-[-0.02em]">
-              <span className="text-foreground">Show</span><span className="text-primary">Flow</span>
-            </span>
-            <span className="rounded border border-border px-1 py-px font-mono text-[9px] font-medium tabular-nums text-muted-foreground">
-              v{APP_META.VERSION}
-            </span>
+            <BrandWordmark />
           </div>
 
           {/* Breadcrumb — current page path (desktop) */}

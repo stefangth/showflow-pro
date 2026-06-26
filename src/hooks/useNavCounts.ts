@@ -21,12 +21,16 @@ export function useNavCounts(): { pendingConfirmations: number; openOffers: numb
   const pending = useQuery({
     queryKey: ["bookings", "nav-pending-confirmations", orgId],
     enabled: canSeeOrgBookings && !!orgId,
+    // Badge freshness without hammering on every focus/navigation; booking
+    // mutations still invalidate ['bookings'] for immediate updates.
+    staleTime: 60_000,
     queryFn: () => fetchPendingConfirmationsCount(supabase, orgId!),
   });
 
   const offers = useQuery({
     queryKey: ["bookings", "nav-open-offers", artistId],
     enabled: !!artistId,
+    staleTime: 60_000,
     queryFn: () => fetchMyOpenOffersCount(supabase, artistId!),
   });
 
