@@ -51,8 +51,10 @@ export function NotificationsList() {
               key={n.id}
               onClick={() => !n.read && markRead.mutate(n.id)}
               className={cn(
-                'w-full text-left px-4 py-3 border-b border-border last:border-0 transition-colors hover:bg-muted',
-                !n.read && 'bg-[var(--notification-unread)]',
+                'w-full text-left px-4 py-3 border-b border-border last:border-0 transition-colors',
+                n.read
+                  ? 'hover:bg-muted'
+                  : 'bg-[var(--notification-unread)] hover:bg-[var(--notification-unread)]',
               )}
             >
               <div className="flex items-start gap-2">
