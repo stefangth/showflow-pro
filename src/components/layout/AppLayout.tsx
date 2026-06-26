@@ -162,28 +162,71 @@ export default function AppLayout({ children }: AppLayoutProps) {
         ))}
       </nav>
 
-      {/* User section */}
-      <div className="border-t-[0.5px] border-sidebar-border px-2 py-3 space-y-1">
-        {!collapsed && (
-          <div className="px-1.5 mb-1.5 space-y-1.5">
+      {/* User / profile card */}
+      <div className="border-t-[0.5px] border-sidebar-border p-2">
+        {collapsed ? (
+          <div className="flex flex-col items-center gap-2">
+            <Avatar className="h-8 w-8">
+              <AvatarFallback seed={user?.email ?? ''}>{initials}</AvatarFallback>
+            </Avatar>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-7 w-7 text-sidebar-foreground/70"
+              onClick={() => navigate(ROUTES.PROFILE)}
+              aria-label="Profile"
+            >
+              <User className="h-[14px] w-[14px]" />
+            </Button>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-7 w-7 text-sidebar-foreground/70"
+              onClick={handleSignOut}
+              aria-label="Sign out"
+            >
+              <LogOut className="h-[14px] w-[14px]" />
+            </Button>
+          </div>
+        ) : (
+          <div className="rounded-[10px] border border-sidebar-border bg-background/70 px-2.5 py-2 shadow-sm">
             <div className="flex items-center gap-2.5">
-              <Avatar className="h-7 w-7">
-                <AvatarFallback seed={user?.email ?? ''}>
-                  {(user?.email?.split('@')[0] ?? '?').slice(0, 2).toUpperCase()}
-                </AvatarFallback>
+              <Avatar className="h-8 w-8 shrink-0">
+                <AvatarFallback seed={user?.email ?? ''}>{initials}</AvatarFallback>
               </Avatar>
               <div className="flex-1 min-w-0">
-                <p className="text-[12px] font-semibold truncate">{user?.email}</p>
-                <p className="text-[10px] text-muted-foreground capitalize truncate">{roles.join(', ') || 'No role'}</p>
+                <p className="text-[12.5px] font-semibold leading-tight truncate">{displayName}</p>
+                <p className="text-[10.5px] text-muted-foreground leading-tight truncate">{profileSubtitle}</p>
               </div>
+              <Popover open={profileMenuOpen} onOpenChange={setProfileMenuOpen}>
+                <PopoverTrigger asChild>
+                  <Button variant="ghost" size="icon" className="h-7 w-7 shrink-0 text-sidebar-foreground/60 hover:text-sidebar-foreground" aria-label="Account menu">
+                    <Settings className="h-[15px] w-[15px]" />
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent align="end" side="top" sideOffset={8} className="w-44 p-1">
+                  <button
+                    className="flex w-full items-center gap-2.5 rounded-md px-2.5 py-2 text-[13px] text-foreground hover:bg-foreground/[0.05] transition-colors"
+                    onClick={() => { setProfileMenuOpen(false); navigate(ROUTES.PROFILE); }}
+                  >
+                    <User className="h-[14px] w-[14px]" /> Profile
+                  </button>
+                  <button
+                    className="flex w-full items-center gap-2.5 rounded-md px-2.5 py-2 text-[13px] text-foreground hover:bg-foreground/[0.05] transition-colors"
+                    onClick={() => { setProfileMenuOpen(false); handleSignOut(); }}
+                  >
+                    <LogOut className="h-[14px] w-[14px]" /> Sign out
+                  </button>
+                </PopoverContent>
+              </Popover>
             </div>
             {viewAsRole && isEditorMode && !viewAsUser && (
-              <Badge variant="outline" className="border-warning text-warning">
+              <Badge variant="outline" className="mt-2 border-warning text-warning">
                 Viewing as: {viewAsRole}
               </Badge>
             )}
             {viewAsUser && isEditorMode && (
-              <div className="space-y-0.5">
+              <div className="mt-2 space-y-0.5">
                 <Badge variant="outline" className="border-warning text-warning">
                   Viewing as: {viewAsUser.roles.join(', ') || 'no role'}
                 </Badge>
@@ -192,24 +235,6 @@ export default function AppLayout({ children }: AppLayoutProps) {
             )}
           </div>
         )}
-        <Button
-          variant="ghost"
-          size="sm"
-          className="w-full justify-start gap-2.5 text-sidebar-foreground/70 hover:bg-foreground/[0.04] hover:text-sidebar-foreground"
-          onClick={() => navigate(ROUTES.PROFILE)}
-        >
-          <User className="h-[14px] w-[14px]" />
-          {!collapsed && 'Profile'}
-        </Button>
-        <Button
-          variant="ghost"
-          size="sm"
-          className="w-full justify-start gap-2.5 text-sidebar-foreground/70 hover:bg-foreground/[0.04] hover:text-sidebar-foreground"
-          onClick={handleSignOut}
-        >
-          <LogOut className="h-[14px] w-[14px]" />
-          {!collapsed && 'Sign Out'}
-        </Button>
       </div>
     </div>
   );
