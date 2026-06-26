@@ -88,3 +88,31 @@ export async function closeOfferTier(
   if (payload?.error) throw new Error(payload.error);
   return { closed: !!payload?.closed, withdrawn: payload?.withdrawn ?? 0, message: payload?.message };
 }
+
+/** Count of bookings awaiting producer confirmation (soft_booked) in an org. */
+export async function fetchPendingConfirmationsCount(
+  client: SupabaseClient<Database>,
+  orgId: string,
+): Promise<number> {
+  const { data, error } = await client
+    .from("bookings")
+    .select("id")
+    .eq("org_id", orgId)
+    .eq("status", "soft_booked");
+  if (error) throw error;
+  return (data ?? []).length;
+}
+
+/** Count of open offers (suggested) awaiting a given artist's response. */
+export async function fetchMyOpenOffersCount(
+  client: SupabaseClient<Database>,
+  artistId: string,
+): Promise<number> {
+  const { data, error } = await client
+    .from("bookings")
+    .select("id")
+    .eq("artist_id", artistId)
+    .eq("status", "suggested");
+  if (error) throw error;
+  return (data ?? []).length;
+}
