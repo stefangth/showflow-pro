@@ -42,7 +42,7 @@ export function OrganizationsTab() {
 
   const enter = (orgId: string) => { switchOrg(orgId); navigate(ROUTES.DASHBOARD); };
 
-  if (isLoading) return <div className="space-y-2">{[0, 1, 2].map((i) => <Skeleton key={i} className="h-12 w-full" />)}</div>;
+  if (isLoading) return <div className="space-y-2">{[0, 1, 2].map((i) => <Skeleton key={i} className="h-[34px] w-full" />)}</div>;
   if (isError) return <Alert variant="destructive"><AlertDescription>{(error as Error).message}</AlertDescription></Alert>;
 
   return (
@@ -52,7 +52,7 @@ export function OrganizationsTab() {
         <TableHeader>
           <TableRow>
             <TableHead>Name</TableHead><TableHead>Slug</TableHead><TableHead>Status</TableHead>
-            <TableHead>Members</TableHead><TableHead>Active artists</TableHead><TableHead>Bookings 30d</TableHead>
+            <TableHead className="text-right">Members</TableHead><TableHead className="text-right">Active artists</TableHead><TableHead className="text-right">Bookings 30d</TableHead>
             <TableHead>Last activity</TableHead><TableHead className="text-right">Actions</TableHead>
           </TableRow>
         </TableHeader>
@@ -62,9 +62,9 @@ export function OrganizationsTab() {
               <TableCell className="font-medium">{o.name}</TableCell>
               <TableCell className="text-muted-foreground">{o.slug}</TableCell>
               <TableCell><Badge variant={o.status === "suspended" ? "destructive" : "secondary"}>{o.status}</Badge></TableCell>
-              <TableCell>{o.member_count}</TableCell>
-              <TableCell>{o.active_artist_count}</TableCell>
-              <TableCell>{o.bookings_30d}</TableCell>
+              <TableCell className="text-right tabular-nums">{o.member_count}</TableCell>
+              <TableCell className="text-right tabular-nums">{o.active_artist_count}</TableCell>
+              <TableCell className="text-right tabular-nums">{o.bookings_30d}</TableCell>
               <TableCell className="text-muted-foreground">{formatLastActivity(o.last_activity_at)}</TableCell>
               <TableCell className="text-right">
                 <div className="flex items-center justify-end gap-1">
