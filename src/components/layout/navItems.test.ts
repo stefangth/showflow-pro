@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { NAV_ITEMS, visibleNavItems } from "./navItems";
+import { NAV_ITEMS, visibleNavItems, groupNavBySections } from "./navItems";
 
 const ctx = (over: Partial<{ isEditorMode: boolean; isRealAdmin: boolean; isSuperAdmin: boolean; roles: string[] }> = {}) => {
   const { isEditorMode = false, isRealAdmin = false, isSuperAdmin = false, roles = [] } = over;
@@ -25,5 +25,26 @@ describe("visibleNavItems", () => {
   it("editor admin sees role items but Platform only if super-admin", () => {
     expect(visibleNavItems(NAV_ITEMS, ctx({ isEditorMode: true, isRealAdmin: true })).map((i) => i.label)).not.toContain("Platform");
     expect(visibleNavItems(NAV_ITEMS, ctx({ isEditorMode: true, isRealAdmin: true, isSuperAdmin: true })).map((i) => i.label)).toContain("Platform");
+  });
+});
+
+describe("sections", () => {
+  it("every nav item declares a section", () => {
+    for (const i of NAV_ITEMS) expect(i.section).toBeTruthy();
+  });
+
+  it("an artist sees only the Workspace section", () => {
+    const groups = groupNavBySections(visibleNavItems(NAV_ITEMS, ctx({ roles: ["artist"] })));
+    expect(groups.map((g) => g.section)).toEqual(["workspace"]);
+    expect(groups[0].items.map((i) => i.label)).toEqual(["Dashboard", "Availability", "Chats"]);
+  });
+
+  it("an admin sees workspace, catalog and system", () => {
+    const groups = groupNavBySections(visibleNavItems(NAV_ITEMS, ctx({ roles: ["admin"] })));
+    expect(groups.map((g) => g.section)).toEqual(["workspace", "catalog", "system"]);
+  });
+
+  it("drops empty sections", () => {
+    expect(groupNavBySections([])).toEqual([]);
   });
 });
