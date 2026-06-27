@@ -88,3 +88,34 @@ export async function closeOfferTier(
   if (payload?.error) throw new Error(payload.error);
   return { closed: !!payload?.closed, withdrawn: payload?.withdrawn ?? 0, message: payload?.message };
 }
+
+/** Count of bookings awaiting producer confirmation (soft_booked) in an org.
+ *  Uses a server-side head count — no row data crosses the wire and there is no
+ *  PostgREST max-rows truncation. */
+export async function fetchPendingConfirmationsCount(
+  client: SupabaseClient<Database>,
+  orgId: string,
+): Promise<number> {
+  const { count, error } = await client
+    .from("bookings")
+    .select("*", { count: "exact", head: true })
+    .eq("org_id", orgId)
+    .eq("status", "soft_booked");
+  if (error) throw error;
+  return count ?? 0;
+}
+
+/** Count of open offers (suggested) awaiting a given artist's response.
+ *  Server-side head count (see fetchPendingConfirmationsCount). */
+export async function fetchMyOpenOffersCount(
+  client: SupabaseClient<Database>,
+  artistId: string,
+): Promise<number> {
+  const { count, error } = await client
+    .from("bookings")
+    .select("*", { count: "exact", head: true })
+    .eq("artist_id", artistId)
+    .eq("status", "suggested");
+  if (error) throw error;
+  return count ?? 0;
+}

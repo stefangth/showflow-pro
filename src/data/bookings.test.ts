@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { createFakeSupabase } from "@/test/supabaseFake";
-import { openOfferTier, fetchOfferTiers, fetchOpenedTiers, closeOfferTier } from "./bookings";
+import { openOfferTier, fetchOfferTiers, fetchOpenedTiers, closeOfferTier, fetchPendingConfirmationsCount, fetchMyOpenOffersCount } from "./bookings";
 
 describe("openOfferTier", () => {
   it("sends snake_case body and returns offersCreated", async () => {
@@ -75,5 +75,47 @@ describe("closeOfferTier", () => {
   it("throws on transport error", async () => {
     const fake = createFakeSupabase({ "fn:close-offer-tier": { data: null, error: { message: "network" } } });
     await expect(closeOfferTier(fake as never, { showDateId: "d1", tier: 1, withdraw: false })).rejects.toBeTruthy();
+  });
+});
+
+describe("fetchPendingConfirmationsCount", () => {
+  it("counts soft_booked bookings for the org via a head count", async () => {
+    const fake = createFakeSupabase({
+      bookings: { data: null, count: 3, error: null },
+    });
+    const n = await fetchPendingConfirmationsCount(fake as never, "org-1");
+    expect(n).toBe(3);
+    // Server-side count: no row data transferred (head: true).
+    expect(fake.calls).toContainEqual({ table: "bookings", method: "select", args: ["*", { count: "exact", head: true }] });
+    expect(fake.calls).toContainEqual({ table: "bookings", method: "eq", args: ["org_id", "org-1"] });
+    expect(fake.calls).toContainEqual({ table: "bookings", method: "eq", args: ["status", "soft_booked"] });
+  });
+
+  it("returns 0 when count is null", async () => {
+    const fake = createFakeSupabase({ bookings: { data: null, count: null, error: null } });
+    expect(await fetchPendingConfirmationsCount(fake as never, "org-1")).toBe(0);
+  });
+
+  it("throws on error", async () => {
+    const fake = createFakeSupabase({ bookings: { data: null, error: { message: "boom" } } });
+    await expect(fetchPendingConfirmationsCount(fake as never, "org-1")).rejects.toBeTruthy();
+  });
+});
+
+describe("fetchMyOpenOffersCount", () => {
+  it("counts suggested bookings for the artist via a head count", async () => {
+    const fake = createFakeSupabase({
+      bookings: { data: null, count: 2, error: null },
+    });
+    const n = await fetchMyOpenOffersCount(fake as never, "artist-1");
+    expect(n).toBe(2);
+    expect(fake.calls).toContainEqual({ table: "bookings", method: "select", args: ["*", { count: "exact", head: true }] });
+    expect(fake.calls).toContainEqual({ table: "bookings", method: "eq", args: ["artist_id", "artist-1"] });
+    expect(fake.calls).toContainEqual({ table: "bookings", method: "eq", args: ["status", "suggested"] });
+  });
+
+  it("returns 0 when count is null", async () => {
+    const fake = createFakeSupabase({ bookings: { data: null, count: null, error: null } });
+    expect(await fetchMyOpenOffersCount(fake as never, "artist-1")).toBe(0);
   });
 });

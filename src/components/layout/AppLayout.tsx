@@ -1,23 +1,27 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { NavLink, Link } from 'react-router-dom';
 import { useAuth } from '@/features/auth/AuthContext';
-import { APP_META, ROUTES } from '@/config/app.config';
+import { ROUTES } from '@/config/app.config';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { Settings, LogOut, Bell, ChevronLeft, ChevronRight, Menu, EyeOff, User } from 'lucide-react';
-import { NAV_ITEMS, visibleNavItems } from '@/components/layout/navItems';
+import { NAV_ITEMS, visibleNavItems, groupNavBySections } from '@/components/layout/navItems';
 import { cn } from '@/lib/utils';
 import { useSettingsWarnings } from '@/hooks/useSettingsWarnings';
 import { useEditorConfig } from '@/features/editor/EditorContext';
 import { EditorToolbar, EditorModeToggle } from '@/features/editor/EditorToolbar';
 import { StageMark } from '@/components/brand/StageMark';
+import { BrandWordmark } from '@/components/brand/BrandWordmark';
 import { OrgSwitcher } from '@/components/layout/OrgSwitcher';
 import { NotificationsList } from '@/components/layout/NotificationsList';
 import { useNotifications } from '@/hooks/useNotifications';
+import { useNavCounts } from '@/hooks/useNavCounts';
+import { useMyProfile } from '@/hooks/useMyProfile';
+import { toast } from 'sonner';
 
 interface AppLayoutProps {
   children: React.ReactNode;
@@ -26,6 +30,7 @@ interface AppLayoutProps {
 const ROUTE_TO_FILE: Record<string, string> = {
   [ROUTES.DASHBOARD]:    'DashboardPage.tsx',
   [ROUTES.BOOKINGS]:     'ShowsBookingsPage.tsx',
+  [ROUTES.PRODUCTIONS]:  'ProductionsPage.tsx',
   [ROUTES.ARTISTS]:      'ArtistsPage.tsx',
   [ROUTES.AVAILABILITY]: 'AvailabilityPage.tsx',
   [ROUTES.ADMIN]:        'AdminPage.tsx',
@@ -36,25 +41,45 @@ const ROUTE_TO_FILE: Record<string, string> = {
 const ROUTE_TO_LABEL: Record<string, string> = Object.fromEntries(NAV_ITEMS.map((i) => [i.to, i.label]));
 
 export default function AppLayout({ children }: AppLayoutProps) {
-  const { user, signOut, roles, hasRole, viewAsRole, viewAsUser, isSuperAdmin } = useAuth();
+  const { user, signOut, roles, hasRole, viewAsRole, viewAsUser, isSuperAdmin, currentOrg } = useAuth();
   const { isEditorMode } = useEditorConfig();
   const navigate = useNavigate();
   const location = useLocation();
   const [collapsed, setCollapsed] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
   const [notifOpen, setNotifOpen] = useState(false);
+  const [profileMenuOpen, setProfileMenuOpen] = useState(false);
   const { hasAnyWarning } = useSettingsWarnings();
   const { data: notifications = [] } = useNotifications();
+  const { data: myProfile } = useMyProfile();
+  const navCounts = useNavCounts();
+
+  // The account-menu Popover lives only in the expanded sidebar. Reset its open
+  // state when collapsing so it doesn't auto-pop on the next expand.
+  useEffect(() => { if (collapsed) setProfileMenuOpen(false); }, [collapsed]);
 
   const isRealAdmin = roles.includes('admin');
   const unreadCount = notifications.filter(n => !n.read).length;
 
+  const displayName = (myProfile?.display_name?.trim() || user?.email?.split('@')[0] || 'Account');
+  const initials = displayName.slice(0, 2).toUpperCase();
+  const primaryRole = roles[0];
+  const roleLabel = primaryRole
+    ? primaryRole[0].toUpperCase() + primaryRole.slice(1)
+    : (isSuperAdmin ? 'Super Admin' : 'No role');
+  const profileSubtitle = currentOrg ? `${roleLabel} · ${currentOrg.name}` : roleLabel;
+
   const handleSignOut = async () => {
-    await signOut();
-    navigate(ROUTES.LOGIN);
+    try {
+      await signOut();
+      navigate(ROUTES.LOGIN);
+    } catch {
+      toast.error('Sign out failed — please try again.');
+    }
   };
 
   const filteredNav = visibleNavItems(NAV_ITEMS, { isEditorMode, isRealAdmin, isSuperAdmin, hasRole: (r) => hasRole(r as any) });
+  const navGroups = groupNavBySections(filteredNav);
 
   const isHiddenForViewAs = (item: typeof NAV_ITEMS[number]) => {
     if (!isEditorMode) return false;
@@ -69,16 +94,7 @@ export default function AppLayout({ children }: AppLayoutProps) {
       {/* Logo */}
       <div className="flex items-center gap-2.5 px-3.5 py-4 border-b-[0.5px] border-sidebar-border">
         <StageMark variant="mark" size={32} className="shrink-0" />
-        {!collapsed && (
-          <div className="flex items-baseline gap-1.5 min-w-0">
-            <span className="font-display text-[15px] font-semibold tracking-[-0.02em] truncate">
-              {APP_META.NAME}
-            </span>
-            <span className="text-[10px] font-medium text-muted-foreground tabular-nums shrink-0">
-              v{APP_META.VERSION}
-            </span>
-          </div>
-        )}
+        {!collapsed && <BrandWordmark className="flex-1" />}
       </div>
 
       {/* Org switcher */}
@@ -87,69 +103,134 @@ export default function AppLayout({ children }: AppLayoutProps) {
       </div>
 
       {/* Nav links */}
-      <nav className="flex-1 px-2 py-3 space-y-0.5">
-        {filteredNav.map(item => {
-          const showWarningDot = item.to === ROUTES.SETTINGS && hasAnyWarning;
-          const hiddenForRole = isHiddenForViewAs(item);
-          return (
-            <NavLink
-              key={item.to}
-              to={item.to}
-              onClick={() => setMobileOpen(false)}
-              className={({ isActive }) =>
-                cn(
-                  'flex items-center gap-2.5 rounded-[7px] px-2.5 py-2 text-[13px] font-medium transition-colors',
-                  hiddenForRole ? 'opacity-40' : '',
-                  isActive
-                    ? 'bg-sidebar-accent text-sidebar-accent-foreground font-semibold'
-                    : 'text-sidebar-foreground/70 hover:bg-foreground/[0.04] hover:text-sidebar-foreground'
-                )
-              }
-            >
-              <span className="relative shrink-0">
-                <item.icon className="h-[14px] w-[14px]" />
-                {showWarningDot && (
-                  <span className="absolute -top-0.5 -right-0.5 h-1.5 w-1.5 rounded-full bg-destructive ring-2 ring-background" />
-                )}
-                {hiddenForRole && !collapsed && (
-                  <EyeOff className="absolute -bottom-1 -right-1 h-2.5 w-2.5 text-muted-foreground" />
-                )}
-              </span>
-              {!collapsed && (
-                <span className="flex items-center gap-2 flex-1 min-w-0">
-                  {item.label}
-                  {showWarningDot && (
-                    <span className="ml-auto h-1.5 w-1.5 rounded-full bg-destructive shrink-0" />
+      <nav className="flex-1 overflow-y-auto px-2 py-3 space-y-4">
+        {navGroups.map(group => (
+          <div key={group.section} className="space-y-0.5">
+            {!collapsed && (
+              <p className="px-2.5 pb-1 text-[10px] font-semibold uppercase tracking-[0.08em] text-muted-foreground/70">
+                {group.label}
+              </p>
+            )}
+            {group.items.map(item => {
+              const showWarningDot = item.to === ROUTES.SETTINGS && hasAnyWarning;
+              const hiddenForRole = isHiddenForViewAs(item);
+              const badgeCount = item.badge ? navCounts[item.badge] : 0;
+              return (
+                <NavLink
+                  key={item.to}
+                  to={item.to}
+                  onClick={() => setMobileOpen(false)}
+                  className={({ isActive }) =>
+                    cn(
+                      'flex items-center gap-2.5 rounded-[7px] px-2.5 py-2 text-[13px] font-medium transition-colors',
+                      hiddenForRole ? 'opacity-40' : '',
+                      isActive
+                        ? 'bg-sidebar-accent text-sidebar-accent-foreground font-semibold'
+                        : 'text-sidebar-foreground/70 hover:bg-foreground/[0.04] hover:text-sidebar-foreground'
+                    )
+                  }
+                >
+                  <span className="relative shrink-0">
+                    <item.icon className="h-[14px] w-[14px]" />
+                    {/* One corner dot. Warning (destructive) wins over the collapsed
+                        count dot (primary) so a config warning is never painted over. */}
+                    {(showWarningDot || (collapsed && badgeCount > 0)) && (
+                      <span
+                        className={cn(
+                          'absolute -top-0.5 -right-0.5 h-1.5 w-1.5 rounded-full ring-2 ring-background',
+                          showWarningDot ? 'bg-destructive' : 'bg-primary',
+                        )}
+                      />
+                    )}
+                    {hiddenForRole && !collapsed && (
+                      <EyeOff className="absolute -bottom-1 -right-1 h-2.5 w-2.5 text-muted-foreground" />
+                    )}
+                  </span>
+                  {!collapsed && (
+                    <span className="flex items-center gap-2 flex-1 min-w-0">
+                      <span className="truncate">{item.label}</span>
+                      {badgeCount > 0 && (
+                        <span className="ml-auto shrink-0 rounded-full bg-sidebar-accent px-1.5 py-px text-[10px] font-semibold tabular-nums text-sidebar-accent-foreground">
+                          {badgeCount}
+                        </span>
+                      )}
+                      {showWarningDot && (
+                        <span className="ml-auto h-1.5 w-1.5 rounded-full bg-destructive shrink-0" />
+                      )}
+                    </span>
                   )}
-                </span>
-              )}
-            </NavLink>
-          );
-        })}
+                </NavLink>
+              );
+            })}
+          </div>
+        ))}
       </nav>
 
-      {/* User section */}
-      <div className="border-t-[0.5px] border-sidebar-border px-2 py-3 space-y-1">
-        {!collapsed && (
-          <div className="px-1.5 mb-1.5 space-y-1.5">
+      {/* User / profile card */}
+      <div className="border-t-[0.5px] border-sidebar-border p-2">
+        {collapsed ? (
+          <div className="flex flex-col items-center gap-2">
+            <Avatar className="h-8 w-8">
+              <AvatarFallback seed={user?.email ?? ''}>{initials}</AvatarFallback>
+            </Avatar>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-7 w-7 text-sidebar-foreground/70"
+              onClick={() => navigate(ROUTES.PROFILE)}
+              aria-label="Profile"
+            >
+              <User className="h-[14px] w-[14px]" />
+            </Button>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-7 w-7 text-sidebar-foreground/70"
+              onClick={handleSignOut}
+              aria-label="Sign out"
+            >
+              <LogOut className="h-[14px] w-[14px]" />
+            </Button>
+          </div>
+        ) : (
+          <div className="rounded-[10px] border border-sidebar-border bg-background/70 px-2.5 py-2 shadow-sm">
             <div className="flex items-center gap-2.5">
-              <Avatar className="h-7 w-7">
-                <AvatarFallback seed={user?.email ?? ''}>
-                  {(user?.email?.split('@')[0] ?? '?').slice(0, 2).toUpperCase()}
-                </AvatarFallback>
+              <Avatar className="h-8 w-8 shrink-0">
+                <AvatarFallback seed={user?.email ?? ''}>{initials}</AvatarFallback>
               </Avatar>
               <div className="flex-1 min-w-0">
-                <p className="text-[12px] font-semibold truncate">{user?.email}</p>
-                <p className="text-[10px] text-muted-foreground capitalize truncate">{roles.join(', ') || 'No role'}</p>
+                <p className="text-[12.5px] font-semibold leading-tight truncate">{displayName}</p>
+                <p className="text-[10.5px] text-muted-foreground leading-tight truncate">{profileSubtitle}</p>
               </div>
+              <Popover open={profileMenuOpen} onOpenChange={setProfileMenuOpen}>
+                <PopoverTrigger asChild>
+                  <Button variant="ghost" size="icon" className="h-7 w-7 shrink-0 text-sidebar-foreground/60 hover:text-sidebar-foreground" aria-label="Account menu">
+                    <Settings className="h-[15px] w-[15px]" />
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent align="end" side="top" sideOffset={8} className="w-44 p-1">
+                  <button
+                    className="flex w-full items-center gap-2.5 rounded-md px-2.5 py-2 text-[13px] text-foreground hover:bg-muted transition-colors"
+                    onClick={() => { setProfileMenuOpen(false); navigate(ROUTES.PROFILE); }}
+                  >
+                    <User className="h-[14px] w-[14px]" /> Profile
+                  </button>
+                  <button
+                    className="flex w-full items-center gap-2.5 rounded-md px-2.5 py-2 text-[13px] text-foreground hover:bg-muted transition-colors"
+                    onClick={() => { setProfileMenuOpen(false); handleSignOut(); }}
+                  >
+                    <LogOut className="h-[14px] w-[14px]" /> Sign out
+                  </button>
+                </PopoverContent>
+              </Popover>
             </div>
             {viewAsRole && isEditorMode && !viewAsUser && (
-              <Badge variant="outline" className="border-warning text-warning">
+              <Badge variant="outline" className="mt-2 border-warning text-warning">
                 Viewing as: {viewAsRole}
               </Badge>
             )}
             {viewAsUser && isEditorMode && (
-              <div className="space-y-0.5">
+              <div className="mt-2 space-y-0.5">
                 <Badge variant="outline" className="border-warning text-warning">
                   Viewing as: {viewAsUser.roles.join(', ') || 'no role'}
                 </Badge>
@@ -158,24 +239,6 @@ export default function AppLayout({ children }: AppLayoutProps) {
             )}
           </div>
         )}
-        <Button
-          variant="ghost"
-          size="sm"
-          className="w-full justify-start gap-2.5 text-sidebar-foreground/70 hover:bg-foreground/[0.04] hover:text-sidebar-foreground"
-          onClick={() => navigate(ROUTES.PROFILE)}
-        >
-          <User className="h-[14px] w-[14px]" />
-          {!collapsed && 'Profile'}
-        </Button>
-        <Button
-          variant="ghost"
-          size="sm"
-          className="w-full justify-start gap-2.5 text-sidebar-foreground/70 hover:bg-foreground/[0.04] hover:text-sidebar-foreground"
-          onClick={handleSignOut}
-        >
-          <LogOut className="h-[14px] w-[14px]" />
-          {!collapsed && 'Sign Out'}
-        </Button>
       </div>
     </div>
   );
@@ -203,7 +266,7 @@ export default function AppLayout({ children }: AppLayoutProps) {
       {mobileOpen && (
         <div className="fixed inset-0 z-50 lg:hidden">
           <div
-            className="absolute inset-0 bg-black/50"
+            className="absolute inset-0 bg-[var(--veil)]"
             onClick={() => setMobileOpen(false)}
             aria-hidden="true"
           />
@@ -226,8 +289,7 @@ export default function AppLayout({ children }: AppLayoutProps) {
           </button>
           <div className="lg:hidden flex items-center gap-2">
             <StageMark variant="mark" size={24} />
-            <span className="font-display font-semibold text-[15px] tracking-[-0.02em]">{APP_META.NAME}</span>
-            <span className="text-[10px] font-medium text-muted-foreground tabular-nums">v{APP_META.VERSION}</span>
+            <BrandWordmark />
           </div>
 
           {/* Breadcrumb — current page path (desktop) */}
