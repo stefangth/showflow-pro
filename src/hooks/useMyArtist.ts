@@ -9,6 +9,9 @@ export function useMyArtist() {
   return useQuery({
     queryKey: ['my-artist', userId],
     enabled: !!userId,
+    // Artist↔user linkage is stable within a session; cache it so non-artist
+    // users (admins/producers) don't re-query on every window focus/navigation.
+    staleTime: 5 * 60_000,
     queryFn: () => fetchMyArtist(supabase, userId!),
   });
 }
