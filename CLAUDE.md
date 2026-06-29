@@ -65,7 +65,7 @@ These are public values (anon key, not service role). Never commit `.env`. The s
 
 ## Versioning & changelog
 
-- **Semver tags on releases.** Tag the release commit `vMAJOR.MINOR.PATCH` (`git tag -a v1.4.0 -m "<theme>"` then `git push origin --tags`). MINOR = new user-facing features, PATCH = fixes, MAJOR = breaking changes. Tags `v1.0.0`–`v1.4.0` cover Apr–Jun 2026.
+- **Semver tags on releases.** Tag the release commit `vMAJOR.MINOR.PATCH` (`git tag -a v1.6.0 -m "<theme>"` then `git push origin --tags`). MINOR = new user-facing features, PATCH = fixes, MAJOR = breaking changes. Tags `v1.0.0`–`v1.6.0` cover Apr–Jun 2026.
 - **Bump the version in two places to match the tag:** `version` in `package.json` and `APP_META.VERSION` in `src/config/app.config.ts` (the latter renders next to the brand name in the top-left of `AppLayout`).
 - **Update `public/changelog.md`** (the single source of truth). Add a newest-first block: `## X.Y.Z — Mon D, YYYY`, a one-line `*theme*`, then `### New` / `### Improved` / `### Fixed` bullets written for end users (no refactors, tests, CI, or docs). Bullets use the form `- **Title** — description`.
 - **Regenerate the JSON:** `deno run --allow-read --allow-write scripts/changelog-to-json.ts` rewrites `public/changelog.json` from the markdown — never hand-edit the JSON.
@@ -92,19 +92,24 @@ src/
     filters/       # Reusable filter/sort/view-toggle controls
     platform/      # Super-admin platform console UI (OrganizationsTab, PlatformAdminsTab,
                    #   PlatformDefaultsTab, EditOrgDialog, NewOrgDialog, OrgInvitePopover,
-                   #   OrgMembersPopover) + pure utilities (platformFormat.ts, templateText.ts)
+                   #   OrgMembersPopover, SystemHealthTab) + pure utilities (platformFormat.ts, templateText.ts)
     catalog/       # Production catalog CRUD: ShowFormDialog (create/edit shows) + ProductionsPage support
     shows/         # ShowDateDetailSheet — the full per-date booking management surface;
                    #   ShowDateFormDialog — create/edit show_dates (in-app)
-    settings/      # AirtableSyncTab — Settings → Airtable Sync tab (schema-driven mapping + catalog linking)
+    settings/      # AirtableSyncTab — Settings → Airtable Sync tab (schema-driven mapping + catalog linking;
+                   #   autosaves via React Query, decoupled from the page's global Save/draft);
+                   #   OrganizationTab — Settings → Organization tab (org rename for admins)
     layout/        # AppLayout (sidebar + topbar shell), NotificationsList (notification bell popover)
     ui/            # shadcn primitives — DO NOT edit by hand, regenerate via shadcn
   config/
-    app.config.ts  # Feature flags (FEATURES), route constants (ROUTES), BOOKING_ENGINE_DEFAULTS, CHAT_ARCHIVE_DAYS
+    app.config.ts  # Feature flags (FEATURES), route constants (ROUTES), BOOKING_ENGINE_DEFAULTS,
+                   #   SYSTEM_HEALTH / SYSTEM_HEALTH_BUDGET (platform health thresholds), CHAT_ARCHIVE_DAYS
   data/            # Data-access layer: fetchX(client, args) / mutateX(client, args) functions
                    #   that take the Supabase client as a parameter. Hooks are thin wrappers.
-                   #   Domains: artists, invitations, members, notifications, orgs, platform,
-                   #   profiles, settings, shows, showDates, skills. Test with supabaseFake.ts (never vi.mock the client).
+                   #   Domains: artists, airtableKey, airtableMapping, airtableSchema, airtableSettings,
+                   #   airtableSync, bookings, cities, customFields, invitations, members, notifications,
+                   #   notificationPreferences, orgs, platform, profiles, settings, shows, showDates, skills.
+                   #   Test with supabaseFake.ts (never vi.mock the client).
   features/
     auth/          # AuthContext (org-aware: currentOrg/orgs/switchOrg, isSuperAdmin),
                    #   ProtectedRoute (org gate → NoOrgScreen / SuspendedOrgScreen;
@@ -124,9 +129,12 @@ src/
   hooks/           # Domain hooks (useMyArtist, useEligibleArtists, useChatParticipant,
                    #   useArtistEligibleDates, useSettingsWarnings,
                    #   useSkills/useArtistSkills, useNotifications/useMarkNotificationRead/
-                   #   useMarkAllNotificationsRead, useMyProfile/useUpdateMyProfile,
+                   #   useMarkAllNotificationsRead, useNotificationPreferences,
+                   #   useMyProfile/useUpdateMyProfile,
                    #   useOrgMembers/useRemoveOrgMember,
-                   #   useShows/useShowDates/useCities) + UI hooks (use-mobile, use-toast)
+                   #   useShows/useShowDates/useCities,
+                   #   useNavCounts (role-aware badge counts for sidebar nav — head-count only),
+                   #   useSystemHealth (System Health tab data)) + UI hooks (use-mobile, use-toast)
   integrations/
     supabase/
       client.ts    # Single shared Supabase client
@@ -134,7 +142,10 @@ src/
   lib/             # Shared utilities: utils.ts (cn helper), dates.ts (parseDateOnly,
                    #   formatDateDMY, formatDateWithWeekday, toDateKey — all timezone-safe),
                    #   avatar.ts, bookings.ts, catalog.ts (isSyncedShow/Date, canHardDeleteShow/Date),
-                   #   settings.ts (dedupeProgramPairs, effectiveSlots)
+                   #   settings.ts (dedupeProgramPairs, effectiveSlots),
+                   #   customFields.ts (custom-field helpers), identity.ts (user identity helpers),
+                   #   notificationCategories.ts (re-exports shared category model from _shared/notificationCategories.ts),
+                   #   systemHealth.ts (4-state derivation: Operational/Degraded/Down/Stale from p95/error-rate budgets)
   pages/           # One file per route, default-exported
                    #   Key pages: DashboardPage, ShowsBookingsPage (ROUTES.BOOKINGS),
                    #   ProductionsPage (ROUTES.PRODUCTIONS) — admin+producer catalog CRUD + drag-reorder,
@@ -209,9 +220,10 @@ When adding a new page:
   - **Invitations:** `create-invitation` (org admin → insert `org_invitations` + send the `org-invitation` email). Acceptance is the `accept_invitation` RPC, not an edge function.
   - **Airtable sync:** `airtable-schema` (admin-only, user-JWT via `requireOrgRole(org_id, ['admin'])`) reads the org's Airtable schema with the Vault PAT for the mapping UI — returns `{ schemaAccessible, bases }` (no `baseId` in body) or `{ schemaAccessible, tables }` (with `baseId`); an Airtable `403` (PAT missing the `schema.bases:read` scope) surfaces as `{ schemaAccessible: false }` so the UI falls back to typed inputs, and the PAT is never returned to the client. `airtable-poll` is the `*/5 * * * *` cron that upserts `show_dates` from each org's base (see the Airtable-sync key decision in `docs/adr/README.md`).
   - **Transactional email:** `send-transactional-email`, `preview-transactional-email`, `handle-email-suppression`, `handle-email-unsubscribe`. New templates must be registered in `_shared/transactional-email-templates/registry.ts`.
-  - **Booking engine:** `open-offer-tier` (create suggested bookings), `expire-offers` (hourly expiry), `send-offer-digest` (daily 19:00 Berlin), `send-confirmation-digest` (daily 20:00 Berlin). All cron functions are org-aware: they iterate active orgs via `getActiveOrgs(admin)` from `_shared/settings.ts` and resolve settings per-org with `resolveOrgSetting`.
+  - **Booking engine:** `open-offer-tier` (create suggested bookings), `close-offer-tier` (close a tier + optionally withdraw still-suggested bookings; auth: service-role or org admin/producer; `verify_jwt=true`), `expire-offers` (hourly expiry), `send-offer-digest` (daily 19:00 Berlin), `send-confirmation-digest` (daily 20:00 Berlin). All cron functions are org-aware: they iterate active orgs via `getActiveOrgs(admin)` from `_shared/settings.ts` and resolve settings per-org with `resolveOrgSetting`.
   - **Watchers:** `tier-at-risk-watcher` — scans open offer tiers and fires an in-app `tier_at_risk` notification when remaining pending + accepted < required slots. Idempotent (one notification per date/tier). No email; visual only.
-  - **Platform (super-admin):** `provision-org` (atomic org creation + catalog seeding + first-admin invite, requires super-admin); `resend-invitation` (resend an existing `org_invitations` row's email).
+  - **Cron health:** `cron-health-watcher` (runs every 15 min via `requireCronOrRole`; reads `net._http_response` via `cron_health_scan` RPC, updates `cron_health_state`, logs to `cron_health_log`; on a healthy→failing transition sends one in-app notification + email to all super-admins; on recovery sends in-app only). Health truth comes from the HTTP response layer — `cron.job_run_details` marks a 404 as "succeeded" and cannot be trusted.
+  - **Platform (super-admin):** `provision-org` (atomic org creation + catalog seeding + first-admin invite, requires super-admin); `resend-invitation` (resend an existing `org_invitations` row's email); `platform-edge-metrics` (super-admin-gated proxy for the Supabase Management/Analytics API — returns per-function invocation counts, error rates, and p50/p95 latency; uses the `ANALYTICS` PAT env secret, not a service-role key; read-only).
   - **Account & data (GDPR):** `delete-my-account` (authenticated; last-admin-guarded via `sole_admin_orgs`; calls `anonymize_user` **via the caller's JWT client** then `auth.admin.deleteUser`) and `export-org-data` (super-admin; full org JSON bundle). Per-user export is the `export_my_data` RPC; org deletion is the `delete_org` RPC (super-admin); account anonymization is the `anonymize_user` RPC.
 - Use the service role key only when bypassing RLS is intentional (admin endpoints). Always re-verify the caller's role server-side first via `requireRole` (any-org), `requireOrgRole(org_id, [...])` (org-scoped), or `requireSuperAdmin` (platform-admin endpoints) from `_shared/auth.ts` — see `create-invitation` / `provision-org` for patterns. `requireOrgRole` automatically accepts super-admins so god-mode works on org-scoped endpoints.
 - Read secrets via `Deno.env.get('SECRET_NAME')`.
@@ -221,12 +233,24 @@ When adding a new page:
 - In-app notifications write to the `notifications` table (columns: `id`, `user_id`, `type`, `title`, `message`, `read` boolean, `related_entity_id`, `related_entity_type`, `created_at`). There is no `payload` column and no `read_at` timestamp — read state is a plain boolean `read`.
 - `FEATURES.NOTIFICATIONS` must be `true` (it is, by default).
 - Create notifications from edge functions or server-side mutations only — never bare client-side inserts without proper RLS policies.
+- **Notification preferences** — users opt out per `category × channel` (email / in-app) in the `notification_preferences` table (JSONB `prefs` column; own-row RLS). Missing row or missing key means **enabled** (opt-out model, so existing users are unaffected on migration). Enforced at two chokepoints:
+  - `gate_notification_pref` BEFORE INSERT trigger on `notifications` — calls `should_notify(user_id, type)` via `category_of(type)` → silently cancels the insert if the user has disabled that category's in-app channel.
+  - Per-category gate in `send-transactional-email` — calls `get_user_id_by_email` RPC (service-role only) to resolve the recipient, then checks the preference. Critical templates (`org-invitation`, `password-reset`) and types not mapped in `category_of` are never gated.
+- The shared category model (`NOTIFICATION_CATEGORIES`, `IN_APP_TYPE_CATEGORY`, `EMAIL_TEMPLATE_CATEGORY`) lives in `supabase/functions/_shared/notificationCategories.ts` and is re-exported by `src/lib/notificationCategories.ts` so the UI and the gate never diverge.
 
 ### Styling
 
 - **Use semantic tokens only**: `bg-background`, `text-foreground`, `text-primary`, `border-border`, etc. Never hardcode colors like `bg-white` or `text-black` in components.
-- **Accent numbered stops (`accent-50`–`900`) do NOT support Tailwind opacity modifiers** (`bg-accent-500/20`, `text-accent-700/60`, …) — those vars are plain hex, not HSL channels, so the `/<alpha>` silently yields a solid color with no error. For an alpha accent, use a solid stop, an `rgba()` literal, or a dedicated token.
-- All design tokens live in `src/index.css` (HSL, except the hex `--accent-50`–`900` scale) and `tailwind.config.ts`.
+- **Accent numbered stops (`accent-50`–`900`) do NOT support Tailwind opacity modifiers** (`bg-accent-500/20`, `text-accent-700/60`, …) — those vars are plain hex (not HSL channels), so the `/<alpha>` silently yields a solid color with no error. For an alpha accent, use a solid stop, an `rgba()` literal, or a dedicated token.
+- **Extended design-system token vocabulary** (all in `src/index.css`):
+  - Neutral surface aliases: `--surface`, `--surface-2`, `--surface-3`, `--bg`, `--text`, `--text-muted`, `--text-faint`
+  - Semantic tint pairs (light + dark overrides): `--green-100/500/600`, `--amber-100/500/600`, `--red-100/500/600`. Use as arbitrary values (`bg-[var(--red-100)]`) — they are not Tailwind palette names.
+  - Motion / density: `--ease-out/in-out`, `--dur-fast/base/slow`, `--row-h`, `--btn-h`. CSS-only; not exposed as Tailwind utilities.
+  - Overlay scrim: `--veil`; shadow ramp: `--shadow-0/4/inset`.
+  - Hover/active primary shades: `--primary-hover`, `--primary-active`.
+- **Tailwind utilities added** (beyond the default shadcn set): `rounded-xs`, `rounded-s/m/l/xl/2xl`, `rounded-pill`; `shadow-elev0`, `shadow-elev4`, `shadow-elev-inset`.
+- **Badge semantic tint pattern** — status badges (`confirmed`, `hold`, `risk`, `destructive`) use the `-100` bg + `-600` text pair (e.g. `bg-[var(--green-100)] text-[var(--green-600)]`), not hardcoded colors.
+- All design tokens live in `src/index.css` (HSL, except the hex `--accent-50`–`900` scale and the semantic tints) and `tailwind.config.ts`.
 - Display font: `font-display` (Geist). Body: default Geist (`font-sans`); mono: `font-mono` (Geist Mono). Fonts are loaded in `index.html` and set in `tailwind.config.ts`.
 - Match the existing component patterns: `Card` for grouped content, `Tabs` for sectioned admin UIs, `Badge` for status pills.
 
@@ -302,7 +326,7 @@ Suggested emails:
 
 | File | Purpose |
 |------|---------|
-| `src/config/app.config.ts` | FEATURES flags, ROUTES, BOOKING_ENGINE_DEFAULTS (canonical booking-engine fallbacks; mirrors `_shared/settings.ts`), CHAT_ARCHIVE_DAYS |
+| `src/config/app.config.ts` | FEATURES flags, ROUTES, BOOKING_ENGINE_DEFAULTS (canonical booking-engine fallbacks; mirrors `_shared/settings.ts`), SYSTEM_HEALTH / SYSTEM_HEALTH_BUDGET (platform health thresholds), CHAT_ARCHIVE_DAYS |
 | `src/integrations/supabase/types.ts` | Auto-generated DB types — read only |
 | `src/features/auth/AuthContext.tsx` | Auth state, org-scoped role helpers, `currentOrg`/`orgs`/`switchOrg`, `isSuperAdmin` |
 | `src/features/auth/resetPassword.ts` | Pure helpers for reset-password flow (hash parse, redirect safety, schema) |
@@ -311,17 +335,26 @@ Suggested emails:
 | `src/data/settings.ts` | `resolveOrgSetting` / `upsertOrgSetting` — org-aware settings resolver (frontend) |
 | `src/data/platform.ts` | Super-admin data access: `fetchAllOrgs`, `provisionOrg`, `fetchPlatformOrgStats`, platform admin CRUD |
 | `src/data/profiles.ts` | `fetchMyProfile` / `updateMyProfile` / `updateMyPassword` |
-| `src/data/members.ts` | `fetchOrgMembers` / `removeOrgMember` (via `list_org_members` / `remove_org_member` RPCs) |
+| `src/data/members.ts` | `fetchOrgMembers` / `removeOrgMember` / `setOrgMemberRole` (via `list_org_members` / `remove_org_member` / `set_org_member_role` RPCs) |
+| `src/data/airtableKey.ts` | `saveAirtableKey` / `fetchAirtableKeyStatus` / `deleteAirtableKey` — Vault-backed PAT management |
+| `src/data/airtableSettings.ts` | Tab-owned read of the four Airtable sync settings (org-row-wins resolution) — used by AirtableSyncTab autosave |
+| `src/data/notificationPreferences.ts` | `fetchMyNotificationPreferences` / `upsertMyNotificationPreferences` |
+| `src/lib/systemHealth.ts` | Pure 4-state health derivation (Operational/Degraded/Down/Stale) from p95/error-rate budgets — unit-tested |
+| `src/lib/notificationCategories.ts` | Re-exports the shared category model from `_shared/notificationCategories.ts` |
 | `src/hooks/` | All domain hooks — reuse before writing new queries |
 | `src/types/index.ts` | Domain type extensions on top of Supabase types |
 | `supabase/functions/_shared/settings.ts` | `resolveOrgSetting` + `getActiveOrgs` — org-aware settings for edge functions |
 | `supabase/functions/_shared/auth.ts` | `requireRole` / `requireOrgRole` / `requireSuperAdmin` / `requireCronOrRole` |
+| `supabase/functions/_shared/notificationCategories.ts` | Canonical notification category + channel model; imported by both the gate trigger helpers and `src/lib/notificationCategories.ts` |
 | `supabase/functions/provision-org/index.ts` | Atomic org creation + catalog seed + first-admin invite (super-admin) |
 | `supabase/functions/send-offer-digest/index.ts` | Daily offer digest (Berlin 19:00 gate) |
 | `supabase/functions/send-confirmation-digest/index.ts` | Daily confirmation digest (Berlin 20:00 gate) |
-| `supabase/functions/airtable-poll/index.ts` | Org-aware Airtable → show_dates sync (per-org Vault key) |
+| `supabase/functions/airtable-poll/index.ts` | Org-aware Airtable → show_dates sync; resolves `multipleRecordLinks` fields to names |
 | `supabase/functions/open-offer-tier/index.ts` | Creates suggested bookings for a date/tier |
+| `supabase/functions/close-offer-tier/index.ts` | Closes a tier; optionally cancels still-suggested bookings (withdraw=true) |
 | `supabase/functions/tier-at-risk-watcher/index.ts` | In-app notification when a tier can no longer fill before deadline |
+| `supabase/functions/cron-health-watcher/index.ts` | Reads HTTP outcomes from `net._http_response`; updates `cron_health_state`; alerts super-admins on failure transitions |
+| `supabase/functions/platform-edge-metrics/index.ts` | Super-admin proxy for the Supabase Management/Analytics API — returns per-function latency + error metrics |
 | `supabase/functions/delete-my-account/index.ts` | Authenticated account self-deletion: last-admin guard → `anonymize_user` → `auth.admin.deleteUser` |
 | `src/data/account.ts` | `exportMyData` / `deleteMyAccount` / `fetchNotificationPreferences` / `upsertNotificationPreferences` |
 
