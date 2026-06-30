@@ -55,6 +55,22 @@ interface CatalogRow {
   /** The linked catalog entity, or null when unlinked. */
   linkedId: string | null;
   linkedLabel: string | null;
+  /** Program rows only: the source pair, so onCreate imports it without a key→pair lookup. */
+  createPair?: ProgramPair;
+}
+
+/** Collapse rows that resolve to the same catalog key — e.g. two linked-table records both named
+ *  "Berlin", or "Berlin"/"berlin" — so each catalog target shows once and row.key is a unique
+ *  React list key. Keeps the first occurrence's display. */
+function dedupeRowsByKey(rows: CatalogRow[]): CatalogRow[] {
+  const seen = new Set<string>();
+  const out: CatalogRow[] = [];
+  for (const r of rows) {
+    if (seen.has(r.key)) continue;
+    seen.add(r.key);
+    out.push(r);
+  }
+  return out;
 }
 
 /** Per-row "smart" combobox: search existing catalog rows to link, or create a new catalog
@@ -153,9 +169,8 @@ function CatalogSection({
             <span>Airtable option</span><span>Status</span><span>Catalog link</span>
           </div>
           {rows.map((row) => (
-            // Raw display name as the React key — row.key is normalized (lowercased), so two
-            // linked-table options like "Berlin"/"berlin" would collide on it.
-            <div key={row.display} className="grid grid-cols-1 sm:grid-cols-[1fr_110px_240px] gap-2 sm:gap-3 items-center px-3 py-2.5 border-b border-border last:border-b-0">
+            // row.key is unique per row (rows are deduped by key upstream), so it's a safe list key.
+            <div key={row.key} className="grid grid-cols-1 sm:grid-cols-[1fr_110px_240px] gap-2 sm:gap-3 items-center px-3 py-2.5 border-b border-border last:border-b-0">
               <span className="text-sm font-medium truncate">{row.display}</span>
               <div><Badge variant={row.linkedId ? "secondary" : "outline"}>{row.linkedId ? "Linked" : "Unlinked"}</Badge></div>
               <div className="flex items-center justify-between sm:justify-start gap-2 min-w-0">
@@ -474,24 +489,24 @@ export function AirtableSyncTab({ orgId }: Props) {
   // Source-field subtitles name the actual mapped Airtable field(s), not a hardcoded label.
   const programSource = fieldMap.program ? `${fieldMap.program} · ${fieldMap.sub_program}` : (fieldMap.sub_program ?? "");
   const citySource = fieldMap.city ?? "";
-  // One key formula shared by both derivations below — no duplication, no map side-effect.
-  const programKeyOf = (pair: ProgramPair) => buildProgramKey(pair.program, pair.sub_program) ?? pair.sub_program;
-  const pairByKey = new Map<string, ProgramPair>(programGrainPairs.map((pair) => [programKeyOf(pair), pair]));
-  const programRows: CatalogRow[] = programGrainPairs.map((pair) => {
-    const key = programKeyOf(pair);
+  // Each program row carries its source pair (onCreate needs no key→pair map). Rows are deduped by
+  // catalog key so each target shows once and row.key is a unique, collision-free React list key.
+  const programRows: CatalogRow[] = dedupeRowsByKey(programGrainPairs.map((pair) => {
+    const key = buildProgramKey(pair.program, pair.sub_program) ?? pair.sub_program;
     const show = key ? showByKey.get(key) : undefined;
     return {
       key,
       display: pair.program ? `${pair.program} – ${pair.sub_program}` : pair.sub_program,
       linkedId: show?.id ?? null,
       linkedLabel: show ? showLabel(show) : null,
+      createPair: pair,
     };
-  });
-  const cityRows: CatalogRow[] = cityOptions.map((name) => {
+  }));
+  const cityRows: CatalogRow[] = dedupeRowsByKey(cityOptions.map((name) => {
     const key = buildCityKey(name) ?? name;
     const city = key ? cityByKey.get(key) : undefined;
     return { key, display: name, linkedId: city?.id ?? null, linkedLabel: city?.name ?? null };
-  });
+  }));
   const programExisting = unlinkedShows.map((sh) => ({ id: sh.id, label: showLabel(sh) }));
   const cityExisting = unlinkedCities.map((c) => ({ id: c.id, label: c.name }));
   const programUnlinked = programRows.filter((r) => !r.linkedId).length;
@@ -869,7 +884,7 @@ export function AirtableSyncTab({ orgId }: Props) {
                   importAll={() => importPrograms.mutate()}
                   importDisabled={importPrograms.isPending || showsQ.isLoading || programUnlinked === 0}
                   existing={programExisting}
-                  onCreate={(row) => { const pair = pairByKey.get(row.key); if (pair) createOneProgram.mutate(pair); }}
+                  onCreate={(row) => { if (row.createPair) createOneProgram.mutate(row.createPair); }}
                   onLink={(row, id) => linkShow.mutate({ showId: id, key: row.key })}
                   onUnlink={(id) => unlinkShow.mutate(id)}
                   busy={createOneProgram.isPending || showsQ.isLoading || linkShow.isPending || unlinkShow.isPending}
