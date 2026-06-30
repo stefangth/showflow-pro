@@ -281,6 +281,8 @@ async function syncOrg(deps: Deps, orgId: string, baseId: string, tableName: str
       // Transition self-heal: a show still keyed sub-program-only is adopted to the composite
       // grain (re-keyed + program backfilled) so its existing dates keep resolving. Idempotent —
       // the in-memory map is updated so later records in this run hit the composite key directly.
+      // Assumes one program per sub_program (the legacy key maps to a single show); if a base ever
+      // reuses one sub_program across programs, only the first program's records adopt the legacy show.
       if (!showId && programKey && legacyKey && legacyKey !== programKey) {
         const legacy = showByKey.get(legacyKey);
         if (legacy) {

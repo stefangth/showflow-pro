@@ -51,9 +51,14 @@ export function planProgramImport(
   const existingKeys = new Set(
     existing.map((e) => e.airtable_program_key).filter((k): k is string => !!k),
   );
+  // A sub-program-only-keyed (pre-grain) show has key === its sub_program. Comparing equality
+  // (rather than "no pipe") is robust to sub-program names that contain a literal '|'.
+  // Note: this dedups by sub_program, so for orgs whose sub_program repeats across programs a
+  // genuinely-new (program, sub) pair sharing that sub is skipped — acceptable while the catalog
+  // is one-program-per-sub_program; revisit if non-unique sub-programs are introduced.
   const legacySubs = new Set(
     existing
-      .filter((e) => e.airtable_program_key && !e.airtable_program_key.includes("|"))
+      .filter((e) => !!e.airtable_program_key && e.airtable_program_key === (e.sub_program ?? "").trim())
       .map((e) => (e.sub_program ?? "").trim())
       .filter(Boolean),
   );
