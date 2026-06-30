@@ -493,8 +493,9 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
       ]);
       // Which Airtable view to read (default "Grid view"; blank reads the whole table). A row
       // stored with a null value would surface as null (resolveOrgSetting returns a found row's
-      // value as-is), so coerce to keep viewName a genuine string and avoid a silent whole-table read.
-      const viewName = viewRaw ?? "Grid view";
+      // value as-is), so coerce to keep viewName a genuine string. Trim so stray whitespace from a
+      // manual/legacy value can't produce an unmatchable view name (e.g. "%20Grid%20view%20").
+      const viewName = (viewRaw ?? "Grid view").trim();
 
       const logMisconfig = (detail: string) =>
         admin.from("airtable_sync_log").insert({ org_id: org.id, sync_type: "airtable_poll", status: "error", records_processed: 0, imported_count: 0, new_count: 0, updated_count: 0, held_count: 0, error_details: detail, synced_at: deps.now().toISOString() });

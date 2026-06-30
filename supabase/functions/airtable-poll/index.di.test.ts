@@ -419,6 +419,12 @@ Deno.test("airtable-poll: a blank airtable_view reads the whole table (no view p
   assertEquals(url.includes("view="), false, `Blank view should omit the view param entirely: ${url}`);
 });
 
+Deno.test("airtable-poll: trims surrounding whitespace from the configured view", async () => {
+  const url = await captureAirtableUrl([{ when: { key: "airtable_view" }, data: [{ org_id: ORG, value: "  Published  " }] }]);
+  assertEquals(url.includes("view=Published"), true, `View should be trimmed before encoding: ${url}`);
+  assertEquals(url.includes("%20Published"), false, `Leading whitespace must not survive into the view param: ${url}`);
+});
+
 Deno.test("airtable-poll: a null-valued airtable_view row falls back to the default view", async () => {
   // resolveOrgSetting returns a found row's value as-is (even null); the handler coerces it
   // back to the default so a null row never silently turns into a whole-table read.
