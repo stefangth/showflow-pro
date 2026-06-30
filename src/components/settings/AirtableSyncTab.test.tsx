@@ -318,6 +318,27 @@ describe("AirtableSyncTab — autosave", () => {
     );
   });
 
+  it("warns (not 'no options') when the key can't read records for program pairs", async () => {
+    (fetchAirtableKeyStatus as ReturnType<typeof vi.fn>).mockResolvedValue({ present: true, updatedAt: null });
+    (fetchAirtableBases as ReturnType<typeof vi.fn>).mockResolvedValue({ schemaAccessible: true, bases: [{ id: "appX", name: "Base" }] });
+    (fetchAirtableTables as ReturnType<typeof vi.fn>).mockResolvedValue({
+      schemaAccessible: true,
+      tables: [{
+        id: "tbl", name: "Events",
+        fields: [
+          { id: "fP", name: "Program", type: "singleSelect", options: { choices: [{ id: "p1", name: "TJE" }] } },
+          { id: "fS", name: "Sub", type: "singleSelect", options: { choices: [{ id: "c1", name: "TJE: Murder" }] } },
+        ],
+      }],
+    });
+    // Airtable 403 on the records endpoint → edge fn returns { schemaAccessible: false } (HTTP 200).
+    (fetchAirtableProgramPairs as ReturnType<typeof vi.fn>).mockResolvedValue({ schemaAccessible: false });
+    (fetchShowsForLinking as ReturnType<typeof vi.fn>).mockResolvedValue([]);
+    renderTab({ airtable_base_id: "appX", airtable_table_name: "Events", airtable_field_map: { program: "Program", sub_program: "Sub" } });
+
+    expect(await screen.findByText(/can't read records/i)).toBeInTheDocument();
+  });
+
   it("lists city options from a linked-record City field", async () => {
     (fetchAirtableKeyStatus as ReturnType<typeof vi.fn>).mockResolvedValue({ present: true, updatedAt: null });
     (fetchAirtableBases as ReturnType<typeof vi.fn>).mockResolvedValue({ schemaAccessible: true, bases: [{ id: "appX", name: "Base" }] });
