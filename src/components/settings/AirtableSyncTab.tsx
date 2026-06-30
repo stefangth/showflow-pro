@@ -474,12 +474,11 @@ export function AirtableSyncTab({ orgId }: Props) {
   // Source-field subtitles name the actual mapped Airtable field(s), not a hardcoded label.
   const programSource = fieldMap.program ? `${fieldMap.program} · ${fieldMap.sub_program}` : (fieldMap.sub_program ?? "");
   const citySource = fieldMap.city ?? "";
-  // Built independently of programRows so the two can't desync (e.g. if either is later memoized).
-  const pairByKey = new Map<string, ProgramPair>(
-    programGrainPairs.map((pair) => [buildProgramKey(pair.program, pair.sub_program) ?? pair.sub_program, pair]),
-  );
+  // One key formula shared by both derivations below — no duplication, no map side-effect.
+  const programKeyOf = (pair: ProgramPair) => buildProgramKey(pair.program, pair.sub_program) ?? pair.sub_program;
+  const pairByKey = new Map<string, ProgramPair>(programGrainPairs.map((pair) => [programKeyOf(pair), pair]));
   const programRows: CatalogRow[] = programGrainPairs.map((pair) => {
-    const key = buildProgramKey(pair.program, pair.sub_program) ?? pair.sub_program;
+    const key = programKeyOf(pair);
     const show = key ? showByKey.get(key) : undefined;
     return {
       key,
