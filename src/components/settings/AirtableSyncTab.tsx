@@ -492,7 +492,9 @@ export function AirtableSyncTab({ orgId }: Props) {
   // Each program row carries its source pair (onCreate needs no key→pair map). Rows are deduped by
   // catalog key so each target shows once and row.key is a unique, collision-free React list key.
   const programRows: CatalogRow[] = dedupeRowsByKey(programGrainPairs.map((pair) => {
-    const key = buildProgramKey(pair.program, pair.sub_program) ?? pair.sub_program;
+    // Fall back to "" (not the raw value) so a whitespace-only option yields a falsy key — the
+    // poll's buildProgramKey would resolve such a record to null, so linking a " " key never matches.
+    const key = buildProgramKey(pair.program, pair.sub_program) ?? "";
     const show = key ? showByKey.get(key) : undefined;
     return {
       key,
@@ -503,7 +505,9 @@ export function AirtableSyncTab({ orgId }: Props) {
     };
   }));
   const cityRows: CatalogRow[] = dedupeRowsByKey(cityOptions.map((name) => {
-    const key = buildCityKey(name) ?? name;
+    // "" fallback (not the raw name) so a whitespace-only option is falsy and offers no link —
+    // consistent with the program rows and with the poll's clean()-based key derivation.
+    const key = buildCityKey(name) ?? "";
     const city = key ? cityByKey.get(key) : undefined;
     return { key, display: name, linkedId: city?.id ?? null, linkedLabel: city?.name ?? null };
   }));
