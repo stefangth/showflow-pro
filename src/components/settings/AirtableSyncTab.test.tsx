@@ -417,4 +417,21 @@ describe("AirtableSyncTab — Airtable view", () => {
     fireEvent.blur(input);
     await waitFor(() => expect(upsertOrgSetting).toHaveBeenCalledWith(expect.anything(), "org-1", "airtable_view", ""));
   });
+
+  it("trims whitespace from the view before saving", async () => {
+    (fetchAirtableKeyStatus as ReturnType<typeof vi.fn>).mockResolvedValue({ present: true, updatedAt: null });
+    (fetchAirtableBases as ReturnType<typeof vi.fn>).mockResolvedValue({ schemaAccessible: true, bases: [{ id: "appA", name: "Base" }] });
+    (fetchAirtableTables as ReturnType<typeof vi.fn>).mockResolvedValue({ schemaAccessible: true, tables: [{ id: "t", name: "Events", fields: [] }] });
+    renderTab({ airtable_base_id: "appA", airtable_table_name: "Events" }); // airtable_view defaults to "Grid view"
+
+    const input = await screen.findByPlaceholderText("Grid view");
+    // Padding-only edit normalizes to the current value → no save.
+    fireEvent.change(input, { target: { value: "  Grid view  " } });
+    fireEvent.blur(input);
+    expect(upsertOrgSetting).not.toHaveBeenCalledWith(expect.anything(), "org-1", "airtable_view", expect.anything());
+    // A real (padded) change persists the trimmed value.
+    fireEvent.change(input, { target: { value: "  Published  " } });
+    fireEvent.blur(input);
+    await waitFor(() => expect(upsertOrgSetting).toHaveBeenCalledWith(expect.anything(), "org-1", "airtable_view", "Published"));
+  });
 });

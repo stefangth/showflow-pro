@@ -694,7 +694,7 @@ export function AirtableSyncTab({ orgId }: Props) {
                   placeholder="Grid view"
                   defaultValue={s.airtable_view}
                   key={`view-${s.airtable_view}`}
-                  onBlur={(e) => { if (e.target.value !== s.airtable_view) saveSettings.mutate({ airtable_view: e.target.value }); }}
+                  onBlur={(e) => { const v = e.target.value.trim(); if (v !== s.airtable_view) saveSettings.mutate({ airtable_view: v }); }}
                 />
                 <p className="text-xs text-muted-foreground">
                   The sync reads records from this Airtable view. Leave blank to read the entire table. Defaults to &ldquo;Grid view&rdquo;.
