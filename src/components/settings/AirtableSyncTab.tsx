@@ -130,9 +130,9 @@ function CatalogSection({
   onCreate: (row: CatalogRow) => void;
   onLink: (row: CatalogRow, id: string) => void;
   onUnlink: (id: string) => void;
-  entityNoun: string; // "show" | "city" — for aria-labels
+  entityNoun: "show" | "city"; // used in aria-labels + search placeholders
   emptyHint: string;
-  busy?: boolean; // a link/create/unlink mutation for this section is in flight
+  busy?: boolean; // a link/create/unlink mutation (or the backing catalog query) is in flight
 }) {
   return (
     <div className="space-y-3">
@@ -162,7 +162,7 @@ function CatalogSection({
                     <span className="text-sm text-muted-foreground truncate">→ {row.linkedLabel}</span>
                     <Button size="sm" variant="ghost" className="shrink-0" disabled={busy} onClick={() => onUnlink(row.linkedId!)}>Unlink</Button>
                   </>
-                ) : (
+                ) : row.key ? (
                   <CatalogLinkCombobox
                     optionLabel={row.display}
                     existing={existing}
@@ -172,6 +172,10 @@ function CatalogSection({
                     ariaLabel={`link or create ${entityNoun} for ${row.display}`}
                     searchPlaceholder={`Search ${entityNoun}s…`}
                   />
+                ) : (
+                  // No usable link key (blank source value) — never offer linking; a blank key
+                  // would otherwise match every unresolved record in the poll.
+                  <span className="text-sm text-muted-foreground">—</span>
                 )}
               </div>
             </div>
@@ -421,6 +425,9 @@ export function AirtableSyncTab({ orgId }: Props) {
   const createOneProgram = useMutation({
     mutationFn: async (pair: ProgramPair) => {
       const rows = planProgramImport([pair], showsQ.data ?? []);
+      // Empty plan = the option is already covered by an existing/legacy catalog show; creating
+      // nothing must not report success. (A legacy sub-only-keyed show auto-links on the next sync.)
+      if (rows.length === 0) throw new Error("Already matches a catalog show — it will link on the next sync.");
       await importShowsFromOptions(supabase, orgId!, rows);
     },
     onSuccess: () => { qc.invalidateQueries({ queryKey: ["shows"] }); toast.success("Show created and linked"); },
@@ -429,6 +436,8 @@ export function AirtableSyncTab({ orgId }: Props) {
   const createOneCity = useMutation({
     mutationFn: async (name: string) => {
       const plan = planCityReconciliation([name], citiesQ.data ?? []);
+      // Empty plan = already reconciled to a catalog city; don't report a false "created".
+      if (plan.toLink.length === 0 && plan.toCreate.length === 0) throw new Error("Already matches a catalog city.");
       for (const l of plan.toLink) await linkCityAirtableKey(supabase, l.cityId, l.key);
       await importCitiesFromOptions(supabase, orgId!, plan.toCreate);
     },
@@ -462,10 +471,12 @@ export function AirtableSyncTab({ orgId }: Props) {
   // Source-field subtitles name the actual mapped Airtable field(s), not a hardcoded label.
   const programSource = fieldMap.program ? `${fieldMap.program} · ${fieldMap.sub_program}` : (fieldMap.sub_program ?? "");
   const citySource = fieldMap.city ?? "";
-  const pairByKey = new Map<string, ProgramPair>();
+  // Built independently of programRows so the two can't desync (e.g. if either is later memoized).
+  const pairByKey = new Map<string, ProgramPair>(
+    programGrainPairs.map((pair) => [buildProgramKey(pair.program, pair.sub_program) ?? pair.sub_program, pair]),
+  );
   const programRows: CatalogRow[] = programGrainPairs.map((pair) => {
     const key = buildProgramKey(pair.program, pair.sub_program) ?? pair.sub_program;
-    pairByKey.set(key, pair);
     const show = key ? showByKey.get(key) : undefined;
     return {
       key,
@@ -854,12 +865,12 @@ export function AirtableSyncTab({ orgId }: Props) {
                   rows={programRows}
                   unlinkedCount={programUnlinked}
                   importAll={() => importPrograms.mutate()}
-                  importDisabled={importPrograms.isPending || programUnlinked === 0}
+                  importDisabled={importPrograms.isPending || showsQ.isLoading || programUnlinked === 0}
                   existing={programExisting}
                   onCreate={(row) => { const pair = pairByKey.get(row.key); if (pair) createOneProgram.mutate(pair); }}
                   onLink={(row, id) => linkShow.mutate({ showId: id, key: row.key })}
                   onUnlink={(id) => unlinkShow.mutate(id)}
-                  busy={createOneProgram.isPending || linkShow.isPending || unlinkShow.isPending}
+                  busy={createOneProgram.isPending || showsQ.isLoading || linkShow.isPending || unlinkShow.isPending}
                   entityNoun="show"
                   emptyHint="No program options found in the mapped table."
                 />
@@ -872,12 +883,12 @@ export function AirtableSyncTab({ orgId }: Props) {
                 rows={cityRows}
                 unlinkedCount={cityUnlinked}
                 importAll={() => importCities.mutate()}
-                importDisabled={importCities.isPending || cityUnlinked === 0}
+                importDisabled={importCities.isPending || citiesQ.isLoading || cityUnlinked === 0}
                 existing={cityExisting}
                 onCreate={(row) => createOneCity.mutate(row.display)}
                 onLink={(row, id) => linkCity.mutate({ cityId: id, key: row.key })}
                 onUnlink={(id) => unlinkCity.mutate(id)}
-                busy={createOneCity.isPending || linkCity.isPending || unlinkCity.isPending}
+                busy={createOneCity.isPending || citiesQ.isLoading || linkCity.isPending || unlinkCity.isPending}
                 entityNoun="city"
                 emptyHint="No options on the mapped City field."
               />

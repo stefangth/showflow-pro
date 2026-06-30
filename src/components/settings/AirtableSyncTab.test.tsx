@@ -43,6 +43,7 @@ vi.mock("@/data/customFields", () => ({
   upsertCustomFieldDef: vi.fn(() => Promise.resolve()),
   deleteCustomFieldDef: vi.fn(() => Promise.resolve()),
 }));
+vi.mock("sonner", () => ({ toast: { success: vi.fn(), error: vi.fn(), info: vi.fn(), warning: vi.fn() } }));
 
 import { fetchAirtableBases, fetchAirtableTables, fetchAirtableLinkedRecords, fetchAirtableProgramPairs } from "@/data/airtableSchema";
 import { fetchAirtableKeyStatus } from "@/data/airtableKey";
@@ -50,6 +51,7 @@ import { fetchLatestSyncLog, fetchUnresolvedRecords } from "@/data/airtableSync"
 import { fetchCitiesForLinking, mergeCities } from "@/data/cities";
 import { upsertOrgSetting, fetchShowsForLinking, importShowsFromOptions } from "@/data/settings";
 import { fetchAirtableSettings } from "@/data/airtableSettings";
+import { toast } from "sonner";
 
 function renderTab(initial: Record<string, unknown> = {}) {
   (fetchAirtableSettings as ReturnType<typeof vi.fn>).mockResolvedValue({
@@ -307,7 +309,9 @@ describe("AirtableSyncTab — autosave", () => {
     (fetchShowsForLinking as ReturnType<typeof vi.fn>).mockResolvedValue([]);
     renderTab({ airtable_base_id: "appX", airtable_table_name: "Events", airtable_field_map: { sub_program: "Sub" } });
 
-    fireEvent.click(await screen.findByLabelText("link or create show for TJE: Murder"));
+    const trigger = await screen.findByLabelText("link or create show for TJE: Murder");
+    await waitFor(() => expect(trigger).not.toBeDisabled()); // wait for showsQ to resolve
+    fireEvent.click(trigger);
     fireEvent.click(await screen.findByText(/Create/));
     await waitFor(() =>
       expect(importShowsFromOptions).toHaveBeenCalledWith(
@@ -315,6 +319,32 @@ describe("AirtableSyncTab — autosave", () => {
         [expect.objectContaining({ sub_program: "TJE: Murder", key: "TJE: Murder" })],
       ),
     );
+  });
+
+  it("reports a clear error instead of false success when the program is already covered", async () => {
+    (fetchAirtableKeyStatus as ReturnType<typeof vi.fn>).mockResolvedValue({ present: true, updatedAt: null });
+    (fetchAirtableBases as ReturnType<typeof vi.fn>).mockResolvedValue({ schemaAccessible: true, bases: [{ id: "appX", name: "Base" }] });
+    (fetchAirtableTables as ReturnType<typeof vi.fn>).mockResolvedValue({
+      schemaAccessible: true,
+      tables: [{ id: "tbl", name: "Events", fields: [
+        { id: "fP", name: "Program", type: "singleSelect", options: { choices: [{ id: "p1", name: "TJE" }] } },
+        { id: "fS", name: "Sub", type: "singleSelect", options: { choices: [{ id: "c1", name: "TJE: Murder" }] } },
+      ] }],
+    });
+    (fetchAirtableProgramPairs as ReturnType<typeof vi.fn>).mockResolvedValue({ schemaAccessible: true, pairs: [{ program: "TJE", sub_program: "TJE: Murder" }] });
+    // A legacy sub-only-keyed show already covers this sub → planProgramImport returns [].
+    (fetchShowsForLinking as ReturnType<typeof vi.fn>).mockResolvedValue([
+      { id: "legacy-1", program: null, sub_program: "TJE: Murder", main_cast_slots: 2, understudy_slots: 0, airtable_program_key: "TJE: Murder" },
+    ]);
+    renderTab({ airtable_base_id: "appX", airtable_table_name: "Events", airtable_field_map: { program: "Program", sub_program: "Sub" } });
+
+    const trigger = await screen.findByLabelText(/link or create show for TJE/);
+    await waitFor(() => expect(trigger).not.toBeDisabled());
+    fireEvent.click(trigger);
+    fireEvent.click(await screen.findByText(/Create/));
+    await waitFor(() => expect(toast.error).toHaveBeenCalled());
+    expect(importShowsFromOptions).not.toHaveBeenCalled();
+    expect(toast.success).not.toHaveBeenCalled();
   });
 
   it("links Programs at the composite grain when Program is mapped", async () => {
