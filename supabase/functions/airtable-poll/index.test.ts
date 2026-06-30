@@ -254,3 +254,100 @@ Deno.test("airtable-poll sessions: a brand-new date with no S1 inserts session_1
   const payload = inserts[0] as Record<string, unknown>;
   assertEquals(payload.session_1, null);
 });
+
+// ─── Program composite grain (Task 1) ───────────────────────────────────────────
+const PROGRAM_FIELD_MAP = { date: "Date", program: "Program", sub_program: "SubProgram", city: "City" };
+
+/** Seed an enabled+keyed ORG with a caller-supplied `shows` array and PROGRAM_FIELD_MAP. */
+function seededDepsShows(records: unknown[], shows: unknown[]) {
+  return makeFakeDeps({
+    tables: {
+      app_settings: [
+        { when: { key: "cron_secret" }, data: { value: "secret123" } },
+        { when: { key: "airtable_sync_enabled" }, data: [{ org_id: ORG, value: true }] },
+        { when: { key: "airtable_base_id" }, data: [{ org_id: ORG, value: "appABCDEFGHIJKLMNO" }] },
+        { when: { key: "airtable_table_name" }, data: [{ org_id: ORG, value: "Shows" }] },
+        { when: { key: "airtable_field_map" }, data: [{ org_id: ORG, value: PROGRAM_FIELD_MAP }] },
+      ],
+      organizations: { data: [{ id: ORG }], error: null },
+      shows: { data: shows, error: null },
+      cities: { data: [{ id: "city-berlin", airtable_city_key: "berlin" }], error: null },
+      show_dates: { data: [], error: null },
+      airtable_sync_log: { data: { id: "log-1" }, error: null },
+      airtable_sync_record_log: { data: [], error: null },
+      org_memberships: { data: [], error: null },
+      notifications: { data: null, error: null },
+    },
+    rpcs: { get_org_airtable_key: { data: "key", error: null } },
+    fetchImpl: (() => Promise.resolve(airtableResponse(records)) as Promise<Response>),
+  });
+}
+
+/** Capture `shows` UPDATE payloads and `show_dates` INSERT payloads in one from() wrapper. */
+function captureWrites(deps: ReturnType<typeof makeFakeDeps>["deps"]) {
+  const showUpdates: unknown[] = [];
+  const showDateInserts: unknown[] = [];
+  const originalFrom = deps.admin.from.bind(deps.admin);
+  (deps.admin as any).from = (table: string) => {
+    const chain = originalFrom(table);
+    if (table === "shows") {
+      const origUpdate = chain.update.bind(chain);
+      chain.update = (payload: unknown) => { showUpdates.push(payload); return (origUpdate as (x: unknown) => any)(payload); };
+    }
+    if (table === "show_dates") {
+      const origInsert = chain.insert.bind(chain);
+      chain.insert = (payload: unknown) => {
+        showDateInserts.push(payload);
+        const insertChain = (origInsert as (x: unknown) => any)(payload);
+        (insertChain as any).single = () => Promise.resolve({ data: { id: "sd-new" }, error: null });
+        return insertChain;
+      };
+    }
+    return chain;
+  };
+  return { showUpdates, showDateInserts };
+}
+
+Deno.test("airtable-poll grain: composite-keyed show resolves; program matches → no shows write", async () => {
+  const records = [{ id: "rec-1", fields: { Date: "2026-06-01", Program: "BOL", SubProgram: "BOL: PP", City: "Berlin" } }];
+  const { deps } = seededDepsShows(records, [{ id: "show-bol", program: "BOL", airtable_program_key: "BOL|BOL: PP" }]);
+  const { showUpdates, showDateInserts } = captureWrites(deps);
+  const res = await handle(authReq(), deps);
+  assertEquals(res.status, 200);
+  assertEquals(showDateInserts.length, 1);
+  assertEquals((showDateInserts[0] as Record<string, unknown>).show_id, "show-bol");
+  assertEquals(showUpdates.length, 0);
+});
+
+Deno.test("airtable-poll grain: a sub-program-only-keyed show is re-keyed to composite + program set", async () => {
+  const records = [{ id: "rec-1", fields: { Date: "2026-06-01", Program: "BOL", SubProgram: "BOL: PP", City: "Berlin" } }];
+  const { deps } = seededDepsShows(records, [{ id: "show-bol", program: null, airtable_program_key: "BOL: PP" }]);
+  const { showUpdates, showDateInserts } = captureWrites(deps);
+  const res = await handle(authReq(), deps);
+  assertEquals(res.status, 200);
+  assertEquals(showUpdates.length, 1);
+  assertEquals(showUpdates[0], { airtable_program_key: "BOL|BOL: PP", program: "BOL" });
+  assertEquals(showDateInserts.length, 1);
+  assertEquals((showDateInserts[0] as Record<string, unknown>).show_id, "show-bol");
+});
+
+Deno.test("airtable-poll grain: composite-keyed show with null program gets program written through", async () => {
+  const records = [{ id: "rec-1", fields: { Date: "2026-06-01", Program: "BOL", SubProgram: "BOL: PP", City: "Berlin" } }];
+  const { deps } = seededDepsShows(records, [{ id: "show-bol", program: null, airtable_program_key: "BOL|BOL: PP" }]);
+  const { showUpdates } = captureWrites(deps);
+  const res = await handle(authReq(), deps);
+  assertEquals(res.status, 200);
+  assertEquals(showUpdates.length, 1);
+  assertEquals(showUpdates[0], { program: "BOL" });
+});
+
+Deno.test("airtable-poll grain: program unmapped → no shows write, resolves as before", async () => {
+  const records = [{ id: "rec-1", fields: { Date: "2026-06-01", SubProgram: "Magic", City: "Berlin" } }];
+  const { deps } = seededDeps(records); // existing helper: FIELD_MAP (no program), show-magic keyed "Magic"
+  const { showUpdates, showDateInserts } = captureWrites(deps);
+  const res = await handle(authReq(), deps);
+  assertEquals(res.status, 200);
+  assertEquals(showUpdates.length, 0);
+  assertEquals(showDateInserts.length, 1);
+  assertEquals((showDateInserts[0] as Record<string, unknown>).show_id, "show-magic");
+});
