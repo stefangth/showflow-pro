@@ -653,6 +653,8 @@ export function AirtableSyncTab({ orgId }: Props) {
                   <Skeleton className="h-9 w-full" />
                 ) : fieldMap.program && programPairsQ.isError ? (
                   <Alert variant="destructive"><AlertDescription>Couldn't load program options from Airtable. Try refreshing the schema.</AlertDescription></Alert>
+                ) : fieldMap.program && programPairsQ.data?.schemaAccessible === false ? (
+                  <Alert variant="destructive"><AlertDescription>Your Airtable key can't read records (it needs the data.records:read scope), so program options can't be listed.</AlertDescription></Alert>
                 ) : programGrainPairs.length ? programGrainPairs.map((pair) => {
                   const name = pair.sub_program;
                   const key = buildProgramKey(pair.program, pair.sub_program);
