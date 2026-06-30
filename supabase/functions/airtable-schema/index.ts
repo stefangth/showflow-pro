@@ -59,7 +59,9 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
     const headers = { Authorization: `Bearer ${apiKey as string}` };
 
     // ── Mode C: list a linked table's records (id + primary-field name) ───────
-    if (body?.baseId && body?.linkedTableId) {
+    // `!subProgramField` keeps Mode C and Mode D (pairs) mutually exclusive even if a
+    // caller supplies both linkedTableId and the pairs fields.
+    if (body?.baseId && body?.linkedTableId && !body?.subProgramField) {
       const schemaRes = await deps.fetch(`${AIRTABLE_META}/bases/${encodeURIComponent(body.baseId)}/tables`, { headers });
       const schemaFail = await airtableFailure(schemaRes, "Airtable schema read failed");
       if (schemaFail) return schemaFail;

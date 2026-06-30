@@ -1,5 +1,6 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "@/integrations/supabase/types";
+import type { ProgramPair } from "./airtableMapping";
 
 export interface AirtableBase { id: string; name: string }
 export interface AirtableField { id: string; name: string; type: string; options?: Record<string, unknown> }
@@ -51,8 +52,7 @@ export async function fetchAirtableLinkedRecords(
   return { schemaAccessible: !!payload?.schemaAccessible, records: payload?.records };
 }
 
-export interface AirtableProgramPair { program: string | null; sub_program: string }
-export interface ProgramPairsResult { schemaAccessible: boolean; pairs?: AirtableProgramPair[] }
+export interface ProgramPairsResult { schemaAccessible: boolean; pairs?: ProgramPair[] }
 
 /** Distinct (program, sub_program) pairs from the mapped table's records, via airtable-schema
  *  Mode D. Used by the mapping UI to link at the composite grain (ADR-0010 parity with the poll). */
@@ -68,7 +68,7 @@ export async function fetchAirtableProgramPairs(
     body: { org_id: orgId, baseId, tableName, subProgramField, ...(programField ? { programField } : {}) },
   });
   if (error) throw error;
-  const payload = data as { error?: string; schemaAccessible?: boolean; pairs?: AirtableProgramPair[] };
+  const payload = data as { error?: string; schemaAccessible?: boolean; pairs?: ProgramPair[] };
   if (payload?.error) throw new Error(payload.error);
   return { schemaAccessible: !!payload?.schemaAccessible, pairs: payload?.pairs };
 }
