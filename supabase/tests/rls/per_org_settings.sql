@@ -7,7 +7,7 @@
 --   0000…a000 org A         0000…b000 org B
 BEGIN;
 CREATE EXTENSION IF NOT EXISTS pgtap WITH SCHEMA extensions;
-SELECT plan(11);
+SELECT plan(13);
 
 SET session_replication_role = replica;
 INSERT INTO auth.users (id, aud, role, email, email_confirmed_at, raw_app_meta_data, raw_user_meta_data, created_at, updated_at)
@@ -24,15 +24,22 @@ INSERT INTO public.org_memberships (org_id, user_id, role) VALUES
   ('00000000-0000-0000-0000-00000000b000','aaaaaaaa-aaaa-00b2-0000-000000000000','admin');
 
 -- platform default + an org-A override of the same key
+-- + a null-valued org override (must fall through to platform) and a null-valued
+--   platform-only row (must fall through to NULL — no lower tier exists)
 INSERT INTO public.app_settings (org_id, key, value) VALUES
   (NULL, 'demo_key', '"platform"'::jsonb),
-  ('00000000-0000-0000-0000-00000000a000', 'demo_key', '"orgA"'::jsonb);
+  ('00000000-0000-0000-0000-00000000a000', 'demo_key', '"orgA"'::jsonb),
+  (NULL, 'null_org_key', '"plat-fallback"'::jsonb),
+  ('00000000-0000-0000-0000-00000000a000', 'null_org_key', 'null'::jsonb),
+  (NULL, 'null_platform_key', 'null'::jsonb);
 SET session_replication_role = DEFAULT;
 
 -- get_org_setting resolves org override, else platform, else null (definer; call directly)
 SELECT is( public.get_org_setting('00000000-0000-0000-0000-00000000a000','demo_key'), '"orgA"'::jsonb, 'org A override wins');
 SELECT is( public.get_org_setting('00000000-0000-0000-0000-00000000b000','demo_key'), '"platform"'::jsonb, 'org B falls back to platform default');
 SELECT is( public.get_org_setting('00000000-0000-0000-0000-00000000b000','missing'), NULL, 'unknown key resolves to null');
+SELECT is( public.get_org_setting('00000000-0000-0000-0000-00000000a000','null_org_key'), '"plat-fallback"'::jsonb, 'null-valued org row falls through to platform default');
+SELECT is( public.get_org_setting('00000000-0000-0000-0000-00000000a000','null_platform_key'), NULL, 'null-valued platform-only row resolves to null (no lower tier)');
 
 -- ── reads under RLS ──
 -- org-B admin sees the platform row (org_id IS NULL) and NOT org A's override

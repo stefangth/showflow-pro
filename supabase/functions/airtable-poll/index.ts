@@ -491,10 +491,10 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
         resolveOrgSetting<FieldMap>(admin, org.id, "airtable_field_map", {}),
         resolveOrgSetting<string | null>(admin, org.id, "airtable_view", "Grid view"),
       ]);
-      // Which Airtable view to read (default "Grid view"; blank reads the whole table). A row
-      // stored with a null value would surface as null (resolveOrgSetting returns a found row's
-      // value as-is), so coerce to keep viewName a genuine string. Trim so stray whitespace from a
-      // manual/legacy value can't produce an unmatchable view name (e.g. "%20Grid%20view%20").
+      // Which Airtable view to read (default "Grid view"; blank reads the whole table).
+      // resolveOrgSetting already falls a null-valued row through to "Grid view"; the `??` here
+      // is belt-and-suspenders. Trim so stray whitespace from a manual/legacy value can't produce
+      // an unmatchable view name (e.g. "%20Grid%20view%20").
       const viewName = (viewRaw ?? "Grid view").trim();
 
       const logMisconfig = (detail: string) =>

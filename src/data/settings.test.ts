@@ -68,6 +68,20 @@ describe("resolveOrgSetting", () => {
     expect(await resolveOrgSetting(fake as never, "o1", "k", "def")).toBe("plat");
   });
 
+  it("falls through to the platform default when the org row is null-valued", async () => {
+    const fake = createFakeSupabase({
+      app_settings: { data: [{ org_id: "o1", value: null }, { org_id: null, value: "plat" }], error: null },
+    });
+    expect(await resolveOrgSetting(fake as never, "o1", "k", "def")).toBe("plat");
+  });
+
+  it("falls through to the fallback when the platform row is null-valued and there's no org override", async () => {
+    const fake = createFakeSupabase({
+      app_settings: { data: [{ org_id: null, value: null }], error: null },
+    });
+    expect(await resolveOrgSetting(fake as never, "o1", "k", "def")).toBe("def");
+  });
+
   it("returns the fallback when no row matches", async () => {
     const fake = createFakeSupabase({ app_settings: { data: [], error: null } });
     expect(await resolveOrgSetting(fake as never, "o1", "k", "def")).toBe("def");
@@ -161,5 +175,18 @@ describe("mergeOrgRows", () => {
 
   it("returns an empty map for no rows", () => {
     expect(mergeOrgRows([]).size).toBe(0);
+  });
+
+  it("skips a null-valued org row and falls through to the platform default", () => {
+    const byKey = mergeOrgRows([
+      { key: "a", value: null, org_id: "org-1" },
+      { key: "a", value: "platform", org_id: null },
+    ]);
+    expect(byKey.get("a")?.value).toBe("platform");
+  });
+
+  it("has no entry for a key whose only row is null-valued", () => {
+    const byKey = mergeOrgRows([{ key: "a", value: null, org_id: "org-1" }]);
+    expect(byKey.has("a")).toBe(false);
   });
 });
