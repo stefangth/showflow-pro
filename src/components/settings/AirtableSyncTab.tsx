@@ -15,8 +15,8 @@ import { toast } from "sonner";
 import { Trash2, CheckCircle2, KeyRound, Lock, Loader2, AlertCircle } from "lucide-react";
 import { fetchCustomFieldDefs, upsertCustomFieldDef, deleteCustomFieldDef } from "@/data/customFields";
 import { airtableTypeToCustomType, slugifyKey, type CustomFieldType } from "@/lib/customFields";
-import { fetchAirtableBases, fetchAirtableTables, fetchAirtableLinkedRecords } from "@/data/airtableSchema";
-import { SHOWFLOW_FIELDS, buildProgramKey, buildCityKey, planCityReconciliation, groupDuplicateCities, type AirtableFieldMap } from "@/data/airtableMapping";
+import { fetchAirtableBases, fetchAirtableTables, fetchAirtableLinkedRecords, fetchAirtableProgramPairs } from "@/data/airtableSchema";
+import { SHOWFLOW_FIELDS, buildProgramKey, buildCityKey, planCityReconciliation, groupDuplicateCities, planProgramImport, type AirtableFieldMap, type ProgramPair } from "@/data/airtableMapping";
 import { showLabel } from "@/types";
 import { fetchShowsForLinking, linkShowAirtableKey, importShowsFromOptions, upsertOrgSetting } from "@/data/settings";
 import { fetchAirtableSettings, type AirtableSettings } from "@/data/airtableSettings";
@@ -171,6 +171,16 @@ export function AirtableSyncTab({ orgId }: Props) {
     retry: false,
   });
 
+  // When Program is mapped, link at the composite grain: read distinct (program, sub_program)
+  // pairs from records so the UI builds the SAME key the poll does (ADR-0010).
+  const programPairsQ = useQuery({
+    queryKey: ["airtable", "program-pairs", orgId, baseId, s.airtable_table_name, fieldMap.program, fieldMap.sub_program],
+    enabled: !!orgId && keyPresent && basesAccessible && !!baseId && !!selectedTable && !!fieldMap.program && !!fieldMap.sub_program,
+    queryFn: () => fetchAirtableProgramPairs(supabase, orgId!, baseId, s.airtable_table_name!, fieldMap.sub_program!, fieldMap.program!),
+    staleTime: 5 * 60 * 1000,
+    retry: false,
+  });
+
   // ── API key (Vault) + schema loading ────────────────────────────────────────
   const saveKey = useMutation({
     mutationFn: async () => {
@@ -239,7 +249,10 @@ export function AirtableSyncTab({ orgId }: Props) {
     return choices.map((c) => c.name);
   };
 
-  const programOptions = optionNames(fieldMap.sub_program); // sub-program-only linking (current scope)
+  // Composite grain when Program is mapped (pairs from records); else sub-program-only options.
+  const programGrainPairs: ProgramPair[] = fieldMap.program
+    ? (programPairsQ.data?.pairs ?? [])
+    : optionNames(fieldMap.sub_program).map((name) => ({ program: null, sub_program: name }));
   const cityOptions = cityLinkedTableId
     ? (cityLinkedRecordsQ.data?.records ?? []).map((r) => r.name)
     : optionNames(fieldMap.city);
@@ -250,10 +263,7 @@ export function AirtableSyncTab({ orgId }: Props) {
   // ── Import / unlink mutations ───────────────────────────────────────────────
   const importPrograms = useMutation({
     mutationFn: async () => {
-      const rows = programOptions
-        .map((name) => ({ name, key: buildProgramKey(null, name) }))
-        .filter((r) => r.key && !showByKey.has(r.key))
-        .map((r) => ({ program: null, sub_program: r.name, key: r.key! }));
+      const rows = planProgramImport(programGrainPairs, showsQ.data ?? []);
       await importShowsFromOptions(supabase, orgId!, rows);
     },
     onSuccess: () => { qc.invalidateQueries({ queryKey: ["shows"] }); toast.success("Imported program options"); },
@@ -637,14 +647,16 @@ export function AirtableSyncTab({ orgId }: Props) {
               <div className="space-y-3">
                 <div className="flex items-center justify-between">
                   <h4 className="font-display font-semibold">Programs ({fieldMap.sub_program})</h4>
-                  <Button variant="outline" size="sm" onClick={() => importPrograms.mutate()} disabled={importPrograms.isPending || !programOptions.length}>Import all</Button>
+                  <Button variant="outline" size="sm" onClick={() => importPrograms.mutate()} disabled={importPrograms.isPending || !programGrainPairs.length}>Import all</Button>
                 </div>
-                {programOptions.length ? programOptions.map((name) => {
-                  const key = buildProgramKey(null, name);
+                {programGrainPairs.length ? programGrainPairs.map((pair) => {
+                  const name = pair.sub_program;
+                  const key = buildProgramKey(pair.program, pair.sub_program);
                   const show = key ? showByKey.get(key) : undefined;
+                  const display = pair.program ? `${pair.program} – ${pair.sub_program}` : pair.sub_program;
                   return (
-                    <div key={name} className="flex items-center justify-between gap-2 border-t border-border pt-2">
-                      <span className="text-sm font-medium">{name}</span>
+                    <div key={key ?? name} className="flex items-center justify-between gap-2 border-t border-border pt-2">
+                      <span className="text-sm font-medium">{display}</span>
                       {show
                         ? <div className="flex items-center gap-2"><Badge variant="secondary">linked</Badge><Button size="sm" variant="ghost" onClick={() => unlinkShow.mutate(show.id)} disabled={unlinkShow.isPending}>Unlink</Button></div>
                         : (
@@ -664,7 +676,7 @@ export function AirtableSyncTab({ orgId }: Props) {
                         )}
                     </div>
                   );
-                }) : <p className="text-sm text-muted-foreground">No options on the mapped Sub-program field.</p>}
+                }) : <p className="text-sm text-muted-foreground">No program options found in the mapped table.</p>}
               </div>
             )}
             {fieldMap.city && (
