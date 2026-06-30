@@ -649,7 +649,11 @@ export function AirtableSyncTab({ orgId }: Props) {
                   <h4 className="font-display font-semibold">Programs ({fieldMap.sub_program})</h4>
                   <Button variant="outline" size="sm" onClick={() => importPrograms.mutate()} disabled={importPrograms.isPending || !programGrainPairs.length}>Import all</Button>
                 </div>
-                {programGrainPairs.length ? programGrainPairs.map((pair) => {
+                {fieldMap.program && programPairsQ.isLoading ? (
+                  <Skeleton className="h-9 w-full" />
+                ) : fieldMap.program && programPairsQ.isError ? (
+                  <Alert variant="destructive"><AlertDescription>Couldn't load program options from Airtable. Try refreshing the schema.</AlertDescription></Alert>
+                ) : programGrainPairs.length ? programGrainPairs.map((pair) => {
                   const name = pair.sub_program;
                   const key = buildProgramKey(pair.program, pair.sub_program);
                   const show = key ? showByKey.get(key) : undefined;
