@@ -1,4 +1,4 @@
-import { normalizeCityName, buildCityKey } from "../../supabase/functions/_shared/airtableKey.ts";
+import { normalizeCityName, buildCityKey, buildProgramKey } from "../../supabase/functions/_shared/airtableKey.ts";
 
 /** Which ShowFlow field each Airtable field name maps to. Stored in app_settings.airtable_field_map.
  *  Values are Airtable field NAMES (matched against the schema-read field list) or null/absent. */
