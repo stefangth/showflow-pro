@@ -63,7 +63,9 @@ export function planProgramImport(
     const sub = (p.sub_program ?? "").trim();
     const prog = p.program == null ? null : (p.program.trim() || null);
     const key = buildProgramKey(prog, sub);
-    if (!key || existingKeys.has(key) || legacySubs.has(sub) || seen.has(key)) continue;
+    // A pair with no sub-program isn't a catalog show in this grain — drop it. (buildProgramKey
+    // would otherwise return the program-only key, which !key wouldn't catch.)
+    if (!sub || !key || existingKeys.has(key) || legacySubs.has(sub) || seen.has(key)) continue;
     seen.add(key);
     rows.push({ program: prog, sub_program: sub, key });
   }

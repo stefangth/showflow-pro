@@ -301,8 +301,12 @@ async function syncOrg(deps: Deps, orgId: string, baseId: string, tableName: str
 
       // Keep shows.program current with Airtable (fills the column on already-composite shows).
       if (programValue !== null && resolved && resolved.program !== programValue) {
-        await admin.from("shows").update({ program: programValue }).eq("id", showId);
-        resolved.program = programValue; // in-place — showByKey already holds this reference
+        const { error: progErr } = await admin.from("shows").update({ program: programValue }).eq("id", showId);
+        if (progErr) {
+          console.error("airtable-poll: program write-through failed", { org: orgId, programKey, error: progErr.message });
+        } else {
+          resolved.program = programValue; // in-place — showByKey already holds this reference
+        }
       }
 
       const cityNames = fieldMap.city ? resolveNames(fields[fieldMap.city], linkMaps.city) : [];
