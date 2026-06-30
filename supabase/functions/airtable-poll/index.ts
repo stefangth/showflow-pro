@@ -161,7 +161,7 @@ async function notifyAdminsOnSyncProblem(
  *  Resolution is STRICT: shows/cities resolve only by airtable_program_key / airtable_city_key;
  *  anything unlinked is held (city is non-fatal). org_id on show_dates / record logs comes from
  *  derive triggers. Throws on Airtable API error (after logging) so handle() skips counting it. */
-async function syncOrg(deps: Deps, orgId: string, baseId: string, tableName: string, apiKey: string, fieldMap: FieldMap, viewName: string | null): Promise<OrgSyncResult> {
+async function syncOrg(deps: Deps, orgId: string, baseId: string, tableName: string, apiKey: string, fieldMap: FieldMap, viewName: string): Promise<OrgSyncResult> {
   const admin = deps.admin;
 
   // ── Linked-catalog lookup maps (key → id). No name fallback, no lowercasing. ──
