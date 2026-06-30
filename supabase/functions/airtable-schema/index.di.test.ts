@@ -263,3 +263,51 @@ Deno.test("airtable-schema: linked records with unknown linkedTableId → 404", 
   const res = await handle(adminReq({ org_id: ORG, baseId: "appXXX", linkedTableId: "tblMissing" }), deps);
   assertEquals(res.status, 404);
 });
+
+// ─── Program pairs mode (baseId + tableName + subProgramField) ───────────────────
+Deno.test("airtable-schema: program pairs → distinct (program, sub_program) from records", async () => {
+  const urls: string[] = [];
+  const fetchImpl: typeof fetch = (url) => {
+    urls.push(String(url));
+    return Promise.resolve(airtableJson({
+      records: [
+        { id: "r1", fields: { Program: "BOL", "Sub-Programm": "BOL: PP" } },
+        { id: "r2", fields: { Program: "TJE", "Sub-Programm": "TJE: Boat" } },
+        { id: "r3", fields: { Program: "TJE", "Sub-Programm": "TJE: Boat" } }, // duplicate pair → collapsed
+        { id: "r4", fields: { "Sub-Programm": "  " } },                        // blank sub → skipped
+      ],
+    })) as Promise<Response>;
+  };
+  const { deps } = adminDeps({ fetchImpl });
+  const res = await handle(
+    adminReq({ org_id: ORG, baseId: "appX", tableName: "Events", programField: "Program", subProgramField: "Sub-Programm" }),
+    deps,
+  );
+  assertEquals(res.status, 200);
+  const body = await res.json();
+  assertEquals(body.schemaAccessible, true);
+  assertEquals(body.pairs, [
+    { program: "BOL", sub_program: "BOL: PP" },
+    { program: "TJE", sub_program: "TJE: Boat" },
+  ]);
+  assertEquals(urls[0].includes("/v0/appX/Events"), true);
+  assertEquals(decodeURIComponent(urls[0]).includes("fields[]=Sub-Programm"), true);
+});
+
+Deno.test("airtable-schema: program pairs without programField → program null", async () => {
+  const { deps } = adminDeps({
+    fetchImpl: () => Promise.resolve(airtableJson({ records: [{ id: "r1", fields: { "Sub-Programm": "BOL: PP" } }] })) as Promise<Response>,
+  });
+  const res = await handle(adminReq({ org_id: ORG, baseId: "appX", tableName: "Events", subProgramField: "Sub-Programm" }), deps);
+  assertEquals(res.status, 200);
+  assertEquals((await res.json()).pairs, [{ program: null, sub_program: "BOL: PP" }]);
+});
+
+Deno.test("airtable-schema: program pairs 403 (missing scope) → { schemaAccessible: false }", async () => {
+  const { deps } = adminDeps({
+    fetchImpl: () => Promise.resolve(new Response("", { status: 403 })) as Promise<Response>,
+  });
+  const res = await handle(adminReq({ org_id: ORG, baseId: "appX", tableName: "Events", subProgramField: "Sub-Programm" }), deps);
+  assertEquals(res.status, 200);
+  assertEquals((await res.json()).schemaAccessible, false);
+});
