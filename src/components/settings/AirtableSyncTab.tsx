@@ -153,7 +153,9 @@ function CatalogSection({
             <span>Airtable option</span><span>Status</span><span>Catalog link</span>
           </div>
           {rows.map((row) => (
-            <div key={row.key} className="grid grid-cols-1 sm:grid-cols-[1fr_110px_240px] gap-2 sm:gap-3 items-center px-3 py-2.5 border-b border-border last:border-b-0">
+            // Raw display name as the React key — row.key is normalized (lowercased), so two
+            // linked-table options like "Berlin"/"berlin" would collide on it.
+            <div key={row.display} className="grid grid-cols-1 sm:grid-cols-[1fr_110px_240px] gap-2 sm:gap-3 items-center px-3 py-2.5 border-b border-border last:border-b-0">
               <span className="text-sm font-medium truncate">{row.display}</span>
               <div><Badge variant={row.linkedId ? "secondary" : "outline"}>{row.linkedId ? "Linked" : "Unlinked"}</Badge></div>
               <div className="flex items-center justify-between sm:justify-start gap-2 min-w-0">
@@ -440,8 +442,9 @@ export function AirtableSyncTab({ orgId }: Props) {
       if (plan.toLink.length === 0 && plan.toCreate.length === 0) throw new Error("Already matches a catalog city.");
       for (const l of plan.toLink) await linkCityAirtableKey(supabase, l.cityId, l.key);
       await importCitiesFromOptions(supabase, orgId!, plan.toCreate);
+      return plan;
     },
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ["cities"] }); toast.success("City created and linked"); },
+    onSuccess: (plan) => { qc.invalidateQueries({ queryKey: ["cities"] }); toast.success(plan.toCreate.length > 0 ? "City created and linked" : "City linked"); },
     onError: (e: unknown) => toast.error((e as Error).message ?? "Create failed"),
   });
   const unlinkShow = useMutation({
