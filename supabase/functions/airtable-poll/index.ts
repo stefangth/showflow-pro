@@ -161,7 +161,7 @@ async function notifyAdminsOnSyncProblem(
  *  Resolution is STRICT: shows/cities resolve only by airtable_program_key / airtable_city_key;
  *  anything unlinked is held (city is non-fatal). org_id on show_dates / record logs comes from
  *  derive triggers. Throws on Airtable API error (after logging) so handle() skips counting it. */
-async function syncOrg(deps: Deps, orgId: string, baseId: string, tableName: string, apiKey: string, fieldMap: FieldMap): Promise<OrgSyncResult> {
+async function syncOrg(deps: Deps, orgId: string, baseId: string, tableName: string, apiKey: string, fieldMap: FieldMap, viewName: string): Promise<OrgSyncResult> {
   const admin = deps.admin;
 
   // ── Linked-catalog lookup maps (key → id). No name fallback, no lowercasing. ──
@@ -239,7 +239,10 @@ async function syncOrg(deps: Deps, orgId: string, baseId: string, tableName: str
 
   // ── Page through Airtable, classify each record ───────────────────────────
   const encodedTable = encodeURIComponent(tableName);
-  const airtableBaseUrl = `https://api.airtable.com/v0/${baseId}/${encodedTable}?view=Grid%20view`;
+  const dataUrl = `https://api.airtable.com/v0/${baseId}/${encodedTable}`;
+  // A named view scopes (and can filter) which records sync; a blank view reads the table's
+  // full record set. encodeURIComponent keeps spaces as %20 (e.g. "Grid view" → "Grid%20view").
+  const viewParam = viewName ? `view=${encodeURIComponent(viewName)}` : null;
   const outcomes: RecordOutcome[] = [];
   const newDateIds: string[] = [];
   let processed = 0, newDates = 0, updated = 0, held = 0, recordsSeen = 0;
@@ -249,7 +252,8 @@ async function syncOrg(deps: Deps, orgId: string, baseId: string, tableName: str
 
   do {
     pageCount += 1;
-    const url = offset ? `${airtableBaseUrl}&offset=${encodeURIComponent(offset)}` : airtableBaseUrl;
+    const params = [viewParam, offset ? `offset=${encodeURIComponent(offset)}` : null].filter((p): p is string => Boolean(p));
+    const url = params.length ? `${dataUrl}?${params.join("&")}` : dataUrl;
     const res = await deps.fetch(url, { headers: { Authorization: `Bearer ${apiKey}` } });
     if (!res.ok) {
       const body = (await res.text()).slice(0, 500);
@@ -480,9 +484,18 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
       const enabled = await resolveOrgSetting<boolean>(admin, org.id, "airtable_sync_enabled", false);
       if (!enabled) continue; // intentionally off → skip silently
 
-      const baseId = await resolveOrgSetting<string | null>(admin, org.id, "airtable_base_id", null);
-      const tableName = await resolveOrgSetting<string | null>(admin, org.id, "airtable_table_name", null);
-      const fieldMap = await resolveOrgSetting<FieldMap>(admin, org.id, "airtable_field_map", {});
+      // Resolve the per-org sync config in one parallel fan-out (independent settings).
+      const [baseId, tableName, fieldMap, viewRaw] = await Promise.all([
+        resolveOrgSetting<string | null>(admin, org.id, "airtable_base_id", null),
+        resolveOrgSetting<string | null>(admin, org.id, "airtable_table_name", null),
+        resolveOrgSetting<FieldMap>(admin, org.id, "airtable_field_map", {}),
+        resolveOrgSetting<string | null>(admin, org.id, "airtable_view", "Grid view"),
+      ]);
+      // Which Airtable view to read (default "Grid view"; blank reads the whole table). A row
+      // stored with a null value would surface as null (resolveOrgSetting returns a found row's
+      // value as-is), so coerce to keep viewName a genuine string. Trim so stray whitespace from a
+      // manual/legacy value can't produce an unmatchable view name (e.g. "%20Grid%20view%20").
+      const viewName = (viewRaw ?? "Grid view").trim();
 
       const logMisconfig = (detail: string) =>
         admin.from("airtable_sync_log").insert({ org_id: org.id, sync_type: "airtable_poll", status: "error", records_processed: 0, imported_count: 0, new_count: 0, updated_count: 0, held_count: 0, error_details: detail, synced_at: deps.now().toISOString() });
@@ -494,7 +507,7 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
       const { data: apiKey } = await admin.rpc("get_org_airtable_key", { _org: org.id });
       if (!apiKey) { await logMisconfig("Airtable sync enabled but no API key is configured in the Vault"); continue; }
 
-      const r = await syncOrg(deps, org.id, baseId, tableName, apiKey as string, fieldMap);
+      const r = await syncOrg(deps, org.id, baseId, tableName, apiKey as string, fieldMap, viewName);
       totals.orgs_synced += 1;
       totals.processed += r.processed;
       totals.new_dates += r.new_dates;

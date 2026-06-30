@@ -19,9 +19,9 @@ vi.mock("@/data/settings", () => ({
 }));
 vi.mock("@/data/airtableSettings", () => ({
   fetchAirtableSettings: vi.fn(() =>
-    Promise.resolve({ airtable_sync_enabled: false, airtable_base_id: "", airtable_table_name: "", airtable_field_map: {} }),
+    Promise.resolve({ airtable_sync_enabled: false, airtable_base_id: "", airtable_table_name: "", airtable_field_map: {}, airtable_view: "Grid view" }),
   ),
-  AIRTABLE_SETTING_KEYS: ["airtable_sync_enabled", "airtable_base_id", "airtable_table_name", "airtable_field_map"],
+  AIRTABLE_SETTING_KEYS: ["airtable_sync_enabled", "airtable_base_id", "airtable_table_name", "airtable_field_map", "airtable_view"],
 }));
 vi.mock("@/data/cities", () => ({
   fetchCitiesForLinking: vi.fn(() => Promise.resolve([])),
@@ -43,13 +43,15 @@ vi.mock("@/data/customFields", () => ({
   upsertCustomFieldDef: vi.fn(() => Promise.resolve()),
   deleteCustomFieldDef: vi.fn(() => Promise.resolve()),
 }));
+vi.mock("sonner", () => ({ toast: { success: vi.fn(), error: vi.fn(), info: vi.fn(), warning: vi.fn() } }));
 
 import { fetchAirtableBases, fetchAirtableTables, fetchAirtableLinkedRecords, fetchAirtableProgramPairs } from "@/data/airtableSchema";
 import { fetchAirtableKeyStatus } from "@/data/airtableKey";
 import { fetchLatestSyncLog, fetchUnresolvedRecords } from "@/data/airtableSync";
 import { fetchCitiesForLinking, mergeCities } from "@/data/cities";
-import { upsertOrgSetting, fetchShowsForLinking } from "@/data/settings";
+import { upsertOrgSetting, fetchShowsForLinking, importShowsFromOptions } from "@/data/settings";
 import { fetchAirtableSettings } from "@/data/airtableSettings";
+import { toast } from "sonner";
 
 function renderTab(initial: Record<string, unknown> = {}) {
   (fetchAirtableSettings as ReturnType<typeof vi.fn>).mockResolvedValue({
@@ -57,6 +59,7 @@ function renderTab(initial: Record<string, unknown> = {}) {
     airtable_base_id: "",
     airtable_table_name: "",
     airtable_field_map: {},
+    airtable_view: "Grid view",
     ...initial,
   });
   return renderWithProviders(<AirtableSyncTab orgId="org-1" />);
@@ -289,7 +292,59 @@ describe("AirtableSyncTab — autosave", () => {
     renderTab({ airtable_base_id: "appX", airtable_table_name: "Events", airtable_field_map: { sub_program: "Sub" } });
 
     expect(await screen.findByText("TJE: Murder")).toBeInTheDocument();
-    expect(screen.getByLabelText("link TJE: Murder to an existing show")).toBeInTheDocument();
+    const trigger = screen.getByLabelText("link or create show for TJE: Murder");
+    fireEvent.click(trigger);
+    // The combobox offers both "Create" and the existing unlinked show to link to.
+    expect(await screen.findByText(/Create/)).toBeInTheDocument();
+    expect(screen.getByText("Existing")).toBeInTheDocument();
+  });
+
+  it("creates a show inline from an unlinked program option", async () => {
+    (fetchAirtableKeyStatus as ReturnType<typeof vi.fn>).mockResolvedValue({ present: true, updatedAt: null });
+    (fetchAirtableBases as ReturnType<typeof vi.fn>).mockResolvedValue({ schemaAccessible: true, bases: [{ id: "appX", name: "Base" }] });
+    (fetchAirtableTables as ReturnType<typeof vi.fn>).mockResolvedValue({
+      schemaAccessible: true,
+      tables: [{ id: "tbl", name: "Events", fields: [{ id: "fS", name: "Sub", type: "singleSelect", options: { choices: [{ id: "c1", name: "TJE: Murder" }] } }] }],
+    });
+    (fetchShowsForLinking as ReturnType<typeof vi.fn>).mockResolvedValue([]);
+    renderTab({ airtable_base_id: "appX", airtable_table_name: "Events", airtable_field_map: { sub_program: "Sub" } });
+
+    const trigger = await screen.findByLabelText("link or create show for TJE: Murder");
+    await waitFor(() => expect(trigger).not.toBeDisabled()); // wait for showsQ to resolve
+    fireEvent.click(trigger);
+    fireEvent.click(await screen.findByText(/Create/));
+    await waitFor(() =>
+      expect(importShowsFromOptions).toHaveBeenCalledWith(
+        expect.anything(), "org-1",
+        [expect.objectContaining({ sub_program: "TJE: Murder", key: "TJE: Murder" })],
+      ),
+    );
+  });
+
+  it("reports a clear error instead of false success when the program is already covered", async () => {
+    (fetchAirtableKeyStatus as ReturnType<typeof vi.fn>).mockResolvedValue({ present: true, updatedAt: null });
+    (fetchAirtableBases as ReturnType<typeof vi.fn>).mockResolvedValue({ schemaAccessible: true, bases: [{ id: "appX", name: "Base" }] });
+    (fetchAirtableTables as ReturnType<typeof vi.fn>).mockResolvedValue({
+      schemaAccessible: true,
+      tables: [{ id: "tbl", name: "Events", fields: [
+        { id: "fP", name: "Program", type: "singleSelect", options: { choices: [{ id: "p1", name: "TJE" }] } },
+        { id: "fS", name: "Sub", type: "singleSelect", options: { choices: [{ id: "c1", name: "TJE: Murder" }] } },
+      ] }],
+    });
+    (fetchAirtableProgramPairs as ReturnType<typeof vi.fn>).mockResolvedValue({ schemaAccessible: true, pairs: [{ program: "TJE", sub_program: "TJE: Murder" }] });
+    // A legacy sub-only-keyed show already covers this sub → planProgramImport returns [].
+    (fetchShowsForLinking as ReturnType<typeof vi.fn>).mockResolvedValue([
+      { id: "legacy-1", program: null, sub_program: "TJE: Murder", main_cast_slots: 2, understudy_slots: 0, airtable_program_key: "TJE: Murder" },
+    ]);
+    renderTab({ airtable_base_id: "appX", airtable_table_name: "Events", airtable_field_map: { program: "Program", sub_program: "Sub" } });
+
+    const trigger = await screen.findByLabelText(/link or create show for TJE/);
+    await waitFor(() => expect(trigger).not.toBeDisabled());
+    fireEvent.click(trigger);
+    fireEvent.click(await screen.findByText(/Create/));
+    await waitFor(() => expect(toast.error).toHaveBeenCalled());
+    expect(importShowsFromOptions).not.toHaveBeenCalled();
+    expect(toast.success).not.toHaveBeenCalled();
   });
 
   it("links Programs at the composite grain when Program is mapped", async () => {
@@ -355,5 +410,58 @@ describe("AirtableSyncTab — autosave", () => {
     renderTab({ airtable_base_id: "appX", airtable_table_name: "Events", airtable_field_map: { city: "City" } });
 
     expect(await screen.findByText("Berlin")).toBeInTheDocument();
+  });
+});
+
+describe("AirtableSyncTab — Airtable view", () => {
+  beforeEach(() => vi.clearAllMocks());
+
+  it("shows the optional view input once a key and table are set", async () => {
+    (fetchAirtableKeyStatus as ReturnType<typeof vi.fn>).mockResolvedValue({ present: true, updatedAt: null });
+    (fetchAirtableBases as ReturnType<typeof vi.fn>).mockResolvedValue({ schemaAccessible: true, bases: [{ id: "appA", name: "Base" }] });
+    (fetchAirtableTables as ReturnType<typeof vi.fn>).mockResolvedValue({ schemaAccessible: true, tables: [{ id: "t", name: "Events", fields: [] }] });
+    renderTab({ airtable_base_id: "appA", airtable_table_name: "Events" });
+    expect(await screen.findByPlaceholderText("Grid view")).toBeInTheDocument();
+  });
+
+  it("hides the view input until a table is selected", async () => {
+    (fetchAirtableKeyStatus as ReturnType<typeof vi.fn>).mockResolvedValue({ present: true, updatedAt: null });
+    (fetchAirtableBases as ReturnType<typeof vi.fn>).mockResolvedValue({ schemaAccessible: true, bases: [] });
+    renderTab(); // no table_name
+    await screen.findByRole("button", { name: "Refresh from Airtable" });
+    expect(screen.queryByPlaceholderText("Grid view")).not.toBeInTheDocument();
+  });
+
+  it("saves the view on blur only when it changed, incl. clearing to whole-table mode", async () => {
+    (fetchAirtableKeyStatus as ReturnType<typeof vi.fn>).mockResolvedValue({ present: true, updatedAt: null });
+    (fetchAirtableBases as ReturnType<typeof vi.fn>).mockResolvedValue({ schemaAccessible: true, bases: [{ id: "appA", name: "Base" }] });
+    (fetchAirtableTables as ReturnType<typeof vi.fn>).mockResolvedValue({ schemaAccessible: true, tables: [{ id: "t", name: "Events", fields: [] }] });
+    renderTab({ airtable_base_id: "appA", airtable_table_name: "Events" }); // airtable_view defaults to "Grid view"
+
+    const input = await screen.findByPlaceholderText("Grid view");
+    // Unchanged blur → no airtable_view save.
+    fireEvent.blur(input);
+    expect(upsertOrgSetting).not.toHaveBeenCalledWith(expect.anything(), "org-1", "airtable_view", expect.anything());
+    // Clearing the field saves "" (whole-table mode).
+    fireEvent.change(input, { target: { value: "" } });
+    fireEvent.blur(input);
+    await waitFor(() => expect(upsertOrgSetting).toHaveBeenCalledWith(expect.anything(), "org-1", "airtable_view", ""));
+  });
+
+  it("trims whitespace from the view before saving", async () => {
+    (fetchAirtableKeyStatus as ReturnType<typeof vi.fn>).mockResolvedValue({ present: true, updatedAt: null });
+    (fetchAirtableBases as ReturnType<typeof vi.fn>).mockResolvedValue({ schemaAccessible: true, bases: [{ id: "appA", name: "Base" }] });
+    (fetchAirtableTables as ReturnType<typeof vi.fn>).mockResolvedValue({ schemaAccessible: true, tables: [{ id: "t", name: "Events", fields: [] }] });
+    renderTab({ airtable_base_id: "appA", airtable_table_name: "Events" }); // airtable_view defaults to "Grid view"
+
+    const input = await screen.findByPlaceholderText("Grid view");
+    // Padding-only edit normalizes to the current value → no save.
+    fireEvent.change(input, { target: { value: "  Grid view  " } });
+    fireEvent.blur(input);
+    expect(upsertOrgSetting).not.toHaveBeenCalledWith(expect.anything(), "org-1", "airtable_view", expect.anything());
+    // A real (padded) change persists the trimmed value.
+    fireEvent.change(input, { target: { value: "  Published  " } });
+    fireEvent.blur(input);
+    await waitFor(() => expect(upsertOrgSetting).toHaveBeenCalledWith(expect.anything(), "org-1", "airtable_view", "Published"));
   });
 });
