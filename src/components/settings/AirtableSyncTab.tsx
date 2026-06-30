@@ -87,7 +87,8 @@ function CatalogLinkCombobox({
           <CommandInput placeholder={searchPlaceholder} value={search} onValueChange={setSearch} />
           <CommandList>
             <CommandGroup>
-              <CommandItem value="__create__" onSelect={() => { onCreate(); setOpen(false); }}>
+              {/* Radix doesn't fire onOpenChange for a programmatic close, so clear search here too. */}
+              <CommandItem value="__create__" onSelect={() => { onCreate(); setOpen(false); setSearch(""); }}>
                 <Plus className="h-4 w-4 mr-2" /> Create &ldquo;{optionLabel}&rdquo;
               </CommandItem>
             </CommandGroup>
@@ -96,7 +97,7 @@ function CatalogLinkCombobox({
                 <CommandSeparator />
                 <CommandGroup heading="Link to existing">
                   {matches.map((e) => (
-                    <CommandItem key={e.id} value={e.id} onSelect={() => { onLink(e.id); setOpen(false); }}>
+                    <CommandItem key={e.id} value={e.id} onSelect={() => { onLink(e.id); setOpen(false); setSearch(""); }}>
                       {e.label}
                     </CommandItem>
                   ))}
