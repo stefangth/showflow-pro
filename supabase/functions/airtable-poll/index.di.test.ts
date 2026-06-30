@@ -43,6 +43,7 @@ const ENABLED_SETTINGS = [
   { when: { key: "airtable_base_id" }, data: [{ org_id: ORG, value: "appABCDEFGHIJKLMNO" }] }, // 17-char valid format
   { when: { key: "airtable_table_name" }, data: [{ org_id: ORG, value: "ShowDates" }] },
   { when: { key: "airtable_field_map" }, data: [{ org_id: ORG, value: { date: "Date", sub_program: "SubProgram", city: "City", session_1: "Session 1", session_2: "Session 2" } }] },
+  { when: { key: "airtable_view" }, data: [{ org_id: ORG, value: "Grid view" }] },
 ];
 
 /** Airtable API response with one record */
@@ -414,6 +415,13 @@ Deno.test("airtable-poll: airtable_view setting overrides the default view in th
 Deno.test("airtable-poll: a blank airtable_view reads the whole table (no view param)", async () => {
   const url = await captureAirtableUrl([{ when: { key: "airtable_view" }, data: [{ org_id: ORG, value: "" }] }]);
   assertEquals(url.includes("view="), false, `Blank view should omit the view param entirely: ${url}`);
+});
+
+Deno.test("airtable-poll: a null-valued airtable_view row falls back to the default view", async () => {
+  // resolveOrgSetting returns a found row's value as-is (even null); the handler coerces it
+  // back to the default so a null row never silently turns into a whole-table read.
+  const url = await captureAirtableUrl([{ when: { key: "airtable_view" }, data: [{ org_id: ORG, value: null }] }]);
+  assertEquals(url.includes("view=Grid%20view"), true, `Null view row should fall back to the default: ${url}`);
 });
 
 // ─── Field mapping ────────────────────────────────────────────────────────────

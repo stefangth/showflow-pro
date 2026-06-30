@@ -484,11 +484,17 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
       const enabled = await resolveOrgSetting<boolean>(admin, org.id, "airtable_sync_enabled", false);
       if (!enabled) continue; // intentionally off → skip silently
 
-      const baseId = await resolveOrgSetting<string | null>(admin, org.id, "airtable_base_id", null);
-      const tableName = await resolveOrgSetting<string | null>(admin, org.id, "airtable_table_name", null);
-      const fieldMap = await resolveOrgSetting<FieldMap>(admin, org.id, "airtable_field_map", {});
-      // Which Airtable view to read (default "Grid view"; blank reads the whole table).
-      const viewName = await resolveOrgSetting<string>(admin, org.id, "airtable_view", "Grid view");
+      // Resolve the per-org sync config in one parallel fan-out (independent settings).
+      const [baseId, tableName, fieldMap, viewRaw] = await Promise.all([
+        resolveOrgSetting<string | null>(admin, org.id, "airtable_base_id", null),
+        resolveOrgSetting<string | null>(admin, org.id, "airtable_table_name", null),
+        resolveOrgSetting<FieldMap>(admin, org.id, "airtable_field_map", {}),
+        resolveOrgSetting<string | null>(admin, org.id, "airtable_view", "Grid view"),
+      ]);
+      // Which Airtable view to read (default "Grid view"; blank reads the whole table). A row
+      // stored with a null value would surface as null (resolveOrgSetting returns a found row's
+      // value as-is), so coerce to keep viewName a genuine string and avoid a silent whole-table read.
+      const viewName = viewRaw ?? "Grid view";
 
       const logMisconfig = (detail: string) =>
         admin.from("airtable_sync_log").insert({ org_id: org.id, sync_type: "airtable_poll", status: "error", records_processed: 0, imported_count: 0, new_count: 0, updated_count: 0, held_count: 0, error_details: detail, synced_at: deps.now().toISOString() });
