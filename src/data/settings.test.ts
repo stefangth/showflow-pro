@@ -176,4 +176,17 @@ describe("mergeOrgRows", () => {
   it("returns an empty map for no rows", () => {
     expect(mergeOrgRows([]).size).toBe(0);
   });
+
+  it("skips a null-valued org row and falls through to the platform default", () => {
+    const byKey = mergeOrgRows([
+      { key: "a", value: null, org_id: "org-1" },
+      { key: "a", value: "platform", org_id: null },
+    ]);
+    expect(byKey.get("a")?.value).toBe("platform");
+  });
+
+  it("has no entry for a key whose only row is null-valued", () => {
+    const byKey = mergeOrgRows([{ key: "a", value: null, org_id: "org-1" }]);
+    expect(byKey.has("a")).toBe(false);
+  });
 });
