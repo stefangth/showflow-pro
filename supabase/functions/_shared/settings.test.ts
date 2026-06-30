@@ -33,6 +33,26 @@ Deno.test("resolveOrgSetting: falls back to the platform default when no org row
   assertEquals(await resolveOrgSetting<number>(admin, ORG_A, "offer_digest_hour_berlin", 0), 19);
 });
 
+Deno.test("resolveOrgSetting: a null-valued org row falls through to the platform default", async () => {
+  const admin = adminWith({
+    app_settings: [{
+      when: { key: "offer_digest_hour_berlin" },
+      data: [{ org_id: ORG_A, value: null }, { org_id: null, value: 19 }],
+    }],
+  });
+  assertEquals(await resolveOrgSetting<number>(admin, ORG_A, "offer_digest_hour_berlin", 0), 19);
+});
+
+Deno.test("resolveOrgSetting: a null-valued platform row falls through to the fallback", async () => {
+  const admin = adminWith({
+    app_settings: [{
+      when: { key: "offer_digest_hour_berlin" },
+      data: [{ org_id: null, value: null }],
+    }],
+  });
+  assertEquals(await resolveOrgSetting<number>(admin, ORG_A, "offer_digest_hour_berlin", 48), 48);
+});
+
 Deno.test("resolveOrgSetting: returns the fallback when neither row exists", async () => {
   const admin = adminWith({ app_settings: { data: [], error: null } });
   assertEquals(await resolveOrgSetting<number>(admin, ORG_A, "missing", 48), 48);

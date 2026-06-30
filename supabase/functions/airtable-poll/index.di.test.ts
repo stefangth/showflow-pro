@@ -426,8 +426,9 @@ Deno.test("airtable-poll: trims surrounding whitespace from the configured view"
 });
 
 Deno.test("airtable-poll: a null-valued airtable_view row falls back to the default view", async () => {
-  // resolveOrgSetting returns a found row's value as-is (even null); the handler coerces it
-  // back to the default so a null row never silently turns into a whole-table read.
+  // resolveOrgSetting itself now falls a null-valued row through to the "Grid view" default;
+  // this also pins the handler's belt-and-suspenders `??` so a null row never silently turns
+  // into a whole-table read.
   const url = await captureAirtableUrl([{ when: { key: "airtable_view" }, data: [{ org_id: ORG, value: null }] }]);
   assertEquals(url.includes("view=Grid%20view"), true, `Null view row should fall back to the default: ${url}`);
 });

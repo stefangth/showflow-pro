@@ -46,7 +46,9 @@ export async function resolveOrgSetting<T>(
   const rows = (data ?? []) as SettingRow[];
   const orgRow = orgId ? rows.find((r) => r.org_id === orgId) : undefined;
   const platformRow = rows.find((r) => r.org_id === null);
-  const chosen = orgRow ?? platformRow;
+  // A JSONB-null-valued row (org override or platform default) is not a "real"
+  // value — fall through to the next tier instead of returning null.
+  const chosen = [orgRow, platformRow].find((r) => r && r.value != null);
   return (chosen ? (chosen.value as T) : fallback);
 }
 
@@ -74,6 +76,9 @@ export function mergeOrgRows(
 ): Map<string, { value: unknown; org_id: string | null }> {
   const byKey = new Map<string, { value: unknown; org_id: string | null }>();
   for (const r of rows) {
+    // A JSONB-null-valued row is not a "real" value — skip it, same as resolveOrgSetting,
+    // so a null-valued org row falls through to a real-valued platform row instead of winning.
+    if (r.value == null) continue;
     const prev = byKey.get(r.key);
     if (!prev || (r.org_id !== null && prev.org_id === null)) byKey.set(r.key, { value: r.value, org_id: r.org_id });
   }
