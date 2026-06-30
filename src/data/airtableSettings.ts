@@ -3,12 +3,14 @@ import type { Database } from "@/integrations/supabase/types";
 import type { AirtableFieldMap } from "./airtableMapping";
 import { mergeOrgRows } from "./settings";
 
-/** The four Airtable settings the admin edits in the Airtable Sync tab. */
+/** The Airtable settings the admin edits in the Airtable Sync tab. */
 export interface AirtableSettings {
   airtable_sync_enabled: boolean;
   airtable_base_id: string;
   airtable_table_name: string;
   airtable_field_map: AirtableFieldMap;
+  /** Airtable view the poll reads from. Blank = whole table; defaults to "Grid view". */
+  airtable_view: string;
 }
 
 export const AIRTABLE_SETTING_KEYS = [
@@ -16,6 +18,7 @@ export const AIRTABLE_SETTING_KEYS = [
   "airtable_base_id",
   "airtable_table_name",
   "airtable_field_map",
+  "airtable_view",
 ] as const;
 
 const DEFAULTS: AirtableSettings = {
@@ -23,6 +26,7 @@ const DEFAULTS: AirtableSettings = {
   airtable_base_id: "",
   airtable_table_name: "",
   airtable_field_map: {},
+  airtable_view: "Grid view",
 };
 
 /**
@@ -48,5 +52,7 @@ export async function fetchAirtableSettings(
     airtable_base_id: (byKey.get("airtable_base_id")?.value as string) ?? DEFAULTS.airtable_base_id,
     airtable_table_name: (byKey.get("airtable_table_name")?.value as string) ?? DEFAULTS.airtable_table_name,
     airtable_field_map: (byKey.get("airtable_field_map")?.value as AirtableFieldMap) ?? DEFAULTS.airtable_field_map,
+    // An explicit "" (read the whole table) is preserved; only a missing row falls back.
+    airtable_view: (byKey.get("airtable_view")?.value as string) ?? DEFAULTS.airtable_view,
   };
 }

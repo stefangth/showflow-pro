@@ -11,7 +11,30 @@ describe("fetchAirtableSettings", () => {
       airtable_base_id: "",
       airtable_table_name: "",
       airtable_field_map: {},
+      airtable_view: "Grid view",
     });
+  });
+
+  it("preserves an explicit blank view (read the whole table) over the default", async () => {
+    const fake = createFakeSupabase({
+      app_settings: {
+        data: [{ key: "airtable_view", value: "", org_id: "org-1" }],
+        error: null,
+      },
+    });
+    const s = await fetchAirtableSettings(fake as never, "org-1");
+    expect(s.airtable_view).toBe("");
+  });
+
+  it("reads an org-set view name", async () => {
+    const fake = createFakeSupabase({
+      app_settings: {
+        data: [{ key: "airtable_view", value: "Published", org_id: "org-1" }],
+        error: null,
+      },
+    });
+    const s = await fetchAirtableSettings(fake as never, "org-1");
+    expect(s.airtable_view).toBe("Published");
   });
 
   it("prefers the org row over the platform default per key", async () => {

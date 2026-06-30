@@ -66,7 +66,7 @@ export function AirtableSyncTab({ orgId }: Props) {
     queryFn: () => fetchAirtableSettings(supabase, orgId!),
   });
   const s: AirtableSettings = settingsQ.data ?? {
-    airtable_sync_enabled: false, airtable_base_id: "", airtable_table_name: "", airtable_field_map: {},
+    airtable_sync_enabled: false, airtable_base_id: "", airtable_table_name: "", airtable_field_map: {}, airtable_view: "Grid view",
   };
 
   const saveSettings = useMutation({
@@ -505,6 +505,20 @@ export function AirtableSyncTab({ orgId }: Props) {
                 <Skeleton className="h-10 w-full" />
               </div>
             ) : null}
+            {keyPresent && s.airtable_table_name && (
+              <div className="space-y-2">
+                <Label>Airtable view (optional)</Label>
+                <Input
+                  placeholder="Grid view"
+                  defaultValue={s.airtable_view}
+                  key={`view-${s.airtable_view}`}
+                  onBlur={(e) => { if (e.target.value !== s.airtable_view) saveSettings.mutate({ airtable_view: e.target.value }); }}
+                />
+                <p className="text-xs text-muted-foreground">
+                  The sync reads records from this Airtable view. Leave blank to read the entire table. Defaults to &ldquo;Grid view&rdquo;.
+                </p>
+              </div>
+            )}
           </div>
         </CardContent>
       </Card>
