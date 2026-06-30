@@ -12,7 +12,9 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { toast } from "sonner";
-import { Trash2, CheckCircle2, KeyRound, Lock, Loader2, AlertCircle } from "lucide-react";
+import { Trash2, CheckCircle2, KeyRound, Lock, Loader2, AlertCircle, Plus, ChevronsUpDown } from "lucide-react";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Command, CommandInput, CommandList, CommandGroup, CommandItem, CommandSeparator } from "@/components/ui/command";
 import { fetchCustomFieldDefs, upsertCustomFieldDef, deleteCustomFieldDef } from "@/data/customFields";
 import { airtableTypeToCustomType, slugifyKey, type CustomFieldType } from "@/lib/customFields";
 import { fetchAirtableBases, fetchAirtableTables, fetchAirtableLinkedRecords, fetchAirtableProgramPairs } from "@/data/airtableSchema";
@@ -42,6 +44,141 @@ function AutosaveStatus({ state }: { state: "idle" | "saving" | "saved" | "error
   if (state === "saved")
     return <span className="flex items-center gap-1 text-xs text-muted-foreground"><CheckCircle2 className="h-3 w-3 text-primary" /> All changes saved</span>;
   return <span className="flex items-center gap-1 text-xs text-destructive"><AlertCircle className="h-3 w-3" /> Couldn't save</span>;
+}
+
+/** One catalog row: the Airtable option, its link status, and the action control. */
+interface CatalogRow {
+  /** Stable key + the value the link key is built from. */
+  key: string;
+  /** What the user sees for this Airtable option. */
+  display: string;
+  /** The linked catalog entity, or null when unlinked. */
+  linkedId: string | null;
+  linkedLabel: string | null;
+}
+
+/** Per-row "smart" combobox: search existing catalog rows to link, or create a new catalog
+ *  entry for this Airtable option. Shared by the Programs and Cities tables. */
+function CatalogLinkCombobox({
+  optionLabel, existing, onCreate, onLink, disabled, ariaLabel, searchPlaceholder,
+}: {
+  optionLabel: string;
+  existing: { id: string; label: string }[];
+  onCreate: () => void;
+  onLink: (id: string) => void;
+  disabled?: boolean;
+  ariaLabel: string;
+  searchPlaceholder: string;
+}) {
+  const [open, setOpen] = useState(false);
+  const [search, setSearch] = useState("");
+  const matches = existing.filter((e) => e.label.toLowerCase().includes(search.trim().toLowerCase()));
+  return (
+    <Popover open={open} onOpenChange={(o) => { setOpen(o); if (!o) setSearch(""); }}>
+      <PopoverTrigger asChild>
+        <Button variant="outline" size="sm" className="h-8 w-full sm:w-[240px] justify-between" aria-label={ariaLabel} disabled={disabled}>
+          <span className="truncate text-muted-foreground">Link or create…</span>
+          <ChevronsUpDown className="h-4 w-4 ml-2 shrink-0 opacity-50" />
+        </Button>
+      </PopoverTrigger>
+      <PopoverContent className="w-[260px] p-0" align="end">
+        {/* Manual filtering (shouldFilter=false) so the Create row is always offered. */}
+        <Command shouldFilter={false}>
+          <CommandInput placeholder={searchPlaceholder} value={search} onValueChange={setSearch} />
+          <CommandList>
+            <CommandGroup>
+              <CommandItem value="__create__" onSelect={() => { onCreate(); setOpen(false); }}>
+                <Plus className="h-4 w-4 mr-2" /> Create &ldquo;{optionLabel}&rdquo;
+              </CommandItem>
+            </CommandGroup>
+            {matches.length > 0 && (
+              <>
+                <CommandSeparator />
+                <CommandGroup heading="Link to existing">
+                  {matches.map((e) => (
+                    <CommandItem key={e.id} value={e.id} onSelect={() => { onLink(e.id); setOpen(false); }}>
+                      {e.label}
+                    </CommandItem>
+                  ))}
+                </CommandGroup>
+              </>
+            )}
+            {matches.length === 0 && search.trim() !== "" && (
+              <p className="px-3 py-2 text-xs text-muted-foreground">No existing matches.</p>
+            )}
+          </CommandList>
+        </Command>
+      </PopoverContent>
+    </Popover>
+  );
+}
+
+/** One catalog section (Programs or Cities): header with a dynamic source-field subtitle +
+ *  bulk import, then a tabular list with a status pill and per-row link/create combobox. */
+function CatalogSection({
+  title, sourceLabel, rows, unlinkedCount, importAll, importDisabled,
+  existing, onCreate, onLink, onUnlink, entityNoun, emptyHint, busy,
+}: {
+  title: string;
+  sourceLabel: string;
+  rows: CatalogRow[];
+  unlinkedCount: number;
+  importAll: () => void;
+  importDisabled: boolean;
+  existing: { id: string; label: string }[];
+  onCreate: (row: CatalogRow) => void;
+  onLink: (row: CatalogRow, id: string) => void;
+  onUnlink: (id: string) => void;
+  entityNoun: string; // "show" | "city" — for aria-labels
+  emptyHint: string;
+  busy?: boolean; // a link/create/unlink mutation for this section is in flight
+}) {
+  return (
+    <div className="space-y-3">
+      <div className="flex items-end justify-between gap-3">
+        <div className="min-w-0">
+          <h4 className="font-display font-semibold">{title}</h4>
+          <p className="text-xs text-muted-foreground truncate">from {sourceLabel}</p>
+        </div>
+        <Button variant="outline" size="sm" onClick={importAll} disabled={importDisabled}>
+          Import all unlinked{unlinkedCount ? ` (${unlinkedCount})` : ""}
+        </Button>
+      </div>
+      {rows.length === 0 ? (
+        <p className="text-sm text-muted-foreground">{emptyHint}</p>
+      ) : (
+        <div className="rounded-md border border-border">
+          <div className="hidden sm:grid grid-cols-[1fr_110px_240px] gap-3 px-3 py-2 text-xs font-medium uppercase tracking-wide text-muted-foreground border-b border-border">
+            <span>Airtable option</span><span>Status</span><span>Catalog link</span>
+          </div>
+          {rows.map((row) => (
+            <div key={row.key} className="grid grid-cols-1 sm:grid-cols-[1fr_110px_240px] gap-2 sm:gap-3 items-center px-3 py-2.5 border-b border-border last:border-b-0">
+              <span className="text-sm font-medium truncate">{row.display}</span>
+              <div><Badge variant={row.linkedId ? "secondary" : "outline"}>{row.linkedId ? "Linked" : "Unlinked"}</Badge></div>
+              <div className="flex items-center justify-between sm:justify-start gap-2 min-w-0">
+                {row.linkedId ? (
+                  <>
+                    <span className="text-sm text-muted-foreground truncate">→ {row.linkedLabel}</span>
+                    <Button size="sm" variant="ghost" className="shrink-0" disabled={busy} onClick={() => onUnlink(row.linkedId!)}>Unlink</Button>
+                  </>
+                ) : (
+                  <CatalogLinkCombobox
+                    optionLabel={row.display}
+                    existing={existing}
+                    onCreate={() => onCreate(row)}
+                    onLink={(id) => onLink(row, id)}
+                    disabled={busy}
+                    ariaLabel={`link or create ${entityNoun} for ${row.display}`}
+                    searchPlaceholder={`Search ${entityNoun}s…`}
+                  />
+                )}
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
 }
 
 export function AirtableSyncTab({ orgId }: Props) {
@@ -278,6 +415,25 @@ export function AirtableSyncTab({ orgId }: Props) {
     onSuccess: () => { qc.invalidateQueries({ queryKey: ["cities"] }); toast.success("Imported city options"); },
     onError: (e: unknown) => toast.error((e as Error).message ?? "Import failed"),
   });
+  // Per-element import: create a single catalog show/city for one Airtable option (reuses the
+  // same pure planners as "Import all", just over a one-element list).
+  const createOneProgram = useMutation({
+    mutationFn: async (pair: ProgramPair) => {
+      const rows = planProgramImport([pair], showsQ.data ?? []);
+      await importShowsFromOptions(supabase, orgId!, rows);
+    },
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ["shows"] }); toast.success("Show created and linked"); },
+    onError: (e: unknown) => toast.error((e as Error).message ?? "Create failed"),
+  });
+  const createOneCity = useMutation({
+    mutationFn: async (name: string) => {
+      const plan = planCityReconciliation([name], citiesQ.data ?? []);
+      for (const l of plan.toLink) await linkCityAirtableKey(supabase, l.cityId, l.key);
+      await importCitiesFromOptions(supabase, orgId!, plan.toCreate);
+    },
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ["cities"] }); toast.success("City created and linked"); },
+    onError: (e: unknown) => toast.error((e as Error).message ?? "Create failed"),
+  });
   const unlinkShow = useMutation({
     mutationFn: (showId: string) => linkShowAirtableKey(supabase, showId, null),
     onSuccess: () => { qc.invalidateQueries({ queryKey: ["shows"] }); toast.success("Unlinked"); },
@@ -300,6 +456,32 @@ export function AirtableSyncTab({ orgId }: Props) {
   });
   const unlinkedShows = (showsQ.data ?? []).filter((sh) => !sh.airtable_program_key);
   const unlinkedCities = (citiesQ.data ?? []).filter((c) => !c.airtable_city_key);
+
+  // ── Catalog-link table rows (status + the key the link is built on) ──────────
+  // Source-field subtitles name the actual mapped Airtable field(s), not a hardcoded label.
+  const programSource = fieldMap.program ? `${fieldMap.program} · ${fieldMap.sub_program}` : (fieldMap.sub_program ?? "");
+  const citySource = fieldMap.city ?? "";
+  const pairByKey = new Map<string, ProgramPair>();
+  const programRows: CatalogRow[] = programGrainPairs.map((pair) => {
+    const key = buildProgramKey(pair.program, pair.sub_program) ?? pair.sub_program;
+    pairByKey.set(key, pair);
+    const show = key ? showByKey.get(key) : undefined;
+    return {
+      key,
+      display: pair.program ? `${pair.program} – ${pair.sub_program}` : pair.sub_program,
+      linkedId: show?.id ?? null,
+      linkedLabel: show ? showLabel(show) : null,
+    };
+  });
+  const cityRows: CatalogRow[] = cityOptions.map((name) => {
+    const key = buildCityKey(name) ?? name;
+    const city = key ? cityByKey.get(key) : undefined;
+    return { key, display: name, linkedId: city?.id ?? null, linkedLabel: city?.name ?? null };
+  });
+  const programExisting = unlinkedShows.map((sh) => ({ id: sh.id, label: showLabel(sh) }));
+  const cityExisting = unlinkedCities.map((c) => ({ id: c.id, label: c.name }));
+  const programUnlinked = programRows.filter((r) => !r.linkedId).length;
+  const cityUnlinked = cityRows.filter((r) => !r.linkedId).length;
 
   // ── Custom fields (definitions table; immediate mutations, not the settings draft) ──
   const customFieldsQ = useQuery({
@@ -653,85 +835,51 @@ export function AirtableSyncTab({ orgId }: Props) {
           <CardHeader>
             <CardTitle className="font-display">4 · Catalog links</CardTitle>
             <CardDescription>
-              "Import all" creates a ShowFlow show/city for each unlinked Airtable option (new shows start with no slot config — set counts in the Shows tab). The sync resolves records against these links; anything unlinked is held, never dropped.
+              Link each Airtable option to a ShowFlow show/city, or create one inline. The sync resolves records against these links; anything unlinked is held, never dropped. New shows start with no slot config — set counts in the Shows tab.
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-8">
             {fieldMap.sub_program && (
-              <div className="space-y-3">
-                <div className="flex items-center justify-between">
-                  <h4 className="font-display font-semibold">Programs ({fieldMap.sub_program})</h4>
-                  <Button variant="outline" size="sm" onClick={() => importPrograms.mutate()} disabled={importPrograms.isPending || !programGrainPairs.length}>Import all</Button>
-                </div>
-                {fieldMap.program && programPairsQ.isLoading ? (
-                  <Skeleton className="h-9 w-full" />
-                ) : fieldMap.program && programPairsQ.isError ? (
-                  <Alert variant="destructive"><AlertDescription>Couldn't load program options from Airtable. Try refreshing the schema.</AlertDescription></Alert>
-                ) : fieldMap.program && programPairsQ.data?.schemaAccessible === false ? (
-                  <Alert variant="destructive"><AlertDescription>Your Airtable key can't read records (it needs the data.records:read scope), so program options can't be listed.</AlertDescription></Alert>
-                ) : programGrainPairs.length ? programGrainPairs.map((pair) => {
-                  const name = pair.sub_program;
-                  const key = buildProgramKey(pair.program, pair.sub_program);
-                  const show = key ? showByKey.get(key) : undefined;
-                  const display = pair.program ? `${pair.program} – ${pair.sub_program}` : pair.sub_program;
-                  return (
-                    <div key={key ?? name} className="flex items-center justify-between gap-2 border-t border-border pt-2">
-                      <span className="text-sm font-medium">{display}</span>
-                      {show
-                        ? <div className="flex items-center gap-2"><Badge variant="secondary">linked</Badge><Button size="sm" variant="ghost" onClick={() => unlinkShow.mutate(show.id)} disabled={unlinkShow.isPending}>Unlink</Button></div>
-                        : (
-                          <div className="flex items-center gap-2">
-                            <Badge variant="outline">unlinked</Badge>
-                            {unlinkedShows.length > 0 && key && (
-                              <Select onValueChange={(showId) => linkShow.mutate({ showId, key: key! })} disabled={linkShow.isPending}>
-                                <SelectTrigger className="h-8 w-[200px]" aria-label={`link ${name} to an existing show`}>
-                                  <SelectValue placeholder="Link to existing…" />
-                                </SelectTrigger>
-                                <SelectContent>
-                                  {unlinkedShows.map((sh) => <SelectItem key={sh.id} value={sh.id}>{showLabel(sh)}</SelectItem>)}
-                                </SelectContent>
-                              </Select>
-                            )}
-                          </div>
-                        )}
-                    </div>
-                  );
-                }) : <p className="text-sm text-muted-foreground">No program options found in the mapped table.</p>}
-              </div>
+              fieldMap.program && programPairsQ.isLoading ? (
+                <Skeleton className="h-24 w-full" />
+              ) : fieldMap.program && programPairsQ.isError ? (
+                <Alert variant="destructive"><AlertDescription>Couldn't load program options from Airtable. Try refreshing the schema.</AlertDescription></Alert>
+              ) : fieldMap.program && programPairsQ.data?.schemaAccessible === false ? (
+                <Alert variant="destructive"><AlertDescription>Your Airtable key can't read records (it needs the data.records:read scope), so program options can't be listed.</AlertDescription></Alert>
+              ) : (
+                <CatalogSection
+                  title="Programs"
+                  sourceLabel={programSource}
+                  rows={programRows}
+                  unlinkedCount={programUnlinked}
+                  importAll={() => importPrograms.mutate()}
+                  importDisabled={importPrograms.isPending || programUnlinked === 0}
+                  existing={programExisting}
+                  onCreate={(row) => { const pair = pairByKey.get(row.key); if (pair) createOneProgram.mutate(pair); }}
+                  onLink={(row, id) => linkShow.mutate({ showId: id, key: row.key })}
+                  onUnlink={(id) => unlinkShow.mutate(id)}
+                  busy={createOneProgram.isPending || linkShow.isPending || unlinkShow.isPending}
+                  entityNoun="show"
+                  emptyHint="No program options found in the mapped table."
+                />
+              )
             )}
             {fieldMap.city && (
-              <div className="space-y-3">
-                <div className="flex items-center justify-between">
-                  <h4 className="font-display font-semibold">Cities ({fieldMap.city})</h4>
-                  <Button variant="outline" size="sm" onClick={() => importCities.mutate()} disabled={importCities.isPending || !cityOptions.length}>Import all</Button>
-                </div>
-                {cityOptions.length ? cityOptions.map((name) => {
-                  const key = buildCityKey(name);
-                  const city = key ? cityByKey.get(key) : undefined;
-                  return (
-                    <div key={name} className="flex items-center justify-between gap-2 border-t border-border pt-2">
-                      <span className="text-sm font-medium">{name}</span>
-                      {city
-                        ? <div className="flex items-center gap-2"><Badge variant="secondary">linked</Badge><Button size="sm" variant="ghost" onClick={() => unlinkCity.mutate(city.id)} disabled={unlinkCity.isPending}>Unlink</Button></div>
-                        : (
-                          <div className="flex items-center gap-2">
-                            <Badge variant="outline">unlinked</Badge>
-                            {unlinkedCities.length > 0 && key && (
-                              <Select onValueChange={(cityId) => linkCity.mutate({ cityId, key: key! })} disabled={linkCity.isPending}>
-                                <SelectTrigger className="h-8 w-[200px]" aria-label={`link ${name} to an existing city`}>
-                                  <SelectValue placeholder="Link to existing…" />
-                                </SelectTrigger>
-                                <SelectContent>
-                                  {unlinkedCities.map((c) => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
-                                </SelectContent>
-                              </Select>
-                            )}
-                          </div>
-                        )}
-                    </div>
-                  );
-                }) : <p className="text-sm text-muted-foreground">No options on the mapped City field.</p>}
-              </div>
+              <CatalogSection
+                title="Cities"
+                sourceLabel={citySource}
+                rows={cityRows}
+                unlinkedCount={cityUnlinked}
+                importAll={() => importCities.mutate()}
+                importDisabled={importCities.isPending || cityUnlinked === 0}
+                existing={cityExisting}
+                onCreate={(row) => createOneCity.mutate(row.display)}
+                onLink={(row, id) => linkCity.mutate({ cityId: id, key: row.key })}
+                onUnlink={(id) => unlinkCity.mutate(id)}
+                busy={createOneCity.isPending || linkCity.isPending || unlinkCity.isPending}
+                entityNoun="city"
+                emptyHint="No options on the mapped City field."
+              />
             )}
           </CardContent>
         </Card>

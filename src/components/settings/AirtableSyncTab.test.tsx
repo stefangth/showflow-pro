@@ -48,7 +48,7 @@ import { fetchAirtableBases, fetchAirtableTables, fetchAirtableLinkedRecords, fe
 import { fetchAirtableKeyStatus } from "@/data/airtableKey";
 import { fetchLatestSyncLog, fetchUnresolvedRecords } from "@/data/airtableSync";
 import { fetchCitiesForLinking, mergeCities } from "@/data/cities";
-import { upsertOrgSetting, fetchShowsForLinking } from "@/data/settings";
+import { upsertOrgSetting, fetchShowsForLinking, importShowsFromOptions } from "@/data/settings";
 import { fetchAirtableSettings } from "@/data/airtableSettings";
 
 function renderTab(initial: Record<string, unknown> = {}) {
@@ -290,7 +290,31 @@ describe("AirtableSyncTab — autosave", () => {
     renderTab({ airtable_base_id: "appX", airtable_table_name: "Events", airtable_field_map: { sub_program: "Sub" } });
 
     expect(await screen.findByText("TJE: Murder")).toBeInTheDocument();
-    expect(screen.getByLabelText("link TJE: Murder to an existing show")).toBeInTheDocument();
+    const trigger = screen.getByLabelText("link or create show for TJE: Murder");
+    fireEvent.click(trigger);
+    // The combobox offers both "Create" and the existing unlinked show to link to.
+    expect(await screen.findByText(/Create/)).toBeInTheDocument();
+    expect(screen.getByText("Existing")).toBeInTheDocument();
+  });
+
+  it("creates a show inline from an unlinked program option", async () => {
+    (fetchAirtableKeyStatus as ReturnType<typeof vi.fn>).mockResolvedValue({ present: true, updatedAt: null });
+    (fetchAirtableBases as ReturnType<typeof vi.fn>).mockResolvedValue({ schemaAccessible: true, bases: [{ id: "appX", name: "Base" }] });
+    (fetchAirtableTables as ReturnType<typeof vi.fn>).mockResolvedValue({
+      schemaAccessible: true,
+      tables: [{ id: "tbl", name: "Events", fields: [{ id: "fS", name: "Sub", type: "singleSelect", options: { choices: [{ id: "c1", name: "TJE: Murder" }] } }] }],
+    });
+    (fetchShowsForLinking as ReturnType<typeof vi.fn>).mockResolvedValue([]);
+    renderTab({ airtable_base_id: "appX", airtable_table_name: "Events", airtable_field_map: { sub_program: "Sub" } });
+
+    fireEvent.click(await screen.findByLabelText("link or create show for TJE: Murder"));
+    fireEvent.click(await screen.findByText(/Create/));
+    await waitFor(() =>
+      expect(importShowsFromOptions).toHaveBeenCalledWith(
+        expect.anything(), "org-1",
+        [expect.objectContaining({ sub_program: "TJE: Murder", key: "TJE: Murder" })],
+      ),
+    );
   });
 
   it("links Programs at the composite grain when Program is mapped", async () => {
