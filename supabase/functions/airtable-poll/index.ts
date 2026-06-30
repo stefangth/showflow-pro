@@ -252,7 +252,7 @@ async function syncOrg(deps: Deps, orgId: string, baseId: string, tableName: str
 
   do {
     pageCount += 1;
-    const params = [viewParam, offset ? `offset=${encodeURIComponent(offset)}` : null].filter(Boolean);
+    const params = [viewParam, offset ? `offset=${encodeURIComponent(offset)}` : null].filter((p): p is string => Boolean(p));
     const url = params.length ? `${dataUrl}?${params.join("&")}` : dataUrl;
     const res = await deps.fetch(url, { headers: { Authorization: `Bearer ${apiKey}` } });
     if (!res.ok) {
