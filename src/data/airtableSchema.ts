@@ -50,3 +50,25 @@ export async function fetchAirtableLinkedRecords(
   if (payload?.error) throw new Error(payload.error);
   return { schemaAccessible: !!payload?.schemaAccessible, records: payload?.records };
 }
+
+export interface AirtableProgramPair { program: string | null; sub_program: string }
+export interface ProgramPairsResult { schemaAccessible: boolean; pairs?: AirtableProgramPair[] }
+
+/** Distinct (program, sub_program) pairs from the mapped table's records, via airtable-schema
+ *  Mode D. Used by the mapping UI to link at the composite grain (ADR-0010 parity with the poll). */
+export async function fetchAirtableProgramPairs(
+  client: SupabaseClient<Database>,
+  orgId: string,
+  baseId: string,
+  tableName: string,
+  subProgramField: string,
+  programField?: string,
+): Promise<ProgramPairsResult> {
+  const { data, error } = await client.functions.invoke("airtable-schema", {
+    body: { org_id: orgId, baseId, tableName, subProgramField, ...(programField ? { programField } : {}) },
+  });
+  if (error) throw error;
+  const payload = data as { error?: string; schemaAccessible?: boolean; pairs?: AirtableProgramPair[] };
+  if (payload?.error) throw new Error(payload.error);
+  return { schemaAccessible: !!payload?.schemaAccessible, pairs: payload?.pairs };
+}

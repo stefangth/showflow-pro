@@ -37,6 +37,39 @@ export const SHOWFLOW_FIELDS: ShowflowFieldDef[] = [
 // poll and this UI compose keys identically. Re-exported here so frontend imports are unchanged.
 export { buildProgramKey, buildCityKey, normalizeCityName } from "../../supabase/functions/_shared/airtableKey.ts";
 
+/** A distinct program/sub-program pairing read from Airtable records (Mode D of airtable-schema). */
+export interface ProgramPair { program: string | null; sub_program: string }
+
+/** Plan which (program, sub_program) pairs to create as catalog shows, at the composite link grain.
+ *  Dedupes against existing shows by composite key AND by sub-program for legacy (pre-grain,
+ *  no-"|") keys, so re-running "Import all" during/after the grain migration never duplicates a show.
+ *  Pure: no client, no side effects. Rows feed importShowsFromOptions unchanged. */
+export function planProgramImport(
+  pairs: ProgramPair[],
+  existing: Array<{ sub_program: string | null; airtable_program_key: string | null }>,
+): Array<{ program: string | null; sub_program: string; key: string }> {
+  const existingKeys = new Set(
+    existing.map((e) => e.airtable_program_key).filter((k): k is string => !!k),
+  );
+  const legacySubs = new Set(
+    existing
+      .filter((e) => e.airtable_program_key && !e.airtable_program_key.includes("|"))
+      .map((e) => (e.sub_program ?? "").trim())
+      .filter(Boolean),
+  );
+  const seen = new Set<string>();
+  const rows: Array<{ program: string | null; sub_program: string; key: string }> = [];
+  for (const p of pairs) {
+    const sub = (p.sub_program ?? "").trim();
+    const prog = p.program == null ? null : (p.program.trim() || null);
+    const key = buildProgramKey(prog, sub);
+    if (!key || existingKeys.has(key) || legacySubs.has(sub) || seen.has(key)) continue;
+    seen.add(key);
+    rows.push({ program: prog, sub_program: sub, key });
+  }
+  return rows;
+}
+
 /** A catalog city row, minimal shape needed for reconciliation/dedup (structural — no import cycle). */
 export interface CityRowLike { id: string; name: string; airtable_city_key: string | null }
 
