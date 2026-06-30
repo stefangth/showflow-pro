@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { buildProgramKey, buildCityKey, normalizeCityName, SHOWFLOW_FIELDS, planCityReconciliation, groupDuplicateCities } from "./airtableMapping";
+import { buildProgramKey, buildCityKey, normalizeCityName, SHOWFLOW_FIELDS, planCityReconciliation, groupDuplicateCities, planProgramImport } from "./airtableMapping";
 
 describe("airtableMapping key helpers", () => {
   it("buildProgramKey uses sub_program alone when program value is absent", () => {
@@ -76,5 +76,48 @@ describe("groupDuplicateCities", () => {
   });
   it("returns [] when there are no duplicates", () => {
     expect(groupDuplicateCities([{ id: "a", name: "Berlin", airtable_city_key: null }])).toEqual([]);
+  });
+});
+
+describe("planProgramImport", () => {
+  it("builds composite keys and rows for unlinked pairs", () => {
+    const rows = planProgramImport(
+      [{ program: "BOL", sub_program: "BOL: PP" }, { program: "TJE", sub_program: "TJE: Boat" }],
+      [],
+    );
+    expect(rows).toEqual([
+      { program: "BOL", sub_program: "BOL: PP", key: "BOL|BOL: PP" },
+      { program: "TJE", sub_program: "TJE: Boat", key: "TJE|TJE: Boat" },
+    ]);
+  });
+
+  it("skips a pair whose composite key already exists", () => {
+    const rows = planProgramImport(
+      [{ program: "BOL", sub_program: "BOL: PP" }],
+      [{ sub_program: "BOL: PP", airtable_program_key: "BOL|BOL: PP" }],
+    );
+    expect(rows).toEqual([]);
+  });
+
+  it("skips a pair whose sub-program is still legacy-keyed (transition window)", () => {
+    // Existing show created pre-grain (key === sub_program, no '|') must not be duplicated.
+    const rows = planProgramImport(
+      [{ program: "BOL", sub_program: "BOL: PP" }],
+      [{ sub_program: "BOL: PP", airtable_program_key: "BOL: PP" }],
+    );
+    expect(rows).toEqual([]);
+  });
+
+  it("falls back to sub-program-only keys when program is null", () => {
+    const rows = planProgramImport([{ program: null, sub_program: "Solo" }], []);
+    expect(rows).toEqual([{ program: null, sub_program: "Solo", key: "Solo" }]);
+  });
+
+  it("dedupes repeated pairs and drops blank sub-programs", () => {
+    const rows = planProgramImport(
+      [{ program: "BOL", sub_program: "BOL: PP" }, { program: "BOL", sub_program: "BOL: PP" }, { program: "X", sub_program: "  " }],
+      [],
+    );
+    expect(rows).toEqual([{ program: "BOL", sub_program: "BOL: PP", key: "BOL|BOL: PP" }]);
   });
 });
