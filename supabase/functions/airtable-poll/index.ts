@@ -165,10 +165,10 @@ async function syncOrg(deps: Deps, orgId: string, baseId: string, tableName: str
   const admin = deps.admin;
 
   // ── Linked-catalog lookup maps (key → id). No name fallback, no lowercasing. ──
-  const { data: shows } = await admin.from("shows").select("id, airtable_program_key").eq("org_id", orgId).limit(10000);
-  const showByKey = new Map<string, string>();
-  for (const s of (shows ?? []) as Array<{ id: string; airtable_program_key: string | null }>) {
-    if (s.airtable_program_key) showByKey.set(s.airtable_program_key, s.id);
+  const { data: shows } = await admin.from("shows").select("id, program, airtable_program_key").eq("org_id", orgId).limit(10000);
+  const showByKey = new Map<string, { id: string; program: string | null }>();
+  for (const s of (shows ?? []) as Array<{ id: string; program: string | null; airtable_program_key: string | null }>) {
+    if (s.airtable_program_key) showByKey.set(s.airtable_program_key, { id: s.id, program: s.program });
   }
   const { data: citiesRows } = await admin.from("cities").select("id, airtable_city_key").eq("org_id", orgId).limit(10000);
   const cityByKey = new Map<string, string>();
@@ -267,10 +267,49 @@ async function syncOrg(deps: Deps, orgId: string, baseId: string, tableName: str
       const dateValue = fieldMap.date ? fields[fieldMap.date] ?? null : null;
       if (!dateValue) { held += 1; outcomes.push({ airtable_record_id: id, action: "held_unresolved", show_date_id: null, reason: "missing date", raw_fields: fields }); continue; }
 
-      const subProgramValue = fieldMap.sub_program ? fields[fieldMap.sub_program] ?? null : null;
-      const programKey = buildProgramKey(null, subProgramValue == null ? null : String(subProgramValue));
-      const showId = programKey ? showByKey.get(programKey) ?? null : null;
+      const subProgramRaw = fieldMap.sub_program ? fields[fieldMap.sub_program] ?? null : null;
+      const subProgramValue = subProgramRaw == null ? null : String(subProgramRaw);
+      const programRaw = fieldMap.program ? fields[fieldMap.program] ?? null : null;
+      const programValue = programRaw == null ? null : (String(programRaw).trim() || null);
+
+      // Composite grain (ADR-0010): program present → "program|sub_program"; else sub_program alone.
+      const programKey = buildProgramKey(programValue, subProgramValue);
+      const legacyKey = buildProgramKey(null, subProgramValue);
+      let resolved = programKey ? showByKey.get(programKey) ?? null : null;
+      let showId = resolved?.id ?? null;
+
+      // Transition self-heal: a show still keyed sub-program-only is adopted to the composite
+      // grain (re-keyed + program backfilled) so its existing dates keep resolving. Idempotent —
+      // the in-memory map is updated so later records in this run hit the composite key directly.
+      // Assumes one program per sub_program (the legacy key maps to a single show); if a base ever
+      // reuses one sub_program across programs, only the first program's records adopt the legacy show.
+      if (!showId && programKey && legacyKey && legacyKey !== programKey) {
+        const legacy = showByKey.get(legacyKey);
+        if (legacy) {
+          const { error: rekeyErr } = await admin.from("shows")
+            .update({ airtable_program_key: programKey, program: programValue }).eq("id", legacy.id);
+          if (!rekeyErr) {
+            showByKey.delete(legacyKey);
+            resolved = { id: legacy.id, program: programValue };
+            showByKey.set(programKey, resolved);
+            showId = legacy.id;
+          } else {
+            console.error("airtable-poll: re-key update failed", { org: orgId, legacyKey, programKey, error: rekeyErr.message });
+          }
+        }
+      }
+
       if (!showId) { held += 1; outcomes.push({ airtable_record_id: id, action: "held_unresolved", show_date_id: null, reason: `program '${subProgramValue ?? ""}' not linked`, raw_fields: fields }); continue; }
+
+      // Keep shows.program current with Airtable (fills the column on already-composite shows).
+      if (programValue !== null && resolved && resolved.program !== programValue) {
+        const { error: progErr } = await admin.from("shows").update({ program: programValue }).eq("id", showId);
+        if (progErr) {
+          console.error("airtable-poll: program write-through failed", { org: orgId, programKey, error: progErr.message });
+        } else {
+          resolved.program = programValue; // in-place — showByKey already holds this reference
+        }
+      }
 
       const cityNames = fieldMap.city ? resolveNames(fields[fieldMap.city], linkMaps.city) : [];
       const cityRawName = cityNames[0] ?? null;

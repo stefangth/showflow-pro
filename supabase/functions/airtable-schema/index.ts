@@ -2,7 +2,7 @@ import { preflight, json } from "../_shared/http.ts";
 import { requireOrgRole } from "../_shared/auth.ts";
 import { realDeps, type Deps } from "../_shared/deps.ts";
 
-type Body = { org_id?: string; baseId?: string; linkedTableId?: string };
+type Body = { org_id?: string; baseId?: string; linkedTableId?: string; tableName?: string; programField?: string; subProgramField?: string };
 
 const AIRTABLE_META = "https://api.airtable.com/v0/meta";
 const AIRTABLE_DATA = "https://api.airtable.com/v0";
@@ -38,6 +38,7 @@ async function airtableFailure(res: Response, label: string): Promise<Response |
  *  - body has no baseId → list accessible bases  → { schemaAccessible: true, bases: [{ id, name }] }.
  *  - body has a baseId  → describe that base      → { schemaAccessible: true, tables: [{ id, name, fields: [{ id, name, type, options? }] }] }.
  *  - body has baseId + linkedTableId → list that linked table's records → { schemaAccessible: true, records: [{ id, name }] }.
+ *  - body has baseId + tableName + subProgramField (+ programField?) → distinct (program, sub_program) pairs → { schemaAccessible: true, pairs: [{ program, sub_program }] }.
  *  - Airtable 403 (no scope) → { schemaAccessible: false } so the UI falls back to typed inputs.
  */
 export async function handle(req: Request, deps: Deps): Promise<Response> {
@@ -58,7 +59,9 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
     const headers = { Authorization: `Bearer ${apiKey as string}` };
 
     // ── Mode C: list a linked table's records (id + primary-field name) ───────
-    if (body?.baseId && body?.linkedTableId) {
+    // `!subProgramField` keeps Mode C and Mode D (pairs) mutually exclusive even if a
+    // caller supplies both linkedTableId and the pairs fields.
+    if (body?.baseId && body?.linkedTableId && !body?.subProgramField) {
       const schemaRes = await deps.fetch(`${AIRTABLE_META}/bases/${encodeURIComponent(body.baseId)}/tables`, { headers });
       const schemaFail = await airtableFailure(schemaRes, "Airtable schema read failed");
       if (schemaFail) return schemaFail;
@@ -90,6 +93,43 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
       } while (offset && pages < MAX_RECORD_PAGES);
 
       return json({ schemaAccessible: true, records });
+    }
+
+    // ── Mode D: distinct (program, sub_program) pairs from the main table ──────
+    //    Powers composite-grain catalog linking; the UI builds keys from these.
+    if (body?.baseId && body?.tableName && body?.subProgramField) {
+      const seen = new Set<string>();
+      const pairs: Array<{ program: string | null; sub_program: string }> = [];
+      let offset: string | undefined;
+      let pages = 0;
+      do {
+        const params = new URLSearchParams();
+        params.append("fields[]", body.subProgramField);
+        if (body.programField) params.append("fields[]", body.programField);
+        if (offset) params.set("offset", offset);
+        const recRes = await deps.fetch(
+          `${AIRTABLE_DATA}/${encodeURIComponent(body.baseId)}/${encodeURIComponent(body.tableName)}?${params.toString()}`,
+          { headers },
+        );
+        const recFail = await airtableFailure(recRes, "Airtable records read failed");
+        if (recFail) return recFail;
+        const data = (await recRes.json()) as { records?: Array<{ fields?: Record<string, unknown> }>; offset?: string };
+        for (const r of data.records ?? []) {
+          const subRaw = r.fields?.[body.subProgramField];
+          const sub = subRaw == null ? "" : String(subRaw).trim();
+          if (!sub) continue;
+          const progRaw = body.programField ? r.fields?.[body.programField] : null;
+          const prog = progRaw == null ? null : (String(progRaw).trim() || null);
+          const dedup = `${prog ?? ""}\x00${sub}`;
+          if (seen.has(dedup)) continue;
+          seen.add(dedup);
+          pairs.push({ program: prog, sub_program: sub });
+        }
+        offset = data.offset;
+        pages += 1;
+      } while (offset && pages < MAX_RECORD_PAGES);
+
+      return json({ schemaAccessible: true, pairs });
     }
 
     // ── Mode B: describe one base's tables + fields ───────────────────────────

@@ -44,9 +44,11 @@ Store the catalog link as a **per-org-unique, opaque `text` key column** on the 
   field* is org-level config and stays JSON in `app_settings.airtable_field_map`. The *option→row
   link* is relational, FK-adjacent, per-row, needs a uniqueness constraint, and is read per-record by
   the poll — so it is a column, not JSON.
-- **Grain shipped:** Phase 2b links **sub-program-only**. The composite grain is **deferred** and is
-  addable **without a migration** (extend the helper's usage + the poll; the column is already
-  opaque).
+- **Grain shipped:** Phase 2b shipped **sub-program-only**. The composite `program|sub_program`
+  grain shipped on 2026-06-30 (this change) — additive, **no migration**: the UI reads distinct
+  `(program, sub_program)` pairs (airtable-schema Mode D) and the poll reads the record's `program`
+  cell; both compose the key via `buildProgramKey`. The poll **self-heals** pre-grain shows by
+  re-keying them to the composite key and backfilling `shows.program` on the next sync.
 
 ## Options Considered
 
@@ -101,8 +103,9 @@ common (sub-program-only) base works today, and the composite grain ships later 
    `buildProgramKey`/`buildCityKey` helper (import it or port it exactly server-side) against the
    `airtable_program_key`/`airtable_city_key` columns. Add a test asserting UI and poll produce the
    same key for the same input.
-2. [ ] If/when composite grain is needed: extend the helper's usage in `AirtableSyncTab` (map Program
-   too) and in the poll — **no migration**.
+2. [x] Composite grain shipped (2026-06-30): `AirtableSyncTab` maps Program via distinct record
+   pairs and the poll resolves the composite key — no migration. See plan
+   `docs/superpowers/plans/2026-06-30-program-composite-grain.md`.
 
 See the sync-engine spec [§5/§6](../superpowers/specs/2026-06-16-airtable-sync-engine-design.md) and
 the [Phase 2b design](../superpowers/specs/2026-06-17-airtable-mapping-model-phase-2b-design.md).
