@@ -292,6 +292,8 @@ Deno.test("airtable-schema: program pairs → distinct (program, sub_program) fr
   ]);
   assertEquals(urls[0].includes("/v0/appX/Events"), true);
   assertEquals(decodeURIComponent(urls[0]).includes("fields[]=Sub-Programm"), true);
+  // programField must be requested too — else Airtable omits the column and every program is null.
+  assertEquals(decodeURIComponent(urls[0]).includes("fields[]=Program"), true);
 });
 
 Deno.test("airtable-schema: program pairs without programField → program null", async () => {
