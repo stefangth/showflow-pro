@@ -372,6 +372,50 @@ Deno.test("airtable-poll: fetch called with correct Airtable URL and Bearer toke
   );
 });
 
+/** Capture the Airtable data-fetch URL for one run with the given app_settings rows. */
+async function captureAirtableUrl(
+  settings: Array<{ when: { key: string }; data: unknown }>,
+): Promise<string> {
+  const captured: string[] = [];
+  const { deps } = makeFakeDeps({
+    tables: {
+      app_settings: [
+        { when: { key: "cron_secret" }, data: { value: "secret123" } },
+        { when: { key: "airtable_sync_enabled" }, data: [{ org_id: ORG, value: true }] },
+        { when: { key: "airtable_base_id" }, data: [{ org_id: ORG, value: "appABCDEFGHIJKLMNO" }] },
+        { when: { key: "airtable_table_name" }, data: [{ org_id: ORG, value: "My Table" }] },
+        { when: { key: "airtable_field_map" }, data: [{ org_id: ORG, value: { date: "Date", sub_program: "SubProgram" } }] },
+        ...settings,
+      ],
+      organizations: { data: [{ id: ORG }], error: null },
+      shows: { data: [], error: null },
+      cities: { data: [], error: null },
+      show_dates: { data: [], error: null },
+      airtable_sync_log: { data: { id: "log-1" }, error: null },
+      airtable_sync_record_log: { data: [], error: null },
+      org_memberships: { data: [], error: null },
+      notifications: { data: null, error: null },
+    },
+    rpcs: { get_org_airtable_key: { data: "my-api-key-xyz", error: null } },
+    fetchImpl: (url) => { captured.push(String(url)); return Promise.resolve(makeAirtableResponse([])) as Promise<Response>; },
+  });
+  const res = await handle(authReq(), deps);
+  assertEquals(res.status, 200);
+  assertEquals(captured.length, 1);
+  return captured[0];
+}
+
+Deno.test("airtable-poll: airtable_view setting overrides the default view in the fetch URL", async () => {
+  const url = await captureAirtableUrl([{ when: { key: "airtable_view" }, data: [{ org_id: ORG, value: "Published" }] }]);
+  assertEquals(url.includes("view=Published"), true, `URL should use the configured view: ${url}`);
+  assertEquals(url.includes("Grid%20view"), false, `URL should not fall back to the default view: ${url}`);
+});
+
+Deno.test("airtable-poll: a blank airtable_view reads the whole table (no view param)", async () => {
+  const url = await captureAirtableUrl([{ when: { key: "airtable_view" }, data: [{ org_id: ORG, value: "" }] }]);
+  assertEquals(url.includes("view="), false, `Blank view should omit the view param entirely: ${url}`);
+});
+
 // ─── Field mapping ────────────────────────────────────────────────────────────
 
 Deno.test("airtable-poll: maps Date/SubProgram/City/Session fields and inserts show_date", async () => {
