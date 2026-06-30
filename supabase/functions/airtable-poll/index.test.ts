@@ -351,3 +351,45 @@ Deno.test("airtable-poll grain: program unmapped → no shows write, resolves as
   assertEquals(showDateInserts.length, 1);
   assertEquals((showDateInserts[0] as Record<string, unknown>).show_id, "show-magic");
 });
+
+Deno.test("airtable-poll grain: re-key DB error → record held, no show_dates insert, run does not crash", async () => {
+  // Legacy-keyed show (sub-program-only key) so the self-heal branch triggers.
+  const records = [{ id: "rec-1", fields: { Date: "2026-06-01", Program: "BOL", SubProgram: "BOL: PP", City: "Berlin" } }];
+  const { deps } = seededDepsShows(records, [{ id: "show-bol", program: null, airtable_program_key: "BOL: PP" }]);
+
+  const showDateInserts: unknown[] = [];
+  const originalFrom = deps.admin.from.bind(deps.admin);
+  (deps.admin as any).from = (table: string) => {
+    const chain = originalFrom(table);
+    if (table === "shows") {
+      // Force the re-key update to return a DB error.
+      chain.update = (_payload: unknown) => {
+        const errChain = {
+          eq: (_col: string, _val: unknown) => ({
+            then: (resolve: (v: { data: null; error: { message: string } }) => void) =>
+              resolve({ data: null, error: { message: "db error" } }),
+          }),
+        };
+        return errChain as any;
+      };
+    }
+    if (table === "show_dates") {
+      const origInsert = chain.insert.bind(chain);
+      chain.insert = (payload: unknown) => {
+        showDateInserts.push(payload);
+        const insertChain = (origInsert as (x: unknown) => any)(payload);
+        (insertChain as any).single = () => Promise.resolve({ data: { id: "sd-new" }, error: null });
+        return insertChain;
+      };
+    }
+    return chain;
+  };
+
+  const res = await handle(authReq(), deps);
+  assertEquals(res.status, 200);
+  const body = await res.json();
+  // Re-key failed → show not resolved → record held
+  assertEquals(body.held, 1);
+  // No show_dates row should have been inserted
+  assertEquals(showDateInserts.length, 0);
+});

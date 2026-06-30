@@ -291,6 +291,8 @@ async function syncOrg(deps: Deps, orgId: string, baseId: string, tableName: str
             resolved = { id: legacy.id, program: programValue };
             showByKey.set(programKey, resolved);
             showId = legacy.id;
+          } else {
+            console.error("airtable-poll: re-key update failed", { org: orgId, legacyKey, programKey, error: rekeyErr.message });
           }
         }
       }
@@ -300,8 +302,7 @@ async function syncOrg(deps: Deps, orgId: string, baseId: string, tableName: str
       // Keep shows.program current with Airtable (fills the column on already-composite shows).
       if (programValue !== null && resolved && resolved.program !== programValue) {
         await admin.from("shows").update({ program: programValue }).eq("id", showId);
-        resolved.program = programValue;
-        showByKey.set(programKey!, resolved);
+        resolved.program = programValue; // in-place — showByKey already holds this reference
       }
 
       const cityNames = fieldMap.city ? resolveNames(fields[fieldMap.city], linkMaps.city) : [];
