@@ -402,6 +402,8 @@ async function captureAirtableUrl(
   });
   const res = await handle(authReq(), deps);
   assertEquals(res.status, 200);
+  // The helper's Airtable response carries no `offset`, so the poll makes exactly one page
+  // fetch. If a caller ever seeds a paginated response, relax this to >= 1 and read captured[0].
   assertEquals(captured.length, 1);
   return captured[0];
 }

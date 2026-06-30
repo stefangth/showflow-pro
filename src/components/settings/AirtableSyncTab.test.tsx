@@ -358,3 +358,39 @@ describe("AirtableSyncTab — autosave", () => {
     expect(await screen.findByText("Berlin")).toBeInTheDocument();
   });
 });
+
+describe("AirtableSyncTab — Airtable view", () => {
+  beforeEach(() => vi.clearAllMocks());
+
+  it("shows the optional view input once a key and table are set", async () => {
+    (fetchAirtableKeyStatus as ReturnType<typeof vi.fn>).mockResolvedValue({ present: true, updatedAt: null });
+    (fetchAirtableBases as ReturnType<typeof vi.fn>).mockResolvedValue({ schemaAccessible: true, bases: [{ id: "appA", name: "Base" }] });
+    (fetchAirtableTables as ReturnType<typeof vi.fn>).mockResolvedValue({ schemaAccessible: true, tables: [{ id: "t", name: "Events", fields: [] }] });
+    renderTab({ airtable_base_id: "appA", airtable_table_name: "Events" });
+    expect(await screen.findByPlaceholderText("Grid view")).toBeInTheDocument();
+  });
+
+  it("hides the view input until a table is selected", async () => {
+    (fetchAirtableKeyStatus as ReturnType<typeof vi.fn>).mockResolvedValue({ present: true, updatedAt: null });
+    (fetchAirtableBases as ReturnType<typeof vi.fn>).mockResolvedValue({ schemaAccessible: true, bases: [] });
+    renderTab(); // no table_name
+    await screen.findByRole("button", { name: "Refresh from Airtable" });
+    expect(screen.queryByPlaceholderText("Grid view")).not.toBeInTheDocument();
+  });
+
+  it("saves the view on blur only when it changed, incl. clearing to whole-table mode", async () => {
+    (fetchAirtableKeyStatus as ReturnType<typeof vi.fn>).mockResolvedValue({ present: true, updatedAt: null });
+    (fetchAirtableBases as ReturnType<typeof vi.fn>).mockResolvedValue({ schemaAccessible: true, bases: [{ id: "appA", name: "Base" }] });
+    (fetchAirtableTables as ReturnType<typeof vi.fn>).mockResolvedValue({ schemaAccessible: true, tables: [{ id: "t", name: "Events", fields: [] }] });
+    renderTab({ airtable_base_id: "appA", airtable_table_name: "Events" }); // airtable_view defaults to "Grid view"
+
+    const input = await screen.findByPlaceholderText("Grid view");
+    // Unchanged blur → no airtable_view save.
+    fireEvent.blur(input);
+    expect(upsertOrgSetting).not.toHaveBeenCalledWith(expect.anything(), "org-1", "airtable_view", expect.anything());
+    // Clearing the field saves "" (whole-table mode).
+    fireEvent.change(input, { target: { value: "" } });
+    fireEvent.blur(input);
+    await waitFor(() => expect(upsertOrgSetting).toHaveBeenCalledWith(expect.anything(), "org-1", "airtable_view", ""));
+  });
+});
