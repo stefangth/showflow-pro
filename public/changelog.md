@@ -2,6 +2,18 @@
 
 What's new in ShowFlow, newest first.
 
+## 1.7.0 — July 1, 2026
+
+*Faster artist onboarding*
+
+### New
+- **Invite artists to a login from the roster** — Send an app-login invite straight from the Add Artist dialog or from an existing artist, with no separate Invites detour.
+- **Account status at a glance** — Every artist shows a clear Active, Invited, or No account status on their card and profile.
+- **Bulk import artists** — Import your roster from a CSV or Excel file, or paste a public Google Sheets link. Map the columns, review and de-duplicate, then add everyone at once — and optionally send them login invites in the same step.
+
+### Improved
+- **Reliable account linking** — Inviting from an artist ties the login to that exact artist, even when their login email differs from their booking email.
+
 ## 1.6.0 — June 24, 2026
 
 *Productions table & Airtable sync improvements*
