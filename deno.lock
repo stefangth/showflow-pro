@@ -40,6 +40,7 @@
     "npm:@testing-library/jest-dom@^6.6.0": "6.9.1",
     "npm:@testing-library/react@16": "16.3.2_@testing-library+dom@10.4.1_@types+react@18.3.1_@types+react-dom@18.3.7__@types+react@18.3.1_react@18.3.1_react-dom@18.3.1__react@18.3.1",
     "npm:@types/node@^22.16.5": "22.19.19",
+    "npm:@types/papaparse@^5.5.2": "5.5.2",
     "npm:@types/react-dom@^18.3.7": "18.3.7_@types+react@18.3.1",
     "npm:@types/react@18.3.1": "18.3.1",
     "npm:@types/react@^18.3.23": "18.3.29",
@@ -59,6 +60,7 @@
     "npm:jsdom@^20.0.3": "20.0.3",
     "npm:lucide-react@^1.8.0": "1.17.0_react@18.3.1",
     "npm:next-themes@0.3": "0.3.0_react@18.3.1_react-dom@18.3.1__react@18.3.1",
+    "npm:papaparse@^5.5.4": "5.5.4",
     "npm:postcss@^8.5.6": "8.5.15",
     "npm:react-day-picker@^9.14.0": "9.14.0_react@18.3.1",
     "npm:react-dom@^18.3.1": "18.3.1_react@18.3.1",
@@ -1963,7 +1965,19 @@
     "@types/node@22.19.19": {
       "integrity": "sha512-dyh/xO2Fh5bYrfWaaqGrRQQGkNdmYw6AmaAUvYeUMNTWQtvb796ikLdmTchRmOlOiIJ1TDXfWgVx1QkUlQ6Hew==",
       "dependencies": [
-        "undici-types"
+        "undici-types@6.21.0"
+      ]
+    },
+    "@types/node@24.2.0": {
+      "integrity": "sha512-3xyG3pMCq3oYCNg7/ZP+E1ooTaGB4cG8JWRsqqOYQdbWNY4zbaV0Ennrd7stjiJEFZCaybcIgpTjJWHRfBSIDw==",
+      "dependencies": [
+        "undici-types@7.10.0"
+      ]
+    },
+    "@types/papaparse@5.5.2": {
+      "integrity": "sha512-gFnFp/JMzLHCwRf7tQHrNnfhN4eYBVYYI897CGX4MY1tzY9l2aLkVyx2IlKZ/SAqDbB3I1AOZW5gTMGGsqWliA==",
+      "dependencies": [
+        "@types/node@24.2.0"
       ]
     },
     "@types/prop-types@15.7.15": {
@@ -2718,29 +2732,29 @@
     "esbuild@0.21.5": {
       "integrity": "sha512-mg3OPMV4hXywwpoDxu3Qda5xCKQi+vCTZq8S9J/EpkhB2HzKXq4SNFZE3+NK93JYxc8VMSep+lOUSC/RVKaBqw==",
       "optionalDependencies": [
-        "@esbuild/aix-ppc64@0.21.5",
-        "@esbuild/android-arm@0.21.5",
-        "@esbuild/android-arm64@0.21.5",
-        "@esbuild/android-x64@0.21.5",
-        "@esbuild/darwin-arm64@0.21.5",
-        "@esbuild/darwin-x64@0.21.5",
-        "@esbuild/freebsd-arm64@0.21.5",
-        "@esbuild/freebsd-x64@0.21.5",
-        "@esbuild/linux-arm@0.21.5",
-        "@esbuild/linux-arm64@0.21.5",
-        "@esbuild/linux-ia32@0.21.5",
-        "@esbuild/linux-loong64@0.21.5",
-        "@esbuild/linux-mips64el@0.21.5",
-        "@esbuild/linux-ppc64@0.21.5",
-        "@esbuild/linux-riscv64@0.21.5",
-        "@esbuild/linux-s390x@0.21.5",
-        "@esbuild/linux-x64@0.21.5",
-        "@esbuild/netbsd-x64@0.21.5",
-        "@esbuild/openbsd-x64@0.21.5",
-        "@esbuild/sunos-x64@0.21.5",
-        "@esbuild/win32-arm64@0.21.5",
-        "@esbuild/win32-ia32@0.21.5",
-        "@esbuild/win32-x64@0.21.5"
+        "@esbuild/aix-ppc64",
+        "@esbuild/android-arm",
+        "@esbuild/android-arm64",
+        "@esbuild/android-x64",
+        "@esbuild/darwin-arm64",
+        "@esbuild/darwin-x64",
+        "@esbuild/freebsd-arm64",
+        "@esbuild/freebsd-x64",
+        "@esbuild/linux-arm",
+        "@esbuild/linux-arm64",
+        "@esbuild/linux-ia32",
+        "@esbuild/linux-loong64",
+        "@esbuild/linux-mips64el",
+        "@esbuild/linux-ppc64",
+        "@esbuild/linux-riscv64",
+        "@esbuild/linux-s390x",
+        "@esbuild/linux-x64",
+        "@esbuild/netbsd-x64",
+        "@esbuild/openbsd-x64",
+        "@esbuild/sunos-x64",
+        "@esbuild/win32-arm64",
+        "@esbuild/win32-ia32",
+        "@esbuild/win32-x64"
       ],
       "scripts": true,
       "bin": true
@@ -3934,6 +3948,9 @@
     "package-json-from-dist@1.0.1": {
       "integrity": "sha512-UEZIS3/by4OC8vL3P2dTXRETpebLI2NiI5vIrjaD/5UtrkFX/tNbwjTSRAGC/+7CAo2pIcBaRgWmcBBHcsaCIw=="
     },
+    "papaparse@5.5.4": {
+      "integrity": "sha512-SwzWD9gl/ElwYLCI0nUja1mFJzjq2D8ziShfNBa7zCHzkOozeOGDwHWQ+tvCzEZcewecWZ5U7kUopDnG+DFYEQ=="
+    },
     "parent-module@1.0.1": {
       "integrity": "sha512-GQ2EWRpQV8/o+Aw8YqtfZZPfNRWZYkbidE9k5rpl/hC3vtHHBfGm2Ifi6qWV+coDGkrUKZAxE3Lot5kcsRlh+g==",
       "dependencies": [
@@ -4693,6 +4710,9 @@
     "undici-types@6.21.0": {
       "integrity": "sha512-iwDZqg0QAGrg9Rav5H4n0M64c3mkR59cJ6wQp+7C4nI0gsmExaedaYLNO44eT4AtBBwjbTiGPMlt2Md0T9H9JQ=="
     },
+    "undici-types@7.10.0": {
+      "integrity": "sha512-t5Fy/nfn+14LuOc2KNYg75vZqClpAiqscVvMygNnlsHBFpSXdJaYtXMcdNLpl/Qvc3P2cB3s6lOV51nqsFq4ag=="
+    },
     "unified@11.0.5": {
       "integrity": "sha512-xKvGhPWw3k84Qjh8bI3ZeJjqnyadK+GEFtazSfZv/rKeTkTjOJho6mFqh2SM96iIcZokxiOpg78GazTSg8+KHA==",
       "dependencies": [
@@ -4850,8 +4870,8 @@
     "vite@5.4.21_@types+node@22.19.19": {
       "integrity": "sha512-o5a9xKjbtuhY6Bi5S3+HvbRERmouabWbyUcpXXUA1u+GNUKoROi9byOJ8M0nHbHYHkYICiMlqxkg1KkYmm25Sw==",
       "dependencies": [
-        "@types/node",
-        "esbuild@0.21.5",
+        "@types/node@22.19.19",
+        "esbuild",
         "postcss",
         "rollup"
       ],
@@ -4859,7 +4879,7 @@
         "fsevents@2.3.3"
       ],
       "optionalPeers": [
-        "@types/node"
+        "@types/node@22.19.19"
       ],
       "bin": true
     },
@@ -4867,7 +4887,7 @@
       "integrity": "sha512-xejya+bT/j/+R/AGa1XOfRxLmNUlLtlwjRsFUILF+xHfzElmGcmFydy2gqqIrd62ptIEfwVMofd19uNWD9L7Nw==",
       "dependencies": [
         "@types/chai",
-        "@types/node",
+        "@types/node@22.19.19",
         "@vitest/expect",
         "@vitest/mocker",
         "@vitest/pretty-format",
@@ -4893,7 +4913,7 @@
         "why-is-node-running"
       ],
       "optionalPeers": [
-        "@types/node",
+        "@types/node@22.19.19",
         "jsdom"
       ],
       "bin": true
@@ -5052,6 +5072,7 @@
         "npm:@testing-library/jest-dom@^6.6.0",
         "npm:@testing-library/react@16",
         "npm:@types/node@^22.16.5",
+        "npm:@types/papaparse@^5.5.2",
         "npm:@types/react-dom@^18.3.7",
         "npm:@types/react@^18.3.23",
         "npm:@vitejs/plugin-react-swc@^3.11.0",
@@ -5070,6 +5091,7 @@
         "npm:jsdom@^20.0.3",
         "npm:lucide-react@^1.8.0",
         "npm:next-themes@0.3",
+        "npm:papaparse@^5.5.4",
         "npm:postcss@^8.5.6",
         "npm:react-day-picker@^9.14.0",
         "npm:react-dom@^18.3.1",

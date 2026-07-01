@@ -50,9 +50,12 @@ export default function AcceptInvitePage() {
     if (ran.current) return;
     ran.current = true;
     acceptInvitation(supabase, token)
-      .then((orgId) => {
+      .then(({ orgId, artistLinked }) => {
         switchOrg(orgId);
         toast.success('Invitation accepted');
+        if (!artistLinked) {
+          toast.warning("You've joined, but we couldn't auto-link your artist profile — an admin can link it.");
+        }
         navigate(ROUTES.DASHBOARD, { replace: true });
       })
       .catch((e: unknown) => {

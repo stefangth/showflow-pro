@@ -14,6 +14,9 @@ import { TagInput, type TagOption } from '@/components/ui/tag-input';
 import { useToast } from '@/hooks/use-toast';
 import { useSkills, useArtistSkills, useCreateSkill, type Skill } from '@/hooks/useSkills';
 import { useOrgMembers } from '@/hooks/useOrgMembers';
+import { usePendingInvitedArtists } from '@/hooks/usePendingInvitedArtists';
+import { artistAccountState } from '@/lib/artistAccount';
+import { inviteArtistToApp, resendInvitation, fetchOrgInvitations } from '@/data/invitations';
 import { LinkedAccountPanel } from './LinkedAccountPanel';
 import type { Artist, ArtistStatus } from '@/types';
 
@@ -57,6 +60,41 @@ export function ArtistProfileSheet({ artistId, open, onOpenChange }: Props) {
   const linkedMember = artist?.user_id && orgMembers
     ? orgMembers.find((m) => m.user_id === artist.user_id)
     : undefined;
+
+  // Three-state account status (Active / Invited / No account), shared vocabulary.
+  const { data: pendingIds } = usePendingInvitedArtists(currentOrg?.id);
+  const pendingSet = useMemo(() => new Set(pendingIds ?? []), [pendingIds]);
+  const accountState = artist ? artistAccountState(artist, pendingSet) : 'none';
+
+  const invite = useMutation({
+    mutationFn: async () => {
+      if (!currentOrg || !artist) throw new Error('No active organization');
+      if (!artist.email) throw new Error('This artist has no email — add one before inviting.');
+      await inviteArtistToApp(supabase, { orgId: currentOrg.id, artistId: artist.id, email: artist.email });
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['artists', 'pending-invites'] });
+      qc.invalidateQueries({ queryKey: ['org-invitations'] });
+      toast({ title: 'Invite sent' });
+    },
+    onError: (e: any) => toast({ title: 'Error', description: e.message, variant: 'destructive' }),
+  });
+
+  const resend = useMutation({
+    mutationFn: async () => {
+      if (!currentOrg || !artist) throw new Error('No active organization');
+      const invitations = await fetchOrgInvitations(supabase, currentOrg.id);
+      const live = invitations.find(
+        (i) => i.status === 'pending' && i.artist_id === artist.id,
+      ) ?? invitations.find(
+        (i) => i.status === 'pending' && !!artist.email && i.email.toLowerCase() === artist.email!.toLowerCase(),
+      );
+      if (!live) throw new Error('No pending invite to resend.');
+      await resendInvitation(supabase, live.id);
+    },
+    onSuccess: () => toast({ title: 'Invite re-sent' }),
+    onError: (e: any) => toast({ title: 'Error', description: e.message, variant: 'destructive' }),
+  });
 
   const [form, setForm] = useState({
     name: '',
@@ -240,11 +278,16 @@ export function ArtistProfileSheet({ artistId, open, onOpenChange }: Props) {
             </div>
 
             <LinkedAccountPanel
+              state={accountState}
               userId={artist.user_id}
               bookingEmail={artist.email}
               account={linkedMember ? { email: linkedMember.email, display_name: linkedMember.display_name } : undefined}
               accountLoading={isAdmin && !!artist.user_id && membersLoading}
               canSeeAccount={isAdmin}
+              canInvite={isAdmin}
+              onInvite={() => invite.mutate()}
+              onResend={() => resend.mutate()}
+              inviteBusy={invite.isPending || resend.isPending}
             />
 
             {canEdit && (
