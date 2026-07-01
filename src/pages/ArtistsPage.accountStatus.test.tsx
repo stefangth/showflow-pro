@@ -9,15 +9,17 @@ const artists = [
   { id: "a-none", name: "Ned None", email: "ned@x.com", status: "active", user_id: null, org_id: "o1" },
 ];
 
-const fake = createFakeSupabase({
+// vi.mock is hoisted above imports, so the factory reads a vi.hoisted holder that we
+// populate with the fake after imports run (referencing an outer const would TDZ-throw).
+const { client } = vi.hoisted(() => ({ client: {} as Record<string, unknown> }));
+vi.mock("@/integrations/supabase/client", () => ({ supabase: client }));
+Object.assign(client, createFakeSupabase({
   artists: { data: artists, error: null },
   bookings: { data: [], error: null },
   artist_skills: { data: [], error: null },
   cast_members: { data: [], error: null },
   "rpc:list_pending_invited_artists": { data: ["a-invited"], error: null },
-});
-
-vi.mock("@/integrations/supabase/client", () => ({ supabase: fake }));
+}));
 vi.mock("@/features/auth/AuthContext", () => ({
   useAuth: () => ({ hasRole: () => true, currentOrg: { id: "o1" } }),
 }));
