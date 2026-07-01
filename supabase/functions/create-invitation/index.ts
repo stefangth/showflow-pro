@@ -8,6 +8,8 @@ type Body = {
   email: string;
   role: 'admin' | 'producer' | 'artist';
   app_origin: string;
+  /** Optional: link the invite to an existing catalog artist (forces role 'artist'). */
+  artist_id?: string;
 };
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -33,11 +35,31 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
 
     const admin = deps.admin;
 
+    // Optional artist_id: deterministic link from the artist surface. Validate against
+    // the service client and force role 'artist' when linking a catalog artist.
+    let role: Body["role"] = body.role;
+    const artistId = typeof body.artist_id === "string" ? body.artist_id : undefined;
+    if (artistId) {
+      const { data: artist } = await admin
+        .from("artists").select("id, org_id, user_id").eq("id", artistId).maybeSingle();
+      const a = artist as { org_id?: string; user_id?: string | null } | null;
+      if (!a || a.org_id !== body.org_id) {
+        return json({ error: "Artist not found in this organization" }, 400);
+      }
+      if (a.user_id) {
+        return json({ error: "That artist already has an account" }, 400);
+      }
+      role = "artist";
+    }
+
+    const insertRow: Record<string, unknown> = { org_id: body.org_id, email, role, invited_by: auth.userId };
+    if (artistId) insertRow.artist_id = artistId;
+
     // Insert the invitation (token / status / expires_at use DB defaults) and read it back.
     const { data: invite, error: insErr } = await admin
       .from('org_invitations')
-      .insert({ org_id: body.org_id, email, role: body.role, invited_by: auth.userId })
-      .select('id, org_id, email, role, status, token, expires_at')
+      .insert(insertRow)
+      .select('id, org_id, email, role, status, token, expires_at, artist_id')
       .single();
     if (insErr || !invite) {
       return json({ error: insErr?.message ?? 'Could not create invitation' }, 500);
