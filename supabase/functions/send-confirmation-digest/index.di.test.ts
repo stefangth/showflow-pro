@@ -468,6 +468,46 @@ Deno.test("send-confirmation-digest: digests_sent incremented only after success
   assertEquals((await res.json()).digests_sent, 1);
 });
 
+// ── C4: gate confirmation_digest_sent_at on a REAL send ───────────────────────
+
+function c4ConfirmDeps(emailResult: { data?: unknown; error?: unknown }) {
+  return makeFakeDeps({
+    now: BERLIN_20_CEST,
+    emailResult: emailResult as { data: unknown; error: unknown },
+    tables: {
+      app_settings: APP_SETTINGS_SEED,
+      organizations: { data: [{ id: ORG_1 }], error: null },
+      bookings: { data: ONE_CONFIRMED, error: null },
+    },
+  });
+}
+
+Deno.test("send-confirmation-digest C4: successful send → stamps confirmation_digest_sent_at, digests_sent 1", async () => {
+  const { deps, calls } = c4ConfirmDeps({ data: { success: true, message_id: "m1" }, error: null });
+  const res = await handle(makeRequest({ headers: cronOK }), deps);
+  assertEquals((await res.json()).digests_sent, 1);
+  const update = calls.find((c) => c.table === "bookings" && c.method === "update");
+  assertExists(update);
+  assertEquals((update!.args[0] as Record<string, string>).confirmation_digest_sent_at, BERLIN_20_CEST.toISOString());
+});
+
+Deno.test("send-confirmation-digest C4: skipped send (200 {success:false}) → NO stamp, digests_sent 0", async () => {
+  const { deps, calls, invokeCalls } = c4ConfirmDeps({ data: { success: false, reason: "pref_disabled" }, error: null });
+  const res = await handle(makeRequest({ headers: cronOK }), deps);
+  assertEquals((await res.json()).digests_sent, 0);
+  assertEquals(invokeCalls.filter((c) => c.name === "send-transactional-email").length, 1, "email attempted");
+  const update = calls.find((c) => c.table === "bookings" && c.method === "update");
+  assertEquals(update, undefined, "must NOT stamp confirmation_digest_sent_at on a skipped send");
+});
+
+Deno.test("send-confirmation-digest C4: hard failure (error populated) → NO stamp, digests_sent 0", async () => {
+  const { deps, calls } = c4ConfirmDeps({ data: null, error: { message: "Failed to send email" } });
+  const res = await handle(makeRequest({ headers: cronOK }), deps);
+  assertEquals((await res.json()).digests_sent, 0);
+  const update = calls.find((c) => c.table === "bookings" && c.method === "update");
+  assertEquals(update, undefined, "must NOT stamp on a failed send (retried next run)");
+});
+
 // =============================================================================
 // STAMP FAILURE BEHAVIOR (characterization — matches send-offer-digest pattern)
 // =============================================================================

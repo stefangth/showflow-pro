@@ -194,6 +194,15 @@ export interface FakeDepsOptions extends FakeClientOptions {
   envVars?: Record<string, string>;
   now?: Date;
   fetchImpl?: typeof fetch;
+  /**
+   * Result returned by `deps.sendEmail(...)` (and generic `invokeFunction`).
+   * Defaults to a REAL send — `{ data: { success: true }, error: null }` — which is what
+   * `send-transactional-email` returns on delivery, so digest handlers stamp as they would
+   * in production. Override to model a failure (`{ error: {...} }`) or a legitimately-skipped
+   * send (`{ data: { success: false, reason: 'email_suppressed' } }`) — in both cases the
+   * digest handlers must NOT stamp (C4). See `emailWasSent` in deps.ts.
+   */
+  emailResult?: InvokeResult;
 }
 
 /** Build a fake Deps for handler tests. Records invokeFunction/sendEmail calls. */
@@ -202,10 +211,11 @@ export function makeFakeDeps(opts: FakeDepsOptions = {}) {
   const invokeCalls: Array<{ name: string; body: unknown }> = [];
   const env = opts.envVars ?? {};
   const fixedNow = opts.now ?? new Date("2026-06-01T12:00:00.000Z");
+  const emailResult: InvokeResult = opts.emailResult ?? { data: { success: true }, error: null };
 
   const invokeFunction = (name: string, body: unknown): Promise<InvokeResult> => {
     invokeCalls.push({ name, body });
-    return Promise.resolve({ data: null, error: null });
+    return Promise.resolve(emailResult);
   };
 
   const deps: Deps = {

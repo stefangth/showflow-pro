@@ -1,13 +1,19 @@
 import { preflight, json } from "../_shared/http.ts";
 import { requireCronOrRole } from "../_shared/auth.ts";
 import { realDeps, type Deps } from "../_shared/deps.ts";
+import { countAccepted, countPendingNotExpired, isFutureOrToday, requiredPrimarySlots } from "../_shared/tierFill.ts";
 
 /**
  * Hourly job:
  *   1. Call expire_soft_bookings() RPC to cancel any expired offers.
- *   2. For each show_date with a still-unfilled tier after expiry, write a
+ *   2. For each FUTURE show_date with a still-unfilled tier after expiry, write a
  *      cast_escalation_requested notification + send a producer email.
  *   3. Mark show_date_offer_tiers.escalation_notified_at to be idempotent.
+ *
+ * Slot math (M2): a primary offer tier fills `main_cast_slots`; "still short" is judged
+ * against accepted/confirmed bookings from ALL sources for the date (any tier + manual
+ * `offer_tier IS NULL`) while this tier's own offers have all lapsed. Past dates are
+ * skipped so a closed date never escalates.
  *
  * Auth: X-Cron-Secret header (pg_cron) or user JWT (admin/producer manual trigger).
  */
@@ -45,26 +51,34 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
 
     const program = (sd as any).show?.program
     const subProgram = (sd as any).show?.sub_program
-    const mainCastSlots: number | null = (sd as any).show?.main_cast_slots ?? null
-    const understudySlots: number | null = (sd as any).show?.understudy_slots ?? null
 
-    // NULL slot columns = unconfigured show; skip.
-    if (mainCastSlots === null || understudySlots === null) continue
-    const requiredSlots = mainCastSlots + understudySlots
+    // Past dates can no longer fill — never escalate (would re-fire forever otherwise).
+    if (!isFutureOrToday((sd as any).date, deps.now())) continue
 
-    // Has every open offer in this tier expired (or been resolved) AND the tier still isn't filled?
+    // requiredSlots = main_cast_slots (what a primary offer tier fills). NULL = unconfigured → skip.
+    const requiredSlots = requiredPrimarySlots({
+      main_cast_slots: (sd as any).show?.main_cast_slots ?? null,
+      understudy_slots: (sd as any).show?.understudy_slots ?? null,
+    })
+    if (requiredSlots === null) continue
+
+    // Fetch every booking for this date (all tiers + manual offer_tier NULL). `accepted`
+    // counts across all sources; the "tier window has closed" check only looks at THIS
+    // tier's still-live pending offers.
     const { data: bookings } = await admin
       .from('bookings')
-      .select('status, offer_expires_at')
+      .select('status, offer_tier, offer_expires_at')
       .eq('show_date_id', row.show_date_id)
-      .eq('offer_tier', row.tier)
 
-    const accepted = (bookings ?? []).filter((b: any) => b.status === 'soft_booked' || b.status === 'confirmed').length
-    const pendingNotExpired = (bookings ?? []).filter((b: any) =>
-      b.status === 'suggested' && (!b.offer_expires_at || new Date(b.offer_expires_at) > deps.now())
-    ).length
+    const allRows = (bookings ?? []) as Array<{ status?: string | null; offer_tier?: number | null; offer_expires_at?: string | null }>
+    const accepted = countAccepted(allRows)
+    const pendingNotExpired = countPendingNotExpired(
+      allRows.filter((b) => b.offer_tier === row.tier),
+      deps.now(),
+    )
 
-    // Only escalate when the tier window has fully closed (no live pending) AND still short of slots
+    // Only escalate when THIS tier's window has fully closed (no live pending) AND the
+    // date is still short of its primary slots (counting all sources).
     if (pendingNotExpired > 0) continue
     if (accepted >= requiredSlots) continue
 
