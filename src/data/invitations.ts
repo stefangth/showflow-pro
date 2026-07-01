@@ -82,15 +82,18 @@ export async function revokeInvitation(
 
 /**
  * Accept an invitation by token (authenticated user). Server-side SECURITY DEFINER
- * RPC validates the token/expiry/email and writes the org_membership. Returns the org_id.
+ * RPC validates the token/expiry/email and writes the org_membership. Returns the
+ * org_id plus `artistLinked` — false only when an artist_id-stamped invite couldn't
+ * auto-link the talent profile (caller already owns an artist in the org).
  */
 export async function acceptInvitation(
   client: SupabaseClient<Database>,
   token: string,
-): Promise<string> {
+): Promise<{ orgId: string; artistLinked: boolean }> {
   const { data, error } = await client.rpc("accept_invitation", { p_token: token });
   if (error) throw error;
-  return data as string;
+  const r = (data ?? {}) as { org_id?: string; artist_linked?: boolean };
+  return { orgId: r.org_id ?? "", artistLinked: r.artist_linked !== false };
 }
 
 /** Re-send a pending org invitation (org admin or super-admin). */

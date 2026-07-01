@@ -58,11 +58,16 @@ describe("revokeInvitation", () => {
 });
 
 describe("acceptInvitation", () => {
-  it("calls the accept_invitation rpc with the token and returns the org id", async () => {
-    const fake = createFakeSupabase({ "rpc:accept_invitation": { data: "org-9", error: null } });
-    const orgId = await acceptInvitation(fake as never, "tok123");
-    expect(orgId).toBe("org-9");
+  it("calls the accept_invitation rpc and returns { orgId, artistLinked }", async () => {
+    const fake = createFakeSupabase({ "rpc:accept_invitation": { data: { org_id: "org-9", artist_linked: true }, error: null } });
+    const res = await acceptInvitation(fake as never, "tok123");
+    expect(res).toEqual({ orgId: "org-9", artistLinked: true });
     expect(fake.calls).toContainEqual({ table: "rpc:accept_invitation", method: "rpc", args: [{ p_token: "tok123" }] });
+  });
+
+  it("reports artistLinked=false when the deterministic link was skipped", async () => {
+    const fake = createFakeSupabase({ "rpc:accept_invitation": { data: { org_id: "o1", artist_linked: false }, error: null } });
+    expect((await acceptInvitation(fake as never, "t")).artistLinked).toBe(false);
   });
 
   it("throws on error (e.g. expired)", async () => {
