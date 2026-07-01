@@ -25,4 +25,15 @@ describe("guessMapping", () => {
     expect(m.email).toBe("email");
     expect(m.name).toBeUndefined();
   });
+
+  it("prefers an exact 'Email' over a loose 'Mailing Address' match", () => {
+    // "Mailing Address" comes first in column order and matches the loose /mail/,
+    // but the exact "Email" must win the email slot.
+    expect(guessMapping(["Mailing Address", "Email"]).email).toBe("Email");
+  });
+
+  it("does not let a loose /name/ steal 'Company Name' when a real Name exists", () => {
+    const m = guessMapping(["Company Name", "Name"]);
+    expect(m.name).toBe("Name");
+  });
 });
