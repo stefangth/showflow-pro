@@ -1,8 +1,11 @@
-import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { resolveContactEmail } from "@/lib/identity";
+import { ACCOUNT_STATE_META, type AccountState } from "@/lib/artistAccount";
 
 interface LinkedAccountPanelProps {
-  /** artists.user_id — null/undefined means unregistered (external talent, no login). */
+  /** Three-state account status (shared vocabulary). */
+  state: AccountState;
+  /** artists.user_id — null/undefined means unregistered. */
   userId: string | null | undefined;
   /** artists.email — the booking contact (may be null). */
   bookingEmail: string | null | undefined;
@@ -10,38 +13,55 @@ interface LinkedAccountPanelProps {
   account?: { email: string | null; display_name: string | null };
   /** True while the admin account lookup is in flight. */
   accountLoading?: boolean;
-  /** Whether the viewer may see account-level PII (admins). Producers get the badge only. */
+  /** Whether the viewer may see account-level PII (admins). Producers get the status only. */
   canSeeAccount: boolean;
+  /** Whether the viewer may invite/resend (admins). */
+  canInvite: boolean;
+  onInvite?: () => void;
+  onResend?: () => void;
+  inviteBusy?: boolean;
 }
 
 /**
- * Read-only "Linked account" section for ArtistProfileSheet (ADR-0011). Surfaces
- * whether a talent record is tied to a login account and — for admins — the
- * effective digest recipient (digests prefer the login email; see _shared/identity).
+ * Read-only "Linked account" section for ArtistProfileSheet (ADR-0011). One status
+ * vocabulary (ACCOUNT_STATE_META) shared with the card chip; admins additionally see
+ * the effective digest recipient and an Invite/Resend action.
  */
 export function LinkedAccountPanel({
-  userId,
-  bookingEmail,
-  account,
-  accountLoading,
-  canSeeAccount,
+  state, userId, bookingEmail, account, accountLoading, canSeeAccount, canInvite, onInvite, onResend, inviteBusy,
 }: LinkedAccountPanelProps) {
   const isRegistered = !!userId;
+  const meta = ACCOUNT_STATE_META[state];
   const effectiveDigestEmail = resolveContactEmail({ authEmail: account?.email, bookingEmail });
 
   return (
     <div className="space-y-2 rounded-md border border-border p-3">
       <div className="flex items-center justify-between">
         <span className="text-sm font-medium">Linked account</span>
-        <Badge variant={isRegistered ? "secondary" : "outline"}>
-          {isRegistered ? "Registered" : "Unregistered — external"}
-        </Badge>
+        <span className="inline-flex items-center gap-1.5 text-xs text-muted-foreground">
+          <span className={`h-1.5 w-1.5 rounded-full ${meta.dotClass}`} aria-hidden="true" />
+          {meta.label}
+        </span>
       </div>
 
-      {!isRegistered && (
-        <p className="text-sm text-muted-foreground">
-          No login account. Digests use the booking email{bookingEmail ? ` (${bookingEmail})` : ""}.
-        </p>
+      {state === "none" && (
+        <div className="flex items-center justify-between gap-2">
+          <p className="text-sm text-muted-foreground">
+            No login account. Digests use the booking email{bookingEmail ? ` (${bookingEmail})` : ""}.
+          </p>
+          {canInvite && (
+            <Button size="sm" variant="outline" onClick={onInvite} disabled={inviteBusy}>Invite to app</Button>
+          )}
+        </div>
+      )}
+
+      {state === "invited" && (
+        <div className="flex items-center justify-between gap-2">
+          <p className="text-sm text-muted-foreground">Invite pending — awaiting acceptance.</p>
+          {canInvite && (
+            <Button size="sm" variant="outline" onClick={onResend} disabled={inviteBusy}>Resend</Button>
+          )}
+        </div>
       )}
 
       {isRegistered && canSeeAccount && (
