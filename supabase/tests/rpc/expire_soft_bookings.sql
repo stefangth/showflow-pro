@@ -1,18 +1,20 @@
 -- Tests for public.expire_soft_bookings()
--- (defined in 20260514210000_expire_soft_bookings_fn.sql)
+-- (redefined in 20260702120002_expire_only_suggested_offers.sql — C3)
 --
 -- The function performs a single set-based UPDATE:
 --   UPDATE bookings
 --   SET status = 'cancelled', cancelled_at = now(), cancellation_reason = 'offer_expired'
---   WHERE status IN ('suggested', 'soft_booked')
+--   WHERE status = 'suggested'
 --     AND offer_expires_at IS NOT NULL
 --     AND offer_expires_at < now();
 --
--- So a row is expired iff: status is suggested OR soft_booked, AND offer_expires_at
--- is non-NULL and strictly in the past. Confirmed / future-expiry / NULL-expiry rows
--- are untouched. The function itself sets cancelled_at + cancellation_reason; the
--- bookings update_updated_at_column() BEFORE UPDATE trigger advances updated_at on any
--- row the UPDATE touches.
+-- C3 change: accepted holds (soft_booked) NEVER auto-expire. Only an untouched
+-- 'suggested' offer past its deadline is cancelled. So a row is expired iff:
+-- status is 'suggested', AND offer_expires_at is non-NULL and strictly in the past.
+-- soft_booked / confirmed / future-expiry / NULL-expiry rows are untouched. The
+-- function itself sets cancelled_at + cancellation_reason; the bookings
+-- update_updated_at_column() BEFORE UPDATE trigger advances updated_at on any row the
+-- UPDATE touches.
 --
 -- UUID legend (all test-only, rolled back at end):
 --   cccccccc-ed00-0001-…  show (theatre/musical)
@@ -48,7 +50,7 @@ INSERT INTO public.artists (id, name, org_id) VALUES
   ('bbbbbbbb-ed00-0005-0000-000000000000', 'ED Artist 5', '00000000-0000-0000-0000-00000000b007');
 
 -- Booking 1: suggested + PAST expiry            → should expire
--- Booking 2: soft_booked + PAST expiry          → should expire
+-- Booking 2: soft_booked + PAST expiry          → untouched (C3: accepted holds never expire)
 -- Booking 3: suggested + FUTURE expiry          → untouched
 -- Booking 4: suggested + NULL expiry            → untouched
 -- Booking 5: confirmed + PAST expiry            → untouched (status not in set)
@@ -80,13 +82,16 @@ SELECT is(
 );
 
 -- ────────────────────────────────────────────────────────────────────────────
--- Test 3: soft_booked with past expiry is ALSO expired (status set covers both)
+-- Test 3 (C3 regression): soft_booked with past expiry is NOT cancelled.
+-- Accepting only flips status to soft_booked and never clears offer_expires_at, so
+-- before C3 an artist who accepted on time was silently cancelled when the producer
+-- didn't confirm before the deadline. C3 removes soft_booked from the expiry set.
 -- ────────────────────────────────────────────────────────────────────────────
 SELECT is(
   (SELECT status::text || '|' || COALESCE(cancellation_reason, '')
    FROM public.bookings WHERE id = 'eeeeeeee-ed00-0002-0000-000000000000'),
-  'cancelled|offer_expired',
-  'soft_booked + past expiry → cancelled with reason offer_expired'
+  'soft_booked|',
+  'C3: soft_booked + past expiry → NOT cancelled (accepted holds never auto-expire)'
 );
 
 -- ────────────────────────────────────────────────────────────────────────────
