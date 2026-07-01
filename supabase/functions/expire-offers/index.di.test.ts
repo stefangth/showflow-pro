@@ -171,8 +171,11 @@ Deno.test("expire-offers: tier with unconfigured show (null main_cast_slots) →
   assertEquals((await res.json()).escalations, 0);
 });
 
-Deno.test("expire-offers: tier with only one slot column null → no escalation", async () => {
-  // Even if main_cast_slots is set, null understudy_slots = unconfigured → skip.
+Deno.test("expire-offers: M2 — null understudy_slots does NOT block escalation (understudy irrelevant to primary offers)", async () => {
+  // M2: a primary offer tier fills main_cast_slots only. understudy_slots being null no
+  // longer marks the show "unconfigured" — with main_cast_slots=2 configured and nothing
+  // filled, the tier still escalates. (Only a null main_cast_slots skips — see the test
+  // above at "tier with unconfigured show (null main_cast_slots) → no escalation".)
   const showDatePartial = {
     ...SHOW_DATE,
     show: { program: "Ballet", sub_program: "Matinée", main_cast_slots: 2, understudy_slots: null },
@@ -183,23 +186,26 @@ Deno.test("expire-offers: tier with only one slot column null → no escalation"
       show_date_offer_tiers: { data: [OPEN_TIER], error: null },
       show_dates: { data: showDatePartial, error: null },
       bookings: { data: [], error: null },
+      notifications: { data: null, error: null },
+      org_memberships: { data: [{ user_id: "admin-1" }], error: null },
     },
     rpcs: {
       expire_soft_bookings: { data: null, error: null },
       resolve_show_assignments: { data: [], error: null },
     },
+    usersById: { "admin-1": { email: "admin@example.com" } },
     now: FIXED_NOW,
   });
   const res = await handle(cronReq(), deps);
   assertEquals(res.status, 200);
-  assertEquals((await res.json()).escalations, 0);
+  assertEquals((await res.json()).escalations, 1);
 });
 
 // ─── requiredSlots calculation ────────────────────────────────────────────────
 
-Deno.test("expire-offers: requiredSlots = main_cast_slots + understudy_slots from shows columns", async () => {
-  // SHOW_DATE has main_cast_slots=2, understudy_slots=1 → requiredSlots=3
-  // With 0 accepted and 0 pending → should escalate
+Deno.test("expire-offers: M2 — requiredSlots = main_cast_slots ONLY (understudy excluded)", async () => {
+  // SHOW_DATE has main_cast_slots=2, understudy_slots=1 → requiredSlots=2 (main only).
+  // With 0 accepted and 0 pending → should escalate; message reports 0/2, not 0/3.
   const { deps, calls } = makeFakeDeps({
     tables: {
       app_settings: appSettingsSeed(),
@@ -219,18 +225,19 @@ Deno.test("expire-offers: requiredSlots = main_cast_slots + understudy_slots fro
   const res = await handle(cronReq(), deps);
   assertEquals(res.status, 200);
   assertEquals((await res.json()).escalations, 1);
-  // Verify the notification message contains slot numbers
+  // Verify the notification message reports main-only slots (0/2, not 0/3)
   const notifInsert = calls.find((c) => c.table === "notifications" && c.method === "insert");
   const rows = notifInsert?.args[0] as Array<{ message: string }>;
-  assertStringIncludes(rows[0].message, "0/3");
+  assertStringIncludes(rows[0].message, "0/2");
 });
 
 // ─── Escalation condition: pendingNotExpired > 0 → no escalation ─────────────
 
 Deno.test("expire-offers: pending (non-expired) suggested booking → no escalation", async () => {
   const futureExpiry = new Date(FIXED_NOW.getTime() + 60_000).toISOString(); // 1 min in the future
+  // offer_tier: 1 marks this as THIS tier's own live offer (the "window still open" signal).
   const bookings = [
-    { status: "suggested", offer_expires_at: futureExpiry },
+    { status: "suggested", offer_tier: 1, offer_expires_at: futureExpiry },
   ];
   const { deps } = makeFakeDeps({
     tables: {
@@ -251,7 +258,7 @@ Deno.test("expire-offers: pending (non-expired) suggested booking → no escalat
 });
 
 Deno.test("expire-offers: suggested booking with null offer_expires_at → treated as pending → no escalation", async () => {
-  const bookings = [{ status: "suggested", offer_expires_at: null }];
+  const bookings = [{ status: "suggested", offer_tier: 1, offer_expires_at: null }];
   const { deps } = makeFakeDeps({
     tables: {
       app_settings: appSettingsSeed(),
@@ -300,7 +307,7 @@ Deno.test("expire-offers: boundary — offer_expires_at exactly == now → NOT p
 
 Deno.test("expire-offers: boundary — offer_expires_at 1ms in the future → still pending → no escalation", async () => {
   const oneMillisLater = new Date(FIXED_NOW.getTime() + 1).toISOString();
-  const bookings = [{ status: "suggested", offer_expires_at: oneMillisLater }];
+  const bookings = [{ status: "suggested", offer_tier: 1, offer_expires_at: oneMillisLater }];
   const { deps } = makeFakeDeps({
     tables: {
       app_settings: appSettingsSeed(),
@@ -791,4 +798,83 @@ Deno.test("expire-offers: reads slot capacity from shows columns and stamps noti
   assertEquals(res.status, 200);
   assertExists(notifPayload); // escalation fired
   assertEquals(notifPayload[0].org_id, ORG); // notification carries the show_date's org_id
+});
+
+// ─── M2 slot-math corrections ────────────────────────────────────────────────
+// FIXED_NOW is 2026-06-01; 2026-07-01 is future, 2026-05-01 is past.
+
+Deno.test("expire-offers: M2 — understudy_slots does NOT inflate required; accepted == main → no escalation", async () => {
+  // main_cast_slots=1, understudy_slots=5. Old math: need 6 → 1 accepted escalates.
+  // New math: need 1 (main only) → 1 accepted is filled, no escalation.
+  const showDate = {
+    ...SHOW_DATE,
+    show: { program: "Ballet", sub_program: "Matinée", main_cast_slots: 1, understudy_slots: 5 },
+  };
+  const { deps } = makeFakeDeps({
+    tables: {
+      app_settings: appSettingsSeed(),
+      show_date_offer_tiers: { data: [OPEN_TIER], error: null },
+      show_dates: { data: showDate, error: null },
+      bookings: { data: [{ status: "soft_booked", offer_tier: 1, offer_expires_at: null }], error: null },
+    },
+    rpcs: { expire_soft_bookings: { data: null, error: null }, resolve_show_assignments: { data: [], error: null } },
+    now: FIXED_NOW,
+  });
+  const res = await handle(cronReq(), deps);
+  assertEquals(res.status, 200);
+  assertEquals((await res.json()).escalations, 0, "understudy slots must not inflate the requirement");
+});
+
+Deno.test("expire-offers: M2 — manual booking (offer_tier NULL) counts toward filled → no escalation", async () => {
+  // main_cast_slots=2. A manual booking (offer_tier NULL) + one accepted offer = 2 → filled.
+  // This tier's own offers have all expired, so old per-tier count would still escalate.
+  const showDate = {
+    ...SHOW_DATE,
+    show: { program: "Ballet", sub_program: "Matinée", main_cast_slots: 2, understudy_slots: 0 },
+  };
+  const { deps } = makeFakeDeps({
+    tables: {
+      app_settings: appSettingsSeed(),
+      show_date_offer_tiers: { data: [OPEN_TIER], error: null },
+      show_dates: { data: showDate, error: null },
+      bookings: {
+        data: [
+          { status: "confirmed", offer_tier: null, offer_expires_at: null },     // manual — must count
+          { status: "soft_booked", offer_tier: 1, offer_expires_at: null },       // this tier's accepted
+          { status: "suggested", offer_tier: 1, offer_expires_at: "2026-05-01T00:00:00Z" }, // this tier, expired
+        ],
+        error: null,
+      },
+    },
+    rpcs: { expire_soft_bookings: { data: null, error: null }, resolve_show_assignments: { data: [], error: null } },
+    now: FIXED_NOW,
+  });
+  const res = await handle(cronReq(), deps);
+  assertEquals(res.status, 200);
+  assertEquals((await res.json()).escalations, 0, "manual (offer_tier NULL) booking must count toward filled");
+});
+
+Deno.test("expire-offers: M2 — past date is never escalated", async () => {
+  // Genuinely unfillable (0 accepted, need 2, no live pending) but the date is in the past.
+  const showDate = {
+    ...SHOW_DATE,
+    date: "2026-05-01",
+    show: { program: "Ballet", sub_program: "Matinée", main_cast_slots: 2, understudy_slots: 0 },
+  };
+  const { deps } = makeFakeDeps({
+    tables: {
+      app_settings: appSettingsSeed(),
+      show_date_offer_tiers: { data: [OPEN_TIER], error: null },
+      show_dates: { data: showDate, error: null },
+      bookings: { data: [], error: null },
+      notifications: { data: null, error: null },
+      org_memberships: { data: [{ user_id: "admin-1" }], error: null },
+    },
+    rpcs: { expire_soft_bookings: { data: null, error: null }, resolve_show_assignments: { data: [], error: null } },
+    usersById: { "admin-1": { email: "admin@example.com" } },
+    now: FIXED_NOW,
+  });
+  const res = await handle(cronReq(), deps);
+  assertEquals(res.status, 200);
+  assertEquals((await res.json()).escalations, 0, "past dates must never escalate");
 });

@@ -969,3 +969,78 @@ Deno.test("tier-at-risk-watcher DI: reads slot capacity from shows columns and s
   assertExists(notifPayload, "notification must be inserted");
   assertEquals(notifPayload[0].org_id, ORG, "notification must carry the show_date's org_id");
 });
+
+// ── Part 8: M2 slot-math corrections ──────────────────────────────────────────
+// Default fake clock is 2026-06-01 (Berlin), so 2026-07-01 is future, 2026-05-01 is past.
+
+Deno.test("tier-at-risk-watcher DI M2: required = main_cast_slots only — understudy_slots does NOT inflate the requirement", async () => {
+  // main_cast_slots=1, understudy_slots=5. Old math: need 6 → 1 accepted looks at-risk.
+  // New math: need 1 (main only) → 1 accepted is HEALTHY, no alert.
+  const tierId = "tier-m2-under";
+  const sdId = "sd-m2-under";
+  const { deps, calls } = makeFakeDeps({
+    tables: {
+      app_settings: makeBaseSettings(),
+      show_date_offer_tiers: { data: [makeTier(tierId, sdId)], error: null },
+      notifications: { data: [], error: null },
+      show_dates: { data: makeShowDate(sdId, "MusicalA", "MainShow", "2026-07-01", "00000000-0000-0000-0000-000000000001", 1, 5), error: null },
+      bookings: { data: [{ status: "soft_booked" }], error: null }, // 1 accepted >= main(1) → healthy
+    },
+    rpcs: { resolve_show_assignments: { data: [{ producer_user_id: "prod-1" }], error: null } },
+  });
+  const res = await handle(makeRequest({ headers: CRON_OK }), deps);
+  const body = await res.json();
+  assertEquals(body.at_risk_count, 0, "understudy slots must not inflate the requirement");
+  const insertCalls = calls.filter((c) => c.table === "notifications" && c.method === "insert");
+  assertEquals(insertCalls.length, 0, "no false at-risk notification");
+});
+
+Deno.test("tier-at-risk-watcher DI M2: manual booking (offer_tier NULL) counts toward filled → not at-risk", async () => {
+  // main_cast_slots=2. A manual booking (offer_tier NULL) + one accepted offer = 2 → healthy.
+  // Old per-tier count (.eq('offer_tier', tier)) would miss the manual row and false-alarm.
+  const tierId = "tier-m2-manual";
+  const sdId = "sd-m2-manual";
+  const { deps, calls } = makeFakeDeps({
+    tables: {
+      app_settings: makeBaseSettings(),
+      show_date_offer_tiers: { data: [makeTier(tierId, sdId)], error: null },
+      notifications: { data: [], error: null },
+      show_dates: { data: makeShowDate(sdId, "MusicalA", "MainShow", "2026-07-01", "00000000-0000-0000-0000-000000000001", 2, 0), error: null },
+      bookings: {
+        data: [
+          { status: "confirmed", offer_tier: null }, // manual booking — must count
+          { status: "soft_booked", offer_tier: 1 },  // this tier's accepted offer
+        ],
+        error: null,
+      },
+    },
+    rpcs: { resolve_show_assignments: { data: [{ producer_user_id: "prod-1" }], error: null } },
+  });
+  const res = await handle(makeRequest({ headers: CRON_OK }), deps);
+  const body = await res.json();
+  assertEquals(body.at_risk_count, 0, "manual (offer_tier NULL) booking must count toward filled");
+  const insertCalls = calls.filter((c) => c.table === "notifications" && c.method === "insert");
+  assertEquals(insertCalls.length, 0);
+});
+
+Deno.test("tier-at-risk-watcher DI M2: past date is never flagged at-risk", async () => {
+  // Same unfillable setup as a normal at-risk case, but the date is in the past
+  // (before the 2026-06-01 fake clock). The watcher must skip it, not re-alert forever.
+  const tierId = "tier-m2-past";
+  const sdId = "sd-m2-past";
+  const { deps, calls } = makeFakeDeps({
+    tables: {
+      app_settings: makeBaseSettings(),
+      show_date_offer_tiers: { data: [makeTier(tierId, sdId)], error: null },
+      notifications: { data: [], error: null },
+      show_dates: { data: makeShowDate(sdId, "MusicalA", "MainShow", "2026-05-01", "00000000-0000-0000-0000-000000000001", 2, 0), error: null },
+      bookings: { data: [], error: null }, // 0 filled, need 2 → would be at-risk if future
+    },
+    rpcs: { resolve_show_assignments: { data: [{ producer_user_id: "prod-1" }], error: null } },
+  });
+  const res = await handle(makeRequest({ headers: CRON_OK }), deps);
+  const body = await res.json();
+  assertEquals(body.at_risk_count, 0, "past dates must never alert");
+  const insertCalls = calls.filter((c) => c.table === "notifications" && c.method === "insert");
+  assertEquals(insertCalls.length, 0);
+});

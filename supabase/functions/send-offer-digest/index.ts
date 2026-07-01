@@ -1,6 +1,6 @@
 import { preflight, json } from "../_shared/http.ts";
 import { requireCronOrRole } from "../_shared/auth.ts";
-import { realDeps, type Deps } from "../_shared/deps.ts";
+import { emailWasSent, realDeps, type Deps } from "../_shared/deps.ts";
 import { getActiveOrgs, resolveOrgSetting, BOOKING_ENGINE_DEFAULTS } from "../_shared/settings.ts";
 import { resolveContactEmail, resolveAccountDisplayName } from "../_shared/identity.ts";
 
@@ -114,13 +114,26 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
 
     for (const [artistId, entry] of grouped) {
       try {
-        await deps.sendEmail({
+        const result = await deps.sendEmail({
           template_name: 'artist-offer-digest',
           recipient_email: entry.recipientEmail,
           org_id: org.id,
           templateData: { displayName: entry.displayName, offers: entry.offers },
           idempotency_key: `offer-digest-${org.id}-${artistId}-${now.toISOString().slice(0, 13)}`,
         });
+        // Only stamp digest_sent_at + offer_expires_at when the email ACTUALLY sent.
+        // A failed send (Resend outage) or a legitimately-skipped one (suppressed address /
+        // preference-disabled) returns success:false — do NOT start the expiry clock, or the
+        // offer would be silently cancelled by expire-offers for a mail the artist never got.
+        // The offer stays pending (digest_sent_at null) and is retried on the next run; the
+        // artist still sees it in the in-app offer list.
+        if (!emailWasSent(result)) {
+          console.warn('send-offer-digest: email not sent — leaving offer pending (no stamp)', {
+            org: org.id, artistId, error: result.error ?? null,
+            reason: (result.data as { reason?: unknown } | null)?.reason ?? null,
+          });
+          continue;
+        }
         const { error: stampErr } = await admin
           .from('bookings')
           .update({ digest_sent_at: now.toISOString(), offer_expires_at: offerExpiresAt.toISOString() })
