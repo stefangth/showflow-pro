@@ -10,7 +10,7 @@ import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
-import { Plus, Search } from 'lucide-react';
+import { Plus, Search, Upload } from 'lucide-react';
 import { motion } from 'framer-motion';
 import type { Artist } from '@/types';
 import { ProgramFilter } from '@/components/filters/ProgramFilter';
@@ -24,6 +24,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { usePendingInvitedArtists } from '@/hooks/usePendingInvitedArtists';
 import { artistAccountState } from '@/lib/artistAccount';
 import { AccountStatusChip } from '@/components/artists/AccountStatusChip';
+import { ArtistImportDialog } from '@/components/artists/ArtistImportDialog';
 import { inviteArtistToApp } from '@/data/invitations';
 
 type BookingJoin = {
@@ -46,6 +47,7 @@ export default function ArtistsPage() {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [form, setForm] = useState({ name: '', email: '', phone: '', bio: '' });
   const [alsoInvite, setAlsoInvite] = useState(false);
+  const [importOpen, setImportOpen] = useState(false);
   const [profileArtistId, setProfileArtistId] = useState<string | null>(null);
 
   const { data: artists, isLoading } = useQuery({
@@ -59,6 +61,10 @@ export default function ArtistsPage() {
 
   const { data: pendingIds } = usePendingInvitedArtists(currentOrg?.id);
   const pendingSet = useMemo(() => new Set(pendingIds ?? []), [pendingIds]);
+  const existingEmails = useMemo(
+    () => (artists ?? []).map((a) => a.email).filter((e): e is string => !!e),
+    [artists],
+  );
 
   const { data: bookings } = useQuery({
     queryKey: ['bookings', 'light'],
@@ -221,6 +227,12 @@ export default function ArtistsPage() {
           <h1 className="font-display text-[32px] font-semibold tracking-tight">Artists</h1>
           <p className="text-muted-foreground mt-1">Manage your artist roster</p>
         </div>
+        <div className="flex items-center gap-2">
+        {(hasRole('producer') || hasRole('admin')) && (
+          <Button variant="outline" onClick={() => setImportOpen(true)}>
+            <Upload className="h-4 w-4 mr-2" />Import from sheet
+          </Button>
+        )}
         {hasRole('admin') && (
           <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
             <DialogTrigger asChild>
@@ -250,6 +262,7 @@ export default function ArtistsPage() {
             </DialogContent>
           </Dialog>
         )}
+        </div>
       </div>
 
       <div className="flex flex-wrap items-center gap-3">
@@ -341,6 +354,15 @@ export default function ArtistsPage() {
         open={!!profileArtistId}
         onOpenChange={(o) => { if (!o) setProfileArtistId(null); }}
       />
+
+      {currentOrg && (
+        <ArtistImportDialog
+          open={importOpen}
+          onOpenChange={setImportOpen}
+          orgId={currentOrg.id}
+          existingEmails={existingEmails}
+        />
+      )}
     </div>
   );
 }
