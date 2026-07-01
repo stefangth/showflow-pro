@@ -11,6 +11,8 @@ export interface Invitation {
   token: string;
   expires_at: string;
   created_at?: string;
+  /** Set when the invite was created from a specific catalog artist (deterministic link). */
+  artist_id?: string | null;
 }
 
 /** Absolute accept-invite link for an invitation token (for copy-to-clipboard). */
@@ -26,16 +28,30 @@ export function acceptInviteUrl(token: string): string {
  */
 export async function createInvitation(
   client: SupabaseClient<Database>,
-  args: { orgId: string; email: string; role: AppRole },
+  args: { orgId: string; email: string; role: AppRole; artistId?: string },
 ): Promise<Invitation> {
-  const { data, error } = await client.functions.invoke("create-invitation", {
-    body: { org_id: args.orgId, email: args.email, role: args.role, app_origin: window.location.origin },
-  });
+  const body: Record<string, unknown> = {
+    org_id: args.orgId, email: args.email, role: args.role, app_origin: window.location.origin,
+  };
+  if (args.artistId) body.artist_id = args.artistId;
+  const { data, error } = await client.functions.invoke("create-invitation", { body });
   if (error) throw error;
   const payload = data as { error?: string; invitation?: Invitation };
   if (payload?.error) throw new Error(payload.error);
   if (!payload?.invitation) throw new Error("Invitation was not created");
   return payload.invitation;
+}
+
+/**
+ * Invite an existing catalog artist to an app login. Always role 'artist', and the
+ * invitation is stamped with the artist_id so accept_invitation links that exact row
+ * (even if the login email ends up differing from the booking email).
+ */
+export async function inviteArtistToApp(
+  client: SupabaseClient<Database>,
+  args: { orgId: string; artistId: string; email: string },
+): Promise<Invitation> {
+  return createInvitation(client, { orgId: args.orgId, email: args.email, role: "artist", artistId: args.artistId });
 }
 
 /** All invitations for an org, newest first. */
@@ -45,7 +61,7 @@ export async function fetchOrgInvitations(
 ): Promise<Invitation[]> {
   const { data, error } = await client
     .from("org_invitations")
-    .select("id, org_id, email, role, status, token, expires_at, created_at")
+    .select("id, org_id, email, role, status, token, expires_at, created_at, artist_id")
     .eq("org_id", orgId)
     .order("created_at", { ascending: false });
   if (error) throw error;

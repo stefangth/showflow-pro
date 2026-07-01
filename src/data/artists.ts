@@ -2,6 +2,16 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "@/integrations/supabase/types";
 import type { Artist } from "@/types";
 
+/** Artist ids in an org with a live pending app-login invite (member-guarded RPC). */
+export async function fetchPendingInvitedArtistIds(
+  client: SupabaseClient<Database>,
+  orgId: string,
+): Promise<string[]> {
+  const { data, error } = await client.rpc("list_pending_invited_artists", { p_org: orgId });
+  if (error) throw error;
+  return (data ?? []) as string[];
+}
+
 /** Fetch the artists row linked to a given auth user id (or null). */
 export async function fetchMyArtist(
   client: SupabaseClient<Database>,
