@@ -59,7 +59,7 @@ export function ArtistImportDialog({ open, onOpenChange, orgId, existingEmails, 
   const [searchTerm, setSearchTerm] = useState('');
   const [selected, setSelected] = useState<Set<number>>(new Set());
   const [alsoInvite, setAlsoInvite] = useState(false);
-  const [summary, setSummary] = useState<{ created: number; skipped: number; errors: number; invited: number } | null>(null);
+  const [summary, setSummary] = useState<{ created: number; skipped: number; errors: number; invited: number; inviteFailed: number } | null>(null);
 
   function reset() {
     setStep('source'); setParsed(null); setMapping({}); setLinkUrl(''); setFetching(false);
@@ -158,26 +158,34 @@ export function ArtistImportDialog({ open, onOpenChange, orgId, existingEmails, 
       const results: BulkImportResult[] = await bulkImportArtists(supabase, { orgId, rows });
 
       let invited = 0;
+      let inviteFailed = 0;
       if (alsoInvite && canInvite) {
         const createdById = new Map(results.filter((x) => x.status === 'created' && x.artist_id).map((x) => [x.index, x.artist_id!]));
-        for (const r of chosen) {
-          const aid = createdById.get(r.index);
-          if (aid && r.values.email) {
-            try { await inviteArtistToApp(supabase, { orgId, artistId: aid, email: r.values.email }); invited++; }
-            catch (e) { console.error('invite-on-import failed for', r.values.email, e); }
-          }
+        const targets = chosen
+          .map((r) => ({ aid: createdById.get(r.index), email: r.values.email }))
+          .filter((t): t is { aid: string; email: string } => !!t.aid && !!t.email);
+        // Bounded concurrency so a large import doesn't fire hundreds of edge calls at once.
+        const CONCURRENCY = 6;
+        for (let i = 0; i < targets.length; i += CONCURRENCY) {
+          const batch = targets.slice(i, i + CONCURRENCY);
+          const settled = await Promise.allSettled(
+            batch.map((t) => inviteArtistToApp(supabase, { orgId, artistId: t.aid, email: t.email })),
+          );
+          settled.forEach((res, j) => {
+            if (res.status === 'fulfilled') invited++;
+            else { inviteFailed++; console.error('invite-on-import failed for', batch[j].email, res.reason); }
+          });
         }
       }
-      return { results, invited };
+      return { results, invited, inviteFailed };
     },
-    onSuccess: ({ results, invited }) => {
-      qc.invalidateQueries({ queryKey: ['artists'] });
-      qc.invalidateQueries({ queryKey: ['artists', 'pending-invites'] });
+    onSuccess: ({ results, invited, inviteFailed }) => {
+      qc.invalidateQueries({ queryKey: ['artists'] }); // prefix also busts ['artists','pending-invites']
       // Server result is authoritative; fold in preview-skipped/errored rows we never sent.
       const created = results.filter((r) => r.status === 'created').length;
       const skipped = counts.skipped + results.filter((r) => r.status === 'skipped_existing').length;
       const errors = counts.error + results.filter((r) => r.status === 'error').length;
-      setSummary({ created, skipped, errors, invited });
+      setSummary({ created, skipped, errors, invited, inviteFailed });
       setStep('done');
     },
     onError: (e: any) => toast({ title: 'Import failed', description: e.message, variant: 'destructive' }),
@@ -368,6 +376,11 @@ export function ArtistImportDialog({ open, onOpenChange, orgId, existingEmails, 
                 {summary.skipped} skipped{summary.errors ? `, ${summary.errors} need attention` : ''}
                 {summary.invited ? ` · ${summary.invited} invited` : ''}
               </p>
+              {summary.inviteFailed > 0 && (
+                <p className="text-sm text-warning">
+                  {summary.inviteFailed} couldn't be invited — retry from each artist.
+                </p>
+              )}
             </div>
             <div className="flex justify-center gap-2">
               <Button type="button" onClick={() => close(false)}>Done</Button>

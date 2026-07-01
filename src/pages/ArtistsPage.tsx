@@ -136,8 +136,7 @@ export default function ArtistsPage() {
       return { inviteFailed: false };
     },
     onSuccess: (res) => {
-      queryClient.invalidateQueries({ queryKey: ['artists'] });
-      queryClient.invalidateQueries({ queryKey: ['artists', 'pending-invites'] });
+      queryClient.invalidateQueries({ queryKey: ['artists'] }); // prefix also busts ['artists','pending-invites']
       const invited = alsoInvite;
       setDialogOpen(false);
       setForm({ name: '', email: '', phone: '', bio: '' });
