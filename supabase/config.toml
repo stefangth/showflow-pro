@@ -37,6 +37,9 @@ verify_jwt = true
 [functions.export-org-data]
 verify_jwt = true
 
+[functions.fetch-remote-sheet]
+verify_jwt = true
+
 [functions.open-offer-tier]
 verify_jwt = true
 

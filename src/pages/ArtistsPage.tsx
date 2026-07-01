@@ -10,7 +10,7 @@ import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
-import { Plus, Search } from 'lucide-react';
+import { Plus, Search, Upload } from 'lucide-react';
 import { motion } from 'framer-motion';
 import type { Artist } from '@/types';
 import { ProgramFilter } from '@/components/filters/ProgramFilter';
@@ -20,6 +20,12 @@ import { useFilterVisibility } from '@/components/filters/useFilterVisibility';
 import { applySort, inTimeframe } from '@/components/filters/filterUtils';
 import { CastsSection } from '@/components/casts/CastsSection';
 import { ArtistProfileSheet } from '@/components/artists/ArtistProfileSheet';
+import { Checkbox } from '@/components/ui/checkbox';
+import { usePendingInvitedArtists } from '@/hooks/usePendingInvitedArtists';
+import { artistAccountState } from '@/lib/artistAccount';
+import { AccountStatusChip } from '@/components/artists/AccountStatusChip';
+import { ArtistImportDialog } from '@/components/artists/ArtistImportDialog';
+import { inviteArtistToApp } from '@/data/invitations';
 
 type BookingJoin = {
   id: string; artist_id: string; status: string;
@@ -40,6 +46,8 @@ export default function ArtistsPage() {
   const [sort, setSort] = useState<SortValue>('alpha_asc');
   const [dialogOpen, setDialogOpen] = useState(false);
   const [form, setForm] = useState({ name: '', email: '', phone: '', bio: '' });
+  const [alsoInvite, setAlsoInvite] = useState(false);
+  const [importOpen, setImportOpen] = useState(false);
   const [profileArtistId, setProfileArtistId] = useState<string | null>(null);
 
   const { data: artists, isLoading } = useQuery({
@@ -50,6 +58,13 @@ export default function ArtistsPage() {
       return data as Artist[];
     },
   });
+
+  const { data: pendingIds } = usePendingInvitedArtists(currentOrg?.id);
+  const pendingSet = useMemo(() => new Set(pendingIds ?? []), [pendingIds]);
+  const existingEmails = useMemo(
+    () => (artists ?? []).map((a) => a.email).filter((e): e is string => !!e),
+    [artists],
+  );
 
   const { data: bookings } = useQuery({
     queryKey: ['bookings', 'light'],
@@ -99,22 +114,52 @@ export default function ArtistsPage() {
   });
 
   const createArtist = useMutation({
-    mutationFn: async () => {
+    mutationFn: async (): Promise<{ inviteFailed: boolean }> => {
       if (!currentOrg) throw new Error('No active organization');
-      const { error } = await supabase.from('artists').insert({
+      if (alsoInvite && !form.email.trim()) throw new Error('Email is required to send an invite');
+      const { data: inserted, error } = await supabase.from('artists').insert({
         name: form.name,
         email: form.email || null,
         phone: form.phone || null,
         bio: form.bio || null,
         org_id: currentOrg.id,
-      });
+      }).select('id').single();
       if (error) throw error;
+      if (alsoInvite && inserted) {
+        try {
+          await inviteArtistToApp(supabase, { orgId: currentOrg.id, artistId: inserted.id, email: form.email });
+        } catch (e) {
+          console.error('Artist created but invite failed', e);
+          return { inviteFailed: true }; // keep the artist; warn below
+        }
+      }
+      return { inviteFailed: false };
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['artists'] });
+    onSuccess: (res) => {
+      queryClient.invalidateQueries({ queryKey: ['artists'] }); // prefix also busts ['artists','pending-invites']
+      const invited = alsoInvite;
       setDialogOpen(false);
       setForm({ name: '', email: '', phone: '', bio: '' });
-      toast({ title: 'Artist added' });
+      setAlsoInvite(false);
+      if (res?.inviteFailed) {
+        toast({ title: 'Artist created', description: "The invite couldn't be sent — retry from the artist.", variant: 'destructive' });
+      } else {
+        toast({ title: invited ? 'Artist added and invited' : 'Artist added' });
+      }
+    },
+    onError: (err: any) => toast({ title: 'Error', description: err.message, variant: 'destructive' }),
+  });
+
+  const inviteExisting = useMutation({
+    mutationFn: async (artist: Artist) => {
+      if (!currentOrg) throw new Error('No active organization');
+      if (!artist.email) throw new Error('This artist has no email — add one before inviting.');
+      await inviteArtistToApp(supabase, { orgId: currentOrg.id, artistId: artist.id, email: artist.email });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['artists', 'pending-invites'] });
+      queryClient.invalidateQueries({ queryKey: ['org-invitations'] });
+      toast({ title: 'Invite sent' });
     },
     onError: (err: any) => toast({ title: 'Error', description: err.message, variant: 'destructive' }),
   });
@@ -182,6 +227,12 @@ export default function ArtistsPage() {
           <h1 className="font-display text-[32px] font-semibold tracking-tight">Artists</h1>
           <p className="text-muted-foreground mt-1">Manage your artist roster</p>
         </div>
+        <div className="flex items-center gap-2">
+        {(hasRole('producer') || hasRole('admin')) && (
+          <Button variant="outline" onClick={() => setImportOpen(true)}>
+            <Upload className="h-4 w-4 mr-2" />Import from sheet
+          </Button>
+        )}
         {hasRole('admin') && (
           <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
             <DialogTrigger asChild>
@@ -191,9 +242,18 @@ export default function ArtistsPage() {
               <DialogHeader><DialogTitle className="font-display">Add New Artist</DialogTitle></DialogHeader>
               <form onSubmit={e => { e.preventDefault(); createArtist.mutate(); }} className="space-y-4">
                 <Input placeholder="Full name" value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} required />
-                <Input type="email" placeholder="Email" value={form.email} onChange={e => setForm(f => ({ ...f, email: e.target.value }))} />
+                <Input type="email" placeholder="Email" value={form.email} onChange={e => setForm(f => ({ ...f, email: e.target.value }))} required={alsoInvite} />
                 <Input placeholder="Phone" value={form.phone} onChange={e => setForm(f => ({ ...f, phone: e.target.value }))} />
                 <Textarea placeholder="Bio" value={form.bio} onChange={e => setForm(f => ({ ...f, bio: e.target.value }))} />
+                <div className="flex items-start gap-2 rounded-md border border-border p-3">
+                  <Checkbox id="also-invite" checked={alsoInvite} onCheckedChange={(v) => setAlsoInvite(!!v)} className="mt-0.5" />
+                  <div className="space-y-1">
+                    <label htmlFor="also-invite" className="text-sm font-medium leading-none">Also send an app-login invite</label>
+                    {alsoInvite && (
+                      <p className="text-xs text-muted-foreground">They'll get an email to set a password and join as an artist. Email is required.</p>
+                    )}
+                  </div>
+                </div>
                 <p className="text-xs text-muted-foreground">Skills can be added after creation via the artist's profile.</p>
                 <Button type="submit" className="w-full" disabled={createArtist.isPending}>
                   {createArtist.isPending ? 'Adding...' : 'Add Artist'}
@@ -202,6 +262,7 @@ export default function ArtistsPage() {
             </DialogContent>
           </Dialog>
         )}
+        </div>
       </div>
 
       <div className="flex flex-wrap items-center gap-3">
@@ -244,7 +305,26 @@ export default function ArtistsPage() {
                           <p className="text-xs text-muted-foreground">{artist.email}</p>
                         </div>
                       </div>
-                      <Badge variant="secondary" className={statusColor[artist.status] ?? ''}>{artist.status}</Badge>
+                      {(() => {
+                        const accountState = artistAccountState(artist, pendingSet);
+                        return (
+                          <div className="flex flex-col items-end gap-2">
+                            <Badge variant="secondary" className={statusColor[artist.status] ?? ''}>{artist.status}</Badge>
+                            <AccountStatusChip state={accountState} />
+                            {accountState === 'none' && hasRole('admin') && (
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                className="h-6 px-2 text-xs"
+                                onClick={(e) => { e.stopPropagation(); inviteExisting.mutate(artist); }}
+                                disabled={inviteExisting.isPending}
+                              >
+                                Invite
+                              </Button>
+                            )}
+                          </div>
+                        );
+                      })()}
                     </div>
                     {skills.length > 0 && (
                       <div className="flex flex-wrap gap-1 mb-2">
@@ -274,6 +354,16 @@ export default function ArtistsPage() {
         open={!!profileArtistId}
         onOpenChange={(o) => { if (!o) setProfileArtistId(null); }}
       />
+
+      {currentOrg && (
+        <ArtistImportDialog
+          open={importOpen}
+          onOpenChange={setImportOpen}
+          orgId={currentOrg.id}
+          existingEmails={existingEmails}
+          canInvite={hasRole('admin')}
+        />
+      )}
     </div>
   );
 }

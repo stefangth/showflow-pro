@@ -689,6 +689,90 @@ export type Database = {
           },
         ]
       }
+      cron_health_dispatch: {
+        Row: {
+          dispatched_at: string
+          id: number
+          job_name: string
+          request_id: number
+        }
+        Insert: {
+          dispatched_at?: string
+          id?: number
+          job_name: string
+          request_id: number
+        }
+        Update: {
+          dispatched_at?: string
+          id?: number
+          job_name?: string
+          request_id?: number
+        }
+        Relationships: []
+      }
+      cron_health_log: {
+        Row: {
+          error: string | null
+          id: number
+          job_name: string
+          observed_at: string
+          status_code: number | null
+        }
+        Insert: {
+          error?: string | null
+          id?: number
+          job_name: string
+          observed_at?: string
+          status_code?: number | null
+        }
+        Update: {
+          error?: string | null
+          id?: number
+          job_name?: string
+          observed_at?: string
+          status_code?: number | null
+        }
+        Relationships: []
+      }
+      cron_health_state: {
+        Row: {
+          alerted_at: string | null
+          consecutive_failures: number
+          job_name: string
+          last_dispatched_at: string | null
+          last_error: string | null
+          last_ok_at: string | null
+          last_response_at: string | null
+          last_status_code: number | null
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          alerted_at?: string | null
+          consecutive_failures?: number
+          job_name: string
+          last_dispatched_at?: string | null
+          last_error?: string | null
+          last_ok_at?: string | null
+          last_response_at?: string | null
+          last_status_code?: number | null
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          alerted_at?: string | null
+          consecutive_failures?: number
+          job_name?: string
+          last_dispatched_at?: string | null
+          last_error?: string | null
+          last_ok_at?: string | null
+          last_response_at?: string | null
+          last_status_code?: number | null
+          status?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       custom_field_definitions: {
         Row: {
           created_at: string
@@ -768,7 +852,7 @@ export type Database = {
           created_at: string
           id: string
           message: string | null
-          org_id: string
+          org_id: string | null
           read: boolean
           related_entity_id: string | null
           related_entity_type: string | null
@@ -780,7 +864,7 @@ export type Database = {
           created_at?: string
           id?: string
           message?: string | null
-          org_id: string
+          org_id?: string | null
           read?: boolean
           related_entity_id?: string | null
           related_entity_type?: string | null
@@ -792,7 +876,7 @@ export type Database = {
           created_at?: string
           id?: string
           message?: string | null
-          org_id?: string
+          org_id?: string | null
           read?: boolean
           related_entity_id?: string | null
           related_entity_type?: string | null
@@ -813,6 +897,7 @@ export type Database = {
       org_invitations: {
         Row: {
           accepted_at: string | null
+          artist_id: string | null
           created_at: string
           email: string
           expires_at: string
@@ -825,6 +910,7 @@ export type Database = {
         }
         Insert: {
           accepted_at?: string | null
+          artist_id?: string | null
           created_at?: string
           email: string
           expires_at?: string
@@ -837,6 +923,7 @@ export type Database = {
         }
         Update: {
           accepted_at?: string | null
+          artist_id?: string | null
           created_at?: string
           email?: string
           expires_at?: string
@@ -848,6 +935,13 @@ export type Database = {
           token?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "org_invitations_artist_id_fkey"
+            columns: ["artist_id"]
+            isOneToOne: false
+            referencedRelation: "artists"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "org_invitations_org_id_fkey"
             columns: ["org_id"]
@@ -1379,19 +1473,49 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      accept_invitation: { Args: { p_token: string }; Returns: string }
+      accept_invitation: { Args: { p_token: string }; Returns: Json }
       add_platform_admin: { Args: { p_email: string }; Returns: string }
       anonymize_user: { Args: { p_user: string }; Returns: undefined }
+      bulk_import_artists: {
+        Args: { p_org: string; p_rows: Json }
+        Returns: Json
+      }
       category_of: { Args: { p_type: string }; Returns: string }
       compute_show_date_status: {
         Args: { p_show_date_id: string }
         Returns: undefined
+      }
+      cron_health_scan: {
+        Args: never
+        Returns: {
+          dispatched_at: string
+          error_msg: string
+          job_name: string
+          request_id: number
+          responded_at: string
+          status_code: number
+          timed_out: boolean
+        }[]
       }
       delete_org: { Args: { p_org: string }; Returns: undefined }
       delete_org_airtable_key: { Args: { _org: string }; Returns: undefined }
       expire_soft_bookings: { Args: never; Returns: undefined }
       export_my_data: { Args: never; Returns: Json }
       get_column_descriptions: { Args: never; Returns: Json }
+      get_cron_health: {
+        Args: never
+        Returns: {
+          consecutive_failures: number
+          job_name: string
+          last_error: string
+          last_ok_at: string
+          last_run_at: string
+          last_status_code: number
+          recent_failures: Json
+          schedule: string
+          status: string
+        }[]
+      }
       get_org_airtable_key: { Args: { _org: string }; Returns: string }
       get_org_airtable_key_status: {
         Args: { _org: string }
@@ -1401,6 +1525,7 @@ export type Database = {
         }[]
       }
       get_org_setting: { Args: { _key: string; _org: string }; Returns: Json }
+      get_user_id_by_email: { Args: { p_email: string }; Returns: string }
       has_org_role: {
         Args: {
           _org: string
@@ -1424,6 +1549,10 @@ export type Database = {
           roles: Database["public"]["Enums"]["app_role"][]
           user_id: string
         }[]
+      }
+      list_pending_invited_artists: {
+        Args: { p_org: string }
+        Returns: string[]
       }
       list_platform_admins: {
         Args: never
