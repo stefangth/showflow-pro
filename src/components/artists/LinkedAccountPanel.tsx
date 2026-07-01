@@ -1,6 +1,7 @@
 import { Button } from "@/components/ui/button";
 import { resolveContactEmail } from "@/lib/identity";
-import { ACCOUNT_STATE_META, type AccountState } from "@/lib/artistAccount";
+import { type AccountState } from "@/lib/artistAccount";
+import { AccountStatusChip } from "./AccountStatusChip";
 
 interface LinkedAccountPanelProps {
   /** Three-state account status (shared vocabulary). */
@@ -31,17 +32,13 @@ export function LinkedAccountPanel({
   state, userId, bookingEmail, account, accountLoading, canSeeAccount, canInvite, onInvite, onResend, inviteBusy,
 }: LinkedAccountPanelProps) {
   const isRegistered = !!userId;
-  const meta = ACCOUNT_STATE_META[state];
   const effectiveDigestEmail = resolveContactEmail({ authEmail: account?.email, bookingEmail });
 
   return (
     <div className="space-y-2 rounded-md border border-border p-3">
       <div className="flex items-center justify-between">
         <span className="text-sm font-medium">Linked account</span>
-        <span className="inline-flex items-center gap-1.5 text-xs text-muted-foreground">
-          <span className={`h-1.5 w-1.5 rounded-full ${meta.dotClass}`} aria-hidden="true" />
-          {meta.label}
-        </span>
+        <AccountStatusChip state={state} />
       </div>
 
       {state === "none" && (
