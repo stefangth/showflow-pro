@@ -1,7 +1,7 @@
 import { describe, it, expect } from "vitest";
 import { createFakeSupabase } from "@/test/supabaseFake";
 import { anArtist } from "@/test/fixtures";
-import { fetchMyArtist, fetchMyCancelledDateBookings, mergeArtistCancelledDates } from "./artists";
+import { fetchMyArtist, fetchMyCancelledDateBookings, mergeArtistCancelledDates, fetchPendingInvitedArtistIds } from "./artists";
 
 describe("fetchMyArtist", () => {
   it("queries the artists table by user_id and returns the row", async () => {
@@ -71,5 +71,24 @@ describe("mergeArtistCancelledDates", () => {
   });
   it("does not duplicate a date already eligible", () => {
     expect(mergeArtistCancelledDates([{ id: "d1" } as any], [{ id: "d1", status: "cancelled" } as any])).toHaveLength(1);
+  });
+});
+
+describe("fetchPendingInvitedArtistIds", () => {
+  it("calls the list_pending_invited_artists rpc with p_org and returns ids", async () => {
+    const fake = createFakeSupabase({ "rpc:list_pending_invited_artists": { data: ["a1", "a2"], error: null } });
+    const ids = await fetchPendingInvitedArtistIds(fake as never, "o1");
+    expect(ids).toEqual(["a1", "a2"]);
+    expect(fake.calls).toContainEqual({ table: "rpc:list_pending_invited_artists", method: "rpc", args: [{ p_org: "o1" }] });
+  });
+
+  it("returns [] when the rpc yields null", async () => {
+    const fake = createFakeSupabase({ "rpc:list_pending_invited_artists": { data: null, error: null } });
+    expect(await fetchPendingInvitedArtistIds(fake as never, "o1")).toEqual([]);
+  });
+
+  it("throws on error", async () => {
+    const fake = createFakeSupabase({ "rpc:list_pending_invited_artists": { data: null, error: { message: "boom" } } });
+    await expect(fetchPendingInvitedArtistIds(fake as never, "o1")).rejects.toBeTruthy();
   });
 });

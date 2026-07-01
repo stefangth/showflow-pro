@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { createFakeSupabase } from "@/test/supabaseFake";
-import { createInvitation, fetchOrgInvitations, revokeInvitation, acceptInvitation, acceptInviteUrl, resendInvitation } from "./invitations";
+import { createInvitation, fetchOrgInvitations, revokeInvitation, acceptInvitation, acceptInviteUrl, resendInvitation, inviteArtistToApp } from "./invitations";
 
 const INV = { id: "inv1", org_id: "o1", email: "x@y.com", role: "producer", status: "pending", token: "tok123", expires_at: "2099-01-01" };
 
@@ -91,5 +91,30 @@ describe("resendInvitation", () => {
   it("throws when the invoke errors", async () => {
     const fake = createFakeSupabase({ "fn:resend-invitation": { data: null, error: { message: "boom" } } });
     await expect(resendInvitation(fake as never, "inv-9")).rejects.toBeTruthy();
+  });
+});
+
+describe("createInvitation with artistId", () => {
+  it("forwards artist_id in the function body when provided", async () => {
+    const fake = createFakeSupabase({ "fn:create-invitation": { data: { invitation: INV }, error: null } });
+    await createInvitation(fake as never, { orgId: "o1", email: "x@y.com", role: "artist", artistId: "art-1" });
+    expect(fake.calls).toContainEqual({
+      table: "fn:create-invitation",
+      method: "invoke",
+      args: [{ org_id: "o1", email: "x@y.com", role: "artist", app_origin: window.location.origin, artist_id: "art-1" }],
+    });
+  });
+});
+
+describe("inviteArtistToApp", () => {
+  it("calls create-invitation with role artist + the artist_id", async () => {
+    const fake = createFakeSupabase({ "fn:create-invitation": { data: { invitation: INV }, error: null } });
+    const result = await inviteArtistToApp(fake as never, { orgId: "o1", artistId: "art-1", email: "x@y.com" });
+    expect(result).toEqual(INV);
+    expect(fake.calls).toContainEqual({
+      table: "fn:create-invitation",
+      method: "invoke",
+      args: [{ org_id: "o1", email: "x@y.com", role: "artist", app_origin: window.location.origin, artist_id: "art-1" }],
+    });
   });
 });
