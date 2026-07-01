@@ -132,3 +132,55 @@ Deno.test("create-invitation DI: net-new invitee → branded email WITH actionLi
   assertEquals(emails.length, 1);
   assertEquals((emails[0].body as { templateData: { actionLink?: string } }).templateData.actionLink, "https://app.test/reset-password?redirect=x");
 });
+
+// === Spec A: optional artist_id (deterministic link from the artist surface) ===
+
+Deno.test("create-invitation DI: valid artist_id → stamps artist_id + forces role artist", async () => {
+  const { deps, calls } = adminDeps({
+    tables: {
+      org_memberships: { data: { role: "admin" }, error: null },
+      artists: { data: { id: "art-1", org_id: "org-1", user_id: null }, error: null },
+      org_invitations: {
+        data: { id: "inv1", org_id: "org-1", email: "invitee@x.com", role: "artist", status: "pending", token: "tok123", expires_at: "2099-01-01T00:00:00Z", artist_id: "art-1" },
+        error: null,
+      },
+      organizations: { data: { name: "Acme" }, error: null },
+    },
+  });
+  // role 'producer' in the body must be overridden to 'artist' when artist_id is present.
+  const res = await handle(inviteReq({ org_id: "org-1", email: "invitee@x.com", role: "producer", artist_id: "art-1" }), deps);
+  assertEquals(res.status, 200);
+  const insert = calls.find((c) => c.table === "org_invitations" && c.method === "insert");
+  assertExists(insert);
+  assertEquals(insert.args[0], { org_id: "org-1", email: "invitee@x.com", role: "artist", invited_by: "u1", artist_id: "art-1" });
+});
+
+Deno.test("create-invitation DI: artist_id from another org → 400", async () => {
+  const { deps } = adminDeps({
+    tables: {
+      org_memberships: { data: { role: "admin" }, error: null },
+      artists: { data: { id: "art-1", org_id: "other-org", user_id: null }, error: null },
+    },
+  });
+  const res = await handle(inviteReq({ org_id: "org-1", email: "invitee@x.com", role: "artist", artist_id: "art-1" }), deps);
+  assertEquals(res.status, 400);
+});
+
+Deno.test("create-invitation DI: artist_id already registered → 400", async () => {
+  const { deps } = adminDeps({
+    tables: {
+      org_memberships: { data: { role: "admin" }, error: null },
+      artists: { data: { id: "art-1", org_id: "org-1", user_id: "u9" }, error: null },
+    },
+  });
+  const res = await handle(inviteReq({ org_id: "org-1", email: "invitee@x.com", role: "artist", artist_id: "art-1" }), deps);
+  assertEquals(res.status, 400);
+});
+
+Deno.test("create-invitation DI: no artist_id → legacy insert has no artist_id key", async () => {
+  const { deps, calls } = adminDeps();
+  await handle(inviteReq({ org_id: "org-1", email: "invitee@x.com", role: "producer" }), deps);
+  const insert = calls.find((c) => c.table === "org_invitations" && c.method === "insert");
+  assertExists(insert);
+  assertEquals(Object.prototype.hasOwnProperty.call(insert.args[0] as object, "artist_id"), false);
+});
