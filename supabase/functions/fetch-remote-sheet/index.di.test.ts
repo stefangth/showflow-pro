@@ -71,3 +71,17 @@ Deno.test("fetch-remote-sheet DI: upstream redirect → 400", async () => {
   const res = await handle(sheetReq({ org_id: "o1", url: GOOD_URL }), deps);
   assertEquals(res.status, 400);
 });
+
+Deno.test("fetch-remote-sheet DI: oversized Content-Length → 502 (no body read)", async () => {
+  let read = false;
+  const fakeRes = {
+    status: 200,
+    ok: true,
+    headers: new Headers({ "content-length": String(6 * 1024 * 1024) }),
+    arrayBuffer: () => { read = true; return Promise.resolve(new ArrayBuffer(0)); },
+  } as unknown as Response;
+  const { deps } = producerDeps((() => Promise.resolve(fakeRes)) as typeof fetch);
+  const res = await handle(sheetReq({ org_id: "o1", url: GOOD_URL }), deps);
+  assertEquals(res.status, 502);
+  assertEquals(read, false);
+});

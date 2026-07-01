@@ -42,27 +42,33 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
 
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), TIMEOUT_MS);
-    let res: Response;
     try {
-      res = await deps.fetch(body.url, { redirect: "manual", signal: controller.signal });
+      const res = await deps.fetch(body.url, { redirect: "manual", signal: controller.signal });
+
+      // Never follow a redirect (could bounce to an internal host).
+      if (res.status >= 300 && res.status < 400) {
+        return json({ error: "Redirects are not allowed" }, 400);
+      }
+      if (!res.ok) {
+        return json({ error: "The sheet was not reachable (is it published to the web?)" }, 502);
+      }
+
+      // Reject early on a declared-oversized body...
+      const declared = Number(res.headers.get("content-length"));
+      if (Number.isFinite(declared) && declared > MAX_BYTES) {
+        return json({ error: "Sheet is too large" }, 502);
+      }
+
+      // ...then read (the abort timer still guards this download) and re-check the cap.
+      const buf = await res.arrayBuffer();
+      if (buf.byteLength > MAX_BYTES) return json({ error: "Sheet is too large" }, 502);
+      return json({ csv: new TextDecoder().decode(buf) }, 200);
     } catch (_e) {
+      // fetch failure, or an abort (timeout) during the headers/body read.
+      return json({ error: "Could not fetch the sheet (timed out or unreachable)" }, 502);
+    } finally {
       clearTimeout(timer);
-      return json({ error: "Could not fetch the sheet" }, 502);
     }
-    clearTimeout(timer);
-
-    // Never follow a redirect (could bounce to an internal host).
-    if (res.status >= 300 && res.status < 400) {
-      return json({ error: "Redirects are not allowed" }, 400);
-    }
-    if (!res.ok) {
-      return json({ error: "The sheet was not reachable (is it published to the web?)" }, 502);
-    }
-
-    const buf = await res.arrayBuffer();
-    if (buf.byteLength > MAX_BYTES) return json({ error: "Sheet is too large" }, 502);
-    const csv = new TextDecoder().decode(buf);
-    return json({ csv }, 200);
   } catch (e) {
     console.error("fetch-remote-sheet error", e);
     return json({ error: (e as Error).message }, 500);
