@@ -1,5 +1,5 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
-import type { Database } from "@/integrations/supabase/types";
+import type { Database, Json } from "@/integrations/supabase/types";
 
 export interface BulkImportRowInput {
   index: number;
@@ -20,7 +20,10 @@ export async function bulkImportArtists(
   client: SupabaseClient<Database>,
   args: { orgId: string; rows: BulkImportRowInput[] },
 ): Promise<BulkImportResult[]> {
-  const { data, error } = await client.rpc("bulk_import_artists", { p_org: args.orgId, p_rows: args.rows });
+  const { data, error } = await client.rpc("bulk_import_artists", {
+    p_org: args.orgId,
+    p_rows: args.rows as unknown as Json,
+  });
   if (error) throw error;
   return (data ?? []) as unknown as BulkImportResult[];
 }
