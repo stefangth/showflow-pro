@@ -164,7 +164,7 @@ export function ArtistImportDialog({ open, onOpenChange, orgId, existingEmails, 
           const aid = createdById.get(r.index);
           if (aid && r.values.email) {
             try { await inviteArtistToApp(supabase, { orgId, artistId: aid, email: r.values.email }); invited++; }
-            catch { /* per-row invite failure; the import itself stands */ }
+            catch (e) { console.error('invite-on-import failed for', r.values.email, e); }
           }
         }
       }
@@ -200,7 +200,7 @@ export function ArtistImportDialog({ open, onOpenChange, orgId, existingEmails, 
             const state = i < activeIdx ? 'done' : i === activeIdx ? 'current' : 'todo';
             return (
               <div key={s.key} className="flex items-center gap-2">
-                <span className={`inline-flex h-5 w-5 items-center justify-center rounded-full ${state === 'current' ? 'bg-primary text-primary-foreground' : state === 'done' ? 'bg-success text-white' : 'border border-border text-muted-foreground'}`}>
+                <span className={`inline-flex h-5 w-5 items-center justify-center rounded-full ${state === 'current' ? 'bg-primary text-primary-foreground' : state === 'done' ? 'bg-success text-success-foreground' : 'border border-border text-muted-foreground'}`}>
                   {state === 'done' ? <Check className="h-3 w-3" /> : i + 1}
                 </span>
                 <span className={state === 'current' ? 'font-medium' : 'text-muted-foreground'}>{s.label}</span>
