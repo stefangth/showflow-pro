@@ -1476,6 +1476,10 @@ export type Database = {
       accept_invitation: { Args: { p_token: string }; Returns: string }
       add_platform_admin: { Args: { p_email: string }; Returns: string }
       anonymize_user: { Args: { p_user: string }; Returns: undefined }
+      bulk_import_artists: {
+        Args: { p_org: string; p_rows: Json }
+        Returns: Json
+      }
       category_of: { Args: { p_type: string }; Returns: string }
       compute_show_date_status: {
         Args: { p_show_date_id: string }
