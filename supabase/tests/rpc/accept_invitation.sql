@@ -4,7 +4,7 @@
 --   0000…ac001 org
 BEGIN;
 CREATE EXTENSION IF NOT EXISTS pgtap WITH SCHEMA extensions;
-SELECT plan(6);
+SELECT plan(12);
 
 SET session_replication_role = replica;
 
@@ -65,6 +65,80 @@ SELECT throws_ok(
   $$ SELECT public.accept_invitation('tok-accept-aaa') $$,
   'P0002', null, 'an accepted invitation cannot be reused');
 RESET ROLE;
+
+-- === Spec A: artist_id-first linking ===
+-- Seeds a second org, three invitees (C owns nothing, D legacy, E already owns an
+-- artist), and four artists. Exercises: id-stamped link, the no-op guard when the
+-- caller already owns an artist in the org (would otherwise trip the
+-- artists(org_id, user_id) partial-unique index), and the legacy email path.
+SET session_replication_role = replica;
+INSERT INTO auth.users (id, aud, role, email, email_confirmed_at, raw_app_meta_data, raw_user_meta_data, created_at, updated_at)
+VALUES
+  ('aaaaaaaa-aaaa-ac03-0000-000000000000','authenticated','authenticated','accept-c@test.com', now(),'{"provider":"email"}','{}',now(),now()),
+  ('aaaaaaaa-aaaa-ac04-0000-000000000000','authenticated','authenticated','accept-d@test.com', now(),'{"provider":"email"}','{}',now(),now()),
+  ('aaaaaaaa-aaaa-ac05-0000-000000000000','authenticated','authenticated','accept-e@test.com', now(),'{"provider":"email"}','{}',now(),now());
+
+INSERT INTO public.organizations (id, name, slug)
+VALUES ('00000000-0000-0000-0000-0000000ac002','Accept Org 2','accept-org-2');
+
+-- a501 idd: unclaimed; linked by id (booking email deliberately != login email).
+INSERT INTO public.artists (id, org_id, name, email, status) VALUES
+  ('00000000-0000-0000-0000-00000000a501','00000000-0000-0000-0000-0000000ac002','Idd Artist','booking-only@test.com','active');
+-- a502 owned: already owned by user E (drives the guard's no-op via double-ownership).
+INSERT INTO public.artists (id, org_id, name, email, status, user_id) VALUES
+  ('00000000-0000-0000-0000-00000000a502','00000000-0000-0000-0000-0000000ac002','Owned Artist','owned@test.com','active','aaaaaaaa-aaaa-ac05-0000-000000000000');
+-- a503 legacy: unclaimed; matches user D by email.
+INSERT INTO public.artists (id, org_id, name, email, status) VALUES
+  ('00000000-0000-0000-0000-00000000a503','00000000-0000-0000-0000-0000000ac002','Legacy Artist','accept-d@test.com','active');
+-- a504 other: unclaimed target of E's id-stamped invite (claim must no-op since E already owns a502).
+INSERT INTO public.artists (id, org_id, name, email, status) VALUES
+  ('00000000-0000-0000-0000-00000000a504','00000000-0000-0000-0000-0000000ac002','Other Artist','other@test.com','active');
+
+INSERT INTO public.org_invitations (org_id, email, role, token, status, artist_id) VALUES
+  ('00000000-0000-0000-0000-0000000ac002','accept-c@test.com','artist','tok-accept-ccc','pending','00000000-0000-0000-0000-00000000a501'),
+  ('00000000-0000-0000-0000-0000000ac002','accept-e@test.com','artist','tok-accept-eee','pending','00000000-0000-0000-0000-00000000a504');
+INSERT INTO public.org_invitations (org_id, email, role, token, status) VALUES
+  ('00000000-0000-0000-0000-0000000ac002','accept-d@test.com','artist','tok-accept-ddd','pending');
+SET session_replication_role = DEFAULT;
+
+-- 7. User C (owns nothing) accepts the id-stamped invite.
+SELECT set_config('request.jwt.claims','{"sub":"aaaaaaaa-aaaa-ac03-0000-000000000000","role":"authenticated"}',true);
+SET LOCAL ROLE authenticated;
+SELECT lives_ok(
+  $$ SELECT public.accept_invitation('tok-accept-ccc') $$,
+  'id-stamped invitee accepts');
+RESET ROLE;
+-- 8. The exact artist is claimed by artist_id (even though its booking email differs).
+SELECT is(
+  (SELECT user_id FROM public.artists WHERE id = '00000000-0000-0000-0000-00000000a501'),
+  'aaaaaaaa-aaaa-ac03-0000-000000000000'::uuid,
+  'artist_id-stamped invite links the exact artist by id');
+
+-- 9. User E already owns a502; accepting an id-stamped invite for a504 must not error.
+SELECT set_config('request.jwt.claims','{"sub":"aaaaaaaa-aaaa-ac05-0000-000000000000","role":"authenticated"}',true);
+SET LOCAL ROLE authenticated;
+SELECT lives_ok(
+  $$ SELECT public.accept_invitation('tok-accept-eee') $$,
+  'invitee who already owns an artist accepts without error');
+RESET ROLE;
+-- 10. The guard no-ops: a504 stays unclaimed (no partial-unique-index violation).
+SELECT is(
+  (SELECT user_id FROM public.artists WHERE id = '00000000-0000-0000-0000-00000000a504'),
+  null::uuid,
+  'claim no-ops when the caller already owns an artist in the org');
+
+-- 11. Legacy invitee D (no artist_id) accepts.
+SELECT set_config('request.jwt.claims','{"sub":"aaaaaaaa-aaaa-ac04-0000-000000000000","role":"authenticated"}',true);
+SET LOCAL ROLE authenticated;
+SELECT lives_ok(
+  $$ SELECT public.accept_invitation('tok-accept-ddd') $$,
+  'legacy invitee accepts');
+RESET ROLE;
+-- 12. Legacy email path still links by lowercased email.
+SELECT is(
+  (SELECT user_id FROM public.artists WHERE id = '00000000-0000-0000-0000-00000000a503'),
+  'aaaaaaaa-aaaa-ac04-0000-000000000000'::uuid,
+  'legacy email path still links by lowercased email');
 
 SELECT * FROM finish();
 ROLLBACK;
