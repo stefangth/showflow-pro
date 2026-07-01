@@ -2,7 +2,7 @@
 -- insert with server-side dedup on lower(email); returns per-row jsonb status.
 BEGIN;
 CREATE EXTENSION IF NOT EXISTS pgtap WITH SCHEMA extensions;
-SELECT plan(6);
+SELECT plan(7);
 
 SET session_replication_role = replica;
 INSERT INTO auth.users (id, aud, role, email, email_confirmed_at, raw_app_meta_data, raw_user_meta_data, created_at, updated_at)
@@ -47,6 +47,12 @@ SELECT is(
   (SELECT count(*)::int FROM public.artists
    WHERE org_id = '00000000-0000-0000-0000-0000000cc0a1' AND lower(email) = 'ada@x.com'),
   1, 'dedup does not create a duplicate');
+
+-- 7. A non-numeric 'index' must not abort the batch (falls back to row ordinality).
+SELECT is(
+  (public.bulk_import_artists('00000000-0000-0000-0000-0000000cc0a1',
+     '[{"index":"oops","name":"Ordinal Fallback","email":"ord@x.com","phone":null,"bio":null}]'::jsonb) -> 0 ->> 'status'),
+  'created', 'a malformed index does not abort the batch');
 RESET ROLE;
 
 -- 3. Artist-role caller is rejected.
