@@ -1473,7 +1473,7 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      accept_invitation: { Args: { p_token: string }; Returns: string }
+      accept_invitation: { Args: { p_token: string }; Returns: Json }
       add_platform_admin: { Args: { p_email: string }; Returns: string }
       anonymize_user: { Args: { p_user: string }; Returns: undefined }
       bulk_import_artists: {

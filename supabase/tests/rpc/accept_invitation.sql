@@ -104,9 +104,10 @@ SET session_replication_role = DEFAULT;
 -- 7. User C (owns nothing) accepts the id-stamped invite.
 SELECT set_config('request.jwt.claims','{"sub":"aaaaaaaa-aaaa-ac03-0000-000000000000","role":"authenticated"}',true);
 SET LOCAL ROLE authenticated;
-SELECT lives_ok(
-  $$ SELECT public.accept_invitation('tok-accept-ccc') $$,
-  'id-stamped invitee accepts');
+SELECT is(
+  (public.accept_invitation('tok-accept-ccc') ->> 'artist_linked'),
+  'true',
+  'id-stamped invitee links -> artist_linked true');
 RESET ROLE;
 -- 8. The exact artist is claimed by artist_id (even though its booking email differs).
 SELECT is(
@@ -117,9 +118,10 @@ SELECT is(
 -- 9. User E already owns a502; accepting an id-stamped invite for a504 must not error.
 SELECT set_config('request.jwt.claims','{"sub":"aaaaaaaa-aaaa-ac05-0000-000000000000","role":"authenticated"}',true);
 SET LOCAL ROLE authenticated;
-SELECT lives_ok(
-  $$ SELECT public.accept_invitation('tok-accept-eee') $$,
-  'invitee who already owns an artist accepts without error');
+SELECT is(
+  (public.accept_invitation('tok-accept-eee') ->> 'artist_linked'),
+  'false',
+  'guard no-op when caller already owns an artist -> artist_linked false');
 RESET ROLE;
 -- 10. The guard no-ops: a504 stays unclaimed (no partial-unique-index violation).
 SELECT is(
@@ -130,9 +132,10 @@ SELECT is(
 -- 11. Legacy invitee D (no artist_id) accepts.
 SELECT set_config('request.jwt.claims','{"sub":"aaaaaaaa-aaaa-ac04-0000-000000000000","role":"authenticated"}',true);
 SET LOCAL ROLE authenticated;
-SELECT lives_ok(
-  $$ SELECT public.accept_invitation('tok-accept-ddd') $$,
-  'legacy invitee accepts');
+SELECT is(
+  (public.accept_invitation('tok-accept-ddd') ->> 'org_id'),
+  '00000000-0000-0000-0000-0000000ac002',
+  'legacy accept returns org_id in the jsonb result');
 RESET ROLE;
 -- 12. Legacy email path still links by lowercased email.
 SELECT is(
