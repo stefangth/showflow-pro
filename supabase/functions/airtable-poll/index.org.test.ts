@@ -29,6 +29,7 @@ Deno.test("airtable-poll: skips orgs with sync disabled or no key; syncs the ena
     },
     rpcs: {
       get_org_airtable_key: { data: "key_on", error: null },
+      get_cron_secret: { data: "s", error: null },
     },
     fetchImpl: () => Promise.resolve(new Response(JSON.stringify({ records: [] }), { status: 200 })),
   });
@@ -72,7 +73,7 @@ Deno.test("airtable-poll: org with sync enabled but no Vault key is skipped (no 
       airtable_sync_record_log: { data: [], error: null },
       org_memberships: { data: [], error: null }, notifications: { data: null, error: null },
     },
-    rpcs: { get_org_airtable_key: { data: null, error: null } }, // no key
+    rpcs: { get_org_airtable_key: { data: null, error: null }, get_cron_secret: { data: "s", error: null } }, // no key
     fetchImpl: () => { fetched++; return Promise.resolve(new Response("{}", { status: 200 })); },
   });
   const res = await handle(makeRequest({ headers: auth }), deps);

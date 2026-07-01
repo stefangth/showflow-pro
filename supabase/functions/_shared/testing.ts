@@ -84,11 +84,37 @@ function resolveSeed(
   return { data, error, ...countField };
 }
 
+/**
+ * Resolve the cron secret value a test seeded into the app_settings table, so the
+ * Vault-backed `get_cron_secret` RPC can default to it when a test hasn't seeded the
+ * RPC explicitly. Post-C1 the secret lives in Vault and is read via the RPC (not
+ * app_settings), but the RPC returns the same value that used to live in app_settings —
+ * so mirroring the seeded app_settings.cron_secret keeps existing cron-auth tests green
+ * without touching every seed site. Tests that seed `rpcs.get_cron_secret` win over this.
+ */
+function seededCronSecret(tables: Record<string, TableSeed>): string | null {
+  const seed = tables["app_settings"];
+  if (!seed) return null;
+  const readValue = (v: unknown): string | null => {
+    if (v && typeof v === "object" && "value" in (v as Record<string, unknown>)) {
+      const val = (v as { value?: unknown }).value;
+      return typeof val === "string" ? val : null;
+    }
+    return null;
+  };
+  if (Array.isArray(seed)) {
+    const entry = seed.find((e) => e.when?.key === "cron_secret");
+    return entry ? readValue(entry.data) : null;
+  }
+  return readValue((seed as SingleSeed).data);
+}
+
 /** A call-recording stand-in for a Supabase client (admin or user). */
 export function createFakeClient(opts: FakeClientOptions = {}) {
   const calls: RecordedCall[] = [];
   const tables = opts.tables ?? {};
   const rpcs = opts.rpcs ?? {};
+  const fallbackCronSecret = seededCronSecret(tables);
 
   function builder(table: string): AnyChain {
     const seed: TableSeed = tables[table] ?? { data: [], error: null };
@@ -136,7 +162,12 @@ export function createFakeClient(opts: FakeClientOptions = {}) {
     from(table: string) { calls.push({ table, method: "from", args: [] }); return builder(table); },
     rpc(name: string, params?: unknown) {
       calls.push({ table: `rpc:${name}`, method: "rpc", args: [params] });
-      return Promise.resolve(rpcs[name] ?? { data: null, error: null });
+      if (name in rpcs) return Promise.resolve(rpcs[name]);
+      // Default get_cron_secret to the seeded app_settings.cron_secret (see seededCronSecret).
+      if (name === "get_cron_secret" && fallbackCronSecret !== null) {
+        return Promise.resolve({ data: fallbackCronSecret, error: null });
+      }
+      return Promise.resolve({ data: null, error: null });
     },
     auth: {
       getUser: () => Promise.resolve({ data: { user: opts.authUser ?? null }, error: null }),

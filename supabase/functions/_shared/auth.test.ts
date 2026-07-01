@@ -44,15 +44,15 @@ Deno.test("requireOrgRole accepts an org member holding the role and returns use
   if (out.ok) assertEquals(out.userId, "u1");
 });
 
-Deno.test("requireCronOrRole accepts a matching cron secret without a JWT", async () => {
-  const { deps } = makeFakeDeps({ tables: { app_settings: { data: { value: "secret123" }, error: null } } });
+Deno.test("requireCronOrRole accepts a matching cron secret without a JWT (secret from the Vault-backed RPC)", async () => {
+  const { deps } = makeFakeDeps({ rpcs: { get_cron_secret: { data: "secret123", error: null } } });
   const out = await requireCronOrRole(deps, makeRequest({ headers: { "X-Cron-Secret": "secret123" } }), ["admin"]);
   assertEquals(out.ok, true);
   if (out.ok) assertEquals(out.userId, null);
 });
 
 Deno.test("requireCronOrRole rejects a wrong cron secret (401)", async () => {
-  const { deps } = makeFakeDeps({ tables: { app_settings: { data: { value: "secret123" }, error: null } } });
+  const { deps } = makeFakeDeps({ rpcs: { get_cron_secret: { data: "secret123", error: null } } });
   const out = await requireCronOrRole(deps, makeRequest({ headers: { "X-Cron-Secret": "nope" } }), ["admin"]);
   assertEquals(out.ok, false);
   if (!out.ok) assertEquals(out.response.status, 401);
@@ -60,9 +60,16 @@ Deno.test("requireCronOrRole rejects a wrong cron secret (401)", async () => {
 
 Deno.test("requireCronOrRole rejects a wrong secret of the SAME length (401)", async () => {
   // "secret123" and "secret124" are both 9 chars — exercises the constant-time
-  // compare's equal-length branch (timingSafeEqual must run and return false).
-  const { deps } = makeFakeDeps({ tables: { app_settings: { data: { value: "secret123" }, error: null } } });
+  // compare's equal-length branch (must run and return false).
+  const { deps } = makeFakeDeps({ rpcs: { get_cron_secret: { data: "secret123", error: null } } });
   const out = await requireCronOrRole(deps, makeRequest({ headers: { "X-Cron-Secret": "secret124" } }), ["admin"]);
+  assertEquals(out.ok, false);
+  if (!out.ok) assertEquals(out.response.status, 401);
+});
+
+Deno.test("requireCronOrRole treats a null RPC secret as empty — any non-empty header is rejected (401)", async () => {
+  const { deps } = makeFakeDeps({ rpcs: { get_cron_secret: { data: null, error: null } } });
+  const out = await requireCronOrRole(deps, makeRequest({ headers: { "X-Cron-Secret": "anything" } }), ["admin"]);
   assertEquals(out.ok, false);
   if (!out.ok) assertEquals(out.response.status, 401);
 });
@@ -74,8 +81,15 @@ Deno.test("constantTimeEqual: equal strings → true, unequal (same/diff length)
   assertEquals(constantTimeEqual("", ""), true);
 });
 
-Deno.test("isServiceRole detects the service-role bearer token", () => {
+Deno.test("isServiceRole detects the service-role bearer token (constant-time compare)", () => {
   const { deps } = makeFakeDeps({ envVars: { SUPABASE_SERVICE_ROLE_KEY: "svc" } });
   assertEquals(isServiceRole(deps, makeRequest({ headers: { Authorization: "Bearer svc" } })), true);
   assertEquals(isServiceRole(deps, makeRequest({ headers: { Authorization: "Bearer other" } })), false);
+  // Same-length wrong token → exercises the constant-time compare's equal-length branch.
+  assertEquals(isServiceRole(deps, makeRequest({ headers: { Authorization: "Bearer sv1" } })), false);
+});
+
+Deno.test("isServiceRole returns false when the service key env var is unset", () => {
+  const { deps } = makeFakeDeps({ envVars: {} });
+  assertEquals(isServiceRole(deps, makeRequest({ headers: { Authorization: "Bearer " } })), false);
 });
