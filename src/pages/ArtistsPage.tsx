@@ -128,7 +128,8 @@ export default function ArtistsPage() {
       if (alsoInvite && inserted) {
         try {
           await inviteArtistToApp(supabase, { orgId: currentOrg.id, artistId: inserted.id, email: form.email });
-        } catch {
+        } catch (e) {
+          console.error('Artist created but invite failed', e);
           return { inviteFailed: true }; // keep the artist; warn below
         }
       }
@@ -158,7 +159,7 @@ export default function ArtistsPage() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['artists', 'pending-invites'] });
-      queryClient.invalidateQueries({ queryKey: ['invitations'] });
+      queryClient.invalidateQueries({ queryKey: ['org-invitations'] });
       toast({ title: 'Invite sent' });
     },
     onError: (err: any) => toast({ title: 'Error', description: err.message, variant: 'destructive' }),
@@ -361,6 +362,7 @@ export default function ArtistsPage() {
           onOpenChange={setImportOpen}
           orgId={currentOrg.id}
           existingEmails={existingEmails}
+          canInvite={hasRole('admin')}
         />
       )}
     </div>

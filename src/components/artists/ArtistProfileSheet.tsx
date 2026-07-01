@@ -74,7 +74,7 @@ export function ArtistProfileSheet({ artistId, open, onOpenChange }: Props) {
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['artists', 'pending-invites'] });
-      qc.invalidateQueries({ queryKey: ['invitations'] });
+      qc.invalidateQueries({ queryKey: ['org-invitations'] });
       toast({ title: 'Invite sent' });
     },
     onError: (e: any) => toast({ title: 'Error', description: e.message, variant: 'destructive' }),
