@@ -33,7 +33,7 @@ function seededDeps(records: unknown[], showDatesData: unknown[] = []) {
       org_memberships: { data: [], error: null },
       notifications: { data: null, error: null },
     },
-    rpcs: { get_org_airtable_key: { data: "key", error: null } },
+    rpcs: { get_org_airtable_key: { data: "key", error: null }, get_cron_secret: { data: "secret123", error: null } },
     fetchImpl: (() => Promise.resolve(airtableResponse(records))) as typeof fetch,
   });
 }

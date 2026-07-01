@@ -1,4 +1,5 @@
 import { preflight, json } from "../_shared/http.ts";
+import { requireCronOrRole } from "../_shared/auth.ts";
 import { realDeps, type Deps } from "../_shared/deps.ts";
 import { getActiveOrgs, resolveOrgSetting } from "../_shared/settings.ts";
 import { buildProgramKey, buildCityKey } from "../_shared/airtableKey.ts";
@@ -457,17 +458,17 @@ async function syncOrg(deps: Deps, orgId: string, baseId: string, tableName: str
  * An enabled-but-misconfigured org (bad base / missing base|table|key) leaves a visible error log row.
  * Disabled orgs are skipped silently. One org's failure never aborts the others.
  *
- * Auth: X-Cron-Secret header (pg_cron, platform cron_secret row). Cron-only — no user JWT.
+ * Auth: X-Cron-Secret header (pg_cron; the Vault-backed cron secret) via requireCronOrRole,
+ * or an admin user JWT for a manual trigger.
  */
 export async function handle(req: Request, deps: Deps): Promise<Response> {
   if (req.method === "OPTIONS") return preflight();
   const admin = deps.admin;
 
-  const cronSecretHeader = req.headers.get("X-Cron-Secret");
-  if (!cronSecretHeader) return json({ error: "Unauthorized" }, 401);
-  const { data: secretSetting } = await admin
-    .from("app_settings").select("value").eq("key", "cron_secret").is("org_id", null).maybeSingle();
-  if (cronSecretHeader !== ((secretSetting?.value as string | null) ?? "")) return json({ error: "Unauthorized" }, 401);
+  // Auth: X-Cron-Secret (pg_cron, Vault-backed via requireCronOrRole → get_cron_secret) or
+  // an admin user JWT for a manual trigger. Constant-time compare, shared with the other crons.
+  const auth = await requireCronOrRole(deps, req, ["admin"]);
+  if (!auth.ok) return auth.response;
 
   let orgs: Array<{ id: string }>;
   try {

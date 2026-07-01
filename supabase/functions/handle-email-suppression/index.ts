@@ -1,4 +1,5 @@
 import { json } from "../_shared/http.ts";
+import { constantTimeEqual } from "../_shared/auth.ts";
 import { realDeps, type Deps } from "../_shared/deps.ts";
 
 // Resend uses Standard Webhooks (https://www.standardwebhooks.com/)
@@ -37,7 +38,8 @@ async function verifyResendWebhook(
 
   const isValid = webhookSignature.split(' ').some((part) => {
     const [version, sig] = part.split(',')
-    return version === 'v1' && sig === computed
+    // Constant-time compare so a forged signature can't be recovered via a timing attack.
+    return version === 'v1' && sig !== undefined && constantTimeEqual(sig, computed)
   })
 
   if (!isValid) {
