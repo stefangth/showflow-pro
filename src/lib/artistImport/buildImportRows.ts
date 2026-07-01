@@ -14,6 +14,9 @@ export interface ImportRow {
   error?: string;
 }
 
+// Mirrors EMAIL_RE in supabase/functions/create-invitation/index.ts. The two live in
+// separate runtimes (Vite frontend vs Deno edge) with no shared import boundary, so the
+// pattern is intentionally duplicated — keep them in sync if either changes.
 export const IMPORT_EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 const cell = (row: Record<string, string>, col?: string): string => (col ? (row[col] ?? "").trim() : "");
