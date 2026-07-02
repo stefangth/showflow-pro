@@ -5,6 +5,7 @@ import appLogicMd from '../../docs/app-logic.md?raw';
 import { Link } from 'react-router-dom';
 import { ROUTES, BOOKING_ENGINE_DEFAULTS } from '@/config/app.config';
 import { useSettingsWarnings } from '@/hooks/useSettingsWarnings';
+import { useAllCities } from '@/hooks/useAllCities';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/features/auth/AuthContext';
@@ -25,7 +26,7 @@ import { Settings as SettingsIcon, Database, Bell, Wand2, Save, SlidersHorizonta
 import { upsertOrgSetting, mergeOrgRows } from '@/data/settings';
 import { AirtableSyncTab } from '@/components/settings/AirtableSyncTab';
 import { OrganizationTab } from '@/components/settings/OrganizationTab';
-import type { City, Cast } from '@/types';
+import type { Cast } from '@/types';
 
 const EMAIL_TEMPLATE_KEYS = [
   'signup-decision',
@@ -305,15 +306,7 @@ export default function SettingsPage() {
   const { schedulingWarnings } = useSettingsWarnings();
 
   // Cities (available to producers + admins)
-  const { data: cities } = useQuery({
-    queryKey: ['cities', currentOrg?.id],
-    enabled: canEnter,
-    queryFn: async () => {
-      const { data, error } = await supabase.from('cities').select('*').order('name');
-      if (error) throw error;
-      return data as City[];
-    },
-  });
+  const { data: cities } = useAllCities(canEnter);
   const [newCity, setNewCity] = useState('');
   const addCity = useMutation({
     mutationFn: async (name: string) => {
