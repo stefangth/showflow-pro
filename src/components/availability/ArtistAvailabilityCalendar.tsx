@@ -42,27 +42,29 @@ export function ArtistAvailabilityCalendar({ artistId, eligibleDates }: Props) {
   const monthEndKey = toDateKey(monthEnd);
 
   // Fetch all non-cancelled bookings for this artist
-  const { data: bookings } = useQuery({
+  const { data: bookings, isError: bookingsError } = useQuery({
     queryKey: ['bookings', 'artist', artistId],
     queryFn: async () => {
-      const { data } = await supabase
+      const { data, error } = await supabase
         .from('bookings')
         .select('id, show_date_id, status, show_date:show_dates!inner(date)')
         .eq('artist_id', artistId)
         .neq('status', 'cancelled');
+      if (error) throw error;
       return (data ?? []) as unknown as BookingRow[];
     },
   });
 
-  const { data: blockedDates } = useQuery({
+  const { data: blockedDates, isError: blockedError } = useQuery({
     queryKey: ['blocked-dates', artistId, format(currentMonth, 'yyyy-MM')],
     queryFn: async () => {
-      const { data } = await (supabase as any)
+      const { data, error } = await (supabase as any)
         .from('blocked_dates')
         .select('date')
         .eq('artist_id', artistId)
         .gte('date', monthStartKey)
         .lte('date', monthEndKey);
+      if (error) throw error;
       return (data ?? []) as { date: string }[];
     },
   });
@@ -122,6 +124,7 @@ export function ArtistAvailabilityCalendar({ artistId, eligibleDates }: Props) {
           <Button
             variant="ghost"
             size="icon"
+            aria-label="Previous month"
             onClick={() => setCurrentMonth(subMonths(currentMonth, 1))}
           >
             <ChevronLeft className="h-4 w-4" />
@@ -130,6 +133,7 @@ export function ArtistAvailabilityCalendar({ artistId, eligibleDates }: Props) {
           <Button
             variant="ghost"
             size="icon"
+            aria-label="Next month"
             onClick={() => setCurrentMonth(addMonths(currentMonth, 1))}
           >
             <ChevronRight className="h-4 w-4" />
@@ -137,6 +141,11 @@ export function ArtistAvailabilityCalendar({ artistId, eligibleDates }: Props) {
         </div>
       </CardHeader>
       <CardContent>
+        {(bookingsError || blockedError) && (
+          <p className="mb-3 text-sm text-destructive">
+            Couldn't load your bookings or blocked dates — statuses may be incomplete. Please refresh.
+          </p>
+        )}
         <div className="grid grid-cols-7 gap-1 mb-2">
           {['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].map((d) => (
             <div key={d} className="text-center text-xs font-medium text-muted-foreground py-1">

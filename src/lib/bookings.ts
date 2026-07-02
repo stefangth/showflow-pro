@@ -3,7 +3,30 @@
  * No Supabase, no React — safe to unit-test directly.
  */
 
-import type { Database } from "@/integrations/supabase/types";
+// ── Booking-status badge styling (single source of truth) ──────────────────────
+// Previously duplicated across BookingRow, ArtistBookingsView, and AvailabilityPage
+// and DRIFTED: `suggested` was `bg-muted text-muted-foreground` in the producer
+// BookingRow but `bg-info/10 text-info` in the two artist surfaces. Reconciled to
+// the artist-surface variant (`bg-info/10 text-info`, the 2-of-3 majority) so a
+// pending offer reads as an info state everywhere. `unanswered` is a synthetic,
+// artist-only status (no active booking yet) — harmless where booking rows never
+// carry it. Labels stay per-surface (they differ intentionally, e.g. "Hold placed"
+// vs "Soft booked"); only the class map is centralized here.
+const BOOKING_STATUS_BADGE_CLASS: Record<string, string> = {
+  confirmed: "bg-success/10 text-success",
+  soft_booked: "bg-warning/10 text-warning",
+  suggested: "bg-info/10 text-info",
+  unanswered: "bg-muted text-muted-foreground",
+  cancelled: "bg-destructive/10 text-destructive",
+};
+
+/**
+ * Semantic-token badge classes for a booking status (or the synthetic `unanswered`
+ * artist status). Unknown statuses return "" so the Badge falls back to its variant.
+ */
+export function bookingStatusBadgeClass(status: string): string {
+  return BOOKING_STATUS_BADGE_CLASS[status] ?? "";
+}
 
 export interface BookingLike {
   artist_id: string;
@@ -48,27 +71,6 @@ export function computeInheritedCastIds(
   overrideCastIds: Set<string>,
 ): Set<string> {
   return new Set((eligibilityCastIds ?? []).filter((cid) => !overrideCastIds.has(cid)));
-}
-
-/** Update payload for a booking status transition. */
-export interface BookingStatusUpdate {
-  status: Database["public"]["Enums"]["booking_status"];
-  confirmed_at?: string;
-  cancelled_at?: string;
-}
-
-/**
- * Build the `bookings` update payload for a status transition.
- *
- * NOTE: matches current production behavior exactly — it only *sets*
- * confirmed_at / cancelled_at and never clears a stale stamp on the reverse
- * transition. See part2-bug-log.md ("booking timestamp never cleared").
- */
-export function bookingStatusUpdate(status: string, now: Date): BookingStatusUpdate {
-  const updates: BookingStatusUpdate = { status: status as Database["public"]["Enums"]["booking_status"] };
-  if (status === "confirmed") updates.confirmed_at = now.toISOString();
-  if (status === "cancelled") updates.cancelled_at = now.toISOString();
-  return updates;
 }
 
 // ── Offer-tier UI helpers (open/close actions in ShowDateDetailSheet) ──────────

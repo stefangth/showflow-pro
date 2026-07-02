@@ -1,8 +1,15 @@
 name: CI
 
+# Runs on every PR, and also on the merged commit once it lands on `main`.
+# The `push: main` trigger exists so the edge-function deploy can gate on a green
+# CI run of the *merged* result (see deploy-functions.yml's `workflow_run` trigger):
+# on a private/free-plan repo required status checks aren't available, so this is
+# how we guarantee the merged commit was actually tested before it deploys.
 on:
   pull_request:
     branches: ["**"]
+  push:
+    branches: [main]
 
 
 concurrency:
@@ -65,6 +72,37 @@ jobs:
 
       - name: Run Vitest
         run: npm test
+
+  # ── 2b. Coverage gate (Vitest + v8) ────────────────────────────────────────
+  # The coverage thresholds in vitest.config.ts only apply under `--coverage`,
+  # which the plain `npm test` step above does NOT pass — so the ratchet was
+  # decorative (L3). This job runs `vitest run --coverage` so a drop below the
+  # configured thresholds fails CI for real.
+  #
+  # NOTE: the v8 coverage provider (`@vitest/coverage-v8`) is intentionally NOT a
+  # committed devDependency — adding it to package.json without regenerating
+  # package-lock.json would break `npm ci` in every other job. We install it here
+  # with `--no-save` (pinned to the vitest version) after the deterministic
+  # `npm ci`, so the lockfile stays untouched and only this job pulls the provider.
+  # If it later graduates to a committed devDependency, drop the extra install step.
+  coverage:
+    name: Coverage gate
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - run: npm ci
+
+      - name: Install coverage provider (not in lockfile — see note above)
+        run: npm install --no-save @vitest/coverage-v8@3.2.4
+
+      - name: Run Vitest with coverage (enforces thresholds)
+        run: npm run test:coverage
 
   # ── 3. Database tests (pgTAP) ──────────────────────────────────────────────
   # Boots the local Supabase Postgres stack, applies all migrations, and runs

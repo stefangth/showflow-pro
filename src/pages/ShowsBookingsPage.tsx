@@ -21,7 +21,9 @@ import { ArtistBookingsView } from '@/components/bookings/ArtistBookingsView';
 import { ShowDateDetailSheet } from '@/components/shows/ShowDateDetailSheet';
 import { ShowDateFormDialog } from '@/components/shows/ShowDateFormDialog';
 import { Button } from '@/components/ui/button';
+import { Skeleton } from '@/components/ui/skeleton';
 import { showSlots } from '@/lib/settings';
+import { parseDateOnly } from '@/lib/dates';
 import { showLabel } from '@/types';
 import { useColumnTemplate, useEditorConfig } from '@/features/editor/EditorContext';
 import { useColumnHeaders } from '@/features/editor/useColumnHeaders';
@@ -115,6 +117,13 @@ function ProducerShowsBookings() {
   const [customFilters, setCustomFilters] = useState<Record<string, CustomFilterState>>({});
   const [view, setView] = useState<ViewMode>('list');
   const [activeShowDateId, setActiveShowDateId] = useState<string | null>(null);
+  const openShowDate = (id: string) => setActiveShowDateId(id);
+  const openShowDateOnKey = (id: string) => (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault();
+      openShowDate(id);
+    }
+  };
   const [newDateOpen, setNewDateOpen] = useState(false);
   const { hasRole } = useAuth();
   const canManage = hasRole('admin') || hasRole('producer');
@@ -212,7 +221,7 @@ function ProducerShowsBookings() {
       return matchSearch && matchProgram;
     });
     if (timeframe.from || timeframe.to) {
-      list = list.filter(sd => inTimeframe(new Date(sd.date + 'T00:00:00'), timeframe));
+      list = list.filter(sd => inTimeframe(parseDateOnly(sd.date), timeframe));
     }
     if (statusFilter !== 'all') {
       list = list.filter(sd => displayStatus(sd) === statusFilter);
@@ -231,13 +240,13 @@ function ProducerShowsBookings() {
     }
     return applySort(list, sort as SortValue,
       sd => sd.show?.program ?? '',
-      sd => new Date(sd.date + 'T00:00:00')
+      sd => parseDateOnly(sd.date)
     );
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [showDates, search, programs, timeframe, statusFilter, sort, customFilters, filterableDefs, customDefs]);
 
   const calendarItems = useMemo(() =>
-    filtered.map(sd => ({ showDate: sd, date: new Date(sd.date + 'T00:00:00') })),
+    filtered.map(sd => ({ showDate: sd, date: parseDateOnly(sd.date) })),
     [filtered]
   );
 
@@ -250,7 +259,7 @@ function ProducerShowsBookings() {
 
   const dayAbbr = (dateStr: string) => {
     const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
-    return days[new Date(dateStr + 'T00:00:00').getDay()];
+    return days[parseDateOnly(dateStr).getDay()];
   };
 
   return (
@@ -303,7 +312,7 @@ function ProducerShowsBookings() {
       <ColumnLayoutEditor pageKey="bookings-producer" />
 
       {isLoading ? (
-        <div className="space-y-2">{[1,2,3,4,5].map(i => <div key={i} className="h-12 rounded bg-muted animate-pulse" />)}</div>
+        <div className="space-y-2">{[1,2,3,4,5].map(i => <Skeleton key={i} className="h-12" />)}</div>
       ) : view === 'list' ? (
         <Card>
           <CardContent className="p-0 overflow-x-auto">
@@ -326,7 +335,7 @@ function ProducerShowsBookings() {
                     switch (colId) {
                       case 'show_dates.date': return (
                         <TableCell key={colId} className="font-medium whitespace-nowrap">
-                          {format(new Date(sd.date + 'T00:00:00'), 'dd MMM yyyy')}
+                          {format(parseDateOnly(sd.date), 'dd MMM yyyy')}
                         </TableCell>
                       );
                       case '_computed.day': return (
@@ -413,7 +422,9 @@ function ProducerShowsBookings() {
                     <TableRow
                       key={sd.id}
                       className="cursor-pointer"
-                      onClick={() => setActiveShowDateId(sd.id)}
+                      tabIndex={0}
+                      onClick={() => openShowDate(sd.id)}
+                      onKeyDown={openShowDateOnKey(sd.id)}
                     >
                       {orderedColumns.filter(c => c.visible).map(c => cellFor(c.columnId))}
                     </TableRow>
@@ -438,7 +449,10 @@ function ProducerShowsBookings() {
           renderItem={it => (
             <Card
               className="hover:shadow-elev2 transition-shadow cursor-pointer"
-              onClick={() => setActiveShowDateId(it.showDate.id)}
+              role="button"
+              tabIndex={0}
+              onClick={() => openShowDate(it.showDate.id)}
+              onKeyDown={openShowDateOnKey(it.showDate.id)}
             >
               <CardContent className="py-3 flex items-center justify-between gap-3">
                 <div className="min-w-0">

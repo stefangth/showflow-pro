@@ -1,7 +1,7 @@
 import { describe, it, expect } from "vitest";
 import {
   isSyncedShow, isSyncedDate, canHardDeleteDate, canHardDeleteShow,
-  findDuplicateDate, nextSortOrder,
+  findDuplicateDate, nextSortOrder, reconcileDragOrder,
 } from "./catalog";
 
 describe("catalog helpers", () => {
@@ -37,5 +37,53 @@ describe("catalog helpers", () => {
   it("nextSortOrder = max(sort_order) + 1, treating null as 0", () => {
     expect(nextSortOrder([])).toBe(1);
     expect(nextSortOrder([{ sort_order: 3 }, { sort_order: null }, { sort_order: 7 }])).toBe(8);
+  });
+
+  describe("reconcileDragOrder", () => {
+    const a = { id: "a" }, b = { id: "b" }, c = { id: "c" };
+
+    it("returns the same prev reference when the sequence is already identical", () => {
+      const prev = [a, b, c];
+      expect(reconcileDragOrder(prev, [a, b, c], false)).toBe(prev);
+    });
+
+    // H6 regression: while dragging, a refetch returning the same ids must NOT clobber
+    // the in-progress local reorder.
+    it("preserves the local order when dragging and the id set is unchanged but reordered", () => {
+      const prev = [c, a, b]; // user dragged c to the top
+      const next = [a, b, c]; // server still returns the same three, original order
+      expect(reconcileDragOrder(prev, next, true)).toBe(prev); // keep the user's order
+    });
+
+    // Cross-client sync: once the drag has settled (isDragging=false), a different client's
+    // committed reorder of the SAME id set must be adopted, not silently discarded.
+    it("adopts server order when NOT dragging and the same id set was reordered elsewhere", () => {
+      const prev = [c, a, b]; // stale local order
+      const next = [a, b, c]; // another client committed this order
+      expect(reconcileDragOrder(prev, next, false)).toBe(next);
+    });
+
+    it("adopts server data when a production was added", () => {
+      const prev = [a, b];
+      const next = [a, b, c];
+      expect(reconcileDragOrder(prev, next, false)).toBe(next);
+    });
+
+    it("adopts server data when a production was removed", () => {
+      const prev = [a, b, c];
+      const next = [a, b];
+      expect(reconcileDragOrder(prev, next, false)).toBe(next);
+    });
+
+    it("adopts server data when the membership changed (filter switch)", () => {
+      const prev = [a, b];
+      const next = [c];
+      expect(reconcileDragOrder(prev, next, false)).toBe(next);
+    });
+
+    it("seeds from empty on first load", () => {
+      const next = [a, b];
+      expect(reconcileDragOrder([], next, false)).toBe(next);
+    });
   });
 });

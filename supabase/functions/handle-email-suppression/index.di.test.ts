@@ -453,6 +453,31 @@ Deno.test("signature generated with different secret → 401", async () => {
   assertEquals(res.status, 401);
 });
 
+// --- 13b. Forged signature of the SAME length → 401 (constant-time compare) ---
+
+Deno.test("forged signature with the same byte length as the real one → 401", async () => {
+  const { deps } = makeFakeDeps({ envVars: BASE_ENV_VARS, now: FIXED_NOW_DATE });
+
+  const payload = {
+    type: "email.bounced",
+    created_at: "2026-06-01T12:00:00Z",
+    data: { to: ["victim@example.com"] },
+  };
+  const rawBody = JSON.stringify(payload);
+
+  // Compute the real signature, then flip its first base64 char so the forgery has the
+  // exact same length — this exercises the equal-length branch of constantTimeEqual.
+  const real = await signWebhook(TEST_SECRET, WEBHOOK_ID, FIXED_NOW_TS, rawBody);
+  const [, realSig] = real.split(",");
+  const flipped = (realSig[0] === "A" ? "B" : "A") + realSig.slice(1);
+  const forged = `v1,${flipped}`;
+  assertEquals(forged.length, real.length, "forged signature must be the same length as the real one");
+
+  const req = await makeSignedRequest(payload, { signatureOverride: forged });
+  const res = await handle(req, deps);
+  assertEquals(res.status, 401);
+});
+
 // --- 14. Multiple v1, signatures — at least one matches → accepted ---
 
 Deno.test("webhook-signature with multiple v1 sigs, one valid → accepted (key rotation)", async () => {

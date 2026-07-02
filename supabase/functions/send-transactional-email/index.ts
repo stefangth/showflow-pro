@@ -6,6 +6,7 @@ import { realDeps, type Deps } from "../_shared/deps.ts";
 import { resolveOrgSetting, BOOKING_ENGINE_DEFAULTS } from "../_shared/settings.ts";
 import { categoryForTemplate } from "../_shared/notificationCategories.ts";
 import { isServiceRole } from "../_shared/auth.ts";
+import { redactEmail } from "../_shared/identity.ts";
 
 function generateToken(): string {
   const bytes = new Uint8Array(32)
@@ -173,7 +174,7 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
     unsubscribeToken = storedToken.token
   } else {
     // Token used but email not suppressed — safety fallback
-    console.warn('Unsubscribe token already used but email not suppressed', { email: normalizedEmail })
+    console.warn('Unsubscribe token already used but email not suppressed', { email_redacted: redactEmail(normalizedEmail) })
     return json({ success: false, reason: 'email_suppressed' }, 200)
   }
 
@@ -267,7 +268,11 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
     metadata: { resend_id: sendData.id },
   })
 
-  console.log('Email sent via Resend', { templateName, effectiveRecipient, resend_id: sendData.id })
+  console.log('Email sent via Resend', {
+    templateName,
+    recipient_redacted: redactEmail(effectiveRecipient),
+    resend_id: sendData.id,
+  })
 
   return json({ success: true, message_id: sendData.id }, 200)
 }

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/features/auth/AuthContext';
@@ -105,8 +105,14 @@ export function ArtistProfileSheet({ artistId, open, onOpenChange }: Props) {
   });
   const [selectedSkills, setSelectedSkills] = useState<TagOption[]>([]);
 
+  // Seed the editable form only when the artist IDENTITY changes, not on every
+  // refetch. A `['artists']` prefix invalidation (any artists write, incl. bulk
+  // import) re-fetches the same row and would otherwise wipe in-progress edits.
+  // Opening a different artist (new id) still re-seeds.
+  const seededArtistIdRef = useRef<string | null>(null);
   useEffect(() => {
-    if (artist) {
+    if (artist && seededArtistIdRef.current !== artist.id) {
+      seededArtistIdRef.current = artist.id;
       setForm({
         name: artist.name,
         email: artist.email ?? '',
@@ -117,9 +123,16 @@ export function ArtistProfileSheet({ artistId, open, onOpenChange }: Props) {
     }
   }, [artist]);
 
+  // Skills load on a separate query and can resolve after the artist row; seed them
+  // once per artist identity so a later ['skills'] invalidation for the same artist
+  // doesn't clobber in-progress selections. A different artist (new id) re-seeds.
+  const seededSkillsIdRef = useRef<string | null>(null);
   useEffect(() => {
-    if (artistSkills) setSelectedSkills(artistSkills.map((s) => ({ id: s.id, name: s.name })));
-  }, [artistSkills]);
+    if (artist && artistSkills && seededSkillsIdRef.current !== artist.id) {
+      seededSkillsIdRef.current = artist.id;
+      setSelectedSkills(artistSkills.map((s) => ({ id: s.id, name: s.name })));
+    }
+  }, [artist, artistSkills]);
 
   const initialSkillIds = useMemo(() => new Set((artistSkills ?? []).map((s) => s.id)), [artistSkills]);
 

@@ -725,6 +725,55 @@ Deno.test("send-offer-digest: registered artist with blank booking email → del
   assertEquals(msg.templateData?.displayName, "Talent");
 });
 
+// ── C4: stamp ONLY when the email actually sent ───────────────────────────────
+// send-transactional-email returns 200 { success:false } for suppression / preference-
+// disabled, and an error-populated result for a hard failure. Neither must start the
+// expiry clock. Only { data:{success:true}, error:null } stamps digest_sent_at + expiry.
+
+const C4_PENDING = [{
+  id: "b1", artist_id: "a1",
+  artists: { id: "a1", name: "Jo", email: "jo@x.com" },
+  show_dates: { date: "2026-06-10", shows: { program: "P", sub_program: "S" }, cities: { name: "Berlin" } },
+}];
+
+function c4Deps(emailResult: { data?: unknown; error?: unknown }) {
+  return makeFakeDeps({
+    now: BERLIN_19_CEST,
+    emailResult: emailResult as { data: unknown; error: unknown },
+    tables: {
+      app_settings: APP_SETTINGS_SEED,
+      organizations: { data: [{ id: ORG_1 }], error: null },
+      bookings: { data: C4_PENDING, error: null },
+    },
+  });
+}
+
+Deno.test("send-offer-digest C4: successful send (data.success===true) → stamps + digests_sent 1", async () => {
+  const { deps, calls } = c4Deps({ data: { success: true, message_id: "m1" }, error: null });
+  const res = await handle(makeRequest({ headers: cronOK }), deps);
+  assertEquals((await res.json()).digests_sent, 1);
+  const update = calls.find((c) => c.table === "bookings" && c.method === "update");
+  assertExists(update);
+});
+
+Deno.test("send-offer-digest C4: suppressed/pref-disabled (200 {success:false}) → NO stamp, digests_sent 0", async () => {
+  const { deps, calls, invokeCalls } = c4Deps({ data: { success: false, reason: "email_suppressed" }, error: null });
+  const res = await handle(makeRequest({ headers: cronOK }), deps);
+  assertEquals((await res.json()).digests_sent, 0, "a skipped send must not count");
+  // Email WAS attempted, but the offer must NOT be stamped (expiry clock not started).
+  assertEquals(invokeCalls.filter((c) => c.name === "send-transactional-email").length, 1);
+  const update = calls.find((c) => c.table === "bookings" && c.method === "update");
+  assertEquals(update, undefined, "must NOT stamp digest_sent_at/offer_expires_at on a skipped send");
+});
+
+Deno.test("send-offer-digest C4: hard failure (error populated) → NO stamp, digests_sent 0", async () => {
+  const { deps, calls } = c4Deps({ data: null, error: { message: "Failed to send email" } });
+  const res = await handle(makeRequest({ headers: cronOK }), deps);
+  assertEquals((await res.json()).digests_sent, 0, "a failed send must not count");
+  const update = calls.find((c) => c.table === "bookings" && c.method === "update");
+  assertEquals(update, undefined, "must NOT stamp on a failed send (offer stays pending, retried next run)");
+});
+
 Deno.test("send-offer-digest: resolve_user_contacts RPC error → non-fatal, falls back to booking email", async () => {
   const pending = [{
     id: "b1", artist_id: "a1",

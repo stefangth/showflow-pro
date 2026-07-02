@@ -1,11 +1,18 @@
 import { preflight, json } from "../_shared/http.ts";
 import { requireCronOrRole } from "../_shared/auth.ts";
 import { realDeps, type Deps } from "../_shared/deps.ts";
+import { countAccepted, countPendingNotExpired, isFutureOrToday, requiredPrimarySlots } from "../_shared/tierFill.ts";
 
 /**
  * Scans all open offer tiers and emits a `tier_at_risk` notification when a
  * (show_date, tier) becomes mathematically unable to fill before the deadline:
- *   remaining_pending + accepted < required_slots
+ *   pending + accepted(all sources) < main_cast_slots
+ *
+ * Slot math (M2): a primary offer tier fills `main_cast_slots` (understudy slots are
+ * filled separately, not by these offers), and "can this still fill" is judged against
+ * accepted/confirmed bookings from ALL sources for the date — including manual bookings
+ * (`offer_tier IS NULL`) and other tiers — plus this tier's own live pending offers.
+ * Past dates are skipped so a closed date never re-alerts.
  *
  * Visual-only (in-app); no email. Idempotent: one notification per (date, tier)
  * — clears when math recovers (by deleting the old row before re-evaluating).
@@ -64,23 +71,32 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
 
     const program = (sd as any).show?.program
     const subProgram = (sd as any).show?.sub_program
-    const mainCastSlots: number | null = (sd as any).show?.main_cast_slots ?? null
-    const understudySlots: number | null = (sd as any).show?.understudy_slots ?? null
 
-    // NULL slot columns = unconfigured show; skip.
-    if (mainCastSlots === null || understudySlots === null) continue
-    const requiredSlots = mainCastSlots + understudySlots
+    // Past dates can no longer fill — never alert (would re-fire forever otherwise).
+    if (!isFutureOrToday((sd as any).date, deps.now())) continue
+
+    // requiredSlots = main_cast_slots (what a primary offer tier fills). NULL = unconfigured → skip.
+    const requiredSlots = requiredPrimarySlots({
+      main_cast_slots: (sd as any).show?.main_cast_slots ?? null,
+      understudy_slots: (sd as any).show?.understudy_slots ?? null,
+    })
+    if (requiredSlots === null) continue
     if (requiredSlots === 0) continue
 
-    // Count for this show_date, this tier
+    // Count for this show_date across ALL sources (all tiers + manual offer_tier NULL),
+    // NOT just this tier: a date filled via tier-1 or a manual booking is not at risk.
     const { data: bookings } = await admin
       .from('bookings')
-      .select('status')
+      .select('status, offer_expires_at')
       .eq('show_date_id', row.show_date_id)
-      .eq('offer_tier', row.tier)
 
-    const pending = (bookings ?? []).filter((b: any) => b.status === 'suggested').length
-    const accepted = (bookings ?? []).filter((b: any) => b.status === 'soft_booked' || b.status === 'confirmed').length
+    const rows = (bookings ?? []) as Array<{ status?: string | null; offer_expires_at?: string | null }>
+    // Only live (not-yet-expired) suggested offers count toward "can this still fill".
+    // A suggested offer past its offer_expires_at that expire-offers hasn't swept yet is
+    // effectively lapsed — counting it as pending would suppress the at-risk alert for up
+    // to ~1h (the expire-offers cadence). Mirrors expire-offers' fill math.
+    const pending = countPendingNotExpired(rows, deps.now())
+    const accepted = countAccepted(rows)
 
     if (pending + accepted >= requiredSlots) continue // healthy
 

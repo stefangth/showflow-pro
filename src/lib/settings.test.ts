@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { showSlots, computeSchedulingWarnings } from "./settings";
+import { showSlots, computeSchedulingWarnings, computeSettingsDirtyKeys } from "./settings";
 
 describe("showSlots", () => {
   it("returns null when show is null", () => {
@@ -85,5 +85,63 @@ describe("computeSchedulingWarnings", () => {
     ]);
     expect(w.schedulingWarnings).toBe(0);
     expect(w.hasAnyWarning).toBe(false);
+  });
+});
+
+describe("computeSettingsDirtyKeys", () => {
+  const EDITABLE = ["resend_from_address", "offer_response_window_hours", "notifications_enabled"] as const;
+
+  it("returns no dirty keys when the draft is untouched (empty draft)", () => {
+    const settings = [{ key: "offer_response_window_hours", value: 48 }];
+    expect(computeSettingsDirtyKeys(settings, {}, EDITABLE)).toEqual([]);
+  });
+
+  it("returns no dirty keys when the draft matches persisted values", () => {
+    const settings = [{ key: "offer_response_window_hours", value: 48 }];
+    const draft = { offer_response_window_hours: 48 };
+    expect(computeSettingsDirtyKeys(settings, draft, EDITABLE)).toEqual([]);
+  });
+
+  it("marks a changed persisted key dirty", () => {
+    const settings = [{ key: "offer_response_window_hours", value: 48 }];
+    const draft = { offer_response_window_hours: 24 };
+    expect(computeSettingsDirtyKeys(settings, draft, EDITABLE)).toEqual(["offer_response_window_hours"]);
+  });
+
+  // The core H5 regression: a first-ever value for a key with NO persisted row must be dirty.
+  it("marks a first-ever value dirty even with no persisted row", () => {
+    const settings: { key: string; value: unknown }[] = []; // nothing saved yet
+    const draft = { resend_from_address: "Org <hi@org.com>" };
+    expect(computeSettingsDirtyKeys(settings, draft, EDITABLE)).toEqual(["resend_from_address"]);
+  });
+
+  it("handles a null/undefined settings list (first-ever value still dirty)", () => {
+    const draft = { resend_from_address: "Org <hi@org.com>" };
+    expect(computeSettingsDirtyKeys(null, draft, EDITABLE)).toEqual(["resend_from_address"]);
+    expect(computeSettingsDirtyKeys(undefined, draft, EDITABLE)).toEqual(["resend_from_address"]);
+  });
+
+  it("does not mark an editable key dirty when it is absent from the draft", () => {
+    // Key is editable and has no persisted row, but the user never entered a value.
+    expect(computeSettingsDirtyKeys([], {}, EDITABLE)).toEqual([]);
+  });
+
+  it("uses deep equality so equivalent object values are not dirty", () => {
+    const settings = [{ key: "filters_visibility", value: { shows: { producer: { program: true } } } }];
+    const draft = { filters_visibility: { shows: { producer: { program: true } } } };
+    expect(computeSettingsDirtyKeys(settings, draft, ["filters_visibility"])).toEqual([]);
+  });
+
+  it("detects a nested object edit via deep comparison", () => {
+    const settings = [{ key: "filters_visibility", value: { shows: { producer: { program: true } } } }];
+    const draft = { filters_visibility: { shows: { producer: { program: false } } } };
+    expect(computeSettingsDirtyKeys(settings, draft, ["filters_visibility"])).toEqual(["filters_visibility"]);
+  });
+
+  it("marks a persisted key that is not in the editable set dirty when the draft differs", () => {
+    // Persisted rows always participate, even if the caller's editable set omits the key.
+    const settings = [{ key: "legacy_key", value: "old" }];
+    const draft = { legacy_key: "new" };
+    expect(computeSettingsDirtyKeys(settings, draft, EDITABLE)).toEqual(["legacy_key"]);
   });
 });

@@ -11,6 +11,7 @@ import { MessageBubble } from './MessageBubble';
 import { useChatParticipant } from '@/hooks/useChatParticipant';
 import { CHAT_ARCHIVE_DAYS } from '@/config/app.config';
 import { differenceInCalendarDays } from 'date-fns';
+import { parseDateOnly } from '@/lib/dates';
 import { MessageSquare, Send, Archive } from 'lucide-react';
 
 interface Props {
@@ -30,7 +31,7 @@ export function ChatPanel({ showDateId, showDate }: Props) {
   const { data: isParticipant, isLoading: participantLoading } = useChatParticipant(showDateId);
 
   const archived = useMemo(() => {
-    const d = new Date(showDate + 'T00:00:00');
+    const d = parseDateOnly(showDate);
     return differenceInCalendarDays(new Date(), d) > CHAT_ARCHIVE_DAYS;
   }, [showDate]);
 
@@ -79,7 +80,8 @@ export function ChatPanel({ showDateId, showDate }: Props) {
     queryKey: ['chat-author-profiles', userIds.join(',')],
     enabled: userIds.length > 0,
     queryFn: async () => {
-      const { data } = await supabase.from('profiles').select('user_id, display_name').in('user_id', userIds);
+      const { data, error } = await supabase.from('profiles').select('user_id, display_name').in('user_id', userIds);
+      if (error) throw error;
       const map: Record<string, string> = {};
       (data ?? []).forEach(p => { map[p.user_id] = p.display_name ?? 'User'; });
       return map;
@@ -186,7 +188,7 @@ export function ChatPanel({ showDateId, showDate }: Props) {
             onChange={(e) => setDraft(e.target.value)}
             disabled={archived || send.isPending}
           />
-          <Button type="submit" size="icon" disabled={archived || !draft.trim() || send.isPending}>
+          <Button type="submit" size="icon" aria-label="Send message" disabled={archived || !draft.trim() || send.isPending}>
             <Send className="h-4 w-4" />
           </Button>
         </form>

@@ -22,3 +22,31 @@ export function findDuplicateDate<T extends { show_id: string; date: string; sta
 export function nextSortOrder(shows: { sort_order: number | null }[]): number {
   return shows.reduce((max, s) => Math.max(max, s.sort_order ?? 0), 0) + 1;
 }
+
+/**
+ * Reconcile a locally-held drag order (`prev`) with freshly-fetched/filtered rows
+ * (`next`) without clobbering an IN-PROGRESS user reorder.
+ *
+ * When the id sets match but the order differs, whose order wins depends on `isDragging`:
+ *   - `isDragging === true`  → keep `prev` (the user is mid-drag; a refetch must not snap
+ *                              their local reorder back to server order);
+ *   - `isDragging === false` → adopt `next` (the drag has settled; a DIFFERENT client's
+ *                              committed reorder — same ids, new order — should sync in
+ *                              rather than being silently discarded).
+ * A changed membership (add / remove / filter switch) always adopts `next`. The same
+ * `prev` reference is returned when already in sync so callers can bail out of a state update.
+ */
+export function reconcileDragOrder<T extends { id: string }>(prev: T[], next: T[], isDragging: boolean): T[] {
+  const sameSequence =
+    prev.length === next.length && prev.every((s, i) => next[i] && s.id === next[i].id);
+  if (sameSequence) return prev;
+
+  const nextIds = new Set(next.map((s) => s.id));
+  const prevIds = new Set(prev.map((s) => s.id));
+  const sameMembers =
+    nextIds.size === prevIds.size && [...nextIds].every((id) => prevIds.has(id));
+  // Same productions, only reordered: keep the user's local order ONLY while dragging;
+  // once the drag has settled, adopt the server order so another client's reorder syncs in.
+  if (sameMembers) return isDragging ? prev : next;
+  return next;
+}

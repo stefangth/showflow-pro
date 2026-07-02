@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
@@ -38,8 +38,13 @@ function StarterCatalogCard() {
   const [cities, setCities] = useState("");
   const [casts, setCasts] = useState("");
 
+  // Seed the editable fields once, when server data first arrives. Re-seeding on
+  // every `data` identity change would let an unrelated refetch (e.g. window
+  // refocus) wipe in-progress edits. Save's own refetch already matches the form.
+  const seededRef = useRef(false);
   useEffect(() => {
-    if (!data) return;
+    if (!data || seededRef.current) return;
+    seededRef.current = true;
     setSkills(serializeLines(data.skills ?? []));
     setCities(serializeLines(data.cities ?? []));
     setCasts(serializeCasts(data.casts ?? []));
@@ -85,7 +90,12 @@ function BookingEngineDefaultsCard() {
   });
 
   const [form, setForm] = useState<BookingEngineDefaults>({ ...BOOKING_ENGINE_DEFAULTS });
-  useEffect(() => { if (data) setForm(data); }, [data]);
+  // Seed once when server data first arrives; a later unrelated refetch must not
+  // clobber in-progress edits (the save's own refetch already matches the form).
+  const seededRef = useRef(false);
+  useEffect(() => {
+    if (data && !seededRef.current) { seededRef.current = true; setForm(data); }
+  }, [data]);
 
   const save = useMutation({
     mutationFn: () => {

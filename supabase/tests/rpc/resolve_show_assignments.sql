@@ -34,7 +34,7 @@ BEGIN;
 
 CREATE EXTENSION IF NOT EXISTS pgtap WITH SCHEMA extensions;
 
-SELECT plan(7);
+SELECT plan(10);
 
 -- ────────────────────────────────────────────────────────────────────────────
 -- Fixtures. replica mode disables the auth.users FK trigger on show_assignments
@@ -50,7 +50,18 @@ VALUES
   ('aaaaaaaa-5a00-0003-0000-000000000000', 'authenticated', 'authenticated', 'sa-prod-sub@test.com',  now(), '{"provider":"email"}'::jsonb, '{}'::jsonb, now(), now()),
   ('aaaaaaaa-5a00-0004-0000-000000000000', 'authenticated', 'authenticated', 'sa-prod-prog@test.com', now(), '{"provider":"email"}'::jsonb, '{}'::jsonb, now(), now()),
   -- producer that belongs to a DIFFERENT org (used only by the cross-org isolation test)
-  ('aaaaaaaa-5a00-0009-0000-000000000000', 'authenticated', 'authenticated', 'sa-prod-otherorg@test.com', now(), '{"provider":"email"}'::jsonb, '{}'::jsonb, now(), now());
+  ('aaaaaaaa-5a00-0009-0000-000000000000', 'authenticated', 'authenticated', 'sa-prod-otherorg@test.com', now(), '{"provider":"email"}'::jsonb, '{}'::jsonb, now(), now()),
+  -- M6 membership-guard fixtures:
+  --   0010 = member of the bootstrap org (b007); 0011 = outsider (no membership);
+  --   0012 = super-admin.
+  ('aaaaaaaa-5a00-0010-0000-000000000000', 'authenticated', 'authenticated', 'sa-member@test.com',   now(), '{"provider":"email"}'::jsonb, '{}'::jsonb, now(), now()),
+  ('aaaaaaaa-5a00-0011-0000-000000000000', 'authenticated', 'authenticated', 'sa-outsider@test.com', now(), '{"provider":"email"}'::jsonb, '{}'::jsonb, now(), now()),
+  ('aaaaaaaa-5a00-0012-0000-000000000000', 'authenticated', 'authenticated', 'sa-super@test.com',    now(), '{"provider":"email"}'::jsonb, '{}'::jsonb, now(), now());
+
+INSERT INTO public.org_memberships (org_id, user_id, role) VALUES
+  ('00000000-0000-0000-0000-00000000b007', 'aaaaaaaa-5a00-0010-0000-000000000000', 'producer');
+
+INSERT INTO public.platform_admins (user_id) VALUES ('aaaaaaaa-5a00-0012-0000-000000000000');
 
 -- A second org. The bootstrap org (…b007) holds the tier-1..4 seeds; this org holds a
 -- would-match (program-only, NULL sub_program, NULL city) assignment that MUST be excluded
@@ -159,6 +170,45 @@ SELECT results_eq(
        ('aaaaaaaa-5a00-0004-0000-000000000000'::uuid, 1) $$,
   'org filter excludes another org''s matching (program-only) assignment'
 );
+
+-- ────────────────────────────────────────────────────────────────────────────
+-- Test 7 (M6): an AUTHENTICATED non-member calling with the bootstrap org's id is
+-- rejected — DEFINER bypasses show_assignments RLS, so without a membership guard any
+-- authenticated user could harvest another org's producer_user_ids.
+-- ────────────────────────────────────────────────────────────────────────────
+SELECT set_config('request.jwt.claims','{"sub":"aaaaaaaa-5a00-0011-0000-000000000000","role":"authenticated"}',true);
+SET LOCAL ROLE authenticated;
+SELECT throws_ok(
+  $$ SELECT * FROM public.resolve_show_assignments('theatre', NULL, NULL, '00000000-0000-0000-0000-00000000b007') $$,
+  'not authorized',
+  'M6: an authenticated non-member cannot resolve another org''s assignments'
+);
+RESET ROLE;
+
+-- ────────────────────────────────────────────────────────────────────────────
+-- Test 8 (M6): an authenticated MEMBER of the org gets that org's rows.
+-- ────────────────────────────────────────────────────────────────────────────
+SELECT set_config('request.jwt.claims','{"sub":"aaaaaaaa-5a00-0010-0000-000000000000","role":"authenticated"}',true);
+SET LOCAL ROLE authenticated;
+SELECT is(
+  (SELECT producer_user_id FROM public.resolve_show_assignments('theatre', NULL, NULL, '00000000-0000-0000-0000-00000000b007')
+   ORDER BY specificity DESC LIMIT 1),
+  'aaaaaaaa-5a00-0004-0000-000000000000'::uuid,
+  'M6: a member of the org resolves its assignments (program-only fallback, tier 1)'
+);
+RESET ROLE;
+
+-- ────────────────────────────────────────────────────────────────────────────
+-- Test 9 (M6): a super-admin is unaffected by the guard (god-mode read).
+-- ────────────────────────────────────────────────────────────────────────────
+SELECT set_config('request.jwt.claims','{"sub":"aaaaaaaa-5a00-0012-0000-000000000000","role":"authenticated"}',true);
+SET LOCAL ROLE authenticated;
+SELECT is(
+  (SELECT count(*)::int FROM public.resolve_show_assignments('theatre', NULL, NULL, '00000000-0000-0000-0000-00000000b007')),
+  1,
+  'M6: a super-admin resolves any org''s assignments'
+);
+RESET ROLE;
 
 SELECT * FROM finish();
 ROLLBACK;
