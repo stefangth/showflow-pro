@@ -79,7 +79,8 @@ export function ChatPanel({ showDateId, showDate }: Props) {
     queryKey: ['chat-author-profiles', userIds.join(',')],
     enabled: userIds.length > 0,
     queryFn: async () => {
-      const { data } = await supabase.from('profiles').select('user_id, display_name').in('user_id', userIds);
+      const { data, error } = await supabase.from('profiles').select('user_id, display_name').in('user_id', userIds);
+      if (error) throw error;
       const map: Record<string, string> = {};
       (data ?? []).forEach(p => { map[p.user_id] = p.display_name ?? 'User'; });
       return map;

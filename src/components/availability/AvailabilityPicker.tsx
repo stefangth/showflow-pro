@@ -19,15 +19,16 @@ export function AvailabilityPicker({ artistId, date, size = 'default' }: Props) 
   const { currentOrg } = useAuth();
   const qc = useQueryClient();
 
-  const { data: block } = useQuery({
+  const { data: block, isError } = useQuery({
     queryKey: ['blocked-dates', 'cell', artistId, date],
     queryFn: async () => {
-      const { data } = await supabase
+      const { data, error } = await supabase
         .from('blocked_dates')
         .select('id')
         .eq('artist_id', artistId)
         .eq('date', date)
         .maybeSingle();
+      if (error) throw error;
       return data as { id: string } | null;
     },
   });
@@ -47,6 +48,14 @@ export function AvailabilityPicker({ artistId, date, size = 'default' }: Props) 
       qc.invalidateQueries({ queryKey: ['blocked-dates'] });
     },
   });
+
+  if (isError) {
+    return (
+      <p className="w-full text-xs text-destructive text-center" role="alert">
+        Couldn't load
+      </p>
+    );
+  }
 
   return (
     <Button
