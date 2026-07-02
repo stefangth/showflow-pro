@@ -20,7 +20,11 @@ export default tseslint.config(
     rules: {
       ...reactHooks.configs.recommended.rules,
       "react-refresh/only-export-components": ["warn", { allowConstantExport: true }],
-      "@typescript-eslint/no-unused-vars": "off",
+      // Surfaced as warnings (non-blocking): flipping these to "error" + adding
+      // `--max-warnings 0` to the lint script would fail CI on pre-existing
+      // violations across the tree, so that hard-fail is a deferred follow-up that
+      // needs a tree-cleanup pass verified in CI first (L3).
+      "@typescript-eslint/no-unused-vars": "warn",
       "@typescript-eslint/no-explicit-any": "warn",
     },
   },

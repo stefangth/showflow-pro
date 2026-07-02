@@ -1,5 +1,5 @@
 import { assertEquals } from "./test-asserts.ts";
-import { resolveContactEmail, resolveAccountDisplayName } from "./identity.ts";
+import { redactEmail, resolveContactEmail, resolveAccountDisplayName } from "./identity.ts";
 
 Deno.test("resolveContactEmail: login (auth) email wins over booking email", () => {
   assertEquals(
@@ -30,4 +30,25 @@ Deno.test("resolveAccountDisplayName: falls back to talent label, then empty str
   assertEquals(resolveAccountDisplayName({ displayName: null, artistName: "Talent" }), "Talent");
   assertEquals(resolveAccountDisplayName({ displayName: "  ", artistName: "Talent" }), "Talent");
   assertEquals(resolveAccountDisplayName({ displayName: null, artistName: null }), "");
+});
+
+Deno.test("redactEmail: keeps first char + domain, masks the rest", () => {
+  assertEquals(redactEmail("alice@example.com"), "a***@example.com");
+  assertEquals(redactEmail("BOB@sub.domain.org"), "B***@sub.domain.org");
+});
+
+Deno.test("redactEmail: never returns the full local part", () => {
+  const full = "sensitive.person@example.com";
+  const out = redactEmail(full);
+  // The redacted form must not contain the raw local part verbatim.
+  assertEquals(out.includes("sensitive.person"), false);
+  assertEquals(out, "s***@example.com");
+});
+
+Deno.test("redactEmail: null/empty/malformed degrade to a safe placeholder", () => {
+  assertEquals(redactEmail(null), "(none)");
+  assertEquals(redactEmail(undefined), "(none)");
+  assertEquals(redactEmail(""), "(none)");
+  assertEquals(redactEmail("not-an-email"), "***");
+  assertEquals(redactEmail("@nolocal.com"), "***");
 });
