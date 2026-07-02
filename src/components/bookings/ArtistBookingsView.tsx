@@ -3,6 +3,7 @@ import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { TimeframeFilter, type TimeframeValue } from '@/components/filters/TimeframeFilter';
 import { SortControl, type SortValue } from '@/components/filters/SortControl';
@@ -62,15 +63,16 @@ export function ArtistBookingsView() {
   // Distinct cache key per projection (this selects `is_understudy`, not `id`).
   // A shared key let different `select` shapes clobber each other in the React
   // Query cache — see the note in AvailabilityPage.
-  const { data: myBookings } = useQuery({
+  const { data: myBookings, isError: bookingsError } = useQuery({
     queryKey: ['bookings', 'artist-bookings-view', artist?.id],
     enabled: !!artist?.id,
     queryFn: async () => {
-      const { data } = await supabase
+      const { data, error } = await supabase
         .from('bookings')
         .select('show_date_id, status, is_understudy')
         .eq('artist_id', artist!.id)
         .neq('status', 'cancelled');
+      if (error) throw error;
       return (data ?? []) as BookingLite[];
     },
   });
@@ -133,7 +135,11 @@ export function ArtistBookingsView() {
 
       <ColumnLayoutEditor pageKey="bookings-artist" />
 
-      {isLoading ? (
+      {bookingsError ? (
+        <Alert variant="destructive">
+          <AlertDescription>Failed to load your bookings. Please refresh.</AlertDescription>
+        </Alert>
+      ) : isLoading ? (
         <div className="space-y-2">
           {[1, 2, 3, 4].map((i) => (
             <div key={i} className="h-12 rounded bg-muted animate-pulse" />

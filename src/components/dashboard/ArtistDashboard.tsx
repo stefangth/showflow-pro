@@ -4,6 +4,7 @@ import { Link } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 import { CalendarDays, MessageCircleQuestion, Theater } from 'lucide-react';
 import { useArtistEligibleDates } from '@/hooks/useArtistEligibleDates';
 import { useMyArtist } from '@/hooks/useMyArtist';
@@ -24,20 +25,21 @@ export function ArtistDashboard() {
   // Distinct cache key per projection (this selects no `id`). A shared key let
   // different `select` shapes clobber each other in the React Query cache — see
   // the note in AvailabilityPage.
-  const { data: myBookings } = useQuery({
+  const { data: myBookings, isError: bookingsError } = useQuery({
     queryKey: ['bookings', 'artist-dashboard', artist?.id],
     enabled: !!artist?.id,
     queryFn: async () => {
-      const { data } = await supabase
+      const { data, error } = await supabase
         .from('bookings')
         .select('show_date_id, status')
         .eq('artist_id', artist!.id)
         .neq('status', 'cancelled');
+      if (error) throw error;
       return (data ?? []) as BookingLite[];
     },
   });
 
-  const { data: myMemberships } = useQuery({
+  const { data: myMemberships, isError: membershipsError } = useQuery({
     queryKey: ['my-cast-memberships', artist?.id],
     enabled: !!artist?.id,
     queryFn: async () => {
@@ -94,6 +96,12 @@ export function ArtistDashboard() {
           Your response rate on dates you've been offered.
         </p>
       </div>
+
+      {bookingsError && (
+        <Alert variant="destructive">
+          <AlertDescription>Failed to load your offers. Please refresh.</AlertDescription>
+        </Alert>
+      )}
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <Link to={`${ROUTES.AVAILABILITY}?filter=unanswered`} className="block">
@@ -176,7 +184,9 @@ export function ArtistDashboard() {
           </CardTitle>
         </CardHeader>
         <CardContent>
-          {(myMemberships?.length ?? 0) === 0 ? (
+          {membershipsError ? (
+            <p className="text-sm text-destructive">Failed to load your casts.</p>
+          ) : (myMemberships?.length ?? 0) === 0 ? (
             <p className="text-sm text-muted-foreground">You haven't been added to any casts yet.</p>
           ) : (
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">

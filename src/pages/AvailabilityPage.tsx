@@ -6,6 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 import {
   format, startOfMonth, endOfMonth, eachDayOfInterval, isToday, addMonths, subMonths,
 } from 'date-fns';
@@ -81,15 +82,16 @@ function ArtistAvailability() {
   // key (not by `select`), so sharing one key let an id-less projection clobber
   // this slot — OfferResponseButtons then fired `update().eq('id', undefined)`.
   // Keep one key per projection.
-  const { data: myBookings } = useQuery({
+  const { data: myBookings, isError: bookingsError } = useQuery({
     queryKey: ['bookings', 'artist-offers', artist?.id],
     enabled: !!artist?.id,
     queryFn: async () => {
-      const { data } = await supabase
+      const { data, error } = await supabase
         .from('bookings')
         .select('id, show_date_id, status')
         .eq('artist_id', artist!.id)
         .neq('status', 'cancelled');
+      if (error) throw error;
       return (data ?? []) as { id: string; show_date_id: string; status: string }[];
     },
   });
@@ -115,7 +117,7 @@ function ArtistAvailability() {
 
   type BlockedDateRow = { id: string; date: string; reason: string | null };
 
-  const { data: blockedDates } = useQuery({
+  const { data: blockedDates, isError: blockedError } = useQuery({
     queryKey: ['blocked-dates', artist?.id],
     enabled: !!artist?.id,
     queryFn: async () => {
@@ -218,7 +220,14 @@ function ArtistAvailability() {
 
       <ColumnLayoutEditor pageKey="availability" />
 
-      {isLoading ? (
+      {bookingsError ? (
+        <Alert variant="destructive">
+          <AlertDescription>
+            Failed to load your offers. Please refresh — don't block dates until this loads,
+            as pending offers may not be shown.
+          </AlertDescription>
+        </Alert>
+      ) : isLoading ? (
         <div className="space-y-2">
           {[1, 2, 3, 4].map((i) => (
             <div key={i} className="h-12 rounded bg-muted animate-pulse" />
@@ -373,6 +382,12 @@ function ArtistAvailability() {
             </Button>
           </form>
 
+          {blockedError && (
+            <Alert variant="destructive">
+              <AlertDescription>Failed to load your blocked dates.</AlertDescription>
+            </Alert>
+          )}
+
           {(blockedDates?.length ?? 0) > 0 && (
             <div className="space-y-1.5 pt-1">
               {blockedDates!.map((b) => (
@@ -392,7 +407,7 @@ function ArtistAvailability() {
               ))}
             </div>
           )}
-          {(blockedDates?.length ?? 0) === 0 && (
+          {!blockedError && (blockedDates?.length ?? 0) === 0 && (
             <p className="text-sm text-muted-foreground pt-1">No blocked dates yet.</p>
           )}
         </CardContent>
