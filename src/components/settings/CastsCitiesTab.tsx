@@ -1,0 +1,292 @@
+import { useState, useEffect } from 'react';
+import { Link } from 'react-router-dom';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { supabase } from '@/integrations/supabase/client';
+import { useAllCities } from '@/hooks/useAllCities';
+import { ROUTES } from '@/config/app.config';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Badge } from '@/components/ui/badge';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Plus, Trash2 } from 'lucide-react';
+import { toast } from 'sonner';
+import type { Cast } from '@/types';
+
+type CastCityPriorityRow = { id: string; cast_id: string; city_id: string; priority: number };
+
+/**
+ * Settings → Casts & Cities. Self-contained: owns its own cities/casts/priority
+ * queries, realtime subscription, and add/remove form state. Does not touch the
+ * page-level settings draft.
+ */
+export function CastsCitiesTab({ currentOrgId, canEnter }: { currentOrgId: string | undefined; canEnter: boolean }) {
+  const qc = useQueryClient();
+  const orgId = currentOrgId ?? null;
+
+  const { data: cities } = useAllCities(canEnter);
+  const [newCity, setNewCity] = useState('');
+  const addCity = useMutation({
+    mutationFn: async (name: string) => {
+      if (!orgId) throw new Error('No active organization');
+      const { error } = await supabase.from('cities').insert({ name, org_id: orgId });
+      if (error) throw error;
+    },
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ['cities'] }); setNewCity(''); toast.success('City added'); },
+    onError: (e: any) => toast.error(e.message ?? 'Failed to add'),
+  });
+  const removeCity = useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await supabase.from('cities').delete().eq('id', id);
+      if (error) throw error;
+    },
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ['cities'] }); toast.success('City removed'); },
+    onError: (e: any) => toast.error(e.message ?? 'Failed to remove'),
+  });
+
+  const { data: casts } = useQuery({
+    queryKey: ['casts', currentOrgId],
+    enabled: canEnter,
+    queryFn: async () => {
+      const { data, error } = await supabase.from('casts').select('*').order('name');
+      if (error) throw error;
+      return data as Cast[];
+    },
+  });
+  const { data: castCounts } = useQuery({
+    queryKey: ['cast-members-counts'],
+    enabled: canEnter,
+    queryFn: async () => {
+      const { data, error } = await supabase.from('cast_members').select('cast_id');
+      if (error) throw error;
+      const map: Record<string, number> = {};
+      (data ?? []).forEach(r => { map[r.cast_id] = (map[r.cast_id] ?? 0) + 1; });
+      return map;
+    },
+  });
+
+  const { data: castCityPriorities } = useQuery({
+    queryKey: ['cast-city-priority', currentOrgId],
+    enabled: canEnter,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('cast_city_priority')
+        .select('id, cast_id, city_id, priority')
+        .order('city_id')
+        .order('priority');
+      if (error) throw error;
+      return (data ?? []) as CastCityPriorityRow[];
+    },
+  });
+
+  useEffect(() => {
+    if (!canEnter) return;
+    const channel = supabase
+      .channel('cast_city_priority_realtime')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'cast_city_priority' }, () => {
+        qc.invalidateQueries({ queryKey: ['cast-city-priority'] });
+      })
+      .subscribe();
+    return () => { void supabase.removeChannel(channel); };
+  }, [canEnter, qc]);
+
+  const [newPriorityCityId, setNewPriorityCityId] = useState('');
+  const [newPriorityCastId, setNewPriorityCastId] = useState('');
+  const [newPriorityValue, setNewPriorityValue] = useState(1);
+
+  const addCastPriority = useMutation({
+    mutationFn: async () => {
+      if (!orgId) throw new Error('No active organization');
+      const { error } = await supabase.from('cast_city_priority').insert({
+        city_id: newPriorityCityId,
+        cast_id: newPriorityCastId,
+        priority: newPriorityValue,
+        org_id: orgId,
+      });
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['cast-city-priority'] });
+      setNewPriorityCityId('');
+      setNewPriorityCastId('');
+      setNewPriorityValue(1);
+      toast.success('Priority assigned');
+    },
+    onError: (e: any) => toast.error(e.message ?? 'Failed to assign priority'),
+  });
+
+  const deleteCastPriority = useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await supabase.from('cast_city_priority').delete().eq('id', id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['cast-city-priority'] });
+      toast.success('Assignment removed');
+    },
+    onError: (e: any) => toast.error(e.message ?? 'Failed to remove'),
+  });
+
+  return (
+    <div className="mt-4 space-y-6">
+      <Card>
+        <CardHeader>
+          <CardTitle className="font-display">Cities</CardTitle>
+          <CardDescription>
+            Cities are used to scope cast eligibility per show.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          <form
+            className="flex gap-2"
+            onSubmit={(e) => { e.preventDefault(); if (newCity.trim()) addCity.mutate(newCity.trim()); }}
+          >
+            <Input placeholder="New city name" value={newCity} onChange={e => setNewCity(e.target.value)} />
+            <Button type="submit" disabled={!newCity.trim() || addCity.isPending}>
+              <Plus className="h-4 w-4 mr-1" />Add
+            </Button>
+          </form>
+          <div className="flex flex-wrap gap-2 pt-2">
+            {(cities ?? []).map(c => (
+              <Badge key={c.id} variant="secondary" className="gap-2 py-1.5 pl-3 pr-1">
+                {c.name}
+                <button
+                  onClick={() => removeCity.mutate(c.id)}
+                  className="rounded hover:bg-background/40 p-0.5"
+                  aria-label={`Remove ${c.name}`}
+                >
+                  <Trash2 className="h-3 w-3" />
+                </button>
+              </Badge>
+            ))}
+            {(cities?.length ?? 0) === 0 && <p className="text-sm text-muted-foreground">No cities yet.</p>}
+          </div>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="font-display">Casts</CardTitle>
+          <CardDescription>
+            Manage casts and their members on the <Link className="text-primary underline" to={ROUTES.ARTISTS}>Artists page</Link>.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          {(casts?.length ?? 0) === 0 ? (
+            <p className="text-sm text-muted-foreground">No casts yet.</p>
+          ) : (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+              {casts!.map(c => (
+                <div key={c.id} className="p-3 rounded-lg border border-border">
+                  <p className="font-medium text-sm">{c.name}</p>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    {castCounts?.[c.id] ?? 0} member{(castCounts?.[c.id] ?? 0) === 1 ? '' : 's'}
+                  </p>
+                </div>
+              ))}
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="font-display">Cast Priority by City</CardTitle>
+          <CardDescription>
+            Configure which cast is offered first (Tier 1), second (Tier 2), etc. for each city.
+            The offer engine follows this order when creating booking offers.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-6">
+          {/* Existing assignments grouped by city */}
+          {(cities ?? []).map(city => {
+            const assignments = (castCityPriorities ?? [])
+              .filter(r => r.city_id === city.id)
+              .sort((a, b) => a.priority - b.priority);
+            if (assignments.length === 0) return null;
+            return (
+              <div key={city.id}>
+                <p className="text-sm font-medium mb-2">{city.name}</p>
+                <div className="space-y-1.5">
+                  {assignments.map(a => {
+                    const cast = casts?.find(c => c.id === a.cast_id);
+                    return (
+                      <div key={a.id} className="flex items-center gap-3 p-2 rounded-md border border-border">
+                        <Badge variant="outline" className="text-xs w-16 justify-center shrink-0">
+                          Tier {a.priority}
+                        </Badge>
+                        <span className="text-sm flex-1">{cast?.name ?? '–'}</span>
+                        <button
+                          onClick={() => deleteCastPriority.mutate(a.id)}
+                          className="rounded hover:bg-muted p-0.5 text-muted-foreground hover:text-destructive"
+                          aria-label="Remove assignment"
+                        >
+                          <Trash2 className="h-3.5 w-3.5" />
+                        </button>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            );
+          })}
+          {(cities?.length ?? 0) === 0 && (
+            <p className="text-sm text-muted-foreground">Add cities above to configure priorities.</p>
+          )}
+
+          {/* Add assignment form */}
+          <div className="pt-4 border-t border-border space-y-3">
+            <p className="text-sm font-medium">Add assignment</p>
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+              <Select
+                value={newPriorityCityId}
+                onValueChange={v => { setNewPriorityCityId(v); setNewPriorityCastId(''); }}
+              >
+                <SelectTrigger><SelectValue placeholder="City…" /></SelectTrigger>
+                <SelectContent>
+                  {(cities ?? []).map(c => (
+                    <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <Select
+                value={newPriorityCastId}
+                onValueChange={setNewPriorityCastId}
+                disabled={!newPriorityCityId}
+              >
+                <SelectTrigger><SelectValue placeholder="Cast…" /></SelectTrigger>
+                <SelectContent>
+                  {(casts ?? [])
+                    .filter(c =>
+                      !(castCityPriorities ?? []).some(
+                        p => p.city_id === newPriorityCityId && p.cast_id === c.id
+                      )
+                    )
+                    .map(c => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
+                </SelectContent>
+              </Select>
+              <Select
+                value={String(newPriorityValue)}
+                onValueChange={v => setNewPriorityValue(Number(v))}
+              >
+                <SelectTrigger><SelectValue placeholder="Tier…" /></SelectTrigger>
+                <SelectContent>
+                  {[1, 2, 3, 4, 5].map(n => (
+                    <SelectItem key={n} value={String(n)}>Tier {n}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <Button
+              size="sm"
+              disabled={!newPriorityCityId || !newPriorityCastId || addCastPriority.isPending}
+              onClick={() => addCastPriority.mutate()}
+            >
+              <Plus className="h-4 w-4 mr-1" />Assign
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
+    </div>
+  );
+}

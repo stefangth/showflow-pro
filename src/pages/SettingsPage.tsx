@@ -1,15 +1,10 @@
 import { useState, useEffect, useRef } from 'react';
-import ReactMarkdown from 'react-markdown';
-import remarkGfm from 'remark-gfm';
-import appLogicMd from '../../docs/app-logic.md?raw';
 import { Link } from 'react-router-dom';
 import { ROUTES, BOOKING_ENGINE_DEFAULTS } from '@/config/app.config';
 import { useSettingsWarnings } from '@/hooks/useSettingsWarnings';
-import { useAllCities } from '@/hooks/useAllCities';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/features/auth/AuthContext';
-import { fetchOrgProducers } from '@/data/orgs';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -17,17 +12,17 @@ import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Separator } from '@/components/ui/separator';
-import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { toast } from 'sonner';
-import { Settings as SettingsIcon, Database, Bell, Wand2, Save, SlidersHorizontal, MapPin, Plus, Trash2, Clock, BookOpen, UserCog, Eye, Building2 } from 'lucide-react';
+import { Settings as SettingsIcon, Database, Bell, Wand2, Save, SlidersHorizontal, MapPin, Clock, BookOpen, UserCog, Eye, Building2 } from 'lucide-react';
 import { upsertOrgSetting, mergeOrgRows } from '@/data/settings';
 import { computeSettingsDirtyKeys } from '@/lib/settings';
 import { AirtableSyncTab } from '@/components/settings/AirtableSyncTab';
 import { OrganizationTab } from '@/components/settings/OrganizationTab';
-import type { Cast } from '@/types';
+import { CastsCitiesTab } from '@/components/settings/CastsCitiesTab';
+import { ProductionOwnershipTab } from '@/components/settings/ProductionOwnershipTab';
+import { DocumentationTab } from '@/components/settings/DocumentationTab';
 
 const EMAIL_TEMPLATE_KEYS = [
   'signup-decision',
@@ -45,10 +40,6 @@ const EMAIL_TEMPLATE_LABELS: Record<EmailTemplateKey, string> = {
   'artist-offer-digest': 'Artist Offer Digest',
   'artist-confirmation-digest': 'Artist Confirmation Digest',
 };
-
-// Sentinel value used in Selects to represent "Any" / unscoped — Radix Select
-// forbids empty-string SelectItem values.
-const ANY_SCOPE = '__any__';
 
 type FilterKey = 'program' | 'timeframe' | 'sort' | 'status';
 const FILTER_KEYS: FilterKey[] = ['program', 'timeframe', 'sort', 'status'];
@@ -69,8 +60,6 @@ type SettingRow = {
   key: string;
   value: any;
 };
-
-type ProgramSubProgramPair = { program: string; sub_program: string };
 
 function ShowSlotsEditor() {
   const warn = useSettingsWarnings(); // returns { schedulingWarnings, hasAnyWarning } directly
@@ -329,210 +318,6 @@ export default function SettingsPage() {
   const canEnter = isAdmin || isProducer;
   const { schedulingWarnings } = useSettingsWarnings();
 
-  // Cities (available to producers + admins)
-  const { data: cities } = useAllCities(canEnter);
-  const [newCity, setNewCity] = useState('');
-  const addCity = useMutation({
-    mutationFn: async (name: string) => {
-      if (!orgId) throw new Error('No active organization');
-      const { error } = await supabase.from('cities').insert({ name, org_id: orgId });
-      if (error) throw error;
-    },
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ['cities'] }); setNewCity(''); toast.success('City added'); },
-    onError: (e: any) => toast.error(e.message ?? 'Failed to add'),
-  });
-  const removeCity = useMutation({
-    mutationFn: async (id: string) => {
-      const { error } = await supabase.from('cities').delete().eq('id', id);
-      if (error) throw error;
-    },
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ['cities'] }); toast.success('City removed'); },
-    onError: (e: any) => toast.error(e.message ?? 'Failed to remove'),
-  });
-
-  const { data: showProgramSubProgramPairs } = useQuery({
-    queryKey: ['shows-program-sub-programs', currentOrg?.id],
-    enabled: canEnter,
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from('shows')
-        .select('program, sub_program')
-        .not('program', 'is', null)
-        .not('sub_program', 'is', null);
-      if (error) throw error;
-      const seen = new Set<string>();
-      const pairs: ProgramSubProgramPair[] = [];
-      (data ?? []).forEach(r => {
-        const key = `${r.program}::${r.sub_program}`;
-        if (!seen.has(key)) {
-          seen.add(key);
-          pairs.push({ program: r.program as string, sub_program: r.sub_program as string });
-        }
-      });
-      pairs.sort((a, b) => a.program.localeCompare(b.program) || a.sub_program.localeCompare(b.sub_program));
-      return pairs;
-    },
-  });
-
-  const { data: casts } = useQuery({
-    queryKey: ['casts', currentOrg?.id],
-    enabled: canEnter,
-    queryFn: async () => {
-      const { data, error } = await supabase.from('casts').select('*').order('name');
-      if (error) throw error;
-      return data as Cast[];
-    },
-  });
-  const { data: castCounts } = useQuery({
-    queryKey: ['cast-members-counts'],
-    enabled: canEnter,
-    queryFn: async () => {
-      const { data, error } = await supabase.from('cast_members').select('cast_id');
-      if (error) throw error;
-      const map: Record<string, number> = {};
-      (data ?? []).forEach(r => { map[r.cast_id] = (map[r.cast_id] ?? 0) + 1; });
-      return map;
-    },
-  });
-
-  // cast_city_priority — available to admins and producers
-  type CastCityPriorityRow = { id: string; cast_id: string; city_id: string; priority: number };
-
-  const { data: castCityPriorities } = useQuery({
-    queryKey: ['cast-city-priority', currentOrg?.id],
-    enabled: canEnter,
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from('cast_city_priority')
-        .select('id, cast_id, city_id, priority')
-        .order('city_id')
-        .order('priority');
-      if (error) throw error;
-      return (data ?? []) as CastCityPriorityRow[];
-    },
-  });
-
-  useEffect(() => {
-    if (!canEnter) return;
-    const channel = supabase
-      .channel('cast_city_priority_realtime')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'cast_city_priority' }, () => {
-        qc.invalidateQueries({ queryKey: ['cast-city-priority'] });
-      })
-      .subscribe();
-    return () => { void supabase.removeChannel(channel); };
-  }, [canEnter, qc]);
-
-  const [newPriorityCityId, setNewPriorityCityId] = useState('');
-  const [newPriorityCastId, setNewPriorityCastId] = useState('');
-  const [newPriorityValue, setNewPriorityValue] = useState(1);
-
-  const addCastPriority = useMutation({
-    mutationFn: async () => {
-      if (!orgId) throw new Error('No active organization');
-      const { error } = await supabase.from('cast_city_priority').insert({
-        city_id: newPriorityCityId,
-        cast_id: newPriorityCastId,
-        priority: newPriorityValue,
-        org_id: orgId,
-      });
-      if (error) throw error;
-    },
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ['cast-city-priority'] });
-      setNewPriorityCityId('');
-      setNewPriorityCastId('');
-      setNewPriorityValue(1);
-      toast.success('Priority assigned');
-    },
-    onError: (e: any) => toast.error(e.message ?? 'Failed to assign priority'),
-  });
-
-  const deleteCastPriority = useMutation({
-    mutationFn: async (id: string) => {
-      const { error } = await supabase.from('cast_city_priority').delete().eq('id', id);
-      if (error) throw error;
-    },
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ['cast-city-priority'] });
-      toast.success('Assignment removed');
-    },
-    onError: (e: any) => toast.error(e.message ?? 'Failed to remove'),
-  });
-
-  // show_assignments — production ownership routing
-  type ShowAssignmentRow = { id: string; producer_user_id: string; program: string; sub_program: string | null; city_id: string | null };
-
-  const { data: showAssignments } = useQuery({
-    queryKey: ['show-assignments'],
-    enabled: canEnter,
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from('show_assignments')
-        .select('id, producer_user_id, program, sub_program, city_id')
-        .order('program').order('sub_program').order('created_at');
-      if (error) throw error;
-      return (data ?? []) as ShowAssignmentRow[];
-    },
-  });
-
-  const { data: producerUsers } = useQuery({
-    queryKey: ['producer-users', currentOrg?.id],
-    enabled: canEnter && !!currentOrg,
-    queryFn: () => fetchOrgProducers(supabase, currentOrg!.id),
-  });
-
-  useEffect(() => {
-    if (!canEnter) return;
-    const channel = supabase
-      .channel('show_assignments_realtime')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'show_assignments' }, () => {
-        qc.invalidateQueries({ queryKey: ['show-assignments'] });
-      })
-      .subscribe();
-    return () => { void supabase.removeChannel(channel); };
-  }, [canEnter, qc]);
-
-  const [newAssignProgram, setNewAssignProgram] = useState('');
-  const [newAssignSubProgram, setNewAssignSubProgram] = useState('');
-  const [newAssignCityId, setNewAssignCityId] = useState('');
-  const [newAssignUserId, setNewAssignUserId] = useState('');
-
-  const addAssignment = useMutation({
-    mutationFn: async () => {
-      if (!currentOrg) throw new Error('No active organization');
-      const { error } = await supabase.from('show_assignments').insert({
-        producer_user_id: newAssignUserId,
-        program: newAssignProgram,
-        sub_program: newAssignSubProgram || null,
-        city_id: newAssignCityId || null,
-        org_id: currentOrg.id,
-      });
-      if (error) throw error;
-    },
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ['show-assignments'] });
-      setNewAssignProgram('');
-      setNewAssignSubProgram('');
-      setNewAssignCityId('');
-      setNewAssignUserId('');
-      toast.success('Assignment added');
-    },
-    onError: (e: any) => toast.error(e.message ?? 'Failed to add assignment'),
-  });
-
-  const deleteAssignment = useMutation({
-    mutationFn: async (id: string) => {
-      const { error } = await supabase.from('show_assignments').delete().eq('id', id);
-      if (error) throw error;
-    },
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ['show-assignments'] });
-      toast.success('Assignment removed');
-    },
-    onError: (e: any) => toast.error(e.message ?? 'Failed to remove'),
-  });
-
   const dirtyKeys = computeSettingsDirtyKeys(settings, draft, EDITABLE_SETTING_KEYS);
 
   const isDirty = dirtyKeys.length > 0;
@@ -619,272 +404,12 @@ export default function SettingsPage() {
           <TabsTrigger value="docs"><BookOpen className="h-4 w-4 mr-2" />Documentation</TabsTrigger>
         </TabsList>
 
-        <TabsContent value="casts-cities" className="mt-4 space-y-6">
-          <Card>
-            <CardHeader>
-              <CardTitle className="font-display">Cities</CardTitle>
-              <CardDescription>
-                Cities are used to scope cast eligibility per show.
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-3">
-              <form
-                className="flex gap-2"
-                onSubmit={(e) => { e.preventDefault(); if (newCity.trim()) addCity.mutate(newCity.trim()); }}
-              >
-                <Input placeholder="New city name" value={newCity} onChange={e => setNewCity(e.target.value)} />
-                <Button type="submit" disabled={!newCity.trim() || addCity.isPending}>
-                  <Plus className="h-4 w-4 mr-1" />Add
-                </Button>
-              </form>
-              <div className="flex flex-wrap gap-2 pt-2">
-                {(cities ?? []).map(c => (
-                  <Badge key={c.id} variant="secondary" className="gap-2 py-1.5 pl-3 pr-1">
-                    {c.name}
-                    <button
-                      onClick={() => removeCity.mutate(c.id)}
-                      className="rounded hover:bg-background/40 p-0.5"
-                      aria-label={`Remove ${c.name}`}
-                    >
-                      <Trash2 className="h-3 w-3" />
-                    </button>
-                  </Badge>
-                ))}
-                {(cities?.length ?? 0) === 0 && <p className="text-sm text-muted-foreground">No cities yet.</p>}
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader>
-              <CardTitle className="font-display">Casts</CardTitle>
-              <CardDescription>
-                Manage casts and their members on the <Link className="text-primary underline" to={ROUTES.ARTISTS}>Artists page</Link>.
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              {(casts?.length ?? 0) === 0 ? (
-                <p className="text-sm text-muted-foreground">No casts yet.</p>
-              ) : (
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-                  {casts!.map(c => (
-                    <div key={c.id} className="p-3 rounded-lg border border-border">
-                      <p className="font-medium text-sm">{c.name}</p>
-                      <p className="text-xs text-muted-foreground mt-1">
-                        {castCounts?.[c.id] ?? 0} member{(castCounts?.[c.id] ?? 0) === 1 ? '' : 's'}
-                      </p>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader>
-              <CardTitle className="font-display">Cast Priority by City</CardTitle>
-              <CardDescription>
-                Configure which cast is offered first (Tier 1), second (Tier 2), etc. for each city.
-                The offer engine follows this order when creating booking offers.
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-6">
-              {/* Existing assignments grouped by city */}
-              {(cities ?? []).map(city => {
-                const assignments = (castCityPriorities ?? [])
-                  .filter(r => r.city_id === city.id)
-                  .sort((a, b) => a.priority - b.priority);
-                if (assignments.length === 0) return null;
-                return (
-                  <div key={city.id}>
-                    <p className="text-sm font-medium mb-2">{city.name}</p>
-                    <div className="space-y-1.5">
-                      {assignments.map(a => {
-                        const cast = casts?.find(c => c.id === a.cast_id);
-                        return (
-                          <div key={a.id} className="flex items-center gap-3 p-2 rounded-md border border-border">
-                            <Badge variant="outline" className="text-xs w-16 justify-center shrink-0">
-                              Tier {a.priority}
-                            </Badge>
-                            <span className="text-sm flex-1">{cast?.name ?? '–'}</span>
-                            <button
-                              onClick={() => deleteCastPriority.mutate(a.id)}
-                              className="rounded hover:bg-muted p-0.5 text-muted-foreground hover:text-destructive"
-                              aria-label="Remove assignment"
-                            >
-                              <Trash2 className="h-3.5 w-3.5" />
-                            </button>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  </div>
-                );
-              })}
-              {(cities?.length ?? 0) === 0 && (
-                <p className="text-sm text-muted-foreground">Add cities above to configure priorities.</p>
-              )}
-
-              {/* Add assignment form */}
-              <div className="pt-4 border-t border-border space-y-3">
-                <p className="text-sm font-medium">Add assignment</p>
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
-                  <Select
-                    value={newPriorityCityId}
-                    onValueChange={v => { setNewPriorityCityId(v); setNewPriorityCastId(''); }}
-                  >
-                    <SelectTrigger><SelectValue placeholder="City…" /></SelectTrigger>
-                    <SelectContent>
-                      {(cities ?? []).map(c => (
-                        <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  <Select
-                    value={newPriorityCastId}
-                    onValueChange={setNewPriorityCastId}
-                    disabled={!newPriorityCityId}
-                  >
-                    <SelectTrigger><SelectValue placeholder="Cast…" /></SelectTrigger>
-                    <SelectContent>
-                      {(casts ?? [])
-                        .filter(c =>
-                          !(castCityPriorities ?? []).some(
-                            p => p.city_id === newPriorityCityId && p.cast_id === c.id
-                          )
-                        )
-                        .map(c => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
-                    </SelectContent>
-                  </Select>
-                  <Select
-                    value={String(newPriorityValue)}
-                    onValueChange={v => setNewPriorityValue(Number(v))}
-                  >
-                    <SelectTrigger><SelectValue placeholder="Tier…" /></SelectTrigger>
-                    <SelectContent>
-                      {[1, 2, 3, 4, 5].map(n => (
-                        <SelectItem key={n} value={String(n)}>Tier {n}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-                <Button
-                  size="sm"
-                  disabled={!newPriorityCityId || !newPriorityCastId || addCastPriority.isPending}
-                  onClick={() => addCastPriority.mutate()}
-                >
-                  <Plus className="h-4 w-4 mr-1" />Assign
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
+        <TabsContent value="casts-cities">
+          <CastsCitiesTab currentOrgId={currentOrg?.id} canEnter={canEnter} />
         </TabsContent>
 
-        <TabsContent value="production-ownership" className="mt-4 space-y-6">
-          <Card>
-            <CardHeader>
-              <CardTitle className="font-display">Production Ownership</CardTitle>
-              <CardDescription>
-                Map producer users to show scopes for notification routing. The most-specific match wins:
-                (program + sub-program + city) beats (program + city) beats (program + sub-program) beats (program only).
-                Admins are always fallback recipients.
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              {/* Add assignment form */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3 items-end">
-                <div className="space-y-1">
-                  <Label className="text-xs">Producer</Label>
-                  <Select value={newAssignUserId} onValueChange={setNewAssignUserId}>
-                    <SelectTrigger><SelectValue placeholder="Select producer…" /></SelectTrigger>
-                    <SelectContent>
-                      {(producerUsers ?? []).map(u => (
-                        <SelectItem key={u.user_id} value={u.user_id}>
-                          {u.display_name ?? u.user_id.slice(0, 8)}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="space-y-1">
-                  <Label className="text-xs">Program</Label>
-                  <Select value={newAssignProgram} onValueChange={(v) => { setNewAssignProgram(v); setNewAssignSubProgram(''); }}>
-                    <SelectTrigger><SelectValue placeholder="Select program…" /></SelectTrigger>
-                    <SelectContent>
-                      {Array.from(new Set((showProgramSubProgramPairs ?? []).map(p => p.program))).sort().map(prog => (
-                        <SelectItem key={prog} value={prog}>{prog}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="space-y-1">
-                  <Label className="text-xs">Sub-program (optional)</Label>
-                  <Select value={newAssignSubProgram || ANY_SCOPE} onValueChange={(v) => setNewAssignSubProgram(v === ANY_SCOPE ? '' : v)}>
-                    <SelectTrigger><SelectValue placeholder="Any sub-program" /></SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value={ANY_SCOPE}>Any</SelectItem>
-                      {Array.from(new Set((showProgramSubProgramPairs ?? []).filter(p => p.program === newAssignProgram).map(p => p.sub_program))).sort().map(sp => (
-                        <SelectItem key={sp} value={sp}>{sp}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="space-y-1">
-                  <Label className="text-xs">City (optional)</Label>
-                  <Select value={newAssignCityId || ANY_SCOPE} onValueChange={(v) => setNewAssignCityId(v === ANY_SCOPE ? '' : v)}>
-                    <SelectTrigger><SelectValue placeholder="Any city" /></SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value={ANY_SCOPE}>Any</SelectItem>
-                      {(cities ?? []).map(c => (
-                        <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-                <Button
-                  size="sm"
-                  disabled={!newAssignUserId || !newAssignProgram || addAssignment.isPending}
-                  onClick={() => addAssignment.mutate()}
-                >
-                  <Plus className="h-4 w-4 mr-1" />Add
-                </Button>
-              </div>
-
-              {/* Existing assignments */}
-              {(showAssignments?.length ?? 0) === 0 ? (
-                <p className="text-sm text-muted-foreground pt-2">No assignments yet.</p>
-              ) : (
-                <div className="space-y-1.5 pt-2">
-                  {showAssignments!.map((a) => {
-                    const producer = producerUsers?.find(u => u.user_id === a.producer_user_id);
-                    const city = cities?.find(c => c.id === a.city_id);
-                    return (
-                      <div key={a.id} className="flex items-center gap-3 text-sm p-2 rounded-md border border-border">
-                        <span className="font-medium w-32 shrink-0 truncate">
-                          {producer?.display_name ?? a.producer_user_id.slice(0, 8)}
-                        </span>
-                        <span className="flex-1 text-muted-foreground">
-                          {a.program}
-                          {a.sub_program ? ` / ${a.sub_program}` : ''}
-                          {city ? ` — ${city.name}` : ''}
-                        </span>
-                        <Badge variant="outline" className="text-xs shrink-0">
-                          {a.sub_program && a.city_id ? 'Exact' : a.city_id ? 'City' : a.sub_program ? 'Sub' : 'Program'}
-                        </Badge>
-                        <button
-                          onClick={() => deleteAssignment.mutate(a.id)}
-                          className="p-0.5 rounded hover:bg-muted text-muted-foreground hover:text-destructive"
-                          aria-label="Remove assignment"
-                        >
-                          <Trash2 className="h-3.5 w-3.5" />
-                        </button>
-                      </div>
-                    );
-                  })}
-                </div>
-              )}
-            </CardContent>
-          </Card>
+        <TabsContent value="production-ownership">
+          <ProductionOwnershipTab currentOrgId={currentOrg?.id} canEnter={canEnter} />
         </TabsContent>
 
         <TabsContent value="scheduling" className="mt-4 space-y-6">
@@ -991,35 +516,7 @@ export default function SettingsPage() {
         </TabsContent>
 
         <TabsContent value="docs" className="mt-4">
-          <Card>
-            <CardHeader>
-              <CardTitle className="font-display">App Logic Guide</CardTitle>
-              <CardDescription>
-                How ShowFlow works: roles, data model, eligibility, and the full availability → booking flow.
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="prose prose-sm max-w-none text-foreground
-                [&_h1]:font-display [&_h1]:text-2xl [[&_h1]:font-bold_h1]:font-semibold [&_h1]:mt-6 [&_h1]:mb-3
-                [&_h2]:font-display [&_h2]:text-xl [&_h2]:font-semibold [&_h2]:mt-6 [&_h2]:mb-2 [&_h2]:border-b [&_h2]:border-border [&_h2]:pb-1
-                [&_h3]:font-display [&_h3]:text-base [&_h3]:font-semibold [&_h3]:mt-4 [&_h3]:mb-1
-                [&_p]:text-sm [&_p]:leading-relaxed [&_p]:mb-3 [&_p]:text-foreground
-                [&_li]:text-sm [&_li]:leading-relaxed
-                [&_ul]:list-disc [&_ul]:pl-5 [&_ul]:mb-3
-                [&_ol]:list-decimal [&_ol]:pl-5 [&_ol]:mb-3
-                [&_code]:bg-muted [&_code]:text-foreground [&_code]:text-xs [&_code]:px-1.5 [&_code]:py-0.5 [&_code]:rounded
-                [&_pre]:bg-muted [&_pre]:rounded-lg [&_pre]:p-4 [&_pre]:overflow-x-auto [&_pre]:mb-3 [&_pre]:text-xs
-                [&_pre_code]:bg-transparent [&_pre_code]:p-0
-                [&_table]:w-full [&_table]:text-sm [&_table]:border-collapse [&_table]:mb-4
-                [&_th]:text-left [&_th]:font-medium [&_th]:border [&_th]:border-border [&_th]:bg-muted [&_th]:px-3 [&_th]:py-1.5
-                [&_td]:border [&_td]:border-border [&_td]:px-3 [&_td]:py-1.5 [&_td]:text-sm [&_td]:align-top
-                [&_hr]:border-border [&_hr]:my-4
-                [&_strong]:font-semibold [&_strong]:text-foreground
-                [&_blockquote]:border-l-2 [&_blockquote]:border-border [&_blockquote]:pl-4 [&_blockquote]:text-muted-foreground">
-                <ReactMarkdown remarkPlugins={[remarkGfm]}>{appLogicMd}</ReactMarkdown>
-              </div>
-            </CardContent>
-          </Card>
+          <DocumentationTab />
         </TabsContent>
       </Tabs>
 
