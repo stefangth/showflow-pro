@@ -1,0 +1,58 @@
+import { describe, it, expect } from "vitest";
+import { REALTIME_INVALIDATIONS } from "./AuthContext";
+
+/**
+ * Guards the realtime table → query-key invalidation map. A key prefix that no
+ * `useQuery` uses silently no-ops, so cross-client edits stop propagating (M5).
+ */
+
+function keysFor(table: string): unknown[][] {
+  const entry = REALTIME_INVALIDATIONS.find((e) => e.table === table);
+  if (!entry) throw new Error(`no realtime entry for table '${table}'`);
+  return entry.keys;
+}
+
+function hasKey(table: string, prefix: string): boolean {
+  return keysFor(table).some((k) => k[0] === prefix);
+}
+
+describe("REALTIME_INVALIDATIONS — shows table", () => {
+  it("invalidates the live Productions list key ['shows'] (prefix)", () => {
+    // ['shows'] prefix-matches useShows' ['shows','list',orgId], ['shows','with-slots',…], ['shows','linking',…].
+    expect(hasKey("shows", "shows")).toBe(true);
+  });
+
+  it("invalidates the program/sub-programs key used by SettingsPage", () => {
+    expect(hasKey("shows", "shows-program-sub-programs")).toBe(true);
+  });
+
+  it("invalidates the eligibility key used by CastDetailsSheet", () => {
+    expect(hasKey("shows", "shows-for-eligibility")).toBe(true);
+  });
+
+  it("drops the dead ['show'] (singular) and ['shows-sub-programs'] keys", () => {
+    expect(hasKey("shows", "show")).toBe(false);
+    expect(hasKey("shows", "shows-sub-programs")).toBe(false);
+  });
+});
+
+describe("REALTIME_INVALIDATIONS — map integrity", () => {
+  it("lists no known-dead key prefixes (renamed/typo'd keys that no query uses)", () => {
+    // Keys confirmed to have zero `useQuery` consumers in src as of this audit.
+    const deadPrefixes = new Set(["show", "shows-sub-programs", "my-artist-producer"]);
+    const listed = REALTIME_INVALIDATIONS.flatMap((e) => e.keys.map((k) => k[0]));
+    const offenders = listed.filter((p) => deadPrefixes.has(p as string));
+    expect(offenders).toEqual([]);
+  });
+
+  it("every entry has a table and at least one key", () => {
+    for (const entry of REALTIME_INVALIDATIONS) {
+      expect(entry.table).toBeTruthy();
+      expect(entry.keys.length).toBeGreaterThan(0);
+      for (const key of entry.keys) {
+        expect(Array.isArray(key)).toBe(true);
+        expect(key.length).toBeGreaterThan(0);
+      }
+    }
+  });
+});
