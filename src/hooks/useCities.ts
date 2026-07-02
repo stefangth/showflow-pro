@@ -8,7 +8,7 @@ export type { CityLink };
 export function useCities() {
   const { currentOrg } = useAuth();
   return useQuery({
-    queryKey: ["cities", currentOrg?.id],
+    queryKey: ["cities", "link", currentOrg?.id],
     enabled: !!currentOrg,
     queryFn: () => fetchCitiesForLinking(supabase, currentOrg?.id ?? null),
   });

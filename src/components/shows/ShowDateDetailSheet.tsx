@@ -32,8 +32,9 @@ import { openOfferTier, fetchOfferTiers, fetchOpenedTiers, closeOfferTier, updat
 import { ChatPanel } from '@/components/chat/ChatPanel';
 import { ShowDateFormDialog } from '@/components/shows/ShowDateFormDialog';
 import { useCancelShowDate, useDeleteShowDate } from '@/hooks/useShowDates';
+import { useAllCities } from '@/hooks/useAllCities';
 import { isSyncedDate, canHardDeleteDate } from '@/lib/catalog';
-import type { Booking, Artist, City, Cast } from '@/types';
+import type { Booking, Artist, Cast } from '@/types';
 
 interface Props {
   showDateId: string | null;
@@ -93,15 +94,7 @@ export function ShowDateDetailSheet({ showDateId, open, onOpenChange }: Props) {
     },
   });
 
-  const { data: cities } = useQuery({
-    queryKey: ['cities', currentOrg?.id],
-    enabled: canManage,
-    queryFn: async () => {
-      const { data, error } = await supabase.from('cities').select('*').order('name');
-      if (error) throw error;
-      return data as City[];
-    },
-  });
+  const { data: cities } = useAllCities(canManage);
 
   const { data: casts } = useQuery({
     queryKey: ['casts', currentOrg?.id],

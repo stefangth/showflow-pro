@@ -12,8 +12,9 @@ import { Badge } from '@/components/ui/badge';
 import { Checkbox } from '@/components/ui/checkbox';
 import { toast } from 'sonner';
 import { Search, X, Plus, Users, Layers, Pencil, Check } from 'lucide-react';
-import type { Artist, Cast, City, Show } from '@/types';
+import type { Artist, Cast, Show } from '@/types';
 import { showLabel } from '@/types';
+import { useAllCities } from '@/hooks/useAllCities';
 
 interface Props {
   cast: Cast | null;
@@ -83,14 +84,7 @@ export function CastDetailsSheet({ cast, open, onOpenChange, onArtistClick }: Pr
   });
 
   // Eligibility (cities × shows)
-  const { data: cities } = useQuery({
-    queryKey: ['cities', currentOrg?.id],
-    queryFn: async () => {
-      const { data, error } = await supabase.from('cities').select('*').order('name');
-      if (error) throw error;
-      return data as City[];
-    },
-  });
+  const { data: cities } = useAllCities();
 
   const { data: shows } = useQuery({
     queryKey: ['shows-for-eligibility'],

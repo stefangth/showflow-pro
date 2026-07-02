@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { createFakeSupabase } from "@/test/supabaseFake";
-import { fetchCitiesForLinking, linkCityAirtableKey, importCitiesFromOptions, mergeCities } from "./cities";
+import { fetchCities, fetchCitiesForLinking, linkCityAirtableKey, importCitiesFromOptions, mergeCities } from "./cities";
 
 describe("cities data-access", () => {
   it("fetchCitiesForLinking selects link fields for the org", async () => {
@@ -15,6 +15,49 @@ describe("cities data-access", () => {
     const fake = createFakeSupabase({});
     expect(await fetchCitiesForLinking(fake as never, null)).toEqual([]);
     expect(fake.calls).toEqual([]);
+  });
+
+  it("fetchCities returns full rows filtered by org_id (never another org's rows)", async () => {
+    // Two orgs' cities seeded; god-mode RLS would return both, so the explicit
+    // org_id filter must be what scopes the result. Array-seed matches on eq(org_id).
+    const org1Rows = [{ id: "c1", name: "Berlin", org_id: "org-1", airtable_city_key: null }];
+    const org2Rows = [{ id: "c2", name: "Munich", org_id: "org-2", airtable_city_key: null }];
+    const fake = createFakeSupabase({
+      cities: [
+        { when: { org_id: "org-1" }, data: org1Rows, error: null },
+        { when: { org_id: "org-2" }, data: org2Rows, error: null },
+      ],
+    });
+    const res = await fetchCities(fake as never, "org-1");
+    expect(res).toEqual(org1Rows);
+    // Full-row projection: select('*'), org-filtered.
+    expect(fake.calls).toContainEqual({ table: "cities", method: "select", args: ["*"] });
+    expect(fake.calls).toContainEqual({ table: "cities", method: "eq", args: ["org_id", "org-1"] });
+    // Never leaks the other org's row.
+    expect(res).not.toContainEqual(org2Rows[0]);
+  });
+
+  it("fetchCities scopes to the requested org (org-2)", async () => {
+    const org1Rows = [{ id: "c1", name: "Berlin", org_id: "org-1", airtable_city_key: null }];
+    const org2Rows = [{ id: "c2", name: "Munich", org_id: "org-2", airtable_city_key: null }];
+    const fake = createFakeSupabase({
+      cities: [
+        { when: { org_id: "org-1" }, data: org1Rows, error: null },
+        { when: { org_id: "org-2" }, data: org2Rows, error: null },
+      ],
+    });
+    expect(await fetchCities(fake as never, "org-2")).toEqual(org2Rows);
+  });
+
+  it("fetchCities returns [] for null org (no query)", async () => {
+    const fake = createFakeSupabase({});
+    expect(await fetchCities(fake as never, null)).toEqual([]);
+    expect(fake.calls).toEqual([]);
+  });
+
+  it("fetchCities throws on error", async () => {
+    const fake = createFakeSupabase({ cities: { data: null, error: { message: "boom" } } });
+    await expect(fetchCities(fake as never, "org-1")).rejects.toMatchObject({ message: "boom" });
   });
 
   it("linkCityAirtableKey updates the key on the row", async () => {

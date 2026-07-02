@@ -1,6 +1,8 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "@/integrations/supabase/types";
 
+type CityRow = Database["public"]["Tables"]["cities"]["Row"];
+
 export interface CityLink { id: string; name: string; airtable_city_key: string | null }
 
 /** Org's cities with their Airtable link key, for the catalog-linking UI. */
@@ -13,6 +15,20 @@ export async function fetchCitiesForLinking(
     .from("cities").select("id, name, airtable_city_key").eq("org_id", orgId).order("name");
   if (error) throw error;
   return (data ?? []) as CityLink[];
+}
+
+/** Org's cities as full rows, for admin/booking surfaces. The explicit org_id filter is
+ *  required: god-mode RLS returns rows across ALL of a super-admin's orgs, so relying on
+ *  RLS alone could render another org's cities. */
+export async function fetchCities(
+  client: SupabaseClient<Database>,
+  orgId: string | null,
+): Promise<CityRow[]> {
+  if (!orgId) return [];
+  const { data, error } = await client
+    .from("cities").select("*").eq("org_id", orgId).order("name");
+  if (error) throw error;
+  return (data ?? []) as CityRow[];
 }
 
 /** Link (or, with null, unlink) a city to an Airtable city-option key. */
