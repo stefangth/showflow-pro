@@ -187,7 +187,7 @@ export function ChatPanel({ showDateId, showDate }: Props) {
             onChange={(e) => setDraft(e.target.value)}
             disabled={archived || send.isPending}
           />
-          <Button type="submit" size="icon" disabled={archived || !draft.trim() || send.isPending}>
+          <Button type="submit" size="icon" aria-label="Send message" disabled={archived || !draft.trim() || send.isPending}>
             <Send className="h-4 w-4" />
           </Button>
         </form>

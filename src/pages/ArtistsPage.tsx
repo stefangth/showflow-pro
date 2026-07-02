@@ -21,6 +21,7 @@ import { applySort, inTimeframe } from '@/components/filters/filterUtils';
 import { CastsSection } from '@/components/casts/CastsSection';
 import { ArtistProfileSheet } from '@/components/artists/ArtistProfileSheet';
 import { Checkbox } from '@/components/ui/checkbox';
+import { Skeleton } from '@/components/ui/skeleton';
 import { usePendingInvitedArtists } from '@/hooks/usePendingInvitedArtists';
 import { artistAccountState } from '@/lib/artistAccount';
 import { AccountStatusChip } from '@/components/artists/AccountStatusChip';
@@ -279,7 +280,7 @@ export default function ArtistsPage() {
 
       {isLoading ? (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {[1,2,3].map(i => <div key={i} className="h-40 rounded-lg bg-muted animate-pulse" />)}
+          {[1,2,3].map(i => <Skeleton key={i} className="h-40 rounded-lg" />)}
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">

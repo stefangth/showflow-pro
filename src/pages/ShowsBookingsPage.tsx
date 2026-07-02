@@ -21,6 +21,7 @@ import { ArtistBookingsView } from '@/components/bookings/ArtistBookingsView';
 import { ShowDateDetailSheet } from '@/components/shows/ShowDateDetailSheet';
 import { ShowDateFormDialog } from '@/components/shows/ShowDateFormDialog';
 import { Button } from '@/components/ui/button';
+import { Skeleton } from '@/components/ui/skeleton';
 import { showSlots } from '@/lib/settings';
 import { showLabel } from '@/types';
 import { useColumnTemplate, useEditorConfig } from '@/features/editor/EditorContext';
@@ -115,6 +116,13 @@ function ProducerShowsBookings() {
   const [customFilters, setCustomFilters] = useState<Record<string, CustomFilterState>>({});
   const [view, setView] = useState<ViewMode>('list');
   const [activeShowDateId, setActiveShowDateId] = useState<string | null>(null);
+  const openShowDate = (id: string) => setActiveShowDateId(id);
+  const openShowDateOnKey = (id: string) => (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault();
+      openShowDate(id);
+    }
+  };
   const [newDateOpen, setNewDateOpen] = useState(false);
   const { hasRole } = useAuth();
   const canManage = hasRole('admin') || hasRole('producer');
@@ -303,7 +311,7 @@ function ProducerShowsBookings() {
       <ColumnLayoutEditor pageKey="bookings-producer" />
 
       {isLoading ? (
-        <div className="space-y-2">{[1,2,3,4,5].map(i => <div key={i} className="h-12 rounded bg-muted animate-pulse" />)}</div>
+        <div className="space-y-2">{[1,2,3,4,5].map(i => <Skeleton key={i} className="h-12" />)}</div>
       ) : view === 'list' ? (
         <Card>
           <CardContent className="p-0 overflow-x-auto">
@@ -413,7 +421,10 @@ function ProducerShowsBookings() {
                     <TableRow
                       key={sd.id}
                       className="cursor-pointer"
-                      onClick={() => setActiveShowDateId(sd.id)}
+                      role="button"
+                      tabIndex={0}
+                      onClick={() => openShowDate(sd.id)}
+                      onKeyDown={openShowDateOnKey(sd.id)}
                     >
                       {orderedColumns.filter(c => c.visible).map(c => cellFor(c.columnId))}
                     </TableRow>
@@ -438,7 +449,10 @@ function ProducerShowsBookings() {
           renderItem={it => (
             <Card
               className="hover:shadow-elev2 transition-shadow cursor-pointer"
-              onClick={() => setActiveShowDateId(it.showDate.id)}
+              role="button"
+              tabIndex={0}
+              onClick={() => openShowDate(it.showDate.id)}
+              onKeyDown={openShowDateOnKey(it.showDate.id)}
             >
               <CardContent className="py-3 flex items-center justify-between gap-3">
                 <div className="min-w-0">
