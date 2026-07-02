@@ -119,7 +119,7 @@ function makeHappyDeps(opts: {
       org_memberships: { data: [], error: null },
       notifications: { data: null, error: null },
     },
-    rpcs: { get_org_airtable_key: { data: "key", error: null } },
+    rpcs: { get_org_airtable_key: { data: "key", error: null }, get_cron_secret: { data: "secret123", error: null } },
     fetchImpl: resolvedFetchImpl,
   });
 
@@ -135,14 +135,14 @@ function authReq(extraHeaders: Record<string, string> = {}) {
 }
 
 // ─── Auth ────────────────────────────────────────────────────────────────────
+// Post-C1 the cron secret comes from the Vault-backed get_cron_secret RPC, not
+// member-readable app_settings. This endpoint is CRON-SECRET-ONLY (requireCronSecret):
+// it fans out over every active org and writes each org's data, so an org-admin JWT
+// must NOT be able to drive it (the old requireCronOrRole role fallback was a cross-org hole).
 
-Deno.test("airtable-poll: missing X-Cron-Secret → 401", async () => {
+Deno.test("airtable-poll: missing X-Cron-Secret → 401 (no user JWT either)", async () => {
   const { deps } = makeFakeDeps({
-    tables: {
-      app_settings: [
-        { when: { key: "cron_secret" }, data: { value: "secret123" } },
-      ],
-    },
+    rpcs: { get_cron_secret: { data: "secret123", error: null } },
   });
   const res = await handle(makeRequest({ method: "POST" }), deps);
   assertEquals(res.status, 401);
@@ -152,11 +152,7 @@ Deno.test("airtable-poll: missing X-Cron-Secret → 401", async () => {
 
 Deno.test("airtable-poll: wrong X-Cron-Secret → 401", async () => {
   const { deps } = makeFakeDeps({
-    tables: {
-      app_settings: [
-        { when: { key: "cron_secret" }, data: { value: "secret123" } },
-      ],
-    },
+    rpcs: { get_cron_secret: { data: "secret123", error: null } },
   });
   const res = await handle(
     makeRequest({ method: "POST", headers: { "X-Cron-Secret": "WRONG" } }),
@@ -165,21 +161,34 @@ Deno.test("airtable-poll: wrong X-Cron-Secret → 401", async () => {
   assertEquals(res.status, 401);
 });
 
-Deno.test("airtable-poll: null stored secret treated as empty string — non-empty header → 401", async () => {
-  // storedSecret defaults to '' when no cron_secret row found
+Deno.test("airtable-poll: null Vault secret treated as empty string — non-empty header → 401", async () => {
+  // storedSecret defaults to '' when the RPC returns null (secret not provisioned).
   const { deps } = makeFakeDeps({
-    tables: {
-      app_settings: [
-        // maybeSingle() returns null data when no row
-        { when: { key: "cron_secret" }, data: null },
-      ],
-    },
+    rpcs: { get_cron_secret: { data: null, error: null } },
   });
   const res = await handle(
     makeRequest({ method: "POST", headers: { "X-Cron-Secret": "anysecret" } }),
     deps,
   );
   assertEquals(res.status, 401);
+});
+
+Deno.test("airtable-poll: admin USER JWT without a cron secret → 401 (cron-secret-only, no role fallback)", async () => {
+  // Regression (Fix B): airtable-poll writes EVERY active org, so an org-admin JWT
+  // must never trigger it. Even a fully valid admin membership is rejected without
+  // the X-Cron-Secret header — no requireRole fallback anymore.
+  const { deps } = makeFakeDeps({
+    authUser: { id: "admin-1" },
+    tables: { org_memberships: { data: { role: "admin" }, error: null } },
+    rpcs: { get_cron_secret: { data: "secret123", error: null } },
+  });
+  const res = await handle(
+    makeRequest({ method: "POST", headers: { Authorization: "Bearer admin-jwt" } }),
+    deps,
+  );
+  assertEquals(res.status, 401);
+  const body = await res.json();
+  assertEquals(body.error, "Unauthorized");
 });
 
 // ─── Per-org skip paths (disabled / unconfigured / bad base / no key) ─────────
@@ -195,7 +204,7 @@ Deno.test("airtable-poll: org with sync disabled → 200, org skipped", async ()
       ],
       organizations: { data: [{ id: ORG }], error: null },
     },
-    rpcs: { get_org_airtable_key: { data: "key", error: null } },
+    rpcs: { get_org_airtable_key: { data: "key", error: null }, get_cron_secret: { data: "secret123", error: null } },
   });
   const res = await handle(authReq(), deps);
   assertEquals(res.status, 200);
@@ -215,7 +224,7 @@ Deno.test("airtable-poll: org missing base_id → 200, org skipped", async () =>
       ],
       organizations: { data: [{ id: ORG }], error: null },
     },
-    rpcs: { get_org_airtable_key: { data: "key", error: null } },
+    rpcs: { get_org_airtable_key: { data: "key", error: null }, get_cron_secret: { data: "secret123", error: null } },
   });
   const res = await handle(authReq(), deps);
   assertEquals(res.status, 200);
@@ -235,7 +244,7 @@ Deno.test("airtable-poll: org missing table_name → 200, org skipped", async ()
       ],
       organizations: { data: [{ id: ORG }], error: null },
     },
-    rpcs: { get_org_airtable_key: { data: "key", error: null } },
+    rpcs: { get_org_airtable_key: { data: "key", error: null }, get_cron_secret: { data: "secret123", error: null } },
   });
   const res = await handle(authReq(), deps);
   assertEquals(res.status, 200);
@@ -256,7 +265,7 @@ Deno.test("airtable-poll: invalid base_id format → 200, org skipped, sync_log 
       organizations: { data: [{ id: ORG }], error: null },
       airtable_sync_log: { data: { id: "log-1" }, error: null },
     },
-    rpcs: { get_org_airtable_key: { data: "key", error: null } },
+    rpcs: { get_org_airtable_key: { data: "key", error: null }, get_cron_secret: { data: "secret123", error: null } },
   });
 
   const originalFrom = deps.admin.from.bind(deps.admin);
@@ -295,7 +304,7 @@ Deno.test("airtable-poll: org with no Vault key → 200, org skipped, no fetch",
       show_dates: { data: [], error: null },
       airtable_sync_log: { data: { id: "log-1" }, error: null },
     },
-    rpcs: { get_org_airtable_key: { data: null, error: null } }, // no key
+    rpcs: { get_org_airtable_key: { data: null, error: null }, get_cron_secret: { data: "secret123", error: null } }, // no key
     fetchImpl: () => { fetched++; return Promise.resolve(makeAirtableResponse([])) as Promise<Response>; },
   });
   const res = await handle(authReq(), deps);
@@ -333,7 +342,7 @@ Deno.test("airtable-poll: fetch called with correct Airtable URL and Bearer toke
       org_memberships: { data: [], error: null },
       notifications: { data: null, error: null },
     },
-    rpcs: { get_org_airtable_key: { data: "my-api-key-xyz", error: null } },
+    rpcs: { get_org_airtable_key: { data: "my-api-key-xyz", error: null }, get_cron_secret: { data: "secret123", error: null } },
     fetchImpl,
   });
 
@@ -397,7 +406,7 @@ async function captureAirtableUrl(
       org_memberships: { data: [], error: null },
       notifications: { data: null, error: null },
     },
-    rpcs: { get_org_airtable_key: { data: "my-api-key-xyz", error: null } },
+    rpcs: { get_org_airtable_key: { data: "my-api-key-xyz", error: null }, get_cron_secret: { data: "secret123", error: null } },
     fetchImpl: (url) => { captured.push(String(url)); return Promise.resolve(makeAirtableResponse([])) as Promise<Response>; },
   });
   const res = await handle(authReq(), deps);
@@ -726,7 +735,7 @@ Deno.test("airtable-poll: totals contain all required fields on success (0 recor
       org_memberships: { data: [], error: null },
       notifications: { data: null, error: null },
     },
-    rpcs: { get_org_airtable_key: { data: "key", error: null } },
+    rpcs: { get_org_airtable_key: { data: "key", error: null }, get_cron_secret: { data: "secret123", error: null } },
     fetchImpl: () => Promise.resolve(makeAirtableResponse([])) as Promise<Response>,
   });
 
@@ -850,7 +859,7 @@ Deno.test("airtable-poll: Airtable API error → run still 200, org skipped (org
       org_memberships: { data: [], error: null },
       notifications: { data: null, error: null },
     },
-    rpcs: { get_org_airtable_key: { data: "key", error: null } },
+    rpcs: { get_org_airtable_key: { data: "key", error: null }, get_cron_secret: { data: "secret123", error: null } },
     // Return a non-ok response from Airtable
     fetchImpl: () =>
       Promise.resolve(
@@ -901,7 +910,7 @@ Deno.test("airtable-poll: inserts a success row (with org_id + zero counts) into
       org_memberships: { data: [], error: null },
       notifications: { data: null, error: null },
     },
-    rpcs: { get_org_airtable_key: { data: "key", error: null } },
+    rpcs: { get_org_airtable_key: { data: "key", error: null }, get_cron_secret: { data: "secret123", error: null } },
     fetchImpl: () => Promise.resolve(makeAirtableResponse([])) as Promise<Response>,
   });
 
@@ -949,7 +958,7 @@ Deno.test("airtable-poll: inserts an error row (with org_id) into airtable_sync_
       org_memberships: { data: [], error: null },
       notifications: { data: null, error: null },
     },
-    rpcs: { get_org_airtable_key: { data: "key", error: null } },
+    rpcs: { get_org_airtable_key: { data: "key", error: null }, get_cron_secret: { data: "secret123", error: null } },
     fetchImpl: () =>
       Promise.resolve(new Response("Forbidden", { status: 500 })) as Promise<Response>,
   });
@@ -996,7 +1005,7 @@ Deno.test("airtable-poll: synced_at uses deps.now() (fixed to 2026-06-01T12:00:0
       org_memberships: { data: [], error: null },
       notifications: { data: null, error: null },
     },
-    rpcs: { get_org_airtable_key: { data: "key", error: null } },
+    rpcs: { get_org_airtable_key: { data: "key", error: null }, get_cron_secret: { data: "secret123", error: null } },
     fetchImpl: () => Promise.resolve(makeAirtableResponse([])) as Promise<Response>,
   });
 
@@ -1104,7 +1113,7 @@ Deno.test("airtable-poll: a newly-held record notifies org admins (one notificat
       org_memberships: { data: [{ user_id: "admin-1" }], error: null },
       notifications: { data: null, error: null },
     },
-    rpcs: { get_org_airtable_key: { data: "key", error: null } },
+    rpcs: { get_org_airtable_key: { data: "key", error: null }, get_cron_secret: { data: "secret123", error: null } },
     fetchImpl: () => Promise.resolve(makeAirtableResponse(records)) as Promise<Response>,
   });
 

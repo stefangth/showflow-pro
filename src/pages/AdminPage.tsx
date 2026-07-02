@@ -4,12 +4,14 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/features/auth/AuthContext';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { format } from 'date-fns';
 import { Users, Activity, Database } from 'lucide-react';
 import { useSearchParams } from 'react-router-dom';
 import { InvitesTab } from '@/components/admin/InvitesTab';
 import { MembersTab } from '@/components/admin/MembersTab';
+import { fetchAdminAuditLogs, fetchAdminSyncLogs, fetchAdminStats } from '@/data/admin';
 
 /** Row caps for the admin activity panels. */
 const AUDIT_LOG_LIMIT = 50;
@@ -21,40 +23,19 @@ export default function AdminPage() {
   const initialTab = params.get('tab') || 'invites';
   const [tab, setTab] = useState(initialTab);
 
-  const { data: auditLogs } = useQuery({
+  const { data: auditLogs, isError: auditError } = useQuery({
     queryKey: ['admin-audit'],
-    queryFn: async () => {
-      const { data } = await supabase
-        .from('booking_audit_log')
-        .select('*, booking:bookings(artist:artists(name))')
-        .order('created_at', { ascending: false })
-        .limit(AUDIT_LOG_LIMIT);
-      return data ?? [];
-    },
+    queryFn: () => fetchAdminAuditLogs(supabase, AUDIT_LOG_LIMIT),
   });
 
-  const { data: syncLogs } = useQuery({
+  const { data: syncLogs, isError: syncError } = useQuery({
     queryKey: ['admin-sync'],
-    queryFn: async () => {
-      const { data } = await supabase
-        .from('airtable_sync_log')
-        .select('*')
-        .order('synced_at', { ascending: false })
-        .limit(SYNC_LOG_LIMIT);
-      return data ?? [];
-    },
+    queryFn: () => fetchAdminSyncLogs(supabase, SYNC_LOG_LIMIT),
   });
 
   const { data: stats } = useQuery({
     queryKey: ['admin-stats'],
-    queryFn: async () => {
-      const [shows, artists, bookings] = await Promise.all([
-        supabase.from('shows').select('*', { count: 'exact', head: true }),
-        supabase.from('artists').select('*', { count: 'exact', head: true }),
-        supabase.from('bookings').select('*', { count: 'exact', head: true }),
-      ]);
-      return { shows: shows.count ?? 0, artists: artists.count ?? 0, bookings: bookings.count ?? 0 };
-    },
+    queryFn: () => fetchAdminStats(supabase),
   });
 
   const handleTabChange = (v: string) => {
@@ -115,6 +96,11 @@ export default function AdminPage() {
           <Card>
             <CardHeader><CardTitle className="font-display">Booking Audit Trail</CardTitle></CardHeader>
             <CardContent>
+              {auditError && (
+                <Alert variant="destructive" className="mb-3">
+                  <AlertDescription>Failed to load the audit trail.</AlertDescription>
+                </Alert>
+              )}
               <div className="space-y-2">
                 {auditLogs?.map((log: any) => (
                   <div key={log.id} className="flex items-center justify-between p-3 rounded-lg border border-border text-sm">
@@ -130,7 +116,7 @@ export default function AdminPage() {
                     </div>
                   </div>
                 ))}
-                {auditLogs?.length === 0 && <p className="text-sm text-muted-foreground text-center py-6">No audit logs yet</p>}
+                {!auditError && auditLogs?.length === 0 && <p className="text-sm text-muted-foreground text-center py-6">No audit logs yet</p>}
               </div>
             </CardContent>
           </Card>
@@ -140,8 +126,13 @@ export default function AdminPage() {
           <Card>
             <CardHeader><CardTitle className="font-display">Airtable Sync Status</CardTitle></CardHeader>
             <CardContent>
+              {syncError && (
+                <Alert variant="destructive" className="mb-3">
+                  <AlertDescription>Failed to load the sync status.</AlertDescription>
+                </Alert>
+              )}
               <div className="space-y-2">
-                {syncLogs && syncLogs.length > 0 ? syncLogs.map((log: any) => (
+                {syncError ? null : syncLogs && syncLogs.length > 0 ? syncLogs.map((log: any) => (
                   <div key={log.id} className="flex items-center justify-between p-3 rounded-lg border border-border text-sm">
                     <div className="flex items-center gap-2">
                       <Badge variant="secondary" className={log.status === 'success' ? 'bg-success/10 text-success' : 'bg-destructive/10 text-destructive'}>

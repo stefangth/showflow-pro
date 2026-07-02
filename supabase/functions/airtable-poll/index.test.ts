@@ -38,7 +38,7 @@ function seededDeps(records: unknown[], fetchImpl?: typeof fetch) {
       org_memberships: { data: [], error: null },
       notifications: { data: null, error: null },
     },
-    rpcs: { get_org_airtable_key: { data: "key", error: null } },
+    rpcs: { get_org_airtable_key: { data: "key", error: null }, get_cron_secret: { data: "secret123", error: null } },
     fetchImpl: fetchImpl ?? (() => Promise.resolve(airtableResponse(records)) as Promise<Response>),
   });
 }
@@ -57,7 +57,7 @@ Deno.test("airtable-poll contract: disabled flag short-circuits — org not sync
       ],
       organizations: { data: [{ id: ORG }], error: null },
     },
-    rpcs: { get_org_airtable_key: { data: "key", error: null } },
+    rpcs: { get_org_airtable_key: { data: "key", error: null }, get_cron_secret: { data: "secret123", error: null } },
   });
   const res = await handle(authReq(), deps);
   assertEquals(res.status, 200);
@@ -133,7 +133,7 @@ function seededDepsWithExisting(
       org_memberships: { data: [], error: null },
       notifications: { data: null, error: null },
     },
-    rpcs: { get_org_airtable_key: { data: "key", error: null } },
+    rpcs: { get_org_airtable_key: { data: "key", error: null }, get_cron_secret: { data: "secret123", error: null } },
     fetchImpl: (() => Promise.resolve(airtableResponse(records)) as Promise<Response>),
   });
 }
@@ -278,7 +278,7 @@ function seededDepsShows(records: unknown[], shows: unknown[]) {
       org_memberships: { data: [], error: null },
       notifications: { data: null, error: null },
     },
-    rpcs: { get_org_airtable_key: { data: "key", error: null } },
+    rpcs: { get_org_airtable_key: { data: "key", error: null }, get_cron_secret: { data: "secret123", error: null } },
     fetchImpl: (() => Promise.resolve(airtableResponse(records)) as Promise<Response>),
   });
 }

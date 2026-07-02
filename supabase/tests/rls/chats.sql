@@ -127,6 +127,12 @@ SELECT is(
   'is_chat_participant: artist with only suggested booking is not a participant'
 );
 
+-- These status flips are pure fixture manipulation to exercise
+-- is_chat_participant across statuses; several are illegal transitions under the
+-- enforce_booking_transition guard (e.g. confirmed → suggested). Disable triggers
+-- (replica) so the guard doesn't reject them — the is() checks below are SELECTs.
+SET session_replication_role = replica;
+
 -- 5. Promote artist B to confirmed — now a participant
 UPDATE public.bookings
 SET status = 'confirmed'
@@ -174,6 +180,8 @@ SELECT is(
 UPDATE public.bookings
 SET status = 'suggested'
 WHERE id = 'eeeeeeee-eeee-0002-0000-000000000000';
+
+SET session_replication_role = DEFAULT;
 
 -- ────────────────────────────────────────────────────────────────────────────
 -- chats SELECT via RLS (uses is_chat_participant internally)

@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { createFakeSupabase } from "@/test/supabaseFake";
-import { openOfferTier, fetchOfferTiers, fetchOpenedTiers, closeOfferTier, fetchPendingConfirmationsCount, fetchMyOpenOffersCount } from "./bookings";
+import { openOfferTier, fetchOfferTiers, fetchOpenedTiers, closeOfferTier, fetchPendingConfirmationsCount, fetchMyOpenOffersCount, bulkConfirmSoftBooked, bulkDeclineSoftBooked, updateBookingStatusGuarded, respondToOffer } from "./bookings";
 
 describe("openOfferTier", () => {
   it("sends snake_case body and returns offersCreated", async () => {
@@ -117,5 +117,112 @@ describe("fetchMyOpenOffersCount", () => {
   it("returns 0 when count is null", async () => {
     const fake = createFakeSupabase({ bookings: { data: null, count: null, error: null } });
     expect(await fetchMyOpenOffersCount(fake as never, "artist-1")).toBe(0);
+  });
+});
+
+const NOW = new Date("2026-07-02T12:00:00.000Z");
+
+describe("bulkConfirmSoftBooked", () => {
+  it("preconditions on soft_booked and reports rows actually confirmed", async () => {
+    // Two ids requested but only one row still soft_booked → affected = 1.
+    const fake = createFakeSupabase({ bookings: { data: [{ id: "b1" }], error: null } });
+    const res = await bulkConfirmSoftBooked(fake as never, { ids: ["b1", "b2"], now: NOW });
+    expect(res).toEqual({ affected: 1 });
+    expect(fake.calls).toContainEqual({ table: "bookings", method: "in", args: ["id", ["b1", "b2"]] });
+    expect(fake.calls).toContainEqual({ table: "bookings", method: "eq", args: ["status", "soft_booked"] });
+    expect(fake.calls).toContainEqual({
+      table: "bookings",
+      method: "update",
+      args: [{ status: "confirmed", confirmed_at: NOW.toISOString() }],
+    });
+  });
+
+  it("reports 0 affected when every selected booking already moved on (stale ids)", async () => {
+    const fake = createFakeSupabase({ bookings: { data: [], error: null } });
+    const res = await bulkConfirmSoftBooked(fake as never, { ids: ["b1"], now: NOW });
+    expect(res).toEqual({ affected: 0 });
+  });
+
+  it("throws on a supabase error", async () => {
+    const fake = createFakeSupabase({ bookings: { data: null, error: { message: "boom" } } });
+    await expect(bulkConfirmSoftBooked(fake as never, { ids: ["b1"], now: NOW })).rejects.toBeTruthy();
+  });
+});
+
+describe("bulkDeclineSoftBooked", () => {
+  it("preconditions on soft_booked and stamps a producer_declined cancel", async () => {
+    const fake = createFakeSupabase({ bookings: { data: [{ id: "b1" }], error: null } });
+    const res = await bulkDeclineSoftBooked(fake as never, { ids: ["b1"], now: NOW });
+    expect(res).toEqual({ affected: 1 });
+    expect(fake.calls).toContainEqual({ table: "bookings", method: "eq", args: ["status", "soft_booked"] });
+    expect(fake.calls).toContainEqual({
+      table: "bookings",
+      method: "update",
+      args: [{ status: "cancelled", cancelled_at: NOW.toISOString(), cancellation_reason: "producer_declined" }],
+    });
+  });
+
+  it("reports 0 affected for a stale selection", async () => {
+    const fake = createFakeSupabase({ bookings: { data: [], error: null } });
+    expect(await bulkDeclineSoftBooked(fake as never, { ids: ["b1"], now: NOW })).toEqual({ affected: 0 });
+  });
+});
+
+describe("updateBookingStatusGuarded", () => {
+  it("confirm requires the booking to be soft_booked", async () => {
+    const fake = createFakeSupabase({ bookings: { data: [{ id: "b1" }], error: null } });
+    const res = await updateBookingStatusGuarded(fake as never, { bookingId: "b1", status: "confirmed", now: NOW });
+    expect(res).toEqual({ affected: 1 });
+    expect(fake.calls).toContainEqual({ table: "bookings", method: "eq", args: ["id", "b1"] });
+    expect(fake.calls).toContainEqual({ table: "bookings", method: "eq", args: ["status", "soft_booked"] });
+    expect(fake.calls).toContainEqual({
+      table: "bookings",
+      method: "update",
+      args: [{ status: "confirmed", confirmed_at: NOW.toISOString() }],
+    });
+  });
+
+  it("cancel guards against a no-op re-cancel via neq(status, cancelled)", async () => {
+    const fake = createFakeSupabase({ bookings: { data: [{ id: "b1" }], error: null } });
+    const res = await updateBookingStatusGuarded(fake as never, { bookingId: "b1", status: "cancelled", now: NOW });
+    expect(res).toEqual({ affected: 1 });
+    expect(fake.calls).toContainEqual({ table: "bookings", method: "neq", args: ["status", "cancelled"] });
+    expect(fake.calls).toContainEqual({
+      table: "bookings",
+      method: "update",
+      args: [{ status: "cancelled", cancelled_at: NOW.toISOString() }],
+    });
+  });
+
+  it("reports 0 affected when a stale confirm hits an already-cancelled booking", async () => {
+    const fake = createFakeSupabase({ bookings: { data: [], error: null } });
+    const res = await updateBookingStatusGuarded(fake as never, { bookingId: "b1", status: "confirmed", now: NOW });
+    expect(res).toEqual({ affected: 0 });
+  });
+});
+
+describe("respondToOffer", () => {
+  it("accept requires the offer to still be suggested and sets soft_booked", async () => {
+    const fake = createFakeSupabase({ bookings: { data: [{ id: "b1" }], error: null } });
+    const res = await respondToOffer(fake as never, { bookingId: "b1", accept: true, now: NOW });
+    expect(res).toEqual({ affected: 1 });
+    expect(fake.calls).toContainEqual({ table: "bookings", method: "eq", args: ["status", "suggested"] });
+    expect(fake.calls).toContainEqual({ table: "bookings", method: "update", args: [{ status: "soft_booked" }] });
+  });
+
+  it("decline stamps artist_declined", async () => {
+    const fake = createFakeSupabase({ bookings: { data: [{ id: "b1" }], error: null } });
+    const res = await respondToOffer(fake as never, { bookingId: "b1", accept: false, now: NOW });
+    expect(res).toEqual({ affected: 1 });
+    expect(fake.calls).toContainEqual({
+      table: "bookings",
+      method: "update",
+      args: [{ status: "cancelled", cancelled_at: NOW.toISOString(), cancellation_reason: "artist_declined" }],
+    });
+  });
+
+  it("reports 0 affected when the offer was withdrawn/expired (no longer suggested)", async () => {
+    const fake = createFakeSupabase({ bookings: { data: [], error: null } });
+    expect(await respondToOffer(fake as never, { bookingId: "b1", accept: true, now: NOW })).toEqual({ affected: 0 });
   });
 });

@@ -1,8 +1,9 @@
 import { describe, it, expect } from "vitest";
 import {
-  deriveBookingGroups, computeInheritedCastIds, bookingStatusUpdate,
+  deriveBookingGroups, computeInheritedCastIds,
   buildOfferTierOptions, offerResultToast, offerConfirmCopy,
   pendingOfferCount, closeConfirmCopy, closeResultToast,
+  bookingStatusBadgeClass,
 } from "./bookings";
 
 type B = { artist_id: string; status: string; is_understudy: boolean };
@@ -69,25 +70,6 @@ describe("computeInheritedCastIds", () => {
   });
   it("handles null eligibility", () => {
     expect(computeInheritedCastIds(null, new Set(["c1"])).size).toBe(0);
-  });
-});
-
-describe("bookingStatusUpdate", () => {
-  const now = new Date("2026-06-01T10:00:00.000Z");
-  it("stamps confirmed_at when confirming", () => {
-    expect(bookingStatusUpdate("confirmed", now)).toEqual({
-      status: "confirmed",
-      confirmed_at: now.toISOString(),
-    });
-  });
-  it("stamps cancelled_at when cancelling", () => {
-    expect(bookingStatusUpdate("cancelled", now)).toEqual({
-      status: "cancelled",
-      cancelled_at: now.toISOString(),
-    });
-  });
-  it("stamps no timestamp for soft_booked (characterizes current behavior — does NOT clear stale stamps)", () => {
-    expect(bookingStatusUpdate("soft_booked", now)).toEqual({ status: "soft_booked" });
   });
 });
 
@@ -187,5 +169,25 @@ describe("closeResultToast", () => {
   });
   it("reports a withdraw against an already-closed tier without claiming a fresh close", () => {
     expect(closeResultToast({ closed: false, withdrawn: 2 }, 1)).toEqual({ kind: "success", text: "Withdrew 2 offers from tier 1" });
+  });
+});
+
+describe("bookingStatusBadgeClass", () => {
+  it("maps each known status to its semantic-token classes", () => {
+    expect(bookingStatusBadgeClass("confirmed")).toBe("bg-success/10 text-success");
+    expect(bookingStatusBadgeClass("soft_booked")).toBe("bg-warning/10 text-warning");
+    expect(bookingStatusBadgeClass("suggested")).toBe("bg-info/10 text-info");
+    expect(bookingStatusBadgeClass("cancelled")).toBe("bg-destructive/10 text-destructive");
+  });
+  it("maps the synthetic artist-only `unanswered` status", () => {
+    expect(bookingStatusBadgeClass("unanswered")).toBe("bg-muted text-muted-foreground");
+  });
+  it("reconciled the prior drift: `suggested` is the info variant everywhere", () => {
+    // Previously `bg-muted text-muted-foreground` in BookingRow only.
+    expect(bookingStatusBadgeClass("suggested")).toBe("bg-info/10 text-info");
+  });
+  it("returns an empty string for an unknown status (badge falls back to its variant)", () => {
+    expect(bookingStatusBadgeClass("nonsense")).toBe("");
+    expect(bookingStatusBadgeClass("")).toBe("");
   });
 });

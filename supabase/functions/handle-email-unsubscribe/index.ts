@@ -1,5 +1,6 @@
 import { preflight, json } from "../_shared/http.ts";
 import { realDeps, type Deps } from "../_shared/deps.ts";
+import { redactEmail } from "../_shared/identity.ts";
 
 export async function handle(req: Request, deps: Deps): Promise<Response> {
   // Handle CORS preflight
@@ -90,7 +91,8 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
     .maybeSingle()
 
   if (updateError) {
-    console.error('Failed to mark token as used', { error: updateError, token })
+    // Never log the raw token — it's a live unsubscribe credential.
+    console.error('Failed to mark token as used', { error: updateError })
     return json({ error: 'Failed to process unsubscribe' }, 500)
   }
 
@@ -109,12 +111,12 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
   if (suppressError) {
     console.error('Failed to suppress email', {
       error: suppressError,
-      email: tokenRecord.email,
+      email_redacted: redactEmail(tokenRecord.email),
     })
     return json({ error: 'Failed to process unsubscribe' }, 500)
   }
 
-  console.log('Email unsubscribed', { email: tokenRecord.email })
+  console.log('Email unsubscribed', { email_redacted: redactEmail(tokenRecord.email) })
 
   return json({ success: true })
 }

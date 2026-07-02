@@ -1,6 +1,6 @@
 import { preflight, json } from "../_shared/http.ts";
 import { requireCronOrRole } from "../_shared/auth.ts";
-import { realDeps, type Deps } from "../_shared/deps.ts";
+import { emailWasSent, realDeps, type Deps } from "../_shared/deps.ts";
 import { getActiveOrgs, resolveOrgSetting, BOOKING_ENGINE_DEFAULTS } from "../_shared/settings.ts";
 import { resolveContactEmail, resolveAccountDisplayName } from "../_shared/identity.ts";
 import { coalesceChangeRows, describeDateChanges, type ChangeLogRow } from "../_shared/scheduleChanges.ts";
@@ -190,29 +190,40 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
         }
       }
     }
+    // In-app notifications are the RELIABLE delivery channel for schedule changes (the
+    // change-log's "send"). Track whether that delivery succeeded — the change-log stamp
+    // below gates on it (C4): if the insert fails, do NOT consume the change rows, so the
+    // next run retries them instead of silently dropping the notifications.
+    let inAppDelivered = true;
     if (notificationRows.length > 0) {
       const { error: notifErr } = await admin.from('notifications').insert(notificationRows);
-      if (notifErr) console.error('send-confirmation-digest: notification insert failed', { org: org.id, error: notifErr.message });
+      if (notifErr) {
+        inAppDelivered = false;
+        console.error('send-confirmation-digest: notification insert failed', { org: org.id, error: notifErr.message });
+      }
     }
 
     // Consume the change log NOW — right after in-app delivery (the reliable channel) and
     // BEFORE the best-effort email loop. The email loop makes N external calls and is the
     // likeliest place to time out; stamping first stops a same-hour retry from re-inserting
     // duplicate schedule_change notifications (email dedup is handled by idempotency_key).
-    // Net: change rows are consumed once notified in-app, independent of email success.
+    // Net: change rows are consumed once notified in-app — but ONLY when that in-app insert
+    // actually succeeded (C4). A failed insert leaves digested_at null so the rows retry.
     const consumedChangeIds = changeRows.map((r) => r.id);
-    if (consumedChangeIds.length > 0) {
+    if (consumedChangeIds.length > 0 && inAppDelivered) {
       const { error: digestStampErr } = await admin
         .from('show_date_change_log')
         .update({ digested_at: now.toISOString() })
         .in('id', consumedChangeIds);
       if (digestStampErr) console.error('send-confirmation-digest: change-log stamp failed', { org: org.id, error: digestStampErr.message });
+    } else if (consumedChangeIds.length > 0) {
+      console.warn('send-confirmation-digest: in-app delivery failed — NOT consuming change log (will retry)', { org: org.id, count: consumedChangeIds.length });
     }
 
     // One email per artist (confirmations + schedule changes folded). Best-effort.
     for (const [artistId, entry] of grouped) {
       try {
-        await deps.sendEmail({
+        const result = await deps.sendEmail({
           template_name: 'artist-confirmation-digest',
           recipient_email: entry.recipientEmail,
           org_id: org.id,
@@ -224,6 +235,18 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
           },
           idempotency_key: `confirmation-digest-${org.id}-${artistId}-${now.toISOString().slice(0, 13)}`,
         });
+        // Only stamp confirmation_digest_sent_at when the email ACTUALLY sent (C4). A failed
+        // send (Resend outage) or a legitimately-skipped one (suppressed / pref-disabled)
+        // returns success:false — leave the stamp null so the confirmation is retried next
+        // run instead of being marked "sent" for a mail the artist never received. (Schedule
+        // changes are still delivered in-app above, independent of this email.)
+        if (!emailWasSent(result)) {
+          console.warn('send-confirmation-digest: email not sent — not stamping confirmation', {
+            org: org.id, artistId, error: result.error ?? null,
+            reason: (result.data as { reason?: unknown } | null)?.reason ?? null,
+          });
+          continue;
+        }
         if (entry.bookingIds.length > 0) {
           const { error: stampErr } = await admin
             .from('bookings')

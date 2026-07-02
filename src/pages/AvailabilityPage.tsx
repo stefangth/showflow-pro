@@ -6,12 +6,14 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 import {
   format, startOfMonth, endOfMonth, eachDayOfInterval, isToday, addMonths, subMonths,
 } from 'date-fns';
 import { ChevronLeft, ChevronRight, Plus, Trash2 } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Skeleton } from '@/components/ui/skeleton';
 import { TimeframeFilter, type TimeframeValue } from '@/components/filters/TimeframeFilter';
 import { SortControl, type SortValue } from '@/components/filters/SortControl';
 import { ViewToggle, type ViewMode } from '@/components/filters/ViewToggle';
@@ -22,6 +24,7 @@ import { useMyArtist } from '@/hooks/useMyArtist';
 import { ArtistAvailabilityCalendar } from '@/components/availability/ArtistAvailabilityCalendar';
 import { AvailabilityPicker } from '@/components/availability/AvailabilityPicker';
 import { OfferResponseButtons } from '@/components/availability/OfferResponseButtons';
+import { bookingStatusBadgeClass } from '@/lib/bookings';
 import { formatDateDMY, parseDateOnly } from '@/lib/dates';
 import { showLabel } from '@/types';
 import { useColumnTemplate, useEditorConfig } from '@/features/editor/EditorContext';
@@ -34,13 +37,6 @@ const BOOKING_STATUS_LABEL: Record<string, string> = {
   soft_booked: 'Hold placed',
   suggested: 'Offer pending',
   unanswered: 'No offer yet',
-};
-
-const BOOKING_STATUS_STYLE: Record<string, string> = {
-  confirmed: 'bg-success/10 text-success',
-  soft_booked: 'bg-warning/10 text-warning',
-  suggested: 'bg-info/10 text-info',
-  unanswered: 'bg-muted text-muted-foreground',
 };
 
 export default function AvailabilityPage() {
@@ -81,15 +77,16 @@ function ArtistAvailability() {
   // key (not by `select`), so sharing one key let an id-less projection clobber
   // this slot — OfferResponseButtons then fired `update().eq('id', undefined)`.
   // Keep one key per projection.
-  const { data: myBookings } = useQuery({
+  const { data: myBookings, isError: bookingsError } = useQuery({
     queryKey: ['bookings', 'artist-offers', artist?.id],
     enabled: !!artist?.id,
     queryFn: async () => {
-      const { data } = await supabase
+      const { data, error } = await supabase
         .from('bookings')
         .select('id, show_date_id, status')
         .eq('artist_id', artist!.id)
         .neq('status', 'cancelled');
+      if (error) throw error;
       return (data ?? []) as { id: string; show_date_id: string; status: string }[];
     },
   });
@@ -115,7 +112,7 @@ function ArtistAvailability() {
 
   type BlockedDateRow = { id: string; date: string; reason: string | null };
 
-  const { data: blockedDates } = useQuery({
+  const { data: blockedDates, isError: blockedError } = useQuery({
     queryKey: ['blocked-dates', artist?.id],
     enabled: !!artist?.id,
     queryFn: async () => {
@@ -131,6 +128,28 @@ function ArtistAvailability() {
 
   const [newBlockDate, setNewBlockDate] = useState('');
   const [newBlockReason, setNewBlockReason] = useState('');
+
+  // Dates the artist may block: eligible dates (server-enforced by the
+  // blocked_dates trigger) that aren't already blocked and have no active
+  // booking. Keeps the picker in lockstep with the DB guard so a legitimate
+  // choice is never rejected and an ineligible one can't be submitted.
+  const blockedSet = useMemo(
+    () => new Set((blockedDates ?? []).map((b) => b.date)),
+    [blockedDates]
+  );
+  const blockableDates = useMemo(() => {
+    const seen = new Set<string>();
+    return (eligibleDates ?? [])
+      .filter((d) => {
+        if (blockedSet.has(d.date)) return false;
+        const booking = bookingMap.get(d.id);
+        if (booking && booking.status !== 'cancelled') return false;
+        if (seen.has(d.date)) return false;
+        seen.add(d.date);
+        return true;
+      })
+      .sort((a, b) => a.date.localeCompare(b.date));
+  }, [eligibleDates, blockedSet, bookingMap]);
 
   const addBlock = useMutation({
     mutationFn: async () => {
@@ -218,10 +237,17 @@ function ArtistAvailability() {
 
       <ColumnLayoutEditor pageKey="availability" />
 
-      {isLoading ? (
+      {bookingsError ? (
+        <Alert variant="destructive">
+          <AlertDescription>
+            Failed to load your offers. Please refresh — don't block dates until this loads,
+            as pending offers may not be shown.
+          </AlertDescription>
+        </Alert>
+      ) : isLoading ? (
         <div className="space-y-2">
           {[1, 2, 3, 4].map((i) => (
-            <div key={i} className="h-12 rounded bg-muted animate-pulse" />
+            <Skeleton key={i} className="h-12" />
           ))}
         </div>
       ) : view === 'list' ? (
@@ -273,7 +299,7 @@ function ArtistAvailability() {
                       );
                       case '_computed.my_status': return (
                         <TableCell key={colId}>
-                          <Badge variant="secondary" className={BOOKING_STATUS_STYLE[status] ?? ''}>
+                          <Badge variant="secondary" className={bookingStatusBadgeClass(status)}>
                             {BOOKING_STATUS_LABEL[status] ?? status}
                           </Badge>
                         </TableCell>
@@ -348,13 +374,27 @@ function ArtistAvailability() {
           >
             <div className="space-y-1">
               <Label className="text-xs">Date</Label>
-              <Input
-                type="date"
-                className="w-44"
+              {/* Eligible-only picker: mirrors the server-side blocked_dates
+                  guard so artists can't submit an ineligible date or one they're
+                  already booked on. */}
+              <select
+                aria-label="Block date"
+                className="flex h-10 w-44 rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
                 value={newBlockDate}
                 onChange={(e) => setNewBlockDate(e.target.value)}
+                disabled={blockableDates.length === 0}
                 required
-              />
+              >
+                <option value="" disabled>
+                  {blockableDates.length === 0 ? 'No eligible dates' : 'Select a date…'}
+                </option>
+                {blockableDates.map((d) => (
+                  <option key={d.id} value={d.date}>
+                    {formatDateDMY(d.date)}
+                    {d.venue ? ` — ${d.venue}` : ''}
+                  </option>
+                ))}
+              </select>
             </div>
             <div className="space-y-1 flex-1 min-w-32">
               <Label className="text-xs">Reason (optional)</Label>
@@ -373,12 +413,18 @@ function ArtistAvailability() {
             </Button>
           </form>
 
+          {blockedError && (
+            <Alert variant="destructive">
+              <AlertDescription>Failed to load your blocked dates.</AlertDescription>
+            </Alert>
+          )}
+
           {(blockedDates?.length ?? 0) > 0 && (
             <div className="space-y-1.5 pt-1">
               {blockedDates!.map((b) => (
                 <div key={b.id} className="flex items-center gap-3 text-sm p-2 rounded-md border border-border">
                   <span className="font-medium w-28 shrink-0">
-                    {new Date(b.date + 'T00:00:00').toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}
+                    {parseDateOnly(b.date).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}
                   </span>
                   <span className="flex-1 text-muted-foreground">{b.reason ?? '—'}</span>
                   <button
@@ -392,7 +438,7 @@ function ArtistAvailability() {
               ))}
             </div>
           )}
-          {(blockedDates?.length ?? 0) === 0 && (
+          {!blockedError && (blockedDates?.length ?? 0) === 0 && (
             <p className="text-sm text-muted-foreground pt-1">No blocked dates yet.</p>
           )}
         </CardContent>

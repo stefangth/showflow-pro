@@ -119,3 +119,102 @@ export async function fetchMyOpenOffersCount(
   if (error) throw error;
   return count ?? 0;
 }
+
+// ── Guarded status transitions (H3) ────────────────────────────────────────────
+// Producer/admin/artist status writes carry an explicit precondition on the CURRENT
+// status and report how many rows actually changed. A stale write (the row moved on
+// under the client — e.g. expire-offers cancelled a suggested offer, or a date
+// cancellation cascade cancelled a soft_booked hold) matches 0 rows, so the caller
+// can surface honest "this changed — refresh" feedback instead of a false success.
+// The DB trigger enforce_booking_transition (20260702120020) is the hard backstop;
+// these preconditions keep the UI honest and avoid no-op success toasts.
+
+type BookingStatus = Database["public"]["Enums"]["booking_status"];
+
+/**
+ * Confirm all soft_booked bookings among `ids` (producer bulk-confirm).
+ * Only rows still in `soft_booked` are affected. Returns the number of rows changed.
+ */
+export async function bulkConfirmSoftBooked(
+  client: SupabaseClient<Database>,
+  args: { ids: string[]; now: Date },
+): Promise<{ affected: number }> {
+  const { data, error } = await client
+    .from("bookings")
+    .update({ status: "confirmed", confirmed_at: args.now.toISOString() })
+    .in("id", args.ids)
+    .eq("status", "soft_booked")
+    .select("id");
+  if (error) throw error;
+  return { affected: (data ?? []).length };
+}
+
+/**
+ * Decline (cancel) all soft_booked bookings among `ids` (producer bulk-decline).
+ * Only rows still in `soft_booked` are affected. Returns the number of rows changed.
+ */
+export async function bulkDeclineSoftBooked(
+  client: SupabaseClient<Database>,
+  args: { ids: string[]; now: Date },
+): Promise<{ affected: number }> {
+  const { data, error } = await client
+    .from("bookings")
+    .update({
+      status: "cancelled",
+      cancelled_at: args.now.toISOString(),
+      cancellation_reason: "producer_declined",
+    })
+    .in("id", args.ids)
+    .eq("status", "soft_booked")
+    .select("id");
+  if (error) throw error;
+  return { affected: (data ?? []).length };
+}
+
+/**
+ * Transition a single booking to `confirmed` or `cancelled` with a status precondition:
+ *  - confirmed  requires the booking is currently soft_booked;
+ *  - cancelled  requires the booking is currently non-cancelled (any active state).
+ * Returns the number of rows changed (0 = the booking moved on under us).
+ */
+export async function updateBookingStatusGuarded(
+  client: SupabaseClient<Database>,
+  args: { bookingId: string; status: Extract<BookingStatus, "confirmed" | "cancelled">; now: Date },
+): Promise<{ affected: number }> {
+  const patch: Database["public"]["Tables"]["bookings"]["Update"] =
+    args.status === "confirmed"
+      ? { status: "confirmed", confirmed_at: args.now.toISOString() }
+      : { status: "cancelled", cancelled_at: args.now.toISOString() };
+
+  let q = client.from("bookings").update(patch).eq("id", args.bookingId);
+  q = args.status === "confirmed"
+    ? q.eq("status", "soft_booked") // only a soft_booked hold can be confirmed
+    : q.neq("status", "cancelled"); // any active booking can be cancelled; skip no-op re-cancel
+
+  const { data, error } = await q.select("id");
+  if (error) throw error;
+  return { affected: (data ?? []).length };
+}
+
+/**
+ * Artist response to a pending (suggested) offer. Accept → soft_booked,
+ * Decline → cancelled(artist_declined). Only affects a still-suggested offer, so a
+ * withdrawn/expired offer reports 0 rows changed instead of a false "accepted".
+ */
+export async function respondToOffer(
+  client: SupabaseClient<Database>,
+  args: { bookingId: string; accept: boolean; now: Date },
+): Promise<{ affected: number }> {
+  const patch: Database["public"]["Tables"]["bookings"]["Update"] = args.accept
+    ? { status: "soft_booked" }
+    : { status: "cancelled", cancelled_at: args.now.toISOString(), cancellation_reason: "artist_declined" };
+
+  const { data, error } = await client
+    .from("bookings")
+    .update(patch)
+    .eq("id", args.bookingId)
+    .eq("status", "suggested")
+    .select("id");
+  if (error) throw error;
+  return { affected: (data ?? []).length };
+}

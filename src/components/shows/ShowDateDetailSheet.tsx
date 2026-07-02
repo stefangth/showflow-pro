@@ -23,17 +23,19 @@ import { showLabel } from '@/types';
 import { useEligibleArtists } from '@/hooks/useEligibleArtists';
 import { showSlots } from '@/lib/settings';
 import {
-  deriveBookingGroups, computeInheritedCastIds, bookingStatusUpdate,
+  deriveBookingGroups, computeInheritedCastIds,
   buildOfferTierOptions, offerResultToast, offerConfirmCopy,
   pendingOfferCount, closeConfirmCopy, closeResultToast,
 } from '@/lib/bookings';
-import { formatDateDMY, formatTimestampDMY } from '@/lib/dates';
-import { openOfferTier, fetchOfferTiers, fetchOpenedTiers, closeOfferTier } from '@/data/bookings';
+import { formatDateDMY, formatTimestampDMY, parseDateOnly } from '@/lib/dates';
+import { openOfferTier, fetchOfferTiers, fetchOpenedTiers, closeOfferTier, updateBookingStatusGuarded } from '@/data/bookings';
 import { ChatPanel } from '@/components/chat/ChatPanel';
 import { ShowDateFormDialog } from '@/components/shows/ShowDateFormDialog';
+import { BookingRow } from '@/components/shows/BookingRow';
 import { useCancelShowDate, useDeleteShowDate } from '@/hooks/useShowDates';
+import { useAllCities } from '@/hooks/useAllCities';
 import { isSyncedDate, canHardDeleteDate } from '@/lib/catalog';
-import type { Booking, Artist, City, Cast } from '@/types';
+import type { Booking, Artist, Cast } from '@/types';
 
 interface Props {
   showDateId: string | null;
@@ -42,13 +44,6 @@ interface Props {
 }
 
 type BookingWithArtist = Booking & { artist: Pick<Artist, 'id' | 'name'> };
-
-const BOOKING_STATUS_STYLE: Record<string, string> = {
-  confirmed: 'bg-success/10 text-success',
-  soft_booked: 'bg-warning/10 text-warning',
-  suggested: 'bg-muted text-muted-foreground',
-  cancelled: 'bg-destructive/10 text-destructive',
-};
 
 export function ShowDateDetailSheet({ showDateId, open, onOpenChange }: Props) {
   const { hasRole, user, roles, currentOrg } = useAuth();
@@ -93,15 +88,7 @@ export function ShowDateDetailSheet({ showDateId, open, onOpenChange }: Props) {
     },
   });
 
-  const { data: cities } = useQuery({
-    queryKey: ['cities', currentOrg?.id],
-    enabled: canManage,
-    queryFn: async () => {
-      const { data, error } = await supabase.from('cities').select('*').order('name');
-      if (error) throw error;
-      return data as City[];
-    },
-  });
+  const { data: cities } = useAllCities(canManage);
 
   const { data: casts } = useQuery({
     queryKey: ['casts', currentOrg?.id],
@@ -258,14 +245,15 @@ export function ShowDateDetailSheet({ showDateId, open, onOpenChange }: Props) {
   });
 
   const updateBookingStatus = useMutation({
-    mutationFn: async ({ bookingId, status }: { bookingId: string; status: string }) => {
-      const updates = bookingStatusUpdate(status, new Date());
-      const { error } = await supabase.from('bookings').update(updates).eq('id', bookingId);
-      if (error) throw error;
-    },
-    onSuccess: () => {
+    mutationFn: ({ bookingId, status }: { bookingId: string; status: 'confirmed' | 'cancelled' }) =>
+      updateBookingStatusGuarded(supabase, { bookingId, status, now: new Date() }),
+    onSuccess: ({ affected }) => {
       queryClient.invalidateQueries({ queryKey: ['bookings'] });
-      toast.success('Booking updated');
+      if (affected === 0) {
+        toast.error('This booking changed — refresh and retry');
+      } else {
+        toast.success('Booking updated');
+      }
     },
     onError: (err: any) => toast.error(err.message),
   });
@@ -329,7 +317,7 @@ export function ShowDateDetailSheet({ showDateId, open, onOpenChange }: Props) {
               {/* Date info */}
               <div className="space-y-2">
                 <p className="font-display text-[26px] font-semibold tracking-tight">
-                  {format(new Date(showDate.date + 'T00:00:00'), 'EEEE, d MMMM yyyy')}
+                  {format(parseDateOnly(showDate.date), 'EEEE, d MMMM yyyy')}
                 </p>
                 <div className="flex flex-wrap gap-3 text-sm text-muted-foreground">
                   {(showDate.session_1 || showDate.session_2 || showDate.session_3) && (
@@ -695,35 +683,13 @@ export function ShowDateDetailSheet({ showDateId, open, onOpenChange }: Props) {
                         <div className="space-y-2">
                           <p className="text-xs text-muted-foreground uppercase tracking-wide">Main cast</p>
                           {mainBookings.map(b => (
-                            <div key={b.id} className="flex items-center justify-between p-3 rounded-lg border border-border">
-                              <div>
-                                <p className="font-medium text-sm">{b.artist?.name}</p>
-                                <Badge variant="secondary" className={`text-xs mt-1 ${BOOKING_STATUS_STYLE[b.status] ?? ''}`}>
-                                  {b.status.replace('_', ' ')}
-                                </Badge>
-                              </div>
-                              {canManage && (
-                                <div className="flex gap-2">
-                                  {b.status === 'soft_booked' && (
-                                    <Button
-                                      size="sm"
-                                      variant="outline"
-                                      onClick={() => updateBookingStatus.mutate({ bookingId: b.id, status: 'confirmed' })}
-                                    >
-                                      Confirm
-                                    </Button>
-                                  )}
-                                  <Button
-                                    size="sm"
-                                    variant="ghost"
-                                    className="text-destructive"
-                                    onClick={() => updateBookingStatus.mutate({ bookingId: b.id, status: 'cancelled' })}
-                                  >
-                                    Cancel
-                                  </Button>
-                                </div>
-                              )}
-                            </div>
+                            <BookingRow
+                              key={b.id}
+                              booking={b}
+                              canManage={canManage}
+                              onConfirm={(bookingId) => updateBookingStatus.mutate({ bookingId, status: 'confirmed' })}
+                              onCancel={(bookingId) => updateBookingStatus.mutate({ bookingId, status: 'cancelled' })}
+                            />
                           ))}
                         </div>
                       )}
@@ -731,35 +697,13 @@ export function ShowDateDetailSheet({ showDateId, open, onOpenChange }: Props) {
                         <div className="space-y-2">
                           <p className="text-xs text-muted-foreground uppercase tracking-wide">Understudies</p>
                           {understudyBookings.map(b => (
-                            <div key={b.id} className="flex items-center justify-between p-3 rounded-lg border border-border">
-                              <div>
-                                <p className="font-medium text-sm">{b.artist?.name}</p>
-                                <Badge variant="secondary" className={`text-xs mt-1 ${BOOKING_STATUS_STYLE[b.status] ?? ''}`}>
-                                  {b.status.replace('_', ' ')}
-                                </Badge>
-                              </div>
-                              {canManage && (
-                                <div className="flex gap-2">
-                                  {b.status === 'soft_booked' && (
-                                    <Button
-                                      size="sm"
-                                      variant="outline"
-                                      onClick={() => updateBookingStatus.mutate({ bookingId: b.id, status: 'confirmed' })}
-                                    >
-                                      Confirm
-                                    </Button>
-                                  )}
-                                  <Button
-                                    size="sm"
-                                    variant="ghost"
-                                    className="text-destructive"
-                                    onClick={() => updateBookingStatus.mutate({ bookingId: b.id, status: 'cancelled' })}
-                                  >
-                                    Cancel
-                                  </Button>
-                                </div>
-                              )}
-                            </div>
+                            <BookingRow
+                              key={b.id}
+                              booking={b}
+                              canManage={canManage}
+                              onConfirm={(bookingId) => updateBookingStatus.mutate({ bookingId, status: 'confirmed' })}
+                              onCancel={(bookingId) => updateBookingStatus.mutate({ bookingId, status: 'cancelled' })}
+                            />
                           ))}
                         </div>
                       )}

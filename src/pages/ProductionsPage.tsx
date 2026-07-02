@@ -1,8 +1,8 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Reorder } from "framer-motion";
 import { useAuth } from "@/features/auth/AuthContext";
 import { useShows, useArchiveShow, useDeleteShow, useReorderShows, type ShowWithStats } from "@/hooks/useShows";
-import { isSyncedShow, canHardDeleteShow } from "@/lib/catalog";
+import { isSyncedShow, canHardDeleteShow, reconcileDragOrder } from "@/lib/catalog";
 import { showSlots } from "@/lib/settings";
 import { formatDateDMY } from "@/lib/dates";
 import { showLabel } from "@/types";
@@ -68,11 +68,22 @@ export default function ProductionsPage() {
     return list.filter((s) => s.status === statusFilter);
   }, [shows, statusFilter]);
 
-  useEffect(() => { setOrder(filtered); }, [filtered]);
+  // Reconcile the local drag order with server/filter data WITHOUT clobbering an
+  // in-progress reorder. reconcileDragOrder keeps the local order only while a drag is
+  // active (isDragging); once settled it adopts server order on a same-id-set change so a
+  // DIFFERENT client's committed reorder syncs in. A membership change always adopts server data.
+  const draggingRef = useRef(false);
+  useEffect(() => {
+    setOrder((prev) => reconcileDragOrder(prev, filtered, draggingRef.current));
+  }, [filtered]);
 
   const openCreate = () => { setEditing(null); setFormOpen(true); };
   const openEdit = (s: ShowWithStats) => { setEditing(s); setFormOpen(true); };
-  const persistOrder = () => reorder.mutate(order.map((s) => s.id));
+  const onDragStart = () => { draggingRef.current = true; };
+  const persistOrder = () => {
+    draggingRef.current = false;
+    reorder.mutate(order.map((s) => s.id));
+  };
 
   const onDelete = (s: ShowWithStats) =>
     del.mutate(s.id, { onSuccess: () => toast.success("Production deleted"), onError: (e) => toast.error((e as Error).message) });
@@ -199,7 +210,7 @@ export default function ProductionsPage() {
           {reorderable ? (
             <Reorder.Group axis="y" values={order} onReorder={setOrder}>
               {order.map((s) => (
-                <Reorder.Item key={s.id} value={s} onDragEnd={persistOrder}>
+                <Reorder.Item key={s.id} value={s} onDragStart={onDragStart} onDragEnd={persistOrder}>
                   {renderRow(s, true)}
                 </Reorder.Item>
               ))}

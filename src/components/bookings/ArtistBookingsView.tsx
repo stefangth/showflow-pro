@@ -3,6 +3,8 @@ import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Skeleton } from '@/components/ui/skeleton';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { TimeframeFilter, type TimeframeValue } from '@/components/filters/TimeframeFilter';
 import { SortControl, type SortValue } from '@/components/filters/SortControl';
@@ -13,6 +15,7 @@ import { ShowDateDetailSheet } from '@/components/shows/ShowDateDetailSheet';
 import { useArtistEligibleDates, type EligibleDate } from '@/hooks/useArtistEligibleDates';
 import { fetchMyCancelledDateBookings, mergeArtistCancelledDates, type CancelledDateEntry } from '@/data/artists';
 import { useMyArtist } from '@/hooks/useMyArtist';
+import { bookingStatusBadgeClass } from '@/lib/bookings';
 import { formatDateDMY, parseDateOnly } from '@/lib/dates';
 import { showLabel } from '@/types';
 import { useColumnTemplate, useEditorConfig } from '@/features/editor/EditorContext';
@@ -37,14 +40,6 @@ const STATUS_LABEL: Record<string, string> = {
   cancelled: 'Cancelled',
 };
 
-const STATUS_STYLE: Record<string, string> = {
-  confirmed: 'bg-success/10 text-success',
-  soft_booked: 'bg-warning/10 text-warning',
-  suggested: 'bg-info/10 text-info',
-  unanswered: 'bg-muted text-muted-foreground',
-  cancelled: 'bg-destructive/10 text-destructive',
-};
-
 /**
  * Artist-scoped Bookings view: same list/calendar UI, filtered to eligible dates.
  */
@@ -62,15 +57,16 @@ export function ArtistBookingsView() {
   // Distinct cache key per projection (this selects `is_understudy`, not `id`).
   // A shared key let different `select` shapes clobber each other in the React
   // Query cache — see the note in AvailabilityPage.
-  const { data: myBookings } = useQuery({
+  const { data: myBookings, isError: bookingsError } = useQuery({
     queryKey: ['bookings', 'artist-bookings-view', artist?.id],
     enabled: !!artist?.id,
     queryFn: async () => {
-      const { data } = await supabase
+      const { data, error } = await supabase
         .from('bookings')
         .select('show_date_id, status, is_understudy')
         .eq('artist_id', artist!.id)
         .neq('status', 'cancelled');
+      if (error) throw error;
       return (data ?? []) as BookingLite[];
     },
   });
@@ -133,10 +129,14 @@ export function ArtistBookingsView() {
 
       <ColumnLayoutEditor pageKey="bookings-artist" />
 
-      {isLoading ? (
+      {bookingsError ? (
+        <Alert variant="destructive">
+          <AlertDescription>Failed to load your bookings. Please refresh.</AlertDescription>
+        </Alert>
+      ) : isLoading ? (
         <div className="space-y-2">
           {[1, 2, 3, 4].map((i) => (
-            <div key={i} className="h-12 rounded bg-muted animate-pulse" />
+            <Skeleton key={i} className="h-12" />
           ))}
         </div>
       ) : view === 'list' ? (
@@ -193,7 +193,7 @@ export function ArtistBookingsView() {
                       );
                       case '_computed.my_status': return (
                         <TableCell key={colId}>
-                          <Badge variant="secondary" className={STATUS_STYLE[status] ?? ''}>
+                          <Badge variant="secondary" className={bookingStatusBadgeClass(status)}>
                             {STATUS_LABEL[status] ?? status}
                           </Badge>
                           {cancelled && d.cancellation_reason && (
@@ -252,7 +252,7 @@ export function ArtistBookingsView() {
                       <p className="text-xs text-destructive truncate">{d.cancellation_reason}</p>
                     )}
                   </div>
-                  <Badge variant="secondary" className={STATUS_STYLE[status] ?? ''}>
+                  <Badge variant="secondary" className={bookingStatusBadgeClass(status)}>
                     {STATUS_LABEL[status] ?? status}
                   </Badge>
                 </CardContent>

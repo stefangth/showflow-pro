@@ -84,6 +84,38 @@ Deno.test("folds confirmations + schedule changes into one email per artist", as
   assertEquals(stamped, true);
 });
 
+Deno.test("C4: in-app notification insert fails → change log is NOT consumed (retried next run)", async () => {
+  // The in-app notification is the reliable delivery channel for schedule changes. If its
+  // insert fails, the change-log rows must NOT be stamped digested — otherwise the changes
+  // are silently dropped. Seed the notifications table with an error to fail the insert.
+  const { deps, calls } = makeFakeDeps({
+    now: NOW,
+    tables: {
+      app_settings: [{ when: { key: "cron_secret" }, data: { value: "secret123" } }],
+      organizations: { data: [{ id: ORG }], error: null },
+      bookings: [
+        { when: { status: "confirmed" }, data: [] },
+        { data: [
+          { id: "bk-B", artist_id: "art-B", show_date_id: "sd-cancel", status: "cancelled", cancellation_reason: "date_cancelled",
+            artists: { id: "art-B", name: "Ben", email: "ben@ex.com", user_id: B_USER } },
+        ] },
+      ],
+      show_date_change_log: { data: [
+        { id: "cl-2", show_date_id: "sd-cancel", change_type: "cancelled", session_slot: null, old_value: null, new_value: null, created_at: "2026-06-01T11:00:00Z",
+          show_dates: { date: "2026-06-15", status: "cancelled", cancellation_reason: null, shows: { program: "Magic", sub_program: null }, cities: { name: "Hamburg" } } },
+      ], error: null },
+      // Notification insert fails.
+      notifications: { data: null, error: { message: "notifications insert failed" } },
+    },
+    rpcs: { resolve_user_contacts: { data: [{ user_id: B_USER, email: "ben@login.com", display_name: "Ben L" }], error: null } },
+  });
+  const res = await handle(cronReq(), deps);
+  assertEquals(res.status, 200);
+  // Change-log rows must NOT be stamped because in-app delivery failed.
+  const stamped = calls.some((c) => c.table === "show_date_change_log" && c.method === "update");
+  assertEquals(stamped, false, "change log must not be consumed when in-app delivery failed");
+});
+
 Deno.test("an org with only schedule changes (no confirmations) is still processed", async () => {
   const { deps, invokeCalls } = makeFakeDeps({
     now: NOW,

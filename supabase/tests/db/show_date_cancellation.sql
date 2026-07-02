@@ -20,7 +20,7 @@ BEGIN;
 
 CREATE EXTENSION IF NOT EXISTS pgtap WITH SCHEMA extensions;
 
-SELECT plan(11);
+SELECT plan(12);
 
 -- ────────────────────────────────────────────────────────────────────────────
 -- Shared fixtures (as postgres superuser).
@@ -112,11 +112,17 @@ SELECT is(
   'cancelled',
   'show_date status is cancelled after cascade');
 
--- 8. A subsequent booking write does not un-cancel the date
---    (compute_show_date_status short-circuits on a cancelled date). Re-confirming
---    one of the released bookings must leave the date cancelled.
-UPDATE public.bookings SET status = 'confirmed'
-WHERE id = 'eeeeeeee-0c00-0001-0000-000000000000';
+-- 8. A released (cancelled) booking cannot be re-confirmed: the
+--    enforce_booking_transition guard independently rejects cancelled → confirmed
+--    (SQLSTATE 23514) before compute_show_date_status ever runs, so the date
+--    stays cancelled. (Even setting that aside, compute_show_date_status
+--    short-circuits on a cancelled date.)
+SELECT throws_ok(
+  $$UPDATE public.bookings SET status = 'confirmed'
+    WHERE id = 'eeeeeeee-0c00-0001-0000-000000000000'$$,
+  '23514',
+  null,
+  're-confirming a released booking is rejected by the transition guard');
 
 SELECT is(
   (SELECT status::text FROM public.show_dates WHERE id = 'dddddddd-0c00-0001-0000-000000000000'),

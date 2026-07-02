@@ -34,3 +34,17 @@ export function resolveAccountDisplayName(opts: {
 }): string {
   return opts.displayName?.trim() || opts.artistName?.trim() || "";
 }
+
+/**
+ * Redact an email for logging so we never write full recipient PII to logs.
+ * Keeps the first character of the local part and the full domain
+ * (e.g. `alice@example.com` -> `a***@example.com`), matching the inline
+ * redaction handle-email-suppression already uses. Non-email / malformed
+ * input degrades to a fully-masked placeholder rather than leaking the raw value.
+ */
+export function redactEmail(email: string | null | undefined): string {
+  if (!email) return "(none)";
+  const at = email.indexOf("@");
+  if (at <= 0) return "***";
+  return `${email[0]}***@${email.slice(at + 1)}`;
+}

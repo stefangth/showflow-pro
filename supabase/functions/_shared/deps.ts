@@ -13,6 +13,24 @@ export interface InvokeResult {
   error: unknown;
 }
 
+/**
+ * Did a `deps.sendEmail(...)` call actually deliver an email?
+ *
+ * `sendEmail`/`invokeFunction` never throw — they return `{ data, error }`. And
+ * `send-transactional-email` returns HTTP 200 `{ success: false, reason }` for a
+ * legitimately-skipped send (suppressed address / preference-disabled / already-used
+ * token), reserving a thrown/`error`-populated result for hard failures (missing config,
+ * Resend outage). So a real delivery is ONLY `error == null && data.success === true`.
+ *
+ * Callers use this to avoid side effects (stamping digest_sent_at / starting the expiry
+ * clock) on a failed OR skipped send. See C4 in the code-review fixes.
+ */
+export function emailWasSent(result: InvokeResult): boolean {
+  if (result.error != null) return false;
+  const data = result.data as { success?: unknown } | null | undefined;
+  return !!data && data.success === true;
+}
+
 /** Everything a handler touches that is environment- or time-dependent. Injected so tests can fake it. */
 export interface Deps {
   admin: SupabaseClient;
