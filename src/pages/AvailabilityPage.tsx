@@ -134,6 +134,28 @@ function ArtistAvailability() {
   const [newBlockDate, setNewBlockDate] = useState('');
   const [newBlockReason, setNewBlockReason] = useState('');
 
+  // Dates the artist may block: eligible dates (server-enforced by the
+  // blocked_dates trigger) that aren't already blocked and have no active
+  // booking. Keeps the picker in lockstep with the DB guard so a legitimate
+  // choice is never rejected and an ineligible one can't be submitted.
+  const blockedSet = useMemo(
+    () => new Set((blockedDates ?? []).map((b) => b.date)),
+    [blockedDates]
+  );
+  const blockableDates = useMemo(() => {
+    const seen = new Set<string>();
+    return (eligibleDates ?? [])
+      .filter((d) => {
+        if (blockedSet.has(d.date)) return false;
+        const booking = bookingMap.get(d.id);
+        if (booking && booking.status !== 'cancelled') return false;
+        if (seen.has(d.date)) return false;
+        seen.add(d.date);
+        return true;
+      })
+      .sort((a, b) => a.date.localeCompare(b.date));
+  }, [eligibleDates, blockedSet, bookingMap]);
+
   const addBlock = useMutation({
     mutationFn: async () => {
       if (!currentOrg) throw new Error('No active organization');
@@ -357,13 +379,26 @@ function ArtistAvailability() {
           >
             <div className="space-y-1">
               <Label className="text-xs">Date</Label>
-              <Input
-                type="date"
-                className="w-44"
+              {/* Eligible-only picker: mirrors the server-side blocked_dates
+                  guard so artists can't submit an ineligible date or one they're
+                  already booked on. */}
+              <select
+                className="flex h-10 w-44 rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
                 value={newBlockDate}
                 onChange={(e) => setNewBlockDate(e.target.value)}
+                disabled={blockableDates.length === 0}
                 required
-              />
+              >
+                <option value="" disabled>
+                  {blockableDates.length === 0 ? 'No eligible dates' : 'Select a date…'}
+                </option>
+                {blockableDates.map((d) => (
+                  <option key={d.id} value={d.date}>
+                    {formatDateDMY(d.date)}
+                    {d.venue ? ` — ${d.venue}` : ''}
+                  </option>
+                ))}
+              </select>
             </div>
             <div className="space-y-1 flex-1 min-w-32">
               <Label className="text-xs">Reason (optional)</Label>
