@@ -7,6 +7,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { CHAT_ARCHIVE_DAYS } from '@/config/app.config';
 import { differenceInCalendarDays, format } from 'date-fns';
 import { MessageSquare } from 'lucide-react';
+import { parseDateOnly } from '@/lib/dates';
 import { showLabel } from '@/types';
 import { ShowDateDetailSheet } from '@/components/shows/ShowDateDetailSheet';
 
@@ -38,7 +39,7 @@ export default function ChatsListPage() {
     return (chats ?? []).filter(c => {
       const d = c.show_date?.date;
       if (!d) return false;
-      return differenceInCalendarDays(today, new Date(d + 'T00:00:00')) <= CHAT_ARCHIVE_DAYS;
+      return differenceInCalendarDays(today, parseDateOnly(d)) <= CHAT_ARCHIVE_DAYS;
     });
   }, [chats]);
 
@@ -72,7 +73,7 @@ export default function ChatsListPage() {
                   <div>
                     <p className="font-medium">{showLabel(c.show_date?.show ?? { program: null, sub_program: null })}</p>
                     <p className="text-sm text-muted-foreground">
-                      {c.show_date?.date && format(new Date(c.show_date.date + 'T00:00:00'), 'EEEE, MMM d, yyyy')}
+                      {c.show_date?.date && format(parseDateOnly(c.show_date.date), 'EEEE, MMM d, yyyy')}
                     </p>
                   </div>
                   <Badge variant="secondary">Open</Badge>

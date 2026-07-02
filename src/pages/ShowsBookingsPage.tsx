@@ -23,6 +23,7 @@ import { ShowDateFormDialog } from '@/components/shows/ShowDateFormDialog';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { showSlots } from '@/lib/settings';
+import { parseDateOnly } from '@/lib/dates';
 import { showLabel } from '@/types';
 import { useColumnTemplate, useEditorConfig } from '@/features/editor/EditorContext';
 import { useColumnHeaders } from '@/features/editor/useColumnHeaders';
@@ -220,7 +221,7 @@ function ProducerShowsBookings() {
       return matchSearch && matchProgram;
     });
     if (timeframe.from || timeframe.to) {
-      list = list.filter(sd => inTimeframe(new Date(sd.date + 'T00:00:00'), timeframe));
+      list = list.filter(sd => inTimeframe(parseDateOnly(sd.date), timeframe));
     }
     if (statusFilter !== 'all') {
       list = list.filter(sd => displayStatus(sd) === statusFilter);
@@ -239,13 +240,13 @@ function ProducerShowsBookings() {
     }
     return applySort(list, sort as SortValue,
       sd => sd.show?.program ?? '',
-      sd => new Date(sd.date + 'T00:00:00')
+      sd => parseDateOnly(sd.date)
     );
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [showDates, search, programs, timeframe, statusFilter, sort, customFilters, filterableDefs, customDefs]);
 
   const calendarItems = useMemo(() =>
-    filtered.map(sd => ({ showDate: sd, date: new Date(sd.date + 'T00:00:00') })),
+    filtered.map(sd => ({ showDate: sd, date: parseDateOnly(sd.date) })),
     [filtered]
   );
 
@@ -258,7 +259,7 @@ function ProducerShowsBookings() {
 
   const dayAbbr = (dateStr: string) => {
     const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
-    return days[new Date(dateStr + 'T00:00:00').getDay()];
+    return days[parseDateOnly(dateStr).getDay()];
   };
 
   return (
@@ -334,7 +335,7 @@ function ProducerShowsBookings() {
                     switch (colId) {
                       case 'show_dates.date': return (
                         <TableCell key={colId} className="font-medium whitespace-nowrap">
-                          {format(new Date(sd.date + 'T00:00:00'), 'dd MMM yyyy')}
+                          {format(parseDateOnly(sd.date), 'dd MMM yyyy')}
                         </TableCell>
                       );
                       case '_computed.day': return (

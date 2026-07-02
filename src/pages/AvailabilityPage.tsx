@@ -24,6 +24,7 @@ import { useMyArtist } from '@/hooks/useMyArtist';
 import { ArtistAvailabilityCalendar } from '@/components/availability/ArtistAvailabilityCalendar';
 import { AvailabilityPicker } from '@/components/availability/AvailabilityPicker';
 import { OfferResponseButtons } from '@/components/availability/OfferResponseButtons';
+import { bookingStatusBadgeClass } from '@/lib/bookings';
 import { formatDateDMY, parseDateOnly } from '@/lib/dates';
 import { showLabel } from '@/types';
 import { useColumnTemplate, useEditorConfig } from '@/features/editor/EditorContext';
@@ -36,13 +37,6 @@ const BOOKING_STATUS_LABEL: Record<string, string> = {
   soft_booked: 'Hold placed',
   suggested: 'Offer pending',
   unanswered: 'No offer yet',
-};
-
-const BOOKING_STATUS_STYLE: Record<string, string> = {
-  confirmed: 'bg-success/10 text-success',
-  soft_booked: 'bg-warning/10 text-warning',
-  suggested: 'bg-info/10 text-info',
-  unanswered: 'bg-muted text-muted-foreground',
 };
 
 export default function AvailabilityPage() {
@@ -305,7 +299,7 @@ function ArtistAvailability() {
                       );
                       case '_computed.my_status': return (
                         <TableCell key={colId}>
-                          <Badge variant="secondary" className={BOOKING_STATUS_STYLE[status] ?? ''}>
+                          <Badge variant="secondary" className={bookingStatusBadgeClass(status)}>
                             {BOOKING_STATUS_LABEL[status] ?? status}
                           </Badge>
                         </TableCell>
@@ -429,7 +423,7 @@ function ArtistAvailability() {
               {blockedDates!.map((b) => (
                 <div key={b.id} className="flex items-center gap-3 text-sm p-2 rounded-md border border-border">
                   <span className="font-medium w-28 shrink-0">
-                    {new Date(b.date + 'T00:00:00').toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}
+                    {parseDateOnly(b.date).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}
                   </span>
                   <span className="flex-1 text-muted-foreground">{b.reason ?? '—'}</span>
                   <button

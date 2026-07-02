@@ -3,6 +3,7 @@ import {
   deriveBookingGroups, computeInheritedCastIds, bookingStatusUpdate,
   buildOfferTierOptions, offerResultToast, offerConfirmCopy,
   pendingOfferCount, closeConfirmCopy, closeResultToast,
+  bookingStatusBadgeClass,
 } from "./bookings";
 
 type B = { artist_id: string; status: string; is_understudy: boolean };
@@ -187,5 +188,25 @@ describe("closeResultToast", () => {
   });
   it("reports a withdraw against an already-closed tier without claiming a fresh close", () => {
     expect(closeResultToast({ closed: false, withdrawn: 2 }, 1)).toEqual({ kind: "success", text: "Withdrew 2 offers from tier 1" });
+  });
+});
+
+describe("bookingStatusBadgeClass", () => {
+  it("maps each known status to its semantic-token classes", () => {
+    expect(bookingStatusBadgeClass("confirmed")).toBe("bg-success/10 text-success");
+    expect(bookingStatusBadgeClass("soft_booked")).toBe("bg-warning/10 text-warning");
+    expect(bookingStatusBadgeClass("suggested")).toBe("bg-info/10 text-info");
+    expect(bookingStatusBadgeClass("cancelled")).toBe("bg-destructive/10 text-destructive");
+  });
+  it("maps the synthetic artist-only `unanswered` status", () => {
+    expect(bookingStatusBadgeClass("unanswered")).toBe("bg-muted text-muted-foreground");
+  });
+  it("reconciled the prior drift: `suggested` is the info variant everywhere", () => {
+    // Previously `bg-muted text-muted-foreground` in BookingRow only.
+    expect(bookingStatusBadgeClass("suggested")).toBe("bg-info/10 text-info");
+  });
+  it("returns an empty string for an unknown status (badge falls back to its variant)", () => {
+    expect(bookingStatusBadgeClass("nonsense")).toBe("");
+    expect(bookingStatusBadgeClass("")).toBe("");
   });
 });

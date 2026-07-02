@@ -5,6 +5,31 @@
 
 import type { Database } from "@/integrations/supabase/types";
 
+// ── Booking-status badge styling (single source of truth) ──────────────────────
+// Previously duplicated across BookingRow, ArtistBookingsView, and AvailabilityPage
+// and DRIFTED: `suggested` was `bg-muted text-muted-foreground` in the producer
+// BookingRow but `bg-info/10 text-info` in the two artist surfaces. Reconciled to
+// the artist-surface variant (`bg-info/10 text-info`, the 2-of-3 majority) so a
+// pending offer reads as an info state everywhere. `unanswered` is a synthetic,
+// artist-only status (no active booking yet) — harmless where booking rows never
+// carry it. Labels stay per-surface (they differ intentionally, e.g. "Hold placed"
+// vs "Soft booked"); only the class map is centralized here.
+const BOOKING_STATUS_BADGE_CLASS: Record<string, string> = {
+  confirmed: "bg-success/10 text-success",
+  soft_booked: "bg-warning/10 text-warning",
+  suggested: "bg-info/10 text-info",
+  unanswered: "bg-muted text-muted-foreground",
+  cancelled: "bg-destructive/10 text-destructive",
+};
+
+/**
+ * Semantic-token badge classes for a booking status (or the synthetic `unanswered`
+ * artist status). Unknown statuses return "" so the Badge falls back to its variant.
+ */
+export function bookingStatusBadgeClass(status: string): string {
+  return BOOKING_STATUS_BADGE_CLASS[status] ?? "";
+}
+
 export interface BookingLike {
   artist_id: string;
   status: string;

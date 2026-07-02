@@ -11,6 +11,7 @@ import { Users, Activity, Database } from 'lucide-react';
 import { useSearchParams } from 'react-router-dom';
 import { InvitesTab } from '@/components/admin/InvitesTab';
 import { MembersTab } from '@/components/admin/MembersTab';
+import { fetchAdminAuditLogs, fetchAdminSyncLogs, fetchAdminStats } from '@/data/admin';
 
 /** Row caps for the admin activity panels. */
 const AUDIT_LOG_LIMIT = 50;
@@ -24,40 +25,17 @@ export default function AdminPage() {
 
   const { data: auditLogs, isError: auditError } = useQuery({
     queryKey: ['admin-audit'],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from('booking_audit_log')
-        .select('*, booking:bookings(artist:artists(name))')
-        .order('created_at', { ascending: false })
-        .limit(AUDIT_LOG_LIMIT);
-      if (error) throw error;
-      return data ?? [];
-    },
+    queryFn: () => fetchAdminAuditLogs(supabase, AUDIT_LOG_LIMIT),
   });
 
   const { data: syncLogs, isError: syncError } = useQuery({
     queryKey: ['admin-sync'],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from('airtable_sync_log')
-        .select('*')
-        .order('synced_at', { ascending: false })
-        .limit(SYNC_LOG_LIMIT);
-      if (error) throw error;
-      return data ?? [];
-    },
+    queryFn: () => fetchAdminSyncLogs(supabase, SYNC_LOG_LIMIT),
   });
 
   const { data: stats } = useQuery({
     queryKey: ['admin-stats'],
-    queryFn: async () => {
-      const [shows, artists, bookings] = await Promise.all([
-        supabase.from('shows').select('*', { count: 'exact', head: true }),
-        supabase.from('artists').select('*', { count: 'exact', head: true }),
-        supabase.from('bookings').select('*', { count: 'exact', head: true }),
-      ]);
-      return { shows: shows.count ?? 0, artists: artists.count ?? 0, bookings: bookings.count ?? 0 };
-    },
+    queryFn: () => fetchAdminStats(supabase),
   });
 
   const handleTabChange = (v: string) => {

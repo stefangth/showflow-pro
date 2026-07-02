@@ -24,6 +24,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Skeleton } from '@/components/ui/skeleton';
 import { usePendingInvitedArtists } from '@/hooks/usePendingInvitedArtists';
 import { artistAccountState } from '@/lib/artistAccount';
+import { parseDateOnly } from '@/lib/dates';
 import { AccountStatusChip } from '@/components/artists/AccountStatusChip';
 import { ArtistImportDialog } from '@/components/artists/ArtistImportDialog';
 import { inviteArtistToApp } from '@/data/invitations';
@@ -184,7 +185,7 @@ export default function ArtistsPage() {
   const nextBookingDate = (artistId: string): Date | null => {
     const today = new Date(); today.setHours(0, 0, 0, 0);
     const dates = (bookingsByArtist.get(artistId) ?? [])
-      .map(b => b.show_date?.date ? new Date(b.show_date.date + 'T00:00:00') : null)
+      .map(b => b.show_date?.date ? parseDateOnly(b.show_date.date) : null)
       .filter((d): d is Date => d !== null && d >= today)
       .sort((a, b) => a.getTime() - b.getTime());
     return dates[0] ?? null;
@@ -209,7 +210,7 @@ export default function ArtistsPage() {
     }
     if (timeframe.from || timeframe.to) {
       list = list.filter(a => (bookingsByArtist.get(a.id) ?? []).some(b =>
-        inTimeframe(b.show_date?.date ? new Date(b.show_date.date + 'T00:00:00') : null, timeframe)
+        inTimeframe(b.show_date?.date ? parseDateOnly(b.show_date.date) : null, timeframe)
       ));
     }
     return applySort(list, sort, a => a.name, a => nextBookingDate(a.id));
