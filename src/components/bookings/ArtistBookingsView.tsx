@@ -15,6 +15,7 @@ import { ShowDateDetailSheet } from '@/components/shows/ShowDateDetailSheet';
 import { useArtistEligibleDates, type EligibleDate } from '@/hooks/useArtistEligibleDates';
 import { fetchMyCancelledDateBookings, mergeArtistCancelledDates, type CancelledDateEntry } from '@/data/artists';
 import { useMyArtist } from '@/hooks/useMyArtist';
+import { bookingStatusBadgeClass } from '@/lib/bookings';
 import { formatDateDMY, parseDateOnly } from '@/lib/dates';
 import { showLabel } from '@/types';
 import { useColumnTemplate, useEditorConfig } from '@/features/editor/EditorContext';
@@ -37,14 +38,6 @@ const STATUS_LABEL: Record<string, string> = {
   suggested: 'Offer pending',
   unanswered: 'No offer yet',
   cancelled: 'Cancelled',
-};
-
-const STATUS_STYLE: Record<string, string> = {
-  confirmed: 'bg-success/10 text-success',
-  soft_booked: 'bg-warning/10 text-warning',
-  suggested: 'bg-info/10 text-info',
-  unanswered: 'bg-muted text-muted-foreground',
-  cancelled: 'bg-destructive/10 text-destructive',
 };
 
 /**
@@ -200,7 +193,7 @@ export function ArtistBookingsView() {
                       );
                       case '_computed.my_status': return (
                         <TableCell key={colId}>
-                          <Badge variant="secondary" className={STATUS_STYLE[status] ?? ''}>
+                          <Badge variant="secondary" className={bookingStatusBadgeClass(status)}>
                             {STATUS_LABEL[status] ?? status}
                           </Badge>
                           {cancelled && d.cancellation_reason && (
@@ -259,7 +252,7 @@ export function ArtistBookingsView() {
                       <p className="text-xs text-destructive truncate">{d.cancellation_reason}</p>
                     )}
                   </div>
-                  <Badge variant="secondary" className={STATUS_STYLE[status] ?? ''}>
+                  <Badge variant="secondary" className={bookingStatusBadgeClass(status)}>
                     {STATUS_LABEL[status] ?? status}
                   </Badge>
                 </CardContent>

@@ -11,6 +11,7 @@ import { MessageBubble } from './MessageBubble';
 import { useChatParticipant } from '@/hooks/useChatParticipant';
 import { CHAT_ARCHIVE_DAYS } from '@/config/app.config';
 import { differenceInCalendarDays } from 'date-fns';
+import { parseDateOnly } from '@/lib/dates';
 import { MessageSquare, Send, Archive } from 'lucide-react';
 
 interface Props {
@@ -30,7 +31,7 @@ export function ChatPanel({ showDateId, showDate }: Props) {
   const { data: isParticipant, isLoading: participantLoading } = useChatParticipant(showDateId);
 
   const archived = useMemo(() => {
-    const d = new Date(showDate + 'T00:00:00');
+    const d = parseDateOnly(showDate);
     return differenceInCalendarDays(new Date(), d) > CHAT_ARCHIVE_DAYS;
   }, [showDate]);
 

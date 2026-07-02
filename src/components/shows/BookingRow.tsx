@@ -1,15 +1,9 @@
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { bookingStatusBadgeClass } from '@/lib/bookings';
 import type { Booking, Artist } from '@/types';
 
 type BookingWithArtist = Booking & { artist: Pick<Artist, 'id' | 'name'> };
-
-const BOOKING_STATUS_STYLE: Record<string, string> = {
-  confirmed: 'bg-success/10 text-success',
-  soft_booked: 'bg-warning/10 text-warning',
-  suggested: 'bg-muted text-muted-foreground',
-  cancelled: 'bg-destructive/10 text-destructive',
-};
 
 interface BookingRowProps {
   booking: BookingWithArtist;
@@ -29,7 +23,7 @@ export function BookingRow({ booking: b, canManage, onConfirm, onCancel }: Booki
     <div className="flex items-center justify-between p-3 rounded-lg border border-border">
       <div>
         <p className="font-medium text-sm">{b.artist?.name}</p>
-        <Badge variant="secondary" className={`text-xs mt-1 ${BOOKING_STATUS_STYLE[b.status] ?? ''}`}>
+        <Badge variant="secondary" className={`text-xs mt-1 ${bookingStatusBadgeClass(b.status)}`}>
           {b.status.replace('_', ' ')}
         </Badge>
       </div>

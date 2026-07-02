@@ -27,7 +27,7 @@ import {
   buildOfferTierOptions, offerResultToast, offerConfirmCopy,
   pendingOfferCount, closeConfirmCopy, closeResultToast,
 } from '@/lib/bookings';
-import { formatDateDMY, formatTimestampDMY } from '@/lib/dates';
+import { formatDateDMY, formatTimestampDMY, parseDateOnly } from '@/lib/dates';
 import { openOfferTier, fetchOfferTiers, fetchOpenedTiers, closeOfferTier, updateBookingStatusGuarded } from '@/data/bookings';
 import { ChatPanel } from '@/components/chat/ChatPanel';
 import { ShowDateFormDialog } from '@/components/shows/ShowDateFormDialog';
@@ -317,7 +317,7 @@ export function ShowDateDetailSheet({ showDateId, open, onOpenChange }: Props) {
               {/* Date info */}
               <div className="space-y-2">
                 <p className="font-display text-[26px] font-semibold tracking-tight">
-                  {format(new Date(showDate.date + 'T00:00:00'), 'EEEE, d MMMM yyyy')}
+                  {format(parseDateOnly(showDate.date), 'EEEE, d MMMM yyyy')}
                 </p>
                 <div className="flex flex-wrap gap-3 text-sm text-muted-foreground">
                   {(showDate.session_1 || showDate.session_2 || showDate.session_3) && (
