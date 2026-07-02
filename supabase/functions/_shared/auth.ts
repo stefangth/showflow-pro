@@ -101,20 +101,40 @@ export async function requireSuperAdmin(deps: Deps, req: Request): Promise<AuthO
 }
 
 /**
- * Accept a valid X-Cron-Secret OR fall back to requireRole.
+ * Require a valid X-Cron-Secret and NOTHING else (cron-only endpoints).
+ *
+ * Use this for endpoints that must be driven by pg_cron alone — e.g. airtable-poll,
+ * which loops EVERY active org and writes cross-org data, so a per-org admin JWT must
+ * never be able to trigger it (a role-fallback here would be a cross-tenant hole).
  *
  * The cron secret lives in Supabase Vault (not member-readable app_settings — see
  * migration 20260702120010_cron_secret_to_vault.sql). PostgREST cannot reach the
  * vault/private schemas, so we read it through the service-role-only public RPC
  * `get_cron_secret`. Comparison stays constant-time to avoid a timing oracle.
+ * A missing or mismatched header → 401.
+ */
+export async function requireCronSecret(deps: Deps, req: Request): Promise<AuthOutcome> {
+  const cronSecret = req.headers.get("X-Cron-Secret");
+  const { data: stored } = await deps.admin.rpc("get_cron_secret");
+  const storedSecret = (stored as string | null) ?? "";
+  if (!cronSecret || !constantTimeEqual(cronSecret, storedSecret)) {
+    return { ok: false, response: json({ error: "Unauthorized" }, 401) };
+  }
+  return { ok: true, userId: null };
+}
+
+/**
+ * Accept a valid X-Cron-Secret OR fall back to requireRole.
+ *
+ * When an X-Cron-Secret header is present it is validated via `requireCronSecret`
+ * (constant-time, Vault-backed). Otherwise the caller must satisfy `requireRole`
+ * for one of `roles` in ANY org — this coarse role fallback is safe only for
+ * endpoints scoped to a single caller/org; cross-org fan-out endpoints must use
+ * `requireCronSecret` directly.
  */
 export async function requireCronOrRole(deps: Deps, req: Request, roles: string[]): Promise<AuthOutcome> {
-  const cronSecret = req.headers.get("X-Cron-Secret");
-  if (cronSecret) {
-    const { data: stored } = await deps.admin.rpc("get_cron_secret");
-    const storedSecret = (stored as string | null) ?? "";
-    if (!constantTimeEqual(cronSecret, storedSecret)) return { ok: false, response: json({ error: "Unauthorized" }, 401) };
-    return { ok: true, userId: null };
+  if (req.headers.get("X-Cron-Secret")) {
+    return requireCronSecret(deps, req);
   }
   return requireRole(deps, req, roles);
 }

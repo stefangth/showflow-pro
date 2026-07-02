@@ -1,7 +1,7 @@
 import { preflight, json } from "../_shared/http.ts";
 import { requireCronOrRole } from "../_shared/auth.ts";
 import { realDeps, type Deps } from "../_shared/deps.ts";
-import { countAccepted, countPending, isFutureOrToday, requiredPrimarySlots } from "../_shared/tierFill.ts";
+import { countAccepted, countPendingNotExpired, isFutureOrToday, requiredPrimarySlots } from "../_shared/tierFill.ts";
 
 /**
  * Scans all open offer tiers and emits a `tier_at_risk` notification when a
@@ -87,11 +87,15 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
     // NOT just this tier: a date filled via tier-1 or a manual booking is not at risk.
     const { data: bookings } = await admin
       .from('bookings')
-      .select('status')
+      .select('status, offer_expires_at')
       .eq('show_date_id', row.show_date_id)
 
-    const rows = (bookings ?? []) as Array<{ status?: string | null }>
-    const pending = countPending(rows)
+    const rows = (bookings ?? []) as Array<{ status?: string | null; offer_expires_at?: string | null }>
+    // Only live (not-yet-expired) suggested offers count toward "can this still fill".
+    // A suggested offer past its offer_expires_at that expire-offers hasn't swept yet is
+    // effectively lapsed — counting it as pending would suppress the at-risk alert for up
+    // to ~1h (the expire-offers cadence). Mirrors expire-offers' fill math.
+    const pending = countPendingNotExpired(rows, deps.now())
     const accepted = countAccepted(rows)
 
     if (pending + accepted >= requiredSlots) continue // healthy

@@ -297,7 +297,14 @@ export default function SettingsPage() {
     // an unrelated invalidation would silently wipe in-progress Booking-Engine/Filters edits.
     const dirty = computeSettingsDirtyKeys(settings, draft, EDITABLE_SETTING_KEYS);
     if (dirty.length === 0) seed();
-  }, [settings, orgId, draft]);
+    // `draft` is read but DELIBERATELY excluded from the deps: seed() calls setDraft() with a
+    // fresh object, so including `draft` would re-run this effect immediately (draft changed →
+    // not dirty → seed → …) in an infinite reseed loop. React Query structural sharing keeps
+    // `settings` referentially stable across identical refetches, so gating on [settings, orgId]
+    // runs the effect only on a real org switch or genuine data change; `draft` here just
+    // captures the value at that render.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [settings, orgId]);
 
   const saveMutation = useMutation({
     mutationFn: async (updates: { key: string; value: any }[]) => {

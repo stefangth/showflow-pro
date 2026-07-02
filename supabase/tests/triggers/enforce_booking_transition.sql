@@ -8,7 +8,8 @@
 --
 -- Legal set: suggested→{soft_booked,cancelled}; soft_booked→{confirmed,cancelled};
 -- confirmed→cancelled; nothing may leave cancelled. Understudy promotion (a
--- SECURITY DEFINER path that sets app.promoting_understudy) must still work.
+-- SECURITY DEFINER path) does only soft_booked→confirmed, which is already in the
+-- legal set, so it passes the guard directly — no GUC bypass needed.
 --
 -- Slots are set high (10 main + 10 understudy) so slot_fill_auto_cancel never fires
 -- and interferes with the direct transitions under test; the understudy-promotion

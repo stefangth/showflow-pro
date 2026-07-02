@@ -1,5 +1,5 @@
 import { preflight, json } from "../_shared/http.ts";
-import { requireCronOrRole } from "../_shared/auth.ts";
+import { requireCronSecret } from "../_shared/auth.ts";
 import { realDeps, type Deps } from "../_shared/deps.ts";
 import { getActiveOrgs, resolveOrgSetting } from "../_shared/settings.ts";
 import { buildProgramKey, buildCityKey } from "../_shared/airtableKey.ts";
@@ -458,16 +458,18 @@ async function syncOrg(deps: Deps, orgId: string, baseId: string, tableName: str
  * An enabled-but-misconfigured org (bad base / missing base|table|key) leaves a visible error log row.
  * Disabled orgs are skipped silently. One org's failure never aborts the others.
  *
- * Auth: X-Cron-Secret header (pg_cron; the Vault-backed cron secret) via requireCronOrRole,
- * or an admin user JWT for a manual trigger.
+ * Auth: X-Cron-Secret header ONLY (pg_cron; the Vault-backed cron secret) via
+ * requireCronSecret. This endpoint fans out over EVERY active org and writes each
+ * org's Airtable data, so it must not accept an org-admin JWT (a role fallback would
+ * let any single org's admin drive cross-org writes).
  */
 export async function handle(req: Request, deps: Deps): Promise<Response> {
   if (req.method === "OPTIONS") return preflight();
   const admin = deps.admin;
 
-  // Auth: X-Cron-Secret (pg_cron, Vault-backed via requireCronOrRole → get_cron_secret) or
-  // an admin user JWT for a manual trigger. Constant-time compare, shared with the other crons.
-  const auth = await requireCronOrRole(deps, req, ["admin"]);
+  // Auth: X-Cron-Secret ONLY (pg_cron, Vault-backed via get_cron_secret). No role fallback —
+  // this handler syncs/writes every active org, so an org-scoped admin JWT must never trigger it.
+  const auth = await requireCronSecret(deps, req);
   if (!auth.ok) return auth.response;
 
   let orgs: Array<{ id: string }>;
