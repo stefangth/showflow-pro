@@ -105,8 +105,11 @@ describe("AvailabilityPage — blocked-date picker (M3)", () => {
     renderWithProviders(<AvailabilityPage />);
 
     // The "Block date" select lives in the Blocked Dates card. It's a native
-    // <select>; find it via its accessible combobox role.
-    const select = await waitFor(() => screen.getByRole("combobox"));
+    // <select>; the page also renders Radix comboboxes (sort/timeframe/view), so
+    // scope to this one by its accessible name to avoid an ambiguous match.
+    const select = await waitFor(() =>
+      screen.getByRole("combobox", { name: "Block date" }),
+    );
 
     const options = within(select as HTMLElement)
       .getAllByRole("option")

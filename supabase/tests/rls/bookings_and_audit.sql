@@ -236,18 +236,20 @@ SELECT is(
   'artist A can accept own offer (suggested → soft_booked)'
 );
 
--- 10. Artist A cannot set own offer directly to confirmed (WITH CHECK blocks it)
---     USING passes (own booking, status = suggested) but WITH CHECK
---     only allows 'soft_booked' | 'cancelled', so PostgreSQL raises 42501.
+-- 10. Artist A cannot set own offer directly to confirmed. The BEFORE
+--     enforce_booking_transition guard fires first and rejects suggested →
+--     confirmed (an illegal transition) with SQLSTATE 23514, before the RLS
+--     WITH CHECK (which only allows 'soft_booked' | 'cancelled') is even
+--     evaluated. Either way the direct jump to confirmed is blocked.
 SELECT set_config('request.jwt.claims', '{"sub":"aaaaaaaa-aaaa-0003-0000-000000000000","role":"authenticated"}', true);
 SET LOCAL ROLE authenticated;
 
 SELECT throws_ok(
   $$UPDATE public.bookings SET status = 'confirmed'
     WHERE id = 'eeeeeeee-eeee-0004-0000-000000000000'$$,
-  '42501',
+  '23514',
   null,
-  'artist A cannot set own offer to confirmed (WITH CHECK violation)'
+  'artist A cannot set own offer to confirmed (transition guard rejects suggested → confirmed)'
 );
 
 RESET ROLE;
