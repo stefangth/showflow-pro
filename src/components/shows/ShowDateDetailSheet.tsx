@@ -23,12 +23,12 @@ import { showLabel } from '@/types';
 import { useEligibleArtists } from '@/hooks/useEligibleArtists';
 import { showSlots } from '@/lib/settings';
 import {
-  deriveBookingGroups, computeInheritedCastIds, bookingStatusUpdate,
+  deriveBookingGroups, computeInheritedCastIds,
   buildOfferTierOptions, offerResultToast, offerConfirmCopy,
   pendingOfferCount, closeConfirmCopy, closeResultToast,
 } from '@/lib/bookings';
 import { formatDateDMY, formatTimestampDMY } from '@/lib/dates';
-import { openOfferTier, fetchOfferTiers, fetchOpenedTiers, closeOfferTier } from '@/data/bookings';
+import { openOfferTier, fetchOfferTiers, fetchOpenedTiers, closeOfferTier, updateBookingStatusGuarded } from '@/data/bookings';
 import { ChatPanel } from '@/components/chat/ChatPanel';
 import { ShowDateFormDialog } from '@/components/shows/ShowDateFormDialog';
 import { useCancelShowDate, useDeleteShowDate } from '@/hooks/useShowDates';
@@ -258,14 +258,15 @@ export function ShowDateDetailSheet({ showDateId, open, onOpenChange }: Props) {
   });
 
   const updateBookingStatus = useMutation({
-    mutationFn: async ({ bookingId, status }: { bookingId: string; status: string }) => {
-      const updates = bookingStatusUpdate(status, new Date());
-      const { error } = await supabase.from('bookings').update(updates).eq('id', bookingId);
-      if (error) throw error;
-    },
-    onSuccess: () => {
+    mutationFn: ({ bookingId, status }: { bookingId: string; status: 'confirmed' | 'cancelled' }) =>
+      updateBookingStatusGuarded(supabase, { bookingId, status, now: new Date() }),
+    onSuccess: ({ affected }) => {
       queryClient.invalidateQueries({ queryKey: ['bookings'] });
-      toast.success('Booking updated');
+      if (affected === 0) {
+        toast.error('This booking changed — refresh and retry');
+      } else {
+        toast.success('Booking updated');
+      }
     },
     onError: (err: any) => toast.error(err.message),
   });
