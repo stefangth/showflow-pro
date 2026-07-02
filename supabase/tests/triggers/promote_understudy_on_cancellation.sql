@@ -311,8 +311,13 @@ INSERT INTO public.bookings (id, show_date_id, artist_id, status, is_understudy,
   ('eeeeeeee-0d00-0020-0000-000000000000', 'dddddddd-0d00-0009-0000-000000000000', 'bbbbbbbb-0d00-0002-0000-000000000000', 'soft_booked', true,  '00000000-0000-0000-0000-00000000b007');
 
 -- Artist 2 (the understudy) blocks 2099-07-09.
+-- Bypass enforce_blocked_date_no_active_booking (M3): this fixture intentionally
+-- creates a block on a date where the artist already has an active (soft_booked)
+-- booking, to exercise the promotion trigger's own blocked-date skip.
+SET session_replication_role = replica;
 INSERT INTO public.blocked_dates (artist_id, date, org_id)
 VALUES ('bbbbbbbb-0d00-0002-0000-000000000000', '2099-07-09', '00000000-0000-0000-0000-00000000b007');
+SET session_replication_role = DEFAULT;
 
 UPDATE public.bookings SET status = 'cancelled' WHERE id = 'eeeeeeee-0d00-0019-0000-000000000000';
 
