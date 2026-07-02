@@ -1,9 +1,9 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
-import type { Database } from '@/integrations/supabase/types';
 import { Button } from '@/components/ui/button';
 import { Check, X } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import { respondToOffer } from '@/data/bookings';
 
 interface Props {
   bookingId: string;
@@ -19,19 +19,17 @@ export function OfferResponseButtons({ bookingId, size = 'default' }: Props) {
   const { toast } = useToast();
 
   const respond = useMutation({
-    mutationFn: async (accept: boolean) => {
-      const updates: Database['public']['Tables']['bookings']['Update'] = {
-        status: accept ? 'soft_booked' : 'cancelled',
-      };
-      if (!accept) {
-        updates.cancelled_at = new Date().toISOString();
-        updates.cancellation_reason = 'artist_declined';
-      }
-      const { error } = await supabase.from('bookings').update(updates).eq('id', bookingId);
-      if (error) throw error;
-    },
-    onSuccess: (_data, accept) => {
+    mutationFn: (accept: boolean) => respondToOffer(supabase, { bookingId, accept, now: new Date() }),
+    onSuccess: ({ affected }, accept) => {
       qc.invalidateQueries({ queryKey: ['bookings'] });
+      if (affected === 0) {
+        toast({
+          title: 'This offer is no longer available',
+          description: 'It may have been withdrawn or expired. Refresh to see the latest.',
+          variant: 'destructive',
+        });
+        return;
+      }
       toast({ title: accept ? 'Offer accepted' : 'Offer declined' });
     },
     onError: (e: any) => toast({ title: 'Error', description: e.message, variant: 'destructive' }),

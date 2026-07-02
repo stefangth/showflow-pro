@@ -15,6 +15,7 @@ import { ArtistDashboard } from '@/components/dashboard/ArtistDashboard';
 import { showSlots } from '@/lib/settings';
 import { formatDateDMY } from '@/lib/dates';
 import { showLabel } from '@/types';
+import { bulkConfirmSoftBooked, bulkDeclineSoftBooked } from '@/data/bookings';
 
 const fadeUp = {
   initial: { opacity: 0, y: 20 },
@@ -97,33 +98,29 @@ function ProducerDashboard() {
   });
 
   const bulkConfirm = useMutation({
-    mutationFn: async (ids: string[]) => {
-      const { error } = await supabase
-        .from('bookings')
-        .update({ status: 'confirmed', confirmed_at: new Date().toISOString() })
-        .in('id', ids);
-      if (error) throw error;
-    },
-    onSuccess: () => {
+    mutationFn: (ids: string[]) => bulkConfirmSoftBooked(supabase, { ids, now: new Date() }),
+    onSuccess: ({ affected }, ids) => {
       qc.invalidateQueries({ queryKey: ['bookings'] });
       setSelected(new Set());
-      toast.success('Bookings confirmed');
+      if (affected < ids.length) {
+        toast.error('Some bookings changed — refresh and retry');
+      } else {
+        toast.success('Bookings confirmed');
+      }
     },
     onError: (e: any) => toast.error(e.message),
   });
 
   const bulkDecline = useMutation({
-    mutationFn: async (ids: string[]) => {
-      const { error } = await supabase
-        .from('bookings')
-        .update({ status: 'cancelled', cancelled_at: new Date().toISOString(), cancellation_reason: 'producer_declined' })
-        .in('id', ids);
-      if (error) throw error;
-    },
-    onSuccess: () => {
+    mutationFn: (ids: string[]) => bulkDeclineSoftBooked(supabase, { ids, now: new Date() }),
+    onSuccess: ({ affected }, ids) => {
       qc.invalidateQueries({ queryKey: ['bookings'] });
       setSelected(new Set());
-      toast.success('Bookings declined');
+      if (affected < ids.length) {
+        toast.error('Some bookings changed — refresh and retry');
+      } else {
+        toast.success('Bookings declined');
+      }
     },
     onError: (e: any) => toast.error(e.message),
   });
