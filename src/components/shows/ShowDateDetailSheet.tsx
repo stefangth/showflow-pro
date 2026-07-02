@@ -31,6 +31,7 @@ import { formatDateDMY, formatTimestampDMY } from '@/lib/dates';
 import { openOfferTier, fetchOfferTiers, fetchOpenedTiers, closeOfferTier, updateBookingStatusGuarded } from '@/data/bookings';
 import { ChatPanel } from '@/components/chat/ChatPanel';
 import { ShowDateFormDialog } from '@/components/shows/ShowDateFormDialog';
+import { BookingRow } from '@/components/shows/BookingRow';
 import { useCancelShowDate, useDeleteShowDate } from '@/hooks/useShowDates';
 import { useAllCities } from '@/hooks/useAllCities';
 import { isSyncedDate, canHardDeleteDate } from '@/lib/catalog';
@@ -43,13 +44,6 @@ interface Props {
 }
 
 type BookingWithArtist = Booking & { artist: Pick<Artist, 'id' | 'name'> };
-
-const BOOKING_STATUS_STYLE: Record<string, string> = {
-  confirmed: 'bg-success/10 text-success',
-  soft_booked: 'bg-warning/10 text-warning',
-  suggested: 'bg-muted text-muted-foreground',
-  cancelled: 'bg-destructive/10 text-destructive',
-};
 
 export function ShowDateDetailSheet({ showDateId, open, onOpenChange }: Props) {
   const { hasRole, user, roles, currentOrg } = useAuth();
@@ -689,35 +683,13 @@ export function ShowDateDetailSheet({ showDateId, open, onOpenChange }: Props) {
                         <div className="space-y-2">
                           <p className="text-xs text-muted-foreground uppercase tracking-wide">Main cast</p>
                           {mainBookings.map(b => (
-                            <div key={b.id} className="flex items-center justify-between p-3 rounded-lg border border-border">
-                              <div>
-                                <p className="font-medium text-sm">{b.artist?.name}</p>
-                                <Badge variant="secondary" className={`text-xs mt-1 ${BOOKING_STATUS_STYLE[b.status] ?? ''}`}>
-                                  {b.status.replace('_', ' ')}
-                                </Badge>
-                              </div>
-                              {canManage && (
-                                <div className="flex gap-2">
-                                  {b.status === 'soft_booked' && (
-                                    <Button
-                                      size="sm"
-                                      variant="outline"
-                                      onClick={() => updateBookingStatus.mutate({ bookingId: b.id, status: 'confirmed' })}
-                                    >
-                                      Confirm
-                                    </Button>
-                                  )}
-                                  <Button
-                                    size="sm"
-                                    variant="ghost"
-                                    className="text-destructive"
-                                    onClick={() => updateBookingStatus.mutate({ bookingId: b.id, status: 'cancelled' })}
-                                  >
-                                    Cancel
-                                  </Button>
-                                </div>
-                              )}
-                            </div>
+                            <BookingRow
+                              key={b.id}
+                              booking={b}
+                              canManage={canManage}
+                              onConfirm={(bookingId) => updateBookingStatus.mutate({ bookingId, status: 'confirmed' })}
+                              onCancel={(bookingId) => updateBookingStatus.mutate({ bookingId, status: 'cancelled' })}
+                            />
                           ))}
                         </div>
                       )}
@@ -725,35 +697,13 @@ export function ShowDateDetailSheet({ showDateId, open, onOpenChange }: Props) {
                         <div className="space-y-2">
                           <p className="text-xs text-muted-foreground uppercase tracking-wide">Understudies</p>
                           {understudyBookings.map(b => (
-                            <div key={b.id} className="flex items-center justify-between p-3 rounded-lg border border-border">
-                              <div>
-                                <p className="font-medium text-sm">{b.artist?.name}</p>
-                                <Badge variant="secondary" className={`text-xs mt-1 ${BOOKING_STATUS_STYLE[b.status] ?? ''}`}>
-                                  {b.status.replace('_', ' ')}
-                                </Badge>
-                              </div>
-                              {canManage && (
-                                <div className="flex gap-2">
-                                  {b.status === 'soft_booked' && (
-                                    <Button
-                                      size="sm"
-                                      variant="outline"
-                                      onClick={() => updateBookingStatus.mutate({ bookingId: b.id, status: 'confirmed' })}
-                                    >
-                                      Confirm
-                                    </Button>
-                                  )}
-                                  <Button
-                                    size="sm"
-                                    variant="ghost"
-                                    className="text-destructive"
-                                    onClick={() => updateBookingStatus.mutate({ bookingId: b.id, status: 'cancelled' })}
-                                  >
-                                    Cancel
-                                  </Button>
-                                </div>
-                              )}
-                            </div>
+                            <BookingRow
+                              key={b.id}
+                              booking={b}
+                              canManage={canManage}
+                              onConfirm={(bookingId) => updateBookingStatus.mutate({ bookingId, status: 'confirmed' })}
+                              onCancel={(bookingId) => updateBookingStatus.mutate({ bookingId, status: 'cancelled' })}
+                            />
                           ))}
                         </div>
                       )}
