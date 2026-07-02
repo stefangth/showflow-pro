@@ -15,20 +15,29 @@ name: Deploy Edge Functions (production)
 # by the CLI on deploy, so public webhooks / cron callers keep working and
 # authenticated endpoints stay locked down.
 #
-# Trigger: push to main touching functions or their config, plus manual dispatch
+# Trigger: gated on a GREEN CI run of the merged `main` commit, plus manual dispatch
 # (Actions -> this workflow -> Run workflow) for backfills / re-syncs.
+#
+# Why `workflow_run` instead of `push: main` (H1): this repo is private/free-plan,
+# so branch-protection "required status checks" aren't available. A `push` trigger
+# would deploy the moment a commit lands on main — even if a PR was merged before CI
+# finished, or someone pushed straight to main — shipping untested edge functions.
+# Instead we wait for the "CI" workflow (ci.yml, which now also runs on `push: main`)
+# to *complete* on the merged commit, then the job-level `if` below deploys only when
+# that CI run passed. The old push-paths filter ("only deploy when functions/config
+# changed") is preserved best-effort by the git-diff step in the deploy job — but the
+# gate (never deploy a red commit) matters more than that optimization.
 #
 # Required repository secret (already configured; shared with db-reset-production):
 #   SUPABASE_ACCESS_TOKEN — a Supabase personal access token
 #                           (https://supabase.com/dashboard/account/tokens)
 
 on:
-  push:
+  workflow_run:
+    # Must match ci.yml's `name:` exactly.
+    workflows: ["CI"]
+    types: [completed]
     branches: [main]
-    paths:
-      - "supabase/functions/**"
-      - "supabase/config.toml"
-      - ".github/workflows/deploy-functions.yml"
   workflow_dispatch:
 
 # Never run two deploys at once; let an in-flight deploy finish rather than
@@ -44,21 +53,64 @@ jobs:
   deploy:
     name: Deploy functions to live project
     runs-on: ubuntu-latest
+    # THE GATE: only run when the triggering CI run passed, or on a manual dispatch
+    # (backfills / re-syncs, which have no workflow_run to gate on). A failed or
+    # cancelled CI run — i.e. a red commit on main — never reaches this job.
+    if: >-
+      github.event_name == 'workflow_dispatch' ||
+      github.event.workflow_run.conclusion == 'success'
     env:
       SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
       PROJECT_REF: epweartpzwvcasrzyueh
     steps:
+      # Check out the exact commit CI tested. For workflow_run this is the CI run's
+      # head SHA; for workflow_dispatch that expression is empty so checkout falls
+      # back to the branch the workflow was dispatched from. fetch-depth: 2 gives us
+      # the parent commit needed by the "did functions change" diff below.
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.workflow_run.head_sha }}
+          fetch-depth: 2
+
+      # Best-effort restoration of the old push-paths optimization: skip the deploy
+      # when the merged commit changed nothing under supabase/functions/ or config.
+      # Only applies to workflow_run; a manual dispatch always deploys. If the diff
+      # can't be computed (e.g. shallow history), we err toward deploying.
+      - name: Check whether functions or config changed
+        id: changed
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "deploy=true" >> "$GITHUB_OUTPUT"
+            echo "Manual dispatch — deploying."
+            exit 0
+          fi
+          HEAD_SHA="${{ github.event.workflow_run.head_sha }}"
+          if git rev-parse --verify --quiet "${HEAD_SHA}^" >/dev/null; then
+            if git diff --name-only "${HEAD_SHA}^" "${HEAD_SHA}" \
+                 | grep -Eq '^supabase/functions/|^supabase/config\.toml$'; then
+              echo "deploy=true" >> "$GITHUB_OUTPUT"
+              echo "Function/config changes detected — deploying."
+            else
+              echo "deploy=false" >> "$GITHUB_OUTPUT"
+              echo "No function/config changes — skipping deploy."
+            fi
+          else
+            echo "deploy=true" >> "$GITHUB_OUTPUT"
+            echo "Parent commit unavailable — deploying to be safe."
+          fi
 
       - uses: supabase/setup-cli@v1
+        if: steps.changed.outputs.deploy == 'true'
         with:
           # Pinned to match the rest of CI (ci.yml, db-reset-production.yml).
           version: 2.98.2
 
       - name: Show Supabase CLI version
+        if: steps.changed.outputs.deploy == 'true'
         run: supabase --version
 
       - name: Deploy all edge functions
+        if: steps.changed.outputs.deploy == 'true'
         # No function name → deploys every function under supabase/functions/.
         # verify_jwt comes from supabase/config.toml (every function MUST be listed
         # there; an unlisted function defaults to verify_jwt = true). Idempotent:
