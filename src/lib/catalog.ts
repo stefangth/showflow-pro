@@ -22,3 +22,26 @@ export function findDuplicateDate<T extends { show_id: string; date: string; sta
 export function nextSortOrder(shows: { sort_order: number | null }[]): number {
   return shows.reduce((max, s) => Math.max(max, s.sort_order ?? 0), 0) + 1;
 }
+
+/**
+ * Reconcile a locally-held drag order (`prev`) with freshly-fetched/filtered rows
+ * (`next`) without clobbering an in-progress user reorder.
+ *
+ * Returns `prev` (preserving the user's order) when both hold the SAME set of ids —
+ * a refetch that returns the same productions must not snap a local reorder back to
+ * server order. Returns `next` only when the membership actually changed (add /
+ * remove / filter switch), so genuinely new data is still adopted. Returns the same
+ * `prev` reference when already in sync so callers can bail out of a state update.
+ */
+export function reconcileDragOrder<T extends { id: string }>(prev: T[], next: T[]): T[] {
+  const sameSequence =
+    prev.length === next.length && prev.every((s, i) => next[i] && s.id === next[i].id);
+  if (sameSequence) return prev;
+
+  const nextIds = new Set(next.map((s) => s.id));
+  const prevIds = new Set(prev.map((s) => s.id));
+  const sameMembers =
+    nextIds.size === prevIds.size && [...nextIds].every((id) => prevIds.has(id));
+  // Same productions, only reordered locally → keep the user's order.
+  return sameMembers ? prev : next;
+}

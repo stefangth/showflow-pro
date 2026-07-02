@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import appLogicMd from '../../docs/app-logic.md?raw';
@@ -24,6 +24,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { toast } from 'sonner';
 import { Settings as SettingsIcon, Database, Bell, Wand2, Save, SlidersHorizontal, MapPin, Plus, Trash2, Clock, BookOpen, UserCog, Eye, Building2 } from 'lucide-react';
 import { upsertOrgSetting, mergeOrgRows } from '@/data/settings';
+import { computeSettingsDirtyKeys } from '@/lib/settings';
 import { AirtableSyncTab } from '@/components/settings/AirtableSyncTab';
 import { OrganizationTab } from '@/components/settings/OrganizationTab';
 import type { Cast } from '@/types';
@@ -53,6 +54,16 @@ type FilterKey = 'program' | 'timeframe' | 'sort' | 'status';
 const FILTER_KEYS: FilterKey[] = ['program', 'timeframe', 'sort', 'status'];
 const PAGES: ('shows' | 'artists' | 'bookings')[] = ['shows', 'artists', 'bookings'];
 const ROLES: ('producer' | 'artist')[] = ['producer', 'artist'];
+
+// Every app_settings key this page's draft can edit. Used for the dirty calc so a
+// first-ever value (a key with no persisted row yet, e.g. resend_from_address) still
+// counts as dirty — iterating only persisted rows would leave it unsavable.
+const EDITABLE_SETTING_KEYS: readonly string[] = [
+  ...Object.keys(BOOKING_ENGINE_DEFAULTS),
+  'email_template_overrides',
+  'filters_visibility',
+  'notifications_enabled',
+];
 
 type SettingRow = {
   key: string;
@@ -277,14 +288,27 @@ export default function SettingsPage() {
   });
 
   const [draft, setDraft] = useState<Record<string, any>>({});
+  // Track which org the draft was last seeded for so switching orgs re-seeds even
+  // when the previous draft was dirty; refetches of the SAME org must not clobber
+  // in-progress edits (a child AirtableSyncTab autosave invalidates ['app-settings'],
+  // and AuthContext realtime invalidates it on any app_settings write).
+  const seededOrgRef = useRef<string | null | undefined>(undefined);
 
   useEffect(() => {
-    if (settings) {
+    if (!settings) return;
+    const seed = () => {
       const next: Record<string, any> = {};
       for (const s of settings) next[s.key] = s.value;
       setDraft(next);
-    }
-  }, [settings]);
+      seededOrgRef.current = orgId;
+    };
+    // New entity (org switch or first load) → always adopt server state.
+    if (seededOrgRef.current !== orgId) { seed(); return; }
+    // Same org refetched: only re-seed when the user has no unsaved edits, otherwise
+    // an unrelated invalidation would silently wipe in-progress Booking-Engine/Filters edits.
+    const dirty = computeSettingsDirtyKeys(settings, draft, EDITABLE_SETTING_KEYS);
+    if (dirty.length === 0) seed();
+  }, [settings, orgId, draft]);
 
   const saveMutation = useMutation({
     mutationFn: async (updates: { key: string; value: any }[]) => {
@@ -509,9 +533,7 @@ export default function SettingsPage() {
     onError: (e: any) => toast.error(e.message ?? 'Failed to remove'),
   });
 
-  const dirtyKeys = (settings ?? [])
-    .filter(s => JSON.stringify(s.value) !== JSON.stringify(draft[s.key]))
-    .map(s => s.key);
+  const dirtyKeys = computeSettingsDirtyKeys(settings, draft, EDITABLE_SETTING_KEYS);
 
   const isDirty = dirtyKeys.length > 0;
 
