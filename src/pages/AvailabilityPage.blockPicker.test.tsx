@@ -59,16 +59,25 @@ vi.mock("@/integrations/supabase/client", () => ({ supabase: client }));
 Object.assign(
   client,
   createFakeSupabase({
-    // Active booking on sd-booked (soft_booked) — keyed by show_date_id.
-    bookings: {
-      data: [{ id: "bk-1", show_date_id: "sd-booked", status: "soft_booked" }],
-      error: null,
-    },
-    // sd-blocked is already blocked.
-    blocked_dates: {
-      data: [{ id: "blk-1", date: "2099-08-12", reason: "vacation" }],
-      error: null,
-    },
+    // Both queries filter by .eq('artist_id', 'artist-1'); use the array-seed
+    // form so the row is only returned for that artist (matching the useMyArtist
+    // mock id). Mirrors the passing useCities.test.tsx `when`-matched seeds.
+    // Active booking on sd-booked (soft_booked) — bookingMap is keyed by show_date_id.
+    bookings: [
+      {
+        when: { artist_id: "artist-1" },
+        data: [{ id: "bk-1", artist_id: "artist-1", show_date_id: "sd-booked", status: "soft_booked" }],
+        error: null,
+      },
+    ],
+    // sd-blocked (2099-08-12) is already blocked for this artist.
+    blocked_dates: [
+      {
+        when: { artist_id: "artist-1" },
+        data: [{ id: "blk-1", artist_id: "artist-1", date: "2099-08-12", reason: "vacation" }],
+        error: null,
+      },
+    ],
   }),
 );
 
@@ -111,14 +120,20 @@ describe("AvailabilityPage — blocked-date picker (M3)", () => {
       screen.getByRole("combobox", { name: "Block date" }),
     );
 
-    const options = within(select as HTMLElement)
-      .getAllByRole("option")
-      .map((o) => (o as HTMLOptionElement).value)
-      .filter((v) => v !== ""); // drop the placeholder option
+    // The <select> renders synchronously from the (mocked) eligible dates, but
+    // the bookings / blocked_dates React Query fetches settle a tick later. Poll
+    // until those async reads have resolved and pruned the ineligible options,
+    // otherwise we'd read all three before the exclusion re-render lands.
+    await waitFor(() => {
+      const options = within(select as HTMLElement)
+        .getAllByRole("option")
+        .map((o) => (o as HTMLOptionElement).value)
+        .filter((v) => v !== ""); // drop the placeholder option
 
-    // Only the free eligible date is offered.
-    expect(options).toEqual(["2099-08-10"]);
-    expect(options).not.toContain("2099-08-11"); // has an active booking
-    expect(options).not.toContain("2099-08-12"); // already blocked
+      // Only the free eligible date is offered.
+      expect(options).toEqual(["2099-08-10"]);
+      expect(options).not.toContain("2099-08-11"); // has an active booking
+      expect(options).not.toContain("2099-08-12"); // already blocked
+    });
   });
 });
