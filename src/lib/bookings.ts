@@ -3,8 +3,6 @@
  * No Supabase, no React — safe to unit-test directly.
  */
 
-import type { Database } from "@/integrations/supabase/types";
-
 // ── Booking-status badge styling (single source of truth) ──────────────────────
 // Previously duplicated across BookingRow, ArtistBookingsView, and AvailabilityPage
 // and DRIFTED: `suggested` was `bg-muted text-muted-foreground` in the producer
@@ -73,27 +71,6 @@ export function computeInheritedCastIds(
   overrideCastIds: Set<string>,
 ): Set<string> {
   return new Set((eligibilityCastIds ?? []).filter((cid) => !overrideCastIds.has(cid)));
-}
-
-/** Update payload for a booking status transition. */
-export interface BookingStatusUpdate {
-  status: Database["public"]["Enums"]["booking_status"];
-  confirmed_at?: string;
-  cancelled_at?: string;
-}
-
-/**
- * Build the `bookings` update payload for a status transition.
- *
- * NOTE: matches current production behavior exactly — it only *sets*
- * confirmed_at / cancelled_at and never clears a stale stamp on the reverse
- * transition. See part2-bug-log.md ("booking timestamp never cleared").
- */
-export function bookingStatusUpdate(status: string, now: Date): BookingStatusUpdate {
-  const updates: BookingStatusUpdate = { status: status as Database["public"]["Enums"]["booking_status"] };
-  if (status === "confirmed") updates.confirmed_at = now.toISOString();
-  if (status === "cancelled") updates.cancelled_at = now.toISOString();
-  return updates;
 }
 
 // ── Offer-tier UI helpers (open/close actions in ShowDateDetailSheet) ──────────

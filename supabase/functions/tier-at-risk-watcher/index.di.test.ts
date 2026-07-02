@@ -1023,6 +1023,61 @@ Deno.test("tier-at-risk-watcher DI M2: manual booking (offer_tier NULL) counts t
   assertEquals(insertCalls.length, 0);
 });
 
+Deno.test("tier-at-risk-watcher DI: an already-expired suggested offer does NOT count as pending → at-risk", async () => {
+  // Fix D: a suggested offer whose offer_expires_at is in the past (relative to the
+  // 2026-06-01 fake clock) is effectively lapsed and must not read as healthy pending —
+  // otherwise the alert is suppressed until expire-offers sweeps it (~1h later).
+  // main_cast_slots=2, understudy_slots=0 → need 2.
+  const tierId = "tier-expired";
+  const sdId = "sd-expired";
+  const { deps, calls } = makeFakeDeps({
+    tables: {
+      app_settings: makeBaseSettings(),
+      show_date_offer_tiers: { data: [makeTier(tierId, sdId)], error: null },
+      notifications: { data: [], error: null },
+      show_dates: { data: makeShowDate(sdId, "MusicalA", "MainShow", "2026-07-01", "00000000-0000-0000-0000-000000000001", 2, 0), error: null },
+      bookings: {
+        data: [
+          // Suggested but expired in the past → NOT counted → pending 0, need 2 → at-risk.
+          { status: "suggested", offer_expires_at: "2026-05-30T00:00:00.000Z" },
+        ],
+        error: null,
+      },
+    },
+    rpcs: { resolve_show_assignments: { data: [{ producer_user_id: "prod-1" }], error: null } },
+  });
+  const res = await handle(makeRequest({ headers: CRON_OK }), deps);
+  const body = await res.json();
+  assertEquals(body.at_risk_count, 1, "an expired suggested offer must not count as live pending");
+  const insertCalls = calls.filter((c) => c.table === "notifications" && c.method === "insert");
+  assertEquals(insertCalls.length, 1, "at-risk notification inserted when the only offer has expired");
+});
+
+Deno.test("tier-at-risk-watcher DI: a still-live suggested offer (future expiry) counts as pending → healthy", async () => {
+  // Complement to the expired case: a suggested offer whose expiry is in the future
+  // still counts. main_cast_slots=1 → need 1; one live suggested offer → healthy.
+  const tierId = "tier-live";
+  const sdId = "sd-live";
+  const { deps, calls } = makeFakeDeps({
+    tables: {
+      app_settings: makeBaseSettings(),
+      show_date_offer_tiers: { data: [makeTier(tierId, sdId)], error: null },
+      notifications: { data: [], error: null },
+      show_dates: { data: makeShowDate(sdId, "MusicalA", "MainShow", "2026-07-01", "00000000-0000-0000-0000-000000000001", 1, 0), error: null },
+      bookings: {
+        data: [{ status: "suggested", offer_expires_at: "2026-06-05T00:00:00.000Z" }], // future → live
+        error: null,
+      },
+    },
+    rpcs: { resolve_show_assignments: { data: [{ producer_user_id: "prod-1" }], error: null } },
+  });
+  const res = await handle(makeRequest({ headers: CRON_OK }), deps);
+  const body = await res.json();
+  assertEquals(body.at_risk_count, 0, "a live (future-expiry) suggested offer must count as pending");
+  const insertCalls = calls.filter((c) => c.table === "notifications" && c.method === "insert");
+  assertEquals(insertCalls.length, 0);
+});
+
 Deno.test("tier-at-risk-watcher DI M2: past date is never flagged at-risk", async () => {
   // Same unfillable setup as a normal at-risk case, but the date is in the past
   // (before the 2026-06-01 fake clock). The watcher must skip it, not re-alert forever.

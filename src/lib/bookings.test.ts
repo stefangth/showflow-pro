@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import {
-  deriveBookingGroups, computeInheritedCastIds, bookingStatusUpdate,
+  deriveBookingGroups, computeInheritedCastIds,
   buildOfferTierOptions, offerResultToast, offerConfirmCopy,
   pendingOfferCount, closeConfirmCopy, closeResultToast,
   bookingStatusBadgeClass,
@@ -70,25 +70,6 @@ describe("computeInheritedCastIds", () => {
   });
   it("handles null eligibility", () => {
     expect(computeInheritedCastIds(null, new Set(["c1"])).size).toBe(0);
-  });
-});
-
-describe("bookingStatusUpdate", () => {
-  const now = new Date("2026-06-01T10:00:00.000Z");
-  it("stamps confirmed_at when confirming", () => {
-    expect(bookingStatusUpdate("confirmed", now)).toEqual({
-      status: "confirmed",
-      confirmed_at: now.toISOString(),
-    });
-  });
-  it("stamps cancelled_at when cancelling", () => {
-    expect(bookingStatusUpdate("cancelled", now)).toEqual({
-      status: "cancelled",
-      cancelled_at: now.toISOString(),
-    });
-  });
-  it("stamps no timestamp for soft_booked (characterizes current behavior — does NOT clear stale stamps)", () => {
-    expect(bookingStatusUpdate("soft_booked", now)).toEqual({ status: "soft_booked" });
   });
 });
 

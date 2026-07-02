@@ -25,15 +25,18 @@ export function nextSortOrder(shows: { sort_order: number | null }[]): number {
 
 /**
  * Reconcile a locally-held drag order (`prev`) with freshly-fetched/filtered rows
- * (`next`) without clobbering an in-progress user reorder.
+ * (`next`) without clobbering an IN-PROGRESS user reorder.
  *
- * Returns `prev` (preserving the user's order) when both hold the SAME set of ids —
- * a refetch that returns the same productions must not snap a local reorder back to
- * server order. Returns `next` only when the membership actually changed (add /
- * remove / filter switch), so genuinely new data is still adopted. Returns the same
- * `prev` reference when already in sync so callers can bail out of a state update.
+ * When the id sets match but the order differs, whose order wins depends on `isDragging`:
+ *   - `isDragging === true`  → keep `prev` (the user is mid-drag; a refetch must not snap
+ *                              their local reorder back to server order);
+ *   - `isDragging === false` → adopt `next` (the drag has settled; a DIFFERENT client's
+ *                              committed reorder — same ids, new order — should sync in
+ *                              rather than being silently discarded).
+ * A changed membership (add / remove / filter switch) always adopts `next`. The same
+ * `prev` reference is returned when already in sync so callers can bail out of a state update.
  */
-export function reconcileDragOrder<T extends { id: string }>(prev: T[], next: T[]): T[] {
+export function reconcileDragOrder<T extends { id: string }>(prev: T[], next: T[], isDragging: boolean): T[] {
   const sameSequence =
     prev.length === next.length && prev.every((s, i) => next[i] && s.id === next[i].id);
   if (sameSequence) return prev;
@@ -42,6 +45,8 @@ export function reconcileDragOrder<T extends { id: string }>(prev: T[], next: T[
   const prevIds = new Set(prev.map((s) => s.id));
   const sameMembers =
     nextIds.size === prevIds.size && [...nextIds].every((id) => prevIds.has(id));
-  // Same productions, only reordered locally → keep the user's order.
-  return sameMembers ? prev : next;
+  // Same productions, only reordered: keep the user's local order ONLY while dragging;
+  // once the drag has settled, adopt the server order so another client's reorder syncs in.
+  if (sameMembers) return isDragging ? prev : next;
+  return next;
 }

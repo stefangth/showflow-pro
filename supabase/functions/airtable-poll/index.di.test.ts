@@ -135,8 +135,10 @@ function authReq(extraHeaders: Record<string, string> = {}) {
 }
 
 // ─── Auth ────────────────────────────────────────────────────────────────────
-// Post-C1 the cron secret comes from the Vault-backed get_cron_secret RPC
-// (requireCronOrRole), not member-readable app_settings.
+// Post-C1 the cron secret comes from the Vault-backed get_cron_secret RPC, not
+// member-readable app_settings. This endpoint is CRON-SECRET-ONLY (requireCronSecret):
+// it fans out over every active org and writes each org's data, so an org-admin JWT
+// must NOT be able to drive it (the old requireCronOrRole role fallback was a cross-org hole).
 
 Deno.test("airtable-poll: missing X-Cron-Secret → 401 (no user JWT either)", async () => {
   const { deps } = makeFakeDeps({
@@ -169,6 +171,24 @@ Deno.test("airtable-poll: null Vault secret treated as empty string — non-empt
     deps,
   );
   assertEquals(res.status, 401);
+});
+
+Deno.test("airtable-poll: admin USER JWT without a cron secret → 401 (cron-secret-only, no role fallback)", async () => {
+  // Regression (Fix B): airtable-poll writes EVERY active org, so an org-admin JWT
+  // must never trigger it. Even a fully valid admin membership is rejected without
+  // the X-Cron-Secret header — no requireRole fallback anymore.
+  const { deps } = makeFakeDeps({
+    authUser: { id: "admin-1" },
+    tables: { org_memberships: { data: { role: "admin" }, error: null } },
+    rpcs: { get_cron_secret: { data: "secret123", error: null } },
+  });
+  const res = await handle(
+    makeRequest({ method: "POST", headers: { Authorization: "Bearer admin-jwt" } }),
+    deps,
+  );
+  assertEquals(res.status, 401);
+  const body = await res.json();
+  assertEquals(body.error, "Unauthorized");
 });
 
 // ─── Per-org skip paths (disabled / unconfigured / bad base / no key) ─────────

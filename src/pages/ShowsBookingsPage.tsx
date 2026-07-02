@@ -422,7 +422,6 @@ function ProducerShowsBookings() {
                     <TableRow
                       key={sd.id}
                       className="cursor-pointer"
-                      role="button"
                       tabIndex={0}
                       onClick={() => openShowDate(sd.id)}
                       onKeyDown={openShowDateOnKey(sd.id)}

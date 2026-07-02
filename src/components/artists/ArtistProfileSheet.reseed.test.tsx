@@ -1,32 +1,36 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { screen, fireEvent, waitFor } from "@testing-library/react";
 import { renderWithProviders } from "@/test/renderWithProviders";
+import { createFakeSupabase } from "@/test/supabaseFake";
 
 // H6 regression: the ArtistProfileSheet editable form must be seeded ONCE per artist
 // identity. A `['artists']` prefix invalidation (any artists write, incl. bulk import)
 // re-fetches the same row and must NOT clobber in-progress edits; opening a DIFFERENT
 // artist (new id) must re-seed.
 
-// A mutable store of artist rows keyed by id, resolved by the faked supabase query.
-const artistsById: Record<string, Record<string, unknown>> = {
-  a1: { id: "a1", name: "Ada", email: "ada@x.com", phone: null, bio: null, status: "active", user_id: null, org_id: "org-1" },
-  a2: { id: "a2", name: "Grace", email: "grace@x.com", phone: null, bio: null, status: "active", user_id: null, org_id: "org-1" },
-};
+// The component reads from('artists').select().eq('id', <id>).single(). We back that with
+// the approved call-recording fake (createFakeSupabase) rather than a hand-rolled chain:
+// an array seed resolves per-id via the `when: { id }` match against the recorded eq() arg.
+const { client } = vi.hoisted(() => ({ client: {} as Record<string, unknown> }));
+vi.mock("@/integrations/supabase/client", () => ({ supabase: client }));
 
-// Minimal faked supabase client: only from('artists').select().eq(id).single() is used.
-vi.mock("@/integrations/supabase/client", () => ({
-  supabase: {
-    from: () => {
-      let capturedId: string | undefined;
-      const chain: Record<string, unknown> = {
-        select: () => chain,
-        eq: (_col: string, val: string) => { capturedId = val; return chain; },
-        single: () => Promise.resolve({ data: artistsById[capturedId ?? ""], error: null }),
-      };
-      return chain;
-    },
-  },
-}));
+Object.assign(
+  client,
+  createFakeSupabase({
+    artists: [
+      {
+        when: { id: "a1" },
+        data: { id: "a1", name: "Ada", email: "ada@x.com", phone: null, bio: null, status: "active", user_id: null, org_id: "org-1" },
+        error: null,
+      },
+      {
+        when: { id: "a2" },
+        data: { id: "a2", name: "Grace", email: "grace@x.com", phone: null, bio: null, status: "active", user_id: null, org_id: "org-1" },
+        error: null,
+      },
+    ],
+  }),
+);
 
 vi.mock("@/features/auth/AuthContext", () => ({
   useAuth: () => ({ hasRole: (r: string) => r === "admin", roles: ["admin"], currentOrg: { id: "org-1" } }),

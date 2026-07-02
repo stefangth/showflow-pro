@@ -69,13 +69,12 @@ export default function ProductionsPage() {
   }, [shows, statusFilter]);
 
   // Reconcile the local drag order with server/filter data WITHOUT clobbering an
-  // in-progress reorder: skip while a drag is active, and only re-seed when the set
-  // of ids actually changed (add/remove/filter switch), not on a refetch that
-  // returns the same productions — which would otherwise snap the user's edits back.
+  // in-progress reorder. reconcileDragOrder keeps the local order only while a drag is
+  // active (isDragging); once settled it adopts server order on a same-id-set change so a
+  // DIFFERENT client's committed reorder syncs in. A membership change always adopts server data.
   const draggingRef = useRef(false);
   useEffect(() => {
-    if (draggingRef.current) return;
-    setOrder((prev) => reconcileDragOrder(prev, filtered));
+    setOrder((prev) => reconcileDragOrder(prev, filtered, draggingRef.current));
   }, [filtered]);
 
   const openCreate = () => { setEditing(null); setFormOpen(true); };

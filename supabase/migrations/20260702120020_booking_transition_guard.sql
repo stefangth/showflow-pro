@@ -29,11 +29,12 @@
 --   * DashboardPage bulkConfirm / bulkDecline              soft_booked → {confirmed,cancelled} ✓
 --   * ShowDateDetailSheet.updateBookingStatus              soft_booked → confirmed; {soft_booked,confirmed} → cancelled ✓
 --
--- Escape hatch: understudy promotion is a system-driven, SECURITY DEFINER path that
--- sets the transaction-scoped GUC app.promoting_understudy = 'true'. Its current
--- transition (soft_booked → confirmed) is already legal, but the guard explicitly
--- allows any transition while that GUC is set, so a future change to the promotion
--- path (e.g. re-introducing suggested → soft_booked) cannot be broken by this trigger.
+-- Understudy promotion: its only transition is soft_booked → confirmed
+-- (promote_understudy_on_cancellation, 20260702120003 — candidates are always
+-- soft_booked and are set to confirmed), which is already legal under the explicit
+-- rules below. No GUC bypass is needed; the earlier app.promoting_understudy escape
+-- hatch was redundant and has been removed. If the promotion path ever introduces a
+-- transition outside the legal set, add that transition to the state machine here.
 --
 -- This does NOT touch the existing notify_booking_transition AFTER-UPDATE audit
 -- trigger — it is a separate, additive BEFORE-UPDATE trigger.
@@ -47,12 +48,6 @@ AS $$
 BEGIN
   -- Non-status column updates and same-status writes always pass.
   IF NEW.status = OLD.status THEN
-    RETURN NEW;
-  END IF;
-
-  -- System-driven understudy promotion runs under this transaction-scoped GUC and
-  -- is trusted to move bookings itself (SECURITY DEFINER path). Allow it through.
-  IF current_setting('app.promoting_understudy', true) = 'true' THEN
     RETURN NEW;
   END IF;
 
