@@ -3,6 +3,7 @@ import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { Skeleton } from '@/components/ui/skeleton';
 import { CHAT_ARCHIVE_DAYS } from '@/config/app.config';
 import { differenceInCalendarDays, format } from 'date-fns';
 import { MessageSquare } from 'lucide-react';
@@ -54,7 +55,7 @@ export default function ChatsListPage() {
 
       {isLoading ? (
         <div className="grid gap-3">
-          {[1, 2, 3].map(i => <div key={i} className="h-20 rounded-lg bg-muted animate-pulse" />)}
+          {[1, 2, 3].map(i => <Skeleton key={i} className="h-20 rounded-lg" />)}
         </div>
       ) : visible.length === 0 ? (
         <Card><CardContent className="py-10 text-center text-muted-foreground">No active chats.</CardContent></Card>

@@ -254,7 +254,7 @@ export function CastDetailsSheet({ cast, open, onOpenChange, onArtistClick }: Pr
                     >
                       <p className="text-sm font-medium">{m.artist.name}</p>
                     </button>
-                    <Button size="icon" variant="ghost" onClick={() => removeMember.mutate(m.id)}>
+                    <Button size="icon" variant="ghost" aria-label={`Remove ${m.artist.name}`} onClick={() => removeMember.mutate(m.id)}>
                       <X className="h-4 w-4" />
                     </Button>
                   </div>
