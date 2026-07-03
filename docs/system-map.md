@@ -76,7 +76,7 @@ Grouped by actor. Full call-site citations live with each row; role gates from `
 | `/accept-invite?token=` (after sign-in) | `accept_invitation` RPC — `src/data/invitations.ts:93` | RPC | Membership + artist link + invite consumed |
 | Resend bounce/complaint webhook | `handle-email-suppression` | webhook | HMAC-verified; upserts `suppressed_emails` |
 
-## 4. The functions — 20 edge functions at a glance
+## 4. The functions — 21 edge functions at a glance
 
 | function | trigger | auth guard | writes | side effects |
 |---|---|---|---|---|
@@ -262,7 +262,7 @@ Every cron dispatch is recorded (`cron_health_dispatch` + pg_net's `net._http_re
 1. **`org_invitations` has no DB-level dedup on (org_id, email)** for pending invites — only the token is unique; duplicates are prevented in app logic alone. Unconfirmed whether intentional. (`20260603120000_add_platform_tables_and_org_helpers.sql`)
 2. **`preview-transactional-email` is `verify_jwt = false`** in `supabase/config.toml` yet its handler calls `requireRole(["admin","producer"])` — functionally still auth-gated (the guard 401s without a valid JWT); the "public" grouping may be intentional for error messaging or may be config drift.
 3. **`should_notify` is probeable cross-user** *(resolved during verification — confirmed, minor)*: the RPC is SECURITY DEFINER, granted `EXECUTE TO authenticated`, with no `auth.uid()` self-scope check — any signed-in user can read another user's per-category opt-out booleans by uuid. Low impact (a boolean per category/channel, requires knowing the uuid), but a hardening candidate. The later hardening migration touched only `category_of`/`gate_notification_pref`, not this function. (`20260622181552_notification_preferences.sql:24-36`)
-4. **CLAUDE.md function inventory drift**: `close-offer-tier` and `platform-edge-metrics` exist and are client-wired but are missing from CLAUDE.md's edge-function category list.
+4. **CLAUDE.md function inventory drift** *(fixed in the PR that introduced this map)*: `close-offer-tier`, `platform-edge-metrics`, and `cron-health-watcher` were client-wired but missing from CLAUDE.md's edge-function category list; the true function count is 21, not the long-repeated 20.
 5. **`expire_soft_bookings()` is callable by any authenticated user** *(found during verification)*: `GRANT EXECUTE TO authenticated` with no internal role/org check, and its UPDATE has no org filter — any signed-in user can trigger a cross-org sweep of overdue `suggested` offers. Impact is low (it only does early, to already-overdue offers, what the hourly cron does anyway) but the grant should be narrowed to `service_role`. (`20260702120002_expire_only_suggested_offers.sql:18-34`)
 
 ---
