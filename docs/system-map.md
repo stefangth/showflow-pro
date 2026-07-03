@@ -20,9 +20,9 @@ Authoritative definitions: `supabase/migrations/20260624101342_cron_dispatch_tim
 | `confirmation-digest` | `0 17-20 * * *` | hourly 17:00–20:00 UTC; Berlin-hour gate (default 20:00) | `send-confirmation-digest` | cron secret or admin/producer JWT | Emails artists confirmations + schedule changes + cancellations |
 | `expire-offers-hourly` | `0 * * * *` | every hour | `expire-offers` | cron secret or admin/producer JWT | Expires overdue `suggested` offers via `expire_soft_bookings()`; escalates unfillable tiers to producers |
 | `tier-at-risk-hourly` | `5 * * * *` | every hour at :05 | `tier-at-risk-watcher` | cron secret or admin/producer JWT | In-app `tier_at_risk` notifications when pending + accepted < required slots; self-clears on recovery |
-| `cron-health-watcher` | `*/15 * * * *` | every 15 minutes | `cron-health-watcher` | `X-Cron-Secret` only | Classifies every job healthy/failing/stale; alerts super-admins on new failures |
+| `cron-health-watcher` | `*/15 * * * *` | every 15 minutes | `cron-health-watcher` | cron secret only (empty-role `requireCronOrRole` — the JWT path can never authorize) | Classifies every job healthy/failing/stale; alerts super-admins on new failures |
 
-**Dispatch plumbing:** each pg_cron tick runs a SQL wrapper — `net.http_post(...)` to `https://<project>.supabase.co/functions/v1/<fn>` followed by an `INSERT INTO cron_health_dispatch (job_name, request_id)` — so every dispatch is attributable when `cron-health-watcher` later joins `cron_health_dispatch` → `net._http_response` (`20260623042017_cron_dispatch_capture.sql`). Every call passes `timeout_milliseconds := 30000`: pg_net's 5000 ms default misclassified healthy 3–10 s cold-start responses as `timed_out`, paging super-admins falsely (`20260624101342_cron_dispatch_timeout.sql:1-6`). The `X-Cron-Secret` header value comes from `private.cron_secret()`, which since `20260702120010_cron_secret_to_vault.sql` reads Supabase Vault (no member-readable table holds it); edge functions verify it via the service-role-only `get_cron_secret()` RPC with a constant-time compare (`_shared/auth.ts:14-24,104-140`).
+**Dispatch plumbing:** each pg_cron tick runs a SQL wrapper — `net.http_post(...)` to `https://<project>.supabase.co/functions/v1/<fn>` followed by an `INSERT INTO cron_health_dispatch (job_name, request_id)` — so every dispatch is attributable when `cron-health-watcher` later joins `cron_health_dispatch` → `net._http_response` (`20260623042017_cron_dispatch_capture.sql`). Every call passes `timeout_milliseconds := 30000`: pg_net's 5000 ms default misclassified healthy 3–10 s cold-start responses as `timed_out`, paging super-admins falsely (`20260624101342_cron_dispatch_timeout.sql:1-6`). The `X-Cron-Secret` header value comes from `private.cron_secret()`, which since `20260702120010_cron_secret_to_vault.sql` reads Supabase Vault (no member-readable table holds it); edge functions verify it via the service-role-only `get_cron_secret()` RPC with a constant-time compare (`_shared/auth.ts:14-24,116-140`).
 
 ## 3. Buttons — everything a user action fires
 
@@ -52,7 +52,7 @@ Grouped by actor. Full call-site citations live with each row; role gates from `
 | Admin → Members: role toggles / remove | `set_org_member_role`, `remove_org_member` — `src/data/members.ts:29,41` | RPC | Last-admin-guarded membership changes |
 | Settings → Airtable Sync (pickers, linking) | `airtable-schema` ×4 modes — `src/data/airtableSchema.ts:17-67` | edge fn | Schema/table/linked-record/program-pair reads via Vault PAT |
 | Settings → Airtable Sync: key save/status/delete | `set_org_airtable_key`, `get_org_airtable_key_status`, `delete_org_airtable_key` — `src/data/airtableKey.ts:15-35` | RPC | Vault-backed PAT management (decrypted key never client-readable) |
-| Settings → Airtable Sync: merge duplicate cities | `merge_cities` — `src/data/cities.ts:63` | RPC | Repoints 4 FK tables to survivor city, deletes losers |
+| Settings → Airtable Sync: merge duplicate cities | `merge_cities` — `src/data/cities.ts:65` | RPC | Repoints 4 FK tables to survivor city, deletes losers |
 | Settings → Booking Engine → template Preview | `preview-transactional-email` — `src/pages/SettingsPage.tsx:107` | edge fn | Server-side React Email render, no send |
 | Settings → Organization → rename | `rename_org` — `src/data/orgs.ts:70` | RPC | Name only, slug immutable |
 | Editor mode → View-as picker | `admin-list-users` — `src/features/editor/EditorToolbar.tsx:30` | edge fn | Org-scoped user list (real-admin gate) |
@@ -63,7 +63,7 @@ Grouped by actor. Full call-site citations live with each row; role gates from `
 | gesture | calls | kind | effect |
 |---|---|---|---|
 | Platform → New organization | `provision-org` — `src/data/platform.ts:93` | edge fn | Atomic `provision_org` RPC + first-admin invite email |
-| Platform → org → Export / Delete | `export-org-data` — `src/data/platform.ts:200`; `delete_org` RPC — `:209` | edge fn + RPC | 29-table JSON bundle; hard teardown across ~24 tables |
+| Platform → org → Export / Delete | `export-org-data` — `src/data/platform.ts:200`; `delete_org` RPC — `:209` | edge fn + RPC | 27-table JSON bundle; hard teardown across the same 27 tables |
 | Platform → System Health | `platform-edge-metrics` — `src/data/platform.ts:67`; `get_cron_health` RPC — `:56` | edge fn + RPC | Analytics-API latency/error metrics; cron dashboard |
 | Platform → Platform Admins tab | `list/add/remove_platform_admin` — `src/data/platform.ts:116-127` | RPC | Roster management, self-demotion + last-admin blocked |
 | Platform → org invite popover → Resend | `resend-invitation` — `src/components/platform/OrgInvitePopover.tsx:21` | edge fn | Same invite email, new idempotency key |
@@ -104,11 +104,11 @@ Grouped by actor. Full call-site citations live with each row; role gates from `
 
 ### Booking engine — `open-offer-tier`, `close-offer-tier`, `expire-offers`, `tier-at-risk-watcher`
 
-Tier N (1…) = casts ranked at priority N for the date's city (`cast_city_priority`); tier 99 = ad-hoc casts added via `show_date_cast_eligibility` that have no priority entry (prevents double-offering). Candidates = active artists in those casts, minus anyone already actively booked on the date, minus anyone with a `blocked_dates` row. All offers are primary (`is_understudy: false`) — understudy slots never get automated offers, and `understudy_slots` is excluded from the fill math (`_shared`-adjacent `tierFill.ts:37-51`). `offer_expires_at` is deliberately NOT set at insert — the clock starts when the digest actually reaches the artist. Escalation (`expire-offers`) fires once per tier (`escalation_notified_at` stamp) when zero pending non-expired offers remain and accepted < required; at-risk flagging (`tier-at-risk-watcher`) is the earlier, softer signal (pending + accepted < required) and self-heals by deleting its notifications when a tier recovers or closes. Cites: `open-offer-tier/index.ts:63-206`, `close-offer-tier/index.ts:61-90`, `expire-offers/index.ts:30-134`, `tier-at-risk-watcher/index.ts:32-150`.
+Tier N (1…) = casts ranked at priority N for the date's city (`cast_city_priority`); tier 99 = ad-hoc casts added via `show_date_cast_eligibility` that have no priority entry (prevents double-offering). Candidates = active artists in those casts, minus anyone already actively booked on the date, minus anyone with a `blocked_dates` row. All offers are primary (`is_understudy: false`) — understudy slots never get automated offers, and `understudy_slots` is excluded from the fill math (`_shared/tierFill.ts:34-46`). `offer_expires_at` is deliberately NOT set at insert — the clock starts when the digest actually reaches the artist. Escalation (`expire-offers`) fires once per tier (`escalation_notified_at` stamp) when zero pending non-expired offers remain and accepted < required; at-risk flagging (`tier-at-risk-watcher`) is the earlier, softer signal (pending + accepted < required) and self-heals by deleting its notifications when a tier recovers or closes. Cites: `open-offer-tier/index.ts:59-217`, `close-offer-tier/index.ts:61-90`, `expire-offers/index.ts:30-134`, `tier-at-risk-watcher/index.ts:32-150`.
 
 ### Digests & email — `send-offer-digest`, `send-confirmation-digest`, `send-transactional-email`, `preview-transactional-email`, `handle-email-suppression`, `handle-email-unsubscribe`
 
-Both digests iterate `getActiveOrgs`, resolve the org's Berlin send-hour via `resolveOrgSetting`, and no-op unless the current Berlin hour matches — the cron fires hourly across a window so summer/winter time both hit. Recipient resolution is login-email-first via `resolve_user_contacts` (ADR-0011). Stamps are written **only after** `emailWasSent()` confirms Resend accepted — a failed send self-retries next hour because the query keys on the missing stamp. All sends funnel through `send-transactional-email` (service-role callers only), which short-circuits on `suppressed_emails` (fail-closed), checks `should_notify` category×channel prefs (fail-open), mints unsubscribe tokens, logs every attempt to `email_send_log`, and passes the caller's idempotency key to Resend so retried digest runs can't double-send. Cites: `send-offer-digest/index.ts:62-140`, `send-confirmation-digest/index.ts:55-255`, `send-transactional-email/index.ts:34-269`.
+Both digests iterate `getActiveOrgs`, resolve the org's Berlin send-hour via `resolveOrgSetting`, and no-op unless the current Berlin hour matches — the cron fires hourly across a window so summer/winter time both hit. Recipient resolution is login-email-first via `resolve_user_contacts` (ADR-0011). Stamps are written **only after** `emailWasSent()` confirms Resend accepted — a failed send self-retries next hour because the query keys on the missing stamp. All sends funnel through `send-transactional-email` (service-role callers only), which short-circuits on `suppressed_emails` (fail-closed), checks `should_notify` category×channel prefs (fail-open), mints unsubscribe tokens, logs every attempt to `email_send_log`, and passes the caller's idempotency key to Resend so retried digest runs can't double-send. Cites: `send-offer-digest/index.ts:21-51,62-140`, `send-confirmation-digest/index.ts:55-255`, `send-transactional-email/index.ts:34-269`.
 
 ### Airtable sync — `airtable-poll`, `airtable-schema`
 
@@ -116,11 +116,11 @@ Both digests iterate `getActiveOrgs`, resolve the org's Berlin send-hour via `re
 
 ### Org & platform — `provision-org`, `create-invitation`, `resend-invitation`, `admin-list-users`, `platform-edge-metrics`, `cron-health-watcher`
 
-Invitation flow: insert `org_invitations` (token via DB default) → best-effort `org-invitation` email (failure never orphans the invite — admins can copy the link). `provision-org` delegates atomicity to the `provision_org` RPC called through the **caller's JWT** so the RPC's own super-admin check holds. `platform-edge-metrics` is the only function that talks to the Supabase Management/Analytics API (dedicated `ANALYTICS` PAT). Cites: `create-invitation/index.ts:33-86`, `provision-org/index.ts:18-57`, `platform-edge-metrics/index.ts:59-85`.
+Invitation flow: insert `org_invitations` (token via DB default) → best-effort `org-invitation` email (failure never orphans the invite — admins can copy the link). `provision-org` delegates atomicity to the `provision_org` RPC called through the **caller's JWT** so the RPC's own super-admin check holds. `platform-edge-metrics` talks to the Supabase Management/Analytics API (dedicated `ANALYTICS` PAT — project keys can't reach it). Cites: `create-invitation/index.ts:33-86`, `provision-org/index.ts:18-57`, `platform-edge-metrics/index.ts:59-85`.
 
 ### GDPR & import — `delete-my-account`, `export-org-data`, `fetch-remote-sheet`
 
-`delete-my-account` orders its writes fail-safe: last-admin check (`sole_admin_orgs`, caller-JWT so `auth.uid()` scoping holds) → `anonymize_user` (caller-JWT) → `auth.admin.deleteUser` (service role). The one risky window: anonymize succeeded but auth-delete failed (no rollback). `export-org-data` reads 29 org tables, aborts on any single failure (never a partial bundle). `fetch-remote-sheet` allows exactly `docs.google.com` published-CSV URLs — manual redirects, 8 s timeout, 5 MB cap. Cites: `delete-my-account/index.ts:8-30`, `export-org-data/index.ts:8-46`, `fetch-remote-sheet/index.ts:7-75`.
+`delete-my-account` orders its writes fail-safe: last-admin check (`sole_admin_orgs`, caller-JWT so `auth.uid()` scoping holds) → `anonymize_user` (caller-JWT) → `auth.admin.deleteUser` (service role). The one risky window: anonymize succeeded but auth-delete failed (no rollback). `export-org-data` reads 27 org tables, aborts on any single failure (never a partial bundle). `fetch-remote-sheet` allows exactly `docs.google.com` published-CSV URLs — manual redirects, 8 s timeout, 5 MB cap. Cites: `delete-my-account/index.ts:8-30`, `export-org-data/index.ts:8-46`, `fetch-remote-sheet/index.ts:7-75`.
 
 ## 5. The gates — database-enforced rules
 
@@ -142,7 +142,7 @@ What the database can refuse (or do on its own), regardless of which code path w
 | `notify_booking_transition_trigger` | `bookings` | AFTER UPDATE | audit log + notifications: `suggested→soft_booked` → producers; `soft_booked→confirmed` → artist | no | body `20260604133000_org_scope_assignments_and_autocancel.sql` |
 | `trg_derive_org_id` (`derive_org_id_from_sync_log_id`) | `airtable_sync_record_log` | BEFORE INSERT | copies `org_id` from parent sync-log row | no | `20260617164248_airtable_sync_records.sql` |
 | `on_auth_user_created` (`handle_new_user`) | `auth.users` | AFTER INSERT | creates `profiles` row (profile-only since approval flow retired) | no | body `20260603140000_retire_approval_flow.sql` |
-| `update_updated_at_column()` (≈13 tables) | various | BEFORE UPDATE | bumps `updated_at` | no | fn `20260416115633…`; latest binding `20260623045101…` |
+| `update_updated_at_column()` (10 live tables) | various | BEFORE UPDATE | bumps `updated_at` | no | fn `20260416115633…`; latest binding `20260623045101…` |
 
 ### The booking state machine
 
@@ -181,11 +181,11 @@ stateDiagram-v2
 | rpc | guard | one line | writes |
 |---|---|---|---|
 | `accept_invitation` | invite email must match caller's auth email | membership + artist link (id-stamp first, email fallback) + invite consumed | `org_memberships`, `artists`, `org_invitations` — `20260701185118…` |
-| `expire_soft_bookings` | caller-gated (cron/service via `expire-offers`) | cancels only `suggested` past `offer_expires_at`; accepted holds never auto-expire | `bookings` — `20260702120002…` |
+| `expire_soft_bookings` | ⚠ gate lives only in the `expire-offers` edge fn — the RPC itself is `GRANT EXECUTE TO authenticated` with no internal role/org check (see Open questions #5) | cancels only `suggested` past `offer_expires_at`; accepted holds never auto-expire | `bookings` — `20260702120002…` |
 | `set_org_member_role` / `remove_org_member` | org admin; last-admin blocked (table-locked) | role/membership management | `org_memberships` — `20260622164142…` / `20260604160000…` |
 | `bulk_import_artists` | org producer/admin | capped 5000, per-row dedup on lower(email), per-row status array | `artists` — `20260701214715…` |
-| `anonymize_user` | self ∨ super-admin (must call via own JWT) | GDPR scrub: deletes user-scoped rows, nulls artist PII, keeps audit skeleton | 7 tables — `20260622193223…` |
-| `delete_org` | super-admin | hard teardown across ~24 tables | everything org-scoped — `20260622193255…` |
+| `anonymize_user` | self ∨ super-admin (must call via own JWT) | GDPR scrub: deletes user-scoped rows, nulls artist PII, keeps audit skeleton | 9 tables — `20260622193223…` |
+| `delete_org` | super-admin | hard teardown across 27 tables (export-org-data mirrors the same list) | everything org-scoped — `20260622193255…` |
 | `provision_org` | super-admin | atomic org + catalog seed + first-admin invite | `organizations`, `org_invitations`, catalog — `20260604140000…` |
 | `sole_admin_orgs` / `export_my_data` | self-scoped via `auth.uid()` | deletion guard / GDPR export | read-only — `20260622205426…` |
 | `get_cron_secret` / `get_org_airtable_key` / `resolve_user_contacts` / `get_user_id_by_email` / `cron_health_scan` | **service-role only** | secrets + cross-schema reads the client must never do | read-only |
@@ -201,11 +201,13 @@ flowchart LR
     AB[Airtable base] -->|"cron */5 via Vault PAT"| AP[airtable-poll]
     AP -->|upsert by airtable_record_id| SD[(show_dates)]
     AP -->|program write-through| SH[(shows)]
-    AP -->|run + record logs| LOG[(airtable_sync_log)]
+    AP -->|run summary| LOG[(airtable_sync_log)]
+    AP -->|per-record outcomes| RLOG[(airtable_sync_record_log)]
     AP -->|held-record problems| NA[notifications to org admins]
     AP -->|"each NEW date, tier 1"| OOT[open-offer-tier]
     OOT -->|insert suggested| BK[(bookings)]
-    SD -->|status recompute triggers| UI[Bookings board via realtime]
+    BK -->|status recompute trigger| SD
+    SD -.->|realtime| UI[Bookings board]
 ```
 
 Airtable is the system of record for show dates (ADR-0001) — in-app date creation exists but synced dates are owned by the poll. Cancelled Airtable records flip the date to `cancelled`, which cascades: `cascade_cancel_bookings_on_date_cancel` cancels every active booking, the schedule-change trigger queues digest rows, and understudy promotion is suppressed during the cascade. Held records (unmappable rows) don't block the run; admins get one `airtable_sync_held` notification per new/worsening problem, and the Sync Status tab reads the per-record log.
@@ -259,8 +261,9 @@ Every cron dispatch is recorded (`cron_health_dispatch` + pg_net's `net._http_re
 
 1. **`org_invitations` has no DB-level dedup on (org_id, email)** for pending invites — only the token is unique; duplicates are prevented in app logic alone. Unconfirmed whether intentional. (`20260603120000_add_platform_tables_and_org_helpers.sql`)
 2. **`preview-transactional-email` is `verify_jwt = false`** in `supabase/config.toml` yet its handler calls `requireRole(["admin","producer"])` — functionally still auth-gated (the guard 401s without a valid JWT); the "public" grouping may be intentional for error messaging or may be config drift.
-3. **`should_notify` self-scoping**: the function takes an arbitrary `p_user` uuid and reads that user's prefs jsonb; research did not conclusively verify whether `authenticated` role can probe other users' preference flags or whether only service-role/trigger contexts ever reach it. (`20260622182649_notif_pref_fn_hardening.sql`)
+3. **`should_notify` is probeable cross-user** *(resolved during verification — confirmed, minor)*: the RPC is SECURITY DEFINER, granted `EXECUTE TO authenticated`, with no `auth.uid()` self-scope check — any signed-in user can read another user's per-category opt-out booleans by uuid. Low impact (a boolean per category/channel, requires knowing the uuid), but a hardening candidate. The later hardening migration touched only `category_of`/`gate_notification_pref`, not this function. (`20260622181552_notification_preferences.sql:24-36`)
 4. **CLAUDE.md function inventory drift**: `close-offer-tier` and `platform-edge-metrics` exist and are client-wired but are missing from CLAUDE.md's edge-function category list.
+5. **`expire_soft_bookings()` is callable by any authenticated user** *(found during verification)*: `GRANT EXECUTE TO authenticated` with no internal role/org check, and its UPDATE has no org filter — any signed-in user can trigger a cross-org sweep of overdue `suggested` offers. Impact is low (it only does early, to already-overdue offers, what the hourly cron does anyway) but the grant should be narrowed to `service_role`. (`20260702120002_expire_only_suggested_offers.sql:18-34`)
 
 ---
 
@@ -269,7 +272,7 @@ Every cron dispatch is recorded (`cron_health_dispatch` + pg_net's `net._http_re
 The drill-down layer. Sections 1–8 are the altitude; this is the detail, per function, in alphabetical order. All paths relative to `supabase/functions/` unless noted.
 
 ### admin-list-users
-- **Trigger:** user action (Editor mode "view as" picker)
+- **Trigger:** user action (Editor mode "view as" picker — `src/features/editor/EditorToolbar.tsx:30`)
 - **Auth:** `requireOrgRole(org_id, ["admin"])` (`index.ts:27`); `verify_jwt = true`
 - **Inputs:** `?org_id` query or body `org_id`
 - **Reads:** `auth.admin.listUsers()` (≤1000), `org_memberships` filtered to org
@@ -280,7 +283,7 @@ The drill-down layer. Sections 1–8 are the altitude; this is the detail, per f
 - **Trigger:** cron `airtable-poll` (5-min)
 - **Auth:** `requireCronSecret` only (`index.ts:472-473`); `verify_jwt = false`
 - **Reads:** `getActiveOrgs`; per-org settings `airtable_sync_enabled`, `airtable_base_id`, `airtable_table_name`, `airtable_field_map`, `airtable_view`; Vault PAT via `get_org_airtable_key`; `shows`, `cities`, `custom_field_definitions`, existing `show_dates`, previous sync logs; Airtable Data + Meta APIs
-- **Writes:** `shows` (re-key + program write-through, `index.ts:294-311`), `show_dates` insert/update (`index.ts:337-376`), `airtable_sync_log` (`index.ts:413-425`), `airtable_sync_record_log` (`index.ts:430-437`), `notifications` `airtable_sync_held` (`index.ts:150-158`)
+- **Writes:** `shows` (re-key + program write-through, `index.ts:294-317`), `show_dates` insert/update (`index.ts:337-376`), `airtable_sync_log` (`index.ts:413-425`), `airtable_sync_record_log` (`index.ts:430-437`), `notifications` `airtable_sync_held` (`index.ts:150-158`)
 - **Side effects:** invokes `open-offer-tier` per new date, batched 10 (`index.ts:103-120`)
 - **Failure:** per-org isolation (`index.ts:520-523`); Airtable API error → 502 after logging; misconfig → error log row + continue; MAX_PAGES=100 truncation warning; idempotent by `airtable_record_id`
 
@@ -289,7 +292,7 @@ The drill-down layer. Sections 1–8 are the altitude; this is the detail, per f
 - **Auth:** `requireOrgRole(orgId, ["admin"])` (`index.ts:53`); `verify_jwt = true`
 - **Inputs:** `org_id` + optional `baseId` / `linkedTableId` / `tableName`+`programField`(+`subProgramField`) — four modes
 - **Reads:** Vault PAT via `get_org_airtable_key`; Airtable Meta/Data APIs. **Writes:** none
-- **Failure:** Airtable 403 → `{schemaAccessible:false}` 200 (expected fallback); 401 → 400; other → 502; page caps logged
+- **Failure:** Airtable 403 → `{schemaAccessible:false}` 200 (expected fallback); 401 → 400; other → 502; base-list page cap logged (record-page caps in modes C/D are silent)
 
 ### close-offer-tier
 - **Trigger:** user action (show-date sheet)
@@ -308,7 +311,7 @@ The drill-down layer. Sections 1–8 are the altitude; this is the detail, per f
 
 ### cron-health-watcher
 - **Trigger:** cron `cron-health-watcher` (15-min)
-- **Auth:** `requireCronOrRole(req, [])` — secret only, no JWT fallback (`index.ts:60-64`); `verify_jwt = false`
+- **Auth:** `requireCronOrRole(req, [])` — empty role list, so only a valid `X-Cron-Secret` can ever authorize (`index.ts:63`); `verify_jwt = false`
 - **Reads:** `cron_health_scan()` RPC (dispatch ⋈ `net._http_response`); `KNOWN_JOBS` max-silence map (`index.ts:31-38`)
 - **Writes:** `cron_health_state` upsert; `cron_health_log` on transitions; `notifications` `cron_health_alert`; prunes dispatch >1 d, log >30 d (`index.ts:122-163`)
 - **Side effects:** `cron-health-alert` email to each super-admin on failure transition; in-app only on recovery
@@ -326,12 +329,12 @@ The drill-down layer. Sections 1–8 are the altitude; this is the detail, per f
 - **Reads:** open never-escalated tiers; show/slot config; date bookings; `resolve_show_assignments` for recipients (fallback org admins)
 - **Writes:** `expire_soft_bookings()` RPC (cancels overdue `suggested` only); `notifications` `cast_escalation_requested` (`index.ts:103-114`); `escalation_notified_at` stamp (`index.ts:131-134`)
 - **Side effects:** `cast-escalation-requested` email per recipient, best-effort
-- **Escalation rule:** future date ∧ configured slots ∧ zero pending non-expired in tier ∧ accepted < required (`tierFill.ts:43-67`)
+- **Escalation rule:** future date ∧ configured slots ∧ zero pending non-expired in tier ∧ accepted < required (`expire-offers/index.ts:56-83`; helpers `tierFill.ts:43-67`)
 
 ### export-org-data
 - **Trigger:** user action (Platform → Edit org → Export)
 - **Auth:** `requireSuperAdmin` (`index.ts:23`); `verify_jwt = true`
-- **Reads:** 29 org-scoped tables (`index.ts:8-17`); excludes user-scoped `notification_preferences`
+- **Reads:** 27 org-scoped tables (`index.ts:8-17`); excludes user-scoped `notification_preferences`
 - **Failure:** any table error → 500, no partial bundle
 
 ### fetch-remote-sheet
