@@ -26,7 +26,7 @@ BEGIN;
 
 CREATE EXTENSION IF NOT EXISTS pgtap WITH SCHEMA extensions;
 
-SELECT plan(8);
+SELECT plan(11);
 
 -- ────────────────────────────────────────────────────────────────────────────
 -- Shared fixtures. session_replication_role = replica disables FK / status
@@ -138,6 +138,19 @@ SELECT ok(
     < (now() - interval '1 day'),
   'updated_at unchanged on an untouched row (NULL expiry)'
 );
+
+-- ────────────────────────────────────────────────────────────────────────────
+-- Tests 9-11: grant posture — cron-only sweep. Clients must go through the
+-- expire-offers edge fn (cron secret ∨ admin/producer); the RPC itself is
+-- service_role-only (hardened after the system-map audit found it callable by
+-- authenticated AND anon with no internal guard and no org filter).
+-- ────────────────────────────────────────────────────────────────────────────
+SELECT ok(NOT has_function_privilege('authenticated', 'public.expire_soft_bookings()', 'execute'),
+          'authenticated cannot execute');
+SELECT ok(NOT has_function_privilege('anon', 'public.expire_soft_bookings()', 'execute'),
+          'anon cannot execute');
+SELECT ok(has_function_privilege('service_role', 'public.expire_soft_bookings()', 'execute'),
+          'service_role can execute');
 
 SELECT * FROM finish();
 ROLLBACK;
