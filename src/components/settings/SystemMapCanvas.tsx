@@ -261,11 +261,9 @@ export function SystemMapCanvas() {
                           >
                             <span className="block font-medium text-foreground">{node.label}</span>
                             {node.sub ? (
-                              <span
-                                data-sub={node.sub}
-                                aria-hidden="true"
-                                className="block truncate text-xs text-muted-foreground before:content-[attr(data-sub)]"
-                              />
+                              <span className="block truncate text-xs text-muted-foreground">
+                                {node.sub}
+                              </span>
                             ) : null}
                           </button>
                         ))}

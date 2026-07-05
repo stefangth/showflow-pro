@@ -7,7 +7,7 @@ describe("SystemMapCanvas", () => {
   it("renders nodes across the four columns", () => {
     renderWithProviders(<SystemMapCanvas />);
     expect(screen.getByRole("button", { name: /airtable-poll$/i })).toBeInTheDocument();
-    expect(screen.getByText(/bookings/i)).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /^bookings$/i })).toBeInTheDocument();
   });
 
   it("filters nodes by subsystem chip", () => {
