@@ -259,7 +259,7 @@ function BookingEngineTab({ get, set }: { get: (key: string, fallback?: any) => 
 // ─── SettingsPage ────────────────────────────────────────────────────────────
 
 export default function SettingsPage() {
-  const { hasRole, currentOrg } = useAuth();
+  const { hasRole, currentOrg, isSuperAdmin } = useAuth();
   const orgId = currentOrg?.id ?? null;
   const qc = useQueryClient();
 
@@ -523,7 +523,7 @@ export default function SettingsPage() {
         </TabsContent>
 
         <TabsContent value="docs" className="mt-4">
-          <DocumentationTab />
+          <DocumentationTab isSuperAdmin={isSuperAdmin} />
         </TabsContent>
       </Tabs>
 

@@ -2,7 +2,7 @@
 
 > **What this is:** the trigger → function → data → side-effect view of the whole automation engine.
 > **What this is not:** domain rationale (see `docs/app-logic.md`) or decision history (see `docs/adr/README.md`).
-> **Maintenance rule:** any PR that adds or changes a cron job, edge function, DB trigger/RPC/constraint, email, or notification path MUST update this file in the same PR.
+> **Maintenance rule:** any PR that adds or changes a cron job, edge function, DB trigger/RPC/constraint, email, or notification path MUST update this file **and** the in-app graph data `src/data/systemMap.ts` (which powers the Settings → Documentation → System Map canvas) in the same PR. The `systemMap.test.ts` drift guard fails CI when a function/cron label here and there disagree.
 > **As of:** 2026-07-03, branch state (not live-project state).
 
 ## 1. The engine in one breath
