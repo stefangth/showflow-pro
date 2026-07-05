@@ -53,3 +53,23 @@ export async function fetchUnresolvedRecords(
   if (error) throw error;
   return (data ?? []) as UnresolvedRecord[];
 }
+
+export interface SyncNowResult {
+  ok: boolean;
+  orgs_synced: number;
+  result: { processed: number; new_dates: number; updated: number; held: number; tiers_opened: number } | null;
+}
+
+/**
+ * Trigger an immediate Airtable poll for one org (the "Sync now" button). Calls the
+ * airtable-poll function with a JWT (attached by supabase-js) + org_id, hitting its
+ * scoped org-admin branch — a single-org sync that bypasses the interval gate.
+ */
+export async function triggerAirtableSyncNow(
+  client: SupabaseClient<Database>,
+  orgId: string,
+): Promise<SyncNowResult> {
+  const { data, error } = await client.functions.invoke("airtable-poll", { body: { org_id: orgId } });
+  if (error) throw error;
+  return data as SyncNowResult;
+}
