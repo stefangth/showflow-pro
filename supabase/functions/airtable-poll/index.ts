@@ -10,6 +10,26 @@ import { isCancelledStatus } from "../_shared/airtableStatus.ts";
 const OFFER_TIER_BATCH_SIZE = 10;
 const MAX_PAGES = 100;
 
+/** Poll-interval floor + jitter grace. Mirrors src/lib/airtablePoll.ts (two runtimes,
+ *  no shared import). The 5-min floor matches the master cron tick; the 60s grace keeps
+ *  a 5-min interval polling every tick despite cron dispatch jitter. */
+const MIN_POLL_INTERVAL_MINUTES = 5;
+const POLL_GRACE_MS = 60_000;
+function clampIntervalMinutes(v: unknown): number {
+  const n = Number(v);
+  return Number.isFinite(n) && n >= MIN_POLL_INTERVAL_MINUTES ? n : MIN_POLL_INTERVAL_MINUTES;
+}
+
+/** Most recent airtable_poll attempt for an org (null = never). Drives the interval gate. */
+async function fetchLastPollAt(admin: Deps["admin"], orgId: string): Promise<Date | null> {
+  const { data } = await admin
+    .from("airtable_sync_log").select("synced_at")
+    .eq("org_id", orgId).eq("sync_type", "airtable_poll")
+    .order("synced_at", { ascending: false }).limit(1).maybeSingle();
+  const ts = (data as { synced_at?: string } | null)?.synced_at;
+  return ts ? new Date(ts) : null;
+}
+
 /** Which Airtable field feeds each ShowFlow field (per-org, from app_settings.airtable_field_map). */
 interface FieldMap {
   date?: string | null;
@@ -515,6 +535,13 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
     try {
       const enabled = await resolveOrgSetting<boolean>(admin, org.id, "airtable_sync_enabled", false);
       if (!enabled) continue; // intentionally off → skip silently
+
+      // Per-org interval gate: skip until this org's interval has elapsed since its last
+      // poll. The master cron ticks every 5 min; this throttles each org independently.
+      const intervalRaw = await resolveOrgSetting<number>(admin, org.id, "airtable_poll_interval_minutes", MIN_POLL_INTERVAL_MINUTES);
+      const intervalMs = clampIntervalMinutes(intervalRaw) * 60_000;
+      const lastPollAt = await fetchLastPollAt(admin, org.id);
+      if (lastPollAt && deps.now().getTime() - lastPollAt.getTime() < intervalMs - POLL_GRACE_MS) continue;
 
       const r = await syncOneOrg(deps, org.id);
       if (!r) continue; // misconfigured — error row already written

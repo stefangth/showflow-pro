@@ -134,6 +134,59 @@ function authReq(extraHeaders: Record<string, string> = {}) {
   });
 }
 
+/**
+ * Deps for interval-gate and manual-sync tests: one enabled+keyed org, empty catalog,
+ * an Airtable-page fetch spy, and a seedable last-poll timestamp. `memberRole`/`authUser`
+ * feed requireOrgRole for the manual-sync path.
+ */
+function makeGateDeps(opts: {
+  lastSyncedAt?: string | null;
+  intervalMinutes?: number;
+  now?: Date;
+  authUser?: { id: string };
+  memberRole?: string | null;
+} = {}) {
+  const fetchSpy = { count: 0 };
+  const fetchImpl = ((url: string) => {
+    if (String(url).includes("api.airtable.com")) fetchSpy.count += 1;
+    return Promise.resolve(new Response(JSON.stringify({ records: [] }), { status: 200, headers: { "Content-Type": "application/json" } }));
+  }) as unknown as typeof fetch;
+
+  const intervalRows = opts.intervalMinutes != null
+    ? [{ when: { key: "airtable_poll_interval_minutes" }, data: [{ org_id: ORG, value: opts.intervalMinutes }] }]
+    : [];
+
+  const { deps, invokeCalls, calls } = makeFakeDeps({
+    now: opts.now ?? new Date("2026-06-01T12:00:00.000Z"),
+    authUser: opts.authUser,
+    tables: {
+      app_settings: [
+        { when: { key: "cron_secret" }, data: { value: "secret123" } },
+        // Field map WITHOUT city/venue: those trigger an extra meta-API fetch
+        // (fetchBaseTables) that would double-count fetchSpy per poll below.
+        { when: { key: "airtable_field_map" }, data: [{ org_id: ORG, value: { date: "Date", sub_program: "SubProgram" } }] },
+        ...ENABLED_SETTINGS,
+        ...intervalRows,
+      ],
+      organizations: { data: [{ id: ORG }], error: null },
+      shows: { data: [], error: null },
+      cities: { data: [], error: null },
+      show_dates: { data: [], error: null },
+      custom_field_definitions: { data: [], error: null },
+      airtable_sync_log: opts.lastSyncedAt !== undefined
+        ? { data: opts.lastSyncedAt === null ? null : { synced_at: opts.lastSyncedAt }, error: null }
+        : { data: null, error: null },
+      airtable_sync_record_log: { data: [], error: null },
+      org_memberships: { data: opts.memberRole ? { role: opts.memberRole } : null, error: null },
+      platform_admins: { data: null, error: null },
+      notifications: { data: null, error: null },
+    },
+    rpcs: { get_org_airtable_key: { data: "key", error: null }, get_cron_secret: { data: "secret123", error: null } },
+    fetchImpl,
+  });
+  return { deps, invokeCalls, calls, fetchSpy };
+}
+
 // ─── Auth ────────────────────────────────────────────────────────────────────
 // Post-C1 the cron secret comes from the Vault-backed get_cron_secret RPC, not
 // member-readable app_settings. This endpoint is CRON-SECRET-ONLY (requireCronSecret):
@@ -1139,6 +1192,51 @@ Deno.test("airtable-poll: a newly-held record notifies org admins (one notificat
   assertEquals(rows[0].user_id, "admin-1");
   assertEquals(rows[0].type, "airtable_sync_held");
   assertEquals(rows[0].related_entity_id, "log-1");
+});
+
+// ─── Interval gate (cron path) ────────────────────────────────────────────────
+
+Deno.test("gate: first run (no prior poll) → polls", async () => {
+  const { deps, fetchSpy } = makeGateDeps({ lastSyncedAt: null });
+  const res = await handle(authReq(), deps);
+  const body = await res.json();
+  assertEquals(res.status, 200);
+  assertEquals(fetchSpy.count, 1);       // hit Airtable
+  assertEquals(body.orgs_synced, 1);
+});
+
+Deno.test("gate: within interval → skipped, no Airtable call", async () => {
+  // last poll 2 min before now(12:00); default interval 5 → 120s < 300s-60s=240s → skip
+  const { deps, fetchSpy } = makeGateDeps({ lastSyncedAt: "2026-06-01T11:58:00.000Z" });
+  const res = await handle(authReq(), deps);
+  const body = await res.json();
+  assertEquals(res.status, 200);
+  assertEquals(fetchSpy.count, 0);
+  assertEquals(body.orgs_synced, 0);
+});
+
+Deno.test("gate: interval elapsed → polls", async () => {
+  const { deps, fetchSpy } = makeGateDeps({ lastSyncedAt: "2026-06-01T11:50:00.000Z" }); // 10 min ago
+  const res = await handle(authReq(), deps);
+  const body = await res.json();
+  assertEquals(fetchSpy.count, 1);
+  assertEquals(body.orgs_synced, 1);
+});
+
+Deno.test("gate: sub-floor interval value is clamped to 5 min", async () => {
+  // stored 1 → clamped to 5; last poll 2 min ago → still skipped
+  const { deps, fetchSpy } = makeGateDeps({ lastSyncedAt: "2026-06-01T11:58:00.000Z", intervalMinutes: 1 });
+  const res = await handle(authReq(), deps);
+  await res.json();
+  assertEquals(fetchSpy.count, 0);
+});
+
+Deno.test("gate: 60s grace lets a 5-min interval poll slightly early", async () => {
+  // last poll 4m40s ago (280s); 300s-60s grace = 240s threshold; 280 ≥ 240 → poll
+  const { deps, fetchSpy } = makeGateDeps({ lastSyncedAt: "2026-06-01T11:55:20.000Z", intervalMinutes: 5 });
+  const res = await handle(authReq(), deps);
+  await res.json();
+  assertEquals(fetchSpy.count, 1);
 });
 
 // ─── OPTIONS preflight ────────────────────────────────────────────────────────
