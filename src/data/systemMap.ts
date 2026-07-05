@@ -40,6 +40,7 @@ export const SYSTEM_MAP_NODES: SystemMapNode[] = [
     detail: {
       Fires: "airtable-poll",
       Auth: "X-Cron-Secret from Vault via private.cron_secret()",
+      Note: "per-org interval gate: skips an org until airtable_poll_interval_minutes has elapsed (min 5, 60s grace)",
       Cite: "supabase/migrations/20260624101342_cron_dispatch_timeout.sql",
     },
   },
@@ -164,11 +165,11 @@ export const SYSTEM_MAP_NODES: SystemMapNode[] = [
     group: "Airtable sync",
     kind: "fn",
     label: "airtable-poll",
-    sub: "cron secret only",
+    sub: "cron fan-out · org-admin Sync now",
     subsystems: ["airtable"],
     detail: {
-      Trigger: "cron every 5 min",
-      Auth: "requireCronSecret · verify_jwt=false",
+      Trigger: "cron every 5 min (per-org interval gate) + Settings → Airtable 'Sync now' (single org)",
+      Auth: "requireCronSecret (fan-out) OR requireOrgRole(admin)+org_id (one org) · verify_jwt=false",
       Writes: "shows, show_dates, airtable_sync_log(+record), notifications (airtable_sync_held)",
       Effects: "invokes open-offer-tier per NEW date (tier 1, batches of 10) · Airtable Data+Meta API",
       Failure: "per-org isolation; idempotent by airtable_record_id",
