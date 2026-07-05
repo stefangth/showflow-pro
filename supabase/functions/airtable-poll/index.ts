@@ -450,6 +450,35 @@ async function syncOrg(deps: Deps, orgId: string, baseId: string, tableName: str
 }
 
 /**
+ * Resolve one org's Airtable sync config, run the misconfig guards, and sync it.
+ * Returns the per-org result, or null when the org is misconfigured (an error
+ * sync_log row was already written) so the caller skips its totals. Shared by the
+ * cron loop (per active org) and the manual "Sync now" path (single org).
+ */
+async function syncOneOrg(deps: Deps, orgId: string): Promise<OrgSyncResult | null> {
+  const admin = deps.admin;
+  const [baseId, tableName, fieldMap, viewRaw] = await Promise.all([
+    resolveOrgSetting<string | null>(admin, orgId, "airtable_base_id", null),
+    resolveOrgSetting<string | null>(admin, orgId, "airtable_table_name", null),
+    resolveOrgSetting<FieldMap>(admin, orgId, "airtable_field_map", {}),
+    resolveOrgSetting<string | null>(admin, orgId, "airtable_view", "Grid view"),
+  ]);
+  const viewName = (viewRaw ?? "Grid view").trim();
+
+  const logMisconfig = (detail: string) =>
+    admin.from("airtable_sync_log").insert({ org_id: orgId, sync_type: "airtable_poll", status: "error", records_processed: 0, imported_count: 0, new_count: 0, updated_count: 0, held_count: 0, error_details: detail, synced_at: deps.now().toISOString() });
+
+  if (!baseId || !tableName) { await logMisconfig("Airtable sync enabled but base_id or table_name is not configured"); return null; }
+  if (!/^app[A-Za-z0-9]{14,}$/.test(baseId)) { await logMisconfig("airtable_base_id has unexpected format; expected app + 14 alphanumeric chars"); return null; }
+  if (!fieldMap?.date || !fieldMap?.sub_program) { await logMisconfig("Airtable field map incomplete: 'date' and 'sub_program' must be mapped"); return null; }
+
+  const { data: apiKey } = await admin.rpc("get_org_airtable_key", { _org: orgId });
+  if (!apiKey) { await logMisconfig("Airtable sync enabled but no API key is configured in the Vault"); return null; }
+
+  return await syncOrg(deps, orgId, baseId, tableName, apiKey as string, fieldMap, viewName);
+}
+
+/**
  * Polls Airtable per ACTIVE org, resolving records against the org's field map + catalog-link keys,
  * upserting show_dates, logging every record's outcome, and opening tier-1 offers for new dates.
  *
@@ -487,30 +516,9 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
       const enabled = await resolveOrgSetting<boolean>(admin, org.id, "airtable_sync_enabled", false);
       if (!enabled) continue; // intentionally off → skip silently
 
-      // Resolve the per-org sync config in one parallel fan-out (independent settings).
-      const [baseId, tableName, fieldMap, viewRaw] = await Promise.all([
-        resolveOrgSetting<string | null>(admin, org.id, "airtable_base_id", null),
-        resolveOrgSetting<string | null>(admin, org.id, "airtable_table_name", null),
-        resolveOrgSetting<FieldMap>(admin, org.id, "airtable_field_map", {}),
-        resolveOrgSetting<string | null>(admin, org.id, "airtable_view", "Grid view"),
-      ]);
-      // Which Airtable view to read (default "Grid view"; blank reads the whole table).
-      // resolveOrgSetting already falls a null-valued row through to "Grid view"; the `??` here
-      // is belt-and-suspenders. Trim so stray whitespace from a manual/legacy value can't produce
-      // an unmatchable view name (e.g. "%20Grid%20view%20").
-      const viewName = (viewRaw ?? "Grid view").trim();
+      const r = await syncOneOrg(deps, org.id);
+      if (!r) continue; // misconfigured — error row already written
 
-      const logMisconfig = (detail: string) =>
-        admin.from("airtable_sync_log").insert({ org_id: org.id, sync_type: "airtable_poll", status: "error", records_processed: 0, imported_count: 0, new_count: 0, updated_count: 0, held_count: 0, error_details: detail, synced_at: deps.now().toISOString() });
-
-      if (!baseId || !tableName) { await logMisconfig("Airtable sync enabled but base_id or table_name is not configured"); continue; }
-      if (!/^app[A-Za-z0-9]{14,}$/.test(baseId)) { await logMisconfig("airtable_base_id has unexpected format; expected app + 14 alphanumeric chars"); continue; }
-      if (!fieldMap?.date || !fieldMap?.sub_program) { await logMisconfig("Airtable field map incomplete: 'date' and 'sub_program' must be mapped"); continue; }
-
-      const { data: apiKey } = await admin.rpc("get_org_airtable_key", { _org: org.id });
-      if (!apiKey) { await logMisconfig("Airtable sync enabled but no API key is configured in the Vault"); continue; }
-
-      const r = await syncOrg(deps, org.id, baseId, tableName, apiKey as string, fieldMap, viewName);
       totals.orgs_synced += 1;
       totals.processed += r.processed;
       totals.new_dates += r.new_dates;
