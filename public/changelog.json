@@ -1,5 +1,29 @@
 [
   {
+    "version": "1.8.0",
+    "date": "2026-07-05",
+    "dateLabel": "July 5, 2026",
+    "title": "Control your Airtable sync cadence",
+    "changes": {
+      "new": [
+        {
+          "title": "Choose how often Airtable syncs",
+          "description": "Pick a polling frequency per organization, from every 5 minutes up to every 8 hours, in Settings → Airtable Sync."
+        },
+        {
+          "title": "Sync now",
+          "description": "Pull the latest from Airtable immediately, between scheduled cycles, with one click."
+        }
+      ],
+      "improved": [
+        {
+          "title": "See your sync cadence at a glance",
+          "description": "The Airtable Sync tab shows when it last synced and when the next sync is due."
+        }
+      ]
+    }
+  },
+  {
     "version": "1.7.0",
     "date": "2026-07-01",
     "dateLabel": "July 1, 2026",
