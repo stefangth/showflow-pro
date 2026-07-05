@@ -181,7 +181,7 @@ stateDiagram-v2
 | rpc | guard | one line | writes |
 |---|---|---|---|
 | `accept_invitation` | invite email must match caller's auth email | membership + artist link (id-stamp first, email fallback) + invite consumed | `org_memberships`, `artists`, `org_invitations` — `20260701185118…` |
-| `expire_soft_bookings` | ⚠ gate lives only in the `expire-offers` edge fn — the RPC itself is `GRANT EXECUTE TO authenticated` with no internal role/org check (see Open questions #5) | cancels only `suggested` past `offer_expires_at`; accepted holds never auto-expire | `bookings` — `20260702120002…` |
+| `expire_soft_bookings` | **service-role only** (hardened `20260703100321` after the audit found it callable by authenticated AND anon) — clients go through the `expire-offers` edge fn | cancels only `suggested` past `offer_expires_at`; accepted holds never auto-expire | `bookings` — `20260702120002…` |
 | `set_org_member_role` / `remove_org_member` | org admin; last-admin blocked (table-locked) | role/membership management | `org_memberships` — `20260622164142…` / `20260604160000…` |
 | `bulk_import_artists` | org producer/admin | capped 5000, per-row dedup on lower(email), per-row status array | `artists` — `20260701214715…` |
 | `anonymize_user` | self ∨ super-admin (must call via own JWT) | GDPR scrub: deletes user-scoped rows, nulls artist PII, keeps audit skeleton | 9 tables — `20260622193223…` |
@@ -190,7 +190,7 @@ stateDiagram-v2
 | `sole_admin_orgs` / `export_my_data` | self-scoped via `auth.uid()` | deletion guard / GDPR export | read-only — `20260622205426…` |
 | `get_cron_secret` / `get_org_airtable_key` / `resolve_user_contacts` / `get_user_id_by_email` / `cron_health_scan` | **service-role only** | secrets + cross-schema reads the client must never do | read-only |
 | `merge_cities` | org admin of survivor | repoints 4 FK tables, deletes losers | 5 tables — `20260617193521…` |
-| `should_notify` | parameterized prefs check | category×channel opt-out; missing row ⇒ true | read-only — `20260622181552…` |
+| `should_notify` | **service-role only** (hardened `20260703100321`; the `gate_notification_pref` trigger calls it as definer/owner) | category×channel opt-out; missing row ⇒ true | read-only — `20260622181552…` |
 
 ## 6. The two big flows, end to end
 
@@ -261,9 +261,9 @@ Every cron dispatch is recorded (`cron_health_dispatch` + pg_net's `net._http_re
 
 1. **`org_invitations` has no DB-level dedup on (org_id, email)** for pending invites — only the token is unique; duplicates are prevented in app logic alone. Unconfirmed whether intentional. (`20260603120000_add_platform_tables_and_org_helpers.sql`)
 2. **`preview-transactional-email` is `verify_jwt = false`** in `supabase/config.toml` yet its handler calls `requireRole(["admin","producer"])` — functionally still auth-gated (the guard 401s without a valid JWT); the "public" grouping may be intentional for error messaging or may be config drift.
-3. **`should_notify` is probeable cross-user** *(resolved during verification — confirmed, minor)*: the RPC is SECURITY DEFINER, granted `EXECUTE TO authenticated`, with no `auth.uid()` self-scope check — any signed-in user can read another user's per-category opt-out booleans by uuid. Low impact (a boolean per category/channel, requires knowing the uuid), but a hardening candidate. The later hardening migration touched only `category_of`/`gate_notification_pref`, not this function. (`20260622181552_notification_preferences.sql:24-36`)
+3. ~~**`should_notify` is probeable cross-user**~~ **FIXED** (`20260703100321_harden_rpc_grants_service_role_only.sql`): EXECUTE revoked from `public`/`anon`/`authenticated`, granted to `service_role` only. Callers unaffected: `send-transactional-email` uses the service-role client; the `gate_notification_pref` trigger is SECURITY DEFINER and executes as owner. Grant posture pinned by pgTAP (`supabase/tests/rpc/should_notify.sql`).
 4. **CLAUDE.md function inventory drift** *(fixed in the PR that introduced this map)*: `close-offer-tier`, `platform-edge-metrics`, and `cron-health-watcher` were client-wired but missing from CLAUDE.md's edge-function category list; the true function count is 21, not the long-repeated 20.
-5. **`expire_soft_bookings()` is callable by any authenticated user** *(found during verification)*: `GRANT EXECUTE TO authenticated` with no internal role/org check, and its UPDATE has no org filter — any signed-in user can trigger a cross-org sweep of overdue `suggested` offers. Impact is low (it only does early, to already-overdue offers, what the hourly cron does anyway) but the grant should be narrowed to `service_role`. (`20260702120002_expire_only_suggested_offers.sql:18-34`)
+5. ~~**`expire_soft_bookings()` is callable by any authenticated user**~~ **FIXED** (`20260703100321_harden_rpc_grants_service_role_only.sql`): it was in fact callable by `anon` too (the default-privileges grant had never been revoked). EXECUTE now revoked from `public`/`anon`/`authenticated`, granted to `service_role` only — the `expire-offers` edge fn (service-role client, `expire-offers/index.ts:30`) is the sole entry point. Grant posture pinned by pgTAP (`supabase/tests/rpc/expire_soft_bookings.sql`).
 
 ---
 
