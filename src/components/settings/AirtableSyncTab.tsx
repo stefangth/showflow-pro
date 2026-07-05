@@ -266,7 +266,8 @@ export function AirtableSyncTab({ orgId }: Props) {
         toast.warning("Sync didn't run — check your Airtable configuration below");
       }
       qc.invalidateQueries({ queryKey: ["airtable", "sync-log", orgId] });
-      qc.invalidateQueries({ queryKey: ["airtable", "unresolved", orgId] });
+      // Prefix match: the unresolved query is keyed by the sync-log id, not orgId.
+      qc.invalidateQueries({ queryKey: ["airtable", "unresolved"] });
       qc.invalidateQueries({ queryKey: ["bookings"] });
     },
     onError: (e: Error) => toast.error(e.message ?? "Sync failed"),
