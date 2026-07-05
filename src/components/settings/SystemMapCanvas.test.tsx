@@ -26,4 +26,14 @@ describe("SystemMapCanvas", () => {
     const panel = screen.getByRole("complementary", { name: /details/i });
     expect(within(panel).getByText(/service-role only/i)).toBeInTheDocument();
   });
+
+  it("closes the detail panel when the selected node is filtered out", () => {
+    renderWithProviders(<SystemMapCanvas />);
+    // send-transactional-email is an email-only node
+    fireEvent.click(screen.getByRole("button", { name: /send-transactional-email/i }));
+    expect(screen.getByRole("complementary", { name: /details/i })).toBeInTheDocument();
+    // switching to the Airtable-sync filter hides it → the stale panel must close
+    fireEvent.click(screen.getByRole("button", { name: /airtable sync/i }));
+    expect(screen.queryByRole("complementary", { name: /details/i })).toBeNull();
+  });
 });
