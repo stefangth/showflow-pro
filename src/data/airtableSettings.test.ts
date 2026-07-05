@@ -12,6 +12,7 @@ describe("fetchAirtableSettings", () => {
       airtable_table_name: "",
       airtable_field_map: {},
       airtable_view: "Grid view",
+      airtable_poll_interval_minutes: 5,
     });
   });
 
@@ -60,5 +61,36 @@ describe("fetchAirtableSettings", () => {
   it("throws when the query errors", async () => {
     const fake = createFakeSupabase({ app_settings: { data: null, error: { message: "boom" } } });
     await expect(fetchAirtableSettings(fake as never, "org-1")).rejects.toBeTruthy();
+  });
+
+  it("defaults the poll interval to the floor when unset", async () => {
+    const fake = createFakeSupabase({ app_settings: { data: [], error: null } });
+    const s = await fetchAirtableSettings(fake as never, "org-1");
+    expect(s.airtable_poll_interval_minutes).toBe(5);
+  });
+
+  it("prefers the org poll interval over the platform default", async () => {
+    const fake = createFakeSupabase({
+      app_settings: {
+        data: [
+          { key: "airtable_poll_interval_minutes", value: 15, org_id: null },
+          { key: "airtable_poll_interval_minutes", value: 60, org_id: "org-1" },
+        ],
+        error: null,
+      },
+    });
+    const s = await fetchAirtableSettings(fake as never, "org-1");
+    expect(s.airtable_poll_interval_minutes).toBe(60);
+  });
+
+  it("falls back to the platform default when the org has no override", async () => {
+    const fake = createFakeSupabase({
+      app_settings: {
+        data: [{ key: "airtable_poll_interval_minutes", value: 30, org_id: null }],
+        error: null,
+      },
+    });
+    const s = await fetchAirtableSettings(fake as never, "org-1");
+    expect(s.airtable_poll_interval_minutes).toBe(30);
   });
 });
