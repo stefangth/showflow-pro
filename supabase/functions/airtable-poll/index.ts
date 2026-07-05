@@ -1,5 +1,5 @@
 import { preflight, json } from "../_shared/http.ts";
-import { requireCronSecret } from "../_shared/auth.ts";
+import { requireCronSecret, requireOrgRole } from "../_shared/auth.ts";
 import { realDeps, type Deps } from "../_shared/deps.ts";
 import { getActiveOrgs, resolveOrgSetting } from "../_shared/settings.ts";
 import { buildProgramKey, buildCityKey } from "../_shared/airtableKey.ts";
@@ -507,14 +507,36 @@ async function syncOneOrg(deps: Deps, orgId: string): Promise<OrgSyncResult | nu
  * An enabled-but-misconfigured org (bad base / missing base|table|key) leaves a visible error log row.
  * Disabled orgs are skipped silently. One org's failure never aborts the others.
  *
- * Auth: X-Cron-Secret header ONLY (pg_cron; the Vault-backed cron secret) via
- * requireCronSecret. This endpoint fans out over EVERY active org and writes each
- * org's Airtable data, so it must not accept an org-admin JWT (a role fallback would
- * let any single org's admin drive cross-org writes).
+ * Auth: TWO paths. (1) X-Cron-Secret header → the cross-org fan-out over EVERY active
+ * org (gated per-org by airtable_poll_interval_minutes). (2) An org-admin JWT + { org_id }
+ * body → a manual "Sync now" for that ONE org only (requireOrgRole, gate bypassed). The
+ * fan-out is never reachable via a JWT, so a single org's admin can't drive cross-org writes.
  */
 export async function handle(req: Request, deps: Deps): Promise<Response> {
   if (req.method === "OPTIONS") return preflight();
   const admin = deps.admin;
+
+  // Manual "Sync now": a request WITHOUT the cron secret is an org-admin trigger for a
+  // SINGLE org (never the cross-org fan-out). requireOrgRole scopes it to the caller's own
+  // org, so it can't drive other orgs' writes — that's why the fan-out stays
+  // cron-secret-only below. The gate is intentionally bypassed (explicit user action).
+  if (req.headers.get("X-Cron-Secret") == null) {
+    const authHeader = req.headers.get("Authorization");
+    if (!authHeader?.startsWith("Bearer ")) return json({ error: "Unauthorized" }, 401);
+    let body: { org_id?: string } = {};
+    try { body = await req.json(); } catch { /* empty/invalid body → handled below */ }
+    const orgId = body?.org_id;
+    if (!orgId) return json({ error: "org_id required" }, 400);
+    const roleCheck = await requireOrgRole(deps, req, orgId, ["admin"]);
+    if (!roleCheck.ok) return roleCheck.response;
+    try {
+      const result = await syncOneOrg(deps, orgId);
+      return json({ ok: true, orgs_synced: result ? 1 : 0, result });
+    } catch (e) {
+      console.error("airtable-poll: manual sync failed", { org: orgId, error: (e as { body?: unknown })?.body ?? (e as Error).message });
+      return json({ error: "sync failed", org_id: orgId }, 502);
+    }
+  }
 
   // Auth: X-Cron-Secret ONLY (pg_cron, Vault-backed via get_cron_secret). No role fallback —
   // this handler syncs/writes every active org, so an org-scoped admin JWT must never trigger it.
