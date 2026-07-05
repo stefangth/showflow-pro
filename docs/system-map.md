@@ -15,7 +15,7 @@ Authoritative definitions: `supabase/migrations/20260624101342_cron_dispatch_tim
 
 | job | schedule | plain English | target function | guard | what it does |
 |---|---|---|---|---|---|
-| `airtable-poll` | `*/5 * * * *` | every 5 minutes | `airtable-poll` | `X-Cron-Secret` only | Upserts `show_dates` from each active org's Airtable base; opens tier 1 for new dates |
+| `airtable-poll` | `*/5 * * * *` | every 5 minutes; each org is **gated** by its own `airtable_poll_interval_minutes` (org override → platform default → 5-min floor, 60s grace, read from `airtable_sync_log.synced_at`) — the tick fires every 5 min; orgs on a longer interval skip ticks until their interval elapses | `airtable-poll` | `X-Cron-Secret` only (fan-out path) | Upserts `show_dates` from each active org's Airtable base; opens tier 1 for new dates. A second entry point — org-admin **"Sync now"** (`requireOrgRole(admin)` + `org_id`) — syncs one org immediately, bypassing the gate |
 | `offer-digest` | `0 16-19 * * *` | hourly 16:00–19:00 UTC; function itself gates to each org's Berlin hour (default 19:00) | `send-offer-digest` | cron secret or admin/producer JWT | Emails artists their pending offers; stamps `digest_sent_at` and starts `offer_expires_at` |
 | `confirmation-digest` | `0 17-20 * * *` | hourly 17:00–20:00 UTC; Berlin-hour gate (default 20:00) | `send-confirmation-digest` | cron secret or admin/producer JWT | Emails artists confirmations + schedule changes + cancellations |
 | `expire-offers-hourly` | `0 * * * *` | every hour | `expire-offers` | cron secret or admin/producer JWT | Expires overdue `suggested` offers via `expire_soft_bookings()`; escalates unfillable tiers to producers |
@@ -80,7 +80,7 @@ Grouped by actor. Full call-site citations live with each row; role gates from `
 
 | function | trigger | auth guard | writes | side effects |
 |---|---|---|---|---|
-| `airtable-poll` | cron 5-min | cron secret only | `shows`, `show_dates`, `airtable_sync_log`, `airtable_sync_record_log`, `notifications` | invokes `open-offer-tier`; Airtable API |
+| `airtable-poll` | cron 5-min (per-org interval gate) + org-admin "Sync now" | cron secret only (fan-out) ∨ `requireOrgRole(admin)`+`org_id` (single org, gate bypassed) | `shows`, `show_dates`, `airtable_sync_log`, `airtable_sync_record_log`, `notifications` | invokes `open-offer-tier`; Airtable API |
 | `open-offer-tier` | UI + `airtable-poll` | service-role ∨ org admin/producer | `bookings` (insert `suggested`), `show_date_offer_tiers` | none (silent by design) |
 | `close-offer-tier` | UI | service-role ∨ org admin/producer | `show_date_offer_tiers`, `bookings` (withdraw) | none |
 | `expire-offers` | cron hourly + UI | cron secret ∨ admin/producer | `notifications`, `show_date_offer_tiers` (escalation stamp); `expire_soft_bookings()` RPC → `bookings` | `cast-escalation-requested` email |
@@ -112,7 +112,7 @@ Both digests iterate `getActiveOrgs`, resolve the org's Berlin send-hour via `re
 
 ### Airtable sync — `airtable-poll`, `airtable-schema`
 
-`airtable-poll` is org-fault-isolated (one org's failure never aborts the others) and idempotent per record via `airtable_record_id`. It resolves linked venue/city records, maps custom fields (`custom_field_definitions`), write-throughs program changes to `shows`, handles cancel/revival status flips, logs every run (`airtable_sync_log`) and every record outcome (`airtable_sync_record_log`), and notifies org admins (`airtable_sync_held`) only on new/worsening held-record problems. New dates → `open-offer-tier` tier 1, batched 10 at a time. `airtable-schema` is the read-only mapping helper behind Settings → Airtable Sync; a PAT lacking schema scope degrades to `{schemaAccessible:false}` rather than erroring. Cites: `airtable-poll/index.ts:103-523`, `airtable-schema/index.ts:22-185`.
+`airtable-poll` is org-fault-isolated (one org's failure never aborts the others) and idempotent per record via `airtable_record_id`. It resolves linked venue/city records, maps custom fields (`custom_field_definitions`), write-throughs program changes to `shows`, handles cancel/revival status flips, logs every run (`airtable_sync_log`) and every record outcome (`airtable_sync_record_log`), and notifies org admins (`airtable_sync_held`) only on new/worsening held-record problems. New dates → `open-offer-tier` tier 1, batched 10 at a time. The cron tick fires every 5 minutes for every active org, but each org is gated by its own `airtable_poll_interval_minutes` (org override → platform default → 5-min floor, with a 60s grace window) — the gate reads the org's most recent `airtable_sync_log.synced_at` and skips the org until the interval has elapsed, so a poll actually only runs on the ticks the org's cadence calls for. A second, scoped entry point on the same function powers an org-admin **"Sync now"** button (Settings → Airtable Sync): `requireOrgRole(admin)` + a single `org_id` in the body syncs that one org immediately, bypassing the interval gate entirely. `airtable-schema` is the read-only mapping helper behind Settings → Airtable Sync; a PAT lacking schema scope degrades to `{schemaAccessible:false}` rather than erroring. Cites: `airtable-poll/index.ts:103-523`, `airtable-schema/index.ts:22-185`.
 
 ### Org & platform — `provision-org`, `create-invitation`, `resend-invitation`, `admin-list-users`, `platform-edge-metrics`, `cron-health-watcher`
 
@@ -280,12 +280,13 @@ The drill-down layer. Sections 1–8 are the altitude; this is the detail, per f
 - **Failure:** whole-handler try/catch → 500
 
 ### airtable-poll
-- **Trigger:** cron `airtable-poll` (5-min)
-- **Auth:** `requireCronSecret` only (`index.ts:472-473`); `verify_jwt = false`
-- **Reads:** `getActiveOrgs`; per-org settings `airtable_sync_enabled`, `airtable_base_id`, `airtable_table_name`, `airtable_field_map`, `airtable_view`; Vault PAT via `get_org_airtable_key`; `shows`, `cities`, `custom_field_definitions`, existing `show_dates`, previous sync logs; Airtable Data + Meta APIs
+- **Trigger:** cron `airtable-poll` (5-min fan-out, per-org interval gate) + Settings → Airtable Sync "Sync now" (single org, manual)
+- **Auth:** two paths — `requireCronSecret` for the cron fan-out (`index.ts:543`), or `requireOrgRole(org_id, ["admin"])` for a request without the cron secret, scoping "Sync now" to the caller's own org (`index.ts:519-537`); `verify_jwt = false`
+- **Gate:** the fan-out path resolves `airtable_poll_interval_minutes` per org (org override → platform default → `MIN_POLL_INTERVAL_MINUTES=5` floor via `resolveOrgSetting`, `index.ts:563-564`) and skips the org unless at least that many minutes (minus a 60s `POLL_GRACE_MS` grace window) have elapsed since its last `airtable_sync_log.synced_at` (`fetchLastPollAt`, `index.ts:24-31`); the "Sync now" path calls the same `syncOneOrg` helper directly and bypasses the gate entirely (`index.ts:478,533`)
+- **Reads:** `getActiveOrgs`; per-org settings `airtable_sync_enabled`, `airtable_base_id`, `airtable_table_name`, `airtable_field_map`, `airtable_view`, `airtable_poll_interval_minutes`; Vault PAT via `get_org_airtable_key`; `shows`, `cities`, `custom_field_definitions`, existing `show_dates`, previous sync logs; Airtable Data + Meta APIs
 - **Writes:** `shows` (re-key + program write-through, `index.ts:294-317`), `show_dates` insert/update (`index.ts:337-376`), `airtable_sync_log` (`index.ts:413-425`), `airtable_sync_record_log` (`index.ts:430-437`), `notifications` `airtable_sync_held` (`index.ts:150-158`)
 - **Side effects:** invokes `open-offer-tier` per new date, batched 10 (`index.ts:103-120`)
-- **Failure:** per-org isolation (`index.ts:520-523`); Airtable API error → 502 after logging; misconfig → error log row + continue; MAX_PAGES=100 truncation warning; idempotent by `airtable_record_id`
+- **Failure:** per-org isolation (`index.ts:520-523`); Airtable API error → 502 after logging; misconfig → error log row + continue; MAX_PAGES=100 truncation warning; idempotent by `airtable_record_id`; "Sync now" without `org_id` → 400
 
 ### airtable-schema
 - **Trigger:** user action (Settings → Airtable Sync)

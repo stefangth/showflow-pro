@@ -10,6 +10,7 @@ import {
 import { BOOKING_ENGINE_DEFAULTS } from "@/config/app.config";
 import type { Json } from "@/integrations/supabase/types";
 import { parseLines, serializeLines, parseCasts, serializeCasts } from "./templateText";
+import { POLL_INTERVAL_PRESETS, MIN_POLL_INTERVAL_MINUTES } from "@/lib/airtablePoll";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -17,12 +18,14 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 export function PlatformDefaultsTab() {
   return (
     <div className="space-y-6">
       <StarterCatalogCard />
       <BookingEngineDefaultsCard />
+      <AirtableDefaultsCard />
     </div>
   );
 }
@@ -163,6 +166,52 @@ function BookingEngineDefaultsCard() {
           <p className="text-xs text-muted-foreground">Sender for all transactional email unless an org overrides it.</p>
         </div>
         <Button onClick={() => save.mutate()} disabled={save.isPending}>Save booking defaults</Button>
+      </CardContent>
+    </Card>
+  );
+}
+
+/** Platform-wide default Airtable poll interval (org_id IS NULL). Orgs override it in
+ *  Settings → Airtable Sync. */
+function AirtableDefaultsCard() {
+  const qc = useQueryClient();
+  const { data, isLoading } = useQuery({
+    queryKey: ["platform", "airtable-interval"],
+    queryFn: () => resolveOrgSetting<number>(supabase, null, "airtable_poll_interval_minutes", MIN_POLL_INTERVAL_MINUTES),
+  });
+
+  const save = useMutation({
+    mutationFn: (minutes: number) => savePlatformSetting(supabase, "airtable_poll_interval_minutes", minutes as unknown as Json),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["platform", "airtable-interval"] });
+      qc.invalidateQueries({ queryKey: ["airtable", "settings"] }); // org tabs inherit this default
+      toast.success("Airtable sync default saved");
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+  if (isLoading) return <Skeleton className="h-40 w-full" />;
+
+  return (
+    <Card>
+      <CardHeader><CardTitle className="font-display">Airtable sync defaults</CardTitle></CardHeader>
+      <CardContent className="space-y-4">
+        <p className="text-sm text-muted-foreground">
+          Default polling frequency for organizations that haven't set their own in
+          Settings → Airtable Sync. The poll runs on a shared 5-minute cycle; this sets how
+          often each org is actually synced.
+        </p>
+        <div className="space-y-1.5 max-w-xs">
+          <Label>Default sync frequency</Label>
+          <Select value={String(data ?? MIN_POLL_INTERVAL_MINUTES)} onValueChange={(v) => save.mutate(Number(v))}>
+            <SelectTrigger className="w-44"><SelectValue /></SelectTrigger>
+            <SelectContent>
+              {POLL_INTERVAL_PRESETS.map((p) => (
+                <SelectItem key={p.value} value={String(p.value)}>{p.label}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
       </CardContent>
     </Card>
   );

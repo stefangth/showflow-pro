@@ -1,5 +1,5 @@
 import { preflight, json } from "../_shared/http.ts";
-import { requireCronSecret } from "../_shared/auth.ts";
+import { requireCronSecret, requireOrgRole } from "../_shared/auth.ts";
 import { realDeps, type Deps } from "../_shared/deps.ts";
 import { getActiveOrgs, resolveOrgSetting } from "../_shared/settings.ts";
 import { buildProgramKey, buildCityKey } from "../_shared/airtableKey.ts";
@@ -9,6 +9,26 @@ import { isCancelledStatus } from "../_shared/airtableStatus.ts";
 /** Max concurrent open-offer-tier invocations per batch to avoid exhausting the DB connection pool. */
 const OFFER_TIER_BATCH_SIZE = 10;
 const MAX_PAGES = 100;
+
+/** Poll-interval floor + jitter grace. Mirrors src/lib/airtablePoll.ts (two runtimes,
+ *  no shared import). The 5-min floor matches the master cron tick; the 60s grace keeps
+ *  a 5-min interval polling every tick despite cron dispatch jitter. */
+const MIN_POLL_INTERVAL_MINUTES = 5;
+const POLL_GRACE_MS = 60_000;
+function clampIntervalMinutes(v: unknown): number {
+  const n = Number(v);
+  return Number.isFinite(n) && n >= MIN_POLL_INTERVAL_MINUTES ? n : MIN_POLL_INTERVAL_MINUTES;
+}
+
+/** Most recent airtable_poll attempt for an org (null = never). Drives the interval gate. */
+async function fetchLastPollAt(admin: Deps["admin"], orgId: string): Promise<Date | null> {
+  const { data } = await admin
+    .from("airtable_sync_log").select("synced_at")
+    .eq("org_id", orgId).eq("sync_type", "airtable_poll")
+    .order("synced_at", { ascending: false }).limit(1).maybeSingle();
+  const ts = (data as { synced_at?: string } | null)?.synced_at;
+  return ts ? new Date(ts) : null;
+}
 
 /** Which Airtable field feeds each ShowFlow field (per-org, from app_settings.airtable_field_map). */
 interface FieldMap {
@@ -450,6 +470,35 @@ async function syncOrg(deps: Deps, orgId: string, baseId: string, tableName: str
 }
 
 /**
+ * Resolve one org's Airtable sync config, run the misconfig guards, and sync it.
+ * Returns the per-org result, or null when the org is misconfigured (an error
+ * sync_log row was already written) so the caller skips its totals. Shared by the
+ * cron loop (per active org) and the manual "Sync now" path (single org).
+ */
+async function syncOneOrg(deps: Deps, orgId: string): Promise<OrgSyncResult | null> {
+  const admin = deps.admin;
+  const [baseId, tableName, fieldMap, viewRaw] = await Promise.all([
+    resolveOrgSetting<string | null>(admin, orgId, "airtable_base_id", null),
+    resolveOrgSetting<string | null>(admin, orgId, "airtable_table_name", null),
+    resolveOrgSetting<FieldMap>(admin, orgId, "airtable_field_map", {}),
+    resolveOrgSetting<string | null>(admin, orgId, "airtable_view", "Grid view"),
+  ]);
+  const viewName = (viewRaw ?? "Grid view").trim();
+
+  const logMisconfig = (detail: string) =>
+    admin.from("airtable_sync_log").insert({ org_id: orgId, sync_type: "airtable_poll", status: "error", records_processed: 0, imported_count: 0, new_count: 0, updated_count: 0, held_count: 0, error_details: detail, synced_at: deps.now().toISOString() });
+
+  if (!baseId || !tableName) { await logMisconfig("Airtable sync enabled but base_id or table_name is not configured"); return null; }
+  if (!/^app[A-Za-z0-9]{14,}$/.test(baseId)) { await logMisconfig("airtable_base_id has unexpected format; expected app + 14 alphanumeric chars"); return null; }
+  if (!fieldMap?.date || !fieldMap?.sub_program) { await logMisconfig("Airtable field map incomplete: 'date' and 'sub_program' must be mapped"); return null; }
+
+  const { data: apiKey } = await admin.rpc("get_org_airtable_key", { _org: orgId });
+  if (!apiKey) { await logMisconfig("Airtable sync enabled but no API key is configured in the Vault"); return null; }
+
+  return await syncOrg(deps, orgId, baseId, tableName, apiKey as string, fieldMap, viewName);
+}
+
+/**
  * Polls Airtable per ACTIVE org, resolving records against the org's field map + catalog-link keys,
  * upserting show_dates, logging every record's outcome, and opening tier-1 offers for new dates.
  *
@@ -458,14 +507,36 @@ async function syncOrg(deps: Deps, orgId: string, baseId: string, tableName: str
  * An enabled-but-misconfigured org (bad base / missing base|table|key) leaves a visible error log row.
  * Disabled orgs are skipped silently. One org's failure never aborts the others.
  *
- * Auth: X-Cron-Secret header ONLY (pg_cron; the Vault-backed cron secret) via
- * requireCronSecret. This endpoint fans out over EVERY active org and writes each
- * org's Airtable data, so it must not accept an org-admin JWT (a role fallback would
- * let any single org's admin drive cross-org writes).
+ * Auth: TWO paths. (1) X-Cron-Secret header → the cross-org fan-out over EVERY active
+ * org (gated per-org by airtable_poll_interval_minutes). (2) An org-admin JWT + { org_id }
+ * body → a manual "Sync now" for that ONE org only (requireOrgRole, gate bypassed). The
+ * fan-out is never reachable via a JWT, so a single org's admin can't drive cross-org writes.
  */
 export async function handle(req: Request, deps: Deps): Promise<Response> {
   if (req.method === "OPTIONS") return preflight();
   const admin = deps.admin;
+
+  // Manual "Sync now": a request WITHOUT the cron secret is an org-admin trigger for a
+  // SINGLE org (never the cross-org fan-out). requireOrgRole scopes it to the caller's own
+  // org, so it can't drive other orgs' writes — that's why the fan-out stays
+  // cron-secret-only below. The gate is intentionally bypassed (explicit user action).
+  if (req.headers.get("X-Cron-Secret") == null) {
+    const authHeader = req.headers.get("Authorization");
+    if (!authHeader?.startsWith("Bearer ")) return json({ error: "Unauthorized" }, 401);
+    let body: { org_id?: string } = {};
+    try { body = await req.json(); } catch { /* empty/invalid body → handled below */ }
+    const orgId = body?.org_id;
+    if (!orgId) return json({ error: "org_id required" }, 400);
+    const roleCheck = await requireOrgRole(deps, req, orgId, ["admin"]);
+    if (!roleCheck.ok) return roleCheck.response;
+    try {
+      const result = await syncOneOrg(deps, orgId);
+      return json({ ok: true, orgs_synced: result ? 1 : 0, result });
+    } catch (e) {
+      console.error("airtable-poll: manual sync failed", { org: orgId, error: (e as { body?: unknown })?.body ?? (e as Error).message });
+      return json({ error: "sync failed", org_id: orgId }, 502);
+    }
+  }
 
   // Auth: X-Cron-Secret ONLY (pg_cron, Vault-backed via get_cron_secret). No role fallback —
   // this handler syncs/writes every active org, so an org-scoped admin JWT must never trigger it.
@@ -487,30 +558,16 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
       const enabled = await resolveOrgSetting<boolean>(admin, org.id, "airtable_sync_enabled", false);
       if (!enabled) continue; // intentionally off → skip silently
 
-      // Resolve the per-org sync config in one parallel fan-out (independent settings).
-      const [baseId, tableName, fieldMap, viewRaw] = await Promise.all([
-        resolveOrgSetting<string | null>(admin, org.id, "airtable_base_id", null),
-        resolveOrgSetting<string | null>(admin, org.id, "airtable_table_name", null),
-        resolveOrgSetting<FieldMap>(admin, org.id, "airtable_field_map", {}),
-        resolveOrgSetting<string | null>(admin, org.id, "airtable_view", "Grid view"),
-      ]);
-      // Which Airtable view to read (default "Grid view"; blank reads the whole table).
-      // resolveOrgSetting already falls a null-valued row through to "Grid view"; the `??` here
-      // is belt-and-suspenders. Trim so stray whitespace from a manual/legacy value can't produce
-      // an unmatchable view name (e.g. "%20Grid%20view%20").
-      const viewName = (viewRaw ?? "Grid view").trim();
+      // Per-org interval gate: skip until this org's interval has elapsed since its last
+      // poll. The master cron ticks every 5 min; this throttles each org independently.
+      const intervalRaw = await resolveOrgSetting<number>(admin, org.id, "airtable_poll_interval_minutes", MIN_POLL_INTERVAL_MINUTES);
+      const intervalMs = clampIntervalMinutes(intervalRaw) * 60_000;
+      const lastPollAt = await fetchLastPollAt(admin, org.id);
+      if (lastPollAt && deps.now().getTime() - lastPollAt.getTime() < intervalMs - POLL_GRACE_MS) continue;
 
-      const logMisconfig = (detail: string) =>
-        admin.from("airtable_sync_log").insert({ org_id: org.id, sync_type: "airtable_poll", status: "error", records_processed: 0, imported_count: 0, new_count: 0, updated_count: 0, held_count: 0, error_details: detail, synced_at: deps.now().toISOString() });
+      const r = await syncOneOrg(deps, org.id);
+      if (!r) continue; // misconfigured — error row already written
 
-      if (!baseId || !tableName) { await logMisconfig("Airtable sync enabled but base_id or table_name is not configured"); continue; }
-      if (!/^app[A-Za-z0-9]{14,}$/.test(baseId)) { await logMisconfig("airtable_base_id has unexpected format; expected app + 14 alphanumeric chars"); continue; }
-      if (!fieldMap?.date || !fieldMap?.sub_program) { await logMisconfig("Airtable field map incomplete: 'date' and 'sub_program' must be mapped"); continue; }
-
-      const { data: apiKey } = await admin.rpc("get_org_airtable_key", { _org: org.id });
-      if (!apiKey) { await logMisconfig("Airtable sync enabled but no API key is configured in the Vault"); continue; }
-
-      const r = await syncOrg(deps, org.id, baseId, tableName, apiKey as string, fieldMap, viewName);
       totals.orgs_synced += 1;
       totals.processed += r.processed;
       totals.new_dates += r.new_dates;
