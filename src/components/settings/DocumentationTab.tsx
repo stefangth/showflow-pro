@@ -1,11 +1,26 @@
-import ReactMarkdown from 'react-markdown';
-import remarkGfm from 'remark-gfm';
-import appLogicMd from '../../../docs/app-logic.md?raw';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { lazy, Suspense } from "react";
+import appLogicMd from "../../../docs/app-logic.md?raw";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { MarkdownDoc } from "./MarkdownDoc";
 
-/** Read-only app-logic guide rendered from docs/app-logic.md. No state. */
-export function DocumentationTab() {
-  return (
+// Lazy-loaded so the graph data (src/data/systemMap.ts) and the rendered
+// system-map.md never enter the main bundle — they load only when a
+// super-admin actually opens the System Map / Reference sub-tab.
+const SystemMapCanvas = lazy(() =>
+  import("./SystemMapCanvas").then((m) => ({ default: m.SystemMapCanvas })),
+);
+const SystemMapReference = lazy(() =>
+  import("./SystemMapReference").then((m) => ({ default: m.SystemMapReference })),
+);
+
+function DocLoading() {
+  return <p className="text-sm text-muted-foreground">Loading…</p>;
+}
+
+/** Documentation surface. App Logic is public; the System Map is super-admin only. */
+export function DocumentationTab({ isSuperAdmin }: { isSuperAdmin: boolean }) {
+  const guide = (
     <Card>
       <CardHeader>
         <CardTitle className="font-display">App Logic Guide</CardTitle>
@@ -14,26 +29,49 @@ export function DocumentationTab() {
         </CardDescription>
       </CardHeader>
       <CardContent>
-        <div className="prose prose-sm max-w-none text-foreground
-          [&_h1]:font-display [&_h1]:text-2xl [[&_h1]:font-bold_h1]:font-semibold [&_h1]:mt-6 [&_h1]:mb-3
-          [&_h2]:font-display [&_h2]:text-xl [&_h2]:font-semibold [&_h2]:mt-6 [&_h2]:mb-2 [&_h2]:border-b [&_h2]:border-border [&_h2]:pb-1
-          [&_h3]:font-display [&_h3]:text-base [&_h3]:font-semibold [&_h3]:mt-4 [&_h3]:mb-1
-          [&_p]:text-sm [&_p]:leading-relaxed [&_p]:mb-3 [&_p]:text-foreground
-          [&_li]:text-sm [&_li]:leading-relaxed
-          [&_ul]:list-disc [&_ul]:pl-5 [&_ul]:mb-3
-          [&_ol]:list-decimal [&_ol]:pl-5 [&_ol]:mb-3
-          [&_code]:bg-muted [&_code]:text-foreground [&_code]:text-xs [&_code]:px-1.5 [&_code]:py-0.5 [&_code]:rounded
-          [&_pre]:bg-muted [&_pre]:rounded-lg [&_pre]:p-4 [&_pre]:overflow-x-auto [&_pre]:mb-3 [&_pre]:text-xs
-          [&_pre_code]:bg-transparent [&_pre_code]:p-0
-          [&_table]:w-full [&_table]:text-sm [&_table]:border-collapse [&_table]:mb-4
-          [&_th]:text-left [&_th]:font-medium [&_th]:border [&_th]:border-border [&_th]:bg-muted [&_th]:px-3 [&_th]:py-1.5
-          [&_td]:border [&_td]:border-border [&_td]:px-3 [&_td]:py-1.5 [&_td]:text-sm [&_td]:align-top
-          [&_hr]:border-border [&_hr]:my-4
-          [&_strong]:font-semibold [&_strong]:text-foreground
-          [&_blockquote]:border-l-2 [&_blockquote]:border-border [&_blockquote]:pl-4 [&_blockquote]:text-muted-foreground">
-          <ReactMarkdown remarkPlugins={[remarkGfm]}>{appLogicMd}</ReactMarkdown>
-        </div>
+        <MarkdownDoc source={appLogicMd} />
       </CardContent>
     </Card>
+  );
+
+  if (!isSuperAdmin) return guide;
+
+  return (
+    <Tabs defaultValue="guide" className="space-y-4">
+      <TabsList>
+        <TabsTrigger value="guide">App Logic</TabsTrigger>
+        <TabsTrigger value="map">System Map</TabsTrigger>
+        <TabsTrigger value="reference">Reference</TabsTrigger>
+      </TabsList>
+      <TabsContent value="guide">{guide}</TabsContent>
+      <TabsContent value="map">
+        <Card>
+          <CardHeader>
+            <CardTitle className="font-display">Automation Engine Map</CardTitle>
+            <CardDescription>
+              Every trigger, edge function, database guard, and side effect — click a node for its dossier.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <Suspense fallback={<DocLoading />}>
+              <SystemMapCanvas />
+            </Suspense>
+          </CardContent>
+        </Card>
+      </TabsContent>
+      <TabsContent value="reference">
+        <Card>
+          <CardHeader>
+            <CardTitle className="font-display">System Map Reference</CardTitle>
+            <CardDescription>The full written map (docs/system-map.md).</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <Suspense fallback={<DocLoading />}>
+              <SystemMapReference />
+            </Suspense>
+          </CardContent>
+        </Card>
+      </TabsContent>
+    </Tabs>
   );
 }

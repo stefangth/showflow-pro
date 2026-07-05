@@ -149,7 +149,7 @@ src/
   types/           # Domain types extending Supabase row types
 docs/
   app-logic.md    # Domain guide (roles, data model, booking flow) — for admins/producers
-  system-map.md   # Automation engine map (trigger→function→data→effect) — update in the same PR as any automation change
+  system-map.md   # Automation engine map (trigger→function→data→effect) — mirrored by src/data/systemMap.ts (in-app canvas); update both in the same PR as any automation change
   legal/          # Privacy policy + impressum in EN/DE (served by PrivacyPage, ImpressumPage)
 supabase/
   functions/       # Deno edge functions
@@ -326,7 +326,7 @@ Suggested emails:
 | `supabase/functions/tier-at-risk-watcher/index.ts` | In-app notification when a tier can no longer fill before deadline |
 | `supabase/functions/delete-my-account/index.ts` | Authenticated account self-deletion: last-admin guard → `anonymize_user` → `auth.admin.deleteUser` |
 | `src/data/account.ts` | `exportMyData` / `deleteMyAccount` / `fetchNotificationPreferences` / `upsertNotificationPreferences` |
-| `docs/system-map.md` | Automation engine system map: every trigger → function → data → side effect, with the DB guards. Update in the same PR as any automation change |
+| `docs/system-map.md` | Automation engine system map: every trigger → function → data → side effect, with the DB guards. Mirrored by `src/data/systemMap.ts` (the in-app Settings → Documentation → System Map canvas); update both in the same PR as any automation change |
 
 ---
 
