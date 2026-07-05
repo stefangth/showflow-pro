@@ -2,6 +2,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "@/integrations/supabase/types";
 import type { AirtableFieldMap } from "./airtableMapping";
 import { mergeOrgRows } from "./settings";
+import { MIN_POLL_INTERVAL_MINUTES } from "@/lib/airtablePoll";
 
 /** The Airtable settings the admin edits in the Airtable Sync tab. */
 export interface AirtableSettings {
@@ -11,6 +12,8 @@ export interface AirtableSettings {
   airtable_field_map: AirtableFieldMap;
   /** Airtable view the poll reads from. Blank = whole table; defaults to "Grid view". */
   airtable_view: string;
+  /** How often the poll runs for this org, in minutes (min 5). */
+  airtable_poll_interval_minutes: number;
 }
 
 export const AIRTABLE_SETTING_KEYS = [
@@ -19,6 +22,7 @@ export const AIRTABLE_SETTING_KEYS = [
   "airtable_table_name",
   "airtable_field_map",
   "airtable_view",
+  "airtable_poll_interval_minutes",
 ] as const;
 
 const DEFAULTS: AirtableSettings = {
@@ -27,6 +31,7 @@ const DEFAULTS: AirtableSettings = {
   airtable_table_name: "",
   airtable_field_map: {},
   airtable_view: "Grid view",
+  airtable_poll_interval_minutes: MIN_POLL_INTERVAL_MINUTES,
 };
 
 /**
@@ -54,5 +59,7 @@ export async function fetchAirtableSettings(
     airtable_field_map: (byKey.get("airtable_field_map")?.value as AirtableFieldMap) ?? DEFAULTS.airtable_field_map,
     // An explicit "" (read the whole table) is preserved; only a missing row falls back.
     airtable_view: (byKey.get("airtable_view")?.value as string) ?? DEFAULTS.airtable_view,
+    airtable_poll_interval_minutes:
+      (byKey.get("airtable_poll_interval_minutes")?.value as number) ?? DEFAULTS.airtable_poll_interval_minutes,
   };
 }
