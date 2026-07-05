@@ -226,10 +226,10 @@ Deno.test("airtable-poll: null Vault secret treated as empty string — non-empt
   assertEquals(res.status, 401);
 });
 
-Deno.test("airtable-poll: admin USER JWT without a cron secret → 401 (cron-secret-only, no role fallback)", async () => {
-  // Regression (Fix B): airtable-poll writes EVERY active org, so an org-admin JWT
-  // must never trigger it. Even a fully valid admin membership is rejected without
-  // the X-Cron-Secret header — no requireRole fallback anymore.
+Deno.test("airtable-poll: admin JWT without org_id → 400 (JWT path is single-org; never the cron fan-out)", async () => {
+  // The cross-org fan-out stays cron-secret-only. A JWT request is the "Sync now" path,
+  // which REQUIRES an explicit org_id and can only ever sync that one org — so a JWT can
+  // never trigger the fan-out. Without org_id it's a 400, not a fan-out.
   const { deps } = makeFakeDeps({
     authUser: { id: "admin-1" },
     tables: { org_memberships: { data: { role: "admin" }, error: null } },
@@ -239,9 +239,46 @@ Deno.test("airtable-poll: admin USER JWT without a cron secret → 401 (cron-sec
     makeRequest({ method: "POST", headers: { Authorization: "Bearer admin-jwt" } }),
     deps,
   );
-  assertEquals(res.status, 401);
+  assertEquals(res.status, 400);
   const body = await res.json();
-  assertEquals(body.error, "Unauthorized");
+  assertEquals(body.error, "org_id required");
+});
+
+// ─── Manual "Sync now" (org-admin JWT, single org, gate bypassed) ─────────────
+
+Deno.test("sync-now: org admin + org_id → 200, syncs only that org (bypasses gate)", async () => {
+  // last poll 30s ago would be gated on the cron path; the manual path must still run.
+  const { deps, fetchSpy } = makeGateDeps({
+    lastSyncedAt: "2026-06-01T11:59:30.000Z", authUser: { id: "admin-1" }, memberRole: "admin",
+  });
+  const res = await handle(
+    makeRequest({ method: "POST", headers: { Authorization: "Bearer admin-jwt" }, body: { org_id: ORG } }),
+    deps,
+  );
+  const body = await res.json();
+  assertEquals(res.status, 200);
+  assertEquals(body.ok, true);
+  assertEquals(body.orgs_synced, 1);
+  assertEquals(fetchSpy.count, 1);
+});
+
+Deno.test("sync-now: caller not an admin of the org → 403", async () => {
+  const { deps, fetchSpy } = makeGateDeps({ authUser: { id: "user-1" }, memberRole: null });
+  const res = await handle(
+    makeRequest({ method: "POST", headers: { Authorization: "Bearer user-jwt" }, body: { org_id: ORG } }),
+    deps,
+  );
+  assertEquals(res.status, 403);
+  assertEquals(fetchSpy.count, 0);
+});
+
+Deno.test("sync-now: missing org_id → 400", async () => {
+  const { deps } = makeGateDeps({ authUser: { id: "admin-1" }, memberRole: "admin" });
+  const res = await handle(
+    makeRequest({ method: "POST", headers: { Authorization: "Bearer admin-jwt" }, body: {} }),
+    deps,
+  );
+  assertEquals(res.status, 400);
 });
 
 // ─── Per-org skip paths (disabled / unconfigured / bad base / no key) ─────────
