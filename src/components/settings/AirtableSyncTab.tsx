@@ -24,9 +24,10 @@ import { fetchShowsForLinking, linkShowAirtableKey, importShowsFromOptions, upse
 import { fetchAirtableSettings, type AirtableSettings } from "@/data/airtableSettings";
 import type { Json } from "@/integrations/supabase/types";
 import { fetchCitiesForLinking, linkCityAirtableKey, importCitiesFromOptions, mergeCities } from "@/data/cities";
-import { fetchLatestSyncLog, fetchUnresolvedRecords, type UnresolvedRecord } from "@/data/airtableSync";
+import { fetchLatestSyncLog, fetchUnresolvedRecords, triggerAirtableSyncNow, type UnresolvedRecord, type SyncNowResult } from "@/data/airtableSync";
 import { saveAirtableKey, fetchAirtableKeyStatus, deleteAirtableKey } from "@/data/airtableKey";
 import { formatDateDMY } from "@/lib/dates";
+import { POLL_INTERVAL_PRESETS, formatInterval, nextSyncAt, MIN_POLL_INTERVAL_MINUTES } from "@/lib/airtablePoll";
 import { airtableFallbackMessage, type FallbackCause } from "@/lib/airtableFallback";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 
@@ -226,6 +227,7 @@ export function AirtableSyncTab({ orgId }: Props) {
   });
   const s: AirtableSettings = settingsQ.data ?? {
     airtable_sync_enabled: false, airtable_base_id: "", airtable_table_name: "", airtable_field_map: {}, airtable_view: "Grid view",
+    airtable_poll_interval_minutes: MIN_POLL_INTERVAL_MINUTES,
   };
 
   const saveSettings = useMutation({
@@ -250,6 +252,24 @@ export function AirtableSyncTab({ orgId }: Props) {
       // needs no refetch — its optimistic cache already matches the DB.
       void qc.invalidateQueries({ queryKey: SETTINGS_KEY });
     },
+  });
+
+  // "Sync now" — an immediate, single-org poll bypassing the interval gate. The edge fn
+  // returns HTTP 200 with `orgs_synced: 0, result: null` when the org is disabled/misconfigured
+  // (it did NOT sync) — that must not read as success, so branch on `result` being present.
+  const syncNow = useMutation({
+    mutationFn: () => triggerAirtableSyncNow(supabase, orgId!),
+    onSuccess: (res: SyncNowResult) => {
+      if (res.orgs_synced > 0 && res.result) {
+        toast.success(`Synced — ${res.result.new_dates} new, ${res.result.updated} updated`);
+      } else {
+        toast.warning("Sync didn't run — check your Airtable configuration below");
+      }
+      qc.invalidateQueries({ queryKey: ["airtable", "sync-log", orgId] });
+      qc.invalidateQueries({ queryKey: ["airtable", "unresolved", orgId] });
+      qc.invalidateQueries({ queryKey: ["bookings"] });
+    },
+    onError: (e: Error) => toast.error(e.message ?? "Sync failed"),
   });
 
   // Derive the status pill from the mutation itself. A single shared useState would let a
@@ -604,6 +624,47 @@ export function AirtableSyncTab({ orgId }: Props) {
               <p className="text-xs text-muted-foreground mt-0.5">Turn polling on or off globally.</p>
             </div>
             <Switch checked={!!s.airtable_sync_enabled} onCheckedChange={(v) => saveSettings.mutate({ airtable_sync_enabled: v })} />
+          </div>
+
+          {/* Poll interval + cadence transparency */}
+          <div className="flex flex-wrap items-end justify-between gap-3">
+            <div className="space-y-1.5">
+              <Label className="font-medium">Sync frequency</Label>
+              <Select
+                value={String(s.airtable_poll_interval_minutes)}
+                onValueChange={(v) => saveSettings.mutate({ airtable_poll_interval_minutes: Number(v) })}
+              >
+                <SelectTrigger className="w-44"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  {POLL_INTERVAL_PRESETS.map((p) => (
+                    <SelectItem key={p.value} value={String(p.value)}>{p.label}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <p className="text-xs text-muted-foreground">
+                Shorter = fresher data but more Airtable API calls (Airtable allows ~5 requests/sec per base)
+                and more writes each cycle. Runs on the shared 5-minute cycle.
+              </p>
+            </div>
+            <div className="flex flex-col items-end gap-1.5">
+              <Button
+                variant="outline" size="sm"
+                disabled={!s.airtable_sync_enabled || !keyPresent || syncNow.isPending}
+                onClick={() => syncNow.mutate()}
+              >
+                {syncNow.isPending ? "Syncing…" : "Sync now"}
+              </Button>
+              <p className="text-xs text-muted-foreground text-right">
+                {(() => {
+                  const last = syncLogQ.data?.synced_at ?? null;
+                  if (!last) return "Not synced yet — runs on the next cycle.";
+                  const next = nextSyncAt(last, s.airtable_poll_interval_minutes);
+                  const lastStr = new Date(last).toLocaleString();
+                  const nextStr = next ? next.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) : "—";
+                  return `Last synced ${lastStr} · next ~${nextStr} (every ${formatInterval(s.airtable_poll_interval_minutes)})`;
+                })()}
+              </p>
+            </div>
           </div>
 
           {!!s.airtable_sync_enabled && !keyStatusQ.isLoading && !keyPresent && (
