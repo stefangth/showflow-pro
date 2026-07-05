@@ -2,6 +2,17 @@
 
 What's new in ShowFlow, newest first.
 
+## 1.8.0 — July 5, 2026
+
+*Control your Airtable sync cadence*
+
+### New
+- **Choose how often Airtable syncs** — Pick a polling frequency per organization, from every 5 minutes up to every 8 hours, in Settings → Airtable Sync.
+- **Sync now** — Pull the latest from Airtable immediately, between scheduled cycles, with one click.
+
+### Improved
+- **See your sync cadence at a glance** — The Airtable Sync tab shows when it last synced and when the next sync is due.
+
 ## 1.7.0 — July 1, 2026
 
 *Faster artist onboarding*
