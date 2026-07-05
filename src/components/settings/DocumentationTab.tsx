@@ -1,9 +1,22 @@
+import { lazy, Suspense } from "react";
 import appLogicMd from "../../../docs/app-logic.md?raw";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { MarkdownDoc } from "./MarkdownDoc";
-import { SystemMapCanvas } from "./SystemMapCanvas";
-import { SystemMapReference } from "./SystemMapReference";
+
+// Lazy-loaded so the graph data (src/data/systemMap.ts) and the rendered
+// system-map.md never enter the main bundle — they load only when a
+// super-admin actually opens the System Map / Reference sub-tab.
+const SystemMapCanvas = lazy(() =>
+  import("./SystemMapCanvas").then((m) => ({ default: m.SystemMapCanvas })),
+);
+const SystemMapReference = lazy(() =>
+  import("./SystemMapReference").then((m) => ({ default: m.SystemMapReference })),
+);
+
+function DocLoading() {
+  return <p className="text-sm text-muted-foreground">Loading…</p>;
+}
 
 /** Documentation surface. App Logic is public; the System Map is super-admin only. */
 export function DocumentationTab({ isSuperAdmin }: { isSuperAdmin: boolean }) {
@@ -40,7 +53,9 @@ export function DocumentationTab({ isSuperAdmin }: { isSuperAdmin: boolean }) {
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <SystemMapCanvas />
+            <Suspense fallback={<DocLoading />}>
+              <SystemMapCanvas />
+            </Suspense>
           </CardContent>
         </Card>
       </TabsContent>
@@ -51,7 +66,9 @@ export function DocumentationTab({ isSuperAdmin }: { isSuperAdmin: boolean }) {
             <CardDescription>The full written map (docs/system-map.md).</CardDescription>
           </CardHeader>
           <CardContent>
-            <SystemMapReference />
+            <Suspense fallback={<DocLoading />}>
+              <SystemMapReference />
+            </Suspense>
           </CardContent>
         </Card>
       </TabsContent>
