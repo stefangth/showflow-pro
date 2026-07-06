@@ -2,6 +2,13 @@
 
 What's new in ShowFlow, newest first.
 
+## 1.8.1 — July 6, 2026
+
+*Fixes*
+
+### Fixed
+- **Airtable sync frequency now sticks** — Choosing a polling interval (for example, every hour) no longer reverts to 5 minutes after other settings are saved.
+
 ## 1.8.0 — July 5, 2026
 
 *Control your Airtable sync cadence*
