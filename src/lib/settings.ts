@@ -22,13 +22,19 @@ export function showSlots(
 }
 
 /**
- * Compute which setting keys the user has edited, comparing the draft against the
- * union of (keys that already have a persisted row) AND (all keys the form can edit).
+ * Compute which setting keys the user has edited, considering ONLY `editableKeys`
+ * (the keys this form actually manages). This is an allowlist, not a union with every
+ * persisted key: a key SettingsPage seeds into its draft but does not own — e.g.
+ * `airtable_poll_interval_minutes`, which has a platform-default row and is edited from
+ * the Airtable Sync tab — must never count as dirty, or a Save here would write the stale
+ * draft value back over the value the owning surface just wrote.
  *
- * Iterating only persisted rows misses a first-ever value: a key with no DB row
- * (e.g. `resend_from_address` never saved before) would never count as dirty, so
- * Save stays disabled and it can never be saved. An absent persisted row is treated
- * as the default/empty baseline — a draft value that differs from it is dirty.
+ * A first-ever value is still caught: because every editable key is always considered, a
+ * key with no DB row (e.g. `resend_from_address` never saved before) is dirty as soon as
+ * the draft holds a value — an absent persisted row is the default/empty baseline.
+ *
+ * `undefined` draft values (key not present in the draft at all) are never dirty:
+ * the user hasn't touched that key, so there's nothing to save.
  *
  * `undefined` draft values (key not present in the draft at all) are never dirty:
  * the user hasn't touched that key, so there's nothing to save.
@@ -41,7 +47,11 @@ export function computeSettingsDirtyKeys(
   const persisted = new Map<string, unknown>();
   for (const s of settings ?? []) persisted.set(s.key, s.value);
 
-  const keys = new Set<string>([...persisted.keys(), ...editableKeys]);
+  // editableKeys is an ALLOWLIST: only keys SettingsPage actually manages can be dirty (and
+  // therefore saved). Unioning with persisted.keys() would let a key owned by another surface
+  // (e.g. airtable_poll_interval_minutes, seeded into the draft from its platform default) show
+  // as dirty and get clobbered with the stale draft value on Save.
+  const keys = new Set<string>(editableKeys);
   const dirty: string[] = [];
   for (const key of keys) {
     // A key the user hasn't entered into the draft can't be dirty.

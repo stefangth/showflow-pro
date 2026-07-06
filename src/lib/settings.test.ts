@@ -126,6 +126,16 @@ describe("computeSettingsDirtyKeys", () => {
     expect(computeSettingsDirtyKeys([], {}, EDITABLE)).toEqual([]);
   });
 
+  // Regression: editableKeys is an ALLOWLIST, not a union with every persisted key. A
+  // non-editable key that SettingsPage seeds into its draft (e.g. the platform-default-backed
+  // airtable_poll_interval_minutes, which is managed by the Airtable tab) must NEVER be dirty —
+  // otherwise a SettingsPage Save writes the stale draft value back and clobbers the tab's write.
+  it("ignores a non-editable key even when the draft diverges from persisted", () => {
+    const settings = [{ key: "airtable_poll_interval_minutes", value: 60 }];
+    const draft = { airtable_poll_interval_minutes: 5 }; // stale platform-default seed
+    expect(computeSettingsDirtyKeys(settings, draft, EDITABLE)).toEqual([]);
+  });
+
   it("uses deep equality so equivalent object values are not dirty", () => {
     const settings = [{ key: "filters_visibility", value: { shows: { producer: { program: true } } } }];
     const draft = { filters_visibility: { shows: { producer: { program: true } } } };
@@ -138,10 +148,13 @@ describe("computeSettingsDirtyKeys", () => {
     expect(computeSettingsDirtyKeys(settings, draft, ["filters_visibility"])).toEqual(["filters_visibility"]);
   });
 
-  it("marks a persisted key that is not in the editable set dirty when the draft differs", () => {
-    // Persisted rows always participate, even if the caller's editable set omits the key.
+  it("never marks a persisted key outside the editable set dirty (allowlist, not union)", () => {
+    // A key this form does not manage is owned by another surface; SettingsPage must not
+    // save it, even if the draft (seeded from persisted) diverges. (Was the reverse before —
+    // the union let a non-editable key clobber the owning surface's write. See the interval
+    // regression above.)
     const settings = [{ key: "legacy_key", value: "old" }];
     const draft = { legacy_key: "new" };
-    expect(computeSettingsDirtyKeys(settings, draft, EDITABLE)).toEqual(["legacy_key"]);
+    expect(computeSettingsDirtyKeys(settings, draft, EDITABLE)).toEqual([]);
   });
 });

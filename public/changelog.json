@@ -1,5 +1,19 @@
 [
   {
+    "version": "1.8.1",
+    "date": "2026-07-06",
+    "dateLabel": "July 6, 2026",
+    "title": "Fixes",
+    "changes": {
+      "fixed": [
+        {
+          "title": "Airtable sync frequency now sticks",
+          "description": "Choosing a polling interval (for example, every hour) no longer reverts to 5 minutes after other settings are saved."
+        }
+      ]
+    }
+  },
+  {
     "version": "1.8.0",
     "date": "2026-07-05",
     "dateLabel": "July 5, 2026",
