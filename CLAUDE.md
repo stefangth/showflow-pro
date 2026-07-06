@@ -65,7 +65,7 @@ These are public values (anon key, not service role). Never commit `.env`. The s
 
 ## Versioning & changelog
 
-- **Semver tags on releases.** Tag the release commit `vMAJOR.MINOR.PATCH` (`git tag -a v1.4.0 -m "<theme>"` then `git push origin --tags`). MINOR = new user-facing features, PATCH = fixes, MAJOR = breaking changes. Tags `v1.0.0`–`v1.4.0` cover Apr–Jun 2026.
+- **Semver tags on releases.** Tag the release commit `vMAJOR.MINOR.PATCH` (`git tag -a v1.4.0 -m "<theme>"` then `git push origin --tags`). MINOR = new user-facing features, PATCH = fixes, MAJOR = breaking changes. Tags exist through `v1.4.0` (Jun 21, 2026) — versions since then (`1.4.1`–`1.8.0`, current) shipped without tags; catch up the tagging when convenient, don't skip it going forward.
 - **Bump the version in two places to match the tag:** `version` in `package.json` and `APP_META.VERSION` in `src/config/app.config.ts` (the latter renders next to the brand name in the top-left of `AppLayout`).
 - **Update `public/changelog.md`** (the single source of truth). Add a newest-first block: `## X.Y.Z — Mon D, YYYY`, a one-line `*theme*`, then `### New` / `### Improved` / `### Fixed` bullets written for end users (no refactors, tests, CI, or docs). Bullets use the form `- **Title** — description`.
 - **Regenerate the JSON:** `deno run --allow-read --allow-write scripts/changelog-to-json.ts` rewrites `public/changelog.json` from the markdown — never hand-edit the JSON.
@@ -92,19 +92,26 @@ src/
     filters/       # Reusable filter/sort/view-toggle controls
     platform/      # Super-admin platform console UI (OrganizationsTab, PlatformAdminsTab,
                    #   PlatformDefaultsTab, EditOrgDialog, NewOrgDialog, OrgInvitePopover,
-                   #   OrgMembersPopover) + pure utilities (platformFormat.ts, templateText.ts)
+                   #   OrgMembersPopover, SystemHealthTab) + pure utilities (platformFormat.ts,
+                   #   templateText.ts) + systemHealth/ (OverallStatusBanner, DomainSummaryGrid,
+                   #   EdgeFunctionsPanel, ScheduledJobsPanel, primitives)
     catalog/       # Production catalog CRUD: ShowFormDialog (create/edit shows) + ProductionsPage support
     shows/         # ShowDateDetailSheet — the full per-date booking management surface;
                    #   ShowDateFormDialog — create/edit show_dates (in-app)
-    settings/      # AirtableSyncTab — Settings → Airtable Sync tab (schema-driven mapping + catalog linking)
+    settings/      # AirtableSyncTab (schema-driven mapping + catalog linking), OrganizationTab,
+                   #   CastsCitiesTab, ProductionOwnershipTab, DocumentationTab (+ MarkdownDoc,
+                   #   SystemMapCanvas, SystemMapReference — Settings → Documentation → System Map)
     layout/        # AppLayout (sidebar + topbar shell), NotificationsList (notification bell popover)
     ui/            # shadcn primitives — DO NOT edit by hand, regenerate via shadcn
   config/
     app.config.ts  # Feature flags (FEATURES), route constants (ROUTES), BOOKING_ENGINE_DEFAULTS, CHAT_ARCHIVE_DAYS
   data/            # Data-access layer: fetchX(client, args) / mutateX(client, args) functions
                    #   that take the Supabase client as a parameter. Hooks are thin wrappers.
-                   #   Domains: artists, invitations, members, notifications, orgs, platform,
-                   #   profiles, settings, shows, showDates, skills. Test with supabaseFake.ts (never vi.mock the client).
+                   #   Domains: account, admin, artistImport, artists, airtableKey, airtableMapping,
+                   #   airtableSchema, airtableSettings, airtableSync, bookings, cities, customFields,
+                   #   invitations, members, notificationPreferences, notifications, orgs, platform,
+                   #   profiles, remoteSheet, settings, shows, showDates, skills, systemMap.
+                   #   Test with supabaseFake.ts (never vi.mock the client).
   features/
     auth/          # AuthContext (org-aware: currentOrg/orgs/switchOrg, isSuperAdmin),
                    #   ProtectedRoute (org gate → NoOrgScreen / SuspendedOrgScreen;
@@ -124,9 +131,12 @@ src/
   hooks/           # Domain hooks (useMyArtist, useEligibleArtists, useChatParticipant,
                    #   useArtistEligibleDates, useSettingsWarnings,
                    #   useSkills/useArtistSkills, useNotifications/useMarkNotificationRead/
-                   #   useMarkAllNotificationsRead, useMyProfile/useUpdateMyProfile,
-                   #   useOrgMembers/useRemoveOrgMember,
-                   #   useShows/useShowDates/useCities) + UI hooks (use-mobile, use-toast)
+                   #   useMarkAllNotificationsRead, useNotificationPreferences,
+                   #   useMyProfile/useUpdateMyProfile,
+                   #   useOrgMembers/useRemoveOrgMember/useSetOrgMemberRole,
+                   #   usePendingInvitedArtists, useNavCounts (sidebar badge counts),
+                   #   useSystemHealth, useShows/useShowDates/useCities/useAllCities)
+                   #   + UI hooks (use-mobile, use-toast)
   integrations/
     supabase/
       client.ts    # Single shared Supabase client
@@ -210,7 +220,7 @@ When adding a new page:
   - **Invitations:** `create-invitation` (org admin → insert `org_invitations` + send the `org-invitation` email; accepts an optional `artist_id` to deterministically link a catalog artist — validates same-org + `user_id IS NULL` and forces role `artist`). Acceptance is the `accept_invitation` RPC (links the artist by `org_invitations.artist_id` first — guarded so it no-ops when the caller already owns an org artist — else by lowercased email), not an edge function. `org_invitations.artist_id` is an FK → `artists(id) ON DELETE SET NULL`, also read by the `list_pending_invited_artists(p_org)` RPC that feeds the artist-card account-status chip.
   - **Airtable sync:** `airtable-schema` (admin-only, user-JWT via `requireOrgRole(org_id, ['admin'])`) reads the org's Airtable schema with the Vault PAT for the mapping UI — returns `{ schemaAccessible, bases }` (no `baseId` in body) or `{ schemaAccessible, tables }` (with `baseId`); an Airtable `403` (PAT missing the `schema.bases:read` scope) surfaces as `{ schemaAccessible: false }` so the UI falls back to typed inputs, and the PAT is never returned to the client. `airtable-poll` is the `*/5 * * * *` cron that upserts `show_dates` from each org's base (each org is throttled by its `airtable_poll_interval_minutes` setting, min 5; an org-admin "Sync now" triggers a single-org poll on demand) (see the Airtable-sync key decision in `docs/adr/README.md`).
   - **Transactional email:** `send-transactional-email`, `preview-transactional-email`, `handle-email-suppression`, `handle-email-unsubscribe`. New templates must be registered in `_shared/transactional-email-templates/registry.ts`.
-  - **Booking engine:** `open-offer-tier` (create suggested bookings), `close-offer-tier` (close a tier ± withdraw its pending offers), `expire-offers` (hourly expiry), `send-offer-digest` (daily 19:00 Berlin), `send-confirmation-digest` (daily 20:00 Berlin). All cron functions are org-aware: they iterate active orgs via `getActiveOrgs(admin)` from `_shared/settings.ts` and resolve settings per-org with `resolveOrgSetting`.
+  - **Booking engine:** `open-offer-tier` (create suggested bookings) and `close-offer-tier` (close a tier ± withdraw its pending offers) are per-request endpoints taking a `show_date_id`, not crons. The cron functions — `expire-offers` (hourly expiry), `send-offer-digest` (daily 19:00 Berlin), `send-confirmation-digest` (daily 20:00 Berlin) — are org-aware: they iterate active orgs via `getActiveOrgs(admin)` from `_shared/settings.ts` and resolve settings per-org with `resolveOrgSetting`.
   - **Watchers:** `tier-at-risk-watcher` — scans open offer tiers and fires an in-app `tier_at_risk` notification when remaining pending + accepted < required slots. Idempotent (one notification per date/tier). No email; visual only. `cron-health-watcher` — 15-min cron that classifies every cron job healthy/failing/stale from the dispatch-capture tables and alerts super-admins on failure transitions.
   - **Platform (super-admin):** `provision-org` (atomic org creation + catalog seeding + first-admin invite, requires super-admin); `resend-invitation` (resend an existing `org_invitations` row's email); `platform-edge-metrics` (System Health metrics proxy to the Supabase Analytics API via the dedicated `ANALYTICS` PAT).
   - **Account & data (GDPR):** `delete-my-account` (authenticated; last-admin-guarded via `sole_admin_orgs`; calls `anonymize_user` **via the caller's JWT client** then `auth.admin.deleteUser`) and `export-org-data` (super-admin; full org JSON bundle). Per-user export is the `export_my_data` RPC; org deletion is the `delete_org` RPC (super-admin); account anonymization is the `anonymize_user` RPC.
@@ -325,7 +335,8 @@ Suggested emails:
 | `supabase/functions/open-offer-tier/index.ts` | Creates suggested bookings for a date/tier |
 | `supabase/functions/tier-at-risk-watcher/index.ts` | In-app notification when a tier can no longer fill before deadline |
 | `supabase/functions/delete-my-account/index.ts` | Authenticated account self-deletion: last-admin guard → `anonymize_user` → `auth.admin.deleteUser` |
-| `src/data/account.ts` | `exportMyData` / `deleteMyAccount` / `fetchNotificationPreferences` / `upsertNotificationPreferences` |
+| `src/data/account.ts` | `exportMyData` / `deleteMyAccount` |
+| `src/data/notificationPreferences.ts` | `fetchMyNotificationPreferences` / `updateMyNotificationPreferences` |
 | `docs/system-map.md` | Automation engine system map: every trigger → function → data → side effect, with the DB guards. Mirrored by `src/data/systemMap.ts` (the in-app Settings → Documentation → System Map canvas); update both in the same PR as any automation change |
 
 ---
