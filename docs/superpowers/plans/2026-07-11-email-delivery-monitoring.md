@@ -167,7 +167,7 @@ git commit -m "feat: add email-health thresholds and pure deriveEmailStatus"
 
 **Files:**
 - Create (via MCP `apply_migration`, name `email_delivery_tables`): `supabase/migrations/<ts>_email_delivery_tables.sql`
-- Test: `supabase/tests/email_send_log_rls.sql` (pgTAP, CI)
+- Test: `supabase/tests/rls/email_send_log.sql` (pgTAP, CI)
 
 **Interfaces:**
 - Produces tables `email_send_log`, `suppressed_emails`, `email_unsubscribe_tokens`, `email_health_state`; app_settings seed `email_log_retention_days = 90`. Consumed by Tasks 3–8.
@@ -175,7 +175,7 @@ git commit -m "feat: add email-health thresholds and pure deriveEmailStatus"
 - [ ] **Step 1: Write the failing pgTAP test**
 
 ```sql
--- supabase/tests/email_send_log_rls.sql
+-- supabase/tests/rls/email_send_log.sql
 BEGIN;
 SELECT plan(4);
 SELECT has_table('public', 'email_send_log', 'email_send_log exists');
@@ -280,7 +280,7 @@ Expected: PASS (4 tests).
 - [ ] **Step 5: Commit**
 
 ```bash
-git add supabase/migrations/*_email_delivery_tables.sql supabase/tests/email_send_log_rls.sql
+git add supabase/migrations/*_email_delivery_tables.sql supabase/tests/rls/email_send_log.sql
 git commit -m "feat: add email_send_log, suppression, unsubscribe, health-state tables"
 ```
 
@@ -290,7 +290,7 @@ git commit -m "feat: add email_send_log, suppression, unsubscribe, health-state 
 
 **Files:**
 - Create (MCP `apply_migration`, name `email_health_rpcs`): `supabase/migrations/<ts>_email_health_rpcs.sql`
-- Test: `supabase/tests/get_email_health.sql` (pgTAP, CI)
+- Test: `supabase/tests/rpc/get_email_health.sql` (pgTAP, CI)
 
 **Interfaces:**
 - Produces `email_health_snapshot(int) → jsonb` (service_role) and `get_email_health(int) → jsonb` (authenticated, super-admin-guarded). Consumed by Task 8 (snapshot) and Task 9 (get_email_health). Returned keys are **snake_case**: `attempted, sent, delivered, delayed, bounced, complained, failed, suppressed, delivery_rate, bounce_rate, complaint_rate, failure_count, last_event_at, by_template[], recent_issues[]`.
@@ -298,7 +298,7 @@ git commit -m "feat: add email_send_log, suppression, unsubscribe, health-state 
 - [ ] **Step 1: Write the failing pgTAP test**
 
 ```sql
--- supabase/tests/get_email_health.sql
+-- supabase/tests/rpc/get_email_health.sql
 BEGIN;
 SELECT plan(3);
 
@@ -413,7 +413,7 @@ Expected: PASS (3 tests).
 - [ ] **Step 5: Commit**
 
 ```bash
-git add supabase/migrations/*_email_health_rpcs.sql supabase/tests/get_email_health.sql
+git add supabase/migrations/*_email_health_rpcs.sql supabase/tests/rpc/get_email_health.sql
 git commit -m "feat: add email_health_snapshot and get_email_health RPCs"
 ```
 
@@ -423,7 +423,7 @@ git commit -m "feat: add email_health_snapshot and get_email_health RPCs"
 
 **Files:**
 - Create (MCP `apply_migration`, name `email_log_prune_and_anonymize`): `supabase/migrations/<ts>_email_log_prune_and_anonymize.sql`
-- Test: `supabase/tests/email_log_prune.sql` (pgTAP, CI)
+- Test: `supabase/tests/rpc/prune_email_log.sql` (pgTAP, CI)
 
 **Interfaces:**
 - Produces `prune_email_log() → int`, a daily `pg_cron` job `email-log-prune`, and an extended `anonymize_user` that scrubs `email_send_log.recipient_email`.
@@ -433,7 +433,7 @@ git commit -m "feat: add email_health_snapshot and get_email_health RPCs"
 - [ ] **Step 1: Write the failing pgTAP test**
 
 ```sql
--- supabase/tests/email_log_prune.sql
+-- supabase/tests/rpc/prune_email_log.sql
 BEGIN;
 SELECT plan(1);
 INSERT INTO public.email_send_log (message_id, template_name, recipient_email, status, created_at)
@@ -497,7 +497,7 @@ Expected: PASS (1 test).
 - [ ] **Step 5: Commit**
 
 ```bash
-git add supabase/migrations/*_email_log_prune_and_anonymize.sql supabase/tests/email_log_prune.sql
+git add supabase/migrations/*_email_log_prune_and_anonymize.sql supabase/tests/rpc/prune_email_log.sql
 git commit -m "feat: add email_send_log retention prune and anonymize scrub"
 ```
 
