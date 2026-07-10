@@ -57,6 +57,26 @@ export const SYSTEM_HEALTH_BUDGET = {
   errorRate: SYSTEM_HEALTH.errorRateBudget,
 };
 
+/** Email-delivery health thresholds + windows for the System Health "Email delivery" domain.
+ *  Rates are deliverability-industry norms. Alert-only knobs (window/min-volume) gate the watcher. */
+export const EMAIL_HEALTH = {
+  /** Warn/critical bounce fraction (0..1). */
+  bounceWarn: 0.02,
+  bounceDown: 0.05,
+  /** Warn/critical spam-complaint fraction (0..1). */
+  complaintWarn: 0.001,
+  complaintDown: 0.003,
+  /** Below this delivery fraction (0..1) the domain reads Degraded. */
+  deliveryWarn: 0.95,
+  /** Panel default lookback (minutes) + the toggle options (24h / 7d). */
+  windowMinutes: 1440,
+  windowOptions: [1440, 10080] as const,
+  /** Watcher-only: rolling alert window + false-alarm guards. */
+  alertWindowMinutes: 180,
+  minVolumeForAlert: 20,
+  failureAlertCount: 3,
+} as const;
+
 /** Role definitions */
 export const ROLES = {
   ADMIN: 'admin',
