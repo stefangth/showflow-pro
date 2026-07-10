@@ -318,12 +318,16 @@ Deno.test("VALID signature + email.complained → suppression row with reason 'c
   assertEquals(logRow.recipient_email, "complained@example.com");
 });
 
-// --- 9. VALID signature + email.delivered (non-suppression) → ignored, NO upsert ---
+// --- 9. VALID signature + email.delivered (lifecycle event, non-suppression) →
+//         updates email_send_log by resend_id (fallback insert when unmatched), no suppression ---
 
-Deno.test("VALID signature + email.delivered → ignored (2xx, { success: true, ignored: true }), no suppression insert", async () => {
+Deno.test("VALID signature + email.delivered → updates email_send_log by resend_id, no suppression", async () => {
   const { deps, calls } = makeFakeDeps({
     envVars: BASE_ENV_VARS,
     now: FIXED_NOW_DATE,
+    tables: {
+      email_send_log: { data: null, error: null },
+    },
   });
 
   const deliveredPayload = {
@@ -342,17 +346,38 @@ Deno.test("VALID signature + email.delivered → ignored (2xx, { success: true, 
   assertEquals(res.status, 200);
   const resBody = await res.json();
 
-  // Response shape: { success: true, ignored: true }
+  // Delivery events are now tracked lifecycle events, not ignored — response is a plain success.
   assertEquals(resBody.success, true);
-  assertEquals(resBody.ignored, true);
+  assertEquals(resBody.ignored, undefined);
 
-  // No suppressed_emails upsert must have been called
+  // No suppressed_emails upsert must have been called (delivered is not bounce/complaint)
   const upsertCall = calls.find((c) => c.table === "suppressed_emails");
   assertEquals(
     upsertCall,
     undefined,
     "suppressed_emails must NOT be touched for non-suppression events",
   );
+
+  // email_send_log: update-by-resend_id is attempted first...
+  const updateCall = calls.find(
+    (c) => c.table === "email_send_log" && c.method === "update",
+  );
+  assertExists(updateCall, "email_send_log update-by-resend_id must be attempted");
+  const [patch] = updateCall!.args as [{ status: string; delivered_at: string }];
+  assertEquals(patch.status, "delivered");
+  assertExists(patch.delivered_at, "delivered_at stamp must be set");
+
+  // ...and since no row matched (seeded null), a fallback row is inserted so counts stay accurate.
+  const insertCall = calls.find(
+    (c) => c.table === "email_send_log" && c.method === "insert",
+  );
+  assertExists(insertCall, "fallback insert must occur when no row matches resend_id");
+  const [logRow] = insertCall!.args as [
+    { status: string; resend_id: string; recipient_email: string },
+  ];
+  assertEquals(logRow.status, "delivered");
+  assertEquals(logRow.resend_id, "em_delivered_001");
+  assertEquals(logRow.recipient_email, "recipient@example.com");
 });
 
 // --- 10. VALID signature + email.opened (non-suppression) → ignored ---
