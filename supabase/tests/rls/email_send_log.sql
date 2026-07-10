@@ -1,4 +1,4 @@
--- supabase/tests/email_send_log_rls.sql
+-- supabase/tests/rls/email_send_log.sql
 BEGIN;
 SELECT plan(4);
 SELECT has_table('public', 'email_send_log', 'email_send_log exists');
