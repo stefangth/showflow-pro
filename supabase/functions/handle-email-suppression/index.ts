@@ -64,10 +64,21 @@ function mapEventToReason(eventType: string): 'bounce' | 'complaint' | null {
   return null
 }
 
-function mapReasonToStatus(reason: string): 'bounced' | 'complained' | 'suppressed' {
-  if (reason === 'bounce') return 'bounced'
-  if (reason === 'complaint') return 'complained'
-  return 'suppressed'
+type LogStatus = 'sent' | 'delivered' | 'delivery_delayed' | 'bounced' | 'complained'
+const EVENT_TO_STATUS: Record<string, LogStatus> = {
+  'email.sent': 'sent',
+  'email.delivered': 'delivered',
+  'email.delivery_delayed': 'delivery_delayed',
+  'email.bounced': 'bounced',
+  'email.complained': 'complained',
+}
+const STATUS_TO_STAMP: Record<LogStatus, string> = {
+  sent: 'sent_at', delivered: 'delivered_at', delivery_delayed: 'delayed_at',
+  bounced: 'bounced_at', complained: 'complained_at',
+}
+/** Resend event type → email_send_log status (null = ignore, e.g. email.opened/email.clicked). */
+export function mapEventToLogStatus(eventType: string): LogStatus | null {
+  return EVENT_TO_STATUS[eventType] ?? null
 }
 
 function mapReasonToMessage(reason: string): string {
@@ -115,53 +126,77 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
     return json({ error: 'Invalid JSON payload' }, 400)
   }
 
-  const reason = mapEventToReason(payload.type)
-  if (!reason) {
-    // Not a suppression event — acknowledge and ignore
+  const logStatus = mapEventToLogStatus(payload.type)
+  if (!logStatus) {
+    // Not a lifecycle event we track — acknowledge and ignore (e.g. email.opened / email.clicked)
     return json({ success: true, ignored: true })
   }
 
   // Resend delivers the recipient in data.to[0]
-  const recipientEmail = payload.data?.to?.[0]
+  const recipientEmail = payload.data?.to?.[0]?.toLowerCase()
   if (!recipientEmail) {
     console.error('Missing recipient in Resend webhook payload', { type: payload.type })
     return json({ error: 'Missing recipient' }, 400)
   }
 
   const admin = deps.admin;
-  const normalizedEmail = recipientEmail.toLowerCase()
+  const resendId = payload.data?.email_id ?? null
 
-  const { error: suppressError } = await admin
-    .from('suppressed_emails')
-    .upsert(
-      { email: normalizedEmail, reason, metadata: { resend_email_id: payload.data?.email_id } },
-      { onConflict: 'email' }
-    )
+  // Bounce/complaint → suppress the address (unchanged behavior).
+  const reason = mapEventToReason(payload.type)
+  if (reason) {
+    const { error: suppressError } = await admin
+      .from('suppressed_emails')
+      .upsert(
+        { email: recipientEmail, reason, metadata: { resend_email_id: resendId } },
+        { onConflict: 'email' }
+      )
 
-  if (suppressError) {
-    console.error('Failed to upsert suppressed email', {
-      error: suppressError,
-      email_redacted: normalizedEmail[0] + '***@' + normalizedEmail.split('@')[1],
-    })
-    return json({ error: 'Failed to write suppression' }, 500)
+    if (suppressError) {
+      console.error('Failed to upsert suppressed email', {
+        error: suppressError,
+        email_redacted: recipientEmail[0] + '***@' + recipientEmail.split('@')[1],
+      })
+      return json({ error: 'Failed to write suppression' }, 500)
+    }
   }
 
-  const { error: insertError } = await admin.from('email_send_log').insert({
-    message_id: payload.data?.email_id ?? null,
-    template_name: 'system',
-    recipient_email: normalizedEmail,
-    status: mapReasonToStatus(reason),
-    error_message: mapReasonToMessage(reason),
-  })
+  // Update the send row by resend_id; insert a fallback row if the event beat the
+  // send-row write or the row was pruned, so deliverability counts stay accurate.
+  const patch: Record<string, unknown> = {
+    status: logStatus,
+    [STATUS_TO_STAMP[logStatus]]: deps.now().toISOString(),
+  }
+  if (reason) patch.error_message = mapReasonToMessage(reason)
 
-  if (insertError) {
-    console.warn('Failed to insert email_send_log', { error: insertError })
+  if (resendId) {
+    const { data: updated, error: updateError } = await admin
+      .from('email_send_log')
+      .update(patch)
+      .eq('resend_id', resendId)
+      .select('id')
+
+    if (updateError) {
+      console.warn('Failed to update email_send_log', { error: updateError })
+    } else if (!updated || (updated as unknown[]).length === 0) {
+      const { error: insertError } = await admin.from('email_send_log').insert({
+        message_id: crypto.randomUUID(),
+        resend_id: resendId,
+        template_name: 'system',
+        recipient_email: recipientEmail,
+        ...patch,
+      })
+
+      if (insertError) {
+        console.warn('Failed to insert fallback email_send_log row', { error: insertError })
+      }
+    }
   }
 
-  console.log('Suppression processed', {
-    email_redacted: normalizedEmail[0] + '***@' + normalizedEmail.split('@')[1],
-    reason,
+  console.log('Deliverability event processed', {
+    email_redacted: recipientEmail[0] + '***@' + recipientEmail.split('@')[1],
     event_type: payload.type,
+    log_status: logStatus,
   })
 
   return json({ success: true })
