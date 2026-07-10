@@ -1314,9 +1314,8 @@ Add to `DomainSummaryGrid.test.tsx`:
 ```tsx
 it("no longer shows Email delivery as a placeholder", () => {
   render(<DomainSummaryGrid domains={[]} />);
-  expect(screen.queryByText("Not monitored yet")).toBeInTheDocument(); // other placeholders remain
-  const emailTile = screen.queryByText("Email delivery");
-  expect(emailTile).not.toBeInTheDocument(); // removed from PLACEHOLDERS
+  expect(screen.queryAllByText("Not monitored yet").length).toBeGreaterThan(0); // other placeholders remain
+  expect(screen.queryByText("Email delivery")).not.toBeInTheDocument(); // removed from PLACEHOLDERS
 });
 ```
 
