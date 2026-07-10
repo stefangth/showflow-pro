@@ -85,6 +85,16 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
     status: 'pending',
   })
 
+  // Transition the pending row to 'failed' before any early-return error path below,
+  // so a genuine send failure never leaves an orphaned 'pending' row hiding it from
+  // the monitoring.
+  const logFailed = async (message: string) => {
+    await admin.from('email_send_log').update({
+      status: 'failed',
+      error_message: message,
+    }).eq('message_id', messageId)
+  }
+
   // Check suppression list (fail-closed)
   const { data: suppressed, error: suppressionError } = await admin
     .from('suppressed_emails')
@@ -94,6 +104,7 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
 
   if (suppressionError) {
     console.error('Suppression check failed — refusing to send', { error: suppressionError })
+    await logFailed(`Suppression check failed: ${suppressionError.message ?? 'unknown error'}`)
     return json({ error: 'Failed to verify suppression status' }, 500)
   }
 
@@ -141,6 +152,7 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
 
   if (tokenLookupError) {
     console.error('Token lookup failed', { error: tokenLookupError })
+    await logFailed(`Unsubscribe token lookup failed: ${tokenLookupError.message ?? 'unknown error'}`)
     return json({ error: 'Failed to prepare email' }, 500)
   }
 
@@ -157,6 +169,7 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
 
     if (tokenError) {
       console.error('Failed to create unsubscribe token', { error: tokenError })
+      await logFailed(`Unsubscribe token upsert failed: ${tokenError.message ?? 'unknown error'}`)
       return json({ error: 'Failed to prepare email' }, 500)
     }
 
@@ -168,12 +181,14 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
 
     if (reReadError || !storedToken) {
       console.error('Failed to read back unsubscribe token after upsert', { error: reReadError })
+      await logFailed(`Unsubscribe token re-read failed: ${reReadError?.message ?? 'token missing after upsert'}`)
       return json({ error: 'Failed to prepare email' }, 500)
     }
     unsubscribeToken = storedToken.token
   } else {
     // Token used but email not suppressed — safety fallback
     console.warn('Unsubscribe token already used but email not suppressed', { email_redacted: redactEmail(normalizedEmail) })
+    await admin.from('email_send_log').update({ status: 'suppressed' }).eq('message_id', messageId)
     return json({ success: false, reason: 'email_suppressed' }, 200)
   }
 
