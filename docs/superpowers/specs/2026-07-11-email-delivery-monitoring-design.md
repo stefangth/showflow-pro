@@ -130,8 +130,13 @@ minVolumeForAlert: 20, failureAlertCount: 3 }`).
 One migration creates the four tables above (+ RLS, indexes, `update_updated_at_column` trigger on `email_send_log`),
 plus:
 
-- **`get_email_health(p_window_minutes int default 1440) returns jsonb`** — `SECURITY DEFINER`, guarded
-  `if not is_super_admin(auth.uid()) then raise exception 'not authorized'`. Returns a single object:
+- **`email_health_snapshot(p_window_minutes int default 1440) returns jsonb`** — `SECURITY DEFINER`, `GRANT
+  EXECUTE … TO service_role` only (REVOKE from public/anon/authenticated). Does the aggregation and returns the raw
+  counts/rates object (below) with **no** derived status and no `auth.uid()` guard. The **watcher** (service role)
+  calls this directly, since it cannot pass the super-admin gate.
+- **`get_email_health(p_window_minutes int default 1440) returns jsonb`** — `SECURITY DEFINER` (authenticated),
+  guarded `if not is_super_admin(auth.uid()) then raise exception 'not authorized'`, returns
+  `email_health_snapshot(p_window_minutes)`. This is the **frontend's** entry point. Returns a single object:
   `{ window_minutes, attempted, sent, delivered, delayed, bounced, complained, failed, suppressed, delivery_rate,
   bounce_rate, complaint_rate, failure_count, last_event_at, by_template:[{template_name, sent, delivered, bounced,
   failed, delivery_rate}], recent_issues:[{recipient_email, template_name, status, error_message, occurred_at}] }`
@@ -162,8 +167,10 @@ plus:
 New **`supabase/functions/email-health-watcher/index.ts`**, twin of `cron-health-watcher`:
 `export async function handle(req, deps)` + bottom-wired `Deno.serve`; `config.toml`
 `[functions.email-health-watcher] verify_jwt = false`; cron auth via `requireCronOrRole` (`X-Cron-Secret`).
-Logic: compute email health over `alertWindowMinutes` (via `get_email_health` or inline SQL, service-role); derive
-state; compare to `email_health_state.last_state`; on a **transition into** Degraded/Down insert a `notifications`
+Logic: compute email health over `alertWindowMinutes` via `email_health_snapshot` (service-role RPC — the watcher
+can't pass `get_email_health`'s super-admin gate); derive state with a **Deno mirror** of `deriveEmailStatus` in
+`supabase/functions/_shared/emailHealth.ts` (sync-commented against `src/lib/systemHealth.ts`, same as
+`BOOKING_ENGINE_DEFAULTS`); compare to `email_health_state.last_state`; on a **transition into** Degraded/Down insert a `notifications`
 row (`type='email_health_degraded'`, `related_entity_type='system'`) **for each super-admin** (from `platform_admins`)
 and update the state row; on recovery to Operational, update state (recovery notice optional). **Guards against false
 alarms:** rate-based alerts require `sent ≥ minVolumeForAlert`; failure alerts require `failure_count ≥
