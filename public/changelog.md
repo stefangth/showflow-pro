@@ -2,6 +2,13 @@
 
 What's new in ShowFlow, newest first.
 
+## 1.9.0 — July 11, 2026
+
+*Dark mode*
+
+### New
+- **Dark mode** — Switch between Light, Dark, and System appearance from the new toggle in the top bar. System follows your device automatically, and your choice is remembered across sessions.
+
 ## 1.8.1 — July 6, 2026
 
 *Fixes*

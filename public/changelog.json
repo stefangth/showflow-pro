@@ -1,5 +1,19 @@
 [
   {
+    "version": "1.9.0",
+    "date": "2026-07-11",
+    "dateLabel": "July 11, 2026",
+    "title": "Dark mode",
+    "changes": {
+      "new": [
+        {
+          "title": "Dark mode",
+          "description": "Switch between Light, Dark, and System appearance from the new toggle in the top bar. System follows your device automatically, and your choice is remembered across sessions."
+        }
+      ]
+    }
+  },
+  {
     "version": "1.8.1",
     "date": "2026-07-06",
     "dateLabel": "July 6, 2026",
