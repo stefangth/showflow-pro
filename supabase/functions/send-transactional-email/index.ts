@@ -76,6 +76,15 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
 
   const admin = deps.admin;
 
+  // Record the attempt up front — exactly one row per message, updated in place.
+  await admin.from('email_send_log').insert({
+    message_id: messageId,
+    org_id: orgId,
+    template_name: templateName,
+    recipient_email: effectiveRecipient,
+    status: 'pending',
+  })
+
   // Check suppression list (fail-closed)
   const { data: suppressed, error: suppressionError } = await admin
     .from('suppressed_emails')
@@ -89,12 +98,7 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
   }
 
   if (suppressed) {
-    await admin.from('email_send_log').insert({
-      message_id: messageId,
-      template_name: templateName,
-      recipient_email: effectiveRecipient,
-      status: 'suppressed',
-    })
+    await admin.from('email_send_log').update({ status: 'suppressed' }).eq('message_id', messageId)
     return json({ success: false, reason: 'email_suppressed' }, 200)
   }
 
@@ -117,12 +121,7 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
         p_user: recipientUserId, p_category: prefCategory, p_channel: 'email',
       })
       if (!prefErr && wants === false) {
-        await admin.from('email_send_log').insert({
-          message_id: messageId,
-          template_name: templateName,
-          recipient_email: effectiveRecipient,
-          status: 'suppressed',
-        })
+        await admin.from('email_send_log').update({ status: 'pref_disabled' }).eq('message_id', messageId)
         return json({ success: false, reason: 'pref_disabled' }, 200)
       }
     }
@@ -214,14 +213,6 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
   // Build unsubscribe URL pointing at the edge function
   const unsubscribeUrl = `${supabaseUrl}/functions/v1/handle-email-unsubscribe?token=${unsubscribeToken}`
 
-  // Log pending before send
-  await admin.from('email_send_log').insert({
-    message_id: messageId,
-    template_name: templateName,
-    recipient_email: effectiveRecipient,
-    status: 'pending',
-  })
-
   // Send via Resend
   const sendResponse = await deps.fetch('https://api.resend.com/emails', {
     method: 'POST',
@@ -247,26 +238,22 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
     const errorBody = await sendResponse.text()
     console.error('Resend API error', { status: sendResponse.status, body: errorBody, templateName })
 
-    await admin.from('email_send_log').insert({
-      message_id: messageId,
-      template_name: templateName,
-      recipient_email: effectiveRecipient,
+    await admin.from('email_send_log').update({
       status: 'failed',
       error_message: `Resend ${sendResponse.status}: ${errorBody.slice(0, 200)}`,
-    })
+    }).eq('message_id', messageId)
 
     return json({ error: 'Failed to send email' }, 500)
   }
 
   const sendData = await sendResponse.json()
 
-  await admin.from('email_send_log').insert({
-    message_id: messageId,
-    template_name: templateName,
-    recipient_email: effectiveRecipient,
+  await admin.from('email_send_log').update({
     status: 'sent',
+    resend_id: sendData.id,
+    sent_at: deps.now().toISOString(),
     metadata: { resend_id: sendData.id },
-  })
+  }).eq('message_id', messageId)
 
   console.log('Email sent via Resend', {
     templateName,
