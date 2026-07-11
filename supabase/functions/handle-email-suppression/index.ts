@@ -188,18 +188,23 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
     // Only advance the row when its CURRENT status is strictly lower rank than the
     // incoming event — this is what makes the update order-independent. Block every
     // status at or above the incoming rank (the incoming status itself, to make repeat
-    // deliveries of the same event a no-op, plus every higher-rank status).
+    // deliveries of the same event a no-op, plus every higher-rank status). Factored out
+    // so the primary update below and the corrective re-update after the fallback upsert
+    // share the exact same rank logic.
     const blockedStatuses = (Object.keys(STATUS_RANK) as LogStatus[]).filter(
       (s) => STATUS_RANK[s] >= STATUS_RANK[logStatus]
     )
     const blockedList = `(${blockedStatuses.map((s) => `"${s}"`).join(',')})`
 
-    const { data: updated, error: updateError } = await admin
-      .from('email_send_log')
-      .update(patch)
-      .eq('resend_id', resendId)
-      .not('status', 'in', blockedList)
-      .select('id')
+    const monotonicUpdateByResendId = () =>
+      admin
+        .from('email_send_log')
+        .update(patch)
+        .eq('resend_id', resendId)
+        .not('status', 'in', blockedList)
+        .select('id')
+
+    const { data: updated, error: updateError } = await monotonicUpdateByResendId()
 
     if (updateError) {
       console.warn('Failed to update email_send_log', { error: updateError })
@@ -232,6 +237,18 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
 
         if (insertError) {
           console.warn('Failed to insert fallback email_send_log row', { error: insertError })
+        } else {
+          // Close the concurrent-insert race: ignoreDuplicates means a losing insert here
+          // is silent (no error), so if another event for this resend_id also reached this
+          // fallback branch and inserted first, its status "won" with NO rank comparison —
+          // e.g. a `delivered`(3) landing ahead of a racing `bounced`(4). The upsert above
+          // has guaranteed a row now exists for resend_id, so re-running the SAME monotonic
+          // update either advances that row to this event's status (if it outranks whatever
+          // landed) or is a no-op (if this event's rank is lower or equal).
+          const { error: correctiveError } = await monotonicUpdateByResendId()
+          if (correctiveError) {
+            console.warn('Failed to run corrective monotonic update after fallback upsert', { error: correctiveError })
+          }
         }
       }
       // else: row exists but was blocked by the monotonic guard — skip silently.

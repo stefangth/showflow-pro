@@ -712,3 +712,68 @@ Deno.test("monotonic guard: genuinely-missing row (0 rows updated, no existing r
   assertEquals(logRow.status, "delivered");
   assertEquals(logRow.resend_id, "em_missing_001");
 });
+
+// ---------------------------------------------------------------------------
+// 20. Concurrent-insert race at the fallback branch (FIX 2) — closes the gap where two
+// events for the same resend_id both reach the fallback upsert (both saw 0 rows for the
+// update AND the existence check), and whichever inserts first "wins" with no rank
+// comparison. True concurrency isn't reproducible with the fake client, but we can assert
+// the code now issues a corrective re-update (the SAME monotonic update, reused) after the
+// fallback upsert, which is what makes the outcome rank-correct regardless of insert order.
+// ---------------------------------------------------------------------------
+
+Deno.test("fallback race: corrective monotonic re-update runs after the fallback upsert for a bounced event", async () => {
+  const { deps, calls } = makeFakeDeps({
+    envVars: BASE_ENV_VARS,
+    now: FIXED_NOW_DATE,
+    tables: {
+      suppressed_emails: { data: null, error: null },
+      // Both the update-select and the existence-select resolve to "nothing found" —
+      // the fallback-branch precondition (0 rows updated, no existing row).
+      email_send_log: { data: null, error: null },
+    },
+  });
+
+  const payload = {
+    type: "email.bounced",
+    created_at: "2026-06-01T12:00:00Z",
+    data: { email_id: "em_race_001", to: ["racer@example.com"] },
+  };
+
+  const req = await makeSignedRequest(payload);
+  const res = await handle(req, deps);
+  assertEquals(res.status, 200);
+
+  // The fallback upsert must have run.
+  const upsertCall = calls.find((c) => c.table === "email_send_log" && c.method === "upsert");
+  assertExists(upsertCall, "fallback upsert must occur when no row matches resend_id");
+  const [logRow] = upsertCall!.args as [{ status: string; resend_id: string }];
+  assertEquals(logRow.status, "bounced");
+  assertEquals(logRow.resend_id, "em_race_001");
+
+  // AND a corrective monotonic update must run in addition to the primary pre-fallback
+  // attempt — two update calls total, both carrying the same rank-exclusion filter.
+  const updateCalls = calls.filter((c) => c.table === "email_send_log" && c.method === "update");
+  assertEquals(updateCalls.length, 2, "expected primary update + corrective re-update after the fallback upsert");
+
+  const notCalls = calls.filter((c) => c.table === "email_send_log" && c.method === "not");
+  assertEquals(notCalls.length, 2, "both update attempts must carry the monotonic rank-exclusion filter");
+  for (const notCall of notCalls) {
+    const [notCol, notOp, notVal] = notCall.args as [string, string, string];
+    assertEquals(notCol, "status");
+    assertEquals(notOp, "in");
+    // 'bounced' is rank 4 — only 'bounced' and 'complained' (rank >= 4) are blocked.
+    assertEquals((notVal as string).includes(`"bounced"`), true);
+    assertEquals((notVal as string).includes(`"complained"`), true);
+    assertEquals((notVal as string).includes(`"delivered"`), false);
+  }
+
+  // The corrective update must occur strictly after the fallback upsert in call order —
+  // it's a re-update triggered BY the upsert having ensured a row now exists, not a
+  // coincidental second attempt before it.
+  const upsertIndex = calls.indexOf(upsertCall!);
+  const updatesAfterUpsert = calls.filter(
+    (c, i) => i > upsertIndex && c.table === "email_send_log" && c.method === "update",
+  );
+  assertEquals(updatesAfterUpsert.length, 1, "the corrective update must occur after the fallback upsert");
+});

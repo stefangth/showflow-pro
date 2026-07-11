@@ -1,5 +1,5 @@
 import { assertEquals } from "./test-asserts.ts";
-import { redactEmail, resolveContactEmail, resolveAccountDisplayName } from "./identity.ts";
+import { redactEmail, redactEmailsInText, resolveContactEmail, resolveAccountDisplayName } from "./identity.ts";
 
 Deno.test("resolveContactEmail: login (auth) email wins over booking email", () => {
   assertEquals(
@@ -51,4 +51,23 @@ Deno.test("redactEmail: null/empty/malformed degrade to a safe placeholder", () 
   assertEquals(redactEmail(""), "(none)");
   assertEquals(redactEmail("not-an-email"), "***");
   assertEquals(redactEmail("@nolocal.com"), "***");
+});
+
+Deno.test("redactEmailsInText: redacts every email-shaped substring in free-form text", () => {
+  assertEquals(
+    redactEmailsInText("Invalid `to` field: alice@example.com is not a verified recipient"),
+    "Invalid `to` field: a***@example.com is not a verified recipient",
+  );
+  // Multiple addresses in the same message all get redacted.
+  assertEquals(
+    redactEmailsInText("bounce for bob@x.com, cc carol@y.org failed"),
+    "bounce for b***@x.com, cc c***@y.org failed",
+  );
+  // Text with no email-shaped substring is returned unchanged.
+  assertEquals(redactEmailsInText("Resend 500: internal server error"), "Resend 500: internal server error");
+});
+
+Deno.test("redactEmailsInText: null/empty pass through unchanged so `?? fallback` still applies", () => {
+  assertEquals(redactEmailsInText(null), null);
+  assertEquals(redactEmailsInText(""), "");
 });

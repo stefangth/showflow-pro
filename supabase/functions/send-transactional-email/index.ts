@@ -280,12 +280,18 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
     return json({ error: 'Failed to send email' }, 500)
   }
 
-  await admin.from('email_send_log').update({
+  const { error: sentErr } = await admin.from('email_send_log').update({
     status: 'sent',
     resend_id: sendData.id,
     sent_at: deps.now().toISOString(),
     metadata: { resend_id: sendData.id },
   }).eq('message_id', messageId)
+  if (sentErr) {
+    // The email was already sent to the recipient — do NOT change the response below.
+    // But the row is now stuck at 'pending' with no resend_id, which also means a later
+    // Resend webhook can't find this row by resend_id and will create a duplicate fallback row.
+    console.error('email_send_log sent-transition failed — row stuck pending, resend_id not persisted', sentErr)
+  }
 
   console.log('Email sent via Resend', {
     templateName,
