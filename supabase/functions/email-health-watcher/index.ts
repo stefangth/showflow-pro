@@ -49,33 +49,51 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
 
   const isBad = state === "degraded" || state === "down";
   const wasBad = prev === "degraded" || prev === "down";
+  const freshTransition = isBad && !wasBad;
 
+  // Single channel, no email backstop: alert BEFORE persisting the new state. If the
+  // notifications insert fails on a fresh transition, we must not advance `last_state` —
+  // otherwise the next run sees `wasBad === true` and the alert is lost for good.
+  let alerted = 0;
+  let alertOk = true;
+  if (freshTransition) {
+    const r = await alertSuperAdmins(deps, state, h);
+    alertOk = r.ok;
+    alerted = r.count;
+  }
+
+  // Single channel: if a fresh transition's alert failed, keep the prior state so the
+  // next run re-detects the transition and retries — never silently drop the only alert.
+  const persistState = (freshTransition && !alertOk) ? prev : state;
   const { error: upsertErr } = await admin.from("email_health_state").upsert({
     id: true,
-    last_state: state,
-    last_alerted_at: isBad ? (wasBad ? undefined : now.toISOString()) : null,
+    last_state: persistState,
+    last_alerted_at: isBad ? ((wasBad || !alertOk) ? undefined : now.toISOString()) : null,
     updated_at: now.toISOString(),
   }, { onConflict: "id" });
-  // Abort on a failed state write too: a dropped write leaves `prev` stale next run and
-  // would either re-alert on every subsequent run (missed persist of "already bad") or
-  // never alert again (missed persist of a recovery) — so skip alerting this run entirely.
   if (upsertErr) {
     console.error("email-health-watcher: state upsert failed, skipping alert", upsertErr);
     return json({ error: "state_write_failed" }, 503);
   }
 
-  let alerted = 0;
-  if (isBad && !wasBad) {
-    alerted = await alertSuperAdmins(deps, state, h);
-  }
   return json({ state, alerted });
 }
 
-/** In-app notification only for every super-admin (platform_admins) — no email. */
-async function alertSuperAdmins(deps: Deps, state: string, h: EmailSnapshot): Promise<number> {
-  const { data } = await deps.admin.from("platform_admins").select("user_id");
+/**
+ * In-app notification only for every super-admin (platform_admins) — no email.
+ * Returns `{ ok: false }` whenever delivery could not be confirmed (recipient read failed,
+ * or the notification insert failed) so the caller can retry on the next run instead of
+ * advancing `last_state` past an alert that never actually landed. Zero super-admins is
+ * `{ ok: true, count: 0 }` — there is no one to retry for, so state may still advance.
+ */
+async function alertSuperAdmins(deps: Deps, state: string, h: EmailSnapshot): Promise<{ ok: boolean; count: number }> {
+  const { data, error: readErr } = await deps.admin.from("platform_admins").select("user_id");
+  if (readErr) {
+    console.error("email-health-watcher: platform_admins read failed, will retry", readErr);
+    return { ok: false, count: 0 };
+  }
   const ids = ((data ?? []) as { user_id: string }[]).map((a) => a.user_id);
-  if (ids.length === 0) return 0;
+  if (ids.length === 0) return { ok: true, count: 0 };
 
   const pct = (n: number) => `${(n * 100).toFixed(1)}%`;
   const message =
@@ -92,10 +110,10 @@ async function alertSuperAdmins(deps: Deps, state: string, h: EmailSnapshot): Pr
     related_entity_id: null,
   })));
   if (error) {
-    console.error("email-health-watcher: notification insert failed", error);
-    return 0;
+    console.error("email-health-watcher: notification insert failed, will retry", error);
+    return { ok: false, count: 0 };
   }
-  return ids.length;
+  return { ok: true, count: ids.length };
 }
 
 if (import.meta.main) Deno.serve((req) => handle(req, realDeps()));
