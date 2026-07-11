@@ -1,6 +1,10 @@
-import { assertEquals } from "https://deno.land/std@0.224.0/assert/mod.ts";
+import { assertEquals, assertExists } from "https://deno.land/std@0.224.0/assert/mod.ts";
 import { handle } from "./index.ts";
 import { makeFakeDeps, makeRequest } from "../_shared/testing.ts";
+
+// suppressed_emails is keyed by `email` and has NO `id` column
+// (see 20260710231816_email_delivery_tables.sql).
+const SUPPRESSED_EMAILS_COLUMNS = ["email", "reason", "metadata", "created_at"];
 
 const svc = "svc-key";
 const authHeaders = { Authorization: `Bearer ${svc}` };
@@ -58,13 +62,35 @@ Deno.test("pending insert failure fails closed — refuses to send unlogged (no 
 Deno.test("suppressed address updates the pending row to 'suppressed' (no second insert)", async () => {
   const { deps, calls } = makeFakeDeps({
     envVars: env,
-    tables: { suppressed_emails: { data: { id: "x" }, error: null } },
+    tables: { suppressed_emails: { data: { email: "b@t.test" }, error: null } },
   });
   const req = makeRequest({ headers: authHeaders, body: { templateName: "artist-offer-digest", recipientEmail: "b@t.test" } });
   await handle(req, deps);
   const logWrites = calls.filter((c) => c.table === "email_send_log");
   assertEquals(logWrites.filter((c) => c.method === "insert").length, 1);
   assertEquals((logWrites.find((c) => c.method === "update")!.args[0] as Record<string, unknown>).status, "suppressed");
+});
+
+Deno.test("suppression check selects only columns that exist in suppressed_emails (regression: no 'id' column)", async () => {
+  // Regression for "column suppressed_emails.id does not exist": the fail-closed
+  // suppression check selected a non-existent `id` column, so every send errored out.
+  const { deps, calls } = makeFakeDeps({
+    envVars: env,
+    tables: { suppressed_emails: { data: null, error: null } },
+  });
+  const req = makeRequest({ headers: authHeaders, body: { templateName: "artist-offer-digest", recipientEmail: "d@t.test" } });
+  await handle(req, deps);
+
+  const select = calls.find((c) => c.table === "suppressed_emails" && c.method === "select");
+  assertExists(select, "suppression check must SELECT from suppressed_emails");
+  const requested = String(select!.args[0]).split(",").map((s) => s.trim());
+  for (const col of requested) {
+    assertEquals(
+      SUPPRESSED_EMAILS_COLUMNS.includes(col),
+      true,
+      `select('${col}') references a column not in suppressed_emails`,
+    );
+  }
 });
 
 Deno.test("suppression-check DB error transitions the pending row to 'failed' (not left orphaned)", async () => {
