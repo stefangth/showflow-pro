@@ -77,13 +77,14 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
   const admin = deps.admin;
 
   // Record the attempt up front — exactly one row per message, updated in place.
-  await admin.from('email_send_log').insert({
+  const { error: pendingErr } = await admin.from('email_send_log').insert({
     message_id: messageId,
     org_id: orgId,
     template_name: templateName,
     recipient_email: effectiveRecipient,
     status: 'pending',
   })
+  if (pendingErr) console.error('email_send_log pending insert failed', pendingErr)
 
   // Transition the pending row to 'failed' before any early-return error path below,
   // so a genuine send failure never leaves an orphaned 'pending' row hiding it from
@@ -198,32 +199,34 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
       ? template.subject(templateData)
       : template.subject
 
-  // Read from-address and template overrides for this org (org override ?? platform default).
-  const fromAddress = await resolveOrgSetting<string>(
-    admin, orgId, 'resend_from_address', BOOKING_ENGINE_DEFAULTS.resend_from_address)
-
-  const overrides = await resolveOrgSetting<Record<string, any>>(
-    admin, orgId, 'email_template_overrides', {})
-  const templateOverride = overrides[templateName] ?? {}
-
-  // Apply subject override
-  let resolvedSubjectFinal = resolvedSubject
-  if (templateOverride.subject && typeof templateOverride.subject === 'string' && templateOverride.subject.trim()) {
-    resolvedSubjectFinal = templateOverride.subject.trim()
-  }
-
-  // Merge _intro, _cta_label, _footer into templateData (non-null values only)
-  const mergedTemplateData = { ...templateData }
-  if (templateOverride.intro) mergedTemplateData._intro = templateOverride.intro
-  if (templateOverride.cta_label) mergedTemplateData._cta_label = templateOverride.cta_label
-  if (templateOverride.footer) mergedTemplateData._footer = templateOverride.footer
-
-  // Render + send are wrapped so a THROWN error (renderAsync failure, or a network error
-  // from deps.fetch — distinct from the handled `!sendResponse.ok` case below) can't escape
-  // and leave the row stuck at 'pending' forever: a stuck 'pending' row counts as an
-  // "attempted" send but never a "failed" one, which would mask an outage from monitoring.
+  // Render + send (including resolving org settings) are wrapped so a THROWN error
+  // (a failed app_settings read inside resolveOrgSetting, a renderAsync failure, or a
+  // network error from deps.fetch — distinct from the handled `!sendResponse.ok` case
+  // below) can't escape and leave the row stuck at 'pending' forever: a stuck 'pending'
+  // row counts as an "attempted" send but never a "failed" one, which would mask an
+  // outage from monitoring.
   let sendData: { id: string; [key: string]: unknown }
   try {
+    // Read from-address and template overrides for this org (org override ?? platform default).
+    const fromAddress = await resolveOrgSetting<string>(
+      admin, orgId, 'resend_from_address', BOOKING_ENGINE_DEFAULTS.resend_from_address)
+
+    const overrides = await resolveOrgSetting<Record<string, any>>(
+      admin, orgId, 'email_template_overrides', {})
+    const templateOverride = overrides[templateName] ?? {}
+
+    // Apply subject override
+    let resolvedSubjectFinal = resolvedSubject
+    if (templateOverride.subject && typeof templateOverride.subject === 'string' && templateOverride.subject.trim()) {
+      resolvedSubjectFinal = templateOverride.subject.trim()
+    }
+
+    // Merge _intro, _cta_label, _footer into templateData (non-null values only)
+    const mergedTemplateData = { ...templateData }
+    if (templateOverride.intro) mergedTemplateData._intro = templateOverride.intro
+    if (templateOverride.cta_label) mergedTemplateData._cta_label = templateOverride.cta_label
+    if (templateOverride.footer) mergedTemplateData._footer = templateOverride.footer
+
     // Render template with merged data
     const html = await renderAsync(React.createElement(template.component, mergedTemplateData))
     const plainText = await renderAsync(
