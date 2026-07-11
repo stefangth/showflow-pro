@@ -12,4 +12,10 @@ describe("DomainSummaryGrid", () => {
     expect(screen.getByText("1 slow")).toBeInTheDocument();
     expect(screen.getAllByText("Not monitored yet").length).toBeGreaterThan(0);
   });
+
+  it("no longer shows Email delivery as a placeholder", () => {
+    render(<DomainSummaryGrid domains={[]} />);
+    expect(screen.queryAllByText("Not monitored yet").length).toBeGreaterThan(0); // other placeholders remain
+    expect(screen.queryByText("Email delivery")).not.toBeInTheDocument(); // removed from PLACEHOLDERS
+  });
 });

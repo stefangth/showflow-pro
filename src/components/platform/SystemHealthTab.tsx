@@ -1,18 +1,23 @@
+import { useState } from "react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { useCronHealth, useEdgeFnMetrics } from "@/hooks/useSystemHealth";
+import { useCronHealth, useEdgeFnMetrics, useEmailHealth } from "@/hooks/useSystemHealth";
 import { OverallStatusBanner } from "./systemHealth/OverallStatusBanner";
 import { DomainSummaryGrid } from "./systemHealth/DomainSummaryGrid";
 import { ScheduledJobsPanel } from "./systemHealth/ScheduledJobsPanel";
 import { EdgeFunctionsPanel } from "./systemHealth/EdgeFunctionsPanel";
+import { EmailDeliveryPanel } from "./systemHealth/EmailDeliveryPanel";
 import {
-  deriveJobStatus, deriveEdgeFnStatus, worstStatus, CRON_JOB_TO_FN, CRON_FNS, type HealthState,
+  deriveJobStatus, deriveEdgeFnStatus, deriveEmailStatus, worstStatus, CRON_JOB_TO_FN, CRON_FNS, type HealthState,
 } from "@/lib/systemHealth";
-import { SYSTEM_HEALTH_BUDGET as budget } from "@/config/app.config";
+import { SYSTEM_HEALTH_BUDGET as budget, EMAIL_HEALTH } from "@/config/app.config";
 
 export function SystemHealthTab() {
   const cron = useCronHealth();
   const edge = useEdgeFnMetrics();
+  const [emailWindow, setEmailWindow] = useState(EMAIL_HEALTH.windowMinutes);
+  const email = useEmailHealth(emailWindow);
+  const emailState = email.data ? deriveEmailStatus(email.data, EMAIL_HEALTH) : "pending";
 
   if (cron.isLoading) return <Skeleton className="h-40 w-full" />;
   if (cron.isError) return <Alert variant="destructive"><AlertDescription>{(cron.error as Error).message}</AlertDescription></Alert>;
@@ -27,7 +32,7 @@ export function SystemHealthTab() {
 
   const jobsState = worstStatus(jobStates);
   const edgeState = worstStatus(edgeStates);
-  const overall = worstStatus([jobsState, edgeState]);
+  const overall = worstStatus([jobsState, edgeState, emailState]);
 
   // "Flagged" counts actionable states only — a never-assessed 'pending' job isn't a problem.
   const flaggedJobs = jobStates.filter((s) => s === "degraded" || s === "down" || s === "stale").length;
@@ -41,9 +46,17 @@ export function SystemHealthTab() {
       <DomainSummaryGrid domains={[
         { key: "jobs", label: "Scheduled jobs", state: jobsState, detail: edge.isError ? `${cronRows.length} jobs · latency n/a` : `${cronRows.length} jobs · ${flaggedJobs} flagged` },
         { key: "edge", label: "Edge functions", state: edgeState, detail: edge.isError ? "metrics unavailable" : `${metrics.length} active` },
+        { key: "email", label: "Email delivery",
+          state: email.isError ? "pending" : emailState,
+          detail: email.isError ? "metrics unavailable"
+            : email.data ? `${email.data.sent} sent · ${(email.data.bounceRate * 100).toFixed(1)}% bounce`
+            : "loading…" },
       ]} />
       <ScheduledJobsPanel cronRows={cronRows} metrics={metrics} />
       <EdgeFunctionsPanel metrics={metrics} />
+      {email.data && (
+        <EmailDeliveryPanel health={email.data} state={emailState} window={emailWindow} onWindowChange={setEmailWindow} />
+      )}
     </div>
   );
 }
