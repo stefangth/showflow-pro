@@ -9,7 +9,7 @@
  *  5. Suppression DB error → FAIL CLOSED (no send)
  *  6. Happy path: correct Resend fetch call (URL, method, auth header), response shape
  *  7. Resend non-2xx → 500 error response
- *  8. email_send_log is written (non-blocking; a log insert error must not fail the send)
+ *  8. email_send_log is written; a pending-insert error FAILS CLOSED (no unlogged send)
  *  9. email_unsubscribe_tokens interaction exists (upsert/read-back)
  * 10. OPTIONS → CORS preflight
  */
@@ -522,7 +522,7 @@ Deno.test("Resend 503 → function returns 500, failure is logged to email_send_
 });
 
 // ===========================================================================
-// 8. email_send_log writes — non-blocking: a log insert error must NOT fail the send
+// 8. email_send_log writes — fail closed: a pending-insert error must refuse to send unlogged
 // ===========================================================================
 
 Deno.test("email_send_log: written on successful send", async () => {
@@ -542,12 +542,12 @@ Deno.test("email_send_log: written on successful send", async () => {
   assertEquals(logInserts.length >= 1, true, "Expected email_send_log insert on send");
 });
 
-Deno.test("email_send_log: log insert error must NOT prevent email delivery (non-blocking)", async () => {
-  // The handler awaits log inserts, but a log failure should not cause it to return an error.
-  // In the current implementation, log inserts are awaited but their errors are not checked (non-blocking).
-  // characterization: the handler does `await admin.from('email_send_log').insert(...)` without
-  // checking the return value for errors on the success path, so a log error is silently ignored.
-  const { fetchImpl } = recordingFetch(200, { id: "re_nolog" });
+Deno.test("email_send_log: pending insert error must FAIL CLOSED (no unlogged send)", async () => {
+  // Every later status transition is `.update(...).eq('message_id', messageId)`, which is a
+  // silent 0-row no-op if the pending row never landed. If the handler sent anyway, that send
+  // would be completely invisible to monitoring. So a pending-insert error must abort before
+  // any Resend call, not be swallowed as non-blocking.
+  const { fetchImpl, fetchCalls } = recordingFetch(200, { id: "re_nolog" });
   const { deps } = makeFakeDeps({
     envVars: ENV,
     tables: {
@@ -565,14 +565,14 @@ Deno.test("email_send_log: log insert error must NOT prevent email delivery (non
     }),
     deps,
   );
-  // The send should succeed even though the log write "failed".
   assertEquals(
     res.status,
-    200,
-    `Expected 200 even when email_send_log insert errors; got ${res.status}`,
+    500,
+    `Expected 500 when email_send_log pending insert errors; got ${res.status}`,
   );
   const body = await res.json();
-  assertEquals(body.success, true, "Expected { success: true } even when log write errors");
+  assertEquals(body.error, "Failed to record email send");
+  assertEquals(fetchCalls.length, 0, "Expected no Resend call when the pending row never landed");
 });
 
 // ===========================================================================

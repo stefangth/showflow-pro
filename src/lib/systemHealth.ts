@@ -30,6 +30,7 @@ export const CRON_JOB_TO_FN: Record<string, string> = {
   "tier-at-risk-hourly": "tier-at-risk-watcher",
   "airtable-poll": "airtable-poll",
   "cron-health-watcher": "cron-health-watcher",
+  "email-health-watcher": "email-health-watcher",
 };
 
 /** Deployed slugs of the cron-invoked functions — used to keep them out of the on-demand

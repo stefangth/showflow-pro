@@ -84,7 +84,10 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
     recipient_email: effectiveRecipient,
     status: 'pending',
   })
-  if (pendingErr) console.error('email_send_log pending insert failed', pendingErr)
+  if (pendingErr) {
+    console.error('email_send_log pending insert failed — refusing to send unlogged', pendingErr)
+    return json({ error: 'Failed to record email send' }, 500)
+  }
 
   // Transition the pending row to 'failed' before any early-return error path below,
   // so a genuine send failure never leaves an orphaned 'pending' row hiding it from

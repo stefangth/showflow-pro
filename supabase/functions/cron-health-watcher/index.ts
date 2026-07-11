@@ -35,6 +35,7 @@ export const KNOWN_JOBS: Record<string, number> = {
   "tier-at-risk-hourly": 130,
   "airtable-poll": 30,
   "cron-health-watcher": 60, // displayed only; see SELF-MONITORING CAVEAT above.
+  "email-health-watcher": 60, // */15 job; same max-silence as its sibling cron-health-watcher.
 };
 
 type ScanRow = {
