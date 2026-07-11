@@ -7,9 +7,9 @@ describe("systemMap data", () => {
 
   it("has the expected node counts per kind", () => {
     const by = (k: string) => SYSTEM_MAP_NODES.filter((n) => n.kind === k).length;
-    expect(by("cron")).toBe(6);
+    expect(by("cron")).toBe(8);
     expect(by("user")).toBe(4);
-    expect(by("fn")).toBe(21);
+    expect(by("fn")).toBe(22);
     expect(by("db")).toBe(12);
     expect(by("fx")).toBe(9);
   });

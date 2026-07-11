@@ -2,6 +2,17 @@
 
 What's new in ShowFlow, newest first.
 
+## 1.9.0 — July 11, 2026
+
+*Email delivery monitoring*
+
+### New
+- **Email delivery health** — the platform System Health console now tracks delivery, bounce, complaint, and send-failure rates, with a per-template breakdown and recent-issues list.
+- **Delivery alerts** — super-admins are notified in-app when bounce or complaint rates cross safe thresholds.
+
+### Fixed
+- **Transactional email** — created the missing send-log and suppression tables that were causing digests and invitations to fail.
+
 ## 1.8.1 — July 6, 2026
 
 *Fixes*
