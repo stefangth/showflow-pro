@@ -11,13 +11,13 @@ interface EdgeFnMetric {
   lastInvokedAt: string | null; lastStatus: number | null;
   recent: { status: number; ms: number }[];
 }
-interface RawRow { function_name?: string; name?: string; status_code?: number; execution_time_ms?: number; timestamp?: string }
+interface RawRow { function_id?: string; status_code?: number; execution_time_ms?: number; timestamp?: string }
 
-// VERIFY AT IMPLEMENTATION: confirm the log source name + column names against the live
-// Analytics API (the MCP get_logs edge-function shape: execution_time_ms, status_code,
-// timestamp, function_id). Keep the SQL in this one constant.
+// The function_edge_logs schema keys each row by function_id (a UUID) — there is NO
+// function_name column (verified against the live Analytics API). function_id -> slug
+// resolution happens in fetchFnSlugs below. Keep the SQL in this one constant.
 const METRICS_SQL =
-  "select m.function_name, r.status_code, m.execution_time_ms, t.timestamp " +
+  "select m.function_id, r.status_code, m.execution_time_ms, t.timestamp " +
   "from function_edge_logs t cross join unnest(t.metadata) m cross join unnest(m.response) r " +
   "order by t.timestamp desc limit 2000";
 
@@ -26,10 +26,30 @@ function deriveRef(url?: string): string | null {
   return m ? m[1] : null;
 }
 
-function aggregate(rows: RawRow[]): EdgeFnMetric[] {
+/** id -> slug map from the Management API (GET /v1/projects/{ref}/functions returns a bare
+ *  array of { id, slug, name, ... }). Best-effort: a failure degrades to id-labelled metrics
+ *  rather than blanking the panel, so latency data survives a name-resolution outage. */
+async function fetchFnSlugs(deps: Deps, ref: string, token: string): Promise<Map<string, string>> {
+  const map = new Map<string, string>();
+  try {
+    const res = await deps.fetch(`https://api.supabase.com/v1/projects/${ref}/functions`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    if (!res.ok) return map;
+    const parsed = await res.json().catch(() => null);
+    const list = Array.isArray(parsed) ? parsed : ((parsed as { functions?: unknown } | null)?.functions ?? []);
+    for (const f of list as Array<{ id?: string; slug?: string; name?: string }>) {
+      const label = f?.slug ?? f?.name;
+      if (f?.id && label) map.set(f.id, label);
+    }
+  } catch (_e) { /* degrade to id labels */ }
+  return map;
+}
+
+function aggregate(rows: RawRow[], idToSlug: Map<string, string>): EdgeFnMetric[] {
   const byFn = new Map<string, RawRow[]>();
   for (const r of rows) {
-    const fn = r.function_name ?? r.name ?? "unknown";
+    const fn = (r.function_id && idToSlug.get(r.function_id)) || r.function_id || "unknown";
     const arr = byFn.get(fn) ?? [];
     arr.push(r); byFn.set(fn, arr);
   }
@@ -77,14 +97,22 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
   let res: Response;
   try {
     res = await deps.fetch(url, { headers: { Authorization: `Bearer ${token}` } });
-  } catch (_e) {
+  } catch (e) {
+    console.error("[platform-edge-metrics] Analytics fetch threw:", e instanceof Error ? e.message : String(e));
     return json({ error: "analytics_unavailable" }, 502);
   }
-  if (!res.ok) return json({ error: "analytics_unavailable", status: res.status }, 502);
+  if (!res.ok) {
+    // Distinguishes a query error (400, e.g. a bad column) from a PAT problem (401/403) — the SQL is
+    // fixed, so a lingering 502 here means the ANALYTICS token, not the query.
+    console.error(`[platform-edge-metrics] Analytics ${res.status}:`, (await res.text().catch(() => "")).slice(0, 300));
+    return json({ error: "analytics_unavailable", status: res.status }, 502);
+  }
 
   const payload = await res.json().catch(() => ({ result: [] }));
   const rows = Array.isArray((payload as { result?: unknown }).result) ? (payload as { result: RawRow[] }).result : [];
-  return json({ functions: aggregate(rows) });
+  // Resolve function_id -> slug only when there's data (keeps the empty-window path to one API call).
+  const idToSlug = rows.length ? await fetchFnSlugs(deps, ref, token) : new Map<string, string>();
+  return json({ functions: aggregate(rows, idToSlug) });
 }
 
 if (import.meta.main) Deno.serve((req) => handle(req, realDeps()));

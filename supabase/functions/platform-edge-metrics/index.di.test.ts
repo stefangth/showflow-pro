@@ -4,16 +4,34 @@ import { handle } from "./index.ts";
 
 const SUPER = "11111111-1111-1111-1111-111111111111";
 
+// The live function_edge_logs schema keys rows by function_id (a UUID), NOT function_name.
+const POLL_ID = "140e6080-44a3-43b9-ab15-37b65ac56fd1";
+const DIGEST_ID = "42692e78-2ad2-443f-8430-49137c88706a";
+// GET /v1/projects/{ref}/functions returns a bare array of { id, slug, name, ... }.
+const FN_LIST = [
+  { id: POLL_ID, slug: "airtable-poll", name: "airtable-poll" },
+  { id: DIGEST_ID, slug: "send-offer-digest", name: "send-offer-digest" },
+];
+
 /** Canned Analytics rows: 3 airtable-poll invocations (one 500), 1 fast send-offer-digest. */
 function analyticsRows() {
   return {
     result: [
-      { function_name: "airtable-poll", status_code: 200, execution_time_ms: 4000, timestamp: "2026-06-24T09:00:00Z" },
-      { function_name: "airtable-poll", status_code: 200, execution_time_ms: 9000, timestamp: "2026-06-24T09:05:00Z" },
-      { function_name: "airtable-poll", status_code: 500, execution_time_ms: 1200, timestamp: "2026-06-24T09:10:00Z" },
-      { function_name: "send-offer-digest", status_code: 200, execution_time_ms: 3000, timestamp: "2026-06-24T09:00:00Z" },
+      { function_id: POLL_ID, status_code: 200, execution_time_ms: 4000, timestamp: "2026-06-24T09:00:00Z" },
+      { function_id: POLL_ID, status_code: 200, execution_time_ms: 9000, timestamp: "2026-06-24T09:05:00Z" },
+      { function_id: POLL_ID, status_code: 500, execution_time_ms: 1200, timestamp: "2026-06-24T09:10:00Z" },
+      { function_id: DIGEST_ID, status_code: 200, execution_time_ms: 3000, timestamp: "2026-06-24T09:00:00Z" },
     ],
   };
+}
+
+/** Routes the two upstream calls the handler makes: the Analytics query and the functions-list
+ *  lookup. Any URL containing "/analytics/" gets `analytics`; everything else gets `fnList`. */
+function routeFetch(analytics: unknown, fnList: unknown = FN_LIST): typeof fetch {
+  return ((url: string) => {
+    const payload = String(url).includes("/analytics/") ? analytics : fnList;
+    return Promise.resolve(new Response(JSON.stringify(payload), { status: 200 }));
+  }) as unknown as typeof fetch;
 }
 
 function superDeps(fetchImpl?: typeof fetch) {
@@ -52,10 +70,15 @@ Deno.test("non-super-admin -> 403", async () => {
 Deno.test("aggregates per function and authenticates with the ANALYTICS PAT", async () => {
   let seenUrl = "";
   let seenAuth = "";
+  // Capture the Analytics call specifically (a second call fetches the functions list).
   const fetchImpl = ((url: string, init?: RequestInit) => {
-    seenUrl = String(url);
-    seenAuth = String((init?.headers as Record<string, string>)?.["Authorization"] ?? "");
-    return Promise.resolve(new Response(JSON.stringify(analyticsRows()), { status: 200 }));
+    const u = String(url);
+    if (u.includes("/analytics/")) {
+      seenUrl = u;
+      seenAuth = String((init?.headers as Record<string, string>)?.["Authorization"] ?? "");
+      return Promise.resolve(new Response(JSON.stringify(analyticsRows()), { status: 200 }));
+    }
+    return Promise.resolve(new Response(JSON.stringify(FN_LIST), { status: 200 }));
   }) as unknown as typeof fetch;
 
   const { deps } = superDeps(fetchImpl);
@@ -70,6 +93,38 @@ Deno.test("aggregates per function and authenticates with the ANALYTICS PAT", as
   assertEquals(poll.p95Ms, 9000);
   assertEquals(seenUrl.startsWith("https://api.supabase.com/v1/projects/proj/analytics"), true);
   assertEquals(seenAuth, "Bearer sbp_test_token");
+});
+
+Deno.test("resolves real function_id UUIDs to slugs via the functions-list API", async () => {
+  // The live Analytics API returns function_edge_logs rows keyed by function_id (a UUID) —
+  // there is NO function_name column. The proxy must resolve those ids to slugs so the panel
+  // shows names, not UUIDs. Regression for the empty "Edge functions" panel.
+  const { deps } = superDeps(routeFetch(analyticsRows()));
+  const res = await handle(superReq({ window_minutes: 60 }), deps);
+  assertEquals(res.status, 200);
+  const body = await res.json() as { functions: Array<Record<string, unknown>> };
+
+  const poll = body.functions.find((f) => f.fn === "airtable-poll");
+  assertExists(poll);
+  assertEquals(poll!.invocations, 3);
+  const digest = body.functions.find((f) => f.fn === "send-offer-digest");
+  assertExists(digest);
+  // No row should collapse into a raw UUID or "unknown".
+  assertEquals(body.functions.some((f) => f.fn === "unknown" || f.fn === POLL_ID), false);
+});
+
+Deno.test("degrades to id labels (still 200) when the functions-list API fails", async () => {
+  const analytics = { result: [{ function_id: POLL_ID, status_code: 200, execution_time_ms: 4000, timestamp: "2026-06-24T09:00:00Z" }] };
+  const fetchImpl = ((url: string) => {
+    if (String(url).includes("/analytics/")) return Promise.resolve(new Response(JSON.stringify(analytics), { status: 200 }));
+    return Promise.resolve(new Response("nope", { status: 500 })); // functions-list unavailable
+  }) as unknown as typeof fetch;
+  const { deps } = superDeps(fetchImpl);
+  const res = await handle(superReq({ window_minutes: 60 }), deps);
+  assertEquals(res.status, 200); // name resolution failing must NOT blank the panel
+  const body = await res.json() as { functions: Array<Record<string, unknown>> };
+  assertEquals(body.functions.length, 1);
+  assertEquals(body.functions[0].fn, POLL_ID); // falls back to the id as label
 });
 
 Deno.test("analytics non-200 -> 502", async () => {
@@ -98,11 +153,10 @@ Deno.test("p95 uses nearest-rank, not the max, when N is a multiple of 20", asyn
   // 20 invocations with latencies 1000..20000ms. p95 nearest-rank = ceil(0.95*20)-1 = index 18 = 19000,
   // NOT the max (20000) that a plain Math.floor would pick.
   const rows = Array.from({ length: 20 }, (_, i) => ({
-    function_name: "airtable-poll", status_code: 200, execution_time_ms: (i + 1) * 1000,
+    function_id: POLL_ID, status_code: 200, execution_time_ms: (i + 1) * 1000,
     timestamp: `2026-06-24T09:${String(i).padStart(2, "0")}:00Z`,
   }));
-  const fetchImpl = (() => Promise.resolve(new Response(JSON.stringify({ result: rows }), { status: 200 }))) as unknown as typeof fetch;
-  const { deps } = superDeps(fetchImpl);
+  const { deps } = superDeps(routeFetch({ result: rows }));
   const res = await handle(superReq({ window_minutes: 60 }), deps);
   const body = await res.json() as { functions: Array<Record<string, unknown>> };
   const poll = body.functions.find((f) => f.fn === "airtable-poll")!;
