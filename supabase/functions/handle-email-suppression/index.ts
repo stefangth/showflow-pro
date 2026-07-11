@@ -1,6 +1,7 @@
 import { json } from "../_shared/http.ts";
 import { constantTimeEqual } from "../_shared/auth.ts";
 import { realDeps, type Deps } from "../_shared/deps.ts";
+import { redactEmail } from "../_shared/identity.ts";
 
 // Resend uses Standard Webhooks (https://www.standardwebhooks.com/)
 // The signing secret is base64-encoded; verification uses HMAC-SHA256.
@@ -75,6 +76,20 @@ const EVENT_TO_STATUS: Record<string, LogStatus> = {
 const STATUS_TO_STAMP: Record<LogStatus, string> = {
   sent: 'sent_at', delivered: 'delivered_at', delivery_delayed: 'delayed_at',
   bounced: 'bounced_at', complained: 'complained_at',
+}
+/**
+ * Lifecycle rank, low → high. Resend delivers webhook events out of order, so the update
+ * below only ever advances a row to a STRICTLY higher rank — it converges on the
+ * highest-rank event seen regardless of arrival order, instead of letting a late
+ * `email.sent`/`email.delivery_delayed` regress a row that already reached `delivered`/
+ * `bounced`/`complained` (which would silently drop it from the delivered count).
+ */
+const STATUS_RANK: Record<LogStatus, number> = {
+  sent: 1,
+  delivery_delayed: 2,
+  delivered: 3,
+  bounced: 4,
+  complained: 5,
 }
 /** Resend event type → email_send_log status (null = ignore, e.g. email.opened/email.clicked). */
 export function mapEventToLogStatus(eventType: string): LogStatus | null {
@@ -155,7 +170,7 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
     if (suppressError) {
       console.error('Failed to upsert suppressed email', {
         error: suppressError,
-        email_redacted: recipientEmail[0] + '***@' + recipientEmail.split('@')[1],
+        email_redacted: redactEmail(recipientEmail),
       })
       return json({ error: 'Failed to write suppression' }, 500)
     }
@@ -170,31 +185,57 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
   if (reason) patch.error_message = mapReasonToMessage(reason)
 
   if (resendId) {
+    // Only advance the row when its CURRENT status is strictly lower rank than the
+    // incoming event — this is what makes the update order-independent. Block every
+    // status at or above the incoming rank (the incoming status itself, to make repeat
+    // deliveries of the same event a no-op, plus every higher-rank status).
+    const blockedStatuses = (Object.keys(STATUS_RANK) as LogStatus[]).filter(
+      (s) => STATUS_RANK[s] >= STATUS_RANK[logStatus]
+    )
+    const blockedList = `(${blockedStatuses.map((s) => `"${s}"`).join(',')})`
+
     const { data: updated, error: updateError } = await admin
       .from('email_send_log')
       .update(patch)
       .eq('resend_id', resendId)
+      .not('status', 'in', blockedList)
       .select('id')
 
     if (updateError) {
       console.warn('Failed to update email_send_log', { error: updateError })
     } else if (!updated || (updated as unknown[]).length === 0) {
-      const { error: insertError } = await admin.from('email_send_log').insert({
-        message_id: crypto.randomUUID(),
-        resend_id: resendId,
-        template_name: 'system',
-        recipient_email: recipientEmail,
-        ...patch,
-      })
+      // 0 rows matched — either no row exists yet for this resend_id (genuinely missing,
+      // e.g. the event beat the send-row write or the row was pruned) or a row exists but
+      // the monotonic-rank guard blocked it (a regression/duplicate event arriving out of
+      // order). Only the former should insert a fallback row; the latter must be a no-op
+      // so we don't clobber the row's already-higher-or-equal-rank status with a fallback.
+      const { data: existing, error: existsError } = await admin
+        .from('email_send_log')
+        .select('id')
+        .eq('resend_id', resendId)
+        .maybeSingle()
 
-      if (insertError) {
-        console.warn('Failed to insert fallback email_send_log row', { error: insertError })
+      if (existsError) {
+        console.warn('Failed to check existing email_send_log row', { error: existsError })
+      } else if (!existing) {
+        const { error: insertError } = await admin.from('email_send_log').insert({
+          message_id: crypto.randomUUID(),
+          resend_id: resendId,
+          template_name: 'system',
+          recipient_email: recipientEmail,
+          ...patch,
+        })
+
+        if (insertError) {
+          console.warn('Failed to insert fallback email_send_log row', { error: insertError })
+        }
       }
+      // else: row exists but was blocked by the monotonic guard — skip silently.
     }
   }
 
   console.log('Deliverability event processed', {
-    email_redacted: recipientEmail[0] + '***@' + recipientEmail.split('@')[1],
+    email_redacted: redactEmail(recipientEmail),
     event_type: payload.type,
     log_status: logStatus,
   })

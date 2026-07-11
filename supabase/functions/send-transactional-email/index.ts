@@ -218,50 +218,61 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
   if (templateOverride.cta_label) mergedTemplateData._cta_label = templateOverride.cta_label
   if (templateOverride.footer) mergedTemplateData._footer = templateOverride.footer
 
-  // Render template with merged data
-  const html = await renderAsync(React.createElement(template.component, mergedTemplateData))
-  const plainText = await renderAsync(
-    React.createElement(template.component, mergedTemplateData),
-    { plainText: true }
-  )
+  // Render + send are wrapped so a THROWN error (renderAsync failure, or a network error
+  // from deps.fetch — distinct from the handled `!sendResponse.ok` case below) can't escape
+  // and leave the row stuck at 'pending' forever: a stuck 'pending' row counts as an
+  // "attempted" send but never a "failed" one, which would mask an outage from monitoring.
+  let sendData: { id: string; [key: string]: unknown }
+  try {
+    // Render template with merged data
+    const html = await renderAsync(React.createElement(template.component, mergedTemplateData))
+    const plainText = await renderAsync(
+      React.createElement(template.component, mergedTemplateData),
+      { plainText: true }
+    )
 
-  // Build unsubscribe URL pointing at the edge function
-  const unsubscribeUrl = `${supabaseUrl}/functions/v1/handle-email-unsubscribe?token=${unsubscribeToken}`
+    // Build unsubscribe URL pointing at the edge function
+    const unsubscribeUrl = `${supabaseUrl}/functions/v1/handle-email-unsubscribe?token=${unsubscribeToken}`
 
-  // Send via Resend
-  const sendResponse = await deps.fetch('https://api.resend.com/emails', {
-    method: 'POST',
-    headers: {
-      'Authorization': `Bearer ${resendApiKey}`,
-      'Content-Type': 'application/json',
-      'Idempotency-Key': idempotencyKey,
-    },
-    body: JSON.stringify({
-      from: fromAddress,
-      to: [effectiveRecipient],
-      subject: resolvedSubjectFinal,
-      html,
-      text: plainText,
+    // Send via Resend
+    const sendResponse = await deps.fetch('https://api.resend.com/emails', {
+      method: 'POST',
       headers: {
-        'List-Unsubscribe': `<${unsubscribeUrl}>`,
-        'List-Unsubscribe-Post': 'List-Unsubscribe=One-Click',
+        'Authorization': `Bearer ${resendApiKey}`,
+        'Content-Type': 'application/json',
+        'Idempotency-Key': idempotencyKey,
       },
-    }),
-  })
+      body: JSON.stringify({
+        from: fromAddress,
+        to: [effectiveRecipient],
+        subject: resolvedSubjectFinal,
+        html,
+        text: plainText,
+        headers: {
+          'List-Unsubscribe': `<${unsubscribeUrl}>`,
+          'List-Unsubscribe-Post': 'List-Unsubscribe=One-Click',
+        },
+      }),
+    })
 
-  if (!sendResponse.ok) {
-    const errorBody = await sendResponse.text()
-    console.error('Resend API error', { status: sendResponse.status, body: errorBody, templateName })
+    if (!sendResponse.ok) {
+      const errorBody = await sendResponse.text()
+      console.error('Resend API error', { status: sendResponse.status, body: errorBody, templateName })
 
-    await admin.from('email_send_log').update({
-      status: 'failed',
-      error_message: `Resend ${sendResponse.status}: ${errorBody.slice(0, 200)}`,
-    }).eq('message_id', messageId)
+      await admin.from('email_send_log').update({
+        status: 'failed',
+        error_message: `Resend ${sendResponse.status}: ${errorBody.slice(0, 200)}`,
+      }).eq('message_id', messageId)
 
+      return json({ error: 'Failed to send email' }, 500)
+    }
+
+    sendData = await sendResponse.json()
+  } catch (e) {
+    console.error('Unexpected error rendering or sending email', { error: e, templateName })
+    await logFailed(`send error: ${(e as Error).message}`)
     return json({ error: 'Failed to send email' }, 500)
   }
-
-  const sendData = await sendResponse.json()
 
   await admin.from('email_send_log').update({
     status: 'sent',

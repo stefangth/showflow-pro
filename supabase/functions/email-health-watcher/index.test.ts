@@ -62,3 +62,25 @@ Deno.test("rejects without cron secret", async () => {
   const res = await handle(makeRequest({ headers: {} }), deps);
   assertEquals(res.status, 401);
 });
+
+Deno.test("alert title interpolates the actual state ('down'), not a hardcoded 'degraded'", async () => {
+  // bounce_rate 0.10 > bounceDown (0.05) → derives "down" (not "degraded").
+  const snapshot = { attempted: 100, sent: 100, delivered: 90, bounced: 10, delayed: 0, complained: 0,
+    failed: 0, suppressed: 0, delivery_rate: 0.9, bounce_rate: 0.10, complaint_rate: 0, failure_count: 0 };
+  const { deps, calls } = makeFakeDeps({
+    ...withSecret,
+    rpcs: { ...withSecret.rpcs, email_health_snapshot: { data: snapshot, error: null } },
+    tables: {
+      email_health_state: { data: { last_state: "operational" }, error: null },
+      platform_admins: { data: [{ user_id: "super-1" }], error: null },
+    },
+  });
+  const res = await handle(makeRequest({ headers: cronHeaders }), deps);
+  assertEquals(res.status, 200);
+  const body = await res.json();
+  assertEquals(body.state, "down");
+
+  const notif = calls.find((c) => c.table === "notifications" && c.method === "insert");
+  const rows = notif!.args[0] as Array<{ title: string }>;
+  assertEquals(rows[0].title, "Email delivery down");
+});
