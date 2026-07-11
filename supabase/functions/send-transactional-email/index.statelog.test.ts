@@ -28,6 +28,33 @@ Deno.test("logs one row transitioning pending → sent with resend_id", async ()
   assertEquals((update!.args[0] as Record<string, unknown>).resend_id, "resend_123");
 });
 
+Deno.test("pending insert failure fails closed — refuses to send unlogged (no Resend call)", async () => {
+  let fetchCalls = 0;
+  const { deps, calls } = makeFakeDeps({
+    envVars: env,
+    tables: {
+      email_send_log: { data: null, error: { message: "boom" } },
+      suppressed_emails: { data: null, error: null },
+      email_unsubscribe_tokens: { data: { token: "tok", used_at: null }, error: null },
+      app_settings: { data: [], error: null },
+    },
+    fetchImpl: () => {
+      fetchCalls++;
+      return Promise.resolve(new Response(JSON.stringify({ id: "resend_123" }), { status: 200 }));
+    },
+  });
+  const req = makeRequest({ headers: authHeaders, body: { templateName: "artist-offer-digest", recipientEmail: "e@t.test" } });
+  const res = await handle(req, deps);
+  assertEquals(res.status, 500);
+
+  // Never sent via Resend — the pending row never landed, so a send would be unlogged.
+  assertEquals(fetchCalls, 0);
+  // Only the failed pending insert — no update ever reaches email_send_log (nothing to key it by).
+  const logWrites = calls.filter((c) => c.table === "email_send_log");
+  assertEquals(logWrites.filter((c) => c.method === "insert").length, 1);
+  assertEquals(logWrites.filter((c) => c.method === "update").length, 0);
+});
+
 Deno.test("suppressed address updates the pending row to 'suppressed' (no second insert)", async () => {
   const { deps, calls } = makeFakeDeps({
     envVars: env,
