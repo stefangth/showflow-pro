@@ -12,6 +12,7 @@ import {
   Text,
 } from 'npm:@react-email/components@0.0.22'
 import type { TemplateEntry } from './registry.ts'
+import { APP_URL } from '../app-url.ts'
 
 const SITE_NAME = 'ShowFlow'
 
@@ -46,7 +47,7 @@ const CronHealthAlert = ({ job_name, status_code, error, last_ok_at, dashboard_u
           <Text style={cardValue}>{last_ok_at ?? 'unknown'}</Text>
         </Section>
         <Section style={{ textAlign: 'center', margin: '32px 0' }}>
-          <Button href={dashboard_url || 'https://showflow.pro/platform'} style={button}>
+          <Button href={dashboard_url || `${APP_URL}/platform`} style={button}>
             Open System Health
           </Button>
         </Section>
@@ -66,7 +67,7 @@ export const template = {
     status_code: 404,
     error: 'Requested function was not found',
     last_ok_at: '2026-06-20T19:00:00Z',
-    dashboard_url: 'https://showflow.pro/platform',
+    dashboard_url: `${APP_URL}/platform`,
   },
 } satisfies TemplateEntry
 

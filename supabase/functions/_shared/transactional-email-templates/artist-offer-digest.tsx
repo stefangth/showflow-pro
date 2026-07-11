@@ -12,9 +12,10 @@ import {
   Text,
 } from 'npm:@react-email/components@0.0.22'
 import type { TemplateEntry } from './registry.ts'
+import { APP_URL } from '../app-url.ts'
 
 const SITE_NAME = 'ShowFlow'
-const AVAILABILITY_URL = 'https://showflow.pro/availability'
+const AVAILABILITY_URL = `${APP_URL}/availability`
 
 interface OfferRow {
   show: string
