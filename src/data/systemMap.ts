@@ -29,7 +29,7 @@ export interface SystemMapEdge {
 }
 
 export const SYSTEM_MAP_NODES: SystemMapNode[] = [
-  // ---- triggers: crons (6)
+  // ---- triggers: crons (8)
   {
     id: "c_poll",
     column: "trigger",
@@ -184,7 +184,7 @@ export const SYSTEM_MAP_NODES: SystemMapNode[] = [
       Cite: "src/pages/UnsubscribePage.tsx · handle-email-suppression",
     },
   },
-  // ---- edge functions (21)
+  // ---- edge functions (22)
   {
     id: "f_poll",
     column: "fn",

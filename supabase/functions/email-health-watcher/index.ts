@@ -72,7 +72,7 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
     updated_at: now.toISOString(),
   }, { onConflict: "id" });
   if (upsertErr) {
-    console.error("email-health-watcher: state upsert failed, skipping alert", upsertErr);
+    console.error("email-health-watcher: state upsert failed", upsertErr);
     return json({ error: "state_write_failed" }, 503);
   }
 
