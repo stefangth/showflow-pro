@@ -459,8 +459,8 @@ export const SYSTEM_MAP_NODES: SystemMapNode[] = [
     detail: {
       Trigger: "Platform → System Health",
       Auth: "requireSuperAdmin · verify_jwt=true",
-      Reads: "Supabase Analytics API (dedicated ANALYTICS PAT): invocations, 5xx, p50/p95 per function",
-      Cite: "platform-edge-metrics/index.ts:59-85",
+      Reads: "Supabase Analytics API (dedicated ANALYTICS PAT): invocations, 5xx, p50/p95 per function; function_id→slug via the functions-list API",
+      Cite: "platform-edge-metrics/index.ts:76-111",
     },
   },
   {
@@ -773,7 +773,7 @@ export const SYSTEM_MAP_NODES: SystemMapNode[] = [
     subsystems: ["platform"],
     detail: {
       Caller: "platform-edge-metrics",
-      Cite: "platform-edge-metrics/index.ts:19-54",
+      Cite: "platform-edge-metrics/index.ts:19-74",
     },
   },
   {
