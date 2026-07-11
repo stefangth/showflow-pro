@@ -1,13 +1,28 @@
 [
   {
+    "version": "1.9.1",
+    "date": "2026-07-11",
+    "dateLabel": "July 11, 2026",
+    "title": "Fixes",
+    "changes": {
+      "fixed": [
+        {
+          "title": "Email links now open the app",
+          "description": "Links in invitation and notification emails — including \"Accept invitation\" — now open the ShowFlow app directly instead of the marketing site, so accepting an invite and other email actions work as expected."
+        }
+      ]
+    }
+  },
+  {
     "version": "1.8.2",
     "date": "2026-07-11",
     "dateLabel": "July 11, 2026",
-    "title": "Email delivery monitoring",
-      "fixed": [
+    "title": "Dark mode",
+    "changes": {
+      "new": [
         {
-          "title": "Transactional email",
-          "description": "fixed send-log and suppression tables that could cause digests and invitations to fail in some cases."
+          "title": "Dark mode",
+          "description": "Switch between Light, Dark, and System appearance from the new toggle in the top bar. System follows your device automatically, and your choice is remembered across sessions."
         }
       ]
     }

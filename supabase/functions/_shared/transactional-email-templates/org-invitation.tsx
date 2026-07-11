@@ -4,9 +4,9 @@ import {
   Body, Button, Container, Head, Heading, Html, Preview, Section, Text,
 } from 'npm:@react-email/components@0.0.22'
 import type { TemplateEntry } from './registry.ts'
+import { APP_URL } from '../app-url.ts'
 
 const SITE_NAME = 'ShowFlow'
-const APP_URL = 'https://showflow.pro'
 
 interface Props {
   orgName?: string

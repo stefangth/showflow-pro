@@ -1,6 +1,7 @@
 import { preflight, json } from "../_shared/http.ts";
 import { requireCronOrRole } from "../_shared/auth.ts";
 import { realDeps, type Deps } from "../_shared/deps.ts";
+import { appUrl } from "../_shared/app-url.ts";
 
 /**
  * Cron-health watcher. Every ~15 min: read the latest HTTP outcome per cron job
@@ -239,7 +240,7 @@ async function alertSuperAdmins(
           status_code: statusCode ?? "no response",
           error: error ?? "",
           last_ok_at: lastOkAt ?? "unknown",
-          dashboard_url: `${deps.env("APP_URL") ?? "https://showflow.pro"}/platform`,
+          dashboard_url: `${appUrl(deps.env)}/platform`,
         },
       });
     } catch (e) {
