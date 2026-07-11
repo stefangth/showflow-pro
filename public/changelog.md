@@ -2,7 +2,7 @@
 
 What's new in ShowFlow, newest first.
 
-## 1.9.0 — July 11, 2026
+## 1.8.2 — July 11, 2026
 
 *Dark mode*
 

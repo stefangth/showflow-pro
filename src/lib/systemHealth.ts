@@ -30,6 +30,7 @@ export const CRON_JOB_TO_FN: Record<string, string> = {
   "tier-at-risk-hourly": "tier-at-risk-watcher",
   "airtable-poll": "airtable-poll",
   "cron-health-watcher": "cron-health-watcher",
+  "email-health-watcher": "email-health-watcher",
 };
 
 /** Deployed slugs of the cron-invoked functions — used to keep them out of the on-demand
@@ -69,4 +70,38 @@ const RANK: Record<HealthState, number> = { operational: 0, pending: 1, degraded
 /** The worst (most severe) state in a list; "operational" for an empty list. */
 export function worstStatus(states: HealthState[]): HealthState {
   return states.reduce<HealthState>((w, s) => (RANK[s] > RANK[w] ? s : w), "operational");
+}
+
+/** Per-template delivery breakdown row (from get_email_health). */
+export interface EmailTemplateStat {
+  templateName: string; sent: number; delivered: number; bounced: number; failed: number; deliveryRate: number;
+}
+/** One actionable recent issue (failed/bounced/complained/suppressed). */
+export interface EmailIssue {
+  recipientEmail: string; templateName: string; status: string; errorMessage: string | null; occurredAt: string;
+}
+/** Aggregated email-delivery health over a window. Mirrors get_email_health's mapped shape. */
+export interface EmailHealth {
+  attempted: number; sent: number; delivered: number; delayed: number; bounced: number;
+  complained: number; failed: number; suppressed: number;
+  deliveryRate: number; bounceRate: number; complaintRate: number; failureCount: number;
+  lastEventAt: string | null; byTemplate: EmailTemplateStat[]; recentIssues: EmailIssue[];
+}
+export interface EmailHealthThresholds {
+  bounceWarn: number; bounceDown: number; complaintWarn: number; complaintDown: number; deliveryWarn: number;
+}
+
+/**
+ * Pure 4-state derivation for email delivery. `sent` = reached Resend; rates use it as denominator.
+ * `suppressed` (pre-send skip) is healthy, never a fault.
+ * MIRROR: keep in sync with supabase/functions/_shared/emailHealth.ts (Deno watcher copy).
+ */
+export function deriveEmailStatus(h: EmailHealth, t: EmailHealthThresholds): HealthState {
+  if (h.attempted === 0) return "operational";                 // idle
+  if (h.sent === 0) return h.failed > 0 ? "down" : "operational"; // all-fail vs all-suppressed
+  if (h.delivered + h.delayed + h.bounced + h.complained === 0) return "stale"; // no delivery webhooks
+  if (h.bounceRate > t.bounceDown || h.complaintRate > t.complaintDown) return "down";
+  if (h.bounceRate > t.bounceWarn || h.complaintRate > t.complaintWarn ||
+      h.failureCount > 0 || h.deliveryRate < t.deliveryWarn) return "degraded";
+  return "operational";
 }

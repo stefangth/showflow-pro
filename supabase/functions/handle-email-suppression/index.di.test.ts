@@ -249,12 +249,12 @@ Deno.test("VALID signature + email.bounced → suppression row with reason 'boun
   assertEquals(upsertRow.metadata.resend_email_id, "em_bounce_001");
   assertEquals(upsertOpts.onConflict, "email");
 
-  // 4. email_send_log insert was called with status 'bounced'
-  const logInsert = calls.find(
-    (c) => c.table === "email_send_log" && c.method === "insert",
+  // 4. email_send_log fallback upsert was called with status 'bounced'
+  const logUpsert = calls.find(
+    (c) => c.table === "email_send_log" && c.method === "upsert",
   );
-  assertExists(logInsert, "email_send_log insert must be called");
-  const [logRow] = logInsert!.args as [
+  assertExists(logUpsert, "email_send_log fallback upsert must be called");
+  const [logRow] = logUpsert!.args as [
     { recipient_email: string; status: string; template_name: string },
   ];
   assertEquals(logRow.recipient_email, "bounced@example.com");
@@ -308,22 +308,26 @@ Deno.test("VALID signature + email.complained → suppression row with reason 'c
   // Email should be normalized to lowercase
   assertEquals(upsertRow.email, "complained@example.com");
 
-  // email_send_log should record status "complained"
-  const logInsert = calls.find(
-    (c) => c.table === "email_send_log" && c.method === "insert",
+  // email_send_log fallback upsert should record status "complained"
+  const logUpsert = calls.find(
+    (c) => c.table === "email_send_log" && c.method === "upsert",
   );
-  assertExists(logInsert);
-  const [logRow] = logInsert!.args as [{ status: string; recipient_email: string }, ...unknown[]];
+  assertExists(logUpsert);
+  const [logRow] = logUpsert!.args as [{ status: string; recipient_email: string }, ...unknown[]];
   assertEquals(logRow.status, "complained");
   assertEquals(logRow.recipient_email, "complained@example.com");
 });
 
-// --- 9. VALID signature + email.delivered (non-suppression) → ignored, NO upsert ---
+// --- 9. VALID signature + email.delivered (lifecycle event, non-suppression) →
+//         updates email_send_log by resend_id (fallback insert when unmatched), no suppression ---
 
-Deno.test("VALID signature + email.delivered → ignored (2xx, { success: true, ignored: true }), no suppression insert", async () => {
+Deno.test("VALID signature + email.delivered → updates email_send_log by resend_id, no suppression", async () => {
   const { deps, calls } = makeFakeDeps({
     envVars: BASE_ENV_VARS,
     now: FIXED_NOW_DATE,
+    tables: {
+      email_send_log: { data: null, error: null },
+    },
   });
 
   const deliveredPayload = {
@@ -342,17 +346,42 @@ Deno.test("VALID signature + email.delivered → ignored (2xx, { success: true, 
   assertEquals(res.status, 200);
   const resBody = await res.json();
 
-  // Response shape: { success: true, ignored: true }
+  // Delivery events are now tracked lifecycle events, not ignored — response is a plain success.
   assertEquals(resBody.success, true);
-  assertEquals(resBody.ignored, true);
+  assertEquals(resBody.ignored, undefined);
 
-  // No suppressed_emails upsert must have been called
-  const upsertCall = calls.find((c) => c.table === "suppressed_emails");
+  // No suppressed_emails upsert must have been called (delivered is not bounce/complaint)
+  const suppressedUpsertCall = calls.find((c) => c.table === "suppressed_emails");
   assertEquals(
-    upsertCall,
+    suppressedUpsertCall,
     undefined,
     "suppressed_emails must NOT be touched for non-suppression events",
   );
+
+  // email_send_log: update-by-resend_id is attempted first...
+  const updateCall = calls.find(
+    (c) => c.table === "email_send_log" && c.method === "update",
+  );
+  assertExists(updateCall, "email_send_log update-by-resend_id must be attempted");
+  const [patch] = updateCall!.args as [{ status: string; delivered_at: string }];
+  assertEquals(patch.status, "delivered");
+  assertExists(patch.delivered_at, "delivered_at stamp must be set");
+
+  // ...and since no row matched (seeded null), a fallback row is upserted (ignoreDuplicates
+  // on resend_id conflict, so concurrent deliveries can't collide) so counts stay accurate.
+  const upsertCall = calls.find(
+    (c) => c.table === "email_send_log" && c.method === "upsert",
+  );
+  assertExists(upsertCall, "fallback upsert must occur when no row matches resend_id");
+  const [logRow, upsertOpts] = upsertCall!.args as [
+    { status: string; resend_id: string; recipient_email: string },
+    { onConflict: string; ignoreDuplicates: boolean },
+  ];
+  assertEquals(logRow.status, "delivered");
+  assertEquals(logRow.resend_id, "em_delivered_001");
+  assertEquals(logRow.recipient_email, "recipient@example.com");
+  assertEquals(upsertOpts.onConflict, "resend_id");
+  assertEquals(upsertOpts.ignoreDuplicates, true);
 });
 
 // --- 10. VALID signature + email.opened (non-suppression) → ignored ---
@@ -588,4 +617,163 @@ Deno.test("valid signature over invalid JSON body → 400", async () => {
   assertEquals(res.status, 400);
   const resBody = await res.json();
   assertEquals(resBody.error, "Invalid JSON payload");
+});
+
+// ---------------------------------------------------------------------------
+// 18-19. Monotonic status guard (FIX A) — the update converges on the highest-rank
+// event regardless of arrival order, and a blocked/duplicate event must not insert
+// a fallback row (that would be indistinguishable from a genuinely-missing row).
+// ---------------------------------------------------------------------------
+
+Deno.test("monotonic guard: late email.sent after the row is already 'delivered' → blocked, no fallback insert", async () => {
+  // The update chain (`.update(...).eq('resend_id', X)...`) and the existence-check
+  // chain (`.select('id').eq('resend_id', X).maybeSingle()`) both filter on the exact
+  // same resend_id — the reserved `__write` seed key (see _shared/testing.ts) is what
+  // lets us seed them independently: the update (a write) resolves to 0 rows (blocked
+  // by the monotonic guard), while the plain select (a read) finds the existing row.
+  const { deps, calls } = makeFakeDeps({
+    envVars: BASE_ENV_VARS,
+    now: FIXED_NOW_DATE,
+    tables: {
+      email_send_log: [
+        { when: { resend_id: "em_regression_001", __write: true }, data: [] },
+        { when: { resend_id: "em_regression_001", __write: false }, data: { id: "log_existing" } },
+      ],
+    },
+  });
+
+  const payload = {
+    type: "email.sent",
+    created_at: "2026-06-01T12:00:00Z",
+    data: { email_id: "em_regression_001", to: ["recipient@example.com"] },
+  };
+
+  const req = await makeSignedRequest(payload);
+  const res = await handle(req, deps);
+  assertEquals(res.status, 200);
+
+  // The update must carry the monotonic status-exclusion filter.
+  const updateCall = calls.find((c) => c.table === "email_send_log" && c.method === "update");
+  assertExists(updateCall, "email_send_log update must be attempted");
+  const notCall = calls.find((c) => c.table === "email_send_log" && c.method === "not");
+  assertExists(notCall, "update must carry a .not('status', 'in', ...) exclusion filter");
+  const [notCol, notOp, notVal] = notCall!.args as [string, string, string];
+  assertEquals(notCol, "status");
+  assertEquals(notOp, "in");
+  // 'sent' is rank 1 — every known status (rank >= 1) is blocked.
+  for (const s of ["sent", "delivery_delayed", "delivered", "bounced", "complained"]) {
+    assertEquals((notVal as string).includes(`"${s}"`), true, `expected blocked list to include "${s}", got ${notVal}`);
+  }
+
+  // The existence check must have run (0 rows updated)...
+  const existenceCheck = calls.find(
+    (c) => c.table === "email_send_log" && c.method === "maybeSingle",
+  );
+  assertExists(existenceCheck, "existence SELECT must run when the update matches 0 rows");
+
+  // ...and since the row DOES exist (blocked, not missing), no fallback upsert happens.
+  const upsertCall = calls.find((c) => c.table === "email_send_log" && c.method === "upsert");
+  assertEquals(
+    upsertCall,
+    undefined,
+    "a blocked/duplicate event must NOT upsert a fallback row (that would fabricate a second log row)",
+  );
+});
+
+Deno.test("monotonic guard: genuinely-missing row (0 rows updated, no existing row) → fallback insert still happens", async () => {
+  const { deps, calls } = makeFakeDeps({
+    envVars: BASE_ENV_VARS,
+    now: FIXED_NOW_DATE,
+    tables: {
+      // Both the update-select and the existence-select resolve to "nothing found" —
+      // no `__write` split needed since both queries agree there's no row.
+      email_send_log: { data: null, error: null },
+    },
+  });
+
+  const payload = {
+    type: "email.delivered",
+    created_at: "2026-06-01T12:00:00Z",
+    data: { email_id: "em_missing_001", to: ["recipient@example.com"] },
+  };
+
+  const req = await makeSignedRequest(payload);
+  const res = await handle(req, deps);
+  assertEquals(res.status, 200);
+
+  const existenceCheck = calls.find(
+    (c) => c.table === "email_send_log" && c.method === "maybeSingle",
+  );
+  assertExists(existenceCheck, "existence SELECT must run when the update matches 0 rows");
+
+  const upsertCall = calls.find((c) => c.table === "email_send_log" && c.method === "upsert");
+  assertExists(upsertCall, "a genuinely-missing row must still get a fallback upsert");
+  const [logRow] = upsertCall!.args as [{ status: string; resend_id: string }];
+  assertEquals(logRow.status, "delivered");
+  assertEquals(logRow.resend_id, "em_missing_001");
+});
+
+// ---------------------------------------------------------------------------
+// 20. Concurrent-insert race at the fallback branch (FIX 2) — closes the gap where two
+// events for the same resend_id both reach the fallback upsert (both saw 0 rows for the
+// update AND the existence check), and whichever inserts first "wins" with no rank
+// comparison. True concurrency isn't reproducible with the fake client, but we can assert
+// the code now issues a corrective re-update (the SAME monotonic update, reused) after the
+// fallback upsert, which is what makes the outcome rank-correct regardless of insert order.
+// ---------------------------------------------------------------------------
+
+Deno.test("fallback race: corrective monotonic re-update runs after the fallback upsert for a bounced event", async () => {
+  const { deps, calls } = makeFakeDeps({
+    envVars: BASE_ENV_VARS,
+    now: FIXED_NOW_DATE,
+    tables: {
+      suppressed_emails: { data: null, error: null },
+      // Both the update-select and the existence-select resolve to "nothing found" —
+      // the fallback-branch precondition (0 rows updated, no existing row).
+      email_send_log: { data: null, error: null },
+    },
+  });
+
+  const payload = {
+    type: "email.bounced",
+    created_at: "2026-06-01T12:00:00Z",
+    data: { email_id: "em_race_001", to: ["racer@example.com"] },
+  };
+
+  const req = await makeSignedRequest(payload);
+  const res = await handle(req, deps);
+  assertEquals(res.status, 200);
+
+  // The fallback upsert must have run.
+  const upsertCall = calls.find((c) => c.table === "email_send_log" && c.method === "upsert");
+  assertExists(upsertCall, "fallback upsert must occur when no row matches resend_id");
+  const [logRow] = upsertCall!.args as [{ status: string; resend_id: string }];
+  assertEquals(logRow.status, "bounced");
+  assertEquals(logRow.resend_id, "em_race_001");
+
+  // AND a corrective monotonic update must run in addition to the primary pre-fallback
+  // attempt — two update calls total, both carrying the same rank-exclusion filter.
+  const updateCalls = calls.filter((c) => c.table === "email_send_log" && c.method === "update");
+  assertEquals(updateCalls.length, 2, "expected primary update + corrective re-update after the fallback upsert");
+
+  const notCalls = calls.filter((c) => c.table === "email_send_log" && c.method === "not");
+  assertEquals(notCalls.length, 2, "both update attempts must carry the monotonic rank-exclusion filter");
+  for (const notCall of notCalls) {
+    const [notCol, notOp, notVal] = notCall.args as [string, string, string];
+    assertEquals(notCol, "status");
+    assertEquals(notOp, "in");
+    // 'bounced' is rank 4 — only 'bounced' and 'complained' (rank >= 4) are blocked.
+    assertEquals((notVal as string).includes(`"bounced"`), true);
+    assertEquals((notVal as string).includes(`"complained"`), true);
+    assertEquals((notVal as string).includes(`"delivered"`), false);
+  }
+
+  // The corrective update must occur strictly after the fallback upsert in call order —
+  // it's a re-update triggered BY the upsert having ensured a row now exists, not a
+  // coincidental second attempt before it.
+  const upsertIndex = calls.indexOf(upsertCall!);
+  const updatesAfterUpsert = calls.filter(
+    (c, i) => i > upsertIndex && c.table === "email_send_log" && c.method === "update",
+  );
+  assertEquals(updatesAfterUpsert.length, 1, "the corrective update must occur after the fallback upsert");
 });

@@ -4,7 +4,7 @@ import type { HealthState } from "@/lib/systemHealth";
 export interface DomainSummary { key: string; label: string; state: HealthState; detail: string }
 
 /** Domains planned for later phases — shown muted so we never imply unmeasured health. */
-const PLACEHOLDERS = ["Email delivery", "Database", "Org sync", "Auth / Storage"];
+const PLACEHOLDERS = ["Database", "Org sync", "Auth / Storage"];
 
 export function DomainSummaryGrid({ domains }: { domains: DomainSummary[] }) {
   return (

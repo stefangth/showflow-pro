@@ -1,6 +1,6 @@
 -- The org_id-nullable relaxation (20260623083502) is guarded by a CHECK so that ONLY platform-level
--- cron notifications may omit org_id. A null-org notification addressed to a non-super-admin would be
--- permanently invisible (the org_isolation RESTRICTIVE policy evaluates is_org_member(uid, NULL) ->
+-- cron/email-health notifications may omit org_id. A null-org notification addressed to a non-super-admin
+-- would be permanently invisible (the org_isolation RESTRICTIVE policy evaluates is_org_member(uid, NULL) ->
 -- UNKNOWN -> the row is hidden, with no error), so the invariant must be machine-enforced.
 --
 -- CHECK constraints fire regardless of session_replication_role, so we run in replica mode to skip the
@@ -8,7 +8,7 @@
 -- (so we needn't seed real users/orgs) — while the CHECK under test still fires.
 BEGIN;
 CREATE EXTENSION IF NOT EXISTS pgtap WITH SCHEMA extensions;
-SELECT plan(4);
+SELECT plan(5);
 
 SET session_replication_role = replica;
 
@@ -22,6 +22,12 @@ SELECT lives_ok(
   $$ INSERT INTO public.notifications (user_id, org_id, type, title, read)
      VALUES ('aaaaaaaa-0000-0000-0000-000000000001', NULL, 'cron_health_alert', 't', false) $$,
   'platform cron notification (org_id null, cron_ type) is allowed'
+);
+
+SELECT lives_ok(
+  $$ INSERT INTO public.notifications (user_id, org_id, type, title, read)
+     VALUES ('aaaaaaaa-0000-0000-0000-000000000001', NULL, 'email_health_degraded', 't', false) $$,
+  'platform email-health-degraded notification (org_id null) is allowed'
 );
 
 SELECT throws_ok(
