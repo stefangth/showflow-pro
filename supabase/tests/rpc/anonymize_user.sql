@@ -1,10 +1,10 @@
 -- anonymize_user: artists anonymized, audit performed_by nulled, profile gone,
--- audit ROW retained, and non-owner/non-super-admin rejected.
+-- audit ROW retained, unsubscribe token cleared, and non-owner/non-super-admin rejected.
 -- NOTE: chat_messages.user_id is NOT NULL; the function deletes messages rather than
 -- nulling the column (test adapted accordingly).
 BEGIN;
 CREATE EXTENSION IF NOT EXISTS pgtap WITH SCHEMA extensions;
-SELECT plan(7);
+SELECT plan(8);
 
 SET session_replication_role = replica;
 INSERT INTO auth.users (id, aud, role, email, email_confirmed_at, raw_app_meta_data, raw_user_meta_data, created_at, updated_at)
@@ -17,6 +17,8 @@ INSERT INTO public.artists (id, org_id, name, email, user_id)
 VALUES ('00000000-0000-0000-0000-000000000bd0','00000000-0000-0000-0000-000000000bc0','Self Talent','self@x.com','00000000-0000-0000-0000-000000000bb0');
 INSERT INTO public.booking_audit_log (id, org_id, action, performed_by)
 VALUES ('00000000-0000-0000-0000-000000000be0','00000000-0000-0000-0000-000000000bc0','status_change','00000000-0000-0000-0000-000000000bb0');
+INSERT INTO public.email_unsubscribe_tokens (token, email)
+VALUES ('anon-user-test-token','self@x.com');
 SET session_replication_role = DEFAULT;
 
 SELECT set_config('request.jwt.claims','{"sub":"00000000-0000-0000-0000-000000000bb1","role":"authenticated"}', true);
@@ -41,6 +43,8 @@ SELECT ok(EXISTS(SELECT 1 FROM public.booking_audit_log WHERE id='00000000-0000-
           'audit row retained with performed_by nulled');
 SELECT ok(NOT EXISTS(SELECT 1 FROM public.profiles WHERE user_id='00000000-0000-0000-0000-000000000bb0'),
           'profile deleted');
+SELECT ok(NOT EXISTS(SELECT 1 FROM public.email_unsubscribe_tokens WHERE lower(email)='self@x.com'),
+          'unsubscribe token cleared');
 
 SELECT * FROM finish();
 ROLLBACK;

@@ -48,3 +48,15 @@ export function redactEmail(email: string | null | undefined): string {
   if (at <= 0) return "***";
   return `${email[0]}***@${email.slice(at + 1)}`;
 }
+
+/**
+ * Redact every email-shaped substring found anywhere inside free-form text (e.g. a
+ * provider error message that echoes the `to` address back verbatim). Unlike
+ * `redactEmail`, which redacts a value already known to BE an email, this scans text
+ * that may or may not contain one. Returns the input unchanged when null/empty so a
+ * caller's `?? fallback` still applies to the null case.
+ */
+export function redactEmailsInText(text: string | null): string | null {
+  if (!text) return text;
+  return text.replace(/[\w.+-]+@[\w-]+\.[\w.-]+/g, (match) => redactEmail(match));
+}

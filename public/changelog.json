@@ -1,14 +1,13 @@
 [
   {
-    "version": "1.9.0",
+    "version": "1.8.2",
     "date": "2026-07-11",
     "dateLabel": "July 11, 2026",
-    "title": "Dark mode",
-    "changes": {
-      "new": [
+    "title": "Email delivery monitoring",
+      "fixed": [
         {
-          "title": "Dark mode",
-          "description": "Switch between Light, Dark, and System appearance from the new toggle in the top bar. System follows your device automatically, and your choice is remembered across sessions."
+          "title": "Transactional email",
+          "description": "fixed send-log and suppression tables that could cause digests and invitations to fail in some cases."
         }
       ]
     }

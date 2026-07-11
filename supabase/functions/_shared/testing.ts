@@ -116,12 +116,22 @@ export function createFakeClient(opts: FakeClientOptions = {}) {
   const rpcs = opts.rpcs ?? {};
   const fallbackCronSecret = seededCronSecret(tables);
 
+  // Methods that make a chain a write — used only to populate the reserved `__write`
+  // match key below, so a test CAN (opt-in, via `when: { ..., __write: true/false }`)
+  // distinguish "the update-then-select on this table" from "the plain select on this
+  // same table with the same eq filter" within a single handler invocation — e.g. a
+  // blind `.update(...).eq('resend_id', x).select('id')` immediately followed by an
+  // existence check `.select('id').eq('resend_id', x).maybeSingle()`. Existing seeds
+  // never reference `__write` in their `when`, so this is fully backward-compatible.
+  const WRITE_METHODS = new Set(["update", "insert", "upsert", "delete"]);
+
   function builder(table: string): AnyChain {
     const seed: TableSeed = tables[table] ?? { data: [], error: null };
     // Local eq map — populated as .eq() calls are chained, used for array-seed matching
     const localEq: Record<string, unknown> = {};
     // Local in map — populated as .in() calls are chained, used for membership filtering
     const localIn: Record<string, unknown[]> = {};
+    let sawWrite = false;
     const chain: AnyChain = {};
     for (const m of CHAIN) {
       chain[m] = (...args: unknown[]) => {
@@ -134,16 +144,18 @@ export function createFakeClient(opts: FakeClientOptions = {}) {
         if (m === "in" && args.length >= 2 && Array.isArray(args[1])) {
           localIn[String(args[0])] = args[1] as unknown[];
         }
+        if (WRITE_METHODS.has(m)) sawWrite = true;
         return chain;
       };
     }
+    const matchEq = () => ({ ...localEq, __write: sawWrite });
     chain["single"] = () => {
       calls.push({ table, method: "single", args: [] });
-      return Promise.resolve(resolveSeed(seed, localEq, localIn));
+      return Promise.resolve(resolveSeed(seed, matchEq(), localIn));
     };
     chain["maybeSingle"] = () => {
       calls.push({ table, method: "maybeSingle", args: [] });
-      const result = resolveSeed(seed, localEq, localIn);
+      const result = resolveSeed(seed, matchEq(), localIn);
       // Real Supabase .maybeSingle() returns null (never []) when there are no rows.
       // Normalise an empty-array result so that `if (row)` guards work correctly.
       const normalised = Array.isArray(result.data) && (result.data as unknown[]).length === 0
@@ -154,7 +166,7 @@ export function createFakeClient(opts: FakeClientOptions = {}) {
     // List queries resolved via .then() do NOT apply in() filtering — the seed data
     // is intentionally simplified and may omit the filtered column entirely.
     chain.then = (f: (v: unknown) => unknown, r?: (e: unknown) => unknown) =>
-      Promise.resolve(resolveSeed(seed, localEq)).then(f, r);
+      Promise.resolve(resolveSeed(seed, matchEq())).then(f, r);
     return chain;
   }
 

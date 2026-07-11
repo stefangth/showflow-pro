@@ -76,6 +76,29 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
 
   const admin = deps.admin;
 
+  // Record the attempt up front — exactly one row per message, updated in place.
+  const { error: pendingErr } = await admin.from('email_send_log').insert({
+    message_id: messageId,
+    org_id: orgId,
+    template_name: templateName,
+    recipient_email: effectiveRecipient,
+    status: 'pending',
+  })
+  if (pendingErr) {
+    console.error('email_send_log pending insert failed — refusing to send unlogged', pendingErr)
+    return json({ error: 'Failed to record email send' }, 500)
+  }
+
+  // Transition the pending row to 'failed' before any early-return error path below,
+  // so a genuine send failure never leaves an orphaned 'pending' row hiding it from
+  // the monitoring.
+  const logFailed = async (message: string) => {
+    await admin.from('email_send_log').update({
+      status: 'failed',
+      error_message: message,
+    }).eq('message_id', messageId)
+  }
+
   // Check suppression list (fail-closed)
   const { data: suppressed, error: suppressionError } = await admin
     .from('suppressed_emails')
@@ -85,16 +108,12 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
 
   if (suppressionError) {
     console.error('Suppression check failed — refusing to send', { error: suppressionError })
+    await logFailed(`Suppression check failed: ${suppressionError.message ?? 'unknown error'}`)
     return json({ error: 'Failed to verify suppression status' }, 500)
   }
 
   if (suppressed) {
-    await admin.from('email_send_log').insert({
-      message_id: messageId,
-      template_name: templateName,
-      recipient_email: effectiveRecipient,
-      status: 'suppressed',
-    })
+    await admin.from('email_send_log').update({ status: 'suppressed' }).eq('message_id', messageId)
     return json({ success: false, reason: 'email_suppressed' }, 200)
   }
 
@@ -117,12 +136,7 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
         p_user: recipientUserId, p_category: prefCategory, p_channel: 'email',
       })
       if (!prefErr && wants === false) {
-        await admin.from('email_send_log').insert({
-          message_id: messageId,
-          template_name: templateName,
-          recipient_email: effectiveRecipient,
-          status: 'suppressed',
-        })
+        await admin.from('email_send_log').update({ status: 'pref_disabled' }).eq('message_id', messageId)
         return json({ success: false, reason: 'pref_disabled' }, 200)
       }
     }
@@ -142,6 +156,7 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
 
   if (tokenLookupError) {
     console.error('Token lookup failed', { error: tokenLookupError })
+    await logFailed(`Unsubscribe token lookup failed: ${tokenLookupError.message ?? 'unknown error'}`)
     return json({ error: 'Failed to prepare email' }, 500)
   }
 
@@ -158,6 +173,7 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
 
     if (tokenError) {
       console.error('Failed to create unsubscribe token', { error: tokenError })
+      await logFailed(`Unsubscribe token upsert failed: ${tokenError.message ?? 'unknown error'}`)
       return json({ error: 'Failed to prepare email' }, 500)
     }
 
@@ -169,12 +185,14 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
 
     if (reReadError || !storedToken) {
       console.error('Failed to read back unsubscribe token after upsert', { error: reReadError })
+      await logFailed(`Unsubscribe token re-read failed: ${reReadError?.message ?? 'token missing after upsert'}`)
       return json({ error: 'Failed to prepare email' }, 500)
     }
     unsubscribeToken = storedToken.token
   } else {
     // Token used but email not suppressed — safety fallback
     console.warn('Unsubscribe token already used but email not suppressed', { email_redacted: redactEmail(normalizedEmail) })
+    await admin.from('email_send_log').update({ status: 'suppressed' }).eq('message_id', messageId)
     return json({ success: false, reason: 'email_suppressed' }, 200)
   }
 
@@ -184,89 +202,96 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
       ? template.subject(templateData)
       : template.subject
 
-  // Read from-address and template overrides for this org (org override ?? platform default).
-  const fromAddress = await resolveOrgSetting<string>(
-    admin, orgId, 'resend_from_address', BOOKING_ENGINE_DEFAULTS.resend_from_address)
+  // Render + send (including resolving org settings) are wrapped so a THROWN error
+  // (a failed app_settings read inside resolveOrgSetting, a renderAsync failure, or a
+  // network error from deps.fetch — distinct from the handled `!sendResponse.ok` case
+  // below) can't escape and leave the row stuck at 'pending' forever: a stuck 'pending'
+  // row counts as an "attempted" send but never a "failed" one, which would mask an
+  // outage from monitoring.
+  let sendData: { id: string; [key: string]: unknown }
+  try {
+    // Read from-address and template overrides for this org (org override ?? platform default).
+    const fromAddress = await resolveOrgSetting<string>(
+      admin, orgId, 'resend_from_address', BOOKING_ENGINE_DEFAULTS.resend_from_address)
 
-  const overrides = await resolveOrgSetting<Record<string, any>>(
-    admin, orgId, 'email_template_overrides', {})
-  const templateOverride = overrides[templateName] ?? {}
+    const overrides = await resolveOrgSetting<Record<string, any>>(
+      admin, orgId, 'email_template_overrides', {})
+    const templateOverride = overrides[templateName] ?? {}
 
-  // Apply subject override
-  let resolvedSubjectFinal = resolvedSubject
-  if (templateOverride.subject && typeof templateOverride.subject === 'string' && templateOverride.subject.trim()) {
-    resolvedSubjectFinal = templateOverride.subject.trim()
-  }
+    // Apply subject override
+    let resolvedSubjectFinal = resolvedSubject
+    if (templateOverride.subject && typeof templateOverride.subject === 'string' && templateOverride.subject.trim()) {
+      resolvedSubjectFinal = templateOverride.subject.trim()
+    }
 
-  // Merge _intro, _cta_label, _footer into templateData (non-null values only)
-  const mergedTemplateData = { ...templateData }
-  if (templateOverride.intro) mergedTemplateData._intro = templateOverride.intro
-  if (templateOverride.cta_label) mergedTemplateData._cta_label = templateOverride.cta_label
-  if (templateOverride.footer) mergedTemplateData._footer = templateOverride.footer
+    // Merge _intro, _cta_label, _footer into templateData (non-null values only)
+    const mergedTemplateData = { ...templateData }
+    if (templateOverride.intro) mergedTemplateData._intro = templateOverride.intro
+    if (templateOverride.cta_label) mergedTemplateData._cta_label = templateOverride.cta_label
+    if (templateOverride.footer) mergedTemplateData._footer = templateOverride.footer
 
-  // Render template with merged data
-  const html = await renderAsync(React.createElement(template.component, mergedTemplateData))
-  const plainText = await renderAsync(
-    React.createElement(template.component, mergedTemplateData),
-    { plainText: true }
-  )
+    // Render template with merged data
+    const html = await renderAsync(React.createElement(template.component, mergedTemplateData))
+    const plainText = await renderAsync(
+      React.createElement(template.component, mergedTemplateData),
+      { plainText: true }
+    )
 
-  // Build unsubscribe URL pointing at the edge function
-  const unsubscribeUrl = `${supabaseUrl}/functions/v1/handle-email-unsubscribe?token=${unsubscribeToken}`
+    // Build unsubscribe URL pointing at the edge function
+    const unsubscribeUrl = `${supabaseUrl}/functions/v1/handle-email-unsubscribe?token=${unsubscribeToken}`
 
-  // Log pending before send
-  await admin.from('email_send_log').insert({
-    message_id: messageId,
-    template_name: templateName,
-    recipient_email: effectiveRecipient,
-    status: 'pending',
-  })
-
-  // Send via Resend
-  const sendResponse = await deps.fetch('https://api.resend.com/emails', {
-    method: 'POST',
-    headers: {
-      'Authorization': `Bearer ${resendApiKey}`,
-      'Content-Type': 'application/json',
-      'Idempotency-Key': idempotencyKey,
-    },
-    body: JSON.stringify({
-      from: fromAddress,
-      to: [effectiveRecipient],
-      subject: resolvedSubjectFinal,
-      html,
-      text: plainText,
+    // Send via Resend
+    const sendResponse = await deps.fetch('https://api.resend.com/emails', {
+      method: 'POST',
       headers: {
-        'List-Unsubscribe': `<${unsubscribeUrl}>`,
-        'List-Unsubscribe-Post': 'List-Unsubscribe=One-Click',
+        'Authorization': `Bearer ${resendApiKey}`,
+        'Content-Type': 'application/json',
+        'Idempotency-Key': idempotencyKey,
       },
-    }),
-  })
-
-  if (!sendResponse.ok) {
-    const errorBody = await sendResponse.text()
-    console.error('Resend API error', { status: sendResponse.status, body: errorBody, templateName })
-
-    await admin.from('email_send_log').insert({
-      message_id: messageId,
-      template_name: templateName,
-      recipient_email: effectiveRecipient,
-      status: 'failed',
-      error_message: `Resend ${sendResponse.status}: ${errorBody.slice(0, 200)}`,
+      body: JSON.stringify({
+        from: fromAddress,
+        to: [effectiveRecipient],
+        subject: resolvedSubjectFinal,
+        html,
+        text: plainText,
+        headers: {
+          'List-Unsubscribe': `<${unsubscribeUrl}>`,
+          'List-Unsubscribe-Post': 'List-Unsubscribe=One-Click',
+        },
+      }),
     })
 
+    if (!sendResponse.ok) {
+      const errorBody = await sendResponse.text()
+      console.error('Resend API error', { status: sendResponse.status, body: errorBody, templateName })
+
+      await admin.from('email_send_log').update({
+        status: 'failed',
+        error_message: `Resend ${sendResponse.status}: ${errorBody.slice(0, 200)}`,
+      }).eq('message_id', messageId)
+
+      return json({ error: 'Failed to send email' }, 500)
+    }
+
+    sendData = await sendResponse.json()
+  } catch (e) {
+    console.error('Unexpected error rendering or sending email', { error: e, templateName })
+    await logFailed(`send error: ${(e as Error).message}`)
     return json({ error: 'Failed to send email' }, 500)
   }
 
-  const sendData = await sendResponse.json()
-
-  await admin.from('email_send_log').insert({
-    message_id: messageId,
-    template_name: templateName,
-    recipient_email: effectiveRecipient,
+  const { error: sentErr } = await admin.from('email_send_log').update({
     status: 'sent',
+    resend_id: sendData.id,
+    sent_at: deps.now().toISOString(),
     metadata: { resend_id: sendData.id },
-  })
+  }).eq('message_id', messageId)
+  if (sentErr) {
+    // The email was already sent to the recipient — do NOT change the response below.
+    // But the row is now stuck at 'pending' with no resend_id, which also means a later
+    // Resend webhook can't find this row by resend_id and will create a duplicate fallback row.
+    console.error('email_send_log sent-transition failed — row stuck pending, resend_id not persisted', sentErr)
+  }
 
   console.log('Email sent via Resend', {
     templateName,
