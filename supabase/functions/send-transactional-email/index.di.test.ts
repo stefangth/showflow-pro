@@ -865,3 +865,38 @@ Deno.test("characterization: used token + not suppressed → returns { success: 
   assertEquals(body.success, false);
   assertEquals(body.reason, "email_suppressed");
 });
+
+// ===========================================================================
+// 15. FIX B — a THROWN send error (e.g. deps.fetch network failure) must not leave
+//     the email_send_log row orphaned at 'pending' forever. It must transition to
+//     'failed' and the handler must return 500, exactly like the handled
+//     `!sendResponse.ok` case above.
+// ===========================================================================
+
+Deno.test("thrown send error (deps.fetch rejects): row transitions to 'failed', not left orphaned 'pending'", async () => {
+  const { deps, calls } = makeFakeDeps({
+    envVars: ENV,
+    tables: happyPathTables("thrown@test.com"),
+    fetchImpl: (() => Promise.reject(new Error("network unreachable"))) as typeof fetch,
+  });
+  const res = await handle(
+    authedReq({
+      body: { templateName: KNOWN_TEMPLATE, recipientEmail: "thrown@test.com" },
+    }),
+    deps,
+  );
+  assertEquals(res.status, 500, `Expected 500 when deps.fetch throws; got ${res.status}`);
+  const body = await res.json();
+  assertExists(body.error);
+
+  const failedUpdate = calls.find(
+    (c) =>
+      c.table === "email_send_log" &&
+      c.method === "update" &&
+      (c.args[0] as { status?: string } | undefined)?.status === "failed",
+  );
+  assertExists(
+    failedUpdate,
+    "Expected email_send_log to be updated to status 'failed' after a thrown send error (not left at 'pending')",
+  );
+});

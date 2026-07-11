@@ -104,7 +104,7 @@ async function alertSuperAdmins(deps: Deps, state: string, h: EmailSnapshot): Pr
     user_id: uid,
     org_id: null,
     type: "email_health_degraded",
-    title: "Email delivery degraded",
+    title: `Email delivery ${state}`,
     message,
     related_entity_type: "system",
     related_entity_id: null,
