@@ -15,7 +15,9 @@ import { SYSTEM_HEALTH_BUDGET as budget, EMAIL_HEALTH } from "@/config/app.confi
 export function SystemHealthTab() {
   const cron = useCronHealth();
   const edge = useEdgeFnMetrics();
-  const [emailWindow, setEmailWindow] = useState(EMAIL_HEALTH.windowMinutes);
+  // Explicit `number` — EMAIL_HEALTH.windowMinutes is a literal (1440) via `as const`, which would
+  // otherwise narrow the setter to Dispatch<SetStateAction<1440>> and reject the panel's (m: number) toggle.
+  const [emailWindow, setEmailWindow] = useState<number>(EMAIL_HEALTH.windowMinutes);
   const email = useEmailHealth(emailWindow);
   const emailState = email.data ? deriveEmailStatus(email.data, EMAIL_HEALTH) : "pending";
 
