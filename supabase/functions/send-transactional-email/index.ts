@@ -102,7 +102,7 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
   // Check suppression list (fail-closed)
   const { data: suppressed, error: suppressionError } = await admin
     .from('suppressed_emails')
-    .select('id')
+    .select('email')
     .eq('email', effectiveRecipient.toLowerCase())
     .maybeSingle()
 
