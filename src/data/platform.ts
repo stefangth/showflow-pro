@@ -1,7 +1,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database, Json } from "@/integrations/supabase/types";
 import type { Organization } from "@/data/orgs";
-import type { EdgeFnMetric } from "@/lib/systemHealth";
+import type { EdgeFnMetric, EmailHealth } from "@/lib/systemHealth";
 import { BOOKING_ENGINE_DEFAULTS, SYSTEM_HEALTH, type AppRole } from "@/config/app.config";
 
 export interface OrgStat {
@@ -69,6 +69,57 @@ export async function fetchEdgeFnMetrics(
   });
   if (error) throw error;
   return (data as { functions?: EdgeFnMetric[] } | null)?.functions ?? [];
+}
+
+/** Email-delivery health for the System Health tab (super-admin only, enforced inside the RPC).
+ *  Maps get_email_health's snake_case jsonb (incl. nested by_template/recent_issues) to the
+ *  camelCase EmailHealth the panel consumes — a mapping, not a bare cast, so shape drift in the
+ *  RPC surfaces as a type error here rather than silently reaching the UI. */
+export async function fetchEmailHealth(
+  client: SupabaseClient<Database>,
+  windowMinutes: number,
+): Promise<EmailHealth> {
+  // get_email_health is a SECURITY DEFINER RPC added alongside the email-delivery tables; the
+  // generated Database type lags new RPCs, so the name is cast here — same idiom as
+  // fetchCronHealth above.
+  const { data, error } = await client.rpc(
+    "get_email_health" as never,
+    { p_window_minutes: windowMinutes } as never,
+  );
+  if (error) throw error;
+  const d = (data ?? {}) as Record<string, unknown>;
+  const byTemplate = (d.by_template ?? []) as Record<string, unknown>[];
+  const recentIssues = (d.recent_issues ?? []) as Record<string, unknown>[];
+  return {
+    attempted: Number(d.attempted ?? 0),
+    sent: Number(d.sent ?? 0),
+    delivered: Number(d.delivered ?? 0),
+    delayed: Number(d.delayed ?? 0),
+    bounced: Number(d.bounced ?? 0),
+    complained: Number(d.complained ?? 0),
+    failed: Number(d.failed ?? 0),
+    suppressed: Number(d.suppressed ?? 0),
+    deliveryRate: Number(d.delivery_rate ?? 0),
+    bounceRate: Number(d.bounce_rate ?? 0),
+    complaintRate: Number(d.complaint_rate ?? 0),
+    failureCount: Number(d.failure_count ?? 0),
+    lastEventAt: (d.last_event_at as string | null | undefined) ?? null,
+    byTemplate: byTemplate.map((t) => ({
+      templateName: t.template_name as string,
+      sent: Number(t.sent ?? 0),
+      delivered: Number(t.delivered ?? 0),
+      bounced: Number(t.bounced ?? 0),
+      failed: Number(t.failed ?? 0),
+      deliveryRate: Number(t.delivery_rate ?? 0),
+    })),
+    recentIssues: recentIssues.map((i) => ({
+      recipientEmail: i.recipient_email as string,
+      templateName: i.template_name as string,
+      status: i.status as string,
+      errorMessage: (i.error_message as string | null | undefined) ?? null,
+      occurredAt: i.occurred_at as string,
+    })),
+  };
 }
 
 /** Every organization (super-admin only; RLS short-circuits is_org_member). */
