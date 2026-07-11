@@ -218,13 +218,17 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
       if (existsError) {
         console.warn('Failed to check existing email_send_log row', { error: existsError })
       } else if (!existing) {
-        const { error: insertError } = await admin.from('email_send_log').insert({
+        // upsert (not insert): two concurrent deliveries for the same resend_id can both
+        // reach this branch (both saw 0 existing rows) and race to write the fallback row.
+        // A plain insert would have the loser fail on the resend_id UNIQUE constraint and
+        // silently drop that event; ignoreDuplicates makes the loser a no-op instead.
+        const { error: insertError } = await admin.from('email_send_log').upsert({
           message_id: crypto.randomUUID(),
           resend_id: resendId,
           template_name: 'system',
           recipient_email: recipientEmail,
           ...patch,
-        })
+        }, { onConflict: 'resend_id', ignoreDuplicates: true })
 
         if (insertError) {
           console.warn('Failed to insert fallback email_send_log row', { error: insertError })

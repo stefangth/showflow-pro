@@ -249,12 +249,12 @@ Deno.test("VALID signature + email.bounced → suppression row with reason 'boun
   assertEquals(upsertRow.metadata.resend_email_id, "em_bounce_001");
   assertEquals(upsertOpts.onConflict, "email");
 
-  // 4. email_send_log insert was called with status 'bounced'
-  const logInsert = calls.find(
-    (c) => c.table === "email_send_log" && c.method === "insert",
+  // 4. email_send_log fallback upsert was called with status 'bounced'
+  const logUpsert = calls.find(
+    (c) => c.table === "email_send_log" && c.method === "upsert",
   );
-  assertExists(logInsert, "email_send_log insert must be called");
-  const [logRow] = logInsert!.args as [
+  assertExists(logUpsert, "email_send_log fallback upsert must be called");
+  const [logRow] = logUpsert!.args as [
     { recipient_email: string; status: string; template_name: string },
   ];
   assertEquals(logRow.recipient_email, "bounced@example.com");
@@ -308,12 +308,12 @@ Deno.test("VALID signature + email.complained → suppression row with reason 'c
   // Email should be normalized to lowercase
   assertEquals(upsertRow.email, "complained@example.com");
 
-  // email_send_log should record status "complained"
-  const logInsert = calls.find(
-    (c) => c.table === "email_send_log" && c.method === "insert",
+  // email_send_log fallback upsert should record status "complained"
+  const logUpsert = calls.find(
+    (c) => c.table === "email_send_log" && c.method === "upsert",
   );
-  assertExists(logInsert);
-  const [logRow] = logInsert!.args as [{ status: string; recipient_email: string }, ...unknown[]];
+  assertExists(logUpsert);
+  const [logRow] = logUpsert!.args as [{ status: string; recipient_email: string }, ...unknown[]];
   assertEquals(logRow.status, "complained");
   assertEquals(logRow.recipient_email, "complained@example.com");
 });
@@ -351,9 +351,9 @@ Deno.test("VALID signature + email.delivered → updates email_send_log by resen
   assertEquals(resBody.ignored, undefined);
 
   // No suppressed_emails upsert must have been called (delivered is not bounce/complaint)
-  const upsertCall = calls.find((c) => c.table === "suppressed_emails");
+  const suppressedUpsertCall = calls.find((c) => c.table === "suppressed_emails");
   assertEquals(
-    upsertCall,
+    suppressedUpsertCall,
     undefined,
     "suppressed_emails must NOT be touched for non-suppression events",
   );
@@ -367,17 +367,21 @@ Deno.test("VALID signature + email.delivered → updates email_send_log by resen
   assertEquals(patch.status, "delivered");
   assertExists(patch.delivered_at, "delivered_at stamp must be set");
 
-  // ...and since no row matched (seeded null), a fallback row is inserted so counts stay accurate.
-  const insertCall = calls.find(
-    (c) => c.table === "email_send_log" && c.method === "insert",
+  // ...and since no row matched (seeded null), a fallback row is upserted (ignoreDuplicates
+  // on resend_id conflict, so concurrent deliveries can't collide) so counts stay accurate.
+  const upsertCall = calls.find(
+    (c) => c.table === "email_send_log" && c.method === "upsert",
   );
-  assertExists(insertCall, "fallback insert must occur when no row matches resend_id");
-  const [logRow] = insertCall!.args as [
+  assertExists(upsertCall, "fallback upsert must occur when no row matches resend_id");
+  const [logRow, upsertOpts] = upsertCall!.args as [
     { status: string; resend_id: string; recipient_email: string },
+    { onConflict: string; ignoreDuplicates: boolean },
   ];
   assertEquals(logRow.status, "delivered");
   assertEquals(logRow.resend_id, "em_delivered_001");
   assertEquals(logRow.recipient_email, "recipient@example.com");
+  assertEquals(upsertOpts.onConflict, "resend_id");
+  assertEquals(upsertOpts.ignoreDuplicates, true);
 });
 
 // --- 10. VALID signature + email.opened (non-suppression) → ignored ---
@@ -667,12 +671,12 @@ Deno.test("monotonic guard: late email.sent after the row is already 'delivered'
   );
   assertExists(existenceCheck, "existence SELECT must run when the update matches 0 rows");
 
-  // ...and since the row DOES exist (blocked, not missing), no fallback insert happens.
-  const insertCall = calls.find((c) => c.table === "email_send_log" && c.method === "insert");
+  // ...and since the row DOES exist (blocked, not missing), no fallback upsert happens.
+  const upsertCall = calls.find((c) => c.table === "email_send_log" && c.method === "upsert");
   assertEquals(
-    insertCall,
+    upsertCall,
     undefined,
-    "a blocked/duplicate event must NOT insert a fallback row (that would fabricate a second log row)",
+    "a blocked/duplicate event must NOT upsert a fallback row (that would fabricate a second log row)",
   );
 });
 
@@ -702,9 +706,9 @@ Deno.test("monotonic guard: genuinely-missing row (0 rows updated, no existing r
   );
   assertExists(existenceCheck, "existence SELECT must run when the update matches 0 rows");
 
-  const insertCall = calls.find((c) => c.table === "email_send_log" && c.method === "insert");
-  assertExists(insertCall, "a genuinely-missing row must still get a fallback insert");
-  const [logRow] = insertCall!.args as [{ status: string; resend_id: string }];
+  const upsertCall = calls.find((c) => c.table === "email_send_log" && c.method === "upsert");
+  assertExists(upsertCall, "a genuinely-missing row must still get a fallback upsert");
+  const [logRow] = upsertCall!.args as [{ status: string; resend_id: string }];
   assertEquals(logRow.status, "delivered");
   assertEquals(logRow.resend_id, "em_missing_001");
 });

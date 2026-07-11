@@ -900,3 +900,45 @@ Deno.test("thrown send error (deps.fetch rejects): row transitions to 'failed', 
     "Expected email_send_log to be updated to status 'failed' after a thrown send error (not left at 'pending')",
   );
 });
+
+Deno.test("thrown resolveOrgSetting error (app_settings read fails): 500 returned, row transitions to 'failed'", async () => {
+  // resolveOrgSetting does `if (error) throw error` — a transient app_settings read
+  // failure must be caught by the same try/catch that wraps renderAsync/fetch, not
+  // escape uncaught and leave the row stuck at 'pending' forever.
+  const { fetchImpl, fetchCalls } = recordingFetch();
+  const { deps, calls } = makeFakeDeps({
+    envVars: ENV,
+    tables: {
+      suppressed_emails: { data: null, error: null },
+      email_unsubscribe_tokens: { data: { token: "existing_token_abc123", used_at: null }, error: null },
+      app_settings: { data: null, error: { message: "boom", code: "PGRST500" } },
+      email_send_log: { data: null, error: null },
+    },
+    fetchImpl,
+  });
+  const res = await handle(
+    authedReq({
+      body: { templateName: KNOWN_TEMPLATE, recipientEmail: "settingsfail@test.com" },
+    }),
+    deps,
+  );
+  assertEquals(res.status, 500, `Expected 500 when resolveOrgSetting throws; got ${res.status}`);
+  const body = await res.json();
+  assertExists(body.error);
+  assertEquals(
+    fetchCalls.length,
+    0,
+    "Resend must NOT be called when resolveOrgSetting throws before render/send",
+  );
+
+  const failedUpdate = calls.find(
+    (c) =>
+      c.table === "email_send_log" &&
+      c.method === "update" &&
+      (c.args[0] as { status?: string } | undefined)?.status === "failed",
+  );
+  assertExists(
+    failedUpdate,
+    "Expected email_send_log to be updated to status 'failed' after resolveOrgSetting throws (not left at 'pending')",
+  );
+});

@@ -1,7 +1,7 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { StatusPill, StatusDot } from "./primitives";
-import { redactEmail } from "@/lib/redactEmail";
+import { redactEmail } from "@/lib/identity";
 import { EMAIL_HEALTH } from "@/config/app.config";
 import type { EmailHealth, HealthState } from "@/lib/systemHealth";
 
