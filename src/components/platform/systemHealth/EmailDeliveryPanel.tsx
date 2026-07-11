@@ -1,7 +1,7 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { StatusPill, StatusDot } from "./primitives";
-import { redactEmail } from "@/lib/identity";
+import { redactEmail, redactEmailsInText } from "@/lib/identity";
 import { EMAIL_HEALTH } from "@/config/app.config";
 import type { EmailHealth, HealthState } from "@/lib/systemHealth";
 
@@ -76,7 +76,7 @@ export function EmailDeliveryPanel({
               <div key={idx} className="flex items-center gap-3 border-b border-border py-1.5 last:border-0">
                 <Badge variant="outline" className={`text-[11px] ${badge(i.status)}`}>{i.status}</Badge>
                 <span className="font-mono text-xs text-muted-foreground">{redactEmail(i.recipientEmail)}</span>
-                <span className="flex-1 truncate text-xs text-muted-foreground">{i.errorMessage ?? i.templateName}</span>
+                <span className="flex-1 truncate text-xs text-muted-foreground">{redactEmailsInText(i.errorMessage) ?? i.templateName}</span>
                 <span className="text-xs text-muted-foreground">{new Date(i.occurredAt).toLocaleString()}</span>
               </div>
             ))}
