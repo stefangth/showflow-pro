@@ -1,24 +1,13 @@
 [
   {
-    "version": "1.9.0",
+    "version": "1.8.2",
     "date": "2026-07-11",
     "dateLabel": "July 11, 2026",
     "title": "Email delivery monitoring",
-    "changes": {
-      "new": [
-        {
-          "title": "Email delivery health",
-          "description": "the platform System Health console now tracks delivery, bounce, complaint, and send-failure rates, with a per-template breakdown and recent-issues list."
-        },
-        {
-          "title": "Delivery alerts",
-          "description": "super-admins are notified in-app when bounce or complaint rates cross safe thresholds."
-        }
-      ],
       "fixed": [
         {
           "title": "Transactional email",
-          "description": "created the missing send-log and suppression tables that were causing digests and invitations to fail."
+          "description": "fixed send-log and suppression tables that could cause digests and invitations to fail in some cases."
         }
       ]
     }

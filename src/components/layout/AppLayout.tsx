@@ -18,6 +18,7 @@ import { StageMark } from '@/components/brand/StageMark';
 import { BrandWordmark } from '@/components/brand/BrandWordmark';
 import { OrgSwitcher } from '@/components/layout/OrgSwitcher';
 import { NotificationsList } from '@/components/layout/NotificationsList';
+import { ThemeToggle } from '@/components/layout/ThemeToggle';
 import { useNotifications } from '@/hooks/useNotifications';
 import { useNavCounts } from '@/hooks/useNavCounts';
 import { useMyProfile } from '@/hooks/useMyProfile';
@@ -319,6 +320,8 @@ export default function AppLayout({ children }: AppLayoutProps) {
           <div className="flex-1" />
           <div className="flex items-center gap-1">
             {isRealAdmin && <EditorModeToggle />}
+
+            <ThemeToggle />
 
             {/* Notification bell — wired to NotificationsList popover */}
             <Popover open={notifOpen} onOpenChange={setNotifOpen}>

@@ -8,8 +8,19 @@
     <meta name="description" content="ShowFlow: Intelligent artist booking for show productions. Auto-suggest, availability management, and real-time booking.">
     <meta name="author" content="ShowFlow" />
 
-    
-    
+    <script>
+      // Apply the persisted (or system) theme before React mounts to avoid a flash.
+      // Must use the same localStorage key ("theme") that next-themes uses.
+      try {
+        var t = localStorage.getItem('theme');
+        var dark = t === 'dark' ||
+          ((!t || t === 'system') && window.matchMedia('(prefers-color-scheme: dark)').matches);
+        document.documentElement.classList.toggle('dark', dark);
+      } catch (e) {}
+    </script>
+
+
+
     <meta property="og:type" content="website" />
     
 
