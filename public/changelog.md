@@ -2,19 +2,15 @@
 
 What's new in ShowFlow, newest first.
 
-## 1.8.3 — July 11, 2026
-
-*Fixes*
-
-### Fixed
-- **Email links now open the app** — Links in invitation and notification emails — including "Accept invitation" — now open the ShowFlow app directly instead of the marketing site, so accepting an invite and other email actions work as expected.
-
 ## 1.8.2 — July 11, 2026
 
 *Dark mode*
 
 ### New
 - **Dark mode** — Switch between Light, Dark, and System appearance from the new toggle in the top bar. System follows your device automatically, and your choice is remembered across sessions.
+
+### Fixed
+- **Email links now open the app** — Links in invitation and notification emails — including "Accept invitation" — now open the ShowFlow app directly instead of the marketing site, so accepting an invite and other email actions work as expected.
 
 ## 1.8.1 — July 6, 2026
 
