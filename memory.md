@@ -6,7 +6,7 @@
 
 ## Current date
 
-2026-07-06
+2026-07-13
 
 ---
 
@@ -16,7 +16,7 @@
 |--------|---------|
 | `main` | Production — never push directly; PRs merge straight to `main` |
 | `dev` | Exists on remote but stale/unused — recent PRs target `main` directly, not `dev` |
-| `claude/tender-bohr-t3t5ep` | Current Claude Code session (docs sync) |
+| `claude/adoring-knuth-h210n1` | Current Claude Code session (docs sync) |
 
 ---
 
@@ -44,7 +44,7 @@ Note: `AIRTABLE_SYNC` was removed from `FEATURES` in app.config.ts. Airtable syn
 | Issue | Impact | Notes |
 |-------|--------|-------|
 | No seed-test-data edge function | Dev setup friction | Must bootstrap first org admin out-of-band (Supabase dashboard); org admin then invites others via Admin → Invites |
-| Releases since `v1.4.0` are untagged | Process gap | `package.json`/changelog are at `1.8.0` (Jul 5) but the last git tag is `v1.4.0` (Jun 21) — versions `1.4.1`–`1.8.0` shipped without a corresponding `git tag`. Catch up when convenient. |
+| Releases since `v1.4.0` are untagged | Process gap | `package.json`/changelog are at `1.9.1` (Jul 11) but the last git tag is `v1.4.0` (Jun 21) — versions `1.4.1`–`1.9.1` shipped without a corresponding `git tag`. Catch up when convenient. |
 
 ---
 
@@ -67,6 +67,7 @@ Note: `AIRTABLE_SYNC` was removed from `FEATURES` in app.config.ts. Airtable syn
 | 2026-06-23 | Key architecture decisions moved out of `CLAUDE.md` into `docs/adr/README.md` ("Key decisions" operational summary + linked ADRs) | Single home for the *what/where* + *why*; `CLAUDE.md` stayed too long to keep accurate inline (ADR-0008 superseded) |
 | 2026-06-23 | CI auto-deploys every edge function on merge to `main` (`.github/workflows/deploy-functions.yml`); Lovable build tooling retired | Removes the manual deploy step for the common case; new functions need a `[functions.<name>]` block in `supabase/config.toml` or they deploy JWT-locked |
 | 2026-07-05 | Airtable poll cadence is per-org configurable (`airtable_poll_interval_minutes`, min 5) with an on-demand "Sync now" | Orgs with low-frequency Airtable changes don't need the default 5-min cron sweep; admins can force a sync between cycles |
+| 2026-07-11 | Email deliverability is a first-class monitored domain: `email_send_log` single-row state machine (pending→sent/failed/bounced/complained, retried transitions on error paths), `email-health-watcher` 15-min cron (mirrors `email_health_snapshot` RPC logic in Deno for testability), `email_health_state` idempotency row, in-app-only super-admin alerting (no email backstop — email is what's being monitored) | Closes the "sends fail silently" gap; a health-watcher pattern already proven by `cron-health-watcher` |
 
 ---
 
@@ -88,7 +89,14 @@ Edge functions additionally use `SUPABASE_SERVICE_ROLE_KEY` (set in Supabase das
 
 | Date | Change |
 |------|--------|
-| 2026-07-06 | Updated `CLAUDE.md` and `memory.md` — closed a month-long doc gap (two prior sync attempts, #116 and #142, were closed unmerged): fixed `src/data/` domain list, `src/hooks/` list, `components/platform/` and `components/settings/` trees, the `close-offer-tier`/`open-offer-tier` "cron function" ambiguity flagged in #142's review, `src/data/account.ts` key-files row, and the versioning section's stale tag range. Current app version: `1.8.0` |
+| 2026-07-13 | Updated `CLAUDE.md` and `memory.md` — synced doc drift from #154–#159 (untouched since the #153 sync): added `EmailDeliveryPanel` to the `systemHealth/` component list, `OrgSwitcher`/`ThemeToggle` to the `components/layout/` list (the latter dated back to #105, undocumented since), added `email-health-watcher` to the Watchers bullet, and refreshed the untagged-releases range to `1.4.1`–`1.9.1`. Current app version: `1.9.1` |
+| 2026-07-11 | Edge-metrics panel fix: query `function_id` (real schema), not nonexistent `function_name`; resolve ids→slugs via Management API, best-effort degrade to id labels (#159) |
+| 2026-07-11 | Transactional email links now point at the app host, not the marketing site (#158, v1.9.1) |
+| 2026-07-11 | Suppression check fix: query the `suppressed_emails` table's real column, not a nonexistent `id` (#157) |
+| 2026-07-11 | Email delivery monitoring — System Health Phase 2: `EmailDeliveryPanel`, `useEmailHealth`/`fetchEmailHealth`, `email_send_log` state-machine refactor + retention prune/anonymize scrub, `email-health-watcher` alert cron (#156, v1.9.0) |
+| 2026-07-11 | Dark mode with three states (system/light/dark): `ThemeToggle` in the top bar, choice persisted (#155, v1.8.2) |
+| 2026-07-06 | Fixed Airtable poll interval reverting to 5 minutes after other settings saves (#154, v1.8.1) |
+| 2026-07-06 | Updated `CLAUDE.md` and `memory.md` — closed a month-long doc gap (two prior sync attempts, #116 and #142, were closed unmerged): fixed `src/data/` domain list, `src/hooks/` list, `components/platform/` and `components/settings/` trees, the `close-offer-tier`/`open-offer-tier` "cron function" ambiguity flagged in #142's review, `src/data/account.ts` key-files row, and the versioning section's stale tag range. Current app version: `1.8.0` (#153) |
 | 2026-07-05 | Configurable Airtable poll interval + "Sync now" (#152, v1.8.0) — per-org `airtable_poll_interval_minutes`, super-admin platform default |
 | 2026-07-05 | In-app automation system map — Settings → Documentation → System Map canvas (#149–151), mirrors `docs/system-map.md` via `src/data/systemMap.ts` |
 | 2026-07-05 | Narrowed `expire_soft_bookings` + `should_notify` RPC grants to `service_role` (#150) |
