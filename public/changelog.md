@@ -2,7 +2,7 @@
 
 What's new in ShowFlow, newest first.
 
-## 1.9.1 — July 11, 2026
+## 1.8.3 — July 11, 2026
 
 *Fixes*
 
