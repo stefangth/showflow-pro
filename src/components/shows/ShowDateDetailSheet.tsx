@@ -687,6 +687,7 @@ export function ShowDateDetailSheet({ showDateId, open, onOpenChange }: Props) {
                               key={b.id}
                               booking={b}
                               canManage={canManage}
+                              showConfirm={true}
                               onConfirm={(bookingId) => updateBookingStatus.mutate({ bookingId, status: 'confirmed' })}
                               onCancel={(bookingId) => updateBookingStatus.mutate({ bookingId, status: 'cancelled' })}
                             />
@@ -701,6 +702,7 @@ export function ShowDateDetailSheet({ showDateId, open, onOpenChange }: Props) {
                               key={b.id}
                               booking={b}
                               canManage={canManage}
+                              showConfirm={true}
                               onConfirm={(bookingId) => updateBookingStatus.mutate({ bookingId, status: 'confirmed' })}
                               onCancel={(bookingId) => updateBookingStatus.mutate({ bookingId, status: 'cancelled' })}
                             />
