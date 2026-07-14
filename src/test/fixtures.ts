@@ -68,6 +68,7 @@ export function aBooking(overrides: Partial<BookingRow> = {}): BookingRow {
     offer_tier: null,
     offered_at: null,
     offer_expires_at: null,
+    reminder_sent_at: null,
     digest_sent_at: null,
     confirmation_digest_sent_at: null,
     org_id: id("org"),
