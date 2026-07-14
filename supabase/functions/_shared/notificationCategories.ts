@@ -32,6 +32,7 @@ export const IN_APP_TYPE_CATEGORY: Record<string, NotificationCategory> = {
 /** Email `template_name` -> category. Unmapped templates (invites, password reset) always send. */
 export const EMAIL_TEMPLATE_CATEGORY: Record<string, NotificationCategory> = {
   "artist-offer-digest": "booking_offers",
+  "offer-immediate": "booking_offers",
   "artist-confirmation-digest": "booking_confirmations",
   "cast-escalation-requested": "at_risk",
 };

@@ -13,6 +13,7 @@ import { template as newSignupAdminNotification } from './new-signup-admin-notif
 import { template as signupDecision } from './signup-decision.tsx'
 import { template as castEscalationRequested } from './cast-escalation-requested.tsx'
 import { template as artistOfferDigest } from './artist-offer-digest.tsx'
+import { template as offerImmediate } from './offer-immediate.tsx'
 import { template as artistConfirmationDigest } from './artist-confirmation-digest.tsx'
 import { template as orgInvitation } from './org-invitation.tsx'
 import { template as cronHealthAlert } from './cron-health-alert.tsx'
@@ -22,6 +23,7 @@ export const TEMPLATES: Record<string, TemplateEntry> = {
   'signup-decision': signupDecision,
   'cast-escalation-requested': castEscalationRequested,
   'artist-offer-digest': artistOfferDigest,
+  'offer-immediate': offerImmediate,
   'artist-confirmation-digest': artistConfirmationDigest,
   'org-invitation': orgInvitation,
   'cron-health-alert': cronHealthAlert,
