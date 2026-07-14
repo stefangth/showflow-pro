@@ -34,7 +34,7 @@ const OfferImmediate = ({ displayName, referenceLabel, date, city, windowHours, 
   const hours = typeof windowHours === 'number' ? windowHours : 48
   const introText = _intro || `You have been offered ${label} on ${where}. You have ${hours} hours to respond before the offer expires.`
   const ctaLabel = _cta_label || 'Respond to this offer'
-  const footerText = _footer || `— The ${SITE_NAME} team`
+  const footerText = _footer || `The ${SITE_NAME} team`
 
   return (
     <Html lang="en" dir="ltr">
