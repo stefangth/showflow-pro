@@ -197,16 +197,21 @@ export async function updateBookingStatusGuarded(
 }
 
 /**
- * Artist response to a pending (suggested) offer. Accept → soft_booked,
- * Decline → cancelled(artist_declined). Only affects a still-suggested offer, so a
- * withdrawn/expired offer reports 0 rows changed instead of a false "accepted".
+ * Artist response to a pending (suggested) offer. Accept → soft_booked (or, with
+ * `autoConfirm` when the org's booking_flow disables producer confirmation, straight
+ * to confirmed); Decline → cancelled(artist_declined). Only affects a still-suggested
+ * offer, so a withdrawn/expired offer reports 0 rows changed instead of a false
+ * "accepted". The confirmed write is still RLS-gated server-side on the org's own
+ * booking_flow.producer_confirmation setting (artist_self_confirm_policy migration).
  */
 export async function respondToOffer(
   client: SupabaseClient<Database>,
-  args: { bookingId: string; accept: boolean; now: Date },
+  args: { bookingId: string; accept: boolean; now: Date; autoConfirm?: boolean },
 ): Promise<{ affected: number }> {
   const patch: Database["public"]["Tables"]["bookings"]["Update"] = args.accept
-    ? { status: "soft_booked" }
+    ? args.autoConfirm
+      ? { status: "confirmed", confirmed_at: args.now.toISOString() }
+      : { status: "soft_booked" }
     : { status: "cancelled", cancelled_at: args.now.toISOString(), cancellation_reason: "artist_declined" };
 
   const { data, error } = await client
@@ -217,4 +222,33 @@ export async function respondToOffer(
     .select("id");
   if (error) throw error;
   return { affected: (data ?? []).length };
+}
+
+/**
+ * Create a booking directly (producer books an artist from the eligibility list).
+ * Inserts `soft_booked` by default, or `confirmed` + confirmed_at when the org's
+ * booking flow confirms producer bookings directly (`confirmDirectly`).
+ */
+export async function createBooking(
+  client: SupabaseClient<Database>,
+  args: {
+    showDateId: string;
+    artistId: string;
+    isUnderstudy: boolean;
+    bookedBy: string;
+    orgId: string;
+    confirmDirectly: boolean;
+    now: Date;
+  },
+): Promise<void> {
+  const { error } = await client.from("bookings").insert({
+    show_date_id: args.showDateId,
+    artist_id: args.artistId,
+    status: args.confirmDirectly ? "confirmed" : "soft_booked",
+    confirmed_at: args.confirmDirectly ? args.now.toISOString() : null,
+    is_understudy: args.isUnderstudy,
+    booked_by: args.bookedBy,
+    org_id: args.orgId,
+  });
+  if (error) throw error;
 }

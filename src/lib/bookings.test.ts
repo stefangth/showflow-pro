@@ -3,7 +3,7 @@ import {
   deriveBookingGroups, computeInheritedCastIds,
   buildOfferTierOptions, offerResultToast, offerConfirmCopy,
   pendingOfferCount, closeConfirmCopy, closeResultToast,
-  bookingStatusBadgeClass,
+  bookingStatusBadgeClass, shouldAutoOpenTier1,
 } from "./bookings";
 
 type B = { artist_id: string; status: string; is_understudy: boolean };
@@ -189,5 +189,18 @@ describe("bookingStatusBadgeClass", () => {
   it("returns an empty string for an unknown status (badge falls back to its variant)", () => {
     expect(bookingStatusBadgeClass("nonsense")).toBe("");
     expect(bookingStatusBadgeClass("")).toBe("");
+  });
+});
+
+describe("shouldAutoOpenTier1", () => {
+  const flow = { auto_open_tier1: true, artist_acceptance: true };
+  it("true when enabled, session present, tier 1 not yet opened", () => {
+    expect(shouldAutoOpenTier1({ flow, hasSession: true, openedTiers: [] })).toBe(true);
+  });
+  it("false without a session, when disabled, in direct mode, or when tier 1 exists", () => {
+    expect(shouldAutoOpenTier1({ flow, hasSession: false, openedTiers: [] })).toBe(false);
+    expect(shouldAutoOpenTier1({ flow: { ...flow, auto_open_tier1: false }, hasSession: true, openedTiers: [] })).toBe(false);
+    expect(shouldAutoOpenTier1({ flow: { ...flow, artist_acceptance: false }, hasSession: true, openedTiers: [] })).toBe(false);
+    expect(shouldAutoOpenTier1({ flow, hasSession: true, openedTiers: [{ tier: 1 }] })).toBe(false);
   });
 });

@@ -159,6 +159,25 @@ export function closeConfirmCopy(input: { tier: number; pendingCount: number }):
   };
 }
 
+/**
+ * Whether tier 1 should be auto-opened for a date. True only when the org's flow
+ * enables auto-open AND artist acceptance (direct-booking orgs never open offers),
+ * a session is configured (`hasSession`), and tier 1 has not already been opened.
+ * Consumed by the date-ready auto-open path (Task 14).
+ */
+export function shouldAutoOpenTier1(args: {
+  flow: { auto_open_tier1: boolean; artist_acceptance: boolean };
+  hasSession: boolean;
+  openedTiers: { tier: number }[];
+}): boolean {
+  return (
+    args.flow.auto_open_tier1 &&
+    args.flow.artist_acceptance &&
+    args.hasSession &&
+    !args.openedTiers.some((t) => t.tier === 1)
+  );
+}
+
 /** Map a close-offer-tier result to a toast kind + text. */
 export function closeResultToast(
   result: { closed: boolean; withdrawn: number; message?: string },

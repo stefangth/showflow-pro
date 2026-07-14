@@ -22,13 +22,14 @@
 --   eeeeeeee-eeee-0004-…  booking: artist A, suggested   (illegal → confirmed)
 --   eeeeeeee-eeee-0005-…  booking: artist A, confirmed   (USING blocks update)
 --   eeeeeeee-eeee-0006-…  booking: artist A, suggested   (artist B can't update)
+--   eeeeeeee-eeee-0007-…  booking: artist A, suggested   (self-confirm under producer_confirmation=false)
 --   ffffffff-ffff-0001-…  booking_audit_log entry
 
 BEGIN;
 
 CREATE EXTENSION IF NOT EXISTS pgtap WITH SCHEMA extensions;
 
-SELECT plan(12);
+SELECT plan(14);
 
 -- ────────────────────────────────────────────────────────────────────────────
 -- Fixture setup (as postgres superuser)
@@ -72,7 +73,8 @@ INSERT INTO public.show_dates (id, show_id, date, session_1, org_id) VALUES
   ('dddddddd-dddd-0002-0000-000000000000', 'cccccccc-cccc-0001-0000-000000000000', '2099-01-02', '20:00'::time, '00000000-0000-0000-0000-00000000b007'),
   ('dddddddd-dddd-0003-0000-000000000000', 'cccccccc-cccc-0001-0000-000000000000', '2099-01-03', '20:00'::time, '00000000-0000-0000-0000-00000000b007'),
   ('dddddddd-dddd-0004-0000-000000000000', 'cccccccc-cccc-0001-0000-000000000000', '2099-01-04', '20:00'::time, '00000000-0000-0000-0000-00000000b007'),
-  ('dddddddd-dddd-0005-0000-000000000000', 'cccccccc-cccc-0001-0000-000000000000', '2099-01-05', '20:00'::time, '00000000-0000-0000-0000-00000000b007');
+  ('dddddddd-dddd-0005-0000-000000000000', 'cccccccc-cccc-0001-0000-000000000000', '2099-01-05', '20:00'::time, '00000000-0000-0000-0000-00000000b007'),
+  ('dddddddd-dddd-0006-0000-000000000000', 'cccccccc-cccc-0001-0000-000000000000', '2099-01-06', '20:00'::time, '00000000-0000-0000-0000-00000000b007');
 
 INSERT INTO public.bookings (id, show_date_id, artist_id, status, is_understudy, org_id) VALUES
   ('eeeeeeee-eeee-0001-0000-000000000000', 'dddddddd-dddd-0001-0000-000000000000', 'bbbbbbbb-bbbb-0001-0000-000000000000', 'suggested'::booking_status, false, '00000000-0000-0000-0000-00000000b007'),
@@ -80,7 +82,8 @@ INSERT INTO public.bookings (id, show_date_id, artist_id, status, is_understudy,
   ('eeeeeeee-eeee-0003-0000-000000000000', 'dddddddd-dddd-0002-0000-000000000000', 'bbbbbbbb-bbbb-0001-0000-000000000000', 'suggested'::booking_status, false, '00000000-0000-0000-0000-00000000b007'),
   ('eeeeeeee-eeee-0004-0000-000000000000', 'dddddddd-dddd-0003-0000-000000000000', 'bbbbbbbb-bbbb-0001-0000-000000000000', 'suggested'::booking_status, false, '00000000-0000-0000-0000-00000000b007'),
   ('eeeeeeee-eeee-0005-0000-000000000000', 'dddddddd-dddd-0004-0000-000000000000', 'bbbbbbbb-bbbb-0001-0000-000000000000', 'confirmed'::booking_status, false, '00000000-0000-0000-0000-00000000b007'),
-  ('eeeeeeee-eeee-0006-0000-000000000000', 'dddddddd-dddd-0005-0000-000000000000', 'bbbbbbbb-bbbb-0001-0000-000000000000', 'suggested'::booking_status, false, '00000000-0000-0000-0000-00000000b007');
+  ('eeeeeeee-eeee-0006-0000-000000000000', 'dddddddd-dddd-0005-0000-000000000000', 'bbbbbbbb-bbbb-0001-0000-000000000000', 'suggested'::booking_status, false, '00000000-0000-0000-0000-00000000b007'),
+  ('eeeeeeee-eeee-0007-0000-000000000000', 'dddddddd-dddd-0006-0000-000000000000', 'bbbbbbbb-bbbb-0001-0000-000000000000', 'suggested'::booking_status, false, '00000000-0000-0000-0000-00000000b007');
 
 INSERT INTO public.booking_audit_log (id, booking_id, action, old_status, new_status, performed_by, org_id)
 VALUES (
@@ -287,6 +290,38 @@ SELECT is(
    WHERE id = 'eeeeeeee-eeee-0006-0000-000000000000'),
   'suggested',
   'artist A booking unchanged — USING artist_id check blocked artist B'
+);
+
+-- ────────────────────────────────────────────────────────────────────────────
+-- Auto-confirm branch: with the org's booking_flow.producer_confirmation = false,
+-- an artist accepting their own suggested offer confirms it in one step.
+-- Seeded here (as postgres superuser, RLS-bypassing) AFTER test 10 asserted the
+-- default-flow deny, so the org had no booking_flow row until this point.
+-- ────────────────────────────────────────────────────────────────────────────
+
+INSERT INTO public.app_settings (org_id, key, value)
+VALUES ('00000000-0000-0000-0000-00000000b007', 'booking_flow', '{"producer_confirmation":false}'::jsonb);
+
+-- 13. Artist A CAN self-confirm own suggested offer when producer_confirmation is off.
+--     The WITH CHECK's confirmed branch passes because get_org_setting resolves the
+--     org's booking_flow to producer_confirmation=false. enforce_booking_transition
+--     already allows suggested → confirmed.
+SELECT set_config('request.jwt.claims', '{"sub":"aaaaaaaa-aaaa-0003-0000-000000000000","role":"authenticated"}', true);
+SET LOCAL ROLE authenticated;
+
+SELECT lives_ok(
+  $$UPDATE public.bookings SET status = 'confirmed', confirmed_at = now()
+    WHERE id = 'eeeeeeee-eeee-0007-0000-000000000000'$$,
+  'artist A can self-confirm own offer when producer_confirmation is disabled'
+);
+
+RESET ROLE;
+
+SELECT is(
+  (SELECT status::text FROM public.bookings
+   WHERE id = 'eeeeeeee-eeee-0007-0000-000000000000'),
+  'confirmed',
+  'offer auto-confirmed by artist (producer_confirmation=false → suggested → confirmed)'
 );
 
 SELECT * FROM finish();
