@@ -1005,3 +1005,119 @@ Deno.test("expire-offers: no reminder when expiry_reminder is off or already sta
     assertEquals(hasReminderFilter, true);
   }
 });
+
+// ─── Milestone C — Task 12: auto-escalation of short tiers ───────────────────
+//
+// Runs inside the same per-tier scan as the manual escalation path, gated on
+// `flow.auto_escalate` (booking_flow, resolved once per org via a flowByOrg
+// cache). When on and a next `cast_city_priority` tier exists for the date's
+// city, the short tier is closed and the next tier opened automatically —
+// skipping the manual cast-escalation-requested email/notification for that
+// row. No next tier → falls back to the existing manual path unchanged.
+
+Deno.test("expire-offers: auto_escalate closes the short tier and opens the next", async () => {
+  const bookings = [
+    { status: "cancelled", offer_tier: 1, offer_expires_at: null },
+    { status: "suggested", offer_tier: 1, offer_expires_at: "2026-05-01T00:00:00Z" }, // expired
+  ];
+  const { deps, calls, invokeCalls } = makeFakeDeps({
+    tables: {
+      app_settings: [
+        { when: { key: "cron_secret" }, data: { value: CRON_SECRET } },
+        { when: { key: "booking_flow" }, data: [{ org_id: SHOW_DATE.org_id, value: { auto_escalate: true } }] },
+      ],
+      show_date_offer_tiers: { data: [OPEN_TIER], error: null },
+      show_dates: { data: SHOW_DATE, error: null },
+      bookings: { data: bookings, error: null },
+      cast_city_priority: { data: [{ priority: 2 }], error: null },
+      notifications: { data: null, error: null },
+      org_memberships: { data: [{ user_id: "admin-1" }], error: null },
+    },
+    rpcs: {
+      expire_soft_bookings: { data: null, error: null },
+      resolve_show_assignments: { data: [], error: null },
+    },
+    usersById: { "admin-1": { email: "admin@example.com" } },
+    now: FIXED_NOW,
+  });
+  const res = await handle(cronReq(), deps);
+  assertEquals(res.status, 200);
+  const body = await res.json();
+  assertEquals(body.auto_escalated, 1);
+  // The manual path never ran for this row.
+  assertEquals(body.escalations, 0);
+
+  const openCall = invokeCalls.find((c) => c.name === "open-offer-tier");
+  assertExists(openCall);
+  assertEquals(openCall!.body, { show_date_id: "sd-1", tier: 2 });
+
+  const tierUpdate = calls.find((c) => c.table === "show_date_offer_tiers" && c.method === "update");
+  assertExists(tierUpdate);
+  const updateArg = tierUpdate!.args[0] as { closed_at?: string; escalation_notified_at?: string };
+  assertEquals(typeof updateArg.closed_at, "string");
+  assertEquals(typeof updateArg.escalation_notified_at, "string");
+
+  const notifInsert = calls.find((c) => c.table === "notifications" && c.method === "insert");
+  assertExists(notifInsert);
+  const rows = notifInsert!.args[0] as Array<{ type: string; user_id: string; title: string; message: string }>;
+  assertEquals(rows.length, 1);
+  assertEquals(rows[0].type, "tier_escalated");
+  assertEquals(rows[0].user_id, "admin-1");
+  assertEquals(rows[0].title, "Tier escalated automatically");
+  assertEquals(rows[0].message, "Tier 1 closed short · tier 2 opened automatically.");
+
+  // No manual cast-escalation-requested email — the auto path skips it entirely.
+  const escalationEmails = invokeCalls.filter(
+    (c) => c.name === "send-transactional-email" &&
+      (c.body as { template_name?: string }).template_name === "cast-escalation-requested",
+  );
+  assertEquals(escalationEmails.length, 0);
+});
+
+Deno.test("expire-offers: auto_escalate with no next tier falls back to the manual escalation path", async () => {
+  const bookings = [
+    { status: "cancelled", offer_tier: 1, offer_expires_at: null },
+    { status: "suggested", offer_tier: 1, offer_expires_at: "2026-05-01T00:00:00Z" },
+  ];
+  const { deps, calls, invokeCalls } = makeFakeDeps({
+    tables: {
+      app_settings: [
+        { when: { key: "cron_secret" }, data: { value: CRON_SECRET } },
+        { when: { key: "booking_flow" }, data: [{ org_id: SHOW_DATE.org_id, value: { auto_escalate: true } }] },
+      ],
+      show_date_offer_tiers: { data: [OPEN_TIER], error: null },
+      show_dates: { data: SHOW_DATE, error: null },
+      bookings: { data: bookings, error: null },
+      cast_city_priority: { data: [], error: null }, // no next tier configured
+      notifications: { data: null, error: null },
+      org_memberships: { data: [{ user_id: "admin-1" }], error: null },
+    },
+    rpcs: {
+      expire_soft_bookings: { data: null, error: null },
+      resolve_show_assignments: { data: [], error: null },
+    },
+    usersById: { "admin-1": { email: "admin@example.com" } },
+    now: FIXED_NOW,
+  });
+  const res = await handle(cronReq(), deps);
+  assertEquals(res.status, 200);
+  const body = await res.json();
+  assertEquals(body.escalations, 1);
+  assertEquals(body.auto_escalated, 0);
+
+  // Identical to the existing manual-escalation behavior.
+  const notifInsert = calls.find((c) => c.table === "notifications" && c.method === "insert");
+  assertExists(notifInsert);
+  const rows = notifInsert!.args[0] as Array<{ type: string }>;
+  assertEquals(rows.length, 1);
+  assertEquals(rows[0].type, "cast_escalation_requested");
+
+  const tierUpdate = calls.find((c) => c.table === "show_date_offer_tiers" && c.method === "update");
+  assertExists(tierUpdate);
+  const updateArg = tierUpdate!.args[0] as { escalation_notified_at?: string; closed_at?: string };
+  assertEquals(updateArg.escalation_notified_at, FIXED_NOW.toISOString());
+  assertEquals(updateArg.closed_at, undefined);
+
+  const openCall = invokeCalls.find((c) => c.name === "open-offer-tier");
+  assertEquals(openCall, undefined);
+});
