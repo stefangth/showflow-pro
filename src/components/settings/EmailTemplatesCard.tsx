@@ -14,6 +14,8 @@ const EMAIL_TEMPLATE_KEYS = [
   'cast-escalation-requested',
   'artist-offer-digest',
   'artist-confirmation-digest',
+  'offer-immediate',
+  'offer-expiry-reminder',
 ] as const;
 type EmailTemplateKey = typeof EMAIL_TEMPLATE_KEYS[number];
 
@@ -23,6 +25,8 @@ const EMAIL_TEMPLATE_LABELS: Record<EmailTemplateKey, string> = {
   'cast-escalation-requested': 'Cast Escalation Requested',
   'artist-offer-digest': 'Artist Offer Digest',
   'artist-confirmation-digest': 'Artist Confirmation Digest',
+  'offer-immediate': 'Immediate Offer',
+  'offer-expiry-reminder': 'Offer Expiry Reminder',
 };
 
 export function EmailTemplatesCard({ get, set }: { get: (key: string, fallback?: any) => any; set: (key: string, value: any) => void }) {

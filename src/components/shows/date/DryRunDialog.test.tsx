@@ -45,6 +45,25 @@ describe("DryRunDialog", () => {
     expect(screen.getByRole("button", { name: /open tier 1/i })).toBeDisabled();
   });
 
+  // Regression: a dry run with zero eligible candidates but no `message` (e.g. every
+  // eligible artist is already booked, blocked, or inactive, so the tier itself is valid
+  // but nobody would get an offer) left confirm enabled: the button read "send 0 offers"
+  // yet a producer could still click it. hasMessage-only gating missed this plain-zero case.
+  it("disables confirm when there are zero candidates, even without a message", () => {
+    renderWithProviders(
+      <DryRunDialog
+        open
+        onOpenChange={() => {}}
+        tier={1}
+        result={{ candidates: [], excluded: { alreadyBooked: 3, blocked: 0, inactive: 0 } }}
+        loading={false}
+        flow={{ offer_delivery: "digest" }}
+        onConfirm={vi.fn()}
+      />,
+    );
+    expect(screen.getByRole("button", { name: /open tier 1 · send 0 offers/i })).toBeDisabled();
+  });
+
   it("shows a loading state while the dry run is in flight", () => {
     renderWithProviders(
       <DryRunDialog

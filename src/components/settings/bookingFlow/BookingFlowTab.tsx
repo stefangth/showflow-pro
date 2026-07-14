@@ -1,3 +1,4 @@
+import { useRef } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/features/auth/AuthContext";
@@ -82,9 +83,29 @@ export function BookingFlowTab({ get, set, dirtyKeys, saving, onSave, onDiscard 
     customFieldKey,
   })} · Apr 30, Berlin`;
 
+  // Remembers the last user-chosen producer_confirmation while artist_acceptance is on.
+  // normalizeBookingFlow forces producer_confirmation on whenever artist_acceptance is off
+  // (security-relevant invariant: a direct booking IS the confirmation, so the field can't
+  // read "not yet confirmed" in that mode); that invariant must stay in normalizeBookingFlow.
+  // But the forced value shouldn't permanently clobber a fast-track org's choice: turning
+  // acceptance back on restores what the user had set before it was forced.
+  const lastProducerConfirmationRef = useRef(flow.producer_confirmation);
+
   // FlowTimeline emits single-field patches and relies on this handler normalizing
   // the merged flow (e.g. artist_acceptance off forces producer_confirmation on).
-  const onFlowChange = (patch: Partial<BookingFlow>) => set("booking_flow", normalizeBookingFlow({ ...flow, ...patch }));
+  const onFlowChange = (patch: Partial<BookingFlow>) => {
+    // Track the user's producer_confirmation choice while it's a real, editable choice
+    // (artist_acceptance on), i.e. before a subsequent "turn acceptance off" forces it on.
+    if (flow.artist_acceptance) {
+      lastProducerConfirmationRef.current =
+        patch.producer_confirmation !== undefined ? patch.producer_confirmation : flow.producer_confirmation;
+    }
+    let merged: Partial<BookingFlow> = { ...flow, ...patch };
+    if (patch.artist_acceptance === true && !flow.artist_acceptance) {
+      merged = { ...merged, producer_confirmation: lastProducerConfirmationRef.current };
+    }
+    set("booking_flow", normalizeBookingFlow(merged));
+  };
   const onTimesChange = (patch: Partial<FlowTimes>) => {
     if (patch.windowHours !== undefined) set("offer_response_window_hours", patch.windowHours);
     if (patch.offerDigestHour !== undefined) set("offer_digest_hour_berlin", patch.offerDigestHour);
@@ -112,6 +133,8 @@ export function BookingFlowTab({ get, set, dirtyKeys, saving, onSave, onDiscard 
           onSave={onSave}
           onDiscard={onDiscard}
           audit={audit.data ?? []}
+          isLoading={audit.isLoading}
+          isError={audit.isError}
         />
       </div>
       <div className="max-w-sm space-y-2">

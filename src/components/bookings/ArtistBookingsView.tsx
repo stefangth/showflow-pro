@@ -34,6 +34,12 @@ function isCancelledEntry(d: DateRow): d is CancelledDateEntry {
   return d.status === 'cancelled';
 }
 
+/** CancelledDateEntry's query never selects `custom` (it isn't reference-field aware),
+ *  so only pass it through for eligible-date rows. */
+function customFor(d: DateRow): Record<string, unknown> | null {
+  return 'custom' in d ? d.custom : null;
+}
+
 const STATUS_LABEL: Record<string, string> = {
   confirmed: 'Confirmed',
   soft_booked: 'Soft booked',
@@ -169,7 +175,7 @@ export function ArtistBookingsView() {
                       case 'shows.program': return (
                         <TableCell key={colId}>
                           {d.show
-                            ? referenceLabel({ reference, show: d.show, custom: null, customFieldKey })
+                            ? referenceLabel({ reference, show: d.show, custom: customFor(d), customFieldKey })
                             : <span className="text-muted-foreground">—</span>}
                         </TableCell>
                       );
@@ -250,7 +256,7 @@ export function ArtistBookingsView() {
                   <div className="min-w-0">
                     <p className="font-medium truncate">
                       {d.show
-                        ? referenceLabel({ reference, show: d.show, custom: null, customFieldKey })
+                        ? referenceLabel({ reference, show: d.show, custom: customFor(d), customFieldKey })
                         : '—'}
                     </p>
                     <p className="text-xs text-muted-foreground truncate">

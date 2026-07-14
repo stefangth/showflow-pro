@@ -49,4 +49,25 @@ describe("BookingFlowTab", () => {
     expect(within(lifecycle).getByText("Suggested")).toBeInTheDocument();
     expect(within(lifecycle).getByText("Soft booked")).toBeInTheDocument();
   });
+
+  // Regression: normalizeBookingFlow forces producer_confirmation on whenever
+  // artist_acceptance is off (security-relevant invariant: direct bookings ARE the
+  // confirmation, so the field can't mean "not yet confirmed"). But that invariant must
+  // not permanently clobber a user's earlier choice to run fast-track (confirmation off):
+  // turning acceptance back on should restore what the user had set before it was forced on.
+  it("restores the user's producer_confirmation choice after an acceptance off/on round trip", () => {
+    renderWithProviders(<Harness />);
+    // Fast-track: artist_acceptance stays on, producer_confirmation goes off.
+    fireEvent.click(screen.getByRole("button", { name: /fast-track/i }));
+    const acceptance = screen.getByRole("switch", { name: /^artist acceptance$/i });
+    const confirmation = screen.getByRole("switch", { name: /^producer confirmation$/i });
+    expect(confirmation).toHaveAttribute("aria-checked", "false");
+
+    // Toggle acceptance off then back on.
+    fireEvent.click(acceptance);
+    expect(screen.getByRole("switch", { name: /^producer confirmation$/i })).toHaveAttribute("aria-checked", "true");
+    fireEvent.click(screen.getByRole("switch", { name: /^artist acceptance$/i }));
+
+    expect(screen.getByRole("switch", { name: /^producer confirmation$/i })).toHaveAttribute("aria-checked", "false");
+  });
 });

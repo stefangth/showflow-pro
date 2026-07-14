@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -56,6 +57,7 @@ export function ShowDateFormDialog({
   defaultShowId?: string | null;
 }) {
   const { currentOrg } = useAuth();
+  const queryClient = useQueryClient();
   const { data: shows } = useShows();
   const { data: cities } = useCities();
   const { data: flow } = useBookingFlow();
@@ -132,6 +134,10 @@ export function ShowDateFormDialog({
             const openedTiers = await fetchOpenedTiers(supabase, showDate.id);
             if (shouldAutoOpenTier1({ flow, hasSession, openedTiers })) {
               const res = await openOfferTier(supabase, { showDateId: showDate.id, tier: 1 });
+              // Match the sheet's own open-tier mutation: bust the bookings prefix (new
+              // suggested bookings) and this date's opened-tiers cache.
+              queryClient.invalidateQueries({ queryKey: ["bookings"] });
+              queryClient.invalidateQueries({ queryKey: ["offer-tiers", "opened", showDate.id] });
               if (res.offersCreated > 0) toast.success(`Tier 1 opened automatically · ${res.offersCreated} offers sent`);
             }
           } catch (e) {
