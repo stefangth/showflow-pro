@@ -1204,6 +1204,8 @@ git commit -m "gate understudy promotion on booking flow policy"
 ### Task 7: Client data functions honor the flow (respondToOffer, createBooking, useBookingFlow)
 
 **Files:**
+- Create: `supabase/migrations/$(date -u +%Y%m%d%H%M%S)_artist_self_confirm_policy.sql` (Step 0)
+- Modify: `supabase/tests/rls/bookings_and_audit.sql` (Step 0)
 - Modify: `src/data/bookings.ts` (respondToOffer at :204; add createBooking)
 - Modify: `src/data/settings.ts` (add fetchBookingFlow)
 - Create: `src/hooks/useBookingFlow.ts`
@@ -1220,7 +1222,44 @@ git commit -m "gate understudy promotion on booking flow policy"
   - `useBookingFlow(): UseQueryResult<BookingFlow>` — thin hook, `queryKey: ["app-settings", "booking-flow", orgId]`.
   - `shouldAutoOpenTier1(args: { flow: Pick<BookingFlow, "auto_open_tier1" | "artist_acceptance">; hasSession: boolean; openedTiers: { tier: number }[] }): boolean` in `src/lib/bookings.ts`.
 
-- [ ] **Step 1: Write the failing tests**
+- [ ] **Step 0: Migration: widen the artist offer-response RLS policy for auto-confirm (added after Task 5 surfaced the gap)**
+
+The current policy (`supabase/migrations/20260514230000_artist_offer_response_policy.sql`) WITH CHECKs `status IN ('soft_booked', 'cancelled')`, so an artist's client-side `suggested → confirmed` write (this task's autoConfirm path) would be RLS-denied even though the transition guard now allows it. Create a NEW migration `$(date -u +%Y%m%d%H%M%S)_artist_self_confirm_policy.sql`:
+
+```sql
+-- Auto-confirm acceptance: when the org's booking_flow disables producer
+-- confirmation, an artist accepting an offer confirms it in one step.
+-- The confirmed branch is gated server-side on the org's own setting via
+-- get_org_setting (SECURITY DEFINER, STABLE), so artists in orgs with
+-- producer review enabled still cannot self-confirm.
+DROP POLICY IF EXISTS "Artists can respond to own offers" ON public.bookings;
+CREATE POLICY "Artists can respond to own offers"
+ON public.bookings FOR UPDATE
+TO authenticated
+USING (
+  artist_id IN (
+    SELECT id FROM public.artists WHERE user_id = auth.uid()
+  )
+  AND status = 'suggested'
+)
+WITH CHECK (
+  artist_id IN (
+    SELECT id FROM public.artists WHERE user_id = auth.uid()
+  )
+  AND (
+    status IN ('soft_booked', 'cancelled')
+    OR (
+      status = 'confirmed'
+      AND COALESCE(
+        (public.get_org_setting(org_id, 'booking_flow')->>'producer_confirmation')::boolean,
+        true
+      ) = false
+    )
+  )
+);
+```
+
+Extend `supabase/tests/rls/bookings_and_audit.sql`: after the existing artist self-confirm-denied assertion (which stays valid because the seeded org has no `booking_flow` row), append one scenario seeding `app_settings (org_id, key, value) VALUES ('<the file's org id>','booking_flow','{"producer_confirmation":false}'::jsonb)` (service-level, before impersonation, following the file's seed style) and assert the artist's `UPDATE ... SET status='confirmed', confirmed_at=now()` on their own suggested booking `lives_ok` and results in status `confirmed`. Bump `plan(N)` accordingly. Commit this migration + test together with the rest of Task 7.
 
 Append to `src/data/bookings.test.ts` (follow the file's existing `createFakeSupabase` conventions):
 
