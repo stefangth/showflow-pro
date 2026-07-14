@@ -22,7 +22,7 @@ export interface TierTimelineProps {
   cityId: string | null;
   /** Human date label (e.g. "Mon 14 Jul 2026") for the open-tier confirm copy. */
   dateLabel: string;
-  flow: Pick<BookingFlow, "artist_acceptance">;
+  flow: Pick<BookingFlow, "artist_acceptance" | "offer_delivery">;
   bookings: Array<{ status: string; offer_tier: number | null }>;
   canManage: boolean;
   /** Whether the date has any session time configured — gates the Open button. */
@@ -81,7 +81,7 @@ export function TierTimeline({
       : tierOptions[0]?.value ?? null;
   const alreadyOpened = openedTiers.some((o) => o.tier === effectiveTier);
   const confirmCopy = effectiveTier != null
-    ? offerConfirmCopy({ tier: effectiveTier, dateLabel, alreadyOpened })
+    ? offerConfirmCopy({ tier: effectiveTier, dateLabel, alreadyOpened, offerDelivery: flow.offer_delivery })
     : null;
   const closeCopy = closeTarget !== null
     ? closeConfirmCopy({ tier: closeTarget, pendingCount: pendingOfferCount(bookings, closeTarget) })
@@ -170,7 +170,7 @@ export function TierTimeline({
                     </AlertDialogHeader>
                     <AlertDialogFooter>
                       <AlertDialogCancel>Cancel</AlertDialogCancel>
-                      <AlertDialogAction onClick={() => onOpenTier(effectiveTier)}>
+                      <AlertDialogAction disabled={openPending} onClick={() => onOpenTier(effectiveTier)}>
                         Open offers
                       </AlertDialogAction>
                     </AlertDialogFooter>

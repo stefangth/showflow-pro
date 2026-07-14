@@ -30,10 +30,11 @@ export async function fetchSettingsAudit(
   const actorIds = [...new Set(rows.map((r) => r.actor).filter(Boolean))] as string[];
   const names = new Map<string, string | null>();
   if (actorIds.length) {
-    const { data: profiles } = await client
+    const { data: profiles, error: profilesError } = await client
       .from("profiles")
       .select("user_id, display_name")
       .in("user_id", actorIds);
+    if (profilesError) throw profilesError;
     for (const p of (profiles ?? []) as { user_id: string; display_name: string | null }[]) {
       names.set(p.user_id, p.display_name);
     }

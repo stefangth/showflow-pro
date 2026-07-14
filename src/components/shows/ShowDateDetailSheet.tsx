@@ -615,6 +615,7 @@ export function ShowDateDetailSheet({ showDateId, open, onOpenChange }: Props) {
                           result={dryRunQ.data ?? null}
                           loading={dryRunQ.isLoading}
                           flow={flow}
+                          confirmPending={openOffers.isPending}
                           onConfirm={() => {
                             if (dryRun) openOffers.mutate(dryRun.tier);
                             setDryRun(null);
