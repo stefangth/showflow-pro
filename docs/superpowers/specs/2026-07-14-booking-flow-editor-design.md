@@ -109,6 +109,7 @@ Policy is read at action time via `resolveOrgSetting(admin, orgId, 'booking_flow
 |---|---|
 | `open-offer-tier` | Refuses with 409 in direct mode. Gains `dry_run: true` input: runs the full eligibility pipeline and returns `{ candidates, excluded }` without writing. When `offer_delivery = "immediate"`: after creating suggested bookings, sends the offer email per artist immediately and stamps `offer_expires_at = now + window` at open time. |
 | `send-offer-digest` | Skips orgs where `offer_delivery = "immediate"` or `artist_acceptance = false`. Digest content uses `referenceLabel`. |
+| `send-confirmation-digest` | Skips orgs where `confirmation_digest = false`. Runs unchanged in direct mode (it is the artist's only notification there). Content uses `referenceLabel`. |
 | `expire-offers` | Two additions per org: (a) when `expiry_reminder` is on, finds suggested bookings with `offer_expires_at` within 24 h and `reminder_sent_at IS NULL`, sends the reminder email + in-app notification (respecting notification preferences), stamps `reminder_sent_at`; (b) when `auto_escalate` is on and expiry left a date short, closes the short tier and invokes `open-offer-tier` for the next available tier. |
 | `tier-at-risk-watcher` | Skips orgs where `at_risk_alerts = false` (also naturally quiet in direct mode since no tiers open). |
 | `respondToOffer` (client data fn) | Accept transitions `suggested → soft_booked`, or `suggested → confirmed` when `producer_confirmation = false` (sets `confirmed_at`). Decline unchanged. |
