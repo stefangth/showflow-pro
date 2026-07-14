@@ -6,7 +6,7 @@
 -- non-status updates through. It is SECURITY DEFINER; we exercise it as superuser
 -- via plain UPDATE statements.
 --
--- Legal set: suggested→{soft_booked,cancelled}; soft_booked→{confirmed,cancelled};
+-- Legal set: suggested→{soft_booked,confirmed,cancelled}; soft_booked→{confirmed,cancelled};
 -- confirmed→cancelled; nothing may leave cancelled. Understudy promotion (a
 -- SECURITY DEFINER path) does only soft_booked→confirmed, which is already in the
 -- legal set, so it passes the guard directly — no GUC bypass needed.
@@ -26,7 +26,7 @@ BEGIN;
 
 CREATE EXTENSION IF NOT EXISTS pgtap WITH SCHEMA extensions;
 
-SELECT plan(13);
+SELECT plan(14);
 
 -- ────────────────────────────────────────────────────────────────────────────
 -- Fixtures
@@ -75,7 +75,7 @@ INSERT INTO public.bookings (id, show_date_id, artist_id, status, is_understudy,
   ('eeeeeeee-eb00-0004-0000-000000000000', 'dddddddd-eb00-0004-0000-000000000000', 'bbbbbbbb-eb00-0001-0000-000000000000', 'soft_booked', false, '00000000-0000-0000-0000-00000000b007'), -- legal: soft_booked→cancelled
   ('eeeeeeee-eb00-0005-0000-000000000000', 'dddddddd-eb00-0005-0000-000000000000', 'bbbbbbbb-eb00-0001-0000-000000000000', 'confirmed',   false, '00000000-0000-0000-0000-00000000b007'), -- legal: confirmed→cancelled
   ('eeeeeeee-eb00-0006-0000-000000000000', 'dddddddd-eb00-0006-0000-000000000000', 'bbbbbbbb-eb00-0001-0000-000000000000', 'cancelled',   false, '00000000-0000-0000-0000-00000000b007'), -- illegal: cancelled→confirmed (resurrection)
-  ('eeeeeeee-eb00-0007-0000-000000000000', 'dddddddd-eb00-0007-0000-000000000000', 'bbbbbbbb-eb00-0001-0000-000000000000', 'suggested',   false, '00000000-0000-0000-0000-00000000b007'), -- illegal: suggested→confirmed (skip a step)
+  ('eeeeeeee-eb00-0007-0000-000000000000', 'dddddddd-eb00-0007-0000-000000000000', 'bbbbbbbb-eb00-0001-0000-000000000000', 'suggested',   false, '00000000-0000-0000-0000-00000000b007'), -- legal: suggested→confirmed (auto-confirm), then confirmed→soft_booked blocked
   ('eeeeeeee-eb00-0008-0000-000000000000', 'dddddddd-eb00-0008-0000-000000000000', 'bbbbbbbb-eb00-0001-0000-000000000000', 'confirmed',   false, '00000000-0000-0000-0000-00000000b007'); -- illegal: confirmed→soft_booked + non-status/same-status passes
 
 SET session_replication_role = DEFAULT;
@@ -129,10 +129,9 @@ SELECT throws_ok(
   'test 8: cancelled → suggested is rejected'
 );
 
-SELECT throws_ok(
-  $$UPDATE public.bookings SET status = 'confirmed' WHERE id = 'eeeeeeee-eb00-0007-0000-000000000000'$$,
-  null, null,
-  'test 9: suggested → confirmed (skips soft_booked) is rejected'
+SELECT lives_ok(
+  $$UPDATE public.bookings SET status = 'confirmed', confirmed_at = now() WHERE id = 'eeeeeeee-eb00-0007-0000-000000000000'$$,
+  'test 9: suggested → confirmed is allowed (auto-confirm acceptance under booking_flow)'
 );
 
 SELECT throws_ok(
@@ -168,6 +167,17 @@ SELECT is(
   (SELECT status::text FROM public.bookings WHERE id = 'eeeeeeee-eb00-0010-0000-000000000000'),
   'confirmed',
   'test 13: understudy promotion (soft_booked → confirmed) still works through the guard'
+);
+
+-- ────────────────────────────────────────────────────────────────────────────
+-- suggested → confirmed is now legal, but the reverse is not: the booking that
+-- auto-confirmed in test 9 (id …0007, now confirmed) cannot walk back to
+-- soft_booked — confirmed → soft_booked stays outside the legal set.
+-- ────────────────────────────────────────────────────────────────────────────
+SELECT throws_ok(
+  $$UPDATE public.bookings SET status = 'soft_booked' WHERE id = 'eeeeeeee-eb00-0007-0000-000000000000'$$,
+  '23514', null,
+  'test 14: confirmed → soft_booked (after auto-confirm) is still rejected'
 );
 
 SELECT * FROM finish();
