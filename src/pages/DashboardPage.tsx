@@ -16,6 +16,7 @@ import { showSlots } from '@/lib/settings';
 import { formatDateDMY } from '@/lib/dates';
 import { showLabel } from '@/types';
 import { bulkConfirmSoftBooked, bulkDeclineSoftBooked } from '@/data/bookings';
+import { useBookingFlow } from '@/hooks/useBookingFlow';
 
 const fadeUp = {
   initial: { opacity: 0, y: 20 },
@@ -48,6 +49,7 @@ function ProducerDashboard() {
   const in30 = format(addDays(today, 30), 'yyyy-MM-dd');
 
   const qc = useQueryClient();
+  const { data: flow } = useBookingFlow();
   const [selected, setSelected] = useState<Set<string>>(new Set());
 
   const { data: upcomingDates } = useQuery({
@@ -198,7 +200,7 @@ function ProducerDashboard() {
       </div>
 
       {/* Ready to confirm */}
-      {(softBookedRows?.length ?? 0) > 0 && (
+      {(flow?.producer_confirmation ?? true) && (softBookedRows?.length ?? 0) > 0 && (
         <Card>
           <CardHeader>
             <div className="flex items-center justify-between flex-wrap gap-3">

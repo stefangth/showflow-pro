@@ -15,7 +15,9 @@ import { ShowDateDetailSheet } from '@/components/shows/ShowDateDetailSheet';
 import { useArtistEligibleDates, type EligibleDate } from '@/hooks/useArtistEligibleDates';
 import { fetchMyCancelledDateBookings, mergeArtistCancelledDates, type CancelledDateEntry } from '@/data/artists';
 import { useMyArtist } from '@/hooks/useMyArtist';
+import { useReferenceField } from '@/hooks/useBookingFlow';
 import { bookingStatusBadgeClass } from '@/lib/bookings';
+import { referenceLabel } from '@/lib/bookingFlow';
 import { formatDateDMY, parseDateOnly } from '@/lib/dates';
 import { showLabel } from '@/types';
 import { useColumnTemplate, useEditorConfig } from '@/features/editor/EditorContext';
@@ -46,6 +48,7 @@ const STATUS_LABEL: Record<string, string> = {
 export function ArtistBookingsView() {
   const { data: artist } = useMyArtist();
   const { data: eligibleDates, isLoading } = useArtistEligibleDates();
+  const { reference, customFieldKey } = useReferenceField();
   const { orderedColumns, visibleCount } = useColumnTemplate('bookings-artist');
   const { isEditorMode } = useEditorConfig();
   const columnHeaders = useColumnHeaders(orderedColumns);
@@ -165,7 +168,9 @@ export function ArtistBookingsView() {
                       );
                       case 'shows.program': return (
                         <TableCell key={colId}>
-                          {d.show ? showLabel(d.show) : <span className="text-muted-foreground">—</span>}
+                          {d.show
+                            ? referenceLabel({ reference, show: d.show, custom: null, customFieldKey })
+                            : <span className="text-muted-foreground">—</span>}
                         </TableCell>
                       );
                       case 'shows.sub_program': return (
@@ -243,7 +248,11 @@ export function ArtistBookingsView() {
               >
                 <CardContent className="py-3 flex items-center justify-between gap-3">
                   <div className="min-w-0">
-                    <p className="font-medium truncate">{d.show ? showLabel(d.show) : '—'}</p>
+                    <p className="font-medium truncate">
+                      {d.show
+                        ? referenceLabel({ reference, show: d.show, custom: null, customFieldKey })
+                        : '—'}
+                    </p>
                     <p className="text-xs text-muted-foreground truncate">
                       {d.venue ?? ''}
                       {d.session_1 ? ` • ${d.session_1.slice(0, 5)}` : ''}
