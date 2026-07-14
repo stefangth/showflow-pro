@@ -799,3 +799,60 @@ Deno.test("send-confirmation-digest: unregistered artist (no user_id) → bookin
   assertExists(email);
   assertEquals((email!.body as { recipient_email: string }).recipient_email, "booking@x.com");
 });
+
+// =============================================================================
+// Milestone C — Task 10: digest sender honors the booking flow
+//
+// resolveBookingFlow reads app_settings.key='booking_flow' via resolveOrgSetting —
+// on top of the confirmation_digest_hour_berlin read the handler already makes.
+// Seeds disambiguate by the recorded .eq("key", ...) arg, layered on APP_SETTINGS_SEED.
+// Direct-mode orgs (artist_acceptance:false) do NOT get gated here — this digest is
+// their only notification, so only confirmation_digest:false skips it.
+// =============================================================================
+
+Deno.test("send-confirmation-digest: confirmation_digest disabled org is skipped", async () => {
+  const settings = [
+    ...APP_SETTINGS_SEED,
+    { when: { key: "booking_flow" }, data: [{ org_id: ORG_1, value: { confirmation_digest: false } }] },
+  ];
+  const { deps, invokeCalls } = baseDeps({ app_settings: settings, bookings: { data: ONE_CONFIRMED, error: null } });
+  const res = await handle(makeRequest({ headers: cronOK }), deps);
+  const body = await res.json();
+  assertEquals(res.status, 200);
+  assertEquals(invokeCalls.some((c) => c.name === "send-transactional-email"), false);
+  assertEquals(body.digests_sent, 0);
+});
+
+Deno.test("send-confirmation-digest: templateData confirmed items carry the custom-field label when the flow selects a custom reference", async () => {
+  const confirmed = [{
+    id: "b1", artist_id: "a1",
+    artists: { id: "a1", name: "Jo", email: "jo@x.com" },
+    show_dates: {
+      date: "2026-06-10",
+      shows: { program: "Phantom", sub_program: "Evening" },
+      cities: { name: "Berlin" },
+      custom: { pn: "PN-9001" },
+    },
+  }];
+  const settings = [
+    ...APP_SETTINGS_SEED,
+    {
+      when: { key: "booking_flow" },
+      data: [{ org_id: ORG_1, value: { reference_field: { source: "custom", custom_field_id: "cf1" } } }],
+    },
+  ];
+  const { deps, invokeCalls } = baseDeps({
+    app_settings: settings,
+    bookings: { data: confirmed, error: null },
+    custom_field_definitions: { data: { key: "pn" }, error: null },
+  });
+  const res = await handle(makeRequest({ headers: cronOK }), deps);
+  assertEquals((await res.json()).digests_sent, 1);
+  const email = invokeCalls.find((c) => c.name === "send-transactional-email");
+  assertExists(email);
+  const msg = email!.body as { templateData?: { bookings?: Array<{ label?: string; show?: string }> } };
+  assertEquals(msg.templateData?.bookings?.[0]?.label, "PN-9001");
+  // The old raw program/sub_program string is still computed alongside the label
+  // (the template's fallback for previewData that doesn't carry a label).
+  assertEquals(msg.templateData?.bookings?.[0]?.show, "Phantom — Evening");
+});
