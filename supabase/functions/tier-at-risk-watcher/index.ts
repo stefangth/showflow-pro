@@ -2,6 +2,7 @@ import { preflight, json } from "../_shared/http.ts";
 import { requireCronOrRole } from "../_shared/auth.ts";
 import { realDeps, type Deps } from "../_shared/deps.ts";
 import { countAccepted, countPendingNotExpired, isFutureOrToday, requiredPrimarySlots } from "../_shared/tierFill.ts";
+import { resolveBookingFlow, type BookingFlow } from "../_shared/bookingFlow.ts";
 
 /**
  * Scans all open offer tiers and emits a `tier_at_risk` notification when a
@@ -16,6 +17,12 @@ import { countAccepted, countPendingNotExpired, isFutureOrToday, requiredPrimary
  *
  * Visual-only (in-app); no email. Idempotent: one notification per (date, tier)
  * — clears when math recovers (by deleting the old row before re-evaluating).
+ *
+ * Gated per (show_date's) org on `booking_flow.at_risk_alerts` and `.artist_acceptance`
+ * (direct-booking orgs have no offer tiers to be "at risk"). A gated tier is skipped
+ * before it's counted at-risk, so it's also never exempted from the recovery pass below
+ * — an org that turns at_risk_alerts off has its stale tier_at_risk notifications
+ * cleared on the very next run, same as any tier that recovers.
  *
  * Auth: X-Cron-Secret header (pg_cron) or user JWT (admin/producer manual trigger).
  */
@@ -59,6 +66,9 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
 
   const stillAtRiskTierIds = new Set<string>()
   let atRiskCount = 0
+  // Cache resolveBookingFlow per org — multiple open tiers in a single scan can belong
+  // to the same org, and the flow doesn't change mid-scan (mirrors expire-offers).
+  const flowByOrg = new Map<string, BookingFlow>()
 
   for (const row of openTiers as Array<{ id: string; show_date_id: string; tier: number }>) {
     // Resolve show date + show meta (including slot capacity columns)
@@ -68,6 +78,18 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
       .eq('id', row.show_date_id)
       .maybeSingle()
     if (!sd) continue
+
+    // Gate on the org's booking flow: an org with at-risk alerts turned off, or in
+    // direct-booking mode (no artist_acceptance → no offer tiers to be "at risk"), gets
+    // no alerts for this tier. `continue` here (rather than an early return) means the
+    // tier is simply never added to `stillAtRiskTierIds` below — the existing recovery
+    // pass at the end of handle() then deletes any pre-existing tier_at_risk notification
+    // for it exactly as it would for any other skipped tier, so disabling alerts clears
+    // stale notifications automatically with no extra code.
+    const orgId = (sd as any).org_id as string
+    const flow = flowByOrg.get(orgId) ?? (await resolveBookingFlow(admin, orgId))
+    flowByOrg.set(orgId, flow)
+    if (!flow.at_risk_alerts || !flow.artist_acceptance) continue
 
     const program = (sd as any).show?.program
     const subProgram = (sd as any).show?.sub_program
