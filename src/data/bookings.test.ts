@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { createFakeSupabase } from "@/test/supabaseFake";
-import { openOfferTier, fetchOfferTiers, fetchOpenedTiers, closeOfferTier, fetchPendingConfirmationsCount, fetchMyOpenOffersCount, bulkConfirmSoftBooked, bulkDeclineSoftBooked, updateBookingStatusGuarded, respondToOffer } from "./bookings";
+import { openOfferTier, fetchOfferTiers, fetchOpenedTiers, closeOfferTier, fetchPendingConfirmationsCount, fetchMyOpenOffersCount, bulkConfirmSoftBooked, bulkDeclineSoftBooked, updateBookingStatusGuarded, respondToOffer, createBooking } from "./bookings";
 
 describe("openOfferTier", () => {
   it("sends snake_case body and returns offersCreated", async () => {
@@ -224,5 +224,43 @@ describe("respondToOffer", () => {
   it("reports 0 affected when the offer was withdrawn/expired (no longer suggested)", async () => {
     const fake = createFakeSupabase({ bookings: { data: [], error: null } });
     expect(await respondToOffer(fake as never, { bookingId: "b1", accept: true, now: NOW })).toEqual({ affected: 0 });
+  });
+});
+
+describe("respondToOffer autoConfirm", () => {
+  it("accept with autoConfirm writes confirmed + confirmed_at, still guarded on suggested", async () => {
+    const fake = createFakeSupabase({ bookings: { data: [{ id: "b1" }], error: null } });
+    const now = new Date("2026-07-14T10:00:00Z");
+    const res = await respondToOffer(fake as never, { bookingId: "b1", accept: true, now, autoConfirm: true });
+    expect(res).toEqual({ affected: 1 });
+    const update = fake.calls.find((c) => c.table === "bookings" && c.method === "update");
+    expect(update?.args[0]).toMatchObject({ status: "confirmed", confirmed_at: now.toISOString() });
+    expect(fake.calls).toContainEqual({ table: "bookings", method: "eq", args: ["status", "suggested"] });
+  });
+  it("accept without autoConfirm keeps writing soft_booked", async () => {
+    const fake = createFakeSupabase({ bookings: { data: [{ id: "b1" }], error: null } });
+    await respondToOffer(fake as never, { bookingId: "b1", accept: true, now: new Date() });
+    const update = fake.calls.find((c) => c.table === "bookings" && c.method === "update");
+    expect(update?.args[0]).toMatchObject({ status: "soft_booked" });
+  });
+});
+
+describe("createBooking", () => {
+  const args = { showDateId: "d1", artistId: "a1", isUnderstudy: false, bookedBy: "u1", orgId: "org-1" };
+  it("inserts soft_booked by default", async () => {
+    const fake = createFakeSupabase({ bookings: { data: null, error: null } });
+    await createBooking(fake as never, { ...args, confirmDirectly: false, now: new Date() });
+    const insert = fake.calls.find((c) => c.table === "bookings" && c.method === "insert");
+    expect(insert?.args[0]).toMatchObject({
+      show_date_id: "d1", artist_id: "a1", status: "soft_booked", is_understudy: false,
+      booked_by: "u1", org_id: "org-1",
+    });
+  });
+  it("inserts confirmed with confirmed_at in direct mode", async () => {
+    const fake = createFakeSupabase({ bookings: { data: null, error: null } });
+    const now = new Date("2026-07-14T10:00:00Z");
+    await createBooking(fake as never, { ...args, confirmDirectly: true, now });
+    const insert = fake.calls.find((c) => c.table === "bookings" && c.method === "insert");
+    expect(insert?.args[0]).toMatchObject({ status: "confirmed", confirmed_at: now.toISOString() });
   });
 });
