@@ -251,6 +251,17 @@ describe("describeAuditEntry", () => {
       describeAuditEntry({ key: "offer_response_window_hours", old_value: 72, new_value: 48 }),
     ).toBe("Response window: 72 → 48");
   });
+  it("shows a diff when only the custom reference field id changes", () => {
+    // Switching from one custom field to another is a real, user-visible change;
+    // rendering both sides as a bare "custom field" hid it as "No effective change".
+    const text = describeAuditEntry({
+      key: "booking_flow",
+      old_value: { ...BOOKING_FLOW_DEFAULTS, reference_field: { source: "custom", custom_field_id: "11111111-aaaa-bbbb-cccc-000000000001" } },
+      new_value: { ...BOOKING_FLOW_DEFAULTS, reference_field: { source: "custom", custom_field_id: "22222222-aaaa-bbbb-cccc-000000000002" } },
+    });
+    expect(text).not.toBe("No effective change");
+    expect(text).toContain("Reference field:");
+  });
   it("reports no effective change for identical values", () => {
     expect(
       describeAuditEntry({ key: "booking_flow", old_value: BOOKING_FLOW_DEFAULTS, new_value: BOOKING_FLOW_DEFAULTS }),

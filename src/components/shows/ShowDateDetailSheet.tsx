@@ -24,7 +24,7 @@ import { useBookingFlow, useReferenceField } from '@/hooks/useBookingFlow';
 import { showSlots } from '@/lib/settings';
 import {
   deriveBookingGroups, computeInheritedCastIds,
-  offerResultToast, closeResultToast,
+  offerResultToast, closeResultToast, deriveDirectBookList,
 } from '@/lib/bookings';
 import { computeUpNext } from '@/lib/bookingCockpit';
 import { BOOKING_FLOW_DEFAULTS, referenceLabel, type FlowTimes } from '@/lib/bookingFlow';
@@ -40,6 +40,7 @@ import { UpNextStrip } from '@/components/shows/date/UpNextStrip';
 import { TierTimeline } from '@/components/shows/date/TierTimeline';
 import { DryRunDialog } from '@/components/shows/date/DryRunDialog';
 import { EligibilityBookList } from '@/components/shows/date/EligibilityBookList';
+import { fetchBlockedArtistIds } from '@/data/blockedDates';
 import { ChatPanel } from '@/components/chat/ChatPanel';
 import { ShowDateFormDialog } from '@/components/shows/ShowDateFormDialog';
 import { BookingRow } from '@/components/shows/BookingRow';
@@ -85,7 +86,7 @@ export function ShowDateDetailSheet({ showDateId, open, onOpenChange }: Props) {
   const cityId = showDate?.city_id ?? null;
   const slotConfig = showSlots(showDate?.show);
 
-  const { data: bookingsForDate } = useQuery({
+  const { data: bookingsForDate, isError: bookingsError } = useQuery({
     queryKey: ['bookings', 'for-date', showDateId],
     enabled: !!showDateId,
     queryFn: async () => {
@@ -124,7 +125,8 @@ export function ShowDateDetailSheet({ showDateId, open, onOpenChange }: Props) {
     },
   });
 
-  const { data: eligibility } = useEligibleArtists(showId, showDateId, cityId);
+  const eligibilityQ = useEligibleArtists(showId, showDateId, cityId);
+  const eligibility = eligibilityQ.data;
 
   const orgId = currentOrg?.id ?? null;
   const { data: flowData } = useBookingFlow();
@@ -153,7 +155,7 @@ export function ShowDateDetailSheet({ showDateId, open, onOpenChange }: Props) {
 
   // Direct-booking mode books from the eligibility list, so it needs every active
   // artist's name. Only fetched when the org's flow disables artist acceptance.
-  const { data: orgArtists } = useQuery({
+  const { data: orgArtists, isError: orgArtistsError } = useQuery({
     queryKey: ['artists', 'for-eligibility', orgId],
     enabled: canManage && !flow.artist_acceptance && !!showDateId,
     queryFn: async () => {
@@ -165,6 +167,14 @@ export function ShowDateDetailSheet({ showDateId, open, onOpenChange }: Props) {
       if (error) throw error;
       return (data ?? []) as { id: string; name: string }[];
     },
+  });
+
+  // Blocked artists for this date: the direct-book list must exclude them, the
+  // same way open-offer-tier skips blocked_dates server-side for tiered offers.
+  const blockedQ = useQuery({
+    queryKey: ['blocked-dates', 'for-date', showDate?.date ?? null],
+    enabled: canManage && !flow.artist_acceptance && !!showDate?.date,
+    queryFn: () => fetchBlockedArtistIds(supabase, { date: showDate!.date }),
   });
 
   const tiersQ = useQuery({
@@ -204,13 +214,20 @@ export function ShowDateDetailSheet({ showDateId, open, onOpenChange }: Props) {
     bookedArtistIds,
   } = useMemo(() => deriveBookingGroups(bookingsForDate ?? []), [bookingsForDate]);
 
-  // Eligible artists (with names) for direct-booking mode: the eligibility set
-  // resolved against the org's active artists. A null set means "no restriction".
-  const eligibleArtistList = useMemo(() => {
-    const all = orgArtists ?? [];
-    const ids = eligibility?.artistIds;
-    return ids == null ? all : all.filter((a) => ids.has(a.id));
-  }, [orgArtists, eligibility]);
+  // Eligible artists (with names) for direct-booking mode. deriveDirectBookList
+  // fails closed while eligibility/blocked data is unresolved and excludes
+  // blocked artists; a null eligibility set means "no restriction".
+  const eligibleArtistList = useMemo(
+    () => deriveDirectBookList(orgArtists, eligibility, blockedQ.data),
+    [orgArtists, eligibility, blockedQ.data],
+  );
+  // bookingsForDate is included so the Booked badges are accurate before any
+  // Book button renders (an empty booked set would briefly offer Book on an
+  // already-booked artist; the DB unique index backstops it, but confusingly).
+  const directListError = orgArtistsError || eligibilityQ.isError || blockedQ.isError || bookingsError;
+  const directListLoading =
+    !directListError &&
+    (orgArtists === undefined || eligibility === undefined || blockedQ.data === undefined || bookingsForDate === undefined);
 
   const overrideCastIds = useMemo(
     () => new Set((dateCastOverrides ?? []).map(r => r.cast_id)),
@@ -625,6 +642,8 @@ export function ShowDateDetailSheet({ showDateId, open, onOpenChange }: Props) {
                     ) : (
                       <EligibilityBookList
                         artists={eligibleArtistList}
+                        loading={directListLoading}
+                        error={directListError}
                         bookedArtistIds={bookedArtistIds}
                         onBook={(artistId, isUnderstudy) =>
                           createBookingMutation.mutate({ artistId, isUnderstudy })}

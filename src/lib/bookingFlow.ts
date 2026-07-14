@@ -301,7 +301,12 @@ function fmtFlowValue(field: keyof BookingFlow, flow: BookingFlow): string {
   if (field === "offer_delivery") return flow.offer_delivery === "digest" ? "daily digest" : "immediate";
   if (field === "reference_field") {
     if (flow.reference_field.source === "program") return "program";
-    if (flow.reference_field.source === "custom") return "custom field";
+    if (flow.reference_field.source === "custom") {
+      // Include a short id so switching between two custom fields still diffs;
+      // a bare "custom field" on both sides read as "No effective change".
+      const id = flow.reference_field.custom_field_id;
+      return id ? `custom field ${id.slice(0, 8)}` : "custom field";
+    }
     return "show label";
   }
   return flow[field] ? "on" : "off";

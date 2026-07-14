@@ -70,4 +70,20 @@ describe("EligibilityBookList", () => {
     fireEvent.click(screen.getByRole("button", { name: "Book and confirm" }));
     expect(onBook).toHaveBeenCalledWith("a1", true);
   });
+
+  it("shows skeletons instead of the empty state while the list is loading", () => {
+    const { container } = renderWithProviders(
+      <EligibilityBookList artists={[]} bookedArtistIds={new Set()} onBook={() => {}} booking={false} loading />,
+    );
+    expect(screen.queryByText(/No eligible artists/)).not.toBeInTheDocument();
+    expect(container.querySelectorAll(".animate-pulse").length).toBeGreaterThan(0);
+  });
+
+  it("shows an error alert instead of the empty state when loading failed", () => {
+    renderWithProviders(
+      <EligibilityBookList artists={[]} bookedArtistIds={new Set()} onBook={() => {}} booking={false} error />,
+    );
+    expect(screen.queryByText(/No eligible artists/)).not.toBeInTheDocument();
+    expect(screen.getByText(/Could not load the eligible artists/)).toBeInTheDocument();
+  });
 });
