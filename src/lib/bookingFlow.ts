@@ -128,3 +128,202 @@ export function matchPreset(flow: BookingFlow): PresetName | "custom" {
   }
   return "custom";
 }
+
+export interface FlowTimes {
+  windowHours: number;
+  offerDigestHour: number;
+  confirmationDigestHour: number;
+}
+
+export interface LifecycleChip {
+  label: string;
+  tone: "violet" | "amber" | "green" | "neutral";
+}
+
+export function hh(hour: number): string {
+  return `${String(hour).padStart(2, "0")}:00`;
+}
+
+export function lifecycleChips(flow: BookingFlow): LifecycleChip[] {
+  if (!flow.artist_acceptance) {
+    return [
+      { label: "Direct booking", tone: "neutral" },
+      { label: "Confirmed", tone: "green" },
+    ];
+  }
+  const chips: LifecycleChip[] = [{ label: "Suggested", tone: "violet" }];
+  if (flow.producer_confirmation) chips.push({ label: "Soft booked", tone: "amber" });
+  chips.push({ label: "Confirmed", tone: "green" });
+  return chips;
+}
+
+export interface PracticeRow {
+  who: "Artist" | "Producer" | "Automation";
+  text: string;
+}
+
+export function inPracticeRows(flow: BookingFlow, times: FlowTimes): PracticeRow[] {
+  let artist: string;
+  if (flow.artist_acceptance) {
+    const delivery =
+      flow.offer_delivery === "digest"
+        ? `Gets the offer in the daily ${hh(times.offerDigestHour)} digest email`
+        : "Gets the offer email the moment the tier opens";
+    const accept = flow.producer_confirmation
+      ? "Accepting soft-books the date."
+      : "Accepting confirms the booking instantly.";
+    artist = `${delivery}, then has ${times.windowHours} h to respond. ${accept}`;
+  } else {
+    artist = `Never sees an offer. The booking appears as confirmed in their calendar${
+      flow.confirmation_digest ? ` and the ${hh(times.confirmationDigestHour)} confirmation digest.` : "."
+    }`;
+  }
+
+  let producer: string;
+  if (!flow.artist_acceptance) {
+    producer =
+      "Books artists directly from the per-date eligibility list; each booking is confirmed immediately.";
+  } else if (flow.producer_confirmation) {
+    producer = "Reviews accepted artists in “Ready to Confirm” and bulk-confirms the cast.";
+  } else {
+    producer = "No review queue: acceptances confirm on their own; the dashboard tracks fills as they land.";
+  }
+
+  const autos: string[] = [];
+  if (flow.auto_open_tier1) autos.push("tier 1 opens as soon as a date is ready (sessions and slots configured)");
+  if (flow.auto_escalate && flow.artist_acceptance) autos.push("unfilled windows escalate to the next tier");
+  if (flow.at_risk_alerts && flow.artist_acceptance) autos.push("producers are alerted when a date can no longer fill in time");
+  if (flow.expiry_reminder && flow.artist_acceptance) autos.push("unanswered artists get a reminder 24 h before their window closes");
+  if (flow.understudy_promotion) autos.push("cancellations promote the longest-waiting accepted understudy");
+  const automation = autos.length
+    ? `${autos.join("; ").replace(/^./, (c) => c.toUpperCase())}.`
+    : "Nothing runs in the background; every step is manual.";
+
+  return [
+    { who: "Artist", text: artist },
+    { who: "Producer", text: producer },
+    { who: "Automation", text: automation },
+  ];
+}
+
+export interface PreviewRow {
+  at: string;
+  text: string;
+}
+
+export function flowPreviewRows(flow: BookingFlow, times: FlowTimes): PreviewRow[] {
+  const rows: PreviewRow[] = [
+    { at: "09:02", text: "Date created (Airtable sync or in-app) · 12 eligible artists in tier 1" },
+  ];
+  if (flow.artist_acceptance) {
+    rows.push(
+      flow.auto_open_tier1
+        ? { at: "09:02", text: "Tier 1 opens automatically · 12 offers created (suggested)" }
+        : { at: "·", text: "Tier 1 waits for a producer to open it" },
+    );
+    rows.push(
+      flow.offer_delivery === "digest"
+        ? { at: hh(times.offerDigestHour), text: `Offer digest emailed · ${times.windowHours} h response window starts` }
+        : { at: "09:03", text: `Offers emailed immediately · ${times.windowHours} h response window starts` },
+    );
+    if (flow.producer_confirmation) {
+      rows.push({ at: "+1 day", text: "Anna K. accepts → soft booked" });
+      rows.push({ at: "+1 day", text: "Producer confirms the cast → confirmed" });
+    } else {
+      rows.push({ at: "+1 day", text: "Anna K. accepts → confirmed immediately" });
+    }
+    if (flow.expiry_reminder && times.windowHours > 24) {
+      rows.push({ at: `+${times.windowHours - 24} h`, text: "Unanswered artists get an expiry reminder" });
+    }
+    if (flow.at_risk_alerts) {
+      rows.push({ at: "auto", text: "Producers alerted if remaining offers cannot fill the date" });
+    }
+    rows.push(
+      flow.auto_escalate
+        ? { at: `+${times.windowHours} h`, text: "Window closes short → tier 2 opens automatically" }
+        : { at: `+${times.windowHours} h`, text: "Window closes short; the next tier stays manual" },
+    );
+  } else {
+    rows.push({ at: "·", text: "No offers; producer books artists from the eligibility list" });
+    rows.push({ at: "·", text: "Producer booking → confirmed directly" });
+  }
+  if (flow.confirmation_digest) {
+    rows.push({ at: hh(times.confirmationDigestHour), text: "Confirmation digest email sent to newly confirmed artists" });
+  }
+  if (flow.understudy_promotion) {
+    rows.push({ at: "auto", text: "On cancellation, longest-waiting accepted understudy promoted" });
+  }
+  return rows;
+}
+
+export function referenceLabel(args: {
+  reference: ReferenceField;
+  show: { program: string | null; sub_program: string | null } | null;
+  custom: Record<string, unknown> | null;
+  customFieldKey: string | null;
+}): string {
+  const { reference, show, custom, customFieldKey } = args;
+  const showText =
+    [show?.program, show?.sub_program].filter(Boolean).join(" · ") || "Untitled show";
+  if (reference.source === "program") return show?.program ?? showText;
+  if (reference.source === "custom" && customFieldKey) {
+    const value = custom?.[customFieldKey];
+    if (value !== null && value !== undefined && String(value).trim() !== "") {
+      return String(value);
+    }
+  }
+  return showText;
+}
+
+const FLOW_FIELD_LABELS: Record<keyof BookingFlow, string> = {
+  auto_open_tier1: "Auto-open tier 1",
+  auto_escalate: "Auto-escalation",
+  at_risk_alerts: "At-risk alerts",
+  offer_delivery: "Offer delivery",
+  expiry_reminder: "Expiry reminder",
+  artist_acceptance: "Artist acceptance",
+  producer_confirmation: "Producer confirmation",
+  confirmation_digest: "Confirmation digest",
+  understudy_promotion: "Understudy promotion",
+  reference_field: "Reference field",
+};
+
+const SETTING_LABELS: Record<string, string> = {
+  booking_flow: "Booking flow",
+  offer_response_window_hours: "Response window",
+  offer_digest_hour_berlin: "Offer digest hour",
+  confirmation_digest_hour_berlin: "Confirmation digest hour",
+  resend_from_address: "Sender address",
+  email_template_overrides: "Email templates",
+};
+
+function fmtFlowValue(field: keyof BookingFlow, flow: BookingFlow): string {
+  if (field === "offer_delivery") return flow.offer_delivery === "digest" ? "daily digest" : "immediate";
+  if (field === "reference_field") {
+    if (flow.reference_field.source === "program") return "program";
+    if (flow.reference_field.source === "custom") return "custom field";
+    return "show label";
+  }
+  return flow[field] ? "on" : "off";
+}
+
+export function describeAuditEntry(entry: {
+  key: string;
+  old_value: unknown;
+  new_value: unknown;
+}): string {
+  if (entry.key === "booking_flow") {
+    const before = normalizeBookingFlow(entry.old_value);
+    const after = normalizeBookingFlow(entry.new_value);
+    const parts: string[] = [];
+    for (const field of Object.keys(FLOW_FIELD_LABELS) as (keyof BookingFlow)[]) {
+      const a = fmtFlowValue(field, before);
+      const b = fmtFlowValue(field, after);
+      if (a !== b) parts.push(`${FLOW_FIELD_LABELS[field]}: ${a} → ${b}`);
+    }
+    return parts.length ? parts.join(" · ") : "No effective change";
+  }
+  const label = SETTING_LABELS[entry.key] ?? entry.key;
+  const fmt = (v: unknown) => (v === null || v === undefined ? "unset" : typeof v === "object" ? "updated" : String(v));
+  return `${label}: ${fmt(entry.old_value)} → ${fmt(entry.new_value)}`;
+}
