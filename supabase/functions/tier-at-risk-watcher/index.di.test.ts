@@ -1078,6 +1078,91 @@ Deno.test("tier-at-risk-watcher DI: a still-live suggested offer (future expiry)
   assertEquals(insertCalls.length, 0);
 });
 
+// ── Milestone C — Task 13: gate on booking_flow (at_risk_alerts / artist_acceptance) ──
+//
+// resolveBookingFlow reads app_settings.key='booking_flow' — array-seed matched by the
+// recorded `.eq('key', …)` arg, same disambiguation idiom as Task 11/12's expire-offers
+// tests. Gated per (sd.org_id), cached in a flowByOrg Map identical to Task 12's pattern.
+// A gated tier is simply `continue`d before it's added to stillAtRiskTierIds — the
+// existing recovery/cleanup pass at the end of handle() then treats it exactly like any
+// other skipped tier (unconfigured slots, healthy, orphaned show_date, …) and deletes any
+// pre-existing tier_at_risk notification for it. So turning at_risk_alerts off for an org
+// automatically clears its stale notifications on the very next run, with no special-case
+// code needed — verified by the second test below.
+
+Deno.test("tier-at-risk-watcher: org with at_risk_alerts=false produces no notifications", async () => {
+  // Clone of "at-risk tier → response includes at_risk_count:1 and cleared:0", plus a
+  // booking_flow override that disables at_risk_alerts for the show_date's org.
+  const ORG_ID = "00000000-0000-0000-0000-000000000001"; // makeShowDate's default org
+  const tierId = "tier-gated";
+  const sdId = "sd-gated";
+
+  const { deps, calls } = makeFakeDeps({
+    tables: {
+      app_settings: [
+        { when: { key: "cron_secret" }, data: { value: "secret-val" } },
+        { when: { key: "booking_flow" }, data: [{ org_id: ORG_ID, value: { at_risk_alerts: false } }] },
+      ],
+      show_date_offer_tiers: { data: [makeTier(tierId, sdId)], error: null },
+      notifications: { data: [], error: null },
+      show_dates: { data: makeShowDate(sdId, "MusicalA", "MainShow"), error: null },
+      // Would be at-risk (1 pending < 3 required) if the org hadn't turned alerts off.
+      bookings: { data: [{ status: "suggested" }], error: null },
+    },
+    rpcs: {
+      resolve_show_assignments: { data: [{ producer_user_id: "prod-1" }], error: null },
+    },
+  });
+
+  const res = await handle(makeRequest({ headers: CRON_OK }), deps);
+  assertEquals(res.status, 200);
+  const body = await res.json();
+  assertEquals(body.at_risk_count, 0, "org with at_risk_alerts=false must not be counted at-risk");
+
+  const insertCalls = calls.filter((c) => c.table === "notifications" && c.method === "insert");
+  assertEquals(insertCalls.length, 0, "no notification inserted when at_risk_alerts is off");
+});
+
+Deno.test("tier-at-risk-watcher: disabling at_risk_alerts clears the org's existing tier_at_risk notification", async () => {
+  // An org that previously had alerts on (and thus an existing notification for a
+  // still-mathematically-at-risk tier) turns at_risk_alerts off. The gate must not
+  // strand the stale notification — the existing stillAtRiskTierIds/cleanup pass should
+  // pick it up and delete it, exactly as it would for any other skipped tier.
+  const ORG_ID = "00000000-0000-0000-0000-000000000001";
+  const tierId = "tier-gated-stale";
+  const sdId = "sd-gated-stale";
+
+  const existingNotif = { id: "notif-stale", user_id: "prod-1", related_entity_id: tierId };
+
+  const { deps, calls } = makeFakeDeps({
+    tables: {
+      app_settings: [
+        { when: { key: "cron_secret" }, data: { value: "secret-val" } },
+        { when: { key: "booking_flow" }, data: [{ org_id: ORG_ID, value: { at_risk_alerts: false } }] },
+      ],
+      show_date_offer_tiers: { data: [makeTier(tierId, sdId)], error: null },
+      notifications: { data: [existingNotif], error: null },
+      show_dates: { data: makeShowDate(sdId, "MusicalA", "MainShow"), error: null },
+      // Still mathematically at-risk — but the org has alerts off, so it's gated out.
+      bookings: { data: [{ status: "suggested" }], error: null },
+    },
+    rpcs: {
+      resolve_show_assignments: { data: [{ producer_user_id: "prod-1" }], error: null },
+    },
+  });
+
+  const res = await handle(makeRequest({ headers: CRON_OK }), deps);
+  const body = await res.json();
+  assertEquals(body.at_risk_count, 0);
+  assertEquals(body.cleared, 1, "stale notification must be cleared once alerts are turned off");
+
+  const deleteCalls = calls.filter((c) => c.table === "notifications" && c.method === "delete");
+  assertEquals(deleteCalls.length > 0, true, "delete must be called for the stale notification");
+  const inCalls = calls.filter((c) => c.table === "notifications" && c.method === "in");
+  const inArgs = inCalls[inCalls.length - 1].args as [string, string[]];
+  assertEquals(inArgs[1].includes("notif-stale"), true);
+});
+
 Deno.test("tier-at-risk-watcher DI M2: past date is never flagged at-risk", async () => {
   // Same unfillable setup as a normal at-risk case, but the date is in the past
   // (before the 2026-06-01 fake clock). The watcher must skip it, not re-alert forever.
