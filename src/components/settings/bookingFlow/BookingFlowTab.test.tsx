@@ -55,6 +55,19 @@ describe("BookingFlowTab", () => {
   // confirmation, so the field can't mean "not yet confirmed"). But that invariant must
   // not permanently clobber a user's earlier choice to run fast-track (confirmation off):
   // turning acceptance back on should restore what the user had set before it was forced on.
+  // Same invariant, but the acceptance-off step comes from a PRESET click instead of the
+  // switch: Fast-track (confirmation off) then Direct book (acceptance off) then acceptance
+  // back on must restore the fast-track choice, not the pre-fast-track default. Presets
+  // bypassed the ref tracking in onFlowChange, so the restore used a stale value.
+  it("a preset's producer_confirmation choice survives an acceptance off/on round trip", () => {
+    renderWithProviders(<Harness />);
+    fireEvent.click(screen.getByRole("button", { name: /fast-track/i }));
+    expect(screen.getByRole("switch", { name: /^producer confirmation$/i })).toHaveAttribute("aria-checked", "false");
+    fireEvent.click(screen.getByRole("button", { name: /direct book/i }));
+    fireEvent.click(screen.getByRole("switch", { name: /^artist acceptance$/i }));
+    expect(screen.getByRole("switch", { name: /^producer confirmation$/i })).toHaveAttribute("aria-checked", "false");
+  });
+
   it("restores the user's producer_confirmation choice after an acceptance off/on round trip", () => {
     renderWithProviders(<Harness />);
     // Fast-track: artist_acceptance stays on, producer_confirmation goes off.

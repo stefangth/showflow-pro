@@ -111,7 +111,17 @@ export function BookingFlowTab({ get, set, dirtyKeys, saving, onSave, onDiscard 
     if (patch.offerDigestHour !== undefined) set("offer_digest_hour_berlin", patch.offerDigestHour);
     if (patch.confirmationDigestHour !== undefined) set("confirmation_digest_hour_berlin", patch.confirmationDigestHour);
   };
-  const onPreset = (p: PresetName) => set("booking_flow", applyPreset(flow, p));
+  const onPreset = (p: PresetName) => {
+    const next = normalizeBookingFlow(applyPreset(flow, p));
+    // A preset click is an explicit choice too: while it keeps acceptance on, its
+    // producer_confirmation becomes the value a later acceptance off/on round trip
+    // restores. Skipping this tracking left the ref stale (e.g. Fast-track's
+    // auto-confirm silently reverted to requiring confirmation after Direct + undo).
+    if (next.artist_acceptance) {
+      lastProducerConfirmationRef.current = next.producer_confirmation;
+    }
+    set("booking_flow", next);
+  };
 
   return (
     <div className="space-y-4">
