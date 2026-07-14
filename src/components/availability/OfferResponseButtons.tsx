@@ -18,7 +18,7 @@ interface Props {
 export function OfferResponseButtons({ bookingId, size = 'default' }: Props) {
   const qc = useQueryClient();
   const { toast } = useToast();
-  const { data: flow } = useBookingFlow();
+  const { data: flow, isLoading: isFlowLoading } = useBookingFlow();
   // Auto-confirm on accept when the org's flow skips producer confirmation.
   const autoConfirm = !(flow?.producer_confirmation ?? true);
 
@@ -52,7 +52,7 @@ export function OfferResponseButtons({ bookingId, size = 'default' }: Props) {
         variant="outline"
         className="flex-1 text-xs border-success/40 text-success hover:bg-success/10"
         onClick={() => respond.mutate(true)}
-        disabled={respond.isPending}
+        disabled={respond.isPending || isFlowLoading}
       >
         <Check className="h-3 w-3 mr-1" />
         Accept
