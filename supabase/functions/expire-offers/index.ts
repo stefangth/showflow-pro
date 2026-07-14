@@ -47,13 +47,26 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
     console.error('expire-offers: failed to fetch active orgs for reminder pass', { error: (e as Error).message })
   }
 
+  // Active-org id set, shared by BOTH the reminder pass and the escalation scan below.
+  // The escalation scan derives its org from show_dates.org_id, which can include
+  // SUSPENDED orgs; auto-escalation (which creates bookings + emails artists) is gated on
+  // this set so a suspended org's short tier never auto-escalates.
+  const activeOrgIds = new Set(reminderOrgs.map((o) => o.id))
+  // resolveBookingFlow cache shared across both passes; the flow doesn't change mid-run
+  // and the same org can appear in the reminder pass and the escalation scan, so this
+  // dedups the per-org flow reads.
+  const flowByOrg = new Map<string, BookingFlow>()
+
   for (const org of reminderOrgs) {
-    let flow
-    try {
-      flow = await resolveBookingFlow(admin, org.id)
-    } catch (e) {
-      console.error('expire-offers: booking flow read failed', { org: org.id, error: (e as Error).message })
-      continue
+    let flow = flowByOrg.get(org.id)
+    if (!flow) {
+      try {
+        flow = await resolveBookingFlow(admin, org.id)
+      } catch (e) {
+        console.error('expire-offers: booking flow read failed', { org: org.id, error: (e as Error).message })
+        continue
+      }
+      flowByOrg.set(org.id, flow)
     }
     if (!flow.artist_acceptance || !flow.expiry_reminder) continue
 
@@ -185,9 +198,9 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
 
   let escalated = 0
   let autoEscalated = 0
-  // Cache resolveBookingFlow per org — multiple open tiers in a single cron run can
-  // belong to the same org, and the flow doesn't change mid-scan.
-  const flowByOrg = new Map<string, BookingFlow>()
+  // flowByOrg (declared above, shared with the reminder pass) caches resolveBookingFlow
+  // per org: multiple open tiers in a single cron run can belong to the same org, and
+  // the flow doesn't change mid-scan.
 
   for (const row of openTiers as Array<{ id: string; show_date_id: string; tier: number }>) {
     const { data: sd } = await admin
@@ -262,7 +275,12 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
     // exists, close this tier and open the next automatically instead of just asking a
     // human to do it. No next tier (or auto-escalate off) falls through to the manual
     // escalation path below, unchanged.
-    if (flow.auto_escalate && row.tier !== 99) {
+    // Auto-escalation is gated on the org being ACTIVE: a suspended org's short tier must
+    // NOT auto-open the next tier (which would create suggested bookings + email artists).
+    // A suspended org falls through to the manual escalation path below, unchanged: the
+    // same behavior it had before auto-escalation existed (the manual path was never
+    // active-scoped, so this preserves it).
+    if (flow.auto_escalate && activeOrgIds.has(orgId) && row.tier !== 99) {
       const { data: nextRows } = await admin
         .from('cast_city_priority')
         .select('priority')

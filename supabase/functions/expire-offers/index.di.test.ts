@@ -1063,6 +1063,8 @@ Deno.test("expire-offers: auto_escalate closes the short tier and opens the next
         { when: { key: "cron_secret" }, data: { value: CRON_SECRET } },
         { when: { key: "booking_flow" }, data: [{ org_id: SHOW_DATE.org_id, value: { auto_escalate: true } }] },
       ],
+      // The org must be ACTIVE for auto-escalation to fire (activeOrgIds gate).
+      organizations: { data: [{ id: SHOW_DATE.org_id }], error: null },
       show_date_offer_tiers: { data: [OPEN_TIER], error: null },
       show_dates: { data: SHOW_DATE, error: null },
       bookings: { data: bookings, error: null },
@@ -1122,6 +1124,8 @@ Deno.test("expire-offers: auto_escalate with no next tier falls back to the manu
         { when: { key: "cron_secret" }, data: { value: CRON_SECRET } },
         { when: { key: "booking_flow" }, data: [{ org_id: SHOW_DATE.org_id, value: { auto_escalate: true } }] },
       ],
+      // The org must be ACTIVE for auto-escalation to fire (activeOrgIds gate).
+      organizations: { data: [{ id: SHOW_DATE.org_id }], error: null },
       show_date_offer_tiers: { data: [OPEN_TIER], error: null },
       show_dates: { data: SHOW_DATE, error: null },
       bookings: { data: bookings, error: null },
@@ -1170,6 +1174,8 @@ Deno.test("expire-offers: auto_escalate invoke failure does not claim success an
         { when: { key: "cron_secret" }, data: { value: CRON_SECRET } },
         { when: { key: "booking_flow" }, data: [{ org_id: SHOW_DATE.org_id, value: { auto_escalate: true } }] },
       ],
+      // The org must be ACTIVE for auto-escalation to fire (activeOrgIds gate).
+      organizations: { data: [{ id: SHOW_DATE.org_id }], error: null },
       show_date_offer_tiers: { data: [OPEN_TIER], error: null },
       show_dates: { data: SHOW_DATE, error: null },
       bookings: { data: bookings, error: null },
@@ -1205,4 +1211,63 @@ Deno.test("expire-offers: auto_escalate invoke failure does not claim success an
   const notifRows = notifInserts.flatMap((c) => c.args[0] as Array<{ type: string }>);
   assertEquals(notifRows.some((r) => r.type === "tier_escalated"), false);
   assertEquals(notifRows.some((r) => r.type === "cast_escalation_requested"), true);
+});
+
+// Round-2 review fix: auto-escalation must be scoped to ACTIVE orgs. A short tier owned by
+// a SUSPENDED org (not in getActiveOrgs) with auto_escalate:true and a next tier available
+// must NOT auto-open the next tier; it falls through to the manual escalation path,
+// exactly as it behaved before auto-escalation existed (the manual path was never
+// active-scoped).
+Deno.test("expire-offers: auto_escalate on an INACTIVE org does not auto-open, falls through to manual", async () => {
+  const OTHER_ACTIVE_ORG = "00000000-0000-0000-0000-0000000000ff";
+  const bookings = [
+    { status: "cancelled", offer_tier: 1, offer_expires_at: null },
+    { status: "suggested", offer_tier: 1, offer_expires_at: "2026-05-01T00:00:00Z" }, // expired
+  ];
+  const { deps, calls, invokeCalls } = makeFakeDeps({
+    tables: {
+      app_settings: [
+        { when: { key: "cron_secret" }, data: { value: CRON_SECRET } },
+        { when: { key: "booking_flow" }, data: [{ org_id: SHOW_DATE.org_id, value: { auto_escalate: true } }] },
+      ],
+      // Active set exists but does NOT contain SHOW_DATE.org_id → that org is suspended.
+      organizations: { data: [{ id: OTHER_ACTIVE_ORG }], error: null },
+      show_date_offer_tiers: { data: [OPEN_TIER], error: null },
+      show_dates: { data: SHOW_DATE, error: null },
+      bookings: { data: bookings, error: null },
+      cast_city_priority: { data: [{ priority: 2 }], error: null }, // a next tier IS available
+      notifications: { data: null, error: null },
+      org_memberships: { data: [{ user_id: "admin-1" }], error: null },
+    },
+    rpcs: {
+      expire_soft_bookings: { data: null, error: null },
+      resolve_show_assignments: { data: [], error: null },
+    },
+    usersById: { "admin-1": { email: "admin@example.com" } },
+    now: FIXED_NOW,
+  });
+  const res = await handle(cronReq(), deps);
+  assertEquals(res.status, 200);
+  const body = await res.json();
+  // Auto-escalation gated off; manual path fires instead.
+  assertEquals(body.auto_escalated, 0);
+  assertEquals(body.escalations, 1);
+
+  // No open-offer-tier invoke: the auto branch was skipped for the inactive org.
+  const openCall = invokeCalls.find((c) => c.name === "open-offer-tier");
+  assertEquals(openCall, undefined);
+
+  // Manual escalation notification was produced (pre-PR behavior for this org).
+  const notifInsert = calls.find((c) => c.table === "notifications" && c.method === "insert");
+  assertExists(notifInsert);
+  const rows = notifInsert!.args[0] as Array<{ type: string }>;
+  assertEquals(rows.length, 1);
+  assertEquals(rows[0].type, "cast_escalation_requested");
+
+  // Manual idempotency stamp written; tier NOT closed (auto path never ran).
+  const tierUpdate = calls.find((c) => c.table === "show_date_offer_tiers" && c.method === "update");
+  assertExists(tierUpdate);
+  const updateArg = tierUpdate!.args[0] as { escalation_notified_at?: string; closed_at?: string };
+  assertEquals(updateArg.escalation_notified_at, FIXED_NOW.toISOString());
+  assertEquals(updateArg.closed_at, undefined);
 });
