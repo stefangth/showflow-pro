@@ -836,3 +836,127 @@ Deno.test("open-offer-tier: tier upsert failure → offers still created + tier_
   assertEquals(body.offers_created, 1);
   assertEquals(body.tier_tracking_warning, true);
 });
+
+// ---------------------------------------------------------------------------
+// Milestone C — Task 8: direct-mode refusal + dry-run
+//
+// resolveBookingFlow reads app_settings.key='booking_flow' via resolveOrgSetting.
+// FLOW_DIRECT models an org whose booking_flow has artist_acceptance:false (a
+// "direct booking" org where offers are disabled).
+//
+// The `artists` table is queried TWICE on the dry-run path:
+//   1. Active filter: .select('id').in('id', ids).eq('status','active')
+//      → localEq records status:'active' → matched by when:{ status:'active' }
+//   2. Name lookup:   .select('id, name').in('id', candidateIds)   (no .eq())
+//      → localEq has no `status` → falls through to the fallback entry.
+// The name query resolves via .then(), which does NOT apply in()-filtering, so
+// the fallback seed must already carry only the rows the DB would return for the
+// candidate ids (i.e. the non-blocked ones).
+// ---------------------------------------------------------------------------
+
+const FLOW_DIRECT = { data: [{ org_id: "org-A", value: { artist_acceptance: false } }], error: null };
+
+Deno.test("open-offer-tier: direct-booking org → 409, nothing written", async () => {
+  const { deps, calls } = makeFakeDeps({
+    envVars,
+    tables: {
+      show_dates: { data: { ...SHOW_DATE_OPEN, org_id: "org-A" }, error: null },
+      app_settings: FLOW_DIRECT,
+    },
+  });
+  const res = await handle(makeRequest({ headers: SVC, body: { show_date_id: "d1", tier: 1 } }), deps);
+  assertEquals(res.status, 409);
+  const body = await res.json();
+  assertEquals(body.error, "Direct booking mode: offers are disabled for this organization.");
+  assertEquals(calls.some((c) => c.table === "bookings" && c.method === "insert"), false);
+  assertEquals(calls.some((c) => c.table === "show_date_offer_tiers" && c.method === "upsert"), false);
+});
+
+Deno.test("open-offer-tier: dry_run returns candidates and writes nothing", async () => {
+  const { deps, calls } = makeFakeDeps({
+    envVars,
+    tables: {
+      show_dates: { data: { ...SHOW_DATE_OPEN, org_id: "org-A" }, error: null },
+      app_settings: { data: [], error: null }, // no booking_flow row → defaults (artist_acceptance:true)
+      cast_city_priority: { data: [{ cast_id: "c1" }], error: null },
+      cast_members: { data: [{ artist_id: "a1" }, { artist_id: "a2" }], error: null },
+      artists: [
+        // Active filter (records .eq('status','active')) → both are active
+        { when: { status: "active" }, data: [{ id: "a1" }, { id: "a2" }], error: null },
+        // Name lookup (no .eq()) → only the surviving candidate (a2 is blocked)
+        { data: [{ id: "a1", name: "Lena" }], error: null },
+      ],
+      bookings: { data: [], error: null },
+      blocked_dates: { data: [{ artist_id: "a2" }], error: null },
+    },
+  });
+  const res = await handle(
+    makeRequest({ headers: SVC, body: { show_date_id: "d1", tier: 1, dry_run: true } }),
+    deps,
+  );
+  assertEquals(res.status, 200);
+  const body = await res.json();
+  assertEquals(body.dry_run, true);
+  assertEquals(body.candidates, [{ id: "a1", name: "Lena" }]);
+  assertEquals(body.excluded.blocked, 1);
+  assertEquals(body.excluded.already_booked, 0);
+  assertEquals(body.excluded.inactive, 0);
+  assertEquals(calls.some((c) => c.table === "bookings" && c.method === "insert"), false);
+  assertEquals(calls.some((c) => c.table === "show_date_offer_tiers" && c.method === "upsert"), false);
+});
+
+Deno.test("open-offer-tier: dry_run on a zero-session date returns the dry-run benign shape", async () => {
+  const { deps, calls } = makeFakeDeps({
+    envVars,
+    tables: {
+      show_dates: {
+        data: { ...SHOW_DATE_OPEN, org_id: "org-A", session_1: null, session_2: null, session_3: null },
+        error: null,
+      },
+      app_settings: { data: [], error: null },
+    },
+  });
+  const res = await handle(
+    makeRequest({ headers: SVC, body: { show_date_id: "d1", tier: 1, dry_run: true } }),
+    deps,
+  );
+  assertEquals(res.status, 200);
+  const body = await res.json();
+  assertEquals(body.dry_run, true);
+  assertEquals(body.candidates, []);
+  assertExists(body.excluded);
+  assertEquals(body.excluded.blocked, 0);
+  assertExists(body.message);
+  assertEquals(calls.some((c) => c.table === "bookings" && c.method === "insert"), false);
+});
+
+Deno.test("open-offer-tier: dry_run — all eligible blocked → dry-run shape with counts, no candidates", async () => {
+  const { deps, calls } = makeFakeDeps({
+    envVars,
+    tables: {
+      show_dates: { data: { ...SHOW_DATE_OPEN, org_id: "org-A" }, error: null },
+      app_settings: { data: [], error: null },
+      cast_city_priority: { data: [{ cast_id: "c1" }], error: null },
+      cast_members: { data: [{ artist_id: "a1" }], error: null },
+      artists: [
+        { when: { status: "active" }, data: [{ id: "a1" }], error: null },
+        { data: [], error: null },
+      ],
+      bookings: { data: [], error: null },
+      blocked_dates: { data: [{ artist_id: "a1" }], error: null },
+    },
+  });
+  const res = await handle(
+    makeRequest({ headers: SVC, body: { show_date_id: "d1", tier: 1, dry_run: true } }),
+    deps,
+  );
+  assertEquals(res.status, 200);
+  const body = await res.json();
+  assertEquals(body.dry_run, true);
+  assertEquals(body.candidates, []);
+  assertEquals(body.excluded.blocked, 1);
+  assertEquals(body.excluded.inactive, 0);
+  assertEquals(body.excluded.already_booked, 0);
+  assertExists(body.message);
+  assertEquals(calls.some((c) => c.table === "bookings" && c.method === "insert"), false);
+});

@@ -1,6 +1,9 @@
 import { preflight, json } from "../_shared/http.ts";
 import { isServiceRole, requireRole, requireOrgRole } from "../_shared/auth.ts";
+import { resolveBookingFlow } from "../_shared/bookingFlow.ts";
 import { realDeps, type Deps } from "../_shared/deps.ts";
+
+type ExcludedCounts = { already_booked: number; blocked: number; inactive: number };
 
 export async function handle(req: Request, deps: Deps): Promise<Response> {
   if (req.method === "OPTIONS") return preflight();
@@ -17,16 +20,31 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
 
   let show_date_id: string
   let tier: number
+  let dryRun = false
   try {
     const body = await req.json()
     show_date_id = body.show_date_id
     tier = Number(body.tier)
+    dryRun = body.dry_run === true
     if (!show_date_id || !tier || tier < 1) {
       return json({ error: 'show_date_id and tier (≥1) are required' }, 400)
     }
   } catch {
     return json({ error: 'Invalid JSON' }, 400)
   }
+
+  // A benign no-op exit. In dry-run mode the preview dialog needs a consistent
+  // shape ({ dry_run, candidates, excluded }) so it can render the reason; the
+  // normal caller (airtable-poll batch) just wants offers_created:0 + message.
+  const benignExit = (message: string, counts?: ExcludedCounts): Response =>
+    dryRun
+      ? json({
+          dry_run: true,
+          candidates: [],
+          excluded: counts ?? { already_booked: 0, blocked: 0, inactive: 0 },
+          message,
+        })
+      : json({ offers_created: 0, message })
 
   // Fetch show date (org_id drives the org-scoped auth check below).
   const { data: showDate, error: sdErr } = await admin
@@ -45,12 +63,22 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
     if (!auth.ok) return auth.response
   }
 
+  // Direct-booking orgs (booking_flow.artist_acceptance = false) skip the offer
+  // stage entirely — producers assign artists straight to confirmed. Refuse to
+  // open offers so no suggested bookings are created. Placed AFTER org-scoped auth
+  // (an unauthorized caller still gets 401/403, not a flow probe) and BEFORE any
+  // pipeline work.
+  const flow = await resolveBookingFlow(deps.admin, showDate.org_id)
+  if (!flow.artist_acceptance) {
+    return json({ error: 'Direct booking mode: offers are disabled for this organization.' }, 409)
+  }
+
   if (showDate.status === 'cancelled') return json({ error: 'Show date is cancelled' }, 400)
 
   if (!showDate.session_1 && !showDate.session_2 && !showDate.session_3) {
     // ≥1-session rule: a times-TBD date is not yet bookable. Benign skip (200, not
     // 400) so airtable-poll's batch caller does not log a false "offer-tier failed".
-    return json({ offers_created: 0, message: 'Show date has no sessions yet — offers not opened' })
+    return benignExit('Show date has no sessions yet — offers not opened')
   }
 
   // Resolve eligible cast IDs for this tier
@@ -65,7 +93,7 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
       .eq('show_date_id', show_date_id)
 
     if (!dateCasts || dateCasts.length === 0) {
-      return json({ offers_created: 0, message: 'No ad-hoc casts for this date' })
+      return benignExit('No ad-hoc casts for this date')
     }
 
     // Filter out casts that are already in the priority system for this city
@@ -85,7 +113,7 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
   } else {
     // Tier 1-N: find casts with this priority for the date's city
     if (!showDate.city_id) {
-      return json({ offers_created: 0, message: 'Show date has no city — cannot resolve priority casts' })
+      return benignExit('Show date has no city — cannot resolve priority casts')
     }
 
     const { data: priorityRows } = await (admin as any)
@@ -97,12 +125,12 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
     eligibleCastIds = (priorityRows ?? []).map((r: any) => r.cast_id)
 
     if (eligibleCastIds.length === 0) {
-      return json({ offers_created: 0, message: `No casts configured at tier ${tier} for this city` })
+      return benignExit(`No casts configured at tier ${tier} for this city`)
     }
   }
 
   if (eligibleCastIds.length === 0) {
-    return json({ offers_created: 0, message: 'No eligible casts for this tier' })
+    return benignExit('No eligible casts for this tier')
   }
 
   // Get all active artists in eligible casts
@@ -113,7 +141,7 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
 
   const artistIds = [...new Set((castMemberRows ?? []).map((r: any) => r.artist_id))]
   if (artistIds.length === 0) {
-    return json({ offers_created: 0, message: 'No artists in eligible casts' })
+    return benignExit('No artists in eligible casts')
   }
 
   // Fetch artist active status
@@ -124,8 +152,10 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
     .eq('status', 'active')
 
   const activeArtistIds = (artistRows ?? []).map((r: any) => r.id)
+  // Members that dropped out of the active-status filter (inactive/archived).
+  const inactiveCount = artistIds.length - activeArtistIds.length
   if (activeArtistIds.length === 0) {
-    return json({ offers_created: 0, message: 'No active artists in eligible casts' })
+    return benignExit('No active artists in eligible casts', { already_booked: 0, blocked: 0, inactive: inactiveCount })
   }
 
   // Skip artists with an existing open offer or non-cancelled booking for this date
@@ -136,6 +166,8 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
     .neq('status', 'cancelled')
 
   const alreadyBookedIds = new Set((existingBookings ?? []).map((b: any) => b.artist_id))
+  // Active artists already holding a non-cancelled booking for this date.
+  const alreadyBookedCount = activeArtistIds.filter((id: string) => alreadyBookedIds.has(id)).length
 
   // Skip artists with a blocked_dates entry for this date (table added in Task 5)
   let blockedArtistIds = new Set<string>()
@@ -154,8 +186,31 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
     (id: string) => !alreadyBookedIds.has(id) && !blockedArtistIds.has(id)
   )
 
+  // Active, not-already-booked artists removed solely by the blocked-dates filter.
+  const blockedCount = activeArtistIds.filter(
+    (id: string) => !alreadyBookedIds.has(id) && blockedArtistIds.has(id)
+  ).length
+  const excluded: ExcludedCounts = {
+    already_booked: alreadyBookedCount,
+    blocked: blockedCount,
+    inactive: inactiveCount,
+  }
+
   if (candidateIds.length === 0) {
-    return json({ offers_created: 0, message: 'All eligible artists already have offers or are blocked' })
+    return benignExit('All eligible artists already have offers or are blocked', excluded)
+  }
+
+  // Dry-run: report who WOULD be offered (and why others were excluded) without
+  // writing any bookings or tier-tracking rows.
+  if (dryRun) {
+    let candidates: Array<{ id: string; name: string }> = []
+    const { data: names, error: namesErr } = await admin
+      .from('artists')
+      .select('id, name')
+      .in('id', candidateIds)
+    if (namesErr) return json({ error: namesErr.message }, 500)
+    candidates = (names ?? []) as Array<{ id: string; name: string }>
+    return json({ dry_run: true, candidates, excluded })
   }
 
   const offeredAt = deps.now()
