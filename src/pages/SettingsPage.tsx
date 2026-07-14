@@ -212,7 +212,7 @@ export default function SettingsPage() {
 
       {isDirty && (
         <div className="flex items-center justify-between gap-4 rounded-lg border border-warning bg-warning/10 px-4 py-2.5 text-sm text-warning">
-          <span>You have unsaved changes — they will be lost if you navigate away.</span>
+          <span>You have unsaved changes. They will be lost if you navigate away.</span>
           <Button size="sm" onClick={handleSave} disabled={saveMutation.isPending}>
             <Save className="h-3.5 w-3.5 mr-1.5" />
             {saveMutation.isPending ? 'Saving…' : 'Save now'}
