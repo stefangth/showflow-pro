@@ -205,6 +205,7 @@ export function FlowTimeline({ flow, times, onFlowChange, onTimesChange, customF
           {flow.reference_field.source === "custom" && (
             <Select
               value={flow.reference_field.custom_field_id}
+              disabled={respOff}
               onValueChange={(id) => onFlowChange({ reference_field: { source: "custom", custom_field_id: id } })}
             >
               <SelectTrigger className="w-44">
@@ -259,7 +260,7 @@ export function FlowTimeline({ flow, times, onFlowChange, onTimesChange, customF
             <Badge variant="confirmed">Confirmed</Badge>
             {respOff && <Badge variant="neutral">Locked on</Badge>}
             <Switch
-              checked={flow.producer_confirmation}
+              checked={respOff || flow.producer_confirmation}
               disabled={respOff}
               aria-label="Producer confirmation"
               onCheckedChange={(v) => onFlowChange({ producer_confirmation: v })}

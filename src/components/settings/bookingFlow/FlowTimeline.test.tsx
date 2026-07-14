@@ -40,4 +40,42 @@ describe("FlowTimeline", () => {
     );
     expect(container.textContent).not.toMatch(/[—–]/);
   });
+
+  it("direct mode disables the nested custom-field select and shows producer confirmation locked on", () => {
+    renderWithProviders(
+      <FlowTimeline
+        flow={{ ...applyPreset(BOOKING_FLOW_DEFAULTS, "direct"), reference_field: { source: "custom", custom_field_id: "cf-1" } }}
+        times={TIMES}
+        onFlowChange={noop}
+        onTimesChange={noop}
+        customFields={[{ id: "cf-1", label: "Berechnung" }]}
+        referencePreview="x"
+      />,
+    );
+    const referenceSelects = screen.getAllByRole("combobox");
+    expect(referenceSelects).toHaveLength(2);
+    referenceSelects.forEach((select) => expect(select).toBeDisabled());
+
+    const producerConfirmationSwitch = screen.getByRole("switch", { name: /producer confirmation/i });
+    expect(producerConfirmationSwitch).toHaveAttribute("aria-checked", "true");
+  });
+
+  it("producer confirmation switch shows checked when locked on even with a non-normalized flow", () => {
+    renderWithProviders(
+      <FlowTimeline
+        flow={{
+          ...applyPreset(BOOKING_FLOW_DEFAULTS, "direct"),
+          artist_acceptance: false,
+          producer_confirmation: false,
+        }}
+        times={TIMES}
+        onFlowChange={noop}
+        onTimesChange={noop}
+        customFields={[]}
+        referencePreview="x"
+      />,
+    );
+    const producerConfirmationSwitch = screen.getByRole("switch", { name: /producer confirmation/i });
+    expect(producerConfirmationSwitch).toHaveAttribute("aria-checked", "true");
+  });
 });
