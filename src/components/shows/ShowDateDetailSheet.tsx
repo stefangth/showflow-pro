@@ -135,6 +135,7 @@ export function ShowDateDetailSheet({ showDateId, open, onOpenChange }: Props) {
   // three resolveOrgSetting calls with the canonical fallbacks.
   const { data: times } = useQuery({
     queryKey: ['app-settings', 'booking-times', orgId],
+    enabled: Boolean(showDateId && orgId),
     queryFn: async (): Promise<FlowTimes> => {
       const [windowHours, offerDigestHour, confirmationDigestHour] = await Promise.all([
         resolveOrgSetting(supabase, orgId, 'offer_response_window_hours', BOOKING_ENGINE_DEFAULTS.offer_response_window_hours),
@@ -651,7 +652,9 @@ export function ShowDateDetailSheet({ showDateId, open, onOpenChange }: Props) {
                               key={b.id}
                               booking={b}
                               canManage={canManage}
-                              showConfirm={flow.producer_confirmation}
+                              // Always true: the button only renders on soft_booked rows anyway, so
+                              // it self-hides when there is no backlog from a previous policy.
+                              showConfirm={true}
                               onConfirm={(bookingId) => updateBookingStatus.mutate({ bookingId, status: 'confirmed' })}
                               onCancel={(bookingId) => updateBookingStatus.mutate({ bookingId, status: 'cancelled' })}
                             />
@@ -666,7 +669,9 @@ export function ShowDateDetailSheet({ showDateId, open, onOpenChange }: Props) {
                               key={b.id}
                               booking={b}
                               canManage={canManage}
-                              showConfirm={flow.producer_confirmation}
+                              // Always true: the button only renders on soft_booked rows anyway, so
+                              // it self-hides when there is no backlog from a previous policy.
+                              showConfirm={true}
                               onConfirm={(bookingId) => updateBookingStatus.mutate({ bookingId, status: 'confirmed' })}
                               onCancel={(bookingId) => updateBookingStatus.mutate({ bookingId, status: 'cancelled' })}
                             />

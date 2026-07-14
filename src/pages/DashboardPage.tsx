@@ -16,7 +16,6 @@ import { showSlots } from '@/lib/settings';
 import { formatDateDMY } from '@/lib/dates';
 import { showLabel } from '@/types';
 import { bulkConfirmSoftBooked, bulkDeclineSoftBooked } from '@/data/bookings';
-import { useBookingFlow } from '@/hooks/useBookingFlow';
 
 const fadeUp = {
   initial: { opacity: 0, y: 20 },
@@ -49,7 +48,6 @@ function ProducerDashboard() {
   const in30 = format(addDays(today, 30), 'yyyy-MM-dd');
 
   const qc = useQueryClient();
-  const { data: flow } = useBookingFlow();
   const [selected, setSelected] = useState<Set<string>>(new Set());
 
   const { data: upcomingDates } = useQuery({
@@ -199,8 +197,10 @@ function ProducerDashboard() {
         <p className="text-muted-foreground mt-1">Cast confirmation status across upcoming dates.</p>
       </div>
 
-      {/* Ready to confirm */}
-      {(flow?.producer_confirmation ?? true) && (softBookedRows?.length ?? 0) > 0 && (
+      {/* Ready to confirm. Backlog-driven, not policy-driven: under auto-confirm,
+          new soft_booked rows do not arise, so the card self-hides; any that
+          exist are backlog from a previous policy and need the affordance. */}
+      {(softBookedRows?.length ?? 0) > 0 && (
         <Card>
           <CardHeader>
             <div className="flex items-center justify-between flex-wrap gap-3">

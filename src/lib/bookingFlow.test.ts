@@ -135,6 +135,11 @@ describe("inPracticeRows", () => {
     expect(rows[0].text).toContain("Never sees an offer");
     expect(rows[1].text).toContain("eligibility list");
   });
+  it("direct mode with auto_open_tier1 still true does not claim tier 1 auto-opens", () => {
+    const flow = normalizeBookingFlow({ ...applyPreset(BOOKING_FLOW_DEFAULTS, "direct"), auto_open_tier1: true });
+    const automation = inPracticeRows(flow, TIMES)[2].text;
+    expect(automation.toLowerCase()).not.toContain("tier 1");
+  });
   it("contains no em- or en-dashes in any row for any preset", () => {
     for (const preset of ["classic", "fasttrack", "direct"] as const) {
       for (const row of inPracticeRows(applyPreset(BOOKING_FLOW_DEFAULTS, preset), TIMES)) {
