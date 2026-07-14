@@ -1121,3 +1121,51 @@ Deno.test("expire-offers: auto_escalate with no next tier falls back to the manu
   const openCall = invokeCalls.find((c) => c.name === "open-offer-tier");
   assertEquals(openCall, undefined);
 });
+
+Deno.test("expire-offers: auto_escalate invoke failure does not claim success and falls through to manual escalation", async () => {
+  const bookings = [
+    { status: "cancelled", offer_tier: 1, offer_expires_at: null },
+    { status: "suggested", offer_tier: 1, offer_expires_at: "2026-05-01T00:00:00Z" }, // expired
+  ];
+  const { deps, calls, invokeCalls } = makeFakeDeps({
+    tables: {
+      app_settings: [
+        { when: { key: "cron_secret" }, data: { value: CRON_SECRET } },
+        { when: { key: "booking_flow" }, data: [{ org_id: SHOW_DATE.org_id, value: { auto_escalate: true } }] },
+      ],
+      show_date_offer_tiers: { data: [OPEN_TIER], error: null },
+      show_dates: { data: SHOW_DATE, error: null },
+      bookings: { data: bookings, error: null },
+      cast_city_priority: { data: [{ priority: 2 }], error: null },
+      notifications: { data: null, error: null },
+      org_memberships: { data: [{ user_id: "admin-1" }], error: null },
+    },
+    rpcs: {
+      expire_soft_bookings: { data: null, error: null },
+      resolve_show_assignments: { data: [], error: null },
+    },
+    usersById: { "admin-1": { email: "admin@example.com" } },
+    now: FIXED_NOW,
+    // The open-offer-tier invoke fails. Note this also makes deps.sendEmail (which
+    // shares the same fake invokeFunction) report failure — harmless here, since the
+    // manual path's email send is best-effort and already tolerates failures.
+    emailResult: { data: null, error: { message: "boom" } },
+  });
+  const res = await handle(cronReq(), deps);
+  assertEquals(res.status, 200);
+  const body = await res.json();
+
+  // A failed invoke must not be counted as an auto-escalation, and the row must fall
+  // through to the manual path so a human still gets notified.
+  assertEquals(body.auto_escalated, 0);
+  assertEquals(body.escalations, 1);
+
+  const openCall = invokeCalls.find((c) => c.name === "open-offer-tier");
+  assertExists(openCall);
+  assertEquals(openCall!.body, { show_date_id: "sd-1", tier: 2 });
+
+  const notifInserts = calls.filter((c) => c.table === "notifications" && c.method === "insert");
+  const notifRows = notifInserts.flatMap((c) => c.args[0] as Array<{ type: string }>);
+  assertEquals(notifRows.some((r) => r.type === "tier_escalated"), false);
+  assertEquals(notifRows.some((r) => r.type === "cast_escalation_requested"), true);
+});
