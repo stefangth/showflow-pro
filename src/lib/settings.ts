@@ -39,6 +39,27 @@ export function showSlots(
  * `undefined` draft values (key not present in the draft at all) are never dirty:
  * the user hasn't touched that key, so there's nothing to save.
  */
+/**
+ * `JSON.stringify` with object keys sorted recursively, so two values that differ
+ * only in key order serialize identically. Postgres jsonb does not preserve key
+ * insertion order, so a `booking_flow`-shaped value round-tripped through the DB
+ * can come back with its keys reordered even though nothing changed, and a plain
+ * `JSON.stringify` comparison would misreport that as dirty. Arrays keep their
+ * order (order is significant there, unlike object keys).
+ */
+function stableStringify(value: unknown): string | undefined {
+  if (Array.isArray(value)) {
+    return `[${value.map((v) => stableStringify(v)).join(",")}]`;
+  }
+  if (value && typeof value === "object") {
+    const keys = Object.keys(value as Record<string, unknown>).sort();
+    return `{${keys
+      .map((k) => `${JSON.stringify(k)}:${stableStringify((value as Record<string, unknown>)[k])}`)
+      .join(",")}}`;
+  }
+  return JSON.stringify(value);
+}
+
 export function computeSettingsDirtyKeys(
   settings: { key: string; value: unknown }[] | null | undefined,
   draft: Record<string, unknown>,
@@ -57,7 +78,8 @@ export function computeSettingsDirtyKeys(
     // A key the user hasn't entered into the draft can't be dirty.
     if (!(key in draft)) continue;
     // Absent persisted row → baseline is `undefined`; any real draft value differs.
-    if (JSON.stringify(persisted.get(key)) !== JSON.stringify(draft[key])) dirty.push(key);
+    // Comparison is key-order-insensitive (see stableStringify) since jsonb reorders keys.
+    if (stableStringify(persisted.get(key)) !== stableStringify(draft[key])) dirty.push(key);
   }
   return dirty;
 }

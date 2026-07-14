@@ -197,6 +197,68 @@ describe("useArtistEligibleDates", () => {
     });
   });
 
+  // Regression: the reference-field feature can point at a show_dates custom field
+  // (booking_flow.reference_field.source === "custom"), but this hook's select never
+  // fetched the `custom` jsonb column, so artist-facing views always passed `custom: null`
+  // to referenceLabel and silently fell back to the show label instead of the org's chosen
+  // custom reference (e.g. a production's internal booking code).
+  it("includes the custom jsonb column in the show_dates select and passes it through", async () => {
+    vi.mocked(useMyArtist).mockReturnValue({ data: { id: ARTIST_ID } } as any);
+
+    let selectArg = "";
+    vi.mocked(supabase.from).mockImplementation((table: string) => {
+      if (table === "cast_members") {
+        return {
+          select: vi.fn().mockReturnValue({
+            eq: vi.fn().mockResolvedValue({ data: [{ cast_id: CAST_ID }], error: null }),
+          }),
+        } as any;
+      }
+      if (table === "show_cast_eligibility") {
+        return {
+          select: vi.fn().mockReturnValue({
+            in: vi.fn().mockResolvedValue({ data: [{ show_id: SHOW_ID, city_id: CITY_ID }], error: null }),
+          }),
+        } as any;
+      }
+      if (table === "show_date_cast_eligibility") {
+        return {
+          select: vi.fn().mockReturnValue({
+            in: vi.fn().mockResolvedValue({ data: [], error: null }),
+          }),
+        } as any;
+      }
+      if (table === "show_dates") {
+        return {
+          select: vi.fn((arg: string) => {
+            selectArg = arg;
+            return {
+              gte: vi.fn().mockReturnValue({
+                neq: vi.fn().mockReturnValue({
+                  order: vi.fn().mockResolvedValue({
+                    data: [{ ...sampleDate, custom: { booking_ref: "FV-2033" } }],
+                    error: null,
+                  }),
+                }),
+              }),
+            };
+          }),
+        } as any;
+      }
+      return {} as any;
+    });
+
+    const { result } = renderHook(() => useArtistEligibleDates(), {
+      wrapper: makeWrapper(),
+    });
+
+    await waitFor(() => {
+      expect(result.current.data?.length).toBe(1);
+    });
+    expect(selectArg).toContain("custom");
+    expect(result.current.data?.[0].custom).toEqual({ booking_ref: "FV-2033" });
+  });
+
   it("is disabled when artist is not loaded yet", () => {
     vi.mocked(useMyArtist).mockReturnValue({ data: undefined } as any);
 

@@ -795,3 +795,158 @@ Deno.test("send-offer-digest: resolve_user_contacts RPC error → non-fatal, fal
   assertExists(email);
   assertEquals((email!.body as { recipient_email: string }).recipient_email, "booking@x.com");
 });
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Milestone C — Task 10: digest senders honor the booking flow
+//
+// resolveBookingFlow reads app_settings.key='booking_flow' via resolveOrgSetting —
+// on top of the offer_digest_hour_berlin / offer_response_window_hours reads the
+// handler already makes. The seed must disambiguate all three by the recorded
+// `.eq("key", ...)` arg (array seeds keyed by `when: { key: ... }`), so start from
+// the file's APP_SETTINGS_SEED and layer a `booking_flow` entry on top.
+// ─────────────────────────────────────────────────────────────────────────────
+
+// An org can switch offer_delivery from "digest" to "immediate" while suggested
+// bookings created under the old mode are still unstamped (digest_sent_at IS
+// NULL). Those bookings never got an immediate email at open (open-offer-tier
+// only emails artists it JUST offered) and would never expire or trigger
+// at-risk if this cron kept skipping the whole org. So an immediate-mode org
+// is NOT skipped: it is processed on every run, with no hour gate, so any
+// orphaned backlog gets flushed and stamped promptly. Once the backlog clears,
+// the unstamped-bookings query naturally returns nothing and this is a no-op.
+
+Deno.test("send-offer-digest: immediate-delivery org's unstamped backlog is sent and stamped even off-hour", async () => {
+  const pending = [{
+    id: "b1", artist_id: "a1",
+    artists: { id: "a1", name: "Jo", email: "jo@x.com" },
+    show_dates: { date: "2026-06-10", shows: { program: "P", sub_program: "S" }, cities: { name: "Berlin" } },
+  }];
+  const settings = [
+    ...APP_SETTINGS_SEED,
+    { when: { key: "booking_flow" }, data: [{ org_id: ORG_1, value: { offer_delivery: "immediate" } }] },
+  ];
+  // BERLIN_18_CEST does NOT match the configured digest hour (19), proof the
+  // hour gate does not apply to an immediate-mode org.
+  const { deps, calls, invokeCalls } = baseDeps(
+    { app_settings: settings, bookings: { data: pending, error: null } },
+    BERLIN_18_CEST,
+  );
+  const res = await handle(makeRequest({ headers: cronOK }), deps);
+  const body = await res.json();
+  assertEquals(res.status, 200);
+  assertEquals(invokeCalls.some((c) => c.name === "send-transactional-email"), true);
+  assertEquals(body.digests_sent, 1);
+  const update = calls.find((c) => c.table === "bookings" && c.method === "update");
+  assertExists(update);
+  const payload = update!.args[0] as Record<string, unknown>;
+  assertEquals("digest_sent_at" in payload && "offer_expires_at" in payload, true);
+});
+
+Deno.test("send-offer-digest: immediate-delivery org with no unstamped bookings sends nothing", async () => {
+  const settings = [
+    ...APP_SETTINGS_SEED,
+    { when: { key: "booking_flow" }, data: [{ org_id: ORG_1, value: { offer_delivery: "immediate" } }] },
+  ];
+  const { deps, invokeCalls } = baseDeps(
+    { app_settings: settings, bookings: { data: [], error: null } },
+    BERLIN_18_CEST,
+  );
+  const res = await handle(makeRequest({ headers: cronOK }), deps);
+  const body = await res.json();
+  assertEquals(res.status, 200);
+  assertEquals(invokeCalls.some((c) => c.name === "send-transactional-email"), false);
+  assertEquals(body.digests_sent, 0);
+});
+
+Deno.test("send-offer-digest: direct-mode org is skipped", async () => {
+  const pending = [{
+    id: "b1", artist_id: "a1",
+    artists: { id: "a1", name: "Jo", email: "jo@x.com" },
+    show_dates: { date: "2026-06-10", shows: { program: "P", sub_program: "S" }, cities: { name: "Berlin" } },
+  }];
+  const settings = [
+    ...APP_SETTINGS_SEED,
+    { when: { key: "booking_flow" }, data: [{ org_id: ORG_1, value: { artist_acceptance: false } }] },
+  ];
+  const { deps, invokeCalls } = baseDeps({ app_settings: settings, bookings: { data: pending, error: null } });
+  const res = await handle(makeRequest({ headers: cronOK }), deps);
+  const body = await res.json();
+  assertEquals(res.status, 200);
+  assertEquals(invokeCalls.some((c) => c.name === "send-transactional-email"), false);
+  assertEquals(body.digests_sent, 0);
+});
+
+Deno.test("send-offer-digest: templateData offer items carry the custom-field label when the flow selects a custom reference", async () => {
+  const pending = [{
+    id: "b1", artist_id: "a1",
+    artists: { id: "a1", name: "Jo", email: "jo@x.com" },
+    show_dates: {
+      date: "2026-06-10",
+      shows: { program: "Phantom", sub_program: "Evening" },
+      cities: { name: "Berlin" },
+      custom: { pn: "PN-4521" },
+    },
+  }];
+  const settings = [
+    ...APP_SETTINGS_SEED,
+    {
+      when: { key: "booking_flow" },
+      data: [{ org_id: ORG_1, value: { reference_field: { source: "custom", custom_field_id: "cf1" } } }],
+    },
+  ];
+  const { deps, invokeCalls } = baseDeps({
+    app_settings: settings,
+    bookings: { data: pending, error: null },
+    custom_field_definitions: { data: { key: "pn" }, error: null },
+  });
+  const res = await handle(makeRequest({ headers: cronOK }), deps);
+  assertEquals((await res.json()).digests_sent, 1);
+  const email = invokeCalls.find((c) => c.name === "send-transactional-email");
+  assertExists(email);
+  const msg = email!.body as { templateData?: { offers?: Array<{ label?: string; show?: string }> } };
+  assertEquals(msg.templateData?.offers?.[0]?.label, "PN-4521");
+  // The old raw program/sub_program string is still computed alongside the label
+  // (the template's fallback for previewData that doesn't carry a label).
+  assertEquals(msg.templateData?.offers?.[0]?.show, "Phantom — Evening");
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Fix B (PR #161 round 3): a booking_flow read failure must not abort the org loop
+//
+// resolveBookingFlow runs first in each org iteration. An UNGUARDED `await` would
+// reject the whole handler on the first org's failure, skipping every later org's
+// digest. The per-org try/catch isolates it (log + continue), so the loop completes
+// and the handler returns 200 instead of rejecting.
+//
+// Harness note: the fake client resolves one seed per table, so a booking_flow error
+// applies to BOTH orgs; it cannot make only org A fail while org B succeeds (the
+// booking_flow read filters org via `.or()`, which the fake doesn't match on). The
+// assertion is therefore that the error is caught per-org and the loop is not aborted:
+// pre-fix the handler REJECTED here (the test would throw) instead of returning 200.
+// ─────────────────────────────────────────────────────────────────────────────
+
+Deno.test("send-offer-digest: booking_flow read error is isolated per org, loop not aborted, returns 200", async () => {
+  const settings = [
+    { when: { key: "cron_secret" }, data: { value: "s" } },
+    { when: { key: "booking_flow" }, error: { message: "booking_flow read failed" } },
+    { when: { key: "offer_digest_hour_berlin" }, data: [{ org_id: null, value: 19 }] },
+    { when: { key: "offer_response_window_hours" }, data: [{ org_id: null, value: 48 }] },
+  ];
+  const { deps } = makeFakeDeps({
+    now: BERLIN_19_CEST,
+    tables: {
+      app_settings: settings,
+      // Two active orgs: proves the loop iterates past the first org's failure.
+      organizations: { data: [{ id: ORG_1 }, { id: ORG_2 }], error: null },
+      bookings: { data: [], error: null },
+    },
+  });
+  const res = await handle(makeRequest({ headers: cronOK }), deps);
+  // Pre-fix: `await resolveBookingFlow` rejects → handle() rejects → this line throws.
+  assertEquals(res.status, 200);
+  const body = await res.json();
+  // Both orgs `continue` on the caught booking_flow error before reaching
+  // processedOrgs.push, so the handler reports the skipped shape; the point is it
+  // COMPLETES (returns a response) instead of rejecting the whole loop on org A.
+  assertEquals(body.skipped, true, "loop completes across both orgs despite booking_flow error");
+});

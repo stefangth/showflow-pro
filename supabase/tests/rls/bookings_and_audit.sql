@@ -22,13 +22,17 @@
 --   eeeeeeee-eeee-0004-…  booking: artist A, suggested   (illegal → confirmed)
 --   eeeeeeee-eeee-0005-…  booking: artist A, confirmed   (USING blocks update)
 --   eeeeeeee-eeee-0006-…  booking: artist A, suggested   (artist B can't update)
+--   eeeeeeee-eeee-0007-…  booking: artist A, suggested   (self-confirm under producer_confirmation=false)
+--   eeeeeeee-eeee-0008-…  booking: artist A, suggested   (status-only accept still lives_ok)
+--   eeeeeeee-eeee-0009-…  booking: artist A, suggested   (artist retarget throws; immutable refs)
+--   eeeeeeee-eeee-000a-…  booking: artist A, suggested   (superuser retarget throws; role-independent)
 --   ffffffff-ffff-0001-…  booking_audit_log entry
 
 BEGIN;
 
 CREATE EXTENSION IF NOT EXISTS pgtap WITH SCHEMA extensions;
 
-SELECT plan(12);
+SELECT plan(17);
 
 -- ────────────────────────────────────────────────────────────────────────────
 -- Fixture setup (as postgres superuser)
@@ -72,7 +76,11 @@ INSERT INTO public.show_dates (id, show_id, date, session_1, org_id) VALUES
   ('dddddddd-dddd-0002-0000-000000000000', 'cccccccc-cccc-0001-0000-000000000000', '2099-01-02', '20:00'::time, '00000000-0000-0000-0000-00000000b007'),
   ('dddddddd-dddd-0003-0000-000000000000', 'cccccccc-cccc-0001-0000-000000000000', '2099-01-03', '20:00'::time, '00000000-0000-0000-0000-00000000b007'),
   ('dddddddd-dddd-0004-0000-000000000000', 'cccccccc-cccc-0001-0000-000000000000', '2099-01-04', '20:00'::time, '00000000-0000-0000-0000-00000000b007'),
-  ('dddddddd-dddd-0005-0000-000000000000', 'cccccccc-cccc-0001-0000-000000000000', '2099-01-05', '20:00'::time, '00000000-0000-0000-0000-00000000b007');
+  ('dddddddd-dddd-0005-0000-000000000000', 'cccccccc-cccc-0001-0000-000000000000', '2099-01-05', '20:00'::time, '00000000-0000-0000-0000-00000000b007'),
+  ('dddddddd-dddd-0006-0000-000000000000', 'cccccccc-cccc-0001-0000-000000000000', '2099-01-06', '20:00'::time, '00000000-0000-0000-0000-00000000b007'),
+  ('dddddddd-dddd-0007-0000-000000000000', 'cccccccc-cccc-0001-0000-000000000000', '2099-01-07', '20:00'::time, '00000000-0000-0000-0000-00000000b007'),
+  ('dddddddd-dddd-0008-0000-000000000000', 'cccccccc-cccc-0001-0000-000000000000', '2099-01-08', '20:00'::time, '00000000-0000-0000-0000-00000000b007'),
+  ('dddddddd-dddd-0009-0000-000000000000', 'cccccccc-cccc-0001-0000-000000000000', '2099-01-09', '20:00'::time, '00000000-0000-0000-0000-00000000b007');
 
 INSERT INTO public.bookings (id, show_date_id, artist_id, status, is_understudy, org_id) VALUES
   ('eeeeeeee-eeee-0001-0000-000000000000', 'dddddddd-dddd-0001-0000-000000000000', 'bbbbbbbb-bbbb-0001-0000-000000000000', 'suggested'::booking_status, false, '00000000-0000-0000-0000-00000000b007'),
@@ -80,7 +88,11 @@ INSERT INTO public.bookings (id, show_date_id, artist_id, status, is_understudy,
   ('eeeeeeee-eeee-0003-0000-000000000000', 'dddddddd-dddd-0002-0000-000000000000', 'bbbbbbbb-bbbb-0001-0000-000000000000', 'suggested'::booking_status, false, '00000000-0000-0000-0000-00000000b007'),
   ('eeeeeeee-eeee-0004-0000-000000000000', 'dddddddd-dddd-0003-0000-000000000000', 'bbbbbbbb-bbbb-0001-0000-000000000000', 'suggested'::booking_status, false, '00000000-0000-0000-0000-00000000b007'),
   ('eeeeeeee-eeee-0005-0000-000000000000', 'dddddddd-dddd-0004-0000-000000000000', 'bbbbbbbb-bbbb-0001-0000-000000000000', 'confirmed'::booking_status, false, '00000000-0000-0000-0000-00000000b007'),
-  ('eeeeeeee-eeee-0006-0000-000000000000', 'dddddddd-dddd-0005-0000-000000000000', 'bbbbbbbb-bbbb-0001-0000-000000000000', 'suggested'::booking_status, false, '00000000-0000-0000-0000-00000000b007');
+  ('eeeeeeee-eeee-0006-0000-000000000000', 'dddddddd-dddd-0005-0000-000000000000', 'bbbbbbbb-bbbb-0001-0000-000000000000', 'suggested'::booking_status, false, '00000000-0000-0000-0000-00000000b007'),
+  ('eeeeeeee-eeee-0007-0000-000000000000', 'dddddddd-dddd-0006-0000-000000000000', 'bbbbbbbb-bbbb-0001-0000-000000000000', 'suggested'::booking_status, false, '00000000-0000-0000-0000-00000000b007'),
+  ('eeeeeeee-eeee-0008-0000-000000000000', 'dddddddd-dddd-0007-0000-000000000000', 'bbbbbbbb-bbbb-0001-0000-000000000000', 'suggested'::booking_status, false, '00000000-0000-0000-0000-00000000b007'),
+  ('eeeeeeee-eeee-0009-0000-000000000000', 'dddddddd-dddd-0008-0000-000000000000', 'bbbbbbbb-bbbb-0001-0000-000000000000', 'suggested'::booking_status, false, '00000000-0000-0000-0000-00000000b007'),
+  ('eeeeeeee-eeee-000a-0000-000000000000', 'dddddddd-dddd-0009-0000-000000000000', 'bbbbbbbb-bbbb-0001-0000-000000000000', 'suggested'::booking_status, false, '00000000-0000-0000-0000-00000000b007');
 
 INSERT INTO public.booking_audit_log (id, booking_id, action, old_status, new_status, performed_by, org_id)
 VALUES (
@@ -236,20 +248,21 @@ SELECT is(
   'artist A can accept own offer (suggested → soft_booked)'
 );
 
--- 10. Artist A cannot set own offer directly to confirmed. The BEFORE
---     enforce_booking_transition guard fires first and rejects suggested →
---     confirmed (an illegal transition) with SQLSTATE 23514, before the RLS
---     WITH CHECK (which only allows 'soft_booked' | 'cancelled') is even
---     evaluated. Either way the direct jump to confirmed is blocked.
+-- 10. Artist A cannot set own offer directly to confirmed. suggested → confirmed
+--     is now a legal transition at the enforce_booking_transition guard (auto-
+--     confirm acceptance under booking_flow), so the RLS WITH CHECK — which only
+--     lets an artist move their own offer to 'soft_booked' | 'cancelled' — is now
+--     the layer that blocks the direct jump, raising SQLSTATE 42501. Either way
+--     the direct jump to confirmed is blocked.
 SELECT set_config('request.jwt.claims', '{"sub":"aaaaaaaa-aaaa-0003-0000-000000000000","role":"authenticated"}', true);
 SET LOCAL ROLE authenticated;
 
 SELECT throws_ok(
   $$UPDATE public.bookings SET status = 'confirmed'
     WHERE id = 'eeeeeeee-eeee-0004-0000-000000000000'$$,
-  '23514',
+  '42501',
   null,
-  'artist A cannot set own offer to confirmed (transition guard rejects suggested → confirmed)'
+  'artist A cannot set own offer to confirmed (RLS WITH CHECK blocks confirmed)'
 );
 
 RESET ROLE;
@@ -286,6 +299,88 @@ SELECT is(
    WHERE id = 'eeeeeeee-eeee-0006-0000-000000000000'),
   'suggested',
   'artist A booking unchanged — USING artist_id check blocked artist B'
+);
+
+-- ────────────────────────────────────────────────────────────────────────────
+-- Auto-confirm branch: with the org's booking_flow.producer_confirmation = false,
+-- an artist accepting their own suggested offer confirms it in one step.
+-- Seeded here (as postgres superuser, RLS-bypassing) AFTER test 10 asserted the
+-- default-flow deny, so the org had no booking_flow row until this point.
+-- ────────────────────────────────────────────────────────────────────────────
+
+INSERT INTO public.app_settings (org_id, key, value)
+VALUES ('00000000-0000-0000-0000-00000000b007', 'booking_flow', '{"producer_confirmation":false}'::jsonb);
+
+-- 13. Artist A CAN self-confirm own suggested offer when producer_confirmation is off.
+--     The WITH CHECK's confirmed branch passes because get_org_setting resolves the
+--     org's booking_flow to producer_confirmation=false. enforce_booking_transition
+--     already allows suggested → confirmed.
+SELECT set_config('request.jwt.claims', '{"sub":"aaaaaaaa-aaaa-0003-0000-000000000000","role":"authenticated"}', true);
+SET LOCAL ROLE authenticated;
+
+SELECT lives_ok(
+  $$UPDATE public.bookings SET status = 'confirmed', confirmed_at = now()
+    WHERE id = 'eeeeeeee-eeee-0007-0000-000000000000'$$,
+  'artist A can self-confirm own offer when producer_confirmation is disabled'
+);
+
+RESET ROLE;
+
+SELECT is(
+  (SELECT status::text FROM public.bookings
+   WHERE id = 'eeeeeeee-eeee-0007-0000-000000000000'),
+  'confirmed',
+  'offer auto-confirmed by artist (producer_confirmation=false → suggested → confirmed)'
+);
+
+-- ────────────────────────────────────────────────────────────────────────────
+-- enforce_booking_immutable_refs guard (bookings_retarget_guard migration)
+-- show_date_id / artist_id are immutable after creation. These run AFTER the
+-- producer_confirmation=false row is seeded (above), so the retarget-throws
+-- scenarios prove the guard blocks the hijack even in a self-confirm org where
+-- the RLS WITH CHECK would otherwise let an artist reach 'confirmed'.
+-- ────────────────────────────────────────────────────────────────────────────
+
+-- 15. A plain status-only accept still succeeds under the guard (no ref change).
+SELECT set_config('request.jwt.claims', '{"sub":"aaaaaaaa-aaaa-0003-0000-000000000000","role":"authenticated"}', true);
+SET LOCAL ROLE authenticated;
+
+SELECT lives_ok(
+  $$UPDATE public.bookings SET status = 'soft_booked'
+    WHERE id = 'eeeeeeee-eeee-0008-0000-000000000000'$$,
+  'status-only accept still lives_ok; guard only blocks ref changes'
+);
+
+RESET ROLE;
+
+-- 16. Artist A retargeting their own offer onto another same-org date while
+--     accepting throws check_violation (23514), even though producer_confirmation
+--     is off. trg_derive_org_id passes (same org), so the immutable-refs guard is
+--     the layer that raises. The target date already carries an active artist-A
+--     booking, but the guard fires BEFORE the uniqueness index is ever evaluated.
+SELECT set_config('request.jwt.claims', '{"sub":"aaaaaaaa-aaaa-0003-0000-000000000000","role":"authenticated"}', true);
+SET LOCAL ROLE authenticated;
+
+SELECT throws_ok(
+  $$UPDATE public.bookings
+    SET status = 'confirmed', show_date_id = 'dddddddd-dddd-0001-0000-000000000000'
+    WHERE id = 'eeeeeeee-eeee-0009-0000-000000000000'$$,
+  '23514',
+  null,
+  'artist retarget of show_date_id throws 23514 even in producer_confirmation=false org'
+);
+
+RESET ROLE;
+
+-- 17. The guard is role-independent: a superuser (RLS-bypassing) UPDATE that
+--     changes show_date_id also throws 23514.
+SELECT throws_ok(
+  $$UPDATE public.bookings
+    SET show_date_id = 'dddddddd-dddd-0001-0000-000000000000'
+    WHERE id = 'eeeeeeee-eeee-000a-0000-000000000000'$$,
+  '23514',
+  null,
+  'superuser retarget of show_date_id also throws 23514 (guard is role-independent)'
 );
 
 SELECT * FROM finish();

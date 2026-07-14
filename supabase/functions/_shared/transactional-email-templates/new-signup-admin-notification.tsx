@@ -48,9 +48,9 @@ const NewSignupAdminNotification = ({
 
         <Section style={card}>
           <Text style={cardLabel}>Name</Text>
-          <Text style={cardValue}>{signupName || '—'}</Text>
+          <Text style={cardValue}>{signupName || 'Not provided'}</Text>
           <Text style={cardLabel}>Email</Text>
-          <Text style={cardValue}>{signupEmail || '—'}</Text>
+          <Text style={cardValue}>{signupEmail || 'Not provided'}</Text>
           <Text style={cardLabel}>Requested role</Text>
           <Text style={cardValue}>{requestedRole || 'artist'}</Text>
         </Section>
@@ -71,7 +71,7 @@ const NewSignupAdminNotification = ({
 export const template = {
   component: NewSignupAdminNotification,
   subject: 'New ShowFlow signup awaiting approval',
-  displayName: 'New signup — admin notification',
+  displayName: 'New signup admin notification',
   previewData: {
     signupName: 'Jane Performer',
     signupEmail: 'jane@example.com',

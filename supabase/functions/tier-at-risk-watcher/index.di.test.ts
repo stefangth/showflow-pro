@@ -1078,6 +1078,150 @@ Deno.test("tier-at-risk-watcher DI: a still-live suggested offer (future expiry)
   assertEquals(insertCalls.length, 0);
 });
 
+// ── Milestone C — Task 13: gate on booking_flow (at_risk_alerts / artist_acceptance) ──
+//
+// resolveBookingFlow reads app_settings.key='booking_flow' — array-seed matched by the
+// recorded `.eq('key', …)` arg, same disambiguation idiom as Task 11/12's expire-offers
+// tests. Gated per (sd.org_id), cached in a flowByOrg Map identical to Task 12's pattern.
+// A gated tier is simply `continue`d before it's added to stillAtRiskTierIds — the
+// existing recovery/cleanup pass at the end of handle() then treats it exactly like any
+// other skipped tier (unconfigured slots, healthy, orphaned show_date, …) and deletes any
+// pre-existing tier_at_risk notification for it. So turning at_risk_alerts off for an org
+// automatically clears its stale notifications on the very next run, with no special-case
+// code needed — verified by the second test below.
+
+Deno.test("tier-at-risk-watcher: org with at_risk_alerts=false produces no notifications", async () => {
+  // Clone of "at-risk tier → response includes at_risk_count:1 and cleared:0", plus a
+  // booking_flow override that disables at_risk_alerts for the show_date's org.
+  const ORG_ID = "00000000-0000-0000-0000-000000000001"; // makeShowDate's default org
+  const tierId = "tier-gated";
+  const sdId = "sd-gated";
+
+  const { deps, calls } = makeFakeDeps({
+    tables: {
+      app_settings: [
+        { when: { key: "cron_secret" }, data: { value: "secret-val" } },
+        { when: { key: "booking_flow" }, data: [{ org_id: ORG_ID, value: { at_risk_alerts: false } }] },
+      ],
+      show_date_offer_tiers: { data: [makeTier(tierId, sdId)], error: null },
+      notifications: { data: [], error: null },
+      show_dates: { data: makeShowDate(sdId, "MusicalA", "MainShow"), error: null },
+      // Would be at-risk (1 pending < 3 required) if the org hadn't turned alerts off.
+      bookings: { data: [{ status: "suggested" }], error: null },
+    },
+    rpcs: {
+      resolve_show_assignments: { data: [{ producer_user_id: "prod-1" }], error: null },
+    },
+  });
+
+  const res = await handle(makeRequest({ headers: CRON_OK }), deps);
+  assertEquals(res.status, 200);
+  const body = await res.json();
+  assertEquals(body.at_risk_count, 0, "org with at_risk_alerts=false must not be counted at-risk");
+
+  const insertCalls = calls.filter((c) => c.table === "notifications" && c.method === "insert");
+  assertEquals(insertCalls.length, 0, "no notification inserted when at_risk_alerts is off");
+});
+
+Deno.test("tier-at-risk-watcher: disabling at_risk_alerts clears the org's existing tier_at_risk notification", async () => {
+  // An org that previously had alerts on (and thus an existing notification for a
+  // still-mathematically-at-risk tier) turns at_risk_alerts off. The gate must not
+  // strand the stale notification — the existing stillAtRiskTierIds/cleanup pass should
+  // pick it up and delete it, exactly as it would for any other skipped tier.
+  const ORG_ID = "00000000-0000-0000-0000-000000000001";
+  const tierId = "tier-gated-stale";
+  const sdId = "sd-gated-stale";
+
+  const existingNotif = { id: "notif-stale", user_id: "prod-1", related_entity_id: tierId };
+
+  const { deps, calls } = makeFakeDeps({
+    tables: {
+      app_settings: [
+        { when: { key: "cron_secret" }, data: { value: "secret-val" } },
+        { when: { key: "booking_flow" }, data: [{ org_id: ORG_ID, value: { at_risk_alerts: false } }] },
+      ],
+      show_date_offer_tiers: { data: [makeTier(tierId, sdId)], error: null },
+      notifications: { data: [existingNotif], error: null },
+      show_dates: { data: makeShowDate(sdId, "MusicalA", "MainShow"), error: null },
+      // Still mathematically at-risk — but the org has alerts off, so it's gated out.
+      bookings: { data: [{ status: "suggested" }], error: null },
+    },
+    rpcs: {
+      resolve_show_assignments: { data: [{ producer_user_id: "prod-1" }], error: null },
+    },
+  });
+
+  const res = await handle(makeRequest({ headers: CRON_OK }), deps);
+  const body = await res.json();
+  assertEquals(body.at_risk_count, 0);
+  assertEquals(body.cleared, 1, "stale notification must be cleared once alerts are turned off");
+
+  const deleteCalls = calls.filter((c) => c.table === "notifications" && c.method === "delete");
+  assertEquals(deleteCalls.length > 0, true, "delete must be called for the stale notification");
+  const inCalls = calls.filter((c) => c.table === "notifications" && c.method === "in");
+  const inArgs = inCalls[inCalls.length - 1].args as [string, string[]];
+  assertEquals(inArgs[1].includes("notif-stale"), true);
+});
+
+// ── Fix B (PR #161 round 3): booking_flow read error must not abort the scan ──
+//
+// A throw from resolveBookingFlow inside the loop would abort the whole handler,
+// skipping the post-loop stale-clear pass, leaving orphaned tier_at_risk
+// notifications stranded. The per-tier try/catch isolates it (log + continue): the
+// skipped tier is never added to stillAtRiskTierIds, so the recovery pass still
+// deletes its stale notification, exactly as any other skipped tier.
+//
+// Harness note: the fake resolves one seed per table, so a booking_flow error applies
+// to every org (the read filters org via `.or()`, which the fake doesn't match on).
+// The test uses two orgs to prove the loop reaches the SECOND tier after the first
+// errors AND the stale-clear runs for both. Pre-fix the handler REJECTED on the first
+// tier and the deletes below never happened.
+Deno.test("tier-at-risk-watcher: booking_flow read error is isolated, scan continues and stale-clear still runs", async () => {
+  const ORG_A = "00000000-0000-0000-0000-0000000000a1";
+  const ORG_B = "00000000-0000-0000-0000-0000000000b2";
+  const tierA = "tier-bf-a";
+  const tierB = "tier-bf-b";
+  const sdA = "sd-bf-a";
+  const sdB = "sd-bf-b";
+
+  // Both tiers have a pre-existing stale tier_at_risk notification.
+  const notifs = [
+    { id: "notif-bf-a", user_id: "prod-1", related_entity_id: tierA },
+    { id: "notif-bf-b", user_id: "prod-1", related_entity_id: tierB },
+  ];
+
+  const { deps, calls } = makeFakeDeps({
+    tables: {
+      app_settings: [
+        { when: { key: "cron_secret" }, data: { value: "secret-val" } },
+        // booking_flow read throws for every org (resolveOrgSetting rethrows the error).
+        { when: { key: "booking_flow" }, error: { message: "booking_flow read failed" } },
+      ],
+      show_date_offer_tiers: { data: [makeTier(tierA, sdA), makeTier(tierB, sdB)], error: null },
+      notifications: { data: notifs, error: null },
+      show_dates: [
+        { when: { id: sdA }, data: makeShowDate(sdA, "MusicalA", "MainShow", "2026-07-01", ORG_A, 2, 0) },
+        { when: { id: sdB }, data: makeShowDate(sdB, "MusicalB", "MainShow", "2026-07-01", ORG_B, 2, 0) },
+      ],
+      bookings: { data: [], error: null },
+    },
+    rpcs: { resolve_show_assignments: { data: [{ producer_user_id: "prod-1" }], error: null } },
+  });
+
+  const res = await handle(makeRequest({ headers: CRON_OK }), deps);
+  // Pre-fix: `await resolveBookingFlow` rejects → handle() rejects → this line throws.
+  assertEquals(res.status, 200);
+  const body = await res.json();
+  assertEquals(body.at_risk_count, 0, "both tiers skipped due to booking_flow read error");
+  assertEquals(body.cleared, 2, "stale-clear still runs for both skipped tiers");
+
+  const inCalls = calls.filter((c) => c.table === "notifications" && c.method === "in");
+  assertEquals(inCalls.length > 0, true, "stale-clear delete must target notification ids");
+  const inArgs = inCalls[inCalls.length - 1].args as [string, string[]];
+  assertEquals(inArgs[1].includes("notif-bf-a"), true, "first org's stale notif cleared");
+  assertEquals(inArgs[1].includes("notif-bf-b"), true, "second org's stale notif cleared (loop reached it)");
+});
+
 Deno.test("tier-at-risk-watcher DI M2: past date is never flagged at-risk", async () => {
   // Same unfillable setup as a normal at-risk case, but the date is in the past
   // (before the 2026-06-01 fake clock). The watcher must skip it, not re-alert forever.

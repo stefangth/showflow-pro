@@ -29,11 +29,11 @@ interface Props {
 const SignupDecisionEmail = ({ decision, displayName, reason, role, _intro, _cta_label, _footer }: Props) => {
   const isApproved = decision === 'approved'
   const defaultIntro = isApproved
-    ? `Good news — your account has been approved. You can now sign in and start using ${SITE_NAME}${role ? ` as a ${role}.` : '.'}`
+    ? `Good news: your account has been approved. You can now sign in and start using ${SITE_NAME}${role ? ` as a ${role}.` : '.'}`
     : 'After review, your access request was not approved at this time.'
   const introText = _intro || defaultIntro
   const ctaLabel = _cta_label || `Open ${SITE_NAME}`
-  const footerText = _footer || `— The ${SITE_NAME} team`
+  const footerText = _footer || `The ${SITE_NAME} team`
   return (
     <Html lang="en" dir="ltr">
       <Head />

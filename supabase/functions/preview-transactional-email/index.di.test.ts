@@ -260,7 +260,7 @@ Deno.test("preview-transactional-email DI: function subject (cast-escalation-req
   const entry = templates[0];
   assertEquals(entry.status, "ready");
   // previewData: { program: 'Riverdance', date: '2026-06-15', tier: 1, ... }
-  assertEquals(entry.subject, "Escalation needed — Tier 1 for Riverdance on 2026-06-15");
+  assertEquals(entry.subject, "Escalation needed: Tier 1 for Riverdance on 2026-06-15");
 });
 
 // ── Single template rendering ─────────────────────────────────────────────────
@@ -513,9 +513,9 @@ Deno.test("preview-transactional-email DI: artist-offer-digest html contains pre
 
 // ── Registry count assertion ──────────────────────────────────────────────────
 
-Deno.test("preview-transactional-email DI: TEMPLATES registry has exactly 7 entries", async () => {
+Deno.test("preview-transactional-email DI: TEMPLATES registry has exactly 9 entries", async () => {
   // Regression guard: if a template is added/removed, this test will catch the mismatch.
-  assertEquals(EXPECTED_TEMPLATE_COUNT, 7);
+  assertEquals(EXPECTED_TEMPLATE_COUNT, 9);
 });
 
 // ── GET method (non-POST) ─────────────────────────────────────────────────────

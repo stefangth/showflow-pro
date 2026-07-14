@@ -73,6 +73,37 @@ export async function fetchOpenedTiers(
   return (data ?? []).map((r) => ({ tier: r.tier, openedAt: r.opened_at, closedAt: r.closed_at }));
 }
 
+export interface DryRunResult {
+  candidates: { id: string; name: string }[];
+  excluded: { alreadyBooked: number; blocked: number; inactive: number };
+  message?: string;
+}
+
+/** Preview who would receive offers for a (show_date, tier) without writing anything. */
+export async function dryRunOfferTier(
+  client: SupabaseClient<Database>,
+  args: { showDateId: string; tier: number },
+): Promise<DryRunResult> {
+  const { data, error } = await client.functions.invoke("open-offer-tier", {
+    body: { show_date_id: args.showDateId, tier: args.tier, dry_run: true },
+  });
+  if (error) throw error;
+  const payload = data as {
+    candidates?: { id: string; name: string }[];
+    excluded?: { already_booked?: number; blocked?: number; inactive?: number };
+    message?: string;
+  };
+  return {
+    candidates: payload?.candidates ?? [],
+    excluded: {
+      alreadyBooked: payload?.excluded?.already_booked ?? 0,
+      blocked: payload?.excluded?.blocked ?? 0,
+      inactive: payload?.excluded?.inactive ?? 0,
+    },
+    message: payload?.message,
+  };
+}
+
 export interface CloseOfferTierResult { closed: boolean; withdrawn: number; message?: string }
 
 /** Invoke the close-offer-tier edge function for one (show_date, tier). */
@@ -197,16 +228,21 @@ export async function updateBookingStatusGuarded(
 }
 
 /**
- * Artist response to a pending (suggested) offer. Accept → soft_booked,
- * Decline → cancelled(artist_declined). Only affects a still-suggested offer, so a
- * withdrawn/expired offer reports 0 rows changed instead of a false "accepted".
+ * Artist response to a pending (suggested) offer. Accept → soft_booked (or, with
+ * `autoConfirm` when the org's booking_flow disables producer confirmation, straight
+ * to confirmed); Decline → cancelled(artist_declined). Only affects a still-suggested
+ * offer, so a withdrawn/expired offer reports 0 rows changed instead of a false
+ * "accepted". The confirmed write is still RLS-gated server-side on the org's own
+ * booking_flow.producer_confirmation setting (artist_self_confirm_policy migration).
  */
 export async function respondToOffer(
   client: SupabaseClient<Database>,
-  args: { bookingId: string; accept: boolean; now: Date },
+  args: { bookingId: string; accept: boolean; now: Date; autoConfirm?: boolean },
 ): Promise<{ affected: number }> {
   const patch: Database["public"]["Tables"]["bookings"]["Update"] = args.accept
-    ? { status: "soft_booked" }
+    ? args.autoConfirm
+      ? { status: "confirmed", confirmed_at: args.now.toISOString() }
+      : { status: "soft_booked" }
     : { status: "cancelled", cancelled_at: args.now.toISOString(), cancellation_reason: "artist_declined" };
 
   const { data, error } = await client
@@ -217,4 +253,33 @@ export async function respondToOffer(
     .select("id");
   if (error) throw error;
   return { affected: (data ?? []).length };
+}
+
+/**
+ * Create a booking directly (producer books an artist from the eligibility list).
+ * Inserts `soft_booked` by default, or `confirmed` + confirmed_at when the org's
+ * booking flow confirms producer bookings directly (`confirmDirectly`).
+ */
+export async function createBooking(
+  client: SupabaseClient<Database>,
+  args: {
+    showDateId: string;
+    artistId: string;
+    isUnderstudy: boolean;
+    bookedBy: string;
+    orgId: string;
+    confirmDirectly: boolean;
+    now: Date;
+  },
+): Promise<void> {
+  const { error } = await client.from("bookings").insert({
+    show_date_id: args.showDateId,
+    artist_id: args.artistId,
+    status: args.confirmDirectly ? "confirmed" : "soft_booked",
+    confirmed_at: args.confirmDirectly ? args.now.toISOString() : null,
+    is_understudy: args.isUnderstudy,
+    booked_by: args.bookedBy,
+    org_id: args.orgId,
+  });
+  if (error) throw error;
 }

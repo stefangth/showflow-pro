@@ -836,3 +836,226 @@ Deno.test("open-offer-tier: tier upsert failure → offers still created + tier_
   assertEquals(body.offers_created, 1);
   assertEquals(body.tier_tracking_warning, true);
 });
+
+// ---------------------------------------------------------------------------
+// Milestone C — Task 8: direct-mode refusal + dry-run
+//
+// resolveBookingFlow reads app_settings.key='booking_flow' via resolveOrgSetting.
+// FLOW_DIRECT models an org whose booking_flow has artist_acceptance:false (a
+// "direct booking" org where offers are disabled).
+//
+// The `artists` table is queried TWICE on the dry-run path:
+//   1. Active filter: .select('id').in('id', ids).eq('status','active')
+//      → localEq records status:'active' → matched by when:{ status:'active' }
+//   2. Name lookup:   .select('id, name').in('id', candidateIds)   (no .eq())
+//      → localEq has no `status` → falls through to the fallback entry.
+// The name query resolves via .then(), which does NOT apply in()-filtering, so
+// the fallback seed must already carry only the rows the DB would return for the
+// candidate ids (i.e. the non-blocked ones).
+// ---------------------------------------------------------------------------
+
+const FLOW_DIRECT = { data: [{ org_id: "org-A", value: { artist_acceptance: false } }], error: null };
+
+Deno.test("open-offer-tier: direct-booking org → 409, nothing written", async () => {
+  const { deps, calls } = makeFakeDeps({
+    envVars,
+    tables: {
+      show_dates: { data: { ...SHOW_DATE_OPEN, org_id: "org-A" }, error: null },
+      app_settings: FLOW_DIRECT,
+    },
+  });
+  const res = await handle(makeRequest({ headers: SVC, body: { show_date_id: "d1", tier: 1 } }), deps);
+  assertEquals(res.status, 409);
+  const body = await res.json();
+  assertEquals(body.error, "Direct booking mode: offers are disabled for this organization.");
+  assertEquals(calls.some((c) => c.table === "bookings" && c.method === "insert"), false);
+  assertEquals(calls.some((c) => c.table === "show_date_offer_tiers" && c.method === "upsert"), false);
+});
+
+Deno.test("open-offer-tier: dry_run returns candidates and writes nothing", async () => {
+  const { deps, calls } = makeFakeDeps({
+    envVars,
+    tables: {
+      show_dates: { data: { ...SHOW_DATE_OPEN, org_id: "org-A" }, error: null },
+      app_settings: { data: [], error: null }, // no booking_flow row → defaults (artist_acceptance:true)
+      cast_city_priority: { data: [{ cast_id: "c1" }], error: null },
+      cast_members: { data: [{ artist_id: "a1" }, { artist_id: "a2" }], error: null },
+      artists: [
+        // Active filter (records .eq('status','active')) → both are active
+        { when: { status: "active" }, data: [{ id: "a1" }, { id: "a2" }], error: null },
+        // Name lookup (no .eq()) → only the surviving candidate (a2 is blocked)
+        { data: [{ id: "a1", name: "Lena" }], error: null },
+      ],
+      bookings: { data: [], error: null },
+      blocked_dates: { data: [{ artist_id: "a2" }], error: null },
+    },
+  });
+  const res = await handle(
+    makeRequest({ headers: SVC, body: { show_date_id: "d1", tier: 1, dry_run: true } }),
+    deps,
+  );
+  assertEquals(res.status, 200);
+  const body = await res.json();
+  assertEquals(body.dry_run, true);
+  assertEquals(body.candidates, [{ id: "a1", name: "Lena" }]);
+  assertEquals(body.excluded.blocked, 1);
+  assertEquals(body.excluded.already_booked, 0);
+  assertEquals(body.excluded.inactive, 0);
+  assertEquals(calls.some((c) => c.table === "bookings" && c.method === "insert"), false);
+  assertEquals(calls.some((c) => c.table === "show_date_offer_tiers" && c.method === "upsert"), false);
+});
+
+Deno.test("open-offer-tier: dry_run on a zero-session date returns the dry-run benign shape", async () => {
+  const { deps, calls } = makeFakeDeps({
+    envVars,
+    tables: {
+      show_dates: {
+        data: { ...SHOW_DATE_OPEN, org_id: "org-A", session_1: null, session_2: null, session_3: null },
+        error: null,
+      },
+      app_settings: { data: [], error: null },
+    },
+  });
+  const res = await handle(
+    makeRequest({ headers: SVC, body: { show_date_id: "d1", tier: 1, dry_run: true } }),
+    deps,
+  );
+  assertEquals(res.status, 200);
+  const body = await res.json();
+  assertEquals(body.dry_run, true);
+  assertEquals(body.candidates, []);
+  assertExists(body.excluded);
+  assertEquals(body.excluded.blocked, 0);
+  assertExists(body.message);
+  assertEquals(calls.some((c) => c.table === "bookings" && c.method === "insert"), false);
+});
+
+Deno.test("open-offer-tier: dry_run — all eligible blocked → dry-run shape with counts, no candidates", async () => {
+  const { deps, calls } = makeFakeDeps({
+    envVars,
+    tables: {
+      show_dates: { data: { ...SHOW_DATE_OPEN, org_id: "org-A" }, error: null },
+      app_settings: { data: [], error: null },
+      cast_city_priority: { data: [{ cast_id: "c1" }], error: null },
+      cast_members: { data: [{ artist_id: "a1" }], error: null },
+      artists: [
+        { when: { status: "active" }, data: [{ id: "a1" }], error: null },
+        { data: [], error: null },
+      ],
+      bookings: { data: [], error: null },
+      blocked_dates: { data: [{ artist_id: "a1" }], error: null },
+    },
+  });
+  const res = await handle(
+    makeRequest({ headers: SVC, body: { show_date_id: "d1", tier: 1, dry_run: true } }),
+    deps,
+  );
+  assertEquals(res.status, 200);
+  const body = await res.json();
+  assertEquals(body.dry_run, true);
+  assertEquals(body.candidates, []);
+  assertEquals(body.excluded.blocked, 1);
+  assertEquals(body.excluded.inactive, 0);
+  assertEquals(body.excluded.already_booked, 0);
+  assertExists(body.message);
+  assertEquals(calls.some((c) => c.table === "bookings" && c.method === "insert"), false);
+});
+
+// ---------------------------------------------------------------------------
+// Milestone C — Task 9: immediate offer delivery
+//
+// When the org's booking_flow.offer_delivery is "immediate", open-offer-tier
+// sends the `offer-immediate` email to each freshly-offered artist AT OPEN and
+// stamps digest_sent_at + offer_expires_at on the bookings whose email actually
+// sent. In the default "digest" mode nothing is emailed at open (the daily
+// send-offer-digest cron owns delivery + stamping).
+//
+// app_settings is read TWICE on the immediate path — once for booking_flow
+// (resolveBookingFlow) and once for offer_response_window_hours — so its seed
+// must be a `key`-matched array; a single seed would hand the flow object back
+// as the window-hours value and blow up the expiry math.
+// ---------------------------------------------------------------------------
+
+const IMMEDIATE_TABLES = {
+  show_dates: { data: { ...SHOW_DATE_OPEN, org_id: "org-A", custom: {} }, error: null },
+  app_settings: [
+    { when: { key: "booking_flow" }, data: [{ org_id: "org-A", value: { offer_delivery: "immediate" } }], error: null },
+    { when: { key: "offer_response_window_hours" }, data: [{ org_id: "org-A", value: 48 }], error: null },
+  ],
+  shows: { data: { program: "Candlelight", sub_program: "Strings" }, error: null },
+  cities: { data: { name: "Berlin" }, error: null },
+  cast_city_priority: { data: [{ cast_id: "c1" }], error: null },
+  cast_members: { data: [{ artist_id: "a1" }], error: null },
+  artists: { data: [{ id: "a1", name: "Lena", email: "lena@x.com", user_id: null }], error: null },
+  bookings: [
+    { when: { __write: true }, data: [{ id: "b1", artist_id: "a1" }], error: null },
+    { data: [], error: null },
+  ],
+  blocked_dates: { data: [], error: null },
+  show_date_offer_tiers: { data: null, error: null },
+};
+
+Deno.test("open-offer-tier: immediate delivery emails artists and stamps expiry", async () => {
+  const { deps, calls, invokeCalls } = makeFakeDeps({
+    envVars,
+    tables: IMMEDIATE_TABLES,
+    rpcs: { resolve_user_contacts: { data: [], error: null } },
+  });
+  const res = await handle(makeRequest({ headers: SVC, body: { show_date_id: "d1", tier: 1 } }), deps);
+  assertEquals(res.status, 200);
+
+  // The immediate email went out, using the offer-immediate template.
+  const email = invokeCalls.find((c) => c.name === "send-transactional-email");
+  assertExists(email);
+  const body = email!.body as Record<string, unknown>;
+  assertEquals(body.template_name, "offer-immediate");
+  assertEquals(body.recipient_email, "lena@x.com");
+  // Keyed on the booking instance (not show_date_id+artist_id): a reopened tier
+  // re-offering the same artist creates a NEW booking row, so it must get a new key
+  // and never dedupe against a stale send from a prior offer round.
+  assertEquals(body.idempotency_key, "offer-immediate-b1");
+  const templateData = body.templateData as Record<string, unknown>;
+  assertEquals(templateData.referenceLabel, "Candlelight · Strings");
+  assertEquals(templateData.city, "Berlin");
+  assertEquals(templateData.windowHours, 48);
+  assertEquals(templateData.displayName, "Lena");
+
+  // The booking whose email sent is stamped with digest_sent_at + offer_expires_at.
+  const stamp = calls.find(
+    (c) => c.table === "bookings" && c.method === "update" &&
+      (c.args[0] as Record<string, unknown>).offer_expires_at !== undefined,
+  );
+  assertExists(stamp);
+  const stampArgs = stamp!.args[0] as Record<string, unknown>;
+  assertExists(stampArgs.digest_sent_at);
+  assertExists(stampArgs.offer_expires_at);
+});
+
+Deno.test("open-offer-tier: digest delivery (default) sends no email at open", async () => {
+  const { deps, calls, invokeCalls } = makeFakeDeps({
+    envVars,
+    tables: {
+      ...IMMEDIATE_TABLES,
+      // No booking_flow override → defaults to offer_delivery:"digest".
+      app_settings: { data: [], error: null },
+    },
+    rpcs: { resolve_user_contacts: { data: [], error: null } },
+  });
+  const res = await handle(makeRequest({ headers: SVC, body: { show_date_id: "d1", tier: 1 } }), deps);
+  assertEquals(res.status, 200);
+  assertEquals((await res.json()).offers_created, 1);
+
+  // Digest mode owns delivery: nothing is emailed at open.
+  assertEquals(
+    invokeCalls.filter((c) => c.name === "send-transactional-email").length,
+    0,
+  );
+  // And no booking is stamped with offer_expires_at at open (the digest cron does that).
+  assertEquals(
+    calls.some(
+      (c) => c.table === "bookings" && c.method === "update" &&
+        (c.args[0] as Record<string, unknown>).offer_expires_at !== undefined,
+    ),
+    false,
+  );
+});

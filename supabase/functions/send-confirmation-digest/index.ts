@@ -4,6 +4,7 @@ import { emailWasSent, realDeps, type Deps } from "../_shared/deps.ts";
 import { getActiveOrgs, resolveOrgSetting, BOOKING_ENGINE_DEFAULTS } from "../_shared/settings.ts";
 import { resolveContactEmail, resolveAccountDisplayName } from "../_shared/identity.ts";
 import { coalesceChangeRows, describeDateChanges, type ChangeLogRow } from "../_shared/scheduleChanges.ts";
+import { resolveBookingFlow, referenceLabel } from "../_shared/bookingFlow.ts";
 
 const ACTIVE_BOOKING_STATUSES = ["suggested", "soft_booked", "confirmed"];
 
@@ -51,6 +52,32 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
     if (berlinHour !== targetHour) continue;
     processedOrgs.push(org.id);
 
+    // Resolve the org's booking flow. confirmation_digest is an EMAIL-ONLY opt-out: it
+    // gates the per-artist email loop below and NOTHING else. The in-app schedule_change
+    // notifications and the digested_at / change-log consumption are the RELIABLE delivery
+    // channel for cancellations/retimes and must run for every processed org regardless of
+    // this toggle (the UI labels it "Daily summary email to newly confirmed artists", an
+    // email-only opt-out). Direct-booking orgs (artist_acceptance:false) are not gated at
+    // all: with no offer/accept stage this digest is the artist's only notification.
+    // A per-org booking-flow read failure must not abort the other orgs' digests
+    // (mirrors the settings-read guard above).
+    let flow: Awaited<ReturnType<typeof resolveBookingFlow>>;
+    try {
+      flow = await resolveBookingFlow(admin, org.id);
+    } catch (e) {
+      console.error('send-confirmation-digest: booking flow read failed', { org: org.id, error: (e as Error).message });
+      continue;
+    }
+
+    // Resolve the org's reference-field display once per org (mirrors send-offer-digest).
+    let customFieldKey: string | null = null;
+    if (flow.reference_field.source === 'custom' && flow.reference_field.custom_field_id) {
+      const { data: def } = await admin
+        .from('custom_field_definitions').select('key')
+        .eq('id', flow.reference_field.custom_field_id).maybeSingle();
+      customFieldKey = (def as { key: string } | null)?.key ?? null;
+    }
+
     // ── Source 1: newly-confirmed bookings ──
     const { data: confirmedRaw, error: queryErr } = await admin
       .from('bookings')
@@ -58,7 +85,7 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
         id,
         artist_id,
         artists ( id, name, email, user_id ),
-        show_dates ( date, shows ( program, sub_program ), cities ( name ) )
+        show_dates ( date, shows ( program, sub_program ), cities ( name ), custom )
       `)
       .eq('org_id', org.id)
       .eq('status', 'confirmed')
@@ -127,7 +154,7 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
     type GroupedEntry = {
       recipientEmail: string; displayName: string;
       bookingIds: string[];
-      bookings: Array<{ show: string; date: string; city: string }>;
+      bookings: Array<{ show: string; date: string; city: string; label: string }>;
       scheduleChanges: Array<{ show: string; date: string; city: string; changes: string }>;
       cancellations: Array<{ show: string; date: string; city: string; reason: string | null }>;
     };
@@ -156,8 +183,14 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
       const program = sd?.shows?.program;
       const subProgram = sd?.shows?.sub_program;
       const show = program ? (subProgram ? `${program} — ${subProgram}` : program) : 'Unknown show';
+      const label = referenceLabel({
+        reference: flow.reference_field,
+        show: sd?.shows ?? null,
+        custom: sd?.custom ?? null,
+        customFieldKey,
+      });
       entry.bookingIds.push(b.id);
-      entry.bookings.push({ show, date: sd?.date ?? '—', city: sd?.cities?.name ?? '—' });
+      entry.bookings.push({ show, date: sd?.date ?? '—', city: sd?.cities?.name ?? '—', label });
     }
 
     // Schedule changes + in-app notifications
@@ -220,43 +253,48 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
       console.warn('send-confirmation-digest: in-app delivery failed — NOT consuming change log (will retry)', { org: org.id, count: consumedChangeIds.length });
     }
 
-    // One email per artist (confirmations + schedule changes folded). Best-effort.
-    for (const [artistId, entry] of grouped) {
-      try {
-        const result = await deps.sendEmail({
-          template_name: 'artist-confirmation-digest',
-          recipient_email: entry.recipientEmail,
-          org_id: org.id,
-          templateData: {
-            displayName: entry.displayName,
-            bookings: entry.bookings,
-            scheduleChanges: entry.scheduleChanges,
-            cancellations: entry.cancellations,
-          },
-          idempotency_key: `confirmation-digest-${org.id}-${artistId}-${now.toISOString().slice(0, 13)}`,
-        });
-        // Only stamp confirmation_digest_sent_at when the email ACTUALLY sent (C4). A failed
-        // send (Resend outage) or a legitimately-skipped one (suppressed / pref-disabled)
-        // returns success:false — leave the stamp null so the confirmation is retried next
-        // run instead of being marked "sent" for a mail the artist never received. (Schedule
-        // changes are still delivered in-app above, independent of this email.)
-        if (!emailWasSent(result)) {
-          console.warn('send-confirmation-digest: email not sent — not stamping confirmation', {
-            org: org.id, artistId, error: result.error ?? null,
-            reason: (result.data as { reason?: unknown } | null)?.reason ?? null,
+    // EMAIL SEND: the ONLY section confirmation_digest gates (see the flow-resolve comment
+    // above). Everything up to here (in-app schedule_change notifications + change-log
+    // consumption) already ran unconditionally. One email per artist (confirmations +
+    // schedule changes folded). Best-effort.
+    if (flow.confirmation_digest) {
+      for (const [artistId, entry] of grouped) {
+        try {
+          const result = await deps.sendEmail({
+            template_name: 'artist-confirmation-digest',
+            recipient_email: entry.recipientEmail,
+            org_id: org.id,
+            templateData: {
+              displayName: entry.displayName,
+              bookings: entry.bookings,
+              scheduleChanges: entry.scheduleChanges,
+              cancellations: entry.cancellations,
+            },
+            idempotency_key: `confirmation-digest-${org.id}-${artistId}-${now.toISOString().slice(0, 13)}`,
           });
-          continue;
+          // Only stamp confirmation_digest_sent_at when the email ACTUALLY sent (C4). A failed
+          // send (Resend outage) or a legitimately-skipped one (suppressed / pref-disabled)
+          // returns success:false, leave the stamp null so the confirmation is retried next
+          // run instead of being marked "sent" for a mail the artist never received. (Schedule
+          // changes are still delivered in-app above, independent of this email.)
+          if (!emailWasSent(result)) {
+            console.warn('send-confirmation-digest: email not sent, not stamping confirmation', {
+              org: org.id, artistId, error: result.error ?? null,
+              reason: (result.data as { reason?: unknown } | null)?.reason ?? null,
+            });
+            continue;
+          }
+          if (entry.bookingIds.length > 0) {
+            const { error: stampErr } = await admin
+              .from('bookings')
+              .update({ confirmation_digest_sent_at: now.toISOString() })
+              .in('id', entry.bookingIds);
+            if (stampErr) console.error('send-confirmation-digest: stamp failed', { org: org.id, artistId, error: stampErr.message });
+          }
+          digestsSent += 1;
+        } catch (e) {
+          console.error('send-confirmation-digest: email send failed', { org: org.id, artistId, error: (e as Error).message });
         }
-        if (entry.bookingIds.length > 0) {
-          const { error: stampErr } = await admin
-            .from('bookings')
-            .update({ confirmation_digest_sent_at: now.toISOString() })
-            .in('id', entry.bookingIds);
-          if (stampErr) console.error('send-confirmation-digest: stamp failed', { org: org.id, artistId, error: stampErr.message });
-        }
-        digestsSent += 1;
-      } catch (e) {
-        console.error('send-confirmation-digest: email send failed', { org: org.id, artistId, error: (e as Error).message });
       }
     }
   }
