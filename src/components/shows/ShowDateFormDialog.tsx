@@ -154,7 +154,11 @@ export function ShowDateFormDialog({
         if (openOffers && slotsConfigured) {
           try {
             const res = await openOfferTier(supabase, { showDateId: id, tier: 1 });
-            toast.success(res.offersCreated > 0 ? `Date created — ${res.offersCreated} offer(s) opened` : "Date created");
+            // Same convention as the edit-path auto-open: bust the bookings prefix
+            // and this date's opened-tiers cache so open sheets do not go stale.
+            queryClient.invalidateQueries({ queryKey: ["bookings"] });
+            queryClient.invalidateQueries({ queryKey: ["offer-tiers", "opened", id] });
+            toast.success(res.offersCreated > 0 ? `Date created · ${res.offersCreated} offer(s) opened` : "Date created");
           } catch { toast.success("Date created (offers could not be opened)"); }
         } else {
           toast.success("Date created");
