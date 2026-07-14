@@ -27,6 +27,8 @@ export const IN_APP_TYPE_CATEGORY: Record<string, NotificationCategory> = {
   cancelled: "schedule_changes",
   tier_at_risk: "at_risk",
   cast_escalation_requested: "at_risk",
+  offer_expiring: "booking_offers",
+  tier_escalated: "at_risk",
 };
 
 /** Email `template_name` -> category. Unmapped templates (invites, password reset) always send. */

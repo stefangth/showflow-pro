@@ -3,7 +3,7 @@ import { requireCronOrRole } from "../_shared/auth.ts";
 import { realDeps, emailWasSent, type Deps } from "../_shared/deps.ts";
 import { countAccepted, countPendingNotExpired, isFutureOrToday, requiredPrimarySlots } from "../_shared/tierFill.ts";
 import { getActiveOrgs } from "../_shared/settings.ts";
-import { resolveBookingFlow, referenceLabel } from "../_shared/bookingFlow.ts";
+import { resolveBookingFlow, referenceLabel, type BookingFlow } from "../_shared/bookingFlow.ts";
 import { resolveContactEmail, resolveAccountDisplayName } from "../_shared/identity.ts";
 
 /**
@@ -184,6 +184,10 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
   if (!openTiers || openTiers.length === 0) return json({ expired: true, escalations: 0, reminders_sent: remindersSent })
 
   let escalated = 0
+  let autoEscalated = 0
+  // Cache resolveBookingFlow per org — multiple open tiers in a single cron run can
+  // belong to the same org, and the flow doesn't change mid-scan.
+  const flowByOrg = new Map<string, BookingFlow>()
 
   for (const row of openTiers as Array<{ id: string; show_date_id: string; tier: number }>) {
     const { data: sd } = await admin
@@ -226,26 +230,83 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
     if (pendingNotExpired > 0) continue
     if (accepted >= requiredSlots) continue
 
-    // Resolve recipients
+    const orgId = (sd as any).org_id as string
+
+    // Resolve the org's booking flow (auto-escalate + direct-mode gate), cached per org.
+    let flow = flowByOrg.get(orgId)
+    if (!flow) {
+      flow = await resolveBookingFlow(admin, orgId)
+      flowByOrg.set(orgId, flow)
+    }
+    if (!flow.artist_acceptance) continue // direct-mode orgs have no offer tiers to escalate
+
+    // Resolve recipients — shared by the auto-escalation notification below and the
+    // manual escalation notification/email further down.
     const { data: producers } = await (admin as any).rpc('resolve_show_assignments', {
       p_program: program ?? '',
       p_sub_program: subProgram,
       p_city_id: (sd as any).city_id,
-      p_org: (sd as any).org_id,
+      p_org: orgId,
     })
     let recipientIds = (producers ?? []).map((p: any) => p.producer_user_id)
     if (recipientIds.length === 0) {
       // Fallback: notify admins OF THIS show_date's org (not every org's admins).
       const { data: admins } = await admin.from('org_memberships').select('user_id')
-        .eq('org_id', (sd as any).org_id).eq('role', 'admin')
+        .eq('org_id', orgId).eq('role', 'admin')
       recipientIds = (admins ?? []).map((a: any) => a.user_id)
     }
     recipientIds = [...new Set(recipientIds)]
 
+    // Auto-escalation: when the org opted in and this isn't the ad-hoc tier 99, look
+    // for the next cast_city_priority tier above this one for the date's city. If one
+    // exists, close this tier and open the next automatically instead of just asking a
+    // human to do it. No next tier (or auto-escalate off) falls through to the manual
+    // escalation path below, unchanged.
+    if (flow.auto_escalate && row.tier !== 99) {
+      const { data: nextRows } = await admin
+        .from('cast_city_priority')
+        .select('priority')
+        .eq('org_id', orgId)
+        .eq('city_id', (sd as any).city_id)
+        .gt('priority', row.tier)
+        .order('priority', { ascending: true })
+        .limit(1)
+      const nextTier = (nextRows?.[0] as { priority: number } | undefined)?.priority
+
+      if (nextTier !== undefined) {
+        // Close + stamp escalation_notified_at BEFORE invoking open-offer-tier: this is
+        // the idempotency mark for the scan (same property the manual path relies on),
+        // so a failed invoke below does not leave the tier open to be re-escalated on
+        // every subsequent hourly run.
+        await (admin as any)
+          .from('show_date_offer_tiers')
+          .update({ closed_at: now.toISOString(), escalation_notified_at: now.toISOString() })
+          .eq('id', row.id)
+
+        await deps.invokeFunction('open-offer-tier', { show_date_id: row.show_date_id, tier: nextTier })
+
+        const autoNotifRows = recipientIds.map((uid: string) => ({
+          org_id: orgId,
+          user_id: uid,
+          type: 'tier_escalated',
+          title: 'Tier escalated automatically',
+          message: `Tier ${row.tier} closed short · tier ${nextTier} opened automatically.`,
+          related_entity_type: 'show_date_offer_tier',
+          related_entity_id: row.id,
+        }))
+        if (autoNotifRows.length > 0) {
+          await admin.from('notifications').insert(autoNotifRows)
+        }
+
+        autoEscalated += 1
+        continue // skip the manual escalation notification/email for this row
+      }
+    }
+
     const message = `Tier ${row.tier} for ${program ?? 'show'} on ${(sd as any).date} expired with ${accepted}/${requiredSlots} slots filled — open the next tier.`
 
     const notifRows = recipientIds.map((uid: string) => ({
-      org_id: (sd as any).org_id,
+      org_id: orgId,
       user_id: uid,
       type: 'cast_escalation_requested',
       title: 'Escalation needed',
@@ -280,7 +341,7 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
     escalated += 1
   }
 
-  return json({ expired: true, escalations: escalated, reminders_sent: remindersSent })
+  return json({ expired: true, escalations: escalated, auto_escalated: autoEscalated, reminders_sent: remindersSent })
 }
 
 if (import.meta.main) Deno.serve((req) => handle(req, realDeps()));
