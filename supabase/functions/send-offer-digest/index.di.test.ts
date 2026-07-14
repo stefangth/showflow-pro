@@ -795,3 +795,83 @@ Deno.test("send-offer-digest: resolve_user_contacts RPC error → non-fatal, fal
   assertExists(email);
   assertEquals((email!.body as { recipient_email: string }).recipient_email, "booking@x.com");
 });
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Milestone C — Task 10: digest senders honor the booking flow
+//
+// resolveBookingFlow reads app_settings.key='booking_flow' via resolveOrgSetting —
+// on top of the offer_digest_hour_berlin / offer_response_window_hours reads the
+// handler already makes. The seed must disambiguate all three by the recorded
+// `.eq("key", ...)` arg (array seeds keyed by `when: { key: ... }`), so start from
+// the file's APP_SETTINGS_SEED and layer a `booking_flow` entry on top.
+// ─────────────────────────────────────────────────────────────────────────────
+
+Deno.test("send-offer-digest: immediate-delivery org is skipped", async () => {
+  const pending = [{
+    id: "b1", artist_id: "a1",
+    artists: { id: "a1", name: "Jo", email: "jo@x.com" },
+    show_dates: { date: "2026-06-10", shows: { program: "P", sub_program: "S" }, cities: { name: "Berlin" } },
+  }];
+  const settings = [
+    ...APP_SETTINGS_SEED,
+    { when: { key: "booking_flow" }, data: [{ org_id: ORG_1, value: { offer_delivery: "immediate" } }] },
+  ];
+  const { deps, invokeCalls } = baseDeps({ app_settings: settings, bookings: { data: pending, error: null } });
+  const res = await handle(makeRequest({ headers: cronOK }), deps);
+  const body = await res.json();
+  assertEquals(res.status, 200);
+  assertEquals(invokeCalls.some((c) => c.name === "send-transactional-email"), false);
+  assertEquals(body.digests_sent, 0);
+});
+
+Deno.test("send-offer-digest: direct-mode org is skipped", async () => {
+  const pending = [{
+    id: "b1", artist_id: "a1",
+    artists: { id: "a1", name: "Jo", email: "jo@x.com" },
+    show_dates: { date: "2026-06-10", shows: { program: "P", sub_program: "S" }, cities: { name: "Berlin" } },
+  }];
+  const settings = [
+    ...APP_SETTINGS_SEED,
+    { when: { key: "booking_flow" }, data: [{ org_id: ORG_1, value: { artist_acceptance: false } }] },
+  ];
+  const { deps, invokeCalls } = baseDeps({ app_settings: settings, bookings: { data: pending, error: null } });
+  const res = await handle(makeRequest({ headers: cronOK }), deps);
+  const body = await res.json();
+  assertEquals(res.status, 200);
+  assertEquals(invokeCalls.some((c) => c.name === "send-transactional-email"), false);
+  assertEquals(body.digests_sent, 0);
+});
+
+Deno.test("send-offer-digest: templateData offer items carry the custom-field label when the flow selects a custom reference", async () => {
+  const pending = [{
+    id: "b1", artist_id: "a1",
+    artists: { id: "a1", name: "Jo", email: "jo@x.com" },
+    show_dates: {
+      date: "2026-06-10",
+      shows: { program: "Phantom", sub_program: "Evening" },
+      cities: { name: "Berlin" },
+      custom: { pn: "PN-4521" },
+    },
+  }];
+  const settings = [
+    ...APP_SETTINGS_SEED,
+    {
+      when: { key: "booking_flow" },
+      data: [{ org_id: ORG_1, value: { reference_field: { source: "custom", custom_field_id: "cf1" } } }],
+    },
+  ];
+  const { deps, invokeCalls } = baseDeps({
+    app_settings: settings,
+    bookings: { data: pending, error: null },
+    custom_field_definitions: { data: { key: "pn" }, error: null },
+  });
+  const res = await handle(makeRequest({ headers: cronOK }), deps);
+  assertEquals((await res.json()).digests_sent, 1);
+  const email = invokeCalls.find((c) => c.name === "send-transactional-email");
+  assertExists(email);
+  const msg = email!.body as { templateData?: { offers?: Array<{ label?: string; show?: string }> } };
+  assertEquals(msg.templateData?.offers?.[0]?.label, "PN-4521");
+  // The old raw program/sub_program string is still computed alongside the label
+  // (the template's fallback for previewData that doesn't carry a label).
+  assertEquals(msg.templateData?.offers?.[0]?.show, "Phantom — Evening");
+});

@@ -3,6 +3,7 @@ import { requireCronOrRole } from "../_shared/auth.ts";
 import { emailWasSent, realDeps, type Deps } from "../_shared/deps.ts";
 import { getActiveOrgs, resolveOrgSetting, BOOKING_ENGINE_DEFAULTS } from "../_shared/settings.ts";
 import { resolveContactEmail, resolveAccountDisplayName } from "../_shared/identity.ts";
+import { resolveBookingFlow, referenceLabel } from "../_shared/bookingFlow.ts";
 
 /**
  * Daily offer digest (hourly cron). For each ACTIVE org whose own
@@ -47,6 +48,23 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
     if (berlinHour !== targetHour) continue;
     processedOrgs.push(org.id);
 
+    // Booking-flow gate: this cron only owns DIGEST-mode delivery for orgs that
+    // actually run an offer/accept stage. Direct-booking orgs (artist_acceptance:
+    // false) never create suggested offers to begin with; immediate-delivery orgs
+    // already emailed each offer at open (see open-offer-tier) — re-notifying here
+    // would duplicate that email.
+    const flow = await resolveBookingFlow(admin, org.id);
+    if (!flow.artist_acceptance || flow.offer_delivery === 'immediate') continue;
+
+    // Resolve the org's reference-field display once per org (mirrors open-offer-tier).
+    let customFieldKey: string | null = null;
+    if (flow.reference_field.source === 'custom' && flow.reference_field.custom_field_id) {
+      const { data: def } = await admin
+        .from('custom_field_definitions').select('key')
+        .eq('id', flow.reference_field.custom_field_id).maybeSingle();
+      customFieldKey = (def as { key: string } | null)?.key ?? null;
+    }
+
     try {
       offerWindowHours = await resolveOrgSetting<number>(admin, org.id, 'offer_response_window_hours', BOOKING_ENGINE_DEFAULTS.offer_response_window_hours);
     } catch (e) {
@@ -65,7 +83,7 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
         id,
         artist_id,
         artists ( id, name, email, user_id ),
-        show_dates ( date, shows ( program, sub_program ), cities ( name ) )
+        show_dates ( date, shows ( program, sub_program ), cities ( name ), custom )
       `)
       .eq('org_id', org.id)
       .eq('status', 'suggested')
@@ -93,7 +111,7 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
       }
     }
 
-    type GroupedEntry = { recipientEmail: string; displayName: string; bookingIds: string[]; offers: Array<{ show: string; date: string; city: string; expires: string }> };
+    type GroupedEntry = { recipientEmail: string; displayName: string; bookingIds: string[]; offers: Array<{ show: string; date: string; city: string; expires: string; label: string }> };
     const grouped = new Map<string, GroupedEntry>();
     for (const b of pendingBookings as any[]) {
       const artist = b.artists;
@@ -104,12 +122,18 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
       const program = sd?.shows?.program;
       const subProgram = sd?.shows?.sub_program;
       const show = program ? (subProgram ? `${program} — ${subProgram}` : program) : 'Unknown show';
+      const label = referenceLabel({
+        reference: flow.reference_field,
+        show: sd?.shows ?? null,
+        custom: sd?.custom ?? null,
+        customFieldKey,
+      });
       if (!grouped.has(b.artist_id)) {
         grouped.set(b.artist_id, { recipientEmail, displayName: resolveAccountDisplayName({ displayName: acct?.display_name, artistName: artist?.name }), bookingIds: [], offers: [] });
       }
       const entry = grouped.get(b.artist_id)!;
       entry.bookingIds.push(b.id);
-      entry.offers.push({ show, date: sd?.date ?? '—', city: sd?.cities?.name ?? '—', expires: expiresDisplay });
+      entry.offers.push({ show, date: sd?.date ?? '—', city: sd?.cities?.name ?? '—', expires: expiresDisplay, label });
     }
 
     for (const [artistId, entry] of grouped) {

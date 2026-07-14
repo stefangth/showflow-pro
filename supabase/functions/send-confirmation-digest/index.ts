@@ -4,6 +4,7 @@ import { emailWasSent, realDeps, type Deps } from "../_shared/deps.ts";
 import { getActiveOrgs, resolveOrgSetting, BOOKING_ENGINE_DEFAULTS } from "../_shared/settings.ts";
 import { resolveContactEmail, resolveAccountDisplayName } from "../_shared/identity.ts";
 import { coalesceChangeRows, describeDateChanges, type ChangeLogRow } from "../_shared/scheduleChanges.ts";
+import { resolveBookingFlow, referenceLabel } from "../_shared/bookingFlow.ts";
 
 const ACTIVE_BOOKING_STATUSES = ["suggested", "soft_booked", "confirmed"];
 
@@ -51,6 +52,22 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
     if (berlinHour !== targetHour) continue;
     processedOrgs.push(org.id);
 
+    // Booking-flow gate: confirmation_digest:false means the org opted out of this
+    // roundup entirely. Direct-booking orgs (artist_acceptance:false) are NOT gated
+    // here — with no offer/accept stage, this digest is the artist's only booking
+    // notification (module doc above).
+    const flow = await resolveBookingFlow(admin, org.id);
+    if (!flow.confirmation_digest) continue;
+
+    // Resolve the org's reference-field display once per org (mirrors send-offer-digest).
+    let customFieldKey: string | null = null;
+    if (flow.reference_field.source === 'custom' && flow.reference_field.custom_field_id) {
+      const { data: def } = await admin
+        .from('custom_field_definitions').select('key')
+        .eq('id', flow.reference_field.custom_field_id).maybeSingle();
+      customFieldKey = (def as { key: string } | null)?.key ?? null;
+    }
+
     // ── Source 1: newly-confirmed bookings ──
     const { data: confirmedRaw, error: queryErr } = await admin
       .from('bookings')
@@ -58,7 +75,7 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
         id,
         artist_id,
         artists ( id, name, email, user_id ),
-        show_dates ( date, shows ( program, sub_program ), cities ( name ) )
+        show_dates ( date, shows ( program, sub_program ), cities ( name ), custom )
       `)
       .eq('org_id', org.id)
       .eq('status', 'confirmed')
@@ -127,7 +144,7 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
     type GroupedEntry = {
       recipientEmail: string; displayName: string;
       bookingIds: string[];
-      bookings: Array<{ show: string; date: string; city: string }>;
+      bookings: Array<{ show: string; date: string; city: string; label: string }>;
       scheduleChanges: Array<{ show: string; date: string; city: string; changes: string }>;
       cancellations: Array<{ show: string; date: string; city: string; reason: string | null }>;
     };
@@ -156,8 +173,14 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
       const program = sd?.shows?.program;
       const subProgram = sd?.shows?.sub_program;
       const show = program ? (subProgram ? `${program} — ${subProgram}` : program) : 'Unknown show';
+      const label = referenceLabel({
+        reference: flow.reference_field,
+        show: sd?.shows ?? null,
+        custom: sd?.custom ?? null,
+        customFieldKey,
+      });
       entry.bookingIds.push(b.id);
-      entry.bookings.push({ show, date: sd?.date ?? '—', city: sd?.cities?.name ?? '—' });
+      entry.bookings.push({ show, date: sd?.date ?? '—', city: sd?.cities?.name ?? '—', label });
     }
 
     // Schedule changes + in-app notifications
