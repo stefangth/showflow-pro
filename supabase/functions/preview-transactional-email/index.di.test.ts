@@ -513,9 +513,9 @@ Deno.test("preview-transactional-email DI: artist-offer-digest html contains pre
 
 // ── Registry count assertion ──────────────────────────────────────────────────
 
-Deno.test("preview-transactional-email DI: TEMPLATES registry has exactly 7 entries", async () => {
+Deno.test("preview-transactional-email DI: TEMPLATES registry has exactly 8 entries", async () => {
   // Regression guard: if a template is added/removed, this test will catch the mismatch.
-  assertEquals(EXPECTED_TEMPLATE_COUNT, 7);
+  assertEquals(EXPECTED_TEMPLATE_COUNT, 8);
 });
 
 // ── GET method (non-POST) ─────────────────────────────────────────────────────
