@@ -2025,6 +2025,8 @@ if (flow.auto_escalate && row.tier !== 99) {
 
 Declare `const flowByOrg = new Map<string, BookingFlow>();` and `let autoEscalated = 0;` before the loop; move the recipients resolution (`resolve_show_assignments` + admin fallback, :86-99) ABOVE this block so both paths share it. Add `auto_escalated: autoEscalated` to the response.
 
+**Also in this task (added after Task 11 review): preference-gate mapping for the two new in-app types.** Create a NEW migration `$(date -u +%Y%m%d%H%M%S)_notification_categories_flow_types.sql` that redefines the `category_of()` SQL function (source of truth: `supabase/migrations/20260622181611_notifications_pref_gate.sql:3-17`; copy verbatim, add two WHEN arms) so `'offer_expiring'` maps to `'booking_offers'` and `'tier_escalated'` maps to `'at_risk'`. Mirror both entries in `IN_APP_TYPE_CATEGORY` in `supabase/functions/_shared/notificationCategories.ts`. Extend `supabase/tests/triggers/notifications_pref_gate.sql` with one assertion per new type (disabled category pref swallows the insert), bumping `plan(N)`.
+
 - [ ] **Step 4: Run the whole edge suite**
 
 Run: `deno test --allow-all --node-modules-dir=none supabase/functions/`
