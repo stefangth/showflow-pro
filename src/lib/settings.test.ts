@@ -158,3 +158,13 @@ describe("computeSettingsDirtyKeys", () => {
     expect(computeSettingsDirtyKeys(settings, draft, EDITABLE)).toEqual([]);
   });
 });
+
+describe("computeSettingsDirtyKeys with object values", () => {
+  it("detects a changed booking_flow object and ignores an identical one", () => {
+    const saved = [{ key: "booking_flow", value: { artist_acceptance: true } }];
+    const dirty = computeSettingsDirtyKeys(saved as never, { booking_flow: { artist_acceptance: false } } as never, ["booking_flow"]);
+    expect(dirty).toContain("booking_flow");
+    const clean = computeSettingsDirtyKeys(saved as never, { booking_flow: { artist_acceptance: true } } as never, ["booking_flow"]);
+    expect(clean).not.toContain("booking_flow");
+  });
+});
