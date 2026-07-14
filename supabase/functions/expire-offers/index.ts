@@ -283,23 +283,36 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
           .update({ closed_at: now.toISOString(), escalation_notified_at: now.toISOString() })
           .eq('id', row.id)
 
-        await deps.invokeFunction('open-offer-tier', { show_date_id: row.show_date_id, tier: nextTier })
+        const invokeResult = await deps.invokeFunction('open-offer-tier', { show_date_id: row.show_date_id, tier: nextTier })
 
-        const autoNotifRows = recipientIds.map((uid: string) => ({
-          org_id: orgId,
-          user_id: uid,
-          type: 'tier_escalated',
-          title: 'Tier escalated automatically',
-          message: `Tier ${row.tier} closed short · tier ${nextTier} opened automatically.`,
-          related_entity_type: 'show_date_offer_tier',
-          related_entity_id: row.id,
-        }))
-        if (autoNotifRows.length > 0) {
-          await admin.from('notifications').insert(autoNotifRows)
+        if (invokeResult.error) {
+          // Mirrors the airtable-poll open-offer-tier error-logging precedent. Do NOT
+          // insert the tier_escalated notification or count this as an auto-escalation —
+          // that would falsely claim success while the date has no open tier. Fall
+          // through (no `continue`) to the manual escalation path below so a human still
+          // gets the "escalation needed" notification/email. escalation_notified_at was
+          // already stamped above (the idempotency mark); the manual path's own stamp
+          // update further down is a harmless no-op re-write of the same value.
+          console.error('expire-offers: open-offer-tier invoke failed during auto-escalation', {
+            show_date_id: row.show_date_id, attempted_tier: nextTier, error: invokeResult.error,
+          })
+        } else {
+          const autoNotifRows = recipientIds.map((uid: string) => ({
+            org_id: orgId,
+            user_id: uid,
+            type: 'tier_escalated',
+            title: 'Tier escalated automatically',
+            message: `Tier ${row.tier} closed short · tier ${nextTier} opened automatically.`,
+            related_entity_type: 'show_date_offer_tier',
+            related_entity_id: row.id,
+          }))
+          if (autoNotifRows.length > 0) {
+            await admin.from('notifications').insert(autoNotifRows)
+          }
+
+          autoEscalated += 1
+          continue // skip the manual escalation notification/email for this row
         }
-
-        autoEscalated += 1
-        continue // skip the manual escalation notification/email for this row
       }
     }
 
