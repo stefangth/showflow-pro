@@ -7,11 +7,9 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/features/auth/AuthContext';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Separator } from '@/components/ui/separator';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { toast } from 'sonner';
 import { Settings as SettingsIcon, Database, Bell, Wand2, Save, SlidersHorizontal, MapPin, Clock, BookOpen, UserCog, Building2 } from 'lucide-react';
@@ -22,7 +20,7 @@ import { OrganizationTab } from '@/components/settings/OrganizationTab';
 import { CastsCitiesTab } from '@/components/settings/CastsCitiesTab';
 import { ProductionOwnershipTab } from '@/components/settings/ProductionOwnershipTab';
 import { DocumentationTab } from '@/components/settings/DocumentationTab';
-import { EmailTemplatesCard } from '@/components/settings/EmailTemplatesCard';
+import { BookingFlowTab, BOOKING_AUDIT_KEYS } from '@/components/settings/bookingFlow/BookingFlowTab';
 
 type FilterKey = 'program' | 'timeframe' | 'sort' | 'status';
 const FILTER_KEYS: FilterKey[] = ['program', 'timeframe', 'sort', 'status'];
@@ -60,69 +58,6 @@ function ShowSlotsEditor() {
       <p className="text-sm text-muted-foreground">
         Slot configuration has moved to the <Link to={ROUTES.PRODUCTIONS} className="text-primary underline">Productions</Link> page.
       </p>
-    </div>
-  );
-}
-
-// ─── BookingEngineTab ────────────────────────────────────────────────────────
-
-function BookingEngineTab({ get, set }: { get: (key: string, fallback?: any) => any; set: (key: string, value: any) => void }) {
-  return (
-    <div className="space-y-6">
-      <Card>
-        <CardHeader>
-          <CardTitle className="font-display">Booking Engine</CardTitle>
-          <CardDescription>
-            Offer-window timings, digest scheduling, and sender address.
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-6">
-          <div className="space-y-2 max-w-sm">
-            <Label>From address (Resend)</Label>
-            <Input
-              placeholder={BOOKING_ENGINE_DEFAULTS.resend_from_address}
-              value={get('resend_from_address', '')}
-              onChange={e => set('resend_from_address', e.target.value)}
-            />
-            <p className="text-xs text-muted-foreground">Overrides the default sender address for all outgoing emails.</p>
-          </div>
-          <Separator />
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-            <div className="space-y-2">
-              <Label>Offer response window (hours)</Label>
-              <Input
-                type="number"
-                min={1}
-                value={get('offer_response_window_hours', BOOKING_ENGINE_DEFAULTS.offer_response_window_hours)}
-                onChange={e => set('offer_response_window_hours', Number(e.target.value))}
-              />
-              <p className="text-xs text-muted-foreground">Window an artist has to respond to an offer.</p>
-            </div>
-            <div className="space-y-2">
-              <Label>Offer digest hour (Berlin)</Label>
-              <Input
-                type="number"
-                min={0}
-                max={23}
-                value={get('offer_digest_hour_berlin', BOOKING_ENGINE_DEFAULTS.offer_digest_hour_berlin)}
-                onChange={e => set('offer_digest_hour_berlin', Number(e.target.value))}
-              />
-            </div>
-            <div className="space-y-2">
-              <Label>Confirmation digest hour (Berlin)</Label>
-              <Input
-                type="number"
-                min={0}
-                max={23}
-                value={get('confirmation_digest_hour_berlin', BOOKING_ENGINE_DEFAULTS.confirmation_digest_hour_berlin)}
-                onChange={e => set('confirmation_digest_hour_berlin', Number(e.target.value))}
-              />
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-
-      <EmailTemplatesCard get={get} set={set} />
     </div>
   );
 }
@@ -233,6 +168,28 @@ export default function SettingsPage() {
     saveMutation.mutate(updates);
   };
 
+  // Booking-flow tab: the FlowRail saves/discards only the keys it owns, so the
+  // rail's dirty count and Save button stay scoped to this tab.
+  const bookingDirtyKeys = dirtyKeys.filter(k => BOOKING_AUDIT_KEYS.includes(k));
+
+  const handleSaveBooking = () => {
+    const updates = bookingDirtyKeys.map(k => ({ key: k, value: draft[k] }));
+    if (updates.length === 0) return;
+    saveMutation.mutate(updates);
+  };
+
+  const handleDiscardBooking = () => {
+    const saved = new Map(settings.map(s => [s.key, s.value]));
+    setDraft(d => {
+      const next = { ...d };
+      for (const k of BOOKING_AUDIT_KEYS) {
+        if (saved.has(k)) next[k] = saved.get(k);
+        else delete next[k];
+      }
+      return next;
+    });
+  };
+
   return (
     <div className="space-y-6 max-w-4xl">
       <div className="flex items-start justify-between gap-4">
@@ -277,7 +234,7 @@ export default function SettingsPage() {
               <span className="h-2 w-2 rounded-full bg-destructive shrink-0" />
             )}
           </TabsTrigger>
-          {(isAdmin || isProducer) && <TabsTrigger value="booking"><Wand2 className="h-4 w-4 mr-2" />Booking Engine</TabsTrigger>}
+          {isAdmin && <TabsTrigger value="booking"><Wand2 className="h-4 w-4 mr-2" />Booking flow</TabsTrigger>}
           {isAdmin && <TabsTrigger value="notifications"><Bell className="h-4 w-4 mr-2" />Notifications</TabsTrigger>}
           <TabsTrigger value="docs"><BookOpen className="h-4 w-4 mr-2" />Documentation</TabsTrigger>
         </TabsList>
@@ -368,8 +325,15 @@ export default function SettingsPage() {
           </Card>
         </TabsContent>
 
-        <TabsContent value="booking" className="mt-4 space-y-6">
-          <BookingEngineTab get={get} set={set} />
+        <TabsContent value="booking" className="mt-4">
+          <BookingFlowTab
+            get={get}
+            set={set}
+            dirtyKeys={bookingDirtyKeys}
+            saving={saveMutation.isPending}
+            onSave={handleSaveBooking}
+            onDiscard={handleDiscardBooking}
+          />
         </TabsContent>
 
         <TabsContent value="notifications" className="mt-4">
