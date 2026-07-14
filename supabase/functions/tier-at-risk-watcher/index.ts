@@ -87,8 +87,21 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
     // for it exactly as it would for any other skipped tier, so disabling alerts clears
     // stale notifications automatically with no extra code.
     const orgId = (sd as any).org_id as string
-    const flow = flowByOrg.get(orgId) ?? (await resolveBookingFlow(admin, orgId))
-    flowByOrg.set(orgId, flow)
+    // A per-org booking-flow read failure must not abort the whole scan; that would
+    // also skip the stale-clear pass after the loop. Skip just this tier (leaving it out
+    // of stillAtRiskTierIds, so the recovery pass clears any stale alert for it, exactly
+    // as a disabled-alerts skip does) and do NOT cache, so a later row for the same org
+    // can retry the resolve.
+    let flow = flowByOrg.get(orgId)
+    if (!flow) {
+      try {
+        flow = await resolveBookingFlow(admin, orgId)
+      } catch (e) {
+        console.error('tier-at-risk-watcher: booking flow read failed', { org: orgId, showDateId: row.show_date_id, error: (e as Error).message })
+        continue
+      }
+      flowByOrg.set(orgId, flow)
+    }
     if (!flow.at_risk_alerts || !flow.artist_acceptance) continue
 
     const program = (sd as any).show?.program
