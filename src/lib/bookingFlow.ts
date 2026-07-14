@@ -190,7 +190,7 @@ export function inPracticeRows(flow: BookingFlow, times: FlowTimes): PracticeRow
   }
 
   const autos: string[] = [];
-  if (flow.auto_open_tier1) autos.push("tier 1 opens as soon as a date is ready (sessions and slots configured)");
+  if (flow.auto_open_tier1 && flow.artist_acceptance) autos.push("tier 1 opens as soon as a date is ready (sessions and slots configured)");
   if (flow.auto_escalate && flow.artist_acceptance) autos.push("unfilled windows escalate to the next tier");
   if (flow.at_risk_alerts && flow.artist_acceptance) autos.push("producers are alerted when a date can no longer fill in time");
   if (flow.expiry_reminder && flow.artist_acceptance) autos.push("unanswered artists get a reminder 24 h before their window closes");
