@@ -33,6 +33,7 @@ export const IN_APP_TYPE_CATEGORY: Record<string, NotificationCategory> = {
 export const EMAIL_TEMPLATE_CATEGORY: Record<string, NotificationCategory> = {
   "artist-offer-digest": "booking_offers",
   "offer-immediate": "booking_offers",
+  "offer-expiry-reminder": "booking_offers",
   "artist-confirmation-digest": "booking_confirmations",
   "cast-escalation-requested": "at_risk",
 };

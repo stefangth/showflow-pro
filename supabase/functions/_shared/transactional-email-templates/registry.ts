@@ -17,6 +17,7 @@ import { template as offerImmediate } from './offer-immediate.tsx'
 import { template as artistConfirmationDigest } from './artist-confirmation-digest.tsx'
 import { template as orgInvitation } from './org-invitation.tsx'
 import { template as cronHealthAlert } from './cron-health-alert.tsx'
+import { template as offerExpiryReminder } from './offer-expiry-reminder.tsx'
 
 export const TEMPLATES: Record<string, TemplateEntry> = {
   'new-signup-admin-notification': newSignupAdminNotification,
@@ -27,4 +28,5 @@ export const TEMPLATES: Record<string, TemplateEntry> = {
   'artist-confirmation-digest': artistConfirmationDigest,
   'org-invitation': orgInvitation,
   'cron-health-alert': cronHealthAlert,
+  'offer-expiry-reminder': offerExpiryReminder,
 }

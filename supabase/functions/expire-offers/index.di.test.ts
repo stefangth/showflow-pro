@@ -65,7 +65,8 @@ Deno.test("expire-offers: runs expiry RPC and reports zero escalations when no o
   });
   const res = await handle(makeRequest({ headers: { "X-Cron-Secret": "s" } }), deps);
   assertEquals(res.status, 200);
-  assertEquals(await res.json(), { expired: true, escalations: 0 });
+  // No `organizations` seed → getActiveOrgs() returns [] → the reminder pass is a no-op.
+  assertEquals(await res.json(), { expired: true, escalations: 0, reminders_sent: 0 });
   assertEquals(calls.some((c) => c.table === "rpc:expire_soft_bookings"), true);
 });
 
@@ -877,4 +878,130 @@ Deno.test("expire-offers: M2 — past date is never escalated", async () => {
   const res = await handle(cronReq(), deps);
   assertEquals(res.status, 200);
   assertEquals((await res.json()).escalations, 0, "past dates must never escalate");
+});
+
+// ─── Milestone C — Task 11: 24h offer expiry reminder pass ───────────────────
+//
+// Runs between the expire_soft_bookings RPC and the tier-escalation scan. Gated per
+// org on `flow.artist_acceptance && flow.expiry_reminder` (resolveBookingFlow reads
+// app_settings.key='booking_flow' — array-seed matched by the recorded `.eq('key', …)`
+// arg, same disambiguation idiom as Task 10's send-offer-digest tests).
+
+Deno.test("expire-offers: sends one reminder per artist inside the 24h window and stamps reminder_sent_at", async () => {
+  const ORG_ID = "org-1";
+  const dueBooking = {
+    id: "booking-1",
+    artist_id: "artist-1",
+    offer_expires_at: new Date(FIXED_NOW.getTime() + 12 * 3600 * 1000).toISOString(),
+    artists: { id: "artist-1", name: "Jo Performer", email: "jo@example.com", user_id: null },
+    show_dates: {
+      date: "2026-07-01",
+      custom: null,
+      show_id: "show-1",
+      city_id: "city-1",
+      shows: { program: "Ballet", sub_program: "Matinée" },
+    },
+  };
+  const { deps, calls, invokeCalls } = makeFakeDeps({
+    now: FIXED_NOW,
+    tables: {
+      app_settings: [
+        { when: { key: "cron_secret" }, data: { value: CRON_SECRET } },
+        { when: { key: "booking_flow" }, data: [{ org_id: ORG_ID, value: { expiry_reminder: true } }] },
+      ],
+      organizations: { data: [{ id: ORG_ID }], error: null },
+      show_date_offer_tiers: { data: [], error: null }, // empty tier scan — escalation loop stays quiet
+      bookings: { data: [dueBooking], error: null },
+    },
+    rpcs: {
+      expire_soft_bookings: { data: null, error: null },
+      resolve_user_contacts: { data: [], error: null },
+    },
+  });
+
+  const res = await handle(cronReq(), deps);
+  assertEquals(res.status, 200);
+  const body = await res.json();
+  assertEquals(body.reminders_sent, 1);
+
+  const emailCalls = invokeCalls.filter((c) => c.name === "send-transactional-email");
+  assertEquals(emailCalls.length, 1);
+  const msg = emailCalls[0].body as { template_name: string; recipient_email: string };
+  assertEquals(msg.template_name, "offer-expiry-reminder");
+  assertEquals(msg.recipient_email, "jo@example.com");
+
+  const stampCall = calls.find((c) => c.table === "bookings" && c.method === "update");
+  assertExists(stampCall);
+  const stampArg = stampCall!.args[0] as { reminder_sent_at?: string };
+  assertEquals(stampArg.reminder_sent_at, FIXED_NOW.toISOString());
+});
+
+Deno.test("expire-offers: no reminder when expiry_reminder is off or already stamped", async () => {
+  const ORG_ID = "org-1";
+  const dueBooking = {
+    id: "booking-1",
+    artist_id: "artist-1",
+    offer_expires_at: new Date(FIXED_NOW.getTime() + 12 * 3600 * 1000).toISOString(),
+    artists: { id: "artist-1", name: "Jo Performer", email: "jo@example.com", user_id: null },
+    show_dates: {
+      date: "2026-07-01",
+      custom: null,
+      show_id: "show-1",
+      city_id: "city-1",
+      shows: { program: "Ballet", sub_program: "Matinée" },
+    },
+  };
+
+  // Variant 1: flow.expiry_reminder is off — the due booking would otherwise qualify,
+  // but the org hasn't opted in, so the reminder query never runs for it.
+  {
+    const { deps, invokeCalls } = makeFakeDeps({
+      now: FIXED_NOW,
+      tables: {
+        app_settings: [
+          { when: { key: "cron_secret" }, data: { value: CRON_SECRET } },
+          { when: { key: "booking_flow" }, data: [{ org_id: ORG_ID, value: { expiry_reminder: false } }] },
+        ],
+        organizations: { data: [{ id: ORG_ID }], error: null },
+        show_date_offer_tiers: { data: [], error: null },
+        bookings: { data: [dueBooking], error: null },
+      },
+      rpcs: { expire_soft_bookings: { data: null, error: null } },
+    });
+    const res = await handle(cronReq(), deps);
+    assertEquals(res.status, 200);
+    assertEquals((await res.json()).reminders_sent, 0);
+    assertEquals(invokeCalls.some((c) => c.name === "send-transactional-email"), false);
+  }
+
+  // Variant 2: flow is on, but the only matching booking already has reminder_sent_at
+  // set. The real `.is('reminder_sent_at', null)` filter excludes it server-side — the
+  // fake seed models that outcome as an empty result — while the handler must still have
+  // issued the idempotency filter (characterization, mirrors the escalation scan's own
+  // `.is('escalation_notified_at', null)` test above).
+  {
+    const { deps, calls, invokeCalls } = makeFakeDeps({
+      now: FIXED_NOW,
+      tables: {
+        app_settings: [
+          { when: { key: "cron_secret" }, data: { value: CRON_SECRET } },
+          { when: { key: "booking_flow" }, data: [{ org_id: ORG_ID, value: { expiry_reminder: true } }] },
+        ],
+        organizations: { data: [{ id: ORG_ID }], error: null },
+        show_date_offer_tiers: { data: [], error: null },
+        bookings: { data: [], error: null },
+      },
+      rpcs: { expire_soft_bookings: { data: null, error: null } },
+    });
+    const res = await handle(cronReq(), deps);
+    assertEquals(res.status, 200);
+    assertEquals((await res.json()).reminders_sent, 0);
+    assertEquals(invokeCalls.some((c) => c.name === "send-transactional-email"), false);
+
+    const isCalls = calls.filter((c) => c.table === "bookings" && c.method === "is");
+    const hasReminderFilter = isCalls.some(
+      (c) => c.args[0] === "reminder_sent_at" && c.args[1] === null,
+    );
+    assertEquals(hasReminderFilter, true);
+  }
 });
