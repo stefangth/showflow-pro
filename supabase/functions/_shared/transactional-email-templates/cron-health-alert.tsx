@@ -28,21 +28,21 @@ interface Props {
 const CronHealthAlert = ({ job_name, status_code, error, last_ok_at, dashboard_url, _footer }: Props) => (
   <Html lang="en" dir="ltr">
     <Head />
-    <Preview>{`Cron health alert — ${job_name ?? 'a scheduled job'} is failing`}</Preview>
+    <Preview>{`Cron health alert: ${job_name ?? 'a scheduled job'} is failing`}</Preview>
     <Body style={main}>
       <Container style={container}>
         <Heading style={h1}>Scheduled job failing</Heading>
         <Text style={text}>
-          The scheduled job <strong>{job_name ?? '—'}</strong> last returned{' '}
-          <strong>{status_code ?? '—'}</strong>. Part of the booking engine may be degraded until it is fixed.
+          The scheduled job <strong>{job_name ?? 'unknown'}</strong> last returned{' '}
+          <strong>{status_code ?? 'unknown'}</strong>. Part of the booking engine may be degraded until it is fixed.
         </Text>
         <Section style={card}>
           <Text style={cardLabel}>Job</Text>
-          <Text style={cardValue}>{job_name ?? '—'}</Text>
+          <Text style={cardValue}>{job_name ?? 'unknown'}</Text>
           <Text style={cardLabel}>Last status</Text>
-          <Text style={cardValue}>{status_code ?? '—'}</Text>
+          <Text style={cardValue}>{status_code ?? 'unknown'}</Text>
           <Text style={cardLabel}>Last error</Text>
-          <Text style={cardValue}>{error || '—'}</Text>
+          <Text style={cardValue}>{error || 'unknown'}</Text>
           <Text style={cardLabel}>Last healthy</Text>
           <Text style={cardValue}>{last_ok_at ?? 'unknown'}</Text>
         </Section>
@@ -51,7 +51,7 @@ const CronHealthAlert = ({ job_name, status_code, error, last_ok_at, dashboard_u
             Open System Health
           </Button>
         </Section>
-        <Text style={footer}>{_footer || `— The ${SITE_NAME} team`}</Text>
+        <Text style={footer}>{_footer || `The ${SITE_NAME} team`}</Text>
       </Container>
     </Body>
   </Html>

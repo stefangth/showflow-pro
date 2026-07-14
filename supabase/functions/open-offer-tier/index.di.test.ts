@@ -1010,7 +1010,10 @@ Deno.test("open-offer-tier: immediate delivery emails artists and stamps expiry"
   const body = email!.body as Record<string, unknown>;
   assertEquals(body.template_name, "offer-immediate");
   assertEquals(body.recipient_email, "lena@x.com");
-  assertEquals(body.idempotency_key, "offer-immediate-d1-a1");
+  // Keyed on the booking instance (not show_date_id+artist_id): a reopened tier
+  // re-offering the same artist creates a NEW booking row, so it must get a new key
+  // and never dedupe against a stale send from a prior offer round.
+  assertEquals(body.idempotency_key, "offer-immediate-b1");
   const templateData = body.templateData as Record<string, unknown>;
   assertEquals(templateData.referenceLabel, "Candlelight · Strings");
   assertEquals(templateData.city, "Berlin");

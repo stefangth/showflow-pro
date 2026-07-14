@@ -6,10 +6,16 @@ import { resolveContactEmail, resolveAccountDisplayName } from "../_shared/ident
 import { resolveBookingFlow, referenceLabel } from "../_shared/bookingFlow.ts";
 
 /**
- * Daily offer digest (hourly cron). For each ACTIVE org whose own
- * offer_digest_hour_berlin matches the current Berlin hour: group that org's
- * undigested suggested offers by artist, send one email per artist (rendered
- * with the org's email overrides), then stamp digest_sent_at + offer_expires_at.
+ * Daily offer digest (hourly cron). Digest-mode orgs are processed only when
+ * their own offer_digest_hour_berlin matches the current Berlin hour;
+ * immediate-delivery orgs are processed on every run with no hour gate, so a
+ * suggested booking left unstamped by a switch from digest to immediate mode
+ * still gets emailed and stamped promptly instead of waiting on the
+ * configured hour. Direct-booking orgs (artist_acceptance false) never create
+ * suggested offers, so they are skipped once the flow is resolved. For every
+ * org that is processed: group that org's undigested suggested offers by
+ * artist, send one email per artist (rendered with the org's email
+ * overrides), then stamp digest_sent_at plus offer_expires_at.
  * Auth: X-Cron-Secret (pg_cron) or admin/producer JWT.
  */
 export async function handle(req: Request, deps: Deps): Promise<Response> {
@@ -36,25 +42,35 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
   const processedOrgs: string[] = [];
 
   for (const org of orgs) {
+    // Resolve the booking flow BEFORE the hour gate, because offer_delivery decides
+    // whether the hour gate even applies: digest-mode orgs still wait for their own
+    // offer_digest_hour_berlin, same as always, while immediate-delivery orgs are
+    // not gated on the hour at all. Immediate-delivery orgs already email each
+    // freshly-offered artist at open (see open-offer-tier); this cron's only job
+    // for them is to flush any suggested booking left unstamped by a mid-flight
+    // switch from digest to immediate mode, so it runs on every invocation and the
+    // unstamped-bookings query below naturally becomes a no-op once that backlog
+    // clears.
+    const flow = await resolveBookingFlow(admin, org.id);
+    const isImmediate = flow.offer_delivery === 'immediate';
+
     // A per-org settings read failure must not abort the other orgs' digests.
-    let targetHour: number;
     let offerWindowHours: number;
-    try {
-      targetHour = await resolveOrgSetting<number>(admin, org.id, 'offer_digest_hour_berlin', BOOKING_ENGINE_DEFAULTS.offer_digest_hour_berlin);
-    } catch (e) {
-      console.error('send-offer-digest: settings read failed', { org: org.id, error: (e as Error).message });
-      continue;
+    if (!isImmediate) {
+      let targetHour: number;
+      try {
+        targetHour = await resolveOrgSetting<number>(admin, org.id, 'offer_digest_hour_berlin', BOOKING_ENGINE_DEFAULTS.offer_digest_hour_berlin);
+      } catch (e) {
+        console.error('send-offer-digest: settings read failed', { org: org.id, error: (e as Error).message });
+        continue;
+      }
+      if (berlinHour !== targetHour) continue;
     }
-    if (berlinHour !== targetHour) continue;
     processedOrgs.push(org.id);
 
-    // Booking-flow gate: this cron only owns DIGEST-mode delivery for orgs that
-    // actually run an offer/accept stage. Direct-booking orgs (artist_acceptance:
-    // false) never create suggested offers to begin with; immediate-delivery orgs
-    // already emailed each offer at open (see open-offer-tier) — re-notifying here
-    // would duplicate that email.
-    const flow = await resolveBookingFlow(admin, org.id);
-    if (!flow.artist_acceptance || flow.offer_delivery === 'immediate') continue;
+    // Direct-booking orgs (artist_acceptance false) never create suggested offers
+    // to begin with, so there is nothing for this cron to send.
+    if (!flow.artist_acceptance) continue;
 
     // Resolve the org's reference-field display once per org (mirrors open-offer-tier).
     let customFieldKey: string | null = null;

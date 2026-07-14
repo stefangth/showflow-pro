@@ -806,7 +806,16 @@ Deno.test("send-offer-digest: resolve_user_contacts RPC error → non-fatal, fal
 // the file's APP_SETTINGS_SEED and layer a `booking_flow` entry on top.
 // ─────────────────────────────────────────────────────────────────────────────
 
-Deno.test("send-offer-digest: immediate-delivery org is skipped", async () => {
+// An org can switch offer_delivery from "digest" to "immediate" while suggested
+// bookings created under the old mode are still unstamped (digest_sent_at IS
+// NULL). Those bookings never got an immediate email at open (open-offer-tier
+// only emails artists it JUST offered) and would never expire or trigger
+// at-risk if this cron kept skipping the whole org. So an immediate-mode org
+// is NOT skipped: it is processed on every run, with no hour gate, so any
+// orphaned backlog gets flushed and stamped promptly. Once the backlog clears,
+// the unstamped-bookings query naturally returns nothing and this is a no-op.
+
+Deno.test("send-offer-digest: immediate-delivery org's unstamped backlog is sent and stamped even off-hour", async () => {
   const pending = [{
     id: "b1", artist_id: "a1",
     artists: { id: "a1", name: "Jo", email: "jo@x.com" },
@@ -816,7 +825,32 @@ Deno.test("send-offer-digest: immediate-delivery org is skipped", async () => {
     ...APP_SETTINGS_SEED,
     { when: { key: "booking_flow" }, data: [{ org_id: ORG_1, value: { offer_delivery: "immediate" } }] },
   ];
-  const { deps, invokeCalls } = baseDeps({ app_settings: settings, bookings: { data: pending, error: null } });
+  // BERLIN_18_CEST does NOT match the configured digest hour (19), proof the
+  // hour gate does not apply to an immediate-mode org.
+  const { deps, calls, invokeCalls } = baseDeps(
+    { app_settings: settings, bookings: { data: pending, error: null } },
+    BERLIN_18_CEST,
+  );
+  const res = await handle(makeRequest({ headers: cronOK }), deps);
+  const body = await res.json();
+  assertEquals(res.status, 200);
+  assertEquals(invokeCalls.some((c) => c.name === "send-transactional-email"), true);
+  assertEquals(body.digests_sent, 1);
+  const update = calls.find((c) => c.table === "bookings" && c.method === "update");
+  assertExists(update);
+  const payload = update!.args[0] as Record<string, unknown>;
+  assertEquals("digest_sent_at" in payload && "offer_expires_at" in payload, true);
+});
+
+Deno.test("send-offer-digest: immediate-delivery org with no unstamped bookings sends nothing", async () => {
+  const settings = [
+    ...APP_SETTINGS_SEED,
+    { when: { key: "booking_flow" }, data: [{ org_id: ORG_1, value: { offer_delivery: "immediate" } }] },
+  ];
+  const { deps, invokeCalls } = baseDeps(
+    { app_settings: settings, bookings: { data: [], error: null } },
+    BERLIN_18_CEST,
+  );
   const res = await handle(makeRequest({ headers: cronOK }), deps);
   const body = await res.json();
   assertEquals(res.status, 200);

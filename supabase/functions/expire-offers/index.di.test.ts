@@ -1006,6 +1006,43 @@ Deno.test("expire-offers: no reminder when expiry_reminder is off or already sta
   }
 });
 
+// The gate is `!flow.artist_acceptance || !flow.expiry_reminder`. The variants above
+// only cover expiry_reminder off; this covers the other side of the OR, a
+// direct-booking org (artist_acceptance: false) with expiry_reminder otherwise ON.
+Deno.test("expire-offers: no reminder when artist_acceptance is false (even if expiry_reminder is on)", async () => {
+  const ORG_ID = "org-1";
+  const dueBooking = {
+    id: "booking-1",
+    artist_id: "artist-1",
+    offer_expires_at: new Date(FIXED_NOW.getTime() + 12 * 3600 * 1000).toISOString(),
+    artists: { id: "artist-1", name: "Jo Performer", email: "jo@example.com", user_id: null },
+    show_dates: {
+      date: "2026-07-01",
+      custom: null,
+      show_id: "show-1",
+      city_id: "city-1",
+      shows: { program: "Ballet", sub_program: "Matinée" },
+    },
+  };
+  const { deps, invokeCalls } = makeFakeDeps({
+    now: FIXED_NOW,
+    tables: {
+      app_settings: [
+        { when: { key: "cron_secret" }, data: { value: CRON_SECRET } },
+        { when: { key: "booking_flow" }, data: [{ org_id: ORG_ID, value: { artist_acceptance: false, expiry_reminder: true } }] },
+      ],
+      organizations: { data: [{ id: ORG_ID }], error: null },
+      show_date_offer_tiers: { data: [], error: null },
+      bookings: { data: [dueBooking], error: null },
+    },
+    rpcs: { expire_soft_bookings: { data: null, error: null } },
+  });
+  const res = await handle(cronReq(), deps);
+  assertEquals(res.status, 200);
+  assertEquals((await res.json()).reminders_sent, 0);
+  assertEquals(invokeCalls.some((c) => c.name === "send-transactional-email"), false);
+});
+
 // ─── Milestone C — Task 12: auto-escalation of short tiers ───────────────────
 //
 // Runs inside the same per-tier scan as the manual escalation path, gated on

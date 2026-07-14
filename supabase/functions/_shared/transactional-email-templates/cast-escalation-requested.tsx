@@ -31,26 +31,26 @@ interface Props {
 const CastEscalationRequested = ({ program, date, tier, accepted, required, _intro, _cta_label, _footer }: Props) => {
   const introText = _intro || `Open the next priority tier to keep this date on track.`
   const ctaLabel = _cta_label || 'Open bookings'
-  const footerText = _footer || `— The ${SITE_NAME} team`
+  const footerText = _footer || `The ${SITE_NAME} team`
   return (
   <Html lang="en" dir="ltr">
     <Head />
-    <Preview>{`Cast escalation needed — Tier ${tier ?? '—'} for ${program ?? 'a show'} on ${date ?? '—'}`}</Preview>
+    <Preview>{`Cast escalation needed: Tier ${tier ?? '?'} for ${program ?? 'a show'} on ${date ?? 'TBD'}`}</Preview>
     <Body style={main}>
       <Container style={container}>
         <Heading style={h1}>Cast escalation needed</Heading>
         <Text style={text}>
-          Tier {tier ?? '—'} for <strong>{program ?? 'a show'}</strong> on{' '}
-          <strong>{date ?? '—'}</strong> has expired with only{' '}
+          Tier {tier ?? '?'} for <strong>{program ?? 'a show'}</strong> on{' '}
+          <strong>{date ?? 'TBD'}</strong> has expired with only{' '}
           <strong>{accepted ?? 0}/{required ?? '?'}</strong> slots filled.
         </Text>
         <Section style={card}>
           <Text style={cardLabel}>Show</Text>
-          <Text style={cardValue}>{program ?? '—'}</Text>
+          <Text style={cardValue}>{program ?? 'a show'}</Text>
           <Text style={cardLabel}>Date</Text>
-          <Text style={cardValue}>{date ?? '—'}</Text>
+          <Text style={cardValue}>{date ?? 'TBD'}</Text>
           <Text style={cardLabel}>Tier</Text>
-          <Text style={cardValue}>{tier ?? '—'}</Text>
+          <Text style={cardValue}>{tier ?? '?'}</Text>
           <Text style={cardLabel}>Filled</Text>
           <Text style={cardValue}>{accepted ?? 0} / {required ?? '?'} slots</Text>
         </Section>
@@ -70,7 +70,7 @@ const CastEscalationRequested = ({ program, date, tier, accepted, required, _int
 export const template = {
   component: CastEscalationRequested,
   subject: (data: Record<string, any>) =>
-    `Escalation needed — Tier ${data?.tier ?? '?'} for ${data?.program ?? 'show'} on ${data?.date ?? '?'}`,
+    `Escalation needed: Tier ${data?.tier ?? '?'} for ${data?.program ?? 'show'} on ${data?.date ?? '?'}`,
   displayName: 'Cast escalation requested',
   previewData: {
     program: 'Riverdance',
