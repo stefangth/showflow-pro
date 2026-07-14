@@ -64,6 +64,27 @@ describe("DryRunDialog", () => {
     expect(screen.getByRole("button", { name: /open tier 1 · send 0 offers/i })).toBeDisabled();
   });
 
+  // Regression: the confirm button ignored the open-tier mutation's pending state,
+  // so a fast double click could open the tier twice.
+  it("disables confirm while the open-tier mutation is pending", () => {
+    renderWithProviders(
+      <DryRunDialog
+        open
+        onOpenChange={() => {}}
+        tier={2}
+        result={{
+          candidates: [{ id: "a1", name: "Lena" }],
+          excluded: { alreadyBooked: 0, blocked: 0, inactive: 0 },
+        }}
+        loading={false}
+        flow={{ offer_delivery: "digest" }}
+        confirmPending
+        onConfirm={vi.fn()}
+      />,
+    );
+    expect(screen.getByRole("button", { name: /open tier 2 · send 1 offers/i })).toBeDisabled();
+  });
+
   it("shows a loading state while the dry run is in flight", () => {
     renderWithProviders(
       <DryRunDialog

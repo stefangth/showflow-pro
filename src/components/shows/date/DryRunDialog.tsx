@@ -15,19 +15,24 @@ export interface DryRunDialogProps {
   result: DryRunResult | null;
   loading: boolean;
   flow: Pick<BookingFlow, "offer_delivery">;
+  /** True while the open-tier mutation is in flight — blocks a double confirm. */
+  confirmPending?: boolean;
   onConfirm: () => void;
 }
 
 /** Preview-who-gets-offers dialog for a tier, backed by `dryRunOfferTier`.
  *  Presentational: the caller owns the dry-run query and the actual open-tier mutation. */
-export function DryRunDialog({ open, onOpenChange, tier, result, loading, flow, onConfirm }: DryRunDialogProps) {
+export function DryRunDialog({
+  open, onOpenChange, tier, result, loading, flow, confirmPending = false, onConfirm,
+}: DryRunDialogProps) {
   const candidates = result?.candidates ?? [];
   const n = candidates.length;
   const hasMessage = !!result?.message;
   const notReady = loading || tier == null || !result;
   // Zero candidates means nobody would get an offer: disable even without an explicit
   // `message` (e.g. every eligible artist is already booked, blocked, or inactive).
-  const confirmDisabled = notReady || hasMessage || n === 0;
+  // `confirmPending` blocks a second click while the open-tier mutation is in flight.
+  const confirmDisabled = notReady || hasMessage || n === 0 || confirmPending;
 
   const deliverySentence = flow.offer_delivery === "digest"
     ? "Offers go out with the next daily digest."

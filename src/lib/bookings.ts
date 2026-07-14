@@ -108,12 +108,15 @@ export function offerResultToast(
 
 /** Confirmation copy for opening a tier; re-open note explains the additive semantics. */
 export function offerConfirmCopy(
-  input: { tier: number; dateLabel: string; alreadyOpened: boolean },
+  input: { tier: number; dateLabel: string; alreadyOpened: boolean; offerDelivery: "digest" | "immediate" },
 ): { title: string; body: string } {
   const noun = tierNoun(input.tier);
+  const deliverySentence = input.offerDelivery === "immediate"
+    ? "Offers are emailed the moment the tier opens, and you can cancel any offer afterward."
+    : "They'll be emailed in the next daily offer digest, and you can cancel any offer afterward.";
   const base =
     `This creates suggested bookings for all eligible artists in ${noun} for ${input.dateLabel}. ` +
-    `They'll be emailed in the next daily offer digest, and you can cancel any offer afterward.`;
+    deliverySentence;
   const cap = input.tier === 99 ? "Ad-hoc casts have" : `Tier ${input.tier} has`;
   const reopen = input.alreadyOpened
     ? ` ${cap} already been opened — re-opening only adds offers for artists who don't have one yet.`

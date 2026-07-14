@@ -107,19 +107,30 @@ describe("offerResultToast", () => {
 
 describe("offerConfirmCopy", () => {
   it("first-open body has no re-open note", () => {
-    const c = offerConfirmCopy({ tier: 1, dateLabel: "10 Jul 2026", alreadyOpened: false });
+    const c = offerConfirmCopy({ tier: 1, dateLabel: "10 Jul 2026", alreadyOpened: false, offerDelivery: "digest" });
     expect(c.title).toBe("Open tier 1 offers?");
     expect(c.body).toContain("10 Jul 2026");
     expect(c.body).not.toContain("already been opened");
   });
   it("already-opened body adds the additive re-open note", () => {
-    const c = offerConfirmCopy({ tier: 2, dateLabel: "10 Jul 2026", alreadyOpened: true });
+    const c = offerConfirmCopy({ tier: 2, dateLabel: "10 Jul 2026", alreadyOpened: true, offerDelivery: "digest" });
     expect(c.body).toContain("Tier 2 has already been opened");
   });
   it("uses ad-hoc wording for tier 99", () => {
-    const c = offerConfirmCopy({ tier: 99, dateLabel: "10 Jul 2026", alreadyOpened: true });
+    const c = offerConfirmCopy({ tier: 99, dateLabel: "10 Jul 2026", alreadyOpened: true, offerDelivery: "digest" });
     expect(c.title).toBe("Open ad-hoc casts offers?");
     expect(c.body).toContain("Ad-hoc casts have already been opened");
+  });
+  it("digest delivery mentions the daily offer digest", () => {
+    const c = offerConfirmCopy({ tier: 1, dateLabel: "10 Jul 2026", alreadyOpened: false, offerDelivery: "digest" });
+    expect(c.body).toContain("next daily offer digest");
+  });
+  // Regression: immediate-delivery orgs saw "next daily offer digest" copy even
+  // though offers for those orgs are emailed the moment the tier opens.
+  it("immediate delivery mentions emails go out the moment the tier opens", () => {
+    const c = offerConfirmCopy({ tier: 1, dateLabel: "10 Jul 2026", alreadyOpened: false, offerDelivery: "immediate" });
+    expect(c.body).toContain("emailed the moment the tier opens");
+    expect(c.body).not.toContain("daily offer digest");
   });
 });
 

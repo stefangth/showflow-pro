@@ -326,7 +326,11 @@ export default function SettingsPage() {
         </TabsContent>
 
         <TabsContent value="booking" className="mt-4">
+          {/* Keyed by org so per-org component state (e.g. the remembered
+              producer_confirmation choice) resets on org switch. The draft itself
+              lives at page level, so remounting the tab loses nothing. */}
           <BookingFlowTab
+            key={orgId ?? 'no-org'}
             get={get}
             set={set}
             dirtyKeys={bookingDirtyKeys}
