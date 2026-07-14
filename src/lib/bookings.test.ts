@@ -3,7 +3,7 @@ import {
   deriveBookingGroups, computeInheritedCastIds,
   buildOfferTierOptions, offerResultToast, offerConfirmCopy,
   pendingOfferCount, closeConfirmCopy, closeResultToast,
-  bookingStatusBadgeClass, shouldAutoOpenTier1,
+  bookingStatusBadgeClass, shouldAutoOpenTier1, deriveDirectBookList,
 } from "./bookings";
 
 type B = { artist_id: string; status: string; is_understudy: boolean };
@@ -213,5 +213,40 @@ describe("shouldAutoOpenTier1", () => {
     expect(shouldAutoOpenTier1({ flow: { ...flow, auto_open_tier1: false }, hasSession: true, openedTiers: [] })).toBe(false);
     expect(shouldAutoOpenTier1({ flow: { ...flow, artist_acceptance: false }, hasSession: true, openedTiers: [] })).toBe(false);
     expect(shouldAutoOpenTier1({ flow, hasSession: true, openedTiers: [{ tier: 1 }] })).toBe(false);
+  });
+});
+
+describe("deriveDirectBookList", () => {
+  const artists = [
+    { id: "a1", name: "One" },
+    { id: "a2", name: "Two" },
+    { id: "a3", name: "Three" },
+  ];
+  it("fails closed while eligibility has not resolved", () => {
+    expect(deriveDirectBookList(artists, undefined, new Set())).toEqual([]);
+  });
+  it("fails closed while the blocked set has not resolved", () => {
+    expect(deriveDirectBookList(artists, { artistIds: null }, undefined)).toEqual([]);
+  });
+  it("null artistIds means no eligibility restriction", () => {
+    expect(deriveDirectBookList(artists, { artistIds: null }, new Set())).toEqual(artists);
+  });
+  it("filters to the eligible set", () => {
+    expect(deriveDirectBookList(artists, { artistIds: new Set(["a2"]) }, new Set())).toEqual([
+      { id: "a2", name: "Two" },
+    ]);
+  });
+  it("excludes artists with a blocked date, matching the tiered offer path", () => {
+    expect(deriveDirectBookList(artists, { artistIds: null }, new Set(["a1", "a3"]))).toEqual([
+      { id: "a2", name: "Two" },
+    ]);
+  });
+  it("applies eligibility and blocked filters together", () => {
+    expect(
+      deriveDirectBookList(artists, { artistIds: new Set(["a1", "a2"]) }, new Set(["a1"])),
+    ).toEqual([{ id: "a2", name: "Two" }]);
+  });
+  it("returns [] when org artists have not loaded", () => {
+    expect(deriveDirectBookList(undefined, { artistIds: null }, new Set())).toEqual([]);
   });
 });

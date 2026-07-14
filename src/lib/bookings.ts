@@ -195,3 +195,23 @@ export function closeResultToast(
   if (n > 0) return { kind: "success", text: `Withdrew ${n} offer${s} from ${noun}` };
   return { kind: "info", text: result.message ?? "Tier was not open" };
 }
+
+/**
+ * Resolves the artist list the direct-mode booking surface may offer a Book
+ * action for. Fails closed: until BOTH the eligibility set and the blocked-date
+ * set have resolved (loading or errored), nobody is bookable; a momentary
+ * "everyone is eligible" window would expose artists outside the cast/city
+ * eligibility with no DB backstop. A null artistIds means genuinely
+ * unrestricted (no eligibility config). Blocked artists are excluded to match
+ * the tiered offer path, which skips blocked_dates server-side.
+ */
+export function deriveDirectBookList(
+  orgArtists: { id: string; name: string }[] | undefined,
+  eligibility: { artistIds: Set<string> | null } | undefined,
+  blockedIds: Set<string> | undefined,
+): { id: string; name: string }[] {
+  if (eligibility === undefined || blockedIds === undefined) return [];
+  const all = orgArtists ?? [];
+  const base = eligibility.artistIds == null ? all : all.filter((a) => eligibility.artistIds!.has(a.id));
+  return base.filter((a) => !blockedIds.has(a.id));
+}
