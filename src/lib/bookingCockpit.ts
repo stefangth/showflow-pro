@@ -29,6 +29,18 @@ export interface UpNextItem {
   text: string;
 }
 
+// The booking engine is Berlin-anchored (digest hours, expiry windows), so the expiry
+// pill must show the Berlin-local calendar day: an offer expiring 23:30 UTC is already
+// the next day in Berlin. en-CA formats as YYYY-MM-DD, which formatDateWithWeekday
+// parses timezone-safely.
+const berlinDayKey = (iso: string): string =>
+  new Intl.DateTimeFormat("en-CA", {
+    timeZone: "Europe/Berlin",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).format(new Date(iso));
+
 export function computeUpNext(args: {
   flow: BookingFlow;
   times: FlowTimes;
@@ -47,7 +59,7 @@ export function computeUpNext(args: {
   if (pendingCount > 0 && nextExpiry) {
     items.push({
       tone: "amber",
-      text: `${pendingCount} ${pendingCount === 1 ? "offer expires" : "offers expire"} ${formatDateWithWeekday(nextExpiry.slice(0, 10))}`,
+      text: `${pendingCount} ${pendingCount === 1 ? "offer expires" : "offers expire"} ${formatDateWithWeekday(berlinDayKey(nextExpiry))}`,
     });
   }
   if (hasOpenTier) {

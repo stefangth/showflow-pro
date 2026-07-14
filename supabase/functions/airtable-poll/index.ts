@@ -417,6 +417,11 @@ async function syncOrg(deps: Deps, orgId: string, baseId: string, tableName: str
     // Also cover UPDATED dates that just gained a session but have no tier-1 row yet.
     // Over-inclusion is safe: open-offer-tier no-ops benignly for not-ready dates, so no
     // readiness check is needed beyond "the payload gained a session".
+    // Accepted race: this read runs before this run's open-offer-tier calls commit, so
+    // two overlapping polls for one org (slow cron tick plus "Sync now") can both pass
+    // it and double-invoke. The loser is rejected by open-offer-tier (the tier row and
+    // bookings are DB-unique) and shows up as a failed invoke in the log; that noise is
+    // accepted rather than adding a cross-invocation lock.
     if (updatedWithSession.length) {
       const { data: existingTierRows } = await admin
         .from("show_date_offer_tiers")

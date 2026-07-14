@@ -28,6 +28,16 @@ describe("computeUpNext", () => {
     expect(texts).toContain("3 offers expire");
     expect(texts).toContain("Auto-escalate: off");
   });
+  it("shows the Berlin-local day when an expiry crosses midnight in UTC", () => {
+    // 23:30 UTC on Jul 15 is already 01:30 on Jul 16 in Berlin (CEST, UTC+2),
+    // and the booking engine is Berlin-anchored: the pill must say Jul 16.
+    const items = computeUpNext({
+      flow: BOOKING_FLOW_DEFAULTS, times: TIMES, pendingCount: 1,
+      nextExpiry: "2026-07-15T23:30:00Z", hasOpenTier: false,
+    });
+    const expiry = items.find((i) => i.text.includes("offer expires"));
+    expect(expiry?.text).toContain("16/07/2026");
+  });
   it("direct mode shows the single direct-booking pill", () => {
     const items = computeUpNext({
       flow: applyPreset(BOOKING_FLOW_DEFAULTS, "direct"), times: TIMES,

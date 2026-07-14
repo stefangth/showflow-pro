@@ -1432,6 +1432,47 @@ Deno.test("airtable-poll: updated date with session and no tier-1 row is auto-op
   assertEquals((offerCalls[0].body as { tier?: number }).tier, 1);
 });
 
+// The idempotency half of the updated-dates path: a date that ALREADY has a tier-1
+// row is filtered out and never re-opened, even when its update gained a session.
+Deno.test("airtable-poll: updated date with an existing tier-1 row is not re-opened", async () => {
+  const { deps, invokeCalls } = makeFakeDeps({
+    tables: {
+      app_settings: [
+        { when: { key: "cron_secret" }, data: { value: "secret123" } },
+        // booking_flow default (empty rows) → normalized defaults: auto_open + acceptance on.
+        { when: { key: "booking_flow" }, data: [] },
+        ...ENABLED_SETTINGS,
+      ],
+      organizations: { data: [{ id: ORG }], error: null },
+      shows: { data: [{ id: "show-uuid-1", airtable_program_key: "TestShow" }], error: null },
+      cities: { data: [{ id: "city-uuid-berlin", airtable_city_key: "berlin" }], error: null },
+      // The record maps to an existing show_date → the update path (not insert).
+      show_dates: { data: [{ id: "d-upd", airtable_record_id: "recUPD" }], error: null },
+      // Tier 1 was already opened for d-upd on an earlier poll.
+      show_date_offer_tiers: { data: [{ show_date_id: "d-upd" }], error: null },
+      airtable_sync_log: { data: { id: "log-1" }, error: null },
+      airtable_sync_record_log: { data: [], error: null },
+      org_memberships: { data: [], error: null },
+      notifications: { data: null, error: null },
+    },
+    rpcs: { get_org_airtable_key: { data: "key", error: null }, get_cron_secret: { data: "secret123", error: null } },
+    fetchImpl: () =>
+      Promise.resolve(
+        makeAirtableResponse([makeRecord("recUPD", { Date: "2026-07-20", SubProgram: "TestShow", "Session 1": "T20:00:00" })]),
+      ) as Promise<Response>,
+  });
+
+  const res = await handle(authReq(), deps);
+  assertEquals(res.status, 200);
+  const body = await res.json();
+  assertEquals(body.updated, 1);
+
+  // The existing tier-1 row keeps the date out of the candidate list entirely.
+  const offerCalls = invokeCalls.filter((c) => c.name === "open-offer-tier");
+  assertEquals(offerCalls.length, 0);
+  assertEquals(body.tiers_opened, 0);
+});
+
 // ─── OPTIONS preflight ────────────────────────────────────────────────────────
 
 Deno.test("airtable-poll: OPTIONS returns preflight (204)", async () => {
