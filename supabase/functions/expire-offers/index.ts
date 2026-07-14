@@ -1,7 +1,10 @@
 import { preflight, json } from "../_shared/http.ts";
 import { requireCronOrRole } from "../_shared/auth.ts";
-import { realDeps, type Deps } from "../_shared/deps.ts";
+import { realDeps, emailWasSent, type Deps } from "../_shared/deps.ts";
 import { countAccepted, countPendingNotExpired, isFutureOrToday, requiredPrimarySlots } from "../_shared/tierFill.ts";
+import { getActiveOrgs } from "../_shared/settings.ts";
+import { resolveBookingFlow, referenceLabel } from "../_shared/bookingFlow.ts";
+import { resolveContactEmail, resolveAccountDisplayName } from "../_shared/identity.ts";
 
 /**
  * Hourly job:
@@ -26,9 +29,150 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
   const auth = await requireCronOrRole(deps, req, ["admin", "producer"]);
   if (!auth.ok) return auth.response;
 
+  const now = deps.now()
+
   // 1. Expire stale offers
   const { error: rpcErr } = await admin.rpc('expire_soft_bookings')
   if (rpcErr) return json({ error: `expire_soft_bookings: ${rpcErr.message}` }, 500)
+
+  // 1.5. Reminder pass (Milestone C — Task 11): notify artists whose offer expires
+  // within the next 24h and haven't already been reminded. Runs before the escalation
+  // scan; org-gated on booking_flow.expiry_reminder (and artist_acceptance, since a
+  // direct-booking org never creates suggested offers to remind about).
+  let remindersSent = 0
+  let reminderOrgs: Array<{ id: string }> = []
+  try {
+    reminderOrgs = await getActiveOrgs(admin)
+  } catch (e) {
+    console.error('expire-offers: failed to fetch active orgs for reminder pass', { error: (e as Error).message })
+  }
+
+  for (const org of reminderOrgs) {
+    let flow
+    try {
+      flow = await resolveBookingFlow(admin, org.id)
+    } catch (e) {
+      console.error('expire-offers: booking flow read failed', { org: org.id, error: (e as Error).message })
+      continue
+    }
+    if (!flow.artist_acceptance || !flow.expiry_reminder) continue
+
+    // Resolve the org's reference-field display once per org (mirrors send-offer-digest).
+    let customFieldKey: string | null = null
+    if (flow.reference_field.source === 'custom' && flow.reference_field.custom_field_id) {
+      const { data: def } = await admin
+        .from('custom_field_definitions').select('key')
+        .eq('id', flow.reference_field.custom_field_id).maybeSingle()
+      customFieldKey = (def as { key: string } | null)?.key ?? null
+    }
+
+    const cutoff = new Date(now.getTime() + 24 * 3600 * 1000)
+    const { data: due, error: dueErr } = await admin
+      .from('bookings')
+      .select('id, artist_id, offer_expires_at, artists(id, name, email, user_id), show_dates(date, custom, show_id, city_id, shows(program, sub_program))')
+      .eq('org_id', org.id)
+      .eq('status', 'suggested')
+      .is('reminder_sent_at', null)
+      .not('offer_expires_at', 'is', null)
+      .gt('offer_expires_at', now.toISOString())
+      .lt('offer_expires_at', cutoff.toISOString())
+    if (dueErr) { console.error('expire-offers: reminder query failed', { org: org.id, error: dueErr.message }); continue }
+    if (!due || due.length === 0) continue
+
+    // ADR-0011: registered artists are addressed at their login (auth) email; the
+    // booking email is the fallback (mirrors send-offer-digest's identity resolution).
+    const userIds = [...new Set(
+      (due as any[]).map((b) => b.artists?.user_id).filter((id: unknown): id is string => !!id),
+    )]
+    const byUser = new Map<string, { email: string | null; display_name: string | null }>()
+    if (userIds.length > 0) {
+      const { data: contacts, error: contactsErr } = await admin.rpc('resolve_user_contacts', { p_user_ids: userIds })
+      if (contactsErr) {
+        console.error('expire-offers: resolve_user_contacts failed', { org: org.id, error: contactsErr.message })
+      } else {
+        for (const c of (contacts ?? []) as Array<{ user_id: string; email: string | null; display_name: string | null }>) {
+          byUser.set(c.user_id, { email: c.email, display_name: c.display_name })
+        }
+      }
+    }
+
+    type ReminderGroup = {
+      recipientEmail: string
+      displayName: string
+      userId: string | null
+      bookingIds: string[]
+      offers: Array<{ referenceLabel: string; date: string; expiresAt: string }>
+    }
+    const grouped = new Map<string, ReminderGroup>()
+    for (const b of due as any[]) {
+      const artist = b.artists
+      const acct = artist?.user_id ? byUser.get(artist.user_id) : undefined
+      const recipientEmail = resolveContactEmail({ authEmail: acct?.email, bookingEmail: artist?.email })
+      if (!recipientEmail) continue
+      const sd = b.show_dates
+      const label = referenceLabel({
+        reference: flow.reference_field,
+        show: sd?.shows ?? null,
+        custom: sd?.custom ?? null,
+        customFieldKey,
+      })
+      const expiresAt = new Intl.DateTimeFormat('en-GB', {
+        timeZone: 'Europe/Berlin', day: '2-digit', month: '2-digit', year: 'numeric',
+        hour: '2-digit', minute: '2-digit', hour12: false,
+      }).format(new Date(b.offer_expires_at))
+      if (!grouped.has(b.artist_id)) {
+        grouped.set(b.artist_id, {
+          recipientEmail,
+          displayName: resolveAccountDisplayName({ displayName: acct?.display_name, artistName: artist?.name }),
+          userId: artist?.user_id ?? null,
+          bookingIds: [],
+          offers: [],
+        })
+      }
+      const entry = grouped.get(b.artist_id)!
+      entry.bookingIds.push(b.id)
+      entry.offers.push({ referenceLabel: label, date: sd?.date ?? 'TBD', expiresAt })
+    }
+
+    for (const [artistId, entry] of grouped) {
+      try {
+        const result = await deps.sendEmail({
+          template_name: 'offer-expiry-reminder',
+          recipient_email: entry.recipientEmail,
+          org_id: org.id,
+          templateData: { displayName: entry.displayName, offers: entry.offers },
+          idempotency_key: `offer-reminder-${org.id}-${artistId}-${now.toISOString().slice(0, 10)}`,
+        })
+        if (!emailWasSent(result)) {
+          console.warn('expire-offers: reminder email not sent — leaving unstamped', {
+            org: org.id, artistId, error: result.error ?? null,
+            reason: (result.data as { reason?: unknown } | null)?.reason ?? null,
+          })
+          continue
+        }
+        const { error: stampErr } = await admin
+          .from('bookings')
+          .update({ reminder_sent_at: now.toISOString() })
+          .in('id', entry.bookingIds)
+        if (stampErr) { console.error('expire-offers: reminder stamp failed', { org: org.id, artistId, error: stampErr.message }); continue }
+        remindersSent += 1
+        if (entry.userId) {
+          const count = entry.bookingIds.length
+          await admin.from('notifications').insert([{
+            org_id: org.id,
+            user_id: entry.userId,
+            type: 'offer_expiring',
+            title: 'Offer expiring soon',
+            message: `You have ${count === 1 ? 'an offer' : `${count} offers`} expiring in the next 24 hours.`,
+            related_entity_type: 'booking',
+            related_entity_id: entry.bookingIds[0],
+          }])
+        }
+      } catch (e) {
+        console.error('expire-offers: reminder email send failed', { org: org.id, artistId, error: (e as Error).message })
+      }
+    }
+  }
 
   // 2. Find open tiers that have never been escalated
   const { data: openTiers } = await (admin as any)
@@ -37,7 +181,7 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
     .is('closed_at', null)
     .is('escalation_notified_at', null)
 
-  if (!openTiers || openTiers.length === 0) return json({ expired: true, escalations: 0 })
+  if (!openTiers || openTiers.length === 0) return json({ expired: true, escalations: 0, reminders_sent: remindersSent })
 
   let escalated = 0
 
@@ -136,7 +280,7 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
     escalated += 1
   }
 
-  return json({ expired: true, escalations: escalated })
+  return json({ expired: true, escalations: escalated, reminders_sent: remindersSent })
 }
 
 if (import.meta.main) Deno.serve((req) => handle(req, realDeps()));

@@ -15,6 +15,7 @@ const APP_LINK_TEMPLATES = [
   "new-signup-admin-notification",
   "signup-decision",
   "cron-health-alert",
+  "offer-expiry-reminder",
 ];
 
 for (const name of APP_LINK_TEMPLATES) {
