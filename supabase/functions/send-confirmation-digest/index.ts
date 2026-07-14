@@ -59,7 +59,15 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
     // this toggle (the UI labels it "Daily summary email to newly confirmed artists", an
     // email-only opt-out). Direct-booking orgs (artist_acceptance:false) are not gated at
     // all: with no offer/accept stage this digest is the artist's only notification.
-    const flow = await resolveBookingFlow(admin, org.id);
+    // A per-org booking-flow read failure must not abort the other orgs' digests
+    // (mirrors the settings-read guard above).
+    let flow: Awaited<ReturnType<typeof resolveBookingFlow>>;
+    try {
+      flow = await resolveBookingFlow(admin, org.id);
+    } catch (e) {
+      console.error('send-confirmation-digest: booking flow read failed', { org: org.id, error: (e as Error).message });
+      continue;
+    }
 
     // Resolve the org's reference-field display once per org (mirrors send-offer-digest).
     let customFieldKey: string | null = null;

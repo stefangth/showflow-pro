@@ -909,3 +909,44 @@ Deno.test("send-offer-digest: templateData offer items carry the custom-field la
   // (the template's fallback for previewData that doesn't carry a label).
   assertEquals(msg.templateData?.offers?.[0]?.show, "Phantom — Evening");
 });
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Fix B (PR #161 round 3): a booking_flow read failure must not abort the org loop
+//
+// resolveBookingFlow runs first in each org iteration. An UNGUARDED `await` would
+// reject the whole handler on the first org's failure, skipping every later org's
+// digest. The per-org try/catch isolates it (log + continue), so the loop completes
+// and the handler returns 200 instead of rejecting.
+//
+// Harness note: the fake client resolves one seed per table, so a booking_flow error
+// applies to BOTH orgs; it cannot make only org A fail while org B succeeds (the
+// booking_flow read filters org via `.or()`, which the fake doesn't match on). The
+// assertion is therefore that the error is caught per-org and the loop is not aborted:
+// pre-fix the handler REJECTED here (the test would throw) instead of returning 200.
+// ─────────────────────────────────────────────────────────────────────────────
+
+Deno.test("send-offer-digest: booking_flow read error is isolated per org, loop not aborted, returns 200", async () => {
+  const settings = [
+    { when: { key: "cron_secret" }, data: { value: "s" } },
+    { when: { key: "booking_flow" }, error: { message: "booking_flow read failed" } },
+    { when: { key: "offer_digest_hour_berlin" }, data: [{ org_id: null, value: 19 }] },
+    { when: { key: "offer_response_window_hours" }, data: [{ org_id: null, value: 48 }] },
+  ];
+  const { deps } = makeFakeDeps({
+    now: BERLIN_19_CEST,
+    tables: {
+      app_settings: settings,
+      // Two active orgs: proves the loop iterates past the first org's failure.
+      organizations: { data: [{ id: ORG_1 }, { id: ORG_2 }], error: null },
+      bookings: { data: [], error: null },
+    },
+  });
+  const res = await handle(makeRequest({ headers: cronOK }), deps);
+  // Pre-fix: `await resolveBookingFlow` rejects → handle() rejects → this line throws.
+  assertEquals(res.status, 200);
+  const body = await res.json();
+  // Both orgs `continue` on the caught booking_flow error before reaching
+  // processedOrgs.push, so the handler reports the skipped shape; the point is it
+  // COMPLETES (returns a response) instead of rejecting the whole loop on org A.
+  assertEquals(body.skipped, true, "loop completes across both orgs despite booking_flow error");
+});

@@ -246,9 +246,16 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
     const orgId = (sd as any).org_id as string
 
     // Resolve the org's booking flow (auto-escalate + direct-mode gate), cached per org.
+    // A per-org read failure must not abort the whole escalation scan; skip this row and
+    // do NOT cache anything, so a later row for the same org can retry the resolve.
     let flow = flowByOrg.get(orgId)
     if (!flow) {
-      flow = await resolveBookingFlow(admin, orgId)
+      try {
+        flow = await resolveBookingFlow(admin, orgId)
+      } catch (e) {
+        console.error('expire-offers: booking flow read failed', { org: orgId, showDateId: row.show_date_id, error: (e as Error).message })
+        continue
+      }
       flowByOrg.set(orgId, flow)
     }
     if (!flow.artist_acceptance) continue // direct-mode orgs have no offer tiers to escalate

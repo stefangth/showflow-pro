@@ -51,7 +51,15 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
     // switch from digest to immediate mode, so it runs on every invocation and the
     // unstamped-bookings query below naturally becomes a no-op once that backlog
     // clears.
-    const flow = await resolveBookingFlow(admin, org.id);
+    // A per-org booking-flow read failure must not abort the other orgs' digests
+    // (mirrors the settings-read guards below).
+    let flow: Awaited<ReturnType<typeof resolveBookingFlow>>;
+    try {
+      flow = await resolveBookingFlow(admin, org.id);
+    } catch (e) {
+      console.error('send-offer-digest: booking flow read failed', { org: org.id, error: (e as Error).message });
+      continue;
+    }
     const isImmediate = flow.offer_delivery === 'immediate';
 
     // A per-org settings read failure must not abort the other orgs' digests.
