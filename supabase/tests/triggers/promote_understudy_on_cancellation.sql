@@ -9,6 +9,13 @@
 --   * an accepted understudy who BLOCKED the date is skipped (tests 11/11b);
 --   * an accepted understudy with no block on the date is still promoted (test 12).
 --
+-- Milestone B (booking_flow policy gates — 20260714105906_understudy_promotion_flow_gates.sql):
+--   * understudy_promotion = false disables promotion entirely (test 13);
+--   * direct mode (artist_acceptance = false) promotes a CONFIRMED understudy, since no
+--     accept step / soft_booked hold ever existed (test 14).
+--   These scenarios seed an org-scoped app_settings 'booking_flow' row AFTER tests 1-12
+--   (which run with no row → code defaults understudy_promotion/artist_acceptance = true).
+--
 -- UUID legend (all test-only, rolled back at end):
 --   aaaaaaaa-0d00-0001-…  auth user (for artist profiles)
 --   bbbbbbbb-0d00-000N-…  artists 1-6
@@ -20,7 +27,7 @@ BEGIN;
 
 CREATE EXTENSION IF NOT EXISTS pgtap WITH SCHEMA extensions;
 
-SELECT plan(19);
+SELECT plan(21);
 
 -- ────────────────────────────────────────────────────────────────────────────
 -- Shared fixtures
@@ -362,6 +369,57 @@ SELECT is(
   (SELECT status::text FROM public.bookings WHERE id = 'eeeeeeee-0d00-0022-0000-000000000000'),
   'confirmed',
   'test 12 (M4): an accepted understudy with no block on the date is still promoted'
+);
+
+-- ────────────────────────────────────────────────────────────────────────────
+-- Test 13 (Milestone B): booking_flow.understudy_promotion = false → cancelling the
+--         confirmed main does NOT promote the soft_booked understudy. The whole
+--         promotion path is gated off for the org.
+-- ────────────────────────────────────────────────────────────────────────────
+INSERT INTO public.show_dates (id, show_id, date, session_1, org_id)
+VALUES ('dddddddd-0d00-0011-0000-000000000000', 'cccccccc-0d00-0001-0000-000000000000', '2099-07-11', '19:00'::time, '00000000-0000-0000-0000-00000000b007');
+
+INSERT INTO public.bookings (id, show_date_id, artist_id, status, is_understudy, org_id) VALUES
+  ('eeeeeeee-0d00-0023-0000-000000000000', 'dddddddd-0d00-0011-0000-000000000000', 'bbbbbbbb-0d00-0001-0000-000000000000', 'confirmed',   false, '00000000-0000-0000-0000-00000000b007'),
+  ('eeeeeeee-0d00-0024-0000-000000000000', 'dddddddd-0d00-0011-0000-000000000000', 'bbbbbbbb-0d00-0003-0000-000000000000', 'soft_booked', true,  '00000000-0000-0000-0000-00000000b007');
+
+-- Disable understudy promotion for the seed org (org override wins over the code default).
+INSERT INTO public.app_settings (org_id, key, value)
+VALUES ('00000000-0000-0000-0000-00000000b007', 'booking_flow', '{"understudy_promotion":false}'::jsonb)
+ON CONFLICT (org_id, key) DO UPDATE SET value = EXCLUDED.value;
+
+UPDATE public.bookings SET status = 'cancelled' WHERE id = 'eeeeeeee-0d00-0023-0000-000000000000';
+
+SELECT is(
+  (SELECT status::text FROM public.bookings WHERE id = 'eeeeeeee-0d00-0024-0000-000000000000'),
+  'soft_booked',
+  'test 13 (Milestone B): promotion skipped when booking_flow.understudy_promotion = false'
+);
+
+-- ────────────────────────────────────────────────────────────────────────────
+-- Test 14 (Milestone B): direct mode (artist_acceptance = false, promotion on) →
+--         a CONFIRMED understudy is promoted (status stays confirmed, is_understudy
+--         flips false). No soft_booked accept step exists in direct mode, so the
+--         confirmed hold is the eligible candidate. The confirmed → confirmed UPDATE
+--         passes enforce_booking_transition() via its same-status short-circuit.
+-- ────────────────────────────────────────────────────────────────────────────
+UPDATE public.app_settings
+SET value = '{"understudy_promotion":true,"artist_acceptance":false}'::jsonb
+WHERE org_id = '00000000-0000-0000-0000-00000000b007' AND key = 'booking_flow';
+
+INSERT INTO public.show_dates (id, show_id, date, session_1, org_id)
+VALUES ('dddddddd-0d00-0012-0000-000000000000', 'cccccccc-0d00-0001-0000-000000000000', '2099-07-12', '19:00'::time, '00000000-0000-0000-0000-00000000b007');
+
+INSERT INTO public.bookings (id, show_date_id, artist_id, status, is_understudy, org_id) VALUES
+  ('eeeeeeee-0d00-0025-0000-000000000000', 'dddddddd-0d00-0012-0000-000000000000', 'bbbbbbbb-0d00-0001-0000-000000000000', 'confirmed', false, '00000000-0000-0000-0000-00000000b007'),
+  ('eeeeeeee-0d00-0026-0000-000000000000', 'dddddddd-0d00-0012-0000-000000000000', 'bbbbbbbb-0d00-0002-0000-000000000000', 'confirmed', true,  '00000000-0000-0000-0000-00000000b007');
+
+UPDATE public.bookings SET status = 'cancelled' WHERE id = 'eeeeeeee-0d00-0025-0000-000000000000';
+
+SELECT is(
+  (SELECT (status::text || ':' || is_understudy::text) FROM public.bookings WHERE id = 'eeeeeeee-0d00-0026-0000-000000000000'),
+  'confirmed:false',
+  'test 14 (Milestone B): direct mode promotes a confirmed understudy (is_understudy flips false)'
 );
 
 SELECT * FROM finish();
