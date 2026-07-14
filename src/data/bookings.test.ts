@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { createFakeSupabase } from "@/test/supabaseFake";
-import { openOfferTier, fetchOfferTiers, fetchOpenedTiers, closeOfferTier, fetchPendingConfirmationsCount, fetchMyOpenOffersCount, bulkConfirmSoftBooked, bulkDeclineSoftBooked, updateBookingStatusGuarded, respondToOffer, createBooking } from "./bookings";
+import { openOfferTier, fetchOfferTiers, fetchOpenedTiers, closeOfferTier, dryRunOfferTier, fetchPendingConfirmationsCount, fetchMyOpenOffersCount, bulkConfirmSoftBooked, bulkDeclineSoftBooked, updateBookingStatusGuarded, respondToOffer, createBooking } from "./bookings";
 
 describe("openOfferTier", () => {
   it("sends snake_case body and returns offersCreated", async () => {
@@ -262,5 +262,23 @@ describe("createBooking", () => {
     await createBooking(fake as never, { ...args, confirmDirectly: true, now });
     const insert = fake.calls.find((c) => c.table === "bookings" && c.method === "insert");
     expect(insert?.args[0]).toMatchObject({ status: "confirmed", confirmed_at: now.toISOString() });
+  });
+});
+
+describe("dryRunOfferTier", () => {
+  it("invokes open-offer-tier with dry_run and maps the response", async () => {
+    const fake = createFakeSupabase({
+      "fn:open-offer-tier": {
+        data: { dry_run: true, candidates: [{ id: "a1", name: "Lena" }], excluded: { already_booked: 1, blocked: 2, inactive: 0 } },
+        error: null,
+      },
+    });
+    const res = await dryRunOfferTier(fake as never, { showDateId: "d1", tier: 2 });
+    expect(res.candidates).toEqual([{ id: "a1", name: "Lena" }]);
+    expect(res.excluded).toEqual({ alreadyBooked: 1, blocked: 2, inactive: 0 });
+    expect(fake.calls).toContainEqual({
+      table: "fn:open-offer-tier", method: "invoke",
+      args: [{ show_date_id: "d1", tier: 2, dry_run: true }],
+    });
   });
 });
