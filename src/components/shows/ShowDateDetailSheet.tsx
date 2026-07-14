@@ -282,7 +282,12 @@ export function ShowDateDetailSheet({ showDateId, open, onOpenChange }: Props) {
       queryClient.invalidateQueries({ queryKey: ['bookings'] });
       toast.success('Artist booked');
     },
-    onError: (err: any) => toast.error(err.message),
+    onError: (err: any) => {
+      // A booking attempt can fail after the row already changed underneath it (e.g. a lost
+      // race with another producer), leaving the cached bookings stale even on failure.
+      queryClient.invalidateQueries({ queryKey: ['bookings'] });
+      toast.error(err.message);
+    },
   });
 
   const updateBookingStatus = useMutation({

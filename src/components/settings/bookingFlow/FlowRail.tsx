@@ -1,7 +1,9 @@
 import type { ReactNode } from "react";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
+import { Skeleton } from "@/components/ui/skeleton";
 import {
   describeAuditEntry,
   flowPreviewRows,
@@ -39,8 +41,10 @@ export function FlowRail(props: {
   onSave: () => void;
   onDiscard: () => void;
   audit: SettingsAuditEntry[];
+  isLoading?: boolean;
+  isError?: boolean;
 }) {
-  const { flow, times, dirtyCount, saving, onSave, onDiscard, audit } = props;
+  const { flow, times, dirtyCount, saving, onSave, onDiscard, audit, isLoading, isError } = props;
   return (
     <div className="flex flex-col gap-3 lg:sticky lg:top-4">
       {dirtyCount > 0 && (
@@ -94,15 +98,28 @@ export function FlowRail(props: {
       </div>
       <RailCard label="Change history">
         <div className="mt-1">
-          {audit.length === 0 && <p className="mt-1.5 text-xs text-muted-foreground">No changes recorded yet.</p>}
-          {audit.map((e) => (
-            <div key={e.id} className="border-t border-border pt-2 mt-2 first:border-t-0 first:mt-1.5">
-              <p className="font-mono text-[10px] text-muted-foreground">
-                {formatDateDMY(e.created_at.slice(0, 10))} · {e.actorName ?? "System"}
-              </p>
-              <p className="mt-0.5 text-xs">{describeAuditEntry(e)}</p>
+          {isLoading ? (
+            <div className="mt-1.5 space-y-1.5">
+              <Skeleton className="h-3 w-2/3" />
+              <Skeleton className="h-3 w-full" />
             </div>
-          ))}
+          ) : isError ? (
+            <Alert variant="destructive" className="mt-1.5 p-2.5">
+              <AlertDescription className="text-xs">Could not load change history.</AlertDescription>
+            </Alert>
+          ) : (
+            <>
+              {audit.length === 0 && <p className="mt-1.5 text-xs text-muted-foreground">No changes recorded yet.</p>}
+              {audit.map((e) => (
+                <div key={e.id} className="border-t border-border pt-2 mt-2 first:border-t-0 first:mt-1.5">
+                  <p className="font-mono text-[10px] text-muted-foreground">
+                    {formatDateDMY(e.created_at.slice(0, 10))} · {e.actorName ?? "System"}
+                  </p>
+                  <p className="mt-0.5 text-xs">{describeAuditEntry(e)}</p>
+                </div>
+              ))}
+            </>
+          )}
         </div>
       </RailCard>
     </div>

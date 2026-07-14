@@ -35,7 +35,7 @@ export function FlowPresets({ active, onSelect }: Props) {
         </button>
       ))}
       <div
-        aria-pressed={active === "custom"}
+        data-state={active === "custom" ? "on" : "off"}
         className={cn(
           "rounded-lg border border-border bg-card p-3",
           active === "custom" && "border-primary ring-1 ring-primary bg-accent",

@@ -25,7 +25,9 @@ export function DryRunDialog({ open, onOpenChange, tier, result, loading, flow, 
   const n = candidates.length;
   const hasMessage = !!result?.message;
   const notReady = loading || tier == null || !result;
-  const confirmDisabled = notReady || hasMessage;
+  // Zero candidates means nobody would get an offer: disable even without an explicit
+  // `message` (e.g. every eligible artist is already booked, blocked, or inactive).
+  const confirmDisabled = notReady || hasMessage || n === 0;
 
   const deliverySentence = flow.offer_delivery === "digest"
     ? "Offers go out with the next daily digest."
