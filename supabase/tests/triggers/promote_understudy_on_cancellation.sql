@@ -27,7 +27,7 @@ BEGIN;
 
 CREATE EXTENSION IF NOT EXISTS pgtap WITH SCHEMA extensions;
 
-SELECT plan(21);
+SELECT plan(24);
 
 -- ────────────────────────────────────────────────────────────────────────────
 -- Shared fixtures
@@ -410,9 +410,11 @@ WHERE org_id = '00000000-0000-0000-0000-00000000b007' AND key = 'booking_flow';
 INSERT INTO public.show_dates (id, show_id, date, session_1, org_id)
 VALUES ('dddddddd-0d00-0012-0000-000000000000', 'cccccccc-0d00-0001-0000-000000000000', '2099-07-12', '19:00'::time, '00000000-0000-0000-0000-00000000b007');
 
-INSERT INTO public.bookings (id, show_date_id, artist_id, status, is_understudy, org_id) VALUES
-  ('eeeeeeee-0d00-0025-0000-000000000000', 'dddddddd-0d00-0012-0000-000000000000', 'bbbbbbbb-0d00-0001-0000-000000000000', 'confirmed', false, '00000000-0000-0000-0000-00000000b007'),
-  ('eeeeeeee-0d00-0026-0000-000000000000', 'dddddddd-0d00-0012-0000-000000000000', 'bbbbbbbb-0d00-0002-0000-000000000000', 'confirmed', true,  '00000000-0000-0000-0000-00000000b007');
+-- The confirmed understudy (0026) is seeded with a KNOWN past confirmed_at so Fix 3
+-- (test 14b) can prove promotion does not clobber it.
+INSERT INTO public.bookings (id, show_date_id, artist_id, status, is_understudy, confirmed_at, org_id) VALUES
+  ('eeeeeeee-0d00-0025-0000-000000000000', 'dddddddd-0d00-0012-0000-000000000000', 'bbbbbbbb-0d00-0001-0000-000000000000', 'confirmed', false, NULL, '00000000-0000-0000-0000-00000000b007'),
+  ('eeeeeeee-0d00-0026-0000-000000000000', 'dddddddd-0d00-0012-0000-000000000000', 'bbbbbbbb-0d00-0002-0000-000000000000', 'confirmed', true,  '2099-01-01 12:00:00+00'::timestamptz, '00000000-0000-0000-0000-00000000b007');
 
 UPDATE public.bookings SET status = 'cancelled' WHERE id = 'eeeeeeee-0d00-0025-0000-000000000000';
 
@@ -420,6 +422,48 @@ SELECT is(
   (SELECT (status::text || ':' || is_understudy::text) FROM public.bookings WHERE id = 'eeeeeeee-0d00-0026-0000-000000000000'),
   'confirmed:false',
   'test 14 (Milestone B): direct mode promotes a confirmed understudy (is_understudy flips false)'
+);
+
+-- ────────────────────────────────────────────────────────────────────────────
+-- Test 14b (PR #161 Fix 3): direct-mode promotion of an already-confirmed
+--         understudy must PRESERVE its original confirmed_at, not restamp now().
+--         The promotion UPDATE now keys the confirmed_at CASE on the candidate's
+--         prior status, so a confirmed candidate keeps its timestamp.
+-- ────────────────────────────────────────────────────────────────────────────
+SELECT is(
+  (SELECT confirmed_at FROM public.bookings WHERE id = 'eeeeeeee-0d00-0026-0000-000000000000'),
+  '2099-01-01 12:00:00+00'::timestamptz,
+  'test 14b (Fix 3): promotion preserves an already-confirmed understudy''s confirmed_at'
+);
+
+-- ────────────────────────────────────────────────────────────────────────────
+-- Test 15 (PR #161 Fix 2): a MALFORMED booking_flow value must not throw. The old
+--         casts ((v_flow->>'understudy_promotion')::boolean) would raise on "maybe"
+--         and abort the whole cancellation; the throw-free comparison treats any
+--         non-'false' value as promotion-enabled (default on). Here understudy_promotion
+--         = "maybe" and artist_acceptance is absent (defaults true → acceptance mode),
+--         so a soft_booked understudy is the eligible candidate.
+-- ────────────────────────────────────────────────────────────────────────────
+UPDATE public.app_settings
+SET value = '{"understudy_promotion": "maybe"}'::jsonb
+WHERE org_id = '00000000-0000-0000-0000-00000000b007' AND key = 'booking_flow';
+
+INSERT INTO public.show_dates (id, show_id, date, session_1, org_id)
+VALUES ('dddddddd-0d00-0013-0000-000000000000', 'cccccccc-0d00-0001-0000-000000000000', '2099-07-13', '19:00'::time, '00000000-0000-0000-0000-00000000b007');
+
+INSERT INTO public.bookings (id, show_date_id, artist_id, status, is_understudy, org_id) VALUES
+  ('eeeeeeee-0d00-0027-0000-000000000000', 'dddddddd-0d00-0013-0000-000000000000', 'bbbbbbbb-0d00-0001-0000-000000000000', 'confirmed',   false, '00000000-0000-0000-0000-00000000b007'),
+  ('eeeeeeee-0d00-0028-0000-000000000000', 'dddddddd-0d00-0013-0000-000000000000', 'bbbbbbbb-0d00-0003-0000-000000000000', 'soft_booked', true,  '00000000-0000-0000-0000-00000000b007');
+
+SELECT lives_ok(
+  $$ UPDATE public.bookings SET status = 'cancelled' WHERE id = 'eeeeeeee-0d00-0027-0000-000000000000' $$,
+  'test 15 (Fix 2): a malformed booking_flow value does not throw during cancellation'
+);
+
+SELECT is(
+  (SELECT status::text FROM public.bookings WHERE id = 'eeeeeeee-0d00-0028-0000-000000000000'),
+  'confirmed',
+  'test 15b (Fix 2): malformed understudy_promotion is treated as default-on → understudy promoted'
 );
 
 SELECT * FROM finish();

@@ -1,7 +1,7 @@
 -- A booking's artist must belong to the same org as its show_date — on INSERT and UPDATE.
 BEGIN;
 CREATE EXTENSION IF NOT EXISTS pgtap WITH SCHEMA extensions;
-SELECT plan(5);
+SELECT plan(6);
 
 -- Org A: a show with two dates and two artists
 INSERT INTO public.organizations (id, name, slug)
@@ -61,6 +61,17 @@ SELECT lives_ok(
   $$ UPDATE public.bookings SET show_date_id = '33333333-3333-3333-3333-333333333333'
      WHERE id = '55555555-5555-5555-5555-555555555555' $$,
   'UPDATE: moving the booking to a same-org date succeeds');
+
+-- 6) UPDATE: tampering org_id alone (test 5 left the booking on Org A date one) is
+--    re-derived from the show_date, so the client-supplied Org B value is overwritten
+--    back to Org A. Before Fix 4 the trigger did not fire on an org_id-only UPDATE, so
+--    the tampered value would have persisted. trg_derive_org_id now includes org_id.
+UPDATE public.bookings SET org_id = '66666666-6666-6666-6666-666666666666'
+  WHERE id = '55555555-5555-5555-5555-555555555555';
+SELECT is(
+  (SELECT org_id FROM public.bookings WHERE id = '55555555-5555-5555-5555-555555555555'),
+  '11111111-1111-1111-1111-111111111111'::uuid,
+  'UPDATE: tampering org_id alone is overwritten by re-derivation from the show_date');
 
 SELECT * FROM finish();
 ROLLBACK;
