@@ -171,14 +171,75 @@ export async function openOfferTier(showDateId: string, tier = 1): Promise<void>
   if (error) throw new Error(`open-offer-tier failed: ${error.message}`);
 }
 
+/**
+ * Like `openOfferTier`, but returns the error message instead of throwing, for
+ * specs that need to assert a REJECTED call (a direct-booking org, where
+ * `booking_flow.artist_acceptance:false` makes the endpoint refuse with a 409)
+ * without an unhandled rejection. Mirrors the error-unwrapping pattern in
+ * `src/data/account.ts`: supabase-js reports a handled non-2xx edge-function
+ * response as a `FunctionsHttpError` with the Response in `error.context`, and
+ * the function's own `{ error: "message" }` body is what we want to assert on.
+ */
+export async function tryOpenOfferTier(
+  showDateId: string,
+  tier = 1
+): Promise<{ error: string | null }> {
+  const admin = adminClient();
+  const { error } = await admin.functions.invoke("open-offer-tier", {
+    body: { show_date_id: showDateId, tier },
+  });
+  if (!error) return { error: null };
+  const context = (error as { context?: Response }).context;
+  if (context && typeof context.json === "function") {
+    try {
+      const body = await context.json();
+      if (body && typeof body.error === "string") return { error: body.error };
+    } catch {
+      // Body wasn't JSON (or already consumed), fall through to the generic message.
+    }
+  }
+  return { error: error.message };
+}
+
+/**
+ * Set (or clear) an org's `booking_flow` override in `app_settings`, driving
+ * the classic / fast-track / direct presets end to end.
+ *
+ * `value: null` resets to defaults by DELETING the org's override row, not by
+ * upserting a null `value` column: `app_settings.value` is `NOT NULL`, so an
+ * upsert with `value: null` (SQL NULL) would violate that constraint. A stored
+ * JSONB `'null'::jsonb` would be skipped by `get_org_setting`'s
+ * `value <> 'null'::jsonb` guard too, but it can't get inserted in the first
+ * place given the same NOT NULL column. Deleting the row is the one
+ * unambiguous way back to the platform default.
+ */
+export async function setBookingFlow(
+  orgId: string,
+  value: Record<string, unknown> | null
+): Promise<void> {
+  const admin = adminClient();
+  if (value === null) {
+    const { error } = await admin
+      .from("app_settings")
+      .delete()
+      .match({ org_id: orgId, key: "booking_flow" });
+    if (error) throw error;
+    return;
+  }
+  const { error } = await admin
+    .from("app_settings")
+    .upsert({ org_id: orgId, key: "booking_flow", value }, { onConflict: "org_id,key" });
+  if (error) throw error;
+}
+
 /** Most recent booking for an artist (any status). */
 export async function getLatestBooking(
   artistId: string
-): Promise<{ id: string; status: string } | null> {
+): Promise<{ id: string; status: string; confirmed_at: string | null } | null> {
   const admin = adminClient();
   const { data } = await admin
     .from("bookings")
-    .select("id, status")
+    .select("id, status, confirmed_at")
     .eq("artist_id", artistId)
     .order("created_at", { ascending: false })
     .limit(1)
