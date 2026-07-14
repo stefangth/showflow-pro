@@ -7,15 +7,12 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/features/auth/AuthContext';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Separator } from '@/components/ui/separator';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { toast } from 'sonner';
-import { Settings as SettingsIcon, Database, Bell, Wand2, Save, SlidersHorizontal, MapPin, Clock, BookOpen, UserCog, Eye, Building2 } from 'lucide-react';
+import { Settings as SettingsIcon, Database, Bell, Wand2, Save, SlidersHorizontal, MapPin, Clock, BookOpen, UserCog, Building2 } from 'lucide-react';
 import { upsertOrgSetting, mergeOrgRows } from '@/data/settings';
 import { computeSettingsDirtyKeys } from '@/lib/settings';
 import { AirtableSyncTab } from '@/components/settings/AirtableSyncTab';
@@ -23,23 +20,7 @@ import { OrganizationTab } from '@/components/settings/OrganizationTab';
 import { CastsCitiesTab } from '@/components/settings/CastsCitiesTab';
 import { ProductionOwnershipTab } from '@/components/settings/ProductionOwnershipTab';
 import { DocumentationTab } from '@/components/settings/DocumentationTab';
-
-const EMAIL_TEMPLATE_KEYS = [
-  'signup-decision',
-  'new-signup-admin-notification',
-  'cast-escalation-requested',
-  'artist-offer-digest',
-  'artist-confirmation-digest',
-] as const;
-type EmailTemplateKey = typeof EMAIL_TEMPLATE_KEYS[number];
-
-const EMAIL_TEMPLATE_LABELS: Record<EmailTemplateKey, string> = {
-  'signup-decision': 'Signup Decision',
-  'new-signup-admin-notification': 'New Signup — Admin Notification',
-  'cast-escalation-requested': 'Cast Escalation Requested',
-  'artist-offer-digest': 'Artist Offer Digest',
-  'artist-confirmation-digest': 'Artist Confirmation Digest',
-};
+import { BookingFlowTab, BOOKING_AUDIT_KEYS } from '@/components/settings/bookingFlow/BookingFlowTab';
 
 type FilterKey = 'program' | 'timeframe' | 'sort' | 'status';
 const FILTER_KEYS: FilterKey[] = ['program', 'timeframe', 'sort', 'status'];
@@ -54,6 +35,7 @@ const EDITABLE_SETTING_KEYS: readonly string[] = [
   'email_template_overrides',
   'filters_visibility',
   'notifications_enabled',
+  'booking_flow',
 ];
 
 type SettingRow = {
@@ -76,182 +58,6 @@ function ShowSlotsEditor() {
       <p className="text-sm text-muted-foreground">
         Slot configuration has moved to the <Link to={ROUTES.PRODUCTIONS} className="text-primary underline">Productions</Link> page.
       </p>
-    </div>
-  );
-}
-
-// ─── BookingEngineTab ────────────────────────────────────────────────────────
-
-const EMAIL_TEMPLATE_DISPLAY_LABELS: Record<EmailTemplateKey, string> = EMAIL_TEMPLATE_LABELS;
-
-function BookingEngineTab({ get, set }: { get: (key: string, fallback?: any) => any; set: (key: string, value: any) => void }) {
-  const [previewOpen, setPreviewOpen] = useState(false);
-  const [previewHtml, setPreviewHtml] = useState('');
-  const [previewLoading, setPreviewLoading] = useState(false);
-  const [previewTitle, setPreviewTitle] = useState('');
-
-  const overrides: Record<string, any> = get('email_template_overrides', {}) ?? {};
-
-  function setOverride(templateKey: string, field: string, value: string) {
-    const next = { ...overrides, [templateKey]: { ...(overrides[templateKey] ?? {}), [field]: value } };
-    set('email_template_overrides', next);
-  }
-
-  async function handlePreview(templateKey: EmailTemplateKey) {
-    setPreviewLoading(true);
-    setPreviewTitle(EMAIL_TEMPLATE_DISPLAY_LABELS[templateKey]);
-    setPreviewOpen(true);
-    try {
-      const { data: { session } } = await supabase.auth.getSession();
-      const token = session?.access_token ?? '';
-      const { data, error } = await supabase.functions.invoke('preview-transactional-email', {
-        body: { templateName: templateKey, overrides: overrides[templateKey] ?? {} },
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      if (error) throw error;
-      const tmpl = data?.templates?.[0];
-      setPreviewHtml(tmpl?.html ?? '<p>No preview available</p>');
-    } catch (e: any) {
-      setPreviewHtml(`<p style="color:red">Preview failed: ${e?.message ?? String(e)}</p>`);
-    } finally {
-      setPreviewLoading(false);
-    }
-  }
-
-  return (
-    <div className="space-y-6">
-      <Card>
-        <CardHeader>
-          <CardTitle className="font-display">Booking Engine</CardTitle>
-          <CardDescription>
-            Offer-window timings, digest scheduling, and sender address.
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-6">
-          <div className="space-y-2 max-w-sm">
-            <Label>From address (Resend)</Label>
-            <Input
-              placeholder={BOOKING_ENGINE_DEFAULTS.resend_from_address}
-              value={get('resend_from_address', '')}
-              onChange={e => set('resend_from_address', e.target.value)}
-            />
-            <p className="text-xs text-muted-foreground">Overrides the default sender address for all outgoing emails.</p>
-          </div>
-          <Separator />
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-            <div className="space-y-2">
-              <Label>Offer response window (hours)</Label>
-              <Input
-                type="number"
-                min={1}
-                value={get('offer_response_window_hours', BOOKING_ENGINE_DEFAULTS.offer_response_window_hours)}
-                onChange={e => set('offer_response_window_hours', Number(e.target.value))}
-              />
-              <p className="text-xs text-muted-foreground">Window an artist has to respond to an offer.</p>
-            </div>
-            <div className="space-y-2">
-              <Label>Offer digest hour (Berlin)</Label>
-              <Input
-                type="number"
-                min={0}
-                max={23}
-                value={get('offer_digest_hour_berlin', BOOKING_ENGINE_DEFAULTS.offer_digest_hour_berlin)}
-                onChange={e => set('offer_digest_hour_berlin', Number(e.target.value))}
-              />
-            </div>
-            <div className="space-y-2">
-              <Label>Confirmation digest hour (Berlin)</Label>
-              <Input
-                type="number"
-                min={0}
-                max={23}
-                value={get('confirmation_digest_hour_berlin', BOOKING_ENGINE_DEFAULTS.confirmation_digest_hour_berlin)}
-                onChange={e => set('confirmation_digest_hour_berlin', Number(e.target.value))}
-              />
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader>
-          <CardTitle className="font-display">Email Templates</CardTitle>
-          <CardDescription>
-            Override subject, intro, CTA label, and footer for each transactional email. Leave blank to use the built-in default.
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-8">
-          {EMAIL_TEMPLATE_KEYS.map(templateKey => (
-            <div key={templateKey} className="space-y-3">
-              <div className="flex items-center justify-between">
-                <h4 className="font-display font-semibold text-sm">{EMAIL_TEMPLATE_DISPLAY_LABELS[templateKey]}</h4>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => handlePreview(templateKey)}
-                >
-                  <Eye className="h-3.5 w-3.5 mr-1.5" />
-                  Preview
-                </Button>
-              </div>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <div className="space-y-1">
-                  <Label className="text-xs">Subject</Label>
-                  <Input
-                    placeholder="Default subject"
-                    value={(overrides[templateKey]?.subject) ?? ''}
-                    onChange={e => setOverride(templateKey, 'subject', e.target.value)}
-                  />
-                </div>
-                <div className="space-y-1">
-                  <Label className="text-xs">CTA label</Label>
-                  <Input
-                    placeholder="Default CTA label"
-                    value={(overrides[templateKey]?.cta_label) ?? ''}
-                    onChange={e => setOverride(templateKey, 'cta_label', e.target.value)}
-                  />
-                </div>
-                <div className="space-y-1 sm:col-span-2">
-                  <Label className="text-xs">Intro text</Label>
-                  <Input
-                    placeholder="Default intro text"
-                    value={(overrides[templateKey]?.intro) ?? ''}
-                    onChange={e => setOverride(templateKey, 'intro', e.target.value)}
-                  />
-                </div>
-                <div className="space-y-1 sm:col-span-2">
-                  <Label className="text-xs">Footer text</Label>
-                  <Input
-                    placeholder="Default footer text"
-                    value={(overrides[templateKey]?.footer) ?? ''}
-                    onChange={e => setOverride(templateKey, 'footer', e.target.value)}
-                  />
-                </div>
-              </div>
-              <Separator />
-            </div>
-          ))}
-        </CardContent>
-      </Card>
-
-      <Dialog open={previewOpen} onOpenChange={setPreviewOpen}>
-        <DialogContent className="max-w-3xl w-full">
-          <DialogHeader>
-            <DialogTitle>Preview — {previewTitle}</DialogTitle>
-          </DialogHeader>
-          {previewLoading ? (
-            <div className="flex items-center justify-center h-64 text-muted-foreground">Rendering preview…</div>
-          ) : (
-            <iframe
-              srcDoc={previewHtml}
-              className="w-full border border-border rounded-lg"
-              style={{ height: '520px' }}
-              sandbox="allow-same-origin"
-              title="Email preview"
-            />
-          )}
-        </DialogContent>
-      </Dialog>
     </div>
   );
 }
@@ -362,6 +168,28 @@ export default function SettingsPage() {
     saveMutation.mutate(updates);
   };
 
+  // Booking-flow tab: the FlowRail saves/discards only the keys it owns, so the
+  // rail's dirty count and Save button stay scoped to this tab.
+  const bookingDirtyKeys = dirtyKeys.filter(k => BOOKING_AUDIT_KEYS.includes(k));
+
+  const handleSaveBooking = () => {
+    const updates = bookingDirtyKeys.map(k => ({ key: k, value: draft[k] }));
+    if (updates.length === 0) return;
+    saveMutation.mutate(updates);
+  };
+
+  const handleDiscardBooking = () => {
+    const saved = new Map(settings.map(s => [s.key, s.value]));
+    setDraft(d => {
+      const next = { ...d };
+      for (const k of BOOKING_AUDIT_KEYS) {
+        if (saved.has(k)) next[k] = saved.get(k);
+        else delete next[k];
+      }
+      return next;
+    });
+  };
+
   return (
     <div className="space-y-6 max-w-4xl">
       <div className="flex items-start justify-between gap-4">
@@ -384,7 +212,7 @@ export default function SettingsPage() {
 
       {isDirty && (
         <div className="flex items-center justify-between gap-4 rounded-lg border border-warning bg-warning/10 px-4 py-2.5 text-sm text-warning">
-          <span>You have unsaved changes — they will be lost if you navigate away.</span>
+          <span>You have unsaved changes. They will be lost if you navigate away.</span>
           <Button size="sm" onClick={handleSave} disabled={saveMutation.isPending}>
             <Save className="h-3.5 w-3.5 mr-1.5" />
             {saveMutation.isPending ? 'Saving…' : 'Save now'}
@@ -406,7 +234,7 @@ export default function SettingsPage() {
               <span className="h-2 w-2 rounded-full bg-destructive shrink-0" />
             )}
           </TabsTrigger>
-          {(isAdmin || isProducer) && <TabsTrigger value="booking"><Wand2 className="h-4 w-4 mr-2" />Booking Engine</TabsTrigger>}
+          {isAdmin && <TabsTrigger value="booking"><Wand2 className="h-4 w-4 mr-2" />Booking flow</TabsTrigger>}
           {isAdmin && <TabsTrigger value="notifications"><Bell className="h-4 w-4 mr-2" />Notifications</TabsTrigger>}
           <TabsTrigger value="docs"><BookOpen className="h-4 w-4 mr-2" />Documentation</TabsTrigger>
         </TabsList>
@@ -497,8 +325,19 @@ export default function SettingsPage() {
           </Card>
         </TabsContent>
 
-        <TabsContent value="booking" className="mt-4 space-y-6">
-          <BookingEngineTab get={get} set={set} />
+        <TabsContent value="booking" className="mt-4">
+          {/* Keyed by org so per-org component state (e.g. the remembered
+              producer_confirmation choice) resets on org switch. The draft itself
+              lives at page level, so remounting the tab loses nothing. */}
+          <BookingFlowTab
+            key={orgId ?? 'no-org'}
+            get={get}
+            set={set}
+            dirtyKeys={bookingDirtyKeys}
+            saving={saveMutation.isPending}
+            onSave={handleSaveBooking}
+            onDiscard={handleDiscardBooking}
+          />
         </TabsContent>
 
         <TabsContent value="notifications" className="mt-4">

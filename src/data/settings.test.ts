@@ -1,6 +1,7 @@
 import { describe, it, expect } from "vitest";
 import { createFakeSupabase } from "@/test/supabaseFake";
-import { fetchShowsWithSlots, resolveOrgSetting, upsertOrgSetting, fetchShowsForLinking, linkShowAirtableKey, importShowsFromOptions, mergeOrgRows } from "./settings";
+import { fetchShowsWithSlots, resolveOrgSetting, upsertOrgSetting, fetchShowsForLinking, linkShowAirtableKey, importShowsFromOptions, mergeOrgRows, fetchBookingFlow } from "./settings";
+import { BOOKING_FLOW_DEFAULTS } from "@/lib/bookingFlow";
 
 describe("fetchShowsWithSlots", () => {
   it("selects the correct columns from shows filtered by org_id", async () => {
@@ -188,5 +189,20 @@ describe("mergeOrgRows", () => {
   it("has no entry for a key whose only row is null-valued", () => {
     const byKey = mergeOrgRows([{ key: "a", value: null, org_id: "org-1" }]);
     expect(byKey.has("a")).toBe(false);
+  });
+});
+
+describe("fetchBookingFlow", () => {
+  it("returns normalized defaults when no row exists", async () => {
+    const fake = createFakeSupabase({ app_settings: { data: [], error: null } });
+    expect(await fetchBookingFlow(fake as never, "org-1")).toEqual(BOOKING_FLOW_DEFAULTS);
+  });
+  it("normalizes the org row (invariant enforced)", async () => {
+    const fake = createFakeSupabase({
+      app_settings: { data: [{ org_id: "org-1", value: { artist_acceptance: false, producer_confirmation: false } }], error: null },
+    });
+    const flow = await fetchBookingFlow(fake as never, "org-1");
+    expect(flow.artist_acceptance).toBe(false);
+    expect(flow.producer_confirmation).toBe(true);
   });
 });

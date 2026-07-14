@@ -19,16 +19,28 @@ import {
 import { Skeleton } from '@/components/ui/skeleton';
 import { MapPin, Clock, Users, Check, ChevronsUpDown } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { showLabel } from '@/types';
 import { useEligibleArtists } from '@/hooks/useEligibleArtists';
+import { useBookingFlow, useReferenceField } from '@/hooks/useBookingFlow';
 import { showSlots } from '@/lib/settings';
 import {
   deriveBookingGroups, computeInheritedCastIds,
-  buildOfferTierOptions, offerResultToast, offerConfirmCopy,
-  pendingOfferCount, closeConfirmCopy, closeResultToast,
+  offerResultToast, closeResultToast, deriveDirectBookList,
 } from '@/lib/bookings';
-import { formatDateDMY, formatTimestampDMY, parseDateOnly } from '@/lib/dates';
-import { openOfferTier, fetchOfferTiers, fetchOpenedTiers, closeOfferTier, updateBookingStatusGuarded } from '@/data/bookings';
+import { computeUpNext } from '@/lib/bookingCockpit';
+import { BOOKING_FLOW_DEFAULTS, referenceLabel, type FlowTimes } from '@/lib/bookingFlow';
+import { BOOKING_ENGINE_DEFAULTS } from '@/config/app.config';
+import { formatDateDMY, parseDateOnly } from '@/lib/dates';
+import {
+  openOfferTier, fetchOfferTiers, fetchOpenedTiers, closeOfferTier,
+  dryRunOfferTier, createBooking, updateBookingStatusGuarded,
+} from '@/data/bookings';
+import { resolveOrgSetting } from '@/data/settings';
+import { BookingFunnel } from '@/components/shows/date/BookingFunnel';
+import { UpNextStrip } from '@/components/shows/date/UpNextStrip';
+import { TierTimeline } from '@/components/shows/date/TierTimeline';
+import { DryRunDialog } from '@/components/shows/date/DryRunDialog';
+import { EligibilityBookList } from '@/components/shows/date/EligibilityBookList';
+import { fetchBlockedArtistIds } from '@/data/blockedDates';
 import { ChatPanel } from '@/components/chat/ChatPanel';
 import { ShowDateFormDialog } from '@/components/shows/ShowDateFormDialog';
 import { BookingRow } from '@/components/shows/BookingRow';
@@ -59,7 +71,7 @@ export function ShowDateDetailSheet({ showDateId, open, onOpenChange }: Props) {
       const { data, error } = await supabase
         .from('show_dates')
         .select(`
-          id, date, session_1, session_2, session_3, venue, status, notes, city_id, show_id, cancellation_reason, airtable_record_id,
+          id, date, session_1, session_2, session_3, venue, status, notes, city_id, show_id, cancellation_reason, airtable_record_id, custom,
           show:shows(id, program, sub_program, main_cast_slots, understudy_slots),
           city:cities(id, name)
         `)
@@ -74,7 +86,7 @@ export function ShowDateDetailSheet({ showDateId, open, onOpenChange }: Props) {
   const cityId = showDate?.city_id ?? null;
   const slotConfig = showSlots(showDate?.show);
 
-  const { data: bookingsForDate } = useQuery({
+  const { data: bookingsForDate, isError: bookingsError } = useQuery({
     queryKey: ['bookings', 'for-date', showDateId],
     enabled: !!showDateId,
     queryFn: async () => {
@@ -113,7 +125,57 @@ export function ShowDateDetailSheet({ showDateId, open, onOpenChange }: Props) {
     },
   });
 
-  const { data: eligibility } = useEligibleArtists(showId, showDateId, cityId);
+  const eligibilityQ = useEligibleArtists(showId, showDateId, cityId);
+  const eligibility = eligibilityQ.data;
+
+  const orgId = currentOrg?.id ?? null;
+  const { data: flowData } = useBookingFlow();
+  const flow = flowData ?? BOOKING_FLOW_DEFAULTS;
+  const { reference, customFieldKey } = useReferenceField();
+
+  // Digest hours + response window feed the "Up next" strip copy. One query,
+  // three resolveOrgSetting calls with the canonical fallbacks.
+  const { data: times } = useQuery({
+    queryKey: ['app-settings', 'booking-times', orgId],
+    enabled: Boolean(showDateId && orgId),
+    queryFn: async (): Promise<FlowTimes> => {
+      const [windowHours, offerDigestHour, confirmationDigestHour] = await Promise.all([
+        resolveOrgSetting(supabase, orgId, 'offer_response_window_hours', BOOKING_ENGINE_DEFAULTS.offer_response_window_hours),
+        resolveOrgSetting(supabase, orgId, 'offer_digest_hour_berlin', BOOKING_ENGINE_DEFAULTS.offer_digest_hour_berlin),
+        resolveOrgSetting(supabase, orgId, 'confirmation_digest_hour_berlin', BOOKING_ENGINE_DEFAULTS.confirmation_digest_hour_berlin),
+      ]);
+      return { windowHours, offerDigestHour, confirmationDigestHour };
+    },
+  });
+  const effectiveTimes: FlowTimes = times ?? {
+    windowHours: BOOKING_ENGINE_DEFAULTS.offer_response_window_hours,
+    offerDigestHour: BOOKING_ENGINE_DEFAULTS.offer_digest_hour_berlin,
+    confirmationDigestHour: BOOKING_ENGINE_DEFAULTS.confirmation_digest_hour_berlin,
+  };
+
+  // Direct-booking mode books from the eligibility list, so it needs every active
+  // artist's name. Only fetched when the org's flow disables artist acceptance.
+  const { data: orgArtists, isError: orgArtistsError } = useQuery({
+    queryKey: ['artists', 'for-eligibility', orgId],
+    enabled: canManage && !flow.artist_acceptance && !!showDateId,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('artists')
+        .select('id, name')
+        .eq('status', 'active')
+        .order('name');
+      if (error) throw error;
+      return (data ?? []) as { id: string; name: string }[];
+    },
+  });
+
+  // Blocked artists for this date: the direct-book list must exclude them, the
+  // same way open-offer-tier skips blocked_dates server-side for tiered offers.
+  const blockedQ = useQuery({
+    queryKey: ['blocked-dates', 'for-date', showDate?.date ?? null],
+    enabled: canManage && !flow.artist_acceptance && !!showDate?.date,
+    queryFn: () => fetchBlockedArtistIds(supabase, { date: showDate!.date }),
+  });
 
   const tiersQ = useQuery({
     queryKey: ['offer-tiers', 'available', showDateId, cityId],
@@ -126,8 +188,7 @@ export function ShowDateDetailSheet({ showDateId, open, onOpenChange }: Props) {
     queryFn: () => fetchOpenedTiers(supabase, showDateId!),
   });
 
-  const [selectedTier, setSelectedTier] = useState<number | null>(null);
-  const [closeTarget, setCloseTarget] = useState<number | null>(null);
+  const [dryRun, setDryRun] = useState<{ tier: number } | null>(null);
   const [editOpen, setEditOpen] = useState(false);
   const [cancelReason, setCancelReason] = useState('');
   const cancelDate = useCancelShowDate();
@@ -137,38 +198,36 @@ export function ShowDateDetailSheet({ showDateId, open, onOpenChange }: Props) {
   const synced = showDate ? isSyncedDate(showDate) : false;
   const deletable = isAdmin && showDate ? canHardDeleteDate({ synced, bookingCount }) : false;
 
-  const tierOptions = useMemo(
-    () => buildOfferTierOptions(tiersQ.data ?? { priorities: [], hasAdHoc: false }),
-    [tiersQ.data]
-  );
-  // Fall back to the first option unless the explicit selection is still a valid
-  // option (e.g. a city change can drop the previously-selected tier).
-  const effectiveTier =
-    selectedTier != null && tierOptions.some(o => o.value === selectedTier)
-      ? selectedTier
-      : tierOptions[0]?.value ?? null;
   const hasSession = !!(showDate?.session_1 || showDate?.session_2 || showDate?.session_3);
-  // True if the tier has EVER been opened (open or closed). Re-opening a closed
-  // tier should still show the additive "already opened" note — especially when it
-  // was closed with offers kept live, so the producer knows offers will coexist.
-  const alreadyOpened = (openedQ.data ?? []).some(o => o.tier === effectiveTier);
 
-  // Dialog copy via pure helpers, computed once (null until usable).
-  const confirmCopy = effectiveTier != null && showDate
-    ? offerConfirmCopy({ tier: effectiveTier, dateLabel: formatDateDMY(showDate.date), alreadyOpened })
-    : null;
-  const closeCopy = closeTarget !== null
-    ? closeConfirmCopy({ tier: closeTarget, pendingCount: pendingOfferCount(bookingsForDate ?? [], closeTarget) })
-    : null;
+  // Preview-who-gets-offers query, enabled only while the dialog is open.
+  const dryRunQ = useQuery({
+    queryKey: ['offer-tiers', 'dry-run', showDateId, dryRun?.tier],
+    enabled: Boolean(dryRun) && !!showDateId,
+    queryFn: () => dryRunOfferTier(supabase, { showDateId: showDateId!, tier: dryRun!.tier }),
+  });
 
   const {
     active: activeBookings,
     main: mainBookings,
     understudy: understudyBookings,
     bookedArtistIds,
-    confirmedMainCount,
-    confirmedUnderstudyCount,
   } = useMemo(() => deriveBookingGroups(bookingsForDate ?? []), [bookingsForDate]);
+
+  // Eligible artists (with names) for direct-booking mode. deriveDirectBookList
+  // fails closed while eligibility/blocked data is unresolved and excludes
+  // blocked artists; a null eligibility set means "no restriction".
+  const eligibleArtistList = useMemo(
+    () => deriveDirectBookList(orgArtists, eligibility, blockedQ.data),
+    [orgArtists, eligibility, blockedQ.data],
+  );
+  // bookingsForDate is included so the Booked badges are accurate before any
+  // Book button renders (an empty booked set would briefly offer Book on an
+  // already-booked artist; the DB unique index backstops it, but confusingly).
+  const directListError = orgArtistsError || eligibilityQ.isError || blockedQ.isError || bookingsError;
+  const directListLoading =
+    !directListError &&
+    (orgArtists === undefined || eligibility === undefined || blockedQ.data === undefined || bookingsForDate === undefined);
 
   const overrideCastIds = useMemo(
     () => new Set((dateCastOverrides ?? []).map(r => r.cast_id)),
@@ -224,24 +283,29 @@ export function ShowDateDetailSheet({ showDateId, open, onOpenChange }: Props) {
     onError: (err: any) => toast.error(err.message),
   });
 
-  const createBooking = useMutation({
-    mutationFn: async ({ artistId, isUnderstudy = false }: { artistId: string; isUnderstudy?: boolean }) => {
+  const createBookingMutation = useMutation({
+    mutationFn: ({ artistId, isUnderstudy }: { artistId: string; isUnderstudy: boolean }) => {
       if (!currentOrg) throw new Error('No active organization');
-      const { error } = await supabase.from('bookings').insert({
-        show_date_id: showDateId!,
-        artist_id: artistId,
-        status: 'soft_booked',
-        is_understudy: isUnderstudy,
-        booked_by: user!.id,
-        org_id: currentOrg.id,
+      return createBooking(supabase, {
+        showDateId: showDateId!,
+        artistId,
+        isUnderstudy,
+        bookedBy: user!.id,
+        orgId: currentOrg.id,
+        confirmDirectly: !flow.artist_acceptance,
+        now: new Date(),
       });
-      if (error) throw error;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['bookings'] });
       toast.success('Artist booked');
     },
-    onError: (err: any) => toast.error(err.message),
+    onError: (err: any) => {
+      // A booking attempt can fail after the row already changed underneath it (e.g. a lost
+      // race with another producer), leaving the cached bookings stale even on failure.
+      queryClient.invalidateQueries({ queryKey: ['bookings'] });
+      toast.error(err.message);
+    },
   });
 
   const updateBookingStatus = useMutation({
@@ -280,9 +344,8 @@ export function ShowDateDetailSheet({ showDateId, open, onOpenChange }: Props) {
       if (kind === 'success') toast.success(text); else toast.info(text);
       queryClient.invalidateQueries({ queryKey: ['bookings'] });
       queryClient.invalidateQueries({ queryKey: ['offer-tiers', 'opened', showDateId] });
-      setCloseTarget(null);
     },
-    onError: (err: any) => { toast.error(err.message); setCloseTarget(null); },
+    onError: (err: any) => toast.error(err.message),
   });
 
   const venue = showDate?.venue;
@@ -293,7 +356,14 @@ export function ShowDateDetailSheet({ showDateId, open, onOpenChange }: Props) {
         <div className="sticky top-0 z-10 bg-background border-b border-border px-6 py-3">
           <SheetHeader className="text-left">
             <SheetTitle className="font-display text-base">
-              {showDate ? showLabel(showDate.show) : 'Show Date'}
+              {showDate
+                ? referenceLabel({
+                    reference,
+                    show: showDate.show,
+                    custom: (showDate.custom as Record<string, unknown> | null) ?? null,
+                    customFieldKey,
+                  })
+                : 'Show Date'}
             </SheetTitle>
             {isEditorMode && isRealAdmin && (
               <Badge variant="outline" className="text-xs font-mono text-muted-foreground w-fit">
@@ -354,25 +424,24 @@ export function ShowDateDetailSheet({ showDateId, open, onOpenChange }: Props) {
                 </div>
               )}
 
-              {/* Slots summary */}
-              <div className="rounded-lg border border-border p-4 space-y-2">
-                <p className="text-sm font-medium flex items-center gap-2">
-                  <Users className="h-4 w-4" />Slots
-                </p>
-                {slotConfig ? (
-                  <div className="grid grid-cols-2 gap-4 text-sm">
-                    <div>
-                      <p className="text-muted-foreground text-xs mb-1">Main cast</p>
-                      <p className="font-medium">{confirmedMainCount} / {slotConfig.main_cast} confirmed</p>
-                    </div>
-                    <div>
-                      <p className="text-muted-foreground text-xs mb-1">Understudies</p>
-                      <p className="font-medium">{confirmedUnderstudyCount} / {slotConfig.understudies} confirmed</p>
-                    </div>
-                  </div>
-                ) : (
+              {/* Booking funnel + up-next strip */}
+              <div className="space-y-3">
+                <BookingFunnel bookings={bookingsForDate ?? []} slots={slotConfig} />
+                <UpNextStrip
+                  items={computeUpNext({
+                    flow,
+                    times: effectiveTimes,
+                    pendingCount: (bookingsForDate ?? []).filter((b) => b.status === 'suggested').length,
+                    nextExpiry: (bookingsForDate ?? [])
+                      .filter((b) => b.status === 'suggested' && b.offer_expires_at)
+                      .map((b) => b.offer_expires_at as string)
+                      .sort()[0] ?? null,
+                    hasOpenTier: (openedQ.data ?? []).some((t) => !t.closedAt),
+                  })}
+                />
+                {!slotConfig && (
                   <Badge variant="secondary" className="bg-destructive/10 text-destructive">
-                    Slot config missing for {showDate.show?.program ?? '—'} / {showDate.show?.sub_program ?? '—'} — configure in Settings
+                    Slot config missing for {showDate.show?.program ?? 'this show'}. Set cast slots in Settings.
                   </Badge>
                 )}
               </div>
@@ -527,147 +596,63 @@ export function ShowDateDetailSheet({ showDateId, open, onOpenChange }: Props) {
                 </div>
               )}
 
-              {/* Offers */}
+              {/* Offers (tiered) or direct booking, gated to producers on live dates */}
               {canManage && showDate.status !== 'cancelled' && (
                 <Card>
                   <CardHeader>
-                    <CardTitle className="font-display text-base">Offers</CardTitle>
+                    <CardTitle className="font-display text-base">
+                      {flow.artist_acceptance ? 'Offers' : 'Book artists'}
+                    </CardTitle>
                   </CardHeader>
                   <CardContent className="space-y-4">
-                    {/* Opened tiers */}
-                    <div className="space-y-1.5">
-                      <p className="text-xs text-muted-foreground uppercase tracking-wide">Opened tiers</p>
-                      {openedQ.isLoading ? (
-                        <Skeleton className="h-5 w-40" />
-                      ) : (openedQ.data ?? []).length === 0 ? (
-                        <p className="text-sm text-muted-foreground">No tiers opened yet.</p>
-                      ) : (
-                        <div className="flex flex-wrap gap-2">
-                          {(openedQ.data ?? []).map(o => (
-                            <Badge key={o.tier} variant="outline" className="flex items-center gap-2 py-1">
-                              <span>
-                                {o.tier === 99 ? 'Ad-hoc casts' : `Tier ${o.tier}`}
-                                <span className="ml-1 opacity-60">
-                                  {o.closedAt
-                                    ? `· closed ${formatTimestampDMY(o.closedAt)}`
-                                    : `· opened ${formatTimestampDMY(o.openedAt)}`}
-                                </span>
-                              </span>
-                              {!o.closedAt && (
-                                <button
-                                  type="button"
-                                  onClick={() => setCloseTarget(o.tier)}
-                                  className="text-destructive hover:underline text-xs"
-                                >
-                                  Close
-                                </button>
-                              )}
-                            </Badge>
-                          ))}
-                        </div>
-                      )}
-                    </div>
-
-                    {/* Open a tier */}
-                    {tiersQ.isLoading ? (
-                      <Skeleton className="h-9 w-64" />
-                    ) : tierOptions.length === 0 ? (
-                      <p className="text-sm text-muted-foreground">
-                        No offer tiers configured for this city — set cast priorities in Settings → Cities &amp; Casts.
-                      </p>
+                    {flow.artist_acceptance ? (
+                      <>
+                        <TierTimeline
+                          showDateId={showDate.id}
+                          cityId={cityId}
+                          dateLabel={formatDateDMY(showDate.date)}
+                          flow={flow}
+                          bookings={bookingsForDate ?? []}
+                          canManage={canManage}
+                          hasSession={hasSession}
+                          tiers={tiersQ.data ?? { priorities: [], hasAdHoc: false }}
+                          openedTiers={openedQ.data ?? []}
+                          isLoadingTiers={tiersQ.isLoading}
+                          isLoadingOpened={openedQ.isLoading}
+                          openPending={openOffers.isPending}
+                          closePending={closeOffers.isPending}
+                          onOpenTier={(tier) => openOffers.mutate(tier)}
+                          onCloseTier={(tier, withdraw) => closeOffers.mutate({ tier, withdraw })}
+                          onPreviewTier={(tier) => setDryRun({ tier })}
+                        />
+                        <DryRunDialog
+                          open={Boolean(dryRun)}
+                          onOpenChange={(o) => { if (!o) setDryRun(null); }}
+                          tier={dryRun?.tier ?? null}
+                          result={dryRunQ.data ?? null}
+                          loading={dryRunQ.isLoading}
+                          flow={flow}
+                          confirmPending={openOffers.isPending}
+                          onConfirm={() => {
+                            if (dryRun) openOffers.mutate(dryRun.tier);
+                            setDryRun(null);
+                          }}
+                        />
+                      </>
                     ) : (
-                      <div className="flex flex-wrap items-center gap-2">
-                        <Select
-                          value={effectiveTier != null ? String(effectiveTier) : undefined}
-                          onValueChange={v => setSelectedTier(Number(v))}
-                        >
-                          <SelectTrigger className="w-48">
-                            <SelectValue placeholder="Select tier" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {tierOptions.map(opt => (
-                              <SelectItem key={opt.value} value={String(opt.value)}>{opt.label}</SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-
-                        <AlertDialog>
-                          <AlertDialogTrigger asChild>
-                            <Button disabled={!hasSession || openOffers.isPending || effectiveTier == null}>
-                              {openOffers.isPending
-                                ? 'Opening…'
-                                : `Open ${effectiveTier === 99 ? 'ad-hoc casts' : `tier ${effectiveTier}`}`}
-                            </Button>
-                          </AlertDialogTrigger>
-                          <AlertDialogContent>
-                            {effectiveTier != null && confirmCopy && (
-                              <>
-                                <AlertDialogHeader>
-                                  <AlertDialogTitle>{confirmCopy.title}</AlertDialogTitle>
-                                  <AlertDialogDescription>{confirmCopy.body}</AlertDialogDescription>
-                                </AlertDialogHeader>
-                                <AlertDialogFooter>
-                                  <AlertDialogCancel>Cancel</AlertDialogCancel>
-                                  <AlertDialogAction onClick={() => openOffers.mutate(effectiveTier)}>
-                                    Open offers
-                                  </AlertDialogAction>
-                                </AlertDialogFooter>
-                              </>
-                            )}
-                          </AlertDialogContent>
-                        </AlertDialog>
-
-                        {!hasSession && (
-                          <span className="text-xs text-muted-foreground">
-                            Add a session time before opening offers.
-                          </span>
-                        )}
-                      </div>
+                      <EligibilityBookList
+                        artists={eligibleArtistList}
+                        loading={directListLoading}
+                        error={directListError}
+                        bookedArtistIds={bookedArtistIds}
+                        onBook={(artistId, isUnderstudy) =>
+                          createBookingMutation.mutate({ artistId, isUnderstudy })}
+                        booking={createBookingMutation.isPending}
+                      />
                     )}
                   </CardContent>
                 </Card>
               )}
-
-              {/* Close-tier confirmation (choose withdraw vs keep) */}
-              <AlertDialog open={closeTarget !== null} onOpenChange={(o) => { if (!o) setCloseTarget(null); }}>
-                <AlertDialogContent>
-                  {closeTarget !== null && closeCopy && (
-                    <>
-                      <AlertDialogHeader>
-                        <AlertDialogTitle>{closeCopy.title}</AlertDialogTitle>
-                        <AlertDialogDescription>{closeCopy.intro}</AlertDialogDescription>
-                      </AlertDialogHeader>
-                      <div className="space-y-2">
-                        <AlertDialogAction asChild>
-                          <button
-                            type="button"
-                            disabled={closeOffers.isPending}
-                            onClick={() => closeOffers.mutate({ tier: closeTarget, withdraw: true })}
-                            className="w-full text-left rounded-lg border border-border p-3 hover:bg-muted disabled:opacity-50"
-                          >
-                            <p className="text-sm font-medium">{closeCopy.withdraw.label}</p>
-                            <p className="text-xs text-muted-foreground mt-0.5">{closeCopy.withdraw.caption}</p>
-                          </button>
-                        </AlertDialogAction>
-                        <AlertDialogAction asChild>
-                          <button
-                            type="button"
-                            disabled={closeOffers.isPending}
-                            onClick={() => closeOffers.mutate({ tier: closeTarget, withdraw: false })}
-                            className="w-full text-left rounded-lg border border-border p-3 hover:bg-muted disabled:opacity-50"
-                          >
-                            <p className="text-sm font-medium">{closeCopy.keep.label}</p>
-                            <p className="text-xs text-muted-foreground mt-0.5">{closeCopy.keep.caption}</p>
-                          </button>
-                        </AlertDialogAction>
-                      </div>
-                      <AlertDialogFooter>
-                        <AlertDialogCancel>Cancel</AlertDialogCancel>
-                      </AlertDialogFooter>
-                    </>
-                  )}
-                </AlertDialogContent>
-              </AlertDialog>
 
               {/* Assigned Artists */}
               <Card>
@@ -687,6 +672,9 @@ export function ShowDateDetailSheet({ showDateId, open, onOpenChange }: Props) {
                               key={b.id}
                               booking={b}
                               canManage={canManage}
+                              // Always true: the button only renders on soft_booked rows anyway, so
+                              // it self-hides when there is no backlog from a previous policy.
+                              showConfirm={true}
                               onConfirm={(bookingId) => updateBookingStatus.mutate({ bookingId, status: 'confirmed' })}
                               onCancel={(bookingId) => updateBookingStatus.mutate({ bookingId, status: 'cancelled' })}
                             />
@@ -701,6 +689,9 @@ export function ShowDateDetailSheet({ showDateId, open, onOpenChange }: Props) {
                               key={b.id}
                               booking={b}
                               canManage={canManage}
+                              // Always true: the button only renders on soft_booked rows anyway, so
+                              // it self-hides when there is no backlog from a previous policy.
+                              showConfirm={true}
                               onConfirm={(bookingId) => updateBookingStatus.mutate({ bookingId, status: 'confirmed' })}
                               onCancel={(bookingId) => updateBookingStatus.mutate({ bookingId, status: 'cancelled' })}
                             />

@@ -197,7 +197,9 @@ function ProducerDashboard() {
         <p className="text-muted-foreground mt-1">Cast confirmation status across upcoming dates.</p>
       </div>
 
-      {/* Ready to confirm */}
+      {/* Ready to confirm. Backlog-driven, not policy-driven: under auto-confirm,
+          new soft_booked rows do not arise, so the card self-hides; any that
+          exist are backlog from a previous policy and need the affordance. */}
       {(softBookedRows?.length ?? 0) > 0 && (
         <Card>
           <CardHeader>

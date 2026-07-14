@@ -15,7 +15,7 @@ import { digestEmailSubject } from '../scheduleChanges.ts'
 
 const SITE_NAME = 'ShowFlow'
 
-interface BookingRow { show: string; date: string; city: string }
+interface BookingRow { show: string; date: string; city: string; label?: string }
 interface ChangeRow { show: string; date: string; city: string; changes: string }
 interface CancelRow { show: string; date: string; city: string; reason?: string | null }
 
@@ -34,12 +34,12 @@ const ArtistConfirmationDigest = ({ displayName, bookings = [], scheduleChanges 
   const introText = _intro || (hasUpdates
     ? `Here's what changed on your bookings.`
     : `Here's what just got confirmed. We're excited to have you on stage!`)
-  const footerText = _footer || `— The ${SITE_NAME} team`
+  const footerText = _footer || `The ${SITE_NAME} team`
 
   return (
     <Html lang="en" dir="ltr">
       <Head />
-      <Preview>{heading} — {SITE_NAME}</Preview>
+      <Preview>{heading} on {SITE_NAME}</Preview>
       <Body style={main}>
         <Container style={container}>
           <Heading style={h1}>{heading}</Heading>
@@ -56,7 +56,7 @@ const ArtistConfirmationDigest = ({ displayName, bookings = [], scheduleChanges 
                 <tbody>
                   {cancellations.map((c, i) => (
                     <tr key={i} style={i % 2 === 1 ? trAlt : tr}>
-                      <td style={td}>{c.show}</td><td style={td}>{c.date}</td><td style={td}>{c.city}</td><td style={td}>{c.reason || '—'}</td>
+                      <td style={td}>{c.show}</td><td style={td}>{c.date}</td><td style={td}>{c.city}</td><td style={td}>{c.reason || 'Not specified'}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -92,7 +92,7 @@ const ArtistConfirmationDigest = ({ displayName, bookings = [], scheduleChanges 
                 <tbody>
                   {bookings.map((b, i) => (
                     <tr key={i} style={i % 2 === 1 ? trAlt : tr}>
-                      <td style={td}>{b.show}</td><td style={td}>{b.date}</td><td style={td}>{b.city}</td>
+                      <td style={td}>{b.label || b.show}</td><td style={td}>{b.date}</td><td style={td}>{b.city}</td>
                     </tr>
                   ))}
                 </tbody>
