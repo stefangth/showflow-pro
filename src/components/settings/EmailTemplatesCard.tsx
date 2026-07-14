@@ -19,7 +19,7 @@ type EmailTemplateKey = typeof EMAIL_TEMPLATE_KEYS[number];
 
 const EMAIL_TEMPLATE_LABELS: Record<EmailTemplateKey, string> = {
   'signup-decision': 'Signup Decision',
-  'new-signup-admin-notification': 'New Signup — Admin Notification',
+  'new-signup-admin-notification': 'New Signup · Admin Notification',
   'cast-escalation-requested': 'Cast Escalation Requested',
   'artist-offer-digest': 'Artist Offer Digest',
   'artist-confirmation-digest': 'Artist Confirmation Digest',
@@ -125,7 +125,7 @@ export function EmailTemplatesCard({ get, set }: { get: (key: string, fallback?:
       <Dialog open={previewOpen} onOpenChange={setPreviewOpen}>
         <DialogContent className="max-w-3xl w-full">
           <DialogHeader>
-            <DialogTitle>Preview — {previewTitle}</DialogTitle>
+            <DialogTitle>Preview · {previewTitle}</DialogTitle>
           </DialogHeader>
           {previewLoading ? (
             <div className="flex items-center justify-center h-64 text-muted-foreground">Rendering preview…</div>
