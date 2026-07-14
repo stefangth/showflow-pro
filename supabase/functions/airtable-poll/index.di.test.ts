@@ -1335,6 +1335,62 @@ Deno.test("airtable-poll: auto_open_tier1=false → no open-offer-tier invocatio
   assertEquals(body.tiers_opened, 0);
 });
 
+// The gate is `flow.auto_open_tier1 && flow.artist_acceptance`. The test above only
+// covers the auto_open_tier1 half; this covers the other side of the AND, a
+// direct-booking org (artist_acceptance: false) with auto-open otherwise ON.
+Deno.test("airtable-poll: artist_acceptance=false (direct booking) → no open-offer-tier invocations", async () => {
+  const { deps, invokeCalls } = makeFakeDeps({
+    tables: {
+      app_settings: [
+        { when: { key: "cron_secret" }, data: { value: "secret123" } },
+        // booking_flow keeps auto-open ON but the org has no offer/accept stage.
+        { when: { key: "booking_flow" }, data: [{ org_id: ORG, value: { auto_open_tier1: true, artist_acceptance: false } }] },
+        ...ENABLED_SETTINGS,
+      ],
+      organizations: { data: [{ id: ORG }], error: null },
+      shows: { data: [{ id: "show-uuid-1", airtable_program_key: "TestShow" }], error: null },
+      cities: { data: [{ id: "city-uuid-berlin", airtable_city_key: "berlin" }], error: null },
+      show_dates: { data: [], error: null },
+      airtable_sync_log: { data: { id: "log-1" }, error: null },
+      airtable_sync_record_log: { data: [], error: null },
+      org_memberships: { data: [], error: null },
+      notifications: { data: null, error: null },
+    },
+    rpcs: { get_org_airtable_key: { data: "key", error: null }, get_cron_secret: { data: "secret123", error: null } },
+    fetchImpl: () =>
+      Promise.resolve(
+        makeAirtableResponse([makeRecord("recNEW002", { Date: "2026-07-16", SubProgram: "TestShow" })]),
+      ) as Promise<Response>,
+  });
+
+  // Give the inserted new date a real id so, WITHOUT the flow gate, tier 1 WOULD open.
+  const originalFrom = deps.admin.from.bind(deps.admin);
+  // deno-lint-ignore no-explicit-any
+  (deps.admin as any).from = (table: string) => {
+    const chain = originalFrom(table);
+    if (table === "show_dates") {
+      const originalInsert = chain.insert.bind(chain);
+      chain.insert = (payload: unknown) => {
+        const insertChain = (originalInsert as (x: unknown) => ReturnType<typeof originalInsert>)(payload);
+        // deno-lint-ignore no-explicit-any
+        (insertChain as any).single = () => Promise.resolve({ data: { id: "new-date-uuid-002" }, error: null });
+        return insertChain;
+      };
+    }
+    return chain;
+  };
+
+  const res = await handle(authReq(), deps);
+  assertEquals(res.status, 200);
+  const body = await res.json();
+  assertEquals(body.new_dates, 1);
+
+  // Gate is off (artist_acceptance false) → the batch never invokes open-offer-tier.
+  const offerCalls = invokeCalls.filter((c) => c.name === "open-offer-tier");
+  assertEquals(offerCalls.length, 0);
+  assertEquals(body.tiers_opened, 0);
+});
+
 Deno.test("airtable-poll: updated date with session and no tier-1 row is auto-opened", async () => {
   const { deps, invokeCalls } = makeFakeDeps({
     tables: {

@@ -260,7 +260,7 @@ Deno.test("preview-transactional-email DI: function subject (cast-escalation-req
   const entry = templates[0];
   assertEquals(entry.status, "ready");
   // previewData: { program: 'Riverdance', date: '2026-06-15', tier: 1, ... }
-  assertEquals(entry.subject, "Escalation needed — Tier 1 for Riverdance on 2026-06-15");
+  assertEquals(entry.subject, "Escalation needed: Tier 1 for Riverdance on 2026-06-15");
 });
 
 // ── Single template rendering ─────────────────────────────────────────────────

@@ -337,6 +337,11 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
         const acct = artist.user_id ? byUser.get(artist.user_id) : undefined
         const recipient = resolveContactEmail({ authEmail: acct?.email, bookingEmail: artist.email })
         if (!recipient) continue
+        // Each re-offer inserts a NEW booking row (bookingByArtist), so keying on
+        // the booking id rather than show_date_id+artist_id keeps a reopened tier's
+        // resend from deduping against a stale send for a prior offer round.
+        const bid = bookingByArtist.get(artist.id)
+        if (!bid) continue
         const result = await deps.sendEmail({
           template_name: 'offer-immediate',
           recipient_email: recipient,
@@ -348,13 +353,12 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
             city: cityName,
             windowHours,
           },
-          idempotency_key: `offer-immediate-${show_date_id}-${artist.id}`,
+          idempotency_key: `offer-immediate-${bid}`,
         })
         // Only stamp the bookings whose email actually delivered — a failed/skipped
         // send leaves the offer unstamped for the daily digest to retry (see emailWasSent).
         if (emailWasSent(result)) {
-          const bid = bookingByArtist.get(artist.id)
-          if (bid) sentBookingIds.push(bid)
+          sentBookingIds.push(bid)
         } else {
           console.warn('open-offer-tier: immediate email not sent — leaving offer pending (no stamp)', {
             org: showDate.org_id, artistId: artist.id, error: result.error ?? null,
