@@ -29,7 +29,7 @@ export async function openOfferTier(
 /**
  * Tiers that *can* be opened for a date.
  * - `priorities`: RAW priorities (duplicates preserved). Dedup/sort/labeling
- *   is the consumer's job — see `buildOfferTierOptions` in `@/lib/bookings`.
+ *   is the consumer's job, see `buildOfferTierOptions` in `@/lib/bookings`.
  * - `hasAdHoc`: whether the date has any per-date ("ad-hoc") cast assignments.
  * - `source`: "show" when the show's own (show, city) ladder has prioritized rows
  *   (it wins outright, no fallback query); "org" when falling back to the org-wide
@@ -63,7 +63,7 @@ export async function fetchOfferTiers(
         .select("priority")
         .eq("city_id", args.cityId);
       if (error) throw error;
-      // Raw — dedup happens downstream in buildOfferTierOptions.
+      // Raw, dedup happens downstream in buildOfferTierOptions.
       priorities = (data ?? []).map((r) => r.priority as number);
     }
   }

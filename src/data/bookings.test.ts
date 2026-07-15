@@ -61,7 +61,7 @@ describe("fetchOfferTiers", () => {
     const res = await fetchOfferTiers(fake as never, { showId: "sh1", cityId: null, showDateId: "d1" });
     expect(res).toEqual({ priorities: [], hasAdHoc: false, source: "org" });
     expect(fake.calls.find((c) => c.table === "cast_city_priority")).toBeUndefined();
-    // A null city skips the show-ladder lookup too — ladders are per (show, city).
+    // A null city skips the show-ladder lookup too: ladders are per (show, city).
     expect(fake.calls.find((c) => c.table === "show_cast_eligibility")).toBeUndefined();
   });
   it("prefers show-scoped priorities and reports source", async () => {
@@ -71,7 +71,7 @@ describe("fetchOfferTiers", () => {
     });
     const res = await fetchOfferTiers(fake as never, { showId: "sh1", cityId: "c1", showDateId: "d1" });
     expect(res).toEqual({ priorities: [1, 2], hasAdHoc: false, source: "show" });
-    // The show ladder wins outright — the org-wide fallback query must not fire.
+    // The show ladder wins outright, so the org-wide fallback query must not fire.
     expect(fake.calls.find((c) => c.table === "cast_city_priority")).toBeUndefined();
     expect(fake.calls).toContainEqual({ table: "show_cast_eligibility", method: "eq", args: ["show_id", "sh1"] });
     expect(fake.calls).toContainEqual({ table: "show_cast_eligibility", method: "eq", args: ["city_id", "c1"] });
