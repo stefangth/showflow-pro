@@ -148,7 +148,20 @@ export function createFakeClient(opts: FakeClientOptions = {}) {
         return chain;
       };
     }
-    const matchEq = () => ({ ...localEq, __write: sawWrite });
+    // Reserved `__in:<col>` match keys, opt-in, mirrors `__write` above. Some
+    // handlers query the SAME table twice with different .in() filters and no
+    // .eq() at all (e.g. cast_members: once for the tier's eligible casts, once
+    // inside the eligibility gate for the gate's own cast set), with no .eq()
+    // calls, localEq is identical for both reads, so `when` could not otherwise
+    // tell them apart. A test can opt in with `when: { "__in:cast_id": JSON.stringify([...]) }`.
+    // Existing seeds never reference an `__in:` key, so this is backward-compatible.
+    const matchEq = () => {
+      const inKeys: Record<string, string> = {};
+      for (const [col, vals] of Object.entries(localIn)) {
+        inKeys[`__in:${col}`] = JSON.stringify(vals);
+      }
+      return { ...localEq, ...inKeys, __write: sawWrite };
+    };
     chain["single"] = () => {
       calls.push({ table, method: "single", args: [] });
       return Promise.resolve(resolveSeed(seed, matchEq(), localIn));
