@@ -1,5 +1,57 @@
 [
   {
+    "version": "1.9.0",
+    "date": "2026-07-15",
+    "dateLabel": "July 15, 2026",
+    "title": "Make the booking flow your own",
+    "changes": {
+      "new": [
+        {
+          "title": "Booking flow editor",
+          "description": "Decide how booking works for your organization in Settings → Booking flow: pick a preset (Classic, Fast-track, Direct book) or tune every step yourself, with a live preview of the resulting booking lifecycle and what each choice means in practice."
+        },
+        {
+          "title": "Direct booking mode",
+          "description": "Skip offers entirely. Producers book and confirm artists straight from the eligibility list on a date, in one step."
+        },
+        {
+          "title": "Fast-track mode",
+          "description": "Offer emails go out immediately when a tier opens, and artists who accept are confirmed automatically with no separate confirmation step."
+        },
+        {
+          "title": "Offer expiry reminders",
+          "description": "Artists can get a reminder email a day before their open offer expires, so fewer offers lapse unanswered."
+        },
+        {
+          "title": "Auto-escalation",
+          "description": "When an offer tier expires without filling, the next tier can open automatically instead of waiting for a producer."
+        },
+        {
+          "title": "Dry-run preview",
+          "description": "See exactly which artists an \"Open tier\" action would reach, and who is excluded and why, before sending anything."
+        },
+        {
+          "title": "Choose your reference field",
+          "description": "Pick what names a booking in offers and emails: the show label, the program, or any custom field."
+        },
+        {
+          "title": "Settings change history",
+          "description": "Every booking-flow change is recorded with who changed what and when, shown right next to the editor."
+        }
+      ],
+      "improved": [
+        {
+          "title": "Per-date booking cockpit",
+          "description": "The date sheet now leads with a booking funnel, an \"up next\" strip of pending actions, and a tier timeline that adapts to your organization's flow."
+        },
+        {
+          "title": "Unavailable artists stay unbookable",
+          "description": "Direct booking respects artist-declared blocked dates, the same way tiered offers always have."
+        }
+      ]
+    }
+  },
+  {
     "version": "1.8.2",
     "date": "2026-07-11",
     "dateLabel": "July 11, 2026",
