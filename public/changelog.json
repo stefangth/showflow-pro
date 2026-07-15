@@ -37,6 +37,14 @@
         {
           "title": "Settings change history",
           "description": "Every booking-flow change is recorded with who changed what and when, shown right next to the editor."
+        },
+        {
+          "title": "Direct bookings notify the artist",
+          "description": "Artists booked directly now get an in-app notification the moment a producer books them, not just the next digest email."
+        },
+        {
+          "title": "Dashboard attention cards",
+          "description": "Producers see under-filled open tiers and offers expiring within a day at a glance; direct-booking organizations see upcoming dates that still need artists."
         }
       ],
       "improved": [
@@ -47,6 +55,10 @@
         {
           "title": "Unavailable artists stay unbookable",
           "description": "Direct booking respects artist-declared blocked dates, the same way tiered offers always have."
+        },
+        {
+          "title": "Every page speaks your booking flow",
+          "description": "In direct-booking mode the artist dashboard shows a Booked dates meter instead of a response rate, and artist pages say \"My Dates\" and \"Not booked\" instead of offer language."
         }
       ]
     }

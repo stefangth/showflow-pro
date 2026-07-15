@@ -15,10 +15,13 @@ What's new in ShowFlow, newest first.
 - **Dry-run preview** — See exactly which artists an "Open tier" action would reach, and who is excluded and why, before sending anything.
 - **Choose your reference field** — Pick what names a booking in offers and emails: the show label, the program, or any custom field.
 - **Settings change history** — Every booking-flow change is recorded with who changed what and when, shown right next to the editor.
+- **Direct bookings notify the artist** — Artists booked directly now get an in-app notification the moment a producer books them, not just the next digest email.
+- **Dashboard attention cards** — Producers see under-filled open tiers and offers expiring within a day at a glance; direct-booking organizations see upcoming dates that still need artists.
 
 ### Improved
 - **Per-date booking cockpit** — The date sheet now leads with a booking funnel, an "up next" strip of pending actions, and a tier timeline that adapts to your organization's flow.
 - **Unavailable artists stay unbookable** — Direct booking respects artist-declared blocked dates, the same way tiered offers always have.
+- **Every page speaks your booking flow** — In direct-booking mode the artist dashboard shows a Booked dates meter instead of a response rate, and artist pages say "My Dates" and "Not booked" instead of offer language.
 
 ## 1.8.2 — July 11, 2026
 
