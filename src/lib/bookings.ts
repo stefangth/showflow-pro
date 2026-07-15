@@ -204,14 +204,18 @@ export function closeResultToast(
  * eligibility with no DB backstop. A null artistIds means genuinely
  * unrestricted (no eligibility config). Blocked artists are excluded to match
  * the tiered offer path, which skips blocked_dates server-side.
+ * The skill-eligibility set follows the same fail-closed contract: undefined =
+ * unresolved = nobody bookable; null = no skill requirements.
  */
 export function deriveDirectBookList(
   orgArtists: { id: string; name: string }[] | undefined,
   eligibility: { artistIds: Set<string> | null } | undefined,
   blockedIds: Set<string> | undefined,
+  skillEligibleIds: Set<string> | null | undefined,
 ): { id: string; name: string }[] {
-  if (eligibility === undefined || blockedIds === undefined) return [];
+  if (eligibility === undefined || blockedIds === undefined || skillEligibleIds === undefined) return [];
   const all = orgArtists ?? [];
   const base = eligibility.artistIds == null ? all : all.filter((a) => eligibility.artistIds!.has(a.id));
-  return base.filter((a) => !blockedIds.has(a.id));
+  const skilled = skillEligibleIds == null ? base : base.filter((a) => skillEligibleIds.has(a.id));
+  return skilled.filter((a) => !blockedIds.has(a.id));
 }

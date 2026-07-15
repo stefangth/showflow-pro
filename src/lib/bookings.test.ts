@@ -223,30 +223,46 @@ describe("deriveDirectBookList", () => {
     { id: "a3", name: "Three" },
   ];
   it("fails closed while eligibility has not resolved", () => {
-    expect(deriveDirectBookList(artists, undefined, new Set())).toEqual([]);
+    expect(deriveDirectBookList(artists, undefined, new Set(), null)).toEqual([]);
   });
   it("fails closed while the blocked set has not resolved", () => {
-    expect(deriveDirectBookList(artists, { artistIds: null }, undefined)).toEqual([]);
+    expect(deriveDirectBookList(artists, { artistIds: null }, undefined, null)).toEqual([]);
   });
   it("null artistIds means no eligibility restriction", () => {
-    expect(deriveDirectBookList(artists, { artistIds: null }, new Set())).toEqual(artists);
+    expect(deriveDirectBookList(artists, { artistIds: null }, new Set(), null)).toEqual(artists);
   });
   it("filters to the eligible set", () => {
-    expect(deriveDirectBookList(artists, { artistIds: new Set(["a2"]) }, new Set())).toEqual([
+    expect(deriveDirectBookList(artists, { artistIds: new Set(["a2"]) }, new Set(), null)).toEqual([
       { id: "a2", name: "Two" },
     ]);
   });
   it("excludes artists with a blocked date, matching the tiered offer path", () => {
-    expect(deriveDirectBookList(artists, { artistIds: null }, new Set(["a1", "a3"]))).toEqual([
+    expect(deriveDirectBookList(artists, { artistIds: null }, new Set(["a1", "a3"]), null)).toEqual([
       { id: "a2", name: "Two" },
     ]);
   });
   it("applies eligibility and blocked filters together", () => {
     expect(
-      deriveDirectBookList(artists, { artistIds: new Set(["a1", "a2"]) }, new Set(["a1"])),
+      deriveDirectBookList(artists, { artistIds: new Set(["a1", "a2"]) }, new Set(["a1"]), null),
     ).toEqual([{ id: "a2", name: "Two" }]);
   });
   it("returns [] when org artists have not loaded", () => {
-    expect(deriveDirectBookList(undefined, { artistIds: null }, new Set())).toEqual([]);
+    expect(deriveDirectBookList(undefined, { artistIds: null }, new Set(), null)).toEqual([]);
+  });
+  it("fails closed while the skill-eligibility set is unresolved", () => {
+    expect(deriveDirectBookList(
+      [{ id: "a1", name: "A" }], { artistIds: null }, new Set(), undefined,
+    )).toEqual([]);
+  });
+  it("null skill set means no skill restriction", () => {
+    expect(deriveDirectBookList(
+      [{ id: "a1", name: "A" }], { artistIds: null }, new Set(), null,
+    )).toEqual([{ id: "a1", name: "A" }]);
+  });
+  it("filters to artists in the skill-eligible set", () => {
+    expect(deriveDirectBookList(
+      [{ id: "a1", name: "A" }, { id: "a2", name: "B" }],
+      { artistIds: null }, new Set(), new Set(["a2"]),
+    )).toEqual([{ id: "a2", name: "B" }]);
   });
 });
