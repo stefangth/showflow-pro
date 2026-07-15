@@ -100,4 +100,23 @@ describe("DryRunDialog", () => {
     expect(screen.getByRole("status")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /open tier 1/i })).toBeDisabled();
   });
+
+  it("renders the not-eligible and missing-skills exclusion rows", () => {
+    renderWithProviders(
+      <DryRunDialog
+        open
+        onOpenChange={() => {}}
+        tier={1}
+        result={{
+          candidates: [],
+          excluded: { alreadyBooked: 0, blocked: 0, inactive: 0, notEligible: 2, missingSkills: 1 },
+        }}
+        loading={false}
+        flow={{ offer_delivery: "digest" }}
+        onConfirm={vi.fn()}
+      />,
+    );
+    expect(screen.getByText("Not eligible for this show: 2")).toBeInTheDocument();
+    expect(screen.getByText("Missing required skills: 1")).toBeInTheDocument();
+  });
 });
