@@ -18,7 +18,12 @@ describe("TierAttentionCard", () => {
     expect(screen.getByText("At risk")).toBeInTheDocument();
     expect(screen.getByText("Expires soon")).toBeInTheDocument();
   });
-  it("shows the immediate-delivery hint when provided and renders nothing when empty", () => {
+  it("renders the delivery hint above the rows when provided", () => {
+    wrap(<TierAttentionCard items={[item]} hint="Offers email artists immediately when a tier opens." reference={{ source: "show" }} customFieldKey={null} />);
+    expect(screen.getByText("Offers email artists immediately when a tier opens.")).toBeInTheDocument();
+  });
+
+  it("renders nothing when there are no items", () => {
     const { container } = wrap(<TierAttentionCard items={[]} hint="x" reference={{ source: "show" }} customFieldKey={null} />);
     expect(container).toBeEmptyDOMElement();
   });
