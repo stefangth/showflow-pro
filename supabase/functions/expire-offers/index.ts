@@ -5,6 +5,7 @@ import { countAccepted, countPendingNotExpired, isFutureOrToday, requiredPrimary
 import { getActiveOrgs } from "../_shared/settings.ts";
 import { resolveBookingFlow, referenceLabel, type BookingFlow } from "../_shared/bookingFlow.ts";
 import { resolveContactEmail, resolveAccountDisplayName } from "../_shared/identity.ts";
+import { resolveTierLadder, nextTierAfter } from "../_shared/eligibility.ts";
 
 /**
  * Hourly job:
@@ -213,7 +214,7 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
   for (const row of openTiers as Array<{ id: string; show_date_id: string; tier: number }>) {
     const { data: sd } = await admin
       .from('show_dates')
-      .select('id, date, city_id, org_id, show:shows(program, sub_program, main_cast_slots, understudy_slots)')
+      .select('id, show_id, date, city_id, org_id, show:shows(program, sub_program, main_cast_slots, understudy_slots)')
       .eq('id', row.show_date_id)
       .maybeSingle()
     if (!sd) continue
@@ -286,25 +287,25 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
     recipientIds = [...new Set(recipientIds)]
 
     // Auto-escalation: when the org opted in and this isn't the ad-hoc tier 99, look
-    // for the next cast_city_priority tier above this one for the date's city. If one
-    // exists, close this tier and open the next automatically instead of just asking a
-    // human to do it. No next tier (or auto-escalate off) falls through to the manual
-    // escalation path below, unchanged.
+    // for the next tier above this one on the date's EFFECTIVE ladder (show override if
+    // present, else the org city list, via resolveTierLadder, same source open-offer-tier
+    // used to open this tier). If one exists, close this tier and open the next
+    // automatically instead of just asking a human to do it. No next tier (or
+    // auto-escalate off) falls through to the manual escalation path below, unchanged.
     // Auto-escalation is gated on the org being ACTIVE: a suspended org's short tier must
     // NOT auto-open the next tier (which would create suggested bookings + email artists).
     // A suspended org falls through to the manual escalation path below, unchanged: the
     // same behavior it had before auto-escalation existed (the manual path was never
     // active-scoped, so this preserves it).
     if (flow.auto_escalate && activeOrgIds.has(orgId) && row.tier !== 99) {
-      const { data: nextRows } = await admin
-        .from('cast_city_priority')
-        .select('priority')
-        .eq('org_id', orgId)
-        .eq('city_id', (sd as any).city_id)
-        .gt('priority', row.tier)
-        .order('priority', { ascending: true })
-        .limit(1)
-      const nextTier = (nextRows?.[0] as { priority: number } | undefined)?.priority
+      let nextTier: number | undefined
+      if ((sd as any).city_id) {
+        // Next tier comes from the SAME effective ladder that opened this tier
+        // (show override if present, else the org city list). Spec: escalation
+        // walks the effective ladder; automation never applies a skill filter.
+        const ladder = await resolveTierLadder(admin, (sd as any).show_id, (sd as any).city_id)
+        nextTier = nextTierAfter(ladder, row.tier) ?? undefined
+      }
 
       if (nextTier !== undefined) {
         // Close + stamp escalation_notified_at BEFORE invoking open-offer-tier: this is
