@@ -22,7 +22,7 @@ PR #161 (branch `claude/booking-engine-ui-ux-09cbf4`) shipped the org-configurab
 
 ## Status update (2026-07-15)
 
-Tier 1 is COMPLETE: PR #161 merged (d1b1ded on main via release PR #162), version 1.9.0 released (changelog + JSON regenerated), semver tags caught up (v1.4.1 through v1.9.0 pushed). Tier 2 items 3, 4, 5, and 7 are COMPLETE on the tier-2 follow-up PR (direct-mode UI e2e; showIdentityLabel/referenceLabel convergence; page-level save hidden on the booking tab; polish batch incl. FlowTimeline badge reuse). Item 6 stays deferred pending producer feedback; the window-hours minimum remains an open product decision. Only Tier 3 (Phases 3 and 4) remains, each needing its own brainstorm/spec cycle.
+Tier 1 is COMPLETE: PR #161 merged (d1b1ded on main via release PR #162), version 1.9.0 released (changelog + JSON regenerated), semver tags caught up (v1.4.1 through v1.9.0 pushed). Tier 2 items 3, 4, 5, and 7 are COMPLETE on the tier-2 follow-up PR (direct-mode UI e2e; showIdentityLabel/referenceLabel convergence; page-level save hidden on the booking tab; polish batch incl. FlowTimeline badge reuse). Item 6 stays deferred pending producer feedback; the window-hours minimum remains an open product decision. Phase 3 (flow-aware surfaces) SHIPPED 2026-07-15 via PR #164 (spec docs/superpowers/specs/2026-07-15-flow-aware-surfaces-design.md; changelog folded into 1.9.0 via PR #165; migration 20260715103620 live on prod). Only Phase 4 (configurable eligibility) remains, needing its own brainstorm/spec cycle.
 
 ## Remaining work, in priority order
 
