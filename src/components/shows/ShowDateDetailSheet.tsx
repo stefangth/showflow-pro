@@ -20,6 +20,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { MapPin, Clock, Users, Check, ChevronsUpDown } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useEligibleArtists } from '@/hooks/useEligibleArtists';
+import { useSkills } from '@/hooks/useSkills';
 import { useBookingFlow, useReferenceField } from '@/hooks/useBookingFlow';
 import { showSlots } from '@/lib/settings';
 import {
@@ -34,12 +35,16 @@ import {
   openOfferTier, fetchOfferTiers, fetchOpenedTiers, closeOfferTier,
   dryRunOfferTier, createBooking, updateBookingStatusGuarded,
 } from '@/data/bookings';
+import {
+  fetchRequiredSkillIds, addShowDateRequiredSkill, removeShowDateRequiredSkill,
+} from '@/data/eligibility';
 import { resolveOrgSetting } from '@/data/settings';
 import { BookingFunnel } from '@/components/shows/date/BookingFunnel';
 import { UpNextStrip } from '@/components/shows/date/UpNextStrip';
 import { TierTimeline } from '@/components/shows/date/TierTimeline';
 import { DryRunDialog } from '@/components/shows/date/DryRunDialog';
 import { EligibilityBookList } from '@/components/shows/date/EligibilityBookList';
+import { RequiredSkillsSection } from '@/components/shows/date/RequiredSkillsSection';
 import { fetchBlockedArtistIds } from '@/data/blockedDates';
 import { ChatPanel } from '@/components/chat/ChatPanel';
 import { ShowDateFormDialog } from '@/components/shows/ShowDateFormDialog';
@@ -284,6 +289,31 @@ export function ShowDateDetailSheet({ showDateId, open, onOpenChange }: Props) {
       toast.success('Cast eligibility updated');
     },
     onError: (err: any) => toast.error(err.message),
+  });
+
+  const { data: orgSkills } = useSkills();
+  const requiredSkillsQ = useQuery({
+    queryKey: ['eligibility', 'required-skills', showDate?.show_id, showDateId],
+    enabled: !!showDate?.show_id && !!showDateId,
+    queryFn: () => fetchRequiredSkillIds(supabase, { showId: showDate!.show_id, showDateId: showDateId! }),
+  });
+  const invalidateEligibility = () => {
+    queryClient.invalidateQueries({ queryKey: ['eligibility'] });
+    queryClient.invalidateQueries({ queryKey: ['eligible-artists'] });
+    queryClient.invalidateQueries({ queryKey: ['artist-eligible-dates'] });
+    queryClient.invalidateQueries({ queryKey: ['offer-tiers'] });
+  };
+  const addDateSkill = useMutation({
+    mutationFn: (skillId: string) =>
+      addShowDateRequiredSkill(supabase, { showDateId: showDateId!, skillId, orgId: currentOrg!.id }),
+    onSuccess: () => { invalidateEligibility(); toast.success('Required skill added'); },
+    onError: (e: Error) => toast.error('Failed to add required skill', { description: e.message }),
+  });
+  const removeDateSkill = useMutation({
+    mutationFn: (skillId: string) =>
+      removeShowDateRequiredSkill(supabase, { showDateId: showDateId!, skillId }),
+    onSuccess: () => { invalidateEligibility(); toast.success('Required skill removed'); },
+    onError: (e: Error) => toast.error('Failed to remove required skill', { description: e.message }),
   });
 
   const createBookingMutation = useMutation({
@@ -537,6 +567,15 @@ export function ShowDateDetailSheet({ showDateId, open, onOpenChange }: Props) {
                         )}
                       </div>
                     )}
+
+                    <RequiredSkillsSection
+                      skills={orgSkills ?? []}
+                      showSkillIds={requiredSkillsQ.data?.showSkillIds ?? []}
+                      dateSkillIds={requiredSkillsQ.data?.dateSkillIds ?? []}
+                      onAdd={(id) => addDateSkill.mutate(id)}
+                      onRemove={(id) => removeDateSkill.mutate(id)}
+                      pending={addDateSkill.isPending || removeDateSkill.isPending}
+                    />
                   </CardContent>
                 </Card>
               )}
