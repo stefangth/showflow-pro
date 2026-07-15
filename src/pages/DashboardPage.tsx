@@ -13,11 +13,12 @@ import { addDays, format } from 'date-fns';
 import { toast } from 'sonner';
 import { ArtistDashboard } from '@/components/dashboard/ArtistDashboard';
 import { TierAttentionCard } from '@/components/dashboard/TierAttentionCard';
+import { DirectBookingCard } from '@/components/dashboard/DirectBookingCard';
 import { showSlots } from '@/lib/settings';
 import { formatDateDMY } from '@/lib/dates';
 import { useReferenceField, useBookingFlow } from '@/hooks/useBookingFlow';
 import { referenceLabel, BOOKING_FLOW_DEFAULTS } from '@/lib/bookingFlow';
-import { computeTierAttention } from '@/lib/bookingCockpit';
+import { computeTierAttention, unfilledMainCastDates } from '@/lib/bookingCockpit';
 import { deliveryHint } from '@/lib/flowCopy';
 import { bulkConfirmSoftBooked, bulkDeclineSoftBooked, fetchTierAttention } from '@/data/bookings';
 
@@ -28,7 +29,7 @@ const fadeUp = {
 
 type ShowRef = { program: string | null; sub_program: string | null; main_cast_slots: number | null; understudy_slots: number | null };
 type DateRow = { id: string; date: string; show_id: string };
-type BookingLite = { show_date_id: string; status: string };
+type BookingLite = { show_date_id: string; status: string; is_understudy: boolean };
 type SoftBookedRow = {
   id: string;
   is_understudy: boolean;
@@ -77,7 +78,7 @@ function ProducerDashboard() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from('bookings')
-        .select('show_date_id, status')
+        .select('show_date_id, status, is_understudy')
         .eq('status', 'confirmed');
       if (error) throw error;
       return (data ?? []) as BookingLite[];
@@ -91,6 +92,25 @@ function ProducerDashboard() {
     });
     return map;
   })();
+
+  const confirmedMainByDate = (() => {
+    const map = new Map<string, number>();
+    (confirmedBookings ?? []).forEach(b => {
+      if (!b.is_understudy) map.set(b.show_date_id, (map.get(b.show_date_id) ?? 0) + 1);
+    });
+    return map;
+  })();
+
+  const directItems = useMemo(
+    () => unfilledMainCastDates(
+      (upcomingDates ?? []).map(d => ({
+        id: d.id, date: d.date, program: d.show?.program ?? null,
+        subProgram: d.show?.sub_program ?? null, mainSlots: d.show?.main_cast_slots ?? null,
+      })),
+      confirmedMainByDate,
+    ),
+    [upcomingDates, confirmedBookings],
+  );
 
   const { data: softBookedRows } = useQuery({
     queryKey: ['bookings', 'soft-booked'],
@@ -297,6 +317,10 @@ function ProducerDashboard() {
           reference={reference}
           customFieldKey={customFieldKey}
         />
+      )}
+
+      {!flow.artist_acceptance && (
+        <DirectBookingCard items={directItems} reference={reference} customFieldKey={customFieldKey} />
       )}
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
