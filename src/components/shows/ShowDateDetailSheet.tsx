@@ -36,8 +36,9 @@ import {
   dryRunOfferTier, createBooking, updateBookingStatusGuarded,
 } from '@/data/bookings';
 import {
-  fetchRequiredSkillIds, addShowDateRequiredSkill, removeShowDateRequiredSkill,
+  fetchRequiredSkillIds, fetchSkillEligibleArtistIds, addShowDateRequiredSkill, removeShowDateRequiredSkill,
 } from '@/data/eligibility';
+import { unionSkillIds } from '@/lib/eligibility';
 import { resolveOrgSetting } from '@/data/settings';
 import { BookingFunnel } from '@/components/shows/date/BookingFunnel';
 import { UpNextStrip } from '@/components/shows/date/UpNextStrip';
@@ -182,6 +183,26 @@ export function ShowDateDetailSheet({ showDateId, open, onOpenChange }: Props) {
     queryFn: () => fetchBlockedArtistIds(supabase, { date: showDate!.date }),
   });
 
+  const { data: orgSkills } = useSkills();
+  const requiredSkillsQ = useQuery({
+    queryKey: ['eligibility', 'required-skills', showDate?.show_id, showDateId],
+    enabled: !!showDate?.show_id && !!showDateId,
+    queryFn: () => fetchRequiredSkillIds(supabase, { showId: showDate!.show_id, showDateId: showDateId! }),
+  });
+
+  // Ad-hoc skill chips the producer picks on the direct-book list, union'd with the
+  // date's hard skill requirements into a single set to resolve eligibility against.
+  const [directSkillFilterIds, setDirectSkillFilterIds] = useState<string[]>([]);
+  const directRequiredSkillIds = useMemo(
+    () => unionSkillIds(requiredSkillsQ.data?.all ?? [], directSkillFilterIds),
+    [requiredSkillsQ.data?.all, directSkillFilterIds],
+  );
+  const skillEligibleQ = useQuery({
+    queryKey: ['eligibility', 'skill-eligible', showDateId, directRequiredSkillIds],
+    enabled: !!showDateId && requiredSkillsQ.data !== undefined,
+    queryFn: () => fetchSkillEligibleArtistIds(supabase, { requiredSkillIds: directRequiredSkillIds }),
+  });
+
   const tiersQ = useQuery({
     queryKey: ['offer-tiers', 'available', showDateId, cityId],
     enabled: canManage && !!showDateId,
@@ -222,20 +243,22 @@ export function ShowDateDetailSheet({ showDateId, open, onOpenChange }: Props) {
   } = useMemo(() => deriveBookingGroups(bookingsForDate ?? []), [bookingsForDate]);
 
   // Eligible artists (with names) for direct-booking mode. deriveDirectBookList
-  // fails closed while eligibility/blocked data is unresolved and excludes
-  // blocked artists; a null eligibility set means "no restriction".
+  // fails closed while eligibility/blocked/skill data is unresolved and excludes
+  // blocked artists; a null eligibility or skill set means "no restriction".
   const eligibleArtistList = useMemo(
-    // skill filtering wired by the direct-book chips change
-    () => deriveDirectBookList(orgArtists, eligibility, blockedQ.data, null),
-    [orgArtists, eligibility, blockedQ.data],
+    () => deriveDirectBookList(orgArtists, eligibility, blockedQ.data, skillEligibleQ.data),
+    [orgArtists, eligibility, blockedQ.data, skillEligibleQ.data],
   );
   // bookingsForDate is included so the Booked badges are accurate before any
   // Book button renders (an empty booked set would briefly offer Book on an
   // already-booked artist; the DB unique index backstops it, but confusingly).
-  const directListError = orgArtistsError || eligibilityQ.isError || blockedQ.isError || bookingsError;
+  const directListError =
+    orgArtistsError || eligibilityQ.isError || blockedQ.isError || bookingsError ||
+    requiredSkillsQ.isError || skillEligibleQ.isError;
   const directListLoading =
     !directListError &&
-    (orgArtists === undefined || eligibility === undefined || blockedQ.data === undefined || bookingsForDate === undefined);
+    (orgArtists === undefined || eligibility === undefined || blockedQ.data === undefined ||
+      bookingsForDate === undefined || skillEligibleQ.data === undefined);
 
   const overrideCastIds = useMemo(
     () => new Set((dateCastOverrides ?? []).map(r => r.cast_id)),
@@ -291,12 +314,6 @@ export function ShowDateDetailSheet({ showDateId, open, onOpenChange }: Props) {
     onError: (err: any) => toast.error(err.message),
   });
 
-  const { data: orgSkills } = useSkills();
-  const requiredSkillsQ = useQuery({
-    queryKey: ['eligibility', 'required-skills', showDate?.show_id, showDateId],
-    enabled: !!showDate?.show_id && !!showDateId,
-    queryFn: () => fetchRequiredSkillIds(supabase, { showId: showDate!.show_id, showDateId: showDateId! }),
-  });
   const invalidateEligibility = () => {
     queryClient.invalidateQueries({ queryKey: ['eligibility'] });
     queryClient.invalidateQueries({ queryKey: ['eligible-artists'] });
@@ -690,6 +707,11 @@ export function ShowDateDetailSheet({ showDateId, open, onOpenChange }: Props) {
                         onBook={(artistId, isUnderstudy) =>
                           createBookingMutation.mutate({ artistId, isUnderstudy })}
                         booking={createBookingMutation.isPending}
+                        skills={orgSkills ?? []}
+                        selectedSkillIds={directSkillFilterIds}
+                        onSkillFilterChange={(id) =>
+                          setDirectSkillFilterIds((prev) =>
+                            prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id])}
                       />
                     )}
                   </CardContent>
