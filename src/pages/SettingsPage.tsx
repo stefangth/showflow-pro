@@ -131,9 +131,20 @@ export default function SettingsPage() {
   const canEnter = isAdmin || isProducer;
   const { schedulingWarnings } = useSettingsWarnings();
 
+  // Controlled so we know which tab is active: the Booking flow tab renders its own
+  // scoped Save/Discard in FlowRail, and the page-level control must defer to it there.
+  const [activeTab, setActiveTab] = useState(isAdmin ? 'organization' : 'scheduling');
+
   const dirtyKeys = computeSettingsDirtyKeys(settings, draft, EDITABLE_SETTING_KEYS);
 
   const isDirty = dirtyKeys.length > 0;
+
+  // Hide the page-level Save/Discard while on the Booking flow tab, but only when every
+  // dirty key belongs to that tab (BOOKING_AUDIT_KEYS). If the draft also holds a dirty key
+  // from another tab (e.g. edited on Notifications, then switched here), keep the page-level
+  // control visible so that other change stays reachable: the rail's Save only ever writes
+  // BOOKING_AUDIT_KEYS, so it cannot save it.
+  const hidePageLevelSave = activeTab === 'booking' && dirtyKeys.every(k => BOOKING_AUDIT_KEYS.includes(k));
 
   // Warn on browser tab close / refresh — must be before any early returns (Rules of Hooks)
   useEffect(() => {
@@ -202,7 +213,7 @@ export default function SettingsPage() {
             Configure integrations, booking behaviour, and notifications. Changes apply immediately.
           </p>
         </div>
-        {canEnter && (
+        {canEnter && !hidePageLevelSave && (
           <Button onClick={handleSave} disabled={saveMutation.isPending || !isDirty}>
             <Save className="h-4 w-4 mr-2" />
             {saveMutation.isPending ? 'Saving…' : `Save${isDirty ? ` (${dirtyKeys.length})` : ''}`}
@@ -210,7 +221,7 @@ export default function SettingsPage() {
         )}
       </div>
 
-      {isDirty && (
+      {isDirty && !hidePageLevelSave && (
         <div className="flex items-center justify-between gap-4 rounded-lg border border-warning bg-warning/10 px-4 py-2.5 text-sm text-warning">
           <span>You have unsaved changes. They will be lost if you navigate away.</span>
           <Button size="sm" onClick={handleSave} disabled={saveMutation.isPending}>
@@ -220,7 +231,7 @@ export default function SettingsPage() {
         </div>
       )}
 
-      <Tabs defaultValue={isAdmin ? 'organization' : 'scheduling'}>
+      <Tabs value={activeTab} onValueChange={setActiveTab}>
         <TabsList>
           {isAdmin && <TabsTrigger value="organization"><Building2 className="h-4 w-4 mr-2" />Organization</TabsTrigger>}
           {isAdmin && <TabsTrigger value="airtable"><Database className="h-4 w-4 mr-2" />Airtable Sync</TabsTrigger>}
