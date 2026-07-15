@@ -12,8 +12,10 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Plus, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
 import type { Cast } from '@/types';
+import { fetchShowPriorityRows, setShowCastPriority, clearShowCastPriority } from '@/data/eligibility';
 
 type CastCityPriorityRow = { id: string; cast_id: string; city_id: string; priority: number };
+type ShowOption = { id: string; program: string; sub_program: string | null };
 
 /**
  * Settings → Casts & Cities. Self-contained: owns its own cities/casts/priority
@@ -127,6 +129,62 @@ export function CastsCitiesTab({ currentOrgId, canEnter }: { currentOrgId: strin
     onError: (e: any) => toast.error(e.message ?? 'Failed to remove'),
   });
 
+  // Show-scoped priority ladder: 'org' renders the org-wide editor above unchanged;
+  // any other value is a show id and switches to that show's override ladder.
+  const [priorityScope, setPriorityScope] = useState<string>('org');
+  const handlePriorityScopeChange = (v: string) => {
+    setPriorityScope(v);
+    // Stale cast ids from another scope must not survive the switch.
+    setNewPriorityCastId('');
+  };
+
+  const { data: allShows } = useQuery({
+    queryKey: ['shows', 'for-priority-scope'],
+    enabled: canEnter,
+    queryFn: async () => {
+      const { data, error } = await supabase.from('shows').select('id, program, sub_program').order('program');
+      if (error) throw error;
+      return (data ?? []) as ShowOption[];
+    },
+  });
+
+  const showPrioritiesQ = useQuery({
+    queryKey: ['eligibility', 'show-priorities', priorityScope],
+    enabled: canEnter && priorityScope !== 'org',
+    queryFn: () => fetchShowPriorityRows(supabase, priorityScope),
+  });
+
+  const invalidatePriorityConsumers = () => {
+    qc.invalidateQueries({ queryKey: ['eligibility'] });
+    qc.invalidateQueries({ queryKey: ['eligible-artists'] });
+    qc.invalidateQueries({ queryKey: ['artist-eligible-dates'] });
+    qc.invalidateQueries({ queryKey: ['offer-tiers'] });
+  };
+
+  const assignShowPriority = useMutation({
+    mutationFn: () => {
+      if (!orgId) throw new Error('No active organization');
+      return setShowCastPriority(supabase, {
+        showId: priorityScope, cityId: newPriorityCityId, castId: newPriorityCastId,
+        priority: newPriorityValue, orgId,
+      });
+    },
+    onSuccess: () => {
+      invalidatePriorityConsumers();
+      setNewPriorityCityId('');
+      setNewPriorityCastId('');
+      setNewPriorityValue(1);
+      toast.success('Priority assigned');
+    },
+    onError: (e: Error) => toast.error('Failed to assign priority', { description: e.message }),
+  });
+
+  const clearShowPriority = useMutation({
+    mutationFn: (rowId: string) => clearShowCastPriority(supabase, rowId),
+    onSuccess: () => { invalidatePriorityConsumers(); toast.success('Priority cleared'); },
+    onError: (e: Error) => toast.error('Failed to clear priority', { description: e.message }),
+  });
+
   return (
     <div className="mt-4 space-y-6">
       <Card>
@@ -198,93 +256,209 @@ export function CastsCitiesTab({ currentOrgId, canEnter }: { currentOrgId: strin
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">
-          {/* Existing assignments grouped by city */}
-          {(cities ?? []).map(city => {
-            const assignments = (castCityPriorities ?? [])
-              .filter(r => r.city_id === city.id)
-              .sort((a, b) => a.priority - b.priority);
-            if (assignments.length === 0) return null;
-            return (
-              <div key={city.id}>
-                <p className="text-sm font-medium mb-2">{city.name}</p>
-                <div className="space-y-1.5">
-                  {assignments.map(a => {
-                    const cast = casts?.find(c => c.id === a.cast_id);
-                    return (
-                      <div key={a.id} className="flex items-center gap-3 p-2 rounded-md border border-border">
-                        <Badge variant="outline" className="text-xs w-16 justify-center shrink-0">
-                          Tier {a.priority}
-                        </Badge>
-                        <span className="text-sm flex-1">{cast?.name ?? '–'}</span>
-                        <button
-                          onClick={() => deleteCastPriority.mutate(a.id)}
-                          className="rounded hover:bg-muted p-0.5 text-muted-foreground hover:text-destructive"
-                          aria-label="Remove assignment"
-                        >
-                          <Trash2 className="h-3.5 w-3.5" />
-                        </button>
-                      </div>
-                    );
-                  })}
+          <div className="space-y-2">
+            <Select value={priorityScope} onValueChange={handlePriorityScopeChange}>
+              <SelectTrigger className="w-72" aria-label="Priority scope"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="org">Organization default</SelectItem>
+                {(allShows ?? []).map((s) => (
+                  <SelectItem key={s.id} value={s.id}>
+                    {[s.program, s.sub_program].filter(Boolean).join(' / ')}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            {priorityScope !== 'org' && (
+              <p className="text-xs text-muted-foreground">
+                Overrides the organization default for this show only. Cities without show priorities keep the organization default.
+              </p>
+            )}
+          </div>
+
+          {priorityScope === 'org' && (
+            <>
+              {/* Existing assignments grouped by city */}
+              {(cities ?? []).map(city => {
+                const assignments = (castCityPriorities ?? [])
+                  .filter(r => r.city_id === city.id)
+                  .sort((a, b) => a.priority - b.priority);
+                if (assignments.length === 0) return null;
+                return (
+                  <div key={city.id}>
+                    <p className="text-sm font-medium mb-2">{city.name}</p>
+                    <div className="space-y-1.5">
+                      {assignments.map(a => {
+                        const cast = casts?.find(c => c.id === a.cast_id);
+                        return (
+                          <div key={a.id} className="flex items-center gap-3 p-2 rounded-md border border-border">
+                            <Badge variant="outline" className="text-xs w-16 justify-center shrink-0">
+                              Tier {a.priority}
+                            </Badge>
+                            <span className="text-sm flex-1">{cast?.name ?? '–'}</span>
+                            <button
+                              onClick={() => deleteCastPriority.mutate(a.id)}
+                              className="rounded hover:bg-muted p-0.5 text-muted-foreground hover:text-destructive"
+                              aria-label="Remove assignment"
+                            >
+                              <Trash2 className="h-3.5 w-3.5" />
+                            </button>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                );
+              })}
+              {(cities?.length ?? 0) === 0 && (
+                <p className="text-sm text-muted-foreground">Add cities above to configure priorities.</p>
+              )}
+
+              {/* Add assignment form */}
+              <div className="pt-4 border-t border-border space-y-3">
+                <p className="text-sm font-medium">Add assignment</p>
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                  <Select
+                    value={newPriorityCityId}
+                    onValueChange={v => { setNewPriorityCityId(v); setNewPriorityCastId(''); }}
+                  >
+                    <SelectTrigger><SelectValue placeholder="City…" /></SelectTrigger>
+                    <SelectContent>
+                      {(cities ?? []).map(c => (
+                        <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <Select
+                    value={newPriorityCastId}
+                    onValueChange={setNewPriorityCastId}
+                    disabled={!newPriorityCityId}
+                  >
+                    <SelectTrigger><SelectValue placeholder="Cast…" /></SelectTrigger>
+                    <SelectContent>
+                      {(casts ?? [])
+                        .filter(c =>
+                          !(castCityPriorities ?? []).some(
+                            p => p.city_id === newPriorityCityId && p.cast_id === c.id
+                          )
+                        )
+                        .map(c => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
+                  <Select
+                    value={String(newPriorityValue)}
+                    onValueChange={v => setNewPriorityValue(Number(v))}
+                  >
+                    <SelectTrigger><SelectValue placeholder="Tier…" /></SelectTrigger>
+                    <SelectContent>
+                      {[1, 2, 3, 4, 5].map(n => (
+                        <SelectItem key={n} value={String(n)}>Tier {n}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </div>
+                <Button
+                  size="sm"
+                  disabled={!newPriorityCityId || !newPriorityCastId || addCastPriority.isPending}
+                  onClick={() => addCastPriority.mutate()}
+                >
+                  <Plus className="h-4 w-4 mr-1" />Assign
+                </Button>
               </div>
-            );
-          })}
-          {(cities?.length ?? 0) === 0 && (
-            <p className="text-sm text-muted-foreground">Add cities above to configure priorities.</p>
+            </>
           )}
 
-          {/* Add assignment form */}
-          <div className="pt-4 border-t border-border space-y-3">
-            <p className="text-sm font-medium">Add assignment</p>
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
-              <Select
-                value={newPriorityCityId}
-                onValueChange={v => { setNewPriorityCityId(v); setNewPriorityCastId(''); }}
-              >
-                <SelectTrigger><SelectValue placeholder="City…" /></SelectTrigger>
-                <SelectContent>
-                  {(cities ?? []).map(c => (
-                    <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              <Select
-                value={newPriorityCastId}
-                onValueChange={setNewPriorityCastId}
-                disabled={!newPriorityCityId}
-              >
-                <SelectTrigger><SelectValue placeholder="Cast…" /></SelectTrigger>
-                <SelectContent>
-                  {(casts ?? [])
-                    .filter(c =>
-                      !(castCityPriorities ?? []).some(
-                        p => p.city_id === newPriorityCityId && p.cast_id === c.id
-                      )
-                    )
-                    .map(c => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
-                </SelectContent>
-              </Select>
-              <Select
-                value={String(newPriorityValue)}
-                onValueChange={v => setNewPriorityValue(Number(v))}
-              >
-                <SelectTrigger><SelectValue placeholder="Tier…" /></SelectTrigger>
-                <SelectContent>
-                  {[1, 2, 3, 4, 5].map(n => (
-                    <SelectItem key={n} value={String(n)}>Tier {n}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <Button
-              size="sm"
-              disabled={!newPriorityCityId || !newPriorityCastId || addCastPriority.isPending}
-              onClick={() => addCastPriority.mutate()}
-            >
-              <Plus className="h-4 w-4 mr-1" />Assign
-            </Button>
-          </div>
+          {priorityScope !== 'org' && (
+            <>
+              {/* Show ladder grouped by city */}
+              {(cities ?? []).map(city => {
+                const assignments = (showPrioritiesQ.data ?? [])
+                  .filter(r => r.cityId === city.id)
+                  .sort((a, b) => a.priority - b.priority);
+                if (assignments.length === 0) return null;
+                return (
+                  <div key={city.id}>
+                    <p className="text-sm font-medium mb-2">{city.name}</p>
+                    <div className="space-y-1.5">
+                      {assignments.map(a => {
+                        const cast = casts?.find(c => c.id === a.castId);
+                        return (
+                          <div key={a.id} className="flex items-center gap-3 p-2 rounded-md border border-border">
+                            <Badge variant="outline" className="text-xs w-16 justify-center shrink-0">
+                              Tier {a.priority}
+                            </Badge>
+                            <span className="text-sm flex-1">{cast?.name ?? 'Unknown cast'}</span>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              disabled={clearShowPriority.isPending}
+                              onClick={() => clearShowPriority.mutate(a.id)}
+                            >
+                              Clear tier
+                            </Button>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                );
+              })}
+              {(showPrioritiesQ.data?.length ?? 0) === 0 && (
+                <p className="text-sm text-muted-foreground">No priorities set for this show yet.</p>
+              )}
+
+              {/* Add assignment form (show scope) */}
+              <div className="pt-4 border-t border-border space-y-3">
+                <p className="text-sm font-medium">Add assignment</p>
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                  <Select
+                    value={newPriorityCityId}
+                    onValueChange={v => { setNewPriorityCityId(v); setNewPriorityCastId(''); }}
+                  >
+                    <SelectTrigger aria-label="City"><SelectValue placeholder="City…" /></SelectTrigger>
+                    <SelectContent>
+                      {(cities ?? []).map(c => (
+                        <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <Select
+                    value={newPriorityCastId}
+                    onValueChange={setNewPriorityCastId}
+                    disabled={!newPriorityCityId}
+                  >
+                    <SelectTrigger aria-label="Cast"><SelectValue placeholder="Cast…" /></SelectTrigger>
+                    <SelectContent>
+                      {(casts ?? [])
+                        .filter(c =>
+                          !(showPrioritiesQ.data ?? []).some(
+                            p => p.cityId === newPriorityCityId && p.castId === c.id
+                          )
+                        )
+                        .map(c => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
+                  <Select
+                    value={String(newPriorityValue)}
+                    onValueChange={v => setNewPriorityValue(Number(v))}
+                  >
+                    <SelectTrigger aria-label="Tier"><SelectValue placeholder="Tier…" /></SelectTrigger>
+                    <SelectContent>
+                      {[1, 2, 3, 4, 5].map(n => (
+                        <SelectItem key={n} value={String(n)}>Tier {n}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <Button
+                  size="sm"
+                  disabled={!newPriorityCityId || !newPriorityCastId || assignShowPriority.isPending}
+                  onClick={() => assignShowPriority.mutate()}
+                >
+                  <Plus className="h-4 w-4 mr-1" />Assign
+                </Button>
+              </div>
+            </>
+          )}
         </CardContent>
       </Card>
     </div>
