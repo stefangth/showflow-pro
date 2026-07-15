@@ -248,6 +248,37 @@ export async function getLatestBooking(
 }
 
 /**
+ * Newest `notifications` row matching a user, type, and related entity, or null.
+ * The booking-status-change trigger writes to `notifications` synchronously in
+ * the same transaction as the booking write, so once the booking row is
+ * readable (e.g. via `getLatestBooking`) its notification is committed too, and
+ * this needs no polling or retry.
+ */
+export async function getNotification(
+  userId: string,
+  type: string,
+  relatedEntityId: string
+): Promise<{
+  id: string;
+  type: string;
+  title: string | null;
+  user_id: string;
+  related_entity_id: string | null;
+} | null> {
+  const admin = adminClient();
+  const { data } = await admin
+    .from("notifications")
+    .select("id, type, title, user_id, related_entity_id")
+    .eq("user_id", userId)
+    .eq("type", type)
+    .eq("related_entity_id", relatedEntityId)
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  return data ?? null;
+}
+
+/**
  * Count `booking_confirmed` notifications for a user since a wall-clock instant.
  * The booking-status-change trigger writes to `notifications` directly; the
  * email itself is sent later by the daily confirmation-digest cron job.

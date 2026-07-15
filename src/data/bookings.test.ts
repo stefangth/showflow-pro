@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { createFakeSupabase } from "@/test/supabaseFake";
-import { openOfferTier, fetchOfferTiers, fetchOpenedTiers, closeOfferTier, dryRunOfferTier, fetchPendingConfirmationsCount, fetchMyOpenOffersCount, bulkConfirmSoftBooked, bulkDeclineSoftBooked, updateBookingStatusGuarded, respondToOffer, createBooking } from "./bookings";
+import { openOfferTier, fetchOfferTiers, fetchOpenedTiers, closeOfferTier, dryRunOfferTier, fetchPendingConfirmationsCount, fetchMyOpenOffersCount, bulkConfirmSoftBooked, bulkDeclineSoftBooked, updateBookingStatusGuarded, respondToOffer, createBooking, fetchTierAttention } from "./bookings";
 
 describe("openOfferTier", () => {
   it("sends snake_case body and returns offersCreated", async () => {
@@ -280,5 +280,38 @@ describe("dryRunOfferTier", () => {
       table: "fn:open-offer-tier", method: "invoke",
       args: [{ show_date_id: "d1", tier: 2, dry_run: true }],
     });
+  });
+});
+
+describe("fetchTierAttention", () => {
+  it("selects open tiers on upcoming org dates and maps rows", async () => {
+    const fake = createFakeSupabase({
+      show_date_offer_tiers: {
+        data: [{
+          tier: 1,
+          show_date: {
+            id: "d1", date: "2026-07-20", status: "open", custom: null,
+            show: { program: "TJE", sub_program: "M", main_cast_slots: 2, understudy_slots: 1 },
+            bookings: [{ status: "suggested", offer_tier: 1, offer_expires_at: null }],
+          },
+        }],
+        error: null,
+      },
+    });
+    const rows = await fetchTierAttention(fake as never, { orgId: "org-1", today: "2026-07-15" });
+    expect(rows).toEqual([{
+      showDateId: "d1", date: "2026-07-20", program: "TJE", subProgram: "M", custom: null,
+      slots: { main_cast: 2, understudies: 1 }, tier: 1,
+      bookings: [{ status: "suggested", offer_tier: 1, offer_expires_at: null }],
+    }]);
+    expect(fake.calls).toContainEqual({ table: "show_date_offer_tiers", method: "is", args: ["closed_at", null] });
+    expect(fake.calls).toContainEqual({ table: "show_date_offer_tiers", method: "eq", args: ["show_date.org_id", "org-1"] });
+    expect(fake.calls).toContainEqual({ table: "show_date_offer_tiers", method: "gte", args: ["show_date.date", "2026-07-15"] });
+    expect(fake.calls).toContainEqual({ table: "show_date_offer_tiers", method: "neq", args: ["show_date.status", "cancelled"] });
+  });
+  it("returns [] for a null org without querying", async () => {
+    const fake = createFakeSupabase({});
+    expect(await fetchTierAttention(fake as never, { orgId: null, today: "2026-07-15" })).toEqual([]);
+    expect(fake.calls).toEqual([]);
   });
 });

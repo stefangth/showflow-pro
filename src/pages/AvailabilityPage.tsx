@@ -27,19 +27,13 @@ import { OfferResponseButtons } from '@/components/availability/OfferResponseBut
 import { bookingStatusBadgeClass } from '@/lib/bookings';
 import { formatDateDMY, parseDateOnly } from '@/lib/dates';
 import { showIdentityLabel } from '@/types';
-import { useReferenceField } from '@/hooks/useBookingFlow';
-import { referenceLabel } from '@/lib/bookingFlow';
+import { useBookingFlow, useReferenceField } from '@/hooks/useBookingFlow';
+import { BOOKING_FLOW_DEFAULTS, referenceLabel } from '@/lib/bookingFlow';
+import { availabilityPageCopy, bookingStatusLabels } from '@/lib/flowCopy';
 import { useColumnTemplate, useEditorConfig } from '@/features/editor/EditorContext';
 import { useColumnHeaders } from '@/features/editor/useColumnHeaders';
 import { ColumnLayoutEditor } from '@/features/editor/ColumnLayoutEditor';
 import { useToast } from '@/hooks/use-toast';
-
-const BOOKING_STATUS_LABEL: Record<string, string> = {
-  confirmed: 'Confirmed',
-  soft_booked: 'Hold placed',
-  suggested: 'Offer pending',
-  unanswered: 'No offer yet',
-};
 
 export default function AvailabilityPage() {
   return <ArtistAvailability />;
@@ -53,6 +47,10 @@ function ArtistAvailability() {
   const { data: artist } = useMyArtist();
   const { data: eligibleDates, isLoading } = useArtistEligibleDates();
   const { reference, customFieldKey } = useReferenceField();
+  const flowQ = useBookingFlow();
+  const flow = flowQ.data ?? BOOKING_FLOW_DEFAULTS;
+  const pageCopy = availabilityPageCopy(flow);
+  const statusLabels = bookingStatusLabels(flow);
   const { orderedColumns, visibleCount } = useColumnTemplate('availability');
   const { isEditorMode } = useEditorConfig();
   const columnHeaders = useColumnHeaders(orderedColumns);
@@ -199,7 +197,7 @@ function ArtistAvailability() {
   if (!artist) {
     return (
       <div className="space-y-6">
-        <h1 className="font-display text-[32px] font-semibold tracking-tight">My Offers</h1>
+        <h1 className="font-display text-[32px] font-semibold tracking-tight">{pageCopy.title}</h1>
         <Card>
           <CardContent className="py-12 text-center">
             <p className="text-muted-foreground">
@@ -214,10 +212,8 @@ function ArtistAvailability() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="font-display text-[32px] font-semibold tracking-tight">My Offers</h1>
-        <p className="text-muted-foreground mt-1">
-          View your offers and block dates you're unavailable for.
-        </p>
+        <h1 className="font-display text-[32px] font-semibold tracking-tight">{pageCopy.title}</h1>
+        <p className="text-muted-foreground mt-1">{pageCopy.subtitle}</p>
       </div>
 
       <div className="flex flex-wrap items-center gap-3">
@@ -310,7 +306,7 @@ function ArtistAvailability() {
                       case '_computed.my_status': return (
                         <TableCell key={colId}>
                           <Badge variant="secondary" className={bookingStatusBadgeClass(status)}>
-                            {BOOKING_STATUS_LABEL[status] ?? status}
+                            {statusLabels[status] ?? status}
                           </Badge>
                         </TableCell>
                       );
