@@ -33,6 +33,7 @@ import { TEST_PRODUCER_EMAIL, TEST_PRODUCER_PASSWORD } from "./global-setup";
 import {
   cleanupBookingFixture,
   getLatestBooking,
+  getNotification,
   openOfferTier,
   seedBookingFixture,
   setBookingFlow,
@@ -219,5 +220,17 @@ test.describe("Booking flow presets: one happy path per preset", () => {
     // created directly with no offer step (mirrors the old assertion).
     const booking = await getLatestBooking(fixture.artistId);
     expect(booking?.status).toBe("confirmed");
+
+    // Phase 3: the direct INSERT itself fires the booking_confirmed in-app
+    // notification (DB trigger), since no offer/accept transition ever runs.
+    // The trigger writes the notification in the same transaction as the
+    // booking, so getLatestBooking having returned the row means it is already
+    // committed. No polling needed.
+    const notification = await getNotification(
+      fixture.artistUser.id,
+      "booking_confirmed",
+      booking!.id
+    );
+    expect(notification).not.toBeNull();
   });
 });

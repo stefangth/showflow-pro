@@ -1,5 +1,6 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "@/integrations/supabase/types";
+import type { TierAttentionInput } from "@/lib/bookingCockpit";
 
 export interface OpenOfferTierResult {
   offersCreated: number;
@@ -282,4 +283,44 @@ export async function createBooking(
     org_id: args.orgId,
   });
   if (error) throw error;
+}
+
+/**
+ * Open offer tiers on this org's upcoming, non-cancelled dates, with the
+ * date's bookings and slot config, for the dashboard tier-attention card.
+ * `today` is passed in (yyyy-mm-dd) so callers and tests own the clock.
+ */
+export async function fetchTierAttention(
+  client: SupabaseClient<Database>,
+  args: { orgId: string | null; today: string },
+): Promise<TierAttentionInput[]> {
+  if (!args.orgId) return [];
+  const { data, error } = await client
+    .from("show_date_offer_tiers")
+    .select(
+      "tier, show_date:show_dates!inner(id, date, status, custom, org_id, " +
+      "show:shows(program, sub_program, main_cast_slots, understudy_slots), " +
+      "bookings(status, offer_tier, offer_expires_at))",
+    )
+    .is("closed_at", null)
+    .eq("show_date.org_id", args.orgId)
+    .gte("show_date.date", args.today)
+    .neq("show_date.status", "cancelled");
+  if (error) throw error;
+  // any at the join boundary, consistent with the file's other joined-row shapes
+  return ((data ?? []) as any[]).map((r) => ({
+    showDateId: r.show_date.id,
+    date: r.show_date.date,
+    program: r.show_date.show?.program ?? null,
+    subProgram: r.show_date.show?.sub_program ?? null,
+    custom: r.show_date.custom ?? null,
+    slots:
+      r.show_date.show?.main_cast_slots != null && r.show_date.show?.understudy_slots != null
+        ? { main_cast: r.show_date.show.main_cast_slots, understudies: r.show_date.show.understudy_slots }
+        : null,
+    tier: r.tier,
+    bookings: (r.show_date.bookings ?? []).map((b: any) => ({
+      status: b.status, offer_tier: b.offer_tier, offer_expires_at: b.offer_expires_at,
+    })),
+  }));
 }

@@ -9,8 +9,9 @@ import { CalendarDays, MessageCircleQuestion, Theater } from 'lucide-react';
 import { useArtistEligibleDates } from '@/hooks/useArtistEligibleDates';
 import { useMyArtist } from '@/hooks/useMyArtist';
 import { formatDateDMY } from '@/lib/dates';
-import { useReferenceField } from '@/hooks/useBookingFlow';
-import { referenceLabel } from '@/lib/bookingFlow';
+import { useBookingFlow, useReferenceField } from '@/hooks/useBookingFlow';
+import { referenceLabel, BOOKING_FLOW_DEFAULTS } from '@/lib/bookingFlow';
+import { artistMeter } from '@/lib/flowCopy';
 import { ROUTES } from '@/config/app.config';
 
 type BookingLite = { show_date_id: string; status: string };
@@ -23,6 +24,9 @@ export function ArtistDashboard() {
   const { data: artist } = useMyArtist();
   const { data: eligibleDates } = useArtistEligibleDates();
   const { reference, customFieldKey } = useReferenceField();
+  const flowQ = useBookingFlow();
+  const flow = flowQ.data ?? BOOKING_FLOW_DEFAULTS;
+  const meter = artistMeter(flow);
 
   // Distinct cache key per projection (this selects no `id`). A shared key let
   // different `select` shapes clobber each other in the React Query cache — see
@@ -65,7 +69,7 @@ export function ArtistDashboard() {
     const total = dates.length;
     const respondedCount = dates.filter((d) => {
       const s = bookingMap.get(d.id);
-      return s === 'confirmed' || s === 'soft_booked';
+      return s != null && meter.countStatuses.includes(s);
     }).length;
     return {
       total,
@@ -73,7 +77,7 @@ export function ArtistDashboard() {
       pct: total === 0 ? 0 : Math.round((respondedCount / total) * 100),
       unanswered: dates.filter((d) => bookingMap.get(d.id) === 'suggested'),
     };
-  }, [eligibleDates, bookingMap]);
+  }, [eligibleDates, bookingMap, meter]);
 
   if (!artist) {
     return (
@@ -95,7 +99,7 @@ export function ArtistDashboard() {
       <div>
         <h1 className="font-display text-[32px] font-semibold tracking-tight">Dashboard</h1>
         <p className="text-muted-foreground mt-1">
-          Your response rate on dates you've been offered.
+          {meter.headerSentence}
         </p>
       </div>
 
@@ -106,11 +110,14 @@ export function ArtistDashboard() {
       )}
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <Link to={`${ROUTES.AVAILABILITY}?filter=unanswered`} className="block">
+        <Link
+          to={meter.filterUnanswered ? `${ROUTES.AVAILABILITY}?filter=unanswered` : ROUTES.AVAILABILITY}
+          className="block"
+        >
           <Card className="hover:shadow-elev3 transition-shadow cursor-pointer h-full">
             <CardContent className="pt-6">
               <div className="flex items-start justify-between mb-4">
-                <p className="text-sm text-muted-foreground font-medium">Response rate</p>
+                <p className="text-sm text-muted-foreground font-medium">{meter.title}</p>
                 <CalendarDays className="h-8 w-8 text-primary opacity-30" />
               </div>
               <div className="flex items-baseline gap-2 mb-3">
@@ -128,12 +135,15 @@ export function ArtistDashboard() {
                 </div>
               </div>
               <p className="text-xs text-muted-foreground mt-3">
-                Click to see pending offers →
+                {meter.footer}
               </p>
             </CardContent>
           </Card>
         </Link>
 
+        {/* Direct-booking orgs have no offer step, so there is never anything
+            to respond to; hide the card instead of showing offer language. */}
+        {flow.artist_acceptance && (
         <Card>
           <CardHeader>
             <CardTitle className="font-display flex items-center gap-2 text-base">
@@ -145,7 +155,7 @@ export function ArtistDashboard() {
           <CardContent>
             {unanswered.length === 0 ? (
               <p className="text-sm text-muted-foreground">
-                You're all caught up — no pending offers.
+                You're all caught up. No pending offers.
               </p>
             ) : (
               <div className="space-y-2 max-h-72 overflow-y-auto">
@@ -175,6 +185,7 @@ export function ArtistDashboard() {
             )}
           </CardContent>
         </Card>
+        )}
       </div>
 
       <Card>
