@@ -29,4 +29,12 @@ describe("RequiredSkillsSection", () => {
     expect(onAdd).toHaveBeenCalledWith("s3");
     expect(screen.queryByRole("button", { name: "judge" })).not.toBeInTheDocument();
   });
+  it("a skill in both show and date lists renders once, as the read-only show chip", () => {
+    render(<RequiredSkillsSection skills={SKILLS} showSkillIds={["s1"]} dateSkillIds={["s1", "s2"]}
+      onAdd={() => {}} onRemove={() => {}} pending={false} />);
+    expect(screen.getAllByText("judge")).toHaveLength(1);
+    expect(screen.getByText("From show")).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /remove judge/i })).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /remove juggling/i })).toBeInTheDocument();
+  });
 });
