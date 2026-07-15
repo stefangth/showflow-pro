@@ -12,11 +12,14 @@ import { motion } from 'framer-motion';
 import { addDays, format } from 'date-fns';
 import { toast } from 'sonner';
 import { ArtistDashboard } from '@/components/dashboard/ArtistDashboard';
+import { TierAttentionCard } from '@/components/dashboard/TierAttentionCard';
 import { showSlots } from '@/lib/settings';
 import { formatDateDMY } from '@/lib/dates';
-import { useReferenceField } from '@/hooks/useBookingFlow';
-import { referenceLabel } from '@/lib/bookingFlow';
-import { bulkConfirmSoftBooked, bulkDeclineSoftBooked } from '@/data/bookings';
+import { useReferenceField, useBookingFlow } from '@/hooks/useBookingFlow';
+import { referenceLabel, BOOKING_FLOW_DEFAULTS } from '@/lib/bookingFlow';
+import { computeTierAttention } from '@/lib/bookingCockpit';
+import { deliveryHint } from '@/lib/flowCopy';
+import { bulkConfirmSoftBooked, bulkDeclineSoftBooked, fetchTierAttention } from '@/data/bookings';
 
 const fadeUp = {
   initial: { opacity: 0, y: 20 },
@@ -49,7 +52,10 @@ function ProducerDashboard() {
   const in30 = format(addDays(today, 30), 'yyyy-MM-dd');
 
   const qc = useQueryClient();
+  const { currentOrg } = useAuth();
+  const orgId = currentOrg?.id ?? null;
   const { reference, customFieldKey } = useReferenceField();
+  const flow = useBookingFlow().data ?? BOOKING_FLOW_DEFAULTS;
   const [selected, setSelected] = useState<Set<string>>(new Set());
 
   const { data: upcomingDates } = useQuery({
@@ -98,6 +104,16 @@ function ProducerDashboard() {
       return (data ?? []) as unknown as SoftBookedRow[];
     },
   });
+
+  const { data: attentionRows } = useQuery({
+    queryKey: ['bookings', 'tier-attention', orgId],
+    enabled: Boolean(orgId) && flow.artist_acceptance,
+    queryFn: () => fetchTierAttention(supabase, { orgId, today: todayStr }),
+  });
+  const attentionItems = useMemo(
+    () => computeTierAttention(attentionRows ?? [], new Date()),
+    [attentionRows],
+  );
 
   const bulkConfirm = useMutation({
     mutationFn: (ids: string[]) => bulkConfirmSoftBooked(supabase, { ids, now: new Date() }),
@@ -271,6 +287,15 @@ function ProducerDashboard() {
             </div>
           </CardContent>
         </Card>
+      )}
+
+      {flow.artist_acceptance && (
+        <TierAttentionCard
+          items={attentionItems}
+          hint={deliveryHint(flow)}
+          reference={reference}
+          customFieldKey={customFieldKey}
+        />
       )}
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
