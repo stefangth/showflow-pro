@@ -99,6 +99,15 @@ describe("CastsCitiesTab - scoped priority editor", () => {
     expect(within(row).getByText("Tier 1")).toBeInTheDocument();
   });
 
+  it("org-scopes the scope-select shows query (a multi-org member must not see another org's shows)", async () => {
+    renderTab();
+    // Calls-level pin: the fake's single-object seeds don't apply eq() filtering, so
+    // seed data alone can't prove the org filter wasn't dropped (UI-leak regression).
+    await waitFor(() =>
+      expect(fake.calls).toContainEqual({ table: "shows", method: "eq", args: ["org_id", "org-1"] }),
+    );
+  });
+
   it("records an insert on show_cast_eligibility carrying priority when assigning a tier in show scope", async () => {
     renderTab();
     await openScopeSelect();

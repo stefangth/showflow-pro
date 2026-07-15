@@ -138,11 +138,20 @@ export function CastsCitiesTab({ currentOrgId, canEnter }: { currentOrgId: strin
     setNewPriorityCastId('');
   };
 
+  // Org-scoped like fetchShowsWithStats (src/data/shows.ts): god-mode RLS returns rows
+  // across ALL of a super-admin's orgs, so relying on RLS alone could list another
+  // org's shows in the scope dropdown.
   const { data: allShows } = useQuery({
-    queryKey: ['shows', 'for-priority-scope'],
-    enabled: canEnter,
+    queryKey: ['shows', 'for-priority-scope', orgId],
+    enabled: canEnter && !!orgId,
     queryFn: async () => {
-      const { data, error } = await supabase.from('shows').select('id, program, sub_program').order('program');
+      if (!orgId) return [];
+      const { data, error } = await supabase
+        .from('shows')
+        .select('id, program, sub_program')
+        .eq('org_id', orgId)
+        .order('sort_order', { ascending: true, nullsFirst: false })
+        .order('program');
       if (error) throw error;
       return (data ?? []) as ShowOption[];
     },
