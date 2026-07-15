@@ -591,6 +591,7 @@ export async function filterArtistIdsBySkills(
   // (artist_id, skill_id) is the junction PK, so counting rows equals counting distinct skills.
   return artistIds.filter((id) => (counts.get(id) ?? 0) === requiredSkillIds.length);
 }
+```
 
 - [ ] **Step 4: Run tests to verify pass**
 
