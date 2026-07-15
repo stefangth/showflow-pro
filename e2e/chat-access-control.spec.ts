@@ -135,7 +135,7 @@ test.describe("Chat access control — booking status gates chat participation",
     // Chats nav is visible to all roles (no role gate on the nav item).
     await navViaSidebar(page, /^chats$/i);
 
-    // The chat card is labelled by showLabel(program – sub_program).
+    // The chat card is labelled by referenceLabel (default source: program, sub_program).
     const chatCard = page.getByRole("button", { name: /e2e-program/i }).first();
     await expect(chatCard).toBeVisible({ timeout: 15_000 });
     await chatCard.click();

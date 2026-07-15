@@ -19,7 +19,7 @@ import { fetchCustomFieldDefs, upsertCustomFieldDef, deleteCustomFieldDef } from
 import { airtableTypeToCustomType, slugifyKey, type CustomFieldType } from "@/lib/customFields";
 import { fetchAirtableBases, fetchAirtableTables, fetchAirtableLinkedRecords, fetchAirtableProgramPairs } from "@/data/airtableSchema";
 import { SHOWFLOW_FIELDS, buildProgramKey, buildCityKey, planCityReconciliation, groupDuplicateCities, planProgramImport, type AirtableFieldMap, type ProgramPair } from "@/data/airtableMapping";
-import { showLabel } from "@/types";
+import { showIdentityLabel } from "@/types";
 import { fetchShowsForLinking, linkShowAirtableKey, importShowsFromOptions, upsertOrgSetting } from "@/data/settings";
 import { fetchAirtableSettings, type AirtableSettings } from "@/data/airtableSettings";
 import type { Json } from "@/integrations/supabase/types";
@@ -519,9 +519,9 @@ export function AirtableSyncTab({ orgId }: Props) {
     const show = key ? showByKey.get(key) : undefined;
     return {
       key,
-      display: pair.program ? `${pair.program} – ${pair.sub_program}` : pair.sub_program,
+      display: showIdentityLabel(pair),
       linkedId: show?.id ?? null,
-      linkedLabel: show ? showLabel(show) : null,
+      linkedLabel: show ? showIdentityLabel(show) : null,
       createPair: pair,
     };
   }));
@@ -532,7 +532,7 @@ export function AirtableSyncTab({ orgId }: Props) {
     const city = key ? cityByKey.get(key) : undefined;
     return { key, display: name, linkedId: city?.id ?? null, linkedLabel: city?.name ?? null };
   }));
-  const programExisting = unlinkedShows.map((sh) => ({ id: sh.id, label: showLabel(sh) }));
+  const programExisting = unlinkedShows.map((sh) => ({ id: sh.id, label: showIdentityLabel(sh) }));
   const cityExisting = unlinkedCities.map((c) => ({ id: c.id, label: c.name }));
   const programUnlinked = programRows.filter((r) => !r.linkedId).length;
   const cityUnlinked = cityRows.filter((r) => !r.linkedId).length;
