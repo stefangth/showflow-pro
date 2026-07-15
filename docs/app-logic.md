@@ -147,8 +147,10 @@ Offer tiers come from an "effective ladder" resolved per (show, city):
 2. Otherwise the ladder is the org-wide `cast_city_priority` list for the city.
 
 A `show_cast_eligibility` row without a priority keeps its plain meaning: eligible,
-untiered (reachable via direct booking or the ad-hoc tier 99). Tier 99 offers the
-date's ad-hoc casts minus any cast already in the effective ladder.
+untiered: the cast stays reachable via direct booking. Ad-hoc tier 99 offers come
+from the separate per-date cast list (`show_date_cast_eligibility`), not from these
+rows; tier 99 offers the date's ad-hoc casts minus any cast already in the
+effective ladder.
 
 Priorities are edited in Settings > Casts & Cities (scope selector: organization
 default, or a specific show).
@@ -167,7 +169,7 @@ filter is per-invocation and never applied by automation.
 
 open-offer-tier filters, in order: effective-ladder casts for the tier ->
 active artists -> not already booked -> not blocked -> passes the show
-eligibility gate (union of show-level and date-level cast rows; none = 
+eligibility gate (union of show-level and date-level cast rows; none =
 unrestricted) -> holds all required skills. The dry-run preview reports each
 exclusion count.
 

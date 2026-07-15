@@ -24,7 +24,7 @@ The offer engine's tiering axis is hardwired to city: `cast_city_priority` maps 
 
 - `ALTER TABLE show_cast_eligibility ADD COLUMN priority integer` with `CHECK (priority >= 1)`, nullable.
 - Partial unique index: `UNIQUE (show_id, city_id, priority) WHERE priority IS NOT NULL`. Mirrors the org-level `UNIQUE (city_id, priority)`: one cast per tier per (show, city).
-- `priority IS NULL` keeps today's meaning exactly: eligible for the show, untiered (reachable via direct booking and ad-hoc tier 99).
+- `priority IS NULL` keeps today's meaning exactly: eligible for the show, untiered: the cast stays reachable via direct booking. Ad-hoc tier 99 candidates come from the separate per-date list (`show_date_cast_eligibility`), not from these rows.
 - Existing rows, RLS policies, and the `UNIQUE (show_id, city_id, cast_id)` constraint are untouched.
 
 ### `show_required_skills`

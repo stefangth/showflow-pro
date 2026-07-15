@@ -234,7 +234,7 @@ export const SYSTEM_MAP_NODES: SystemMapNode[] = [
       Writes: "bookings (suggested, primary only) · show_date_offer_tiers upsert; offer_expires_at stays null except in immediate delivery",
       Effects: "none in digest mode; immediate-delivery orgs (offer_delivery=immediate) get an offer-immediate email right away, stamped only for sends that succeeded",
       TierLogic: "effective ladder per (show,city): show_cast_eligibility priority rows win outright, else cast_city_priority; tier 99 = ad-hoc casts minus ladder members",
-      Reads: "show_cast_eligibility (priority ladder + gate) · show_date_cast_eligibility (gate) · show_required_skills ∪ show_date_required_skills, plus an optional per-request skill_filter_ids · artist_skills",
+      Reads: "show_cast_eligibility (priority ladder + gate) · show_date_cast_eligibility (gate + tier 99 ad-hoc candidates) · show_required_skills ∪ show_date_required_skills, plus an optional per-request skill_filter_ids · artist_skills",
       Cite: "open-offer-tier/index.ts:59-217,271-376",
     },
   },
