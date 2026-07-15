@@ -33,6 +33,14 @@ describe("fetchSkillEligibleArtistIds", () => {
     const res = await fetchSkillEligibleArtistIds(fake as never, { requiredSkillIds: ["s1", "s2"] });
     expect([...res!]).toEqual(["a1"]);
   });
+  it("returns an EMPTY set (not null) when skills are required but nobody holds them", async () => {
+    // null means unrestricted; zero qualifying artists must stay a restriction, never fail open.
+    const fake = createFakeSupabase({ artist_skills: { data: [], error: null } });
+    const res = await fetchSkillEligibleArtistIds(fake as never, { requiredSkillIds: ["s1"] });
+    expect(res).not.toBeNull();
+    expect(res).toBeInstanceOf(Set);
+    expect(res!.size).toBe(0);
+  });
 });
 
 describe("fetchShowPriorityRows", () => {
