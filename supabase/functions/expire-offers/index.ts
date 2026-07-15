@@ -171,7 +171,7 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
         remindersSent += 1
         if (entry.userId) {
           const count = entry.bookingIds.length
-          await admin.from('notifications').insert([{
+          const { error: notifErr } = await admin.from('notifications').insert([{
             org_id: org.id,
             user_id: entry.userId,
             type: 'offer_expiring',
@@ -180,6 +180,14 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
             related_entity_type: 'booking',
             related_entity_id: entry.bookingIds[0],
           }])
+          // Best-effort: the reminder email already sent and the booking is already
+          // stamped above, so a failed in-app insert must not abort the pass. Log with
+          // enough context (org/artist/bookings) to investigate, then continue.
+          if (notifErr) {
+            console.error('expire-offers: reminder notification insert failed', {
+              org: org.id, artistId, userId: entry.userId, bookingIds: entry.bookingIds, error: notifErr.message,
+            })
+          }
         }
       } catch (e) {
         console.error('expire-offers: reminder email send failed', { org: org.id, artistId, error: (e as Error).message })

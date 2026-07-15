@@ -10,12 +10,19 @@ const ACTIVE_BOOKING_STATUSES = ["suggested", "soft_booked", "confirmed"];
 
 /**
  * Daily confirmation digest (hourly cron). For each ACTIVE org whose
- * confirmation_digest_hour_berlin matches the current Berlin hour, send one email
- * per artist that folds BOTH newly-confirmed bookings AND undigested schedule
- * changes (cancellation / per-session add/remove/retime) on dates the artist is
- * booked on, creating in-app schedule_change notifications for registered artists.
- * In-app delivery happens before the (best-effort) email; change-log rows are
- * stamped digested afterwards so they are not re-processed.
+ * confirmation_digest_hour_berlin matches the current Berlin hour: create
+ * in-app schedule_change notifications for registered artists (newly-confirmed
+ * bookings folded with undigested schedule changes, cancellation / per-session
+ * add/remove/retime, on dates the artist is booked on) and consume the
+ * matching show_date_change_log rows. That in-app step is the reliable
+ * delivery channel and always runs once an org matches the hour gate,
+ * regardless of the org's flow settings. Only THEN, and only when the org's
+ * booking_flow.confirmation_digest is on, does the function send one
+ * best-effort email per artist folding the same bookings and changes;
+ * confirmation_digest is an email-only opt-out, so turning it off skips just
+ * that email loop, never the in-app notifications. It is NOT gated on
+ * artist_acceptance: direct-booking orgs have no offer/accept stage, so this
+ * digest is their only booking notification.
  * Auth: X-Cron-Secret (pg_cron) or admin/producer JWT.
  */
 export async function handle(req: Request, deps: Deps): Promise<Response> {

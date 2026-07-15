@@ -4,7 +4,7 @@ import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
-import { hh, type BookingFlow, type FlowTimes } from "@/lib/bookingFlow";
+import { hh, lifecycleChips, type BookingFlow, type FlowTimes } from "@/lib/bookingFlow";
 
 interface Props {
   flow: BookingFlow;
@@ -62,6 +62,15 @@ function TimelineStep({
 export function FlowTimeline({ flow, times, onFlowChange, onTimesChange, customFields, referencePreview }: Props) {
   const respOff = !flow.artist_acceptance;
   const skippedChip = <Badge variant="neutral">Skipped</Badge>;
+
+  // The stage that acceptance (or a direct booking) lands on next is always the
+  // second entry of the central lifecycleChips() sequence: "Direct booking" (index
+  // 0) skips straight to "Confirmed" (index 1); "Suggested" (index 0) proceeds to
+  // either "Soft booked" or "Confirmed" (index 1) depending on producer_confirmation.
+  // Deriving from the same helper the rail uses keeps this badge from drifting out
+  // of sync with FlowRail's "Resulting lifecycle" chips.
+  const nextStageChip = lifecycleChips(flow)[1];
+  const nextStageBadgeVariant = nextStageChip.tone === "amber" ? "hold" : "confirmed";
 
   return (
     <div>
@@ -232,9 +241,7 @@ export function FlowTimeline({ flow, times, onFlowChange, onTimesChange, customF
         desc="Artists accept or decline from their calendar. Off means producers book directly, with no offers at all."
         chips={
           <>
-            <Badge variant={respOff || !flow.producer_confirmation ? "confirmed" : "hold"}>
-              {respOff || !flow.producer_confirmation ? "Confirmed" : "Soft booked"}
-            </Badge>
+            <Badge variant={nextStageBadgeVariant}>{nextStageChip.label}</Badge>
             <Switch
               checked={flow.artist_acceptance}
               aria-label="Artist acceptance"
