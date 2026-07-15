@@ -25,7 +25,8 @@ export function ArtistDashboard() {
   const { data: eligibleDates } = useArtistEligibleDates();
   const { reference, customFieldKey } = useReferenceField();
   const flowQ = useBookingFlow();
-  const meter = artistMeter(flowQ.data ?? BOOKING_FLOW_DEFAULTS);
+  const flow = flowQ.data ?? BOOKING_FLOW_DEFAULTS;
+  const meter = artistMeter(flow);
 
   // Distinct cache key per projection (this selects no `id`). A shared key let
   // different `select` shapes clobber each other in the React Query cache — see
@@ -140,6 +141,9 @@ export function ArtistDashboard() {
           </Card>
         </Link>
 
+        {/* Direct-booking orgs have no offer step, so there is never anything
+            to respond to; hide the card instead of showing offer language. */}
+        {flow.artist_acceptance && (
         <Card>
           <CardHeader>
             <CardTitle className="font-display flex items-center gap-2 text-base">
@@ -151,7 +155,7 @@ export function ArtistDashboard() {
           <CardContent>
             {unanswered.length === 0 ? (
               <p className="text-sm text-muted-foreground">
-                You're all caught up — no pending offers.
+                You're all caught up. No pending offers.
               </p>
             ) : (
               <div className="space-y-2 max-h-72 overflow-y-auto">
@@ -181,6 +185,7 @@ export function ArtistDashboard() {
             )}
           </CardContent>
         </Card>
+        )}
       </div>
 
       <Card>
