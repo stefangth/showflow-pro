@@ -92,6 +92,17 @@ export async function clearShowCastPriority(client: SupabaseClient<Database>, ro
   if (error) throw error;
 }
 
+/** Show-level required skill ids (no date component). */
+export async function fetchShowRequiredSkillIds(
+  client: SupabaseClient<Database>,
+  showId: string,
+): Promise<string[]> {
+  const { data, error } = await (client as any)
+    .from("show_required_skills").select("skill_id").eq("show_id", showId);
+  if (error) throw error;
+  return ((data ?? []) as { skill_id: string }[]).map((r) => r.skill_id);
+}
+
 export async function addShowRequiredSkill(
   client: SupabaseClient<Database>,
   args: { showId: string; skillId: string; orgId: string },

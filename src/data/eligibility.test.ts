@@ -5,6 +5,7 @@ import {
   setShowCastPriority, clearShowCastPriority,
   addShowRequiredSkill, removeShowRequiredSkill,
   addShowDateRequiredSkill, removeShowDateRequiredSkill,
+  fetchShowRequiredSkillIds,
 } from "./eligibility";
 
 describe("fetchRequiredSkillIds", () => {
@@ -15,6 +16,13 @@ describe("fetchRequiredSkillIds", () => {
     });
     const res = await fetchRequiredSkillIds(fake as never, { showId: "sh1", showDateId: "d1" });
     expect(res).toEqual({ showSkillIds: ["s1"], dateSkillIds: ["s1", "s2"], all: ["s1", "s2"] });
+  });
+});
+
+describe("fetchShowRequiredSkillIds", () => {
+  it("returns the show's skill ids", async () => {
+    const fake = createFakeSupabase({ show_required_skills: { data: [{ skill_id: "s1" }], error: null } });
+    expect(await fetchShowRequiredSkillIds(fake as never, "sh1")).toEqual(["s1"]);
   });
 });
 

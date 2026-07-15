@@ -1,10 +1,14 @@
-import { useEffect } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { toast } from "sonner";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/features/auth/AuthContext";
 import { useCreateShow, useUpdateShow, type ShowWithStats } from "@/hooks/useShows";
+import { useSkills } from "@/hooks/useSkills";
+import { fetchShowRequiredSkillIds, addShowRequiredSkill, removeShowRequiredSkill } from "@/data/eligibility";
 import { isSyncedShow, nextSortOrder } from "@/lib/catalog";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -12,6 +16,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
+import { SkillPicker } from "@/components/skills/SkillPicker";
 
 const slot = z.string().regex(/^\d*$/, "Whole number ≥ 0").optional().or(z.literal(""));
 const schema = z.object({
@@ -40,6 +45,22 @@ export function ShowFormDialog({
   const synced = !!show && isSyncedShow(show);
   const createShow = useCreateShow();
   const updateShow = useUpdateShow();
+  const queryClient = useQueryClient();
+
+  const { data: orgSkills } = useSkills();
+  const [requiredSkillIds, setRequiredSkillIds] = useState<string[]>([]);
+  const initialSkillIdsRef = useRef<string[]>([]);
+  // Load the show's current required skills when editing (dialog opens with a show).
+  const showReqQ = useQuery({
+    queryKey: ["eligibility", "show-required-skills", show?.id],
+    enabled: open && !!show?.id,
+    queryFn: () => fetchShowRequiredSkillIds(supabase, show!.id),
+  });
+  useEffect(() => {
+    const ids = showReqQ.data ?? [];
+    setRequiredSkillIds(ids);
+    initialSkillIdsRef.current = ids;
+  }, [showReqQ.data]);
 
   const form = useForm<FormValues>({
     resolver: zodResolver(schema),
@@ -60,8 +81,26 @@ export function ShowFormDialog({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, show]);
 
+  /** Insert/delete added/removed skill ids against the target show, then bust
+   *  every domain the eligibility engine reads from. */
+  const applyRequiredSkillsDiff = async (targetShowId: string) => {
+    const before = new Set(initialSkillIdsRef.current);
+    const after = new Set(requiredSkillIds);
+    for (const id of requiredSkillIds) {
+      if (!before.has(id)) await addShowRequiredSkill(supabase, { showId: targetShowId, skillId: id, orgId: currentOrg!.id });
+    }
+    for (const id of initialSkillIdsRef.current) {
+      if (!after.has(id)) await removeShowRequiredSkill(supabase, { showId: targetShowId, skillId: id });
+    }
+    queryClient.invalidateQueries({ queryKey: ["eligibility"] });
+    queryClient.invalidateQueries({ queryKey: ["eligible-artists"] });
+    queryClient.invalidateQueries({ queryKey: ["artist-eligible-dates"] });
+    queryClient.invalidateQueries({ queryKey: ["offer-tiers"] });
+  };
+
   const onSubmit = async (v: FormValues) => {
     try {
+      let targetShowId: string;
       if (isEdit && show) {
         await updateShow.mutateAsync({
           id: show.id,
@@ -69,6 +108,7 @@ export function ShowFormDialog({
             ? { category: v.category || null, description: v.description || null, main_cast_slots: toSlot(v.mainCastSlots), understudy_slots: toSlot(v.understudySlots) }
             : { program: v.program || null, sub_program: v.subProgram || null, category: v.category || null, description: v.description || null, main_cast_slots: toSlot(v.mainCastSlots), understudy_slots: toSlot(v.understudySlots) },
         });
+        targetShowId = show.id;
         toast.success("Production updated");
         onSaved?.(show.id);
       } else {
@@ -80,9 +120,11 @@ export function ShowFormDialog({
           mainCastSlots: toSlot(v.mainCastSlots), understudySlots: toSlot(v.understudySlots),
           sortOrder: nextSortOrder(allShows),
         });
+        targetShowId = id;
         toast.success("Production created");
         onSaved?.(id);
       }
+      await applyRequiredSkillsDiff(targetShowId);
       onOpenChange(false);
     } catch (e) {
       toast.error((e as Error).message);
@@ -130,6 +172,20 @@ export function ShowFormDialog({
               <Input id="understudySlots" inputMode="numeric" {...form.register("understudySlots")} />
               {err.understudySlots && <p className="text-xs text-destructive">{err.understudySlots.message}</p>}
             </div>
+          </div>
+          <div className="space-y-1.5">
+            <p className="text-sm font-medium">Required skills</p>
+            <p className="text-xs text-muted-foreground">
+              Artists must have all of these skills to receive offers or be booked.
+            </p>
+            <SkillPicker
+              skills={orgSkills ?? []}
+              selectedIds={requiredSkillIds}
+              onToggle={(id) => setRequiredSkillIds((prev) =>
+                prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id])}
+              disabled={pending}
+              emptyHint="No skills yet. Add skills on artist profiles first."
+            />
           </div>
           <DialogFooter>
             <Button type="submit" disabled={pending}>{pending ? "Saving…" : isEdit ? "Save" : "Create"}</Button>
