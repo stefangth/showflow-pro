@@ -230,10 +230,11 @@ export const SYSTEM_MAP_NODES: SystemMapNode[] = [
       Trigger: "UI button + airtable-poll",
       Auth: "isServiceRole ∨ requireOrgRole(admin,producer)",
       Gate: "409 when booking_flow.artist_acceptance=false (direct-booking orgs never get offers)",
-      DryRun: "dry_run:true returns the candidate list + exclusion counts, writes nothing",
+      DryRun: "dry_run:true returns the candidate list + exclusion counts (already_booked, blocked, inactive, not_eligible, missing_skills), writes nothing",
       Writes: "bookings (suggested, primary only) · show_date_offer_tiers upsert; offer_expires_at stays null except in immediate delivery",
       Effects: "none in digest mode; immediate-delivery orgs (offer_delivery=immediate) get an offer-immediate email right away, stamped only for sends that succeeded",
-      TierLogic: "tier N = cast_city_priority rank N; tier 99 = ad-hoc casts; minus booked/blocked artists",
+      TierLogic: "effective ladder per (show,city): show_cast_eligibility priority rows win outright, else cast_city_priority; tier 99 = ad-hoc casts minus ladder members",
+      Reads: "show_cast_eligibility (priority ladder + gate) · show_date_cast_eligibility (gate) · show_required_skills ∪ show_date_required_skills, plus an optional per-request skill_filter_ids · artist_skills",
       Cite: "open-offer-tier/index.ts:59-217,271-376",
     },
   },
@@ -265,7 +266,7 @@ export const SYSTEM_MAP_NODES: SystemMapNode[] = [
       Reminder: "24h-before-expiry pass, gated on expiry_reminder ∧ artist_acceptance: offer-expiry-reminder email + offer_expiring in-app, idempotent via bookings.reminder_sent_at",
       Writes:
         "expire_soft_bookings() RPC → cancels overdue suggested · notifications (offer_expiring, tier_escalated, cast_escalation_requested) · escalation stamp",
-      Effects: "auto_escalate on: closes the short tier, opens the next cast_city_priority tier via open-offer-tier, notifies tier_escalated (no email); otherwise, or on a failed auto-open, falls back to cast-escalation-requested email + notification to producers",
+      Effects: "auto_escalate on: closes the short tier, opens the next tier of the SAME effective ladder that opened it via open-offer-tier, notifies tier_escalated (no email); otherwise, or on a failed auto-open, falls back to cast-escalation-requested email + notification to producers",
       Rule: "escalate once per tier when 0 pending non-expired ∧ accepted < required",
       Cite: "expire-offers/index.ts:23-361",
     },
@@ -539,9 +540,9 @@ export const SYSTEM_MAP_NODES: SystemMapNode[] = [
     subsystems: ["booking", "email", "airtable"],
     detail: {
       Guards:
-        "enforce_booking_transition (state machine, rejects) · trg_derive_org_id (cross-org, rejects) · bookings_active_artist_date_uniq (one active per artist+date) · promote_understudy_on_cancellation · slot_fill_auto_cancel · notify_booking_transition (suggested→soft_booked → producers; soft_booked→confirmed → artist; direct INSERT as confirmed → artist) · status recompute → show_dates",
+        "enforce_booking_transition (state machine, rejects) · trg_derive_org_id (cross-org, rejects) · bookings_active_artist_date_uniq (one active per artist+date) · promote_understudy_on_cancellation (accepted understudy, ordered by skill coverage of the cancelled artist's skills desc then oldest first; skills never block promotion) · slot_fill_auto_cancel · notify_booking_transition (suggested→soft_booked → producers; soft_booked→confirmed → artist; direct INSERT as confirmed → artist) · status recompute → show_dates",
       StateMachine: "suggested → soft_booked → confirmed; suggested → confirmed directly under auto-confirm (producer_confirmation=false); direct-booking orgs INSERT straight to confirmed (no offer step); any → cancelled; cancelled terminal",
-      Cite: "20260702120020 · 20260616162454 · 20260616161112 · 20260714104826 · 20260715103620",
+      Cite: "20260702120020 · 20260616162454 · 20260616161112 · 20260714104826 · 20260715103620 · 20260715130100",
     },
   },
   {
