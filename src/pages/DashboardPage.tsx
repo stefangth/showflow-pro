@@ -110,10 +110,11 @@ function ProducerDashboard() {
     enabled: Boolean(orgId) && flow.artist_acceptance,
     queryFn: () => fetchTierAttention(supabase, { orgId, today: todayStr }),
   });
-  const attentionItems = useMemo(
-    () => computeTierAttention(attentionRows ?? [], new Date()),
-    [attentionRows],
-  );
+  // Deliberately NOT memoized: structural sharing keeps attentionRows
+  // reference-equal across refetches, so a memo would freeze the clock and
+  // "Expires soon" could never flip from time passing alone. The derivation
+  // is a cheap filter/map (same pattern as computeUpNext in the date sheet).
+  const attentionItems = computeTierAttention(attentionRows ?? [], new Date());
 
   const bulkConfirm = useMutation({
     mutationFn: (ids: string[]) => bulkConfirmSoftBooked(supabase, { ids, now: new Date() }),

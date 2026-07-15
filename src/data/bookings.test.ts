@@ -307,6 +307,7 @@ describe("fetchTierAttention", () => {
     expect(fake.calls).toContainEqual({ table: "show_date_offer_tiers", method: "is", args: ["closed_at", null] });
     expect(fake.calls).toContainEqual({ table: "show_date_offer_tiers", method: "eq", args: ["show_date.org_id", "org-1"] });
     expect(fake.calls).toContainEqual({ table: "show_date_offer_tiers", method: "gte", args: ["show_date.date", "2026-07-15"] });
+    expect(fake.calls).toContainEqual({ table: "show_date_offer_tiers", method: "neq", args: ["show_date.status", "cancelled"] });
   });
   it("returns [] for a null org without querying", async () => {
     const fake = createFakeSupabase({});
