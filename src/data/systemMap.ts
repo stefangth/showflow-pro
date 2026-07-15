@@ -539,9 +539,9 @@ export const SYSTEM_MAP_NODES: SystemMapNode[] = [
     subsystems: ["booking", "email", "airtable"],
     detail: {
       Guards:
-        "enforce_booking_transition (state machine, rejects) · trg_derive_org_id (cross-org, rejects) · bookings_active_artist_date_uniq (one active per artist+date) · promote_understudy_on_cancellation · slot_fill_auto_cancel · notify_booking_transition · status recompute → show_dates",
-      StateMachine: "suggested → soft_booked → confirmed; suggested → confirmed directly under auto-confirm (producer_confirmation=false); any → cancelled; cancelled terminal",
-      Cite: "20260702120020 · 20260616162454 · 20260616161112 · 20260714104826",
+        "enforce_booking_transition (state machine, rejects) · trg_derive_org_id (cross-org, rejects) · bookings_active_artist_date_uniq (one active per artist+date) · promote_understudy_on_cancellation · slot_fill_auto_cancel · notify_booking_transition (suggested→soft_booked → producers; soft_booked→confirmed → artist; direct INSERT as confirmed → artist) · status recompute → show_dates",
+      StateMachine: "suggested → soft_booked → confirmed; suggested → confirmed directly under auto-confirm (producer_confirmation=false); direct-booking orgs INSERT straight to confirmed (no offer step); any → cancelled; cancelled terminal",
+      Cite: "20260702120020 · 20260616162454 · 20260616161112 · 20260714104826 · 20260715103620",
     },
   },
   {
