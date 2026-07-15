@@ -20,6 +20,10 @@ PR #161 (branch `claude/booking-engine-ui-ux-09cbf4`) shipped the org-configurab
 - Production DB has: `settings_audit_log` (+trigger, RLS), transition guard allowing `suggested → confirmed`, `bookings.reminder_sent_at`, understudy-promotion policy gates, the flow-gated artist self-confirm RLS policy, `category_of()` mappings for `offer_expiring`/`tier_escalated`, and the review-hardening migration (`20260714182625`: auto-confirm notifications, throw-free boolean parsing, confirmed_at preservation, `trg_derive_org_id` fires on `UPDATE OF org_id`).
 - Edge functions deploy automatically on merge to `main` (`.github/workflows/deploy-functions.yml`); no new function slugs were added, `supabase/config.toml` needed no changes.
 
+## Status update (2026-07-15)
+
+Tier 1 is COMPLETE: PR #161 merged (d1b1ded on main via release PR #162), version 1.9.0 released (changelog + JSON regenerated), semver tags caught up (v1.4.1 through v1.9.0 pushed). Tier 2 items 3, 4, 5, and 7 are COMPLETE on the tier-2 follow-up PR (direct-mode UI e2e; showIdentityLabel/referenceLabel convergence; page-level save hidden on the booking tab; polish batch incl. FlowTimeline badge reuse). Item 6 stays deferred pending producer feedback; the window-hours minimum remains an open product decision. Only Tier 3 (Phases 3 and 4) remains, each needing its own brainstorm/spec cycle.
+
 ## Remaining work, in priority order
 
 ### Tier 1: at/after merge of PR #161

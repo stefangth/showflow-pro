@@ -14,8 +14,10 @@
  *                     under this org setting.
  *   3. direct       : artist_acceptance:false. open-offer-tier refuses with an
  *                     error (offers are disabled for the org), so a producer
- *                     books straight to confirmed instead. The artist never
- *                     sees an offer but the date shows as confirmed on login.
+ *                     books straight to confirmed from the date sheet's "Book
+ *                     artists" card. Booking and confirming happen in one step,
+ *                     driven through the real UI, with no offer for the artist
+ *                     to accept.
  *
  * Each scenario gets its own fresh show_date on the fixture's show/cast
  * (`freshEligibleDate` below) so the three serial tests never fight over the
@@ -25,8 +27,9 @@
 import { expect, test } from "@playwright/test";
 import { loginAsAndAwaitDashboard, navViaSidebar } from "./helpers/auth";
 import { deleteUserByEmail, BOOTSTRAP_ORG_ID } from "./helpers/users";
-import { adminClient, tagEmail } from "./helpers/supabase";
+import { tagEmail } from "./helpers/supabase";
 import { seedConsent } from "./helpers/consent";
+import { TEST_PRODUCER_EMAIL, TEST_PRODUCER_PASSWORD } from "./global-setup";
 import {
   cleanupBookingFixture,
   getLatestBooking,
@@ -49,10 +52,21 @@ function isoDays(offset: number): string {
   return d.toISOString().slice(0, 10);
 }
 
-/** `YYYY-MM-DD` to `dd/MM/yyyy`, matching src/lib/dates.ts's formatDateDMY. */
-function formatDMY(dateISO: string): string {
+const MONTH_ABBR = [
+  "Jan", "Feb", "Mar", "Apr", "May", "Jun",
+  "Jul", "Aug", "Sep", "Oct", "Nov", "Dec",
+];
+
+/**
+ * `YYYY-MM-DD` to `dd MMM yyyy` (e.g. `26 Aug 2026`), matching the producer
+ * bookings table's date cell (`format(parseDateOnly(sd.date), 'dd MMM yyyy')`
+ * in ShowsBookingsPage). Used to target THIS date's row when all e2e dates
+ * share the same seeded show. The ISO day is already zero-padded, so the parts
+ * map straight to date-fns' default (en-US) output with no Date construction.
+ */
+function formatBookingsDate(dateISO: string): string {
   const [y, m, d] = dateISO.split("-");
-  return `${d}/${m}/${y}`;
+  return `${d} ${MONTH_ABBR[Number(m) - 1]} ${y}`;
 }
 
 /**
@@ -140,38 +154,70 @@ test.describe("Booking flow presets: one happy path per preset", () => {
     expect(booking?.confirmed_at).toBeTruthy();
   });
 
-  test("direct: offers are refused, a straight booking lands confirmed", async ({ page }) => {
+  test("direct: a producer books the artist straight to confirmed via the UI", async ({ page }) => {
     await setBookingFlow(BOOTSTRAP_ORG_ID, { artist_acceptance: false });
 
     const dateISO = isoDays(42);
     const dateId = await freshEligibleDate(dateISO);
 
+    // Direct-booking orgs disable open offers: open-offer-tier refuses, so there
+    // is no suggested/offer step for the artist to accept. Assert the refusal,
+    // preserving the old test's "no offer step" coverage.
     const { error } = await tryOpenOfferTier(dateId, 99);
     expect(error).toBeTruthy();
     expect(error).toMatch(/direct booking/i);
 
-    // No offer was created, so a producer books the artist straight to confirmed
-    // instead, the same shape createBooking (src/data/bookings.ts) inserts when
-    // the org's booking_flow disables artist acceptance.
-    const admin = adminClient();
-    const { error: insertErr } = await admin.from("bookings").insert({
-      show_date_id: dateId,
-      artist_id: fixture.artistId,
-      status: "confirmed",
-      confirmed_at: new Date().toISOString(),
-      is_understudy: false,
-      org_id: BOOTSTRAP_ORG_ID,
-    });
-    expect(insertErr).toBeNull();
+    // Drive the real direct-booking UI instead of inserting the booking: a
+    // producer opens the date sheet and books the artist from the "Book artists"
+    // card (EligibilityBookList), which books AND confirms in one step.
+    await loginAsAndAwaitDashboard(page, TEST_PRODUCER_EMAIL, TEST_PRODUCER_PASSWORD);
+    await navViaSidebar(page, /^shows & bookings$/i);
 
+    // Every e2e date hangs off the same seeded "e2e-program" show, so open THIS
+    // date by its formatted date cell (the producer table renders "dd MMM yyyy")
+    // AND the program, not by program alone as booking-lifecycle can.
+    const dateRow = page
+      .getByRole("row")
+      .filter({ hasText: formatBookingsDate(dateISO) })
+      .filter({ hasText: /e2e-program/i });
+    await expect(dateRow).toBeVisible({ timeout: 15_000 });
+    await dateRow.click();
+
+    // EligibilityBookList fails closed with Skeletons until the eligibility,
+    // blocked, org-artist and bookings queries all resolve, so wait for the
+    // seeded artist's Book button itself, not just the card. Only that artist is
+    // eligible (cast-restricted), so there is exactly one Book button.
+    const bookButton = page.getByRole("button", { name: /^book$/i }).first();
+    await expect(bookButton).toBeVisible({ timeout: 20_000 });
+
+    // Clicking Book opens a confirm AlertDialog ("Book <name> for this date?")
+    // with a "Book and confirm" action. Retry the open until that action is
+    // present, since the dialog content mounts after the click. Guarding re-click
+    // on the action NOT being visible means we only click while the dialog is
+    // closed (no overlay), so it never double-fires.
+    const confirmBooking = page.getByRole("button", { name: /^book and confirm$/i });
+    await expect(async () => {
+      if (!(await confirmBooking.isVisible())) {
+        await bookButton.click();
+      }
+      await expect(confirmBooking).toBeVisible({ timeout: 2_000 });
+    }).toPass({ timeout: 20_000 });
+
+    // Commit the booking, retrying the confirm click until the DURABLE signal
+    // (the row flipping from a Book button to a "Booked" badge) lands, rather
+    // than the transient "Artist booked" sonner toast. Once the dialog closes
+    // the action unmounts, so the guard stops any duplicate booking.
+    const bookedBadge = page.getByText(/^booked$/i);
+    await expect(async () => {
+      if (await confirmBooking.isVisible()) {
+        await confirmBooking.click();
+      }
+      await expect(bookedBadge).toBeVisible({ timeout: 2_000 });
+    }).toPass({ timeout: 20_000 });
+
+    // Ground-truth DB check the badge stands in for: a single confirmed booking,
+    // created directly with no offer step (mirrors the old assertion).
     const booking = await getLatestBooking(fixture.artistId);
     expect(booking?.status).toBe("confirmed");
-
-    await loginAsAndAwaitDashboard(page, ARTIST_EMAIL, ARTIST_PASSWORD);
-    await navViaSidebar(page, /^availability$/i);
-
-    const row = page.getByRole("row").filter({ hasText: formatDMY(dateISO) });
-    await expect(row).toBeVisible({ timeout: 15_000 });
-    await expect(row.getByText(/^confirmed$/i)).toBeVisible();
   });
 });

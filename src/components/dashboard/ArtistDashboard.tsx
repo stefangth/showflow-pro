@@ -9,7 +9,8 @@ import { CalendarDays, MessageCircleQuestion, Theater } from 'lucide-react';
 import { useArtistEligibleDates } from '@/hooks/useArtistEligibleDates';
 import { useMyArtist } from '@/hooks/useMyArtist';
 import { formatDateDMY } from '@/lib/dates';
-import { showLabel } from '@/types';
+import { useReferenceField } from '@/hooks/useBookingFlow';
+import { referenceLabel } from '@/lib/bookingFlow';
 import { ROUTES } from '@/config/app.config';
 
 type BookingLite = { show_date_id: string; status: string };
@@ -21,6 +22,7 @@ type CastMembershipRow = { id: string; cast: { id: string; name: string } | null
 export function ArtistDashboard() {
   const { data: artist } = useMyArtist();
   const { data: eligibleDates } = useArtistEligibleDates();
+  const { reference, customFieldKey } = useReferenceField();
 
   // Distinct cache key per projection (this selects no `id`). A shared key let
   // different `select` shapes clobber each other in the React Query cache — see
@@ -154,7 +156,9 @@ export function ArtistDashboard() {
                     className="flex items-center justify-between p-2 rounded-md hover:bg-muted text-sm"
                   >
                     <div className="min-w-0">
-                      <p className="font-medium truncate">{showLabel(d.show)}</p>
+                      <p className="font-medium truncate">
+                        {referenceLabel({ reference, show: d.show, custom: d.custom, customFieldKey })}
+                      </p>
                       <p className="text-xs text-muted-foreground">{formatDateDMY(d.date)}</p>
                     </div>
                     <Badge variant="outline" className="text-xs">
