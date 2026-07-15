@@ -114,7 +114,7 @@ vi.mock("@/hooks/useBookingFlow", () => ({
 
 import { ArtistDashboard } from "./ArtistDashboard";
 
-describe("ArtistDashboard — flow-aware meter (Task 3)", () => {
+describe("ArtistDashboard flow-aware meter (Task 3)", () => {
   it("classic flow: keeps the Response rate meter (confirmed + soft_booked count)", async () => {
     flowHolder.flow = BOOKING_FLOW_DEFAULTS;
     renderWithProviders(<ArtistDashboard />);
