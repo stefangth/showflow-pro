@@ -1,7 +1,7 @@
 -- Booking flow Phase 3 gap 1: direct-booking orgs INSERT bookings as
 -- status='confirmed' with no offer step (createBooking with confirmDirectly),
 -- so no UPDATE transition ever fires for them and notify_booking_transition()
--- — being AFTER UPDATE only — never notified the linked artist. This migration
+-- (AFTER UPDATE only) never notified the linked artist. This migration
 -- adds an AFTER INSERT branch: a booking INSERTed with status='confirmed'
 -- notifies the linked artist (type='booking_confirmed'), same title/message as
 -- the existing UPDATE-path confirmation. Offer INSERTs (status='suggested')
