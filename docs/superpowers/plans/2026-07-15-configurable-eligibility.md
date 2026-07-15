@@ -2213,5 +2213,5 @@ git commit -m "add configurable eligibility e2e coverage"
 
 1. Final whole-branch review (superpowers:requesting-code-review), PR against main, CI + review-bot rounds, merge on green (never `--auto`).
 2. Prod migration apply: ONLY with explicit user approval naming project `epweartpzwvcasrzyueh`, via Supabase MCP `apply_migration` (both migrations, in order), then align recorded versions to the filenames (`UPDATE supabase_migrations.schema_migrations SET version = '<filename-ts>' WHERE name = '<name>'`) and verify the trigger/tables live.
-3. Changelog + version bump (MINOR, 1.10.0) per `public/changelog.md` conventions; regenerate JSON via `deno run --allow-read --allow-write scripts/changelog-to-json.ts`. Same-day fold rule applies if another release ships the same day.
+3. Changelog: USER DECISION (2026-07-15): fold Phase 4 into the existing 1.9.0 entry per the same-day-releases convention. No version bump, no new tag (v1.9.0 stays where it is); extend the 1.9.0 block's bullets and regenerate JSON via `deno run --allow-read --allow-write scripts/changelog-to-json.ts`.
 4. Update the handoff doc `docs/superpowers/plans/2026-07-14-booking-flow-followups.md` (Phase 4 shipped) and persistent memory.
