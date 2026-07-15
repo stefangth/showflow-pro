@@ -180,7 +180,7 @@ export function ShowDateDetailSheet({ showDateId, open, onOpenChange }: Props) {
   const tiersQ = useQuery({
     queryKey: ['offer-tiers', 'available', showDateId, cityId],
     enabled: canManage && !!showDateId,
-    // `source` (show vs org ladder) isn't surfaced in this UI yet — destructured
+    // `source` (show vs org ladder) isn't surfaced in this UI yet: destructured
     // by consumers below but not rendered.
     queryFn: () => fetchOfferTiers(supabase, { showId: showId!, cityId, showDateId: showDateId! }),
   });
