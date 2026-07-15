@@ -84,7 +84,7 @@ Extend `notify_booking_transition()` (currently `AFTER UPDATE`-only, last touche
 
 ## 3. Artist surfaces
 
-- `ArtistDashboard.tsx`: add `useBookingFlow`; header sentence and meter from `artistMeter(flow)`; `responded` counts `countStatuses`. "Awaiting your response" card logic unchanged (self-hides in direct mode).
+- `ArtistDashboard.tsx`: add `useBookingFlow`; header sentence and meter from `artistMeter(flow)`; `responded` counts `countStatuses`. "Awaiting your response" card is gated off entirely in direct mode (correction during implementation: it renders an offer-worded empty state rather than self-hiding).
 - `AvailabilityPage.tsx`: title/subtitle from `availabilityPageCopy`; replace local `BOOKING_STATUS_LABEL` with `bookingStatusLabels(flow)`.
 - `ArtistBookingsView.tsx`: subtitle from `bookingsViewCopy`; replace local `STATUS_LABEL` with `bookingStatusLabels(flow)`.
 - `OfferResponseButtons` is already flow-aware; untouched.
