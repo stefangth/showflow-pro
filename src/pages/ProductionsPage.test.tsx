@@ -43,9 +43,9 @@ import ProductionsPage from "./ProductionsPage";
 describe("ProductionsPage", () => {
   beforeEach(() => { vi.clearAllMocks(); role = "admin"; });
 
-  it("uses the full program – sub_program label for compound shows", () => {
+  it("uses the full program · sub_program identity label for compound shows", () => {
     renderWithProviders(<ProductionsPage />);
-    expect(screen.getByLabelText("Edit TJE – Murder")).toBeInTheDocument();
+    expect(screen.getByLabelText("Edit TJE · Murder")).toBeInTheDocument();
   });
 
   it("renders rows and an unconfigured badge for null slots", () => {

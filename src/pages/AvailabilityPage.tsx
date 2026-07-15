@@ -26,7 +26,9 @@ import { AvailabilityPicker } from '@/components/availability/AvailabilityPicker
 import { OfferResponseButtons } from '@/components/availability/OfferResponseButtons';
 import { bookingStatusBadgeClass } from '@/lib/bookings';
 import { formatDateDMY, parseDateOnly } from '@/lib/dates';
-import { showLabel } from '@/types';
+import { showIdentityLabel } from '@/types';
+import { useReferenceField } from '@/hooks/useBookingFlow';
+import { referenceLabel } from '@/lib/bookingFlow';
 import { useColumnTemplate, useEditorConfig } from '@/features/editor/EditorContext';
 import { useColumnHeaders } from '@/features/editor/useColumnHeaders';
 import { ColumnLayoutEditor } from '@/features/editor/ColumnLayoutEditor';
@@ -50,6 +52,7 @@ function ArtistAvailability() {
   const { currentOrg } = useAuth();
   const { data: artist } = useMyArtist();
   const { data: eligibleDates, isLoading } = useArtistEligibleDates();
+  const { reference, customFieldKey } = useReferenceField();
   const { orderedColumns, visibleCount } = useColumnTemplate('availability');
   const { isEditorMode } = useEditorConfig();
   const columnHeaders = useColumnHeaders(orderedColumns);
@@ -187,7 +190,10 @@ function ArtistAvailability() {
       inTimeframe(parseDateOnly(d.date), timeframe)
     );
     if (filter === 'unanswered') list = list.filter((d) => !respondedSet.has(d.id));
-    return applySort(list, sort, (d) => showLabel(d.show), (d) => parseDateOnly(d.date));
+    // Sort on the show's own program/sub_program identity (stable), never the
+    // org-configurable reference label — a custom-field reference would reorder
+    // the list unpredictably.
+    return applySort(list, sort, (d) => showIdentityLabel(d.show), (d) => parseDateOnly(d.date));
   }, [eligibleDates, timeframe, sort, filter, respondedSet]);
 
   if (!artist) {
@@ -273,7 +279,11 @@ function ArtistAvailability() {
                           {formatDateDMY(d.date)}
                         </TableCell>
                       );
-                      case 'shows.program': return <TableCell key={colId}>{showLabel(d.show)}</TableCell>;
+                      case 'shows.program': return (
+                        <TableCell key={colId}>
+                          {referenceLabel({ reference, show: d.show, custom: d.custom, customFieldKey })}
+                        </TableCell>
+                      );
                       case 'shows.sub_program': return (
                         <TableCell key={colId}>
                           {d.show?.sub_program ?? <span className="text-muted-foreground">—</span>}

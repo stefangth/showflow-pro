@@ -14,7 +14,8 @@ import { toast } from 'sonner';
 import { ArtistDashboard } from '@/components/dashboard/ArtistDashboard';
 import { showSlots } from '@/lib/settings';
 import { formatDateDMY } from '@/lib/dates';
-import { showLabel } from '@/types';
+import { useReferenceField } from '@/hooks/useBookingFlow';
+import { referenceLabel } from '@/lib/bookingFlow';
 import { bulkConfirmSoftBooked, bulkDeclineSoftBooked } from '@/data/bookings';
 
 const fadeUp = {
@@ -48,6 +49,7 @@ function ProducerDashboard() {
   const in30 = format(addDays(today, 30), 'yyyy-MM-dd');
 
   const qc = useQueryClient();
+  const { reference, customFieldKey } = useReferenceField();
   const [selected, setSelected] = useState<Set<string>>(new Set());
 
   const { data: upcomingDates } = useQuery({
@@ -254,7 +256,9 @@ function ProducerDashboard() {
                     {row.artist?.name ?? '—'}
                   </span>
                   <div className="w-40 min-w-0">
-                    <p className="text-sm truncate">{showLabel(row.show_date?.show as any)}</p>
+                    <p className="text-sm truncate">
+                      {referenceLabel({ reference, show: row.show_date?.show ?? null, custom: null, customFieldKey })}
+                    </p>
                     <p className="text-xs text-muted-foreground">{formatDateDMY(row.show_date?.date ?? '')}</p>
                   </div>
                   <div className="w-20 text-right">

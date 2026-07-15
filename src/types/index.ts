@@ -44,7 +44,17 @@ export interface ShowDateWithBookings extends ShowDate {
   show: Show;
 }
 
-export function showLabel(show: { program: string | null; sub_program: string | null }): string {
-  if (show.program && show.sub_program) return `${show.program} – ${show.sub_program}`;
-  return show.program ?? show.sub_program ?? '—';
+/**
+ * The show's own program · sub_program identity label. Internal helper for
+ * CATALOG surfaces — production lists, the show picker, cast-eligibility headers,
+ * Airtable catalog linking — and as a deterministic sort key. These need the raw
+ * program/sub_program identity of a *catalog show*, which must not collapse to a
+ * single program or custom value (it would lose disambiguation and reorder lists
+ * unpredictably). For a *booking / show_date* display, use `referenceLabel`
+ * (src/lib/bookingFlow.ts), which honors the org's configured reference field.
+ */
+export function showIdentityLabel(
+  show: { program: string | null; sub_program: string | null } | null | undefined
+): string {
+  return [show?.program, show?.sub_program].filter(Boolean).join(' · ') || 'Untitled show';
 }
