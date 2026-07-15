@@ -13,7 +13,7 @@ describe("DryRunDialog", () => {
         tier={2}
         result={{
           candidates: [{ id: "a1", name: "Lena" }],
-          excluded: { alreadyBooked: 1, blocked: 2, inactive: 0 },
+          excluded: { alreadyBooked: 1, blocked: 2, inactive: 0, notEligible: 0, missingSkills: 0 },
         }}
         loading={false}
         flow={{ offer_delivery: "digest" }}
@@ -34,7 +34,7 @@ describe("DryRunDialog", () => {
         open
         onOpenChange={() => {}}
         tier={1}
-        result={{ candidates: [], excluded: { alreadyBooked: 0, blocked: 0, inactive: 0 }, message: "No sessions configured for this date" }}
+        result={{ candidates: [], excluded: { alreadyBooked: 0, blocked: 0, inactive: 0, notEligible: 0, missingSkills: 0 }, message: "No sessions configured for this date" }}
         loading={false}
         flow={{ offer_delivery: "immediate" }}
         onConfirm={vi.fn()}
@@ -55,7 +55,7 @@ describe("DryRunDialog", () => {
         open
         onOpenChange={() => {}}
         tier={1}
-        result={{ candidates: [], excluded: { alreadyBooked: 3, blocked: 0, inactive: 0 } }}
+        result={{ candidates: [], excluded: { alreadyBooked: 3, blocked: 0, inactive: 0, notEligible: 0, missingSkills: 0 } }}
         loading={false}
         flow={{ offer_delivery: "digest" }}
         onConfirm={vi.fn()}
@@ -74,7 +74,7 @@ describe("DryRunDialog", () => {
         tier={2}
         result={{
           candidates: [{ id: "a1", name: "Lena" }],
-          excluded: { alreadyBooked: 0, blocked: 0, inactive: 0 },
+          excluded: { alreadyBooked: 0, blocked: 0, inactive: 0, notEligible: 0, missingSkills: 0 },
         }}
         loading={false}
         flow={{ offer_delivery: "digest" }}

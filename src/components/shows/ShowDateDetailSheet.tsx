@@ -180,7 +180,9 @@ export function ShowDateDetailSheet({ showDateId, open, onOpenChange }: Props) {
   const tiersQ = useQuery({
     queryKey: ['offer-tiers', 'available', showDateId, cityId],
     enabled: canManage && !!showDateId,
-    queryFn: () => fetchOfferTiers(supabase, { cityId, showDateId: showDateId! }),
+    // `source` (show vs org ladder) isn't surfaced in this UI yet — destructured
+    // by consumers below but not rendered.
+    queryFn: () => fetchOfferTiers(supabase, { showId: showId!, cityId, showDateId: showDateId! }),
   });
   const openedQ = useQuery({
     queryKey: ['offer-tiers', 'opened', showDateId],
@@ -218,7 +220,8 @@ export function ShowDateDetailSheet({ showDateId, open, onOpenChange }: Props) {
   // fails closed while eligibility/blocked data is unresolved and excludes
   // blocked artists; a null eligibility set means "no restriction".
   const eligibleArtistList = useMemo(
-    () => deriveDirectBookList(orgArtists, eligibility, blockedQ.data),
+    // skill filtering wired by the direct-book chips change
+    () => deriveDirectBookList(orgArtists, eligibility, blockedQ.data, null),
     [orgArtists, eligibility, blockedQ.data],
   );
   // bookingsForDate is included so the Booked badges are accurate before any
