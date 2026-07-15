@@ -175,7 +175,7 @@ All copy uses no em or en dashes (standing rule).
 - **Promotion ordering:** when a cancelled artist has skills and understudies differ in coverage, the promoted understudy can differ from the pre-change (oldest-first) pick. Orgs whose artists carry no skills see no change.
 - Everything else is opt-in: with no priorities set and no required skills, the engine behaves exactly as before.
 - Migration is additive; frontend, edge functions, and migration ship in one PR (functions auto-deploy on merge; the migration is applied to prod via the established MCP flow with explicit user approval naming the project).
-- Release: new user-facing features, so MINOR bump (1.10.0) at release time per the changelog conventions.
+- Release: folds into the existing 1.9.0 changelog entry per the same-day-releases convention (user decision, 2026-07-15). No version bump, no new tag.
 
 ## Non-goals
 
