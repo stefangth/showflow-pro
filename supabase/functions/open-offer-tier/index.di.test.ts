@@ -423,7 +423,7 @@ Deno.test("open-offer-tier: all artists already booked → offers_created 0, no 
     envVars,
     tables: {
       show_dates: { data: SHOW_DATE_OPEN, error: null },
-      cast_city_priority: { data: [{ cast_id: "cast-a" }], error: null },
+      cast_city_priority: { data: [{ cast_id: "cast-a", priority: 1 }], error: null },
       cast_members: { data: [{ artist_id: "art-1" }], error: null },
       artists: { data: [{ id: "art-1" }], error: null },
       // art-1 is already booked; fallback for insert not needed
@@ -435,7 +435,11 @@ Deno.test("open-offer-tier: all artists already booked → offers_created 0, no 
   });
   const res = await handle(makeRequest({ headers: SVC, body: { show_date_id: "d1", tier: 1 } }), deps);
   assertEquals(res.status, 200);
-  assertEquals((await res.json()).offers_created, 0);
+  const body = await res.json();
+  assertEquals(body.offers_created, 0);
+  // Pin the exit REASON: the run must reach the already-booked filter, not stop
+  // earlier at tier resolution with a "no casts" message.
+  assertEquals(body.message, "All eligible artists already have offers, are blocked, or do not qualify");
   const insertCall = calls.find((c) => c.table === "bookings" && c.method === "insert");
   assertEquals(insertCall, undefined, "no insert call should be made");
 });
@@ -689,7 +693,7 @@ Deno.test("open-offer-tier: eligible casts exist but have no members → offers_
     envVars,
     tables: {
       show_dates: { data: SHOW_DATE_OPEN, error: null },
-      cast_city_priority: { data: [{ cast_id: "cast-empty" }], error: null },
+      cast_city_priority: { data: [{ cast_id: "cast-empty", priority: 1 }], error: null },
       cast_members: { data: [], error: null }, // no members
       artists: { data: [], error: null },
       bookings: bookingsSeed("d1"),
@@ -697,7 +701,11 @@ Deno.test("open-offer-tier: eligible casts exist but have no members → offers_
   });
   const res = await handle(makeRequest({ headers: SVC, body: { show_date_id: "d1", tier: 1 } }), deps);
   assertEquals(res.status, 200);
-  assertEquals((await res.json()).offers_created, 0);
+  const body = await res.json();
+  assertEquals(body.offers_created, 0);
+  // Pin the exit REASON: the run must reach the cast_members read and find it
+  // empty, not stop earlier at tier resolution with a "no casts" message.
+  assertEquals(body.message, "No artists in eligible casts");
   const insertCall = calls.find((c) => c.table === "bookings" && c.method === "insert");
   assertEquals(insertCall, undefined, "no insert when no cast members");
 });
@@ -731,7 +739,7 @@ Deno.test("open-offer-tier: success response includes offers_created field", asy
     envVars,
     tables: {
       show_dates: { data: SHOW_DATE_OPEN, error: null },
-      cast_city_priority: { data: [{ cast_id: "cast-a" }], error: null },
+      cast_city_priority: { data: [{ cast_id: "cast-a", priority: 1 }], error: null },
       cast_members: { data: [{ artist_id: "art-1" }], error: null },
       artists: { data: [{ id: "art-1" }], error: null },
       bookings: bookingsSeed("d1", ["b1"]),
@@ -743,6 +751,9 @@ Deno.test("open-offer-tier: success response includes offers_created field", asy
   const body = await res.json();
   assertEquals("offers_created" in body, true, "response must have offers_created field");
   assertEquals(typeof body.offers_created, "number");
+  // Pin the SUCCESS path: this test's point is the happy-path response shape,
+  // so the run must actually reach the insert (1 offer), not benign-exit at 0.
+  assertEquals(body.offers_created, 1);
 });
 
 // ------ Re-open re-activates a closed tier (merge upsert) ------
@@ -1241,6 +1252,58 @@ Deno.test("open-offer-tier: skill_filter_ids from the request restricts to holde
   assertEquals(body.excluded.missing_skills, 1);
 });
 
+Deno.test("open-offer-tier: stored requirements UNION with skill_filter_ids (dry run)", async () => {
+  // The show stores sk-1 AND the caller passes skill_filter_ids ["sk-9"]. The
+  // effective requirement is the UNION [sk-1, sk-9]: an artist must hold BOTH
+  // to survive. ar-1 holds both; ar-2 holds only the stored skill; ar-3 holds
+  // only the per-open filter skill. An either-or regression (stored OR filter
+  // instead of the union) would let ar-2 or ar-3 through and report
+  // missing_skills 1, so this test pins the union in both directions.
+  // Every seeded artist_skills row's skill is in the union, so the unfiltered
+  // blob the fake returns equals what the DB would return for the union query.
+  const { deps } = makeFakeDeps({
+    envVars,
+    tables: {
+      show_dates: { data: SHOW_DATE_OPEN, error: null },
+      cast_city_priority: { data: [{ cast_id: "cast-a", priority: 1 }], error: null },
+      cast_members: { data: [{ artist_id: "ar-1" }, { artist_id: "ar-2" }, { artist_id: "ar-3" }], error: null },
+      artists: [
+        { when: { status: "active" }, data: [{ id: "ar-1" }, { id: "ar-2" }, { id: "ar-3" }], error: null },
+        { data: [{ id: "ar-1", name: "Ar One" }], error: null },
+      ],
+      show_required_skills: { data: [{ skill_id: "sk-1" }], error: null },
+      show_date_required_skills: { data: [], error: null },
+      artist_skills: {
+        data: [
+          { artist_id: "ar-1", skill_id: "sk-1" },
+          { artist_id: "ar-1", skill_id: "sk-9" },
+          { artist_id: "ar-2", skill_id: "sk-1" },
+          { artist_id: "ar-3", skill_id: "sk-9" },
+        ],
+        error: null,
+      },
+      bookings: { data: [], error: null },
+      blocked_dates: { data: [], error: null },
+    },
+  });
+  const res = await handle(
+    makeRequest({
+      headers: SVC,
+      body: { show_date_id: "d1", tier: 1, dry_run: true, skill_filter_ids: ["sk-9"] },
+    }),
+    deps,
+  );
+  assertEquals(res.status, 200);
+  const body = await res.json();
+  assertEquals(body.candidates, [{ id: "ar-1", name: "Ar One" }]);
+  assertEquals(
+    body.excluded.missing_skills,
+    2,
+    "ar-2 (stored-only) and ar-3 (filter-only) must BOTH be excluded by the union",
+  );
+  assertEquals(body.excluded.not_eligible, 0);
+});
+
 Deno.test("open-offer-tier: tier 99 dedups against the effective (show-scoped) ladder", async () => {
   // The show ladder places cast-a at tier 1. Date-level eligibility (ad-hoc,
   // tier 99) lists cast-a AND cast-b. Tier 99 must offer only cast-b's
@@ -1262,11 +1325,17 @@ Deno.test("open-offer-tier: tier 99 dedups against the effective (show-scoped) l
         { when: { "__in:cast_id": JSON.stringify(["cast-b"]) }, data: [{ artist_id: "art-b" }], error: null },
         { data: [{ artist_id: "art-a" }, { artist_id: "art-b" }], error: null },
       ],
-      // Only art-b is ever legitimately requested from `artists` (the main flow's
-      // active-status filter runs on cast_members' narrower ['cast-b'] result), so a
-      // seed also naming art-a would leak back in regardless of the .in() ids
-      // requested, since the fake does not filter single-seed list reads by .in().
-      artists: { data: [{ id: "art-b" }], error: null },
+      // `artists` is ALSO keyed on the actual .in('id', ...) set: .then() reads
+      // never apply .in() filtering, so a single-object seed would silently
+      // erase a leaked art-a at the artists stage and mask a missing dedup.
+      // Correct run: .in('id', ['art-b']) matches the `when` entry. A run that
+      // leaks cast-a (dedup skipped) requests ['art-a','art-b'], misses the
+      // `when`, and gets BOTH artists from the fallback, so the leak survives
+      // to the insert and the rows.length assertion below fails.
+      artists: [
+        { when: { "__in:id": JSON.stringify(["art-b"]) }, data: [{ id: "art-b" }], error: null },
+        { data: [{ id: "art-a" }, { id: "art-b" }], error: null },
+      ],
       bookings: bookingsSeed("d1", ["b1"]),
       blocked_dates: { data: [], error: null },
     },
