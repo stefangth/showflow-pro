@@ -15,9 +15,10 @@ import { ShowDateDetailSheet } from '@/components/shows/ShowDateDetailSheet';
 import { useArtistEligibleDates, type EligibleDate } from '@/hooks/useArtistEligibleDates';
 import { fetchMyCancelledDateBookings, mergeArtistCancelledDates, type CancelledDateEntry } from '@/data/artists';
 import { useMyArtist } from '@/hooks/useMyArtist';
-import { useReferenceField } from '@/hooks/useBookingFlow';
+import { useBookingFlow, useReferenceField } from '@/hooks/useBookingFlow';
 import { bookingStatusBadgeClass } from '@/lib/bookings';
-import { referenceLabel } from '@/lib/bookingFlow';
+import { BOOKING_FLOW_DEFAULTS, referenceLabel } from '@/lib/bookingFlow';
+import { bookingsViewCopy, bookingStatusLabels } from '@/lib/flowCopy';
 import { formatDateDMY, parseDateOnly } from '@/lib/dates';
 import { showIdentityLabel } from '@/types';
 import { useColumnTemplate, useEditorConfig } from '@/features/editor/EditorContext';
@@ -40,14 +41,6 @@ function customFor(d: DateRow): Record<string, unknown> | null {
   return 'custom' in d ? d.custom : null;
 }
 
-const STATUS_LABEL: Record<string, string> = {
-  confirmed: 'Confirmed',
-  soft_booked: 'Soft booked',
-  suggested: 'Offer pending',
-  unanswered: 'No offer yet',
-  cancelled: 'Cancelled',
-};
-
 /**
  * Artist-scoped Bookings view: same list/calendar UI, filtered to eligible dates.
  */
@@ -55,6 +48,10 @@ export function ArtistBookingsView() {
   const { data: artist } = useMyArtist();
   const { data: eligibleDates, isLoading } = useArtistEligibleDates();
   const { reference, customFieldKey } = useReferenceField();
+  const flowQ = useBookingFlow();
+  const flow = flowQ.data ?? BOOKING_FLOW_DEFAULTS;
+  const pageCopy = bookingsViewCopy(flow);
+  const statusLabels = bookingStatusLabels(flow);
   const { orderedColumns, visibleCount } = useColumnTemplate('bookings-artist');
   const { isEditorMode } = useEditorConfig();
   const columnHeaders = useColumnHeaders(orderedColumns);
@@ -124,10 +121,8 @@ export function ArtistBookingsView() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="font-display text-[32px] font-semibold tracking-tight">My Bookings</h1>
-        <p className="text-muted-foreground mt-1">
-          Dates you've been offered for, based on your cast eligibility.
-        </p>
+        <h1 className="font-display text-[32px] font-semibold tracking-tight">{pageCopy.title}</h1>
+        <p className="text-muted-foreground mt-1">{pageCopy.subtitle}</p>
       </div>
 
       <div className="flex flex-wrap items-center gap-3">
@@ -207,7 +202,7 @@ export function ArtistBookingsView() {
                       case '_computed.my_status': return (
                         <TableCell key={colId}>
                           <Badge variant="secondary" className={bookingStatusBadgeClass(status)}>
-                            {STATUS_LABEL[status] ?? status}
+                            {statusLabels[status] ?? status}
                           </Badge>
                           {cancelled && d.cancellation_reason && (
                             <div className="mt-1 text-xs text-destructive">{d.cancellation_reason}</div>
@@ -270,7 +265,7 @@ export function ArtistBookingsView() {
                     )}
                   </div>
                   <Badge variant="secondary" className={bookingStatusBadgeClass(status)}>
-                    {STATUS_LABEL[status] ?? status}
+                    {statusLabels[status] ?? status}
                   </Badge>
                 </CardContent>
               </Card>
