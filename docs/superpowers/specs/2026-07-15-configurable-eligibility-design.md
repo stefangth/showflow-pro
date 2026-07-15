@@ -15,6 +15,7 @@ The offer engine's tiering axis is hardwired to city: `cast_city_priority` maps 
 3. **Approach A: generalize existing tables.** Priority column on `show_cast_eligibility`; two new skills-requirement tables; shared Deno module for ladder logic. No SQL resolver RPC, no policy-JSON rules engine.
 4. **Gate fix: yes.** Tier candidates are intersected with the show eligibility gate when one exists, matching the documented rule that eligibility defines who can be booked at all.
 5. **Priority UI lives in Settings.** Settings > Casts & Cities > "Cast Priority by City" gains a scope selector (organization default vs a specific show). Org-wide editing is unchanged.
+6. **Skill-scoped opens: yes. Slot profiles: deferred.** Required skills are uniform by design: every offered/booked artist must hold all of them. Coverage needs (e.g. at least one judge among five slots) are NOT modeled in this phase. Instead, producers get a per-open skill filter on manual tier opens and skill filter chips in the direct-book list, which covers the "open more offers, judges only" workflow by hand. Slot profiles, per-profile fill math, and skill-aware understudy promotion are explicitly deferred (see Non-goals).
 
 ## Data model (one additive migration)
 
@@ -71,7 +72,15 @@ Filters run in this order, each counting what it removes for the dry-run summary
 3. Not already actively booked for the date (counts `already_booked`).
 4. Not blocked on the date via `blocked_dates` (counts `blocked`).
 5. **Gate (new):** if the union of show-level gate rows (`show_cast_eligibility` for show + city) and date-level gate rows (`show_date_cast_eligibility`) is non-empty, the candidate must belong to one of those casts; empty union = unrestricted. Exactly `useEligibleArtists` semantics. Counts `not_eligible`. (When the effective ladder IS the show ladder, its casts are gate rows by construction, so this can only exclude candidates when the org ladder is in effect.)
-6. **Skills (new):** candidate must hold all required skills. Counts `missing_skills`.
+6. **Skills (new):** candidate must hold all skills in the effective required set. Counts `missing_skills`.
+
+### Per-open skill filter (new)
+
+The `open-offer-tier` request body gains an optional `skill_filter_ids: string[]`. When present, those skill ids are UNIONED into the required set for that invocation only (step 6 above), so only artists holding all of requirement-plus-filter receive offers. Rules:
+
+- Applies to manual opens and dry-runs (the dry-run preview reflects the filter in its `missing_skills` count).
+- Never passed by automation: `airtable-poll` auto-open of tier 1 and the `expire-offers` auto-escalation always open unfiltered.
+- Not persisted: `show_date_offer_tiers` does not record the filter. Re-opening the same tier without a filter later offers to the remaining (already-booked artists are always skipped), so a scoped open composes with a later full open.
 
 Dry-run response gains `not_eligible` and `missing_skills` in `excluded`. Everything downstream (insert shape, tier upsert, immediate delivery) is unchanged.
 
@@ -125,14 +134,16 @@ The "Cast Priority by City" section gains a scope select at the top: **"Organiza
 ### Cockpit surfaces
 
 - `TierTimeline` shows a small hint when the show ladder is in effect: "Using show-specific priorities".
+- The tier open controls gain an optional skill picker labeled "Only offer to artists with", feeding `skill_filter_ids` on both the dry-run and the real open. Empty selection = unfiltered (default).
 - The dry-run preview ("Preview who gets offers") lists the two new exclusion counts with labels "not eligible for this show" and "missing required skills".
+- The direct-book list (`EligibilityBookList` in ShowDateDetailSheet) gains skill filter chips: selecting skills narrows the list to artists holding all of them, reusing `fetchSkillEligibleArtistIds` with the selected ids. Client-side view filter only; nothing persisted.
 
 All copy uses no em or en dashes (standing rule).
 
 ## Testing
 
-- **Vitest:** pure helpers in `src/lib/eligibility.ts`; data-access functions in `src/data/eligibility.ts` and the extended `fetchOfferTiers` via `supabaseFake`; `deriveDirectBookList` skills fail-closed behavior; `useArtistEligibleDates` skill filtering; priority-editor and skills-editor component tests.
-- **Deno:** unit tests for `_shared/eligibility.ts`; extended `open-offer-tier` contract suite (show-ladder resolution, org fallback, gate intersection, skills exclusion, dry-run counts, tier 99 dedup vs effective ladder); extended `expire-offers` suite (escalation walks the show ladder; falls back to org ladder; manual path when the ladder is exhausted). Run the whole `supabase/functions/` suite.
+- **Vitest:** pure helpers in `src/lib/eligibility.ts`; data-access functions in `src/data/eligibility.ts` and the extended `fetchOfferTiers` via `supabaseFake`; `deriveDirectBookList` skills fail-closed behavior; `useArtistEligibleDates` skill filtering; priority-editor, skills-editor, tier-open skill-picker, and direct-book filter-chip component tests.
+- **Deno:** unit tests for `_shared/eligibility.ts`; extended `open-offer-tier` contract suite (show-ladder resolution, org fallback, gate intersection, skills exclusion, `skill_filter_ids` union semantics on open and dry-run, dry-run counts, tier 99 dedup vs effective ladder); extended `expire-offers` suite (escalation walks the show ladder; falls back to org ladder; escalation opens unfiltered; manual path when the ladder is exhausted). Run the whole `supabase/functions/` suite.
 - **pgTAP:** RLS on both new tables (member read, producer/admin write, cross-org denied); the partial unique index on (show_id, city_id, priority); org-derivation triggers; the same-org skill check.
 - **e2e (one spec):** show ladder overrides org ladder (opening tier 1 creates offers only for the override cast) and a skill requirement excludes an unskilled artist from the direct-book list.
 
@@ -150,6 +161,7 @@ All copy uses no em or en dashes (standing rule).
 
 ## Non-goals
 
+- **Skill slot profiles (coverage requirements).** "At least one judge among five slots" is not modeled: fill math (`tierFill`, dashboards, the tier-at-risk watcher, confirm gating) and understudy promotion (`promote_understudy_on_cancellation` picks by status preference and age) remain skill-blind. The per-open skill filter is the manual workaround. This is the leading candidate for the next phase.
 - Multiple casts per tier (the one-cast-per-tier constraint stays, at both scopes).
 - Org-configurable axis (venue, global, program-as-axis); no venues entity.
 - Skills as soft ranking or scoring (the engine keeps "all eligible artists in the tier get an offer").
