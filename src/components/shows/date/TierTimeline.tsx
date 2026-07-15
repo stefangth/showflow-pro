@@ -7,6 +7,7 @@ import {
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { Skeleton } from "@/components/ui/skeleton";
+import { SkillPicker } from "@/components/skills/SkillPicker";
 import { formatTimestampDMY } from "@/lib/dates";
 import { tierFillCounts } from "@/lib/bookingCockpit";
 import {
@@ -29,15 +30,20 @@ export interface TierTimelineProps {
   hasSession: boolean;
   /** Raw per-city tier priorities + ad-hoc flag (fetchOfferTiers' return shape). */
   tiers: { priorities: number[]; hasAdHoc: boolean };
+  /** Whether the tier ladder used above comes from the show's own eligibility rows
+   *  ("show") or the org-wide city priority fallback ("org"). */
+  ladderSource: "show" | "org";
+  /** Org skills, offered as toggle chips to scope which artists get the offer. */
+  skills: { id: string; name: string }[];
   /** Tiers already opened for this date (fetchOpenedTiers' return shape). */
   openedTiers: OpenedTier[];
   isLoadingTiers?: boolean;
   isLoadingOpened?: boolean;
   openPending?: boolean;
   closePending?: boolean;
-  onOpenTier: (tier: number) => void;
+  onOpenTier: (tier: number, skillFilterIds: string[]) => void;
   onCloseTier: (tier: number, withdraw: boolean) => void;
-  onPreviewTier: (tier: number) => void;
+  onPreviewTier: (tier: number, skillFilterIds: string[]) => void;
 }
 
 /** Opened-tiers list + open/close/preview controls, ported from ShowDateDetailSheet's
@@ -52,6 +58,8 @@ export function TierTimeline({
   canManage,
   hasSession,
   tiers,
+  ladderSource,
+  skills,
   openedTiers,
   isLoadingTiers = false,
   isLoadingOpened = false,
@@ -63,6 +71,7 @@ export function TierTimeline({
 }: TierTimelineProps) {
   const [selectedTier, setSelectedTier] = useState<number | null>(null);
   const [closeTarget, setCloseTarget] = useState<number | null>(null);
+  const [skillFilterIds, setSkillFilterIds] = useState<string[]>([]);
 
   if (!flow.artist_acceptance) {
     return (
@@ -129,73 +138,91 @@ export function TierTimeline({
 
       {/* Open a tier */}
       {canManage && (
-        isLoadingTiers ? (
-          <Skeleton className="h-9 w-64" />
-        ) : tierOptions.length === 0 ? (
-          <p className="text-sm text-muted-foreground">
-            {cityId
-              ? "No offer tiers configured for this city · set cast priorities in Settings → Cities & Casts."
-              : "Select a city to configure offer tiers."}
-          </p>
-        ) : (
-          <div className="flex flex-wrap items-center gap-2">
-            <Select
-              value={effectiveTier != null ? String(effectiveTier) : undefined}
-              onValueChange={(v) => setSelectedTier(Number(v))}
-            >
-              <SelectTrigger className="w-48">
-                <SelectValue placeholder="Select tier" />
-              </SelectTrigger>
-              <SelectContent>
-                {tierOptions.map((opt) => (
-                  <SelectItem key={opt.value} value={String(opt.value)}>{opt.label}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+        <>
+          {ladderSource === "show" && (
+            <p className="text-xs text-muted-foreground">Using show-specific priorities</p>
+          )}
+          {isLoadingTiers ? (
+            <Skeleton className="h-9 w-64" />
+          ) : tierOptions.length === 0 ? (
+            <p className="text-sm text-muted-foreground">
+              {cityId
+                ? "No offer tiers configured for this city · set cast priorities in Settings → Cities & Casts."
+                : "Select a city to configure offer tiers."}
+            </p>
+          ) : (
+            <div className="flex flex-wrap items-center gap-2">
+              <Select
+                value={effectiveTier != null ? String(effectiveTier) : undefined}
+                onValueChange={(v) => setSelectedTier(Number(v))}
+              >
+                <SelectTrigger className="w-48">
+                  <SelectValue placeholder="Select tier" />
+                </SelectTrigger>
+                <SelectContent>
+                  {tierOptions.map((opt) => (
+                    <SelectItem key={opt.value} value={String(opt.value)}>{opt.label}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
 
-            <AlertDialog>
-              <AlertDialogTrigger asChild>
-                <Button disabled={!hasSession || openPending || effectiveTier == null}>
-                  {openPending
-                    ? "Opening…"
-                    : `Open ${effectiveTier === 99 ? "ad-hoc casts" : `tier ${effectiveTier}`}`}
-                </Button>
-              </AlertDialogTrigger>
-              <AlertDialogContent>
-                {effectiveTier != null && confirmCopy && (
-                  <>
-                    <AlertDialogHeader>
-                      <AlertDialogTitle>{confirmCopy.title}</AlertDialogTitle>
-                      <AlertDialogDescription>{confirmCopy.body}</AlertDialogDescription>
-                    </AlertDialogHeader>
-                    <AlertDialogFooter>
-                      <AlertDialogCancel>Cancel</AlertDialogCancel>
-                      <AlertDialogAction disabled={openPending} onClick={() => onOpenTier(effectiveTier)}>
-                        Open offers
-                      </AlertDialogAction>
-                    </AlertDialogFooter>
-                  </>
-                )}
-              </AlertDialogContent>
-            </AlertDialog>
+              <div className="space-y-1">
+                <p className="text-xs text-muted-foreground">Only offer to artists with</p>
+                <SkillPicker
+                  skills={skills}
+                  selectedIds={skillFilterIds}
+                  onToggle={(id) => setSkillFilterIds((prev) =>
+                    prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id])}
+                />
+              </div>
 
-            <Button
-              type="button"
-              variant="ghost"
-              size="sm"
-              disabled={effectiveTier == null}
-              onClick={() => { if (effectiveTier != null) onPreviewTier(effectiveTier); }}
-            >
-              Preview who gets offers
-            </Button>
+              <AlertDialog>
+                <AlertDialogTrigger asChild>
+                  <Button disabled={!hasSession || openPending || effectiveTier == null}>
+                    {openPending
+                      ? "Opening…"
+                      : `Open ${effectiveTier === 99 ? "ad-hoc casts" : `tier ${effectiveTier}`}`}
+                  </Button>
+                </AlertDialogTrigger>
+                <AlertDialogContent>
+                  {effectiveTier != null && confirmCopy && (
+                    <>
+                      <AlertDialogHeader>
+                        <AlertDialogTitle>{confirmCopy.title}</AlertDialogTitle>
+                        <AlertDialogDescription>{confirmCopy.body}</AlertDialogDescription>
+                      </AlertDialogHeader>
+                      <AlertDialogFooter>
+                        <AlertDialogCancel>Cancel</AlertDialogCancel>
+                        <AlertDialogAction
+                          disabled={openPending}
+                          onClick={() => onOpenTier(effectiveTier, skillFilterIds)}
+                        >
+                          Open offers
+                        </AlertDialogAction>
+                      </AlertDialogFooter>
+                    </>
+                  )}
+                </AlertDialogContent>
+              </AlertDialog>
 
-            {!hasSession && (
-              <span className="text-xs text-muted-foreground">
-                Add a session time before opening offers.
-              </span>
-            )}
-          </div>
-        )
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                disabled={effectiveTier == null}
+                onClick={() => { if (effectiveTier != null) onPreviewTier(effectiveTier, skillFilterIds); }}
+              >
+                Preview who gets offers
+              </Button>
+
+              {!hasSession && (
+                <span className="text-xs text-muted-foreground">
+                  Add a session time before opening offers.
+                </span>
+              )}
+            </div>
+          )}
+        </>
       )}
 
       {/* Close-tier confirmation (choose withdraw vs keep) */}

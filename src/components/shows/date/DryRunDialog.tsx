@@ -69,6 +69,12 @@ export function DryRunDialog({
               Excluded: {result?.excluded.alreadyBooked ?? 0} already booked ·{" "}
               {result?.excluded.blocked ?? 0} blocked · {result?.excluded.inactive ?? 0} inactive
             </p>
+            <p className="text-xs text-muted-foreground">
+              Not eligible for this show: {result?.excluded.notEligible ?? 0}
+            </p>
+            <p className="text-xs text-muted-foreground">
+              Missing required skills: {result?.excluded.missingSkills ?? 0}
+            </p>
             <div className="flex flex-wrap gap-1.5">
               {candidates.map((c) => (
                 <span
