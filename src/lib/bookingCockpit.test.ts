@@ -1,6 +1,12 @@
 import { describe, expect, it } from "vitest";
 import { BOOKING_FLOW_DEFAULTS, applyPreset } from "./bookingFlow";
-import { computeFunnel, computeUpNext, tierFillCounts } from "./bookingCockpit";
+import {
+  computeFunnel,
+  computeUpNext,
+  computeTierAttention,
+  tierFillCounts,
+  unfilledMainCastDates,
+} from "./bookingCockpit";
 
 const TIMES = { windowHours: 48, offerDigestHour: 19, confirmationDigestHour: 20 };
 
@@ -62,5 +68,69 @@ describe("tierFillCounts", () => {
       { status: "cancelled", offer_tier: 1 },
     ], 1);
     expect(counts).toEqual({ pending: 1, accepted: 1 });
+  });
+});
+
+describe("computeTierAttention", () => {
+  const NOW = new Date("2026-07-15T12:00:00Z");
+  const base = {
+    showDateId: "d1", date: "2026-07-20", program: "TJE", subProgram: "Murder",
+    custom: null, slots: { main_cast: 2, understudies: 1 }, tier: 1,
+  };
+  it("flags an under-filled open tier as at risk", () => {
+    const items = computeTierAttention([{
+      ...base,
+      bookings: [{ status: "soft_booked", offer_tier: 1, offer_expires_at: null }],
+    }], NOW);
+    expect(items).toHaveLength(1);
+    expect(items[0]).toMatchObject({ filled: 1, required: 3, atRisk: true, expiresSoon: false });
+  });
+  it("flags offers expiring within 24h even when filled", () => {
+    const items = computeTierAttention([{
+      ...base,
+      bookings: [
+        { status: "soft_booked", offer_tier: 1, offer_expires_at: null },
+        { status: "soft_booked", offer_tier: 1, offer_expires_at: null },
+        { status: "suggested", offer_tier: 1, offer_expires_at: "2026-07-15T20:00:00Z" },
+      ],
+    }], NOW);
+    expect(items[0]).toMatchObject({ filled: 3, atRisk: false, expiresSoon: true });
+  });
+  it("drops healthy tiers, unconfigured slots, and cancelled bookings", () => {
+    const items = computeTierAttention([
+      { ...base, bookings: [
+        { status: "confirmed", offer_tier: 1, offer_expires_at: null },
+        { status: "confirmed", offer_tier: 1, offer_expires_at: null },
+        { status: "soft_booked", offer_tier: 1, offer_expires_at: null },
+      ] },
+      { ...base, showDateId: "d2", slots: null, bookings: [] },
+      { ...base, showDateId: "d3", bookings: [
+        { status: "cancelled", offer_tier: 1, offer_expires_at: null },
+      ] },
+    ], NOW);
+    expect(items.map((i) => i.showDateId)).toEqual(["d3"]); // only the empty at-risk one
+  });
+  it("sorts by date ascending", () => {
+    const items = computeTierAttention([
+      { ...base, showDateId: "later", date: "2026-07-25", bookings: [] },
+      { ...base, showDateId: "sooner", date: "2026-07-18", bookings: [] },
+    ], NOW);
+    expect(items.map((i) => i.showDateId)).toEqual(["sooner", "later"]);
+  });
+});
+
+describe("unfilledMainCastDates", () => {
+  it("returns dates whose confirmed main cast is under the slot count", () => {
+    const out = unfilledMainCastDates(
+      [
+        { id: "d1", date: "2026-07-20", program: "A", subProgram: null, mainSlots: 2 },
+        { id: "d2", date: "2026-07-21", program: "B", subProgram: null, mainSlots: 2 },
+        { id: "d3", date: "2026-07-22", program: "C", subProgram: null, mainSlots: null },
+      ],
+      new Map([["d1", 2], ["d2", 1]]),
+    );
+    expect(out).toEqual([
+      { id: "d2", date: "2026-07-21", program: "B", subProgram: null, mainBooked: 1, mainSlots: 2 },
+    ]);
   });
 });
