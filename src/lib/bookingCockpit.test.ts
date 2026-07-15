@@ -110,6 +110,44 @@ describe("computeTierAttention", () => {
     ], NOW);
     expect(items.map((i) => i.showDateId)).toEqual(["d3"]); // only the empty at-risk one
   });
+  it("scopes the expiry check to the row's own tier", () => {
+    // Fully filled tier 1; the only expiring offer belongs to tier 2, so
+    // deleting the same-tier guard would wrongly flag this row.
+    const items = computeTierAttention([{
+      ...base,
+      bookings: [
+        { status: "soft_booked", offer_tier: 1, offer_expires_at: null },
+        { status: "soft_booked", offer_tier: 1, offer_expires_at: null },
+        { status: "confirmed", offer_tier: 1, offer_expires_at: null },
+        { status: "suggested", offer_tier: 2, offer_expires_at: "2026-07-15T20:00:00Z" },
+      ],
+    }], NOW);
+    expect(items).toHaveLength(0);
+  });
+  it("ignores already-expired offers and includes the exact 24h boundary", () => {
+    const filledExceptExpiry = [
+      { status: "soft_booked", offer_tier: 1, offer_expires_at: null },
+      { status: "soft_booked", offer_tier: 1, offer_expires_at: null },
+      { status: "confirmed", offer_tier: 1, offer_expires_at: null },
+    ];
+    // dt <= 0: expired an hour ago, must not flag.
+    expect(computeTierAttention([{
+      ...base,
+      bookings: [...filledExceptExpiry, { status: "suggested", offer_tier: 1, offer_expires_at: "2026-07-15T11:00:00Z" }],
+    }], NOW)).toHaveLength(0);
+    // dt === 24h exactly: inclusive boundary, must flag.
+    const atBoundary = computeTierAttention([{
+      ...base,
+      bookings: [...filledExceptExpiry, { status: "suggested", offer_tier: 1, offer_expires_at: "2026-07-16T12:00:00Z" }],
+    }], NOW);
+    expect(atBoundary).toHaveLength(1);
+    expect(atBoundary[0].expiresSoon).toBe(true);
+    // dt just over 24h: outside the window, must not flag.
+    expect(computeTierAttention([{
+      ...base,
+      bookings: [...filledExceptExpiry, { status: "suggested", offer_tier: 1, offer_expires_at: "2026-07-16T12:00:01Z" }],
+    }], NOW)).toHaveLength(0);
+  });
   it("sorts by date ascending", () => {
     const items = computeTierAttention([
       { ...base, showDateId: "later", date: "2026-07-25", bookings: [] },

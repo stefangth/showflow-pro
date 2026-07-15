@@ -109,7 +109,7 @@ const EXPIRES_SOON_MS = 24 * 60 * 60 * 1000;
  * Attention rows for the producer dashboard: open tiers that are under-filled
  * (filled = pending + accepted in the tier, required = total configured slots,
  * matching the dashboard's fully-confirmed math) or that have pending offers
- * expiring within 24h. Dates without slot config are skipped: no basis to
+ * in the SAME tier expiring within 24h. Dates without slot config are skipped: no basis to
  * judge. Sorted soonest first.
  */
 export function computeTierAttention(rows: TierAttentionInput[], now: Date): TierAttentionItem[] {
