@@ -116,10 +116,11 @@ Single home for the shared resolution logic, consumed by `open-offer-tier` and `
 
 ```ts
 resolveTierLadder(admin, showId, cityId): Promise<{ source: "show" | "org"; tiers: { tier: number; castId: string }[] }>
+ladderCastIdsAtTier(ladder, tier): string[]                  // pure
 nextTierAfter(ladder, currentTier): number | null            // pure
-fetchGateArtistIds(admin, showId, cityId, showDateId): Promise<Set<string> | null>   // null = unrestricted
-fetchRequiredSkillIds(admin, showId, showDateId): Promise<string[]>
-filterArtistsBySkills(admin, artistIds, requiredSkillIds): Promise<string[]>          // ids holding all
+fetchGateArtistIds(admin, { showId, cityId, showDateId }): Promise<Set<string> | null>   // null = unrestricted
+fetchRequiredSkillIds(admin, { showId, showDateId }): Promise<string[]>
+filterArtistIdsBySkills(admin, artistIds, requiredSkillIds): Promise<string[]>           // ids holding all
 ```
 
 ### Frontend
@@ -151,7 +152,7 @@ The "Cast Priority by City" section gains a scope select at the top: **"Organiza
 
 - `TierTimeline` shows a small hint when the show ladder is in effect: "Using show-specific priorities".
 - The tier open controls gain an optional skill picker labeled "Only offer to artists with", feeding `skill_filter_ids` on both the dry-run and the real open. Empty selection = unfiltered (default).
-- The dry-run preview ("Preview who gets offers") lists the two new exclusion counts with labels "not eligible for this show" and "missing required skills".
+- The dry-run preview ("Preview who gets offers") lists the two new exclusion counts with labels "Not eligible for this show" and "Missing required skills".
 - The direct-book list (`EligibilityBookList` in ShowDateDetailSheet) gains skill filter chips: selecting skills narrows the list to artists holding all of them, reusing `fetchSkillEligibleArtistIds` with the selected ids. Client-side view filter only; nothing persisted.
 
 All copy uses no em or en dashes (standing rule).
