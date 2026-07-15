@@ -50,6 +50,15 @@ export function ShowFormDialog({
   const { data: orgSkills } = useSkills();
   const [requiredSkillIds, setRequiredSkillIds] = useState<string[]>([]);
   const initialSkillIdsRef = useRef<string[]>([]);
+  // Which (open session, show identity) the skills editor was last seeded for.
+  // The dialog instance stays mounted across close/reopen (ProductionsPage), so
+  // seeding must be keyed on the open transition, not on query-data identity:
+  // structural sharing keeps a refetch reference-equal, which would otherwise
+  // let an unsaved toggle survive an X/Escape close and leak into the next save.
+  const skillsSeededForRef = useRef<string | null>(null);
+  // Show id created in the current open session; a retry after a failed skills
+  // diff must reuse it instead of creating a duplicate show.
+  const createdShowIdRef = useRef<string | null>(null);
   // Load the show's current required skills when editing (dialog opens with a show).
   const showReqQ = useQuery({
     queryKey: ["eligibility", "show-required-skills", show?.id],
@@ -57,10 +66,26 @@ export function ShowFormDialog({
     queryFn: () => fetchShowRequiredSkillIds(supabase, show!.id),
   });
   useEffect(() => {
-    const ids = showReqQ.data ?? [];
+    if (!open) {
+      // Closing discards unsaved toggles (they must never survive into the next
+      // session's diff) and ends the create session.
+      skillsSeededForRef.current = null;
+      createdShowIdRef.current = null;
+      setRequiredSkillIds([]);
+      initialSkillIdsRef.current = [];
+      return;
+    }
+    const identity = show?.id ?? "__create__";
+    // Seed once per open session per show identity; a mid-session refetch must
+    // not clobber in-progress toggles (same pattern as the ArtistProfileSheet
+    // draft reseed).
+    if (skillsSeededForRef.current === identity) return;
+    if (show?.id && showReqQ.data === undefined) return; // edit mode: wait for the fetch
+    skillsSeededForRef.current = identity;
+    const ids = show?.id ? showReqQ.data ?? [] : [];
     setRequiredSkillIds(ids);
     initialSkillIdsRef.current = ids;
-  }, [showReqQ.data]);
+  }, [open, show?.id, showReqQ.data]);
 
   const form = useForm<FormValues>({
     resolver: zodResolver(schema),
@@ -82,23 +107,42 @@ export function ShowFormDialog({
   }, [open, show]);
 
   /** Insert/delete added/removed skill ids against the target show, then bust
-   *  every domain the eligibility engine reads from. */
-  const applyRequiredSkillsDiff = async (targetShowId: string) => {
+   *  every domain the eligibility engine reads from. The baseline ref advances
+   *  INCREMENTALLY after each successful write, so a retry after a mid-diff
+   *  failure only re-attempts genuinely unfinished operations (a repeated
+   *  insert would hit the UNIQUE (show_id, skill_id) index). Returns whether
+   *  the whole diff applied. */
+  const applyRequiredSkillsDiff = async (targetShowId: string, orgId: string): Promise<boolean> => {
     const before = new Set(initialSkillIdsRef.current);
     const after = new Set(requiredSkillIds);
-    for (const id of requiredSkillIds) {
-      if (!before.has(id)) await addShowRequiredSkill(supabase, { showId: targetShowId, skillId: id, orgId: currentOrg!.id });
+    const toAdd = requiredSkillIds.filter((id) => !before.has(id));
+    const toRemove = initialSkillIdsRef.current.filter((id) => !after.has(id));
+    if (toAdd.length === 0 && toRemove.length === 0) return true;
+    try {
+      for (const id of toAdd) {
+        await addShowRequiredSkill(supabase, { showId: targetShowId, skillId: id, orgId });
+        initialSkillIdsRef.current = [...initialSkillIdsRef.current, id];
+      }
+      for (const id of toRemove) {
+        await removeShowRequiredSkill(supabase, { showId: targetShowId, skillId: id });
+        initialSkillIdsRef.current = initialSkillIdsRef.current.filter((x) => x !== id);
+      }
+      return true;
+    } catch (e) {
+      // Distinct from the show-upsert failure: the show itself saved fine.
+      toast.error("Failed to update required skills", { description: (e as Error).message });
+      return false;
+    } finally {
+      // Partial writes may have landed even on failure; refresh consumers either way.
+      queryClient.invalidateQueries({ queryKey: ["eligibility"] });
+      queryClient.invalidateQueries({ queryKey: ["eligible-artists"] });
+      queryClient.invalidateQueries({ queryKey: ["artist-eligible-dates"] });
+      queryClient.invalidateQueries({ queryKey: ["offer-tiers"] });
     }
-    for (const id of initialSkillIdsRef.current) {
-      if (!after.has(id)) await removeShowRequiredSkill(supabase, { showId: targetShowId, skillId: id });
-    }
-    queryClient.invalidateQueries({ queryKey: ["eligibility"] });
-    queryClient.invalidateQueries({ queryKey: ["eligible-artists"] });
-    queryClient.invalidateQueries({ queryKey: ["artist-eligible-dates"] });
-    queryClient.invalidateQueries({ queryKey: ["offer-tiers"] });
   };
 
   const onSubmit = async (v: FormValues) => {
+    if (!currentOrg) { toast.error("No active organization"); return; }
     try {
       let targetShowId: string;
       if (isEdit && show) {
@@ -112,20 +156,25 @@ export function ShowFormDialog({
         toast.success("Production updated");
         onSaved?.(show.id);
       } else {
-        if (!currentOrg) { toast.error("No active organization"); return; }
-        const { id } = await createShow.mutateAsync({
-          orgId: currentOrg.id, createdBy: user?.id ?? null,
-          program: v.program || null, subProgram: v.subProgram || null,
-          category: v.category || null, description: v.description || null,
-          mainCastSlots: toSlot(v.mainCastSlots), understudySlots: toSlot(v.understudySlots),
-          sortOrder: nextSortOrder(allShows),
-        });
+        // A retry after a failed skills diff reuses the show created earlier in
+        // this open session instead of inserting a duplicate.
+        let id = createdShowIdRef.current;
+        if (!id) {
+          ({ id } = await createShow.mutateAsync({
+            orgId: currentOrg.id, createdBy: user?.id ?? null,
+            program: v.program || null, subProgram: v.subProgram || null,
+            category: v.category || null, description: v.description || null,
+            mainCastSlots: toSlot(v.mainCastSlots), understudySlots: toSlot(v.understudySlots),
+            sortOrder: nextSortOrder(allShows),
+          }));
+          createdShowIdRef.current = id;
+          toast.success("Production created");
+          onSaved?.(id);
+        }
         targetShowId = id;
-        toast.success("Production created");
-        onSaved?.(id);
       }
-      await applyRequiredSkillsDiff(targetShowId);
-      onOpenChange(false);
+      const skillsApplied = await applyRequiredSkillsDiff(targetShowId, currentOrg.id);
+      if (skillsApplied) onOpenChange(false); // keep the dialog open on diff failure so a retry can finish
     } catch (e) {
       toast.error((e as Error).message);
     }
