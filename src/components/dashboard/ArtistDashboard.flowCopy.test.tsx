@@ -139,4 +139,18 @@ describe("ArtistDashboard — flow-aware meter (Task 3)", () => {
     const meterLink = screen.getByText("1 of 4 dates").closest("a");
     expect(meterLink?.getAttribute("href")).not.toContain("filter=unanswered");
   });
+
+  // Spec correction: the card does NOT self-hide on empty (it renders an
+  // offer-worded empty state), so direct mode must gate it off entirely.
+  it("classic flow shows the awaiting-response card; direct flow hides it", async () => {
+    flowHolder.flow = BOOKING_FLOW_DEFAULTS;
+    const classic = renderWithProviders(<ArtistDashboard />);
+    expect(await classic.findByText("Awaiting your response")).toBeInTheDocument();
+    classic.unmount();
+
+    flowHolder.flow = applyPreset(BOOKING_FLOW_DEFAULTS, "direct");
+    renderWithProviders(<ArtistDashboard />);
+    expect(await screen.findByText("Booked dates")).toBeInTheDocument();
+    expect(screen.queryByText("Awaiting your response")).not.toBeInTheDocument();
+  });
 });
