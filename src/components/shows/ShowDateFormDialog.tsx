@@ -15,7 +15,7 @@ import { fetchShowDatesForShow } from "@/data/showDates";
 import { isSyncedDate, findDuplicateDate } from "@/lib/catalog";
 import { shouldAutoOpenTier1 } from "@/lib/bookings";
 import { showSlots } from "@/lib/settings";
-import { showLabel } from "@/types";
+import { showIdentityLabel } from "@/types";
 import { toDateKey, parseDateOnly, formatDateDMY } from "@/lib/dates";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -189,7 +189,7 @@ export function ShowDateFormDialog({
             <Select value={showId} onValueChange={(v) => form.setValue("showId", v, { shouldValidate: true })} disabled={mode === "edit"}>
               <SelectTrigger><SelectValue placeholder="Choose a production" /></SelectTrigger>
               <SelectContent>
-                {activeShows.map((s) => <SelectItem key={s.id} value={s.id}>{showLabel(s)}</SelectItem>)}
+                {activeShows.map((s) => <SelectItem key={s.id} value={s.id}>{showIdentityLabel(s)}</SelectItem>)}
               </SelectContent>
             </Select>
             {err.showId && <p className="text-xs text-destructive">{err.showId.message}</p>}

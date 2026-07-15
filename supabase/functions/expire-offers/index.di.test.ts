@@ -936,6 +936,65 @@ Deno.test("expire-offers: sends one reminder per artist inside the 24h window an
   assertEquals(stampArg.reminder_sent_at, FIXED_NOW.toISOString());
 });
 
+Deno.test("expire-offers: logs and continues when the reminder's notification insert fails", async () => {
+  const ORG_ID = "org-1";
+  const dueBooking = {
+    id: "booking-1",
+    artist_id: "artist-1",
+    offer_expires_at: new Date(FIXED_NOW.getTime() + 12 * 3600 * 1000).toISOString(),
+    // A registered user_id is required to reach the notifications insert at all.
+    artists: { id: "artist-1", name: "Jo Performer", email: "jo@example.com", user_id: "user-1" },
+    show_dates: {
+      date: "2026-07-01",
+      custom: null,
+      show_id: "show-1",
+      city_id: "city-1",
+      shows: { program: "Ballet", sub_program: "Matinée" },
+    },
+  };
+  const { deps } = makeFakeDeps({
+    now: FIXED_NOW,
+    tables: {
+      app_settings: [
+        { when: { key: "cron_secret" }, data: { value: CRON_SECRET } },
+        { when: { key: "booking_flow" }, data: [{ org_id: ORG_ID, value: { expiry_reminder: true } }] },
+      ],
+      organizations: { data: [{ id: ORG_ID }], error: null },
+      show_date_offer_tiers: { data: [], error: null },
+      bookings: { data: [dueBooking], error: null },
+      notifications: { data: null, error: { message: "insert boom" } },
+    },
+    rpcs: {
+      expire_soft_bookings: { data: null, error: null },
+      resolve_user_contacts: { data: [], error: null },
+    },
+  });
+
+  const errorLogs: unknown[][] = [];
+  const originalConsoleError = console.error;
+  console.error = (...args: unknown[]) => { errorLogs.push(args); };
+  let res: Response;
+  try {
+    res = await handle(cronReq(), deps);
+  } finally {
+    console.error = originalConsoleError;
+  }
+
+  assertEquals(res.status, 200);
+  const body = await res.json();
+  // A failed in-app notification must not undo the reminder: the email already sent
+  // and the booking is already stamped by the time the insert is attempted.
+  assertEquals(body.reminders_sent, 1);
+
+  const loggedNotifFailure = errorLogs.some(
+    (args) =>
+      typeof args[0] === "string" &&
+      args[0].includes("expire-offers") &&
+      args[0].includes("notification insert failed"),
+  );
+  assertEquals(loggedNotifFailure, true);
+});
+
 Deno.test("expire-offers: no reminder when expiry_reminder is off or already stamped", async () => {
   const ORG_ID = "org-1";
   const dueBooking = {

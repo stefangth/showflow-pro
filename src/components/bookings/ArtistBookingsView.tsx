@@ -19,7 +19,7 @@ import { useReferenceField } from '@/hooks/useBookingFlow';
 import { bookingStatusBadgeClass } from '@/lib/bookings';
 import { referenceLabel } from '@/lib/bookingFlow';
 import { formatDateDMY, parseDateOnly } from '@/lib/dates';
-import { showLabel } from '@/types';
+import { showIdentityLabel } from '@/types';
 import { useColumnTemplate, useEditorConfig } from '@/features/editor/EditorContext';
 import { useColumnHeaders } from '@/features/editor/useColumnHeaders';
 import { ColumnLayoutEditor } from '@/features/editor/ColumnLayoutEditor';
@@ -106,10 +106,12 @@ export function ArtistBookingsView() {
       inTimeframe(parseDateOnly(d.date), timeframe)
     );
     const merged = mergeArtistCancelledDates(eligibleFiltered, cancelledFiltered);
+    // Sort on the show's own program/sub_program identity (stable), never the
+    // org-configurable reference label used for display below.
     return applySort(
       merged,
       sort,
-      (d) => (d.show ? showLabel(d.show) : '—'),
+      (d) => showIdentityLabel(d.show),
       (d) => parseDateOnly(d.date)
     );
   }, [eligibleDates, cancelledEntries, timeframe, sort]);
