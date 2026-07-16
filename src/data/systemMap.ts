@@ -543,7 +543,7 @@ export const SYSTEM_MAP_NODES: SystemMapNode[] = [
         "enforce_booking_transition (state machine, rejects) · trg_derive_org_id (cross-org, rejects) · bookings_active_artist_date_uniq (one active per artist+date) · promote_understudy_on_cancellation (accepted understudy, ordered by skill coverage of the cancelled artist's skills desc then oldest first; skills never block promotion) · slot_fill_auto_cancel · notify_booking_transition (suggested→soft_booked → producers; soft_booked→confirmed → artist; direct INSERT as confirmed → artist) · status recompute → show_dates",
       StateMachine: "suggested → soft_booked → confirmed; suggested → confirmed directly under auto-confirm (producer_confirmation=false); direct-booking orgs INSERT straight to confirmed (no offer step); any → cancelled; cancelled terminal",
       Rule: "flow-gated triggers/policies (promote_understudy_on_cancellation, the 'Artists can respond to own offers' self-confirm policy) read booking_flow via get_effective_booking_flow — entitlement-aware, so an org without the booking_flow entitlement falls back to classic defaults (understudy promotion on, artist acceptance on, producer confirmation on)",
-      Cite: "20260702120020 · 20260616162454 · 20260616161112 · 20260714104826 · 20260715103620 · 20260715130100 · 20260717014012",
+      Cite: "20260702120020 · 20260616162454 · 20260616161112 · 20260714104826 · 20260715103620 · 20260715130100 · 20260716235007",
     },
   },
   {
