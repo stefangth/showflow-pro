@@ -3,6 +3,7 @@ import type { Database, Json } from "@/integrations/supabase/types";
 import type { Organization } from "@/data/orgs";
 import type { EdgeFnMetric, EmailHealth } from "@/lib/systemHealth";
 import { BOOKING_ENGINE_DEFAULTS, SYSTEM_HEALTH, type AppRole } from "@/config/app.config";
+import type { EntitlementRow, FeatureKey } from "@/lib/entitlements";
 
 export interface OrgStat {
   org_id: string;
@@ -259,4 +260,26 @@ export async function exportOrgData(client: SupabaseClient<Database>, orgId: str
 export async function deleteOrg(client: SupabaseClient<Database>, orgId: string): Promise<void> {
   const { error } = await client.rpc("delete_org", { p_org: orgId });
   if (error) throw error;
+}
+
+/** Toggle a single feature entitlement for an org (upsert on org_id+feature). Super-admin only via org_entitlements RLS. */
+export async function setOrgEntitlement(
+  client: SupabaseClient<Database>,
+  orgId: string,
+  feature: FeatureKey,
+  enabled: boolean,
+): Promise<void> {
+  const { error } = await client
+    .from("org_entitlements")
+    .upsert({ org_id: orgId, feature, enabled }, { onConflict: "org_id,feature" });
+  if (error) throw error;
+}
+
+/** Every org's feature entitlement rows (platform fleet view, super-admin only). */
+export async function fetchAllOrgEntitlements(
+  client: SupabaseClient<Database>,
+): Promise<Array<{ org_id: string } & EntitlementRow>> {
+  const { data, error } = await client.from("org_entitlements").select("org_id, feature, enabled");
+  if (error) throw error;
+  return (data ?? []) as Array<{ org_id: string } & EntitlementRow>;
 }
