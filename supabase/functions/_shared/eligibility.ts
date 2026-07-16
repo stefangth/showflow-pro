@@ -12,7 +12,10 @@ export interface TierLadder {
 }
 
 /** Effective ladder for (show, city): show-scoped prioritized rows win outright;
- *  otherwise the org-wide cast_city_priority list for the city. */
+ *  otherwise the org-wide cast_city_priority list for the city.
+ *  Queries here (and in the gate below) deliberately filter by show_id/city_id
+ *  without an explicit org_id: shows and cities are tenant-owned rows whose ids
+ *  never cross orgs, so FK scoping already pins the org. Not an oversight. */
 export async function resolveTierLadder(admin: Admin, showId: string, cityId: string): Promise<TierLadder> {
   // deno-lint-ignore no-explicit-any
   const { data: showRows } = await (admin as any)
