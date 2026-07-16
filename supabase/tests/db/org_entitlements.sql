@@ -5,7 +5,7 @@
 -- audited into settings_audit_log with key = 'entitlement:<feature>'.
 BEGIN;
 CREATE EXTENSION IF NOT EXISTS pgtap WITH SCHEMA extensions;
-SELECT plan(13);
+SELECT plan(14);
 
 -- ── Seed two orgs + a member of each + a platform super-admin.
 SET session_replication_role = replica;
@@ -57,20 +57,28 @@ SELECT is(
   0, 'foreign org member sees no rows for org A');
 RESET ROLE;
 
--- 8 & 9. a plain org member cannot write entitlements (super-admin-only policy).
+-- 8-10. a plain org member cannot write entitlements (super-admin-only policy).
+-- INSERT fails the WITH CHECK clause, which throws; UPDATE does not throw —
+-- RLS silently filters the target rows to zero, so assert 0 rows + unchanged value.
 SELECT pg_temp.act_as('00000000-0000-0000-0000-00000000ee11');
 SET LOCAL ROLE authenticated;
 SELECT throws_ok(
   $$INSERT INTO public.org_entitlements (org_id, feature, enabled)
     VALUES ('00000000-0000-0000-0000-00000000ee01','some_other_feature', true)$$,
   '42501', NULL, 'org member cannot insert an entitlement row');
-SELECT throws_ok(
-  $$UPDATE public.org_entitlements SET enabled = false
-    WHERE org_id = '00000000-0000-0000-0000-00000000ee01' AND feature = 'hire_orders'$$,
-  '42501', NULL, 'org member cannot update an entitlement row');
+WITH updated AS (
+  UPDATE public.org_entitlements SET enabled = false
+  WHERE org_id = '00000000-0000-0000-0000-00000000ee01' AND feature = 'hire_orders'
+  RETURNING 1
+)
+SELECT is((SELECT count(*)::int FROM updated), 0, 'org member update affects 0 rows');
 RESET ROLE;
+SELECT is(
+  (SELECT enabled FROM public.org_entitlements
+   WHERE org_id = '00000000-0000-0000-0000-00000000ee01' AND feature = 'hire_orders'),
+  true, 'org member update did not change the value');
 
--- 10. a super-admin (platform_admins row) can insert.
+-- 11. a super-admin (platform_admins row) can insert.
 SELECT pg_temp.act_as('00000000-0000-0000-0000-00000000ee13');
 SET LOCAL ROLE authenticated;
 SELECT lives_ok(
@@ -78,7 +86,7 @@ SELECT lives_ok(
     VALUES ('00000000-0000-0000-0000-00000000ee02','hire_orders', true)$$,
   'super-admin can insert an entitlement row');
 
--- 11. a super-admin can update.
+-- 12. a super-admin can update.
 SELECT lives_ok(
   $$UPDATE public.org_entitlements SET enabled = false
     WHERE org_id = '00000000-0000-0000-0000-00000000ee01' AND feature = 'hire_orders'$$,
@@ -89,14 +97,14 @@ UPDATE public.org_entitlements SET enabled = false
   WHERE org_id = '00000000-0000-0000-0000-00000000ee01' AND feature = 'hire_orders';
 RESET ROLE;
 
--- 12. insert + the one changed update above are both audited; the no-op
+-- 13. insert + the one changed update above are both audited; the no-op
 --     re-update just above added nothing.
 SELECT is(
   (SELECT count(*)::int FROM public.settings_audit_log
    WHERE org_id = '00000000-0000-0000-0000-00000000ee01' AND key = 'entitlement:hire_orders'),
   2, 'insert + update both audited, no-op update not audited');
 
--- 13. the stamp trigger records who made the last write.
+-- 14. the stamp trigger records who made the last write.
 SELECT is(
   (SELECT updated_by FROM public.org_entitlements
    WHERE org_id = '00000000-0000-0000-0000-00000000ee01' AND feature = 'hire_orders'),
