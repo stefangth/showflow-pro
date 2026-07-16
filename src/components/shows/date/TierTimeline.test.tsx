@@ -11,6 +11,8 @@ const baseProps = {
   canManage: true,
   hasSession: true,
   tiers: { priorities: [1], hasAdHoc: false },
+  skills: [] as { id: string; name: string }[],
+  ladderSource: "org" as const,
   onOpenTier: vi.fn(),
   onCloseTier: vi.fn(),
   onPreviewTier: vi.fn(),
@@ -44,7 +46,7 @@ describe("TierTimeline", () => {
       />,
     );
     fireEvent.click(screen.getByRole("button", { name: /preview who gets offers/i }));
-    expect(onPreviewTier).toHaveBeenCalledWith(1);
+    expect(onPreviewTier).toHaveBeenCalledWith(1, []);
   });
 
   it("renders a direct-mode note instead of tier controls when artist_acceptance is off", () => {
@@ -93,5 +95,83 @@ describe("TierTimeline", () => {
     expect(screen.getByRole("button", { name: /^open offers$/i })).toBeEnabled();
     rerender(<TierTimeline {...props} openPending />);
     expect(screen.getByRole("button", { name: /^open offers$/i })).toBeDisabled();
+  });
+
+  it("renders the show-specific priorities hint only when ladderSource is show", () => {
+    const { rerender } = renderWithProviders(
+      <TierTimeline {...baseProps} bookings={[]} openedTiers={[]} ladderSource="show" />,
+    );
+    expect(screen.getByText("Using show-specific priorities")).toBeInTheDocument();
+    rerender(<TierTimeline {...baseProps} bookings={[]} openedTiers={[]} ladderSource="org" />);
+    expect(screen.queryByText("Using show-specific priorities")).not.toBeInTheDocument();
+  });
+
+  it("confirms opening the tier with the toggled skill filter ids", () => {
+    const onOpenTier = vi.fn();
+    renderWithProviders(
+      <TierTimeline
+        {...baseProps}
+        bookings={[]}
+        openedTiers={[]}
+        skills={[{ id: "s1", name: "Juggling" }]}
+        onOpenTier={onOpenTier}
+      />,
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Juggling" }));
+    fireEvent.click(screen.getByRole("button", { name: /open tier 1/i }));
+    fireEvent.click(screen.getByRole("button", { name: /^open offers$/i }));
+    expect(onOpenTier).toHaveBeenCalledWith(1, ["s1"]);
+  });
+
+  it("confirms opening the tier with an empty skill filter when no chips are toggled", () => {
+    const onOpenTier = vi.fn();
+    renderWithProviders(
+      <TierTimeline
+        {...baseProps}
+        bookings={[]}
+        openedTiers={[]}
+        skills={[{ id: "s1", name: "Juggling" }]}
+        onOpenTier={onOpenTier}
+      />,
+    );
+    fireEvent.click(screen.getByRole("button", { name: /open tier 1/i }));
+    fireEvent.click(screen.getByRole("button", { name: /^open offers$/i }));
+    expect(onOpenTier).toHaveBeenCalledWith(1, []);
+  });
+
+  // Regression: skillFilterIds carried over across tier selections, so a producer
+  // who scoped tier 1 to a skill silently under-offered on tier 2 with the same filter.
+  it("clears the skill filter when the tier selection changes", async () => {
+    const onOpenTier = vi.fn();
+    renderWithProviders(
+      <TierTimeline
+        {...baseProps}
+        bookings={[]}
+        openedTiers={[]}
+        tiers={{ priorities: [1, 2], hasAdHoc: false }}
+        skills={[{ id: "s1", name: "Juggling" }]}
+        onOpenTier={onOpenTier}
+      />,
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Juggling" }));
+    fireEvent.click(screen.getByRole("combobox"));
+    fireEvent.click(await screen.findByRole("option", { name: "Tier 2" }));
+    fireEvent.click(screen.getByRole("button", { name: /open tier 2/i }));
+    fireEvent.click(screen.getByRole("button", { name: /^open offers$/i }));
+    expect(onOpenTier).toHaveBeenCalledWith(2, []);
+  });
+
+  it("includes the toggled skill's name in the confirm dialog cue when the tier is unchanged", () => {
+    renderWithProviders(
+      <TierTimeline
+        {...baseProps}
+        bookings={[]}
+        openedTiers={[]}
+        skills={[{ id: "s1", name: "Juggling" }]}
+      />,
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Juggling" }));
+    fireEvent.click(screen.getByRole("button", { name: /open tier 1/i }));
+    expect(screen.getByText(/Only artists with all of these skills receive offers: Juggling\./)).toBeInTheDocument();
   });
 });

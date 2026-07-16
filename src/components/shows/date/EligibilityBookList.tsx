@@ -8,6 +8,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Skeleton } from "@/components/ui/skeleton";
+import { SkillPicker } from "@/components/skills/SkillPicker";
 
 /**
  * Direct-mode booking list: shows every eligible artist for a show date with a
@@ -18,13 +19,19 @@ import { Skeleton } from "@/components/ui/skeleton";
  * actions. Pure presentational — the caller (ShowDateDetailSheet) owns the
  * booking mutation and passes the current booked-artist set + pending state.
  */
-export function EligibilityBookList({ artists, bookedArtistIds, onBook, booking, loading = false, error = false }: {
+export function EligibilityBookList({
+  artists, bookedArtistIds, onBook, booking, loading = false, error = false,
+  skills, selectedSkillIds, onSkillFilterChange,
+}: {
   artists: { id: string; name: string }[];
   bookedArtistIds: Set<string>;
   onBook: (artistId: string, isUnderstudy: boolean) => void;
   booking: boolean;
   loading?: boolean;
   error?: boolean;
+  skills?: { id: string; name: string }[];
+  selectedSkillIds?: string[];
+  onSkillFilterChange?: (skillId: string) => void;
 }) {
   const [understudy, setUnderstudy] = useState(false);
   const [confirmTarget, setConfirmTarget] = useState<{ id: string; name: string } | null>(null);
@@ -49,6 +56,16 @@ export function EligibilityBookList({ artists, bookedArtistIds, onBook, booking,
         <Checkbox checked={understudy} onCheckedChange={(v) => setUnderstudy(v === true)} />
         Book as understudy
       </label>
+      {skills && skills.length > 0 && onSkillFilterChange && (
+        <div className="space-y-1">
+          <p className="text-xs text-muted-foreground">Only offer to artists with</p>
+          <SkillPicker
+            skills={skills}
+            selectedIds={selectedSkillIds ?? []}
+            onToggle={onSkillFilterChange}
+          />
+        </div>
+      )}
       {artists.length === 0 && (
         <p className="text-sm text-muted-foreground">No eligible artists for this date. Check casts and city in Settings.</p>
       )}

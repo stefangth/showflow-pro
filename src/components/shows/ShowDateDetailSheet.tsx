@@ -20,6 +20,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { MapPin, Clock, Users, Check, ChevronsUpDown } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useEligibleArtists } from '@/hooks/useEligibleArtists';
+import { useSkills } from '@/hooks/useSkills';
 import { useBookingFlow, useReferenceField } from '@/hooks/useBookingFlow';
 import { showSlots } from '@/lib/settings';
 import {
@@ -34,12 +35,17 @@ import {
   openOfferTier, fetchOfferTiers, fetchOpenedTiers, closeOfferTier,
   dryRunOfferTier, createBooking, updateBookingStatusGuarded,
 } from '@/data/bookings';
+import {
+  fetchRequiredSkillIds, fetchSkillEligibleArtistIds, addShowDateRequiredSkill, removeShowDateRequiredSkill,
+} from '@/data/eligibility';
+import { unionSkillIds } from '@/lib/eligibility';
 import { resolveOrgSetting } from '@/data/settings';
 import { BookingFunnel } from '@/components/shows/date/BookingFunnel';
 import { UpNextStrip } from '@/components/shows/date/UpNextStrip';
 import { TierTimeline } from '@/components/shows/date/TierTimeline';
 import { DryRunDialog } from '@/components/shows/date/DryRunDialog';
 import { EligibilityBookList } from '@/components/shows/date/EligibilityBookList';
+import { RequiredSkillsSection } from '@/components/shows/date/RequiredSkillsSection';
 import { fetchBlockedArtistIds } from '@/data/blockedDates';
 import { ChatPanel } from '@/components/chat/ChatPanel';
 import { ShowDateFormDialog } from '@/components/shows/ShowDateFormDialog';
@@ -177,10 +183,32 @@ export function ShowDateDetailSheet({ showDateId, open, onOpenChange }: Props) {
     queryFn: () => fetchBlockedArtistIds(supabase, { date: showDate!.date }),
   });
 
+  const { data: orgSkills } = useSkills();
+  const requiredSkillsQ = useQuery({
+    queryKey: ['eligibility', 'required-skills', showDate?.show_id, showDateId],
+    enabled: !!showDate?.show_id && !!showDateId,
+    queryFn: () => fetchRequiredSkillIds(supabase, { showId: showDate!.show_id, showDateId: showDateId! }),
+  });
+
+  // Ad-hoc skill chips the producer picks on the direct-book list, union'd with the
+  // date's hard skill requirements into a single set to resolve eligibility against.
+  const [directSkillFilterIds, setDirectSkillFilterIds] = useState<string[]>([]);
+  const directRequiredSkillIds = useMemo(
+    () => unionSkillIds(requiredSkillsQ.data?.all ?? [], directSkillFilterIds),
+    [requiredSkillsQ.data?.all, directSkillFilterIds],
+  );
+  const skillEligibleQ = useQuery({
+    queryKey: ['eligibility', 'skill-eligible', showDateId, directRequiredSkillIds],
+    enabled: !!showDateId && requiredSkillsQ.data !== undefined,
+    queryFn: () => fetchSkillEligibleArtistIds(supabase, { requiredSkillIds: directRequiredSkillIds }),
+  });
+
   const tiersQ = useQuery({
     queryKey: ['offer-tiers', 'available', showDateId, cityId],
     enabled: canManage && !!showDateId,
-    queryFn: () => fetchOfferTiers(supabase, { cityId, showDateId: showDateId! }),
+    // `source` (show vs org ladder) feeds TierTimeline's "Using show-specific
+    // priorities" hint below.
+    queryFn: () => fetchOfferTiers(supabase, { showId: showId!, cityId, showDateId: showDateId! }),
   });
   const openedQ = useQuery({
     queryKey: ['offer-tiers', 'opened', showDateId],
@@ -188,7 +216,7 @@ export function ShowDateDetailSheet({ showDateId, open, onOpenChange }: Props) {
     queryFn: () => fetchOpenedTiers(supabase, showDateId!),
   });
 
-  const [dryRun, setDryRun] = useState<{ tier: number } | null>(null);
+  const [dryRun, setDryRun] = useState<{ tier: number; skillFilterIds: string[] } | null>(null);
   const [editOpen, setEditOpen] = useState(false);
   const [cancelReason, setCancelReason] = useState('');
   const cancelDate = useCancelShowDate();
@@ -202,9 +230,11 @@ export function ShowDateDetailSheet({ showDateId, open, onOpenChange }: Props) {
 
   // Preview-who-gets-offers query, enabled only while the dialog is open.
   const dryRunQ = useQuery({
-    queryKey: ['offer-tiers', 'dry-run', showDateId, dryRun?.tier],
+    queryKey: ['offer-tiers', 'dry-run', showDateId, dryRun?.tier, dryRun?.skillFilterIds],
     enabled: Boolean(dryRun) && !!showDateId,
-    queryFn: () => dryRunOfferTier(supabase, { showDateId: showDateId!, tier: dryRun!.tier }),
+    queryFn: () => dryRunOfferTier(supabase, {
+      showDateId: showDateId!, tier: dryRun!.tier, skillFilterIds: dryRun!.skillFilterIds,
+    }),
   });
 
   const {
@@ -215,19 +245,22 @@ export function ShowDateDetailSheet({ showDateId, open, onOpenChange }: Props) {
   } = useMemo(() => deriveBookingGroups(bookingsForDate ?? []), [bookingsForDate]);
 
   // Eligible artists (with names) for direct-booking mode. deriveDirectBookList
-  // fails closed while eligibility/blocked data is unresolved and excludes
-  // blocked artists; a null eligibility set means "no restriction".
+  // fails closed while eligibility/blocked/skill data is unresolved and excludes
+  // blocked artists; a null eligibility or skill set means "no restriction".
   const eligibleArtistList = useMemo(
-    () => deriveDirectBookList(orgArtists, eligibility, blockedQ.data),
-    [orgArtists, eligibility, blockedQ.data],
+    () => deriveDirectBookList(orgArtists, eligibility, blockedQ.data, skillEligibleQ.data),
+    [orgArtists, eligibility, blockedQ.data, skillEligibleQ.data],
   );
   // bookingsForDate is included so the Booked badges are accurate before any
   // Book button renders (an empty booked set would briefly offer Book on an
   // already-booked artist; the DB unique index backstops it, but confusingly).
-  const directListError = orgArtistsError || eligibilityQ.isError || blockedQ.isError || bookingsError;
+  const directListError =
+    orgArtistsError || eligibilityQ.isError || blockedQ.isError || bookingsError ||
+    requiredSkillsQ.isError || skillEligibleQ.isError;
   const directListLoading =
     !directListError &&
-    (orgArtists === undefined || eligibility === undefined || blockedQ.data === undefined || bookingsForDate === undefined);
+    (orgArtists === undefined || eligibility === undefined || blockedQ.data === undefined ||
+      bookingsForDate === undefined || skillEligibleQ.data === undefined);
 
   const overrideCastIds = useMemo(
     () => new Set((dateCastOverrides ?? []).map(r => r.cast_id)),
@@ -283,6 +316,25 @@ export function ShowDateDetailSheet({ showDateId, open, onOpenChange }: Props) {
     onError: (err: any) => toast.error(err.message),
   });
 
+  const invalidateEligibility = () => {
+    queryClient.invalidateQueries({ queryKey: ['eligibility'] });
+    queryClient.invalidateQueries({ queryKey: ['eligible-artists'] });
+    queryClient.invalidateQueries({ queryKey: ['artist-eligible-dates'] });
+    queryClient.invalidateQueries({ queryKey: ['offer-tiers'] });
+  };
+  const addDateSkill = useMutation({
+    mutationFn: (skillId: string) =>
+      addShowDateRequiredSkill(supabase, { showDateId: showDateId!, skillId, orgId: currentOrg!.id }),
+    onSuccess: () => { invalidateEligibility(); toast.success('Required skill added'); },
+    onError: (e: Error) => toast.error('Failed to add required skill', { description: e.message }),
+  });
+  const removeDateSkill = useMutation({
+    mutationFn: (skillId: string) =>
+      removeShowDateRequiredSkill(supabase, { showDateId: showDateId!, skillId }),
+    onSuccess: () => { invalidateEligibility(); toast.success('Required skill removed'); },
+    onError: (e: Error) => toast.error('Failed to remove required skill', { description: e.message }),
+  });
+
   const createBookingMutation = useMutation({
     mutationFn: ({ artistId, isUnderstudy }: { artistId: string; isUnderstudy: boolean }) => {
       if (!currentOrg) throw new Error('No active organization');
@@ -323,8 +375,9 @@ export function ShowDateDetailSheet({ showDateId, open, onOpenChange }: Props) {
   });
 
   const openOffers = useMutation({
-    mutationFn: (tier: number) => openOfferTier(supabase, { showDateId: showDateId!, tier }),
-    onSuccess: (res, tier) => {
+    mutationFn: ({ tier, skillFilterIds }: { tier: number; skillFilterIds: string[] }) =>
+      openOfferTier(supabase, { showDateId: showDateId!, tier, skillFilterIds }),
+    onSuccess: (res, { tier }) => {
       const { kind, text } = offerResultToast(res, tier);
       if (kind === 'success') toast.success(text); else toast.info(text);
       if (res.trackingWarning) {
@@ -534,6 +587,15 @@ export function ShowDateDetailSheet({ showDateId, open, onOpenChange }: Props) {
                         )}
                       </div>
                     )}
+
+                    <RequiredSkillsSection
+                      skills={orgSkills ?? []}
+                      showSkillIds={requiredSkillsQ.data?.showSkillIds ?? []}
+                      dateSkillIds={requiredSkillsQ.data?.dateSkillIds ?? []}
+                      onAdd={(id) => addDateSkill.mutate(id)}
+                      onRemove={(id) => removeDateSkill.mutate(id)}
+                      pending={addDateSkill.isPending || removeDateSkill.isPending}
+                    />
                   </CardContent>
                 </Card>
               )}
@@ -616,14 +678,16 @@ export function ShowDateDetailSheet({ showDateId, open, onOpenChange }: Props) {
                           canManage={canManage}
                           hasSession={hasSession}
                           tiers={tiersQ.data ?? { priorities: [], hasAdHoc: false }}
+                          ladderSource={tiersQ.data?.source ?? "org"}
+                          skills={orgSkills ?? []}
                           openedTiers={openedQ.data ?? []}
                           isLoadingTiers={tiersQ.isLoading}
                           isLoadingOpened={openedQ.isLoading}
                           openPending={openOffers.isPending}
                           closePending={closeOffers.isPending}
-                          onOpenTier={(tier) => openOffers.mutate(tier)}
+                          onOpenTier={(tier, skillFilterIds) => openOffers.mutate({ tier, skillFilterIds })}
                           onCloseTier={(tier, withdraw) => closeOffers.mutate({ tier, withdraw })}
-                          onPreviewTier={(tier) => setDryRun({ tier })}
+                          onPreviewTier={(tier, skillFilterIds) => setDryRun({ tier, skillFilterIds })}
                         />
                         <DryRunDialog
                           open={Boolean(dryRun)}
@@ -634,7 +698,7 @@ export function ShowDateDetailSheet({ showDateId, open, onOpenChange }: Props) {
                           flow={flow}
                           confirmPending={openOffers.isPending}
                           onConfirm={() => {
-                            if (dryRun) openOffers.mutate(dryRun.tier);
+                            if (dryRun) openOffers.mutate({ tier: dryRun.tier, skillFilterIds: dryRun.skillFilterIds });
                             setDryRun(null);
                           }}
                         />
@@ -648,6 +712,11 @@ export function ShowDateDetailSheet({ showDateId, open, onOpenChange }: Props) {
                         onBook={(artistId, isUnderstudy) =>
                           createBookingMutation.mutate({ artistId, isUnderstudy })}
                         booking={createBookingMutation.isPending}
+                        skills={orgSkills ?? []}
+                        selectedSkillIds={directSkillFilterIds}
+                        onSkillFilterChange={(id) =>
+                          setDirectSkillFilterIds((prev) =>
+                            prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id])}
                       />
                     )}
                   </CardContent>

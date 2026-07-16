@@ -108,7 +108,14 @@ export function offerResultToast(
 
 /** Confirmation copy for opening a tier; re-open note explains the additive semantics. */
 export function offerConfirmCopy(
-  input: { tier: number; dateLabel: string; alreadyOpened: boolean; offerDelivery: "digest" | "immediate" },
+  input: {
+    tier: number;
+    dateLabel: string;
+    alreadyOpened: boolean;
+    offerDelivery: "digest" | "immediate";
+    /** Names of skills the offer is scoped to, if a producer applied a skill filter. */
+    skillFilterNames?: string[];
+  },
 ): { title: string; body: string } {
   const noun = tierNoun(input.tier);
   const deliverySentence = input.offerDelivery === "immediate"
@@ -121,7 +128,10 @@ export function offerConfirmCopy(
   const reopen = input.alreadyOpened
     ? ` ${cap} already been opened — re-opening only adds offers for artists who don't have one yet.`
     : "";
-  return { title: `Open ${noun} offers?`, body: base + reopen };
+  const skillCue = input.skillFilterNames && input.skillFilterNames.length > 0
+    ? ` Only artists with all of these skills receive offers: ${input.skillFilterNames.join(", ")}.`
+    : "";
+  return { title: `Open ${noun} offers?`, body: base + reopen + skillCue };
 }
 
 /** Count still-pending (suggested) offers for a tier — feeds the close dialog. */
@@ -204,14 +214,18 @@ export function closeResultToast(
  * eligibility with no DB backstop. A null artistIds means genuinely
  * unrestricted (no eligibility config). Blocked artists are excluded to match
  * the tiered offer path, which skips blocked_dates server-side.
+ * The skill-eligibility set follows the same fail-closed contract: undefined =
+ * unresolved = nobody bookable; null = no skill requirements.
  */
 export function deriveDirectBookList(
   orgArtists: { id: string; name: string }[] | undefined,
   eligibility: { artistIds: Set<string> | null } | undefined,
   blockedIds: Set<string> | undefined,
+  skillEligibleIds: Set<string> | null | undefined,
 ): { id: string; name: string }[] {
-  if (eligibility === undefined || blockedIds === undefined) return [];
+  if (eligibility === undefined || blockedIds === undefined || skillEligibleIds === undefined) return [];
   const all = orgArtists ?? [];
   const base = eligibility.artistIds == null ? all : all.filter((a) => eligibility.artistIds!.has(a.id));
-  return base.filter((a) => !blockedIds.has(a.id));
+  const skilled = skillEligibleIds == null ? base : base.filter((a) => skillEligibleIds.has(a.id));
+  return skilled.filter((a) => !blockedIds.has(a.id));
 }

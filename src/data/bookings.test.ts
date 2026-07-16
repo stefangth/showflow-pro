@@ -27,23 +27,66 @@ describe("openOfferTier", () => {
     const fake = createFakeSupabase({ "fn:open-offer-tier": { data: { error: "Show date is cancelled" }, error: null } });
     await expect(openOfferTier(fake as never, { showDateId: "d1", tier: 1 })).rejects.toThrow("Show date is cancelled");
   });
+  it("passes skill_filter_ids only when non-empty", async () => {
+    const fake = createFakeSupabase({ "fn:open-offer-tier": { data: { offers_created: 1 }, error: null } });
+    await openOfferTier(fake as never, { showDateId: "d1", tier: 1, skillFilterIds: ["s1"] });
+    expect(fake.calls).toContainEqual({
+      table: "fn:open-offer-tier", method: "invoke",
+      args: [{ show_date_id: "d1", tier: 1, skill_filter_ids: ["s1"] }],
+    });
+  });
+  it("omits skill_filter_ids when the array is empty", async () => {
+    const fake = createFakeSupabase({ "fn:open-offer-tier": { data: { offers_created: 1 }, error: null } });
+    await openOfferTier(fake as never, { showDateId: "d1", tier: 1, skillFilterIds: [] });
+    expect(fake.calls).toContainEqual({
+      table: "fn:open-offer-tier", method: "invoke",
+      args: [{ show_date_id: "d1", tier: 1 }],
+    });
+  });
 });
 
 describe("fetchOfferTiers", () => {
   it("returns priorities for the city and detects ad-hoc", async () => {
     const fake = createFakeSupabase({
+      show_cast_eligibility: { data: [], error: null },
       cast_city_priority: { data: [{ priority: 1 }, { priority: 2 }, { priority: 1 }], error: null },
       show_date_cast_eligibility: { data: [{ id: "x" }], error: null },
     });
-    const res = await fetchOfferTiers(fake as never, { cityId: "c1", showDateId: "d1" });
+    const res = await fetchOfferTiers(fake as never, { showId: "sh1", cityId: "c1", showDateId: "d1" });
     // Duplicates are intentionally preserved here — dedup is buildOfferTierOptions' job.
-    expect(res).toEqual({ priorities: [1, 2, 1], hasAdHoc: true });
+    expect(res).toEqual({ priorities: [1, 2, 1], hasAdHoc: true, source: "org" });
   });
   it("skips the priority query when there is no city", async () => {
     const fake = createFakeSupabase({ show_date_cast_eligibility: { data: [], error: null } });
-    const res = await fetchOfferTiers(fake as never, { cityId: null, showDateId: "d1" });
-    expect(res).toEqual({ priorities: [], hasAdHoc: false });
+    const res = await fetchOfferTiers(fake as never, { showId: "sh1", cityId: null, showDateId: "d1" });
+    expect(res).toEqual({ priorities: [], hasAdHoc: false, source: "org" });
     expect(fake.calls.find((c) => c.table === "cast_city_priority")).toBeUndefined();
+    // A null city skips the show-ladder lookup too: ladders are per (show, city).
+    expect(fake.calls.find((c) => c.table === "show_cast_eligibility")).toBeUndefined();
+  });
+  it("prefers show-scoped priorities and reports source", async () => {
+    const fake = createFakeSupabase({
+      show_cast_eligibility: { data: [{ priority: 1 }, { priority: 2 }], error: null },
+      show_date_cast_eligibility: { data: [], error: null },
+    });
+    const res = await fetchOfferTiers(fake as never, { showId: "sh1", cityId: "c1", showDateId: "d1" });
+    expect(res).toEqual({ priorities: [1, 2], hasAdHoc: false, source: "show" });
+    // The show ladder wins outright, so the org-wide fallback query must not fire.
+    expect(fake.calls.find((c) => c.table === "cast_city_priority")).toBeUndefined();
+    expect(fake.calls).toContainEqual({ table: "show_cast_eligibility", method: "eq", args: ["show_id", "sh1"] });
+    expect(fake.calls).toContainEqual({ table: "show_cast_eligibility", method: "eq", args: ["city_id", "c1"] });
+    // The fake can't apply .not() to seeded rows, so pin the filter call itself
+    // (see fetchShowPriorityRows in src/data/eligibility.test.ts for the pattern).
+    expect(fake.calls).toContainEqual({ table: "show_cast_eligibility", method: "not", args: ["priority", "is", null] });
+  });
+  it("falls back to the org city list with source org", async () => {
+    const fake = createFakeSupabase({
+      show_cast_eligibility: { data: [], error: null },
+      cast_city_priority: { data: [{ priority: 1 }], error: null },
+      show_date_cast_eligibility: { data: [], error: null },
+    });
+    const res = await fetchOfferTiers(fake as never, { showId: "sh1", cityId: "c1", showDateId: "d1" });
+    expect(res).toEqual({ priorities: [1], hasAdHoc: false, source: "org" });
   });
 });
 
@@ -275,10 +318,27 @@ describe("dryRunOfferTier", () => {
     });
     const res = await dryRunOfferTier(fake as never, { showDateId: "d1", tier: 2 });
     expect(res.candidates).toEqual([{ id: "a1", name: "Lena" }]);
-    expect(res.excluded).toEqual({ alreadyBooked: 1, blocked: 2, inactive: 0 });
+    // notEligible/missingSkills default to 0 when the edge fn omits them.
+    expect(res.excluded).toEqual({ alreadyBooked: 1, blocked: 2, inactive: 0, notEligible: 0, missingSkills: 0 });
     expect(fake.calls).toContainEqual({
       table: "fn:open-offer-tier", method: "invoke",
       args: [{ show_date_id: "d1", tier: 2, dry_run: true }],
+    });
+  });
+  it("maps the two new exclusion counts", async () => {
+    const fake = createFakeSupabase({ "fn:open-offer-tier": { data: {
+      dry_run: true, candidates: [],
+      excluded: { already_booked: 1, blocked: 0, inactive: 0, not_eligible: 2, missing_skills: 3 },
+    }, error: null } });
+    const res = await dryRunOfferTier(fake as never, { showDateId: "d1", tier: 1 });
+    expect(res.excluded).toEqual({ alreadyBooked: 1, blocked: 0, inactive: 0, notEligible: 2, missingSkills: 3 });
+  });
+  it("passes skill_filter_ids only when non-empty", async () => {
+    const fake = createFakeSupabase({ "fn:open-offer-tier": { data: { dry_run: true, candidates: [], excluded: {} }, error: null } });
+    await dryRunOfferTier(fake as never, { showDateId: "d1", tier: 1, skillFilterIds: ["s1", "s2"] });
+    expect(fake.calls).toContainEqual({
+      table: "fn:open-offer-tier", method: "invoke",
+      args: [{ show_date_id: "d1", tier: 1, dry_run: true, skill_filter_ids: ["s1", "s2"] }],
     });
   });
 });

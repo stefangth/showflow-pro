@@ -34,9 +34,11 @@ function makeWrapper() {
 
 const ARTIST_ID = "artist-uuid-1";
 const SHOW_DATE_ID = "date-uuid-1";
+const SHOW_DATE_ID_2 = "date-uuid-2";
 const SHOW_ID = "show-uuid-1";
 const CAST_ID = "cast-uuid-1";
 const CITY_ID = "city-uuid-1";
+const SKILL_JUDGE = "skill-judge";
 
 /** Typical show_date row returned by Supabase */
 const sampleDate = {
@@ -51,6 +53,43 @@ const sampleDate = {
   venue: null,
   show: { id: SHOW_ID, program: "theatre", sub_program: "musical", status: "active" },
 };
+
+const sampleDate2 = {
+  ...sampleDate,
+  id: SHOW_DATE_ID_2,
+  date: "2099-01-02",
+};
+
+/**
+ * Default (empty) mocks for the three tables added by the hard-skill-requirement
+ * step (step 5). Tests that exercise cases where eligible.length > 0 must supply
+ * these or the fallback `{} as any` branch makes `.select` blow up, since the new
+ * fetches run unconditionally once there is at least one eligible date.
+ */
+function emptySkillRequirementTables(table: string) {
+  if (table === "artist_skills") {
+    return {
+      select: vi.fn().mockReturnValue({
+        eq: vi.fn().mockResolvedValue({ data: [], error: null }),
+      }),
+    } as any;
+  }
+  if (table === "show_required_skills") {
+    return {
+      select: vi.fn().mockReturnValue({
+        in: vi.fn().mockResolvedValue({ data: [], error: null }),
+      }),
+    } as any;
+  }
+  if (table === "show_date_required_skills") {
+    return {
+      select: vi.fn().mockReturnValue({
+        in: vi.fn().mockResolvedValue({ data: [], error: null }),
+      }),
+    } as any;
+  }
+  return undefined;
+}
 
 describe("useArtistEligibleDates", () => {
   beforeEach(() => {
@@ -125,7 +164,7 @@ describe("useArtistEligibleDates", () => {
           }),
         } as any;
       }
-      return {} as any;
+      return emptySkillRequirementTables(table) ?? ({} as any);
     });
 
     const { result } = renderHook(() => useArtistEligibleDates(), {
@@ -185,7 +224,7 @@ describe("useArtistEligibleDates", () => {
           }),
         } as any;
       }
-      return {} as any;
+      return emptySkillRequirementTables(table) ?? ({} as any);
     });
 
     const { result } = renderHook(() => useArtistEligibleDates(), {
@@ -245,7 +284,7 @@ describe("useArtistEligibleDates", () => {
           }),
         } as any;
       }
-      return {} as any;
+      return emptySkillRequirementTables(table) ?? ({} as any);
     });
 
     const { result } = renderHook(() => useArtistEligibleDates(), {
@@ -257,6 +296,285 @@ describe("useArtistEligibleDates", () => {
     });
     expect(selectArg).toContain("custom");
     expect(result.current.data?.[0].custom).toEqual({ booking_ref: "FV-2033" });
+  });
+
+  it("hides a date whose show-level required skill the artist lacks", async () => {
+    vi.mocked(useMyArtist).mockReturnValue({ data: { id: ARTIST_ID } } as any);
+
+    vi.mocked(supabase.from).mockImplementation((table: string) => {
+      if (table === "cast_members") {
+        return {
+          select: vi.fn().mockReturnValue({
+            eq: vi.fn().mockResolvedValue({ data: [{ cast_id: CAST_ID }], error: null }),
+          }),
+        } as any;
+      }
+      if (table === "show_cast_eligibility") {
+        return {
+          select: vi.fn().mockReturnValue({
+            in: vi.fn().mockResolvedValue({ data: [{ show_id: SHOW_ID, city_id: CITY_ID }], error: null }),
+          }),
+        } as any;
+      }
+      if (table === "show_date_cast_eligibility") {
+        return {
+          select: vi.fn().mockReturnValue({
+            in: vi.fn().mockResolvedValue({ data: [], error: null }),
+          }),
+        } as any;
+      }
+      if (table === "show_dates") {
+        return {
+          select: vi.fn().mockReturnValue({
+            gte: vi.fn().mockReturnValue({
+              neq: vi.fn().mockReturnValue({
+                order: vi.fn().mockResolvedValue({ data: [sampleDate], error: null }),
+              }),
+            }),
+          }),
+        } as any;
+      }
+      // Artist has no skills at all, so the s-judge requirement is unmet.
+      if (table === "artist_skills") {
+        return {
+          select: vi.fn().mockReturnValue({
+            eq: vi.fn().mockResolvedValue({ data: [], error: null }),
+          }),
+        } as any;
+      }
+      if (table === "show_required_skills") {
+        return {
+          select: vi.fn().mockReturnValue({
+            in: vi.fn().mockResolvedValue({
+              data: [{ show_id: SHOW_ID, skill_id: SKILL_JUDGE }],
+              error: null,
+            }),
+          }),
+        } as any;
+      }
+      if (table === "show_date_required_skills") {
+        return {
+          select: vi.fn().mockReturnValue({
+            in: vi.fn().mockResolvedValue({ data: [], error: null }),
+          }),
+        } as any;
+      }
+      return {} as any;
+    });
+
+    const { result } = renderHook(() => useArtistEligibleDates(), {
+      wrapper: makeWrapper(),
+    });
+
+    await waitFor(() => {
+      expect(result.current.data).toEqual([]);
+    });
+    // Pin the intended path: the date really did reach the skill-requirement
+    // step (eligible.length was > 0), it was not filtered out earlier.
+    expect(vi.mocked(supabase.from)).toHaveBeenCalledWith("show_required_skills");
+  });
+
+  it("keeps a date visible when the artist holds the required show-level skill", async () => {
+    vi.mocked(useMyArtist).mockReturnValue({ data: { id: ARTIST_ID } } as any);
+
+    vi.mocked(supabase.from).mockImplementation((table: string) => {
+      if (table === "cast_members") {
+        return {
+          select: vi.fn().mockReturnValue({
+            eq: vi.fn().mockResolvedValue({ data: [{ cast_id: CAST_ID }], error: null }),
+          }),
+        } as any;
+      }
+      if (table === "show_cast_eligibility") {
+        return {
+          select: vi.fn().mockReturnValue({
+            in: vi.fn().mockResolvedValue({ data: [{ show_id: SHOW_ID, city_id: CITY_ID }], error: null }),
+          }),
+        } as any;
+      }
+      if (table === "show_date_cast_eligibility") {
+        return {
+          select: vi.fn().mockReturnValue({
+            in: vi.fn().mockResolvedValue({ data: [], error: null }),
+          }),
+        } as any;
+      }
+      if (table === "show_dates") {
+        return {
+          select: vi.fn().mockReturnValue({
+            gte: vi.fn().mockReturnValue({
+              neq: vi.fn().mockReturnValue({
+                order: vi.fn().mockResolvedValue({ data: [sampleDate], error: null }),
+              }),
+            }),
+          }),
+        } as any;
+      }
+      // Artist holds the required skill this time, so the date stays eligible.
+      if (table === "artist_skills") {
+        return {
+          select: vi.fn().mockReturnValue({
+            eq: vi.fn().mockResolvedValue({ data: [{ skill_id: SKILL_JUDGE }], error: null }),
+          }),
+        } as any;
+      }
+      if (table === "show_required_skills") {
+        return {
+          select: vi.fn().mockReturnValue({
+            in: vi.fn().mockResolvedValue({
+              data: [{ show_id: SHOW_ID, skill_id: SKILL_JUDGE }],
+              error: null,
+            }),
+          }),
+        } as any;
+      }
+      if (table === "show_date_required_skills") {
+        return {
+          select: vi.fn().mockReturnValue({
+            in: vi.fn().mockResolvedValue({ data: [], error: null }),
+          }),
+        } as any;
+      }
+      return {} as any;
+    });
+
+    const { result } = renderHook(() => useArtistEligibleDates(), {
+      wrapper: makeWrapper(),
+    });
+
+    await waitFor(() => {
+      expect(result.current.data?.length).toBe(1);
+      expect(result.current.data?.[0].id).toBe(SHOW_DATE_ID);
+    });
+  });
+
+  it("hides only the specific date carrying an unmet date-level requirement", async () => {
+    vi.mocked(useMyArtist).mockReturnValue({ data: { id: ARTIST_ID } } as any);
+
+    vi.mocked(supabase.from).mockImplementation((table: string) => {
+      if (table === "cast_members") {
+        return {
+          select: vi.fn().mockReturnValue({
+            eq: vi.fn().mockResolvedValue({ data: [{ cast_id: CAST_ID }], error: null }),
+          }),
+        } as any;
+      }
+      if (table === "show_cast_eligibility") {
+        // Both dates belong to the same show+city, so both are eligible via cast.
+        return {
+          select: vi.fn().mockReturnValue({
+            in: vi.fn().mockResolvedValue({ data: [{ show_id: SHOW_ID, city_id: CITY_ID }], error: null }),
+          }),
+        } as any;
+      }
+      if (table === "show_date_cast_eligibility") {
+        return {
+          select: vi.fn().mockReturnValue({
+            in: vi.fn().mockResolvedValue({ data: [], error: null }),
+          }),
+        } as any;
+      }
+      if (table === "show_dates") {
+        return {
+          select: vi.fn().mockReturnValue({
+            gte: vi.fn().mockReturnValue({
+              neq: vi.fn().mockReturnValue({
+                order: vi.fn().mockResolvedValue({ data: [sampleDate, sampleDate2], error: null }),
+              }),
+            }),
+          }),
+        } as any;
+      }
+      if (table === "artist_skills") {
+        return {
+          select: vi.fn().mockReturnValue({
+            eq: vi.fn().mockResolvedValue({ data: [], error: null }),
+          }),
+        } as any;
+      }
+      // The show itself requires nothing.
+      if (table === "show_required_skills") {
+        return {
+          select: vi.fn().mockReturnValue({
+            in: vi.fn().mockResolvedValue({ data: [], error: null }),
+          }),
+        } as any;
+      }
+      // Only the second date carries a per-date requirement the artist lacks.
+      if (table === "show_date_required_skills") {
+        return {
+          select: vi.fn().mockReturnValue({
+            in: vi.fn().mockResolvedValue({
+              data: [{ show_date_id: SHOW_DATE_ID_2, skill_id: SKILL_JUDGE }],
+              error: null,
+            }),
+          }),
+        } as any;
+      }
+      return {} as any;
+    });
+
+    const { result } = renderHook(() => useArtistEligibleDates(), {
+      wrapper: makeWrapper(),
+    });
+
+    await waitFor(() => {
+      expect(result.current.data?.length).toBe(1);
+    });
+    expect(result.current.data?.[0].id).toBe(SHOW_DATE_ID);
+    expect(result.current.data?.some((d) => d.id === SHOW_DATE_ID_2)).toBe(false);
+  });
+
+  it("keeps all dates when no skill requirements exist anywhere (regression)", async () => {
+    vi.mocked(useMyArtist).mockReturnValue({ data: { id: ARTIST_ID } } as any);
+
+    vi.mocked(supabase.from).mockImplementation((table: string) => {
+      if (table === "cast_members") {
+        return {
+          select: vi.fn().mockReturnValue({
+            eq: vi.fn().mockResolvedValue({ data: [{ cast_id: CAST_ID }], error: null }),
+          }),
+        } as any;
+      }
+      if (table === "show_cast_eligibility") {
+        return {
+          select: vi.fn().mockReturnValue({
+            in: vi.fn().mockResolvedValue({ data: [{ show_id: SHOW_ID, city_id: CITY_ID }], error: null }),
+          }),
+        } as any;
+      }
+      if (table === "show_date_cast_eligibility") {
+        return {
+          select: vi.fn().mockReturnValue({
+            in: vi.fn().mockResolvedValue({ data: [], error: null }),
+          }),
+        } as any;
+      }
+      if (table === "show_dates") {
+        return {
+          select: vi.fn().mockReturnValue({
+            gte: vi.fn().mockReturnValue({
+              neq: vi.fn().mockReturnValue({
+                order: vi.fn().mockResolvedValue({ data: [sampleDate, sampleDate2], error: null }),
+              }),
+            }),
+          }),
+        } as any;
+      }
+      // No requirement rows anywhere, and the artist has no skills either.
+      return emptySkillRequirementTables(table) ?? ({} as any);
+    });
+
+    const { result } = renderHook(() => useArtistEligibleDates(), {
+      wrapper: makeWrapper(),
+    });
+
+    await waitFor(() => {
+      expect(result.current.data?.length).toBe(2);
+    });
+    expect(result.current.data?.map((d) => d.id).sort()).toEqual(
+      [SHOW_DATE_ID, SHOW_DATE_ID_2].sort()
+    );
   });
 
   it("is disabled when artist is not loaded yet", () => {

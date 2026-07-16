@@ -86,4 +86,49 @@ describe("EligibilityBookList", () => {
     expect(screen.queryByText(/No eligible artists/)).not.toBeInTheDocument();
     expect(screen.getByText(/Could not load the eligible artists/)).toBeInTheDocument();
   });
+
+  it("renders skill filter chips and fires onSkillFilterChange when a chip is toggled", () => {
+    const onSkillFilterChange = vi.fn();
+    renderWithProviders(
+      <EligibilityBookList
+        artists={[{ id: "a1", name: "Lena" }]}
+        bookedArtistIds={new Set()}
+        onBook={vi.fn()}
+        booking={false}
+        skills={[{ id: "s1", name: "Improv" }, { id: "s2", name: "Singing" }]}
+        selectedSkillIds={["s1"]}
+        onSkillFilterChange={onSkillFilterChange}
+      />,
+    );
+    expect(screen.getByText("Only offer to artists with")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Improv" })).toHaveAttribute("aria-pressed", "true");
+    expect(screen.getByRole("button", { name: "Singing" })).toHaveAttribute("aria-pressed", "false");
+    fireEvent.click(screen.getByRole("button", { name: "Singing" }));
+    expect(onSkillFilterChange).toHaveBeenCalledWith("s2");
+  });
+
+  it("renders no skill chips when skills are omitted or empty", () => {
+    const { rerender } = renderWithProviders(
+      <EligibilityBookList
+        artists={[{ id: "a1", name: "Lena" }]}
+        bookedArtistIds={new Set()}
+        onBook={vi.fn()}
+        booking={false}
+      />,
+    );
+    expect(screen.queryByText("Only offer to artists with")).not.toBeInTheDocument();
+
+    rerender(
+      <EligibilityBookList
+        artists={[{ id: "a1", name: "Lena" }]}
+        bookedArtistIds={new Set()}
+        onBook={vi.fn()}
+        booking={false}
+        skills={[]}
+        selectedSkillIds={[]}
+        onSkillFilterChange={vi.fn()}
+      />,
+    );
+    expect(screen.queryByText("Only offer to artists with")).not.toBeInTheDocument();
+  });
 });
