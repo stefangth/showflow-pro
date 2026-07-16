@@ -3,7 +3,7 @@ import {
   deriveBookingGroups, computeInheritedCastIds,
   buildOfferTierOptions, offerResultToast, offerConfirmCopy,
   pendingOfferCount, closeConfirmCopy, closeResultToast,
-  bookingStatusBadgeClass,
+  bookingStatusBadgeClass, shouldAutoOpenTier1, deriveDirectBookList,
 } from "./bookings";
 
 type B = { artist_id: string; status: string; is_understudy: boolean };
@@ -107,19 +107,47 @@ describe("offerResultToast", () => {
 
 describe("offerConfirmCopy", () => {
   it("first-open body has no re-open note", () => {
-    const c = offerConfirmCopy({ tier: 1, dateLabel: "10 Jul 2026", alreadyOpened: false });
+    const c = offerConfirmCopy({ tier: 1, dateLabel: "10 Jul 2026", alreadyOpened: false, offerDelivery: "digest" });
     expect(c.title).toBe("Open tier 1 offers?");
     expect(c.body).toContain("10 Jul 2026");
     expect(c.body).not.toContain("already been opened");
   });
   it("already-opened body adds the additive re-open note", () => {
-    const c = offerConfirmCopy({ tier: 2, dateLabel: "10 Jul 2026", alreadyOpened: true });
+    const c = offerConfirmCopy({ tier: 2, dateLabel: "10 Jul 2026", alreadyOpened: true, offerDelivery: "digest" });
     expect(c.body).toContain("Tier 2 has already been opened");
   });
   it("uses ad-hoc wording for tier 99", () => {
-    const c = offerConfirmCopy({ tier: 99, dateLabel: "10 Jul 2026", alreadyOpened: true });
+    const c = offerConfirmCopy({ tier: 99, dateLabel: "10 Jul 2026", alreadyOpened: true, offerDelivery: "digest" });
     expect(c.title).toBe("Open ad-hoc casts offers?");
     expect(c.body).toContain("Ad-hoc casts have already been opened");
+  });
+  it("digest delivery mentions the daily offer digest", () => {
+    const c = offerConfirmCopy({ tier: 1, dateLabel: "10 Jul 2026", alreadyOpened: false, offerDelivery: "digest" });
+    expect(c.body).toContain("next daily offer digest");
+  });
+  // Regression: immediate-delivery orgs saw "next daily offer digest" copy even
+  // though offers for those orgs are emailed the moment the tier opens.
+  it("immediate delivery mentions emails go out the moment the tier opens", () => {
+    const c = offerConfirmCopy({ tier: 1, dateLabel: "10 Jul 2026", alreadyOpened: false, offerDelivery: "immediate" });
+    expect(c.body).toContain("emailed the moment the tier opens");
+    expect(c.body).not.toContain("daily offer digest");
+  });
+  // Regression: a producer scoping an open to a skill filter got no confirm-dialog cue,
+  // so re-opening a different tier silently under-offered with a stale filter.
+  it("appends the skill-filter cue when skillFilterNames is non-empty", () => {
+    const c = offerConfirmCopy({
+      tier: 1, dateLabel: "10 Jul 2026", alreadyOpened: false, offerDelivery: "digest",
+      skillFilterNames: ["judge", "aerial"],
+    });
+    expect(c.body.endsWith("Only artists with all of these skills receive offers: judge, aerial.")).toBe(true);
+  });
+  it("omits the skill-filter cue when skillFilterNames is empty or absent", () => {
+    const withoutField = offerConfirmCopy({ tier: 1, dateLabel: "10 Jul 2026", alreadyOpened: false, offerDelivery: "digest" });
+    const withEmptyArray = offerConfirmCopy({
+      tier: 1, dateLabel: "10 Jul 2026", alreadyOpened: false, offerDelivery: "digest", skillFilterNames: [],
+    });
+    expect(withoutField.body).not.toContain("receive offers");
+    expect(withEmptyArray.body).toEqual(withoutField.body);
   });
 });
 
@@ -189,5 +217,69 @@ describe("bookingStatusBadgeClass", () => {
   it("returns an empty string for an unknown status (badge falls back to its variant)", () => {
     expect(bookingStatusBadgeClass("nonsense")).toBe("");
     expect(bookingStatusBadgeClass("")).toBe("");
+  });
+});
+
+describe("shouldAutoOpenTier1", () => {
+  const flow = { auto_open_tier1: true, artist_acceptance: true };
+  it("true when enabled, session present, tier 1 not yet opened", () => {
+    expect(shouldAutoOpenTier1({ flow, hasSession: true, openedTiers: [] })).toBe(true);
+  });
+  it("false without a session, when disabled, in direct mode, or when tier 1 exists", () => {
+    expect(shouldAutoOpenTier1({ flow, hasSession: false, openedTiers: [] })).toBe(false);
+    expect(shouldAutoOpenTier1({ flow: { ...flow, auto_open_tier1: false }, hasSession: true, openedTiers: [] })).toBe(false);
+    expect(shouldAutoOpenTier1({ flow: { ...flow, artist_acceptance: false }, hasSession: true, openedTiers: [] })).toBe(false);
+    expect(shouldAutoOpenTier1({ flow, hasSession: true, openedTiers: [{ tier: 1 }] })).toBe(false);
+  });
+});
+
+describe("deriveDirectBookList", () => {
+  const artists = [
+    { id: "a1", name: "One" },
+    { id: "a2", name: "Two" },
+    { id: "a3", name: "Three" },
+  ];
+  it("fails closed while eligibility has not resolved", () => {
+    expect(deriveDirectBookList(artists, undefined, new Set(), null)).toEqual([]);
+  });
+  it("fails closed while the blocked set has not resolved", () => {
+    expect(deriveDirectBookList(artists, { artistIds: null }, undefined, null)).toEqual([]);
+  });
+  it("null artistIds means no eligibility restriction", () => {
+    expect(deriveDirectBookList(artists, { artistIds: null }, new Set(), null)).toEqual(artists);
+  });
+  it("filters to the eligible set", () => {
+    expect(deriveDirectBookList(artists, { artistIds: new Set(["a2"]) }, new Set(), null)).toEqual([
+      { id: "a2", name: "Two" },
+    ]);
+  });
+  it("excludes artists with a blocked date, matching the tiered offer path", () => {
+    expect(deriveDirectBookList(artists, { artistIds: null }, new Set(["a1", "a3"]), null)).toEqual([
+      { id: "a2", name: "Two" },
+    ]);
+  });
+  it("applies eligibility and blocked filters together", () => {
+    expect(
+      deriveDirectBookList(artists, { artistIds: new Set(["a1", "a2"]) }, new Set(["a1"]), null),
+    ).toEqual([{ id: "a2", name: "Two" }]);
+  });
+  it("returns [] when org artists have not loaded", () => {
+    expect(deriveDirectBookList(undefined, { artistIds: null }, new Set(), null)).toEqual([]);
+  });
+  it("fails closed while the skill-eligibility set is unresolved", () => {
+    expect(deriveDirectBookList(
+      [{ id: "a1", name: "A" }], { artistIds: null }, new Set(), undefined,
+    )).toEqual([]);
+  });
+  it("null skill set means no skill restriction", () => {
+    expect(deriveDirectBookList(
+      [{ id: "a1", name: "A" }], { artistIds: null }, new Set(), null,
+    )).toEqual([{ id: "a1", name: "A" }]);
+  });
+  it("filters to artists in the skill-eligible set", () => {
+    expect(deriveDirectBookList(
+      [{ id: "a1", name: "A" }, { id: "a2", name: "B" }],
+      { artistIds: null }, new Set(), new Set(["a2"]),
+    )).toEqual([{ id: "a2", name: "B" }]);
   });
 });

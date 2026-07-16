@@ -369,6 +369,7 @@ export type Database = {
           offer_tier: number | null
           offered_at: string | null
           org_id: string
+          reminder_sent_at: string | null
           show_date_id: string
           status: Database["public"]["Enums"]["booking_status"]
           updated_at: string
@@ -389,6 +390,7 @@ export type Database = {
           offer_tier?: number | null
           offered_at?: string | null
           org_id: string
+          reminder_sent_at?: string | null
           show_date_id: string
           status?: Database["public"]["Enums"]["booking_status"]
           updated_at?: string
@@ -409,6 +411,7 @@ export type Database = {
           offer_tier?: number | null
           offered_at?: string | null
           org_id?: string
+          reminder_sent_at?: string | null
           show_date_id?: string
           status?: Database["public"]["Enums"]["booking_status"]
           updated_at?: string
@@ -829,6 +832,113 @@ export type Database = {
           },
         ]
       }
+      email_health_state: {
+        Row: {
+          id: boolean
+          last_alerted_at: string | null
+          last_state: string
+          updated_at: string
+        }
+        Insert: {
+          id?: boolean
+          last_alerted_at?: string | null
+          last_state?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: boolean
+          last_alerted_at?: string | null
+          last_state?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      email_send_log: {
+        Row: {
+          bounced_at: string | null
+          complained_at: string | null
+          created_at: string
+          delayed_at: string | null
+          delivered_at: string | null
+          error_message: string | null
+          id: string
+          message_id: string
+          metadata: Json
+          org_id: string | null
+          recipient_email: string
+          resend_id: string | null
+          sent_at: string | null
+          status: string
+          template_name: string
+          updated_at: string
+        }
+        Insert: {
+          bounced_at?: string | null
+          complained_at?: string | null
+          created_at?: string
+          delayed_at?: string | null
+          delivered_at?: string | null
+          error_message?: string | null
+          id?: string
+          message_id: string
+          metadata?: Json
+          org_id?: string | null
+          recipient_email: string
+          resend_id?: string | null
+          sent_at?: string | null
+          status?: string
+          template_name: string
+          updated_at?: string
+        }
+        Update: {
+          bounced_at?: string | null
+          complained_at?: string | null
+          created_at?: string
+          delayed_at?: string | null
+          delivered_at?: string | null
+          error_message?: string | null
+          id?: string
+          message_id?: string
+          metadata?: Json
+          org_id?: string | null
+          recipient_email?: string
+          resend_id?: string | null
+          sent_at?: string | null
+          status?: string
+          template_name?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "email_send_log_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      email_unsubscribe_tokens: {
+        Row: {
+          created_at: string
+          email: string
+          token: string
+          used_at: string | null
+        }
+        Insert: {
+          created_at?: string
+          email: string
+          token: string
+          used_at?: string | null
+        }
+        Update: {
+          created_at?: string
+          email?: string
+          token?: string
+          used_at?: string | null
+        }
+        Relationships: []
+      }
       notification_preferences: {
         Row: {
           prefs: Json
@@ -1055,6 +1165,44 @@ export type Database = {
         }
         Relationships: []
       }
+      settings_audit_log: {
+        Row: {
+          actor: string | null
+          created_at: string
+          id: string
+          key: string
+          new_value: Json | null
+          old_value: Json | null
+          org_id: string | null
+        }
+        Insert: {
+          actor?: string | null
+          created_at?: string
+          id?: string
+          key: string
+          new_value?: Json | null
+          old_value?: Json | null
+          org_id?: string | null
+        }
+        Update: {
+          actor?: string | null
+          created_at?: string
+          id?: string
+          key?: string
+          new_value?: Json | null
+          old_value?: Json | null
+          org_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "settings_audit_log_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       show_assignments: {
         Row: {
           city_id: string | null
@@ -1107,6 +1255,7 @@ export type Database = {
           created_at: string
           id: string
           org_id: string
+          priority: number | null
           show_id: string
         }
         Insert: {
@@ -1115,6 +1264,7 @@ export type Database = {
           created_at?: string
           id?: string
           org_id: string
+          priority?: number | null
           show_id: string
         }
         Update: {
@@ -1123,6 +1273,7 @@ export type Database = {
           created_at?: string
           id?: string
           org_id?: string
+          priority?: number | null
           show_id?: string
         }
         Relationships: [
@@ -1301,6 +1452,52 @@ export type Database = {
           },
         ]
       }
+      show_date_required_skills: {
+        Row: {
+          created_at: string
+          id: string
+          org_id: string
+          show_date_id: string
+          skill_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          org_id: string
+          show_date_id: string
+          skill_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          org_id?: string
+          show_date_id?: string
+          skill_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "show_date_required_skills_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "show_date_required_skills_show_date_id_fkey"
+            columns: ["show_date_id"]
+            isOneToOne: false
+            referencedRelation: "show_dates"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "show_date_required_skills_skill_id_fkey"
+            columns: ["skill_id"]
+            isOneToOne: false
+            referencedRelation: "skills"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       show_dates: {
         Row: {
           airtable_record_id: string | null
@@ -1376,6 +1573,52 @@ export type Database = {
             columns: ["show_id"]
             isOneToOne: false
             referencedRelation: "shows"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      show_required_skills: {
+        Row: {
+          created_at: string
+          id: string
+          org_id: string
+          show_id: string
+          skill_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          org_id: string
+          show_id: string
+          skill_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          org_id?: string
+          show_id?: string
+          skill_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "show_required_skills_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "show_required_skills_show_id_fkey"
+            columns: ["show_id"]
+            isOneToOne: false
+            referencedRelation: "shows"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "show_required_skills_skill_id_fkey"
+            columns: ["skill_id"]
+            isOneToOne: false
+            referencedRelation: "skills"
             referencedColumns: ["id"]
           },
         ]
@@ -1468,6 +1711,27 @@ export type Database = {
           },
         ]
       }
+      suppressed_emails: {
+        Row: {
+          created_at: string
+          email: string
+          metadata: Json
+          reason: string
+        }
+        Insert: {
+          created_at?: string
+          email: string
+          metadata?: Json
+          reason?: string
+        }
+        Update: {
+          created_at?: string
+          email?: string
+          metadata?: Json
+          reason?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
@@ -1499,6 +1763,10 @@ export type Database = {
       }
       delete_org: { Args: { p_org: string }; Returns: undefined }
       delete_org_airtable_key: { Args: { _org: string }; Returns: undefined }
+      email_health_snapshot: {
+        Args: { p_window_minutes?: number }
+        Returns: Json
+      }
       expire_soft_bookings: { Args: never; Returns: undefined }
       export_my_data: { Args: never; Returns: Json }
       get_column_descriptions: { Args: never; Returns: Json }
@@ -1516,6 +1784,8 @@ export type Database = {
           status: string
         }[]
       }
+      get_cron_secret: { Args: never; Returns: string }
+      get_email_health: { Args: { p_window_minutes?: number }; Returns: Json }
       get_org_airtable_key: { Args: { _org: string }; Returns: string }
       get_org_airtable_key_status: {
         Args: { _org: string }
@@ -1588,6 +1858,7 @@ export type Database = {
         }
         Returns: Json
       }
+      prune_email_log: { Args: never; Returns: number }
       remove_org_member: {
         Args: { p_org: string; p_user: string }
         Returns: undefined

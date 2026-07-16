@@ -137,6 +137,42 @@ If no eligibility config exists at all (no rows in either table for the show dat
 
 Artists can only declare availability on dates returned by `useArtistEligibleDates` — the calendar makes non-eligible dates non-interactive.
 
+### Cast priorities and the effective ladder
+
+Offer tiers come from an "effective ladder" resolved per (show, city):
+
+1. If the show has `show_cast_eligibility` rows with a `priority` for the date's city,
+   those rows ARE the ladder: tier N = the cast with priority N. The org-wide list is
+   ignored for that pair.
+2. Otherwise the ladder is the org-wide `cast_city_priority` list for the city.
+
+A `show_cast_eligibility` row without a priority keeps its plain meaning: eligible,
+untiered: the cast stays reachable via direct booking. Ad-hoc tier 99 offers come
+from the separate per-date cast list (`show_date_cast_eligibility`), not from these
+rows; tier 99 offers the date's ad-hoc casts minus any cast already in the
+effective ladder.
+
+Priorities are edited in Settings > Casts & Cities (scope selector: organization
+default, or a specific show).
+
+### Required skills
+
+A show can require skills (`show_required_skills`), and a date can add more
+(`show_date_required_skills`); the requirement is the union. Requirements are
+uniform: an artist qualifies only when holding ALL of them. They are enforced in
+the offer engine, the direct-book list, and the artist availability calendar
+(an artist missing a required skill does not see the date). Producers can also
+scope a single tier open to extra skills ("Only offer to artists with"); that
+filter is per-invocation and never applied by automation.
+
+### Offer candidate pipeline
+
+open-offer-tier filters, in order: effective-ladder casts for the tier ->
+active artists -> not already booked -> not blocked -> passes the show
+eligibility gate (union of show-level and date-level cast rows; none =
+unrestricted) -> holds all required skills. The dry-run preview reports each
+exclusion count.
+
 ---
 
 ## The Offer → Booking Flow
@@ -151,10 +187,12 @@ airtable-poll calls open-offer-tier for Tier 1
         │
         ▼
 open-offer-tier edge function:
-  1. Resolves eligible artists for the tier (cast_city_priority table;
-     Tier 99 = ad-hoc cast via show_date_cast_eligibility)
-  2. Filters out: artists with existing non-cancelled bookings for this date,
-     artists with a blocked_dates entry for this date
+  1. Resolves the effective ladder for the tier (show_cast_eligibility priority
+     rows for this show + city, else the org-wide cast_city_priority list;
+     Tier 99 = ad-hoc cast via show_date_cast_eligibility, minus the ladder)
+  2. Filters out: inactive artists, artists with existing non-cancelled bookings
+     for this date, artists with a blocked_dates entry for this date, artists
+     outside the show eligibility gate, artists missing a required skill
   3. Inserts suggested bookings for all remaining candidates
      (no scoring/ranking — all eligible artists in the tier receive an offer)
   4. offer_expires_at is left null until the offer digest is sent
@@ -177,8 +215,9 @@ Artist opens their calendar (ArtistAvailabilityCalendar)
 expire-offers runs hourly:
   - Cancels suggested bookings where offer_expires_at < now() (status → cancelled)
   - If a tier's window has fully closed (no pending, non-expired offers remain)
-    and accepted count < required slots:
-      → creates a cast_escalation_requested in-app notification + emails producers
+    and accepted count < required slots, the tier escalates (see Escalation below):
+      → auto_escalate on: opens the next tier of the same effective ladder
+      → otherwise: creates a cast_escalation_requested in-app notification + emails producers
       → stamps escalation_notified_at (idempotent — fires once per tier)
         │
         ▼
@@ -199,12 +238,22 @@ Each **show** carries `main_cast_slots` and `understudy_slots` (one show = one `
 
 Suggested offers that have not been accepted or declined expire once `offer_expires_at` passes. The expiry window (`offer_response_window_hours`, default 48 h) starts from the time the offer digest email is sent — not from when the offer was created. This gives artists the full configured window after they receive notification. The `expire-offers` function runs hourly and cancels any suggested booking whose `offer_expires_at` has passed.
 
+### Escalation
+
+When a tier's window closes short of `main_cast_slots`, `expire-offers` (hourly)
+either auto-escalates (booking_flow.auto_escalate: closes the tier and opens the
+next tier of the SAME effective ladder that opened it) or, when auto-escalate is
+off or the ladder is exhausted, notifies producers to act (`cast_escalation_requested`).
+Understudy promotion prefers the accepted understudy whose skills best cover the
+cancelled artist's skills, oldest first on ties; skills never block a promotion.
+
 ### Understudy promotion
 
-If a confirmed main-cast booking is cancelled, the system automatically promotes the best available understudy to fill the vacant slot. The promotion trigger selects from `is_understudy = true` bookings for the same show date with status `soft_booked` or `suggested`, preferring `soft_booked` over `suggested` and, within the same status, the earliest created booking.
+If a confirmed main-cast booking is cancelled (and `booking_flow.understudy_promotion` is on), the system automatically promotes the best available understudy to fill the vacant slot. The promotion trigger selects from `is_understudy = true` bookings on the same show date that are accepted: `soft_booked` in the normal artist-acceptance flow, or `soft_booked`/`confirmed` in direct-booking orgs. Understudies who have blocked the date are skipped.
 
-- A `soft_booked` understudy → promoted to `confirmed`, `is_understudy = false`
-- A `suggested` understudy → promoted to `soft_booked`, `is_understudy = false`
+Among the remaining candidates, the trigger orders by how many of the cancelled artist's skills each understudy shares (most overlap first), then by earliest created booking on ties. Skills only reorder the preference; they never disqualify a candidate.
+
+The winning understudy is promoted to `confirmed`, `is_understudy = false`.
 
 The promotion is recorded in `booking_audit_log` (action: `understudy_promoted`) and the promoted artist receives an `understudy_promoted` in-app notification.
 

@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -8,11 +9,13 @@ import { useAuth } from "@/features/auth/AuthContext";
 import { useShows } from "@/hooks/useShows";
 import { useCities } from "@/hooks/useCities";
 import { useCreateShowDate, useUpdateShowDate } from "@/hooks/useShowDates";
-import { openOfferTier } from "@/data/bookings";
+import { useBookingFlow } from "@/hooks/useBookingFlow";
+import { openOfferTier, fetchOpenedTiers } from "@/data/bookings";
 import { fetchShowDatesForShow } from "@/data/showDates";
 import { isSyncedDate, findDuplicateDate } from "@/lib/catalog";
+import { shouldAutoOpenTier1 } from "@/lib/bookings";
 import { showSlots } from "@/lib/settings";
-import { showLabel } from "@/types";
+import { showIdentityLabel } from "@/types";
 import { toDateKey, parseDateOnly, formatDateDMY } from "@/lib/dates";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -54,8 +57,10 @@ export function ShowDateFormDialog({
   defaultShowId?: string | null;
 }) {
   const { currentOrg } = useAuth();
+  const queryClient = useQueryClient();
   const { data: shows } = useShows();
   const { data: cities } = useCities();
+  const { data: flow } = useBookingFlow();
   const create = useCreateShowDate();
   const update = useUpdateShowDate();
   const synced = mode === "edit" && !!showDate && isSyncedDate(showDate);
@@ -78,10 +83,17 @@ export function ShowDateFormDialog({
         session1: showDate?.session_1?.slice(0, 5) ?? "", session2: showDate?.session_2?.slice(0, 5) ?? "", session3: showDate?.session_3?.slice(0, 5) ?? "",
         venue: showDate?.venue ?? "", cityId: showDate?.city_id ?? "", notes: showDate?.notes ?? "",
       });
-      setOpenOffers(false); setDupWarning(null);
+      setDupWarning(null);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, showDate, defaultShowId]);
+
+  // Default the "open offers" checkbox from the org's booking flow. Kept in its own effect
+  // (deps: open, flow) so it stays reactive when the flow query resolves after the dialog
+  // opens, without a flow refetch resetting the user's typed form fields above.
+  useEffect(() => {
+    if (open) setOpenOffers((flow?.auto_open_tier1 ?? true) && (flow?.artist_acceptance ?? true));
+  }, [open, flow]);
 
   const activeShows = useMemo(() => (shows ?? []).filter((s) => s.status !== "archived"), [shows]);
   const showId = form.watch("showId");
@@ -113,6 +125,25 @@ export function ShowDateFormDialog({
               },
         });
         toast.success("Date updated");
+        // A saved edit can newly satisfy the auto-open conditions (e.g. sessions just
+        // filled in). Wrapped in its own try/catch so a failed auto-open never breaks
+        // the save the user already succeeded at.
+        if (flow) {
+          try {
+            const hasSession = Boolean(v.session1 || v.session2 || v.session3);
+            const openedTiers = await fetchOpenedTiers(supabase, showDate.id);
+            if (shouldAutoOpenTier1({ flow, hasSession, openedTiers })) {
+              const res = await openOfferTier(supabase, { showDateId: showDate.id, tier: 1 });
+              // Match the sheet's own open-tier mutation: bust the bookings prefix (new
+              // suggested bookings) and this date's opened-tiers cache.
+              queryClient.invalidateQueries({ queryKey: ["bookings"] });
+              queryClient.invalidateQueries({ queryKey: ["offer-tiers", "opened", showDate.id] });
+              if (res.offersCreated > 0) toast.success(`Tier 1 opened automatically · ${res.offersCreated} offers sent`);
+            }
+          } catch (e) {
+            toast.error((e as Error).message);
+          }
+        }
       } else {
         if (!currentOrg) { toast.error("No active organization"); return; }
         const { id } = await create.mutateAsync({
@@ -123,7 +154,11 @@ export function ShowDateFormDialog({
         if (openOffers && slotsConfigured) {
           try {
             const res = await openOfferTier(supabase, { showDateId: id, tier: 1 });
-            toast.success(res.offersCreated > 0 ? `Date created — ${res.offersCreated} offer(s) opened` : "Date created");
+            // Same convention as the edit-path auto-open: bust the bookings prefix
+            // and this date's opened-tiers cache so open sheets do not go stale.
+            queryClient.invalidateQueries({ queryKey: ["bookings"] });
+            queryClient.invalidateQueries({ queryKey: ["offer-tiers", "opened", id] });
+            toast.success(res.offersCreated > 0 ? `Date created · ${res.offersCreated} offer(s) opened` : "Date created");
           } catch { toast.success("Date created (offers could not be opened)"); }
         } else {
           toast.success("Date created");
@@ -154,7 +189,7 @@ export function ShowDateFormDialog({
             <Select value={showId} onValueChange={(v) => form.setValue("showId", v, { shouldValidate: true })} disabled={mode === "edit"}>
               <SelectTrigger><SelectValue placeholder="Choose a production" /></SelectTrigger>
               <SelectContent>
-                {activeShows.map((s) => <SelectItem key={s.id} value={s.id}>{showLabel(s)}</SelectItem>)}
+                {activeShows.map((s) => <SelectItem key={s.id} value={s.id}>{showIdentityLabel(s)}</SelectItem>)}
               </SelectContent>
             </Select>
             {err.showId && <p className="text-xs text-destructive">{err.showId.message}</p>}
@@ -208,7 +243,7 @@ export function ShowDateFormDialog({
             <Textarea id="notes" {...form.register("notes")} />
           </div>
 
-          {mode === "create" && (
+          {mode === "create" && !(flow && !flow.artist_acceptance) && (
             <div className="flex items-center gap-2 text-sm">
               <Checkbox id="open-offers" checked={openOffers} disabled={!slotsConfigured} onCheckedChange={(c) => setOpenOffers(!!c)} />
               <Label htmlFor="open-offers" className={`font-normal ${slotsConfigured ? "" : "text-muted-foreground"}`}>

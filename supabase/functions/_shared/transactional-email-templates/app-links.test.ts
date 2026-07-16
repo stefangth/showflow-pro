@@ -10,10 +10,12 @@ import { TEMPLATES } from "./registry.ts";
 const APP_LINK_TEMPLATES = [
   "org-invitation",
   "artist-offer-digest",
+  "offer-immediate",
   "cast-escalation-requested",
   "new-signup-admin-notification",
   "signup-decision",
   "cron-health-alert",
+  "offer-expiry-reminder",
 ];
 
 for (const name of APP_LINK_TEMPLATES) {

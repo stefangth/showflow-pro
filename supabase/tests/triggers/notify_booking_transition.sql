@@ -18,7 +18,7 @@ BEGIN;
 
 CREATE EXTENSION IF NOT EXISTS pgtap WITH SCHEMA extensions;
 
-SELECT plan(8);
+SELECT plan(9);
 
 -- ────────────────────────────────────────────────────────────────────────────
 -- Fixtures (superuser; bypass FK triggers with replica role)
@@ -55,7 +55,8 @@ INSERT INTO public.show_dates (id, show_id, date, session_1, org_id) VALUES
   ('dddddddd-ab00-0001-0000-000000000000', 'cccccccc-ab00-0001-0000-000000000000', '2099-07-01', '19:00'::time, '00000000-0000-0000-0000-00000000b007'),
   ('dddddddd-ab00-0002-0000-000000000000', 'cccccccc-ab00-0001-0000-000000000000', '2099-07-02', '19:00'::time, '00000000-0000-0000-0000-00000000b007'),
   ('dddddddd-ab00-0003-0000-000000000000', 'cccccccc-ab00-0001-0000-000000000000', '2099-07-03', '19:00'::time, '00000000-0000-0000-0000-00000000b007'),
-  ('dddddddd-ab00-0004-0000-000000000000', 'cccccccc-ab00-0001-0000-000000000000', '2099-07-04', '19:00'::time, '00000000-0000-0000-0000-00000000b007');
+  ('dddddddd-ab00-0004-0000-000000000000', 'cccccccc-ab00-0001-0000-000000000000', '2099-07-04', '19:00'::time, '00000000-0000-0000-0000-00000000b007'),
+  ('dddddddd-ab00-0005-0000-000000000000', 'cccccccc-ab00-0001-0000-000000000000', '2099-07-05', '19:00'::time, '00000000-0000-0000-0000-00000000b007');
 
 -- Booking 1: will be transitioned suggested → soft_booked
 INSERT INTO public.bookings (id, show_date_id, artist_id, status, is_understudy, org_id)
@@ -72,6 +73,10 @@ VALUES ('eeeeeeee-ab00-0003-0000-000000000000', 'dddddddd-ab00-0003-0000-0000000
 -- Booking 4: suggested → cancelled
 INSERT INTO public.bookings (id, show_date_id, artist_id, status, is_understudy, org_id)
 VALUES ('eeeeeeee-ab00-0004-0000-000000000000', 'dddddddd-ab00-0004-0000-000000000000', 'bbbbbbbb-ab00-0001-0000-000000000000', 'suggested', false, '00000000-0000-0000-0000-00000000b007');
+
+-- Booking 5: suggested → confirmed in ONE step (auto-confirm / producer_confirmation off)
+INSERT INTO public.bookings (id, show_date_id, artist_id, status, is_understudy, org_id)
+VALUES ('eeeeeeee-ab00-0005-0000-000000000000', 'dddddddd-ab00-0005-0000-000000000000', 'bbbbbbbb-ab00-0001-0000-000000000000', 'suggested', false, '00000000-0000-0000-0000-00000000b007');
 
 SET session_replication_role = DEFAULT;
 
@@ -179,6 +184,26 @@ SELECT is(
    WHERE booking_id = 'eeeeeeee-ab00-0004-0000-000000000000'),
   1,
   'test 8: suggested→cancelled inserts one audit row'
+);
+
+-- ────────────────────────────────────────────────────────────────────────────
+-- Test 9 (PR #161 Fix 1): suggested → confirmed in ONE step notifies the artist.
+--         The auto-confirm flow (booking_flow.producer_confirmation = false) lets an
+--         artist accept straight to confirmed. The confirmed branch was widened from
+--         OLD.status = 'soft_booked' to OLD.status IN ('soft_booked','suggested'), so
+--         a one-step confirm must produce the SAME booking_confirmed notification.
+-- ────────────────────────────────────────────────────────────────────────────
+UPDATE public.bookings
+SET status = 'confirmed'
+WHERE id = 'eeeeeeee-ab00-0005-0000-000000000000';
+
+SELECT is(
+  (SELECT count(*)::int FROM public.notifications
+   WHERE user_id = 'aaaaaaaa-ab00-0003-0000-000000000000'
+     AND type = 'booking_confirmed'
+     AND related_entity_id = 'eeeeeeee-ab00-0005-0000-000000000000'),
+  1,
+  'test 9 (Fix 1): artist receives booking_confirmed notification on suggested→confirmed'
 );
 
 SELECT * FROM finish();

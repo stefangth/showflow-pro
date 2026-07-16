@@ -13,7 +13,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { toast } from 'sonner';
 import { Search, X, Plus, Users, Layers, Pencil, Check } from 'lucide-react';
 import type { Artist, Cast, Show } from '@/types';
-import { showLabel } from '@/types';
+import { showIdentityLabel } from '@/types';
 import { useAllCities } from '@/hooks/useAllCities';
 
 interface Props {
@@ -305,7 +305,7 @@ export function CastDetailsSheet({ cast, open, onOpenChange, onArtistClick }: Pr
                     <tr>
                       <th className="text-left p-2 font-medium sticky left-0 bg-muted/50">City \ Show</th>
                       {(shows ?? []).map(s => (
-                        <th key={s.id} className="text-left p-2 font-medium whitespace-nowrap">{showLabel(s)}</th>
+                        <th key={s.id} className="text-left p-2 font-medium whitespace-nowrap">{showIdentityLabel(s)}</th>
                       ))}
                     </tr>
                   </thead>

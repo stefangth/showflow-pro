@@ -1,6 +1,18 @@
 import { preflight, json } from "../_shared/http.ts";
 import { isServiceRole, requireRole, requireOrgRole } from "../_shared/auth.ts";
-import { realDeps, type Deps } from "../_shared/deps.ts";
+import { resolveBookingFlow, referenceLabel } from "../_shared/bookingFlow.ts";
+import { emailWasSent, realDeps, type Deps } from "../_shared/deps.ts";
+import { resolveOrgSetting, BOOKING_ENGINE_DEFAULTS } from "../_shared/settings.ts";
+import { resolveContactEmail, resolveAccountDisplayName } from "../_shared/identity.ts";
+import {
+  resolveTierLadder, ladderCastIdsAtTier, fetchGateArtistIds,
+  fetchRequiredSkillIds, filterArtistIdsBySkills,
+} from "../_shared/eligibility.ts";
+
+type ExcludedCounts = {
+  already_booked: number; blocked: number; inactive: number;
+  not_eligible: number; missing_skills: number;
+};
 
 export async function handle(req: Request, deps: Deps): Promise<Response> {
   if (req.method === "OPTIONS") return preflight();
@@ -17,10 +29,16 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
 
   let show_date_id: string
   let tier: number
+  let dryRun = false
+  let skillFilterIds: string[] = []
   try {
     const body = await req.json()
     show_date_id = body.show_date_id
     tier = Number(body.tier)
+    dryRun = body.dry_run === true
+    if (Array.isArray(body.skill_filter_ids)) {
+      skillFilterIds = body.skill_filter_ids.filter((v: unknown): v is string => typeof v === "string")
+    }
     if (!show_date_id || !tier || tier < 1) {
       return json({ error: 'show_date_id and tier (≥1) are required' }, 400)
     }
@@ -28,10 +46,23 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
     return json({ error: 'Invalid JSON' }, 400)
   }
 
+  // A benign no-op exit. In dry-run mode the preview dialog needs a consistent
+  // shape ({ dry_run, candidates, excluded }) so it can render the reason; the
+  // normal caller (airtable-poll batch) just wants offers_created:0 + message.
+  const benignExit = (message: string, counts?: ExcludedCounts): Response =>
+    dryRun
+      ? json({
+          dry_run: true,
+          candidates: [],
+          excluded: counts ?? { already_booked: 0, blocked: 0, inactive: 0, not_eligible: 0, missing_skills: 0 },
+          message,
+        })
+      : json({ offers_created: 0, message })
+
   // Fetch show date (org_id drives the org-scoped auth check below).
   const { data: showDate, error: sdErr } = await admin
     .from('show_dates')
-    .select('id, show_id, city_id, date, status, session_1, session_2, session_3, org_id')
+    .select('id, show_id, city_id, date, status, session_1, session_2, session_3, org_id, custom')
     .eq('id', show_date_id)
     .maybeSingle()
 
@@ -45,64 +76,61 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
     if (!auth.ok) return auth.response
   }
 
+  // Direct-booking orgs (booking_flow.artist_acceptance = false) skip the offer
+  // stage entirely — producers assign artists straight to confirmed. Refuse to
+  // open offers so no suggested bookings are created. Placed AFTER org-scoped auth
+  // (an unauthorized caller still gets 401/403, not a flow probe) and BEFORE any
+  // pipeline work.
+  const flow = await resolveBookingFlow(deps.admin, showDate.org_id)
+  if (!flow.artist_acceptance) {
+    return json({ error: 'Direct booking mode: offers are disabled for this organization.' }, 409)
+  }
+
   if (showDate.status === 'cancelled') return json({ error: 'Show date is cancelled' }, 400)
 
   if (!showDate.session_1 && !showDate.session_2 && !showDate.session_3) {
     // ≥1-session rule: a times-TBD date is not yet bookable. Benign skip (200, not
     // 400) so airtable-poll's batch caller does not log a false "offer-tier failed".
-    return json({ offers_created: 0, message: 'Show date has no sessions yet — offers not opened' })
+    return benignExit('Show date has no sessions yet — offers not opened')
   }
 
-  // Resolve eligible cast IDs for this tier
+  // Resolve the effective ladder once: show-scoped priorities win outright for
+  // this (show, city); otherwise the org-wide city list (spec: effective ladder).
   let eligibleCastIds: string[]
 
   if (tier === 99) {
-    // Tier 99: ad-hoc casts added via show_date_cast_eligibility
-    // that have no cast_city_priority entry for this city
+    // Tier 99: ad-hoc casts added via show_date_cast_eligibility that are not
+    // already part of the EFFECTIVE ladder for this (show, city).
     const { data: dateCasts } = await admin
       .from('show_date_cast_eligibility')
       .select('cast_id')
       .eq('show_date_id', show_date_id)
 
     if (!dateCasts || dateCasts.length === 0) {
-      return json({ offers_created: 0, message: 'No ad-hoc casts for this date' })
+      return benignExit('No ad-hoc casts for this date')
     }
 
-    // Filter out casts that are already in the priority system for this city
+    const castIds = dateCasts.map((r: any) => r.cast_id)
     if (showDate.city_id) {
-      const castIds = dateCasts.map((r: any) => r.cast_id)
-      const { data: priorityRows } = await (admin as any)
-        .from('cast_city_priority')
-        .select('cast_id')
-        .eq('city_id', showDate.city_id)
-        .in('cast_id', castIds)
-
-      const prioritizedCastIds = new Set((priorityRows ?? []).map((r: any) => r.cast_id))
-      eligibleCastIds = castIds.filter((id: string) => !prioritizedCastIds.has(id))
+      const ladder = await resolveTierLadder(admin, showDate.show_id, showDate.city_id)
+      const ladderCastIds = new Set(ladder.tiers.map((t) => t.castId))
+      eligibleCastIds = castIds.filter((id: string) => !ladderCastIds.has(id))
     } else {
-      eligibleCastIds = dateCasts.map((r: any) => r.cast_id)
+      eligibleCastIds = castIds
     }
   } else {
-    // Tier 1-N: find casts with this priority for the date's city
     if (!showDate.city_id) {
-      return json({ offers_created: 0, message: 'Show date has no city — cannot resolve priority casts' })
+      return benignExit('Show date has no city, cannot resolve priority casts')
     }
-
-    const { data: priorityRows } = await (admin as any)
-      .from('cast_city_priority')
-      .select('cast_id')
-      .eq('city_id', showDate.city_id)
-      .eq('priority', tier)
-
-    eligibleCastIds = (priorityRows ?? []).map((r: any) => r.cast_id)
-
+    const ladder = await resolveTierLadder(admin, showDate.show_id, showDate.city_id)
+    eligibleCastIds = ladderCastIdsAtTier(ladder, tier)
     if (eligibleCastIds.length === 0) {
-      return json({ offers_created: 0, message: `No casts configured at tier ${tier} for this city` })
+      return benignExit(`No casts configured at tier ${tier} for this city`)
     }
   }
 
   if (eligibleCastIds.length === 0) {
-    return json({ offers_created: 0, message: 'No eligible casts for this tier' })
+    return benignExit('No eligible casts for this tier')
   }
 
   // Get all active artists in eligible casts
@@ -113,7 +141,7 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
 
   const artistIds = [...new Set((castMemberRows ?? []).map((r: any) => r.artist_id))]
   if (artistIds.length === 0) {
-    return json({ offers_created: 0, message: 'No artists in eligible casts' })
+    return benignExit('No artists in eligible casts')
   }
 
   // Fetch artist active status
@@ -124,8 +152,12 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
     .eq('status', 'active')
 
   const activeArtistIds = (artistRows ?? []).map((r: any) => r.id)
+  // Members that dropped out of the active-status filter (inactive/archived).
+  const inactiveCount = artistIds.length - activeArtistIds.length
   if (activeArtistIds.length === 0) {
-    return json({ offers_created: 0, message: 'No active artists in eligible casts' })
+    return benignExit('No active artists in eligible casts', {
+      already_booked: 0, blocked: 0, inactive: inactiveCount, not_eligible: 0, missing_skills: 0,
+    })
   }
 
   // Skip artists with an existing open offer or non-cancelled booking for this date
@@ -136,6 +168,8 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
     .neq('status', 'cancelled')
 
   const alreadyBookedIds = new Set((existingBookings ?? []).map((b: any) => b.artist_id))
+  // Active artists already holding a non-cancelled booking for this date.
+  const alreadyBookedCount = activeArtistIds.filter((id: string) => alreadyBookedIds.has(id)).length
 
   // Skip artists with a blocked_dates entry for this date (table added in Task 5)
   let blockedArtistIds = new Set<string>()
@@ -154,8 +188,52 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
     (id: string) => !alreadyBookedIds.has(id) && !blockedArtistIds.has(id)
   )
 
-  if (candidateIds.length === 0) {
-    return json({ offers_created: 0, message: 'All eligible artists already have offers or are blocked' })
+  // Active, not-already-booked artists removed solely by the blocked-dates filter.
+  const blockedCount = activeArtistIds.filter(
+    (id: string) => !alreadyBookedIds.has(id) && blockedArtistIds.has(id)
+  ).length
+
+  // Gate (spec: candidates must pass the show eligibility gate when one exists;
+  // union of show-level and date-level rows, none at all = unrestricted).
+  const gate = await fetchGateArtistIds(admin, {
+    showId: showDate.show_id, cityId: showDate.city_id, showDateId: show_date_id,
+  })
+  const afterBlocked = candidateIds
+  const afterGate = gate == null ? afterBlocked : afterBlocked.filter((id: string) => gate.has(id))
+  const notEligibleCount = afterBlocked.length - afterGate.length
+
+  // Skills: stored requirements (show ∪ date) unioned with the per-open filter.
+  const storedSkillIds = await fetchRequiredSkillIds(admin, {
+    showId: showDate.show_id, showDateId: show_date_id,
+  })
+  const requiredSkillIds = [...new Set([...storedSkillIds, ...skillFilterIds])]
+  const afterSkills = await filterArtistIdsBySkills(admin, afterGate, requiredSkillIds)
+  const missingSkillsCount = afterGate.length - afterSkills.length
+
+  const finalCandidateIds = afterSkills
+  const excluded: ExcludedCounts = {
+    already_booked: alreadyBookedCount,
+    blocked: blockedCount,
+    inactive: inactiveCount,
+    not_eligible: notEligibleCount,
+    missing_skills: missingSkillsCount,
+  }
+
+  if (finalCandidateIds.length === 0) {
+    return benignExit('All eligible artists already have offers, are blocked, or do not qualify', excluded)
+  }
+
+  // Dry-run: report who WOULD be offered (and why others were excluded) without
+  // writing any bookings or tier-tracking rows.
+  if (dryRun) {
+    let candidates: Array<{ id: string; name: string }> = []
+    const { data: names, error: namesErr } = await admin
+      .from('artists')
+      .select('id, name')
+      .in('id', finalCandidateIds)
+    if (namesErr) return json({ error: namesErr.message }, 500)
+    candidates = (names ?? []) as Array<{ id: string; name: string }>
+    return json({ dry_run: true, candidates, excluded })
   }
 
   const offeredAt = deps.now()
@@ -169,7 +247,7 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
   // starts from when the artist is notified via the offer digest email,
   // not from offer creation. send-offer-digest sets offer_expires_at when
   // it stamps digest_sent_at.
-  const toInsert = candidateIds.map((artistId: string) => ({
+  const toInsert = finalCandidateIds.map((artistId: string) => ({
     show_date_id,
     artist_id: artistId,
     status: 'suggested' as const,
@@ -181,7 +259,7 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
   const { data: inserted, error: insErr } = await admin
     .from('bookings')
     .insert(toInsert)
-    .select('id')
+    .select('id, artist_id')
 
   if (insErr) {
     console.error('open-offer-tier: insert error', insErr)
@@ -210,6 +288,117 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
   // AND signal the caller so the producer knows escalation/at-risk may be broken
   // for this round (re-opening the tier recovers it).
   if (tierErr) console.error('open-offer-tier: tier upsert error', tierErr)
+
+  // Immediate delivery: when the org's booking_flow.offer_delivery is "immediate",
+  // email each freshly-offered artist right now (instead of waiting for the daily
+  // send-offer-digest cron) and start their expiry clock. Only the bookings whose
+  // email ACTUALLY sent get stamped with digest_sent_at + offer_expires_at — an
+  // unsent one (Resend outage / suppressed / preference-disabled) stays unstamped
+  // so the daily digest pass retries it, mirroring send-offer-digest's semantics.
+  // The dry-run path returned long before the insert, so this never runs for it.
+  if (flow.offer_delivery === 'immediate' && (inserted?.length ?? 0) > 0) {
+    try {
+      const windowHours = await resolveOrgSetting<number>(
+        admin, showDate.org_id, 'offer_response_window_hours',
+        BOOKING_ENGINE_DEFAULTS.offer_response_window_hours,
+      )
+      const expiresAt = new Date(offeredAt.getTime() + windowHours * 60 * 60 * 1000)
+
+      // Resolve the offer's display label (mirrors send-offer-digest / the flow ref field).
+      const { data: showRow } = await admin
+        .from('shows').select('program, sub_program').eq('id', showDate.show_id).maybeSingle()
+      let cityName: string | null = null
+      if (showDate.city_id) {
+        const { data: cityRow } = await admin
+          .from('cities').select('name').eq('id', showDate.city_id).maybeSingle()
+        cityName = (cityRow as { name: string } | null)?.name ?? null
+      }
+      let customFieldKey: string | null = null
+      if (flow.reference_field.source === 'custom' && flow.reference_field.custom_field_id) {
+        const { data: def } = await admin
+          .from('custom_field_definitions').select('key')
+          .eq('id', flow.reference_field.custom_field_id).maybeSingle()
+        customFieldKey = (def as { key: string } | null)?.key ?? null
+      }
+      const label = referenceLabel({
+        reference: flow.reference_field,
+        show: (showRow ?? null) as { program: string | null; sub_program: string | null } | null,
+        custom: (showDate.custom ?? null) as Record<string, unknown> | null,
+        customFieldKey,
+      })
+
+      // Fetch the offered artists' contact rows and resolve login-vs-booking identity
+      // exactly like send-offer-digest (ADR-0011): registered artists are addressed at
+      // their auth email + account display name; unregistered fall back to booking email.
+      const { data: artistRows } = await admin
+        .from('artists').select('id, name, email, user_id').in('id', finalCandidateIds)
+      const artists = (artistRows ?? []) as Array<{ id: string; name: string | null; email: string | null; user_id: string | null }>
+
+      const userIds = [...new Set(
+        artists.map((a) => a.user_id).filter((id): id is string => !!id),
+      )]
+      const byUser = new Map<string, { email: string | null; display_name: string | null }>()
+      if (userIds.length > 0) {
+        const { data: contacts, error: contactsErr } = await admin.rpc('resolve_user_contacts', { p_user_ids: userIds })
+        if (contactsErr) {
+          // Non-fatal: fall back to booking emails for this org's artists.
+          console.error('open-offer-tier: resolve_user_contacts failed', { org: showDate.org_id, error: contactsErr.message })
+        } else {
+          for (const c of (contacts ?? []) as Array<{ user_id: string; email: string | null; display_name: string | null }>) {
+            byUser.set(c.user_id, { email: c.email, display_name: c.display_name })
+          }
+        }
+      }
+
+      const bookingByArtist = new Map(
+        (inserted as Array<{ id: string; artist_id: string }>).map((r) => [r.artist_id, r.id]),
+      )
+      const sentBookingIds: string[] = []
+      for (const artist of artists) {
+        const acct = artist.user_id ? byUser.get(artist.user_id) : undefined
+        const recipient = resolveContactEmail({ authEmail: acct?.email, bookingEmail: artist.email })
+        if (!recipient) continue
+        // Each re-offer inserts a NEW booking row (bookingByArtist), so keying on
+        // the booking id rather than show_date_id+artist_id keeps a reopened tier's
+        // resend from deduping against a stale send for a prior offer round.
+        const bid = bookingByArtist.get(artist.id)
+        if (!bid) continue
+        const result = await deps.sendEmail({
+          template_name: 'offer-immediate',
+          recipient_email: recipient,
+          org_id: showDate.org_id,
+          templateData: {
+            displayName: resolveAccountDisplayName({ displayName: acct?.display_name, artistName: artist.name }),
+            referenceLabel: label,
+            date: showDate.date,
+            city: cityName,
+            windowHours,
+          },
+          idempotency_key: `offer-immediate-${bid}`,
+        })
+        // Only stamp the bookings whose email actually delivered — a failed/skipped
+        // send leaves the offer unstamped for the daily digest to retry (see emailWasSent).
+        if (emailWasSent(result)) {
+          sentBookingIds.push(bid)
+        } else {
+          console.warn('open-offer-tier: immediate email not sent — leaving offer pending (no stamp)', {
+            org: showDate.org_id, artistId: artist.id, error: result.error ?? null,
+          })
+        }
+      }
+      if (sentBookingIds.length > 0) {
+        const { error: stampErr } = await admin
+          .from('bookings')
+          .update({ digest_sent_at: offeredAt.toISOString(), offer_expires_at: expiresAt.toISOString() })
+          .in('id', sentBookingIds)
+        if (stampErr) console.error('open-offer-tier: immediate stamp failed — will re-send via digest', { org: showDate.org_id, error: stampErr.message })
+      }
+    } catch (e) {
+      // Immediate delivery is best-effort: the bookings + tier row are already committed,
+      // so a failure here must not fail the open. Unstamped offers fall back to the digest.
+      console.error('open-offer-tier: immediate delivery failed', { show_date_id, error: (e as Error).message })
+    }
+  }
 
   const offersCreated = inserted?.length ?? 0
   console.log('open-offer-tier complete', { show_date_id, tier, offersCreated, tierTracked: !tierErr })

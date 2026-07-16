@@ -108,17 +108,30 @@ export function offerResultToast(
 
 /** Confirmation copy for opening a tier; re-open note explains the additive semantics. */
 export function offerConfirmCopy(
-  input: { tier: number; dateLabel: string; alreadyOpened: boolean },
+  input: {
+    tier: number;
+    dateLabel: string;
+    alreadyOpened: boolean;
+    offerDelivery: "digest" | "immediate";
+    /** Names of skills the offer is scoped to, if a producer applied a skill filter. */
+    skillFilterNames?: string[];
+  },
 ): { title: string; body: string } {
   const noun = tierNoun(input.tier);
+  const deliverySentence = input.offerDelivery === "immediate"
+    ? "Offers are emailed the moment the tier opens, and you can cancel any offer afterward."
+    : "They'll be emailed in the next daily offer digest, and you can cancel any offer afterward.";
   const base =
     `This creates suggested bookings for all eligible artists in ${noun} for ${input.dateLabel}. ` +
-    `They'll be emailed in the next daily offer digest, and you can cancel any offer afterward.`;
+    deliverySentence;
   const cap = input.tier === 99 ? "Ad-hoc casts have" : `Tier ${input.tier} has`;
   const reopen = input.alreadyOpened
     ? ` ${cap} already been opened — re-opening only adds offers for artists who don't have one yet.`
     : "";
-  return { title: `Open ${noun} offers?`, body: base + reopen };
+  const skillCue = input.skillFilterNames && input.skillFilterNames.length > 0
+    ? ` Only artists with all of these skills receive offers: ${input.skillFilterNames.join(", ")}.`
+    : "";
+  return { title: `Open ${noun} offers?`, body: base + reopen + skillCue };
 }
 
 /** Count still-pending (suggested) offers for a tier — feeds the close dialog. */
@@ -159,6 +172,25 @@ export function closeConfirmCopy(input: { tier: number; pendingCount: number }):
   };
 }
 
+/**
+ * Whether tier 1 should be auto-opened for a date. True only when the org's flow
+ * enables auto-open AND artist acceptance (direct-booking orgs never open offers),
+ * a session is configured (`hasSession`), and tier 1 has not already been opened.
+ * Consumed by the date-ready auto-open path (Task 14).
+ */
+export function shouldAutoOpenTier1(args: {
+  flow: { auto_open_tier1: boolean; artist_acceptance: boolean };
+  hasSession: boolean;
+  openedTiers: { tier: number }[];
+}): boolean {
+  return (
+    args.flow.auto_open_tier1 &&
+    args.flow.artist_acceptance &&
+    args.hasSession &&
+    !args.openedTiers.some((t) => t.tier === 1)
+  );
+}
+
 /** Map a close-offer-tier result to a toast kind + text. */
 export function closeResultToast(
   result: { closed: boolean; withdrawn: number; message?: string },
@@ -172,4 +204,28 @@ export function closeResultToast(
   // Tier was already closed: re-closing only withdrew surviving (kept-live) offers.
   if (n > 0) return { kind: "success", text: `Withdrew ${n} offer${s} from ${noun}` };
   return { kind: "info", text: result.message ?? "Tier was not open" };
+}
+
+/**
+ * Resolves the artist list the direct-mode booking surface may offer a Book
+ * action for. Fails closed: until BOTH the eligibility set and the blocked-date
+ * set have resolved (loading or errored), nobody is bookable; a momentary
+ * "everyone is eligible" window would expose artists outside the cast/city
+ * eligibility with no DB backstop. A null artistIds means genuinely
+ * unrestricted (no eligibility config). Blocked artists are excluded to match
+ * the tiered offer path, which skips blocked_dates server-side.
+ * The skill-eligibility set follows the same fail-closed contract: undefined =
+ * unresolved = nobody bookable; null = no skill requirements.
+ */
+export function deriveDirectBookList(
+  orgArtists: { id: string; name: string }[] | undefined,
+  eligibility: { artistIds: Set<string> | null } | undefined,
+  blockedIds: Set<string> | undefined,
+  skillEligibleIds: Set<string> | null | undefined,
+): { id: string; name: string }[] {
+  if (eligibility === undefined || blockedIds === undefined || skillEligibleIds === undefined) return [];
+  const all = orgArtists ?? [];
+  const base = eligibility.artistIds == null ? all : all.filter((a) => eligibility.artistIds!.has(a.id));
+  const skilled = skillEligibleIds == null ? base : base.filter((a) => skillEligibleIds.has(a.id));
+  return skilled.filter((a) => !blockedIds.has(a.id));
 }

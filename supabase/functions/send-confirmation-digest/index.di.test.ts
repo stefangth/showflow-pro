@@ -799,3 +799,111 @@ Deno.test("send-confirmation-digest: unregistered artist (no user_id) → bookin
   assertExists(email);
   assertEquals((email!.body as { recipient_email: string }).recipient_email, "booking@x.com");
 });
+
+// =============================================================================
+// Milestone C — Task 10: digest sender honors the booking flow
+//
+// resolveBookingFlow reads app_settings.key='booking_flow' via resolveOrgSetting —
+// on top of the confirmation_digest_hour_berlin read the handler already makes.
+// Seeds disambiguate by the recorded .eq("key", ...) arg, layered on APP_SETTINGS_SEED.
+// Direct-mode orgs (artist_acceptance:false) do NOT get gated here — this digest is
+// their only notification, so only confirmation_digest:false skips it.
+// =============================================================================
+
+Deno.test("send-confirmation-digest: confirmation_digest disabled org sends NO email", async () => {
+  // The flag is now an EMAIL-ONLY opt-out: with confirmation_digest:false and only a
+  // confirmed booking (no schedule changes), no email is sent and nothing is stamped.
+  const settings = [
+    ...APP_SETTINGS_SEED,
+    { when: { key: "booking_flow" }, data: [{ org_id: ORG_1, value: { confirmation_digest: false } }] },
+  ];
+  const { deps, invokeCalls } = baseDeps({ app_settings: settings, bookings: { data: ONE_CONFIRMED, error: null } });
+  const res = await handle(makeRequest({ headers: cronOK }), deps);
+  const body = await res.json();
+  assertEquals(res.status, 200);
+  assertEquals(invokeCalls.some((c) => c.name === "send-transactional-email"), false);
+  assertEquals(body.digests_sent, 0);
+});
+
+Deno.test("send-confirmation-digest: confirmation_digest:false still delivers in-app schedule_change + stamps digested_at", async () => {
+  // Fix (PR #161 round 2): the email toggle must NOT kill in-app schedule-change delivery.
+  // Seed an org with confirmation_digest:false AND a pending cancellation change-log row.
+  // Expected: NO email invoke, but the in-app schedule_change notification is inserted and
+  // the change-log row is stamped digested_at.
+  const B_USER = "bbbb2222-0000-0000-0000-000000000000";
+  const settings = [
+    ...APP_SETTINGS_SEED,
+    { when: { key: "booking_flow" }, data: [{ org_id: ORG_1, value: { confirmation_digest: false } }] },
+  ];
+  const { deps, invokeCalls, calls } = makeFakeDeps({
+    now: BERLIN_20_CEST,
+    tables: {
+      app_settings: settings,
+      organizations: { data: [{ id: ORG_1 }], error: null },
+      bookings: [
+        // Source 1 (confirmations, .eq status=confirmed) → none.
+        { when: { status: "confirmed" }, data: [] },
+        // Change-recipient query (.in show_date_id): fallback (no `when`).
+        { data: [
+          { id: "bk-B", artist_id: "art-B", show_date_id: "sd-cancel", status: "cancelled", cancellation_reason: "date_cancelled",
+            artists: { id: "art-B", name: "Ben", email: "ben@ex.com", user_id: B_USER } },
+        ] },
+      ],
+      show_date_change_log: { data: [
+        { id: "cl-2", show_date_id: "sd-cancel", change_type: "cancelled", session_slot: null, old_value: null, new_value: null, created_at: "2026-06-01T11:00:00Z",
+          show_dates: { date: "2026-06-15", status: "cancelled", cancellation_reason: "Venue flooded", shows: { program: "Magic", sub_program: null }, cities: { name: "Hamburg" } } },
+      ], error: null },
+      notifications: { data: null, error: null },
+    },
+    rpcs: { resolve_user_contacts: { data: [{ user_id: B_USER, email: "ben@login.com", display_name: "Ben L" }], error: null } },
+  });
+  const res = await handle(makeRequest({ headers: cronOK }), deps);
+  assertEquals(res.status, 200);
+  // Email is gated off.
+  assertEquals(invokeCalls.some((c) => c.name === "send-transactional-email"), false);
+  // In-app schedule_change notification still inserted.
+  const notifInsert = calls.find((c) => c.table === "notifications" && c.method === "insert");
+  assertExists(notifInsert);
+  const rows = notifInsert!.args[0] as Array<{ type: string; user_id: string }>;
+  assertEquals(rows.length, 1);
+  assertEquals(rows[0].type, "schedule_change");
+  assertEquals(rows[0].user_id, B_USER);
+  // Change-log row still stamped digested_at.
+  const stamp = calls.find((c) => c.table === "show_date_change_log" && c.method === "update");
+  assertExists(stamp);
+  assertEquals((stamp!.args[0] as { digested_at?: string }).digested_at, BERLIN_20_CEST.toISOString());
+});
+
+Deno.test("send-confirmation-digest: templateData confirmed items carry the custom-field label when the flow selects a custom reference", async () => {
+  const confirmed = [{
+    id: "b1", artist_id: "a1",
+    artists: { id: "a1", name: "Jo", email: "jo@x.com" },
+    show_dates: {
+      date: "2026-06-10",
+      shows: { program: "Phantom", sub_program: "Evening" },
+      cities: { name: "Berlin" },
+      custom: { pn: "PN-9001" },
+    },
+  }];
+  const settings = [
+    ...APP_SETTINGS_SEED,
+    {
+      when: { key: "booking_flow" },
+      data: [{ org_id: ORG_1, value: { reference_field: { source: "custom", custom_field_id: "cf1" } } }],
+    },
+  ];
+  const { deps, invokeCalls } = baseDeps({
+    app_settings: settings,
+    bookings: { data: confirmed, error: null },
+    custom_field_definitions: { data: { key: "pn" }, error: null },
+  });
+  const res = await handle(makeRequest({ headers: cronOK }), deps);
+  assertEquals((await res.json()).digests_sent, 1);
+  const email = invokeCalls.find((c) => c.name === "send-transactional-email");
+  assertExists(email);
+  const msg = email!.body as { templateData?: { bookings?: Array<{ label?: string; show?: string }> } };
+  assertEquals(msg.templateData?.bookings?.[0]?.label, "PN-9001");
+  // The old raw program/sub_program string is still computed alongside the label
+  // (the template's fallback for previewData that doesn't carry a label).
+  assertEquals(msg.templateData?.bookings?.[0]?.show, "Phantom — Evening");
+});

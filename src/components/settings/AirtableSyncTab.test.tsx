@@ -366,8 +366,8 @@ describe("AirtableSyncTab — autosave", () => {
     (fetchShowsForLinking as ReturnType<typeof vi.fn>).mockResolvedValue([]);
     renderTab({ airtable_base_id: "appX", airtable_table_name: "Events", airtable_field_map: { program: "Program", sub_program: "Sub" } });
 
-    // Composite display label "TJE – TJE: Murder" renders for the pair.
-    expect(await screen.findByText("TJE – TJE: Murder")).toBeInTheDocument();
+    // Composite identity label "TJE · TJE: Murder" renders for the pair.
+    expect(await screen.findByText("TJE · TJE: Murder")).toBeInTheDocument();
     await waitFor(() =>
       expect(fetchAirtableProgramPairs).toHaveBeenCalledWith(expect.anything(), "org-1", "appX", "Events", "Sub", "Program"),
     );

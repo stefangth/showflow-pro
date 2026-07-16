@@ -3,12 +3,19 @@ import { requireCronOrRole } from "../_shared/auth.ts";
 import { emailWasSent, realDeps, type Deps } from "../_shared/deps.ts";
 import { getActiveOrgs, resolveOrgSetting, BOOKING_ENGINE_DEFAULTS } from "../_shared/settings.ts";
 import { resolveContactEmail, resolveAccountDisplayName } from "../_shared/identity.ts";
+import { resolveBookingFlow, referenceLabel } from "../_shared/bookingFlow.ts";
 
 /**
- * Daily offer digest (hourly cron). For each ACTIVE org whose own
- * offer_digest_hour_berlin matches the current Berlin hour: group that org's
- * undigested suggested offers by artist, send one email per artist (rendered
- * with the org's email overrides), then stamp digest_sent_at + offer_expires_at.
+ * Daily offer digest (hourly cron). Digest-mode orgs are processed only when
+ * their own offer_digest_hour_berlin matches the current Berlin hour;
+ * immediate-delivery orgs are processed on every run with no hour gate, so a
+ * suggested booking left unstamped by a switch from digest to immediate mode
+ * still gets emailed and stamped promptly instead of waiting on the
+ * configured hour. Direct-booking orgs (artist_acceptance false) never create
+ * suggested offers, so they are skipped once the flow is resolved. For every
+ * org that is processed: group that org's undigested suggested offers by
+ * artist, send one email per artist (rendered with the org's email
+ * overrides), then stamp digest_sent_at plus offer_expires_at.
  * Auth: X-Cron-Secret (pg_cron) or admin/producer JWT.
  */
 export async function handle(req: Request, deps: Deps): Promise<Response> {
@@ -35,17 +42,52 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
   const processedOrgs: string[] = [];
 
   for (const org of orgs) {
-    // A per-org settings read failure must not abort the other orgs' digests.
-    let targetHour: number;
-    let offerWindowHours: number;
+    // Resolve the booking flow BEFORE the hour gate, because offer_delivery decides
+    // whether the hour gate even applies: digest-mode orgs still wait for their own
+    // offer_digest_hour_berlin, same as always, while immediate-delivery orgs are
+    // not gated on the hour at all. Immediate-delivery orgs already email each
+    // freshly-offered artist at open (see open-offer-tier); this cron's only job
+    // for them is to flush any suggested booking left unstamped by a mid-flight
+    // switch from digest to immediate mode, so it runs on every invocation and the
+    // unstamped-bookings query below naturally becomes a no-op once that backlog
+    // clears.
+    // A per-org booking-flow read failure must not abort the other orgs' digests
+    // (mirrors the settings-read guards below).
+    let flow: Awaited<ReturnType<typeof resolveBookingFlow>>;
     try {
-      targetHour = await resolveOrgSetting<number>(admin, org.id, 'offer_digest_hour_berlin', BOOKING_ENGINE_DEFAULTS.offer_digest_hour_berlin);
+      flow = await resolveBookingFlow(admin, org.id);
     } catch (e) {
-      console.error('send-offer-digest: settings read failed', { org: org.id, error: (e as Error).message });
+      console.error('send-offer-digest: booking flow read failed', { org: org.id, error: (e as Error).message });
       continue;
     }
-    if (berlinHour !== targetHour) continue;
+    const isImmediate = flow.offer_delivery === 'immediate';
+
+    // A per-org settings read failure must not abort the other orgs' digests.
+    let offerWindowHours: number;
+    if (!isImmediate) {
+      let targetHour: number;
+      try {
+        targetHour = await resolveOrgSetting<number>(admin, org.id, 'offer_digest_hour_berlin', BOOKING_ENGINE_DEFAULTS.offer_digest_hour_berlin);
+      } catch (e) {
+        console.error('send-offer-digest: settings read failed', { org: org.id, error: (e as Error).message });
+        continue;
+      }
+      if (berlinHour !== targetHour) continue;
+    }
     processedOrgs.push(org.id);
+
+    // Direct-booking orgs (artist_acceptance false) never create suggested offers
+    // to begin with, so there is nothing for this cron to send.
+    if (!flow.artist_acceptance) continue;
+
+    // Resolve the org's reference-field display once per org (mirrors open-offer-tier).
+    let customFieldKey: string | null = null;
+    if (flow.reference_field.source === 'custom' && flow.reference_field.custom_field_id) {
+      const { data: def } = await admin
+        .from('custom_field_definitions').select('key')
+        .eq('id', flow.reference_field.custom_field_id).maybeSingle();
+      customFieldKey = (def as { key: string } | null)?.key ?? null;
+    }
 
     try {
       offerWindowHours = await resolveOrgSetting<number>(admin, org.id, 'offer_response_window_hours', BOOKING_ENGINE_DEFAULTS.offer_response_window_hours);
@@ -65,7 +107,7 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
         id,
         artist_id,
         artists ( id, name, email, user_id ),
-        show_dates ( date, shows ( program, sub_program ), cities ( name ) )
+        show_dates ( date, shows ( program, sub_program ), cities ( name ), custom )
       `)
       .eq('org_id', org.id)
       .eq('status', 'suggested')
@@ -93,7 +135,7 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
       }
     }
 
-    type GroupedEntry = { recipientEmail: string; displayName: string; bookingIds: string[]; offers: Array<{ show: string; date: string; city: string; expires: string }> };
+    type GroupedEntry = { recipientEmail: string; displayName: string; bookingIds: string[]; offers: Array<{ show: string; date: string; city: string; expires: string; label: string }> };
     const grouped = new Map<string, GroupedEntry>();
     for (const b of pendingBookings as any[]) {
       const artist = b.artists;
@@ -104,12 +146,18 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
       const program = sd?.shows?.program;
       const subProgram = sd?.shows?.sub_program;
       const show = program ? (subProgram ? `${program} — ${subProgram}` : program) : 'Unknown show';
+      const label = referenceLabel({
+        reference: flow.reference_field,
+        show: sd?.shows ?? null,
+        custom: sd?.custom ?? null,
+        customFieldKey,
+      });
       if (!grouped.has(b.artist_id)) {
         grouped.set(b.artist_id, { recipientEmail, displayName: resolveAccountDisplayName({ displayName: acct?.display_name, artistName: artist?.name }), bookingIds: [], offers: [] });
       }
       const entry = grouped.get(b.artist_id)!;
       entry.bookingIds.push(b.id);
-      entry.offers.push({ show, date: sd?.date ?? '—', city: sd?.cities?.name ?? '—', expires: expiresDisplay });
+      entry.offers.push({ show, date: sd?.date ?? '—', city: sd?.cities?.name ?? '—', expires: expiresDisplay, label });
     }
 
     for (const [artistId, entry] of grouped) {

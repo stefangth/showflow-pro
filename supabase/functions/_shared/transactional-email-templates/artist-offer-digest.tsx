@@ -22,6 +22,7 @@ interface OfferRow {
   date: string
   city: string
   expires: string
+  label?: string
 }
 
 interface Props {
@@ -36,7 +37,7 @@ const ArtistOfferDigest = ({ displayName, offers = [], _intro, _cta_label, _foot
   const n = offers.length
   const introText = _intro || `You have ${n} pending offer${n === 1 ? '' : 's'} waiting for your response. Please review and accept or decline before the deadlines below.`
   const ctaLabel = _cta_label || 'View your offers'
-  const footerText = _footer || `— The ${SITE_NAME} team`
+  const footerText = _footer || `The ${SITE_NAME} team`
 
   return (
     <Html lang="en" dir="ltr">
@@ -66,7 +67,7 @@ const ArtistOfferDigest = ({ displayName, offers = [], _intro, _cta_label, _foot
                 <tbody>
                   {offers.map((offer, i) => (
                     <tr key={i} style={i % 2 === 1 ? trAlt : tr}>
-                      <td style={td}>{offer.show}</td>
+                      <td style={td}>{offer.label || offer.show}</td>
                       <td style={td}>{offer.date}</td>
                       <td style={td}>{offer.city}</td>
                       <td style={{ ...td, color: '#ef4444' }}>{offer.expires}</td>

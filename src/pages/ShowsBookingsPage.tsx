@@ -24,7 +24,8 @@ import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { showSlots } from '@/lib/settings';
 import { parseDateOnly } from '@/lib/dates';
-import { showLabel } from '@/types';
+import { useReferenceField } from '@/hooks/useBookingFlow';
+import { referenceLabel } from '@/lib/bookingFlow';
 import { useColumnTemplate, useEditorConfig } from '@/features/editor/EditorContext';
 import { useColumnHeaders } from '@/features/editor/useColumnHeaders';
 import { ColumnLayoutEditor } from '@/features/editor/ColumnLayoutEditor';
@@ -90,6 +91,7 @@ export default function ShowsBookingsPage() {
 
 function ProducerShowsBookings() {
   const { canSee } = useFilterVisibility('bookings');
+  const { reference, customFieldKey } = useReferenceField();
   const { orderedColumns, visibleCount } = useColumnTemplate('bookings-producer');
   const { isEditorMode, getCustomFieldDefs } = useEditorConfig();
   const columnHeaders = useColumnHeaders(orderedColumns);
@@ -456,7 +458,9 @@ function ProducerShowsBookings() {
             >
               <CardContent className="py-3 flex items-center justify-between gap-3">
                 <div className="min-w-0">
-                  <p className="font-medium truncate">{showLabel(it.showDate.show)}</p>
+                  <p className="font-medium truncate">
+                    {referenceLabel({ reference, show: it.showDate.show, custom: it.showDate.custom, customFieldKey })}
+                  </p>
                   <p className="text-xs text-muted-foreground truncate">
                     {[it.showDate.venue, it.showDate.city?.name]
                       .filter(Boolean).join(' · ')}
