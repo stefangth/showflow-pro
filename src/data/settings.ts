@@ -57,11 +57,24 @@ export async function resolveOrgSetting<T>(
  * Effective booking-flow policy for an org, normalized (invariants enforced) so
  * every consumer reads a complete BookingFlow. When no org override or platform
  * default exists, returns BOOKING_FLOW_DEFAULTS via normalizeBookingFlow(null).
+ *
+ * Gated on the org's `booking_flow` entitlement: when the module is disabled,
+ * returns classic defaults without ever reading the org's app_settings override
+ * (the org can't be configured into a mode it isn't entitled to). On an RPC
+ * error, fails open to the pre-entitlement behavior so an entitlement hiccup
+ * never takes the booking pipeline down.
  */
 export async function fetchBookingFlow(
   client: SupabaseClient<Database>,
   orgId: string | null,
 ): Promise<BookingFlow> {
+  if (orgId) {
+    const { data: entitled, error } = await client.rpc("is_feature_enabled", {
+      _org: orgId,
+      _feature: "booking_flow",
+    });
+    if (!error && entitled === false) return normalizeBookingFlow(null);
+  }
   return normalizeBookingFlow(await resolveOrgSetting(client, orgId, "booking_flow", null));
 }
 
