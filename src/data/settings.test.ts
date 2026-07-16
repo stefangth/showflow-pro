@@ -1,7 +1,7 @@
 import { describe, it, expect } from "vitest";
 import { createFakeSupabase } from "@/test/supabaseFake";
 import { fetchShowsWithSlots, resolveOrgSetting, upsertOrgSetting, fetchShowsForLinking, linkShowAirtableKey, importShowsFromOptions, mergeOrgRows, fetchBookingFlow } from "./settings";
-import { BOOKING_FLOW_DEFAULTS } from "@/lib/bookingFlow";
+import { BOOKING_FLOW_DEFAULTS, normalizeBookingFlow } from "@/lib/bookingFlow";
 
 describe("fetchShowsWithSlots", () => {
   it("selects the correct columns from shows filtered by org_id", async () => {
@@ -204,5 +204,44 @@ describe("fetchBookingFlow", () => {
     const flow = await fetchBookingFlow(fake as never, "org-1");
     expect(flow.artist_acceptance).toBe(false);
     expect(flow.producer_confirmation).toBe(true);
+  });
+
+  it("returns classic defaults without reading the override when booking_flow is disabled", async () => {
+    const fake = createFakeSupabase({
+      "rpc:is_feature_enabled": { data: false, error: null },
+      app_settings: { data: [{ org_id: "org-1", value: { artist_acceptance: false } }], error: null },
+    });
+    const flow = await fetchBookingFlow(fake as never, "org-1");
+    expect(flow).toEqual(normalizeBookingFlow(null));
+    expect(fake.calls.some((c) => c.table === "app_settings")).toBe(false);
+    expect(fake.calls).toContainEqual({ table: "rpc:is_feature_enabled", method: "rpc", args: [{ _org: "org-1", _feature: "booking_flow" }] });
+  });
+
+  it("resolves the org override when entitled", async () => {
+    const fake = createFakeSupabase({
+      "rpc:is_feature_enabled": { data: true, error: null },
+      app_settings: { data: [{ org_id: "org-1", value: { artist_acceptance: false } }], error: null },
+    });
+    const flow = await fetchBookingFlow(fake as never, "org-1");
+    expect(fake.calls).toContainEqual({ table: "rpc:is_feature_enabled", method: "rpc", args: [{ _org: "org-1", _feature: "booking_flow" }] });
+    expect(fake.calls.some((c) => c.table === "app_settings")).toBe(true);
+    expect(flow.artist_acceptance).toBe(false);
+  });
+
+  it("fails open to the existing resolution when the RPC errors", async () => {
+    const fake = createFakeSupabase({
+      "rpc:is_feature_enabled": { data: null, error: { message: "boom" } },
+      app_settings: { data: [{ org_id: "org-1", value: { artist_acceptance: false } }], error: null },
+    });
+    const flow = await fetchBookingFlow(fake as never, "org-1");
+    expect(fake.calls.some((c) => c.table === "app_settings")).toBe(true);
+    expect(flow.artist_acceptance).toBe(false);
+  });
+
+  it("skips the entitlement RPC entirely when orgId is null", async () => {
+    const fake = createFakeSupabase({ app_settings: { data: [], error: null } });
+    const flow = await fetchBookingFlow(fake as never, null);
+    expect(flow).toEqual(normalizeBookingFlow(null));
+    expect(fake.calls.some((c) => c.table === "rpc:is_feature_enabled")).toBe(false);
   });
 });
