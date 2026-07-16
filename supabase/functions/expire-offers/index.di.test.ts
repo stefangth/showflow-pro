@@ -1330,3 +1330,158 @@ Deno.test("expire-offers: auto_escalate on an INACTIVE org does not auto-open, f
   assertEquals(updateArg.escalation_notified_at, FIXED_NOW.toISOString());
   assertEquals(updateArg.closed_at, undefined);
 });
+
+// ─── Task 5: ladder-aware auto-escalation next-tier lookup ───────────────────
+//
+// The auto-escalation branch above used to query cast_city_priority directly for the
+// next tier. It now routes through resolveTierLadder/nextTierAfter (_shared/eligibility.ts,
+// Task 3), the SAME effective ladder that open-offer-tier used to open this tier: a
+// show-scoped priority list (show_cast_eligibility for this show+city) wins outright over
+// the org-wide cast_city_priority list. Automation never applies a skill filter, so the
+// open-offer-tier invoke body must never carry a skill_filter_ids key.
+
+Deno.test("expire-offers: show ladder wins over the org city list for the next tier", async () => {
+  // show_cast_eligibility carries the show's own ladder (priorities 1 and 3) for this
+  // (show, city); cast_city_priority carries the org-wide list with priority 2 for the
+  // SAME city. resolveTierLadder must prefer the show ladder outright: the next tier
+  // after 1 is 3 (the show ladder's own next rung), never 2 (the org list's), proving the
+  // lookup did not silently fall back to querying cast_city_priority directly.
+  const showDate = { ...SHOW_DATE, show_id: "show-1" };
+  const bookings = [
+    { status: "cancelled", offer_tier: 1, offer_expires_at: null },
+    { status: "suggested", offer_tier: 1, offer_expires_at: "2026-05-01T00:00:00Z" }, // expired
+  ];
+  const { deps, invokeCalls } = makeFakeDeps({
+    tables: {
+      app_settings: [
+        { when: { key: "cron_secret" }, data: { value: CRON_SECRET } },
+        { when: { key: "booking_flow" }, data: [{ org_id: SHOW_DATE.org_id, value: { auto_escalate: true } }] },
+      ],
+      organizations: { data: [{ id: SHOW_DATE.org_id }], error: null },
+      show_date_offer_tiers: { data: [OPEN_TIER], error: null },
+      show_dates: { data: showDate, error: null },
+      bookings: { data: bookings, error: null },
+      show_cast_eligibility: {
+        data: [{ cast_id: "cast-a", priority: 1 }, { cast_id: "cast-b", priority: 3 }],
+        error: null,
+      },
+      cast_city_priority: { data: [{ cast_id: "cast-c", priority: 2 }], error: null },
+      notifications: { data: null, error: null },
+      org_memberships: { data: [{ user_id: "admin-1" }], error: null },
+    },
+    rpcs: {
+      expire_soft_bookings: { data: null, error: null },
+      resolve_show_assignments: { data: [], error: null },
+    },
+    usersById: { "admin-1": { email: "admin@example.com" } },
+    now: FIXED_NOW,
+  });
+  const res = await handle(cronReq(), deps);
+  assertEquals(res.status, 200);
+  const body = await res.json();
+  assertEquals(body.auto_escalated, 1);
+  assertEquals(body.escalations, 0);
+
+  const openCall = invokeCalls.find((c) => c.name === "open-offer-tier");
+  assertExists(openCall);
+  assertEquals(openCall!.body, { show_date_id: "sd-1", tier: 3 });
+
+  // Automation never applies a skill filter (spec rule): the invoke body must not
+  // carry a skill_filter_ids key at all.
+  assertEquals("skill_filter_ids" in (openCall!.body as Record<string, unknown>), false);
+});
+
+Deno.test("expire-offers: org city list still resolves the next tier when the show has no priorities", async () => {
+  // show_cast_eligibility is empty for this show+city, so the ladder falls through to
+  // the org-wide cast_city_priority list (source: 'org'), the same next-tier result the
+  // direct cast_city_priority query used to produce, now reached through the ladder.
+  const showDate = { ...SHOW_DATE, show_id: "show-1" };
+  const bookings = [
+    { status: "cancelled", offer_tier: 1, offer_expires_at: null },
+    { status: "suggested", offer_tier: 1, offer_expires_at: "2026-05-01T00:00:00Z" },
+  ];
+  const { deps, invokeCalls } = makeFakeDeps({
+    tables: {
+      app_settings: [
+        { when: { key: "cron_secret" }, data: { value: CRON_SECRET } },
+        { when: { key: "booking_flow" }, data: [{ org_id: SHOW_DATE.org_id, value: { auto_escalate: true } }] },
+      ],
+      organizations: { data: [{ id: SHOW_DATE.org_id }], error: null },
+      show_date_offer_tiers: { data: [OPEN_TIER], error: null },
+      show_dates: { data: showDate, error: null },
+      bookings: { data: bookings, error: null },
+      show_cast_eligibility: { data: [], error: null },
+      cast_city_priority: {
+        data: [{ cast_id: "cast-x", priority: 1 }, { cast_id: "cast-y", priority: 2 }],
+        error: null,
+      },
+      notifications: { data: null, error: null },
+      org_memberships: { data: [{ user_id: "admin-1" }], error: null },
+    },
+    rpcs: {
+      expire_soft_bookings: { data: null, error: null },
+      resolve_show_assignments: { data: [], error: null },
+    },
+    usersById: { "admin-1": { email: "admin@example.com" } },
+    now: FIXED_NOW,
+  });
+  const res = await handle(cronReq(), deps);
+  assertEquals(res.status, 200);
+  const body = await res.json();
+  assertEquals(body.auto_escalated, 1);
+  assertEquals(body.escalations, 0);
+
+  const openCall = invokeCalls.find((c) => c.name === "open-offer-tier");
+  assertExists(openCall);
+  assertEquals(openCall!.body, { show_date_id: "sd-1", tier: 2 });
+});
+
+Deno.test("expire-offers: show ladder exhausted (only the current tier) falls through to manual escalation", async () => {
+  // The show's ladder has ONLY tier 1 (the tier that's currently short), no higher rung
+  // exists on the show list, so nextTierAfter returns null. cast_city_priority DOES have
+  // a next tier (priority 2) here on purpose: since the show list is non-empty it must
+  // win outright (source: 'show'), so that org row must never be consulted. A wrong
+  // implementation that fell back to the org list on an exhausted show ladder would
+  // wrongly auto-escalate to tier 2 instead of falling through to the manual path.
+  const showDate = { ...SHOW_DATE, show_id: "show-1" };
+  const bookings = [
+    { status: "cancelled", offer_tier: 1, offer_expires_at: null },
+    { status: "suggested", offer_tier: 1, offer_expires_at: "2026-05-01T00:00:00Z" },
+  ];
+  const { deps, calls, invokeCalls } = makeFakeDeps({
+    tables: {
+      app_settings: [
+        { when: { key: "cron_secret" }, data: { value: CRON_SECRET } },
+        { when: { key: "booking_flow" }, data: [{ org_id: SHOW_DATE.org_id, value: { auto_escalate: true } }] },
+      ],
+      organizations: { data: [{ id: SHOW_DATE.org_id }], error: null },
+      show_date_offer_tiers: { data: [OPEN_TIER], error: null },
+      show_dates: { data: showDate, error: null },
+      bookings: { data: bookings, error: null },
+      show_cast_eligibility: { data: [{ cast_id: "cast-a", priority: 1 }], error: null },
+      cast_city_priority: { data: [{ cast_id: "cast-c", priority: 2 }], error: null },
+      notifications: { data: null, error: null },
+      org_memberships: { data: [{ user_id: "admin-1" }], error: null },
+    },
+    rpcs: {
+      expire_soft_bookings: { data: null, error: null },
+      resolve_show_assignments: { data: [], error: null },
+    },
+    usersById: { "admin-1": { email: "admin@example.com" } },
+    now: FIXED_NOW,
+  });
+  const res = await handle(cronReq(), deps);
+  assertEquals(res.status, 200);
+  const body = await res.json();
+  assertEquals(body.auto_escalated, 0);
+  assertEquals(body.escalations, 1);
+
+  const openCall = invokeCalls.find((c) => c.name === "open-offer-tier");
+  assertEquals(openCall, undefined, "an exhausted show ladder must never fall back to the org city list");
+
+  const notifInsert = calls.find((c) => c.table === "notifications" && c.method === "insert");
+  assertExists(notifInsert);
+  const rows = notifInsert!.args[0] as Array<{ type: string }>;
+  assertEquals(rows.length, 1);
+  assertEquals(rows[0].type, "cast_escalation_requested");
+});

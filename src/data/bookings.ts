@@ -13,11 +13,11 @@ export interface OpenOfferTierResult {
 /** Invoke the open-offer-tier edge function for one (show_date, tier). */
 export async function openOfferTier(
   client: SupabaseClient<Database>,
-  args: { showDateId: string; tier: number },
+  args: { showDateId: string; tier: number; skillFilterIds?: string[] },
 ): Promise<OpenOfferTierResult> {
-  const { data, error } = await client.functions.invoke("open-offer-tier", {
-    body: { show_date_id: args.showDateId, tier: args.tier },
-  });
+  const body: Record<string, unknown> = { show_date_id: args.showDateId, tier: args.tier };
+  if (args.skillFilterIds && args.skillFilterIds.length > 0) body.skill_filter_ids = args.skillFilterIds;
+  const { data, error } = await client.functions.invoke("open-offer-tier", { body });
   if (error) throw error;
   const payload = data as { offers_created?: number; message?: string; error?: string; tier_tracking_warning?: boolean };
   if (payload?.error) throw new Error(payload.error);
@@ -28,25 +28,44 @@ export async function openOfferTier(
 
 /**
  * Tiers that *can* be opened for a date.
- * - `priorities`: RAW per-city priorities (duplicates preserved). Dedup/sort/labeling
- *   is the consumer's job — see `buildOfferTierOptions` in `@/lib/bookings`.
+ * - `priorities`: RAW priorities (duplicates preserved). Dedup/sort/labeling
+ *   is the consumer's job, see `buildOfferTierOptions` in `@/lib/bookings`.
  * - `hasAdHoc`: whether the date has any per-date ("ad-hoc") cast assignments.
- * A null `cityId` skips the priority query (priorities = []) but still checks ad-hoc,
- * since ad-hoc casts are per-date, not per-city.
+ * - `source`: "show" when the show's own (show, city) ladder has prioritized rows
+ *   (it wins outright, no fallback query); "org" when falling back to the org-wide
+ *   `cast_city_priority` list for the city.
+ * A null `cityId` skips both priority queries (priorities = [], source = "org") but
+ * still checks ad-hoc, since ad-hoc casts are per-date, not per-city.
  */
 export async function fetchOfferTiers(
   client: SupabaseClient<Database>,
-  args: { cityId: string | null; showDateId: string },
-): Promise<{ priorities: number[]; hasAdHoc: boolean }> {
+  args: { showId: string; cityId: string | null; showDateId: string },
+): Promise<{ priorities: number[]; hasAdHoc: boolean; source: "show" | "org" }> {
   let priorities: number[] = [];
+  let source: "show" | "org" = "org";
   if (args.cityId) {
-    const { data, error } = await client
-      .from("cast_city_priority")
+    // Show-scoped ladder wins outright for this (show, city); org list is the fallback.
+    // priority is not yet in the generated types.
+    const { data: showRows, error: showErr } = await (client as any)
+      .from("show_cast_eligibility")
       .select("priority")
-      .eq("city_id", args.cityId);
-    if (error) throw error;
-    // Raw — dedup happens downstream in buildOfferTierOptions.
-    priorities = (data ?? []).map((r) => r.priority as number);
+      .eq("show_id", args.showId)
+      .eq("city_id", args.cityId)
+      .not("priority", "is", null);
+    if (showErr) throw showErr;
+    const showPriorities = ((showRows ?? []) as { priority: number }[]).map((r) => r.priority);
+    if (showPriorities.length > 0) {
+      priorities = showPriorities;
+      source = "show";
+    } else {
+      const { data, error } = await client
+        .from("cast_city_priority")
+        .select("priority")
+        .eq("city_id", args.cityId);
+      if (error) throw error;
+      // Raw, dedup happens downstream in buildOfferTierOptions.
+      priorities = (data ?? []).map((r) => r.priority as number);
+    }
   }
   // Any show_date_cast_eligibility row for this date means ad-hoc casts exist (tier 99).
   const { data: adHoc, error: adErr } = await client
@@ -55,7 +74,7 @@ export async function fetchOfferTiers(
     .eq("show_date_id", args.showDateId)
     .limit(1);
   if (adErr) throw adErr;
-  return { priorities, hasAdHoc: (adHoc ?? []).length > 0 };
+  return { priorities, hasAdHoc: (adHoc ?? []).length > 0, source };
 }
 
 export interface OpenedTier { tier: number; openedAt: string; closedAt: string | null }
@@ -76,22 +95,25 @@ export async function fetchOpenedTiers(
 
 export interface DryRunResult {
   candidates: { id: string; name: string }[];
-  excluded: { alreadyBooked: number; blocked: number; inactive: number };
+  excluded: { alreadyBooked: number; blocked: number; inactive: number; notEligible: number; missingSkills: number };
   message?: string;
 }
 
 /** Preview who would receive offers for a (show_date, tier) without writing anything. */
 export async function dryRunOfferTier(
   client: SupabaseClient<Database>,
-  args: { showDateId: string; tier: number },
+  args: { showDateId: string; tier: number; skillFilterIds?: string[] },
 ): Promise<DryRunResult> {
-  const { data, error } = await client.functions.invoke("open-offer-tier", {
-    body: { show_date_id: args.showDateId, tier: args.tier, dry_run: true },
-  });
+  const body: Record<string, unknown> = { show_date_id: args.showDateId, tier: args.tier, dry_run: true };
+  if (args.skillFilterIds && args.skillFilterIds.length > 0) body.skill_filter_ids = args.skillFilterIds;
+  const { data, error } = await client.functions.invoke("open-offer-tier", { body });
   if (error) throw error;
   const payload = data as {
     candidates?: { id: string; name: string }[];
-    excluded?: { already_booked?: number; blocked?: number; inactive?: number };
+    excluded?: {
+      already_booked?: number; blocked?: number; inactive?: number;
+      not_eligible?: number; missing_skills?: number;
+    };
     message?: string;
   };
   return {
@@ -100,6 +122,8 @@ export async function dryRunOfferTier(
       alreadyBooked: payload?.excluded?.already_booked ?? 0,
       blocked: payload?.excluded?.blocked ?? 0,
       inactive: payload?.excluded?.inactive ?? 0,
+      notEligible: payload?.excluded?.not_eligible ?? 0,
+      missingSkills: payload?.excluded?.missing_skills ?? 0,
     },
     message: payload?.message,
   };

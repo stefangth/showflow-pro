@@ -13,7 +13,7 @@ describe("DryRunDialog", () => {
         tier={2}
         result={{
           candidates: [{ id: "a1", name: "Lena" }],
-          excluded: { alreadyBooked: 1, blocked: 2, inactive: 0 },
+          excluded: { alreadyBooked: 1, blocked: 2, inactive: 0, notEligible: 0, missingSkills: 0 },
         }}
         loading={false}
         flow={{ offer_delivery: "digest" }}
@@ -34,7 +34,7 @@ describe("DryRunDialog", () => {
         open
         onOpenChange={() => {}}
         tier={1}
-        result={{ candidates: [], excluded: { alreadyBooked: 0, blocked: 0, inactive: 0 }, message: "No sessions configured for this date" }}
+        result={{ candidates: [], excluded: { alreadyBooked: 0, blocked: 0, inactive: 0, notEligible: 0, missingSkills: 0 }, message: "No sessions configured for this date" }}
         loading={false}
         flow={{ offer_delivery: "immediate" }}
         onConfirm={vi.fn()}
@@ -55,7 +55,7 @@ describe("DryRunDialog", () => {
         open
         onOpenChange={() => {}}
         tier={1}
-        result={{ candidates: [], excluded: { alreadyBooked: 3, blocked: 0, inactive: 0 } }}
+        result={{ candidates: [], excluded: { alreadyBooked: 3, blocked: 0, inactive: 0, notEligible: 0, missingSkills: 0 } }}
         loading={false}
         flow={{ offer_delivery: "digest" }}
         onConfirm={vi.fn()}
@@ -74,7 +74,7 @@ describe("DryRunDialog", () => {
         tier={2}
         result={{
           candidates: [{ id: "a1", name: "Lena" }],
-          excluded: { alreadyBooked: 0, blocked: 0, inactive: 0 },
+          excluded: { alreadyBooked: 0, blocked: 0, inactive: 0, notEligible: 0, missingSkills: 0 },
         }}
         loading={false}
         flow={{ offer_delivery: "digest" }}
@@ -99,5 +99,24 @@ describe("DryRunDialog", () => {
     );
     expect(screen.getByRole("status")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /open tier 1/i })).toBeDisabled();
+  });
+
+  it("renders the not-eligible and missing-skills exclusion rows", () => {
+    renderWithProviders(
+      <DryRunDialog
+        open
+        onOpenChange={() => {}}
+        tier={1}
+        result={{
+          candidates: [],
+          excluded: { alreadyBooked: 0, blocked: 0, inactive: 0, notEligible: 2, missingSkills: 1 },
+        }}
+        loading={false}
+        flow={{ offer_delivery: "digest" }}
+        onConfirm={vi.fn()}
+      />,
+    );
+    expect(screen.getByText("Not eligible for this show: 2")).toBeInTheDocument();
+    expect(screen.getByText("Missing required skills: 1")).toBeInTheDocument();
   });
 });

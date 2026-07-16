@@ -4,8 +4,15 @@ import { resolveBookingFlow, referenceLabel } from "../_shared/bookingFlow.ts";
 import { emailWasSent, realDeps, type Deps } from "../_shared/deps.ts";
 import { resolveOrgSetting, BOOKING_ENGINE_DEFAULTS } from "../_shared/settings.ts";
 import { resolveContactEmail, resolveAccountDisplayName } from "../_shared/identity.ts";
+import {
+  resolveTierLadder, ladderCastIdsAtTier, fetchGateArtistIds,
+  fetchRequiredSkillIds, filterArtistIdsBySkills,
+} from "../_shared/eligibility.ts";
 
-type ExcludedCounts = { already_booked: number; blocked: number; inactive: number };
+type ExcludedCounts = {
+  already_booked: number; blocked: number; inactive: number;
+  not_eligible: number; missing_skills: number;
+};
 
 export async function handle(req: Request, deps: Deps): Promise<Response> {
   if (req.method === "OPTIONS") return preflight();
@@ -23,11 +30,15 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
   let show_date_id: string
   let tier: number
   let dryRun = false
+  let skillFilterIds: string[] = []
   try {
     const body = await req.json()
     show_date_id = body.show_date_id
     tier = Number(body.tier)
     dryRun = body.dry_run === true
+    if (Array.isArray(body.skill_filter_ids)) {
+      skillFilterIds = body.skill_filter_ids.filter((v: unknown): v is string => typeof v === "string")
+    }
     if (!show_date_id || !tier || tier < 1) {
       return json({ error: 'show_date_id and tier (≥1) are required' }, 400)
     }
@@ -43,7 +54,7 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
       ? json({
           dry_run: true,
           candidates: [],
-          excluded: counts ?? { already_booked: 0, blocked: 0, inactive: 0 },
+          excluded: counts ?? { already_booked: 0, blocked: 0, inactive: 0, not_eligible: 0, missing_skills: 0 },
           message,
         })
       : json({ offers_created: 0, message })
@@ -83,12 +94,13 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
     return benignExit('Show date has no sessions yet — offers not opened')
   }
 
-  // Resolve eligible cast IDs for this tier
+  // Resolve the effective ladder once: show-scoped priorities win outright for
+  // this (show, city); otherwise the org-wide city list (spec: effective ladder).
   let eligibleCastIds: string[]
 
   if (tier === 99) {
-    // Tier 99: ad-hoc casts added via show_date_cast_eligibility
-    // that have no cast_city_priority entry for this city
+    // Tier 99: ad-hoc casts added via show_date_cast_eligibility that are not
+    // already part of the EFFECTIVE ladder for this (show, city).
     const { data: dateCasts } = await admin
       .from('show_date_cast_eligibility')
       .select('cast_id')
@@ -98,34 +110,20 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
       return benignExit('No ad-hoc casts for this date')
     }
 
-    // Filter out casts that are already in the priority system for this city
+    const castIds = dateCasts.map((r: any) => r.cast_id)
     if (showDate.city_id) {
-      const castIds = dateCasts.map((r: any) => r.cast_id)
-      const { data: priorityRows } = await (admin as any)
-        .from('cast_city_priority')
-        .select('cast_id')
-        .eq('city_id', showDate.city_id)
-        .in('cast_id', castIds)
-
-      const prioritizedCastIds = new Set((priorityRows ?? []).map((r: any) => r.cast_id))
-      eligibleCastIds = castIds.filter((id: string) => !prioritizedCastIds.has(id))
+      const ladder = await resolveTierLadder(admin, showDate.show_id, showDate.city_id)
+      const ladderCastIds = new Set(ladder.tiers.map((t) => t.castId))
+      eligibleCastIds = castIds.filter((id: string) => !ladderCastIds.has(id))
     } else {
-      eligibleCastIds = dateCasts.map((r: any) => r.cast_id)
+      eligibleCastIds = castIds
     }
   } else {
-    // Tier 1-N: find casts with this priority for the date's city
     if (!showDate.city_id) {
-      return benignExit('Show date has no city — cannot resolve priority casts')
+      return benignExit('Show date has no city, cannot resolve priority casts')
     }
-
-    const { data: priorityRows } = await (admin as any)
-      .from('cast_city_priority')
-      .select('cast_id')
-      .eq('city_id', showDate.city_id)
-      .eq('priority', tier)
-
-    eligibleCastIds = (priorityRows ?? []).map((r: any) => r.cast_id)
-
+    const ladder = await resolveTierLadder(admin, showDate.show_id, showDate.city_id)
+    eligibleCastIds = ladderCastIdsAtTier(ladder, tier)
     if (eligibleCastIds.length === 0) {
       return benignExit(`No casts configured at tier ${tier} for this city`)
     }
@@ -157,7 +155,9 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
   // Members that dropped out of the active-status filter (inactive/archived).
   const inactiveCount = artistIds.length - activeArtistIds.length
   if (activeArtistIds.length === 0) {
-    return benignExit('No active artists in eligible casts', { already_booked: 0, blocked: 0, inactive: inactiveCount })
+    return benignExit('No active artists in eligible casts', {
+      already_booked: 0, blocked: 0, inactive: inactiveCount, not_eligible: 0, missing_skills: 0,
+    })
   }
 
   // Skip artists with an existing open offer or non-cancelled booking for this date
@@ -192,14 +192,35 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
   const blockedCount = activeArtistIds.filter(
     (id: string) => !alreadyBookedIds.has(id) && blockedArtistIds.has(id)
   ).length
+
+  // Gate (spec: candidates must pass the show eligibility gate when one exists;
+  // union of show-level and date-level rows, none at all = unrestricted).
+  const gate = await fetchGateArtistIds(admin, {
+    showId: showDate.show_id, cityId: showDate.city_id, showDateId: show_date_id,
+  })
+  const afterBlocked = candidateIds
+  const afterGate = gate == null ? afterBlocked : afterBlocked.filter((id: string) => gate.has(id))
+  const notEligibleCount = afterBlocked.length - afterGate.length
+
+  // Skills: stored requirements (show ∪ date) unioned with the per-open filter.
+  const storedSkillIds = await fetchRequiredSkillIds(admin, {
+    showId: showDate.show_id, showDateId: show_date_id,
+  })
+  const requiredSkillIds = [...new Set([...storedSkillIds, ...skillFilterIds])]
+  const afterSkills = await filterArtistIdsBySkills(admin, afterGate, requiredSkillIds)
+  const missingSkillsCount = afterGate.length - afterSkills.length
+
+  const finalCandidateIds = afterSkills
   const excluded: ExcludedCounts = {
     already_booked: alreadyBookedCount,
     blocked: blockedCount,
     inactive: inactiveCount,
+    not_eligible: notEligibleCount,
+    missing_skills: missingSkillsCount,
   }
 
-  if (candidateIds.length === 0) {
-    return benignExit('All eligible artists already have offers or are blocked', excluded)
+  if (finalCandidateIds.length === 0) {
+    return benignExit('All eligible artists already have offers, are blocked, or do not qualify', excluded)
   }
 
   // Dry-run: report who WOULD be offered (and why others were excluded) without
@@ -209,7 +230,7 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
     const { data: names, error: namesErr } = await admin
       .from('artists')
       .select('id, name')
-      .in('id', candidateIds)
+      .in('id', finalCandidateIds)
     if (namesErr) return json({ error: namesErr.message }, 500)
     candidates = (names ?? []) as Array<{ id: string; name: string }>
     return json({ dry_run: true, candidates, excluded })
@@ -226,7 +247,7 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
   // starts from when the artist is notified via the offer digest email,
   // not from offer creation. send-offer-digest sets offer_expires_at when
   // it stamps digest_sent_at.
-  const toInsert = candidateIds.map((artistId: string) => ({
+  const toInsert = finalCandidateIds.map((artistId: string) => ({
     show_date_id,
     artist_id: artistId,
     status: 'suggested' as const,
@@ -310,7 +331,7 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
       // exactly like send-offer-digest (ADR-0011): registered artists are addressed at
       // their auth email + account display name; unregistered fall back to booking email.
       const { data: artistRows } = await admin
-        .from('artists').select('id, name, email, user_id').in('id', candidateIds)
+        .from('artists').select('id, name, email, user_id').in('id', finalCandidateIds)
       const artists = (artistRows ?? []) as Array<{ id: string; name: string | null; email: string | null; user_id: string | null }>
 
       const userIds = [...new Set(
