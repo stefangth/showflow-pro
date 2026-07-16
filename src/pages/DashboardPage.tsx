@@ -12,10 +12,15 @@ import { motion } from 'framer-motion';
 import { addDays, format } from 'date-fns';
 import { toast } from 'sonner';
 import { ArtistDashboard } from '@/components/dashboard/ArtistDashboard';
+import { TierAttentionCard } from '@/components/dashboard/TierAttentionCard';
+import { DirectBookingCard } from '@/components/dashboard/DirectBookingCard';
 import { showSlots } from '@/lib/settings';
 import { formatDateDMY } from '@/lib/dates';
-import { showLabel } from '@/types';
-import { bulkConfirmSoftBooked, bulkDeclineSoftBooked } from '@/data/bookings';
+import { useReferenceField, useBookingFlow } from '@/hooks/useBookingFlow';
+import { referenceLabel, BOOKING_FLOW_DEFAULTS } from '@/lib/bookingFlow';
+import { computeTierAttention, unfilledMainCastDates } from '@/lib/bookingCockpit';
+import { deliveryHint } from '@/lib/flowCopy';
+import { bulkConfirmSoftBooked, bulkDeclineSoftBooked, fetchTierAttention } from '@/data/bookings';
 
 const fadeUp = {
   initial: { opacity: 0, y: 20 },
@@ -24,7 +29,7 @@ const fadeUp = {
 
 type ShowRef = { program: string | null; sub_program: string | null; main_cast_slots: number | null; understudy_slots: number | null };
 type DateRow = { id: string; date: string; show_id: string };
-type BookingLite = { show_date_id: string; status: string };
+type BookingLite = { show_date_id: string; status: string; is_understudy: boolean };
 type SoftBookedRow = {
   id: string;
   is_understudy: boolean;
@@ -48,6 +53,10 @@ function ProducerDashboard() {
   const in30 = format(addDays(today, 30), 'yyyy-MM-dd');
 
   const qc = useQueryClient();
+  const { currentOrg } = useAuth();
+  const orgId = currentOrg?.id ?? null;
+  const { reference, customFieldKey } = useReferenceField();
+  const flow = useBookingFlow().data ?? BOOKING_FLOW_DEFAULTS;
   const [selected, setSelected] = useState<Set<string>>(new Set());
 
   const { data: upcomingDates } = useQuery({
@@ -69,7 +78,7 @@ function ProducerDashboard() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from('bookings')
-        .select('show_date_id, status')
+        .select('show_date_id, status, is_understudy')
         .eq('status', 'confirmed');
       if (error) throw error;
       return (data ?? []) as BookingLite[];
@@ -84,6 +93,25 @@ function ProducerDashboard() {
     return map;
   })();
 
+  const confirmedMainByDate = (() => {
+    const map = new Map<string, number>();
+    (confirmedBookings ?? []).forEach(b => {
+      if (!b.is_understudy) map.set(b.show_date_id, (map.get(b.show_date_id) ?? 0) + 1);
+    });
+    return map;
+  })();
+
+  const directItems = useMemo(
+    () => unfilledMainCastDates(
+      (upcomingDates ?? []).map(d => ({
+        id: d.id, date: d.date, program: d.show?.program ?? null,
+        subProgram: d.show?.sub_program ?? null, mainSlots: d.show?.main_cast_slots ?? null,
+      })),
+      confirmedMainByDate,
+    ),
+    [upcomingDates, confirmedBookings],
+  );
+
   const { data: softBookedRows } = useQuery({
     queryKey: ['bookings', 'soft-booked'],
     queryFn: async () => {
@@ -96,6 +124,17 @@ function ProducerDashboard() {
       return (data ?? []) as unknown as SoftBookedRow[];
     },
   });
+
+  const { data: attentionRows } = useQuery({
+    queryKey: ['bookings', 'tier-attention', orgId],
+    enabled: Boolean(orgId) && flow.artist_acceptance,
+    queryFn: () => fetchTierAttention(supabase, { orgId, today: todayStr }),
+  });
+  // Deliberately NOT memoized: structural sharing keeps attentionRows
+  // reference-equal across refetches, so a memo would freeze the clock and
+  // "Expires soon" could never flip from time passing alone. The derivation
+  // is a cheap filter/map (same pattern as computeUpNext in the date sheet).
+  const attentionItems = computeTierAttention(attentionRows ?? [], new Date());
 
   const bulkConfirm = useMutation({
     mutationFn: (ids: string[]) => bulkConfirmSoftBooked(supabase, { ids, now: new Date() }),
@@ -197,7 +236,9 @@ function ProducerDashboard() {
         <p className="text-muted-foreground mt-1">Cast confirmation status across upcoming dates.</p>
       </div>
 
-      {/* Ready to confirm */}
+      {/* Ready to confirm. Backlog-driven, not policy-driven: under auto-confirm,
+          new soft_booked rows do not arise, so the card self-hides; any that
+          exist are backlog from a previous policy and need the affordance. */}
       {(softBookedRows?.length ?? 0) > 0 && (
         <Card>
           <CardHeader>
@@ -252,7 +293,9 @@ function ProducerDashboard() {
                     {row.artist?.name ?? '—'}
                   </span>
                   <div className="w-40 min-w-0">
-                    <p className="text-sm truncate">{showLabel(row.show_date?.show as any)}</p>
+                    <p className="text-sm truncate">
+                      {referenceLabel({ reference, show: row.show_date?.show ?? null, custom: null, customFieldKey })}
+                    </p>
                     <p className="text-xs text-muted-foreground">{formatDateDMY(row.show_date?.date ?? '')}</p>
                   </div>
                   <div className="w-20 text-right">
@@ -265,6 +308,19 @@ function ProducerDashboard() {
             </div>
           </CardContent>
         </Card>
+      )}
+
+      {flow.artist_acceptance && (
+        <TierAttentionCard
+          items={attentionItems}
+          hint={deliveryHint(flow)}
+          reference={reference}
+          customFieldKey={customFieldKey}
+        />
+      )}
+
+      {!flow.artist_acceptance && (
+        <DirectBookingCard items={directItems} reference={reference} customFieldKey={customFieldKey} />
       )}
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">

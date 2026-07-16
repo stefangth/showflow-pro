@@ -1276,6 +1276,203 @@ Deno.test("gate: 60s grace lets a 5-min interval poll slightly early", async () 
   assertEquals(fetchSpy.count, 1);
 });
 
+// ─── Flow-gated tier-1 auto-open (Task 14) ────────────────────────────────────
+// Auto-open is gated on the org's booking_flow (auto_open_tier1 && artist_acceptance)
+// and additionally covers UPDATED dates that just gained a session but have no tier-1
+// row yet. The booking_flow seed is disambiguated by `when: { key: "booking_flow" }`
+// so it never shadows the base_id/table_name/field_map settings the poll also resolves.
+
+Deno.test("airtable-poll: auto_open_tier1=false → no open-offer-tier invocations", async () => {
+  const { deps, invokeCalls } = makeFakeDeps({
+    tables: {
+      app_settings: [
+        { when: { key: "cron_secret" }, data: { value: "secret123" } },
+        // booking_flow disables tier-1 auto-open for ORG.
+        { when: { key: "booking_flow" }, data: [{ org_id: ORG, value: { auto_open_tier1: false } }] },
+        ...ENABLED_SETTINGS,
+      ],
+      organizations: { data: [{ id: ORG }], error: null },
+      shows: { data: [{ id: "show-uuid-1", airtable_program_key: "TestShow" }], error: null },
+      cities: { data: [{ id: "city-uuid-berlin", airtable_city_key: "berlin" }], error: null },
+      show_dates: { data: [], error: null },
+      airtable_sync_log: { data: { id: "log-1" }, error: null },
+      airtable_sync_record_log: { data: [], error: null },
+      org_memberships: { data: [], error: null },
+      notifications: { data: null, error: null },
+    },
+    rpcs: { get_org_airtable_key: { data: "key", error: null }, get_cron_secret: { data: "secret123", error: null } },
+    fetchImpl: () =>
+      Promise.resolve(
+        makeAirtableResponse([makeRecord("recNEW001", { Date: "2026-07-15", SubProgram: "TestShow" })]),
+      ) as Promise<Response>,
+  });
+
+  // Give the inserted new date a real id so, WITHOUT the flow gate, tier 1 WOULD open.
+  const originalFrom = deps.admin.from.bind(deps.admin);
+  // deno-lint-ignore no-explicit-any
+  (deps.admin as any).from = (table: string) => {
+    const chain = originalFrom(table);
+    if (table === "show_dates") {
+      const originalInsert = chain.insert.bind(chain);
+      chain.insert = (payload: unknown) => {
+        const insertChain = (originalInsert as (x: unknown) => ReturnType<typeof originalInsert>)(payload);
+        // deno-lint-ignore no-explicit-any
+        (insertChain as any).single = () => Promise.resolve({ data: { id: "new-date-uuid-001" }, error: null });
+        return insertChain;
+      };
+    }
+    return chain;
+  };
+
+  const res = await handle(authReq(), deps);
+  assertEquals(res.status, 200);
+  const body = await res.json();
+  assertEquals(body.new_dates, 1);
+
+  // Gate is off → the batch never invokes open-offer-tier, tiers_opened is 0.
+  const offerCalls = invokeCalls.filter((c) => c.name === "open-offer-tier");
+  assertEquals(offerCalls.length, 0);
+  assertEquals(body.tiers_opened, 0);
+});
+
+// The gate is `flow.auto_open_tier1 && flow.artist_acceptance`. The test above only
+// covers the auto_open_tier1 half; this covers the other side of the AND, a
+// direct-booking org (artist_acceptance: false) with auto-open otherwise ON.
+Deno.test("airtable-poll: artist_acceptance=false (direct booking) → no open-offer-tier invocations", async () => {
+  const { deps, invokeCalls } = makeFakeDeps({
+    tables: {
+      app_settings: [
+        { when: { key: "cron_secret" }, data: { value: "secret123" } },
+        // booking_flow keeps auto-open ON but the org has no offer/accept stage.
+        { when: { key: "booking_flow" }, data: [{ org_id: ORG, value: { auto_open_tier1: true, artist_acceptance: false } }] },
+        ...ENABLED_SETTINGS,
+      ],
+      organizations: { data: [{ id: ORG }], error: null },
+      shows: { data: [{ id: "show-uuid-1", airtable_program_key: "TestShow" }], error: null },
+      cities: { data: [{ id: "city-uuid-berlin", airtable_city_key: "berlin" }], error: null },
+      show_dates: { data: [], error: null },
+      airtable_sync_log: { data: { id: "log-1" }, error: null },
+      airtable_sync_record_log: { data: [], error: null },
+      org_memberships: { data: [], error: null },
+      notifications: { data: null, error: null },
+    },
+    rpcs: { get_org_airtable_key: { data: "key", error: null }, get_cron_secret: { data: "secret123", error: null } },
+    fetchImpl: () =>
+      Promise.resolve(
+        makeAirtableResponse([makeRecord("recNEW002", { Date: "2026-07-16", SubProgram: "TestShow" })]),
+      ) as Promise<Response>,
+  });
+
+  // Give the inserted new date a real id so, WITHOUT the flow gate, tier 1 WOULD open.
+  const originalFrom = deps.admin.from.bind(deps.admin);
+  // deno-lint-ignore no-explicit-any
+  (deps.admin as any).from = (table: string) => {
+    const chain = originalFrom(table);
+    if (table === "show_dates") {
+      const originalInsert = chain.insert.bind(chain);
+      chain.insert = (payload: unknown) => {
+        const insertChain = (originalInsert as (x: unknown) => ReturnType<typeof originalInsert>)(payload);
+        // deno-lint-ignore no-explicit-any
+        (insertChain as any).single = () => Promise.resolve({ data: { id: "new-date-uuid-002" }, error: null });
+        return insertChain;
+      };
+    }
+    return chain;
+  };
+
+  const res = await handle(authReq(), deps);
+  assertEquals(res.status, 200);
+  const body = await res.json();
+  assertEquals(body.new_dates, 1);
+
+  // Gate is off (artist_acceptance false) → the batch never invokes open-offer-tier.
+  const offerCalls = invokeCalls.filter((c) => c.name === "open-offer-tier");
+  assertEquals(offerCalls.length, 0);
+  assertEquals(body.tiers_opened, 0);
+});
+
+Deno.test("airtable-poll: updated date with session and no tier-1 row is auto-opened", async () => {
+  const { deps, invokeCalls } = makeFakeDeps({
+    tables: {
+      app_settings: [
+        { when: { key: "cron_secret" }, data: { value: "secret123" } },
+        // booking_flow default (empty rows) → normalized defaults: auto_open + acceptance on.
+        { when: { key: "booking_flow" }, data: [] },
+        ...ENABLED_SETTINGS,
+      ],
+      organizations: { data: [{ id: ORG }], error: null },
+      shows: { data: [{ id: "show-uuid-1", airtable_program_key: "TestShow" }], error: null },
+      cities: { data: [{ id: "city-uuid-berlin", airtable_city_key: "berlin" }], error: null },
+      // The record maps to an existing show_date → the update path (not insert).
+      show_dates: { data: [{ id: "d-upd", airtable_record_id: "recUPD" }], error: null },
+      // No tier-1 row yet for d-upd → the updated-with-session date becomes a candidate.
+      show_date_offer_tiers: { data: [], error: null },
+      airtable_sync_log: { data: { id: "log-1" }, error: null },
+      airtable_sync_record_log: { data: [], error: null },
+      org_memberships: { data: [], error: null },
+      notifications: { data: null, error: null },
+    },
+    rpcs: { get_org_airtable_key: { data: "key", error: null }, get_cron_secret: { data: "secret123", error: null } },
+    fetchImpl: () =>
+      Promise.resolve(
+        makeAirtableResponse([makeRecord("recUPD", { Date: "2026-07-20", SubProgram: "TestShow", "Session 1": "T20:00:00" })]),
+      ) as Promise<Response>,
+  });
+
+  const res = await handle(authReq(), deps);
+  assertEquals(res.status, 200);
+  const body = await res.json();
+  assertEquals(body.updated, 1);
+  assertEquals(body.new_dates, 0);
+
+  // The updated date had a session and no tier-1 row → open-offer-tier is invoked for it.
+  const offerCalls = invokeCalls.filter((c) => c.name === "open-offer-tier");
+  assertEquals(offerCalls.length, 1);
+  assertEquals((offerCalls[0].body as { show_date_id?: string }).show_date_id, "d-upd");
+  assertEquals((offerCalls[0].body as { tier?: number }).tier, 1);
+});
+
+// The idempotency half of the updated-dates path: a date that ALREADY has a tier-1
+// row is filtered out and never re-opened, even when its update gained a session.
+Deno.test("airtable-poll: updated date with an existing tier-1 row is not re-opened", async () => {
+  const { deps, invokeCalls } = makeFakeDeps({
+    tables: {
+      app_settings: [
+        { when: { key: "cron_secret" }, data: { value: "secret123" } },
+        // booking_flow default (empty rows) → normalized defaults: auto_open + acceptance on.
+        { when: { key: "booking_flow" }, data: [] },
+        ...ENABLED_SETTINGS,
+      ],
+      organizations: { data: [{ id: ORG }], error: null },
+      shows: { data: [{ id: "show-uuid-1", airtable_program_key: "TestShow" }], error: null },
+      cities: { data: [{ id: "city-uuid-berlin", airtable_city_key: "berlin" }], error: null },
+      // The record maps to an existing show_date → the update path (not insert).
+      show_dates: { data: [{ id: "d-upd", airtable_record_id: "recUPD" }], error: null },
+      // Tier 1 was already opened for d-upd on an earlier poll.
+      show_date_offer_tiers: { data: [{ show_date_id: "d-upd" }], error: null },
+      airtable_sync_log: { data: { id: "log-1" }, error: null },
+      airtable_sync_record_log: { data: [], error: null },
+      org_memberships: { data: [], error: null },
+      notifications: { data: null, error: null },
+    },
+    rpcs: { get_org_airtable_key: { data: "key", error: null }, get_cron_secret: { data: "secret123", error: null } },
+    fetchImpl: () =>
+      Promise.resolve(
+        makeAirtableResponse([makeRecord("recUPD", { Date: "2026-07-20", SubProgram: "TestShow", "Session 1": "T20:00:00" })]),
+      ) as Promise<Response>,
+  });
+
+  const res = await handle(authReq(), deps);
+  assertEquals(res.status, 200);
+  const body = await res.json();
+  assertEquals(body.updated, 1);
+
+  // The existing tier-1 row keeps the date out of the candidate list entirely.
+  const offerCalls = invokeCalls.filter((c) => c.name === "open-offer-tier");
+  assertEquals(offerCalls.length, 0);
+  assertEquals(body.tiers_opened, 0);
+});
+
 // ─── OPTIONS preflight ────────────────────────────────────────────────────────
 
 Deno.test("airtable-poll: OPTIONS returns preflight (204)", async () => {

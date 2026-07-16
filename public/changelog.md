@@ -2,6 +2,32 @@
 
 What's new in ShowFlow, newest first.
 
+## 1.9.0 — July 15, 2026
+
+*Make the booking flow your own*
+
+### New
+- **Booking flow editor** — Decide how booking works for your organization in Settings → Booking flow: pick a preset (Classic, Fast-track, Direct book) or tune every step yourself, with a live preview of the resulting booking lifecycle and what each choice means in practice.
+- **Direct booking mode** — Skip offers entirely. Producers book and confirm artists straight from the eligibility list on a date, in one step.
+- **Fast-track mode** — Offer emails go out immediately when a tier opens, and artists who accept are confirmed automatically with no separate confirmation step.
+- **Offer expiry reminders** — Artists can get a reminder email a day before their open offer expires, so fewer offers lapse unanswered.
+- **Auto-escalation** — When an offer tier expires without filling, the next tier can open automatically instead of waiting for a producer.
+- **Dry-run preview** — See exactly which artists an "Open tier" action would reach, and who is excluded and why, before sending anything.
+- **Choose your reference field** — Pick what names a booking in offers and emails: the show label, the program, or any custom field.
+- **Settings change history** — Every booking-flow change is recorded with who changed what and when, shown right next to the editor.
+- **Direct bookings notify the artist** — Artists booked directly now get an in-app notification the moment a producer books them, not just the next digest email.
+- **Dashboard attention cards** — Producers see under-filled open tiers and offers expiring within a day at a glance; direct-booking organizations see upcoming dates that still need artists.
+- **Show-specific cast priorities** — A show can now carry its own cast tier ladder per city, overriding the organization default; edit it in Settings → Casts & Cities with the new scope selector.
+- **Required skills** — Shows (and individual dates) can require skills; offers, direct booking, and each artist's availability calendar respect them automatically, and the same-org rules are enforced by the database.
+- **Skill-scoped offers** — Open a tier for artists with specific skills only, or filter the direct-book list by skill; the dry-run preview and confirmation dialog show exactly who is reached and who is excluded, and why.
+- **Skill-aware understudy promotion** — When a main-cast artist cancels, the understudy whose skills best cover theirs is promoted first; without skills in play, promotion behaves exactly as before.
+
+### Improved
+- **Per-date booking cockpit** — The date sheet now leads with a booking funnel, an "up next" strip of pending actions, and a tier timeline that adapts to your organization's flow.
+- **Unavailable artists stay unbookable** — Direct booking respects artist-declared blocked dates, the same way tiered offers always have.
+- **Every page speaks your booking flow** — In direct-booking mode the artist dashboard shows a Booked dates meter instead of a response rate, and artist pages say "My Dates" and "Not booked" instead of offer language.
+- **Offer tiers respect show eligibility** — Opening a city tier now only reaches artists who are actually eligible for that show, matching what the direct-book list and artist calendars already enforced.
+
 ## 1.8.2 — July 11, 2026
 
 *Dark mode*

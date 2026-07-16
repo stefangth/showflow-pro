@@ -1,5 +1,6 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "@/integrations/supabase/types";
+import type { TierAttentionInput } from "@/lib/bookingCockpit";
 
 export interface OpenOfferTierResult {
   offersCreated: number;
@@ -12,11 +13,11 @@ export interface OpenOfferTierResult {
 /** Invoke the open-offer-tier edge function for one (show_date, tier). */
 export async function openOfferTier(
   client: SupabaseClient<Database>,
-  args: { showDateId: string; tier: number },
+  args: { showDateId: string; tier: number; skillFilterIds?: string[] },
 ): Promise<OpenOfferTierResult> {
-  const { data, error } = await client.functions.invoke("open-offer-tier", {
-    body: { show_date_id: args.showDateId, tier: args.tier },
-  });
+  const body: Record<string, unknown> = { show_date_id: args.showDateId, tier: args.tier };
+  if (args.skillFilterIds && args.skillFilterIds.length > 0) body.skill_filter_ids = args.skillFilterIds;
+  const { data, error } = await client.functions.invoke("open-offer-tier", { body });
   if (error) throw error;
   const payload = data as { offers_created?: number; message?: string; error?: string; tier_tracking_warning?: boolean };
   if (payload?.error) throw new Error(payload.error);
@@ -27,25 +28,44 @@ export async function openOfferTier(
 
 /**
  * Tiers that *can* be opened for a date.
- * - `priorities`: RAW per-city priorities (duplicates preserved). Dedup/sort/labeling
- *   is the consumer's job — see `buildOfferTierOptions` in `@/lib/bookings`.
+ * - `priorities`: RAW priorities (duplicates preserved). Dedup/sort/labeling
+ *   is the consumer's job, see `buildOfferTierOptions` in `@/lib/bookings`.
  * - `hasAdHoc`: whether the date has any per-date ("ad-hoc") cast assignments.
- * A null `cityId` skips the priority query (priorities = []) but still checks ad-hoc,
- * since ad-hoc casts are per-date, not per-city.
+ * - `source`: "show" when the show's own (show, city) ladder has prioritized rows
+ *   (it wins outright, no fallback query); "org" when falling back to the org-wide
+ *   `cast_city_priority` list for the city.
+ * A null `cityId` skips both priority queries (priorities = [], source = "org") but
+ * still checks ad-hoc, since ad-hoc casts are per-date, not per-city.
  */
 export async function fetchOfferTiers(
   client: SupabaseClient<Database>,
-  args: { cityId: string | null; showDateId: string },
-): Promise<{ priorities: number[]; hasAdHoc: boolean }> {
+  args: { showId: string; cityId: string | null; showDateId: string },
+): Promise<{ priorities: number[]; hasAdHoc: boolean; source: "show" | "org" }> {
   let priorities: number[] = [];
+  let source: "show" | "org" = "org";
   if (args.cityId) {
-    const { data, error } = await client
-      .from("cast_city_priority")
+    // Show-scoped ladder wins outright for this (show, city); org list is the fallback.
+    // priority is not yet in the generated types.
+    const { data: showRows, error: showErr } = await (client as any)
+      .from("show_cast_eligibility")
       .select("priority")
-      .eq("city_id", args.cityId);
-    if (error) throw error;
-    // Raw — dedup happens downstream in buildOfferTierOptions.
-    priorities = (data ?? []).map((r) => r.priority as number);
+      .eq("show_id", args.showId)
+      .eq("city_id", args.cityId)
+      .not("priority", "is", null);
+    if (showErr) throw showErr;
+    const showPriorities = ((showRows ?? []) as { priority: number }[]).map((r) => r.priority);
+    if (showPriorities.length > 0) {
+      priorities = showPriorities;
+      source = "show";
+    } else {
+      const { data, error } = await client
+        .from("cast_city_priority")
+        .select("priority")
+        .eq("city_id", args.cityId);
+      if (error) throw error;
+      // Raw, dedup happens downstream in buildOfferTierOptions.
+      priorities = (data ?? []).map((r) => r.priority as number);
+    }
   }
   // Any show_date_cast_eligibility row for this date means ad-hoc casts exist (tier 99).
   const { data: adHoc, error: adErr } = await client
@@ -54,7 +74,7 @@ export async function fetchOfferTiers(
     .eq("show_date_id", args.showDateId)
     .limit(1);
   if (adErr) throw adErr;
-  return { priorities, hasAdHoc: (adHoc ?? []).length > 0 };
+  return { priorities, hasAdHoc: (adHoc ?? []).length > 0, source };
 }
 
 export interface OpenedTier { tier: number; openedAt: string; closedAt: string | null }
@@ -71,6 +91,42 @@ export async function fetchOpenedTiers(
     .order("tier", { ascending: true });
   if (error) throw error;
   return (data ?? []).map((r) => ({ tier: r.tier, openedAt: r.opened_at, closedAt: r.closed_at }));
+}
+
+export interface DryRunResult {
+  candidates: { id: string; name: string }[];
+  excluded: { alreadyBooked: number; blocked: number; inactive: number; notEligible: number; missingSkills: number };
+  message?: string;
+}
+
+/** Preview who would receive offers for a (show_date, tier) without writing anything. */
+export async function dryRunOfferTier(
+  client: SupabaseClient<Database>,
+  args: { showDateId: string; tier: number; skillFilterIds?: string[] },
+): Promise<DryRunResult> {
+  const body: Record<string, unknown> = { show_date_id: args.showDateId, tier: args.tier, dry_run: true };
+  if (args.skillFilterIds && args.skillFilterIds.length > 0) body.skill_filter_ids = args.skillFilterIds;
+  const { data, error } = await client.functions.invoke("open-offer-tier", { body });
+  if (error) throw error;
+  const payload = data as {
+    candidates?: { id: string; name: string }[];
+    excluded?: {
+      already_booked?: number; blocked?: number; inactive?: number;
+      not_eligible?: number; missing_skills?: number;
+    };
+    message?: string;
+  };
+  return {
+    candidates: payload?.candidates ?? [],
+    excluded: {
+      alreadyBooked: payload?.excluded?.already_booked ?? 0,
+      blocked: payload?.excluded?.blocked ?? 0,
+      inactive: payload?.excluded?.inactive ?? 0,
+      notEligible: payload?.excluded?.not_eligible ?? 0,
+      missingSkills: payload?.excluded?.missing_skills ?? 0,
+    },
+    message: payload?.message,
+  };
 }
 
 export interface CloseOfferTierResult { closed: boolean; withdrawn: number; message?: string }
@@ -197,16 +253,21 @@ export async function updateBookingStatusGuarded(
 }
 
 /**
- * Artist response to a pending (suggested) offer. Accept → soft_booked,
- * Decline → cancelled(artist_declined). Only affects a still-suggested offer, so a
- * withdrawn/expired offer reports 0 rows changed instead of a false "accepted".
+ * Artist response to a pending (suggested) offer. Accept → soft_booked (or, with
+ * `autoConfirm` when the org's booking_flow disables producer confirmation, straight
+ * to confirmed); Decline → cancelled(artist_declined). Only affects a still-suggested
+ * offer, so a withdrawn/expired offer reports 0 rows changed instead of a false
+ * "accepted". The confirmed write is still RLS-gated server-side on the org's own
+ * booking_flow.producer_confirmation setting (artist_self_confirm_policy migration).
  */
 export async function respondToOffer(
   client: SupabaseClient<Database>,
-  args: { bookingId: string; accept: boolean; now: Date },
+  args: { bookingId: string; accept: boolean; now: Date; autoConfirm?: boolean },
 ): Promise<{ affected: number }> {
   const patch: Database["public"]["Tables"]["bookings"]["Update"] = args.accept
-    ? { status: "soft_booked" }
+    ? args.autoConfirm
+      ? { status: "confirmed", confirmed_at: args.now.toISOString() }
+      : { status: "soft_booked" }
     : { status: "cancelled", cancelled_at: args.now.toISOString(), cancellation_reason: "artist_declined" };
 
   const { data, error } = await client
@@ -217,4 +278,73 @@ export async function respondToOffer(
     .select("id");
   if (error) throw error;
   return { affected: (data ?? []).length };
+}
+
+/**
+ * Create a booking directly (producer books an artist from the eligibility list).
+ * Inserts `soft_booked` by default, or `confirmed` + confirmed_at when the org's
+ * booking flow confirms producer bookings directly (`confirmDirectly`).
+ */
+export async function createBooking(
+  client: SupabaseClient<Database>,
+  args: {
+    showDateId: string;
+    artistId: string;
+    isUnderstudy: boolean;
+    bookedBy: string;
+    orgId: string;
+    confirmDirectly: boolean;
+    now: Date;
+  },
+): Promise<void> {
+  const { error } = await client.from("bookings").insert({
+    show_date_id: args.showDateId,
+    artist_id: args.artistId,
+    status: args.confirmDirectly ? "confirmed" : "soft_booked",
+    confirmed_at: args.confirmDirectly ? args.now.toISOString() : null,
+    is_understudy: args.isUnderstudy,
+    booked_by: args.bookedBy,
+    org_id: args.orgId,
+  });
+  if (error) throw error;
+}
+
+/**
+ * Open offer tiers on this org's upcoming, non-cancelled dates, with the
+ * date's bookings and slot config, for the dashboard tier-attention card.
+ * `today` is passed in (yyyy-mm-dd) so callers and tests own the clock.
+ */
+export async function fetchTierAttention(
+  client: SupabaseClient<Database>,
+  args: { orgId: string | null; today: string },
+): Promise<TierAttentionInput[]> {
+  if (!args.orgId) return [];
+  const { data, error } = await client
+    .from("show_date_offer_tiers")
+    .select(
+      "tier, show_date:show_dates!inner(id, date, status, custom, org_id, " +
+      "show:shows(program, sub_program, main_cast_slots, understudy_slots), " +
+      "bookings(status, offer_tier, offer_expires_at))",
+    )
+    .is("closed_at", null)
+    .eq("show_date.org_id", args.orgId)
+    .gte("show_date.date", args.today)
+    .neq("show_date.status", "cancelled");
+  if (error) throw error;
+  // any at the join boundary, consistent with the file's other joined-row shapes
+  return ((data ?? []) as any[]).map((r) => ({
+    showDateId: r.show_date.id,
+    date: r.show_date.date,
+    program: r.show_date.show?.program ?? null,
+    subProgram: r.show_date.show?.sub_program ?? null,
+    custom: r.show_date.custom ?? null,
+    slots:
+      r.show_date.show?.main_cast_slots != null && r.show_date.show?.understudy_slots != null
+        ? { main_cast: r.show_date.show.main_cast_slots, understudies: r.show_date.show.understudy_slots }
+        : null,
+    tier: r.tier,
+    bookings: (r.show_date.bookings ?? []).map((b: any) => ({
+      status: b.status, offer_tier: b.offer_tier, offer_expires_at: b.offer_expires_at,
+    })),
+  }));
 }

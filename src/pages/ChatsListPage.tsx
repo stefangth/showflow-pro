@@ -8,7 +8,8 @@ import { CHAT_ARCHIVE_DAYS } from '@/config/app.config';
 import { differenceInCalendarDays, format } from 'date-fns';
 import { MessageSquare } from 'lucide-react';
 import { parseDateOnly } from '@/lib/dates';
-import { showLabel } from '@/types';
+import { useReferenceField } from '@/hooks/useBookingFlow';
+import { referenceLabel } from '@/lib/bookingFlow';
 import { ShowDateDetailSheet } from '@/components/shows/ShowDateDetailSheet';
 
 type ChatRow = {
@@ -20,6 +21,7 @@ type ChatRow = {
 
 export default function ChatsListPage() {
   const [activeShowDateId, setActiveShowDateId] = useState<string | null>(null);
+  const { reference, customFieldKey } = useReferenceField();
 
   const { data: chats, isLoading } = useQuery({
     queryKey: ['my-chats'],
@@ -71,7 +73,7 @@ export default function ChatsListPage() {
               <Card className="hover:border-primary transition-colors">
                 <CardContent className="py-4 flex items-center justify-between gap-3">
                   <div>
-                    <p className="font-medium">{showLabel(c.show_date?.show ?? { program: null, sub_program: null })}</p>
+                    <p className="font-medium">{referenceLabel({ reference, show: c.show_date?.show ?? null, custom: null, customFieldKey })}</p>
                     <p className="text-sm text-muted-foreground">
                       {c.show_date?.date && format(parseDateOnly(c.show_date.date), 'EEEE, MMM d, yyyy')}
                     </p>

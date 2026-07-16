@@ -158,3 +158,35 @@ describe("computeSettingsDirtyKeys", () => {
     expect(computeSettingsDirtyKeys(settings, draft, EDITABLE)).toEqual([]);
   });
 });
+
+describe("computeSettingsDirtyKeys with object values", () => {
+  it("detects a changed booking_flow object and ignores an identical one", () => {
+    const saved = [{ key: "booking_flow", value: { artist_acceptance: true } }];
+    const dirty = computeSettingsDirtyKeys(saved as never, { booking_flow: { artist_acceptance: false } } as never, ["booking_flow"]);
+    expect(dirty).toContain("booking_flow");
+    const clean = computeSettingsDirtyKeys(saved as never, { booking_flow: { artist_acceptance: true } } as never, ["booking_flow"]);
+    expect(clean).not.toContain("booking_flow");
+  });
+
+  // Regression: jsonb does not preserve key insertion order, so a value that round-trips
+  // through Postgres can come back with its keys reordered even though nothing changed.
+  // A plain JSON.stringify comparison would misreport that as dirty and let a no-op Save
+  // write it back. The comparison must be key-order-insensitive.
+  it("ignores key order when the values are otherwise identical", () => {
+    const saved = [{ key: "booking_flow", value: { b: 1, a: 2 } }];
+    const draft = { booking_flow: { a: 2, b: 1 } };
+    expect(computeSettingsDirtyKeys(saved as never, draft as never, ["booking_flow"])).toEqual([]);
+  });
+
+  it("ignores key order in nested objects too", () => {
+    const saved = [{ key: "booking_flow", value: { reference_field: { source: "custom", custom_field_id: "f1" } } }];
+    const draft = { booking_flow: { reference_field: { custom_field_id: "f1", source: "custom" } } };
+    expect(computeSettingsDirtyKeys(saved as never, draft as never, ["booking_flow"])).toEqual([]);
+  });
+
+  it("still detects a real change when key order also differs", () => {
+    const saved = [{ key: "booking_flow", value: { b: 1, a: 2 } }];
+    const draft = { booking_flow: { a: 99, b: 1 } };
+    expect(computeSettingsDirtyKeys(saved as never, draft as never, ["booking_flow"])).toEqual(["booking_flow"]);
+  });
+});

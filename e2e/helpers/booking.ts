@@ -171,15 +171,164 @@ export async function openOfferTier(showDateId: string, tier = 1): Promise<void>
   if (error) throw new Error(`open-offer-tier failed: ${error.message}`);
 }
 
+/**
+ * Like `openOfferTier`, but returns the error message instead of throwing, for
+ * specs that need to assert a REJECTED call (a direct-booking org, where
+ * `booking_flow.artist_acceptance:false` makes the endpoint refuse with a 409)
+ * without an unhandled rejection. Mirrors the error-unwrapping pattern in
+ * `src/data/account.ts`: supabase-js reports a handled non-2xx edge-function
+ * response as a `FunctionsHttpError` with the Response in `error.context`, and
+ * the function's own `{ error: "message" }` body is what we want to assert on.
+ */
+export async function tryOpenOfferTier(
+  showDateId: string,
+  tier = 1
+): Promise<{ error: string | null }> {
+  const admin = adminClient();
+  const { error } = await admin.functions.invoke("open-offer-tier", {
+    body: { show_date_id: showDateId, tier },
+  });
+  if (!error) return { error: null };
+  const context = (error as { context?: Response }).context;
+  if (context && typeof context.json === "function") {
+    try {
+      const body = await context.json();
+      if (body && typeof body.error === "string") return { error: body.error };
+    } catch {
+      // Body wasn't JSON (or already consumed), fall through to the generic message.
+    }
+  }
+  return { error: error.message };
+}
+
+/**
+ * Set (or clear) an org's `booking_flow` override in `app_settings`, driving
+ * the classic / fast-track / direct presets end to end.
+ *
+ * `value: null` resets to defaults by DELETING the org's override row, not by
+ * upserting a null `value` column: `app_settings.value` is `NOT NULL`, so an
+ * upsert with `value: null` (SQL NULL) would violate that constraint. A stored
+ * JSONB `'null'::jsonb` would be skipped by `get_org_setting`'s
+ * `value <> 'null'::jsonb` guard too, but it can't get inserted in the first
+ * place given the same NOT NULL column. Deleting the row is the one
+ * unambiguous way back to the platform default.
+ */
+export async function setBookingFlow(
+  orgId: string,
+  value: Record<string, unknown> | null
+): Promise<void> {
+  const admin = adminClient();
+  if (value === null) {
+    const { error } = await admin
+      .from("app_settings")
+      .delete()
+      .match({ org_id: orgId, key: "booking_flow" });
+    if (error) throw error;
+    return;
+  }
+  const { error } = await admin
+    .from("app_settings")
+    .upsert({ org_id: orgId, key: "booking_flow", value }, { onConflict: "org_id,key" });
+  if (error) throw error;
+}
+
+/**
+ * Give a cast a show-scoped priority for (show, city): the show ladder
+ * overrides the org-wide city list for that pair. Creates the eligibility
+ * row if missing, updates priority if it already exists.
+ */
+export async function setShowLadderPriority(args: {
+  showId: string;
+  cityId: string;
+  castId: string;
+  orgId: string;
+  priority: number;
+}): Promise<void> {
+  const admin = adminClient();
+  const { data: existing } = await admin
+    .from("show_cast_eligibility")
+    .select("id")
+    .eq("show_id", args.showId)
+    .eq("city_id", args.cityId)
+    .eq("cast_id", args.castId);
+  if (existing && existing.length > 0) {
+    const { error } = await admin
+      .from("show_cast_eligibility")
+      .update({ priority: args.priority })
+      .eq("id", existing[0].id);
+    if (error) throw error;
+  } else {
+    const { error } = await admin.from("show_cast_eligibility").insert({
+      show_id: args.showId,
+      city_id: args.cityId,
+      cast_id: args.castId,
+      org_id: args.orgId,
+      priority: args.priority,
+    });
+    if (error) throw error;
+  }
+}
+
+/** Require a skill on a show, creating the skill in the org if needed. Returns the skill id. */
+export async function addShowRequiredSkillE2E(args: {
+  showId: string;
+  orgId: string;
+  skillName: string;
+}): Promise<string> {
+  const admin = adminClient();
+  const { data: skill, error: skillErr } = await admin
+    .from("skills")
+    .insert({ org_id: args.orgId, name: args.skillName })
+    .select("id")
+    .single();
+  if (skillErr) throw skillErr;
+  const { error } = await admin
+    .from("show_required_skills")
+    .insert({ show_id: args.showId, skill_id: skill.id, org_id: args.orgId });
+  if (error) throw error;
+  return skill.id;
+}
+
 /** Most recent booking for an artist (any status). */
 export async function getLatestBooking(
   artistId: string
-): Promise<{ id: string; status: string } | null> {
+): Promise<{ id: string; status: string; confirmed_at: string | null } | null> {
   const admin = adminClient();
   const { data } = await admin
     .from("bookings")
-    .select("id, status")
+    .select("id, status, confirmed_at")
     .eq("artist_id", artistId)
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  return data ?? null;
+}
+
+/**
+ * Newest `notifications` row matching a user, type, and related entity, or null.
+ * The booking-status-change trigger writes to `notifications` synchronously in
+ * the same transaction as the booking write, so once the booking row is
+ * readable (e.g. via `getLatestBooking`) its notification is committed too, and
+ * this needs no polling or retry.
+ */
+export async function getNotification(
+  userId: string,
+  type: string,
+  relatedEntityId: string
+): Promise<{
+  id: string;
+  type: string;
+  title: string | null;
+  user_id: string;
+  related_entity_id: string | null;
+} | null> {
+  const admin = adminClient();
+  const { data } = await admin
+    .from("notifications")
+    .select("id, type, title, user_id, related_entity_id")
+    .eq("user_id", userId)
+    .eq("type", type)
+    .eq("related_entity_id", relatedEntityId)
     .order("created_at", { ascending: false })
     .limit(1)
     .maybeSingle();

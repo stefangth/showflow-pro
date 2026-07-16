@@ -1,5 +1,6 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database, Json } from "@/integrations/supabase/types";
+import { type BookingFlow, normalizeBookingFlow } from "@/lib/bookingFlow";
 
 export interface ShowWithSlots {
   id: string;
@@ -50,6 +51,18 @@ export async function resolveOrgSetting<T>(
   // value — fall through to the next tier instead of returning null.
   const chosen = [orgRow, platformRow].find((r) => r && r.value != null);
   return (chosen ? (chosen.value as T) : fallback);
+}
+
+/**
+ * Effective booking-flow policy for an org, normalized (invariants enforced) so
+ * every consumer reads a complete BookingFlow. When no org override or platform
+ * default exists, returns BOOKING_FLOW_DEFAULTS via normalizeBookingFlow(null).
+ */
+export async function fetchBookingFlow(
+  client: SupabaseClient<Database>,
+  orgId: string | null,
+): Promise<BookingFlow> {
+  return normalizeBookingFlow(await resolveOrgSetting(client, orgId, "booking_flow", null));
 }
 
 /** Upsert a per-org setting override (org_id,key). Platform defaults are super-admin-only. */

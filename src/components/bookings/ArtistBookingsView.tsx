@@ -15,9 +15,12 @@ import { ShowDateDetailSheet } from '@/components/shows/ShowDateDetailSheet';
 import { useArtistEligibleDates, type EligibleDate } from '@/hooks/useArtistEligibleDates';
 import { fetchMyCancelledDateBookings, mergeArtistCancelledDates, type CancelledDateEntry } from '@/data/artists';
 import { useMyArtist } from '@/hooks/useMyArtist';
+import { useBookingFlow, useReferenceField } from '@/hooks/useBookingFlow';
 import { bookingStatusBadgeClass } from '@/lib/bookings';
+import { BOOKING_FLOW_DEFAULTS, referenceLabel } from '@/lib/bookingFlow';
+import { bookingsViewCopy, bookingStatusLabels } from '@/lib/flowCopy';
 import { formatDateDMY, parseDateOnly } from '@/lib/dates';
-import { showLabel } from '@/types';
+import { showIdentityLabel } from '@/types';
 import { useColumnTemplate, useEditorConfig } from '@/features/editor/EditorContext';
 import { useColumnHeaders } from '@/features/editor/useColumnHeaders';
 import { ColumnLayoutEditor } from '@/features/editor/ColumnLayoutEditor';
@@ -32,13 +35,11 @@ function isCancelledEntry(d: DateRow): d is CancelledDateEntry {
   return d.status === 'cancelled';
 }
 
-const STATUS_LABEL: Record<string, string> = {
-  confirmed: 'Confirmed',
-  soft_booked: 'Soft booked',
-  suggested: 'Offer pending',
-  unanswered: 'No offer yet',
-  cancelled: 'Cancelled',
-};
+/** CancelledDateEntry's query never selects `custom` (it isn't reference-field aware),
+ *  so only pass it through for eligible-date rows. */
+function customFor(d: DateRow): Record<string, unknown> | null {
+  return 'custom' in d ? d.custom : null;
+}
 
 /**
  * Artist-scoped Bookings view: same list/calendar UI, filtered to eligible dates.
@@ -46,6 +47,11 @@ const STATUS_LABEL: Record<string, string> = {
 export function ArtistBookingsView() {
   const { data: artist } = useMyArtist();
   const { data: eligibleDates, isLoading } = useArtistEligibleDates();
+  const { reference, customFieldKey } = useReferenceField();
+  const flowQ = useBookingFlow();
+  const flow = flowQ.data ?? BOOKING_FLOW_DEFAULTS;
+  const pageCopy = bookingsViewCopy(flow);
+  const statusLabels = bookingStatusLabels(flow);
   const { orderedColumns, visibleCount } = useColumnTemplate('bookings-artist');
   const { isEditorMode } = useEditorConfig();
   const columnHeaders = useColumnHeaders(orderedColumns);
@@ -97,10 +103,12 @@ export function ArtistBookingsView() {
       inTimeframe(parseDateOnly(d.date), timeframe)
     );
     const merged = mergeArtistCancelledDates(eligibleFiltered, cancelledFiltered);
+    // Sort on the show's own program/sub_program identity (stable), never the
+    // org-configurable reference label used for display below.
     return applySort(
       merged,
       sort,
-      (d) => (d.show ? showLabel(d.show) : '—'),
+      (d) => showIdentityLabel(d.show),
       (d) => parseDateOnly(d.date)
     );
   }, [eligibleDates, cancelledEntries, timeframe, sort]);
@@ -113,10 +121,8 @@ export function ArtistBookingsView() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="font-display text-[32px] font-semibold tracking-tight">My Bookings</h1>
-        <p className="text-muted-foreground mt-1">
-          Dates you've been offered for, based on your cast eligibility.
-        </p>
+        <h1 className="font-display text-[32px] font-semibold tracking-tight">{pageCopy.title}</h1>
+        <p className="text-muted-foreground mt-1">{pageCopy.subtitle}</p>
       </div>
 
       <div className="flex flex-wrap items-center gap-3">
@@ -165,7 +171,9 @@ export function ArtistBookingsView() {
                       );
                       case 'shows.program': return (
                         <TableCell key={colId}>
-                          {d.show ? showLabel(d.show) : <span className="text-muted-foreground">—</span>}
+                          {d.show
+                            ? referenceLabel({ reference, show: d.show, custom: customFor(d), customFieldKey })
+                            : <span className="text-muted-foreground">—</span>}
                         </TableCell>
                       );
                       case 'shows.sub_program': return (
@@ -194,7 +202,7 @@ export function ArtistBookingsView() {
                       case '_computed.my_status': return (
                         <TableCell key={colId}>
                           <Badge variant="secondary" className={bookingStatusBadgeClass(status)}>
-                            {STATUS_LABEL[status] ?? status}
+                            {statusLabels[status] ?? status}
                           </Badge>
                           {cancelled && d.cancellation_reason && (
                             <div className="mt-1 text-xs text-destructive">{d.cancellation_reason}</div>
@@ -243,7 +251,11 @@ export function ArtistBookingsView() {
               >
                 <CardContent className="py-3 flex items-center justify-between gap-3">
                   <div className="min-w-0">
-                    <p className="font-medium truncate">{d.show ? showLabel(d.show) : '—'}</p>
+                    <p className="font-medium truncate">
+                      {d.show
+                        ? referenceLabel({ reference, show: d.show, custom: customFor(d), customFieldKey })
+                        : '—'}
+                    </p>
                     <p className="text-xs text-muted-foreground truncate">
                       {d.venue ?? ''}
                       {d.session_1 ? ` • ${d.session_1.slice(0, 5)}` : ''}
@@ -253,7 +265,7 @@ export function ArtistBookingsView() {
                     )}
                   </div>
                   <Badge variant="secondary" className={bookingStatusBadgeClass(status)}>
-                    {STATUS_LABEL[status] ?? status}
+                    {statusLabels[status] ?? status}
                   </Badge>
                 </CardContent>
               </Card>

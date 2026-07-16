@@ -2,6 +2,7 @@ import { preflight, json } from "../_shared/http.ts";
 import { requireCronSecret, requireOrgRole } from "../_shared/auth.ts";
 import { realDeps, type Deps } from "../_shared/deps.ts";
 import { getActiveOrgs, resolveOrgSetting } from "../_shared/settings.ts";
+import { resolveBookingFlow } from "../_shared/bookingFlow.ts";
 import { buildProgramKey, buildCityKey } from "../_shared/airtableKey.ts";
 import { coerceCustomValue, type CustomFieldType } from "../_shared/customFields.ts";
 import { isCancelledStatus } from "../_shared/airtableStatus.ts";
@@ -266,6 +267,9 @@ async function syncOrg(deps: Deps, orgId: string, baseId: string, tableName: str
   const viewParam = viewName ? `view=${encodeURIComponent(viewName)}` : null;
   const outcomes: RecordOutcome[] = [];
   const newDateIds: string[] = [];
+  // Existing dates whose upsert payload gained a session this run — candidates for a
+  // late tier-1 auto-open (a date synced before its session times were filled in).
+  const updatedWithSession: string[] = [];
   let processed = 0, newDates = 0, updated = 0, held = 0, recordsSeen = 0;
   let offset: string | undefined;
   let pageCount = 0;
@@ -372,6 +376,7 @@ async function syncOrg(deps: Deps, orgId: string, baseId: string, tableName: str
         const { error } = await admin.from("show_dates").update(payload).eq("id", existingId);
         if (error) { outcomes.push({ airtable_record_id: id, action: "error", show_date_id: existingId, reason: error.message, raw_fields: fields }); continue; }
         processed += 1; updated += 1;
+        if (payload.session_1 || payload.session_2 || payload.session_3) updatedWithSession.push(existingId);
         outcomes.push({ airtable_record_id: id, action: "updated", show_date_id: existingId, reason: cityNote, raw_fields: fields });
         continue;
       }
@@ -400,9 +405,36 @@ async function syncOrg(deps: Deps, orgId: string, baseId: string, tableName: str
   const truncated = pageCount >= MAX_PAGES && !!offset;
   if (truncated) console.warn("airtable-poll: reached MAX_PAGES limit; sync may be incomplete", { org: orgId });
 
-  // Flush tier-1 offers for new dates (resilient batch).
-  const tiersOpened = await openOfferTierBatch(deps, newDateIds);
-  const tiersFailed = newDateIds.length - tiersOpened;
+  // Flush tier-1 offers (resilient batch), gated on the org's booking flow. Resolve the
+  // flow once per org. Gate on BOTH switches: auto_open_tier1 (owner turned auto-open off)
+  // AND artist_acceptance — a direct-booking org has no offer step, and open-offer-tier now
+  // 409s in direct mode (Task 8), so the acceptance half avoids pointless failing invokes.
+  let tiersOpened = 0;
+  let tiersAttempted = 0;
+  const flow = await resolveBookingFlow(admin, orgId);
+  if (flow.auto_open_tier1 && flow.artist_acceptance) {
+    let candidates = [...newDateIds];
+    // Also cover UPDATED dates that just gained a session but have no tier-1 row yet.
+    // Over-inclusion is safe: open-offer-tier no-ops benignly for not-ready dates, so no
+    // readiness check is needed beyond "the payload gained a session".
+    // Accepted race: this read runs before this run's open-offer-tier calls commit, so
+    // two overlapping polls for one org (slow cron tick plus "Sync now") can both pass
+    // it and double-invoke. The loser is rejected by open-offer-tier (the tier row and
+    // bookings are DB-unique) and shows up as a failed invoke in the log; that noise is
+    // accepted rather than adding a cross-invocation lock.
+    if (updatedWithSession.length) {
+      const { data: existingTierRows } = await admin
+        .from("show_date_offer_tiers")
+        .select("show_date_id")
+        .in("show_date_id", updatedWithSession)
+        .eq("tier", 1);
+      const already = new Set((existingTierRows ?? []).map((r: { show_date_id: string }) => r.show_date_id));
+      candidates = candidates.concat(updatedWithSession.filter((id) => !already.has(id)));
+    }
+    tiersAttempted = candidates.length;
+    tiersOpened = await openOfferTierBatch(deps, candidates);
+  }
+  const tiersFailed = tiersAttempted - tiersOpened;
 
   // Previous run's held set (fetched BEFORE inserting this run's log) for change-only notify.
   const { data: prevLog } = await admin
@@ -426,7 +458,7 @@ async function syncOrg(deps: Deps, orgId: string, baseId: string, tableName: str
   const parts: string[] = [];
   if (apiError) parts.push(apiError);
   if (truncated) parts.push(`Reached MAX_PAGES (${MAX_PAGES}); sync is incomplete`);
-  if (tiersFailed > 0) parts.push(`${tiersFailed} of ${newDateIds.length} open-offer-tier calls failed`);
+  if (tiersFailed > 0) parts.push(`${tiersFailed} of ${tiersAttempted} open-offer-tier calls failed`);
   if (held > 0) parts.push(`${held} record(s) held (unresolved)`);
   if (errored > 0) parts.push(`${errored} record(s) errored`);
 

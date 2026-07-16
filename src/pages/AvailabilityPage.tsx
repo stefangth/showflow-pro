@@ -26,18 +26,14 @@ import { AvailabilityPicker } from '@/components/availability/AvailabilityPicker
 import { OfferResponseButtons } from '@/components/availability/OfferResponseButtons';
 import { bookingStatusBadgeClass } from '@/lib/bookings';
 import { formatDateDMY, parseDateOnly } from '@/lib/dates';
-import { showLabel } from '@/types';
+import { showIdentityLabel } from '@/types';
+import { useBookingFlow, useReferenceField } from '@/hooks/useBookingFlow';
+import { BOOKING_FLOW_DEFAULTS, referenceLabel } from '@/lib/bookingFlow';
+import { availabilityPageCopy, bookingStatusLabels } from '@/lib/flowCopy';
 import { useColumnTemplate, useEditorConfig } from '@/features/editor/EditorContext';
 import { useColumnHeaders } from '@/features/editor/useColumnHeaders';
 import { ColumnLayoutEditor } from '@/features/editor/ColumnLayoutEditor';
 import { useToast } from '@/hooks/use-toast';
-
-const BOOKING_STATUS_LABEL: Record<string, string> = {
-  confirmed: 'Confirmed',
-  soft_booked: 'Hold placed',
-  suggested: 'Offer pending',
-  unanswered: 'No offer yet',
-};
 
 export default function AvailabilityPage() {
   return <ArtistAvailability />;
@@ -50,6 +46,11 @@ function ArtistAvailability() {
   const { currentOrg } = useAuth();
   const { data: artist } = useMyArtist();
   const { data: eligibleDates, isLoading } = useArtistEligibleDates();
+  const { reference, customFieldKey } = useReferenceField();
+  const flowQ = useBookingFlow();
+  const flow = flowQ.data ?? BOOKING_FLOW_DEFAULTS;
+  const pageCopy = availabilityPageCopy(flow);
+  const statusLabels = bookingStatusLabels(flow);
   const { orderedColumns, visibleCount } = useColumnTemplate('availability');
   const { isEditorMode } = useEditorConfig();
   const columnHeaders = useColumnHeaders(orderedColumns);
@@ -187,13 +188,16 @@ function ArtistAvailability() {
       inTimeframe(parseDateOnly(d.date), timeframe)
     );
     if (filter === 'unanswered') list = list.filter((d) => !respondedSet.has(d.id));
-    return applySort(list, sort, (d) => showLabel(d.show), (d) => parseDateOnly(d.date));
+    // Sort on the show's own program/sub_program identity (stable), never the
+    // org-configurable reference label — a custom-field reference would reorder
+    // the list unpredictably.
+    return applySort(list, sort, (d) => showIdentityLabel(d.show), (d) => parseDateOnly(d.date));
   }, [eligibleDates, timeframe, sort, filter, respondedSet]);
 
   if (!artist) {
     return (
       <div className="space-y-6">
-        <h1 className="font-display text-[32px] font-semibold tracking-tight">My Offers</h1>
+        <h1 className="font-display text-[32px] font-semibold tracking-tight">{pageCopy.title}</h1>
         <Card>
           <CardContent className="py-12 text-center">
             <p className="text-muted-foreground">
@@ -208,10 +212,8 @@ function ArtistAvailability() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="font-display text-[32px] font-semibold tracking-tight">My Offers</h1>
-        <p className="text-muted-foreground mt-1">
-          View your offers and block dates you're unavailable for.
-        </p>
+        <h1 className="font-display text-[32px] font-semibold tracking-tight">{pageCopy.title}</h1>
+        <p className="text-muted-foreground mt-1">{pageCopy.subtitle}</p>
       </div>
 
       <div className="flex flex-wrap items-center gap-3">
@@ -273,7 +275,11 @@ function ArtistAvailability() {
                           {formatDateDMY(d.date)}
                         </TableCell>
                       );
-                      case 'shows.program': return <TableCell key={colId}>{showLabel(d.show)}</TableCell>;
+                      case 'shows.program': return (
+                        <TableCell key={colId}>
+                          {referenceLabel({ reference, show: d.show, custom: d.custom, customFieldKey })}
+                        </TableCell>
+                      );
                       case 'shows.sub_program': return (
                         <TableCell key={colId}>
                           {d.show?.sub_program ?? <span className="text-muted-foreground">—</span>}
@@ -300,7 +306,7 @@ function ArtistAvailability() {
                       case '_computed.my_status': return (
                         <TableCell key={colId}>
                           <Badge variant="secondary" className={bookingStatusBadgeClass(status)}>
-                            {BOOKING_STATUS_LABEL[status] ?? status}
+                            {statusLabels[status] ?? status}
                           </Badge>
                         </TableCell>
                       );

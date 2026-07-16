@@ -8,6 +8,7 @@ type BookingWithArtist = Booking & { artist: Pick<Artist, 'id' | 'name'> };
 interface BookingRowProps {
   booking: BookingWithArtist;
   canManage: boolean;
+  showConfirm: boolean;
   onConfirm: (bookingId: string) => void;
   onCancel: (bookingId: string) => void;
 }
@@ -17,8 +18,10 @@ interface BookingRowProps {
  * Shared by the Main-cast and Understudies lists in ShowDateDetailSheet — the two
  * were byte-identical before extraction. Pure presentational: status transitions
  * remain owned by the parent's guarded mutation via the onConfirm/onCancel callbacks.
+ * `showConfirm` gates the Confirm action separately from `b.status` so a caller using
+ * an auto-confirm booking flow (no manual confirm step) can hide it entirely.
  */
-export function BookingRow({ booking: b, canManage, onConfirm, onCancel }: BookingRowProps) {
+export function BookingRow({ booking: b, canManage, showConfirm, onConfirm, onCancel }: BookingRowProps) {
   return (
     <div className="flex items-center justify-between p-3 rounded-lg border border-border">
       <div>
@@ -29,7 +32,7 @@ export function BookingRow({ booking: b, canManage, onConfirm, onCancel }: Booki
       </div>
       {canManage && (
         <div className="flex gap-2">
-          {b.status === 'soft_booked' && (
+          {showConfirm && b.status === 'soft_booked' && (
             <Button
               size="sm"
               variant="outline"

@@ -2,6 +2,7 @@ import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useMyArtist } from './useMyArtist';
 import { toDateKey } from '@/lib/dates';
+import { artistHasAllSkills } from '@/lib/eligibility';
 
 export type EligibleDate = {
   id: string;                 // show_date.id
@@ -13,6 +14,7 @@ export type EligibleDate = {
   city_id: string | null;
   show_id: string;
   venue: string | null;
+  custom: Record<string, unknown> | null;
   show: {
     id: string;
     program: string | null;
@@ -63,7 +65,7 @@ export function useArtistEligibleDates() {
       const { data: dates, error } = await supabase
         .from('show_dates')
         .select(
-          'id, date, session_1, session_2, session_3, status, city_id, show_id, venue, show:shows(id, program, sub_program, status)'
+          'id, date, session_1, session_2, session_3, status, city_id, show_id, venue, custom, show:shows(id, program, sub_program, status)'
         )
         .gte('date', today)
         .neq('status', 'cancelled')
@@ -79,7 +81,46 @@ export function useArtistEligibleDates() {
         return false;
       });
 
-      return eligible as unknown as EligibleDate[];
+      // 5. Hard skill requirements: the artist only sees dates whose required
+      // skills (show-level union date-level) they fully hold (phase 4 spec).
+      if (eligible.length === 0) return [];
+
+      const { data: mySkills } = await supabase
+        .from('artist_skills')
+        .select('skill_id')
+        .eq('artist_id', artist!.id);
+      const mySkillIds = new Set((mySkills ?? []).map((r) => r.skill_id));
+
+      const showIds = Array.from(new Set(eligible.map((d: any) => d.show_id)));
+      const dateIds = eligible.map((d: any) => d.id);
+      // Requirement tables are not yet in the generated types.
+      const { data: showReq } = await (supabase as any)
+        .from('show_required_skills')
+        .select('show_id, skill_id')
+        .in('show_id', showIds);
+      const { data: dateReq } = await (supabase as any)
+        .from('show_date_required_skills')
+        .select('show_date_id, skill_id')
+        .in('show_date_id', dateIds);
+
+      const requiredByShow = new Map<string, string[]>();
+      for (const r of (showReq ?? []) as { show_id: string; skill_id: string }[]) {
+        requiredByShow.set(r.show_id, [...(requiredByShow.get(r.show_id) ?? []), r.skill_id]);
+      }
+      const requiredByDate = new Map<string, string[]>();
+      for (const r of (dateReq ?? []) as { show_date_id: string; skill_id: string }[]) {
+        requiredByDate.set(r.show_date_id, [...(requiredByDate.get(r.show_date_id) ?? []), r.skill_id]);
+      }
+
+      const qualified = eligible.filter((d: any) => {
+        const required = [
+          ...(requiredByShow.get(d.show_id) ?? []),
+          ...(requiredByDate.get(d.id) ?? []),
+        ];
+        return artistHasAllSkills(mySkillIds, required);
+      });
+
+      return qualified as unknown as EligibleDate[];
     },
   });
 }

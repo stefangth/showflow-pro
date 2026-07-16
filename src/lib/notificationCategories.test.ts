@@ -17,6 +17,8 @@ describe("notification category model", () => {
   it("maps known in-app types and email templates to categories", () => {
     expect(IN_APP_TYPE_CATEGORY["booking_confirmed"]).toBe("booking_confirmations");
     expect(IN_APP_TYPE_CATEGORY["tier_at_risk"]).toBe("at_risk");
+    expect(IN_APP_TYPE_CATEGORY["offer_expiring"]).toBe("booking_offers");
+    expect(IN_APP_TYPE_CATEGORY["tier_escalated"]).toBe("at_risk");
     expect(categoryForTemplate("artist-offer-digest")).toBe("booking_offers");
   });
 

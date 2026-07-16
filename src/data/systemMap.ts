@@ -197,7 +197,7 @@ export const SYSTEM_MAP_NODES: SystemMapNode[] = [
       Trigger: "cron every 5 min (per-org interval gate) + Settings → Airtable 'Sync now' (single org)",
       Auth: "requireCronSecret (fan-out) OR requireOrgRole(admin)+org_id (one org) · verify_jwt=false",
       Writes: "shows, show_dates, airtable_sync_log(+record), notifications (airtable_sync_held)",
-      Effects: "invokes open-offer-tier per NEW date (tier 1, batches of 10) · Airtable Data+Meta API",
+      Effects: "invokes open-offer-tier (tier 1, batches of 10) for new dates and updated dates that just gained a session but have no tier-1 row yet, gated on auto_open_tier1 ∧ artist_acceptance · Airtable Data+Meta API",
       Failure: "per-org isolation; idempotent by airtable_record_id",
       Cite: "airtable-poll/index.ts",
     },
@@ -229,10 +229,13 @@ export const SYSTEM_MAP_NODES: SystemMapNode[] = [
     detail: {
       Trigger: "UI button + airtable-poll",
       Auth: "isServiceRole ∨ requireOrgRole(admin,producer)",
-      Writes: "bookings (suggested, primary only, NO expiry clock yet) · show_date_offer_tiers upsert",
-      Effects: "none — deliberately silent until the digest",
-      TierLogic: "tier N = cast_city_priority rank N; tier 99 = ad-hoc casts; minus booked/blocked artists",
-      Cite: "open-offer-tier/index.ts:59-217",
+      Gate: "409 when booking_flow.artist_acceptance=false (direct-booking orgs never get offers)",
+      DryRun: "dry_run:true returns the candidate list + exclusion counts (already_booked, blocked, inactive, not_eligible, missing_skills), writes nothing",
+      Writes: "bookings (suggested, primary only) · show_date_offer_tiers upsert; offer_expires_at stays null except in immediate delivery",
+      Effects: "none in digest mode; immediate-delivery orgs (offer_delivery=immediate) get an offer-immediate email right away, stamped only for sends that succeeded",
+      TierLogic: "effective ladder per (show,city): show_cast_eligibility priority rows win outright, else cast_city_priority; tier 99 = ad-hoc casts minus ladder members",
+      Reads: "show_cast_eligibility (priority ladder + gate) · show_date_cast_eligibility (gate + tier 99 ad-hoc candidates) · show_required_skills ∪ show_date_required_skills, plus an optional per-request skill_filter_ids · artist_skills",
+      Cite: "open-offer-tier/index.ts:59-217,271-376",
     },
   },
   {
@@ -260,11 +263,12 @@ export const SYSTEM_MAP_NODES: SystemMapNode[] = [
     detail: {
       Trigger: "hourly cron + manual",
       Auth: "requireCronOrRole(admin,producer) · verify_jwt=false",
+      Reminder: "24h-before-expiry pass, gated on expiry_reminder ∧ artist_acceptance: offer-expiry-reminder email + offer_expiring in-app, idempotent via bookings.reminder_sent_at",
       Writes:
-        "expire_soft_bookings() RPC → cancels overdue suggested · notifications (cast_escalation_requested) · escalation stamp",
-      Effects: "cast-escalation-requested email to producers",
+        "expire_soft_bookings() RPC → cancels overdue suggested · notifications (offer_expiring, tier_escalated, cast_escalation_requested) · escalation stamp",
+      Effects: "auto_escalate on: closes the short tier, opens the next tier of the SAME effective ladder that opened it via open-offer-tier, notifies tier_escalated (no email); otherwise, or on a failed auto-open, falls back to cast-escalation-requested email + notification to producers",
       Rule: "escalate once per tier when 0 pending non-expired ∧ accepted < required",
-      Cite: "expire-offers/index.ts:30-134",
+      Cite: "expire-offers/index.ts:23-361",
     },
   },
   {
@@ -277,9 +281,10 @@ export const SYSTEM_MAP_NODES: SystemMapNode[] = [
     detail: {
       Trigger: "hourly cron + manual",
       Auth: "requireCronOrRole(admin,producer) · verify_jwt=false",
-      Writes: "notifications (tier_at_risk) — deduped per (tier,user), self-clearing on recovery",
-      Effects: "none — in-app only by design",
-      Cite: "tier-at-risk-watcher/index.ts:32-150",
+      Gate: "per org: at_risk_alerts ∧ artist_acceptance; a gated tier is never marked still-at-risk, so its stale notification clears on the next run same as a recovered tier",
+      Writes: "notifications (tier_at_risk), deduped per (tier,user), self-clearing on recovery",
+      Effects: "none, in-app only by design",
+      Cite: "tier-at-risk-watcher/index.ts:29-177",
     },
   },
   {
@@ -293,10 +298,11 @@ export const SYSTEM_MAP_NODES: SystemMapNode[] = [
     detail: {
       Trigger: "hourly cron, gated to each org's Berlin hour (default 19:00)",
       Auth: "requireCronOrRole(admin,producer) · verify_jwt=false",
+      Gate: "skips direct-booking (artist_acceptance=false) and immediate-delivery (offer_delivery=immediate) orgs entirely",
       Writes:
-        "bookings.digest_sent_at + offer_expires_at — the ONLY place the 48h clock starts, only after emailWasSent",
+        "bookings.digest_sent_at + offer_expires_at, the ONLY place the 48h clock starts for digest-mode orgs, only after emailWasSent",
       Effects: "artist-offer-digest email",
-      Cite: "send-offer-digest/index.ts:21-140",
+      Cite: "send-offer-digest/index.ts:21-177",
     },
   },
   {
@@ -309,10 +315,11 @@ export const SYSTEM_MAP_NODES: SystemMapNode[] = [
     detail: {
       Trigger: "hourly cron, Berlin gate (default 20:00)",
       Auth: "requireCronOrRole(admin,producer) · verify_jwt=false",
+      Gate: "skips the whole org when confirmation_digest=false; NOT gated on artist_acceptance (direct-booking orgs rely on this digest as their only booking notification)",
       Writes:
-        "notifications (schedule_change) · change_log.digested_at · bookings.confirmation_digest_sent_at — all stamped only on success, so failures self-retry",
+        "notifications (schedule_change) · change_log.digested_at · bookings.confirmation_digest_sent_at, all stamped only on success, so failures self-retry",
       Effects: "artist-confirmation-digest email",
-      Cite: "send-confirmation-digest/index.ts:55-255",
+      Cite: "send-confirmation-digest/index.ts:55-293",
     },
   },
   {
@@ -523,7 +530,7 @@ export const SYSTEM_MAP_NODES: SystemMapNode[] = [
       Cite: "fetch-remote-sheet/index.ts:7-75",
     },
   },
-  // ---- database (12)
+  // ---- database (13)
   {
     id: "d_bookings",
     column: "db",
@@ -533,9 +540,9 @@ export const SYSTEM_MAP_NODES: SystemMapNode[] = [
     subsystems: ["booking", "email", "airtable"],
     detail: {
       Guards:
-        "enforce_booking_transition (state machine, rejects) · trg_derive_org_id (cross-org, rejects) · bookings_active_artist_date_uniq (one active per artist+date) · promote_understudy_on_cancellation · slot_fill_auto_cancel · notify_booking_transition · status recompute → show_dates",
-      StateMachine: "suggested → soft_booked → confirmed; any → cancelled; cancelled terminal",
-      Cite: "20260702120020 · 20260616162454 · 20260616161112",
+        "enforce_booking_transition (state machine, rejects) · trg_derive_org_id (cross-org, rejects) · bookings_active_artist_date_uniq (one active per artist+date) · promote_understudy_on_cancellation (accepted understudy, ordered by skill coverage of the cancelled artist's skills desc then oldest first; skills never block promotion) · slot_fill_auto_cancel · notify_booking_transition (suggested→soft_booked → producers; soft_booked→confirmed → artist; direct INSERT as confirmed → artist) · status recompute → show_dates",
+      StateMachine: "suggested → soft_booked → confirmed; suggested → confirmed directly under auto-confirm (producer_confirmation=false); direct-booking orgs INSERT straight to confirmed (no offer step); any → cancelled; cancelled terminal",
+      Cite: "20260702120020 · 20260616162454 · 20260616161112 · 20260714104826 · 20260715103620 · 20260715130100",
     },
   },
   {
@@ -675,7 +682,21 @@ export const SYSTEM_MAP_NODES: SystemMapNode[] = [
       Cite: "20260623042017 · 20260623040709",
     },
   },
-  // ---- effects (9)
+  {
+    id: "d_auditlog",
+    column: "db",
+    kind: "db",
+    label: "settings_audit_log",
+    sub: "every app_settings change, org + platform rows",
+    subsystems: ["booking", "email", "airtable"],
+    detail: {
+      Trigger: "log_app_settings_change fires AFTER INSERT OR UPDATE on app_settings, no-ops when an UPDATE didn't actually change the value",
+      Reads: "Settings > Booking flow Change history rail, via fetchSettingsAudit",
+      Note: "no INSERT policy, the SECURITY DEFINER trigger is the sole writer; org_id NULL rows (platform-default edits) stay invisible to org members by design",
+      Cite: "20260714103537_settings_audit_log.sql",
+    },
+  },
+  // ---- effects (13)
   {
     id: "e_offerdig",
     column: "fx",
@@ -703,6 +724,32 @@ export const SYSTEM_MAP_NODES: SystemMapNode[] = [
     },
   },
   {
+    id: "e_offerimm",
+    column: "fx",
+    kind: "fx",
+    label: "offer-immediate",
+    sub: "→ artists · on tier open (immediate delivery)",
+    subsystems: ["email", "booking"],
+    detail: {
+      Recipient: "artists freshly offered in a tier, only when the org's booking_flow.offer_delivery is immediate",
+      OptOut: "suppression · booking_offers×email pref · unsubscribe link",
+      Cite: "open-offer-tier/index.ts:271-376",
+    },
+  },
+  {
+    id: "e_offerremind",
+    column: "fx",
+    kind: "fx",
+    label: "offer-expiry-reminder",
+    sub: "→ artists · 24h before expiry",
+    subsystems: ["email", "booking"],
+    detail: {
+      Recipient: "artists with a live suggested offer expiring within 24h, not yet reminded",
+      OptOut: "suppression · booking_offers×email pref · unsubscribe link; gated on booking_flow.expiry_reminder",
+      Cite: "expire-offers/index.ts:38-175",
+    },
+  },
+  {
     id: "e_escal",
     column: "fx",
     kind: "fx",
@@ -712,6 +759,32 @@ export const SYSTEM_MAP_NODES: SystemMapNode[] = [
     detail: {
       Recipient: "assigned producers, fallback org admins",
       Cite: "expire-offers/index.ts:123",
+    },
+  },
+  {
+    id: "e_offerexpiring",
+    column: "fx",
+    kind: "fx",
+    label: "offer_expiring (in-app)",
+    sub: "→ artists · 24h before expiry",
+    subsystems: ["booking"],
+    detail: {
+      Recipient: "the same artists reminded by offer-expiry-reminder, registered users only",
+      Rule: "one notification per reminder pass, idempotent alongside bookings.reminder_sent_at",
+      Cite: "expire-offers/index.ts:159-169",
+    },
+  },
+  {
+    id: "e_tierescalated",
+    column: "fx",
+    kind: "fx",
+    label: "tier_escalated (in-app)",
+    sub: "→ producers · auto-escalation only",
+    subsystems: ["booking"],
+    detail: {
+      Recipient: "assigned producers, fallback org admins",
+      Rule: "fires only when booking_flow.auto_escalate closes a short tier and opens the next one automatically; a failed auto-open falls back to the manual cast-escalation-requested path instead",
+      Cite: "expire-offers/index.ts:299-314",
     },
   },
   {
@@ -869,9 +942,14 @@ export const SYSTEM_MAP_EDGES: SystemMapEdge[] = [
   { from: "d_bookings", to: "d_showdates", read: true, label: "status recompute" },
   { from: "d_shows", to: "d_showdates", read: true, label: "slot ripple" },
   { from: "d_bookings", to: "d_notif", read: true, label: "transition notify" },
+  { from: "d_settings", to: "d_auditlog", read: true, label: "log_app_settings_change trigger" },
   // fn → effects
   { from: "f_offerdig", to: "e_offerdig" },
   { from: "f_confdig", to: "e_confdig" },
+  { from: "f_open", to: "e_offerimm" },
+  { from: "f_expire", to: "e_offerremind" },
+  { from: "f_expire", to: "e_offerexpiring" },
+  { from: "f_expire", to: "e_tierescalated" },
   { from: "f_expire", to: "e_escal" },
   { from: "f_create_inv", to: "e_invite" },
   { from: "f_resend_inv", to: "e_invite" },

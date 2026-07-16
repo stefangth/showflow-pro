@@ -150,6 +150,21 @@ export function createFakeSupabase(seed: Record<string, TableSeed> = {}) {
         return Promise.resolve(seed[`fn:${name}`] ?? { data: null, error: null });
       },
     },
+    // Realtime stand-in: components subscribe with `.channel(name).on(...).subscribe()`
+    // and later `removeChannel(channel)` on cleanup. No fake test drives an actual
+    // postgres_changes event through this, it only needs to not throw so components
+    // with a realtime effect (CastsCitiesTab, ProductionOwnershipTab, etc.) can mount.
+    channel(name: string) {
+      calls.push({ table: `channel:${name}`, method: "channel", args: [] });
+      const chan: Record<string, unknown> = {};
+      chan.on = (...args: unknown[]) => { calls.push({ table: `channel:${name}`, method: "on", args }); return chan; };
+      chan.subscribe = (...args: unknown[]) => { calls.push({ table: `channel:${name}`, method: "subscribe", args }); return chan; };
+      return chan;
+    },
+    removeChannel(channel: unknown) {
+      calls.push({ table: "channel", method: "removeChannel", args: [channel] });
+      return Promise.resolve("ok");
+    },
     auth: {
       // Seed auth results under `auth:<method>` (e.g. `auth:updateUser`).
       signInWithPassword(creds: unknown) {

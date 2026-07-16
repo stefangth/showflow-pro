@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Check, X } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { respondToOffer } from '@/data/bookings';
+import { useBookingFlow } from '@/hooks/useBookingFlow';
 
 interface Props {
   bookingId: string;
@@ -17,9 +18,12 @@ interface Props {
 export function OfferResponseButtons({ bookingId, size = 'default' }: Props) {
   const qc = useQueryClient();
   const { toast } = useToast();
+  const { data: flow, isLoading: isFlowLoading } = useBookingFlow();
+  // Auto-confirm on accept when the org's flow skips producer confirmation.
+  const autoConfirm = !(flow?.producer_confirmation ?? true);
 
   const respond = useMutation({
-    mutationFn: (accept: boolean) => respondToOffer(supabase, { bookingId, accept, now: new Date() }),
+    mutationFn: (accept: boolean) => respondToOffer(supabase, { bookingId, accept, now: new Date(), autoConfirm }),
     onSuccess: ({ affected }, accept) => {
       qc.invalidateQueries({ queryKey: ['bookings'] });
       if (affected === 0) {
@@ -30,7 +34,11 @@ export function OfferResponseButtons({ bookingId, size = 'default' }: Props) {
         });
         return;
       }
-      toast({ title: accept ? 'Offer accepted' : 'Offer declined' });
+      if (accept) {
+        toast({ title: autoConfirm ? 'Offer accepted. Booking confirmed.' : 'Offer accepted' });
+      } else {
+        toast({ title: 'Offer declined' });
+      }
     },
     onError: (e: any) => toast({ title: 'Error', description: e.message, variant: 'destructive' }),
   });
@@ -44,7 +52,7 @@ export function OfferResponseButtons({ bookingId, size = 'default' }: Props) {
         variant="outline"
         className="flex-1 text-xs border-success/40 text-success hover:bg-success/10"
         onClick={() => respond.mutate(true)}
-        disabled={respond.isPending}
+        disabled={respond.isPending || isFlowLoading}
       >
         <Check className="h-3 w-3 mr-1" />
         Accept
