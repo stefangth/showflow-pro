@@ -138,4 +138,40 @@ describe("TierTimeline", () => {
     fireEvent.click(screen.getByRole("button", { name: /^open offers$/i }));
     expect(onOpenTier).toHaveBeenCalledWith(1, []);
   });
+
+  // Regression: skillFilterIds carried over across tier selections, so a producer
+  // who scoped tier 1 to a skill silently under-offered on tier 2 with the same filter.
+  it("clears the skill filter when the tier selection changes", async () => {
+    const onOpenTier = vi.fn();
+    renderWithProviders(
+      <TierTimeline
+        {...baseProps}
+        bookings={[]}
+        openedTiers={[]}
+        tiers={{ priorities: [1, 2], hasAdHoc: false }}
+        skills={[{ id: "s1", name: "Juggling" }]}
+        onOpenTier={onOpenTier}
+      />,
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Juggling" }));
+    fireEvent.click(screen.getByRole("combobox"));
+    fireEvent.click(await screen.findByRole("option", { name: "Tier 2" }));
+    fireEvent.click(screen.getByRole("button", { name: /open tier 2/i }));
+    fireEvent.click(screen.getByRole("button", { name: /^open offers$/i }));
+    expect(onOpenTier).toHaveBeenCalledWith(2, []);
+  });
+
+  it("includes the toggled skill's name in the confirm dialog cue when the tier is unchanged", () => {
+    renderWithProviders(
+      <TierTimeline
+        {...baseProps}
+        bookings={[]}
+        openedTiers={[]}
+        skills={[{ id: "s1", name: "Juggling" }]}
+      />,
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Juggling" }));
+    fireEvent.click(screen.getByRole("button", { name: /open tier 1/i }));
+    expect(screen.getByText(/Only artists with all of these skills receive offers: Juggling\./)).toBeInTheDocument();
+  });
 });
