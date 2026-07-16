@@ -1255,6 +1255,7 @@ export type Database = {
           created_at: string
           id: string
           org_id: string
+          priority: number | null
           show_id: string
         }
         Insert: {
@@ -1263,6 +1264,7 @@ export type Database = {
           created_at?: string
           id?: string
           org_id: string
+          priority?: number | null
           show_id: string
         }
         Update: {
@@ -1271,6 +1273,7 @@ export type Database = {
           created_at?: string
           id?: string
           org_id?: string
+          priority?: number | null
           show_id?: string
         }
         Relationships: [
@@ -1449,6 +1452,52 @@ export type Database = {
           },
         ]
       }
+      show_date_required_skills: {
+        Row: {
+          created_at: string
+          id: string
+          org_id: string
+          show_date_id: string
+          skill_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          org_id: string
+          show_date_id: string
+          skill_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          org_id?: string
+          show_date_id?: string
+          skill_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "show_date_required_skills_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "show_date_required_skills_show_date_id_fkey"
+            columns: ["show_date_id"]
+            isOneToOne: false
+            referencedRelation: "show_dates"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "show_date_required_skills_skill_id_fkey"
+            columns: ["skill_id"]
+            isOneToOne: false
+            referencedRelation: "skills"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       show_dates: {
         Row: {
           airtable_record_id: string | null
@@ -1524,6 +1573,52 @@ export type Database = {
             columns: ["show_id"]
             isOneToOne: false
             referencedRelation: "shows"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      show_required_skills: {
+        Row: {
+          created_at: string
+          id: string
+          org_id: string
+          show_id: string
+          skill_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          org_id: string
+          show_id: string
+          skill_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          org_id?: string
+          show_id?: string
+          skill_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "show_required_skills_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "show_required_skills_show_id_fkey"
+            columns: ["show_id"]
+            isOneToOne: false
+            referencedRelation: "shows"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "show_required_skills_skill_id_fkey"
+            columns: ["skill_id"]
+            isOneToOne: false
+            referencedRelation: "skills"
             referencedColumns: ["id"]
           },
         ]
