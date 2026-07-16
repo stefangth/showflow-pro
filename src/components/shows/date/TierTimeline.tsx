@@ -89,8 +89,14 @@ export function TierTimeline({
       ? selectedTier
       : tierOptions[0]?.value ?? null;
   const alreadyOpened = openedTiers.some((o) => o.tier === effectiveTier);
+  // Preserve the order skills were toggled in (not the `skills` prop order).
+  const skillFilterNames = skillFilterIds
+    .map((id) => skills.find((s) => s.id === id)?.name)
+    .filter((name): name is string => Boolean(name));
   const confirmCopy = effectiveTier != null
-    ? offerConfirmCopy({ tier: effectiveTier, dateLabel, alreadyOpened, offerDelivery: flow.offer_delivery })
+    ? offerConfirmCopy({
+      tier: effectiveTier, dateLabel, alreadyOpened, offerDelivery: flow.offer_delivery, skillFilterNames,
+    })
     : null;
   const closeCopy = closeTarget !== null
     ? closeConfirmCopy({ tier: closeTarget, pendingCount: pendingOfferCount(bookings, closeTarget) })
@@ -154,7 +160,7 @@ export function TierTimeline({
             <div className="flex flex-wrap items-center gap-2">
               <Select
                 value={effectiveTier != null ? String(effectiveTier) : undefined}
-                onValueChange={(v) => setSelectedTier(Number(v))}
+                onValueChange={(v) => { setSelectedTier(Number(v)); setSkillFilterIds([]); }}
               >
                 <SelectTrigger className="w-48">
                   <SelectValue placeholder="Select tier" />

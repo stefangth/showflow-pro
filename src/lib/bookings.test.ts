@@ -132,6 +132,23 @@ describe("offerConfirmCopy", () => {
     expect(c.body).toContain("emailed the moment the tier opens");
     expect(c.body).not.toContain("daily offer digest");
   });
+  // Regression: a producer scoping an open to a skill filter got no confirm-dialog cue,
+  // so re-opening a different tier silently under-offered with a stale filter.
+  it("appends the skill-filter cue when skillFilterNames is non-empty", () => {
+    const c = offerConfirmCopy({
+      tier: 1, dateLabel: "10 Jul 2026", alreadyOpened: false, offerDelivery: "digest",
+      skillFilterNames: ["judge", "aerial"],
+    });
+    expect(c.body.endsWith("Only artists with all of these skills receive offers: judge, aerial.")).toBe(true);
+  });
+  it("omits the skill-filter cue when skillFilterNames is empty or absent", () => {
+    const withoutField = offerConfirmCopy({ tier: 1, dateLabel: "10 Jul 2026", alreadyOpened: false, offerDelivery: "digest" });
+    const withEmptyArray = offerConfirmCopy({
+      tier: 1, dateLabel: "10 Jul 2026", alreadyOpened: false, offerDelivery: "digest", skillFilterNames: [],
+    });
+    expect(withoutField.body).not.toContain("receive offers");
+    expect(withEmptyArray.body).toEqual(withoutField.body);
+  });
 });
 
 describe("pendingOfferCount", () => {

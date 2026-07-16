@@ -108,7 +108,14 @@ export function offerResultToast(
 
 /** Confirmation copy for opening a tier; re-open note explains the additive semantics. */
 export function offerConfirmCopy(
-  input: { tier: number; dateLabel: string; alreadyOpened: boolean; offerDelivery: "digest" | "immediate" },
+  input: {
+    tier: number;
+    dateLabel: string;
+    alreadyOpened: boolean;
+    offerDelivery: "digest" | "immediate";
+    /** Names of skills the offer is scoped to, if a producer applied a skill filter. */
+    skillFilterNames?: string[];
+  },
 ): { title: string; body: string } {
   const noun = tierNoun(input.tier);
   const deliverySentence = input.offerDelivery === "immediate"
@@ -121,7 +128,10 @@ export function offerConfirmCopy(
   const reopen = input.alreadyOpened
     ? ` ${cap} already been opened — re-opening only adds offers for artists who don't have one yet.`
     : "";
-  return { title: `Open ${noun} offers?`, body: base + reopen };
+  const skillCue = input.skillFilterNames && input.skillFilterNames.length > 0
+    ? ` Only artists with all of these skills receive offers: ${input.skillFilterNames.join(", ")}.`
+    : "";
+  return { title: `Open ${noun} offers?`, body: base + reopen + skillCue };
 }
 
 /** Count still-pending (suggested) offers for a tier — feeds the close dialog. */
