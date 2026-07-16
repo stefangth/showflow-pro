@@ -1817,6 +1817,7 @@ export type Database = {
         }[]
       }
       get_cron_secret: { Args: never; Returns: string }
+      get_effective_booking_flow: { Args: { _org: string }; Returns: Json }
       get_email_health: { Args: { p_window_minutes?: number }; Returns: Json }
       get_org_airtable_key: { Args: { _org: string }; Returns: string }
       get_org_airtable_key_status: {
