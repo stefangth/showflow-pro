@@ -210,7 +210,7 @@ create table public.org_entitlements (
   org_id     uuid not null references public.organizations(id) on delete cascade,
   feature    text not null,
   enabled    boolean not null,
-  updated_by uuid references auth.users(id),
+  updated_by uuid references auth.users(id) on delete set null,
   updated_at timestamptz not null default now(),
   primary key (org_id, feature)
 );
