@@ -45,6 +45,22 @@
         {
           "title": "Dashboard attention cards",
           "description": "Producers see under-filled open tiers and offers expiring within a day at a glance; direct-booking organizations see upcoming dates that still need artists."
+        },
+        {
+          "title": "Show-specific cast priorities",
+          "description": "A show can now carry its own cast tier ladder per city, overriding the organization default; edit it in Settings → Casts & Cities with the new scope selector."
+        },
+        {
+          "title": "Required skills",
+          "description": "Shows (and individual dates) can require skills; offers, direct booking, and each artist's availability calendar respect them automatically, and the same-org rules are enforced by the database."
+        },
+        {
+          "title": "Skill-scoped offers",
+          "description": "Open a tier for artists with specific skills only, or filter the direct-book list by skill; the dry-run preview and confirmation dialog show exactly who is reached and who is excluded, and why."
+        },
+        {
+          "title": "Skill-aware understudy promotion",
+          "description": "When a main-cast artist cancels, the understudy whose skills best cover theirs is promoted first; without skills in play, promotion behaves exactly as before."
         }
       ],
       "improved": [
@@ -59,6 +75,10 @@
         {
           "title": "Every page speaks your booking flow",
           "description": "In direct-booking mode the artist dashboard shows a Booked dates meter instead of a response rate, and artist pages say \"My Dates\" and \"Not booked\" instead of offer language."
+        },
+        {
+          "title": "Offer tiers respect show eligibility",
+          "description": "Opening a city tier now only reaches artists who are actually eligible for that show, matching what the direct-book list and artist calendars already enforced."
         }
       ]
     }
