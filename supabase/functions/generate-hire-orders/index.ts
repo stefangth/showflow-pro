@@ -11,8 +11,10 @@ import { requireCronOrRole, requireOrgRole } from "../_shared/auth.ts";
 import { requireFeature } from "../_shared/entitlements.ts";
 import { resolveOrgSetting } from "../_shared/settings.ts";
 import { realDeps, type Deps } from "../_shared/deps.ts";
+import { APP_URL } from "../_shared/app-url.ts";
 import { encodeBase64 } from "https://deno.land/std@0.224.0/encoding/base64.ts";
 import {
+  formatMoney,
   formatOrderNo,
   orderReadyIssues,
   resolveFields,
@@ -30,11 +32,13 @@ interface Numbering { prefix: string; pattern: string }
 interface OrderDefaults { default_fee: number | null; currency: string }
 interface TermsVariants { lean: HireOrderTerm[]; standard: HireOrderTerm[]; full: HireOrderTerm[] }
 type TermsVariant = keyof TermsVariants;
+interface Countersign { mode: "manual" | "documenso" }
 
 const NUMBERING_DEFAULT: Numbering = { prefix: "HO", pattern: "{prefix}-{yyyy}-{mmdd}-{cast|seq}" };
 const DEFAULTS_DEFAULT: OrderDefaults = { default_fee: null, currency: "EUR" };
 const LETTERHEAD_DEFAULT: HireOrderLetterhead = { legal_name: "", address_lines: [] };
 const TERMS_DEFAULT: TermsVariants = { lean: [], standard: [], full: [] };
+const COUNTERSIGN_DEFAULT: Countersign = { mode: "manual" };
 
 const BUCKET = "hire-orders";
 const SIGNED_URL_TTL = 3600;
@@ -276,18 +280,20 @@ async function issueOrders(deps: Deps, body: IssueBody, _userId: string | null):
   const orderIds = Array.isArray(body.order_ids) ? body.order_ids : [];
   if (orderIds.length === 0) return json({ error: "order_ids required" }, 400);
 
-  const [letterhead, terms, defaults] = await Promise.all([
+  const [letterhead, terms, defaults, countersign] = await Promise.all([
     resolveOrgSetting<HireOrderLetterhead>(admin, org, "hire_order_letterhead", LETTERHEAD_DEFAULT),
     resolveOrgSetting<TermsVariants>(admin, org, "hire_order_terms", TERMS_DEFAULT),
     resolveOrgSetting<OrderDefaults>(admin, org, "hire_order_defaults", DEFAULTS_DEFAULT),
+    resolveOrgSetting<Countersign>(admin, org, "hire_order_countersign", COUNTERSIGN_DEFAULT),
   ]);
+  const countersignMode = countersign?.mode ?? "manual";
 
   const issued: string[] = [];
   const failed: Array<{ order_id: string; issues: string[] }> = [];
 
   for (const orderId of orderIds) {
     try {
-      const outcome = await issueOne(deps, org, orderId, letterhead, terms, defaults);
+      const outcome = await issueOne(deps, org, orderId, letterhead, terms, defaults, countersignMode);
       if (outcome.ok) issued.push(orderId);
       else failed.push({ order_id: orderId, issues: outcome.issues });
     } catch (e) {
@@ -307,6 +313,7 @@ async function issueOne(
   letterhead: HireOrderLetterhead,
   terms: TermsVariants,
   defaults: OrderDefaults,
+  countersignMode: string,
 ): Promise<{ ok: true } | { ok: false; issues: string[] }> {
   const admin = deps.admin;
 
@@ -364,7 +371,7 @@ async function issueOne(
   if (issueErr) return { ok: false, issues: ["transition_failed"] };
 
   // Best-effort side effects — a failure here must NOT undo a successful issue.
-  await sendIssuedEmail(deps, org, o, data, bytes).catch((e) =>
+  await sendIssuedEmail(deps, org, o, data, bytes, currency, countersignMode).catch((e) =>
     console.error("generate-hire-orders: issued email failed", { org, orderId, error: (e as Error).message }),
   );
   await notifyArtist(deps, org, o).catch((e) =>
@@ -374,20 +381,43 @@ async function issueOne(
   return { ok: true };
 }
 
-async function sendIssuedEmail(deps: Deps, org: string, order: Any, data: OrderData, bytes: Uint8Array): Promise<void> {
+async function sendIssuedEmail(
+  deps: Deps,
+  org: string,
+  order: Any,
+  data: OrderData,
+  bytes: Uint8Array,
+  currency: string,
+  countersignMode: string,
+): Promise<void> {
   const recipient = strField(data, "recipient_email");
   if (!recipient) {
     console.warn("generate-hire-orders: no recipient email, skipping issued email", { org, orderId: order.id });
     return;
   }
+  const feeValue = data.fee?.value;
+  const feeLabel = feeValue === undefined || feeValue === null || feeValue === ""
+    ? ""
+    : formatMoney(feeValue as string | number, currency); // same fee/currency the PDF shows
+
   const result = await deps.sendEmail({
     template_name: "hire-order-issued",
     recipient_email: recipient,
     org_id: org,
+    // Contract of _shared/transactional-email-templates/hire-order-issued.tsx (snake_case).
+    // download_url points at the auth-gated V3 detail page (re-signs the PDF on demand),
+    // NOT a raw signed storage URL — a signed URL expires in 3600s and would be dead in the
+    // inbox. The route is /hire-orders/:id, so it uses order.id (the uuid), not order_no.
+    // signing_url is omitted in v1 (manual countersign; Documenso is the extended plan).
     templateData: {
-      orderNo: order.order_no,
-      artistName: strField(data, "artist_name"),
-      date: strField(data, "date"),
+      artist_name: strField(data, "artist_name"),
+      order_no: order.order_no,
+      date_label: dateLabel(strField(data, "date")),
+      venue: strField(data, "venue"),
+      city: strField(data, "city"),
+      fee_label: feeLabel,
+      download_url: `${APP_URL}/hire-orders/${order.id}`,
+      countersign_mode: countersignMode,
     },
     attachments: [{ filename: `${order.order_no}.pdf`, content_base64: encodeBase64(bytes) }],
     idempotency_key: `hire-order-issued-${order.id}`,
@@ -530,6 +560,21 @@ function castCodeFromLabel(label: string | null): string | undefined {
   if (!label) return undefined;
   const slug = label.replace(/[^A-Za-z0-9]/g, "").slice(0, 8).toUpperCase();
   return slug || undefined;
+}
+
+/**
+ * Human label for an email from a `YYYY-MM-DD` date-only string, e.g. "Mon, Jun 15, 2026".
+ * Timezone-safe: the date is CONSTRUCTED at UTC midnight and FORMATTED in UTC (CLAUDE.md
+ * calendar rule), so a viewer/server timezone can never shift the day. Non-date input is
+ * returned unchanged.
+ */
+function dateLabel(dateOnly: string): string {
+  if (!/^\d{4}-\d{2}-\d{2}/.test(dateOnly)) return dateOnly;
+  const d = new Date(`${dateOnly.slice(0, 10)}T00:00:00Z`);
+  if (Number.isNaN(d.getTime())) return dateOnly;
+  return d.toLocaleDateString("en-US", {
+    weekday: "short", month: "short", day: "numeric", year: "numeric", timeZone: "UTC",
+  });
 }
 
 if (import.meta.main) Deno.serve((req) => handle(req, realDeps()));

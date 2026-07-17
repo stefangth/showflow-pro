@@ -163,6 +163,8 @@ function issuableOrder(overrides: Record<string, unknown> = {}) {
       artist_name: { value: "Ann", source: "showflow" },
       recipient_email: { value: "ann@x.de", source: "showflow" },
       date: { value: "2026-06-15", source: "showflow" },
+      venue: { value: "Colosseum", source: "showflow" },
+      city: { value: "Berlin", source: "showflow" },
       fee: { value: 500, source: "showflow" },
       currency: { value: "EUR", source: "default" },
     },
@@ -208,13 +210,30 @@ Deno.test("issue renders, uploads to hire-orders/<org>/<order_no>.pdf, stamps is
   assert(upd.issued_at, "issued_at stamped");
   assertEquals(upd.pdf_path, "org-1/HO-1.pdf");
 
-  // email with the PDF attachment
+  // email with the PDF attachment + the full template contract (snake_case, 8 keys)
   const email = invokeCalls.find((c) => c.name === "send-transactional-email");
   assert(email, "expected a transactional email");
-  const msg = email!.body as { template_name: string; recipient_email: string; attachments: Array<{ filename: string }> };
+  const msg = email!.body as {
+    template_name: string;
+    recipient_email: string;
+    attachments: Array<{ filename: string }>;
+    templateData: Record<string, unknown>;
+  };
   assertEquals(msg.template_name, "hire-order-issued");
   assertEquals(msg.recipient_email, "ann@x.de");
   assertEquals(msg.attachments[0].filename, "HO-1.pdf");
+  const td = msg.templateData;
+  assertEquals(td.artist_name, "Ann");
+  assertEquals(td.order_no, "HO-1");
+  assertEquals(td.venue, "Colosseum");
+  assertEquals(td.city, "Berlin");
+  assertEquals(td.fee_label, "€500.00"); // same fee/currency the PDF shows
+  assertEquals(td.countersign_mode, "manual"); // org default (no hire_order_countersign seeded)
+  // Durable auth-gated detail-page link (re-signs on demand), NOT a 3600s signed URL,
+  // and keyed by the order UUID because the route is /hire-orders/:id.
+  assert(String(td.download_url).includes("/hire-orders/o-1"), `download_url was ${td.download_url}`);
+  // date_label is a timezone-safe human label, not the raw ISO string.
+  assert(td.date_label !== "2026-06-15" && String(td.date_label).includes("2026"), `date_label was ${td.date_label}`);
 
   // artist in-app notification (artist has a linked user_id)
   const notif = calls.find((c) => c.table === "notifications" && c.method === "insert");
