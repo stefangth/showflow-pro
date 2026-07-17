@@ -1,9 +1,9 @@
 import { describe, it, expect } from "vitest";
-import { NAV_ITEMS, visibleNavItems, groupNavBySections } from "./navItems";
+import { NAV_ITEMS, visibleNavItems, groupNavBySections, type NavItem } from "./navItems";
 
-const ctx = (over: Partial<{ isEditorMode: boolean; isRealAdmin: boolean; isSuperAdmin: boolean; roles: string[] }> = {}) => {
-  const { isEditorMode = false, isRealAdmin = false, isSuperAdmin = false, roles = [] } = over;
-  return { isEditorMode, isRealAdmin, isSuperAdmin, hasRole: (r: string) => roles.includes(r) };
+const ctx = (over: Partial<{ isEditorMode: boolean; isRealAdmin: boolean; isSuperAdmin: boolean; roles: string[]; enabledFeatures: Set<string> }> = {}) => {
+  const { isEditorMode = false, isRealAdmin = false, isSuperAdmin = false, roles = [], enabledFeatures = new Set<string>() } = over;
+  return { isEditorMode, isRealAdmin, isSuperAdmin, hasRole: (r: string) => roles.includes(r), enabledFeatures };
 };
 
 describe("visibleNavItems", () => {
@@ -25,6 +25,32 @@ describe("visibleNavItems", () => {
   it("editor admin sees role items but Platform only if super-admin", () => {
     expect(visibleNavItems(NAV_ITEMS, ctx({ isEditorMode: true, isRealAdmin: true })).map((i) => i.label)).not.toContain("Platform");
     expect(visibleNavItems(NAV_ITEMS, ctx({ isEditorMode: true, isRealAdmin: true, isSuperAdmin: true })).map((i) => i.label)).toContain("Platform");
+  });
+});
+
+describe("feature gating", () => {
+  it("hides items whose feature is not enabled", () => {
+    const items = [
+      { to: "/x", icon: NAV_ITEMS[0].icon, label: "X", section: "workspace", feature: "hire_orders" } as NavItem,
+    ];
+    expect(visibleNavItems(items, ctx())).toHaveLength(0);
+    expect(visibleNavItems(items, ctx({ enabledFeatures: new Set(["hire_orders"]) }))).toHaveLength(1);
+  });
+
+  it("gates a feature item even for a super-admin or editor-mode admin", () => {
+    const items = [
+      { to: "/x", icon: NAV_ITEMS[0].icon, label: "X", section: "workspace", feature: "hire_orders" } as NavItem,
+    ];
+    expect(visibleNavItems(items, ctx({ isSuperAdmin: true }))).toHaveLength(0);
+    expect(visibleNavItems(items, ctx({ isEditorMode: true, isRealAdmin: true }))).toHaveLength(0);
+    expect(
+      visibleNavItems(items, ctx({ isSuperAdmin: true, enabledFeatures: new Set(["hire_orders"]) })),
+    ).toHaveLength(1);
+  });
+
+  it("items without a feature key are unaffected by enabledFeatures", () => {
+    const labels = visibleNavItems(NAV_ITEMS, ctx({ roles: ["admin"] })).map((i) => i.label);
+    expect(labels).toContain("Admin");
   });
 });
 
