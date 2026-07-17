@@ -5,7 +5,10 @@ import { renderWithProviders } from "@/test/renderWithProviders";
 // Mock the data-access layer (tested separately), never the supabase singleton —
 // matches the repo convention (see AirtableSyncTab.test.tsx).
 vi.mock("@/data/settings", () => ({
-  resolveOrgSetting: vi.fn(() => Promise.resolve({ skills: [], cities: [], casts: [] })),
+  resolveOrgSetting: vi.fn((_client: unknown, _orgId: unknown, key: string) => {
+    if (key === "default_entitlements") return Promise.resolve({ booking_flow: true, hire_orders: false });
+    return Promise.resolve({ skills: [], cities: [], casts: [] });
+  }),
 }));
 vi.mock("@/data/platform", () => ({
   EMPTY_STARTER_TEMPLATE: { skills: [], cities: [], casts: [] },
@@ -15,7 +18,7 @@ vi.mock("@/data/platform", () => ({
 }));
 
 import { PlatformDefaultsTab } from "./PlatformDefaultsTab";
-import { fetchPlatformBookingDefaults, savePlatformBookingDefaults } from "@/data/platform";
+import { fetchPlatformBookingDefaults, savePlatformBookingDefaults, savePlatformSetting } from "@/data/platform";
 
 const DEFAULTS = {
   offer_response_window_hours: 36,
@@ -52,6 +55,34 @@ describe("PlatformDefaultsTab — booking engine defaults", () => {
           confirmation_digest_hour_berlin: 21,
           resend_from_address: "New <n@ew.com>",
         }),
+      ),
+    );
+  });
+});
+
+describe("PlatformDefaultsTab — default modules", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    (fetchPlatformBookingDefaults as ReturnType<typeof vi.fn>).mockResolvedValue(DEFAULTS);
+  });
+
+  it("loads the platform default entitlements into switches", async () => {
+    renderWithProviders(<PlatformDefaultsTab />);
+    const bookingFlowSwitch = await screen.findByRole("switch", { name: /booking flow/i });
+    const hireOrdersSwitch = screen.getByRole("switch", { name: /hire orders/i });
+    expect(bookingFlowSwitch).toBeChecked();
+    expect(hireOrdersSwitch).not.toBeChecked();
+  });
+
+  it("saves a toggle via savePlatformSetting under the default_entitlements key", async () => {
+    renderWithProviders(<PlatformDefaultsTab />);
+    const hireOrdersSwitch = await screen.findByRole("switch", { name: /hire orders/i });
+    fireEvent.click(hireOrdersSwitch);
+    await waitFor(() =>
+      expect(savePlatformSetting).toHaveBeenCalledWith(
+        expect.anything(),
+        "default_entitlements",
+        expect.objectContaining({ booking_flow: true, hire_orders: true }),
       ),
     );
   });
