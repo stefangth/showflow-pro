@@ -8,6 +8,12 @@
 -- public, then in 20260717110023_hire_order_freeze_allow_null_on_delete.sql to let the
 -- assignment links be cleared)
 --
+-- Also covers Task 2's two source columns that a hire order later snapshots
+-- (booking_fee_and_duration.sql): bookings.fee_amount numeric(10,2) and
+-- show_dates.duration_minutes integer, both nullable with a range check.
+-- Nothing writes them yet -- this file only proves shape + constraints, at the
+-- very end (see "Task 2" section below).
+--
 -- Guard functions under test (defined alongside the tables):
 --   derive_org_for_hire_order()      BEFORE INSERT OR UPDATE OF booking_id/artist_id/
 --                                     show_date_id: raises P0001 when a linked entity
@@ -38,7 +44,7 @@
 -- restrictive on top of both, same shape as org_entitlements.sql.
 BEGIN;
 CREATE EXTENSION IF NOT EXISTS pgtap WITH SCHEMA extensions;
-SELECT plan(29);
+SELECT plan(40);
 
 CREATE OR REPLACE FUNCTION pg_temp.act_as(_uid text) RETURNS void LANGUAGE plpgsql AS $$
 BEGIN
@@ -304,6 +310,49 @@ SELECT throws_ok(
     VALUES ('00000000-0000-0000-0000-00000000f0a1', 'HO-MISMATCH-1', '{}'::jsonb, 'eeeeeeee-f0a2-0001-0000-000000000000')$$,
   'P0001', NULL,
   'attaching a booking from a different org is rejected');
+
+-- ────────────────────────────────────────────────────────────────────────────
+-- Task 2: bookings.fee_amount + show_dates.duration_minutes -- the two source
+-- columns a hire order snapshots (artist fee, performance duration). Nothing
+-- writes them yet; this only proves shape + constraints.
+--   fee_amount        numeric(10,2), nullable, check (fee_amount is null or
+--                      fee_amount >= 0)
+--   duration_minutes  integer, nullable, check (duration_minutes is null or
+--                      duration_minutes between 1 and 1440)
+-- eeeeeeee-f0a1-0001 / dddddddd-f0a1-0001 are reused fixture rows: neither is
+-- referenced by any hire_orders link at this point in the file (HO-REPOINT-1's
+-- booking_id/artist_id/show_date_id were all cleared to NULL by the "allow
+-- nulling" block above, and the show_date it originally pointed at was
+-- dddddddd-f0a1-0002, not -0001), so mutating them here cannot disturb any
+-- earlier assertion.
+-- ────────────────────────────────────────────────────────────────────────────
+SELECT has_column('public', 'bookings', 'fee_amount', 'bookings has a fee_amount column');
+SELECT col_type_is('public', 'bookings', 'fee_amount', 'numeric(10,2)', 'fee_amount is numeric(10,2)');
+SELECT col_is_nullable('public', 'bookings', 'fee_amount', 'fee_amount is nullable');
+
+SELECT has_column('public', 'show_dates', 'duration_minutes', 'show_dates has a duration_minutes column');
+SELECT col_type_is('public', 'show_dates', 'duration_minutes', 'integer', 'duration_minutes is integer');
+SELECT col_is_nullable('public', 'show_dates', 'duration_minutes', 'duration_minutes is nullable');
+
+SELECT throws_ok(
+  $$UPDATE public.bookings SET fee_amount = -1 WHERE id = 'eeeeeeee-f0a1-0001-0000-000000000000'$$,
+  '23514', NULL,
+  'fee_amount rejects a negative value');
+SELECT lives_ok(
+  $$UPDATE public.bookings SET fee_amount = 4500.00 WHERE id = 'eeeeeeee-f0a1-0001-0000-000000000000'$$,
+  'fee_amount accepts a valid numeric(10,2) value');
+
+SELECT throws_ok(
+  $$UPDATE public.show_dates SET duration_minutes = 0 WHERE id = 'dddddddd-f0a1-0001-0000-000000000000'$$,
+  '23514', NULL,
+  'duration_minutes rejects 0');
+SELECT throws_ok(
+  $$UPDATE public.show_dates SET duration_minutes = 1441 WHERE id = 'dddddddd-f0a1-0001-0000-000000000000'$$,
+  '23514', NULL,
+  'duration_minutes rejects 1441');
+SELECT lives_ok(
+  $$UPDATE public.show_dates SET duration_minutes = 90 WHERE id = 'dddddddd-f0a1-0001-0000-000000000000'$$,
+  'duration_minutes accepts 90');
 
 SELECT * FROM finish();
 ROLLBACK;
