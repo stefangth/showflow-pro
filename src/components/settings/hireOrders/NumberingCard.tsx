@@ -17,7 +17,7 @@ export interface HireOrderNumbering {
   prefix: string;
   pattern: string;
 }
-export const NUMBERING_DEFAULT: HireOrderNumbering = { prefix: "HO", pattern: "{prefix}-{yyyy}-{mmdd}-{cast|seq}" };
+export const NUMBERING_DEFAULT: HireOrderNumbering = { prefix: "HO", pattern: "{prefix}-{yyyy}-{mmdd}-{seq}" };
 
 export function NumberingCard({ orgId }: { orgId: string | null }) {
   const qc = useQueryClient();
@@ -71,7 +71,7 @@ export function NumberingCard({ orgId }: { orgId: string | null }) {
       <CardHeader>
         <CardTitle className="font-display">Numbering</CardTitle>
         <CardDescription>
-          Controls the order number stamped on every hire order. Supported tokens: {"{prefix}"}, {"{yyyy}"}, {"{mm}"}, {"{dd}"}, {"{mmdd}"}, {"{cast|seq}"}.
+          Controls the order number stamped on every hire order. Supported tokens: {"{prefix}"}, {"{yyyy}"}, {"{mm}"}, {"{dd}"}, {"{mmdd}"}, {"{seq}"}, {"{cast}"}, {"{cast|seq}"}.
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">

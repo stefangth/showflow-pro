@@ -3,7 +3,7 @@ import { renderHook, waitFor, act } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import React from "react";
 
-vi.mock("sonner", () => ({ toast: { success: vi.fn(), error: vi.fn(), info: vi.fn() } }));
+vi.mock("sonner", () => ({ toast: { success: vi.fn(), error: vi.fn(), info: vi.fn(), warning: vi.fn() } }));
 vi.mock("@/hooks/useMyArtist", () => ({ useMyArtist: vi.fn() }));
 vi.mock("@/data/hireOrders", () => ({
   fetchHireOrdersForDate: vi.fn(),
@@ -114,7 +114,7 @@ describe("useHireOrderAction", () => {
     expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: ["hire-orders"] });
   });
 
-  it("toasts an error when draft produces only skips", async () => {
+  it("toasts an error with the skip reason when draft produces only skips", async () => {
     vi.mocked(invokeHireOrderAction).mockResolvedValue({ created: [], skipped: [{ booking_id: "b1", reason: "exists" }] });
     const { Wrapper } = wrapper();
     const { result } = renderHook(() => useHireOrderAction(), { wrapper: Wrapper });
@@ -123,9 +123,30 @@ describe("useHireOrderAction", () => {
       await result.current.mutateAsync({ action: "draft", org_id: "org-1" });
     });
 
-    expect(toast.error).toHaveBeenCalledWith("No hire orders drafted");
+    expect(toast.error).toHaveBeenCalledWith("No hire orders drafted: already has a hire order");
     expect(toast.success).not.toHaveBeenCalled();
     expect(toast.info).not.toHaveBeenCalled();
+  });
+
+  it("toasts success AND a warning when a draft creates some but skips others", async () => {
+    vi.mocked(invokeHireOrderAction).mockResolvedValue({
+      created: ["ho-1"],
+      skipped: [
+        { booking_id: "b1", reason: "exists" },
+        { booking_id: "b2", reason: "exists" },
+      ],
+    });
+    const { Wrapper } = wrapper();
+    const { result } = renderHook(() => useHireOrderAction(), { wrapper: Wrapper });
+
+    await act(async () => {
+      await result.current.mutateAsync({ action: "draft", org_id: "org-1", show_date_id: "d1" });
+    });
+
+    expect(toast.success).toHaveBeenCalledWith("Drafted 1 hire order");
+    // Deduped reason copy — two `exists` skips collapse to one phrase.
+    expect(toast.warning).toHaveBeenCalledWith("2 bookings skipped: already has a hire order");
+    expect(toast.error).not.toHaveBeenCalled();
   });
 
   it("toasts an info message when draft has nothing to do (zero created, zero skipped)", async () => {

@@ -70,6 +70,42 @@ Deno.test("draft creates one order per confirmed booking without an active order
   assertEquals(body.skipped[0].reason, "exists");
 });
 
+Deno.test("draft assigns a distinct order number to every artist on one date (no silent drop past 5)", async () => {
+  // Six confirmed bookings on ONE date that carries a program/cast label. The
+  // default pattern differentiates by {seq}, so every artist gets a distinct base
+  // order number and ALL six are created — the pre-fix default collapsed the base
+  // to the shared cast code and silently lost the 6th to the 5-try collision cap.
+  const six = Array.from({ length: 6 }, (_, i) =>
+    booking(`b-${i}`, `a-${i}`, 500, `Artist ${i}`, `artist${i}@x.de`));
+  const { deps, calls } = makeFakeDeps({
+    authUser: { id: "u-admin" },
+    tables: {
+      org_memberships: { data: { role: "admin" } },
+      show_dates: { data: SHOW_DATE_ROW }, // program "Aida" -> a cast code IS present
+      bookings: { data: six },
+      cities: { data: { name: "Berlin" } },
+      hire_orders: [
+        { when: { __write: false }, data: [] }, // no existing orders; seq base 0
+        { when: { __write: true }, data: { id: "ho-x" } }, // every insert succeeds
+      ],
+      // hire_order_numbering intentionally NOT seeded -> the code's NUMBERING_DEFAULT applies.
+      app_settings: [{ when: { key: "hire_order_defaults" }, data: [DEFAULTS] }],
+    },
+  });
+
+  const res = await handle(makeRequest({ headers: JWT, body: { action: "draft", org_id: ORG, show_date_id: SD } }), deps);
+  assertEquals(res.status, 200);
+  const body = await res.json();
+  assertEquals(body.created.length, 6, "all six bookings drafted");
+  assertEquals(body.skipped, [], "no booking dropped");
+
+  const orderNos = calls
+    .filter((c) => c.table === "hire_orders" && c.method === "insert")
+    .map((c) => (c.args[0] as { order_no: string }).order_no);
+  assertEquals(orderNos.length, 6);
+  assertEquals(new Set(orderNos).size, 6, `expected 6 distinct order numbers, got ${JSON.stringify(orderNos)}`);
+});
+
 Deno.test("draft snapshots showflow fields with source tags and org defaults", async () => {
   const { deps, calls } = makeFakeDeps({
     authUser: { id: "u-admin" },

@@ -34,7 +34,7 @@ interface TermsVariants { lean: HireOrderTerm[]; standard: HireOrderTerm[]; full
 type TermsVariant = keyof TermsVariants;
 interface Countersign { mode: "manual" | "documenso" }
 
-const NUMBERING_DEFAULT: Numbering = { prefix: "HO", pattern: "{prefix}-{yyyy}-{mmdd}-{cast|seq}" };
+const NUMBERING_DEFAULT: Numbering = { prefix: "HO", pattern: "{prefix}-{yyyy}-{mmdd}-{seq}" };
 const DEFAULTS_DEFAULT: OrderDefaults = { default_fee: null, currency: "EUR" };
 const LETTERHEAD_DEFAULT: HireOrderLetterhead = { legal_name: "", address_lines: [] };
 const TERMS_DEFAULT: TermsVariants = { lean: [], standard: [], full: [] };
@@ -140,11 +140,18 @@ async function draftOrders(deps: Deps, body: DraftBody, userId: string | null): 
     cityName = (c as { name?: string } | null)?.name ?? null;
   }
 
-  // Sequence base: existing non-void orders for THIS show date (the performance day).
-  // Collisions across dates/shows are still caught by the unique index + suffix retry.
+  // Sequence base: existing non-void orders for this org across the WHOLE calendar
+  // day (not just this show_date). Scoping to the day — via an inner-join on the
+  // order's show_date — keeps {seq} unique when an org runs several show_dates on
+  // the same date, so `HO-{yyyy}-{mmdd}-{seq}` never repeats a base across them and
+  // the collision suffix stays a genuine safety net rather than a differentiator.
+  // Concurrency is still guarded by the (org_id, order_no) unique index + suffix
+  // retry: two simultaneous drafts may read the same base, but the index rejects a
+  // duplicate and insertWithRetry advances the suffix.
   const { count } = await admin
-    .from("hire_orders").select("id", { count: "exact", head: true })
-    .eq("org_id", org).eq("show_date_id", body.show_date_id).neq("status", "void");
+    .from("hire_orders")
+    .select("id, show_dates!inner(date)", { count: "exact", head: true })
+    .eq("org_id", org).eq("show_dates.date", showDate.date).neq("status", "void");
   let seq = count ?? 0;
 
   const castCode = castCodeFromLabel(showDate.shows?.program ?? null);
@@ -223,13 +230,18 @@ async function draftOrders(deps: Deps, body: DraftBody, userId: string | null): 
   return json({ created, skipped });
 }
 
-/** Insert with unique-violation retry using the shared collision suffix (max 5 tries). */
+/**
+ * Insert with unique-violation retry using the shared collision suffix.
+ * The base order number is already unique per artist per day (see the {seq}
+ * scope above), so a collision here means a genuine race; the cap is a
+ * defense-in-depth safety net, not the primary differentiator.
+ */
 async function insertWithRetry(
   admin: Deps["admin"],
   baseOrderNo: string,
   row: Record<string, unknown>,
 ): Promise<{ id: string } | { reason: string }> {
-  for (let attempt = 0; attempt < 5; attempt++) {
+  for (let attempt = 0; attempt < 20; attempt++) {
     const order_no = withCollisionSuffix(baseOrderNo, attempt);
     const { data, error } = await admin
       .from("hire_orders").insert({ ...row, order_no }).select("id").maybeSingle();

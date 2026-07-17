@@ -73,6 +73,22 @@ function describeIssueFailures(failed: { order_id: string; issues: string[] }[])
   return codes.map((code) => ISSUE_FAILURE_COPY[code] ?? code).join(", ");
 }
 
+/** Friendly copy for the reasons a draft can be skipped (see draftOrders in the
+ *  edge function). `exists` is the routine case (the booking already has a live
+ *  order); `order_no_collision` should not occur now that {seq} makes each base
+ *  unique, but it is mapped so the toast never shows a bare code. */
+const DRAFT_SKIP_COPY: Record<string, string> = {
+  exists: "already has a hire order",
+  order_no_collision: "could not be assigned a unique number",
+  error: "hit an unexpected error",
+};
+
+/** Unique, human-readable reasons across every skipped draft. */
+function describeDraftSkips(skipped: { booking_id: string; reason: string }[]): string {
+  const reasons = Array.from(new Set(skipped.map((s) => s.reason)));
+  return reasons.map((reason) => DRAFT_SKIP_COPY[reason] ?? reason).join(", ");
+}
+
 /** Invoke generate-hire-orders (draft/issue/preview/download-url). Invalidates the
  *  whole hire-orders domain and toasts a summary for draft/issue; preview and
  *  download-url return data the caller opens directly and stay silent. */
@@ -87,8 +103,15 @@ export function useHireOrderAction() {
         const { created = [], skipped = [] } = (data ?? {}) as DraftResult;
         if (created.length > 0) {
           toast.success(`Drafted ${created.length} hire order${created.length === 1 ? "" : "s"}`);
+          // Some bookings were still skipped (e.g. they already had an order) —
+          // surface that rather than letting it pass silently under the success.
+          if (skipped.length > 0) {
+            toast.warning(
+              `${skipped.length} booking${skipped.length === 1 ? "" : "s"} skipped: ${describeDraftSkips(skipped)}`,
+            );
+          }
         } else if (skipped.length > 0) {
-          toast.error("No hire orders drafted");
+          toast.error(`No hire orders drafted: ${describeDraftSkips(skipped)}`);
         } else {
           // Zero eligible bookings for this date — not a failure, just nothing to do.
           toast.info("No bookings need hire orders");
