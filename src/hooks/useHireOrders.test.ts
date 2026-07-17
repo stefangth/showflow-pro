@@ -9,6 +9,7 @@ vi.mock("@/data/hireOrders", () => ({
   fetchHireOrdersForDate: vi.fn(),
   fetchHireOrder: vi.fn(),
   fetchMyHireOrders: vi.fn(),
+  fetchHireOrders: vi.fn(),
   invokeHireOrderAction: vi.fn(),
   updateHireOrderStatus: vi.fn(),
 }));
@@ -19,6 +20,7 @@ import {
   fetchHireOrdersForDate,
   fetchHireOrder,
   fetchMyHireOrders,
+  fetchHireOrders,
   invokeHireOrderAction,
   updateHireOrderStatus,
 } from "@/data/hireOrders";
@@ -26,8 +28,10 @@ import {
   useHireOrdersForDate,
   useHireOrder,
   useMyHireOrders,
+  useHireOrders,
   useHireOrderAction,
   useMarkCountersigned,
+  useVoidHireOrder,
 } from "./useHireOrders";
 
 function wrapper() {
@@ -93,6 +97,34 @@ describe("useMyHireOrders", () => {
     const { result } = renderHook(() => useMyHireOrders(), { wrapper: Wrapper });
     expect(result.current.fetchStatus).toBe("idle");
     expect(fetchMyHireOrders).not.toHaveBeenCalled();
+  });
+});
+
+describe("useHireOrders", () => {
+  beforeEach(() => vi.clearAllMocks());
+
+  it("fetches for a given org and filters", async () => {
+    vi.mocked(fetchHireOrders).mockResolvedValue([{ id: "ho-1" }] as never);
+    const { Wrapper } = wrapper();
+    const { result } = renderHook(() => useHireOrders("org-1", { status: ["draft"] }), { wrapper: Wrapper });
+    await waitFor(() => expect(result.current.isSuccess).toBe(true));
+    expect(result.current.data).toEqual([{ id: "ho-1" }]);
+    expect(fetchHireOrders).toHaveBeenCalledWith(expect.anything(), "org-1", { status: ["draft"] });
+  });
+
+  it("defaults filters to {} when omitted", async () => {
+    vi.mocked(fetchHireOrders).mockResolvedValue([] as never);
+    const { Wrapper } = wrapper();
+    const { result } = renderHook(() => useHireOrders("org-1"), { wrapper: Wrapper });
+    await waitFor(() => expect(result.current.isSuccess).toBe(true));
+    expect(fetchHireOrders).toHaveBeenCalledWith(expect.anything(), "org-1", {});
+  });
+
+  it("stays disabled without an orgId", () => {
+    const { Wrapper } = wrapper();
+    const { result } = renderHook(() => useHireOrders(null), { wrapper: Wrapper });
+    expect(result.current.fetchStatus).toBe("idle");
+    expect(fetchHireOrders).not.toHaveBeenCalled();
   });
 });
 
@@ -251,6 +283,37 @@ describe("useMarkCountersigned", () => {
     vi.mocked(updateHireOrderStatus).mockRejectedValue(new Error("stale"));
     const { Wrapper } = wrapper();
     const { result } = renderHook(() => useMarkCountersigned(), { wrapper: Wrapper });
+
+    await act(async () => {
+      await expect(result.current.mutateAsync("ho-1")).rejects.toThrow();
+    });
+
+    expect(toast.error).toHaveBeenCalledWith("stale");
+  });
+});
+
+describe("useVoidHireOrder", () => {
+  beforeEach(() => vi.clearAllMocks());
+
+  it("calls updateHireOrderStatus with void, toasts, and invalidates hire-orders", async () => {
+    vi.mocked(updateHireOrderStatus).mockResolvedValue(undefined);
+    const { Wrapper, qc } = wrapper();
+    const invalidateSpy = vi.spyOn(qc, "invalidateQueries");
+    const { result } = renderHook(() => useVoidHireOrder(), { wrapper: Wrapper });
+
+    await act(async () => {
+      await result.current.mutateAsync("ho-1");
+    });
+
+    expect(updateHireOrderStatus).toHaveBeenCalledWith(expect.anything(), "ho-1", "void");
+    expect(toast.success).toHaveBeenCalledWith("Hire order voided");
+    expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: ["hire-orders"] });
+  });
+
+  it("toasts an error on failure", async () => {
+    vi.mocked(updateHireOrderStatus).mockRejectedValue(new Error("stale"));
+    const { Wrapper } = wrapper();
+    const { result } = renderHook(() => useVoidHireOrder(), { wrapper: Wrapper });
 
     await act(async () => {
       await expect(result.current.mutateAsync("ho-1")).rejects.toThrow();

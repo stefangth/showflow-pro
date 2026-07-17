@@ -57,6 +57,36 @@ describe("feature gating", () => {
   });
 });
 
+describe("hire orders nav item", () => {
+  it("is hidden for an admin without the hire_orders feature enabled", () => {
+    const labels = visibleNavItems(NAV_ITEMS, ctx({ roles: ["admin"] })).map((i) => i.label);
+    expect(labels).not.toContain("Hire orders");
+  });
+
+  it("is shown for a producer once hire_orders is enabled", () => {
+    const labels = visibleNavItems(
+      NAV_ITEMS,
+      ctx({ roles: ["producer"], enabledFeatures: new Set(["hire_orders"]) }),
+    ).map((i) => i.label);
+    expect(labels).toContain("Hire orders");
+  });
+
+  it("is hidden for an artist even with the feature enabled (role-gated)", () => {
+    const labels = visibleNavItems(
+      NAV_ITEMS,
+      ctx({ roles: ["artist"], enabledFeatures: new Set(["hire_orders"]) }),
+    ).map((i) => i.label);
+    expect(labels).not.toContain("Hire orders");
+  });
+
+  it("carries the awaitingCountersign badge and workspace section", () => {
+    const item = NAV_ITEMS.find((i) => i.label === "Hire orders");
+    expect(item?.badge).toBe("awaitingCountersign");
+    expect(item?.section).toBe("workspace");
+    expect(item?.feature).toBe("hire_orders");
+  });
+});
+
 describe("sections", () => {
   it("every nav item declares a section", () => {
     for (const i of NAV_ITEMS) expect(i.section).toBeTruthy();

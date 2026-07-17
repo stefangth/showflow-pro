@@ -3,14 +3,18 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/features/auth/AuthContext";
 import { useMyArtist } from "@/hooks/useMyArtist";
 import { fetchPendingConfirmationsCount, fetchMyOpenOffersCount } from "@/data/bookings";
+import { fetchAwaitingCountersignCount } from "@/data/hireOrders";
 
 /**
  * Real, role-specific counts for sidebar nav badges.
  * - pendingConfirmations: soft_booked bookings awaiting a producer/admin (current org).
  * - openOffers: suggested bookings awaiting the signed-in artist's response.
- * Both live under the ['bookings', ...] key domain so booking mutations refresh them.
+ * - awaitingCountersign: hire orders (current org) sitting in 'issued' status.
+ * Booking counts live under the ['bookings', ...] key domain so booking
+ * mutations refresh them; the hire-order count lives under ['hire-orders', ...]
+ * so hire-order mutations (the whole-prefix invalidation rule) refresh it.
  */
-export function useNavCounts(): { pendingConfirmations: number; openOffers: number } {
+export function useNavCounts(): { pendingConfirmations: number; openOffers: number; awaitingCountersign: number } {
   const { currentOrg, hasRole } = useAuth();
   const { data: artist } = useMyArtist();
 
@@ -34,8 +38,16 @@ export function useNavCounts(): { pendingConfirmations: number; openOffers: numb
     queryFn: () => fetchMyOpenOffersCount(supabase, artistId!),
   });
 
+  const awaitingCountersign = useQuery({
+    queryKey: ["hire-orders", "awaiting-count", orgId],
+    enabled: canSeeOrgBookings && !!orgId,
+    staleTime: 60_000,
+    queryFn: () => fetchAwaitingCountersignCount(supabase, orgId!),
+  });
+
   return {
     pendingConfirmations: pending.data ?? 0,
     openOffers: offers.data ?? 0,
+    awaitingCountersign: awaitingCountersign.data ?? 0,
   };
 }

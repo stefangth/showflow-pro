@@ -9,10 +9,14 @@ vi.mock("@/data/bookings", () => ({
   fetchPendingConfirmationsCount: vi.fn(),
   fetchMyOpenOffersCount: vi.fn(),
 }));
+vi.mock("@/data/hireOrders", () => ({
+  fetchAwaitingCountersignCount: vi.fn(),
+}));
 
 import { useAuth } from "@/features/auth/AuthContext";
 import { useMyArtist } from "@/hooks/useMyArtist";
 import { fetchPendingConfirmationsCount, fetchMyOpenOffersCount } from "@/data/bookings";
+import { fetchAwaitingCountersignCount } from "@/data/hireOrders";
 import { useNavCounts } from "./useNavCounts";
 
 function wrapper() {
@@ -22,7 +26,10 @@ function wrapper() {
 }
 
 describe("useNavCounts", () => {
-  beforeEach(() => vi.clearAllMocks());
+  beforeEach(() => {
+    vi.clearAllMocks();
+    vi.mocked(fetchAwaitingCountersignCount).mockResolvedValue(0);
+  });
 
   it("fetches pending confirmations for a producer with an org; no offers without an artist", async () => {
     vi.mocked(useAuth).mockReturnValue({
@@ -52,5 +59,44 @@ describe("useNavCounts", () => {
     expect(fetchMyOpenOffersCount).toHaveBeenCalledWith(expect.anything(), "artist-1");
     expect(fetchPendingConfirmationsCount).not.toHaveBeenCalled();
     expect(result.current.pendingConfirmations).toBe(0);
+  });
+
+  it("fetches the awaiting-countersign count for a producer/admin with an org", async () => {
+    vi.mocked(useAuth).mockReturnValue({
+      currentOrg: { id: "org-1", name: "Acme" },
+      hasRole: (r: string) => r === "producer",
+    } as never);
+    vi.mocked(useMyArtist).mockReturnValue({ data: null } as never);
+    vi.mocked(fetchPendingConfirmationsCount).mockResolvedValue(0);
+    vi.mocked(fetchAwaitingCountersignCount).mockResolvedValue(7);
+
+    const { result } = renderHook(() => useNavCounts(), { wrapper: wrapper() });
+    await waitFor(() => expect(result.current.awaitingCountersign).toBe(7));
+    expect(fetchAwaitingCountersignCount).toHaveBeenCalledWith(expect.anything(), "org-1");
+  });
+
+  it("does not fetch the awaiting-countersign count for a role without org visibility (e.g. artist)", async () => {
+    vi.mocked(useAuth).mockReturnValue({
+      currentOrg: { id: "org-1", name: "Acme" },
+      hasRole: () => false,
+    } as never);
+    vi.mocked(useMyArtist).mockReturnValue({ data: { id: "artist-1" } } as never);
+    vi.mocked(fetchMyOpenOffersCount).mockResolvedValue(0);
+
+    const { result } = renderHook(() => useNavCounts(), { wrapper: wrapper() });
+    await waitFor(() => expect(result.current.openOffers).toBe(0));
+    expect(fetchAwaitingCountersignCount).not.toHaveBeenCalled();
+    expect(result.current.awaitingCountersign).toBe(0);
+  });
+
+  it("does not fetch the awaiting-countersign count without an org", async () => {
+    vi.mocked(useAuth).mockReturnValue({
+      currentOrg: null,
+      hasRole: (r: string) => r === "admin",
+    } as never);
+    vi.mocked(useMyArtist).mockReturnValue({ data: null } as never);
+
+    renderHook(() => useNavCounts(), { wrapper: wrapper() });
+    expect(fetchAwaitingCountersignCount).not.toHaveBeenCalled();
   });
 });

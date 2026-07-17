@@ -1,7 +1,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "@/integrations/supabase/types";
 
-type HireOrderStatus = Database["public"]["Enums"]["hire_order_status"];
+export type HireOrderStatus = Database["public"]["Enums"]["hire_order_status"];
 
 /** A `hire_orders` row, with the linked artist's name joined in (when selected). */
 export type HireOrderRow = Database["public"]["Tables"]["hire_orders"]["Row"] & {
@@ -56,6 +56,91 @@ export async function fetchMyHireOrders(
     .order("created_at", { ascending: false });
   if (error) throw error;
   return (data ?? []) as unknown as HireOrderRow[];
+}
+
+/** Status + free-text filters accepted by fetchHireOrders. Both are optional;
+ *  an empty/undefined status list means "any status". */
+export interface HireOrderFilters {
+  status?: HireOrderStatus[];
+  search?: string;
+}
+
+/** A hire_orders row for the V4 tracking table: the joined artist name (as
+ *  HireOrderRow already carries) plus the linked show_date's date + venue. */
+export type HireOrderListRow = HireOrderRow & {
+  show_dates?: { date: string; venue: string | null } | null;
+};
+
+/**
+ * All of an org's hire orders (any status by default), for the V4 tracking
+ * dashboard: `artists(name)` and `show_dates(date, venue)` joined, newest
+ * first, optionally narrowed by status and/or a free-text search across the
+ * order number and the artist's name.
+ *
+ * `order_no` matching is pushed to Postgres via `.ilike()` — it is a
+ * base-table column, so PostgREST filters it cleanly server-side. Artist-name
+ * matching can't join the same query cleanly: PostgREST cannot combine a
+ * joined table's column (`artists.name`) with a base-table `.ilike()` in one
+ * `.or()` filter. So when a search term is given, this also re-fetches the
+ * (status-filtered) rows once more WITHOUT the ilike and matches
+ * `artists.name` in JS, merging the two result sets by id. With no search
+ * term this stays a single round trip.
+ */
+export async function fetchHireOrders(
+  client: SupabaseClient<Database>,
+  orgId: string,
+  filters: HireOrderFilters = {},
+): Promise<HireOrderListRow[]> {
+  const baseQuery = () => {
+    let q = client
+      .from("hire_orders")
+      .select("*, artists(name), show_dates(date, venue)")
+      .eq("org_id", orgId)
+      .order("created_at", { ascending: false });
+    if (filters.status && filters.status.length > 0) {
+      q = q.in("status", filters.status);
+    }
+    return q;
+  };
+
+  const needle = filters.search?.trim();
+  if (!needle) {
+    const { data, error } = await baseQuery();
+    if (error) throw error;
+    return (data ?? []) as unknown as HireOrderListRow[];
+  }
+
+  const [byOrderNo, fullSet] = await Promise.all([
+    baseQuery().ilike("order_no", `%${needle}%`),
+    baseQuery(),
+  ]);
+  if (byOrderNo.error) throw byOrderNo.error;
+  if (fullSet.error) throw fullSet.error;
+
+  const lowerNeedle = needle.toLowerCase();
+  const byArtistName = ((fullSet.data ?? []) as unknown as HireOrderListRow[]).filter((row) =>
+    (row.artists?.name ?? "").toLowerCase().includes(lowerNeedle),
+  );
+
+  const merged = new Map<string, HireOrderListRow>();
+  for (const row of (byOrderNo.data ?? []) as unknown as HireOrderListRow[]) merged.set(row.id, row);
+  for (const row of byArtistName) merged.set(row.id, row);
+  return Array.from(merged.values()).sort((a, b) => (a.created_at < b.created_at ? 1 : -1));
+}
+
+/** Head count of an org's hire orders currently awaiting countersignature
+ *  (status = 'issued'). Feeds both the V4 KPI tile and the sidebar nav badge. */
+export async function fetchAwaitingCountersignCount(
+  client: SupabaseClient<Database>,
+  orgId: string,
+): Promise<number> {
+  const { count, error } = await client
+    .from("hire_orders")
+    .select("id", { count: "exact", head: true })
+    .eq("org_id", orgId)
+    .eq("status", "issued");
+  if (error) throw error;
+  return count ?? 0;
 }
 
 /** Invoke the generate-hire-orders edge function (actions: draft/issue/preview/download-url). */

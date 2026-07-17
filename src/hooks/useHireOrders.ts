@@ -1,4 +1,4 @@
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient, keepPreviousData } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useMyArtist } from "@/hooks/useMyArtist";
@@ -6,9 +6,11 @@ import {
   fetchHireOrdersForDate,
   fetchHireOrder,
   fetchMyHireOrders,
+  fetchHireOrders,
   invokeHireOrderAction,
   updateHireOrderReview,
   updateHireOrderStatus,
+  type HireOrderFilters,
   type HireOrderReview,
   type HireOrderRow,
 } from "@/data/hireOrders";
@@ -46,6 +48,20 @@ export function useMyHireOrders() {
     queryKey: ["hire-orders", "mine", ...artistIds],
     enabled: artistIds.length > 0,
     queryFn: () => fetchMyHireOrders(supabase, artistIds),
+  });
+}
+
+/** All of an org's hire orders (any status by default), for the V4 tracking
+ *  dashboard. `filters` defaults to `{}` (no status/search narrowing).
+ *  `placeholderData: keepPreviousData` keeps the last-loaded rows on screen
+ *  while a new filter/search combination refetches, instead of flashing back
+ *  to a loading state on every chip click or keystroke. */
+export function useHireOrders(orgId: string | null | undefined, filters: HireOrderFilters = {}) {
+  return useQuery({
+    queryKey: ["hire-orders", "list", orgId, filters],
+    enabled: !!orgId,
+    placeholderData: keepPreviousData,
+    queryFn: () => fetchHireOrders(supabase, orgId!, filters),
   });
 }
 
@@ -165,6 +181,23 @@ export function useMarkCountersigned() {
     },
     onError: (error: Error) => {
       toast.error(error.message || "Could not mark as countersigned");
+    },
+  });
+}
+
+/** Void a hire order (the client path; the DB transition guard enforces
+ *  legality server-side). Used by the V4 slide-over's Void action, which
+ *  gates the call behind an AlertDialog confirmation. */
+export function useVoidHireOrder() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => updateHireOrderStatus(supabase, id, "void"),
+    onSuccess: () => {
+      invalidateHireOrders(qc);
+      toast.success("Hire order voided");
+    },
+    onError: (error: Error) => {
+      toast.error(error.message || "Could not void hire order");
     },
   });
 }
