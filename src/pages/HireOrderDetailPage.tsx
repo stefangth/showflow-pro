@@ -1,0 +1,314 @@
+import { useParams, useNavigate } from "react-router-dom";
+import { useQuery } from "@tanstack/react-query";
+import { ArrowLeft, Download, FileText, CheckCircle2 } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { Card, CardContent } from "@/components/ui/card";
+import { Skeleton } from "@/components/ui/skeleton";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { useAuth } from "@/features/auth/AuthContext";
+import { useHireOrder, useHireOrderAction, useMarkCountersigned } from "@/hooks/useHireOrders";
+import { invokeHireOrderAction, type HireOrderRow } from "@/data/hireOrders";
+import { supabase } from "@/integrations/supabase/client";
+import { formatMoney } from "@/lib/hireOrders/money";
+import { formatDateDMY } from "@/lib/dates";
+import type { OrderData } from "@/lib/hireOrders/types";
+import { OrderTimeline } from "@/components/hireOrders/OrderTimeline";
+import { OrderFactsRail } from "@/components/hireOrders/OrderFactsRail";
+
+/** Read a resolved snapshot field as a trimmed string ("" when absent). */
+function snap(data: OrderData, key: keyof OrderData): string {
+  const v = data[key]?.value;
+  if (v === null || v === undefined) return "";
+  return String(v);
+}
+
+/** Status pill — mirrors the V1 card tones, with issued surfaced as
+ *  "Awaiting countersign" per the design. */
+function StatusBadge({ status }: { status: string }) {
+  switch (status) {
+    case "draft":
+      return <Badge variant="secondary">Draft</Badge>;
+    case "ready":
+      return <Badge variant="accent">Ready</Badge>;
+    case "issued":
+      return <Badge variant="hold">Awaiting countersign</Badge>;
+    case "countersigned":
+      return <Badge variant="confirmed">Countersigned</Badge>;
+    case "void":
+      return <Badge variant="neutral">Void</Badge>;
+    default:
+      return <Badge variant="neutral">{status}</Badge>;
+  }
+}
+
+/**
+ * Full-page hire-order document viewer at `/hire-orders/:id`. This is where the
+ * issued-order email (Task 8) and artist notifications land. Layout follows the
+ * V3 design: a header strip, then a `1fr 312px` grid of the embedded PDF (left)
+ * and a status rail (right).
+ *
+ * Access is enforced by RLS: `useHireOrder` fails for an order the caller cannot
+ * see (a non-owned order for an artist, a cross-org order), so the destructive
+ * Alert IS the access-denied path — there is deliberately no separate
+ * client-side ownership check.
+ */
+export default function HireOrderDetailPage() {
+  const { id } = useParams<{ id: string }>();
+  const navigate = useNavigate();
+  const { currentOrg, hasRole } = useAuth();
+  const orgId = currentOrg?.id ?? "";
+
+  const { data: order, isLoading, isError, error } = useHireOrder(id);
+  const action = useHireOrderAction();
+  const countersign = useMarkCountersigned();
+
+  const hasPdf = !!order?.pdf_path;
+
+  // Signed URL for the embedded PDF. Lives 3600s server-side; refresh well
+  // before expiry (staleTime 45min). Only fetched once the order is loaded and
+  // actually has a rendered PDF (draft orders have none).
+  const pdfUrl = useQuery({
+    queryKey: ["hire-orders", "pdf-url", id],
+    enabled: !!id && hasPdf && !!orgId,
+    staleTime: 45 * 60 * 1000,
+    queryFn: async () => {
+      const res = await invokeHireOrderAction(supabase, {
+        action: "download-url",
+        org_id: orgId,
+        order_id: id,
+      });
+      return (res as { url?: string } | null)?.url ?? null;
+    },
+  });
+
+  function handleDownload() {
+    if (!order) return;
+    void (async () => {
+      const res = await action.mutateAsync({ action: "download-url", org_id: orgId, order_id: order.id });
+      const url = (res as { url?: string } | null)?.url;
+      if (url) window.open(url, "_blank", "noopener,noreferrer");
+    })().catch(() => {
+      /* useHireOrderAction toasts the failure */
+    });
+  }
+
+  if (isLoading) {
+    return (
+      <div className="mx-auto max-w-6xl space-y-6 p-4 sm:p-6">
+        <Skeleton className="h-10 w-64" />
+        <div className="grid grid-cols-1 gap-6 lg:grid-cols-[1fr_312px]">
+          <Skeleton className="h-[600px] w-full" />
+          <div className="space-y-4">
+            <Skeleton className="h-40 w-full" />
+            <Skeleton className="h-28 w-full" />
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (isError || !order) {
+    return (
+      <div className="mx-auto max-w-6xl p-4 sm:p-6">
+        <Button variant="ghost" size="sm" className="mb-4 -ml-2" onClick={() => navigate(-1)}>
+          <ArrowLeft className="mr-1 h-4 w-4" /> Back
+        </Button>
+        <Alert variant="destructive">
+          <AlertTitle>Could not load this hire order</AlertTitle>
+          <AlertDescription>
+            {(error as Error)?.message ??
+              "You may not have access to this order, or it no longer exists."}
+          </AlertDescription>
+        </Alert>
+      </div>
+    );
+  }
+
+  return <HireOrderDetail order={order} canManage={hasRole("admin") || hasRole("producer")}
+    navigateBack={() => navigate(-1)}
+    onDownload={handleDownload}
+    downloadBusy={action.isPending}
+    onCountersign={() => countersign.mutate(order.id)}
+    countersignBusy={countersign.isPending}
+    pdfUrl={pdfUrl.data ?? null}
+    pdfUrlLoading={pdfUrl.isLoading}
+    hasPdf={hasPdf}
+  />;
+}
+
+interface DetailProps {
+  order: HireOrderRow;
+  canManage: boolean;
+  navigateBack: () => void;
+  onDownload: () => void;
+  downloadBusy: boolean;
+  onCountersign: () => void;
+  countersignBusy: boolean;
+  pdfUrl: string | null;
+  pdfUrlLoading: boolean;
+  hasPdf: boolean;
+}
+
+/** The loaded-state body — split out so the page shell handles loading/error
+ *  and this renders the header + document grid for a known-good order. */
+function HireOrderDetail({
+  order, canManage, navigateBack, onDownload, downloadBusy,
+  onCountersign, countersignBusy, pdfUrl, pdfUrlLoading, hasPdf,
+}: DetailProps) {
+  const data = (order.data ?? {}) as OrderData;
+  const artistName = order.artists?.name || snap(data, "artist_name") || "Unknown artist";
+  const email = snap(data, "recipient_email");
+  const venue = snap(data, "venue");
+  const dateStr = snap(data, "date");
+  const durationRaw = snap(data, "duration_min");
+  const duration = durationRaw ? `${durationRaw} min` : null;
+  const sessions = snap(data, "sessions") || null;
+  const fee = order.fee_amount != null ? formatMoney(order.fee_amount, order.fee_currency) : null;
+
+  const subtitleParts = [
+    <span key="no" className="font-mono">{order.order_no}</span>,
+    artistName,
+    venue,
+    dateStr ? <span key="date" className="font-mono">{formatDateDMY(dateStr)}</span> : null,
+  ].filter(Boolean);
+
+  return (
+    <div className="mx-auto max-w-6xl space-y-6 p-4 sm:p-6">
+      {/* Header strip */}
+      <div className="flex flex-wrap items-start justify-between gap-4">
+        <div className="flex items-start gap-2 min-w-0">
+          <Button variant="ghost" size="icon" className="mt-0.5 shrink-0" onClick={navigateBack} aria-label="Go back">
+            <ArrowLeft className="h-5 w-5" />
+          </Button>
+          <div className="min-w-0">
+            <div className="flex items-center gap-3">
+              <h1 className="font-display text-xl text-foreground">Performance hire order</h1>
+              <StatusBadge status={order.status} />
+            </div>
+            <p className="mt-1 flex flex-wrap items-center gap-x-1.5 text-sm text-muted-foreground">
+              {subtitleParts.map((part, i) => (
+                <span key={i} className="flex items-center gap-x-1.5">
+                  {i > 0 && <span aria-hidden="true">·</span>}
+                  {part}
+                </span>
+              ))}
+            </p>
+          </div>
+        </div>
+        <div className="flex items-center gap-2 shrink-0">
+          {/* Editing an issued document is an extended-plan capability. */}
+          <Button variant="outline" size="sm" disabled title="Editing is not available in this version">
+            Edit
+          </Button>
+          <Button variant="outline" size="sm" onClick={onDownload} disabled={!hasPdf || downloadBusy}>
+            <Download className="mr-1 h-4 w-4" /> Download
+          </Button>
+        </div>
+      </div>
+
+      {/* Document + rail */}
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-[1fr_312px]">
+        {/* LEFT: the embedded PDF on a paper-tinted desk */}
+        <div className="rounded-xl border border-border bg-muted p-3 sm:p-4">
+          {!hasPdf ? (
+            <div className="flex min-h-[480px] flex-col items-center justify-center gap-2 text-center">
+              <FileText className="h-8 w-8 text-muted-foreground" />
+              <p className="text-sm font-medium text-foreground">Not issued yet</p>
+              <p className="max-w-xs text-sm text-muted-foreground">
+                This hire order has no document until it is issued to the artist.
+              </p>
+            </div>
+          ) : pdfUrlLoading || !pdfUrl ? (
+            <Skeleton className="h-[600px] w-full rounded-lg" />
+          ) : (
+            <iframe
+              title="Hire order document"
+              src={pdfUrl}
+              className="h-[600px] w-full rounded-lg border border-border bg-background lg:h-[720px]"
+            />
+          )}
+        </div>
+
+        {/* RIGHT: status rail */}
+        <aside className="space-y-4">
+          <Card>
+            <CardContent className="space-y-4 pt-6">
+              <OrderTimeline
+                status={order.status}
+                createdAt={order.created_at}
+                issuedAt={order.issued_at}
+                countersignedAt={order.countersigned_at}
+              />
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardContent className="space-y-1 pt-6">
+              <h3 className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Recipient</h3>
+              <p className="text-sm font-medium text-foreground">{artistName}</p>
+              {email && <p className="text-sm text-muted-foreground break-words">{email}</p>}
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardContent className="space-y-5 pt-6">
+              <OrderFactsRail fee={fee} duration={duration} sessions={sessions} />
+              <PrimaryAction
+                canManage={canManage}
+                status={order.status}
+                hasPdf={hasPdf}
+                onDownload={onDownload}
+                downloadBusy={downloadBusy}
+                onCountersign={onCountersign}
+                countersignBusy={countersignBusy}
+              />
+            </CardContent>
+          </Card>
+        </aside>
+      </div>
+    </div>
+  );
+}
+
+interface ActionProps {
+  canManage: boolean;
+  status: string;
+  hasPdf: boolean;
+  onDownload: () => void;
+  downloadBusy: boolean;
+  onCountersign: () => void;
+  countersignBusy: boolean;
+}
+
+/** The role- and status-driven primary control in the rail. Producers/admins
+ *  can mark an issued order countersigned (and see a confirmation once done);
+ *  artists only ever get a download control. */
+function PrimaryAction({
+  canManage, status, hasPdf, onDownload, downloadBusy, onCountersign, countersignBusy,
+}: ActionProps) {
+  if (canManage && status === "issued") {
+    return (
+      <Button className="w-full" onClick={onCountersign} disabled={countersignBusy}>
+        Mark countersigned
+      </Button>
+    );
+  }
+  if (canManage && status === "countersigned") {
+    return (
+      <div className="flex items-center gap-2 rounded-lg border border-[var(--green-600)]/30 bg-[var(--green-100)] px-3 py-2 text-sm font-medium text-[var(--green-600)]">
+        <CheckCircle2 className="h-4 w-4 shrink-0" />
+        Countersigned by artist
+      </div>
+    );
+  }
+  if (!canManage) {
+    return (
+      <Button className="w-full" onClick={onDownload} disabled={!hasPdf || downloadBusy}>
+        <Download className="mr-1 h-4 w-4" /> Download PDF
+      </Button>
+    );
+  }
+  // Producer/admin on a draft/ready/void order: no primary action here.
+  return null;
+}
