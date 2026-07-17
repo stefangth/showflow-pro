@@ -20,6 +20,11 @@
 -- derived from the object path's first folder segment
 -- (`(storage.foldername(name))[1])::uuid`). No write policies -- uploads go
 -- through the service role only (see "Task 6" section below).
+-- The follow-up hire_orders_storage_guarded_cast.sql rewrote that policy's
+-- USING clause as a CASE so the ::uuid cast is structurally unreachable for any
+-- OTHER bucket's rows (short-circuits to false before the cast), making the
+-- 22P02 hazard impossible independent of query plan rather than merely
+-- planner-safe.
 --
 -- Guard functions under test (defined alongside the tables):
 --   derive_org_for_hire_order()      BEFORE INSERT OR UPDATE OF booking_id/artist_id/
@@ -399,17 +404,20 @@ SELECT is(
   0, 'a member of a different org cannot select that object');
 RESET ROLE;
 
--- Cast-hazard regression: Postgres does not guarantee left-to-right evaluation
--- of AND, so a naive read of `bucket_id = 'hire-orders' and
--- ((storage.foldername(name))[1])::uuid` might appear to risk an
--- `invalid input syntax for type uuid` (22P02) on any *other* bucket's object
--- whose first path segment isn't a uuid. Empirically verified live (see
--- task-6-report.md) under both a normal plan and a forced sequential scan
--- (enable_indexscan/enable_bitmapscan off) with the clause order both as
--- written and reversed: Postgres's planner always cost-orders the cheap
--- `bucket_id = 'hire-orders'` equality check before the expensive
--- STABLE-function cast, so it short-circuits before the cast ever runs. This
--- seeds exactly that decoy shape and asserts the SELECT still lives.
+-- Cast-hazard regression (guarded form): the policy's USING clause is now a
+-- CASE (hire_orders_storage_guarded_cast.sql) --
+--   case when bucket_id = 'hire-orders'
+--     then is_org_member(auth.uid(), ((storage.foldername(name))[1])::uuid)
+--     else false end
+-- -- so for any bucket OTHER than 'hire-orders' the qual short-circuits to
+-- false and the `((storage.foldername(name))[1])::uuid` cast is never evaluated,
+-- structurally, regardless of query plan. This seeds exactly the shape that
+-- would trip a naive AND policy -- another bucket's object whose first path
+-- segment isn't a uuid ('not-a-uuid/x.png') -- and asserts the SELECT still
+-- lives. enable_indexscan/enable_bitmapscan are forced off so the decoy row's
+-- qual is genuinely evaluated on a sequential scan (no index can pre-eliminate
+-- it), making this a plan-independent proof of the structural guard rather than
+-- a test that merely happens to hit a bucket_id-scoped index.
 INSERT INTO storage.buckets (id, name, public) VALUES
   ('hazard-decoy-bucket', 'hazard-decoy-bucket', false);
 INSERT INTO storage.objects (bucket_id, name, owner) VALUES
@@ -417,10 +425,16 @@ INSERT INTO storage.objects (bucket_id, name, owner) VALUES
 
 SELECT pg_temp.act_as('aaaaaaaa-f0a1-0001-0000-000000000000');
 SET LOCAL ROLE authenticated;
+SET LOCAL enable_indexscan = off;
+SET LOCAL enable_bitmapscan = off;
+SET LOCAL enable_seqscan = on;
 SELECT lives_ok(
   $$SELECT count(*) FROM storage.objects$$,
-  'selecting storage.objects does not raise 22P02 when another bucket has a non-uuid first path segment');
+  'selecting storage.objects does not raise 22P02 when another bucket has a non-uuid first path segment (guarded CASE, forced seqscan)');
 RESET ROLE;
+RESET enable_indexscan;
+RESET enable_bitmapscan;
+RESET enable_seqscan;
 
 SELECT * FROM finish();
 ROLLBACK;
