@@ -184,6 +184,169 @@ Deno.test("draft with notify inserts hire_orders_ready producer notifications on
   assert(rows.some((r) => r.user_id === "p1"), "notifies the resolved producer");
 });
 
+// ── draft-manual ─────────────────────────────────────────────────────────
+
+Deno.test("draft-manual with only manual fields creates an unlinked draft where every field is source manual", async () => {
+  const manual = {
+    artist_name: "Walk-in Artist",
+    recipient_email: "walkin@example.com",
+    role: "Soloist",
+    cast: "Cast A",
+    date: "2026-08-01",
+    venue: "The Loft",
+    city: "Hamburg",
+    duration_min: 60,
+    sessions: ["20:00"],
+    fee: 750,
+    currency: "USD",
+    notes: "Fully manual engagement",
+  };
+  const { deps, calls } = makeFakeDeps({
+    authUser: { id: "u-admin" },
+    tables: {
+      org_memberships: { data: { role: "admin" } },
+      hire_orders: [
+        { when: { __write: false }, data: [] }, // sequence-base count read
+        { when: { __write: true }, data: { id: "ho-manual-1" } },
+      ],
+      app_settings: [
+        { when: { key: "hire_order_defaults" }, data: [DEFAULTS] },
+        { when: { key: "hire_order_numbering" }, data: [NUMBERING] },
+      ],
+    },
+  });
+
+  const res = await handle(
+    makeRequest({ headers: JWT, body: { action: "draft-manual", org_id: ORG, manual } }),
+    deps,
+  );
+  assertEquals(res.status, 200);
+  const body = await res.json();
+  assertEquals(body.created.length, 1, "expected exactly one created order");
+
+  // No queries against artists/show_dates at all — neither id was given.
+  assertEquals(calls.filter((c) => c.table === "artists").length, 0);
+  assertEquals(calls.filter((c) => c.table === "show_dates").length, 0);
+
+  const insert = calls.find((c) => c.table === "hire_orders" && c.method === "insert");
+  assert(insert, "expected a hire_orders insert");
+  const row = insert!.args[0] as {
+    booking_id: string | null; artist_id: string | null; show_date_id: string | null;
+    fee_currency: string; terms_variant: string; status: string;
+    data: Record<string, { value: unknown; source: string }>;
+  };
+  assertEquals(row.booking_id, null, "manual orders never link a booking");
+  assertEquals(row.artist_id, null);
+  assertEquals(row.show_date_id, null);
+  assertEquals(row.status, "draft");
+  assertEquals(row.terms_variant, "standard");
+  for (const key of Object.keys(manual)) {
+    assertEquals(row.data[key]?.source, "manual", `${key} should be source manual`);
+  }
+  assertEquals(row.data.fee.value, 750);
+  assertEquals(row.fee_currency, "USD", "fee_currency follows the resolved (manual) currency, not the org default");
+});
+
+Deno.test("draft-manual with artist_id and show_date_id resolves showflow fields underneath a manual override", async () => {
+  const { deps, calls } = makeFakeDeps({
+    authUser: { id: "u-admin" },
+    tables: {
+      org_memberships: { data: { role: "admin" } },
+      artists: { data: { id: "a-A", name: "Ann", email: "ann@x.de", cast_role: "Lead" } },
+      show_dates: { data: SHOW_DATE_ROW },
+      cities: { data: { name: "Berlin" } },
+      hire_orders: [
+        { when: { __write: false }, data: [] },
+        { when: { __write: true }, data: { id: "ho-manual-2" } },
+      ],
+      app_settings: [
+        { when: { key: "hire_order_defaults" }, data: [DEFAULTS] },
+        { when: { key: "hire_order_numbering" }, data: [NUMBERING] },
+      ],
+    },
+  });
+
+  const res = await handle(
+    makeRequest({
+      headers: JWT,
+      body: {
+        action: "draft-manual",
+        org_id: ORG,
+        artist_id: "a-A",
+        show_date_id: SD,
+        manual: { venue: "Overridden Hall", fee: 900 },
+      },
+    }),
+    deps,
+  );
+  assertEquals(res.status, 200);
+  const body = await res.json();
+  assertEquals(body.created.length, 1);
+
+  const insert = calls.find((c) => c.table === "hire_orders" && c.method === "insert");
+  assert(insert, "expected a hire_orders insert");
+  const row = insert!.args[0] as {
+    artist_id: string | null; show_date_id: string | null;
+    data: Record<string, { value: unknown; source: string }>;
+  };
+  assertEquals(row.artist_id, "a-A");
+  assertEquals(row.show_date_id, SD);
+
+  // Showflow-derived fields resolve underneath.
+  assertEquals(row.data.artist_name.value, "Ann");
+  assertEquals(row.data.artist_name.source, "showflow");
+  assertEquals(row.data.recipient_email.value, "ann@x.de");
+  assertEquals(row.data.recipient_email.source, "showflow");
+  assertEquals(row.data.city.value, "Berlin");
+  assertEquals(row.data.city.source, "showflow");
+  assertEquals(row.data.date.value, "2026-06-15");
+  assertEquals(row.data.date.source, "showflow");
+
+  // The manual override for venue/fee wins over showflow/defaults.
+  assertEquals(row.data.venue.value, "Overridden Hall");
+  assertEquals(row.data.venue.source, "manual");
+  assertEquals(row.data.fee.value, 900);
+  assertEquals(row.data.fee.source, "manual");
+});
+
+Deno.test("draft-manual does not gate on recipient_email at draft time", async () => {
+  // No recipient_email anywhere (no artist link, no manual override) — draft-manual
+  // must still succeed; the ready gate is enforced at issue, not draft.
+  const { deps } = makeFakeDeps({
+    authUser: { id: "u-admin" },
+    tables: {
+      org_memberships: { data: { role: "admin" } },
+      hire_orders: [
+        { when: { __write: false }, data: [] },
+        { when: { __write: true }, data: { id: "ho-manual-3" } },
+      ],
+      app_settings: [
+        { when: { key: "hire_order_defaults" }, data: [DEFAULTS] },
+        { when: { key: "hire_order_numbering" }, data: [NUMBERING] },
+      ],
+    },
+  });
+  const res = await handle(
+    makeRequest({ headers: JWT, body: { action: "draft-manual", org_id: ORG, manual: { venue: "The Loft" } } }),
+    deps,
+  );
+  assertEquals(res.status, 200);
+  assertEquals((await res.json()).created.length, 1);
+});
+
+Deno.test("draft-manual 403s when hire_orders entitlement is off", async () => {
+  const { deps } = makeFakeDeps({
+    authUser: { id: "u-admin" },
+    tables: { org_memberships: { data: { role: "admin" } } },
+    rpcs: { is_feature_enabled: { data: false, error: null } },
+  });
+  const res = await handle(
+    makeRequest({ headers: JWT, body: { action: "draft-manual", org_id: ORG, manual: { fee: 500 } } }),
+    deps,
+  );
+  assertEquals(res.status, 403);
+});
+
 // ── issue ──────────────────────────────────────────────────────────────
 
 function issuableOrder(overrides: Record<string, unknown> = {}) {

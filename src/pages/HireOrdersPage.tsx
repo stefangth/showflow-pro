@@ -5,6 +5,7 @@ import { useHireOrders } from "@/hooks/useHireOrders";
 import { OrdersKpis, computeOrderKpis } from "@/components/hireOrders/OrdersKpis";
 import { OrdersTable } from "@/components/hireOrders/OrdersTable";
 import { OrderSlideOver } from "@/components/hireOrders/OrderSlideOver";
+import { NewOrderWizard } from "@/components/hireOrders/NewOrderWizard";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -73,7 +74,7 @@ export default function HireOrdersPage() {
         </div>
         <div className="flex items-center gap-2">
           {IMPORT_READY && <Button variant="outline">Import from spreadsheet</Button>}
-          <Button onClick={() => setWizardOpen(true)} disabled={wizardOpen}>
+          <Button onClick={() => setWizardOpen(true)}>
             New order
           </Button>
         </div>
@@ -122,7 +123,7 @@ export default function HireOrdersPage() {
         orgId={orgId ?? ""}
       />
 
-      {/* NewOrderWizard mounted in Task 2 */}
+      <NewOrderWizard open={wizardOpen} onOpenChange={setWizardOpen} orgId={orgId} />
     </div>
   );
 }

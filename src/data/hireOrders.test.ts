@@ -8,6 +8,8 @@ import {
   fetchAwaitingCountersignCount,
   invokeHireOrderAction,
   updateHireOrderStatus,
+  fetchArtistsLite,
+  fetchShowDatesLite,
 } from "./hireOrders";
 
 describe("fetchHireOrdersForDate", () => {
@@ -191,6 +193,86 @@ describe("fetchAwaitingCountersignCount", () => {
   it("throws on a supabase error", async () => {
     const fake = createFakeSupabase({ hire_orders: { data: null, error: { message: "boom" } } });
     await expect(fetchAwaitingCountersignCount(fake as never, "org-1")).rejects.toBeTruthy();
+  });
+});
+
+describe("fetchArtistsLite", () => {
+  it("returns [] without querying when orgId is null", async () => {
+    const fake = createFakeSupabase({});
+    expect(await fetchArtistsLite(fake as never, null)).toEqual([]);
+    expect(fake.calls).toEqual([]);
+  });
+
+  it("selects id/name/email, filters by org_id, orders by name", async () => {
+    const fake = createFakeSupabase({
+      artists: { data: [{ id: "a1", name: "Ann", email: "ann@x.de" }], error: null },
+    });
+    const res = await fetchArtistsLite(fake as never, "org-1");
+    expect(res).toEqual([{ id: "a1", name: "Ann", email: "ann@x.de" }]);
+    expect(fake.calls).toContainEqual({ table: "artists", method: "select", args: ["id, name, email"] });
+    expect(fake.calls).toContainEqual({ table: "artists", method: "eq", args: ["org_id", "org-1"] });
+    expect(fake.calls).toContainEqual({ table: "artists", method: "order", args: ["name"] });
+  });
+
+  it("throws on a supabase error", async () => {
+    const fake = createFakeSupabase({ artists: { data: null, error: { message: "boom" } } });
+    await expect(fetchArtistsLite(fake as never, "org-1")).rejects.toBeTruthy();
+  });
+
+  it("returns [] when there are no rows", async () => {
+    const fake = createFakeSupabase({ artists: { data: null, error: null } });
+    expect(await fetchArtistsLite(fake as never, "org-1")).toEqual([]);
+  });
+});
+
+describe("fetchShowDatesLite", () => {
+  it("returns [] without querying when orgId is null", async () => {
+    const fake = createFakeSupabase({});
+    expect(await fetchShowDatesLite(fake as never, null)).toEqual([]);
+    expect(fake.calls).toEqual([]);
+  });
+
+  it("selects date/venue/duration/sessions with the joined city name, filters by org_id, orders by date desc", async () => {
+    const fake = createFakeSupabase({
+      show_dates: {
+        data: [
+          {
+            id: "sd1", date: "2026-03-01", venue: "Main Hall", duration_minutes: 90,
+            session_1: "19:00", session_2: null, session_3: "22:00",
+            cities: { name: "Berlin" },
+          },
+        ],
+        error: null,
+      },
+    });
+    const res = await fetchShowDatesLite(fake as never, "org-1");
+    expect(res).toEqual([{
+      id: "sd1", date: "2026-03-01", venue: "Main Hall", city: "Berlin",
+      duration_minutes: 90, sessions: ["19:00", "22:00"],
+    }]);
+    expect(fake.calls).toContainEqual({ table: "show_dates", method: "eq", args: ["org_id", "org-1"] });
+    expect(fake.calls).toContainEqual({ table: "show_dates", method: "order", args: ["date", { ascending: false }] });
+  });
+
+  it("maps a null city and no sessions", async () => {
+    const fake = createFakeSupabase({
+      show_dates: {
+        data: [{ id: "sd2", date: "2026-04-01", venue: null, duration_minutes: null, session_1: null, session_2: null, session_3: null, cities: null }],
+        error: null,
+      },
+    });
+    const res = await fetchShowDatesLite(fake as never, "org-1");
+    expect(res).toEqual([{ id: "sd2", date: "2026-04-01", venue: null, city: null, duration_minutes: null, sessions: [] }]);
+  });
+
+  it("throws on a supabase error", async () => {
+    const fake = createFakeSupabase({ show_dates: { data: null, error: { message: "boom" } } });
+    await expect(fetchShowDatesLite(fake as never, "org-1")).rejects.toBeTruthy();
+  });
+
+  it("returns [] when there are no rows", async () => {
+    const fake = createFakeSupabase({ show_dates: { data: null, error: null } });
+    expect(await fetchShowDatesLite(fake as never, "org-1")).toEqual([]);
   });
 });
 

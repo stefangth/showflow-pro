@@ -143,6 +143,64 @@ export async function fetchAwaitingCountersignCount(
   return count ?? 0;
 }
 
+/** A minimal artist row for the V5 "new order" wizard's artist picker (and,
+ *  per Task 5, the spreadsheet import wizard's entity-resolution step). */
+export interface ArtistLite { id: string; name: string; email: string | null }
+
+/** Every org artist (any status — the wizard offers a free choice, per the
+ *  design spec), lightest possible shape, ordered by name. */
+export async function fetchArtistsLite(
+  client: SupabaseClient<Database>,
+  orgId: string | null,
+): Promise<ArtistLite[]> {
+  if (!orgId) return [];
+  const { data, error } = await client
+    .from("artists").select("id, name, email").eq("org_id", orgId).order("name");
+  if (error) throw error;
+  return (data ?? []) as ArtistLite[];
+}
+
+/** A minimal show_date row for the V5 wizard's date picker (and Task 5's import
+ *  wizard). `sessions` is the non-empty session_1..3 triplet, mirroring the
+ *  edge function's own assembly in draftOrders/draftManual. */
+export interface ShowDateLite {
+  id: string;
+  date: string;
+  venue: string | null;
+  city: string | null;
+  duration_minutes: number | null;
+  sessions: string[];
+}
+
+/** Every org show_date (any status — "any date" per the design spec), newest
+ *  first, with the city name joined. */
+export async function fetchShowDatesLite(
+  client: SupabaseClient<Database>,
+  orgId: string | null,
+): Promise<ShowDateLite[]> {
+  if (!orgId) return [];
+  const { data, error } = await client
+    .from("show_dates")
+    .select("id, date, venue, duration_minutes, session_1, session_2, session_3, cities(name)")
+    .eq("org_id", orgId)
+    .order("date", { ascending: false });
+  if (error) throw error;
+  return ((data ?? []) as unknown as Array<{
+    id: string; date: string; venue: string | null; duration_minutes: number | null;
+    session_1: string | null; session_2: string | null; session_3: string | null;
+    cities: { name: string } | null;
+  }>).map((row) => ({
+    id: row.id,
+    date: row.date,
+    venue: row.venue,
+    city: row.cities?.name ?? null,
+    duration_minutes: row.duration_minutes,
+    sessions: [row.session_1, row.session_2, row.session_3].filter(
+      (t): t is string => typeof t === "string" && t !== "",
+    ),
+  }));
+}
+
 /** Invoke the generate-hire-orders edge function (actions: draft/issue/preview/download-url). */
 export async function invokeHireOrderAction(
   client: SupabaseClient<Database>,

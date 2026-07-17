@@ -7,6 +7,8 @@ import {
   fetchHireOrder,
   fetchMyHireOrders,
   fetchHireOrders,
+  fetchArtistsLite,
+  fetchShowDatesLite,
   invokeHireOrderAction,
   updateHireOrderReview,
   updateHireOrderStatus,
@@ -62,6 +64,27 @@ export function useHireOrders(orgId: string | null | undefined, filters: HireOrd
     enabled: !!orgId,
     placeholderData: keepPreviousData,
     queryFn: () => fetchHireOrders(supabase, orgId!, filters),
+  });
+}
+
+/** Every org artist, lightest shape, for the V5 "new order" wizard's artist
+ *  picker (and Task 5's import entity-resolution step). Not date-scoped —
+ *  deliberately NOT useEligibleArtists, which restricts to one show date. */
+export function useArtistsLite(orgId: string | null | undefined) {
+  return useQuery({
+    queryKey: ["hire-orders", "artists-lite", orgId],
+    enabled: !!orgId,
+    queryFn: () => fetchArtistsLite(supabase, orgId!),
+  });
+}
+
+/** Every org show_date, lightest shape, newest first, for the V5 wizard's date
+ *  picker (and Task 5's import wizard). */
+export function useShowDatesLite(orgId: string | null | undefined) {
+  return useQuery({
+    queryKey: ["hire-orders", "showdates-lite", orgId],
+    enabled: !!orgId,
+    queryFn: () => fetchShowDatesLite(supabase, orgId!),
   });
 }
 

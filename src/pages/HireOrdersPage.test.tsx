@@ -12,6 +12,9 @@ import { createFakeSupabase, type TableSeed } from "@/test/supabaseFake";
 const { client } = vi.hoisted(() => ({ client: {} as Record<string, unknown> }));
 vi.mock("@/integrations/supabase/client", () => ({ supabase: client }));
 vi.mock("@/features/auth/AuthContext", () => ({ useAuth: vi.fn() }));
+// The page now always mounts NewOrderWizard (Task 2), which calls useNavigate
+// for its "Open order" success action.
+vi.mock("react-router-dom", () => ({ useNavigate: () => vi.fn() }));
 
 function seedClient(seed: Record<string, TableSeed>) {
   for (const key of Object.keys(client)) delete client[key];
@@ -269,5 +272,16 @@ describe("HireOrdersPage", () => {
     await screen.findByText("Hire orders");
     expect(screen.getByRole("button", { name: /new order/i })).toBeEnabled();
     expect(screen.queryByRole("button", { name: /import from spreadsheet/i })).not.toBeInTheDocument();
+  });
+
+  it("opens the guided wizard on New order and does not self-disable to a dead-end", async () => {
+    renderPage();
+    await screen.findByText("Hire orders");
+    const newOrderBtn = screen.getByRole("button", { name: /new order/i });
+    fireEvent.click(newOrderBtn);
+    expect(await screen.findByText("New hire order")).toBeInTheDocument();
+    // Task-1 Minor resolved: the button used to disable itself to `wizardOpen`,
+    // leaving no way to reopen the wizard after a first click.
+    expect(newOrderBtn).toBeEnabled();
   });
 });
