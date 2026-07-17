@@ -98,7 +98,7 @@ describe("HireOrdersTab", () => {
     expect(screen.getByText(/connect documenso in a later step\. manual marking stays available\./i)).toBeInTheDocument();
   });
 
-  it("lists three terms variant sub-editors (lean, standard, full) seeded with default clauses, and supports add/remove", async () => {
+  it("lists three terms variant sub-editors (lean, standard, full), all empty by default", async () => {
     authAs("org-on");
     renderWithProviders(<HireOrdersTab />);
     await screen.findByText("Terms");
@@ -107,18 +107,43 @@ describe("HireOrdersTab", () => {
     expect(screen.getByText("Standard")).toBeInTheDocument();
     expect(screen.getByText("Full")).toBeInTheDocument();
 
-    // Seeded from HIRE_ORDER_DEFAULT_TERMS: lean starts empty, standard has 4, full has 4.
-    const leanSection = screen.getByText("Lean").closest("div")!.parentElement as HTMLElement;
+    // ShowFlow seeds NO clause text (HIRE_ORDER_DEFAULT_TERMS is empty for every
+    // variant): terms are the org's own legal responsibility, authored here before
+    // issuing. So every variant starts with zero clause rows and an empty state.
+    for (const variant of ["Lean", "Standard", "Full"]) {
+      const section = screen.getByText(variant).closest("div")!.parentElement as HTMLElement;
+      expect(within(section).queryAllByLabelText(new RegExp(`${variant} clause \\d+ title`, "i"))).toHaveLength(0);
+      expect(within(section).getByText(/no clauses yet/i)).toBeInTheDocument();
+    }
+  });
+
+  it("adds and removes clause rows on a variant that starts empty", async () => {
+    authAs("org-on");
+    renderWithProviders(<HireOrdersTab />);
+    await screen.findByText("Terms");
     const standardSection = screen.getByText("Standard").closest("div")!.parentElement as HTMLElement;
-    expect(within(leanSection).queryAllByLabelText(/lean clause \d+ title/i)).toHaveLength(0);
-    expect(within(standardSection).getAllByLabelText(/standard clause \d+ title/i)).toHaveLength(4);
 
-    // Add a clause row to Lean.
-    fireEvent.click(within(leanSection).getByRole("button", { name: /add clause/i }));
-    expect(within(leanSection).getAllByLabelText(/lean clause \d+ title/i)).toHaveLength(1);
+    // Add two rows to the empty variant; the empty state gives way to the editors.
+    fireEvent.click(within(standardSection).getByRole("button", { name: /add clause/i }));
+    fireEvent.click(within(standardSection).getByRole("button", { name: /add clause/i }));
+    expect(within(standardSection).getAllByLabelText(/standard clause \d+ title/i)).toHaveLength(2);
+    expect(within(standardSection).queryByText(/no clauses yet/i)).not.toBeInTheDocument();
 
-    // Remove a clause row from Standard.
+    // A clause row edits both of its { title, body } halves.
+    fireEvent.change(within(standardSection).getByLabelText(/standard clause 1 title/i), {
+      target: { value: "Clause one" },
+    });
+    fireEvent.change(within(standardSection).getByLabelText(/standard clause 1 body/i), {
+      target: { value: "Body text." },
+    });
+    expect(within(standardSection).getByLabelText(/standard clause 1 title/i)).toHaveValue("Clause one");
+    expect(within(standardSection).getByLabelText(/standard clause 1 body/i)).toHaveValue("Body text.");
+
+    // Removing takes it back down, and emptying it restores the empty state.
     fireEvent.click(within(standardSection).getByRole("button", { name: /remove standard clause 1/i }));
-    expect(within(standardSection).getAllByLabelText(/standard clause \d+ title/i)).toHaveLength(3);
+    expect(within(standardSection).getAllByLabelText(/standard clause \d+ title/i)).toHaveLength(1);
+    fireEvent.click(within(standardSection).getByRole("button", { name: /remove standard clause 1/i }));
+    expect(within(standardSection).queryAllByLabelText(/standard clause \d+ title/i)).toHaveLength(0);
+    expect(within(standardSection).getByText(/no clauses yet/i)).toBeInTheDocument();
   });
 });
