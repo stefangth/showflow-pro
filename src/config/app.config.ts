@@ -9,14 +9,42 @@ import type { FeatureKey } from '@/lib/entitlements';
  * Routes owned by a gated (entitlement-controlled) module. Checked by
  * ProtectedRoute via requiredFeatureForPath: a route listed here renders
  * FeatureDisabledScreen instead of its page when the current org doesn't
- * have the feature enabled (see src/hooks/useEntitlements.ts). Filled in as
- * gated modules land — starts empty.
+ * have the feature enabled (see src/hooks/useEntitlements.ts).
+ *
+ * Keys may be dynamic route patterns with `:param` segments (e.g.
+ * `/hire-orders/:id`); requiredFeatureForPath matches those against the
+ * concrete pathname so the gate fires for dynamic routes too.
  */
-export const ROUTE_FEATURES: Record<string, FeatureKey> = {};
+export const ROUTE_FEATURES: Record<string, FeatureKey> = {
+  '/hire-orders/:id': 'hire_orders',
+};
 
-/** Pure lookup: which FeatureKey (if any) gates a given pathname. */
+/** Whether a route pattern (which may carry `:param` segments) matches a
+ *  concrete pathname. Pure and segment-based — `/hire-orders/:id` matches
+ *  `/hire-orders/abc-uuid` but not `/hire-orders` or `/hire-orders/a/b`. */
+function matchesRoutePattern(pattern: string, pathname: string): boolean {
+  const patternSegs = pattern.split('/');
+  const pathSegs = pathname.split('/');
+  if (patternSegs.length !== pathSegs.length) return false;
+  return patternSegs.every((seg, i) =>
+    seg.startsWith(':') ? pathSegs[i].length > 0 : seg === pathSegs[i],
+  );
+}
+
+/**
+ * Pure lookup: which FeatureKey (if any) gates a given pathname. Exact static
+ * matches win first (fast path); dynamic patterns (keys containing `:`) are
+ * then matched segment-by-segment so a real URL like `/hire-orders/<uuid>`
+ * still resolves to its feature. Without this the route-level entitlement gate
+ * would silently never fire for `:param` routes.
+ */
 export function requiredFeatureForPath(pathname: string): FeatureKey | undefined {
-  return ROUTE_FEATURES[pathname];
+  const exact = ROUTE_FEATURES[pathname];
+  if (exact) return exact;
+  for (const [pattern, feature] of Object.entries(ROUTE_FEATURES)) {
+    if (pattern.includes(':') && matchesRoutePattern(pattern, pathname)) return feature;
+  }
+  return undefined;
 }
 
 /**
@@ -135,6 +163,7 @@ export const ROUTES = {
   UNSUBSCRIBE: '/unsubscribe',
   ACCEPT_INVITE: '/accept-invite',
   PLATFORM: '/platform',
+  HIRE_ORDER_DETAIL: '/hire-orders/:id',
 } as const;
 
 /** Number of days after a show date that its chat is hidden from the UI */
