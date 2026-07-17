@@ -13,6 +13,7 @@ interface Props {
   onTimesChange: (patch: Partial<FlowTimes>) => void;
   customFields: { id: string; label: string }[];
   referencePreview: string;
+  disabled?: boolean;
 }
 
 function TimelineStep({
@@ -59,7 +60,15 @@ function TimelineStep({
   );
 }
 
-export function FlowTimeline({ flow, times, onFlowChange, onTimesChange, customFields, referencePreview }: Props) {
+export function FlowTimeline({
+  flow,
+  times,
+  onFlowChange,
+  onTimesChange,
+  customFields,
+  referencePreview,
+  disabled = false,
+}: Props) {
   const respOff = !flow.artist_acceptance;
   const skippedChip = <Badge variant="neutral">Skipped</Badge>;
 
@@ -96,7 +105,7 @@ export function FlowTimeline({ flow, times, onFlowChange, onTimesChange, customF
         <label className="flex items-center gap-2.5 text-sm">
           <Switch
             checked={flow.auto_open_tier1}
-            disabled={respOff}
+            disabled={disabled || respOff}
             aria-label="Auto-open tier 1"
             onCheckedChange={(v) => onFlowChange({ auto_open_tier1: v })}
           />
@@ -105,7 +114,7 @@ export function FlowTimeline({ flow, times, onFlowChange, onTimesChange, customF
         <label className="flex items-center gap-2.5 text-sm">
           <Switch
             checked={flow.auto_escalate}
-            disabled={respOff}
+            disabled={disabled || respOff}
             aria-label="Auto-escalate tiers"
             onCheckedChange={(v) => onFlowChange({ auto_escalate: v })}
           />
@@ -114,7 +123,7 @@ export function FlowTimeline({ flow, times, onFlowChange, onTimesChange, customF
         <label className="flex items-center gap-2.5 text-sm">
           <Switch
             checked={flow.at_risk_alerts}
-            disabled={respOff}
+            disabled={disabled || respOff}
             aria-label="At-risk alerts"
             onCheckedChange={(v) => onFlowChange({ at_risk_alerts: v })}
           />
@@ -136,7 +145,7 @@ export function FlowTimeline({ flow, times, onFlowChange, onTimesChange, customF
                 key={mode}
                 type="button"
                 aria-pressed={flow.offer_delivery === mode}
-                disabled={respOff}
+                disabled={disabled || respOff}
                 onClick={() => onFlowChange({ offer_delivery: mode })}
                 className={cn(
                   "rounded px-3 py-1.5 text-xs font-medium",
@@ -159,7 +168,7 @@ export function FlowTimeline({ flow, times, onFlowChange, onTimesChange, customF
               min={0}
               max={23}
               value={times.offerDigestHour}
-              disabled={respOff || flow.offer_delivery !== "digest"}
+              disabled={disabled || respOff || flow.offer_delivery !== "digest"}
               className="w-16 font-mono"
               onChange={(e) => onTimesChange({ offerDigestHour: Number(e.target.value) })}
             />
@@ -171,7 +180,7 @@ export function FlowTimeline({ flow, times, onFlowChange, onTimesChange, customF
               min={1}
               max={336}
               value={times.windowHours}
-              disabled={respOff}
+              disabled={disabled || respOff}
               className="w-16 font-mono"
               onChange={(e) => onTimesChange({ windowHours: Number(e.target.value) })}
             />
@@ -180,7 +189,7 @@ export function FlowTimeline({ flow, times, onFlowChange, onTimesChange, customF
         <label className="flex items-center gap-2.5 text-sm">
           <Switch
             checked={flow.expiry_reminder}
-            disabled={respOff}
+            disabled={disabled || respOff}
             aria-label="Expiry reminder"
             onCheckedChange={(v) => onFlowChange({ expiry_reminder: v })}
           />
@@ -190,7 +199,7 @@ export function FlowTimeline({ flow, times, onFlowChange, onTimesChange, customF
           <span className="text-xs text-muted-foreground">Reference field</span>
           <Select
             value={flow.reference_field.source}
-            disabled={respOff}
+            disabled={disabled || respOff}
             onValueChange={(source) =>
               onFlowChange({
                 reference_field:
@@ -214,7 +223,7 @@ export function FlowTimeline({ flow, times, onFlowChange, onTimesChange, customF
           {flow.reference_field.source === "custom" && (
             <Select
               value={flow.reference_field.custom_field_id}
-              disabled={respOff}
+              disabled={disabled || respOff}
               onValueChange={(id) => onFlowChange({ reference_field: { source: "custom", custom_field_id: id } })}
             >
               <SelectTrigger className="w-44">
@@ -244,6 +253,7 @@ export function FlowTimeline({ flow, times, onFlowChange, onTimesChange, customF
             <Badge variant={nextStageBadgeVariant}>{nextStageChip.label}</Badge>
             <Switch
               checked={flow.artist_acceptance}
+              disabled={disabled}
               aria-label="Artist acceptance"
               onCheckedChange={(v) => onFlowChange({ artist_acceptance: v })}
             />
@@ -268,7 +278,7 @@ export function FlowTimeline({ flow, times, onFlowChange, onTimesChange, customF
             {respOff && <Badge variant="neutral">Locked on</Badge>}
             <Switch
               checked={respOff || flow.producer_confirmation}
-              disabled={respOff}
+              disabled={disabled || respOff}
               aria-label="Producer confirmation"
               onCheckedChange={(v) => onFlowChange({ producer_confirmation: v })}
             />
@@ -301,13 +311,14 @@ export function FlowTimeline({ flow, times, onFlowChange, onTimesChange, customF
                 min={0}
                 max={23}
                 value={times.confirmationDigestHour}
-                disabled={!flow.confirmation_digest}
+                disabled={disabled || !flow.confirmation_digest}
                 className="w-16 font-mono"
                 onChange={(e) => onTimesChange({ confirmationDigestHour: Number(e.target.value) })}
               />
             </label>
             <Switch
               checked={flow.confirmation_digest}
+              disabled={disabled}
               aria-label="Confirmation digest"
               onCheckedChange={(v) => onFlowChange({ confirmation_digest: v })}
             />
@@ -323,6 +334,7 @@ export function FlowTimeline({ flow, times, onFlowChange, onTimesChange, customF
         chips={
           <Switch
             checked={flow.understudy_promotion}
+            disabled={disabled}
             aria-label="Understudy promotion"
             onCheckedChange={(v) => onFlowChange({ understudy_promotion: v })}
           />

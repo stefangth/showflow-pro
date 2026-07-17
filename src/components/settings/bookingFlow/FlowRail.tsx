@@ -43,8 +43,11 @@ export function FlowRail(props: {
   audit: SettingsAuditEntry[];
   isLoading?: boolean;
   isError?: boolean;
+  /** When true, hides the Save/Discard actions (the module isn't entitled, so there's
+   *  nothing to save) but keeps every other card, including change history, visible. */
+  locked?: boolean;
 }) {
-  const { flow, times, dirtyCount, saving, onSave, onDiscard, audit, isLoading, isError } = props;
+  const { flow, times, dirtyCount, saving, onSave, onDiscard, audit, isLoading, isError, locked = false } = props;
   return (
     <div className="flex flex-col gap-3 lg:sticky lg:top-4">
       {dirtyCount > 0 && (
@@ -86,16 +89,18 @@ export function FlowRail(props: {
           ))}
         </div>
       </RailCard>
-      <div className="flex gap-2">
-        <Button className="flex-1" disabled={dirtyCount === 0 || saving} onClick={onSave}>
-          {dirtyCount > 0 ? `Save (${dirtyCount})` : "Saved"}
-        </Button>
-        {dirtyCount > 0 && (
-          <Button variant="ghost" onClick={onDiscard}>
-            Discard
+      {!locked && (
+        <div className="flex gap-2">
+          <Button className="flex-1" disabled={dirtyCount === 0 || saving} onClick={onSave}>
+            {dirtyCount > 0 ? `Save (${dirtyCount})` : "Saved"}
           </Button>
-        )}
-      </div>
+          {dirtyCount > 0 && (
+            <Button variant="ghost" onClick={onDiscard}>
+              Discard
+            </Button>
+          )}
+        </div>
+      )}
       <RailCard label="Change history">
         <div className="mt-1">
           {isLoading ? (

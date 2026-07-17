@@ -10,9 +10,10 @@ const PRESET_META: Record<PresetName, { name: string; desc: string; dotClass: st
 interface Props {
   active: PresetName | "custom";
   onSelect: (p: PresetName) => void;
+  disabled?: boolean;
 }
 
-export function FlowPresets({ active, onSelect }: Props) {
+export function FlowPresets({ active, onSelect, disabled }: Props) {
   const presets = Object.keys(BOOKING_FLOW_PRESETS) as PresetName[];
   return (
     <div className="grid grid-cols-2 gap-2.5 md:grid-cols-4" role="group" aria-label="Flow presets">
@@ -21,9 +22,10 @@ export function FlowPresets({ active, onSelect }: Props) {
           key={p}
           type="button"
           aria-pressed={active === p}
+          disabled={disabled}
           onClick={() => onSelect(p)}
           className={cn(
-            "rounded-lg border border-border bg-card p-3 text-left transition-colors",
+            "rounded-lg border border-border bg-card p-3 text-left transition-colors disabled:cursor-not-allowed disabled:opacity-50",
             active === p ? "border-primary ring-1 ring-primary bg-accent" : "hover:border-input",
           )}
         >
