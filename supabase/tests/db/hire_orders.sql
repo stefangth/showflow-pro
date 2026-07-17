@@ -56,7 +56,7 @@
 -- restrictive on top of both, same shape as org_entitlements.sql.
 BEGIN;
 CREATE EXTENSION IF NOT EXISTS pgtap WITH SCHEMA extensions;
-SELECT plan(45);
+SELECT plan(46);
 
 CREATE OR REPLACE FUNCTION pg_temp.act_as(_uid text) RETURNS void LANGUAGE plpgsql AS $$
 BEGIN
@@ -404,20 +404,20 @@ SELECT is(
   0, 'a member of a different org cannot select that object');
 RESET ROLE;
 
--- Cast-hazard regression (guarded form): the policy's USING clause is now a
--- CASE (hire_orders_storage_guarded_cast.sql) --
---   case when bucket_id = 'hire-orders'
---     then is_org_member(auth.uid(), ((storage.foldername(name))[1])::uuid)
---     else false end
--- -- so for any bucket OTHER than 'hire-orders' the qual short-circuits to
--- false and the `((storage.foldername(name))[1])::uuid` cast is never evaluated,
--- structurally, regardless of query plan. This seeds exactly the shape that
--- would trip a naive AND policy -- another bucket's object whose first path
--- segment isn't a uuid ('not-a-uuid/x.png') -- and asserts the SELECT still
--- lives. enable_indexscan/enable_bitmapscan are forced off so the decoy row's
--- qual is genuinely evaluated on a sequential scan (no index can pre-eliminate
--- it), making this a plan-independent proof of the structural guard rather than
--- a test that merely happens to hit a bucket_id-scoped index.
+-- Cast-hazard behavior check (assertion 45): with a decoy object in ANOTHER
+-- bucket whose first path segment isn't a uuid ('not-a-uuid/x.png'), a client
+-- SELECT across storage.objects must not raise 22P02. enable_indexscan/
+-- enable_bitmapscan are forced off so the decoy row's qual is genuinely
+-- evaluated on a sequential scan (no bucket_id index can pre-eliminate it) --
+-- i.e. this proves the cast never blows up in a client's face regardless of
+-- scan choice.
+-- NOTE: this assertion is deliberately NOT the proof of the *structural* guard.
+-- It cannot distinguish the CASE form from the old un-guarded AND form: under
+-- either, the ::uuid cast is never reached for the decoy row (the CASE short-
+-- circuits on the else branch; the AND is cost-reordered by the planner's
+-- order_qual_clauses so the cheap bucket_id equality runs first), so both forms
+-- pass this identically -- verified live against the AND form in task-6-report.md.
+-- What actually pins the structural contract is assertion 46 below.
 INSERT INTO storage.buckets (id, name, public) VALUES
   ('hazard-decoy-bucket', 'hazard-decoy-bucket', false);
 INSERT INTO storage.objects (bucket_id, name, owner) VALUES
@@ -430,11 +430,27 @@ SET LOCAL enable_bitmapscan = off;
 SET LOCAL enable_seqscan = on;
 SELECT lives_ok(
   $$SELECT count(*) FROM storage.objects$$,
-  'selecting storage.objects does not raise 22P02 when another bucket has a non-uuid first path segment (guarded CASE, forced seqscan)');
+  'selecting storage.objects does not raise 22P02 when another bucket has a non-uuid first path segment (forced seqscan)');
 RESET ROLE;
 RESET enable_indexscan;
 RESET enable_bitmapscan;
 RESET enable_seqscan;
+
+-- Structural guard (assertion 46): pin the policy's USING clause to the CASE
+-- form so a revert to the un-guarded AND -- or a copy of the AND shape into a
+-- new bucket's policy -- fails CI. This is the ONE assertion that discriminates
+-- the guarded form from the AND form (assertion 45 cannot; see its note above).
+-- An implementation-shape assertion is normally a smell, but here the structural
+-- form IS the contract: `else false` is what makes the ::uuid cast unreachable
+-- for every other bucket independent of the query planner. Verified live
+-- (task-6-report.md): the `~ 'CASE'` check returns true for the current CASE
+-- policy and false for the old AND expression.
+SELECT is(
+  (SELECT pg_get_expr(p.polqual, p.polrelid) ~ 'CASE'
+   FROM pg_policy p JOIN pg_class c ON c.oid = p.polrelid
+   WHERE c.relname = 'objects' AND p.polname = 'Org members read own hire order pdfs'),
+  true,
+  'hire-orders storage policy uses a CASE guard so the uuid cast is unreachable for other buckets');
 
 SELECT * FROM finish();
 ROLLBACK;
