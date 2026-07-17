@@ -183,4 +183,31 @@ describe("HireOrderDetailPage", () => {
     expect(await screen.findByRole("alert")).toBeInTheDocument();
     expect(screen.getByText(/could not load/i)).toBeInTheDocument();
   });
+
+  it("shows an inline error and a Download fallback instead of a perpetual skeleton when the signed-URL fetch fails", async () => {
+    authAs("producer");
+    seedClient({
+      hire_orders: { data: order(), error: null },
+      "fn:generate-hire-orders": { data: null, error: new Error("edge function returned a non-2xx status code") },
+    });
+    renderPage();
+    expect(await screen.findByText(/couldn't load the document/i)).toBeInTheDocument();
+    // The header Download button is the fallback action; it must stay enabled.
+    const downloadBtn = screen.getByRole("button", { name: /download/i });
+    expect(downloadBtn).toBeEnabled();
+    expect(screen.queryByTitle(/hire order document/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/^not issued yet$/i)).not.toBeInTheDocument();
+  });
+
+  it("shows the same inline error when a super-admin has no current org (org_id resolves to empty)", async () => {
+    vi.mocked(useAuth).mockReturnValue({
+      currentOrg: null,
+      hasRole: (r: string) => r === "admin",
+      roles: ["admin"],
+    } as never);
+    seedFor(order());
+    renderPage();
+    expect(await screen.findByText(/couldn't load the document/i)).toBeInTheDocument();
+    expect(screen.queryByTitle(/hire order document/i)).not.toBeInTheDocument();
+  });
 });

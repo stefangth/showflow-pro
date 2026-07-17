@@ -1,7 +1,6 @@
 import { useState } from "react";
 import { Sparkles, FileText } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
@@ -9,6 +8,7 @@ import { useAuth } from "@/features/auth/AuthContext";
 import { useFeature } from "@/hooks/useEntitlements";
 import { useHireOrdersForDate, useHireOrderAction, useMyHireOrders } from "@/hooks/useHireOrders";
 import type { HireOrderRow } from "@/data/hireOrders";
+import { HireOrderStatusBadge } from "@/components/hireOrders/HireOrderStatusBadge";
 import { GenerateHireOrderDialog } from "./GenerateHireOrderDialog";
 import type { HireOrderBooking, HireOrderShowDate } from "./types";
 
@@ -30,24 +30,6 @@ export function HireOrdersCard(props: Props) {
   if (!enabled) return null;
   if (!props.canManage) return <ArtistHireOrders {...props} />;
   return <ProducerHireOrders {...props} />;
-}
-
-/** Tone + copy for each order status (kept beside the rows that use it). */
-function StatusBadge({ status }: { status: string }) {
-  switch (status) {
-    case "draft":
-      return <Badge variant="secondary">Draft</Badge>;
-    case "ready":
-      return <Badge variant="accent">Ready</Badge>;
-    case "issued":
-      return <Badge variant="hold">Awaiting countersign</Badge>;
-    case "countersigned":
-      return <Badge variant="confirmed">Countersigned</Badge>;
-    case "void":
-      return <Badge variant="neutral">Void</Badge>;
-    default:
-      return <Badge variant="neutral">{status}</Badge>;
-  }
 }
 
 /**
@@ -85,7 +67,7 @@ function ArtistHireOrders({ showDateId }: Props) {
         <div className="flex items-center justify-between gap-3 rounded-lg border border-border p-3">
           <p className="text-sm font-mono text-muted-foreground">{order.order_no}</p>
           <div className="flex items-center gap-2 shrink-0">
-            <StatusBadge status={order.status} />
+            <HireOrderStatusBadge status={order.status} />
             <Button size="sm" variant="outline" onClick={handleDownload} disabled={action.isPending}>
               Download
             </Button>
@@ -178,7 +160,7 @@ function ProducerHireOrders({ showDateId, showDate, bookings, canManage }: Props
                       <p className="text-xs font-mono text-muted-foreground">{o.order_no}</p>
                     </div>
                     <div className="flex items-center gap-2 shrink-0">
-                      <StatusBadge status={o.status} />
+                      <HireOrderStatusBadge status={o.status} />
                       {(o.status === "draft" || o.status === "ready") && (
                         <Button size="sm" variant="outline" onClick={() => setDialogOrder(o)}>
                           Review and issue

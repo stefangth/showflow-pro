@@ -227,6 +227,67 @@ Deno.test("attachments: a single attachment at exactly 5MB (boundary) is allowed
   assertEquals(fetchCalls.length, 1);
 });
 
+// ===========================================================================
+// Rejection: malformed attachment (missing/non-string content_base64 or filename)
+// ===========================================================================
+
+Deno.test("attachments: a malformed attachment (missing content_base64) → 400 attachment_invalid, no Resend call", async () => {
+  const { fetchImpl, fetchCalls } = recordingFetch();
+  const { deps } = makeFakeDeps({ envVars: ENV, tables: happyPathTables(), fetchImpl });
+  const res = await handle(
+    authedReq({
+      body: {
+        templateName: KNOWN_TEMPLATE,
+        recipientEmail: "malformed@test.com",
+        attachments: [{ filename: "order.pdf" }],
+      },
+    }),
+    deps,
+  );
+  assertEquals(res.status, 400, `Expected 400; got ${res.status}`);
+  const body = await res.json();
+  assertEquals(body.error, "attachment_invalid");
+  assertEquals(fetchCalls.length, 0, "Resend must NOT be called when an attachment is malformed");
+});
+
+Deno.test("attachments: an attachment with a non-string content_base64 → 400 attachment_invalid, no Resend call", async () => {
+  const { fetchImpl, fetchCalls } = recordingFetch();
+  const { deps } = makeFakeDeps({ envVars: ENV, tables: happyPathTables(), fetchImpl });
+  const res = await handle(
+    authedReq({
+      body: {
+        templateName: KNOWN_TEMPLATE,
+        recipientEmail: "wrongtype@test.com",
+        attachments: [{ filename: "order.pdf", content_base64: 12345 }],
+      },
+    }),
+    deps,
+  );
+  assertEquals(res.status, 400, `Expected 400; got ${res.status}`);
+  const body = await res.json();
+  assertEquals(body.error, "attachment_invalid");
+  assertEquals(fetchCalls.length, 0);
+});
+
+Deno.test("attachments: an attachment with an empty filename → 400 attachment_invalid, no Resend call", async () => {
+  const { fetchImpl, fetchCalls } = recordingFetch();
+  const { deps } = makeFakeDeps({ envVars: ENV, tables: happyPathTables(), fetchImpl });
+  const res = await handle(
+    authedReq({
+      body: {
+        templateName: KNOWN_TEMPLATE,
+        recipientEmail: "emptyname@test.com",
+        attachments: [{ filename: "", content_base64: "aGVsbG8=" }],
+      },
+    }),
+    deps,
+  );
+  assertEquals(res.status, 400, `Expected 400; got ${res.status}`);
+  const body = await res.json();
+  assertEquals(body.error, "attachment_invalid");
+  assertEquals(fetchCalls.length, 0);
+});
+
 Deno.test("attachments: rejection happens before email_send_log is touched (no pending row written)", async () => {
   const { fetchImpl } = recordingFetch();
   const { deps, calls } = makeFakeDeps({ envVars: ENV, tables: happyPathTables(), fetchImpl });

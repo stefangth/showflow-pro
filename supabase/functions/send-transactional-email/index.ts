@@ -99,6 +99,12 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
       return json({ error: 'attachment_too_large' }, 400)
     }
     for (const att of attachments) {
+      if (
+        typeof att?.filename !== 'string' || att.filename.length === 0 ||
+        typeof att?.content_base64 !== 'string' || att.content_base64.length === 0
+      ) {
+        return json({ error: 'attachment_invalid' }, 400)
+      }
       if (base64ByteSize(att.content_base64) > MAX_ATTACHMENT_BYTES) {
         return json({ error: 'attachment_too_large' }, 400)
       }

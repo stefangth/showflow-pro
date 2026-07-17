@@ -517,10 +517,11 @@ SELECT is(
 -- racy against that concurrent traffic, so each checkpoint instead captures
 -- max(id) into a transaction-local GUC (set_config, same trick the file already
 -- uses for pg_temp.act_as) and every assertion below filters on both
--- `id > checkpoint` AND `url = the generate-hire-orders endpoint` -- no other
--- job in this system posts to that URL, so the filter is immune to unrelated
--- concurrent cron activity and to the background worker deleting older,
--- unrelated rows once it processes them.
+-- `id > checkpoint` AND `url = the generate-hire-orders endpoint` -- this is
+-- URL-scoped, not truly immune to concurrency: no other job in this system
+-- posts to that URL, so the filter happens to isolate this checkpoint from
+-- unrelated concurrent cron activity and from the background worker deleting
+-- older, unrelated rows once it processes them.
 --
 -- NOT unit-observable here: whether the enqueued request is ever actually
 -- delivered/executed (that is pg_net's background worker + the live

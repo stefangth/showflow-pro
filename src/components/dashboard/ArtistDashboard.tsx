@@ -10,6 +10,7 @@ import { CalendarDays, Download, FileText, MessageCircleQuestion, Theater } from
 import { useArtistEligibleDates } from '@/hooks/useArtistEligibleDates';
 import { useMyArtist } from '@/hooks/useMyArtist';
 import { useMyHireOrders, useHireOrderAction } from '@/hooks/useHireOrders';
+import { HireOrderStatusBadge } from '@/components/hireOrders/HireOrderStatusBadge';
 import { useFeature } from '@/hooks/useEntitlements';
 import { useAuth } from '@/features/auth/AuthContext';
 import { formatDateDMY } from '@/lib/dates';
@@ -29,20 +30,6 @@ function snap(data: OrderData, key: keyof OrderData): string {
   const v = data[key]?.value;
   if (v === null || v === undefined) return '';
   return String(v);
-}
-
-/** Status pill for the artist's own orders. useMyHireOrders only ever returns
- *  issued/countersigned rows, so those are the only tones that can appear;
- *  mirrors the Task 12/13 tones (never invents a new one). */
-function HireOrderStatusBadge({ status }: { status: string }) {
-  switch (status) {
-    case 'issued':
-      return <Badge variant="hold">Awaiting countersign</Badge>;
-    case 'countersigned':
-      return <Badge variant="confirmed">Countersigned</Badge>;
-    default:
-      return <Badge variant="neutral">{status}</Badge>;
-  }
 }
 
 /**
