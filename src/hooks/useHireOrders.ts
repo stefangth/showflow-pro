@@ -52,6 +52,27 @@ export function useMyHireOrders() {
 interface DraftResult { created?: string[]; skipped?: { booking_id: string; reason: string }[] }
 interface IssueResult { issued?: string[]; failed?: { order_id: string; issues: string[] }[] }
 
+/** Friendly copy for the issue-validation failure codes generate-hire-orders
+ *  can return (see orderReadyIssues / issueOrders in the edge function) — orgs
+ *  ship with empty terms, so `missing_terms` is the common first failure and a
+ *  raw code is not actionable on its own. Deliberately small: codes with no
+ *  entry here fall back to the raw code rather than growing this list to cover
+ *  every internal failure mode. */
+const ISSUE_FAILURE_COPY: Record<string, string> = {
+  missing_terms: "Add terms in Settings before issuing",
+  missing_fee: "Set an engagement fee before issuing",
+  missing_recipient_email: "Add a recipient email before issuing",
+  missing_date: "Set a show date before issuing",
+  missing_letterhead: "Add a letterhead in Settings before issuing",
+  already_issued: "Already issued",
+};
+
+/** Unique, human-readable reasons across every failed order's issue codes. */
+function describeIssueFailures(failed: { order_id: string; issues: string[] }[]): string {
+  const codes = Array.from(new Set(failed.flatMap((f) => f.issues)));
+  return codes.map((code) => ISSUE_FAILURE_COPY[code] ?? code).join(", ");
+}
+
 /** Invoke generate-hire-orders (draft/issue/preview/download-url). Invalidates the
  *  whole hire-orders domain and toasts a summary for draft/issue; preview and
  *  download-url return data the caller opens directly and stay silent. */
@@ -68,6 +89,9 @@ export function useHireOrderAction() {
           toast.success(`Drafted ${created.length} hire order${created.length === 1 ? "" : "s"}`);
         } else if (skipped.length > 0) {
           toast.error("No hire orders drafted");
+        } else {
+          // Zero eligible bookings for this date — not a failure, just nothing to do.
+          toast.info("No bookings need hire orders");
         }
       } else if (action === "issue") {
         const { issued = [], failed = [] } = (data ?? {}) as IssueResult;
@@ -75,7 +99,9 @@ export function useHireOrderAction() {
           toast.success(`Issued ${issued.length} hire order${issued.length === 1 ? "" : "s"}`);
         }
         if (failed.length > 0) {
-          toast.error(`${failed.length} hire order${failed.length === 1 ? "" : "s"} failed to issue`);
+          toast.error(
+            `${failed.length} hire order${failed.length === 1 ? "" : "s"} failed to issue: ${describeIssueFailures(failed)}`,
+          );
         }
       }
       // preview / download-url: no toast — the caller opens the returned PDF/URL directly.

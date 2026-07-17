@@ -3,7 +3,7 @@ import { renderHook, waitFor, act } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import React from "react";
 
-vi.mock("sonner", () => ({ toast: { success: vi.fn(), error: vi.fn() } }));
+vi.mock("sonner", () => ({ toast: { success: vi.fn(), error: vi.fn(), info: vi.fn() } }));
 vi.mock("@/hooks/useMyArtist", () => ({ useMyArtist: vi.fn() }));
 vi.mock("@/data/hireOrders", () => ({
   fetchHireOrdersForDate: vi.fn(),
@@ -125,9 +125,24 @@ describe("useHireOrderAction", () => {
 
     expect(toast.error).toHaveBeenCalledWith("No hire orders drafted");
     expect(toast.success).not.toHaveBeenCalled();
+    expect(toast.info).not.toHaveBeenCalled();
   });
 
-  it("toasts issued and failed counts separately for issue", async () => {
+  it("toasts an info message when draft has nothing to do (zero created, zero skipped)", async () => {
+    vi.mocked(invokeHireOrderAction).mockResolvedValue({ created: [], skipped: [] });
+    const { Wrapper } = wrapper();
+    const { result } = renderHook(() => useHireOrderAction(), { wrapper: Wrapper });
+
+    await act(async () => {
+      await result.current.mutateAsync({ action: "draft", org_id: "org-1", show_date_id: "d1" });
+    });
+
+    expect(toast.info).toHaveBeenCalledWith("No bookings need hire orders");
+    expect(toast.success).not.toHaveBeenCalled();
+    expect(toast.error).not.toHaveBeenCalled();
+  });
+
+  it("toasts issued and failed counts separately for issue, with friendly copy for missing_terms", async () => {
     vi.mocked(invokeHireOrderAction).mockResolvedValue({
       issued: ["ho-1"],
       failed: [{ order_id: "ho-2", issues: ["missing_terms"] }],
@@ -140,7 +155,30 @@ describe("useHireOrderAction", () => {
     });
 
     expect(toast.success).toHaveBeenCalledWith("Issued 1 hire order");
-    expect(toast.error).toHaveBeenCalledWith("1 hire order failed to issue");
+    expect(toast.error).toHaveBeenCalledWith(
+      "1 hire order failed to issue: Add terms in Settings before issuing",
+    );
+  });
+
+  it("maps multiple distinct failure codes to friendly copy, deduped and joined", async () => {
+    vi.mocked(invokeHireOrderAction).mockResolvedValue({
+      issued: [],
+      failed: [
+        { order_id: "ho-1", issues: ["missing_fee"] },
+        { order_id: "ho-2", issues: ["missing_fee", "missing_recipient_email"] },
+        { order_id: "ho-3", issues: ["some_unmapped_code"] },
+      ],
+    });
+    const { Wrapper } = wrapper();
+    const { result } = renderHook(() => useHireOrderAction(), { wrapper: Wrapper });
+
+    await act(async () => {
+      await result.current.mutateAsync({ action: "issue", org_id: "org-1", order_ids: ["ho-1", "ho-2", "ho-3"] });
+    });
+
+    expect(toast.error).toHaveBeenCalledWith(
+      "3 hire orders failed to issue: Set an engagement fee before issuing, Add a recipient email before issuing, some_unmapped_code",
+    );
   });
 
   it("stays silent (no toast) for preview", async () => {

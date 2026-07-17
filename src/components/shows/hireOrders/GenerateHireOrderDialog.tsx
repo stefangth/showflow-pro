@@ -75,8 +75,14 @@ export function GenerateHireOrderDialog({ open, onOpenChange, order, showDate, o
     [showDate.show?.program, showDate.show?.sub_program].filter(Boolean).join(" · ");
   const currency = order.fee_currency || "EUR";
 
+  // The loaded order's fee/variant, captured once as the comparison baseline
+  // for persist() below (the dialog is remounted per order via `key={order.id}`
+  // in HireOrdersCard, so `order` itself never changes under an open dialog).
+  const initialFeeAmount = order.fee_amount ?? null;
+  const initialVariant = order.terms_variant || "standard";
+
   const [fee, setFee] = useState<string>(order.fee_amount != null ? String(order.fee_amount) : "");
-  const [variant, setVariant] = useState<string>(order.terms_variant || "standard");
+  const [variant, setVariant] = useState<string>(initialVariant);
 
   const review = useUpdateHireOrderReview();
   const action = useHireOrderAction();
@@ -84,7 +90,13 @@ export function GenerateHireOrderDialog({ open, onOpenChange, order, showDate, o
 
   const feeAmount = fee.trim() === "" ? null : Number(fee);
 
+  // Preview/Issue call this on every click. Only write (and only re-tag
+  // data.fee.source to "manual") when the producer actually edited the fee or
+  // terms variant — otherwise an untouched sheet/showflow-sourced fee would be
+  // silently re-tagged as manual on every click.
   async function persist(): Promise<void> {
+    const changed = feeAmount !== initialFeeAmount || variant !== initialVariant;
+    if (!changed) return;
     await review.mutateAsync({ id: order.id, review: { feeAmount, termsVariant: variant }, currentData: order.data });
   }
 

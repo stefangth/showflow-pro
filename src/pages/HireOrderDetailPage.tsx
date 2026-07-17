@@ -2,7 +2,6 @@ import { useParams, useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { ArrowLeft, Download, FileText, CheckCircle2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
@@ -15,31 +14,13 @@ import { formatDateDMY } from "@/lib/dates";
 import type { OrderData } from "@/lib/hireOrders/types";
 import { OrderTimeline } from "@/components/hireOrders/OrderTimeline";
 import { OrderFactsRail } from "@/components/hireOrders/OrderFactsRail";
+import { HireOrderStatusBadge } from "@/components/hireOrders/HireOrderStatusBadge";
 
 /** Read a resolved snapshot field as a trimmed string ("" when absent). */
 function snap(data: OrderData, key: keyof OrderData): string {
   const v = data[key]?.value;
   if (v === null || v === undefined) return "";
   return String(v);
-}
-
-/** Status pill — mirrors the V1 card tones, with issued surfaced as
- *  "Awaiting countersign" per the design. */
-function StatusBadge({ status }: { status: string }) {
-  switch (status) {
-    case "draft":
-      return <Badge variant="secondary">Draft</Badge>;
-    case "ready":
-      return <Badge variant="accent">Ready</Badge>;
-    case "issued":
-      return <Badge variant="hold">Awaiting countersign</Badge>;
-    case "countersigned":
-      return <Badge variant="confirmed">Countersigned</Badge>;
-    case "void":
-      return <Badge variant="neutral">Void</Badge>;
-    default:
-      return <Badge variant="neutral">{status}</Badge>;
-  }
 }
 
 /**
@@ -81,6 +62,13 @@ export default function HireOrderDetailPage() {
       return (res as { url?: string } | null)?.url ?? null;
     },
   });
+
+  // The panel must not sit on the Skeleton forever: fold both known failure
+  // modes into one flag — a genuine query error (edge 500) AND the permanently
+  // -disabled case where a super-admin has no current org selected (org_id
+  // resolves to "", so the query never even attempts the fetch and would
+  // otherwise never leave isLoading===false / data===undefined).
+  const pdfUrlError = pdfUrl.isError || (hasPdf && !orgId);
 
   function handleDownload() {
     if (!order) return;
@@ -133,6 +121,7 @@ export default function HireOrderDetailPage() {
     countersignBusy={countersign.isPending}
     pdfUrl={pdfUrl.data ?? null}
     pdfUrlLoading={pdfUrl.isLoading}
+    pdfUrlError={pdfUrlError}
     hasPdf={hasPdf}
   />;
 }
@@ -147,6 +136,7 @@ interface DetailProps {
   countersignBusy: boolean;
   pdfUrl: string | null;
   pdfUrlLoading: boolean;
+  pdfUrlError: boolean;
   hasPdf: boolean;
 }
 
@@ -154,7 +144,7 @@ interface DetailProps {
  *  and this renders the header + document grid for a known-good order. */
 function HireOrderDetail({
   order, canManage, navigateBack, onDownload, downloadBusy,
-  onCountersign, countersignBusy, pdfUrl, pdfUrlLoading, hasPdf,
+  onCountersign, countersignBusy, pdfUrl, pdfUrlLoading, pdfUrlError, hasPdf,
 }: DetailProps) {
   const data = (order.data ?? {}) as OrderData;
   const artistName = order.artists?.name || snap(data, "artist_name") || "Unknown artist";
@@ -184,7 +174,7 @@ function HireOrderDetail({
           <div className="min-w-0">
             <div className="flex items-center gap-3">
               <h1 className="font-display text-xl text-foreground">Performance hire order</h1>
-              <StatusBadge status={order.status} />
+              <HireOrderStatusBadge status={order.status} />
             </div>
             <p className="mt-1 flex flex-wrap items-center gap-x-1.5 text-sm text-muted-foreground">
               {subtitleParts.map((part, i) => (
@@ -217,6 +207,14 @@ function HireOrderDetail({
               <p className="text-sm font-medium text-foreground">Not issued yet</p>
               <p className="max-w-xs text-sm text-muted-foreground">
                 This hire order has no document until it is issued to the artist.
+              </p>
+            </div>
+          ) : pdfUrlError ? (
+            <div className="flex min-h-[480px] flex-col items-center justify-center gap-2 text-center">
+              <FileText className="h-8 w-8 text-muted-foreground" />
+              <p className="text-sm font-medium text-foreground">Couldn't load the document</p>
+              <p className="max-w-xs text-sm text-muted-foreground">
+                The preview could not be loaded. Use the Download button above instead.
               </p>
             </div>
           ) : pdfUrlLoading || !pdfUrl ? (
@@ -296,7 +294,7 @@ function PrimaryAction({
   }
   if (canManage && status === "countersigned") {
     return (
-      <div className="flex items-center gap-2 rounded-lg border border-[var(--green-600)]/30 bg-[var(--green-100)] px-3 py-2 text-sm font-medium text-[var(--green-600)]">
+      <div className="flex items-center gap-2 rounded-lg border border-[var(--green-600-a30)] bg-[var(--green-100)] px-3 py-2 text-sm font-medium text-[var(--green-600)]">
         <CheckCircle2 className="h-4 w-4 shrink-0" />
         Countersigned by artist
       </div>

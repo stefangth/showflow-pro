@@ -117,6 +117,33 @@ describe("GenerateHireOrderDialog", () => {
     await waitFor(() => expect(onOpenChange).toHaveBeenCalledWith(false));
   });
 
+  it("skips persisting the review when nothing changed, but still issues", async () => {
+    seedClient({
+      hire_orders: { data: [], error: null },
+      "fn:generate-hire-orders": { data: { issued: ["ho-1"], failed: [] }, error: null },
+    });
+    const onOpenChange = vi.fn();
+    renderWithProviders(
+      <GenerateHireOrderDialog
+        open onOpenChange={onOpenChange} order={ORDER} showDate={SHOW_DATE} orgId="org-1" producerName="Aurora Productions"
+      />,
+    );
+
+    // No edits to fee or variant — click straight to Issue.
+    fireEvent.click(screen.getByRole("button", { name: "Issue and send" }));
+
+    await waitFor(() => {
+      const calls = (client.calls ?? []) as { table: string; method: string; args: unknown[] }[];
+      const update = calls.find((c) => c.table === "hire_orders" && c.method === "update");
+      expect(update).toBeUndefined();
+      const invoke = calls.find((c) => c.table === "fn:generate-hire-orders" && c.method === "invoke");
+      const body = invoke!.args[0] as { action: string; order_ids: string[] };
+      expect(body.action).toBe("issue");
+      expect(body.order_ids).toEqual(["ho-1"]);
+    });
+    await waitFor(() => expect(onOpenChange).toHaveBeenCalledWith(false));
+  });
+
   it("Preview PDF invokes the preview action and opens the returned PDF", async () => {
     seedClient({
       hire_orders: { data: [], error: null },
