@@ -939,6 +939,152 @@ export type Database = {
         }
         Relationships: []
       }
+      hire_order_imports: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          file_name: string | null
+          id: string
+          mapping: Json
+          org_id: string
+          row_count: number
+          source: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          file_name?: string | null
+          id?: string
+          mapping: Json
+          org_id: string
+          row_count: number
+          source: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          file_name?: string | null
+          id?: string
+          mapping?: Json
+          org_id?: string
+          row_count?: number
+          source?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "hire_order_imports_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      hire_orders: {
+        Row: {
+          artist_id: string | null
+          booking_id: string | null
+          countersign_mode: string | null
+          countersigned_at: string | null
+          created_at: string
+          created_by: string | null
+          data: Json
+          documenso_envelope_id: string | null
+          fee_amount: number | null
+          fee_currency: string
+          id: string
+          import_id: string | null
+          issued_at: string | null
+          order_no: string
+          org_id: string
+          pdf_path: string | null
+          show_date_id: string | null
+          status: Database["public"]["Enums"]["hire_order_status"]
+          terms_variant: string
+          updated_at: string
+        }
+        Insert: {
+          artist_id?: string | null
+          booking_id?: string | null
+          countersign_mode?: string | null
+          countersigned_at?: string | null
+          created_at?: string
+          created_by?: string | null
+          data: Json
+          documenso_envelope_id?: string | null
+          fee_amount?: number | null
+          fee_currency?: string
+          id?: string
+          import_id?: string | null
+          issued_at?: string | null
+          order_no: string
+          org_id: string
+          pdf_path?: string | null
+          show_date_id?: string | null
+          status?: Database["public"]["Enums"]["hire_order_status"]
+          terms_variant?: string
+          updated_at?: string
+        }
+        Update: {
+          artist_id?: string | null
+          booking_id?: string | null
+          countersign_mode?: string | null
+          countersigned_at?: string | null
+          created_at?: string
+          created_by?: string | null
+          data?: Json
+          documenso_envelope_id?: string | null
+          fee_amount?: number | null
+          fee_currency?: string
+          id?: string
+          import_id?: string | null
+          issued_at?: string | null
+          order_no?: string
+          org_id?: string
+          pdf_path?: string | null
+          show_date_id?: string | null
+          status?: Database["public"]["Enums"]["hire_order_status"]
+          terms_variant?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "hire_orders_artist_id_fkey"
+            columns: ["artist_id"]
+            isOneToOne: false
+            referencedRelation: "artists"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "hire_orders_booking_id_fkey"
+            columns: ["booking_id"]
+            isOneToOne: false
+            referencedRelation: "bookings"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "hire_orders_import_id_fkey"
+            columns: ["import_id"]
+            isOneToOne: false
+            referencedRelation: "hire_order_imports"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "hire_orders_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "hire_orders_show_date_id_fkey"
+            columns: ["show_date_id"]
+            isOneToOne: false
+            referencedRelation: "show_dates"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       notification_preferences: {
         Row: {
           prefs: Json
@@ -1956,6 +2102,7 @@ export type Database = {
       artist_status: "active" | "inactive" | "on_leave"
       availability_status: "available" | "unavailable" | "tentative"
       booking_status: "suggested" | "soft_booked" | "confirmed" | "cancelled"
+      hire_order_status: "draft" | "ready" | "issued" | "countersigned" | "void"
       show_date_status:
         | "open"
         | "partially_filled"
@@ -2093,6 +2240,7 @@ export const Constants = {
       artist_status: ["active", "inactive", "on_leave"],
       availability_status: ["available", "unavailable", "tentative"],
       booking_status: ["suggested", "soft_booked", "confirmed", "cancelled"],
+      hire_order_status: ["draft", "ready", "issued", "countersigned", "void"],
       show_date_status: [
         "open",
         "partially_filled",
