@@ -97,10 +97,16 @@ src/
                    #   EdgeFunctionsPanel, ScheduledJobsPanel, primitives)
     catalog/       # Production catalog CRUD: ShowFormDialog (create/edit shows) + ProductionsPage support
     shows/         # ShowDateDetailSheet — the full per-date booking management surface;
-                   #   ShowDateFormDialog — create/edit show_dates (in-app)
+                   #   ShowDateFormDialog — create/edit show_dates (in-app);
+                   #   hireOrders/ (HireOrdersCard + GenerateHireOrderDialog: the per-date
+                   #   hire-order surface embedded in ShowDateDetailSheet, feature-gated)
+    hireOrders/    # Shared hire-order document primitives (OrderFactsRail, OrderTimeline)
+                   #   used by the HireOrderDetailPage viewer
     settings/      # AirtableSyncTab (schema-driven mapping + catalog linking), OrganizationTab,
                    #   CastsCitiesTab, ProductionOwnershipTab, DocumentationTab (+ MarkdownDoc,
-                   #   SystemMapCanvas, SystemMapReference — Settings → Documentation → System Map)
+                   #   SystemMapCanvas, SystemMapReference — Settings → Documentation → System Map),
+                   #   hireOrders/HireOrdersTab (Letterhead, Numbering, OrderDefaults,
+                   #   TermsVariants, Countersign cards; Settings > Hire orders, admin-only)
     layout/        # AppLayout (sidebar + topbar shell), NotificationsList (notification bell popover)
     ui/            # shadcn primitives — DO NOT edit by hand, regenerate via shadcn
   config/
@@ -109,8 +115,9 @@ src/
                    #   that take the Supabase client as a parameter. Hooks are thin wrappers.
                    #   Domains: account, admin, artistImport, artists, airtableKey, airtableMapping,
                    #   airtableSchema, airtableSettings, airtableSync, bookings, cities, customFields,
-                   #   entitlements, invitations, members, notificationPreferences, notifications, orgs,
-                   #   platform, profiles, remoteSheet, settings, shows, showDates, skills, systemMap.
+                   #   entitlements, hireOrders, invitations, members, notificationPreferences,
+                   #   notifications, orgs, platform, profiles, remoteSheet, settings, shows, showDates,
+                   #   skills, systemMap.
                    #   Test with supabaseFake.ts (never vi.mock the client).
   features/
     auth/          # AuthContext (org-aware: currentOrg/orgs/switchOrg, isSuperAdmin),
@@ -153,6 +160,8 @@ src/
                    #   ProfilePage (ROUTES.PROFILE) — user profile + in-app password change
                    #   ResetPasswordPage (ROUTES.RESET_PASSWORD) — request + set (public, no auth)
                    #   PlatformPage (ROUTES.PLATFORM) — super-admin console; uses PlatformRoute
+                   #   HireOrderDetailPage (ROUTES.HIRE_ORDER_DETAIL, /hire-orders/:id): the
+                   #     single hire-order viewer (admin/producer/artist; feature-gated route)
                    #   Public pages (no auth): UnsubscribePage, PrivacyPage, ImpressumPage,
                    #   AcceptInvitePage, ResetPasswordPage
                    #   /signup redirects to /login (no standalone signup page).
@@ -225,6 +234,7 @@ When adding a new page:
   - **Platform (super-admin):** `provision-org` (atomic org creation + catalog seeding + first-admin invite, requires super-admin); `resend-invitation` (resend an existing `org_invitations` row's email); `platform-edge-metrics` (System Health metrics proxy to the Supabase Analytics API via the dedicated `ANALYTICS` PAT).
   - **Account & data (GDPR):** `delete-my-account` (authenticated; last-admin-guarded via `sole_admin_orgs`; calls `anonymize_user` **via the caller's JWT client** then `auth.admin.deleteUser`) and `export-org-data` (super-admin; full org JSON bundle). Per-user export is the `export_my_data` RPC; org deletion is the `delete_org` RPC (super-admin); account anonymization is the `anonymize_user` RPC.
   - **Import:** `fetch-remote-sheet` — SSRF-guarded proxy that fetches a public Google Sheets CSV for the bulk artist import (`requireOrgRole(org_id, ['producer','admin'])`; host-allowlisted to `docs.google.com` published-CSV URLs, no redirect following, size/timeout caps). The bulk insert itself is the `bulk_import_artists(p_org, p_rows)` RPC — a producer/admin-guarded `SECURITY DEFINER` set-based insert with server-side dedup on `lower(email)`, returning a per-row jsonb status array. Client parse/map/dedup lives in the pure `src/lib/artistImport/*` modules behind the `ArtistImportDialog` wizard.
+  - **Hire orders:** `generate-hire-orders` is the hire-order engine: one endpoint, four per-request actions. `draft` creates draft orders from a date's confirmed bookings (snapshotting fields via `resolveFields`); `issue` readiness-gates, renders the PDF, uploads it to the `hire-orders` bucket, stamps `issued`, emails the artist the PDF attachment and notifies them; `preview` returns a watermarked PDF and persists nothing; `download-url` returns a signed URL for producers, super-admins, or the linked artist on issued/countersigned orders. It runs `verify_jwt = false` in `config.toml` because the auto-draft DB trigger calls it with `X-Cron-Secret`, so it self-authorizes via `requireCronOrRole(['admin','producer'])` for cron callers or `requireOrgRole(org_id, ['admin','producer'])` for JWT callers, then `requireFeature(org, 'hire_orders')`. `download-url` runs its own per-order auth ahead of that gate. When a show_date transitions into `fully_filled`, the feature-gated `dispatch_hire_order_drafts` DB trigger fires the `draft` action so orders are auto-drafted; issuing stays a human action in the UI. Frontend data access is `src/data/hireOrders.ts` with thin hooks in `src/hooks/useHireOrders.ts`. Ships DARK (the `hire_orders` entitlement defaults off).
 - Use the service role key only when bypassing RLS is intentional (admin endpoints). Always re-verify the caller's role server-side first via `requireRole` (any-org), `requireOrgRole(org_id, [...])` (org-scoped), or `requireSuperAdmin` (platform-admin endpoints) from `_shared/auth.ts` — see `create-invitation` / `provision-org` for patterns. `requireOrgRole` automatically accepts super-admins so god-mode works on org-scoped endpoints.
 - Read secrets via `Deno.env.get('SECRET_NAME')`.
 
