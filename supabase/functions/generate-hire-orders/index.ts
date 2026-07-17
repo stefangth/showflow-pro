@@ -7,7 +7,7 @@
 // DI: exports handle(req, deps); Deno.serve wiring at the bottom. Tests inject
 // makeFakeDeps (deps.renderHireOrderPdf is stubbed). See index.di.test.ts.
 import { preflight, json } from "../_shared/http.ts";
-import { requireCronOrRole } from "../_shared/auth.ts";
+import { requireCronOrRole, requireOrgRole } from "../_shared/auth.ts";
 import { requireFeature } from "../_shared/entitlements.ts";
 import { resolveOrgSetting } from "../_shared/settings.ts";
 import { realDeps, type Deps } from "../_shared/deps.ts";
@@ -54,7 +54,17 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
   // behind the admin/producer gate — it runs its own auth (see downloadUrl).
   if (body.action === "download-url") return downloadUrl(deps, req, body);
 
-  const gate = await requireCronOrRole(deps, req, ["admin", "producer"]);
+  // Org-scoped gate for draft/issue/preview. A cron-secret caller (the trigger /
+  // Task-9 cron) is org-agnostic and validated by the shared secret. A JWT caller
+  // must hold admin/producer WITHIN the TARGET org (body.org_id) — NOT merely in
+  // some org: requireCronOrRole's JWT fallback (requireRole) checks the role in ANY
+  // org, which combined with the RLS-bypassing admin client would let an admin of
+  // org A act on org B (cross-tenant). requireOrgRole closes that (and accepts
+  // super-admins). Mirrors open-offer-tier's coarse-then-org-scoped pattern.
+  const isCron = !!req.headers.get("X-Cron-Secret");
+  const gate = isCron
+    ? await requireCronOrRole(deps, req, ["admin", "producer"])
+    : await requireOrgRole(deps, req, body.org_id, ["admin", "producer"]);
   if (!gate.ok) return gate.response;
 
   const denied = await requireFeature(deps, body.org_id, "hire_orders");
@@ -139,58 +149,65 @@ async function draftOrders(deps: Deps, body: DraftBody, userId: string | null): 
   );
 
   for (const b of bookings) {
-    if (hasOrder.has(b.id)) {
-      skipped.push({ booking_id: b.id, reason: "exists" });
-      continue;
+    // Per-booking isolation (mirrors issueOrders): an unexpected throw on one
+    // booking must not abort the batch into a CORS-less 500.
+    try {
+      if (hasOrder.has(b.id)) {
+        skipped.push({ booking_id: b.id, reason: "exists" });
+        continue;
+      }
+      const artist = b.artists ?? {};
+
+      // showflow layer: only non-empty values (resolveFields treats undefined/"" as
+      // absent, but NOT null — so nulls are omitted here rather than mis-tagged).
+      const showflow: Partial<Record<OrderFieldKey, unknown>> = {};
+      assign(showflow, "artist_name", artist.name);
+      assign(showflow, "recipient_email", artist.email);
+      assign(showflow, "role", artist.cast_role);
+      assign(showflow, "date", showDate.date);
+      assign(showflow, "venue", showDate.venue);
+      assign(showflow, "city", cityName);
+      assign(showflow, "duration_min", showDate.duration_minutes);
+      if (sessions.length > 0) showflow.sessions = sessions;
+      assign(showflow, "fee", b.fee_amount);
+
+      // defaults layer: org default fee (fallback under a booking fee) + currency.
+      const defLayer: Partial<Record<OrderFieldKey, unknown>> = { currency: defaults.currency };
+      assign(defLayer, "fee", defaults.default_fee);
+
+      const layers: FieldLayers = { showflow, defaults: defLayer };
+      const data = resolveFields(layers);
+
+      seq += 1;
+      const baseOrderNo = formatOrderNo(numbering.pattern, {
+        prefix: numbering.prefix,
+        date: showDate.date,
+        castCode,
+        seq,
+      });
+
+      const feeValue = data.fee?.value;
+      const feeAmount = feeValue === undefined || feeValue === null || feeValue === "" ? null : Number(feeValue);
+      const row = {
+        org_id: org,
+        status: "draft" as const,
+        booking_id: b.id,
+        artist_id: b.artist_id,
+        show_date_id: body.show_date_id,
+        data,
+        fee_amount: feeAmount,
+        fee_currency: defaults.currency,
+        terms_variant: "standard",
+        created_by: userId,
+      };
+
+      const result = await insertWithRetry(admin, baseOrderNo, row);
+      if ("id" in result) created.push(result.id);
+      else skipped.push({ booking_id: b.id, reason: result.reason });
+    } catch (e) {
+      console.error("generate-hire-orders: draft failed for booking", { org, bookingId: b.id, error: (e as Error).message });
+      skipped.push({ booking_id: b.id, reason: "error" });
     }
-    const artist = b.artists ?? {};
-
-    // showflow layer: only non-empty values (resolveFields treats undefined/"" as
-    // absent, but NOT null — so nulls are omitted here rather than mis-tagged).
-    const showflow: Partial<Record<OrderFieldKey, unknown>> = {};
-    assign(showflow, "artist_name", artist.name);
-    assign(showflow, "recipient_email", artist.email);
-    assign(showflow, "role", artist.cast_role);
-    assign(showflow, "date", showDate.date);
-    assign(showflow, "venue", showDate.venue);
-    assign(showflow, "city", cityName);
-    assign(showflow, "duration_min", showDate.duration_minutes);
-    if (sessions.length > 0) showflow.sessions = sessions;
-    assign(showflow, "fee", b.fee_amount);
-
-    // defaults layer: org default fee (fallback under a booking fee) + currency.
-    const defLayer: Partial<Record<OrderFieldKey, unknown>> = { currency: defaults.currency };
-    assign(defLayer, "fee", defaults.default_fee);
-
-    const layers: FieldLayers = { showflow, defaults: defLayer };
-    const data = resolveFields(layers);
-
-    seq += 1;
-    const baseOrderNo = formatOrderNo(numbering.pattern, {
-      prefix: numbering.prefix,
-      date: showDate.date,
-      castCode,
-      seq,
-    });
-
-    const feeValue = data.fee?.value;
-    const feeAmount = feeValue === undefined || feeValue === null || feeValue === "" ? null : Number(feeValue);
-    const row = {
-      org_id: org,
-      status: "draft" as const,
-      booking_id: b.id,
-      artist_id: b.artist_id,
-      show_date_id: body.show_date_id,
-      data,
-      fee_amount: feeAmount,
-      fee_currency: defaults.currency,
-      terms_variant: "standard",
-      created_by: userId,
-    };
-
-    const result = await insertWithRetry(admin, baseOrderNo, row);
-    if ("id" in result) created.push(result.id);
-    else skipped.push({ booking_id: b.id, reason: result.reason });
   }
 
   // Optional producer notification (mirrors booking_ready_to_confirm recipient
