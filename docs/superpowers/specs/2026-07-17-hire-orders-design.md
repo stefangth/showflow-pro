@@ -27,6 +27,8 @@ Verified codebase facts this spec builds on (all confirmed on v1.9.0): no moneta
 
 ## 1. Feature entitlements (platform-gated modules)
 
+**Status: implemented (2026-07-17).** Every layer below landed across Tasks 1-10 of `docs/superpowers/plans/2026-07-17-entitlements-platform.md`: the dual-home registry, `org_entitlements` table with RLS and audit, `is_feature_enabled`/`get_effective_booking_flow` SQL gating, client and edge resolution, nav/route/locked-state UI, the Platform console Modules toggles and provisioning seed, and the e2e coverage. `hire_orders` itself (§2 onward) is still unimplemented; the module exists in the registry with `defaultEnabled: false` so this PR ships dark.
+
 ### 1.1 Why not `app_settings`
 
 Org-scoped `app_settings` rows are writable by **org admins** (permissive policy rewritten to `has_org_role(auth.uid(), org_id, 'admin')` in `20260603130200_org_scoped_role_gating.sql`), and platform-default rows are readable by every authenticated user (the documented `cron_secret` leak precedent). Entitlements are billing-derived and must be **super-admin-write-only**, so they get their own table.

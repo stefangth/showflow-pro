@@ -409,9 +409,9 @@ The drill-down layer. Sections 1–8 are the altitude; this is the detail, per f
 ### provision-org
 - **Trigger:** user action (Platform → New organization)
 - **Auth:** `requireSuperAdmin` (`index.ts:18`); `verify_jwt = true`
-- **Writes:** `provision_org` RPC via caller's JWT (atomic org + catalog seed + invite) (`index.ts:33-34`)
+- **Writes:** `provision_org` RPC via caller's JWT (atomic org + catalog seed + invite) (`index.ts:33-34`); then seeds one `org_entitlements` row per registry feature from the platform `default_entitlements` setting (falls back to each feature's registry default when unset) (`index.ts:44-64`)
 - **Side effects:** `org-invitation` email, idempotency `org-invitation-{org_id}`, best-effort
-- **Failure:** 23505 → 409 slug taken; email failure never rolls back the org
+- **Failure:** 23505 → 409 slug taken; entitlement seeding and email delivery are both best-effort — a failure in either logs and continues, never rolls back or blocks the org that was just created
 
 ### resend-invitation
 - **Trigger:** user action (Invites tab, artist sheet, platform popover)

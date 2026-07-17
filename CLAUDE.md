@@ -104,13 +104,13 @@ src/
     layout/        # AppLayout (sidebar + topbar shell), NotificationsList (notification bell popover)
     ui/            # shadcn primitives — DO NOT edit by hand, regenerate via shadcn
   config/
-    app.config.ts  # Feature flags (FEATURES), route constants (ROUTES), BOOKING_ENGINE_DEFAULTS, CHAT_ARCHIVE_DAYS
+    app.config.ts  # ROUTE_FEATURES (entitlement-gated routes), route constants (ROUTES), BOOKING_ENGINE_DEFAULTS, CHAT_ARCHIVE_DAYS
   data/            # Data-access layer: fetchX(client, args) / mutateX(client, args) functions
                    #   that take the Supabase client as a parameter. Hooks are thin wrappers.
                    #   Domains: account, admin, artistImport, artists, airtableKey, airtableMapping,
                    #   airtableSchema, airtableSettings, airtableSync, bookings, cities, customFields,
-                   #   invitations, members, notificationPreferences, notifications, orgs, platform,
-                   #   profiles, remoteSheet, settings, shows, showDates, skills, systemMap.
+                   #   entitlements, invitations, members, notificationPreferences, notifications, orgs,
+                   #   platform, profiles, remoteSheet, settings, shows, showDates, skills, systemMap.
                    #   Test with supabaseFake.ts (never vi.mock the client).
   features/
     auth/          # AuthContext (org-aware: currentOrg/orgs/switchOrg, isSuperAdmin),
@@ -231,7 +231,6 @@ When adding a new page:
 ### Notification system
 
 - In-app notifications write to the `notifications` table (columns: `id`, `user_id`, `type`, `title`, `message`, `read` boolean, `related_entity_id`, `related_entity_type`, `created_at`). There is no `payload` column and no `read_at` timestamp — read state is a plain boolean `read`.
-- `FEATURES.NOTIFICATIONS` must be `true` (it is, by default).
 - Create notifications from edge functions or server-side mutations only — never bare client-side inserts without proper RLS policies.
 
 ### Styling
@@ -314,7 +313,8 @@ Suggested emails:
 
 | File | Purpose |
 |------|---------|
-| `src/config/app.config.ts` | FEATURES flags, ROUTES, BOOKING_ENGINE_DEFAULTS (canonical booking-engine fallbacks; mirrors `_shared/settings.ts`), CHAT_ARCHIVE_DAYS |
+| `src/config/app.config.ts` | ROUTE_FEATURES (entitlement-gated routes), ROUTES, BOOKING_ENGINE_DEFAULTS (canonical booking-engine fallbacks; mirrors `_shared/settings.ts`), CHAT_ARCHIVE_DAYS |
+| `src/lib/entitlements.ts` | Per-org module entitlements registry: `FeatureKey`, `FEATURE_REGISTRY`, `enabledFeatures`/`isFeatureEnabled`. Dual-home — mirrored verbatim by `supabase/functions/_shared/entitlements.ts` (the two runtimes can't share an import) and by the SQL twin `public.is_feature_enabled()`; change all three in the same commit |
 | `src/integrations/supabase/types.ts` | Auto-generated DB types — read only |
 | `src/features/auth/AuthContext.tsx` | Auth state, org-scoped role helpers, `currentOrg`/`orgs`/`switchOrg`, `isSuperAdmin` |
 | `src/features/auth/resetPassword.ts` | Pure helpers for reset-password flow (hash parse, redirect safety, schema) |

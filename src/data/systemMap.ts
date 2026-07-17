@@ -451,9 +451,9 @@ export const SYSTEM_MAP_NODES: SystemMapNode[] = [
     detail: {
       Trigger: "Platform → New organization",
       Auth: "requireSuperAdmin · verify_jwt=true",
-      Writes: "provision_org RPC via caller's JWT — atomic org + catalog seed + first-admin invite",
+      Writes: "provision_org RPC via caller's JWT — atomic org + catalog seed + first-admin invite; then seeds one org_entitlements row per registry feature from the platform default_entitlements setting (best-effort, falls back to each feature's registry default)",
       Effects: "org-invitation email",
-      Cite: "provision-org/index.ts:18-57",
+      Cite: "provision-org/index.ts:18-64",
     },
   },
   {
