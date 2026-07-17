@@ -1,5 +1,7 @@
-// generate-hire-orders — the hire-order engine. Four per-request actions:
+// generate-hire-orders — the hire-order engine. Five per-request actions:
 //   draft        create draft orders from confirmed bookings (snapshot fields)
+//   draft-manual create ONE draft from the V5 wizard: free choice of artist x
+//                date (either/both optional) plus producer-entered manual fields
 //   issue        validate -> render PDF -> upload -> stamp issued -> email + notify
 //   preview      render a watermarked PDF for one order, persist nothing
 //   download-url signed URL for an order's PDF (producers + the linked artist)
@@ -77,6 +79,8 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
   switch (body.action) {
     case "draft":
       return draftOrders(deps, body, gate.userId);
+    case "draft-manual":
+      return draftManual(deps, body, gate.userId);
     case "issue":
       return issueOrders(deps, body, gate.userId);
     case "preview":
@@ -280,6 +284,117 @@ async function notifyProducers(deps: Deps, org: string, showDate: Any, orderCoun
   }));
   const { error } = await admin.from("notifications").insert(rows);
   if (error) console.error("generate-hire-orders: producer notification insert failed", { org, error: error.message });
+}
+
+// ── draft-manual ─────────────────────────────────────────────────────────
+
+interface DraftManualBody {
+  org_id: string;
+  artist_id?: string;
+  show_date_id?: string;
+  manual?: Partial<Record<OrderFieldKey, unknown>>;
+}
+
+/**
+ * The V5 wizard's single-order draft path: free choice of artist x date (either,
+ * both, or neither), plus producer-entered manual fields. Unlike `draftOrders`
+ * this never links a booking (a manual/wizard order has none) and creates
+ * exactly one row per call.
+ *
+ * showflow is assembled ONLY when both artist_id and show_date_id are given
+ * (mirrors draftOrders' snapshot assembly for the linked artist + show date);
+ * otherwise it stays empty and every resolved field falls through to
+ * manual/default. The ready gate (recipient_email etc.) is NOT applied here —
+ * it only runs at issue time, so a draft can be saved with gaps.
+ */
+async function draftManual(deps: Deps, body: DraftManualBody, userId: string | null): Promise<Response> {
+  const admin = deps.admin;
+  const org = body.org_id;
+  const manual = body.manual ?? {};
+
+  const [defaults, numbering] = await Promise.all([
+    resolveOrgSetting<OrderDefaults>(admin, org, "hire_order_defaults", DEFAULTS_DEFAULT),
+    resolveOrgSetting<Numbering>(admin, org, "hire_order_numbering", NUMBERING_DEFAULT),
+  ]);
+
+  const showflow: Partial<Record<OrderFieldKey, unknown>> = {};
+  let castCode: string | undefined;
+  let numberingDate: string | undefined;
+
+  if (body.artist_id && body.show_date_id) {
+    const [{ data: artistRow }, { data: sdRow }] = await Promise.all([
+      admin.from("artists").select("id, name, email, cast_role").eq("id", body.artist_id).eq("org_id", org).maybeSingle(),
+      admin.from("show_dates")
+        .select("id, date, venue, city_id, duration_minutes, session_1, session_2, session_3, shows(program, sub_program)")
+        .eq("id", body.show_date_id).eq("org_id", org).maybeSingle(),
+    ]);
+
+    if (artistRow) {
+      const artist = artistRow as Any;
+      assign(showflow, "artist_name", artist.name);
+      assign(showflow, "recipient_email", artist.email);
+      assign(showflow, "role", artist.cast_role);
+    }
+    if (sdRow) {
+      const sd = sdRow as Any;
+      assign(showflow, "date", sd.date);
+      assign(showflow, "venue", sd.venue);
+      assign(showflow, "duration_min", sd.duration_minutes);
+      const sessions = [sd.session_1, sd.session_2, sd.session_3].filter(
+        (t: unknown): t is string => typeof t === "string" && t !== "",
+      );
+      if (sessions.length > 0) showflow.sessions = sessions;
+      if (sd.city_id) {
+        const { data: c } = await admin.from("cities").select("name").eq("id", sd.city_id).maybeSingle();
+        assign(showflow, "city", (c as { name?: string } | null)?.name ?? null);
+      }
+      castCode = castCodeFromLabel(sd.shows?.program ?? null);
+      numberingDate = sd.date;
+    }
+  }
+
+  const defLayer: Partial<Record<OrderFieldKey, unknown>> = { currency: defaults.currency };
+  assign(defLayer, "fee", defaults.default_fee);
+
+  const layers: FieldLayers = { showflow, manual, defaults: defLayer };
+  const data = resolveFields(layers);
+
+  if (!numberingDate && typeof manual.date === "string" && manual.date) numberingDate = manual.date;
+
+  // Sequence base: a simple org-wide non-void count. draftOrders scopes its
+  // sequence per calendar day via a join through the linked show_date, but a
+  // wizard order may have none to join on — an org-wide count is always
+  // available and, combined with insertWithRetry's collision-suffix retry, is
+  // still a correct (if less tightly differentiated) base.
+  const { count } = await admin.from("hire_orders").select("id", { count: "exact", head: true }).eq("org_id", org).neq("status", "void");
+  const seq = (count ?? 0) + 1;
+
+  const baseOrderNo = formatOrderNo(numbering.pattern, { prefix: numbering.prefix, date: numberingDate, castCode, seq });
+
+  const feeValue = data.fee?.value;
+  const feeAmount = feeValue === undefined || feeValue === null || feeValue === "" ? null : Number(feeValue);
+  // fee_currency follows the RESOLVED currency (which a producer can override at
+  // step 2), not blindly the org default — draftOrders can hardcode the org
+  // default because a booking never carries its own currency; a wizard order can.
+  const currencyValue = data.currency?.value;
+  const currency = typeof currencyValue === "string" && currencyValue ? currencyValue : defaults.currency;
+
+  const row = {
+    org_id: org,
+    status: "draft" as const,
+    booking_id: null,
+    artist_id: body.artist_id ?? null,
+    show_date_id: body.show_date_id ?? null,
+    data,
+    fee_amount: feeAmount,
+    fee_currency: currency,
+    terms_variant: "standard",
+    created_by: userId,
+  };
+
+  const result = await insertWithRetry(admin, baseOrderNo, row);
+  if ("id" in result) return json({ created: [result.id] });
+  return json({ created: [], error: result.reason });
 }
 
 // ── issue ────────────────────────────────────────────────────────────────
