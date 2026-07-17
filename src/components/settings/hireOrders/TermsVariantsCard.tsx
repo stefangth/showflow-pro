@@ -48,7 +48,10 @@ function ClauseListEditor({
         </Button>
       </div>
       {clauses.length === 0 && (
-        <p className="text-xs text-muted-foreground">No clauses in this variant yet. Add one above.</p>
+        <p className="rounded-lg border border-dashed border-border p-3 text-xs text-muted-foreground">
+          No clauses yet. Add the clauses your organization wants printed on a {label.toLowerCase()} hire order
+          before issuing one.
+        </p>
       )}
       {clauses.map((clause, i) => (
         <div key={i} className="space-y-2 rounded-lg border border-border p-3">
@@ -124,7 +127,8 @@ export function TermsVariantsCard({ orgId }: { orgId: string | null }) {
         <CardTitle className="font-display">Terms</CardTitle>
         <CardDescription>
           Clauses printed on the hire order PDF. Lean, standard, and full are separate sets: a hire order
-          picks one variant when it is issued.
+          picks one variant when it is issued. ShowFlow ships no default clauses, so your organization
+          authors its own.
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-6">

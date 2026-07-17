@@ -6,7 +6,8 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { LetterheadCard } from "./LetterheadCard";
-import { OrderDefaultsCard, OrderNumberingCard } from "./OrderDefaultsCard";
+import { OrderDefaultsCard } from "./OrderDefaultsCard";
+import { NumberingCard } from "./NumberingCard";
 import { TermsVariantsCard } from "./TermsVariantsCard";
 import { CountersignCard } from "./CountersignCard";
 
@@ -104,7 +105,7 @@ export function HireOrdersTab() {
       <div className="space-y-4">
         <LetterheadCard orgId={orgId} />
         <OrderDefaultsCard orgId={orgId} />
-        <OrderNumberingCard orgId={orgId} />
+        <NumberingCard orgId={orgId} />
         <TermsVariantsCard orgId={orgId} />
         <CountersignCard orgId={orgId} />
       </div>
