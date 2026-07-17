@@ -5,6 +5,9 @@
 // into one per edge convention (see src/lib/entitlements.ts /
 // _shared/entitlements.ts for the house precedent of this pattern). Change
 // both homes in the same commit.
+//
+// EXCEPTION: the renderer port at the bottom of this file is edge-only and
+// has no src/ twin — see the comment there.
 
 export type FieldSource = "showflow" | "sheet" | "manual" | "default";
 
@@ -163,3 +166,43 @@ export function orderReadyIssues(data: OrderData, letterhead: unknown): string[]
   if (isBlank(legalName)) issues.push("missing_letterhead");
   return issues;
 }
+
+// ── renderer port ────────────────────────────────────────────────────────
+//
+// Edge-only, deliberately NOT mirrored in src/lib/hireOrders/: the frontend
+// never renders PDFs (it previews and downloads what the edge function
+// produced), so there is nothing for a browser-side twin to implement.
+//
+// The port exists so the generate-hire-orders function can inject the
+// renderer through `Deps` and be tested without paying for a real render.
+// The concrete implementation is `./hire-order-pdf/render.tsx`.
+
+export interface HireOrderLetterhead {
+  legal_name: string;
+  address_lines: string[];
+  registration_line?: string;
+  agent_name?: string;
+  agent_email?: string;
+}
+
+export interface HireOrderTerm {
+  title: string;
+  body: string;
+}
+
+export interface RenderInput {
+  /** The order's field snapshot, already resolved by `resolveFields`. */
+  data: OrderData;
+  orderNo: string;
+  /** `preview` overlays a watermark; `issued` is the document of record. */
+  status: "issued" | "preview";
+  letterhead: HireOrderLetterhead;
+  /** The org's terms. Empty is the seeded default — the section is omitted. */
+  terms: HireOrderTerm[];
+  /** Currency code for `formatMoney` (e.g. "EUR"). */
+  currency: string;
+  /** Timestamp shown in the footer; rendered as a UTC calendar date. */
+  generatedAtIso: string;
+}
+
+export type RenderHireOrderPdf = (input: RenderInput) => Promise<Uint8Array>;
