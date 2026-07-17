@@ -341,11 +341,13 @@ Expected pass: HTTP 200, `bytes > 1000`, magic bytes correct, cold-start under ~
 
 | Criterion | Result |
 |---|---|
-| HTTP status | **200** (9/9 invocations, incl. 6 concurrent) |
+| HTTP status | **200** on **11/11** invocations (1 on v1, 4 on v2 incl. the `?raw=1` PDF fetch, 6 concurrent) |
 | `bytes > 1000` | **11,779** bytes, byte-identical across every run |
 | Magic bytes | **`255044462d312e33`** = `%PDF-1.3` (`%PDF-` = `255044462d`) ✅ |
-| Cold start | **1.83s / 1.88s / 1.56s** worst-case 1.88s (budget was ~10s); warm 0.54s; render itself ~170-190ms |
-| Memory / CPU | heapUsed **~29.8MB**, heapTotal ~32.5MB, stable across 6 concurrent renders. **No OOM, no CPU-limit kill, no `shutdown`/`WORKER_LIMIT` events in `get_logs`.** |
+| Cold start | **1.83s / 1.88s / 1.56s** worst-case 1.88s (budget was ~10s); warm 0.54s; render itself ~170-190ms (worst 521ms under 6-way contention) |
+| Memory / CPU | heapUsed **~29.8MB**, heapTotal ~32.5MB, stable across 6 concurrent renders. **No OOM, no CPU-limit kill, no `546` / `WORKER_RESOURCE_LIMIT` / `shutdown` events in `get_logs`.** Headroom vs the documented isolate limits below. |
+
+**Headroom against the real isolate limits.** Per Supabase docs ([546 / WORKER_RESOURCE_LIMIT](https://supabase.com/docs/guides/troubleshooting/edge-function-546-error-response)), each isolate gets **250 MB memory** and **2s CPU**, and *"once an isolate uses 50% of any resource, it will finish the current request and then shut down"* (so the practical soft ceiling is ~125 MB / ~1s CPU). Measured: heapUsed **~29.8 MB ≈ 12% of the 250 MB limit** (~24% of the 50% retire threshold); render **~170-190 ms**, worst **521 ms**, against the **2s CPU** budget. Caveats on that figure: `Deno.memoryUsage().rss` returns `0` on this runtime, so 29.8 MB is the **JS heap only** — the 250 MB limit counts total isolate memory, which is necessarily higher. **Note the binding constraint for Task 7 is the 2s CPU budget, not the ~10s wall-clock figure in the pass criteria above.**
 
 Validated off-box (not just trusting a 200): `file` reports *"PDF document, version 1.3, 2 pages"*; the PDF carries `/FontFile2` + `/BaseFont /BGXMRM+Geist-Regular` (the font really is embedded); `pypdf` extracts the full running-order table and both `Page N of 2` footers.
 
@@ -361,7 +363,13 @@ Validated off-box (not just trusting a 200): `file` reports *"PDF document, vers
 2. **`deno.json` must set** `nodeModulesDir: "auto"` + `jsx: "react-jsx"` + `jsxImportSource: "npm:react@18.3.1"` (mirrors `send-transactional-email`). Keep JSX in `.tsx` files; the `index.ts` entrypoint stays plain TS.
 3. **When deploying via the MCP `deploy_edge_function`, pass `import_map_path: "deno.json"` explicitly** on redeploys — otherwise it reuses the previous version's absolute path and 400s with *"import map path does not exist"*.
 4. Confirmed working on edge: `StyleSheet.create`, flexbox `View` table grids, multi-page `Document`, `wrap={false}` rows, and the `render={({ pageNumber, totalPages }) => ...}` + `fixed` footer callback.
-5. The spike embedded a *subsetted* Geist Regular (6,848 B, 68 Latin glyphs, hinting stripped). A full Geist TTF (~73 KB) is ~10x larger but is still just a string constant in the bundle — no expected impact. Task 7 must ensure its embedded subset covers every glyph its copy uses (incl. `€`, umlauts, and any punctuation), or those glyphs render as notdef.
+5. **Font scale is unproven — smoke-test the four real fonts first.** Only **one** subsetted, hinting-stripped font (6,848 B) was tested. Task 7 embeds **four full-featured fonts** (Geist Regular/Medium/SemiBold + Geist Mono Regular, ~73 KB each, **~400 KB base64 total — roughly 50x this payload**) carrying the hinting / `GSUB` / `GPOS` / `kern` tables the spike deliberately stripped and therefore **never parsed**. Fontkit parse cost and cold-start/memory growth at that scale are **unproven** — and note the isolate's real budget is 2s CPU / 250 MB, not the ~10s wall clock. **Task 7 should register all four real fonts in a throwaway smoke-test (even against a placeholder template) before building the full renderer**, so a bundle-size, CPU, or cold-start regression surfaces early rather than after the template exists.
+6. Task 7 must ensure its embedded subset covers every glyph its copy uses (incl. `€`, umlauts, and any punctuation), or those glyphs render as notdef.
+7. **Not exercised by the canary — verify, do not infer:**
+   - **`opacity` and `transform`/`rotate`** — required for the `status === "preview"` rotated 48pt "PREVIEW" watermark at 8% opacity. Supported per react-pdf's documented API, but **not proven live on this edge runtime**. Verify it in Task 7's first component rather than inferring it from the spike's other passing results.
+   - **`backgroundColor` fills** — the tinted `#F4F1FF` fact cell. The canary used only borders and text color.
+   - **Multiple concurrent `Font.register` calls** — the canary registered a single family. Task 7 registers three Geist weights plus Geist Mono in one document, exercising react-pdf's family/weight resolution, which the spike did not.
+   Each is likely fine, but the canary's document was materially simpler than Task 7's.
 
 ---
 
