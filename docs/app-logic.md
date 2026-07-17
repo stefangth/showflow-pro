@@ -310,6 +310,36 @@ Transactional email uses the `send-transactional-email` edge function. Templates
 
 ---
 
+## Hire orders
+
+A **hire order** is the PDF engagement sheet an org issues to a confirmed artist for a specific show date: it states the producer, artist, date, venue, running order, the engagement fee, and the org's terms, and carries a countersignature block. Hire orders are a **feature module**: the `hire_orders` entitlement ships **off** for every org (dark by default), so the whole surface (the date-sheet card, the Settings > Hire orders tab, the artist's dashboard card, and the `/hire-orders/:id` viewer) only appears once a super-admin turns the module on for that org.
+
+Each order lives in the `hire_orders` table and moves through a small state machine:
+
+| Status | Meaning |
+|---|---|
+| `draft` | Created from a confirmed booking, fields snapshotted, not yet reviewed. Editable. |
+| `ready` | Passed the readiness check (has a fee, recipient email, date, and org letterhead). Editable. |
+| `issued` | Rendered to PDF, uploaded, emailed to the artist. **Frozen**: the snapshot, fee, terms, order number, and PDF can no longer change. |
+| `countersigned` | The artist (or Documenso, later) has countersigned. |
+| `void` | Cancelled at any point; frees the booking for a new order. |
+
+The DB enforces the legal transitions and the issued-order freeze; the client is only the happy-path driver.
+
+**Fee-only (v1).** An order carries a single engagement fee and currency. There is no deposit / balance split yet; that is a later phase.
+
+**Terms are authored per org.** The `lean` / `standard` / `full` terms variants live in `hire_order_terms` (Settings > Hire orders) and **ship empty**. An order cannot be issued on a variant that has no clauses, so a new org must author its terms before it can issue. Letterhead, order-numbering pattern, default fee/currency, and countersign mode are the other per-org hire-order settings.
+
+**Auto-draft, human issue.** When a date reaches `fully_filled`, the `dispatch_hire_order_drafts` DB trigger asks the `generate-hire-orders` edge function to auto-create one **draft** per confirmed booking (feature-gated, so dark orgs are unaffected). A producer can also draft on demand from the date-sheet hire-orders card. Turning a draft into an issued document is always a **deliberate human action**: the producer opens the review dialog, sets the fee, picks the terms variant, and issues. Issuing renders the PDF, uploads it to the `hire-orders` storage bucket, stamps the order `issued`, emails the artist the PDF as an attachment, and posts them an in-app notification.
+
+**Countersign is manual in v1.** The issued PDF carries a countersignature block the artist signs offline; a producer then marks the order `countersigned` in the viewer. A `documenso` countersign mode exists in the settings but the live e-signature integration is a later phase.
+
+**Artist download.** The artist sees their issued/countersigned orders on their dashboard ("Your hire orders") and on the date sheet, and can download the PDF. Download always goes through the edge function's `download-url` action, which authorizes the linked artist (on issued/countersigned orders only) and returns a short-lived signed URL; artists never get producer/admin management controls.
+
+**Operational note (org deletion).** `delete_org` has **no** explicit `delete from hire_orders`: it relies on `hire_orders_org_id_fkey ON DELETE CASCADE` to sweep an org's hire orders when the organization row is removed (the booking / artist / show_date FKs are `ON DELETE SET NULL`, so those do **not** cascade the delete). The omission is deliberate. A future edit to `delete_org` must not "fix" it by assuming a hire-order cleanup step was forgotten.
+
+---
+
 ## Airtable Sync
 
 ### Custom (Airtable-synced) fields

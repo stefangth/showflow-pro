@@ -70,6 +70,10 @@ vi.mock("@/hooks/useMyArtist", () => ({
 vi.mock("@/hooks/useArtistEligibleDates", () => ({
   useArtistEligibleDates: () => ({ data: ELIGIBLE, isLoading: false }),
 }));
+// Task 14 added a hire-orders chip gated on useFeature; this file only cares
+// about flow-driven copy, so keep the feature off (no hire_orders table is
+// seeded here anyway, so the chip would never show regardless).
+vi.mock("@/hooks/useEntitlements", () => ({ useFeature: () => false }));
 
 // Keep the list column machinery minimal but include the status column so the
 // per-row status badge (bookingStatusLabels) actually renders.

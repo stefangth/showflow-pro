@@ -48,6 +48,7 @@ import { EligibilityBookList } from '@/components/shows/date/EligibilityBookList
 import { RequiredSkillsSection } from '@/components/shows/date/RequiredSkillsSection';
 import { fetchBlockedArtistIds } from '@/data/blockedDates';
 import { ChatPanel } from '@/components/chat/ChatPanel';
+import { HireOrdersCard } from '@/components/shows/hireOrders/HireOrdersCard';
 import { ShowDateFormDialog } from '@/components/shows/ShowDateFormDialog';
 import { BookingRow } from '@/components/shows/BookingRow';
 import { useCancelShowDate, useDeleteShowDate } from '@/hooks/useShowDates';
@@ -773,6 +774,14 @@ export function ShowDateDetailSheet({ showDateId, open, onOpenChange }: Props) {
                   )}
                 </CardContent>
               </Card>
+
+              {/* Hire orders (feature-gated; producer/admin management surface) */}
+              <HireOrdersCard
+                showDateId={showDate.id}
+                showDate={showDate}
+                bookings={bookingsForDate ?? []}
+                canManage={canManage}
+              />
 
               {/* Chat */}
               <ChatPanel showDateId={showDate.id} showDate={showDate.date} />
