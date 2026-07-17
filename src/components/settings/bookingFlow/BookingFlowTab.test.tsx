@@ -48,7 +48,7 @@ Object.assign(
 import { useAuth } from "@/features/auth/AuthContext";
 import { BookingFlowTab } from "./BookingFlowTab";
 
-function Harness({ orgFlow }: { orgFlow?: BookingFlow } = {}) {
+function Harness({ orgFlow, dirtyKeys = [] }: { orgFlow?: BookingFlow; dirtyKeys?: string[] } = {}) {
   const [draft, setDraft] = useState<Record<string, unknown>>({
     booking_flow: orgFlow ?? BOOKING_FLOW_DEFAULTS,
     offer_response_window_hours: 48,
@@ -59,7 +59,7 @@ function Harness({ orgFlow }: { orgFlow?: BookingFlow } = {}) {
     <BookingFlowTab
       get={(k) => draft[k]}
       set={(k, v) => setDraft((d) => ({ ...d, [k]: v }))}
-      dirtyKeys={[]}
+      dirtyKeys={dirtyKeys}
       saving={false}
       onSave={() => {}}
       onDiscard={() => {}}
@@ -152,6 +152,20 @@ describe("BookingFlowTab", () => {
       // Displayed flow is normalizeBookingFlow(null) (classic defaults), not the
       // stored override — the switch reads "on" even though the draft has it off.
       expect(screen.getByRole("switch", { name: /^artist acceptance$/i })).toHaveAttribute("aria-checked", "true");
+    });
+
+    // Critical-bug regression: the from-address input and EmailTemplatesCard stay editable
+    // while locked (email copy isn't part of the booking_flow module), and both write keys
+    // that flow through as `dirtyKeys` here. FlowRail already hides its Save/Discard while
+    // locked, so its "Previewing unsaved draft" banner must also stay hidden — otherwise it
+    // announces a draft with no save control anywhere on the rail (SettingsPage's page-level
+    // Save is what actually persists it; see SettingsPage.test.tsx for that half).
+    it("hides the rail's unsaved-draft banner while locked even when dirtyKeys is non-empty", async () => {
+      vi.mocked(useAuth).mockReturnValue({ currentOrg: { id: "org-locked" } } as never);
+      renderWithProviders(<Harness dirtyKeys={["resend_from_address"]} />);
+
+      await waitFor(() => expect(screen.getByText("Booking flow is not enabled")).toBeInTheDocument());
+      expect(screen.queryByText(/previewing unsaved draft/i)).not.toBeInTheDocument();
     });
 
     it("leaves the entitled path unchanged: no lock notice, Save present", async () => {
