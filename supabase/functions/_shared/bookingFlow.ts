@@ -2,6 +2,7 @@
 // The two runtimes cannot share an import; change both files in the same PR.
 import type { SupabaseClient } from "npm:@supabase/supabase-js@2";
 import { resolveOrgSetting } from "./settings.ts";
+import { checkFeature } from "./entitlements.ts";
 
 export type OfferDelivery = "digest" | "immediate";
 export type ReferenceSource = "show" | "program" | "custom";
@@ -101,5 +102,9 @@ export async function resolveBookingFlow(
   admin: SupabaseClient,
   orgId: string,
 ): Promise<BookingFlow> {
+  // booking_flow fails OPEN on an entitlement-check error (see checkFeature) — an
+  // unentitled org (or an org whose feature row was explicitly turned off) gets the
+  // defaults, never its stored app_settings override.
+  if (!(await checkFeature(admin, orgId, "booking_flow"))) return normalizeBookingFlow(null);
   return normalizeBookingFlow(await resolveOrgSetting(admin, orgId, "booking_flow", null));
 }
