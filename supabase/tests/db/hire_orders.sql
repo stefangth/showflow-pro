@@ -2,7 +2,9 @@
 -- (draft -> ready -> issued -> countersigned, or any state -> void), gated by the
 -- 'hire_orders' entitlement (org_entitlements.sql: default OFF) and org-isolated
 -- like every other tenant table.
--- (defined in 20260717102508_hire_orders_schema.sql)
+-- (defined in 20260717102508_hire_orders_schema.sql; enforce_hire_order_transition()
+-- re-declared in 20260717104220_hire_order_transition_freeze_assignment_fields.sql to
+-- extend the freeze list and add SECURITY DEFINER SET search_path = public)
 --
 -- Guard functions under test (defined alongside the tables):
 --   derive_org_for_hire_order()      BEFORE INSERT OR UPDATE OF booking_id/artist_id/
@@ -16,8 +18,13 @@
 --                                     draft->{ready,void}, ready->{draft,issued,void},
 --                                     issued->{countersigned,void},
 --                                     countersigned->{void}; and freezes data/fee_amount/
---                                     fee_currency/terms_variant/order_no/pdf_path once
---                                     a row has left 'ready' (issued or countersigned).
+--                                     fee_currency/terms_variant/order_no/pdf_path/
+--                                     booking_id/artist_id/show_date_id once a row has
+--                                     left 'ready' (issued or countersigned) -- the
+--                                     assignment fields were added by the follow-up
+--                                     migration above so an issued/countersigned order
+--                                     can no longer be silently re-pointed at a
+--                                     different booking/artist/show_date.
 --
 -- RLS: producers/admins get full access gated additionally by is_feature_enabled
 -- (WITH CHECK only -- writes require the entitlement, reads do not); artists get a
@@ -25,7 +32,7 @@
 -- restrictive on top of both, same shape as org_entitlements.sql.
 BEGIN;
 CREATE EXTENSION IF NOT EXISTS pgtap WITH SCHEMA extensions;
-SELECT plan(18);
+SELECT plan(23);
 
 CREATE OR REPLACE FUNCTION pg_temp.act_as(_uid text) RETURNS void LANGUAGE plpgsql AS $$
 BEGIN
@@ -179,6 +186,14 @@ SELECT lives_ok(
 SELECT lives_ok(
   $$UPDATE public.hire_orders SET status = 'void' WHERE id = 'ffffffff-f0a1-0006-0000-000000000000'$$,
   'countersigned -> void is allowed');
+-- draft and issued are separate elsif branches in enforce_hire_order_transition's
+-- legal-set chain (not shared with ready/countersigned above), so each needs its own
+-- any->void exercise. HO-DRAFT-1 (ffffffff-f0a1-0001) is otherwise only referenced by
+-- its order_no string in the duplicate-order_no throws_ok above, which never mutates
+-- this row, so it is still 'draft' here.
+SELECT lives_ok(
+  $$UPDATE public.hire_orders SET status = 'void' WHERE id = 'ffffffff-f0a1-0001-0000-000000000000'$$,
+  'draft -> void is allowed');
 
 -- ────────────────────────────────────────────────────────────────────────────
 -- Immutability: an issued row's document fields cannot be edited (status machinery
@@ -188,6 +203,35 @@ SELECT throws_ok(
   $$UPDATE public.hire_orders SET data = '{"changed":true}'::jsonb WHERE id = 'ffffffff-f0a1-0002-0000-000000000000'$$,
   NULL, NULL,
   'updating data on an issued hire order is rejected');
+
+-- Regression for the freeze-list gap: booking_id/artist_id/show_date_id were added to
+-- the immutability freeze condition by 20260717104220_hire_order_transition_freeze_
+-- assignment_fields.sql. HO-ISSUED-1 (ffffffff-f0a1-0002) starts issued with
+-- booking_id=NULL, show_date_id=NULL, artist_id=bbbbbbbb-f0a1-0001 (Ho Artist A); none
+-- of the prior throws_ok updates on this row change its state (all rejected), so it is
+-- still issued with those same values here. Each attempt below changes exactly one
+-- assignment column to a same-org value (avoiding derive_org_for_hire_order's
+-- cross-org raise, which fires first and would mask the immutability raise), so the
+-- P0001 below is unambiguously from enforce_hire_order_transition's freeze check.
+SELECT throws_ok(
+  $$UPDATE public.hire_orders SET booking_id = 'eeeeeeee-f0a1-0001-0000-000000000000' WHERE id = 'ffffffff-f0a1-0002-0000-000000000000'$$,
+  'P0001', 'issued hire orders are immutable',
+  'updating booking_id on an issued hire order is rejected');
+SELECT throws_ok(
+  $$UPDATE public.hire_orders SET artist_id = NULL WHERE id = 'ffffffff-f0a1-0002-0000-000000000000'$$,
+  'P0001', 'issued hire orders are immutable',
+  'updating artist_id on an issued hire order is rejected');
+SELECT throws_ok(
+  $$UPDATE public.hire_orders SET show_date_id = 'dddddddd-f0a1-0001-0000-000000000000' WHERE id = 'ffffffff-f0a1-0002-0000-000000000000'$$,
+  'P0001', 'issued hire orders are immutable',
+  'updating show_date_id on an issued hire order is rejected');
+
+-- issued -> void: run last on this row (after the freeze checks above, which all
+-- reject and so leave the row's status unchanged at 'issued') to cover the fourth
+-- any->void leg alongside ready/countersigned above and draft above.
+SELECT lives_ok(
+  $$UPDATE public.hire_orders SET status = 'void' WHERE id = 'ffffffff-f0a1-0002-0000-000000000000'$$,
+  'issued -> void is allowed');
 
 -- ────────────────────────────────────────────────────────────────────────────
 -- Org consistency: a booking from a different org cannot be attached
