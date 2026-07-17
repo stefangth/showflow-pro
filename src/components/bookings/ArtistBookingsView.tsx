@@ -1,5 +1,7 @@
 import { useMemo, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
+import { Link } from 'react-router-dom';
+import { FileText } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -15,12 +17,15 @@ import { ShowDateDetailSheet } from '@/components/shows/ShowDateDetailSheet';
 import { useArtistEligibleDates, type EligibleDate } from '@/hooks/useArtistEligibleDates';
 import { fetchMyCancelledDateBookings, mergeArtistCancelledDates, type CancelledDateEntry } from '@/data/artists';
 import { useMyArtist } from '@/hooks/useMyArtist';
+import { useMyHireOrders } from '@/hooks/useHireOrders';
+import { useFeature } from '@/hooks/useEntitlements';
 import { useBookingFlow, useReferenceField } from '@/hooks/useBookingFlow';
 import { bookingStatusBadgeClass } from '@/lib/bookings';
 import { BOOKING_FLOW_DEFAULTS, referenceLabel } from '@/lib/bookingFlow';
 import { bookingsViewCopy, bookingStatusLabels } from '@/lib/flowCopy';
 import { formatDateDMY, parseDateOnly } from '@/lib/dates';
 import { showIdentityLabel } from '@/types';
+import { ROUTES } from '@/config/app.config';
 import { useColumnTemplate, useEditorConfig } from '@/features/editor/EditorContext';
 import { useColumnHeaders } from '@/features/editor/useColumnHeaders';
 import { ColumnLayoutEditor } from '@/features/editor/ColumnLayoutEditor';
@@ -47,6 +52,8 @@ function customFor(d: DateRow): Record<string, unknown> | null {
 export function ArtistBookingsView() {
   const { data: artist } = useMyArtist();
   const { data: eligibleDates, isLoading } = useArtistEligibleDates();
+  const hireOrdersEnabled = useFeature('hire_orders');
+  const { data: myHireOrders } = useMyHireOrders();
   const { reference, customFieldKey } = useReferenceField();
   const flowQ = useBookingFlow();
   const flow = flowQ.data ?? BOOKING_FLOW_DEFAULTS;
@@ -88,6 +95,17 @@ export function ArtistBookingsView() {
     myBookings?.forEach((b) => m.set(b.show_date_id, b));
     return m;
   }, [myBookings]);
+
+  // show_date_id -> issued/countersigned hire order id for this artist
+  // (useMyHireOrders never returns any other status). First-seen wins so a
+  // stray duplicate keeps the most recent order (the query orders DESC).
+  const hireOrderIdByDateId = useMemo(() => {
+    const m = new Map<string, string>();
+    myHireOrders?.forEach((o) => {
+      if (o.show_date_id && !m.has(o.show_date_id)) m.set(o.show_date_id, o.id);
+    });
+    return m;
+  }, [myHireOrders]);
 
   const statusFor = (d: DateRow): string => {
     if (isCancelledEntry(d)) return 'cancelled';
@@ -206,6 +224,16 @@ export function ArtistBookingsView() {
                           </Badge>
                           {cancelled && d.cancellation_reason && (
                             <div className="mt-1 text-xs text-destructive">{d.cancellation_reason}</div>
+                          )}
+                          {hireOrdersEnabled && hireOrderIdByDateId.has(d.id) && (
+                            <Link
+                              to={ROUTES.HIRE_ORDER_DETAIL.replace(':id', hireOrderIdByDateId.get(d.id)!)}
+                              onClick={(e) => e.stopPropagation()}
+                              className="mt-1 inline-flex items-center gap-1 text-xs text-primary hover:underline"
+                            >
+                              <FileText className="h-3 w-3" />
+                              Hire order
+                            </Link>
                           )}
                         </TableCell>
                       );

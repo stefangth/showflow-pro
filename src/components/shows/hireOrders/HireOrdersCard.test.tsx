@@ -12,6 +12,11 @@ import { createFakeSupabase, type TableSeed } from "@/test/supabaseFake";
 const { client } = vi.hoisted(() => ({ client: {} as Record<string, unknown> }));
 vi.mock("@/integrations/supabase/client", () => ({ supabase: client }));
 vi.mock("@/features/auth/AuthContext", () => ({ useAuth: vi.fn() }));
+// The Task 14 artist branch (ArtistHireOrders) reads useMyHireOrders, which is
+// backed by useMyArtist -> useEffectiveUserId (AuthContext). Mocking useMyArtist
+// directly (same convention as useHireOrders.test.ts / the flowCopy dashboard
+// tests) keeps this file from needing a real AuthProvider.
+vi.mock("@/hooks/useMyArtist", () => ({ useMyArtist: vi.fn() }));
 
 function seedClient(seed: Record<string, TableSeed>) {
   for (const key of Object.keys(client)) delete client[key];
@@ -19,6 +24,7 @@ function seedClient(seed: Record<string, TableSeed>) {
 }
 
 import { useAuth } from "@/features/auth/AuthContext";
+import { useMyArtist } from "@/hooks/useMyArtist";
 import { HireOrdersCard } from "./HireOrdersCard";
 
 function authAs(orgId: string) {
@@ -71,7 +77,10 @@ function order(overrides: Record<string, unknown>) {
 }
 
 describe("HireOrdersCard", () => {
-  beforeEach(() => seedClient({ ...ENTITLEMENTS, hire_orders: { data: [], error: null } }));
+  beforeEach(() => {
+    seedClient({ ...ENTITLEMENTS, hire_orders: { data: [], error: null } });
+    vi.mocked(useMyArtist).mockReset();
+  });
 
   it("renders nothing when the org is not entitled to hire_orders", async () => {
     authAs("org-off");
@@ -80,17 +89,6 @@ describe("HireOrdersCard", () => {
     );
     await waitFor(() =>
       expect(queryClient.getQueryState(["entitlements", "org-off"])?.status).toBe("success"),
-    );
-    expect(screen.queryByText("Hire orders")).not.toBeInTheDocument();
-  });
-
-  it("renders nothing when the viewer cannot manage (artist variant is Task 14)", async () => {
-    authAs("org-on");
-    const { queryClient } = renderWithProviders(
-      <HireOrdersCard showDateId="sd-1" showDate={SHOW_DATE_FILLED} bookings={[CONFIRMED_BOOKING]} canManage={false} />,
-    );
-    await waitFor(() =>
-      expect(queryClient.getQueryState(["entitlements", "org-on"])?.status).toBe("success"),
     );
     expect(screen.queryByText("Hire orders")).not.toBeInTheDocument();
   });
@@ -186,5 +184,114 @@ describe("HireOrdersCard", () => {
     );
     expect(await screen.findByRole("alert")).toBeInTheDocument();
     expect(screen.getByText(/could not load hire orders/i)).toBeInTheDocument();
+  });
+});
+
+describe("HireOrdersCard artist variant (Task 14)", () => {
+  beforeEach(() => {
+    seedClient({ ...ENTITLEMENTS, hire_orders: { data: [], error: null } });
+    vi.mocked(useMyArtist).mockReset();
+  });
+
+  it("renders nothing when the viewer has no linked artist profile", async () => {
+    authAs("org-on");
+    vi.mocked(useMyArtist).mockReturnValue({ data: null } as never);
+    const { queryClient } = renderWithProviders(
+      <HireOrdersCard showDateId="sd-1" showDate={SHOW_DATE_FILLED} bookings={[CONFIRMED_BOOKING]} canManage={false} />,
+    );
+    await waitFor(() =>
+      expect(queryClient.getQueryState(["entitlements", "org-on"])?.status).toBe("success"),
+    );
+    expect(screen.queryByText("Hire order")).not.toBeInTheDocument();
+    expect(screen.queryByText("Hire orders")).not.toBeInTheDocument();
+    // The producer-only controls never appear for an artist viewer.
+    expect(screen.queryByRole("button", { name: /generate hire orders/i })).not.toBeInTheDocument();
+  });
+
+  it("renders nothing when the artist has no order for this date", async () => {
+    authAs("org-on");
+    vi.mocked(useMyArtist).mockReturnValue({ data: { id: "ar-1" } } as never);
+    seedClient({
+      ...ENTITLEMENTS,
+      hire_orders: {
+        data: [order({ id: "ho-9", show_date_id: "sd-OTHER", artist_id: "ar-1", status: "issued" })],
+        error: null,
+      },
+    });
+    const { queryClient } = renderWithProviders(
+      <HireOrdersCard showDateId="sd-1" showDate={SHOW_DATE_FILLED} bookings={[CONFIRMED_BOOKING]} canManage={false} />,
+    );
+    await waitFor(() =>
+      expect(queryClient.getQueryState(["entitlements", "org-on"])?.status).toBe("success"),
+    );
+    expect(screen.queryByText("Hire order")).not.toBeInTheDocument();
+  });
+
+  it("renders a read-only row with the order number, status badge and Download for the artist's own order on this date", async () => {
+    authAs("org-on");
+    vi.mocked(useMyArtist).mockReturnValue({ data: { id: "ar-1" } } as never);
+    seedClient({
+      ...ENTITLEMENTS,
+      hire_orders: {
+        data: [
+          order({
+            id: "ho-9",
+            order_no: "HO-2026-0201-9",
+            show_date_id: "sd-1",
+            artist_id: "ar-1",
+            status: "issued",
+          }),
+        ],
+        error: null,
+      },
+    });
+    renderWithProviders(
+      <HireOrdersCard showDateId="sd-1" showDate={SHOW_DATE_FILLED} bookings={[CONFIRMED_BOOKING]} canManage={false} />,
+    );
+
+    expect(await screen.findByText("Hire order")).toBeInTheDocument();
+    expect(screen.getByText("HO-2026-0201-9")).toBeInTheDocument();
+    expect(screen.getByText(/awaiting countersign/i)).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /download/i })).toBeInTheDocument();
+
+    // Never the producer's controls.
+    expect(screen.queryByRole("button", { name: /generate hire orders/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /review and issue/i })).not.toBeInTheDocument();
+    // No em/en dashes in the row copy.
+    expect(document.body.textContent).not.toMatch(/[—–]/);
+  });
+
+  it("clicking Download invokes the download-url action for the artist's own order", async () => {
+    authAs("org-on");
+    vi.mocked(useMyArtist).mockReturnValue({ data: { id: "ar-1" } } as never);
+    seedClient({
+      ...ENTITLEMENTS,
+      hire_orders: {
+        data: [
+          order({
+            id: "ho-9",
+            order_no: "HO-2026-0201-9",
+            show_date_id: "sd-1",
+            artist_id: "ar-1",
+            status: "countersigned",
+          }),
+        ],
+        error: null,
+      },
+      "fn:generate-hire-orders": { data: { url: "https://signed.example/ho-9.pdf" }, error: null },
+    });
+    renderWithProviders(
+      <HireOrdersCard showDateId="sd-1" showDate={SHOW_DATE_FILLED} bookings={[CONFIRMED_BOOKING]} canManage={false} />,
+    );
+    fireEvent.click(await screen.findByRole("button", { name: /download/i }));
+    await waitFor(() => {
+      const calls = (client.calls ?? []) as { table: string; method: string; args: unknown[] }[];
+      const invoke = calls.find((c) => c.table === "fn:generate-hire-orders" && c.method === "invoke");
+      expect(invoke).toBeDefined();
+      const body = invoke!.args[0] as { action: string; org_id: string; order_id: string };
+      expect(body.action).toBe("download-url");
+      expect(body.org_id).toBe("org-on");
+      expect(body.order_id).toBe("ho-9");
+    });
   });
 });
