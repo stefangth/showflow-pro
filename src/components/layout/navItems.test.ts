@@ -37,12 +37,15 @@ describe("feature gating", () => {
     expect(visibleNavItems(items, ctx({ enabledFeatures: new Set(["hire_orders"]) }))).toHaveLength(1);
   });
 
-  it("gates a feature item even for a super-admin or editor-mode admin", () => {
+  it("gates a feature item for a non-super-admin (incl. editor-mode admin) but lets a super-admin bypass", () => {
     const items = [
       { to: "/x", icon: NAV_ITEMS[0].icon, label: "X", section: "workspace", feature: "hire_orders" } as NavItem,
     ];
-    expect(visibleNavItems(items, ctx({ isSuperAdmin: true }))).toHaveLength(0);
+    // Editor-mode admin who is NOT a super-admin stays gated.
     expect(visibleNavItems(items, ctx({ isEditorMode: true, isRealAdmin: true }))).toHaveLength(0);
+    // Super-admins bypass the entitlement gate (matches ProtectedRoute's route-level bypass),
+    // with or without the feature explicitly enabled for their org.
+    expect(visibleNavItems(items, ctx({ isSuperAdmin: true }))).toHaveLength(1);
     expect(
       visibleNavItems(items, ctx({ isSuperAdmin: true, enabledFeatures: new Set(["hire_orders"]) })),
     ).toHaveLength(1);
