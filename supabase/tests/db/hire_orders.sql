@@ -65,7 +65,7 @@
 -- restrictive on top of both, same shape as org_entitlements.sql.
 BEGIN;
 CREATE EXTENSION IF NOT EXISTS pgtap WITH SCHEMA extensions;
-SELECT plan(54);
+SELECT plan(56);
 
 CREATE OR REPLACE FUNCTION pg_temp.act_as(_uid text) RETURNS void LANGUAGE plpgsql AS $$
 BEGIN
@@ -376,12 +376,16 @@ SELECT lives_ok(
   'duration_minutes accepts 90');
 
 -- ────────────────────────────────────────────────────────────────────────────
--- Task 6: private 'hire-orders' Storage bucket + its single SELECT policy
--- (hire_orders_storage.sql). Task 8's edge function will render the PDF and
--- upload it to `hire-orders/<org_id>/<order_no>.pdf` under the service role
--- (bypasses RLS), then hand out signed URLs only -- so the only client-facing
--- surface is this SELECT policy, which scopes to bucket_id = 'hire-orders' and
--- org membership derived from the object path's first folder segment.
+-- Task 6: private 'hire-orders' Storage bucket + its single SELECT policy.
+-- T8's edge function renders the PDF and uploads it to
+-- `hire-orders/<org_id>/<order_no>.pdf` under the service role (bypasses RLS),
+-- then hands out signed URLs only. The client-facing surface is this SELECT
+-- policy, which (per hire_orders_storage_artist_scope.sql) mirrors the
+-- hire_orders TABLE's access model: org admins/producers get the whole org
+-- folder; artists get ONLY their own issued/countersigned order's pdf (joined
+-- by hire_orders.pdf_path = storage.objects.name). The earlier form granted any
+-- org member the whole folder -- an intra-org cross-artist disclosure path,
+-- since order_no is predictable and castmates know the date+cast.
 -- ────────────────────────────────────────────────────────────────────────────
 SELECT is(
   (SELECT count(*)::int FROM storage.buckets WHERE id = 'hire-orders'),
@@ -390,19 +394,22 @@ SELECT is(
   (SELECT public FROM storage.buckets WHERE id = 'hire-orders'),
   false, 'hire-orders storage bucket is private (public = false)');
 
--- Seed one object per org, path = '<org_id>/x.pdf', bypassing RLS as the
--- migration-test role (writes go through the service role only in prod --
--- there are deliberately no INSERT policies to exercise here).
+-- Seed one bare object per org (no hire_orders backing) to exercise the
+-- admin/producer branch and cross-org denial. Writes bypass RLS as the
+-- migration-test role (uploads go through the service role in prod -- there are
+-- deliberately no INSERT policies).
 INSERT INTO storage.objects (bucket_id, name, owner) VALUES
   ('hire-orders', '00000000-0000-0000-0000-00000000f0a1/x.pdf', NULL),
   ('hire-orders', '00000000-0000-0000-0000-00000000f0a2/y.pdf', NULL);
 
+-- aaaaaaaa-f0a1-0001 is org A's PRODUCER: the admin/producer branch grants the
+-- whole org folder, even for an object with no hire_orders row behind it.
 SELECT pg_temp.act_as('aaaaaaaa-f0a1-0001-0000-000000000000');
 SET LOCAL ROLE authenticated;
 SELECT is(
   (SELECT count(*)::int FROM storage.objects
    WHERE bucket_id = 'hire-orders' AND name = '00000000-0000-0000-0000-00000000f0a1/x.pdf'),
-  1, 'an org A member can select an object under their own org''s hire-orders path');
+  1, 'an org A producer can read any object under their org''s hire-orders folder');
 RESET ROLE;
 
 SELECT pg_temp.act_as('aaaaaaaa-f0a2-0001-0000-000000000000');
@@ -410,7 +417,34 @@ SET LOCAL ROLE authenticated;
 SELECT is(
   (SELECT count(*)::int FROM storage.objects
    WHERE bucket_id = 'hire-orders' AND name = '00000000-0000-0000-0000-00000000f0a1/x.pdf'),
-  0, 'a member of a different org cannot select that object');
+  0, 'a member of a different org cannot select that object (cross-org denial)');
+RESET ROLE;
+
+-- Artist scope (hire_orders_storage_artist_scope.sql): storage reads mirror the
+-- hire_orders table's per-artist gate, NOT bare org membership. Two issued
+-- orders in org A -- one owned by artist A (user aaaaaaaa-f0a1-0002 via artist
+-- bbbbbbbb-f0a1-0001) and one by peer artist A2 (bbbbbbbb-f0a1-0002) -- each with
+-- a pdf_path and a matching storage object at exactly that path (= how T8
+-- uploads: `<org_id>/<order_no>.pdf` = pdf_path).
+INSERT INTO public.hire_orders (id, org_id, order_no, status, artist_id, pdf_path, data) VALUES
+  ('ffffffff-f0a1-0009-0000-000000000000','00000000-0000-0000-0000-00000000f0a1','HO-STORAGE-A','issued','bbbbbbbb-f0a1-0001-0000-000000000000','00000000-0000-0000-0000-00000000f0a1/HO-STORAGE-A.pdf','{}'),
+  ('ffffffff-f0a1-0010-0000-000000000000','00000000-0000-0000-0000-00000000f0a1','HO-STORAGE-PEER','issued','bbbbbbbb-f0a1-0002-0000-000000000000','00000000-0000-0000-0000-00000000f0a1/HO-STORAGE-PEER.pdf','{}');
+INSERT INTO storage.objects (bucket_id, name, owner) VALUES
+  ('hire-orders', '00000000-0000-0000-0000-00000000f0a1/HO-STORAGE-A.pdf', NULL),
+  ('hire-orders', '00000000-0000-0000-0000-00000000f0a1/HO-STORAGE-PEER.pdf', NULL);
+
+SELECT pg_temp.act_as('aaaaaaaa-f0a1-0002-0000-000000000000');
+SET LOCAL ROLE authenticated;
+SELECT is(
+  (SELECT count(*)::int FROM storage.objects
+   WHERE name = '00000000-0000-0000-0000-00000000f0a1/HO-STORAGE-A.pdf'),
+  1, 'an artist can read their own issued order''s storage object');
+-- Regression for the intra-org disclosure this migration closes: under the old
+-- is_org_member policy this returned 1 (leak); it must be 0 now.
+SELECT is(
+  (SELECT count(*)::int FROM storage.objects
+   WHERE name = '00000000-0000-0000-0000-00000000f0a1/HO-STORAGE-PEER.pdf'),
+  0, 'an artist cannot read a same-org peer''s issued order''s storage object (intra-org disclosure regression)');
 RESET ROLE;
 
 -- Cast-hazard behavior check (assertion 45): with a decoy object in ANOTHER
