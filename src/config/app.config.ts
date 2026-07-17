@@ -18,6 +18,7 @@ import type { FeatureKey } from '@/lib/entitlements';
 export const ROUTE_FEATURES: Record<string, FeatureKey> = {
   '/hire-orders': 'hire_orders',
   '/hire-orders/:id': 'hire_orders',
+  '/hire-orders/:id/edit': 'hire_orders',
 };
 
 /** Whether a route pattern (which may carry `:param` segments) matches a
@@ -166,6 +167,7 @@ export const ROUTES = {
   PLATFORM: '/platform',
   HIRE_ORDERS: '/hire-orders',
   HIRE_ORDER_DETAIL: '/hire-orders/:id',
+  HIRE_ORDER_EDIT: '/hire-orders/:id/edit',
 } as const;
 
 /** Number of days after a show date that its chat is hidden from the UI */

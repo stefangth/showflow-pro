@@ -8,6 +8,8 @@ import {
   fetchAwaitingCountersignCount,
   invokeHireOrderAction,
   updateHireOrderStatus,
+  updateHireOrderDraft,
+  fetchShowflowLayerForOrder,
   fetchArtistsLite,
   fetchShowDatesLite,
 } from "./hireOrders";
@@ -295,5 +297,126 @@ describe("updateHireOrderStatus", () => {
   it("throws on a supabase error", async () => {
     const fake = createFakeSupabase({ hire_orders: { data: null, error: { message: "boom" } } });
     await expect(updateHireOrderStatus(fake as never, "ho-1", "void")).rejects.toBeTruthy();
+  });
+});
+
+describe("updateHireOrderDraft", () => {
+  const DATA = { artist_name: { value: "Ada Lovelace", source: "manual" } };
+
+  it("writes the full data snapshot and the id filter", async () => {
+    const fake = createFakeSupabase({ hire_orders: { data: null, error: null } });
+    await updateHireOrderDraft(fake as never, "ho-1", { data: DATA as never });
+    expect(fake.calls).toContainEqual({ table: "hire_orders", method: "update", args: [{ data: DATA }] });
+    expect(fake.calls).toContainEqual({ table: "hire_orders", method: "eq", args: ["id", "ho-1"] });
+  });
+
+  it("writes fee_amount as a number when given a string, and fee_currency/terms_variant when given", async () => {
+    const fake = createFakeSupabase({ hire_orders: { data: null, error: null } });
+    await updateHireOrderDraft(fake as never, "ho-1", {
+      data: DATA as never, fee_amount: "4500.5", fee_currency: "USD", terms_variant: "full",
+    });
+    const update = fake.calls.find((c) => c.table === "hire_orders" && c.method === "update");
+    expect(update?.args[0]).toEqual({ data: DATA, fee_amount: 4500.5, fee_currency: "USD", terms_variant: "full" });
+  });
+
+  it("writes fee_amount null for null or empty string, without touching omitted columns", async () => {
+    const fake = createFakeSupabase({ hire_orders: { data: null, error: null } });
+    await updateHireOrderDraft(fake as never, "ho-1", { data: DATA as never, fee_amount: null });
+    let update = fake.calls.find((c) => c.table === "hire_orders" && c.method === "update");
+    expect(update?.args[0]).toEqual({ data: DATA, fee_amount: null });
+
+    fake.calls.length = 0;
+    await updateHireOrderDraft(fake as never, "ho-1", { data: DATA as never, fee_amount: "" });
+    update = fake.calls.find((c) => c.table === "hire_orders" && c.method === "update");
+    expect(update?.args[0]).toEqual({ data: DATA, fee_amount: null });
+  });
+
+  it("throws on a supabase error", async () => {
+    const fake = createFakeSupabase({ hire_orders: { data: null, error: { message: "boom" } } });
+    await expect(updateHireOrderDraft(fake as never, "ho-1", { data: DATA as never })).rejects.toBeTruthy();
+  });
+});
+
+describe("fetchShowflowLayerForOrder", () => {
+  it("returns {} without querying when both ids are null", async () => {
+    const fake = createFakeSupabase({});
+    expect(await fetchShowflowLayerForOrder(fake as never, { showDateId: null, artistId: null })).toEqual({});
+    expect(fake.calls).toEqual([]);
+  });
+
+  it("maps the artist row to artist_name/recipient_email/role", async () => {
+    const fake = createFakeSupabase({
+      artists: { data: { name: "Ada Lovelace", email: "ada@example.com", cast_role: "Lead" }, error: null },
+    });
+    const res = await fetchShowflowLayerForOrder(fake as never, { showDateId: null, artistId: "a1" });
+    expect(res).toEqual({ artist_name: "Ada Lovelace", recipient_email: "ada@example.com", role: "Lead" });
+    expect(fake.calls).toContainEqual({ table: "artists", method: "select", args: ["name, email, cast_role"] });
+    expect(fake.calls).toContainEqual({ table: "artists", method: "eq", args: ["id", "a1"] });
+  });
+
+  it("skips null artist fields (email/role) rather than assigning null", async () => {
+    const fake = createFakeSupabase({
+      artists: { data: { name: "Ada Lovelace", email: null, cast_role: null }, error: null },
+    });
+    const res = await fetchShowflowLayerForOrder(fake as never, { showDateId: null, artistId: "a1" });
+    expect(res).toEqual({ artist_name: "Ada Lovelace" });
+  });
+
+  it("maps the show_date row to date/venue/city/duration_min/sessions", async () => {
+    const fake = createFakeSupabase({
+      show_dates: {
+        data: {
+          date: "2026-02-01", venue: "Main Hall", duration_minutes: 90,
+          session_1: "19:00", session_2: null, session_3: "22:00",
+          cities: { name: "Berlin" },
+        },
+        error: null,
+      },
+    });
+    const res = await fetchShowflowLayerForOrder(fake as never, { showDateId: "sd-1", artistId: null });
+    expect(res).toEqual({
+      date: "2026-02-01", venue: "Main Hall", city: "Berlin",
+      duration_min: 90, sessions: ["19:00", "22:00"],
+    });
+    expect(fake.calls).toContainEqual({ table: "show_dates", method: "eq", args: ["id", "sd-1"] });
+  });
+
+  it("omits city and sessions when there is no city / no sessions", async () => {
+    const fake = createFakeSupabase({
+      show_dates: {
+        data: {
+          date: "2026-02-01", venue: null, duration_minutes: null,
+          session_1: null, session_2: null, session_3: null, cities: null,
+        },
+        error: null,
+      },
+    });
+    const res = await fetchShowflowLayerForOrder(fake as never, { showDateId: "sd-1", artistId: null });
+    expect(res).toEqual({ date: "2026-02-01" });
+  });
+
+  it("fetches both artist and show_date in parallel when both ids are given", async () => {
+    const fake = createFakeSupabase({
+      artists: { data: { name: "Ada Lovelace", email: "ada@example.com", cast_role: "Lead" }, error: null },
+      show_dates: {
+        data: { date: "2026-02-01", venue: "Main Hall", duration_minutes: 90, session_1: null, session_2: null, session_3: null, cities: null },
+        error: null,
+      },
+    });
+    const res = await fetchShowflowLayerForOrder(fake as never, { showDateId: "sd-1", artistId: "a1" });
+    expect(res).toEqual({
+      artist_name: "Ada Lovelace", recipient_email: "ada@example.com", role: "Lead",
+      date: "2026-02-01", venue: "Main Hall", duration_min: 90,
+    });
+  });
+
+  it("throws on an artist supabase error", async () => {
+    const fake = createFakeSupabase({ artists: { data: null, error: { message: "boom" } } });
+    await expect(fetchShowflowLayerForOrder(fake as never, { showDateId: null, artistId: "a1" })).rejects.toBeTruthy();
+  });
+
+  it("throws on a show_date supabase error", async () => {
+    const fake = createFakeSupabase({ show_dates: { data: null, error: { message: "boom" } } });
+    await expect(fetchShowflowLayerForOrder(fake as never, { showDateId: "sd-1", artistId: null })).rejects.toBeTruthy();
   });
 });
