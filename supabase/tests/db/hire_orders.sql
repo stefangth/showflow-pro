@@ -26,6 +26,15 @@
 -- 22P02 hazard impossible independent of query plan rather than merely
 -- planner-safe.
 --
+-- Also covers Task 9's dispatch_hire_order_drafts trigger
+-- (fully_filled_hire_order_dispatch.sql): AFTER UPDATE OF status ON show_dates,
+-- WHEN new.status='fully_filled' AND old.status IS DISTINCT FROM new.status, it
+-- perform net.http_post()s a generate-hire-orders 'draft' request (gated again in
+-- the function body by is_feature_enabled(org,'hire_orders')). net.http_post's
+-- queue table (net.http_request_queue) is a real, transactionally-visible INSERT,
+-- so the dispatch itself -- not just the gating logic -- is directly asserted here
+-- (see "Task 9" section below).
+--
 -- Guard functions under test (defined alongside the tables):
 --   derive_org_for_hire_order()      BEFORE INSERT OR UPDATE OF booking_id/artist_id/
 --                                     show_date_id: raises P0001 when a linked entity
@@ -56,7 +65,7 @@
 -- restrictive on top of both, same shape as org_entitlements.sql.
 BEGIN;
 CREATE EXTENSION IF NOT EXISTS pgtap WITH SCHEMA extensions;
-SELECT plan(46);
+SELECT plan(54);
 
 CREATE OR REPLACE FUNCTION pg_temp.act_as(_uid text) RETURNS void LANGUAGE plpgsql AS $$
 BEGIN
@@ -451,6 +460,118 @@ SELECT is(
    WHERE c.relname = 'objects' AND p.polname = 'Org members read own hire order pdfs'),
   true,
   'hire-orders storage policy uses a CASE guard so the uuid cast is unreachable for other buckets');
+
+-- ────────────────────────────────────────────────────────────────────────────
+-- Task 9: dispatch_hire_order_drafts trigger (fully_filled_hire_order_dispatch.sql).
+-- Org A (00000000-...-f0a1) already has its hire_orders entitlement flipped ON
+-- earlier in this file (the "RLS + entitlement" section above) and never turned
+-- back off, so it is reused as-is for the entitlement-ON case. Org B
+-- (00000000-...-f0a2) has never had an org_entitlements row written for
+-- 'hire_orders', so is_feature_enabled falls back to the registry default
+-- (false) -- reused as-is for the entitlement-OFF case. Two fresh, minimally
+-- configured shows (1 main slot, 0 understudy) let a single confirmed booking
+-- flip the date straight to 'fully_filled' via the existing
+-- sync_show_date_status_trigger -> compute_show_date_status(), which is what
+-- fires dispatch_hire_order_drafts (AFTER UPDATE OF status).
+--
+-- Dispatch is asserted directly against net.http_request_queue (pg_net's real
+-- queue table -- confirmed live, outside this file, that a rolled-back
+-- BEGIN; SELECT net.http_post(...); SELECT count(*) FROM net.http_request_queue;
+-- ROLLBACK; shows the row before the rollback discards it) rather than only the
+-- gating logic, because this is a live project with real cron jobs continuously
+-- enqueueing/dequeuing unrelated requests. A plain "before/after count" would be
+-- racy against that concurrent traffic, so each checkpoint instead captures
+-- max(id) into a transaction-local GUC (set_config, same trick the file already
+-- uses for pg_temp.act_as) and every assertion below filters on both
+-- `id > checkpoint` AND `url = the generate-hire-orders endpoint` -- no other
+-- job in this system posts to that URL, so the filter is immune to unrelated
+-- concurrent cron activity and to the background worker deleting older,
+-- unrelated rows once it processes them.
+--
+-- NOT unit-observable here: whether the enqueued request is ever actually
+-- delivered/executed (that is pg_net's background worker + the live
+-- generate-hire-orders function, both outside a rolled-back SQL transaction --
+-- Task 8's own DI suite already covers generate-hire-orders's 'draft' action,
+-- including a cron-secret-caller test explicitly noting it "pins the Task-9
+-- trigger path"). What IS asserted is the real, transactionally-visible
+-- enqueue: that it happens exactly once with the right URL/body/headers/timeout
+-- when entitled, and not at all when not.
+-- ────────────────────────────────────────────────────────────────────────────
+SELECT has_function('public', 'dispatch_hire_order_drafts', 'dispatch_hire_order_drafts() function exists');
+SELECT ok(
+  EXISTS(
+    SELECT 1 FROM pg_trigger t JOIN pg_class c ON c.oid = t.tgrelid
+    WHERE c.relname = 'show_dates' AND t.tgname = 'dispatch_hire_order_drafts' AND NOT t.tgisinternal
+  ),
+  'dispatch_hire_order_drafts trigger is bound to show_dates'
+);
+
+INSERT INTO public.shows (id, org_id, program, sub_program, main_cast_slots, understudy_slots) VALUES
+  ('11119999-f0a1-0009-0000-000000000000','00000000-0000-0000-0000-00000000f0a1','theatre','ho-dispatch-a',1,0),
+  ('11119999-f0a2-0009-0000-000000000000','00000000-0000-0000-0000-00000000f0a2','theatre','ho-dispatch-b',1,0);
+INSERT INTO public.show_dates (id, org_id, show_id, date, session_1) VALUES
+  ('22229999-f0a1-0009-0000-000000000000','00000000-0000-0000-0000-00000000f0a1','11119999-f0a1-0009-0000-000000000000','2099-09-10','19:00'),
+  ('22229999-f0a2-0009-0000-000000000000','00000000-0000-0000-0000-00000000f0a2','11119999-f0a2-0009-0000-000000000000','2099-09-10','19:00');
+
+-- ── Org A: hire_orders entitlement ON ──
+SELECT set_config('ho_dispatch.checkpoint', (SELECT coalesce(max(id),0)::text FROM net.http_request_queue), true);
+
+INSERT INTO public.bookings (id, org_id, show_date_id, artist_id, status, is_understudy) VALUES
+  ('33339999-f0a1-0009-0000-000000000000','00000000-0000-0000-0000-00000000f0a1','22229999-f0a1-0009-0000-000000000000','bbbbbbbb-f0a1-0001-0000-000000000000','confirmed', false);
+
+SELECT is(
+  (SELECT status::text FROM public.show_dates WHERE id = '22229999-f0a1-0009-0000-000000000000'),
+  'fully_filled',
+  'org A show_date reaches fully_filled from the confirmed booking (sync_show_date_status_trigger)');
+
+SELECT is(
+  (SELECT count(*)::int FROM net.http_request_queue
+   WHERE id > current_setting('ho_dispatch.checkpoint')::bigint
+     AND url = 'https://epweartpzwvcasrzyueh.supabase.co/functions/v1/generate-hire-orders'),
+  1,
+  'entitlement ON: the fully_filled transition enqueues exactly one generate-hire-orders dispatch');
+
+SELECT ok(
+  EXISTS(
+    SELECT 1 FROM net.http_request_queue
+    WHERE id > current_setting('ho_dispatch.checkpoint')::bigint
+      AND url = 'https://epweartpzwvcasrzyueh.supabase.co/functions/v1/generate-hire-orders'
+      AND convert_from(body, 'utf8') LIKE '%"action": "draft"%'
+      AND convert_from(body, 'utf8') LIKE '%"notify": true%'
+      AND convert_from(body, 'utf8') LIKE '%"org_id": "00000000-0000-0000-0000-00000000f0a1"%'
+      AND convert_from(body, 'utf8') LIKE '%"show_date_id": "22229999-f0a1-0009-0000-000000000000"%'
+  ),
+  'the dispatched request body carries action=draft, notify=true, and the right org_id/show_date_id'
+);
+
+SELECT ok(
+  EXISTS(
+    SELECT 1 FROM net.http_request_queue
+    WHERE id > current_setting('ho_dispatch.checkpoint')::bigint
+      AND url = 'https://epweartpzwvcasrzyueh.supabase.co/functions/v1/generate-hire-orders'
+      AND headers->>'X-Cron-Secret' = private.cron_secret()
+      AND timeout_milliseconds = 30000
+  ),
+  'the dispatched request carries the vault cron secret and the mandatory 30s timeout'
+);
+
+-- ── Org B: hire_orders entitlement OFF (default -- no org_entitlements row) ──
+SELECT set_config('ho_dispatch.checkpoint', (SELECT coalesce(max(id),0)::text FROM net.http_request_queue), true);
+
+INSERT INTO public.bookings (id, org_id, show_date_id, artist_id, status, is_understudy) VALUES
+  ('33339999-f0a2-0009-0000-000000000000','00000000-0000-0000-0000-00000000f0a2','22229999-f0a2-0009-0000-000000000000','bbbbbbbb-f0a2-0001-0000-000000000000','confirmed', false);
+
+SELECT is(
+  (SELECT status::text FROM public.show_dates WHERE id = '22229999-f0a2-0009-0000-000000000000'),
+  'fully_filled',
+  'org B show_date also reaches fully_filled -- the entitlement gate is independent of the slot math');
+
+SELECT is(
+  (SELECT count(*)::int FROM net.http_request_queue
+   WHERE id > current_setting('ho_dispatch.checkpoint')::bigint
+     AND url = 'https://epweartpzwvcasrzyueh.supabase.co/functions/v1/generate-hire-orders'),
+  0,
+  'entitlement OFF (default, no org_entitlements row): the same fully_filled transition enqueues nothing');
 
 SELECT * FROM finish();
 ROLLBACK;

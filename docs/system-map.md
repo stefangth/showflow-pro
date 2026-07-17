@@ -78,7 +78,7 @@ Grouped by actor. Full call-site citations live with each row; role gates from `
 | `/accept-invite?token=` (after sign-in) | `accept_invitation` RPC — `src/data/invitations.ts:93` | RPC | Membership + artist link + invite consumed |
 | Resend deliverability webhook (sent/delivered/delayed/bounce/complaint) | `handle-email-suppression` | webhook | HMAC-verified; updates `email_send_log` lifecycle; bounce/complaint additionally upserts `suppressed_emails` |
 
-## 4. The functions — 22 edge functions at a glance
+## 4. The functions — 23 edge functions at a glance
 
 | function | trigger | auth guard | writes | side effects |
 |---|---|---|---|---|
@@ -87,6 +87,7 @@ Grouped by actor. Full call-site citations live with each row; role gates from `
 | `close-offer-tier` | UI | service-role ∨ org admin/producer | `show_date_offer_tiers`, `bookings` (withdraw) | none |
 | `expire-offers` | cron hourly + UI | cron secret ∨ admin/producer | `bookings` (`reminder_sent_at`); `notifications` (`offer_expiring`, `tier_escalated`, `cast_escalation_requested`), `show_date_offer_tiers` (escalation stamp); `expire_soft_bookings()` RPC → `bookings` | `offer-expiry-reminder` email 24 h before expiry (gated `expiry_reminder`); `auto_escalate` on: auto-opens the next tier of the same effective ladder, no email; else `cast-escalation-requested` email to producers |
 | `tier-at-risk-watcher` | cron hourly + UI | cron secret ∨ admin/producer | `notifications` (insert + self-clearing delete); gated per org on `at_risk_alerts` (stale notifications still clear for a gated org) | none — in-app only |
+| `generate-hire-orders` | DB trigger `dispatch_hire_order_drafts` (`show_dates.status → fully_filled`, `draft` action) + UI (`issue`/`preview`/`download-url`, not yet wired to a page as of this task) | cron secret (`X-Cron-Secret`) ∨ `requireOrgRole(org_id,[admin,producer])` (JWT, org-scoped); `download-url` has its own bespoke auth — org admin/producer, super-admin, or the linked artist on an issued/countersigned order only | `hire_orders` (insert `draft`, per-booking try/catch; `ready→issued` + `pdf_path` on `issue`); Storage `hire-orders/<org>/<order_no>.pdf` upload (`issue`); `notifications` `hire_orders_ready` (`draft`, once per batch, when `notify:true`) / `hire_order_issued` (`issue`, per artist) | `hire-order-issued` email with PDF attachment, best-effort (`issue` only); gated on `is_feature_enabled(org,'hire_orders')` (default off, ships dark) |
 | `send-offer-digest` | cron hourly (Berlin gate) + UI | cron secret ∨ admin/producer | `bookings` (`digest_sent_at`, `offer_expires_at`); skips immediate-delivery and direct-booking orgs | `artist-offer-digest` email |
 | `send-confirmation-digest` | cron hourly (Berlin gate) + UI | cron secret ∨ admin/producer | `notifications`, `show_date_change_log` (`digested_at`), `bookings` (`confirmation_digest_sent_at`); skipped entirely when `confirmation_digest=false` | `artist-confirmation-digest` email |
 | `send-transactional-email` | fn→fn only | service-role only | `email_unsubscribe_tokens`, `email_send_log` | Resend API (idempotency-keyed) |
@@ -144,6 +145,7 @@ What the database can refuse (or do on its own), regardless of which code path w
 | `sync_show_dates_on_show_update_trigger` | `shows` | AFTER UPDATE of program/sub_program/slots | recomputes status of every child date | no | `20260616172104_slots_on_shows.sql` |
 | `cascade_cancel_bookings_on_date_cancel` | `show_dates` | AFTER INSERT/UPDATE, `NEW.status='cancelled'` | cancels all active bookings on the date (`date_cancelled`); suppresses understudy promotion during the cascade via GUC | no | `20260620130000_show_date_cancellation.sql` |
 | `log_show_date_schedule_change` | `show_dates` | AFTER UPDATE of sessions/status | appends `show_date_change_log` rows consumed by the confirmation digest | no | `20260620140000_schedule_change_notifications.sql` |
+| `dispatch_hire_order_drafts` | `show_dates` | AFTER UPDATE OF `status`, WHEN `new.status='fully_filled' AND old.status IS DISTINCT FROM new.status` | dispatches `generate-hire-orders` (`action:'draft', notify:true`) via `net.http_post`, re-gated in the function body by `is_feature_enabled(org,'hire_orders')`; one draft hire order per confirmed booking on the date, plus a `hire_orders_ready` producer notification | no | `20260717161030_fully_filled_hire_order_dispatch.sql` |
 | `trg_enforce_blocked_date_no_active_booking` | `blocked_dates` | BEFORE INSERT/UPDATE | artist can't block a date holding an active booking | **yes** — booking conflict | `20260702120030_blocked_dates_eligibility_guard.sql` |
 | `notify_booking_transition_trigger` | `bookings` | AFTER INSERT OR UPDATE | audit log (updates only) + notifications: `suggested→soft_booked` → producers; `soft_booked→confirmed` → artist; direct INSERT as `confirmed` → artist | no | body `20260604133000_org_scope_assignments_and_autocancel.sql`, INSERT branch `20260715103620_direct_booking_confirmed_notification.sql` |
 | `trg_derive_org_id` (`derive_org_id_from_sync_log_id`) | `airtable_sync_record_log` | BEFORE INSERT | copies `org_id` from parent sync-log row | no | `20260617164248_airtable_sync_records.sql` |
@@ -371,6 +373,16 @@ The drill-down layer. Sections 1–8 are the altitude; this is the detail, per f
 - **Trigger:** user action (artist import wizard)
 - **Auth:** `requireOrgRole(org_id, ["producer","admin"])` (`index.ts:36`); `verify_jwt = true`
 - **Guards:** exact host `docs.google.com`, `/spreadsheets/` path, `format=csv`; no redirects; 8 s abort; 5 MB double-checked (`index.ts:7-64`)
+
+### generate-hire-orders
+- **Trigger:** DB trigger `dispatch_hire_order_drafts` (`show_dates.status → fully_filled`, `action:'draft'`) + user action (`issue`/`preview`/`download-url` — not yet wired to a page as of this task)
+- **Auth:** cron-secret path (`X-Cron-Secret`) via `requireCronOrRole(["admin","producer"])`, or JWT `requireOrgRole(body.org_id, ["admin","producer"])` scoped to the caller's own org, for `draft`/`issue`/`preview`; `download-url` runs its own bespoke auth — org admin/producer of the order's org, super-admin, or the linked artist (`artists.user_id = caller`) on an `issued`/`countersigned` order only (draft/ready never downloadable); `verify_jwt = false`
+- **Gate:** every action behind `requireFeature(org_id, 'hire_orders')` (default off — ships dark, no org has it enabled yet)
+- **Inputs:** `{action, org_id, ...}` — `draft` (`show_date_id`, optional `booking_ids`/`notify`), `issue` (`order_ids`), `preview` (`order_id`), `download-url` (`order_id`)
+- **Writes:** `hire_orders` insert (`draft`; per-booking try/catch isolates one bad row; unique-`order_no` collision retried via `withCollisionSuffix`, max 5) / `ready→issued` transition + `pdf_path` (`issue`); Storage upload `hire-orders/<org>/<order_no>.pdf` (`issue`); `notifications` `hire_orders_ready` (`draft`, once per batch, when `notify:true`, via `resolve_show_assignments` fallback org admins) / `hire_order_issued` (`issue`, per linked artist)
+- **Side effects:** `hire-order-issued` email with PDF attachment, best-effort (`issue` only); none for `draft`/`preview`/`download-url`
+- **Failure:** per-booking/per-order try/catch isolates one bad row from the batch instead of failing it; `preview` persists nothing; a cross-tenant JWT caller (admin/producer of a different org than `body.org_id`) is rejected 403 by the org-scoped gate
+- **Cite:** `generate-hire-orders/index.ts`, `20260717161030_fully_filled_hire_order_dispatch.sql` (the trigger)
 
 ### handle-email-suppression
 - **Trigger:** Resend webhook (full deliverability lifecycle: sent, delivered, delivery_delayed, bounced, complained; also opened/clicked, which are acknowledged and ignored)

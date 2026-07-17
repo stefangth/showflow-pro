@@ -288,6 +288,23 @@ export const SYSTEM_MAP_NODES: SystemMapNode[] = [
     },
   },
   {
+    id: "f_hireorders",
+    column: "fn",
+    group: "Hire orders",
+    kind: "fn",
+    label: "generate-hire-orders",
+    sub: "DB trigger ∨ admin/producer",
+    subsystems: ["booking"],
+    detail: {
+      Trigger: "DB trigger dispatch_hire_order_drafts (show_dates.status -> fully_filled, action:draft) + UI (issue/preview/download-url, not yet wired to a page)",
+      Auth: "cron secret (X-Cron-Secret) ∨ requireOrgRole(org_id,[admin,producer]) (JWT, org-scoped) · download-url: bespoke -- org admin/producer, super-admin, or the linked artist on an issued/countersigned order only · verify_jwt=false",
+      Gate: "every action behind requireFeature(org_id,'hire_orders') -- default off, ships dark",
+      Writes: "hire_orders insert (draft, per-booking try/catch, order_no collision retried x5) / ready->issued + pdf_path (issue) · Storage hire-orders/<org>/<order_no>.pdf (issue) · notifications hire_orders_ready (draft, notify:true) / hire_order_issued (issue)",
+      Effects: "hire-order-issued email with PDF attachment, best-effort (issue only)",
+      Cite: "generate-hire-orders/index.ts · 20260717161030_fully_filled_hire_order_dispatch.sql",
+    },
+  },
+  {
     id: "f_offerdig",
     column: "fn",
     group: "Digests & email",
@@ -555,8 +572,8 @@ export const SYSTEM_MAP_NODES: SystemMapNode[] = [
     subsystems: ["booking", "airtable"],
     detail: {
       Guards:
-        "cascade_cancel_bookings_on_date_cancel · log_show_date_schedule_change · status recomputed from bookings, never client-written",
-      Cite: "20260620130000 · 20260620140000 · 20260616172104",
+        "cascade_cancel_bookings_on_date_cancel · log_show_date_schedule_change · status recomputed from bookings, never client-written · dispatch_hire_order_drafts (AFTER UPDATE OF status, fires only on a transition into fully_filled, dispatches generate-hire-orders via net.http_post, gated by is_feature_enabled(org,'hire_orders'))",
+      Cite: "20260620130000 · 20260620140000 · 20260616172104 · 20260717161030",
     },
   },
   {
@@ -917,6 +934,7 @@ export const SYSTEM_MAP_EDGES: SystemMapEdge[] = [
   { from: "f_expire", to: "d_notif" },
   { from: "f_expire", to: "d_tiers" },
   { from: "f_risk", to: "d_notif" },
+  { from: "f_hireorders", to: "d_notif" },
   { from: "f_offerdig", to: "d_bookings" },
   { from: "f_confdig", to: "d_bookings" },
   { from: "f_confdig", to: "d_notif" },
@@ -944,6 +962,8 @@ export const SYSTEM_MAP_EDGES: SystemMapEdge[] = [
   { from: "d_shows", to: "d_showdates", read: true, label: "slot ripple" },
   { from: "d_bookings", to: "d_notif", read: true, label: "transition notify" },
   { from: "d_settings", to: "d_auditlog", read: true, label: "log_app_settings_change trigger" },
+  // db → fn (row-level trigger dispatch, not a scheduled cron)
+  { from: "d_showdates", to: "f_hireorders", label: "fully_filled -> dispatch_hire_order_drafts (net.http_post)" },
   // fn → effects
   { from: "f_offerdig", to: "e_offerdig" },
   { from: "f_confdig", to: "e_confdig" },
