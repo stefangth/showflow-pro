@@ -1,7 +1,9 @@
 import { useRef } from "react";
 import { useQuery } from "@tanstack/react-query";
+import { Lock } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/features/auth/AuthContext";
+import { useFeature } from "@/hooks/useEntitlements";
 import {
   applyPreset,
   matchPreset,
@@ -15,6 +17,7 @@ import { BOOKING_ENGINE_DEFAULTS } from "@/config/app.config";
 import { fetchCustomFieldDefs } from "@/data/customFields";
 import { useSettingsAudit } from "@/hooks/useSettingsAudit";
 import { EmailTemplatesCard } from "@/components/settings/EmailTemplatesCard";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { FlowPresets } from "./FlowPresets";
@@ -48,7 +51,12 @@ export function BookingFlowTab({ get, set, dirtyKeys, saving, onSave, onDiscard 
   const { currentOrg } = useAuth();
   const orgId = currentOrg?.id ?? null;
 
-  const flow = normalizeBookingFlow(get("booking_flow"));
+  // When the org isn't entitled to the booking-flow module, the tab renders read-only.
+  // The displayed flow must be the classic defaults (normalizeBookingFlow(null)), not
+  // the org's stored override — that override isn't the live behavior right now, so
+  // showing it would misrepresent what the standard flow actually does.
+  const locked = !useFeature("booking_flow");
+  const flow = normalizeBookingFlow(locked ? null : get("booking_flow"));
 
   // SettingsPage's `get` returns '' for keys with no draft/persisted value, so a
   // bare `?? default` would leave `Number('')` === 0. Coerce explicitly instead.
@@ -125,7 +133,17 @@ export function BookingFlowTab({ get, set, dirtyKeys, saving, onSave, onDiscard 
 
   return (
     <div className="space-y-4">
-      <FlowPresets active={matchPreset(flow)} onSelect={onPreset} />
+      {locked && (
+        <Alert>
+          <Lock className="h-4 w-4" />
+          <AlertTitle>Booking flow is not enabled</AlertTitle>
+          <AlertDescription>
+            Your booking pipeline runs the standard flow. Contact your ShowFlow administrator to enable
+            configuration.
+          </AlertDescription>
+        </Alert>
+      )}
+      <FlowPresets active={matchPreset(flow)} onSelect={onPreset} disabled={locked} />
       <div className="grid gap-5 lg:grid-cols-[1fr_340px]">
         <FlowTimeline
           flow={flow}
@@ -134,6 +152,7 @@ export function BookingFlowTab({ get, set, dirtyKeys, saving, onSave, onDiscard 
           onTimesChange={onTimesChange}
           customFields={customFields}
           referencePreview={referencePreview}
+          disabled={locked}
         />
         <FlowRail
           flow={flow}
@@ -145,6 +164,7 @@ export function BookingFlowTab({ get, set, dirtyKeys, saving, onSave, onDiscard 
           audit={audit.data ?? []}
           isLoading={audit.isLoading}
           isError={audit.isError}
+          locked={locked}
         />
       </div>
       <div className="max-w-sm space-y-2">
