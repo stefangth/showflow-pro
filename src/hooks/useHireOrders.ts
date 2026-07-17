@@ -7,7 +7,10 @@ import {
   fetchHireOrder,
   fetchMyHireOrders,
   invokeHireOrderAction,
+  updateHireOrderReview,
   updateHireOrderStatus,
+  type HireOrderReview,
+  type HireOrderRow,
 } from "@/data/hireOrders";
 
 /** Every mutation below busts the whole `['hire-orders']` prefix, never a sub-key —
@@ -79,6 +82,22 @@ export function useHireOrderAction() {
     },
     onError: (error: Error) => {
       toast.error(error.message || "Hire order action failed");
+    },
+  });
+}
+
+/** Persist the generate dialog's fee + terms-variant edits onto a draft/ready
+ *  order (the pre-step before preview/issue). Silent on success — the caller
+ *  chains preview/issue right after, which own the user-facing toasts. Busts the
+ *  whole hire-orders domain so the date-sheet rows reflect the new fee/variant. */
+export function useUpdateHireOrderReview() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (vars: { id: string; review: HireOrderReview; currentData: HireOrderRow["data"] }) =>
+      updateHireOrderReview(supabase, vars.id, vars.review, vars.currentData),
+    onSuccess: () => invalidateHireOrders(qc),
+    onError: (error: Error) => {
+      toast.error(error.message || "Could not save hire order changes");
     },
   });
 }
