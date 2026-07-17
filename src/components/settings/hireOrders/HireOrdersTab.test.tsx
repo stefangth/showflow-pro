@@ -1,7 +1,7 @@
-import { describe, expect, it, vi } from "vitest";
+import { describe, expect, it, vi, beforeEach } from "vitest";
 import { fireEvent, screen, waitFor, within } from "@testing-library/react";
 import { renderWithProviders } from "@/test/renderWithProviders";
-import { createFakeSupabase } from "@/test/supabaseFake";
+import { createFakeSupabase, type TableSeed } from "@/test/supabaseFake";
 
 // HireOrdersTab and its cards read `currentOrg` from useAuth and hit the shared supabase
 // client directly (resolveOrgSetting/upsertOrgSetting, useFeature/useEntitlements,
@@ -13,22 +13,28 @@ const { client } = vi.hoisted(() => ({ client: {} as Record<string, unknown> }))
 vi.mock("@/integrations/supabase/client", () => ({ supabase: client }));
 vi.mock("@/features/auth/AuthContext", () => ({ useAuth: vi.fn() }));
 
-Object.assign(
-  client,
-  createFakeSupabase({
-    // Every card resolves its own key via resolveOrgSetting({ ... }.eq("key", key)...); the
-    // fake doesn't filter on `.eq("key", ...)` for a single-object seed, so an empty array
-    // here means every card falls back to its own default, exactly what these tests need
-    // to exercise the seeded HIRE_ORDER_DEFAULT_TERMS and the "manual" countersign default.
-    app_settings: { data: [], error: null },
-    settings_audit_log: { data: [], error: null },
-    profiles: { data: [], error: null },
-    org_entitlements: [
-      { when: { org_id: "org-on" }, data: [{ feature: "hire_orders", enabled: true }], error: null },
-      { when: { org_id: "org-off" }, data: [{ feature: "hire_orders", enabled: false }], error: null },
-    ],
-  }),
-);
+// Every card resolves its own key via resolveOrgSetting({ ... }.eq("key", key)...); the
+// fake doesn't filter on `.eq("key", ...)` for a single-object seed, so an empty array
+// means every card falls back to its own default, which is what the happy-path tests
+// need (empty HIRE_ORDER_DEFAULT_TERMS, "manual" countersign).
+const OK_SEED: Record<string, TableSeed> = {
+  app_settings: { data: [], error: null },
+  settings_audit_log: { data: [], error: null },
+  profiles: { data: [], error: null },
+  org_entitlements: [
+    { when: { org_id: "org-on" }, data: [{ feature: "hire_orders", enabled: true }], error: null },
+    { when: { org_id: "org-off" }, data: [{ feature: "hire_orders", enabled: false }], error: null },
+  ],
+};
+
+/** Re-seed the shared client holder in place, so each test picks its own server behavior
+ *  (the vi.mock above captured this exact object by reference, so it must be mutated,
+ *  never reassigned). */
+function seedClient(seed: Record<string, TableSeed>) {
+  for (const key of Object.keys(client)) delete client[key];
+  Object.assign(client, createFakeSupabase(seed));
+}
+seedClient(OK_SEED);
 
 import { useAuth } from "@/features/auth/AuthContext";
 import { HireOrdersTab } from "./HireOrdersTab";
@@ -38,6 +44,8 @@ function authAs(orgId: string) {
 }
 
 describe("HireOrdersTab", () => {
+  beforeEach(() => seedClient(OK_SEED));
+
   it("renders all five cards when the org is entitled", async () => {
     authAs("org-on");
     renderWithProviders(<HireOrdersTab />);
@@ -115,6 +123,50 @@ describe("HireOrdersTab", () => {
       expect(within(section).queryAllByLabelText(new RegExp(`${variant} clause \\d+ title`, "i"))).toHaveLength(0);
       expect(within(section).getByText(/no clauses yet/i)).toBeInTheDocument();
     }
+  });
+
+  // Data-loss regression: when the settings read fails, React Query settles to
+  // status:'error' with isLoading:false and data:undefined. Cards that branch only on
+  // isLoading fall through and render their blank/default form values as if they were
+  // the org's saved data, with Save live. An admin clicking Save then overwrites a real
+  // stored value (a legal letterhead name, authored terms) with the empty default.
+  // The cards must surface the failure and offer no Save while in that state.
+  describe("when the settings read fails", () => {
+    const FAILING_SEED: Record<string, TableSeed> = {
+      ...OK_SEED,
+      app_settings: { data: null, error: new Error("permission denied for table app_settings") },
+    };
+
+    it("shows a destructive alert and no Save control, instead of an editable blank form", async () => {
+      seedClient(FAILING_SEED);
+      authAs("org-on");
+      renderWithProviders(<HireOrdersTab />);
+
+      // Every card that reads app_settings surfaces the failure. Each card owns its own
+      // query, so they settle independently: wait for the count rather than
+      // findAllByRole, which resolves on the FIRST match and would race the other four.
+      await waitFor(() => expect(screen.getAllByRole("alert")).toHaveLength(5));
+      expect(screen.getByText(/could not load the letterhead settings/i)).toBeInTheDocument();
+      expect(screen.getByText(/could not load the terms settings/i)).toBeInTheDocument();
+      // ...carrying the underlying reason, not a bare "something went wrong".
+      expect(screen.getAllByText(/permission denied for table app_settings/i).length).toBeGreaterThan(0);
+
+      // The overwrite path is closed: no Save button exists anywhere on the tab, and
+      // no blank form field is offered as if it held the org's real value.
+      expect(screen.queryByRole("button", { name: /^save/i })).not.toBeInTheDocument();
+      expect(screen.queryByLabelText("Legal name")).not.toBeInTheDocument();
+      expect(screen.queryByRole("radio")).not.toBeInTheDocument();
+    });
+
+    it("recovers to the normal editable form once the read succeeds", async () => {
+      authAs("org-on");
+      renderWithProviders(<HireOrdersTab />);
+
+      // Guard against the alert becoming a permanent state: the happy path still works.
+      expect(await screen.findByLabelText("Legal name")).toBeInTheDocument();
+      expect(screen.getByRole("button", { name: "Save letterhead" })).toBeEnabled();
+      expect(screen.queryByText(/could not load/i)).not.toBeInTheDocument();
+    });
   });
 
   it("adds and removes clause rows on a variant that starts empty", async () => {

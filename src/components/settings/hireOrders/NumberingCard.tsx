@@ -10,6 +10,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 
 /** The `hire_order_numbering` app_settings value (spec §2.6). */
 export interface HireOrderNumbering {
@@ -20,7 +21,7 @@ export const NUMBERING_DEFAULT: HireOrderNumbering = { prefix: "HO", pattern: "{
 
 export function NumberingCard({ orgId }: { orgId: string | null }) {
   const qc = useQueryClient();
-  const { data, isLoading } = useQuery({
+  const { data, isLoading, isError, error } = useQuery({
     queryKey: ["app-settings", "hire_order_numbering", orgId],
     queryFn: () => resolveOrgSetting<HireOrderNumbering>(supabase, orgId, "hire_order_numbering", NUMBERING_DEFAULT),
     enabled: Boolean(orgId),
@@ -50,6 +51,16 @@ export function NumberingCard({ orgId }: { orgId: string | null }) {
   });
 
   if (isLoading) return <Skeleton className="h-40 w-full" />;
+  // Read failed: render the error INSTEAD of the form. Falling through would show
+  // NUMBERING_DEFAULT as if it were the org's saved values, and a Save from there
+  // would overwrite a customized prefix/pattern with the stock one.
+  if (isError) {
+    return (
+      <Alert variant="destructive">
+        <AlertDescription>Could not load the numbering settings. {(error as Error).message}</AlertDescription>
+      </Alert>
+    );
+  }
 
   // Rendered with the shared pure formatter (src/lib/hireOrders/orderNo.ts) so the
   // preview can never drift from the number the generator actually stamps.

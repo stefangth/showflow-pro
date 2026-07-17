@@ -12,6 +12,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Separator } from "@/components/ui/separator";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 
 /** The `hire_order_terms` app_settings value (spec §2.6). */
 export interface HireOrderTerms {
@@ -92,7 +93,7 @@ function ClauseListEditor({
 
 export function TermsVariantsCard({ orgId }: { orgId: string | null }) {
   const qc = useQueryClient();
-  const { data, isLoading } = useQuery({
+  const { data, isLoading, isError, error } = useQuery({
     queryKey: ["app-settings", "hire_order_terms", orgId],
     queryFn: () => resolveOrgSetting<HireOrderTerms>(supabase, orgId, "hire_order_terms", HIRE_ORDER_DEFAULT_TERMS),
     enabled: Boolean(orgId),
@@ -120,6 +121,17 @@ export function TermsVariantsCard({ orgId }: { orgId: string | null }) {
   });
 
   if (isLoading) return <Skeleton className="h-64 w-full" />;
+  // Read failed: render the error INSTEAD of the form. This card is the sharpest case
+  // of that hazard: HIRE_ORDER_DEFAULT_TERMS is empty for every variant, so falling
+  // through would render "No clauses yet" and be indistinguishable from an org that
+  // genuinely has none. A Save from there would wipe every authored clause.
+  if (isError) {
+    return (
+      <Alert variant="destructive">
+        <AlertDescription>Could not load the terms settings. {(error as Error).message}</AlertDescription>
+      </Alert>
+    );
+  }
 
   return (
     <Card>
