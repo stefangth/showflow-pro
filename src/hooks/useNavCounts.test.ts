@@ -9,10 +9,14 @@ vi.mock("@/data/bookings", () => ({
   fetchPendingConfirmationsCount: vi.fn(),
   fetchMyOpenOffersCount: vi.fn(),
 }));
+vi.mock("@/data/hireOrders", () => ({
+  fetchAwaitingCountersignCount: vi.fn(),
+}));
 
 import { useAuth } from "@/features/auth/AuthContext";
 import { useMyArtist } from "@/hooks/useMyArtist";
 import { fetchPendingConfirmationsCount, fetchMyOpenOffersCount } from "@/data/bookings";
+import { fetchAwaitingCountersignCount } from "@/data/hireOrders";
 import { useNavCounts } from "./useNavCounts";
 
 function wrapper() {
@@ -24,22 +28,25 @@ function wrapper() {
 describe("useNavCounts", () => {
   beforeEach(() => vi.clearAllMocks());
 
-  it("fetches pending confirmations for a producer with an org; no offers without an artist", async () => {
+  it("fetches pending confirmations and the awaiting-countersign count for a producer with an org; no offers without an artist", async () => {
     vi.mocked(useAuth).mockReturnValue({
       currentOrg: { id: "org-1", name: "Acme" },
       hasRole: (r: string) => r === "producer",
     } as never);
     vi.mocked(useMyArtist).mockReturnValue({ data: null } as never);
     vi.mocked(fetchPendingConfirmationsCount).mockResolvedValue(5);
+    vi.mocked(fetchAwaitingCountersignCount).mockResolvedValue(2);
 
     const { result } = renderHook(() => useNavCounts(), { wrapper: wrapper() });
     await waitFor(() => expect(result.current.pendingConfirmations).toBe(5));
+    await waitFor(() => expect(result.current.awaitingCountersign).toBe(2));
     expect(fetchPendingConfirmationsCount).toHaveBeenCalledWith(expect.anything(), "org-1");
+    expect(fetchAwaitingCountersignCount).toHaveBeenCalledWith(expect.anything(), "org-1");
     expect(fetchMyOpenOffersCount).not.toHaveBeenCalled();
     expect(result.current.openOffers).toBe(0);
   });
 
-  it("fetches open offers for an artist; no org-confirmations query", async () => {
+  it("fetches open offers for an artist; no org-scoped queries (confirmations or awaiting-countersign)", async () => {
     vi.mocked(useAuth).mockReturnValue({
       currentOrg: { id: "org-1", name: "Acme" },
       hasRole: () => false,
@@ -51,6 +58,8 @@ describe("useNavCounts", () => {
     await waitFor(() => expect(result.current.openOffers).toBe(3));
     expect(fetchMyOpenOffersCount).toHaveBeenCalledWith(expect.anything(), "artist-1");
     expect(fetchPendingConfirmationsCount).not.toHaveBeenCalled();
+    expect(fetchAwaitingCountersignCount).not.toHaveBeenCalled();
     expect(result.current.pendingConfirmations).toBe(0);
+    expect(result.current.awaitingCountersign).toBe(0);
   });
 });

@@ -23,6 +23,11 @@ describe("requiredFeatureForPath", () => {
     expect(ROUTE_FEATURES["/hire-orders/:id"]).toBe("hire_orders");
   });
 
+  it("gates the V4 hire-orders tracking route on the hire_orders feature", () => {
+    expect(ROUTE_FEATURES["/hire-orders"]).toBe("hire_orders");
+    expect(requiredFeatureForPath("/hire-orders")).toBe("hire_orders");
+  });
+
   it("returns undefined for a path with no configured feature", () => {
     expect(requiredFeatureForPath("/dashboard")).toBeUndefined();
   });
@@ -39,7 +44,9 @@ describe("requiredFeatureForPath", () => {
   });
 
   it("does not match the dynamic pattern for the wrong segment count", () => {
-    expect(requiredFeatureForPath("/hire-orders")).toBeUndefined();
+    // "/hire-orders" itself now exact-matches ROUTE_FEATURES directly (the V4
+    // list route) — the case this guards against is a path with too many
+    // segments for the ":id" pattern, which must still fall through to undefined.
     expect(requiredFeatureForPath("/hire-orders/abc/extra")).toBeUndefined();
   });
 

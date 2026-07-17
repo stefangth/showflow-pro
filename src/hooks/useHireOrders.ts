@@ -1,16 +1,19 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/features/auth/AuthContext";
 import { useMyArtist } from "@/hooks/useMyArtist";
 import {
   fetchHireOrdersForDate,
   fetchHireOrder,
   fetchMyHireOrders,
+  fetchHireOrders,
   invokeHireOrderAction,
   updateHireOrderReview,
   updateHireOrderStatus,
   type HireOrderReview,
   type HireOrderRow,
+  type HireOrderFilters,
 } from "@/data/hireOrders";
 
 /** Every mutation below busts the whole `['hire-orders']` prefix, never a sub-key —
@@ -35,6 +38,18 @@ export function useHireOrder(id: string | null | undefined) {
     queryKey: ["hire-orders", "detail", id],
     enabled: !!id,
     queryFn: () => fetchHireOrder(supabase, id!),
+  });
+}
+
+/** All of the current org's hire orders for the V4 tracking dashboard,
+ *  filtered by status/search (see fetchHireOrders). Disabled without a
+ *  current org — matches every other org-scoped list hook in this file. */
+export function useHireOrdersList(filters: HireOrderFilters = {}) {
+  const { currentOrg } = useAuth();
+  return useQuery({
+    queryKey: ["hire-orders", "list", currentOrg?.id, filters],
+    enabled: !!currentOrg,
+    queryFn: () => fetchHireOrders(supabase, currentOrg!.id, filters),
   });
 }
 
@@ -149,6 +164,23 @@ export function useUpdateHireOrderReview() {
     onSuccess: () => invalidateHireOrders(qc),
     onError: (error: Error) => {
       toast.error(error.message || "Could not save hire order changes");
+    },
+  });
+}
+
+/** Void a hire order (the client path; the DB transition guard allows `void`
+ *  from any state, so this has no status precondition of its own). Used by
+ *  the V4 slide-over's destructive "Void" action, behind an AlertDialog. */
+export function useVoidHireOrder() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => updateHireOrderStatus(supabase, id, "void"),
+    onSuccess: () => {
+      invalidateHireOrders(qc);
+      toast.success("Hire order voided");
+    },
+    onError: (error: Error) => {
+      toast.error(error.message || "Could not void hire order");
     },
   });
 }

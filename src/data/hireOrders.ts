@@ -1,12 +1,27 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "@/integrations/supabase/types";
 
-type HireOrderStatus = Database["public"]["Enums"]["hire_order_status"];
+export type HireOrderStatus = Database["public"]["Enums"]["hire_order_status"];
 
 /** A `hire_orders` row, with the linked artist's name joined in (when selected). */
 export type HireOrderRow = Database["public"]["Tables"]["hire_orders"]["Row"] & {
   artists?: { name: string } | null;
 };
+
+/** A `hire_orders` row for the V4 tracking table: artist name AND the linked
+ *  show date's date/venue joined in (unlinked/manual orders carry neither and
+ *  fall back to the resolved `data` snapshot in the UI). */
+export type HireOrderListRow = HireOrderRow & {
+  show_dates?: { date: string; venue: string | null } | null;
+};
+
+/** `fetchHireOrders` filters: an empty/omitted `status` returns every status;
+ *  `search` does a case-insensitive match on the order number OR the joined
+ *  artist name. */
+export interface HireOrderFilters {
+  status?: HireOrderStatus[];
+  search?: string;
+}
 
 /** All hire orders for a show date (any status), oldest first, artist name joined. */
 export async function fetchHireOrdersForDate(
@@ -119,4 +134,52 @@ export async function updateHireOrderStatus(
       : { status };
   const { error } = await client.from("hire_orders").update(patch).eq("id", id);
   if (error) throw error;
+}
+
+/**
+ * All of an org's hire orders (any status), newest first, with the linked
+ * artist name and show date (date + venue) joined in — feeds the V4 tracking
+ * table. `filters.status` narrows to a status set (omitted/empty = every
+ * status); `filters.search` matches the order number OR the joined artist
+ * name, case-insensitively (PostgREST's `or()` supports referencing an
+ * embedded resource's column — see the API docs' "Embedded filters" section).
+ * `%`/`,` are stripped from the search term first since they are significant
+ * in a PostgREST filter string and the search box is free text.
+ */
+export async function fetchHireOrders(
+  client: SupabaseClient<Database>,
+  orgId: string,
+  filters: HireOrderFilters = {},
+): Promise<HireOrderListRow[]> {
+  let query = client
+    .from("hire_orders")
+    .select("*, artists(name), show_dates(date, venue)")
+    .eq("org_id", orgId)
+    .order("created_at", { ascending: false });
+  if (filters.status && filters.status.length > 0) {
+    query = query.in("status", filters.status);
+  }
+  const term = filters.search?.trim().replace(/[%,]/g, "");
+  if (term) {
+    query = query.or(`order_no.ilike.%${term}%,artists.name.ilike.%${term}%`);
+  }
+  const { data, error } = await query;
+  if (error) throw error;
+  return (data ?? []) as unknown as HireOrderListRow[];
+}
+
+/** Count of this org's orders currently awaiting the artist's countersignature
+ *  (status `issued`) — the "Hire orders" nav badge and the V4 KPI tile.
+ *  Server-side head count (see fetchPendingConfirmationsCount in bookings.ts). */
+export async function fetchAwaitingCountersignCount(
+  client: SupabaseClient<Database>,
+  orgId: string,
+): Promise<number> {
+  const { count, error } = await client
+    .from("hire_orders")
+    .select("*", { count: "exact", head: true })
+    .eq("org_id", orgId)
+    .eq("status", "issued");
+  if (error) throw error;
+  return count ?? 0;
 }

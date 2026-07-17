@@ -5,20 +5,24 @@ import React from "react";
 
 vi.mock("sonner", () => ({ toast: { success: vi.fn(), error: vi.fn(), info: vi.fn(), warning: vi.fn() } }));
 vi.mock("@/hooks/useMyArtist", () => ({ useMyArtist: vi.fn() }));
+vi.mock("@/features/auth/AuthContext", () => ({ useAuth: vi.fn() }));
 vi.mock("@/data/hireOrders", () => ({
   fetchHireOrdersForDate: vi.fn(),
   fetchHireOrder: vi.fn(),
   fetchMyHireOrders: vi.fn(),
+  fetchHireOrders: vi.fn(),
   invokeHireOrderAction: vi.fn(),
   updateHireOrderStatus: vi.fn(),
 }));
 
 import { toast } from "sonner";
 import { useMyArtist } from "@/hooks/useMyArtist";
+import { useAuth } from "@/features/auth/AuthContext";
 import {
   fetchHireOrdersForDate,
   fetchHireOrder,
   fetchMyHireOrders,
+  fetchHireOrders,
   invokeHireOrderAction,
   updateHireOrderStatus,
 } from "@/data/hireOrders";
@@ -26,8 +30,10 @@ import {
   useHireOrdersForDate,
   useHireOrder,
   useMyHireOrders,
+  useHireOrdersList,
   useHireOrderAction,
   useMarkCountersigned,
+  useVoidHireOrder,
 } from "./useHireOrders";
 
 function wrapper() {
@@ -93,6 +99,28 @@ describe("useMyHireOrders", () => {
     const { result } = renderHook(() => useMyHireOrders(), { wrapper: Wrapper });
     expect(result.current.fetchStatus).toBe("idle");
     expect(fetchMyHireOrders).not.toHaveBeenCalled();
+  });
+});
+
+describe("useHireOrdersList", () => {
+  beforeEach(() => vi.clearAllMocks());
+
+  it("fetches the current org's hire orders with the given filters", async () => {
+    vi.mocked(useAuth).mockReturnValue({ currentOrg: { id: "org-1" } } as never);
+    vi.mocked(fetchHireOrders).mockResolvedValue([{ id: "ho-1" }] as never);
+    const { Wrapper } = wrapper();
+    const { result } = renderHook(() => useHireOrdersList({ status: ["draft"] }), { wrapper: Wrapper });
+    await waitFor(() => expect(result.current.isSuccess).toBe(true));
+    expect(result.current.data).toEqual([{ id: "ho-1" }]);
+    expect(fetchHireOrders).toHaveBeenCalledWith(expect.anything(), "org-1", { status: ["draft"] });
+  });
+
+  it("stays disabled without a current org", () => {
+    vi.mocked(useAuth).mockReturnValue({ currentOrg: null } as never);
+    const { Wrapper } = wrapper();
+    const { result } = renderHook(() => useHireOrdersList(), { wrapper: Wrapper });
+    expect(result.current.fetchStatus).toBe("idle");
+    expect(fetchHireOrders).not.toHaveBeenCalled();
   });
 });
 
@@ -251,6 +279,37 @@ describe("useMarkCountersigned", () => {
     vi.mocked(updateHireOrderStatus).mockRejectedValue(new Error("stale"));
     const { Wrapper } = wrapper();
     const { result } = renderHook(() => useMarkCountersigned(), { wrapper: Wrapper });
+
+    await act(async () => {
+      await expect(result.current.mutateAsync("ho-1")).rejects.toThrow();
+    });
+
+    expect(toast.error).toHaveBeenCalledWith("stale");
+  });
+});
+
+describe("useVoidHireOrder", () => {
+  beforeEach(() => vi.clearAllMocks());
+
+  it("calls updateHireOrderStatus with void, toasts, and invalidates hire-orders", async () => {
+    vi.mocked(updateHireOrderStatus).mockResolvedValue(undefined);
+    const { Wrapper, qc } = wrapper();
+    const invalidateSpy = vi.spyOn(qc, "invalidateQueries");
+    const { result } = renderHook(() => useVoidHireOrder(), { wrapper: Wrapper });
+
+    await act(async () => {
+      await result.current.mutateAsync("ho-1");
+    });
+
+    expect(updateHireOrderStatus).toHaveBeenCalledWith(expect.anything(), "ho-1", "void");
+    expect(toast.success).toHaveBeenCalledWith("Hire order voided");
+    expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: ["hire-orders"] });
+  });
+
+  it("toasts an error on failure", async () => {
+    vi.mocked(updateHireOrderStatus).mockRejectedValue(new Error("stale"));
+    const { Wrapper } = wrapper();
+    const { result } = renderHook(() => useVoidHireOrder(), { wrapper: Wrapper });
 
     await act(async () => {
       await expect(result.current.mutateAsync("ho-1")).rejects.toThrow();

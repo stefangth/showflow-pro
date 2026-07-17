@@ -1,10 +1,10 @@
-import { LayoutDashboard, BookOpen, Clock, Settings, Shield, MessageSquare, Users, Building2, Theater } from 'lucide-react';
+import { LayoutDashboard, BookOpen, Clock, Settings, Shield, MessageSquare, Users, Building2, Theater, FileSignature } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import { ROUTES } from '@/config/app.config';
 import type { FeatureKey } from '@/lib/entitlements';
 
 export type NavSection = 'workspace' | 'catalog' | 'system';
-export type NavBadge = 'pendingConfirmations' | 'openOffers';
+export type NavBadge = 'pendingConfirmations' | 'openOffers' | 'awaitingCountersign';
 
 export interface NavItem {
   to: string;
@@ -29,6 +29,7 @@ const SECTION_ORDER: NavSection[] = ['workspace', 'catalog', 'system'];
 export const NAV_ITEMS: NavItem[] = [
   { to: ROUTES.DASHBOARD, icon: LayoutDashboard, label: 'Dashboard', section: 'workspace' },
   { to: ROUTES.BOOKINGS, icon: BookOpen, label: 'Shows & Bookings', section: 'workspace', roles: ['admin', 'producer'], badge: 'pendingConfirmations' },
+  { to: ROUTES.HIRE_ORDERS, icon: FileSignature, label: 'Hire orders', section: 'workspace', roles: ['admin', 'producer'], feature: 'hire_orders', badge: 'awaitingCountersign' },
   { to: ROUTES.AVAILABILITY, icon: Clock, label: 'Availability', section: 'workspace', roles: ['artist'], badge: 'openOffers' },
   { to: ROUTES.CHATS, icon: MessageSquare, label: 'Chats', section: 'workspace' },
   { to: ROUTES.PRODUCTIONS, icon: Theater, label: 'Productions', section: 'catalog', roles: ['admin', 'producer'] },
