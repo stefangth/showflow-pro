@@ -58,10 +58,14 @@ export function visibleNavItems(
     enabledFeatures: Set<string>;
   },
 ): NavItem[] {
-  // Entitlement gate applies to every viewer first — including editor-mode
-  // and super-admins in the sidebar. God-mode direct-URL access to a gated
-  // route is a separate concern handled by ProtectedRoute.
-  items = items.filter((item) => !item.feature || ctx.enabledFeatures.has(item.feature));
+  // Entitlement gate applies to every viewer first. Super-admins bypass it
+  // (god-mode), consistent with ProtectedRoute exempting super-admins from the
+  // route-level feature gate — so a super-admin sees the sidebar link for any
+  // gated route they can already reach by direct URL. Editor-mode admins who
+  // aren't super-admins stay gated.
+  items = items.filter(
+    (item) => !item.feature || ctx.isSuperAdmin || ctx.enabledFeatures.has(item.feature),
+  );
 
   if (ctx.isEditorMode && ctx.isRealAdmin) {
     return items.filter((i) => !i.superAdmin || ctx.isSuperAdmin);

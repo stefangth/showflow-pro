@@ -89,15 +89,31 @@ export async function requireFeature(
   return (await checkFeature(deps.admin, orgId, feature)) ? null : json({ error: "feature_disabled" }, 403);
 }
 
-/** Filter a list of orgs down to those entitled to `feature` (one RPC call per org). */
-export async function filterEntitledOrgs(
+/**
+ * Filter a list of orgs down to those entitled to `feature`, in a SINGLE query
+ * (one `org_entitlements` read for the whole batch, not one RPC per org — the old
+ * per-org loop was an N+1 that would scale linearly with the active-org count on
+ * the fleet-wide cron paths this is scaffolding for). Orgs with no row fall back
+ * to the feature's registry default. On a query error this mirrors checkFeature's
+ * fail direction: OPEN for `booking_flow` (keep every org), CLOSED otherwise.
+ */
+export async function filterEntitledOrgs<T extends { id: string }>(
   admin: SupabaseClient,
-  orgs: Array<{ id: string }>,
+  orgs: T[],
   feature: FeatureKey,
-): Promise<Array<{ id: string }>> {
-  const out: Array<{ id: string }> = [];
-  for (const org of orgs) {
-    if (await checkFeature(admin, org.id, feature)) out.push(org);
-  }
-  return out;
+): Promise<T[]> {
+  if (orgs.length === 0) return [];
+  const { data, error } = await admin
+    .from("org_entitlements")
+    .select("org_id, enabled")
+    .eq("feature", feature)
+    .in("org_id", orgs.map((o) => o.id));
+  if (error) return feature === "booking_flow" ? orgs : [];
+  const enabledById = new Map(
+    ((data as Array<{ org_id: string; enabled: boolean }> | null) ?? []).map(
+      (r): [string, boolean] => [r.org_id, r.enabled],
+    ),
+  );
+  const fallback = FEATURE_REGISTRY[feature].defaultEnabled;
+  return orgs.filter((o) => enabledById.get(o.id) ?? fallback);
 }
