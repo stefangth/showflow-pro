@@ -7,7 +7,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { useAuth } from "@/features/auth/AuthContext";
 import { useFeature } from "@/hooks/useEntitlements";
-import { useHireOrdersForDate, useHireOrderAction } from "@/hooks/useHireOrders";
+import { useHireOrdersForDate, useHireOrderAction, useMyHireOrders } from "@/hooks/useHireOrders";
 import type { HireOrderRow } from "@/data/hireOrders";
 import { GenerateHireOrderDialog } from "./GenerateHireOrderDialog";
 import type { HireOrderBooking, HireOrderShowDate } from "./types";
@@ -22,14 +22,13 @@ interface Props {
 /**
  * Hire-orders surface for the show-date detail sheet. Gated on the `hire_orders`
  * entitlement, then split by role: the producer management view lives in
- * `ProducerHireOrders`. The `!canManage` branch renders nothing today — Task 14
- * swaps in the read-only artist variant right here, keeping the producer logic
- * fully isolated below.
+ * `ProducerHireOrders`; the read-only artist view lives in `ArtistHireOrders`.
+ * The two stay fully isolated from each other below.
  */
 export function HireOrdersCard(props: Props) {
   const enabled = useFeature("hire_orders");
   if (!enabled) return null;
-  if (!props.canManage) return null; // Task 14 seam: return <ArtistHireOrders {...props} />
+  if (!props.canManage) return <ArtistHireOrders {...props} />;
   return <ProducerHireOrders {...props} />;
 }
 
@@ -49,6 +48,52 @@ function StatusBadge({ status }: { status: string }) {
     default:
       return <Badge variant="neutral">{status}</Badge>;
   }
+}
+
+/**
+ * Read-only artist variant: the viewer's own order for this date, if `useMyHireOrders`
+ * (Task 11 — issued/countersigned only) has one. No issue/generate controls, ever;
+ * download is the only action. Renders nothing without a matching order.
+ */
+function ArtistHireOrders({ showDateId }: Props) {
+  const { currentOrg } = useAuth();
+  const orgId = currentOrg?.id ?? "";
+  const { data: myOrders } = useMyHireOrders();
+  const action = useHireOrderAction();
+
+  const order = (myOrders ?? []).find((o) => o.show_date_id === showDateId);
+  if (!order) return null;
+
+  function handleDownload() {
+    void (async () => {
+      const res = await action.mutateAsync({ action: "download-url", org_id: orgId, order_id: order!.id });
+      const url = (res as { url?: string } | null)?.url;
+      if (url) window.open(url, "_blank", "noopener,noreferrer");
+    })().catch(() => {
+      /* useHireOrderAction toasts the failure */
+    });
+  }
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="font-display text-lg flex items-center gap-2">
+          <FileText className="h-5 w-5" />Hire order
+        </CardTitle>
+      </CardHeader>
+      <CardContent>
+        <div className="flex items-center justify-between gap-3 rounded-lg border border-border p-3">
+          <p className="text-sm font-mono text-muted-foreground">{order.order_no}</p>
+          <div className="flex items-center gap-2 shrink-0">
+            <StatusBadge status={order.status} />
+            <Button size="sm" variant="outline" onClick={handleDownload} disabled={action.isPending}>
+              Download
+            </Button>
+          </div>
+        </div>
+      </CardContent>
+    </Card>
+  );
 }
 
 function ProducerHireOrders({ showDateId, showDate, bookings, canManage }: Props) {
