@@ -16,6 +16,7 @@ import type { FeatureKey } from '@/lib/entitlements';
  * concrete pathname so the gate fires for dynamic routes too.
  */
 export const ROUTE_FEATURES: Record<string, FeatureKey> = {
+  '/hire-orders': 'hire_orders',
   '/hire-orders/:id': 'hire_orders',
 };
 
@@ -163,6 +164,7 @@ export const ROUTES = {
   UNSUBSCRIBE: '/unsubscribe',
   ACCEPT_INVITE: '/accept-invite',
   PLATFORM: '/platform',
+  HIRE_ORDERS: '/hire-orders',
   HIRE_ORDER_DETAIL: '/hire-orders/:id',
 } as const;
 

@@ -26,7 +26,7 @@ type TerminalFn = (...args: unknown[]) => Promise<FakeResult>;
 export interface FakeChain extends PromiseLike<FakeResult> {
   select: ChainFn; insert: ChainFn; update: ChainFn; upsert: ChainFn; delete: ChainFn;
   eq: ChainFn; neq: ChainFn; gt: ChainFn; gte: ChainFn; lt: ChainFn; lte: ChainFn;
-  in: ChainFn; is: ChainFn; or: ChainFn; not: ChainFn; match: ChainFn;
+  in: ChainFn; is: ChainFn; or: ChainFn; not: ChainFn; match: ChainFn; ilike: ChainFn;
   order: ChainFn; limit: ChainFn; range: ChainFn; filter: ChainFn; contains: ChainFn; overlaps: ChainFn;
   single: TerminalFn; maybeSingle: TerminalFn;
 }
@@ -34,18 +34,19 @@ export interface FakeChain extends PromiseLike<FakeResult> {
 /** Chainable query-builder methods that return `this` and record their call. */
 const CHAIN_METHODS = [
   "select", "insert", "update", "upsert", "delete",
-  "eq", "neq", "gt", "gte", "lt", "lte", "in", "is", "or", "not", "match",
+  "eq", "neq", "gt", "gte", "lt", "lte", "in", "is", "or", "not", "match", "ilike",
   "order", "limit", "range", "filter", "contains", "overlaps",
 ] as const;
 
 /** Terminal methods that resolve to the seeded result. */
 const TERMINAL_METHODS = ["single", "maybeSingle"] as const;
 
-/** Resolve the result for a table seed given a local eq map and in-filter map. */
+/** Resolve the result for a table seed given a local eq map, in-filter map, and ilike-filter map. */
 function resolveSeed(
   seed: TableSeed,
   localEq: Record<string, unknown>,
   localIn: Record<string, unknown[]> = {},
+  localIlike: Record<string, string> = {},
 ): { data: unknown; error: unknown; count: number | null } {
   if (Array.isArray(seed)) {
     // Find first entry whose every `when` key/value matches localEq
@@ -64,20 +65,31 @@ function resolveSeed(
     return { data: [], error: null, count: null };
   }
   // Single-object seed (backward-compatible).
-  // Apply in() filtering so that .in("role", ["admin"]) correctly excludes rows
-  // where the field value is not in the allowed set. Mirrors the Deno fake.
+  // Apply in()/ilike() filtering so that .in("role", ["admin"]) or
+  // .ilike("order_no", "%foo%") correctly narrow the seeded rows. Mirrors the Deno fake.
   const { data, error, count = null } = seed as SingleSeed;
-  if (data !== null && data !== undefined && Object.keys(localIn).length > 0) {
-    const applyInFilter = (row: Record<string, unknown>): boolean =>
-      Object.entries(localIn).every(([col, allowed]) => allowed.includes(row[col]));
+  const hasIn = Object.keys(localIn).length > 0;
+  const hasIlike = Object.keys(localIlike).length > 0;
+  if (data !== null && data !== undefined && (hasIn || hasIlike)) {
+    const applyFilters = (row: Record<string, unknown>): boolean => {
+      const inOk = Object.entries(localIn).every(([col, allowed]) => allowed.includes(row[col]));
+      const ilikeOk = Object.entries(localIlike).every(([col, pattern]) => {
+        // Strip SQL LIKE wildcards from a simple "%needle%" pattern — good
+        // enough for the substring-contains matching this fake needs to support.
+        const needle = pattern.replace(/^%+|%+$/g, "").toLowerCase();
+        const value = row[col];
+        return typeof value === "string" && value.toLowerCase().includes(needle);
+      });
+      return inOk && ilikeOk;
+    };
 
     if (Array.isArray(data)) {
       // Filter the array and return only matching rows
-      const filtered = (data as Record<string, unknown>[]).filter(applyInFilter);
+      const filtered = (data as Record<string, unknown>[]).filter(applyFilters);
       return { data: filtered.length > 0 ? filtered : null, error, count };
     } else if (typeof data === "object") {
-      // Single object: return null if it doesn't satisfy the in() constraint
-      if (!applyInFilter(data as Record<string, unknown>)) {
+      // Single object: return null if it doesn't satisfy the filter constraints
+      if (!applyFilters(data as Record<string, unknown>)) {
         return { data: null, error, count };
       }
     }
@@ -104,6 +116,8 @@ export function createFakeSupabase(seed: Record<string, TableSeed> = {}) {
     const localEq: Record<string, unknown> = {};
     // Local in map — populated as .in() calls are chained, used for membership filtering
     const localIn: Record<string, unknown[]> = {};
+    // Local ilike map — populated as .ilike() calls are chained, used for substring filtering
+    const localIlike: Record<string, string> = {};
     const chain: Record<string, unknown> = {};
 
     for (const m of CHAIN_METHODS) {
@@ -117,18 +131,22 @@ export function createFakeSupabase(seed: Record<string, TableSeed> = {}) {
         if (m === "in" && args.length >= 2 && Array.isArray(args[1])) {
           localIn[String(args[0])] = args[1] as unknown[];
         }
+        // Track ilike() args locally for substring filtering
+        if (m === "ilike" && args.length >= 2) {
+          localIlike[String(args[0])] = String(args[1]);
+        }
         return chain;
       };
     }
     for (const m of TERMINAL_METHODS) {
       chain[m] = (...args: unknown[]) => {
         calls.push({ table, method: m, args });
-        return Promise.resolve(resolveSeed(tableSeed, localEq, localIn));
+        return Promise.resolve(resolveSeed(tableSeed, localEq, localIn, localIlike));
       };
     }
     // Make the builder awaitable (thenable) so `await fake.from(t).select()...` resolves.
     chain.then = (onFulfilled: (v: unknown) => unknown, onRejected?: (e: unknown) => unknown) =>
-      Promise.resolve(resolveSeed(tableSeed, localEq, localIn)).then(onFulfilled, onRejected);
+      Promise.resolve(resolveSeed(tableSeed, localEq, localIn, localIlike)).then(onFulfilled, onRejected);
 
     return chain as unknown as FakeChain;
   }
