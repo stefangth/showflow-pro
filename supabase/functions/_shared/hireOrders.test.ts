@@ -58,11 +58,22 @@ Deno.test("formatOrderNo: renders the default pattern", () => {
 Deno.test("withCollisionSuffix: suffixes collisions", () => {
   assertEquals(withCollisionSuffix("HO-2026-0615-B1", 0), "HO-2026-0615-B1");
   assertEquals(withCollisionSuffix("HO-2026-0615-B1", 1), "HO-2026-0615-B1-2");
+  assertEquals(withCollisionSuffix("HO-2026-0615-B1", 2), "HO-2026-0615-B1-3");
 });
 
 Deno.test("formatMoney: formats with two decimals and thousands separators", () => {
   assertEquals(formatMoney("4500", "EUR"), "€4,500.00");
   assertEquals(formatMoney(4500.5, "EUR"), "€4,500.50");
+});
+
+Deno.test("formatMoney: prefixes each known currency with its symbol", () => {
+  assertEquals(formatMoney("4500", "USD"), "$4,500.00");
+  // CHF's trailing space is deliberate: it reads as a word, not a glyph.
+  assertEquals(formatMoney("4500", "CHF"), "CHF 4,500.00");
+});
+
+Deno.test("formatMoney: falls back to a spaced currency code when the symbol is unknown", () => {
+  assertEquals(formatMoney("4500", "SEK"), "SEK 4,500.00");
 });
 
 Deno.test("orderReadyIssues: ready gate requires fee, recipient email, date, and letterhead legal name", () => {
