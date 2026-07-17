@@ -10,6 +10,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 
 /** The `hire_order_letterhead` app_settings value (spec §2.6). Rendered at the top of
  *  every hire order PDF alongside the "Hiring party" block. */
@@ -39,7 +40,7 @@ function serializeLines(lines: string[]): string {
 
 export function LetterheadCard({ orgId }: { orgId: string | null }) {
   const qc = useQueryClient();
-  const { data, isLoading } = useQuery({
+  const { data, isLoading, isError, error } = useQuery({
     queryKey: ["app-settings", "hire_order_letterhead", orgId],
     queryFn: () => resolveOrgSetting<Letterhead>(supabase, orgId, "hire_order_letterhead", LETTERHEAD_DEFAULT),
     enabled: Boolean(orgId),
@@ -69,6 +70,16 @@ export function LetterheadCard({ orgId }: { orgId: string | null }) {
   });
 
   if (isLoading) return <Skeleton className="h-64 w-full" />;
+  // Read failed: render the error INSTEAD of the form. Falling through would show
+  // LETTERHEAD_DEFAULT's blank fields as if they were the org's saved values, and a
+  // Save from there would overwrite a real stored letterhead with empty strings.
+  if (isError) {
+    return (
+      <Alert variant="destructive">
+        <AlertDescription>Could not load the letterhead settings. {(error as Error).message}</AlertDescription>
+      </Alert>
+    );
+  }
 
   return (
     <Card>

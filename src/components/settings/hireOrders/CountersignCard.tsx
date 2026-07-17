@@ -22,7 +22,7 @@ export const COUNTERSIGN_DEFAULT: HireOrderCountersign = { mode: "manual" };
 
 export function CountersignCard({ orgId }: { orgId: string | null }) {
   const qc = useQueryClient();
-  const { data, isLoading } = useQuery({
+  const { data, isLoading, isError, error } = useQuery({
     queryKey: ["app-settings", "hire_order_countersign", orgId],
     queryFn: () => resolveOrgSetting<HireOrderCountersign>(supabase, orgId, "hire_order_countersign", COUNTERSIGN_DEFAULT),
     enabled: Boolean(orgId),
@@ -50,6 +50,16 @@ export function CountersignCard({ orgId }: { orgId: string | null }) {
   });
 
   if (isLoading) return <Skeleton className="h-40 w-full" />;
+  // Read failed: render the error INSTEAD of the form. Falling through would show
+  // COUNTERSIGN_DEFAULT ("manual") as if it were the org's saved mode, and a Save
+  // from there would silently revert an org configured for documenso.
+  if (isError) {
+    return (
+      <Alert variant="destructive">
+        <AlertDescription>Could not load the countersign settings. {(error as Error).message}</AlertDescription>
+      </Alert>
+    );
+  }
 
   return (
     <Card>

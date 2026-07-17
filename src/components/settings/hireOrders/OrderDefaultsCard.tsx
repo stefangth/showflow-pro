@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 /** The `hire_order_defaults` app_settings value (spec §2.3 / §2.6). */
@@ -23,7 +24,7 @@ const CURRENCIES = ["EUR", "USD", "CHF"];
 
 export function OrderDefaultsCard({ orgId }: { orgId: string | null }) {
   const qc = useQueryClient();
-  const { data, isLoading } = useQuery({
+  const { data, isLoading, isError, error } = useQuery({
     queryKey: ["app-settings", "hire_order_defaults", orgId],
     queryFn: () => resolveOrgSetting<HireOrderDefaults>(supabase, orgId, "hire_order_defaults", ORDER_DEFAULTS_DEFAULT),
     enabled: Boolean(orgId),
@@ -53,6 +54,16 @@ export function OrderDefaultsCard({ orgId }: { orgId: string | null }) {
   });
 
   if (isLoading) return <Skeleton className="h-40 w-full" />;
+  // Read failed: render the error INSTEAD of the form. Falling through would show
+  // ORDER_DEFAULTS_DEFAULT as if it were the org's saved values, and a Save from
+  // there would overwrite a real stored default fee with none.
+  if (isError) {
+    return (
+      <Alert variant="destructive">
+        <AlertDescription>Could not load the order defaults. {(error as Error).message}</AlertDescription>
+      </Alert>
+    );
+  }
 
   return (
     <Card>
