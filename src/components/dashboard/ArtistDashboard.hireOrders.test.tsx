@@ -78,7 +78,7 @@ describe("ArtistDashboard hire-orders card (Task 14)", () => {
     expect(screen.getByText(/01\/02\/2026/)).toBeInTheDocument();
     expect(screen.getByText(/Main Hall/)).toBeInTheDocument();
     expect(screen.getByText(/awaiting countersign/i)).toBeInTheDocument();
-    expect(screen.getByRole("button")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /download/i })).toBeInTheDocument();
     // No em/en dashes in the card copy.
     expect(document.body.textContent).not.toMatch(/[—–]/);
   });
@@ -119,7 +119,7 @@ describe("ArtistDashboard hire-orders card (Task 14)", () => {
 
     renderWithProviders(<ArtistDashboard />);
 
-    fireEvent.click(await screen.findByRole("button"));
+    fireEvent.click(await screen.findByRole("button", { name: /download/i }));
     await waitFor(() => {
       const calls = (client.calls ?? []) as { table: string; method: string; args: unknown[] }[];
       const invoke = calls.find((c) => c.table === "fn:generate-hire-orders" && c.method === "invoke");

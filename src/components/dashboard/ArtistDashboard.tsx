@@ -266,6 +266,7 @@ export function ArtistDashboard() {
                     <Button
                       size="sm"
                       variant="outline"
+                      aria-label="Download"
                       onClick={() => handleDownloadHireOrder(o.id)}
                       disabled={hireOrderAction.isPending}
                     >
