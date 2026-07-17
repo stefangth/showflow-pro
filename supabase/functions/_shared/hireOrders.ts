@@ -87,7 +87,13 @@ export function resolveFields(layers: FieldLayers): OrderData {
 
 /**
  * Render an order-number pattern. Supported tokens: {prefix}, {yyyy}, {mm},
- * {dd}, {mmdd}, {cast|seq} (castCode when present, else seq).
+ * {dd}, {mmdd}, {seq} (per-artist sequence, always numeric), {cast} (cast code
+ * when present, else ""), and {cast|seq} (cast code when present, else seq — the
+ * legacy token, kept for orgs that configured it).
+ *
+ * The default pattern uses {seq} so every artist on a date gets a DISTINCT base
+ * number; {cast|seq} collapsed a whole cast to one base, leaving the collision
+ * suffix as the only differentiator.
  *
  * `date` arrives as a `YYYY-MM-DD` string; sliced directly (no Date parsing)
  * to avoid timezone drift.
@@ -109,7 +115,11 @@ export function formatOrderNo(
     .replace(/\{mmdd\}/g, mmdd)
     .replace(/\{mm\}/g, mm)
     .replace(/\{dd\}/g, dd)
-    .replace(/\{cast\|seq\}/g, castOrSeq);
+    // {cast|seq} first: it contains the substrings "cast" and "seq" but must be
+    // replaced as a whole before the standalone {cast}/{seq} tokens are matched.
+    .replace(/\{cast\|seq\}/g, castOrSeq)
+    .replace(/\{cast\}/g, castCode ?? "")
+    .replace(/\{seq\}/g, String(seq));
 }
 
 /**

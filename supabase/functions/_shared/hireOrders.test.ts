@@ -44,7 +44,7 @@ Deno.test("resolveFields: skips undefined and empty-string layer values", () => 
   assertEquals(out.venue, { value: "X", source: "showflow" });
 });
 
-Deno.test("formatOrderNo: renders the default pattern", () => {
+Deno.test("formatOrderNo: renders the legacy {cast|seq} pattern (castCode when present, else seq)", () => {
   assertEquals(
     formatOrderNo("{prefix}-{yyyy}-{mmdd}-{cast|seq}", { prefix: "HO", date: "2026-06-15", castCode: "B1", seq: 7 }),
     "HO-2026-0615-B1",
@@ -53,6 +53,30 @@ Deno.test("formatOrderNo: renders the default pattern", () => {
     formatOrderNo("{prefix}-{yyyy}-{mmdd}-{cast|seq}", { prefix: "HO", date: "2026-06-15", seq: 7 }),
     "HO-2026-0615-7",
   );
+});
+
+Deno.test("formatOrderNo: {seq} is always the numeric sequence, {cast} is code-or-empty", () => {
+  assertEquals(
+    formatOrderNo("{prefix}-{yyyy}-{mmdd}-{seq}", { prefix: "HO", date: "2026-06-15", castCode: "B1", seq: 7 }),
+    "HO-2026-0615-7",
+  );
+  assertEquals(formatOrderNo("{prefix}-{cast}{seq}", { prefix: "HO", castCode: "B1", seq: 3 }), "HO-B13");
+  assertEquals(formatOrderNo("{prefix}-{cast}{seq}", { prefix: "HO", seq: 3 }), "HO-3");
+});
+
+Deno.test("formatOrderNo: default {seq} pattern yields a distinct number per artist on a date", () => {
+  const pattern = "{prefix}-{yyyy}-{mmdd}-{seq}";
+  const nums = [1, 2, 3, 4, 5, 6].map((seq) =>
+    formatOrderNo(pattern, { prefix: "HO", date: "2026-06-15", castCode: "AIDA", seq }));
+  assertEquals(new Set(nums).size, 6);
+  assertEquals(nums, [
+    "HO-2026-0615-1",
+    "HO-2026-0615-2",
+    "HO-2026-0615-3",
+    "HO-2026-0615-4",
+    "HO-2026-0615-5",
+    "HO-2026-0615-6",
+  ]);
 });
 
 Deno.test("withCollisionSuffix: suffixes collisions", () => {
