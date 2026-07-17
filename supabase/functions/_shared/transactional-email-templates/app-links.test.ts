@@ -16,6 +16,7 @@ const APP_LINK_TEMPLATES = [
   "signup-decision",
   "cron-health-alert",
   "offer-expiry-reminder",
+  "hire-order-issued",
 ];
 
 for (const name of APP_LINK_TEMPLATES) {

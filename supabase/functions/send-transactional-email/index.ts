@@ -2,7 +2,7 @@ import * as React from 'npm:react@18.3.1'
 import { renderAsync } from 'npm:@react-email/components@0.0.22'
 import { TEMPLATES } from '../_shared/transactional-email-templates/registry.ts'
 import { preflight, json } from "../_shared/http.ts";
-import { realDeps, type Deps } from "../_shared/deps.ts";
+import { realDeps, type Deps, type EmailAttachment } from "../_shared/deps.ts";
 import { resolveOrgSetting, BOOKING_ENGINE_DEFAULTS } from "../_shared/settings.ts";
 import { categoryForTemplate } from "../_shared/notificationCategories.ts";
 import { isServiceRole } from "../_shared/auth.ts";
@@ -14,6 +14,20 @@ function generateToken(): string {
   return Array.from(bytes)
     .map((b) => b.toString(16).padStart(2, '0'))
     .join('')
+}
+
+const MAX_ATTACHMENTS = 2
+const MAX_ATTACHMENT_BYTES = 5 * 1024 * 1024 // 5MB
+
+/** Decoded byte size of a base64 string, computed from its length (no actual decode
+ * needed): 4 chars encode 3 bytes, minus 1 byte per trailing '=' padding char. */
+function base64ByteSize(b64: string): number {
+  const len = b64.length
+  if (len === 0) return 0
+  let padding = 0
+  if (b64.endsWith('==')) padding = 2
+  else if (b64.endsWith('=')) padding = 1
+  return Math.floor((len * 3) / 4) - padding
 }
 
 export async function handle(req: Request, deps: Deps): Promise<Response> {
@@ -41,6 +55,7 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
   let messageId: string
   let templateData: Record<string, any> = {}
   let orgId: string | null = null
+  let attachments: EmailAttachment[] | undefined
   try {
     const body = await req.json()
     templateName = body.templateName || body.template_name
@@ -50,6 +65,9 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
     orgId = body.org_id ?? body.orgId ?? null
     if (body.templateData && typeof body.templateData === 'object') {
       templateData = body.templateData
+    }
+    if (Array.isArray(body.attachments) && body.attachments.length > 0) {
+      attachments = body.attachments as EmailAttachment[]
     }
   } catch {
     return json({ error: 'Invalid JSON in request body' }, 400)
@@ -72,6 +90,19 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
     return json({
       error: 'recipientEmail is required (unless the template defines a fixed recipient)',
     }, 400)
+  }
+
+  // Attachment limits (checked before any side effect so a rejected request never
+  // creates an email_send_log row or reaches Resend).
+  if (attachments) {
+    if (attachments.length > MAX_ATTACHMENTS) {
+      return json({ error: 'attachment_too_large' }, 400)
+    }
+    for (const att of attachments) {
+      if (base64ByteSize(att.content_base64) > MAX_ATTACHMENT_BYTES) {
+        return json({ error: 'attachment_too_large' }, 400)
+      }
+    }
   }
 
   const admin = deps.admin;
@@ -240,6 +271,10 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
     // Build unsubscribe URL pointing at the edge function
     const unsubscribeUrl = `${supabaseUrl}/functions/v1/handle-email-unsubscribe?token=${unsubscribeToken}`
 
+    // Map { filename, content_base64 } -> Resend's { filename, content } shape.
+    // Omitted entirely when there are no attachments, so pre-Task-10 sends are byte-for-byte unchanged.
+    const resendAttachments = attachments?.map((a) => ({ filename: a.filename, content: a.content_base64 }))
+
     // Send via Resend
     const sendResponse = await deps.fetch('https://api.resend.com/emails', {
       method: 'POST',
@@ -258,6 +293,7 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
           'List-Unsubscribe': `<${unsubscribeUrl}>`,
           'List-Unsubscribe-Post': 'List-Unsubscribe=One-Click',
         },
+        ...(resendAttachments ? { attachments: resendAttachments } : {}),
       }),
     })
 
