@@ -10,6 +10,8 @@ export interface FeatureDef {
   label: string;
   description: string;
   defaultEnabled: boolean;
+  /** Compact chip label for dense fleet views (e.g. the platform Organizations table). */
+  short: "BF" | "HO";
 }
 
 export const FEATURE_REGISTRY: Record<FeatureKey, FeatureDef> = {
@@ -18,12 +20,14 @@ export const FEATURE_REGISTRY: Record<FeatureKey, FeatureDef> = {
     label: "Booking flow",
     description: "Configurable offer, escalation and confirmation automation.",
     defaultEnabled: true,
+    short: "BF",
   },
   hire_orders: {
     key: "hire_orders",
     label: "Hire orders",
     description: "PDF engagement sheets with delivery and countersignature.",
     defaultEnabled: false,
+    short: "HO",
   },
 };
 

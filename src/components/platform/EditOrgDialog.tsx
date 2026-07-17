@@ -2,14 +2,17 @@ import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
-import { updateOrg, exportOrgData, deleteOrg, type OrgStat } from "@/data/platform";
+import { updateOrg, exportOrgData, deleteOrg, setOrgEntitlement, type OrgStat } from "@/data/platform";
+import { fetchEntitlements } from "@/data/entitlements";
+import { FEATURE_KEYS, FEATURE_REGISTRY, type FeatureKey } from "@/lib/entitlements";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Switch } from "@/components/ui/switch";
 import {
   AlertDialog, AlertDialogTrigger, AlertDialogContent, AlertDialogHeader,
   AlertDialogTitle, AlertDialogDescription, AlertDialogFooter, AlertDialogCancel, AlertDialogAction,
@@ -62,6 +65,28 @@ export function EditOrgDialog({ org, onClose }: { org: OrgStat | null; onClose: 
     onError: (e: Error) => toast.error(e.message),
   });
 
+  const { data: entitlements } = useQuery({
+    queryKey: ["entitlements", org?.org_id],
+    queryFn: () => fetchEntitlements(supabase, org!.org_id),
+    enabled: !!org,
+  });
+
+  const isModuleEnabled = (feature: FeatureKey): boolean => {
+    const row = entitlements?.find((r) => r.feature === feature);
+    return row ? row.enabled : FEATURE_REGISTRY[feature].defaultEnabled;
+  };
+
+  const toggleModule = useMutation({
+    mutationFn: ({ feature, enabled }: { feature: FeatureKey; enabled: boolean }) =>
+      setOrgEntitlement(supabase, org!.org_id, feature, enabled),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["platform"] });
+      qc.invalidateQueries({ queryKey: ["entitlements"] });
+      toast.success("Module updated");
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
   return (
     <Dialog open={!!org} onOpenChange={(o) => { if (!o) onClose(); }}>
       <DialogContent>
@@ -79,6 +104,27 @@ export function EditOrgDialog({ org, onClose }: { org: OrgStat | null; onClose: 
           </div>
           <DialogFooter><Button type="submit" disabled={mutation.isPending}>Save</Button></DialogFooter>
         </form>
+        <div className="mt-6 border border-border rounded-md p-4 space-y-3">
+          <p className="text-sm font-medium">Modules</p>
+          {FEATURE_KEYS.map((key) => {
+            const def = FEATURE_REGISTRY[key];
+            return (
+              <div key={key} className="flex items-center justify-between gap-4">
+                <div>
+                  <Label htmlFor={`module-${key}`} className="font-medium">{def.label}</Label>
+                  <p className="text-xs text-muted-foreground mt-0.5">{def.description}</p>
+                </div>
+                <Switch
+                  id={`module-${key}`}
+                  aria-label={def.label}
+                  checked={isModuleEnabled(key)}
+                  disabled={toggleModule.isPending}
+                  onCheckedChange={(checked) => toggleModule.mutate({ feature: key, enabled: checked })}
+                />
+              </div>
+            );
+          })}
+        </div>
         <div className="mt-6 border-t border-destructive/30 pt-4 space-y-3">
           <p className="text-sm font-medium text-destructive">Danger zone</p>
           <div className="flex flex-wrap gap-2">

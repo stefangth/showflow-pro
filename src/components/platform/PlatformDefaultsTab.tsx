@@ -9,6 +9,7 @@ import {
 } from "@/data/platform";
 import { BOOKING_ENGINE_DEFAULTS } from "@/config/app.config";
 import type { Json } from "@/integrations/supabase/types";
+import { FEATURE_KEYS, FEATURE_REGISTRY, type FeatureKey } from "@/lib/entitlements";
 import { parseLines, serializeLines, parseCasts, serializeCasts } from "./templateText";
 import { POLL_INTERVAL_PRESETS, MIN_POLL_INTERVAL_MINUTES } from "@/lib/airtablePoll";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -16,6 +17,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { Switch } from "@/components/ui/switch";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -26,6 +28,7 @@ export function PlatformDefaultsTab() {
       <StarterCatalogCard />
       <BookingEngineDefaultsCard />
       <AirtableDefaultsCard />
+      <DefaultModulesCard />
     </div>
   );
 }
@@ -212,6 +215,69 @@ function AirtableDefaultsCard() {
             </SelectContent>
           </Select>
         </div>
+      </CardContent>
+    </Card>
+  );
+}
+
+/** Registry fallback for the default_entitlements platform setting, derived from
+ *  FEATURE_REGISTRY so it can't drift from each feature's own defaultEnabled. */
+const DEFAULT_ENTITLEMENTS_FALLBACK: Record<FeatureKey, boolean> = Object.fromEntries(
+  FEATURE_KEYS.map((key) => [key, FEATURE_REGISTRY[key].defaultEnabled]),
+) as Record<FeatureKey, boolean>;
+
+/** Platform-wide default module entitlements (org_id IS NULL). Seeded onto every
+ *  new org at creation time by provision-org; an org's own toggle in Edit organization
+ *  overrides it afterward. */
+function DefaultModulesCard() {
+  const qc = useQueryClient();
+  const { data, isLoading } = useQuery({
+    queryKey: ["platform", "default-entitlements"],
+    queryFn: () => resolveOrgSetting<Record<FeatureKey, boolean>>(
+      supabase, null, "default_entitlements", DEFAULT_ENTITLEMENTS_FALLBACK,
+    ),
+  });
+
+  const save = useMutation({
+    mutationFn: (value: Record<FeatureKey, boolean>) =>
+      savePlatformSetting(supabase, "default_entitlements", value as unknown as Json),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["platform"] });
+      toast.success("Default modules saved");
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+  if (isLoading) return <Skeleton className="h-40 w-full" />;
+
+  const current = data ?? DEFAULT_ENTITLEMENTS_FALLBACK;
+
+  return (
+    <Card>
+      <CardHeader><CardTitle className="font-display">Default modules</CardTitle></CardHeader>
+      <CardContent className="space-y-4">
+        <p className="text-sm text-muted-foreground">
+          Modules new organizations start with, seeded at creation time. An organization's own
+          toggle in Edit organization overrides this afterward.
+        </p>
+        {FEATURE_KEYS.map((key) => {
+          const def = FEATURE_REGISTRY[key];
+          return (
+            <div key={key} className="flex items-center justify-between gap-4">
+              <div>
+                <Label htmlFor={`default-module-${key}`} className="font-medium">{def.label}</Label>
+                <p className="text-xs text-muted-foreground mt-0.5">{def.description}</p>
+              </div>
+              <Switch
+                id={`default-module-${key}`}
+                aria-label={def.label}
+                checked={current[key] ?? def.defaultEnabled}
+                disabled={save.isPending}
+                onCheckedChange={(checked) => save.mutate({ ...current, [key]: checked })}
+              />
+            </div>
+          );
+        })}
       </CardContent>
     </Card>
   );
