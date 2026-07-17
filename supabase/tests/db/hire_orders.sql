@@ -1,0 +1,612 @@
+-- hire_orders + hire_order_imports: PDF engagement-sheet lifecycle
+-- (draft -> ready -> issued -> countersigned, or any state -> void), gated by the
+-- 'hire_orders' entitlement (org_entitlements.sql: default OFF) and org-isolated
+-- like every other tenant table.
+-- (defined in 20260717102508_hire_orders_schema.sql; enforce_hire_order_transition()
+-- re-declared twice since -- in 20260717104220_hire_order_transition_freeze_assignment_
+-- fields.sql to extend the freeze list and add SECURITY DEFINER SET search_path =
+-- public, then in 20260717110023_hire_order_freeze_allow_null_on_delete.sql to let the
+-- assignment links be cleared)
+--
+-- Also covers Task 2's two source columns that a hire order later snapshots
+-- (booking_fee_and_duration.sql): bookings.fee_amount numeric(10,2) and
+-- show_dates.duration_minutes integer, both nullable with a range check.
+-- Nothing writes them yet -- this file only proves shape + constraints, at the
+-- very end (see "Task 2" section below).
+--
+-- Also covers Task 6's private 'hire-orders' Storage bucket
+-- (hire_orders_storage.sql): storage.objects gets a single SELECT policy for
+-- role authenticated, scoped to bucket_id = 'hire-orders' and org membership
+-- derived from the object path's first folder segment
+-- (`(storage.foldername(name))[1])::uuid`). No write policies -- uploads go
+-- through the service role only (see "Task 6" section below).
+-- The follow-up hire_orders_storage_guarded_cast.sql rewrote that policy's
+-- USING clause as a CASE so the ::uuid cast is structurally unreachable for any
+-- OTHER bucket's rows (short-circuits to false before the cast), making the
+-- 22P02 hazard impossible independent of query plan rather than merely
+-- planner-safe.
+--
+-- Also covers Task 9's dispatch_hire_order_drafts trigger
+-- (fully_filled_hire_order_dispatch.sql): AFTER UPDATE OF status ON show_dates,
+-- WHEN new.status='fully_filled' AND old.status IS DISTINCT FROM new.status, it
+-- perform net.http_post()s a generate-hire-orders 'draft' request (gated again in
+-- the function body by is_feature_enabled(org,'hire_orders')). net.http_post's
+-- queue table (net.http_request_queue) is a real, transactionally-visible INSERT,
+-- so the dispatch itself -- not just the gating logic -- is directly asserted here
+-- (see "Task 9" section below).
+--
+-- Guard functions under test (defined alongside the tables):
+--   derive_org_for_hire_order()      BEFORE INSERT OR UPDATE OF booking_id/artist_id/
+--                                     show_date_id: raises P0001 when a linked entity
+--                                     belongs to a different org (mirrors
+--                                     bookings_artist_org_guard.sql's trg_derive_org_id
+--                                     mismatch case -- this guard rejects rather than
+--                                     re-derives, since a hire order's org_id is its
+--                                     own tenant boundary, not inherited).
+--   enforce_hire_order_transition()  BEFORE UPDATE: legal set is
+--                                     draft->{ready,void}, ready->{draft,issued,void},
+--                                     issued->{countersigned,void},
+--                                     countersigned->{void}. Once a row has left
+--                                     'ready' (issued or countersigned) it also
+--                                     freezes the document's own content --
+--                                     data/fee_amount/fee_currency/terms_variant/
+--                                     order_no/pdf_path -- absolutely, and freezes the
+--                                     assignment links booking_id/artist_id/
+--                                     show_date_id ASYMMETRICALLY: they may be CLEARED
+--                                     to NULL (an ON DELETE SET NULL referential
+--                                     action is an internal UPDATE and must not be
+--                                     blocked -- an absolute freeze here hard-failed
+--                                     delete_org) but never moved to a different
+--                                     non-null value, in either direction.
+--
+-- RLS: producers/admins get full access gated additionally by is_feature_enabled
+-- (WITH CHECK only -- writes require the entitlement, reads do not); artists get a
+-- narrow SELECT of their own issued/countersigned orders only; org_isolation is
+-- restrictive on top of both, same shape as org_entitlements.sql.
+BEGIN;
+CREATE EXTENSION IF NOT EXISTS pgtap WITH SCHEMA extensions;
+SELECT plan(56);
+
+CREATE OR REPLACE FUNCTION pg_temp.act_as(_uid text) RETURNS void LANGUAGE plpgsql AS $$
+BEGIN
+  PERFORM set_config('request.jwt.claims', json_build_object('sub',_uid,'role','authenticated')::text, true);
+END $$;
+
+-- ── Fixtures (seeded under replica so none of the guard triggers above -- all
+--    BEFORE INSERT/UPDATE OF the ref columns, or BEFORE UPDATE for the lifecycle
+--    guard -- interfere with what is already internally-consistent seed data).
+SET session_replication_role = replica;
+
+INSERT INTO auth.users (id, aud, role, email, email_confirmed_at, raw_app_meta_data, raw_user_meta_data, created_at, updated_at) VALUES
+  ('aaaaaaaa-f0a1-0001-0000-000000000000','authenticated','authenticated','ho-producer-a@x.com',now(),'{"provider":"email"}','{}',now(),now()),
+  ('aaaaaaaa-f0a2-0001-0000-000000000000','authenticated','authenticated','ho-producer-b@x.com',now(),'{"provider":"email"}','{}',now(),now()),
+  ('aaaaaaaa-f0a1-0002-0000-000000000000','authenticated','authenticated','ho-artist-a@x.com',now(),'{"provider":"email"}','{}',now(),now());
+
+INSERT INTO public.organizations (id, name, slug) VALUES
+  ('00000000-0000-0000-0000-00000000f0a1','HoOrgA','ho-org-a'),
+  ('00000000-0000-0000-0000-00000000f0a2','HoOrgB','ho-org-b');
+
+INSERT INTO public.org_memberships (org_id, user_id, role) VALUES
+  ('00000000-0000-0000-0000-00000000f0a1','aaaaaaaa-f0a1-0001-0000-000000000000','producer'),
+  ('00000000-0000-0000-0000-00000000f0a2','aaaaaaaa-f0a2-0001-0000-000000000000','producer'),
+  ('00000000-0000-0000-0000-00000000f0a1','aaaaaaaa-f0a1-0002-0000-000000000000','artist');
+
+-- Org A carries a SECOND artist / show_date / booking set purely so that a genuine
+-- re-point (non-null value -> DIFFERENT non-null same-org value) is expressible --
+-- that is now the only thing the assignment freeze rejects, so it must be tested
+-- against real distinct rows rather than implied by the NULL-boundary cases.
+INSERT INTO public.artists (id, org_id, name, user_id) VALUES
+  ('bbbbbbbb-f0a1-0001-0000-000000000000','00000000-0000-0000-0000-00000000f0a1','Ho Artist A','aaaaaaaa-f0a1-0002-0000-000000000000'),
+  ('bbbbbbbb-f0a1-0002-0000-000000000000','00000000-0000-0000-0000-00000000f0a1','Ho Artist A2',NULL),
+  ('bbbbbbbb-f0a2-0001-0000-000000000000','00000000-0000-0000-0000-00000000f0a2','Ho Artist B',NULL);
+
+INSERT INTO public.shows (id, org_id, program, sub_program) VALUES
+  ('cccccccc-f0a1-0001-0000-000000000000','00000000-0000-0000-0000-00000000f0a1','theatre','ho-show-a'),
+  ('cccccccc-f0a2-0001-0000-000000000000','00000000-0000-0000-0000-00000000f0a2','theatre','ho-show-b');
+
+INSERT INTO public.show_dates (id, org_id, show_id, date, session_1) VALUES
+  ('dddddddd-f0a1-0001-0000-000000000000','00000000-0000-0000-0000-00000000f0a1','cccccccc-f0a1-0001-0000-000000000000','2099-09-01','19:00'),
+  ('dddddddd-f0a1-0002-0000-000000000000','00000000-0000-0000-0000-00000000f0a1','cccccccc-f0a1-0001-0000-000000000000','2099-09-02','19:00'),
+  ('dddddddd-f0a2-0001-0000-000000000000','00000000-0000-0000-0000-00000000f0a2','cccccccc-f0a2-0001-0000-000000000000','2099-09-01','19:00');
+
+-- Four org-A bookings with pairwise-distinct (show_date_id, artist_id) so none trip
+-- bookings_active_artist_date_uniq: 0001=(sd1,a1) 0002=(sd2,a2) 0003=(sd1,a2) 0004=(sd2,a1).
+-- 0003 is deliberately left unreferenced by any hire order, so it is a free re-point
+-- target that cannot collide with hire_orders_active_booking_uniq and mask the P0001.
+INSERT INTO public.bookings (id, org_id, show_date_id, artist_id, status) VALUES
+  ('eeeeeeee-f0a1-0001-0000-000000000000','00000000-0000-0000-0000-00000000f0a1','dddddddd-f0a1-0001-0000-000000000000','bbbbbbbb-f0a1-0001-0000-000000000000','suggested'),
+  ('eeeeeeee-f0a1-0002-0000-000000000000','00000000-0000-0000-0000-00000000f0a1','dddddddd-f0a1-0002-0000-000000000000','bbbbbbbb-f0a1-0002-0000-000000000000','suggested'),
+  ('eeeeeeee-f0a1-0003-0000-000000000000','00000000-0000-0000-0000-00000000f0a1','dddddddd-f0a1-0001-0000-000000000000','bbbbbbbb-f0a1-0002-0000-000000000000','suggested'),
+  ('eeeeeeee-f0a1-0004-0000-000000000000','00000000-0000-0000-0000-00000000f0a1','dddddddd-f0a1-0002-0000-000000000000','bbbbbbbb-f0a1-0001-0000-000000000000','suggested'),
+  ('eeeeeeee-f0a2-0001-0000-000000000000','00000000-0000-0000-0000-00000000f0a2','dddddddd-f0a2-0001-0000-000000000000','bbbbbbbb-f0a2-0001-0000-000000000000','suggested');
+
+-- Baseline hire_orders rows, one per scenario below.
+INSERT INTO public.hire_orders (id, org_id, order_no, status, artist_id, data) VALUES
+  ('ffffffff-f0a1-0001-0000-000000000000','00000000-0000-0000-0000-00000000f0a1','HO-DRAFT-1','draft','bbbbbbbb-f0a1-0001-0000-000000000000','{}'),
+  ('ffffffff-f0a1-0002-0000-000000000000','00000000-0000-0000-0000-00000000f0a1','HO-ISSUED-1','issued','bbbbbbbb-f0a1-0001-0000-000000000000','{}'),
+  ('ffffffff-f0a1-0004-0000-000000000000','00000000-0000-0000-0000-00000000f0a1','HO-CHAIN-1','draft',NULL,'{}'),
+  ('ffffffff-f0a1-0005-0000-000000000000','00000000-0000-0000-0000-00000000f0a1','HO-VOID-READY','ready',NULL,'{}'),
+  ('ffffffff-f0a1-0006-0000-000000000000','00000000-0000-0000-0000-00000000f0a1','HO-VOID-CSGN','countersigned',NULL,'{}');
+INSERT INTO public.hire_orders (id, org_id, order_no, status, booking_id, data) VALUES
+  ('ffffffff-f0a1-0003-0000-000000000000','00000000-0000-0000-0000-00000000f0a1','HO-BOOKED-1','draft','eeeeeeee-f0a1-0001-0000-000000000000','{}');
+-- HO-REPOINT-1: issued with all three links NON-NULL, so the full assignment truth
+-- table (re-point / null / re-attach) can be walked on one row.
+-- HO-FKDEL-1: issued, booking-linked, reserved for the ON DELETE SET NULL regression.
+INSERT INTO public.hire_orders (id, org_id, order_no, status, booking_id, artist_id, show_date_id, data) VALUES
+  ('ffffffff-f0a1-0007-0000-000000000000','00000000-0000-0000-0000-00000000f0a1','HO-REPOINT-1','issued','eeeeeeee-f0a1-0002-0000-000000000000','bbbbbbbb-f0a1-0002-0000-000000000000','dddddddd-f0a1-0002-0000-000000000000','{}'),
+  ('ffffffff-f0a1-0008-0000-000000000000','00000000-0000-0000-0000-00000000f0a1','HO-FKDEL-1','issued','eeeeeeee-f0a1-0004-0000-000000000000',NULL,NULL,'{}');
+
+SET session_replication_role = DEFAULT;
+
+-- ────────────────────────────────────────────────────────────────────────────
+-- Shape: both tables, enum values
+-- ────────────────────────────────────────────────────────────────────────────
+SELECT has_table('public', 'hire_orders', 'hire_orders exists');
+SELECT has_table('public', 'hire_order_imports', 'hire_order_imports exists');
+
+SELECT is(
+  (SELECT array_agg(enumlabel::text ORDER BY enumsortorder)
+   FROM pg_enum WHERE enumtypid = 'public.hire_order_status'::regtype),
+  ARRAY['draft','ready','issued','countersigned','void'],
+  'hire_order_status enum has the five lifecycle values in order');
+
+-- ────────────────────────────────────────────────────────────────────────────
+-- Constraints
+-- ────────────────────────────────────────────────────────────────────────────
+SELECT throws_ok(
+  $$INSERT INTO public.hire_orders (org_id, order_no, data)
+    VALUES ('00000000-0000-0000-0000-00000000f0a1', 'HO-DRAFT-1', '{}'::jsonb)$$,
+  '23505', NULL,
+  'duplicate (org_id, order_no) is rejected');
+
+SELECT throws_ok(
+  $$INSERT INTO public.hire_orders (org_id, order_no, data, booking_id)
+    VALUES ('00000000-0000-0000-0000-00000000f0a1', 'HO-BOOKED-2', '{}'::jsonb, 'eeeeeeee-f0a1-0001-0000-000000000000')$$,
+  '23505', NULL,
+  'a second active hire order on the same booking is rejected (partial unique index)');
+
+-- ────────────────────────────────────────────────────────────────────────────
+-- RLS: org isolation
+-- ────────────────────────────────────────────────────────────────────────────
+SELECT pg_temp.act_as('aaaaaaaa-f0a2-0001-0000-000000000000');
+SET LOCAL ROLE authenticated;
+SELECT is(
+  (SELECT count(*)::int FROM public.hire_orders WHERE org_id = '00000000-0000-0000-0000-00000000f0a1'),
+  0, 'producer of org B sees no rows for org A');
+RESET ROLE;
+
+-- ────────────────────────────────────────────────────────────────────────────
+-- RLS: artist can read own issued order but not own draft order
+-- ────────────────────────────────────────────────────────────────────────────
+SELECT pg_temp.act_as('aaaaaaaa-f0a1-0002-0000-000000000000');
+SET LOCAL ROLE authenticated;
+SELECT is(
+  (SELECT count(*)::int FROM public.hire_orders WHERE id = 'ffffffff-f0a1-0002-0000-000000000000'),
+  1, 'artist can select their own issued order');
+SELECT is(
+  (SELECT count(*)::int FROM public.hire_orders WHERE id = 'ffffffff-f0a1-0001-0000-000000000000'),
+  0, 'artist cannot select their own draft order');
+RESET ROLE;
+
+-- ────────────────────────────────────────────────────────────────────────────
+-- RLS + entitlement: producer INSERT is gated by is_feature_enabled(org,'hire_orders')
+-- ────────────────────────────────────────────────────────────────────────────
+INSERT INTO public.org_entitlements (org_id, feature, enabled)
+VALUES ('00000000-0000-0000-0000-00000000f0a1', 'hire_orders', false);
+
+SELECT pg_temp.act_as('aaaaaaaa-f0a1-0001-0000-000000000000');
+SET LOCAL ROLE authenticated;
+SELECT throws_ok(
+  $$INSERT INTO public.hire_orders (org_id, order_no, data)
+    VALUES ('00000000-0000-0000-0000-00000000f0a1', 'HO-GATE-1', '{}'::jsonb)$$,
+  '42501', NULL,
+  'producer insert is rejected while the hire_orders entitlement is disabled');
+RESET ROLE;
+
+UPDATE public.org_entitlements SET enabled = true
+  WHERE org_id = '00000000-0000-0000-0000-00000000f0a1' AND feature = 'hire_orders';
+
+SELECT pg_temp.act_as('aaaaaaaa-f0a1-0001-0000-000000000000');
+SET LOCAL ROLE authenticated;
+SELECT lives_ok(
+  $$INSERT INTO public.hire_orders (org_id, order_no, data)
+    VALUES ('00000000-0000-0000-0000-00000000f0a1', 'HO-GATE-2', '{}'::jsonb)$$,
+  'producer insert succeeds once the hire_orders entitlement is enabled');
+RESET ROLE;
+
+-- ────────────────────────────────────────────────────────────────────────────
+-- Lifecycle guard: forward chain, backward step, void from any state
+-- ────────────────────────────────────────────────────────────────────────────
+SELECT lives_ok(
+  $$UPDATE public.hire_orders SET status = 'ready' WHERE id = 'ffffffff-f0a1-0004-0000-000000000000'$$,
+  'draft -> ready is allowed');
+SELECT lives_ok(
+  $$UPDATE public.hire_orders SET status = 'issued' WHERE id = 'ffffffff-f0a1-0004-0000-000000000000'$$,
+  'ready -> issued is allowed');
+SELECT lives_ok(
+  $$UPDATE public.hire_orders SET status = 'countersigned' WHERE id = 'ffffffff-f0a1-0004-0000-000000000000'$$,
+  'issued -> countersigned is allowed');
+
+SELECT throws_ok(
+  $$UPDATE public.hire_orders SET status = 'draft' WHERE id = 'ffffffff-f0a1-0002-0000-000000000000'$$,
+  NULL, NULL,
+  'issued -> draft is rejected');
+
+SELECT lives_ok(
+  $$UPDATE public.hire_orders SET status = 'void' WHERE id = 'ffffffff-f0a1-0005-0000-000000000000'$$,
+  'ready -> void is allowed');
+SELECT lives_ok(
+  $$UPDATE public.hire_orders SET status = 'void' WHERE id = 'ffffffff-f0a1-0006-0000-000000000000'$$,
+  'countersigned -> void is allowed');
+-- draft and issued are separate elsif branches in enforce_hire_order_transition's
+-- legal-set chain (not shared with ready/countersigned above), so each needs its own
+-- any->void exercise. HO-DRAFT-1 (ffffffff-f0a1-0001) is otherwise only referenced by
+-- its order_no string in the duplicate-order_no throws_ok above, which never mutates
+-- this row, so it is still 'draft' here.
+SELECT lives_ok(
+  $$UPDATE public.hire_orders SET status = 'void' WHERE id = 'ffffffff-f0a1-0001-0000-000000000000'$$,
+  'draft -> void is allowed');
+
+-- ────────────────────────────────────────────────────────────────────────────
+-- Immutability: an issued row's document fields cannot be edited (status machinery
+-- may still move it, exercised above).
+-- ────────────────────────────────────────────────────────────────────────────
+SELECT throws_ok(
+  $$UPDATE public.hire_orders SET data = '{"changed":true}'::jsonb WHERE id = 'ffffffff-f0a1-0002-0000-000000000000'$$,
+  NULL, NULL,
+  'updating data on an issued hire order is rejected');
+
+-- ────────────────────────────────────────────────────────────────────────────
+-- Assignment links on an issued row: "allow nulling, block re-pointing"
+-- (20260717110023_hire_order_freeze_allow_null_on_delete.sql). Walked as the full
+-- truth table on HO-REPOINT-1 (ffffffff-f0a1-0007), which starts issued with all
+-- three links non-null. Every attempt targets a SAME-ORG value, so
+-- derive_org_for_hire_order (a BEFORE trigger sorting alphabetically ahead of
+-- enforce_hire_order_transition) never raises its cross-org exception first and mask
+-- the freeze raise -- any P0001 below is unambiguously the freeze check.
+-- ────────────────────────────────────────────────────────────────────────────
+
+-- old=value -> new=DIFFERENT non-null value: the real threat, must still reject.
+-- Ordered first: all three reject, so the row is unchanged for the null cases below.
+SELECT throws_ok(
+  $$UPDATE public.hire_orders SET booking_id = 'eeeeeeee-f0a1-0003-0000-000000000000' WHERE id = 'ffffffff-f0a1-0007-0000-000000000000'$$,
+  'P0001', 'issued hire orders are immutable',
+  're-pointing booking_id at a different booking on an issued hire order is rejected');
+SELECT throws_ok(
+  $$UPDATE public.hire_orders SET artist_id = 'bbbbbbbb-f0a1-0001-0000-000000000000' WHERE id = 'ffffffff-f0a1-0007-0000-000000000000'$$,
+  'P0001', 'issued hire orders are immutable',
+  're-pointing artist_id at a different artist on an issued hire order is rejected');
+SELECT throws_ok(
+  $$UPDATE public.hire_orders SET show_date_id = 'dddddddd-f0a1-0001-0000-000000000000' WHERE id = 'ffffffff-f0a1-0007-0000-000000000000'$$,
+  'P0001', 'issued hire orders are immutable',
+  're-pointing show_date_id at a different show date on an issued hire order is rejected');
+
+-- old=value -> new=NULL: must PASS. This is the shape an ON DELETE SET NULL
+-- referential action takes, and rejecting it is what broke delete_org (see the
+-- FK-delete regression below). These three mutate the row.
+SELECT lives_ok(
+  $$UPDATE public.hire_orders SET booking_id = NULL WHERE id = 'ffffffff-f0a1-0007-0000-000000000000'$$,
+  'clearing booking_id on an issued hire order is allowed');
+SELECT lives_ok(
+  $$UPDATE public.hire_orders SET artist_id = NULL WHERE id = 'ffffffff-f0a1-0007-0000-000000000000'$$,
+  'clearing artist_id on an issued hire order is allowed');
+SELECT lives_ok(
+  $$UPDATE public.hire_orders SET show_date_id = NULL WHERE id = 'ffffffff-f0a1-0007-0000-000000000000'$$,
+  'clearing show_date_id on an issued hire order is allowed');
+
+-- old=NULL -> new=value: cannot re-attach after nulling. Runs on the same row, whose
+-- booking_id the lives_ok above just set to NULL.
+SELECT throws_ok(
+  $$UPDATE public.hire_orders SET booking_id = 'eeeeeeee-f0a1-0003-0000-000000000000' WHERE id = 'ffffffff-f0a1-0007-0000-000000000000'$$,
+  'P0001', 'issued hire orders are immutable',
+  're-attaching booking_id after it was cleared on an issued hire order is rejected');
+
+-- ────────────────────────────────────────────────────────────────────────────
+-- Regression (the scenario that actually broke): booking_id/artist_id/show_date_id
+-- carry ON DELETE SET NULL FKs, which Postgres implements as an internal UPDATE that
+-- fires enforce_hire_order_transition. An absolute freeze rejected the referential
+-- action itself, hard-failing delete_org for any org that had ever issued a hire
+-- order. Deleting a referenced booking must succeed and simply clear the link.
+-- ────────────────────────────────────────────────────────────────────────────
+SELECT lives_ok(
+  $$DELETE FROM public.bookings WHERE id = 'eeeeeeee-f0a1-0004-0000-000000000000'$$,
+  'deleting a booking referenced by an issued hire order succeeds (ON DELETE SET NULL)');
+SELECT is(
+  (SELECT booking_id FROM public.hire_orders WHERE id = 'ffffffff-f0a1-0008-0000-000000000000'),
+  NULL::uuid,
+  'the deleted booking link is cleared and the issued hire order itself survives');
+
+-- issued -> void: run last on HO-ISSUED-1 (after the data-edit throws_ok above, which
+-- rejects and so leaves its status unchanged at 'issued') to cover the fourth
+-- any->void leg alongside ready/countersigned and draft above.
+SELECT lives_ok(
+  $$UPDATE public.hire_orders SET status = 'void' WHERE id = 'ffffffff-f0a1-0002-0000-000000000000'$$,
+  'issued -> void is allowed');
+
+-- ────────────────────────────────────────────────────────────────────────────
+-- Org consistency: a booking from a different org cannot be attached
+-- ────────────────────────────────────────────────────────────────────────────
+SELECT throws_ok(
+  $$INSERT INTO public.hire_orders (org_id, order_no, data, booking_id)
+    VALUES ('00000000-0000-0000-0000-00000000f0a1', 'HO-MISMATCH-1', '{}'::jsonb, 'eeeeeeee-f0a2-0001-0000-000000000000')$$,
+  'P0001', NULL,
+  'attaching a booking from a different org is rejected');
+
+-- ────────────────────────────────────────────────────────────────────────────
+-- Task 2: bookings.fee_amount + show_dates.duration_minutes -- the two source
+-- columns a hire order snapshots (artist fee, performance duration). Nothing
+-- writes them yet; this only proves shape + constraints.
+--   fee_amount        numeric(10,2), nullable, check (fee_amount is null or
+--                      fee_amount >= 0)
+--   duration_minutes  integer, nullable, check (duration_minutes is null or
+--                      duration_minutes between 1 and 1440)
+-- eeeeeeee-f0a1-0001 / dddddddd-f0a1-0001 are reused fixture rows: neither is
+-- referenced by any hire_orders link at this point in the file (HO-REPOINT-1's
+-- booking_id/artist_id/show_date_id were all cleared to NULL by the "allow
+-- nulling" block above, and the show_date it originally pointed at was
+-- dddddddd-f0a1-0002, not -0001), so mutating them here cannot disturb any
+-- earlier assertion.
+-- ────────────────────────────────────────────────────────────────────────────
+SELECT has_column('public', 'bookings', 'fee_amount', 'bookings has a fee_amount column');
+SELECT col_type_is('public', 'bookings', 'fee_amount', 'numeric(10,2)', 'fee_amount is numeric(10,2)');
+SELECT col_is_null('public', 'bookings', 'fee_amount', 'fee_amount is nullable');
+
+SELECT has_column('public', 'show_dates', 'duration_minutes', 'show_dates has a duration_minutes column');
+SELECT col_type_is('public', 'show_dates', 'duration_minutes', 'integer', 'duration_minutes is integer');
+SELECT col_is_null('public', 'show_dates', 'duration_minutes', 'duration_minutes is nullable');
+
+SELECT throws_ok(
+  $$UPDATE public.bookings SET fee_amount = -1 WHERE id = 'eeeeeeee-f0a1-0001-0000-000000000000'$$,
+  '23514', NULL,
+  'fee_amount rejects a negative value');
+SELECT lives_ok(
+  $$UPDATE public.bookings SET fee_amount = 4500.00 WHERE id = 'eeeeeeee-f0a1-0001-0000-000000000000'$$,
+  'fee_amount accepts a valid numeric(10,2) value');
+
+SELECT throws_ok(
+  $$UPDATE public.show_dates SET duration_minutes = 0 WHERE id = 'dddddddd-f0a1-0001-0000-000000000000'$$,
+  '23514', NULL,
+  'duration_minutes rejects 0');
+SELECT throws_ok(
+  $$UPDATE public.show_dates SET duration_minutes = 1441 WHERE id = 'dddddddd-f0a1-0001-0000-000000000000'$$,
+  '23514', NULL,
+  'duration_minutes rejects 1441');
+SELECT lives_ok(
+  $$UPDATE public.show_dates SET duration_minutes = 90 WHERE id = 'dddddddd-f0a1-0001-0000-000000000000'$$,
+  'duration_minutes accepts 90');
+
+-- ────────────────────────────────────────────────────────────────────────────
+-- Task 6: private 'hire-orders' Storage bucket + its single SELECT policy.
+-- T8's edge function renders the PDF and uploads it to
+-- `hire-orders/<org_id>/<order_no>.pdf` under the service role (bypasses RLS),
+-- then hands out signed URLs only. The client-facing surface is this SELECT
+-- policy, which (per hire_orders_storage_artist_scope.sql) mirrors the
+-- hire_orders TABLE's access model: org admins/producers get the whole org
+-- folder; artists get ONLY their own issued/countersigned order's pdf (joined
+-- by hire_orders.pdf_path = storage.objects.name). The earlier form granted any
+-- org member the whole folder -- an intra-org cross-artist disclosure path,
+-- since order_no is predictable and castmates know the date+cast.
+-- ────────────────────────────────────────────────────────────────────────────
+SELECT is(
+  (SELECT count(*)::int FROM storage.buckets WHERE id = 'hire-orders'),
+  1, 'hire-orders storage bucket exists');
+SELECT is(
+  (SELECT public FROM storage.buckets WHERE id = 'hire-orders'),
+  false, 'hire-orders storage bucket is private (public = false)');
+
+-- Seed one bare object per org (no hire_orders backing) to exercise the
+-- admin/producer branch and cross-org denial. Writes bypass RLS as the
+-- migration-test role (uploads go through the service role in prod -- there are
+-- deliberately no INSERT policies).
+INSERT INTO storage.objects (bucket_id, name, owner) VALUES
+  ('hire-orders', '00000000-0000-0000-0000-00000000f0a1/x.pdf', NULL),
+  ('hire-orders', '00000000-0000-0000-0000-00000000f0a2/y.pdf', NULL);
+
+-- aaaaaaaa-f0a1-0001 is org A's PRODUCER: the admin/producer branch grants the
+-- whole org folder, even for an object with no hire_orders row behind it.
+SELECT pg_temp.act_as('aaaaaaaa-f0a1-0001-0000-000000000000');
+SET LOCAL ROLE authenticated;
+SELECT is(
+  (SELECT count(*)::int FROM storage.objects
+   WHERE bucket_id = 'hire-orders' AND name = '00000000-0000-0000-0000-00000000f0a1/x.pdf'),
+  1, 'an org A producer can read any object under their org''s hire-orders folder');
+RESET ROLE;
+
+SELECT pg_temp.act_as('aaaaaaaa-f0a2-0001-0000-000000000000');
+SET LOCAL ROLE authenticated;
+SELECT is(
+  (SELECT count(*)::int FROM storage.objects
+   WHERE bucket_id = 'hire-orders' AND name = '00000000-0000-0000-0000-00000000f0a1/x.pdf'),
+  0, 'a member of a different org cannot select that object (cross-org denial)');
+RESET ROLE;
+
+-- Artist scope (hire_orders_storage_artist_scope.sql): storage reads mirror the
+-- hire_orders table's per-artist gate, NOT bare org membership. Two issued
+-- orders in org A -- one owned by artist A (user aaaaaaaa-f0a1-0002 via artist
+-- bbbbbbbb-f0a1-0001) and one by peer artist A2 (bbbbbbbb-f0a1-0002) -- each with
+-- a pdf_path and a matching storage object at exactly that path (= how T8
+-- uploads: `<org_id>/<order_no>.pdf` = pdf_path).
+INSERT INTO public.hire_orders (id, org_id, order_no, status, artist_id, pdf_path, data) VALUES
+  ('ffffffff-f0a1-0009-0000-000000000000','00000000-0000-0000-0000-00000000f0a1','HO-STORAGE-A','issued','bbbbbbbb-f0a1-0001-0000-000000000000','00000000-0000-0000-0000-00000000f0a1/HO-STORAGE-A.pdf','{}'),
+  ('ffffffff-f0a1-0010-0000-000000000000','00000000-0000-0000-0000-00000000f0a1','HO-STORAGE-PEER','issued','bbbbbbbb-f0a1-0002-0000-000000000000','00000000-0000-0000-0000-00000000f0a1/HO-STORAGE-PEER.pdf','{}');
+INSERT INTO storage.objects (bucket_id, name, owner) VALUES
+  ('hire-orders', '00000000-0000-0000-0000-00000000f0a1/HO-STORAGE-A.pdf', NULL),
+  ('hire-orders', '00000000-0000-0000-0000-00000000f0a1/HO-STORAGE-PEER.pdf', NULL);
+
+SELECT pg_temp.act_as('aaaaaaaa-f0a1-0002-0000-000000000000');
+SET LOCAL ROLE authenticated;
+SELECT is(
+  (SELECT count(*)::int FROM storage.objects
+   WHERE name = '00000000-0000-0000-0000-00000000f0a1/HO-STORAGE-A.pdf'),
+  1, 'an artist can read their own issued order''s storage object');
+-- Regression for the intra-org disclosure this migration closes: under the old
+-- is_org_member policy this returned 1 (leak); it must be 0 now.
+SELECT is(
+  (SELECT count(*)::int FROM storage.objects
+   WHERE name = '00000000-0000-0000-0000-00000000f0a1/HO-STORAGE-PEER.pdf'),
+  0, 'an artist cannot read a same-org peer''s issued order''s storage object (intra-org disclosure regression)');
+RESET ROLE;
+
+-- Cast-hazard behavior check (assertion 45): with a decoy object in ANOTHER
+-- bucket whose first path segment isn't a uuid ('not-a-uuid/x.png'), a client
+-- SELECT across storage.objects must not raise 22P02. enable_indexscan/
+-- enable_bitmapscan are forced off so the decoy row's qual is genuinely
+-- evaluated on a sequential scan (no bucket_id index can pre-eliminate it) --
+-- i.e. this proves the cast never blows up in a client's face regardless of
+-- scan choice.
+-- NOTE: this assertion is deliberately NOT the proof of the *structural* guard.
+-- It cannot distinguish the CASE form from the old un-guarded AND form: under
+-- either, the ::uuid cast is never reached for the decoy row (the CASE short-
+-- circuits on the else branch; the AND is cost-reordered by the planner's
+-- order_qual_clauses so the cheap bucket_id equality runs first), so both forms
+-- pass this identically -- verified live against the AND form in task-6-report.md.
+-- What actually pins the structural contract is assertion 46 below.
+INSERT INTO storage.buckets (id, name, public) VALUES
+  ('hazard-decoy-bucket', 'hazard-decoy-bucket', false);
+INSERT INTO storage.objects (bucket_id, name, owner) VALUES
+  ('hazard-decoy-bucket', 'not-a-uuid/x.png', NULL);
+
+SELECT pg_temp.act_as('aaaaaaaa-f0a1-0001-0000-000000000000');
+SET LOCAL ROLE authenticated;
+SET LOCAL enable_indexscan = off;
+SET LOCAL enable_bitmapscan = off;
+SET LOCAL enable_seqscan = on;
+SELECT lives_ok(
+  $$SELECT count(*) FROM storage.objects$$,
+  'selecting storage.objects does not raise 22P02 when another bucket has a non-uuid first path segment (forced seqscan)');
+RESET ROLE;
+RESET enable_indexscan;
+RESET enable_bitmapscan;
+RESET enable_seqscan;
+
+-- Structural guard (assertion 46): pin the policy's USING clause to the CASE
+-- form so a revert to the un-guarded AND -- or a copy of the AND shape into a
+-- new bucket's policy -- fails CI. This is the ONE assertion that discriminates
+-- the guarded form from the AND form (assertion 45 cannot; see its note above).
+-- An implementation-shape assertion is normally a smell, but here the structural
+-- form IS the contract: `else false` is what makes the ::uuid cast unreachable
+-- for every other bucket independent of the query planner. Verified live
+-- (task-6-report.md): the `~ 'CASE'` check returns true for the current CASE
+-- policy and false for the old AND expression.
+SELECT is(
+  (SELECT pg_get_expr(p.polqual, p.polrelid) ~ 'CASE'
+   FROM pg_policy p JOIN pg_class c ON c.oid = p.polrelid
+   WHERE c.relname = 'objects' AND p.polname = 'Org members read own hire order pdfs'),
+  true,
+  'hire-orders storage policy uses a CASE guard so the uuid cast is unreachable for other buckets');
+
+-- ────────────────────────────────────────────────────────────────────────────
+-- Task 9: dispatch_hire_order_drafts trigger (fully_filled_hire_order_dispatch.sql).
+-- Org A (00000000-...-f0a1) already has its hire_orders entitlement flipped ON
+-- earlier in this file (the "RLS + entitlement" section above) and never turned
+-- back off, so it is reused as-is for the entitlement-ON case. Org B
+-- (00000000-...-f0a2) has never had an org_entitlements row written for
+-- 'hire_orders', so is_feature_enabled falls back to the registry default
+-- (false) -- reused as-is for the entitlement-OFF case. Two fresh, minimally
+-- configured shows (1 main slot, 0 understudy) let a single confirmed booking
+-- flip the date straight to 'fully_filled' via the existing
+-- sync_show_date_status_trigger -> compute_show_date_status(), which is what
+-- fires dispatch_hire_order_drafts (AFTER UPDATE OF status).
+--
+-- Dispatch is asserted directly against net.http_request_queue (pg_net's real
+-- queue table -- confirmed live, outside this file, that a rolled-back
+-- BEGIN; SELECT net.http_post(...); SELECT count(*) FROM net.http_request_queue;
+-- ROLLBACK; shows the row before the rollback discards it) rather than only the
+-- gating logic, because this is a live project with real cron jobs continuously
+-- enqueueing/dequeuing unrelated requests. A plain "before/after count" would be
+-- racy against that concurrent traffic, so each checkpoint instead captures
+-- max(id) into a transaction-local GUC (set_config, same trick the file already
+-- uses for pg_temp.act_as) and every assertion below filters on both
+-- `id > checkpoint` AND `url = the generate-hire-orders endpoint` -- this is
+-- URL-scoped, not truly immune to concurrency: no other job in this system
+-- posts to that URL, so the filter happens to isolate this checkpoint from
+-- unrelated concurrent cron activity and from the background worker deleting
+-- older, unrelated rows once it processes them.
+--
+-- NOT unit-observable here: whether the enqueued request is ever actually
+-- delivered/executed (that is pg_net's background worker + the live
+-- generate-hire-orders function, both outside a rolled-back SQL transaction --
+-- Task 8's own DI suite already covers generate-hire-orders's 'draft' action,
+-- including a cron-secret-caller test explicitly noting it "pins the Task-9
+-- trigger path"). What IS asserted is the real, transactionally-visible
+-- enqueue: that it happens exactly once with the right URL/body/headers/timeout
+-- when entitled, and not at all when not.
+-- ────────────────────────────────────────────────────────────────────────────
+SELECT has_function('public', 'dispatch_hire_order_drafts', 'dispatch_hire_order_drafts() function exists');
+SELECT ok(
+  EXISTS(
+    SELECT 1 FROM pg_trigger t JOIN pg_class c ON c.oid = t.tgrelid
+    WHERE c.relname = 'show_dates' AND t.tgname = 'dispatch_hire_order_drafts' AND NOT t.tgisinternal
+  ),
+  'dispatch_hire_order_drafts trigger is bound to show_dates'
+);
+
+INSERT INTO public.shows (id, org_id, program, sub_program, main_cast_slots, understudy_slots) VALUES
+  ('11119999-f0a1-0009-0000-000000000000','00000000-0000-0000-0000-00000000f0a1','theatre','ho-dispatch-a',1,0),
+  ('11119999-f0a2-0009-0000-000000000000','00000000-0000-0000-0000-00000000f0a2','theatre','ho-dispatch-b',1,0);
+INSERT INTO public.show_dates (id, org_id, show_id, date, session_1) VALUES
+  ('22229999-f0a1-0009-0000-000000000000','00000000-0000-0000-0000-00000000f0a1','11119999-f0a1-0009-0000-000000000000','2099-09-10','19:00'),
+  ('22229999-f0a2-0009-0000-000000000000','00000000-0000-0000-0000-00000000f0a2','11119999-f0a2-0009-0000-000000000000','2099-09-10','19:00');
+
+-- ── Org A: hire_orders entitlement ON ──
+SELECT set_config('ho_dispatch.checkpoint', (SELECT coalesce(max(id),0)::text FROM net.http_request_queue), true);
+
+INSERT INTO public.bookings (id, org_id, show_date_id, artist_id, status, is_understudy) VALUES
+  ('33339999-f0a1-0009-0000-000000000000','00000000-0000-0000-0000-00000000f0a1','22229999-f0a1-0009-0000-000000000000','bbbbbbbb-f0a1-0001-0000-000000000000','confirmed', false);
+
+SELECT is(
+  (SELECT status::text FROM public.show_dates WHERE id = '22229999-f0a1-0009-0000-000000000000'),
+  'fully_filled',
+  'org A show_date reaches fully_filled from the confirmed booking (sync_show_date_status_trigger)');
+
+SELECT is(
+  (SELECT count(*)::int FROM net.http_request_queue
+   WHERE id > current_setting('ho_dispatch.checkpoint')::bigint
+     AND url = 'https://epweartpzwvcasrzyueh.supabase.co/functions/v1/generate-hire-orders'),
+  1,
+  'entitlement ON: the fully_filled transition enqueues exactly one generate-hire-orders dispatch');
+
+SELECT ok(
+  EXISTS(
+    SELECT 1 FROM net.http_request_queue
+    WHERE id > current_setting('ho_dispatch.checkpoint')::bigint
+      AND url = 'https://epweartpzwvcasrzyueh.supabase.co/functions/v1/generate-hire-orders'
+      AND convert_from(body, 'utf8') LIKE '%"action": "draft"%'
+      AND convert_from(body, 'utf8') LIKE '%"notify": true%'
+      AND convert_from(body, 'utf8') LIKE '%"org_id": "00000000-0000-0000-0000-00000000f0a1"%'
+      AND convert_from(body, 'utf8') LIKE '%"show_date_id": "22229999-f0a1-0009-0000-000000000000"%'
+  ),
+  'the dispatched request body carries action=draft, notify=true, and the right org_id/show_date_id'
+);
+
+SELECT ok(
+  EXISTS(
+    SELECT 1 FROM net.http_request_queue
+    WHERE id > current_setting('ho_dispatch.checkpoint')::bigint
+      AND url = 'https://epweartpzwvcasrzyueh.supabase.co/functions/v1/generate-hire-orders'
+      AND headers->>'X-Cron-Secret' = private.cron_secret()
+      AND timeout_milliseconds = 30000
+  ),
+  'the dispatched request carries the vault cron secret and the mandatory 30s timeout'
+);
+
+-- ── Org B: hire_orders entitlement OFF (default -- no org_entitlements row) ──
+SELECT set_config('ho_dispatch.checkpoint', (SELECT coalesce(max(id),0)::text FROM net.http_request_queue), true);
+
+INSERT INTO public.bookings (id, org_id, show_date_id, artist_id, status, is_understudy) VALUES
+  ('33339999-f0a2-0009-0000-000000000000','00000000-0000-0000-0000-00000000f0a2','22229999-f0a2-0009-0000-000000000000','bbbbbbbb-f0a2-0001-0000-000000000000','confirmed', false);
+
+SELECT is(
+  (SELECT status::text FROM public.show_dates WHERE id = '22229999-f0a2-0009-0000-000000000000'),
+  'fully_filled',
+  'org B show_date also reaches fully_filled -- the entitlement gate is independent of the slot math');
+
+SELECT is(
+  (SELECT count(*)::int FROM net.http_request_queue
+   WHERE id > current_setting('ho_dispatch.checkpoint')::bigint
+     AND url = 'https://epweartpzwvcasrzyueh.supabase.co/functions/v1/generate-hire-orders'),
+  0,
+  'entitlement OFF (default, no org_entitlements row): the same fully_filled transition enqueues nothing');
+
+SELECT * FROM finish();
+ROLLBACK;

@@ -26,6 +26,10 @@ export interface FakeClientOptions {
   generateLinkResult?: { data?: unknown; error?: unknown };
   /** Seeded result for auth.admin.deleteUser (default: success). */
   deleteUserResult?: { data?: unknown; error?: unknown };
+  /** Seeded result for storage.from(bucket).upload(...) (default: success). */
+  storageUploadResult?: { data?: unknown; error?: unknown };
+  /** Seeded result for storage.from(bucket).createSignedUrl(...) (default: a signed URL). */
+  storageSignedUrlResult?: { data?: unknown; error?: unknown };
 }
 
 const CHAIN = [
@@ -218,6 +222,26 @@ export function createFakeClient(opts: FakeClientOptions = {}) {
       },
     },
     functions: { invoke: (_n: string, _o: unknown) => Promise.resolve({ data: null, error: null }) },
+    storage: {
+      // Records upload/createSignedUrl into `calls` (table `storage:<bucket>`) so tests
+      // can assert the object path a handler writes to / signs. Additive: pre-storage
+      // callers never touch it.
+      from(bucket: string) {
+        return {
+          upload: (path: string, body: unknown, uploadOpts?: unknown) => {
+            calls.push({ table: `storage:${bucket}`, method: "upload", args: [path, body, uploadOpts] });
+            return Promise.resolve(opts.storageUploadResult ?? { data: { path }, error: null });
+          },
+          createSignedUrl: (path: string, expiresIn: number) => {
+            calls.push({ table: `storage:${bucket}`, method: "createSignedUrl", args: [path, expiresIn] });
+            return Promise.resolve(
+              opts.storageSignedUrlResult ??
+                { data: { signedUrl: `https://signed.test/${bucket}/${path}` }, error: null },
+            );
+          },
+        };
+      },
+    },
   };
   return { client, calls };
 }
@@ -257,6 +281,9 @@ export function makeFakeDeps(opts: FakeDepsOptions = {}) {
     now: () => fixedNow,
     invokeFunction,
     sendEmail: (msg: EmailMessage) => invokeFunction("send-transactional-email", msg),
+    // Stub the renderer as bytes starting with "%PDF" so handlers get a plausible
+    // PDF without paying for a real react-pdf render (that is covered by render.test.ts).
+    renderHireOrderPdf: () => Promise.resolve(new Uint8Array([0x25, 0x50, 0x44, 0x46])),
     fetch: opts.fetchImpl ?? (() => Promise.resolve(new Response("{}", { status: 200 }))) as typeof fetch,
   };
   return { deps, calls, invokeCalls, client };

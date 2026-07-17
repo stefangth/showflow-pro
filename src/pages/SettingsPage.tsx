@@ -13,7 +13,7 @@ import { Switch } from '@/components/ui/switch';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { toast } from 'sonner';
-import { Settings as SettingsIcon, Database, Bell, Wand2, Save, SlidersHorizontal, MapPin, Clock, BookOpen, UserCog, Building2 } from 'lucide-react';
+import { Settings as SettingsIcon, Database, Bell, Wand2, Save, SlidersHorizontal, MapPin, Clock, BookOpen, UserCog, Building2, FileSignature } from 'lucide-react';
 import { upsertOrgSetting, mergeOrgRows } from '@/data/settings';
 import { computeSettingsDirtyKeys } from '@/lib/settings';
 import { AirtableSyncTab } from '@/components/settings/AirtableSyncTab';
@@ -22,6 +22,7 @@ import { CastsCitiesTab } from '@/components/settings/CastsCitiesTab';
 import { ProductionOwnershipTab } from '@/components/settings/ProductionOwnershipTab';
 import { DocumentationTab } from '@/components/settings/DocumentationTab';
 import { BookingFlowTab, BOOKING_AUDIT_KEYS } from '@/components/settings/bookingFlow/BookingFlowTab';
+import { HireOrdersTab } from '@/components/settings/hireOrders/HireOrdersTab';
 
 type FilterKey = 'program' | 'timeframe' | 'sort' | 'status';
 const FILTER_KEYS: FilterKey[] = ['program', 'timeframe', 'sort', 'status'];
@@ -70,6 +71,7 @@ export default function SettingsPage() {
   const orgId = currentOrg?.id ?? null;
   const qc = useQueryClient();
   const bookingFlowEntitled = useFeature('booking_flow');
+  const hireOrdersEntitled = useFeature('hire_orders');
 
   const { data: settings, isLoading } = useQuery({
     queryKey: ['app-settings', 'all', orgId],
@@ -255,6 +257,7 @@ export default function SettingsPage() {
             )}
           </TabsTrigger>
           {isAdmin && <TabsTrigger value="booking"><Wand2 className="h-4 w-4 mr-2" />Booking flow</TabsTrigger>}
+          {isAdmin && hireOrdersEntitled && <TabsTrigger value="hire-orders"><FileSignature className="h-4 w-4 mr-2" />Hire orders</TabsTrigger>}
           {isAdmin && <TabsTrigger value="notifications"><Bell className="h-4 w-4 mr-2" />Notifications</TabsTrigger>}
           <TabsTrigger value="docs"><BookOpen className="h-4 w-4 mr-2" />Documentation</TabsTrigger>
         </TabsList>
@@ -359,6 +362,12 @@ export default function SettingsPage() {
             onDiscard={handleDiscardBooking}
           />
         </TabsContent>
+
+        {isAdmin && hireOrdersEntitled && (
+          <TabsContent value="hire-orders" className="mt-4">
+            <HireOrdersTab />
+          </TabsContent>
+        )}
 
         <TabsContent value="notifications" className="mt-4">
           <Card>

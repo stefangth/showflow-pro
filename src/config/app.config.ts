@@ -9,14 +9,42 @@ import type { FeatureKey } from '@/lib/entitlements';
  * Routes owned by a gated (entitlement-controlled) module. Checked by
  * ProtectedRoute via requiredFeatureForPath: a route listed here renders
  * FeatureDisabledScreen instead of its page when the current org doesn't
- * have the feature enabled (see src/hooks/useEntitlements.ts). Filled in as
- * gated modules land — starts empty.
+ * have the feature enabled (see src/hooks/useEntitlements.ts).
+ *
+ * Keys may be dynamic route patterns with `:param` segments (e.g.
+ * `/hire-orders/:id`); requiredFeatureForPath matches those against the
+ * concrete pathname so the gate fires for dynamic routes too.
  */
-export const ROUTE_FEATURES: Record<string, FeatureKey> = {};
+export const ROUTE_FEATURES: Record<string, FeatureKey> = {
+  '/hire-orders/:id': 'hire_orders',
+};
 
-/** Pure lookup: which FeatureKey (if any) gates a given pathname. */
+/** Whether a route pattern (which may carry `:param` segments) matches a
+ *  concrete pathname. Pure and segment-based — `/hire-orders/:id` matches
+ *  `/hire-orders/abc-uuid` but not `/hire-orders` or `/hire-orders/a/b`. */
+function matchesRoutePattern(pattern: string, pathname: string): boolean {
+  const patternSegs = pattern.split('/');
+  const pathSegs = pathname.split('/');
+  if (patternSegs.length !== pathSegs.length) return false;
+  return patternSegs.every((seg, i) =>
+    seg.startsWith(':') ? pathSegs[i].length > 0 : seg === pathSegs[i],
+  );
+}
+
+/**
+ * Pure lookup: which FeatureKey (if any) gates a given pathname. Exact static
+ * matches win first (fast path); dynamic patterns (keys containing `:`) are
+ * then matched segment-by-segment so a real URL like `/hire-orders/<uuid>`
+ * still resolves to its feature. Without this the route-level entitlement gate
+ * would silently never fire for `:param` routes.
+ */
 export function requiredFeatureForPath(pathname: string): FeatureKey | undefined {
-  return ROUTE_FEATURES[pathname];
+  const exact = ROUTE_FEATURES[pathname];
+  if (exact) return exact;
+  for (const [pattern, feature] of Object.entries(ROUTE_FEATURES)) {
+    if (pattern.includes(':') && matchesRoutePattern(pattern, pathname)) return feature;
+  }
+  return undefined;
 }
 
 /**
@@ -81,6 +109,31 @@ export const EMAIL_HEALTH = {
   failureAlertCount: 3,
 } as const;
 
+/** A single hire-order terms clause: a titled paragraph of contract copy. */
+export interface HireOrderClause {
+  title: string;
+  body: string;
+}
+
+/**
+ * Starting point for an org's hire-order terms: every variant is empty.
+ *
+ * ShowFlow deliberately ships NO default clause text. Contract terms are the
+ * hiring org's own legal responsibility and vary by jurisdiction and engagement,
+ * so an admin authors them in Settings → Hire orders → Terms before issuing.
+ * Seeding plausible-looking boilerplate would invite orgs to issue legal
+ * documents nobody on their side had actually reviewed.
+ *
+ * The shape is kept (rather than dropping the constant) because it is the
+ * documented fallback for the `hire_order_terms` app_settings key and the PDF
+ * renderer and generator (Tasks 7/8) depend on the HireOrderClause type.
+ */
+export const HIRE_ORDER_DEFAULT_TERMS: { lean: HireOrderClause[]; standard: HireOrderClause[]; full: HireOrderClause[] } = {
+  lean: [],
+  standard: [],
+  full: [],
+};
+
 /** Role definitions */
 export const ROLES = {
   ADMIN: 'admin',
@@ -110,6 +163,7 @@ export const ROUTES = {
   UNSUBSCRIBE: '/unsubscribe',
   ACCEPT_INVITE: '/accept-invite',
   PLATFORM: '/platform',
+  HIRE_ORDER_DETAIL: '/hire-orders/:id',
 } as const;
 
 /** Number of days after a show date that its chat is hidden from the UI */

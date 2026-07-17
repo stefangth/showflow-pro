@@ -7,9 +7,9 @@ import {
 } from "./notificationCategories";
 
 describe("notification category model", () => {
-  it("exposes five categories and two channels", () => {
+  it("exposes six categories and two channels", () => {
     expect(NOTIFICATION_CATEGORIES.map((c) => c.key)).toEqual([
-      "booking_offers", "booking_confirmations", "booking_activity", "schedule_changes", "at_risk",
+      "booking_offers", "booking_confirmations", "booking_activity", "schedule_changes", "at_risk", "hire_orders",
     ]);
     expect(NOTIFICATION_CHANNELS).toEqual(["email", "in_app"]);
   });
@@ -25,5 +25,12 @@ describe("notification category model", () => {
   it("returns null for critical/unmapped templates (always send)", () => {
     expect(categoryForTemplate("org-invitation")).toBeNull();
     expect(categoryForTemplate("new-signup-admin-notification")).toBeNull();
+  });
+
+  it("maps the three hire-orders in-app types and the hire-order-issued template to hire_orders", () => {
+    expect(IN_APP_TYPE_CATEGORY["hire_orders_ready"]).toBe("hire_orders");
+    expect(IN_APP_TYPE_CATEGORY["hire_order_issued"]).toBe("hire_orders");
+    expect(IN_APP_TYPE_CATEGORY["hire_order_countersigned"]).toBe("hire_orders");
+    expect(categoryForTemplate("hire-order-issued")).toBe("hire_orders");
   });
 });

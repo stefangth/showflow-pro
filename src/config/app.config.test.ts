@@ -19,8 +19,8 @@ describe("requiredFeatureForPath", () => {
     delete (ROUTE_FEATURES as Record<string, string>)[TEST_PATH];
   });
 
-  it("starts empty: no route is gated by default", () => {
-    expect(ROUTE_FEATURES).toEqual({});
+  it("gates the hire-order detail route on the hire_orders feature", () => {
+    expect(ROUTE_FEATURES["/hire-orders/:id"]).toBe("hire_orders");
   });
 
   it("returns undefined for a path with no configured feature", () => {
@@ -30,5 +30,20 @@ describe("requiredFeatureForPath", () => {
   it("returns the feature key for a route present in ROUTE_FEATURES", () => {
     (ROUTE_FEATURES as Record<string, string>)[TEST_PATH] = "hire_orders";
     expect(requiredFeatureForPath(TEST_PATH)).toBe("hire_orders");
+  });
+
+  it("matches a dynamic `:param` route pattern against a concrete pathname", () => {
+    // The real URL is `/hire-orders/<uuid>`, which never exact-matches the
+    // `/hire-orders/:id` key — the gate must pattern-match or it silently no-ops.
+    expect(requiredFeatureForPath("/hire-orders/abc-123-uuid")).toBe("hire_orders");
+  });
+
+  it("does not match the dynamic pattern for the wrong segment count", () => {
+    expect(requiredFeatureForPath("/hire-orders")).toBeUndefined();
+    expect(requiredFeatureForPath("/hire-orders/abc/extra")).toBeUndefined();
+  });
+
+  it("does not match an empty `:param` segment", () => {
+    expect(requiredFeatureForPath("/hire-orders/")).toBeUndefined();
   });
 });

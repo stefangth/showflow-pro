@@ -9,6 +9,7 @@ export const NOTIFICATION_CATEGORIES = [
   { key: "booking_activity", label: "Booking activity", description: "Producer updates — artists accepting offers" },
   { key: "schedule_changes", label: "Schedule changes", description: "Date, session, and cancellation changes" },
   { key: "at_risk", label: "At-risk & escalations", description: "Tiers at risk of going unfilled and cast escalations" },
+  { key: "hire_orders", label: "Hire orders", description: "Engagement sheets issued to you and their countersign status." },
 ] as const;
 
 export type NotificationCategory = (typeof NOTIFICATION_CATEGORIES)[number]["key"];
@@ -29,6 +30,9 @@ export const IN_APP_TYPE_CATEGORY: Record<string, NotificationCategory> = {
   cast_escalation_requested: "at_risk",
   offer_expiring: "booking_offers",
   tier_escalated: "at_risk",
+  hire_orders_ready: "hire_orders",
+  hire_order_issued: "hire_orders",
+  hire_order_countersigned: "hire_orders",
 };
 
 /** Email `template_name` -> category. Unmapped templates (invites, password reset) always send. */
@@ -38,6 +42,7 @@ export const EMAIL_TEMPLATE_CATEGORY: Record<string, NotificationCategory> = {
   "offer-expiry-reminder": "booking_offers",
   "artist-confirmation-digest": "booking_confirmations",
   "cast-escalation-requested": "at_risk",
+  "hire-order-issued": "hire_orders",
 };
 
 /** The category for an email template, or null when it is critical/uncategorized (always send). */

@@ -4,18 +4,33 @@ import { Link } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { CalendarDays, MessageCircleQuestion, Theater } from 'lucide-react';
+import { CalendarDays, Download, FileText, MessageCircleQuestion, Theater } from 'lucide-react';
 import { useArtistEligibleDates } from '@/hooks/useArtistEligibleDates';
 import { useMyArtist } from '@/hooks/useMyArtist';
+import { useMyHireOrders, useHireOrderAction } from '@/hooks/useHireOrders';
+import { HireOrderStatusBadge } from '@/components/hireOrders/HireOrderStatusBadge';
+import { useFeature } from '@/hooks/useEntitlements';
+import { useAuth } from '@/features/auth/AuthContext';
 import { formatDateDMY } from '@/lib/dates';
 import { useBookingFlow, useReferenceField } from '@/hooks/useBookingFlow';
 import { referenceLabel, BOOKING_FLOW_DEFAULTS } from '@/lib/bookingFlow';
 import { artistMeter } from '@/lib/flowCopy';
 import { ROUTES } from '@/config/app.config';
+import type { OrderData } from '@/lib/hireOrders/types';
 
 type BookingLite = { show_date_id: string; status: string };
 type CastMembershipRow = { id: string; cast: { id: string; name: string } | null };
+
+/** Read a resolved snapshot field as a trimmed string ("" when absent). Mirrors
+ *  the same small helper in HireOrderDetailPage.tsx / HireOrdersCard.tsx (kept
+ *  local per that established pattern rather than a shared import). */
+function snap(data: OrderData, key: keyof OrderData): string {
+  const v = data[key]?.value;
+  if (v === null || v === undefined) return '';
+  return String(v);
+}
 
 /**
  * Artist dashboard: offer response rate + list of pending offers.
@@ -27,6 +42,25 @@ export function ArtistDashboard() {
   const flowQ = useBookingFlow();
   const flow = flowQ.data ?? BOOKING_FLOW_DEFAULTS;
   const meter = artistMeter(flow);
+
+  const hireOrdersEnabled = useFeature('hire_orders');
+  const { data: myHireOrders } = useMyHireOrders();
+  const { currentOrg } = useAuth();
+  const hireOrderAction = useHireOrderAction();
+
+  function handleDownloadHireOrder(orderId: string) {
+    void (async () => {
+      const res = await hireOrderAction.mutateAsync({
+        action: 'download-url',
+        org_id: currentOrg?.id ?? '',
+        order_id: orderId,
+      });
+      const url = (res as { url?: string } | null)?.url;
+      if (url) window.open(url, '_blank', 'noopener,noreferrer');
+    })().catch(() => {
+      /* useHireOrderAction toasts the failure */
+    });
+  }
 
   // Distinct cache key per projection (this selects no `id`). A shared key let
   // different `select` shapes clobber each other in the React Query cache — see
@@ -187,6 +221,51 @@ export function ArtistDashboard() {
         </Card>
         )}
       </div>
+
+      {hireOrdersEnabled && (myHireOrders?.length ?? 0) > 0 && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="font-display flex items-center gap-2 text-base">
+              <FileText className="h-4 w-4" />
+              Your hire orders
+              <Badge variant="secondary">{myHireOrders!.length}</Badge>
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-2">
+            {myHireOrders!.map((o) => {
+              const data = (o.data ?? {}) as OrderData;
+              const dateStr = snap(data, 'date');
+              const venue = snap(data, 'venue');
+              const subtitle = [dateStr ? formatDateDMY(dateStr) : null, venue || null]
+                .filter(Boolean)
+                .join(' · ');
+              return (
+                <div
+                  key={o.id}
+                  className="flex items-center justify-between gap-3 rounded-lg border border-border p-3"
+                >
+                  <Link to={ROUTES.HIRE_ORDER_DETAIL.replace(':id', o.id)} className="min-w-0 flex-1">
+                    <p className="text-sm font-mono font-medium text-foreground truncate">{o.order_no}</p>
+                    {subtitle && <p className="text-xs text-muted-foreground truncate">{subtitle}</p>}
+                  </Link>
+                  <div className="flex items-center gap-2 shrink-0">
+                    <HireOrderStatusBadge status={o.status} />
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      aria-label="Download"
+                      onClick={() => handleDownloadHireOrder(o.id)}
+                      disabled={hireOrderAction.isPending}
+                    >
+                      <Download className="h-4 w-4" />
+                    </Button>
+                  </div>
+                </div>
+              );
+            })}
+          </CardContent>
+        </Card>
+      )}
 
       <Card>
         <CardHeader>

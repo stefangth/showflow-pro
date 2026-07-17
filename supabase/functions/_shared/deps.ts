@@ -1,4 +1,11 @@
 import { createClient, type SupabaseClient } from "npm:@supabase/supabase-js@2";
+import type { RenderHireOrderPdf } from "./hireOrders.ts";
+
+/** A file attached to a transactional email (Task 10 wires the actual Resend send). */
+export interface EmailAttachment {
+  filename: string;
+  content_base64: string;
+}
 
 export interface EmailMessage {
   template_name: string;
@@ -6,6 +13,8 @@ export interface EmailMessage {
   org_id?: string;
   templateData?: Record<string, unknown>;
   idempotency_key?: string;
+  /** Binary attachments (e.g. the issued hire-order PDF). Task 10 implements delivery. */
+  attachments?: EmailAttachment[];
 }
 
 export interface InvokeResult {
@@ -39,6 +48,8 @@ export interface Deps {
   now: () => Date;
   invokeFunction: (name: string, body: unknown) => Promise<InvokeResult>;
   sendEmail: (msg: EmailMessage) => Promise<InvokeResult>;
+  /** Render a hire-order PDF (Task 7 concrete impl, injected so tests can fake it). */
+  renderHireOrderPdf: RenderHireOrderPdf;
   fetch: typeof fetch;
 }
 
@@ -68,6 +79,15 @@ export function realDeps(getEnv: (k: string) => string | undefined = (k) => Deno
     now: () => new Date(),
     invokeFunction,
     sendEmail: (msg: EmailMessage) => invokeFunction("send-transactional-email", msg),
+    // Lazily import the concrete renderer: it pulls in react-pdf and ~707KB of
+    // embedded fonts, so a static import would load that heavy module into every
+    // edge-function test that imports deps.ts. Deferring it to first render keeps
+    // the test graph light and the module cost out of cold-start until a PDF is
+    // actually generated.
+    renderHireOrderPdf: async (input) => {
+      const { renderHireOrderPdf } = await import("./hire-order-pdf/render.tsx");
+      return renderHireOrderPdf(input);
+    },
     fetch: (...args: Parameters<typeof fetch>) => fetch(...args),
   };
 }
