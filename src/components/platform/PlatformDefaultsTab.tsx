@@ -35,7 +35,7 @@ export function PlatformDefaultsTab() {
 
 function StarterCatalogCard() {
   const qc = useQueryClient();
-  const { data, isLoading } = useQuery({
+  const { data, isLoading, isError, error } = useQuery({
     queryKey: ["platform", "starter-template"],
     queryFn: () => resolveOrgSetting<StarterCatalogTemplate>(supabase, null, "starter_catalog_template", EMPTY_STARTER_TEMPLATE),
   });
@@ -65,6 +65,7 @@ function StarterCatalogCard() {
   });
 
   if (isLoading) return <Skeleton className="h-64 w-full" />;
+  if (isError) return <Alert variant="destructive"><AlertDescription>{(error as Error).message}</AlertDescription></Alert>;
 
   return (
     <Card>
@@ -178,7 +179,7 @@ function BookingEngineDefaultsCard() {
  *  Settings → Airtable Sync. */
 function AirtableDefaultsCard() {
   const qc = useQueryClient();
-  const { data, isLoading } = useQuery({
+  const { data, isLoading, isError, error } = useQuery({
     queryKey: ["platform", "airtable-interval"],
     queryFn: () => resolveOrgSetting<number>(supabase, null, "airtable_poll_interval_minutes", MIN_POLL_INTERVAL_MINUTES),
   });
@@ -194,6 +195,7 @@ function AirtableDefaultsCard() {
   });
 
   if (isLoading) return <Skeleton className="h-40 w-full" />;
+  if (isError) return <Alert variant="destructive"><AlertDescription>{(error as Error).message}</AlertDescription></Alert>;
 
   return (
     <Card>
@@ -231,7 +233,7 @@ const DEFAULT_ENTITLEMENTS_FALLBACK: Record<FeatureKey, boolean> = Object.fromEn
  *  overrides it afterward. */
 function DefaultModulesCard() {
   const qc = useQueryClient();
-  const { data, isLoading } = useQuery({
+  const { data, isLoading, isError, error } = useQuery({
     queryKey: ["platform", "default-entitlements"],
     queryFn: () => resolveOrgSetting<Record<FeatureKey, boolean>>(
       supabase, null, "default_entitlements", DEFAULT_ENTITLEMENTS_FALLBACK,
@@ -249,6 +251,7 @@ function DefaultModulesCard() {
   });
 
   if (isLoading) return <Skeleton className="h-40 w-full" />;
+  if (isError) return <Alert variant="destructive"><AlertDescription>{(error as Error).message}</AlertDescription></Alert>;
 
   const current = data ?? DEFAULT_ENTITLEMENTS_FALLBACK;
 
