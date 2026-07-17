@@ -540,6 +540,7 @@ Deno.test("send-confirmation-digest: sendEmail throws → digests_sent not incre
       invokeCalls.push({ name: "send-transactional-email", body: _msg });
       return Promise.reject(new Error("Resend API down"));
     },
+    renderHireOrderPdf: () => Promise.resolve(new Uint8Array([0x25, 0x50, 0x44, 0x46])),
     fetch: (() => Promise.resolve(new Response("{}", { status: 200 }))) as typeof fetch,
   };
 

@@ -74,6 +74,13 @@ verify_jwt = false
 [functions.airtable-poll]
 verify_jwt = false
 
+# generate-hire-orders: the fully-filled trigger + cron callers use X-Cron-Secret,
+# and the download-url action authorizes artists (who are neither admin nor producer)
+# against the loaded order — so the gateway must not force a JWT; auth is in-function
+# (requireCronOrRole for draft/issue/preview, a bespoke check for download-url).
+[functions.generate-hire-orders]
+verify_jwt = false
+
 [functions.cron-health-watcher]
 verify_jwt = false
 
