@@ -68,6 +68,40 @@ export async function invokeHireOrderAction(
   return data;
 }
 
+/** The producer's pre-issue review edits from the generate dialog. */
+export interface HireOrderReview {
+  feeAmount: number | null;
+  termsVariant: string;
+}
+
+/**
+ * Persist the producer's review edits (engagement fee + terms variant) onto a
+ * draft/ready order before preview/issue. The fee lands in BOTH the `fee_amount`
+ * column and the `data.fee` snapshot as a `manual`-source field — the PDF renders
+ * from the snapshot (`data.fee.value`), so the two must stay in step. Every other
+ * snapshot field is preserved untouched. Never call on an issued order; the DB
+ * transition guard (Task 1) is the backstop, this is only the client path.
+ */
+export async function updateHireOrderReview(
+  client: SupabaseClient<Database>,
+  id: string,
+  review: HireOrderReview,
+  currentData: HireOrderRow["data"],
+): Promise<void> {
+  const base =
+    currentData && typeof currentData === "object" && !Array.isArray(currentData)
+      ? (currentData as Record<string, unknown>)
+      : {};
+  const data = { ...base, fee: { value: review.feeAmount, source: "manual" } };
+  const patch: Database["public"]["Tables"]["hire_orders"]["Update"] = {
+    fee_amount: review.feeAmount,
+    terms_variant: review.termsVariant,
+    data: data as Database["public"]["Tables"]["hire_orders"]["Update"]["data"],
+  };
+  const { error } = await client.from("hire_orders").update(patch).eq("id", id);
+  if (error) throw error;
+}
+
 /**
  * Client-side status write for "mark countersigned" / "void". Only ever writes
  * `status` (+ `countersigned_at`, stamped here, when transitioning to
