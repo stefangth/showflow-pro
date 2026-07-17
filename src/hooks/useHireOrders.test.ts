@@ -123,7 +123,7 @@ describe("useHireOrderAction", () => {
       await result.current.mutateAsync({ action: "draft", org_id: "org-1" });
     });
 
-    expect(toast.error).toHaveBeenCalledWith("No hire orders drafted: already has a hire order");
+    expect(toast.error).toHaveBeenCalledWith("No hire orders drafted: already ordered");
     expect(toast.success).not.toHaveBeenCalled();
     expect(toast.info).not.toHaveBeenCalled();
   });
@@ -144,8 +144,9 @@ describe("useHireOrderAction", () => {
     });
 
     expect(toast.success).toHaveBeenCalledWith("Drafted 1 hire order");
-    // Deduped reason copy — two `exists` skips collapse to one phrase.
-    expect(toast.warning).toHaveBeenCalledWith("2 bookings skipped: already has a hire order");
+    // Deduped, number-agnostic reason copy: two `exists` skips collapse to one phrase
+    // that reads correctly after a plural count ("2 bookings skipped: already ordered").
+    expect(toast.warning).toHaveBeenCalledWith("2 bookings skipped: already ordered");
     expect(toast.error).not.toHaveBeenCalled();
   });
 

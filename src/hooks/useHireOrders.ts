@@ -78,7 +78,9 @@ function describeIssueFailures(failed: { order_id: string; issues: string[] }[])
  *  order); `order_no_collision` should not occur now that {seq} makes each base
  *  unique, but it is mapped so the toast never shows a bare code. */
 const DRAFT_SKIP_COPY: Record<string, string> = {
-  exists: "already has a hire order",
+  // Number-agnostic phrasing: each reads correctly whether the toast counts 1 or N
+  // bookings (e.g. "1 booking skipped: already ordered", "2 bookings skipped: already ordered").
+  exists: "already ordered",
   order_no_collision: "could not be assigned a unique number",
   error: "hit an unexpected error",
 };
