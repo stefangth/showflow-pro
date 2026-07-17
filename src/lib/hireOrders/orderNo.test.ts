@@ -14,5 +14,6 @@ describe("withCollisionSuffix", () => {
   it("suffixes collisions", () => {
     expect(withCollisionSuffix("HO-2026-0615-B1", 0)).toBe("HO-2026-0615-B1");
     expect(withCollisionSuffix("HO-2026-0615-B1", 1)).toBe("HO-2026-0615-B1-2");
+    expect(withCollisionSuffix("HO-2026-0615-B1", 2)).toBe("HO-2026-0615-B1-3");
   });
 });
