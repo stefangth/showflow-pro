@@ -1,11 +1,12 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/features/auth/AuthContext";
 import { ROUTES } from "@/config/app.config";
-import { fetchPlatformOrgStats, setOrgStatus, type OrgStat } from "@/data/platform";
+import { fetchPlatformOrgStats, fetchAllOrgEntitlements, setOrgStatus, type OrgStat } from "@/data/platform";
+import { enabledFeatures, FEATURE_KEYS, FEATURE_REGISTRY, type FeatureKey, type EntitlementRow } from "@/lib/entitlements";
 import { formatLastActivity } from "./platformFormat";
 import { NewOrgDialog } from "./NewOrgDialog";
 import { EditOrgDialog } from "./EditOrgDialog";
@@ -34,6 +35,25 @@ export function OrganizationsTab() {
     queryFn: () => fetchPlatformOrgStats(supabase),
   });
 
+  const { data: entitlementRows } = useQuery({
+    queryKey: ["platform", "entitlements"],
+    queryFn: () => fetchAllOrgEntitlements(supabase),
+  });
+
+  // Group entitlement rows by org, dropping any row whose feature isn't a known
+  // registry key — fetchAllOrgEntitlements casts the raw DB string with no runtime
+  // validation, so a stale/unknown feature row must not crash this render.
+  const entitlementsByOrg = useMemo(() => {
+    const map = new Map<string, EntitlementRow[]>();
+    for (const row of entitlementRows ?? []) {
+      if (!FEATURE_KEYS.includes(row.feature as FeatureKey)) continue;
+      const list = map.get(row.org_id) ?? [];
+      list.push(row);
+      map.set(row.org_id, list);
+    }
+    return map;
+  }, [entitlementRows]);
+
   const statusMutation = useMutation({
     mutationFn: ({ id, status }: { id: string; status: "active" | "suspended" }) => setOrgStatus(supabase, id, status),
     onSuccess: () => { qc.invalidateQueries({ queryKey: ["platform"] }); toast.success("Org updated"); },
@@ -51,7 +71,7 @@ export function OrganizationsTab() {
       <Table>
         <TableHeader>
           <TableRow>
-            <TableHead>Name</TableHead><TableHead>Slug</TableHead><TableHead>Status</TableHead>
+            <TableHead>Name</TableHead><TableHead>Slug</TableHead><TableHead>Status</TableHead><TableHead>Modules</TableHead>
             <TableHead className="text-right">Members</TableHead><TableHead className="text-right">Active artists</TableHead><TableHead className="text-right">Bookings 30d</TableHead>
             <TableHead>Last activity</TableHead><TableHead className="text-right">Actions</TableHead>
           </TableRow>
@@ -62,6 +82,13 @@ export function OrganizationsTab() {
               <TableCell className="font-medium">{o.name}</TableCell>
               <TableCell className="text-muted-foreground">{o.slug}</TableCell>
               <TableCell><Badge variant={o.status === "suspended" ? "destructive" : "secondary"}>{o.status}</Badge></TableCell>
+              <TableCell>
+                <div className="flex flex-wrap gap-1">
+                  {[...enabledFeatures(entitlementsByOrg.get(o.org_id) ?? [])].map((feature) => (
+                    <Badge key={feature} variant="outline">{FEATURE_REGISTRY[feature].short}</Badge>
+                  ))}
+                </div>
+              </TableCell>
               <TableCell className="text-right tabular-nums">{o.member_count}</TableCell>
               <TableCell className="text-right tabular-nums">{o.active_artist_count}</TableCell>
               <TableCell className="text-right tabular-nums">{o.bookings_30d}</TableCell>
@@ -82,7 +109,7 @@ export function OrganizationsTab() {
               </TableCell>
             </TableRow>
           ))}
-          {orgs?.length === 0 && <TableRow><TableCell colSpan={8} className="text-center text-muted-foreground py-6">No organizations yet</TableCell></TableRow>}
+          {orgs?.length === 0 && <TableRow><TableCell colSpan={9} className="text-center text-muted-foreground py-6">No organizations yet</TableCell></TableRow>}
         </TableBody>
       </Table>
       <EditOrgDialog org={editing} onClose={() => setEditing(null)} />

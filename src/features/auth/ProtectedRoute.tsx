@@ -2,10 +2,12 @@ import { Navigate, useLocation } from 'react-router-dom';
 import { useAuth } from './AuthContext';
 import NoOrgScreen from '@/pages/NoOrgScreen';
 import SuspendedOrgScreen from '@/pages/SuspendedOrgScreen';
+import FeatureDisabledScreen from '@/pages/FeatureDisabledScreen';
 import type { AppRole } from '@/config/app.config';
-import { ROUTES } from '@/config/app.config';
+import { ROUTES, requiredFeatureForPath } from '@/config/app.config';
 import { DEFAULT_PAGE_ACCESS } from '@/features/editor/types';
 import { useEditorConfig } from '@/features/editor/EditorContext';
+import { useEntitlements } from '@/hooks/useEntitlements';
 
 interface ProtectedRouteProps {
   children: React.ReactNode;
@@ -15,6 +17,7 @@ interface ProtectedRouteProps {
 export function ProtectedRoute({ children, requiredRoles }: ProtectedRouteProps) {
   const { user, loading, roles, currentOrg, isSuperAdmin } = useAuth();
   const { isEditorMode, pageAccess } = useEditorConfig();
+  const { features, isLoading: entitlementsLoading } = useEntitlements();
   const location = useLocation();
 
   if (loading) {
@@ -37,6 +40,15 @@ export function ProtectedRoute({ children, requiredRoles }: ProtectedRouteProps)
   // Super-admins may enter a suspended org (god-mode); members cannot.
   if (currentOrg.status === 'suspended' && !isSuperAdmin) {
     return <SuspendedOrgScreen />;
+  }
+
+  // Route-level entitlement gate. While entitlements are still loading, fall
+  // through to the existing render path rather than flashing the disabled
+  // screen for an org that does have the feature. Super-admins (god-mode)
+  // bypass this like they bypass org role gates below.
+  const requiredFeature = requiredFeatureForPath(location.pathname);
+  if (requiredFeature && !entitlementsLoading && !features.has(requiredFeature) && !isSuperAdmin) {
+    return <FeatureDisabledScreen feature={requiredFeature} />;
   }
 
   // Admins in editor mode bypass all route role gates — they can navigate anywhere.

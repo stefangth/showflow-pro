@@ -1,6 +1,7 @@
 import { LayoutDashboard, BookOpen, Clock, Settings, Shield, MessageSquare, Users, Building2, Theater } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import { ROUTES } from '@/config/app.config';
+import type { FeatureKey } from '@/lib/entitlements';
 
 export type NavSection = 'workspace' | 'catalog' | 'system';
 export type NavBadge = 'pendingConfirmations' | 'openOffers';
@@ -13,6 +14,8 @@ export interface NavItem {
   badge?: NavBadge;
   roles?: string[];
   superAdmin?: boolean;
+  /** Gate this item behind an org entitlement (Task 4's FEATURE_REGISTRY). */
+  feature?: FeatureKey;
 }
 
 export const SECTION_LABELS: Record<NavSection, string> = {
@@ -47,8 +50,19 @@ export function groupNavBySections(items: NavItem[]): NavSectionGroup[] {
 /** Base nav visibility (before editor view-as styling). */
 export function visibleNavItems(
   items: NavItem[],
-  ctx: { isEditorMode: boolean; isRealAdmin: boolean; isSuperAdmin: boolean; hasRole: (r: string) => boolean },
+  ctx: {
+    isEditorMode: boolean;
+    isRealAdmin: boolean;
+    isSuperAdmin: boolean;
+    hasRole: (r: string) => boolean;
+    enabledFeatures: Set<string>;
+  },
 ): NavItem[] {
+  // Entitlement gate applies to every viewer first — including editor-mode
+  // and super-admins in the sidebar. God-mode direct-URL access to a gated
+  // route is a separate concern handled by ProtectedRoute.
+  items = items.filter((item) => !item.feature || ctx.enabledFeatures.has(item.feature));
+
   if (ctx.isEditorMode && ctx.isRealAdmin) {
     return items.filter((i) => !i.superAdmin || ctx.isSuperAdmin);
   }

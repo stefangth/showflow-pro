@@ -192,6 +192,13 @@ export function createFakeClient(opts: FakeClientOptions = {}) {
       if (name === "get_cron_secret" && fallbackCronSecret !== null) {
         return Promise.resolve({ data: fallbackCronSecret, error: null });
       }
+      // Default every org to entitled for is_feature_enabled so the many existing
+      // DI tests (booking-flow consumers etc.) that never seed this RPC keep their
+      // pre-entitlements behavior. Tests exercising the gate itself override via
+      // `rpcs: { is_feature_enabled: {...} }`.
+      if (name === "is_feature_enabled") {
+        return Promise.resolve({ data: true, error: null });
+      }
       return Promise.resolve({ data: null, error: null });
     },
     auth: {

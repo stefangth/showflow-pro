@@ -22,6 +22,7 @@ import { ThemeToggle } from '@/components/layout/ThemeToggle';
 import { useNotifications } from '@/hooks/useNotifications';
 import { useNavCounts } from '@/hooks/useNavCounts';
 import { useMyProfile } from '@/hooks/useMyProfile';
+import { useEntitlements } from '@/hooks/useEntitlements';
 import { toast } from 'sonner';
 
 interface AppLayoutProps {
@@ -54,6 +55,7 @@ export default function AppLayout({ children }: AppLayoutProps) {
   const { data: notifications = [] } = useNotifications();
   const { data: myProfile } = useMyProfile();
   const navCounts = useNavCounts();
+  const { features } = useEntitlements();
 
   // The account-menu Popover lives only in the expanded sidebar. Reset its open
   // state when collapsing so it doesn't auto-pop on the next expand.
@@ -79,7 +81,7 @@ export default function AppLayout({ children }: AppLayoutProps) {
     }
   };
 
-  const filteredNav = visibleNavItems(NAV_ITEMS, { isEditorMode, isRealAdmin, isSuperAdmin, hasRole: (r) => hasRole(r as any) });
+  const filteredNav = visibleNavItems(NAV_ITEMS, { isEditorMode, isRealAdmin, isSuperAdmin, hasRole: (r) => hasRole(r as any), enabledFeatures: features });
   const navGroups = groupNavBySections(filteredNav);
 
   const isHiddenForViewAs = (item: typeof NAV_ITEMS[number]) => {
