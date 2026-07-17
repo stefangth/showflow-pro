@@ -327,7 +327,17 @@ test.describe("Hire orders: producer issues, artist downloads", () => {
     expect(payload.url).toBeTruthy();
 
     // The signed URL must serve the actual PDF: 200 + application/pdf, non-empty body.
-    const pdf = await page.request.get(payload.url!);
+    // The edge function runs inside the Docker network and signs URLs with its internal
+    // Supabase host (kong:8000), which the host-side Playwright runner cannot resolve.
+    // Rewrite the origin to the host-reachable Supabase URL; the path and signed token
+    // stay valid, so this still fetches the real stored PDF.
+    const hostBase = process.env.SUPABASE_URL ?? process.env.VITE_SUPABASE_URL;
+    if (!hostBase) throw new Error("E2E: SUPABASE_URL is required to reach storage");
+    const signed = new URL(payload.url!);
+    const base = new URL(hostBase);
+    signed.protocol = base.protocol;
+    signed.host = base.host; // host includes the port
+    const pdf = await page.request.get(signed.toString());
     expect(pdf.status()).toBe(200);
     expect(pdf.headers()["content-type"]).toContain("application/pdf");
     expect((await pdf.body()).byteLength).toBeGreaterThan(0);
