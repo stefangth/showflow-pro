@@ -391,6 +391,23 @@ Deno.test("download-url allows the linked artist and rejects an unrelated artist
     unrelated.deps,
   );
   assertEquals(denyRes.status, 403);
+
+  // Linked artist but the order is still a DRAFT -> 403 (artists only reach
+  // issued/countersigned; drafts/ready are never downloadable by them).
+  const draft = makeFakeDeps({
+    authUser: { id: "u-artist" },
+    tables: {
+      org_memberships: { data: [] },
+      platform_admins: { data: null },
+      hire_orders: { data: { ...orderRow, status: "draft" } },
+      artists: { data: { id: "a-A" } }, // linked, but status gates it out
+    },
+  });
+  const draftRes = await handle(
+    makeRequest({ headers: { Authorization: "Bearer artist-jwt" }, body: { action: "download-url", org_id: ORG, order_id: "o-1" } }),
+    draft.deps,
+  );
+  assertEquals(draftRes.status, 403);
 });
 
 // ── coarse auth ────────────────────────────────────────────────────────
@@ -402,4 +419,61 @@ Deno.test("rejects non-cron non-producer callers", async () => {
   });
   const res = await handle(makeRequest({ headers: JWT, body: { action: "draft", org_id: ORG, show_date_id: SD } }), deps);
   assertEquals(res.status, 403);
+});
+
+Deno.test("rejects a JWT admin of another org targeting this org (cross-tenant)", async () => {
+  // Caller is an admin of org A but NOT a member of org B. The org-scoped gate
+  // must reject targeting org B even though the caller holds the role elsewhere.
+  // The rest of the preview path is seeded so that, WITHOUT the org gate, the
+  // handler would render and leak org B's PDF — this test fails (200) against a
+  // caller-org-blind gate and passes (403) once scoped to body.org_id.
+  const { deps } = makeFakeDeps({
+    authUser: { id: "u-adminA" },
+    tables: {
+      org_memberships: [
+        { when: { org_id: "org-B" }, data: [] }, // no membership in the TARGET org
+        { data: { role: "admin" } }, // admin somewhere (org A) — an ANY-org check would pass
+      ],
+      platform_admins: { data: null },
+      hire_orders: { data: issuableOrder({ org_id: "org-B" }) },
+      app_settings: [
+        { when: { key: "hire_order_letterhead" }, data: [{ org_id: "org-B", value: { legal_name: "B GmbH", address_lines: [] } }] },
+        { when: { key: "hire_order_terms" }, data: [{ org_id: "org-B", value: { lean: [], standard: [], full: [] } }] },
+        { when: { key: "hire_order_defaults" }, data: [{ org_id: "org-B", value: { default_fee: null, currency: "EUR" } }] },
+      ],
+    },
+  });
+  const res = await handle(
+    makeRequest({ headers: JWT, body: { action: "preview", org_id: "org-B", order_id: "o-1" } }),
+    deps,
+  );
+  assertEquals(res.status, 403);
+});
+
+Deno.test("cron-secret caller is accepted (trigger path unchanged)", async () => {
+  const { deps } = makeFakeDeps({
+    tables: {
+      show_dates: { data: SHOW_DATE_ROW },
+      bookings: { data: [booking("b-A", "a-A", 500, "Ann", "ann@x.de")] },
+      cities: { data: { name: "Berlin" } },
+      hire_orders: [
+        { when: { __write: false }, data: [] },
+        { when: { __write: true }, data: { id: "ho-cron" } },
+      ],
+      app_settings: [
+        { when: { key: "hire_order_defaults" }, data: [DEFAULTS] },
+        { when: { key: "hire_order_numbering" }, data: [NUMBERING] },
+      ],
+    },
+    rpcs: { get_cron_secret: { data: "cron-secret-value", error: null } },
+  });
+  const res = await handle(
+    makeRequest({
+      headers: { "X-Cron-Secret": "cron-secret-value" },
+      body: { action: "draft", org_id: ORG, show_date_id: SD },
+    }),
+    deps,
+  );
+  assertEquals(res.status, 200);
+  assertEquals((await res.json()).created, ["ho-cron"]);
 });
