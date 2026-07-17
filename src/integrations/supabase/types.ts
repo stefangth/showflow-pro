@@ -362,6 +362,7 @@ export type Database = {
           confirmed_at: string | null
           created_at: string
           digest_sent_at: string | null
+          fee_amount: number | null
           id: string
           is_understudy: boolean
           notes: string | null
@@ -383,6 +384,7 @@ export type Database = {
           confirmed_at?: string | null
           created_at?: string
           digest_sent_at?: string | null
+          fee_amount?: number | null
           id?: string
           is_understudy?: boolean
           notes?: string | null
@@ -404,6 +406,7 @@ export type Database = {
           confirmed_at?: string | null
           created_at?: string
           digest_sent_at?: string | null
+          fee_amount?: number | null
           id?: string
           is_understudy?: boolean
           notes?: string | null
@@ -1684,6 +1687,7 @@ export type Database = {
           created_at: string
           custom: Json
           date: string
+          duration_minutes: number | null
           id: string
           notes: string | null
           org_id: string
@@ -1702,6 +1706,7 @@ export type Database = {
           created_at?: string
           custom?: Json
           date: string
+          duration_minutes?: number | null
           id?: string
           notes?: string | null
           org_id: string
@@ -1720,6 +1725,7 @@ export type Database = {
           created_at?: string
           custom?: Json
           date?: string
+          duration_minutes?: number | null
           id?: string
           notes?: string | null
           org_id?: string
