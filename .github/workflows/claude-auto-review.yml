@@ -37,4 +37,12 @@ jobs:
             Use `mcp__github_inline_comment__create_inline_comment` (with `confirmed: true`) to highlight specific code issues.
             Only post GitHub comments - don't submit review text as messages.
 
-          claude_args:  --allowedTools "mcp__github_inline_comment__create_inline_comment,Bash(gh pr comment:*),Bash(gh pr diff:*),Bash(gh pr view:*),Read,Grep,Glob"
+          # Full output kept on so the run log shows any tool the agent gets denied;
+          # flip back to false once reviews are posting reliably again.
+          show_full_output: true
+
+          # Broadened beyond the stock example: the v2.1.x review agent explores
+          # the checked-out branch with Read/Grep/Glob and git inspection, so the
+          # old minimal allowlist got it blocked (67 denials) and it never posted.
+          claude_args: |
+            --allowedTools "mcp__github_inline_comment__create_inline_comment,Bash(gh pr comment:*),Bash(gh pr diff:*),Bash(gh pr view:*),Bash(gh pr checks:*),Bash(git diff:*),Bash(git log:*),Bash(git show:*),Bash(git blame:*),Read,Grep,Glob"
