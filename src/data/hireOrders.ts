@@ -1,5 +1,6 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "@/integrations/supabase/types";
+import type { OrderData, OrderFieldKey } from "@/lib/hireOrders/types";
 
 export type HireOrderStatus = Database["public"]["Enums"]["hire_order_status"];
 
@@ -243,6 +244,119 @@ export async function updateHireOrderReview(
   };
   const { error } = await client.from("hire_orders").update(patch).eq("id", id);
   if (error) throw error;
+}
+
+/** Patch accepted by `updateHireOrderDraft`: the full resolved snapshot plus
+ *  the optional columns that mirror parts of it. */
+export interface UpdateHireOrderDraftPatch {
+  data: OrderData;
+  fee_amount?: string | number | null;
+  fee_currency?: string;
+  terms_variant?: string;
+}
+
+/**
+ * Persist the V2 split builder's full field-resolution snapshot onto a
+ * draft/ready order, plus the optional fee/currency/terms columns.
+ *
+ * DISTINCT from `updateHireOrderReview`: that one is the narrow pre-issue path
+ * used by the V1 generate dialog (fee + terms variant only, reconstructing
+ * just `data.fee` on top of whatever `data` already held). This one writes
+ * the WHOLE resolved `data` snapshot the builder computed — every field, each
+ * tagged with its resolved source — because the builder can edit any of the
+ * twelve order fields across its four sections, not just the fee. Callers are
+ * responsible for keeping `fee_amount` in step with `data.fee?.value` (see
+ * `HireOrderEditPage`'s patch builder).
+ */
+export async function updateHireOrderDraft(
+  client: SupabaseClient<Database>,
+  id: string,
+  patch: UpdateHireOrderDraftPatch,
+): Promise<void> {
+  const update: Database["public"]["Tables"]["hire_orders"]["Update"] = {
+    data: patch.data as Database["public"]["Tables"]["hire_orders"]["Update"]["data"],
+  };
+  if (patch.fee_amount !== undefined) {
+    update.fee_amount = patch.fee_amount === null || patch.fee_amount === "" ? null : Number(patch.fee_amount);
+  }
+  if (patch.fee_currency !== undefined) update.fee_currency = patch.fee_currency;
+  if (patch.terms_variant !== undefined) update.terms_variant = patch.terms_variant;
+  const { error } = await client.from("hire_orders").update(update).eq("id", id);
+  if (error) throw error;
+}
+
+/** Assign into a showflow-layer draft only when the value is meaningfully
+ *  present. Mirrors `resolveFields` treating `""` the same as `undefined`
+ *  (both absent), but a `null` column value is skipped here explicitly too —
+ *  same convention as the edge function's own `assign` helper. */
+function assignShowflowField(
+  layer: Partial<Record<OrderFieldKey, unknown>>,
+  key: OrderFieldKey,
+  value: unknown,
+): void {
+  if (value === null || value === undefined || value === "") return;
+  layer[key] = value;
+}
+
+/**
+ * A fresh ShowFlow-sourced field layer for an order's linked artist and/or
+ * show date, for the V2 builder's "Refresh from ShowFlow" action. Either id
+ * may be null (an order can link just one); when both are null this returns
+ * `{}` (a fully manual/unlinked order has nothing to refresh from — the
+ * caller hides/disables the action in that case).
+ *
+ * MIRROR: reproduces the showflow-layer assembly in `draftOrders` /
+ * `draftManual` in `supabase/functions/generate-hire-orders/index.ts` (artist
+ * name/email/cast_role, show_date date/venue/city/duration/sessions). The two
+ * runtimes cannot share an import — the edge function's assembly is
+ * authoritative; keep this in step with it.
+ */
+export async function fetchShowflowLayerForOrder(
+  client: SupabaseClient<Database>,
+  args: { showDateId: string | null; artistId: string | null },
+): Promise<Partial<Record<OrderFieldKey, unknown>>> {
+  const layer: Partial<Record<OrderFieldKey, unknown>> = {};
+
+  const [artistResult, showDateResult] = await Promise.all([
+    args.artistId
+      ? client.from("artists").select("name, email, cast_role").eq("id", args.artistId).maybeSingle()
+      : Promise.resolve({ data: null, error: null }),
+    args.showDateId
+      ? client
+          .from("show_dates")
+          .select("date, venue, duration_minutes, session_1, session_2, session_3, cities(name)")
+          .eq("id", args.showDateId)
+          .maybeSingle()
+      : Promise.resolve({ data: null, error: null }),
+  ]);
+
+  if (artistResult.error) throw artistResult.error;
+  if (showDateResult.error) throw showDateResult.error;
+
+  if (artistResult.data) {
+    const artist = artistResult.data as { name: string; email: string | null; cast_role: string | null };
+    assignShowflowField(layer, "artist_name", artist.name);
+    assignShowflowField(layer, "recipient_email", artist.email);
+    assignShowflowField(layer, "role", artist.cast_role);
+  }
+
+  if (showDateResult.data) {
+    const sd = showDateResult.data as unknown as {
+      date: string; venue: string | null; duration_minutes: number | null;
+      session_1: string | null; session_2: string | null; session_3: string | null;
+      cities: { name: string } | null;
+    };
+    assignShowflowField(layer, "date", sd.date);
+    assignShowflowField(layer, "venue", sd.venue);
+    assignShowflowField(layer, "city", sd.cities?.name ?? null);
+    assignShowflowField(layer, "duration_min", sd.duration_minutes);
+    const sessions = [sd.session_1, sd.session_2, sd.session_3].filter(
+      (t): t is string => typeof t === "string" && t !== "",
+    );
+    if (sessions.length > 0) layer.sessions = sessions;
+  }
+
+  return layer;
 }
 
 /**

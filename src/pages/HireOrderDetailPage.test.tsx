@@ -75,6 +75,7 @@ function renderPage(id = "ho-1") {
     <MemoryRouter initialEntries={[`/hire-orders/${id}`]}>
       <Routes>
         <Route path="/hire-orders/:id" element={<HireOrderDetailPage />} />
+        <Route path="/hire-orders/:id/edit" element={<div>EDIT STUB</div>} />
       </Routes>
     </MemoryRouter>,
   );
@@ -197,6 +198,38 @@ describe("HireOrderDetailPage", () => {
     expect(downloadBtn).toBeEnabled();
     expect(screen.queryByTitle(/hire order document/i)).not.toBeInTheDocument();
     expect(screen.queryByText(/^not issued yet$/i)).not.toBeInTheDocument();
+  });
+
+  it("shows an Edit button for a draft order that navigates to the V2 builder", async () => {
+    authAs("producer");
+    seedFor(order({ status: "draft", pdf_path: null, issued_at: null }));
+    renderPage();
+    const editBtn = await screen.findByRole("button", { name: /^edit$/i });
+    fireEvent.click(editBtn);
+    expect(await screen.findByText("EDIT STUB")).toBeInTheDocument();
+  });
+
+  it("shows an Edit button for a ready order too", async () => {
+    authAs("producer");
+    seedFor(order({ status: "ready", pdf_path: null, issued_at: null }));
+    renderPage();
+    expect(await screen.findByRole("button", { name: /^edit$/i })).toBeInTheDocument();
+  });
+
+  it("hides the Edit button for issued/countersigned orders and for an artist viewer", async () => {
+    authAs("producer");
+    seedFor(order({ status: "issued" }));
+    renderPage();
+    await screen.findByText("Performance hire order");
+    expect(screen.queryByRole("button", { name: /^edit$/i })).not.toBeInTheDocument();
+  });
+
+  it("shows an artist only a Download control, never Edit, even on a draft order", async () => {
+    authAs("artist");
+    seedFor(order({ status: "draft", pdf_path: null, issued_at: null }));
+    renderPage();
+    await screen.findByRole("button", { name: /download pdf/i });
+    expect(screen.queryByRole("button", { name: /^edit$/i })).not.toBeInTheDocument();
   });
 
   it("shows the same inline error when a super-admin has no current org (org_id resolves to empty)", async () => {

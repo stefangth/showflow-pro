@@ -13,8 +13,11 @@ const { client } = vi.hoisted(() => ({ client: {} as Record<string, unknown> }))
 vi.mock("@/integrations/supabase/client", () => ({ supabase: client }));
 vi.mock("@/features/auth/AuthContext", () => ({ useAuth: vi.fn() }));
 // The page now always mounts NewOrderWizard (Task 2), which calls useNavigate
-// for its "Open order" success action.
-vi.mock("react-router-dom", () => ({ useNavigate: () => vi.fn() }));
+// for its "Open order" success action; OrderSlideOver's Edit button (Task 2b)
+// also navigates. A stable spy (not a fresh vi.fn() per call) lets tests
+// assert on it.
+const navigate = vi.fn();
+vi.mock("react-router-dom", () => ({ useNavigate: () => navigate }));
 
 function seedClient(seed: Record<string, TableSeed>) {
   for (const key of Object.keys(client)) delete client[key];
@@ -104,6 +107,7 @@ function renderPage() {
 
 describe("HireOrdersPage", () => {
   beforeEach(() => {
+    navigate.mockClear();
     authAs("producer");
     seedFor(ROWS);
   });
@@ -175,6 +179,17 @@ describe("HireOrdersPage", () => {
     expect(within(dialog).getByRole("button", { name: /download/i })).toBeInTheDocument();
     expect(within(dialog).getByRole("button", { name: /mark countersigned/i })).toBeInTheDocument();
     expect(within(dialog).queryByRole("button", { name: /issue and send/i })).not.toBeInTheDocument();
+    expect(within(dialog).queryByRole("button", { name: /^edit$/i })).not.toBeInTheDocument();
+  });
+
+  it("shows Edit alongside Issue and send for a draft order, and navigates to the V2 builder", async () => {
+    renderPage();
+    const cell = await screen.findByText("HO-2026-0201-1");
+    fireEvent.click(cell);
+    const dialog = await screen.findByRole("dialog");
+    const editBtn = within(dialog).getByRole("button", { name: /^edit$/i });
+    fireEvent.click(editBtn);
+    expect(navigate).toHaveBeenCalledWith("/hire-orders/ho-1/edit");
   });
 
   it("downloads via the download-url action and opens the returned signed URL", async () => {

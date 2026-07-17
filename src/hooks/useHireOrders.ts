@@ -12,9 +12,11 @@ import {
   invokeHireOrderAction,
   updateHireOrderReview,
   updateHireOrderStatus,
+  updateHireOrderDraft,
   type HireOrderFilters,
   type HireOrderReview,
   type HireOrderRow,
+  type UpdateHireOrderDraftPatch,
 } from "@/data/hireOrders";
 
 /** Every mutation below busts the whole `['hire-orders']` prefix, never a sub-key —
@@ -97,7 +99,7 @@ interface IssueResult { issued?: string[]; failed?: { order_id: string; issues: 
  *  raw code is not actionable on its own. Deliberately small: codes with no
  *  entry here fall back to the raw code rather than growing this list to cover
  *  every internal failure mode. */
-const ISSUE_FAILURE_COPY: Record<string, string> = {
+export const ISSUE_FAILURE_COPY: Record<string, string> = {
   missing_terms: "Add terms in Settings before issuing",
   missing_fee: "Set an engagement fee before issuing",
   missing_recipient_email: "Add a recipient email before issuing",
@@ -185,6 +187,25 @@ export function useUpdateHireOrderReview() {
   return useMutation({
     mutationFn: (vars: { id: string; review: HireOrderReview; currentData: HireOrderRow["data"] }) =>
       updateHireOrderReview(supabase, vars.id, vars.review, vars.currentData),
+    onSuccess: () => invalidateHireOrders(qc),
+    onError: (error: Error) => {
+      toast.error(error.message || "Could not save hire order changes");
+    },
+  });
+}
+
+/**
+ * Persist the V2 builder's full data snapshot (+ optional fee/currency/terms)
+ * onto a draft/ready order. Silent on success (only errors toast): both the
+ * debounced live-preview refresh AND the explicit "Save draft" action share
+ * this mutation, and a background preview-persist popping a toast on every
+ * keystroke would be noisy. The "Save draft" button toasts explicitly itself
+ * once its own `mutateAsync` resolves — same pattern as `useUpdateHireOrderReview`. */
+export function useUpdateHireOrderDraft() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (vars: { id: string; patch: UpdateHireOrderDraftPatch }) =>
+      updateHireOrderDraft(supabase, vars.id, vars.patch),
     onSuccess: () => invalidateHireOrders(qc),
     onError: (error: Error) => {
       toast.error(error.message || "Could not save hire order changes");

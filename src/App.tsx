@@ -29,6 +29,7 @@ import ResetPasswordPage from "./pages/ResetPasswordPage";
 import ProductionsPage from "./pages/ProductionsPage";
 import HireOrdersPage from "./pages/HireOrdersPage";
 import HireOrderDetailPage from "./pages/HireOrderDetailPage";
+import HireOrderEditPage from "./pages/HireOrderEditPage";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -53,6 +54,7 @@ const App = () => (
             <Route path={ROUTES.PRODUCTIONS} element={<ProtectedRoute requiredRoles={['admin', 'producer']}><AppLayout><ProductionsPage /></AppLayout></ProtectedRoute>} />
             <Route path={ROUTES.HIRE_ORDERS} element={<ProtectedRoute requiredRoles={['admin', 'producer']}><AppLayout><HireOrdersPage /></AppLayout></ProtectedRoute>} />
             <Route path={ROUTES.HIRE_ORDER_DETAIL} element={<ProtectedRoute requiredRoles={['admin', 'producer', 'artist']}><AppLayout><HireOrderDetailPage /></AppLayout></ProtectedRoute>} />
+            <Route path={ROUTES.HIRE_ORDER_EDIT} element={<ProtectedRoute requiredRoles={['admin', 'producer']}><AppLayout><HireOrderEditPage /></AppLayout></ProtectedRoute>} />
             <Route path={ROUTES.AVAILABILITY} element={<ProtectedRoute requiredRoles={['artist']}><AppLayout><AvailabilityPage /></AppLayout></ProtectedRoute>} />
             <Route path={ROUTES.ADMIN} element={<ProtectedRoute requiredRoles={['admin']}><AppLayout><AdminPage /></AppLayout></ProtectedRoute>} />
             <Route path={ROUTES.SETTINGS} element={<ProtectedRoute requiredRoles={['admin', 'producer']}><AppLayout><SettingsPage /></AppLayout></ProtectedRoute>} />

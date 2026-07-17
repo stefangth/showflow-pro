@@ -12,6 +12,7 @@ vi.mock("@/data/hireOrders", () => ({
   fetchHireOrders: vi.fn(),
   invokeHireOrderAction: vi.fn(),
   updateHireOrderStatus: vi.fn(),
+  updateHireOrderDraft: vi.fn(),
 }));
 
 import { toast } from "sonner";
@@ -23,6 +24,7 @@ import {
   fetchHireOrders,
   invokeHireOrderAction,
   updateHireOrderStatus,
+  updateHireOrderDraft,
 } from "@/data/hireOrders";
 import {
   useHireOrdersForDate,
@@ -32,6 +34,7 @@ import {
   useHireOrderAction,
   useMarkCountersigned,
   useVoidHireOrder,
+  useUpdateHireOrderDraft,
 } from "./useHireOrders";
 
 function wrapper() {
@@ -286,6 +289,39 @@ describe("useMarkCountersigned", () => {
 
     await act(async () => {
       await expect(result.current.mutateAsync("ho-1")).rejects.toThrow();
+    });
+
+    expect(toast.error).toHaveBeenCalledWith("stale");
+  });
+});
+
+describe("useUpdateHireOrderDraft", () => {
+  beforeEach(() => vi.clearAllMocks());
+
+  it("calls updateHireOrderDraft with id + patch, invalidates hire-orders, and stays silent on success", async () => {
+    vi.mocked(updateHireOrderDraft).mockResolvedValue(undefined);
+    const { Wrapper, qc } = wrapper();
+    const invalidateSpy = vi.spyOn(qc, "invalidateQueries");
+    const { result } = renderHook(() => useUpdateHireOrderDraft(), { wrapper: Wrapper });
+
+    const patch = { data: { fee: { value: 100, source: "manual" as const } } };
+    await act(async () => {
+      await result.current.mutateAsync({ id: "ho-1", patch });
+    });
+
+    expect(updateHireOrderDraft).toHaveBeenCalledWith(expect.anything(), "ho-1", patch);
+    expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: ["hire-orders"] });
+    expect(toast.success).not.toHaveBeenCalled();
+    expect(toast.error).not.toHaveBeenCalled();
+  });
+
+  it("toasts an error on failure", async () => {
+    vi.mocked(updateHireOrderDraft).mockRejectedValue(new Error("stale"));
+    const { Wrapper } = wrapper();
+    const { result } = renderHook(() => useUpdateHireOrderDraft(), { wrapper: Wrapper });
+
+    await act(async () => {
+      await expect(result.current.mutateAsync({ id: "ho-1", patch: { data: {} } })).rejects.toThrow();
     });
 
     expect(toast.error).toHaveBeenCalledWith("stale");

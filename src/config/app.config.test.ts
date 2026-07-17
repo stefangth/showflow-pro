@@ -27,6 +27,18 @@ describe("requiredFeatureForPath", () => {
     expect(ROUTE_FEATURES["/hire-orders"]).toBe("hire_orders");
   });
 
+  it("gates the hire-order edit (V2 builder) route on the hire_orders feature", () => {
+    expect(ROUTE_FEATURES["/hire-orders/:id/edit"]).toBe("hire_orders");
+    expect(requiredFeatureForPath("/hire-orders/abc-123-uuid/edit")).toBe("hire_orders");
+  });
+
+  it("resolves the detail route via its own 2-segment pattern, not the 3-segment edit pattern", () => {
+    // /hire-orders/:id (2 segs) and /hire-orders/:id/edit (3 segs) must never
+    // cross-match — segment count keeps them isolated.
+    expect(requiredFeatureForPath("/hire-orders/abc-123-uuid")).toBe("hire_orders");
+    expect(requiredFeatureForPath("/hire-orders/abc-123-uuid/edit")).toBe("hire_orders");
+  });
+
   it("returns undefined for a path with no configured feature", () => {
     expect(requiredFeatureForPath("/dashboard")).toBeUndefined();
   });

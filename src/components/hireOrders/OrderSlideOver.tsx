@@ -1,4 +1,5 @@
-import { Download } from "lucide-react";
+import { Download, Pencil } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
 import {
@@ -12,6 +13,7 @@ import { formatDateDMY } from "@/lib/dates";
 import type { OrderData } from "@/lib/hireOrders/types";
 import type { HireOrderListRow } from "@/data/hireOrders";
 import { useHireOrderAction, useMarkCountersigned, useVoidHireOrder } from "@/hooks/useHireOrders";
+import { ROUTES } from "@/config/app.config";
 
 /** Read a resolved snapshot field as a trimmed string ("" when absent). */
 function snap(data: OrderData, key: keyof OrderData): string {
@@ -37,6 +39,7 @@ interface Props {
  * of the currently active status/search filter mid-view.
  */
 export function OrderSlideOver({ order, open, onOpenChange, orgId }: Props) {
+  const navigate = useNavigate();
   const action = useHireOrderAction();
   const countersign = useMarkCountersigned();
   const voidOrder = useVoidHireOrder();
@@ -78,6 +81,11 @@ export function OrderSlideOver({ order, open, onOpenChange, orgId }: Props) {
     voidOrder.mutate(order!.id, { onSuccess: () => onOpenChange(false) });
   }
 
+  function handleEdit() {
+    onOpenChange(false);
+    navigate(ROUTES.HIRE_ORDER_EDIT.replace(":id", order!.id));
+  }
+
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent className="w-full overflow-y-auto sm:max-w-md">
@@ -114,9 +122,14 @@ export function OrderSlideOver({ order, open, onOpenChange, orgId }: Props) {
 
           <div className="space-y-2">
             {(order.status === "draft" || order.status === "ready") && (
-              <Button className="w-full" onClick={handleIssue} disabled={action.isPending}>
-                Issue and send
-              </Button>
+              <>
+                <Button variant="outline" className="w-full" onClick={handleEdit}>
+                  <Pencil className="mr-1 h-4 w-4" /> Edit
+                </Button>
+                <Button className="w-full" onClick={handleIssue} disabled={action.isPending}>
+                  Issue and send
+                </Button>
+              </>
             )}
             {order.status === "issued" && (
               <>
