@@ -14,6 +14,13 @@
 -- Nothing writes them yet -- this file only proves shape + constraints, at the
 -- very end (see "Task 2" section below).
 --
+-- Also covers Task 6's private 'hire-orders' Storage bucket
+-- (hire_orders_storage.sql): storage.objects gets a single SELECT policy for
+-- role authenticated, scoped to bucket_id = 'hire-orders' and org membership
+-- derived from the object path's first folder segment
+-- (`(storage.foldername(name))[1])::uuid`). No write policies -- uploads go
+-- through the service role only (see "Task 6" section below).
+--
 -- Guard functions under test (defined alongside the tables):
 --   derive_org_for_hire_order()      BEFORE INSERT OR UPDATE OF booking_id/artist_id/
 --                                     show_date_id: raises P0001 when a linked entity
@@ -44,7 +51,7 @@
 -- restrictive on top of both, same shape as org_entitlements.sql.
 BEGIN;
 CREATE EXTENSION IF NOT EXISTS pgtap WITH SCHEMA extensions;
-SELECT plan(40);
+SELECT plan(45);
 
 CREATE OR REPLACE FUNCTION pg_temp.act_as(_uid text) RETURNS void LANGUAGE plpgsql AS $$
 BEGIN
@@ -353,6 +360,67 @@ SELECT throws_ok(
 SELECT lives_ok(
   $$UPDATE public.show_dates SET duration_minutes = 90 WHERE id = 'dddddddd-f0a1-0001-0000-000000000000'$$,
   'duration_minutes accepts 90');
+
+-- ────────────────────────────────────────────────────────────────────────────
+-- Task 6: private 'hire-orders' Storage bucket + its single SELECT policy
+-- (hire_orders_storage.sql). Task 8's edge function will render the PDF and
+-- upload it to `hire-orders/<org_id>/<order_no>.pdf` under the service role
+-- (bypasses RLS), then hand out signed URLs only -- so the only client-facing
+-- surface is this SELECT policy, which scopes to bucket_id = 'hire-orders' and
+-- org membership derived from the object path's first folder segment.
+-- ────────────────────────────────────────────────────────────────────────────
+SELECT is(
+  (SELECT count(*)::int FROM storage.buckets WHERE id = 'hire-orders'),
+  1, 'hire-orders storage bucket exists');
+SELECT is(
+  (SELECT public FROM storage.buckets WHERE id = 'hire-orders'),
+  false, 'hire-orders storage bucket is private (public = false)');
+
+-- Seed one object per org, path = '<org_id>/x.pdf', bypassing RLS as the
+-- migration-test role (writes go through the service role only in prod --
+-- there are deliberately no INSERT policies to exercise here).
+INSERT INTO storage.objects (bucket_id, name, owner) VALUES
+  ('hire-orders', '00000000-0000-0000-0000-00000000f0a1/x.pdf', NULL),
+  ('hire-orders', '00000000-0000-0000-0000-00000000f0a2/y.pdf', NULL);
+
+SELECT pg_temp.act_as('aaaaaaaa-f0a1-0001-0000-000000000000');
+SET LOCAL ROLE authenticated;
+SELECT is(
+  (SELECT count(*)::int FROM storage.objects
+   WHERE bucket_id = 'hire-orders' AND name = '00000000-0000-0000-0000-00000000f0a1/x.pdf'),
+  1, 'an org A member can select an object under their own org''s hire-orders path');
+RESET ROLE;
+
+SELECT pg_temp.act_as('aaaaaaaa-f0a2-0001-0000-000000000000');
+SET LOCAL ROLE authenticated;
+SELECT is(
+  (SELECT count(*)::int FROM storage.objects
+   WHERE bucket_id = 'hire-orders' AND name = '00000000-0000-0000-0000-00000000f0a1/x.pdf'),
+  0, 'a member of a different org cannot select that object');
+RESET ROLE;
+
+-- Cast-hazard regression: Postgres does not guarantee left-to-right evaluation
+-- of AND, so a naive read of `bucket_id = 'hire-orders' and
+-- ((storage.foldername(name))[1])::uuid` might appear to risk an
+-- `invalid input syntax for type uuid` (22P02) on any *other* bucket's object
+-- whose first path segment isn't a uuid. Empirically verified live (see
+-- task-6-report.md) under both a normal plan and a forced sequential scan
+-- (enable_indexscan/enable_bitmapscan off) with the clause order both as
+-- written and reversed: Postgres's planner always cost-orders the cheap
+-- `bucket_id = 'hire-orders'` equality check before the expensive
+-- STABLE-function cast, so it short-circuits before the cast ever runs. This
+-- seeds exactly that decoy shape and asserts the SELECT still lives.
+INSERT INTO storage.buckets (id, name, public) VALUES
+  ('hazard-decoy-bucket', 'hazard-decoy-bucket', false);
+INSERT INTO storage.objects (bucket_id, name, owner) VALUES
+  ('hazard-decoy-bucket', 'not-a-uuid/x.png', NULL);
+
+SELECT pg_temp.act_as('aaaaaaaa-f0a1-0001-0000-000000000000');
+SET LOCAL ROLE authenticated;
+SELECT lives_ok(
+  $$SELECT count(*) FROM storage.objects$$,
+  'selecting storage.objects does not raise 22P02 when another bucket has a non-uuid first path segment');
+RESET ROLE;
 
 SELECT * FROM finish();
 ROLLBACK;
