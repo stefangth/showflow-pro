@@ -328,11 +328,11 @@ SELECT throws_ok(
 -- ────────────────────────────────────────────────────────────────────────────
 SELECT has_column('public', 'bookings', 'fee_amount', 'bookings has a fee_amount column');
 SELECT col_type_is('public', 'bookings', 'fee_amount', 'numeric(10,2)', 'fee_amount is numeric(10,2)');
-SELECT col_is_nullable('public', 'bookings', 'fee_amount', 'fee_amount is nullable');
+SELECT col_is_null('public', 'bookings', 'fee_amount', 'fee_amount is nullable');
 
 SELECT has_column('public', 'show_dates', 'duration_minutes', 'show_dates has a duration_minutes column');
 SELECT col_type_is('public', 'show_dates', 'duration_minutes', 'integer', 'duration_minutes is integer');
-SELECT col_is_nullable('public', 'show_dates', 'duration_minutes', 'duration_minutes is nullable');
+SELECT col_is_null('public', 'show_dates', 'duration_minutes', 'duration_minutes is nullable');
 
 SELECT throws_ok(
   $$UPDATE public.bookings SET fee_amount = -1 WHERE id = 'eeeeeeee-f0a1-0001-0000-000000000000'$$,
