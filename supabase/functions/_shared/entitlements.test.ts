@@ -76,21 +76,44 @@ Deno.test("requireFeature: returns null when the feature is on", async () => {
   assertEquals(res, null);
 });
 
-Deno.test("filterEntitledOrgs: keeps only orgs with the feature enabled", async () => {
-  const { deps } = makeFakeDeps({
+Deno.test("filterEntitledOrgs: keeps only entitled orgs via a single batch query, honoring registry defaults", async () => {
+  const { deps, calls } = makeFakeDeps({
     tables: {
-      orgs: [
-        { when: { id: "org-a" }, data: { id: "org-a" } },
-      ],
+      org_entitlements: {
+        data: [
+          { org_id: "org-a", enabled: true },
+          { org_id: "org-b", enabled: false },
+          // org-c has no row -> falls back to the registry default (hire_orders = off).
+        ],
+        error: null,
+      },
     },
-    rpcs: {}, // per-org result seeded via a custom admin below
   });
-  // filterEntitledOrgs calls checkFeature per org — build a tiny fake admin whose
-  // rpc() branches on the _org param so different orgs get different results.
-  const admin = {
-    rpc: (_name: string, params?: { _org?: string }) =>
-      Promise.resolve({ data: params?._org === "org-a", error: null }),
-  } as unknown as typeof deps.admin;
-  const result = await filterEntitledOrgs(admin, [{ id: "org-a" }, { id: "org-b" }], "hire_orders");
+  const result = await filterEntitledOrgs(
+    deps.admin,
+    [{ id: "org-a" }, { id: "org-b" }, { id: "org-c" }],
+    "hire_orders",
+  );
   assertEquals(result, [{ id: "org-a" }]);
+  // One org_entitlements read for the whole batch — the old per-org N+1 is gone.
+  assertEquals(calls.filter((c) => c.table === "org_entitlements" && c.method === "select").length, 1);
+});
+
+Deno.test("filterEntitledOrgs: an org with no row falls back to the registry default (booking_flow on)", async () => {
+  const { deps } = makeFakeDeps({ tables: { org_entitlements: { data: [], error: null } } });
+  assertEquals(await filterEntitledOrgs(deps.admin, [{ id: "org-a" }], "booking_flow"), [{ id: "org-a" }]);
+});
+
+Deno.test("filterEntitledOrgs: on query error fails OPEN for booking_flow and CLOSED otherwise", async () => {
+  const errored = { tables: { org_entitlements: { data: null, error: { message: "boom" } } } };
+  const { deps: openDeps } = makeFakeDeps(errored);
+  assertEquals(await filterEntitledOrgs(openDeps.admin, [{ id: "o1" }], "booking_flow"), [{ id: "o1" }]);
+  const { deps: closedDeps } = makeFakeDeps(errored);
+  assertEquals(await filterEntitledOrgs(closedDeps.admin, [{ id: "o1" }], "hire_orders"), []);
+});
+
+Deno.test("filterEntitledOrgs: an empty org list short-circuits without querying", async () => {
+  const { deps, calls } = makeFakeDeps({ tables: { org_entitlements: { data: [], error: null } } });
+  assertEquals(await filterEntitledOrgs(deps.admin, [], "hire_orders"), []);
+  assertEquals(calls.some((c) => c.table === "org_entitlements"), false);
 });
