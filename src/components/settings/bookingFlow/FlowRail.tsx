@@ -43,11 +43,19 @@ export function FlowRail(props: {
   audit: SettingsAuditEntry[];
   isLoading?: boolean;
   isError?: boolean;
+  /** When true, hides the Save/Discard actions (the module isn't entitled, so there's
+   *  nothing to save) but keeps every other card, including change history, visible. */
+  locked?: boolean;
 }) {
-  const { flow, times, dirtyCount, saving, onSave, onDiscard, audit, isLoading, isError } = props;
+  const { flow, times, dirtyCount, saving, onSave, onDiscard, audit, isLoading, isError, locked = false } = props;
   return (
     <div className="flex flex-col gap-3 lg:sticky lg:top-4">
-      {dirtyCount > 0 && (
+      {/* When locked, the rail offers no Save/Discard (see below), so a dirty count here
+          would refer to a save control that doesn't exist on this rail. Any dirt while
+          locked comes from the from-address input or EmailTemplatesCard (both stay
+          editable and write BOOKING_AUDIT_KEYS), which the page-level Save handles
+          instead — the page-level banner carries that messaging. */}
+      {!locked && dirtyCount > 0 && (
         <div className="rounded-lg bg-[var(--amber-100)] px-3 py-2 text-xs font-medium text-[var(--amber-600)]">
           Previewing unsaved draft · {dirtyCount} {dirtyCount === 1 ? "change" : "changes"}
         </div>
@@ -86,16 +94,18 @@ export function FlowRail(props: {
           ))}
         </div>
       </RailCard>
-      <div className="flex gap-2">
-        <Button className="flex-1" disabled={dirtyCount === 0 || saving} onClick={onSave}>
-          {dirtyCount > 0 ? `Save (${dirtyCount})` : "Saved"}
-        </Button>
-        {dirtyCount > 0 && (
-          <Button variant="ghost" onClick={onDiscard}>
-            Discard
+      {!locked && (
+        <div className="flex gap-2">
+          <Button className="flex-1" disabled={dirtyCount === 0 || saving} onClick={onSave}>
+            {dirtyCount > 0 ? `Save (${dirtyCount})` : "Saved"}
           </Button>
-        )}
-      </div>
+          {dirtyCount > 0 && (
+            <Button variant="ghost" onClick={onDiscard}>
+              Discard
+            </Button>
+          )}
+        </div>
+      )}
       <RailCard label="Change history">
         <div className="mt-1">
           {isLoading ? (

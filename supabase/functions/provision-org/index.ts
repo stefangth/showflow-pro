@@ -2,6 +2,8 @@ import { preflight, json } from "../_shared/http.ts";
 import { requireSuperAdmin } from "../_shared/auth.ts";
 import { realDeps, type Deps } from "../_shared/deps.ts";
 import { deliverOrgInvitation } from "../_shared/invitations.ts";
+import { resolveOrgSetting } from "../_shared/settings.ts";
+import { FEATURE_KEYS, FEATURE_REGISTRY, type FeatureKey } from "../_shared/entitlements.ts";
 
 type Body = {
   name: string;
@@ -38,6 +40,28 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
       return json({ error: (error as Error).message ?? "Could not provision org" }, 500);
     }
     const { org_id, token } = data as { org_id: string; token: string };
+
+    // Seed org_entitlements from the platform default_entitlements setting (falls back to
+    // each feature's registry default when the platform setting is unset). Best-effort: a
+    // seeding failure must not undo the org that was just created, so log and continue —
+    // same resilience posture as the invite delivery below.
+    try {
+      const fallbackDefaults = Object.fromEntries(
+        FEATURE_KEYS.map((key) => [key, FEATURE_REGISTRY[key].defaultEnabled]),
+      ) as Record<FeatureKey, boolean>;
+      const defaultEntitlements = await resolveOrgSetting<Record<FeatureKey, boolean>>(
+        deps.admin, null, "default_entitlements", fallbackDefaults,
+      );
+      const entitlementRows = FEATURE_KEYS.map((feature) => ({
+        org_id,
+        feature,
+        enabled: defaultEntitlements[feature] ?? FEATURE_REGISTRY[feature].defaultEnabled,
+      }));
+      const { error: entitlementsError } = await deps.admin.from("org_entitlements").insert(entitlementRows);
+      if (entitlementsError) console.error("provision-org: entitlement seeding failed", entitlementsError.message);
+    } catch (e) {
+      console.error("provision-org: entitlement seeding failed", (e as Error).message);
+    }
 
     // Bootstrap + branded invite via the unified helper (net-new gets an account + set-password link).
     try {

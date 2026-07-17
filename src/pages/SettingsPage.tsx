@@ -5,6 +5,7 @@ import { useSettingsWarnings } from '@/hooks/useSettingsWarnings';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/features/auth/AuthContext';
+import { useFeature } from '@/hooks/useEntitlements';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
@@ -68,6 +69,7 @@ export default function SettingsPage() {
   const { hasRole, currentOrg, isSuperAdmin } = useAuth();
   const orgId = currentOrg?.id ?? null;
   const qc = useQueryClient();
+  const bookingFlowEntitled = useFeature('booking_flow');
 
   const { data: settings, isLoading } = useQuery({
     queryKey: ['app-settings', 'all', orgId],
@@ -140,11 +142,18 @@ export default function SettingsPage() {
   const isDirty = dirtyKeys.length > 0;
 
   // Hide the page-level Save/Discard while on the Booking flow tab, but only when every
-  // dirty key belongs to that tab (BOOKING_AUDIT_KEYS). If the draft also holds a dirty key
-  // from another tab (e.g. edited on Notifications, then switched here), keep the page-level
-  // control visible so that other change stays reachable: the rail's Save only ever writes
-  // BOOKING_AUDIT_KEYS, so it cannot save it.
-  const hidePageLevelSave = activeTab === 'booking' && dirtyKeys.every(k => BOOKING_AUDIT_KEYS.includes(k));
+  // dirty key belongs to that tab (BOOKING_AUDIT_KEYS) AND the org is entitled to the
+  // booking_flow module. If the draft also holds a dirty key from another tab (e.g. edited
+  // on Notifications, then switched here), keep the page-level control visible so that other
+  // change stays reachable: the rail's Save only ever writes BOOKING_AUDIT_KEYS, so it cannot
+  // save it. When the org is NOT entitled, FlowRail hides its own Save/Discard entirely (the
+  // flow fields are locked read-only) but the from-address input and EmailTemplatesCard stay
+  // editable — both write keys inside BOOKING_AUDIT_KEYS (resend_from_address,
+  // email_template_overrides). Without the entitlement check those edits would be dirty,
+  // hidePageLevelSave would still fire, and the user would have no Save control anywhere on
+  // the page (a locked org has no rail Save to fall back to).
+  const hidePageLevelSave =
+    activeTab === 'booking' && bookingFlowEntitled && dirtyKeys.every(k => BOOKING_AUDIT_KEYS.includes(k));
 
   // Warn on browser tab close / refresh — must be before any early returns (Rules of Hooks)
   useEffect(() => {

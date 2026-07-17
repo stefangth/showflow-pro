@@ -1004,6 +1004,38 @@ export type Database = {
           },
         ]
       }
+      org_entitlements: {
+        Row: {
+          enabled: boolean
+          feature: string
+          org_id: string
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          enabled: boolean
+          feature: string
+          org_id: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          enabled?: boolean
+          feature?: string
+          org_id?: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "org_entitlements_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       org_invitations: {
         Row: {
           accepted_at: string | null
@@ -1785,6 +1817,7 @@ export type Database = {
         }[]
       }
       get_cron_secret: { Args: never; Returns: string }
+      get_effective_booking_flow: { Args: { _org: string }; Returns: Json }
       get_email_health: { Args: { p_window_minutes?: number }; Returns: Json }
       get_org_airtable_key: { Args: { _org: string }; Returns: string }
       get_org_airtable_key_status: {
@@ -1806,6 +1839,10 @@ export type Database = {
       }
       is_chat_participant: {
         Args: { _chat_id: string; _user_id: string }
+        Returns: boolean
+      }
+      is_feature_enabled: {
+        Args: { _feature: string; _org: string }
         Returns: boolean
       }
       is_org_member: { Args: { _org: string; _uid: string }; Returns: boolean }

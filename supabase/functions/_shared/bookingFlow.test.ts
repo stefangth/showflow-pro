@@ -1,8 +1,10 @@
 import { assertEquals } from "./test-asserts.ts";
+import { makeFakeDeps } from "./testing.ts";
 import {
   BOOKING_FLOW_DEFAULTS,
   normalizeBookingFlow,
   referenceLabel,
+  resolveBookingFlow,
 } from "./bookingFlow.ts";
 
 Deno.test("normalizeBookingFlow: null and garbage return defaults", () => {
@@ -49,4 +51,55 @@ Deno.test("referenceLabel: show, program, custom, fallback", () => {
     }),
     "Candlelight · Strings",
   );
+});
+
+// ── Entitlement gating ──────────────────────────────────────────────────────
+
+Deno.test("resolveBookingFlow: returns defaults for an unentitled org, ignoring app_settings", async () => {
+  const { deps } = makeFakeDeps({
+    tables: {
+      app_settings: [
+        { when: { key: "booking_flow" }, data: [{ org_id: "org-1", value: { artist_acceptance: false } }] },
+      ],
+    },
+    rpcs: { is_feature_enabled: { data: false, error: null } },
+  });
+  const flow = await resolveBookingFlow(deps.admin, "org-1");
+  assertEquals(flow, normalizeBookingFlow(null));
+  assertEquals(flow, BOOKING_FLOW_DEFAULTS);
+});
+
+Deno.test("resolveBookingFlow: entitled org reads its configured booking_flow setting", async () => {
+  const { deps } = makeFakeDeps({
+    tables: {
+      app_settings: [
+        { when: { key: "booking_flow" }, data: [{ org_id: "org-1", value: { artist_acceptance: false } }] },
+      ],
+    },
+    rpcs: { is_feature_enabled: { data: true, error: null } },
+  });
+  const flow = await resolveBookingFlow(deps.admin, "org-1");
+  // artist_acceptance:false forces producer_confirmation:true (existing normalize rule).
+  assertEquals(flow.artist_acceptance, false);
+  assertEquals(flow.producer_confirmation, true);
+});
+
+Deno.test("resolveBookingFlow: fails OPEN (falls through to resolveOrgSetting) when the entitlement RPC errors", async () => {
+  // Seed a NON-default org override so the assertion can distinguish the correct
+  // fail-open path (override honored) from a fail-closed regression (defaults
+  // returned) — an empty app_settings seed would pass either way.
+  const { deps } = makeFakeDeps({
+    tables: {
+      app_settings: [
+        { when: { key: "booking_flow" }, data: [{ org_id: "org-1", value: { artist_acceptance: false } }] },
+      ],
+    },
+    rpcs: { is_feature_enabled: { data: null, error: { message: "boom" } } },
+  });
+  const flow = await resolveBookingFlow(deps.admin, "org-1");
+  // The stored override was read and applied, proving resolution proceeded past
+  // the erroring entitlement check (artist_acceptance:false also forces
+  // producer_confirmation:true via the existing normalize rule).
+  assertEquals(flow.artist_acceptance, false);
+  assertEquals(flow.producer_confirmation, true);
 });

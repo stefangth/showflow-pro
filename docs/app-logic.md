@@ -304,7 +304,7 @@ Chat threads become **read-only** after `CHAT_ARCHIVE_DAYS` (30 days) past the s
 
 ## Notifications
 
-In-app notifications are written to the `notifications` table (`user_id`, `type`, `title`, `message`, `read`, `related_entity_id`, `related_entity_type`). They are created server-side only (edge functions or triggers with appropriate RLS). Read state is a plain boolean `read` field. Notification delivery requires `FEATURES.NOTIFICATIONS = true` (default on).
+In-app notifications are written to the `notifications` table (`user_id`, `type`, `title`, `message`, `read`, `related_entity_id`, `related_entity_type`). They are created server-side only (edge functions or triggers with appropriate RLS). Read state is a plain boolean `read` field. Delivery of each notification is gated per user by their notification preferences (category and channel), enforced server-side by the `should_notify` function.
 
 Transactional email uses the `send-transactional-email` edge function. Templates live in `supabase/functions/_shared/transactional-email-templates/` and are registered in `registry.ts`. New templates must be added to the registry to be deliverable.
 
