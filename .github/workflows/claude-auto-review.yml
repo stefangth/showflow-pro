@@ -8,6 +8,11 @@ on:
 
 jobs:
   review:
+    # PR events (opened/synchronize) always review. A comment only triggers a
+    # re-review when it @claude-mentions on a pull request (not a plain issue).
+    if: >-
+      github.event_name == 'pull_request' ||
+      (github.event.issue.pull_request && contains(github.event.comment.body, '@claude'))
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -16,6 +21,9 @@ jobs:
     steps:
       - uses: actions/checkout@v6
         with:
+          # On an @claude comment the event ref is the default branch, so check
+          # out the PR head explicitly; pull_request events keep their default.
+          ref: ${{ github.event.issue.pull_request && format('refs/pull/{0}/head', github.event.issue.number) || '' }}
           fetch-depth: 1
 
       - uses: anthropics/claude-code-action@v1
@@ -23,7 +31,7 @@ jobs:
           claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }} 
           prompt: |
             REPO: ${{ github.repository }}
-            PR NUMBER: ${{ github.event.pull_request.number }}
+            PR NUMBER: ${{ github.event.pull_request.number || github.event.issue.number }}
 
             Please review this pull request with a focus on:
             - Code quality and best practices
