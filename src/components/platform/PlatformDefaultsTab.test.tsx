@@ -19,6 +19,7 @@ vi.mock("@/data/platform", () => ({
 
 import { PlatformDefaultsTab } from "./PlatformDefaultsTab";
 import { fetchPlatformBookingDefaults, savePlatformBookingDefaults, savePlatformSetting } from "@/data/platform";
+import { resolveOrgSetting } from "@/data/settings";
 
 const DEFAULTS = {
   offer_response_window_hours: 36,
@@ -85,5 +86,55 @@ describe("PlatformDefaultsTab — default modules", () => {
         expect.objectContaining({ booking_flow: true, hire_orders: true }),
       ),
     );
+  });
+});
+
+// Data-loss regression: when a platform-defaults read fails, React Query settles to
+// status:'error' with isLoading:false and data:undefined. A card that branches only on
+// isLoading falls through and renders its blank/default form values as if they were the
+// real saved platform-wide defaults, with Save (or a live-mutating Switch/Select) enabled.
+// A super-admin acting on that screen then overwrites real defaults with empties — for
+// every org on the platform. Each card must surface the failure instead and offer no
+// write path while in that state.
+describe("PlatformDefaultsTab — settings-read failure guards", () => {
+  beforeEach(() => vi.clearAllMocks());
+
+  it("StarterCatalogCard shows a destructive alert and no Save when the read fails, instead of a blank editable form", async () => {
+    (resolveOrgSetting as ReturnType<typeof vi.fn>).mockImplementation((_c: unknown, _o: unknown, key: string) => {
+      if (key === "starter_catalog_template") return Promise.reject(new Error("permission denied for table app_settings"));
+      if (key === "default_entitlements") return Promise.resolve({ booking_flow: true, hire_orders: false });
+      return Promise.resolve({ skills: [], cities: [], casts: [] });
+    });
+    (fetchPlatformBookingDefaults as ReturnType<typeof vi.fn>).mockResolvedValue(DEFAULTS);
+    renderWithProviders(<PlatformDefaultsTab />);
+
+    expect(await screen.findByText(/permission denied for table app_settings/i)).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Save defaults" })).not.toBeInTheDocument();
+    expect(screen.queryByLabelText("Skills")).not.toBeInTheDocument();
+  });
+
+  it("AirtableDefaultsCard shows a destructive alert and no Select when the read fails, instead of the fallback interval", async () => {
+    (resolveOrgSetting as ReturnType<typeof vi.fn>).mockImplementation((_c: unknown, _o: unknown, key: string) => {
+      if (key === "airtable_poll_interval_minutes") return Promise.reject(new Error("network error"));
+      if (key === "default_entitlements") return Promise.resolve({ booking_flow: true, hire_orders: false });
+      return Promise.resolve({ skills: [], cities: [], casts: [] });
+    });
+    (fetchPlatformBookingDefaults as ReturnType<typeof vi.fn>).mockResolvedValue(DEFAULTS);
+    renderWithProviders(<PlatformDefaultsTab />);
+
+    expect(await screen.findByText(/network error/i)).toBeInTheDocument();
+    expect(screen.queryByText("Default sync frequency")).not.toBeInTheDocument();
+  });
+
+  it("DefaultModulesCard shows a destructive alert and no Switches when the read fails, instead of the registry fallback", async () => {
+    (resolveOrgSetting as ReturnType<typeof vi.fn>).mockImplementation((_c: unknown, _o: unknown, key: string) => {
+      if (key === "default_entitlements") return Promise.reject(new Error("permission denied for table app_settings"));
+      return Promise.resolve({ skills: [], cities: [], casts: [] });
+    });
+    (fetchPlatformBookingDefaults as ReturnType<typeof vi.fn>).mockResolvedValue(DEFAULTS);
+    renderWithProviders(<PlatformDefaultsTab />);
+
+    expect(await screen.findAllByText(/permission denied for table app_settings/i)).not.toHaveLength(0);
+    expect(screen.queryAllByRole("switch")).toHaveLength(0);
   });
 });
