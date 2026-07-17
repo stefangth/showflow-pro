@@ -81,6 +81,65 @@ export const EMAIL_HEALTH = {
   failureAlertCount: 3,
 } as const;
 
+/** A single hire-order terms clause: a titled paragraph of contract copy. */
+export interface HireOrderClause {
+  title: string;
+  body: string;
+}
+
+/**
+ * Default hire-order terms clauses, org-editable via Settings → Hire orders → Terms
+ * before any real order is ever issued (the module ships default-off, see
+ * FEATURE_REGISTRY.hire_orders in src/lib/entitlements.ts).
+ *
+ * `standard` holds the four clauses used by the standard variant; `full` holds the
+ * four additional clauses appended when the full variant is selected (rendering is
+ * a later task's concern — this settings tab only stores the two lists). `lean`
+ * starts empty: orgs that want the shortest possible document add their own.
+ *
+ * EN copy only, no em/en dashes per house style. This starter copy is generic
+ * boilerplate, not legal advice — every clause is editable per org before use.
+ */
+export const HIRE_ORDER_DEFAULT_TERMS: { lean: HireOrderClause[]; standard: HireOrderClause[]; full: HireOrderClause[] } = {
+  lean: [],
+  standard: [
+    {
+      title: 'Engagement',
+      body: 'This order confirms the engagement of the artist named above for the performance, date, and venue specified. The artist agrees to arrive in time for the running order listed on this document.',
+    },
+    {
+      title: 'Payment terms',
+      body: "The engagement fee stated above is payable to the artist upon completion of the performance, unless another payment schedule has been agreed in writing between the parties.",
+    },
+    {
+      title: 'Cancellation',
+      body: "Either party may cancel this engagement by written notice. Any cancellation fee or notice period is as agreed between the parties and recorded in this order's notes.",
+    },
+    {
+      title: 'Force majeure',
+      body: 'Neither party is liable for a delay or failure to perform caused by circumstances beyond its reasonable control, including illness, accident, severe weather, or venue closure.',
+    },
+  ],
+  full: [
+    {
+      title: 'Confidentiality',
+      body: "Each party agrees to keep the commercial terms of this engagement confidential, except where disclosure is required by law or needed to carry out this order.",
+    },
+    {
+      title: 'Image and recording rights',
+      body: 'The artist consents to the production company using photography, audio, and video recorded during the engagement for reasonable promotional purposes, unless otherwise agreed in writing.',
+    },
+    {
+      title: 'Independent contractor status',
+      body: 'The artist performs this engagement as an independent contractor, not as an employee of the production company. Nothing in this order creates an employment relationship.',
+    },
+    {
+      title: 'Governing law',
+      body: "This order is governed by the laws of the jurisdiction stated in the organization's registration details, without regard to conflict of law principles.",
+    },
+  ],
+};
+
 /** Role definitions */
 export const ROLES = {
   ADMIN: 'admin',
