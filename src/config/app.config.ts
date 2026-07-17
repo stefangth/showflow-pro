@@ -3,17 +3,21 @@
  * All feature flags, intervals, weights, and role definitions live here.
  */
 
-/** Feature flags to enable/disable modules */
-export const FEATURES = {
-  /** Enable auto-suggest booking engine */
-  AUTO_SUGGEST: true,
-  /** Enable in-app notifications */
-  NOTIFICATIONS: true,
-  /** Enable understudy management */
-  UNDERSTUDY: true,
-  /** Enable booking audit trail */
-  AUDIT_TRAIL: true,
-} as const;
+import type { FeatureKey } from '@/lib/entitlements';
+
+/**
+ * Routes owned by a gated (entitlement-controlled) module. Checked by
+ * ProtectedRoute via requiredFeatureForPath: a route listed here renders
+ * FeatureDisabledScreen instead of its page when the current org doesn't
+ * have the feature enabled (see src/hooks/useEntitlements.ts). Filled in as
+ * gated modules land — starts empty.
+ */
+export const ROUTE_FEATURES: Record<string, FeatureKey> = {};
+
+/** Pure lookup: which FeatureKey (if any) gates a given pathname. */
+export function requiredFeatureForPath(pathname: string): FeatureKey | undefined {
+  return ROUTE_FEATURES[pathname];
+}
 
 /**
  * Canonical fallback defaults for the org-tunable booking-engine settings.
