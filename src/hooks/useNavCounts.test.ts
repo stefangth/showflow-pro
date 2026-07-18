@@ -5,6 +5,7 @@ import React from "react";
 
 vi.mock("@/features/auth/AuthContext", () => ({ useAuth: vi.fn() }));
 vi.mock("@/hooks/useMyArtist", () => ({ useMyArtist: vi.fn() }));
+vi.mock("@/hooks/useEntitlements", () => ({ useFeature: vi.fn() }));
 vi.mock("@/data/bookings", () => ({
   fetchPendingConfirmationsCount: vi.fn(),
   fetchMyOpenOffersCount: vi.fn(),
@@ -15,6 +16,7 @@ vi.mock("@/data/hireOrders", () => ({
 
 import { useAuth } from "@/features/auth/AuthContext";
 import { useMyArtist } from "@/hooks/useMyArtist";
+import { useFeature } from "@/hooks/useEntitlements";
 import { fetchPendingConfirmationsCount, fetchMyOpenOffersCount } from "@/data/bookings";
 import { fetchAwaitingCountersignCount } from "@/data/hireOrders";
 import { useNavCounts } from "./useNavCounts";
@@ -29,6 +31,7 @@ describe("useNavCounts", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     vi.mocked(fetchAwaitingCountersignCount).mockResolvedValue(0);
+    vi.mocked(useFeature).mockReturnValue(true);
   });
 
   it("fetches pending confirmations for a producer with an org; no offers without an artist", async () => {
@@ -86,6 +89,22 @@ describe("useNavCounts", () => {
     const { result } = renderHook(() => useNavCounts(), { wrapper: wrapper() });
     await waitFor(() => expect(result.current.openOffers).toBe(0));
     expect(fetchAwaitingCountersignCount).not.toHaveBeenCalled();
+    expect(result.current.awaitingCountersign).toBe(0);
+  });
+
+  it("does not fetch the awaiting-countersign count for an org with the hire_orders feature off", async () => {
+    vi.mocked(useAuth).mockReturnValue({
+      currentOrg: { id: "org-1", name: "Acme" },
+      hasRole: (r: string) => r === "admin",
+    } as never);
+    vi.mocked(useMyArtist).mockReturnValue({ data: null } as never);
+    vi.mocked(fetchPendingConfirmationsCount).mockResolvedValue(0);
+    vi.mocked(useFeature).mockReturnValue(false);
+
+    const { result } = renderHook(() => useNavCounts(), { wrapper: wrapper() });
+    await waitFor(() => expect(result.current.pendingConfirmations).toBe(0));
+    expect(fetchAwaitingCountersignCount).not.toHaveBeenCalled();
+    // Gated off -> reads 0, same as an unresolved/absent query.
     expect(result.current.awaitingCountersign).toBe(0);
   });
 

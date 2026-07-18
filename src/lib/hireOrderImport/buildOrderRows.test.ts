@@ -249,6 +249,29 @@ describe("buildOrderRows", () => {
     expect(r.matchedShowDateId).toBe("date-1");
   });
 
+  it("does not flag missing_fee when the fee column itself is not mapped", () => {
+    const mappingWithoutFee: OrderColumnMapping = { ...FULL_MAPPING };
+    delete mappingWithoutFee.fee;
+    const [r] = buildOrderRows(
+      [
+        row({
+          Artist: "Ada Lovelace",
+          Email: "ada@x.com",
+          Date: "2026-06-15",
+          Venue: "Opera House",
+          City: "Berlin",
+          Fee: "500", // present in the raw sheet, but the column isn't mapped, so it's ignored
+        }),
+      ],
+      mappingWithoutFee,
+      catalog
+    );
+    expect(r.issues).not.toContain("missing_fee");
+    expect(r.sheet.fee).toBeUndefined();
+    // otherwise clean -> ready, not flagged into attention just because there's no fee column
+    expect(r.status).toBe("ready");
+  });
+
   it("flags missing_date when the date column is mapped but the cell is blank", () => {
     const [r] = buildOrderRows(
       [
@@ -312,6 +335,91 @@ describe("buildOrderRows", () => {
     );
     expect(r.matchedShowDateId).toBe("date-1");
     expect(r.issues).not.toContain("ambiguous_date");
+  });
+
+  it("flags venue_city_mismatch when venue/city are given but wrong on an otherwise-unambiguous day", () => {
+    const singleDateCatalog = { artists: catalog.artists, dates: [DATE_A] }; // only Opera House/Berlin on 2026-06-15
+    const [r] = buildOrderRows(
+      [
+        row({
+          Artist: "Ada Lovelace",
+          Email: "ada@x.com",
+          Date: "2026-06-15",
+          Venue: "Wrong Venue",
+          City: "Wrong City",
+          Fee: "500",
+        }),
+      ],
+      FULL_MAPPING,
+      singleDateCatalog
+    );
+    expect(r.status).toBe("attention");
+    expect(r.issues).toContain("venue_city_mismatch");
+    // still keeps the date link so the producer reviews rather than loses it
+    expect(r.matchedShowDateId).toBe("date-1");
+  });
+
+  it("does not flag venue_city_mismatch when venue/city match the resolved date", () => {
+    const singleDateCatalog = { artists: catalog.artists, dates: [DATE_A] };
+    const [r] = buildOrderRows(
+      [
+        row({
+          Artist: "Ada Lovelace",
+          Email: "ada@x.com",
+          Date: "2026-06-15",
+          Venue: "Opera House",
+          City: "Berlin",
+          Fee: "500",
+        }),
+      ],
+      FULL_MAPPING,
+      singleDateCatalog
+    );
+    expect(r.issues).not.toContain("venue_city_mismatch");
+    expect(r.matchedShowDateId).toBe("date-1");
+  });
+
+  it("does not flag venue_city_mismatch when no venue/city column is mapped", () => {
+    const mappingWithoutVenueCity: OrderColumnMapping = { ...FULL_MAPPING };
+    delete mappingWithoutVenueCity.venue;
+    delete mappingWithoutVenueCity.city;
+    const singleDateCatalog = { artists: catalog.artists, dates: [DATE_A] };
+    const [r] = buildOrderRows(
+      [
+        row({
+          Artist: "Ada Lovelace",
+          Email: "ada@x.com",
+          Date: "2026-06-15",
+          Venue: "Some Other Venue", // present in the sheet but the column isn't mapped, so it's ignored
+          City: "Some Other City",
+          Fee: "500",
+        }),
+      ],
+      mappingWithoutVenueCity,
+      singleDateCatalog
+    );
+    expect(r.issues).not.toContain("venue_city_mismatch");
+    expect(r.matchedShowDateId).toBe("date-1");
+  });
+
+  it("does not flag venue_city_mismatch when the day is ambiguous (already flagged ambiguous_date)", () => {
+    const [r] = buildOrderRows(
+      [
+        row({
+          Artist: "Ada Lovelace",
+          Email: "ada@x.com",
+          Date: "2026-06-15",
+          Venue: "Wrong Venue",
+          City: "Wrong City",
+          Fee: "500",
+        }),
+      ],
+      FULL_MAPPING,
+      catalog // DATE_A and DATE_B both 2026-06-15; neither matches "Wrong Venue"/"Wrong City"
+    );
+    expect(r.issues).toContain("ambiguous_date");
+    expect(r.issues).not.toContain("venue_city_mismatch");
+    expect(r.matchedShowDateId).toBeUndefined();
   });
 
   it("marks a fully resolvable row as ready with no issues", () => {
