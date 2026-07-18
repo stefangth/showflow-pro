@@ -176,15 +176,15 @@ export const SYSTEM_MAP_NODES: SystemMapNode[] = [
     column: "trigger",
     kind: "user",
     label: "Public / webhooks",
-    sub: "unsubscribe · Resend · accept-invite",
-    subsystems: ["email", "platform"],
+    sub: "unsubscribe · Resend · Documenso · accept-invite",
+    subsystems: ["email", "platform", "booking"],
     detail: {
       Gestures:
-        "Unsubscribe link (token-credentialed) · Resend bounce/complaint webhook (HMAC) · /accept-invite?token=",
-      Cite: "src/pages/UnsubscribePage.tsx · handle-email-suppression",
+        "Unsubscribe link (token-credentialed) · Resend bounce/complaint webhook (HMAC) · Documenso DOCUMENT_COMPLETED webhook (shared secret) · /accept-invite?token=",
+      Cite: "src/pages/UnsubscribePage.tsx · handle-email-suppression · documenso-webhook",
     },
   },
-  // ---- edge functions (22)
+  // ---- edge functions (24)
   {
     id: "f_poll",
     column: "fn",
@@ -302,6 +302,24 @@ export const SYSTEM_MAP_NODES: SystemMapNode[] = [
       Writes: "hire_orders insert (draft, per-booking try/catch, order_no collision retried x5) / ready->issued + pdf_path (issue) / countersign_mode+documenso_envelope_id (issue, documenso mode + successful Documenso call only; falls back to countersign_mode='manual' on failure, the issued stamp is never rolled back) · Storage hire-orders/<org>/<order_no>.pdf (issue) · notifications hire_orders_ready (draft, notify:true) / hire_order_issued (issue) · countersign-test writes nothing",
       Effects: "hire-order-issued email with PDF attachment, best-effort (issue only), carrying signing_url in documenso mode · Documenso REST API create->recipient->distribute (issue, documenso mode only, via _shared/documenso.ts) -- a failure is contained: logged, reported as a documenso_failed warning, order stays issued · countersign-test: one read-only Documenso list call, token from the DOCUMENSO_API_TOKEN edge secret, never returned to the client",
       Cite: "generate-hire-orders/index.ts · _shared/documenso.ts · 20260717161030_fully_filled_hire_order_dispatch.sql",
+    },
+  },
+  {
+    id: "f_documenso",
+    column: "fn",
+    group: "Hire orders",
+    kind: "fn",
+    label: "documenso-webhook",
+    sub: "shared secret only",
+    subsystems: ["booking"],
+    detail: {
+      Trigger: "Documenso webhook, event DOCUMENT_COMPLETED (SCREAMING_SNAKE_CASE per Documenso's own WebhookTriggerEvents enum, not the dotted document.completed)",
+      Auth: "constant-time compare of X-Documenso-Secret against the Vault-backed DOCUMENSO_WEBHOOK_SECRET edge secret -- no db read before the compare passes · verify_jwt=false",
+      Reads: "hire_orders by documenso_envelope_id, joined to show_dates/shows for producer resolution",
+      Writes: "hire_orders.status issued->countersigned + countersigned_at · notifications hire_order_countersigned to the order's producers (resolve_show_assignments, fallback org admins), deduped",
+      Effects: "none -- in-app notification only",
+      Failure: "unrecognised event or unknown envelope id -> 200 {ignored:true} (never retry-storm) · already-countersigned order -> idempotent 200, no re-stamp, no second notification",
+      Cite: "documenso-webhook/index.ts",
     },
   },
   {
@@ -906,6 +924,7 @@ export const SYSTEM_MAP_EDGES: SystemMapEdge[] = [
   { from: "u_super", to: "f_metrics" },
   { from: "u_public", to: "f_unsub" },
   { from: "u_public", to: "f_suppress" },
+  { from: "u_public", to: "f_documenso" },
   // user → db (direct guarded mutations)
   { from: "u_artist", to: "d_bookings", label: "accept / decline" },
   { from: "u_artist", to: "d_blocked", label: "block / unblock" },
@@ -935,6 +954,7 @@ export const SYSTEM_MAP_EDGES: SystemMapEdge[] = [
   { from: "f_expire", to: "d_tiers" },
   { from: "f_risk", to: "d_notif" },
   { from: "f_hireorders", to: "d_notif" },
+  { from: "f_documenso", to: "d_notif" },
   { from: "f_offerdig", to: "d_bookings" },
   { from: "f_confdig", to: "d_bookings" },
   { from: "f_confdig", to: "d_notif" },

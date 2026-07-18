@@ -65,6 +65,12 @@ verify_jwt = false
 [functions.handle-email-unsubscribe]
 verify_jwt = false
 
+# documenso-webhook: Documenso carries no Supabase JWT on its webhook deliveries;
+# the handler self-authorizes via a constant-time compare against the
+# Vault-backed DOCUMENSO_WEBHOOK_SECRET edge secret (X-Documenso-Secret header).
+[functions.documenso-webhook]
+verify_jwt = false
+
 [functions.preview-transactional-email]
 verify_jwt = false
 
