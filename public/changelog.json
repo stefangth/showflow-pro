@@ -24,19 +24,11 @@
         },
         {
           "title": "Split builder for drafts",
-          "description": "Open a draft in a two-pane editor: fields on one side, a live PDF preview on the other, with a note on where each value came from (the booking, a manual edit, or an org default)."
+          "description": "Open a draft in a two-pane editor: fields on one side, a live PDF preview on the other, with a note on where each value came from (the booking, a manual edit, or an organization default)."
         },
         {
           "title": "Documenso countersigning (optional)",
           "description": "Organizations that want electronic signatures can opt into Documenso countersigning in Settings. It is off by default and needs an admin to connect and configure it; issued orders can then be sent for e-signature and are marked countersigned automatically when the artist signs."
-        },
-        {
-          "title": "Org modules",
-          "description": "Super-admins can turn feature modules, including Hire orders, on or off per organization from the Platform console."
-        },
-        {
-          "title": "Booking flow as a module",
-          "description": "The configurable booking flow introduced in 1.9.0 is now its own gateable module alongside Hire orders, so it can be switched off per organization too."
         }
       ]
     }
@@ -94,7 +86,7 @@
         },
         {
           "title": "Required skills",
-          "description": "Shows (and individual dates) can require skills; offers, direct booking, and each artist's availability calendar respect them automatically, and the same-org rules are enforced by the database."
+          "description": "Shows (and individual dates) can require skills; offers, direct booking, and each artist's availability calendar respect them automatically, and artists only ever see requirements from their own organization."
         },
         {
           "title": "Skill-scoped offers",
@@ -300,12 +292,6 @@
           "title": "Delete account",
           "description": "Permanently delete your account from your profile. Your personal details are removed while shared booking history is kept but de-identified."
         }
-      ],
-      "improved": [
-        {
-          "title": "Organization tools (admins)",
-          "description": "Platform admins can now export an organization's full dataset and permanently delete an organization from the console."
-        }
       ]
     }
   },
@@ -387,10 +373,6 @@
         {
           "title": "Member management",
           "description": "manage members and resend pending invitations."
-        },
-        {
-          "title": "Platform console",
-          "description": "a super-admin console for managing organizations."
         }
       ]
     }

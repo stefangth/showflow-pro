@@ -11,10 +11,8 @@ What's new in ShowFlow, newest first.
 - **Import hire orders from a spreadsheet** — Bring in engagements from an Excel file or a public Google Sheets link. Map the columns, choose which rows to import, match each row to the right artist and date, fix anything flagged, then create the drafts in bulk.
 - **Hire orders page** — A new Hire orders page shows KPI tiles across every order, filters by status, search, and select many orders at once to issue them in a single batch.
 - **Guided new order wizard** — Build a single hire order step by step: pick the artist and date, confirm the engagement details, set the fee, then review before creating the draft. A fully manual engagement with no linked date is supported too, for one-off bookings made outside the calendar.
-- **Split builder for drafts** — Open a draft in a two-pane editor: fields on one side, a live PDF preview on the other, with a note on where each value came from (the booking, a manual edit, or an org default).
+- **Split builder for drafts** — Open a draft in a two-pane editor: fields on one side, a live PDF preview on the other, with a note on where each value came from (the booking, a manual edit, or an organization default).
 - **Documenso countersigning (optional)** — Organizations that want electronic signatures can opt into Documenso countersigning in Settings. It is off by default and needs an admin to connect and configure it; issued orders can then be sent for e-signature and are marked countersigned automatically when the artist signs.
-- **Org modules** — Super-admins can turn feature modules, including Hire orders, on or off per organization from the Platform console.
-- **Booking flow as a module** — The configurable booking flow introduced in 1.9.0 is now its own gateable module alongside Hire orders, so it can be switched off per organization too.
 
 ## 1.9.0 — July 15, 2026
 
@@ -32,7 +30,7 @@ What's new in ShowFlow, newest first.
 - **Direct bookings notify the artist** — Artists booked directly now get an in-app notification the moment a producer books them, not just the next digest email.
 - **Dashboard attention cards** — Producers see under-filled open tiers and offers expiring within a day at a glance; direct-booking organizations see upcoming dates that still need artists.
 - **Show-specific cast priorities** — A show can now carry its own cast tier ladder per city, overriding the organization default; edit it in Settings → Casts & Cities with the new scope selector.
-- **Required skills** — Shows (and individual dates) can require skills; offers, direct booking, and each artist's availability calendar respect them automatically, and the same-org rules are enforced by the database.
+- **Required skills** — Shows (and individual dates) can require skills; offers, direct booking, and each artist's availability calendar respect them automatically, and artists only ever see requirements from their own organization.
 - **Skill-scoped offers** — Open a tier for artists with specific skills only, or filter the direct-book list by skill; the dry-run preview and confirmation dialog show exactly who is reached and who is excluded, and why.
 - **Skill-aware understudy promotion** — When a main-cast artist cancels, the understudy whose skills best cover theirs is promoted first; without skills in play, promotion behaves exactly as before.
 
@@ -122,9 +120,6 @@ What's new in ShowFlow, newest first.
 - **Download my data** — Export a complete copy of your personal data (profile, talent records, bookings, availability, messages, and notifications) as a JSON file from your profile.
 - **Delete account** — Permanently delete your account from your profile. Your personal details are removed while shared booking history is kept but de-identified.
 
-### Improved
-- **Organization tools (admins)** — Platform admins can now export an organization's full dataset and permanently delete an organization from the console.
-
 ## 1.4.1 — June 22, 2026
 
 *Airtable sync fixes*
@@ -158,7 +153,6 @@ What's new in ShowFlow, newest first.
 - **Invite-only onboarding** — invite teammates by email and have them join through a secure link. (Public sign-up has been retired.)
 - **Your profile** — a profile page with in-app password changes, plus a self-service password reset.
 - **Member management** — manage members and resend pending invitations.
-- **Platform console** — a super-admin console for managing organizations.
 
 ## 1.2.0 — May 31, 2026
 
