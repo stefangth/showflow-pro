@@ -1,5 +1,5 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
-import type { Database } from "@/integrations/supabase/types";
+import type { Database, Json } from "@/integrations/supabase/types";
 import type { OrderData, OrderFieldKey } from "@/lib/hireOrders/types";
 
 export type HireOrderStatus = Database["public"]["Enums"]["hire_order_status"];
@@ -417,8 +417,10 @@ export async function bulkImportHireOrders(
 ): Promise<BulkImportHireOrdersResultRow[]> {
   const { data, error } = await client.rpc("bulk_import_hire_orders", {
     p_org: args.orgId,
-    p_import: args.import,
-    p_rows: args.rows,
+    // The RPC's jsonb params type as `Json`; our precise arg interfaces lack the
+    // string index signature `Json` requires, so cast at this boundary (house rule).
+    p_import: args.import as unknown as Json,
+    p_rows: args.rows as unknown as Json,
   });
   if (error) throw error;
   return (data ?? []) as unknown as BulkImportHireOrdersResultRow[];
