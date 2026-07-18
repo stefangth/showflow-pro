@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { toast } from "sonner";
@@ -96,6 +96,8 @@ export function HireOrderImportDialog({ open, onOpenChange, orgId }: Props) {
     setRange({ headerRow: 1, mode: "all" }); setMapping({}); setManualEdits({}); setLinks({});
     setSelection(new Set()); setLinkUrl(""); setFetching(false); setCreatingRowIndex(null);
     setSubmitting(false); setResult(null);
+    lastMappedHeadersKeyRef.current = null;
+    lastReviewRowSetKeyRef.current = null;
   }
 
   function handleOpenChange(next: boolean) {
@@ -118,6 +120,8 @@ export function HireOrderImportDialog({ open, onOpenChange, orgId }: Props) {
     setManualEdits({});
     setLinks({});
     setSelection(new Set());
+    lastMappedHeadersKeyRef.current = null;
+    lastReviewRowSetKeyRef.current = null;
     setStep("range");
   }
 
@@ -151,8 +155,19 @@ export function HireOrderImportDialog({ open, onOpenChange, orgId }: Props) {
   const currentRows = useMemo(() => rawSheets[sheetIndex]?.rows ?? [], [rawSheets, sheetIndex]);
   const { headers, dataRows } = useMemo(() => applyRange(currentRows, range), [currentRows, range]);
 
+  // Tracks which headers the mapping was last (re)seeded from, so a Map
+  // revisit with unchanged headers preserves the user's manual overrides
+  // instead of silently re-running guessOrderMapping over them.
+  const lastMappedHeadersKeyRef = useRef<string | null>(null);
+
   function goToMap() {
-    setMapping(guessOrderMapping(headers));
+    const headersKey = JSON.stringify(headers);
+    const headersChanged = lastMappedHeadersKeyRef.current !== headersKey;
+    const mappingEmpty = Object.keys(mapping).length === 0;
+    if (headersChanged || mappingEmpty) {
+      setMapping(guessOrderMapping(headers));
+    }
+    lastMappedHeadersKeyRef.current = headersKey;
     setStep("map");
   }
 
@@ -214,9 +229,20 @@ export function HireOrderImportDialog({ open, onOpenChange, orgId }: Props) {
     [resolvedRows, links],
   );
 
+  // Tracks the row-index set Review was last seeded from, so a revisit with
+  // the same underlying rows preserves whatever the user selected (including a
+  // manual over-selection of an "attention" row) instead of silently resetting
+  // it. Only reseeds on the first-ever visit or when the resolved row set
+  // itself changed (e.g. the user went back and changed the range/mapping).
+  const lastReviewRowSetKeyRef = useRef<string | null>(null);
+
   function goToReview() {
-    const ready = displayRows.filter((r) => r.status === "ready").map((r) => r.rowIndex);
-    setSelection(new Set(ready));
+    const rowSetKey = JSON.stringify(displayRows.map((r) => r.rowIndex));
+    if (lastReviewRowSetKeyRef.current !== rowSetKey) {
+      const ready = displayRows.filter((r) => r.status === "ready").map((r) => r.rowIndex);
+      setSelection(new Set(ready));
+      lastReviewRowSetKeyRef.current = rowSetKey;
+    }
     setStep("review");
   }
 
@@ -278,13 +304,22 @@ export function HireOrderImportDialog({ open, onOpenChange, orgId }: Props) {
         });
         const feeRaw = data.fee?.value;
         const feeNumeric = feeRaw != null && feeRaw !== "" ? Number(feeRaw) : NaN;
+        // fee_currency follows the RESOLVED currency (mapped/manual sheet value
+        // wins over the org default), mirroring draftManual in
+        // generate-hire-orders/index.ts and HireOrderEditPage.tsx:211 — a row
+        // never silently loses a currency the sheet or a manual edit supplied.
+        const currencyValue = data.currency?.value;
+        const currency =
+          typeof currencyValue === "string" && currencyValue
+            ? currencyValue
+            : defaultsQuery.data?.currency ?? DEFAULTS_FALLBACK.currency;
         return {
           row_index: r.rowIndex,
           artist_id: links[r.rowIndex]?.id ?? r.matchedArtistId ?? null,
           show_date_id: r.matchedShowDateId ?? null,
           data,
           ...(Number.isFinite(feeNumeric) ? { fee_amount: feeNumeric } : {}),
-          fee_currency: defaultsQuery.data?.currency ?? DEFAULTS_FALLBACK.currency,
+          fee_currency: currency,
           terms_variant: "standard",
         };
       });

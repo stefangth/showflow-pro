@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { applyRange } from "./rangeSelection";
+import { applyRange, parsePickedRows } from "./rangeSelection";
 
 describe("applyRange", () => {
   it("uses row 1 as the header and everything after as data by default", () => {
@@ -69,5 +69,31 @@ describe("applyRange", () => {
     const rows = [["Name"], ["Ada"], ["Grace"]];
     const { dataRows } = applyRange(rows, { headerRow: 1, mode: "range", from: 0, to: 2 });
     expect(dataRows.map((r) => r.rowIndex)).toEqual([2]);
+  });
+});
+
+describe("parsePickedRows", () => {
+  it("parses a comma/range list into sorted, de-duplicated row numbers", () => {
+    expect(parsePickedRows("3,5,12-14")).toEqual([3, 5, 12, 13, 14]);
+  });
+
+  it("tolerates spaces around commas, dashes, and numbers", () => {
+    expect(parsePickedRows(" 3 , 5 , 12 - 14 ")).toEqual([3, 5, 12, 13, 14]);
+  });
+
+  it("swaps a reversed range instead of dropping it", () => {
+    expect(parsePickedRows("18-16")).toEqual([16, 17, 18]);
+  });
+
+  it("de-duplicates and sorts regardless of input order", () => {
+    expect(parsePickedRows("5, 3, 5, 4-3")).toEqual([3, 4, 5]);
+  });
+
+  it("skips unparseable tokens without throwing", () => {
+    expect(parsePickedRows("abc, 3, , 5-x")).toEqual([3]);
+  });
+
+  it("returns an empty array for blank input", () => {
+    expect(parsePickedRows("   ")).toEqual([]);
   });
 });

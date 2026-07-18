@@ -21,6 +21,12 @@ const FIELD_LABELS: Record<OrderFieldKey, string> = {
   notes: "Notes",
 };
 
+// `sessions` is excluded: neither `guessOrderMapping` nor `buildOrderRows` ever
+// reads a mapped `sessions` column (there's no sheet-column convention for it —
+// see guessOrderMapping's docstring), so a Select for it here would be a
+// control that does nothing when the user picks a column.
+const MAPPABLE_FIELD_KEYS: OrderFieldKey[] = ORDER_FIELD_KEYS.filter((key) => key !== "sessions");
+
 interface Props {
   headers: string[];
   mapping: OrderColumnMapping;
@@ -28,11 +34,8 @@ interface Props {
 }
 
 /**
- * Map step: one Select per `OrderFieldKey`, options = sheet headers + "Ignore",
- * prefilled by the caller from `guessOrderMapping`. `sessions` has no sheet-column
- * convention (see guessOrderMapping's docstring) — it's listed here for
- * completeness and future manual entry, but `buildOrderRows` never reads it from
- * the sheet layer today.
+ * Map step: one Select per mappable `OrderFieldKey`, options = sheet headers +
+ * "Ignore", prefilled by the caller from `guessOrderMapping`.
  */
 export function MapStep({ headers, mapping, onMappingChange }: Props) {
   function setField(key: OrderFieldKey, value: string) {
@@ -48,7 +51,7 @@ export function MapStep({ headers, mapping, onMappingChange }: Props) {
         Matched your columns automatically where possible. Adjust any field below.
       </p>
       <div className="space-y-2.5">
-        {ORDER_FIELD_KEYS.map((key) => {
+        {MAPPABLE_FIELD_KEYS.map((key) => {
           const col = mapping[key];
           return (
             <div key={key} className="grid grid-cols-[10rem_1fr] items-center gap-3">
