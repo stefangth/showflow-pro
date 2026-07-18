@@ -1,7 +1,8 @@
 import { describe, expect, it } from "vitest";
 import { screen, within } from "@testing-library/react";
 import { renderWithProviders } from "@/test/renderWithProviders";
-import { computeOrderKpis, OrdersKpis } from "./OrdersKpis";
+import { OrdersKpis } from "./OrdersKpis";
+import { computeOrderKpis } from "@/lib/hireOrders/kpis";
 import type { HireOrderListRow } from "@/data/hireOrders";
 
 /** A minimal HireOrderListRow, only the fields computeOrderKpis reads. */

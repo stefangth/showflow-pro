@@ -4,6 +4,7 @@ import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { resolveOrgSetting, upsertOrgSetting } from "@/data/settings";
 import type { Json } from "@/integrations/supabase/types";
+import { ORDER_DEFAULTS_DEFAULT } from "./defaults";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -17,7 +18,6 @@ export interface HireOrderDefaults {
   default_fee: number | null;
   currency: string;
 }
-export const ORDER_DEFAULTS_DEFAULT: HireOrderDefaults = { default_fee: null, currency: "EUR" };
 
 /** Kept in sync with the CURRENCY_SYMBOLS map in src/lib/hireOrders/money.ts. */
 const CURRENCIES = ["EUR", "USD", "CHF"];

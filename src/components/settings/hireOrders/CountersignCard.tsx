@@ -5,6 +5,7 @@ import { CheckCircle2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { resolveOrgSetting, upsertOrgSetting } from "@/data/settings";
 import { invokeHireOrderAction } from "@/data/hireOrders";
+import { COUNTERSIGN_DEFAULT } from "./defaults";
 import type { Json } from "@/integrations/supabase/types";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -27,7 +28,6 @@ export type CountersignMode = "manual" | "documenso";
 export interface HireOrderCountersign {
   mode: CountersignMode;
 }
-export const COUNTERSIGN_DEFAULT: HireOrderCountersign = { mode: "manual" };
 
 interface CountersignTestResult { ok: boolean; detail: string }
 

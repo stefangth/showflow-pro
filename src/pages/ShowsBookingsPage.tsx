@@ -30,7 +30,8 @@ import { useColumnTemplate, useEditorConfig } from '@/features/editor/EditorCont
 import { useColumnHeaders } from '@/features/editor/useColumnHeaders';
 import { ColumnLayoutEditor } from '@/features/editor/ColumnLayoutEditor';
 import { formatCustomValue, compareCustomValues, customFilterMatches, type CustomFilterState } from '@/lib/customFields';
-import { CustomFieldFilter, emptyCustomFilter } from '@/components/filters/CustomFieldFilter';
+import { CustomFieldFilter } from '@/components/filters/CustomFieldFilter';
+import { emptyCustomFilter } from '@/components/filters/customFilterState';
 
 type ShowRef = {
   id: string;
