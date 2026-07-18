@@ -7,12 +7,17 @@
 -- per-row 'error' without aborting the batch. Dedup: a row whose
 -- (artist_id, show_date_id) already carries an active (non-void) hire order
 -- is 'skipped_existing' -- but ONLY when both links are present; unlinked
--- rows are never deduped. Order numbers are generated in-function from the
--- org's hire_order_numbering setting (default HO-{yyyy}-{mmdd}-{seq}), with a
--- unique_violation collision-suffix retry loop.
+-- rows are never deduped. The pre-check SELECT EXISTS is a fast-path
+-- optimization; hire_orders_active_artist_date_uniq (a partial unique index,
+-- mirroring bookings_active_artist_date_uniq) is the race-safe DB backstop --
+-- see the tests near the bottom of this file. Order numbers are generated
+-- in-function from the org's hire_order_numbering setting (default
+-- HO-{yyyy}-{mmdd}-{seq}), with a unique_violation collision-suffix retry
+-- loop that discriminates an order_no collision from an active-artist-date
+-- conflict via GET STACKED DIAGNOSTICS ... CONSTRAINT_NAME.
 BEGIN;
 CREATE EXTENSION IF NOT EXISTS pgtap WITH SCHEMA extensions;
-SELECT plan(28);
+SELECT plan(33);
 
 CREATE OR REPLACE FUNCTION pg_temp.act_as(_uid text) RETURNS void LANGUAGE plpgsql AS $$
 BEGIN
@@ -308,6 +313,68 @@ SELECT is(
 SELECT is(
   (SELECT order_no FROM public.hire_orders WHERE id = (((SELECT results FROM seq_result) -> 1 ->> 'order_id'))::uuid),
   'HO-2099-1201-2', 'E2: row 1''s order_no carries seq=2 -- the in-call count(*) already sees row 0''s insert, so this is NOT a "-2" collision suffix on an identical base');
+
+-- ────────────────────────────────────────────────────────────────────────────
+-- CI-review fix: the RPC's "one active order per (artist, show_date)" dedup
+-- was a racy SELECT EXISTS + INSERT with no backing constraint. Mirrors
+-- bookings_active_artist_date_uniq (20260616161112): a partial unique index
+-- (20260718125647_hire_orders_active_artist_date_uniq.sql) now backs the
+-- invariant at the DB level, and the RPC's insert loop discriminates the
+-- resulting unique_violation from an order_no collision via
+-- GET STACKED DIAGNOSTICS ... CONSTRAINT_NAME (verified directly against the
+-- live index: a plain partial unique index populates CONSTRAINT_NAME with the
+-- index's own name, exactly like a table-level UNIQUE constraint does).
+-- ────────────────────────────────────────────────────────────────────────────
+SELECT has_index('public', 'hire_orders', 'hire_orders_active_artist_date_uniq',
+  'hire_orders_active_artist_date_uniq index exists');
+
+-- The invariant is DB-enforced independent of the RPC: a raw INSERT
+-- duplicating the pre-seeded active (artist1, sd1) pair from a DIFFERENT
+-- order_no (so it cannot be the order_no unique constraint firing) still
+-- raises a unique_violation.
+SELECT pg_temp.act_as('aaaaaaaa-b100-0001-0000-000000000000');
+SET LOCAL ROLE authenticated;
+SELECT throws_ok(
+  $$ INSERT INTO public.hire_orders (org_id, order_no, status, artist_id, show_date_id, data)
+     VALUES ('00000000-0000-0000-0000-0000000b10a1', 'HO-DIRECT-DUP-1', 'draft',
+             'bbbbbbbb-b100-0001-0000-000000000000', 'dddddddd-b100-0001-0000-000000000000', '{}') $$,
+  '23505', NULL,
+  'a second active hire order for the SAME (org, artist, show_date) is rejected at the DB level');
+RESET ROLE;
+
+-- Same-call dedup, race-safe backstop exercised end-to-end: two rows in ONE
+-- bulk_import_hire_orders call target a brand-new (artist, show_date) pair
+-- (never imported before this call). Row 0 creates it; row 1 -- whose
+-- pre-check SELECT EXISTS runs after row 0's insert is already visible within
+-- the same transaction -- must not create a second active order for the pair
+-- and reports skipped_existing rather than erroring or duplicating (proving
+-- the invariant holds end-to-end for the exact "two rows, one call" shape a
+-- racing import + the fully_filled auto-draft trigger could produce).
+SELECT pg_temp.act_as('aaaaaaaa-b100-0001-0000-000000000000');
+SET LOCAL ROLE authenticated;
+CREATE TEMP TABLE samecall_result AS
+SELECT public.bulk_import_hire_orders(
+  '00000000-0000-0000-0000-0000000b10a1',
+  '{"source":"csv","file_name":"samecall.csv","mapping":{},"row_count":2}'::jsonb,
+  '[
+    {"row_index":0,"artist_id":"bbbbbbbb-b100-0001-0000-000000000000","show_date_id":"dddddddd-b100-0002-0000-000000000000","data":{},"fee_currency":"EUR","terms_variant":"standard"},
+    {"row_index":1,"artist_id":"bbbbbbbb-b100-0001-0000-000000000000","show_date_id":"dddddddd-b100-0002-0000-000000000000","data":{},"fee_currency":"EUR","terms_variant":"standard"}
+  ]'::jsonb
+) AS results;
+RESET ROLE;
+
+SELECT is(
+  ((SELECT results FROM samecall_result) -> 0 ->> 'status'),
+  'created', 'same-call dedup: first row for a brand-new (artist, date) pair is created');
+SELECT is(
+  ((SELECT results FROM samecall_result) -> 1 ->> 'status'),
+  'skipped_existing', 'same-call dedup: second row for the SAME pair in the SAME call is skipped_existing, not a duplicate');
+SELECT is(
+  (SELECT count(*)::int FROM public.hire_orders
+   WHERE org_id = '00000000-0000-0000-0000-0000000b10a1' AND status <> 'void'
+     AND artist_id = 'bbbbbbbb-b100-0001-0000-000000000000'
+     AND show_date_id = 'dddddddd-b100-0002-0000-000000000000'),
+  1, 'exactly one active order exists for the pair after the same-call duplicate row');
 
 SELECT * FROM finish();
 ROLLBACK;

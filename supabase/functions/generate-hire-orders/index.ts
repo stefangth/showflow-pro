@@ -270,6 +270,15 @@ async function draftOrders(deps: Deps, body: DraftBody, userId: string | null): 
  * The base order number is already unique per artist per day (see the {seq}
  * scope above), so a collision here means a genuine race; the cap is a
  * defense-in-depth safety net, not the primary differentiator.
+ *
+ * TWO distinct unique constraints can raise 23505 on this insert:
+ *   hire_orders_org_id_order_no_key (order_no collision) -> keep retrying
+ *     the suffix, as always.
+ *   hire_orders_active_artist_date_uniq (one active order per (org, artist,
+ *     show_date), mirrors bookings_active_artist_date_uniq) -> NOT retriable
+ *     by suffix -- a different order_no can never resolve an artist/date
+ *     conflict -- so it is reported as a distinct 'exists' reason instead of
+ *     being folded into order_no_collision after burning 20 attempts.
  */
 async function insertWithRetry(
   admin: Deps["admin"],
@@ -281,10 +290,28 @@ async function insertWithRetry(
     const { data, error } = await admin
       .from("hire_orders").insert({ ...row, order_no }).select("id").maybeSingle();
     if (!error && data) return { id: (data as { id: string }).id };
-    if (error && (error as { code?: string }).code === "23505") continue; // collision -> next suffix
+    if (error && (error as { code?: string }).code === "23505") {
+      if (isActiveArtistDateConflict(error)) return { reason: "exists" };
+      continue; // order_no collision -> next suffix
+    }
     if (error) return { reason: (error as { message?: string }).message ?? "insert_failed" };
   }
   return { reason: "order_no_collision" };
+}
+
+/**
+ * Detect the active-artist-date backstop index from a Postgres/PostgREST
+ * unique_violation error. supabase-js's PostgrestError surfaces the underlying
+ * pg error's `message` (and `details`) verbatim -- e.g. `duplicate key value
+ * violates unique constraint "hire_orders_active_artist_date_uniq"` -- there is
+ * no separate structured constraint-name field on the client error type, so
+ * matching the index name as a substring of message/details is the reliable
+ * discriminator available here (confirmed live against the applied index).
+ */
+function isActiveArtistDateConflict(error: unknown): boolean {
+  const e = error as { message?: string; details?: string } | null;
+  const haystack = `${e?.message ?? ""} ${e?.details ?? ""}`;
+  return haystack.includes("hire_orders_active_artist_date_uniq");
 }
 
 async function notifyProducers(deps: Deps, org: string, showDate: Any, orderCount: number): Promise<void> {
@@ -436,6 +463,12 @@ async function draftManual(deps: Deps, body: DraftManualBody, userId: string | n
 
   const result = await insertWithRetry(admin, baseOrderNo, row);
   if ("id" in result) return json({ created: [result.id] });
+  // An artist/date duplicate (hire_orders_active_artist_date_uniq) is a legitimate
+  // skip, not an error -- the wizard already has an active order for this exact
+  // artist x date pair. Report it the same shape a batch import does, rather than
+  // as a generic error (and, upstream in insertWithRetry, without a 20-attempt
+  // suffix retry that could never resolve it).
+  if (result.reason === "exists") return json({ created: [], skipped: [{ reason: "exists" }] });
   return json({ created: [], error: result.reason });
 }
 
