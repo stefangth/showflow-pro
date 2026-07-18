@@ -6,13 +6,14 @@ import { OrdersKpis, computeOrderKpis } from "@/components/hireOrders/OrdersKpis
 import { OrdersTable } from "@/components/hireOrders/OrdersTable";
 import { OrderSlideOver } from "@/components/hireOrders/OrderSlideOver";
 import { NewOrderWizard } from "@/components/hireOrders/NewOrderWizard";
+import { HireOrderImportDialog } from "@/components/hireOrders/import/HireOrderImportDialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import type { HireOrderStatus } from "@/data/hireOrders";
 
-/** Flipped in Task 5 once the spreadsheet-import wizard lands. */
-const IMPORT_READY = false;
+/** The spreadsheet-import wizard shipped in Task 5. */
+const IMPORT_READY = true;
 
 type StatusChip = "all" | "draft" | "ready" | "issued" | "countersigned";
 
@@ -49,6 +50,7 @@ export default function HireOrdersPage() {
   const [search, setSearch] = useState("");
   const [slideOverId, setSlideOverId] = useState<string | null>(null);
   const [wizardOpen, setWizardOpen] = useState(false);
+  const [importOpen, setImportOpen] = useState(false);
 
   const { data: allOrders = [] } = useHireOrders(orgId, {});
 
@@ -73,7 +75,11 @@ export default function HireOrdersPage() {
           </p>
         </div>
         <div className="flex items-center gap-2">
-          {IMPORT_READY && <Button variant="outline">Import from spreadsheet</Button>}
+          {IMPORT_READY && (
+            <Button variant="outline" onClick={() => setImportOpen(true)}>
+              Import from spreadsheet
+            </Button>
+          )}
           <Button onClick={() => setWizardOpen(true)}>
             New order
           </Button>
@@ -124,6 +130,7 @@ export default function HireOrdersPage() {
       />
 
       <NewOrderWizard open={wizardOpen} onOpenChange={setWizardOpen} orgId={orgId} />
+      <HireOrderImportDialog open={importOpen} onOpenChange={setImportOpen} orgId={orgId} />
     </div>
   );
 }

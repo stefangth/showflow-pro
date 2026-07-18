@@ -12,6 +12,8 @@ import {
   fetchShowflowLayerForOrder,
   fetchArtistsLite,
   fetchShowDatesLite,
+  bulkImportHireOrders,
+  createArtistLite,
 } from "./hireOrders";
 
 describe("fetchHireOrdersForDate", () => {
@@ -418,5 +420,78 @@ describe("fetchShowflowLayerForOrder", () => {
   it("throws on a show_date supabase error", async () => {
     const fake = createFakeSupabase({ show_dates: { data: null, error: { message: "boom" } } });
     await expect(fetchShowflowLayerForOrder(fake as never, { showDateId: "sd-1", artistId: null })).rejects.toBeTruthy();
+  });
+});
+
+describe("bulkImportHireOrders", () => {
+  it("calls the bulk_import_hire_orders RPC with p_org/p_import/p_rows and returns the per-row results", async () => {
+    const results = [
+      { row_index: 0, status: "created", order_id: "ho-1" },
+      { row_index: 1, status: "skipped_existing" },
+    ];
+    const fake = createFakeSupabase({
+      "rpc:bulk_import_hire_orders": { data: results, error: null },
+    });
+    const importMeta = { source: "csv" as const, file_name: "artists.csv", mapping: { artist_name: "Name" }, row_count: 2 };
+    const rows = [
+      {
+        row_index: 0,
+        artist_id: "a1",
+        show_date_id: "sd1",
+        data: { fee: { value: "500.00", source: "sheet" as const } },
+        fee_amount: 500,
+        fee_currency: "EUR",
+        terms_variant: "standard",
+      },
+    ];
+    const res = await bulkImportHireOrders(fake as never, { orgId: "org-1", import: importMeta, rows });
+    expect(res).toEqual(results);
+    expect(fake.calls).toContainEqual({
+      table: "rpc:bulk_import_hire_orders",
+      method: "rpc",
+      args: [{ p_org: "org-1", p_import: importMeta, p_rows: rows }],
+    });
+  });
+
+  it("returns [] when the RPC returns null", async () => {
+    const fake = createFakeSupabase({ "rpc:bulk_import_hire_orders": { data: null, error: null } });
+    const res = await bulkImportHireOrders(fake as never, {
+      orgId: "org-1",
+      import: { source: "gsheet", file_name: null, mapping: {}, row_count: 0 },
+      rows: [],
+    });
+    expect(res).toEqual([]);
+  });
+
+  it("throws on a supabase error", async () => {
+    const fake = createFakeSupabase({ "rpc:bulk_import_hire_orders": { data: null, error: { message: "forbidden" } } });
+    await expect(
+      bulkImportHireOrders(fake as never, {
+        orgId: "org-1",
+        import: { source: "xlsx", file_name: "f.xlsx", mapping: {}, row_count: 0 },
+        rows: [],
+      }),
+    ).rejects.toBeTruthy();
+  });
+});
+
+describe("createArtistLite", () => {
+  it("inserts a new artist scoped to the org and returns its lite shape", async () => {
+    const fake = createFakeSupabase({
+      artists: { data: { id: "a-new", name: "Walk-in Artist", email: "walkin@example.com" }, error: null },
+    });
+    const res = await createArtistLite(fake as never, { orgId: "org-1", name: "Walk-in Artist", email: "walkin@example.com" });
+    expect(res).toEqual({ id: "a-new", name: "Walk-in Artist", email: "walkin@example.com" });
+    expect(fake.calls).toContainEqual({
+      table: "artists",
+      method: "insert",
+      args: [{ name: "Walk-in Artist", email: "walkin@example.com", org_id: "org-1" }],
+    });
+    expect(fake.calls).toContainEqual({ table: "artists", method: "single", args: [] });
+  });
+
+  it("throws on a supabase error", async () => {
+    const fake = createFakeSupabase({ artists: { data: null, error: { message: "boom" } } });
+    await expect(createArtistLite(fake as never, { orgId: "org-1", name: "X", email: null })).rejects.toBeTruthy();
   });
 });
