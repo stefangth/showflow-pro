@@ -567,7 +567,8 @@ Deno.test("issue sends a Documenso envelope when countersign mode is documenso: 
   assertEquals(docCalls.length, 3, "expected the create -> recipient -> distribute sequence");
   for (const c of docCalls) {
     const headers = new Headers(c.init?.headers);
-    assertEquals(headers.get("Authorization"), "Bearer tok-secret");
+    // Documenso API v1 uses the raw api_... token with no "Bearer " scheme.
+    assertEquals(headers.get("Authorization"), "tok-secret");
   }
 
   const csUpdate = calls.find(
@@ -660,12 +661,16 @@ Deno.test("issue keeps the order issued with a documenso_failed warning when Doc
 });
 
 Deno.test("countersign-test is admin-only, checks connectivity, and never leaks the token", async () => {
-  const fetchImpl = (() => Promise.resolve(new Response(JSON.stringify({ data: [] }), { status: 200 }))) as typeof fetch;
+  const producerCalls: Array<{ url: string; init?: RequestInit }> = [];
+  const producerFetchImpl = ((url: string | URL | Request, init?: RequestInit) => {
+    producerCalls.push({ url: String(url), init });
+    return Promise.resolve(new Response(JSON.stringify({ data: [] }), { status: 200 }));
+  }) as typeof fetch;
 
   // Producer passes the coarse draft/issue gate but must be rejected here (admin-only).
   const producer = makeFakeDeps({
     authUser: { id: "u-producer" },
-    fetchImpl,
+    fetchImpl: producerFetchImpl,
     envVars: { DOCUMENSO_API_TOKEN: "tok-secret" },
     tables: { org_memberships: { data: { role: "producer" } } },
   });
@@ -675,9 +680,14 @@ Deno.test("countersign-test is admin-only, checks connectivity, and never leaks 
   );
   assertEquals(producerRes.status, 403);
 
+  const adminCalls: Array<{ url: string; init?: RequestInit }> = [];
+  const adminFetchImpl = ((url: string | URL | Request, init?: RequestInit) => {
+    adminCalls.push({ url: String(url), init });
+    return Promise.resolve(new Response(JSON.stringify({ data: [] }), { status: 200 }));
+  }) as typeof fetch;
   const admin = makeFakeDeps({
     authUser: { id: "u-admin" },
-    fetchImpl,
+    fetchImpl: adminFetchImpl,
     envVars: { DOCUMENSO_API_TOKEN: "tok-secret" },
     tables: { org_memberships: { data: { role: "admin" } } },
   });
@@ -690,6 +700,11 @@ Deno.test("countersign-test is admin-only, checks connectivity, and never leaks 
   assertEquals(adminBody.ok, true);
   assert(typeof adminBody.detail === "string");
   assert(!JSON.stringify(adminBody).includes("tok-secret"), "the token must never be echoed back");
+
+  assertEquals(adminCalls.length, 1, "expected a single Documenso connectivity check request");
+  const headers = new Headers(adminCalls[0].init?.headers);
+  // Documenso API v1 uses the raw api_... token with no "Bearer " scheme.
+  assertEquals(headers.get("Authorization"), "tok-secret");
 });
 
 Deno.test("countersign-test reports ok:false without throwing when Documenso is unreachable/unauthorized", async () => {

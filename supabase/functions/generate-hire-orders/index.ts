@@ -16,7 +16,7 @@ import { requireFeature } from "../_shared/entitlements.ts";
 import { resolveOrgSetting } from "../_shared/settings.ts";
 import { realDeps, type Deps } from "../_shared/deps.ts";
 import { APP_URL } from "../_shared/app-url.ts";
-import { createAndSendEnvelope } from "../_shared/documenso.ts";
+import { createAndSendEnvelope, documensoAuthHeader } from "../_shared/documenso.ts";
 import { encodeBase64 } from "https://deno.land/std@0.224.0/encoding/base64.ts";
 import {
   formatMoney,
@@ -758,7 +758,7 @@ async function countersignTest(deps: Deps, body: CountersignTestBody): Promise<R
   const baseUrl = body.base_url || DOCUMENSO_DEFAULT_BASE_URL;
   try {
     const res = await deps.fetch(`${baseUrl}/api/v2/envelope?perPage=1`, {
-      headers: { Authorization: `Bearer ${token}` },
+      headers: { Authorization: documensoAuthHeader(token) },
     });
     if (!res.ok) return json({ ok: false, detail: `documenso_error:${res.status}` });
     return json({ ok: true, detail: "Connected" });

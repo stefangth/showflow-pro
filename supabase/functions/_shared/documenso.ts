@@ -24,6 +24,17 @@ export interface DocumensoConfig {
   token: string;
 }
 
+/**
+ * Documenso API v1 authenticates with the raw `api_...` token in the
+ * Authorization header -- no "Bearer" scheme prefix (verified against
+ * https://docs.documenso.com/developers/public-api/authentication). Both
+ * call sites (this client and generate-hire-orders' countersign-test) must
+ * go through this single helper so they can never drift apart again.
+ */
+export function documensoAuthHeader(token: string): string {
+  return token;
+}
+
 interface CreateAndSendEnvelopeArgs {
   title: string;
   pdf: Uint8Array;
@@ -44,7 +55,8 @@ function assertOk(res: Response): void {
 /**
  * Create a Documenso envelope from an already-rendered PDF, add the artist as
  * a SIGNER recipient, and send it. Every request carries
- * `Authorization: Bearer <cfg.token>` against `cfg.baseUrl` as the origin.
+ * `Authorization: <cfg.token>` (raw token, no Bearer scheme) against
+ * `cfg.baseUrl` as the origin.
  *
  * Failure: any non-2xx response at any of the three steps throws
  * `Error("documenso_error:<status>")` -- the caller (generate-hire-orders'
@@ -57,7 +69,7 @@ export async function createAndSendEnvelope(
   cfg: DocumensoConfig,
   args: CreateAndSendEnvelopeArgs,
 ): Promise<CreateAndSendEnvelopeResult> {
-  const authHeader = { Authorization: `Bearer ${cfg.token}` };
+  const authHeader = { Authorization: documensoAuthHeader(cfg.token) };
 
   // 1) Create the envelope/document from the rendered PDF bytes. Deliberately
   // no Content-Type header here: fetch derives the multipart boundary from the
