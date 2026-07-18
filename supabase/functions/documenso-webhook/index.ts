@@ -92,14 +92,32 @@ async function handleDocumentCompleted(deps: Deps, envelopeId: string): Promise<
     return json({ ignored: true });
   }
 
+  // Atomic + idempotent transition: the update itself is guarded by
+  // status='issued' (not just the earlier read) and we only notify when it
+  // actually matched a row. Two near-simultaneous deliveries for the same
+  // order can both pass the status read above before either write commits --
+  // without this guard both would re-stamp and double-insert the producer
+  // notification. `.select("id")` reports which rows the update actually
+  // touched, so a delivery that loses the race sees an empty result here and
+  // treats it as an idempotent no-op instead of notifying again.
   const countersignedAt = deps.now().toISOString();
-  const { error: updateErr } = await admin
+  const { data: updatedRows, error: updateErr } = await admin
     .from("hire_orders")
     .update({ status: "countersigned", countersigned_at: countersignedAt })
-    .eq("id", o.id);
+    .eq("id", o.id)
+    .eq("status", "issued")
+    .select("id");
   if (updateErr) {
     console.error("documenso-webhook: countersign stamp failed", { orderId: o.id, error: updateErr.message });
     return json({ error: "update_failed" }, 500);
+  }
+
+  const affected = Array.isArray(updatedRows) ? updatedRows.length > 0 : !!updatedRows;
+  if (!affected) {
+    // Lost the race: a concurrent delivery already flipped this order to
+    // countersigned between our read and our write. Acknowledge without
+    // re-notifying.
+    return json({ countersigned: true, idempotent: true });
   }
 
   await notifyProducers(deps, o).catch((e) =>
