@@ -93,13 +93,13 @@ function ProducerDashboard() {
     return map;
   })();
 
-  const confirmedMainByDate = (() => {
+  const confirmedMainByDate = useMemo(() => {
     const map = new Map<string, number>();
     (confirmedBookings ?? []).forEach(b => {
       if (!b.is_understudy) map.set(b.show_date_id, (map.get(b.show_date_id) ?? 0) + 1);
     });
     return map;
-  })();
+  }, [confirmedBookings]);
 
   const directItems = useMemo(
     () => unfilledMainCastDates(
@@ -109,7 +109,7 @@ function ProducerDashboard() {
       })),
       confirmedMainByDate,
     ),
-    [upcomingDates, confirmedBookings],
+    [upcomingDates, confirmedMainByDate],
   );
 
   const { data: softBookedRows } = useQuery({
