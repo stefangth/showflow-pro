@@ -12,7 +12,7 @@
 -- unique_violation collision-suffix retry loop.
 BEGIN;
 CREATE EXTENSION IF NOT EXISTS pgtap WITH SCHEMA extensions;
-SELECT plan(20);
+SELECT plan(28);
 
 CREATE OR REPLACE FUNCTION pg_temp.act_as(_uid text) RETURNS void LANGUAGE plpgsql AS $$
 BEGIN
@@ -222,6 +222,92 @@ SELECT is(
    ) -> 0 ->> 'status'),
   'skipped_existing', 'a linked row still dedupes correctly on a fresh call against the pre-seeded active order');
 RESET ROLE;
+
+-- ────────────────────────────────────────────────────────────────────────────
+-- E1. Collision-suffix exhaustion -> per-row 'error', sibling row NOT aborted.
+-- The RPC's collision retry tries attempts 0..19: attempt 0 = the bare base
+-- order_no, attempts 1..19 = base || '-2' .. base || '-20' (20 distinct
+-- strings total -- see the `for v_attempt in 0..19 loop` in
+-- 20260718005949_bulk_import_hire_orders.sql). We pre-occupy exactly those 20
+-- strings for the same org and the same data.date.value the imported row will
+-- use, so the RPC's v_seq computes to the same base_order_no a 21st row on
+-- that date would get -- and every one of its 20 attempts collides.
+-- Variant implemented: FULL exhaustion (all 20 slots occupied), not the
+-- documented "-2"-only fallback -- pre-seeding 20 rows directly (bypassing
+-- the RPC) turned out to be cheap and unambiguous, so the fallback wasn't
+-- needed.
+-- ────────────────────────────────────────────────────────────────────────────
+SET session_replication_role = replica;
+INSERT INTO public.hire_orders (org_id, order_no, status, data)
+SELECT '00000000-0000-0000-0000-0000000b10a1',
+  CASE WHEN n = 1 THEN 'HO-2099-1101-21' ELSE 'HO-2099-1101-21-' || n END,
+  'draft',
+  '{"date":{"value":"2099-11-01","source":"manual"}}'::jsonb
+FROM generate_series(1,20) AS n;
+SET session_replication_role = DEFAULT;
+
+SELECT pg_temp.act_as('aaaaaaaa-b100-0001-0000-000000000000');
+SET LOCAL ROLE authenticated;
+CREATE TEMP TABLE collision_result AS
+SELECT public.bulk_import_hire_orders(
+  '00000000-0000-0000-0000-0000000b10a1',
+  '{"source":"csv","file_name":"collision.csv","mapping":{},"row_count":2}'::jsonb,
+  '[
+    {"row_index":0,"data":{"date":{"value":"2099-11-01","source":"manual"},"artist_name":{"value":"Collision Row","source":"manual"}},"fee_currency":"EUR","terms_variant":"standard"},
+    {"row_index":1,"data":{"date":{"value":"2099-11-02","source":"manual"},"artist_name":{"value":"Sibling Row","source":"manual"}},"fee_currency":"EUR","terms_variant":"standard"}
+  ]'::jsonb
+) AS results;
+RESET ROLE;
+
+SELECT is(
+  ((SELECT results FROM collision_result) -> 0 ->> 'status'),
+  'error', 'E1: row 0, whose 20 candidate order_no slots are all pre-occupied, records a per-row error');
+SELECT is(
+  ((SELECT results FROM collision_result) -> 0 ->> 'error'),
+  'order_no_collision', 'E1: row 0''s error is the order_no_collision sentinel');
+SELECT is(
+  ((SELECT results FROM collision_result) -> 1 ->> 'status'),
+  'created', 'E1: sibling row 1 (different date, no collision) still created -- the batch was not aborted');
+SELECT is(
+  (SELECT count(*)::int FROM public.hire_orders
+   WHERE org_id = '00000000-0000-0000-0000-0000000b10a1' AND data->'date'->>'value' = '2099-11-01'),
+  20, 'E1: no 21st row was created for the exhausted date -- still exactly the 20 pre-seeded rows');
+
+-- ────────────────────────────────────────────────────────────────────────────
+-- E2. Same-call {seq} advancement: two unlinked rows sharing one date/org in
+-- a SINGLE bulk_import_hire_orders call get order_no values whose {seq}
+-- component differs (...-1 then ...-2), not a collision suffix tacked onto an
+-- identical base -- proving the in-transaction count(*) sees row 0's insert
+-- before row 1's number is computed. Asserted via an EXACT match (not just
+-- "differ"): if seq were NOT advancing, row 1 would collide with row 0's base
+-- and fall back to the collision-suffix path instead, producing "...-1-2",
+-- which fails the exact "...-2" match below.
+-- ────────────────────────────────────────────────────────────────────────────
+SELECT pg_temp.act_as('aaaaaaaa-b100-0001-0000-000000000000');
+SET LOCAL ROLE authenticated;
+CREATE TEMP TABLE seq_result AS
+SELECT public.bulk_import_hire_orders(
+  '00000000-0000-0000-0000-0000000b10a1',
+  '{"source":"csv","file_name":"seq.csv","mapping":{},"row_count":2}'::jsonb,
+  '[
+    {"row_index":0,"data":{"date":{"value":"2099-12-01","source":"manual"},"artist_name":{"value":"Seq A","source":"manual"}},"fee_currency":"EUR","terms_variant":"standard"},
+    {"row_index":1,"data":{"date":{"value":"2099-12-01","source":"manual"},"artist_name":{"value":"Seq B","source":"manual"}},"fee_currency":"EUR","terms_variant":"standard"}
+  ]'::jsonb
+) AS results;
+RESET ROLE;
+
+SELECT is(
+  ((SELECT results FROM seq_result) -> 0 ->> 'status'),
+  'created', 'E2: row 0 is created');
+SELECT is(
+  ((SELECT results FROM seq_result) -> 1 ->> 'status'),
+  'created', 'E2: row 1 is created');
+SELECT is(
+  (SELECT order_no FROM public.hire_orders WHERE id = (((SELECT results FROM seq_result) -> 0 ->> 'order_id'))::uuid),
+  'HO-2099-1201-1', 'E2: row 0''s order_no carries seq=1 (0 prior same-date orders)');
+SELECT is(
+  (SELECT order_no FROM public.hire_orders WHERE id = (((SELECT results FROM seq_result) -> 1 ->> 'order_id'))::uuid),
+  'HO-2099-1201-2', 'E2: row 1''s order_no carries seq=2 -- the in-call count(*) already sees row 0''s insert, so this is NOT a "-2" collision suffix on an identical base');
 
 SELECT * FROM finish();
 ROLLBACK;
