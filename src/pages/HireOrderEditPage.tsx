@@ -91,6 +91,26 @@ function splitLayers(data: OrderData): SplitLayers {
 const READ_ONLY_STATUSES = new Set(["issued", "countersigned", "void"]);
 
 /**
+ * `resolveFields` treats `""` as "layer absent" and falls through to the
+ * next layer (sheet -> showflow -> default) — correct for an untouched
+ * field, but wrong for a field the user explicitly blanked: that must stay
+ * empty, not revert to a lower-precedence fallback. `clearedFields` tracks
+ * which keys were explicitly blanked this edit session; this helper
+ * re-applies the empty manual value AFTER resolveFields has already (wrongly,
+ * for these keys) fallen through, for both the on-screen snapshot and the
+ * patch sent to `updateHireOrderDraft`. Does not touch the shared
+ * `resolveFields` itself — that module is dual-homed with the edge function.
+ */
+function applyClearedOverrides(data: OrderData, cleared: Set<OrderFieldKey>): OrderData {
+  if (cleared.size === 0) return data;
+  const out: OrderData = { ...data };
+  for (const key of cleared) {
+    out[key] = { value: "", source: "manual" };
+  }
+  return out;
+}
+
+/**
  * Wraps an async `run` function with single-flight + trailing-rerun semantics:
  * calling the returned trigger while a cycle from a previous call is still in
  * flight does NOT start a second, concurrent cycle. It only flags that a
@@ -167,6 +187,11 @@ export default function HireOrderEditPage() {
 
   const [resolvedData, setResolvedData] = useState<OrderData | null>(null);
   const [sessionEdits, setSessionEdits] = useState<Partial<Record<OrderFieldKey, unknown>>>({});
+  // Fields the user explicitly blanked (typed "" into). Persists across a
+  // Save (unlike sessionEdits, which resets) so a saved-then-reloaded empty
+  // field doesn't silently revert the next time displayData is derived —
+  // see applyClearedOverrides above.
+  const [clearedFields, setClearedFields] = useState<Set<OrderFieldKey>>(new Set());
   const [dirty, setDirty] = useState(false);
   const [termsVariant, setTermsVariant] = useState("standard");
   const [previewSrc, setPreviewSrc] = useState<string | null>(null);
@@ -180,8 +205,19 @@ export default function HireOrderEditPage() {
   useEffect(() => {
     if (order && !seededRef.current) {
       seededRef.current = true;
-      setResolvedData((order.data ?? {}) as OrderData);
+      const data = (order.data ?? {}) as OrderData;
+      setResolvedData(data);
       setTermsVariant(order.terms_variant || "standard");
+      // A field previously saved as an explicit empty manual value is the
+      // durable, on-the-record marker for "the user cleared this" — restore
+      // clearedFields from it so a reload doesn't let the field silently
+      // revert to its showflow/sheet/default fallback.
+      const initiallyCleared = new Set<OrderFieldKey>();
+      for (const key of ORDER_FIELD_KEYS) {
+        const field = data[key];
+        if (field && field.source === "manual" && field.value === "") initiallyCleared.add(key);
+      }
+      if (initiallyCleared.size > 0) setClearedFields(initiallyCleared);
     }
   }, [order]);
 
@@ -190,10 +226,12 @@ export default function HireOrderEditPage() {
     () => ({ ...baseLayers.manual, ...sessionEdits }),
     [baseLayers.manual, sessionEdits],
   );
-  const displayData = useMemo(
-    () => resolveFields({ showflow: baseLayers.showflow, sheet: baseLayers.sheet, manual: manualLayer, defaults: baseLayers.defaults }),
-    [baseLayers, manualLayer],
-  );
+  const displayData = useMemo(() => {
+    const resolved = resolveFields({
+      showflow: baseLayers.showflow, sheet: baseLayers.sheet, manual: manualLayer, defaults: baseLayers.defaults,
+    });
+    return applyClearedOverrides(resolved, clearedFields);
+  }, [baseLayers, manualLayer, clearedFields]);
 
   /** Fold the given snapshot in as the new baseline: session edits are already
    *  reflected in its per-field sources, so they can be cleared. `markDirty`
@@ -214,6 +252,14 @@ export default function HireOrderEditPage() {
 
   function handleFieldChange(key: OrderFieldKey, raw: string) {
     setSessionEdits((prev) => ({ ...prev, [key]: raw }));
+    setClearedFields((prev) => {
+      const isCleared = raw === "";
+      if (isCleared === prev.has(key)) return prev;
+      const next = new Set(prev);
+      if (isCleared) next.add(key);
+      else next.delete(key);
+      return next;
+    });
     setDirty(true);
   }
 

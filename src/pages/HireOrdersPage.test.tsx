@@ -282,6 +282,46 @@ describe("HireOrdersPage", () => {
     });
   });
 
+  it("prunes a selected row from the bulk-issue bar once it is filtered out of view, so a hidden selection can never be issued unrevalidated", async () => {
+    renderPage();
+    await screen.findByText("HO-2026-0201-1");
+    fireEvent.click(screen.getByRole("checkbox", { name: /select order ho-2026-0201-1/i })); // ho-1, draft
+    expect(screen.getByRole("button", { name: /issue selected/i })).toBeEnabled();
+
+    fireEvent.change(screen.getByPlaceholderText(/search/i), { target: { value: "zed" } });
+    await waitFor(() => expect(screen.queryByText("HO-2026-0201-1")).not.toBeInTheDocument());
+
+    // The only selected row (ho-1) is no longer visible under the "zed"
+    // search — the bulk bar must disappear entirely rather than keep a
+    // stale, un-revalidated selection issuable.
+    expect(screen.queryByRole("button", { name: /issue selected/i })).not.toBeInTheDocument();
+  });
+
+  it("sends only the still-visible, still-issuable ids when a filter change hides part of a prior selection", async () => {
+    renderPage();
+    await screen.findByText("HO-2026-0201-1");
+    fireEvent.click(screen.getByRole("checkbox", { name: /select order ho-2026-0201-1/i })); // ho-1, draft
+    fireEvent.click(screen.getByRole("checkbox", { name: /select order ho-2026-0301-1/i })); // ho-2, ready
+    expect(screen.getByRole("button", { name: /issue selected/i })).toBeEnabled();
+
+    // Narrow to the Draft chip: ho-2 (ready) drops out of view, but stays
+    // in the raw selection set unless it's pruned.
+    fireEvent.click(screen.getByRole("button", { name: /^draft$/i }));
+    await waitFor(() => expect(screen.queryByText("HO-2026-0301-1")).not.toBeInTheDocument());
+    expect(screen.getByText("HO-2026-0201-1")).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: /issue selected/i }));
+    await waitFor(() => {
+      const calls = (client.calls ?? []) as { table: string; method: string; args: unknown[] }[];
+      const invoke = calls.find((c) => c.table === "fn:generate-hire-orders" && c.method === "invoke");
+      const body = invoke?.args[0] as { action?: string; order_ids?: string[] } | undefined;
+      expect(body?.action).toBe("issue");
+      // ho-2 must never be sent: it was hidden by the filter and was never
+      // re-validated against its current (visible) status.
+      expect(body?.order_ids).toEqual(["ho-1"]);
+    });
+  });
+
   it("shows New order and Import from spreadsheet, both enabled (Task 5: import wizard shipped)", async () => {
     renderPage();
     await screen.findByText("Hire orders");
