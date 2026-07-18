@@ -238,6 +238,24 @@ describe("useHireOrderAction", () => {
     );
   });
 
+  it("maps documenso_failed to friendly copy alongside a successful issue (countersign delivery warning, not a real issue failure)", async () => {
+    vi.mocked(invokeHireOrderAction).mockResolvedValue({
+      issued: ["ho-1"],
+      failed: [{ order_id: "ho-1", issues: ["documenso_failed"] }],
+    });
+    const { Wrapper } = wrapper();
+    const { result } = renderHook(() => useHireOrderAction(), { wrapper: Wrapper });
+
+    await act(async () => {
+      await result.current.mutateAsync({ action: "issue", org_id: "org-1", order_ids: ["ho-1"] });
+    });
+
+    expect(toast.success).toHaveBeenCalledWith("Issued 1 hire order");
+    expect(toast.error).toHaveBeenCalledWith(
+      "1 hire order failed to issue: Order issued, but countersign delivery failed",
+    );
+  });
+
   it("stays silent (no toast) for preview", async () => {
     vi.mocked(invokeHireOrderAction).mockResolvedValue({ pdf_base64: "abc" });
     const { Wrapper } = wrapper();

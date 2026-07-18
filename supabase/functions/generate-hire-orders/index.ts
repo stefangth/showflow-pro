@@ -1,10 +1,12 @@
-// generate-hire-orders — the hire-order engine. Five per-request actions:
-//   draft        create draft orders from confirmed bookings (snapshot fields)
-//   draft-manual create ONE draft from the V5 wizard: free choice of artist x
-//                date (either/both optional) plus producer-entered manual fields
-//   issue        validate -> render PDF -> upload -> stamp issued -> email + notify
-//   preview      render a watermarked PDF for one order, persist nothing
-//   download-url signed URL for an order's PDF (producers + the linked artist)
+// generate-hire-orders — the hire-order engine. Six per-request actions:
+//   draft            create draft orders from confirmed bookings (snapshot fields)
+//   draft-manual     create ONE draft from the V5 wizard: free choice of artist x
+//                    date (either/both optional) plus producer-entered manual fields
+//   issue            validate -> render PDF -> upload -> stamp issued -> email + notify
+//                    (+ a Documenso countersign envelope when the org is in that mode)
+//   preview          render a watermarked PDF for one order, persist nothing
+//   download-url     signed URL for an order's PDF (producers + the linked artist)
+//   countersign-test admin-only Documenso connectivity check for the settings card
 //
 // DI: exports handle(req, deps); Deno.serve wiring at the bottom. Tests inject
 // makeFakeDeps (deps.renderHireOrderPdf is stubbed). See index.di.test.ts.
@@ -14,6 +16,7 @@ import { requireFeature } from "../_shared/entitlements.ts";
 import { resolveOrgSetting } from "../_shared/settings.ts";
 import { realDeps, type Deps } from "../_shared/deps.ts";
 import { APP_URL } from "../_shared/app-url.ts";
+import { createAndSendEnvelope } from "../_shared/documenso.ts";
 import { encodeBase64 } from "https://deno.land/std@0.224.0/encoding/base64.ts";
 import {
   formatMoney,
@@ -34,7 +37,13 @@ interface Numbering { prefix: string; pattern: string }
 interface OrderDefaults { default_fee: number | null; currency: string }
 interface TermsVariants { lean: HireOrderTerm[]; standard: HireOrderTerm[]; full: HireOrderTerm[] }
 type TermsVariant = keyof TermsVariants;
-interface Countersign { mode: "manual" | "documenso" }
+interface Countersign {
+  mode: "manual" | "documenso";
+  /** Documenso instance origin (cloud or self-hosted). Only the URL lives in this
+   *  org setting — the API token is a server-only Vault-backed edge secret
+   *  (DOCUMENSO_API_TOKEN), never stored here and never returned to the client. */
+  base_url?: string;
+}
 
 const NUMBERING_DEFAULT: Numbering = { prefix: "HO", pattern: "{prefix}-{yyyy}-{mmdd}-{seq}" };
 const DEFAULTS_DEFAULT: OrderDefaults = { default_fee: null, currency: "EUR" };
@@ -44,6 +53,7 @@ const COUNTERSIGN_DEFAULT: Countersign = { mode: "manual" };
 
 const BUCKET = "hire-orders";
 const SIGNED_URL_TTL = 3600;
+const DOCUMENSO_DEFAULT_BASE_URL = "https://app.documenso.com";
 
 // deno-lint-ignore no-explicit-any
 type Any = any;
@@ -85,6 +95,13 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
       return issueOrders(deps, body, gate.userId);
     case "preview":
       return previewOrder(deps, body);
+    case "countersign-test": {
+      // The coarse gate above accepts admin OR producer; this action is admin-only
+      // (mirrors airtable-schema's admin-only connectivity check), so re-check.
+      const adminGate = await requireOrgRole(deps, req, body.org_id, ["admin"]);
+      if (!adminGate.ok) return adminGate.response;
+      return countersignTest(deps, body);
+    }
     default:
       return json({ error: "unknown_action" }, 400);
   }
@@ -413,16 +430,23 @@ async function issueOrders(deps: Deps, body: IssueBody, _userId: string | null):
     resolveOrgSetting<OrderDefaults>(admin, org, "hire_order_defaults", DEFAULTS_DEFAULT),
     resolveOrgSetting<Countersign>(admin, org, "hire_order_countersign", COUNTERSIGN_DEFAULT),
   ]);
-  const countersignMode = countersign?.mode ?? "manual";
 
   const issued: string[] = [];
   const failed: Array<{ order_id: string; issues: string[] }> = [];
 
   for (const orderId of orderIds) {
     try {
-      const outcome = await issueOne(deps, org, orderId, letterhead, terms, defaults, countersignMode);
-      if (outcome.ok) issued.push(orderId);
-      else failed.push({ order_id: orderId, issues: outcome.issues });
+      const outcome = await issueOne(deps, org, orderId, letterhead, terms, defaults, countersign);
+      if (outcome.ok) {
+        issued.push(orderId);
+        // A Documenso delivery failure is a WARNING, not an issue failure: the
+        // document is genuinely issued (rendered, uploaded, stamped), so it stays
+        // in `issued`, and the countersign-delivery problem surfaces alongside it
+        // in `failed` rather than silently disappearing.
+        if (outcome.warning) failed.push({ order_id: orderId, issues: [outcome.warning] });
+      } else {
+        failed.push({ order_id: orderId, issues: outcome.issues });
+      }
     } catch (e) {
       // Per-order capture: one bad order must not fail the batch.
       console.error("generate-hire-orders: issue failed", { org, orderId, error: (e as Error).message });
@@ -440,8 +464,8 @@ async function issueOne(
   letterhead: HireOrderLetterhead,
   terms: TermsVariants,
   defaults: OrderDefaults,
-  countersignMode: string,
-): Promise<{ ok: true } | { ok: false; issues: string[] }> {
+  countersign: Countersign,
+): Promise<{ ok: true; warning?: string } | { ok: false; issues: string[] }> {
   const admin = deps.admin;
 
   const { data: order } = await admin
@@ -497,15 +521,61 @@ async function issueOne(
     .eq("id", orderId);
   if (issueErr) return { ok: false, issues: ["transition_failed"] };
 
+  // Documenso countersignature (design spec §8): send the SAME rendered bytes
+  // to Documenso for e-signature. FAILURE CONTAINMENT is the point of this
+  // block — the document is already issued (rendered, uploaded, stamped) above,
+  // and nothing here may undo that. A Documenso error (missing token, network,
+  // non-2xx) falls back to manual countersign mode and surfaces as a `warning`
+  // the caller reports alongside the (still-successful) issue, never as an
+  // issue failure.
+  let countersignModeUsed = countersign.mode ?? "manual";
+  let signingUrl: string | null = null;
+  let warning: string | undefined;
+
+  if (countersignModeUsed === "documenso") {
+    const token = deps.env("DOCUMENSO_API_TOKEN");
+    const baseUrl = countersign.base_url || DOCUMENSO_DEFAULT_BASE_URL;
+    try {
+      if (!token) throw new Error("documenso_token_missing");
+      const recipientEmail = strField(data, "recipient_email");
+      const recipientName = strField(data, "artist_name") || recipientEmail;
+      const envelope = await createAndSendEnvelope(
+        deps.fetch,
+        { baseUrl, token },
+        { title: o.order_no, pdf: bytes, recipientName, recipientEmail },
+      );
+      signingUrl = envelope.signingUrl;
+      const { error: csErr } = await admin
+        .from("hire_orders")
+        .update({ countersign_mode: "documenso", documenso_envelope_id: envelope.envelopeId })
+        .eq("id", orderId);
+      if (csErr) {
+        console.error("generate-hire-orders: countersign_mode stamp failed", { org, orderId, error: csErr.message });
+      }
+    } catch (e) {
+      console.error("generate-hire-orders: documenso envelope failed", { org, orderId, error: (e as Error).message });
+      countersignModeUsed = "manual";
+      warning = "documenso_failed";
+      // Explicit fallback write: the order's countersign_mode must read 'manual'
+      // even though nothing was ever stamped 'documenso' for it (issue only runs
+      // once per order — the already-issued gate above blocks a retry).
+      const { error: fallbackErr } = await admin
+        .from("hire_orders").update({ countersign_mode: "manual" }).eq("id", orderId);
+      if (fallbackErr) {
+        console.error("generate-hire-orders: countersign fallback stamp failed", { org, orderId, error: fallbackErr.message });
+      }
+    }
+  }
+
   // Best-effort side effects — a failure here must NOT undo a successful issue.
-  await sendIssuedEmail(deps, org, o, data, bytes, currency, countersignMode).catch((e) =>
+  await sendIssuedEmail(deps, org, o, data, bytes, currency, countersignModeUsed, signingUrl).catch((e) =>
     console.error("generate-hire-orders: issued email failed", { org, orderId, error: (e as Error).message }),
   );
   await notifyArtist(deps, org, o).catch((e) =>
     console.error("generate-hire-orders: artist notification failed", { org, orderId, error: (e as Error).message }),
   );
 
-  return { ok: true };
+  return warning ? { ok: true, warning } : { ok: true };
 }
 
 async function sendIssuedEmail(
@@ -516,6 +586,7 @@ async function sendIssuedEmail(
   bytes: Uint8Array,
   currency: string,
   countersignMode: string,
+  signingUrl: string | null,
 ): Promise<void> {
   const recipient = strField(data, "recipient_email");
   if (!recipient) {
@@ -535,7 +606,8 @@ async function sendIssuedEmail(
     // download_url points at the auth-gated V3 detail page (re-signs the PDF on demand),
     // NOT a raw signed storage URL — a signed URL expires in 3600s and would be dead in the
     // inbox. The route is /hire-orders/:id, so it uses order.id (the uuid), not order_no.
-    // signing_url is omitted in v1 (manual countersign; Documenso is the extended plan).
+    // signing_url is only ever set in documenso mode (undefined -> omitted for manual,
+    // and for a documenso attempt that failed and fell back -- see issueOne).
     templateData: {
       artist_name: strField(data, "artist_name"),
       order_no: order.order_no,
@@ -545,6 +617,7 @@ async function sendIssuedEmail(
       fee_label: feeLabel,
       download_url: `${APP_URL}/hire-orders/${order.id}`,
       countersign_mode: countersignMode,
+      signing_url: signingUrl ?? undefined,
     },
     attachments: [{ filename: `${order.order_no}.pdf`, content_base64: encodeBase64(bytes) }],
     idempotency_key: `hire-order-issued-${order.id}`,
@@ -665,6 +738,33 @@ async function downloadUrl(deps: Deps, req: Request, body: DownloadBody): Promis
   if (signErr || !signed) return json({ error: "sign_failed" }, 500);
 
   return json({ url: (signed as { signedUrl: string }).signedUrl, expires_in: SIGNED_URL_TTL });
+}
+
+// ── countersign-test (admin-only, own re-check happens in handle()) ────────
+
+interface CountersignTestBody { org_id: string; base_url?: string }
+
+/**
+ * Cheap authenticated Documenso connectivity check for the settings card's
+ * "Test connection" button. Mirrors airtable-schema's server-side PAT proxy
+ * pattern: the token is read from the Vault-backed DOCUMENSO_API_TOKEN edge
+ * secret and used ONLY here, never returned to the client. Always resolves
+ * 200 with `{ ok, detail }` -- a connectivity failure is data, not a 500.
+ */
+async function countersignTest(deps: Deps, body: CountersignTestBody): Promise<Response> {
+  const token = deps.env("DOCUMENSO_API_TOKEN");
+  if (!token) return json({ ok: false, detail: "Documenso API token is not configured on the server" });
+
+  const baseUrl = body.base_url || DOCUMENSO_DEFAULT_BASE_URL;
+  try {
+    const res = await deps.fetch(`${baseUrl}/api/v2/envelope?perPage=1`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    if (!res.ok) return json({ ok: false, detail: `documenso_error:${res.status}` });
+    return json({ ok: true, detail: "Connected" });
+  } catch (e) {
+    return json({ ok: false, detail: (e as Error).message });
+  }
 }
 
 // ── helpers ────────────────────────────────────────────────────────────────

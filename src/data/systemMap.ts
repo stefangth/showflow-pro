@@ -296,12 +296,12 @@ export const SYSTEM_MAP_NODES: SystemMapNode[] = [
     sub: "DB trigger ∨ admin/producer",
     subsystems: ["booking"],
     detail: {
-      Trigger: "DB trigger dispatch_hire_order_drafts (show_dates.status -> fully_filled, action:draft) + UI (issue/preview/download-url, not yet wired to a page)",
-      Auth: "cron secret (X-Cron-Secret) ∨ requireOrgRole(org_id,[admin,producer]) (JWT, org-scoped) · download-url: bespoke -- org admin/producer, super-admin, or the linked artist on an issued/countersigned order only · verify_jwt=false",
+      Trigger: "DB trigger dispatch_hire_order_drafts (show_dates.status -> fully_filled, action:draft) + UI (issue/preview/download-url, not yet wired to a page; countersign-test from the Settings countersign card)",
+      Auth: "cron secret (X-Cron-Secret) ∨ requireOrgRole(org_id,[admin,producer]) (JWT, org-scoped) · download-url: bespoke -- org admin/producer, super-admin, or the linked artist on an issued/countersigned order only · countersign-test: admin-only re-check on top of the coarse gate · verify_jwt=false",
       Gate: "every action behind requireFeature(org_id,'hire_orders') -- default off, ships dark",
-      Writes: "hire_orders insert (draft, per-booking try/catch, order_no collision retried x5) / ready->issued + pdf_path (issue) · Storage hire-orders/<org>/<order_no>.pdf (issue) · notifications hire_orders_ready (draft, notify:true) / hire_order_issued (issue)",
-      Effects: "hire-order-issued email with PDF attachment, best-effort (issue only)",
-      Cite: "generate-hire-orders/index.ts · 20260717161030_fully_filled_hire_order_dispatch.sql",
+      Writes: "hire_orders insert (draft, per-booking try/catch, order_no collision retried x5) / ready->issued + pdf_path (issue) / countersign_mode+documenso_envelope_id (issue, documenso mode + successful Documenso call only; falls back to countersign_mode='manual' on failure, the issued stamp is never rolled back) · Storage hire-orders/<org>/<order_no>.pdf (issue) · notifications hire_orders_ready (draft, notify:true) / hire_order_issued (issue) · countersign-test writes nothing",
+      Effects: "hire-order-issued email with PDF attachment, best-effort (issue only), carrying signing_url in documenso mode · Documenso REST API create->recipient->distribute (issue, documenso mode only, via _shared/documenso.ts) -- a failure is contained: logged, reported as a documenso_failed warning, order stays issued · countersign-test: one read-only Documenso list call, token from the DOCUMENSO_API_TOKEN edge secret, never returned to the client",
+      Cite: "generate-hire-orders/index.ts · _shared/documenso.ts · 20260717161030_fully_filled_hire_order_dispatch.sql",
     },
   },
   {

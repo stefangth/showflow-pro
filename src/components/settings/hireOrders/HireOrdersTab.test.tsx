@@ -96,14 +96,59 @@ describe("HireOrdersTab", () => {
     expect(screen.getByRole("radio", { name: /documenso/i })).toHaveAttribute("aria-checked", "false");
   });
 
-  it("shows the Documenso note only once documenso is selected, and keeps it selectable", async () => {
+  it("shows the Documenso connection controls only once documenso is selected, and keeps it selectable", async () => {
     authAs("org-on");
     renderWithProviders(<HireOrdersTab />);
     await screen.findByText("Countersign mode");
-    expect(screen.queryByText(/connect documenso in a later step/i)).not.toBeInTheDocument();
+    expect(screen.queryByLabelText("Documenso instance URL")).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /test connection/i })).not.toBeInTheDocument();
 
     fireEvent.click(screen.getByRole("radio", { name: /documenso/i }));
-    expect(screen.getByText(/connect documenso in a later step\. manual marking stays available\./i)).toBeInTheDocument();
+    expect(screen.getByLabelText("Documenso instance URL")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /test connection/i })).toBeInTheDocument();
+    // Copy makes clear the token is configured server-side, not entered in this card.
+    expect(screen.getByText(/configured server-side by the platform operator/i)).toBeInTheDocument();
+    expect(screen.queryByLabelText(/api token/i)).not.toBeInTheDocument();
+  });
+
+  it("Test connection invokes countersign-test with the org id and base url, and shows the result inline", async () => {
+    seedClient({
+      ...OK_SEED,
+      "fn:generate-hire-orders": { data: { ok: true, detail: "Connected" }, error: null },
+    });
+    authAs("org-on");
+    renderWithProviders(<HireOrdersTab />);
+    await screen.findByText("Countersign mode");
+    fireEvent.click(screen.getByRole("radio", { name: /documenso/i }));
+
+    fireEvent.change(screen.getByLabelText("Documenso instance URL"), {
+      target: { value: "https://documenso.example.com" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: /test connection/i }));
+
+    await screen.findByText("Connected");
+
+    const calls = client.calls as { table: string; method: string; args: unknown[] }[];
+    const invoke = calls.find((c) => c.table === "fn:generate-hire-orders");
+    expect(invoke).toBeDefined();
+    const body = invoke!.args[0] as { action: string; org_id: string; base_url: string };
+    expect(body.action).toBe("countersign-test");
+    expect(body.org_id).toBe("org-on");
+    expect(body.base_url).toBe("https://documenso.example.com");
+  });
+
+  it("Test connection shows a destructive result when the check fails", async () => {
+    seedClient({
+      ...OK_SEED,
+      "fn:generate-hire-orders": { data: { ok: false, detail: "documenso_error:401" }, error: null },
+    });
+    authAs("org-on");
+    renderWithProviders(<HireOrdersTab />);
+    await screen.findByText("Countersign mode");
+    fireEvent.click(screen.getByRole("radio", { name: /documenso/i }));
+    fireEvent.click(screen.getByRole("button", { name: /test connection/i }));
+
+    expect(await screen.findByText("documenso_error:401")).toBeInTheDocument();
   });
 
   it("lists three terms variant sub-editors (lean, standard, full), all empty by default", async () => {
