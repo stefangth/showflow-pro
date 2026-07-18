@@ -427,6 +427,50 @@ Deno.test("draft-manual creates the order with a null fee when no manual fee is 
   assertEquals((insert!.args[0] as { fee_amount: number | null }).fee_amount, null);
 });
 
+Deno.test("draft-manual for an artist/date pair that already has an active order returns created:[] with a skip indicator, no retry", async () => {
+  // Simulates the hire_orders_active_artist_date_uniq backstop firing: the insert
+  // returns a 23505 whose message names that index (exactly the shape supabase-js
+  // surfaces for a Postgres unique_violation). insertWithRetry must recognize this
+  // as a genuine duplicate -- NOT a order_no collision -- and return immediately
+  // rather than retrying the collision suffix 20 times.
+  const { deps, calls } = makeFakeDeps({
+    authUser: { id: "u-admin" },
+    tables: {
+      org_memberships: { data: { role: "admin" } },
+      artists: { data: { id: "a-A", name: "Ann", email: "ann@x.de", cast_role: "Lead" } },
+      show_dates: { data: SHOW_DATE_ROW },
+      cities: { data: { name: "Berlin" } },
+      hire_orders: [
+        { when: { __write: false }, data: [] },
+        {
+          when: { __write: true },
+          error: { code: "23505", message: 'duplicate key value violates unique constraint "hire_orders_active_artist_date_uniq"' },
+        },
+      ],
+      app_settings: [
+        { when: { key: "hire_order_defaults" }, data: [DEFAULTS] },
+        { when: { key: "hire_order_numbering" }, data: [NUMBERING] },
+      ],
+    },
+  });
+
+  const res = await handle(
+    makeRequest({
+      headers: JWT,
+      body: { action: "draft-manual", org_id: ORG, artist_id: "a-A", show_date_id: SD, manual: {} },
+    }),
+    deps,
+  );
+  assertEquals(res.status, 200);
+  const body = await res.json();
+  assertEquals(body.created, [], "no order was created");
+  assertEquals(body.skipped, [{ reason: "exists" }], "reports a skip indicator, not a generic error");
+  assertEquals(body.error, undefined, "must not surface as an order_no_collision error");
+
+  const inserts = calls.filter((c) => c.table === "hire_orders" && c.method === "insert");
+  assertEquals(inserts.length, 1, "must not retry the collision suffix for a real artist/date duplicate");
+});
+
 // ── issue ──────────────────────────────────────────────────────────────
 
 function issuableOrder(overrides: Record<string, unknown> = {}) {
