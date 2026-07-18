@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { ChevronRight } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -31,10 +31,36 @@ export function OrdersTable({ orders, orgId, onRowClick }: Props) {
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const action = useHireOrderAction();
 
+  // Prune the selection to whatever is currently present in `orders`: the
+  // caller (HireOrdersPage) re-derives this list on every status-chip click
+  // and search keystroke, and a row selected before such a change must not
+  // linger in `selected` once it scrolls out of view. Without this, a stale
+  // id could sit in `selected` unrevalidated against its current status and
+  // still reach the issue mutation. Returning the same Set reference when
+  // nothing changed is a no-op setState (React bails out of the re-render).
+  useEffect(() => {
+    setSelected((prev) => {
+      const visibleIds = new Set(orders.map((o) => o.id));
+      let changed = false;
+      const next = new Set<string>();
+      for (const id of prev) {
+        if (visibleIds.has(id)) next.add(id);
+        else changed = true;
+      }
+      return changed ? next : prev;
+    });
+  }, [orders]);
+
   const allSelected = orders.length > 0 && orders.every((o) => selected.has(o.id));
   const someSelected = selected.size > 0;
+  // Rows currently both selected AND visible. Guarding on `.length ===
+  // selected.size` (rather than a bare `.every`, which is vacuously true on
+  // an empty array) closes the window — before the prune effect above has
+  // flushed — where every visible selected row happens to be issuable but
+  // the selection also still holds hidden, unrevalidated ids.
   const selectedRows = orders.filter((o) => selected.has(o.id));
-  const canIssueSelected = someSelected && selectedRows.every((o) => isIssuable(o.status));
+  const canIssueSelected =
+    someSelected && selectedRows.length === selected.size && selectedRows.every((o) => isIssuable(o.status));
 
   const toggleAll = () => {
     setSelected(allSelected ? new Set() : new Set(orders.map((o) => o.id)));
@@ -49,8 +75,13 @@ export function OrdersTable({ orders, orgId, onRowClick }: Props) {
   };
 
   const handleIssueSelected = () => {
+    // Recompute from `orders` (currently visible) rather than trusting the
+    // raw `selected` Set: only ids that are both still present and issuable
+    // are ever sent to the mutation.
+    const idsToIssue = orders.filter((o) => selected.has(o.id) && isIssuable(o.status)).map((o) => o.id);
+    if (idsToIssue.length === 0) return;
     action.mutate(
-      { action: "issue", org_id: orgId, order_ids: Array.from(selected) },
+      { action: "issue", org_id: orgId, order_ids: idsToIssue },
       { onSuccess: () => setSelected(new Set()) },
     );
   };

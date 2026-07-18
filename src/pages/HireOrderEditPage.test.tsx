@@ -184,6 +184,41 @@ describe("HireOrderEditPage", () => {
     expect(screen.getByRole("button", { name: /refresh from showflow/i })).toBeDisabled();
   });
 
+  it("clearing a field with a showflow fallback keeps it empty instead of reverting, shows Manual, and saves the empty value", async () => {
+    seedFor(order());
+    renderPage();
+    await screen.findByText("HO-2026-0201-1");
+    expect(within(screen.getByTestId("field-role")).getByText("SF")).toBeInTheDocument();
+
+    fireEvent.change(screen.getByLabelText("Role"), { target: { value: "" } });
+
+    // The input must not silently snap back to the showflow fallback value.
+    expect(screen.getByLabelText("Role")).toHaveValue("");
+    expect(within(screen.getByTestId("field-role")).getByText("Manual")).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: /^save draft$/i }));
+
+    await waitFor(() => {
+      const update = updateCalls().at(-1);
+      expect(update).toBeDefined();
+      const patch = update!.args[0] as { data?: Record<string, { value: unknown; source: string }> };
+      expect(patch.data?.role).toEqual({ value: "", source: "manual" });
+    });
+  });
+
+  it("re-typing a value into a previously-cleared field un-clears it back to a normal manual edit", async () => {
+    seedFor(order());
+    renderPage();
+    await screen.findByText("HO-2026-0201-1");
+
+    fireEvent.change(screen.getByLabelText("Role"), { target: { value: "" } });
+    expect(within(screen.getByTestId("field-role")).getByText("Manual")).toBeInTheDocument();
+
+    fireEvent.change(screen.getByLabelText("Role"), { target: { value: "Swing" } });
+    expect(screen.getByLabelText("Role")).toHaveValue("Swing");
+    expect(within(screen.getByTestId("field-role")).getByText("Manual")).toBeInTheDocument();
+  });
+
   it("Save draft persists the resolved snapshot via updateHireOrderDraft and invalidates hire-orders", async () => {
     seedFor(order());
     const queryClient = createTestQueryClient();
