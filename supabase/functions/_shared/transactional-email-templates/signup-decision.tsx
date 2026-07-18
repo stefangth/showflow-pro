@@ -11,7 +11,7 @@ import {
   Section,
   Text,
 } from 'npm:@react-email/components@0.0.22'
-import type { TemplateEntry } from './registry.ts'
+import type { TemplateEntry, TemplateData } from './registry.ts'
 import { APP_URL } from '../app-url.ts'
 
 const SITE_NAME = 'ShowFlow'
@@ -82,8 +82,8 @@ const SignupDecisionEmail = ({ decision, displayName, reason, role, _intro, _cta
 }
 
 export const template = {
-  component: SignupDecisionEmail,
-  subject: (data: Record<string, any>) =>
+  component: SignupDecisionEmail as React.ComponentType<TemplateData>,
+  subject: (data: TemplateData) =>
     data?.decision === 'approved'
       ? `You're approved on ${SITE_NAME}`
       : `Your ${SITE_NAME} signup request`,

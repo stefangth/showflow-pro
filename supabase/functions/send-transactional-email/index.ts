@@ -1,6 +1,6 @@
 import * as React from 'npm:react@18.3.1'
 import { renderAsync } from 'npm:@react-email/components@0.0.22'
-import { TEMPLATES } from '../_shared/transactional-email-templates/registry.ts'
+import { TEMPLATES, type TemplateData } from '../_shared/transactional-email-templates/registry.ts'
 import { preflight, json } from "../_shared/http.ts";
 import { realDeps, type Deps, type EmailAttachment } from "../_shared/deps.ts";
 import { resolveOrgSetting, BOOKING_ENGINE_DEFAULTS } from "../_shared/settings.ts";
@@ -53,7 +53,7 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
   let recipientEmail: string
   let idempotencyKey: string
   let messageId: string
-  let templateData: Record<string, any> = {}
+  let templateData: TemplateData = {}
   let orgId: string | null = null
   let attachments: EmailAttachment[] | undefined
   try {
@@ -251,9 +251,9 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
     const fromAddress = await resolveOrgSetting<string>(
       admin, orgId, 'resend_from_address', BOOKING_ENGINE_DEFAULTS.resend_from_address)
 
-    const overrides = await resolveOrgSetting<Record<string, any>>(
+    const overrides = await resolveOrgSetting<TemplateData>(
       admin, orgId, 'email_template_overrides', {})
-    const templateOverride = overrides[templateName] ?? {}
+    const templateOverride = (overrides[templateName] ?? {}) as TemplateData
 
     // Apply subject override
     let resolvedSubjectFinal = resolvedSubject

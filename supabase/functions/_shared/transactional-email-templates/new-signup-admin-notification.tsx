@@ -11,7 +11,7 @@ import {
   Section,
   Text,
 } from 'npm:@react-email/components@0.0.22'
-import type { TemplateEntry } from './registry.ts'
+import type { TemplateEntry, TemplateData } from './registry.ts'
 import { APP_URL } from '../app-url.ts'
 
 const SITE_NAME = 'ShowFlow'
@@ -69,7 +69,7 @@ const NewSignupAdminNotification = ({
 }
 
 export const template = {
-  component: NewSignupAdminNotification,
+  component: NewSignupAdminNotification as React.ComponentType<TemplateData>,
   subject: 'New ShowFlow signup awaiting approval',
   displayName: 'New signup admin notification',
   previewData: {

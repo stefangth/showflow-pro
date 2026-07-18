@@ -1,6 +1,6 @@
 import * as React from 'npm:react@18.3.1'
 import { renderAsync } from 'npm:@react-email/components@0.0.22'
-import { TEMPLATES } from '../_shared/transactional-email-templates/registry.ts'
+import { TEMPLATES, type TemplateData } from '../_shared/transactional-email-templates/registry.ts'
 import { preflight, json } from "../_shared/http.ts";
 import { requireRole } from "../_shared/auth.ts";
 import { realDeps, type Deps } from "../_shared/deps.ts";
@@ -16,7 +16,7 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
 
   // Parse body
   let templateName: string | undefined
-  let overrides: Record<string, any> = {}
+  let overrides: TemplateData = {}
   try {
     if (req.method === 'POST') {
       const body = await req.json().catch(() => ({}))

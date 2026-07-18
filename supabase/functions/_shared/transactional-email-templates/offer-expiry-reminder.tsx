@@ -11,7 +11,7 @@ import {
   Section,
   Text,
 } from 'npm:@react-email/components@0.0.22'
-import type { TemplateEntry } from './registry.ts'
+import type { TemplateEntry, TemplateData } from './registry.ts'
 import { APP_URL } from '../app-url.ts'
 
 const SITE_NAME = 'ShowFlow'
@@ -75,9 +75,9 @@ const OfferExpiryReminder = ({ displayName, offers = [], _intro, _cta_label, _fo
 }
 
 export const template = {
-  component: OfferExpiryReminder,
-  subject: (data: Record<string, any>) => {
-    const n = (data?.offers ?? []).length
+  component: OfferExpiryReminder as React.ComponentType<TemplateData>,
+  subject: (data: TemplateData) => {
+    const n = Array.isArray(data?.offers) ? data.offers.length : 0
     return n === 1 ? 'Reminder: your offer expires soon' : `Reminder: ${n} offers expire soon`
   },
   displayName: 'Offer expiry reminder',

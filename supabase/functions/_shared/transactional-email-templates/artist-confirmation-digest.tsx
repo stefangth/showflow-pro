@@ -10,7 +10,7 @@ import {
   Section,
   Text,
 } from 'npm:@react-email/components@0.0.22'
-import type { TemplateEntry } from './registry.ts'
+import type { TemplateEntry, TemplateData } from './registry.ts'
 import { digestEmailSubject } from '../scheduleChanges.ts'
 
 const SITE_NAME = 'ShowFlow'
@@ -112,8 +112,8 @@ const ArtistConfirmationDigest = ({ displayName, bookings = [], scheduleChanges 
 }
 
 export const template = {
-  component: ArtistConfirmationDigest,
-  subject: (data: Record<string, any>) => digestEmailSubject(data),
+  component: ArtistConfirmationDigest as React.ComponentType<TemplateData>,
+  subject: (data: TemplateData) => digestEmailSubject(data),
   displayName: 'Artist confirmation digest',
   previewData: {
     displayName: 'Jane Performer',

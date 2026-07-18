@@ -1,6 +1,8 @@
 /** Pure helpers for schedule-change detection/coalescing, shared by the
  *  confirmation digest and the digest email template. No I/O. */
 
+import type { TemplateData } from "./transactional-email-templates/registry.ts";
+
 export type SessionChangeKind = "session_added" | "session_removed" | "session_retimed";
 
 export interface ChangeLogRow {
@@ -92,7 +94,11 @@ export function describeDateChanges(c: CoalescedDateChange): string {
 }
 
 /** Adaptive digest subject: neutral when the email carries more than confirmations. */
-export function digestEmailSubject(data: { scheduleChanges?: unknown[]; cancellations?: unknown[]; [key: string]: unknown }): string {
-  const hasUpdates = (data.scheduleChanges?.length ?? 0) > 0 || (data.cancellations?.length ?? 0) > 0;
+export function digestEmailSubject(data: TemplateData): string {
+  const scheduleChanges = data.scheduleChanges;
+  const cancellations = data.cancellations;
+  const hasUpdates =
+    (Array.isArray(scheduleChanges) && scheduleChanges.length > 0) ||
+    (Array.isArray(cancellations) && cancellations.length > 0);
   return hasUpdates ? "Your booking updates — ShowFlow" : "Your bookings are confirmed — ShowFlow";
 }

@@ -11,7 +11,7 @@ import {
   Section,
   Text,
 } from 'npm:@react-email/components@0.0.22'
-import type { TemplateEntry } from './registry.ts'
+import type { TemplateEntry, TemplateData } from './registry.ts'
 import { APP_URL } from '../app-url.ts'
 
 const SITE_NAME = 'ShowFlow'
@@ -58,8 +58,8 @@ const CronHealthAlert = ({ job_name, status_code, error, last_ok_at, dashboard_u
 )
 
 export const template = {
-  component: CronHealthAlert,
-  subject: (data: Record<string, any>) =>
+  component: CronHealthAlert as React.ComponentType<TemplateData>,
+  subject: (data: TemplateData) =>
     `Cron health: ${data?.job_name ?? 'a job'} is failing (${data?.status_code ?? '?'})`,
   displayName: 'Cron health alert',
   previewData: {

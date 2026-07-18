@@ -11,7 +11,7 @@ import {
   Section,
   Text,
 } from 'npm:@react-email/components@0.0.22'
-import type { TemplateEntry } from './registry.ts'
+import type { TemplateEntry, TemplateData } from './registry.ts'
 import { APP_URL } from '../app-url.ts'
 
 const SITE_NAME = 'ShowFlow'
@@ -68,8 +68,8 @@ const CastEscalationRequested = ({ program, date, tier, accepted, required, _int
 }
 
 export const template = {
-  component: CastEscalationRequested,
-  subject: (data: Record<string, any>) =>
+  component: CastEscalationRequested as React.ComponentType<TemplateData>,
+  subject: (data: TemplateData) =>
     `Escalation needed: Tier ${data?.tier ?? '?'} for ${data?.program ?? 'show'} on ${data?.date ?? '?'}`,
   displayName: 'Cast escalation requested',
   previewData: {
