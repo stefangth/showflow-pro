@@ -64,6 +64,31 @@ interface Props {
 
 type BookingWithArtist = Booking & { artist: Pick<Artist, 'id' | 'name'> };
 
+/** Joined row shape of the show-date-detail select below — mirror the select string. */
+interface ShowDateDetailRow {
+  id: string;
+  date: string;
+  session_1: string | null;
+  session_2: string | null;
+  session_3: string | null;
+  venue: string | null;
+  status: string;
+  notes: string | null;
+  city_id: string | null;
+  show_id: string;
+  cancellation_reason: string | null;
+  airtable_record_id: string | null;
+  custom: Record<string, unknown> | null;
+  show: {
+    id: string;
+    program: string | null;
+    sub_program: string | null;
+    main_cast_slots: number | null;
+    understudy_slots: number | null;
+  } | null;
+  city: { id: string; name: string } | null;
+}
+
 export function ShowDateDetailSheet({ showDateId, open, onOpenChange }: Props) {
   const { hasRole, user, roles, currentOrg } = useAuth();
   const { isEditorMode } = useEditorConfig();
@@ -85,7 +110,7 @@ export function ShowDateDetailSheet({ showDateId, open, onOpenChange }: Props) {
         .eq('id', showDateId!)
         .single();
       if (error) throw error;
-      return data as any;
+      return data as unknown as ShowDateDetailRow;
     },
   });
 

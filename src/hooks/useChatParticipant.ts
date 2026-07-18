@@ -21,7 +21,8 @@ export function useChatParticipant(showDateId: string | null | undefined) {
         .eq('show_date_id', showDateId!)
         .in('status', ['soft_booked', 'confirmed']);
       if (error) throw error;
-      return (data ?? []).some((b: any) => b.artist?.user_id === user!.id);
+      const rows = (data ?? []) as unknown as { artist: { user_id: string | null } | null }[];
+      return rows.some((b) => b.artist?.user_id === user!.id);
     },
   });
 }
