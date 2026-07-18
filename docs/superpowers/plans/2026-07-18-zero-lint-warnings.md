@@ -773,6 +773,7 @@ git commit -m "route frontend test stubs through typed cast helpers"
 - Consumes: `asTypedClient` from `_shared/testing.ts` (Task 12), `TypedClient` from `deps.ts`.
 
 - [ ] **Step 1: Sweep, same three idioms as Task 13** — fake clients/deps through `asTypedClient` / `makeFakeDeps` options; row fixtures through explicit local interfaces or `Partial<>` casts of the row types the functions now export/declare; never per-site `as any`. Run per function: `deno test --allow-all supabase/functions/airtable-poll/ 2>&1 | tail -2` → pass, then the rest.
+- [ ] **Step 1b: Also remove the 18 `eslint-disable`-suppressed `any` sites in these files** — they never fired warnings so they are NOT in Appendix B: `airtable-poll/index.di.test.ts:733,888,1312,1319,1368,1375`, `index.custom.test.ts:46,51,55,68,73`, `index.regression.test.ts:66,68`, `index.linked.test.ts:69`, `admin-list-users/index.di.test.ts:34`, `send-transactional-email/index.di.test.ts:633,642` (line numbers as of plan time — re-grep with `grep -rn "eslint-disable.*no-explicit-any" supabase/functions/`). For each: delete the suppression comment AND fix the `any` underneath with the same idioms. Verify: that grep returns 0 matches under `supabase/functions/` test files.
 - [ ] **Step 2: Verify zero `any` repo-wide**
 
 Run: `npm run lint 2>&1 | tail -1`
@@ -815,7 +816,7 @@ git commit -m "type deno edge function test stubs"
 
   3. **Architecture tree + key-files table**: `features/auth/` additionally lists `realtimeInvalidations.ts` (moved in Task 4); mention the moved modules from Task 4 where the tree names their old homes (`lib/` gains `singleFlight.ts`, `hireOrders/kpis.ts`); add `supabase/functions/_shared/database.types.ts` to the key-files table with "mirror of `src/integrations/supabase/types.ts` (dual-home, sync-tested — regenerate both together)". Context file paths are unchanged (Task 5 exemption).
   4. **Things to avoid**: add `- Casting Supabase rows or clients with \`as any\` — use an explicit row interface + single \`as unknown as\` cast at the query boundary, or the typed test helpers.`
-- Modify: remove any straggler suppression comments: `grep -rn "eslint-disable.*no-explicit-any" src supabase e2e` → delete each (they're all obsolete now).
+- Modify: remove straggler suppression comments: `grep -rn "eslint-disable.*no-explicit-any\|deno-lint-ignore no-explicit-any" src supabase e2e`. For each match, VERIFY it is orphaned (the `any` beneath it was already fixed in Tasks 7–14) before deleting the comment; if a live `any` survives underneath, fix it with the boundary patterns first — never delete a suppression that still guards code. Expected: all matches are orphaned by now (Tasks 10–12 fixed the production sites, Task 14 Step 1b the test sites); end state is 0 matches.
 
 **Interfaces:** none.
 
