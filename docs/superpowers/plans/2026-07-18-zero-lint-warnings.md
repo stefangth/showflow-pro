@@ -345,7 +345,7 @@ git commit -m "exempt context modules from fast-refresh lint rule"
 **Interfaces:**
 - Produces: `import type { Database } from "./database.types.ts"` for all `supabase/functions/**` code (used by Tasks 10–12).
 
-- [ ] **Step 1: Write the failing sync test**
+- [x] **Step 1: Write the failing sync test**
 
 ```ts
 import { readFileSync } from "node:fs";
@@ -363,17 +363,17 @@ describe("database types mirror", () => {
 });
 ```
 
-- [ ] **Step 2: Run it, verify it fails**
+- [x] **Step 2: Run it, verify it fails**
 
 Run: `npx vitest run src/integrations/supabase/typesMirror.test.ts`
 Expected: FAIL — `ENOENT ... database.types.ts`
 
-- [ ] **Step 3: Create the mirror**
+- [x] **Step 3: Create the mirror**
 
 Run: `cp src/integrations/supabase/types.ts supabase/functions/_shared/database.types.ts`
 
-- [ ] **Step 4: Re-run the test** → PASS. Also `deno check supabase/functions/_shared/database.types.ts` → exit 0.
-- [ ] **Step 5: Commit**
+- [x] **Step 4: Re-run the test** → PASS. Also `deno check supabase/functions/_shared/database.types.ts` → exit 0.
+- [x] **Step 5: Commit**
 
 ```bash
 git add supabase/functions/_shared/database.types.ts src/integrations/supabase/typesMirror.test.ts
