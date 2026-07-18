@@ -120,10 +120,10 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
 
   try {
     await verifyResendWebhook(req, rawBody, webhookSecret, deps.now().getTime())
-  } catch (err: any) {
-    const code = err.code ?? 'verification_failed'
+  } catch (err) {
+    const code = (err as { code?: string }).code ?? 'verification_failed'
     if (code === 'missing_headers' || code === 'invalid_signature') {
-      console.error('Webhook verification failed', { code, message: err.message })
+      console.error('Webhook verification failed', { code, message: (err as Error).message })
       return json({ error: 'Invalid signature' }, 401)
     }
     if (code === 'stale_timestamp') {

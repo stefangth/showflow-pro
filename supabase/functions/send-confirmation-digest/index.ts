@@ -5,8 +5,61 @@ import { getActiveOrgs, resolveOrgSetting, BOOKING_ENGINE_DEFAULTS } from "../_s
 import { resolveContactEmail, resolveAccountDisplayName } from "../_shared/identity.ts";
 import { coalesceChangeRows, describeDateChanges, type ChangeLogRow } from "../_shared/scheduleChanges.ts";
 import { resolveBookingFlow, referenceLabel } from "../_shared/bookingFlow.ts";
+import type { ArtistJoin } from "../_shared/rows.ts";
 
 const ACTIVE_BOOKING_STATUSES = ["suggested", "soft_booked", "confirmed"];
+
+/** Mirrors the newly-confirmed-bookings select in handle(). */
+interface ConfirmedBookingRow {
+  id: string
+  artist_id: string
+  artists: ArtistJoin | null
+  show_dates: {
+    date: string
+    shows: { program: string | null; sub_program: string | null } | null
+    cities: { name: string } | null
+    custom: Record<string, unknown> | null
+  } | null
+}
+
+/** Mirrors the show_date_change_log select in handle(); the scalar columns
+ *  carry the same types as _shared/scheduleChanges.ts ChangeLogRow. */
+interface ChangeLogJoinRow {
+  id: string
+  show_date_id: string
+  change_type: ChangeLogRow["change_type"]
+  session_slot: number | null
+  old_value: string | null
+  new_value: string | null
+  created_at: string
+  show_dates: {
+    date: string
+    status: string
+    cancellation_reason: string | null
+    shows: { program: string | null; sub_program: string | null } | null
+    cities: { name: string } | null
+  } | null
+}
+
+/** Mirrors the per-affected-date bookings select in handle(). */
+interface ChangeBookingRow {
+  id: string
+  artist_id: string
+  show_date_id: string
+  status: string
+  cancellation_reason: string | null
+  artists: ArtistJoin | null
+}
+
+interface NotificationInsertRow {
+  org_id: string
+  user_id: string
+  type: string
+  title: string
+  message: string
+  related_entity_id?: string | null
+  related_entity_type?: string | null
+}
 
 /**
  * Daily confirmation digest (hourly cron). For each ACTIVE org whose
@@ -110,8 +163,8 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
       .is('digested_at', null);
     if (changeErr) { console.error('send-confirmation-digest: change-log query error', { org: org.id, error: changeErr.message }); continue; }
 
-    const confirmed = (confirmedRaw ?? []) as any[];
-    const changeRows = (changeRaw ?? []) as any[];
+    const confirmed = (confirmedRaw ?? []) as unknown as ConfirmedBookingRow[];
+    const changeRows = (changeRaw ?? []) as unknown as ChangeLogJoinRow[];
     if (confirmed.length === 0 && changeRows.length === 0) continue;
 
     // Show context per show_date (every row for a date joins to its current row).
@@ -131,16 +184,16 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
 
     // Recipients per affected date (one bookings query, partitioned in JS).
     const affectedDateIds = coalesced.map((c) => c.showDateId);
-    let changeBookings: any[] = [];
+    let changeBookings: ChangeBookingRow[] = [];
     if (affectedDateIds.length > 0) {
       const { data } = await admin
         .from('bookings')
         .select('id, artist_id, show_date_id, status, cancellation_reason, artists ( id, name, email, user_id )')
         .eq('org_id', org.id)
         .in('show_date_id', affectedDateIds);
-      changeBookings = (data ?? []) as any[];
+      changeBookings = (data ?? []) as unknown as ChangeBookingRow[];
     }
-    const bookingsByDate = new Map<string, any[]>();
+    const bookingsByDate = new Map<string, ChangeBookingRow[]>();
     for (const b of changeBookings) {
       const list = bookingsByDate.get(b.show_date_id);
       if (list) list.push(b); else bookingsByDate.set(b.show_date_id, [b]);
@@ -166,7 +219,7 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
       cancellations: Array<{ show: string; date: string; city: string; reason: string | null }>;
     };
     const grouped = new Map<string, GroupedEntry>();
-    const ensureEntry = (artistId: string, artist: any): GroupedEntry | null => {
+    const ensureEntry = (artistId: string, artist: ArtistJoin | null): GroupedEntry | null => {
       const acct = artist?.user_id ? byUser.get(artist.user_id) : undefined;
       const recipientEmail = resolveContactEmail({ authEmail: acct?.email, bookingEmail: artist?.email });
       if (!recipientEmail) return null;
@@ -201,7 +254,7 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
     }
 
     // Schedule changes + in-app notifications
-    const notificationRows: any[] = [];
+    const notificationRows: NotificationInsertRow[] = [];
     for (const c of coalesced) {
       const ctx = dateContext.get(c.showDateId) ?? { show: 'Unknown show', date: '—', city: '—', reason: null };
       const dateBookings = bookingsByDate.get(c.showDateId) ?? [];

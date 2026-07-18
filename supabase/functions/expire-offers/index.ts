@@ -6,6 +6,7 @@ import { getActiveOrgs } from "../_shared/settings.ts";
 import { resolveBookingFlow, referenceLabel, type BookingFlow } from "../_shared/bookingFlow.ts";
 import { resolveContactEmail, resolveAccountDisplayName } from "../_shared/identity.ts";
 import { resolveTierLadder, nextTierAfter } from "../_shared/eligibility.ts";
+import type { DueBookingRow, OrgAdminRow, ProducerAssignmentRow, ShowDateWithShow } from "../_shared/rows.ts";
 
 /**
  * Hourly job:
@@ -92,11 +93,12 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
       .lt('offer_expires_at', cutoff.toISOString())
     if (dueErr) { console.error('expire-offers: reminder query failed', { org: org.id, error: dueErr.message }); continue }
     if (!due || due.length === 0) continue
+    const dueRows = (due ?? []) as unknown as DueBookingRow[]
 
     // ADR-0011: registered artists are addressed at their login (auth) email; the
     // booking email is the fallback (mirrors send-offer-digest's identity resolution).
     const userIds = [...new Set(
-      (due as any[]).map((b) => b.artists?.user_id).filter((id: unknown): id is string => !!id),
+      dueRows.map((b) => b.artists?.user_id).filter((id): id is string => !!id),
     )]
     const byUser = new Map<string, { email: string | null; display_name: string | null }>()
     if (userIds.length > 0) {
@@ -118,7 +120,7 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
       offers: Array<{ referenceLabel: string; date: string; expiresAt: string }>
     }
     const grouped = new Map<string, ReminderGroup>()
-    for (const b of due as any[]) {
+    for (const b of dueRows) {
       const artist = b.artists
       const acct = artist?.user_id ? byUser.get(artist.user_id) : undefined
       const recipientEmail = resolveContactEmail({ authEmail: acct?.email, bookingEmail: artist?.email })
@@ -133,7 +135,7 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
       const expiresAt = new Intl.DateTimeFormat('en-GB', {
         timeZone: 'Europe/Berlin', day: '2-digit', month: '2-digit', year: 'numeric',
         hour: '2-digit', minute: '2-digit', hour12: false,
-      }).format(new Date(b.offer_expires_at))
+      }).format(new Date(b.offer_expires_at!)) // non-null: the query filters offer_expires_at IS NOT NULL
       if (!grouped.has(b.artist_id)) {
         grouped.set(b.artist_id, {
           recipientEmail,
@@ -197,7 +199,7 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
   }
 
   // 2. Find open tiers that have never been escalated
-  const { data: openTiers } = await (admin as any)
+  const { data: openTiers } = await admin
     .from('show_date_offer_tiers')
     .select('id, show_date_id, tier, escalation_notified_at')
     .is('closed_at', null)
@@ -218,17 +220,18 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
       .eq('id', row.show_date_id)
       .maybeSingle()
     if (!sd) continue
+    const sdRow = sd as unknown as ShowDateWithShow
 
-    const program = (sd as any).show?.program
-    const subProgram = (sd as any).show?.sub_program
+    const program = sdRow.show?.program
+    const subProgram = sdRow.show?.sub_program
 
     // Past dates can no longer fill — never escalate (would re-fire forever otherwise).
-    if (!isFutureOrToday((sd as any).date, deps.now())) continue
+    if (!isFutureOrToday(sdRow.date, deps.now())) continue
 
     // requiredSlots = main_cast_slots (what a primary offer tier fills). NULL = unconfigured → skip.
     const requiredSlots = requiredPrimarySlots({
-      main_cast_slots: (sd as any).show?.main_cast_slots ?? null,
-      understudy_slots: (sd as any).show?.understudy_slots ?? null,
+      main_cast_slots: sdRow.show?.main_cast_slots ?? null,
+      understudy_slots: sdRow.show?.understudy_slots ?? null,
     })
     if (requiredSlots === null) continue
 
@@ -252,7 +255,7 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
     if (pendingNotExpired > 0) continue
     if (accepted >= requiredSlots) continue
 
-    const orgId = (sd as any).org_id as string
+    const orgId = sdRow.org_id
 
     // Resolve the org's booking flow (auto-escalate + direct-mode gate), cached per org.
     // A per-org read failure must not abort the whole escalation scan; skip this row and
@@ -271,18 +274,18 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
 
     // Resolve recipients — shared by the auto-escalation notification below and the
     // manual escalation notification/email further down.
-    const { data: producers } = await (admin as any).rpc('resolve_show_assignments', {
+    const { data: producers } = await admin.rpc('resolve_show_assignments', {
       p_program: program ?? '',
       p_sub_program: subProgram,
-      p_city_id: (sd as any).city_id,
+      p_city_id: sdRow.city_id,
       p_org: orgId,
     })
-    let recipientIds = (producers ?? []).map((p: any) => p.producer_user_id)
+    let recipientIds = ((producers ?? []) as unknown as ProducerAssignmentRow[]).map((p) => p.producer_user_id)
     if (recipientIds.length === 0) {
       // Fallback: notify admins OF THIS show_date's org (not every org's admins).
       const { data: admins } = await admin.from('org_memberships').select('user_id')
         .eq('org_id', orgId).eq('role', 'admin')
-      recipientIds = (admins ?? []).map((a: any) => a.user_id)
+      recipientIds = ((admins ?? []) as unknown as OrgAdminRow[]).map((a) => a.user_id)
     }
     recipientIds = [...new Set(recipientIds)]
 
@@ -299,11 +302,11 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
     // active-scoped, so this preserves it).
     if (flow.auto_escalate && activeOrgIds.has(orgId) && row.tier !== 99) {
       let nextTier: number | undefined
-      if ((sd as any).city_id) {
+      if (sdRow.city_id) {
         // Next tier comes from the SAME effective ladder that opened this tier
         // (show override if present, else the org city list). Spec: escalation
         // walks the effective ladder; automation never applies a skill filter.
-        const ladder = await resolveTierLadder(admin, (sd as any).show_id, (sd as any).city_id)
+        const ladder = await resolveTierLadder(admin, sdRow.show_id, sdRow.city_id)
         nextTier = nextTierAfter(ladder, row.tier) ?? undefined
       }
 
@@ -312,7 +315,7 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
         // the idempotency mark for the scan (same property the manual path relies on),
         // so a failed invoke below does not leave the tier open to be re-escalated on
         // every subsequent hourly run.
-        await (admin as any)
+        await admin
           .from('show_date_offer_tiers')
           .update({ closed_at: now.toISOString(), escalation_notified_at: now.toISOString() })
           .eq('id', row.id)
@@ -350,7 +353,7 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
       }
     }
 
-    const message = `Tier ${row.tier} for ${program ?? 'show'} on ${(sd as any).date} expired with ${accepted}/${requiredSlots} slots filled — open the next tier.`
+    const message = `Tier ${row.tier} for ${program ?? 'show'} on ${sdRow.date} expired with ${accepted}/${requiredSlots} slots filled — open the next tier.`
 
     const notifRows = recipientIds.map((uid: string) => ({
       org_id: orgId,
@@ -373,14 +376,14 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
       if (!recipientEmail) continue
       try {
         await deps.sendEmail({ template_name: 'cast-escalation-requested', recipient_email: recipientEmail,
-          templateData: { program, date: (sd as any).date, tier: row.tier, accepted, required: requiredSlots } })
+          templateData: { program, date: sdRow.date, tier: row.tier, accepted, required: requiredSlots } })
       } catch (e) {
         console.error('expire-offers: email send failed', { uid, error: (e as Error).message })
       }
     }
 
     // Mark idempotent
-    await (admin as any)
+    await admin
       .from('show_date_offer_tiers')
       .update({ escalation_notified_at: deps.now().toISOString() })
       .eq('id', row.id)

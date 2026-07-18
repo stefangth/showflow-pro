@@ -110,7 +110,7 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
       return benignExit('No ad-hoc casts for this date')
     }
 
-    const castIds = dateCasts.map((r: any) => r.cast_id)
+    const castIds = ((dateCasts ?? []) as unknown as { cast_id: string }[]).map((r) => r.cast_id)
     if (showDate.city_id) {
       const ladder = await resolveTierLadder(admin, showDate.show_id, showDate.city_id)
       const ladderCastIds = new Set(ladder.tiers.map((t) => t.castId))
@@ -139,7 +139,7 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
     .select('artist_id')
     .in('cast_id', eligibleCastIds)
 
-  const artistIds = [...new Set((castMemberRows ?? []).map((r: any) => r.artist_id))]
+  const artistIds = [...new Set(((castMemberRows ?? []) as unknown as { artist_id: string }[]).map((r) => r.artist_id))]
   if (artistIds.length === 0) {
     return benignExit('No artists in eligible casts')
   }
@@ -151,7 +151,7 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
     .in('id', artistIds)
     .eq('status', 'active')
 
-  const activeArtistIds = (artistRows ?? []).map((r: any) => r.id)
+  const activeArtistIds = ((artistRows ?? []) as unknown as { id: string }[]).map((r) => r.id)
   // Members that dropped out of the active-status filter (inactive/archived).
   const inactiveCount = artistIds.length - activeArtistIds.length
   if (activeArtistIds.length === 0) {
@@ -167,19 +167,19 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
     .eq('show_date_id', show_date_id)
     .neq('status', 'cancelled')
 
-  const alreadyBookedIds = new Set((existingBookings ?? []).map((b: any) => b.artist_id))
+  const alreadyBookedIds = new Set(((existingBookings ?? []) as unknown as { artist_id: string }[]).map((b) => b.artist_id))
   // Active artists already holding a non-cancelled booking for this date.
   const alreadyBookedCount = activeArtistIds.filter((id: string) => alreadyBookedIds.has(id)).length
 
   // Skip artists with a blocked_dates entry for this date (table added in Task 5)
   let blockedArtistIds = new Set<string>()
   try {
-    const { data: blockedRows } = await (admin as any)
+    const { data: blockedRows } = await admin
       .from('blocked_dates')
       .select('artist_id')
       .eq('date', showDate.date)
       .in('artist_id', activeArtistIds)
-    blockedArtistIds = new Set((blockedRows ?? []).map((r: any) => r.artist_id))
+    blockedArtistIds = new Set(((blockedRows ?? []) as unknown as { artist_id: string }[]).map((r) => r.artist_id))
   } catch {
     // blocked_dates table may not exist yet — skip silently
   }
@@ -270,7 +270,7 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
   // upsert (no ignoreDuplicates) re-activates a tier that was previously closed:
   // clears closed_at, refreshes opened_at, and resets escalation so the new
   // round can escalate again. (close-offer-tier sets closed_at.)
-  const { error: tierErr } = await (admin as any)
+  const { error: tierErr } = await admin
     .from('show_date_offer_tiers')
     .upsert(
       {

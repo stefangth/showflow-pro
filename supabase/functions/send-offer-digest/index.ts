@@ -4,6 +4,22 @@ import { emailWasSent, realDeps, type Deps } from "../_shared/deps.ts";
 import { getActiveOrgs, resolveOrgSetting, BOOKING_ENGINE_DEFAULTS } from "../_shared/settings.ts";
 import { resolveContactEmail, resolveAccountDisplayName } from "../_shared/identity.ts";
 import { resolveBookingFlow, referenceLabel } from "../_shared/bookingFlow.ts";
+import type { ArtistJoin } from "../_shared/rows.ts";
+
+/** Mirrors the pending-bookings select below (NOT _shared/rows.ts DueBookingRow:
+ *  this select has no offer_expires_at and its show_dates join selects
+ *  cities(name) instead of show_id/city_id). */
+interface PendingBookingRow {
+  id: string
+  artist_id: string
+  artists: ArtistJoin | null
+  show_dates: {
+    date: string
+    shows: { program: string | null; sub_program: string | null } | null
+    cities: { name: string } | null
+    custom: Record<string, unknown> | null
+  } | null
+}
 
 /**
  * Daily offer digest (hourly cron). Digest-mode orgs are processed only when
@@ -116,11 +132,12 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
 
     if (queryErr) { console.error('send-offer-digest: query error', { org: org.id, error: queryErr.message }); continue; }
     if (!pendingBookings || pendingBookings.length === 0) continue;
+    const pendingRows = (pendingBookings ?? []) as unknown as PendingBookingRow[];
 
     // ADR-0011: registered artists are addressed at their login (auth) email; the
     // booking email is the fallback (and the only address an unregistered artist has).
     const userIds = [...new Set(
-      (pendingBookings as any[]).map((b) => b.artists?.user_id).filter((id: unknown): id is string => !!id),
+      pendingRows.map((b) => b.artists?.user_id).filter((id): id is string => !!id),
     )];
     const byUser = new Map<string, { email: string | null; display_name: string | null }>();
     if (userIds.length > 0) {
@@ -137,7 +154,7 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
 
     type GroupedEntry = { recipientEmail: string; displayName: string; bookingIds: string[]; offers: Array<{ show: string; date: string; city: string; expires: string; label: string }> };
     const grouped = new Map<string, GroupedEntry>();
-    for (const b of pendingBookings as any[]) {
+    for (const b of pendingRows) {
       const artist = b.artists;
       const acct = artist?.user_id ? byUser.get(artist.user_id) : undefined;
       const recipientEmail = resolveContactEmail({ authEmail: acct?.email, bookingEmail: artist?.email });
