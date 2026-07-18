@@ -19,7 +19,7 @@ function seedClient(seed: Record<string, TableSeed>) {
 }
 
 import { useAuth } from "@/features/auth/AuthContext";
-import HireOrderEditPage from "./HireOrderEditPage";
+import HireOrderEditPage, { createSingleFlightRunner } from "./HireOrderEditPage";
 
 function authAs(role: "admin" | "producer" = "producer", orgId = "org-1") {
   vi.mocked(useAuth).mockReturnValue({
@@ -271,5 +271,97 @@ describe("HireOrderEditPage", () => {
     renderPage();
     expect(await screen.findByRole("alert")).toBeInTheDocument();
     expect(screen.getByText(/could not load/i)).toBeInTheDocument();
+  });
+});
+
+/** A manually-resolvable promise, for controlling exactly when an in-flight
+ *  `run()` call settles relative to test assertions. */
+function deferred<T = void>() {
+  let resolve!: (v: T) => void;
+  const promise = new Promise<T>((res) => {
+    resolve = res;
+  });
+  return { promise, resolve };
+}
+
+/** Drains the microtask queue `times` rounds deep — enough for a chain of
+ *  `await`s inside `createSingleFlightRunner`'s loop (run's own continuation,
+ *  then the loop's continuation, then the next run's synchronous prefix) to
+ *  settle, without needing fake timers (the runner has no timers of its own;
+ *  the 800ms debounce lives in the component's effect, not this primitive). */
+async function flushMicrotasks(times = 5) {
+  for (let i = 0; i < times; i++) await Promise.resolve();
+}
+
+// Regression coverage for the debounced live-preview race (finding 1): two
+// overlapping persist+preview cycles must never run concurrently, so
+// whichever one is "stale" can never write the DB or set previewSrc after a
+// newer one. `createSingleFlightRunner` is the primitive `HireOrderEditPage`
+// wraps its persist+preview cycle in to guarantee that; it's pure (no React,
+// no timers), so the race is reproduced deterministically here with
+// hand-controlled deferred promises instead of trying to win a real timing
+// race against jsdom/RTL's real-timer async utilities (which the rest of
+// this file already relies on for the 800ms debounce itself — mixing fake
+// timers into that suite would risk exactly the flakiness this file's other
+// tests avoid by using real timers).
+describe("createSingleFlightRunner", () => {
+  it("never starts a second cycle while one is in flight, coalesces any number of mid-flight triggers into exactly one trailing rerun, and only starts the rerun after the first cycle fully settles", async () => {
+    const calls: string[] = [];
+    const gate1 = deferred<void>();
+    const gate2 = deferred<void>();
+    let callIndex = 0;
+    const run = vi.fn(async () => {
+      callIndex += 1;
+      const idx = callIndex;
+      calls.push(`start-${idx}`);
+      await (idx === 1 ? gate1.promise : gate2.promise);
+      calls.push(`end-${idx}`);
+    });
+
+    const trigger = createSingleFlightRunner(run);
+
+    trigger();
+    expect(run).toHaveBeenCalledTimes(1);
+    expect(calls).toEqual(["start-1"]);
+
+    // Three edits land while cycle 1's write/preview is still in flight (its
+    // gate hasn't been released yet) — none may start a second, concurrent
+    // cycle. This is the exact shape of the bug: rapid edits during a slow
+    // persist+preview chain.
+    trigger();
+    trigger();
+    trigger();
+    expect(run).toHaveBeenCalledTimes(1);
+    expect(calls).toEqual(["start-1"]);
+
+    // Let cycle 1 finish.
+    gate1.resolve();
+    await flushMicrotasks();
+
+    // Exactly ONE trailing rerun fired for the three mid-flight triggers —
+    // not three, not zero — and it only started once cycle 1's own "end"
+    // had already happened (proving strict sequencing, not concurrency).
+    expect(calls).toEqual(["start-1", "end-1", "start-2"]);
+    expect(run).toHaveBeenCalledTimes(2);
+
+    gate2.resolve();
+    await flushMicrotasks();
+    expect(calls).toEqual(["start-1", "end-1", "start-2", "end-2"]);
+    // No further rerun: nothing triggered during cycle 2's flight, so a
+    // settled cycle does not loop forever.
+    expect(run).toHaveBeenCalledTimes(2);
+  });
+
+  it("starts a fresh, independent cycle for a trigger that arrives after the previous cycle has already settled", async () => {
+    const run = vi.fn(async () => {});
+    const trigger = createSingleFlightRunner(run);
+
+    trigger();
+    await flushMicrotasks();
+    expect(run).toHaveBeenCalledTimes(1);
+
+    trigger();
+    await flushMicrotasks();
+    expect(run).toHaveBeenCalledTimes(2);
   });
 });

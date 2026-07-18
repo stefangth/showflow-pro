@@ -310,6 +310,15 @@ function assignShowflowField(
  * name/email/cast_role, show_date date/venue/city/duration/sessions). The two
  * runtimes cannot share an import — the edge function's assembly is
  * authoritative; keep this in step with it.
+ *
+ * DELIBERATE GAP: the edge function's `draftOrders` assembly also sets `fee`
+ * from `bookings.fee_amount` (generate-hire-orders/index.ts:~187), but this
+ * mirror omits `fee` on purpose. Nothing currently populates
+ * `bookings.fee_amount` on this path, so today the gap is inert, but if that
+ * ever changes this function will keep silently NOT re-pulling it: "Refresh
+ * from ShowFlow" is meant to leave the engagement fee exactly as the builder
+ * (manual entry or prior resolution) already has it, never overwrite it from
+ * a booking-sourced value.
  */
 export async function fetchShowflowLayerForOrder(
   client: SupabaseClient<Database>,

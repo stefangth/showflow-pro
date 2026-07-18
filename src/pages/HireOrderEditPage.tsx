@@ -91,6 +91,55 @@ function splitLayers(data: OrderData): SplitLayers {
 const READ_ONLY_STATUSES = new Set(["issued", "countersigned", "void"]);
 
 /**
+ * Wraps an async `run` function with single-flight + trailing-rerun semantics:
+ * calling the returned trigger while a cycle from a previous call is still in
+ * flight does NOT start a second, concurrent cycle. It only flags that a
+ * rerun is needed. The moment the in-flight cycle's promise settles, exactly
+ * one trailing rerun fires (coalescing any number of triggers received during
+ * the flight into that single rerun) and calls `run` again.
+ *
+ * This is what guarantees write ordering for the debounced live-preview cycle
+ * below: `run` is never invoked a second time until the previous invocation's
+ * promise has fully settled, so two cycles can never race. Whichever DB write
+ * (and preview) `run` performs on its Nth call is always fully committed
+ * before its (N+1)th call begins, so a superseded edit's write/preview can
+ * never land after a newer edit's.
+ *
+ * A pure post-await "generation" check alone cannot give this guarantee: by
+ * the time such a check could run (after the stale cycle's own `await`), the
+ * stale cycle's write has already been sent, so it can still resolve after a
+ * newer cycle's write and clobber it. Serializing the calls, as this does, is
+ * the only way to guarantee ordering.
+ *
+ * Exported for direct unit testing. This primitive has no timing of its own;
+ * the 800ms debounce stays in the component's effect below.
+ */
+export function createSingleFlightRunner(run: () => Promise<void>): () => void {
+  let inFlight = false;
+  let rerunPending = false;
+
+  async function loop() {
+    inFlight = true;
+    try {
+      do {
+        rerunPending = false;
+        await run();
+      } while (rerunPending);
+    } finally {
+      inFlight = false;
+    }
+  }
+
+  return () => {
+    if (inFlight) {
+      rerunPending = true;
+      return;
+    }
+    void loop();
+  };
+}
+
+/**
  * V2 split builder: draft editor at `/hire-orders/:id/edit` with a live PDF
  * preview and per-field provenance chips. Left column = four numbered
  * sections (Parties, Engagement, Fees and payment, Terms detail) built from
@@ -195,20 +244,39 @@ export default function HireOrderEditPage() {
   // (it takes no body payload beyond the id), so reflecting an edit means
   // persisting it first, then re-requesting the preview — debounced 800ms so
   // a burst of keystrokes becomes one save + one preview, not one per key.
+  //
+  // The cycle's own two awaits can easily outlast 800ms, so a second edit's
+  // timer can fire while the first edit's cycle is still persisting/
+  // previewing. `createSingleFlightRunner` (above) guarantees those two
+  // cycles never run concurrently — see its docstring for why that's the
+  // only way to guarantee write ordering here. `latestRef` carries whatever
+  // the guarded cycle needs so a trailing rerun always reads the LATEST
+  // state, not whatever the timer's closure captured when it fired.
+  const latestRef = useRef({ order, orgId, isReadOnly, buildPatch, updateDraft, action });
+  latestRef.current = { order, orgId, isReadOnly, buildPatch, updateDraft, action };
+
+  const runPreviewCycleRef = useRef<(() => void) | null>(null);
+  if (runPreviewCycleRef.current === null) {
+    runPreviewCycleRef.current = createSingleFlightRunner(async () => {
+      const { order: curOrder, orgId: curOrgId, isReadOnly: curReadOnly, buildPatch: curBuildPatch, updateDraft: curUpdateDraft, action: curAction } =
+        latestRef.current;
+      if (!curOrder || curReadOnly || !curOrgId) return;
+      try {
+        await curUpdateDraft.mutateAsync({ id: curOrder.id, patch: curBuildPatch() });
+        const res = await curAction.mutateAsync({ action: "preview", org_id: curOrgId, order_id: curOrder.id });
+        const b64 = (res as { pdf_base64?: string } | null)?.pdf_base64;
+        if (b64) setPreviewSrc(`data:application/pdf;base64,${b64}`);
+      } catch {
+        /* a transient debounce-preview failure shouldn't interrupt editing;
+           the explicit Save draft / Issue actions surface their own toasts */
+      }
+    });
+  }
+
   useEffect(() => {
     if (!dirty || !order || isReadOnly || !orgId) return;
     const timer = setTimeout(() => {
-      void (async () => {
-        try {
-          await updateDraft.mutateAsync({ id: order.id, patch: buildPatch() });
-          const res = await action.mutateAsync({ action: "preview", org_id: orgId, order_id: order.id });
-          const b64 = (res as { pdf_base64?: string } | null)?.pdf_base64;
-          if (b64) setPreviewSrc(`data:application/pdf;base64,${b64}`);
-        } catch {
-          /* a transient debounce-preview failure shouldn't interrupt editing;
-             the explicit Save draft / Issue actions surface their own toasts */
-        }
-      })();
+      runPreviewCycleRef.current?.();
     }, 800);
     return () => clearTimeout(timer);
     // eslint-disable-next-line react-hooks/exhaustive-deps
