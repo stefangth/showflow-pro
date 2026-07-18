@@ -2,6 +2,20 @@
 
 What's new in ShowFlow, newest first.
 
+## 1.10.0 — July 18, 2026
+
+*Paperwork that writes itself*
+
+### New
+- **Hire orders** — Generate a draft engagement sheet straight from a confirmed booking, review the fee and terms, then issue it as a PDF. The artist gets the PDF by email and an in-app notification, and can download it from their dashboard any time.
+- **Import hire orders from a spreadsheet** — Bring in engagements from an Excel file or a public Google Sheets link. Map the columns, choose which rows to import, match each row to the right artist and date, fix anything flagged, then create the drafts in bulk.
+- **Hire orders page** — A new Hire orders page shows KPI tiles across every order, filters by status, search, and select many orders at once to issue them in a single batch.
+- **Guided new order wizard** — Build a single hire order step by step: pick the artist and date, confirm the engagement details, set the fee, then review before creating the draft. A fully manual engagement with no linked date is supported too, for one-off bookings made outside the calendar.
+- **Split builder for drafts** — Open a draft in a two-pane editor: fields on one side, a live PDF preview on the other, with a note on where each value came from (the booking, a manual edit, or an org default).
+- **Documenso countersigning (optional)** — Organizations that want electronic signatures can opt into Documenso countersigning in Settings. It is off by default and needs an admin to connect and configure it; issued orders can then be sent for e-signature and are marked countersigned automatically when the artist signs.
+- **Org modules** — Super-admins can turn feature modules, including Hire orders, on or off per organization from the Platform console.
+- **Booking flow as a module** — The configurable booking flow introduced in 1.9.0 is now its own gateable module alongside Hire orders, so it can be switched off per organization too.
+
 ## 1.9.0 — July 15, 2026
 
 *Make the booking flow your own*

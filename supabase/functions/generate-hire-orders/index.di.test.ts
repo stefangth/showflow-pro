@@ -184,6 +184,293 @@ Deno.test("draft with notify inserts hire_orders_ready producer notifications on
   assert(rows.some((r) => r.user_id === "p1"), "notifies the resolved producer");
 });
 
+// ── draft-manual ─────────────────────────────────────────────────────────
+
+Deno.test("draft-manual with only manual fields creates an unlinked draft where every field is source manual", async () => {
+  const manual = {
+    artist_name: "Walk-in Artist",
+    recipient_email: "walkin@example.com",
+    role: "Soloist",
+    cast: "Cast A",
+    date: "2026-08-01",
+    venue: "The Loft",
+    city: "Hamburg",
+    duration_min: 60,
+    sessions: ["20:00"],
+    fee: 750,
+    currency: "USD",
+    notes: "Fully manual engagement",
+  };
+  const { deps, calls } = makeFakeDeps({
+    authUser: { id: "u-admin" },
+    tables: {
+      org_memberships: { data: { role: "admin" } },
+      hire_orders: [
+        { when: { __write: false }, data: [] }, // sequence-base count read
+        { when: { __write: true }, data: { id: "ho-manual-1" } },
+      ],
+      app_settings: [
+        { when: { key: "hire_order_defaults" }, data: [DEFAULTS] },
+        { when: { key: "hire_order_numbering" }, data: [NUMBERING] },
+      ],
+    },
+  });
+
+  const res = await handle(
+    makeRequest({ headers: JWT, body: { action: "draft-manual", org_id: ORG, manual } }),
+    deps,
+  );
+  assertEquals(res.status, 200);
+  const body = await res.json();
+  assertEquals(body.created.length, 1, "expected exactly one created order");
+
+  // No queries against artists/show_dates at all — neither id was given.
+  assertEquals(calls.filter((c) => c.table === "artists").length, 0);
+  assertEquals(calls.filter((c) => c.table === "show_dates").length, 0);
+
+  const insert = calls.find((c) => c.table === "hire_orders" && c.method === "insert");
+  assert(insert, "expected a hire_orders insert");
+  const row = insert!.args[0] as {
+    booking_id: string | null; artist_id: string | null; show_date_id: string | null;
+    fee_currency: string; terms_variant: string; status: string;
+    data: Record<string, { value: unknown; source: string }>;
+  };
+  assertEquals(row.booking_id, null, "manual orders never link a booking");
+  assertEquals(row.artist_id, null);
+  assertEquals(row.show_date_id, null);
+  assertEquals(row.status, "draft");
+  assertEquals(row.terms_variant, "standard");
+  for (const key of Object.keys(manual)) {
+    assertEquals(row.data[key]?.source, "manual", `${key} should be source manual`);
+  }
+  assertEquals(row.data.fee.value, 750);
+  assertEquals(row.fee_currency, "USD", "fee_currency follows the resolved (manual) currency, not the org default");
+});
+
+Deno.test("draft-manual with artist_id and show_date_id resolves showflow fields underneath a manual override", async () => {
+  const { deps, calls } = makeFakeDeps({
+    authUser: { id: "u-admin" },
+    tables: {
+      org_memberships: { data: { role: "admin" } },
+      artists: { data: { id: "a-A", name: "Ann", email: "ann@x.de", cast_role: "Lead" } },
+      show_dates: { data: SHOW_DATE_ROW },
+      cities: { data: { name: "Berlin" } },
+      hire_orders: [
+        { when: { __write: false }, data: [] },
+        { when: { __write: true }, data: { id: "ho-manual-2" } },
+      ],
+      app_settings: [
+        { when: { key: "hire_order_defaults" }, data: [DEFAULTS] },
+        { when: { key: "hire_order_numbering" }, data: [NUMBERING] },
+      ],
+    },
+  });
+
+  const res = await handle(
+    makeRequest({
+      headers: JWT,
+      body: {
+        action: "draft-manual",
+        org_id: ORG,
+        artist_id: "a-A",
+        show_date_id: SD,
+        manual: { venue: "Overridden Hall", fee: 900 },
+      },
+    }),
+    deps,
+  );
+  assertEquals(res.status, 200);
+  const body = await res.json();
+  assertEquals(body.created.length, 1);
+
+  const insert = calls.find((c) => c.table === "hire_orders" && c.method === "insert");
+  assert(insert, "expected a hire_orders insert");
+  const row = insert!.args[0] as {
+    artist_id: string | null; show_date_id: string | null;
+    data: Record<string, { value: unknown; source: string }>;
+  };
+  assertEquals(row.artist_id, "a-A");
+  assertEquals(row.show_date_id, SD);
+
+  // Showflow-derived fields resolve underneath.
+  assertEquals(row.data.artist_name.value, "Ann");
+  assertEquals(row.data.artist_name.source, "showflow");
+  assertEquals(row.data.recipient_email.value, "ann@x.de");
+  assertEquals(row.data.recipient_email.source, "showflow");
+  assertEquals(row.data.city.value, "Berlin");
+  assertEquals(row.data.city.source, "showflow");
+  assertEquals(row.data.date.value, "2026-06-15");
+  assertEquals(row.data.date.source, "showflow");
+
+  // The manual override for venue/fee wins over showflow/defaults.
+  assertEquals(row.data.venue.value, "Overridden Hall");
+  assertEquals(row.data.venue.source, "manual");
+  assertEquals(row.data.fee.value, 900);
+  assertEquals(row.data.fee.source, "manual");
+});
+
+Deno.test("draft-manual does not gate on recipient_email at draft time", async () => {
+  // No recipient_email anywhere (no artist link, no manual override) — draft-manual
+  // must still succeed; the ready gate is enforced at issue, not draft.
+  const { deps } = makeFakeDeps({
+    authUser: { id: "u-admin" },
+    tables: {
+      org_memberships: { data: { role: "admin" } },
+      hire_orders: [
+        { when: { __write: false }, data: [] },
+        { when: { __write: true }, data: { id: "ho-manual-3" } },
+      ],
+      app_settings: [
+        { when: { key: "hire_order_defaults" }, data: [DEFAULTS] },
+        { when: { key: "hire_order_numbering" }, data: [NUMBERING] },
+      ],
+    },
+  });
+  const res = await handle(
+    makeRequest({ headers: JWT, body: { action: "draft-manual", org_id: ORG, manual: { venue: "The Loft" } } }),
+    deps,
+  );
+  assertEquals(res.status, 200);
+  assertEquals((await res.json()).created.length, 1);
+});
+
+Deno.test("draft-manual 403s when hire_orders entitlement is off", async () => {
+  const { deps } = makeFakeDeps({
+    authUser: { id: "u-admin" },
+    tables: { org_memberships: { data: { role: "admin" } } },
+    rpcs: { is_feature_enabled: { data: false, error: null } },
+  });
+  const res = await handle(
+    makeRequest({ headers: JWT, body: { action: "draft-manual", org_id: ORG, manual: { fee: 500 } } }),
+    deps,
+  );
+  assertEquals(res.status, 403);
+});
+
+Deno.test("draft-manual rejects a non-numeric manual fee with 400 invalid_fee instead of silently nulling it", async () => {
+  const { deps, calls } = makeFakeDeps({
+    authUser: { id: "u-admin" },
+    tables: {
+      org_memberships: { data: { role: "admin" } },
+      hire_orders: [
+        { when: { __write: false }, data: [] },
+        { when: { __write: true }, data: { id: "ho-should-not-be-created" } },
+      ],
+      app_settings: [
+        { when: { key: "hire_order_defaults" }, data: [DEFAULTS] },
+        { when: { key: "hire_order_numbering" }, data: [NUMBERING] },
+      ],
+    },
+  });
+  const res = await handle(
+    makeRequest({ headers: JWT, body: { action: "draft-manual", org_id: ORG, manual: { fee: "not-a-number" } } }),
+    deps,
+  );
+  assertEquals(res.status, 400);
+  assertEquals(await res.json(), { error: "invalid_fee" });
+  assertEquals(
+    calls.filter((c) => c.table === "hire_orders" && c.method === "insert").length,
+    0,
+    "an invalid fee must reject before any insert",
+  );
+});
+
+Deno.test("draft-manual creates the order with the numeric fee when a valid manual fee is given", async () => {
+  const { deps, calls } = makeFakeDeps({
+    authUser: { id: "u-admin" },
+    tables: {
+      org_memberships: { data: { role: "admin" } },
+      hire_orders: [
+        { when: { __write: false }, data: [] },
+        { when: { __write: true }, data: { id: "ho-fee-ok" } },
+      ],
+      app_settings: [
+        { when: { key: "hire_order_defaults" }, data: [DEFAULTS] },
+        { when: { key: "hire_order_numbering" }, data: [NUMBERING] },
+      ],
+    },
+  });
+  const res = await handle(
+    makeRequest({ headers: JWT, body: { action: "draft-manual", org_id: ORG, manual: { fee: 500 } } }),
+    deps,
+  );
+  assertEquals(res.status, 200);
+  assertEquals((await res.json()).created, ["ho-fee-ok"]);
+  const insert = calls.find((c) => c.table === "hire_orders" && c.method === "insert");
+  assert(insert, "expected a hire_orders insert");
+  assertEquals((insert!.args[0] as { fee_amount: number | null }).fee_amount, 500);
+});
+
+Deno.test("draft-manual creates the order with a null fee when no manual fee is given", async () => {
+  const { deps, calls } = makeFakeDeps({
+    authUser: { id: "u-admin" },
+    tables: {
+      org_memberships: { data: { role: "admin" } },
+      hire_orders: [
+        { when: { __write: false }, data: [] },
+        { when: { __write: true }, data: { id: "ho-fee-null" } },
+      ],
+      app_settings: [
+        { when: { key: "hire_order_defaults" }, data: [DEFAULTS] },
+        { when: { key: "hire_order_numbering" }, data: [NUMBERING] },
+      ],
+    },
+  });
+  const res = await handle(
+    makeRequest({ headers: JWT, body: { action: "draft-manual", org_id: ORG, manual: { venue: "The Loft" } } }),
+    deps,
+  );
+  assertEquals(res.status, 200);
+  assertEquals((await res.json()).created, ["ho-fee-null"]);
+  const insert = calls.find((c) => c.table === "hire_orders" && c.method === "insert");
+  assert(insert, "expected a hire_orders insert");
+  assertEquals((insert!.args[0] as { fee_amount: number | null }).fee_amount, null);
+});
+
+Deno.test("draft-manual for an artist/date pair that already has an active order returns created:[] with a skip indicator, no retry", async () => {
+  // Simulates the hire_orders_active_artist_date_uniq backstop firing: the insert
+  // returns a 23505 whose message names that index (exactly the shape supabase-js
+  // surfaces for a Postgres unique_violation). insertWithRetry must recognize this
+  // as a genuine duplicate -- NOT a order_no collision -- and return immediately
+  // rather than retrying the collision suffix 20 times.
+  const { deps, calls } = makeFakeDeps({
+    authUser: { id: "u-admin" },
+    tables: {
+      org_memberships: { data: { role: "admin" } },
+      artists: { data: { id: "a-A", name: "Ann", email: "ann@x.de", cast_role: "Lead" } },
+      show_dates: { data: SHOW_DATE_ROW },
+      cities: { data: { name: "Berlin" } },
+      hire_orders: [
+        { when: { __write: false }, data: [] },
+        {
+          when: { __write: true },
+          error: { code: "23505", message: 'duplicate key value violates unique constraint "hire_orders_active_artist_date_uniq"' },
+        },
+      ],
+      app_settings: [
+        { when: { key: "hire_order_defaults" }, data: [DEFAULTS] },
+        { when: { key: "hire_order_numbering" }, data: [NUMBERING] },
+      ],
+    },
+  });
+
+  const res = await handle(
+    makeRequest({
+      headers: JWT,
+      body: { action: "draft-manual", org_id: ORG, artist_id: "a-A", show_date_id: SD, manual: {} },
+    }),
+    deps,
+  );
+  assertEquals(res.status, 200);
+  const body = await res.json();
+  assertEquals(body.created, [], "no order was created");
+  assertEquals(body.skipped, [{ reason: "exists" }], "reports a skip indicator, not a generic error");
+  assertEquals(body.error, undefined, "must not surface as an order_no_collision error");
+
+  const inserts = calls.filter((c) => c.table === "hire_orders" && c.method === "insert");
+  assertEquals(inserts.length, 1, "must not retry the collision suffix for a real artist/date duplicate");
+});
+
 // ── issue ──────────────────────────────────────────────────────────────
 
 function issuableOrder(overrides: Record<string, unknown> = {}) {
@@ -346,6 +633,276 @@ Deno.test("issue is idempotent per order (already issued -> failed with already_
   const body = await res.json();
   assertEquals(body.issued, []);
   assert(body.failed[0].issues.includes("already_issued"));
+});
+
+// ── documenso countersign ────────────────────────────────────────────────
+
+/** A fake fetch that plays back the create -> recipient -> distribute sequence
+ *  createAndSendEnvelope issues, keyed by URL suffix (order-independent). */
+function fakeDocumensoFetch(): { fetchImpl: typeof fetch; calls: Array<{ url: string; init?: RequestInit }> } {
+  const calls: Array<{ url: string; init?: RequestInit }> = [];
+  const fetchImpl = ((url: string | URL | Request, init?: RequestInit) => {
+    const u = String(url);
+    calls.push({ url: u, init });
+    if (u.endsWith("/envelope/create")) {
+      return Promise.resolve(new Response(JSON.stringify({ id: "envelope_1" }), { status: 200 }));
+    }
+    if (u.endsWith("/recipient/create-many")) {
+      return Promise.resolve(new Response(JSON.stringify({ data: [{ token: "sign-tok" }] }), { status: 200 }));
+    }
+    if (u.endsWith("/distribute")) {
+      return Promise.resolve(new Response("{}", { status: 200 }));
+    }
+    return Promise.resolve(new Response("{}", { status: 200 }));
+  }) as typeof fetch;
+  return { fetchImpl, calls };
+}
+
+Deno.test("issue sends a Documenso envelope when countersign mode is documenso: stamps the order and carries signing_url in the email", async () => {
+  const { fetchImpl, calls: docCalls } = fakeDocumensoFetch();
+  const { deps, calls, invokeCalls } = makeFakeDeps({
+    authUser: { id: "u-admin" },
+    fetchImpl,
+    // The base URL is OPERATOR-controlled only, via this edge secret — never the
+    // per-org setting (see the ignored `base_url` below, a different host entirely).
+    envVars: { DOCUMENSO_API_TOKEN: "tok-secret", DOCUMENSO_BASE_URL: "https://documenso.test" },
+    tables: {
+      org_memberships: { data: { role: "admin" } },
+      hire_orders: [
+        { when: { __write: false }, data: issuableOrder() },
+        { when: { __write: true }, data: null },
+      ],
+      artists: { data: { user_id: "u-artist" } },
+      app_settings: [
+        { when: { key: "hire_order_letterhead" }, data: [LETTERHEAD] },
+        { when: { key: "hire_order_terms" }, data: [TERMS_FILLED] },
+        { when: { key: "hire_order_defaults" }, data: [DEFAULTS] },
+        {
+          // An attacker-controlled (or merely stale) org setting base_url that MUST
+          // be ignored — the shared DOCUMENSO_API_TOKEN would otherwise leak to it.
+          when: { key: "hire_order_countersign" },
+          data: [{ org_id: ORG, value: { mode: "documenso", base_url: "https://attacker.example.com" } }],
+        },
+      ],
+    },
+  });
+
+  const res = await handle(makeRequest({ headers: JWT, body: { action: "issue", org_id: ORG, order_ids: ["o-1"] } }), deps);
+  const body = await res.json();
+  assertEquals(body.issued, ["o-1"]);
+  assertEquals(body.failed, []);
+
+  assertEquals(docCalls.length, 3, "expected the create -> recipient -> distribute sequence");
+  for (const c of docCalls) {
+    assert(
+      c.url.startsWith("https://documenso.test/"),
+      `expected the env-configured host, not the org setting's base_url: ${c.url}`,
+    );
+    const headers = new Headers(c.init?.headers);
+    // Documenso API v1 uses the raw api_... token with no "Bearer " scheme.
+    assertEquals(headers.get("Authorization"), "tok-secret");
+  }
+
+  const csUpdate = calls.find(
+    (c) => c.table === "hire_orders" && c.method === "update" && "countersign_mode" in (c.args[0] as object),
+  );
+  assert(csUpdate, "expected a countersign_mode/documenso_envelope_id update");
+  const csRow = csUpdate!.args[0] as { countersign_mode: string; documenso_envelope_id: string };
+  assertEquals(csRow.countersign_mode, "documenso");
+  assertEquals(csRow.documenso_envelope_id, "envelope_1");
+
+  const email = invokeCalls.find((c) => c.name === "send-transactional-email");
+  assert(email, "expected the issued email");
+  const td = (email!.body as { templateData: Record<string, unknown> }).templateData;
+  assertEquals(td.countersign_mode, "documenso");
+  assertEquals(td.signing_url, "https://documenso.test/sign/sign-tok");
+});
+
+Deno.test("issue never calls Documenso when countersign mode is manual", async () => {
+  let fetchCalls = 0;
+  const fetchImpl = (() => {
+    fetchCalls++;
+    return Promise.resolve(new Response("{}", { status: 200 }));
+  }) as typeof fetch;
+  const { deps } = makeFakeDeps({
+    authUser: { id: "u-admin" },
+    fetchImpl,
+    tables: {
+      org_memberships: { data: { role: "admin" } },
+      hire_orders: [
+        { when: { __write: false }, data: issuableOrder() },
+        { when: { __write: true }, data: null },
+      ],
+      artists: { data: { user_id: "u-artist" } },
+      app_settings: [
+        { when: { key: "hire_order_letterhead" }, data: [LETTERHEAD] },
+        { when: { key: "hire_order_terms" }, data: [TERMS_FILLED] },
+        { when: { key: "hire_order_defaults" }, data: [DEFAULTS] },
+        { when: { key: "hire_order_countersign" }, data: [{ org_id: ORG, value: { mode: "manual" } }] },
+      ],
+    },
+  });
+
+  const res = await handle(makeRequest({ headers: JWT, body: { action: "issue", org_id: ORG, order_ids: ["o-1"] } }), deps);
+  const body = await res.json();
+  assertEquals(body.issued, ["o-1"]);
+  assertEquals(fetchCalls, 0, "manual mode must never call Documenso");
+});
+
+Deno.test("issue keeps the order issued with a documenso_failed warning when Documenso errors (never un-issues)", async () => {
+  const fetchImpl = (() => Promise.resolve(new Response("unauthorized", { status: 401 }))) as typeof fetch;
+  const { deps, calls, invokeCalls } = makeFakeDeps({
+    authUser: { id: "u-admin" },
+    fetchImpl,
+    envVars: { DOCUMENSO_API_TOKEN: "tok-secret", DOCUMENSO_BASE_URL: "https://documenso.test" },
+    tables: {
+      org_memberships: { data: { role: "admin" } },
+      hire_orders: [
+        { when: { __write: false }, data: issuableOrder() },
+        { when: { __write: true }, data: null },
+      ],
+      artists: { data: { user_id: "u-artist" } },
+      app_settings: [
+        { when: { key: "hire_order_letterhead" }, data: [LETTERHEAD] },
+        { when: { key: "hire_order_terms" }, data: [TERMS_FILLED] },
+        { when: { key: "hire_order_defaults" }, data: [DEFAULTS] },
+        {
+          when: { key: "hire_order_countersign" },
+          data: [{ org_id: ORG, value: { mode: "documenso" } }],
+        },
+      ],
+    },
+  });
+
+  const res = await handle(makeRequest({ headers: JWT, body: { action: "issue", org_id: ORG, order_ids: ["o-1"] } }), deps);
+  const body = await res.json();
+  assertEquals(body.issued, ["o-1"], "the document stays issued despite the Documenso failure");
+  assertEquals(body.failed, [{ order_id: "o-1", issues: ["documenso_failed"] }]);
+
+  const csUpdate = calls.find(
+    (c) => c.table === "hire_orders" && c.method === "update" && "countersign_mode" in (c.args[0] as object),
+  );
+  assert(csUpdate, "expected a countersign_mode fallback update");
+  assertEquals((csUpdate!.args[0] as { countersign_mode: string }).countersign_mode, "manual");
+
+  const email = invokeCalls.find((c) => c.name === "send-transactional-email");
+  assert(email, "expected the issued email to still send");
+  const td = (email!.body as { templateData: Record<string, unknown> }).templateData;
+  assertEquals(td.countersign_mode, "manual");
+  assertEquals(td.signing_url, undefined);
+});
+
+Deno.test("countersign-test is admin-only, checks connectivity against the env-configured host, and never leaks the token", async () => {
+  const producerCalls: Array<{ url: string; init?: RequestInit }> = [];
+  const producerFetchImpl = ((url: string | URL | Request, init?: RequestInit) => {
+    producerCalls.push({ url: String(url), init });
+    return Promise.resolve(new Response(JSON.stringify({ data: [] }), { status: 200 }));
+  }) as typeof fetch;
+
+  // Producer passes the coarse draft/issue gate but must be rejected here (admin-only).
+  // The request body's base_url is attacker-controllable and MUST be ignored — see
+  // the admin assertions below, which prove the real request goes to the env host.
+  const producer = makeFakeDeps({
+    authUser: { id: "u-producer" },
+    fetchImpl: producerFetchImpl,
+    envVars: { DOCUMENSO_API_TOKEN: "tok-secret", DOCUMENSO_BASE_URL: "https://documenso.test" },
+    tables: { org_memberships: { data: { role: "producer" } } },
+  });
+  const producerRes = await handle(
+    makeRequest({ headers: JWT, body: { action: "countersign-test", org_id: ORG, base_url: "https://attacker.example.com" } }),
+    producer.deps,
+  );
+  assertEquals(producerRes.status, 403);
+
+  const adminCalls: Array<{ url: string; init?: RequestInit }> = [];
+  const adminFetchImpl = ((url: string | URL | Request, init?: RequestInit) => {
+    adminCalls.push({ url: String(url), init });
+    return Promise.resolve(new Response(JSON.stringify({ data: [] }), { status: 200 }));
+  }) as typeof fetch;
+  const admin = makeFakeDeps({
+    authUser: { id: "u-admin" },
+    fetchImpl: adminFetchImpl,
+    envVars: { DOCUMENSO_API_TOKEN: "tok-secret", DOCUMENSO_BASE_URL: "https://documenso.test" },
+    tables: { org_memberships: { data: { role: "admin" } } },
+  });
+  const adminRes = await handle(
+    // A body-supplied base_url (attacker or otherwise) is IGNORED entirely.
+    makeRequest({ headers: JWT, body: { action: "countersign-test", org_id: ORG, base_url: "https://attacker.example.com" } }),
+    admin.deps,
+  );
+  assertEquals(adminRes.status, 200);
+  const adminBody = await adminRes.json();
+  assertEquals(adminBody.ok, true);
+  assert(typeof adminBody.detail === "string");
+  assert(!JSON.stringify(adminBody).includes("tok-secret"), "the token must never be echoed back");
+
+  assertEquals(adminCalls.length, 1, "expected a single Documenso connectivity check request");
+  assert(
+    adminCalls[0].url.startsWith("https://documenso.test/"),
+    `expected the env-configured host, not the body's base_url: ${adminCalls[0].url}`,
+  );
+  const headers = new Headers(adminCalls[0].init?.headers);
+  // Documenso API v1 uses the raw api_... token with no "Bearer " scheme.
+  assertEquals(headers.get("Authorization"), "tok-secret");
+});
+
+Deno.test("countersign-test falls back to the hosted app.documenso.com when DOCUMENSO_BASE_URL is unset", async () => {
+  const calls: Array<{ url: string }> = [];
+  const fetchImpl = ((url: string | URL | Request) => {
+    calls.push({ url: String(url) });
+    return Promise.resolve(new Response(JSON.stringify({ data: [] }), { status: 200 }));
+  }) as typeof fetch;
+  const { deps } = makeFakeDeps({
+    authUser: { id: "u-admin" },
+    fetchImpl,
+    envVars: { DOCUMENSO_API_TOKEN: "tok-secret" },
+    tables: { org_memberships: { data: { role: "admin" } } },
+  });
+  const res = await handle(
+    makeRequest({ headers: JWT, body: { action: "countersign-test", org_id: ORG } }),
+    deps,
+  );
+  assertEquals(res.status, 200);
+  assertEquals(calls.length, 1);
+  assert(calls[0].url.startsWith("https://app.documenso.com/"));
+});
+
+Deno.test("countersign-test rejects a non-https DOCUMENSO_BASE_URL instead of silently falling back", async () => {
+  let fetchCalls = 0;
+  const fetchImpl = (() => { fetchCalls++; return Promise.resolve(new Response("{}", { status: 200 })); }) as typeof fetch;
+  const { deps } = makeFakeDeps({
+    authUser: { id: "u-admin" },
+    fetchImpl,
+    envVars: { DOCUMENSO_API_TOKEN: "tok-secret", DOCUMENSO_BASE_URL: "http://insecure.example.com" },
+    tables: { org_memberships: { data: { role: "admin" } } },
+  });
+  const res = await handle(
+    makeRequest({ headers: JWT, body: { action: "countersign-test", org_id: ORG } }),
+    deps,
+  );
+  assertEquals(res.status, 200, "connectivity failures are reported in the body, never a 500");
+  const body = await res.json();
+  assertEquals(body.ok, false);
+  assertEquals(body.detail, "documenso_base_url_invalid");
+  assertEquals(fetchCalls, 0, "must never call an insecure host");
+});
+
+Deno.test("countersign-test reports ok:false without throwing when Documenso is unreachable/unauthorized", async () => {
+  const fetchImpl = (() => Promise.resolve(new Response("unauthorized", { status: 401 }))) as typeof fetch;
+  const { deps } = makeFakeDeps({
+    authUser: { id: "u-admin" },
+    fetchImpl,
+    envVars: { DOCUMENSO_API_TOKEN: "tok-secret", DOCUMENSO_BASE_URL: "https://documenso.test" },
+    tables: { org_memberships: { data: { role: "admin" } } },
+  });
+  const res = await handle(
+    makeRequest({ headers: JWT, body: { action: "countersign-test", org_id: ORG } }),
+    deps,
+  );
+  assertEquals(res.status, 200, "connectivity failures are reported in the body, never a 500");
+  const resBody = await res.json();
+  assertEquals(resBody.ok, false);
+  assert(typeof resBody.detail === "string" && resBody.detail.length > 0);
 });
 
 Deno.test("order number collisions get -2 suffix", async () => {

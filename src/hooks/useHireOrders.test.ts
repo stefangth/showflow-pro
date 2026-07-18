@@ -9,8 +9,10 @@ vi.mock("@/data/hireOrders", () => ({
   fetchHireOrdersForDate: vi.fn(),
   fetchHireOrder: vi.fn(),
   fetchMyHireOrders: vi.fn(),
+  fetchHireOrders: vi.fn(),
   invokeHireOrderAction: vi.fn(),
   updateHireOrderStatus: vi.fn(),
+  updateHireOrderDraft: vi.fn(),
 }));
 
 import { toast } from "sonner";
@@ -19,15 +21,20 @@ import {
   fetchHireOrdersForDate,
   fetchHireOrder,
   fetchMyHireOrders,
+  fetchHireOrders,
   invokeHireOrderAction,
   updateHireOrderStatus,
+  updateHireOrderDraft,
 } from "@/data/hireOrders";
 import {
   useHireOrdersForDate,
   useHireOrder,
   useMyHireOrders,
+  useHireOrders,
   useHireOrderAction,
   useMarkCountersigned,
+  useVoidHireOrder,
+  useUpdateHireOrderDraft,
 } from "./useHireOrders";
 
 function wrapper() {
@@ -93,6 +100,34 @@ describe("useMyHireOrders", () => {
     const { result } = renderHook(() => useMyHireOrders(), { wrapper: Wrapper });
     expect(result.current.fetchStatus).toBe("idle");
     expect(fetchMyHireOrders).not.toHaveBeenCalled();
+  });
+});
+
+describe("useHireOrders", () => {
+  beforeEach(() => vi.clearAllMocks());
+
+  it("fetches for a given org and filters", async () => {
+    vi.mocked(fetchHireOrders).mockResolvedValue([{ id: "ho-1" }] as never);
+    const { Wrapper } = wrapper();
+    const { result } = renderHook(() => useHireOrders("org-1", { status: ["draft"] }), { wrapper: Wrapper });
+    await waitFor(() => expect(result.current.isSuccess).toBe(true));
+    expect(result.current.data).toEqual([{ id: "ho-1" }]);
+    expect(fetchHireOrders).toHaveBeenCalledWith(expect.anything(), "org-1", { status: ["draft"] });
+  });
+
+  it("defaults filters to {} when omitted", async () => {
+    vi.mocked(fetchHireOrders).mockResolvedValue([] as never);
+    const { Wrapper } = wrapper();
+    const { result } = renderHook(() => useHireOrders("org-1"), { wrapper: Wrapper });
+    await waitFor(() => expect(result.current.isSuccess).toBe(true));
+    expect(fetchHireOrders).toHaveBeenCalledWith(expect.anything(), "org-1", {});
+  });
+
+  it("stays disabled without an orgId", () => {
+    const { Wrapper } = wrapper();
+    const { result } = renderHook(() => useHireOrders(null), { wrapper: Wrapper });
+    expect(result.current.fetchStatus).toBe("idle");
+    expect(fetchHireOrders).not.toHaveBeenCalled();
   });
 });
 
@@ -203,6 +238,49 @@ describe("useHireOrderAction", () => {
     );
   });
 
+  it("surfaces documenso_failed as a warning alongside a successful issue, not the failed-to-issue error", async () => {
+    vi.mocked(invokeHireOrderAction).mockResolvedValue({
+      issued: ["ho-1"],
+      failed: [{ order_id: "ho-1", issues: ["documenso_failed"] }],
+    });
+    const { Wrapper } = wrapper();
+    const { result } = renderHook(() => useHireOrderAction(), { wrapper: Wrapper });
+
+    await act(async () => {
+      await result.current.mutateAsync({ action: "issue", org_id: "org-1", order_ids: ["ho-1"] });
+    });
+
+    expect(toast.success).toHaveBeenCalledWith("Issued 1 hire order");
+    expect(toast.warning).toHaveBeenCalledWith("1 hire order issued, but countersign delivery failed");
+    // The order counts toward "Issued 1" only -- it must not also read as a
+    // failure, which would contradict the success toast right above it.
+    expect(toast.error).not.toHaveBeenCalled();
+  });
+
+  it("keeps a genuine issue failure separate from a documenso_failed warning when both occur in the same batch", async () => {
+    vi.mocked(invokeHireOrderAction).mockResolvedValue({
+      issued: ["ho-1"],
+      failed: [
+        { order_id: "ho-1", issues: ["documenso_failed"] },
+        { order_id: "ho-2", issues: ["missing_terms"] },
+      ],
+    });
+    const { Wrapper } = wrapper();
+    const { result } = renderHook(() => useHireOrderAction(), { wrapper: Wrapper });
+
+    await act(async () => {
+      await result.current.mutateAsync({ action: "issue", org_id: "org-1", order_ids: ["ho-1", "ho-2"] });
+    });
+
+    expect(toast.success).toHaveBeenCalledWith("Issued 1 hire order");
+    // Only the genuinely-failed order (ho-2) counts toward "failed to issue" --
+    // the documenso_failed order (ho-1) does not inflate this count.
+    expect(toast.error).toHaveBeenCalledWith(
+      "1 hire order failed to issue: Add terms in Settings before issuing",
+    );
+    expect(toast.warning).toHaveBeenCalledWith("1 hire order issued, but countersign delivery failed");
+  });
+
   it("stays silent (no toast) for preview", async () => {
     vi.mocked(invokeHireOrderAction).mockResolvedValue({ pdf_base64: "abc" });
     const { Wrapper } = wrapper();
@@ -214,6 +292,48 @@ describe("useHireOrderAction", () => {
 
     expect(toast.success).not.toHaveBeenCalled();
     expect(toast.error).not.toHaveBeenCalled();
+  });
+
+  it("does NOT invalidate hire-orders for the read-only preview and download-url actions, but still does for draft/issue/draft-manual", async () => {
+    const { Wrapper, qc } = wrapper();
+    const invalidateSpy = vi.spyOn(qc, "invalidateQueries");
+    const { result } = renderHook(() => useHireOrderAction(), { wrapper: Wrapper });
+
+    // The debounced live-preview cycle on HireOrderEditPage calls `preview`
+    // roughly every 800ms while a producer types -- invalidating the whole
+    // ['hire-orders'] domain on every tick storms the table/KPI/nav-count/
+    // detail queries for a read-only action that changes nothing.
+    vi.mocked(invokeHireOrderAction).mockResolvedValue({ pdf_base64: "abc" });
+    await act(async () => {
+      await result.current.mutateAsync({ action: "preview", org_id: "org-1", order_id: "ho-1" });
+    });
+    expect(invalidateSpy).not.toHaveBeenCalled();
+
+    vi.mocked(invokeHireOrderAction).mockResolvedValue({ url: "https://signed.example/ho-1.pdf" });
+    await act(async () => {
+      await result.current.mutateAsync({ action: "download-url", org_id: "org-1", order_id: "ho-1" });
+    });
+    expect(invalidateSpy).not.toHaveBeenCalled();
+
+    vi.mocked(invokeHireOrderAction).mockResolvedValue({ created: ["ho-1"], skipped: [] });
+    await act(async () => {
+      await result.current.mutateAsync({ action: "draft", org_id: "org-1" });
+    });
+    expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: ["hire-orders"] });
+    invalidateSpy.mockClear();
+
+    vi.mocked(invokeHireOrderAction).mockResolvedValue({ issued: ["ho-1"], failed: [] });
+    await act(async () => {
+      await result.current.mutateAsync({ action: "issue", org_id: "org-1", order_ids: ["ho-1"] });
+    });
+    expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: ["hire-orders"] });
+    invalidateSpy.mockClear();
+
+    vi.mocked(invokeHireOrderAction).mockResolvedValue({ id: "ho-new" });
+    await act(async () => {
+      await result.current.mutateAsync({ action: "draft-manual", org_id: "org-1", manual: {} });
+    });
+    expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: ["hire-orders"] });
   });
 
   it("toasts an error on failure", async () => {
@@ -251,6 +371,70 @@ describe("useMarkCountersigned", () => {
     vi.mocked(updateHireOrderStatus).mockRejectedValue(new Error("stale"));
     const { Wrapper } = wrapper();
     const { result } = renderHook(() => useMarkCountersigned(), { wrapper: Wrapper });
+
+    await act(async () => {
+      await expect(result.current.mutateAsync("ho-1")).rejects.toThrow();
+    });
+
+    expect(toast.error).toHaveBeenCalledWith("stale");
+  });
+});
+
+describe("useUpdateHireOrderDraft", () => {
+  beforeEach(() => vi.clearAllMocks());
+
+  it("calls updateHireOrderDraft with id + patch, invalidates hire-orders, and stays silent on success", async () => {
+    vi.mocked(updateHireOrderDraft).mockResolvedValue(undefined);
+    const { Wrapper, qc } = wrapper();
+    const invalidateSpy = vi.spyOn(qc, "invalidateQueries");
+    const { result } = renderHook(() => useUpdateHireOrderDraft(), { wrapper: Wrapper });
+
+    const patch = { data: { fee: { value: 100, source: "manual" as const } } };
+    await act(async () => {
+      await result.current.mutateAsync({ id: "ho-1", patch });
+    });
+
+    expect(updateHireOrderDraft).toHaveBeenCalledWith(expect.anything(), "ho-1", patch);
+    expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: ["hire-orders"] });
+    expect(toast.success).not.toHaveBeenCalled();
+    expect(toast.error).not.toHaveBeenCalled();
+  });
+
+  it("toasts an error on failure", async () => {
+    vi.mocked(updateHireOrderDraft).mockRejectedValue(new Error("stale"));
+    const { Wrapper } = wrapper();
+    const { result } = renderHook(() => useUpdateHireOrderDraft(), { wrapper: Wrapper });
+
+    await act(async () => {
+      await expect(result.current.mutateAsync({ id: "ho-1", patch: { data: {} } })).rejects.toThrow();
+    });
+
+    expect(toast.error).toHaveBeenCalledWith("stale");
+  });
+});
+
+describe("useVoidHireOrder", () => {
+  beforeEach(() => vi.clearAllMocks());
+
+  it("calls updateHireOrderStatus with void, toasts, and invalidates hire-orders", async () => {
+    vi.mocked(updateHireOrderStatus).mockResolvedValue(undefined);
+    const { Wrapper, qc } = wrapper();
+    const invalidateSpy = vi.spyOn(qc, "invalidateQueries");
+    const { result } = renderHook(() => useVoidHireOrder(), { wrapper: Wrapper });
+
+    await act(async () => {
+      await result.current.mutateAsync("ho-1");
+    });
+
+    expect(updateHireOrderStatus).toHaveBeenCalledWith(expect.anything(), "ho-1", "void");
+    expect(toast.success).toHaveBeenCalledWith("Hire order voided");
+    expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: ["hire-orders"] });
+  });
+
+  it("toasts an error on failure", async () => {
+    vi.mocked(updateHireOrderStatus).mockRejectedValue(new Error("stale"));
+    const { Wrapper } = wrapper();
+    const { result } = renderHook(() => useVoidHireOrder(), { wrapper: Wrapper });
 
     await act(async () => {
       await expect(result.current.mutateAsync("ho-1")).rejects.toThrow();
