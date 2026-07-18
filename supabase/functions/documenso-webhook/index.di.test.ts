@@ -124,6 +124,47 @@ Deno.test("document.completed falls back to org admins when no producer resolves
   assert(rows.some((r) => r.user_id === "admin-1"), "falls back to notifying org admins");
 });
 
+Deno.test("document.completed for an issued order with no show_date_id (manual order) countersigns and falls back to org admins", async () => {
+  // A manual/import order has no linked show_date, so show_dates comes back null
+  // from the embedded select. resolve_show_assignments is left unseeded (defaults
+  // to { data: null, error: null }) and we assert it is never even called -- the
+  // handler must skip straight to the org-admin fallback rather than reaching for
+  // a show_date that doesn't exist.
+  const { deps, calls } = makeFakeDeps({
+    envVars: { DOCUMENSO_WEBHOOK_SECRET: SECRET },
+    now: new Date("2026-07-18T15:30:00.000Z"),
+    tables: {
+      hire_orders: { data: issuedOrder({ show_date_id: null, show_dates: null }) },
+      org_memberships: { data: [{ user_id: "admin-1" }] },
+    },
+  });
+
+  const res = await handle(
+    makeRequest({ headers: { "X-Documenso-Secret": SECRET }, body: documentCompletedBody() }),
+    deps,
+  );
+  assertEquals(res.status, 200);
+  assertEquals((await res.json()).countersigned, true);
+
+  const update = calls.find((c) => c.table === "hire_orders" && c.method === "update");
+  assert(update, "expected a hire_orders update even for an unlinked order");
+  const patch = update!.args[0] as { status: string; countersigned_at: string };
+  assertEquals(patch.status, "countersigned");
+  assertEquals(patch.countersigned_at, "2026-07-18T15:30:00.000Z");
+
+  assertEquals(
+    calls.filter((c) => c.table === "rpc:resolve_show_assignments").length,
+    0,
+    "resolve_show_assignments must not be called when the order has no show_date",
+  );
+
+  const notifInserts = calls.filter((c) => c.table === "notifications" && c.method === "insert");
+  assertEquals(notifInserts.length, 1, "producer notification inserted exactly once");
+  const rows = notifInserts[0].args[0] as Array<{ user_id: string; type: string }>;
+  assert(rows.some((r) => r.user_id === "admin-1"), "falls back to notifying org admins for an unlinked order");
+  assert(rows.every((r) => r.type === "hire_order_countersigned"));
+});
+
 Deno.test("unknown envelope id -> 200 ignored, no status change", async () => {
   const { deps, calls } = makeFakeDeps({
     envVars: { DOCUMENSO_WEBHOOK_SECRET: SECRET },
@@ -153,6 +194,34 @@ Deno.test("duplicate delivery (already countersigned) is an idempotent no-op", a
 
   assertEquals(calls.filter((c) => c.table === "hire_orders" && c.method === "update").length, 0, "no re-stamp");
   assertEquals(calls.filter((c) => c.table === "notifications" && c.method === "insert").length, 0, "no second notification");
+});
+
+Deno.test("document.completed for a matched but not-yet-issued order is ignored (no transition, no notification)", async () => {
+  // Distinct from the already-countersigned idempotent case above: this is the
+  // OTHER branch of the status guard -- a draft/void order that was never
+  // actually issued but somehow has a Documenso envelope id on file.
+  const { deps, calls } = makeFakeDeps({
+    envVars: { DOCUMENSO_WEBHOOK_SECRET: SECRET },
+    tables: { hire_orders: { data: issuedOrder({ status: "draft" }) } },
+  });
+
+  const res = await handle(
+    makeRequest({ headers: { "X-Documenso-Secret": SECRET }, body: documentCompletedBody() }),
+    deps,
+  );
+  assertEquals(res.status, 200);
+  assertEquals((await res.json()).ignored, true);
+
+  assertEquals(
+    calls.filter((c) => c.table === "hire_orders" && c.method === "update").length,
+    0,
+    "a non-issued order must not be transitioned to countersigned",
+  );
+  assertEquals(
+    calls.filter((c) => c.table === "notifications" && c.method === "insert").length,
+    0,
+    "a non-issued order must not trigger a countersigned notification",
+  );
 });
 
 Deno.test("other event types are ignored without touching the db", async () => {
