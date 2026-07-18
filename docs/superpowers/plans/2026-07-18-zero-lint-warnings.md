@@ -26,7 +26,7 @@
 
 ## Decisions locked in (approved trade-offs)
 
-- **Context split (Task 5)** is the highest-churn task (~55 importer files + test mock paths). It is the honest fix for fast-refresh on `AuthContext`/`EditorContext`/`ConsentContext`. The lighter alternative (disable the rule for `*Context.tsx`) was rejected when Option A was chosen.
+- **Context files are exempted, not split (Task 5)** — decision revised at plan approval (2026-07-18): the provider+hook split would touch ~55 importer files plus test mock paths for a dev-experience-only benefit (fast refresh on context edits), which is the wrong risk profile for a cleanup whose success metric is "nothing changed behaviorally". Instead, a three-file ESLint carve-out disables `react-refresh/only-export-components` for the context modules, with the split deferred to a future standalone PR (which would simply delete the carve-out). Hook import paths and test mock paths are therefore UNCHANGED throughout this plan.
 - **`ComponentType` in the email registry** takes one explicit `as React.ComponentType<TemplateData>` cast per template registration (10 casts). This is the standard variance workaround; the cast names its target type, which is the boundary style we are standardizing on.
 - **Deno `Database` types are a mirrored copy** of `src/integrations/supabase/types.ts` (the two runtimes can't share an import — same reason as `entitlements.ts`). A Vitest sync test enforces byte-equality so drift fails CI.
 
@@ -287,35 +287,50 @@ git commit -m "move constants and pure helpers out of component modules"
 
 ---
 
-### Task 5: Split context hooks into their own modules
+### Task 5: Exempt the context modules from the fast-refresh rule
+
+*(Revised at plan approval — see "Decisions locked in". The provider+hook split is deferred to a future standalone PR; this task is the three-file carve-out.)*
 
 **Files:**
-- Create: `src/features/auth/context.ts` — the `createContext` object + the context value type (move both out of `AuthContext.tsx`).
-- Create: `src/features/auth/useAuth.ts` — `useAuth` (AuthContext.tsx:208) and `useEffectiveUserId` (AuthContext.tsx:202), importing the context object from `./context`.
-- Modify: `src/features/auth/AuthContext.tsx` — keep ONLY the `AuthProvider` component (imports from `./context`).
-- Create: `src/features/editor/context.ts` + `src/features/editor/useEditor.ts` — move `useEditor` (:244), `useEditorConfig` (:251), `useColumnTemplate` (:266), `useTablePermission` (:289); `EditorContext.tsx` keeps only the provider.
-- Create: `src/features/consent/context.ts` + `src/features/consent/useConsent.ts` — move `useConsent` (ConsentContext.tsx:91); `ConsentContext.tsx` keeps only `ConsentProvider`.
-- Modify: every importer — `grep -rln "from '@/features/auth/AuthContext'" src e2e` (30 files), same for editor (18) and consent (5). Change only the hook imports to the new module; provider imports (App.tsx / main.tsx / renderWithProviders) keep pointing at the provider files.
-- Modify: every test that mocks a hook via the old path: `grep -rn "vi.mock('@/features/auth/AuthContext'" src` → `vi.mock('@/features/auth/useAuth', ...)` etc. A test that mocks BOTH provider and hook needs two `vi.mock` calls.
+- Modify: `eslint.config.js` — extend the Task-1 exemption block.
 
 **Interfaces:**
-- Produces: `useAuth()`, `useEffectiveUserId()`, `useEditor()`, `useEditorConfig()`, `useColumnTemplate(pageKey)`, `useTablePermission(tableKey)`, `useConsent()` — identical signatures, new import paths. Task 13's mock-path sweep and Task 15's CLAUDE.md updates depend on these paths.
+- Produces: nothing. Hook import paths (`@/features/auth/AuthContext` etc.) and test mock paths are unchanged everywhere.
 
-- [ ] **Step 1: Split auth (create context.ts + useAuth.ts, slim AuthContext.tsx)**
-- [ ] **Step 2: Update auth importers + test mock paths; run `npx vitest run src/features/auth src/components src/pages 2>&1 | tail -3`** → pass.
-- [ ] **Step 3: Split editor the same way; update 18 importers; run affected tests** → pass.
-- [ ] **Step 4: Split consent the same way; update 5 importers; run affected tests** → pass.
-- [ ] **Step 5: Verify rule is fully clean**
+- [ ] **Step 1: Add the context files to the react-refresh exemption block**
+
+In `eslint.config.js`, change the shadcn/test-harness exemption block to:
+
+```js
+  // shadcn primitives are generated (never hand-edited) and the test harness
+  // is never HMR'd — fast-refresh hygiene is meaningless in both. The three
+  // context modules deliberately co-locate provider + hooks (editing them
+  // full-reloads the dev server; accepted). Splitting them for fast refresh
+  // is deferred to a standalone PR — that PR deletes this carve-out.
+  {
+    files: [
+      "src/components/ui/**",
+      "src/test/**",
+      "src/features/auth/AuthContext.tsx",
+      "src/features/editor/EditorContext.tsx",
+      "src/features/consent/ConsentContext.tsx",
+    ],
+    rules: { "react-refresh/only-export-components": "off" },
+  },
+```
+
+- [ ] **Step 2: Verify rule is fully clean**
 
 Run: `npm run lint 2>&1 | grep -c only-export-components || true`
 Expected: `0`
 
-- [ ] **Step 6: Full gate: `npx vitest run` (all 1164) + `npx tsc -p tsconfig.app.json --noEmit`** → pass.
-- [ ] **Step 7: Commit**
+- [ ] **Step 3: Sanity gate: `npx vitest run 2>&1 | tail -3`** → 158 files / 1164 tests pass (config-only change; counts identical).
+
+- [ ] **Step 4: Commit**
 
 ```bash
-git add -A
-git commit -m "split context hooks into dedicated modules for fast refresh"
+git add eslint.config.js
+git commit -m "exempt context modules from fast-refresh lint rule"
 ```
 
 ---
@@ -727,7 +742,7 @@ export function partialMock<T>(partial: Partial<T>): T {
 
 - [ ] **Step 4: Run test** → PASS. Commit the helpers alone: `git add src/test/castHelpers.* && git commit -m "add typed cast helpers for test stubs"`.
 - [ ] **Step 5: Sweep the test files, three idioms:**
-  - `vi.mocked(useX).mockReturnValue({ ... } as any)` → `vi.mocked(useX).mockReturnValue(asQueryResult({ ... }))` for query hooks; `partialMock<ReturnType<typeof useAuth>>({ ... })` for context hooks (import the hook's type from its Task 5 module).
+  - `vi.mocked(useX).mockReturnValue({ ... } as any)` → `vi.mocked(useX).mockReturnValue(asQueryResult({ ... }))` for query hooks; `partialMock<ReturnType<typeof useAuth>>({ ... })` for context hooks (import the hook from its context module — paths unchanged; Task 5 did not move them).
   - Ad-hoc fake-client chain objects (`useArtistEligibleDates.test.ts`'s `} as any;` blocks, `useEligibleArtists`, `useChatParticipant`): keep the stub object literal exactly as-is, remove the per-object `as any`, funnel the outermost value through `asSupabase(...)` (or `partialMock<...>` when the mock target is a chain fragment — worked example for the dominant idiom:
 
 ```ts
@@ -798,7 +813,7 @@ git commit -m "type deno edge function test stubs"
   `_shared/testing.ts` `asTypedClient`) — one cast inside the helper, never `as any`.
 ```
 
-  3. **Architecture tree + key-files table**: update the moved paths — `features/auth/` now lists `AuthContext.tsx` (provider), `useAuth.ts` (hooks), `context.ts`, `realtimeInvalidations.ts`; same treatment for `features/editor/` and `features/consent/`; add `supabase/functions/_shared/database.types.ts` to the key-files table with "mirror of `src/integrations/supabase/types.ts` (dual-home, sync-tested — regenerate both together)".
+  3. **Architecture tree + key-files table**: `features/auth/` additionally lists `realtimeInvalidations.ts` (moved in Task 4); mention the moved modules from Task 4 where the tree names their old homes (`lib/` gains `singleFlight.ts`, `hireOrders/kpis.ts`); add `supabase/functions/_shared/database.types.ts` to the key-files table with "mirror of `src/integrations/supabase/types.ts` (dual-home, sync-tested — regenerate both together)". Context file paths are unchanged (Task 5 exemption).
   4. **Things to avoid**: add `- Casting Supabase rows or clients with \`as any\` — use an explicit row interface + single \`as unknown as\` cast at the query boundary, or the typed test helpers.`
 - Modify: remove any straggler suppression comments: `grep -rn "eslint-disable.*no-explicit-any" src supabase e2e` → delete each (they're all obsolete now).
 
