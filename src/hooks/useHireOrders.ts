@@ -109,6 +109,11 @@ export const ISSUE_FAILURE_COPY: Record<string, string> = {
   missing_date: "Set a show date before issuing",
   missing_letterhead: "Add a letterhead in Settings before issuing",
   already_issued: "Already issued",
+  // Not a real issue failure: the document was rendered, uploaded, and stamped
+  // issued -- generate-hire-orders' Documenso branch reports this as a warning
+  // alongside a successful issue (see the failure-containment note in
+  // issueOne), so the toast must never read as "the order was not issued".
+  documenso_failed: "Order issued, but countersign delivery failed",
 };
 
 /** Unique, human-readable reasons across every failed order's issue codes. */

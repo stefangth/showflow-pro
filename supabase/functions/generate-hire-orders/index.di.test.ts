@@ -511,6 +511,205 @@ Deno.test("issue is idempotent per order (already issued -> failed with already_
   assert(body.failed[0].issues.includes("already_issued"));
 });
 
+// ── documenso countersign ────────────────────────────────────────────────
+
+/** A fake fetch that plays back the create -> recipient -> distribute sequence
+ *  createAndSendEnvelope issues, keyed by URL suffix (order-independent). */
+function fakeDocumensoFetch(): { fetchImpl: typeof fetch; calls: Array<{ url: string; init?: RequestInit }> } {
+  const calls: Array<{ url: string; init?: RequestInit }> = [];
+  const fetchImpl = ((url: string | URL | Request, init?: RequestInit) => {
+    const u = String(url);
+    calls.push({ url: u, init });
+    if (u.endsWith("/envelope/create")) {
+      return Promise.resolve(new Response(JSON.stringify({ id: "envelope_1" }), { status: 200 }));
+    }
+    if (u.endsWith("/recipient/create-many")) {
+      return Promise.resolve(new Response(JSON.stringify({ data: [{ token: "sign-tok" }] }), { status: 200 }));
+    }
+    if (u.endsWith("/distribute")) {
+      return Promise.resolve(new Response("{}", { status: 200 }));
+    }
+    return Promise.resolve(new Response("{}", { status: 200 }));
+  }) as typeof fetch;
+  return { fetchImpl, calls };
+}
+
+Deno.test("issue sends a Documenso envelope when countersign mode is documenso: stamps the order and carries signing_url in the email", async () => {
+  const { fetchImpl, calls: docCalls } = fakeDocumensoFetch();
+  const { deps, calls, invokeCalls } = makeFakeDeps({
+    authUser: { id: "u-admin" },
+    fetchImpl,
+    envVars: { DOCUMENSO_API_TOKEN: "tok-secret" },
+    tables: {
+      org_memberships: { data: { role: "admin" } },
+      hire_orders: [
+        { when: { __write: false }, data: issuableOrder() },
+        { when: { __write: true }, data: null },
+      ],
+      artists: { data: { user_id: "u-artist" } },
+      app_settings: [
+        { when: { key: "hire_order_letterhead" }, data: [LETTERHEAD] },
+        { when: { key: "hire_order_terms" }, data: [TERMS_FILLED] },
+        { when: { key: "hire_order_defaults" }, data: [DEFAULTS] },
+        {
+          when: { key: "hire_order_countersign" },
+          data: [{ org_id: ORG, value: { mode: "documenso", base_url: "https://documenso.test" } }],
+        },
+      ],
+    },
+  });
+
+  const res = await handle(makeRequest({ headers: JWT, body: { action: "issue", org_id: ORG, order_ids: ["o-1"] } }), deps);
+  const body = await res.json();
+  assertEquals(body.issued, ["o-1"]);
+  assertEquals(body.failed, []);
+
+  assertEquals(docCalls.length, 3, "expected the create -> recipient -> distribute sequence");
+  for (const c of docCalls) {
+    const headers = new Headers(c.init?.headers);
+    assertEquals(headers.get("Authorization"), "Bearer tok-secret");
+  }
+
+  const csUpdate = calls.find(
+    (c) => c.table === "hire_orders" && c.method === "update" && "countersign_mode" in (c.args[0] as object),
+  );
+  assert(csUpdate, "expected a countersign_mode/documenso_envelope_id update");
+  const csRow = csUpdate!.args[0] as { countersign_mode: string; documenso_envelope_id: string };
+  assertEquals(csRow.countersign_mode, "documenso");
+  assertEquals(csRow.documenso_envelope_id, "envelope_1");
+
+  const email = invokeCalls.find((c) => c.name === "send-transactional-email");
+  assert(email, "expected the issued email");
+  const td = (email!.body as { templateData: Record<string, unknown> }).templateData;
+  assertEquals(td.countersign_mode, "documenso");
+  assertEquals(td.signing_url, "https://documenso.test/sign/sign-tok");
+});
+
+Deno.test("issue never calls Documenso when countersign mode is manual", async () => {
+  let fetchCalls = 0;
+  const fetchImpl = (() => {
+    fetchCalls++;
+    return Promise.resolve(new Response("{}", { status: 200 }));
+  }) as typeof fetch;
+  const { deps } = makeFakeDeps({
+    authUser: { id: "u-admin" },
+    fetchImpl,
+    tables: {
+      org_memberships: { data: { role: "admin" } },
+      hire_orders: [
+        { when: { __write: false }, data: issuableOrder() },
+        { when: { __write: true }, data: null },
+      ],
+      artists: { data: { user_id: "u-artist" } },
+      app_settings: [
+        { when: { key: "hire_order_letterhead" }, data: [LETTERHEAD] },
+        { when: { key: "hire_order_terms" }, data: [TERMS_FILLED] },
+        { when: { key: "hire_order_defaults" }, data: [DEFAULTS] },
+        { when: { key: "hire_order_countersign" }, data: [{ org_id: ORG, value: { mode: "manual" } }] },
+      ],
+    },
+  });
+
+  const res = await handle(makeRequest({ headers: JWT, body: { action: "issue", org_id: ORG, order_ids: ["o-1"] } }), deps);
+  const body = await res.json();
+  assertEquals(body.issued, ["o-1"]);
+  assertEquals(fetchCalls, 0, "manual mode must never call Documenso");
+});
+
+Deno.test("issue keeps the order issued with a documenso_failed warning when Documenso errors (never un-issues)", async () => {
+  const fetchImpl = (() => Promise.resolve(new Response("unauthorized", { status: 401 }))) as typeof fetch;
+  const { deps, calls, invokeCalls } = makeFakeDeps({
+    authUser: { id: "u-admin" },
+    fetchImpl,
+    envVars: { DOCUMENSO_API_TOKEN: "tok-secret" },
+    tables: {
+      org_memberships: { data: { role: "admin" } },
+      hire_orders: [
+        { when: { __write: false }, data: issuableOrder() },
+        { when: { __write: true }, data: null },
+      ],
+      artists: { data: { user_id: "u-artist" } },
+      app_settings: [
+        { when: { key: "hire_order_letterhead" }, data: [LETTERHEAD] },
+        { when: { key: "hire_order_terms" }, data: [TERMS_FILLED] },
+        { when: { key: "hire_order_defaults" }, data: [DEFAULTS] },
+        {
+          when: { key: "hire_order_countersign" },
+          data: [{ org_id: ORG, value: { mode: "documenso", base_url: "https://documenso.test" } }],
+        },
+      ],
+    },
+  });
+
+  const res = await handle(makeRequest({ headers: JWT, body: { action: "issue", org_id: ORG, order_ids: ["o-1"] } }), deps);
+  const body = await res.json();
+  assertEquals(body.issued, ["o-1"], "the document stays issued despite the Documenso failure");
+  assertEquals(body.failed, [{ order_id: "o-1", issues: ["documenso_failed"] }]);
+
+  const csUpdate = calls.find(
+    (c) => c.table === "hire_orders" && c.method === "update" && "countersign_mode" in (c.args[0] as object),
+  );
+  assert(csUpdate, "expected a countersign_mode fallback update");
+  assertEquals((csUpdate!.args[0] as { countersign_mode: string }).countersign_mode, "manual");
+
+  const email = invokeCalls.find((c) => c.name === "send-transactional-email");
+  assert(email, "expected the issued email to still send");
+  const td = (email!.body as { templateData: Record<string, unknown> }).templateData;
+  assertEquals(td.countersign_mode, "manual");
+  assertEquals(td.signing_url, undefined);
+});
+
+Deno.test("countersign-test is admin-only, checks connectivity, and never leaks the token", async () => {
+  const fetchImpl = (() => Promise.resolve(new Response(JSON.stringify({ data: [] }), { status: 200 }))) as typeof fetch;
+
+  // Producer passes the coarse draft/issue gate but must be rejected here (admin-only).
+  const producer = makeFakeDeps({
+    authUser: { id: "u-producer" },
+    fetchImpl,
+    envVars: { DOCUMENSO_API_TOKEN: "tok-secret" },
+    tables: { org_memberships: { data: { role: "producer" } } },
+  });
+  const producerRes = await handle(
+    makeRequest({ headers: JWT, body: { action: "countersign-test", org_id: ORG, base_url: "https://documenso.test" } }),
+    producer.deps,
+  );
+  assertEquals(producerRes.status, 403);
+
+  const admin = makeFakeDeps({
+    authUser: { id: "u-admin" },
+    fetchImpl,
+    envVars: { DOCUMENSO_API_TOKEN: "tok-secret" },
+    tables: { org_memberships: { data: { role: "admin" } } },
+  });
+  const adminRes = await handle(
+    makeRequest({ headers: JWT, body: { action: "countersign-test", org_id: ORG, base_url: "https://documenso.test" } }),
+    admin.deps,
+  );
+  assertEquals(adminRes.status, 200);
+  const adminBody = await adminRes.json();
+  assertEquals(adminBody.ok, true);
+  assert(typeof adminBody.detail === "string");
+  assert(!JSON.stringify(adminBody).includes("tok-secret"), "the token must never be echoed back");
+});
+
+Deno.test("countersign-test reports ok:false without throwing when Documenso is unreachable/unauthorized", async () => {
+  const fetchImpl = (() => Promise.resolve(new Response("unauthorized", { status: 401 }))) as typeof fetch;
+  const { deps } = makeFakeDeps({
+    authUser: { id: "u-admin" },
+    fetchImpl,
+    envVars: { DOCUMENSO_API_TOKEN: "tok-secret" },
+    tables: { org_memberships: { data: { role: "admin" } } },
+  });
+  const res = await handle(
+    makeRequest({ headers: JWT, body: { action: "countersign-test", org_id: ORG, base_url: "https://documenso.test" } }),
+    deps,
+  );
+  assertEquals(res.status, 200, "connectivity failures are reported in the body, never a 500");
+  const resBody = await res.json();
+  assertEquals(resBody.ok, false);
+  assert(typeof resBody.detail === "string" && resBody.detail.length > 0);
+});
+
 Deno.test("order number collisions get -2 suffix", async () => {
   const { deps, calls } = makeFakeDeps({
     authUser: { id: "u-admin" },
