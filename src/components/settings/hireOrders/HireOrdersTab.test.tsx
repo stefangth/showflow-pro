@@ -104,14 +104,16 @@ describe("HireOrdersTab", () => {
     expect(screen.queryByRole("button", { name: /test connection/i })).not.toBeInTheDocument();
 
     fireEvent.click(screen.getByRole("radio", { name: /documenso/i }));
-    expect(screen.getByLabelText("Documenso instance URL")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /test connection/i })).toBeInTheDocument();
-    // Copy makes clear the token is configured server-side, not entered in this card.
+    // Copy makes clear the token AND instance URL are configured server-side, not
+    // entered in this card (the base URL is operator-controlled only — see the
+    // documenso base-url SSRF/secret-exfiltration fix).
     expect(screen.getByText(/configured server-side by the platform operator/i)).toBeInTheDocument();
+    expect(screen.queryByLabelText("Documenso instance URL")).not.toBeInTheDocument();
     expect(screen.queryByLabelText(/api token/i)).not.toBeInTheDocument();
   });
 
-  it("Test connection invokes countersign-test with the org id and base url, and shows the result inline", async () => {
+  it("Test connection invokes countersign-test with the org id only (no base url), and shows the result inline", async () => {
     seedClient({
       ...OK_SEED,
       "fn:generate-hire-orders": { data: { ok: true, detail: "Connected" }, error: null },
@@ -121,9 +123,6 @@ describe("HireOrdersTab", () => {
     await screen.findByText("Countersign mode");
     fireEvent.click(screen.getByRole("radio", { name: /documenso/i }));
 
-    fireEvent.change(screen.getByLabelText("Documenso instance URL"), {
-      target: { value: "https://documenso.example.com" },
-    });
     fireEvent.click(screen.getByRole("button", { name: /test connection/i }));
 
     await screen.findByText("Connected");
@@ -131,10 +130,10 @@ describe("HireOrdersTab", () => {
     const calls = client.calls as { table: string; method: string; args: unknown[] }[];
     const invoke = calls.find((c) => c.table === "fn:generate-hire-orders");
     expect(invoke).toBeDefined();
-    const body = invoke!.args[0] as { action: string; org_id: string; base_url: string };
+    const body = invoke!.args[0] as { action: string; org_id: string; base_url?: string };
     expect(body.action).toBe("countersign-test");
     expect(body.org_id).toBe("org-on");
-    expect(body.base_url).toBe("https://documenso.example.com");
+    expect(body.base_url).toBeUndefined();
   });
 
   it("Test connection shows a destructive result when the check fails", async () => {

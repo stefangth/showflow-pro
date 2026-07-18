@@ -347,6 +347,86 @@ Deno.test("draft-manual 403s when hire_orders entitlement is off", async () => {
   assertEquals(res.status, 403);
 });
 
+Deno.test("draft-manual rejects a non-numeric manual fee with 400 invalid_fee instead of silently nulling it", async () => {
+  const { deps, calls } = makeFakeDeps({
+    authUser: { id: "u-admin" },
+    tables: {
+      org_memberships: { data: { role: "admin" } },
+      hire_orders: [
+        { when: { __write: false }, data: [] },
+        { when: { __write: true }, data: { id: "ho-should-not-be-created" } },
+      ],
+      app_settings: [
+        { when: { key: "hire_order_defaults" }, data: [DEFAULTS] },
+        { when: { key: "hire_order_numbering" }, data: [NUMBERING] },
+      ],
+    },
+  });
+  const res = await handle(
+    makeRequest({ headers: JWT, body: { action: "draft-manual", org_id: ORG, manual: { fee: "not-a-number" } } }),
+    deps,
+  );
+  assertEquals(res.status, 400);
+  assertEquals(await res.json(), { error: "invalid_fee" });
+  assertEquals(
+    calls.filter((c) => c.table === "hire_orders" && c.method === "insert").length,
+    0,
+    "an invalid fee must reject before any insert",
+  );
+});
+
+Deno.test("draft-manual creates the order with the numeric fee when a valid manual fee is given", async () => {
+  const { deps, calls } = makeFakeDeps({
+    authUser: { id: "u-admin" },
+    tables: {
+      org_memberships: { data: { role: "admin" } },
+      hire_orders: [
+        { when: { __write: false }, data: [] },
+        { when: { __write: true }, data: { id: "ho-fee-ok" } },
+      ],
+      app_settings: [
+        { when: { key: "hire_order_defaults" }, data: [DEFAULTS] },
+        { when: { key: "hire_order_numbering" }, data: [NUMBERING] },
+      ],
+    },
+  });
+  const res = await handle(
+    makeRequest({ headers: JWT, body: { action: "draft-manual", org_id: ORG, manual: { fee: 500 } } }),
+    deps,
+  );
+  assertEquals(res.status, 200);
+  assertEquals((await res.json()).created, ["ho-fee-ok"]);
+  const insert = calls.find((c) => c.table === "hire_orders" && c.method === "insert");
+  assert(insert, "expected a hire_orders insert");
+  assertEquals((insert!.args[0] as { fee_amount: number | null }).fee_amount, 500);
+});
+
+Deno.test("draft-manual creates the order with a null fee when no manual fee is given", async () => {
+  const { deps, calls } = makeFakeDeps({
+    authUser: { id: "u-admin" },
+    tables: {
+      org_memberships: { data: { role: "admin" } },
+      hire_orders: [
+        { when: { __write: false }, data: [] },
+        { when: { __write: true }, data: { id: "ho-fee-null" } },
+      ],
+      app_settings: [
+        { when: { key: "hire_order_defaults" }, data: [DEFAULTS] },
+        { when: { key: "hire_order_numbering" }, data: [NUMBERING] },
+      ],
+    },
+  });
+  const res = await handle(
+    makeRequest({ headers: JWT, body: { action: "draft-manual", org_id: ORG, manual: { venue: "The Loft" } } }),
+    deps,
+  );
+  assertEquals(res.status, 200);
+  assertEquals((await res.json()).created, ["ho-fee-null"]);
+  const insert = calls.find((c) => c.table === "hire_orders" && c.method === "insert");
+  assert(insert, "expected a hire_orders insert");
+  assertEquals((insert!.args[0] as { fee_amount: number | null }).fee_amount, null);
+});
+
 // ── issue ──────────────────────────────────────────────────────────────
 
 function issuableOrder(overrides: Record<string, unknown> = {}) {
@@ -539,7 +619,9 @@ Deno.test("issue sends a Documenso envelope when countersign mode is documenso: 
   const { deps, calls, invokeCalls } = makeFakeDeps({
     authUser: { id: "u-admin" },
     fetchImpl,
-    envVars: { DOCUMENSO_API_TOKEN: "tok-secret" },
+    // The base URL is OPERATOR-controlled only, via this edge secret — never the
+    // per-org setting (see the ignored `base_url` below, a different host entirely).
+    envVars: { DOCUMENSO_API_TOKEN: "tok-secret", DOCUMENSO_BASE_URL: "https://documenso.test" },
     tables: {
       org_memberships: { data: { role: "admin" } },
       hire_orders: [
@@ -552,8 +634,10 @@ Deno.test("issue sends a Documenso envelope when countersign mode is documenso: 
         { when: { key: "hire_order_terms" }, data: [TERMS_FILLED] },
         { when: { key: "hire_order_defaults" }, data: [DEFAULTS] },
         {
+          // An attacker-controlled (or merely stale) org setting base_url that MUST
+          // be ignored — the shared DOCUMENSO_API_TOKEN would otherwise leak to it.
           when: { key: "hire_order_countersign" },
-          data: [{ org_id: ORG, value: { mode: "documenso", base_url: "https://documenso.test" } }],
+          data: [{ org_id: ORG, value: { mode: "documenso", base_url: "https://attacker.example.com" } }],
         },
       ],
     },
@@ -566,6 +650,10 @@ Deno.test("issue sends a Documenso envelope when countersign mode is documenso: 
 
   assertEquals(docCalls.length, 3, "expected the create -> recipient -> distribute sequence");
   for (const c of docCalls) {
+    assert(
+      c.url.startsWith("https://documenso.test/"),
+      `expected the env-configured host, not the org setting's base_url: ${c.url}`,
+    );
     const headers = new Headers(c.init?.headers);
     // Documenso API v1 uses the raw api_... token with no "Bearer " scheme.
     assertEquals(headers.get("Authorization"), "tok-secret");
@@ -622,7 +710,7 @@ Deno.test("issue keeps the order issued with a documenso_failed warning when Doc
   const { deps, calls, invokeCalls } = makeFakeDeps({
     authUser: { id: "u-admin" },
     fetchImpl,
-    envVars: { DOCUMENSO_API_TOKEN: "tok-secret" },
+    envVars: { DOCUMENSO_API_TOKEN: "tok-secret", DOCUMENSO_BASE_URL: "https://documenso.test" },
     tables: {
       org_memberships: { data: { role: "admin" } },
       hire_orders: [
@@ -636,7 +724,7 @@ Deno.test("issue keeps the order issued with a documenso_failed warning when Doc
         { when: { key: "hire_order_defaults" }, data: [DEFAULTS] },
         {
           when: { key: "hire_order_countersign" },
-          data: [{ org_id: ORG, value: { mode: "documenso", base_url: "https://documenso.test" } }],
+          data: [{ org_id: ORG, value: { mode: "documenso" } }],
         },
       ],
     },
@@ -660,7 +748,7 @@ Deno.test("issue keeps the order issued with a documenso_failed warning when Doc
   assertEquals(td.signing_url, undefined);
 });
 
-Deno.test("countersign-test is admin-only, checks connectivity, and never leaks the token", async () => {
+Deno.test("countersign-test is admin-only, checks connectivity against the env-configured host, and never leaks the token", async () => {
   const producerCalls: Array<{ url: string; init?: RequestInit }> = [];
   const producerFetchImpl = ((url: string | URL | Request, init?: RequestInit) => {
     producerCalls.push({ url: String(url), init });
@@ -668,14 +756,16 @@ Deno.test("countersign-test is admin-only, checks connectivity, and never leaks 
   }) as typeof fetch;
 
   // Producer passes the coarse draft/issue gate but must be rejected here (admin-only).
+  // The request body's base_url is attacker-controllable and MUST be ignored — see
+  // the admin assertions below, which prove the real request goes to the env host.
   const producer = makeFakeDeps({
     authUser: { id: "u-producer" },
     fetchImpl: producerFetchImpl,
-    envVars: { DOCUMENSO_API_TOKEN: "tok-secret" },
+    envVars: { DOCUMENSO_API_TOKEN: "tok-secret", DOCUMENSO_BASE_URL: "https://documenso.test" },
     tables: { org_memberships: { data: { role: "producer" } } },
   });
   const producerRes = await handle(
-    makeRequest({ headers: JWT, body: { action: "countersign-test", org_id: ORG, base_url: "https://documenso.test" } }),
+    makeRequest({ headers: JWT, body: { action: "countersign-test", org_id: ORG, base_url: "https://attacker.example.com" } }),
     producer.deps,
   );
   assertEquals(producerRes.status, 403);
@@ -688,11 +778,12 @@ Deno.test("countersign-test is admin-only, checks connectivity, and never leaks 
   const admin = makeFakeDeps({
     authUser: { id: "u-admin" },
     fetchImpl: adminFetchImpl,
-    envVars: { DOCUMENSO_API_TOKEN: "tok-secret" },
+    envVars: { DOCUMENSO_API_TOKEN: "tok-secret", DOCUMENSO_BASE_URL: "https://documenso.test" },
     tables: { org_memberships: { data: { role: "admin" } } },
   });
   const adminRes = await handle(
-    makeRequest({ headers: JWT, body: { action: "countersign-test", org_id: ORG, base_url: "https://documenso.test" } }),
+    // A body-supplied base_url (attacker or otherwise) is IGNORED entirely.
+    makeRequest({ headers: JWT, body: { action: "countersign-test", org_id: ORG, base_url: "https://attacker.example.com" } }),
     admin.deps,
   );
   assertEquals(adminRes.status, 200);
@@ -702,13 +793,21 @@ Deno.test("countersign-test is admin-only, checks connectivity, and never leaks 
   assert(!JSON.stringify(adminBody).includes("tok-secret"), "the token must never be echoed back");
 
   assertEquals(adminCalls.length, 1, "expected a single Documenso connectivity check request");
+  assert(
+    adminCalls[0].url.startsWith("https://documenso.test/"),
+    `expected the env-configured host, not the body's base_url: ${adminCalls[0].url}`,
+  );
   const headers = new Headers(adminCalls[0].init?.headers);
   // Documenso API v1 uses the raw api_... token with no "Bearer " scheme.
   assertEquals(headers.get("Authorization"), "tok-secret");
 });
 
-Deno.test("countersign-test reports ok:false without throwing when Documenso is unreachable/unauthorized", async () => {
-  const fetchImpl = (() => Promise.resolve(new Response("unauthorized", { status: 401 }))) as typeof fetch;
+Deno.test("countersign-test falls back to the hosted app.documenso.com when DOCUMENSO_BASE_URL is unset", async () => {
+  const calls: Array<{ url: string }> = [];
+  const fetchImpl = ((url: string | URL | Request) => {
+    calls.push({ url: String(url) });
+    return Promise.resolve(new Response(JSON.stringify({ data: [] }), { status: 200 }));
+  }) as typeof fetch;
   const { deps } = makeFakeDeps({
     authUser: { id: "u-admin" },
     fetchImpl,
@@ -716,7 +815,44 @@ Deno.test("countersign-test reports ok:false without throwing when Documenso is 
     tables: { org_memberships: { data: { role: "admin" } } },
   });
   const res = await handle(
-    makeRequest({ headers: JWT, body: { action: "countersign-test", org_id: ORG, base_url: "https://documenso.test" } }),
+    makeRequest({ headers: JWT, body: { action: "countersign-test", org_id: ORG } }),
+    deps,
+  );
+  assertEquals(res.status, 200);
+  assertEquals(calls.length, 1);
+  assert(calls[0].url.startsWith("https://app.documenso.com/"));
+});
+
+Deno.test("countersign-test rejects a non-https DOCUMENSO_BASE_URL instead of silently falling back", async () => {
+  let fetchCalls = 0;
+  const fetchImpl = (() => { fetchCalls++; return Promise.resolve(new Response("{}", { status: 200 })); }) as typeof fetch;
+  const { deps } = makeFakeDeps({
+    authUser: { id: "u-admin" },
+    fetchImpl,
+    envVars: { DOCUMENSO_API_TOKEN: "tok-secret", DOCUMENSO_BASE_URL: "http://insecure.example.com" },
+    tables: { org_memberships: { data: { role: "admin" } } },
+  });
+  const res = await handle(
+    makeRequest({ headers: JWT, body: { action: "countersign-test", org_id: ORG } }),
+    deps,
+  );
+  assertEquals(res.status, 200, "connectivity failures are reported in the body, never a 500");
+  const body = await res.json();
+  assertEquals(body.ok, false);
+  assertEquals(body.detail, "documenso_base_url_invalid");
+  assertEquals(fetchCalls, 0, "must never call an insecure host");
+});
+
+Deno.test("countersign-test reports ok:false without throwing when Documenso is unreachable/unauthorized", async () => {
+  const fetchImpl = (() => Promise.resolve(new Response("unauthorized", { status: 401 }))) as typeof fetch;
+  const { deps } = makeFakeDeps({
+    authUser: { id: "u-admin" },
+    fetchImpl,
+    envVars: { DOCUMENSO_API_TOKEN: "tok-secret", DOCUMENSO_BASE_URL: "https://documenso.test" },
+    tables: { org_memberships: { data: { role: "admin" } } },
+  });
+  const res = await handle(
+    makeRequest({ headers: JWT, body: { action: "countersign-test", org_id: ORG } }),
     deps,
   );
   assertEquals(res.status, 200, "connectivity failures are reported in the body, never a 500");
