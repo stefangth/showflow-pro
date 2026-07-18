@@ -39,10 +39,6 @@ interface TermsVariants { lean: HireOrderTerm[]; standard: HireOrderTerm[]; full
 type TermsVariant = keyof TermsVariants;
 interface Countersign {
   mode: "manual" | "documenso";
-  /** Documenso instance origin (cloud or self-hosted). Only the URL lives in this
-   *  org setting — the API token is a server-only Vault-backed edge secret
-   *  (DOCUMENSO_API_TOKEN), never stored here and never returned to the client. */
-  base_url?: string;
 }
 
 const NUMBERING_DEFAULT: Numbering = { prefix: "HO", pattern: "{prefix}-{yyyy}-{mmdd}-{seq}" };
@@ -54,6 +50,24 @@ const COUNTERSIGN_DEFAULT: Countersign = { mode: "manual" };
 const BUCKET = "hire-orders";
 const SIGNED_URL_TTL = 3600;
 const DOCUMENSO_DEFAULT_BASE_URL = "https://app.documenso.com";
+
+/**
+ * The Documenso instance origin is OPERATOR-controlled ONLY (edge secret
+ * DOCUMENSO_BASE_URL), never a per-org setting or request body. DOCUMENSO_API_TOKEN
+ * is a single instance-wide secret shared by every org, so letting an org's free-text
+ * setting (or a request body field) steer where it's sent would let an admin in org A
+ * point it at an attacker host and exfiltrate the shared token plus the rendered
+ * hire-order PDF (artist PII) for every org (SSRF / cross-tenant secret exfiltration).
+ * Defaults to the hosted app.documenso.com. Rejects a non-https value outright — never
+ * silently falls back — since the shared token travels in this request's Authorization
+ * header.
+ */
+function resolveDocumensoBaseUrl(deps: Deps): { ok: true; baseUrl: string } | { ok: false; error: string } {
+  const raw = deps.env("DOCUMENSO_BASE_URL");
+  const baseUrl = raw && raw.trim() !== "" ? raw : DOCUMENSO_DEFAULT_BASE_URL;
+  if (!baseUrl.startsWith("https://")) return { ok: false, error: "documenso_base_url_invalid" };
+  return { ok: true, baseUrl };
+}
 
 // deno-lint-ignore no-explicit-any
 type Any = any;
@@ -100,7 +114,7 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
       // (mirrors airtable-schema's admin-only connectivity check), so re-check.
       const adminGate = await requireOrgRole(deps, req, body.org_id, ["admin"]);
       if (!adminGate.ok) return adminGate.response;
-      return countersignTest(deps, body);
+      return countersignTest(deps);
     }
     default:
       return json({ error: "unknown_action" }, 400);
@@ -329,6 +343,17 @@ async function draftManual(deps: Deps, body: DraftManualBody, userId: string | n
   const org = body.org_id;
   const manual = body.manual ?? {};
 
+  // A manual fee is producer-typed free text (V5 wizard step 2). `Number(feeValue)`
+  // on a non-numeric value yields NaN, which JSON-serializes to `null` on insert —
+  // silently dropping the entered value instead of rejecting the bad input. Reject
+  // outright when a fee WAS provided but isn't a finite number; a genuinely absent
+  // fee (undefined/null/"") keeps falling through to the existing null behavior.
+  const manualFeeRaw = manual.fee;
+  const manualFeeProvided = manualFeeRaw !== undefined && manualFeeRaw !== null && manualFeeRaw !== "";
+  if (manualFeeProvided && !Number.isFinite(Number(manualFeeRaw))) {
+    return json({ error: "invalid_fee" }, 400);
+  }
+
   const [defaults, numbering] = await Promise.all([
     resolveOrgSetting<OrderDefaults>(admin, org, "hire_order_defaults", DEFAULTS_DEFAULT),
     resolveOrgSetting<Numbering>(admin, org, "hire_order_numbering", NUMBERING_DEFAULT),
@@ -534,14 +559,15 @@ async function issueOne(
 
   if (countersignModeUsed === "documenso") {
     const token = deps.env("DOCUMENSO_API_TOKEN");
-    const baseUrl = countersign.base_url || DOCUMENSO_DEFAULT_BASE_URL;
+    const baseUrlResult = resolveDocumensoBaseUrl(deps);
     try {
       if (!token) throw new Error("documenso_token_missing");
+      if (!baseUrlResult.ok) throw new Error(baseUrlResult.error);
       const recipientEmail = strField(data, "recipient_email");
       const recipientName = strField(data, "artist_name") || recipientEmail;
       const envelope = await createAndSendEnvelope(
         deps.fetch,
-        { baseUrl, token },
+        { baseUrl: baseUrlResult.baseUrl, token },
         { title: o.order_no, pdf: bytes, recipientName, recipientEmail },
       );
       signingUrl = envelope.signingUrl;
@@ -742,22 +768,24 @@ async function downloadUrl(deps: Deps, req: Request, body: DownloadBody): Promis
 
 // ── countersign-test (admin-only, own re-check happens in handle()) ────────
 
-interface CountersignTestBody { org_id: string; base_url?: string }
-
 /**
  * Cheap authenticated Documenso connectivity check for the settings card's
  * "Test connection" button. Mirrors airtable-schema's server-side PAT proxy
  * pattern: the token is read from the Vault-backed DOCUMENSO_API_TOKEN edge
- * secret and used ONLY here, never returned to the client. Always resolves
- * 200 with `{ ok, detail }` -- a connectivity failure is data, not a 500.
+ * secret and used ONLY here, never returned to the client. The instance URL is
+ * likewise operator-controlled only (see resolveDocumensoBaseUrl) — never a
+ * request body field, so this action cannot be pointed at an attacker host.
+ * Always resolves 200 with `{ ok, detail }` -- a connectivity failure is data,
+ * not a 500.
  */
-async function countersignTest(deps: Deps, body: CountersignTestBody): Promise<Response> {
+async function countersignTest(deps: Deps): Promise<Response> {
   const token = deps.env("DOCUMENSO_API_TOKEN");
   if (!token) return json({ ok: false, detail: "Documenso API token is not configured on the server" });
 
-  const baseUrl = body.base_url || DOCUMENSO_DEFAULT_BASE_URL;
+  const baseUrlResult = resolveDocumensoBaseUrl(deps);
+  if (!baseUrlResult.ok) return json({ ok: false, detail: baseUrlResult.error });
   try {
-    const res = await deps.fetch(`${baseUrl}/api/v2/envelope?perPage=1`, {
+    const res = await deps.fetch(`${baseUrlResult.baseUrl}/api/v2/envelope?perPage=1`, {
       headers: { Authorization: documensoAuthHeader(token) },
     });
     if (!res.ok) return json({ ok: false, detail: `documenso_error:${res.status}` });

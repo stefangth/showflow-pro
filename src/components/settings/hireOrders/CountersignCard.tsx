@@ -8,7 +8,6 @@ import { invokeHireOrderAction } from "@/data/hireOrders";
 import type { Json } from "@/integrations/supabase/types";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Alert, AlertDescription } from "@/components/ui/alert";
@@ -16,14 +15,17 @@ import { Skeleton } from "@/components/ui/skeleton";
 
 export type CountersignMode = "manual" | "documenso";
 
-/** The `hire_order_countersign` app_settings value (spec §2.6 / §8). Only the
- *  Documenso instance URL lives in this org setting — the API token is a
- *  Vault-backed edge secret (DOCUMENSO_API_TOKEN) configured server-side by
- *  the platform operator, mirroring the Airtable PAT pattern: it is never
- *  entered, shown, or stored in this card. */
+/** The `hire_order_countersign` app_settings value (spec §2.6 / §8). Both the
+ *  Documenso API token AND the Documenso instance URL are configured
+ *  server-side by the platform operator (edge secrets DOCUMENSO_API_TOKEN /
+ *  DOCUMENSO_BASE_URL), mirroring the Airtable PAT pattern: neither is
+ *  entered, shown, or stored in this card. DOCUMENSO_API_TOKEN is a single
+ *  instance-wide secret shared by every org, so the instance URL cannot be a
+ *  per-org setting either — a free-text org URL paired with a shared secret
+ *  would let an org admin point it at an attacker host and exfiltrate the
+ *  token plus rendered hire-order PDFs (artist PII) for every org. */
 export interface HireOrderCountersign {
   mode: CountersignMode;
-  base_url?: string;
 }
 export const COUNTERSIGN_DEFAULT: HireOrderCountersign = { mode: "manual" };
 
@@ -70,7 +72,6 @@ export function CountersignCard({ orgId }: { orgId: string | null }) {
       const result = await invokeHireOrderAction(supabase, {
         action: "countersign-test",
         org_id: orgId,
-        base_url: form.base_url || undefined,
       });
       return result as CountersignTestResult;
     },
@@ -126,22 +127,10 @@ export function CountersignCard({ orgId }: { orgId: string | null }) {
         </RadioGroup>
         {form.mode === "documenso" && (
           <div className="space-y-3 rounded-lg border border-border p-3">
-            <div className="space-y-1.5">
-              <Label htmlFor="ho-documenso-base-url">Documenso instance URL</Label>
-              <Input
-                id="ho-documenso-base-url"
-                placeholder="https://app.documenso.com"
-                value={form.base_url ?? ""}
-                onChange={(e) => setForm((f) => ({ ...f, base_url: e.target.value }))}
-              />
-              <p className="text-xs text-muted-foreground">
-                Leave blank to use the hosted app.documenso.com. Enter a self-hosted instance's URL instead.
-              </p>
-            </div>
             <Alert>
               <AlertDescription>
-                The Documenso API token is configured server-side by the platform operator (a Supabase Vault
-                secret). It is never entered here.
+                The Documenso API token and instance URL are configured server-side by the platform operator
+                (Supabase Vault secrets DOCUMENSO_API_TOKEN and DOCUMENSO_BASE_URL). Neither is entered here.
               </AlertDescription>
             </Alert>
             <div className="flex flex-wrap items-center gap-3">
