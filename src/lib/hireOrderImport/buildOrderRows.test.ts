@@ -249,6 +249,71 @@ describe("buildOrderRows", () => {
     expect(r.matchedShowDateId).toBe("date-1");
   });
 
+  it("flags missing_date when the date column is mapped but the cell is blank", () => {
+    const [r] = buildOrderRows(
+      [
+        row({
+          Artist: "Ada Lovelace",
+          Email: "ada@x.com",
+          Date: "",
+          Venue: "Opera House",
+          City: "Berlin",
+          Fee: "500",
+        }),
+      ],
+      FULL_MAPPING,
+      catalog
+    );
+    expect(r.status).toBe("attention");
+    expect(r.issues).toContain("missing_date");
+    expect(r.sheet.date).toBeUndefined();
+    expect(r.matchedShowDateId).toBeUndefined();
+    // still resolvable/importable: artist is matched despite the missing date
+    expect(r.matchedArtistId).toBe("artist-1");
+  });
+
+  it("does not flag missing_date when the date column itself is not mapped", () => {
+    const mappingWithoutDate: OrderColumnMapping = { ...FULL_MAPPING };
+    delete mappingWithoutDate.date;
+    const [r] = buildOrderRows(
+      [
+        row({
+          Artist: "Ada Lovelace",
+          Email: "ada@x.com",
+          Date: "2026-06-15", // present in the raw sheet, but the column isn't mapped, so it's ignored
+          Venue: "Opera House",
+          City: "Berlin",
+          Fee: "500",
+        }),
+      ],
+      mappingWithoutDate,
+      catalog
+    );
+    expect(r.issues).not.toContain("missing_date");
+    expect(r.sheet.date).toBeUndefined();
+    expect(r.matchedShowDateId).toBeUndefined();
+  });
+
+  it("narrows by venue when only the venue column is mapped (city not mapped at all)", () => {
+    const venueOnlyMapping: OrderColumnMapping = { ...FULL_MAPPING };
+    delete venueOnlyMapping.city;
+    const [r] = buildOrderRows(
+      [
+        row({
+          Artist: "Ada Lovelace",
+          Email: "ada@x.com",
+          Date: "2026-06-15",
+          Venue: "Opera House",
+          Fee: "500",
+        }),
+      ],
+      venueOnlyMapping,
+      catalog // DATE_A (Opera House/Berlin) and DATE_B (Concert Hall/Munich) both fall on 2026-06-15
+    );
+    expect(r.matchedShowDateId).toBe("date-1");
+    expect(r.issues).not.toContain("ambiguous_date");
+  });
+
   it("marks a fully resolvable row as ready with no issues", () => {
     const [r] = buildOrderRows(
       [
