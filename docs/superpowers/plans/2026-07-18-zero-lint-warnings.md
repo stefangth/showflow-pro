@@ -23,6 +23,7 @@
 - `docs/system-map.md` / `src/data/systemMap.ts` untouched: no automation behavior changes.
 - The full per-site inventory is in **Appendix A** (production `any` sites with current source lines) and **Appendix B** (test-file `any` counts). Tasks reference it as "Appendix A".
 - Baseline check before starting: `npm run lint 2>&1 | tail -1` → `✖ 453 problems (0 errors, 453 warnings)`.
+- **Local Deno invocation** (this environment): `export PATH="/root/.deno/bin:$PATH" DENO_CERT=/root/.ccr/ca-bundle.crt` then `deno test --allow-all --node-modules-dir=none supabase/functions/...` — the `--node-modules-dir=none` flag matches CI (the root `package.json` otherwise forces node_modules resolution), and `DENO_CERT` trusts the outbound proxy. Same for `deno check`. Baseline: 772 passed / 0 failed / 2 ignored. Wherever a task says `deno test --allow-all`, use this invocation.
 
 ## Decisions locked in (approved trade-offs)
 
