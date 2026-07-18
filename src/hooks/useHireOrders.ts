@@ -94,7 +94,15 @@ export function useShowDatesLite(orgId: string | null | undefined) {
 }
 
 interface DraftResult { created?: string[]; skipped?: { booking_id: string; reason: string }[] }
-interface IssueResult { issued?: string[]; failed?: { order_id: string; issues: string[] }[] }
+export interface IssueResult { issued?: string[]; failed?: { order_id: string; issues: string[] }[] }
+
+/** Actions that actually write data and so must bust the hire-orders domain.
+ *  `preview` and `download-url` are read-only -- the debounced live-preview
+ *  cycle on HireOrderEditPage calls `preview` roughly every 800ms while a
+ *  producer types, and invalidating on every tick would storm the whole
+ *  ['hire-orders'] domain (table/KPIs/nav-count/detail queries) for an action
+ *  that changes nothing. */
+const WRITE_ACTIONS = new Set(["draft", "issue", "draft-manual"]);
 
 /** Friendly copy for the issue-validation failure codes generate-hire-orders
  *  can return (see orderReadyIssues / issueOrders in the edge function) — orgs
@@ -140,16 +148,18 @@ function describeDraftSkips(skipped: { booking_id: string; reason: string }[]): 
   return reasons.map((reason) => DRAFT_SKIP_COPY[reason] ?? reason).join(", ");
 }
 
-/** Invoke generate-hire-orders (draft/issue/preview/download-url). Invalidates the
- *  whole hire-orders domain and toasts a summary for draft/issue; preview and
- *  download-url return data the caller opens directly and stay silent. */
+/** Invoke generate-hire-orders (draft/issue/draft-manual/preview/download-url).
+ *  Invalidates the whole hire-orders domain for the write actions
+ *  (draft/issue/draft-manual) and toasts a summary for draft/issue; preview and
+ *  download-url are read-only, so they neither invalidate nor toast -- the
+ *  caller opens the returned PDF/URL directly. */
 export function useHireOrderAction() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: (body: Record<string, unknown>) => invokeHireOrderAction(supabase, body),
     onSuccess: (data, variables) => {
-      invalidateHireOrders(qc);
       const action = variables.action;
+      if (WRITE_ACTIONS.has(action as string)) invalidateHireOrders(qc);
       if (action === "draft") {
         const { created = [], skipped = [] } = (data ?? {}) as DraftResult;
         if (created.length > 0) {

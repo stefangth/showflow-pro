@@ -1,3 +1,4 @@
+import { useRef } from "react";
 import { Download, Pencil } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
@@ -37,6 +38,15 @@ interface Props {
  * Every mutating action closes the sheet on success — the underlying list
  * query re-filters on refetch, and a just-acted-on row can otherwise fall out
  * of the currently active status/search filter mid-view.
+ *
+ * `<Sheet>` stays mounted unconditionally, driven purely by `open` (mirrors
+ * ArtistProfileSheet) — it must NOT be gated behind `order` being non-null.
+ * HireOrdersPage nulls the selected order in the very same state update that
+ * flips `open` to false, so bailing out with `if (!order) return null` before
+ * rendering `<Sheet>` unmounted the whole Radix Portal synchronously and ate
+ * the slide-out transition. `displayOrder` caches the last non-null order so
+ * the panel keeps showing its real content while it animates closed, instead
+ * of the content going blank one tick before the panel itself disappears.
  */
 export function OrderSlideOver({ order, open, onOpenChange, orgId }: Props) {
   const navigate = useNavigate();
@@ -44,28 +54,32 @@ export function OrderSlideOver({ order, open, onOpenChange, orgId }: Props) {
   const countersign = useMarkCountersigned();
   const voidOrder = useVoidHireOrder();
 
-  if (!order) return null;
+  const lastOrderRef = useRef<HireOrderListRow | null>(null);
+  if (order) lastOrderRef.current = order;
+  const displayOrder = order ?? lastOrderRef.current;
 
-  const data = (order.data ?? {}) as OrderData;
-  const artistName = order.artists?.name || snap(data, "artist_name") || "Unknown artist";
+  const data = (displayOrder?.data ?? {}) as OrderData;
+  const artistName = displayOrder?.artists?.name || snap(data, "artist_name") || "Unknown artist";
   const email = snap(data, "recipient_email");
-  const venue = order.show_dates?.venue || snap(data, "venue");
-  const dateStr = order.show_dates?.date || snap(data, "date");
+  const venue = displayOrder?.show_dates?.venue || snap(data, "venue");
+  const dateStr = displayOrder?.show_dates?.date || snap(data, "date");
   const durationRaw = snap(data, "duration_min");
   const duration = durationRaw ? `${durationRaw} min` : null;
   const sessions = snap(data, "sessions") || null;
-  const fee = order.fee_amount != null ? formatMoney(order.fee_amount, order.fee_currency) : null;
+  const fee = displayOrder?.fee_amount != null ? formatMoney(displayOrder.fee_amount, displayOrder.fee_currency) : null;
 
   function handleIssue() {
+    if (!displayOrder) return;
     action.mutate(
-      { action: "issue", org_id: orgId, order_ids: [order!.id] },
+      { action: "issue", org_id: orgId, order_ids: [displayOrder.id] },
       { onSuccess: () => onOpenChange(false) },
     );
   }
 
   async function handleDownload() {
+    if (!displayOrder) return;
     try {
-      const res = await action.mutateAsync({ action: "download-url", org_id: orgId, order_id: order!.id });
+      const res = await action.mutateAsync({ action: "download-url", org_id: orgId, order_id: displayOrder.id });
       const url = (res as { url?: string } | null)?.url;
       if (url) window.open(url, "_blank", "noopener,noreferrer");
     } catch {
@@ -74,101 +88,108 @@ export function OrderSlideOver({ order, open, onOpenChange, orgId }: Props) {
   }
 
   function handleCountersign() {
-    countersign.mutate(order!.id, { onSuccess: () => onOpenChange(false) });
+    if (!displayOrder) return;
+    countersign.mutate(displayOrder.id, { onSuccess: () => onOpenChange(false) });
   }
 
   function handleVoid() {
-    voidOrder.mutate(order!.id, { onSuccess: () => onOpenChange(false) });
+    if (!displayOrder) return;
+    voidOrder.mutate(displayOrder.id, { onSuccess: () => onOpenChange(false) });
   }
 
   function handleEdit() {
+    if (!displayOrder) return;
     onOpenChange(false);
-    navigate(ROUTES.HIRE_ORDER_EDIT.replace(":id", order!.id));
+    navigate(ROUTES.HIRE_ORDER_EDIT.replace(":id", displayOrder.id));
   }
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent className="w-full overflow-y-auto sm:max-w-md">
-        <SheetHeader>
-          <div className="flex items-center gap-2">
-            <SheetTitle className="font-mono text-base">{order.order_no}</SheetTitle>
-            <HireOrderStatusBadge status={order.status} />
-          </div>
-        </SheetHeader>
-
-        <div className="mt-6 space-y-6">
-          <dl className="grid grid-cols-2 gap-4 text-sm">
-            <div>
-              <dt className="text-xs uppercase tracking-wide text-muted-foreground">Artist</dt>
-              <dd className="mt-0.5 text-foreground">{artistName}</dd>
-            </div>
-            {email && (
-              <div>
-                <dt className="text-xs uppercase tracking-wide text-muted-foreground">Email</dt>
-                <dd className="mt-0.5 break-words text-foreground">{email}</dd>
+        {displayOrder && (
+          <>
+            <SheetHeader>
+              <div className="flex items-center gap-2">
+                <SheetTitle className="font-mono text-base">{displayOrder.order_no}</SheetTitle>
+                <HireOrderStatusBadge status={displayOrder.status} />
               </div>
-            )}
-            <div>
-              <dt className="text-xs uppercase tracking-wide text-muted-foreground">Venue</dt>
-              <dd className="mt-0.5 text-foreground">{venue || "Not set"}</dd>
-            </div>
-            <div>
-              <dt className="text-xs uppercase tracking-wide text-muted-foreground">Date</dt>
-              <dd className="mt-0.5 font-mono text-foreground">{dateStr ? formatDateDMY(dateStr) : "Not set"}</dd>
-            </div>
-          </dl>
+            </SheetHeader>
 
-          <OrderFactsRail fee={fee} duration={duration} sessions={sessions} />
+            <div className="mt-6 space-y-6">
+              <dl className="grid grid-cols-2 gap-4 text-sm">
+                <div>
+                  <dt className="text-xs uppercase tracking-wide text-muted-foreground">Artist</dt>
+                  <dd className="mt-0.5 text-foreground">{artistName}</dd>
+                </div>
+                {email && (
+                  <div>
+                    <dt className="text-xs uppercase tracking-wide text-muted-foreground">Email</dt>
+                    <dd className="mt-0.5 break-words text-foreground">{email}</dd>
+                  </div>
+                )}
+                <div>
+                  <dt className="text-xs uppercase tracking-wide text-muted-foreground">Venue</dt>
+                  <dd className="mt-0.5 text-foreground">{venue || "Not set"}</dd>
+                </div>
+                <div>
+                  <dt className="text-xs uppercase tracking-wide text-muted-foreground">Date</dt>
+                  <dd className="mt-0.5 font-mono text-foreground">{dateStr ? formatDateDMY(dateStr) : "Not set"}</dd>
+                </div>
+              </dl>
 
-          <div className="space-y-2">
-            {(order.status === "draft" || order.status === "ready") && (
-              <>
-                <Button variant="outline" className="w-full" onClick={handleEdit}>
-                  <Pencil className="mr-1 h-4 w-4" /> Edit
-                </Button>
-                <Button className="w-full" onClick={handleIssue} disabled={action.isPending}>
-                  Issue and send
-                </Button>
-              </>
-            )}
-            {order.status === "issued" && (
-              <>
-                <Button variant="outline" className="w-full" onClick={handleDownload} disabled={action.isPending}>
-                  <Download className="mr-1 h-4 w-4" /> Download
-                </Button>
-                <Button className="w-full" onClick={handleCountersign} disabled={countersign.isPending}>
-                  Mark countersigned
-                </Button>
-              </>
-            )}
-            {order.status === "countersigned" && (
-              <Button variant="outline" className="w-full" onClick={handleDownload} disabled={action.isPending}>
-                <Download className="mr-1 h-4 w-4" /> Download
-              </Button>
-            )}
-            {order.status !== "void" && (
-              <AlertDialog>
-                <AlertDialogTrigger asChild>
-                  <Button variant="outline" className="w-full text-destructive hover:text-destructive">
-                    Void
+              <OrderFactsRail fee={fee} duration={duration} sessions={sessions} />
+
+              <div className="space-y-2">
+                {(displayOrder.status === "draft" || displayOrder.status === "ready") && (
+                  <>
+                    <Button variant="outline" className="w-full" onClick={handleEdit}>
+                      <Pencil className="mr-1 h-4 w-4" /> Edit
+                    </Button>
+                    <Button className="w-full" onClick={handleIssue} disabled={action.isPending}>
+                      Issue and send
+                    </Button>
+                  </>
+                )}
+                {displayOrder.status === "issued" && (
+                  <>
+                    <Button variant="outline" className="w-full" onClick={handleDownload} disabled={action.isPending}>
+                      <Download className="mr-1 h-4 w-4" /> Download
+                    </Button>
+                    <Button className="w-full" onClick={handleCountersign} disabled={countersign.isPending}>
+                      Mark countersigned
+                    </Button>
+                  </>
+                )}
+                {displayOrder.status === "countersigned" && (
+                  <Button variant="outline" className="w-full" onClick={handleDownload} disabled={action.isPending}>
+                    <Download className="mr-1 h-4 w-4" /> Download
                   </Button>
-                </AlertDialogTrigger>
-                <AlertDialogContent>
-                  <AlertDialogHeader>
-                    <AlertDialogTitle>Void this hire order?</AlertDialogTitle>
-                    <AlertDialogDescription>
-                      This cannot be undone. The order will be marked void and removed from active tracking.
-                    </AlertDialogDescription>
-                  </AlertDialogHeader>
-                  <AlertDialogFooter>
-                    <AlertDialogCancel>Cancel</AlertDialogCancel>
-                    <AlertDialogAction onClick={handleVoid}>Void order</AlertDialogAction>
-                  </AlertDialogFooter>
-                </AlertDialogContent>
-              </AlertDialog>
-            )}
-          </div>
-        </div>
+                )}
+                {displayOrder.status !== "void" && (
+                  <AlertDialog>
+                    <AlertDialogTrigger asChild>
+                      <Button variant="outline" className="w-full text-destructive hover:text-destructive">
+                        Void
+                      </Button>
+                    </AlertDialogTrigger>
+                    <AlertDialogContent>
+                      <AlertDialogHeader>
+                        <AlertDialogTitle>Void this hire order?</AlertDialogTitle>
+                        <AlertDialogDescription>
+                          This cannot be undone. The order will be marked void and removed from active tracking.
+                        </AlertDialogDescription>
+                      </AlertDialogHeader>
+                      <AlertDialogFooter>
+                        <AlertDialogCancel>Cancel</AlertDialogCancel>
+                        <AlertDialogAction onClick={handleVoid}>Void order</AlertDialogAction>
+                      </AlertDialogFooter>
+                    </AlertDialogContent>
+                  </AlertDialog>
+                )}
+              </div>
+            </div>
+          </>
+        )}
       </SheetContent>
     </Sheet>
   );

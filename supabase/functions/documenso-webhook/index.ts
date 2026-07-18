@@ -12,7 +12,7 @@
 // `payload.envelopeId` is the string envelope id this app stores as
 // `hire_orders.documenso_envelope_id` -- it is the SAME id `_shared/documenso.ts`'s
 // `createAndSendEnvelope` captured from the `POST /api/v2/envelope/create`
-// response (`envelope.envelopeId`). `payload.id` is a legacy NUMERIC document id
+// response (parsed as `{ id?: string }`, i.e. `created.id`). `payload.id` is a legacy NUMERIC document id
 // (mapped from a secondaryId) and is not what we key on.
 //
 // DI: exports handle(req, deps); Deno.serve wiring at the bottom. See index.di.test.ts.

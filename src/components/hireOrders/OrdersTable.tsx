@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { HireOrderStatusBadge } from "@/components/hireOrders/HireOrderStatusBadge";
 import { formatMoney } from "@/lib/hireOrders/money";
 import { formatDateDMY } from "@/lib/dates";
-import { useHireOrderAction } from "@/hooks/useHireOrders";
+import { useHireOrderAction, type IssueResult } from "@/hooks/useHireOrders";
 import type { HireOrderListRow } from "@/data/hireOrders";
 
 /** Only draft/ready orders can be batch-issued. */
@@ -84,7 +84,22 @@ export function OrdersTable({ orders, orgId, onRowClick }: Props) {
     if (idsToIssue.length === 0) return;
     action.mutate(
       { action: "issue", org_id: orgId, order_ids: idsToIssue },
-      { onSuccess: () => setSelected(new Set()) },
+      {
+        // Only drop the ids that actually succeeded -- a per-row validation
+        // failure (e.g. missing fee) must keep its order checked so the
+        // producer can fix it and retry immediately, instead of losing the
+        // selection and having to re-find the failed rows in the table.
+        onSuccess: (data) => {
+          const failedIds = new Set(((data ?? {}) as IssueResult).failed?.map((f) => f.order_id) ?? []);
+          setSelected((prev) => {
+            const next = new Set(prev);
+            for (const id of idsToIssue) {
+              if (!failedIds.has(id)) next.delete(id);
+            }
+            return next;
+          });
+        },
+      },
     );
   };
 
