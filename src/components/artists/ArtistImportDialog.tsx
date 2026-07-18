@@ -188,7 +188,7 @@ export function ArtistImportDialog({ open, onOpenChange, orgId, existingEmails, 
       setSummary({ created, skipped, errors, invited, inviteFailed });
       setStep('done');
     },
-    onError: (e: any) => toast({ title: 'Import failed', description: e.message, variant: 'destructive' }),
+    onError: (e: Error) => toast({ title: 'Import failed', description: e.message, variant: 'destructive' }),
   });
 
   const selectedNewCount = importRows.filter((r) => r.status === 'new' && selected.has(r.index)).length;

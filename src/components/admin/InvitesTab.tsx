@@ -32,7 +32,7 @@ export function InvitesTab() {
       qc.invalidateQueries({ queryKey: ['org-invitations'] });
       toast.success('Invitation sent');
     },
-    onError: (e: any) => toast.error(e?.message ?? 'Could not send invitation'),
+    onError: (e: Error) => toast.error(e?.message ?? 'Could not send invitation'),
   });
 
   const revoke = useMutation({
@@ -41,13 +41,13 @@ export function InvitesTab() {
       qc.invalidateQueries({ queryKey: ['org-invitations'] });
       toast.success('Invitation revoked');
     },
-    onError: (e: any) => toast.error(e?.message ?? 'Could not revoke invitation'),
+    onError: (e: Error) => toast.error(e?.message ?? 'Could not revoke invitation'),
   });
 
   const resend = useMutation({
     mutationFn: (id: string) => resendInvitation(supabase, id),
     onSuccess: () => toast.success('Invitation re-sent'),
-    onError: (e: any) => toast.error(e?.message ?? 'Could not resend invitation'),
+    onError: (e: Error) => toast.error(e?.message ?? 'Could not resend invitation'),
   });
 
   const copyLink = async (token: string) => {

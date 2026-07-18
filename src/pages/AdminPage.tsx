@@ -102,7 +102,7 @@ export default function AdminPage() {
                 </Alert>
               )}
               <div className="space-y-2">
-                {auditLogs?.map((log: any) => (
+                {auditLogs?.map((log) => (
                   <div key={log.id} className="flex items-center justify-between p-3 rounded-lg border border-border text-sm">
                     <div>
                       <span className="font-medium">{log.action}</span>
@@ -132,7 +132,7 @@ export default function AdminPage() {
                 </Alert>
               )}
               <div className="space-y-2">
-                {syncError ? null : syncLogs && syncLogs.length > 0 ? syncLogs.map((log: any) => (
+                {syncError ? null : syncLogs && syncLogs.length > 0 ? syncLogs.map((log) => (
                   <div key={log.id} className="flex items-center justify-between p-3 rounded-lg border border-border text-sm">
                     <div className="flex items-center gap-2">
                       <Badge variant="secondary" className={log.status === 'success' ? 'bg-success/10 text-success' : 'bg-destructive/10 text-destructive'}>

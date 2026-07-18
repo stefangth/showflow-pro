@@ -77,7 +77,7 @@ export function ArtistProfileSheet({ artistId, open, onOpenChange }: Props) {
       qc.invalidateQueries({ queryKey: ['org-invitations'] });
       toast({ title: 'Invite sent' });
     },
-    onError: (e: any) => toast({ title: 'Error', description: e.message, variant: 'destructive' }),
+    onError: (e: Error) => toast({ title: 'Error', description: e.message, variant: 'destructive' }),
   });
 
   const resend = useMutation({
@@ -93,7 +93,7 @@ export function ArtistProfileSheet({ artistId, open, onOpenChange }: Props) {
       await resendInvitation(supabase, live.id);
     },
     onSuccess: () => toast({ title: 'Invite re-sent' }),
-    onError: (e: any) => toast({ title: 'Error', description: e.message, variant: 'destructive' }),
+    onError: (e: Error) => toast({ title: 'Error', description: e.message, variant: 'destructive' }),
   });
 
   const [form, setForm] = useState({
@@ -177,7 +177,7 @@ export function ArtistProfileSheet({ artistId, open, onOpenChange }: Props) {
       toast({ title: 'Artist updated' });
       onOpenChange(false);
     },
-    onError: (e: any) => toast({ title: 'Error', description: e.message, variant: 'destructive' }),
+    onError: (e: Error) => toast({ title: 'Error', description: e.message, variant: 'destructive' }),
   });
 
   async function handleCreateSkill(name: string): Promise<TagOption> {

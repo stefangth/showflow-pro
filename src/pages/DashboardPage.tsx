@@ -147,7 +147,7 @@ function ProducerDashboard() {
         toast.success('Bookings confirmed');
       }
     },
-    onError: (e: any) => toast.error(e.message),
+    onError: (e: Error) => toast.error(e.message),
   });
 
   const bulkDecline = useMutation({
@@ -161,7 +161,7 @@ function ProducerDashboard() {
         toast.success('Bookings declined');
       }
     },
-    onError: (e: any) => toast.error(e.message),
+    onError: (e: Error) => toast.error(e.message),
   });
 
   const allIds = useMemo(() => (softBookedRows ?? []).map(r => r.id), [softBookedRows]);

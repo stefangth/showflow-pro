@@ -167,8 +167,10 @@ function ProducerShowsBookings() {
         .select('show_date_id, status, is_understudy')
         .neq('status', 'cancelled');
       if (error) throw error;
+      interface CountRow { show_date_id: string; status: string; is_understudy: boolean }
+      const rows = (data ?? []) as unknown as CountRow[];
       const map = new Map<string, { confirmedMain: number; confirmedUs: number; total: number }>();
-      (data ?? []).forEach((b: any) => {
+      rows.forEach((b) => {
         const cur = map.get(b.show_date_id) ?? { confirmedMain: 0, confirmedUs: 0, total: 0 };
         cur.total += 1;
         if (b.status === 'confirmed') {
@@ -286,7 +288,7 @@ function ProducerShowsBookings() {
           />
         </div>
         {canSee('status') && (
-          <Select value={statusFilter} onValueChange={v => updateStatusFilter(v as any)}>
+          <Select value={statusFilter} onValueChange={v => updateStatusFilter(v as 'all' | DisplayStatus)}>
             <SelectTrigger className="w-[180px]"><SelectValue placeholder="Status" /></SelectTrigger>
             <SelectContent>
               <SelectItem value="all">All statuses</SelectItem>

@@ -54,8 +54,8 @@ export default function LoginPage() {
       // Honor a relative ?redirect= (e.g. the accept-invite flow); never an absolute/external URL.
       const redirect = searchParams.get('redirect');
       navigate(redirect && redirect.startsWith('/') && !redirect.startsWith('//') ? redirect : ROUTES.DASHBOARD);
-    } catch (err: any) {
-      setError(friendlyAuthError(err?.message ?? 'Something went wrong. Please try again.'));
+    } catch (err) {
+      setError(friendlyAuthError((err as Error).message ?? 'Something went wrong. Please try again.'));
       setPassword('');
       requestAnimationFrame(() => emailRef.current?.focus());
     } finally {

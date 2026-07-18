@@ -39,7 +39,7 @@ export function CastDialog() {
       setDescription('');
       toast({ title: 'Cast created' });
     },
-    onError: (err: any) => toast({ title: 'Error', description: err.message, variant: 'destructive' }),
+    onError: (err: Error) => toast({ title: 'Error', description: err.message, variant: 'destructive' }),
   });
 
   return (

@@ -40,7 +40,7 @@ export function OfferResponseButtons({ bookingId, size = 'default' }: Props) {
         toast({ title: 'Offer declined' });
       }
     },
-    onError: (e: any) => toast({ title: 'Error', description: e.message, variant: 'destructive' }),
+    onError: (e: Error) => toast({ title: 'Error', description: e.message, variant: 'destructive' }),
   });
 
   const btnSize = size === 'sm' ? 'sm' : 'default';

@@ -58,7 +58,7 @@ function ArtistAvailability() {
   const [sort, setSort] = useState<SortValue>('chrono_asc');
   const [view, setView] = useState<ViewMode>('list');
   const [filter, setFilter] = useState<'all' | 'unanswered'>(
-    (searchParams.get('filter') as any) === 'unanswered' ? 'unanswered' : 'all'
+    searchParams.get('filter') === 'unanswered' ? 'unanswered' : 'all'
   );
 
   useEffect(() => {
@@ -166,7 +166,7 @@ function ArtistAvailability() {
       setNewBlockReason('');
       toast({ title: 'Date blocked' });
     },
-    onError: (e: any) => toast({ title: 'Error', description: e.message, variant: 'destructive' }),
+    onError: (e: Error) => toast({ title: 'Error', description: e.message, variant: 'destructive' }),
   });
 
   const removeBlock = useMutation({

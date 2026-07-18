@@ -24,6 +24,7 @@ import { useNavCounts } from '@/hooks/useNavCounts';
 import { useMyProfile } from '@/hooks/useMyProfile';
 import { useEntitlements } from '@/hooks/useEntitlements';
 import { toast } from 'sonner';
+import type { AppRole } from '@/types';
 
 interface AppLayoutProps {
   children: React.ReactNode;
@@ -82,13 +83,13 @@ export default function AppLayout({ children }: AppLayoutProps) {
     }
   };
 
-  const filteredNav = visibleNavItems(NAV_ITEMS, { isEditorMode, isRealAdmin, isSuperAdmin, hasRole: (r) => hasRole(r as any), enabledFeatures: features });
+  const filteredNav = visibleNavItems(NAV_ITEMS, { isEditorMode, isRealAdmin, isSuperAdmin, hasRole: (r) => hasRole(r as AppRole), enabledFeatures: features });
   const navGroups = groupNavBySections(filteredNav);
 
   const isHiddenForViewAs = (item: typeof NAV_ITEMS[number]) => {
     if (!isEditorMode) return false;
     if (!item.roles) return false;
-    if (viewAsUser) return !item.roles.some(r => viewAsUser.roles.includes(r as any));
+    if (viewAsUser) return !item.roles.some(r => viewAsUser.roles.includes(r as AppRole));
     if (viewAsRole === null) return false;
     return !item.roles.includes(viewAsRole);
   };

@@ -35,7 +35,7 @@ export function CastsCitiesTab({ currentOrgId, canEnter }: { currentOrgId: strin
       if (error) throw error;
     },
     onSuccess: () => { qc.invalidateQueries({ queryKey: ['cities'] }); setNewCity(''); toast.success('City added'); },
-    onError: (e: any) => toast.error(e.message ?? 'Failed to add'),
+    onError: (e: Error) => toast.error(e.message ?? 'Failed to add'),
   });
   const removeCity = useMutation({
     mutationFn: async (id: string) => {
@@ -43,7 +43,7 @@ export function CastsCitiesTab({ currentOrgId, canEnter }: { currentOrgId: strin
       if (error) throw error;
     },
     onSuccess: () => { qc.invalidateQueries({ queryKey: ['cities'] }); toast.success('City removed'); },
-    onError: (e: any) => toast.error(e.message ?? 'Failed to remove'),
+    onError: (e: Error) => toast.error(e.message ?? 'Failed to remove'),
   });
 
   const { data: casts } = useQuery({
@@ -114,7 +114,7 @@ export function CastsCitiesTab({ currentOrgId, canEnter }: { currentOrgId: strin
       setNewPriorityValue(1);
       toast.success('Priority assigned');
     },
-    onError: (e: any) => toast.error(e.message ?? 'Failed to assign priority'),
+    onError: (e: Error) => toast.error(e.message ?? 'Failed to assign priority'),
   });
 
   const deleteCastPriority = useMutation({
@@ -126,7 +126,7 @@ export function CastsCitiesTab({ currentOrgId, canEnter }: { currentOrgId: strin
       qc.invalidateQueries({ queryKey: ['cast-city-priority'] });
       toast.success('Assignment removed');
     },
-    onError: (e: any) => toast.error(e.message ?? 'Failed to remove'),
+    onError: (e: Error) => toast.error(e.message ?? 'Failed to remove'),
   });
 
   // Show-scoped priority ladder: 'org' renders the org-wide editor above unchanged;
