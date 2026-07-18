@@ -137,14 +137,30 @@ export async function updateHireOrderStatus(
 }
 
 /**
+ * Neutralise a free-text search term before it is interpolated into a PostgREST
+ * `or()` filter string. Strips the two wildcards (`%`, `*`) so a user can't turn
+ * the search into a match-all, and the grouping/quoting metacharacters
+ * (`,` `(` `)` `"` `\`) so a stray `)` can't close the `or(...)` group early and
+ * append attacker-controlled clauses (e.g. `x)or(status.eq.void`). Column and
+ * operator are hard-coded around the term, so it only ever lands in the value
+ * position where the remaining characters (letters, digits, `.`, `-`, …) are
+ * literal — order numbers and artist names never legitimately carry the stripped
+ * ones, so the loss is negligible. Returns "" for a blank/undefined term.
+ */
+export function sanitizeSearchTerm(search: string | undefined): string {
+  return (search ?? "").replace(/[%*(),"\\]/g, "").trim();
+}
+
+/**
  * All of an org's hire orders (any status), newest first, with the linked
  * artist name and show date (date + venue) joined in — feeds the V4 tracking
  * table. `filters.status` narrows to a status set (omitted/empty = every
  * status); `filters.search` matches the order number OR the joined artist
  * name, case-insensitively (PostgREST's `or()` supports referencing an
  * embedded resource's column — see the API docs' "Embedded filters" section).
- * `%`/`,` are stripped from the search term first since they are significant
- * in a PostgREST filter string and the search box is free text.
+ * Every character with structural meaning in a PostgREST filter string is
+ * stripped from the search term first (see `sanitizeSearchTerm`) since the
+ * search box is free text and is interpolated straight into the `or()` group.
  */
 export async function fetchHireOrders(
   client: SupabaseClient<Database>,
@@ -159,7 +175,7 @@ export async function fetchHireOrders(
   if (filters.status && filters.status.length > 0) {
     query = query.in("status", filters.status);
   }
-  const term = filters.search?.trim().replace(/[%,]/g, "");
+  const term = sanitizeSearchTerm(filters.search);
   if (term) {
     query = query.or(`order_no.ilike.%${term}%,artists.name.ilike.%${term}%`);
   }

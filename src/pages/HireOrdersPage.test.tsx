@@ -133,6 +133,37 @@ describe("HireOrdersPage", () => {
     expect(await screen.findByText(/3 orders · €6,000\.00 committed/)).toBeInTheDocument();
   });
 
+  it("keeps the KPI tiles and meta line org-wide when a status filter narrows the table", async () => {
+    // Single-object seed so the fake applies .in('status', …) membership filtering:
+    // the filtered LIST query returns only draft rows while the unfiltered KPI/meta
+    // query still sees every order. (The array seed used elsewhere ignores .in().)
+    seedClient({ hire_orders: { data: ORDERS, error: null } });
+    renderWithProviders(<HireOrdersPage />);
+
+    // Baseline: all three orders visible, KPIs/meta org-wide.
+    await screen.findByText("HO-2026-0201-1");
+    expect(screen.getByText("HO-2026-0201-2")).toBeInTheDocument();
+    expect(screen.getByText("HO-2026-0201-3")).toBeInTheDocument();
+
+    // Filter the table down to Draft.
+    fireEvent.click(screen.getByRole("button", { name: "Draft" }));
+
+    // Table narrows to the single draft order (wait for the refetch to settle:
+    // the draft row present AND the others gone in the same steady state).
+    await waitFor(() => {
+      expect(screen.getByText("HO-2026-0201-1")).toBeInTheDocument();
+      expect(screen.queryByText("HO-2026-0201-2")).not.toBeInTheDocument();
+    });
+    expect(screen.queryByText("HO-2026-0201-3")).not.toBeInTheDocument();
+
+    // …but the KPI tiles and meta line stay org-wide. Were they filtered, "Issued"
+    // (cumulative, needs issued_at) would collapse to 0 and committed to the draft's
+    // 1000 — instead Issued is still 2 and the meta line still totals all three.
+    expect(screen.getByText(/3 orders · €6,000\.00 committed/)).toBeInTheDocument();
+    const kpiValues = screen.getAllByText(/^\d+$/).map((el) => el.textContent);
+    expect(kpiValues).toEqual(expect.arrayContaining(["2", "1"]));
+  });
+
   it("renders the table with mono order numbers, stacked artist/venue, mono date, right-aligned fee, and a status badge", async () => {
     renderWithProviders(<HireOrdersPage />);
     await screen.findByText("HO-2026-0201-1");

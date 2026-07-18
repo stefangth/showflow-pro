@@ -1,6 +1,7 @@
 import { useMemo, useState } from "react";
 import { Search } from "lucide-react";
 import { useAuth } from "@/features/auth/AuthContext";
+import { useDebouncedValue } from "@/hooks/useDebouncedValue";
 import { useHireOrdersList, useHireOrderAction } from "@/hooks/useHireOrders";
 import { OrdersKpis, committedValue } from "@/components/hireOrders/OrdersKpis";
 import { OrdersTable } from "@/components/hireOrders/OrdersTable";
@@ -69,15 +70,25 @@ export default function HireOrdersPage() {
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [slideOverId, setSlideOverId] = useState<string | null>(null);
 
+  // Keep the input responsive but only re-query once typing pauses — otherwise
+  // every keystroke changes the query key and fires a fresh DB round-trip.
+  const debouncedSearch = useDebouncedValue(search.trim(), 250);
+
   const filters = useMemo(
     () => ({
       status: statusFilter === "all" ? undefined : [statusFilter],
-      search: search.trim() || undefined,
+      search: debouncedSearch || undefined,
     }),
-    [statusFilter, search],
+    [statusFilter, debouncedSearch],
   );
 
   const { data: orders, isLoading, isError } = useHireOrdersList(filters);
+  // The KPI tiles and header meta line are an always-on org-wide overview,
+  // independent of the table's status/search filter (a status chip must not
+  // collapse "Issued"/"Value committed" to that subset). Fetch the unfiltered
+  // list separately for them; when no filter is active this shares a query key
+  // with the list above and dedupes, so it costs nothing in the common case.
+  const overview = useHireOrdersList({}).data ?? [];
   const action = useHireOrderAction();
   const rows = orders ?? [];
 
@@ -102,7 +113,7 @@ export default function HireOrdersPage() {
     );
   }
 
-  const { total, currency } = committedValue(rows);
+  const { total, currency } = committedValue(overview);
 
   return (
     <div className="space-y-6">
@@ -113,7 +124,7 @@ export default function HireOrdersPage() {
           </p>
           <h1 className="font-display text-[32px] font-semibold tracking-tight">Hire orders</h1>
           <p className="mt-1 text-muted-foreground">
-            {rows.length} order{rows.length === 1 ? "" : "s"} · {formatMoney(total, currency)} committed
+            {overview.length} order{overview.length === 1 ? "" : "s"} · {formatMoney(total, currency)} committed
           </p>
         </div>
         <div className="flex items-center gap-2">
@@ -161,7 +172,7 @@ export default function HireOrdersPage() {
         </Alert>
       ) : (
         <>
-          <OrdersKpis orders={rows} />
+          <OrdersKpis orders={overview} />
 
           {isLoading ? (
             <div className="space-y-2">

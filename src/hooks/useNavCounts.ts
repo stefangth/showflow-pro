@@ -2,6 +2,7 @@ import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/features/auth/AuthContext";
 import { useMyArtist } from "@/hooks/useMyArtist";
+import { useFeature } from "@/hooks/useEntitlements";
 import { fetchPendingConfirmationsCount, fetchMyOpenOffersCount } from "@/data/bookings";
 import { fetchAwaitingCountersignCount } from "@/data/hireOrders";
 
@@ -13,10 +14,17 @@ import { fetchAwaitingCountersignCount } from "@/data/hireOrders";
  *   (current org) — the "Hire orders" nav item's badge.
  * pendingConfirmations/openOffers live under ['bookings', ...] so booking mutations
  * refresh them; awaitingCountersign lives under ['hire-orders', ...] for the same reason.
+ *
+ * awaitingCountersign is additionally gated on the org's `hire_orders` entitlement,
+ * mirroring the nav item that consumes it (visibleNavItems in navItems.ts):
+ * super-admins bypass the gate (god-mode), everyone else needs the feature enabled.
+ * The feature ships dark, so without this gate every admin/producer would fire an
+ * extra round-trip on every page load for orgs that don't have hire orders at all.
  */
 export function useNavCounts(): { pendingConfirmations: number; openOffers: number; awaitingCountersign: number } {
-  const { currentOrg, hasRole } = useAuth();
+  const { currentOrg, hasRole, isSuperAdmin } = useAuth();
   const { data: artist } = useMyArtist();
+  const hireOrdersEnabled = useFeature("hire_orders");
 
   const orgId = currentOrg?.id ?? null;
   const canSeeOrgBookings = hasRole("admin") || hasRole("producer");
@@ -40,7 +48,7 @@ export function useNavCounts(): { pendingConfirmations: number; openOffers: numb
 
   const awaitingCountersign = useQuery({
     queryKey: ["hire-orders", "awaiting-count", orgId],
-    enabled: canSeeOrgBookings && !!orgId,
+    enabled: canSeeOrgBookings && !!orgId && (hireOrdersEnabled || isSuperAdmin),
     staleTime: 60_000,
     queryFn: () => fetchAwaitingCountersignCount(supabase, orgId!),
   });

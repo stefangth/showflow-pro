@@ -8,6 +8,7 @@ import {
   updateHireOrderStatus,
   fetchHireOrders,
   fetchAwaitingCountersignCount,
+  sanitizeSearchTerm,
 } from "./hireOrders";
 
 describe("fetchHireOrdersForDate", () => {
@@ -160,6 +161,22 @@ describe("fetchHireOrders", () => {
     });
   });
 
+  it("strips parens/quotes so a term can't break out of the or() group", async () => {
+    const fake = createFakeSupabase({ hire_orders: { data: [], error: null } });
+    // A term crafted to close the or(...) group early and inject a clause.
+    await fetchHireOrders(fake as never, "org-1", { search: 'x) or (status.eq.void"' });
+    const orCall = fake.calls.find((c) => c.table === "hire_orders" && c.method === "or");
+    const filter = orCall?.args[0] as string;
+    // No unescaped grouping/quoting metacharacters survive in the term.
+    expect(filter).toBe(
+      "order_no.ilike.%x or status.eq.void%,artists.name.ilike.%x or status.eq.void%",
+    );
+    // The only ')'/'('/'\"' anywhere are the ones the query never had to begin with.
+    expect(filter).not.toContain(")");
+    expect(filter).not.toContain("(");
+    expect(filter).not.toContain('"');
+  });
+
   it("returns [] when there are no rows", async () => {
     const fake = createFakeSupabase({ hire_orders: { data: null, error: null } });
     expect(await fetchHireOrders(fake as never, "org-1", {})).toEqual([]);
@@ -188,5 +205,22 @@ describe("fetchAwaitingCountersignCount", () => {
   it("throws on a supabase error", async () => {
     const fake = createFakeSupabase({ hire_orders: { data: null, error: { message: "boom" } } });
     await expect(fetchAwaitingCountersignCount(fake as never, "org-1")).rejects.toBeTruthy();
+  });
+});
+
+describe("sanitizeSearchTerm", () => {
+  it("returns '' for undefined/blank", () => {
+    expect(sanitizeSearchTerm(undefined)).toBe("");
+    expect(sanitizeSearchTerm("   ")).toBe("");
+  });
+
+  it("strips wildcards and PostgREST grouping/quoting metacharacters", () => {
+    expect(sanitizeSearchTerm('%*(),"\\')).toBe("");
+    expect(sanitizeSearchTerm('a)b(c,d"e%f*g')).toBe("abcdefg");
+  });
+
+  it("preserves ordinary order-number / name characters", () => {
+    expect(sanitizeSearchTerm("HO-2026-0201-1")).toBe("HO-2026-0201-1");
+    expect(sanitizeSearchTerm("  Cleo Nile  ")).toBe("Cleo Nile");
   });
 });

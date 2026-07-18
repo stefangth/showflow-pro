@@ -5,6 +5,7 @@ import React from "react";
 
 vi.mock("@/features/auth/AuthContext", () => ({ useAuth: vi.fn() }));
 vi.mock("@/hooks/useMyArtist", () => ({ useMyArtist: vi.fn() }));
+vi.mock("@/hooks/useEntitlements", () => ({ useFeature: vi.fn() }));
 vi.mock("@/data/bookings", () => ({
   fetchPendingConfirmationsCount: vi.fn(),
   fetchMyOpenOffersCount: vi.fn(),
@@ -15,6 +16,7 @@ vi.mock("@/data/hireOrders", () => ({
 
 import { useAuth } from "@/features/auth/AuthContext";
 import { useMyArtist } from "@/hooks/useMyArtist";
+import { useFeature } from "@/hooks/useEntitlements";
 import { fetchPendingConfirmationsCount, fetchMyOpenOffersCount } from "@/data/bookings";
 import { fetchAwaitingCountersignCount } from "@/data/hireOrders";
 import { useNavCounts } from "./useNavCounts";
@@ -28,12 +30,14 @@ function wrapper() {
 describe("useNavCounts", () => {
   beforeEach(() => vi.clearAllMocks());
 
-  it("fetches pending confirmations and the awaiting-countersign count for a producer with an org; no offers without an artist", async () => {
+  it("fetches pending confirmations and the awaiting-countersign count for a producer with an org and hire orders enabled; no offers without an artist", async () => {
     vi.mocked(useAuth).mockReturnValue({
       currentOrg: { id: "org-1", name: "Acme" },
       hasRole: (r: string) => r === "producer",
+      isSuperAdmin: false,
     } as never);
     vi.mocked(useMyArtist).mockReturnValue({ data: null } as never);
+    vi.mocked(useFeature).mockReturnValue(true);
     vi.mocked(fetchPendingConfirmationsCount).mockResolvedValue(5);
     vi.mocked(fetchAwaitingCountersignCount).mockResolvedValue(2);
 
@@ -46,12 +50,46 @@ describe("useNavCounts", () => {
     expect(result.current.openOffers).toBe(0);
   });
 
+  it("does not fetch the awaiting-countersign count when hire orders is disabled (feature ships dark)", async () => {
+    vi.mocked(useAuth).mockReturnValue({
+      currentOrg: { id: "org-1", name: "Acme" },
+      hasRole: (r: string) => r === "producer",
+      isSuperAdmin: false,
+    } as never);
+    vi.mocked(useMyArtist).mockReturnValue({ data: null } as never);
+    vi.mocked(useFeature).mockReturnValue(false);
+    vi.mocked(fetchPendingConfirmationsCount).mockResolvedValue(5);
+
+    const { result } = renderHook(() => useNavCounts(), { wrapper: wrapper() });
+    // Pending-confirmations still fires (not feature-gated); awaiting-countersign does not.
+    await waitFor(() => expect(result.current.pendingConfirmations).toBe(5));
+    expect(fetchAwaitingCountersignCount).not.toHaveBeenCalled();
+    expect(result.current.awaitingCountersign).toBe(0);
+  });
+
+  it("fetches the awaiting-countersign count for a super-admin even when the feature is off (god-mode)", async () => {
+    vi.mocked(useAuth).mockReturnValue({
+      currentOrg: { id: "org-1", name: "Acme" },
+      hasRole: (r: string) => r === "admin",
+      isSuperAdmin: true,
+    } as never);
+    vi.mocked(useMyArtist).mockReturnValue({ data: null } as never);
+    vi.mocked(useFeature).mockReturnValue(false);
+    vi.mocked(fetchAwaitingCountersignCount).mockResolvedValue(4);
+
+    const { result } = renderHook(() => useNavCounts(), { wrapper: wrapper() });
+    await waitFor(() => expect(result.current.awaitingCountersign).toBe(4));
+    expect(fetchAwaitingCountersignCount).toHaveBeenCalledWith(expect.anything(), "org-1");
+  });
+
   it("fetches open offers for an artist; no org-scoped queries (confirmations or awaiting-countersign)", async () => {
     vi.mocked(useAuth).mockReturnValue({
       currentOrg: { id: "org-1", name: "Acme" },
       hasRole: () => false,
+      isSuperAdmin: false,
     } as never);
     vi.mocked(useMyArtist).mockReturnValue({ data: { id: "artist-1" } } as never);
+    vi.mocked(useFeature).mockReturnValue(false);
     vi.mocked(fetchMyOpenOffersCount).mockResolvedValue(3);
 
     const { result } = renderHook(() => useNavCounts(), { wrapper: wrapper() });
