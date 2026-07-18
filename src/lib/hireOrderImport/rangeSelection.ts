@@ -54,3 +54,34 @@ export function applyRange(
   const dataRows = rowNumbers.map((n) => ({ rowIndex: n, cells: rows[n - 1] ?? [] }));
   return { headers, dataRows };
 }
+
+/**
+ * Parse a free-text list of 1-based row numbers/ranges (e.g. "3, 5, 12-18") into
+ * a sorted, de-duplicated array of row numbers. Backs the "Pick rows" mode's
+ * row-number entry, which lets a user reach rows beyond RangeStep's bounded
+ * preview (only the first MAX_PREVIEW_ROWS rows render checkboxes) — this
+ * parser has no notion of a sheet size and never clamps; out-of-bounds picks
+ * are dropped later by `applyRange`, same as an out-of-bounds checkbox pick.
+ * Tokens that don't parse as a number or range are silently skipped so one bad
+ * token doesn't block the valid ones around it; a reversed range (e.g. "18-12")
+ * is swapped rather than dropped.
+ */
+export function parsePickedRows(input: string): number[] {
+  const picked = new Set<number>();
+  for (const rawToken of input.split(",")) {
+    const token = rawToken.trim();
+    if (token === "") continue;
+
+    const rangeMatch = token.match(/^(\d+)\s*-\s*(\d+)$/);
+    if (rangeMatch) {
+      let start = Number(rangeMatch[1]);
+      let end = Number(rangeMatch[2]);
+      if (start > end) [start, end] = [end, start];
+      for (let n = start; n <= end; n++) picked.add(n);
+      continue;
+    }
+
+    if (/^\d+$/.test(token)) picked.add(Number(token));
+  }
+  return Array.from(picked).sort((a, b) => a - b);
+}

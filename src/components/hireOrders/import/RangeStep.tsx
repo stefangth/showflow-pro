@@ -1,8 +1,9 @@
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import type { RawSheet } from "@/lib/artistImport/parseSheet";
-import { applyRange, type SheetRange } from "@/lib/hireOrderImport/rangeSelection";
+import { applyRange, parsePickedRows, type SheetRange } from "@/lib/hireOrderImport/rangeSelection";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
 
@@ -32,12 +33,25 @@ export function RangeStep({ sheets, sheetIndex, onSheetIndexChange, range, onRan
   const { headers, dataRows } = useMemo(() => applyRange(rows, range), [rows, range]);
   const includedRowNumbers = useMemo(() => new Set(dataRows.map((d) => d.rowIndex)), [dataRows]);
   const previewRows = rows.slice(0, MAX_PREVIEW_ROWS);
+  const [pickedInput, setPickedInput] = useState("");
 
   function togglePicked(rowNumber: number, checked: boolean) {
     const picked = new Set(range.picked ?? []);
     if (checked) picked.add(rowNumber);
     else picked.delete(rowNumber);
     onRangeChange({ ...range, picked: Array.from(picked).sort((a, b) => a - b) });
+  }
+
+  // Adds (unions) the parsed rows into range.picked rather than replacing it,
+  // so this stays consistent with togglePicked above and never wipes out
+  // whatever the checkboxes already selected within the preview.
+  function applyPickedInput() {
+    const parsed = parsePickedRows(pickedInput);
+    if (parsed.length === 0) return;
+    const picked = new Set(range.picked ?? []);
+    parsed.forEach((n) => picked.add(n));
+    onRangeChange({ ...range, picked: Array.from(picked).sort((a, b) => a - b) });
+    setPickedInput("");
   }
 
   return (
@@ -104,6 +118,33 @@ export function RangeStep({ sheets, sheetIndex, onSheetIndexChange, range, onRan
           </div>
         )}
       </div>
+
+      {range.mode === "picked" && (
+        <div className="space-y-1.5">
+          <Label htmlFor="import-picked-rows">Add rows by number</Label>
+          <div className="flex items-center gap-2">
+            <Input
+              id="import-picked-rows"
+              placeholder="e.g. 3, 5, 12-18"
+              value={pickedInput}
+              onChange={(e) => setPickedInput(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") {
+                  e.preventDefault();
+                  applyPickedInput();
+                }
+              }}
+            />
+            <Button type="button" variant="outline" size="sm" onClick={applyPickedInput}>
+              Add
+            </Button>
+          </div>
+          <p className="text-xs text-muted-foreground">
+            Row numbers match the spreadsheet, so this also reaches rows past the {MAX_PREVIEW_ROWS}-row preview
+            below (the checkboxes there only cover the first {MAX_PREVIEW_ROWS} rows).
+          </p>
+        </div>
+      )}
 
       <p className="text-xs text-muted-foreground">
         {headers.length} column{headers.length === 1 ? "" : "s"} · {dataRows.length} row{dataRows.length === 1 ? "" : "s"} selected

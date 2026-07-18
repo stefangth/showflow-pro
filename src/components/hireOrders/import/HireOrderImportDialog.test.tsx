@@ -118,6 +118,27 @@ describe("HireOrderImportDialog", () => {
     expect(within(feeSelect).getByText("City")).toBeInTheDocument();
   });
 
+  it("preserves a manual Map override when revisiting Map without changing headers", async () => {
+    seedDefault();
+    renderDialog();
+    uploadCsv();
+    await waitFor(() => expect(screen.getByLabelText(/header row/i)).toBeInTheDocument());
+    fireEvent.click(screen.getByRole("button", { name: /^continue$/i })); // -> map
+
+    const feeSelect = await screen.findByRole("combobox", { name: /^fee column$/i });
+    fireEvent.click(feeSelect);
+    fireEvent.click(await screen.findByRole("option", { name: "City" }));
+    expect(within(feeSelect).getByText("City")).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: /^back$/i })); // -> range
+    await waitFor(() => expect(screen.getByLabelText(/header row/i)).toBeInTheDocument());
+    fireEvent.click(screen.getByRole("button", { name: /^continue$/i })); // -> map again (revisit, same headers)
+
+    const feeSelectAgain = await screen.findByRole("combobox", { name: /^fee column$/i });
+    // The manual override survives the round trip instead of being re-guessed back to "Fee".
+    expect(within(feeSelectAgain).getByText("City")).toBeInTheDocument();
+  });
+
   async function walkToResolve() {
     renderDialog();
     uploadCsv();
@@ -157,6 +178,25 @@ describe("HireOrderImportDialog", () => {
     // The blank row is skipped -> its checkbox is disabled.
     const skippedCheckbox = screen.getByRole("checkbox", { name: /select row 4/i });
     expect(skippedCheckbox).toBeDisabled();
+  });
+
+  it("preserves a manual selection change when revisiting Review", async () => {
+    seedDefault();
+    await walkToResolve();
+    fireEvent.click(screen.getByRole("button", { name: /^continue$/i })); // -> review (first time)
+
+    await screen.findByText("Needs attention");
+    const newPersonCheckbox = screen.getByRole("checkbox", { name: /select new person/i });
+    expect(newPersonCheckbox).not.toBeChecked();
+    fireEvent.click(newPersonCheckbox); // manually select an "attention" row despite its unresolved issue
+
+    fireEvent.click(screen.getByRole("button", { name: /^back$/i })); // -> resolve
+    await screen.findByText("New Person");
+    fireEvent.click(screen.getByRole("button", { name: /^continue$/i })); // -> review again (revisit, nothing changed)
+
+    const newPersonCheckboxAgain = await screen.findByRole("checkbox", { name: /select new person/i });
+    // A revisit must not silently reset the user's manual over-selection.
+    expect(newPersonCheckboxAgain).toBeChecked();
   });
 
   it("submits the selected rows to bulk_import_hire_orders with resolved data, then shows the Done screen", async () => {
@@ -234,6 +274,43 @@ describe("HireOrderImportDialog", () => {
         args: [{ name: "New Person", email: null, org_id: ORG }],
       }),
     );
+  });
+
+  it("fee_currency follows a mapped sheet currency, falling back to the org default", async () => {
+    const CSV_CURRENCY = `Artist,Email,Date,Venue,City,Fee,Currency
+Ann Artist,ann@example.com,2026-08-01,Main Hall,Berlin,500,USD
+Ann Artist,ann@example.com,2026-08-01,Main Hall,Berlin,750,`;
+    seedDefault({
+      "rpc:bulk_import_hire_orders": {
+        data: [
+          { row_index: 2, status: "created", order_id: "ho-1" },
+          { row_index: 3, status: "created", order_id: "ho-2" },
+        ],
+        error: null,
+      },
+    });
+    renderDialog();
+    uploadCsv(CSV_CURRENCY);
+    await waitFor(() => expect(screen.getByLabelText(/header row/i)).toBeInTheDocument());
+    fireEvent.click(screen.getByRole("button", { name: /^continue$/i })); // -> map
+
+    const currencySelect = await screen.findByRole("combobox", { name: /^currency column$/i });
+    expect(within(currencySelect).getByText("Currency")).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: /^continue$/i })); // -> resolve
+    fireEvent.click(screen.getByRole("button", { name: /^continue$/i })); // -> review
+
+    fireEvent.click(await screen.findByRole("button", { name: /import 2 orders/i }));
+
+    await waitFor(() => expect(rpcCalls("bulk_import_hire_orders").length).toBe(1));
+    const rows = rpcCalls("bulk_import_hire_orders")[0].p_rows as Record<string, unknown>[];
+    expect(rows).toHaveLength(2);
+    const usdRow = rows.find((r) => r.fee_amount === 500);
+    const eurRow = rows.find((r) => r.fee_amount === 750);
+    // The sheet supplied "USD" for the first row -> that resolved currency must win.
+    expect(usdRow?.fee_currency).toBe("USD");
+    // The second row's Currency cell is blank -> falls back to the org default.
+    expect(eurRow?.fee_currency).toBe("EUR");
   });
 
   it("fetches a Google Sheets URL via fetch-remote-sheet and advances to Range", async () => {
