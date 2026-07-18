@@ -1,10 +1,10 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { screen, fireEvent, waitFor } from "@testing-library/react";
+import { screen } from "@testing-library/react";
 import { renderWithProviders } from "@/test/renderWithProviders";
 
-const reorderShows = vi.fn((...a: unknown[]) => Promise.resolve());
-const archiveShow = vi.fn((...a: unknown[]) => Promise.resolve());
-const deleteShow = vi.fn((...a: unknown[]) => Promise.resolve());
+const reorderShows = vi.fn((..._a: unknown[]) => Promise.resolve());
+const archiveShow = vi.fn((..._a: unknown[]) => Promise.resolve());
+const deleteShow = vi.fn((..._a: unknown[]) => Promise.resolve());
 let role = "admin";
 vi.mock("@/integrations/supabase/client", () => ({ supabase: {} }));
 vi.mock("@/features/auth/AuthContext", () => ({ useAuth: () => ({ currentOrg: { id: "org-1" }, user: { id: "u1" }, hasRole: (r: string) => r === role || r === "producer" }) }));

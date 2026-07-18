@@ -3,10 +3,10 @@ import { screen, fireEvent, waitFor } from "@testing-library/react";
 import { renderWithProviders } from "@/test/renderWithProviders";
 import { BOOKING_FLOW_DEFAULTS } from "@/lib/bookingFlow";
 
-const createShowDate = vi.fn((...a: unknown[]) => Promise.resolve({ id: "d-new" }));
-const updateShowDate = vi.fn((...a: unknown[]) => Promise.resolve({}));
-const openOfferTier = vi.fn((...a: unknown[]) => Promise.resolve({ offersCreated: 1 }));
-const fetchOpenedTiers = vi.fn((...a: unknown[]) => Promise.resolve([]));
+const createShowDate = vi.fn((..._a: unknown[]) => Promise.resolve({ id: "d-new" }));
+const updateShowDate = vi.fn((..._a: unknown[]) => Promise.resolve({}));
+const openOfferTier = vi.fn((..._a: unknown[]) => Promise.resolve({ offersCreated: 1 }));
+const fetchOpenedTiers = vi.fn((..._a: unknown[]) => Promise.resolve([]));
 let mockFlow: typeof BOOKING_FLOW_DEFAULTS | undefined = undefined;
 vi.mock("@/integrations/supabase/client", () => ({ supabase: {} }));
 vi.mock("@/features/auth/AuthContext", () => ({ useAuth: () => ({ currentOrg: { id: "org-1" }, user: { id: "u1" }, hasRole: () => true }) }));

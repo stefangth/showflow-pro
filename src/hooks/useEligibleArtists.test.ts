@@ -57,7 +57,6 @@ describe("useEligibleArtists", () => {
   });
 
   it("returns artistIds set when cast members are found", async () => {
-    const callCount = 0;
     vi.mocked(supabase.from).mockImplementation((table: string) => {
       if (table === "show_cast_eligibility") {
         return {
@@ -232,7 +231,7 @@ describe("useEligibleArtists", () => {
   });
 
   it("reacts to changed showDateId", async () => {
-    const makeChain = (dateId: string) => ({
+    const makeChain = (_dateId: string) => ({
       select: vi.fn().mockReturnValue({
         eq: vi.fn().mockReturnValue({
           eq: vi.fn().mockResolvedValue({ data: [], error: null }),

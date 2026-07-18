@@ -1,7 +1,6 @@
 import { Check, ChevronDown } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
 
 interface Props {

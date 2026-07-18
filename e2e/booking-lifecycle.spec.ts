@@ -9,7 +9,7 @@
  *   5. Verify an email was queued in email_send_log for the artist
  */
 import { expect, test } from "@playwright/test";
-import { loginAs, loginAsAndAwaitDashboard, navViaSidebar } from "./helpers/auth";
+import { loginAsAndAwaitDashboard, navViaSidebar } from "./helpers/auth";
 import { deleteUserByEmail } from "./helpers/users";
 import { tagEmail } from "./helpers/supabase";
 import { seedConsent } from "./helpers/consent";

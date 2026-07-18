@@ -38,7 +38,7 @@ const OUTSIDER_EMAIL = tagEmail("artist-chat-outsider", Date.now());
 const OUTSIDER_PASSWORD = "E2eChatOutsider!1";
 
 let fixture: BookingFixture;
-let outsider: { id: string; email: string };
+let _outsider: { id: string; email: string };
 let outsiderArtistId: string;
 let chatId: string;
 let participantBookingId: string;
@@ -64,7 +64,7 @@ test.describe("Chat access control — booking status gates chat participation",
       OUTSIDER_PASSWORD,
       "artist"
     );
-    outsider = { id: outsiderUser.id, email: outsiderUser.email };
+    _outsider = { id: outsiderUser.id, email: outsiderUser.email };
 
     const { data: artist2, error: a2Err } = await admin
       .from("artists")
