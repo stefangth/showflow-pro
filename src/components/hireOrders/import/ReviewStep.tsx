@@ -28,6 +28,7 @@ const ISSUE_LABELS: Record<string, string> = {
   unparseable_date: "Unreadable date",
   missing_date: "Missing date",
   ambiguous_date: "Ambiguous date",
+  venue_city_mismatch: "Venue/city mismatch",
   missing_fee: "Missing fee",
 };
 
@@ -39,6 +40,7 @@ interface Props {
   rows: ReviewRow[];
   selection: Set<number>;
   onToggleRow: (rowIndex: number, checked: boolean) => void;
+  onToggleAll: (checked: boolean) => void;
   manualEdits: Record<number, ManualEdit>;
   onEditFee: (rowIndex: number, value: string) => void;
   onEditDate: (rowIndex: number, value: string) => void;
@@ -49,12 +51,19 @@ interface Props {
  * table with a preselected-when-ready checkbox (skipped rows are never
  * selectable) and inline-editable fee/date cells. Edits are reported upward via
  * onEditFee/onEditDate — this component holds no derivation of its own, it only
- * renders whatever status/issues the caller already resolved.
+ * renders whatever status/issues the caller already resolved. A header
+ * checkbox mirrors "all selectable (non-skipped) rows are selected" and calls
+ * onToggleAll to select/clear them all at once.
  */
-export function ReviewStep({ rows, selection, onToggleRow, manualEdits, onEditFee, onEditDate }: Props) {
+export function ReviewStep({ rows, selection, onToggleRow, onToggleAll, manualEdits, onEditFee, onEditDate }: Props) {
   const readyCount = rows.filter((r) => r.status === "ready").length;
   const attentionCount = rows.filter((r) => r.status === "attention").length;
   const skippedCount = rows.filter((r) => r.status === "skipped").length;
+
+  const selectableRows = rows.filter((r) => r.status !== "skipped");
+  const selectedCount = selectableRows.filter((r) => selection.has(r.rowIndex)).length;
+  const allSelected = selectableRows.length > 0 && selectedCount === selectableRows.length;
+  const someSelected = selectedCount > 0 && !allSelected;
 
   return (
     <div className="space-y-4">
@@ -77,7 +86,14 @@ export function ReviewStep({ rows, selection, onToggleRow, manualEdits, onEditFe
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead className="w-8" />
+              <TableHead className="w-8">
+                <Checkbox
+                  checked={someSelected ? "indeterminate" : allSelected}
+                  disabled={selectableRows.length === 0}
+                  onCheckedChange={(v) => onToggleAll(!!v)}
+                  aria-label="Select all"
+                />
+              </TableHead>
               <TableHead>Artist</TableHead>
               <TableHead>Date</TableHead>
               <TableHead>Fee</TableHead>

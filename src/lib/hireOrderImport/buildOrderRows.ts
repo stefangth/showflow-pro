@@ -138,11 +138,12 @@ function matchShowDate(
   city: string,
   mapping: OrderColumnMapping,
   dates: ImportCatalogDate[]
-): { id?: string; ambiguous: boolean } {
+): { id?: string; ambiguous: boolean; mismatch?: boolean } {
   const byDate = dates.filter((d) => d.date === iso);
 
   const columnsMapped = Boolean(mapping.venue || mapping.city);
   const hasNarrowingValue = Boolean(venue || city);
+  let narrowingFailed = false;
   if (columnsMapped && hasNarrowingValue) {
     const narrowed = byDate.filter(
       (d) =>
@@ -152,10 +153,17 @@ function matchShowDate(
     if (narrowed.length === 1) return { id: narrowed[0].id, ambiguous: false };
     if (narrowed.length > 1) return { ambiguous: true };
     // narrowed.length === 0: venue/city didn't match any same-day date — fall
-    // through to the plain date-only check below.
+    // through to the plain date-only check below, flagging a mismatch if that
+    // resolves unambiguously (a wrong venue/city on an otherwise single-date
+    // day still deserves human review, even though the date link is kept).
+    narrowingFailed = true;
   }
 
-  if (byDate.length === 1) return { id: byDate[0].id, ambiguous: false };
+  if (byDate.length === 1) {
+    return narrowingFailed
+      ? { id: byDate[0].id, ambiguous: false, mismatch: true }
+      : { id: byDate[0].id, ambiguous: false };
+  }
   return { ambiguous: true };
 }
 
@@ -226,7 +234,10 @@ export function buildOrderRows(
       } else {
         issues.push("missing_fee");
       }
-    } else {
+    } else if (mapping.fee) {
+      // Fee column is mapped but this row's cell is blank — flag it (mirrors
+      // the missing_date handling above). An unmapped fee column is left
+      // alone: there's no per-row cell to be blank, so nothing to flag.
       issues.push("missing_fee");
     }
 
@@ -238,6 +249,7 @@ export function buildOrderRows(
       const result = matchShowDate(isoDate, rawVenue, rawCity, mapping, catalog.dates);
       matchedShowDateId = result.id;
       if (result.ambiguous) issues.push("ambiguous_date");
+      if (result.mismatch) issues.push("venue_city_mismatch");
     }
 
     const status: ResolvedImportRow["status"] = issues.length > 0 ? "attention" : "ready";

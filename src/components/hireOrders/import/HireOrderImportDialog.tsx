@@ -280,6 +280,13 @@ export function HireOrderImportDialog({ open, onOpenChange, orgId }: Props) {
       return next;
     });
   }
+  function toggleAll(checked: boolean) {
+    if (!checked) {
+      setSelection(new Set());
+      return;
+    }
+    setSelection(new Set(displayRows.filter((r) => r.status !== "skipped").map((r) => r.rowIndex)));
+  }
   function editFee(rowIndex: number, value: string) {
     setManualEdits((prev) => ({ ...prev, [rowIndex]: { ...prev[rowIndex], fee: value } }));
   }
@@ -470,6 +477,7 @@ export function HireOrderImportDialog({ open, onOpenChange, orgId }: Props) {
               rows={displayRows}
               selection={selection}
               onToggleRow={toggleRow}
+              onToggleAll={toggleAll}
               manualEdits={manualEdits}
               onEditFee={editFee}
               onEditDate={editDate}

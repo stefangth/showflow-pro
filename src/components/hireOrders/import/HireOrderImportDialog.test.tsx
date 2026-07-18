@@ -180,6 +180,30 @@ describe("HireOrderImportDialog", () => {
     expect(skippedCheckbox).toBeDisabled();
   });
 
+  it("select-all selects every non-skipped row, and toggling off clears them", async () => {
+    seedDefault();
+    await walkToResolve();
+    fireEvent.click(screen.getByRole("button", { name: /^continue$/i })); // -> review, without resolving New Person
+
+    await screen.findByText("Needs attention");
+    const selectAll = screen.getByRole("checkbox", { name: /select all/i });
+    const annCheckbox = screen.getByRole("checkbox", { name: /select ann artist/i });
+    const newPersonCheckbox = screen.getByRole("checkbox", { name: /select new person/i });
+
+    // Ann is preselected (ready), New Person is not (attention) -> select-all starts indeterminate.
+    expect(selectAll).toHaveAttribute("aria-checked", "mixed");
+
+    fireEvent.click(selectAll);
+    expect(annCheckbox).toBeChecked();
+    expect(newPersonCheckbox).toBeChecked();
+    expect(selectAll).toBeChecked();
+
+    fireEvent.click(selectAll);
+    expect(annCheckbox).not.toBeChecked();
+    expect(newPersonCheckbox).not.toBeChecked();
+    expect(selectAll).not.toBeChecked();
+  });
+
   it("preserves a manual selection change when revisiting Review", async () => {
     seedDefault();
     await walkToResolve();
