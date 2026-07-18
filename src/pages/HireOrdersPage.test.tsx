@@ -256,6 +256,41 @@ describe("HireOrdersPage", () => {
     });
   });
 
+  it("debounces rapid search typing into one filtered query instead of one per keystroke, while the input itself stays responsive", async () => {
+    renderPage();
+    await screen.findByText("HO-2026-0201-1");
+    const selectCallCount = () =>
+      ((client.calls ?? []) as { table: string; method: string }[]).filter(
+        (c) => c.table === "hire_orders" && c.method === "select",
+      ).length;
+    const before = selectCallCount();
+
+    const input = screen.getByPlaceholderText(/search/i);
+    // Fast typing: several keystrokes fired back-to-back with no elapsed
+    // time between them, same as a real user typing well under the 275ms
+    // debounce window.
+    fireEvent.change(input, { target: { value: "m" } });
+    fireEvent.change(input, { target: { value: "mi" } });
+    fireEvent.change(input, { target: { value: "mir" } });
+    fireEvent.change(input, { target: { value: "mira" } });
+
+    // The input reflects every keystroke immediately (stays controlled and
+    // responsive) even though the query underneath hasn't fired yet.
+    expect(input).toHaveValue("mira");
+    expect(selectCallCount()).toBe(before);
+
+    await waitFor(() => {
+      expect(screen.getByText("HO-2026-0401-1")).toBeInTheDocument();
+      expect(screen.queryByText("HO-2026-0201-1")).not.toBeInTheDocument();
+    });
+
+    // The whole four-keystroke burst collapsed into a single debounced
+    // filter change: one query round for the search term (order_no ilike +
+    // full-set fetch, per fetchHireOrders' own search fan-out) rather than
+    // one round per keystroke.
+    expect(selectCallCount() - before).toBeLessThanOrEqual(2);
+  });
+
   it("enables the bulk bar on row selection and disables Issue selected unless every selected row is draft/ready", async () => {
     renderPage();
     await screen.findByText("HO-2026-0201-1");

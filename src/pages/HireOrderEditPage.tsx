@@ -268,47 +268,42 @@ export default function HireOrderEditPage() {
     setDirty(true);
   }
 
-  // Initial live-preview render: fetch the stored order's PDF once on load
-  // (before any edits), so the right column never sits empty.
-  const mountPreviewRef = useRef(false);
-  useEffect(() => {
-    if (!order || isReadOnly || !orgId || mountPreviewRef.current) return;
-    mountPreviewRef.current = true;
-    void (async () => {
-      try {
-        const res = await action.mutateAsync({ action: "preview", org_id: orgId, order_id: order.id });
-        const b64 = (res as { pdf_base64?: string } | null)?.pdf_base64;
-        if (b64) setPreviewSrc(`data:application/pdf;base64,${b64}`);
-      } catch {
-        /* useHireOrderAction already toasts a genuine failure */
-      }
-    })();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [order, isReadOnly, orgId]);
-
   // Live preview: the `preview` edge action always renders the STORED order
   // (it takes no body payload beyond the id), so reflecting an edit means
   // persisting it first, then re-requesting the preview — debounced 800ms so
   // a burst of keystrokes becomes one save + one preview, not one per key.
+  // `dirty` gates the persist step so the mount cycle below (fired before
+  // any edit, `dirty` still false) previews the stored order as-is instead
+  // of writing it back unchanged.
   //
   // The cycle's own two awaits can easily outlast 800ms, so a second edit's
   // timer can fire while the first edit's cycle is still persisting/
-  // previewing. `createSingleFlightRunner` (above) guarantees those two
+  // previewing. `createSingleFlightRunner` (below) guarantees those two
   // cycles never run concurrently — see its docstring for why that's the
   // only way to guarantee write ordering here. `latestRef` carries whatever
   // the guarded cycle needs so a trailing rerun always reads the LATEST
   // state, not whatever the timer's closure captured when it fired.
-  const latestRef = useRef({ order, orgId, isReadOnly, buildPatch, updateDraft, action });
-  latestRef.current = { order, orgId, isReadOnly, buildPatch, updateDraft, action };
+  //
+  // The initial mount preview (right below) is routed through this SAME
+  // single-flight runner rather than firing its own independent fetch: two
+  // uncoordinated preview fetches (mount + an edit that lands inside the
+  // mount fetch's round trip) could otherwise resolve out of order and let
+  // the stale mount preview overwrite a newer edit's preview in `previewSrc`.
+  const latestRef = useRef({ order, orgId, isReadOnly, buildPatch, updateDraft, action, dirty });
+  latestRef.current = { order, orgId, isReadOnly, buildPatch, updateDraft, action, dirty };
 
   const runPreviewCycleRef = useRef<(() => void) | null>(null);
   if (runPreviewCycleRef.current === null) {
     runPreviewCycleRef.current = createSingleFlightRunner(async () => {
-      const { order: curOrder, orgId: curOrgId, isReadOnly: curReadOnly, buildPatch: curBuildPatch, updateDraft: curUpdateDraft, action: curAction } =
-        latestRef.current;
+      const {
+        order: curOrder, orgId: curOrgId, isReadOnly: curReadOnly, buildPatch: curBuildPatch,
+        updateDraft: curUpdateDraft, action: curAction, dirty: curDirty,
+      } = latestRef.current;
       if (!curOrder || curReadOnly || !curOrgId) return;
       try {
-        await curUpdateDraft.mutateAsync({ id: curOrder.id, patch: curBuildPatch() });
+        if (curDirty) {
+          await curUpdateDraft.mutateAsync({ id: curOrder.id, patch: curBuildPatch() });
+        }
         const res = await curAction.mutateAsync({ action: "preview", org_id: curOrgId, order_id: curOrder.id });
         const b64 = (res as { pdf_base64?: string } | null)?.pdf_base64;
         if (b64) setPreviewSrc(`data:application/pdf;base64,${b64}`);
@@ -318,6 +313,17 @@ export default function HireOrderEditPage() {
       }
     });
   }
+
+  // Initial live-preview render: fetch the stored order's PDF once on load
+  // (before any edits), so the right column never sits empty. Goes through
+  // `runPreviewCycleRef` (not its own fetch) so it can never race a
+  // debounced edit cycle — see the comment above.
+  const mountPreviewRef = useRef(false);
+  useEffect(() => {
+    if (!order || isReadOnly || !orgId || mountPreviewRef.current) return;
+    mountPreviewRef.current = true;
+    runPreviewCycleRef.current?.();
+  }, [order, isReadOnly, orgId]);
 
   useEffect(() => {
     if (!dirty || !order || isReadOnly || !orgId) return;

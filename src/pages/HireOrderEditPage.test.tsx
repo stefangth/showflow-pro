@@ -248,6 +248,57 @@ describe("HireOrderEditPage", () => {
   });
 
   it(
+    "serializes the mount preview and an edit that lands inside its round trip, so the edit's fresher preview always wins",
+    async () => {
+      seedFor(order());
+      // An edit fires while the mount preview's own `generate-hire-orders`
+      // invoke is still in flight (its response is gated below). If the
+      // mount fetch runs through the SAME single-flight runner as the
+      // debounced edit cycle (the fix for finding 14), the edit's trigger
+      // must coalesce into a trailing rerun rather than firing a second,
+      // concurrent invoke — so invokeCount stays at 1 until the mount call
+      // is released, and the edit's response (not the stale mount response)
+      // is what ends up in `previewSrc`.
+      const gate = deferred<{ data: unknown; error: null }>();
+      let invokeCount = 0;
+      const invokeSpy = vi.fn(() => {
+        invokeCount += 1;
+        if (invokeCount === 1) return gate.promise;
+        return Promise.resolve({ data: { pdf_base64: "RURJVA==" }, error: null });
+      });
+      (client as unknown as { functions: { invoke: unknown } }).functions.invoke = invokeSpy;
+
+      renderPage();
+      await waitFor(() => expect(invokeCount).toBe(1));
+
+      fireEvent.change(screen.getByLabelText("Notes"), { target: { value: "Updated during mount fetch" } });
+
+      // Past the 800ms debounce window, but the mount call is still gated:
+      // no second invoke should have started (proves the edit's trigger was
+      // coalesced into the mount cycle's runner, not run independently).
+      await new Promise((r) => setTimeout(r, 900));
+      expect(invokeCount).toBe(1);
+
+      // Release the stale mount response.
+      gate.resolve({ data: { pdf_base64: PREVIEW_PDF_B64 }, error: null });
+
+      // The trailing rerun (persist the edit, then re-preview) now runs, and
+      // its result is the final state — never clobbered back to the mount
+      // cycle's own (stale) response.
+      await waitFor(() => {
+        const frame = screen.getByTitle(/hire order live preview/i);
+        expect(frame).toHaveAttribute("src", "data:application/pdf;base64,RURJVA==");
+      });
+      expect(invokeCount).toBe(2);
+      const lastUpdate = updateCalls().at(-1);
+      expect(lastUpdate).toBeDefined();
+      const patch = lastUpdate!.args[0] as { data?: Record<string, { value: unknown }> };
+      expect(patch.data?.notes?.value).toBe("Updated during mount fetch");
+    },
+    8000,
+  );
+
+  it(
     "re-requests the preview action debounced 800ms after an edit (save-then-preview)",
     async () => {
       seedFor(order());
