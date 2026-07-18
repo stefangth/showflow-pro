@@ -375,7 +375,7 @@ export function HireOrderImportDialog({ open, onOpenChange, orgId }: Props) {
                   <span
                     className={cn(
                       "inline-flex h-5 w-5 items-center justify-center rounded-full",
-                      state === "todo" ? "border border-border text-muted-foreground" : "bg-accent-500 text-white",
+                      state === "todo" ? "border border-border text-muted-foreground" : "bg-accent-500 text-primary-foreground",
                     )}
                   >
                     {state === "done" ? <Check className="h-3 w-3" /> : i + 1}
