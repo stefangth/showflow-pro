@@ -41,7 +41,7 @@
 - Consumes: nothing.
 - Produces: the scoped flat config all later tasks lint against. Rules stay `"warn"` — Task 15 flips them via the shared `strictness` object defined here.
 
-- [ ] **Step 1: Replace `eslint.config.js` with the scoped config**
+- [x] **Step 1: Replace `eslint.config.js` with the scoped config**
 
 ```js
 import js from "@eslint/js";
@@ -102,17 +102,17 @@ export default tseslint.config(
 );
 ```
 
-- [ ] **Step 2: Run lint, record the new baseline**
+- [x] **Step 2: Run lint, record the new baseline**
 
 Run: `npm run lint 2>&1 | tail -1`
 Expected: `✖ 410 problems (0 errors, 410 warnings)` — 19 react-refresh warnings gone (11 in `supabase/functions/**` templates + render.tsx, 7 in `src/components/ui/**`, 1 in `src/test/renderWithProviders.tsx`) and 24 underscore-prefixed unused-vars gone. If the number differs by ±2, diff the per-rule counts (`npm run lint 2>&1 | grep -oE '[a-z-]+/[a-z-]+$' | sort | uniq -c`) against Task 0 baseline (359/55/36/3) and reconcile before proceeding — do not continue with an unexplained delta.
 
-- [ ] **Step 3: Verify tests still pass**
+- [x] **Step 3: Verify tests still pass**
 
 Run: `npx vitest run 2>&1 | tail -3`
 Expected: `Test Files  158 passed` / `Tests  1164 passed`
 
-- [ ] **Step 4: Commit**
+- [x] **Step 4: Commit**
 
 ```bash
 git add eslint.config.js
