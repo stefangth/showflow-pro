@@ -30,7 +30,7 @@ function fakeFetch(handlers: Record<string, (init?: RequestInit) => Response>): 
   return { fetchFn, calls };
 }
 
-Deno.test("createAndSendEnvelope issues create -> add recipient -> distribute, each carrying the Bearer token", async () => {
+Deno.test("createAndSendEnvelope issues create -> add recipient -> distribute, each carrying the raw API token", async () => {
   const { fetchFn, calls } = fakeFetch({
     "/api/v2/envelope/create": () => jsonRes({ id: "envelope_123" }),
     "/api/v2/envelope/recipient/create-many": () => jsonRes({ data: [{ id: 1, token: "sign-tok-xyz" }] }),
@@ -46,7 +46,8 @@ Deno.test("createAndSendEnvelope issues create -> add recipient -> distribute, e
 
   for (const c of calls) {
     const headers = new Headers(c.init?.headers);
-    assertEquals(headers.get("Authorization"), "Bearer tok-abc", `missing/incorrect Bearer header on ${c.url}`);
+    // Documenso API v1 uses the raw api_... token with no "Bearer " scheme.
+    assertEquals(headers.get("Authorization"), "tok-abc", `missing/incorrect Authorization header on ${c.url}`);
   }
 
   assertEquals(result.envelopeId, "envelope_123");
