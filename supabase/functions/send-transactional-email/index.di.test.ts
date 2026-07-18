@@ -15,7 +15,7 @@
  */
 
 import { assertEquals, assertExists } from "../_shared/test-asserts.ts";
-import { makeFakeDeps, makeRequest } from "../_shared/testing.ts";
+import { bindFakeFrom, makeFakeDeps, makeRequest } from "../_shared/testing.ts";
 import { handle } from "./index.ts";
 
 // send-transactional-email now requires the service-role bearer (isServiceRole gate).
@@ -629,7 +629,7 @@ Deno.test("email_unsubscribe_tokens: upsert happens when no existing token", asy
   });
 
   // Override the admin.from for email_unsubscribe_tokens to return stateful results
-  const origFrom = baseDeps.admin.from.bind(baseDeps.admin);
+  const origFrom = bindFakeFrom(baseDeps.admin);
   // deno-lint-ignore no-explicit-any
   (baseDeps.admin as any).from = (table: string) => {
     if (table !== "email_unsubscribe_tokens") return origFrom(table);

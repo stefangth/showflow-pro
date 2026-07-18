@@ -1,5 +1,6 @@
 import { preflight, json } from "../_shared/http.ts";
 import { requireCronSecret, requireOrgRole } from "../_shared/auth.ts";
+import type { Json, TablesInsert, TablesUpdate } from "../_shared/database.types.ts";
 import { realDeps, type Deps } from "../_shared/deps.ts";
 import { getActiveOrgs, resolveOrgSetting } from "../_shared/settings.ts";
 import { resolveBookingFlow } from "../_shared/bookingFlow.ts";
@@ -293,7 +294,8 @@ async function syncOrg(deps: Deps, orgId: string, baseId: string, tableName: str
       const fields = record.fields;
       const id = record.id;
 
-      const dateValue = fieldMap.date ? fields[fieldMap.date] ?? null : null;
+      // Airtable date fields arrive as ISO strings; the raw field value is unknown.
+      const dateValue = fieldMap.date ? (fields[fieldMap.date] as string | null | undefined) ?? null : null;
       if (!dateValue) { held += 1; outcomes.push({ airtable_record_id: id, action: "held_unresolved", show_date_id: null, reason: "missing date", raw_fields: fields }); continue; }
 
       const subProgramRaw = fieldMap.sub_program ? fields[fieldMap.sub_program] ?? null : null;
@@ -358,14 +360,14 @@ async function syncOrg(deps: Deps, orgId: string, baseId: string, tableName: str
       const existing = existingByAirtableId.get(id);
       const existingId = existing?.id;
       if (existingId) {
-        const payload: Record<string, unknown> = { date: dateValue };
+        const payload: TablesUpdate<"show_dates"> = { date: dateValue };
         if (fieldMap.session_1) payload.session_1 = session1;
         if (fieldMap.session_2) payload.session_2 = session2;
         if (fieldMap.session_3) payload.session_3 = session3;
         if (venue !== null) payload.venue = venue;
         if (cityId !== null) payload.city_id = cityId;
         const customBag = buildCustom(fields);
-        if (customBag !== undefined) payload.custom = customBag;
+        if (customBag !== undefined) payload.custom = customBag as Json;
         if (isCancelled) {
           payload.status = "cancelled";
           payload.cancellation_reason = reason == null ? null : String(reason);
@@ -381,19 +383,20 @@ async function syncOrg(deps: Deps, orgId: string, baseId: string, tableName: str
         continue;
       }
 
-      // org_id is set by the derive trigger from show_id.
-      const insertPayload: Record<string, unknown> = { show_id: showId, date: dateValue, airtable_record_id: id, city_id: cityId };
+      // org_id is set by the derive trigger from show_id — the generated Insert
+      // type can't know that, hence the Omit + single cast at the insert below.
+      const insertPayload: Omit<TablesInsert<"show_dates">, "org_id"> = { show_id: showId, date: dateValue, airtable_record_id: id, city_id: cityId };
       if (fieldMap.session_1) insertPayload.session_1 = session1;
       if (fieldMap.session_2) insertPayload.session_2 = session2;
       if (fieldMap.session_3) insertPayload.session_3 = session3;
       if (venue !== null) insertPayload.venue = venue;
       const customBagNew = buildCustom(fields);
-      if (customBagNew !== undefined) insertPayload.custom = customBagNew;
+      if (customBagNew !== undefined) insertPayload.custom = customBagNew as Json;
       if (isCancelled) {
         insertPayload.status = "cancelled";
         insertPayload.cancellation_reason = reason == null ? null : String(reason);
       }
-      const { data: inserted, error: insertErr } = await admin.from("show_dates").insert(insertPayload).select("id").single();
+      const { data: inserted, error: insertErr } = await admin.from("show_dates").insert(insertPayload as TablesInsert<"show_dates">).select("id").single();
       if (insertErr || !inserted?.id) { outcomes.push({ airtable_record_id: id, action: "error", show_date_id: null, reason: insertErr?.message ?? "insert returned no id", raw_fields: fields }); continue; }
       processed += 1; newDates += 1;
       newDateIds.push(inserted.id);
@@ -479,14 +482,17 @@ async function syncOrg(deps: Deps, orgId: string, baseId: string, tableName: str
 
   const heldIds = outcomes.filter((o) => o.action === "held_unresolved").map((o) => o.airtable_record_id);
   if (syncLogId && outcomes.length) {
-    await admin.from("airtable_sync_record_log").insert(outcomes.map((o) => ({
+    // org_id is derived by trg_derive_org_id from sync_log_id (20260617164248) —
+    // the generated Insert type can't know that, hence the Omit + single cast.
+    const recordRows = outcomes.map((o): Omit<TablesInsert<"airtable_sync_record_log">, "org_id"> => ({
       sync_log_id: syncLogId,
       airtable_record_id: o.airtable_record_id,
       action: o.action,
       show_date_id: o.show_date_id,
       reason: o.reason,
-      raw_fields: o.raw_fields,
-    })));
+      raw_fields: o.raw_fields as Json,
+    }));
+    await admin.from("airtable_sync_record_log").insert(recordRows as TablesInsert<"airtable_sync_record_log">[]);
     const importedZeroFromNonEmpty = recordsSeen > 0 && processed === 0;
     await notifyAdminsOnSyncProblem(
       deps, orgId, syncLogId,

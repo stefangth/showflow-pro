@@ -3,7 +3,7 @@
  * The poll fetches the base schema + each linked table, resolving record IDs → names.
  */
 import { assertEquals } from "../_shared/test-asserts.ts";
-import { makeFakeDeps, makeRequest } from "../_shared/testing.ts";
+import { bindFakeFrom, makeFakeDeps, makeRequest } from "../_shared/testing.ts";
 import { handle } from "./index.ts";
 
 const ORG = "00000000-0000-0000-0000-0000000000a1";
@@ -65,7 +65,7 @@ Deno.test("airtable-poll: resolves linked-record venue & city to display names",
     fetchImpl,
   });
 
-  const originalFrom = deps.admin.from.bind(deps.admin);
+  const originalFrom = bindFakeFrom(deps.admin);
   // deno-lint-ignore no-explicit-any
   (deps.admin as any).from = (table: string) => {
     const chain = originalFrom(table);

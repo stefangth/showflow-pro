@@ -6,7 +6,7 @@ import { getActiveOrgs } from "../_shared/settings.ts";
 import { resolveBookingFlow, referenceLabel, type BookingFlow } from "../_shared/bookingFlow.ts";
 import { resolveContactEmail, resolveAccountDisplayName } from "../_shared/identity.ts";
 import { resolveTierLadder, nextTierAfter } from "../_shared/eligibility.ts";
-import type { DueBookingRow, OrgAdminRow, ProducerAssignmentRow, ShowDateWithShow } from "../_shared/rows.ts";
+import type { DueBookingRow, OrgAdminRow, ProducerAssignmentRow, ResolveShowAssignmentsArgs, ShowDateWithShow } from "../_shared/rows.ts";
 
 /**
  * Hourly job:
@@ -279,7 +279,8 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
       p_sub_program: subProgram,
       p_city_id: sdRow.city_id,
       p_org: orgId,
-    })
+      // The SQL function accepts NULL sub_program/city_id; type-gen doesn't model that.
+    } as ResolveShowAssignmentsArgs)
     let recipientIds = ((producers ?? []) as unknown as ProducerAssignmentRow[]).map((p) => p.producer_user_id)
     if (recipientIds.length === 0) {
       // Fallback: notify admins OF THIS show_date's org (not every org's admins).

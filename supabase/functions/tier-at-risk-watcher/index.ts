@@ -3,7 +3,7 @@ import { requireCronOrRole } from "../_shared/auth.ts";
 import { realDeps, type Deps } from "../_shared/deps.ts";
 import { countAccepted, countPendingNotExpired, isFutureOrToday, requiredPrimarySlots } from "../_shared/tierFill.ts";
 import { resolveBookingFlow, type BookingFlow } from "../_shared/bookingFlow.ts";
-import type { OrgAdminRow, ProducerAssignmentRow, ShowJoin } from "../_shared/rows.ts";
+import type { OrgAdminRow, ProducerAssignmentRow, ResolveShowAssignmentsArgs, ShowJoin } from "../_shared/rows.ts";
 
 /** Mirrors the show_dates select below — unlike expire-offers' ShowDateWithShow,
  *  this select does NOT include show_id (the loop keys on row.show_date_id). */
@@ -157,7 +157,8 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
       p_sub_program: subProgram,
       p_city_id: sdRow.city_id,
       p_org: sdRow.org_id,
-    })
+      // The SQL function accepts NULL sub_program/city_id; type-gen doesn't model that.
+    } as ResolveShowAssignmentsArgs)
 
     let recipientIds = Array.from(new Set(((producers ?? []) as unknown as ProducerAssignmentRow[]).map((p) => p.producer_user_id)))
     if (recipientIds.length === 0) {

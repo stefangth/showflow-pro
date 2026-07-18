@@ -26,7 +26,7 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
     console.error("email-health-watcher: snapshot failed, aborting", snapErr);
     return json({ error: "snapshot_failed" }, 503);
   }
-  const h = snap as EmailSnapshot;
+  const h = snap as unknown as EmailSnapshot;
 
   // Volume guard: don't derive an alertable state from a tiny sample. Below the floor,
   // treat as operational (unless there are enough hard send-failures to stand alone).

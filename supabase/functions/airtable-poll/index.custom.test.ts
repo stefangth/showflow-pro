@@ -1,5 +1,5 @@
 import { assertEquals } from "../_shared/test-asserts.ts";
-import { makeFakeDeps, makeRequest } from "../_shared/testing.ts";
+import { bindFakeFrom, makeFakeDeps, makeRequest } from "../_shared/testing.ts";
 import { handle } from "./index.ts";
 
 const ORG = "00000000-0000-0000-0000-0000000000c1";
@@ -42,7 +42,7 @@ const authReq = () => makeRequest({ method: "POST", headers: { "X-Cron-Secret": 
 
 /** Capture show_dates insert payloads via the documented from() override trick. */
 function captureInserts(deps: ReturnType<typeof seededDeps>["deps"], captured: unknown[]) {
-  const originalFrom = deps.admin.from.bind(deps.admin);
+  const originalFrom = bindFakeFrom(deps.admin);
   // deno-lint-ignore no-explicit-any
   (deps.admin as any).from = (table: string) => {
     const chain = originalFrom(table);
@@ -64,7 +64,7 @@ function captureInserts(deps: ReturnType<typeof seededDeps>["deps"], captured: u
 
 /** Capture show_dates update payloads via the same from() override trick. */
 function captureUpdates(deps: ReturnType<typeof seededDeps>["deps"], captured: unknown[]) {
-  const originalFrom = deps.admin.from.bind(deps.admin);
+  const originalFrom = bindFakeFrom(deps.admin);
   // deno-lint-ignore no-explicit-any
   (deps.admin as any).from = (table: string) => {
     const chain = originalFrom(table);

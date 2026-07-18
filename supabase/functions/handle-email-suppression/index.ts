@@ -1,5 +1,6 @@
 import { json } from "../_shared/http.ts";
 import { constantTimeEqual } from "../_shared/auth.ts";
+import type { TablesInsert, TablesUpdate } from "../_shared/database.types.ts";
 import { realDeps, type Deps } from "../_shared/deps.ts";
 import { redactEmail } from "../_shared/identity.ts";
 
@@ -199,7 +200,9 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
     const monotonicUpdateByResendId = () =>
       admin
         .from('email_send_log')
-        .update(patch)
+        // patch is built with a computed stamp column, so it stays a Record —
+        // single cast to the table's Update type at the boundary.
+        .update(patch as TablesUpdate<'email_send_log'>)
         .eq('resend_id', resendId)
         .not('status', 'in', blockedList)
         .select('id')
@@ -233,7 +236,7 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
           template_name: 'system',
           recipient_email: recipientEmail,
           ...patch,
-        }, { onConflict: 'resend_id', ignoreDuplicates: true })
+        } as TablesInsert<'email_send_log'>, { onConflict: 'resend_id', ignoreDuplicates: true })
 
         if (insertError) {
           console.warn('Failed to insert fallback email_send_log row', { error: insertError })

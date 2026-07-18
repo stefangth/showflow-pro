@@ -1,6 +1,9 @@
 import { preflight, json } from "../_shared/http.ts";
+import type { Database } from "../_shared/database.types.ts";
 import { realDeps, type Deps } from "../_shared/deps.ts";
 import { requireSuperAdmin } from "../_shared/auth.ts";
+
+type OrgTable = keyof Database["public"]["Tables"];
 
 // Every org-scoped table (mirrors delete_org's coverage) so a pre-deletion export
 // is not lossy. `organizations` is keyed by `id`; all others by `org_id`.
@@ -14,7 +17,7 @@ const ORG_TABLES = [
   "bookings", "booking_audit_log", "blocked_dates",
   "chats", "chat_messages", "notifications",
   "airtable_sync_log", "airtable_sync_record_log",
-];
+] as const satisfies readonly OrgTable[];
 
 export async function handle(req: Request, deps: Deps): Promise<Response> {
   if (req.method === "OPTIONS") return preflight();
@@ -40,7 +43,12 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
   };
   for (const table of ORG_TABLES) {
     const col = table === "organizations" ? "id" : "org_id";
-    const { data, error } = await admin.from(table).select("*").eq(col, orgId);
+    // The loop is generic over table names, which defeats the typed client's
+    // per-table column inference — single structural cast at the boundary.
+    const query = admin.from(table).select("*") as unknown as {
+      eq: (col: string, val: string) => PromiseLike<{ data: unknown[] | null; error: unknown }>;
+    };
+    const { data, error } = await query.eq(col, orgId);
     if (error) return json({ error: `Failed to read ${table}` }, 500);
     bundle[table] = data ?? [];
   }

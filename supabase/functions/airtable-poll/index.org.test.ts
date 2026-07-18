@@ -1,6 +1,6 @@
 // supabase/functions/airtable-poll/index.org.test.ts
 import { assertEquals } from "../_shared/test-asserts.ts";
-import { makeFakeDeps, makeRequest } from "../_shared/testing.ts";
+import { bindFakeFrom, makeFakeDeps, makeRequest } from "../_shared/testing.ts";
 import { handle } from "./index.ts";
 
 const ORG_ON = "00000000-0000-0000-0000-0000000000a1";
@@ -36,7 +36,7 @@ Deno.test("airtable-poll: skips orgs with sync disabled or no key; syncs the ena
 
   // capture sync_log inserts
   const logs: any[] = [];
-  const originalFrom = deps.admin.from.bind(deps.admin);
+  const originalFrom = bindFakeFrom(deps.admin);
   (deps.admin as any).from = (t: string) => {
     const chain = originalFrom(t);
     if (t === "airtable_sync_log") {

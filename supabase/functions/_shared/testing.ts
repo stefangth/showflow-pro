@@ -1,4 +1,17 @@
-import type { Deps, EmailMessage, InvokeResult } from "./deps.ts";
+import type { Deps, EmailMessage, InvokeResult, TypedClient } from "./deps.ts";
+
+/** The single sanctioned cast from a fake client to the typed client. */
+export function asTypedClient(fake: unknown): TypedClient {
+  return fake as TypedClient;
+}
+
+/** Bind the fake client's untyped `from` so tests can wrap/instrument it.
+ *  The typed client's `from` only accepts known table-name literals; the fake
+ *  underneath takes any string, which is what instrumentation needs. */
+export function bindFakeFrom(client: unknown): (table: string) => FakeChain {
+  const c = client as { from: (table: string) => FakeChain };
+  return c.from.bind(c);
+}
 
 export interface RecordedCall { table: string; method: string; args: unknown[]; }
 
@@ -38,8 +51,21 @@ const CHAIN = [
   "order", "limit", "range", "filter",
 ];
 
-// deno-lint-ignore no-explicit-any
-type AnyChain = Record<string, any>;
+/** Result shape every fake query resolves to. */
+export type FakeResult = { data: unknown; error: unknown; count?: number };
+type ChainFn = (...args: unknown[]) => FakeChain;
+/** Chainable query builder: every chain method returns the same builder, the
+ *  terminals (`single`/`maybeSingle`) and `await` resolve the seeded result.
+ *  Built on a plain `Record<string, unknown>` and cast out once (same pattern
+ *  as `src/test/supabaseFake.ts`). */
+export interface FakeChain extends PromiseLike<FakeResult> {
+  select: ChainFn; insert: ChainFn; update: ChainFn; upsert: ChainFn; delete: ChainFn;
+  eq: ChainFn; neq: ChainFn; gt: ChainFn; gte: ChainFn; lt: ChainFn; lte: ChainFn;
+  in: ChainFn; is: ChainFn; or: ChainFn; not: ChainFn; match: ChainFn;
+  order: ChainFn; limit: ChainFn; range: ChainFn; filter: ChainFn;
+  single: () => Promise<FakeResult>;
+  maybeSingle: () => Promise<FakeResult>;
+}
 
 /** Resolve the result for a table seed given a local eq map and in-filter map. */
 function resolveSeed(
@@ -129,14 +155,14 @@ export function createFakeClient(opts: FakeClientOptions = {}) {
   // never reference `__write` in their `when`, so this is fully backward-compatible.
   const WRITE_METHODS = new Set(["update", "insert", "upsert", "delete"]);
 
-  function builder(table: string): AnyChain {
+  function builder(table: string): FakeChain {
     const seed: TableSeed = tables[table] ?? { data: [], error: null };
     // Local eq map — populated as .eq() calls are chained, used for array-seed matching
     const localEq: Record<string, unknown> = {};
     // Local in map — populated as .in() calls are chained, used for membership filtering
     const localIn: Record<string, unknown[]> = {};
     let sawWrite = false;
-    const chain: AnyChain = {};
+    const chain: Record<string, unknown> = {};
     for (const m of CHAIN) {
       chain[m] = (...args: unknown[]) => {
         calls.push({ table, method: m, args });
@@ -184,7 +210,7 @@ export function createFakeClient(opts: FakeClientOptions = {}) {
     // is intentionally simplified and may omit the filtered column entirely.
     chain.then = (f: (v: unknown) => unknown, r?: (e: unknown) => unknown) =>
       Promise.resolve(resolveSeed(seed, matchEq())).then(f, r);
-    return chain;
+    return chain as unknown as FakeChain;
   }
 
   const client = {
@@ -275,8 +301,8 @@ export function makeFakeDeps(opts: FakeDepsOptions = {}) {
   };
 
   const deps: Deps = {
-    admin: client as unknown as Deps["admin"],
-    userClient: () => client as unknown as Deps["admin"],
+    admin: asTypedClient(client),
+    userClient: () => asTypedClient(client),
     env: (k) => env[k],
     now: () => fixedNow,
     invokeFunction,

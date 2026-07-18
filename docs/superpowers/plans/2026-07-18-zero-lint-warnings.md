@@ -646,7 +646,7 @@ git commit -m "replace any alias with explicit row types in hire order functions
 **Interfaces:**
 - Produces: `export type TypedClient = SupabaseClient<Database>` from `deps.ts`; `Deps.admin: TypedClient`, `Deps.userClient: (h: string) => TypedClient`. `asTypedClient(fake: unknown): TypedClient` from `testing.ts` (used by Task 14).
 
-- [ ] **Step 1: deps.ts**
+- [x] **Step 1: deps.ts**
 
 ```ts
 import { createClient, type SupabaseClient } from "npm:@supabase/supabase-js@2";
@@ -658,7 +658,7 @@ export type TypedClient = SupabaseClient<Database>;
 
 `Deps.admin: TypedClient`, `userClient: (authHeader: string) => TypedClient`, `createClient<Database>(...)` at both construction sites. Then try removing the `// eslint-disable-next-line @typescript-eslint/no-explicit-any` + `body as any` at lines 69–70: if `FunctionInvokeOptions.body` rejects `unknown`, use `body: body as never` — no, prefer: keep `invokeFunction`'s param `body: unknown` and pass `{ body }` if it compiles; if not, the narrowest compiling cast that is not `any`.
 
-- [ ] **Step 2: testing.ts** — replace `type AnyChain = Record<string, any>` with `Record<string, unknown>` (mirror `src/test/supabaseFake.ts`'s builder pattern: build on a `Record<string, unknown>`, cast the finished object out through `unknown`), delete the `deno-lint-ignore` above it, and add:
+- [x] **Step 2: testing.ts** — replace `type AnyChain = Record<string, any>` with `Record<string, unknown>` (mirror `src/test/supabaseFake.ts`'s builder pattern: build on a `Record<string, unknown>`, cast the finished object out through `unknown`), delete the `deno-lint-ignore` above it, and add:
 
 ```ts
 import type { TypedClient } from "./deps.ts";
@@ -670,8 +670,8 @@ export function asTypedClient(fake: unknown): TypedClient {
 
 Wire `makeFakeDeps` so the fake admin/userClient pass through `asTypedClient`.
 
-- [ ] **Step 3: Fix the fallout** — run `deno test --allow-all supabase/functions/ 2>&1 | tail -5`. Every new type error is one of: (a) an overlap complaint on an existing `as Row[]` cast → make it `as unknown as Row[]`; (b) a genuine column/table mismatch → fix the name against `database.types.ts` (that's the payoff of this task); (c) an insert payload mismatch → align the object with the table's `Insert` type. Iterate until: `deno test --allow-all supabase/functions/` → all pass.
-- [ ] **Step 4: Verify**: `npx eslint supabase/functions/_shared/deps.ts supabase/functions/_shared/testing.ts 2>&1 | grep -c no-explicit-any || true` → `0`. Also `grep -rn "eslint-disable.*no-explicit-any\|deno-lint-ignore no-explicit-any" supabase/functions/ | wc -l` → `0`.
+- [x] **Step 3: Fix the fallout** — run `deno test --allow-all supabase/functions/ 2>&1 | tail -5`. Every new type error is one of: (a) an overlap complaint on an existing `as Row[]` cast → make it `as unknown as Row[]`; (b) a genuine column/table mismatch → fix the name against `database.types.ts` (that's the payoff of this task); (c) an insert payload mismatch → align the object with the table's `Insert` type. Iterate until: `deno test --allow-all supabase/functions/` → all pass.
+- [x] **Step 4: Verify**: `npx eslint supabase/functions/_shared/deps.ts supabase/functions/_shared/testing.ts 2>&1 | grep -c no-explicit-any || true` → `0`. Also `grep -rn "eslint-disable.*no-explicit-any\|deno-lint-ignore no-explicit-any" supabase/functions/ | wc -l` → `0`.
 - [x] **Step 5: Commit**
 
 ```bash

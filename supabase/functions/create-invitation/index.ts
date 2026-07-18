@@ -1,5 +1,6 @@
 import { preflight, json } from "../_shared/http.ts";
 import { requireOrgRole } from "../_shared/auth.ts";
+import type { TablesInsert } from "../_shared/database.types.ts";
 import { realDeps, type Deps } from "../_shared/deps.ts";
 import { deliverOrgInvitation } from "../_shared/invitations.ts";
 
@@ -52,7 +53,7 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
       role = "artist";
     }
 
-    const insertRow: Record<string, unknown> = { org_id: body.org_id, email, role, invited_by: auth.userId };
+    const insertRow: TablesInsert<"org_invitations"> = { org_id: body.org_id, email, role, invited_by: auth.userId };
     if (artistId) insertRow.artist_id = artistId;
 
     // Insert the invitation (token / status / expires_at use DB defaults) and read it back.
