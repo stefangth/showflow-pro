@@ -12,6 +12,7 @@
 // makeFakeDeps (deps.renderHireOrderPdf is stubbed). See index.di.test.ts.
 import { preflight, json } from "../_shared/http.ts";
 import { requireCronOrRole, requireOrgRole } from "../_shared/auth.ts";
+import type { OrgAdminRow, ProducerAssignmentRow } from "../_shared/rows.ts";
 import { requireFeature } from "../_shared/entitlements.ts";
 import { resolveOrgSetting } from "../_shared/settings.ts";
 import { realDeps, type Deps } from "../_shared/deps.ts";
@@ -69,8 +70,99 @@ function resolveDocumensoBaseUrl(deps: Deps): { ok: true; baseUrl: string } | { 
   return { ok: true, baseUrl };
 }
 
-// deno-lint-ignore no-explicit-any
-type Any = any;
+// ── row shapes (mirror the select strings at the call sites — if you change a
+//    select, change its interface in the same commit) ───────────────────────
+
+interface ShowProgramJoin {
+  program: string | null;
+  sub_program: string | null;
+}
+
+/** Shape of draftOrders' show_dates select. */
+interface ShowDateRow {
+  id: string;
+  org_id: string;
+  show_id: string;
+  city_id: string | null;
+  date: string;
+  venue: string | null;
+  duration_minutes: number | null;
+  notes: string | null;
+  session_1: string | null;
+  session_2: string | null;
+  session_3: string | null;
+  shows: ShowProgramJoin | null;
+}
+
+interface BookingArtistJoin {
+  id: string;
+  name: string | null;
+  email: string | null;
+  cast_role: string | null;
+  user_id: string | null;
+}
+
+/** Shape of draftOrders' bookings select. */
+interface BookingWithArtistRow {
+  id: string;
+  artist_id: string;
+  fee_amount: number | null;
+  status: string;
+  artists: BookingArtistJoin | null;
+}
+
+/** Shape of draftManual's artists select. */
+interface ManualArtistRow {
+  id: string;
+  name: string | null;
+  email: string | null;
+  cast_role: string | null;
+}
+
+/** Shape of draftManual's show_dates select. */
+interface ManualShowDateRow {
+  id: string;
+  date: string;
+  venue: string | null;
+  city_id: string | null;
+  duration_minutes: number | null;
+  session_1: string | null;
+  session_2: string | null;
+  session_3: string | null;
+  shows: ShowProgramJoin | null;
+}
+
+/** Shape of issueOne's hire_orders select (also what sendIssuedEmail/notifyArtist receive). */
+interface IssueOrderRow {
+  id: string;
+  org_id: string;
+  order_no: string;
+  status: string;
+  data: OrderData;
+  terms_variant: string | null;
+  fee_currency: string | null;
+  artist_id: string | null;
+}
+
+/** Shape of previewOrder's hire_orders select. */
+interface PreviewOrderRow {
+  id: string;
+  org_id: string;
+  order_no: string;
+  data: OrderData;
+  terms_variant: string | null;
+  fee_currency: string | null;
+}
+
+/** Shape of downloadUrl's hire_orders select. */
+interface DownloadOrderRow {
+  id: string;
+  org_id: string;
+  artist_id: string | null;
+  status: string;
+  pdf_path: string | null;
+  order_no: string;
+}
 
 // ── entry ──────────────────────────────────────────────────────────────────
 
@@ -138,7 +230,7 @@ async function draftOrders(deps: Deps, body: DraftBody, userId: string | null): 
     .eq("org_id", org)
     .maybeSingle();
   if (!sd) return json({ error: "show_date_not_found" }, 404);
-  const showDate = sd as Any;
+  const showDate = sd as unknown as ShowDateRow;
 
   // Confirmed bookings for the date (optionally a subset), artist joined.
   let bq = admin
@@ -149,7 +241,7 @@ async function draftOrders(deps: Deps, body: DraftBody, userId: string | null): 
   if (Array.isArray(body.booking_ids) && body.booking_ids.length > 0) bq = bq.in("id", body.booking_ids);
   const { data: bookingRows, error: bErr } = await bq;
   if (bErr) return json({ error: bErr.message }, 500);
-  const bookings = (bookingRows ?? []) as Any[];
+  const bookings = (bookingRows ?? []) as unknown as BookingWithArtistRow[];
 
   const created: string[] = [];
   const skipped: Array<{ booking_id: string; reason: string }> = [];
@@ -160,7 +252,7 @@ async function draftOrders(deps: Deps, body: DraftBody, userId: string | null): 
   const bookingIds = bookings.map((b) => b.id);
   const { data: existing } = await admin
     .from("hire_orders").select("booking_id").in("booking_id", bookingIds).neq("status", "void");
-  const hasOrder = new Set((existing ?? []).map((r: Any) => r.booking_id));
+  const hasOrder = new Set(((existing ?? []) as unknown as { booking_id: string }[]).map((r) => r.booking_id));
 
   // Settings for the snapshot + numbering.
   const [defaults, numbering] = await Promise.all([
@@ -202,7 +294,7 @@ async function draftOrders(deps: Deps, body: DraftBody, userId: string | null): 
         skipped.push({ booking_id: b.id, reason: "exists" });
         continue;
       }
-      const artist = b.artists ?? {};
+      const artist: Partial<BookingArtistJoin> = b.artists ?? {};
 
       // showflow layer: only non-empty values (resolveFields treats undefined/"" as
       // absent, but NOT null — so nulls are omitted here rather than mis-tagged).
@@ -314,7 +406,7 @@ function isActiveArtistDateConflict(error: unknown): boolean {
   return haystack.includes("hire_orders_active_artist_date_uniq");
 }
 
-async function notifyProducers(deps: Deps, org: string, showDate: Any, orderCount: number): Promise<void> {
+async function notifyProducers(deps: Deps, org: string, showDate: ShowDateRow, orderCount: number): Promise<void> {
   const admin = deps.admin;
   const { data: producers } = await admin.rpc("resolve_show_assignments", {
     p_program: showDate.shows?.program ?? "",
@@ -322,11 +414,11 @@ async function notifyProducers(deps: Deps, org: string, showDate: Any, orderCoun
     p_city_id: showDate.city_id,
     p_org: org,
   });
-  let recipientIds = (producers ?? []).map((p: Any) => p.producer_user_id);
+  let recipientIds = ((producers ?? []) as unknown as ProducerAssignmentRow[]).map((p) => p.producer_user_id);
   if (recipientIds.length === 0) {
     // Fallback: notify this org's admins.
     const { data: admins } = await admin.from("org_memberships").select("user_id").eq("org_id", org).eq("role", "admin");
-    recipientIds = (admins ?? []).map((a: Any) => a.user_id);
+    recipientIds = ((admins ?? []) as unknown as OrgAdminRow[]).map((a) => a.user_id);
   }
   recipientIds = [...new Set(recipientIds)] as string[];
   if (recipientIds.length === 0) return;
@@ -399,13 +491,13 @@ async function draftManual(deps: Deps, body: DraftManualBody, userId: string | n
     ]);
 
     if (artistRow) {
-      const artist = artistRow as Any;
+      const artist = artistRow as unknown as ManualArtistRow;
       assign(showflow, "artist_name", artist.name);
       assign(showflow, "recipient_email", artist.email);
       assign(showflow, "role", artist.cast_role);
     }
     if (sdRow) {
-      const sd = sdRow as Any;
+      const sd = sdRow as unknown as ManualShowDateRow;
       assign(showflow, "date", sd.date);
       assign(showflow, "venue", sd.venue);
       assign(showflow, "duration_min", sd.duration_minutes);
@@ -533,7 +625,7 @@ async function issueOne(
     .eq("org_id", org)
     .maybeSingle();
   if (!order) return { ok: false, issues: ["not_found"] };
-  const o = order as Any;
+  const o = order as unknown as IssueOrderRow;
 
   // Idempotency: an already-issued (or countersigned) order is frozen.
   if (o.status === "issued" || o.status === "countersigned") return { ok: false, issues: ["already_issued"] };
@@ -640,7 +732,7 @@ async function issueOne(
 async function sendIssuedEmail(
   deps: Deps,
   org: string,
-  order: Any,
+  order: IssueOrderRow,
   data: OrderData,
   bytes: Uint8Array,
   currency: string,
@@ -686,7 +778,7 @@ async function sendIssuedEmail(
   }
 }
 
-async function notifyArtist(deps: Deps, org: string, order: Any): Promise<void> {
+async function notifyArtist(deps: Deps, org: string, order: IssueOrderRow): Promise<void> {
   if (!order.artist_id) return;
   const admin = deps.admin;
   // Unlinked artists (no auth user) get no in-app notification.
@@ -721,7 +813,7 @@ async function previewOrder(deps: Deps, body: PreviewBody): Promise<Response> {
     .eq("org_id", org)
     .maybeSingle();
   if (!order) return json({ error: "not_found" }, 404);
-  const o = order as Any;
+  const o = order as unknown as PreviewOrderRow;
 
   const [letterhead, terms, defaults] = await Promise.all([
     resolveOrgSetting<HireOrderLetterhead>(admin, org, "hire_order_letterhead", LETTERHEAD_DEFAULT),
@@ -765,7 +857,7 @@ async function downloadUrl(deps: Deps, req: Request, body: DownloadBody): Promis
     .eq("org_id", body.org_id)
     .maybeSingle();
   if (!order) return json({ error: "not_found" }, 404);
-  const o = order as Any;
+  const o = order as unknown as DownloadOrderRow;
 
   let allowed = false;
 

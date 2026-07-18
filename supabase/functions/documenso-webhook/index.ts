@@ -19,11 +19,29 @@
 import { preflight, json } from "../_shared/http.ts";
 import { constantTimeEqual } from "../_shared/auth.ts";
 import { realDeps, type Deps } from "../_shared/deps.ts";
+import type { OrgAdminRow, ProducerAssignmentRow } from "../_shared/rows.ts";
 
 const DOCUMENT_COMPLETED_EVENT = "DOCUMENT_COMPLETED";
 
-// deno-lint-ignore no-explicit-any
-type Any = any;
+// Row shapes mirror the select strings at the call sites — if you change a
+// select, change the interface in the same commit.
+interface HireOrderShowJoin {
+  program: string | null;
+  sub_program: string | null;
+}
+interface HireOrderShowDateJoin {
+  city_id: string | null;
+  shows: HireOrderShowJoin | null;
+}
+/** Shape of the order select in handleDocumentCompleted. */
+interface HireOrderRow {
+  id: string;
+  org_id: string;
+  status: string;
+  order_no: string;
+  show_date_id: string | null;
+  show_dates: HireOrderShowDateJoin | null;
+}
 
 interface DocumensoWebhookPayload {
   event?: string;
@@ -75,7 +93,7 @@ async function handleDocumentCompleted(deps: Deps, envelopeId: string): Promise<
   // Unknown envelope id: never retry-storm an id Documenso holds that we don't
   // (or no longer) recognise.
   if (!order) return json({ ignored: true });
-  const o = order as Any;
+  const o = order as unknown as HireOrderRow;
 
   // Idempotent no-op: a duplicate delivery must not re-stamp or re-notify.
   if (o.status === "countersigned") return json({ countersigned: true, idempotent: true });
@@ -134,10 +152,10 @@ async function handleDocumentCompleted(deps: Deps, envelopeId: string): Promise<
  * city), falling back to the org's admins when nothing resolves or the order
  * has no linked show_date (a manual/wizard order). Recipients are deduped.
  */
-async function notifyProducers(deps: Deps, order: Any): Promise<void> {
+async function notifyProducers(deps: Deps, order: HireOrderRow): Promise<void> {
   const admin = deps.admin;
-  const org = order.org_id as string;
-  const showDate = order.show_dates as Any | null;
+  const org = order.org_id;
+  const showDate = order.show_dates;
 
   let recipientIds: string[] = [];
   if (showDate) {
@@ -147,13 +165,13 @@ async function notifyProducers(deps: Deps, order: Any): Promise<void> {
       p_city_id: showDate.city_id,
       p_org: org,
     });
-    recipientIds = (producers ?? []).map((p: Any) => p.producer_user_id);
+    recipientIds = ((producers ?? []) as unknown as ProducerAssignmentRow[]).map((p) => p.producer_user_id);
   }
 
   if (recipientIds.length === 0) {
     const { data: admins } = await admin
       .from("org_memberships").select("user_id").eq("org_id", org).eq("role", "admin");
-    recipientIds = (admins ?? []).map((a: Any) => a.user_id);
+    recipientIds = ((admins ?? []) as unknown as OrgAdminRow[]).map((a) => a.user_id);
   }
 
   recipientIds = [...new Set(recipientIds)] as string[];
