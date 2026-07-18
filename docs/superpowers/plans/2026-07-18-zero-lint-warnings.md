@@ -624,9 +624,9 @@ git commit -m "type booking engine cron row shapes, drop any casts"
 - Consumes: `ProducerAssignmentRow`, `OrgAdminRow` from `_shared/rows.ts`.
 - Produces: file-local interfaces only.
 
-- [ ] **Step 1: Convert documenso-webhook**: `deno test --allow-all supabase/functions/documenso-webhook/ 2>&1 | tail -2` → pass.
-- [ ] **Step 2: Convert generate-hire-orders (largest file — go select-by-select, `deno check supabase/functions/generate-hire-orders/index.ts` after each interface lands)**: final `deno test --allow-all supabase/functions/generate-hire-orders/ 2>&1 | tail -2` → pass.
-- [ ] **Step 3: Verify**: `npx eslint supabase/functions/documenso-webhook supabase/functions/generate-hire-orders 2>&1 | grep no-explicit-any | grep -v test | wc -l` → `0`
+- [x] **Step 1: Convert documenso-webhook**: `deno test --allow-all supabase/functions/documenso-webhook/ 2>&1 | tail -2` → pass.
+- [x] **Step 2: Convert generate-hire-orders (largest file — go select-by-select, `deno check supabase/functions/generate-hire-orders/index.ts` after each interface lands)**: final `deno test --allow-all supabase/functions/generate-hire-orders/ 2>&1 | tail -2` → pass.
+- [x] **Step 3: Verify**: `npx eslint supabase/functions/documenso-webhook supabase/functions/generate-hire-orders 2>&1 | grep no-explicit-any | grep -v test | wc -l` → `0` *(verified via `--format unix` so the test-file grep filter works)*
 - [x] **Step 4: Commit**
 
 ```bash
