@@ -35,9 +35,18 @@ export default tseslint.config(
     },
   },
   // shadcn primitives are generated (never hand-edited) and the test harness
-  // is never HMR'd — fast-refresh hygiene is meaningless in both.
+  // is never HMR'd — fast-refresh hygiene is meaningless in both. The three
+  // context modules deliberately co-locate provider + hooks (editing them
+  // full-reloads the dev server; accepted). Splitting them for fast refresh
+  // is deferred to a standalone PR — that PR deletes this carve-out.
   {
-    files: ["src/components/ui/**", "src/test/**"],
+    files: [
+      "src/components/ui/**",
+      "src/test/**",
+      "src/features/auth/AuthContext.tsx",
+      "src/features/editor/EditorContext.tsx",
+      "src/features/consent/ConsentContext.tsx",
+    ],
     rules: { "react-refresh/only-export-components": "off" },
   },
   // Deno edge functions: server runtime. No Vite fast refresh (the React

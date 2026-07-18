@@ -298,7 +298,7 @@ git commit -m "move constants and pure helpers out of component modules"
 **Interfaces:**
 - Produces: nothing. Hook import paths (`@/features/auth/AuthContext` etc.) and test mock paths are unchanged everywhere.
 
-- [ ] **Step 1: Add the context files to the react-refresh exemption block**
+- [x] **Step 1: Add the context files to the react-refresh exemption block**
 
 In `eslint.config.js`, change the shadcn/test-harness exemption block to:
 
@@ -320,14 +320,14 @@ In `eslint.config.js`, change the shadcn/test-harness exemption block to:
   },
 ```
 
-- [ ] **Step 2: Verify rule is fully clean**
+- [x] **Step 2: Verify rule is fully clean**
 
 Run: `npm run lint 2>&1 | grep -c only-export-components || true`
 Expected: `0`
 
-- [ ] **Step 3: Sanity gate: `npx vitest run 2>&1 | tail -3`** → 158 files / 1164 tests pass (config-only change; counts identical).
+- [x] **Step 3: Sanity gate: `npx vitest run 2>&1 | tail -3`** → 158 files / 1164 tests pass (config-only change; counts identical).
 
-- [ ] **Step 4: Commit**
+- [x] **Step 4: Commit**
 
 ```bash
 git add eslint.config.js
