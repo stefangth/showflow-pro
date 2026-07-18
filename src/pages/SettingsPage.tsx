@@ -4,6 +4,7 @@ import { ROUTES, BOOKING_ENGINE_DEFAULTS } from '@/config/app.config';
 import { useSettingsWarnings } from '@/hooks/useSettingsWarnings';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
+import type { Json } from '@/integrations/supabase/types';
 import { useAuth } from '@/features/auth/AuthContext';
 import { useFeature } from '@/hooks/useEntitlements';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -43,8 +44,11 @@ const EDITABLE_SETTING_KEYS: readonly string[] = [
 
 type SettingRow = {
   key: string;
-  value: any;
+  value: unknown;
 };
+
+/** Shape of the `filters_visibility` setting: page → role → filter-key → on/off. */
+type FiltersVisibility = Record<string, Record<string, Record<string, boolean>>>;
 
 function ShowSlotsEditor() {
   const warn = useSettingsWarnings(); // returns { schedulingWarnings, hasAnyWarning } directly
@@ -87,7 +91,7 @@ export default function SettingsPage() {
     },
   });
 
-  const [draft, setDraft] = useState<Record<string, any>>({});
+  const [draft, setDraft] = useState<Record<string, unknown>>({});
   // Track which org the draft was last seeded for so switching orgs re-seeds even
   // when the previous draft was dirty; refetches of the SAME org must not clobber
   // in-progress edits (a child AirtableSyncTab autosave invalidates ['app-settings'],
@@ -97,7 +101,7 @@ export default function SettingsPage() {
   useEffect(() => {
     if (!settings) return;
     const seed = () => {
-      const next: Record<string, any> = {};
+      const next: Record<string, unknown> = {};
       for (const s of settings) next[s.key] = s.value;
       setDraft(next);
       seededOrgRef.current = orgId;
@@ -118,17 +122,17 @@ export default function SettingsPage() {
   }, [settings, orgId]);
 
   const saveMutation = useMutation({
-    mutationFn: async (updates: { key: string; value: any }[]) => {
+    mutationFn: async (updates: { key: string; value: unknown }[]) => {
       if (!orgId) throw new Error('No active organization');
       for (const u of updates) {
-        await upsertOrgSetting(supabase, orgId, u.key, u.value);
+        await upsertOrgSetting(supabase, orgId, u.key, u.value as Json);
       }
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['app-settings'] });
       toast.success('Settings saved');
     },
-    onError: (e: any) => toast.error(e.message ?? 'Failed to save'),
+    onError: (e: Error) => toast.error(e.message ?? 'Failed to save'),
   });
 
   const isAdmin = hasRole('admin');
@@ -179,8 +183,8 @@ export default function SettingsPage() {
     return <div className="flex items-center justify-center h-64 text-muted-foreground">Loading settings…</div>;
   }
 
-  const get = (key: string, fallback: any = '') => draft[key] ?? fallback;
-  const set = (key: string, value: any) => setDraft(d => ({ ...d, [key]: value }));
+  const get = (key: string, fallback: unknown = '') => draft[key] ?? fallback;
+  const set = (key: string, value: unknown) => setDraft(d => ({ ...d, [key]: value }));
 
   const handleSave = () => {
     const updates = dirtyKeys.map(k => ({ key: k, value: draft[k] }));
@@ -305,7 +309,7 @@ export default function SettingsPage() {
             </CardHeader>
             <CardContent className="space-y-8">
               {PAGES.map(page => {
-                const pageVis = get('filters_visibility', {})?.[page] ?? {};
+                const pageVis = (get('filters_visibility', {}) as FiltersVisibility)?.[page] ?? {};
                 return (
                   <div key={page} className="space-y-3">
                     <h4 className="font-display font-semibold capitalize">{page}</h4>
@@ -328,7 +332,7 @@ export default function SettingsPage() {
                                     <Switch
                                       checked={!!row[key]}
                                       onCheckedChange={(v) => {
-                                        const all = get('filters_visibility', {}) ?? {};
+                                        const all = (get('filters_visibility', {}) as FiltersVisibility) ?? {};
                                         const nextPage = { ...(all[page] ?? {}) };
                                         nextPage[role] = { ...(nextPage[role] ?? {}), [key]: v };
                                         set('filters_visibility', { ...all, [page]: nextPage });

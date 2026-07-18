@@ -31,13 +31,13 @@ const EMAIL_TEMPLATE_LABELS: Record<EmailTemplateKey, string> = {
   'hire-order-issued': 'Hire Order Issued',
 };
 
-export function EmailTemplatesCard({ get, set }: { get: (key: string, fallback?: any) => any; set: (key: string, value: any) => void }) {
+export function EmailTemplatesCard({ get, set }: { get: (key: string, fallback?: unknown) => unknown; set: (key: string, value: unknown) => void }) {
   const [previewOpen, setPreviewOpen] = useState(false);
   const [previewHtml, setPreviewHtml] = useState('');
   const [previewLoading, setPreviewLoading] = useState(false);
   const [previewTitle, setPreviewTitle] = useState('');
 
-  const overrides: Record<string, any> = get('email_template_overrides', {}) ?? {};
+  const overrides: Record<string, Record<string, string>> = (get('email_template_overrides', {}) ?? {}) as Record<string, Record<string, string>>;
 
   function setOverride(templateKey: string, field: string, value: string) {
     const next = { ...overrides, [templateKey]: { ...(overrides[templateKey] ?? {}), [field]: value } };
@@ -58,8 +58,8 @@ export function EmailTemplatesCard({ get, set }: { get: (key: string, fallback?:
       if (error) throw error;
       const tmpl = data?.templates?.[0];
       setPreviewHtml(tmpl?.html ?? '<p>No preview available</p>');
-    } catch (e: any) {
-      setPreviewHtml(`<p style="color:red">Preview failed: ${e?.message ?? String(e)}</p>`);
+    } catch (e) {
+      setPreviewHtml(`<p style="color:red">Preview failed: ${(e as Error)?.message ?? String(e)}</p>`);
     } finally {
       setPreviewLoading(false);
     }

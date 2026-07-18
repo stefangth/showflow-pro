@@ -35,6 +35,7 @@ type BookingJoin = {
 };
 
 type SkillJoin = { artist_id: string; skill: { id: string; name: string } | null };
+type CastJoin = { artist_id: string; cast: { id: string; name: string } | null };
 
 export default function ArtistsPage() {
   const { hasRole, currentOrg } = useAuth();
@@ -106,7 +107,7 @@ export default function ArtistsPage() {
         .select('artist_id, cast:casts(id, name)');
       if (error) throw error;
       const map = new Map<string, { id: string; name: string }[]>();
-      (data ?? []).forEach((r: any) => {
+      ((data ?? []) as unknown as CastJoin[]).forEach((r) => {
         const arr = map.get(r.artist_id) ?? [];
         if (r.cast) arr.push(r.cast);
         map.set(r.artist_id, arr);
@@ -149,7 +150,7 @@ export default function ArtistsPage() {
         toast({ title: invited ? 'Artist added and invited' : 'Artist added' });
       }
     },
-    onError: (err: any) => toast({ title: 'Error', description: err.message, variant: 'destructive' }),
+    onError: (err: Error) => toast({ title: 'Error', description: err.message, variant: 'destructive' }),
   });
 
   const inviteExisting = useMutation({
@@ -163,7 +164,7 @@ export default function ArtistsPage() {
       queryClient.invalidateQueries({ queryKey: ['org-invitations'] });
       toast({ title: 'Invite sent' });
     },
-    onError: (err: any) => toast({ title: 'Error', description: err.message, variant: 'destructive' }),
+    onError: (err: Error) => toast({ title: 'Error', description: err.message, variant: 'destructive' }),
   });
 
   const programOptions = useMemo(() => {

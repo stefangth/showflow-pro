@@ -120,7 +120,7 @@ export function ChatPanel({ showDateId, showDate }: Props) {
       setDraft('');
       qc.invalidateQueries({ queryKey: ['chat-messages', chat?.id] });
     },
-    onError: (e: any) => toast({ title: 'Error', description: e.message, variant: 'destructive' }),
+    onError: (e: Error) => toast({ title: 'Error', description: e.message, variant: 'destructive' }),
   });
 
   if (participantLoading) {

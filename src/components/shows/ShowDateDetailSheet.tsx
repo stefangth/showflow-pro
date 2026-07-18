@@ -312,7 +312,7 @@ export function ShowDateDetailSheet({ showDateId, open, onOpenChange }: Props) {
       queryClient.invalidateQueries({ queryKey: ['artist-eligible-dates'] });
       toast.success('City updated');
     },
-    onError: (err: any) => toast.error(err.message),
+    onError: (err: Error) => toast.error(err.message),
   });
 
   const toggleDateCast = useMutation({
@@ -339,7 +339,7 @@ export function ShowDateDetailSheet({ showDateId, open, onOpenChange }: Props) {
       queryClient.invalidateQueries({ queryKey: ['artist-eligible-dates'] });
       toast.success('Cast eligibility updated');
     },
-    onError: (err: any) => toast.error(err.message),
+    onError: (err: Error) => toast.error(err.message),
   });
 
   const invalidateEligibility = () => {
@@ -378,7 +378,7 @@ export function ShowDateDetailSheet({ showDateId, open, onOpenChange }: Props) {
       queryClient.invalidateQueries({ queryKey: ['bookings'] });
       toast.success('Artist booked');
     },
-    onError: (err: any) => {
+    onError: (err: Error) => {
       // A booking attempt can fail after the row already changed underneath it (e.g. a lost
       // race with another producer), leaving the cached bookings stale even on failure.
       queryClient.invalidateQueries({ queryKey: ['bookings'] });
@@ -397,7 +397,7 @@ export function ShowDateDetailSheet({ showDateId, open, onOpenChange }: Props) {
         toast.success('Booking updated');
       }
     },
-    onError: (err: any) => toast.error(err.message),
+    onError: (err: Error) => toast.error(err.message),
   });
 
   const openOffers = useMutation({
@@ -412,7 +412,7 @@ export function ShowDateDetailSheet({ showDateId, open, onOpenChange }: Props) {
       queryClient.invalidateQueries({ queryKey: ['bookings'] });
       queryClient.invalidateQueries({ queryKey: ['offer-tiers', 'opened', showDateId] });
     },
-    onError: (err: any) => toast.error(err.message),
+    onError: (err: Error) => toast.error(err.message),
   });
 
   const closeOffers = useMutation({
@@ -424,7 +424,7 @@ export function ShowDateDetailSheet({ showDateId, open, onOpenChange }: Props) {
       queryClient.invalidateQueries({ queryKey: ['bookings'] });
       queryClient.invalidateQueries({ queryKey: ['offer-tiers', 'opened', showDateId] });
     },
-    onError: (err: any) => toast.error(err.message),
+    onError: (err: Error) => toast.error(err.message),
   });
 
   const venue = showDate?.venue;

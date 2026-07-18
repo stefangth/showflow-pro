@@ -112,7 +112,7 @@ export function ProductionOwnershipTab({ currentOrgId, canEnter }: Props) {
       setNewAssignUserId('');
       toast.success('Assignment added');
     },
-    onError: (e: any) => toast.error(e.message ?? 'Failed to add assignment'),
+    onError: (e: Error) => toast.error(e.message ?? 'Failed to add assignment'),
   });
 
   const deleteAssignment = useMutation({
@@ -124,7 +124,7 @@ export function ProductionOwnershipTab({ currentOrgId, canEnter }: Props) {
       qc.invalidateQueries({ queryKey: ['show-assignments'] });
       toast.success('Assignment removed');
     },
-    onError: (e: any) => toast.error(e.message ?? 'Failed to remove'),
+    onError: (e: Error) => toast.error(e.message ?? 'Failed to remove'),
   });
 
   return (

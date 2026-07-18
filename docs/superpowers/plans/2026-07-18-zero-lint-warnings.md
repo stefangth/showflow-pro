@@ -448,15 +448,15 @@ git commit -m "type frontend data layer queries, drop stale any casts"
 
 **Interfaces:** none produced.
 
-- [ ] **Step 1: Apply P1 across all 32 sites** (Appendix A lists each line). Run `npx vitest run src/components src/pages 2>&1 | tail -3` → pass.
-- [ ] **Step 2: Apply P2 (9 sites), typecheck**: `npx tsc -p tsconfig.app.json --noEmit` → exit 0.
-- [ ] **Step 3: Apply P3 (11 sites), typecheck + run settings tests**: `npx vitest run src/components/settings src/pages 2>&1 | tail -3` → pass.
-- [ ] **Step 4: Verify `src/` production code is fully any-clean**
+- [x] **Step 1: Apply P1 across all 32 sites** (Appendix A lists each line). Run `npx vitest run src/components src/pages 2>&1 | tail -3` → pass.
+- [x] **Step 2: Apply P2 (9 sites), typecheck**: `npx tsc -p tsconfig.app.json --noEmit` → exit 0.
+- [x] **Step 3: Apply P3 (11 sites), typecheck + run settings tests**: `npx vitest run src/components/settings src/pages 2>&1 | tail -3` → pass.
+- [x] **Step 4: Verify `src/` production code is fully any-clean**
 
 Run: `npx eslint 'src/**/*.{ts,tsx}' 2>&1 | grep no-explicit-any | grep -v -E '\.test\.|src/test/' | wc -l`
 Expected: `0`
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add -A
