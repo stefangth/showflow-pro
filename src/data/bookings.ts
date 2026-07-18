@@ -45,8 +45,7 @@ export async function fetchOfferTiers(
   let source: "show" | "org" = "org";
   if (args.cityId) {
     // Show-scoped ladder wins outright for this (show, city); org list is the fallback.
-    // priority is not yet in the generated types.
-    const { data: showRows, error: showErr } = await (client as any)
+    const { data: showRows, error: showErr } = await client
       .from("show_cast_eligibility")
       .select("priority")
       .eq("show_id", args.showId)
@@ -309,6 +308,25 @@ export async function createBooking(
   if (error) throw error;
 }
 
+/** Joined row shape of the fetchTierAttention select below — mirror the select string. */
+interface TierAttentionRow {
+  tier: number;
+  show_date: {
+    id: string;
+    date: string;
+    status: string;
+    custom: Record<string, unknown> | null;
+    org_id: string;
+    show: {
+      program: string | null;
+      sub_program: string | null;
+      main_cast_slots: number | null;
+      understudy_slots: number | null;
+    } | null;
+    bookings: { status: string; offer_tier: number | null; offer_expires_at: string | null }[] | null;
+  };
+}
+
 /**
  * Open offer tiers on this org's upcoming, non-cancelled dates, with the
  * date's bookings and slot config, for the dashboard tier-attention card.
@@ -331,8 +349,7 @@ export async function fetchTierAttention(
     .gte("show_date.date", args.today)
     .neq("show_date.status", "cancelled");
   if (error) throw error;
-  // any at the join boundary, consistent with the file's other joined-row shapes
-  return ((data ?? []) as any[]).map((r) => ({
+  return ((data ?? []) as unknown as TierAttentionRow[]).map((r) => ({
     showDateId: r.show_date.id,
     date: r.show_date.date,
     program: r.show_date.show?.program ?? null,
@@ -343,7 +360,7 @@ export async function fetchTierAttention(
         ? { main_cast: r.show_date.show.main_cast_slots, understudies: r.show_date.show.understudy_slots }
         : null,
     tier: r.tier,
-    bookings: (r.show_date.bookings ?? []).map((b: any) => ({
+    bookings: (r.show_date.bookings ?? []).map((b) => ({
       status: b.status, offer_tier: b.offer_tier, offer_expires_at: b.offer_expires_at,
     })),
   }));

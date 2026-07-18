@@ -72,10 +72,19 @@ export function useArtistEligibleDates() {
         .order('date', { ascending: true });
       if (error) throw error;
 
+      interface EligibleDateRow {
+        id: string; date: string;
+        session_1: string | null; session_2: string | null; session_3: string | null;
+        status: string; city_id: string | null; show_id: string;
+        venue: string | null; custom: Record<string, unknown> | null;
+        show: { id: string; program: string | null; sub_program: string | null; status: string } | null;
+      }
+      const allDates = (dates ?? []) as unknown as EligibleDateRow[];
+
       const showCityKey = new Set((showCity ?? []).map((r) => `${r.show_id}:${r.city_id}`));
 
       // 4. Filter to eligible
-      const eligible = (dates ?? []).filter((d: any) => {
+      const eligible = allDates.filter((d) => {
         if (overrideDateIds.has(d.id)) return true;
         if (d.city_id && showCityKey.has(`${d.show_id}:${d.city_id}`)) return true;
         return false;
@@ -91,28 +100,27 @@ export function useArtistEligibleDates() {
         .eq('artist_id', artist!.id);
       const mySkillIds = new Set((mySkills ?? []).map((r) => r.skill_id));
 
-      const showIds = Array.from(new Set(eligible.map((d: any) => d.show_id)));
-      const dateIds = eligible.map((d: any) => d.id);
-      // Requirement tables are not yet in the generated types.
-      const { data: showReq } = await (supabase as any)
+      const showIds = Array.from(new Set(eligible.map((d) => d.show_id)));
+      const dateIds = eligible.map((d) => d.id);
+      const { data: showReq } = await supabase
         .from('show_required_skills')
         .select('show_id, skill_id')
         .in('show_id', showIds);
-      const { data: dateReq } = await (supabase as any)
+      const { data: dateReq } = await supabase
         .from('show_date_required_skills')
         .select('show_date_id, skill_id')
         .in('show_date_id', dateIds);
 
       const requiredByShow = new Map<string, string[]>();
-      for (const r of (showReq ?? []) as { show_id: string; skill_id: string }[]) {
+      for (const r of showReq ?? []) {
         requiredByShow.set(r.show_id, [...(requiredByShow.get(r.show_id) ?? []), r.skill_id]);
       }
       const requiredByDate = new Map<string, string[]>();
-      for (const r of (dateReq ?? []) as { show_date_id: string; skill_id: string }[]) {
+      for (const r of dateReq ?? []) {
         requiredByDate.set(r.show_date_id, [...(requiredByDate.get(r.show_date_id) ?? []), r.skill_id]);
       }
 
-      const qualified = eligible.filter((d: any) => {
+      const qualified = eligible.filter((d) => {
         const required = [
           ...(requiredByShow.get(d.show_id) ?? []),
           ...(requiredByDate.get(d.id) ?? []),

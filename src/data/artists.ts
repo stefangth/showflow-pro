@@ -39,6 +39,22 @@ export interface CancelledDateEntry {
   show: { program: string | null; sub_program: string | null } | null;
 }
 
+/** Joined row shape of the fetchMyCancelledDateBookings select below — mirror the select string. */
+interface CancelledBookingRow {
+  show_date_id: string;
+  show_date: {
+    id: string;
+    date: string;
+    venue: string | null;
+    session_1: string | null;
+    session_2: string | null;
+    session_3: string | null;
+    status: string;
+    cancellation_reason: string | null;
+    show: { program: string | null; sub_program: string | null } | null;
+  } | null;
+}
+
 /** Dates this artist had a booking on that were cancelled by a date cancellation. */
 export async function fetchMyCancelledDateBookings(
   client: SupabaseClient<Database>,
@@ -53,9 +69,9 @@ export async function fetchMyCancelledDateBookings(
     .eq("status", "cancelled")
     .eq("cancellation_reason", "date_cancelled");
   if (error) throw error;
-  return ((data ?? []) as any[])
+  return ((data ?? []) as unknown as CancelledBookingRow[])
     .map((b) => b.show_date)
-    .filter((sd) => sd && sd.status === "cancelled") as CancelledDateEntry[];
+    .filter((sd): sd is CancelledDateEntry => !!sd && sd.status === "cancelled");
 }
 
 /** Append cancelled entries whose id isn't already in the eligible-dates list. */

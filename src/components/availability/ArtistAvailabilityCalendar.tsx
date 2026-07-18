@@ -58,14 +58,14 @@ export function ArtistAvailabilityCalendar({ artistId, eligibleDates }: Props) {
   const { data: blockedDates, isError: blockedError } = useQuery({
     queryKey: ['blocked-dates', artistId, format(currentMonth, 'yyyy-MM')],
     queryFn: async () => {
-      const { data, error } = await (supabase as any)
+      const { data, error } = await supabase
         .from('blocked_dates')
         .select('date')
         .eq('artist_id', artistId)
         .gte('date', monthStartKey)
         .lte('date', monthEndKey);
       if (error) throw error;
-      return (data ?? []) as { date: string }[];
+      return data ?? [];
     },
   });
 

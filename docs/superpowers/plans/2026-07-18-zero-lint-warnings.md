@@ -409,16 +409,16 @@ then `const allDates = (dates ?? []) as unknown as EligibleDateRow[];` and drop 
 - Consumes: nothing new (frontend client was already `SupabaseClient<Database>`).
 - Produces: `EligibleDateRow`, `ShowDateDetailRow` local interfaces (file-local; nothing external).
 
-- [ ] **Step 1: Apply eligibility.ts, run its tests**: `npx vitest run src/data/eligibility.test.ts` (if present — else the data tests folder) → pass.
-- [ ] **Step 2: Apply bookings.ts + artists.ts, run `npx vitest run src/data` → pass.**
-- [ ] **Step 3: Apply the two hooks + calendar + sheet, run `npx vitest run src/hooks src/components` → pass.**
-- [ ] **Step 4: Typecheck is the real gate for this task**: `npx tsc -p tsconfig.app.json --noEmit` → exit 0. If a table is genuinely absent from the types, STOP and regenerate per Global Constraints, re-copy the Task 6 mirror in the same commit.
-- [ ] **Step 5: Verify these files are any-clean**
+- [x] **Step 1: Apply eligibility.ts, run its tests**: `npx vitest run src/data/eligibility.test.ts` (if present — else the data tests folder) → pass.
+- [x] **Step 2: Apply bookings.ts + artists.ts, run `npx vitest run src/data` → pass.**
+- [x] **Step 3: Apply the two hooks + calendar + sheet, run `npx vitest run src/hooks src/components` → pass.**
+- [x] **Step 4: Typecheck is the real gate for this task**: `npx tsc -p tsconfig.app.json --noEmit` → exit 0. If a table is genuinely absent from the types, STOP and regenerate per Global Constraints, re-copy the Task 6 mirror in the same commit.
+- [x] **Step 5: Verify these files are any-clean**
 
 Run: `npx eslint src/data src/hooks/useArtistEligibleDates.ts src/hooks/useChatParticipant.ts src/components/availability/ArtistAvailabilityCalendar.tsx src/components/shows/ShowDateDetailSheet.tsx 2>&1 | grep -c no-explicit-any || true`
 Expected: `6` (the six remaining `onError` sites in ShowDateDetailSheet — fixed in Task 8; all others `0`).
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add -A
