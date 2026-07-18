@@ -1,5 +1,6 @@
 import { preflight, json } from "../_shared/http.ts";
 import { isServiceRole, requireRole, requireOrgRole } from "../_shared/auth.ts";
+import type { TablesInsert } from "../_shared/database.types.ts";
 import { resolveBookingFlow, referenceLabel } from "../_shared/bookingFlow.ts";
 import { emailWasSent, realDeps, type Deps } from "../_shared/deps.ts";
 import { resolveOrgSetting, BOOKING_ENGINE_DEFAULTS } from "../_shared/settings.ts";
@@ -247,7 +248,10 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
   // starts from when the artist is notified via the offer digest email,
   // not from offer creation. send-offer-digest sets offer_expires_at when
   // it stamps digest_sent_at.
-  const toInsert = finalCandidateIds.map((artistId: string) => ({
+  // org_id is intentionally omitted: the derive_org_id_for_booking BEFORE INSERT
+  // trigger derives it from show_date_id — the generated Insert type can't know
+  // that, hence the Omit + single cast at the insert below.
+  const toInsert = finalCandidateIds.map((artistId: string): Omit<TablesInsert<'bookings'>, 'org_id'> => ({
     show_date_id,
     artist_id: artistId,
     status: 'suggested' as const,
@@ -258,7 +262,7 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
 
   const { data: inserted, error: insErr } = await admin
     .from('bookings')
-    .insert(toInsert)
+    .insert(toInsert as TablesInsert<'bookings'>[])
     .select('id, artist_id')
 
   if (insErr) {
@@ -273,13 +277,14 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
   const { error: tierErr } = await admin
     .from('show_date_offer_tiers')
     .upsert(
+      // org_id omitted: derived by trg_derive_org_id from show_date_id on insert.
       {
         show_date_id,
         tier,
         opened_at: offeredAt.toISOString(),
         closed_at: null,
         escalation_notified_at: null,
-      },
+      } as TablesInsert<'show_date_offer_tiers'>,
       { onConflict: 'show_date_id,tier' }
     )
   // The tier row is now load-bearing for re-open (it clears closed_at) and is

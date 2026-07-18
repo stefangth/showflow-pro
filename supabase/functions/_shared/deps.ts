@@ -1,5 +1,9 @@
 import { createClient, type SupabaseClient } from "npm:@supabase/supabase-js@2";
+import type { Database } from "./database.types.ts";
 import type { RenderHireOrderPdf } from "./hireOrders.ts";
+
+/** The Supabase client typed against the mirrored generated Database schema. */
+export type TypedClient = SupabaseClient<Database>;
 
 /** A file attached to a transactional email (Task 10 wires the actual Resend send). */
 export interface EmailAttachment {
@@ -42,8 +46,8 @@ export function emailWasSent(result: InvokeResult): boolean {
 
 /** Everything a handler touches that is environment- or time-dependent. Injected so tests can fake it. */
 export interface Deps {
-  admin: SupabaseClient;
-  userClient: (authHeader: string) => SupabaseClient;
+  admin: TypedClient;
+  userClient: (authHeader: string) => TypedClient;
   env: (key: string) => string | undefined;
   now: () => Date;
   invokeFunction: (name: string, body: unknown) => Promise<InvokeResult>;
@@ -61,20 +65,23 @@ export function realDeps(getEnv: (k: string) => string | undefined = (k) => Deno
   const url = getEnv("SUPABASE_URL") ?? "";
   const serviceKey = getEnv("SUPABASE_SERVICE_ROLE_KEY") ?? "";
   const anonKey = getEnv("SUPABASE_ANON_KEY") ?? "";
-  const admin = createClient(url, serviceKey, {
+  const admin = createClient<Database>(url, serviceKey, {
     auth: { persistSession: false, autoRefreshToken: false },
   });
 
   const invokeFunction = async (name: string, body: unknown): Promise<InvokeResult> => {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { data, error } = await admin.functions.invoke(name, { body: body as any });
+    // FunctionInvokeOptions.body does not accept `unknown`; every caller passes a
+    // JSON object payload, so narrow to the Record member of its union.
+    const { data, error } = await admin.functions.invoke(name, {
+      body: body as Record<string, unknown>,
+    });
     return { data, error };
   };
 
   return {
     admin,
     userClient: (authHeader: string) =>
-      createClient(url, anonKey, { global: { headers: { Authorization: authHeader } } }),
+      createClient<Database>(url, anonKey, { global: { headers: { Authorization: authHeader } } }),
     env: getEnv,
     now: () => new Date(),
     invokeFunction,

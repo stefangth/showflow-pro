@@ -19,7 +19,7 @@
 import { preflight, json } from "../_shared/http.ts";
 import { constantTimeEqual } from "../_shared/auth.ts";
 import { realDeps, type Deps } from "../_shared/deps.ts";
-import type { OrgAdminRow, ProducerAssignmentRow } from "../_shared/rows.ts";
+import type { OrgAdminRow, ProducerAssignmentRow, ResolveShowAssignmentsArgs } from "../_shared/rows.ts";
 
 const DOCUMENT_COMPLETED_EVENT = "DOCUMENT_COMPLETED";
 
@@ -164,7 +164,8 @@ async function notifyProducers(deps: Deps, order: HireOrderRow): Promise<void> {
       p_sub_program: showDate.shows?.sub_program ?? null,
       p_city_id: showDate.city_id,
       p_org: org,
-    });
+      // The SQL function accepts NULL sub_program/city_id; type-gen doesn't model that.
+    } as ResolveShowAssignmentsArgs);
     recipientIds = ((producers ?? []) as unknown as ProducerAssignmentRow[]).map((p) => p.producer_user_id);
   }
 

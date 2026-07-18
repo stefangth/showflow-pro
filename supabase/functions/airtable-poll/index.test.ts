@@ -7,7 +7,7 @@
  * outcome vocabulary is imported_new / updated / held_unresolved (no "skipped").
  */
 import { assertEquals } from "../_shared/test-asserts.ts";
-import { makeFakeDeps, makeRequest } from "../_shared/testing.ts";
+import { bindFakeFrom, makeFakeDeps, makeRequest } from "../_shared/testing.ts";
 import { handle } from "./index.ts";
 
 const ORG = "00000000-0000-0000-0000-0000000000c1";
@@ -77,7 +77,7 @@ Deno.test("airtable-poll contract: key-linked records import; missing-date / unl
   ];
 
   const { deps } = seededDeps(records);
-  const originalFrom = deps.admin.from.bind(deps.admin);
+  const originalFrom = bindFakeFrom(deps.admin);
   (deps.admin as any).from = (table: string) => {
     const chain = originalFrom(table);
     if (table === "show_dates") {
@@ -141,7 +141,7 @@ function seededDepsWithExisting(
 /** Wrap deps.admin.from so every show_dates UPDATE payload is captured for assertion. */
 function captureShowDateUpdates(deps: ReturnType<typeof makeFakeDeps>["deps"]): unknown[] {
   const updatePayloads: unknown[] = [];
-  const originalFrom = deps.admin.from.bind(deps.admin);
+  const originalFrom = bindFakeFrom(deps.admin);
   (deps.admin as any).from = (table: string) => {
     const chain = originalFrom(table);
     if (table === "show_dates") {
@@ -213,7 +213,7 @@ const SESSION_FIELD_MAP = { date: "Date", sub_program: "SubProgram", city: "City
 /** Wrap deps.admin.from so every show_dates INSERT payload is captured. */
 function captureShowDateInserts(deps: ReturnType<typeof makeFakeDeps>["deps"]): unknown[] {
   const inserts: unknown[] = [];
-  const originalFrom = deps.admin.from.bind(deps.admin);
+  const originalFrom = bindFakeFrom(deps.admin);
   (deps.admin as any).from = (table: string) => {
     const chain = originalFrom(table);
     if (table === "show_dates") {
@@ -287,7 +287,7 @@ function seededDepsShows(records: unknown[], shows: unknown[]) {
 function captureWrites(deps: ReturnType<typeof makeFakeDeps>["deps"]) {
   const showUpdates: unknown[] = [];
   const showDateInserts: unknown[] = [];
-  const originalFrom = deps.admin.from.bind(deps.admin);
+  const originalFrom = bindFakeFrom(deps.admin);
   (deps.admin as any).from = (table: string) => {
     const chain = originalFrom(table);
     if (table === "shows") {
@@ -358,7 +358,7 @@ Deno.test("airtable-poll grain: re-key DB error → record held, no show_dates i
   const { deps } = seededDepsShows(records, [{ id: "show-bol", program: null, airtable_program_key: "BOL: PP" }]);
 
   const showDateInserts: unknown[] = [];
-  const originalFrom = deps.admin.from.bind(deps.admin);
+  const originalFrom = bindFakeFrom(deps.admin);
   (deps.admin as any).from = (table: string) => {
     const chain = originalFrom(table);
     if (table === "shows") {
@@ -400,7 +400,7 @@ Deno.test("airtable-poll grain: program write-through DB error → record still 
   const { deps } = seededDepsShows(records, [{ id: "show-bol", program: null, airtable_program_key: "BOL|BOL: PP" }]);
 
   const showDateInserts: unknown[] = [];
-  const originalFrom = deps.admin.from.bind(deps.admin);
+  const originalFrom = bindFakeFrom(deps.admin);
   (deps.admin as any).from = (table: string) => {
     const chain = originalFrom(table);
     if (table === "shows") {

@@ -12,7 +12,8 @@
 // makeFakeDeps (deps.renderHireOrderPdf is stubbed). See index.di.test.ts.
 import { preflight, json } from "../_shared/http.ts";
 import { requireCronOrRole, requireOrgRole } from "../_shared/auth.ts";
-import type { OrgAdminRow, ProducerAssignmentRow } from "../_shared/rows.ts";
+import type { TablesInsert } from "../_shared/database.types.ts";
+import type { OrgAdminRow, ProducerAssignmentRow, ResolveShowAssignmentsArgs } from "../_shared/rows.ts";
 import { requireFeature } from "../_shared/entitlements.ts";
 import { resolveOrgSetting } from "../_shared/settings.ts";
 import { realDeps, type Deps } from "../_shared/deps.ts";
@@ -380,7 +381,9 @@ async function insertWithRetry(
   for (let attempt = 0; attempt < 20; attempt++) {
     const order_no = withCollisionSuffix(baseOrderNo, attempt);
     const { data, error } = await admin
-      .from("hire_orders").insert({ ...row, order_no }).select("id").maybeSingle();
+      // row is a dynamically-assembled draft (resolveFields output), so it is a
+      // Record — single cast to the table's Insert type at the boundary.
+      .from("hire_orders").insert({ ...row, order_no } as unknown as TablesInsert<"hire_orders">).select("id").maybeSingle();
     if (!error && data) return { id: (data as { id: string }).id };
     if (error && (error as { code?: string }).code === "23505") {
       if (isActiveArtistDateConflict(error)) return { reason: "exists" };
@@ -413,7 +416,8 @@ async function notifyProducers(deps: Deps, org: string, showDate: ShowDateRow, o
     p_sub_program: showDate.shows?.sub_program ?? null,
     p_city_id: showDate.city_id,
     p_org: org,
-  });
+    // The SQL function accepts NULL sub_program/city_id; type-gen doesn't model that.
+  } as ResolveShowAssignmentsArgs);
   let recipientIds = ((producers ?? []) as unknown as ProducerAssignmentRow[]).map((p) => p.producer_user_id);
   if (recipientIds.length === 0) {
     // Fallback: notify this org's admins.

@@ -30,7 +30,7 @@
  */
 
 import { assertEquals, assertExists } from "../_shared/test-asserts.ts";
-import { makeFakeDeps, makeRequest } from "../_shared/testing.ts";
+import { bindFakeFrom, makeFakeDeps, makeRequest } from "../_shared/testing.ts";
 import { handle } from "./index.ts";
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
@@ -358,7 +358,7 @@ Deno.test("airtable-poll: invalid base_id format → 200, org skipped, sync_log 
     rpcs: { get_org_airtable_key: { data: "key", error: null }, get_cron_secret: { data: "secret123", error: null } },
   });
 
-  const originalFrom = deps.admin.from.bind(deps.admin);
+  const originalFrom = bindFakeFrom(deps.admin);
   (deps.admin as any).from = (table: string) => {
     const chain = originalFrom(table);
     if (table === "airtable_sync_log") {
@@ -552,7 +552,7 @@ Deno.test("airtable-poll: maps Date/SubProgram/City/Session fields and inserts s
   });
 
   // Wrap the admin client's from() to capture insert args
-  const originalFrom = deps.admin.from.bind(deps.admin);
+  const originalFrom = bindFakeFrom(deps.admin);
   (deps.admin as any).from = (table: string) => {
     const chain = originalFrom(table);
     if (table === "show_dates") {
@@ -594,7 +594,7 @@ Deno.test("airtable-poll: session_1 is null when field missing (no 00:00 fabrica
 
   const { deps } = makeHappyDeps({ airtableRecords: records });
 
-  const originalFrom = deps.admin.from.bind(deps.admin);
+  const originalFrom = bindFakeFrom(deps.admin);
   (deps.admin as any).from = (table: string) => {
     const chain = originalFrom(table);
     if (table === "show_dates") {
@@ -623,7 +623,7 @@ Deno.test("airtable-poll: city_id is null when city not in DB", async () => {
 
   const { deps } = makeHappyDeps({ airtableRecords: records });
 
-  const originalFrom = deps.admin.from.bind(deps.admin);
+  const originalFrom = bindFakeFrom(deps.admin);
   (deps.admin as any).from = (table: string) => {
     const chain = originalFrom(table);
     if (table === "show_dates") {
@@ -655,7 +655,7 @@ Deno.test("airtable-poll: record without Date field is held, not inserted", asyn
 
   const { deps } = makeHappyDeps({ airtableRecords: records });
 
-  const originalFrom = deps.admin.from.bind(deps.admin);
+  const originalFrom = bindFakeFrom(deps.admin);
   (deps.admin as any).from = (table: string) => {
     const chain = originalFrom(table);
     if (table === "show_dates") {
@@ -691,7 +691,7 @@ Deno.test("airtable-poll: unresolvable show → record held, held count in total
 
   const { deps } = makeHappyDeps({ airtableRecords: records });
 
-  const originalFrom = deps.admin.from.bind(deps.admin);
+  const originalFrom = bindFakeFrom(deps.admin);
   (deps.admin as any).from = (table: string) => {
     const chain = originalFrom(table);
     if (table === "show_dates") {
@@ -721,7 +721,7 @@ Deno.test("airtable-poll: new date → invokeFunction('open-offer-tier', { show_
 
   // Override show_dates to make insert().select().single() return a new id.
   let insertCalled = false;
-  const originalFrom = deps.admin.from.bind(deps.admin);
+  const originalFrom = bindFakeFrom(deps.admin);
   (deps.admin as any).from = (table: string) => {
     const chain = originalFrom(table);
     if (table === "show_dates") {
@@ -775,7 +775,7 @@ Deno.test("airtable-poll: existing date → update only, NO invokeFunction call"
     existingShowDates: [{ id: "existing-uuid-001", airtable_record_id: "recEXISTING" }],
   });
 
-  const originalFrom = deps.admin.from.bind(deps.admin);
+  const originalFrom = bindFakeFrom(deps.admin);
   (deps.admin as any).from = (table: string) => {
     const chain = originalFrom(table);
     if (table === "show_dates") {
@@ -874,7 +874,7 @@ Deno.test("airtable-poll: one invokeFunction rejection → others still run, sti
   const { deps, invokeCalls } = makeHappyDeps({ airtableRecords: newRecords });
 
   // Patch insert to return distinct UUIDs per airtable_record_id
-  const originalFrom = deps.admin.from.bind(deps.admin);
+  const originalFrom = bindFakeFrom(deps.admin);
   (deps.admin as any).from = (table: string) => {
     const chain = originalFrom(table);
     if (table === "show_dates") {
@@ -957,7 +957,7 @@ Deno.test("airtable-poll: Airtable API error → run still 200, org skipped (org
       ) as Promise<Response>,
   });
 
-  const originalFrom = deps.admin.from.bind(deps.admin);
+  const originalFrom = bindFakeFrom(deps.admin);
   (deps.admin as any).from = (table: string) => {
     const chain = originalFrom(table);
     if (table === "airtable_sync_log") {
@@ -1004,7 +1004,7 @@ Deno.test("airtable-poll: inserts a success row (with org_id + zero counts) into
     fetchImpl: () => Promise.resolve(makeAirtableResponse([])) as Promise<Response>,
   });
 
-  const originalFrom = deps.admin.from.bind(deps.admin);
+  const originalFrom = bindFakeFrom(deps.admin);
   (deps.admin as any).from = (table: string) => {
     const chain = originalFrom(table);
     if (table === "airtable_sync_log") {
@@ -1053,7 +1053,7 @@ Deno.test("airtable-poll: inserts an error row (with org_id) into airtable_sync_
       Promise.resolve(new Response("Forbidden", { status: 500 })) as Promise<Response>,
   });
 
-  const originalFrom = deps.admin.from.bind(deps.admin);
+  const originalFrom = bindFakeFrom(deps.admin);
   (deps.admin as any).from = (table: string) => {
     const chain = originalFrom(table);
     if (table === "airtable_sync_log") {
@@ -1099,7 +1099,7 @@ Deno.test("airtable-poll: synced_at uses deps.now() (fixed to 2026-06-01T12:00:0
     fetchImpl: () => Promise.resolve(makeAirtableResponse([])) as Promise<Response>,
   });
 
-  const originalFrom = deps.admin.from.bind(deps.admin);
+  const originalFrom = bindFakeFrom(deps.admin);
   (deps.admin as any).from = (table: string) => {
     const chain = originalFrom(table);
     if (table === "airtable_sync_log") {
@@ -1131,7 +1131,7 @@ Deno.test("airtable-poll: unlinked city is non-fatal — record still imports wi
 
   const { deps } = makeHappyDeps({ airtableRecords: records });
 
-  const originalFrom = deps.admin.from.bind(deps.admin);
+  const originalFrom = bindFakeFrom(deps.admin);
   (deps.admin as any).from = (table: string) => {
     const chain = originalFrom(table);
     if (table === "show_dates") {
@@ -1207,7 +1207,7 @@ Deno.test("airtable-poll: a newly-held record notifies org admins (one notificat
     fetchImpl: () => Promise.resolve(makeAirtableResponse(records)) as Promise<Response>,
   });
 
-  const originalFrom = deps.admin.from.bind(deps.admin);
+  const originalFrom = bindFakeFrom(deps.admin);
   (deps.admin as any).from = (table: string) => {
     const chain = originalFrom(table);
     if (table === "notifications") {
@@ -1308,7 +1308,7 @@ Deno.test("airtable-poll: auto_open_tier1=false → no open-offer-tier invocatio
   });
 
   // Give the inserted new date a real id so, WITHOUT the flow gate, tier 1 WOULD open.
-  const originalFrom = deps.admin.from.bind(deps.admin);
+  const originalFrom = bindFakeFrom(deps.admin);
   // deno-lint-ignore no-explicit-any
   (deps.admin as any).from = (table: string) => {
     const chain = originalFrom(table);
@@ -1364,7 +1364,7 @@ Deno.test("airtable-poll: artist_acceptance=false (direct booking) → no open-o
   });
 
   // Give the inserted new date a real id so, WITHOUT the flow gate, tier 1 WOULD open.
-  const originalFrom = deps.admin.from.bind(deps.admin);
+  const originalFrom = bindFakeFrom(deps.admin);
   // deno-lint-ignore no-explicit-any
   (deps.admin as any).from = (table: string) => {
     const chain = originalFrom(table);

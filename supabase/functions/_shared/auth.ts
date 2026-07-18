@@ -1,5 +1,9 @@
+import type { Database } from "./database.types.ts";
 import type { Deps } from "./deps.ts";
 import { json } from "./http.ts";
+
+/** The org-membership role enum, as generated from the DB schema. */
+export type AppRole = Database["public"]["Enums"]["app_role"];
 
 export type AuthOutcome =
   | { ok: true; userId: string | null }
@@ -37,7 +41,7 @@ export function isServiceRole(deps: Deps, req: Request): boolean {
  * org_memberships can hold many rows per user (multi-org), so we cap at one row to
  * avoid PostgREST's "multiple rows returned" error on .maybeSingle().
  */
-export async function requireRole(deps: Deps, req: Request, roles: string[]): Promise<AuthOutcome> {
+export async function requireRole(deps: Deps, req: Request, roles: AppRole[]): Promise<AuthOutcome> {
   const authHeader = req.headers.get("Authorization");
   if (!authHeader?.startsWith("Bearer ")) {
     return { ok: false, response: json({ error: "Unauthorized" }, 401) };
@@ -59,7 +63,7 @@ export async function requireRole(deps: Deps, req: Request, roles: string[]): Pr
  * cannot act on another. Platform admins (super-admins) bypass the org gate so
  * god-mode works on org-scoped endpoints (mirrors the SQL is_super_admin short-circuit).
  */
-export async function requireOrgRole(deps: Deps, req: Request, orgId: string, roles: string[]): Promise<AuthOutcome> {
+export async function requireOrgRole(deps: Deps, req: Request, orgId: string, roles: AppRole[]): Promise<AuthOutcome> {
   const authHeader = req.headers.get("Authorization");
   if (!authHeader?.startsWith("Bearer ")) {
     return { ok: false, response: json({ error: "Unauthorized" }, 401) };
@@ -132,7 +136,7 @@ export async function requireCronSecret(deps: Deps, req: Request): Promise<AuthO
  * endpoints scoped to a single caller/org; cross-org fan-out endpoints must use
  * `requireCronSecret` directly.
  */
-export async function requireCronOrRole(deps: Deps, req: Request, roles: string[]): Promise<AuthOutcome> {
+export async function requireCronOrRole(deps: Deps, req: Request, roles: AppRole[]): Promise<AuthOutcome> {
   if (req.headers.get("X-Cron-Secret")) {
     return requireCronSecret(deps, req);
   }

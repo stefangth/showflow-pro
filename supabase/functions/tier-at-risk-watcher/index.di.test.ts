@@ -21,7 +21,7 @@
  */
 
 import { assertEquals, assertExists } from "../_shared/test-asserts.ts";
-import { makeFakeDeps, makeRequest } from "../_shared/testing.ts";
+import { bindFakeFrom, makeFakeDeps, makeRequest } from "../_shared/testing.ts";
 import { handle } from "./index.ts";
 
 // ── Shared helpers ────────────────────────────────────────────────────────────
@@ -952,7 +952,7 @@ Deno.test("tier-at-risk-watcher DI: reads slot capacity from shows columns and s
 
   // Capture the notifications insert payload.
   let notifPayload: any = null;
-  const originalFrom = deps.admin.from.bind(deps.admin);
+  const originalFrom = bindFakeFrom(deps.admin);
   (deps.admin as any).from = (t: string) => {
     const chain = originalFrom(t);
     if (t === "notifications") {
