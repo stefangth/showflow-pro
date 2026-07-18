@@ -11,7 +11,7 @@ import {
   Section,
   Text,
 } from 'npm:@react-email/components@0.0.22'
-import type { TemplateEntry } from './registry.ts'
+import type { TemplateEntry, TemplateData } from './registry.ts'
 import { APP_URL } from '../app-url.ts'
 
 const SITE_NAME = 'ShowFlow'
@@ -92,9 +92,9 @@ const ArtistOfferDigest = ({ displayName, offers = [], _intro, _cta_label, _foot
 }
 
 export const template = {
-  component: ArtistOfferDigest,
-  subject: (data: Record<string, any>) => {
-    const n = (data?.offers ?? []).length
+  component: ArtistOfferDigest as React.ComponentType<TemplateData>,
+  subject: (data: TemplateData) => {
+    const n = Array.isArray(data?.offers) ? data.offers.length : 0
     return `You have ${n} pending offer${n === 1 ? '' : 's'} on ${SITE_NAME}`
   },
   displayName: 'Artist offer digest',

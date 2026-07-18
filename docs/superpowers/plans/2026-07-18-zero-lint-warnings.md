@@ -475,7 +475,7 @@ git commit -m "replace remaining any in app pages and components with real types
 **Interfaces:**
 - Produces: `export type TemplateData = Record<string, unknown>` from `registry.ts` — Tasks 10/12 reference it for `templateData` payloads.
 
-- [ ] **Step 1: Registry**
+- [x] **Step 1: Registry**
 
 ```ts
 export type TemplateData = Record<string, unknown>
@@ -489,7 +489,7 @@ export interface TemplateEntry {
 }
 ```
 
-- [ ] **Step 2: Each template registration** — the component keeps its own typed props; the registration takes the one variance cast (worked example, `org-invitation.tsx`):
+- [x] **Step 2: Each template registration** — the component keeps its own typed props; the registration takes the one variance cast (worked example, `org-invitation.tsx`):
 
 ```ts
 export const template = {
@@ -503,13 +503,13 @@ export const template = {
 
 (`unknown` in a template literal is legal TS; where a subject fn passes `data` to a helper like `digestEmailSubject`, change that helper's parameter to `TemplateData` and narrow inside it.) Apply the same shape to: artist-confirmation-digest, artist-offer-digest, cast-escalation-requested, cron-health-alert, hire-order-issued, new-signup-admin-notification, offer-expiry-reminder, offer-immediate, signup-decision.
 
-- [ ] **Step 3: `send-transactional-email` + `preview-transactional-email`** — `Record<string, any>` → `TemplateData` (import it) at the three listed lines.
-- [ ] **Step 4: Gate**
+- [x] **Step 3: `send-transactional-email` + `preview-transactional-email`** — `Record<string, any>` → `TemplateData` (import it) at the three listed lines.
+- [x] **Step 4: Gate**
 
 Run: `deno test --allow-all supabase/functions/send-transactional-email/ supabase/functions/preview-transactional-email/ 2>&1 | tail -2` → pass (deno test typechecks the graph, which pulls in every template).
 Run: `npx eslint 'supabase/functions/_shared/transactional-email-templates/**' supabase/functions/send-transactional-email supabase/functions/preview-transactional-email 2>&1 | grep -c no-explicit-any || true` → `0`
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add -A
@@ -599,7 +599,7 @@ interface NotificationInsertRow {
 - [ ] **Step 2: Convert tier-at-risk-watcher + _shared/eligibility.ts**: `deno test --allow-all supabase/functions/tier-at-risk-watcher/ supabase/functions/_shared/ 2>&1 | tail -2` → pass.
 - [ ] **Step 3: Convert open-offer-tier + both digests + suppression**: `deno test --allow-all supabase/functions/ 2>&1 | tail -2` → all pass.
 - [ ] **Step 4: Verify**: `npx eslint supabase/functions/expire-offers supabase/functions/tier-at-risk-watcher supabase/functions/open-offer-tier supabase/functions/send-offer-digest supabase/functions/send-confirmation-digest supabase/functions/_shared/eligibility.ts supabase/functions/handle-email-suppression 2>&1 | grep no-explicit-any | grep -v test | wc -l` → `0`
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add -A
@@ -627,7 +627,7 @@ git commit -m "type booking engine cron row shapes, drop any casts"
 - [ ] **Step 1: Convert documenso-webhook**: `deno test --allow-all supabase/functions/documenso-webhook/ 2>&1 | tail -2` → pass.
 - [ ] **Step 2: Convert generate-hire-orders (largest file — go select-by-select, `deno check supabase/functions/generate-hire-orders/index.ts` after each interface lands)**: final `deno test --allow-all supabase/functions/generate-hire-orders/ 2>&1 | tail -2` → pass.
 - [ ] **Step 3: Verify**: `npx eslint supabase/functions/documenso-webhook supabase/functions/generate-hire-orders 2>&1 | grep no-explicit-any | grep -v test | wc -l` → `0`
-- [ ] **Step 4: Commit**
+- [x] **Step 4: Commit**
 
 ```bash
 git add -A
@@ -672,7 +672,7 @@ Wire `makeFakeDeps` so the fake admin/userClient pass through `asTypedClient`.
 
 - [ ] **Step 3: Fix the fallout** — run `deno test --allow-all supabase/functions/ 2>&1 | tail -5`. Every new type error is one of: (a) an overlap complaint on an existing `as Row[]` cast → make it `as unknown as Row[]`; (b) a genuine column/table mismatch → fix the name against `database.types.ts` (that's the payoff of this task); (c) an insert payload mismatch → align the object with the table's `Insert` type. Iterate until: `deno test --allow-all supabase/functions/` → all pass.
 - [ ] **Step 4: Verify**: `npx eslint supabase/functions/_shared/deps.ts supabase/functions/_shared/testing.ts 2>&1 | grep -c no-explicit-any || true` → `0`. Also `grep -rn "eslint-disable.*no-explicit-any\|deno-lint-ignore no-explicit-any" supabase/functions/ | wc -l` → `0`.
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add -A
@@ -781,7 +781,7 @@ Run: `npm run lint 2>&1 | tail -1`
 Expected: `✖ 0 problems` (nothing left: this is the last warning-producing category).
 
 - [ ] **Step 3: Full gate**: `npx vitest run` → 1164 pass; `deno test --allow-all supabase/functions/` → pass; `npx tsc -p tsconfig.app.json --noEmit` → exit 0.
-- [ ] **Step 4: Commit**
+- [x] **Step 4: Commit**
 
 ```bash
 git add -A
@@ -824,7 +824,7 @@ git commit -m "type deno edge function test stubs"
 - [ ] **Step 1: Apply all edits above.**
 - [ ] **Step 2: Prove the gate**: `npm run lint` → exit 0, no output. Then prove it bites: add `const x: any = 1` to any file, `npm run lint` → exit 1 with 1 error; revert.
 - [ ] **Step 3: Full final gate**: `npx vitest run` (1164 pass) + `deno test --allow-all supabase/functions/` (pass) + `npx tsc -p tsconfig.app.json --noEmit` (exit 0) + `npm run build` (succeeds — catches any import-path slip from Tasks 4–5).
-- [ ] **Step 4: Commit**
+- [x] **Step 4: Commit**
 
 ```bash
 git add -A

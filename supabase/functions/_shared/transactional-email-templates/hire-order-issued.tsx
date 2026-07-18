@@ -3,7 +3,7 @@ import * as React from 'npm:react@18.3.1'
 import {
   Body, Button, Container, Head, Heading, Html, Preview, Section, Text,
 } from 'npm:@react-email/components@0.0.22'
-import type { TemplateEntry } from './registry.ts'
+import type { TemplateEntry, TemplateData } from './registry.ts'
 import { APP_URL } from '../app-url.ts'
 
 interface Props {
@@ -77,8 +77,8 @@ const HireOrderIssuedEmail = ({
 }
 
 export const template = {
-  component: HireOrderIssuedEmail,
-  subject: (data: Record<string, any>) =>
+  component: HireOrderIssuedEmail as React.ComponentType<TemplateData>,
+  subject: (data: TemplateData) =>
     `Your hire order for ${data?.date_label || 'your date'} at ${data?.venue || 'the venue'}`,
   displayName: 'Hire order issued',
   previewData: {

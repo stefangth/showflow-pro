@@ -11,7 +11,7 @@ import {
   Section,
   Text,
 } from 'npm:@react-email/components@0.0.22'
-import type { TemplateEntry } from './registry.ts'
+import type { TemplateEntry, TemplateData } from './registry.ts'
 import { APP_URL } from '../app-url.ts'
 
 const SITE_NAME = 'ShowFlow'
@@ -67,8 +67,8 @@ const OfferImmediate = ({ displayName, referenceLabel, date, city, windowHours, 
 }
 
 export const template = {
-  component: OfferImmediate,
-  subject: (data: Record<string, any>) => `Offer: ${data.referenceLabel} · ${data.date}`,
+  component: OfferImmediate as React.ComponentType<TemplateData>,
+  subject: (data: TemplateData) => `Offer: ${data.referenceLabel} · ${data.date}`,
   displayName: 'Immediate offer',
   previewData: {
     displayName: 'Jane Performer',
