@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Search } from "lucide-react";
 import { useAuth } from "@/features/auth/AuthContext";
 import { useHireOrders } from "@/hooks/useHireOrders";
@@ -48,15 +48,25 @@ export default function HireOrdersPage() {
 
   const [statusChip, setStatusChip] = useState<StatusChip>("all");
   const [search, setSearch] = useState("");
+  // The input itself stays controlled by `search` on every keystroke so
+  // typing feels instant; only the value that drives the query is debounced,
+  // so a short search term collapses a burst of keystrokes into a single
+  // pair of Supabase round trips instead of firing one per key.
+  const [debouncedSearch, setDebouncedSearch] = useState("");
   const [slideOverId, setSlideOverId] = useState<string | null>(null);
   const [wizardOpen, setWizardOpen] = useState(false);
   const [importOpen, setImportOpen] = useState(false);
 
+  useEffect(() => {
+    const timer = setTimeout(() => setDebouncedSearch(search), 275);
+    return () => clearTimeout(timer);
+  }, [search]);
+
   const { data: allOrders = [] } = useHireOrders(orgId, {});
 
   const filters = useMemo(
-    () => ({ status: chipToStatusFilter(statusChip), search: search.trim() || undefined }),
-    [statusChip, search],
+    () => ({ status: chipToStatusFilter(statusChip), search: debouncedSearch.trim() || undefined }),
+    [statusChip, debouncedSearch],
   );
   const { data: filteredOrders = [], isLoading } = useHireOrders(orgId, filters);
 

@@ -24,8 +24,10 @@ interface Props {
 /**
  * The V4 order list: a row-selectable table (checkbox column drives the bulk
  * action bar) plus the table itself. Order number and date render mono; fee
- * is right-aligned tabular. Clicking a row (outside the checkbox) opens the
- * slide-over via `onRowClick`.
+ * is right-aligned tabular. Clicking a row (outside the checkbox), or
+ * focusing it and pressing Enter/Space, opens the slide-over via
+ * `onRowClick`. The checkbox cell stops both click and keydown propagation
+ * so toggling selection (mouse or keyboard) never also opens the row.
  */
 export function OrdersTable({ orders, orgId, onRowClick }: Props) {
   const [selected, setSelected] = useState<Set<string>>(new Set());
@@ -114,8 +116,20 @@ export function OrdersTable({ orders, orgId, onRowClick }: Props) {
             </TableHeader>
             <TableBody>
               {orders.map((o) => (
-                <TableRow key={o.id} className="cursor-pointer" onClick={() => onRowClick(o.id)}>
-                  <TableCell onClick={(e) => e.stopPropagation()}>
+                <TableRow
+                  key={o.id}
+                  className="cursor-pointer"
+                  onClick={() => onRowClick(o.id)}
+                  role="button"
+                  tabIndex={0}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" || e.key === " ") {
+                      e.preventDefault();
+                      onRowClick(o.id);
+                    }
+                  }}
+                >
+                  <TableCell onClick={(e) => e.stopPropagation()} onKeyDown={(e) => e.stopPropagation()}>
                     <Checkbox
                       checked={selected.has(o.id)}
                       onCheckedChange={() => toggleRow(o.id)}
