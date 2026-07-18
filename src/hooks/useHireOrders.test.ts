@@ -294,6 +294,48 @@ describe("useHireOrderAction", () => {
     expect(toast.error).not.toHaveBeenCalled();
   });
 
+  it("does NOT invalidate hire-orders for the read-only preview and download-url actions, but still does for draft/issue/draft-manual", async () => {
+    const { Wrapper, qc } = wrapper();
+    const invalidateSpy = vi.spyOn(qc, "invalidateQueries");
+    const { result } = renderHook(() => useHireOrderAction(), { wrapper: Wrapper });
+
+    // The debounced live-preview cycle on HireOrderEditPage calls `preview`
+    // roughly every 800ms while a producer types -- invalidating the whole
+    // ['hire-orders'] domain on every tick storms the table/KPI/nav-count/
+    // detail queries for a read-only action that changes nothing.
+    vi.mocked(invokeHireOrderAction).mockResolvedValue({ pdf_base64: "abc" });
+    await act(async () => {
+      await result.current.mutateAsync({ action: "preview", org_id: "org-1", order_id: "ho-1" });
+    });
+    expect(invalidateSpy).not.toHaveBeenCalled();
+
+    vi.mocked(invokeHireOrderAction).mockResolvedValue({ url: "https://signed.example/ho-1.pdf" });
+    await act(async () => {
+      await result.current.mutateAsync({ action: "download-url", org_id: "org-1", order_id: "ho-1" });
+    });
+    expect(invalidateSpy).not.toHaveBeenCalled();
+
+    vi.mocked(invokeHireOrderAction).mockResolvedValue({ created: ["ho-1"], skipped: [] });
+    await act(async () => {
+      await result.current.mutateAsync({ action: "draft", org_id: "org-1" });
+    });
+    expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: ["hire-orders"] });
+    invalidateSpy.mockClear();
+
+    vi.mocked(invokeHireOrderAction).mockResolvedValue({ issued: ["ho-1"], failed: [] });
+    await act(async () => {
+      await result.current.mutateAsync({ action: "issue", org_id: "org-1", order_ids: ["ho-1"] });
+    });
+    expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: ["hire-orders"] });
+    invalidateSpy.mockClear();
+
+    vi.mocked(invokeHireOrderAction).mockResolvedValue({ id: "ho-new" });
+    await act(async () => {
+      await result.current.mutateAsync({ action: "draft-manual", org_id: "org-1", manual: {} });
+    });
+    expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: ["hire-orders"] });
+  });
+
   it("toasts an error on failure", async () => {
     vi.mocked(invokeHireOrderAction).mockRejectedValue(new Error("network down"));
     const { Wrapper } = wrapper();
