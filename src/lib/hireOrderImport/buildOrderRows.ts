@@ -212,6 +212,11 @@ export function buildOrderRows(
       } else {
         issues.push("unparseable_date");
       }
+    } else if (mapping.date) {
+      // Date column is mapped but this row's cell is blank — flag it (mirrors
+      // the missing_fee handling below). An unmapped date column is left
+      // alone: there's no per-row cell to be blank, so nothing to flag.
+      issues.push("missing_date");
     }
 
     if (rawFee) {
