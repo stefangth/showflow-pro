@@ -368,6 +368,81 @@ export async function fetchShowflowLayerForOrder(
   return layer;
 }
 
+/** Metadata stored on the `hire_order_imports` row created by a bulk import run.
+ *  `source` must satisfy the DB CHECK (source in ('xlsx','csv','gsheet')); `mapping`
+ *  is stored as-is (the OrderColumnMapping the user confirmed in the Map step). */
+export interface BulkImportHireOrdersImportMeta {
+  source: "xlsx" | "csv" | "gsheet";
+  file_name: string | null;
+  mapping: Record<string, unknown>;
+  row_count: number;
+}
+
+/** One resolved import row as sent to the RPC. `data` is the ALREADY-RESOLVED
+ *  OrderData (via resolveFields) -- the RPC stores it as-is, it never re-resolves. */
+export interface BulkImportHireOrdersRow {
+  row_index: number;
+  artist_id: string | null;
+  show_date_id: string | null;
+  data: OrderData;
+  fee_amount?: number;
+  fee_currency: string;
+  terms_variant: string;
+}
+
+export interface BulkImportHireOrdersArgs {
+  orgId: string;
+  import: BulkImportHireOrdersImportMeta;
+  rows: BulkImportHireOrdersRow[];
+}
+
+/** Per-row outcome returned by the `bulk_import_hire_orders` RPC. */
+export interface BulkImportHireOrdersResultRow {
+  row_index: number;
+  status: "created" | "skipped_existing" | "error";
+  order_id?: string;
+  error?: string;
+}
+
+/**
+ * Create draft hire orders from an already-resolved spreadsheet import (the
+ * import wizard's final Review-step submit). A single SECURITY DEFINER RPC:
+ * inserts the `hire_order_imports` row, then one `hire_orders` draft per row
+ * (skipping rows that would duplicate an existing active order for the same
+ * artist + show_date). Never issues -- import is draft-only by design.
+ */
+export async function bulkImportHireOrders(
+  client: SupabaseClient<Database>,
+  args: BulkImportHireOrdersArgs,
+): Promise<BulkImportHireOrdersResultRow[]> {
+  const { data, error } = await client.rpc("bulk_import_hire_orders", {
+    p_org: args.orgId,
+    p_import: args.import,
+    p_rows: args.rows,
+  });
+  if (error) throw error;
+  return (data ?? []) as unknown as BulkImportHireOrdersResultRow[];
+}
+
+/**
+ * Create a new org artist from just a name + email (the import wizard's Resolve
+ * step "Create artist" path, for an unmatched sheet row). Mirrors the insert
+ * shape in ArtistsPage.tsx's createArtist mutation, selecting the ArtistLite
+ * columns back so the new artist can be used immediately as a link target.
+ */
+export async function createArtistLite(
+  client: SupabaseClient<Database>,
+  args: { orgId: string; name: string; email: string | null },
+): Promise<ArtistLite> {
+  const { data, error } = await client
+    .from("artists")
+    .insert({ name: args.name, email: args.email, org_id: args.orgId })
+    .select("id, name, email")
+    .single();
+  if (error) throw error;
+  return data as ArtistLite;
+}
+
 /**
  * Client-side status write for "mark countersigned" / "void". Only ever writes
  * `status` (+ `countersigned_at`, stamped here, when transitioning to

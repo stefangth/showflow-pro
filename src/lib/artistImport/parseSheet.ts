@@ -53,3 +53,44 @@ export async function parseSheet(input: string | ArrayBuffer, kind: SheetKind): 
   });
   return { headers, rows };
 }
+
+export interface RawSheet {
+  name: string;
+  rows: string[][];
+}
+export interface ParsedSheetRaw {
+  sheets: RawSheet[];
+}
+
+/**
+ * Parse a CSV string or an XLSX ArrayBuffer into raw string-matrix sheets, with
+ * NO header inference — every row (including whatever the sheet's actual header
+ * row is) comes back as a plain `string[][]`. This feeds the hire-order import
+ * wizard's Range step, which lets the user pick the header row and row scope
+ * themselves (a single sheet may have a title/preamble row before the real
+ * header). Every cell is coerced to a trimmed string; the row cap reuses the
+ * same `MAX_IMPORT_ROWS` guard as `parseSheet`, applied per sheet.
+ *
+ * CSV always yields a single sheet named "Sheet1" (CSV has no sheet concept).
+ * XLSX yields one entry per workbook sheet, in workbook order, so a multi-sheet
+ * workbook can offer a sheet picker.
+ */
+export async function parseSheetRaw(input: string | ArrayBuffer, kind: SheetKind): Promise<ParsedSheetRaw> {
+  if (kind === "csv") {
+    const parsed = Papa.parse<string[]>(String(input), { header: false, skipEmptyLines: true });
+    const rows = parsed.data.map((r) => r.map((cell) => String(cell ?? "").trim()));
+    guard(rows);
+    return { sheets: [{ name: "Sheet1", rows }] };
+  }
+
+  const XLSX = await import("xlsx");
+  const wb = XLSX.read(input, { type: "array" });
+  const sheets = wb.SheetNames.map((name) => {
+    const ws = wb.Sheets[name];
+    const matrix = XLSX.utils.sheet_to_json<unknown[]>(ws, { header: 1, blankrows: false, defval: "" });
+    const rows = matrix.map((arr) => (arr as unknown[]).map((cell) => String(cell ?? "").trim()));
+    guard(rows);
+    return { name, rows };
+  });
+  return { sheets };
+}

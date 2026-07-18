@@ -282,11 +282,18 @@ describe("HireOrdersPage", () => {
     });
   });
 
-  it("shows New order enabled and Import from spreadsheet hidden (not yet ready)", async () => {
+  it("shows New order and Import from spreadsheet, both enabled (Task 5: import wizard shipped)", async () => {
     renderPage();
     await screen.findByText("Hire orders");
     expect(screen.getByRole("button", { name: /new order/i })).toBeEnabled();
-    expect(screen.queryByRole("button", { name: /import from spreadsheet/i })).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /import from spreadsheet/i })).toBeEnabled();
+  });
+
+  it("opens the import wizard on Import from spreadsheet", async () => {
+    renderPage();
+    await screen.findByText("Hire orders");
+    fireEvent.click(screen.getByRole("button", { name: /import from spreadsheet/i }));
+    expect(await screen.findByText("Import hire orders from a spreadsheet")).toBeInTheDocument();
   });
 
   it("opens the guided wizard on New order and does not self-disable to a dead-end", async () => {

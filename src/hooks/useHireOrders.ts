@@ -13,10 +13,13 @@ import {
   updateHireOrderReview,
   updateHireOrderStatus,
   updateHireOrderDraft,
+  bulkImportHireOrders,
+  createArtistLite,
   type HireOrderFilters,
   type HireOrderReview,
   type HireOrderRow,
   type UpdateHireOrderDraftPatch,
+  type BulkImportHireOrdersArgs,
 } from "@/data/hireOrders";
 
 /** Every mutation below busts the whole `['hire-orders']` prefix, never a sub-key —
@@ -225,6 +228,43 @@ export function useMarkCountersigned() {
     },
     onError: (error: Error) => {
       toast.error(error.message || "Could not mark as countersigned");
+    },
+  });
+}
+
+/**
+ * Submit the import wizard's Review-step selection to `bulk_import_hire_orders`.
+ * Silent on success (only errors toast) — the wizard's own Done step renders the
+ * per-row result counts, so a toast here would be redundant. Busts the whole
+ * hire-orders domain since a successful import creates new draft orders.
+ */
+export function useBulkImportHireOrders() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (args: BulkImportHireOrdersArgs) => bulkImportHireOrders(supabase, args),
+    onSuccess: () => invalidateHireOrders(qc),
+    onError: (error: Error) => {
+      toast.error(error.message || "Could not import hire orders");
+    },
+  });
+}
+
+/**
+ * Create a new org artist from just a name + email (the import wizard's Resolve
+ * step "Create artist" path). Busts BOTH the hire-orders domain (its
+ * artists-lite cache) and the plain artists domain, per the house rule that a
+ * mutation touching another domain's cache invalidates that domain too.
+ */
+export function useCreateArtistLite() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (args: { orgId: string; name: string; email: string | null }) => createArtistLite(supabase, args),
+    onSuccess: () => {
+      invalidateHireOrders(qc);
+      qc.invalidateQueries({ queryKey: ["artists"] });
+    },
+    onError: (error: Error) => {
+      toast.error(error.message || "Could not create the artist");
     },
   });
 }
