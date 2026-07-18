@@ -11,6 +11,7 @@ import { invokeHireOrderAction, type HireOrderRow } from "@/data/hireOrders";
 import { supabase } from "@/integrations/supabase/client";
 import { formatMoney } from "@/lib/hireOrders/money";
 import { formatDateDMY } from "@/lib/dates";
+import { ROUTES } from "@/config/app.config";
 import type { OrderData } from "@/lib/hireOrders/types";
 import { OrderTimeline } from "@/components/hireOrders/OrderTimeline";
 import { OrderFactsRail } from "@/components/hireOrders/OrderFactsRail";
@@ -115,6 +116,7 @@ export default function HireOrderDetailPage() {
 
   return <HireOrderDetail order={order} canManage={hasRole("admin") || hasRole("producer")}
     navigateBack={() => navigate(-1)}
+    onEdit={() => navigate(ROUTES.HIRE_ORDER_EDIT.replace(":id", order.id))}
     onDownload={handleDownload}
     downloadBusy={action.isPending}
     onCountersign={() => countersign.mutate(order.id)}
@@ -130,6 +132,7 @@ interface DetailProps {
   order: HireOrderRow;
   canManage: boolean;
   navigateBack: () => void;
+  onEdit: () => void;
   onDownload: () => void;
   downloadBusy: boolean;
   onCountersign: () => void;
@@ -143,7 +146,7 @@ interface DetailProps {
 /** The loaded-state body — split out so the page shell handles loading/error
  *  and this renders the header + document grid for a known-good order. */
 function HireOrderDetail({
-  order, canManage, navigateBack, onDownload, downloadBusy,
+  order, canManage, navigateBack, onEdit, onDownload, downloadBusy,
   onCountersign, countersignBusy, pdfUrl, pdfUrlLoading, pdfUrlError, hasPdf,
 }: DetailProps) {
   const data = (order.data ?? {}) as OrderData;
@@ -187,10 +190,11 @@ function HireOrderDetail({
           </div>
         </div>
         <div className="flex items-center gap-2 shrink-0">
-          {/* Editing an issued document is an extended-plan capability. */}
-          <Button variant="outline" size="sm" disabled title="Editing is not available in this version">
-            Edit
-          </Button>
+          {canManage && (order.status === "draft" || order.status === "ready") && (
+            <Button variant="outline" size="sm" onClick={onEdit}>
+              Edit
+            </Button>
+          )}
           <Button variant="outline" size="sm" onClick={onDownload} disabled={!hasPdf || downloadBusy}>
             <Download className="mr-1 h-4 w-4" /> Download
           </Button>

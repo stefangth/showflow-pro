@@ -1,4 +1,4 @@
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient, keepPreviousData } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useMyArtist } from "@/hooks/useMyArtist";
@@ -6,11 +6,20 @@ import {
   fetchHireOrdersForDate,
   fetchHireOrder,
   fetchMyHireOrders,
+  fetchHireOrders,
+  fetchArtistsLite,
+  fetchShowDatesLite,
   invokeHireOrderAction,
   updateHireOrderReview,
   updateHireOrderStatus,
+  updateHireOrderDraft,
+  bulkImportHireOrders,
+  createArtistLite,
+  type HireOrderFilters,
   type HireOrderReview,
   type HireOrderRow,
+  type UpdateHireOrderDraftPatch,
+  type BulkImportHireOrdersArgs,
 } from "@/data/hireOrders";
 
 /** Every mutation below busts the whole `['hire-orders']` prefix, never a sub-key —
@@ -49,8 +58,51 @@ export function useMyHireOrders() {
   });
 }
 
+/** All of an org's hire orders (any status by default), for the V4 tracking
+ *  dashboard. `filters` defaults to `{}` (no status/search narrowing).
+ *  `placeholderData: keepPreviousData` keeps the last-loaded rows on screen
+ *  while a new filter/search combination refetches, instead of flashing back
+ *  to a loading state on every chip click or keystroke. */
+export function useHireOrders(orgId: string | null | undefined, filters: HireOrderFilters = {}) {
+  return useQuery({
+    queryKey: ["hire-orders", "list", orgId, filters],
+    enabled: !!orgId,
+    placeholderData: keepPreviousData,
+    queryFn: () => fetchHireOrders(supabase, orgId!, filters),
+  });
+}
+
+/** Every org artist, lightest shape, for the V5 "new order" wizard's artist
+ *  picker (and Task 5's import entity-resolution step). Not date-scoped —
+ *  deliberately NOT useEligibleArtists, which restricts to one show date. */
+export function useArtistsLite(orgId: string | null | undefined) {
+  return useQuery({
+    queryKey: ["hire-orders", "artists-lite", orgId],
+    enabled: !!orgId,
+    queryFn: () => fetchArtistsLite(supabase, orgId!),
+  });
+}
+
+/** Every org show_date, lightest shape, newest first, for the V5 wizard's date
+ *  picker (and Task 5's import wizard). */
+export function useShowDatesLite(orgId: string | null | undefined) {
+  return useQuery({
+    queryKey: ["hire-orders", "showdates-lite", orgId],
+    enabled: !!orgId,
+    queryFn: () => fetchShowDatesLite(supabase, orgId!),
+  });
+}
+
 interface DraftResult { created?: string[]; skipped?: { booking_id: string; reason: string }[] }
-interface IssueResult { issued?: string[]; failed?: { order_id: string; issues: string[] }[] }
+export interface IssueResult { issued?: string[]; failed?: { order_id: string; issues: string[] }[] }
+
+/** Actions that actually write data and so must bust the hire-orders domain.
+ *  `preview` and `download-url` are read-only -- the debounced live-preview
+ *  cycle on HireOrderEditPage calls `preview` roughly every 800ms while a
+ *  producer types, and invalidating on every tick would storm the whole
+ *  ['hire-orders'] domain (table/KPIs/nav-count/detail queries) for an action
+ *  that changes nothing. */
+const WRITE_ACTIONS = new Set(["draft", "issue", "draft-manual"]);
 
 /** Friendly copy for the issue-validation failure codes generate-hire-orders
  *  can return (see orderReadyIssues / issueOrders in the edge function) — orgs
@@ -58,13 +110,18 @@ interface IssueResult { issued?: string[]; failed?: { order_id: string; issues: 
  *  raw code is not actionable on its own. Deliberately small: codes with no
  *  entry here fall back to the raw code rather than growing this list to cover
  *  every internal failure mode. */
-const ISSUE_FAILURE_COPY: Record<string, string> = {
+export const ISSUE_FAILURE_COPY: Record<string, string> = {
   missing_terms: "Add terms in Settings before issuing",
   missing_fee: "Set an engagement fee before issuing",
   missing_recipient_email: "Add a recipient email before issuing",
   missing_date: "Set a show date before issuing",
   missing_letterhead: "Add a letterhead in Settings before issuing",
   already_issued: "Already issued",
+  // Not a real issue failure: the document was rendered, uploaded, and stamped
+  // issued -- generate-hire-orders' Documenso branch reports this as a warning
+  // alongside a successful issue (see the failure-containment note in
+  // issueOne), so the toast must never read as "the order was not issued".
+  documenso_failed: "Order issued, but countersign delivery failed",
 };
 
 /** Unique, human-readable reasons across every failed order's issue codes. */
@@ -91,16 +148,18 @@ function describeDraftSkips(skipped: { booking_id: string; reason: string }[]): 
   return reasons.map((reason) => DRAFT_SKIP_COPY[reason] ?? reason).join(", ");
 }
 
-/** Invoke generate-hire-orders (draft/issue/preview/download-url). Invalidates the
- *  whole hire-orders domain and toasts a summary for draft/issue; preview and
- *  download-url return data the caller opens directly and stay silent. */
+/** Invoke generate-hire-orders (draft/issue/draft-manual/preview/download-url).
+ *  Invalidates the whole hire-orders domain for the write actions
+ *  (draft/issue/draft-manual) and toasts a summary for draft/issue; preview and
+ *  download-url are read-only, so they neither invalidate nor toast -- the
+ *  caller opens the returned PDF/URL directly. */
 export function useHireOrderAction() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: (body: Record<string, unknown>) => invokeHireOrderAction(supabase, body),
     onSuccess: (data, variables) => {
-      invalidateHireOrders(qc);
       const action = variables.action;
+      if (WRITE_ACTIONS.has(action as string)) invalidateHireOrders(qc);
       if (action === "draft") {
         const { created = [], skipped = [] } = (data ?? {}) as DraftResult;
         if (created.length > 0) {
@@ -120,12 +179,26 @@ export function useHireOrderAction() {
         }
       } else if (action === "issue") {
         const { issued = [], failed = [] } = (data ?? {}) as IssueResult;
+        // documenso_failed rides in `failed` but describes an order that DID
+        // issue successfully (PDF rendered, uploaded, stamped issued) -- only
+        // its countersign-delivery step hit a snag. Routing it through the
+        // same "failed to issue" error would contradict itself and double-count
+        // an order that already counted toward the "issued" success toast, so
+        // it gets pulled out into its own warning and excluded from the
+        // genuine-failure count/copy.
+        const genuineFailed = failed.filter((f) => !f.issues.includes("documenso_failed"));
+        const documensoFailed = failed.filter((f) => f.issues.includes("documenso_failed"));
         if (issued.length > 0) {
           toast.success(`Issued ${issued.length} hire order${issued.length === 1 ? "" : "s"}`);
         }
-        if (failed.length > 0) {
+        if (genuineFailed.length > 0) {
           toast.error(
-            `${failed.length} hire order${failed.length === 1 ? "" : "s"} failed to issue: ${describeIssueFailures(failed)}`,
+            `${genuineFailed.length} hire order${genuineFailed.length === 1 ? "" : "s"} failed to issue: ${describeIssueFailures(genuineFailed)}`,
+          );
+        }
+        if (documensoFailed.length > 0) {
+          toast.warning(
+            `${documensoFailed.length} hire order${documensoFailed.length === 1 ? "" : "s"} issued, but countersign delivery failed`,
           );
         }
       }
@@ -153,6 +226,25 @@ export function useUpdateHireOrderReview() {
   });
 }
 
+/**
+ * Persist the V2 builder's full data snapshot (+ optional fee/currency/terms)
+ * onto a draft/ready order. Silent on success (only errors toast): both the
+ * debounced live-preview refresh AND the explicit "Save draft" action share
+ * this mutation, and a background preview-persist popping a toast on every
+ * keystroke would be noisy. The "Save draft" button toasts explicitly itself
+ * once its own `mutateAsync` resolves — same pattern as `useUpdateHireOrderReview`. */
+export function useUpdateHireOrderDraft() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (vars: { id: string; patch: UpdateHireOrderDraftPatch }) =>
+      updateHireOrderDraft(supabase, vars.id, vars.patch),
+    onSuccess: () => invalidateHireOrders(qc),
+    onError: (error: Error) => {
+      toast.error(error.message || "Could not save hire order changes");
+    },
+  });
+}
+
 /** Mark a hire order as countersigned (the client path; the DB transition guard
  *  from Task 1 enforces legality server-side). */
 export function useMarkCountersigned() {
@@ -165,6 +257,60 @@ export function useMarkCountersigned() {
     },
     onError: (error: Error) => {
       toast.error(error.message || "Could not mark as countersigned");
+    },
+  });
+}
+
+/**
+ * Submit the import wizard's Review-step selection to `bulk_import_hire_orders`.
+ * Silent on success (only errors toast) — the wizard's own Done step renders the
+ * per-row result counts, so a toast here would be redundant. Busts the whole
+ * hire-orders domain since a successful import creates new draft orders.
+ */
+export function useBulkImportHireOrders() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (args: BulkImportHireOrdersArgs) => bulkImportHireOrders(supabase, args),
+    onSuccess: () => invalidateHireOrders(qc),
+    onError: (error: Error) => {
+      toast.error(error.message || "Could not import hire orders");
+    },
+  });
+}
+
+/**
+ * Create a new org artist from just a name + email (the import wizard's Resolve
+ * step "Create artist" path). Busts BOTH the hire-orders domain (its
+ * artists-lite cache) and the plain artists domain, per the house rule that a
+ * mutation touching another domain's cache invalidates that domain too.
+ */
+export function useCreateArtistLite() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (args: { orgId: string; name: string; email: string | null }) => createArtistLite(supabase, args),
+    onSuccess: () => {
+      invalidateHireOrders(qc);
+      qc.invalidateQueries({ queryKey: ["artists"] });
+    },
+    onError: (error: Error) => {
+      toast.error(error.message || "Could not create the artist");
+    },
+  });
+}
+
+/** Void a hire order (the client path; the DB transition guard enforces
+ *  legality server-side). Used by the V4 slide-over's Void action, which
+ *  gates the call behind an AlertDialog confirmation. */
+export function useVoidHireOrder() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => updateHireOrderStatus(supabase, id, "void"),
+    onSuccess: () => {
+      invalidateHireOrders(qc);
+      toast.success("Hire order voided");
+    },
+    onError: (error: Error) => {
+      toast.error(error.message || "Could not void hire order");
     },
   });
 }

@@ -16,7 +16,9 @@ import type { FeatureKey } from '@/lib/entitlements';
  * concrete pathname so the gate fires for dynamic routes too.
  */
 export const ROUTE_FEATURES: Record<string, FeatureKey> = {
+  '/hire-orders': 'hire_orders',
   '/hire-orders/:id': 'hire_orders',
+  '/hire-orders/:id/edit': 'hire_orders',
 };
 
 /** Whether a route pattern (which may carry `:param` segments) matches a
@@ -163,7 +165,9 @@ export const ROUTES = {
   UNSUBSCRIBE: '/unsubscribe',
   ACCEPT_INVITE: '/accept-invite',
   PLATFORM: '/platform',
+  HIRE_ORDERS: '/hire-orders',
   HIRE_ORDER_DETAIL: '/hire-orders/:id',
+  HIRE_ORDER_EDIT: '/hire-orders/:id/edit',
 } as const;
 
 /** Number of days after a show date that its chat is hidden from the UI */
@@ -173,7 +177,7 @@ export const CHAT_ARCHIVE_DAYS = 30;
 export const APP_META = {
   NAME: 'ShowFlow',
   DESCRIPTION: 'Artist Booking SaaS for live show productions',
-  VERSION: '1.9.0',
+  VERSION: '1.10.0',
   /** Public marketing site — used for the "Book a demo" CTA on the login page. */
   MARKETING_URL: 'https://showflow.pro',
 } as const;

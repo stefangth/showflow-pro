@@ -23,6 +23,22 @@ describe("requiredFeatureForPath", () => {
     expect(ROUTE_FEATURES["/hire-orders/:id"]).toBe("hire_orders");
   });
 
+  it("gates the hire-orders tracking (list) route on the hire_orders feature", () => {
+    expect(ROUTE_FEATURES["/hire-orders"]).toBe("hire_orders");
+  });
+
+  it("gates the hire-order edit (V2 builder) route on the hire_orders feature", () => {
+    expect(ROUTE_FEATURES["/hire-orders/:id/edit"]).toBe("hire_orders");
+    expect(requiredFeatureForPath("/hire-orders/abc-123-uuid/edit")).toBe("hire_orders");
+  });
+
+  it("resolves the detail route via its own 2-segment pattern, not the 3-segment edit pattern", () => {
+    // /hire-orders/:id (2 segs) and /hire-orders/:id/edit (3 segs) must never
+    // cross-match — segment count keeps them isolated.
+    expect(requiredFeatureForPath("/hire-orders/abc-123-uuid")).toBe("hire_orders");
+    expect(requiredFeatureForPath("/hire-orders/abc-123-uuid/edit")).toBe("hire_orders");
+  });
+
   it("returns undefined for a path with no configured feature", () => {
     expect(requiredFeatureForPath("/dashboard")).toBeUndefined();
   });
@@ -38,8 +54,14 @@ describe("requiredFeatureForPath", () => {
     expect(requiredFeatureForPath("/hire-orders/abc-123-uuid")).toBe("hire_orders");
   });
 
+  it("resolves the plain list route via the exact key, not the dynamic :id pattern", () => {
+    // /hire-orders is its own exact ROUTE_FEATURES entry (the V4 tracking
+    // page) — it must resolve without ever falling through to the
+    // /hire-orders/:id pattern match (segment counts differ: 2 vs 3).
+    expect(requiredFeatureForPath("/hire-orders")).toBe("hire_orders");
+  });
+
   it("does not match the dynamic pattern for the wrong segment count", () => {
-    expect(requiredFeatureForPath("/hire-orders")).toBeUndefined();
     expect(requiredFeatureForPath("/hire-orders/abc/extra")).toBeUndefined();
   });
 

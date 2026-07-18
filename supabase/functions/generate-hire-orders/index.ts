@@ -1,8 +1,12 @@
-// generate-hire-orders — the hire-order engine. Four per-request actions:
-//   draft        create draft orders from confirmed bookings (snapshot fields)
-//   issue        validate -> render PDF -> upload -> stamp issued -> email + notify
-//   preview      render a watermarked PDF for one order, persist nothing
-//   download-url signed URL for an order's PDF (producers + the linked artist)
+// generate-hire-orders — the hire-order engine. Six per-request actions:
+//   draft            create draft orders from confirmed bookings (snapshot fields)
+//   draft-manual     create ONE draft from the V5 wizard: free choice of artist x
+//                    date (either/both optional) plus producer-entered manual fields
+//   issue            validate -> render PDF -> upload -> stamp issued -> email + notify
+//                    (+ a Documenso countersign envelope when the org is in that mode)
+//   preview          render a watermarked PDF for one order, persist nothing
+//   download-url     signed URL for an order's PDF (producers + the linked artist)
+//   countersign-test admin-only Documenso connectivity check for the settings card
 //
 // DI: exports handle(req, deps); Deno.serve wiring at the bottom. Tests inject
 // makeFakeDeps (deps.renderHireOrderPdf is stubbed). See index.di.test.ts.
@@ -12,6 +16,7 @@ import { requireFeature } from "../_shared/entitlements.ts";
 import { resolveOrgSetting } from "../_shared/settings.ts";
 import { realDeps, type Deps } from "../_shared/deps.ts";
 import { APP_URL } from "../_shared/app-url.ts";
+import { createAndSendEnvelope, documensoAuthHeader } from "../_shared/documenso.ts";
 import { encodeBase64 } from "https://deno.land/std@0.224.0/encoding/base64.ts";
 import {
   formatMoney,
@@ -32,7 +37,9 @@ interface Numbering { prefix: string; pattern: string }
 interface OrderDefaults { default_fee: number | null; currency: string }
 interface TermsVariants { lean: HireOrderTerm[]; standard: HireOrderTerm[]; full: HireOrderTerm[] }
 type TermsVariant = keyof TermsVariants;
-interface Countersign { mode: "manual" | "documenso" }
+interface Countersign {
+  mode: "manual" | "documenso";
+}
 
 const NUMBERING_DEFAULT: Numbering = { prefix: "HO", pattern: "{prefix}-{yyyy}-{mmdd}-{seq}" };
 const DEFAULTS_DEFAULT: OrderDefaults = { default_fee: null, currency: "EUR" };
@@ -42,6 +49,25 @@ const COUNTERSIGN_DEFAULT: Countersign = { mode: "manual" };
 
 const BUCKET = "hire-orders";
 const SIGNED_URL_TTL = 3600;
+const DOCUMENSO_DEFAULT_BASE_URL = "https://app.documenso.com";
+
+/**
+ * The Documenso instance origin is OPERATOR-controlled ONLY (edge secret
+ * DOCUMENSO_BASE_URL), never a per-org setting or request body. DOCUMENSO_API_TOKEN
+ * is a single instance-wide secret shared by every org, so letting an org's free-text
+ * setting (or a request body field) steer where it's sent would let an admin in org A
+ * point it at an attacker host and exfiltrate the shared token plus the rendered
+ * hire-order PDF (artist PII) for every org (SSRF / cross-tenant secret exfiltration).
+ * Defaults to the hosted app.documenso.com. Rejects a non-https value outright — never
+ * silently falls back — since the shared token travels in this request's Authorization
+ * header.
+ */
+function resolveDocumensoBaseUrl(deps: Deps): { ok: true; baseUrl: string } | { ok: false; error: string } {
+  const raw = deps.env("DOCUMENSO_BASE_URL");
+  const baseUrl = raw && raw.trim() !== "" ? raw : DOCUMENSO_DEFAULT_BASE_URL;
+  if (!baseUrl.startsWith("https://")) return { ok: false, error: "documenso_base_url_invalid" };
+  return { ok: true, baseUrl };
+}
 
 // deno-lint-ignore no-explicit-any
 type Any = any;
@@ -77,10 +103,19 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
   switch (body.action) {
     case "draft":
       return draftOrders(deps, body, gate.userId);
+    case "draft-manual":
+      return draftManual(deps, body, gate.userId);
     case "issue":
       return issueOrders(deps, body, gate.userId);
     case "preview":
       return previewOrder(deps, body);
+    case "countersign-test": {
+      // The coarse gate above accepts admin OR producer; this action is admin-only
+      // (mirrors airtable-schema's admin-only connectivity check), so re-check.
+      const adminGate = await requireOrgRole(deps, req, body.org_id, ["admin"]);
+      if (!adminGate.ok) return adminGate.response;
+      return countersignTest(deps);
+    }
     default:
       return json({ error: "unknown_action" }, 400);
   }
@@ -235,6 +270,15 @@ async function draftOrders(deps: Deps, body: DraftBody, userId: string | null): 
  * The base order number is already unique per artist per day (see the {seq}
  * scope above), so a collision here means a genuine race; the cap is a
  * defense-in-depth safety net, not the primary differentiator.
+ *
+ * TWO distinct unique constraints can raise 23505 on this insert:
+ *   hire_orders_org_id_order_no_key (order_no collision) -> keep retrying
+ *     the suffix, as always.
+ *   hire_orders_active_artist_date_uniq (one active order per (org, artist,
+ *     show_date), mirrors bookings_active_artist_date_uniq) -> NOT retriable
+ *     by suffix -- a different order_no can never resolve an artist/date
+ *     conflict -- so it is reported as a distinct 'exists' reason instead of
+ *     being folded into order_no_collision after burning 20 attempts.
  */
 async function insertWithRetry(
   admin: Deps["admin"],
@@ -246,10 +290,28 @@ async function insertWithRetry(
     const { data, error } = await admin
       .from("hire_orders").insert({ ...row, order_no }).select("id").maybeSingle();
     if (!error && data) return { id: (data as { id: string }).id };
-    if (error && (error as { code?: string }).code === "23505") continue; // collision -> next suffix
+    if (error && (error as { code?: string }).code === "23505") {
+      if (isActiveArtistDateConflict(error)) return { reason: "exists" };
+      continue; // order_no collision -> next suffix
+    }
     if (error) return { reason: (error as { message?: string }).message ?? "insert_failed" };
   }
   return { reason: "order_no_collision" };
+}
+
+/**
+ * Detect the active-artist-date backstop index from a Postgres/PostgREST
+ * unique_violation error. supabase-js's PostgrestError surfaces the underlying
+ * pg error's `message` (and `details`) verbatim -- e.g. `duplicate key value
+ * violates unique constraint "hire_orders_active_artist_date_uniq"` -- there is
+ * no separate structured constraint-name field on the client error type, so
+ * matching the index name as a substring of message/details is the reliable
+ * discriminator available here (confirmed live against the applied index).
+ */
+function isActiveArtistDateConflict(error: unknown): boolean {
+  const e = error as { message?: string; details?: string } | null;
+  const haystack = `${e?.message ?? ""} ${e?.details ?? ""}`;
+  return haystack.includes("hire_orders_active_artist_date_uniq");
 }
 
 async function notifyProducers(deps: Deps, org: string, showDate: Any, orderCount: number): Promise<void> {
@@ -282,6 +344,134 @@ async function notifyProducers(deps: Deps, org: string, showDate: Any, orderCoun
   if (error) console.error("generate-hire-orders: producer notification insert failed", { org, error: error.message });
 }
 
+// ── draft-manual ─────────────────────────────────────────────────────────
+
+interface DraftManualBody {
+  org_id: string;
+  artist_id?: string;
+  show_date_id?: string;
+  manual?: Partial<Record<OrderFieldKey, unknown>>;
+}
+
+/**
+ * The V5 wizard's single-order draft path: free choice of artist x date (either,
+ * both, or neither), plus producer-entered manual fields. Unlike `draftOrders`
+ * this never links a booking (a manual/wizard order has none) and creates
+ * exactly one row per call.
+ *
+ * showflow is assembled ONLY when both artist_id and show_date_id are given
+ * (mirrors draftOrders' snapshot assembly for the linked artist + show date);
+ * otherwise it stays empty and every resolved field falls through to
+ * manual/default. The ready gate (recipient_email etc.) is NOT applied here —
+ * it only runs at issue time, so a draft can be saved with gaps.
+ */
+async function draftManual(deps: Deps, body: DraftManualBody, userId: string | null): Promise<Response> {
+  const admin = deps.admin;
+  const org = body.org_id;
+  const manual = body.manual ?? {};
+
+  // A manual fee is producer-typed free text (V5 wizard step 2). `Number(feeValue)`
+  // on a non-numeric value yields NaN, which JSON-serializes to `null` on insert —
+  // silently dropping the entered value instead of rejecting the bad input. Reject
+  // outright when a fee WAS provided but isn't a finite number; a genuinely absent
+  // fee (undefined/null/"") keeps falling through to the existing null behavior.
+  const manualFeeRaw = manual.fee;
+  const manualFeeProvided = manualFeeRaw !== undefined && manualFeeRaw !== null && manualFeeRaw !== "";
+  if (manualFeeProvided && !Number.isFinite(Number(manualFeeRaw))) {
+    return json({ error: "invalid_fee" }, 400);
+  }
+
+  const [defaults, numbering] = await Promise.all([
+    resolveOrgSetting<OrderDefaults>(admin, org, "hire_order_defaults", DEFAULTS_DEFAULT),
+    resolveOrgSetting<Numbering>(admin, org, "hire_order_numbering", NUMBERING_DEFAULT),
+  ]);
+
+  const showflow: Partial<Record<OrderFieldKey, unknown>> = {};
+  let castCode: string | undefined;
+  let numberingDate: string | undefined;
+
+  if (body.artist_id && body.show_date_id) {
+    const [{ data: artistRow }, { data: sdRow }] = await Promise.all([
+      admin.from("artists").select("id, name, email, cast_role").eq("id", body.artist_id).eq("org_id", org).maybeSingle(),
+      admin.from("show_dates")
+        .select("id, date, venue, city_id, duration_minutes, session_1, session_2, session_3, shows(program, sub_program)")
+        .eq("id", body.show_date_id).eq("org_id", org).maybeSingle(),
+    ]);
+
+    if (artistRow) {
+      const artist = artistRow as Any;
+      assign(showflow, "artist_name", artist.name);
+      assign(showflow, "recipient_email", artist.email);
+      assign(showflow, "role", artist.cast_role);
+    }
+    if (sdRow) {
+      const sd = sdRow as Any;
+      assign(showflow, "date", sd.date);
+      assign(showflow, "venue", sd.venue);
+      assign(showflow, "duration_min", sd.duration_minutes);
+      const sessions = [sd.session_1, sd.session_2, sd.session_3].filter(
+        (t: unknown): t is string => typeof t === "string" && t !== "",
+      );
+      if (sessions.length > 0) showflow.sessions = sessions;
+      if (sd.city_id) {
+        const { data: c } = await admin.from("cities").select("name").eq("id", sd.city_id).maybeSingle();
+        assign(showflow, "city", (c as { name?: string } | null)?.name ?? null);
+      }
+      castCode = castCodeFromLabel(sd.shows?.program ?? null);
+      numberingDate = sd.date;
+    }
+  }
+
+  const defLayer: Partial<Record<OrderFieldKey, unknown>> = { currency: defaults.currency };
+  assign(defLayer, "fee", defaults.default_fee);
+
+  const layers: FieldLayers = { showflow, manual, defaults: defLayer };
+  const data = resolveFields(layers);
+
+  if (!numberingDate && typeof manual.date === "string" && manual.date) numberingDate = manual.date;
+
+  // Sequence base: a simple org-wide non-void count. draftOrders scopes its
+  // sequence per calendar day via a join through the linked show_date, but a
+  // wizard order may have none to join on — an org-wide count is always
+  // available and, combined with insertWithRetry's collision-suffix retry, is
+  // still a correct (if less tightly differentiated) base.
+  const { count } = await admin.from("hire_orders").select("id", { count: "exact", head: true }).eq("org_id", org).neq("status", "void");
+  const seq = (count ?? 0) + 1;
+
+  const baseOrderNo = formatOrderNo(numbering.pattern, { prefix: numbering.prefix, date: numberingDate, castCode, seq });
+
+  const feeValue = data.fee?.value;
+  const feeAmount = feeValue === undefined || feeValue === null || feeValue === "" ? null : Number(feeValue);
+  // fee_currency follows the RESOLVED currency (which a producer can override at
+  // step 2), not blindly the org default — draftOrders can hardcode the org
+  // default because a booking never carries its own currency; a wizard order can.
+  const currencyValue = data.currency?.value;
+  const currency = typeof currencyValue === "string" && currencyValue ? currencyValue : defaults.currency;
+
+  const row = {
+    org_id: org,
+    status: "draft" as const,
+    booking_id: null,
+    artist_id: body.artist_id ?? null,
+    show_date_id: body.show_date_id ?? null,
+    data,
+    fee_amount: feeAmount,
+    fee_currency: currency,
+    terms_variant: "standard",
+    created_by: userId,
+  };
+
+  const result = await insertWithRetry(admin, baseOrderNo, row);
+  if ("id" in result) return json({ created: [result.id] });
+  // An artist/date duplicate (hire_orders_active_artist_date_uniq) is a legitimate
+  // skip, not an error -- the wizard already has an active order for this exact
+  // artist x date pair. Report it the same shape a batch import does, rather than
+  // as a generic error (and, upstream in insertWithRetry, without a 20-attempt
+  // suffix retry that could never resolve it).
+  if (result.reason === "exists") return json({ created: [], skipped: [{ reason: "exists" }] });
+  return json({ created: [], error: result.reason });
+}
+
 // ── issue ────────────────────────────────────────────────────────────────
 
 interface IssueBody { org_id: string; order_ids: string[] }
@@ -298,16 +488,23 @@ async function issueOrders(deps: Deps, body: IssueBody, _userId: string | null):
     resolveOrgSetting<OrderDefaults>(admin, org, "hire_order_defaults", DEFAULTS_DEFAULT),
     resolveOrgSetting<Countersign>(admin, org, "hire_order_countersign", COUNTERSIGN_DEFAULT),
   ]);
-  const countersignMode = countersign?.mode ?? "manual";
 
   const issued: string[] = [];
   const failed: Array<{ order_id: string; issues: string[] }> = [];
 
   for (const orderId of orderIds) {
     try {
-      const outcome = await issueOne(deps, org, orderId, letterhead, terms, defaults, countersignMode);
-      if (outcome.ok) issued.push(orderId);
-      else failed.push({ order_id: orderId, issues: outcome.issues });
+      const outcome = await issueOne(deps, org, orderId, letterhead, terms, defaults, countersign);
+      if (outcome.ok) {
+        issued.push(orderId);
+        // A Documenso delivery failure is a WARNING, not an issue failure: the
+        // document is genuinely issued (rendered, uploaded, stamped), so it stays
+        // in `issued`, and the countersign-delivery problem surfaces alongside it
+        // in `failed` rather than silently disappearing.
+        if (outcome.warning) failed.push({ order_id: orderId, issues: [outcome.warning] });
+      } else {
+        failed.push({ order_id: orderId, issues: outcome.issues });
+      }
     } catch (e) {
       // Per-order capture: one bad order must not fail the batch.
       console.error("generate-hire-orders: issue failed", { org, orderId, error: (e as Error).message });
@@ -325,8 +522,8 @@ async function issueOne(
   letterhead: HireOrderLetterhead,
   terms: TermsVariants,
   defaults: OrderDefaults,
-  countersignMode: string,
-): Promise<{ ok: true } | { ok: false; issues: string[] }> {
+  countersign: Countersign,
+): Promise<{ ok: true; warning?: string } | { ok: false; issues: string[] }> {
   const admin = deps.admin;
 
   const { data: order } = await admin
@@ -382,15 +579,62 @@ async function issueOne(
     .eq("id", orderId);
   if (issueErr) return { ok: false, issues: ["transition_failed"] };
 
+  // Documenso countersignature (design spec §8): send the SAME rendered bytes
+  // to Documenso for e-signature. FAILURE CONTAINMENT is the point of this
+  // block — the document is already issued (rendered, uploaded, stamped) above,
+  // and nothing here may undo that. A Documenso error (missing token, network,
+  // non-2xx) falls back to manual countersign mode and surfaces as a `warning`
+  // the caller reports alongside the (still-successful) issue, never as an
+  // issue failure.
+  let countersignModeUsed = countersign.mode ?? "manual";
+  let signingUrl: string | null = null;
+  let warning: string | undefined;
+
+  if (countersignModeUsed === "documenso") {
+    const token = deps.env("DOCUMENSO_API_TOKEN");
+    const baseUrlResult = resolveDocumensoBaseUrl(deps);
+    try {
+      if (!token) throw new Error("documenso_token_missing");
+      if (!baseUrlResult.ok) throw new Error(baseUrlResult.error);
+      const recipientEmail = strField(data, "recipient_email");
+      const recipientName = strField(data, "artist_name") || recipientEmail;
+      const envelope = await createAndSendEnvelope(
+        deps.fetch,
+        { baseUrl: baseUrlResult.baseUrl, token },
+        { title: o.order_no, pdf: bytes, recipientName, recipientEmail },
+      );
+      signingUrl = envelope.signingUrl;
+      const { error: csErr } = await admin
+        .from("hire_orders")
+        .update({ countersign_mode: "documenso", documenso_envelope_id: envelope.envelopeId })
+        .eq("id", orderId);
+      if (csErr) {
+        console.error("generate-hire-orders: countersign_mode stamp failed", { org, orderId, error: csErr.message });
+      }
+    } catch (e) {
+      console.error("generate-hire-orders: documenso envelope failed", { org, orderId, error: (e as Error).message });
+      countersignModeUsed = "manual";
+      warning = "documenso_failed";
+      // Explicit fallback write: the order's countersign_mode must read 'manual'
+      // even though nothing was ever stamped 'documenso' for it (issue only runs
+      // once per order — the already-issued gate above blocks a retry).
+      const { error: fallbackErr } = await admin
+        .from("hire_orders").update({ countersign_mode: "manual" }).eq("id", orderId);
+      if (fallbackErr) {
+        console.error("generate-hire-orders: countersign fallback stamp failed", { org, orderId, error: fallbackErr.message });
+      }
+    }
+  }
+
   // Best-effort side effects — a failure here must NOT undo a successful issue.
-  await sendIssuedEmail(deps, org, o, data, bytes, currency, countersignMode).catch((e) =>
+  await sendIssuedEmail(deps, org, o, data, bytes, currency, countersignModeUsed, signingUrl).catch((e) =>
     console.error("generate-hire-orders: issued email failed", { org, orderId, error: (e as Error).message }),
   );
   await notifyArtist(deps, org, o).catch((e) =>
     console.error("generate-hire-orders: artist notification failed", { org, orderId, error: (e as Error).message }),
   );
 
-  return { ok: true };
+  return warning ? { ok: true, warning } : { ok: true };
 }
 
 async function sendIssuedEmail(
@@ -401,6 +645,7 @@ async function sendIssuedEmail(
   bytes: Uint8Array,
   currency: string,
   countersignMode: string,
+  signingUrl: string | null,
 ): Promise<void> {
   const recipient = strField(data, "recipient_email");
   if (!recipient) {
@@ -420,7 +665,8 @@ async function sendIssuedEmail(
     // download_url points at the auth-gated V3 detail page (re-signs the PDF on demand),
     // NOT a raw signed storage URL — a signed URL expires in 3600s and would be dead in the
     // inbox. The route is /hire-orders/:id, so it uses order.id (the uuid), not order_no.
-    // signing_url is omitted in v1 (manual countersign; Documenso is the extended plan).
+    // signing_url is only ever set in documenso mode (undefined -> omitted for manual,
+    // and for a documenso attempt that failed and fell back -- see issueOne).
     templateData: {
       artist_name: strField(data, "artist_name"),
       order_no: order.order_no,
@@ -430,6 +676,7 @@ async function sendIssuedEmail(
       fee_label: feeLabel,
       download_url: `${APP_URL}/hire-orders/${order.id}`,
       countersign_mode: countersignMode,
+      signing_url: signingUrl ?? undefined,
     },
     attachments: [{ filename: `${order.order_no}.pdf`, content_base64: encodeBase64(bytes) }],
     idempotency_key: `hire-order-issued-${order.id}`,
@@ -550,6 +797,35 @@ async function downloadUrl(deps: Deps, req: Request, body: DownloadBody): Promis
   if (signErr || !signed) return json({ error: "sign_failed" }, 500);
 
   return json({ url: (signed as { signedUrl: string }).signedUrl, expires_in: SIGNED_URL_TTL });
+}
+
+// ── countersign-test (admin-only, own re-check happens in handle()) ────────
+
+/**
+ * Cheap authenticated Documenso connectivity check for the settings card's
+ * "Test connection" button. Mirrors airtable-schema's server-side PAT proxy
+ * pattern: the token is read from the Vault-backed DOCUMENSO_API_TOKEN edge
+ * secret and used ONLY here, never returned to the client. The instance URL is
+ * likewise operator-controlled only (see resolveDocumensoBaseUrl) — never a
+ * request body field, so this action cannot be pointed at an attacker host.
+ * Always resolves 200 with `{ ok, detail }` -- a connectivity failure is data,
+ * not a 500.
+ */
+async function countersignTest(deps: Deps): Promise<Response> {
+  const token = deps.env("DOCUMENSO_API_TOKEN");
+  if (!token) return json({ ok: false, detail: "Documenso API token is not configured on the server" });
+
+  const baseUrlResult = resolveDocumensoBaseUrl(deps);
+  if (!baseUrlResult.ok) return json({ ok: false, detail: baseUrlResult.error });
+  try {
+    const res = await deps.fetch(`${baseUrlResult.baseUrl}/api/v2/envelope?perPage=1`, {
+      headers: { Authorization: documensoAuthHeader(token) },
+    });
+    if (!res.ok) return json({ ok: false, detail: `documenso_error:${res.status}` });
+    return json({ ok: true, detail: "Connected" });
+  } catch (e) {
+    return json({ ok: false, detail: (e as Error).message });
+  }
 }
 
 // ── helpers ────────────────────────────────────────────────────────────────

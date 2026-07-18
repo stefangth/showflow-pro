@@ -1928,6 +1928,10 @@ export type Database = {
         Args: { p_org: string; p_rows: Json }
         Returns: Json
       }
+      bulk_import_hire_orders: {
+        Args: { p_import: Json; p_org: string; p_rows: Json }
+        Returns: Json
+      }
       category_of: { Args: { p_type: string }; Returns: string }
       compute_show_date_status: {
         Args: { p_show_date_id: string }

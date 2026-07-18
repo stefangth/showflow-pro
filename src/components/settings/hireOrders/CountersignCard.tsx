@@ -1,8 +1,10 @@
 import { useEffect, useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
+import { CheckCircle2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { resolveOrgSetting, upsertOrgSetting } from "@/data/settings";
+import { invokeHireOrderAction } from "@/data/hireOrders";
 import type { Json } from "@/integrations/supabase/types";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -13,12 +15,21 @@ import { Skeleton } from "@/components/ui/skeleton";
 
 export type CountersignMode = "manual" | "documenso";
 
-/** The `hire_order_countersign` app_settings value (spec §2.6 / §8). Documenso
- *  credentials live in Vault, not here (extended plan, not this task). */
+/** The `hire_order_countersign` app_settings value (spec §2.6 / §8). Both the
+ *  Documenso API token AND the Documenso instance URL are configured
+ *  server-side by the platform operator (edge secrets DOCUMENSO_API_TOKEN /
+ *  DOCUMENSO_BASE_URL), mirroring the Airtable PAT pattern: neither is
+ *  entered, shown, or stored in this card. DOCUMENSO_API_TOKEN is a single
+ *  instance-wide secret shared by every org, so the instance URL cannot be a
+ *  per-org setting either — a free-text org URL paired with a shared secret
+ *  would let an org admin point it at an attacker host and exfiltrate the
+ *  token plus rendered hire-order PDFs (artist PII) for every org. */
 export interface HireOrderCountersign {
   mode: CountersignMode;
 }
 export const COUNTERSIGN_DEFAULT: HireOrderCountersign = { mode: "manual" };
+
+interface CountersignTestResult { ok: boolean; detail: string }
 
 export function CountersignCard({ orgId }: { orgId: string | null }) {
   const qc = useQueryClient();
@@ -49,6 +60,25 @@ export function CountersignCard({ orgId }: { orgId: string | null }) {
     onError: (e: Error) => toast.error(e.message),
   });
 
+  // "Test connection" — an admin-only, cheap Documenso connectivity check
+  // (generate-hire-orders' countersign-test action). Never sends a token from
+  // here: the server reads DOCUMENSO_API_TOKEN from its own Vault-backed edge
+  // secret and never echoes it back. Result renders inline, not as a toast, so
+  // it stays visible next to the fields it describes.
+  const [testResult, setTestResult] = useState<CountersignTestResult | null>(null);
+  const test = useMutation({
+    mutationFn: async () => {
+      if (!orgId) throw new Error("No active organization");
+      const result = await invokeHireOrderAction(supabase, {
+        action: "countersign-test",
+        org_id: orgId,
+      });
+      return result as CountersignTestResult;
+    },
+    onSuccess: (result) => setTestResult(result),
+    onError: (e: Error) => setTestResult({ ok: false, detail: e.message }),
+  });
+
   if (isLoading) return <Skeleton className="h-40 w-full" />;
   // Read failed: render the error INSTEAD of the form. Falling through would show
   // COUNTERSIGN_DEFAULT ("manual") as if it were the org's saved mode, and a Save
@@ -70,7 +100,10 @@ export function CountersignCard({ orgId }: { orgId: string | null }) {
       <CardContent className="space-y-4">
         <RadioGroup
           value={form.mode}
-          onValueChange={(v) => setForm({ mode: v as CountersignMode })}
+          onValueChange={(v) => {
+            setForm((f) => ({ ...f, mode: v as CountersignMode }));
+            setTestResult(null);
+          }}
           className="gap-3"
         >
           <div className="flex items-start gap-3 rounded-lg border border-border p-3">
@@ -93,11 +126,33 @@ export function CountersignCard({ orgId }: { orgId: string | null }) {
           </div>
         </RadioGroup>
         {form.mode === "documenso" && (
-          <Alert>
-            <AlertDescription>
-              Connect Documenso in a later step. Manual marking stays available.
-            </AlertDescription>
-          </Alert>
+          <div className="space-y-3 rounded-lg border border-border p-3">
+            <Alert>
+              <AlertDescription>
+                The Documenso API token and instance URL are configured server-side by the platform operator
+                (Supabase Vault secrets DOCUMENSO_API_TOKEN and DOCUMENSO_BASE_URL). Neither is entered here.
+              </AlertDescription>
+            </Alert>
+            <div className="flex flex-wrap items-center gap-3">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => { setTestResult(null); test.mutate(); }}
+                disabled={test.isPending || !orgId}
+              >
+                {test.isPending ? "Testing connection..." : "Test connection"}
+              </Button>
+              {testResult?.ok && (
+                <span className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                  <CheckCircle2 className="h-3.5 w-3.5 text-primary" />
+                  {testResult.detail}
+                </span>
+              )}
+              {testResult && !testResult.ok && (
+                <span className="text-xs text-destructive">{testResult.detail}</span>
+              )}
+            </div>
+          </div>
         )}
         <Button onClick={() => save.mutate()} disabled={save.isPending || !orgId}>
           Save countersign mode
