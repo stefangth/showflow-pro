@@ -30,6 +30,7 @@ const ISSUE_LABELS: Record<string, string> = {
   ambiguous_date: "Ambiguous date",
   venue_city_mismatch: "Venue/city mismatch",
   missing_fee: "Missing fee",
+  ambiguous_fee: "Ambiguous fee",
 };
 
 function describeIssues(issues: string[]): string {

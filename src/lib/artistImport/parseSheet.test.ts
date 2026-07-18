@@ -25,6 +25,15 @@ describe("parseSheet (csv)", () => {
     const body = Array.from({ length: MAX_IMPORT_ROWS + 1 }, (_, i) => `A${i},a${i}@x.com`).join("\n");
     await expect(parseSheet(header + body, "csv")).rejects.toThrow(/exceeds/i);
   });
+
+  // Regression guard for Finding #8's fix: parseSheet (used by the artist
+  // import, unaffected by the parseSheetRaw change) still drops blank lines.
+  it("still skips a blank line between data rows (unlike the fixed parseSheetRaw)", async () => {
+    const csvWithBlankRow = "name,email\nAda,ada@x.com\n\nGrace,grace@x.com";
+    const { rows } = await parseSheet(csvWithBlankRow, "csv");
+    expect(rows).toHaveLength(2);
+    expect(rows[1]).toEqual({ name: "Grace", email: "grace@x.com" });
+  });
 });
 
 describe("parseSheet (xlsx)", () => {
@@ -40,6 +49,25 @@ describe("parseSheet (xlsx)", () => {
     const { headers, rows } = await parseSheet(buf, "xlsx");
     expect(headers).toEqual(["name", "email", "phone", "bio"]);
     expect(rows[0]).toEqual({ name: "Ada", email: "ada@x.com", phone: "+49 151", bio: "Soprano" });
+  });
+
+  // Documents (does not change) the current record-building behavior: XLSX
+  // headers are used verbatim, with no dedup, so two columns sharing a header
+  // name collapse into a single record key and the rightmost column wins.
+  // Disambiguation is out of scope (mitigated by the manual mapping step).
+  it("resolves duplicate headers last-wins in the per-row record", async () => {
+    const ws = XLSX.utils.aoa_to_sheet([
+      ["Fee", "Name", "Fee"],
+      [100, "Ada", 200],
+    ]);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "Sheet1");
+    const buf = XLSX.write(wb, { type: "array", bookType: "xlsx" }) as ArrayBuffer;
+
+    const { headers, rows } = await parseSheet(buf, "xlsx");
+    expect(headers).toEqual(["Fee", "Name", "Fee"]);
+    // Both "Fee" columns collapse to a single key; the rightmost (last) column wins.
+    expect(rows[0]).toEqual({ Fee: "200", Name: "Ada" });
   });
 });
 
@@ -61,6 +89,20 @@ describe("parseSheetRaw (csv)", () => {
     const header = "name,email\n";
     const body = Array.from({ length: MAX_IMPORT_ROWS + 1 }, (_, i) => `A${i},a${i}@x.com`).join("\n");
     await expect(parseSheetRaw(header + body, "csv")).rejects.toThrow(/exceeds/i);
+  });
+
+  // Finding #8: parseSheetRaw feeds rangeSelection.applyRange, which assigns
+  // 1-based row numbers that must match how a user reads row numbers in a
+  // spreadsheet. Dropping blank lines before that numbering shifts every
+  // subsequent row's number off by however many blank lines preceded it.
+  it("preserves a blank row between data rows so later rows keep their true spreadsheet row number", async () => {
+    const csvWithBlankRow = "name,email\nAda,ada@x.com\n\nGrace,grace@x.com";
+    const { sheets } = await parseSheetRaw(csvWithBlankRow, "csv");
+    // row 1: header, row 2: Ada, row 3: blank, row 4: Grace
+    expect(sheets[0].rows).toHaveLength(4);
+    expect(sheets[0].rows[1]).toEqual(["Ada", "ada@x.com"]);
+    expect(sheets[0].rows[2]).toEqual([""]);
+    expect(sheets[0].rows[3]).toEqual(["Grace", "grace@x.com"]);
   });
 });
 
@@ -99,5 +141,27 @@ describe("parseSheetRaw (xlsx)", () => {
 
     const { sheets } = await parseSheetRaw(buf, "xlsx");
     expect(sheets[0].rows[1]).toEqual(["500", ""]);
+  });
+
+  // Finding #8, XLSX side of the same fix: a blank row in the middle of the
+  // sheet must stay in the raw matrix so subsequent rows keep their true
+  // 1-based spreadsheet row number.
+  it("preserves a blank row between data rows so later rows keep their true spreadsheet row number", async () => {
+    const ws = XLSX.utils.aoa_to_sheet([
+      ["name", "email"],
+      ["Ada", "ada@x.com"],
+      [],
+      ["Grace", "grace@x.com"],
+    ]);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "Sheet1");
+    const buf = XLSX.write(wb, { type: "array", bookType: "xlsx" }) as ArrayBuffer;
+
+    const { sheets } = await parseSheetRaw(buf, "xlsx");
+    // row 1: header, row 2: Ada, row 3: blank, row 4: Grace
+    expect(sheets[0].rows).toHaveLength(4);
+    expect(sheets[0].rows[1]).toEqual(["Ada", "ada@x.com"]);
+    expect(sheets[0].rows[2]).toEqual(["", ""]);
+    expect(sheets[0].rows[3]).toEqual(["Grace", "grace@x.com"]);
   });
 });

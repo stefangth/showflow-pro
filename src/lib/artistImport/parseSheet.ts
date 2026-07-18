@@ -74,10 +74,18 @@ export interface ParsedSheetRaw {
  * CSV always yields a single sheet named "Sheet1" (CSV has no sheet concept).
  * XLSX yields one entry per workbook sheet, in workbook order, so a multi-sheet
  * workbook can offer a sheet picker.
+ *
+ * Blank rows are PRESERVED (unlike `parseSheet` above, which drops them): this
+ * feeds `rangeSelection.applyRange`, whose 1-based row numbers are documented
+ * to match how a user reads row numbers in a spreadsheet. Dropping a blank row
+ * here first would shift every later row's number off by however many blank
+ * rows preceded it. A fully-blank data row still ends up "skipped" downstream
+ * in `buildOrderRows` (which already treats an all-empty record as skipped),
+ * so nothing gets imported from it — it just keeps its true row number.
  */
 export async function parseSheetRaw(input: string | ArrayBuffer, kind: SheetKind): Promise<ParsedSheetRaw> {
   if (kind === "csv") {
-    const parsed = Papa.parse<string[]>(String(input), { header: false, skipEmptyLines: true });
+    const parsed = Papa.parse<string[]>(String(input), { header: false, skipEmptyLines: false });
     const rows = parsed.data.map((r) => r.map((cell) => String(cell ?? "").trim()));
     guard(rows);
     return { sheets: [{ name: "Sheet1", rows }] };
@@ -87,7 +95,7 @@ export async function parseSheetRaw(input: string | ArrayBuffer, kind: SheetKind
   const wb = XLSX.read(input, { type: "array" });
   const sheets = wb.SheetNames.map((name) => {
     const ws = wb.Sheets[name];
-    const matrix = XLSX.utils.sheet_to_json<unknown[]>(ws, { header: 1, blankrows: false, defval: "" });
+    const matrix = XLSX.utils.sheet_to_json<unknown[]>(ws, { header: 1, blankrows: true, defval: "" });
     const rows = matrix.map((arr) => (arr as unknown[]).map((cell) => String(cell ?? "").trim()));
     guard(rows);
     return { name, rows };

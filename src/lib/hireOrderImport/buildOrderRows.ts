@@ -87,10 +87,26 @@ export function parseImportDate(raw: string): string | null {
 // by whichever separator appears LAST, normalize to a fixed 2-decimal string.
 // ---------------------------------------------------------------------------
 
-/** Parse a money cell to a fixed 2-decimal string (e.g. "4500.00"), or null. */
-export function parseImportMoney(raw: string): string | null {
+// A single separator ("." or ",") followed by exactly three trailing digits
+// (e.g. "4.500", "12,500") is genuinely ambiguous for a 2-decimal currency: it
+// could be thousands grouping (4500) or a fat-fingered decimal (4.50) — three
+// digits can never be a valid 2-decimal fraction, so neither reading is safe
+// to guess. The `$` anchor means a second separator anywhere in the string
+// (e.g. "4.500,00") disqualifies the match, since that case is unambiguous.
+const AMBIGUOUS_MONEY_RE = /^-?\d+[.,]\d{3}$/;
+
+/**
+ * Parse a money cell to a fixed 2-decimal string (e.g. "4500.00").
+ * Returns `null` when the cell is empty or not a number at all.
+ * Returns `undefined` when the amount is AMBIGUOUS (see `AMBIGUOUS_MONEY_RE`)
+ * — the caller must surface this for human review rather than silently
+ * picking a reading.
+ */
+export function parseImportMoney(raw: string): string | null | undefined {
   const stripped = raw.replace(/[^0-9.,-]/g, "").trim();
   if (stripped === "") return null;
+
+  if (AMBIGUOUS_MONEY_RE.test(stripped)) return undefined;
 
   const lastComma = stripped.lastIndexOf(",");
   const lastDot = stripped.lastIndexOf(".");
@@ -132,6 +148,14 @@ function matchArtist(email: string, name: string, artists: ImportCatalogArtist[]
   return undefined;
 }
 
+/** True when a mapped, non-blank raw field disagrees with the matched date's
+ *  corresponding field (case-insensitive). An unmapped field, or a blank raw
+ *  cell, never counts as a mismatch — there is nothing provided to disagree. */
+function fieldDisagrees(mappedColumn: string | undefined, raw: string, dateField: string | null): boolean {
+  if (!mappedColumn || raw === "" || dateField === null) return false;
+  return dateField.trim().toLowerCase() !== raw.toLowerCase();
+}
+
 function matchShowDate(
   iso: string,
   venue: string,
@@ -144,27 +168,43 @@ function matchShowDate(
   const columnsMapped = Boolean(mapping.venue || mapping.city);
   const hasNarrowingValue = Boolean(venue || city);
   let narrowingFailed = false;
+  let matched: ImportCatalogDate | undefined;
+
   if (columnsMapped && hasNarrowingValue) {
     const narrowed = byDate.filter(
       (d) =>
         (venue !== "" && d.venue !== null && d.venue.trim().toLowerCase() === venue.toLowerCase()) ||
         (city !== "" && d.city !== null && d.city.trim().toLowerCase() === city.toLowerCase())
     );
-    if (narrowed.length === 1) return { id: narrowed[0].id, ambiguous: false };
-    if (narrowed.length > 1) return { ambiguous: true };
-    // narrowed.length === 0: venue/city didn't match any same-day date — fall
-    // through to the plain date-only check below, flagging a mismatch if that
-    // resolves unambiguously (a wrong venue/city on an otherwise single-date
-    // day still deserves human review, even though the date link is kept).
-    narrowingFailed = true;
+    if (narrowed.length === 1) {
+      // The OR-narrowing above resolves to exactly one date as soon as EITHER
+      // venue or city matches it — a wrong venue with a right city (or vice
+      // versa) can still narrow to one date here. That's a genuine partial
+      // mismatch, checked below via fieldDisagrees, not caught by this branch.
+      matched = narrowed[0];
+    } else if (narrowed.length > 1) {
+      return { ambiguous: true };
+    } else {
+      // narrowed.length === 0: venue/city didn't match any same-day date —
+      // fall through to the plain date-only check below, flagging a mismatch
+      // if that resolves unambiguously (a wrong venue/city on an otherwise
+      // single-date day still deserves human review, even though the date
+      // link is kept).
+      narrowingFailed = true;
+    }
   }
 
-  if (byDate.length === 1) {
-    return narrowingFailed
-      ? { id: byDate[0].id, ambiguous: false, mismatch: true }
-      : { id: byDate[0].id, ambiguous: false };
+  if (!matched) {
+    if (byDate.length !== 1) return { ambiguous: true };
+    matched = byDate[0];
   }
-  return { ambiguous: true };
+
+  const mismatch =
+    narrowingFailed ||
+    fieldDisagrees(mapping.venue, venue, matched.venue) ||
+    fieldDisagrees(mapping.city, city, matched.city);
+
+  return mismatch ? { id: matched.id, ambiguous: false, mismatch: true } : { id: matched.id, ambiguous: false };
 }
 
 /**
@@ -231,6 +271,12 @@ export function buildOrderRows(
       const parsedFee = parseImportMoney(rawFee);
       if (parsedFee) {
         sheet.fee = parsedFee;
+      } else if (parsedFee === undefined) {
+        // Ambiguous single-separator amount (e.g. "4.500") — surfaced
+        // separately from missing_fee so the producer knows to disambiguate
+        // rather than just fill in a blank. sheet.fee is deliberately left
+        // unset: guessing wrong here silently under/over-pays the artist.
+        issues.push("ambiguous_fee");
       } else {
         issues.push("missing_fee");
       }

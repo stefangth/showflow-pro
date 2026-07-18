@@ -68,6 +68,34 @@ describe("parseImportMoney", () => {
   it("returns null for unparseable text", () => {
     expect(parseImportMoney("n/a")).toBeNull();
   });
+
+  it("parses a dot decimal with 2 trailing digits '4.50' to '4.50'", () => {
+    expect(parseImportMoney("4.50")).toBe("4.50");
+  });
+
+  it("parses a comma decimal with 2 trailing digits '4,50' to '4.50'", () => {
+    expect(parseImportMoney("4,50")).toBe("4.50");
+  });
+
+  it("parses a dot decimal with 1 trailing digit '4.5' to '4.50'", () => {
+    expect(parseImportMoney("4.5")).toBe("4.50");
+  });
+
+  it("parses a comma decimal with 1 trailing digit '4,5' to '4.50'", () => {
+    expect(parseImportMoney("4,5")).toBe("4.50");
+  });
+
+  it("returns undefined (ambiguous) for a single dot followed by exactly 3 digits '4.500'", () => {
+    expect(parseImportMoney("4.500")).toBeUndefined();
+  });
+
+  it("returns undefined (ambiguous) for a single comma followed by exactly 3 digits '4,500'", () => {
+    expect(parseImportMoney("4,500")).toBeUndefined();
+  });
+
+  it("returns undefined (ambiguous) for '12.500'", () => {
+    expect(parseImportMoney("12.500")).toBeUndefined();
+  });
 });
 
 describe("buildOrderRows", () => {
@@ -249,6 +277,51 @@ describe("buildOrderRows", () => {
     expect(r.matchedShowDateId).toBe("date-1");
   });
 
+  it("flags ambiguous_fee (not missing_fee) for a single-separator 3-trailing-digit amount, and leaves sheet.fee unset", () => {
+    const [r] = buildOrderRows(
+      [
+        row({
+          Artist: "Ada Lovelace",
+          Email: "ada@x.com",
+          Date: "2026-06-15",
+          Venue: "Opera House",
+          City: "Berlin",
+          Fee: "4.500",
+        }),
+      ],
+      FULL_MAPPING,
+      catalog
+    );
+    expect(r.status).toBe("attention");
+    expect(r.issues).toContain("ambiguous_fee");
+    expect(r.issues).not.toContain("missing_fee");
+    expect(r.sheet.fee).toBeUndefined();
+    // artist and date still resolve despite the ambiguous fee
+    expect(r.matchedArtistId).toBe("artist-1");
+    expect(r.matchedShowDateId).toBe("date-1");
+  });
+
+  it("flags ambiguous_fee for a comma-separated 3-trailing-digit amount", () => {
+    const [r] = buildOrderRows(
+      [
+        row({
+          Artist: "Ada Lovelace",
+          Email: "ada@x.com",
+          Date: "2026-06-15",
+          Venue: "Opera House",
+          City: "Berlin",
+          Fee: "4,500",
+        }),
+      ],
+      FULL_MAPPING,
+      catalog
+    );
+    expect(r.status).toBe("attention");
+    expect(r.issues).toContain("ambiguous_fee");
+    expect(r.issues).not.toContain("missing_fee");
+    expect(r.sheet.fee).toBeUndefined();
+  });
+
   it("does not flag missing_fee when the fee column itself is not mapped", () => {
     const mappingWithoutFee: OrderColumnMapping = { ...FULL_MAPPING };
     delete mappingWithoutFee.fee;
@@ -356,6 +429,49 @@ describe("buildOrderRows", () => {
     expect(r.status).toBe("attention");
     expect(r.issues).toContain("venue_city_mismatch");
     // still keeps the date link so the producer reviews rather than loses it
+    expect(r.matchedShowDateId).toBe("date-1");
+  });
+
+  it("flags venue_city_mismatch when venue is correct but city is wrong on an otherwise-unambiguous day (OR-narrowing partial mismatch)", () => {
+    const singleDateCatalog = { artists: catalog.artists, dates: [DATE_A] }; // Opera House/Berlin
+    const [r] = buildOrderRows(
+      [
+        row({
+          Artist: "Ada Lovelace",
+          Email: "ada@x.com",
+          Date: "2026-06-15",
+          Venue: "Opera House", // correct
+          City: "Wrong City", // wrong
+          Fee: "500",
+        }),
+      ],
+      FULL_MAPPING,
+      singleDateCatalog
+    );
+    expect(r.status).toBe("attention");
+    expect(r.issues).toContain("venue_city_mismatch");
+    // still keeps the date link so the producer reviews rather than loses it
+    expect(r.matchedShowDateId).toBe("date-1");
+  });
+
+  it("flags venue_city_mismatch when city is correct but venue is wrong on an otherwise-unambiguous day (OR-narrowing partial mismatch)", () => {
+    const singleDateCatalog = { artists: catalog.artists, dates: [DATE_A] }; // Opera House/Berlin
+    const [r] = buildOrderRows(
+      [
+        row({
+          Artist: "Ada Lovelace",
+          Email: "ada@x.com",
+          Date: "2026-06-15",
+          Venue: "Wrong Venue", // wrong
+          City: "Berlin", // correct
+          Fee: "500",
+        }),
+      ],
+      FULL_MAPPING,
+      singleDateCatalog
+    );
+    expect(r.status).toBe("attention");
+    expect(r.issues).toContain("venue_city_mismatch");
     expect(r.matchedShowDateId).toBe("date-1");
   });
 
