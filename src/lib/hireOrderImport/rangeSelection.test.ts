@@ -1,5 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { applyRange, parsePickedRows } from "./rangeSelection";
+import { MAX_IMPORT_ROWS } from "@/lib/artistImport/parseSheet";
 
 describe("applyRange", () => {
   it("uses row 1 as the header and everything after as data by default", () => {
@@ -95,5 +96,25 @@ describe("parsePickedRows", () => {
 
   it("returns an empty array for blank input", () => {
     expect(parsePickedRows("   ")).toEqual([]);
+  });
+
+  it("caps a huge typo'd range at MAX_IMPORT_ROWS instead of building a giant set", () => {
+    const start = Date.now();
+    const result = parsePickedRows("12-99999999");
+    const elapsedMs = Date.now() - start;
+    expect(result.length).toBeLessThanOrEqual(MAX_IMPORT_ROWS);
+    expect(elapsedMs).toBeLessThan(1000);
+    // Still starts at the requested row and is contiguous up to the cap.
+    expect(result[0]).toBe(12);
+    expect(result[result.length - 1]).toBe(12 + result.length - 1);
+  });
+
+  it("caps the total picked count at MAX_IMPORT_ROWS across multiple huge ranges", () => {
+    const result = parsePickedRows("1-99999999,100000000-199999999");
+    expect(result.length).toBeLessThanOrEqual(MAX_IMPORT_ROWS);
+  });
+
+  it("still returns normal small ranges unchanged", () => {
+    expect(parsePickedRows("3,5,12-14")).toEqual([3, 5, 12, 13, 14]);
   });
 });

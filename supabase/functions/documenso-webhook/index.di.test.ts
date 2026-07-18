@@ -196,6 +196,73 @@ Deno.test("duplicate delivery (already countersigned) is an idempotent no-op", a
   assertEquals(calls.filter((c) => c.table === "notifications" && c.method === "insert").length, 0, "no second notification");
 });
 
+Deno.test("second concurrent document.completed delivery for the same order does not double-notify (atomic conditional update)", async () => {
+  // Two near-simultaneous DOCUMENT_COMPLETED deliveries for the same envelope.
+  // Each delivery gets its own read of the db (independent fake deps, modeling
+  // two separate HTTP requests hitting two separate db snapshots): the FIRST
+  // delivery's conditional .eq("status", "issued") update matches the row and
+  // transitions + notifies exactly once. The SECOND delivery's read still shows
+  // "issued" (its read happened before the first delivery's write committed),
+  // but by the time its own conditional update runs, the row has already been
+  // flipped by the first delivery, so the update matches zero rows and the
+  // handler must treat that as an idempotent no-op instead of notifying again.
+
+  // First delivery: normal success path.
+  const first = makeFakeDeps({
+    envVars: { DOCUMENSO_WEBHOOK_SECRET: SECRET },
+    now: new Date("2026-07-18T15:30:00.000Z"),
+    tables: { hire_orders: { data: issuedOrder() } },
+    rpcs: { resolve_show_assignments: { data: [{ producer_user_id: "p1" }] } },
+  });
+  const firstRes = await handle(
+    makeRequest({ headers: { "X-Documenso-Secret": SECRET }, body: documentCompletedBody() }),
+    first.deps,
+  );
+  assertEquals(firstRes.status, 200);
+  assertEquals((await firstRes.json()).countersigned, true);
+  assertEquals(
+    first.calls.filter((c) => c.table === "notifications" && c.method === "insert").length,
+    1,
+    "the first delivery notifies exactly once",
+  );
+
+  // Second (losing) delivery: same order, but the conditional update affects
+  // zero rows because the first delivery already won the race. The `__write`
+  // match key (see _shared/testing.ts) distinguishes the update-then-select
+  // from the plain read that precedes it, even though both target the same
+  // table with an otherwise-identical seed.
+  const second = makeFakeDeps({
+    envVars: { DOCUMENSO_WEBHOOK_SECRET: SECRET },
+    tables: {
+      hire_orders: [
+        { when: { __write: true }, data: [] },
+        { when: {}, data: issuedOrder() },
+      ],
+    },
+  });
+  const secondRes = await handle(
+    makeRequest({ headers: { "X-Documenso-Secret": SECRET }, body: documentCompletedBody() }),
+    second.deps,
+  );
+  assertEquals(secondRes.status, 200);
+  const secondBody = await secondRes.json();
+  assertEquals(secondBody.countersigned, true);
+  assertEquals(secondBody.idempotent, true, "the losing delivery reports itself as an idempotent no-op");
+
+  const update = second.calls.find((c) => c.table === "hire_orders" && c.method === "update");
+  assert(update, "the losing delivery still attempts the conditional update");
+  const statusGuard = second.calls.find(
+    (c) => c.table === "hire_orders" && c.method === "eq" && c.args[0] === "status" && c.args[1] === "issued",
+  );
+  assert(statusGuard, "the update is guarded by .eq('status', 'issued'), not just the earlier read");
+
+  assertEquals(
+    second.calls.filter((c) => c.table === "notifications" && c.method === "insert").length,
+    0,
+    "the second (losing) delivery must not insert a second countersigned notification",
+  );
+});
+
 Deno.test("document.completed for a matched but not-yet-issued order is ignored (no transition, no notification)", async () => {
   // Distinct from the already-countersigned idempotent case above: this is the
   // OTHER branch of the status guard -- a draft/void order that was never

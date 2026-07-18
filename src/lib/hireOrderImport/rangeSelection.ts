@@ -7,6 +7,8 @@
 // stable and human-meaningful as it threads through the mapping UI and into
 // `buildOrderRows`'s per-row issue reporting ("row 5: missing fee").
 
+import { MAX_IMPORT_ROWS } from "@/lib/artistImport/parseSheet";
+
 export interface SheetRange {
   sheetName?: string;
   headerRow: number;
@@ -65,10 +67,17 @@ export function applyRange(
  * Tokens that don't parse as a number or range are silently skipped so one bad
  * token doesn't block the valid ones around it; a reversed range (e.g. "18-12")
  * is swapped rather than dropped.
+ *
+ * Span cap: a picked set can never usefully exceed `MAX_IMPORT_ROWS` (the same
+ * hard cap `parseSheet` enforces on the sheet itself), so a typo'd range like
+ * "12-99999999" must not expand into a tens-of-millions-entry Set and hang the
+ * tab. Each range's `end` is clamped to however many slots remain under the
+ * cap, and token processing stops entirely once the cap is reached.
  */
 export function parsePickedRows(input: string): number[] {
   const picked = new Set<number>();
   for (const rawToken of input.split(",")) {
+    if (picked.size >= MAX_IMPORT_ROWS) break;
     const token = rawToken.trim();
     if (token === "") continue;
 
@@ -77,7 +86,9 @@ export function parsePickedRows(input: string): number[] {
       let start = Number(rangeMatch[1]);
       let end = Number(rangeMatch[2]);
       if (start > end) [start, end] = [end, start];
-      for (let n = start; n <= end; n++) picked.add(n);
+      const remaining = MAX_IMPORT_ROWS - picked.size;
+      const clampedEnd = Math.min(end, start + remaining - 1);
+      for (let n = start; n <= clampedEnd; n++) picked.add(n);
       continue;
     }
 
