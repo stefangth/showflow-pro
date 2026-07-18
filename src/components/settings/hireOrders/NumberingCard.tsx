@@ -5,6 +5,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { resolveOrgSetting, upsertOrgSetting } from "@/data/settings";
 import type { Json } from "@/integrations/supabase/types";
 import { formatOrderNo } from "@/lib/hireOrders/orderNo";
+import { NUMBERING_DEFAULT } from "./defaults";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -17,7 +18,6 @@ export interface HireOrderNumbering {
   prefix: string;
   pattern: string;
 }
-export const NUMBERING_DEFAULT: HireOrderNumbering = { prefix: "HO", pattern: "{prefix}-{yyyy}-{mmdd}-{seq}" };
 
 export function NumberingCard({ orgId }: { orgId: string | null }) {
   const qc = useQueryClient();

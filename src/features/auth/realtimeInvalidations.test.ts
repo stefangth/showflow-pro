@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { REALTIME_INVALIDATIONS } from "./AuthContext";
+import { REALTIME_INVALIDATIONS } from "./realtimeInvalidations";
 
 /**
  * Guards the realtime table → query-key invalidation map. A key prefix that no

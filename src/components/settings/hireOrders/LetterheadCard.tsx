@@ -4,6 +4,7 @@ import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { resolveOrgSetting, upsertOrgSetting } from "@/data/settings";
 import type { Json } from "@/integrations/supabase/types";
+import { LETTERHEAD_DEFAULT } from "./defaults";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -21,14 +22,6 @@ export interface Letterhead {
   agent_name?: string;
   agent_email?: string;
 }
-
-export const LETTERHEAD_DEFAULT: Letterhead = {
-  legal_name: "",
-  address_lines: [],
-  registration_line: "",
-  agent_name: "",
-  agent_email: "",
-};
 
 /** One address line per row; blank rows are dropped on parse. */
 function parseLines(text: string): string[] {

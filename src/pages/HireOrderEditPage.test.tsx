@@ -19,7 +19,8 @@ function seedClient(seed: Record<string, TableSeed>) {
 }
 
 import { useAuth } from "@/features/auth/AuthContext";
-import HireOrderEditPage, { createSingleFlightRunner } from "./HireOrderEditPage";
+import HireOrderEditPage from "./HireOrderEditPage";
+import { createSingleFlightRunner } from "@/lib/singleFlight";
 
 function authAs(role: "admin" | "producer" = "producer", orgId = "org-1") {
   vi.mocked(useAuth).mockReturnValue({

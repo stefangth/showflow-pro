@@ -265,21 +265,21 @@ git commit -m "remove dead imports and variables flagged by no-unused-vars"
 **Interfaces:**
 - Produces: same symbol names at new paths — later tasks and existing code import e.g. `import { computeOrderKpis } from "@/lib/hireOrders/kpis"`.
 
-- [ ] **Step 1: For each move, find importers first**
+- [x] **Step 1: For each move, find importers first**
 
 Run for each symbol, e.g.: `grep -rn "computeOrderKpis\|OrderKpiStats" src/ --include="*.ts*" -l`
 Move the code verbatim (no logic edits), update every importer path, and if a co-located test imports the symbol from the component file, re-point it at the new module (tests keep importing the real module — never copy logic).
 
-- [ ] **Step 2: Verify each moved symbol's tests still pass**
+- [x] **Step 2: Verify each moved symbol's tests still pass**
 
 Run: `npx vitest run 2>&1 | tail -3` → 158 files / 1164 tests pass (moves must not change counts).
 
-- [ ] **Step 3: Verify rule progress**
+- [x] **Step 3: Verify rule progress**
 
 Run: `npm run lint 2>&1 | grep -c only-export-components || true`
 Expected: `7` (only the context-file hook exports remain, fixed in Task 5: AuthContext 2 — line 16's const moved here, leaving `useAuth` + `useEffectiveUserId` — EditorContext 4, ConsentContext 1).
 
-- [ ] **Step 4: Commit**
+- [x] **Step 4: Commit**
 
 ```bash
 git add -A

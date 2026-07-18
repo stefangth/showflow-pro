@@ -21,7 +21,8 @@ import { OrganizationTab } from '@/components/settings/OrganizationTab';
 import { CastsCitiesTab } from '@/components/settings/CastsCitiesTab';
 import { ProductionOwnershipTab } from '@/components/settings/ProductionOwnershipTab';
 import { DocumentationTab } from '@/components/settings/DocumentationTab';
-import { BookingFlowTab, BOOKING_AUDIT_KEYS } from '@/components/settings/bookingFlow/BookingFlowTab';
+import { BookingFlowTab } from '@/components/settings/bookingFlow/BookingFlowTab';
+import { BOOKING_AUDIT_KEYS } from '@/components/settings/bookingFlow/auditKeys';
 import { HireOrdersTab } from '@/components/settings/hireOrders/HireOrdersTab';
 
 type FilterKey = 'program' | 'timeframe' | 'sort' | 'status';
