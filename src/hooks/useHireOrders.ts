@@ -169,12 +169,26 @@ export function useHireOrderAction() {
         }
       } else if (action === "issue") {
         const { issued = [], failed = [] } = (data ?? {}) as IssueResult;
+        // documenso_failed rides in `failed` but describes an order that DID
+        // issue successfully (PDF rendered, uploaded, stamped issued) -- only
+        // its countersign-delivery step hit a snag. Routing it through the
+        // same "failed to issue" error would contradict itself and double-count
+        // an order that already counted toward the "issued" success toast, so
+        // it gets pulled out into its own warning and excluded from the
+        // genuine-failure count/copy.
+        const genuineFailed = failed.filter((f) => !f.issues.includes("documenso_failed"));
+        const documensoFailed = failed.filter((f) => f.issues.includes("documenso_failed"));
         if (issued.length > 0) {
           toast.success(`Issued ${issued.length} hire order${issued.length === 1 ? "" : "s"}`);
         }
-        if (failed.length > 0) {
+        if (genuineFailed.length > 0) {
           toast.error(
-            `${failed.length} hire order${failed.length === 1 ? "" : "s"} failed to issue: ${describeIssueFailures(failed)}`,
+            `${genuineFailed.length} hire order${genuineFailed.length === 1 ? "" : "s"} failed to issue: ${describeIssueFailures(genuineFailed)}`,
+          );
+        }
+        if (documensoFailed.length > 0) {
+          toast.warning(
+            `${documensoFailed.length} hire order${documensoFailed.length === 1 ? "" : "s"} issued, but countersign delivery failed`,
           );
         }
       }

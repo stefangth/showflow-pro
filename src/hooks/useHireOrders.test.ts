@@ -238,7 +238,7 @@ describe("useHireOrderAction", () => {
     );
   });
 
-  it("maps documenso_failed to friendly copy alongside a successful issue (countersign delivery warning, not a real issue failure)", async () => {
+  it("surfaces documenso_failed as a warning alongside a successful issue, not the failed-to-issue error", async () => {
     vi.mocked(invokeHireOrderAction).mockResolvedValue({
       issued: ["ho-1"],
       failed: [{ order_id: "ho-1", issues: ["documenso_failed"] }],
@@ -251,9 +251,34 @@ describe("useHireOrderAction", () => {
     });
 
     expect(toast.success).toHaveBeenCalledWith("Issued 1 hire order");
+    expect(toast.warning).toHaveBeenCalledWith("1 hire order issued, but countersign delivery failed");
+    // The order counts toward "Issued 1" only -- it must not also read as a
+    // failure, which would contradict the success toast right above it.
+    expect(toast.error).not.toHaveBeenCalled();
+  });
+
+  it("keeps a genuine issue failure separate from a documenso_failed warning when both occur in the same batch", async () => {
+    vi.mocked(invokeHireOrderAction).mockResolvedValue({
+      issued: ["ho-1"],
+      failed: [
+        { order_id: "ho-1", issues: ["documenso_failed"] },
+        { order_id: "ho-2", issues: ["missing_terms"] },
+      ],
+    });
+    const { Wrapper } = wrapper();
+    const { result } = renderHook(() => useHireOrderAction(), { wrapper: Wrapper });
+
+    await act(async () => {
+      await result.current.mutateAsync({ action: "issue", org_id: "org-1", order_ids: ["ho-1", "ho-2"] });
+    });
+
+    expect(toast.success).toHaveBeenCalledWith("Issued 1 hire order");
+    // Only the genuinely-failed order (ho-2) counts toward "failed to issue" --
+    // the documenso_failed order (ho-1) does not inflate this count.
     expect(toast.error).toHaveBeenCalledWith(
-      "1 hire order failed to issue: Order issued, but countersign delivery failed",
+      "1 hire order failed to issue: Add terms in Settings before issuing",
     );
+    expect(toast.warning).toHaveBeenCalledWith("1 hire order issued, but countersign delivery failed");
   });
 
   it("stays silent (no toast) for preview", async () => {
