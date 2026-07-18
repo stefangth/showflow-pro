@@ -3,8 +3,8 @@ import { screen, fireEvent, waitFor } from "@testing-library/react";
 import { renderWithProviders } from "@/test/renderWithProviders";
 import { createFakeSupabase } from "@/test/supabaseFake";
 
-const createShow = vi.fn((...a: unknown[]) => Promise.resolve({ id: "s-new" }));
-const updateShow = vi.fn((...a: unknown[]) => Promise.resolve());
+const createShow = vi.fn((..._a: unknown[]) => Promise.resolve({ id: "s-new" }));
+const updateShow = vi.fn((..._a: unknown[]) => Promise.resolve());
 vi.mock("@/data/shows", async (orig) => ({ ...(await orig<typeof import("@/data/shows")>()), createShow: (...a: unknown[]) => createShow(...a), updateShow: (...a: unknown[]) => updateShow(...a) }));
 // Real fake client (not a bare {}): the dialog now reads/writes show_required_skills
 // via the real @/data/eligibility functions and reads skills via useSkills, so both

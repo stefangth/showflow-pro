@@ -230,17 +230,17 @@ type ActionType = {
 
 **Interfaces:** none.
 
-- [ ] **Step 1: Apply all deletions/renames above**
-- [ ] **Step 2: Verify rule is clean**
+- [x] **Step 1: Apply all deletions/renames above**
+- [x] **Step 2: Verify rule is clean**
 
 Run: `npm run lint 2>&1 | grep -c no-unused-vars || true`
 Expected: `0`
 
-- [ ] **Step 3: Full test + typecheck gate**
+- [x] **Step 3: Full test + typecheck gate**
 
 Run: `npx vitest run 2>&1 | tail -3` → pass. `npx tsc -p tsconfig.app.json --noEmit` → exit 0. `deno test --allow-all supabase/functions/expire-offers/ 2>&1 | tail -2` → pass.
 
-- [ ] **Step 4: Commit**
+- [x] **Step 4: Commit**
 
 ```bash
 git add -A

@@ -2,7 +2,7 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import { screen, fireEvent, waitFor } from "@testing-library/react";
 import { renderWithProviders } from "@/test/renderWithProviders";
 
-const renameOrg = vi.fn((...a: unknown[]) => Promise.resolve());
+const renameOrg = vi.fn((..._a: unknown[]) => Promise.resolve());
 const refreshOrgs = vi.fn(() => Promise.resolve());
 vi.mock("@/data/orgs", async (orig) => ({ ...(await orig<typeof import("@/data/orgs")>()), renameOrg: (...a: unknown[]) => renameOrg(...a) }));
 vi.mock("@/integrations/supabase/client", () => ({ supabase: {} }));

@@ -4,7 +4,7 @@
  * Tests auth logic, cron secret validation, and the escalation decision
  * criteria. No real Supabase calls.
  */
-import { assertEquals, assertExists } from "../_shared/test-asserts.ts";
+import { assertEquals } from "../_shared/test-asserts.ts";
 
 // ── Logic helpers mirroring the function ─────────────────────────────────
 

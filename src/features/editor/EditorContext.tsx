@@ -10,7 +10,6 @@ import type { AppRole } from '@/config/app.config';
 import { resolveColumnTemplate, pageColumnDefs, COMPUTED_LABELS, customFieldDefToColumnDef, CUSTOM_FIELD_PAGES } from './columnRegistries';
 import { fetchCustomFieldDefs, type CustomFieldDefinition } from '@/data/customFields';
 import {
-  DEFAULT_PAGE_ACCESS,
   DEFAULT_TABLE_PERMISSIONS,
   type ColumnDef,
   type ColumnTemplate,

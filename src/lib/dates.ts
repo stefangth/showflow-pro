@@ -4,7 +4,7 @@
  * All `show_dates.date` and `availability.date` columns are PG `date` (no TZ),
  * so we must parse them with an explicit `T00:00:00` to avoid UTC drift.
  */
-import { format, parse } from 'date-fns';
+import { format } from 'date-fns';
 
 /** Parse a `YYYY-MM-DD` string into a local-midnight Date (timezone-safe). */
 export function parseDateOnly(dateStr: string): Date {
