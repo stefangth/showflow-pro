@@ -17,8 +17,7 @@ export interface TierLadder {
  *  without an explicit org_id: shows and cities are tenant-owned rows whose ids
  *  never cross orgs, so FK scoping already pins the org. Not an oversight. */
 export async function resolveTierLadder(admin: Admin, showId: string, cityId: string): Promise<TierLadder> {
-  // deno-lint-ignore no-explicit-any
-  const { data: showRows } = await (admin as any)
+  const { data: showRows } = await admin
     .from("show_cast_eligibility")
     .select("cast_id, priority")
     .eq("show_id", showId)
@@ -31,8 +30,7 @@ export async function resolveTierLadder(admin: Admin, showId: string, cityId: st
       tiers: show.map((r) => ({ tier: r.priority, castId: r.cast_id })).sort((a, b) => a.tier - b.tier),
     };
   }
-  // deno-lint-ignore no-explicit-any
-  const { data: orgRows } = await (admin as any)
+  const { data: orgRows } = await admin
     .from("cast_city_priority")
     .select("cast_id, priority")
     .eq("city_id", cityId);
@@ -62,16 +60,14 @@ export async function fetchGateArtistIds(
 ): Promise<Set<string> | null> {
   const castIds: string[] = [];
   if (args.cityId) {
-    // deno-lint-ignore no-explicit-any
-    const { data: showCasts } = await (admin as any)
+      const { data: showCasts } = await admin
       .from("show_cast_eligibility")
       .select("cast_id")
       .eq("show_id", args.showId)
       .eq("city_id", args.cityId);
     for (const r of (showCasts ?? []) as Array<{ cast_id: string }>) castIds.push(r.cast_id);
   }
-  // deno-lint-ignore no-explicit-any
-  const { data: dateCasts } = await (admin as any)
+  const { data: dateCasts } = await admin
     .from("show_date_cast_eligibility")
     .select("cast_id")
     .eq("show_date_id", args.showDateId);
@@ -80,8 +76,7 @@ export async function fetchGateArtistIds(
   const uniq = [...new Set(castIds)];
   if (uniq.length === 0) return null;
 
-  // deno-lint-ignore no-explicit-any
-  const { data: members } = await (admin as any)
+  const { data: members } = await admin
     .from("cast_members")
     .select("artist_id")
     .in("cast_id", uniq);
@@ -93,13 +88,11 @@ export async function fetchRequiredSkillIds(
   admin: Admin,
   args: { showId: string; showDateId: string },
 ): Promise<string[]> {
-  // deno-lint-ignore no-explicit-any
-  const { data: showSkills } = await (admin as any)
+  const { data: showSkills } = await admin
     .from("show_required_skills")
     .select("skill_id")
     .eq("show_id", args.showId);
-  // deno-lint-ignore no-explicit-any
-  const { data: dateSkills } = await (admin as any)
+  const { data: dateSkills } = await admin
     .from("show_date_required_skills")
     .select("skill_id")
     .eq("show_date_id", args.showDateId);
@@ -117,8 +110,7 @@ export async function filterArtistIdsBySkills(
   requiredSkillIds: string[],
 ): Promise<string[]> {
   if (requiredSkillIds.length === 0 || artistIds.length === 0) return artistIds;
-  // deno-lint-ignore no-explicit-any
-  const { data: rows } = await (admin as any)
+  const { data: rows } = await admin
     .from("artist_skills")
     .select("artist_id, skill_id")
     .in("artist_id", artistIds)

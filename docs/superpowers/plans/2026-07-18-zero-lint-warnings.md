@@ -595,10 +595,10 @@ interface NotificationInsertRow {
 - Consumes: `TemplateData` (Task 9) if any `templateData` locals were typed.
 - Produces: `_shared/rows.ts` exports above — Task 11 reuses `ProducerAssignmentRow`/`OrgAdminRow`.
 
-- [ ] **Step 1: Create `rows.ts`, convert expire-offers, run its tests**: `deno test --allow-all supabase/functions/expire-offers/ 2>&1 | tail -2` → pass.
-- [ ] **Step 2: Convert tier-at-risk-watcher + _shared/eligibility.ts**: `deno test --allow-all supabase/functions/tier-at-risk-watcher/ supabase/functions/_shared/ 2>&1 | tail -2` → pass.
-- [ ] **Step 3: Convert open-offer-tier + both digests + suppression**: `deno test --allow-all supabase/functions/ 2>&1 | tail -2` → all pass.
-- [ ] **Step 4: Verify**: `npx eslint supabase/functions/expire-offers supabase/functions/tier-at-risk-watcher supabase/functions/open-offer-tier supabase/functions/send-offer-digest supabase/functions/send-confirmation-digest supabase/functions/_shared/eligibility.ts supabase/functions/handle-email-suppression 2>&1 | grep no-explicit-any | grep -v test | wc -l` → `0`
+- [x] **Step 1: Create `rows.ts`, convert expire-offers, run its tests**: `deno test --allow-all supabase/functions/expire-offers/ 2>&1 | tail -2` → pass.
+- [x] **Step 2: Convert tier-at-risk-watcher + _shared/eligibility.ts**: `deno test --allow-all supabase/functions/tier-at-risk-watcher/ supabase/functions/_shared/ 2>&1 | tail -2` → pass.
+- [x] **Step 3: Convert open-offer-tier + both digests + suppression**: `deno test --allow-all supabase/functions/ 2>&1 | tail -2` → all pass.
+- [x] **Step 4: Verify**: `npx eslint supabase/functions/expire-offers supabase/functions/tier-at-risk-watcher supabase/functions/open-offer-tier supabase/functions/send-offer-digest supabase/functions/send-confirmation-digest supabase/functions/_shared/eligibility.ts supabase/functions/handle-email-suppression 2>&1 | grep no-explicit-any | grep -v test | wc -l` → `0` *(verified via `--format unix` so the path-per-line grep filter works; the stylish default prints 10 remaining warnings that are all in Task-14 test files)*
 - [x] **Step 5: Commit**
 
 ```bash

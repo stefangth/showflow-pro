@@ -3,6 +3,17 @@ import { requireCronOrRole } from "../_shared/auth.ts";
 import { realDeps, type Deps } from "../_shared/deps.ts";
 import { countAccepted, countPendingNotExpired, isFutureOrToday, requiredPrimarySlots } from "../_shared/tierFill.ts";
 import { resolveBookingFlow, type BookingFlow } from "../_shared/bookingFlow.ts";
+import type { OrgAdminRow, ProducerAssignmentRow, ShowJoin } from "../_shared/rows.ts";
+
+/** Mirrors the show_dates select below — unlike expire-offers' ShowDateWithShow,
+ *  this select does NOT include show_id (the loop keys on row.show_date_id). */
+interface TierShowDateRow {
+  id: string
+  date: string
+  city_id: string | null
+  org_id: string
+  show: ShowJoin | null
+}
 
 /**
  * Scans all open offer tiers and emits a `tier_at_risk` notification when a
@@ -36,7 +47,7 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
   if (!auth.ok) return auth.response;
 
   // Load all currently-open tiers (closed_at IS NULL)
-  const { data: openTiers, error: tiersErr } = await (admin as any)
+  const { data: openTiers, error: tiersErr } = await admin
     .from('show_date_offer_tiers')
     .select('id, show_date_id, tier')
     .is('closed_at', null)
@@ -78,6 +89,7 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
       .eq('id', row.show_date_id)
       .maybeSingle()
     if (!sd) continue
+    const sdRow = sd as unknown as TierShowDateRow
 
     // Gate on the org's booking flow: an org with at-risk alerts turned off, or in
     // direct-booking mode (no artist_acceptance → no offer tiers to be "at risk"), gets
@@ -86,7 +98,7 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
     // pass at the end of handle() then deletes any pre-existing tier_at_risk notification
     // for it exactly as it would for any other skipped tier, so disabling alerts clears
     // stale notifications automatically with no extra code.
-    const orgId = (sd as any).org_id as string
+    const orgId = sdRow.org_id
     // A per-org booking-flow read failure must not abort the whole scan; that would
     // also skip the stale-clear pass after the loop. Skip just this tier (leaving it out
     // of stillAtRiskTierIds, so the recovery pass clears any stale alert for it, exactly
@@ -104,16 +116,16 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
     }
     if (!flow.at_risk_alerts || !flow.artist_acceptance) continue
 
-    const program = (sd as any).show?.program
-    const subProgram = (sd as any).show?.sub_program
+    const program = sdRow.show?.program
+    const subProgram = sdRow.show?.sub_program
 
     // Past dates can no longer fill — never alert (would re-fire forever otherwise).
-    if (!isFutureOrToday((sd as any).date, deps.now())) continue
+    if (!isFutureOrToday(sdRow.date, deps.now())) continue
 
     // requiredSlots = main_cast_slots (what a primary offer tier fills). NULL = unconfigured → skip.
     const requiredSlots = requiredPrimarySlots({
-      main_cast_slots: (sd as any).show?.main_cast_slots ?? null,
-      understudy_slots: (sd as any).show?.understudy_slots ?? null,
+      main_cast_slots: sdRow.show?.main_cast_slots ?? null,
+      understudy_slots: sdRow.show?.understudy_slots ?? null,
     })
     if (requiredSlots === null) continue
     if (requiredSlots === 0) continue
@@ -140,28 +152,28 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
 
     // Resolve producers to notify (admin fallback). Dedupe — resolve_show_assignments
     // can return the same producer multiple times when several scopes match.
-    const { data: producers } = await (admin as any).rpc('resolve_show_assignments', {
+    const { data: producers } = await admin.rpc('resolve_show_assignments', {
       p_program: program ?? '',
       p_sub_program: subProgram,
-      p_city_id: (sd as any).city_id,
-      p_org: (sd as any).org_id,
+      p_city_id: sdRow.city_id,
+      p_org: sdRow.org_id,
     })
 
-    let recipientIds = Array.from(new Set((producers ?? []).map((p: any) => p.producer_user_id)))
+    let recipientIds = Array.from(new Set(((producers ?? []) as unknown as ProducerAssignmentRow[]).map((p) => p.producer_user_id)))
     if (recipientIds.length === 0) {
       // Fallback: notify admins OF THIS show_date's org (not every org's admins).
       const { data: admins } = await admin.from('org_memberships').select('user_id')
-        .eq('org_id', (sd as any).org_id).eq('role', 'admin')
-      recipientIds = Array.from(new Set((admins ?? []).map((a: any) => a.user_id)))
+        .eq('org_id', sdRow.org_id).eq('role', 'admin')
+      recipientIds = Array.from(new Set(((admins ?? []) as unknown as OrgAdminRow[]).map((a) => a.user_id)))
     }
 
-    const payloadMessage = `Tier ${row.tier} for ${program ?? 'show'} on ${(sd as any).date} is mathematically unfillable (${pending} pending, ${accepted} accepted, need ${requiredSlots}).`
+    const payloadMessage = `Tier ${row.tier} for ${program ?? 'show'} on ${sdRow.date} is mathematically unfillable (${pending} pending, ${accepted} accepted, need ${requiredSlots}).`
 
     // Only insert notifications for (tier, user) pairs that don't already have one
-    const newRows = (recipientIds as string[])
+    const newRows = recipientIds
       .filter(uid => !existingKeySet.has(`${row.id}::${uid}`))
       .map(uid => ({
-        org_id: (sd as any).org_id,
+        org_id: sdRow.org_id,
         user_id: uid,
         type: 'tier_at_risk',
         title: 'Tier at risk',
