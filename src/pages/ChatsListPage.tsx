@@ -35,9 +35,8 @@ export default function ChatsListPage() {
     },
   });
 
-  const today = new Date();
-
   const visible = useMemo(() => {
+    const today = new Date();
     return (chats ?? []).filter(c => {
       const d = c.show_date?.date;
       if (!d) return false;

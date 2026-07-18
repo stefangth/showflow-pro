@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useCallback } from 'react';
 import { getAvatarTone } from '@/lib/avatar';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
@@ -182,14 +182,14 @@ export default function ArtistsPage() {
     return map;
   }, [bookings]);
 
-  const nextBookingDate = (artistId: string): Date | null => {
+  const nextBookingDate = useCallback((artistId: string): Date | null => {
     const today = new Date(); today.setHours(0, 0, 0, 0);
     const dates = (bookingsByArtist.get(artistId) ?? [])
       .map(b => b.show_date?.date ? parseDateOnly(b.show_date.date) : null)
       .filter((d): d is Date => d !== null && d >= today)
       .sort((a, b) => a.getTime() - b.getTime());
     return dates[0] ?? null;
-  };
+  }, [bookingsByArtist]);
 
   const filtered = useMemo(() => {
     if (!artists) return [];
@@ -214,7 +214,7 @@ export default function ArtistsPage() {
       ));
     }
     return applySort(list, sort, a => a.name, a => nextBookingDate(a.id));
-  }, [artists, search, programs, timeframe, sort, bookingsByArtist, skillsByArtist]);
+  }, [artists, search, programs, timeframe, sort, bookingsByArtist, skillsByArtist, nextBookingDate]);
 
   const statusColor: Record<string, string> = {
     active: 'bg-success/10 text-success',

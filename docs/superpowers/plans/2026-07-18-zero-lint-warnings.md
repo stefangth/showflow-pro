@@ -132,7 +132,7 @@ git commit -m "scope eslint config per runtime, ignore underscore args"
 - Consumes: nothing from earlier tasks.
 - Produces: nothing later tasks rely on. Pure behavior-preserving memoization fixes.
 
-- [ ] **Step 1: DashboardPage — memoize `confirmedMainByDate`, correct `directItems` deps**
+- [x] **Step 1: DashboardPage — memoize `confirmedMainByDate`, correct `directItems` deps**
 
 Replace the IIFE at lines 96–102 and the dep array at line 112:
 
@@ -148,7 +148,7 @@ const confirmedMainByDate = useMemo(() => {
 
 and in `directItems` change `[upcomingDates, confirmedBookings]` → `[upcomingDates, confirmedMainByDate]`. Leave the `confirmedCountByDate` IIFE alone (not flagged; minimal diff).
 
-- [ ] **Step 2: ChatsListPage — move `today` inside the memo**
+- [x] **Step 2: ChatsListPage — move `today` inside the memo**
 
 Delete line 38 (`const today = new Date();`) and add it as the first line of the `visible` useMemo body:
 
@@ -163,7 +163,7 @@ const visible = useMemo(() => {
 }, [chats]);
 ```
 
-- [ ] **Step 3: ArtistsPage — wrap `nextBookingDate` in `useCallback`, add it to deps**
+- [x] **Step 3: ArtistsPage — wrap `nextBookingDate` in `useCallback`, add it to deps**
 
 ```tsx
 const nextBookingDate = useCallback((artistId: string): Date | null => {
@@ -178,13 +178,13 @@ const nextBookingDate = useCallback((artistId: string): Date | null => {
 
 Add `useCallback` to the React import if absent. Change the `filtered` dep array (line 217) to `[artists, search, programs, timeframe, sort, bookingsByArtist, skillsByArtist, nextBookingDate]`.
 
-- [ ] **Step 4: Verify**
+- [x] **Step 4: Verify**
 
 Run: `npx eslint src/pages/DashboardPage.tsx src/pages/ChatsListPage.tsx src/pages/ArtistsPage.tsx 2>&1 | grep -c exhaustive-deps || true`
 Expected: `0`
 Run: `npx vitest run 2>&1 | tail -3` → all pass.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add src/pages/DashboardPage.tsx src/pages/ChatsListPage.tsx src/pages/ArtistsPage.tsx
