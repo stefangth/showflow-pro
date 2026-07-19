@@ -7,6 +7,13 @@ export default defineConfig({
   test: {
     environment: "jsdom",
     globals: true,
+    // Dummy Supabase env so the client singleton can be constructed without a
+    // local .env file — unit tests only ever talk to the supabaseFake harness.
+    env: {
+      VITE_SUPABASE_URL: "http://localhost:54321",
+      VITE_SUPABASE_PUBLISHABLE_KEY: "test-anon-key",
+      VITE_SUPABASE_PROJECT_ID: "test",
+    },
     setupFiles: ["./src/test/setup.ts"],
     include: ["src/**/*.{test,spec}.{ts,tsx}"],
     coverage: {
