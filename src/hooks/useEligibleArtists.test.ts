@@ -3,6 +3,9 @@ import { renderHook, waitFor } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import React from "react";
 import { useEligibleArtists } from "./useEligibleArtists";
+import { partialMock } from "@/test/castHelpers";
+import type { SupabaseClient } from "@supabase/supabase-js";
+import type { Database } from "@/integrations/supabase/types";
 
 // ── Mock Supabase client ──────────────────────────────────────────────────
 
@@ -22,6 +25,19 @@ function makeWrapper() {
     React.createElement(QueryClientProvider, { client: queryClient }, children);
 }
 
+
+/** Install a table→chain-stub factory as the `from` mock; stubs stay plain
+ *  objects, the single sanctioned boundary cast happens once, here. */
+function mockFrom(impl: (table: string) => unknown) {
+  vi.mocked(supabase.from).mockImplementation(
+    partialMock<SupabaseClient<Database>["from"]>(impl),
+  );
+}
+/** Same, for tests that use one shared chain object for every table. */
+function mockFromChain(chain: unknown) {
+  mockFrom(() => chain);
+}
+
 describe("useEligibleArtists", () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -36,7 +52,7 @@ describe("useEligibleArtists", () => {
       maybeSingle: vi.fn().mockResolvedValue({ data: null, error: null }),
     };
     // show_cast_eligibility and show_date_cast_eligibility both return []
-    vi.mocked(supabase.from).mockReturnValue({
+    mockFromChain({
       ...noDataChain,
       select: vi.fn().mockReturnValue({
         eq: vi.fn().mockReturnValue({
@@ -44,7 +60,7 @@ describe("useEligibleArtists", () => {
         }),
         in: vi.fn().mockResolvedValue({ data: [], error: null }),
       }),
-    } as any);
+    });
 
     const { result } = renderHook(
       () => useEligibleArtists("show-1", "date-1", "city-1"),
@@ -57,7 +73,7 @@ describe("useEligibleArtists", () => {
   });
 
   it("returns artistIds set when cast members are found", async () => {
-    vi.mocked(supabase.from).mockImplementation((table: string) => {
+    mockFrom((table) => {
       if (table === "show_cast_eligibility") {
         return {
           select: vi.fn().mockReturnValue({
@@ -68,14 +84,14 @@ describe("useEligibleArtists", () => {
               }),
             }),
           }),
-        } as any;
+        };
       }
       if (table === "show_date_cast_eligibility") {
         return {
           select: vi.fn().mockReturnValue({
             eq: vi.fn().mockResolvedValue({ data: [], error: null }),
           }),
-        } as any;
+        };
       }
       if (table === "cast_members") {
         return {
@@ -85,9 +101,9 @@ describe("useEligibleArtists", () => {
               error: null,
             }),
           }),
-        } as any;
+        };
       }
-      return {} as any;
+      return {};
     });
 
     const { result } = renderHook(
@@ -120,15 +136,15 @@ describe("useEligibleArtists", () => {
   });
 
   it("skips show_cast_eligibility query when cityId is null", async () => {
-    vi.mocked(supabase.from).mockImplementation((table: string) => {
+    mockFrom((table) => {
       if (table === "show_date_cast_eligibility") {
         return {
           select: vi.fn().mockReturnValue({
             eq: vi.fn().mockResolvedValue({ data: [], error: null }),
           }),
-        } as any;
+        };
       }
-      return {} as any;
+      return {};
     });
 
     const { result } = renderHook(
@@ -147,7 +163,7 @@ describe("useEligibleArtists", () => {
   });
 
   it("deduplicates castIds when a cast appears in both show+city and per-date override", async () => {
-    vi.mocked(supabase.from).mockImplementation((table: string) => {
+    mockFrom((table) => {
       if (table === "show_cast_eligibility") {
         return {
           select: vi.fn().mockReturnValue({
@@ -158,7 +174,7 @@ describe("useEligibleArtists", () => {
               }),
             }),
           }),
-        } as any;
+        };
       }
       if (table === "show_date_cast_eligibility") {
         return {
@@ -168,7 +184,7 @@ describe("useEligibleArtists", () => {
               error: null,
             }),
           }),
-        } as any;
+        };
       }
       if (table === "cast_members") {
         return {
@@ -178,9 +194,9 @@ describe("useEligibleArtists", () => {
               error: null,
             }),
           }),
-        } as any;
+        };
       }
-      return {} as any;
+      return {};
     });
 
     const { result } = renderHook(
@@ -195,7 +211,7 @@ describe("useEligibleArtists", () => {
   });
 
   it("returns override cast in castIds when only show_date_cast_eligibility has it (no city)", async () => {
-    vi.mocked(supabase.from).mockImplementation((table: string) => {
+    mockFrom((table) => {
       if (table === "show_date_cast_eligibility") {
         return {
           select: vi.fn().mockReturnValue({
@@ -204,7 +220,7 @@ describe("useEligibleArtists", () => {
               error: null,
             }),
           }),
-        } as any;
+        };
       }
       if (table === "cast_members") {
         return {
@@ -214,9 +230,9 @@ describe("useEligibleArtists", () => {
               error: null,
             }),
           }),
-        } as any;
+        };
       }
-      return {} as any;
+      return {};
     });
 
     const { result } = renderHook(
@@ -239,15 +255,15 @@ describe("useEligibleArtists", () => {
       }),
     });
 
-    vi.mocked(supabase.from).mockImplementation((table: string) => {
+    mockFrom((table) => {
       if (table === "show_date_cast_eligibility") {
         return {
           select: vi.fn().mockReturnValue({
             eq: vi.fn().mockResolvedValue({ data: [], error: null }),
           }),
-        } as any;
+        };
       }
-      return makeChain("date-1") as any;
+      return makeChain("date-1");
     });
 
     const { result, rerender } = renderHook(

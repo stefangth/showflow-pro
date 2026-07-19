@@ -2,6 +2,8 @@ import { describe, it, expect } from "vitest";
 import { createFakeSupabase } from "@/test/supabaseFake";
 import { anArtist } from "@/test/fixtures";
 import { fetchMyArtist, fetchMyCancelledDateBookings, mergeArtistCancelledDates, fetchPendingInvitedArtistIds } from "./artists";
+import { partialMock } from "@/test/castHelpers";
+import type { CancelledDateEntry } from "./artists";
 
 describe("fetchMyArtist", () => {
   it("queries the artists table by user_id and returns the row", async () => {
@@ -66,11 +68,11 @@ describe("fetchMyCancelledDateBookings", () => {
 
 describe("mergeArtistCancelledDates", () => {
   it("appends cancelled entries not already present", () => {
-    const merged = mergeArtistCancelledDates([{ id: "d2" } as any], [{ id: "d1", status: "cancelled" } as any]);
+    const merged = mergeArtistCancelledDates([{ id: "d2" }], [partialMock<CancelledDateEntry>({ id: "d1", status: "cancelled" })]);
     expect(merged.map((d) => d.id).sort()).toEqual(["d1", "d2"]);
   });
   it("does not duplicate a date already eligible", () => {
-    expect(mergeArtistCancelledDates([{ id: "d1" } as any], [{ id: "d1", status: "cancelled" } as any])).toHaveLength(1);
+    expect(mergeArtistCancelledDates([{ id: "d1" }], [partialMock<CancelledDateEntry>({ id: "d1", status: "cancelled" })])).toHaveLength(1);
   });
 });
 

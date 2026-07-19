@@ -3,6 +3,9 @@ import { renderHook, waitFor } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import React from "react";
 import { useChatParticipant } from "./useChatParticipant";
+import { partialMock } from "@/test/castHelpers";
+import type { User, SupabaseClient } from "@supabase/supabase-js";
+import type { Database } from "@/integrations/supabase/types";
 
 // ── Mock Supabase client ──────────────────────────────────────────────────
 
@@ -29,16 +32,24 @@ function makeWrapper() {
     React.createElement(QueryClientProvider, { client: queryClient }, children);
 }
 
+
+/** Route a shared chain stub through the single sanctioned boundary cast. */
+function mockFromChain(chain: unknown) {
+  vi.mocked(supabase.from).mockImplementation(
+    partialMock<SupabaseClient<Database>["from"]>(() => chain),
+  );
+}
+
 describe("useChatParticipant", () => {
   beforeEach(() => {
     vi.clearAllMocks();
   });
 
   it("returns true immediately for admin without querying bookings", async () => {
-    vi.mocked(useAuth).mockReturnValue({
-      user: { id: "user-admin" } as any,
+    vi.mocked(useAuth).mockReturnValue(partialMock<ReturnType<typeof useAuth>>({
+      user: partialMock<User>({ id: "user-admin" }),
       hasRole: (role: string) => role === "admin",
-    } as any);
+    }));
 
     const { result } = renderHook(() => useChatParticipant("date-1"), {
       wrapper: makeWrapper(),
@@ -51,10 +62,10 @@ describe("useChatParticipant", () => {
   });
 
   it("returns true immediately for producer without querying bookings", async () => {
-    vi.mocked(useAuth).mockReturnValue({
-      user: { id: "user-producer" } as any,
+    vi.mocked(useAuth).mockReturnValue(partialMock<ReturnType<typeof useAuth>>({
+      user: partialMock<User>({ id: "user-producer" }),
       hasRole: (role: string) => role === "producer",
-    } as any);
+    }));
 
     const { result } = renderHook(() => useChatParticipant("date-1"), {
       wrapper: makeWrapper(),
@@ -68,10 +79,10 @@ describe("useChatParticipant", () => {
 
   it("returns true for artist with a soft_booked/confirmed booking on the date", async () => {
     const userId = "user-artist-1";
-    vi.mocked(useAuth).mockReturnValue({
-      user: { id: userId } as any,
+    vi.mocked(useAuth).mockReturnValue(partialMock<ReturnType<typeof useAuth>>({
+      user: partialMock<User>({ id: userId }),
       hasRole: () => false,
-    } as any);
+    }));
 
     const mockChain = {
       select: vi.fn().mockReturnThis(),
@@ -81,7 +92,7 @@ describe("useChatParticipant", () => {
         error: null,
       }),
     };
-    vi.mocked(supabase.from).mockReturnValue(mockChain as any);
+    mockFromChain(mockChain);
 
     const { result } = renderHook(() => useChatParticipant("date-1"), {
       wrapper: makeWrapper(),
@@ -94,10 +105,10 @@ describe("useChatParticipant", () => {
 
   it("returns false for artist without a booking on the date", async () => {
     const userId = "user-artist-2";
-    vi.mocked(useAuth).mockReturnValue({
-      user: { id: userId } as any,
+    vi.mocked(useAuth).mockReturnValue(partialMock<ReturnType<typeof useAuth>>({
+      user: partialMock<User>({ id: userId }),
       hasRole: () => false,
-    } as any);
+    }));
 
     const mockChain = {
       select: vi.fn().mockReturnThis(),
@@ -107,7 +118,7 @@ describe("useChatParticipant", () => {
         error: null,
       }),
     };
-    vi.mocked(supabase.from).mockReturnValue(mockChain as any);
+    mockFromChain(mockChain);
 
     const { result } = renderHook(() => useChatParticipant("date-1"), {
       wrapper: makeWrapper(),
@@ -119,10 +130,10 @@ describe("useChatParticipant", () => {
   });
 
   it("is disabled when showDateId is null", () => {
-    vi.mocked(useAuth).mockReturnValue({
-      user: { id: "user-1" } as any,
+    vi.mocked(useAuth).mockReturnValue(partialMock<ReturnType<typeof useAuth>>({
+      user: partialMock<User>({ id: "user-1" }),
       hasRole: () => false,
-    } as any);
+    }));
 
     const { result } = renderHook(() => useChatParticipant(null), {
       wrapper: makeWrapper(),
@@ -132,10 +143,10 @@ describe("useChatParticipant", () => {
   });
 
   it("is disabled when user is null", () => {
-    vi.mocked(useAuth).mockReturnValue({
+    vi.mocked(useAuth).mockReturnValue(partialMock<ReturnType<typeof useAuth>>({
       user: null,
       hasRole: () => false,
-    } as any);
+    }));
 
     const { result } = renderHook(() => useChatParticipant("date-1"), {
       wrapper: makeWrapper(),
@@ -146,17 +157,17 @@ describe("useChatParticipant", () => {
 
   it("reacts to changed showDateId", async () => {
     const userId = "user-artist-1";
-    vi.mocked(useAuth).mockReturnValue({
-      user: { id: userId } as any,
+    vi.mocked(useAuth).mockReturnValue(partialMock<ReturnType<typeof useAuth>>({
+      user: partialMock<User>({ id: userId }),
       hasRole: () => false,
-    } as any);
+    }));
 
     const mockChain = {
       select: vi.fn().mockReturnThis(),
       eq: vi.fn().mockReturnThis(),
       in: vi.fn().mockResolvedValue({ data: [], error: null }),
     };
-    vi.mocked(supabase.from).mockReturnValue(mockChain as any);
+    mockFromChain(mockChain);
 
     const { rerender, result } = renderHook(
       ({ dateId }) => useChatParticipant(dateId),

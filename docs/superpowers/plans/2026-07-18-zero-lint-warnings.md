@@ -691,7 +691,7 @@ git commit -m "type deno supabase clients against mirrored database types"
 **Interfaces:**
 - Produces: `asSupabase(fake: unknown): SupabaseClient<Database>`, `asQueryResult<T>(partial): UseQueryResult<T, Error>`, `partialMock<T>(partial: Partial<T>): T` — the only sanctioned test casts from Task 15 onward.
 
-- [ ] **Step 1: Write the failing helper test**
+- [x] **Step 1: Write the failing helper test**
 
 ```ts
 import { describe, expect, it } from "vitest";
@@ -713,8 +713,8 @@ describe("castHelpers", () => {
 });
 ```
 
-- [ ] **Step 2: Run it to verify it fails** — `npx vitest run src/test/castHelpers.test.ts` → FAIL (module not found).
-- [ ] **Step 3: Implement**
+- [x] **Step 2: Run it to verify it fails** — `npx vitest run src/test/castHelpers.test.ts` → FAIL (module not found).
+- [x] **Step 3: Implement**
 
 ```ts
 import type { UseQueryResult } from "@tanstack/react-query";
@@ -741,8 +741,8 @@ export function partialMock<T>(partial: Partial<T>): T {
 }
 ```
 
-- [ ] **Step 4: Run test** → PASS. Commit the helpers alone: `git add src/test/castHelpers.* && git commit -m "add typed cast helpers for test stubs"`.
-- [ ] **Step 5: Sweep the test files, three idioms:**
+- [x] **Step 4: Run test** → PASS. Commit the helpers alone: `git add src/test/castHelpers.* && git commit -m "add typed cast helpers for test stubs"`.
+- [x] **Step 5: Sweep the test files, three idioms:**
   - `vi.mocked(useX).mockReturnValue({ ... } as any)` → `vi.mocked(useX).mockReturnValue(asQueryResult({ ... }))` for query hooks; `partialMock<ReturnType<typeof useAuth>>({ ... })` for context hooks (import the hook from its context module — paths unchanged; Task 5 did not move them).
   - Ad-hoc fake-client chain objects (`useArtistEligibleDates.test.ts`'s `} as any;` blocks, `useEligibleArtists`, `useChatParticipant`): keep the stub object literal exactly as-is, remove the per-object `as any`, funnel the outermost value through `asSupabase(...)` (or `partialMock<...>` when the mock target is a chain fragment — worked example for the dominant idiom:
 
@@ -756,8 +756,8 @@ vi.mocked(useMyArtist).mockReturnValue(asQueryResult({ data: { id: ARTIST_ID } }
 For a `from`-implementation stub whose return chain was `({ ... } as any)`, type the factory's return as `ReturnType<SupabaseClient<Database>["from"]>` via one `asSupabase` on the whole client stub instead of casting each chain — restructure to "build plain object → single boundary cast", same as `supabaseFake.ts`.)
   - Fixture-shape casts (`artists.test.ts` `{ id: "d2" } as any`, `ProtectedRoute.test.tsx` `requiredRoles as any`, `user: { id: "user-1" } as any`) → `partialMock<TheRealType>({ ... })`, importing the real type.
   Work file-by-file in Appendix B order (largest first), running that file's tests after each: `npx vitest run <file>` → pass.
-- [ ] **Step 6: Verify + full gate**: `npx eslint 'src/**/*.test.*' src/test 2>&1 | grep -c no-explicit-any || true` → `0`; `npx vitest run 2>&1 | tail -3` → 1164 pass (count unchanged — this sweep must not weaken a single assertion).
-- [ ] **Step 7: Commit**
+- [x] **Step 6: Verify + full gate**: `npx eslint 'src/**/*.test.*' src/test 2>&1 | grep -c no-explicit-any || true` → `0`; `npx vitest run 2>&1 | tail -3` → 1164 pass (count unchanged — this sweep must not weaken a single assertion).
+- [x] **Step 7: Commit**
 
 ```bash
 git add -A

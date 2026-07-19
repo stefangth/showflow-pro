@@ -2,6 +2,7 @@ import { render, screen, fireEvent } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { useTheme } from 'next-themes';
 import { ThemeToggle } from './ThemeToggle';
+import { partialMock } from '@/test/castHelpers';
 
 vi.mock('next-themes', () => ({ useTheme: vi.fn() }));
 
@@ -9,7 +10,7 @@ const setTheme = vi.fn();
 
 beforeEach(() => {
   setTheme.mockClear();
-  vi.mocked(useTheme).mockReturnValue({ theme: 'system', setTheme } as any);
+  vi.mocked(useTheme).mockReturnValue(partialMock<ReturnType<typeof useTheme>>({ theme: 'system', setTheme }));
 });
 
 describe('ThemeToggle', () => {
