@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
+import { createContext, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import type { User, Session } from '@supabase/supabase-js';
@@ -7,7 +7,7 @@ import { fetchMyMemberships, type Membership, type Organization } from '@/data/o
 import { fetchIsSuperAdmin, fetchAllOrgs } from '@/data/platform';
 import { rolesForOrg, effectiveHasRole, effectiveOrgs } from './orgRoles';
 import { REALTIME_INVALIDATIONS } from './realtimeInvalidations';
-import { resolveSessionIdentity, type SessionIdentityHandlers } from './sessionState';
+import { resolveSessionIdentity, shouldRaiseLoading, type SessionIdentityHandlers } from './sessionState';
 
 export interface ViewAsUser {
   id: string;
@@ -58,6 +58,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true);
   const [viewAsRole, setViewAsRole] = useState<AppRole | null>(null);
   const [viewAsUser, setViewAsUserState] = useState<ViewAsUser | null>(null);
+  /** User id `loadIdentity` last resolved for; drives whether a new session must raise `loading`. */
+  const identityUserIdRef = useRef<string | null>(null);
 
   const setViewAsUser = (u: ViewAsUser | null) => {
     setViewAsUserState(u);
@@ -102,6 +104,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setIsSuperAdmin(false);
       setAllOrgs([]);
     }
+    // Identity is now loaded for this user; future auth events for the same
+    // user (token refresh, etc.) must not re-raise `loading`. See shouldRaiseLoading.
+    identityUserIdRef.current = userId;
   };
 
   /** Reset all identity + impersonation state for a signed-out session. */
@@ -114,6 +119,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setViewAsRole(null);
     setViewAsUserState(null);
     localStorage.removeItem('showflow_editor_mode');
+    identityUserIdRef.current = null;
   };
 
   useEffect(() => {
@@ -128,6 +134,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       (_event, session) => {
         setSession(session);
         setUser(session?.user ?? null);
+        // A newly signed-in user's identity isn't loaded yet — raise `loading`
+        // synchronously (before the navigate that follows sign-in re-renders a
+        // guard) so it shows the spinner instead of flashing NoOrgScreen / the
+        // wrong role gate. Background events for the already-loaded user leave
+        // `loading` untouched. See shouldRaiseLoading.
+        if (shouldRaiseLoading(session, identityUserIdRef.current)) setLoading(true);
         // Defer only the identity load: it issues Supabase calls, which can
         // deadlock if run synchronously inside the auth state-change callback.
         setTimeout(() => { void resolveSessionIdentity(session, identityHandlers); }, 0);
@@ -137,6 +149,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     supabase.auth.getSession().then(({ data: { session } }) => {
       setSession(session);
       setUser(session?.user ?? null);
+      if (shouldRaiseLoading(session, identityUserIdRef.current)) setLoading(true);
       void resolveSessionIdentity(session, identityHandlers);
     });
 

@@ -41,3 +41,28 @@ export async function resolveSessionIdentity(
     h.setLoading(false);
   }
 }
+
+/**
+ * Should `loading` be raised (spinner) for an incoming auth session?
+ *
+ * `resolveSessionIdentity` only ever *clears* `loading`. That is enough on a
+ * hard load, where `loading` starts `true` at mount and stays true until
+ * identity settles. But once it has gone `false`, a *new* signed-in session
+ * (the sign-in transition, or an account switch in a live tab) makes `user`
+ * truthy while isSuperAdmin/currentOrg are still empty — and the deferred
+ * identity load hasn't run yet. Guards that read `loading:false` as
+ * "identity resolved" then flash NoOrgScreen / the wrong role gate on the way
+ * to the destination route.
+ *
+ * Raise `loading` exactly when a session's user has no loaded identity yet
+ * (`loadedUserId` is the user id `loadIdentity` last resolved for). Background
+ * events for the already-loaded user (TOKEN_REFRESHED / USER_UPDATED) and
+ * signed-out sessions (guards redirect to /login) must NOT re-raise it — that
+ * would flash a full-app spinner over an already-usable screen.
+ */
+export function shouldRaiseLoading(
+  session: Session | null,
+  loadedUserId: string | null,
+): boolean {
+  return !!session?.user && session.user.id !== loadedUserId;
+}
