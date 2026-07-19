@@ -1,5 +1,9 @@
 import { describe, it, expect, vi } from "vitest";
-import { resolveSessionIdentity, type SessionIdentityHandlers } from "./sessionState";
+import {
+  resolveSessionIdentity,
+  shouldRaiseLoading,
+  type SessionIdentityHandlers,
+} from "./sessionState";
 
 function makeHandlers(over: Partial<SessionIdentityHandlers> = {}): SessionIdentityHandlers {
   return {
@@ -68,5 +72,33 @@ describe("resolveSessionIdentity", () => {
       resolveSessionIdentity({ user: { id: "u" } } as never, handlers),
     ).resolves.toBeUndefined();
     expect(handlers.setLoading).toHaveBeenCalledWith(false);
+  });
+});
+
+describe("shouldRaiseLoading", () => {
+  it("raises loading when a signed-in user's identity is not loaded yet", () => {
+    // The post-login race: after a signed-out resolve cleared `loading` to
+    // false, a fresh sign-in makes `user` truthy while identity is still empty.
+    // Guards must see the spinner (loading:true), not a stale identity, until
+    // the deferred loadIdentity runs — otherwise NoOrgScreen / the wrong role
+    // gate flashes on the way to the dashboard.
+    expect(shouldRaiseLoading({ user: { id: "user-1" } } as never, null)).toBe(true);
+  });
+
+  it("raises loading when the signed-in user differs from the loaded identity", () => {
+    // Account switch within a live tab: identity is loaded for a different user.
+    expect(shouldRaiseLoading({ user: { id: "user-2" } } as never, "user-1")).toBe(true);
+  });
+
+  it("does not raise loading for a background event on the already-loaded user", () => {
+    // TOKEN_REFRESHED / USER_UPDATED fire for the same user whose identity is
+    // already loaded — re-raising `loading` would flash a full-app spinner.
+    expect(shouldRaiseLoading({ user: { id: "user-1" } } as never, "user-1")).toBe(false);
+  });
+
+  it("does not raise loading for a signed-out session", () => {
+    // Sign-out sets user:null; the guards redirect to /login, no spinner needed.
+    expect(shouldRaiseLoading(null, "user-1")).toBe(false);
+    expect(shouldRaiseLoading(null, null)).toBe(false);
   });
 });
