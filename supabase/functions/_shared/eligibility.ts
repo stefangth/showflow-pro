@@ -60,7 +60,7 @@ export async function fetchGateArtistIds(
 ): Promise<Set<string> | null> {
   const castIds: string[] = [];
   if (args.cityId) {
-      const { data: showCasts } = await admin
+    const { data: showCasts } = await admin
       .from("show_cast_eligibility")
       .select("cast_id")
       .eq("show_id", args.showId)

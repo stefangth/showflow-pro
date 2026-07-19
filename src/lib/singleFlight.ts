@@ -20,7 +20,7 @@
  * the only way to guarantee ordering.
  *
  * Exported for direct unit testing. This primitive has no timing of its own;
- * the 800ms debounce stays in the component's effect below.
+ * the 800ms debounce lives in HireOrderEditPage's autosave effect.
  */
 export function createSingleFlightRunner(run: () => Promise<void>): () => void {
   let inFlight = false;
