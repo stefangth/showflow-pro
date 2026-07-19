@@ -29,9 +29,6 @@ coverage
 .env.*
 !.env.example
 
-# Local MCP config (per-developer secrets)
-.mcp.local.json
-
 # Supabase CLI cache
 supabase/.temp/
 
