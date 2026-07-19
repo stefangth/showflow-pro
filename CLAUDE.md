@@ -32,7 +32,7 @@ Scale target: 50+ active shows, 200+ artists, multi-venue.
 npm install          # or bun install
 npm run dev          # local dev server (Vite, port 5173)
 npm run build        # production build
-npm run lint         # eslint
+npm run lint         # eslint (zero-warning gate: --max-warnings 0)
 npx vitest run       # unit tests (vitest + jsdom; setup in src/test/setup.ts)
 npm run test:watch   # vitest watch mode
 ```
@@ -121,6 +121,7 @@ src/
                    #   Test with supabaseFake.ts (never vi.mock the client).
   features/
     auth/          # AuthContext (org-aware: currentOrg/orgs/switchOrg, isSuperAdmin),
+                   #   realtimeInvalidations.ts (REALTIME_INVALIDATIONS table→query-key map),
                    #   ProtectedRoute (org gate → NoOrgScreen / SuspendedOrgScreen;
                    #   super-admins bypass org gate and suspended-org check),
                    #   PlatformRoute (super-admin-only gate for /platform, no org required),
@@ -151,7 +152,8 @@ src/
   lib/             # Shared utilities: utils.ts (cn helper), dates.ts (parseDateOnly,
                    #   formatDateDMY, formatDateWithWeekday, toDateKey — all timezone-safe),
                    #   avatar.ts, bookings.ts, catalog.ts (isSyncedShow/Date, canHardDeleteShow/Date),
-                   #   settings.ts (dedupeProgramPairs, effectiveSlots)
+                   #   settings.ts (dedupeProgramPairs, effectiveSlots), singleFlight.ts,
+                   #   hireOrders/kpis.ts (computeOrderKpis)
   pages/           # One file per route, default-exported
                    #   Key pages: DashboardPage, ShowsBookingsPage (ROUTES.BOOKINGS),
                    #   ProductionsPage (ROUTES.PRODUCTIONS) — admin+producer catalog CRUD + drag-reorder,
@@ -254,7 +256,13 @@ When adding a new page:
 ### TypeScript
 
 - Prefer types derived from `Database` in `src/integrations/supabase/types.ts` — see `src/types/index.ts` for extension patterns.
-- `any` is allowed for Supabase joined-row shapes when typing them is disproportionate, but isolate to the boundary.
+- `any` is banned (lint error, CI-gated via `--max-warnings 0`). When supabase-js can't infer a joined-row
+  shape, define an explicit local row `interface` and cast once at the query result
+  (`as unknown as Row[]`) immediately after the error check — confined to `src/data/**`,
+  hook `queryFn`s, and `supabase/functions/**`. Never deep-access an untyped row.
+  Test stubs go through the typed helpers (`src/test/castHelpers.ts` — `asSupabase`/`asQueryResult`/`partialMock`;
+  `supabase/functions/_shared/testing.ts` — `asTypedClient`/`bindFakeFrom`/`setFakeFrom`) —
+  one cast inside the helper, never per-site `as any`.
 
 ### Testing
 
@@ -337,6 +345,7 @@ Suggested emails:
 | `src/hooks/` | All domain hooks — reuse before writing new queries |
 | `src/types/index.ts` | Domain type extensions on top of Supabase types |
 | `supabase/functions/_shared/settings.ts` | `resolveOrgSetting` + `getActiveOrgs` — org-aware settings for edge functions |
+| `supabase/functions/_shared/database.types.ts` | Mirror of `src/integrations/supabase/types.ts` (dual-home, byte-equality sync-tested by `src/integrations/supabase/typesMirror.test.ts` — regenerate both together) |
 | `supabase/functions/_shared/auth.ts` | `requireRole` / `requireOrgRole` / `requireSuperAdmin` / `requireCronOrRole` |
 | `supabase/functions/provision-org/index.ts` | Atomic org creation + catalog seed + first-admin invite (super-admin) |
 | `supabase/functions/send-offer-digest/index.ts` | Daily offer digest (Berlin 19:00 gate) |
@@ -364,3 +373,4 @@ Suggested emails:
 - Re-implementing production logic inside a test file (tests must import the real module).
 - Constructing a Supabase client, CORS headers, or auth checks inline in an edge function instead of using `realDeps()` / `_shared/http.ts` / `_shared/auth.ts`.
 - Hand-rolling `vi.mock('@/integrations/supabase/client')` chains instead of the `src/test/` harness.
+- Casting Supabase rows or clients with `as any` — use an explicit row interface + single `as unknown as` cast at the query boundary, or the typed test helpers (`castHelpers.ts` / `_shared/testing.ts`).

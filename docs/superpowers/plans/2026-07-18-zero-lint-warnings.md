@@ -821,9 +821,9 @@ git commit -m "type deno edge function test stubs"
 
 **Interfaces:** none.
 
-- [ ] **Step 1: Apply all edits above.**
-- [ ] **Step 2: Prove the gate**: `npm run lint` → exit 0, no output. Then prove it bites: add `const x: any = 1` to any file, `npm run lint` → exit 1 with 1 error; revert.
-- [ ] **Step 3: Full final gate**: `npx vitest run` (1164 pass) + `deno test --allow-all supabase/functions/` (pass) + `npx tsc -p tsconfig.app.json --noEmit` (exit 0) + `npm run build` (succeeds — catches any import-path slip from Tasks 4–5).
+- [x] **Step 1: Apply all edits above.**
+- [x] **Step 2: Prove the gate**: `npm run lint` → exit 0, no output. Then prove it bites: add `const x: any = 1` to any file, `npm run lint` → exit 1 with 1 error; revert.
+- [x] **Step 3: Full final gate**: `npx vitest run` (1164 pass) + `deno test --allow-all supabase/functions/` (pass) + `npx tsc -p tsconfig.app.json --noEmit` (exit 0) + `npm run build` (succeeds — catches any import-path slip from Tasks 4–5).
 - [x] **Step 4: Commit**
 
 ```bash

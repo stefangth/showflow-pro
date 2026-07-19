@@ -4,19 +4,19 @@ import reactHooks from "eslint-plugin-react-hooks";
 import reactRefresh from "eslint-plugin-react-refresh";
 import tseslint from "typescript-eslint";
 
-// Severity is "warn" during the cleanup tasks of the zero-warnings plan;
-// the final task flips these to "error" and adds --max-warnings 0 to the
-// lint script so new violations fail CI.
+// All three rules are errors and the lint script runs with --max-warnings 0:
+// any new violation fails CI. The `any` boundary policy lives in CLAUDE.md
+// ("TypeScript" section).
 const strictness = {
   "@typescript-eslint/no-unused-vars": [
-    "warn",
+    "error",
     {
       argsIgnorePattern: "^_",
       varsIgnorePattern: "^_",
       caughtErrorsIgnorePattern: "^_",
     },
   ],
-  "@typescript-eslint/no-explicit-any": "warn",
+  "@typescript-eslint/no-explicit-any": "error",
 };
 
 export default tseslint.config(
@@ -30,7 +30,7 @@ export default tseslint.config(
     plugins: { "react-hooks": reactHooks, "react-refresh": reactRefresh },
     rules: {
       ...reactHooks.configs.recommended.rules,
-      "react-refresh/only-export-components": ["warn", { allowConstantExport: true }],
+      "react-refresh/only-export-components": ["error", { allowConstantExport: true }],
       ...strictness,
     },
   },
