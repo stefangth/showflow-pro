@@ -27,6 +27,7 @@ coverage
 # Environment files — never commit secrets
 .env
 .env.*
+!.env.example
 
 # Local MCP config (per-developer secrets)
 .mcp.local.json
