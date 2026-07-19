@@ -24,6 +24,13 @@ coverage
 *.sln
 *.sw?
 
+# Environment files — never commit secrets
+.env
+.env.*
+
+# Local MCP config (per-developer secrets)
+.mcp.local.json
+
 # Supabase CLI cache
 supabase/.temp/
 
