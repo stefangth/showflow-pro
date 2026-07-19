@@ -3,6 +3,10 @@ import { renderHook, waitFor } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import React from "react";
 import { useArtistEligibleDates } from "./useArtistEligibleDates";
+import { asQueryResult, partialMock } from "@/test/castHelpers";
+import type { SupabaseClient } from "@supabase/supabase-js";
+import type { Database } from "@/integrations/supabase/types";
+import type { Artist } from "@/types";
 
 // ── Mocks ─────────────────────────────────────────────────────────────────
 
@@ -30,6 +34,14 @@ function makeWrapper() {
   });
   return ({ children }: { children: React.ReactNode }) =>
     React.createElement(QueryClientProvider, { client: queryClient }, children);
+}
+
+/** Install a table→chain-stub factory as the `from` mock. The stubs stay plain
+ *  objects; the single sanctioned boundary cast happens once, here. */
+function mockFrom(impl: (table: string) => unknown) {
+  vi.mocked(supabase.from).mockImplementation(
+    partialMock<SupabaseClient<Database>["from"]>(impl),
+  );
 }
 
 const ARTIST_ID = "artist-uuid-1";
