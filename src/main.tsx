@@ -3,7 +3,10 @@ import "./index.css";
 import { missingClientEnv } from "./config/env";
 
 const rootEl = document.getElementById("root")!;
-const missing = missingClientEnv(import.meta.env);
+const missing = missingClientEnv({
+  VITE_SUPABASE_URL: import.meta.env.VITE_SUPABASE_URL,
+  VITE_SUPABASE_PUBLISHABLE_KEY: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
+});
 
 if (missing.length > 0) {
   // Required env is absent — importing App would pull in the Supabase client,
