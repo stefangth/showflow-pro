@@ -5,24 +5,27 @@ export interface SessionIdentityHandlers {
   loadIdentity: (userId: string) => Promise<void>;
   /** Reset all identity/impersonation state for a signed-out user. */
   clearIdentity: () => void;
-  setLoading: (loading: boolean) => void;
+  /**
+   * Record that identity has settled for `userId` (null when signed out).
+   * This is what flips `authReady`/`loading` — call it AFTER identity has been
+   * loaded (or cleared), so no render ever treats a half-loaded identity as
+   * authoritative. Must run even if loadIdentity throws, or the guards strand
+   * on the spinner.
+   */
+  markResolved: (userId: string | null) => void;
 }
 
 /**
  * Resolve identity for a (possibly null) auth session — load it for a signed-in
- * user, else clear it — then clear `loading` ONLY after identity has settled.
+ * user, else clear it — then mark it resolved for that user id.
  *
- * This ordering is load-bearing: the route guards (ProtectedRoute /
- * PlatformRoute) read `loading` to decide when isSuperAdmin/currentOrg are
- * trustworthy. Clearing it while identity is still empty makes them misfire —
- * a hard load of /platform bounces to the dashboard/no-org screen, and other
- * routes flash the wrong role gate — because `loading:false` is read as
- * "identity resolved" when it hasn't been.
+ * `markResolved` is called in `finally`, strictly after loadIdentity/clearIdentity
+ * settle, so readiness only flips once the identity data for the current user is
+ * in place (or a fetch failure is accepted). See `computeAuthReady`.
  *
  * Callers set session/user themselves (those are lock-safe and run
- * synchronously); this function owns only the async identity + loading step,
- * which is the part that must be deferred out of the Supabase auth-state-change
- * callback to avoid its lock.
+ * synchronously); this function owns only the async identity step, which must be
+ * deferred out of the Supabase auth-state-change callback to avoid its lock.
  */
 export async function resolveSessionIdentity(
   session: Session | null,
@@ -35,34 +38,34 @@ export async function resolveSessionIdentity(
       h.clearIdentity();
     }
   } catch {
-    // loadIdentity is contracted not to reject, but never let a failure
-    // strand the app on the loading spinner.
+    // loadIdentity is contracted not to reject, but never let a failure strand
+    // the app on the loading spinner — markResolved still runs below.
   } finally {
-    h.setLoading(false);
+    h.markResolved(session?.user?.id ?? null);
   }
 }
 
 /**
- * Should `loading` be raised (spinner) for an incoming auth session?
+ * Are the route guards allowed to make routing/role decisions yet?
  *
- * `resolveSessionIdentity` only ever *clears* `loading`. That is enough on a
- * hard load, where `loading` starts `true` at mount and stays true until
- * identity settles. But once it has gone `false`, a *new* signed-in session
- * (the sign-in transition, or an account switch in a live tab) makes `user`
- * truthy while isSuperAdmin/currentOrg are still empty — and the deferred
- * identity load hasn't run yet. Guards that read `loading:false` as
- * "identity resolved" then flash NoOrgScreen / the wrong role gate on the way
- * to the destination route.
+ * Ready iff the initial session check has completed (`bootstrapped`) AND identity
+ * is loaded for the *currently authenticated* user — i.e. the user id from the
+ * live session matches the user id identity was last resolved for (`null === null`
+ * when signed out).
  *
- * Raise `loading` exactly when a session's user has no loaded identity yet
- * (`loadedUserId` is the user id `loadIdentity` last resolved for). Background
- * events for the already-loaded user (TOKEN_REFRESHED / USER_UPDATED) and
- * signed-out sessions (guards redirect to /login) must NOT re-raise it — that
- * would flash a full-app spinner over an already-usable screen.
+ * This is the load-bearing invariant. Because readiness is DERIVED from
+ * (bootstrapped, userId, identityUserId) rather than a separately-sequenced
+ * `loading` flag, there is no render — under any auth-callback ordering — where
+ * `user` is truthy but identity (isSuperAdmin/currentOrg) is still empty and the
+ * guard treats it as authoritative. The instant `user` changes, `userId !==
+ * identityUserId`, so the guards show the spinner until `resolveSessionIdentity`
+ * calls `markResolved`. The old flash (NoOrgScreen / wrong role gate on login)
+ * was a race against clearing `loading`; here it is impossible by construction.
  */
-export function shouldRaiseLoading(
-  session: Session | null,
-  loadedUserId: string | null,
+export function computeAuthReady(
+  bootstrapped: boolean,
+  userId: string | null,
+  identityUserId: string | null,
 ): boolean {
-  return !!session?.user && session.user.id !== loadedUserId;
+  return bootstrapped && (userId ?? null) === (identityUserId ?? null);
 }
