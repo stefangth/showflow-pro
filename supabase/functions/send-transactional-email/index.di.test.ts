@@ -15,7 +15,7 @@
  */
 
 import { assertEquals, assertExists } from "../_shared/test-asserts.ts";
-import { bindFakeFrom, makeFakeDeps, makeRequest } from "../_shared/testing.ts";
+import { bindFakeFrom, makeFakeDeps, makeRequest, setFakeFrom } from "../_shared/testing.ts";
 import { handle } from "./index.ts";
 
 // send-transactional-email now requires the service-role bearer (isServiceRole gate).
@@ -630,8 +630,7 @@ Deno.test("email_unsubscribe_tokens: upsert happens when no existing token", asy
 
   // Override the admin.from for email_unsubscribe_tokens to return stateful results
   const origFrom = bindFakeFrom(baseDeps.admin);
-  // deno-lint-ignore no-explicit-any
-  (baseDeps.admin as any).from = (table: string) => {
+  setFakeFrom(baseDeps.admin, (table: string) => {
     if (table !== "email_unsubscribe_tokens") return origFrom(table);
     allCalls.push({ table, method: "from", args: [] });
     const CHAIN_METHODS = [
@@ -639,8 +638,7 @@ Deno.test("email_unsubscribe_tokens: upsert happens when no existing token", asy
       "eq", "neq", "gt", "gte", "lt", "lte", "in", "is", "or", "not", "match",
       "order", "limit", "range", "filter",
     ];
-    // deno-lint-ignore no-explicit-any
-    const chain: Record<string, any> = {};
+    const chain: Record<string, unknown> = {};
     for (const m of CHAIN_METHODS) {
       chain[m] = (...args: unknown[]) => {
         allCalls.push({ table, method: m, args });
@@ -658,7 +656,7 @@ Deno.test("email_unsubscribe_tokens: upsert happens when no existing token", asy
       return Promise.resolve({ data: null, error: null }).then(f, r);
     };
     return chain;
-  };
+  });
 
   await handle(
     authedReq({

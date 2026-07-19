@@ -30,7 +30,7 @@
  */
 
 import { assertEquals, assertExists } from "../_shared/test-asserts.ts";
-import { bindFakeFrom, makeFakeDeps, makeRequest } from "../_shared/testing.ts";
+import { bindFakeFrom, makeFakeDeps, makeRequest, setFakeFrom } from "../_shared/testing.ts";
 import { handle } from "./index.ts";
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
@@ -359,14 +359,14 @@ Deno.test("airtable-poll: invalid base_id format → 200, org skipped, sync_log 
   });
 
   const originalFrom = bindFakeFrom(deps.admin);
-  (deps.admin as any).from = (table: string) => {
+  setFakeFrom(deps.admin, (table: string) => {
     const chain = originalFrom(table);
     if (table === "airtable_sync_log") {
       const orig = chain.insert.bind(chain);
       chain.insert = (p: unknown) => { syncLogInserts.push(p); return (orig as (x: unknown) => ReturnType<typeof orig>)(p); };
     }
     return chain;
-  };
+  });
 
   const res = await handle(authReq(), deps);
   assertEquals(res.status, 200);
@@ -553,17 +553,17 @@ Deno.test("airtable-poll: maps Date/SubProgram/City/Session fields and inserts s
 
   // Wrap the admin client's from() to capture insert args
   const originalFrom = bindFakeFrom(deps.admin);
-  (deps.admin as any).from = (table: string) => {
+  setFakeFrom(deps.admin, (table: string) => {
     const chain = originalFrom(table);
     if (table === "show_dates") {
-      const originalInsert = (chain as any).insert.bind(chain);
-      (chain as any).insert = (payload: unknown) => {
+      const originalInsert = chain.insert.bind(chain);
+      chain.insert = (payload: unknown) => {
         insertedPayloads.push(payload);
-        return originalInsert(payload as any);
+        return originalInsert(payload);
       };
     }
     return chain;
-  };
+  });
 
   const res = await handle(authReq(), deps);
   assertEquals(res.status, 200);
@@ -595,14 +595,14 @@ Deno.test("airtable-poll: session_1 is null when field missing (no 00:00 fabrica
   const { deps } = makeHappyDeps({ airtableRecords: records });
 
   const originalFrom = bindFakeFrom(deps.admin);
-  (deps.admin as any).from = (table: string) => {
+  setFakeFrom(deps.admin, (table: string) => {
     const chain = originalFrom(table);
     if (table === "show_dates") {
       const orig = chain.insert.bind(chain);
       chain.insert = (p: unknown) => { insertedPayloads.push(p); return (orig as (x: unknown) => ReturnType<typeof orig>)(p); };
     }
     return chain;
-  };
+  });
 
   await handle(authReq(), deps);
   assertEquals(insertedPayloads.length >= 1, true);
@@ -624,14 +624,14 @@ Deno.test("airtable-poll: city_id is null when city not in DB", async () => {
   const { deps } = makeHappyDeps({ airtableRecords: records });
 
   const originalFrom = bindFakeFrom(deps.admin);
-  (deps.admin as any).from = (table: string) => {
+  setFakeFrom(deps.admin, (table: string) => {
     const chain = originalFrom(table);
     if (table === "show_dates") {
       const orig = chain.insert.bind(chain);
       chain.insert = (p: unknown) => { insertedPayloads.push(p); return (orig as (x: unknown) => ReturnType<typeof orig>)(p); };
     }
     return chain;
-  };
+  });
 
   await handle(authReq(), deps);
   assertEquals(insertedPayloads.length >= 1, true);
@@ -656,14 +656,14 @@ Deno.test("airtable-poll: record without Date field is held, not inserted", asyn
   const { deps } = makeHappyDeps({ airtableRecords: records });
 
   const originalFrom = bindFakeFrom(deps.admin);
-  (deps.admin as any).from = (table: string) => {
+  setFakeFrom(deps.admin, (table: string) => {
     const chain = originalFrom(table);
     if (table === "show_dates") {
       const orig = chain.insert.bind(chain);
       chain.insert = (p: unknown) => { insertedPayloads.push(p); return (orig as (x: unknown) => ReturnType<typeof orig>)(p); };
     }
     return chain;
-  };
+  });
 
   const res = await handle(authReq(), deps);
   assertEquals(res.status, 200);
@@ -692,14 +692,14 @@ Deno.test("airtable-poll: unresolvable show → record held, held count in total
   const { deps } = makeHappyDeps({ airtableRecords: records });
 
   const originalFrom = bindFakeFrom(deps.admin);
-  (deps.admin as any).from = (table: string) => {
+  setFakeFrom(deps.admin, (table: string) => {
     const chain = originalFrom(table);
     if (table === "show_dates") {
       const orig = chain.insert.bind(chain);
       chain.insert = (p: unknown) => { insertedPayloads.push(p); return (orig as (x: unknown) => ReturnType<typeof orig>)(p); };
     }
     return chain;
-  };
+  });
 
   const res = await handle(authReq(), deps);
   assertEquals(res.status, 200);
@@ -722,7 +722,7 @@ Deno.test("airtable-poll: new date → invokeFunction('open-offer-tier', { show_
   // Override show_dates to make insert().select().single() return a new id.
   let insertCalled = false;
   const originalFrom = bindFakeFrom(deps.admin);
-  (deps.admin as any).from = (table: string) => {
+  setFakeFrom(deps.admin, (table: string) => {
     const chain = originalFrom(table);
     if (table === "show_dates") {
       const originalInsert = chain.insert.bind(chain);
@@ -730,14 +730,13 @@ Deno.test("airtable-poll: new date → invokeFunction('open-offer-tier', { show_
         insertCalled = true;
         const insertChain = (originalInsert as (x: unknown) => ReturnType<typeof originalInsert>)(payload);
         // Override single() to return our fake inserted id
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        (insertChain as any).single = () =>
+        insertChain.single = () =>
           Promise.resolve({ data: { id: "new-date-uuid-001" }, error: null });
         return insertChain;
       };
     }
     return chain;
-  };
+  });
 
   const res = await handle(authReq(), deps);
   assertEquals(res.status, 200);
@@ -758,8 +757,8 @@ Deno.test("airtable-poll: new date → invokeFunction('open-offer-tier', { show_
   // invokeFunction should have been called with open-offer-tier
   const offerCalls = invokeCalls.filter((c) => c.name === "open-offer-tier");
   assertEquals(offerCalls.length, 1);
-  assertEquals((offerCalls[0].body as any).show_date_id, "new-date-uuid-001");
-  assertEquals((offerCalls[0].body as any).tier, 1);
+  assertEquals((offerCalls[0].body as Record<string, unknown>).show_date_id, "new-date-uuid-001");
+  assertEquals((offerCalls[0].body as Record<string, unknown>).tier, 1);
   assertEquals(body.tiers_opened, 1);
 });
 
@@ -776,7 +775,7 @@ Deno.test("airtable-poll: existing date → update only, NO invokeFunction call"
   });
 
   const originalFrom = bindFakeFrom(deps.admin);
-  (deps.admin as any).from = (table: string) => {
+  setFakeFrom(deps.admin, (table: string) => {
     const chain = originalFrom(table);
     if (table === "show_dates") {
       const originalUpdate = chain.update.bind(chain);
@@ -786,7 +785,7 @@ Deno.test("airtable-poll: existing date → update only, NO invokeFunction call"
       };
     }
     return chain;
-  };
+  });
 
   const res = await handle(authReq(), deps);
   assertEquals(res.status, 200);
@@ -875,7 +874,7 @@ Deno.test("airtable-poll: one invokeFunction rejection → others still run, sti
 
   // Patch insert to return distinct UUIDs per airtable_record_id
   const originalFrom = bindFakeFrom(deps.admin);
-  (deps.admin as any).from = (table: string) => {
+  setFakeFrom(deps.admin, (table: string) => {
     const chain = originalFrom(table);
     if (table === "show_dates") {
       const originalInsert = chain.insert.bind(chain);
@@ -885,14 +884,13 @@ Deno.test("airtable-poll: one invokeFunction rejection → others still run, sti
         insertOrder.push(airtableId);
         const uuid = recordToUuid[airtableId] ?? "uuid-unknown";
         const insertChain = (originalInsert as (x: unknown) => ReturnType<typeof originalInsert>)(payload);
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        (insertChain as any).single = () =>
+        insertChain.single = () =>
           Promise.resolve({ data: { id: uuid }, error: null });
         return insertChain;
       };
     }
     return chain;
-  };
+  });
 
   // Override invokeFunction: reject for uuid-batch-002, succeed for others
   let invokeCallCount = 0;
@@ -958,14 +956,14 @@ Deno.test("airtable-poll: Airtable API error → run still 200, org skipped (org
   });
 
   const originalFrom = bindFakeFrom(deps.admin);
-  (deps.admin as any).from = (table: string) => {
+  setFakeFrom(deps.admin, (table: string) => {
     const chain = originalFrom(table);
     if (table === "airtable_sync_log") {
       const orig = chain.insert.bind(chain);
       chain.insert = (p: unknown) => { syncLogInserts.push(p); return (orig as (x: unknown) => ReturnType<typeof orig>)(p); };
     }
     return chain;
-  };
+  });
 
   // syncOrg throws on the Airtable error; handle() catches + continues → still 200 (no throw out of handle()).
   const res = await handle(authReq(), deps);
@@ -1005,14 +1003,14 @@ Deno.test("airtable-poll: inserts a success row (with org_id + zero counts) into
   });
 
   const originalFrom = bindFakeFrom(deps.admin);
-  (deps.admin as any).from = (table: string) => {
+  setFakeFrom(deps.admin, (table: string) => {
     const chain = originalFrom(table);
     if (table === "airtable_sync_log") {
       const orig = chain.insert.bind(chain);
       chain.insert = (p: unknown) => { syncLogInserts.push(p); return (orig as (x: unknown) => ReturnType<typeof orig>)(p); };
     }
     return chain;
-  };
+  });
 
   const res = await handle(authReq(), deps);
   assertEquals(res.status, 200);
@@ -1054,14 +1052,14 @@ Deno.test("airtable-poll: inserts an error row (with org_id) into airtable_sync_
   });
 
   const originalFrom = bindFakeFrom(deps.admin);
-  (deps.admin as any).from = (table: string) => {
+  setFakeFrom(deps.admin, (table: string) => {
     const chain = originalFrom(table);
     if (table === "airtable_sync_log") {
       const orig = chain.insert.bind(chain);
       chain.insert = (p: unknown) => { syncLogInserts.push(p); return (orig as (x: unknown) => ReturnType<typeof orig>)(p); };
     }
     return chain;
-  };
+  });
 
   const res = await handle(authReq(), deps);
   // run continues past the failed org
@@ -1100,14 +1098,14 @@ Deno.test("airtable-poll: synced_at uses deps.now() (fixed to 2026-06-01T12:00:0
   });
 
   const originalFrom = bindFakeFrom(deps.admin);
-  (deps.admin as any).from = (table: string) => {
+  setFakeFrom(deps.admin, (table: string) => {
     const chain = originalFrom(table);
     if (table === "airtable_sync_log") {
       const orig = chain.insert.bind(chain);
       chain.insert = (p: unknown) => { syncLogInserts.push(p); return (orig as (x: unknown) => ReturnType<typeof orig>)(p); };
     }
     return chain;
-  };
+  });
 
   await handle(authReq(), deps);
   assertEquals(syncLogInserts.length, 1);
@@ -1132,7 +1130,7 @@ Deno.test("airtable-poll: unlinked city is non-fatal — record still imports wi
   const { deps } = makeHappyDeps({ airtableRecords: records });
 
   const originalFrom = bindFakeFrom(deps.admin);
-  (deps.admin as any).from = (table: string) => {
+  setFakeFrom(deps.admin, (table: string) => {
     const chain = originalFrom(table);
     if (table === "show_dates") {
       const originalInsert = chain.insert.bind(chain);
@@ -1141,7 +1139,7 @@ Deno.test("airtable-poll: unlinked city is non-fatal — record still imports wi
         insertedPayloads.push(p);
         const insertChain = (originalInsert as (x: unknown) => ReturnType<typeof originalInsert>)(payload);
         // Give the inserted row a stable id so it counts as a new date.
-        (insertChain as any).single = () => Promise.resolve({ data: { id: `sd-${p.airtable_record_id}` }, error: null });
+        insertChain.single = () => Promise.resolve({ data: { id: `sd-${p.airtable_record_id}` }, error: null });
         return insertChain;
       };
     }
@@ -1150,7 +1148,7 @@ Deno.test("airtable-poll: unlinked city is non-fatal — record still imports wi
       chain.insert = (p: unknown) => { recordLogInserts.push(p); return (orig as (x: unknown) => ReturnType<typeof orig>)(p); };
     }
     return chain;
-  };
+  });
 
   const res = await handle(authReq(), deps);
   assertEquals(res.status, 200);
@@ -1208,14 +1206,14 @@ Deno.test("airtable-poll: a newly-held record notifies org admins (one notificat
   });
 
   const originalFrom = bindFakeFrom(deps.admin);
-  (deps.admin as any).from = (table: string) => {
+  setFakeFrom(deps.admin, (table: string) => {
     const chain = originalFrom(table);
     if (table === "notifications") {
       const orig = chain.insert.bind(chain);
       chain.insert = (p: unknown) => { notificationInserts.push(p); return (orig as (x: unknown) => ReturnType<typeof orig>)(p); };
     }
     return chain;
-  };
+  });
 
   const res = await handle(authReq(), deps);
   assertEquals(res.status, 200);
@@ -1309,20 +1307,18 @@ Deno.test("airtable-poll: auto_open_tier1=false → no open-offer-tier invocatio
 
   // Give the inserted new date a real id so, WITHOUT the flow gate, tier 1 WOULD open.
   const originalFrom = bindFakeFrom(deps.admin);
-  // deno-lint-ignore no-explicit-any
-  (deps.admin as any).from = (table: string) => {
+  setFakeFrom(deps.admin, (table: string) => {
     const chain = originalFrom(table);
     if (table === "show_dates") {
       const originalInsert = chain.insert.bind(chain);
       chain.insert = (payload: unknown) => {
         const insertChain = (originalInsert as (x: unknown) => ReturnType<typeof originalInsert>)(payload);
-        // deno-lint-ignore no-explicit-any
-        (insertChain as any).single = () => Promise.resolve({ data: { id: "new-date-uuid-001" }, error: null });
+        insertChain.single = () => Promise.resolve({ data: { id: "new-date-uuid-001" }, error: null });
         return insertChain;
       };
     }
     return chain;
-  };
+  });
 
   const res = await handle(authReq(), deps);
   assertEquals(res.status, 200);
@@ -1365,20 +1361,18 @@ Deno.test("airtable-poll: artist_acceptance=false (direct booking) → no open-o
 
   // Give the inserted new date a real id so, WITHOUT the flow gate, tier 1 WOULD open.
   const originalFrom = bindFakeFrom(deps.admin);
-  // deno-lint-ignore no-explicit-any
-  (deps.admin as any).from = (table: string) => {
+  setFakeFrom(deps.admin, (table: string) => {
     const chain = originalFrom(table);
     if (table === "show_dates") {
       const originalInsert = chain.insert.bind(chain);
       chain.insert = (payload: unknown) => {
         const insertChain = (originalInsert as (x: unknown) => ReturnType<typeof originalInsert>)(payload);
-        // deno-lint-ignore no-explicit-any
-        (insertChain as any).single = () => Promise.resolve({ data: { id: "new-date-uuid-002" }, error: null });
+        insertChain.single = () => Promise.resolve({ data: { id: "new-date-uuid-002" }, error: null });
         return insertChain;
       };
     }
     return chain;
-  };
+  });
 
   const res = await handle(authReq(), deps);
   assertEquals(res.status, 200);

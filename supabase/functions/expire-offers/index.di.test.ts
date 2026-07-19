@@ -1,5 +1,5 @@
 import { assertEquals, assertExists } from "../_shared/test-asserts.ts";
-import { bindFakeFrom, makeFakeDeps, makeRequest } from "../_shared/testing.ts";
+import { bindFakeFrom, makeFakeDeps, makeRequest, setFakeFrom } from "../_shared/testing.ts";
 import { handle } from "./index.ts";
 
 function assertStringIncludes(actual: string, expected: string, msg?: string): void {
@@ -784,21 +784,21 @@ Deno.test("expire-offers: reads slot capacity from shows columns and stamps noti
   });
 
   // Capture the notifications insert payload.
-  let notifPayload: any = null;
+  const notifInserts: Array<Array<Record<string, unknown>>> = [];
   const originalFrom = bindFakeFrom(deps.admin);
-  (deps.admin as any).from = (t: string) => {
+  setFakeFrom(deps.admin, (t: string) => {
     const chain = originalFrom(t);
     if (t === "notifications") {
       const orig = chain.insert.bind(chain);
-      chain.insert = (p: unknown) => { notifPayload = p; return (orig as (x: unknown) => ReturnType<typeof orig>)(p); };
+      chain.insert = (p: unknown) => { notifInserts.push(p as Array<Record<string, unknown>>); return (orig as (x: unknown) => ReturnType<typeof orig>)(p); };
     }
     return chain;
-  };
+  });
 
   const res = await handle(makeRequest({ headers: { "X-Cron-Secret": "s" } }), deps);
   assertEquals(res.status, 200);
-  assertExists(notifPayload); // escalation fired
-  assertEquals(notifPayload[0].org_id, ORG); // notification carries the show_date's org_id
+  assertExists(notifInserts[0]); // escalation fired
+  assertEquals(notifInserts[0][0].org_id, ORG); // notification carries the show_date's org_id
 });
 
 // ─── M2 slot-math corrections ────────────────────────────────────────────────

@@ -7,7 +7,7 @@
  * outcome vocabulary is imported_new / updated / held_unresolved (no "skipped").
  */
 import { assertEquals } from "../_shared/test-asserts.ts";
-import { bindFakeFrom, makeFakeDeps, makeRequest } from "../_shared/testing.ts";
+import { bindFakeFrom, type FakeChain, makeFakeDeps, makeRequest, setFakeFrom } from "../_shared/testing.ts";
 import { handle } from "./index.ts";
 
 const ORG = "00000000-0000-0000-0000-0000000000c1";
@@ -78,7 +78,7 @@ Deno.test("airtable-poll contract: key-linked records import; missing-date / unl
 
   const { deps } = seededDeps(records);
   const originalFrom = bindFakeFrom(deps.admin);
-  (deps.admin as any).from = (table: string) => {
+  setFakeFrom(deps.admin, (table: string) => {
     const chain = originalFrom(table);
     if (table === "show_dates") {
       const originalInsert = chain.insert.bind(chain);
@@ -86,12 +86,12 @@ Deno.test("airtable-poll contract: key-linked records import; missing-date / unl
         const p = payload as Record<string, unknown>;
         insertedPayloads.push(p);
         const insertChain = (originalInsert as (x: unknown) => ReturnType<typeof originalInsert>)(payload);
-        (insertChain as any).single = () => Promise.resolve({ data: { id: `sd-${p.airtable_record_id}` }, error: null });
+        insertChain.single = () => Promise.resolve({ data: { id: `sd-${p.airtable_record_id}` }, error: null });
         return insertChain;
       };
     }
     return chain;
-  };
+  });
 
   const res = await handle(authReq(), deps);
   assertEquals(res.status, 200);
@@ -142,7 +142,7 @@ function seededDepsWithExisting(
 function captureShowDateUpdates(deps: ReturnType<typeof makeFakeDeps>["deps"]): unknown[] {
   const updatePayloads: unknown[] = [];
   const originalFrom = bindFakeFrom(deps.admin);
-  (deps.admin as any).from = (table: string) => {
+  setFakeFrom(deps.admin, (table: string) => {
     const chain = originalFrom(table);
     if (table === "show_dates") {
       const originalUpdate = chain.update.bind(chain);
@@ -152,7 +152,7 @@ function captureShowDateUpdates(deps: ReturnType<typeof makeFakeDeps>["deps"]): 
       };
     }
     return chain;
-  };
+  });
   return updatePayloads;
 }
 
@@ -214,19 +214,19 @@ const SESSION_FIELD_MAP = { date: "Date", sub_program: "SubProgram", city: "City
 function captureShowDateInserts(deps: ReturnType<typeof makeFakeDeps>["deps"]): unknown[] {
   const inserts: unknown[] = [];
   const originalFrom = bindFakeFrom(deps.admin);
-  (deps.admin as any).from = (table: string) => {
+  setFakeFrom(deps.admin, (table: string) => {
     const chain = originalFrom(table);
     if (table === "show_dates") {
       const originalInsert = chain.insert.bind(chain);
       chain.insert = (payload: unknown) => {
         inserts.push(payload);
-        const insertChain = (originalInsert as (x: unknown) => any)(payload);
-        (insertChain as any).single = () => Promise.resolve({ data: { id: "sd-new" }, error: null });
+        const insertChain = originalInsert(payload);
+        insertChain.single = () => Promise.resolve({ data: { id: "sd-new" }, error: null });
         return insertChain;
       };
     }
     return chain;
-  };
+  });
   return inserts;
 }
 
@@ -288,23 +288,23 @@ function captureWrites(deps: ReturnType<typeof makeFakeDeps>["deps"]) {
   const showUpdates: unknown[] = [];
   const showDateInserts: unknown[] = [];
   const originalFrom = bindFakeFrom(deps.admin);
-  (deps.admin as any).from = (table: string) => {
+  setFakeFrom(deps.admin, (table: string) => {
     const chain = originalFrom(table);
     if (table === "shows") {
       const origUpdate = chain.update.bind(chain);
-      chain.update = (payload: unknown) => { showUpdates.push(payload); return (origUpdate as (x: unknown) => any)(payload); };
+      chain.update = (payload: unknown) => { showUpdates.push(payload); return origUpdate(payload); };
     }
     if (table === "show_dates") {
       const origInsert = chain.insert.bind(chain);
       chain.insert = (payload: unknown) => {
         showDateInserts.push(payload);
-        const insertChain = (origInsert as (x: unknown) => any)(payload);
-        (insertChain as any).single = () => Promise.resolve({ data: { id: "sd-new" }, error: null });
+        const insertChain = origInsert(payload);
+        insertChain.single = () => Promise.resolve({ data: { id: "sd-new" }, error: null });
         return insertChain;
       };
     }
     return chain;
-  };
+  });
   return { showUpdates, showDateInserts };
 }
 
@@ -359,7 +359,7 @@ Deno.test("airtable-poll grain: re-key DB error → record held, no show_dates i
 
   const showDateInserts: unknown[] = [];
   const originalFrom = bindFakeFrom(deps.admin);
-  (deps.admin as any).from = (table: string) => {
+  setFakeFrom(deps.admin, (table: string) => {
     const chain = originalFrom(table);
     if (table === "shows") {
       // Force the re-key update to return a DB error.
@@ -370,20 +370,20 @@ Deno.test("airtable-poll grain: re-key DB error → record held, no show_dates i
               resolve({ data: null, error: { message: "db error" } }),
           }),
         };
-        return errChain as any;
+        return errChain as unknown as FakeChain;
       };
     }
     if (table === "show_dates") {
       const origInsert = chain.insert.bind(chain);
       chain.insert = (payload: unknown) => {
         showDateInserts.push(payload);
-        const insertChain = (origInsert as (x: unknown) => any)(payload);
-        (insertChain as any).single = () => Promise.resolve({ data: { id: "sd-new" }, error: null });
+        const insertChain = origInsert(payload);
+        insertChain.single = () => Promise.resolve({ data: { id: "sd-new" }, error: null });
         return insertChain;
       };
     }
     return chain;
-  };
+  });
 
   const res = await handle(authReq(), deps);
   assertEquals(res.status, 200);
@@ -401,7 +401,7 @@ Deno.test("airtable-poll grain: program write-through DB error → record still 
 
   const showDateInserts: unknown[] = [];
   const originalFrom = bindFakeFrom(deps.admin);
-  (deps.admin as any).from = (table: string) => {
+  setFakeFrom(deps.admin, (table: string) => {
     const chain = originalFrom(table);
     if (table === "shows") {
       // Force the program write-through update to return a DB error.
@@ -410,19 +410,19 @@ Deno.test("airtable-poll grain: program write-through DB error → record still 
           then: (resolve: (v: { data: null; error: { message: string } }) => void) =>
             resolve({ data: null, error: { message: "db error" } }),
         }),
-      }) as any;
+      }) as unknown as FakeChain;
     }
     if (table === "show_dates") {
       const origInsert = chain.insert.bind(chain);
       chain.insert = (payload: unknown) => {
         showDateInserts.push(payload);
-        const insertChain = (origInsert as (x: unknown) => any)(payload);
-        (insertChain as any).single = () => Promise.resolve({ data: { id: "sd-new" }, error: null });
+        const insertChain = origInsert(payload);
+        insertChain.single = () => Promise.resolve({ data: { id: "sd-new" }, error: null });
         return insertChain;
       };
     }
     return chain;
-  };
+  });
 
   const res = await handle(authReq(), deps);
   assertEquals(res.status, 200);

@@ -5,7 +5,7 @@
  * the summary log + per-record logs are written.
  */
 import { assertEquals } from "../_shared/test-asserts.ts";
-import { makeFakeDeps, makeRequest } from "../_shared/testing.ts";
+import { bindFakeFrom, makeFakeDeps, makeRequest, setFakeFrom } from "../_shared/testing.ts";
 import { handle } from "./index.ts";
 
 const ORG = "00000000-0000-0000-0000-0000000000a1";
@@ -63,14 +63,13 @@ function seededDeps() {
   });
 
   // Capture inserts for show_dates / record-log / sync-log.
-  // deno-lint-ignore no-explicit-any
-  const originalFrom = (deps.admin.from as any).bind(deps.admin);
-  // deno-lint-ignore no-explicit-any
-  (deps.admin as any).from = (table: string) => {
+  const originalFrom = bindFakeFrom(deps.admin);
+  setFakeFrom(deps.admin, (table: string) => {
     const chain = originalFrom(table);
     if (table === "show_dates") {
       const orig = chain.insert.bind(chain);
-      chain.insert = (p: Record<string, unknown>) => {
+      chain.insert = (payload: unknown) => {
+        const p = payload as Record<string, unknown>;
         showDateInserts.push(p);
         const c = orig(p);
         // give the inserted row a stable id for offer opening
@@ -84,10 +83,10 @@ function seededDeps() {
     }
     if (table === "airtable_sync_log") {
       const orig = chain.insert.bind(chain);
-      chain.insert = (p: Record<string, unknown>) => { syncLogInserts.push(p); return orig(p); };
+      chain.insert = (p: unknown) => { syncLogInserts.push(p as Record<string, unknown>); return orig(p); };
     }
     return chain;
-  };
+  });
 
   return { deps, invokeCalls, showDateInserts, recordLogInserts, syncLogInserts };
 }
