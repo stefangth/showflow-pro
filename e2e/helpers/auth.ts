@@ -36,7 +36,18 @@ export async function loginAsAndAwaitDashboard(
  * proof-of-roles signal.
  */
 export async function navViaSidebar(page: Page, linkName: RegExp): Promise<void> {
-  const link = page.getByRole("link", { name: linkName });
+  // Nav links grow a numeric badge once useNavCounts resolves — the accessible
+  // name flips from e.g. "Shows & Bookings" to "Shows & Bookings 1". An
+  // end-anchored pattern that matched during the visibility check can stop
+  // matching by the time click() re-resolves the locator, which then waits out
+  // the whole test timeout for a name that never comes back (chronic CI flake;
+  // the failure screenshot shows the link visible WITH its badge). Tolerate an
+  // optional trailing count so both states match.
+  const namePattern = new RegExp(
+    linkName.source.replace(/\$$/, String.raw`(\s+\d+)?$`),
+    linkName.flags,
+  );
+  const link = page.getByRole("link", { name: namePattern });
   await expect(link).toBeVisible({ timeout: 15_000 });
   await link.click();
 }
