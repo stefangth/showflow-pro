@@ -75,7 +75,7 @@ const sampleDate2 = {
 /**
  * Default (empty) mocks for the three tables added by the hard-skill-requirement
  * step (step 5). Tests that exercise cases where eligible.length > 0 must supply
- * these or the fallback `{} as any` branch makes `.select` blow up, since the new
+ * these or the fallback `{}` fallback branch makes `.select` blow up, since the new
  * fetches run unconditionally once there is at least one eligible date.
  */
 function emptySkillRequirementTables(table: string) {
@@ -84,21 +84,21 @@ function emptySkillRequirementTables(table: string) {
       select: vi.fn().mockReturnValue({
         eq: vi.fn().mockResolvedValue({ data: [], error: null }),
       }),
-    } as any;
+    };
   }
   if (table === "show_required_skills") {
     return {
       select: vi.fn().mockReturnValue({
         in: vi.fn().mockResolvedValue({ data: [], error: null }),
       }),
-    } as any;
+    };
   }
   if (table === "show_date_required_skills") {
     return {
       select: vi.fn().mockReturnValue({
         in: vi.fn().mockResolvedValue({ data: [], error: null }),
       }),
-    } as any;
+    };
   }
   return undefined;
 }
@@ -109,17 +109,17 @@ describe("useArtistEligibleDates", () => {
   });
 
   it("returns empty array when artist has no cast memberships", async () => {
-    vi.mocked(useMyArtist).mockReturnValue({ data: { id: ARTIST_ID } } as any);
+    vi.mocked(useMyArtist).mockReturnValue(partialMock<ReturnType<typeof useMyArtist>>({ data: partialMock<Artist>({ id: ARTIST_ID }) }));
 
-    vi.mocked(supabase.from).mockImplementation((table: string) => {
+    mockFrom((table) => {
       if (table === "cast_members") {
         return {
           select: vi.fn().mockReturnValue({
             eq: vi.fn().mockResolvedValue({ data: [], error: null }),
           }),
-        } as any;
+        };
       }
-      return {} as any;
+      return {};
     });
 
     const { result } = renderHook(() => useArtistEligibleDates(), {
@@ -132,9 +132,9 @@ describe("useArtistEligibleDates", () => {
   });
 
   it("returns eligible dates matching show+city eligibility", async () => {
-    vi.mocked(useMyArtist).mockReturnValue({ data: { id: ARTIST_ID } } as any);
+    vi.mocked(useMyArtist).mockReturnValue(partialMock<ReturnType<typeof useMyArtist>>({ data: partialMock<Artist>({ id: ARTIST_ID }) }));
 
-    vi.mocked(supabase.from).mockImplementation((table: string) => {
+    mockFrom((table) => {
       if (table === "cast_members") {
         return {
           select: vi.fn().mockReturnValue({
@@ -143,7 +143,7 @@ describe("useArtistEligibleDates", () => {
               error: null,
             }),
           }),
-        } as any;
+        };
       }
       if (table === "show_cast_eligibility") {
         return {
@@ -153,14 +153,14 @@ describe("useArtistEligibleDates", () => {
               error: null,
             }),
           }),
-        } as any;
+        };
       }
       if (table === "show_date_cast_eligibility") {
         return {
           select: vi.fn().mockReturnValue({
             in: vi.fn().mockResolvedValue({ data: [], error: null }),
           }),
-        } as any;
+        };
       }
       if (table === "show_dates") {
         return {
@@ -174,9 +174,9 @@ describe("useArtistEligibleDates", () => {
               }),
             }),
           }),
-        } as any;
+        };
       }
-      return emptySkillRequirementTables(table) ?? ({} as any);
+      return emptySkillRequirementTables(table) ?? ({});
     });
 
     const { result } = renderHook(() => useArtistEligibleDates(), {
@@ -190,9 +190,9 @@ describe("useArtistEligibleDates", () => {
   });
 
   it("returns eligible dates from per-date overrides", async () => {
-    vi.mocked(useMyArtist).mockReturnValue({ data: { id: ARTIST_ID } } as any);
+    vi.mocked(useMyArtist).mockReturnValue(partialMock<ReturnType<typeof useMyArtist>>({ data: partialMock<Artist>({ id: ARTIST_ID }) }));
 
-    vi.mocked(supabase.from).mockImplementation((table: string) => {
+    mockFrom((table) => {
       if (table === "cast_members") {
         return {
           select: vi.fn().mockReturnValue({
@@ -201,7 +201,7 @@ describe("useArtistEligibleDates", () => {
               error: null,
             }),
           }),
-        } as any;
+        };
       }
       if (table === "show_cast_eligibility") {
         // No show+city match
@@ -209,7 +209,7 @@ describe("useArtistEligibleDates", () => {
           select: vi.fn().mockReturnValue({
             in: vi.fn().mockResolvedValue({ data: [], error: null }),
           }),
-        } as any;
+        };
       }
       if (table === "show_date_cast_eligibility") {
         // Per-date override for SHOW_DATE_ID
@@ -220,7 +220,7 @@ describe("useArtistEligibleDates", () => {
               error: null,
             }),
           }),
-        } as any;
+        };
       }
       if (table === "show_dates") {
         return {
@@ -234,9 +234,9 @@ describe("useArtistEligibleDates", () => {
               }),
             }),
           }),
-        } as any;
+        };
       }
-      return emptySkillRequirementTables(table) ?? ({} as any);
+      return emptySkillRequirementTables(table) ?? ({});
     });
 
     const { result } = renderHook(() => useArtistEligibleDates(), {
@@ -254,30 +254,30 @@ describe("useArtistEligibleDates", () => {
   // to referenceLabel and silently fell back to the show label instead of the org's chosen
   // custom reference (e.g. a production's internal booking code).
   it("includes the custom jsonb column in the show_dates select and passes it through", async () => {
-    vi.mocked(useMyArtist).mockReturnValue({ data: { id: ARTIST_ID } } as any);
+    vi.mocked(useMyArtist).mockReturnValue(partialMock<ReturnType<typeof useMyArtist>>({ data: partialMock<Artist>({ id: ARTIST_ID }) }));
 
     let selectArg = "";
-    vi.mocked(supabase.from).mockImplementation((table: string) => {
+    mockFrom((table) => {
       if (table === "cast_members") {
         return {
           select: vi.fn().mockReturnValue({
             eq: vi.fn().mockResolvedValue({ data: [{ cast_id: CAST_ID }], error: null }),
           }),
-        } as any;
+        };
       }
       if (table === "show_cast_eligibility") {
         return {
           select: vi.fn().mockReturnValue({
             in: vi.fn().mockResolvedValue({ data: [{ show_id: SHOW_ID, city_id: CITY_ID }], error: null }),
           }),
-        } as any;
+        };
       }
       if (table === "show_date_cast_eligibility") {
         return {
           select: vi.fn().mockReturnValue({
             in: vi.fn().mockResolvedValue({ data: [], error: null }),
           }),
-        } as any;
+        };
       }
       if (table === "show_dates") {
         return {
@@ -294,9 +294,9 @@ describe("useArtistEligibleDates", () => {
               }),
             };
           }),
-        } as any;
+        };
       }
-      return emptySkillRequirementTables(table) ?? ({} as any);
+      return emptySkillRequirementTables(table) ?? ({});
     });
 
     const { result } = renderHook(() => useArtistEligibleDates(), {
@@ -311,29 +311,29 @@ describe("useArtistEligibleDates", () => {
   });
 
   it("hides a date whose show-level required skill the artist lacks", async () => {
-    vi.mocked(useMyArtist).mockReturnValue({ data: { id: ARTIST_ID } } as any);
+    vi.mocked(useMyArtist).mockReturnValue(partialMock<ReturnType<typeof useMyArtist>>({ data: partialMock<Artist>({ id: ARTIST_ID }) }));
 
-    vi.mocked(supabase.from).mockImplementation((table: string) => {
+    mockFrom((table) => {
       if (table === "cast_members") {
         return {
           select: vi.fn().mockReturnValue({
             eq: vi.fn().mockResolvedValue({ data: [{ cast_id: CAST_ID }], error: null }),
           }),
-        } as any;
+        };
       }
       if (table === "show_cast_eligibility") {
         return {
           select: vi.fn().mockReturnValue({
             in: vi.fn().mockResolvedValue({ data: [{ show_id: SHOW_ID, city_id: CITY_ID }], error: null }),
           }),
-        } as any;
+        };
       }
       if (table === "show_date_cast_eligibility") {
         return {
           select: vi.fn().mockReturnValue({
             in: vi.fn().mockResolvedValue({ data: [], error: null }),
           }),
-        } as any;
+        };
       }
       if (table === "show_dates") {
         return {
@@ -344,7 +344,7 @@ describe("useArtistEligibleDates", () => {
               }),
             }),
           }),
-        } as any;
+        };
       }
       // Artist has no skills at all, so the s-judge requirement is unmet.
       if (table === "artist_skills") {
@@ -352,7 +352,7 @@ describe("useArtistEligibleDates", () => {
           select: vi.fn().mockReturnValue({
             eq: vi.fn().mockResolvedValue({ data: [], error: null }),
           }),
-        } as any;
+        };
       }
       if (table === "show_required_skills") {
         return {
@@ -362,16 +362,16 @@ describe("useArtistEligibleDates", () => {
               error: null,
             }),
           }),
-        } as any;
+        };
       }
       if (table === "show_date_required_skills") {
         return {
           select: vi.fn().mockReturnValue({
             in: vi.fn().mockResolvedValue({ data: [], error: null }),
           }),
-        } as any;
+        };
       }
-      return {} as any;
+      return {};
     });
 
     const { result } = renderHook(() => useArtistEligibleDates(), {
@@ -387,29 +387,29 @@ describe("useArtistEligibleDates", () => {
   });
 
   it("keeps a date visible when the artist holds the required show-level skill", async () => {
-    vi.mocked(useMyArtist).mockReturnValue({ data: { id: ARTIST_ID } } as any);
+    vi.mocked(useMyArtist).mockReturnValue(partialMock<ReturnType<typeof useMyArtist>>({ data: partialMock<Artist>({ id: ARTIST_ID }) }));
 
-    vi.mocked(supabase.from).mockImplementation((table: string) => {
+    mockFrom((table) => {
       if (table === "cast_members") {
         return {
           select: vi.fn().mockReturnValue({
             eq: vi.fn().mockResolvedValue({ data: [{ cast_id: CAST_ID }], error: null }),
           }),
-        } as any;
+        };
       }
       if (table === "show_cast_eligibility") {
         return {
           select: vi.fn().mockReturnValue({
             in: vi.fn().mockResolvedValue({ data: [{ show_id: SHOW_ID, city_id: CITY_ID }], error: null }),
           }),
-        } as any;
+        };
       }
       if (table === "show_date_cast_eligibility") {
         return {
           select: vi.fn().mockReturnValue({
             in: vi.fn().mockResolvedValue({ data: [], error: null }),
           }),
-        } as any;
+        };
       }
       if (table === "show_dates") {
         return {
@@ -420,7 +420,7 @@ describe("useArtistEligibleDates", () => {
               }),
             }),
           }),
-        } as any;
+        };
       }
       // Artist holds the required skill this time, so the date stays eligible.
       if (table === "artist_skills") {
@@ -428,7 +428,7 @@ describe("useArtistEligibleDates", () => {
           select: vi.fn().mockReturnValue({
             eq: vi.fn().mockResolvedValue({ data: [{ skill_id: SKILL_JUDGE }], error: null }),
           }),
-        } as any;
+        };
       }
       if (table === "show_required_skills") {
         return {
@@ -438,16 +438,16 @@ describe("useArtistEligibleDates", () => {
               error: null,
             }),
           }),
-        } as any;
+        };
       }
       if (table === "show_date_required_skills") {
         return {
           select: vi.fn().mockReturnValue({
             in: vi.fn().mockResolvedValue({ data: [], error: null }),
           }),
-        } as any;
+        };
       }
-      return {} as any;
+      return {};
     });
 
     const { result } = renderHook(() => useArtistEligibleDates(), {
@@ -461,15 +461,15 @@ describe("useArtistEligibleDates", () => {
   });
 
   it("hides only the specific date carrying an unmet date-level requirement", async () => {
-    vi.mocked(useMyArtist).mockReturnValue({ data: { id: ARTIST_ID } } as any);
+    vi.mocked(useMyArtist).mockReturnValue(partialMock<ReturnType<typeof useMyArtist>>({ data: partialMock<Artist>({ id: ARTIST_ID }) }));
 
-    vi.mocked(supabase.from).mockImplementation((table: string) => {
+    mockFrom((table) => {
       if (table === "cast_members") {
         return {
           select: vi.fn().mockReturnValue({
             eq: vi.fn().mockResolvedValue({ data: [{ cast_id: CAST_ID }], error: null }),
           }),
-        } as any;
+        };
       }
       if (table === "show_cast_eligibility") {
         // Both dates belong to the same show+city, so both are eligible via cast.
@@ -477,14 +477,14 @@ describe("useArtistEligibleDates", () => {
           select: vi.fn().mockReturnValue({
             in: vi.fn().mockResolvedValue({ data: [{ show_id: SHOW_ID, city_id: CITY_ID }], error: null }),
           }),
-        } as any;
+        };
       }
       if (table === "show_date_cast_eligibility") {
         return {
           select: vi.fn().mockReturnValue({
             in: vi.fn().mockResolvedValue({ data: [], error: null }),
           }),
-        } as any;
+        };
       }
       if (table === "show_dates") {
         return {
@@ -495,14 +495,14 @@ describe("useArtistEligibleDates", () => {
               }),
             }),
           }),
-        } as any;
+        };
       }
       if (table === "artist_skills") {
         return {
           select: vi.fn().mockReturnValue({
             eq: vi.fn().mockResolvedValue({ data: [], error: null }),
           }),
-        } as any;
+        };
       }
       // The show itself requires nothing.
       if (table === "show_required_skills") {
@@ -510,7 +510,7 @@ describe("useArtistEligibleDates", () => {
           select: vi.fn().mockReturnValue({
             in: vi.fn().mockResolvedValue({ data: [], error: null }),
           }),
-        } as any;
+        };
       }
       // Only the second date carries a per-date requirement the artist lacks.
       if (table === "show_date_required_skills") {
@@ -521,9 +521,9 @@ describe("useArtistEligibleDates", () => {
               error: null,
             }),
           }),
-        } as any;
+        };
       }
-      return {} as any;
+      return {};
     });
 
     const { result } = renderHook(() => useArtistEligibleDates(), {
@@ -538,29 +538,29 @@ describe("useArtistEligibleDates", () => {
   });
 
   it("keeps all dates when no skill requirements exist anywhere (regression)", async () => {
-    vi.mocked(useMyArtist).mockReturnValue({ data: { id: ARTIST_ID } } as any);
+    vi.mocked(useMyArtist).mockReturnValue(partialMock<ReturnType<typeof useMyArtist>>({ data: partialMock<Artist>({ id: ARTIST_ID }) }));
 
-    vi.mocked(supabase.from).mockImplementation((table: string) => {
+    mockFrom((table) => {
       if (table === "cast_members") {
         return {
           select: vi.fn().mockReturnValue({
             eq: vi.fn().mockResolvedValue({ data: [{ cast_id: CAST_ID }], error: null }),
           }),
-        } as any;
+        };
       }
       if (table === "show_cast_eligibility") {
         return {
           select: vi.fn().mockReturnValue({
             in: vi.fn().mockResolvedValue({ data: [{ show_id: SHOW_ID, city_id: CITY_ID }], error: null }),
           }),
-        } as any;
+        };
       }
       if (table === "show_date_cast_eligibility") {
         return {
           select: vi.fn().mockReturnValue({
             in: vi.fn().mockResolvedValue({ data: [], error: null }),
           }),
-        } as any;
+        };
       }
       if (table === "show_dates") {
         return {
@@ -571,10 +571,10 @@ describe("useArtistEligibleDates", () => {
               }),
             }),
           }),
-        } as any;
+        };
       }
       // No requirement rows anywhere, and the artist has no skills either.
-      return emptySkillRequirementTables(table) ?? ({} as any);
+      return emptySkillRequirementTables(table) ?? ({});
     });
 
     const { result } = renderHook(() => useArtistEligibleDates(), {
@@ -590,7 +590,7 @@ describe("useArtistEligibleDates", () => {
   });
 
   it("is disabled when artist is not loaded yet", () => {
-    vi.mocked(useMyArtist).mockReturnValue({ data: undefined } as any);
+    vi.mocked(useMyArtist).mockReturnValue(partialMock<ReturnType<typeof useMyArtist>>({ data: undefined }));
 
     const { result } = renderHook(() => useArtistEligibleDates(), {
       wrapper: makeWrapper(),
@@ -600,9 +600,9 @@ describe("useArtistEligibleDates", () => {
   });
 
   it("throws on query error", async () => {
-    vi.mocked(useMyArtist).mockReturnValue({ data: { id: ARTIST_ID } } as any);
+    vi.mocked(useMyArtist).mockReturnValue(partialMock<ReturnType<typeof useMyArtist>>({ data: partialMock<Artist>({ id: ARTIST_ID }) }));
 
-    vi.mocked(supabase.from).mockImplementation((table: string) => {
+    mockFrom((table) => {
       if (table === "cast_members") {
         return {
           select: vi.fn().mockReturnValue({
@@ -611,21 +611,21 @@ describe("useArtistEligibleDates", () => {
               error: null,
             }),
           }),
-        } as any;
+        };
       }
       if (table === "show_cast_eligibility") {
         return {
           select: vi.fn().mockReturnValue({
             in: vi.fn().mockResolvedValue({ data: [], error: null }),
           }),
-        } as any;
+        };
       }
       if (table === "show_date_cast_eligibility") {
         return {
           select: vi.fn().mockReturnValue({
             in: vi.fn().mockResolvedValue({ data: [], error: null }),
           }),
-        } as any;
+        };
       }
       if (table === "show_dates") {
         return {
@@ -639,9 +639,9 @@ describe("useArtistEligibleDates", () => {
               }),
             }),
           }),
-        } as any;
+        };
       }
-      return {} as any;
+      return {};
     });
 
     const { result } = renderHook(() => useArtistEligibleDates(), {
