@@ -4,6 +4,8 @@ import React from "react";
 import { MemoryRouter, Route, Routes } from "react-router-dom";
 import { ProtectedRoute } from "./ProtectedRoute";
 import { ROUTE_FEATURES } from "@/config/app.config";
+import { partialMock } from "@/test/castHelpers";
+import type { User } from "@supabase/supabase-js";
 
 // ── Mocks ─────────────────────────────────────────────────────────────────
 
@@ -39,7 +41,7 @@ function renderProtected(
   {
     requiredRoles,
     path = "/protected",
-  }: { requiredRoles?: string[]; path?: string } = {}
+  }: { requiredRoles?: React.ComponentProps<typeof ProtectedRoute>["requiredRoles"]; path?: string } = {}
 ) {
   return render(
     React.createElement(
@@ -63,7 +65,7 @@ function renderProtected(
             element: React.createElement(
               ProtectedRoute,
               {
-                requiredRoles: requiredRoles as any,
+                requiredRoles,
                 children: React.createElement("div", null, "Protected Content"),
               }
             ),
@@ -77,23 +79,23 @@ function renderProtected(
 describe("ProtectedRoute", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    vi.mocked(useEditorConfig).mockReturnValue({
+    vi.mocked(useEditorConfig).mockReturnValue(partialMock<ReturnType<typeof useEditorConfig>>({
       isEditorMode: false,
       pageAccess: {},
-    } as any);
-    vi.mocked(useEntitlements).mockReturnValue({
+    }));
+    vi.mocked(useEntitlements).mockReturnValue(partialMock<ReturnType<typeof useEntitlements>>({
       features: new Set(),
       isLoading: false,
-    } as any);
+    }));
   });
 
   it("shows loading spinner when auth is loading", () => {
-    vi.mocked(useAuth).mockReturnValue({
+    vi.mocked(useAuth).mockReturnValue(partialMock<ReturnType<typeof useAuth>>({
       user: null,
       loading: true,
       roles: [],
       currentOrg: null,
-    } as any);
+    }));
 
     renderProtected();
 
@@ -101,12 +103,12 @@ describe("ProtectedRoute", () => {
   });
 
   it("redirects to /login when user is not authenticated", () => {
-    vi.mocked(useAuth).mockReturnValue({
+    vi.mocked(useAuth).mockReturnValue(partialMock<ReturnType<typeof useAuth>>({
       user: null,
       loading: false,
       roles: [],
       currentOrg: null,
-    } as any);
+    }));
 
     renderProtected();
 
@@ -114,12 +116,12 @@ describe("ProtectedRoute", () => {
   });
 
   it("shows the no-org screen when the user has no active org", () => {
-    vi.mocked(useAuth).mockReturnValue({
-      user: { id: "user-1" } as any,
+    vi.mocked(useAuth).mockReturnValue(partialMock<ReturnType<typeof useAuth>>({
+      user: partialMock<User>({ id: "user-1" }),
       loading: false,
       roles: [],
       currentOrg: null,
-    } as any);
+    }));
 
     renderProtected();
 
@@ -127,12 +129,12 @@ describe("ProtectedRoute", () => {
   });
 
   it("shows the suspended screen when the active org is suspended", () => {
-    vi.mocked(useAuth).mockReturnValue({
-      user: { id: "user-1" } as any,
+    vi.mocked(useAuth).mockReturnValue(partialMock<ReturnType<typeof useAuth>>({
+      user: partialMock<User>({ id: "user-1" }),
       loading: false,
       roles: ["producer"],
       currentOrg: { ...ACTIVE_ORG, status: "suspended" },
-    } as any);
+    }));
 
     renderProtected({ requiredRoles: ["producer"] });
 
@@ -140,12 +142,12 @@ describe("ProtectedRoute", () => {
   });
 
   it("renders children for an authenticated org member with no role restriction", () => {
-    vi.mocked(useAuth).mockReturnValue({
-      user: { id: "user-1" } as any,
+    vi.mocked(useAuth).mockReturnValue(partialMock<ReturnType<typeof useAuth>>({
+      user: partialMock<User>({ id: "user-1" }),
       loading: false,
       roles: ["artist"],
       currentOrg: ACTIVE_ORG,
-    } as any);
+    }));
 
     renderProtected();
 
@@ -153,12 +155,12 @@ describe("ProtectedRoute", () => {
   });
 
   it("renders children for user with matching required role", () => {
-    vi.mocked(useAuth).mockReturnValue({
-      user: { id: "user-1" } as any,
+    vi.mocked(useAuth).mockReturnValue(partialMock<ReturnType<typeof useAuth>>({
+      user: partialMock<User>({ id: "user-1" }),
       loading: false,
       roles: ["producer"],
       currentOrg: ACTIVE_ORG,
-    } as any);
+    }));
 
     renderProtected({ requiredRoles: ["admin", "producer"] });
 
@@ -166,12 +168,12 @@ describe("ProtectedRoute", () => {
   });
 
   it("redirects to /dashboard when user lacks required role", () => {
-    vi.mocked(useAuth).mockReturnValue({
-      user: { id: "user-1" } as any,
+    vi.mocked(useAuth).mockReturnValue(partialMock<ReturnType<typeof useAuth>>({
+      user: partialMock<User>({ id: "user-1" }),
       loading: false,
       roles: ["artist"],
       currentOrg: ACTIVE_ORG,
-    } as any);
+    }));
 
     renderProtected({ requiredRoles: ["admin"] });
 
@@ -179,16 +181,16 @@ describe("ProtectedRoute", () => {
   });
 
   it("allows admin in editor mode to bypass role restrictions", () => {
-    vi.mocked(useAuth).mockReturnValue({
-      user: { id: "user-admin" } as any,
+    vi.mocked(useAuth).mockReturnValue(partialMock<ReturnType<typeof useAuth>>({
+      user: partialMock<User>({ id: "user-admin" }),
       loading: false,
       roles: ["admin"],
       currentOrg: ACTIVE_ORG,
-    } as any);
-    vi.mocked(useEditorConfig).mockReturnValue({
+    }));
+    vi.mocked(useEditorConfig).mockReturnValue(partialMock<ReturnType<typeof useEditorConfig>>({
       isEditorMode: true,
       pageAccess: {},
-    } as any);
+    }));
 
     renderProtected({ requiredRoles: ["producer"] });
 
@@ -196,16 +198,16 @@ describe("ProtectedRoute", () => {
   });
 
   it("does NOT allow non-admin in editor mode to bypass role restrictions", () => {
-    vi.mocked(useAuth).mockReturnValue({
-      user: { id: "user-1" } as any,
+    vi.mocked(useAuth).mockReturnValue(partialMock<ReturnType<typeof useAuth>>({
+      user: partialMock<User>({ id: "user-1" }),
       loading: false,
       roles: ["artist"],
       currentOrg: ACTIVE_ORG,
-    } as any);
-    vi.mocked(useEditorConfig).mockReturnValue({
+    }));
+    vi.mocked(useEditorConfig).mockReturnValue(partialMock<ReturnType<typeof useEditorConfig>>({
       isEditorMode: true,
       pageAccess: {},
-    } as any);
+    }));
 
     renderProtected({ requiredRoles: ["admin"] });
 
@@ -223,17 +225,17 @@ describe("ProtectedRoute", () => {
     });
 
     it("shows FeatureDisabledScreen when the route's feature is disabled for the org", () => {
-      vi.mocked(useAuth).mockReturnValue({
-        user: { id: "user-1" } as any,
+      vi.mocked(useAuth).mockReturnValue(partialMock<ReturnType<typeof useAuth>>({
+        user: partialMock<User>({ id: "user-1" }),
         loading: false,
         roles: ["producer"],
         currentOrg: ACTIVE_ORG,
         isSuperAdmin: false,
-      } as any);
-      vi.mocked(useEntitlements).mockReturnValue({
+      }));
+      vi.mocked(useEntitlements).mockReturnValue(partialMock<ReturnType<typeof useEntitlements>>({
         features: new Set(),
         isLoading: false,
-      } as any);
+      }));
 
       renderProtected();
 
@@ -242,17 +244,17 @@ describe("ProtectedRoute", () => {
     });
 
     it("renders children when the feature is enabled for the org", () => {
-      vi.mocked(useAuth).mockReturnValue({
-        user: { id: "user-1" } as any,
+      vi.mocked(useAuth).mockReturnValue(partialMock<ReturnType<typeof useAuth>>({
+        user: partialMock<User>({ id: "user-1" }),
         loading: false,
         roles: ["producer"],
         currentOrg: ACTIVE_ORG,
         isSuperAdmin: false,
-      } as any);
-      vi.mocked(useEntitlements).mockReturnValue({
+      }));
+      vi.mocked(useEntitlements).mockReturnValue(partialMock<ReturnType<typeof useEntitlements>>({
         features: new Set(["hire_orders"]),
         isLoading: false,
-      } as any);
+      }));
 
       renderProtected();
 
@@ -260,17 +262,17 @@ describe("ProtectedRoute", () => {
     });
 
     it("lets a super-admin bypass the feature gate", () => {
-      vi.mocked(useAuth).mockReturnValue({
-        user: { id: "user-1" } as any,
+      vi.mocked(useAuth).mockReturnValue(partialMock<ReturnType<typeof useAuth>>({
+        user: partialMock<User>({ id: "user-1" }),
         loading: false,
         roles: [],
         currentOrg: ACTIVE_ORG,
         isSuperAdmin: true,
-      } as any);
-      vi.mocked(useEntitlements).mockReturnValue({
+      }));
+      vi.mocked(useEntitlements).mockReturnValue(partialMock<ReturnType<typeof useEntitlements>>({
         features: new Set(),
         isLoading: false,
-      } as any);
+      }));
 
       renderProtected();
 
@@ -278,17 +280,17 @@ describe("ProtectedRoute", () => {
     });
 
     it("does not flash FeatureDisabledScreen while entitlements are still loading", () => {
-      vi.mocked(useAuth).mockReturnValue({
-        user: { id: "user-1" } as any,
+      vi.mocked(useAuth).mockReturnValue(partialMock<ReturnType<typeof useAuth>>({
+        user: partialMock<User>({ id: "user-1" }),
         loading: false,
         roles: ["producer"],
         currentOrg: ACTIVE_ORG,
         isSuperAdmin: false,
-      } as any);
-      vi.mocked(useEntitlements).mockReturnValue({
+      }));
+      vi.mocked(useEntitlements).mockReturnValue(partialMock<ReturnType<typeof useEntitlements>>({
         features: new Set(),
         isLoading: true,
-      } as any);
+      }));
 
       renderProtected();
 
