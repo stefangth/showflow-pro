@@ -773,14 +773,14 @@ git commit -m "route frontend test stubs through typed cast helpers"
 **Interfaces:**
 - Consumes: `asTypedClient` from `_shared/testing.ts` (Task 12), `TypedClient` from `deps.ts`.
 
-- [ ] **Step 1: Sweep, same three idioms as Task 13** — fake clients/deps through `asTypedClient` / `makeFakeDeps` options; row fixtures through explicit local interfaces or `Partial<>` casts of the row types the functions now export/declare; never per-site `as any`. Run per function: `deno test --allow-all supabase/functions/airtable-poll/ 2>&1 | tail -2` → pass, then the rest.
-- [ ] **Step 1b: Also remove the 18 `eslint-disable`-suppressed `any` sites in these files** — they never fired warnings so they are NOT in Appendix B: `airtable-poll/index.di.test.ts:733,888,1312,1319,1368,1375`, `index.custom.test.ts:46,51,55,68,73`, `index.regression.test.ts:66,68`, `index.linked.test.ts:69`, `admin-list-users/index.di.test.ts:34`, `send-transactional-email/index.di.test.ts:633,642` (line numbers as of plan time — re-grep with `grep -rn "eslint-disable.*no-explicit-any" supabase/functions/`). For each: delete the suppression comment AND fix the `any` underneath with the same idioms. Verify: that grep returns 0 matches under `supabase/functions/` test files.
-- [ ] **Step 2: Verify zero `any` repo-wide**
+- [x] **Step 1: Sweep, same three idioms as Task 13** — fake clients/deps through `asTypedClient` / `makeFakeDeps` options; row fixtures through explicit local interfaces or `Partial<>` casts of the row types the functions now export/declare; never per-site `as any`. Run per function: `deno test --allow-all supabase/functions/airtable-poll/ 2>&1 | tail -2` → pass, then the rest.
+- [x] **Step 1b: Also remove the 18 `eslint-disable`-suppressed `any` sites in these files** — they never fired warnings so they are NOT in Appendix B: `airtable-poll/index.di.test.ts:733,888,1312,1319,1368,1375`, `index.custom.test.ts:46,51,55,68,73`, `index.regression.test.ts:66,68`, `index.linked.test.ts:69`, `admin-list-users/index.di.test.ts:34`, `send-transactional-email/index.di.test.ts:633,642` (line numbers as of plan time — re-grep with `grep -rn "eslint-disable.*no-explicit-any" supabase/functions/`). For each: delete the suppression comment AND fix the `any` underneath with the same idioms. Verify: that grep returns 0 matches under `supabase/functions/` test files.
+- [x] **Step 2: Verify zero `any` repo-wide**
 
 Run: `npm run lint 2>&1 | tail -1`
 Expected: `✖ 0 problems` (nothing left: this is the last warning-producing category).
 
-- [ ] **Step 3: Full gate**: `npx vitest run` → 1164 pass; `deno test --allow-all supabase/functions/` → pass; `npx tsc -p tsconfig.app.json --noEmit` → exit 0.
+- [x] **Step 3: Full gate**: `npx vitest run` → 1164 pass; `deno test --allow-all supabase/functions/` → pass; `npx tsc -p tsconfig.app.json --noEmit` → exit 0.
 - [x] **Step 4: Commit**
 
 ```bash

@@ -21,7 +21,7 @@
  */
 
 import { assertEquals, assertExists } from "../_shared/test-asserts.ts";
-import { bindFakeFrom, makeFakeDeps, makeRequest } from "../_shared/testing.ts";
+import { bindFakeFrom, makeFakeDeps, makeRequest, setFakeFrom } from "../_shared/testing.ts";
 import { handle } from "./index.ts";
 
 // ── Shared helpers ────────────────────────────────────────────────────────────
@@ -951,23 +951,23 @@ Deno.test("tier-at-risk-watcher DI: reads slot capacity from shows columns and s
   });
 
   // Capture the notifications insert payload.
-  let notifPayload: any = null;
+  const notifInserts: Array<Array<Record<string, unknown>>> = [];
   const originalFrom = bindFakeFrom(deps.admin);
-  (deps.admin as any).from = (t: string) => {
+  setFakeFrom(deps.admin, (t: string) => {
     const chain = originalFrom(t);
     if (t === "notifications") {
       const orig = chain.insert.bind(chain);
-      chain.insert = (p: unknown) => { notifPayload = p; return (orig as (x: unknown) => ReturnType<typeof orig>)(p); };
+      chain.insert = (p: unknown) => { notifInserts.push(p as Array<Record<string, unknown>>); return (orig as (x: unknown) => ReturnType<typeof orig>)(p); };
     }
     return chain;
-  };
+  });
 
   const res = await handle(makeRequest({ headers: CRON_OK }), deps);
   assertEquals(res.status, 200);
   const body = await res.json();
   assertEquals(body.at_risk_count, 1, "tier is at-risk");
-  assertExists(notifPayload, "notification must be inserted");
-  assertEquals(notifPayload[0].org_id, ORG, "notification must carry the show_date's org_id");
+  assertExists(notifInserts[0], "notification must be inserted");
+  assertEquals(notifInserts[0][0].org_id, ORG, "notification must carry the show_date's org_id");
 });
 
 // ── Part 8: M2 slot-math corrections ──────────────────────────────────────────

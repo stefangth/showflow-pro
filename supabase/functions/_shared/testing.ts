@@ -13,6 +13,14 @@ export function bindFakeFrom(client: unknown): (table: string) => FakeChain {
   return c.from.bind(c);
 }
 
+/** Install a replacement `from` on a fake client sitting behind the typed
+ *  facade — the write-side counterpart to `bindFakeFrom`. Tests use it to wrap
+ *  the original `from` and instrument specific tables; the single sanctioned
+ *  cast lives here, never at the call site. */
+export function setFakeFrom(client: unknown, from: (table: string) => unknown): void {
+  (client as { from: (table: string) => unknown }).from = from;
+}
+
 export interface RecordedCall { table: string; method: string; args: unknown[]; }
 
 /** A single seed: the result returned for every query to a table (backward-compatible form).

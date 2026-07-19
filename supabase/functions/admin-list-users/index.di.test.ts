@@ -31,8 +31,7 @@ function adminRequest(): Request {
 
 // The FakeClientOptions.usersById type only declares `{ email?: string }` but the
 // fake's listUsers() spreads all provided fields onto the returned user object.
-// deno-lint-ignore no-explicit-any
-type UsersById = Record<string, any>;
+type UsersById = Record<string, { email?: string } & Record<string, unknown>>;
 
 // Build deps where u1 is a valid admin caller. usersById feeds listUsers();
 // org_memberships feeds both requireRole (the admin-caller check) and the role map.

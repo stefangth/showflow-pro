@@ -3,7 +3,7 @@ import { renderHook, waitFor } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import React from "react";
 import { useArtistEligibleDates } from "./useArtistEligibleDates";
-import { asQueryResult, partialMock } from "@/test/castHelpers";
+import { partialMock } from "@/test/castHelpers";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "@/integrations/supabase/types";
 import type { Artist } from "@/types";

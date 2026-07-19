@@ -1,5 +1,5 @@
 import { assertEquals } from "../_shared/test-asserts.ts";
-import { bindFakeFrom, makeFakeDeps, makeRequest } from "../_shared/testing.ts";
+import { bindFakeFrom, makeFakeDeps, makeRequest, setFakeFrom } from "../_shared/testing.ts";
 import { handle } from "./index.ts";
 
 const ORG = "00000000-0000-0000-0000-0000000000c1";
@@ -43,38 +43,33 @@ const authReq = () => makeRequest({ method: "POST", headers: { "X-Cron-Secret": 
 /** Capture show_dates insert payloads via the documented from() override trick. */
 function captureInserts(deps: ReturnType<typeof seededDeps>["deps"], captured: unknown[]) {
   const originalFrom = bindFakeFrom(deps.admin);
-  // deno-lint-ignore no-explicit-any
-  (deps.admin as any).from = (table: string) => {
+  setFakeFrom(deps.admin, (table: string) => {
     const chain = originalFrom(table);
     if (table === "show_dates") {
       const originalInsert = chain.insert.bind(chain);
-      // deno-lint-ignore no-explicit-any
-      (chain as any).insert = (payload: unknown) => {
+      chain.insert = (payload: unknown) => {
         captured.push(payload);
         const insertChain = (originalInsert as (x: unknown) => ReturnType<typeof originalInsert>)(payload);
-        // deno-lint-ignore no-explicit-any
-        (insertChain as any).single = () =>
+        insertChain.single = () =>
           Promise.resolve({ data: { id: `sd-${(payload as Record<string, unknown>).airtable_record_id}` }, error: null });
         return insertChain;
       };
     }
     return chain;
-  };
+  });
 }
 
 /** Capture show_dates update payloads via the same from() override trick. */
 function captureUpdates(deps: ReturnType<typeof seededDeps>["deps"], captured: unknown[]) {
   const originalFrom = bindFakeFrom(deps.admin);
-  // deno-lint-ignore no-explicit-any
-  (deps.admin as any).from = (table: string) => {
+  setFakeFrom(deps.admin, (table: string) => {
     const chain = originalFrom(table);
     if (table === "show_dates") {
       const originalUpdate = chain.update.bind(chain);
-      // deno-lint-ignore no-explicit-any
-      (chain as any).update = (payload: unknown) => { captured.push(payload); return originalUpdate(payload as Record<string, unknown>); };
+      chain.update = (payload: unknown) => { captured.push(payload); return originalUpdate(payload as Record<string, unknown>); };
     }
     return chain;
-  };
+  });
 }
 
 Deno.test("airtable-poll custom: writes coerced custom bag on insert, omits missing/bad keys", async () => {

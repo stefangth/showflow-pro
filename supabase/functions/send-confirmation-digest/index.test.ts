@@ -18,6 +18,16 @@ const cronReq = () => makeRequest({ headers: { "X-Cron-Secret": "secret123" } })
 const A_USER = "aaaa1111-0000-0000-0000-000000000000";
 const B_USER = "bbbb2222-0000-0000-0000-000000000000";
 
+/** The slice of the send-transactional-email body these tests assert on. */
+interface DigestEmailBody {
+  recipient_email: string;
+  templateData: {
+    bookings: unknown[];
+    scheduleChanges: Array<{ changes: string }>;
+    cancellations: Array<{ reason: string | null }>;
+  };
+}
+
 function digestDeps() {
   return makeFakeDeps({
     now: NOW,
@@ -61,13 +71,13 @@ Deno.test("folds confirmations + schedule changes into one email per artist", as
   const emails = invokeCalls.filter((c) => c.name === "send-transactional-email");
   assertEquals(emails.length, 2);
 
-  const aEmail = emails.find((e) => (e.body as any).recipient_email === "ada@login.com")!.body as any;
+  const aEmail = emails.find((e) => (e.body as DigestEmailBody).recipient_email === "ada@login.com")!.body as DigestEmailBody;
   assertEquals(aEmail.templateData.bookings.length, 1); // the confirmation
   assertEquals(aEmail.templateData.scheduleChanges.length, 1); // the retime
   assertEquals(aEmail.templateData.scheduleChanges[0].changes, "Session 1 now 20:00 (was 19:00)");
   assertEquals(aEmail.templateData.cancellations.length, 0);
 
-  const bEmail = emails.find((e) => (e.body as any).recipient_email === "ben@login.com")!.body as any;
+  const bEmail = emails.find((e) => (e.body as DigestEmailBody).recipient_email === "ben@login.com")!.body as DigestEmailBody;
   assertEquals(bEmail.templateData.bookings.length, 0);
   assertEquals(bEmail.templateData.cancellations.length, 1);
   assertEquals(bEmail.templateData.cancellations[0].reason, "Venue flooded");
@@ -75,7 +85,7 @@ Deno.test("folds confirmations + schedule changes into one email per artist", as
   // In-app notifications inserted for both registered artists.
   const notifInsert = calls.find((c) => c.table === "notifications" && c.method === "insert");
   assertEquals(!!notifInsert, true);
-  const rows = (notifInsert!.args[0] as any[]);
+  const rows = (notifInsert!.args[0] as Array<Record<string, unknown>>);
   assertEquals(rows.length, 2);
   assertEquals(rows.every((r) => r.type === "schedule_change"), true);
 
@@ -141,5 +151,5 @@ Deno.test("an org with only schedule changes (no confirmations) is still process
   assertEquals(res.status, 200);
   const emails = invokeCalls.filter((c) => c.name === "send-transactional-email");
   assertEquals(emails.length, 1);
-  assertEquals((emails[0].body as any).recipient_email, "ben@login.com");
+  assertEquals((emails[0].body as DigestEmailBody).recipient_email, "ben@login.com");
 });
