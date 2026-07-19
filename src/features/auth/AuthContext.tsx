@@ -7,6 +7,7 @@ import { fetchMyMemberships, type Membership, type Organization } from '@/data/o
 import { fetchIsSuperAdmin, fetchAllOrgs } from '@/data/platform';
 import { rolesForOrg, effectiveHasRole, effectiveOrgs } from './orgRoles';
 import { REALTIME_INVALIDATIONS } from './realtimeInvalidations';
+import { resolveSessionIdentity, type SessionIdentityHandlers } from './sessionState';
 
 export interface ViewAsUser {
   id: string;
@@ -103,36 +104,40 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   };
 
+  /** Reset all identity + impersonation state for a signed-out session. */
+  const clearIdentity = () => {
+    setMemberships([]);
+    setCurrentOrgId(null);
+    setIsSuperAdmin(false);
+    setAllOrgs([]);
+    localStorage.removeItem('showflow.currentOrg');
+    setViewAsRole(null);
+    setViewAsUserState(null);
+    localStorage.removeItem('showflow_editor_mode');
+  };
+
   useEffect(() => {
+    // session/user are set synchronously (plain setters are lock-safe). Only
+    // identity loading is deferred/awaited inside resolveSessionIdentity, which
+    // clears `loading` after identity settles so route guards never see
+    // loading:false with un-loaded identity (isSuperAdmin/currentOrg). See
+    // sessionState.ts.
+    const identityHandlers: SessionIdentityHandlers = { loadIdentity, clearIdentity, setLoading };
+
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (_event, session) => {
+      (_event, session) => {
         setSession(session);
         setUser(session?.user ?? null);
-        if (session?.user) {
-          setTimeout(() => {
-            loadIdentity(session.user.id);
-          }, 0);
-        } else {
-          setMemberships([]);
-          setCurrentOrgId(null);
-          setIsSuperAdmin(false);
-          setAllOrgs([]);
-          localStorage.removeItem('showflow.currentOrg');
-          setViewAsRole(null);
-          setViewAsUserState(null);
-          localStorage.removeItem('showflow_editor_mode');
-        }
-        setLoading(false);
+        // Defer only the identity load: it issues Supabase calls, which can
+        // deadlock if run synchronously inside the auth state-change callback.
+        setTimeout(() => { void resolveSessionIdentity(session, identityHandlers); }, 0);
       }
     );
 
     supabase.auth.getSession().then(({ data: { session } }) => {
       setSession(session);
       setUser(session?.user ?? null);
-      if (session?.user) {
-        loadIdentity(session.user.id);
-      }
-      setLoading(false);
+      void resolveSessionIdentity(session, identityHandlers);
     });
 
     return () => subscription.unsubscribe();
