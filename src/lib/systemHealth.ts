@@ -10,10 +10,16 @@ export interface EdgeFnMetric {
   fn: string;
   invocations: number;
   errors: number;            // count of 5xx responses
+  rejected: number;          // count of 4xx responses
+  /** Exact status-code histogram, e.g. { "200": 3, "401": 48 }. Drives the panel's
+   *  "what went wrong" chips, which a bare error count cannot answer. */
+  byStatus: Record<string, number>;
   p50Ms: number | null;
   p95Ms: number | null;
   lastInvokedAt: string | null;
   lastStatus: number | null;
+  /** Most recent non-2xx outcome in the window, or null if every call succeeded. */
+  lastFailure: { status: number; at: string } | null;
   recent: EdgeFnOutcome[];
 }
 

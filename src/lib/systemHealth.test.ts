@@ -6,8 +6,8 @@ import {
 
 const BUDGET: HealthBudget = { p95Ms: 12000, errorRate: 0.05 };
 const metric = (over: Partial<EdgeFnMetric> = {}): EdgeFnMetric => ({
-  fn: "f", invocations: 10, errors: 0, p50Ms: 100, p95Ms: 200,
-  lastInvokedAt: "2026-06-24T00:00:00Z", lastStatus: 200, recent: [], ...over,
+  fn: "f", invocations: 10, errors: 0, rejected: 0, byStatus: {}, p50Ms: 100, p95Ms: 200,
+  lastInvokedAt: "2026-06-24T00:00:00Z", lastStatus: 200, lastFailure: null, recent: [], ...over,
 });
 
 describe("deriveJobStatus", () => {

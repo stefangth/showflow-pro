@@ -163,3 +163,57 @@ Deno.test("p95 uses nearest-rank, not the max, when N is a multiple of 20", asyn
   assertEquals(poll.p95Ms, 19000);
   assertEquals(poll.p50Ms, 10000);
 });
+
+const TIER_ID = "af3fd77d-cba2-4026-b5db-34d04de20ef5";
+
+Deno.test("counts 4xx as rejected, 5xx as errors, and breaks down by status", async () => {
+  const rows = {
+    result: [
+      { function_id: TIER_ID, status_code: 401, execution_time_ms: 300, timestamp: "2026-07-21T09:00:00Z" },
+      { function_id: TIER_ID, status_code: 401, execution_time_ms: 310, timestamp: "2026-07-21T09:05:00Z" },
+      { function_id: TIER_ID, status_code: 500, execution_time_ms: 900, timestamp: "2026-07-21T09:10:00Z" },
+      { function_id: TIER_ID, status_code: 200, execution_time_ms: 400, timestamp: "2026-07-21T09:15:00Z" },
+    ],
+  };
+  const fnList = [{ id: TIER_ID, slug: "open-offer-tier", name: "open-offer-tier" }];
+  const { deps } = superDeps(routeFetch(rows, fnList));
+  const res = await handle(superReq(), deps);
+  assertEquals(res.status, 200);
+
+  const body = await res.json() as { functions: Array<Record<string, unknown>> };
+  const fn = body.functions[0];
+  assertEquals(fn.fn, "open-offer-tier");
+  assertEquals(fn.invocations, 4);
+  assertEquals(fn.rejected, 2);
+  assertEquals(fn.errors, 1);
+  assertEquals(fn.byStatus, { "200": 1, "401": 2, "500": 1 });
+});
+
+Deno.test("lastFailure reports the most recent non-2xx, not the most recent call", async () => {
+  const rows = {
+    result: [
+      { function_id: TIER_ID, status_code: 401, execution_time_ms: 300, timestamp: "2026-07-21T09:00:00Z" },
+      { function_id: TIER_ID, status_code: 200, execution_time_ms: 400, timestamp: "2026-07-21T09:20:00Z" },
+    ],
+  };
+  const fnList = [{ id: TIER_ID, slug: "open-offer-tier", name: "open-offer-tier" }];
+  const { deps } = superDeps(routeFetch(rows, fnList));
+  const res = await handle(superReq(), deps);
+
+  const body = await res.json() as { functions: Array<Record<string, unknown>> };
+  assertEquals(body.functions[0].lastFailure, { status: 401, at: "2026-07-21T09:00:00Z" });
+});
+
+Deno.test("lastFailure is null when every call succeeded", async () => {
+  const rows = {
+    result: [
+      { function_id: TIER_ID, status_code: 200, execution_time_ms: 400, timestamp: "2026-07-21T09:00:00Z" },
+    ],
+  };
+  const fnList = [{ id: TIER_ID, slug: "open-offer-tier", name: "open-offer-tier" }];
+  const { deps } = superDeps(routeFetch(rows, fnList));
+  const res = await handle(superReq(), deps);
+
+  const body = await res.json() as { functions: Array<Record<string, unknown>> };
+  assertEquals(body.functions[0].lastFailure, null);
+});

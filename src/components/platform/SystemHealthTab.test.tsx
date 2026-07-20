@@ -34,8 +34,8 @@ describe("SystemHealthTab", () => {
       consecutive_failures: 0, last_run_at: "2026-06-24T09:45:00Z", recent_failures: [],
     }]);
     vi.spyOn(platform, "fetchEdgeFnMetrics").mockResolvedValue([{
-      fn: "cron-health-watcher", invocations: 10, errors: 0, p50Ms: 4000, p95Ms: 18000,
-      lastInvokedAt: "2026-06-24T09:45:00Z", lastStatus: 200, recent: [],
+      fn: "cron-health-watcher", invocations: 10, errors: 0, rejected: 0, byStatus: {}, p50Ms: 4000, p95Ms: 18000,
+      lastInvokedAt: "2026-06-24T09:45:00Z", lastStatus: 200, lastFailure: null, recent: [],
     }]);
     vi.spyOn(platform, "fetchEmailHealth").mockResolvedValue(emailFixture);
     renderWithProviders(<SystemHealthTab />);

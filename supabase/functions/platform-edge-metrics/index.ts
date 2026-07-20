@@ -6,9 +6,11 @@ const MAX_WINDOW_MIN = 1440; // Management API caps the analytics range at 24h.
 
 /** Mirrors src/lib/systemHealth.ts EdgeFnMetric — keep in sync. */
 interface EdgeFnMetric {
-  fn: string; invocations: number; errors: number;
+  fn: string; invocations: number; errors: number; rejected: number;
+  byStatus: Record<string, number>;
   p50Ms: number | null; p95Ms: number | null;
   lastInvokedAt: string | null; lastStatus: number | null;
+  lastFailure: { status: number; at: string } | null;
   recent: { status: number; ms: number }[];
 }
 interface RawRow { function_id?: string; status_code?: number; execution_time_ms?: number; timestamp?: string }
@@ -60,14 +62,29 @@ function aggregate(rows: RawRow[], idToSlug: Map<string, string>): EdgeFnMetric[
       lat.length === 0 ? null : lat[Math.min(lat.length - 1, Math.max(0, Math.ceil((p / 100) * lat.length) - 1))];
     const sorted = [...rs].sort((a, b) => String(b.timestamp).localeCompare(String(a.timestamp)));
     const last = sorted[0];
+    const byStatus: Record<string, number> = {};
+    for (const r of rs) {
+      const key = String(Number(r.status_code) || 0);
+      byStatus[key] = (byStatus[key] ?? 0) + 1;
+    }
+    // Most recent non-2xx. `sorted` is already newest-first, so the first match wins.
+    // A 4xx counts here as much as a 5xx: to a caller, a rejection and a crash are
+    // both "the call did not do its job".
+    const failure = sorted.find((r) => Number(r.status_code) >= 400);
     return {
       fn,
       invocations: rs.length,
       errors: rs.filter((r) => Number(r.status_code) >= 500).length,
+      rejected: rs.filter((r) => {
+        const s = Number(r.status_code);
+        return s >= 400 && s < 500;
+      }).length,
+      byStatus,
       p50Ms: pct(50),
       p95Ms: pct(95),
       lastInvokedAt: last?.timestamp ?? null,
       lastStatus: last?.status_code ?? null,
+      lastFailure: failure ? { status: Number(failure.status_code), at: String(failure.timestamp) } : null,
       recent: sorted.slice(0, 20).map((r) => ({ status: Number(r.status_code) || 0, ms: Number(r.execution_time_ms) || 0 })),
     };
   });
