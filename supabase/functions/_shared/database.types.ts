@@ -985,6 +985,8 @@ export type Database = {
       }
       hire_orders: {
         Row: {
+          agent_email: string | null
+          agent_name: string | null
           artist_id: string | null
           booking_id: string | null
           countersign_mode: string | null
@@ -1007,6 +1009,8 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          agent_email?: string | null
+          agent_name?: string | null
           artist_id?: string | null
           booking_id?: string | null
           countersign_mode?: string | null
@@ -1029,6 +1033,8 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          agent_email?: string | null
+          agent_name?: string | null
           artist_id?: string | null
           booking_id?: string | null
           countersign_mode?: string | null
