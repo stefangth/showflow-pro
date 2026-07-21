@@ -149,6 +149,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     // computeAuthReady), so the moment `user` changes they show the spinner
     // until identity for that user is loaded — no flag to sequence, no flash.
     const identityHandlers: SessionIdentityHandlers = { loadIdentity, clearIdentity, markResolved };
+    // Flipped on unmount so the bootstrap's retry/backoff loop stops touching
+    // state against a dead provider (StrictMode double-invoke, HMR, test remounts).
+    let cancelled = false;
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       (_event, session) => {
@@ -172,14 +175,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setUser(session?.user ?? null);
       },
       resolve: (session) => resolveSessionIdentity(session, identityHandlers),
+      // Abandon the bootstrap once the provider unmounts, or once any real
+      // resolution has landed (e.g. an onAuthStateChange event beat the retries)
+      // — so a slow attempt can neither clobber a good signed-in state nor keep
+      // retrying. onAuthStateChange stays subscribed, so the app self-heals the
+      // moment the lock frees.
+      shouldAbort: () => cancelled || resolvedRef.current,
       // Last resort when the session can never be established (a deadlocked
       // cross-tab auth lock): settle as signed-out so the guards leave the
-      // spinner instead of hanging forever. No-op once any real resolution has
-      // landed (e.g. an onAuthStateChange event beat the retries), so a good
-      // signed-in state is never clobbered; onAuthStateChange stays subscribed,
-      // so the app self-heals the moment the lock frees.
+      // spinner instead of hanging forever. bootstrapAuth only calls this when
+      // shouldAbort() is false, so it never clobbers an already-resolved state.
       degrade: () => {
-        if (resolvedRef.current) return;
         setSession(null);
         setUser(null);
         clearIdentity();
@@ -187,7 +193,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       },
     });
 
-    return () => subscription.unsubscribe();
+    return () => {
+      cancelled = true;
+      subscription.unsubscribe();
+    };
   }, []);
 
   // Realtime: global cache invalidation for all queried tables

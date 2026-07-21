@@ -85,4 +85,38 @@ describe("bootstrapAuth", () => {
     expect(deps.resolve).not.toHaveBeenCalled();
     expect(deps.degrade).toHaveBeenCalledTimes(1);
   });
+
+  it("does not apply a successful session once superseded mid-flight (no clobber of an auth event)", async () => {
+    // The window between reading the session and applying it can now stretch
+    // across retries; if a concurrent onAuthStateChange already resolved a
+    // fresher state, this attempt must not re-apply its (possibly stale) result.
+    const shouldAbort = vi.fn().mockReturnValueOnce(false).mockReturnValue(true);
+    const deps = makeDeps({ shouldAbort });
+
+    const p = bootstrapAuth(deps);
+    await vi.runAllTimersAsync();
+    await p;
+
+    expect(deps.getSession).toHaveBeenCalledTimes(1);
+    expect(deps.applySession).not.toHaveBeenCalled();
+    expect(deps.resolve).not.toHaveBeenCalled();
+    expect(deps.degrade).not.toHaveBeenCalled();
+  });
+
+  it("stops retrying and never degrades once superseded between attempts", async () => {
+    // e.g. the provider unmounted, or an auth event resolved while a retry was
+    // pending — the loop must abandon quietly, not keep hammering or degrade.
+    const shouldAbort = vi.fn().mockReturnValueOnce(false).mockReturnValue(true);
+    const getSession = vi.fn(async () => {
+      throw new Error("locked");
+    });
+    const deps = makeDeps({ getSession, retries: 3, shouldAbort });
+
+    const p = bootstrapAuth(deps);
+    await vi.runAllTimersAsync();
+    await p;
+
+    expect(getSession).toHaveBeenCalledTimes(1); // aborted before the first retry
+    expect(deps.degrade).not.toHaveBeenCalled();
+  });
 });

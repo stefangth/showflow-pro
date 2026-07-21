@@ -124,4 +124,26 @@ describe("AuthContext — bootstrap survives a stalled auth lock (endless-spinne
     expect(settled.loading).toBe(false);
     expect(settled.hasUser).toBe(false);
   });
+
+  it("cancels the retry loop on unmount (no getSession or state updates against a dead provider)", async () => {
+    getSessionMock.mockRejectedValue(new Error("locked"));
+
+    let view!: ReturnType<typeof renderProvider>;
+    await act(async () => {
+      view = renderProvider();
+    });
+    // Attempt 0 fired and rejected; a backoff retry is now pending.
+    expect(getSessionMock).toHaveBeenCalledTimes(1);
+
+    act(() => {
+      view.unmount();
+    });
+
+    // Advancing past every backoff must NOT run another attempt — the pending
+    // retry chain is abandoned rather than firing against an unmounted provider.
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(15_000);
+    });
+    expect(getSessionMock).toHaveBeenCalledTimes(1);
+  });
 });

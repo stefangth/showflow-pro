@@ -80,17 +80,35 @@ export interface AuthBootstrapDeps {
   resolve: (session: Session | null) => Promise<void>;
   /** Last resort when the session can't be established: settle as signed-out so guards leave the spinner. */
   degrade: () => void;
-  /** Attempts after the first before degrading (default 3). */
+  /**
+   * Abandon this bootstrap's effects — checked before applying a result, before
+   * each retry, and before degrading. True once the provider unmounts or another
+   * path (an onAuthStateChange event) has already resolved a fresher state, so a
+   * slow attempt can neither clobber it nor keep retrying. Defaults to never.
+   */
+  shouldAbort?: () => boolean;
+  /** Attempts after the first before degrading (default 2). */
   retries?: number;
   /** Base backoff between attempts, scaled linearly by attempt (default 800ms). */
   backoffMs?: number;
-  /** Per-attempt ceiling; a getSession that hasn't settled by then is treated as a failure (default 6000ms). */
+  /**
+   * Per-attempt ceiling; a getSession that hasn't settled by then is treated as
+   * a failure (default 8000ms). Kept above supabase-js's own 5s lock-acquire
+   * timeout so the common case — a contended getSession rejecting on its own —
+   * settles and retries without leaving a call abandoned on the lock queue; this
+   * ceiling only bites a genuine hang (e.g. a stuck token-refresh fetch).
+   */
   timeoutMs?: number;
 }
 
-const DEFAULT_BOOTSTRAP_RETRIES = 3;
+// 2 retries (3 attempts total): rides out transient multi-tab lock contention
+// while bounding the worst-case time to the login fallback. A getSession under
+// lock contention rejects at supabase-js's ~5s internal timeout, so the common
+// failure path degrades in ~17s worst case (typically recovering far sooner);
+// a true hang hits the 8s ceiling per attempt.
+const DEFAULT_BOOTSTRAP_RETRIES = 2;
 const DEFAULT_BOOTSTRAP_BACKOFF_MS = 800;
-const DEFAULT_BOOTSTRAP_TIMEOUT_MS = 6000;
+const DEFAULT_BOOTSTRAP_TIMEOUT_MS = 8000;
 
 const delay = (ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms));
 
@@ -127,21 +145,31 @@ function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T> {
  * If every attempt fails we `degrade()` (settle as signed-out) so the app can
  * never spin indefinitely — a later onAuthStateChange event re-resolves identity
  * the moment the lock frees.
+ *
+ * `shouldAbort()` is checked before applying a result, before each retry, and
+ * before degrading, so once the provider unmounts or another path resolves a
+ * fresher state this bootstrap stops touching state (no clobber, no zombie
+ * retries). A timed-out getSession() can't be cancelled, but the timeout sits
+ * above supabase-js's own 5s lock-acquire timeout, so contended calls reject and
+ * settle on their own rather than being abandoned onto the lock queue.
  */
 export async function bootstrapAuth(deps: AuthBootstrapDeps): Promise<void> {
+  const shouldAbort = deps.shouldAbort ?? (() => false);
   const retries = deps.retries ?? DEFAULT_BOOTSTRAP_RETRIES;
   const backoffMs = deps.backoffMs ?? DEFAULT_BOOTSTRAP_BACKOFF_MS;
   const timeoutMs = deps.timeoutMs ?? DEFAULT_BOOTSTRAP_TIMEOUT_MS;
 
   for (let attempt = 0; ; attempt++) {
+    if (shouldAbort()) return;
     try {
       const session = await withTimeout(deps.getSession(), timeoutMs);
+      if (shouldAbort()) return; // superseded/unmounted in flight — don't clobber
       deps.applySession(session);
       await deps.resolve(session);
       return;
     } catch {
       if (attempt >= retries) {
-        deps.degrade();
+        if (!shouldAbort()) deps.degrade();
         return;
       }
       await delay(backoffMs * (attempt + 1));
