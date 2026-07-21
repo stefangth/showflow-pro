@@ -219,6 +219,10 @@ export async function invokeHireOrderAction(
 export interface HireOrderReview {
   feeAmount: number | null;
   termsVariant: string;
+  /** Per-order booking-agent overrides. Present only when the producer edited them;
+   *  `""` means "print no agent", omitted means "leave the column unchanged". */
+  agentName?: string | null;
+  agentEmail?: string | null;
 }
 
 /**
@@ -245,6 +249,8 @@ export async function updateHireOrderReview(
     terms_variant: review.termsVariant,
     data: data as Database["public"]["Tables"]["hire_orders"]["Update"]["data"],
   };
+  if (review.agentName !== undefined) patch.agent_name = review.agentName;
+  if (review.agentEmail !== undefined) patch.agent_email = review.agentEmail;
   const { error } = await client.from("hire_orders").update(patch).eq("id", id);
   if (error) throw error;
 }
