@@ -39,10 +39,16 @@ export const NAV_ITEMS: NavItem[] = [
   { to: ROUTES.PLATFORM, icon: Building2, label: 'Platform', section: 'system', superAdmin: true },
 ];
 
-export interface NavSectionGroup { section: NavSection; label: string; items: NavItem[]; }
+/** A nav item resolved for one viewer. `locked` means "show it, grayed and inert":
+ *  the org does not have the module, but hiding it entirely leaves members unable
+ *  to tell the module exists. Super-admins are never locked — they administer
+ *  entitlements, and ProtectedRoute lets them through to the off-state page. */
+export type VisibleNavItem = NavItem & { locked: boolean };
+
+export interface NavSectionGroup<T extends NavItem = NavItem> { section: NavSection; label: string; items: T[]; }
 
 /** Group already role-filtered items by section, in fixed order, dropping empty sections. */
-export function groupNavBySections(items: NavItem[]): NavSectionGroup[] {
+export function groupNavBySections<T extends NavItem>(items: T[]): NavSectionGroup<T>[] {
   return SECTION_ORDER
     .map((section) => ({ section, label: SECTION_LABELS[section], items: items.filter((i) => i.section === section) }))
     .filter((g) => g.items.length > 0);
@@ -58,22 +64,24 @@ export function visibleNavItems(
     hasRole: (r: string) => boolean;
     enabledFeatures: Set<string>;
   },
-): NavItem[] {
-  // Entitlement gate applies to every viewer first. Super-admins bypass it
-  // (god-mode), consistent with ProtectedRoute exempting super-admins from the
-  // route-level feature gate — so a super-admin sees the sidebar link for any
-  // gated route they can already reach by direct URL. Editor-mode admins who
-  // aren't super-admins stay gated.
-  items = items.filter(
-    (item) => !item.feature || ctx.isSuperAdmin || ctx.enabledFeatures.has(item.feature),
-  );
+): VisibleNavItem[] {
+  // Entitlement no longer HIDES an item, it LOCKS it: a member who cannot use a
+  // module should still be able to see that it exists. Super-admins are never
+  // locked, consistent with ProtectedRoute exempting them from the route-level
+  // feature gate. Role gating below is unchanged and still hides outright.
+  const lock = (item: NavItem): VisibleNavItem => ({
+    ...item,
+    locked: !!item.feature && !ctx.isSuperAdmin && !ctx.enabledFeatures.has(item.feature),
+  });
 
   if (ctx.isEditorMode && ctx.isRealAdmin) {
-    return items.filter((i) => !i.superAdmin || ctx.isSuperAdmin);
+    return items.filter((i) => !i.superAdmin || ctx.isSuperAdmin).map(lock);
   }
-  return items.filter((item) => {
-    if (item.superAdmin) return ctx.isSuperAdmin;
-    if (!item.roles) return true;
-    return item.roles.some((r) => ctx.hasRole(r));
-  });
+  return items
+    .filter((item) => {
+      if (item.superAdmin) return ctx.isSuperAdmin;
+      if (!item.roles) return true;
+      return item.roles.some((r) => ctx.hasRole(r));
+    })
+    .map(lock);
 }
