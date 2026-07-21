@@ -678,12 +678,13 @@ Deno.test("issue inherits the letterhead agent when the order override is null",
       ],
     },
   });
-  let captured: { letterhead: { agent_name?: string } } | null = null;
+  let captured: { letterhead: { agent_name?: string; agent_email?: string } } | null = null;
   deps.renderHireOrderPdf = (a) => { captured = a as unknown as typeof captured; return Promise.resolve(new Uint8Array([0x25, 0x50, 0x44, 0x46])); };
 
   const res = await handle(makeRequest({ headers: JWT, body: { action: "issue", org_id: ORG, order_ids: ["o-1"] } }), deps);
   assertEquals(res.status, 200);
   assertEquals(captured!.letterhead.agent_name, "Org Agent");
+  assertEquals(captured!.letterhead.agent_email, "org@x.com");
 });
 
 // ── documenso countersign ────────────────────────────────────────────────
@@ -1006,6 +1007,50 @@ Deno.test("preview returns base64 pdf without persisting", async () => {
   assertEquals(body.pdf_base64, "JVBERg=="); // base64 of the fake "%PDF" bytes
   // nothing persisted
   assertEquals(calls.filter((c) => c.table === "hire_orders" && ["insert", "update"].includes(c.method)).length, 0);
+});
+
+Deno.test("preview merges the order's agent override over the org letterhead", async () => {
+  const { deps } = makeFakeDeps({
+    authUser: { id: "u-admin" },
+    tables: {
+      org_memberships: { data: { role: "admin" } },
+      hire_orders: { data: issuableOrder({ agent_name: "Solo Agent", agent_email: "solo@x.com" }) },
+      app_settings: [
+        { when: { key: "hire_order_letterhead" }, data: [{ org_id: ORG, value: { legal_name: "Nord GmbH", address_lines: [], registration_line: "", agent_name: "Org Agent", agent_email: "org@x.com" } }] },
+        { when: { key: "hire_order_terms" }, data: [TERMS_FILLED] },
+        { when: { key: "hire_order_defaults" }, data: [DEFAULTS] },
+      ],
+    },
+  });
+  let captured: { letterhead: { agent_name?: string; agent_email?: string } } | null = null;
+  deps.renderHireOrderPdf = (a) => { captured = a as unknown as typeof captured; return Promise.resolve(new Uint8Array([0x25, 0x50, 0x44, 0x46])); };
+
+  const res = await handle(makeRequest({ headers: JWT, body: { action: "preview", org_id: ORG, order_id: "o-1" } }), deps);
+  assertEquals(res.status, 200);
+  assertEquals(captured!.letterhead.agent_name, "Solo Agent");
+  assertEquals(captured!.letterhead.agent_email, "solo@x.com");
+});
+
+Deno.test("preview inherits the letterhead agent when the order override is null", async () => {
+  const { deps } = makeFakeDeps({
+    authUser: { id: "u-admin" },
+    tables: {
+      org_memberships: { data: { role: "admin" } },
+      hire_orders: { data: issuableOrder({ agent_name: null, agent_email: null }) },
+      app_settings: [
+        { when: { key: "hire_order_letterhead" }, data: [{ org_id: ORG, value: { legal_name: "Nord GmbH", address_lines: [], registration_line: "", agent_name: "Org Agent", agent_email: "org@x.com" } }] },
+        { when: { key: "hire_order_terms" }, data: [TERMS_FILLED] },
+        { when: { key: "hire_order_defaults" }, data: [DEFAULTS] },
+      ],
+    },
+  });
+  let captured: { letterhead: { agent_name?: string; agent_email?: string } } | null = null;
+  deps.renderHireOrderPdf = (a) => { captured = a as unknown as typeof captured; return Promise.resolve(new Uint8Array([0x25, 0x50, 0x44, 0x46])); };
+
+  const res = await handle(makeRequest({ headers: JWT, body: { action: "preview", org_id: ORG, order_id: "o-1" } }), deps);
+  assertEquals(res.status, 200);
+  assertEquals(captured!.letterhead.agent_name, "Org Agent");
+  assertEquals(captured!.letterhead.agent_email, "org@x.com");
 });
 
 // ── download-url ───────────────────────────────────────────────────────
