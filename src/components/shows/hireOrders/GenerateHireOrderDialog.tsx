@@ -1,4 +1,5 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { Ticket } from "lucide-react";
 import {
   Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle,
@@ -11,6 +12,10 @@ import { formatDateDMY } from "@/lib/dates";
 import type { OrderData } from "@/lib/hireOrders/types";
 import type { HireOrderRow } from "@/data/hireOrders";
 import { useHireOrderAction, useUpdateHireOrderReview } from "@/hooks/useHireOrders";
+import { supabase } from "@/integrations/supabase/client";
+import { resolveOrgSetting } from "@/data/settings";
+import type { Letterhead } from "@/components/settings/hireOrders/LetterheadCard";
+import { LETTERHEAD_DEFAULT } from "@/components/settings/hireOrders/defaults";
 import type { HireOrderShowDate } from "./types";
 
 interface Props {
@@ -84,6 +89,55 @@ export function GenerateHireOrderDialog({ open, onOpenChange, order, showDate, o
   const [fee, setFee] = useState<string>(order.fee_amount != null ? String(order.fee_amount) : "");
   const [variant, setVariant] = useState<string>(initialVariant);
 
+  // Org letterhead default — reuses the same query key as LetterheadCard so the cache is shared.
+  const { data: letterhead, isError: letterheadError } = useQuery({
+    queryKey: ["app-settings", "hire_order_letterhead", orgId],
+    queryFn: () => resolveOrgSetting<Letterhead>(supabase, orgId, "hire_order_letterhead", LETTERHEAD_DEFAULT),
+    enabled: Boolean(orgId),
+  });
+
+  const [agentName, setAgentName] = useState<string>(order.agent_name ?? "");
+  const [agentEmail, setAgentEmail] = useState<string>(order.agent_email ?? "");
+  // Baseline for the "changed?" check; updated per-field when we seed from the letterhead.
+  const initialAgentRef = useRef({ name: order.agent_name ?? "", email: order.agent_email ?? "" });
+  // The letterhead query is async and can resolve after the producer has already
+  // started typing; once they've touched a field, a late-arriving default must
+  // never clobber that edit -- tracked per field (not as a pair) so a late
+  // default can still fill whichever field the producer hasn't touched, and a
+  // field the order already overrides is never re-seeded.
+  const nameTouchedRef = useRef(false);
+  const emailTouchedRef = useRef(false);
+  const nameSeededRef = useRef(order.agent_name != null);
+  const emailSeededRef = useRef(order.agent_email != null);
+  useEffect(() => {
+    if (!letterhead) return;
+    if (!nameSeededRef.current && !nameTouchedRef.current) {
+      nameSeededRef.current = true;
+      const v = letterhead.agent_name ?? "";
+      setAgentName(v);
+      initialAgentRef.current = { ...initialAgentRef.current, name: v };
+    }
+    if (!emailSeededRef.current && !emailTouchedRef.current) {
+      emailSeededRef.current = true;
+      const v = letterhead.agent_email ?? "";
+      setAgentEmail(v);
+      initialAgentRef.current = { ...initialAgentRef.current, email: v };
+    }
+  }, [letterhead]);
+
+  // Until the org letterhead default is KNOWN, a field with no order-level override
+  // has no value to show. Disable it so the producer can't type into a not-yet-seeded
+  // field: doing so would set its "touched" ref before the default arrived, permanently
+  // blocking the seed and leaving the field blank while the PDF still rendered the org
+  // default (a WYSIWYG violation, and a type-then-clear would silently discard the edit).
+  // Gate on `letterhead === undefined` (not just "loading"), so a failed letterhead fetch
+  // keeps the field disabled rather than un-disabling to a misleading blank. A field the
+  // order already overrides is ready at once. The `Boolean(orgId)` guard matches the
+  // query's own `enabled`: with no active org the query never runs and `letterhead` would
+  // stay `undefined` forever, so there is no default to wait for — don't lock the field.
+  const nameAwaitingDefault = Boolean(orgId) && order.agent_name == null && letterhead === undefined;
+  const emailAwaitingDefault = Boolean(orgId) && order.agent_email == null && letterhead === undefined;
+
   const review = useUpdateHireOrderReview();
   const action = useHireOrderAction();
   const busy = review.isPending || action.isPending;
@@ -95,9 +149,23 @@ export function GenerateHireOrderDialog({ open, onOpenChange, order, showDate, o
   // terms variant — otherwise an untouched sheet/showflow-sourced fee would be
   // silently re-tagged as manual on every click.
   async function persist(): Promise<void> {
-    const changed = feeAmount !== initialFeeAmount || variant !== initialVariant;
+    // Each agent field is compared and written independently, so editing only the
+    // name never converts the inherited (null) email into a stored literal, and
+    // vice versa.
+    const nameChanged = agentName !== initialAgentRef.current.name;
+    const emailChanged = agentEmail !== initialAgentRef.current.email;
+    const changed = feeAmount !== initialFeeAmount || variant !== initialVariant || nameChanged || emailChanged;
     if (!changed) return;
-    await review.mutateAsync({ id: order.id, review: { feeAmount, termsVariant: variant }, currentData: order.data });
+    await review.mutateAsync({
+      id: order.id,
+      review: {
+        feeAmount,
+        termsVariant: variant,
+        ...(nameChanged ? { agentName } : {}),
+        ...(emailChanged ? { agentEmail } : {}),
+      },
+      currentData: order.data,
+    });
   }
 
   function handlePreview(): void {
@@ -187,6 +255,41 @@ export function GenerateHireOrderDialog({ open, onOpenChange, order, showDate, o
                 );
               })}
             </div>
+          </div>
+
+          {/* Booking agent — prefilled from the org letterhead, overridable per order */}
+          <div className="space-y-1.5">
+            <Label className="text-xs text-muted-foreground">Booking agent (optional)</Label>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+              <Input
+                aria-label="Agent name"
+                placeholder="Agent name"
+                value={agentName}
+                disabled={nameAwaitingDefault}
+                onChange={(e) => {
+                  nameTouchedRef.current = true;
+                  setAgentName(e.target.value);
+                }}
+              />
+              <Input
+                aria-label="Agent email"
+                type="email"
+                placeholder="Agent email"
+                value={agentEmail}
+                disabled={emailAwaitingDefault}
+                onChange={(e) => {
+                  emailTouchedRef.current = true;
+                  setAgentEmail(e.target.value);
+                }}
+              />
+            </div>
+            {letterheadError ? (
+              <p className="text-xs text-destructive">
+                Couldn't load your organization letterhead. This order will use your saved default.
+              </p>
+            ) : (
+              <p className="text-xs text-muted-foreground">Prefilled from your organization letterhead.</p>
+            )}
           </div>
 
           {/* Info note (fee-only copy) */}

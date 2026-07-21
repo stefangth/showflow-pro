@@ -2,6 +2,13 @@
 
 What's new in ShowFlow, newest first.
 
+## 1.10.3 — July 22, 2026
+
+*Easier settings navigation*
+
+### Improved
+- **Settings navigation** — Settings now uses a grouped side menu instead of one long row of tabs, so every section stays visible and easy to find as the list grows. Related sections sit together under clear headings, and on smaller screens the menu becomes a compact scrollable strip.
+
 ## 1.10.2 — July 21, 2026
 
 *Reliability fixes*

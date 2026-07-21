@@ -8,6 +8,7 @@ import { fetchIsSuperAdmin, fetchAllOrgs } from '@/data/platform';
 import { rolesForOrg, effectiveHasRole, effectiveOrgs } from './orgRoles';
 import { REALTIME_INVALIDATIONS } from './realtimeInvalidations';
 import { resolveSessionIdentity, computeAuthReady, bootstrapAuth, type SessionIdentityHandlers } from './sessionState';
+import { maybeDevAutoLogin } from './devAutoLogin';
 
 export interface ViewAsUser {
   id: string;
@@ -192,6 +193,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         markResolved(null);
       },
     });
+
+    // DEV-ONLY: auto sign-in on the local Vite dev server when opted in via
+    // `VITE_DEV_AUTOLOGIN=true` (+ VITE_DEV_AUTOLOGIN_EMAIL/PASSWORD in .env), so
+    // gated routes render without the login screen. `import.meta.env.DEV` is
+    // statically false in every production build, so Vite dead-strips this whole
+    // block (and the credential reads) from deployed bundles — it can never run
+    // on a hosted server. onAuthStateChange (subscribed above) picks up the
+    // resulting session. See devAutoLogin.ts for the full safety model.
+    if (import.meta.env.DEV) {
+      void maybeDevAutoLogin(supabase.auth, {
+        optedIn: import.meta.env.VITE_DEV_AUTOLOGIN === 'true',
+        email: import.meta.env.VITE_DEV_AUTOLOGIN_EMAIL as string | undefined,
+        password: import.meta.env.VITE_DEV_AUTOLOGIN_PASSWORD as string | undefined,
+      });
+    }
 
     return () => {
       cancelled = true;

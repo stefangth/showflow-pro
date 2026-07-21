@@ -1,5 +1,19 @@
 [
   {
+    "version": "1.10.3",
+    "date": "2026-07-22",
+    "dateLabel": "July 22, 2026",
+    "title": "Easier settings navigation",
+    "changes": {
+      "improved": [
+        {
+          "title": "Settings navigation",
+          "description": "Settings now uses a grouped side menu instead of one long row of tabs, so every section stays visible and easy to find as the list grows. Related sections sit together under clear headings, and on smaller screens the menu becomes a compact scrollable strip."
+        }
+      ]
+    }
+  },
+  {
     "version": "1.10.2",
     "date": "2026-07-21",
     "dateLabel": "July 21, 2026",

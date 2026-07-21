@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import { ROUTES, BOOKING_ENGINE_DEFAULTS } from '@/config/app.config';
 import { useSettingsWarnings } from '@/hooks/useSettingsWarnings';
+import { useIsMobile } from '@/hooks/use-mobile';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import type { Json } from '@/integrations/supabase/types';
@@ -143,6 +144,11 @@ export default function SettingsPage() {
   // Controlled so we know which tab is active: the Booking flow tab renders its own
   // scoped Save/Discard in FlowRail, and the page-level control must defer to it there.
   const [activeTab, setActiveTab] = useState(isAdmin ? 'organization' : 'scheduling');
+  // Keep the Tabs ARIA orientation matched to the actual layout axis: the nav rail is
+  // vertical on md+ but a horizontal scroll row below md, so arrow-key roving (Up/Down
+  // vs Left/Right) follows the visual direction at each breakpoint. Breakpoint (768px)
+  // matches the `md:` boundary the rail styling uses.
+  const isMobile = useIsMobile();
 
   const dirtyKeys = computeSettingsDirtyKeys(settings, draft, EDITABLE_SETTING_KEYS);
 
@@ -217,8 +223,29 @@ export default function SettingsPage() {
     });
   };
 
+  const navGroups: { heading: string; items: { value: string; label: string; icon: typeof Building2; show: boolean; dot?: boolean }[] }[] = [
+    { heading: "Organization", items: [
+      { value: "organization", label: "Organization", icon: Building2, show: isAdmin },
+      { value: "production-ownership", label: "Production Ownership", icon: UserCog, show: isAdmin || isProducer },
+      { value: "casts-cities", label: "Casts & Cities", icon: MapPin, show: true },
+    ] },
+    { heading: "Automation", items: [
+      { value: "airtable", label: "Airtable Sync", icon: Database, show: isAdmin },
+      { value: "booking", label: "Booking flow", icon: Wand2, show: isAdmin },
+      { value: "scheduling", label: "Scheduling", icon: Clock, show: true, dot: schedulingWarnings > 0 },
+      { value: "hire-orders", label: "Hire orders", icon: FileSignature, show: isAdmin && hireOrdersEntitled },
+    ] },
+    { heading: "Preferences", items: [
+      { value: "filters", label: "Filters", icon: SlidersHorizontal, show: isAdmin },
+      { value: "notifications", label: "Notifications", icon: Bell, show: isAdmin },
+    ] },
+    { heading: "Help", items: [
+      { value: "docs", label: "Documentation", icon: BookOpen, show: true },
+    ] },
+  ];
+
   return (
-    <div className="space-y-6 max-w-4xl">
+    <div className="space-y-6 max-w-5xl">
       <div className="flex items-start justify-between gap-4">
         <div>
           <h1 className="font-display text-[32px] font-semibold tracking-tight flex items-center gap-3">
@@ -247,26 +274,44 @@ export default function SettingsPage() {
         </div>
       )}
 
-      <Tabs value={activeTab} onValueChange={setActiveTab}>
-        <TabsList>
-          {isAdmin && <TabsTrigger value="organization"><Building2 className="h-4 w-4 mr-2" />Organization</TabsTrigger>}
-          {isAdmin && <TabsTrigger value="airtable"><Database className="h-4 w-4 mr-2" />Airtable Sync</TabsTrigger>}
-          {isAdmin && <TabsTrigger value="filters"><SlidersHorizontal className="h-4 w-4 mr-2" />Filters</TabsTrigger>}
-          <TabsTrigger value="casts-cities"><MapPin className="h-4 w-4 mr-2" />Casts & Cities</TabsTrigger>
-          {(isAdmin || isProducer) && <TabsTrigger value="production-ownership"><UserCog className="h-4 w-4 mr-2" />Production Ownership</TabsTrigger>}
-          <TabsTrigger value="scheduling" className="gap-2">
-            <Clock className="h-4 w-4" />
-            Scheduling
-            {schedulingWarnings > 0 && (
-              <span className="h-2 w-2 rounded-full bg-destructive shrink-0" />
-            )}
-          </TabsTrigger>
-          {isAdmin && <TabsTrigger value="booking"><Wand2 className="h-4 w-4 mr-2" />Booking flow</TabsTrigger>}
-          {isAdmin && hireOrdersEntitled && <TabsTrigger value="hire-orders"><FileSignature className="h-4 w-4 mr-2" />Hire orders</TabsTrigger>}
-          {isAdmin && <TabsTrigger value="notifications"><Bell className="h-4 w-4 mr-2" />Notifications</TabsTrigger>}
-          <TabsTrigger value="docs"><BookOpen className="h-4 w-4 mr-2" />Documentation</TabsTrigger>
+      <Tabs
+        value={activeTab}
+        onValueChange={setActiveTab}
+        orientation={isMobile ? 'horizontal' : 'vertical'}
+        className="md:grid md:grid-cols-[220px_1fr] md:gap-8 md:items-start"
+      >
+        <TabsList className="mb-4 flex h-auto w-full items-stretch gap-1 overflow-x-auto bg-transparent p-0 md:sticky md:top-4 md:mb-0 md:flex-col md:gap-0 md:overflow-visible">
+          {navGroups.map((group) => {
+            const items = group.items.filter((i) => i.show);
+            if (items.length === 0) return null;
+            return (
+              <div key={group.heading} className="contents md:mt-4 md:block md:first:mt-0">
+                {/* Decorative visual grouping only. aria-hidden so this stray non-tab
+                    child isn't announced inside the role="tablist"; the tabs themselves
+                    carry clear labels, so screen-reader users get a clean flat list. */}
+                <p
+                  aria-hidden="true"
+                  className="hidden px-3 pb-1 text-xs font-medium uppercase tracking-wide text-muted-foreground md:block"
+                >
+                  {group.heading}
+                </p>
+                {items.map((item) => (
+                  <TabsTrigger
+                    key={item.value}
+                    value={item.value}
+                    className="shrink-0 justify-start gap-2 rounded-md px-3 py-2 text-muted-foreground data-[state=active]:bg-muted data-[state=active]:text-foreground data-[state=active]:shadow-none hover:bg-muted/60 md:w-full"
+                  >
+                    <item.icon className="h-4 w-4 shrink-0" />
+                    <span>{item.label}</span>
+                    {item.dot && <span className="ml-1 h-2 w-2 shrink-0 rounded-full bg-destructive md:ml-auto" />}
+                  </TabsTrigger>
+                ))}
+              </div>
+            );
+          })}
         </TabsList>
 
+        <div className="min-w-0">
         <TabsContent value="casts-cities">
           <CastsCitiesTab currentOrgId={currentOrg?.id} canEnter={canEnter} />
         </TabsContent>
@@ -398,6 +443,7 @@ export default function SettingsPage() {
         <TabsContent value="docs" className="mt-4">
           <DocumentationTab isSuperAdmin={isSuperAdmin} />
         </TabsContent>
+        </div>
       </Tabs>
 
     </div>

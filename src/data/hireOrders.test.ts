@@ -9,6 +9,7 @@ import {
   invokeHireOrderAction,
   updateHireOrderStatus,
   updateHireOrderDraft,
+  updateHireOrderReview,
   fetchShowflowLayerForOrder,
   fetchArtistsLite,
   fetchShowDatesLite,
@@ -336,6 +337,36 @@ describe("updateHireOrderDraft", () => {
   it("throws on a supabase error", async () => {
     const fake = createFakeSupabase({ hire_orders: { data: null, error: { message: "boom" } } });
     await expect(updateHireOrderDraft(fake as never, "ho-1", { data: DATA as never })).rejects.toBeTruthy();
+  });
+});
+
+describe("updateHireOrderReview agent override", () => {
+  it("writes agent_name/agent_email when provided", async () => {
+    const fake = createFakeSupabase({ hire_orders: { data: null, error: null } });
+    await updateHireOrderReview(
+      fake as never,
+      "ho-1",
+      { feeAmount: 500, termsVariant: "standard", agentName: "Solo Agent", agentEmail: "solo@x.com" },
+      { artist_name: { value: "Ada", source: "showflow" } },
+    );
+    const update = fake.calls.find((c) => c.table === "hire_orders" && c.method === "update");
+    const patch = update!.args[0] as { agent_name?: string; agent_email?: string };
+    expect(patch.agent_name).toBe("Solo Agent");
+    expect(patch.agent_email).toBe("solo@x.com");
+  });
+
+  it("omits agent columns entirely when not provided", async () => {
+    const fake = createFakeSupabase({ hire_orders: { data: null, error: null } });
+    await updateHireOrderReview(
+      fake as never,
+      "ho-1",
+      { feeAmount: 500, termsVariant: "standard" },
+      {},
+    );
+    const update = fake.calls.find((c) => c.table === "hire_orders" && c.method === "update");
+    const patch = update!.args[0] as Record<string, unknown>;
+    expect("agent_name" in patch).toBe(false);
+    expect("agent_email" in patch).toBe(false);
   });
 });
 

@@ -23,9 +23,16 @@ export interface Letterhead {
   agent_email?: string;
 }
 
-/** One address line per row; blank rows are dropped on parse. */
-function parseLines(text: string): string[] {
-  return text.split("\n").map((l) => l.trim()).filter(Boolean);
+/** One address line per row. On SAVE only: trim trailing whitespace per line
+ *  (leading indentation + interior blanks preserved), then drop empty lines from
+ *  the top and bottom so a stray leading/trailing Enter is not stored. */
+function linesFromText(text: string): string[] {
+  const lines = text.split("\n").map((l) => l.replace(/\s+$/, ""));
+  let start = 0;
+  let end = lines.length;
+  while (start < end && lines[start] === "") start++;
+  while (end > start && lines[end - 1] === "") end--;
+  return lines.slice(start, end);
 }
 function serializeLines(lines: string[]): string {
   return lines.join("\n");
@@ -40,6 +47,7 @@ export function LetterheadCard({ orgId }: { orgId: string | null }) {
   });
 
   const [form, setForm] = useState<Letterhead>(LETTERHEAD_DEFAULT);
+  const [addressText, setAddressText] = useState<string>("");
   // Seed once when server data first arrives; a later unrelated refetch must not
   // clobber in-progress edits (the save's own refetch already matches the form).
   const seededRef = useRef(false);
@@ -47,13 +55,15 @@ export function LetterheadCard({ orgId }: { orgId: string | null }) {
     if (data && !seededRef.current) {
       seededRef.current = true;
       setForm(data);
+      setAddressText(serializeLines(data.address_lines));
     }
   }, [data]);
 
   const save = useMutation({
     mutationFn: () => {
       if (!orgId) throw new Error("No active organization");
-      return upsertOrgSetting(supabase, orgId, "hire_order_letterhead", form as unknown as Json);
+      const payload: Letterhead = { ...form, address_lines: linesFromText(addressText) };
+      return upsertOrgSetting(supabase, orgId, "hire_order_letterhead", payload as unknown as Json);
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["app-settings"] });
@@ -97,9 +107,9 @@ export function LetterheadCard({ orgId }: { orgId: string | null }) {
           <Textarea
             id="ho-address"
             rows={3}
-            value={serializeLines(form.address_lines)}
+            value={addressText}
             placeholder={"Street and number\nPostal code and city\nCountry"}
-            onChange={(e) => setForm((f) => ({ ...f, address_lines: parseLines(e.target.value) }))}
+            onChange={(e) => setAddressText(e.target.value)}
           />
           <p className="text-xs text-muted-foreground">One line per row.</p>
         </div>
