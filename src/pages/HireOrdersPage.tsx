@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { Search } from "lucide-react";
 import { useAuth } from "@/features/auth/AuthContext";
+import { useFeature } from "@/hooks/useEntitlements";
 import { useHireOrders } from "@/hooks/useHireOrders";
 import { OrdersKpis } from "@/components/hireOrders/OrdersKpis";
 import { computeOrderKpis } from "@/lib/hireOrders/kpis";
@@ -8,6 +9,7 @@ import { OrdersTable } from "@/components/hireOrders/OrdersTable";
 import { OrderSlideOver } from "@/components/hireOrders/OrderSlideOver";
 import { NewOrderWizard } from "@/components/hireOrders/NewOrderWizard";
 import { HireOrderImportDialog } from "@/components/hireOrders/import/HireOrderImportDialog";
+import { FeatureOffBanner } from "@/components/layout/FeatureOffBanner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -46,6 +48,7 @@ function chipToStatusFilter(chip: StatusChip): HireOrderStatus[] | undefined {
 export default function HireOrdersPage() {
   const { currentOrg } = useAuth();
   const orgId = currentOrg?.id ?? null;
+  const featureOn = useFeature("hire_orders");
 
   const [statusChip, setStatusChip] = useState<StatusChip>("all");
   const [search, setSearch] = useState("");
@@ -77,6 +80,8 @@ export default function HireOrdersPage() {
 
   return (
     <div className="space-y-6">
+      {!featureOn && <FeatureOffBanner feature="hire_orders" />}
+
       <div className="flex items-start justify-between gap-3">
         <div>
           <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Workspace</p>
@@ -87,11 +92,11 @@ export default function HireOrdersPage() {
         </div>
         <div className="flex items-center gap-2">
           {IMPORT_READY && (
-            <Button variant="outline" onClick={() => setImportOpen(true)}>
+            <Button variant="outline" disabled={!featureOn} onClick={() => setImportOpen(true)}>
               Import from spreadsheet
             </Button>
           )}
-          <Button onClick={() => setWizardOpen(true)}>
+          <Button disabled={!featureOn} onClick={() => setWizardOpen(true)}>
             New order
           </Button>
         </div>
