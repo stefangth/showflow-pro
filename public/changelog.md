@@ -2,6 +2,16 @@
 
 What's new in ShowFlow, newest first.
 
+## 1.10.1 — July 21, 2026
+
+*Reliability fixes*
+
+### Improved
+- **Locked modules in the sidebar** — Features your organization hasn't switched on now appear as a locked item in the sidebar instead of being hidden, so it's clear what is available to enable.
+
+### Fixed
+- **Automatic offers** — Newly added show dates once again open their first round of artist offers automatically.
+
 ## 1.10.0 — July 18, 2026
 
 *Paperwork that writes itself*

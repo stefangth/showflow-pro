@@ -1,5 +1,25 @@
 [
   {
+    "version": "1.10.1",
+    "date": "2026-07-21",
+    "dateLabel": "July 21, 2026",
+    "title": "Reliability fixes",
+    "changes": {
+      "improved": [
+        {
+          "title": "Locked modules in the sidebar",
+          "description": "Features your organization hasn't switched on now appear as a locked item in the sidebar instead of being hidden, so it's clear what is available to enable."
+        }
+      ],
+      "fixed": [
+        {
+          "title": "Automatic offers",
+          "description": "Newly added show dates once again open their first round of artist offers automatically."
+        }
+      ]
+    }
+  },
+  {
     "version": "1.10.0",
     "date": "2026-07-18",
     "dateLabel": "July 18, 2026",
