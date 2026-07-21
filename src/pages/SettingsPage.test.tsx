@@ -125,7 +125,11 @@ describe("SettingsPage grouped vertical nav", () => {
   it("renders group headings and switches content", async () => {
     vi.mocked(useAuth).mockReturnValue(DEFAULT_AUTH as never);
     renderWithProviders(<MemoryRouter><SettingsPage /></MemoryRouter>);
-    expect(await screen.findByText("Automation")).toBeInTheDocument();
+    // Group headings are decorative visual grouping — aria-hidden so they aren't announced
+    // as stray non-tab children of the role="tablist".
+    const automationHeading = await screen.findByText("Automation");
+    expect(automationHeading).toBeInTheDocument();
+    expect(automationHeading).toHaveAttribute("aria-hidden", "true");
     // The "Organization" group heading shares its literal text with the "Organization" tab
     // trigger AND the OrganizationTab card's own CardTitle (rendered because "organization" is
     // the default active tab for an admin) — scope to the heading <p> to disambiguate.

@@ -216,6 +216,8 @@ describe("GenerateHireOrderDialog", () => {
     );
     expect(screen.getByLabelText("Agent name")).toBeDisabled();
     expect(screen.getByLabelText("Agent email")).toBeDisabled();
+    // The disabled state is explained, not silent, so the form doesn't read as broken.
+    expect(screen.getByText(/this order will use your saved default/i)).toBeInTheDocument();
   });
 
   it("does not lock the agent inputs when there is no active org (letterhead query never runs)", () => {

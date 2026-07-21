@@ -286,7 +286,13 @@ export default function SettingsPage() {
             if (items.length === 0) return null;
             return (
               <div key={group.heading} className="contents md:mt-4 md:block md:first:mt-0">
-                <p className="hidden px-3 pb-1 text-xs font-medium uppercase tracking-wide text-muted-foreground md:block">
+                {/* Decorative visual grouping only. aria-hidden so this stray non-tab
+                    child isn't announced inside the role="tablist"; the tabs themselves
+                    carry clear labels, so screen-reader users get a clean flat list. */}
+                <p
+                  aria-hidden="true"
+                  className="hidden px-3 pb-1 text-xs font-medium uppercase tracking-wide text-muted-foreground md:block"
+                >
                   {group.heading}
                 </p>
                 {items.map((item) => (

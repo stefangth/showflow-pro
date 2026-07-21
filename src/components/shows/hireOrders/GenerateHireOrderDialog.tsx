@@ -90,7 +90,7 @@ export function GenerateHireOrderDialog({ open, onOpenChange, order, showDate, o
   const [variant, setVariant] = useState<string>(initialVariant);
 
   // Org letterhead default — reuses the same query key as LetterheadCard so the cache is shared.
-  const { data: letterhead } = useQuery({
+  const { data: letterhead, isError: letterheadError } = useQuery({
     queryKey: ["app-settings", "hire_order_letterhead", orgId],
     queryFn: () => resolveOrgSetting<Letterhead>(supabase, orgId, "hire_order_letterhead", LETTERHEAD_DEFAULT),
     enabled: Boolean(orgId),
@@ -283,7 +283,13 @@ export function GenerateHireOrderDialog({ open, onOpenChange, order, showDate, o
                 }}
               />
             </div>
-            <p className="text-xs text-muted-foreground">Prefilled from your organization letterhead.</p>
+            {letterheadError ? (
+              <p className="text-xs text-destructive">
+                Couldn't load your organization letterhead. This order will use your saved default.
+              </p>
+            ) : (
+              <p className="text-xs text-muted-foreground">Prefilled from your organization letterhead.</p>
+            )}
           </div>
 
           {/* Info note (fee-only copy) */}
