@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { Search } from "lucide-react";
 import { useAuth } from "@/features/auth/AuthContext";
-import { useFeature } from "@/hooks/useEntitlements";
+import { useEntitlements } from "@/hooks/useEntitlements";
 import { useHireOrders } from "@/hooks/useHireOrders";
 import { OrdersKpis } from "@/components/hireOrders/OrdersKpis";
 import { computeOrderKpis } from "@/lib/hireOrders/kpis";
@@ -48,7 +48,12 @@ function chipToStatusFilter(chip: StatusChip): HireOrderStatus[] | undefined {
 export default function HireOrdersPage() {
   const { currentOrg } = useAuth();
   const orgId = currentOrg?.id ?? null;
-  const featureOn = useFeature("hire_orders");
+  // Fail open while entitlements are loading: useFeature falls back to the
+  // registry default (false for hire_orders), which flashed the off-state
+  // banner and disabled buttons on every fresh mount for orgs that actually
+  // have the module on. Show the off-state only once the query has resolved.
+  const { features, isLoading: entitlementsLoading } = useEntitlements();
+  const featureOn = entitlementsLoading || features.has("hire_orders");
 
   const [statusChip, setStatusChip] = useState<StatusChip>("all");
   const [search, setSearch] = useState("");
