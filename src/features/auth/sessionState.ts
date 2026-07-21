@@ -69,3 +69,82 @@ export function computeAuthReady(
 ): boolean {
   return bootstrapped && (userId ?? null) === (identityUserId ?? null);
 }
+
+/** Injected surface for the initial-session bootstrap. See {@link bootstrapAuth}. */
+export interface AuthBootstrapDeps {
+  /** Read the current session. May reject or hang under multi-tab auth-lock contention. */
+  getSession: () => Promise<Session | null>;
+  /** Apply the freshly read session to state (synchronous setters). */
+  applySession: (session: Session | null) => void;
+  /** Load-or-clear identity for the session, then mark readiness (resolveSessionIdentity bound to handlers). */
+  resolve: (session: Session | null) => Promise<void>;
+  /** Last resort when the session can't be established: settle as signed-out so guards leave the spinner. */
+  degrade: () => void;
+  /** Attempts after the first before degrading (default 3). */
+  retries?: number;
+  /** Base backoff between attempts, scaled linearly by attempt (default 800ms). */
+  backoffMs?: number;
+  /** Per-attempt ceiling; a getSession that hasn't settled by then is treated as a failure (default 6000ms). */
+  timeoutMs?: number;
+}
+
+const DEFAULT_BOOTSTRAP_RETRIES = 3;
+const DEFAULT_BOOTSTRAP_BACKOFF_MS = 800;
+const DEFAULT_BOOTSTRAP_TIMEOUT_MS = 6000;
+
+const delay = (ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms));
+
+/** Reject if `promise` hasn't settled within `ms`, clearing the timer either way (no leak / no late reject). */
+function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T> {
+  return new Promise<T>((resolve, reject) => {
+    const timer = setTimeout(
+      () => reject(new Error(`auth bootstrap: getSession exceeded ${ms}ms`)),
+      ms,
+    );
+    promise.then(
+      (value) => {
+        clearTimeout(timer);
+        resolve(value);
+      },
+      (err) => {
+        clearTimeout(timer);
+        reject(err);
+      },
+    );
+  });
+}
+
+/**
+ * Establish the initial session, resilient to a stalled auth bootstrap.
+ *
+ * supabase-js serializes auth-token access across same-origin tabs with a Web
+ * Lock; under multi-tab contention `getSession()` can time out (reject) or hang
+ * indefinitely. The previous bootstrap awaited it exactly once with no catch and
+ * no timeout, so a single stall stranded route guards on the loading spinner
+ * forever (the "endless spinning ball" with several tabs open on one account).
+ *
+ * Here each attempt is bounded by a timeout and retried with linear backoff.
+ * If every attempt fails we `degrade()` (settle as signed-out) so the app can
+ * never spin indefinitely — a later onAuthStateChange event re-resolves identity
+ * the moment the lock frees.
+ */
+export async function bootstrapAuth(deps: AuthBootstrapDeps): Promise<void> {
+  const retries = deps.retries ?? DEFAULT_BOOTSTRAP_RETRIES;
+  const backoffMs = deps.backoffMs ?? DEFAULT_BOOTSTRAP_BACKOFF_MS;
+  const timeoutMs = deps.timeoutMs ?? DEFAULT_BOOTSTRAP_TIMEOUT_MS;
+
+  for (let attempt = 0; ; attempt++) {
+    try {
+      const session = await withTimeout(deps.getSession(), timeoutMs);
+      deps.applySession(session);
+      await deps.resolve(session);
+      return;
+    } catch {
+      if (attempt >= retries) {
+        deps.degrade();
+        return;
+      }
+      await delay(backoffMs * (attempt + 1));
+    }
+  }
+}
