@@ -226,12 +226,22 @@ export interface HireOrderReview {
 }
 
 /**
- * Persist the producer's review edits (engagement fee + terms variant) onto a
- * draft/ready order before preview/issue. The fee lands in BOTH the `fee_amount`
- * column and the `data.fee` snapshot as a `manual`-source field — the PDF renders
- * from the snapshot (`data.fee.value`), so the two must stay in step. Every other
- * snapshot field is preserved untouched. Never call on an issued order; the DB
- * transition guard (Task 1) is the backstop, this is only the client path.
+ * Persist the producer's review edits (engagement fee, terms variant, and
+ * optionally the per-order booking-agent override) onto a draft/ready order
+ * before preview/issue. The fee lands in BOTH the `fee_amount` column and the
+ * `data.fee` snapshot as a `manual`-source field — the PDF renders from the
+ * snapshot (`data.fee.value`), so the two must stay in step. Every other
+ * snapshot field is preserved untouched.
+ *
+ * `fee_amount`/`terms_variant`/`data` are ALWAYS written. `agent_name` and
+ * `agent_email` are each written independently, and only when their key is
+ * present on `review` (`undefined` means "leave the column unchanged" —
+ * see `HireOrderReview`'s doc comment) — so editing just one of the two
+ * agent fields never overwrites the other with its current (possibly
+ * inherited) value.
+ *
+ * Never call on an issued order; the DB transition guard (Task 1) is the
+ * backstop, this is only the client path.
  */
 export async function updateHireOrderReview(
   client: SupabaseClient<Database>,

@@ -98,24 +98,32 @@ export function GenerateHireOrderDialog({ open, onOpenChange, order, showDate, o
 
   const [agentName, setAgentName] = useState<string>(order.agent_name ?? "");
   const [agentEmail, setAgentEmail] = useState<string>(order.agent_email ?? "");
-  // Baseline for the "changed?" check; updated when we seed from the letterhead.
+  // Baseline for the "changed?" check; updated per-field when we seed from the letterhead.
   const initialAgentRef = useRef({ name: order.agent_name ?? "", email: order.agent_email ?? "" });
-  // Seed from the letterhead default only when the order carries no override of its own.
-  const seededAgentRef = useRef(order.agent_name != null || order.agent_email != null);
   // The letterhead query is async and can resolve after the producer has already
-  // started typing; once they've touched either field, a late-arriving default
-  // must never clobber their edit.
-  const agentTouchedRef = useRef(false);
+  // started typing; once they've touched a field, a late-arriving default must
+  // never clobber that edit -- tracked per field (not as a pair) so a late
+  // default can still fill whichever field the producer hasn't touched, and a
+  // field the order already overrides is never re-seeded.
+  const nameTouchedRef = useRef(false);
+  const emailTouchedRef = useRef(false);
+  const nameSeededRef = useRef(order.agent_name != null);
+  const emailSeededRef = useRef(order.agent_email != null);
   useEffect(() => {
-    if (letterhead && !seededAgentRef.current && !agentTouchedRef.current) {
-      seededAgentRef.current = true;
-      const name = order.agent_name ?? letterhead.agent_name ?? "";
-      const email = order.agent_email ?? letterhead.agent_email ?? "";
-      setAgentName(name);
-      setAgentEmail(email);
-      initialAgentRef.current = { name, email };
+    if (!letterhead) return;
+    if (!nameSeededRef.current && !nameTouchedRef.current) {
+      nameSeededRef.current = true;
+      const v = letterhead.agent_name ?? "";
+      setAgentName(v);
+      initialAgentRef.current = { ...initialAgentRef.current, name: v };
     }
-  }, [letterhead, order.agent_name, order.agent_email]);
+    if (!emailSeededRef.current && !emailTouchedRef.current) {
+      emailSeededRef.current = true;
+      const v = letterhead.agent_email ?? "";
+      setAgentEmail(v);
+      initialAgentRef.current = { ...initialAgentRef.current, email: v };
+    }
+  }, [letterhead]);
 
   const review = useUpdateHireOrderReview();
   const action = useHireOrderAction();
@@ -128,16 +136,20 @@ export function GenerateHireOrderDialog({ open, onOpenChange, order, showDate, o
   // terms variant — otherwise an untouched sheet/showflow-sourced fee would be
   // silently re-tagged as manual on every click.
   async function persist(): Promise<void> {
-    const agentChanged =
-      agentName !== initialAgentRef.current.name || agentEmail !== initialAgentRef.current.email;
-    const changed = feeAmount !== initialFeeAmount || variant !== initialVariant || agentChanged;
+    // Each agent field is compared and written independently, so editing only the
+    // name never converts the inherited (null) email into a stored literal, and
+    // vice versa.
+    const nameChanged = agentName !== initialAgentRef.current.name;
+    const emailChanged = agentEmail !== initialAgentRef.current.email;
+    const changed = feeAmount !== initialFeeAmount || variant !== initialVariant || nameChanged || emailChanged;
     if (!changed) return;
     await review.mutateAsync({
       id: order.id,
       review: {
         feeAmount,
         termsVariant: variant,
-        ...(agentChanged ? { agentName, agentEmail } : {}),
+        ...(nameChanged ? { agentName } : {}),
+        ...(emailChanged ? { agentEmail } : {}),
       },
       currentData: order.data,
     });
@@ -241,7 +253,7 @@ export function GenerateHireOrderDialog({ open, onOpenChange, order, showDate, o
                 placeholder="Agent name"
                 value={agentName}
                 onChange={(e) => {
-                  agentTouchedRef.current = true;
+                  nameTouchedRef.current = true;
                   setAgentName(e.target.value);
                 }}
               />
@@ -251,7 +263,7 @@ export function GenerateHireOrderDialog({ open, onOpenChange, order, showDate, o
                 placeholder="Agent email"
                 value={agentEmail}
                 onChange={(e) => {
-                  agentTouchedRef.current = true;
+                  emailTouchedRef.current = true;
                   setAgentEmail(e.target.value);
                 }}
               />

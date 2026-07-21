@@ -205,4 +205,63 @@ describe("GenerateHireOrderDialog", () => {
       expect(patch.agent_email).toBe("solo@x.com");
     });
   });
+
+  it("clearing a prefilled agent field persists an empty string", async () => {
+    seedClient({
+      hire_orders: { data: [], error: null },
+      app_settings: {
+        data: [{ org_id: "org-1", value: { legal_name: "Aurora", address_lines: [], agent_name: "Org Agent", agent_email: "org@x.com" } }],
+        error: null,
+      },
+      "fn:generate-hire-orders": { data: { issued: ["ho-1"], failed: [] }, error: null },
+    });
+    renderDialog();
+    await waitFor(() => {
+      expect(screen.getByLabelText("Agent name")).toHaveValue("Org Agent");
+      expect(screen.getByLabelText("Agent email")).toHaveValue("org@x.com");
+    });
+
+    // Clear ONLY the name; the email is left exactly as prefilled.
+    fireEvent.change(screen.getByLabelText("Agent name"), { target: { value: "" } });
+    fireEvent.click(screen.getByRole("button", { name: "Issue and send" }));
+
+    await waitFor(() => {
+      const calls = (client.calls ?? []) as { table: string; method: string; args: unknown[] }[];
+      const update = calls.find((c) => c.table === "hire_orders" && c.method === "update");
+      const patch = update!.args[0] as Record<string, unknown>;
+      expect(patch.agent_name).toBe("");
+      // The email was never touched -- its key must be absent, not re-written
+      // with its (unchanged) current value.
+      expect("agent_email" in patch).toBe(false);
+    });
+  });
+
+  it("editing only the agent email writes only agent_email", async () => {
+    seedClient({
+      hire_orders: { data: [], error: null },
+      app_settings: {
+        data: [{ org_id: "org-1", value: { legal_name: "Aurora", address_lines: [], agent_name: "Org Agent", agent_email: "org@x.com" } }],
+        error: null,
+      },
+      "fn:generate-hire-orders": { data: { issued: ["ho-1"], failed: [] }, error: null },
+    });
+    renderDialog();
+    await waitFor(() => {
+      expect(screen.getByLabelText("Agent name")).toHaveValue("Org Agent");
+      expect(screen.getByLabelText("Agent email")).toHaveValue("org@x.com");
+    });
+
+    // Edit ONLY the email; the name is left exactly as prefilled.
+    fireEvent.change(screen.getByLabelText("Agent email"), { target: { value: "new@x.com" } });
+    fireEvent.click(screen.getByRole("button", { name: "Issue and send" }));
+
+    await waitFor(() => {
+      const calls = (client.calls ?? []) as { table: string; method: string; args: unknown[] }[];
+      const update = calls.find((c) => c.table === "hire_orders" && c.method === "update");
+      const patch = update!.args[0] as Record<string, unknown>;
+      expect(patch.agent_email).toBe("new@x.com");
+      // The name was never touched -- its key must be absent.
+      expect("agent_name" in patch).toBe(false);
+    });
+  });
 });
