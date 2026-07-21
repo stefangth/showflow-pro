@@ -1,9 +1,9 @@
 import { describe, it, expect } from "vitest";
 import { NAV_ITEMS, visibleNavItems, groupNavBySections, type NavItem } from "./navItems";
 
-const ctx = (over: Partial<{ isEditorMode: boolean; isRealAdmin: boolean; isSuperAdmin: boolean; roles: string[]; enabledFeatures: Set<string> }> = {}) => {
-  const { isEditorMode = false, isRealAdmin = false, isSuperAdmin = false, roles = [], enabledFeatures = new Set<string>() } = over;
-  return { isEditorMode, isRealAdmin, isSuperAdmin, hasRole: (r: string) => roles.includes(r), enabledFeatures };
+const ctx = (over: Partial<{ isEditorMode: boolean; isRealAdmin: boolean; isSuperAdmin: boolean; roles: string[]; enabledFeatures: Set<string>; entitlementsLoading: boolean }> = {}) => {
+  const { isEditorMode = false, isRealAdmin = false, isSuperAdmin = false, roles = [], enabledFeatures = new Set<string>(), entitlementsLoading = false } = over;
+  return { isEditorMode, isRealAdmin, isSuperAdmin, hasRole: (r: string) => roles.includes(r), enabledFeatures, entitlementsLoading };
 };
 
 describe("visibleNavItems", () => {
@@ -80,6 +80,13 @@ describe("feature locking", () => {
   it("unlocks it once the module is enabled", () => {
     const items = visibleNavItems(NAV_ITEMS, ctx({ roles: ["admin"], enabledFeatures: new Set(["hire_orders"]) }));
     expect(items.find((i) => i.label === "Hire orders")?.locked).toBe(false);
+  });
+
+  it("does not lock a feature-gated item while entitlements are still loading (fails open)", () => {
+    const items = visibleNavItems(NAV_ITEMS, ctx({ roles: ["admin"], entitlementsLoading: true }));
+    const hireOrders = items.find((i) => i.label === "Hire orders");
+    expect(hireOrders).toBeDefined();
+    expect(hireOrders?.locked).toBe(false);
   });
 
   it("never locks it for a super-admin, who administers entitlements", () => {

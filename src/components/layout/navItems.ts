@@ -63,15 +63,19 @@ export function visibleNavItems(
     isSuperAdmin: boolean;
     hasRole: (r: string) => boolean;
     enabledFeatures: Set<string>;
+    entitlementsLoading: boolean;
   },
 ): VisibleNavItem[] {
   // Entitlement no longer HIDES an item, it LOCKS it: a member who cannot use a
   // module should still be able to see that it exists. Super-admins are never
   // locked, consistent with ProtectedRoute exempting them from the route-level
-  // feature gate. Role gating below is unchanged and still hides outright.
+  // feature gate. While entitlements are still loading, fail OPEN (never lock)
+  // so an entitled org doesn't see the item flash locked for one round-trip,
+  // matching ProtectedRoute and HireOrdersPage's fail-open loading behavior.
+  // Role gating below is unchanged and still hides outright.
   const lock = (item: NavItem): VisibleNavItem => ({
     ...item,
-    locked: !!item.feature && !ctx.isSuperAdmin && !ctx.enabledFeatures.has(item.feature),
+    locked: !ctx.entitlementsLoading && !!item.feature && !ctx.isSuperAdmin && !ctx.enabledFeatures.has(item.feature),
   });
 
   if (ctx.isEditorMode && ctx.isRealAdmin) {
