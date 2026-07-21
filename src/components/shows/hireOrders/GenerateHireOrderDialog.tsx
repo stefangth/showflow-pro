@@ -1,4 +1,5 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { Ticket } from "lucide-react";
 import {
   Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle,
@@ -11,6 +12,10 @@ import { formatDateDMY } from "@/lib/dates";
 import type { OrderData } from "@/lib/hireOrders/types";
 import type { HireOrderRow } from "@/data/hireOrders";
 import { useHireOrderAction, useUpdateHireOrderReview } from "@/hooks/useHireOrders";
+import { supabase } from "@/integrations/supabase/client";
+import { resolveOrgSetting } from "@/data/settings";
+import type { Letterhead } from "@/components/settings/hireOrders/LetterheadCard";
+import { LETTERHEAD_DEFAULT } from "@/components/settings/hireOrders/defaults";
 import type { HireOrderShowDate } from "./types";
 
 interface Props {
@@ -84,6 +89,34 @@ export function GenerateHireOrderDialog({ open, onOpenChange, order, showDate, o
   const [fee, setFee] = useState<string>(order.fee_amount != null ? String(order.fee_amount) : "");
   const [variant, setVariant] = useState<string>(initialVariant);
 
+  // Org letterhead default — reuses the same query key as LetterheadCard so the cache is shared.
+  const { data: letterhead } = useQuery({
+    queryKey: ["app-settings", "hire_order_letterhead", orgId],
+    queryFn: () => resolveOrgSetting<Letterhead>(supabase, orgId, "hire_order_letterhead", LETTERHEAD_DEFAULT),
+    enabled: Boolean(orgId),
+  });
+
+  const [agentName, setAgentName] = useState<string>(order.agent_name ?? "");
+  const [agentEmail, setAgentEmail] = useState<string>(order.agent_email ?? "");
+  // Baseline for the "changed?" check; updated when we seed from the letterhead.
+  const initialAgentRef = useRef({ name: order.agent_name ?? "", email: order.agent_email ?? "" });
+  // Seed from the letterhead default only when the order carries no override of its own.
+  const seededAgentRef = useRef(order.agent_name != null || order.agent_email != null);
+  // The letterhead query is async and can resolve after the producer has already
+  // started typing; once they've touched either field, a late-arriving default
+  // must never clobber their edit.
+  const agentTouchedRef = useRef(false);
+  useEffect(() => {
+    if (letterhead && !seededAgentRef.current && !agentTouchedRef.current) {
+      seededAgentRef.current = true;
+      const name = order.agent_name ?? letterhead.agent_name ?? "";
+      const email = order.agent_email ?? letterhead.agent_email ?? "";
+      setAgentName(name);
+      setAgentEmail(email);
+      initialAgentRef.current = { name, email };
+    }
+  }, [letterhead, order.agent_name, order.agent_email]);
+
   const review = useUpdateHireOrderReview();
   const action = useHireOrderAction();
   const busy = review.isPending || action.isPending;
@@ -95,9 +128,19 @@ export function GenerateHireOrderDialog({ open, onOpenChange, order, showDate, o
   // terms variant — otherwise an untouched sheet/showflow-sourced fee would be
   // silently re-tagged as manual on every click.
   async function persist(): Promise<void> {
-    const changed = feeAmount !== initialFeeAmount || variant !== initialVariant;
+    const agentChanged =
+      agentName !== initialAgentRef.current.name || agentEmail !== initialAgentRef.current.email;
+    const changed = feeAmount !== initialFeeAmount || variant !== initialVariant || agentChanged;
     if (!changed) return;
-    await review.mutateAsync({ id: order.id, review: { feeAmount, termsVariant: variant }, currentData: order.data });
+    await review.mutateAsync({
+      id: order.id,
+      review: {
+        feeAmount,
+        termsVariant: variant,
+        ...(agentChanged ? { agentName, agentEmail } : {}),
+      },
+      currentData: order.data,
+    });
   }
 
   function handlePreview(): void {
@@ -187,6 +230,33 @@ export function GenerateHireOrderDialog({ open, onOpenChange, order, showDate, o
                 );
               })}
             </div>
+          </div>
+
+          {/* Booking agent — prefilled from the org letterhead, overridable per order */}
+          <div className="space-y-1.5">
+            <Label className="text-xs text-muted-foreground">Booking agent (optional)</Label>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+              <Input
+                aria-label="Agent name"
+                placeholder="Agent name"
+                value={agentName}
+                onChange={(e) => {
+                  agentTouchedRef.current = true;
+                  setAgentName(e.target.value);
+                }}
+              />
+              <Input
+                aria-label="Agent email"
+                type="email"
+                placeholder="Agent email"
+                value={agentEmail}
+                onChange={(e) => {
+                  agentTouchedRef.current = true;
+                  setAgentEmail(e.target.value);
+                }}
+              />
+            </div>
+            <p className="text-xs text-muted-foreground">Prefilled from your organization letterhead.</p>
           </div>
 
           {/* Info note (fee-only copy) */}

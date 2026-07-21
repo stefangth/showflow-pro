@@ -44,7 +44,7 @@ const ORDER = {
 let openSpy: ReturnType<typeof vi.fn>;
 
 beforeEach(() => {
-  seedClient({ hire_orders: { data: [], error: null } });
+  seedClient({ hire_orders: { data: [], error: null }, app_settings: { data: [], error: null } });
   openSpy = vi.fn();
   vi.stubGlobal("open", openSpy);
   // jsdom does not implement object URLs.
@@ -86,6 +86,7 @@ describe("GenerateHireOrderDialog", () => {
   it("persists the edited fee + variant then invokes issue, and closes on success", async () => {
     seedClient({
       hire_orders: { data: [], error: null },
+      app_settings: { data: [], error: null },
       "fn:generate-hire-orders": { data: { issued: ["ho-1"], failed: [] }, error: null },
     });
     const onOpenChange = vi.fn();
@@ -120,6 +121,7 @@ describe("GenerateHireOrderDialog", () => {
   it("skips persisting the review when nothing changed, but still issues", async () => {
     seedClient({
       hire_orders: { data: [], error: null },
+      app_settings: { data: [], error: null },
       "fn:generate-hire-orders": { data: { issued: ["ho-1"], failed: [] }, error: null },
     });
     const onOpenChange = vi.fn();
@@ -147,6 +149,7 @@ describe("GenerateHireOrderDialog", () => {
   it("Preview PDF invokes the preview action and opens the returned PDF", async () => {
     seedClient({
       hire_orders: { data: [], error: null },
+      app_settings: { data: [], error: null },
       "fn:generate-hire-orders": { data: { pdf_base64: "JVBERi0xLjQK" }, error: null },
     });
     renderDialog();
@@ -159,5 +162,47 @@ describe("GenerateHireOrderDialog", () => {
       expect((invoke!.args[0] as { action: string }).action).toBe("preview");
     });
     await waitFor(() => expect(openSpy).toHaveBeenCalledWith("blob:fake", "_blank", "noopener,noreferrer"));
+  });
+
+  it("prefills agent fields from the org letterhead default", async () => {
+    seedClient({
+      hire_orders: { data: [], error: null },
+      app_settings: {
+        data: [{ org_id: "org-1", value: { legal_name: "Aurora", address_lines: [], agent_name: "Org Agent", agent_email: "org@x.com" } }],
+        error: null,
+      },
+    });
+    renderDialog();
+    // The "Agent name"/"Agent email" inputs render immediately (unconditionally,
+    // not gated behind the letterhead query's isLoading), so findByLabelText
+    // resolves as soon as they mount -- before the async default has necessarily
+    // arrived. Poll the VALUE itself until the letterhead-seeding effect lands.
+    await waitFor(() => {
+      expect(screen.getByLabelText("Agent name")).toHaveValue("Org Agent");
+      expect(screen.getByLabelText("Agent email")).toHaveValue("org@x.com");
+    });
+  });
+
+  it("persists an edited agent name + email on issue", async () => {
+    seedClient({
+      hire_orders: { data: [], error: null },
+      app_settings: {
+        data: [{ org_id: "org-1", value: { legal_name: "Aurora", address_lines: [], agent_name: "Org Agent", agent_email: "org@x.com" } }],
+        error: null,
+      },
+      "fn:generate-hire-orders": { data: { issued: ["ho-1"], failed: [] }, error: null },
+    });
+    renderDialog();
+    fireEvent.change(await screen.findByLabelText("Agent name"), { target: { value: "Solo Agent" } });
+    fireEvent.change(screen.getByLabelText("Agent email"), { target: { value: "solo@x.com" } });
+    fireEvent.click(screen.getByRole("button", { name: "Issue and send" }));
+
+    await waitFor(() => {
+      const calls = (client.calls ?? []) as { table: string; method: string; args: unknown[] }[];
+      const update = calls.find((c) => c.table === "hire_orders" && c.method === "update");
+      const patch = update!.args[0] as { agent_name?: string; agent_email?: string };
+      expect(patch.agent_name).toBe("Solo Agent");
+      expect(patch.agent_email).toBe("solo@x.com");
+    });
   });
 });
