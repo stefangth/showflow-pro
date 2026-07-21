@@ -2,6 +2,13 @@
 
 What's new in ShowFlow, newest first.
 
+## 1.10.2 — July 21, 2026
+
+*Reliability fixes*
+
+### Fixed
+- **Endless loading spinner** — Opening the app with several tabs signed in to the same account could leave one tab stuck on the loading spinner. It now retries and recovers on its own instead of hanging, so you no longer need to reload.
+
 ## 1.10.1 — July 21, 2026
 
 *Reliability fixes*

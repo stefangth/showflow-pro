@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
+import { createContext, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import type { User, Session } from '@supabase/supabase-js';
@@ -7,7 +7,7 @@ import { fetchMyMemberships, type Membership, type Organization } from '@/data/o
 import { fetchIsSuperAdmin, fetchAllOrgs } from '@/data/platform';
 import { rolesForOrg, effectiveHasRole, effectiveOrgs } from './orgRoles';
 import { REALTIME_INVALIDATIONS } from './realtimeInvalidations';
-import { resolveSessionIdentity, computeAuthReady, type SessionIdentityHandlers } from './sessionState';
+import { resolveSessionIdentity, computeAuthReady, bootstrapAuth, type SessionIdentityHandlers } from './sessionState';
 
 export interface ViewAsUser {
   id: string;
@@ -63,6 +63,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   // no render can treat a half-loaded identity as authoritative. See sessionState.ts.
   const [bootstrapped, setBootstrapped] = useState(false);
   const [identityUserId, setIdentityUserId] = useState<string | null>(null);
+  // Tracks whether any real resolution has landed, so a failed initial-session
+  // bootstrap can't clobber a good signed-in state an auth event already set.
+  const resolvedRef = useRef(false);
 
   const setViewAsUser = (u: ViewAsUser | null) => {
     setViewAsUserState(u);
@@ -134,6 +137,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
    * is in place (isSuperAdmin/currentOrg populated), never mid-load.
    */
   const markResolved = (userId: string | null) => {
+    resolvedRef.current = true;
     setIdentityUserId(userId);
     setBootstrapped(true);
   };
@@ -145,6 +149,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     // computeAuthReady), so the moment `user` changes they show the spinner
     // until identity for that user is loaded — no flag to sequence, no flash.
     const identityHandlers: SessionIdentityHandlers = { loadIdentity, clearIdentity, markResolved };
+    // Flipped on unmount so the bootstrap's retry/backoff loop stops touching
+    // state against a dead provider (StrictMode double-invoke, HMR, test remounts).
+    let cancelled = false;
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       (_event, session) => {
@@ -156,13 +163,40 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
     );
 
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setSession(session);
-      setUser(session?.user ?? null);
-      void resolveSessionIdentity(session, identityHandlers);
+    // Initial-session bootstrap, hardened against a stalled auth lock. Under
+    // multi-tab contention getSession() can time out or hang; awaiting it once
+    // with no catch (the old code) stranded the guards on the spinner forever.
+    // bootstrapAuth retries with backoff and, failing that, degrades to
+    // signed-out so the app can never spin indefinitely. See sessionState.ts.
+    void bootstrapAuth({
+      getSession: async () => (await supabase.auth.getSession()).data.session,
+      applySession: (session) => {
+        setSession(session);
+        setUser(session?.user ?? null);
+      },
+      resolve: (session) => resolveSessionIdentity(session, identityHandlers),
+      // Abandon the bootstrap once the provider unmounts, or once any real
+      // resolution has landed (e.g. an onAuthStateChange event beat the retries)
+      // — so a slow attempt can neither clobber a good signed-in state nor keep
+      // retrying. onAuthStateChange stays subscribed, so the app self-heals the
+      // moment the lock frees.
+      shouldAbort: () => cancelled || resolvedRef.current,
+      // Last resort when the session can never be established (a deadlocked
+      // cross-tab auth lock): settle as signed-out so the guards leave the
+      // spinner instead of hanging forever. bootstrapAuth only calls this when
+      // shouldAbort() is false, so it never clobbers an already-resolved state.
+      degrade: () => {
+        setSession(null);
+        setUser(null);
+        clearIdentity();
+        markResolved(null);
+      },
     });
 
-    return () => subscription.unsubscribe();
+    return () => {
+      cancelled = true;
+      subscription.unsubscribe();
+    };
   }, []);
 
   // Realtime: global cache invalidation for all queried tables

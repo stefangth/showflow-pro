@@ -1,5 +1,19 @@
 [
   {
+    "version": "1.10.2",
+    "date": "2026-07-21",
+    "dateLabel": "July 21, 2026",
+    "title": "Reliability fixes",
+    "changes": {
+      "fixed": [
+        {
+          "title": "Endless loading spinner",
+          "description": "Opening the app with several tabs signed in to the same account could leave one tab stuck on the loading spinner. It now retries and recovers on its own instead of hanging, so you no longer need to reload."
+        }
+      ]
+    }
+  },
+  {
     "version": "1.10.1",
     "date": "2026-07-21",
     "dateLabel": "July 21, 2026",
