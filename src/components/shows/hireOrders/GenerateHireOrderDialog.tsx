@@ -90,7 +90,7 @@ export function GenerateHireOrderDialog({ open, onOpenChange, order, showDate, o
   const [variant, setVariant] = useState<string>(initialVariant);
 
   // Org letterhead default — reuses the same query key as LetterheadCard so the cache is shared.
-  const { data: letterhead } = useQuery({
+  const { data: letterhead, isLoading: letterheadLoading } = useQuery({
     queryKey: ["app-settings", "hire_order_letterhead", orgId],
     queryFn: () => resolveOrgSetting<Letterhead>(supabase, orgId, "hire_order_letterhead", LETTERHEAD_DEFAULT),
     enabled: Boolean(orgId),
@@ -124,6 +124,15 @@ export function GenerateHireOrderDialog({ open, onOpenChange, order, showDate, o
       initialAgentRef.current = { ...initialAgentRef.current, email: v };
     }
   }, [letterhead]);
+
+  // Until the org letterhead default has loaded, a field with no order-level override
+  // has no known value to show. Disable it so the producer can't type into a
+  // not-yet-seeded field: doing so would set its "touched" ref before the default
+  // arrived, permanently blocking the seed and leaving the field blank while the PDF
+  // still rendered the org default (a WYSIWYG violation, and a type-then-clear would
+  // silently discard the edit). A field the order already overrides is ready at once.
+  const nameAwaitingDefault = order.agent_name == null && letterheadLoading;
+  const emailAwaitingDefault = order.agent_email == null && letterheadLoading;
 
   const review = useUpdateHireOrderReview();
   const action = useHireOrderAction();
@@ -252,6 +261,7 @@ export function GenerateHireOrderDialog({ open, onOpenChange, order, showDate, o
                 aria-label="Agent name"
                 placeholder="Agent name"
                 value={agentName}
+                disabled={nameAwaitingDefault}
                 onChange={(e) => {
                   nameTouchedRef.current = true;
                   setAgentName(e.target.value);
@@ -262,6 +272,7 @@ export function GenerateHireOrderDialog({ open, onOpenChange, order, showDate, o
                 type="email"
                 placeholder="Agent email"
                 value={agentEmail}
+                disabled={emailAwaitingDefault}
                 onChange={(e) => {
                   emailTouchedRef.current = true;
                   setAgentEmail(e.target.value);

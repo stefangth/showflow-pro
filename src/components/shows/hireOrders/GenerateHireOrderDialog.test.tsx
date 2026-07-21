@@ -173,13 +173,33 @@ describe("GenerateHireOrderDialog", () => {
       },
     });
     renderDialog();
-    // The "Agent name"/"Agent email" inputs render immediately (unconditionally,
-    // not gated behind the letterhead query's isLoading), so findByLabelText
-    // resolves as soon as they mount -- before the async default has necessarily
-    // arrived. Poll the VALUE itself until the letterhead-seeding effect lands.
+    // The inputs render immediately but are disabled while the letterhead query is
+    // still loading (see the "disables ... until the default loads" test); poll the
+    // VALUE until the seeding effect lands, by which point they are also enabled.
     await waitFor(() => {
       expect(screen.getByLabelText("Agent name")).toHaveValue("Org Agent");
       expect(screen.getByLabelText("Agent email")).toHaveValue("org@x.com");
+    });
+  });
+
+  it("disables the agent inputs until the org letterhead default loads (no type-before-seed race)", async () => {
+    seedClient({
+      hire_orders: { data: [], error: null },
+      app_settings: {
+        data: [{ org_id: "org-1", value: { legal_name: "Aurora", address_lines: [], agent_name: "Org Agent", agent_email: "org@x.com" } }],
+        error: null,
+      },
+    });
+    renderDialog();
+    // Cold cache: on the first render the letterhead query is still pending, so the
+    // fields are disabled — the producer cannot type into a not-yet-seeded field,
+    // which is what previously let a type-then-clear silently discard the edit.
+    expect(screen.getByLabelText("Agent name")).toBeDisabled();
+    expect(screen.getByLabelText("Agent email")).toBeDisabled();
+    // Once the default resolves the fields seed and enable.
+    await waitFor(() => {
+      expect(screen.getByLabelText("Agent name")).toBeEnabled();
+      expect(screen.getByLabelText("Agent name")).toHaveValue("Org Agent");
     });
   });
 
@@ -193,7 +213,10 @@ describe("GenerateHireOrderDialog", () => {
       "fn:generate-hire-orders": { data: { issued: ["ho-1"], failed: [] }, error: null },
     });
     renderDialog();
-    fireEvent.change(await screen.findByLabelText("Agent name"), { target: { value: "Solo Agent" } });
+    // Wait for the fields to seed + enable before editing (they are disabled while
+    // the letterhead default is still loading).
+    await waitFor(() => expect(screen.getByLabelText("Agent name")).toHaveValue("Org Agent"));
+    fireEvent.change(screen.getByLabelText("Agent name"), { target: { value: "Solo Agent" } });
     fireEvent.change(screen.getByLabelText("Agent email"), { target: { value: "solo@x.com" } });
     fireEvent.click(screen.getByRole("button", { name: "Issue and send" }));
 
