@@ -203,6 +203,21 @@ describe("GenerateHireOrderDialog", () => {
     });
   });
 
+  it("keeps the agent inputs disabled when the letterhead fetch fails (never shows a misleading blank)", async () => {
+    seedClient({
+      hire_orders: { data: [], error: null },
+      app_settings: { data: null, error: { message: "boom" } },
+    });
+    const { queryClient } = renderDialog();
+    // The query errors, so no default is ever known. The fields must stay disabled
+    // rather than un-disabling to a blank that would still print the org default.
+    await waitFor(() =>
+      expect(queryClient.getQueryState(["app-settings", "hire_order_letterhead", "org-1"])?.status).toBe("error"),
+    );
+    expect(screen.getByLabelText("Agent name")).toBeDisabled();
+    expect(screen.getByLabelText("Agent email")).toBeDisabled();
+  });
+
   it("persists an edited agent name + email on issue", async () => {
     seedClient({
       hire_orders: { data: [], error: null },
