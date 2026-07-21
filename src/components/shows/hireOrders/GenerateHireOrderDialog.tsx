@@ -132,9 +132,11 @@ export function GenerateHireOrderDialog({ open, onOpenChange, order, showDate, o
   // default (a WYSIWYG violation, and a type-then-clear would silently discard the edit).
   // Gate on `letterhead === undefined` (not just "loading"), so a failed letterhead fetch
   // keeps the field disabled rather than un-disabling to a misleading blank. A field the
-  // order already overrides is ready at once.
-  const nameAwaitingDefault = order.agent_name == null && letterhead === undefined;
-  const emailAwaitingDefault = order.agent_email == null && letterhead === undefined;
+  // order already overrides is ready at once. The `Boolean(orgId)` guard matches the
+  // query's own `enabled`: with no active org the query never runs and `letterhead` would
+  // stay `undefined` forever, so there is no default to wait for — don't lock the field.
+  const nameAwaitingDefault = Boolean(orgId) && order.agent_name == null && letterhead === undefined;
+  const emailAwaitingDefault = Boolean(orgId) && order.agent_email == null && letterhead === undefined;
 
   const review = useUpdateHireOrderReview();
   const action = useHireOrderAction();

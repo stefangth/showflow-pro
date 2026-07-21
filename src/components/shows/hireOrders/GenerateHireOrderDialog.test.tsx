@@ -218,6 +218,19 @@ describe("GenerateHireOrderDialog", () => {
     expect(screen.getByLabelText("Agent email")).toBeDisabled();
   });
 
+  it("does not lock the agent inputs when there is no active org (letterhead query never runs)", () => {
+    seedClient({ hire_orders: { data: [], error: null }, app_settings: { data: [], error: null } });
+    renderWithProviders(
+      <GenerateHireOrderDialog
+        open onOpenChange={vi.fn()} order={ORDER} showDate={SHOW_DATE} orgId="" producerName="Aurora Productions"
+      />,
+    );
+    // orgId "" => the letterhead query is disabled and never resolves; the fields must
+    // not stay permanently disabled waiting for a default that will never load.
+    expect(screen.getByLabelText("Agent name")).toBeEnabled();
+    expect(screen.getByLabelText("Agent email")).toBeEnabled();
+  });
+
   it("persists an edited agent name + email on issue", async () => {
     seedClient({
       hire_orders: { data: [], error: null },
