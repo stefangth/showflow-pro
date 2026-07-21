@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { screen, fireEvent, waitFor } from "@testing-library/react";
+import { MemoryRouter } from "react-router-dom";
 import { renderWithProviders } from "@/test/renderWithProviders";
 import { createFakeSupabase } from "@/test/supabaseFake";
 
@@ -113,5 +114,36 @@ describe("SettingsPage Booking flow tab, locked (booking_flow not entitled)", ()
 
     expect(screen.getAllByRole("button", { name: /^Save/i })).toHaveLength(1);
     expect(screen.queryByText(/unsaved changes/i)).not.toBeInTheDocument();
+  });
+});
+
+describe("SettingsPage grouped vertical nav", () => {
+  // Both tests below land on (or switch to) a tab whose content renders a react-router
+  // <Link> (ShowSlotsEditor on "scheduling", the Artists-page link in CastsCitiesTab on
+  // "casts-cities") — renderWithProviders alone has no Router context, so wrap in a
+  // MemoryRouter here (same pattern as HireOrderDetailPage.test.tsx / FeatureDisabledScreen.test.tsx).
+  it("renders group headings and switches content", async () => {
+    vi.mocked(useAuth).mockReturnValue(DEFAULT_AUTH as never);
+    renderWithProviders(<MemoryRouter><SettingsPage /></MemoryRouter>);
+    expect(await screen.findByText("Automation")).toBeInTheDocument();
+    // The "Organization" group heading shares its literal text with the "Organization" tab
+    // trigger AND the OrganizationTab card's own CardTitle (rendered because "organization" is
+    // the default active tab for an admin) — scope to the heading <p> to disambiguate.
+    expect(screen.getByText("Organization", { selector: "p" })).toBeInTheDocument();
+    // Switching a section swaps the visible content.
+    fireEvent.mouseDown(screen.getByRole("tab", { name: /casts & cities/i }));
+    expect(await screen.findByRole("tab", { name: /casts & cities/i })).toHaveAttribute("aria-selected", "true");
+  });
+
+  it("hides admin-only sections and empty group headings for a producer", async () => {
+    vi.mocked(useAuth).mockReturnValue({
+      ...DEFAULT_AUTH,
+      hasRole: (r: string) => r === "producer",
+    } as never);
+    renderWithProviders(<MemoryRouter><SettingsPage /></MemoryRouter>);
+    await screen.findByRole("tab", { name: /scheduling/i });
+    expect(screen.queryByRole("tab", { name: /airtable sync/i })).not.toBeInTheDocument();
+    // Filters + Notifications are admin-only, so the whole Preferences group disappears.
+    expect(screen.queryByText("Preferences")).not.toBeInTheDocument();
   });
 });
