@@ -635,6 +635,57 @@ Deno.test("issue is idempotent per order (already issued -> failed with already_
   assert(body.failed[0].issues.includes("already_issued"));
 });
 
+Deno.test("issue merges the order's agent override over the org letterhead", async () => {
+  const { deps } = makeFakeDeps({
+    authUser: { id: "u-admin" },
+    tables: {
+      org_memberships: { data: { role: "admin" } },
+      hire_orders: [
+        { when: { __write: false }, data: issuableOrder({ agent_name: "Solo Agent", agent_email: "solo@x.com" }) },
+        { when: { __write: true }, data: null },
+      ],
+      artists: { data: { user_id: "u-artist" } },
+      app_settings: [
+        { when: { key: "hire_order_letterhead" }, data: [{ org_id: ORG, value: { legal_name: "Nord GmbH", address_lines: [], registration_line: "", agent_name: "Org Agent", agent_email: "org@x.com" } }] },
+        { when: { key: "hire_order_terms" }, data: [TERMS_FILLED] },
+        { when: { key: "hire_order_defaults" }, data: [DEFAULTS] },
+      ],
+    },
+  });
+  let captured: { letterhead: { agent_name?: string; agent_email?: string } } | null = null;
+  deps.renderHireOrderPdf = (a) => { captured = a as unknown as typeof captured; return Promise.resolve(new Uint8Array([0x25, 0x50, 0x44, 0x46])); };
+
+  const res = await handle(makeRequest({ headers: JWT, body: { action: "issue", org_id: ORG, order_ids: ["o-1"] } }), deps);
+  assertEquals(res.status, 200);
+  assertEquals(captured!.letterhead.agent_name, "Solo Agent");
+  assertEquals(captured!.letterhead.agent_email, "solo@x.com");
+});
+
+Deno.test("issue inherits the letterhead agent when the order override is null", async () => {
+  const { deps } = makeFakeDeps({
+    authUser: { id: "u-admin" },
+    tables: {
+      org_memberships: { data: { role: "admin" } },
+      hire_orders: [
+        { when: { __write: false }, data: issuableOrder({ agent_name: null, agent_email: null }) },
+        { when: { __write: true }, data: null },
+      ],
+      artists: { data: { user_id: "u-artist" } },
+      app_settings: [
+        { when: { key: "hire_order_letterhead" }, data: [{ org_id: ORG, value: { legal_name: "Nord GmbH", address_lines: [], registration_line: "", agent_name: "Org Agent", agent_email: "org@x.com" } }] },
+        { when: { key: "hire_order_terms" }, data: [TERMS_FILLED] },
+        { when: { key: "hire_order_defaults" }, data: [DEFAULTS] },
+      ],
+    },
+  });
+  let captured: { letterhead: { agent_name?: string } } | null = null;
+  deps.renderHireOrderPdf = (a) => { captured = a as unknown as typeof captured; return Promise.resolve(new Uint8Array([0x25, 0x50, 0x44, 0x46])); };
+
+  const res = await handle(makeRequest({ headers: JWT, body: { action: "issue", org_id: ORG, order_ids: ["o-1"] } }), deps);
+  assertEquals(res.status, 200);
+  assertEquals(captured!.letterhead.agent_name, "Org Agent");
+});
+
 // ── documenso countersign ────────────────────────────────────────────────
 
 /** A fake fetch that plays back the create -> recipient -> distribute sequence

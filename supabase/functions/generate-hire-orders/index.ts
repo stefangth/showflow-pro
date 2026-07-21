@@ -143,6 +143,8 @@ interface IssueOrderRow {
   terms_variant: string | null;
   fee_currency: string | null;
   artist_id: string | null;
+  agent_name: string | null;
+  agent_email: string | null;
 }
 
 /** Shape of previewOrder's hire_orders select. */
@@ -153,6 +155,8 @@ interface PreviewOrderRow {
   data: OrderData;
   terms_variant: string | null;
   fee_currency: string | null;
+  agent_name: string | null;
+  agent_email: string | null;
 }
 
 /** Shape of downloadUrl's hire_orders select. */
@@ -624,7 +628,7 @@ async function issueOne(
 
   const { data: order } = await admin
     .from("hire_orders")
-    .select("id, org_id, order_no, status, data, terms_variant, fee_currency, artist_id")
+    .select("id, org_id, order_no, status, data, terms_variant, fee_currency, artist_id, agent_name, agent_email")
     .eq("id", orderId)
     .eq("org_id", org)
     .maybeSingle();
@@ -652,12 +656,17 @@ async function issueOne(
     if (error) return { ok: false, issues: ["transition_failed"] };
   }
 
+  const effectiveLetterhead: HireOrderLetterhead = {
+    ...letterhead,
+    agent_name: o.agent_name ?? letterhead.agent_name,
+    agent_email: o.agent_email ?? letterhead.agent_email,
+  };
   const currency = o.fee_currency ?? defaults.currency ?? "EUR";
   const bytes = await deps.renderHireOrderPdf({
     data,
     orderNo: o.order_no,
     status: "issued",
-    letterhead,
+    letterhead: effectiveLetterhead,
     terms: variantTerms,
     currency,
     generatedAtIso: deps.now().toISOString(),
@@ -812,7 +821,7 @@ async function previewOrder(deps: Deps, body: PreviewBody): Promise<Response> {
 
   const { data: order } = await admin
     .from("hire_orders")
-    .select("id, org_id, order_no, data, terms_variant, fee_currency")
+    .select("id, org_id, order_no, data, terms_variant, fee_currency, agent_name, agent_email")
     .eq("id", body.order_id)
     .eq("org_id", org)
     .maybeSingle();
@@ -826,11 +835,16 @@ async function previewOrder(deps: Deps, body: PreviewBody): Promise<Response> {
   ]);
   const variant = (o.terms_variant as TermsVariant) ?? "standard";
 
+  const effectiveLetterhead: HireOrderLetterhead = {
+    ...letterhead,
+    agent_name: o.agent_name ?? letterhead.agent_name,
+    agent_email: o.agent_email ?? letterhead.agent_email,
+  };
   const bytes = await deps.renderHireOrderPdf({
     data: o.data as OrderData,
     orderNo: o.order_no,
     status: "preview",
-    letterhead,
+    letterhead: effectiveLetterhead,
     terms: terms[variant] ?? [],
     currency: o.fee_currency ?? defaults.currency ?? "EUR",
     generatedAtIso: deps.now().toISOString(),
