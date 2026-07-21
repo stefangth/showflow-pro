@@ -1,6 +1,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database, Json } from "@/integrations/supabase/types";
 import type { OrderData, OrderFieldKey } from "@/lib/hireOrders/types";
+import { readEdgeError } from "@/lib/edgeErrors";
 
 export type HireOrderStatus = Database["public"]["Enums"]["hire_order_status"];
 
@@ -202,13 +203,15 @@ export async function fetchShowDatesLite(
   }));
 }
 
-/** Invoke the generate-hire-orders edge function (actions: draft/issue/preview/download-url). */
+/** Invoke the generate-hire-orders edge function (actions: draft/issue/preview/download-url).
+ *  Rethrows with the server's own reason rather than supabase-js's opaque
+ *  "non-2xx status code" string — see src/lib/edgeErrors.ts. */
 export async function invokeHireOrderAction(
   client: SupabaseClient<Database>,
   body: Record<string, unknown>,
 ): Promise<unknown> {
   const { data, error } = await client.functions.invoke("generate-hire-orders", { body });
-  if (error) throw error;
+  if (error) throw new Error(await readEdgeError(error));
   return data;
 }
 
