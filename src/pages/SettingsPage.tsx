@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import { ROUTES, BOOKING_ENGINE_DEFAULTS } from '@/config/app.config';
 import { useSettingsWarnings } from '@/hooks/useSettingsWarnings';
+import { useIsMobile } from '@/hooks/use-mobile';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import type { Json } from '@/integrations/supabase/types';
@@ -143,6 +144,11 @@ export default function SettingsPage() {
   // Controlled so we know which tab is active: the Booking flow tab renders its own
   // scoped Save/Discard in FlowRail, and the page-level control must defer to it there.
   const [activeTab, setActiveTab] = useState(isAdmin ? 'organization' : 'scheduling');
+  // Keep the Tabs ARIA orientation matched to the actual layout axis: the nav rail is
+  // vertical on md+ but a horizontal scroll row below md, so arrow-key roving (Up/Down
+  // vs Left/Right) follows the visual direction at each breakpoint. Breakpoint (768px)
+  // matches the `md:` boundary the rail styling uses.
+  const isMobile = useIsMobile();
 
   const dirtyKeys = computeSettingsDirtyKeys(settings, draft, EDITABLE_SETTING_KEYS);
 
@@ -271,7 +277,7 @@ export default function SettingsPage() {
       <Tabs
         value={activeTab}
         onValueChange={setActiveTab}
-        orientation="vertical"
+        orientation={isMobile ? 'horizontal' : 'vertical'}
         className="md:grid md:grid-cols-[220px_1fr] md:gap-8 md:items-start"
       >
         <TabsList className="mb-4 flex h-auto w-full items-stretch gap-1 overflow-x-auto bg-transparent p-0 md:sticky md:top-4 md:mb-0 md:flex-col md:gap-0 md:overflow-visible">
