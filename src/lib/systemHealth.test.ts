@@ -4,10 +4,10 @@ import {
   type EdgeFnMetric, type HealthBudget,
 } from "@/lib/systemHealth";
 
-const BUDGET: HealthBudget = { p95Ms: 12000, errorRate: 0.05 };
+const BUDGET: HealthBudget = { p95Ms: 12000, errorRate: 0.05, rejectRate: 0.2 };
 const metric = (over: Partial<EdgeFnMetric> = {}): EdgeFnMetric => ({
-  fn: "f", invocations: 10, errors: 0, p50Ms: 100, p95Ms: 200,
-  lastInvokedAt: "2026-06-24T00:00:00Z", lastStatus: 200, recent: [], ...over,
+  fn: "f", invocations: 10, errors: 0, rejected: 0, byStatus: {}, p50Ms: 100, p95Ms: 200,
+  lastInvokedAt: "2026-06-24T00:00:00Z", lastStatus: 200, lastFailure: null, recent: [], ...over,
 });
 
 describe("deriveJobStatus", () => {
@@ -32,6 +32,9 @@ describe("deriveJobStatus", () => {
   it("maps cron 'unknown' to pending (neutral, never a false green)", () => {
     expect(deriveJobStatus("unknown", metric({ p95Ms: 8000 }), BUDGET)).toBe("pending");
   });
+  it("is degraded when a healthy cron job is being rejected with 4xx", () => {
+    expect(deriveJobStatus("healthy", metric({ invocations: 10, rejected: 3 }), BUDGET)).toBe("degraded");
+  });
 });
 
 describe("deriveEdgeFnStatus", () => {
@@ -46,6 +49,18 @@ describe("deriveEdgeFnStatus", () => {
   });
   it("is degraded on slow p95", () => {
     expect(deriveEdgeFnStatus(metric({ p95Ms: 20000 }), BUDGET)).toBe("degraded");
+  });
+  it("is down when every call was rejected with 4xx", () => {
+    expect(deriveEdgeFnStatus(metric({ invocations: 48, rejected: 48, errors: 0 }), BUDGET)).toBe("down");
+  });
+  it("is degraded when the 4xx rate is over budget but some calls get through", () => {
+    expect(deriveEdgeFnStatus(metric({ invocations: 10, rejected: 3 }), BUDGET)).toBe("degraded");
+  });
+  it("tolerates an occasional 4xx below budget", () => {
+    expect(deriveEdgeFnStatus(metric({ invocations: 100, rejected: 5 }), BUDGET)).toBe("operational");
+  });
+  it("is down when 4xx and 5xx together account for every call", () => {
+    expect(deriveEdgeFnStatus(metric({ invocations: 4, rejected: 2, errors: 2 }), BUDGET)).toBe("down");
   });
 });
 

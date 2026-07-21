@@ -34,8 +34,8 @@ describe("SystemHealthTab", () => {
       consecutive_failures: 0, last_run_at: "2026-06-24T09:45:00Z", recent_failures: [],
     }]);
     vi.spyOn(platform, "fetchEdgeFnMetrics").mockResolvedValue([{
-      fn: "cron-health-watcher", invocations: 10, errors: 0, p50Ms: 4000, p95Ms: 18000,
-      lastInvokedAt: "2026-06-24T09:45:00Z", lastStatus: 200, recent: [],
+      fn: "cron-health-watcher", invocations: 10, errors: 0, rejected: 0, byStatus: {}, p50Ms: 4000, p95Ms: 18000,
+      lastInvokedAt: "2026-06-24T09:45:00Z", lastStatus: 200, lastFailure: null, recent: [],
     }]);
     vi.spyOn(platform, "fetchEmailHealth").mockResolvedValue(emailFixture);
     renderWithProviders(<SystemHealthTab />);
@@ -71,5 +71,23 @@ describe("SystemHealthTab", () => {
     // useEmailHealth retries once (~1s backoff) before settling into isError — allow extra time.
     expect(await screen.findByText("metrics unavailable", {}, { timeout: 3000 })).toBeInTheDocument();
     expect(screen.queryByText("Delivery rate")).not.toBeInTheDocument();
+  });
+
+  it("counts only on-demand functions in the Edge functions card, matching the panel below", async () => {
+    // One cron function (rendered in Scheduled jobs) + one on-demand function.
+    // The card must not count the cron one: the panel below does not list it.
+    vi.spyOn(platform, "fetchCronHealth").mockResolvedValue([]);
+    vi.spyOn(platform, "fetchEdgeFnMetrics").mockResolvedValue([{
+      fn: "airtable-poll", invocations: 12, errors: 0, rejected: 0, byStatus: { "200": 12 }, p50Ms: 200, p95Ms: 300,
+      lastInvokedAt: "2026-07-21T09:00:00Z", lastStatus: 200, lastFailure: null, recent: [],
+    }, {
+      fn: "open-offer-tier", invocations: 48, errors: 0, rejected: 48, byStatus: { "401": 48 }, p50Ms: 300, p95Ms: 400,
+      lastInvokedAt: "2026-07-21T09:00:00Z", lastStatus: 401,
+      lastFailure: { status: 401, at: "2026-07-21T09:00:00Z" }, recent: [],
+    }]);
+    vi.spyOn(platform, "fetchEmailHealth").mockResolvedValue(emailFixture);
+    renderWithProviders(<SystemHealthTab />);
+    expect(await screen.findByText(/1 on-demand · 1 flagged/)).toBeInTheDocument();
+    expect(screen.queryByText(/2 active/)).not.toBeInTheDocument();
   });
 });

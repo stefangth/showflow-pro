@@ -10,16 +10,23 @@ export interface EdgeFnMetric {
   fn: string;
   invocations: number;
   errors: number;            // count of 5xx responses
+  rejected: number;          // count of 4xx responses
+  /** Exact status-code histogram, e.g. { "200": 3, "401": 48 }. Drives the panel's
+   *  "what went wrong" chips, which a bare error count cannot answer. */
+  byStatus: Record<string, number>;
   p50Ms: number | null;
   p95Ms: number | null;
   lastInvokedAt: string | null;
   lastStatus: number | null;
+  /** Most recent non-2xx outcome in the window, or null if every call succeeded. */
+  lastFailure: { status: number; at: string } | null;
   recent: EdgeFnOutcome[];
 }
 
 export interface HealthBudget {
   p95Ms: number;             // above this (while otherwise healthy) -> degraded
   errorRate: number;         // 0..1; above this -> degraded
+  rejectRate: number;        // 0..1; 4xx fraction above this -> degraded
 }
 
 /** Cron job_name -> deployed edge-function slug (digests/watchers use different names). */
@@ -40,6 +47,9 @@ export const CRON_FNS = new Set(Object.values(CRON_JOB_TO_FN));
 const errorRate = (m: EdgeFnMetric | null): number =>
   m && m.invocations > 0 ? m.errors / m.invocations : 0;
 
+const rejectRate = (m: EdgeFnMetric | null): number =>
+  m && m.invocations > 0 ? m.rejected / m.invocations : 0;
+
 /** Combine durable cron status with latency/errors to yield the status model. */
 export function deriveJobStatus(cron: CronStatus, metric: EdgeFnMetric | null, budget: HealthBudget): HealthState {
   if (cron === "stale") return "stale";
@@ -49,17 +59,23 @@ export function deriveJobStatus(cron: CronStatus, metric: EdgeFnMetric | null, b
   if (cron === "unknown") return "pending";
   if (metric) {
     if (errorRate(metric) > budget.errorRate) return "degraded";
+    if (rejectRate(metric) > budget.rejectRate) return "degraded";
     if (metric.p95Ms !== null && metric.p95Ms > budget.p95Ms) return "degraded";
   }
   return "operational";
 }
 
-/** On-demand functions: no schedule/stale concept; derive purely from metrics. */
+/** On-demand functions: no schedule/stale concept; derive purely from metrics.
+ *  4xx counts as a fault alongside 5xx — a function that rejects every caller is
+ *  as unavailable as one that crashes, and the run timeline has always drawn it
+ *  that way. Keeping the two rates separate lets an occasional validation 400 pass
+ *  while a sustained rejection rate does not. */
 export function deriveEdgeFnStatus(metric: EdgeFnMetric | null, budget: HealthBudget): HealthState {
   if (!metric || metric.invocations === 0) return "operational";
-  const ok2xx = metric.invocations - metric.errors;
-  if (metric.errors > 0 && ok2xx === 0) return "down";
+  // Nothing got through in the window, whatever the reason.
+  if (metric.errors + metric.rejected === metric.invocations) return "down";
   if (errorRate(metric) > budget.errorRate) return "degraded";
+  if (rejectRate(metric) > budget.rejectRate) return "degraded";
   if (metric.p95Ms !== null && metric.p95Ms > budget.p95Ms) return "degraded";
   return "operational";
 }

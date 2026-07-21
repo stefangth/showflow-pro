@@ -1,3 +1,4 @@
+import type { ReactNode } from "react";
 import { describe, expect, it, vi, beforeEach } from "vitest";
 import { fireEvent, screen, waitFor, within } from "@testing-library/react";
 import { renderWithProviders } from "@/test/renderWithProviders";
@@ -15,9 +16,15 @@ vi.mock("@/features/auth/AuthContext", () => ({ useAuth: vi.fn() }));
 // The page now always mounts NewOrderWizard (Task 2), which calls useNavigate
 // for its "Open order" success action; OrderSlideOver's Edit button (Task 2b)
 // also navigates. A stable spy (not a fresh vi.fn() per call) lets tests
-// assert on it.
+// assert on it. `Link` is mocked too (Task 7's FeatureOffBanner renders one)
+// as a plain anchor so it doesn't need a Router context.
 const navigate = vi.fn();
-vi.mock("react-router-dom", () => ({ useNavigate: () => navigate }));
+vi.mock("react-router-dom", () => ({
+  useNavigate: () => navigate,
+  Link: ({ to, className, children }: { to: string; className?: string; children?: ReactNode }) => (
+    <a href={to} className={className}>{children}</a>
+  ),
+}));
 
 function seedClient(seed: Record<string, TableSeed>) {
   for (const key of Object.keys(client)) delete client[key];
@@ -97,6 +104,9 @@ function seedFor(rows: Record<string, unknown>[], extra: Record<string, TableSee
     // One seeded response services every generate-hire-orders action this page
     // calls (issue / download-url) — the fake doesn't branch on request body.
     "fn:generate-hire-orders": { data: { issued: ["ho-1"], failed: [], url: SIGNED_URL }, error: null },
+    // Default the module ON so the existing (non-Task-7) tests below keep
+    // exercising the entitled path. The two Task 7 tests override this.
+    org_entitlements: { data: [{ feature: "hire_orders", enabled: true }], error: null },
     ...extra,
   });
 }
@@ -360,13 +370,18 @@ describe("HireOrdersPage", () => {
   it("shows New order and Import from spreadsheet, both enabled (Task 5: import wizard shipped)", async () => {
     renderPage();
     await screen.findByText("Hire orders");
-    expect(screen.getByRole("button", { name: /new order/i })).toBeEnabled();
+    // hire_orders defaults OFF in the entitlements registry, so useFeature
+    // reports disabled for the brief instant the entitlements query is still
+    // loading (Task 7) — wait for it to settle to the seeded "enabled" value
+    // rather than asserting on the very first render.
+    await waitFor(() => expect(screen.getByRole("button", { name: /new order/i })).toBeEnabled());
     expect(screen.getByRole("button", { name: /import from spreadsheet/i })).toBeEnabled();
   });
 
   it("opens the import wizard on Import from spreadsheet", async () => {
     renderPage();
     await screen.findByText("Hire orders");
+    await waitFor(() => expect(screen.getByRole("button", { name: /import from spreadsheet/i })).toBeEnabled());
     fireEvent.click(screen.getByRole("button", { name: /import from spreadsheet/i }));
     expect(await screen.findByText("Import hire orders from a spreadsheet")).toBeInTheDocument();
   });
@@ -374,11 +389,35 @@ describe("HireOrdersPage", () => {
   it("opens the guided wizard on New order and does not self-disable to a dead-end", async () => {
     renderPage();
     await screen.findByText("Hire orders");
+    await waitFor(() => expect(screen.getByRole("button", { name: /new order/i })).toBeEnabled());
     const newOrderBtn = screen.getByRole("button", { name: /new order/i });
     fireEvent.click(newOrderBtn);
     expect(await screen.findByText("New hire order")).toBeInTheDocument();
     // Task-1 Minor resolved: the button used to disable itself to `wizardOpen`,
     // leaving no way to reopen the wizard after a first click.
     expect(newOrderBtn).toBeEnabled();
+  });
+
+  // Task 7: ProtectedRoute lets super-admins past the route-level feature gate,
+  // so a super-admin viewing an org without the hire_orders module still lands
+  // here. Every write on this page calls generate-hire-orders, which 403s when
+  // the module is off, so the page must warn and disable writes rather than
+  // let the click happen.
+  it("warns and disables creation when the module is off", async () => {
+    seedFor(ROWS, { org_entitlements: { data: [{ feature: "hire_orders", enabled: false }], error: null } });
+    renderPage();
+    expect(await screen.findByText(/Hire orders is off for this organization/)).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /new order/i })).toBeDisabled();
+    expect(screen.getByRole("button", { name: /import from spreadsheet/i })).toBeDisabled();
+  });
+
+  it("shows no banner and enabled actions when the module is on", async () => {
+    renderPage();
+    await screen.findByText("Hire orders");
+    // Same loading-race note as above: wait for the entitlements query to
+    // settle before asserting the banner is gone and actions are enabled.
+    await waitFor(() => expect(screen.queryByText(/is off for this organization/)).not.toBeInTheDocument());
+    expect(screen.getByRole("button", { name: /new order/i })).toBeEnabled();
+    expect(screen.getByRole("button", { name: /import from spreadsheet/i })).toBeEnabled();
   });
 });

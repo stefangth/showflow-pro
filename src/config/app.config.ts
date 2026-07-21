@@ -82,6 +82,10 @@ export const SYSTEM_HEALTH = {
   p95BudgetMs: 12_000,
   /** Recent 5xx fraction (0..1) above which a job/function reads as Degraded. */
   errorRateBudget: 0.05,
+  /** Recent 4xx fraction (0..1) above which a job/function reads as Degraded.
+   *  Looser than errorRateBudget: an occasional validation 400 is normal traffic,
+   *  a sustained rejection rate is a broken caller. */
+  rejectRateBudget: 0.2,
 } as const;
 
 /** Health budget for the systemHealth derivation functions — defined once, imported by every
@@ -89,6 +93,7 @@ export const SYSTEM_HEALTH = {
 export const SYSTEM_HEALTH_BUDGET = {
   p95Ms: SYSTEM_HEALTH.p95BudgetMs,
   errorRate: SYSTEM_HEALTH.errorRateBudget,
+  rejectRate: SYSTEM_HEALTH.rejectRateBudget,
 };
 
 /** Email-delivery health thresholds + windows for the System Health "Email delivery" domain.
@@ -177,7 +182,7 @@ export const CHAT_ARCHIVE_DAYS = 30;
 export const APP_META = {
   NAME: 'ShowFlow',
   DESCRIPTION: 'Artist Booking SaaS for live show productions',
-  VERSION: '1.10.0',
+  VERSION: '1.10.1',
   /** Public marketing site — used for the "Book a demo" CTA on the login page. */
   MARKETING_URL: 'https://showflow.pro',
 } as const;

@@ -8,7 +8,7 @@ import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
-import { Settings, LogOut, Bell, ChevronLeft, ChevronRight, Menu, EyeOff, User } from 'lucide-react';
+import { Settings, LogOut, Bell, ChevronLeft, ChevronRight, Menu, EyeOff, User, Lock } from 'lucide-react';
 import { NAV_ITEMS, visibleNavItems, groupNavBySections } from '@/components/layout/navItems';
 import { cn } from '@/lib/utils';
 import { useSettingsWarnings } from '@/hooks/useSettingsWarnings';
@@ -57,7 +57,7 @@ export default function AppLayout({ children }: AppLayoutProps) {
   const { data: notifications = [] } = useNotifications();
   const { data: myProfile } = useMyProfile();
   const navCounts = useNavCounts();
-  const { features } = useEntitlements();
+  const { features, isLoading: entitlementsLoading } = useEntitlements();
 
   // The account-menu Popover lives only in the expanded sidebar. Reset its open
   // state when collapsing so it doesn't auto-pop on the next expand.
@@ -83,7 +83,7 @@ export default function AppLayout({ children }: AppLayoutProps) {
     }
   };
 
-  const filteredNav = visibleNavItems(NAV_ITEMS, { isEditorMode, isRealAdmin, isSuperAdmin, hasRole: (r) => hasRole(r as AppRole), enabledFeatures: features });
+  const filteredNav = visibleNavItems(NAV_ITEMS, { isEditorMode, isRealAdmin, isSuperAdmin, hasRole: (r) => hasRole(r as AppRole), enabledFeatures: features, entitlementsLoading });
   const navGroups = groupNavBySections(filteredNav);
 
   const isHiddenForViewAs = (item: typeof NAV_ITEMS[number]) => {
@@ -120,6 +120,26 @@ export default function AppLayout({ children }: AppLayoutProps) {
               const showWarningDot = item.to === ROUTES.SETTINGS && hasAnyWarning;
               const hiddenForRole = isHiddenForViewAs(item);
               const badgeCount = item.badge ? navCounts[item.badge] : 0;
+              if (item.locked) {
+                return (
+                  <div
+                    key={item.to}
+                    aria-disabled="true"
+                    title={`${item.label} is not enabled for this organization`}
+                    className="flex cursor-not-allowed items-center gap-2.5 rounded-[7px] px-2.5 py-2 text-[13px] font-medium text-muted-foreground/50"
+                  >
+                    <span className="relative shrink-0">
+                      <item.icon className="h-[14px] w-[14px]" />
+                    </span>
+                    {!collapsed && (
+                      <span className="flex flex-1 items-center gap-2 min-w-0">
+                        <span className="truncate">{item.label}</span>
+                        <Lock className="ml-auto h-3 w-3 shrink-0" />
+                      </span>
+                    )}
+                  </div>
+                );
+              }
               return (
                 <NavLink
                   key={item.to}

@@ -58,6 +58,25 @@ export interface Deps {
 }
 
 /**
+ * FunctionInvokeOptions for an internal service-role invocation. The Authorization header
+ * carries the service-role key EXPLICITLY: supabase-js's implicit "use the createClient key
+ * as the bearer" behavior is not stable across 2.x minors (a redeploy resolving a newer
+ * npm:@supabase/supabase-js@2 dropped it, making every internal function-to-function call
+ * arrive as anon, so the receiver's isServiceRole() returned false and the call 401'd/403'd).
+ * Setting it here is library-drift-proof and fixes every invokeFunction caller (open-offer-tier
+ * via the crons and the email pipeline) in one place.
+ *
+ * FunctionInvokeOptions.body does not accept `unknown`; every caller passes a JSON object
+ * payload, so narrow to the Record member of its union.
+ */
+export function serviceInvokeOptions(
+  body: unknown,
+  serviceKey: string,
+): { body: Record<string, unknown>; headers: { Authorization: string } } {
+  return { body: body as Record<string, unknown>, headers: { Authorization: `Bearer ${serviceKey}` } };
+}
+
+/**
  * Build the production Deps from the environment.
  * `getEnv` is injectable purely so this is unit-testable; production calls realDeps().
  */
@@ -70,11 +89,7 @@ export function realDeps(getEnv: (k: string) => string | undefined = (k) => Deno
   });
 
   const invokeFunction = async (name: string, body: unknown): Promise<InvokeResult> => {
-    // FunctionInvokeOptions.body does not accept `unknown`; every caller passes a
-    // JSON object payload, so narrow to the Record member of its union.
-    const { data, error } = await admin.functions.invoke(name, {
-      body: body as Record<string, unknown>,
-    });
+    const { data, error } = await admin.functions.invoke(name, serviceInvokeOptions(body, serviceKey));
     return { data, error };
   };
 

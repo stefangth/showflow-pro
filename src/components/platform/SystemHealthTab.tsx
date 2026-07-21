@@ -30,7 +30,10 @@ export function SystemHealthTab() {
 
   const jobStates: HealthState[] = cronRows.map((c) =>
     deriveJobStatus(c.status, byFn.get(CRON_JOB_TO_FN[c.job_name] ?? c.job_name) ?? null, budget));
-  const edgeStates: HealthState[] = metrics.filter((m) => !CRON_FNS.has(m.fn)).map((m) => deriveEdgeFnStatus(m, budget));
+  // Cron-invoked functions are rendered in the Scheduled jobs panel, not here — this filtered
+  // list is the single source both the card and EdgeFunctionsPanel derive from, so they can't disagree.
+  const onDemand = metrics.filter((m) => !CRON_FNS.has(m.fn));
+  const edgeStates: HealthState[] = onDemand.map((m) => deriveEdgeFnStatus(m, budget));
 
   const jobsState = worstStatus(jobStates);
   const edgeState = worstStatus(edgeStates);
@@ -38,6 +41,7 @@ export function SystemHealthTab() {
 
   // "Flagged" counts actionable states only — a never-assessed 'pending' job isn't a problem.
   const flaggedJobs = jobStates.filter((s) => s === "degraded" || s === "down" || s === "stale").length;
+  const flaggedEdge = edgeStates.filter((s) => s === "degraded" || s === "down" || s === "stale").length;
   const detail = edge.isError
     ? "Latency metrics unavailable — showing scheduled-job status only"
     : `${cronRows.length} jobs · ${flaggedJobs} need attention`;
@@ -47,7 +51,8 @@ export function SystemHealthTab() {
       <OverallStatusBanner state={overall} detail={detail} />
       <DomainSummaryGrid domains={[
         { key: "jobs", label: "Scheduled jobs", state: jobsState, detail: edge.isError ? `${cronRows.length} jobs · latency n/a` : `${cronRows.length} jobs · ${flaggedJobs} flagged` },
-        { key: "edge", label: "Edge functions", state: edgeState, detail: edge.isError ? "metrics unavailable" : `${metrics.length} active` },
+        { key: "edge", label: "Edge functions", state: edgeState,
+          detail: edge.isError ? "metrics unavailable" : `${onDemand.length} on-demand · ${flaggedEdge} flagged` },
         { key: "email", label: "Email delivery",
           state: email.isError ? "pending" : emailState,
           detail: email.isError ? "metrics unavailable"

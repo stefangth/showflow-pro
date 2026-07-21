@@ -72,6 +72,24 @@ export async function fetchEdgeFnMetrics(
   return (data as { functions?: EdgeFnMetric[] } | null)?.functions ?? [];
 }
 
+/** One console log line from a function's recent error/warning output. */
+export interface EdgeFnLogLine { at: string; level: string; message: string }
+
+/** Recent error/warning log lines for a single edge function. Fetched on demand
+ *  (row expand), never on the panel's refresh cycle — see the note in the edge
+ *  function about the ANALYTICS PAT rate limit. */
+export async function fetchEdgeFnLogs(
+  client: SupabaseClient<Database>,
+  fn: string,
+  windowMinutes: number = SYSTEM_HEALTH.windowMinutes,
+): Promise<EdgeFnLogLine[]> {
+  const { data, error } = await client.functions.invoke("platform-edge-metrics", {
+    body: { action: "logs", fn, window_minutes: windowMinutes },
+  });
+  if (error) throw error;
+  return (data as { lines?: EdgeFnLogLine[] } | null)?.lines ?? [];
+}
+
 /** Email-delivery health for the System Health tab (super-admin only, enforced inside the RPC).
  *  Maps get_email_health's snake_case jsonb (incl. nested by_template/recent_issues) to the
  *  camelCase EmailHealth the panel consumes — a mapping, not a bare cast, so shape drift in the
