@@ -217,3 +217,37 @@ Deno.test("lastFailure is null when every call succeeded", async () => {
   const body = await res.json() as { functions: Array<Record<string, unknown>> };
   assertEquals(body.functions[0].lastFailure, null);
 });
+
+Deno.test("logs action returns recent log lines for one function", async () => {
+  const logRows = {
+    result: [
+      { timestamp: "2026-07-21T09:10:00Z", level: "error", event_message: "airtable-poll: open-offer-tier failed" },
+      { timestamp: "2026-07-21T09:09:00Z", level: "error", event_message: "Unauthorized" },
+    ],
+  };
+  const fnList = [{ id: TIER_ID, slug: "open-offer-tier", name: "open-offer-tier" }];
+  const { deps } = superDeps(routeFetch(logRows, fnList));
+  const res = await handle(superReq({ action: "logs", fn: "open-offer-tier" }), deps);
+  assertEquals(res.status, 200);
+
+  const body = await res.json() as { lines: Array<Record<string, unknown>> };
+  assertEquals(body.lines.length, 2);
+  assertEquals(body.lines[0].message, "airtable-poll: open-offer-tier failed");
+  assertEquals(body.lines[0].level, "error");
+});
+
+Deno.test("logs action still requires super-admin", async () => {
+  const { deps } = makeFakeDeps({
+    authUser: { id: "plain" },
+    tables: { platform_admins: { data: null, error: null } },
+    envVars: { ANALYTICS: "sbp_test_token", SUPABASE_URL: "https://proj.supabase.co" },
+  });
+  const res = await handle(superReq({ action: "logs", fn: "open-offer-tier" }), deps);
+  assertEquals(res.status, 403);
+});
+
+Deno.test("logs action rejects a missing fn", async () => {
+  const { deps } = superDeps(routeFetch({ result: [] }));
+  const res = await handle(superReq({ action: "logs" }), deps);
+  assertEquals(res.status, 400);
+});

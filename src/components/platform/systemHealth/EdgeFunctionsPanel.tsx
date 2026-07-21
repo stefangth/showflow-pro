@@ -1,7 +1,10 @@
+import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
 import { StatusPill, StatusDot, LatencyStat, RunTimeline } from "./primitives";
 import { deriveEdgeFnStatus, CRON_FNS, type EdgeFnMetric } from "@/lib/systemHealth";
 import { SYSTEM_HEALTH_BUDGET as budget } from "@/config/app.config";
+import { useEdgeFnLogs } from "@/hooks/useSystemHealth";
 
 /** Status-code histogram as sorted "code × count" chips, faults first. A bare
  *  error count cannot answer "what went wrong"; the exact code can. */
@@ -12,6 +15,83 @@ function statusChips(byStatus: Record<string, number>) {
     .sort((a, b) => b.count - a.count);
 }
 
+function EdgeFnRow({ m }: { m: EdgeFnMetric }) {
+  const [open, setOpen] = useState(false);
+  const state = deriveEdgeFnStatus(m, budget);
+  const chips = statusChips(m.byStatus);
+  const succeeded = m.invocations - m.errors - m.rejected;
+  const hasFaults = m.errors + m.rejected > 0;
+  // A single combined line, not three separate spans: it is both the visible stat
+  // readout and the text equivalent for the aria-hidden RunTimeline ticks next to it.
+  // Splitting it into per-stat spans as well would duplicate the same numbers into a
+  // second DOM node, which is redundant for sighted and screen-reader users alike.
+  const summary = m.rejected > 0
+    ? `${m.invocations} calls, ${m.rejected} rejected, ${m.errors} errors`
+    : `${m.invocations} calls, ${m.errors} errors`;
+  // Lazy: only fires when the row is expanded. The ANALYTICS PAT is rate-limited to
+  // 60 req/min and the panel already polls every 60s, so a query per row on every
+  // refresh would spend that budget on rows nobody is reading.
+  const logs = useEdgeFnLogs(m.fn, open);
+
+  return (
+    <div className="rounded-lg border border-border p-3">
+      <div className="flex items-center gap-3">
+        <StatusDot state={state} />
+        <span className="font-mono text-sm font-medium flex-1 truncate">{m.fn}</span>
+        <StatusPill state={state} />
+      </div>
+      <div className="mt-2 flex flex-wrap items-center gap-2 pl-5 text-xs text-muted-foreground">
+        <RunTimeline metric={m} p95BudgetMs={budget.p95Ms} />
+        <LatencyStat p95Ms={m.p95Ms} />
+        <span className={m.rejected > 0 || m.errors > 0 ? "text-destructive" : undefined}>· {summary}</span>
+      </div>
+      {chips.length > 0 && (
+        <div className="mt-2 flex flex-wrap items-center gap-2 pl-5 text-xs">
+          {chips.map((c) => (
+            <span
+              key={c.code}
+              className={c.code >= 500
+                ? "rounded-md bg-destructive/10 px-2 py-0.5 font-mono text-destructive"
+                : "rounded-md bg-warning/10 px-2 py-0.5 font-mono text-warning"}
+            >
+              {c.code} × {c.count}
+            </span>
+          ))}
+          {succeeded === 0 && (
+            <span className="text-muted-foreground">no 2xx in this window</span>
+          )}
+        </div>
+      )}
+      {hasFaults && (
+        <div className="mt-2 pl-5">
+          {m.lastFailure && (
+            <p className="text-xs text-muted-foreground">
+              {/* A full local timestamp, not lib/dates' date-only helpers: "which day did
+                  this fail" is useless for a fault you are triaging right now. */}
+              Last failure {new Date(m.lastFailure.at).toLocaleString()}, status {m.lastFailure.status}
+            </p>
+          )}
+          <Button variant="ghost" size="sm" className="mt-1 h-7 px-2 text-xs" onClick={() => setOpen((v) => !v)}>
+            {open ? "Hide recent errors" : "View recent errors"}
+          </Button>
+          {open && (
+            <div className="mt-2 rounded-md bg-muted/40 p-2">
+              {logs.isLoading && <p className="text-xs text-muted-foreground">Loading log lines.</p>}
+              {logs.isError && <p className="text-xs text-muted-foreground">Log lines unavailable.</p>}
+              {logs.data?.length === 0 && <p className="text-xs text-muted-foreground">No error output in this window.</p>}
+              {logs.data?.map((l, i) => (
+                <p key={i} className="font-mono text-[11px] leading-relaxed text-muted-foreground">
+                  {l.at.slice(11, 19)} {l.message}
+                </p>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
 export function EdgeFunctionsPanel({ metrics }: { metrics: EdgeFnMetric[] }) {
   // Non-cron functions only — cron-invoked functions live in the Scheduled jobs panel, and
   // double-listing them here would duplicate their status pills (and double-count health).
@@ -20,49 +100,7 @@ export function EdgeFunctionsPanel({ metrics }: { metrics: EdgeFnMetric[] }) {
     <Card>
       <CardHeader><CardTitle className="font-display text-base">Edge functions</CardTitle></CardHeader>
       <CardContent className="space-y-3">
-        {rows.map((m) => {
-          const state = deriveEdgeFnStatus(m, budget);
-          const chips = statusChips(m.byStatus);
-          const succeeded = m.invocations - m.errors - m.rejected;
-          // A single combined line, not three separate spans: it is both the visible stat
-          // readout and the text equivalent for the aria-hidden RunTimeline ticks next to it.
-          // Splitting it into per-stat spans as well would duplicate the same numbers into a
-          // second DOM node, which is redundant for sighted and screen-reader users alike.
-          const summary = m.rejected > 0
-            ? `${m.invocations} calls, ${m.rejected} rejected, ${m.errors} errors`
-            : `${m.invocations} calls, ${m.errors} errors`;
-          return (
-            <div key={m.fn} className="rounded-lg border border-border p-3">
-              <div className="flex items-center gap-3">
-                <StatusDot state={state} />
-                <span className="font-mono text-sm font-medium flex-1 truncate">{m.fn}</span>
-                <StatusPill state={state} />
-              </div>
-              <div className="mt-2 flex flex-wrap items-center gap-2 pl-5 text-xs text-muted-foreground">
-                <RunTimeline metric={m} p95BudgetMs={budget.p95Ms} />
-                <LatencyStat p95Ms={m.p95Ms} />
-                <span className={m.rejected > 0 || m.errors > 0 ? "text-destructive" : undefined}>· {summary}</span>
-              </div>
-              {chips.length > 0 && (
-                <div className="mt-2 flex flex-wrap items-center gap-2 pl-5 text-xs">
-                  {chips.map((c) => (
-                    <span
-                      key={c.code}
-                      className={c.code >= 500
-                        ? "rounded-md bg-destructive/10 px-2 py-0.5 font-mono text-destructive"
-                        : "rounded-md bg-warning/10 px-2 py-0.5 font-mono text-warning"}
-                    >
-                      {c.code} × {c.count}
-                    </span>
-                  ))}
-                  {succeeded === 0 && (
-                    <span className="text-muted-foreground">no 2xx in this window</span>
-                  )}
-                </div>
-              )}
-            </div>
-          );
-        })}
+        {rows.map((m) => <EdgeFnRow key={m.fn} m={m} />)}
         {rows.length === 0 && <p className="text-sm text-muted-foreground">No edge-function activity in the window.</p>}
       </CardContent>
     </Card>

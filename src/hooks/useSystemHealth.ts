@@ -1,6 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { fetchCronHealth, fetchEdgeFnMetrics, fetchEmailHealth } from "@/data/platform";
+import { fetchCronHealth, fetchEdgeFnLogs, fetchEdgeFnMetrics, fetchEmailHealth } from "@/data/platform";
 import { EMAIL_HEALTH, SYSTEM_HEALTH } from "@/config/app.config";
 
 export function useCronHealth() {
@@ -18,6 +18,18 @@ export function useEdgeFnMetrics() {
     refetchInterval: SYSTEM_HEALTH.refetchMs,
     staleTime: Infinity, // the interval is the sole fetch driver — no extra mount/focus refetches (the Analytics PAT is rate-limited to 60/min).
     // Latency is supplementary — a metrics outage must not blank the tab (panels show cron status only).
+    retry: 1,
+  });
+}
+
+/** Error/warning log lines for one function. `enabled` gates the fetch so the
+ *  query only fires when a panel row is actually expanded. */
+export function useEdgeFnLogs(fn: string, enabled: boolean) {
+  return useQuery({
+    queryKey: ["platform", "edge-logs", fn, SYSTEM_HEALTH.windowMinutes],
+    queryFn: () => fetchEdgeFnLogs(supabase, fn, SYSTEM_HEALTH.windowMinutes),
+    enabled,
+    staleTime: 30_000,
     retry: 1,
   });
 }

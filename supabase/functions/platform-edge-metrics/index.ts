@@ -23,6 +23,19 @@ const METRICS_SQL =
   "from function_edge_logs t cross join unnest(t.metadata) m cross join unnest(m.response) r " +
   "order by t.timestamp desc limit 2000";
 
+// UNVERIFIED against the live Analytics API — the ANALYTICS PAT is an edge secret not
+// available locally (decision 2026-07-21, confirmed with the repo owner), so this SQL is
+// built from Supabase's documented shape only. function_logs is assumed to be a SEPARATE
+// collection from function_edge_logs used by METRICS_SQL above: the former carries console
+// output (event_message/level), the latter the HTTP result. Every field read from a
+// resulting row is defensively optional-chained in fnLogs below — a wrong guess here
+// degrades to an empty drill-down, never a crash. Post-deploy verification is a human step.
+const LOGS_SQL =
+  "select t.timestamp, m.level, t.event_message " +
+  "from function_logs t cross join unnest(t.metadata) m " +
+  "where m.function_id = '{FN_ID}' and m.level in ('error','warning') " +
+  "order by t.timestamp desc limit 25";
+
 function deriveRef(url?: string): string | null {
   const m = (url ?? "").match(/https?:\/\/([a-z0-9]+)\.supabase\.co/i);
   return m ? m[1] : null;
@@ -90,6 +103,45 @@ function aggregate(rows: RawRow[], idToSlug: Map<string, string>): EdgeFnMetric[
   });
 }
 
+interface RawLogRow { timestamp?: string; level?: string; event_message?: string }
+
+/** Recent error/warning console output for ONE function. Split from the metrics query
+ *  and fetched on demand: the ANALYTICS PAT is capped at 60 req/min and the panel polls
+ *  every 60s, so this must not ride the refresh cycle. Every field on a returned row is
+ *  untrusted (see the LOGS_SQL comment) — defaults stand in for anything missing or the
+ *  wrong shape, so a schema mismatch yields an empty/garbled line, never a throw. */
+async function fnLogs(deps: Deps, ref: string, token: string, fn: string, windowMin: number): Promise<Response> {
+  const idToSlug = await fetchFnSlugs(deps, ref, token);
+  const fnId = [...idToSlug.entries()].find(([, slug]) => slug === fn)?.[0];
+  if (!fnId) return json({ lines: [] });
+
+  const end = deps.now();
+  const start = new Date(end.getTime() - windowMin * 60_000);
+  const url = `https://api.supabase.com/v1/projects/${ref}/analytics/endpoints/logs.all` +
+    `?iso_timestamp_start=${encodeURIComponent(start.toISOString())}` +
+    `&iso_timestamp_end=${encodeURIComponent(end.toISOString())}` +
+    `&sql=${encodeURIComponent(LOGS_SQL.replace("{FN_ID}", fnId))}`;
+
+  let res: Response;
+  try {
+    res = await deps.fetch(url, { headers: { Authorization: `Bearer ${token}` } });
+  } catch (e) {
+    console.error("[platform-edge-metrics] logs fetch threw:", e instanceof Error ? e.message : String(e));
+    return json({ error: "analytics_unavailable" }, 502);
+  }
+  if (!res.ok) return json({ error: "analytics_unavailable", status: res.status }, 502);
+
+  const payload = await res.json().catch(() => ({ result: [] }));
+  const rows = Array.isArray((payload as { result?: unknown }).result) ? (payload as { result: RawLogRow[] }).result : [];
+  return json({
+    lines: rows.map((r) => ({
+      at: r.timestamp ?? "",
+      level: r.level ?? "error",
+      message: r.event_message ?? "",
+    })),
+  });
+}
+
 export async function handle(req: Request, deps: Deps): Promise<Response> {
   if (req.method === "OPTIONS") return preflight();
 
@@ -103,6 +155,12 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
   const ref = deps.env("SUPABASE_PROJECT_REF") ?? deriveRef(deps.env("SUPABASE_URL"));
   const token = deps.env("ANALYTICS");
   if (!ref || !token) return json({ error: "metrics_unconfigured" }, 500);
+
+  if ((body as { action?: unknown }).action === "logs") {
+    const fn = (body as { fn?: unknown }).fn;
+    if (typeof fn !== "string" || fn === "") return json({ error: "fn required" }, 400);
+    return fnLogs(deps, ref, token, fn, windowMin);
+  }
 
   const end = deps.now();
   const start = new Date(end.getTime() - windowMin * 60_000);
