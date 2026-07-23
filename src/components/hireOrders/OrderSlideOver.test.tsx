@@ -89,4 +89,20 @@ describe("OrderSlideOver countersign-mode gating on an issued order", () => {
     expect(within(dialog).queryByRole("button", { name: /mark countersigned/i })).not.toBeInTheDocument();
     expect(within(dialog).getByRole("button", { name: /download/i })).toBeInTheDocument();
   });
+
+  it("hides Mark countersigned for an order ISSUED electronic even when the live org mode is manual (order-mode wins)", () => {
+    // The order was issued electronic (frozen in issue_snapshot); the org's live
+    // setting is now manual. The manual flip stays withheld — it would strand the order
+    // against the DB gate, which keys off the same frozen issue-time mode.
+    vi.mocked(useHireOrderCountersignMode).mockReturnValue({ data: { mode: "manual" } } as never);
+    renderWithProviders(
+      <OrderSlideOver
+        order={order({ id: "ho-1", status: "issued", issue_snapshot: { countersign_mode: "electronic" } })}
+        open onOpenChange={() => {}} orgId="org-1"
+      />,
+    );
+    const dialog = screen.getByRole("dialog");
+    expect(within(dialog).queryByRole("button", { name: /mark countersigned/i })).not.toBeInTheDocument();
+    expect(within(dialog).getByRole("button", { name: /download/i })).toBeInTheDocument();
+  });
 });

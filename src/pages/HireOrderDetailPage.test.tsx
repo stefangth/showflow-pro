@@ -183,6 +183,22 @@ describe("HireOrderDetailPage", () => {
     expect(screen.queryByText(/awaiting artist signature/i)).not.toBeInTheDocument();
   });
 
+  it("hides Mark countersigned when the order was ISSUED electronic, even after the org switched to manual (order-mode wins)", async () => {
+    // The order carries a frozen electronic issue-time mode (issue_snapshot), but the
+    // org's live setting is now manual. The manual one-click flip would strand the order
+    // against the DB gate (which also keys off the frozen mode), so it stays hidden and
+    // the awaiting-signature hint shows instead.
+    authAs("producer");
+    seedClient({
+      hire_orders: { data: order({ issue_snapshot: { countersign_mode: "electronic" } }), error: null },
+      "fn:generate-hire-orders": { data: { url: SIGNED_URL }, error: null },
+      app_settings: { data: [{ org_id: "org-1", value: { mode: "manual" } }], error: null },
+    });
+    renderPage();
+    expect(await screen.findByText(/awaiting artist signature/i)).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /mark countersigned/i })).not.toBeInTheDocument();
+  });
+
   it("shows a countersigned confirmation chip (no action) once countersigned", async () => {
     authAs("producer");
     seedFor(order({ status: "countersigned", countersigned_at: "2026-01-14T08:00:00Z" }));

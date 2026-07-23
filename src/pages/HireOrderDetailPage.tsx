@@ -56,11 +56,19 @@ export default function HireOrderDetailPage() {
   const countersignMode = useHireOrderCountersignMode(orgId);
   const { data: myArtist } = useMyArtist();
   const canManage = hasRole("admin") || hasRole("producer");
+  // The signing mode follows the mode the order was ISSUED under (frozen in
+  // issue_snapshot), not the org's current setting — so an electronic-issued order
+  // keeps showing "Review & sign" to the artist and hiding the manual "Mark
+  // countersigned" flip from producers even if the org later switched to manual (which
+  // would otherwise strand the order against the DB gate). Legacy/null snapshots fall
+  // back to the live org setting.
+  const orderMode = (order?.issue_snapshot as { countersign_mode?: string } | null)?.countersign_mode;
+  const effectiveMode = orderMode ?? countersignMode.data?.mode ?? "manual";
   const canSign = order
     ? canArtistSign({
         canManage,
         status: order.status,
-        mode: countersignMode.data?.mode ?? "manual",
+        mode: effectiveMode,
         isLinkedArtist: !!myArtist && myArtist.id === order.artist_id,
       })
     : false;
@@ -136,8 +144,9 @@ export default function HireOrderDetailPage() {
 
   // Electronic-mode orders complete via the artist's in-app signature (consent +
   // audit row + signed PDF), so the manual "Mark countersigned" one-click flip is
-  // hidden for managers in that mode — it would bypass the whole e-sign trail.
-  const isElectronic = countersignMode.data?.mode === "electronic";
+  // hidden for managers in that mode — it would bypass the whole e-sign trail. Keyed
+  // off the order's issue-time mode (see effectiveMode above), not the live setting.
+  const isElectronic = effectiveMode === "electronic";
 
   return <HireOrderDetail order={order} canManage={canManage} canSign={canSign} orgId={orgId}
     isElectronic={isElectronic}

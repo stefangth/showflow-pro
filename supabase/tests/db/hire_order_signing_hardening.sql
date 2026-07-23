@@ -3,6 +3,7 @@
 --   20260723183038_hire_order_user_fks_set_null.sql        (GDPR erasure FKs + anonymize_user)
 --   20260723183053_hire_orders_issue_snapshot.sql          (issue_snapshot column)
 --   20260723183204_hire_order_electronic_countersign_gate.sql (electronic countersign gate)
+--   20260723190547_hire_order_gate_uses_issue_time_mode.sql    (gate keys off issue_snapshot mode)
 --
 -- Run: `supabase test db`, or via the execute_sql MCP wrapped in a rolled-back
 -- transaction (schema is already applied to prod, so this asserts the live schema).
@@ -10,7 +11,7 @@
 -- use ok(<expr> LIKE '%...%', '...') rather than like(...).
 BEGIN;
 CREATE EXTENSION IF NOT EXISTS pgtap WITH SCHEMA extensions;
-SELECT plan(10);
+SELECT plan(11);
 
 -- ── Fixtures (seeded under replica so the derive/transition guard triggers and the
 --    FK referential-action triggers don't interfere with internally-consistent seed
@@ -38,6 +39,11 @@ INSERT INTO public.hire_orders (id, org_id, order_no, status, data, created_by) 
   ('f1510000-0000-0000-0000-000000000002','51510000-0000-0000-0000-000000000000','HO-ELEC-VOID','issued','{}'::jsonb,NULL);
 INSERT INTO public.hire_orders (id, org_id, order_no, status, data) VALUES
   ('f2520000-0000-0000-0000-000000000001','52520000-0000-0000-0000-000000000000','HO-MANUAL-1','issued','{}'::jsonb);
+-- HO-MANUAL-ELEC-SNAP lives in the manual-mode org but was ISSUED electronic (frozen
+-- in issue_snapshot): the gate must follow the frozen issue-time mode, not the live
+-- manual setting, and still reject a bare manual flip.
+INSERT INTO public.hire_orders (id, org_id, order_no, status, data, issue_snapshot) VALUES
+  ('f2520000-0000-0000-0000-000000000002','52520000-0000-0000-0000-000000000000','HO-MANUAL-ELEC-SNAP','issued','{}'::jsonb,'{"countersign_mode":"electronic"}'::jsonb);
 
 INSERT INTO public.hire_order_signatures (id, org_id, hire_order_id, signer_user_id, signer_name, method, signed_at, consent_text) VALUES
   ('a5510000-0000-0000-0000-000000000001','51510000-0000-0000-0000-000000000000','f1510000-0000-0000-0000-000000000001','a1510000-0000-0000-0000-000000000000','Sig Signer','typed',now(),'consent');
@@ -79,6 +85,10 @@ SELECT lives_ok(
 SELECT lives_ok(
   $q$UPDATE public.hire_orders SET status = 'countersigned' WHERE id = 'f2520000-0000-0000-0000-000000000001'$q$,
   'manual mode (default, no setting): marking countersigned without signed_pdf_path is allowed');
+SELECT throws_ok(
+  $q$UPDATE public.hire_orders SET status = 'countersigned' WHERE id = 'f2520000-0000-0000-0000-000000000002'$q$,
+  'P0001', 'electronic hire orders must be countersigned through the signature flow',
+  'frozen issue-time electronic mode wins over the live manual setting: a bare manual flip is still rejected');
 SELECT lives_ok(
   $q$UPDATE public.hire_orders SET status = 'void' WHERE id = 'f1510000-0000-0000-0000-000000000002'$q$,
   'electronic mode: issued -> void is unaffected by the countersign gate');

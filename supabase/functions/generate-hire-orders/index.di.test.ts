@@ -741,12 +741,45 @@ Deno.test("issue snapshots the resolved letterhead + terms on the issued update"
   );
   assert(issuedUpdate, "expected the issued update");
   const snap = (issuedUpdate!.args[0] as {
-    issue_snapshot?: { letterhead?: { legal_name?: string }; terms?: Array<{ title: string }> };
+    issue_snapshot?: { letterhead?: { legal_name?: string }; terms?: Array<{ title: string }>; countersign_mode?: string };
   }).issue_snapshot;
   assert(snap, "the issued update writes issue_snapshot");
   assertEquals(snap!.letterhead?.legal_name, "Nord GmbH", "snapshot carries the resolved letterhead");
   assert(Array.isArray(snap!.terms) && snap!.terms.length > 0, "snapshot carries a non-empty terms array");
   assertEquals(snap!.terms![0].title, "T", "snapshot terms are the resolved variant terms");
+  // The snapshot also freezes the issue-time countersign mode (no setting -> manual default).
+  assertEquals(snap!.countersign_mode, "manual", "snapshot freezes the issue-time countersign mode");
+});
+
+Deno.test("issue freezes the countersign mode into issue_snapshot (electronic)", async () => {
+  // The electronic-vs-manual signing gate must follow the mode the order was ISSUED
+  // under, not the org's live setting, so issue freezes countersign.mode into the
+  // snapshot alongside the letterhead/terms.
+  const { deps, calls } = makeFakeDeps({
+    authUser: { id: "u-admin" },
+    tables: {
+      org_memberships: { data: { role: "admin" } },
+      hire_orders: [
+        { when: { __write: false }, data: issuableOrder() },
+        { when: { __write: true }, data: null },
+      ],
+      artists: { data: { user_id: "u-artist" } },
+      app_settings: [
+        { when: { key: "hire_order_letterhead" }, data: [LETTERHEAD] },
+        { when: { key: "hire_order_terms" }, data: [TERMS_FILLED] },
+        { when: { key: "hire_order_defaults" }, data: [DEFAULTS] },
+        { when: { key: "hire_order_countersign" }, data: [{ org_id: ORG, value: { mode: "electronic" } }] },
+      ],
+    },
+  });
+  const res = await handle(makeRequest({ headers: JWT, body: { action: "issue", org_id: ORG, order_ids: ["o-1"] } }), deps);
+  assertEquals(res.status, 200);
+
+  const issuedUpdate = calls.find(
+    (c) => c.table === "hire_orders" && c.method === "update" && (c.args[0] as { status?: string }).status === "issued",
+  );
+  const snap = (issuedUpdate!.args[0] as { issue_snapshot?: { countersign_mode?: string } }).issue_snapshot;
+  assertEquals(snap!.countersign_mode, "electronic", "snapshot freezes the electronic issue-time mode");
 });
 
 Deno.test("issue in electronic mode emails a signing_url pointing at the in-app order page", async () => {
@@ -1482,6 +1515,26 @@ Deno.test("sign: manual-mode org is rejected 409 wrong_mode", async () => {
   const { deps } = signDeps({ mode: "manual" });
   const res = await handle(makeRequest({ headers: { Authorization: "Bearer artist" }, body: SIGN_BODY }), deps);
   assertEquals(res.status, 409);
+});
+
+Deno.test("sign: order issued electronic still signs even after the org switched to manual (issue-time mode drives the gate)", async () => {
+  // The order was ISSUED electronic (frozen in issue_snapshot); the org's LIVE
+  // hire_order_countersign is now manual. The gate must follow the frozen issue-time
+  // mode, so the linked artist can still sign — otherwise a mid-flight org switch would
+  // strand the order (the DB gate keys off the same frozen mode).
+  const snapshotOrder = {
+    ...SIGN_ORDER,
+    issue_snapshot: {
+      letterhead: { legal_name: "Snapshot GmbH", address_lines: [] },
+      terms: [{ title: "SNAP", body: "snapshot terms" }],
+      currency: "EUR",
+      countersign_mode: "electronic",
+    },
+  };
+  const { deps } = signDeps({ order: snapshotOrder, mode: "manual" });
+  const res = await handle(makeRequest({ headers: { Authorization: "Bearer artist" }, body: SIGN_BODY }), deps);
+  assertEquals(res.status, 200);
+  assertEquals((await res.json()).countersigned, true);
 });
 
 Deno.test("sign: feature-off org is denied", async () => {

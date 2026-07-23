@@ -57,8 +57,13 @@ interface Countersign {
  * bakes in the per-order agent override that issueOne merges, so the sign path must
  * NOT re-apply agent overrides on top of it. Null for orders issued before the
  * column existed (signOrder falls back to live resolution for those).
+ *
+ * `countersign_mode` freezes the countersign mode the order was ISSUED under, so
+ * the electronic-vs-manual signing gate follows the issue-time mode and cannot be
+ * flipped by a later org-setting change (the DB transition gate, signOrder, and
+ * the frontend all key off this). Legacy/null snapshots fall back to the live setting.
  */
-interface IssueSnapshot { letterhead: HireOrderLetterhead; terms: HireOrderTerm[]; currency: string }
+interface IssueSnapshot { letterhead: HireOrderLetterhead; terms: HireOrderTerm[]; currency: string; countersign_mode: string }
 
 const NUMBERING_DEFAULT: Numbering = { prefix: "HO", pattern: "{prefix}-{yyyy}-{mmdd}-{seq}" };
 const DEFAULTS_DEFAULT: OrderDefaults = { default_fee: null, currency: "EUR" };
@@ -707,7 +712,7 @@ async function issueOne(
   // Freeze the resolved letterhead/terms/currency alongside the issued stamp so the
   // signed re-render reproduces this exact document (finding W1). This write is the
   // ready->issued transition, which the freeze trigger permits.
-  const snapshot: IssueSnapshot = { letterhead: effectiveLetterhead, terms: variantTerms, currency };
+  const snapshot: IssueSnapshot = { letterhead: effectiveLetterhead, terms: variantTerms, currency, countersign_mode: countersign.mode };
   const { error: issueErr } = await admin
     .from("hire_orders")
     .update({
@@ -1025,7 +1030,12 @@ async function signOrder(deps: Deps, req: Request, body: SignBody): Promise<Resp
   const denied = await requireFeature(deps, org, "hire_orders");
   if (denied) return denied;
   const countersign = await resolveOrgSetting<Countersign>(admin, org, "hire_order_countersign", COUNTERSIGN_DEFAULT);
-  if (countersign.mode !== "electronic") return json({ error: "wrong_mode" }, 409);
+  // Prefer the mode the order was ISSUED under (frozen in the snapshot) over the live
+  // org setting, so switching the org electronic->manual mid-flight cannot strand an
+  // electronic-issued order (the DB gate keys off the same frozen mode). Legacy/null
+  // snapshots fall back to the current setting.
+  const effectiveMode = o.issue_snapshot?.countersign_mode ?? countersign.mode;
+  if (effectiveMode !== "electronic") return json({ error: "wrong_mode" }, 409);
 
   // Consent + payload validation.
   if (body.consent !== true) return json({ error: "consent_required" }, 400);

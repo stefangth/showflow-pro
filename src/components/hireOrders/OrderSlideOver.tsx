@@ -57,11 +57,17 @@ export function OrderSlideOver({ order, open, onOpenChange, orgId }: Props) {
   // manual "Mark countersigned" one-click flip (which would skip the e-sign
   // audit trail) is withheld in that mode. Manual mode keeps it.
   const countersignMode = useHireOrderCountersignMode(orgId);
-  const isElectronic = countersignMode.data?.mode === "electronic";
 
   const lastOrderRef = useRef<HireOrderListRow | null>(null);
   if (order) lastOrderRef.current = order;
   const displayOrder = order ?? lastOrderRef.current;
+
+  // Follow the mode the order was ISSUED under (frozen in issue_snapshot), not the
+  // org's current setting — an electronic-issued order keeps the manual flip withheld
+  // even if the org later switched to manual. Legacy/null snapshots fall back to the
+  // live setting.
+  const orderMode = (displayOrder?.issue_snapshot as { countersign_mode?: string } | null)?.countersign_mode;
+  const isElectronic = (orderMode ?? countersignMode.data?.mode) === "electronic";
 
   const data = (displayOrder?.data ?? {}) as OrderData;
   const artistName = displayOrder?.artists?.name || snap(data, "artist_name") || "Unknown artist";
