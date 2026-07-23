@@ -4,7 +4,7 @@ import type { Organization } from "@/data/orgs";
 import type { EdgeFnMetric, EmailHealth } from "@/lib/systemHealth";
 import { BOOKING_ENGINE_DEFAULTS, SYSTEM_HEALTH, type AppRole } from "@/config/app.config";
 import type { EntitlementRow, FeatureKey } from "@/lib/entitlements";
-import type { CapabilityRow, CapabilityKey } from "@/lib/capabilities";
+import type { CapabilityKey } from "@/lib/capabilities";
 
 export interface OrgStat {
   org_id: string;
@@ -314,13 +314,4 @@ export async function setOrgCapability(
     .from("org_capabilities")
     .upsert({ org_id: orgId, capability, enabled }, { onConflict: "org_id,capability" });
   if (error) throw error;
-}
-
-/** Every org's capability rows (platform fleet view, super-admin only). */
-export async function fetchAllOrgCapabilities(
-  client: SupabaseClient<Database>,
-): Promise<Array<{ org_id: string } & CapabilityRow>> {
-  const { data, error } = await client.from("org_capabilities").select("org_id, capability, enabled");
-  if (error) throw error;
-  return (data ?? []) as Array<{ org_id: string } & CapabilityRow>;
 }
