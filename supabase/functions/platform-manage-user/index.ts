@@ -1,8 +1,7 @@
 import { preflight, json } from "../_shared/http.ts";
 import { requireSuperAdmin } from "../_shared/auth.ts";
 import { realDeps, type Deps } from "../_shared/deps.ts";
-
-const APP_ORIGIN = "https://app.showflow.pro";
+import { APP_URL } from "../_shared/app-url.ts";
 type Action = "change_email" | "send_password_reset" | "suspend" | "unsuspend" | "delete";
 interface Body { action: Action; target_user_id: string; new_email?: string }
 
@@ -52,13 +51,13 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
         await deps.sendEmail({
           template_name: "account-email-changed",
           recipient_email: oldEmail,
-          templateData: { oldEmail, newEmail, appOrigin: APP_ORIGIN },
+          templateData: { oldEmail, newEmail, appOrigin: APP_URL },
         });
       }
       await deps.sendEmail({
         template_name: "account-email-changed",
         recipient_email: newEmail,
-        templateData: { oldEmail, newEmail, appOrigin: APP_ORIGIN },
+        templateData: { oldEmail, newEmail, appOrigin: APP_URL },
       });
 
       await audit(deps, actor, "change_email", target, { oldEmail, newEmail });
@@ -74,7 +73,7 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
       // (src/data/profiles.ts requestPasswordReset). generateLink only mints a link,
       // it never sends anything, which was the bug: the handler reported success while
       // the user received no email.
-      const { error } = await admin.auth.resetPasswordForEmail(email, { redirectTo: `${APP_ORIGIN}/reset-password` });
+      const { error } = await admin.auth.resetPasswordForEmail(email, { redirectTo: `${APP_URL}/reset-password` });
       if (error) throw error;
       await audit(deps, actor, "send_password_reset", target);
       return json({ ok: true });
