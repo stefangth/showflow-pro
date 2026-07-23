@@ -87,3 +87,51 @@ export function isCapabilityEnabled(rows: CapabilityRow[], capability: string): 
   return enabledCapabilities(rows).has(capability);
 }
 // <<< CAPABILITY REGISTRY MIRROR <<<
+
+// ── Client-only layered resolver (SQL twin: public.is_capability_enabled) ──
+// NOT part of the mirror block: the edge runtime resolves via the RPC.
+export interface CapabilityPolicyRow {
+  capability: string;
+  enabled: boolean | null;
+  locked: boolean;
+}
+
+export type CapabilitySource = "policy_lock" | "org" | "policy_default" | "registry";
+
+export interface ResolvedCapability {
+  effective: boolean;
+  locked: boolean;
+  source: CapabilitySource;
+}
+
+export function resolveCapability(
+  key: string,
+  opts: { orgRow?: CapabilityRow; policyRow?: CapabilityPolicyRow; registryDefault: boolean },
+): ResolvedCapability {
+  const { orgRow, policyRow, registryDefault } = opts;
+  if (policyRow?.locked) {
+    return { effective: policyRow.enabled ?? registryDefault, locked: true, source: "policy_lock" };
+  }
+  if (orgRow) return { effective: orgRow.enabled, locked: false, source: "org" };
+  if (policyRow && policyRow.enabled != null) {
+    return { effective: policyRow.enabled, locked: false, source: "policy_default" };
+  }
+  return { effective: registryDefault, locked: false, source: "registry" };
+}
+
+export function resolveAllCapabilities(
+  overrides: CapabilityRow[],
+  policies: CapabilityPolicyRow[],
+): Map<string, ResolvedCapability> {
+  const orgByKey = new Map(overrides.map((r) => [r.capability, r]));
+  const polByKey = new Map(policies.map((r) => [r.capability, r]));
+  const out = new Map<string, ResolvedCapability>();
+  for (const def of CAPABILITY_DEFS) {
+    out.set(def.key, resolveCapability(def.key, {
+      orgRow: orgByKey.get(def.key),
+      policyRow: polByKey.get(def.key),
+      registryDefault: def.defaultEnabled,
+    }));
+  }
+  return out;
+}
