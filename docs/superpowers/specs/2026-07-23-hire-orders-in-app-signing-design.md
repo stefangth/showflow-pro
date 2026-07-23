@@ -58,6 +58,12 @@ audit metadata (identity, timestamp, IP, user-agent, document hash).
 6. **Keep `manual` mode** as a fallback alongside the new `electronic` mode.
 7. **Leave the Documenso code in place, dark** (do not delete), with "not in
    use" comments. Only remove Documenso as a *selectable* settings option.
+8. **Drawn-signature capture uses `signature_pad`** (MIT, ~5KB, no deps) for
+   velocity-smoothed ink and robust retina/touch handling. Same interaction as a
+   hand-rolled canvas, nicer result, fewer device gotchas.
+9. **Producers get an in-app notification on countersign by default**, and a
+   per-org toggle (`email_producers_on_countersign`, default off) additionally
+   emails them the signed PDF. Electronic mode only.
 
 ## Data model (one migration)
 
@@ -171,10 +177,12 @@ if (body.action === "sign")         return signOrder(deps, req, body);
    an idempotent no-op (mirror `documenso-webhook`'s guarded flip). If the update
    matched zero rows, return the idempotent success shape without re-notifying.
 9. **Side effects (best-effort, never undo the signing):** reuse
-   `notifyProducers` (already defined for the issue path) to notify producers,
-   insert an artist-facing confirmation notification, and email the artist (and
-   producers) the **signed** PDF as attachment via a new
-   `hire-order-countersigned` template. Failures here are logged, not fatal.
+   `notifyProducers` (already defined for the issue path) to notify producers
+   in-app; insert an artist-facing confirmation notification; email the artist
+   the **signed** PDF as attachment via a new `hire-order-countersigned`
+   template; and, only when the org's `email_producers_on_countersign` flag is
+   set, email that same signed PDF to the resolved producers. Failures here are
+   logged, not fatal.
 
 Response: `{ countersigned: true, signed_pdf_path }` (or the idempotent variant).
 
@@ -219,9 +227,7 @@ a prominent **"Review & sign"** button (in the artist action area of
 - The already-embedded PDF preview stays visible for review (dialog references
   "the document shown above").
 - `SignaturePad` component: **Type** tab (text input rendered in a script face)
-  and **Draw** tab (canvas -> PNG data URL; clearable). Reuse the MIT
-  `signature_pad` library for the canvas, or a ~50-line self-contained canvas if
-  we prefer no dependency (decide in the plan; either is fine).
+  and **Draw** tab (`signature_pad`, MIT -> PNG data URL; clearable).
 - A **consent checkbox** with the exact consent statement (see below).
 - **Sign** button -> `useSignHireOrder`, disabled until a signature is present
   and consent is checked.
@@ -251,6 +257,11 @@ present, else the issued PDF. Keep the existing per-order authorization intact.
 
 - Replace the **Documenso** radio with **Electronic signature (in-app)**; keep
   **Manual**. The stored setting becomes `manual | electronic`.
+- Under the Electronic option, add a checkbox **"Also email producers a copy of
+  the signed hire order"** bound to `email_producers_on_countersign` (default
+  off). The `hire_order_countersign` setting shape becomes
+  `{ mode: 'manual' | 'electronic', email_producers_on_countersign?: boolean }`
+  (jsonb app setting, no migration).
 - Remove the Documenso-only "Test connection" button and its `countersign-test`
   call. (The `countersign-test` edge action stays in the code, dark — see below.)
 - The `CountersignMode` UI type becomes `"manual" | "electronic"`.
@@ -261,7 +272,8 @@ present, else the issued PDF. Keep the existing per-order authorization intact.
   to the in-app order page (`${APP_URL}/hire-orders/${order.id}`) so the existing
   "Review and sign" CTA points at the signing screen. Manual mode unchanged.
 - **New `hire-order-countersigned` template:** sent from the `sign` action to the
-  artist (and producers) with the signed PDF attached. Register it in
+  artist with the signed PDF attached, and to the producers only when
+  `email_producers_on_countersign` is set. Register it in
   `_shared/transactional-email-templates/registry.ts`. Copy avoids em/en dashes
   (house style).
 
@@ -334,8 +346,7 @@ user-agent, the SHA-256 of the issued document, and the consent statement.
 
 ## Open questions
 
-- **SignaturePad dependency:** `signature_pad` (MIT) vs a small self-contained
-  canvas. Lean self-contained to avoid a new dependency; confirm in the plan.
-- **Producer countersign copy email:** send the signed PDF to producers too, or
-  in-app notification only? Default: in-app notification for producers, signed
-  PDF email to the artist. Revisit if the owner wants producers emailed the copy.
+_None outstanding._ Both prior questions are resolved (decisions 8 and 9):
+drawn capture uses `signature_pad`; producers get an in-app notification by
+default with an opt-in `email_producers_on_countersign` toggle to also email the
+signed PDF.
