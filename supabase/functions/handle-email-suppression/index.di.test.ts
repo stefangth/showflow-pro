@@ -4,10 +4,10 @@
  * These tests construct VALID HMAC-SHA256 signatures that the handler
  * actually accepts — end-to-end security path verification.
  *
- * Handler signing scheme (from verifyResendWebhook):
- *   - Headers: webhook-id, webhook-timestamp, webhook-signature
+ * Resend signing scheme (documented by Resend):
+ *   - Headers: svix-id, svix-timestamp, svix-signature
  *   - Signed message: `${webhookId}.${webhookTimestamp}.${rawBody}`
- *   - Secret: the env var value is a bare base64 string; handler does atob(secret) directly
+ *   - Secret: the env var starts with `whsec_`, followed by the base64 key material
  *   - HMAC-SHA256 over the message using the decoded secret bytes
  *   - Signature format: `v1,<base64(hmac)>` (multiple space-separated are also accepted)
  *   - Timestamp tolerance: |Math.floor(nowMs/1000) - ts| <= 300
@@ -23,11 +23,11 @@ import { handle } from "./index.ts";
 /**
  * Signs a webhook request body using the same scheme as the handler.
  *
- * @param secret    The bare base64 secret string (what goes into RESEND_WEBHOOK_SECRET env var).
- * @param id        The webhook-id header value.
- * @param tsSeconds The webhook-timestamp (integer seconds since epoch).
+ * @param secret    The `whsec_`-prefixed secret stored in RESEND_WEBHOOK_SECRET.
+ * @param id        The svix-id header value.
+ * @param tsSeconds The svix-timestamp (integer seconds since epoch).
  * @param body      The raw request body string (exactly what the handler will read).
- * @returns         The value for the webhook-signature header: `v1,<base64sig>`
+ * @returns         The value for the svix-signature header: `v1,<base64sig>`
  */
 async function signWebhook(
   secret: string,
@@ -36,7 +36,7 @@ async function signWebhook(
   body: string,
 ): Promise<string> {
   const toSign = `${id}.${tsSeconds}.${body}`;
-  const secretBytes = Uint8Array.from(atob(secret), (c) => c.charCodeAt(0));
+  const secretBytes = Uint8Array.from(atob(secret.replace(/^whsec_/, "")), (c) => c.charCodeAt(0));
 
   const key = await crypto.subtle.importKey(
     "raw",
@@ -60,7 +60,7 @@ async function signWebhook(
 
 // A valid base64 secret (32 random bytes → base64).
 // We use a predictable value so tests are reproducible.
-const TEST_SECRET = btoa("super-secret-webhook-key-for-tests");
+const TEST_SECRET = `whsec_${btoa("super-secret-webhook-key-for-tests")}`;
 
 const BASE_ENV_VARS = {
   RESEND_WEBHOOK_SECRET: TEST_SECRET,
@@ -68,9 +68,9 @@ const BASE_ENV_VARS = {
   SUPABASE_SERVICE_ROLE_KEY: "fake-service-key",
 };
 
-// Fixed "now" from makeFakeDeps default: 2026-06-01T12:00:00.000Z → 1748779200 seconds
+// Fixed "now" from makeFakeDeps default: 2026-06-01T12:00:00.000Z → 1780315200 seconds
 const FIXED_NOW_DATE = new Date("2026-06-01T12:00:00.000Z");
-const FIXED_NOW_TS = Math.floor(FIXED_NOW_DATE.getTime() / 1000); // 1748779200
+const FIXED_NOW_TS = Math.floor(FIXED_NOW_DATE.getTime() / 1000); // 1780315200
 
 const WEBHOOK_ID = "msg_test_001";
 
@@ -101,9 +101,9 @@ async function makeSignedRequest(
     method: "POST",
     headers: {
       "content-type": "application/json",
-      "webhook-id": id,
-      "webhook-timestamp": String(ts),
-      "webhook-signature": signature,
+      "svix-id": id,
+      "svix-timestamp": String(ts),
+      "svix-signature": signature,
       ...(overrides.extraHeaders ?? {}),
     },
     body: rawBody,
@@ -131,6 +131,24 @@ Deno.test("missing signature headers → 401", async () => {
     method: "POST",
     headers: { "content-type": "application/json" },
     body: JSON.stringify({ type: "email.bounced" }),
+  });
+  const res = await handle(req, deps);
+  assertEquals(res.status, 401);
+});
+
+Deno.test("legacy webhook-* signature headers are rejected → 401", async () => {
+  const { deps } = makeFakeDeps({ envVars: BASE_ENV_VARS, now: FIXED_NOW_DATE });
+  const rawBody = JSON.stringify({ type: "email.bounced" });
+  const signature = await signWebhook(TEST_SECRET, WEBHOOK_ID, FIXED_NOW_TS, rawBody);
+  const req = new Request("http://localhost/fn", {
+    method: "POST",
+    headers: {
+      "content-type": "application/json",
+      "webhook-id": WEBHOOK_ID,
+      "webhook-timestamp": String(FIXED_NOW_TS),
+      "webhook-signature": signature,
+    },
+    body: rawBody,
   });
   const res = await handle(req, deps);
   assertEquals(res.status, 401);
@@ -509,7 +527,7 @@ Deno.test("forged signature with the same byte length as the real one → 401", 
 
 // --- 14. Multiple v1, signatures — at least one matches → accepted ---
 
-Deno.test("webhook-signature with multiple v1 sigs, one valid → accepted (key rotation)", async () => {
+Deno.test("svix-signature with multiple v1 sigs, one valid → accepted (key rotation)", async () => {
   const { deps, calls } = makeFakeDeps({
     envVars: BASE_ENV_VARS,
     now: FIXED_NOW_DATE,
@@ -534,9 +552,9 @@ Deno.test("webhook-signature with multiple v1 sigs, one valid → accepted (key 
     method: "POST",
     headers: {
       "content-type": "application/json",
-      "webhook-id": WEBHOOK_ID,
-      "webhook-timestamp": String(FIXED_NOW_TS),
-      "webhook-signature": `${wrongSig} ${correctSig}`,
+      "svix-id": WEBHOOK_ID,
+      "svix-timestamp": String(FIXED_NOW_TS),
+      "svix-signature": `${wrongSig} ${correctSig}`,
     },
     body: rawBody,
   });
@@ -606,9 +624,9 @@ Deno.test("valid signature over invalid JSON body → 400", async () => {
     method: "POST",
     headers: {
       "content-type": "application/json",
-      "webhook-id": WEBHOOK_ID,
-      "webhook-timestamp": String(FIXED_NOW_TS),
-      "webhook-signature": signature,
+      "svix-id": WEBHOOK_ID,
+      "svix-timestamp": String(FIXED_NOW_TS),
+      "svix-signature": signature,
     },
     body: rawBody,
   });
