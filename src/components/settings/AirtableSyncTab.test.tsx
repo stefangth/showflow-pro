@@ -53,7 +53,10 @@ import { upsertOrgSetting, fetchShowsForLinking, importShowsFromOptions } from "
 import { fetchAirtableSettings } from "@/data/airtableSettings";
 import { toast } from "sonner";
 
-function renderTab(initial: Record<string, unknown> = {}) {
+function renderTab(
+  initial: Record<string, unknown> = {},
+  props: { readOnly?: boolean; canTriggerSync?: boolean } = {},
+) {
   (fetchAirtableSettings as ReturnType<typeof vi.fn>).mockResolvedValue({
     airtable_sync_enabled: false,
     airtable_base_id: "",
@@ -62,7 +65,9 @@ function renderTab(initial: Record<string, unknown> = {}) {
     airtable_view: "Grid view",
     ...initial,
   });
-  return renderWithProviders(<AirtableSyncTab orgId="org-1" />);
+  return renderWithProviders(
+    <AirtableSyncTab orgId="org-1" readOnly={props.readOnly} canTriggerSync={props.canTriggerSync} />,
+  );
 }
 
 describe("AirtableSyncTab", () => {
@@ -463,5 +468,62 @@ describe("AirtableSyncTab — Airtable view", () => {
     fireEvent.change(input, { target: { value: "  Published  " } });
     fireEvent.blur(input);
     await waitFor(() => expect(upsertOrgSetting).toHaveBeenCalledWith(expect.anything(), "org-1", "airtable_view", "Published"));
+  });
+});
+
+describe("AirtableSyncTab — capability read-only floor", () => {
+  beforeEach(() => vi.clearAllMocks());
+
+  it("disables the enable-sync switch and the API key Save button, but still shows the real (on) value", async () => {
+    (fetchAirtableKeyStatus as ReturnType<typeof vi.fn>).mockResolvedValue({ present: false, updatedAt: null });
+    renderTab({ airtable_sync_enabled: true }, { readOnly: true });
+
+    const toggle = await screen.findByRole("switch");
+    expect(toggle).toBeDisabled();
+    // The switch mounts before fetchAirtableSettings resolves, so wait for the real
+    // (on) value to land instead of asserting against the initial default.
+    await waitFor(() => expect(toggle).toBeChecked()); // read floor: the real value still renders
+
+    expect(screen.getByRole("button", { name: "Save key" })).toBeDisabled();
+    expect(screen.getByPlaceholderText(/write-only/i)).toBeDisabled();
+  });
+
+  it("disables Replace and Delete for a saved key when readOnly", async () => {
+    (fetchAirtableKeyStatus as ReturnType<typeof vi.fn>).mockResolvedValue({ present: true, updatedAt: "2026-06-22T17:44:00Z" });
+    (fetchAirtableBases as ReturnType<typeof vi.fn>).mockResolvedValue({ schemaAccessible: true, bases: [] });
+    renderTab({}, { readOnly: true });
+
+    expect(await screen.findByText("Key saved")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Replace" })).toBeDisabled();
+    expect(screen.getByRole("button", { name: /Delete/ })).toBeDisabled();
+  });
+
+  it("leaves the enable-sync switch enabled when readOnly is false", async () => {
+    (fetchAirtableKeyStatus as ReturnType<typeof vi.fn>).mockResolvedValue({ present: false, updatedAt: null });
+    renderTab({}, { readOnly: false });
+    expect(await screen.findByRole("switch")).toBeEnabled();
+  });
+
+  // trigger_sync is a separate capability from configure_airtable: a producer can be
+  // read-only on the mapping/keys yet still (or instead) be allowed to fire a sync, or
+  // vice versa — so canTriggerSync must gate "Sync now" independently of readOnly.
+  it("disables Sync now when canTriggerSync is false, independent of readOnly", async () => {
+    (fetchAirtableKeyStatus as ReturnType<typeof vi.fn>).mockResolvedValue({ present: true, updatedAt: null });
+    (fetchAirtableBases as ReturnType<typeof vi.fn>).mockResolvedValue({ schemaAccessible: true, bases: [] });
+    renderTab({ airtable_sync_enabled: true }, { readOnly: false, canTriggerSync: false });
+
+    expect(await screen.findByRole("button", { name: "Sync now" })).toBeDisabled();
+    // Everything else stays editable in this readOnly=false render.
+    expect(screen.getByRole("switch")).toBeEnabled();
+  });
+
+  it("enables Sync now once canTriggerSync is true (sync on, key saved)", async () => {
+    (fetchAirtableKeyStatus as ReturnType<typeof vi.fn>).mockResolvedValue({ present: true, updatedAt: null });
+    (fetchAirtableBases as ReturnType<typeof vi.fn>).mockResolvedValue({ schemaAccessible: true, bases: [] });
+    renderTab({ airtable_sync_enabled: true }, { canTriggerSync: true });
+
+    const syncNow = await screen.findByRole("button", { name: "Sync now" });
+    // Also gated on fetchAirtableSettings resolving airtable_sync_enabled: true.
+    await waitFor(() => expect(syncNow).toBeEnabled());
   });
 });

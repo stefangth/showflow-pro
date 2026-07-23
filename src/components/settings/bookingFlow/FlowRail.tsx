@@ -43,8 +43,9 @@ export function FlowRail(props: {
   audit: SettingsAuditEntry[];
   isLoading?: boolean;
   isError?: boolean;
-  /** When true, hides the Save/Discard actions (the module isn't entitled, so there's
-   *  nothing to save) but keeps every other card, including change history, visible. */
+  /** When true, hides the Save/Discard actions — either the module isn't entitled, or
+   *  this user lacks the capability to edit it — but keeps every other card, including
+   *  change history, visible. */
   locked?: boolean;
 }) {
   const { flow, times, dirtyCount, saving, onSave, onDiscard, audit, isLoading, isError, locked = false } = props;

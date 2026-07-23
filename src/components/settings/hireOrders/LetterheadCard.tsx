@@ -38,7 +38,7 @@ function serializeLines(lines: string[]): string {
   return lines.join("\n");
 }
 
-export function LetterheadCard({ orgId }: { orgId: string | null }) {
+export function LetterheadCard({ orgId, readOnly = false }: { orgId: string | null; readOnly?: boolean }) {
   const qc = useQueryClient();
   const { data, isLoading, isError, error } = useQuery({
     queryKey: ["app-settings", "hire_order_letterhead", orgId],
@@ -99,6 +99,7 @@ export function LetterheadCard({ orgId }: { orgId: string | null }) {
             id="ho-legal-name"
             value={form.legal_name}
             placeholder="Aurora Productions GmbH"
+            disabled={readOnly}
             onChange={(e) => setForm((f) => ({ ...f, legal_name: e.target.value }))}
           />
         </div>
@@ -109,6 +110,7 @@ export function LetterheadCard({ orgId }: { orgId: string | null }) {
             rows={3}
             value={addressText}
             placeholder={"Street and number\nPostal code and city\nCountry"}
+            disabled={readOnly}
             onChange={(e) => setAddressText(e.target.value)}
           />
           <p className="text-xs text-muted-foreground">One line per row.</p>
@@ -119,6 +121,7 @@ export function LetterheadCard({ orgId }: { orgId: string | null }) {
             id="ho-registration"
             value={form.registration_line}
             placeholder="Registered at Amtsgericht Berlin, HRB 123456"
+            disabled={readOnly}
             onChange={(e) => setForm((f) => ({ ...f, registration_line: e.target.value }))}
           />
         </div>
@@ -128,6 +131,7 @@ export function LetterheadCard({ orgId }: { orgId: string | null }) {
             <Input
               id="ho-agent-name"
               value={form.agent_name ?? ""}
+              disabled={readOnly}
               onChange={(e) => setForm((f) => ({ ...f, agent_name: e.target.value }))}
             />
           </div>
@@ -137,11 +141,12 @@ export function LetterheadCard({ orgId }: { orgId: string | null }) {
               id="ho-agent-email"
               type="email"
               value={form.agent_email ?? ""}
+              disabled={readOnly}
               onChange={(e) => setForm((f) => ({ ...f, agent_email: e.target.value }))}
             />
           </div>
         </div>
-        <Button onClick={() => save.mutate()} disabled={save.isPending || !orgId}>
+        <Button onClick={() => save.mutate()} disabled={readOnly || save.isPending || !orgId}>
           Save letterhead
         </Button>
       </CardContent>

@@ -213,6 +213,44 @@ describe("HireOrdersTab", () => {
     });
   });
 
+  // Capability read-only floor: the tab threads `readOnly` into every card so a
+  // producer without `edit_hire_order_settings` sees the org's real values but can't
+  // change any of them.
+  describe("readOnly (capability floor)", () => {
+    it("disables a representative write control on every card, but still renders real values", async () => {
+      authAs("org-on");
+      renderWithProviders(<HireOrdersTab readOnly />);
+
+      // Each card resolves its own independent query — await a checkpoint per card
+      // rather than relying on the first one to imply the rest have settled too.
+      expect(await screen.findByLabelText("Legal name")).toBeDisabled();
+      expect(screen.getByRole("button", { name: "Save letterhead" })).toBeDisabled();
+      expect(await screen.findByLabelText("Default fee")).toBeDisabled();
+      expect(screen.getByRole("button", { name: "Save defaults" })).toBeDisabled();
+      expect(await screen.findByLabelText("Prefix")).toBeDisabled();
+      expect(screen.getByRole("button", { name: "Save numbering" })).toBeDisabled();
+      // Terms has one "Add clause" button per variant (Lean/Standard/Full) — all disabled.
+      await screen.findByText("Terms");
+      for (const btn of screen.getAllByRole("button", { name: /add clause/i })) expect(btn).toBeDisabled();
+      expect(screen.getByRole("button", { name: "Save terms" })).toBeDisabled();
+      // Countersign mode: read floor keeps "manual" visibly selected even though the
+      // radios can't be changed.
+      const manualRadio = await screen.findByRole("radio", { name: /manual/i });
+      expect(manualRadio).toBeDisabled();
+      expect(manualRadio).toHaveAttribute("aria-checked", "true");
+      expect(screen.getByRole("button", { name: "Save countersign mode" })).toBeDisabled();
+    });
+
+    it("leaves every card's controls enabled when readOnly is false", async () => {
+      authAs("org-on");
+      renderWithProviders(<HireOrdersTab readOnly={false} />);
+
+      expect(await screen.findByLabelText("Legal name")).toBeEnabled();
+      expect(screen.getByRole("button", { name: "Save letterhead" })).toBeEnabled();
+      expect(screen.getByRole("radio", { name: /manual/i })).toBeEnabled();
+    });
+  });
+
   it("adds and removes clause rows on a variant that starts empty", async () => {
     authAs("org-on");
     renderWithProviders(<HireOrdersTab />);

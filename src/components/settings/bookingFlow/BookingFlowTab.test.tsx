@@ -48,7 +48,7 @@ Object.assign(
 import { useAuth } from "@/features/auth/AuthContext";
 import { BookingFlowTab } from "./BookingFlowTab";
 
-function Harness({ orgFlow, dirtyKeys = [] }: { orgFlow?: BookingFlow; dirtyKeys?: string[] } = {}) {
+function Harness({ orgFlow, dirtyKeys = [], readOnly }: { orgFlow?: BookingFlow; dirtyKeys?: string[]; readOnly?: boolean } = {}) {
   const [draft, setDraft] = useState<Record<string, unknown>>({
     booking_flow: orgFlow ?? BOOKING_FLOW_DEFAULTS,
     offer_response_window_hours: 48,
@@ -63,6 +63,7 @@ function Harness({ orgFlow, dirtyKeys = [] }: { orgFlow?: BookingFlow; dirtyKeys
       saving={false}
       onSave={() => {}}
       onDiscard={() => {}}
+      readOnly={readOnly}
     />
   );
 }
@@ -179,6 +180,36 @@ describe("BookingFlowTab", () => {
       expect(screen.getByRole("button", { name: /^saved$/i })).toBeInTheDocument();
       expect(screen.getByRole("button", { name: /direct book/i })).not.toBeDisabled();
       expect(screen.getByRole("switch", { name: /^artist acceptance$/i })).not.toBeDisabled();
+    });
+  });
+
+  // Capability read-only floor (distinct from entitlement `locked` above): the org IS
+  // entitled and the flow renders normally, but a producer without `edit_booking_settings`
+  // can't change it.
+  describe("readOnly (capability floor, org entitled)", () => {
+    it("disables presets, timeline switches, the from-address input, and hides rail Save, while showing real values", () => {
+      renderWithProviders(<Harness readOnly dirtyKeys={[]} />);
+
+      expect(screen.getByRole("button", { name: /direct book/i })).toBeDisabled();
+      expect(screen.getByRole("switch", { name: /^artist acceptance$/i })).toBeDisabled();
+      expect(screen.getByLabelText(/from address/i)).toBeDisabled();
+      // EmailTemplatesCard is part of this same capability (the whole tab, not just the
+      // flow steps) — every template's Subject field is disabled.
+      for (const subject of screen.getAllByPlaceholderText("Default subject")) expect(subject).toBeDisabled();
+      // No entitlement lock notice — this is a capability gate, not a module gate.
+      expect(screen.queryByText("Booking flow is not enabled")).not.toBeInTheDocument();
+      // The rail's own Save/Discard is hidden (no write control to grant).
+      expect(screen.queryByRole("button", { name: /^save/i })).not.toBeInTheDocument();
+      // Read floor: the default flow's real value (artist acceptance on) still renders.
+      expect(screen.getByRole("switch", { name: /^artist acceptance$/i })).toHaveAttribute("aria-checked", "true");
+    });
+
+    it("leaves every control enabled when readOnly is false", () => {
+      renderWithProviders(<Harness readOnly={false} />);
+
+      expect(screen.getByRole("button", { name: /direct book/i })).not.toBeDisabled();
+      expect(screen.getByRole("switch", { name: /^artist acceptance$/i })).not.toBeDisabled();
+      expect(screen.getByLabelText(/from address/i)).not.toBeDisabled();
     });
   });
 });

@@ -22,7 +22,7 @@ export interface HireOrderDefaults {
 /** Kept in sync with the CURRENCY_SYMBOLS map in src/lib/hireOrders/money.ts. */
 const CURRENCIES = ["EUR", "USD", "CHF"];
 
-export function OrderDefaultsCard({ orgId }: { orgId: string | null }) {
+export function OrderDefaultsCard({ orgId, readOnly = false }: { orgId: string | null; readOnly?: boolean }) {
   const qc = useQueryClient();
   const { data, isLoading, isError, error } = useQuery({
     queryKey: ["app-settings", "hire_order_defaults", orgId],
@@ -84,6 +84,7 @@ export function OrderDefaultsCard({ orgId }: { orgId: string | null }) {
               step="0.01"
               value={form.default_fee ?? ""}
               placeholder="No default"
+              disabled={readOnly}
               onChange={(e) =>
                 setForm((f) => ({ ...f, default_fee: e.target.value === "" ? null : Number(e.target.value) }))
               }
@@ -91,7 +92,7 @@ export function OrderDefaultsCard({ orgId }: { orgId: string | null }) {
           </div>
           <div className="space-y-1.5">
             <Label htmlFor="ho-currency">Currency</Label>
-            <Select value={form.currency} onValueChange={(v) => setForm((f) => ({ ...f, currency: v }))}>
+            <Select value={form.currency} onValueChange={(v) => setForm((f) => ({ ...f, currency: v }))} disabled={readOnly}>
               <SelectTrigger id="ho-currency"><SelectValue /></SelectTrigger>
               <SelectContent>
                 {CURRENCIES.map((c) => (
@@ -101,7 +102,7 @@ export function OrderDefaultsCard({ orgId }: { orgId: string | null }) {
             </Select>
           </div>
         </div>
-        <Button onClick={() => save.mutate()} disabled={save.isPending || !orgId}>
+        <Button onClick={() => save.mutate()} disabled={readOnly || save.isPending || !orgId}>
           Save defaults
         </Button>
       </CardContent>

@@ -19,7 +19,7 @@ export interface HireOrderNumbering {
   pattern: string;
 }
 
-export function NumberingCard({ orgId }: { orgId: string | null }) {
+export function NumberingCard({ orgId, readOnly = false }: { orgId: string | null; readOnly?: boolean }) {
   const qc = useQueryClient();
   const { data, isLoading, isError, error } = useQuery({
     queryKey: ["app-settings", "hire_order_numbering", orgId],
@@ -81,6 +81,7 @@ export function NumberingCard({ orgId }: { orgId: string | null }) {
             <Input
               id="ho-prefix"
               value={form.prefix}
+              disabled={readOnly}
               onChange={(e) => setForm((f) => ({ ...f, prefix: e.target.value }))}
             />
           </div>
@@ -89,12 +90,13 @@ export function NumberingCard({ orgId }: { orgId: string | null }) {
             <Input
               id="ho-pattern"
               value={form.pattern}
+              disabled={readOnly}
               onChange={(e) => setForm((f) => ({ ...f, pattern: e.target.value }))}
             />
           </div>
         </div>
         {preview && <p className="text-xs text-muted-foreground">Preview: {preview}</p>}
-        <Button onClick={() => save.mutate()} disabled={save.isPending || !orgId}>
+        <Button onClick={() => save.mutate()} disabled={readOnly || save.isPending || !orgId}>
           Save numbering
         </Button>
       </CardContent>

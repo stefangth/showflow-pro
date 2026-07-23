@@ -33,6 +33,13 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 
 interface Props {
   orgId: string | null;
+  /** Capability floor (`configure_airtable`): the org's mapping/keys/catalog links still
+   *  render, but a producer without the capability can't change them. Admins always
+   *  pass `false` here. */
+  readOnly?: boolean;
+  /** Capability floor (`trigger_sync`), independent of `readOnly`: whether this user may
+   *  fire an on-demand "Sync now". Admins always pass `true`. */
+  canTriggerSync?: boolean;
 }
 
 /** shadcn Select cannot use "" as an item value, so "not mapped" needs a sentinel. */
@@ -135,7 +142,7 @@ function CatalogLinkCombobox({
  *  bulk import, then a tabular list with a status pill and per-row link/create combobox. */
 function CatalogSection({
   title, sourceLabel, rows, unlinkedCount, importAll, importDisabled,
-  existing, onCreate, onLink, onUnlink, entityNoun, emptyHint, busy,
+  existing, onCreate, onLink, onUnlink, entityNoun, emptyHint, busy, readOnly,
 }: {
   title: string;
   sourceLabel: string;
@@ -150,6 +157,7 @@ function CatalogSection({
   entityNoun: "show" | "city"; // used in aria-labels + search placeholders
   emptyHint: string;
   busy?: boolean; // a link/create/unlink mutation (or the backing catalog query) is in flight
+  readOnly?: boolean; // capability floor: link/create/unlink/import controls disabled
 }) {
   return (
     <div className="space-y-3">
@@ -158,7 +166,7 @@ function CatalogSection({
           <h4 className="font-display font-semibold">{title}</h4>
           <p className="text-xs text-muted-foreground truncate">from {sourceLabel}</p>
         </div>
-        <Button variant="outline" size="sm" onClick={importAll} disabled={importDisabled}>
+        <Button variant="outline" size="sm" onClick={importAll} disabled={importDisabled || readOnly}>
           Import all unlinked{unlinkedCount ? ` (${unlinkedCount})` : ""}
         </Button>
       </div>
@@ -178,7 +186,7 @@ function CatalogSection({
                 {row.linkedId ? (
                   <>
                     <span className="text-sm text-muted-foreground truncate">→ {row.linkedLabel}</span>
-                    <Button size="sm" variant="ghost" className="shrink-0" disabled={busy} onClick={() => onUnlink(row.linkedId!)}>Unlink</Button>
+                    <Button size="sm" variant="ghost" className="shrink-0" disabled={busy || readOnly} onClick={() => onUnlink(row.linkedId!)}>Unlink</Button>
                   </>
                 ) : row.key ? (
                   <CatalogLinkCombobox
@@ -186,7 +194,7 @@ function CatalogSection({
                     existing={existing}
                     onCreate={() => onCreate(row)}
                     onLink={(id) => onLink(row, id)}
-                    disabled={busy}
+                    disabled={busy || readOnly}
                     ariaLabel={`link or create ${entityNoun} for ${row.display}`}
                     searchPlaceholder={`Search ${entityNoun}s…`}
                   />
@@ -204,7 +212,7 @@ function CatalogSection({
   );
 }
 
-export function AirtableSyncTab({ orgId }: Props) {
+export function AirtableSyncTab({ orgId, readOnly = false, canTriggerSync = true }: Props) {
   const qc = useQueryClient();
   const [airtableKey, setAirtableKey] = useState("");
   const [replacing, setReplacing] = useState(false);
@@ -624,7 +632,7 @@ export function AirtableSyncTab({ orgId }: Props) {
               <Label className="font-medium">Enable Airtable sync</Label>
               <p className="text-xs text-muted-foreground mt-0.5">Turn polling on or off globally.</p>
             </div>
-            <Switch checked={!!s.airtable_sync_enabled} onCheckedChange={(v) => saveSettings.mutate({ airtable_sync_enabled: v })} />
+            <Switch checked={!!s.airtable_sync_enabled} disabled={readOnly} onCheckedChange={(v) => saveSettings.mutate({ airtable_sync_enabled: v })} />
           </div>
 
           {/* Poll interval + cadence transparency */}
@@ -634,6 +642,7 @@ export function AirtableSyncTab({ orgId }: Props) {
               <Select
                 value={String(s.airtable_poll_interval_minutes)}
                 onValueChange={(v) => saveSettings.mutate({ airtable_poll_interval_minutes: Number(v) })}
+                disabled={readOnly}
               >
                 <SelectTrigger className="w-44"><SelectValue /></SelectTrigger>
                 <SelectContent>
@@ -650,7 +659,7 @@ export function AirtableSyncTab({ orgId }: Props) {
             <div className="flex flex-col items-end gap-1.5">
               <Button
                 variant="outline" size="sm"
-                disabled={!s.airtable_sync_enabled || !keyPresent || syncNow.isPending}
+                disabled={!s.airtable_sync_enabled || !keyPresent || syncNow.isPending || !canTriggerSync}
                 onClick={() => syncNow.mutate()}
               >
                 {syncNow.isPending ? "Syncing…" : "Sync now"}
@@ -695,10 +704,10 @@ export function AirtableSyncTab({ orgId }: Props) {
               <div className="flex items-center justify-between gap-2 rounded-md border border-border px-3 py-2">
                 <span className="flex items-center gap-2 text-sm text-muted-foreground"><Lock className="h-4 w-4" /> ••••••••••</span>
                 <div className="flex gap-2">
-                  <Button variant="outline" size="sm" onClick={() => setReplacing(true)}>Replace</Button>
+                  <Button variant="outline" size="sm" disabled={readOnly} onClick={() => setReplacing(true)}>Replace</Button>
                   <AlertDialog>
                     <AlertDialogTrigger asChild>
-                      <Button variant="ghost" size="sm" className="text-destructive hover:text-destructive" disabled={deleteKey.isPending}>
+                      <Button variant="ghost" size="sm" className="text-destructive hover:text-destructive" disabled={readOnly || deleteKey.isPending}>
                         <Trash2 className="mr-1 h-4 w-4" /> Delete
                       </Button>
                     </AlertDialogTrigger>
@@ -718,8 +727,8 @@ export function AirtableSyncTab({ orgId }: Props) {
             ) : (
               <>
                 <div className="flex gap-2">
-                  <Input id="airtable-key" type="password" autoComplete="off" placeholder={keyPresent ? "Enter a new key…" : "key… (write-only)"} value={airtableKey} onChange={(e) => setAirtableKey(e.target.value)} />
-                  <Button onClick={() => saveKey.mutate()} disabled={saveKey.isPending}>{keyPresent ? "Update" : "Save key"}</Button>
+                  <Input id="airtable-key" type="password" autoComplete="off" placeholder={keyPresent ? "Enter a new key…" : "key… (write-only)"} value={airtableKey} disabled={readOnly} onChange={(e) => setAirtableKey(e.target.value)} />
+                  <Button onClick={() => saveKey.mutate()} disabled={readOnly || saveKey.isPending}>{keyPresent ? "Update" : "Save key"}</Button>
                   {keyPresent && replacing && (
                     <Button variant="ghost" onClick={() => { setReplacing(false); setAirtableKey(""); }}>Cancel</Button>
                   )}
@@ -747,14 +756,14 @@ export function AirtableSyncTab({ orgId }: Props) {
               <div className="grid grid-cols-1 gap-4">
                 <div className="space-y-2">
                   <Label>Base</Label>
-                  <Select value={s.airtable_base_id} onValueChange={(v) => saveSettings.mutate({ airtable_base_id: v, airtable_table_name: "" })}>
+                  <Select value={s.airtable_base_id} onValueChange={(v) => saveSettings.mutate({ airtable_base_id: v, airtable_table_name: "" })} disabled={readOnly}>
                     <SelectTrigger><SelectValue placeholder="Select a base" /></SelectTrigger>
                     <SelectContent>{bases.map((b) => <SelectItem key={b.id} value={b.id}>{b.name}</SelectItem>)}</SelectContent>
                   </Select>
                 </div>
                 <div className="space-y-2">
                   <Label>Table</Label>
-                  <Select value={s.airtable_table_name} onValueChange={(v) => saveSettings.mutate({ airtable_table_name: v })} disabled={!tables.length}>
+                  <Select value={s.airtable_table_name} onValueChange={(v) => saveSettings.mutate({ airtable_table_name: v })} disabled={!tables.length || readOnly}>
                     <SelectTrigger><SelectValue placeholder="Select a table" /></SelectTrigger>
                     <SelectContent>{tables.map((t) => <SelectItem key={t.id} value={t.name}>{t.name}</SelectItem>)}</SelectContent>
                   </Select>
@@ -768,11 +777,11 @@ export function AirtableSyncTab({ orgId }: Props) {
                 <div className="grid grid-cols-1 gap-4">
                   <div className="space-y-2">
                     <Label>Airtable base ID</Label>
-                    <Input placeholder="app1234567890" defaultValue={s.airtable_base_id} key={`base-${s.airtable_base_id}`} onBlur={(e) => { if (e.target.value !== s.airtable_base_id) saveSettings.mutate({ airtable_base_id: e.target.value, airtable_table_name: "" }); }} />
+                    <Input placeholder="app1234567890" defaultValue={s.airtable_base_id} key={`base-${s.airtable_base_id}`} disabled={readOnly} onBlur={(e) => { if (e.target.value !== s.airtable_base_id) saveSettings.mutate({ airtable_base_id: e.target.value, airtable_table_name: "" }); }} />
                   </div>
                   <div className="space-y-2">
                     <Label>Airtable table name</Label>
-                    <Input placeholder="Shows" defaultValue={s.airtable_table_name} key={`table-${s.airtable_table_name}`} onBlur={(e) => { if (e.target.value !== s.airtable_table_name) saveSettings.mutate({ airtable_table_name: e.target.value }); }} />
+                    <Input placeholder="Shows" defaultValue={s.airtable_table_name} key={`table-${s.airtable_table_name}`} disabled={readOnly} onBlur={(e) => { if (e.target.value !== s.airtable_table_name) saveSettings.mutate({ airtable_table_name: e.target.value }); }} />
                   </div>
                 </div>
               </>
@@ -789,6 +798,7 @@ export function AirtableSyncTab({ orgId }: Props) {
                   placeholder="Grid view"
                   defaultValue={s.airtable_view}
                   key={`view-${s.airtable_view}`}
+                  disabled={readOnly}
                   onBlur={(e) => { const v = e.target.value.trim(); if (v !== s.airtable_view) saveSettings.mutate({ airtable_view: v }); }}
                 />
                 <p className="text-xs text-muted-foreground">
@@ -820,7 +830,7 @@ export function AirtableSyncTab({ orgId }: Props) {
             {SHOWFLOW_FIELDS.map((f) => (
               <div key={f.key} className="grid grid-cols-1 sm:grid-cols-[160px_1fr] gap-3 items-center">
                 <Label>{f.label}{f.optional ? " (optional)" : ""}</Label>
-                <Select value={(fieldMap[f.key] as string | null) ?? NONE} onValueChange={(v) => setField(f.key, v === NONE ? null : v)}>
+                <Select value={(fieldMap[f.key] as string | null) ?? NONE} onValueChange={(v) => setField(f.key, v === NONE ? null : v)} disabled={readOnly}>
                   <SelectTrigger aria-label={f.label}><SelectValue placeholder="Not mapped" /></SelectTrigger>
                   <SelectContent>
                     <SelectItem value={NONE}>Not mapped</SelectItem>
@@ -832,7 +842,7 @@ export function AirtableSyncTab({ orgId }: Props) {
             {/* Cancellation mapping (status → cancelled + reason) */}
             <div className="grid grid-cols-1 sm:grid-cols-[160px_1fr] gap-3 items-center">
               <Label>Status field (optional)</Label>
-              <Select value={fieldMap.status_field ?? NONE} onValueChange={(v) => setField('status_field', v === NONE ? null : v)}>
+              <Select value={fieldMap.status_field ?? NONE} onValueChange={(v) => setField('status_field', v === NONE ? null : v)} disabled={readOnly}>
                 <SelectTrigger><SelectValue placeholder="Not mapped" /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value={NONE}>Not mapped</SelectItem>
@@ -843,7 +853,7 @@ export function AirtableSyncTab({ orgId }: Props) {
             {fieldMap.status_field && (
               <div className="grid grid-cols-1 sm:grid-cols-[160px_1fr] gap-3 items-center">
                 <Label>"Cancelled" value</Label>
-                <Select value={fieldMap.cancelled_value ?? NONE} onValueChange={(v) => setField('cancelled_value', v === NONE ? null : v)}>
+                <Select value={fieldMap.cancelled_value ?? NONE} onValueChange={(v) => setField('cancelled_value', v === NONE ? null : v)} disabled={readOnly}>
                   <SelectTrigger><SelectValue placeholder="Pick the cancelled option" /></SelectTrigger>
                   <SelectContent>
                     <SelectItem value={NONE}>None</SelectItem>
@@ -854,7 +864,7 @@ export function AirtableSyncTab({ orgId }: Props) {
             )}
             <div className="grid grid-cols-1 sm:grid-cols-[160px_1fr] gap-3 items-center">
               <Label>Cancellation reason (optional)</Label>
-              <Select value={fieldMap.cancellation_reason_field ?? NONE} onValueChange={(v) => setField('cancellation_reason_field', v === NONE ? null : v)}>
+              <Select value={fieldMap.cancellation_reason_field ?? NONE} onValueChange={(v) => setField('cancellation_reason_field', v === NONE ? null : v)} disabled={readOnly}>
                 <SelectTrigger><SelectValue placeholder="Not mapped" /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value={NONE}>Not mapped</SelectItem>
@@ -885,13 +895,13 @@ export function AirtableSyncTab({ orgId }: Props) {
                   <div className="text-sm font-medium truncate">{d.label}</div>
                   <div className="text-xs text-muted-foreground truncate">from “{d.source_field}”</div>
                 </div>
-                <Select value={d.type} onValueChange={(v) => setCustomType.mutate({ def: d, type: v as CustomFieldType })}>
+                <Select value={d.type} onValueChange={(v) => setCustomType.mutate({ def: d, type: v as CustomFieldType })} disabled={readOnly}>
                   <SelectTrigger className="h-8" aria-label={`type for ${d.label}`}><SelectValue /></SelectTrigger>
                   <SelectContent>
                     {CUSTOM_TYPES.map((t) => <SelectItem key={t} value={t}>{t}</SelectItem>)}
                   </SelectContent>
                 </Select>
-                <Button size="sm" variant="ghost" onClick={() => removeCustom.mutate(d.id)} disabled={removeCustom.isPending} aria-label={`remove ${d.label}`}>
+                <Button size="sm" variant="ghost" onClick={() => removeCustom.mutate(d.id)} disabled={readOnly || removeCustom.isPending} aria-label={`remove ${d.label}`}>
                   <Trash2 className="h-4 w-4" />
                 </Button>
               </div>
@@ -911,7 +921,7 @@ export function AirtableSyncTab({ orgId }: Props) {
                   }
                   addCustom.mutate({ name: af.name, type: af.type, options: af.options });
                 }}
-                disabled={addCustom.isPending || unboundFields.length === 0}
+                disabled={readOnly || addCustom.isPending || unboundFields.length === 0}
               >
                 <SelectTrigger><SelectValue placeholder={unboundFields.length ? "Pick an Airtable field…" : "No unmapped fields left"} /></SelectTrigger>
                 <SelectContent>
@@ -956,6 +966,7 @@ export function AirtableSyncTab({ orgId }: Props) {
                   busy={createOneProgram.isPending || showsQ.isLoading || linkShow.isPending || unlinkShow.isPending}
                   entityNoun="show"
                   emptyHint="No program options found in the mapped table."
+                  readOnly={readOnly}
                 />
               )
             )}
@@ -974,6 +985,7 @@ export function AirtableSyncTab({ orgId }: Props) {
                 busy={createOneCity.isPending || citiesQ.isLoading || linkCity.isPending || unlinkCity.isPending}
                 entityNoun="city"
                 emptyHint="No options on the mapped City field."
+                readOnly={readOnly}
               />
             )}
           </CardContent>
@@ -996,7 +1008,7 @@ export function AirtableSyncTab({ orgId }: Props) {
                   <div className="flex items-center justify-between gap-2">
                     <div className="text-sm">
                       <span className="text-muted-foreground">Keep </span>
-                      <Select value={survivor} onValueChange={(v) => setSurvivorByNorm((m) => ({ ...m, [g.norm]: v }))}>
+                      <Select value={survivor} onValueChange={(v) => setSurvivorByNorm((m) => ({ ...m, [g.norm]: v }))} disabled={readOnly}>
                         <SelectTrigger className="inline-flex h-8 w-[220px]" aria-label={`survivor for ${g.norm}`}><SelectValue /></SelectTrigger>
                         <SelectContent>
                           {g.cities.map((c) => <SelectItem key={c.id} value={c.id}>{c.name}{c.airtable_city_key ? " (linked)" : ""}</SelectItem>)}
@@ -1005,7 +1017,7 @@ export function AirtableSyncTab({ orgId }: Props) {
                     </div>
                     <AlertDialog>
                       <AlertDialogTrigger asChild>
-                        <Button size="sm" variant="destructive" disabled={mergeMut.isPending}>Merge</Button>
+                        <Button size="sm" variant="destructive" disabled={readOnly || mergeMut.isPending}>Merge</Button>
                       </AlertDialogTrigger>
                       <AlertDialogContent>
                         <AlertDialogHeader>
