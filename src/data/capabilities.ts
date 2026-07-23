@@ -39,3 +39,36 @@ export async function fetchCapabilityState(
   ]);
   return { overrides, policies };
 }
+
+/** Delete an org's override for a capability (revert to platform/registry default). */
+export async function clearOrgCapability(
+  client: SupabaseClient<Database>,
+  orgId: string,
+  capability: string,
+): Promise<void> {
+  const { error } = await client.from("org_capabilities").delete().eq("org_id", orgId).eq("capability", capability);
+  if (error) throw error;
+}
+
+/** Upsert a platform policy patch (enabled and/or locked) for a capability. Super-admin only via RLS. */
+export async function setOrgCapabilityPolicy(
+  client: SupabaseClient<Database>,
+  orgId: string,
+  capability: string,
+  patch: { enabled?: boolean | null; locked?: boolean },
+): Promise<void> {
+  const { error } = await client
+    .from("org_capability_policies")
+    .upsert({ org_id: orgId, capability, ...patch }, { onConflict: "org_id,capability" });
+  if (error) throw error;
+}
+
+/** Delete a capability's platform policy row (clear platform default + unlock). Super-admin only via RLS. */
+export async function clearOrgCapabilityPolicy(
+  client: SupabaseClient<Database>,
+  orgId: string,
+  capability: string,
+): Promise<void> {
+  const { error } = await client.from("org_capability_policies").delete().eq("org_id", orgId).eq("capability", capability);
+  if (error) throw error;
+}
