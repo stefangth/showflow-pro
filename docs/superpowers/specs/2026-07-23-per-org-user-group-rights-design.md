@@ -25,7 +25,7 @@ This is net-new configurability layered on the existing three roles. It does **n
 | **(b) Platform UI** | The full matrix replaces the lone `producer_can_invite` toggle in `EditOrgDialog`, reached via a "Manage all rights" button; a compact summary stays in the dialog. |
 | **(c) Rollout** | Ship **live**. No staged/dark flag. |
 | **Read-only floor** | Capabilities gate **mutations only**. A producer whose right is off keeps **read-only** access to the surface/data — SELECT/read policies are never capability-gated. |
-| **Producer default posture** | Most defaults reproduce today's gate, but **5 rights intentionally default ON beyond today** (invite artists, manage invitations, resend linked-account invites, issue orders, void orders) — see §9. Producers gain these on deploy. |
+| **Producer default posture** | Most defaults reproduce today's gate, but some rights **default ON beyond today** — full artist management on the Artists page (invite, single-add, resend, manage artist invites) plus issue/void hire orders. See §9. Producers gain these on deploy. |
 
 ## 3. Data model
 
@@ -123,10 +123,12 @@ Producer-grantable rights here are only those with a producer-reachable surface 
 | `producer_can_edit_booking_settings` | Edit booking-engine settings | producer | off | ! | RLS (`app_settings` booking keys) | admin-only |
 
 ### D. Artists
+Producers **fully manage the artist roster** via the existing Artists page (per the artist-management directive): add, edit, invite, and resend — all default on. (`producer_can_invite` in §5.A supplies "invite artist"; `producer_can_view_linked_accounts` supplies "resend".)
+
 | key | action / label | role | default | risk | enforcement | replaces |
 |---|---|---|---|---|---|---|
-| `producer_can_add_artists` | Add / bulk-import artists | producer | on | S | RLS (`artists` ins) + RPC `bulk_import_artists` | admin+producer |
-| `producer_can_edit_artists` | Edit artist details & skills | producer | on | S | RLS (`artists` upd, skills) | admin+producer |
+| `producer_can_add_artists` | Add artist (single dialog **and** bulk import) | producer | **on** | S | RLS (`artists` ins) + RPC `bulk_import_artists` | import was producer; single "Add Artist" was admin-only |
+| `producer_can_edit_artists` | Edit artist details, skills & status | producer | on | S | RLS (`artists` upd, `artist_skills`) | admin+producer |
 | `producer_can_view_linked_accounts` | Resend account invite (panel always visible per read-only floor) | producer | **on** | S | edge (resend) | admin-only |
 
 ### E. Hire orders — `module: hire_orders`
@@ -208,9 +210,11 @@ Roles & permissions                              org: Acme Productions
 
 ## 9. Rollout & safety
 
-- **Ship live**, no dark entitlement. Behavior is preserved on deploy for every right **except** 5 that intentionally default ON beyond today's gates:
-  `producer_can_invite`, `producer_can_manage_invitations`, `producer_can_view_linked_accounts` (resend), `producer_can_issue_hire_orders`, `producer_can_void_hire_orders`.
-  On deploy, producers in **every existing org** gain these actions. The most consequential are **issue / void hire orders** — a producer can then send or cancel legal PDFs to artists without admin action. This is deliberate and **reversible per-org** (admin or platform toggles the right off); all other rights behave exactly as today until retuned.
+- **Ship live**, no dark entitlement. Behavior is preserved on deploy for every right **except** those that intentionally default ON beyond today's gates. On deploy, producers in **every existing org** gain:
+  - **Full artist management** on the Artists page (per the directive): `producer_can_invite`, `producer_can_add_artists` (the single "Add Artist" dialog, formerly admin-only — bulk import was already producer), `producer_can_view_linked_accounts` (resend), `producer_can_manage_invitations` (artist invites). All low-stakes, non-destructive roster actions.
+  - **Hire-order issue / void** (`producer_can_issue_hire_orders`, `producer_can_void_hire_orders`) — the **most consequential**: a producer can then send or cancel legal PDFs to artists without admin action.
+  
+  All of this is deliberate and **reversible per-org** (admin or platform toggles the right off); every other right behaves exactly as today until retuned.
 - **Backward compatible (data)** — the `producer_can_invite` row and every `org_capabilities` value survive unchanged; only the *registry default* for that key flips off → on, so orgs that never set an override now read `on`. An org that had explicitly set it `off` keeps `off`.
 - **Changelog** — customer-facing "New" entry (Settings → Roles & permissions). Per project convention, no mention of platform/super-admin surfaces (the platform lock layer is not described in the public changelog).
 - **System map** — no new automation triggers, so `docs/system-map.md` / `src/data/systemMap.ts` are unaffected. `docs/adr/README.md` key-decisions and `CLAUDE.md` capability notes get a short update.
