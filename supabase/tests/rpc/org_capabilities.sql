@@ -21,10 +21,11 @@ SET session_replication_role = DEFAULT;
 SELECT set_config('request.jwt.claims','{"sub":"aaaa0000-0000-0000-0000-000000000001","role":"authenticated"}',true);
 SET LOCAL ROLE authenticated;
 
--- 1. Registry default: no row → producer_can_invite is off.
+-- 1. Registry default: no row → producer_can_invite is on (flipped in
+--    20260723141017_capability_layered_resolver; spec §9).
 SELECT is(
   public.is_capability_enabled('bbbb0000-0000-0000-0000-000000000001','producer_can_invite'),
-  false, 'default (no row) is off');
+  true, 'default (no row) is on');
 
 -- 2. Super-admin can insert a capability row.
 SELECT lives_ok(
@@ -63,7 +64,8 @@ RESET ROLE;
 SELECT set_config('request.jwt.claims','{"sub":"aaaa0000-0000-0000-0000-000000000003","role":"authenticated"}',true);
 SET LOCAL ROLE authenticated;
 
--- 7. A non-super-admin cannot write org_capabilities (no permissive write policy → RLS denies).
+-- 7. A producer (neither super-admin nor org-admin) cannot write org_capabilities:
+--    the org-admin write policy requires has_org_role(admin), so none grants them → RLS denies.
 SELECT throws_ok(
   $$ INSERT INTO public.org_capabilities (org_id, capability, enabled)
      VALUES ('bbbb0000-0000-0000-0000-000000000001','some_future_cap', true) $$,
