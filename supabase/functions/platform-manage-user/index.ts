@@ -96,7 +96,25 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
       // service-role admin client has auth.uid() = null, so it must be called through the
       // CALLER's JWT client (the acting super-admin's own session), not deps.admin.
       const authHeader = req.headers.get("Authorization")!;
-      const { error: anonErr } = await deps.userClient(authHeader).rpc("anonymize_user", { p_user: target });
+      const userClient = deps.userClient(authHeader);
+
+      // Sole-admin guard: block deleting a user who is the only admin of one or more
+      // orgs, which would strand that org with zero admins. sole_admin_orgs guards on
+      // `auth.uid() = p_user OR is_super_admin(auth.uid())` (not solely self-scoped),
+      // so calling it via the ACTING super-admin's JWT client with p_user = target
+      // satisfies the is_super_admin branch and correctly reports the TARGET's
+      // sole-admin orgs. The service-role admin client has auth.uid() = null, so it
+      // would fail that guard and silently return nothing.
+      const { data: soleOrgs, error: soleErr } = await userClient.rpc("sole_admin_orgs", { p_user: target });
+      if (soleErr) throw soleErr;
+      const soleAdminOrgs = (soleOrgs ?? []) as Array<{ org_id: string; org_name: string }>;
+      if (soleAdminOrgs.length > 0) {
+        return json({
+          error: "Cannot delete: user is the only admin of one or more organizations. Reassign an admin first.",
+        }, 400);
+      }
+
+      const { error: anonErr } = await userClient.rpc("anonymize_user", { p_user: target });
       if (anonErr) throw anonErr;
 
       const { error: delErr } = await admin.auth.admin.deleteUser(target);

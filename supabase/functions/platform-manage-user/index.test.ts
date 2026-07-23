@@ -135,12 +135,30 @@ Deno.test("deletes a user via anonymize_user then the admin delete", async () =>
     authUser: { id: "sa" },
     // Only "sa" is a super-admin; target "u3" is not, so the last-admin guard passes.
     tables: { platform_admins: { data: [{ user_id: "sa" }], error: null } },
-    rpcs: { anonymize_user: { data: null, error: null } },
+    // Target is NOT the sole admin of any org, so the sole-admin guard passes too.
+    rpcs: { sole_admin_orgs: { data: [], error: null }, anonymize_user: { data: null, error: null } },
   });
   const res = await handle(post({ action: "delete", target_user_id: "u3" }), deps);
   assertEquals(res.status, 200);
   assert(calls.some((c) => c.table === "rpc:anonymize_user"));
   assert(calls.some((c) => c.table === "platform_audit_log" && c.method === "insert"));
+});
+
+Deno.test("blocks deleting a user who is the sole admin of an org", async () => {
+  const { deps, calls } = makeFakeDeps({
+    authUser: { id: "sa" },
+    // Only "sa" is a super-admin; target "u3" is not, so the last-admin guard passes,
+    // but sole_admin_orgs reports "u3" as the only admin of "Acme" (mirrors the shape
+    // seeded in delete-my-account/index.test.ts).
+    tables: { platform_admins: { data: [{ user_id: "sa" }], error: null } },
+    rpcs: { sole_admin_orgs: { data: [{ org_id: "o1", org_name: "Acme" }], error: null } },
+  });
+  const res = await handle(post({ action: "delete", target_user_id: "u3" }), deps);
+  assertEquals(res.status, 400);
+  // Neither anonymize_user nor the audit-log insert (which always follows the admin
+  // deleteUser call) ran, proving the handler returned before reaching either.
+  assert(!calls.some((c) => c.table === "rpc:anonymize_user"));
+  assert(!calls.some((c) => c.table === "platform_audit_log" && c.method === "insert"));
 });
 
 Deno.test("rejects an unknown action", async () => {
