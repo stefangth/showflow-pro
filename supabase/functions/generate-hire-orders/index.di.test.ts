@@ -641,9 +641,20 @@ Deno.test("draft-manual for an artist/date pair that already has an active order
 
 // ── draft-batch ─────────────────────────────────────────────────────────
 
+const BATCH_ARTIST_1 = "11111111-1111-4111-8111-111111111111";
+const BATCH_ARTIST_2 = "22222222-2222-4222-8222-222222222222";
+const BATCH_ARTIST_3 = "33333333-3333-4333-8333-333333333333";
+const BATCH_DATE_1 = "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa";
+const BATCH_DATE_2 = "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb";
+
+const BATCH_SHOW_DATE_ROW_1 = {
+  ...SHOW_DATE_ROW,
+  id: BATCH_DATE_1,
+};
+
 const SHOW_DATE_ROW_2 = {
   ...SHOW_DATE_ROW,
-  id: "sd-2",
+  id: BATCH_DATE_2,
   city_id: "city-2",
   date: "2026-06-14",
   venue: "Venue B",
@@ -656,11 +667,21 @@ Deno.test("draft-batch creates one order per artist and snapshots all assigned d
       org_memberships: { data: { role: "admin" } },
       artists: {
         data: [
-          { id: "a-1", name: "Ann", email: "ann@x.de", cast_role: "Lead" },
-          { id: "a-2", name: "Ben", email: "ben@x.de", cast_role: "Soloist" },
+          {
+            id: BATCH_ARTIST_1,
+            name: "Ann",
+            email: "ann@x.de",
+            cast_role: "Lead",
+          },
+          {
+            id: BATCH_ARTIST_2,
+            name: "Ben",
+            email: "ben@x.de",
+            cast_role: "Soloist",
+          },
         ],
       },
-      show_dates: { data: [SHOW_DATE_ROW, SHOW_DATE_ROW_2] },
+      show_dates: { data: [BATCH_SHOW_DATE_ROW_1, SHOW_DATE_ROW_2] },
       cities: {
         data: [{ id: "city-1", name: "Berlin" }, {
           id: "city-2",
@@ -686,8 +707,14 @@ Deno.test("draft-batch creates one order per artist and snapshots all assigned d
         action: "draft-batch",
         org_id: ORG,
         artists: [
-          { artist_id: "a-1", show_date_ids: [SD, "sd-2"] },
-          { artist_id: "a-2", show_date_ids: [SD] },
+          {
+            artist_id: BATCH_ARTIST_1,
+            show_date_ids: [BATCH_DATE_1, BATCH_DATE_2],
+          },
+          {
+            artist_id: BATCH_ARTIST_2.toUpperCase(),
+            show_date_ids: [BATCH_DATE_1.toUpperCase()],
+          },
         ],
         manual: {
           fee: 900,
@@ -716,7 +743,7 @@ Deno.test("draft-batch creates one order per artist and snapshots all assigned d
   };
   assertEquals(
     firstParent.show_date_id,
-    "sd-2",
+    BATCH_DATE_2,
     "legacy parent points at the chronologically first date",
   );
   assertEquals(firstParent.data.date.value, "2026-06-14");
@@ -730,12 +757,17 @@ Deno.test("draft-batch creates one order per artist and snapshots all assigned d
   assertEquals(firstParent.data.engagement_dates.source, "showflow");
   assertEquals(firstParent.data.engagement_dates.value, [
     {
-      show_date_id: "sd-2",
+      show_date_id: BATCH_DATE_2,
       date: "2026-06-14",
       venue: "Venue B",
       city: "Hamburg",
     },
-    { show_date_id: SD, date: "2026-06-15", venue: "Venue A", city: "Berlin" },
+    {
+      show_date_id: BATCH_DATE_1,
+      date: "2026-06-15",
+      venue: "Venue A",
+      city: "Berlin",
+    },
   ]);
 
   const dateInserts = calls.filter((c) =>
@@ -743,8 +775,18 @@ Deno.test("draft-batch creates one order per artist and snapshots all assigned d
   );
   assertEquals(dateInserts.length, 2, "one child-date batch per parent");
   assertEquals(dateInserts[0].args[0], [
-    { hire_order_id: "ho-new", show_date_id: "sd-2", org_id: ORG, position: 0 },
-    { hire_order_id: "ho-new", show_date_id: SD, org_id: ORG, position: 1 },
+    {
+      hire_order_id: "ho-new",
+      show_date_id: BATCH_DATE_2,
+      org_id: ORG,
+      position: 0,
+    },
+    {
+      hire_order_id: "ho-new",
+      show_date_id: BATCH_DATE_1,
+      org_id: ORG,
+      position: 1,
+    },
   ]);
 
   const availabilityCalls = calls.filter((c) =>
@@ -757,20 +799,42 @@ Deno.test("draft-batch creates one order per artist and snapshots all assigned d
   );
   assertEquals(availabilityCalls[0].args[0], {
     p_org: ORG,
-    p_artist: "a-1",
-    p_dates: ["sd-2", SD],
+    p_artist: BATCH_ARTIST_1,
+    p_dates: [BATCH_DATE_2, BATCH_DATE_1],
   });
+
+  for (const table of ["artists", "show_dates"]) {
+    assert(
+      calls.some((call) =>
+        call.table === table && call.method === "eq" &&
+        call.args[0] === "org_id" && call.args[1] === ORG
+      ),
+      `${table} batch lookup must be scoped to the request organisation`,
+    );
+  }
+  const artistLookup = calls.find((call) =>
+    call.table === "artists" && call.method === "in" && call.args[0] === "id"
+  );
+  const dateLookup = calls.find((call) =>
+    call.table === "show_dates" && call.method === "in" &&
+    call.args[0] === "id"
+  );
+  assertEquals(artistLookup?.args[1], [BATCH_ARTIST_1, BATCH_ARTIST_2]);
+  assertEquals(dateLookup?.args[1], [BATCH_DATE_1, BATCH_DATE_2]);
 });
 
 Deno.test("draft-batch rejects empty input, duplicate artists, and artists without dates", async () => {
   for (
     const [artists, error] of [
       [[], "artists required"],
-      [[{ artist_id: "a-1", show_date_ids: [SD] }, {
-        artist_id: "a-1",
-        show_date_ids: ["sd-2"],
+      [[{ artist_id: BATCH_ARTIST_1, show_date_ids: [BATCH_DATE_1] }, {
+        artist_id: BATCH_ARTIST_1,
+        show_date_ids: [BATCH_DATE_2],
       }], "duplicate_artist_id"],
-      [[{ artist_id: "a-1", show_date_ids: [] }], "show_date_ids required"],
+      [
+        [{ artist_id: BATCH_ARTIST_1, show_date_ids: [] }],
+        "show_date_ids required",
+      ],
     ] as const
   ) {
     const { deps } = makeFakeDeps({
@@ -789,6 +853,76 @@ Deno.test("draft-batch rejects empty input, duplicate artists, and artists witho
   }
 });
 
+Deno.test("draft-batch rejects malformed artist and show-date UUIDs before querying", async () => {
+  for (
+    const [artists, error] of [
+      [
+        [{ artist_id: "not-a-uuid", show_date_ids: [BATCH_DATE_1] }],
+        "invalid_artist_id",
+      ],
+      [
+        [{ artist_id: BATCH_ARTIST_1, show_date_ids: ["not-a-uuid"] }],
+        "invalid_show_date_id",
+      ],
+    ] as const
+  ) {
+    const { deps, calls } = makeFakeDeps({
+      authUser: { id: "u-admin" },
+      tables: { org_memberships: { data: { role: "admin" } } },
+    });
+    const response = await handle(
+      makeRequest({
+        headers: JWT,
+        body: { action: "draft-batch", org_id: ORG, artists, manual: {} },
+      }),
+      deps,
+    );
+
+    assertEquals(response.status, 400);
+    assertEquals((await response.json()).error, error);
+    assertEquals(
+      calls.some((call) =>
+        call.table === "artists" || call.table === "show_dates"
+      ),
+      false,
+      "malformed UUIDs must be rejected before batch lookups",
+    );
+  }
+});
+
+Deno.test("draft-batch canonicalizes UUIDs before duplicate artist and date detection", async () => {
+  for (
+    const [artists, error] of [
+      [[
+        { artist_id: BATCH_ARTIST_1, show_date_ids: [BATCH_DATE_1] },
+        {
+          artist_id: BATCH_ARTIST_1.toUpperCase(),
+          show_date_ids: [BATCH_DATE_2],
+        },
+      ], "duplicate_artist_id"],
+      [[{
+        artist_id: BATCH_ARTIST_1,
+        show_date_ids: [BATCH_DATE_1, BATCH_DATE_1.toUpperCase()],
+      }], "duplicate_show_date_id"],
+    ] as const
+  ) {
+    const { deps } = makeFakeDeps({
+      authUser: { id: "u-admin" },
+      tables: { org_memberships: { data: { role: "admin" } } },
+    });
+    const response = await handle(
+      makeRequest({
+        headers: JWT,
+        body: { action: "draft-batch", org_id: ORG, artists, manual: {} },
+      }),
+      deps,
+    );
+
+    assertEquals(response.status, 400);
+    assertEquals((await response.json()).error, error);
+  }
+});
+
 Deno.test("draft-batch keeps artist outcomes independent when one referenced artist is missing", async () => {
   const { deps } = makeFakeDeps({
     authUser: { id: "u-admin" },
@@ -796,13 +930,13 @@ Deno.test("draft-batch keeps artist outcomes independent when one referenced art
       org_memberships: { data: { role: "admin" } },
       artists: {
         data: [{
-          id: "a-2",
+          id: BATCH_ARTIST_2,
           name: "Ben",
           email: "ben@x.de",
           cast_role: "Soloist",
         }],
       },
-      show_dates: { data: [SHOW_DATE_ROW] },
+      show_dates: { data: [BATCH_SHOW_DATE_ROW_1] },
       cities: { data: [{ id: "city-1", name: "Berlin" }] },
       hire_orders: [
         { when: { __write: false }, data: [] },
@@ -823,8 +957,8 @@ Deno.test("draft-batch keeps artist outcomes independent when one referenced art
         action: "draft-batch",
         org_id: ORG,
         artists: [
-          { artist_id: "a-missing", show_date_ids: [SD] },
-          { artist_id: "a-2", show_date_ids: [SD] },
+          { artist_id: BATCH_ARTIST_3, show_date_ids: [BATCH_DATE_1] },
+          { artist_id: BATCH_ARTIST_2, show_date_ids: [BATCH_DATE_1] },
         ],
         manual: { fee: 900, currency: "EUR" },
       },
@@ -836,7 +970,88 @@ Deno.test("draft-batch keeps artist outcomes independent when one referenced art
   assertEquals(await res.json(), {
     created: ["ho-2"],
     skipped: [],
-    errors: [{ artist_id: "a-missing", reason: "artist_not_found" }],
+    errors: [{ artist_id: BATCH_ARTIST_3, reason: "artist_not_found" }],
+  });
+});
+
+Deno.test("draft-batch continues after one artist's availability RPC fails", async () => {
+  const { deps } = makeFakeDeps({
+    authUser: { id: "u-admin" },
+    tables: {
+      org_memberships: { data: { role: "admin" } },
+      artists: {
+        data: [
+          {
+            id: BATCH_ARTIST_1,
+            name: "Ann",
+            email: "ann@x.de",
+            cast_role: "Lead",
+          },
+          {
+            id: BATCH_ARTIST_2,
+            name: "Ben",
+            email: "ben@x.de",
+            cast_role: "Soloist",
+          },
+        ],
+      },
+      show_dates: { data: [BATCH_SHOW_DATE_ROW_1] },
+      cities: { data: [{ id: "city-1", name: "Berlin" }] },
+      hire_orders: [
+        { when: { __write: false }, data: [] },
+        { when: { __write: true }, data: { id: "ho-2" } },
+      ],
+      hire_order_dates: { data: null },
+      app_settings: [
+        { when: { key: "hire_order_defaults" }, data: [DEFAULTS] },
+        { when: { key: "hire_order_numbering" }, data: [NUMBERING] },
+      ],
+    },
+  });
+  const admin = deps.admin as unknown as {
+    rpc: (
+      name: string,
+      params?: unknown,
+    ) => Promise<{ data: unknown; error: unknown }>;
+  };
+  const originalRpc = admin.rpc.bind(admin);
+  admin.rpc = (name, params) => {
+    if (
+      name === "assert_hire_order_dates_available" &&
+      (params as { p_artist?: string })?.p_artist === BATCH_ARTIST_1
+    ) {
+      return Promise.resolve({
+        data: null,
+        error: { message: "availability service failed" },
+      });
+    }
+    return originalRpc(name, params);
+  };
+
+  const response = await handle(
+    makeRequest({
+      headers: JWT,
+      body: {
+        action: "draft-batch",
+        org_id: ORG,
+        artists: [
+          { artist_id: BATCH_ARTIST_1, show_date_ids: [BATCH_DATE_1] },
+          { artist_id: BATCH_ARTIST_2, show_date_ids: [BATCH_DATE_1] },
+        ],
+        manual: { fee: 900, currency: "EUR" },
+      },
+    }),
+    deps,
+  );
+
+  assertEquals(response.status, 200);
+  assertEquals(await response.json(), {
+    created: ["ho-2"],
+    skipped: [],
+    errors: [{
+      artist_id: BATCH_ARTIST_1,
+      reason: "availability_check_failed",
+    }],
   });
 });
 
@@ -969,27 +1184,80 @@ Deno.test("issue renders, uploads to hire-orders/<org>/<order_no>.pdf, stamps is
   );
 });
 
+Deno.test("issue keeps the order issued but does not stamp ambiguous email delivery", async () => {
+  for (const data of [null, {}]) {
+    const { deps, calls } = makeFakeDeps({
+      authUser: { id: "u-admin" },
+      emailResult: { data, error: null },
+      tables: {
+        org_memberships: { data: { role: "admin" } },
+        hire_orders: [
+          { when: { __write: false }, data: issuableOrder() },
+          { when: { __write: true }, data: null },
+        ],
+        artists: { data: { user_id: "u-artist" } },
+        app_settings: [
+          { when: { key: "hire_order_letterhead" }, data: [LETTERHEAD] },
+          { when: { key: "hire_order_terms" }, data: [TERMS_FILLED] },
+          { when: { key: "hire_order_defaults" }, data: [DEFAULTS] },
+        ],
+      },
+    });
+
+    const response = await handle(
+      makeRequest({
+        headers: JWT,
+        body: { action: "issue", org_id: ORG, order_ids: ["o-1"] },
+      }),
+      deps,
+    );
+
+    assertEquals(response.status, 200);
+    assertEquals(await response.json(), { issued: ["o-1"], failed: [] });
+    assert(
+      calls.some((call) =>
+        call.table === "hire_orders" && call.method === "update" &&
+        (call.args[0] as { status?: string }).status === "issued"
+      ),
+      "best-effort email non-delivery must preserve the issued transition",
+    );
+    assertEquals(
+      calls.some((call) =>
+        call.table === "hire_orders" && call.method === "update" &&
+        "last_sent_at" in (call.args[0] as object)
+      ),
+      false,
+      "ambiguous delivery must not stamp last_sent_at",
+    );
+  }
+});
+
 // ── resend ──────────────────────────────────────────────────────────────
 
 function installStorageDownload(
   deps: ReturnType<typeof makeFakeDeps>["deps"],
   result: { data: Blob | null; error: unknown },
-): void {
+): string[] {
+  const downloadedPaths: string[] = [];
   const storage = deps.admin.storage as unknown as {
     from: (bucket: string) => Record<string, unknown>;
   };
   const originalFrom = storage.from.bind(storage);
   storage.from = (bucket: string) => ({
     ...originalFrom(bucket),
-    download: () => Promise.resolve(result),
+    download: (path: string) => {
+      downloadedPaths.push(path);
+      return Promise.resolve(result);
+    },
   });
+  return downloadedPaths;
 }
 
 Deno.test("resend reuses the stored document and stamps last_sent_at only after the provider accepts", async () => {
   const { deps, calls, invokeCalls } = makeFakeDeps({
     authUser: { id: "u-admin" },
     now: new Date("2026-06-01T12:00:00.000Z"),
-    emailResult: { data: { id: "email-2" }, error: null },
+    emailResult: { data: { success: true }, error: null },
     tables: {
       org_memberships: { data: { role: "admin" } },
       hire_orders: [
@@ -1005,7 +1273,7 @@ Deno.test("resend reuses the stored document and stamps last_sent_at only after 
       ],
     },
   });
-  installStorageDownload(deps, {
+  const downloadedPaths = installStorageDownload(deps, {
     data: new Blob([new Uint8Array([0x25, 0x50, 0x44, 0x46])], {
       type: "application/pdf",
     }),
@@ -1025,6 +1293,11 @@ Deno.test("resend reuses the stored document and stamps last_sent_at only after 
 
   assertEquals(response.status, 200);
   assertEquals(await response.json(), { sent_at: "2026-06-01T12:00:00.000Z" });
+  assertEquals(
+    downloadedPaths,
+    [`${ORG}/HO-1-signed.pdf`],
+    "resend must prefer the immutable signed PDF when one exists",
+  );
   const email = invokeCalls.find((c) => c.name === "send-transactional-email");
   assert(email, "stored PDF is delivered through the existing email helper");
   assertEquals(
@@ -1138,6 +1411,53 @@ Deno.test("resend suppressed delivery leaves last_sent_at unchanged", async () =
     ),
     false,
   );
+});
+
+Deno.test("resend rejects null and empty provider data without stamping last_sent_at", async () => {
+  for (const data of [null, {}]) {
+    const { deps, calls } = makeFakeDeps({
+      authUser: { id: "u-admin" },
+      emailResult: { data, error: null },
+      tables: {
+        org_memberships: { data: { role: "admin" } },
+        hire_orders: [
+          {
+            when: { __write: false },
+            data: issuableOrder({
+              status: "issued",
+              pdf_path: `${ORG}/HO-1.pdf`,
+              signed_pdf_path: null,
+            }),
+          },
+          { when: { __write: true }, data: null },
+        ],
+      },
+    });
+    installStorageDownload(deps, {
+      data: new Blob([new Uint8Array([0x25, 0x50, 0x44, 0x46])], {
+        type: "application/pdf",
+      }),
+      error: null,
+    });
+
+    const response = await handle(
+      makeRequest({
+        headers: JWT,
+        body: { action: "resend", org_id: ORG, order_id: "o-1" },
+      }),
+      deps,
+    );
+
+    assertEquals(response.status, 502);
+    assertEquals((await response.json()).error, "email_failed");
+    assertEquals(
+      calls.some((call) =>
+        call.table === "hire_orders" && call.method === "update" &&
+        "last_sent_at" in (call.args[0] as object)
+      ),
+      false,
+    );
+  }
 });
 
 Deno.test("issue refuses orders failing the ready gate and reports issue codes", async () => {

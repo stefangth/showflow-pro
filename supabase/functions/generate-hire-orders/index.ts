@@ -25,7 +25,7 @@ import type {
 } from "../_shared/rows.ts";
 import { requireFeature } from "../_shared/entitlements.ts";
 import { resolveOrgSetting } from "../_shared/settings.ts";
-import { type Deps, realDeps } from "../_shared/deps.ts";
+import { type Deps, emailWasSent, realDeps } from "../_shared/deps.ts";
 import { APP_URL } from "../_shared/app-url.ts";
 import {
   createAndSendEnvelope,
@@ -812,6 +812,15 @@ type BatchArtistOutcome =
   | { kind: "skipped"; reason: string }
   | { kind: "error"; reason: string };
 
+const CANONICAL_UUID_PATTERN =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+function canonicalUuid(value: unknown): string | null {
+  return typeof value === "string" && CANONICAL_UUID_PATTERN.test(value)
+    ? value.toLowerCase()
+    : null;
+}
+
 async function draftBatch(
   deps: Deps,
   body: DraftBatchBody,
@@ -830,6 +839,7 @@ async function draftBatch(
   }
 
   const seenArtists = new Set<string>();
+  const normalizedArtists: DraftBatchArtistInput[] = [];
   for (const item of rawArtists) {
     if (
       !item || typeof item.artist_id !== "string" ||
@@ -837,23 +847,25 @@ async function draftBatch(
     ) {
       return json({ error: "artist_id required" }, 400);
     }
-    if (seenArtists.has(item.artist_id)) {
+    const artistId = canonicalUuid(item.artist_id);
+    if (!artistId) return json({ error: "invalid_artist_id" }, 400);
+    if (seenArtists.has(artistId)) {
       return json({ error: "duplicate_artist_id" }, 400);
     }
-    seenArtists.add(item.artist_id);
+    seenArtists.add(artistId);
     if (!Array.isArray(item.show_date_ids) || item.show_date_ids.length === 0) {
       return json({ error: "show_date_ids required" }, 400);
     }
-    if (
-      item.show_date_ids.some((id) =>
-        typeof id !== "string" || id.trim() === ""
-      )
-    ) {
-      return json({ error: "invalid_show_date_id" }, 400);
+    const showDateIds: string[] = [];
+    for (const id of item.show_date_ids) {
+      const showDateId = canonicalUuid(id);
+      if (!showDateId) return json({ error: "invalid_show_date_id" }, 400);
+      showDateIds.push(showDateId);
     }
-    if (new Set(item.show_date_ids).size !== item.show_date_ids.length) {
+    if (new Set(showDateIds).size !== showDateIds.length) {
       return json({ error: "duplicate_show_date_id" }, 400);
     }
+    normalizedArtists.push({ artist_id: artistId, show_date_ids: showDateIds });
   }
 
   const manual = body.manual ?? {};
@@ -866,9 +878,9 @@ async function draftBatch(
 
   const admin = deps.admin;
   const org = body.org_id;
-  const artistIds = rawArtists.map((item) => item.artist_id);
+  const artistIds = normalizedArtists.map((item) => item.artist_id);
   const showDateIds = [
-    ...new Set(rawArtists.flatMap((item) => item.show_date_ids)),
+    ...new Set(normalizedArtists.flatMap((item) => item.show_date_ids)),
   ];
   const [artistResult, dateResult, defaults, numbering, sequenceResult] =
     await Promise.all([
@@ -938,7 +950,7 @@ async function draftBatch(
   };
   const result: DraftBatchResult = { created: [], skipped: [], errors: [] };
 
-  for (const input of rawArtists) {
+  for (const input of normalizedArtists) {
     try {
       const outcome = await draftBatchArtist(context, input);
       if (outcome.kind === "created") result.created.push(outcome.id);
@@ -1450,10 +1462,10 @@ async function sendIssuedEmail(
       ? `hire-order-resend-${order.id}-${deps.now().toISOString()}`
       : `hire-order-issued-${order.id}`,
   });
-  const delivery = result.data as
-    | { success?: unknown; reason?: unknown }
-    | null;
-  if (result.error != null || delivery?.success === false) {
+  if (!emailWasSent(result)) {
+    const delivery = result.data as
+      | { reason?: unknown }
+      | null;
     console.warn("generate-hire-orders: issued email not delivered", {
       org,
       orderId: order.id,
