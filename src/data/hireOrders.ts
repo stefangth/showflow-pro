@@ -203,7 +203,7 @@ export async function fetchShowDatesLite(
   }));
 }
 
-/** Invoke the generate-hire-orders edge function (actions: draft/issue/preview/download-url).
+/** Invoke the generate-hire-orders edge function (including draft-batch and immutable resend).
  *  Rethrows with the server's own reason rather than supabase-js's opaque
  *  "non-2xx status code" string — see src/lib/edgeErrors.ts. */
 export async function invokeHireOrderAction(

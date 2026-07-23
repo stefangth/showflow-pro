@@ -99,6 +99,11 @@ export function useShowDatesLite(orgId: string | null | undefined) {
 }
 
 interface DraftResult { created?: string[]; skipped?: { booking_id: string; reason: string }[] }
+interface DraftBatchResult {
+  created?: string[];
+  skipped?: { artist_id: string; reason: string }[];
+  errors?: { artist_id: string; reason: string }[];
+}
 export interface IssueResult { issued?: string[]; failed?: { order_id: string; issues: string[] }[] }
 
 /** Actions that actually write data and so must bust the hire-orders domain.
@@ -107,7 +112,7 @@ export interface IssueResult { issued?: string[]; failed?: { order_id: string; i
  *  producer types, and invalidating on every tick would storm the whole
  *  ['hire-orders'] domain (table/KPIs/nav-count/detail queries) for an action
  *  that changes nothing. */
-const WRITE_ACTIONS = new Set(["draft", "issue", "draft-manual"]);
+const WRITE_ACTIONS = new Set(["draft", "issue", "draft-manual", "draft-batch", "resend"]);
 
 /** Friendly copy for the issue-validation failure codes generate-hire-orders
  *  can return (see orderReadyIssues / issueOrders in the edge function) — orgs
@@ -148,16 +153,28 @@ const DRAFT_SKIP_COPY: Record<string, string> = {
 };
 
 /** Unique, human-readable reasons across every skipped draft. */
-function describeDraftSkips(skipped: { booking_id: string; reason: string }[]): string {
+function describeDraftSkips(skipped: Array<{ reason: string }>): string {
   const reasons = Array.from(new Set(skipped.map((s) => s.reason)));
   return reasons.map((reason) => DRAFT_SKIP_COPY[reason] ?? reason).join(", ");
 }
 
-/** Invoke generate-hire-orders (draft/issue/draft-manual/preview/download-url).
+const DRAFT_BATCH_ERROR_COPY: Record<string, string> = {
+  artist_not_found: "artist not found",
+  show_date_not_found: "show date not found",
+  availability_check_failed: "availability could not be checked",
+  date_insert_failed: "assigned dates could not be saved",
+  error: "unexpected error",
+};
+
+function describeBatchErrors(errors: Array<{ reason: string }>): string {
+  const reasons = Array.from(new Set(errors.map((error) => error.reason)));
+  return reasons.map((reason) => DRAFT_BATCH_ERROR_COPY[reason] ?? reason).join(", ");
+}
+
+/** Invoke generate-hire-orders (draft/issue/draft-manual/draft-batch/resend/preview/download-url).
  *  Invalidates the whole hire-orders domain for the write actions
- *  (draft/issue/draft-manual) and toasts a summary for draft/issue; preview and
- *  download-url are read-only, so they neither invalidate nor toast -- the
- *  caller opens the returned PDF/URL directly. */
+ *  (including resend, whose last_sent_at drives the drawer timestamp). Preview
+ *  and download-url are read-only, so they neither invalidate nor toast. */
 export function useHireOrderAction() {
   const qc = useQueryClient();
   return useMutation({
@@ -181,6 +198,24 @@ export function useHireOrderAction() {
         } else {
           // Zero eligible bookings for this date — not a failure, just nothing to do.
           toast.info("No bookings need hire orders");
+        }
+      } else if (action === "draft-batch") {
+        const { created = [], skipped = [], errors = [] } = (data ?? {}) as DraftBatchResult;
+        if (created.length > 0) {
+          toast.success(`Drafted ${created.length} hire order${created.length === 1 ? "" : "s"}`);
+        }
+        if (skipped.length > 0) {
+          toast.warning(
+            `${skipped.length} artist${skipped.length === 1 ? "" : "s"} skipped: ${describeDraftSkips(skipped)}`,
+          );
+        }
+        if (errors.length > 0) {
+          toast.error(
+            `${errors.length} artist${errors.length === 1 ? "" : "s"} failed: ${describeBatchErrors(errors)}`,
+          );
+        }
+        if (created.length === 0 && skipped.length === 0 && errors.length === 0) {
+          toast.info("No artists need hire orders");
         }
       } else if (action === "issue") {
         const { issued = [], failed = [] } = (data ?? {}) as IssueResult;
@@ -206,6 +241,8 @@ export function useHireOrderAction() {
             `${documensoFailed.length} hire order${documensoFailed.length === 1 ? "" : "s"} issued, but countersign delivery failed`,
           );
         }
+      } else if (action === "resend") {
+        toast.success("Hire order resent");
       }
       // preview / download-url: no toast — the caller opens the returned PDF/URL directly.
     },

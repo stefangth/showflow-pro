@@ -2,8 +2,10 @@
 //   draft            create draft orders from confirmed bookings (snapshot fields)
 //   draft-manual     create ONE draft from the V5 wizard: free choice of artist x
 //                    date (either/both optional) plus producer-entered manual fields
+//   draft-batch      create one aggregate draft per artist across assigned dates
 //   issue            validate -> render PDF -> upload -> stamp issued -> email + notify
 //                    (+ a Documenso countersign envelope when the org is in that mode)
+//   resend           email the immutable stored issued/countersigned PDF again
 //   preview          render a watermarked PDF for one order, persist nothing
 //   download-url     signed URL for an order's PDF (producers + the linked artist)
 //   countersign-test admin-only Documenso connectivity check for the settings card
@@ -13,35 +15,56 @@
 //
 // DI: exports handle(req, deps); Deno.serve wiring at the bottom. Tests inject
 // makeFakeDeps (deps.renderHireOrderPdf is stubbed). See index.di.test.ts.
-import { preflight, json } from "../_shared/http.ts";
+import { json, preflight } from "../_shared/http.ts";
 import { requireCronOrRole, requireOrgRole } from "../_shared/auth.ts";
 import type { TablesInsert, TablesUpdate } from "../_shared/database.types.ts";
-import type { OrgAdminRow, ProducerAssignmentRow, ResolveShowAssignmentsArgs } from "../_shared/rows.ts";
+import type {
+  OrgAdminRow,
+  ProducerAssignmentRow,
+  ResolveShowAssignmentsArgs,
+} from "../_shared/rows.ts";
 import { requireFeature } from "../_shared/entitlements.ts";
 import { resolveOrgSetting } from "../_shared/settings.ts";
-import { realDeps, type Deps } from "../_shared/deps.ts";
+import { type Deps, realDeps } from "../_shared/deps.ts";
 import { APP_URL } from "../_shared/app-url.ts";
-import { createAndSendEnvelope, documensoAuthHeader } from "../_shared/documenso.ts";
-import { decodeBase64, encodeBase64 } from "https://deno.land/std@0.224.0/encoding/base64.ts";
 import {
+  createAndSendEnvelope,
+  documensoAuthHeader,
+} from "../_shared/documenso.ts";
+import {
+  decodeBase64,
+  encodeBase64,
+} from "https://deno.land/std@0.224.0/encoding/base64.ts";
+import {
+  type EngagementDate,
+  type FieldLayers,
   formatMoney,
   formatOrderNo,
-  orderReadyIssues,
-  resolveFields,
-  withCollisionSuffix,
-  type FieldLayers,
   type HireOrderLetterhead,
   type HireOrderTerm,
   type OrderData,
   type OrderFieldKey,
+  orderReadyIssues,
   type RenderSignature,
+  resolveFields,
+  withCollisionSuffix,
 } from "../_shared/hireOrders.ts";
 
 // ── settings shapes + fallbacks (mirror src/components/settings/hireOrders/*) ──
 
-interface Numbering { prefix: string; pattern: string }
-interface OrderDefaults { default_fee: number | null; currency: string }
-interface TermsVariants { lean: HireOrderTerm[]; standard: HireOrderTerm[]; full: HireOrderTerm[] }
+interface Numbering {
+  prefix: string;
+  pattern: string;
+}
+interface OrderDefaults {
+  default_fee: number | null;
+  currency: string;
+}
+interface TermsVariants {
+  lean: HireOrderTerm[];
+  standard: HireOrderTerm[];
+  full: HireOrderTerm[];
+}
 type TermsVariant = keyof TermsVariants;
 interface Countersign {
   // 'documenso' is retained for the dormant Documenso path (see issueOne + _shared/documenso.ts).
@@ -63,11 +86,22 @@ interface Countersign {
  * flipped by a later org-setting change (the DB transition gate, signOrder, and
  * the frontend all key off this). Legacy/null snapshots fall back to the live setting.
  */
-interface IssueSnapshot { letterhead: HireOrderLetterhead; terms: HireOrderTerm[]; currency: string; countersign_mode: string }
+interface IssueSnapshot {
+  letterhead: HireOrderLetterhead;
+  terms: HireOrderTerm[];
+  currency: string;
+  countersign_mode: string;
+}
 
-const NUMBERING_DEFAULT: Numbering = { prefix: "HO", pattern: "{prefix}-{yyyy}-{mmdd}-{seq}" };
+const NUMBERING_DEFAULT: Numbering = {
+  prefix: "HO",
+  pattern: "{prefix}-{yyyy}-{mmdd}-{seq}",
+};
 const DEFAULTS_DEFAULT: OrderDefaults = { default_fee: null, currency: "EUR" };
-const LETTERHEAD_DEFAULT: HireOrderLetterhead = { legal_name: "", address_lines: [] };
+const LETTERHEAD_DEFAULT: HireOrderLetterhead = {
+  legal_name: "",
+  address_lines: [],
+};
 const TERMS_DEFAULT: TermsVariants = { lean: [], standard: [], full: [] };
 const COUNTERSIGN_DEFAULT: Countersign = { mode: "manual" };
 
@@ -86,10 +120,14 @@ const DOCUMENSO_DEFAULT_BASE_URL = "https://app.documenso.com";
  * silently falls back — since the shared token travels in this request's Authorization
  * header.
  */
-function resolveDocumensoBaseUrl(deps: Deps): { ok: true; baseUrl: string } | { ok: false; error: string } {
+function resolveDocumensoBaseUrl(
+  deps: Deps,
+): { ok: true; baseUrl: string } | { ok: false; error: string } {
   const raw = deps.env("DOCUMENSO_BASE_URL");
   const baseUrl = raw && raw.trim() !== "" ? raw : DOCUMENSO_DEFAULT_BASE_URL;
-  if (!baseUrl.startsWith("https://")) return { ok: false, error: "documenso_base_url_invalid" };
+  if (!baseUrl.startsWith("https://")) {
+    return { ok: false, error: "documenso_base_url_invalid" };
+  }
   return { ok: true, baseUrl };
 }
 
@@ -192,13 +230,31 @@ interface DownloadOrderRow {
   order_no: string;
 }
 
+/** Minimal order shape needed to compose an issued/resend delivery email. */
+interface EmailOrderRow {
+  id: string;
+  order_no: string;
+}
+
+/** Shape of resendOrder's hire_orders select. */
+interface ResendOrderRow extends EmailOrderRow {
+  status: string;
+  data: OrderData;
+  artist_id: string | null;
+  pdf_path: string | null;
+  signed_pdf_path: string | null;
+  fee_currency: string | null;
+}
+
 // ── entry ──────────────────────────────────────────────────────────────────
 
 export async function handle(req: Request, deps: Deps): Promise<Response> {
   if (req.method === "OPTIONS") return preflight();
 
   const body = await req.json().catch(() => null);
-  if (!body?.action || !body?.org_id) return json({ error: "bad_request" }, 400);
+  if (!body?.action || !body?.org_id) {
+    return json({ error: "bad_request" }, 400);
+  }
 
   // download-url authorizes artists for their own issued orders, so it CANNOT sit
   // behind the admin/producer gate — it runs its own auth (see downloadUrl).
@@ -230,8 +286,12 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
       return draftOrders(deps, body, gate.userId);
     case "draft-manual":
       return draftManual(deps, body, gate.userId);
+    case "draft-batch":
+      return draftBatch(deps, body, gate.userId);
     case "issue":
       return issueOrders(deps, body, gate.userId);
+    case "resend":
+      return resendOrder(deps, body);
     case "preview":
       return previewOrder(deps, body);
     case "countersign-test": {
@@ -250,9 +310,18 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
 
 // ── draft ────────────────────────────────────────────────────────────────
 
-interface DraftBody { org_id: string; show_date_id: string; booking_ids?: string[]; notify?: boolean }
+interface DraftBody {
+  org_id: string;
+  show_date_id: string;
+  booking_ids?: string[];
+  notify?: boolean;
+}
 
-async function draftOrders(deps: Deps, body: DraftBody, userId: string | null): Promise<Response> {
+async function draftOrders(
+  deps: Deps,
+  body: DraftBody,
+  userId: string | null,
+): Promise<Response> {
   const admin = deps.admin;
   const org = body.org_id;
   if (!body.show_date_id) return json({ error: "show_date_id required" }, 400);
@@ -260,7 +329,9 @@ async function draftOrders(deps: Deps, body: DraftBody, userId: string | null): 
   // Show date (org-scoped) with its show, for the snapshot + order-number cast code.
   const { data: sd } = await admin
     .from("show_dates")
-    .select("id, org_id, show_id, city_id, date, venue, duration_minutes, notes, session_1, session_2, session_3, shows(program, sub_program)")
+    .select(
+      "id, org_id, show_id, city_id, date, venue, duration_minutes, notes, session_1, session_2, session_3, shows(program, sub_program)",
+    )
     .eq("id", body.show_date_id)
     .eq("org_id", org)
     .maybeSingle();
@@ -270,10 +341,14 @@ async function draftOrders(deps: Deps, body: DraftBody, userId: string | null): 
   // Confirmed bookings for the date (optionally a subset), artist joined.
   let bq = admin
     .from("bookings")
-    .select("id, artist_id, fee_amount, status, artists(id, name, email, cast_role, user_id)")
+    .select(
+      "id, artist_id, fee_amount, status, artists(id, name, email, cast_role, user_id)",
+    )
     .eq("show_date_id", body.show_date_id)
     .eq("status", "confirmed");
-  if (Array.isArray(body.booking_ids) && body.booking_ids.length > 0) bq = bq.in("id", body.booking_ids);
+  if (Array.isArray(body.booking_ids) && body.booking_ids.length > 0) {
+    bq = bq.in("id", body.booking_ids);
+  }
   const { data: bookingRows, error: bErr } = await bq;
   if (bErr) return json({ error: bErr.message }, 500);
   const bookings = (bookingRows ?? []) as unknown as BookingWithArtistRow[];
@@ -286,19 +361,39 @@ async function draftOrders(deps: Deps, body: DraftBody, userId: string | null): 
   // active-booking index — one live order per booking).
   const bookingIds = bookings.map((b) => b.id);
   const { data: existing } = await admin
-    .from("hire_orders").select("booking_id").in("booking_id", bookingIds).neq("status", "void");
-  const hasOrder = new Set(((existing ?? []) as unknown as { booking_id: string }[]).map((r) => r.booking_id));
+    .from("hire_orders").select("booking_id").in("booking_id", bookingIds).neq(
+      "status",
+      "void",
+    );
+  const hasOrder = new Set(
+    ((existing ?? []) as unknown as { booking_id: string }[]).map((r) =>
+      r.booking_id
+    ),
+  );
 
   // Settings for the snapshot + numbering.
   const [defaults, numbering] = await Promise.all([
-    resolveOrgSetting<OrderDefaults>(admin, org, "hire_order_defaults", DEFAULTS_DEFAULT),
-    resolveOrgSetting<Numbering>(admin, org, "hire_order_numbering", NUMBERING_DEFAULT),
+    resolveOrgSetting<OrderDefaults>(
+      admin,
+      org,
+      "hire_order_defaults",
+      DEFAULTS_DEFAULT,
+    ),
+    resolveOrgSetting<Numbering>(
+      admin,
+      org,
+      "hire_order_numbering",
+      NUMBERING_DEFAULT,
+    ),
   ]);
 
   // City name (showflow field).
   let cityName: string | null = null;
   if (showDate.city_id) {
-    const { data: c } = await admin.from("cities").select("name").eq("id", showDate.city_id).maybeSingle();
+    const { data: c } = await admin.from("cities").select("name").eq(
+      "id",
+      showDate.city_id,
+    ).maybeSingle();
     cityName = (c as { name?: string } | null)?.name ?? null;
   }
 
@@ -313,13 +408,17 @@ async function draftOrders(deps: Deps, body: DraftBody, userId: string | null): 
   const { count } = await admin
     .from("hire_orders")
     .select("id, show_dates!inner(date)", { count: "exact", head: true })
-    .eq("org_id", org).eq("show_dates.date", showDate.date).neq("status", "void");
+    .eq("org_id", org).eq("show_dates.date", showDate.date).neq(
+      "status",
+      "void",
+    );
   let seq = count ?? 0;
 
   const castCode = castCodeFromLabel(showDate.shows?.program ?? null);
-  const sessions = [showDate.session_1, showDate.session_2, showDate.session_3].filter(
-    (t: unknown): t is string => typeof t === "string" && t !== "",
-  );
+  const sessions = [showDate.session_1, showDate.session_2, showDate.session_3]
+    .filter(
+      (t: unknown): t is string => typeof t === "string" && t !== "",
+    );
 
   for (const b of bookings) {
     // Per-booking isolation (mirrors issueOrders): an unexpected throw on one
@@ -345,7 +444,9 @@ async function draftOrders(deps: Deps, body: DraftBody, userId: string | null): 
       assign(showflow, "fee", b.fee_amount);
 
       // defaults layer: org default fee (fallback under a booking fee) + currency.
-      const defLayer: Partial<Record<OrderFieldKey, unknown>> = { currency: defaults.currency };
+      const defLayer: Partial<Record<OrderFieldKey, unknown>> = {
+        currency: defaults.currency,
+      };
       assign(defLayer, "fee", defaults.default_fee);
 
       const layers: FieldLayers = { showflow, defaults: defLayer };
@@ -360,7 +461,10 @@ async function draftOrders(deps: Deps, body: DraftBody, userId: string | null): 
       });
 
       const feeValue = data.fee?.value;
-      const feeAmount = feeValue === undefined || feeValue === null || feeValue === "" ? null : Number(feeValue);
+      const feeAmount =
+        feeValue === undefined || feeValue === null || feeValue === ""
+          ? null
+          : Number(feeValue);
       const row = {
         org_id: org,
         status: "draft" as const,
@@ -378,7 +482,11 @@ async function draftOrders(deps: Deps, body: DraftBody, userId: string | null): 
       if ("id" in result) created.push(result.id);
       else skipped.push({ booking_id: b.id, reason: result.reason });
     } catch (e) {
-      console.error("generate-hire-orders: draft failed for booking", { org, bookingId: b.id, error: (e as Error).message });
+      console.error("generate-hire-orders: draft failed for booking", {
+        org,
+        bookingId: b.id,
+        error: (e as Error).message,
+      });
       skipped.push({ booking_id: b.id, reason: "error" });
     }
   }
@@ -417,13 +525,19 @@ async function insertWithRetry(
     const { data, error } = await admin
       // row is a dynamically-assembled draft (resolveFields output), so it is a
       // Record — single cast to the table's Insert type at the boundary.
-      .from("hire_orders").insert({ ...row, order_no } as unknown as TablesInsert<"hire_orders">).select("id").maybeSingle();
+      .from("hire_orders").insert(
+        { ...row, order_no } as unknown as TablesInsert<"hire_orders">,
+      ).select("id").maybeSingle();
     if (!error && data) return { id: (data as { id: string }).id };
     if (error && (error as { code?: string }).code === "23505") {
       if (isActiveArtistDateConflict(error)) return { reason: "exists" };
       continue; // order_no collision -> next suffix
     }
-    if (error) return { reason: (error as { message?: string }).message ?? "insert_failed" };
+    if (error) {
+      return {
+        reason: (error as { message?: string }).message ?? "insert_failed",
+      };
+    }
   }
   return { reason: "order_no_collision" };
 }
@@ -443,7 +557,12 @@ function isActiveArtistDateConflict(error: unknown): boolean {
   return haystack.includes("hire_orders_active_artist_date_uniq");
 }
 
-async function notifyProducers(deps: Deps, org: string, showDate: ShowDateRow, orderCount: number): Promise<void> {
+async function notifyProducers(
+  deps: Deps,
+  org: string,
+  showDate: ShowDateRow,
+  orderCount: number,
+): Promise<void> {
   const admin = deps.admin;
   const { data: producers } = await admin.rpc("resolve_show_assignments", {
     p_program: showDate.shows?.program ?? "",
@@ -452,11 +571,16 @@ async function notifyProducers(deps: Deps, org: string, showDate: ShowDateRow, o
     p_org: org,
     // The SQL function accepts NULL sub_program/city_id; type-gen doesn't model that.
   } as ResolveShowAssignmentsArgs);
-  let recipientIds = ((producers ?? []) as unknown as ProducerAssignmentRow[]).map((p) => p.producer_user_id);
+  let recipientIds = ((producers ?? []) as unknown as ProducerAssignmentRow[])
+    .map((p) => p.producer_user_id);
   if (recipientIds.length === 0) {
     // Fallback: notify this org's admins.
-    const { data: admins } = await admin.from("org_memberships").select("user_id").eq("org_id", org).eq("role", "admin");
-    recipientIds = ((admins ?? []) as unknown as OrgAdminRow[]).map((a) => a.user_id);
+    const { data: admins } = await admin.from("org_memberships").select(
+      "user_id",
+    ).eq("org_id", org).eq("role", "admin");
+    recipientIds = ((admins ?? []) as unknown as OrgAdminRow[]).map((a) =>
+      a.user_id
+    );
   }
   recipientIds = [...new Set(recipientIds)] as string[];
   if (recipientIds.length === 0) return;
@@ -466,12 +590,19 @@ async function notifyProducers(deps: Deps, org: string, showDate: ShowDateRow, o
     user_id: uid,
     type: "hire_orders_ready",
     title: "Hire orders ready",
-    message: `${orderCount} hire ${orderCount === 1 ? "order is" : "orders are"} drafted and ready to review.`,
+    message: `${orderCount} hire ${
+      orderCount === 1 ? "order is" : "orders are"
+    } drafted and ready to review.`,
     related_entity_type: "show_date",
     related_entity_id: showDate.id,
   }));
   const { error } = await admin.from("notifications").insert(rows);
-  if (error) console.error("generate-hire-orders: producer notification insert failed", { org, error: error.message });
+  if (error) {
+    console.error("generate-hire-orders: producer notification insert failed", {
+      org,
+      error: error.message,
+    });
+  }
 }
 
 // ── draft-manual ─────────────────────────────────────────────────────────
@@ -495,7 +626,11 @@ interface DraftManualBody {
  * manual/default. The ready gate (recipient_email etc.) is NOT applied here —
  * it only runs at issue time, so a draft can be saved with gaps.
  */
-async function draftManual(deps: Deps, body: DraftManualBody, userId: string | null): Promise<Response> {
+async function draftManual(
+  deps: Deps,
+  body: DraftManualBody,
+  userId: string | null,
+): Promise<Response> {
   const admin = deps.admin;
   const org = body.org_id;
   const manual = body.manual ?? {};
@@ -506,14 +641,25 @@ async function draftManual(deps: Deps, body: DraftManualBody, userId: string | n
   // outright when a fee WAS provided but isn't a finite number; a genuinely absent
   // fee (undefined/null/"") keeps falling through to the existing null behavior.
   const manualFeeRaw = manual.fee;
-  const manualFeeProvided = manualFeeRaw !== undefined && manualFeeRaw !== null && manualFeeRaw !== "";
+  const manualFeeProvided = manualFeeRaw !== undefined &&
+    manualFeeRaw !== null && manualFeeRaw !== "";
   if (manualFeeProvided && !Number.isFinite(Number(manualFeeRaw))) {
     return json({ error: "invalid_fee" }, 400);
   }
 
   const [defaults, numbering] = await Promise.all([
-    resolveOrgSetting<OrderDefaults>(admin, org, "hire_order_defaults", DEFAULTS_DEFAULT),
-    resolveOrgSetting<Numbering>(admin, org, "hire_order_numbering", NUMBERING_DEFAULT),
+    resolveOrgSetting<OrderDefaults>(
+      admin,
+      org,
+      "hire_order_defaults",
+      DEFAULTS_DEFAULT,
+    ),
+    resolveOrgSetting<Numbering>(
+      admin,
+      org,
+      "hire_order_numbering",
+      NUMBERING_DEFAULT,
+    ),
   ]);
 
   const showflow: Partial<Record<OrderFieldKey, unknown>> = {};
@@ -522,9 +668,14 @@ async function draftManual(deps: Deps, body: DraftManualBody, userId: string | n
 
   if (body.artist_id && body.show_date_id) {
     const [{ data: artistRow }, { data: sdRow }] = await Promise.all([
-      admin.from("artists").select("id, name, email, cast_role").eq("id", body.artist_id).eq("org_id", org).maybeSingle(),
+      admin.from("artists").select("id, name, email, cast_role").eq(
+        "id",
+        body.artist_id,
+      ).eq("org_id", org).maybeSingle(),
       admin.from("show_dates")
-        .select("id, date, venue, city_id, duration_minutes, session_1, session_2, session_3, shows(program, sub_program)")
+        .select(
+          "id, date, venue, city_id, duration_minutes, session_1, session_2, session_3, shows(program, sub_program)",
+        )
         .eq("id", body.show_date_id).eq("org_id", org).maybeSingle(),
     ]);
 
@@ -544,7 +695,10 @@ async function draftManual(deps: Deps, body: DraftManualBody, userId: string | n
       );
       if (sessions.length > 0) showflow.sessions = sessions;
       if (sd.city_id) {
-        const { data: c } = await admin.from("cities").select("name").eq("id", sd.city_id).maybeSingle();
+        const { data: c } = await admin.from("cities").select("name").eq(
+          "id",
+          sd.city_id,
+        ).maybeSingle();
         assign(showflow, "city", (c as { name?: string } | null)?.name ?? null);
       }
       castCode = castCodeFromLabel(sd.shows?.program ?? null);
@@ -552,31 +706,48 @@ async function draftManual(deps: Deps, body: DraftManualBody, userId: string | n
     }
   }
 
-  const defLayer: Partial<Record<OrderFieldKey, unknown>> = { currency: defaults.currency };
+  const defLayer: Partial<Record<OrderFieldKey, unknown>> = {
+    currency: defaults.currency,
+  };
   assign(defLayer, "fee", defaults.default_fee);
 
   const layers: FieldLayers = { showflow, manual, defaults: defLayer };
   const data = resolveFields(layers);
 
-  if (!numberingDate && typeof manual.date === "string" && manual.date) numberingDate = manual.date;
+  if (!numberingDate && typeof manual.date === "string" && manual.date) {
+    numberingDate = manual.date;
+  }
 
   // Sequence base: a simple org-wide non-void count. draftOrders scopes its
   // sequence per calendar day via a join through the linked show_date, but a
   // wizard order may have none to join on — an org-wide count is always
   // available and, combined with insertWithRetry's collision-suffix retry, is
   // still a correct (if less tightly differentiated) base.
-  const { count } = await admin.from("hire_orders").select("id", { count: "exact", head: true }).eq("org_id", org).neq("status", "void");
+  const { count } = await admin.from("hire_orders").select("id", {
+    count: "exact",
+    head: true,
+  }).eq("org_id", org).neq("status", "void");
   const seq = (count ?? 0) + 1;
 
-  const baseOrderNo = formatOrderNo(numbering.pattern, { prefix: numbering.prefix, date: numberingDate, castCode, seq });
+  const baseOrderNo = formatOrderNo(numbering.pattern, {
+    prefix: numbering.prefix,
+    date: numberingDate,
+    castCode,
+    seq,
+  });
 
   const feeValue = data.fee?.value;
-  const feeAmount = feeValue === undefined || feeValue === null || feeValue === "" ? null : Number(feeValue);
+  const feeAmount =
+    feeValue === undefined || feeValue === null || feeValue === ""
+      ? null
+      : Number(feeValue);
   // fee_currency follows the RESOLVED currency (which a producer can override at
   // step 2), not blindly the org default — draftOrders can hardcode the org
   // default because a booking never carries its own currency; a wizard order can.
   const currencyValue = data.currency?.value;
-  const currency = typeof currencyValue === "string" && currencyValue ? currencyValue : defaults.currency;
+  const currency = typeof currencyValue === "string" && currencyValue
+    ? currencyValue
+    : defaults.currency;
 
   const row = {
     org_id: org,
@@ -598,25 +769,383 @@ async function draftManual(deps: Deps, body: DraftManualBody, userId: string | n
   // artist x date pair. Report it the same shape a batch import does, rather than
   // as a generic error (and, upstream in insertWithRetry, without a 20-attempt
   // suffix retry that could never resolve it).
-  if (result.reason === "exists") return json({ created: [], skipped: [{ reason: "exists" }] });
+  if (result.reason === "exists") {
+    return json({ created: [], skipped: [{ reason: "exists" }] });
+  }
   return json({ created: [], error: result.reason });
+}
+
+// ── draft-batch ─────────────────────────────────────────────────────────
+
+interface DraftBatchArtistInput {
+  artist_id: string;
+  show_date_ids: string[];
+}
+
+interface DraftBatchBody {
+  org_id: string;
+  artists: DraftBatchArtistInput[];
+  manual?: NonNullable<FieldLayers["manual"]>;
+}
+
+interface DraftBatchResult {
+  created: string[];
+  skipped: Array<{ artist_id: string; reason: string }>;
+  errors: Array<{ artist_id: string; reason: string }>;
+}
+
+interface BatchDraftContext {
+  deps: Deps;
+  org: string;
+  userId: string | null;
+  manual: NonNullable<FieldLayers["manual"]>;
+  defaults: OrderDefaults;
+  numbering: Numbering;
+  artistsById: Map<string, ManualArtistRow>;
+  datesById: Map<string, ShowDateRow>;
+  cityNamesById: Map<string, string>;
+  nextSeq: number;
+}
+
+type BatchArtistOutcome =
+  | { kind: "created"; id: string }
+  | { kind: "skipped"; reason: string }
+  | { kind: "error"; reason: string };
+
+async function draftBatch(
+  deps: Deps,
+  body: DraftBatchBody,
+  userId: string | null,
+): Promise<Response> {
+  const rawArtists = body.artists;
+  if (!Array.isArray(rawArtists) || rawArtists.length === 0) {
+    return json({ error: "artists required" }, 400);
+  }
+  if (
+    body.manual !== undefined &&
+    (!body.manual || typeof body.manual !== "object" ||
+      Array.isArray(body.manual))
+  ) {
+    return json({ error: "invalid_manual" }, 400);
+  }
+
+  const seenArtists = new Set<string>();
+  for (const item of rawArtists) {
+    if (
+      !item || typeof item.artist_id !== "string" ||
+      item.artist_id.trim() === ""
+    ) {
+      return json({ error: "artist_id required" }, 400);
+    }
+    if (seenArtists.has(item.artist_id)) {
+      return json({ error: "duplicate_artist_id" }, 400);
+    }
+    seenArtists.add(item.artist_id);
+    if (!Array.isArray(item.show_date_ids) || item.show_date_ids.length === 0) {
+      return json({ error: "show_date_ids required" }, 400);
+    }
+    if (
+      item.show_date_ids.some((id) =>
+        typeof id !== "string" || id.trim() === ""
+      )
+    ) {
+      return json({ error: "invalid_show_date_id" }, 400);
+    }
+    if (new Set(item.show_date_ids).size !== item.show_date_ids.length) {
+      return json({ error: "duplicate_show_date_id" }, 400);
+    }
+  }
+
+  const manual = body.manual ?? {};
+  const manualFeeRaw = manual.fee;
+  const manualFeeProvided = manualFeeRaw !== undefined &&
+    manualFeeRaw !== null && manualFeeRaw !== "";
+  if (manualFeeProvided && !Number.isFinite(Number(manualFeeRaw))) {
+    return json({ error: "invalid_fee" }, 400);
+  }
+
+  const admin = deps.admin;
+  const org = body.org_id;
+  const artistIds = rawArtists.map((item) => item.artist_id);
+  const showDateIds = [
+    ...new Set(rawArtists.flatMap((item) => item.show_date_ids)),
+  ];
+  const [artistResult, dateResult, defaults, numbering, sequenceResult] =
+    await Promise.all([
+      admin.from("artists")
+        .select("id, name, email, cast_role")
+        .eq("org_id", org)
+        .in("id", artistIds),
+      admin.from("show_dates")
+        .select(
+          "id, org_id, show_id, city_id, date, venue, duration_minutes, notes, session_1, session_2, session_3, shows(program, sub_program)",
+        )
+        .eq("org_id", org)
+        .in("id", showDateIds),
+      resolveOrgSetting<OrderDefaults>(
+        admin,
+        org,
+        "hire_order_defaults",
+        DEFAULTS_DEFAULT,
+      ),
+      resolveOrgSetting<Numbering>(
+        admin,
+        org,
+        "hire_order_numbering",
+        NUMBERING_DEFAULT,
+      ),
+      admin.from("hire_orders")
+        .select("id", { count: "exact", head: true })
+        .eq("org_id", org)
+        .neq("status", "void"),
+    ]);
+  if (artistResult.error) return json({ error: "artist_lookup_failed" }, 500);
+  if (dateResult.error) return json({ error: "show_date_lookup_failed" }, 500);
+
+  const artists = (artistResult.data ?? []) as unknown as ManualArtistRow[];
+  const dates = (dateResult.data ?? []) as unknown as ShowDateRow[];
+  const artistsById = new Map(artists.map((artist) => [artist.id, artist]));
+  const datesById = new Map(dates.map((date) => [date.id, date]));
+
+  const cityIds = [
+    ...new Set(
+      dates.map((date) => date.city_id).filter((id): id is string => !!id),
+    ),
+  ];
+  let cityNamesById = new Map<string, string>();
+  if (cityIds.length > 0) {
+    const { data: cityRows, error: cityError } = await admin.from("cities")
+      .select("id, name").in("id", cityIds);
+    if (cityError) return json({ error: "city_lookup_failed" }, 500);
+    cityNamesById = new Map(
+      ((cityRows ?? []) as unknown as Array<{ id: string; name: string }>).map((
+        city,
+      ) => [city.id, city.name]),
+    );
+  }
+
+  const context: BatchDraftContext = {
+    deps,
+    org,
+    userId,
+    manual,
+    defaults,
+    numbering,
+    artistsById,
+    datesById,
+    cityNamesById,
+    nextSeq: sequenceResult.count ?? 0,
+  };
+  const result: DraftBatchResult = { created: [], skipped: [], errors: [] };
+
+  for (const input of rawArtists) {
+    try {
+      const outcome = await draftBatchArtist(context, input);
+      if (outcome.kind === "created") result.created.push(outcome.id);
+      else if (outcome.kind === "skipped") {
+        result.skipped.push({
+          artist_id: input.artist_id,
+          reason: outcome.reason,
+        });
+      } else {result.errors.push({
+          artist_id: input.artist_id,
+          reason: outcome.reason,
+        });}
+    } catch (error) {
+      console.error("generate-hire-orders: batch draft failed", {
+        org,
+        artistId: input.artist_id,
+        error: (error as Error).message,
+      });
+      result.errors.push({ artist_id: input.artist_id, reason: "error" });
+    }
+  }
+
+  return json(result);
+}
+
+/** Draft exactly one aggregate parent and its ordered child-date rows. */
+async function draftBatchArtist(
+  context: BatchDraftContext,
+  input: DraftBatchArtistInput,
+): Promise<BatchArtistOutcome> {
+  const {
+    deps,
+    org,
+    userId,
+    manual,
+    defaults,
+    numbering,
+    artistsById,
+    datesById,
+    cityNamesById,
+  } = context;
+  const artist = artistsById.get(input.artist_id);
+  if (!artist) return { kind: "error", reason: "artist_not_found" };
+
+  const dates: ShowDateRow[] = [];
+  for (const id of input.show_date_ids) {
+    const date = datesById.get(id);
+    if (!date) return { kind: "error", reason: "show_date_not_found" };
+    dates.push(date);
+  }
+  dates.sort((a, b) =>
+    a.date.localeCompare(b.date) || a.id.localeCompare(b.id)
+  );
+
+  const firstDate = dates[0];
+  const engagementDates: EngagementDate[] = dates.map((date) => ({
+    show_date_id: date.id,
+    date: date.date,
+    venue: date.venue,
+    city: date.city_id ? cityNamesById.get(date.city_id) ?? null : null,
+  }));
+
+  const showflow: NonNullable<FieldLayers["showflow"]> = {};
+  assign(showflow, "artist_name", artist.name);
+  assign(showflow, "recipient_email", artist.email);
+  assign(showflow, "role", artist.cast_role);
+  assign(showflow, "date", engagementDates[0].date);
+  assign(showflow, "venue", engagementDates[0].venue);
+  assign(showflow, "city", engagementDates[0].city);
+  assign(showflow, "duration_min", firstDate.duration_minutes);
+  const sessions = [
+    firstDate.session_1,
+    firstDate.session_2,
+    firstDate.session_3,
+  ].filter(
+    (time: unknown): time is string => typeof time === "string" && time !== "",
+  );
+  if (sessions.length > 0) showflow.sessions = sessions;
+
+  const defaultLayer: NonNullable<FieldLayers["defaults"]> = {
+    currency: defaults.currency,
+  };
+  assign(defaultLayer, "fee", defaults.default_fee);
+  const data = resolveFields({ showflow, manual, defaults: defaultLayer });
+  data.engagement_dates = { value: engagementDates, source: "showflow" };
+
+  const { error: availabilityError } = await deps.admin.rpc(
+    "assert_hire_order_dates_available",
+    {
+      p_org: org,
+      p_artist: input.artist_id,
+      p_dates: dates.map((date) => date.id),
+    },
+  );
+  if (availabilityError) {
+    return isDateAvailabilityConflict(availabilityError)
+      ? { kind: "skipped", reason: "exists" }
+      : { kind: "error", reason: "availability_check_failed" };
+  }
+
+  context.nextSeq += 1;
+  const baseOrderNo = formatOrderNo(numbering.pattern, {
+    prefix: numbering.prefix,
+    date: firstDate.date,
+    castCode: castCodeFromLabel(firstDate.shows?.program ?? null),
+    seq: context.nextSeq,
+  });
+  const feeValue = data.fee?.value;
+  const feeAmount =
+    feeValue === undefined || feeValue === null || feeValue === ""
+      ? null
+      : Number(feeValue);
+  const currencyValue = data.currency?.value;
+  const currency = typeof currencyValue === "string" && currencyValue
+    ? currencyValue
+    : defaults.currency;
+  const parent = await insertWithRetry(deps.admin, baseOrderNo, {
+    org_id: org,
+    status: "draft" as const,
+    booking_id: null,
+    artist_id: input.artist_id,
+    show_date_id: firstDate.id,
+    data,
+    fee_amount: feeAmount,
+    fee_currency: currency,
+    terms_variant: "standard",
+    created_by: userId,
+  });
+  if (!("id" in parent)) {
+    return parent.reason === "exists"
+      ? { kind: "skipped", reason: parent.reason }
+      : { kind: "error", reason: parent.reason };
+  }
+
+  const childRows = dates.map((date, position) => ({
+    hire_order_id: parent.id,
+    show_date_id: date.id,
+    org_id: org,
+    position,
+  }));
+  const { error: childError } = await deps.admin
+    .from("hire_order_dates")
+    .insert(childRows as TablesInsert<"hire_order_dates">[]);
+  if (childError) {
+    // Keep a failed aggregate out of active workflows. The availability triggers
+    // ignore void parents, allowing a safe retry after a partial child write.
+    await deps.admin.from("hire_orders").update({ status: "void" }).eq(
+      "id",
+      parent.id,
+    ).eq("status", "draft");
+    return isDateAvailabilityConflict(childError)
+      ? { kind: "skipped", reason: "exists" }
+      : { kind: "error", reason: "date_insert_failed" };
+  }
+
+  return { kind: "created", id: parent.id };
+}
+
+function isDateAvailabilityConflict(error: unknown): boolean {
+  const e = error as { message?: string; details?: string } | null;
+  return `${e?.message ?? ""} ${e?.details ?? ""}`.includes(
+    "active hire order already covers a selected date",
+  );
 }
 
 // ── issue ────────────────────────────────────────────────────────────────
 
-interface IssueBody { org_id: string; order_ids: string[] }
+interface IssueBody {
+  org_id: string;
+  order_ids: string[];
+}
 
-async function issueOrders(deps: Deps, body: IssueBody, _userId: string | null): Promise<Response> {
+async function issueOrders(
+  deps: Deps,
+  body: IssueBody,
+  _userId: string | null,
+): Promise<Response> {
   const admin = deps.admin;
   const org = body.org_id;
   const orderIds = Array.isArray(body.order_ids) ? body.order_ids : [];
   if (orderIds.length === 0) return json({ error: "order_ids required" }, 400);
 
   const [letterhead, terms, defaults, countersign] = await Promise.all([
-    resolveOrgSetting<HireOrderLetterhead>(admin, org, "hire_order_letterhead", LETTERHEAD_DEFAULT),
-    resolveOrgSetting<TermsVariants>(admin, org, "hire_order_terms", TERMS_DEFAULT),
-    resolveOrgSetting<OrderDefaults>(admin, org, "hire_order_defaults", DEFAULTS_DEFAULT),
-    resolveOrgSetting<Countersign>(admin, org, "hire_order_countersign", COUNTERSIGN_DEFAULT),
+    resolveOrgSetting<HireOrderLetterhead>(
+      admin,
+      org,
+      "hire_order_letterhead",
+      LETTERHEAD_DEFAULT,
+    ),
+    resolveOrgSetting<TermsVariants>(
+      admin,
+      org,
+      "hire_order_terms",
+      TERMS_DEFAULT,
+    ),
+    resolveOrgSetting<OrderDefaults>(
+      admin,
+      org,
+      "hire_order_defaults",
+      DEFAULTS_DEFAULT,
+    ),
+    resolveOrgSetting<Countersign>(
+      admin,
+      org,
+      "hire_order_countersign",
+      COUNTERSIGN_DEFAULT,
+    ),
   ]);
 
   const issued: string[] = [];
@@ -624,20 +1153,34 @@ async function issueOrders(deps: Deps, body: IssueBody, _userId: string | null):
 
   for (const orderId of orderIds) {
     try {
-      const outcome = await issueOne(deps, org, orderId, letterhead, terms, defaults, countersign);
+      const outcome = await issueOne(
+        deps,
+        org,
+        orderId,
+        letterhead,
+        terms,
+        defaults,
+        countersign,
+      );
       if (outcome.ok) {
         issued.push(orderId);
         // A Documenso delivery failure is a WARNING, not an issue failure: the
         // document is genuinely issued (rendered, uploaded, stamped), so it stays
         // in `issued`, and the countersign-delivery problem surfaces alongside it
         // in `failed` rather than silently disappearing.
-        if (outcome.warning) failed.push({ order_id: orderId, issues: [outcome.warning] });
+        if (outcome.warning) {
+          failed.push({ order_id: orderId, issues: [outcome.warning] });
+        }
       } else {
         failed.push({ order_id: orderId, issues: outcome.issues });
       }
     } catch (e) {
       // Per-order capture: one bad order must not fail the batch.
-      console.error("generate-hire-orders: issue failed", { org, orderId, error: (e as Error).message });
+      console.error("generate-hire-orders: issue failed", {
+        org,
+        orderId,
+        error: (e as Error).message,
+      });
       failed.push({ order_id: orderId, issues: ["render_failed"] });
     }
   }
@@ -658,7 +1201,9 @@ async function issueOne(
 
   const { data: order } = await admin
     .from("hire_orders")
-    .select("id, org_id, order_no, status, data, terms_variant, fee_currency, artist_id, agent_name, agent_email")
+    .select(
+      "id, org_id, order_no, status, data, terms_variant, fee_currency, artist_id, agent_name, agent_email",
+    )
     .eq("id", orderId)
     .eq("org_id", org)
     .maybeSingle();
@@ -666,7 +1211,9 @@ async function issueOne(
   const o = order as unknown as IssueOrderRow;
 
   // Idempotency: an already-issued (or countersigned) order is frozen.
-  if (o.status === "issued" || o.status === "countersigned") return { ok: false, issues: ["already_issued"] };
+  if (o.status === "issued" || o.status === "countersigned") {
+    return { ok: false, issues: ["already_issued"] };
+  }
   if (o.status === "void") return { ok: false, issues: ["voided"] };
 
   const data = o.data as OrderData;
@@ -682,7 +1229,9 @@ async function issueOne(
   // Promote a draft to ready before issuing (the transition machine forbids
   // draft -> issued directly). A ready order is issued straight through.
   if (o.status === "draft") {
-    const { error } = await admin.from("hire_orders").update({ status: "ready" }).eq("id", orderId);
+    const { error } = await admin.from("hire_orders").update({
+      status: "ready",
+    }).eq("id", orderId);
     if (error) return { ok: false, issues: ["transition_failed"] };
   }
 
@@ -712,7 +1261,12 @@ async function issueOne(
   // Freeze the resolved letterhead/terms/currency alongside the issued stamp so the
   // signed re-render reproduces this exact document (finding W1). This write is the
   // ready->issued transition, which the freeze trigger permits.
-  const snapshot: IssueSnapshot = { letterhead: effectiveLetterhead, terms: variantTerms, currency, countersign_mode: countersign.mode };
+  const snapshot: IssueSnapshot = {
+    letterhead: effectiveLetterhead,
+    terms: variantTerms,
+    currency,
+    countersign_mode: countersign.mode,
+  };
   const { error: issueErr } = await admin
     .from("hire_orders")
     .update({
@@ -754,22 +1308,39 @@ async function issueOne(
       signingUrl = envelope.signingUrl;
       const { error: csErr } = await admin
         .from("hire_orders")
-        .update({ countersign_mode: "documenso", documenso_envelope_id: envelope.envelopeId })
+        .update({
+          countersign_mode: "documenso",
+          documenso_envelope_id: envelope.envelopeId,
+        })
         .eq("id", orderId);
       if (csErr) {
-        console.error("generate-hire-orders: countersign_mode stamp failed", { org, orderId, error: csErr.message });
+        console.error("generate-hire-orders: countersign_mode stamp failed", {
+          org,
+          orderId,
+          error: csErr.message,
+        });
       }
     } catch (e) {
-      console.error("generate-hire-orders: documenso envelope failed", { org, orderId, error: (e as Error).message });
+      console.error("generate-hire-orders: documenso envelope failed", {
+        org,
+        orderId,
+        error: (e as Error).message,
+      });
       countersignModeUsed = "manual";
       warning = "documenso_failed";
       // Explicit fallback write: the order's countersign_mode must read 'manual'
       // even though nothing was ever stamped 'documenso' for it (issue only runs
       // once per order — the already-issued gate above blocks a retry).
       const { error: fallbackErr } = await admin
-        .from("hire_orders").update({ countersign_mode: "manual" }).eq("id", orderId);
+        .from("hire_orders").update({ countersign_mode: "manual" }).eq(
+          "id",
+          orderId,
+        );
       if (fallbackErr) {
-        console.error("generate-hire-orders: countersign fallback stamp failed", { org, orderId, error: fallbackErr.message });
+        console.error(
+          "generate-hire-orders: countersign fallback stamp failed",
+          { org, orderId, error: fallbackErr.message },
+        );
       }
     }
   }
@@ -782,11 +1353,43 @@ async function issueOne(
   }
 
   // Best-effort side effects — a failure here must NOT undo a successful issue.
-  await sendIssuedEmail(deps, org, o, data, bytes, currency, countersignModeUsed, signingUrl).catch((e) =>
-    console.error("generate-hire-orders: issued email failed", { org, orderId, error: (e as Error).message }),
-  );
+  const delivered = await sendIssuedEmail(
+    deps,
+    org,
+    o,
+    data,
+    bytes,
+    currency,
+    countersignModeUsed,
+    signingUrl,
+    "issued",
+  ).catch((e) => {
+    console.error("generate-hire-orders: issued email failed", {
+      org,
+      orderId,
+      error: (e as Error).message,
+    });
+    return false;
+  });
+  if (delivered) {
+    const { error: sentStampError } = await admin
+      .from("hire_orders")
+      .update({ last_sent_at: deps.now().toISOString() })
+      .eq("id", orderId);
+    if (sentStampError) {
+      console.error("generate-hire-orders: initial delivery stamp failed", {
+        org,
+        orderId,
+        error: sentStampError.message,
+      });
+    }
+  }
   await notifyArtist(deps, org, o).catch((e) =>
-    console.error("generate-hire-orders: artist notification failed", { org, orderId, error: (e as Error).message }),
+    console.error("generate-hire-orders: artist notification failed", {
+      org,
+      orderId,
+      error: (e as Error).message,
+    })
   );
 
   return warning ? { ok: true, warning } : { ok: true };
@@ -795,22 +1398,27 @@ async function issueOne(
 async function sendIssuedEmail(
   deps: Deps,
   org: string,
-  order: IssueOrderRow,
+  order: EmailOrderRow,
   data: OrderData,
   bytes: Uint8Array,
   currency: string,
   countersignMode: string,
   signingUrl: string | null,
-): Promise<void> {
+  deliveryKind: "issued" | "resend",
+): Promise<boolean> {
   const recipient = strField(data, "recipient_email");
   if (!recipient) {
-    console.warn("generate-hire-orders: no recipient email, skipping issued email", { org, orderId: order.id });
-    return;
+    console.warn(
+      "generate-hire-orders: no recipient email, skipping issued email",
+      { org, orderId: order.id },
+    );
+    return false;
   }
   const feeValue = data.fee?.value;
-  const feeLabel = feeValue === undefined || feeValue === null || feeValue === ""
-    ? ""
-    : formatMoney(feeValue as string | number, currency); // same fee/currency the PDF shows
+  const feeLabel =
+    feeValue === undefined || feeValue === null || feeValue === ""
+      ? ""
+      : formatMoney(feeValue as string | number, currency); // same fee/currency the PDF shows
 
   const result = await deps.sendEmail({
     template_name: "hire-order-issued",
@@ -834,19 +1442,109 @@ async function sendIssuedEmail(
       countersign_mode: countersignMode,
       signing_url: signingUrl ?? undefined,
     },
-    attachments: [{ filename: `${order.order_no}.pdf`, content_base64: encodeBase64(bytes) }],
-    idempotency_key: `hire-order-issued-${order.id}`,
+    attachments: [{
+      filename: `${order.order_no}.pdf`,
+      content_base64: encodeBase64(bytes),
+    }],
+    idempotency_key: deliveryKind === "resend"
+      ? `hire-order-resend-${order.id}-${deps.now().toISOString()}`
+      : `hire-order-issued-${order.id}`,
   });
-  if (result.error != null) {
-    console.warn("generate-hire-orders: issued email not delivered", { org, orderId: order.id, error: result.error });
+  const delivery = result.data as
+    | { success?: unknown; reason?: unknown }
+    | null;
+  if (result.error != null || delivery?.success === false) {
+    console.warn("generate-hire-orders: issued email not delivered", {
+      org,
+      orderId: order.id,
+      error: result.error ?? delivery?.reason,
+    });
+    return false;
   }
+  return true;
 }
 
-async function notifyArtist(deps: Deps, org: string, order: IssueOrderRow): Promise<void> {
+// ── resend ──────────────────────────────────────────────────────────────
+
+interface ResendBody {
+  org_id: string;
+  order_id: string;
+}
+
+async function resendOrder(deps: Deps, body: ResendBody): Promise<Response> {
+  const org = body.org_id;
+  if (!body.order_id) return json({ error: "order_id required" }, 400);
+
+  const { data: orderRaw, error: orderError } = await deps.admin
+    .from("hire_orders")
+    .select(
+      "id, status, data, order_no, artist_id, pdf_path, signed_pdf_path, fee_currency",
+    )
+    .eq("id", body.order_id)
+    .eq("org_id", org)
+    .maybeSingle();
+  if (orderError) return json({ error: "order_lookup_failed" }, 500);
+  if (!orderRaw) return json({ error: "not_found" }, 404);
+  const order = orderRaw as unknown as ResendOrderRow;
+
+  if (order.status !== "issued" && order.status !== "countersigned") {
+    return json({ error: "not_issued" }, 409);
+  }
+  const data = order.data as OrderData;
+  if (!strField(data, "recipient_email").trim()) {
+    return json({ error: "missing_recipient_email" }, 409);
+  }
+  const path = order.signed_pdf_path ?? order.pdf_path;
+  if (!path) return json({ error: "no_pdf" }, 409);
+
+  const { data: storedPdf, error: downloadError } = await deps.admin.storage
+    .from(BUCKET).download(path);
+  if (downloadError || !storedPdf) {
+    return json({ error: "download_failed" }, 500);
+  }
+  const bytes = new Uint8Array(await storedPdf.arrayBuffer());
+  const currency = order.fee_currency || strField(data, "currency") || "EUR";
+  const delivered = await sendIssuedEmail(
+    deps,
+    org,
+    order,
+    data,
+    bytes,
+    currency,
+    "manual",
+    null,
+    "resend",
+  ).catch((error) => {
+    console.error("generate-hire-orders: resend failed", {
+      org,
+      orderId: order.id,
+      error: (error as Error).message,
+    });
+    return false;
+  });
+  if (!delivered) return json({ error: "email_failed" }, 502);
+
+  const sentAt = deps.now().toISOString();
+  const { error: stampError } = await deps.admin
+    .from("hire_orders")
+    .update({ last_sent_at: sentAt })
+    .eq("id", order.id);
+  if (stampError) return json({ error: "stamp_failed" }, 500);
+  return json({ sent_at: sentAt });
+}
+
+async function notifyArtist(
+  deps: Deps,
+  org: string,
+  order: IssueOrderRow,
+): Promise<void> {
   if (!order.artist_id) return;
   const admin = deps.admin;
   // Unlinked artists (no auth user) get no in-app notification.
-  const { data: artist } = await admin.from("artists").select("user_id").eq("id", order.artist_id).maybeSingle();
+  const { data: artist } = await admin.from("artists").select("user_id").eq(
+    "id",
+    order.artist_id,
+  ).maybeSingle();
   const userId = (artist as { user_id?: string | null } | null)?.user_id;
   if (!userId) return;
   const { error } = await admin.from("notifications").insert([{
@@ -858,12 +1556,21 @@ async function notifyArtist(deps: Deps, org: string, order: IssueOrderRow): Prom
     related_entity_type: "hire_order",
     related_entity_id: order.id,
   }]);
-  if (error) console.error("generate-hire-orders: artist notification insert failed", { org, orderId: order.id, error: error.message });
+  if (error) {
+    console.error("generate-hire-orders: artist notification insert failed", {
+      org,
+      orderId: order.id,
+      error: error.message,
+    });
+  }
 }
 
 // ── preview ────────────────────────────────────────────────────────────────
 
-interface PreviewBody { org_id: string; order_id: string }
+interface PreviewBody {
+  org_id: string;
+  order_id: string;
+}
 
 async function previewOrder(deps: Deps, body: PreviewBody): Promise<Response> {
   const admin = deps.admin;
@@ -872,7 +1579,9 @@ async function previewOrder(deps: Deps, body: PreviewBody): Promise<Response> {
 
   const { data: order } = await admin
     .from("hire_orders")
-    .select("id, org_id, order_no, data, terms_variant, fee_currency, agent_name, agent_email")
+    .select(
+      "id, org_id, order_no, data, terms_variant, fee_currency, agent_name, agent_email",
+    )
     .eq("id", body.order_id)
     .eq("org_id", org)
     .maybeSingle();
@@ -880,9 +1589,24 @@ async function previewOrder(deps: Deps, body: PreviewBody): Promise<Response> {
   const o = order as unknown as PreviewOrderRow;
 
   const [letterhead, terms, defaults] = await Promise.all([
-    resolveOrgSetting<HireOrderLetterhead>(admin, org, "hire_order_letterhead", LETTERHEAD_DEFAULT),
-    resolveOrgSetting<TermsVariants>(admin, org, "hire_order_terms", TERMS_DEFAULT),
-    resolveOrgSetting<OrderDefaults>(admin, org, "hire_order_defaults", DEFAULTS_DEFAULT),
+    resolveOrgSetting<HireOrderLetterhead>(
+      admin,
+      org,
+      "hire_order_letterhead",
+      LETTERHEAD_DEFAULT,
+    ),
+    resolveOrgSetting<TermsVariants>(
+      admin,
+      org,
+      "hire_order_terms",
+      TERMS_DEFAULT,
+    ),
+    resolveOrgSetting<OrderDefaults>(
+      admin,
+      org,
+      "hire_order_defaults",
+      DEFAULTS_DEFAULT,
+    ),
   ]);
   const variant = (o.terms_variant as TermsVariant) ?? "standard";
 
@@ -906,14 +1630,23 @@ async function previewOrder(deps: Deps, body: PreviewBody): Promise<Response> {
 
 // ── download-url (own auth: producers + linked artist) ─────────────────────
 
-interface DownloadBody { org_id: string; order_id: string }
+interface DownloadBody {
+  org_id: string;
+  order_id: string;
+}
 
-async function downloadUrl(deps: Deps, req: Request, body: DownloadBody): Promise<Response> {
+async function downloadUrl(
+  deps: Deps,
+  req: Request,
+  body: DownloadBody,
+): Promise<Response> {
   if (!body.order_id) return json({ error: "order_id required" }, 400);
 
   // Any authenticated user; authorization is decided against the loaded order below.
   const authHeader = req.headers.get("Authorization");
-  if (!authHeader?.startsWith("Bearer ")) return json({ error: "Unauthorized" }, 401);
+  if (!authHeader?.startsWith("Bearer ")) {
+    return json({ error: "Unauthorized" }, 401);
+  }
   const userClient = deps.userClient(authHeader);
   const { data: { user }, error: authErr } = await userClient.auth.getUser();
   if (authErr || !user) return json({ error: "Unauthorized" }, 401);
@@ -921,7 +1654,9 @@ async function downloadUrl(deps: Deps, req: Request, body: DownloadBody): Promis
   const admin = deps.admin;
   const { data: order } = await admin
     .from("hire_orders")
-    .select("id, org_id, artist_id, status, pdf_path, signed_pdf_path, order_no")
+    .select(
+      "id, org_id, artist_id, status, pdf_path, signed_pdf_path, order_no",
+    )
     .eq("id", body.order_id)
     .eq("org_id", body.org_id)
     .maybeSingle();
@@ -933,19 +1668,28 @@ async function downloadUrl(deps: Deps, req: Request, body: DownloadBody): Promis
   // 1) Admin/producer of the order's org.
   const { data: roleRow } = await admin
     .from("org_memberships").select("role")
-    .eq("user_id", user.id).eq("org_id", o.org_id).in("role", ["admin", "producer"]).limit(1).maybeSingle();
+    .eq("user_id", user.id).eq("org_id", o.org_id).in("role", [
+      "admin",
+      "producer",
+    ]).limit(1).maybeSingle();
   if (roleRow) allowed = true;
 
   // 2) Super-admin (god mode).
   if (!allowed) {
-    const { data: superRow } = await admin.from("platform_admins").select("user_id").eq("user_id", user.id).maybeSingle();
+    const { data: superRow } = await admin.from("platform_admins").select(
+      "user_id",
+    ).eq("user_id", user.id).maybeSingle();
     if (superRow) allowed = true;
   }
 
   // 3) The linked artist, on an issued/countersigned order only.
-  if (!allowed && o.artist_id && (o.status === "issued" || o.status === "countersigned")) {
+  if (
+    !allowed && o.artist_id &&
+    (o.status === "issued" || o.status === "countersigned")
+  ) {
     const { data: artistRow } = await admin
-      .from("artists").select("id").eq("id", o.artist_id).eq("user_id", user.id).maybeSingle();
+      .from("artists").select("id").eq("id", o.artist_id).eq("user_id", user.id)
+      .maybeSingle();
     if (artistRow) allowed = true;
   }
 
@@ -960,7 +1704,10 @@ async function downloadUrl(deps: Deps, req: Request, body: DownloadBody): Promis
     .from(BUCKET).createSignedUrl(path, SIGNED_URL_TTL);
   if (signErr || !signed) return json({ error: "sign_failed" }, 500);
 
-  return json({ url: (signed as { signedUrl: string }).signedUrl, expires_in: SIGNED_URL_TTL });
+  return json({
+    url: (signed as { signedUrl: string }).signedUrl,
+    expires_in: SIGNED_URL_TTL,
+  });
 }
 
 // ── sign (own auth: the linked artist only) ────────────────────────────────
@@ -989,27 +1736,39 @@ interface SignOrderRow {
   issue_snapshot: IssueSnapshot | null;
   data: OrderData;
   show_date_id: string | null;
-  show_dates: { city_id: string | null; shows: { program: string | null; sub_program: string | null } | null } | null;
+  show_dates: {
+    city_id: string | null;
+    shows: { program: string | null; sub_program: string | null } | null;
+  } | null;
 }
 
 const CONSENT_TEXT =
   "By signing, I agree that my electronic signature is the legal equivalent of my handwritten signature, and I accept the terms of this hire order.";
 const MAX_SIGNATURE_PNG_CHARS = 2_000_000; // ~1.5MB decoded — a generous cap for a canvas PNG
 
-async function signOrder(deps: Deps, req: Request, body: SignBody): Promise<Response> {
+async function signOrder(
+  deps: Deps,
+  req: Request,
+  body: SignBody,
+): Promise<Response> {
   const admin = deps.admin;
   const org = body.org_id;
   if (!body.order_id) return json({ error: "order_id required" }, 400);
 
   // Own auth: any authenticated user; authorization decided against the loaded order.
   const authHeader = req.headers.get("Authorization");
-  if (!authHeader?.startsWith("Bearer ")) return json({ error: "Unauthorized" }, 401);
-  const { data: { user }, error: authErr } = await deps.userClient(authHeader).auth.getUser();
+  if (!authHeader?.startsWith("Bearer ")) {
+    return json({ error: "Unauthorized" }, 401);
+  }
+  const { data: { user }, error: authErr } = await deps.userClient(authHeader)
+    .auth.getUser();
   if (authErr || !user) return json({ error: "Unauthorized" }, 401);
 
   const { data: orderRaw } = await admin
     .from("hire_orders")
-    .select("id, org_id, order_no, status, artist_id, terms_variant, fee_currency, agent_name, agent_email, issued_pdf_sha256, issue_snapshot, data, show_date_id, show_dates(city_id, shows(program, sub_program))")
+    .select(
+      "id, org_id, order_no, status, artist_id, terms_variant, fee_currency, agent_name, agent_email, issued_pdf_sha256, issue_snapshot, data, show_date_id, show_dates(city_id, shows(program, sub_program))",
+    )
     .eq("id", body.order_id)
     .eq("org_id", org)
     .maybeSingle();
@@ -1019,17 +1778,25 @@ async function signOrder(deps: Deps, req: Request, body: SignBody): Promise<Resp
   // Only the linked artist may sign.
   if (!o.artist_id) return json({ error: "forbidden" }, 403);
   const { data: artistRow } = await admin
-    .from("artists").select("id").eq("id", o.artist_id).eq("user_id", user.id).maybeSingle();
+    .from("artists").select("id").eq("id", o.artist_id).eq("user_id", user.id)
+    .maybeSingle();
   if (!artistRow) return json({ error: "forbidden" }, 403);
 
   // Idempotency + status guard.
-  if (o.status === "countersigned") return json({ countersigned: true, idempotent: true });
+  if (o.status === "countersigned") {
+    return json({ countersigned: true, idempotent: true });
+  }
   if (o.status !== "issued") return json({ error: "not_issued" }, 409);
 
   // Feature + mode gate.
   const denied = await requireFeature(deps, org, "hire_orders");
   if (denied) return denied;
-  const countersign = await resolveOrgSetting<Countersign>(admin, org, "hire_order_countersign", COUNTERSIGN_DEFAULT);
+  const countersign = await resolveOrgSetting<Countersign>(
+    admin,
+    org,
+    "hire_order_countersign",
+    COUNTERSIGN_DEFAULT,
+  );
   // Prefer the mode the order was ISSUED under (frozen in the snapshot) over the live
   // org setting, so switching the org electronic->manual mid-flight cannot strand an
   // electronic-issued order (the DB gate keys off the same frozen mode). Legacy/null
@@ -1040,11 +1807,19 @@ async function signOrder(deps: Deps, req: Request, body: SignBody): Promise<Resp
   // Consent + payload validation.
   if (body.consent !== true) return json({ error: "consent_required" }, 400);
   const method = body.method;
-  if (method !== "typed" && method !== "drawn") return json({ error: "invalid_signature" }, 400);
+  if (method !== "typed" && method !== "drawn") {
+    return json({ error: "invalid_signature" }, 400);
+  }
   const typedName = (body.typed_name ?? "").trim();
-  if (method === "typed" && typedName === "") return json({ error: "invalid_signature" }, 400);
+  if (method === "typed" && typedName === "") {
+    return json({ error: "invalid_signature" }, 400);
+  }
   const png = body.signature_png ?? "";
-  if (method === "drawn" && (!png.startsWith("data:image/png;base64,") || png.length > MAX_SIGNATURE_PNG_CHARS)) {
+  if (
+    method === "drawn" &&
+    (!png.startsWith("data:image/png;base64,") ||
+      png.length > MAX_SIGNATURE_PNG_CHARS)
+  ) {
     return json({ error: "invalid_signature" }, 400);
   }
 
@@ -1077,9 +1852,14 @@ async function signOrder(deps: Deps, req: Request, body: SignBody): Promise<Resp
       return json({ error: "invalid_signature" }, 400);
     }
     signatureImagePath = `${org}/signatures/${o.order_no}.png`;
-    const { error: imgErr } = await admin.storage.from(BUCKET).upload(signatureImagePath, pngBytes, {
-      contentType: "image/png", upsert: true,
-    });
+    const { error: imgErr } = await admin.storage.from(BUCKET).upload(
+      signatureImagePath,
+      pngBytes,
+      {
+        contentType: "image/png",
+        upsert: true,
+      },
+    );
     if (imgErr) return json({ error: "signature_upload_failed" }, 500);
   }
 
@@ -1088,9 +1868,24 @@ async function signOrder(deps: Deps, req: Request, body: SignBody): Promise<Resp
   // orders issued before the issue_snapshot column carry null and fall back to
   // re-resolving the org's CURRENT letterhead/terms + the per-order agent override.
   const [letterhead, terms, defaults] = await Promise.all([
-    resolveOrgSetting<HireOrderLetterhead>(admin, org, "hire_order_letterhead", LETTERHEAD_DEFAULT),
-    resolveOrgSetting<TermsVariants>(admin, org, "hire_order_terms", TERMS_DEFAULT),
-    resolveOrgSetting<OrderDefaults>(admin, org, "hire_order_defaults", DEFAULTS_DEFAULT),
+    resolveOrgSetting<HireOrderLetterhead>(
+      admin,
+      org,
+      "hire_order_letterhead",
+      LETTERHEAD_DEFAULT,
+    ),
+    resolveOrgSetting<TermsVariants>(
+      admin,
+      org,
+      "hire_order_terms",
+      TERMS_DEFAULT,
+    ),
+    resolveOrgSetting<OrderDefaults>(
+      admin,
+      org,
+      "hire_order_defaults",
+      DEFAULTS_DEFAULT,
+    ),
   ]);
   const snapshot = o.issue_snapshot;
   let renderLetterhead: HireOrderLetterhead;
@@ -1101,7 +1896,8 @@ async function signOrder(deps: Deps, req: Request, body: SignBody): Promise<Resp
     // at issue time, so do NOT re-merge o.agent_name/agent_email here.
     renderLetterhead = snapshot.letterhead;
     renderTerms = snapshot.terms;
-    currency = snapshot.currency ?? o.fee_currency ?? defaults.currency ?? "EUR";
+    currency = snapshot.currency ?? o.fee_currency ?? defaults.currency ??
+      "EUR";
   } else {
     const variant = (o.terms_variant as TermsVariant) ?? "standard";
     renderLetterhead = {
@@ -1125,15 +1921,26 @@ async function signOrder(deps: Deps, req: Request, body: SignBody): Promise<Resp
     consentText: CONSENT_TEXT,
   };
   const signedBytes = await deps.renderHireOrderPdf({
-    data, orderNo: o.order_no, status: "countersigned", letterhead: renderLetterhead,
-    terms: renderTerms, currency, generatedAtIso: signedAtIso, signature,
+    data,
+    orderNo: o.order_no,
+    status: "countersigned",
+    letterhead: renderLetterhead,
+    terms: renderTerms,
+    currency,
+    generatedAtIso: signedAtIso,
+    signature,
   });
 
   // Upload the signed copy (keeps the original issued pdf_path intact).
   const signedPath = `${org}/${o.order_no}-signed.pdf`;
-  const { error: upErr } = await admin.storage.from(BUCKET).upload(signedPath, signedBytes, {
-    contentType: "application/pdf", upsert: true,
-  });
+  const { error: upErr } = await admin.storage.from(BUCKET).upload(
+    signedPath,
+    signedBytes,
+    {
+      contentType: "application/pdf",
+      upsert: true,
+    },
+  );
   if (upErr) return json({ error: "signed_upload_failed" }, 500);
 
   // Audit row.
@@ -1159,26 +1966,58 @@ async function signOrder(deps: Deps, req: Request, body: SignBody): Promise<Resp
   // fall through to the guarded flip below (the single source of truth). It flips the
   // order if it is still 'issued' (completing that prior submit) or no-ops idempotently
   // (!affected) if a winner already flipped it. Any other error is a genuine 500.
-  if (sigErr && (sigErr as { code?: string }).code !== "23505") return json({ error: "signature_insert_failed" }, 500);
+  if (sigErr && (sigErr as { code?: string }).code !== "23505") {
+    return json({ error: "signature_insert_failed" }, 500);
+  }
 
   // Atomic + idempotent transition (guarded by status='issued').
   const { data: updatedRows, error: updErr } = await admin
     .from("hire_orders")
-    .update({ status: "countersigned", countersigned_at: signedAtIso, signed_pdf_path: signedPath, countersign_mode: "electronic" })
+    .update({
+      status: "countersigned",
+      countersigned_at: signedAtIso,
+      signed_pdf_path: signedPath,
+      countersign_mode: "electronic",
+    })
     .eq("id", o.id)
     .eq("status", "issued")
     .select("id");
   if (updErr) return json({ error: "transition_failed" }, 500);
-  const affected = Array.isArray(updatedRows) ? updatedRows.length > 0 : !!updatedRows;
+  const affected = Array.isArray(updatedRows)
+    ? updatedRows.length > 0
+    : !!updatedRows;
   if (!affected) return json({ countersigned: true, idempotent: true });
 
   // Best-effort side effects — never undo a completed signing.
   await notifyProducersCountersigned(deps, o).catch((e) =>
-    console.error("generate-hire-orders: sign producer notify failed", { org, orderId: o.id, error: (e as Error).message }));
+    console.error("generate-hire-orders: sign producer notify failed", {
+      org,
+      orderId: o.id,
+      error: (e as Error).message,
+    })
+  );
   await notifyArtistCountersigned(deps, org, o, user.id).catch((e) =>
-    console.error("generate-hire-orders: sign artist notify failed", { org, orderId: o.id, error: (e as Error).message }));
-  await sendCountersignedEmails(deps, org, o, data, signedBytes, currency, !!countersign.email_producers_on_countersign).catch((e) =>
-    console.error("generate-hire-orders: countersigned email failed", { org, orderId: o.id, error: (e as Error).message }));
+    console.error("generate-hire-orders: sign artist notify failed", {
+      org,
+      orderId: o.id,
+      error: (e as Error).message,
+    })
+  );
+  await sendCountersignedEmails(
+    deps,
+    org,
+    o,
+    data,
+    signedBytes,
+    currency,
+    !!countersign.email_producers_on_countersign,
+  ).catch((e) =>
+    console.error("generate-hire-orders: countersigned email failed", {
+      org,
+      orderId: o.id,
+      error: (e as Error).message,
+    })
+  );
 
   return json({ countersigned: true, signed_pdf_path: signedPath });
 }
@@ -1186,7 +2025,10 @@ async function signOrder(deps: Deps, req: Request, body: SignBody): Promise<Resp
 /** Notify the order's producers that the artist countersigned (in-app). Mirrors
  *  documenso-webhook's notifyProducers resolution: resolve_show_assignments on the
  *  order's show_date, falling back to org admins; deduped. */
-async function notifyProducersCountersigned(deps: Deps, order: SignOrderRow): Promise<void> {
+async function notifyProducersCountersigned(
+  deps: Deps,
+  order: SignOrderRow,
+): Promise<void> {
   const admin = deps.admin;
   const org = order.org_id;
   let recipientIds: string[] = [];
@@ -1197,39 +2039,63 @@ async function notifyProducersCountersigned(deps: Deps, order: SignOrderRow): Pr
       p_city_id: order.show_dates.city_id,
       p_org: org,
     } as ResolveShowAssignmentsArgs);
-    recipientIds = ((producers ?? []) as unknown as ProducerAssignmentRow[]).map((p) => p.producer_user_id);
+    recipientIds = ((producers ?? []) as unknown as ProducerAssignmentRow[])
+      .map((p) => p.producer_user_id);
   }
   if (recipientIds.length === 0) {
-    const { data: admins } = await admin.from("org_memberships").select("user_id").eq("org_id", org).eq("role", "admin");
-    recipientIds = ((admins ?? []) as unknown as OrgAdminRow[]).map((a) => a.user_id);
+    const { data: admins } = await admin.from("org_memberships").select(
+      "user_id",
+    ).eq("org_id", org).eq("role", "admin");
+    recipientIds = ((admins ?? []) as unknown as OrgAdminRow[]).map((a) =>
+      a.user_id
+    );
   }
   recipientIds = [...new Set(recipientIds)] as string[];
   if (recipientIds.length === 0) return;
   const rows = recipientIds.map((uid) => ({
-    org_id: org, user_id: uid, type: "hire_order_countersigned",
+    org_id: org,
+    user_id: uid,
+    type: "hire_order_countersigned",
     title: "Hire order countersigned",
     message: `Hire order ${order.order_no} has been countersigned.`,
-    related_entity_type: "hire_order", related_entity_id: order.id,
+    related_entity_type: "hire_order",
+    related_entity_id: order.id,
   }));
   await admin.from("notifications").insert(rows);
 }
 
 /** A confirmation notification for the signing artist. */
-async function notifyArtistCountersigned(deps: Deps, org: string, order: SignOrderRow, userId: string): Promise<void> {
+async function notifyArtistCountersigned(
+  deps: Deps,
+  org: string,
+  order: SignOrderRow,
+  userId: string,
+): Promise<void> {
   await deps.admin.from("notifications").insert([{
-    org_id: org, user_id: userId, type: "hire_order_countersigned",
+    org_id: org,
+    user_id: userId,
+    type: "hire_order_countersigned",
     title: "Hire order signed",
     message: `You signed hire order ${order.order_no}.`,
-    related_entity_type: "hire_order", related_entity_id: order.id,
+    related_entity_type: "hire_order",
+    related_entity_id: order.id,
   }]);
 }
 
 /** Email the artist the signed PDF; optionally email producers too (opt-in flag). */
 async function sendCountersignedEmails(
-  deps: Deps, org: string, order: SignOrderRow, data: OrderData, signedBytes: Uint8Array,
-  _currency: string, emailProducers: boolean,
+  deps: Deps,
+  org: string,
+  order: SignOrderRow,
+  data: OrderData,
+  signedBytes: Uint8Array,
+  _currency: string,
+  emailProducers: boolean,
 ): Promise<void> {
-  const attachment = { filename: `${order.order_no}-signed.pdf`, content_base64: encodeBase64(signedBytes) };
+  const attachment = {
+    filename: `${order.order_no}-signed.pdf`,
+    content_base64: encodeBase64(signedBytes),
+  };
   const templateData = {
     artist_name: strField(data, "artist_name"),
     order_no: order.order_no,
@@ -1252,13 +2118,18 @@ async function sendCountersignedEmails(
   // Resolve producer emails via auth admin (few per show); best-effort.
   let producerIds: string[] = [];
   if (order.show_dates) {
-    const { data: producers } = await deps.admin.rpc("resolve_show_assignments", {
-      p_program: order.show_dates.shows?.program ?? "",
-      p_sub_program: order.show_dates.shows?.sub_program ?? null,
-      p_city_id: order.show_dates.city_id,
-      p_org: org,
-    } as ResolveShowAssignmentsArgs);
-    producerIds = ((producers ?? []) as unknown as ProducerAssignmentRow[]).map((p) => p.producer_user_id);
+    const { data: producers } = await deps.admin.rpc(
+      "resolve_show_assignments",
+      {
+        p_program: order.show_dates.shows?.program ?? "",
+        p_sub_program: order.show_dates.shows?.sub_program ?? null,
+        p_city_id: order.show_dates.city_id,
+        p_org: org,
+      } as ResolveShowAssignmentsArgs,
+    );
+    producerIds = ((producers ?? []) as unknown as ProducerAssignmentRow[]).map(
+      (p) => p.producer_user_id,
+    );
   }
   for (const uid of [...new Set(producerIds)]) {
     const { data: got } = await deps.admin.auth.admin.getUserById(uid);
@@ -1268,7 +2139,12 @@ async function sendCountersignedEmails(
       template_name: "hire-order-countersigned",
       recipient_email: email,
       org_id: org,
-      templateData: { ...templateData, _intro: `A hire order for ${templateData.venue || "a show"} has been countersigned by the artist. The signed copy is attached.` },
+      templateData: {
+        ...templateData,
+        _intro: `A hire order for ${
+          templateData.venue || "a show"
+        } has been countersigned by the artist. The signed copy is attached.`,
+      },
       attachments: [attachment],
       idempotency_key: `hire-order-countersigned-prod-${order.id}-${uid}`,
     });
@@ -1289,15 +2165,27 @@ async function sendCountersignedEmails(
  */
 async function countersignTest(deps: Deps): Promise<Response> {
   const token = deps.env("DOCUMENSO_API_TOKEN");
-  if (!token) return json({ ok: false, detail: "Documenso API token is not configured on the server" });
+  if (!token) {
+    return json({
+      ok: false,
+      detail: "Documenso API token is not configured on the server",
+    });
+  }
 
   const baseUrlResult = resolveDocumensoBaseUrl(deps);
-  if (!baseUrlResult.ok) return json({ ok: false, detail: baseUrlResult.error });
+  if (!baseUrlResult.ok) {
+    return json({ ok: false, detail: baseUrlResult.error });
+  }
   try {
-    const res = await deps.fetch(`${baseUrlResult.baseUrl}/api/v2/envelope?perPage=1`, {
-      headers: { Authorization: documensoAuthHeader(token) },
-    });
-    if (!res.ok) return json({ ok: false, detail: `documenso_error:${res.status}` });
+    const res = await deps.fetch(
+      `${baseUrlResult.baseUrl}/api/v2/envelope?perPage=1`,
+      {
+        headers: { Authorization: documensoAuthHeader(token) },
+      },
+    );
+    if (!res.ok) {
+      return json({ ok: false, detail: `documenso_error:${res.status}` });
+    }
     return json({ ok: true, detail: "Connected" });
   } catch (e) {
     return json({ ok: false, detail: (e as Error).message });
@@ -1307,7 +2195,11 @@ async function countersignTest(deps: Deps): Promise<Response> {
 // ── helpers ────────────────────────────────────────────────────────────────
 
 /** Assign a layer field only when the value is meaningful (skip null/undefined/""). */
-function assign(layer: Partial<Record<OrderFieldKey, unknown>>, key: OrderFieldKey, value: unknown): void {
+function assign(
+  layer: Partial<Record<OrderFieldKey, unknown>>,
+  key: OrderFieldKey,
+  value: unknown,
+): void {
   if (value === null || value === undefined || value === "") return;
   layer[key] = value;
 }
@@ -1322,7 +2214,9 @@ function strField(data: OrderData, key: OrderFieldKey): string {
 /** Lowercase hex SHA-256 of the given bytes (issued-document tamper anchor). */
 async function sha256Hex(bytes: Uint8Array): Promise<string> {
   const digest = await crypto.subtle.digest("SHA-256", bytes as BufferSource);
-  return Array.from(new Uint8Array(digest)).map((b) => b.toString(16).padStart(2, "0")).join("");
+  return Array.from(new Uint8Array(digest)).map((b) =>
+    b.toString(16).padStart(2, "0")
+  ).join("");
 }
 
 /** A compact uppercase cast code from a show's reference label; undefined when blank. */
@@ -1343,7 +2237,11 @@ function dateLabel(dateOnly: string): string {
   const d = new Date(`${dateOnly.slice(0, 10)}T00:00:00Z`);
   if (Number.isNaN(d.getTime())) return dateOnly;
   return d.toLocaleDateString("en-US", {
-    weekday: "short", month: "short", day: "numeric", year: "numeric", timeZone: "UTC",
+    weekday: "short",
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+    timeZone: "UTC",
   });
 }
 
