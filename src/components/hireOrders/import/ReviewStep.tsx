@@ -1,4 +1,4 @@
-import type { OrderFieldKey } from "@/lib/hireOrders/types";
+import type { EditableOrderFieldKey } from "@/lib/hireOrders/types";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
@@ -18,7 +18,7 @@ export interface ManualEdit {
  *  user-picked link, so the caller overlays that before handing rows here). */
 export interface ReviewRow {
   rowIndex: number;
-  sheet: Partial<Record<OrderFieldKey, unknown>>;
+  sheet: Partial<Record<EditableOrderFieldKey, unknown>>;
   status: "ready" | "attention" | "skipped";
   issues: string[];
 }

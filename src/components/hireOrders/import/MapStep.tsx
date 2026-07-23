@@ -1,4 +1,4 @@
-import { ORDER_FIELD_KEYS, type OrderFieldKey } from "@/lib/hireOrders/types";
+import { ORDER_FIELD_KEYS, type EditableOrderFieldKey } from "@/lib/hireOrders/types";
 import type { OrderColumnMapping } from "@/lib/hireOrderImport/guessOrderMapping";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -6,7 +6,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 /** shadcn Select can't use "" as an item value, so "not mapped" needs a sentinel. */
 const IGNORE = "__ignore__";
 
-const FIELD_LABELS: Record<OrderFieldKey, string> = {
+const FIELD_LABELS: Record<EditableOrderFieldKey, string> = {
   artist_name: "Artist name",
   recipient_email: "Recipient email",
   role: "Role",
@@ -25,7 +25,7 @@ const FIELD_LABELS: Record<OrderFieldKey, string> = {
 // reads a mapped `sessions` column (there's no sheet-column convention for it —
 // see guessOrderMapping's docstring), so a Select for it here would be a
 // control that does nothing when the user picks a column.
-const MAPPABLE_FIELD_KEYS: OrderFieldKey[] = ORDER_FIELD_KEYS.filter((key) => key !== "sessions");
+const MAPPABLE_FIELD_KEYS: EditableOrderFieldKey[] = ORDER_FIELD_KEYS.filter((key) => key !== "sessions");
 
 interface Props {
   headers: string[];
@@ -34,11 +34,11 @@ interface Props {
 }
 
 /**
- * Map step: one Select per mappable `OrderFieldKey`, options = sheet headers +
+ * Map step: one Select per mappable editable order field, options = sheet headers +
  * "Ignore", prefilled by the caller from `guessOrderMapping`.
  */
 export function MapStep({ headers, mapping, onMappingChange }: Props) {
-  function setField(key: OrderFieldKey, value: string) {
+  function setField(key: EditableOrderFieldKey, value: string) {
     const next = { ...mapping };
     if (value === IGNORE) delete next[key];
     else next[key] = value;

@@ -1,7 +1,7 @@
 // Hire-order import row resolution: parses mapped sheet cells into typed values,
 // matches each row to a catalog artist + show_date, and flags rows that need
 // human attention before they can become a draft hire order.
-import type { OrderFieldKey } from "@/lib/hireOrders/types";
+import type { EditableOrderFieldKey } from "@/lib/hireOrders/types";
 import type { OrderColumnMapping } from "./guessOrderMapping";
 
 export interface ImportRowInput {
@@ -12,7 +12,7 @@ export interface ImportRowInput {
 export interface ResolvedImportRow {
   rowIndex: number;
   /** Typed/parsed sheet layer — feeds FieldLayers.sheet verbatim. Only fields present via the mapping are set. */
-  sheet: Partial<Record<OrderFieldKey, unknown>>;
+  sheet: Partial<Record<EditableOrderFieldKey, unknown>>;
   matchedArtistId?: string;
   matchedShowDateId?: string;
   status: "ready" | "attention" | "skipped";
@@ -226,7 +226,7 @@ export function buildOrderRows(
       return { rowIndex, sheet: {}, status: "skipped", issues: [] };
     }
 
-    const sheet: Partial<Record<OrderFieldKey, unknown>> = {};
+    const sheet: Partial<Record<EditableOrderFieldKey, unknown>> = {};
     const issues: string[] = [];
 
     const rawArtistName = cell(record, mapping.artist_name);

@@ -1,6 +1,6 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database, Json } from "@/integrations/supabase/types";
-import type { OrderData, OrderFieldKey } from "@/lib/hireOrders/types";
+import type { EditableOrderFieldKey, OrderData } from "@/lib/hireOrders/types";
 import { readEdgeError } from "@/lib/edgeErrors";
 
 export type HireOrderStatus = Database["public"]["Enums"]["hire_order_status"];
@@ -309,8 +309,8 @@ export async function updateHireOrderDraft(
  *  (both absent), but a `null` column value is skipped here explicitly too —
  *  same convention as the edge function's own `assign` helper. */
 function assignShowflowField(
-  layer: Partial<Record<OrderFieldKey, unknown>>,
-  key: OrderFieldKey,
+  layer: Partial<Record<EditableOrderFieldKey, unknown>>,
+  key: EditableOrderFieldKey,
   value: unknown,
 ): void {
   if (value === null || value === undefined || value === "") return;
@@ -342,8 +342,8 @@ function assignShowflowField(
 export async function fetchShowflowLayerForOrder(
   client: SupabaseClient<Database>,
   args: { showDateId: string | null; artistId: string | null },
-): Promise<Partial<Record<OrderFieldKey, unknown>>> {
-  const layer: Partial<Record<OrderFieldKey, unknown>> = {};
+): Promise<Partial<Record<EditableOrderFieldKey, unknown>>> {
+  const layer: Partial<Record<EditableOrderFieldKey, unknown>> = {};
 
   const [artistResult, showDateResult] = await Promise.all([
     args.artistId

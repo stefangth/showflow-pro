@@ -9,7 +9,7 @@ import { useArtistsLite, useShowDatesLite, useHireOrderAction } from "@/hooks/us
 import type { ArtistLite, ShowDateLite } from "@/data/hireOrders";
 import { resolveFields } from "@/lib/hireOrders/resolveFields";
 import { formatMoney } from "@/lib/hireOrders/money";
-import type { FieldLayers, OrderData, OrderFieldKey } from "@/lib/hireOrders/types";
+import type { EditableOrderFieldKey, FieldLayers, OrderData } from "@/lib/hireOrders/types";
 import { formatDateDMY } from "@/lib/dates";
 import { ROUTES } from "@/config/app.config";
 import { cn } from "@/lib/utils";
@@ -43,7 +43,7 @@ const STEPS: { step: WizardStep; label: string }[] = [
   { step: 4, label: "Review and issue" },
 ];
 
-const REVIEW_ROWS: { key: OrderFieldKey; label: string }[] = [
+const REVIEW_ROWS: { key: EditableOrderFieldKey; label: string }[] = [
   { key: "artist_name", label: "Artist" },
   { key: "recipient_email", label: "Recipient email" },
   { key: "date", label: "Date" },
@@ -60,7 +60,7 @@ function dateOptionLabel(d: ShowDateLite): string {
   return parts.join(" · ");
 }
 
-function reviewValue(key: OrderFieldKey, data: OrderData): string {
+function reviewValue(key: EditableOrderFieldKey, data: OrderData): string {
   const v = data[key]?.value;
   if (v === undefined || v === null || v === "") return "Not set";
   if (key === "date" && typeof v === "string") return formatDateDMY(v);
@@ -219,8 +219,8 @@ export function NewOrderWizard({ open, onOpenChange, orgId }: Props) {
     setManualSessions((rows) => rows.map((r, idx) => (idx === i ? { ...r, ...patch } : r)));
   }
 
-  function buildManualDict(): Partial<Record<OrderFieldKey, unknown>> {
-    const manual: Partial<Record<OrderFieldKey, unknown>> = {};
+  function buildManualDict(): Partial<Record<EditableOrderFieldKey, unknown>> {
+    const manual: Partial<Record<EditableOrderFieldKey, unknown>> = {};
     if (manualMode) {
       if (manualArtistName.trim()) manual.artist_name = manualArtistName.trim();
       if (manualEmail.trim()) manual.recipient_email = manualEmail.trim();
@@ -244,7 +244,7 @@ export function NewOrderWizard({ open, onOpenChange, orgId }: Props) {
   // step-4 summary matches what actually gets stored. `role` is intentionally
   // absent here (fetchArtistsLite doesn't carry cast_role) — the server-side
   // showflow layer can still resolve it from the artists table directly.
-  const previewShowflow: Partial<Record<OrderFieldKey, unknown>> = {};
+  const previewShowflow: Partial<Record<EditableOrderFieldKey, unknown>> = {};
   if (linkedArtist) {
     previewShowflow.artist_name = linkedArtist.name;
     if (linkedArtist.email) previewShowflow.recipient_email = linkedArtist.email;
@@ -256,7 +256,7 @@ export function NewOrderWizard({ open, onOpenChange, orgId }: Props) {
     if (linkedDate.duration_minutes != null) previewShowflow.duration_min = linkedDate.duration_minutes;
     if (linkedDate.sessions.length > 0) previewShowflow.sessions = linkedDate.sessions;
   }
-  const previewDefaults: Partial<Record<OrderFieldKey, unknown>> = {
+  const previewDefaults: Partial<Record<EditableOrderFieldKey, unknown>> = {
     currency: defaultsQuery.data?.currency ?? "EUR",
   };
   if (defaultsQuery.data?.default_fee != null) previewDefaults.fee = defaultsQuery.data.default_fee;
