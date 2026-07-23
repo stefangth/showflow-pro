@@ -7,13 +7,11 @@ vi.mock("sonner", () => ({ toast: { success: vi.fn(), error: vi.fn() } }));
 const exportSpy = vi.fn().mockResolvedValue({ schema_version: 1 });
 const deleteSpy = vi.fn().mockResolvedValue(undefined);
 const setOrgEntitlementSpy = vi.fn().mockResolvedValue(undefined);
-const setOrgCapabilitySpy = vi.fn().mockResolvedValue(undefined);
 vi.mock("@/data/platform", () => ({
   updateOrg: vi.fn().mockResolvedValue(undefined),
   exportOrgData: () => exportSpy(),
   deleteOrg: () => deleteSpy(),
   setOrgEntitlement: (...args: unknown[]) => setOrgEntitlementSpy(...args),
-  setOrgCapability: (...args: unknown[]) => setOrgCapabilitySpy(...args),
 }));
 const fetchEntitlementsSpy = vi.fn().mockResolvedValue([
   { feature: "booking_flow", enabled: true },
@@ -22,14 +20,14 @@ const fetchEntitlementsSpy = vi.fn().mockResolvedValue([
 vi.mock("@/data/entitlements", () => ({
   fetchEntitlements: (...args: unknown[]) => fetchEntitlementsSpy(...args),
 }));
-const fetchCapabilitiesSpy = vi.fn().mockResolvedValue([]);
-vi.mock("@/data/capabilities", () => ({
-  fetchCapabilities: (...args: unknown[]) => fetchCapabilitiesSpy(...args),
+vi.mock("@/components/settings/permissions/PermissionsMatrix", () => ({
+  PermissionsMatrix: (p: { orgId: string; mode: string }) => (
+    <div data-testid="matrix" data-org={p.orgId} data-mode={p.mode} />
+  ),
 }));
 
 import { EditOrgDialog } from "./EditOrgDialog";
 import { toast } from "sonner";
-import { CAPABILITY_REGISTRY } from "@/lib/capabilities";
 
 const org = { org_id: "o1", name: "Acme", slug: "acme", status: "active" } as never;
 const wrap = (ui: React.ReactNode) => (
@@ -101,33 +99,18 @@ describe("EditOrgDialog modules section", () => {
 });
 
 describe("EditOrgDialog user rights section", () => {
-  beforeEach(() => {
-    setOrgCapabilitySpy.mockClear();
-    fetchCapabilitiesSpy.mockClear();
-    (toast.success as ReturnType<typeof vi.fn>).mockClear();
-  });
-
-  it("renders the User rights section with a Switch per capability", async () => {
+  it("shows a summary and a button to manage all rights", async () => {
     render(wrap(<EditOrgDialog org={org} onClose={() => {}} />));
-    await waitFor(() => expect(fetchCapabilitiesSpy).toHaveBeenCalledWith(expect.anything(), "o1"));
     expect(screen.getByText("User rights")).toBeInTheDocument();
-    // producer_can_rename_org defaults to off (sensitive right), unlike producer_can_invite
-    // which now defaults on (see src/lib/capabilities.ts).
-    const producerCanRenameOrg = await screen.findByRole("switch", {
-      name: CAPABILITY_REGISTRY.producer_can_rename_org.label,
-    });
-    expect(producerCanRenameOrg).not.toBeChecked();
+    expect(screen.getByRole("button", { name: /manage all rights/i })).toBeInTheDocument();
+    expect(screen.queryByTestId("matrix")).not.toBeInTheDocument();
   });
 
-  it("toggling a capability calls setOrgCapability, invalidates capabilities, and toasts", async () => {
+  it("opens the permissions matrix in platform mode for the org", async () => {
     render(wrap(<EditOrgDialog org={org} onClose={() => {}} />));
-    const producerCanRenameOrg = await screen.findByRole("switch", {
-      name: CAPABILITY_REGISTRY.producer_can_rename_org.label,
-    });
-    fireEvent.click(producerCanRenameOrg);
-    await waitFor(() =>
-      expect(setOrgCapabilitySpy).toHaveBeenCalledWith(expect.anything(), "o1", "producer_can_rename_org", true),
-    );
-    await waitFor(() => expect(toast.success).toHaveBeenCalledWith("User rights updated"));
+    fireEvent.click(screen.getByRole("button", { name: /manage all rights/i }));
+    const m = await screen.findByTestId("matrix");
+    expect(m).toHaveAttribute("data-org", "o1");
+    expect(m).toHaveAttribute("data-mode", "platform");
   });
 });
