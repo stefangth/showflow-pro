@@ -33,4 +33,12 @@ describe("SignHireOrderDialog", () => {
       expect.anything(),
     );
   });
+
+  it("keeps Sign disabled when consent is checked but no signature is present", () => {
+    render(<SignHireOrderDialog orderId="ho1" orgId="o1" open onOpenChange={() => {}} />);
+    const signBtn = () => screen.getByRole("button", { name: /sign hire order/i });
+
+    fireEvent.click(screen.getByRole("checkbox"));       // consent checked, no signature
+    expect(signBtn()).toBeDisabled();
+  });
 });

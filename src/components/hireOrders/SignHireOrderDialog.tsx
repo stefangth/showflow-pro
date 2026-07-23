@@ -23,6 +23,19 @@ export function SignHireOrderDialog({ orderId, orgId, open, onOpenChange }: Prop
   const [consent, setConsent] = useState(false);
   const sign = useSignHireOrder();
 
+  // Closing for any reason (Cancel, successful sign, outside click, Esc) must
+  // reset the signature/consent state -- the consumer keeps this dialog mounted
+  // (`{canSign && <SignHireOrderDialog .../>}`), so bare useState survives an
+  // open/close cycle and would otherwise resurface a stale signature/consent
+  // on reopen. Routed through here so every close path resets exactly once.
+  function handleOpenChange(o: boolean) {
+    if (!o) {
+      setSig(null);
+      setConsent(false);
+    }
+    onOpenChange(o);
+  }
+
   function submit() {
     if (!sig || !consent) return;
     sign.mutate(
@@ -34,12 +47,12 @@ export function SignHireOrderDialog({ orderId, orgId, open, onOpenChange }: Prop
         signaturePng: sig.method === "drawn" ? sig.pngDataUrl : undefined,
         consent: true,
       },
-      { onSuccess: () => { onOpenChange(false); setSig(null); setConsent(false); } },
+      { onSuccess: () => handleOpenChange(false) },
     );
   }
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogContent className="sm:max-w-lg">
         <DialogHeader>
           <DialogTitle className="font-display">Sign your hire order</DialogTitle>
@@ -57,7 +70,7 @@ export function SignHireOrderDialog({ orderId, orgId, open, onOpenChange }: Prop
           </div>
         </div>
         <DialogFooter>
-          <Button variant="outline" onClick={() => onOpenChange(false)} disabled={sign.isPending}>Cancel</Button>
+          <Button variant="outline" onClick={() => handleOpenChange(false)} disabled={sign.isPending}>Cancel</Button>
           <Button onClick={submit} disabled={!sig || !consent || sign.isPending}>
             {sign.isPending ? "Signing..." : "Sign hire order"}
           </Button>
