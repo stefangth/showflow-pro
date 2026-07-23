@@ -1236,3 +1236,131 @@ Deno.test("cron-secret caller is accepted (trigger path unchanged)", async () =>
   assertEquals(res.status, 200);
   assertEquals((await res.json()).created, ["ho-cron"]);
 });
+
+// ── sign action ────────────────────────────────────────────────────────────
+
+const SIGN_ORDER = {
+  id: "o-1",
+  org_id: ORG,
+  order_no: "HO-1",
+  status: "issued",
+  artist_id: "a-A",
+  terms_variant: "standard",
+  fee_currency: "EUR",
+  agent_name: null,
+  agent_email: null,
+  issued_pdf_sha256: "c".repeat(64),
+  show_date_id: SD,
+  show_dates: { city_id: "city-1", shows: { program: "Aida", sub_program: null } },
+  data: {
+    artist_name: { value: "Ann", source: "showflow" },
+    recipient_email: { value: "ann@x.de", source: "showflow" },
+    date: { value: "2026-06-15", source: "showflow" },
+    venue: { value: "Colosseum", source: "showflow" },
+    fee: { value: 500, source: "showflow" },
+  },
+};
+
+function signDeps(overrides: { order?: unknown; artist?: unknown; mode?: string; featureOn?: boolean } = {}) {
+  return makeFakeDeps({
+    authUser: { id: "u-artist" },
+    rpcs: { is_feature_enabled: { data: overrides.featureOn ?? true, error: null } },
+    tables: {
+      hire_orders: [
+        { when: { __write: false }, data: overrides.order ?? SIGN_ORDER },
+        { when: { __write: true }, data: [{ id: "o-1" }] }, // the guarded transition matched a row
+      ],
+      // Preserve an EXPLICIT null (unrelated user: the artist lookup finds no row) —
+      // `?? { id: "a-A" }` would swallow it and make every caller look linked.
+      artists: { data: "artist" in overrides ? overrides.artist : { id: "a-A" } },
+      org_memberships: { data: [] },
+      app_settings: [
+        { when: { key: "hire_order_countersign" }, data: [{ org_id: ORG, value: { mode: overrides.mode ?? "electronic" } }] },
+        { when: { key: "hire_order_letterhead" }, data: [LETTERHEAD] },
+        { when: { key: "hire_order_terms" }, data: [TERMS_FILLED] },
+        { when: { key: "hire_order_defaults" }, data: [DEFAULTS] },
+      ],
+    },
+  });
+}
+
+const SIGN_BODY = { action: "sign", org_id: ORG, order_id: "o-1", method: "typed", typed_name: "Ann Lee", consent: true };
+
+Deno.test("sign: linked artist signs an issued electronic order -> countersigned", async () => {
+  const { deps, calls, invokeCalls } = signDeps();
+  const res = await handle(makeRequest({ headers: { Authorization: "Bearer artist" }, body: SIGN_BODY }), deps);
+  assertEquals(res.status, 200);
+  const body = await res.json();
+  assertEquals(body.countersigned, true);
+  // signed PDF uploaded
+  const up = calls.find((c) => c.table === "storage:hire-orders" && c.method === "upload" && String((c.args[0])).endsWith("-signed.pdf"));
+  assert(up, "signed pdf uploaded");
+  // audit row inserted
+  const sig = calls.find((c) => c.table === "hire_order_signatures" && c.method === "insert");
+  assert(sig, "audit row inserted");
+  const row = (sig!.args[0] as Array<Record<string, unknown>>)[0]; // insert([{...}]) -> first row
+  assertEquals(row.method, "typed");
+  assertEquals(row.hire_order_id, "o-1");
+  assertEquals(row.document_sha256, "c".repeat(64));
+  // transitioned with signed_pdf_path + countersign_mode
+  const upd = calls.find((c) => c.table === "hire_orders" && c.method === "update" && (c.args[0] as { status?: string }).status === "countersigned");
+  const patch = upd!.args[0] as { signed_pdf_path?: string; countersign_mode?: string };
+  assert(patch.signed_pdf_path?.endsWith("-signed.pdf"));
+  assertEquals(patch.countersign_mode, "electronic");
+  // countersigned email to the artist
+  const email = invokeCalls.find((c) => c.name === "send-transactional-email");
+  assertEquals((email!.body as { template_name: string }).template_name, "hire-order-countersigned");
+});
+
+Deno.test("sign: an unrelated user is rejected 403", async () => {
+  const { deps } = signDeps({ artist: null });
+  const res = await handle(makeRequest({ headers: { Authorization: "Bearer other" }, body: SIGN_BODY }), deps);
+  assertEquals(res.status, 403);
+});
+
+Deno.test("sign: consent is required", async () => {
+  const { deps } = signDeps();
+  const res = await handle(makeRequest({ headers: { Authorization: "Bearer artist" }, body: { ...SIGN_BODY, consent: false } }), deps);
+  assertEquals(res.status, 400);
+});
+
+Deno.test("sign: a non-issued order is rejected 409", async () => {
+  const { deps } = signDeps({ order: { ...SIGN_ORDER, status: "draft" } });
+  const res = await handle(makeRequest({ headers: { Authorization: "Bearer artist" }, body: SIGN_BODY }), deps);
+  assertEquals(res.status, 409);
+});
+
+Deno.test("sign: already-countersigned order is an idempotent 200", async () => {
+  const { deps } = signDeps({ order: { ...SIGN_ORDER, status: "countersigned" } });
+  const res = await handle(makeRequest({ headers: { Authorization: "Bearer artist" }, body: SIGN_BODY }), deps);
+  assertEquals(res.status, 200);
+  assertEquals((await res.json()).idempotent, true);
+});
+
+Deno.test("sign: manual-mode org is rejected 409 wrong_mode", async () => {
+  const { deps } = signDeps({ mode: "manual" });
+  const res = await handle(makeRequest({ headers: { Authorization: "Bearer artist" }, body: SIGN_BODY }), deps);
+  assertEquals(res.status, 409);
+});
+
+Deno.test("sign: feature-off org is denied", async () => {
+  const { deps } = signDeps({ featureOn: false });
+  const res = await handle(makeRequest({ headers: { Authorization: "Bearer artist" }, body: SIGN_BODY }), deps);
+  assert(res.status === 403 || res.status === 402, `feature gate status was ${res.status}`);
+});
+
+Deno.test("download-url serves the signed copy once signed_pdf_path is set", async () => {
+  const { deps, calls } = makeFakeDeps({
+    authUser: { id: "u-artist" },
+    tables: {
+      org_memberships: { data: [] },
+      platform_admins: { data: null },
+      hire_orders: { data: { id: "o-1", org_id: ORG, artist_id: "a-A", status: "countersigned", pdf_path: "org-1/HO-1.pdf", signed_pdf_path: "org-1/HO-1-signed.pdf", order_no: "HO-1" } },
+      artists: { data: { id: "a-A" } },
+    },
+  });
+  const res = await handle(makeRequest({ headers: { Authorization: "Bearer artist" }, body: { action: "download-url", org_id: ORG, order_id: "o-1" } }), deps);
+  assertEquals(res.status, 200);
+  const signCall = calls.find((c) => c.table === "storage:hire-orders" && c.method === "createSignedUrl");
+  assertEquals(signCall!.args[0], "org-1/HO-1-signed.pdf");
+});

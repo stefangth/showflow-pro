@@ -19,7 +19,7 @@ import { resolveOrgSetting } from "../_shared/settings.ts";
 import { realDeps, type Deps } from "../_shared/deps.ts";
 import { APP_URL } from "../_shared/app-url.ts";
 import { createAndSendEnvelope, documensoAuthHeader } from "../_shared/documenso.ts";
-import { encodeBase64 } from "https://deno.land/std@0.224.0/encoding/base64.ts";
+import { decodeBase64, encodeBase64 } from "https://deno.land/std@0.224.0/encoding/base64.ts";
 import {
   formatMoney,
   formatOrderNo,
@@ -31,6 +31,7 @@ import {
   type HireOrderTerm,
   type OrderData,
   type OrderFieldKey,
+  type RenderSignature,
 } from "../_shared/hireOrders.ts";
 
 // ── settings shapes + fallbacks (mirror src/components/settings/hireOrders/*) ──
@@ -169,6 +170,7 @@ interface DownloadOrderRow {
   artist_id: string | null;
   status: string;
   pdf_path: string | null;
+  signed_pdf_path: string | null;
   order_no: string;
 }
 
@@ -183,6 +185,11 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
   // download-url authorizes artists for their own issued orders, so it CANNOT sit
   // behind the admin/producer gate — it runs its own auth (see downloadUrl).
   if (body.action === "download-url") return downloadUrl(deps, req, body);
+
+  // sign authorizes the linked ARTIST (who holds neither admin nor producer), so
+  // it likewise sits BEFORE the admin/producer gate and runs its own auth
+  // (see signOrder — Bearer JWT -> the order's linked artist only).
+  if (body.action === "sign") return signOrder(deps, req, body);
 
   // Org-scoped gate for draft/issue/preview. A cron-secret caller (the trigger /
   // Task-9 cron) is org-agnostic and validated by the shared secret. A JWT caller
@@ -881,7 +888,7 @@ async function downloadUrl(deps: Deps, req: Request, body: DownloadBody): Promis
   const admin = deps.admin;
   const { data: order } = await admin
     .from("hire_orders")
-    .select("id, org_id, artist_id, status, pdf_path, order_no")
+    .select("id, org_id, artist_id, status, pdf_path, signed_pdf_path, order_no")
     .eq("id", body.order_id)
     .eq("org_id", body.org_id)
     .maybeSingle();
@@ -910,14 +917,285 @@ async function downloadUrl(deps: Deps, req: Request, body: DownloadBody): Promis
   }
 
   if (!allowed) return json({ error: "forbidden" }, 403);
-  if (!o.pdf_path) return json({ error: "no_pdf" }, 409);
+  // The countersigned copy is the document of record once signed; fall back to the
+  // original issued PDF for orders that were never electronically countersigned.
+  const path = o.signed_pdf_path ?? o.pdf_path;
+  if (!path) return json({ error: "no_pdf" }, 409);
 
   // Sign with the caller's client so storage RLS is the backstop.
   const { data: signed, error: signErr } = await userClient.storage
-    .from(BUCKET).createSignedUrl(o.pdf_path, SIGNED_URL_TTL);
+    .from(BUCKET).createSignedUrl(path, SIGNED_URL_TTL);
   if (signErr || !signed) return json({ error: "sign_failed" }, 500);
 
   return json({ url: (signed as { signedUrl: string }).signedUrl, expires_in: SIGNED_URL_TTL });
+}
+
+// ── sign (own auth: the linked artist only) ────────────────────────────────
+
+interface SignBody {
+  org_id: string;
+  order_id: string;
+  method?: "typed" | "drawn";
+  typed_name?: string;
+  signature_png?: string;
+  consent?: boolean;
+}
+
+/** Shape of the order select in signOrder (mirrors the select string). */
+interface SignOrderRow {
+  id: string;
+  org_id: string;
+  order_no: string;
+  status: string;
+  artist_id: string | null;
+  terms_variant: string | null;
+  fee_currency: string | null;
+  agent_name: string | null;
+  agent_email: string | null;
+  issued_pdf_sha256: string | null;
+  data: OrderData;
+  show_date_id: string | null;
+  show_dates: { city_id: string | null; shows: { program: string | null; sub_program: string | null } | null } | null;
+}
+
+const CONSENT_TEXT =
+  "By signing, I agree that my electronic signature is the legal equivalent of my handwritten signature, and I accept the terms of this hire order.";
+const MAX_SIGNATURE_PNG_CHARS = 2_000_000; // ~1.5MB decoded — a generous cap for a canvas PNG
+
+async function signOrder(deps: Deps, req: Request, body: SignBody): Promise<Response> {
+  const admin = deps.admin;
+  const org = body.org_id;
+  if (!body.order_id) return json({ error: "order_id required" }, 400);
+
+  // Own auth: any authenticated user; authorization decided against the loaded order.
+  const authHeader = req.headers.get("Authorization");
+  if (!authHeader?.startsWith("Bearer ")) return json({ error: "Unauthorized" }, 401);
+  const { data: { user }, error: authErr } = await deps.userClient(authHeader).auth.getUser();
+  if (authErr || !user) return json({ error: "Unauthorized" }, 401);
+
+  const { data: orderRaw } = await admin
+    .from("hire_orders")
+    .select("id, org_id, order_no, status, artist_id, terms_variant, fee_currency, agent_name, agent_email, issued_pdf_sha256, data, show_date_id, show_dates(city_id, shows(program, sub_program))")
+    .eq("id", body.order_id)
+    .eq("org_id", org)
+    .maybeSingle();
+  if (!orderRaw) return json({ error: "not_found" }, 404);
+  const o = orderRaw as unknown as SignOrderRow;
+
+  // Only the linked artist may sign.
+  if (!o.artist_id) return json({ error: "forbidden" }, 403);
+  const { data: artistRow } = await admin
+    .from("artists").select("id").eq("id", o.artist_id).eq("user_id", user.id).maybeSingle();
+  if (!artistRow) return json({ error: "forbidden" }, 403);
+
+  // Idempotency + status guard.
+  if (o.status === "countersigned") return json({ countersigned: true, idempotent: true });
+  if (o.status !== "issued") return json({ error: "not_issued" }, 409);
+
+  // Feature + mode gate.
+  const denied = await requireFeature(deps, org, "hire_orders");
+  if (denied) return denied;
+  const countersign = await resolveOrgSetting<Countersign>(admin, org, "hire_order_countersign", COUNTERSIGN_DEFAULT);
+  if (countersign.mode !== "electronic") return json({ error: "wrong_mode" }, 409);
+
+  // Consent + payload validation.
+  if (body.consent !== true) return json({ error: "consent_required" }, 400);
+  const method = body.method;
+  if (method !== "typed" && method !== "drawn") return json({ error: "invalid_signature" }, 400);
+  const typedName = (body.typed_name ?? "").trim();
+  if (method === "typed" && typedName === "") return json({ error: "invalid_signature" }, 400);
+  const png = body.signature_png ?? "";
+  if (method === "drawn" && (!png.startsWith("data:image/png;base64,") || png.length > MAX_SIGNATURE_PNG_CHARS)) {
+    return json({ error: "invalid_signature" }, 400);
+  }
+
+  const data = o.data;
+  const signerName = strField(data, "artist_name") || typedName || "Artist";
+  const signerEmail = strField(data, "recipient_email") || null;
+  const signedAtIso = deps.now().toISOString();
+  const ip = req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || null;
+  const userAgent = req.headers.get("user-agent") || null;
+
+  // Store the drawn image (audit trail); typed signatures have no image.
+  let signatureImagePath: string | null = null;
+  if (method === "drawn") {
+    const b64 = png.slice(png.indexOf(",") + 1);
+    const pngBytes = decodeBase64(b64);
+    signatureImagePath = `${org}/signatures/${o.order_no}.png`;
+    const { error: imgErr } = await admin.storage.from(BUCKET).upload(signatureImagePath, pngBytes, {
+      contentType: "image/png", upsert: true,
+    });
+    if (imgErr) return json({ error: "signature_upload_failed" }, 500);
+  }
+
+  // Re-render the signed PDF from the frozen snapshot.
+  const [letterhead, terms, defaults] = await Promise.all([
+    resolveOrgSetting<HireOrderLetterhead>(admin, org, "hire_order_letterhead", LETTERHEAD_DEFAULT),
+    resolveOrgSetting<TermsVariants>(admin, org, "hire_order_terms", TERMS_DEFAULT),
+    resolveOrgSetting<OrderDefaults>(admin, org, "hire_order_defaults", DEFAULTS_DEFAULT),
+  ]);
+  const variant = (o.terms_variant as TermsVariant) ?? "standard";
+  const effectiveLetterhead: HireOrderLetterhead = {
+    ...letterhead,
+    agent_name: o.agent_name ?? letterhead.agent_name,
+    agent_email: o.agent_email ?? letterhead.agent_email,
+  };
+  const currency = o.fee_currency ?? defaults.currency ?? "EUR";
+  const signature: RenderSignature = {
+    method,
+    typedName: method === "typed" ? typedName : undefined,
+    imageDataUrl: method === "drawn" ? png : undefined,
+    signerName,
+    signerEmail: signerEmail ?? undefined,
+    signedAtIso,
+    ip: ip ?? undefined,
+    userAgent: userAgent ?? undefined,
+    documentSha256: o.issued_pdf_sha256 ?? "",
+    consentText: CONSENT_TEXT,
+  };
+  const signedBytes = await deps.renderHireOrderPdf({
+    data, orderNo: o.order_no, status: "countersigned", letterhead: effectiveLetterhead,
+    terms: terms[variant] ?? [], currency, generatedAtIso: signedAtIso, signature,
+  });
+
+  // Upload the signed copy (keeps the original issued pdf_path intact).
+  const signedPath = `${org}/${o.order_no}-signed.pdf`;
+  const { error: upErr } = await admin.storage.from(BUCKET).upload(signedPath, signedBytes, {
+    contentType: "application/pdf", upsert: true,
+  });
+  if (upErr) return json({ error: "signed_upload_failed" }, 500);
+
+  // Audit row.
+  const { error: sigErr } = await admin.from("hire_order_signatures").insert([{
+    org_id: org,
+    hire_order_id: o.id,
+    signer_user_id: user.id,
+    signer_name: signerName,
+    signer_email: signerEmail,
+    method,
+    typed_name: method === "typed" ? typedName : null,
+    signature_image_path: signatureImagePath,
+    signed_at: signedAtIso,
+    ip,
+    user_agent: userAgent,
+    consent_text: CONSENT_TEXT,
+    document_sha256: o.issued_pdf_sha256,
+    // dynamically assembled audit row -> single cast at the boundary
+  }] as unknown as TablesInsert<"hire_order_signatures">[]);
+  if (sigErr) return json({ error: "signature_insert_failed" }, 500);
+
+  // Atomic + idempotent transition (guarded by status='issued').
+  const { data: updatedRows, error: updErr } = await admin
+    .from("hire_orders")
+    .update({ status: "countersigned", countersigned_at: signedAtIso, signed_pdf_path: signedPath, countersign_mode: "electronic" })
+    .eq("id", o.id)
+    .eq("status", "issued")
+    .select("id");
+  if (updErr) return json({ error: "transition_failed" }, 500);
+  const affected = Array.isArray(updatedRows) ? updatedRows.length > 0 : !!updatedRows;
+  if (!affected) return json({ countersigned: true, idempotent: true });
+
+  // Best-effort side effects — never undo a completed signing.
+  await notifyProducersCountersigned(deps, o).catch((e) =>
+    console.error("generate-hire-orders: sign producer notify failed", { org, orderId: o.id, error: (e as Error).message }));
+  await notifyArtistCountersigned(deps, org, o, user.id).catch((e) =>
+    console.error("generate-hire-orders: sign artist notify failed", { org, orderId: o.id, error: (e as Error).message }));
+  await sendCountersignedEmails(deps, org, o, data, signedBytes, currency, !!countersign.email_producers_on_countersign).catch((e) =>
+    console.error("generate-hire-orders: countersigned email failed", { org, orderId: o.id, error: (e as Error).message }));
+
+  return json({ countersigned: true, signed_pdf_path: signedPath });
+}
+
+/** Notify the order's producers that the artist countersigned (in-app). Mirrors
+ *  documenso-webhook's notifyProducers resolution: resolve_show_assignments on the
+ *  order's show_date, falling back to org admins; deduped. */
+async function notifyProducersCountersigned(deps: Deps, order: SignOrderRow): Promise<void> {
+  const admin = deps.admin;
+  const org = order.org_id;
+  let recipientIds: string[] = [];
+  if (order.show_dates) {
+    const { data: producers } = await admin.rpc("resolve_show_assignments", {
+      p_program: order.show_dates.shows?.program ?? "",
+      p_sub_program: order.show_dates.shows?.sub_program ?? null,
+      p_city_id: order.show_dates.city_id,
+      p_org: org,
+    } as ResolveShowAssignmentsArgs);
+    recipientIds = ((producers ?? []) as unknown as ProducerAssignmentRow[]).map((p) => p.producer_user_id);
+  }
+  if (recipientIds.length === 0) {
+    const { data: admins } = await admin.from("org_memberships").select("user_id").eq("org_id", org).eq("role", "admin");
+    recipientIds = ((admins ?? []) as unknown as OrgAdminRow[]).map((a) => a.user_id);
+  }
+  recipientIds = [...new Set(recipientIds)] as string[];
+  if (recipientIds.length === 0) return;
+  const rows = recipientIds.map((uid) => ({
+    org_id: org, user_id: uid, type: "hire_order_countersigned",
+    title: "Hire order countersigned",
+    message: `Hire order ${order.order_no} has been countersigned.`,
+    related_entity_type: "hire_order", related_entity_id: order.id,
+  }));
+  await admin.from("notifications").insert(rows);
+}
+
+/** A confirmation notification for the signing artist. */
+async function notifyArtistCountersigned(deps: Deps, org: string, order: SignOrderRow, userId: string): Promise<void> {
+  await deps.admin.from("notifications").insert([{
+    org_id: org, user_id: userId, type: "hire_order_countersigned",
+    title: "Hire order signed",
+    message: `You signed hire order ${order.order_no}.`,
+    related_entity_type: "hire_order", related_entity_id: order.id,
+  }]);
+}
+
+/** Email the artist the signed PDF; optionally email producers too (opt-in flag). */
+async function sendCountersignedEmails(
+  deps: Deps, org: string, order: SignOrderRow, data: OrderData, signedBytes: Uint8Array,
+  _currency: string, emailProducers: boolean,
+): Promise<void> {
+  const attachment = { filename: `${order.order_no}-signed.pdf`, content_base64: encodeBase64(signedBytes) };
+  const templateData = {
+    artist_name: strField(data, "artist_name"),
+    order_no: order.order_no,
+    date_label: dateLabel(strField(data, "date")),
+    venue: strField(data, "venue"),
+    download_url: `${APP_URL}/hire-orders/${order.id}`,
+  };
+  const artistEmail = strField(data, "recipient_email");
+  if (artistEmail) {
+    await deps.sendEmail({
+      template_name: "hire-order-countersigned",
+      recipient_email: artistEmail,
+      org_id: org,
+      templateData,
+      attachments: [attachment],
+      idempotency_key: `hire-order-countersigned-${order.id}`,
+    });
+  }
+  if (!emailProducers) return;
+  // Resolve producer emails via auth admin (few per show); best-effort.
+  let producerIds: string[] = [];
+  if (order.show_dates) {
+    const { data: producers } = await deps.admin.rpc("resolve_show_assignments", {
+      p_program: order.show_dates.shows?.program ?? "",
+      p_sub_program: order.show_dates.shows?.sub_program ?? null,
+      p_city_id: order.show_dates.city_id,
+      p_org: org,
+    } as ResolveShowAssignmentsArgs);
+    producerIds = ((producers ?? []) as unknown as ProducerAssignmentRow[]).map((p) => p.producer_user_id);
+  }
+  for (const uid of [...new Set(producerIds)]) {
+    const { data: got } = await deps.admin.auth.admin.getUserById(uid);
+    const email = (got as { user?: { email?: string } } | null)?.user?.email;
+    if (!email) continue;
+    await deps.sendEmail({
+      template_name: "hire-order-countersigned",
+      recipient_email: email,
+      org_id: org,
+      templateData: { ...templateData, _intro: `A hire order for ${templateData.venue || "a show"} has been countersigned by the artist. The signed copy is attached.` },
+      attachments: [attachment],
+      idempotency_key: `hire-order-countersigned-prod-${order.id}-${uid}`,
+    });
+  }
 }
 
 // ── countersign-test (admin-only, own re-check happens in handle()) ────────
