@@ -51,6 +51,21 @@ export interface FakeClientOptions {
   storageUploadResult?: { data?: unknown; error?: unknown };
   /** Seeded result for storage.from(bucket).createSignedUrl(...) (default: a signed URL). */
   storageSignedUrlResult?: { data?: unknown; error?: unknown };
+  /**
+   * Seeded auth-user roster for admin.auth.admin.listUsers() (default: derived from
+   * usersById, unchanged). When provided, listUsers() returns exactly this roster —
+   * each entry defaulted with sane fields for any key left unset — instead of the
+   * usersById-derived shape. Used by cross-org roster handlers (e.g. platform-list-users)
+   * that need created_at/last_sign_in_at/banned_until on the fake auth user, which
+   * usersById (keyed by id, `{ email? }`-shaped) does not model.
+   */
+  authUsers?: Array<{
+    id: string;
+    email?: string | null;
+    created_at?: string;
+    last_sign_in_at?: string | null;
+    banned_until?: string | null;
+  }>;
 }
 
 const CHAIN = [
@@ -245,8 +260,21 @@ export function createFakeClient(opts: FakeClientOptions = {}) {
       admin: {
         getUserById: (id: string) =>
           Promise.resolve({ data: { user: opts.usersById?.[id] ? { id, ...opts.usersById[id] } : null }, error: null }),
-        listUsers: () =>
-          Promise.resolve({ data: { users: Object.entries(opts.usersById ?? {}).map(([id, u]) => ({ id, ...u })) }, error: null }),
+        listUsers: (_params?: unknown) =>
+          Promise.resolve({
+            data: {
+              users: opts.authUsers
+                ? opts.authUsers.map((u) => ({
+                  id: u.id,
+                  email: u.email ?? null,
+                  created_at: u.created_at ?? "2026-01-01T00:00:00.000Z",
+                  last_sign_in_at: u.last_sign_in_at ?? null,
+                  banned_until: u.banned_until ?? null,
+                }))
+                : Object.entries(opts.usersById ?? {}).map(([id, u]) => ({ id, ...u })),
+            },
+            error: null,
+          }),
         inviteUserByEmail: (email: string, _opts?: unknown) =>
           Promise.resolve(opts.inviteResult ?? { data: { user: { id: "invited", email } }, error: null }),
         generateLink: (_params: unknown) =>
