@@ -217,6 +217,8 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
     case "preview":
       return previewOrder(deps, body);
     case "countersign-test": {
+      // NOT IN USE: dormant Documenso path, no org can select 'documenso' since the
+      // settings UI offers only manual|electronic. Retained for a future self-hosted Documenso.
       // The coarse gate above accepts admin OR producer; this action is admin-only
       // (mirrors airtable-schema's admin-only connectivity check), so re-check.
       const adminGate = await requireOrgRole(deps, req, body.org_id, ["admin"]);
@@ -706,6 +708,8 @@ async function issueOne(
   let signingUrl: string | null = null;
   let warning: string | undefined;
 
+  // NOT IN USE: dormant Documenso path, no org can select 'documenso' since the
+  // settings UI offers only manual|electronic. Retained for a future self-hosted Documenso.
   if (countersignModeUsed === "documenso") {
     const token = deps.env("DOCUMENSO_API_TOKEN");
     const baseUrlResult = resolveDocumensoBaseUrl(deps);
@@ -788,8 +792,9 @@ async function sendIssuedEmail(
     // download_url points at the auth-gated V3 detail page (re-signs the PDF on demand),
     // NOT a raw signed storage URL — a signed URL expires in 3600s and would be dead in the
     // inbox. The route is /hire-orders/:id, so it uses order.id (the uuid), not order_no.
-    // signing_url is only ever set in documenso mode (undefined -> omitted for manual,
-    // and for a documenso attempt that failed and fell back -- see issueOne).
+    // signing_url is set in documenso mode and in electronic mode (the in-app order
+    // page). It is undefined, so omitted, for manual mode and for a documenso
+    // attempt that failed and fell back -- see issueOne.
     templateData: {
       artist_name: strField(data, "artist_name"),
       order_no: order.order_no,

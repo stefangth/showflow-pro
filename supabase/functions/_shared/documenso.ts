@@ -1,3 +1,7 @@
+// NOT IN USE (2026-07): superseded by in-app electronic signing (the `sign` action
+// in generate-hire-orders + hire_order_signatures). Retained, dark, for a possible
+// future self-hosted Documenso. See docs/superpowers/specs/2026-07-23-hire-orders-in-app-signing-design.md.
+//
 // Thin Documenso REST API v1/v2 client for the hire-order countersignature flow
 // (design spec §8). Injected `fetchFn` + `cfg` so the whole client is testable
 // against a fake fetch — no network access in tests, no SDK dependency.
