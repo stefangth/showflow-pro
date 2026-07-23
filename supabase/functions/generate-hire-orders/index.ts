@@ -40,7 +40,10 @@ interface OrderDefaults { default_fee: number | null; currency: string }
 interface TermsVariants { lean: HireOrderTerm[]; standard: HireOrderTerm[]; full: HireOrderTerm[] }
 type TermsVariant = keyof TermsVariants;
 interface Countersign {
-  mode: "manual" | "documenso";
+  // 'documenso' is retained for the dormant Documenso path (see issueOne + _shared/documenso.ts).
+  mode: "manual" | "documenso" | "electronic";
+  /** electronic mode only: also email producers the signed PDF on countersign. */
+  email_producers_on_countersign?: boolean;
 }
 
 const NUMBERING_DEFAULT: Numbering = { prefix: "HO", pattern: "{prefix}-{yyyy}-{mmdd}-{seq}" };
@@ -678,9 +681,10 @@ async function issueOne(
     .upload(path, bytes, { contentType: "application/pdf", upsert: true });
   if (upErr) return { ok: false, issues: ["upload_failed"] };
 
+  const issuedPdfSha256 = await sha256Hex(bytes);
   const { error: issueErr } = await admin
     .from("hire_orders")
-    .update({ status: "issued", issued_at: deps.now().toISOString(), pdf_path: path })
+    .update({ status: "issued", issued_at: deps.now().toISOString(), pdf_path: path, issued_pdf_sha256: issuedPdfSha256 })
     .eq("id", orderId);
   if (issueErr) return { ok: false, issues: ["transition_failed"] };
 
@@ -729,6 +733,13 @@ async function issueOne(
         console.error("generate-hire-orders: countersign fallback stamp failed", { org, orderId, error: fallbackErr.message });
       }
     }
+  }
+
+  // Electronic (in-app) countersign: nothing to send at issue time — the artist
+  // signs later on the order page. Point the issued email's "Review and sign" CTA
+  // at that page (the auth-gated detail route, keyed by the order UUID).
+  if (countersignModeUsed === "electronic") {
+    signingUrl = `${APP_URL}/hire-orders/${o.id}`;
   }
 
   // Best-effort side effects — a failure here must NOT undo a successful issue.
@@ -951,6 +962,12 @@ function strField(data: OrderData, key: OrderFieldKey): string {
   const v = data[key]?.value;
   if (v === null || v === undefined) return "";
   return String(v);
+}
+
+/** Lowercase hex SHA-256 of the given bytes (issued-document tamper anchor). */
+async function sha256Hex(bytes: Uint8Array): Promise<string> {
+  const digest = await crypto.subtle.digest("SHA-256", bytes as BufferSource);
+  return Array.from(new Uint8Array(digest)).map((b) => b.toString(16).padStart(2, "0")).join("");
 }
 
 /** A compact uppercase cast code from a show's reference label; undefined when blank. */

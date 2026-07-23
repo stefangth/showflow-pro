@@ -687,6 +687,57 @@ Deno.test("issue inherits the letterhead agent when the order override is null",
   assertEquals(captured!.letterhead.agent_email, "org@x.com");
 });
 
+Deno.test("issue stamps issued_pdf_sha256 on the issued update", async () => {
+  const { deps, calls } = makeFakeDeps({
+    authUser: { id: "u-admin" },
+    tables: {
+      org_memberships: { data: { role: "admin" } },
+      hire_orders: [
+        { when: { __write: false }, data: issuableOrder() },
+        { when: { __write: true }, data: null },
+      ],
+      artists: { data: { user_id: "u-artist" } },
+      app_settings: [
+        { when: { key: "hire_order_letterhead" }, data: [LETTERHEAD] },
+        { when: { key: "hire_order_terms" }, data: [TERMS_FILLED] },
+        { when: { key: "hire_order_defaults" }, data: [DEFAULTS] },
+      ],
+    },
+  });
+  const res = await handle(makeRequest({ headers: JWT, body: { action: "issue", org_id: ORG, order_ids: ["o-1"] } }), deps);
+  assertEquals(res.status, 200);
+  const issuedUpdate = calls.find(
+    (c) => c.table === "hire_orders" && c.method === "update" && (c.args[0] as { status?: string }).status === "issued",
+  );
+  const upd = issuedUpdate!.args[0] as { issued_pdf_sha256?: string };
+  assert(typeof upd.issued_pdf_sha256 === "string" && /^[0-9a-f]{64}$/.test(upd.issued_pdf_sha256), "64-char hex hash stamped");
+});
+
+Deno.test("issue in electronic mode emails a signing_url pointing at the in-app order page", async () => {
+  const { deps, invokeCalls } = makeFakeDeps({
+    authUser: { id: "u-admin" },
+    tables: {
+      org_memberships: { data: { role: "admin" } },
+      hire_orders: [
+        { when: { __write: false }, data: issuableOrder() },
+        { when: { __write: true }, data: null },
+      ],
+      artists: { data: { user_id: "u-artist" } },
+      app_settings: [
+        { when: { key: "hire_order_letterhead" }, data: [LETTERHEAD] },
+        { when: { key: "hire_order_terms" }, data: [TERMS_FILLED] },
+        { when: { key: "hire_order_defaults" }, data: [DEFAULTS] },
+        { when: { key: "hire_order_countersign" }, data: [{ org_id: ORG, value: { mode: "electronic" } }] },
+      ],
+    },
+  });
+  await handle(makeRequest({ headers: JWT, body: { action: "issue", org_id: ORG, order_ids: ["o-1"] } }), deps);
+  const email = invokeCalls.find((c) => c.name === "send-transactional-email");
+  const td = (email!.body as { templateData: Record<string, unknown> }).templateData;
+  assertEquals(td.countersign_mode, "electronic");
+  assert(String(td.signing_url).includes("/hire-orders/o-1"), `signing_url was ${td.signing_url}`);
+});
+
 // ── documenso countersign ────────────────────────────────────────────────
 
 /** A fake fetch that plays back the create -> recipient -> distribute sequence
