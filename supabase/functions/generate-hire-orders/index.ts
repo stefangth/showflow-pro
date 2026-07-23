@@ -1,4 +1,4 @@
-// generate-hire-orders — the hire-order engine. Six per-request actions:
+// generate-hire-orders — the hire-order engine. Seven per-request actions:
 //   draft            create draft orders from confirmed bookings (snapshot fields)
 //   draft-manual     create ONE draft from the V5 wizard: free choice of artist x
 //                    date (either/both optional) plus producer-entered manual fields
@@ -7,6 +7,9 @@
 //   preview          render a watermarked PDF for one order, persist nothing
 //   download-url     signed URL for an order's PDF (producers + the linked artist)
 //   countersign-test admin-only Documenso connectivity check for the settings card
+//   sign             the linked artist signs an issued electronic order: re-render PDF
+//                    + certificate, store signed_pdf_path + a hire_order_signatures
+//                    audit row, flip to countersigned, notify + email
 //
 // DI: exports handle(req, deps); Deno.serve wiring at the bottom. Tests inject
 // makeFakeDeps (deps.renderHireOrderPdf is stubbed). See index.di.test.ts.
