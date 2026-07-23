@@ -16,7 +16,14 @@ describe("platformUsers data layer", () => {
   });
   it("fetchPlatformUsers reads the edge-function payload", async () => {
     const fake = createFakeSupabase({ "fn:platform-list-users": { data: { users: [{ id: "u1" }] }, error: null } });
-    const users = await fetchPlatformUsers(asSupabase(fake));
-    expect(users[0].id).toBe("u1");
+    const result = await fetchPlatformUsers(asSupabase(fake));
+    expect(result.users[0].id).toBe("u1");
+    expect(result.truncated).toBe(false);
+  });
+
+  it("fetchPlatformUsers surfaces the truncated flag instead of dropping it", async () => {
+    const fake = createFakeSupabase({ "fn:platform-list-users": { data: { users: [{ id: "u1" }], truncated: true }, error: null } });
+    const result = await fetchPlatformUsers(asSupabase(fake));
+    expect(result.truncated).toBe(true);
   });
 });

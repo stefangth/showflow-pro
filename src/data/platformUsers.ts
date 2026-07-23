@@ -20,13 +20,20 @@ export interface PlatformUser {
   memberships: PlatformUserMembership[];
 }
 
+export interface PlatformUsersResult {
+  users: PlatformUser[];
+  /** true when the underlying auth.admin.listUsers page hit the 1000-row cap
+   *  — the roster is not exhaustive and callers must surface this, not drop it. */
+  truncated: boolean;
+}
+
 /** All platform users across every org, via the super-admin-only platform-list-users edge function. */
-export async function fetchPlatformUsers(client: SupabaseClient<Database>): Promise<PlatformUser[]> {
+export async function fetchPlatformUsers(client: SupabaseClient<Database>): Promise<PlatformUsersResult> {
   const { data, error } = await client.functions.invoke("platform-list-users", { body: {} });
   if (error) throw error;
-  const payload = data as { error?: string; users?: PlatformUser[] };
+  const payload = data as { error?: string; users?: PlatformUser[]; truncated?: boolean };
   if (payload?.error) throw new Error(payload.error);
-  return payload.users ?? [];
+  return { users: payload.users ?? [], truncated: !!payload.truncated };
 }
 
 /** Add or remove a role for a user in an org (super-admin-only RPC). */
