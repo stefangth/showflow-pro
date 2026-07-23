@@ -335,6 +335,7 @@ Suggested emails:
 |------|---------|
 | `src/config/app.config.ts` | ROUTE_FEATURES (entitlement-gated routes), ROUTES, BOOKING_ENGINE_DEFAULTS (canonical booking-engine fallbacks; mirrors `_shared/settings.ts`), CHAT_ARCHIVE_DAYS |
 | `src/lib/entitlements.ts` | Per-org module entitlements registry: `FeatureKey`, `FEATURE_REGISTRY`, `enabledFeatures`/`isFeatureEnabled`. Dual-home — mirrored verbatim by `supabase/functions/_shared/entitlements.ts` (the two runtimes can't share an import) and by the SQL twin `public.is_feature_enabled()`; change all three in the same commit |
+| `src/lib/capabilities.ts` | Per-org **capabilities** ("user group rights") registry: `CAPABILITY_DEFS` (role x action grants), `resolveCapability` (lock → org override → platform default → registry default), group helpers. Distinct from entitlements: a module says a feature *exists*, a capability says who may *use* it. Three-mirror discipline — the registry block is byte-identical to `supabase/functions/_shared/capabilities.ts`, and `public.capability_default()` is the SQL twin (guarded by `capabilityDefaultsSql.test.ts`); change all three together. UI reads it via `useCan(action)` (`src/hooks/useCapabilities.ts`) |
 | `src/integrations/supabase/types.ts` | Auto-generated DB types — read only |
 | `src/features/auth/AuthContext.tsx` | Auth state, org-scoped role helpers, `currentOrg`/`orgs`/`switchOrg`, `isSuperAdmin` |
 | `src/features/auth/resetPassword.ts` | Pure helpers for reset-password flow (hash parse, redirect safety, schema) |
