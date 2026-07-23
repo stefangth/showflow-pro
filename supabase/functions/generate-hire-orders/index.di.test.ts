@@ -1364,3 +1364,67 @@ Deno.test("download-url serves the signed copy once signed_pdf_path is set", asy
   const signCall = calls.find((c) => c.table === "storage:hire-orders" && c.method === "createSignedUrl");
   assertEquals(signCall!.args[0], "org-1/HO-1-signed.pdf");
 });
+
+Deno.test("sign: drawn method uploads the signature image and records method drawn", async () => {
+  const { deps, calls } = signDeps();
+  const res = await handle(makeRequest({
+    headers: { Authorization: "Bearer artist" },
+    body: {
+      action: "sign", org_id: ORG, order_id: "o-1", method: "drawn",
+      signature_png: "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAAC0lEQVR4nGNgAAIAAAUAAXpeqz8AAAAASUVORK5CYII=",
+      consent: true,
+    },
+  }), deps);
+  assertEquals(res.status, 200);
+  assertEquals((await res.json()).countersigned, true);
+
+  // The drawn PNG is uploaded to the signatures/ path (distinct from the signed PDF).
+  const imgUpload = calls.find((c) =>
+    c.table === "storage:hire-orders" && c.method === "upload" && String(c.args[0]).endsWith("signatures/HO-1.png"));
+  assert(imgUpload, "signature image uploaded to signatures/HO-1.png");
+
+  // Audit row carries method drawn + the image path, and no typed_name.
+  const sig = calls.find((c) => c.table === "hire_order_signatures" && c.method === "insert");
+  assert(sig, "audit row inserted");
+  const row = (sig!.args[0] as Array<Record<string, unknown>>)[0]; // insert([{...}]) -> first row
+  assertEquals(row.method, "drawn");
+  assert(String(row.signature_image_path).endsWith("signatures/HO-1.png"), `signature_image_path was ${row.signature_image_path}`);
+  assertEquals(row.typed_name, null);
+});
+
+Deno.test("sign: emails BOTH the artist and the producers when email_producers_on_countersign is on", async () => {
+  // signDeps fixes the countersign seed to { mode: electronic } and never seeds
+  // resolve_show_assignments / usersById, so the producer fan-out is inlined here.
+  const { deps, invokeCalls } = makeFakeDeps({
+    authUser: { id: "u-artist" },
+    rpcs: {
+      is_feature_enabled: { data: true, error: null },
+      resolve_show_assignments: { data: [{ producer_user_id: "p1" }], error: null },
+    },
+    usersById: { p1: { email: "prod@x.de" } }, // admin.auth.admin.getUserById("p1")
+    tables: {
+      hire_orders: [
+        { when: { __write: false }, data: SIGN_ORDER },
+        { when: { __write: true }, data: [{ id: "o-1" }] },
+      ],
+      artists: { data: { id: "a-A" } },
+      org_memberships: { data: [] },
+      app_settings: [
+        { when: { key: "hire_order_countersign" }, data: [{ org_id: ORG, value: { mode: "electronic", email_producers_on_countersign: true } }] },
+        { when: { key: "hire_order_letterhead" }, data: [LETTERHEAD] },
+        { when: { key: "hire_order_terms" }, data: [TERMS_FILLED] },
+        { when: { key: "hire_order_defaults" }, data: [DEFAULTS] },
+      ],
+    },
+  });
+
+  const res = await handle(makeRequest({ headers: { Authorization: "Bearer artist" }, body: SIGN_BODY }), deps);
+  assertEquals(res.status, 200);
+
+  const countersignedEmails = invokeCalls.filter((c) =>
+    c.name === "send-transactional-email" &&
+    (c.body as { template_name: string }).template_name === "hire-order-countersigned");
+  assertEquals(countersignedEmails.length, 2, "one email to the artist, one to the producer");
+  const recipients = countersignedEmails.map((c) => (c.body as { recipient_email: string }).recipient_email).sort();
+  assertEquals(recipients, ["ann@x.de", "prod@x.de"]);
+});
