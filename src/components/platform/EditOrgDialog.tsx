@@ -5,9 +5,11 @@ import { z } from "zod";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
-import { updateOrg, exportOrgData, deleteOrg, setOrgEntitlement, type OrgStat } from "@/data/platform";
+import { updateOrg, exportOrgData, deleteOrg, setOrgEntitlement, setOrgCapability, type OrgStat } from "@/data/platform";
 import { fetchEntitlements } from "@/data/entitlements";
+import { fetchCapabilities } from "@/data/capabilities";
 import { FEATURE_KEYS, FEATURE_REGISTRY, type FeatureKey } from "@/lib/entitlements";
+import { CAPABILITY_KEYS, CAPABILITY_REGISTRY, type CapabilityKey } from "@/lib/capabilities";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -87,6 +89,27 @@ export function EditOrgDialog({ org, onClose }: { org: OrgStat | null; onClose: 
     onError: (e: Error) => toast.error(e.message),
   });
 
+  const { data: capabilities } = useQuery({
+    queryKey: ["capabilities", org?.org_id],
+    queryFn: () => fetchCapabilities(supabase, org!.org_id),
+    enabled: !!org,
+  });
+
+  const isCapabilityOn = (capability: CapabilityKey): boolean => {
+    const row = capabilities?.find((r) => r.capability === capability);
+    return row ? row.enabled : CAPABILITY_REGISTRY[capability].defaultEnabled;
+  };
+
+  const toggleCapability = useMutation({
+    mutationFn: ({ capability, enabled }: { capability: CapabilityKey; enabled: boolean }) =>
+      setOrgCapability(supabase, org!.org_id, capability, enabled),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["capabilities"] });
+      toast.success("User rights updated");
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
   return (
     <Dialog open={!!org} onOpenChange={(o) => { if (!o) onClose(); }}>
       <DialogContent>
@@ -120,6 +143,27 @@ export function EditOrgDialog({ org, onClose }: { org: OrgStat | null; onClose: 
                   checked={isModuleEnabled(key)}
                   disabled={toggleModule.isPending}
                   onCheckedChange={(checked) => toggleModule.mutate({ feature: key, enabled: checked })}
+                />
+              </div>
+            );
+          })}
+        </div>
+        <div className="mt-6 border border-border rounded-md p-4 space-y-3">
+          <p className="text-sm font-medium">User rights</p>
+          {CAPABILITY_KEYS.map((key) => {
+            const def = CAPABILITY_REGISTRY[key];
+            return (
+              <div key={key} className="flex items-center justify-between gap-4">
+                <div>
+                  <Label htmlFor={`capability-${key}`} className="font-medium">{def.label}</Label>
+                  <p className="text-xs text-muted-foreground mt-0.5">{def.description}</p>
+                </div>
+                <Switch
+                  id={`capability-${key}`}
+                  aria-label={def.label}
+                  checked={isCapabilityOn(key)}
+                  disabled={toggleCapability.isPending}
+                  onCheckedChange={(checked) => toggleCapability.mutate({ capability: key, enabled: checked })}
                 />
               </div>
             );

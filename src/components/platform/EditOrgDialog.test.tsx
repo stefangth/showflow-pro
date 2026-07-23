@@ -7,11 +7,13 @@ vi.mock("sonner", () => ({ toast: { success: vi.fn(), error: vi.fn() } }));
 const exportSpy = vi.fn().mockResolvedValue({ schema_version: 1 });
 const deleteSpy = vi.fn().mockResolvedValue(undefined);
 const setOrgEntitlementSpy = vi.fn().mockResolvedValue(undefined);
+const setOrgCapabilitySpy = vi.fn().mockResolvedValue(undefined);
 vi.mock("@/data/platform", () => ({
   updateOrg: vi.fn().mockResolvedValue(undefined),
   exportOrgData: () => exportSpy(),
   deleteOrg: () => deleteSpy(),
   setOrgEntitlement: (...args: unknown[]) => setOrgEntitlementSpy(...args),
+  setOrgCapability: (...args: unknown[]) => setOrgCapabilitySpy(...args),
 }));
 const fetchEntitlementsSpy = vi.fn().mockResolvedValue([
   { feature: "booking_flow", enabled: true },
@@ -20,9 +22,14 @@ const fetchEntitlementsSpy = vi.fn().mockResolvedValue([
 vi.mock("@/data/entitlements", () => ({
   fetchEntitlements: (...args: unknown[]) => fetchEntitlementsSpy(...args),
 }));
+const fetchCapabilitiesSpy = vi.fn().mockResolvedValue([]);
+vi.mock("@/data/capabilities", () => ({
+  fetchCapabilities: (...args: unknown[]) => fetchCapabilitiesSpy(...args),
+}));
 
 import { EditOrgDialog } from "./EditOrgDialog";
 import { toast } from "sonner";
+import { CAPABILITY_REGISTRY } from "@/lib/capabilities";
 
 const org = { org_id: "o1", name: "Acme", slug: "acme", status: "active" } as never;
 const wrap = (ui: React.ReactNode) => (
@@ -88,5 +95,35 @@ describe("EditOrgDialog modules section", () => {
     await waitFor(() => expect(toast.success).toHaveBeenCalledWith("Module updated"));
     expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: ["platform"] });
     expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: ["entitlements"] });
+  });
+});
+
+describe("EditOrgDialog user rights section", () => {
+  beforeEach(() => {
+    setOrgCapabilitySpy.mockClear();
+    fetchCapabilitiesSpy.mockClear();
+    (toast.success as ReturnType<typeof vi.fn>).mockClear();
+  });
+
+  it("renders the User rights section with a Switch per capability", async () => {
+    render(wrap(<EditOrgDialog org={org} onClose={() => {}} />));
+    await waitFor(() => expect(fetchCapabilitiesSpy).toHaveBeenCalledWith(expect.anything(), "o1"));
+    expect(screen.getByText("User rights")).toBeInTheDocument();
+    const producerCanInvite = await screen.findByRole("switch", {
+      name: CAPABILITY_REGISTRY.producer_can_invite.label,
+    });
+    expect(producerCanInvite).not.toBeChecked();
+  });
+
+  it("toggling a capability calls setOrgCapability, invalidates capabilities, and toasts", async () => {
+    render(wrap(<EditOrgDialog org={org} onClose={() => {}} />));
+    const producerCanInvite = await screen.findByRole("switch", {
+      name: CAPABILITY_REGISTRY.producer_can_invite.label,
+    });
+    fireEvent.click(producerCanInvite);
+    await waitFor(() =>
+      expect(setOrgCapabilitySpy).toHaveBeenCalledWith(expect.anything(), "o1", "producer_can_invite", true),
+    );
+    await waitFor(() => expect(toast.success).toHaveBeenCalledWith("User rights updated"));
   });
 });
