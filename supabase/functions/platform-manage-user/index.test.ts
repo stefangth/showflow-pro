@@ -81,6 +81,8 @@ Deno.test("suspends a user and audits the action", async () => {
     // Only "sa" is a super-admin, and the target ("u3") isn't in this list, so the
     // last-admin guard does not block this suspension.
     tables: { platform_admins: { data: [{ user_id: "sa" }], error: null } },
+    // Target is NOT the sole admin of any org, so the sole-admin guard passes too.
+    rpcs: { sole_admin_orgs: { data: [], error: null } },
   });
   const res = await handle(post({ action: "suspend", target_user_id: "u3" }), deps);
   assertEquals(res.status, 200);
@@ -98,6 +100,22 @@ Deno.test("unsuspends a user", async () => {
   assertEquals(res.status, 200);
   const updateCall = calls.find((c) => c.table === "auth.admin.updateUserById");
   assertEquals((updateCall?.args[1] as { ban_duration?: string } | undefined)?.ban_duration, "none");
+});
+
+Deno.test("blocks suspending a user who is the sole admin of an org", async () => {
+  const { deps, calls } = makeFakeDeps({
+    authUser: { id: "sa" },
+    // "sa" is the only super-admin; target "u3" is not, so the last-admin guard passes,
+    // but sole_admin_orgs reports "u3" as the only admin of "Acme". Suspending them would
+    // lock that org out of admin access (a banned admin cannot sign in).
+    tables: { platform_admins: { data: [{ user_id: "sa" }], error: null } },
+    rpcs: { sole_admin_orgs: { data: [{ org_id: "o1", org_name: "Acme" }], error: null } },
+  });
+  const res = await handle(post({ action: "suspend", target_user_id: "u3" }), deps);
+  assertEquals(res.status, 400);
+  // The ban update never ran, proving the handler returned before applying the suspension.
+  assert(!calls.some((c) => c.table === "auth.admin.updateUserById"));
+  assert(!calls.some((c) => c.table === "platform_audit_log" && c.method === "insert"));
 });
 
 Deno.test("sends a password reset link via resetPasswordForEmail", async () => {

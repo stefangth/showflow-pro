@@ -21,6 +21,20 @@ async function isLastSuperAdmin(deps: Deps, userId: string): Promise<boolean> {
   return rows.length <= 1 && rows.some((r) => r.user_id === userId);
 }
 
+/**
+ * Orgs where `userId` is the only admin. Suspending or deleting such a user would leave
+ * that org with no usable admin (a banned admin cannot sign in; a deleted one is gone).
+ * Called via the CALLER's JWT client because sole_admin_orgs guards on
+ * `auth.uid() = p_user OR is_super_admin(auth.uid())`; the service-role admin client
+ * (auth.uid() = null) would fail that guard and silently return nothing.
+ */
+async function soleAdminOrgs(deps: Deps, req: Request, userId: string): Promise<Array<{ org_id: string; org_name: string }>> {
+  const authHeader = req.headers.get("Authorization")!;
+  const { data, error } = await deps.userClient(authHeader).rpc("sole_admin_orgs", { p_user: userId });
+  if (error) throw error;
+  return (data ?? []) as Array<{ org_id: string; org_name: string }>;
+}
+
 export async function handle(req: Request, deps: Deps): Promise<Response> {
   if (req.method === "OPTIONS") return preflight();
   try {
@@ -80,9 +94,14 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
     }
 
     if (body.action === "suspend" || body.action === "unsuspend") {
-      if (body.action === "suspend" && target === actor) return json({ error: "You cannot suspend yourself" }, 400);
-      if (body.action === "suspend" && await isLastSuperAdmin(deps, target)) {
-        return json({ error: "Cannot suspend the last super-admin" }, 400);
+      if (body.action === "suspend") {
+        if (target === actor) return json({ error: "You cannot suspend yourself" }, 400);
+        if (await isLastSuperAdmin(deps, target)) return json({ error: "Cannot suspend the last super-admin" }, 400);
+        // Sole-admin guard: suspending the only admin of an org locks that org out of
+        // admin access (a banned admin cannot sign in). Mirrors the delete guard.
+        if ((await soleAdminOrgs(deps, req, target)).length > 0) {
+          return json({ error: "Cannot suspend: user is the only admin of one or more organizations. Reassign an admin first." }, 400);
+        }
       }
       const { error } = await admin.auth.admin.updateUserById(target, {
         ban_duration: body.action === "suspend" ? "876000h" : "none",
@@ -95,29 +114,15 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
     if (body.action === "delete") {
       if (target === actor) return json({ error: "You cannot delete yourself" }, 400);
       if (await isLastSuperAdmin(deps, target)) return json({ error: "Cannot delete the last super-admin" }, 400);
+      // Sole-admin guard: deleting the only admin of an org strands it with zero admins.
+      if ((await soleAdminOrgs(deps, req, target)).length > 0) {
+        return json({ error: "Cannot delete: user is the only admin of one or more organizations. Reassign an admin first." }, 400);
+      }
 
       // anonymize_user guards on `auth.uid() = p_user OR is_super_admin(auth.uid())`. The
       // service-role admin client has auth.uid() = null, so it must be called through the
       // CALLER's JWT client (the acting super-admin's own session), not deps.admin.
-      const authHeader = req.headers.get("Authorization")!;
-      const userClient = deps.userClient(authHeader);
-
-      // Sole-admin guard: block deleting a user who is the only admin of one or more
-      // orgs, which would strand that org with zero admins. sole_admin_orgs guards on
-      // `auth.uid() = p_user OR is_super_admin(auth.uid())` (not solely self-scoped),
-      // so calling it via the ACTING super-admin's JWT client with p_user = target
-      // satisfies the is_super_admin branch and correctly reports the TARGET's
-      // sole-admin orgs. The service-role admin client has auth.uid() = null, so it
-      // would fail that guard and silently return nothing.
-      const { data: soleOrgs, error: soleErr } = await userClient.rpc("sole_admin_orgs", { p_user: target });
-      if (soleErr) throw soleErr;
-      const soleAdminOrgs = (soleOrgs ?? []) as Array<{ org_id: string; org_name: string }>;
-      if (soleAdminOrgs.length > 0) {
-        return json({
-          error: "Cannot delete: user is the only admin of one or more organizations. Reassign an admin first.",
-        }, 400);
-      }
-
+      const userClient = deps.userClient(req.headers.get("Authorization")!);
       const { error: anonErr } = await userClient.rpc("anonymize_user", { p_user: target });
       if (anonErr) throw anonErr;
 
