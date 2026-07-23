@@ -1,6 +1,6 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { StatusPill, StatusDot, LatencyStat, RunTimeline } from "./primitives";
-import { deriveJobStatus, CRON_JOB_TO_FN, type EdgeFnMetric } from "@/lib/systemHealth";
+import { describeJobHealth, deriveJobStatus, CRON_JOB_TO_FN, type EdgeFnMetric } from "@/lib/systemHealth";
 import { SYSTEM_HEALTH_BUDGET as budget } from "@/config/app.config";
 import type { CronHealthRow } from "@/data/platform";
 
@@ -13,6 +13,7 @@ export function ScheduledJobsPanel({ cronRows, metrics }: { cronRows: CronHealth
         {cronRows.map((c) => {
           const metric = byFn.get(CRON_JOB_TO_FN[c.job_name] ?? c.job_name) ?? null;
           const state = deriveJobStatus(c.status, metric, budget);
+          const reason = describeJobHealth(c.status, metric, budget);
           return (
             <div key={c.job_name} className="rounded-lg border border-border p-3">
               <div className="flex items-center gap-3">
@@ -27,6 +28,19 @@ export function ScheduledJobsPanel({ cronRows, metrics }: { cronRows: CronHealth
                 {c.last_run_at && <span>· last run {new Date(c.last_run_at).toLocaleString()}</span>}
                 {c.last_error && <span>· {c.last_error}</span>}
               </div>
+              {reason && <p className="mt-2 pl-5 text-xs text-muted-foreground">{reason}</p>}
+              {c.recentFailures.length > 0 && (
+                <details className="mt-2 pl-5 text-xs text-muted-foreground">
+                  <summary className="cursor-pointer font-medium text-foreground">Failure history</summary>
+                  <div className="mt-2 space-y-1 rounded-md bg-muted/40 p-2">
+                    {c.recentFailures.map((failure) => (
+                      <p key={`${failure.observed_at}-${failure.status_code ?? "none"}`}>
+                        {new Date(failure.observed_at).toLocaleString()} · {failure.status_code === null ? "no HTTP response" : `HTTP ${failure.status_code}`} · {failure.error ?? "No error detail recorded"}
+                      </p>
+                    ))}
+                  </div>
+                </details>
+              )}
             </div>
           );
         })}

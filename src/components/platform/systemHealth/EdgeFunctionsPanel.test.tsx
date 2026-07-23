@@ -1,7 +1,8 @@
 import { describe, it, expect } from "vitest";
-import { screen } from "@testing-library/react";
+import { fireEvent, screen } from "@testing-library/react";
 import { renderWithProviders } from "@/test/renderWithProviders";
 import { EdgeFunctionsPanel } from "./EdgeFunctionsPanel";
+import { edgeLogUnavailableMessage } from "./edgeLogCopy";
 import type { EdgeFnMetric } from "@/lib/systemHealth";
 
 const metric = (over: Partial<EdgeFnMetric> = {}): EdgeFnMetric => ({
@@ -60,5 +61,22 @@ describe("EdgeFunctionsPanel", () => {
       byStatus: { "200": 6 }, lastStatus: 200, lastFailure: null,
     })]} />);
     expect(screen.queryByRole("button", { name: /view recent errors/i })).not.toBeInTheDocument();
+  });
+
+  it("explains an elevated 5xx rate", () => {
+    renderWithProviders(<EdgeFunctionsPanel metrics={[metric({ invocations: 10, errors: 2, rejected: 0, byStatus: { "200": 8, "500": 2 } })]} />);
+    expect(screen.getByText("5xx error rate 20.0% exceeds the 5.0% budget")).toBeInTheDocument();
+  });
+
+  it("opens the recent-error detail region", () => {
+    renderWithProviders(<EdgeFunctionsPanel metrics={[metric()]} />);
+    fireEvent.click(screen.getByRole("button", { name: /view recent errors/i }));
+    expect(screen.getByRole("button", { name: /hide recent errors/i })).toBeInTheDocument();
+    expect(screen.getByText("Loading log lines.")).toBeInTheDocument();
+  });
+
+  it("includes the analytics failure message in unavailable log copy", () => {
+    expect(edgeLogUnavailableMessage(new Error("analytics request returned 502")))
+      .toBe("Log lines unavailable: analytics request returned 502");
   });
 });

@@ -2,9 +2,10 @@ import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { StatusPill, StatusDot, LatencyStat, RunTimeline } from "./primitives";
-import { deriveEdgeFnStatus, CRON_FNS, type EdgeFnMetric } from "@/lib/systemHealth";
+import { describeEdgeFnHealth, deriveEdgeFnStatus, CRON_FNS, type EdgeFnMetric } from "@/lib/systemHealth";
 import { SYSTEM_HEALTH_BUDGET as budget } from "@/config/app.config";
 import { useEdgeFnLogs } from "@/hooks/useSystemHealth";
+import { edgeLogUnavailableMessage } from "./edgeLogCopy";
 
 /** Status-code histogram as sorted "code × count" chips, faults first. A bare
  *  error count cannot answer "what went wrong"; the exact code can. */
@@ -21,6 +22,7 @@ function EdgeFnRow({ m }: { m: EdgeFnMetric }) {
   const chips = statusChips(m.byStatus);
   const succeeded = m.invocations - m.errors - m.rejected;
   const hasFaults = m.errors + m.rejected > 0;
+  const reason = describeEdgeFnHealth(m, budget);
   // A single combined line, not three separate spans: it is both the visible stat
   // readout and the text equivalent for the aria-hidden RunTimeline ticks next to it.
   // Splitting it into per-stat spans as well would duplicate the same numbers into a
@@ -45,6 +47,7 @@ function EdgeFnRow({ m }: { m: EdgeFnMetric }) {
         <LatencyStat p95Ms={m.p95Ms} />
         <span className={m.rejected > 0 || m.errors > 0 ? "text-destructive" : undefined}>· {summary}</span>
       </div>
+      {reason && <p className="mt-2 pl-5 text-xs text-muted-foreground">{reason}</p>}
       {chips.length > 0 && (
         <div className="mt-2 flex flex-wrap items-center gap-2 pl-5 text-xs">
           {chips.map((c) => (
@@ -77,7 +80,7 @@ function EdgeFnRow({ m }: { m: EdgeFnMetric }) {
           {open && (
             <div className="mt-2 rounded-md bg-muted/40 p-2">
               {logs.isLoading && <p className="text-xs text-muted-foreground">Loading log lines.</p>}
-              {logs.isError && <p className="text-xs text-muted-foreground">Log lines unavailable.</p>}
+              {logs.isError && <p className="text-xs text-muted-foreground">{edgeLogUnavailableMessage(logs.error)}</p>}
               {logs.data?.length === 0 && <p className="text-xs text-muted-foreground">No error output in this window.</p>}
               {logs.data?.map((l, i) => (
                 <p key={i} className="font-mono text-[11px] leading-relaxed text-muted-foreground">

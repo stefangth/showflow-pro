@@ -27,7 +27,7 @@
 - Consumes: `CronStatus`, `EdgeFnMetric`, and `HealthBudget`.
 - Produces: `describeJobHealth(cron, metric, budget): string | null` and `describeEdgeFnHealth(metric, budget): string | null`.
 
-- [ ] **Step 1: Write failing explanation tests**
+- [x] **Step 1: Write failing explanation tests**
 
 Add tests that expect:
 
@@ -40,13 +40,13 @@ expect(describeEdgeFnHealth(metric({ invocations: 10, rejected: 3 }), BUDGET))
   .toBe("4xx rejection rate 30.0% exceeds the 20.0% budget");
 ```
 
-- [ ] **Step 2: Run the focused test and verify RED**
+- [x] **Step 2: Run the focused test and verify RED**
 
 Run: `npx vitest run src/lib/systemHealth.test.ts`
 
 Expected: FAIL because the two explanation helpers are not exported.
 
-- [ ] **Step 3: Implement the minimal explanation helpers**
+- [x] **Step 3: Implement the minimal explanation helpers**
 
 Add a private formatter:
 
@@ -57,7 +57,7 @@ const seconds = (ms: number) => `${(ms / 1000).toFixed(1)}s`;
 
 Then implement helpers with the status derivation's precedence: stale, failing/down, pending, all failed/rejected, elevated 5xx rate, elevated 4xx rate, and p95 budget. Return `null` when operational.
 
-- [ ] **Step 4: Run the focused test and verify GREEN**
+- [x] **Step 4: Run the focused test and verify GREEN**
 
 Run: `npx vitest run src/lib/systemHealth.test.ts`
 
@@ -76,7 +76,7 @@ Expected: PASS.
 - Consumes: `describeJobHealth` and `CronHealthRow.recent_failures`.
 - Produces: `CronFailure` with `status_code`, `error`, and `observed_at`; an accessible `Failure history` disclosure when one or more entries exist.
 
-- [ ] **Step 1: Write failing component tests**
+- [x] **Step 1: Write failing component tests**
 
 Extend the cron fixture with:
 
@@ -90,14 +90,14 @@ recent_failures: [{
 
 Assert the panel renders `p95 latency 18.0s exceeds the 12.0s budget`, a `Failure history` control, and—after clicking it—`504` and `timed out`.
 
-- [ ] **Step 2: Run the focused test and verify RED**
+- [x] **Step 2: Run the focused test and verify RED**
 
 Run: `npx vitest run src/components/platform/systemHealth/ScheduledJobsPanel.test.tsx`
 
 Expected: FAIL because neither reason copy nor failure history is rendered.
 
 
-- [ ] **Step 3: Implement explicit mapping and UI**
+- [x] **Step 3: Implement explicit mapping and UI**
 
 Add this exported type in `src/data/platform.ts` and use it in `CronHealthRow`:
 
@@ -127,7 +127,7 @@ return ((data ?? []) as Record<string, unknown>[]).map((row) => ({
 
 In `ScheduledJobsPanel`, call `describeJobHealth`, render its non-null copy below the existing schedule details, and use native `<details><summary>Failure history</summary>…</details>` to list each timestamp, status (`HTTP ${status_code}` when non-null), and stored error text.
 
-- [ ] **Step 4: Run the focused test and verify GREEN**
+- [x] **Step 4: Run the focused test and verify GREEN**
 
 Run: `npx vitest run src/components/platform/systemHealth/ScheduledJobsPanel.test.tsx`
 
@@ -145,21 +145,21 @@ Expected: PASS.
 - Consumes: `describeEdgeFnHealth` and the existing `useEdgeFnLogs` query result.
 - Produces: reason copy for non-operational function rows and an expanded drill-down that displays the query error message when the Analytics request fails.
 
-- [ ] **Step 1: Write failing UI tests**
+- [x] **Step 1: Write failing UI tests**
 
 Add a metric with `invocations: 10`, `errors: 2`, and assert the panel renders `5xx error rate 20.0% exceeds the 5.0% budget`. Add an interaction test that clicks `View recent errors` and verifies the detail region opens with its loading state.
 
-- [ ] **Step 2: Run the focused test and verify RED**
+- [x] **Step 2: Run the focused test and verify RED**
 
 Run: `npx vitest run src/components/platform/systemHealth/EdgeFunctionsPanel.test.tsx`
 
 Expected: FAIL because no explanation is rendered and the expanded state is not asserted by existing tests.
 
-- [ ] **Step 3: Implement minimal rendering**
+- [x] **Step 3: Implement minimal rendering**
 
 Import and call `describeEdgeFnHealth`. Render the returned reason after the summary. Replace the generic error-state copy with `Log lines unavailable: ${(logs.error as Error).message}` while retaining a safe fallback when the error is not an `Error`.
 
-- [ ] **Step 4: Run the focused test and verify GREEN**
+- [x] **Step 4: Run the focused test and verify GREEN**
 
 Run: `npx vitest run src/components/platform/systemHealth/EdgeFunctionsPanel.test.tsx`
 
@@ -172,25 +172,25 @@ Expected: PASS.
 **Files:**
 - Modify: files from Tasks 1–3 and both health documentation files only.
 
-- [ ] **Step 1: Run focused health tests**
+- [x] **Step 1: Run focused health tests**
 
 Run: `npx vitest run src/lib/systemHealth.test.ts src/components/platform/systemHealth/ScheduledJobsPanel.test.tsx src/components/platform/systemHealth/EdgeFunctionsPanel.test.tsx`
 
 Expected: PASS.
 
-- [ ] **Step 2: Run repository verification**
+- [x] **Step 2: Run repository verification**
 
 Run: `npm test && npm run lint && npm run build`
 
 Expected: all commands exit 0.
 
-- [ ] **Step 3: Review the diff**
+- [x] **Step 3: Review the diff**
 
 Run: `git diff --check origin/main...HEAD && git diff --stat origin/main...HEAD`
 
 Expected: only scoped health-observability code, tests, and documentation.
 
-- [ ] **Step 4: Commit and open a draft pull request**
+- [x] **Step 4: Commit and open a draft pull request**
 
 ```bash
 git add src/lib/systemHealth.ts src/lib/systemHealth.test.ts src/data/platform.ts \
