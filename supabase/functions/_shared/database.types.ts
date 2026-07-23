@@ -2152,6 +2152,10 @@ export type Database = {
       add_platform_admin: { Args: { p_email: string }; Returns: string }
       anonymize_user: { Args: { p_user: string }; Returns: undefined }
       app_setting_capability: { Args: { _key: string }; Returns: string }
+      assert_hire_order_dates_available: {
+        Args: { p_artist: string; p_dates: string[]; p_org: string }
+        Returns: undefined
+      }
       bulk_import_artists: {
         Args: { p_org: string; p_rows: Json }
         Returns: Json

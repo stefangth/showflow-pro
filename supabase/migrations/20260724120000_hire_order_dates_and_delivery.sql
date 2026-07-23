@@ -14,9 +14,26 @@ create index hire_order_dates_show_date_idx
 
 create or replace function public.enforce_hire_order_date_org()
 returns trigger language plpgsql security definer set search_path = public as $$
+declare
+  v_parent_org uuid;
+  v_show_date_org uuid;
 begin
-  if (select org_id from public.hire_orders where id = new.hire_order_id) <> new.org_id
-     or (select org_id from public.show_dates where id = new.show_date_id) <> new.org_id then
+  -- Lock the parent before resolving its identity. Parent artist/org/status
+  -- updates take the same row lock, so a child can never validate against an
+  -- identity that changes before the overlap trigger runs.
+  select org_id
+    into v_parent_org
+  from public.hire_orders
+  where id = new.hire_order_id
+  for update;
+
+  select org_id
+    into v_show_date_org
+  from public.show_dates
+  where id = new.show_date_id;
+
+  if v_parent_org is distinct from new.org_id
+     or v_show_date_org is distinct from new.org_id then
     raise exception 'hire order date belongs to a different org';
   end if;
   return new;
@@ -84,7 +101,8 @@ begin
   select artist_id, status
     into v_artist, v_status
   from public.hire_orders
-  where id = new.hire_order_id;
+  where id = new.hire_order_id
+  for update;
 
   if v_artist is null or v_status = 'void' then
     return new;
@@ -127,14 +145,53 @@ language plpgsql
 security definer
 set search_path = public
 as $$
+declare
+  v_old_lock bigint;
+  v_new_lock bigint;
 begin
+  if old.artist_id is not null then
+    v_old_lock := hashtextextended(
+      old.org_id::text || ':' || old.artist_id::text,
+      0
+    );
+  end if;
+
+  if new.artist_id is not null then
+    v_new_lock := hashtextextended(
+      new.org_id::text || ':' || new.artist_id::text,
+      0
+    );
+  end if;
+
+  -- Lock both identities in stable order. The old key serializes releases
+  -- (voiding or moving an order) while the new key serializes acquisitions.
+  if v_old_lock is not null
+     and v_new_lock is not null
+     and v_old_lock <> v_new_lock then
+    perform pg_advisory_xact_lock(least(v_old_lock, v_new_lock));
+    perform pg_advisory_xact_lock(greatest(v_old_lock, v_new_lock));
+  elsif coalesce(v_old_lock, v_new_lock) is not null then
+    perform pg_advisory_xact_lock(coalesce(v_old_lock, v_new_lock));
+  end if;
+
+  -- Parent and child organisation identity is an invariant independent of
+  -- active status: moving a parent must not strand children in another org.
+  if exists (
+    select 1
+    from public.hire_order_dates own_date
+    join public.show_dates sd on sd.id = own_date.show_date_id
+    where own_date.hire_order_id = new.id
+      and (
+        own_date.org_id is distinct from new.org_id
+        or sd.org_id is distinct from new.org_id
+      )
+  ) then
+    raise exception 'hire order date belongs to a different org';
+  end if;
+
   if new.artist_id is null or new.status = 'void' then
     return new;
   end if;
-
-  perform pg_advisory_xact_lock(
-    hashtextextended(new.org_id::text || ':' || new.artist_id::text, 0)
-  );
 
   -- The existing partial unique index remains the legacy-vs-legacy backstop.
   -- This trigger adds the paths that cross the aggregate child table.
