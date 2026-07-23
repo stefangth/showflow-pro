@@ -1068,6 +1068,7 @@ export type Database = {
           fee_currency: string
           id: string
           import_id: string | null
+          issue_snapshot: Json | null
           issued_at: string | null
           issued_pdf_sha256: string | null
           order_no: string
@@ -1094,6 +1095,7 @@ export type Database = {
           fee_currency?: string
           id?: string
           import_id?: string | null
+          issue_snapshot?: Json | null
           issued_at?: string | null
           issued_pdf_sha256?: string | null
           order_no: string
@@ -1120,6 +1122,7 @@ export type Database = {
           fee_currency?: string
           id?: string
           import_id?: string | null
+          issue_snapshot?: Json | null
           issued_at?: string | null
           issued_pdf_sha256?: string | null
           order_no?: string
@@ -1259,6 +1262,41 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "org_capabilities_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      org_capability_policies: {
+        Row: {
+          capability: string
+          enabled: boolean | null
+          locked: boolean
+          org_id: string
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          capability: string
+          enabled?: boolean | null
+          locked?: boolean
+          org_id: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          capability?: string
+          enabled?: boolean | null
+          locked?: boolean
+          org_id?: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "org_capability_policies_org_id_fkey"
             columns: ["org_id"]
             isOneToOne: false
             referencedRelation: "organizations"
@@ -2067,6 +2105,7 @@ export type Database = {
       accept_invitation: { Args: { p_token: string }; Returns: Json }
       add_platform_admin: { Args: { p_email: string }; Returns: string }
       anonymize_user: { Args: { p_user: string }; Returns: undefined }
+      app_setting_capability: { Args: { _key: string }; Returns: string }
       bulk_import_artists: {
         Args: { p_org: string; p_rows: Json }
         Returns: Json
@@ -2075,6 +2114,7 @@ export type Database = {
         Args: { p_import: Json; p_org: string; p_rows: Json }
         Returns: Json
       }
+      capability_default: { Args: { _capability: string }; Returns: boolean }
       category_of: { Args: { p_type: string }; Returns: string }
       compute_show_date_status: {
         Args: { p_show_date_id: string }
@@ -2137,6 +2177,10 @@ export type Database = {
         Returns: boolean
       }
       is_capability_enabled: {
+        Args: { _capability: string; _org: string }
+        Returns: boolean
+      }
+      is_capability_locked: {
         Args: { _capability: string; _org: string }
         Returns: boolean
       }
