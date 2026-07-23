@@ -16,7 +16,7 @@ const EMPTY: Map<string, ResolvedCapability> = new Map();
 export function useResolvedCapabilities(): { resolved: Map<string, ResolvedCapability>; isLoading: boolean } {
   const { currentOrg } = useAuth();
   const q = useQuery({
-    queryKey: ["capabilities", currentOrg?.id],
+    queryKey: ["capabilities", "state", currentOrg?.id],
     queryFn: () => fetchCapabilityState(supabase, currentOrg!.id),
     enabled: !!currentOrg,
     staleTime: 60_000,
@@ -31,6 +31,9 @@ export function useCan(action: string): boolean {
   const { hasRole } = useAuth();
   const { resolved, isLoading } = useResolvedCapabilities();
   if (hasRole("admin")) return true;
+  // Loading fallback returns the first held grantable role's registry default; the loaded path
+  // unions across all held roles. Inert while every CAPABILITY_DEFS entry has role: "producer"
+  // (revisit if artist-scoped defs are added).
   for (const role of ["producer", "artist"] as GrantableRole[]) {
     if (!hasRole(role)) continue;
     const def = capabilityFor(role, action);

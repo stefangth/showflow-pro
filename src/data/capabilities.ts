@@ -25,7 +25,7 @@ export async function fetchCapabilityPolicies(
     .select("capability, enabled, locked")
     .eq("org_id", orgId);
   if (error) throw error;
-  return (data ?? []) as CapabilityPolicyRow[];
+  return data ?? [];
 }
 
 /** Both layers in one call: org overrides + platform policies. */

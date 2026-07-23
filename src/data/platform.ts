@@ -4,6 +4,7 @@ import type { Organization } from "@/data/orgs";
 import type { EdgeFnMetric, EmailHealth } from "@/lib/systemHealth";
 import { BOOKING_ENGINE_DEFAULTS, SYSTEM_HEALTH, type AppRole } from "@/config/app.config";
 import type { EntitlementRow, FeatureKey } from "@/lib/entitlements";
+
 export interface OrgStat {
   org_id: string;
   name: string;
