@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Reorder } from "framer-motion";
-import { useAuth } from "@/features/auth/AuthContext";
+import { useCan } from "@/hooks/useCapabilities";
 import { useShows, useArchiveShow, useDeleteShow, useReorderShows, type ShowWithStats } from "@/hooks/useShows";
 import { isSyncedShow, canHardDeleteShow, reconcileDragOrder } from "@/lib/catalog";
 import { showSlots } from "@/lib/settings";
@@ -45,8 +45,10 @@ function colWidth(colId: string, isFirst: boolean): string {
 }
 
 export default function ProductionsPage() {
-  const { hasRole } = useAuth();
-  const isAdmin = hasRole("admin");
+  const canManageProductions = useCan("manage_productions");
+  const canArchiveProductions = useCan("archive_productions");
+  const canReorderProductions = useCan("reorder_productions");
+  const canHardDelete = useCan("hard_delete_productions");
   const { data: shows, isLoading, isError } = useShows();
   const archive = useArchiveShow();
   const del = useDeleteShow();
@@ -93,7 +95,7 @@ export default function ProductionsPage() {
       onError: (e) => toast.error((e as Error).message),
     });
 
-  const reorderable = statusFilter === "active";
+  const reorderable = statusFilter === "active" && canReorderProductions;
 
   if (isError) {
     return <Alert variant="destructive"><AlertDescription>Failed to load productions.</AlertDescription></Alert>;
@@ -128,7 +130,7 @@ export default function ProductionsPage() {
 
   const renderRow = (s: ShowWithStats, draggable: boolean) => {
     const synced = isSyncedShow(s);
-    const deletable = isAdmin && canHardDeleteShow({ synced, dateCount: s.dateCount });
+    const deletable = canHardDelete && canHardDeleteShow({ synced, dateCount: s.dateCount });
     const label = showIdentityLabel(s);
     return (
       <div className="flex items-center gap-3 px-4 py-3 border-b last:border-b-0">
@@ -142,11 +144,15 @@ export default function ProductionsPage() {
           </div>
         ))}
         <div className="ml-auto flex items-center gap-1 shrink-0">
-          <Button variant="ghost" size="icon" onClick={() => openEdit(s)} aria-label={`Edit ${label}`}><Pencil className="h-4 w-4" /></Button>
-          <Button variant="ghost" size="icon" onClick={() => onArchive(s, s.status !== "archived")} aria-label="Toggle archive">
+          <Button variant="ghost" size="icon" onClick={() => openEdit(s)} aria-label={`Edit ${label}`} disabled={!canManageProductions}
+            title={canManageProductions ? undefined : "You don't have permission to edit productions"}>
+            <Pencil className="h-4 w-4" />
+          </Button>
+          <Button variant="ghost" size="icon" onClick={() => onArchive(s, s.status !== "archived")} aria-label="Toggle archive" disabled={!canArchiveProductions}
+            title={canArchiveProductions ? undefined : "You don't have permission to archive productions"}>
             {s.status === "archived" ? <ArchiveRestore className="h-4 w-4" /> : <Archive className="h-4 w-4" />}
           </Button>
-          {isAdmin && (
+          {canHardDelete && (
             <AlertDialog>
               <AlertDialogTrigger asChild>
                 <Button variant="ghost" size="icon" data-testid={`delete-${s.id}`} disabled={!deletable}
@@ -178,7 +184,10 @@ export default function ProductionsPage() {
           <h1 className="font-display text-[32px] font-semibold tracking-tight">Productions</h1>
           <p className="text-muted-foreground mt-1">Your show catalog — slots, status, and order.</p>
         </div>
-        <Button onClick={openCreate}>New production</Button>
+        <Button onClick={openCreate} disabled={!canManageProductions}
+          title={canManageProductions ? undefined : "You don't have permission to create productions"}>
+          New production
+        </Button>
       </div>
 
       <div className="flex items-center gap-3">

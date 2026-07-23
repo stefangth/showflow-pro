@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/features/auth/AuthContext';
+import { useCan } from '@/hooks/useCapabilities';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { CastDialog } from './CastDialog';
 import { CastDetailsSheet } from './CastDetailsSheet';
@@ -14,7 +15,12 @@ interface CastsSectionProps {
 
 export function CastsSection({ onArtistClick }: CastsSectionProps = {}) {
   const { hasRole, currentOrg } = useAuth();
-  const canManage = hasRole('admin') || hasRole('producer');
+  // Page-level visibility: this section only renders on ArtistsPage, which is already
+  // admin/producer-gated at the route level. canManageCasts (below) separately governs
+  // the mutating controls (create/edit cast, add/remove members) so read access to the
+  // cast list and details survives an org disabling the manage_casts capability.
+  const canView = hasRole('admin') || hasRole('producer');
+  const canManageCasts = useCan('manage_casts');
   const [activeCast, setActiveCast] = useState<Cast | null>(null);
 
   const { data: casts } = useQuery({
@@ -37,7 +43,7 @@ export function CastsSection({ onArtistClick }: CastsSectionProps = {}) {
     },
   });
 
-  if (!canManage) return null;
+  if (!canView) return null;
 
   return (
     <Card>
@@ -45,7 +51,7 @@ export function CastsSection({ onArtistClick }: CastsSectionProps = {}) {
         <CardTitle className="font-display text-lg flex items-center gap-2">
           <Users className="h-5 w-5" /> Casts
         </CardTitle>
-        <CastDialog />
+        {canManageCasts && <CastDialog />}
       </CardHeader>
       <CardContent>
         {(casts?.length ?? 0) === 0 ? (

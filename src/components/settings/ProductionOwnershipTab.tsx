@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
+import { useCan } from '@/hooks/useCapabilities';
 import { useAllCities } from '@/hooks/useAllCities';
 import { fetchOrgProducers } from '@/data/orgs';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -31,6 +32,10 @@ interface Props {
  */
 export function ProductionOwnershipTab({ currentOrgId, canEnter }: Props) {
   const qc = useQueryClient();
+  // canEnter (role: admin/producer, set by the Settings nav) keeps gating READ — the
+  // queries below and their `enabled` flags are unchanged. canManage is the new
+  // capability gate for the write controls only (read-only floor).
+  const canManage = useCan('manage_ownership');
   const { data: cities } = useAllCities(canEnter);
 
   const { data: showProgramSubProgramPairs } = useQuery({
@@ -191,7 +196,7 @@ export function ProductionOwnershipTab({ currentOrgId, canEnter }: Props) {
             </div>
             <Button
               size="sm"
-              disabled={!newAssignUserId || !newAssignProgram || addAssignment.isPending}
+              disabled={!canManage || !newAssignUserId || !newAssignProgram || addAssignment.isPending}
               onClick={() => addAssignment.mutate()}
             >
               <Plus className="h-4 w-4 mr-1" />Add
@@ -221,8 +226,9 @@ export function ProductionOwnershipTab({ currentOrgId, canEnter }: Props) {
                     </Badge>
                     <button
                       onClick={() => deleteAssignment.mutate(a.id)}
-                      className="p-0.5 rounded hover:bg-muted text-muted-foreground hover:text-destructive"
+                      className="p-0.5 rounded hover:bg-muted text-muted-foreground hover:text-destructive disabled:opacity-50 disabled:pointer-events-none"
                       aria-label="Remove assignment"
+                      disabled={!canManage}
                     >
                       <Trash2 className="h-3.5 w-3.5" />
                     </button>

@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/features/auth/AuthContext';
+import { useCan } from '@/hooks/useCapabilities';
 import { useEditorConfig } from '@/features/editor/EditorContext';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from '@/components/ui/sheet';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -24,10 +25,10 @@ interface Props {
 }
 
 export function CastDetailsSheet({ cast, open, onOpenChange, onArtistClick }: Props) {
-  const { hasRole, roles, currentOrg } = useAuth();
+  const { roles, currentOrg } = useAuth();
   const { isEditorMode } = useEditorConfig();
   const isRealAdmin = roles.includes('admin');
-  const canManage = hasRole('admin') || hasRole('producer');
+  const canManage = useCan('manage_casts');
   const qc = useQueryClient();
   const [search, setSearch] = useState('');
   const [editMode, setEditMode] = useState(false);
@@ -254,7 +255,7 @@ export function CastDetailsSheet({ cast, open, onOpenChange, onArtistClick }: Pr
                     >
                       <p className="text-sm font-medium">{m.artist.name}</p>
                     </button>
-                    <Button size="icon" variant="ghost" aria-label={`Remove ${m.artist.name}`} onClick={() => removeMember.mutate(m.id)}>
+                    <Button size="icon" variant="ghost" aria-label={`Remove ${m.artist.name}`} onClick={() => removeMember.mutate(m.id)} disabled={!canManage}>
                       <X className="h-4 w-4" />
                     </Button>
                   </div>
@@ -278,7 +279,7 @@ export function CastDetailsSheet({ cast, open, onOpenChange, onArtistClick }: Pr
                       <p className="text-sm">{a.name}</p>
                       <Badge variant="outline" className="text-xs">{a.status}</Badge>
                     </div>
-                    <Button size="sm" variant="ghost" onClick={() => addMember.mutate(a.id)}>
+                    <Button size="sm" variant="ghost" onClick={() => addMember.mutate(a.id)} disabled={!canManage}>
                       <Plus className="h-4 w-4" />
                     </Button>
                   </div>

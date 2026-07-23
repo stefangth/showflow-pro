@@ -6,6 +6,7 @@ import { toast } from "sonner";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/features/auth/AuthContext";
+import { useCan } from "@/hooks/useCapabilities";
 import { useCreateShow, useUpdateShow, type ShowWithStats } from "@/hooks/useShows";
 import { useSkills } from "@/hooks/useSkills";
 import { fetchShowRequiredSkillIds, addShowRequiredSkill, removeShowRequiredSkill } from "@/data/eligibility";
@@ -41,6 +42,7 @@ export function ShowFormDialog({
   onSaved?: (id: string) => void;
 }) {
   const { user, currentOrg } = useAuth();
+  const canEditScheduling = useCan("edit_scheduling");
   const isEdit = !!show;
   const synced = !!show && isSyncedShow(show);
   const createShow = useCreateShow();
@@ -213,12 +215,12 @@ export function ShowFormDialog({
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1.5">
               <Label htmlFor="mainCastSlots">Main cast slots</Label>
-              <Input id="mainCastSlots" inputMode="numeric" {...form.register("mainCastSlots")} />
+              <Input id="mainCastSlots" inputMode="numeric" disabled={!canEditScheduling} {...form.register("mainCastSlots")} />
               {err.mainCastSlots && <p className="text-xs text-destructive">{err.mainCastSlots.message}</p>}
             </div>
             <div className="space-y-1.5">
               <Label htmlFor="understudySlots">Understudy slots</Label>
-              <Input id="understudySlots" inputMode="numeric" {...form.register("understudySlots")} />
+              <Input id="understudySlots" inputMode="numeric" disabled={!canEditScheduling} {...form.register("understudySlots")} />
               {err.understudySlots && <p className="text-xs text-destructive">{err.understudySlots.message}</p>}
             </div>
           </div>
