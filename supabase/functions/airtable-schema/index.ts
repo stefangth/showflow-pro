@@ -1,5 +1,6 @@
 import { preflight, json } from "../_shared/http.ts";
 import { requireOrgRole } from "../_shared/auth.ts";
+import { requireCapability } from "../_shared/capabilities.ts";
 import { realDeps, type Deps } from "../_shared/deps.ts";
 
 type Body = { org_id?: string; baseId?: string; linkedTableId?: string; tableName?: string; programField?: string; subProgramField?: string };
@@ -30,7 +31,8 @@ async function airtableFailure(res: Response, label: string): Promise<Response |
 /**
  * Reads the org's Airtable schema for the mapping UI.
  *
- * Auth: user JWT, requireOrgRole(org_id, ['admin']) (super-admins pass too).
+ * Auth: user JWT, requireOrgRole(org_id, ['admin']) (super-admins pass too), or a
+ * producer with the producer_can_configure_airtable capability on for this org.
  * The org PAT is read from the Vault via get_org_airtable_key and used only
  * server-side — it is NEVER returned to the client.
  *
@@ -50,8 +52,15 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
     if (!orgId) return json({ error: "Invalid payload: org_id is required" }, 400);
 
     // Caller must be an admin of the target org (super-admins pass via requireOrgRole).
-    const auth = await requireOrgRole(deps, req, orgId, ["admin"]);
-    if (!auth.ok) return auth.response;
+    // Admins bypass the capability gate outright; a producer additionally needs
+    // producer_can_configure_airtable on for this org.
+    const adminAuth = await requireOrgRole(deps, req, orgId, ["admin"]);
+    if (!adminAuth.ok) {
+      const prodAuth = await requireOrgRole(deps, req, orgId, ["producer"]);
+      if (!prodAuth.ok) return prodAuth.response;
+      const capGate = await requireCapability(deps, orgId, "producer_can_configure_airtable");
+      if (capGate) return capGate;
+    }
 
     // The org's Vault-stored PAT, used server-side only. Never echoed to the client.
     const { data: apiKey } = await deps.admin.rpc("get_org_airtable_key", { _org: orgId });

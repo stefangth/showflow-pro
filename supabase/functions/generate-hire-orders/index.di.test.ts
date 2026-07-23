@@ -1185,3 +1185,124 @@ Deno.test("cron-secret caller is accepted (trigger path unchanged)", async () =>
   assertEquals(res.status, 200);
   assertEquals((await res.json()).created, ["ho-cron"]);
 });
+
+// ── producer capability gate (draft / draft-manual / issue) ────────────────
+//
+// Admins/super-admins bypass the capability gate outright (the adminGate check
+// inside handle() passes before the capability RPC is ever consulted). A caller
+// who is only a producer of the target org must additionally hold the per-action
+// capability: producer_can_generate_hire_orders for draft/draft-manual,
+// producer_can_issue_hire_orders for issue. preview/download-url/countersign-test
+// stay ungated by capabilities (countersign-test remains admin-only via its own
+// re-check, covered above).
+
+Deno.test("draft: producer with producer_can_generate_hire_orders OFF → 403 capability_disabled, no writes", async () => {
+  const { deps, calls } = makeFakeDeps({
+    authUser: { id: "u-producer" },
+    tables: { org_memberships: { data: { role: "producer" } } },
+    rpcs: { is_capability_enabled: { data: false, error: null } },
+  });
+  const res = await handle(makeRequest({ headers: JWT, body: { action: "draft", org_id: ORG, show_date_id: SD } }), deps);
+  assertEquals(res.status, 403);
+  const body = await res.json();
+  assertEquals(body.error, "capability_disabled");
+  assertEquals(calls.some((c) => c.table === "hire_orders" && c.method === "insert"), false);
+});
+
+Deno.test("draft: producer with producer_can_generate_hire_orders ON → proceeds past the gate", async () => {
+  const { deps } = makeFakeDeps({
+    authUser: { id: "u-producer" },
+    tables: {
+      org_memberships: { data: { role: "producer" } },
+      show_dates: { data: SHOW_DATE_ROW },
+      bookings: { data: [booking("b-A", "a-A", 500, "Ann", "ann@x.de")] },
+      cities: { data: { name: "Berlin" } },
+      hire_orders: [
+        { when: { __write: false }, data: [] },
+        { when: { __write: true }, data: { id: "ho-producer" } },
+      ],
+      app_settings: [
+        { when: { key: "hire_order_defaults" }, data: [DEFAULTS] },
+        { when: { key: "hire_order_numbering" }, data: [NUMBERING] },
+      ],
+    },
+    rpcs: { is_capability_enabled: { data: true, error: null } },
+  });
+  const res = await handle(makeRequest({ headers: JWT, body: { action: "draft", org_id: ORG, show_date_id: SD } }), deps);
+  assertEquals(res.status, 200);
+  assertEquals((await res.json()).created, ["ho-producer"]);
+});
+
+Deno.test("draft-manual: producer with producer_can_generate_hire_orders OFF → 403 capability_disabled", async () => {
+  const { deps } = makeFakeDeps({
+    authUser: { id: "u-producer" },
+    tables: { org_memberships: { data: { role: "producer" } } },
+    rpcs: { is_capability_enabled: { data: false, error: null } },
+  });
+  const res = await handle(makeRequest({ headers: JWT, body: { action: "draft-manual", org_id: ORG, manual: {} } }), deps);
+  assertEquals(res.status, 403);
+  assertEquals((await res.json()).error, "capability_disabled");
+});
+
+Deno.test("issue: producer with producer_can_issue_hire_orders OFF → 403 capability_disabled, no writes", async () => {
+  const { deps, calls } = makeFakeDeps({
+    authUser: { id: "u-producer" },
+    tables: { org_memberships: { data: { role: "producer" } } },
+    rpcs: { is_capability_enabled: { data: false, error: null } },
+  });
+  const res = await handle(makeRequest({ headers: JWT, body: { action: "issue", org_id: ORG, order_ids: ["o-1"] } }), deps);
+  assertEquals(res.status, 403);
+  const body = await res.json();
+  assertEquals(body.error, "capability_disabled");
+  assertEquals(calls.some((c) => c.table === "hire_orders" && c.method === "update"), false);
+});
+
+Deno.test("issue: producer with producer_can_issue_hire_orders ON → proceeds past the gate", async () => {
+  const { deps } = makeFakeDeps({
+    authUser: { id: "u-producer" },
+    tables: {
+      org_memberships: { data: { role: "producer" } },
+      hire_orders: [
+        { when: { __write: false }, data: issuableOrder() },
+        { when: { __write: true }, data: null },
+      ],
+      artists: { data: { user_id: "u-artist" } },
+      app_settings: [
+        { when: { key: "hire_order_letterhead" }, data: [LETTERHEAD] },
+        { when: { key: "hire_order_terms" }, data: [TERMS_FILLED] },
+        { when: { key: "hire_order_defaults" }, data: [DEFAULTS] },
+      ],
+    },
+    rpcs: { is_capability_enabled: { data: true, error: null } },
+  });
+  const res = await handle(makeRequest({ headers: JWT, body: { action: "issue", org_id: ORG, order_ids: ["o-1"] } }), deps);
+  assertEquals(res.status, 200);
+  const body = await res.json();
+  assertEquals(body.issued, ["o-1"]);
+  assertEquals(body.failed, []);
+});
+
+Deno.test("issue: admin bypasses the capability gate entirely (never calls is_capability_enabled)", async () => {
+  const { deps, calls } = makeFakeDeps({
+    authUser: { id: "u-admin" },
+    tables: {
+      org_memberships: { data: { role: "admin" } },
+      hire_orders: [
+        { when: { __write: false }, data: issuableOrder() },
+        { when: { __write: true }, data: null },
+      ],
+      artists: { data: { user_id: "u-artist" } },
+      app_settings: [
+        { when: { key: "hire_order_letterhead" }, data: [LETTERHEAD] },
+        { when: { key: "hire_order_terms" }, data: [TERMS_FILLED] },
+        { when: { key: "hire_order_defaults" }, data: [DEFAULTS] },
+      ],
+    },
+    // is_capability_enabled intentionally NOT seeded — the fake defaults it to
+    // { data: null, error: null }, which checkCapability treats as OFF. An admin
+    // caller must never reach that check at all.
+  });
+  const res = await handle(makeRequest({ headers: JWT, body: { action: "issue", org_id: ORG, order_ids: ["o-1"] } }), deps);
+  assertEquals(res.status, 200);
+  assertEquals(calls.some((c) => c.table === "rpc:is_capability_enabled"), false);
+});

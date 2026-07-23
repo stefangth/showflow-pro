@@ -137,7 +137,8 @@ function authReq(extraHeaders: Record<string, string> = {}) {
 /**
  * Deps for interval-gate and manual-sync tests: one enabled+keyed org, empty catalog,
  * an Airtable-page fetch spy, and a seedable last-poll timestamp. `memberRole`/`authUser`
- * feed requireOrgRole for the manual-sync path.
+ * feed requireOrgRole for the manual-sync path. `capabilityEnabled` (when set) seeds the
+ * is_capability_enabled RPC for the producer_can_trigger_sync gate.
  */
 function makeGateDeps(opts: {
   lastSyncedAt?: string | null;
@@ -145,6 +146,7 @@ function makeGateDeps(opts: {
   now?: Date;
   authUser?: { id: string };
   memberRole?: string | null;
+  capabilityEnabled?: boolean;
 } = {}) {
   const fetchSpy = { count: 0 };
   const fetchImpl = ((url: string) => {
@@ -181,7 +183,13 @@ function makeGateDeps(opts: {
       platform_admins: { data: null, error: null },
       notifications: { data: null, error: null },
     },
-    rpcs: { get_org_airtable_key: { data: "key", error: null }, get_cron_secret: { data: "secret123", error: null } },
+    rpcs: {
+      get_org_airtable_key: { data: "key", error: null },
+      get_cron_secret: { data: "secret123", error: null },
+      ...(opts.capabilityEnabled !== undefined
+        ? { is_capability_enabled: { data: opts.capabilityEnabled, error: null } }
+        : {}),
+    },
     fetchImpl,
   });
   return { deps, invokeCalls, calls, fetchSpy };
@@ -279,6 +287,51 @@ Deno.test("sync-now: missing org_id → 400", async () => {
     deps,
   );
   assertEquals(res.status, 400);
+});
+
+// ─── Manual "Sync now": producer_can_trigger_sync capability gate ────────────
+//
+// Admins bypass the capability gate outright (proven above: the admin sync-now test
+// succeeds although makeGateDeps never seeds is_capability_enabled, which defaults to
+// OFF). A caller who is only a producer of the org must additionally hold
+// producer_can_trigger_sync.
+
+Deno.test("sync-now: producer with producer_can_trigger_sync ON → 200, syncs the org", async () => {
+  const { deps, fetchSpy } = makeGateDeps({
+    authUser: { id: "producer-1" }, memberRole: "producer", capabilityEnabled: true,
+  });
+  const res = await handle(
+    makeRequest({ method: "POST", headers: { Authorization: "Bearer producer-jwt" }, body: { org_id: ORG } }),
+    deps,
+  );
+  const body = await res.json();
+  assertEquals(res.status, 200);
+  assertEquals(body.ok, true);
+  assertEquals(fetchSpy.count, 1);
+});
+
+Deno.test("sync-now: producer with producer_can_trigger_sync OFF → 403 capability_disabled, no sync", async () => {
+  const { deps, fetchSpy } = makeGateDeps({
+    authUser: { id: "producer-1" }, memberRole: "producer", capabilityEnabled: false,
+  });
+  const res = await handle(
+    makeRequest({ method: "POST", headers: { Authorization: "Bearer producer-jwt" }, body: { org_id: ORG } }),
+    deps,
+  );
+  assertEquals(res.status, 403);
+  const body = await res.json();
+  assertEquals(body.error, "capability_disabled");
+  assertEquals(fetchSpy.count, 0);
+});
+
+Deno.test("sync-now: admin bypasses the capability gate entirely (never calls is_capability_enabled)", async () => {
+  const { deps, calls } = makeGateDeps({ authUser: { id: "admin-1" }, memberRole: "admin" });
+  const res = await handle(
+    makeRequest({ method: "POST", headers: { Authorization: "Bearer admin-jwt" }, body: { org_id: ORG } }),
+    deps,
+  );
+  assertEquals(res.status, 200);
+  assertEquals(calls.some((c) => c.table === "rpc:is_capability_enabled"), false);
 });
 
 // ─── Per-org skip paths (disabled / unconfigured / bad base / no key) ─────────

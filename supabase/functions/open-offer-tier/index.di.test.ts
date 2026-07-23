@@ -108,7 +108,7 @@ Deno.test("open-offer-tier: authenticated but not a member of the date's org →
   );
 });
 
-Deno.test("open-offer-tier: admin/producer of the date's org → past the org gate", async () => {
+Deno.test("open-offer-tier: producer of the date's org with the capability ON → past the org gate", async () => {
   const { deps } = makeFakeDeps({
     envVars,
     authUser: { id: "u1" },
@@ -117,12 +117,54 @@ Deno.test("open-offer-tier: admin/producer of the date's org → past the org ga
       org_memberships: { data: { role: "producer" }, error: null },
       cast_city_priority: { data: [], error: null }, // past auth; stops at "no casts at tier"
     },
+    rpcs: { is_capability_enabled: { data: true, error: null } },
   });
   const res = await handle(makeRequest({ headers: { Authorization: "Bearer user" }, body: { show_date_id: "d1", tier: 2 } }), deps);
   assertEquals(res.status, 200);
   const body = await res.json();
   assertEquals(body.offers_created, 0);
   assertExists(body.message);
+});
+
+// === Spec: producer_can_run_offer_engine capability ===
+//
+// Admins/super-admins bypass the capability gate outright (via requireOrgRole's admin
+// check). A caller who is only a producer of the date's org must additionally hold the
+// producer_can_run_offer_engine capability.
+
+Deno.test("open-offer-tier: producer of the date's org with the capability OFF → 403 capability_disabled, no writes", async () => {
+  const { deps, calls } = makeFakeDeps({
+    envVars,
+    authUser: { id: "u1" },
+    tables: {
+      show_dates: { data: { ...SHOW_DATE_OPEN, org_id: "org-A" }, error: null },
+      org_memberships: { data: { role: "producer" }, error: null },
+    },
+    rpcs: { is_capability_enabled: { data: false, error: null } },
+  });
+  const res = await handle(makeRequest({ headers: { Authorization: "Bearer user" }, body: { show_date_id: "d1", tier: 1 } }), deps);
+  assertEquals(res.status, 403);
+  const body = await res.json();
+  assertEquals(body.error, "capability_disabled");
+  assertEquals(calls.some((c) => c.table === "bookings" && c.method === "insert"), false);
+});
+
+Deno.test("open-offer-tier: admin of the date's org bypasses the capability gate entirely (never calls is_capability_enabled)", async () => {
+  const { deps, calls } = makeFakeDeps({
+    envVars,
+    authUser: { id: "u1" },
+    tables: {
+      show_dates: { data: { ...SHOW_DATE_OPEN, org_id: "org-A" }, error: null },
+      org_memberships: { data: { role: "admin" }, error: null },
+      cast_city_priority: { data: [], error: null }, // past auth; stops at "no casts at tier"
+    },
+    // is_capability_enabled intentionally NOT seeded — the fake defaults it to
+    // { data: null, error: null }, which checkCapability treats as OFF. An admin
+    // caller must never reach that check at all.
+  });
+  const res = await handle(makeRequest({ headers: { Authorization: "Bearer user" }, body: { show_date_id: "d1", tier: 2 } }), deps);
+  assertEquals(res.status, 200);
+  assertEquals(calls.some((c) => c.table === "rpc:is_capability_enabled"), false);
 });
 
 Deno.test("open-offer-tier: service role + missing fields → 400", async () => {
