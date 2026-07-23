@@ -15,7 +15,7 @@ import { Switch } from '@/components/ui/switch';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { toast } from 'sonner';
-import { Settings as SettingsIcon, Database, Bell, Wand2, Save, SlidersHorizontal, MapPin, Clock, BookOpen, UserCog, Building2, FileSignature } from 'lucide-react';
+import { Settings as SettingsIcon, Database, Bell, Wand2, Save, SlidersHorizontal, MapPin, Clock, BookOpen, UserCog, Building2, FileSignature, ShieldCheck } from 'lucide-react';
 import { upsertOrgSetting, mergeOrgRows } from '@/data/settings';
 import { computeSettingsDirtyKeys } from '@/lib/settings';
 import { AirtableSyncTab } from '@/components/settings/AirtableSyncTab';
@@ -26,6 +26,7 @@ import { DocumentationTab } from '@/components/settings/DocumentationTab';
 import { BookingFlowTab } from '@/components/settings/bookingFlow/BookingFlowTab';
 import { BOOKING_AUDIT_KEYS } from '@/components/settings/bookingFlow/auditKeys';
 import { HireOrdersTab } from '@/components/settings/hireOrders/HireOrdersTab';
+import { PermissionsTab } from '@/components/settings/permissions/PermissionsTab';
 
 type FilterKey = 'program' | 'timeframe' | 'sort' | 'status';
 const FILTER_KEYS: FilterKey[] = ['program', 'timeframe', 'sort', 'status'];
@@ -226,6 +227,7 @@ export default function SettingsPage() {
   const navGroups: { heading: string; items: { value: string; label: string; icon: typeof Building2; show: boolean; dot?: boolean }[] }[] = [
     { heading: "Organization", items: [
       { value: "organization", label: "Organization", icon: Building2, show: isAdmin },
+      { value: "permissions", label: "Roles & permissions", icon: ShieldCheck, show: isAdmin },
       { value: "production-ownership", label: "Production Ownership", icon: UserCog, show: isAdmin || isProducer },
       { value: "casts-cities", label: "Casts & Cities", icon: MapPin, show: true },
     ] },
@@ -337,6 +339,12 @@ export default function SettingsPage() {
         {isAdmin && (
           <TabsContent value="organization" className="mt-4">
             <OrganizationTab />
+          </TabsContent>
+        )}
+
+        {isAdmin && (
+          <TabsContent value="permissions" className="mt-4">
+            <PermissionsTab />
           </TabsContent>
         )}
 
