@@ -66,6 +66,15 @@ export interface FakeClientOptions {
     last_sign_in_at?: string | null;
     banned_until?: string | null;
   }>;
+  /**
+   * Seeded lookup backing `admin.rpc('get_user_id_by_email', { p_email })` — maps a
+   * (lowercased) email to the auth user id that owns it. Used by platform-manage-user's
+   * duplicate-email check. An explicit `rpcs.get_user_id_by_email` seed still wins if a
+   * test provides both (checked first in `rpc()` below).
+   */
+  authUsersByEmail?: Record<string, { id: string }>;
+  /** Seeded result for auth.admin.updateUserById (default: success). */
+  updateUserByIdResult?: { data?: unknown; error?: unknown };
 }
 
 const CHAIN = [
@@ -241,6 +250,15 @@ export function createFakeClient(opts: FakeClientOptions = {}) {
     rpc(name: string, params?: unknown) {
       calls.push({ table: `rpc:${name}`, method: "rpc", args: [params] });
       if (name in rpcs) return Promise.resolve(rpcs[name]);
+      // Default get_user_id_by_email to the seeded authUsersByEmail map (see
+      // authUsersByEmail doc comment on FakeClientOptions above). An explicit `rpcs`
+      // seed for this name already returned above, so this only fires when a test
+      // relies on the dedicated option instead.
+      if (name === "get_user_id_by_email" && opts.authUsersByEmail) {
+        const email = (params as { p_email?: string } | undefined)?.p_email;
+        const match = email ? opts.authUsersByEmail[email] : undefined;
+        return Promise.resolve({ data: match?.id ?? null, error: null });
+      }
       // Default get_cron_secret to the seeded app_settings.cron_secret (see seededCronSecret).
       if (name === "get_cron_secret" && fallbackCronSecret !== null) {
         return Promise.resolve({ data: fallbackCronSecret, error: null });
@@ -258,8 +276,31 @@ export function createFakeClient(opts: FakeClientOptions = {}) {
       getUser: () => Promise.resolve({ data: { user: opts.authUser ?? null }, error: null }),
       getClaims: (_token?: string) => Promise.resolve({ data: opts.claims ? { claims: opts.claims } : null, error: null }),
       admin: {
-        getUserById: (id: string) =>
-          Promise.resolve({ data: { user: opts.usersById?.[id] ? { id, ...opts.usersById[id] } : null }, error: null }),
+        getUserById: (id: string) => {
+          // Prefer the `authUsers` roster (carries created_at/last_sign_in_at/banned_until,
+          // the shape platform-manage-user needs for its oldEmail lookup) when a test seeds
+          // it; fall back to the pre-existing `usersById` shape unchanged otherwise.
+          const found = opts.authUsers?.find((u) => u.id === id);
+          if (found) {
+            return Promise.resolve({
+              data: {
+                user: {
+                  id: found.id,
+                  email: found.email ?? null,
+                  created_at: found.created_at ?? "2026-01-01T00:00:00.000Z",
+                  last_sign_in_at: found.last_sign_in_at ?? null,
+                  banned_until: found.banned_until ?? null,
+                },
+              },
+              error: null,
+            });
+          }
+          return Promise.resolve({ data: { user: opts.usersById?.[id] ? { id, ...opts.usersById[id] } : null }, error: null });
+        },
+        updateUserById: (id: string, attrs?: unknown) => {
+          calls.push({ table: "auth.admin.updateUserById", method: "update", args: [id, attrs] });
+          return Promise.resolve(opts.updateUserByIdResult ?? { data: { user: null }, error: null });
+        },
         listUsers: (_params?: unknown) =>
           Promise.resolve({
             data: {
