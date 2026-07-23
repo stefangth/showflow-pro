@@ -19,7 +19,7 @@ This is net-new configurability layered on the existing three roles. It does **n
 |---|---|
 | **Model** | Role × capability matrix on the existing 3 roles, extending `org_capabilities`. No new roles, no `app_role`/`has_role()` changes. |
 | **Enforcement** | Defense in depth: UI gate + edge `requireCapability` + capability-aware RLS, each with tests. |
-| **First-cut scope** | Full catalog on day one — all ~30 rights wired and enforced. |
+| **First-cut scope** | Full catalog on day one — all 27 producer rights wired and enforced. |
 | **Governance** | Platform admin sets per-org defaults and can **lock** rights; org admin tunes everything unlocked. Two-layer storage. |
 | **(a) Admin invariant** | Admin is never a stored capability — admins always hold everything by default. |
 | **(b) Platform UI** | The full matrix replaces the lone `producer_can_invite` toggle in `EditOrgDialog`, reached via a "Manage all rights" button; a compact summary stays in the dialog. |
@@ -94,15 +94,15 @@ interface CapabilityDef {
 Legend: default is the effective value for a fresh org. Most reproduce today's gate; **bold on** marks the 5 rights that intentionally default beyond today (§9). `S` = standard, `!` = sensitive (confirm + audit). Module column blank unless gated.
 
 ### A. Members & access
-| key | action / label | role | default | risk | enforcement | replaces (today) |
-|---|---|---|---|---|---|---|
-| `producer_can_invite` *(exists)* | Invite artists | producer | **on** | S | edge (`create-invitation`, wired) | admin-only + this cap (was off) |
-| `producer_can_invite_producers` | Invite producers | producer | off | ! | edge (`create-invitation`) | admin-only |
-| `producer_can_change_roles` | Change member roles | producer | off | ! | RPC `set_org_member_role` | admin-only |
-| `producer_can_remove_members` | Remove members | producer | off | ! | RPC `remove_org_member` | admin-only |
-| `producer_can_manage_invitations` | Revoke / resend invitations | producer | **on** | S | edge (`resend-invitation`) + RLS (`org_invitations`) | admin-only |
+Producer-grantable rights here are only those with a producer-reachable surface — the **Artists** page — because the read-only-reach decision keeps the **Admin console admin-only** (narrow-Admin).
 
-*Inviting/promoting admins stays admin-only (not a capability) — a producer granting admin would be escalation.*
+| key | action / label | role | default | risk | enforcement | surface / replaces |
+|---|---|---|---|---|---|---|
+| `producer_can_invite` *(exists)* | Invite artist to the app | producer | **on** | S | edge (`create-invitation`, wired) | Artists page; admin-only + this cap (was off) |
+| `producer_can_manage_invitations` | Revoke / resend **artist** invitations | producer | **on** | S | edge (`resend-invitation`) + RLS (`org_invitations` where role=`artist`) | Artists page (pending-invite chip); admin-only |
+
+**Admin-only in v1 (not producer-grantable)** — these live only in the admin-only Admin console, so under narrow-Admin there is no producer surface to exercise them; they stay admin-only and are candidates to graduate later if a producer members surface is ever built:
+`invite_producers`, `change_member_roles`, `remove_members`. Inviting/promoting **admins** is likewise never a capability (a producer granting admin would be escalation).
 
 ### B. Productions & show dates
 | key | action / label | role | default | risk | enforcement | replaces |
@@ -153,18 +153,22 @@ Legend: default is the effective value for a fresh org. Most reproduce today's g
 | `producer_can_configure_airtable` | Configure Airtable sync (mapping, keys) | producer | off | ! | edge (`airtable-schema`) + RLS (airtable settings) | admin-only |
 | `producer_can_trigger_sync` | Trigger manual "Sync now" | producer | off | S | edge (`airtable-poll` single-org) | admin-only |
 
-**Total: 30 producer capabilities** (1 pre-existing, 29 new). Exact count and each "replaces" gate are verified per-right during planning.
+**Total: 27 producer capabilities** (1 pre-existing, 26 new). Three member-management rights (`invite_producers`, `change_member_roles`, `remove_members`) stay admin-only in v1 per the narrow-Admin decision. Exact count and each "replaces" gate are verified per-right during planning.
 
 **Read-only floor (rule 0).** Capabilities gate **mutations only**. Producer SELECT/read policies are **never** capability-gated — the producer role keeps its existing org-scoped read access unconditionally. When a right is off, the surface renders **read-only** (control disabled/hidden), never removed. This means:
 - RLS changes touch **INSERT/UPDATE/DELETE policies only**, never SELECT.
 - Edge read endpoints (e.g. `download-url`, and the read side of `airtable-schema`) are not capability-gated for producers; only the mutating actions are. (The Airtable PAT is never returned to the client regardless.)
 - Each gated UI surface needs a **read-only rendering** for producers when the right is off — additional UI work versus simply hiding.
 
+**Reach (decided): broad for Settings, narrow for Admin.**
+- **Settings (broad)** — the currently admin-only Settings tabs (**Booking flow, Airtable, Filters, Notifications**, plus the org-rename control on Organization) become **producer-visible read-only**; the write is gated by the corresponding capability. This is new tab-level gating + read-only tab bodies for producers.
+- **Admin console (narrow)** — the Admin route stays **admin-only**. Producers get no read-only members/invites view. Consequently the only producer-grantable member/access rights are those with an existing Artists-page surface (`producer_can_invite`, `producer_can_manage_invitations` for artist invites); `invite_producers` / `change_member_roles` / `remove_members` stay admin-only in v1 (§5.A).
+
 Each right then lands in up to three places:
 
 1. **UI** — new hook `useCan(action: string): boolean` (admin → always true; else resolve the `${role}_can_${action}` cell from `useCapabilities()` with registry-default fallback) plus a pure `can(role, action, rows)` for logic tests. Replaces the scattered `hasRole('admin') || hasRole('producer')` **write** checks at the gate sites in §5's "replaces" column, rendering read-only instead of hiding.
 2. **Edge** — `requireCapability(deps, org_id, key)` inserted **after** the role gate, following the `create-invitation` double-gate. Applies to the `edge`-tagged rights (mutating actions only).
-3. **RLS** — the table's **write** policy gains `OR (has_org_role(uid, org_id, 'producer') AND is_capability_enabled(org_id, '<key>'))`. Applies to the `rls`-tagged rights. `SECURITY DEFINER` RPCs (`set_org_member_role`, `remove_org_member`, `bulk_import_artists`) get an in-body capability check instead of a policy change.
+3. **RLS** — the table's **write** policy gains `OR (has_org_role(uid, org_id, 'producer') AND is_capability_enabled(org_id, '<key>'))`. Applies to the `rls`-tagged rights. The `SECURITY DEFINER` RPC `bulk_import_artists` gets an in-body capability check instead of a policy change. (`set_org_member_role` / `remove_org_member` stay admin-only — not producer-gated in v1.)
 
 **Tests per right:**
 - Vitest: `can()` resolver truth table; a mirror byte-equality test (src registry == edge registry); a defaults-posture test that pins each `defaultEnabled` and asserts only the §9 five diverge from today's gate.
@@ -215,13 +219,14 @@ Roles & permissions                              org: Acme Productions
 
 - Custom/arbitrary roles or named groups beyond `admin`/`producer`/`artist`.
 - Grantable artist capabilities (column present, no togglable cells).
+- **Producer member/role management** (`invite_producers`, `change_member_roles`, `remove_members`) — admin-only in v1 because the Admin console stays admin-only (narrow-Admin). Graduate later if a producer members surface is built.
 - Delegating admin power tools (Editor mode, impersonation).
 - Per-field/per-column permissions (the editor system already covers column visibility separately).
 
 ## 11. Open questions / risks
 
-- **Read-only floor reach** *(needs decision)* — some gated surfaces are currently **admin-only routes/tabs** that producers can't reach at all: the Admin console (Members / Invites) and the admin-only Settings tabs (Booking flow, Airtable, Filters, Notifications). "Producers can always read" can mean either **(broad)** producers gain read-only access to those surfaces too, or **(narrow)** the floor applies only within surfaces producers already reach, leaving currently-admin-only pages admin-only. Broad reads more literally but expands producer IA (new read-only Admin/Settings views to build); narrow is a smaller change. Resolve before planning — it changes route/tab gating and the amount of read-only UI.
+- **Read-only floor reach** *(decided: broad Settings, narrow Admin — see §6)* — Settings admin-only tabs become producer read-only; the Admin console stays admin-only, which is why the three member-management rights are admin-only in v1 (§5.A).
 - **`confirm_bookings` RLS** — the `bookings` table has many status transitions; the capability must gate only the producer confirm path without loosening other transitions. Verify the exact policy shape during planning; may need a narrower `WITH CHECK` or a dedicated RPC.
 - **`app_settings` key partitioning** — several rights gate subsets of `app_settings` (booking, hire-order, filter, scheduling keys). Confirm the policies can discriminate by key prefix, or introduce a small mapping, so one right doesn't accidentally gate another's keys.
 - **Per-row `is_capability_enabled` cost in RLS** — evaluate whether the function call per row needs `STABLE`/marking or a join-friendly variant for hot tables (`bookings`, `show_dates`).
-- **Registry size** — 30 mirrored keys across three files; the mirror byte-equality test and the SQL `case` must stay in sync (guarded by tests, but a real maintenance surface).
+- **Registry size** — 27 mirrored keys across three files; the mirror byte-equality test and the SQL `case` must stay in sync (guarded by tests, but a real maintenance surface).
