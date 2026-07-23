@@ -8,7 +8,7 @@ vi.mock("@/data/capabilities", () => ({ fetchCapabilityState: vi.fn() }));
 
 import { useAuth } from "@/features/auth/AuthContext";
 import { fetchCapabilityState } from "@/data/capabilities";
-import { useCapabilities, useCapability, useCan } from "./useCapabilities";
+import { useCapabilities, useCapability, useCan, useCapabilityMatrix } from "./useCapabilities";
 
 function wrapper() {
   const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } });
@@ -123,5 +123,33 @@ describe("useCan", () => {
 
     const { result } = renderHook(() => useCan("issue_hire_orders"), { wrapper: wrapper() });
     await waitFor(() => expect(result.current).toBe(false));
+  });
+});
+
+describe("useCapabilityMatrix", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it("returns one cell per registry capability with resolved + raw values", async () => {
+    vi.mocked(fetchCapabilityState).mockResolvedValue({
+      overrides: [{ capability: "producer_can_rename_org", enabled: true }],
+      policies: [{ capability: "producer_can_issue_hire_orders", enabled: false, locked: true }],
+    });
+    const { result } = renderHook(() => useCapabilityMatrix("org-1"), { wrapper: wrapper() });
+    await waitFor(() => expect(result.current.cells.length).toBe(27));
+    const rename = result.current.cells.find((c) => c.def.key === "producer_can_rename_org")!;
+    expect(rename.effective).toBe(true);
+    expect(rename.source).toBe("org");
+    expect(rename.orgEnabled).toBe(true);
+    const issue = result.current.cells.find((c) => c.def.key === "producer_can_issue_hire_orders")!;
+    expect(issue.effective).toBe(false);
+    expect(issue.locked).toBe(true);
+    expect(issue.policyLocked).toBe(true);
+  });
+
+  it("is disabled (no fetch) when orgId is null", () => {
+    const { result } = renderHook(() => useCapabilityMatrix(null), { wrapper: wrapper() });
+    expect(result.current.cells).toEqual([]);
   });
 });
