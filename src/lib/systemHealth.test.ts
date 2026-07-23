@@ -35,6 +35,9 @@ describe("deriveJobStatus", () => {
   it("is degraded when a healthy cron job is being rejected with 4xx", () => {
     expect(deriveJobStatus("healthy", metric({ invocations: 10, rejected: 3 }), BUDGET)).toBe("degraded");
   });
+  it("is down when every recent scheduled invocation failed or was rejected", () => {
+    expect(deriveJobStatus("healthy", metric({ invocations: 3, errors: 2, rejected: 1 }), BUDGET)).toBe("down");
+  });
 });
 
 describe("deriveEdgeFnStatus", () => {

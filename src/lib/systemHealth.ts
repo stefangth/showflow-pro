@@ -78,6 +78,7 @@ export function deriveJobStatus(cron: CronStatus, metric: EdgeFnMetric | null, b
   // green, and ranked below 'degraded' so a brand-new job can't mask a real degraded signal in rollups.
   if (cron === "unknown") return "pending";
   if (metric) {
+    if (metric.invocations > 0 && metric.errors + metric.rejected === metric.invocations) return "down";
     if (errorRate(metric) > budget.errorRate) return "degraded";
     if (rejectRate(metric) > budget.rejectRate) return "degraded";
     if (metric.p95Ms !== null && metric.p95Ms > budget.p95Ms) return "degraded";
