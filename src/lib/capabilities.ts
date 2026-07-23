@@ -4,7 +4,7 @@
 // both files in the same commit. SQL twin: public.is_capability_enabled().
 //
 // Capabilities are permission GRANTS (who may do an action), distinct from
-// module entitlements (whether a feature exists — see entitlements.ts).
+// module entitlements (whether a feature exists; see entitlements.ts).
 
 // >>> CAPABILITY REGISTRY MIRROR (keep byte-identical with the twin file) >>>
 export type CapabilityKey = "producer_can_invite";
