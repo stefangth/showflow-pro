@@ -135,3 +135,16 @@ export function resolveAllCapabilities(
   }
   return out;
 }
+
+// ── Group-order helpers (matrix menu section rendering) ──
+export const CAPABILITY_GROUPS: string[] = CAPABILITY_DEFS.reduce<string[]>((acc, d) => {
+  if (!acc.includes(d.group)) acc.push(d.group);
+  return acc;
+}, []);
+
+export function capabilitiesByGroup(): Array<{ group: string; defs: CapabilityDef[] }> {
+  return CAPABILITY_GROUPS.map((group) => ({
+    group,
+    defs: CAPABILITY_DEFS.filter((d) => d.group === group),
+  }));
+}
