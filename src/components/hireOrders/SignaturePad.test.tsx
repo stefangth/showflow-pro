@@ -88,4 +88,13 @@ describe("SignaturePad", () => {
     fireEvent.click(screen.getByRole("button", { name: "Clear" }));
     expect(onChange).toHaveBeenCalledWith(null);
   });
+
+  it("locks the draw canvas to pointer input when disabled", () => {
+    const onChange = vi.fn();
+    const { container } = render(<SignaturePad value={null} onChange={onChange} disabled />);
+    activateDrawTab();
+    const canvas = container.querySelector("canvas");
+    expect(canvas?.className).toContain("pointer-events-none");
+    expect(canvas?.className).toContain("opacity-50");
+  });
 });
