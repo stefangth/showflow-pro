@@ -12,6 +12,7 @@ import { createFakeSupabase, type TableSeed } from "@/test/supabaseFake";
 const { client } = vi.hoisted(() => ({ client: {} as Record<string, unknown> }));
 vi.mock("@/integrations/supabase/client", () => ({ supabase: client }));
 vi.mock("@/features/auth/AuthContext", () => ({ useAuth: vi.fn() }));
+vi.mock("@/hooks/useCapabilities", async (orig) => ({ ...(await orig<typeof import("@/hooks/useCapabilities")>()), useCan: vi.fn() }));
 
 function seedClient(seed: Record<string, TableSeed>) {
   for (const key of Object.keys(client)) delete client[key];
@@ -19,6 +20,7 @@ function seedClient(seed: Record<string, TableSeed>) {
 }
 
 import { useAuth } from "@/features/auth/AuthContext";
+import { useCan } from "@/hooks/useCapabilities";
 import HireOrderDetailPage from "./HireOrderDetailPage";
 
 type Role = "producer" | "admin" | "artist";
@@ -82,7 +84,10 @@ function renderPage(id = "ho-1") {
 }
 
 describe("HireOrderDetailPage", () => {
-  beforeEach(() => seedFor(order()));
+  beforeEach(() => {
+    seedFor(order());
+    vi.mocked(useCan).mockReturnValue(true);
+  });
 
   it("renders the header with the mono order number and an Awaiting-countersign badge", async () => {
     authAs("producer");
@@ -152,6 +157,15 @@ describe("HireOrderDetailPage", () => {
       expect(update).toBeDefined();
       expect((update!.args[0] as { status?: string }).status).toBe("countersigned");
     });
+  });
+
+  it("manage_countersign off: Mark countersigned is disabled, everything else still reads", async () => {
+    authAs("producer");
+    vi.mocked(useCan).mockImplementation((action: string) => action !== "manage_countersign");
+    renderPage();
+    const btn = await screen.findByRole("button", { name: /mark countersigned/i });
+    expect(btn).toBeDisabled();
+    expect(await screen.findByText("Performance hire order")).toBeInTheDocument();
   });
 
   it("shows a countersigned confirmation chip (no action) once countersigned", async () => {

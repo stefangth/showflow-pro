@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { useAuth } from "@/features/auth/AuthContext";
+import { useCan } from "@/hooks/useCapabilities";
 import { useFeature } from "@/hooks/useEntitlements";
 import { useHireOrdersForDate, useHireOrderAction, useMyHireOrders } from "@/hooks/useHireOrders";
 import type { HireOrderRow } from "@/data/hireOrders";
@@ -82,6 +83,7 @@ function ProducerHireOrders({ showDateId, showDate, bookings, canManage }: Props
   const { currentOrg } = useAuth();
   const orgId = currentOrg?.id ?? "";
   const producerName = currentOrg?.name ?? "";
+  const canGenerate = useCan("generate_hire_orders");
 
   const { data: orders, isLoading, isError, error } = useHireOrdersForDate(showDateId);
   const action = useHireOrderAction();
@@ -139,7 +141,8 @@ function ProducerHireOrders({ showDateId, showDate, bookings, canManage }: Props
                       ? "This date is fully filled and ready for hire orders"
                       : "Generate for confirmed artists"}
                   </p>
-                  <Button size="sm" onClick={handleGenerate} disabled={action.isPending}>
+                  <Button size="sm" onClick={handleGenerate} disabled={action.isPending || !canGenerate}
+                    title={canGenerate ? undefined : "You don't have permission to generate hire orders"}>
                     Generate hire orders
                   </Button>
                 </div>

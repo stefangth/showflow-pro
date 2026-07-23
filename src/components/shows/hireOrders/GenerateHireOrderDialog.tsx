@@ -11,6 +11,7 @@ import { cn } from "@/lib/utils";
 import { formatDateDMY } from "@/lib/dates";
 import type { OrderData } from "@/lib/hireOrders/types";
 import type { HireOrderRow } from "@/data/hireOrders";
+import { useCan } from "@/hooks/useCapabilities";
 import { useHireOrderAction, useUpdateHireOrderReview } from "@/hooks/useHireOrders";
 import { supabase } from "@/integrations/supabase/client";
 import { resolveOrgSetting } from "@/data/settings";
@@ -141,6 +142,7 @@ export function GenerateHireOrderDialog({ open, onOpenChange, order, showDate, o
   const review = useUpdateHireOrderReview();
   const action = useHireOrderAction();
   const busy = review.isPending || action.isPending;
+  const canIssue = useCan("issue_hire_orders");
 
   const feeAmount = fee.trim() === "" ? null : Number(fee);
 
@@ -303,7 +305,10 @@ export function GenerateHireOrderDialog({ open, onOpenChange, order, showDate, o
         <DialogFooter className="gap-2 sm:gap-2">
           <Button variant="ghost" onClick={handlePreview} disabled={busy}>Preview PDF</Button>
           <Button variant="ghost" onClick={() => onOpenChange(false)} disabled={busy}>Cancel</Button>
-          <Button onClick={handleIssue} disabled={busy}>Issue and send</Button>
+          <Button onClick={handleIssue} disabled={busy || !canIssue}
+            title={canIssue ? undefined : "You don't have permission to issue hire orders"}>
+            Issue and send
+          </Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>

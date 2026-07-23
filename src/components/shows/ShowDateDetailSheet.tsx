@@ -4,6 +4,7 @@ import { format } from 'date-fns';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/features/auth/AuthContext';
+import { useCan } from '@/hooks/useCapabilities';
 import { useEditorConfig } from '@/features/editor/EditorContext';
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -95,6 +96,13 @@ export function ShowDateDetailSheet({ showDateId, open, onOpenChange }: Props) {
   const isRealAdmin = roles.includes('admin');
   const queryClient = useQueryClient();
   const canManage = hasRole('admin') || hasRole('producer');
+  // Capability-gated mutating controls, layered on top of the broad canManage
+  // read/visibility gate above (which stays unchanged) -- see useCan's
+  // "read-only floor" contract in src/hooks/useCapabilities.ts.
+  const canManageShowDates = useCan('manage_show_dates');
+  const canHardDelete = useCan('hard_delete_show_dates');
+  const canRunOfferEngine = useCan('run_offer_engine');
+  const canConfirmBookings = useCan('confirm_bookings');
 
   const { data: showDate, isLoading } = useQuery({
     queryKey: ['show-date-detail', showDateId],
@@ -247,10 +255,9 @@ export function ShowDateDetailSheet({ showDateId, open, onOpenChange }: Props) {
   const [cancelReason, setCancelReason] = useState('');
   const cancelDate = useCancelShowDate();
   const deleteDate = useDeleteShowDate();
-  const isAdmin = hasRole('admin');
   const bookingCount = (bookingsForDate ?? []).filter((b: { status: string }) => b.status !== 'cancelled').length;
   const synced = showDate ? isSyncedDate(showDate) : false;
-  const deletable = isAdmin && showDate ? canHardDeleteDate({ synced, bookingCount }) : false;
+  const deletable = canHardDelete && showDate ? canHardDeleteDate({ synced, bookingCount }) : false;
 
   const hasSession = !!(showDate?.session_1 || showDate?.session_2 || showDate?.session_3);
 
@@ -629,7 +636,8 @@ export function ShowDateDetailSheet({ showDateId, open, onOpenChange }: Props) {
               {/* Date actions (edit / cancel / delete) */}
               {canManage && showDate.status !== 'cancelled' && (
                 <div className="flex flex-wrap items-center gap-2">
-                  <Button variant="outline" size="sm" onClick={() => setEditOpen(true)}>
+                  <Button variant="outline" size="sm" onClick={() => setEditOpen(true)} disabled={!canManageShowDates}
+                    title={canManageShowDates ? undefined : "You don't have permission to edit show dates"}>
                     {synced ? 'Edit notes' : 'Edit schedule'}
                   </Button>
 
@@ -657,7 +665,7 @@ export function ShowDateDetailSheet({ showDateId, open, onOpenChange }: Props) {
                     </AlertDialogContent>
                   </AlertDialog>
 
-                  {isAdmin && (
+                  {canHardDelete && (
                     <AlertDialog>
                       <AlertDialogTrigger asChild>
                         <Button variant="ghost" size="sm" className="text-destructive" disabled={!deletable}
@@ -701,7 +709,7 @@ export function ShowDateDetailSheet({ showDateId, open, onOpenChange }: Props) {
                           dateLabel={formatDateDMY(showDate.date)}
                           flow={flow}
                           bookings={bookingsForDate ?? []}
-                          canManage={canManage}
+                          canManage={canRunOfferEngine}
                           hasSession={hasSession}
                           tiers={tiersQ.data ?? { priorities: [], hasAdHoc: false }}
                           ladderSource={tiersQ.data?.source ?? "org"}
@@ -767,9 +775,9 @@ export function ShowDateDetailSheet({ showDateId, open, onOpenChange }: Props) {
                               key={b.id}
                               booking={b}
                               canManage={canManage}
-                              // Always true: the button only renders on soft_booked rows anyway, so
-                              // it self-hides when there is no backlog from a previous policy.
-                              showConfirm={true}
+                              // Gated on confirm_bookings: false hides just the Confirm action
+                              // (Cancel stays available under the broad canManage read/manage gate).
+                              showConfirm={canConfirmBookings}
                               onConfirm={(bookingId) => updateBookingStatus.mutate({ bookingId, status: 'confirmed' })}
                               onCancel={(bookingId) => updateBookingStatus.mutate({ bookingId, status: 'cancelled' })}
                             />
@@ -784,9 +792,9 @@ export function ShowDateDetailSheet({ showDateId, open, onOpenChange }: Props) {
                               key={b.id}
                               booking={b}
                               canManage={canManage}
-                              // Always true: the button only renders on soft_booked rows anyway, so
-                              // it self-hides when there is no backlog from a previous policy.
-                              showConfirm={true}
+                              // Gated on confirm_bookings: false hides just the Confirm action
+                              // (Cancel stays available under the broad canManage read/manage gate).
+                              showConfirm={canConfirmBookings}
                               onConfirm={(bookingId) => updateBookingStatus.mutate({ bookingId, status: 'confirmed' })}
                               onCancel={(bookingId) => updateBookingStatus.mutate({ bookingId, status: 'cancelled' })}
                             />

@@ -3,6 +3,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Link } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/features/auth/AuthContext';
+import { useCan } from '@/hooks/useCapabilities';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -55,6 +56,8 @@ function ProducerDashboard() {
   const qc = useQueryClient();
   const { currentOrg } = useAuth();
   const orgId = currentOrg?.id ?? null;
+  // Only the bulk Confirm action is capability-gated (decline/cancel is deliberately not).
+  const canConfirmBookings = useCan('confirm_bookings');
   const { reference, customFieldKey } = useReferenceField();
   const flow = useBookingFlow().data ?? BOOKING_FLOW_DEFAULTS;
   const [selected, setSelected] = useState<Set<string>>(new Set());
@@ -254,7 +257,8 @@ function ProducerDashboard() {
                     size="sm"
                     variant="default"
                     className="text-xs"
-                    disabled={bulkConfirm.isPending || bulkDecline.isPending}
+                    disabled={bulkConfirm.isPending || bulkDecline.isPending || !canConfirmBookings}
+                    title={canConfirmBookings ? undefined : "You don't have permission to confirm bookings"}
                     onClick={() => bulkConfirm.mutate([...selected])}
                   >
                     <CheckCircle2 className="h-3.5 w-3.5 mr-1" />

@@ -6,6 +6,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { useAuth } from "@/features/auth/AuthContext";
+import { useCan } from "@/hooks/useCapabilities";
 import { useHireOrder, useHireOrderAction, useMarkCountersigned } from "@/hooks/useHireOrders";
 import { invokeHireOrderAction, type HireOrderRow } from "@/data/hireOrders";
 import { supabase } from "@/integrations/supabase/client";
@@ -40,6 +41,9 @@ export default function HireOrderDetailPage() {
   const navigate = useNavigate();
   const { currentOrg, hasRole } = useAuth();
   const orgId = currentOrg?.id ?? "";
+  // Gates only the "Mark countersigned" control below -- the broad canManage
+  // producer/admin-vs-artist split (Edit visibility, the download fallback) is unchanged.
+  const canManageCountersign = useCan("manage_countersign");
 
   const { data: order, isLoading, isError, error } = useHireOrder(id);
   const action = useHireOrderAction();
@@ -115,6 +119,7 @@ export default function HireOrderDetailPage() {
   }
 
   return <HireOrderDetail order={order} canManage={hasRole("admin") || hasRole("producer")}
+    canManageCountersign={canManageCountersign}
     navigateBack={() => navigate(-1)}
     onEdit={() => navigate(ROUTES.HIRE_ORDER_EDIT.replace(":id", order.id))}
     onDownload={handleDownload}
@@ -131,6 +136,7 @@ export default function HireOrderDetailPage() {
 interface DetailProps {
   order: HireOrderRow;
   canManage: boolean;
+  canManageCountersign: boolean;
   navigateBack: () => void;
   onEdit: () => void;
   onDownload: () => void;
@@ -146,7 +152,7 @@ interface DetailProps {
 /** The loaded-state body — split out so the page shell handles loading/error
  *  and this renders the header + document grid for a known-good order. */
 function HireOrderDetail({
-  order, canManage, navigateBack, onEdit, onDownload, downloadBusy,
+  order, canManage, canManageCountersign, navigateBack, onEdit, onDownload, downloadBusy,
   onCountersign, countersignBusy, pdfUrl, pdfUrlLoading, pdfUrlError, hasPdf,
 }: DetailProps) {
   const data = (order.data ?? {}) as OrderData;
@@ -258,6 +264,7 @@ function HireOrderDetail({
               <OrderFactsRail fee={fee} duration={duration} sessions={sessions} />
               <PrimaryAction
                 canManage={canManage}
+                canManageCountersign={canManageCountersign}
                 status={order.status}
                 hasPdf={hasPdf}
                 onDownload={onDownload}
@@ -275,6 +282,7 @@ function HireOrderDetail({
 
 interface ActionProps {
   canManage: boolean;
+  canManageCountersign: boolean;
   status: string;
   hasPdf: boolean;
   onDownload: () => void;
@@ -285,13 +293,15 @@ interface ActionProps {
 
 /** The role- and status-driven primary control in the rail. Producers/admins
  *  can mark an issued order countersigned (and see a confirmation once done);
- *  artists only ever get a download control. */
+ *  artists only ever get a download control. `canManageCountersign` gates only
+ *  the Mark-countersigned action itself, on top of the broad producer/admin split. */
 function PrimaryAction({
-  canManage, status, hasPdf, onDownload, downloadBusy, onCountersign, countersignBusy,
+  canManage, canManageCountersign, status, hasPdf, onDownload, downloadBusy, onCountersign, countersignBusy,
 }: ActionProps) {
   if (canManage && status === "issued") {
     return (
-      <Button className="w-full" onClick={onCountersign} disabled={countersignBusy}>
+      <Button className="w-full" onClick={onCountersign} disabled={countersignBusy || !canManageCountersign}
+        title={canManageCountersign ? undefined : "You don't have permission to countersign hire orders"}>
         Mark countersigned
       </Button>
     );

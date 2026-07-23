@@ -13,6 +13,7 @@ import { formatMoney } from "@/lib/hireOrders/money";
 import { formatDateDMY } from "@/lib/dates";
 import type { OrderData } from "@/lib/hireOrders/types";
 import type { HireOrderListRow } from "@/data/hireOrders";
+import { useCan } from "@/hooks/useCapabilities";
 import { useHireOrderAction, useMarkCountersigned, useVoidHireOrder } from "@/hooks/useHireOrders";
 import { ROUTES } from "@/config/app.config";
 
@@ -53,6 +54,8 @@ export function OrderSlideOver({ order, open, onOpenChange, orgId }: Props) {
   const action = useHireOrderAction();
   const countersign = useMarkCountersigned();
   const voidOrder = useVoidHireOrder();
+  const canIssue = useCan("issue_hire_orders");
+  const canVoid = useCan("void_hire_orders");
 
   const lastOrderRef = useRef<HireOrderListRow | null>(null);
   if (order) lastOrderRef.current = order;
@@ -145,7 +148,8 @@ export function OrderSlideOver({ order, open, onOpenChange, orgId }: Props) {
                     <Button variant="outline" className="w-full" onClick={handleEdit}>
                       <Pencil className="mr-1 h-4 w-4" /> Edit
                     </Button>
-                    <Button className="w-full" onClick={handleIssue} disabled={action.isPending}>
+                    <Button className="w-full" onClick={handleIssue} disabled={action.isPending || !canIssue}
+                      title={canIssue ? undefined : "You don't have permission to issue hire orders"}>
                       Issue and send
                     </Button>
                   </>
@@ -168,7 +172,8 @@ export function OrderSlideOver({ order, open, onOpenChange, orgId }: Props) {
                 {displayOrder.status !== "void" && (
                   <AlertDialog>
                     <AlertDialogTrigger asChild>
-                      <Button variant="outline" className="w-full text-destructive hover:text-destructive">
+                      <Button variant="outline" className="w-full text-destructive hover:text-destructive" disabled={!canVoid}
+                        title={canVoid ? undefined : "You don't have permission to void hire orders"}>
                         Void
                       </Button>
                     </AlertDialogTrigger>
