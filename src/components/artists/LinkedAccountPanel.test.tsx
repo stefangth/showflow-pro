@@ -68,4 +68,16 @@ describe("LinkedAccountPanel", () => {
     fireEvent.click(screen.getByRole("button", { name: /resend/i }));
     expect(onResend).toHaveBeenCalled();
   });
+
+  it("shows Invite (create) but hides Resend when canInvite and not canResend", () => {
+    const onInvite = vi.fn();
+    const { rerender } = renderWithProviders(
+      <LinkedAccountPanel state="none" userId={null} bookingEmail="b@x.com" canSeeAccount={false} canInvite canResend={false} onInvite={onInvite} />,
+    );
+    expect(screen.getByRole("button", { name: /invite to app/i })).toBeInTheDocument();
+    rerender(
+      <LinkedAccountPanel state="invited" userId={null} bookingEmail="b@x.com" canSeeAccount={false} canInvite canResend={false} onResend={vi.fn()} />,
+    );
+    expect(screen.queryByRole("button", { name: /resend/i })).not.toBeInTheDocument();
+  });
 });

@@ -184,3 +184,51 @@ Deno.test("create-invitation DI: no artist_id → legacy insert has no artist_id
   assertExists(insert);
   assertEquals(Object.prototype.hasOwnProperty.call(insert.args[0] as object, "artist_id"), false);
 });
+
+// === Spec: producer_can_invite capability (Task 5) ===
+//
+// Admins/super-admins are unchanged (may invite any role). A caller who is only a
+// producer may invite ONLY role='artist', and ONLY when the org's producer_can_invite
+// capability is on.
+
+function producerDeps(extra: Record<string, unknown> = {}) {
+  return makeFakeDeps({
+    authUser: { id: "p1" },
+    usersById: { p1: { email: "prod@acme.test" } },
+    tables: {
+      org_memberships: { data: { role: "producer" }, error: null },
+      org_invitations: {
+        data: { id: "inv1", org_id: "org-1", email: "invitee@x.com", role: "artist", status: "pending", token: "tok123", expires_at: "2099-01-01T00:00:00Z" },
+        error: null,
+      },
+      organizations: { data: { name: "Acme" }, error: null },
+    },
+    ...extra,
+  });
+}
+
+Deno.test("create-invitation DI: producer invites artist with capability ON → 200", async () => {
+  const { deps } = producerDeps({ rpcs: { is_capability_enabled: { data: true, error: null } } });
+  const res = await handle(inviteReq({ org_id: "org-1", email: "invitee@x.com", role: "artist" }), deps);
+  assertEquals(res.status, 200);
+});
+
+Deno.test("create-invitation DI: producer invites artist with capability OFF → 403 capability_disabled", async () => {
+  const { deps } = producerDeps({ rpcs: { is_capability_enabled: { data: false, error: null } } });
+  const res = await handle(inviteReq({ org_id: "org-1", email: "invitee@x.com", role: "artist" }), deps);
+  assertEquals(res.status, 403);
+  assertEquals((await res.json()).error, "capability_disabled");
+});
+
+Deno.test("create-invitation DI: producer invites a PRODUCER (cap on) → 403 producers_can_only_invite_artists", async () => {
+  const { deps } = producerDeps({ rpcs: { is_capability_enabled: { data: true, error: null } } });
+  const res = await handle(inviteReq({ org_id: "org-1", email: "invitee@x.com", role: "producer" }), deps);
+  assertEquals(res.status, 403);
+  assertEquals((await res.json()).error, "producers_can_only_invite_artists");
+});
+
+Deno.test("create-invitation DI: admin still invites a producer → 200 (unchanged)", async () => {
+  const { deps } = adminDeps();
+  const res = await handle(inviteReq({ org_id: "org-1", email: "invitee@x.com", role: "producer" }), deps);
+  assertEquals(res.status, 200);
+});

@@ -16,8 +16,11 @@ interface LinkedAccountPanelProps {
   accountLoading?: boolean;
   /** Whether the viewer may see account-level PII (admins). Producers get the status only. */
   canSeeAccount: boolean;
-  /** Whether the viewer may invite/resend (admins). */
+  /** Whether the viewer may invite/create (admins, or producers with the capability). */
   canInvite: boolean;
+  /** Whether the viewer may resend a pending invite. Defaults to canInvite; kept admin-only
+   *  in ArtistProfileSheet because resend reads org_invitations (admin-only RLS). */
+  canResend?: boolean;
   onInvite?: () => void;
   onResend?: () => void;
   inviteBusy?: boolean;
@@ -29,7 +32,7 @@ interface LinkedAccountPanelProps {
  * the effective digest recipient and an Invite/Resend action.
  */
 export function LinkedAccountPanel({
-  state, userId, bookingEmail, account, accountLoading, canSeeAccount, canInvite, onInvite, onResend, inviteBusy,
+  state, userId, bookingEmail, account, accountLoading, canSeeAccount, canInvite, canResend = canInvite, onInvite, onResend, inviteBusy,
 }: LinkedAccountPanelProps) {
   const isRegistered = !!userId;
   const effectiveDigestEmail = resolveContactEmail({ authEmail: account?.email, bookingEmail });
@@ -55,7 +58,7 @@ export function LinkedAccountPanel({
       {state === "invited" && (
         <div className="flex items-center justify-between gap-2">
           <p className="text-sm text-muted-foreground">Invite pending — awaiting acceptance.</p>
-          {canInvite && (
+          {canResend && (
             <Button size="sm" variant="outline" onClick={onResend} disabled={inviteBusy}>Resend</Button>
           )}
         </div>

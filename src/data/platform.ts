@@ -4,6 +4,7 @@ import type { Organization } from "@/data/orgs";
 import type { EdgeFnMetric, EmailHealth } from "@/lib/systemHealth";
 import { BOOKING_ENGINE_DEFAULTS, SYSTEM_HEALTH, type AppRole } from "@/config/app.config";
 import type { EntitlementRow, FeatureKey } from "@/lib/entitlements";
+import type { CapabilityKey } from "@/lib/capabilities";
 
 export interface OrgStat {
   org_id: string;
@@ -300,4 +301,17 @@ export async function fetchAllOrgEntitlements(
   const { data, error } = await client.from("org_entitlements").select("org_id, feature, enabled");
   if (error) throw error;
   return (data ?? []) as Array<{ org_id: string } & EntitlementRow>;
+}
+
+/** Toggle a single capability for an org (upsert on org_id+capability). Super-admin only via org_capabilities RLS. */
+export async function setOrgCapability(
+  client: SupabaseClient<Database>,
+  orgId: string,
+  capability: CapabilityKey,
+  enabled: boolean,
+): Promise<void> {
+  const { error } = await client
+    .from("org_capabilities")
+    .upsert({ org_id: orgId, capability, enabled }, { onConflict: "org_id,capability" });
+  if (error) throw error;
 }

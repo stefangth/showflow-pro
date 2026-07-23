@@ -1,5 +1,6 @@
 import { preflight, json } from "../_shared/http.ts";
 import { requireOrgRole } from "../_shared/auth.ts";
+import { requireCapability } from "../_shared/capabilities.ts";
 import type { TablesInsert } from "../_shared/database.types.ts";
 import { realDeps, type Deps } from "../_shared/deps.ts";
 import { deliverOrgInvitation } from "../_shared/invitations.ts";
@@ -30,9 +31,24 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
       return json({ error: 'Invalid role' }, 400);
     }
 
-    // Caller must be an admin of the target org.
-    const auth = await requireOrgRole(deps, req, body.org_id, ["admin"]);
-    if (!auth.ok) return auth.response;
+    // Admins & super-admins may invite any role (unchanged). A caller who is only
+    // a producer may invite ONLY artists, and ONLY when producer_can_invite is on.
+    // requireOrgRole returns just { ok, userId } (no role), so we gate twice.
+    const adminAuth = await requireOrgRole(deps, req, body.org_id, ["admin"]);
+    let inviterId: string;
+    if (adminAuth.ok) {
+      inviterId = adminAuth.userId!;
+    } else {
+      const prodAuth = await requireOrgRole(deps, req, body.org_id, ["producer"]);
+      if (!prodAuth.ok) return prodAuth.response;
+      // Gate on the RAW requested role, before the artist_id path (below) coerces
+      // role to 'artist'. Producers legitimately invite via { artist_id, role: 'artist' };
+      // any producer request with role !== 'artist' must be rejected here.
+      if (body.role !== "artist") return json({ error: "producers_can_only_invite_artists" }, 403);
+      const capGate = await requireCapability(deps, body.org_id, "producer_can_invite");
+      if (capGate) return capGate;
+      inviterId = prodAuth.userId!;
+    }
 
     const admin = deps.admin;
 
@@ -53,7 +69,7 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
       role = "artist";
     }
 
-    const insertRow: TablesInsert<"org_invitations"> = { org_id: body.org_id, email, role, invited_by: auth.userId };
+    const insertRow: TablesInsert<"org_invitations"> = { org_id: body.org_id, email, role, invited_by: inviterId };
     if (artistId) insertRow.artist_id = artistId;
 
     // Insert the invitation (token / status / expires_at use DB defaults) and read it back.
@@ -71,7 +87,7 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
     try {
       const { data: org } = await admin
         .from('organizations').select('name').eq('id', body.org_id).maybeSingle();
-      const inviter = auth.userId ? await admin.auth.admin.getUserById(auth.userId) : null;
+      const inviter = inviterId ? await admin.auth.admin.getUserById(inviterId) : null;
       await deliverOrgInvitation(deps, {
         email: invite.email,
         orgName: (org as { name?: string } | null)?.name ?? undefined,
