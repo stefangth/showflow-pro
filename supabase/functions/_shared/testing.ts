@@ -75,6 +75,8 @@ export interface FakeClientOptions {
   authUsersByEmail?: Record<string, { id: string }>;
   /** Seeded result for auth.admin.updateUserById (default: success). */
   updateUserByIdResult?: { data?: unknown; error?: unknown };
+  /** Seeded result for auth.resetPasswordForEmail (default: success, `{ data: {}, error: null }`). */
+  resetPasswordForEmailResult?: { data?: unknown; error?: unknown };
 }
 
 const CHAIN = [
@@ -275,6 +277,13 @@ export function createFakeClient(opts: FakeClientOptions = {}) {
     auth: {
       getUser: () => Promise.resolve({ data: { user: opts.authUser ?? null }, error: null }),
       getClaims: (_token?: string) => Promise.resolve({ data: opts.claims ? { claims: opts.claims } : null, error: null }),
+      // Sibling to `admin.auth.admin` below, NOT nested under it — mirrors real
+      // supabase-js, where resetPasswordForEmail lives on `auth`, not `auth.admin`.
+      // Records the call (email + options) so tests can assert on it directly.
+      resetPasswordForEmail: (email: string, options?: unknown) => {
+        calls.push({ table: "auth.resetPasswordForEmail", method: "reset", args: [email, options] });
+        return Promise.resolve(opts.resetPasswordForEmailResult ?? { data: {}, error: null });
+      },
       admin: {
         getUserById: (id: string) => {
           // Prefer the `authUsers` roster (carries created_at/last_sign_in_at/banned_until,

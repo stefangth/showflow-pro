@@ -69,7 +69,12 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
       const { data: u } = await admin.auth.admin.getUserById(target);
       const email = u?.user?.email;
       if (!email) return json({ error: "User has no email" }, 400);
-      const { error } = await admin.auth.admin.generateLink({ type: "recovery", email });
+      // resetPasswordForEmail (on admin.auth, NOT admin.auth.admin) both mints the
+      // recovery link and sends the email, matching the app's own reset flow
+      // (src/data/profiles.ts requestPasswordReset). generateLink only mints a link,
+      // it never sends anything, which was the bug: the handler reported success while
+      // the user received no email.
+      const { error } = await admin.auth.resetPasswordForEmail(email, { redirectTo: `${APP_ORIGIN}/reset-password` });
       if (error) throw error;
       await audit(deps, actor, "send_password_reset", target);
       return json({ ok: true });

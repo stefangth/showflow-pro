@@ -100,7 +100,7 @@ Deno.test("unsuspends a user", async () => {
   assertEquals((updateCall?.args[1] as { ban_duration?: string } | undefined)?.ban_duration, "none");
 });
 
-Deno.test("sends a password reset link", async () => {
+Deno.test("sends a password reset link via resetPasswordForEmail", async () => {
   const { deps, calls } = makeFakeDeps({
     authUser: { id: "sa" },
     tables: { platform_admins: { data: { user_id: "sa" }, error: null } },
@@ -108,6 +108,12 @@ Deno.test("sends a password reset link", async () => {
   });
   const res = await handle(post({ action: "send_password_reset", target_user_id: "u2" }), deps);
   assertEquals(res.status, 200);
+  // resetPasswordForEmail both mints AND sends the recovery email (generateLink only
+  // mints one, which was the bug: it discarded the link and never sent anything).
+  const resetCall = calls.find((c) => c.table === "auth.resetPasswordForEmail");
+  assert(resetCall, "expected resetPasswordForEmail to be called");
+  assertEquals(resetCall?.args[0], "u2@test.com");
+  assertEquals(resetCall?.args[1], { redirectTo: "https://app.showflow.pro/reset-password" });
   assert(calls.some((c) => c.table === "platform_audit_log" && c.method === "insert"));
 });
 
