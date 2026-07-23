@@ -68,6 +68,37 @@ export async function fetchOrgInvitations(
   return (data ?? []) as unknown as Invitation[];
 }
 
+export interface PendingArtistInvitation {
+  id: string;
+  artistId: string | null;
+  email: string;
+}
+
+interface PendingArtistInvitationRow {
+  id: string;
+  artist_id: string | null;
+  email: string;
+}
+
+/** Pending artist-role invitations for an org (drives the Artists-page revoke/resend controls). */
+export async function fetchPendingArtistInvitations(
+  client: SupabaseClient<Database>,
+  orgId: string,
+): Promise<PendingArtistInvitation[]> {
+  const { data, error } = await client
+    .from("org_invitations")
+    .select("id, artist_id, email")
+    .eq("org_id", orgId)
+    .eq("status", "pending")
+    .eq("role", "artist");
+  if (error) throw error;
+  return ((data ?? []) as unknown as PendingArtistInvitationRow[]).map((r) => ({
+    id: r.id,
+    artistId: r.artist_id,
+    email: r.email,
+  }));
+}
+
 /** Revoke a pending invitation. */
 export async function revokeInvitation(
   client: SupabaseClient<Database>,

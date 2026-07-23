@@ -4,11 +4,16 @@ import { renderWithProviders } from "@/test/renderWithProviders";
 import { createFakeSupabase } from "@/test/supabaseFake";
 
 const { client } = vi.hoisted(() => ({ client: {} as Record<string, unknown> }));
-const { auth } = vi.hoisted(() => ({ auth: { role: "producer" as string } }));
 
 vi.mock("@/integrations/supabase/client", () => ({ supabase: client }));
 vi.mock("@/features/auth/AuthContext", () => ({
-  useAuth: () => ({ hasRole: (r: string) => r === auth.role, currentOrg: { id: "o1" } }),
+  useAuth: () => ({ hasRole: () => true, currentOrg: { id: "o1" } }),
+}));
+// Both "Import from sheet" and "Add Artist" are gated by the same `add_artists`
+// capability (Phase 4.4 rewire) — mock useCan so gating is deterministic in tests.
+vi.mock("@/hooks/useCapabilities", async (orig) => ({
+  ...(await orig<typeof import("@/hooks/useCapabilities")>()),
+  useCan: vi.fn(),
 }));
 vi.mock("@/components/filters/useFilterVisibility", () => ({ useFilterVisibility: () => ({ canSee: () => false }) }));
 vi.mock("@/components/casts/CastsSection", () => ({ CastsSection: () => null }));
@@ -23,29 +28,34 @@ Object.assign(client, createFakeSupabase({
   artist_skills: { data: [], error: null },
   cast_members: { data: [], error: null },
   "rpc:list_pending_invited_artists": { data: [], error: null },
+  org_invitations: { data: [], error: null },
 }));
+
+import { useCan } from "@/hooks/useCapabilities";
+const mockUseCan = (allowed: Record<string, boolean>) =>
+  vi.mocked(useCan).mockImplementation((action: string) => allowed[action] ?? false);
 
 import ArtistsPage from "./ArtistsPage";
 
 describe("ArtistsPage import gating", () => {
-  beforeEach(() => { auth.role = "producer"; });
+  beforeEach(() => { vi.clearAllMocks(); });
 
-  it("producer sees 'Import from sheet' but not 'Add Artist'", () => {
-    auth.role = "producer";
+  it("add_artists on: sees both 'Import from sheet' and 'Add Artist'", () => {
+    mockUseCan({ add_artists: true });
     renderWithProviders(<ArtistsPage />);
     expect(screen.getByRole("button", { name: /import from sheet/i })).toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: /add artist/i })).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /add artist/i })).toBeInTheDocument();
   });
 
-  it("artist sees neither import nor add", () => {
-    auth.role = "artist";
+  it("add_artists off: sees neither import nor add", () => {
+    mockUseCan({ add_artists: false });
     renderWithProviders(<ArtistsPage />);
     expect(screen.queryByRole("button", { name: /import from sheet/i })).not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: /add artist/i })).not.toBeInTheDocument();
   });
 
   it("clicking Import opens the dialog", async () => {
-    auth.role = "producer";
+    mockUseCan({ add_artists: true });
     renderWithProviders(<ArtistsPage />);
     fireEvent.click(screen.getByRole("button", { name: /import from sheet/i }));
     await waitFor(() => expect(screen.getByText("IMPORT OPEN")).toBeInTheDocument());
