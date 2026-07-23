@@ -43,6 +43,7 @@ export const EMAIL_TEMPLATE_CATEGORY: Record<string, NotificationCategory> = {
   "artist-confirmation-digest": "booking_confirmations",
   "cast-escalation-requested": "at_risk",
   "hire-order-issued": "hire_orders",
+  "hire-order-countersigned": "hire_orders",
 };
 
 /** The category for an email template, or null when it is critical/uncategorized (always send). */
