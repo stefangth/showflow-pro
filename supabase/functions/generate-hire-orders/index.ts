@@ -1069,6 +1069,13 @@ async function signOrder(deps: Deps, req: Request, body: SignBody): Promise<Resp
     } catch {
       return json({ error: "invalid_signature" }, 400);
     }
+    // Reject a valid-base64 but non-PNG body before it reaches storage / the react-pdf
+    // <Image> renderer (which would otherwise throw uncaught -> CORS-less 500). Verify
+    // the 8-byte PNG signature.
+    const PNG_SIG = [0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a];
+    if (pngBytes.length < 8 || PNG_SIG.some((b, i) => pngBytes[i] !== b)) {
+      return json({ error: "invalid_signature" }, 400);
+    }
     signatureImagePath = `${org}/signatures/${o.order_no}.png`;
     const { error: imgErr } = await admin.storage.from(BUCKET).upload(signatureImagePath, pngBytes, {
       contentType: "image/png", upsert: true,

@@ -1609,6 +1609,30 @@ Deno.test("sign: a malformed drawn-signature payload is a clean 400, not an unha
   assertEquals(calls.filter((c) => c.table === "hire_orders" && c.method === "update").length, 0);
 });
 
+Deno.test("sign: a valid-base64 but non-PNG drawn-signature payload is a clean 400, not a render 500", async () => {
+  // btoa("not a png") is VALID base64 that decodes fine, so it slips past the
+  // decode try/catch — but the bytes are not a PNG. Without the magic-byte guard
+  // it would be uploaded and then crash the react-pdf <Image> render into an
+  // uncaught CORS-less 500. It must be a clean 400 invalid_signature, bailing
+  // before any upload / audit insert / status flip.
+  const nonPng = btoa("not a png"); // valid base64, non-PNG bytes
+  const { deps, calls } = signDeps();
+  const res = await handle(makeRequest({
+    headers: { Authorization: "Bearer artist" },
+    body: {
+      action: "sign", org_id: ORG, order_id: "o-1", method: "drawn",
+      signature_png: "data:image/png;base64," + nonPng,
+      consent: true,
+    },
+  }), deps);
+  assertEquals(res.status, 400);
+  assertEquals((await res.json()).error, "invalid_signature");
+
+  assertEquals(calls.filter((c) => c.table === "storage:hire-orders" && c.method === "upload").length, 0);
+  assertEquals(calls.filter((c) => c.table === "hire_order_signatures" && c.method === "insert").length, 0);
+  assertEquals(calls.filter((c) => c.table === "hire_orders" && c.method === "update").length, 0);
+});
+
 Deno.test("sign: emails BOTH the artist and the producers when email_producers_on_countersign is on", async () => {
   // signDeps fixes the countersign seed to { mode: electronic } and never seeds
   // resolve_show_assignments / usersById, so the producer fan-out is inlined here.
