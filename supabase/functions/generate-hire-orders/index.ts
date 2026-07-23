@@ -1028,7 +1028,16 @@ async function signOrder(deps: Deps, req: Request, body: SignBody): Promise<Resp
   let signatureImagePath: string | null = null;
   if (method === "drawn") {
     const b64 = png.slice(png.indexOf(",") + 1);
-    const pngBytes = decodeBase64(b64);
+    // The prefix + length were validated above, but the base64 BODY can still be
+    // undecodable (invalid chars) -> decodeBase64 throws. handle() has no try/catch
+    // around signOrder, so an escaped throw would be a CORS-less 500; treat it as
+    // the same clean 400 the other payload-validation failures return.
+    let pngBytes: Uint8Array;
+    try {
+      pngBytes = decodeBase64(b64);
+    } catch {
+      return json({ error: "invalid_signature" }, 400);
+    }
     signatureImagePath = `${org}/signatures/${o.order_no}.png`;
     const { error: imgErr } = await admin.storage.from(BUCKET).upload(signatureImagePath, pngBytes, {
       contentType: "image/png", upsert: true,
