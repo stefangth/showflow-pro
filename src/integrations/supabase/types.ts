@@ -1052,6 +1052,49 @@ export type Database = {
           },
         ]
       }
+      hire_order_dates: {
+        Row: {
+          hire_order_id: string
+          org_id: string
+          position: number
+          show_date_id: string
+        }
+        Insert: {
+          hire_order_id: string
+          org_id: string
+          position: number
+          show_date_id: string
+        }
+        Update: {
+          hire_order_id?: string
+          org_id?: string
+          position?: number
+          show_date_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "hire_order_dates_hire_order_id_fkey"
+            columns: ["hire_order_id"]
+            isOneToOne: false
+            referencedRelation: "hire_orders"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "hire_order_dates_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "hire_order_dates_show_date_id_fkey"
+            columns: ["show_date_id"]
+            isOneToOne: false
+            referencedRelation: "show_dates"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       hire_orders: {
         Row: {
           agent_email: string | null
@@ -1071,6 +1114,7 @@ export type Database = {
           issue_snapshot: Json | null
           issued_at: string | null
           issued_pdf_sha256: string | null
+          last_sent_at: string | null
           order_no: string
           org_id: string
           pdf_path: string | null
@@ -1098,6 +1142,7 @@ export type Database = {
           issue_snapshot?: Json | null
           issued_at?: string | null
           issued_pdf_sha256?: string | null
+          last_sent_at?: string | null
           order_no: string
           org_id: string
           pdf_path?: string | null
@@ -1125,6 +1170,7 @@ export type Database = {
           issue_snapshot?: Json | null
           issued_at?: string | null
           issued_pdf_sha256?: string | null
+          last_sent_at?: string | null
           order_no?: string
           org_id?: string
           pdf_path?: string | null
