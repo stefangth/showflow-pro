@@ -1090,15 +1090,13 @@ async function signOrder(deps: Deps, req: Request, body: SignBody): Promise<Resp
     document_sha256: o.issued_pdf_sha256,
     // dynamically assembled audit row -> single cast at the boundary
   }] as unknown as TablesInsert<"hire_order_signatures">[]);
-  if (sigErr) {
-    // Concurrent sign: two calls both passed the status==="issued" guard above;
-    // the loser's insert trips unique(hire_order_id) (Postgres 23505). The winner
-    // already recorded the signature and is completing the flip, so this is the
-    // same idempotent success the status-guarded transition returns below — not a
-    // 500. Return before the flip's side effects (they belong to the winner).
-    if ((sigErr as { code?: string }).code === "23505") return json({ countersigned: true, idempotent: true });
-    return json({ error: "signature_insert_failed" }, 500);
-  }
+  // A 23505 (unique(hire_order_id)) means an audit row ALREADY exists for this order
+  // — either a concurrent winner, or a prior submit that inserted the row but whose
+  // flip then failed, stranding the order at 'issued'. Do NOT blind-return success:
+  // fall through to the guarded flip below (the single source of truth). It flips the
+  // order if it is still 'issued' (completing that prior submit) or no-ops idempotently
+  // (!affected) if a winner already flipped it. Any other error is a genuine 500.
+  if (sigErr && (sigErr as { code?: string }).code !== "23505") return json({ error: "signature_insert_failed" }, 500);
 
   // Atomic + idempotent transition (guarded by status='issued').
   const { data: updatedRows, error: updErr } = await admin

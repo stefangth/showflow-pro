@@ -1337,20 +1337,20 @@ Deno.test("sign: already-countersigned order is an idempotent 200", async () => 
   assertEquals((await res.json()).idempotent, true);
 });
 
-Deno.test("sign: a concurrent unique-violation on the audit insert is an idempotent 200 with no side effects, not a 500", async () => {
-  // Two concurrent sign calls both pass the status==="issued" guard; the loser's
-  // hire_order_signatures insert trips unique(hire_order_id) -> Postgres 23505.
-  // The winner already recorded the signature and is completing the flip, so this
-  // is an idempotent success — NOT the old signature_insert_failed 500 — and the
-  // handler must return before the flip's producer/artist notifications + emails
-  // (those belong to the winning request).
+Deno.test("sign: 23505 on the audit insert falls through to the guarded flip and completes the countersign when the order is still issued", async () => {
+  // A prior submit inserted the audit row but its status flip then FAILED, leaving
+  // the order stranded at 'issued' with an orphan audit row. This retry passes the
+  // status==="issued" guard, re-does the work, and hits 23505 on the insert. It must
+  // NOT blind-return success: it falls through to the guarded flip, which finds the
+  // order still 'issued', completes the countersign, and runs the side effects once
+  // (the prior submit whose flip failed never ran them).
   const { deps, calls, invokeCalls } = makeFakeDeps({
     authUser: { id: "u-artist" },
     rpcs: { is_feature_enabled: { data: true, error: null } },
     tables: {
       hire_orders: [
-        { when: { __write: false }, data: SIGN_ORDER },
-        { when: { __write: true }, data: [{ id: "o-1" }] },
+        { when: { __write: false }, data: SIGN_ORDER }, // read -> still issued
+        { when: { __write: true }, data: [{ id: "o-1" }] }, // guarded flip matches -> completes
       ],
       artists: { data: { id: "a-A" } },
       org_memberships: { data: [] },
@@ -1368,9 +1368,51 @@ Deno.test("sign: a concurrent unique-violation on the audit insert is an idempot
   assertEquals(res.status, 200);
   const body = await res.json();
   assertEquals(body.countersigned, true);
-  assertEquals(body.idempotent, true);
+  assertEquals(body.idempotent, undefined, "a real completion is not the idempotent no-op");
 
-  // Returned before any side effects: no producer/artist notification, no email.
+  // The guarded flip IS the single source of truth: assert it was attempted, not a
+  // blind early-return that reports success without flipping.
+  const flip = calls.find((c) =>
+    c.table === "hire_orders" && c.method === "update" && (c.args[0] as { status?: string }).status === "countersigned");
+  assert(flip, "expected the guarded flip to status countersigned");
+
+  // Side effects ran once, because the flip actually completed the countersign.
+  const email = invokeCalls.find((c) =>
+    c.name === "send-transactional-email" &&
+    (c.body as { template_name?: string }).template_name === "hire-order-countersigned");
+  assert(email, "expected the countersigned email once the flip completed");
+});
+
+Deno.test("sign: 23505 on the audit insert with an already-flipped order is an idempotent 200 with no side effects", async () => {
+  // A concurrent winner already inserted the audit row AND flipped the order. This
+  // loser hits 23505 on insert, falls through to the guarded flip, which matches no
+  // 'issued' row (already countersigned) -> !affected -> idempotent, no side effects
+  // (they belong to the winner).
+  const { deps, calls, invokeCalls } = makeFakeDeps({
+    authUser: { id: "u-artist" },
+    rpcs: { is_feature_enabled: { data: true, error: null } },
+    tables: {
+      hire_orders: [
+        { when: { __write: false }, data: SIGN_ORDER },
+        { when: { __write: true }, data: [] }, // guarded flip matches nothing -> already flipped
+      ],
+      artists: { data: { id: "a-A" } },
+      org_memberships: { data: [] },
+      hire_order_signatures: { error: { code: "23505" } },
+      app_settings: [
+        { when: { key: "hire_order_countersign" }, data: [{ org_id: ORG, value: { mode: "electronic" } }] },
+        { when: { key: "hire_order_letterhead" }, data: [LETTERHEAD] },
+        { when: { key: "hire_order_terms" }, data: [TERMS_FILLED] },
+        { when: { key: "hire_order_defaults" }, data: [DEFAULTS] },
+      ],
+    },
+  });
+
+  const res = await handle(makeRequest({ headers: { Authorization: "Bearer artist" }, body: SIGN_BODY }), deps);
+  assertEquals(res.status, 200);
+  assertEquals((await res.json()).idempotent, true);
+
+  // No side effects — the winning request owns them.
   assertEquals(calls.filter((c) => c.table === "notifications" && c.method === "insert").length, 0);
   assertEquals(invokeCalls.filter((c) => c.name === "send-transactional-email").length, 0);
 });
