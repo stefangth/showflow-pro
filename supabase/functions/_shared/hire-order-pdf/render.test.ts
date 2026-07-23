@@ -203,3 +203,52 @@ Deno.test("issued render (no signature) is unchanged shape", async () => {
   const bytes = await renderHireOrderPdf(BASE);
   assert(bytes.length > 0 && bytes[0] === 0x25);
 });
+
+Deno.test("aggregate PDF renders every engagement date before the running order", async () => {
+  const bytes = await renderHireOrderPdf({
+    ...makeRenderFixture(),
+    data: {
+      ...makeRenderFixture().data,
+      engagement_dates: {
+        value: [
+          { show_date_id: "sd-1", date: "2026-08-15", venue: "Tempodrom", city: "Berlin" },
+          { show_date_id: "sd-2", date: "2026-08-16", venue: "Kulturhaus", city: "Hamburg" },
+        ],
+        source: "showflow",
+      },
+    },
+  });
+
+  assert(bytes.length > 0 && bytes[0] === 0x25, "produced a PDF");
+  const text = await extractPdfText(bytes);
+  assertStringIncludes(text, "Engagement dates");
+  assertStringIncludes(text, "15/08/2026");
+  assertStringIncludes(text, "Tempodrom");
+  assertStringIncludes(text, "Berlin");
+  assertStringIncludes(text, "16/08/2026");
+  assertStringIncludes(text, "Kulturhaus");
+  assertStringIncludes(text, "Hamburg");
+  assert(
+    text.indexOf("Engagement dates") < text.indexOf("Running order"),
+    "engagement dates render before the running order",
+  );
+});
+
+Deno.test("single-date PDF retains the legacy date presentation", async () => {
+  const text = await extractPdfText(await renderHireOrderPdf({
+    ...BASE,
+    data: {
+      ...BASE.data,
+      engagement_dates: {
+        value: [
+          { show_date_id: "sd-1", date: "2026-08-15", venue: "Tempodrom", city: "Berlin" },
+        ],
+        source: "showflow",
+      },
+    },
+  }));
+
+  assertEquals(text.includes("Engagement dates"), false);
+  assertStringIncludes(text, "15/08/2026");
+  assertStringIncludes(text, "Tempodrom");
+});

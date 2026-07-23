@@ -16,7 +16,12 @@
 //     and curly quotes become plain ASCII or a middot.
 import * as React from "npm:react@18.3.1";
 import { Document, Font, Image, Page, StyleSheet, Text, View, renderToBuffer } from "npm:@react-pdf/renderer@^4";
-import { formatMoney, type OrderData, type RenderInput } from "../hireOrders.ts";
+import {
+  type EngagementDate,
+  formatMoney,
+  type OrderData,
+  type RenderInput,
+} from "../hireOrders.ts";
 import { GEIST_MEDIUM_B64, GEIST_MONO_REGULAR_B64, GEIST_REGULAR_B64, GEIST_SEMIBOLD_B64 } from "./fonts.ts";
 
 // ── fonts ────────────────────────────────────────────────────────────────
@@ -155,6 +160,17 @@ const s = StyleSheet.create({
   cellTime: { fontFamily: "GeistMono", fontSize: 12 },
   notes: { fontSize: 11, color: C.muted, marginTop: 8 },
 
+  // Aggregate engagement dates
+  engagementDateRow: {
+    flexDirection: "row",
+    borderBottomWidth: 0.5,
+    borderBottomColor: C.line,
+    paddingVertical: 6,
+  },
+  engagementDateValue: { width: "28%", fontFamily: "GeistMono", fontSize: 10.5 },
+  engagementDatePlace: { flex: 1, fontSize: 10.5 },
+  engagementDateCity: { width: "25%", fontSize: 10.5, color: C.muted },
+
   // Fees
   feeRow: { flexDirection: "row", justifyContent: "space-between", paddingVertical: 6 },
   feeLabel: { fontSize: 12 },
@@ -281,6 +297,19 @@ function sessionsOf(data: OrderData): string[] {
   return value.filter((v) => v !== undefined && v !== null && v !== "").map(String);
 }
 
+function engagementDatesOf(data: OrderData): EngagementDate[] {
+  const value = data.engagement_dates?.value;
+  if (!Array.isArray(value)) return [];
+  return value.filter((item): item is EngagementDate => {
+    if (!item || typeof item !== "object") return false;
+    const row = item as Partial<EngagementDate>;
+    return typeof row.show_date_id === "string" &&
+      typeof row.date === "string" &&
+      (row.venue === null || typeof row.venue === "string") &&
+      (row.city === null || typeof row.city === "string");
+  });
+}
+
 // ── document ─────────────────────────────────────────────────────────────
 
 function HireOrderDoc(input: RenderInput): React.ReactElement {
@@ -300,6 +329,11 @@ function HireOrderDoc(input: RenderInput): React.ReactElement {
     ? ""
     : formatMoney(fee as string | number, currency);
   const sessions = sessionsOf(data);
+  const engagementDates = engagementDatesOf(data);
+  const isAggregate = engagementDates.length > 1;
+  const dateLabel = isAggregate
+    ? engagementDates.map((item) => formatDateDMY(item.date)).join(" · ")
+    : formatDateDMY(date);
   const billing = role && cast ? `${role} · billed as ${cast}` : cast ? `Billed as ${cast}` : role;
 
   return (
@@ -359,8 +393,8 @@ function HireOrderDoc(input: RenderInput): React.ReactElement {
         <View style={s.facts}>
           <View style={s.factCell}>
             <Text style={s.factLabel}>Date</Text>
-            <Text style={s.factValueMono}>{formatDateDMY(date)}</Text>
-            <Text style={s.factSub}>{weekdayOf(date)}</Text>
+            <Text style={s.factValueMono}>{dateLabel}</Text>
+            <Text style={s.factSub}>{isAggregate ? `${engagementDates.length} dates` : weekdayOf(date)}</Text>
           </View>
           <View style={[s.factCell, s.factDivider]}>
             <Text style={s.factLabel}>Venue</Text>
@@ -378,6 +412,21 @@ function HireOrderDoc(input: RenderInput): React.ReactElement {
             <Text style={s.factSub}>net of VAT</Text>
           </View>
         </View>
+
+        {isAggregate
+          ? (
+            <View style={s.section}>
+              <Text style={s.sectionHeading}>Engagement dates</Text>
+              {engagementDates.map((item) => (
+                <View key={item.show_date_id} style={s.engagementDateRow} wrap={false}>
+                  <Text style={s.engagementDateValue}>{formatDateDMY(item.date)}</Text>
+                  <Text style={s.engagementDatePlace}>{item.venue ?? ""}</Text>
+                  <Text style={s.engagementDateCity}>{item.city ?? ""}</Text>
+                </View>
+              ))}
+            </View>
+          )
+          : null}
 
         {/* Running order */}
         {sessions.length > 0

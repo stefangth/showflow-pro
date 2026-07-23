@@ -31,12 +31,12 @@ const HireOrderIssuedEmail = ({
   const date = date_label || 'your date'
   const place = venue || 'the venue'
   const downloadUrl = download_url || APP_URL
-  const ctaLabel = _cta_label || 'View and download'
+  const showSignCta = countersign_mode === 'documenso' || countersign_mode === 'electronic'
+  const ctaLabel = _cta_label || (showSignCta ? 'Review document' : 'View and download')
   const introText = _intro ||
     `Your hire order for ${date} at ${place} has been issued. Review the details below and download your copy.`
   const footerText = _footer ||
     `Questions about this hire order. Reply to this email and we will help.`
-  const showSignCta = countersign_mode === 'documenso' || countersign_mode === 'electronic'
 
   return (
     <Html lang="en" dir="ltr">
@@ -54,11 +54,6 @@ const HireOrderIssuedEmail = ({
             {city ? <Text style={factRow}><strong>City.</strong> {city}</Text> : null}
             {fee_label ? <Text style={factRow}><strong>Fee.</strong> {fee_label}</Text> : null}
           </Section>
-          <Section style={section}>
-            <Button href={downloadUrl} style={button}>{ctaLabel}</Button>
-          </Section>
-          <Text style={muted}>Or paste this link into your browser:</Text>
-          <Text style={link}>{downloadUrl}</Text>
           {showSignCta ? (
             <>
               <Text style={text}>Review and sign your hire order online to confirm.</Text>
@@ -66,9 +61,15 @@ const HireOrderIssuedEmail = ({
                 <Button href={signing_url || APP_URL} style={button}>Review and sign</Button>
               </Section>
             </>
-          ) : (
+          ) : null}
+          <Section style={section}>
+            <Button href={downloadUrl} style={button}>{ctaLabel}</Button>
+          </Section>
+          <Text style={muted}>Or paste this link into your browser:</Text>
+          <Text style={link}>{downloadUrl}</Text>
+          {!showSignCta ? (
             <Text style={text}>Reply to confirm, or sign and return the attached PDF.</Text>
-          )}
+          ) : null}
           <Text style={footer}>{footerText}</Text>
         </Container>
       </Body>

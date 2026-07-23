@@ -16,6 +16,13 @@ export interface FieldValue<T = unknown> {
   source: FieldSource;
 }
 
+export interface EngagementDate {
+  show_date_id: string;
+  date: string;
+  venue: string | null;
+  city: string | null;
+}
+
 export type OrderFieldKey =
   | "artist_name"
   | "recipient_email"
@@ -28,10 +35,13 @@ export type OrderFieldKey =
   | "sessions"
   | "fee"
   | "currency"
-  | "notes";
+  | "notes"
+  | "engagement_dates";
+
+export type EditableOrderFieldKey = Exclude<OrderFieldKey, "engagement_dates">;
 
 /** Fixed iteration order for resolveFields and any UI that lists order fields. */
-export const ORDER_FIELD_KEYS: OrderFieldKey[] = [
+export const ORDER_FIELD_KEYS: EditableOrderFieldKey[] = [
   "artist_name",
   "recipient_email",
   "role",
@@ -46,13 +56,15 @@ export const ORDER_FIELD_KEYS: OrderFieldKey[] = [
   "notes",
 ];
 
-export type OrderData = Partial<Record<OrderFieldKey, FieldValue>>;
+export type OrderData =
+  & Partial<Record<OrderFieldKey, FieldValue>>
+  & { engagement_dates?: FieldValue<EngagementDate[]> };
 
 export interface FieldLayers {
-  showflow?: Partial<Record<OrderFieldKey, unknown>>;
-  sheet?: Partial<Record<OrderFieldKey, unknown>>;
-  manual?: Partial<Record<OrderFieldKey, unknown>>;
-  defaults?: Partial<Record<OrderFieldKey, unknown>>;
+  showflow?: Partial<Record<EditableOrderFieldKey, unknown>>;
+  sheet?: Partial<Record<EditableOrderFieldKey, unknown>>;
+  manual?: Partial<Record<EditableOrderFieldKey, unknown>>;
+  defaults?: Partial<Record<EditableOrderFieldKey, unknown>>;
 }
 
 // ── resolveFields ────────────────────────────────────────────────────────

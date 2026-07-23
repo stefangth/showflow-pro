@@ -17,4 +17,23 @@ Deno.test("issued email shows the sign CTA in electronic mode", async () => {
     signing_url: "https://app.example/hire-orders/o-1",
   }));
   assert(html.includes("Review and sign"), "electronic mode shows the sign CTA");
+  assert(
+    html.indexOf("Review and sign") < html.indexOf("Review document"),
+    "electronic mode prioritises signing before document download",
+  );
+  assert(!html.includes("View and download"), "electronic mode uses a secondary document CTA label");
+});
+
+Deno.test("issued email preserves the manual download CTA", async () => {
+  const { render } = await import("npm:@react-email/render@1.0.1");
+  const html = await render(React.createElement(template.component, {
+    artist_name: "Ann",
+    date_label: "Sat, Aug 15 2026",
+    venue: "Tempodrom",
+    download_url: "https://app.example/hire-orders/o-1",
+    countersign_mode: "manual",
+  }));
+
+  assert(html.includes("View and download"), "manual mode keeps the legacy download label");
+  assert(!html.includes("Review and sign"), "manual mode does not show electronic signing");
 });
