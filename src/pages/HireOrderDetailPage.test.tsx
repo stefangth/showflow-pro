@@ -11,7 +11,8 @@ import { createFakeSupabase, type TableSeed } from "@/test/supabaseFake";
 // vi.mock chain), and useAuth as a vi.fn() so each test picks the role.
 const { client } = vi.hoisted(() => ({ client: {} as Record<string, unknown> }));
 vi.mock("@/integrations/supabase/client", () => ({ supabase: client }));
-vi.mock("@/features/auth/AuthContext", () => ({ useAuth: vi.fn() }));
+// Task 9 wires in useMyArtist (via useEffectiveUserId) alongside useAuth.
+vi.mock("@/features/auth/AuthContext", () => ({ useAuth: vi.fn(), useEffectiveUserId: () => "user-1" }));
 
 function seedClient(seed: Record<string, TableSeed>) {
   for (const key of Object.keys(client)) delete client[key];

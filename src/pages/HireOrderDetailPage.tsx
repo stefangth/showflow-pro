@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { ArrowLeft, Download, FileText, CheckCircle2 } from "lucide-react";
@@ -6,7 +7,15 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { useAuth } from "@/features/auth/AuthContext";
-import { useHireOrder, useHireOrderAction, useMarkCountersigned } from "@/hooks/useHireOrders";
+import {
+  useHireOrder,
+  useHireOrderAction,
+  useMarkCountersigned,
+  useHireOrderCountersignMode,
+} from "@/hooks/useHireOrders";
+import { useMyArtist } from "@/hooks/useMyArtist";
+import { canArtistSign } from "@/lib/hireOrders/signing";
+import { SignHireOrderDialog } from "@/components/hireOrders/SignHireOrderDialog";
 import { invokeHireOrderAction, type HireOrderRow } from "@/data/hireOrders";
 import { supabase } from "@/integrations/supabase/client";
 import { formatMoney } from "@/lib/hireOrders/money";
@@ -44,6 +53,17 @@ export default function HireOrderDetailPage() {
   const { data: order, isLoading, isError, error } = useHireOrder(id);
   const action = useHireOrderAction();
   const countersign = useMarkCountersigned();
+  const countersignMode = useHireOrderCountersignMode(orgId);
+  const { data: myArtist } = useMyArtist();
+  const canManage = hasRole("admin") || hasRole("producer");
+  const canSign = order
+    ? canArtistSign({
+        canManage,
+        status: order.status,
+        mode: countersignMode.data?.mode ?? "manual",
+        isLinkedArtist: !!myArtist && myArtist.id === order.artist_id,
+      })
+    : false;
 
   const hasPdf = !!order?.pdf_path;
 
@@ -114,7 +134,7 @@ export default function HireOrderDetailPage() {
     );
   }
 
-  return <HireOrderDetail order={order} canManage={hasRole("admin") || hasRole("producer")}
+  return <HireOrderDetail order={order} canManage={canManage} canSign={canSign} orgId={orgId}
     navigateBack={() => navigate(-1)}
     onEdit={() => navigate(ROUTES.HIRE_ORDER_EDIT.replace(":id", order.id))}
     onDownload={handleDownload}
@@ -131,6 +151,8 @@ export default function HireOrderDetailPage() {
 interface DetailProps {
   order: HireOrderRow;
   canManage: boolean;
+  canSign: boolean;
+  orgId: string;
   navigateBack: () => void;
   onEdit: () => void;
   onDownload: () => void;
@@ -146,9 +168,10 @@ interface DetailProps {
 /** The loaded-state body — split out so the page shell handles loading/error
  *  and this renders the header + document grid for a known-good order. */
 function HireOrderDetail({
-  order, canManage, navigateBack, onEdit, onDownload, downloadBusy,
+  order, canManage, canSign, orgId, navigateBack, onEdit, onDownload, downloadBusy,
   onCountersign, countersignBusy, pdfUrl, pdfUrlLoading, pdfUrlError, hasPdf,
 }: DetailProps) {
+  const [signOpen, setSignOpen] = useState(false);
   const data = (order.data ?? {}) as OrderData;
   const artistName = order.artists?.name || snap(data, "artist_name") || "Unknown artist";
   const email = snap(data, "recipient_email");
@@ -258,37 +281,55 @@ function HireOrderDetail({
               <OrderFactsRail fee={fee} duration={duration} sessions={sessions} />
               <PrimaryAction
                 canManage={canManage}
+                canSign={canSign}
                 status={order.status}
                 hasPdf={hasPdf}
                 onDownload={onDownload}
                 downloadBusy={downloadBusy}
                 onCountersign={onCountersign}
                 countersignBusy={countersignBusy}
+                onSign={() => setSignOpen(true)}
               />
             </CardContent>
           </Card>
         </aside>
       </div>
+      {canSign && (
+        <SignHireOrderDialog orderId={order.id} orgId={orgId} open={signOpen} onOpenChange={setSignOpen} />
+      )}
     </div>
   );
 }
 
 interface ActionProps {
   canManage: boolean;
+  canSign: boolean;
   status: string;
   hasPdf: boolean;
   onDownload: () => void;
   downloadBusy: boolean;
   onCountersign: () => void;
   countersignBusy: boolean;
+  onSign: () => void;
 }
 
 /** The role- and status-driven primary control in the rail. Producers/admins
  *  can mark an issued order countersigned (and see a confirmation once done);
- *  artists only ever get a download control. */
+ *  the linked artist gets an in-app Review & sign action on an issued
+ *  electronic-mode order; everyone else only ever gets a download control. */
 function PrimaryAction({
-  canManage, status, hasPdf, onDownload, downloadBusy, onCountersign, countersignBusy,
+  canManage, canSign, status, hasPdf, onDownload, downloadBusy, onCountersign, countersignBusy, onSign,
 }: ActionProps) {
+  if (canSign) {
+    return (
+      <div className="space-y-2">
+        <Button className="w-full" onClick={onSign}>Review &amp; sign</Button>
+        <Button variant="outline" className="w-full" onClick={onDownload} disabled={!hasPdf || downloadBusy}>
+          <Download className="mr-1 h-4 w-4" /> Download PDF
+        </Button>
+      </div>
+    );
+  }
   if (canManage && status === "issued") {
     return (
       <Button className="w-full" onClick={onCountersign} disabled={countersignBusy}>
