@@ -1159,6 +1159,38 @@ export type Database = {
           },
         ]
       }
+      org_capabilities: {
+        Row: {
+          capability: string
+          enabled: boolean
+          org_id: string
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          capability: string
+          enabled: boolean
+          org_id: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          capability?: string
+          enabled?: boolean
+          org_id?: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "org_capabilities_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       org_entitlements: {
         Row: {
           enabled: boolean
@@ -2027,6 +2059,10 @@ export type Database = {
           _role: Database["public"]["Enums"]["app_role"]
           _uid: string
         }
+        Returns: boolean
+      }
+      is_capability_enabled: {
+        Args: { _capability: string; _org: string }
         Returns: boolean
       }
       is_chat_participant: {
