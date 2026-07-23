@@ -41,7 +41,8 @@ export function SignaturePad({ value, onChange, disabled }: Props) {
     node.width = node.offsetWidth * ratio;
     node.height = node.offsetHeight * ratio;
     node.getContext("2d")?.scale(ratio, ratio);
-    const pad = new SignaturePadLib(node);
+    const dark = document.documentElement.classList.contains("dark");
+    const pad = new SignaturePadLib(node, { penColor: dark ? "#ffffff" : "#15131C" });
     pad.addEventListener("endStroke", () => {
       if (pad.isEmpty()) onChangeRef.current(null);
       else onChangeRef.current({ method: "drawn", pngDataUrl: pad.toDataURL("image/png") });
@@ -55,7 +56,7 @@ export function SignaturePad({ value, onChange, disabled }: Props) {
   }
 
   return (
-    <Tabs defaultValue="type" onValueChange={() => onChange(null)}>
+    <Tabs defaultValue="draw" onValueChange={() => onChange(null)}>
       <TabsList className="grid w-full grid-cols-2">
         <TabsTrigger value="type">Type</TabsTrigger>
         <TabsTrigger value="draw">Draw</TabsTrigger>

@@ -33,6 +33,11 @@ export function formatTimestampDMY(input: string): string {
   return format(new Date(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate()), 'dd/MM/yyyy');
 }
 
+/** Format an ISO timestamp in the viewer's local date and time. */
+export function formatTimestampLocal(input: string): string {
+  return new Intl.DateTimeFormat(undefined, { dateStyle: "medium", timeStyle: "short" }).format(new Date(input));
+}
+
 /** Format with weekday + dd/MM/yyyy, e.g. `Mon, 23/04/2026`. */
 export function formatDateWithWeekday(input: string | Date): string {
   const d = typeof input === 'string' ? parseDateOnly(input) : input;
