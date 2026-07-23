@@ -1325,6 +1325,36 @@ export type Database = {
         }
         Relationships: []
       }
+      platform_audit_log: {
+        Row: {
+          action: string
+          actor_user_id: string
+          created_at: string
+          detail: Json | null
+          id: string
+          org_id: string | null
+          target_user_id: string | null
+        }
+        Insert: {
+          action: string
+          actor_user_id: string
+          created_at?: string
+          detail?: Json | null
+          id?: string
+          org_id?: string | null
+          target_user_id?: string | null
+        }
+        Update: {
+          action?: string
+          actor_user_id?: string
+          created_at?: string
+          detail?: Json | null
+          id?: string
+          org_id?: string | null
+          target_user_id?: string | null
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           created_at: string
@@ -2035,6 +2065,10 @@ export type Database = {
         Args: { p_losers: string[]; p_survivor: string }
         Returns: undefined
       }
+      platform_link_artist: {
+        Args: { p_artist_id: string; p_org: string; p_user: string }
+        Returns: undefined
+      }
       platform_org_stats: {
         Args: never
         Returns: {
@@ -2047,6 +2081,19 @@ export type Database = {
           slug: string
           status: string
         }[]
+      }
+      platform_remove_membership: {
+        Args: { p_org: string; p_user: string }
+        Returns: undefined
+      }
+      platform_set_membership: {
+        Args: {
+          p_action: string
+          p_org: string
+          p_role: Database["public"]["Enums"]["app_role"]
+          p_user: string
+        }
+        Returns: undefined
       }
       provision_org: {
         Args: {

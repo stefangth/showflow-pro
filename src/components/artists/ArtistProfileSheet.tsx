@@ -226,13 +226,14 @@ export function ArtistProfileSheet({ artistId, open, onOpenChange }: Props) {
 
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1">
-                <label className="text-sm font-medium">Email</label>
+                <label className="text-sm font-medium">Booking / contact email</label>
                 <Input
                   type="email"
                   value={form.email}
                   onChange={(e) => setForm((f) => ({ ...f, email: e.target.value }))}
                   disabled={!canEdit}
                 />
+                <p className="text-xs text-muted-foreground">Separate from the login account.</p>
               </div>
               <div className="space-y-1">
                 <label className="text-sm font-medium">Phone</label>

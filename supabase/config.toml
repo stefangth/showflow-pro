@@ -46,6 +46,12 @@ verify_jwt = true
 [functions.platform-edge-metrics]
 verify_jwt = true
 
+[functions.platform-list-users]
+verify_jwt = true
+
+[functions.platform-manage-user]
+verify_jwt = true
+
 [functions.provision-org]
 verify_jwt = true
 
