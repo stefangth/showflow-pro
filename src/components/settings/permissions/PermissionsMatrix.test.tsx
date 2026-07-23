@@ -12,7 +12,7 @@ vi.mock("sonner", () => ({ toast: { success: vi.fn(), error: vi.fn() } }));
 
 import { setOrgCapability } from "@/data/platform";
 import { setOrgCapabilityPolicy } from "@/data/capabilities";
-import { useCapabilityMatrix } from "@/hooks/useCapabilities";
+import { useCapabilityMatrix, type CapabilityMatrixCell } from "@/hooks/useCapabilities";
 import { PermissionsMatrix } from "./PermissionsMatrix";
 import { CAPABILITY_DEFS, CAPABILITY_REGISTRY } from "@/lib/capabilities";
 
@@ -20,7 +20,7 @@ function wrap() {
   const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   return ({ children }: { children: React.ReactNode }) => React.createElement(QueryClientProvider, { client: qc }, children);
 }
-function allCells() {
+function allCells(): CapabilityMatrixCell[] {
   return CAPABILITY_DEFS.map((def) => ({ def, effective: def.defaultEnabled, locked: false, source: "registry", policyLocked: false }));
 }
 
