@@ -1,7 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/features/auth/AuthContext";
-import { enabledCapabilities, CAPABILITY_REGISTRY, type CapabilityKey } from "@/lib/capabilities";
+import { enabledCapabilities, CAPABILITY_REGISTRY } from "@/lib/capabilities";
 import { fetchCapabilities } from "@/data/capabilities";
 
 /** The current org's enabled capability set. Missing rows fall back to each
@@ -19,7 +19,7 @@ export function useCapabilities() {
 
 /** Whether a single capability is enabled for the current org. Returns the
  *  registry default while capabilities are still loading. */
-export function useCapability(capability: CapabilityKey): boolean {
+export function useCapability(capability: string): boolean {
   const { capabilities, isLoading } = useCapabilities();
   if (isLoading) return CAPABILITY_REGISTRY[capability].defaultEnabled;
   return capabilities.has(capability);

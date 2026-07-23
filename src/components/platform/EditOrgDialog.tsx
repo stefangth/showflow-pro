@@ -9,7 +9,7 @@ import { updateOrg, exportOrgData, deleteOrg, setOrgEntitlement, setOrgCapabilit
 import { fetchEntitlements } from "@/data/entitlements";
 import { fetchCapabilities } from "@/data/capabilities";
 import { FEATURE_KEYS, FEATURE_REGISTRY, type FeatureKey } from "@/lib/entitlements";
-import { CAPABILITY_KEYS, CAPABILITY_REGISTRY, type CapabilityKey } from "@/lib/capabilities";
+import { CAPABILITY_KEYS, CAPABILITY_REGISTRY } from "@/lib/capabilities";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -95,13 +95,13 @@ export function EditOrgDialog({ org, onClose }: { org: OrgStat | null; onClose: 
     enabled: !!org,
   });
 
-  const isCapabilityOn = (capability: CapabilityKey): boolean => {
+  const isCapabilityOn = (capability: string): boolean => {
     const row = capabilities?.find((r) => r.capability === capability);
     return row ? row.enabled : CAPABILITY_REGISTRY[capability].defaultEnabled;
   };
 
   const toggleCapability = useMutation({
-    mutationFn: ({ capability, enabled }: { capability: CapabilityKey; enabled: boolean }) =>
+    mutationFn: ({ capability, enabled }: { capability: string; enabled: boolean }) =>
       setOrgCapability(supabase, org!.org_id, capability, enabled),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["capabilities"] });

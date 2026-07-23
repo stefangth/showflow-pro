@@ -46,8 +46,10 @@ describe("useCapability", () => {
   });
 
   it("returns the registry default (false) while loading, then the resolved value", async () => {
-    vi.mocked(fetchCapabilities).mockResolvedValue([{ capability: "producer_can_invite", enabled: true }]);
-    const { result } = renderHook(() => useCapability("producer_can_invite"), { wrapper: wrapper() });
+    // producer_can_rename_org defaults to off (sensitive right), unlike producer_can_invite
+    // which now defaults on (see src/lib/capabilities.ts).
+    vi.mocked(fetchCapabilities).mockResolvedValue([{ capability: "producer_can_rename_org", enabled: true }]);
+    const { result } = renderHook(() => useCapability("producer_can_rename_org"), { wrapper: wrapper() });
     expect(result.current).toBe(false); // default while loading
     await waitFor(() => expect(result.current).toBe(true));
   });

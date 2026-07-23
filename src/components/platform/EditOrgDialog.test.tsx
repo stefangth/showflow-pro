@@ -78,7 +78,9 @@ describe("EditOrgDialog modules section", () => {
     render(wrap(<EditOrgDialog org={org} onClose={() => {}} />));
     await waitFor(() => expect(fetchEntitlementsSpy).toHaveBeenCalledWith(expect.anything(), "o1"));
     const bookingFlow = await screen.findByRole("switch", { name: /booking flow/i });
-    const hireOrders = screen.getByRole("switch", { name: /hire orders/i });
+    // Exact match: several new capability labels also contain "hire orders" case-insensitively
+    // (e.g. "Issue hire orders"), which a loose regex would collide with.
+    const hireOrders = screen.getByRole("switch", { name: "Hire orders" });
     expect(bookingFlow).toBeChecked();
     expect(hireOrders).not.toBeChecked();
     expect(screen.getByText(/Configurable offer, escalation and confirmation automation\./i)).toBeInTheDocument();
@@ -89,7 +91,7 @@ describe("EditOrgDialog modules section", () => {
     const { client, tree } = wrapWithClient(<EditOrgDialog org={org} onClose={() => {}} />);
     const invalidateSpy = vi.spyOn(client, "invalidateQueries");
     render(tree);
-    const hireOrders = await screen.findByRole("switch", { name: /hire orders/i });
+    const hireOrders = await screen.findByRole("switch", { name: "Hire orders" });
     fireEvent.click(hireOrders);
     await waitFor(() => expect(setOrgEntitlementSpy).toHaveBeenCalledWith(expect.anything(), "o1", "hire_orders", true));
     await waitFor(() => expect(toast.success).toHaveBeenCalledWith("Module updated"));
@@ -109,20 +111,22 @@ describe("EditOrgDialog user rights section", () => {
     render(wrap(<EditOrgDialog org={org} onClose={() => {}} />));
     await waitFor(() => expect(fetchCapabilitiesSpy).toHaveBeenCalledWith(expect.anything(), "o1"));
     expect(screen.getByText("User rights")).toBeInTheDocument();
-    const producerCanInvite = await screen.findByRole("switch", {
-      name: CAPABILITY_REGISTRY.producer_can_invite.label,
+    // producer_can_rename_org defaults to off (sensitive right), unlike producer_can_invite
+    // which now defaults on (see src/lib/capabilities.ts).
+    const producerCanRenameOrg = await screen.findByRole("switch", {
+      name: CAPABILITY_REGISTRY.producer_can_rename_org.label,
     });
-    expect(producerCanInvite).not.toBeChecked();
+    expect(producerCanRenameOrg).not.toBeChecked();
   });
 
   it("toggling a capability calls setOrgCapability, invalidates capabilities, and toasts", async () => {
     render(wrap(<EditOrgDialog org={org} onClose={() => {}} />));
-    const producerCanInvite = await screen.findByRole("switch", {
-      name: CAPABILITY_REGISTRY.producer_can_invite.label,
+    const producerCanRenameOrg = await screen.findByRole("switch", {
+      name: CAPABILITY_REGISTRY.producer_can_rename_org.label,
     });
-    fireEvent.click(producerCanInvite);
+    fireEvent.click(producerCanRenameOrg);
     await waitFor(() =>
-      expect(setOrgCapabilitySpy).toHaveBeenCalledWith(expect.anything(), "o1", "producer_can_invite", true),
+      expect(setOrgCapabilitySpy).toHaveBeenCalledWith(expect.anything(), "o1", "producer_can_rename_org", true),
     );
     await waitFor(() => expect(toast.success).toHaveBeenCalledWith("User rights updated"));
   });

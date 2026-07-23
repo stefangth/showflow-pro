@@ -4,8 +4,6 @@ import type { Organization } from "@/data/orgs";
 import type { EdgeFnMetric, EmailHealth } from "@/lib/systemHealth";
 import { BOOKING_ENGINE_DEFAULTS, SYSTEM_HEALTH, type AppRole } from "@/config/app.config";
 import type { EntitlementRow, FeatureKey } from "@/lib/entitlements";
-import type { CapabilityKey } from "@/lib/capabilities";
-
 export interface OrgStat {
   org_id: string;
   name: string;
@@ -307,7 +305,7 @@ export async function fetchAllOrgEntitlements(
 export async function setOrgCapability(
   client: SupabaseClient<Database>,
   orgId: string,
-  capability: CapabilityKey,
+  capability: string,
   enabled: boolean,
 ): Promise<void> {
   const { error } = await client
