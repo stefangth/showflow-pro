@@ -13,7 +13,7 @@ import { formatMoney } from "@/lib/hireOrders/money";
 import { formatDateDMY } from "@/lib/dates";
 import type { OrderData } from "@/lib/hireOrders/types";
 import type { HireOrderListRow } from "@/data/hireOrders";
-import { useHireOrderAction, useMarkCountersigned, useVoidHireOrder } from "@/hooks/useHireOrders";
+import { useHireOrderAction, useMarkCountersigned, useVoidHireOrder, useHireOrderCountersignMode } from "@/hooks/useHireOrders";
 import { ROUTES } from "@/config/app.config";
 
 /** Read a resolved snapshot field as a trimmed string ("" when absent). */
@@ -53,6 +53,11 @@ export function OrderSlideOver({ order, open, onOpenChange, orgId }: Props) {
   const action = useHireOrderAction();
   const countersign = useMarkCountersigned();
   const voidOrder = useVoidHireOrder();
+  // Electronic-mode orders complete via the artist's in-app signature, so the
+  // manual "Mark countersigned" one-click flip (which would skip the e-sign
+  // audit trail) is withheld in that mode. Manual mode keeps it.
+  const countersignMode = useHireOrderCountersignMode(orgId);
+  const isElectronic = countersignMode.data?.mode === "electronic";
 
   const lastOrderRef = useRef<HireOrderListRow | null>(null);
   if (order) lastOrderRef.current = order;
@@ -155,9 +160,11 @@ export function OrderSlideOver({ order, open, onOpenChange, orgId }: Props) {
                     <Button variant="outline" className="w-full" onClick={handleDownload} disabled={action.isPending}>
                       <Download className="mr-1 h-4 w-4" /> Download
                     </Button>
-                    <Button className="w-full" onClick={handleCountersign} disabled={countersign.isPending}>
-                      Mark countersigned
-                    </Button>
+                    {!isElectronic && (
+                      <Button className="w-full" onClick={handleCountersign} disabled={countersign.isPending}>
+                        Mark countersigned
+                      </Button>
+                    )}
                   </>
                 )}
                 {displayOrder.status === "countersigned" && (

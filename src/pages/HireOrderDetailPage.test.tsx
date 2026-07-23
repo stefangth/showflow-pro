@@ -155,6 +155,34 @@ describe("HireOrderDetailPage", () => {
     });
   });
 
+  it("hides Mark countersigned for a manager on an electronic issued order, showing an awaiting-signature hint", async () => {
+    // Electronic orders must complete via the artist's in-app signature (consent
+    // + audit row + signed PDF). A one-click manager flip would skip all of that,
+    // so the button is gated out of electronic mode and a non-action hint takes
+    // its place so the rail is not empty.
+    authAs("producer");
+    seedClient({
+      hire_orders: { data: order(), error: null },
+      "fn:generate-hire-orders": { data: { url: SIGNED_URL }, error: null },
+      app_settings: { data: [{ org_id: "org-1", value: { mode: "electronic" } }], error: null },
+    });
+    renderPage();
+    expect(await screen.findByText(/awaiting artist signature/i)).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /mark countersigned/i })).not.toBeInTheDocument();
+  });
+
+  it("keeps Mark countersigned for a manager on a manual-mode issued order", async () => {
+    authAs("producer");
+    seedClient({
+      hire_orders: { data: order(), error: null },
+      "fn:generate-hire-orders": { data: { url: SIGNED_URL }, error: null },
+      app_settings: { data: [{ org_id: "org-1", value: { mode: "manual" } }], error: null },
+    });
+    renderPage();
+    expect(await screen.findByRole("button", { name: /mark countersigned/i })).toBeInTheDocument();
+    expect(screen.queryByText(/awaiting artist signature/i)).not.toBeInTheDocument();
+  });
+
   it("shows a countersigned confirmation chip (no action) once countersigned", async () => {
     authAs("producer");
     seedFor(order({ status: "countersigned", countersigned_at: "2026-01-14T08:00:00Z" }));

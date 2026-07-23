@@ -1337,6 +1337,69 @@ Deno.test("sign: already-countersigned order is an idempotent 200", async () => 
   assertEquals((await res.json()).idempotent, true);
 });
 
+Deno.test("sign: a concurrent unique-violation on the audit insert is an idempotent 200 with no side effects, not a 500", async () => {
+  // Two concurrent sign calls both pass the status==="issued" guard; the loser's
+  // hire_order_signatures insert trips unique(hire_order_id) -> Postgres 23505.
+  // The winner already recorded the signature and is completing the flip, so this
+  // is an idempotent success — NOT the old signature_insert_failed 500 — and the
+  // handler must return before the flip's producer/artist notifications + emails
+  // (those belong to the winning request).
+  const { deps, calls, invokeCalls } = makeFakeDeps({
+    authUser: { id: "u-artist" },
+    rpcs: { is_feature_enabled: { data: true, error: null } },
+    tables: {
+      hire_orders: [
+        { when: { __write: false }, data: SIGN_ORDER },
+        { when: { __write: true }, data: [{ id: "o-1" }] },
+      ],
+      artists: { data: { id: "a-A" } },
+      org_memberships: { data: [] },
+      hire_order_signatures: { error: { code: "23505" } },
+      app_settings: [
+        { when: { key: "hire_order_countersign" }, data: [{ org_id: ORG, value: { mode: "electronic" } }] },
+        { when: { key: "hire_order_letterhead" }, data: [LETTERHEAD] },
+        { when: { key: "hire_order_terms" }, data: [TERMS_FILLED] },
+        { when: { key: "hire_order_defaults" }, data: [DEFAULTS] },
+      ],
+    },
+  });
+
+  const res = await handle(makeRequest({ headers: { Authorization: "Bearer artist" }, body: SIGN_BODY }), deps);
+  assertEquals(res.status, 200);
+  const body = await res.json();
+  assertEquals(body.countersigned, true);
+  assertEquals(body.idempotent, true);
+
+  // Returned before any side effects: no producer/artist notification, no email.
+  assertEquals(calls.filter((c) => c.table === "notifications" && c.method === "insert").length, 0);
+  assertEquals(invokeCalls.filter((c) => c.name === "send-transactional-email").length, 0);
+});
+
+Deno.test("sign: a non-23505 audit-insert error still fails 500 (signature_insert_failed)", async () => {
+  const { deps } = makeFakeDeps({
+    authUser: { id: "u-artist" },
+    rpcs: { is_feature_enabled: { data: true, error: null } },
+    tables: {
+      hire_orders: [
+        { when: { __write: false }, data: SIGN_ORDER },
+        { when: { __write: true }, data: [{ id: "o-1" }] },
+      ],
+      artists: { data: { id: "a-A" } },
+      org_memberships: { data: [] },
+      hire_order_signatures: { error: { code: "23502", message: "not-null violation" } },
+      app_settings: [
+        { when: { key: "hire_order_countersign" }, data: [{ org_id: ORG, value: { mode: "electronic" } }] },
+        { when: { key: "hire_order_letterhead" }, data: [LETTERHEAD] },
+        { when: { key: "hire_order_terms" }, data: [TERMS_FILLED] },
+        { when: { key: "hire_order_defaults" }, data: [DEFAULTS] },
+      ],
+    },
+  });
+  const res = await handle(makeRequest({ headers: { Authorization: "Bearer artist" }, body: SIGN_BODY }), deps);
+  assertEquals(res.status, 500);
+  assertEquals((await res.json()).error, "signature_insert_failed");
+});
+
 Deno.test("sign: manual-mode org is rejected 409 wrong_mode", async () => {
   const { deps } = signDeps({ mode: "manual" });
   const res = await handle(makeRequest({ headers: { Authorization: "Bearer artist" }, body: SIGN_BODY }), deps);

@@ -260,6 +260,20 @@ function formatIsoDMY(iso: string): string {
   return formatDateDMY(d.toISOString().slice(0, 10));
 }
 
+/**
+ * `dd/MM/yyyy HH:MM` (UTC) from a full ISO timestamp. The signature certificate
+ * is an audit record, so it needs minute precision: two signatures on the same
+ * calendar day render identically with a date alone. Hour/minute are read on the
+ * UTC clock (deterministic, matches the "(UTC)" label the row carries).
+ */
+function formatIsoDateTimeUTC(iso: string): string {
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return "";
+  const hh = String(d.getUTCHours()).padStart(2, "0");
+  const mm = String(d.getUTCMinutes()).padStart(2, "0");
+  return `${formatDateDMY(d.toISOString().slice(0, 10))} ${hh}:${mm}`;
+}
+
 /** `sessions` is a list of time strings; anything else renders no rows. */
 function sessionsOf(data: OrderData): string[] {
   const value = data.sessions?.value;
@@ -457,7 +471,7 @@ function HireOrderDoc(input: RenderInput): React.ReactElement {
           <View style={s.certRow}><Text style={s.certLabel}>Signer</Text><Text style={s.certValue}>{signature.signerName}</Text></View>
           {signature.signerEmail ? <View style={s.certRow}><Text style={s.certLabel}>Email</Text><Text style={s.certValue}>{signature.signerEmail}</Text></View> : null}
           <View style={s.certRow}><Text style={s.certLabel}>Method</Text><Text style={s.certValue}>{signature.method === "drawn" ? "Drawn signature" : "Typed signature"}</Text></View>
-          <View style={s.certRow}><Text style={s.certLabel}>Signed at</Text><Text style={s.certValue}>{`${formatIsoDMY(signature.signedAtIso)} (UTC)`}</Text></View>
+          <View style={s.certRow}><Text style={s.certLabel}>Signed at</Text><Text style={s.certValue}>{`${formatIsoDateTimeUTC(signature.signedAtIso)} (UTC)`}</Text></View>
           {signature.ip ? <View style={s.certRow}><Text style={s.certLabel}>IP address</Text><Text style={s.certValue}>{signature.ip}</Text></View> : null}
           {signature.userAgent ? <View style={s.certRow}><Text style={s.certLabel}>Device</Text><Text style={s.certValue}>{signature.userAgent}</Text></View> : null}
           <View style={s.certRow}><Text style={s.certLabel}>Document SHA-256</Text><Text style={s.certValueMono}>{signature.documentSha256}</Text></View>

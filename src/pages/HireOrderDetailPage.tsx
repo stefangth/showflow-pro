@@ -134,7 +134,13 @@ export default function HireOrderDetailPage() {
     );
   }
 
+  // Electronic-mode orders complete via the artist's in-app signature (consent +
+  // audit row + signed PDF), so the manual "Mark countersigned" one-click flip is
+  // hidden for managers in that mode — it would bypass the whole e-sign trail.
+  const isElectronic = countersignMode.data?.mode === "electronic";
+
   return <HireOrderDetail order={order} canManage={canManage} canSign={canSign} orgId={orgId}
+    isElectronic={isElectronic}
     navigateBack={() => navigate(-1)}
     onEdit={() => navigate(ROUTES.HIRE_ORDER_EDIT.replace(":id", order.id))}
     onDownload={handleDownload}
@@ -153,6 +159,7 @@ interface DetailProps {
   canManage: boolean;
   canSign: boolean;
   orgId: string;
+  isElectronic: boolean;
   navigateBack: () => void;
   onEdit: () => void;
   onDownload: () => void;
@@ -168,7 +175,7 @@ interface DetailProps {
 /** The loaded-state body — split out so the page shell handles loading/error
  *  and this renders the header + document grid for a known-good order. */
 function HireOrderDetail({
-  order, canManage, canSign, orgId, navigateBack, onEdit, onDownload, downloadBusy,
+  order, canManage, canSign, orgId, isElectronic, navigateBack, onEdit, onDownload, downloadBusy,
   onCountersign, countersignBusy, pdfUrl, pdfUrlLoading, pdfUrlError, hasPdf,
 }: DetailProps) {
   const [signOpen, setSignOpen] = useState(false);
@@ -283,6 +290,7 @@ function HireOrderDetail({
                 canManage={canManage}
                 canSign={canSign}
                 status={order.status}
+                isElectronic={isElectronic}
                 hasPdf={hasPdf}
                 onDownload={onDownload}
                 downloadBusy={downloadBusy}
@@ -305,6 +313,7 @@ interface ActionProps {
   canManage: boolean;
   canSign: boolean;
   status: string;
+  isElectronic: boolean;
   hasPdf: boolean;
   onDownload: () => void;
   downloadBusy: boolean;
@@ -314,11 +323,13 @@ interface ActionProps {
 }
 
 /** The role- and status-driven primary control in the rail. Producers/admins
- *  can mark an issued order countersigned (and see a confirmation once done);
- *  the linked artist gets an in-app Review & sign action on an issued
+ *  can mark an issued order countersigned in MANUAL mode (and see a confirmation
+ *  once done); in electronic mode that manual flip is withheld — the order must
+ *  be completed by the artist's in-app signature, so a manager sees only a hint.
+ *  The linked artist gets an in-app Review & sign action on an issued
  *  electronic-mode order; everyone else only ever gets a download control. */
 function PrimaryAction({
-  canManage, canSign, status, hasPdf, onDownload, downloadBusy, onCountersign, countersignBusy, onSign,
+  canManage, canSign, status, isElectronic, hasPdf, onDownload, downloadBusy, onCountersign, countersignBusy, onSign,
 }: ActionProps) {
   if (canSign) {
     return (
@@ -331,6 +342,10 @@ function PrimaryAction({
     );
   }
   if (canManage && status === "issued") {
+    // Electronic mode: the artist completes the order in-app; no manual flip.
+    if (isElectronic) {
+      return <p className="text-sm text-muted-foreground">Awaiting artist signature</p>;
+    }
     return (
       <Button className="w-full" onClick={onCountersign} disabled={countersignBusy}>
         Mark countersigned
