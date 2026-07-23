@@ -713,6 +713,42 @@ Deno.test("issue stamps issued_pdf_sha256 on the issued update", async () => {
   assert(typeof upd.issued_pdf_sha256 === "string" && /^[0-9a-f]{64}$/.test(upd.issued_pdf_sha256), "64-char hex hash stamped");
 });
 
+Deno.test("issue snapshots the resolved letterhead + terms on the issued update", async () => {
+  // The signed re-render (the sign action) must reproduce the issued document even
+  // if the org edits its letterhead/terms afterwards, so issue freezes both into
+  // issue_snapshot on the ready->issued transition.
+  const { deps, calls } = makeFakeDeps({
+    authUser: { id: "u-admin" },
+    tables: {
+      org_memberships: { data: { role: "admin" } },
+      hire_orders: [
+        { when: { __write: false }, data: issuableOrder() },
+        { when: { __write: true }, data: null },
+      ],
+      artists: { data: { user_id: "u-artist" } },
+      app_settings: [
+        { when: { key: "hire_order_letterhead" }, data: [LETTERHEAD] },
+        { when: { key: "hire_order_terms" }, data: [TERMS_FILLED] },
+        { when: { key: "hire_order_defaults" }, data: [DEFAULTS] },
+      ],
+    },
+  });
+  const res = await handle(makeRequest({ headers: JWT, body: { action: "issue", org_id: ORG, order_ids: ["o-1"] } }), deps);
+  assertEquals(res.status, 200);
+
+  const issuedUpdate = calls.find(
+    (c) => c.table === "hire_orders" && c.method === "update" && (c.args[0] as { status?: string }).status === "issued",
+  );
+  assert(issuedUpdate, "expected the issued update");
+  const snap = (issuedUpdate!.args[0] as {
+    issue_snapshot?: { letterhead?: { legal_name?: string }; terms?: Array<{ title: string }> };
+  }).issue_snapshot;
+  assert(snap, "the issued update writes issue_snapshot");
+  assertEquals(snap!.letterhead?.legal_name, "Nord GmbH", "snapshot carries the resolved letterhead");
+  assert(Array.isArray(snap!.terms) && snap!.terms.length > 0, "snapshot carries a non-empty terms array");
+  assertEquals(snap!.terms![0].title, "T", "snapshot terms are the resolved variant terms");
+});
+
 Deno.test("issue in electronic mode emails a signing_url pointing at the in-app order page", async () => {
   const { deps, invokeCalls } = makeFakeDeps({
     authUser: { id: "u-admin" },
@@ -1555,4 +1591,87 @@ Deno.test("sign: emails BOTH the artist and the producers when email_producers_o
   assertEquals(countersignedEmails.length, 2, "one email to the artist, one to the producer");
   const recipients = countersignedEmails.map((c) => (c.body as { recipient_email: string }).recipient_email).sort();
   assertEquals(recipients, ["ann@x.de", "prod@x.de"]);
+});
+
+// ── sign renders from the issue snapshot (finding W1) ───────────────────────
+
+/** Capture-shape for the render input's snapshot-relevant fields. */
+type CapturedRender = { terms: Array<{ title: string }>; letterhead: { legal_name?: string } };
+
+Deno.test("sign renders the signed PDF from the issue snapshot, not the current live letterhead/terms", async () => {
+  // The order carries a frozen snapshot; the LIVE hire_order_letterhead/terms settings
+  // are deliberately DIFFERENT. The signed re-render must reproduce the snapshot so the
+  // certificate hash still matches the issued document.
+  const snapshotOrder = {
+    ...SIGN_ORDER,
+    issue_snapshot: {
+      letterhead: { legal_name: "Snapshot GmbH", address_lines: [] },
+      terms: [{ title: "SNAP", body: "snapshot terms" }],
+      currency: "EUR",
+    },
+  };
+  const { deps } = makeFakeDeps({
+    authUser: { id: "u-artist" },
+    rpcs: { is_feature_enabled: { data: true, error: null } },
+    tables: {
+      hire_orders: [
+        { when: { __write: false }, data: snapshotOrder },
+        { when: { __write: true }, data: [{ id: "o-1" }] },
+      ],
+      artists: { data: { id: "a-A" } },
+      org_memberships: { data: [] },
+      app_settings: [
+        { when: { key: "hire_order_countersign" }, data: [{ org_id: ORG, value: { mode: "electronic" } }] },
+        { when: { key: "hire_order_letterhead" }, data: [{ org_id: ORG, value: { legal_name: "Live GmbH", address_lines: [] } }] },
+        { when: { key: "hire_order_terms" }, data: [{ org_id: ORG, value: { lean: [], standard: [{ title: "LIVE", body: "live terms" }], full: [] } }] },
+        { when: { key: "hire_order_defaults" }, data: [DEFAULTS] },
+      ],
+    },
+  });
+  const captured: CapturedRender[] = [];
+  deps.renderHireOrderPdf = (input) => {
+    captured.push(input as unknown as CapturedRender);
+    return Promise.resolve(new Uint8Array([0x25, 0x50, 0x44, 0x46]));
+  };
+
+  const res = await handle(makeRequest({ headers: { Authorization: "Bearer artist" }, body: SIGN_BODY }), deps);
+  assertEquals(res.status, 200);
+  assertEquals(captured.length, 1, "rendered exactly once");
+  assertEquals(captured[0].terms.map((t) => t.title), ["SNAP"], "terms come from the snapshot, not the live setting");
+  assertEquals(captured[0].letterhead.legal_name, "Snapshot GmbH", "letterhead comes from the snapshot");
+});
+
+Deno.test("sign falls back to the live-resolved letterhead/terms for a legacy order with a null issue snapshot", async () => {
+  // Orders issued before the issue_snapshot column carry null; the sign action must
+  // keep working by re-resolving the org's current letterhead/terms for those.
+  const legacyOrder = { ...SIGN_ORDER, issue_snapshot: null };
+  const { deps } = makeFakeDeps({
+    authUser: { id: "u-artist" },
+    rpcs: { is_feature_enabled: { data: true, error: null } },
+    tables: {
+      hire_orders: [
+        { when: { __write: false }, data: legacyOrder },
+        { when: { __write: true }, data: [{ id: "o-1" }] },
+      ],
+      artists: { data: { id: "a-A" } },
+      org_memberships: { data: [] },
+      app_settings: [
+        { when: { key: "hire_order_countersign" }, data: [{ org_id: ORG, value: { mode: "electronic" } }] },
+        { when: { key: "hire_order_letterhead" }, data: [{ org_id: ORG, value: { legal_name: "Live GmbH", address_lines: [] } }] },
+        { when: { key: "hire_order_terms" }, data: [{ org_id: ORG, value: { lean: [], standard: [{ title: "LIVE", body: "live terms" }], full: [] } }] },
+        { when: { key: "hire_order_defaults" }, data: [DEFAULTS] },
+      ],
+    },
+  });
+  const captured: CapturedRender[] = [];
+  deps.renderHireOrderPdf = (input) => {
+    captured.push(input as unknown as CapturedRender);
+    return Promise.resolve(new Uint8Array([0x25, 0x50, 0x44, 0x46]));
+  };
+
+  const res = await handle(makeRequest({ headers: { Authorization: "Bearer artist" }, body: SIGN_BODY }), deps);
+  assertEquals(res.status, 200);
+  assertEquals(captured.length, 1, "rendered exactly once");
+  assertEquals(captured[0].terms.map((t) => t.title), ["LIVE"], "legacy orders fall back to the live-resolved terms");
+  assertEquals(captured[0].letterhead.legal_name, "Live GmbH", "legacy orders fall back to the live letterhead");
 });

@@ -15,7 +15,7 @@
 // makeFakeDeps (deps.renderHireOrderPdf is stubbed). See index.di.test.ts.
 import { preflight, json } from "../_shared/http.ts";
 import { requireCronOrRole, requireOrgRole } from "../_shared/auth.ts";
-import type { TablesInsert } from "../_shared/database.types.ts";
+import type { TablesInsert, TablesUpdate } from "../_shared/database.types.ts";
 import type { OrgAdminRow, ProducerAssignmentRow, ResolveShowAssignmentsArgs } from "../_shared/rows.ts";
 import { requireFeature } from "../_shared/entitlements.ts";
 import { resolveOrgSetting } from "../_shared/settings.ts";
@@ -49,6 +49,16 @@ interface Countersign {
   /** electronic mode only: also email producers the signed PDF on countersign. */
   email_producers_on_countersign?: boolean;
 }
+
+/**
+ * The letterhead + terms + currency resolved at issue time, frozen into
+ * hire_orders.issue_snapshot so the countersigned re-render (signOrder) reproduces
+ * the exact document the issued hash attests to. The snapshot letterhead already
+ * bakes in the per-order agent override that issueOne merges, so the sign path must
+ * NOT re-apply agent overrides on top of it. Null for orders issued before the
+ * column existed (signOrder falls back to live resolution for those).
+ */
+interface IssueSnapshot { letterhead: HireOrderLetterhead; terms: HireOrderTerm[]; currency: string }
 
 const NUMBERING_DEFAULT: Numbering = { prefix: "HO", pattern: "{prefix}-{yyyy}-{mmdd}-{seq}" };
 const DEFAULTS_DEFAULT: OrderDefaults = { default_fee: null, currency: "EUR" };
@@ -694,9 +704,19 @@ async function issueOne(
   if (upErr) return { ok: false, issues: ["upload_failed"] };
 
   const issuedPdfSha256 = await sha256Hex(bytes);
+  // Freeze the resolved letterhead/terms/currency alongside the issued stamp so the
+  // signed re-render reproduces this exact document (finding W1). This write is the
+  // ready->issued transition, which the freeze trigger permits.
+  const snapshot: IssueSnapshot = { letterhead: effectiveLetterhead, terms: variantTerms, currency };
   const { error: issueErr } = await admin
     .from("hire_orders")
-    .update({ status: "issued", issued_at: deps.now().toISOString(), pdf_path: path, issued_pdf_sha256: issuedPdfSha256 })
+    .update({
+      status: "issued",
+      issued_at: deps.now().toISOString(),
+      pdf_path: path,
+      issued_pdf_sha256: issuedPdfSha256,
+      issue_snapshot: snapshot,
+    } as unknown as TablesUpdate<"hire_orders">)
     .eq("id", orderId);
   if (issueErr) return { ok: false, issues: ["transition_failed"] };
 
@@ -961,6 +981,7 @@ interface SignOrderRow {
   agent_name: string | null;
   agent_email: string | null;
   issued_pdf_sha256: string | null;
+  issue_snapshot: IssueSnapshot | null;
   data: OrderData;
   show_date_id: string | null;
   show_dates: { city_id: string | null; shows: { program: string | null; sub_program: string | null } | null } | null;
@@ -983,7 +1004,7 @@ async function signOrder(deps: Deps, req: Request, body: SignBody): Promise<Resp
 
   const { data: orderRaw } = await admin
     .from("hire_orders")
-    .select("id, org_id, order_no, status, artist_id, terms_variant, fee_currency, agent_name, agent_email, issued_pdf_sha256, data, show_date_id, show_dates(city_id, shows(program, sub_program))")
+    .select("id, org_id, order_no, status, artist_id, terms_variant, fee_currency, agent_name, agent_email, issued_pdf_sha256, issue_snapshot, data, show_date_id, show_dates(city_id, shows(program, sub_program))")
     .eq("id", body.order_id)
     .eq("org_id", org)
     .maybeSingle();
@@ -1045,19 +1066,35 @@ async function signOrder(deps: Deps, req: Request, body: SignBody): Promise<Resp
     if (imgErr) return json({ error: "signature_upload_failed" }, 500);
   }
 
-  // Re-render the signed PDF from the frozen snapshot.
+  // Re-render the signed PDF from the frozen issue snapshot so it reproduces the
+  // exact issued document the certificate hash attests to (finding W1). Legacy
+  // orders issued before the issue_snapshot column carry null and fall back to
+  // re-resolving the org's CURRENT letterhead/terms + the per-order agent override.
   const [letterhead, terms, defaults] = await Promise.all([
     resolveOrgSetting<HireOrderLetterhead>(admin, org, "hire_order_letterhead", LETTERHEAD_DEFAULT),
     resolveOrgSetting<TermsVariants>(admin, org, "hire_order_terms", TERMS_DEFAULT),
     resolveOrgSetting<OrderDefaults>(admin, org, "hire_order_defaults", DEFAULTS_DEFAULT),
   ]);
-  const variant = (o.terms_variant as TermsVariant) ?? "standard";
-  const effectiveLetterhead: HireOrderLetterhead = {
-    ...letterhead,
-    agent_name: o.agent_name ?? letterhead.agent_name,
-    agent_email: o.agent_email ?? letterhead.agent_email,
-  };
-  const currency = o.fee_currency ?? defaults.currency ?? "EUR";
+  const snapshot = o.issue_snapshot;
+  let renderLetterhead: HireOrderLetterhead;
+  let renderTerms: HireOrderTerm[];
+  let currency: string;
+  if (snapshot && snapshot.letterhead && Array.isArray(snapshot.terms)) {
+    // The snapshot letterhead already includes the per-order agent override baked in
+    // at issue time, so do NOT re-merge o.agent_name/agent_email here.
+    renderLetterhead = snapshot.letterhead;
+    renderTerms = snapshot.terms;
+    currency = snapshot.currency ?? o.fee_currency ?? defaults.currency ?? "EUR";
+  } else {
+    const variant = (o.terms_variant as TermsVariant) ?? "standard";
+    renderLetterhead = {
+      ...letterhead,
+      agent_name: o.agent_name ?? letterhead.agent_name,
+      agent_email: o.agent_email ?? letterhead.agent_email,
+    };
+    renderTerms = terms[variant] ?? [];
+    currency = o.fee_currency ?? defaults.currency ?? "EUR";
+  }
   const signature: RenderSignature = {
     method,
     typedName: method === "typed" ? typedName : undefined,
@@ -1071,8 +1108,8 @@ async function signOrder(deps: Deps, req: Request, body: SignBody): Promise<Resp
     consentText: CONSENT_TEXT,
   };
   const signedBytes = await deps.renderHireOrderPdf({
-    data, orderNo: o.order_no, status: "countersigned", letterhead: effectiveLetterhead,
-    terms: terms[variant] ?? [], currency, generatedAtIso: signedAtIso, signature,
+    data, orderNo: o.order_no, status: "countersigned", letterhead: renderLetterhead,
+    terms: renderTerms, currency, generatedAtIso: signedAtIso, signature,
   });
 
   // Upload the signed copy (keeps the original issued pdf_path intact).
