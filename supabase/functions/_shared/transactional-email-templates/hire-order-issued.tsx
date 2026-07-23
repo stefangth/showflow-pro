@@ -36,7 +36,7 @@ const HireOrderIssuedEmail = ({
     `Your hire order for ${date} at ${place} has been issued. Review the details below and download your copy.`
   const footerText = _footer ||
     `Questions about this hire order. Reply to this email and we will help.`
-  const isDocumenso = countersign_mode === 'documenso'
+  const showSignCta = countersign_mode === 'documenso' || countersign_mode === 'electronic'
 
   return (
     <Html lang="en" dir="ltr">
@@ -59,7 +59,7 @@ const HireOrderIssuedEmail = ({
           </Section>
           <Text style={muted}>Or paste this link into your browser:</Text>
           <Text style={link}>{downloadUrl}</Text>
-          {isDocumenso ? (
+          {showSignCta ? (
             <>
               <Text style={text}>Review and sign your hire order online to confirm.</Text>
               <Section style={section}>
