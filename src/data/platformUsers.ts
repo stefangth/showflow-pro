@@ -22,8 +22,8 @@ export interface PlatformUser {
 
 export interface PlatformUsersResult {
   users: PlatformUser[];
-  /** true when the underlying auth.admin.listUsers page hit the 1000-row cap
-   *  — the roster is not exhaustive and callers must surface this, not drop it. */
+  /** true when the underlying auth.admin.listUsers page hit the 1000-row cap.
+   *  The roster is not exhaustive and callers must surface this, not drop it. */
   truncated: boolean;
 }
 

@@ -3,6 +3,20 @@ import { screen, fireEvent } from "@testing-library/react";
 import { renderWithProviders } from "@/test/renderWithProviders";
 import type { PlatformUser } from "@/data/platformUsers";
 
+// Radix Select's dismissable-layer cleanup (from closing one combobox) is an
+// effect that flushes on a later tick — re-opening the same combobox in the
+// same synchronous test step can race that cleanup. A macrotask flush between
+// picks lets the cleanup settle first (same pattern as NewOrderWizard.test.tsx).
+async function flush() {
+  await new Promise((r) => setTimeout(r, 0));
+}
+
+async function selectOption(triggerName: string, optionName: string) {
+  fireEvent.click(screen.getByRole("combobox", { name: triggerName }));
+  fireEvent.click(await screen.findByRole("option", { name: optionName }));
+  await flush();
+}
+
 vi.mock("./UserDetailSheet", () => ({ UserDetailSheet: () => null }));
 
 const usePlatformUsersMock = vi.fn();
@@ -49,6 +63,58 @@ describe("UsersTab", () => {
     fireEvent.change(screen.getByPlaceholderText(/search/i), { target: { value: "ada@x.com" } });
     expect(screen.getByText("Ada")).toBeInTheDocument();
     expect(screen.queryByText("Grace")).not.toBeInTheDocument();
+  });
+
+  it("filters by org", async () => {
+    usePlatformUsersMock.mockReturnValue({
+      data: { users: [ADA, GRACE], truncated: false },
+      isLoading: false, isError: false, error: null,
+    });
+    renderWithProviders(<UsersTab />);
+
+    await selectOption("Org filter", "Acme");
+    expect(screen.getByText("Ada")).toBeInTheDocument();
+    expect(screen.queryByText("Grace")).not.toBeInTheDocument();
+
+    await selectOption("Org filter", "All orgs");
+    expect(screen.getByText("Ada")).toBeInTheDocument();
+    expect(screen.getByText("Grace")).toBeInTheDocument();
+  });
+
+  it("filters by role", async () => {
+    usePlatformUsersMock.mockReturnValue({
+      data: { users: [ADA, GRACE], truncated: false },
+      isLoading: false, isError: false, error: null,
+    });
+    renderWithProviders(<UsersTab />);
+
+    await selectOption("Role filter", "producer");
+    expect(screen.queryByText("Ada")).not.toBeInTheDocument();
+    expect(screen.getByText("Grace")).toBeInTheDocument();
+
+    await selectOption("Role filter", "All roles");
+    expect(screen.getByText("Ada")).toBeInTheDocument();
+    expect(screen.getByText("Grace")).toBeInTheDocument();
+  });
+
+  it("filters by status", async () => {
+    usePlatformUsersMock.mockReturnValue({
+      data: { users: [ADA, GRACE], truncated: false },
+      isLoading: false, isError: false, error: null,
+    });
+    renderWithProviders(<UsersTab />);
+
+    await selectOption("Status filter", "Suspended");
+    expect(screen.queryByText("Ada")).not.toBeInTheDocument();
+    expect(screen.getByText("Grace")).toBeInTheDocument();
+
+    await selectOption("Status filter", "Active");
+    expect(screen.getByText("Ada")).toBeInTheDocument();
+    expect(screen.queryByText("Grace")).not.toBeInTheDocument();
+
+    await selectOption("Status filter", "All statuses");
+    expect(screen.getByText("Ada")).toBeInTheDocument();
+    expect(screen.getByText("Grace")).toBeInTheDocument();
   });
 
   it("shows a suspended badge and mutes suspended rows", () => {
