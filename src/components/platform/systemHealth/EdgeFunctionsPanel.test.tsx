@@ -1,8 +1,8 @@
-import { describe, it, expect } from "vitest";
+import { afterEach, describe, it, expect, vi } from "vitest";
 import { fireEvent, screen } from "@testing-library/react";
 import { renderWithProviders } from "@/test/renderWithProviders";
 import { EdgeFunctionsPanel } from "./EdgeFunctionsPanel";
-import { edgeLogUnavailableMessage } from "./edgeLogCopy";
+import * as systemHealthHooks from "@/hooks/useSystemHealth";
 import type { EdgeFnMetric } from "@/lib/systemHealth";
 
 const metric = (over: Partial<EdgeFnMetric> = {}): EdgeFnMetric => ({
@@ -13,6 +13,8 @@ const metric = (over: Partial<EdgeFnMetric> = {}): EdgeFnMetric => ({
 });
 
 describe("EdgeFunctionsPanel", () => {
+  afterEach(() => vi.restoreAllMocks());
+
   it("shows the status-code breakdown so the failure is identifiable", () => {
     renderWithProviders(<EdgeFunctionsPanel metrics={[metric()]} />);
     expect(screen.getByText("401 × 48")).toBeInTheDocument();
@@ -75,8 +77,16 @@ describe("EdgeFunctionsPanel", () => {
     expect(screen.getByText("Loading log lines.")).toBeInTheDocument();
   });
 
-  it("includes the analytics failure message in unavailable log copy", () => {
-    expect(edgeLogUnavailableMessage(new Error("analytics request returned 502")))
-      .toBe("Log lines unavailable: analytics request returned 502");
+  it("renders the analytics failure message after the drill-down opens", () => {
+    vi.spyOn(systemHealthHooks, "useEdgeFnLogs").mockReturnValue({
+      data: undefined,
+      error: new Error("analytics request returned 502"),
+      isError: true,
+      isLoading: false,
+    } as unknown as ReturnType<typeof systemHealthHooks.useEdgeFnLogs>);
+
+    renderWithProviders(<EdgeFunctionsPanel metrics={[metric()]} />);
+    fireEvent.click(screen.getByRole("button", { name: /view recent errors/i }));
+    expect(screen.getByText("Log lines unavailable: analytics request returned 502")).toBeInTheDocument();
   });
 });
