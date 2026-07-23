@@ -35,7 +35,7 @@ export function PermissionRow({ cell, mode, onToggleOverride, onToggleLock, onSe
         {/* Admin column: always granted, read-only */}
         <div className="flex flex-col items-center gap-1 w-16">
           <span className="text-[11px] text-muted-foreground">Admin</span>
-          <Check className="h-4 w-4 text-muted-foreground" aria-label="Admins always have this right" />
+          <Check className="h-4 w-4 text-muted-foreground" role="img" aria-label="Admins always have this right" />
         </div>
         {/* Producer control */}
         <div className="flex flex-col items-center gap-1 w-24">
@@ -50,7 +50,7 @@ export function PermissionRow({ cell, mode, onToggleOverride, onToggleLock, onSe
           ) : (
             <div className="flex items-center gap-2">
               <Switch
-                checked={effective}
+                checked={cell.policyEnabled ?? def.defaultEnabled}
                 onCheckedChange={(v) => onSetPlatformDefault?.(v)}
                 aria-label={`Platform default: ${def.label}`}
               />

@@ -59,4 +59,12 @@ describe("PermissionsMatrix", () => {
     fireEvent.click(within(row).getByRole("button", { name: /lock/i }));
     await waitFor(() => expect(setOrgCapabilityPolicy).toHaveBeenCalledWith(expect.anything(), "org-1", "producer_can_rename_org", { locked: true }));
   });
+
+  it("platform mode: toggling the default switch writes the policy default", async () => {
+    vi.mocked(useCapabilityMatrix).mockReturnValue({ cells: allCells(), isLoading: false });
+    render(<PermissionsMatrix orgId="org-1" mode="platform" moduleEnabled={() => true} />, { wrapper: wrap() });
+    const row = screen.getByTestId(`cap-row-producer_can_manage_casts`);
+    fireEvent.click(within(row).getByRole("switch"));
+    await waitFor(() => expect(setOrgCapabilityPolicy).toHaveBeenCalledWith(expect.anything(), "org-1", "producer_can_manage_casts", { enabled: false }));
+  });
 });
