@@ -4,7 +4,7 @@ import { toast } from "sonner";
 import { Copy } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import {
-  useSetMembership, useRemoveMembership, useLinkArtist, useManageUser,
+  usePlatformUsers, useSetMembership, useRemoveMembership, useLinkArtist, useManageUser,
 } from "@/hooks/usePlatformUsers";
 import { fetchAllOrgs } from "@/data/platform";
 import { fetchArtistsLite } from "@/data/hireOrders";
@@ -18,7 +18,9 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import {
+  Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter,
+} from "@/components/ui/dialog";
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
@@ -43,11 +45,19 @@ function errorMessage(e: unknown): string {
   return e instanceof Error ? e.message : "Something went wrong";
 }
 
-export function UserDetailSheet({ user, open, onOpenChange }: Props) {
+export function UserDetailSheet({ user: propUser, open, onOpenChange }: Props) {
   const setMembership = useSetMembership();
   const removeMembership = useRemoveMembership();
   const linkArtist = useLinkArtist();
   const manageUser = useManageUser();
+
+  // Every mutation below invalidates ['platform','users'], so reading the same
+  // query here (already fetched/cached by UsersTab) and looking the user up by
+  // id keeps this drawer showing fresh membership/role/artist-link data after a
+  // mutation refetches, instead of the pre-mutation `propUser` snapshot the
+  // caller passed in when the row was clicked. Falls back to the prop when the
+  // query has no data yet (or is otherwise empty).
+  const { data: platformUsersData } = usePlatformUsers();
 
   const [emailDialogOpen, setEmailDialogOpen] = useState(false);
   const [newEmail, setNewEmail] = useState("");
@@ -71,6 +81,11 @@ export function UserDetailSheet({ user, open, onOpenChange }: Props) {
     enabled: open && !!artistPickerOrgId,
   });
 
+  const user = useMemo(
+    () => (propUser ? platformUsersData?.users.find((u) => u.id === propUser.id) ?? propUser : null),
+    [platformUsersData, propUser],
+  );
+
   const joinedOrgIds = useMemo(
     () => new Set((user?.memberships ?? []).map((m) => m.org_id)),
     [user],
@@ -84,20 +99,31 @@ export function UserDetailSheet({ user, open, onOpenChange }: Props) {
 
   const deleteConfirmTarget = user.email ?? user.id;
 
-  function handleRoleChange(membership: PlatformUserMembership, nextRole: AppRole) {
+  // The remove and add calls are two separate RPC invocations against
+  // platform_set_membership, which rejects removing an org's last admin. If
+  // they fired in parallel, that rejection would only stop the remove: the add
+  // would still land, leaving the user holding both the old and new role next
+  // to a success toast beside the error. Sequencing via mutateAsync means the
+  // add never happens unless the remove actually succeeded.
+  async function handleRoleChange(membership: PlatformUserMembership, nextRole: AppRole) {
     const currentRole = primaryRole(membership);
     if (nextRole === currentRole) return;
-    setMembership.mutate(
-      { orgId: membership.org_id, userId: user!.id, role: currentRole, action: "remove" },
-      { onError: (e) => toast.error(errorMessage(e)) },
-    );
-    setMembership.mutate(
-      { orgId: membership.org_id, userId: user!.id, role: nextRole, action: "add" },
-      {
-        onSuccess: () => toast.success("Role updated"),
-        onError: (e) => toast.error(errorMessage(e)),
-      },
-    );
+    try {
+      await setMembership.mutateAsync(
+        { orgId: membership.org_id, userId: user!.id, role: currentRole, action: "remove" },
+      );
+    } catch (e) {
+      toast.error(errorMessage(e));
+      return;
+    }
+    try {
+      await setMembership.mutateAsync(
+        { orgId: membership.org_id, userId: user!.id, role: nextRole, action: "add" },
+      );
+      toast.success("Role updated");
+    } catch (e) {
+      toast.error(errorMessage(e));
+    }
   }
 
   function handleAddToOrg() {
@@ -398,7 +424,12 @@ export function UserDetailSheet({ user, open, onOpenChange }: Props) {
 
         <Dialog open={emailDialogOpen} onOpenChange={setEmailDialogOpen}>
           <DialogContent>
-            <DialogHeader><DialogTitle>Change login email</DialogTitle></DialogHeader>
+            <DialogHeader>
+              <DialogTitle>Change login email</DialogTitle>
+              <DialogDescription>
+                Updates the email this user signs in with. They will need to use the new address next time.
+              </DialogDescription>
+            </DialogHeader>
             <div className="space-y-1.5">
               <Label htmlFor="new-login-email">New email</Label>
               <Input

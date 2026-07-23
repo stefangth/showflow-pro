@@ -13,16 +13,22 @@ async function flush() {
 vi.mock("@/integrations/supabase/client", () => ({ supabase: {} }));
 vi.mock("sonner", () => ({ toast: { success: vi.fn(), error: vi.fn() } }));
 
-const setMembershipMutate = vi.fn();
-const removeMembershipMutate = vi.fn();
-const linkArtistMutate = vi.fn();
-const manageUserMutate = vi.fn();
+// Mock the DATA LAYER (not the hooks). The real usePlatformUsers/useSetMembership/
+// useRemoveMembership/useLinkArtist/useManageUser hooks run for real against a real
+// QueryClient (via renderWithProviders), so mutation onSuccess/onError callbacks
+// actually fire and the mutation-invalidates-query refetch loop is exercised.
+const fetchPlatformUsersSpy = vi.fn();
+const setMembershipSpy = vi.fn();
+const removeMembershipSpy = vi.fn();
+const linkArtistSpy = vi.fn();
+const manageUserSpy = vi.fn();
 
-vi.mock("@/hooks/usePlatformUsers", () => ({
-  useSetMembership: () => ({ mutate: setMembershipMutate, isPending: false }),
-  useRemoveMembership: () => ({ mutate: removeMembershipMutate, isPending: false }),
-  useLinkArtist: () => ({ mutate: linkArtistMutate, isPending: false }),
-  useManageUser: () => ({ mutate: manageUserMutate, isPending: false }),
+vi.mock("@/data/platformUsers", () => ({
+  fetchPlatformUsers: (...args: unknown[]) => fetchPlatformUsersSpy(...args),
+  setMembership: (...args: unknown[]) => setMembershipSpy(...args),
+  removeMembership: (...args: unknown[]) => removeMembershipSpy(...args),
+  linkArtist: (...args: unknown[]) => linkArtistSpy(...args),
+  manageUser: (...args: unknown[]) => manageUserSpy(...args),
 }));
 
 const fetchAllOrgsSpy = vi.fn().mockResolvedValue([
@@ -65,10 +71,11 @@ const LINKED_USER: PlatformUser = {
 
 describe("UserDetailSheet", () => {
   beforeEach(() => {
-    setMembershipMutate.mockReset();
-    removeMembershipMutate.mockReset();
-    linkArtistMutate.mockReset();
-    manageUserMutate.mockReset();
+    fetchPlatformUsersSpy.mockReset().mockResolvedValue({ users: [BASE_USER], truncated: false });
+    setMembershipSpy.mockReset().mockResolvedValue(undefined);
+    removeMembershipSpy.mockReset().mockResolvedValue(undefined);
+    linkArtistSpy.mockReset().mockResolvedValue(undefined);
+    manageUserSpy.mockReset().mockResolvedValue(undefined);
     fetchAllOrgsSpy.mockClear();
     fetchArtistsLiteSpy.mockClear();
     (toast.success as ReturnType<typeof vi.fn>).mockClear();
@@ -87,52 +94,79 @@ describe("UserDetailSheet", () => {
     expect(screen.getAllByText("ada@x.com").length).toBeGreaterThan(0);
   });
 
-  it("confirming Suspend calls useManageUser().mutate with action suspend", () => {
+  it("confirming Suspend calls useManageUser().mutate with action suspend", async () => {
     renderWithProviders(<UserDetailSheet user={BASE_USER} open onOpenChange={() => {}} />);
     fireEvent.click(screen.getByRole("button", { name: "Suspend user" }));
     fireEvent.click(screen.getByRole("button", { name: "Suspend" }));
-    expect(manageUserMutate).toHaveBeenCalledWith(
-      { action: "suspend", target_user_id: "u1" },
+    await waitFor(() => expect(manageUserSpy).toHaveBeenCalledWith(
       expect.anything(),
-    );
+      { action: "suspend", target_user_id: "u1" },
+    ));
   });
 
-  it("confirming Unsuspend on a suspended user calls useManageUser().mutate with action unsuspend", () => {
+  it("confirming Unsuspend on a suspended user calls useManageUser().mutate with action unsuspend", async () => {
     renderWithProviders(
       <UserDetailSheet user={{ ...BASE_USER, suspended: true }} open onOpenChange={() => {}} />,
     );
     fireEvent.click(screen.getByRole("button", { name: "Unsuspend user" }));
     fireEvent.click(screen.getByRole("button", { name: "Unsuspend" }));
-    expect(manageUserMutate).toHaveBeenCalledWith(
-      { action: "unsuspend", target_user_id: "u1" },
+    await waitFor(() => expect(manageUserSpy).toHaveBeenCalledWith(
       expect.anything(),
-    );
+      { action: "unsuspend", target_user_id: "u1" },
+    ));
   });
 
-  it("changing a role Select calls useSetMembership().mutate to swap the role", async () => {
+  it("swaps the role: remove then add, exactly one success toast", async () => {
     renderWithProviders(<UserDetailSheet user={BASE_USER} open onOpenChange={() => {}} />);
     fireEvent.click(screen.getByRole("combobox", { name: "Role for Acme" }));
     fireEvent.click(await screen.findByRole("option", { name: "producer" }));
     await flush();
 
-    expect(setMembershipMutate).toHaveBeenCalledWith(
+    await waitFor(() => expect(toast.success).toHaveBeenCalledWith("Role updated"));
+    expect(setMembershipSpy).toHaveBeenCalledTimes(2);
+    // Sequenced: the add must not fire until the remove has resolved.
+    expect(setMembershipSpy.mock.calls[0][1]).toEqual(
       { orgId: "o1", userId: "u1", role: "admin", action: "remove" },
-      expect.anything(),
     );
-    expect(setMembershipMutate).toHaveBeenCalledWith(
+    expect(setMembershipSpy.mock.calls[1][1]).toEqual(
       { orgId: "o1", userId: "u1", role: "producer", action: "add" },
-      expect.anything(),
     );
+    expect(toast.success).toHaveBeenCalledTimes(1);
+    expect(toast.error).not.toHaveBeenCalled();
   });
 
-  it("Unlink calls useLinkArtist().mutate with artistId null", () => {
+  it("aborts the role swap when the remove is rejected: no add, one error toast, no success toast", async () => {
+    setMembershipSpy.mockImplementation((_client: unknown, args: { action: string }) =>
+      args.action === "remove"
+        ? Promise.reject(new Error("cannot remove the last admin"))
+        : Promise.resolve(undefined),
+    );
+    renderWithProviders(<UserDetailSheet user={BASE_USER} open onOpenChange={() => {}} />);
+    fireEvent.click(screen.getByRole("combobox", { name: "Role for Acme" }));
+    fireEvent.click(await screen.findByRole("option", { name: "producer" }));
+    await flush();
+
+    await waitFor(() => expect(toast.error).toHaveBeenCalledTimes(1));
+    expect(setMembershipSpy).toHaveBeenCalledTimes(1);
+    expect(setMembershipSpy).toHaveBeenCalledWith(
+      expect.anything(),
+      { orgId: "o1", userId: "u1", role: "admin", action: "remove" },
+    );
+    expect(setMembershipSpy).not.toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({ action: "add" }),
+    );
+    expect(toast.success).not.toHaveBeenCalled();
+  });
+
+  it("Unlink calls useLinkArtist().mutate with artistId null", async () => {
     renderWithProviders(<UserDetailSheet user={LINKED_USER} open onOpenChange={() => {}} />);
     expect(screen.getByText("Grace Hopper")).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "Unlink" }));
-    expect(linkArtistMutate).toHaveBeenCalledWith(
-      { orgId: "o1", userId: "u2", artistId: null },
+    await waitFor(() => expect(linkArtistSpy).toHaveBeenCalledWith(
       expect.anything(),
-    );
+      { orgId: "o1", userId: "u2", artistId: null },
+    ));
   });
 
   it("picking an artist from the link picker calls useLinkArtist().mutate with the artist id", async () => {
@@ -143,20 +177,50 @@ describe("UserDetailSheet", () => {
     fireEvent.click(await screen.findByRole("combobox", { name: "Artist for Acme" }));
     fireEvent.click(await screen.findByRole("option", { name: "Grace Hopper" }));
 
-    expect(linkArtistMutate).toHaveBeenCalledWith(
-      { orgId: "o1", userId: "u1", artistId: "art1" },
+    await waitFor(() => expect(linkArtistSpy).toHaveBeenCalledWith(
       expect.anything(),
-    );
+      { orgId: "o1", userId: "u1", artistId: "art1" },
+    ));
   });
 
-  it("removes a user from an org via the confirm dialog", () => {
+  it("reflects the newly linked artist once the cache refetches (drawer is not stale)", async () => {
+    fetchPlatformUsersSpy
+      .mockResolvedValueOnce({ users: [BASE_USER], truncated: false })
+      .mockResolvedValue({
+        users: [{
+          ...BASE_USER,
+          memberships: [{ ...BASE_USER.memberships[0], artist: { id: "art1", name: "Grace Hopper" } }],
+        }],
+        truncated: false,
+      });
+
+    renderWithProviders(<UserDetailSheet user={BASE_USER} open onOpenChange={() => {}} />);
+    expect(screen.getByText("None")).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "Link artist" }));
+    await waitFor(() => expect(fetchArtistsLiteSpy).toHaveBeenCalledWith(expect.anything(), "o1"));
+    fireEvent.click(await screen.findByRole("combobox", { name: "Artist for Acme" }));
+    fireEvent.click(await screen.findByRole("option", { name: "Grace Hopper" }));
+
+    await waitFor(() => expect(linkArtistSpy).toHaveBeenCalledWith(
+      expect.anything(),
+      { orgId: "o1", userId: "u1", artistId: "art1" },
+    ));
+    // The mutation invalidated ['platform','users']; the refetch above returns the
+    // artist-linked row, and the drawer (reading the live cache, not the stale prop)
+    // must pick it up without being closed and reopened.
+    await waitFor(() => expect(screen.getByText("Grace Hopper")).toBeInTheDocument());
+    expect(screen.queryByText("None")).not.toBeInTheDocument();
+  });
+
+  it("removes a user from an org via the confirm dialog", async () => {
     renderWithProviders(<UserDetailSheet user={BASE_USER} open onOpenChange={() => {}} />);
     fireEvent.click(screen.getByRole("button", { name: "Remove from org" }));
     fireEvent.click(screen.getByRole("button", { name: "Remove" }));
-    expect(removeMembershipMutate).toHaveBeenCalledWith(
-      { orgId: "o1", userId: "u1" },
+    await waitFor(() => expect(removeMembershipSpy).toHaveBeenCalledWith(
       expect.anything(),
-    );
+      { orgId: "o1", userId: "u1" },
+    ));
   });
 
   it("adds the user to a new organization", async () => {
@@ -174,44 +238,46 @@ describe("UserDetailSheet", () => {
     await flush();
 
     fireEvent.click(screen.getByRole("button", { name: "Add" }));
-    expect(setMembershipMutate).toHaveBeenCalledWith(
-      { orgId: "o2", userId: "u1", role: "producer", action: "add" },
+    await waitFor(() => expect(setMembershipSpy).toHaveBeenCalledWith(
       expect.anything(),
-    );
+      { orgId: "o2", userId: "u1", role: "producer", action: "add" },
+    ));
   });
 
-  it("sends a password reset link", () => {
+  it("sends a password reset link", async () => {
     renderWithProviders(<UserDetailSheet user={BASE_USER} open onOpenChange={() => {}} />);
     fireEvent.click(screen.getByRole("button", { name: "Send reset link" }));
-    expect(manageUserMutate).toHaveBeenCalledWith(
-      { action: "send_password_reset", target_user_id: "u1" },
+    await waitFor(() => expect(manageUserSpy).toHaveBeenCalledWith(
       expect.anything(),
-    );
+      { action: "send_password_reset", target_user_id: "u1" },
+    ));
   });
 
-  it("changes the login email through the confirm dialog", () => {
+  it("changes the login email through the confirm dialog", async () => {
     renderWithProviders(<UserDetailSheet user={BASE_USER} open onOpenChange={() => {}} />);
     fireEvent.click(screen.getByRole("button", { name: "Change email" }));
     const input = screen.getByLabelText("New email");
     fireEvent.change(input, { target: { value: "new@x.com" } });
     fireEvent.click(screen.getByRole("button", { name: "Confirm" }));
-    expect(manageUserMutate).toHaveBeenCalledWith(
-      { action: "change_email", target_user_id: "u1", new_email: "new@x.com" },
+    await waitFor(() => expect(manageUserSpy).toHaveBeenCalledWith(
       expect.anything(),
-    );
+      { action: "change_email", target_user_id: "u1", new_email: "new@x.com" },
+    ));
   });
 
-  it("requires the login email to be typed before deleting", () => {
-    renderWithProviders(<UserDetailSheet user={BASE_USER} open onOpenChange={() => {}} />);
+  it("requires the login email to be typed before deleting, then closes the sheet on success", async () => {
+    const onOpenChange = vi.fn();
+    renderWithProviders(<UserDetailSheet user={BASE_USER} open onOpenChange={onOpenChange} />);
     fireEvent.click(screen.getByRole("button", { name: "Delete user" }));
     const confirm = screen.getByRole("button", { name: "Permanently delete" });
     expect(confirm).toBeDisabled();
     fireEvent.change(screen.getByPlaceholderText("ada@x.com"), { target: { value: "ada@x.com" } });
     expect(confirm).toBeEnabled();
     fireEvent.click(confirm);
-    expect(manageUserMutate).toHaveBeenCalledWith(
-      { action: "delete", target_user_id: "u1" },
+    await waitFor(() => expect(manageUserSpy).toHaveBeenCalledWith(
       expect.anything(),
-    );
+      { action: "delete", target_user_id: "u1" },
+    ));
+    await waitFor(() => expect(onOpenChange).toHaveBeenCalledWith(false));
   });
 });
