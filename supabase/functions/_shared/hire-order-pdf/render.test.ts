@@ -125,3 +125,81 @@ Deno.test("renders no em-dashes or en-dashes in the document copy", async () => 
   assertEquals(text.includes("—"), false, "em-dash found in rendered copy");
   assertEquals(text.includes("–"), false, "en-dash found in rendered copy");
 });
+
+const BASE: RenderInput = {
+  data: {
+    artist_name: { value: "Ann Lee", source: "showflow" },
+    recipient_email: { value: "ann@x.de", source: "showflow" },
+    date: { value: "2026-08-15", source: "showflow" },
+    venue: { value: "Tempodrom", source: "showflow" },
+    fee: { value: 850, source: "showflow" },
+  },
+  orderNo: "HO-1",
+  status: "issued",
+  letterhead: { legal_name: "Nord GmbH", address_lines: ["Berlin"] },
+  terms: [{ title: "Fees", body: "Payable within 30 days." }],
+  currency: "EUR",
+  generatedAtIso: "2026-08-01T10:00:00.000Z",
+};
+
+Deno.test("renders a typed-signature countersigned PDF with a real certificate", async () => {
+  const bytes = await renderHireOrderPdf({
+    ...BASE,
+    status: "countersigned",
+    signature: {
+      method: "typed",
+      typedName: "Ann Lee",
+      signerName: "Ann Lee",
+      signerEmail: "ann@x.de",
+      signedAtIso: "2026-08-02T09:30:00.000Z",
+      ip: "203.0.113.5",
+      userAgent: "Mozilla/5.0",
+      documentSha256: "a".repeat(64),
+      consentText: "By signing, I agree that this is binding.",
+    },
+  });
+  assert(bytes.length > 0, "produced PDF bytes");
+  assert(bytes[0] === 0x25 && bytes[1] === 0x50, "starts with %P (PDF header)");
+
+  // The certificate is an audit page — assert it actually SAYS the audit facts,
+  // so a swapped or mislabeled field would be caught (not just that bytes exist).
+  // ("Signature certificate" is deliberately NOT asserted: react-pdf drops the
+  // "fi" ligature, so the heading extracts as "certicate" — a known pdfText gap.)
+  const text = await extractPdfText(bytes);
+  assertStringIncludes(text, "Ann Lee"); // signer
+  assertStringIncludes(text, "Typed signature"); // method label
+  assertStringIncludes(text, "a".repeat(64)); // document SHA-256
+  assertStringIncludes(text, "By signing, I agree that this is binding."); // consent
+  // Signed-at now carries minute precision so two same-day signatures differ.
+  assertStringIncludes(text, "02/08/2026 09:30");
+});
+
+Deno.test("renders a drawn-signature countersigned PDF with a real certificate", async () => {
+  // 1x1 transparent PNG data URL
+  const png = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAAC0lEQVR4nGNgAAIAAAUAAXpeqz8AAAAASUVORK5CYII=";
+  const bytes = await renderHireOrderPdf({
+    ...BASE,
+    status: "countersigned",
+    signature: {
+      method: "drawn",
+      imageDataUrl: png,
+      signerName: "Ann Lee",
+      signedAtIso: "2026-08-02T09:30:00.000Z",
+      documentSha256: "b".repeat(64),
+      consentText: "By signing, I agree that this is binding.",
+    },
+  });
+  assert(bytes.length > 0 && bytes[0] === 0x25, "produced a PDF");
+
+  const text = await extractPdfText(bytes);
+  assertStringIncludes(text, "Ann Lee"); // signer
+  assertStringIncludes(text, "Drawn signature"); // method label
+  assertStringIncludes(text, "b".repeat(64)); // document SHA-256
+  assertStringIncludes(text, "By signing, I agree that this is binding."); // consent
+  assertStringIncludes(text, "02/08/2026 09:30"); // minute-precision signed-at
+});
+
+Deno.test("issued render (no signature) is unchanged shape", async () => {
+  const bytes = await renderHireOrderPdf(BASE);
+  assert(bytes.length > 0 && bytes[0] === 0x25);
+});

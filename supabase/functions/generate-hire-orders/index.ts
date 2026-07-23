@@ -1,4 +1,4 @@
-// generate-hire-orders — the hire-order engine. Six per-request actions:
+// generate-hire-orders — the hire-order engine. Seven per-request actions:
 //   draft            create draft orders from confirmed bookings (snapshot fields)
 //   draft-manual     create ONE draft from the V5 wizard: free choice of artist x
 //                    date (either/both optional) plus producer-entered manual fields
@@ -7,19 +7,22 @@
 //   preview          render a watermarked PDF for one order, persist nothing
 //   download-url     signed URL for an order's PDF (producers + the linked artist)
 //   countersign-test admin-only Documenso connectivity check for the settings card
+//   sign             the linked artist signs an issued electronic order: re-render PDF
+//                    + certificate, store signed_pdf_path + a hire_order_signatures
+//                    audit row, flip to countersigned, notify + email
 //
 // DI: exports handle(req, deps); Deno.serve wiring at the bottom. Tests inject
 // makeFakeDeps (deps.renderHireOrderPdf is stubbed). See index.di.test.ts.
 import { preflight, json } from "../_shared/http.ts";
 import { requireCronOrRole, requireOrgRole } from "../_shared/auth.ts";
-import type { TablesInsert } from "../_shared/database.types.ts";
+import type { TablesInsert, TablesUpdate } from "../_shared/database.types.ts";
 import type { OrgAdminRow, ProducerAssignmentRow, ResolveShowAssignmentsArgs } from "../_shared/rows.ts";
 import { requireFeature } from "../_shared/entitlements.ts";
 import { resolveOrgSetting } from "../_shared/settings.ts";
 import { realDeps, type Deps } from "../_shared/deps.ts";
 import { APP_URL } from "../_shared/app-url.ts";
 import { createAndSendEnvelope, documensoAuthHeader } from "../_shared/documenso.ts";
-import { encodeBase64 } from "https://deno.land/std@0.224.0/encoding/base64.ts";
+import { decodeBase64, encodeBase64 } from "https://deno.land/std@0.224.0/encoding/base64.ts";
 import {
   formatMoney,
   formatOrderNo,
@@ -31,6 +34,7 @@ import {
   type HireOrderTerm,
   type OrderData,
   type OrderFieldKey,
+  type RenderSignature,
 } from "../_shared/hireOrders.ts";
 
 // ── settings shapes + fallbacks (mirror src/components/settings/hireOrders/*) ──
@@ -40,8 +44,26 @@ interface OrderDefaults { default_fee: number | null; currency: string }
 interface TermsVariants { lean: HireOrderTerm[]; standard: HireOrderTerm[]; full: HireOrderTerm[] }
 type TermsVariant = keyof TermsVariants;
 interface Countersign {
-  mode: "manual" | "documenso";
+  // 'documenso' is retained for the dormant Documenso path (see issueOne + _shared/documenso.ts).
+  mode: "manual" | "documenso" | "electronic";
+  /** electronic mode only: also email producers the signed PDF on countersign. */
+  email_producers_on_countersign?: boolean;
 }
+
+/**
+ * The letterhead + terms + currency resolved at issue time, frozen into
+ * hire_orders.issue_snapshot so the countersigned re-render (signOrder) reproduces
+ * the exact document the issued hash attests to. The snapshot letterhead already
+ * bakes in the per-order agent override that issueOne merges, so the sign path must
+ * NOT re-apply agent overrides on top of it. Null for orders issued before the
+ * column existed (signOrder falls back to live resolution for those).
+ *
+ * `countersign_mode` freezes the countersign mode the order was ISSUED under, so
+ * the electronic-vs-manual signing gate follows the issue-time mode and cannot be
+ * flipped by a later org-setting change (the DB transition gate, signOrder, and
+ * the frontend all key off this). Legacy/null snapshots fall back to the live setting.
+ */
+interface IssueSnapshot { letterhead: HireOrderLetterhead; terms: HireOrderTerm[]; currency: string; countersign_mode: string }
 
 const NUMBERING_DEFAULT: Numbering = { prefix: "HO", pattern: "{prefix}-{yyyy}-{mmdd}-{seq}" };
 const DEFAULTS_DEFAULT: OrderDefaults = { default_fee: null, currency: "EUR" };
@@ -166,6 +188,7 @@ interface DownloadOrderRow {
   artist_id: string | null;
   status: string;
   pdf_path: string | null;
+  signed_pdf_path: string | null;
   order_no: string;
 }
 
@@ -180,6 +203,11 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
   // download-url authorizes artists for their own issued orders, so it CANNOT sit
   // behind the admin/producer gate — it runs its own auth (see downloadUrl).
   if (body.action === "download-url") return downloadUrl(deps, req, body);
+
+  // sign authorizes the linked ARTIST (who holds neither admin nor producer), so
+  // it likewise sits BEFORE the admin/producer gate and runs its own auth
+  // (see signOrder — Bearer JWT -> the order's linked artist only).
+  if (body.action === "sign") return signOrder(deps, req, body);
 
   // Org-scoped gate for draft/issue/preview. A cron-secret caller (the trigger /
   // Task-9 cron) is org-agnostic and validated by the shared secret. A JWT caller
@@ -207,6 +235,8 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
     case "preview":
       return previewOrder(deps, body);
     case "countersign-test": {
+      // NOT IN USE: dormant Documenso path, no org can select 'documenso' since the
+      // settings UI offers only manual|electronic. Retained for a future self-hosted Documenso.
       // The coarse gate above accepts admin OR producer; this action is admin-only
       // (mirrors airtable-schema's admin-only connectivity check), so re-check.
       const adminGate = await requireOrgRole(deps, req, body.org_id, ["admin"]);
@@ -678,9 +708,20 @@ async function issueOne(
     .upload(path, bytes, { contentType: "application/pdf", upsert: true });
   if (upErr) return { ok: false, issues: ["upload_failed"] };
 
+  const issuedPdfSha256 = await sha256Hex(bytes);
+  // Freeze the resolved letterhead/terms/currency alongside the issued stamp so the
+  // signed re-render reproduces this exact document (finding W1). This write is the
+  // ready->issued transition, which the freeze trigger permits.
+  const snapshot: IssueSnapshot = { letterhead: effectiveLetterhead, terms: variantTerms, currency, countersign_mode: countersign.mode };
   const { error: issueErr } = await admin
     .from("hire_orders")
-    .update({ status: "issued", issued_at: deps.now().toISOString(), pdf_path: path })
+    .update({
+      status: "issued",
+      issued_at: deps.now().toISOString(),
+      pdf_path: path,
+      issued_pdf_sha256: issuedPdfSha256,
+      issue_snapshot: snapshot,
+    } as unknown as TablesUpdate<"hire_orders">)
     .eq("id", orderId);
   if (issueErr) return { ok: false, issues: ["transition_failed"] };
 
@@ -695,6 +736,8 @@ async function issueOne(
   let signingUrl: string | null = null;
   let warning: string | undefined;
 
+  // NOT IN USE: dormant Documenso path, no org can select 'documenso' since the
+  // settings UI offers only manual|electronic. Retained for a future self-hosted Documenso.
   if (countersignModeUsed === "documenso") {
     const token = deps.env("DOCUMENSO_API_TOKEN");
     const baseUrlResult = resolveDocumensoBaseUrl(deps);
@@ -729,6 +772,13 @@ async function issueOne(
         console.error("generate-hire-orders: countersign fallback stamp failed", { org, orderId, error: fallbackErr.message });
       }
     }
+  }
+
+  // Electronic (in-app) countersign: nothing to send at issue time — the artist
+  // signs later on the order page. Point the issued email's "Review and sign" CTA
+  // at that page (the auth-gated detail route, keyed by the order UUID).
+  if (countersignModeUsed === "electronic") {
+    signingUrl = `${APP_URL}/hire-orders/${o.id}`;
   }
 
   // Best-effort side effects — a failure here must NOT undo a successful issue.
@@ -770,8 +820,9 @@ async function sendIssuedEmail(
     // download_url points at the auth-gated V3 detail page (re-signs the PDF on demand),
     // NOT a raw signed storage URL — a signed URL expires in 3600s and would be dead in the
     // inbox. The route is /hire-orders/:id, so it uses order.id (the uuid), not order_no.
-    // signing_url is only ever set in documenso mode (undefined -> omitted for manual,
-    // and for a documenso attempt that failed and fell back -- see issueOne).
+    // signing_url is set in documenso mode and in electronic mode (the in-app order
+    // page). It is undefined, so omitted, for manual mode and for a documenso
+    // attempt that failed and fell back -- see issueOne.
     templateData: {
       artist_name: strField(data, "artist_name"),
       order_no: order.order_no,
@@ -870,7 +921,7 @@ async function downloadUrl(deps: Deps, req: Request, body: DownloadBody): Promis
   const admin = deps.admin;
   const { data: order } = await admin
     .from("hire_orders")
-    .select("id, org_id, artist_id, status, pdf_path, order_no")
+    .select("id, org_id, artist_id, status, pdf_path, signed_pdf_path, order_no")
     .eq("id", body.order_id)
     .eq("org_id", body.org_id)
     .maybeSingle();
@@ -899,14 +950,329 @@ async function downloadUrl(deps: Deps, req: Request, body: DownloadBody): Promis
   }
 
   if (!allowed) return json({ error: "forbidden" }, 403);
-  if (!o.pdf_path) return json({ error: "no_pdf" }, 409);
+  // The countersigned copy is the document of record once signed; fall back to the
+  // original issued PDF for orders that were never electronically countersigned.
+  const path = o.signed_pdf_path ?? o.pdf_path;
+  if (!path) return json({ error: "no_pdf" }, 409);
 
   // Sign with the caller's client so storage RLS is the backstop.
   const { data: signed, error: signErr } = await userClient.storage
-    .from(BUCKET).createSignedUrl(o.pdf_path, SIGNED_URL_TTL);
+    .from(BUCKET).createSignedUrl(path, SIGNED_URL_TTL);
   if (signErr || !signed) return json({ error: "sign_failed" }, 500);
 
   return json({ url: (signed as { signedUrl: string }).signedUrl, expires_in: SIGNED_URL_TTL });
+}
+
+// ── sign (own auth: the linked artist only) ────────────────────────────────
+
+interface SignBody {
+  org_id: string;
+  order_id: string;
+  method?: "typed" | "drawn";
+  typed_name?: string;
+  signature_png?: string;
+  consent?: boolean;
+}
+
+/** Shape of the order select in signOrder (mirrors the select string). */
+interface SignOrderRow {
+  id: string;
+  org_id: string;
+  order_no: string;
+  status: string;
+  artist_id: string | null;
+  terms_variant: string | null;
+  fee_currency: string | null;
+  agent_name: string | null;
+  agent_email: string | null;
+  issued_pdf_sha256: string | null;
+  issue_snapshot: IssueSnapshot | null;
+  data: OrderData;
+  show_date_id: string | null;
+  show_dates: { city_id: string | null; shows: { program: string | null; sub_program: string | null } | null } | null;
+}
+
+const CONSENT_TEXT =
+  "By signing, I agree that my electronic signature is the legal equivalent of my handwritten signature, and I accept the terms of this hire order.";
+const MAX_SIGNATURE_PNG_CHARS = 2_000_000; // ~1.5MB decoded — a generous cap for a canvas PNG
+
+async function signOrder(deps: Deps, req: Request, body: SignBody): Promise<Response> {
+  const admin = deps.admin;
+  const org = body.org_id;
+  if (!body.order_id) return json({ error: "order_id required" }, 400);
+
+  // Own auth: any authenticated user; authorization decided against the loaded order.
+  const authHeader = req.headers.get("Authorization");
+  if (!authHeader?.startsWith("Bearer ")) return json({ error: "Unauthorized" }, 401);
+  const { data: { user }, error: authErr } = await deps.userClient(authHeader).auth.getUser();
+  if (authErr || !user) return json({ error: "Unauthorized" }, 401);
+
+  const { data: orderRaw } = await admin
+    .from("hire_orders")
+    .select("id, org_id, order_no, status, artist_id, terms_variant, fee_currency, agent_name, agent_email, issued_pdf_sha256, issue_snapshot, data, show_date_id, show_dates(city_id, shows(program, sub_program))")
+    .eq("id", body.order_id)
+    .eq("org_id", org)
+    .maybeSingle();
+  if (!orderRaw) return json({ error: "not_found" }, 404);
+  const o = orderRaw as unknown as SignOrderRow;
+
+  // Only the linked artist may sign.
+  if (!o.artist_id) return json({ error: "forbidden" }, 403);
+  const { data: artistRow } = await admin
+    .from("artists").select("id").eq("id", o.artist_id).eq("user_id", user.id).maybeSingle();
+  if (!artistRow) return json({ error: "forbidden" }, 403);
+
+  // Idempotency + status guard.
+  if (o.status === "countersigned") return json({ countersigned: true, idempotent: true });
+  if (o.status !== "issued") return json({ error: "not_issued" }, 409);
+
+  // Feature + mode gate.
+  const denied = await requireFeature(deps, org, "hire_orders");
+  if (denied) return denied;
+  const countersign = await resolveOrgSetting<Countersign>(admin, org, "hire_order_countersign", COUNTERSIGN_DEFAULT);
+  // Prefer the mode the order was ISSUED under (frozen in the snapshot) over the live
+  // org setting, so switching the org electronic->manual mid-flight cannot strand an
+  // electronic-issued order (the DB gate keys off the same frozen mode). Legacy/null
+  // snapshots fall back to the current setting.
+  const effectiveMode = o.issue_snapshot?.countersign_mode ?? countersign.mode;
+  if (effectiveMode !== "electronic") return json({ error: "wrong_mode" }, 409);
+
+  // Consent + payload validation.
+  if (body.consent !== true) return json({ error: "consent_required" }, 400);
+  const method = body.method;
+  if (method !== "typed" && method !== "drawn") return json({ error: "invalid_signature" }, 400);
+  const typedName = (body.typed_name ?? "").trim();
+  if (method === "typed" && typedName === "") return json({ error: "invalid_signature" }, 400);
+  const png = body.signature_png ?? "";
+  if (method === "drawn" && (!png.startsWith("data:image/png;base64,") || png.length > MAX_SIGNATURE_PNG_CHARS)) {
+    return json({ error: "invalid_signature" }, 400);
+  }
+
+  const data = o.data;
+  const signerName = strField(data, "artist_name") || typedName || "Artist";
+  const signerEmail = strField(data, "recipient_email") || null;
+  const signedAtIso = deps.now().toISOString();
+  const ip = req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || null;
+  const userAgent = req.headers.get("user-agent") || null;
+
+  // Store the drawn image (audit trail); typed signatures have no image.
+  let signatureImagePath: string | null = null;
+  if (method === "drawn") {
+    const b64 = png.slice(png.indexOf(",") + 1);
+    // The prefix + length were validated above, but the base64 BODY can still be
+    // undecodable (invalid chars) -> decodeBase64 throws. handle() has no try/catch
+    // around signOrder, so an escaped throw would be a CORS-less 500; treat it as
+    // the same clean 400 the other payload-validation failures return.
+    let pngBytes: Uint8Array;
+    try {
+      pngBytes = decodeBase64(b64);
+    } catch {
+      return json({ error: "invalid_signature" }, 400);
+    }
+    // Reject a valid-base64 but non-PNG body before it reaches storage / the react-pdf
+    // <Image> renderer (which would otherwise throw uncaught -> CORS-less 500). Verify
+    // the 8-byte PNG signature.
+    const PNG_SIG = [0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a];
+    if (pngBytes.length < 8 || PNG_SIG.some((b, i) => pngBytes[i] !== b)) {
+      return json({ error: "invalid_signature" }, 400);
+    }
+    signatureImagePath = `${org}/signatures/${o.order_no}.png`;
+    const { error: imgErr } = await admin.storage.from(BUCKET).upload(signatureImagePath, pngBytes, {
+      contentType: "image/png", upsert: true,
+    });
+    if (imgErr) return json({ error: "signature_upload_failed" }, 500);
+  }
+
+  // Re-render the signed PDF from the frozen issue snapshot so it reproduces the
+  // exact issued document the certificate hash attests to (finding W1). Legacy
+  // orders issued before the issue_snapshot column carry null and fall back to
+  // re-resolving the org's CURRENT letterhead/terms + the per-order agent override.
+  const [letterhead, terms, defaults] = await Promise.all([
+    resolveOrgSetting<HireOrderLetterhead>(admin, org, "hire_order_letterhead", LETTERHEAD_DEFAULT),
+    resolveOrgSetting<TermsVariants>(admin, org, "hire_order_terms", TERMS_DEFAULT),
+    resolveOrgSetting<OrderDefaults>(admin, org, "hire_order_defaults", DEFAULTS_DEFAULT),
+  ]);
+  const snapshot = o.issue_snapshot;
+  let renderLetterhead: HireOrderLetterhead;
+  let renderTerms: HireOrderTerm[];
+  let currency: string;
+  if (snapshot && snapshot.letterhead && Array.isArray(snapshot.terms)) {
+    // The snapshot letterhead already includes the per-order agent override baked in
+    // at issue time, so do NOT re-merge o.agent_name/agent_email here.
+    renderLetterhead = snapshot.letterhead;
+    renderTerms = snapshot.terms;
+    currency = snapshot.currency ?? o.fee_currency ?? defaults.currency ?? "EUR";
+  } else {
+    const variant = (o.terms_variant as TermsVariant) ?? "standard";
+    renderLetterhead = {
+      ...letterhead,
+      agent_name: o.agent_name ?? letterhead.agent_name,
+      agent_email: o.agent_email ?? letterhead.agent_email,
+    };
+    renderTerms = terms[variant] ?? [];
+    currency = o.fee_currency ?? defaults.currency ?? "EUR";
+  }
+  const signature: RenderSignature = {
+    method,
+    typedName: method === "typed" ? typedName : undefined,
+    imageDataUrl: method === "drawn" ? png : undefined,
+    signerName,
+    signerEmail: signerEmail ?? undefined,
+    signedAtIso,
+    ip: ip ?? undefined,
+    userAgent: userAgent ?? undefined,
+    documentSha256: o.issued_pdf_sha256 ?? "",
+    consentText: CONSENT_TEXT,
+  };
+  const signedBytes = await deps.renderHireOrderPdf({
+    data, orderNo: o.order_no, status: "countersigned", letterhead: renderLetterhead,
+    terms: renderTerms, currency, generatedAtIso: signedAtIso, signature,
+  });
+
+  // Upload the signed copy (keeps the original issued pdf_path intact).
+  const signedPath = `${org}/${o.order_no}-signed.pdf`;
+  const { error: upErr } = await admin.storage.from(BUCKET).upload(signedPath, signedBytes, {
+    contentType: "application/pdf", upsert: true,
+  });
+  if (upErr) return json({ error: "signed_upload_failed" }, 500);
+
+  // Audit row.
+  const { error: sigErr } = await admin.from("hire_order_signatures").insert([{
+    org_id: org,
+    hire_order_id: o.id,
+    signer_user_id: user.id,
+    signer_name: signerName,
+    signer_email: signerEmail,
+    method,
+    typed_name: method === "typed" ? typedName : null,
+    signature_image_path: signatureImagePath,
+    signed_at: signedAtIso,
+    ip,
+    user_agent: userAgent,
+    consent_text: CONSENT_TEXT,
+    document_sha256: o.issued_pdf_sha256,
+    // dynamically assembled audit row -> single cast at the boundary
+  }] as unknown as TablesInsert<"hire_order_signatures">[]);
+  // A 23505 (unique(hire_order_id)) means an audit row ALREADY exists for this order
+  // — either a concurrent winner, or a prior submit that inserted the row but whose
+  // flip then failed, stranding the order at 'issued'. Do NOT blind-return success:
+  // fall through to the guarded flip below (the single source of truth). It flips the
+  // order if it is still 'issued' (completing that prior submit) or no-ops idempotently
+  // (!affected) if a winner already flipped it. Any other error is a genuine 500.
+  if (sigErr && (sigErr as { code?: string }).code !== "23505") return json({ error: "signature_insert_failed" }, 500);
+
+  // Atomic + idempotent transition (guarded by status='issued').
+  const { data: updatedRows, error: updErr } = await admin
+    .from("hire_orders")
+    .update({ status: "countersigned", countersigned_at: signedAtIso, signed_pdf_path: signedPath, countersign_mode: "electronic" })
+    .eq("id", o.id)
+    .eq("status", "issued")
+    .select("id");
+  if (updErr) return json({ error: "transition_failed" }, 500);
+  const affected = Array.isArray(updatedRows) ? updatedRows.length > 0 : !!updatedRows;
+  if (!affected) return json({ countersigned: true, idempotent: true });
+
+  // Best-effort side effects — never undo a completed signing.
+  await notifyProducersCountersigned(deps, o).catch((e) =>
+    console.error("generate-hire-orders: sign producer notify failed", { org, orderId: o.id, error: (e as Error).message }));
+  await notifyArtistCountersigned(deps, org, o, user.id).catch((e) =>
+    console.error("generate-hire-orders: sign artist notify failed", { org, orderId: o.id, error: (e as Error).message }));
+  await sendCountersignedEmails(deps, org, o, data, signedBytes, currency, !!countersign.email_producers_on_countersign).catch((e) =>
+    console.error("generate-hire-orders: countersigned email failed", { org, orderId: o.id, error: (e as Error).message }));
+
+  return json({ countersigned: true, signed_pdf_path: signedPath });
+}
+
+/** Notify the order's producers that the artist countersigned (in-app). Mirrors
+ *  documenso-webhook's notifyProducers resolution: resolve_show_assignments on the
+ *  order's show_date, falling back to org admins; deduped. */
+async function notifyProducersCountersigned(deps: Deps, order: SignOrderRow): Promise<void> {
+  const admin = deps.admin;
+  const org = order.org_id;
+  let recipientIds: string[] = [];
+  if (order.show_dates) {
+    const { data: producers } = await admin.rpc("resolve_show_assignments", {
+      p_program: order.show_dates.shows?.program ?? "",
+      p_sub_program: order.show_dates.shows?.sub_program ?? null,
+      p_city_id: order.show_dates.city_id,
+      p_org: org,
+    } as ResolveShowAssignmentsArgs);
+    recipientIds = ((producers ?? []) as unknown as ProducerAssignmentRow[]).map((p) => p.producer_user_id);
+  }
+  if (recipientIds.length === 0) {
+    const { data: admins } = await admin.from("org_memberships").select("user_id").eq("org_id", org).eq("role", "admin");
+    recipientIds = ((admins ?? []) as unknown as OrgAdminRow[]).map((a) => a.user_id);
+  }
+  recipientIds = [...new Set(recipientIds)] as string[];
+  if (recipientIds.length === 0) return;
+  const rows = recipientIds.map((uid) => ({
+    org_id: org, user_id: uid, type: "hire_order_countersigned",
+    title: "Hire order countersigned",
+    message: `Hire order ${order.order_no} has been countersigned.`,
+    related_entity_type: "hire_order", related_entity_id: order.id,
+  }));
+  await admin.from("notifications").insert(rows);
+}
+
+/** A confirmation notification for the signing artist. */
+async function notifyArtistCountersigned(deps: Deps, org: string, order: SignOrderRow, userId: string): Promise<void> {
+  await deps.admin.from("notifications").insert([{
+    org_id: org, user_id: userId, type: "hire_order_countersigned",
+    title: "Hire order signed",
+    message: `You signed hire order ${order.order_no}.`,
+    related_entity_type: "hire_order", related_entity_id: order.id,
+  }]);
+}
+
+/** Email the artist the signed PDF; optionally email producers too (opt-in flag). */
+async function sendCountersignedEmails(
+  deps: Deps, org: string, order: SignOrderRow, data: OrderData, signedBytes: Uint8Array,
+  _currency: string, emailProducers: boolean,
+): Promise<void> {
+  const attachment = { filename: `${order.order_no}-signed.pdf`, content_base64: encodeBase64(signedBytes) };
+  const templateData = {
+    artist_name: strField(data, "artist_name"),
+    order_no: order.order_no,
+    date_label: dateLabel(strField(data, "date")),
+    venue: strField(data, "venue"),
+    download_url: `${APP_URL}/hire-orders/${order.id}`,
+  };
+  const artistEmail = strField(data, "recipient_email");
+  if (artistEmail) {
+    await deps.sendEmail({
+      template_name: "hire-order-countersigned",
+      recipient_email: artistEmail,
+      org_id: org,
+      templateData,
+      attachments: [attachment],
+      idempotency_key: `hire-order-countersigned-${order.id}`,
+    });
+  }
+  if (!emailProducers) return;
+  // Resolve producer emails via auth admin (few per show); best-effort.
+  let producerIds: string[] = [];
+  if (order.show_dates) {
+    const { data: producers } = await deps.admin.rpc("resolve_show_assignments", {
+      p_program: order.show_dates.shows?.program ?? "",
+      p_sub_program: order.show_dates.shows?.sub_program ?? null,
+      p_city_id: order.show_dates.city_id,
+      p_org: org,
+    } as ResolveShowAssignmentsArgs);
+    producerIds = ((producers ?? []) as unknown as ProducerAssignmentRow[]).map((p) => p.producer_user_id);
+  }
+  for (const uid of [...new Set(producerIds)]) {
+    const { data: got } = await deps.admin.auth.admin.getUserById(uid);
+    const email = (got as { user?: { email?: string } } | null)?.user?.email;
+    if (!email) continue;
+    await deps.sendEmail({
+      template_name: "hire-order-countersigned",
+      recipient_email: email,
+      org_id: org,
+      templateData: { ...templateData, _intro: `A hire order for ${templateData.venue || "a show"} has been countersigned by the artist. The signed copy is attached.` },
+      attachments: [attachment],
+      idempotency_key: `hire-order-countersigned-prod-${order.id}-${uid}`,
+    });
+  }
 }
 
 // ── countersign-test (admin-only, own re-check happens in handle()) ────────
@@ -951,6 +1317,12 @@ function strField(data: OrderData, key: OrderFieldKey): string {
   const v = data[key]?.value;
   if (v === null || v === undefined) return "";
   return String(v);
+}
+
+/** Lowercase hex SHA-256 of the given bytes (issued-document tamper anchor). */
+async function sha256Hex(bytes: Uint8Array): Promise<string> {
+  const digest = await crypto.subtle.digest("SHA-256", bytes as BufferSource);
+  return Array.from(new Uint8Array(digest)).map((b) => b.toString(16).padStart(2, "0")).join("");
 }
 
 /** A compact uppercase cast code from a show's reference label; undefined when blank. */

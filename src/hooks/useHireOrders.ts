@@ -2,6 +2,9 @@ import { useQuery, useMutation, useQueryClient, keepPreviousData } from "@tansta
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useMyArtist } from "@/hooks/useMyArtist";
+import { resolveOrgSetting } from "@/data/settings";
+import { COUNTERSIGN_DEFAULT } from "@/components/settings/hireOrders/defaults";
+import type { HireOrderCountersign } from "@/components/settings/hireOrders/CountersignCard";
 import {
   fetchHireOrdersForDate,
   fetchHireOrder,
@@ -15,11 +18,13 @@ import {
   updateHireOrderDraft,
   bulkImportHireOrders,
   createArtistLite,
+  signHireOrder,
   type HireOrderFilters,
   type HireOrderReview,
   type HireOrderRow,
   type UpdateHireOrderDraftPatch,
   type BulkImportHireOrdersArgs,
+  type SignHireOrderArgs,
 } from "@/data/hireOrders";
 
 /** Every mutation below busts the whole `['hire-orders']` prefix, never a sub-key —
@@ -257,6 +262,31 @@ export function useMarkCountersigned() {
     },
     onError: (error: Error) => {
       toast.error(error.message || "Could not mark as countersigned");
+    },
+  });
+}
+
+/** The org's countersign mode + producer-email flag (for the signing surface). */
+export function useHireOrderCountersignMode(orgId: string | null | undefined) {
+  return useQuery({
+    queryKey: ["hire-orders", "countersign-mode", orgId],
+    enabled: !!orgId,
+    queryFn: () => resolveOrgSetting<HireOrderCountersign>(supabase, orgId!, "hire_order_countersign", COUNTERSIGN_DEFAULT),
+  });
+}
+
+/** Artist in-app signing. On success busts the whole hire-orders domain so the
+ *  detail page + any list re-render as countersigned. */
+export function useSignHireOrder() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (args: SignHireOrderArgs) => signHireOrder(supabase, args),
+    onSuccess: () => {
+      invalidateHireOrders(qc);
+      toast.success("Hire order signed");
+    },
+    onError: (error: Error) => {
+      toast.error(error.message || "Could not sign the hire order");
     },
   });
 }

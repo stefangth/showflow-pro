@@ -84,70 +84,56 @@ describe("HireOrdersTab", () => {
     });
   });
 
-  it("offers exactly manual and documenso countersign options, manual by default", async () => {
+  it("offers exactly manual and electronic countersign options, manual by default", async () => {
     authAs("org-on");
     renderWithProviders(<HireOrdersTab />);
     await screen.findByText("Countersign mode");
     const radios = screen.getAllByRole("radio");
     expect(radios).toHaveLength(2);
     expect(screen.getByRole("radio", { name: /manual/i })).toBeInTheDocument();
-    expect(screen.getByRole("radio", { name: /documenso/i })).toBeInTheDocument();
+    expect(screen.getByRole("radio", { name: /electronic signature/i })).toBeInTheDocument();
     expect(screen.getByRole("radio", { name: /manual/i })).toHaveAttribute("aria-checked", "true");
-    expect(screen.getByRole("radio", { name: /documenso/i })).toHaveAttribute("aria-checked", "false");
-  });
-
-  it("shows the Documenso connection controls only once documenso is selected, and keeps it selectable", async () => {
-    authAs("org-on");
-    renderWithProviders(<HireOrdersTab />);
-    await screen.findByText("Countersign mode");
-    expect(screen.queryByLabelText("Documenso instance URL")).not.toBeInTheDocument();
+    expect(screen.getByRole("radio", { name: /electronic signature/i })).toHaveAttribute("aria-checked", "false");
+    expect(screen.queryByText(/documenso/i)).not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: /test connection/i })).not.toBeInTheDocument();
-
-    fireEvent.click(screen.getByRole("radio", { name: /documenso/i }));
-    expect(screen.getByRole("button", { name: /test connection/i })).toBeInTheDocument();
-    // Copy makes clear the token AND instance URL are configured server-side, not
-    // entered in this card (the base URL is operator-controlled only — see the
-    // documenso base-url SSRF/secret-exfiltration fix).
-    expect(screen.getByText(/configured server-side by the platform operator/i)).toBeInTheDocument();
-    expect(screen.queryByLabelText("Documenso instance URL")).not.toBeInTheDocument();
-    expect(screen.queryByLabelText(/api token/i)).not.toBeInTheDocument();
   });
 
-  it("Test connection invokes countersign-test with the org id only (no base url), and shows the result inline", async () => {
-    seedClient({
-      ...OK_SEED,
-      "fn:generate-hire-orders": { data: { ok: true, detail: "Connected" }, error: null },
-    });
+  it("shows the producer-email checkbox only once electronic is selected, and keeps it togglable", async () => {
     authAs("org-on");
     renderWithProviders(<HireOrdersTab />);
     await screen.findByText("Countersign mode");
-    fireEvent.click(screen.getByRole("radio", { name: /documenso/i }));
+    expect(screen.queryByLabelText(/also email producers the signed copy/i)).not.toBeInTheDocument();
 
-    fireEvent.click(screen.getByRole("button", { name: /test connection/i }));
+    fireEvent.click(screen.getByRole("radio", { name: /electronic signature/i }));
+    const checkbox = screen.getByRole("checkbox", { name: /also email producers the signed copy/i });
+    expect(checkbox).toBeInTheDocument();
+    expect(checkbox).toHaveAttribute("aria-checked", "false");
 
-    await screen.findByText("Connected");
-
-    const calls = client.calls as { table: string; method: string; args: unknown[] }[];
-    const invoke = calls.find((c) => c.table === "fn:generate-hire-orders");
-    expect(invoke).toBeDefined();
-    const body = invoke!.args[0] as { action: string; org_id: string; base_url?: string };
-    expect(body.action).toBe("countersign-test");
-    expect(body.org_id).toBe("org-on");
-    expect(body.base_url).toBeUndefined();
+    fireEvent.click(checkbox);
+    expect(checkbox).toHaveAttribute("aria-checked", "true");
   });
 
-  it("Test connection shows a destructive result when the check fails", async () => {
-    seedClient({
-      ...OK_SEED,
-      "fn:generate-hire-orders": { data: { ok: false, detail: "documenso_error:401" }, error: null },
-    });
+  it("persists the electronic mode and producer-email flag via upsertOrgSetting on Save", async () => {
     authAs("org-on");
     renderWithProviders(<HireOrdersTab />);
     await screen.findByText("Countersign mode");
-    fireEvent.click(screen.getByRole("radio", { name: /documenso/i }));
-    fireEvent.click(screen.getByRole("button", { name: /test connection/i }));
+    fireEvent.click(screen.getByRole("radio", { name: /electronic signature/i }));
+    fireEvent.click(screen.getByRole("checkbox", { name: /also email producers the signed copy/i }));
+    fireEvent.click(screen.getByRole("button", { name: "Save countersign mode" }));
 
-    expect(await screen.findByText("documenso_error:401")).toBeInTheDocument();
+    await waitFor(() => {
+      const calls = client.calls as { table: string; method: string; args: unknown[] }[];
+      const upsertCall = calls.find(
+        (c) =>
+          c.table === "app_settings" &&
+          c.method === "upsert" &&
+          (c.args[0] as { key: string }).key === "hire_order_countersign",
+      );
+      expect(upsertCall).toBeDefined();
+      const value = (upsertCall!.args[0] as { value: { mode: string; email_producers_on_countersign: boolean } }).value;
+      expect(value.mode).toBe("electronic");
+      expect(value.email_producers_on_countersign).toBe(true);
+    });
   });
 
   it("lists three terms variant sub-editors (lean, standard, full), all empty by default", async () => {

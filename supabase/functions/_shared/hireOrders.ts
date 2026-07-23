@@ -204,8 +204,9 @@ export interface RenderInput {
   /** The order's field snapshot, already resolved by `resolveFields`. */
   data: OrderData;
   orderNo: string;
-  /** `preview` overlays a watermark; `issued` is the document of record. */
-  status: "issued" | "preview";
+  /** `preview` overlays a watermark; `issued` is the document of record;
+   *  `countersigned` renders the artist's signature + a certificate page. */
+  status: "issued" | "preview" | "countersigned";
   letterhead: HireOrderLetterhead;
   /** The org's terms. Empty is the seeded default — the section is omitted. */
   terms: HireOrderTerm[];
@@ -213,6 +214,25 @@ export interface RenderInput {
   currency: string;
   /** Timestamp shown in the footer; rendered as a UTC calendar date. */
   generatedAtIso: string;
+  /** Present only for a countersigned render — draws the artist's mark on the
+   *  signature line and appends the signature-certificate page. */
+  signature?: RenderSignature;
+}
+
+/** Audit + mark data for a countersigned render. */
+export interface RenderSignature {
+  method: "typed" | "drawn";
+  /** Typed full name (method 'typed'). */
+  typedName?: string;
+  /** `data:image/png;base64,...` (method 'drawn'). */
+  imageDataUrl?: string;
+  signerName: string;
+  signerEmail?: string;
+  signedAtIso: string;
+  ip?: string;
+  userAgent?: string;
+  documentSha256: string;
+  consentText: string;
 }
 
 export type RenderHireOrderPdf = (input: RenderInput) => Promise<Uint8Array>;
