@@ -164,7 +164,7 @@ Deno.test("renders a typed-signature countersigned PDF", async () => {
 
 Deno.test("renders a drawn-signature countersigned PDF", async () => {
   // 1x1 transparent PNG data URL
-  const png = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==";
+  const png = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAAC0lEQVR4nGNgAAIAAAUAAXpeqz8AAAAASUVORK5CYII=";
   const bytes = await renderHireOrderPdf({
     ...BASE,
     status: "countersigned",
