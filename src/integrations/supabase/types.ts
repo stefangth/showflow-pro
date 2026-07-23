@@ -983,6 +983,75 @@ export type Database = {
           },
         ]
       }
+      hire_order_signatures: {
+        Row: {
+          consent_text: string
+          created_at: string
+          document_sha256: string | null
+          hire_order_id: string
+          id: string
+          ip: string | null
+          method: string
+          org_id: string
+          signature_image_path: string | null
+          signed_at: string
+          signer_email: string | null
+          signer_name: string
+          signer_user_id: string | null
+          typed_name: string | null
+          user_agent: string | null
+        }
+        Insert: {
+          consent_text: string
+          created_at?: string
+          document_sha256?: string | null
+          hire_order_id: string
+          id?: string
+          ip?: string | null
+          method: string
+          org_id: string
+          signature_image_path?: string | null
+          signed_at: string
+          signer_email?: string | null
+          signer_name: string
+          signer_user_id?: string | null
+          typed_name?: string | null
+          user_agent?: string | null
+        }
+        Update: {
+          consent_text?: string
+          created_at?: string
+          document_sha256?: string | null
+          hire_order_id?: string
+          id?: string
+          ip?: string | null
+          method?: string
+          org_id?: string
+          signature_image_path?: string | null
+          signed_at?: string
+          signer_email?: string | null
+          signer_name?: string
+          signer_user_id?: string | null
+          typed_name?: string | null
+          user_agent?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "hire_order_signatures_hire_order_id_fkey"
+            columns: ["hire_order_id"]
+            isOneToOne: true
+            referencedRelation: "hire_orders"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "hire_order_signatures_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       hire_orders: {
         Row: {
           agent_email: string | null
@@ -1000,10 +1069,12 @@ export type Database = {
           id: string
           import_id: string | null
           issued_at: string | null
+          issued_pdf_sha256: string | null
           order_no: string
           org_id: string
           pdf_path: string | null
           show_date_id: string | null
+          signed_pdf_path: string | null
           status: Database["public"]["Enums"]["hire_order_status"]
           terms_variant: string
           updated_at: string
@@ -1024,10 +1095,12 @@ export type Database = {
           id?: string
           import_id?: string | null
           issued_at?: string | null
+          issued_pdf_sha256?: string | null
           order_no: string
           org_id: string
           pdf_path?: string | null
           show_date_id?: string | null
+          signed_pdf_path?: string | null
           status?: Database["public"]["Enums"]["hire_order_status"]
           terms_variant?: string
           updated_at?: string
@@ -1048,10 +1121,12 @@ export type Database = {
           id?: string
           import_id?: string | null
           issued_at?: string | null
+          issued_pdf_sha256?: string | null
           order_no?: string
           org_id?: string
           pdf_path?: string | null
           show_date_id?: string | null
+          signed_pdf_path?: string | null
           status?: Database["public"]["Enums"]["hire_order_status"]
           terms_variant?: string
           updated_at?: string
