@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { screen } from "@testing-library/react";
+import { screen, fireEvent, waitFor } from "@testing-library/react";
 import { renderWithProviders } from "@/test/renderWithProviders";
 import { createFakeSupabase, type TableSeed } from "@/test/supabaseFake";
 
@@ -16,6 +16,10 @@ vi.mock("@/features/auth/AuthContext", () => ({ useAuth: vi.fn() }));
 vi.mock("@/hooks/useCapabilities", async (orig) => ({
   ...(await orig<typeof import("@/hooks/useCapabilities")>()),
   useCan: vi.fn(),
+}));
+vi.mock("@/hooks/useEntitlements", async (orig) => ({
+  ...(await orig<typeof import("@/hooks/useEntitlements")>()),
+  useFeature: vi.fn(),
 }));
 vi.mock("@/features/editor/EditorContext", () => ({ useEditorConfig: () => ({ isEditorMode: false }) }));
 vi.mock("@/hooks/useEligibleArtists", () => ({
@@ -50,6 +54,7 @@ function seedClient(seed: Record<string, TableSeed>) {
 
 import { useAuth } from "@/features/auth/AuthContext";
 import { useCan } from "@/hooks/useCapabilities";
+import { useFeature } from "@/hooks/useEntitlements";
 import { ShowDateDetailSheet } from "./ShowDateDetailSheet";
 
 const SHOW_DATE = {
@@ -109,6 +114,43 @@ describe("ShowDateDetailSheet capability gates", () => {
       show_date_cast_eligibility: { data: [], error: null },
     });
     vi.mocked(useCan).mockReturnValue(true); // all capabilities on by default
+    vi.mocked(useFeature).mockReturnValue(false); // hire_orders off by default
+  });
+
+  it("hire_orders on + fully filled + no order: header shows Generate hire order and drafts on click", async () => {
+    vi.mocked(useFeature).mockReturnValue(true);
+    seedClient({
+      show_dates: { data: { ...SHOW_DATE, status: "fully_filled" }, error: null },
+      bookings: { data: [], error: null },
+      casts: { data: [], error: null },
+      show_date_cast_eligibility: { data: [], error: null },
+      hire_orders: { data: [], error: null },
+      "fn:generate-hire-orders": { data: { created: ["ho-x"], skipped: [] }, error: null },
+    });
+    renderSheet();
+    const btn = await screen.findByRole("button", { name: /generate hire order/i });
+    expect(btn).toBeEnabled();
+    fireEvent.click(btn);
+    await waitFor(() => {
+      const calls = (client.calls ?? []) as { table: string; method: string; args: unknown[] }[];
+      const invoke = calls.find((c) => c.table === "fn:generate-hire-orders" && c.method === "invoke");
+      expect(invoke).toBeDefined();
+      const body = invoke!.args[0] as { action: string; show_date_id: string };
+      expect(body.action).toBe("draft");
+      expect(body.show_date_id).toBe("sd-1");
+    });
+  });
+
+  it("hire_orders off: no Generate hire order CTA in the header", async () => {
+    seedClient({
+      show_dates: { data: { ...SHOW_DATE, status: "fully_filled" }, error: null },
+      bookings: { data: [], error: null },
+      casts: { data: [], error: null },
+      show_date_cast_eligibility: { data: [], error: null },
+    });
+    renderSheet();
+    await screen.findByText("Main Hall");
+    expect(screen.queryByRole("button", { name: /generate hire order/i })).not.toBeInTheDocument();
   });
 
   it("manage_show_dates on: Edit schedule is enabled", async () => {
