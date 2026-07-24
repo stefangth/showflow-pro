@@ -9,6 +9,7 @@ import { HIRE_ORDER_DEFAULT_TERMS } from "@/config/app.config";
 import { normalizeTermsSetting, type HireOrderTermsSetting } from "@/lib/hireOrders/terms";
 import {
   fetchHireOrdersForDate,
+  fetchDatesReadyForHireOrder,
   fetchHireOrder,
   fetchMyHireOrders,
   fetchHireOrders,
@@ -42,6 +43,17 @@ export function useHireOrdersForDate(showDateId: string | null | undefined) {
     queryKey: ["hire-orders", "for-date", showDateId],
     enabled: !!showDateId,
     queryFn: () => fetchHireOrdersForDate(supabase, showDateId!),
+  });
+}
+
+/** Which of the org's fully-filled dates are ready for a hire order (no active
+ *  order yet), plus the active order covering each already-ordered date. Feeds
+ *  the bookings aggregate banner and the per-row status cell. */
+export function useDatesReadyForHireOrder(orgId: string | null | undefined) {
+  return useQuery({
+    queryKey: ["hire-orders", "ready", orgId],
+    enabled: !!orgId,
+    queryFn: () => fetchDatesReadyForHireOrder(supabase, orgId!),
   });
 }
 
