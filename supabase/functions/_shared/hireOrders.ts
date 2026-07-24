@@ -208,22 +208,22 @@ export interface HireOrderTermsSetting {
   default_id: string | null;
 }
 
-const LEGACY_TERMS_KEYS = ["lean", "standard", "full"] as const;
-const LEGACY_TERMS_NAMES: Record<(typeof LEGACY_TERMS_KEYS)[number], string> = {
+const LEGACY_KEYS = ["lean", "standard", "full"] as const;
+const LEGACY_NAMES: Record<(typeof LEGACY_KEYS)[number], string> = {
   lean: "Lean",
   standard: "Standard",
   full: "Full",
 };
 
-function isTermsRecord(v: unknown): v is Record<string, unknown> {
+function isRecord(v: unknown): v is Record<string, unknown> {
   return typeof v === "object" && v !== null && !Array.isArray(v);
 }
 
-function coerceTermsClauses(raw: unknown): HireOrderClause[] {
+function coerceClauses(raw: unknown): HireOrderClause[] {
   if (!Array.isArray(raw)) return [];
   const out: HireOrderClause[] = [];
   for (const c of raw) {
-    if (isTermsRecord(c) && typeof c.title === "string" && typeof c.body === "string") {
+    if (isRecord(c) && typeof c.title === "string" && typeof c.body === "string") {
       out.push({ title: c.title, body: c.body });
     }
   }
@@ -233,15 +233,15 @@ function coerceTermsClauses(raw: unknown): HireOrderClause[] {
 /** Normalize any stored `hire_order_terms` value to the new shape, tolerating
  *  the legacy `{lean,standard,full}` shape and junk. */
 export function normalizeTermsSetting(raw: unknown): HireOrderTermsSetting {
-  if (!isTermsRecord(raw)) return { templates: [], default_id: null };
+  if (!isRecord(raw)) return { templates: [], default_id: null };
 
   // Legacy shape: has at least one of lean/standard/full and no `templates`.
-  if (!("templates" in raw) && LEGACY_TERMS_KEYS.some((k) => k in raw)) {
+  if (!("templates" in raw) && LEGACY_KEYS.some((k) => k in raw)) {
     return {
-      templates: LEGACY_TERMS_KEYS.map((k) => ({
+      templates: LEGACY_KEYS.map((k) => ({
         id: k,
-        name: LEGACY_TERMS_NAMES[k],
-        clauses: coerceTermsClauses(raw[k]),
+        name: LEGACY_NAMES[k],
+        clauses: coerceClauses(raw[k]),
       })),
       default_id: "standard",
     };
@@ -250,8 +250,8 @@ export function normalizeTermsSetting(raw: unknown): HireOrderTermsSetting {
   if (!Array.isArray(raw.templates)) return { templates: [], default_id: null };
   const templates: HireOrderTemplate[] = [];
   for (const t of raw.templates) {
-    if (isTermsRecord(t) && typeof t.id === "string" && typeof t.name === "string") {
-      templates.push({ id: t.id, name: t.name, clauses: coerceTermsClauses(t.clauses) });
+    if (isRecord(t) && typeof t.id === "string" && typeof t.name === "string") {
+      templates.push({ id: t.id, name: t.name, clauses: coerceClauses(t.clauses) });
     }
   }
   const default_id = typeof raw.default_id === "string" ? raw.default_id : null;
