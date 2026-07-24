@@ -288,7 +288,7 @@ export function GenerateHireOrderDialog({ open, onOpenChange, order, showDate, o
                           setVariant(t.id);
                         }}
                       >
-                        {t.name}
+                        {t.name.trim() || "Untitled template"}
                       </Button>
                     );
                   })}

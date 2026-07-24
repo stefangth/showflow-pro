@@ -594,7 +594,7 @@ export default function HireOrderEditPage() {
                           className="flex-1"
                           onClick={() => handleTermsVariant(t.id)}
                         >
-                          {t.name}
+                          {t.name.trim() || "Untitled template"}
                         </Button>
                       );
                     })}

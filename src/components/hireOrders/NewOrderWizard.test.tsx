@@ -446,6 +446,14 @@ describe("NewOrderWizard", () => {
     expect(within(berlin).getByLabelText(/duration/i)).toHaveValue(90);
     expect(within(hamburg).getByLabelText(/session 1 time/i)).toHaveValue("20:00");
     expect(within(hamburg).getByLabelText(/duration/i)).toHaveValue(75);
+
+    // Each date's session controls carry a date-prefixed aria-label (mirroring the
+    // `${label} running order` group label one level up), so a screen-reader user
+    // can tell which date's "Session 1 time" they're on even without the DOM
+    // grouping a sighted user relies on: querying the whole document (no `within`
+    // scoping) by the date-qualified name still resolves exactly one element.
+    expect(screen.getByLabelText(/berlin session 1 time/i)).toHaveValue("19:00");
+    expect(screen.getByLabelText(/hamburg session 1 time/i)).toHaveValue("20:00");
   });
 
   it("sends a date_overrides entry only for the date whose running order was edited", async () => {

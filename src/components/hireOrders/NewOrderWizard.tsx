@@ -861,15 +861,15 @@ export function NewOrderWizard({ open, onOpenChange, orgId }: Props) {
                                 <Input
                                   placeholder="Label (optional)" value={row.label}
                                   onChange={(e) => updateDateSessionRow(dateId, i, { label: e.target.value })}
-                                  aria-label={`Session ${i + 1} label`}
+                                  aria-label={`${label} session ${i + 1} label`}
                                 />
                                 <Input
                                   type="time" value={row.time}
                                   onChange={(e) => updateDateSessionRow(dateId, i, { time: e.target.value })}
-                                  aria-label={`Session ${i + 1} time`}
+                                  aria-label={`${label} session ${i + 1} time`}
                                 />
                                 {schedule.sessions.length > 1 && (
-                                  <Button type="button" variant="ghost" size="icon" onClick={() => removeDateSessionRow(dateId, i)} aria-label={`Remove session ${i + 1}`}>
+                                  <Button type="button" variant="ghost" size="icon" onClick={() => removeDateSessionRow(dateId, i)} aria-label={`${label} remove session ${i + 1}`}>
                                     <Trash2 className="h-4 w-4" />
                                   </Button>
                                 )}
