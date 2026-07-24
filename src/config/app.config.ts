@@ -4,6 +4,7 @@
  */
 
 import type { FeatureKey } from '@/lib/entitlements';
+import type { HireOrderTermsSetting } from '@/lib/hireOrders/terms';
 
 /**
  * Routes owned by a gated (entitlement-controlled) module. Checked by
@@ -116,29 +117,28 @@ export const EMAIL_HEALTH = {
   failureAlertCount: 3,
 } as const;
 
-/** A single hire-order terms clause: a titled paragraph of contract copy. */
-export interface HireOrderClause {
-  title: string;
-  body: string;
-}
+// Re-exported so existing importers of HireOrderClause (and the newer
+// HireOrderTemplate/HireOrderTermsSetting types) from app.config keep working
+// via one home: the lib module (src/lib/hireOrders/terms.ts) is canonical.
+export type { HireOrderClause, HireOrderTemplate, HireOrderTermsSetting } from '@/lib/hireOrders/terms';
 
 /**
- * Starting point for an org's hire-order terms: every variant is empty.
+ * Fallback for an org that has never saved terms: three seeded, clause-less
+ * templates (Lean / Standard / Full, default Standard).
  *
  * ShowFlow deliberately ships NO default clause text. Contract terms are the
  * hiring org's own legal responsibility and vary by jurisdiction and engagement,
  * so an admin authors them in Settings → Hire orders → Terms before issuing.
  * Seeding plausible-looking boilerplate would invite orgs to issue legal
  * documents nobody on their side had actually reviewed.
- *
- * The shape is kept (rather than dropping the constant) because it is the
- * documented fallback for the `hire_order_terms` app_settings key and the PDF
- * renderer and generator (Tasks 7/8) depend on the HireOrderClause type.
  */
-export const HIRE_ORDER_DEFAULT_TERMS: { lean: HireOrderClause[]; standard: HireOrderClause[]; full: HireOrderClause[] } = {
-  lean: [],
-  standard: [],
-  full: [],
+export const HIRE_ORDER_DEFAULT_TERMS: HireOrderTermsSetting = {
+  templates: [
+    { id: 'lean', name: 'Lean', clauses: [] },
+    { id: 'standard', name: 'Standard', clauses: [] },
+    { id: 'full', name: 'Full', clauses: [] },
+  ],
+  default_id: 'standard',
 };
 
 /** Role definitions */
