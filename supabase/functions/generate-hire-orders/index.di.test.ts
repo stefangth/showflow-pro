@@ -1337,6 +1337,94 @@ Deno.test("draft-batch continues after one transactional aggregate creation fail
   });
 });
 
+Deno.test("draft-batch drops an already-covered date and still creates the order for the rest (partial success)", async () => {
+  const { deps, calls } = makeFakeDeps({
+    authUser: { id: "u-admin" },
+    rpcs: { create_hire_order_with_dates: { data: "ho-new", error: null } },
+    tables: {
+      org_memberships: { data: { role: "admin" } },
+      artists: { data: [{ id: BATCH_ARTIST_1, name: "Ann", email: "ann@x.de", cast_role: "Lead" }] },
+      show_dates: { data: [BATCH_SHOW_DATE_ROW_1, SHOW_DATE_ROW_2] },
+      cities: { data: [{ id: "city-1", name: "Berlin" }, { id: "city-2", name: "Hamburg" }] },
+      // The coverage read (.eq artist_id) returns an active order on BATCH_DATE_1;
+      // the org-wide sequence-count read (no artist_id in its eq map) falls back to [].
+      hire_orders: [
+        { when: { artist_id: BATCH_ARTIST_1 }, data: [{ id: "cov-1", show_date_id: BATCH_DATE_1, status: "issued" }] },
+        { data: [] },
+      ],
+      hire_order_dates: { data: [] },
+      app_settings: [
+        { when: { key: "hire_order_defaults" }, data: [DEFAULTS] },
+        { when: { key: "hire_order_numbering" }, data: [NUMBERING] },
+      ],
+    },
+  });
+
+  const res = await handle(
+    makeRequest({
+      headers: JWT,
+      body: {
+        action: "draft-batch",
+        org_id: ORG,
+        artists: [{ artist_id: BATCH_ARTIST_1, show_date_ids: [BATCH_DATE_1, BATCH_DATE_2] }],
+        manual: { fee: 900, currency: "EUR" },
+      },
+    }),
+    deps,
+  );
+
+  assertEquals(res.status, 200);
+  const body = await res.json();
+  assertEquals(body.created, ["ho-new"]);
+  assertEquals(body.skipped, []);
+  assertEquals(body.errors, []);
+  assertEquals(body.date_conflicts, [{ artist_id: BATCH_ARTIST_1, dropped: [BATCH_DATE_1] }]);
+
+  // The RPC is invoked with ONLY the remaining (uncovered) date.
+  const aggregateCreate = calls.find((c) => c.table === "rpc:create_hire_order_with_dates");
+  const args = aggregateCreate!.args[0] as { p_show_date_ids: string[] };
+  assertEquals(args.p_show_date_ids, [BATCH_DATE_2]);
+});
+
+Deno.test("draft-batch skips an artist whose every requested date is already covered", async () => {
+  const { deps, calls } = makeFakeDeps({
+    authUser: { id: "u-admin" },
+    rpcs: { create_hire_order_with_dates: { data: "ho-new", error: null } },
+    tables: {
+      org_memberships: { data: { role: "admin" } },
+      artists: { data: [{ id: BATCH_ARTIST_1, name: "Ann", email: "ann@x.de", cast_role: "Lead" }] },
+      show_dates: { data: [BATCH_SHOW_DATE_ROW_1] },
+      cities: { data: [{ id: "city-1", name: "Berlin" }] },
+      hire_orders: [
+        { when: { artist_id: BATCH_ARTIST_1 }, data: [{ id: "cov-1", show_date_id: BATCH_DATE_1, status: "issued" }] },
+        { data: [] },
+      ],
+      hire_order_dates: { data: [] },
+      app_settings: [
+        { when: { key: "hire_order_defaults" }, data: [DEFAULTS] },
+        { when: { key: "hire_order_numbering" }, data: [NUMBERING] },
+      ],
+    },
+  });
+  const res = await handle(
+    makeRequest({
+      headers: JWT,
+      body: {
+        action: "draft-batch",
+        org_id: ORG,
+        artists: [{ artist_id: BATCH_ARTIST_1, show_date_ids: [BATCH_DATE_1] }],
+        manual: {},
+      },
+    }),
+    deps,
+  );
+  assertEquals(res.status, 200);
+  const body = await res.json();
+  assertEquals(body.created, []);
+  assertEquals(body.skipped, [{ artist_id: BATCH_ARTIST_1, reason: "exists" }]);
+  assertEquals(calls.filter((c) => c.table === "rpc:create_hire_order_with_dates").length, 0);
+});
+
 // ── issue ──────────────────────────────────────────────────────────────
 
 function issuableOrder(overrides: Record<string, unknown> = {}) {

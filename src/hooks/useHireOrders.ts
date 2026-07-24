@@ -117,6 +117,9 @@ interface DraftBatchResult {
   created?: string[];
   skipped?: { artist_id: string; reason: string }[];
   errors?: { artist_id: string; reason: string }[];
+  /** Partial success: an order was created for the artist, but these requested
+   *  dates were dropped because an active order already covered them. */
+  date_conflicts?: { artist_id: string; dropped: string[] }[];
 }
 export interface IssueResult { issued?: string[]; failed?: { order_id: string; issues: string[] }[] }
 
@@ -214,13 +217,19 @@ export function useHireOrderAction() {
           toast.info("No bookings need hire orders");
         }
       } else if (action === "draft-batch") {
-        const { created = [], skipped = [], errors = [] } = (data ?? {}) as DraftBatchResult;
+        const { created = [], skipped = [], errors = [], date_conflicts = [] } = (data ?? {}) as DraftBatchResult;
         if (created.length > 0) {
           toast.success(`Drafted ${created.length} hire order${created.length === 1 ? "" : "s"}`);
         }
         if (skipped.length > 0) {
           toast.warning(
             `${skipped.length} artist${skipped.length === 1 ? "" : "s"} skipped: ${describeDraftSkips(skipped)}`,
+          );
+        }
+        if (date_conflicts.length > 0) {
+          const droppedTotal = date_conflicts.reduce((sum, c) => sum + c.dropped.length, 0);
+          toast.warning(
+            `${droppedTotal} date${droppedTotal === 1 ? "" : "s"} already had an order and ${droppedTotal === 1 ? "was" : "were"} left out`,
           );
         }
         if (errors.length > 0) {
