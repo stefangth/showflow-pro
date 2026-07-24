@@ -81,8 +81,8 @@ hex, so changing the accent recolours everything that should follow it.
 
 ### Roles
 
-Thirty roles, grouped to match the existing copy sections so the outline reads the same
-way in both halves of the inspector:
+Thirty-five roles, grouped to match the existing copy sections so the outline reads the
+same way in both halves of the inspector:
 
 | Group | Roles |
 |---|---|
@@ -213,10 +213,14 @@ never set by `issue`, and a test asserts that.
 ### Sample document
 
 The editor previews against the existing `sampleOrderData()` shape (which already exercises
-parties, facts, a two-session running order, notes and fees), extended locally with a second
-engagement date and a signature block so the aggregate rows and the certificate page are
-visible. A picker lets the admin preview a **real** order instead, which round-trips to the
-server `preview` action and is the exactness check.
+parties, facts, a two-session running order, notes and fees), extended locally with two more
+engagement dates, terms clauses and a signature block, so no role in the outline is invisible
+in the preview.
+
+An **Open exact PDF** button round-trips the unsaved draft to the server `preview` action and
+opens the result in a new tab. That is the exactness check: same code path, same fonts, same
+renderer as an issued document. Previewing a specific **real** order from inside the editor is
+deferred; the per-order review dialog already previews real orders.
 
 ---
 
