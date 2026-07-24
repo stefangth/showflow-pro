@@ -38,7 +38,6 @@ function snapshot(data: OrderData, key: keyof OrderData): string {
   return String(v);
 }
 
-
 /** Read-only fact cell for the review grid. `mono` renders the value in the
  *  mono face (dates, durations) per the design. */
 function Fact({ label, value, mono }: { label: string; value: string; mono?: boolean }) {
