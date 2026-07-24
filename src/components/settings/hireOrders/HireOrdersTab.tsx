@@ -10,6 +10,7 @@ import { OrderDefaultsCard } from "./OrderDefaultsCard";
 import { NumberingCard } from "./NumberingCard";
 import { TermsVariantsCard } from "./TermsVariantsCard";
 import { CountersignCard } from "./CountersignCard";
+import { PdfCopyCard } from "./PdfCopyCard";
 import { HIRE_ORDER_AUDIT_KEYS } from "./auditKeys";
 
 const KEY_LABELS: Record<string, string> = {
@@ -18,6 +19,7 @@ const KEY_LABELS: Record<string, string> = {
   hire_order_numbering: "Numbering",
   hire_order_defaults: "Order defaults",
   hire_order_countersign: "Countersign mode",
+  hire_order_copy: "PDF copy",
 };
 
 function describeEntry(entry: { key: string }): string {
@@ -100,6 +102,7 @@ export function HireOrdersTab({ readOnly = false }: Props) {
         <OrderDefaultsCard orgId={orgId} readOnly={readOnly} />
         <NumberingCard orgId={orgId} readOnly={readOnly} />
         <TermsVariantsCard orgId={orgId} readOnly={readOnly} />
+        <PdfCopyCard orgId={orgId} readOnly={readOnly} />
         <CountersignCard orgId={orgId} readOnly={readOnly} />
       </div>
       <HireOrdersRail />

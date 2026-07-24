@@ -91,7 +91,7 @@ export const COPY_SECTIONS: CopySection[] = [
     ],
   },
   {
-    title: "Terms",
+    title: "Terms & conditions",
     fields: [
       { key: "terms_heading", label: "Terms heading", tokens: [] },
     ],
