@@ -2170,6 +2170,20 @@ export type Database = {
         Args: { p_show_date_id: string }
         Returns: undefined
       }
+      create_hire_order_with_dates: {
+        Args: {
+          p_artist: string
+          p_created_by: string | null
+          p_data: Json
+          p_fee_amount: number | null
+          p_fee_currency: string
+          p_order_no: string
+          p_org: string
+          p_show_date_ids: string[]
+          p_terms_variant: string
+        }
+        Returns: string
+      }
       cron_health_scan: {
         Args: never
         Returns: {
