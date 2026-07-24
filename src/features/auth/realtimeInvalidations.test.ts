@@ -36,6 +36,17 @@ describe("REALTIME_INVALIDATIONS — shows table", () => {
   });
 });
 
+describe("REALTIME_INVALIDATIONS — hire-order readiness", () => {
+  it("refreshes ['hire-orders'] when a booking or show_date changes (readiness derives from fully_filled status)", () => {
+    expect(hasKey("bookings", "hire-orders")).toBe(true);
+    expect(hasKey("show_dates", "hire-orders")).toBe(true);
+  });
+
+  it("propagates hire_orders row changes to the ['hire-orders'] domain", () => {
+    expect(hasKey("hire_orders", "hire-orders")).toBe(true);
+  });
+});
+
 describe("REALTIME_INVALIDATIONS — map integrity", () => {
   it("lists no known-dead key prefixes (renamed/typo'd keys that no query uses)", () => {
     // Keys confirmed to have zero `useQuery` consumers in src as of this audit.

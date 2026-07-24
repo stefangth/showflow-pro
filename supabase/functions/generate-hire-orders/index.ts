@@ -330,6 +330,11 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
       if (!adminGate.ok) return adminGate.response;
       return uploadAgentSignature(deps, body);
     }
+    case "agent-signature-url": {
+      const adminGate = await requireOrgRole(deps, req, body.org_id, ["admin"]);
+      if (!adminGate.ok) return adminGate.response;
+      return agentSignatureUrl(deps, body);
+    }
     case "countersign-test": {
       // NOT IN USE: dormant Documenso path, no org can select 'documenso' since the
       // settings UI offers only manual|electronic. Retained for a future self-hosted Documenso.
@@ -1331,6 +1336,25 @@ interface AgentSignatureBody {
 }
 
 /**
+ * Decode a `data:image/png;base64,...` URL to bytes, or null if the base64 body
+ * is undecodable OR the bytes aren't a real PNG (8-byte magic). Shared by the
+ * `sign` and agent-signature paths so the decode + magic check live in one place
+ * (each caller maps null to its own error code). The `data:...;base64,` prefix and
+ * size cap are validated by callers before this.
+ */
+function decodePngOrNull(dataUrl: string): Uint8Array | null {
+  let bytes: Uint8Array;
+  try {
+    bytes = decodeBase64(dataUrl.slice(dataUrl.indexOf(",") + 1));
+  } catch {
+    return null;
+  }
+  const PNG_SIG = [0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a];
+  if (bytes.length < 8 || PNG_SIG.some((b, i) => bytes[i] !== b)) return null;
+  return bytes;
+}
+
+/**
  * Store the org's booking-agent signature PNG in the hire-orders bucket and
  * return its path + a short-lived signed URL for a settings preview. Admin-only
  * (re-checked by the caller). The path is persisted into hire_order_letterhead by
@@ -1352,16 +1376,8 @@ async function uploadAgentSignature(
   ) {
     return json({ error: "invalid_png" }, 400);
   }
-  let bytes: Uint8Array;
-  try {
-    bytes = decodeBase64(png.slice(png.indexOf(",") + 1));
-  } catch {
-    return json({ error: "invalid_png" }, 400);
-  }
-  const PNG_SIG = [0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a];
-  if (bytes.length < 8 || PNG_SIG.some((b, i) => bytes[i] !== b)) {
-    return json({ error: "invalid_png" }, 400);
-  }
+  const bytes = decodePngOrNull(png);
+  if (!bytes) return json({ error: "invalid_png" }, 400);
   const path = `${org}/agent-signature.png`;
   const { error: upErr } = await admin.storage.from(BUCKET).upload(path, bytes, {
     contentType: "image/png",
@@ -1373,6 +1389,32 @@ async function uploadAgentSignature(
     SIGNED_URL_TTL,
   );
   return json({ path, url: signed?.signedUrl ?? null });
+}
+
+/**
+ * Return a short-lived signed URL for the org's already-stored agent signature
+ * (or null when none), so the settings card can preview it after a reload — the
+ * client can't sign it itself (the bucket has no read policy for this path).
+ * Admin-only (re-checked by the caller).
+ */
+async function agentSignatureUrl(
+  deps: Deps,
+  body: AgentSignatureBody,
+): Promise<Response> {
+  const admin = deps.admin;
+  const letterhead = await resolveOrgSetting<HireOrderLetterhead>(
+    admin,
+    body.org_id,
+    "hire_order_letterhead",
+    LETTERHEAD_DEFAULT,
+  );
+  const path = letterhead.agent_signature_path;
+  if (!path) return json({ url: null });
+  const { data: signed } = await admin.storage.from(BUCKET).createSignedUrl(
+    path,
+    SIGNED_URL_TTL,
+  );
+  return json({ url: signed?.signedUrl ?? null });
 }
 
 /**
@@ -2175,24 +2217,11 @@ async function signOrder(
   // Store the drawn image (audit trail); typed signatures have no image.
   let signatureImagePath: string | null = null;
   if (method === "drawn") {
-    const b64 = png.slice(png.indexOf(",") + 1);
-    // The prefix + length were validated above, but the base64 BODY can still be
-    // undecodable (invalid chars) -> decodeBase64 throws. handle() has no try/catch
-    // around signOrder, so an escaped throw would be a CORS-less 500; treat it as
-    // the same clean 400 the other payload-validation failures return.
-    let pngBytes: Uint8Array;
-    try {
-      pngBytes = decodeBase64(b64);
-    } catch {
-      return json({ error: "invalid_signature" }, 400);
-    }
-    // Reject a valid-base64 but non-PNG body before it reaches storage / the react-pdf
-    // <Image> renderer (which would otherwise throw uncaught -> CORS-less 500). Verify
-    // the 8-byte PNG signature.
-    const PNG_SIG = [0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a];
-    if (pngBytes.length < 8 || PNG_SIG.some((b, i) => pngBytes[i] !== b)) {
-      return json({ error: "invalid_signature" }, 400);
-    }
+    // Decode + verify the 8-byte PNG magic before it reaches storage / the react-pdf
+    // <Image> renderer (an undecodable or non-PNG body would otherwise throw uncaught
+    // -> CORS-less 500). Same clean 400 the other payload-validation failures return.
+    const pngBytes = decodePngOrNull(png);
+    if (!pngBytes) return json({ error: "invalid_signature" }, 400);
     signatureImagePath = `${org}/signatures/${o.order_no}.png`;
     const { error: imgErr } = await admin.storage.from(BUCKET).upload(
       signatureImagePath,

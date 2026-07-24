@@ -273,6 +273,44 @@ describe("useHireOrderAction", () => {
     expect(toast.error).toHaveBeenCalledWith("1 artist failed: artist not found");
   });
 
+  it("warns how many dates were left out when draft-batch reports date_conflicts (plural)", async () => {
+    vi.mocked(invokeHireOrderAction).mockResolvedValue({
+      created: ["ho-1"],
+      skipped: [],
+      errors: [],
+      date_conflicts: [
+        { artist_id: "a-1", dropped: ["d1", "d2"] },
+        { artist_id: "a-2", dropped: ["d3"] },
+      ],
+    });
+    const { Wrapper } = wrapper();
+    const { result } = renderHook(() => useHireOrderAction(), { wrapper: Wrapper });
+
+    await act(async () => {
+      await result.current.mutateAsync({ action: "draft-batch", org_id: "org-1", artists: [], manual: {} });
+    });
+
+    expect(toast.success).toHaveBeenCalledWith("Drafted 1 hire order");
+    expect(toast.warning).toHaveBeenCalledWith("3 dates already had an order and were left out");
+  });
+
+  it("uses singular wording when exactly one date is left out", async () => {
+    vi.mocked(invokeHireOrderAction).mockResolvedValue({
+      created: ["ho-1"],
+      skipped: [],
+      errors: [],
+      date_conflicts: [{ artist_id: "a-1", dropped: ["d1"] }],
+    });
+    const { Wrapper } = wrapper();
+    const { result } = renderHook(() => useHireOrderAction(), { wrapper: Wrapper });
+
+    await act(async () => {
+      await result.current.mutateAsync({ action: "draft-batch", org_id: "org-1", artists: [], manual: {} });
+    });
+
+    expect(toast.warning).toHaveBeenCalledWith("1 date already had an order and was left out");
+  });
+
   it("toasts after a successful resend", async () => {
     vi.mocked(invokeHireOrderAction).mockResolvedValue({ sent_at: "2026-06-01T12:00:00.000Z" });
     const { Wrapper } = wrapper();

@@ -309,6 +309,7 @@ function ProducerShowsBookings() {
           ctaLabel="Generate hire orders"
           onCta={() => setWizardOpen(true)}
           disabled={!canGenerateHireOrders}
+          ctaTitle={canGenerateHireOrders ? undefined : "You don't have permission to generate hire orders"}
         />
       )}
 
@@ -430,6 +431,7 @@ function ProducerShowsBookings() {
                                   variant="outline"
                                   className="h-7 px-2 text-xs"
                                   disabled={!canGenerateHireOrders || pendingHireOrderDateId === sd.id}
+                                  title={canGenerateHireOrders ? undefined : "You don't have permission to generate hire orders"}
                                   onClick={(e) => { e.stopPropagation(); draftHireOrderForDate(sd.id); }}
                                 >
                                   <Plus className="mr-1 h-3 w-3" /> Generate hire order

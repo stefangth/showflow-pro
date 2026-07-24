@@ -608,3 +608,16 @@ export async function uploadAgentSignature(
   });
   return data as { path: string; url: string | null };
 }
+
+/** Signed URL for the org's already-stored agent signature (or null), so settings
+ *  can preview it after a reload. Admin-only server-side. */
+export async function fetchAgentSignatureUrl(
+  client: SupabaseClient<Database>,
+  orgId: string,
+): Promise<string | null> {
+  const data = await invokeHireOrderAction(client, {
+    action: "agent-signature-url",
+    org_id: orgId,
+  });
+  return (data as { url: string | null }).url;
+}

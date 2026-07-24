@@ -12,6 +12,8 @@ export interface HireOrderReadyBannerProps {
   onCta: () => void;
   /** Disables the CTA (feature off / no capability / pending). */
   disabled?: boolean;
+  /** Native tooltip on the CTA, e.g. a reason the disabled button can't be used. */
+  ctaTitle?: string;
   /** Overrides the default Sparkles glyph in the icon tile. */
   icon?: ReactNode;
 }
@@ -29,6 +31,7 @@ export function HireOrderReadyBanner({
   ctaLabel,
   onCta,
   disabled,
+  ctaTitle,
   icon,
 }: HireOrderReadyBannerProps) {
   return (
@@ -40,7 +43,7 @@ export function HireOrderReadyBanner({
         <p className="text-sm font-semibold text-accent-700">{title}</p>
         <p className="mt-0.5 text-sm text-muted-foreground">{description}</p>
       </div>
-      <Button size="sm" onClick={onCta} disabled={disabled} className="shrink-0">
+      <Button size="sm" onClick={onCta} disabled={disabled} title={ctaTitle} className="shrink-0">
         {ctaLabel}
       </Button>
     </div>

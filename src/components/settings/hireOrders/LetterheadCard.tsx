@@ -3,7 +3,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { resolveOrgSetting, upsertOrgSetting } from "@/data/settings";
-import { uploadAgentSignature } from "@/data/hireOrders";
+import { uploadAgentSignature, fetchAgentSignatureUrl } from "@/data/hireOrders";
 import type { Json } from "@/integrations/supabase/types";
 import { LETTERHEAD_DEFAULT } from "./defaults";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -117,6 +117,16 @@ export function LetterheadCard({ orgId, readOnly = false }: { orgId: string | nu
     setSignaturePreviewUrl(null);
   }
   const hasSignature = !!(signaturePreviewUrl || form.agent_signature_path);
+  // Preview an already-saved signature after a reload: the client can't sign the
+  // storage URL itself, so fetch it via the admin edge action. Keyed on the
+  // server-side path; superseded by a fresh upload's preview URL when present.
+  const savedSignatureUrlQuery = useQuery({
+    queryKey: ["hire-orders", "agent-signature-url", orgId, data?.agent_signature_path ?? null],
+    enabled: Boolean(orgId && data?.agent_signature_path),
+    queryFn: () => fetchAgentSignatureUrl(supabase, orgId!),
+  });
+  const previewUrl = signaturePreviewUrl ??
+    (form.agent_signature_path ? savedSignatureUrlQuery.data ?? null : null);
 
   if (isLoading) return <Skeleton className="h-64 w-full" />;
   // Read failed: render the error INSTEAD of the form. Falling through would show
@@ -199,9 +209,9 @@ export function LetterheadCard({ orgId, readOnly = false }: { orgId: string | nu
           </p>
           {hasSignature && (
             <div className="flex items-center gap-3 rounded-md border border-border p-2 w-fit">
-              {signaturePreviewUrl ? (
+              {previewUrl ? (
                 <img
-                  src={signaturePreviewUrl}
+                  src={previewUrl}
                   alt="Agent signature preview"
                   className="h-12 w-auto max-w-[200px] object-contain"
                 />
