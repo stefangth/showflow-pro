@@ -50,6 +50,8 @@ import { RequiredSkillsSection } from '@/components/shows/date/RequiredSkillsSec
 import { fetchBlockedArtistIds } from '@/data/blockedDates';
 import { ChatPanel } from '@/components/chat/ChatPanel';
 import { HireOrdersCard } from '@/components/shows/hireOrders/HireOrdersCard';
+import { useHireOrdersForDate, useHireOrderAction } from '@/hooks/useHireOrders';
+import { useFeature } from '@/hooks/useEntitlements';
 import { ShowDateFormDialog } from '@/components/shows/ShowDateFormDialog';
 import { BookingRow } from '@/components/shows/BookingRow';
 import { useCancelShowDate, useDeleteShowDate } from '@/hooks/useShowDates';
@@ -169,6 +171,22 @@ export function ShowDateDetailSheet({ showDateId, open, onOpenChange }: Props) {
   const eligibility = eligibilityQ.data;
 
   const orgId = currentOrg?.id ?? null;
+
+  // Hire-order top CTA: a header shortcut mirroring the HireOrdersCard banner
+  // below. Shown when the module is on, the date is fully filled, and no active
+  // order covers it yet; drafts the single-date order for the confirmed cast.
+  const hireOrdersOn = useFeature('hire_orders');
+  const canGenerateHireOrders = useCan('generate_hire_orders');
+  const hireOrderAction = useHireOrderAction();
+  const { data: dateOrders } = useHireOrdersForDate(hireOrdersOn ? showDateId : null);
+  const dateHasActiveOrder = (dateOrders ?? []).some((o) => o.status !== 'void');
+  const showGenerateHireOrderCta = hireOrdersOn && canManage &&
+    showDate?.status === 'fully_filled' && !dateHasActiveOrder;
+  const generateHireOrder = () => {
+    if (!orgId || !showDateId) return;
+    hireOrderAction.mutate({ action: 'draft', org_id: orgId, show_date_id: showDateId, notify: false });
+  };
+
   const { data: flowData } = useBookingFlow();
   const flow = flowData ?? BOOKING_FLOW_DEFAULTS;
   const { reference, customFieldKey } = useReferenceField();
@@ -440,23 +458,35 @@ export function ShowDateDetailSheet({ showDateId, open, onOpenChange }: Props) {
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent side="right" className="w-full sm:max-w-3xl overflow-y-auto p-0">
         <div className="sticky top-0 z-10 bg-background border-b border-border px-6 py-3">
-          <SheetHeader className="text-left">
-            <SheetTitle className="font-display text-base">
-              {showDate
-                ? referenceLabel({
-                    reference,
-                    show: showDate.show,
-                    custom: (showDate.custom as Record<string, unknown> | null) ?? null,
-                    customFieldKey,
-                  })
-                : 'Show Date'}
-            </SheetTitle>
-            {isEditorMode && isRealAdmin && (
-              <Badge variant="outline" className="text-xs font-mono text-muted-foreground w-fit">
-                ShowDateDetailSheet.tsx
-              </Badge>
+          <div className="flex items-start justify-between gap-3">
+            <SheetHeader className="text-left">
+              <SheetTitle className="font-display text-base">
+                {showDate
+                  ? referenceLabel({
+                      reference,
+                      show: showDate.show,
+                      custom: (showDate.custom as Record<string, unknown> | null) ?? null,
+                      customFieldKey,
+                    })
+                  : 'Show Date'}
+              </SheetTitle>
+              {isEditorMode && isRealAdmin && (
+                <Badge variant="outline" className="text-xs font-mono text-muted-foreground w-fit">
+                  ShowDateDetailSheet.tsx
+                </Badge>
+              )}
+            </SheetHeader>
+            {showGenerateHireOrderCta && (
+              <Button
+                size="sm"
+                className="shrink-0"
+                onClick={generateHireOrder}
+                disabled={hireOrderAction.isPending || !canGenerateHireOrders}
+              >
+                Generate hire order
+              </Button>
             )}
-          </SheetHeader>
+          </div>
         </div>
 
         <div className="p-6 space-y-6">
