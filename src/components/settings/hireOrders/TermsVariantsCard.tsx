@@ -96,9 +96,16 @@ function ClauseListEditor({
 
 export function TermsVariantsCard({ orgId, readOnly = false }: { orgId: string | null; readOnly?: boolean }) {
   const qc = useQueryClient();
-  const { data, isLoading, isError, error } = useQuery({
+  // Shares the ["app-settings","hire_order_terms",orgId] key with useHireOrderTerms
+  // (the three order pickers), so a save here busts every picker's cache. Both
+  // observers MUST resolve to the identical HireOrderTermsSetting shape -- the
+  // queryFn normalizes here too (not just read into local state below), so a
+  // legacy-shape org that hasn't re-saved yet never caches the raw {lean,standard,
+  // full} object for a picker to read and crash on (`terms.templates` undefined).
+  const { data, isLoading, isError, error } = useQuery<HireOrderTermsSetting>({
     queryKey: ["app-settings", "hire_order_terms", orgId],
-    queryFn: () => resolveOrgSetting<unknown>(supabase, orgId, "hire_order_terms", HIRE_ORDER_DEFAULT_TERMS),
+    queryFn: async () =>
+      normalizeTermsSetting(await resolveOrgSetting<unknown>(supabase, orgId, "hire_order_terms", HIRE_ORDER_DEFAULT_TERMS)),
     enabled: Boolean(orgId),
   });
 

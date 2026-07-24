@@ -395,3 +395,39 @@ Deno.test("single-date PDF retains the legacy date presentation", async () => {
   assertStringIncludes(text, "15/08/2026");
   assertStringIncludes(text, "Tempodrom");
 });
+
+Deno.test("aggregate PDF still renders order-level notes (not dropped just because it has 2+ dates)", async () => {
+  // notes is editable for aggregates (HireOrderEditPage notes field) and is the
+  // document of record -- an aggregate order must not silently omit it just
+  // because the single-date running-order block (which used to be the only
+  // place notes rendered) is gated off for isAggregate.
+  const bytes = await renderHireOrderPdf({
+    ...makeRenderFixture(),
+    data: {
+      ...makeRenderFixture().data,
+      notes: { value: "Load-in via the stage door from 17:00.", source: "manual" },
+      engagement_dates: {
+        value: [
+          { show_date_id: "sd-1", date: "2026-08-15", venue: "Tempodrom", city: "Berlin", sessions: ["18:00"] },
+          { show_date_id: "sd-2", date: "2026-08-16", venue: "Kulturhaus", city: "Hamburg", sessions: ["19:30"] },
+        ],
+        source: "showflow",
+      },
+    },
+  });
+
+  const text = await extractPdfText(bytes);
+  assertStringIncludes(text, "Engagement dates");
+  assertStringIncludes(text, "Notes: Load-in via the stage door from 17:00.");
+});
+
+Deno.test("single-date PDF still renders its order-level notes unchanged", async () => {
+  // Guards against the aggregate fix double-rendering or dropping notes for the
+  // 0/1-engagement-date (non-aggregate) shape.
+  const text = await extractPdfText(await renderHireOrderPdf(makeRenderFixture()));
+
+  assertStringIncludes(text, "Notes: Backline provided by the venue.");
+  // Exactly one occurrence -- the fix must not duplicate the notes line.
+  const occurrences = text.split("Notes: Backline provided by the venue.").length - 1;
+  assertEquals(occurrences, 1, "notes must render exactly once for a single-date order");
+});

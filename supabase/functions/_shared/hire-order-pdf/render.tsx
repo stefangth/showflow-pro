@@ -472,7 +472,20 @@ function HireOrderDoc(input: RenderInput): React.ReactElement {
                   <Text style={[s.cellTime, s.colTime]}>{time}</Text>
                 </View>
               ))}
-              {notes ? <Text style={s.notes}>{`Notes: ${notes}`}</Text> : null}
+            </View>
+          )
+          : null}
+
+        {/* Order-level notes: NOT gated on !isAggregate. It used to render only
+            inside the single-date running-order block above, so a 2+-date
+            (aggregate) order silently dropped its notes from the document of
+            record even though notes is editable for aggregates too
+            (HireOrderEditPage). Rendered as its own section so both shapes
+            show it exactly once. */}
+        {notes
+          ? (
+            <View style={s.section}>
+              <Text style={s.notes}>{`Notes: ${notes}`}</Text>
             </View>
           )
           : null}

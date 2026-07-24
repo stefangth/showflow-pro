@@ -1,6 +1,7 @@
 import { describe, expect, it, vi, beforeEach, afterEach } from "vitest";
 import { fireEvent, screen, waitFor } from "@testing-library/react";
 import { renderWithProviders } from "@/test/renderWithProviders";
+import { createTestQueryClient } from "@/test/queryClient";
 import { createFakeSupabase, type TableSeed } from "@/test/supabaseFake";
 
 // The dialog reaches the shared client only through its Task-11 hooks
@@ -20,6 +21,7 @@ function seedClient(seed: Record<string, TableSeed>) {
 
 import { useCan } from "@/hooks/useCapabilities";
 import { GenerateHireOrderDialog } from "./GenerateHireOrderDialog";
+import { TermsVariantsCard } from "@/components/settings/hireOrders/TermsVariantsCard";
 import type { HireOrderRow } from "@/data/hireOrders";
 
 const SHOW_DATE = {
@@ -476,5 +478,48 @@ describe("GenerateHireOrderDialog", () => {
       // The name was never touched -- its key must be absent.
       expect("agent_name" in patch).toBe(false);
     });
+  });
+
+  // React Query pitfall (see the "React Query key projection pitfall" house
+  // lesson): TermsVariantsCard and this dialog register a useQuery under the
+  // SAME key (["app-settings","hire_order_terms",orgId]) so a save in Settings
+  // busts every picker's cache. That only works if BOTH queryFns resolve to the
+  // identical HireOrderTermsSetting shape. A legacy-shape org (never re-saved
+  // since the {lean,standard,full} -> {templates,default_id} migration) proves
+  // it: mount the card first so it populates the shared cache, then mount this
+  // dialog against the SAME QueryClient and assert it renders the legacy
+  // templates instead of crashing on `terms.templates` being undefined.
+  it("shares the terms cache with TermsVariantsCard: a legacy-shape org still renders three templates, no crash", async () => {
+    seedClient({
+      hire_orders: { data: [], error: null },
+      app_settings: [
+        {
+          when: { key: "hire_order_terms" },
+          data: [
+            {
+              org_id: "org-1",
+              value: { lean: [{ title: "Fee", body: "Paid on the day." }], standard: [], full: [] },
+            },
+          ],
+          error: null,
+        },
+      ],
+    });
+
+    const queryClient = createTestQueryClient();
+    renderWithProviders(<TermsVariantsCard orgId="org-1" />, { queryClient });
+    // Let the card's own query resolve and populate the shared cache key.
+    await screen.findByDisplayValue("Lean");
+
+    renderWithProviders(
+      <GenerateHireOrderDialog
+        open onOpenChange={vi.fn()} order={ORDER} showDate={SHOW_DATE} orgId="org-1" producerName="Aurora Productions"
+      />,
+      { queryClient },
+    );
+
+    expect(screen.getByRole("radio", { name: "Lean" })).toBeInTheDocument();
+    expect(screen.getByRole("radio", { name: "Standard" })).toBeInTheDocument();
+    expect(screen.getByRole("radio", { name: "Full" })).toBeInTheDocument();
   });
 });
