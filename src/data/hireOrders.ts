@@ -593,3 +593,18 @@ export async function signHireOrder(
     consent: args.consent,
   });
 }
+
+/** Upload the org's booking-agent signature PNG (admin-only). Stores the bytes
+ *  and returns the storage path + a signed preview URL; the caller persists the
+ *  path into the letterhead setting via the normal Save. */
+export async function uploadAgentSignature(
+  client: SupabaseClient<Database>,
+  args: { org_id: string; signature_png: string },
+): Promise<{ path: string; url: string | null }> {
+  const data = await invokeHireOrderAction(client, {
+    action: "upload-agent-signature",
+    org_id: args.org_id,
+    signature_png: args.signature_png,
+  });
+  return data as { path: string; url: string | null };
+}

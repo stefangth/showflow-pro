@@ -11,6 +11,7 @@ export const LETTERHEAD_DEFAULT: Letterhead = {
   registration_line: "",
   agent_name: "",
   agent_email: "",
+  agent_signature_path: null,
 };
 
 export const NUMBERING_DEFAULT: HireOrderNumbering = { prefix: "HO", pattern: "{prefix}-{yyyy}-{mmdd}-{seq}" };
