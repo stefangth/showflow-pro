@@ -482,6 +482,7 @@ export function ShowDateDetailSheet({ showDateId, open, onOpenChange }: Props) {
                 className="shrink-0"
                 onClick={generateHireOrder}
                 disabled={hireOrderAction.isPending || !canGenerateHireOrders}
+                title={canGenerateHireOrders ? undefined : "You don't have permission to generate hire orders"}
               >
                 Generate hire order
               </Button>

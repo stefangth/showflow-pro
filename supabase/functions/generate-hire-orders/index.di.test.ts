@@ -1475,6 +1475,46 @@ Deno.test("upload-agent-signature requires admin (a producer gets 403)", async (
   assertEquals(res.status, 403);
 });
 
+Deno.test("agent-signature-url returns a signed url when a signature is stored", async () => {
+  const { deps } = makeFakeDeps({
+    authUser: { id: "u-admin" },
+    rpcs: { is_feature_enabled: { data: true, error: null } },
+    tables: {
+      org_memberships: { data: { role: "admin" } },
+      app_settings: [{
+        when: { key: "hire_order_letterhead" },
+        data: [{ org_id: ORG, value: { legal_name: "X", address_lines: [], agent_signature_path: `${ORG}/agent-signature.png` } }],
+      }],
+    },
+  });
+  const res = await handle(
+    makeRequest({ headers: JWT, body: { action: "agent-signature-url", org_id: ORG } }),
+    deps,
+  );
+  assertEquals(res.status, 200);
+  assertEquals(typeof (await res.json()).url, "string");
+});
+
+Deno.test("agent-signature-url returns null when no signature is stored", async () => {
+  const { deps } = makeFakeDeps({
+    authUser: { id: "u-admin" },
+    rpcs: { is_feature_enabled: { data: true, error: null } },
+    tables: {
+      org_memberships: { data: { role: "admin" } },
+      app_settings: [{
+        when: { key: "hire_order_letterhead" },
+        data: [{ org_id: ORG, value: { legal_name: "X", address_lines: [] } }],
+      }],
+    },
+  });
+  const res = await handle(
+    makeRequest({ headers: JWT, body: { action: "agent-signature-url", org_id: ORG } }),
+    deps,
+  );
+  assertEquals(res.status, 200);
+  assertEquals((await res.json()).url, null);
+});
+
 // ── issue ──────────────────────────────────────────────────────────────
 
 function issuableOrder(overrides: Record<string, unknown> = {}) {

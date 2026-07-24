@@ -149,6 +149,7 @@ function ProducerHireOrders({ showDateId, showDate, bookings, canManage }: Props
                 ctaLabel="Generate hire order"
                 onCta={handleGenerate}
                 disabled={action.isPending || !canGenerate}
+                ctaTitle={canGenerate ? undefined : "You don't have permission to generate hire orders"}
               />
             )}
 

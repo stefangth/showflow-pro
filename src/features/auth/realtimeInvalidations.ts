@@ -5,8 +5,12 @@
  * or renamed key silently no-ops and breaks cross-client propagation. Exported for testing.
  */
 export const REALTIME_INVALIDATIONS: Array<{ table: string; keys: unknown[][] }> = [
-  { table: 'bookings',                   keys: [['bookings']] },
-  { table: 'show_dates',                 keys: [['show-dates'], ['dashboard-upcoming-dates'], ['artist-eligible-dates']] },
+  // ['hire-orders'] on bookings + show_dates keeps the hire-order readiness query
+  // (['hire-orders','ready',org] — the bookings banner + per-row CTA/chip) fresh
+  // when a booking confirm/cancel flips a date's fully_filled status.
+  { table: 'bookings',                   keys: [['bookings'], ['hire-orders']] },
+  { table: 'show_dates',                 keys: [['show-dates'], ['dashboard-upcoming-dates'], ['artist-eligible-dates'], ['hire-orders']] },
+  { table: 'hire_orders',                keys: [['hire-orders']] },
   { table: 'show_date_cast_eligibility', keys: [['show-date-cast-eligibility'], ['eligible-artists'], ['artist-eligible-dates']] },
   { table: 'show_cast_eligibility',      keys: [['cast-eligibility'], ['eligible-artists'], ['artist-eligible-dates']] },
   { table: 'cast_members',              keys: [['cast-members'], ['artist-casts'], ['my-cast-memberships'], ['cast-members-counts'], ['eligible-artists'], ['artist-eligible-dates']] }, // cast membership drives both eligibility queries

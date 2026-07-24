@@ -91,4 +91,21 @@ describe("LetterheadCard agent signature", () => {
       expect(value.agent_signature_path).toBe("org-1/agent-signature.png");
     });
   });
+
+  it("previews an already-saved signature on load via a signed url", async () => {
+    seedClient({
+      app_settings: {
+        data: [{
+          key: "hire_order_letterhead",
+          org_id: "org-1",
+          value: { legal_name: "X", address_lines: [], registration_line: "", agent_signature_path: "org-1/agent-signature.png" },
+        }],
+        error: null,
+      },
+      "fn:generate-hire-orders": { data: { url: "https://signed.test/saved.png" }, error: null },
+    });
+    renderWithProviders(<LetterheadCard orgId="org-1" />);
+    const preview = await screen.findByAltText("Agent signature preview");
+    expect(preview).toHaveAttribute("src", "https://signed.test/saved.png");
+  });
 });
