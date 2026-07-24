@@ -1,7 +1,7 @@
 -- Aggregate hire-order dates and delivery timestamp persistence.
 BEGIN;
 CREATE EXTENSION IF NOT EXISTS pgtap WITH SCHEMA extensions;
-SELECT plan(30);
+SELECT plan(32);
 
 CREATE OR REPLACE FUNCTION pg_temp.act_as(_uid text) RETURNS void LANGUAGE plpgsql AS $$
 BEGIN
@@ -215,24 +215,35 @@ SELECT lives_ok(
   'voiding an aggregate releases its date for recreation'
 );
 
-SET LOCAL ROLE authenticated;
-SELECT throws_ok(
-  $$select public.create_hire_order_with_dates(
-      '00000000-0000-0000-0000-000000000333',
-      'HO-RPC-DENIED',
-      '00000000-0000-0000-0000-000000000778',
-      array['00000000-0000-0000-0000-000000000669']::uuid[],
-      '{}'::jsonb,
-      null,
-      'EUR',
-      'standard',
-      '00000000-0000-0000-0000-000000000334'
-    )$$,
-  '42501',
-  NULL,
-  'authenticated clients cannot call the service-role aggregate RPC directly'
+-- Do not execute this SECURITY DEFINER RPC through pgTAP's dynamic
+-- throws_ok() path as an unprivileged role: Postgres can crash while
+-- resolving that denied call. Inspect the ACL directly instead.
+SELECT ok(
+  not has_function_privilege(
+    'authenticated',
+    'public.create_hire_order_with_dates(uuid,text,uuid,uuid[],jsonb,numeric,text,text,uuid)',
+    'execute'
+  ),
+  'authenticated clients cannot execute the aggregate RPC'
 );
-RESET ROLE;
+
+SELECT ok(
+  not has_function_privilege(
+    'anon',
+    'public.create_hire_order_with_dates(uuid,text,uuid,uuid[],jsonb,numeric,text,text,uuid)',
+    'execute'
+  ),
+  'anonymous clients cannot execute the aggregate RPC'
+);
+
+SELECT ok(
+  has_function_privilege(
+    'service_role',
+    'public.create_hire_order_with_dates(uuid,text,uuid,uuid[],jsonb,numeric,text,text,uuid)',
+    'execute'
+  ),
+  'only the service role can execute the aggregate RPC'
+);
 
 SET LOCAL ROLE service_role;
 CREATE TEMP TABLE created_aggregate AS
