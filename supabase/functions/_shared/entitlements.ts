@@ -1,8 +1,10 @@
-// Per-org feature entitlements ("modules"). Pure logic (this file's top half)
-// plus edge-only DB-backed helpers (bottom half, Task 6).
-// MIRROR: src/lib/entitlements.ts carries the same registry + resolvers
-// (the two runtimes cannot share an import). Change both files in the
-// same commit. SQL twin: public.is_feature_enabled().
+// Per-org feature entitlements ("modules"). This file is split at the
+// sentinel markers below: the registry block between them is GENERATED
+// from src/lib/entitlements.ts by `npm run sync:mirrors`; edit the source,
+// then regenerate, and never hand-edit the block here. The imports below
+// and the edge-only DB-backed helpers past the block ARE hand-maintained
+// in this file and are runtime-specific (the edge runtime cannot import
+// from src/). SQL twin: public.is_feature_enabled().
 import type { SupabaseClient } from "npm:@supabase/supabase-js@2";
 import type { Deps } from "./deps.ts";
 import { json } from "./http.ts";
