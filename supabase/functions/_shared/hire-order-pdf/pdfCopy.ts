@@ -1,3 +1,6 @@
+// GENERATED FILE. Do not edit.
+// Source: src/lib/hireOrders/pdfCopy.ts
+// Regenerate: npm run sync:mirrors
 // Editable hire-order PDF copy. Every static string the renderer prints is a
 // key here; interpolated strings use {{token}} placeholders resolved by
 // applyTokens. Per-org overrides live in the `hire_order_copy` app-setting and

@@ -1,3 +1,6 @@
+// GENERATED FILE. Do not edit.
+// Source: src/integrations/supabase/types.ts
+// Regenerate: npm run sync:mirrors
 export type Json =
   | string
   | number

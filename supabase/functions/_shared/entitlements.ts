@@ -7,6 +7,7 @@ import type { SupabaseClient } from "npm:@supabase/supabase-js@2";
 import type { Deps } from "./deps.ts";
 import { json } from "./http.ts";
 
+// >>> ENTITLEMENTS REGISTRY MIRROR (keep byte-identical with the twin file) >>>
 export type FeatureKey = "booking_flow" | "hire_orders";
 
 export interface FeatureDef {
@@ -50,6 +51,7 @@ export function enabledFeatures(rows: EntitlementRow[]): Set<FeatureKey> {
 export function isFeatureEnabled(rows: EntitlementRow[], feature: FeatureKey): boolean {
   return enabledFeatures(rows).has(feature);
 }
+// <<< ENTITLEMENTS REGISTRY MIRROR <<<
 
 // ── Edge-only helpers (DB-backed via the is_feature_enabled RPC) ────────────
 // Everything below touches the database (through a SupabaseClient / Deps) and

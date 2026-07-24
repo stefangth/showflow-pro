@@ -1,18 +1,17 @@
-import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
+import { syncMirrors } from "../../../scripts/sync-mirrors.mjs";
 
-// The copy registry is dual-homed because the Deno edge renderer can't import
-// from src/. The two files must be byte-identical: the frontend shows defaults +
-// reset, the edge renders from them and freezes them into the issue snapshot. If
-// they drift, a preview and its issued PDF would use different wording. Edit one,
-// edit the other in the same commit.
+// The edge runtime cannot import from src/, so this file is dual-homed. It is
+// GENERATED from its source by scripts/sync-mirrors.mjs; this test fails if the
+// target was hand-edited or the source changed without a regen.
+//
+// This is a manifest-wide check (every entry in scripts/mirrors.manifest.json,
+// not just pdfCopy.ts), so it also supersedes the old
+// src/integrations/supabase/typesMirror.test.ts, which asserted the same
+// property for the database-types mirror. That file was deleted rather than
+// kept alongside this one to avoid two tests asserting the same thing.
 describe("hire-order pdf copy mirror", () => {
-  it("src and edge pdfCopy.ts are byte-identical", () => {
-    const a = readFileSync("src/lib/hireOrders/pdfCopy.ts", "utf8");
-    const b = readFileSync(
-      "supabase/functions/_shared/hire-order-pdf/pdfCopy.ts",
-      "utf8",
-    );
-    expect(a).toBe(b);
+  it("the generated target is in sync with its source", () => {
+    expect(syncMirrors({ check: true }).stale).toEqual([]);
   });
 });

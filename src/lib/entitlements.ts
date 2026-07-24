@@ -3,6 +3,7 @@
 // registry + resolvers (the two runtimes cannot share an import). Change
 // both files in the same commit. SQL twin: public.is_feature_enabled().
 
+// >>> ENTITLEMENTS REGISTRY MIRROR (keep byte-identical with the twin file) >>>
 export type FeatureKey = "booking_flow" | "hire_orders";
 
 export interface FeatureDef {
@@ -46,3 +47,4 @@ export function enabledFeatures(rows: EntitlementRow[]): Set<FeatureKey> {
 export function isFeatureEnabled(rows: EntitlementRow[], feature: FeatureKey): boolean {
   return enabledFeatures(rows).has(feature);
 }
+// <<< ENTITLEMENTS REGISTRY MIRROR <<<
