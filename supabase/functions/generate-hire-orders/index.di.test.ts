@@ -60,6 +60,45 @@ const TERMS_EMPTY = {
   org_id: ORG,
   value: { lean: [], standard: [], full: [] },
 };
+// New-shape (A1/A5) `hire_order_terms`: an org-authored template list + a `default_id`,
+// replacing the legacy fixed lean/standard/full shape above (both shapes normalize
+// through `normalizeTermsSetting`, so TERMS_FILLED/TERMS_EMPTY above stay valid fixtures).
+const TERMS_TEMPLATES_FULL_DEFAULT = {
+  org_id: ORG,
+  value: {
+    templates: [
+      { id: "lean-tmpl", name: "Lean", clauses: [] },
+      {
+        id: "full",
+        name: "Full",
+        clauses: [{ title: "Full Terms", body: "Everything." }],
+      },
+    ],
+    default_id: "full",
+  },
+};
+/** Default template's id is NOT `terms_variant` on the test order — models an order
+ *  whose referenced template was since deleted, falling back to this default. */
+const TERMS_TEMPLATES_DEFAULT_FILLED = {
+  org_id: ORG,
+  value: {
+    templates: [
+      {
+        id: "current-default",
+        name: "Current",
+        clauses: [{ title: "T2", body: "B2" }],
+      },
+    ],
+    default_id: "current-default",
+  },
+};
+const TERMS_TEMPLATES_DEFAULT_EMPTY = {
+  org_id: ORG,
+  value: {
+    templates: [{ id: "current-default", name: "Current", clauses: [] }],
+    default_id: "current-default",
+  },
+};
 
 // ── draft ────────────────────────────────────────────────────────────────
 
@@ -264,6 +303,46 @@ Deno.test("draft with notify inserts hire_orders_ready producer notifications on
     rows.some((r) => r.user_id === "p1"),
     "notifies the resolved producer",
   );
+});
+
+Deno.test("draft stores the org's default terms-template id, not a hardcoded 'standard'", async () => {
+  const { deps, calls } = makeFakeDeps({
+    authUser: { id: "u-admin" },
+    tables: {
+      org_memberships: { data: { role: "admin" } },
+      show_dates: { data: SHOW_DATE_ROW },
+      bookings: { data: [booking("b-A", "a-A", 500, "Ann", "ann@x.de")] },
+      cities: { data: { name: "Berlin" } },
+      hire_orders: [
+        { when: { __write: false }, data: [] },
+        { when: { __write: true }, data: { id: "ho-1" } },
+      ],
+      app_settings: [
+        { when: { key: "hire_order_defaults" }, data: [DEFAULTS] },
+        { when: { key: "hire_order_numbering" }, data: [NUMBERING] },
+        {
+          when: { key: "hire_order_terms" },
+          data: [TERMS_TEMPLATES_FULL_DEFAULT],
+        },
+      ],
+    },
+  });
+
+  const res = await handle(
+    makeRequest({
+      headers: JWT,
+      body: { action: "draft", org_id: ORG, show_date_id: SD },
+    }),
+    deps,
+  );
+  assertEquals(res.status, 200);
+
+  const insert = calls.find((c) =>
+    c.table === "hire_orders" && c.method === "insert"
+  );
+  assert(insert, "expected a hire_orders insert");
+  const row = insert!.args[0] as { terms_variant: string };
+  assertEquals(row.terms_variant, "full");
 });
 
 // ── draft-manual ─────────────────────────────────────────────────────────
@@ -1604,6 +1683,91 @@ Deno.test("issue refuses an order whose terms variant is empty with missing_term
   assert(
     body.failed[0].issues.includes("missing_terms"),
     "reports missing_terms",
+  );
+});
+
+Deno.test("issue of an order whose terms_variant points at a deleted template renders the default template's clauses", async () => {
+  const { deps } = makeFakeDeps({
+    authUser: { id: "u-admin" },
+    tables: {
+      org_memberships: { data: { role: "admin" } },
+      hire_orders: [
+        {
+          when: { __write: false },
+          data: issuableOrder({ terms_variant: "deleted-template" }),
+        },
+        { when: { __write: true }, data: null },
+      ],
+      artists: { data: { user_id: "u-artist" } },
+      app_settings: [
+        { when: { key: "hire_order_letterhead" }, data: [LETTERHEAD] },
+        {
+          when: { key: "hire_order_terms" },
+          data: [TERMS_TEMPLATES_DEFAULT_FILLED],
+        },
+        { when: { key: "hire_order_defaults" }, data: [DEFAULTS] },
+      ],
+    },
+  });
+  let captured: { terms: Array<{ title: string; body: string }> } | null = null;
+  deps.renderHireOrderPdf = (a) => {
+    captured = a as unknown as typeof captured;
+    return Promise.resolve(new Uint8Array([0x25, 0x50, 0x44, 0x46]));
+  };
+
+  const res = await handle(
+    makeRequest({
+      headers: JWT,
+      body: { action: "issue", org_id: ORG, order_ids: ["o-1"] },
+    }),
+    deps,
+  );
+  assertEquals(res.status, 200);
+  const body = await res.json();
+  assertEquals(body.issued, ["o-1"]);
+  assertEquals(captured!.terms, [{ title: "T2", body: "B2" }]);
+});
+
+Deno.test("issue with a deleted-template reference falling back to an empty default still fails missing_terms", async () => {
+  const { deps, calls } = makeFakeDeps({
+    authUser: { id: "u-admin" },
+    tables: {
+      org_memberships: { data: { role: "admin" } },
+      hire_orders: [
+        {
+          when: { __write: false },
+          data: issuableOrder({ terms_variant: "deleted-template" }),
+        },
+        { when: { __write: true }, data: null },
+      ],
+      app_settings: [
+        { when: { key: "hire_order_letterhead" }, data: [LETTERHEAD] },
+        {
+          when: { key: "hire_order_terms" },
+          data: [TERMS_TEMPLATES_DEFAULT_EMPTY],
+        },
+        { when: { key: "hire_order_defaults" }, data: [DEFAULTS] },
+      ],
+    },
+  });
+
+  const res = await handle(
+    makeRequest({
+      headers: JWT,
+      body: { action: "issue", org_id: ORG, order_ids: ["o-1"] },
+    }),
+    deps,
+  );
+  const body = await res.json();
+  assertEquals(body.issued, []);
+  assert(
+    body.failed[0].issues.includes("missing_terms"),
+    "reports missing_terms even when falling back to the default template",
+  );
+  assertEquals(
+    calls.filter((c) => c.table === "storage:hire-orders").length,
+    0,
+    "gate failed before rendering",
   );
 });
 
