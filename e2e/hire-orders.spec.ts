@@ -240,12 +240,18 @@ test.describe("Hire orders: producer issues, artist downloads", () => {
     await expect(dateRow).toBeVisible({ timeout: 15_000 });
     await dateRow.click();
 
-    // The hire-orders card shows a "Generate hire orders" banner because there is
+    // The hire-orders card shows a "Generate hire order" banner because there is
     // a confirmed booking with no active order yet. Clicking it drafts one order
     // (the draft action is idempotent per booking, so a re-click is a no-op), which
     // then renders a "Review and issue" button. Retry the click until that durable
-    // signal lands, mirroring the other specs' toPass idiom.
-    const generateBtn = page.getByRole("button", { name: /generate hire orders/i });
+    // signal lands, mirroring the other specs' toPass idiom. Scope to the open sheet
+    // dialog (so the bookings table's per-row Generate button behind the overlay is
+    // excluded) and take the first match, since a fully-filled date can show both the
+    // sheet's top CTA and the card banner (both draft the same single-date order).
+    const generateBtn = page
+      .getByRole("dialog")
+      .getByRole("button", { name: /generate hire order/i })
+      .first();
     const reviewBtn = page.getByRole("button", { name: /review and issue/i });
     await expect(generateBtn).toBeVisible({ timeout: 15_000 });
     await expect(async () => {
