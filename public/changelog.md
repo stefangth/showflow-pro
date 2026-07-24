@@ -9,6 +9,13 @@ What's new in ShowFlow, newest first.
 ### New
 - **Name your own terms templates** — Rename, add, and remove the terms templates on your hire orders in Settings → Hire orders. Pick a default that new orders start from.
 - **Per-date running orders** — When a hire order covers several dates, each date now carries its own session times, pulled from the synced event and editable in the new-order wizard.
+- **Editable hire order wording** — Customize every label and line printed on your hire order PDF from Settings → Hire orders, with a live preview before you save.
+- **Booking agent signature** — Upload your booking agent's signature once and it prints on the producer line of every hire order you issue.
+
+### Improved
+- **Start hire orders where you work** — Shows & Bookings now shows how many dates are ready for a hire order, with a button on each ready date, and the same shortcut in the date's detail panel, to start one on the spot.
+- **Copy a session length to every date** — In the new-order wizard, set a session's duration once and copy it to all the dates you selected.
+- **Multi-date orders skip dates already covered** — Creating hire orders across several dates now leaves out any date that already has an order and tells you which were skipped.
 
 ### Fixed
 - **Creating hire orders with custom terms** — Fixed an error that could block new hire orders from being created after you added or renamed a terms template. New orders, including ones that cover multiple dates, now save reliably.
