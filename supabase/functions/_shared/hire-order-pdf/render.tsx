@@ -524,6 +524,9 @@ function HireOrderDoc(input: RenderInput): React.ReactElement {
         <View style={s.signatures} wrap={false}>
           <View style={s.signature}>
             <Text style={s.signatureFor}>{`For the Producer · ${letterhead.legal_name}`}</Text>
+            {letterhead.agent_signature_data_url
+              ? <Image style={s.sigMarkImage} src={letterhead.agent_signature_data_url} />
+              : null}
             <View style={s.signatureLine} />
             <Text style={s.signatureHint}>{`Name · Date ${formatDateDMY(date)}`}</Text>
           </View>

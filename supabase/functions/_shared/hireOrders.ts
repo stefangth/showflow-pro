@@ -324,6 +324,12 @@ export interface HireOrderLetterhead {
   registration_line?: string;
   agent_name?: string;
   agent_email?: string;
+  /** Storage path of the org's booking-agent signature PNG (in the hire-orders
+   *  bucket), drawn on the producer signature line of issued PDFs. */
+  agent_signature_path?: string | null;
+  /** Resolved at issue/preview time from `agent_signature_path`: the PNG as a
+   *  `data:image/png;base64,...` URL for the renderer. Never persisted. */
+  agent_signature_data_url?: string | null;
 }
 
 export interface HireOrderTerm {
