@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { toast } from "sonner";
@@ -9,6 +9,7 @@ import { useArtistsLite, useShowDatesLite, useHireOrderAction } from "@/hooks/us
 import type { ArtistLite, ShowDateLite } from "@/data/hireOrders";
 import { resolveFields } from "@/lib/hireOrders/resolveFields";
 import { formatMoney } from "@/lib/hireOrders/money";
+import type { SessionOverride } from "@/lib/hireOrders/engagementDates";
 import type { EditableOrderFieldKey, FieldLayers, OrderData } from "@/lib/hireOrders/types";
 import { formatDateDMY } from "@/lib/dates";
 import { ROUTES } from "@/config/app.config";
@@ -30,6 +31,37 @@ interface Props {
 
 type WizardStep = 1 | 2 | 3 | 4;
 interface SessionRow { label: string; time: string }
+
+/** A single linked date's editable running order in step 3, seeded from that
+ *  date's own synced sessions/duration and diffed against them on submit. */
+interface DateSchedule { sessions: SessionRow[]; durationMin: string }
+
+/** Seed a date's step-3 running order from its synced sessions/duration. An
+ *  empty synced session list still shows one blank row to type into. */
+function seedDateSchedule(date: ShowDateLite | undefined): DateSchedule {
+  return {
+    sessions:
+      date && date.sessions.length > 0
+        ? date.sessions.map((time) => ({ label: "", time }))
+        : [{ label: "", time: "" }],
+    durationMin: date?.duration_minutes != null ? String(date.duration_minutes) : "",
+  };
+}
+
+/** Fold session rows into the wire strings the edge function expects: a labelled
+ *  row becomes "Label time", an unlabelled one just the time; blank times drop. */
+function sessionRowsToStrings(rows: SessionRow[]): string[] {
+  return rows
+    .filter((s) => s.time.trim() !== "")
+    .map((s) => (s.label.trim() ? `${s.label.trim()} ${s.time.trim()}` : s.time.trim()));
+}
+
+/** A duration input's string to the wire number|null (blank clears it). */
+function parseDurationValue(value: string): number | null {
+  if (value.trim() === "") return null;
+  const n = Number(value);
+  return Number.isNaN(n) ? null : n;
+}
 
 /** Kept in sync with the CURRENCIES list in OrderDefaultsCard.tsx / CURRENCY_SYMBOLS in money.ts. */
 const CURRENCIES = ["EUR", "USD", "CHF"];
@@ -204,7 +236,8 @@ export function NewOrderWizard({ open, onOpenChange, orgId }: Props) {
   const [currency, setCurrency] = useState("EUR");
   const [durationMin, setDurationMin] = useState("");
   const [manualSessions, setManualSessions] = useState<SessionRow[]>([{ label: "", time: "" }]);
-  const [batchScheduleSourceDateId, setBatchScheduleSourceDateId] = useState<string | null>(null);
+  // Linked mode: one editable running order per assigned date, keyed by show_date_id.
+  const [dateSchedules, setDateSchedules] = useState<Record<string, DateSchedule>>({});
   const [submitting, setSubmitting] = useState<"draft" | "issue" | null>(null);
   const [result, setResult] = useState<WizardResult | null>(null);
 
@@ -212,7 +245,7 @@ export function NewOrderWizard({ open, onOpenChange, orgId }: Props) {
     setStep(1); setManualMode(false); setSelectedArtistIds([]); setSelectedShowDateIds([]); setArtistDateIds({});
     setManualArtistName(""); setManualEmail(""); setManualDate(""); setManualVenue(""); setManualCity("");
     setFee(""); setDurationMin(""); setManualSessions([{ label: "", time: "" }]);
-    setBatchScheduleSourceDateId(null);
+    setDateSchedules({});
     setSubmitting(null); setResult(null);
     seededDefaultsRef.current = false; setCurrency("EUR");
   }
@@ -228,50 +261,15 @@ export function NewOrderWizard({ open, onOpenChange, orgId }: Props) {
       setSelectedArtistIds([]);
       setSelectedShowDateIds([]);
       setArtistDateIds({});
-      setBatchScheduleSourceDateId(null);
     }
-  }
-
-  function syncBatchSchedule(
-    nextArtistIds: string[],
-    nextShowDateIds: string[],
-    nextArtistDateIds: Record<string, string[]>,
-  ) {
-    const remainsAssigned =
-      batchScheduleSourceDateId != null &&
-      nextArtistIds.some((artistId) =>
-        (nextArtistDateIds[artistId] ?? []).includes(batchScheduleSourceDateId),
-      );
-    if (remainsAssigned) return;
-
-    const nextSourceDateId =
-      nextShowDateIds.find((showDateId) =>
-        nextArtistIds.some((artistId) =>
-          (nextArtistDateIds[artistId] ?? []).includes(showDateId),
-        ),
-      ) ?? null;
-    const nextSourceDate = showDates.find((date) => date.id === nextSourceDateId);
-    setBatchScheduleSourceDateId(nextSourceDateId);
-    setDurationMin(
-      nextSourceDate?.duration_minutes != null
-        ? String(nextSourceDate.duration_minutes)
-        : "",
-    );
-    setManualSessions(
-      nextSourceDate && nextSourceDate.sessions.length > 0
-        ? nextSourceDate.sessions.map((time) => ({ label: "", time }))
-        : [{ label: "", time: "" }],
-    );
   }
 
   function toggleArtist(id: string) {
     if (selectedArtistIds.includes(id)) {
-      const nextArtistIds = selectedArtistIds.filter((artistId) => artistId !== id);
       const nextArtistDateIds = { ...artistDateIds };
       delete nextArtistDateIds[id];
-      setSelectedArtistIds(nextArtistIds);
+      setSelectedArtistIds((ids) => ids.filter((artistId) => artistId !== id));
       setArtistDateIds(nextArtistDateIds);
-      syncBatchSchedule(nextArtistIds, selectedShowDateIds, nextArtistDateIds);
       return;
     }
     setSelectedArtistIds((ids) => [...ids, id]);
@@ -280,47 +278,65 @@ export function NewOrderWizard({ open, onOpenChange, orgId }: Props) {
 
   function toggleShowDate(id: string) {
     if (selectedShowDateIds.includes(id)) {
-      const nextShowDateIds = selectedShowDateIds.filter((showDateId) => showDateId !== id);
-      const nextArtistDateIds =
+      setSelectedShowDateIds((ids) => ids.filter((showDateId) => showDateId !== id));
+      setArtistDateIds((current) =>
         Object.fromEntries(
-          Object.entries(artistDateIds).map(([artistId, ids]) => [
+          Object.entries(current).map(([artistId, ids]) => [
             artistId,
             ids.filter((showDateId) => showDateId !== id),
           ]),
-        );
-      setSelectedShowDateIds(nextShowDateIds);
-      setArtistDateIds(nextArtistDateIds);
-      syncBatchSchedule(selectedArtistIds, nextShowDateIds, nextArtistDateIds);
+        ),
+      );
       return;
     }
     setSelectedShowDateIds((ids) => [...ids, id]);
   }
 
   function applySelectedDatesToAll() {
-    const nextArtistDateIds = Object.fromEntries(
-      selectedArtistIds.map((artistId) => [artistId, [...selectedShowDateIds]]),
+    setArtistDateIds(
+      Object.fromEntries(
+        selectedArtistIds.map((artistId) => [artistId, [...selectedShowDateIds]]),
+      ),
     );
-    setArtistDateIds(nextArtistDateIds);
-    syncBatchSchedule(selectedArtistIds, selectedShowDateIds, nextArtistDateIds);
   }
 
   function toggleArtistDate(artistId: string, showDateId: string) {
     const assigned = new Set(artistDateIds[artistId] ?? []);
     if (assigned.has(showDateId)) assigned.delete(showDateId);
     else assigned.add(showDateId);
-    const nextArtistDateIds = {
-      ...artistDateIds,
+    setArtistDateIds((current) => ({
+      ...current,
       [artistId]: selectedShowDateIds.filter((id) => assigned.has(id)),
-    };
-    setArtistDateIds(nextArtistDateIds);
-    syncBatchSchedule(selectedArtistIds, selectedShowDateIds, nextArtistDateIds);
+    }));
   }
 
-  const linkedArtist = !manualMode ? artists.find((a) => a.id === selectedArtistIds[0]) ?? null : null;
-  const linkedDate =
-    !manualMode
-      ? showDates.find((d) => d.id === batchScheduleSourceDateId) ?? null
-      : null;
+  // The dates that will actually produce orders: the union of every selected
+  // artist's assignments, ordered by the common-date picker for stable display.
+  const assignedDateIds = useMemo(() => {
+    const assigned = new Set<string>();
+    for (const artistId of selectedArtistIds) {
+      for (const dateId of artistDateIds[artistId] ?? []) assigned.add(dateId);
+    }
+    return selectedShowDateIds.filter((id) => assigned.has(id));
+  }, [selectedArtistIds, selectedShowDateIds, artistDateIds]);
+
+  // Keep the per-date running orders in step with the assigned set: seed a newly
+  // assigned date from its synced sessions/duration, drop one no longer assigned,
+  // and preserve edits for a date that stays assigned. Compares keys (not values)
+  // so it never fights a producer's in-progress edits or loops.
+  useEffect(() => {
+    setDateSchedules((current) => {
+      const desired = new Set(assignedDateIds);
+      const needsAdd = assignedDateIds.some((id) => !(id in current));
+      const needsDrop = Object.keys(current).some((id) => !desired.has(id));
+      if (!needsAdd && !needsDrop) return current;
+      const next: Record<string, DateSchedule> = {};
+      for (const id of assignedDateIds) {
+        next[id] = current[id] ?? seedDateSchedule(showDates.find((d) => d.id === id));
+      }
+      return next;
+    });
+  }, [assignedDateIds, showDates]);
 
   const canContinueStep1 = manualMode
     ? manualArtistName.trim() !== ""
@@ -329,6 +345,7 @@ export function NewOrderWizard({ open, onOpenChange, orgId }: Props) {
   const canContinueStep2 = fee.trim() !== "" && !Number.isNaN(Number(fee));
   const canContinue = step === 1 ? canContinueStep1 : step === 2 ? canContinueStep2 : true;
 
+  // Manual mode's single running order (linked mode edits per-date state instead).
   function addSessionRow() {
     setManualSessions((rows) => (rows.length >= 3 ? rows : [...rows, { label: "", time: "" }]));
   }
@@ -339,41 +356,83 @@ export function NewOrderWizard({ open, onOpenChange, orgId }: Props) {
     setManualSessions((rows) => rows.map((r, idx) => (idx === i ? { ...r, ...patch } : r)));
   }
 
+  // Linked mode's per-date running orders. Each helper no-ops if the date is not
+  // (yet) in state, so a stale callback can never resurrect a dropped date.
+  function patchDateSchedule(dateId: string, update: (schedule: DateSchedule) => DateSchedule) {
+    setDateSchedules((current) =>
+      current[dateId] ? { ...current, [dateId]: update(current[dateId]) } : current,
+    );
+  }
+  function addDateSessionRow(dateId: string) {
+    patchDateSchedule(dateId, (s) =>
+      s.sessions.length >= 3 ? s : { ...s, sessions: [...s.sessions, { label: "", time: "" }] },
+    );
+  }
+  function removeDateSessionRow(dateId: string, i: number) {
+    patchDateSchedule(dateId, (s) => ({ ...s, sessions: s.sessions.filter((_, idx) => idx !== i) }));
+  }
+  function updateDateSessionRow(dateId: string, i: number, patch: Partial<SessionRow>) {
+    patchDateSchedule(dateId, (s) => ({
+      ...s,
+      sessions: s.sessions.map((r, idx) => (idx === i ? { ...r, ...patch } : r)),
+    }));
+  }
+  function setDateDuration(dateId: string, value: string) {
+    patchDateSchedule(dateId, (s) => ({ ...s, durationMin: value }));
+  }
+
   function buildManualDict(): Partial<Record<EditableOrderFieldKey, unknown>> {
     const manual: Partial<Record<EditableOrderFieldKey, unknown>> = {};
+    if (fee.trim() !== "" && !Number.isNaN(Number(fee))) manual.fee = Number(fee);
+    if (currency) manual.currency = currency;
+    // In linked mode the running order is per-date (date_overrides), so sessions
+    // and duration_min stay OUT of the shared manual dict; only manual mode's
+    // single editor still folds them in here.
     if (manualMode) {
       if (manualArtistName.trim()) manual.artist_name = manualArtistName.trim();
       if (manualEmail.trim()) manual.recipient_email = manualEmail.trim();
       if (manualDate.trim()) manual.date = manualDate.trim();
       if (manualVenue.trim()) manual.venue = manualVenue.trim();
       if (manualCity.trim()) manual.city = manualCity.trim();
+      if (durationMin.trim() !== "" && !Number.isNaN(Number(durationMin))) manual.duration_min = Number(durationMin);
+      const sessions = sessionRowsToStrings(manualSessions);
+      if (sessions.length > 0) manual.sessions = sessions;
     }
-    if (fee.trim() !== "" && !Number.isNaN(Number(fee))) manual.fee = Number(fee);
-    if (currency) manual.currency = currency;
-    if (durationMin.trim() !== "" && !Number.isNaN(Number(durationMin))) manual.duration_min = Number(durationMin);
-    const sessions = manualSessions
-      .filter((s) => s.time.trim() !== "")
-      .map((s) => (s.label.trim() ? `${s.label.trim()} ${s.time.trim()}` : s.time.trim()));
-    if (sessions.length > 0) manual.sessions = sessions;
     return manual;
   }
 
-  // Client-side preview of what draft-manual will resolve server-side, so the
-  // step-4 summary matches what actually gets stored. `role` is intentionally
-  // absent here (fetchArtistsLite doesn't carry cast_role) — the server-side
-  // showflow layer can still resolve it from the artists table directly.
+  // Diff each assigned date's edited running order against its synced baseline,
+  // emitting an override ONLY for dates that changed and, within a date, ONLY the
+  // field that changed (an empty sessions array is an explicit clear). Untouched
+  // dates resolve from sync server-side, so they never appear here.
+  function buildDateOverrides(): Record<string, SessionOverride> {
+    const overrides: Record<string, SessionOverride> = {};
+    for (const dateId of assignedDateIds) {
+      const schedule = dateSchedules[dateId];
+      if (!schedule) continue;
+      const synced = showDates.find((d) => d.id === dateId);
+      const baselineSessions = synced?.sessions ?? [];
+      const baselineDuration = synced?.duration_minutes ?? null;
+      const editedSessions = sessionRowsToStrings(schedule.sessions);
+      const editedDuration = parseDurationValue(schedule.durationMin);
+      const sessionsChanged =
+        editedSessions.length !== baselineSessions.length ||
+        editedSessions.some((s, i) => s !== baselineSessions[i]);
+      const durationChanged = editedDuration !== baselineDuration;
+      if (!sessionsChanged && !durationChanged) continue;
+      const override: SessionOverride = {};
+      if (sessionsChanged) override.sessions = editedSessions;
+      if (durationChanged) override.duration_min = editedDuration;
+      overrides[dateId] = override;
+    }
+    return overrides;
+  }
+
+  // Client-side preview of what the fee resolves to server-side, so the step-4
+  // summary matches what actually gets stored. Manual mode also previews its
+  // artist/date fields from the manual dict; linked mode reads its running order
+  // straight from the per-date state below, so only fee/currency matter here.
   const previewShowflow: Partial<Record<EditableOrderFieldKey, unknown>> = {};
-  if (linkedArtist) {
-    previewShowflow.artist_name = linkedArtist.name;
-    if (linkedArtist.email) previewShowflow.recipient_email = linkedArtist.email;
-  }
-  if (linkedDate) {
-    previewShowflow.date = linkedDate.date;
-    if (linkedDate.venue) previewShowflow.venue = linkedDate.venue;
-    if (linkedDate.city) previewShowflow.city = linkedDate.city;
-    if (linkedDate.duration_minutes != null) previewShowflow.duration_min = linkedDate.duration_minutes;
-    if (linkedDate.sessions.length > 0) previewShowflow.sessions = linkedDate.sessions;
-  }
   const previewDefaults: Partial<Record<EditableOrderFieldKey, unknown>> = {
     currency: defaultsQuery.data?.currency ?? "EUR",
   };
@@ -388,6 +447,7 @@ export function NewOrderWizard({ open, onOpenChange, orgId }: Props) {
 
   function draftBody() {
     if (!manualMode) {
+      const dateOverrides = buildDateOverrides();
       return {
         action: "draft-batch" as const,
         org_id: orgId,
@@ -396,6 +456,8 @@ export function NewOrderWizard({ open, onOpenChange, orgId }: Props) {
           show_date_ids: artistDateIds[artist_id] ?? [],
         })),
         manual: buildManualDict(),
+        // Only sent when the producer edited at least one date's running order.
+        ...(Object.keys(dateOverrides).length > 0 ? { date_overrides: dateOverrides } : {}),
       };
     }
     return {
@@ -727,41 +789,97 @@ export function NewOrderWizard({ open, onOpenChange, orgId }: Props) {
             )}
 
             {step === 3 && (
-              <div className="space-y-4">
-                <div className="space-y-1.5">
-                  <Label htmlFor="wiz-duration">Duration (minutes)</Label>
-                  <Input id="wiz-duration" type="number" min="0" value={durationMin} onChange={(e) => setDurationMin(e.target.value)} />
-                </div>
-                <div className="space-y-2">
-                  <Label>Sessions</Label>
+              manualMode ? (
+                <div className="space-y-4">
+                  <div className="space-y-1.5">
+                    <Label htmlFor="wiz-duration">Duration (minutes)</Label>
+                    <Input id="wiz-duration" type="number" min="0" value={durationMin} onChange={(e) => setDurationMin(e.target.value)} />
+                  </div>
                   <div className="space-y-2">
-                    {manualSessions.map((row, i) => (
-                      <div key={i} className="flex items-center gap-2">
-                        <Input
-                          placeholder="Label (optional)" value={row.label}
-                          onChange={(e) => updateSessionRow(i, { label: e.target.value })}
-                          aria-label={`Session ${i + 1} label`}
-                        />
-                        <Input
-                          type="time" value={row.time}
-                          onChange={(e) => updateSessionRow(i, { time: e.target.value })}
-                          aria-label={`Session ${i + 1} time`}
-                        />
-                        {manualSessions.length > 1 && (
-                          <Button type="button" variant="ghost" size="icon" onClick={() => removeSessionRow(i)} aria-label={`Remove session ${i + 1}`}>
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
-                        )}
-                      </div>
-                    ))}
-                    {manualSessions.length < 3 && (
-                      <Button type="button" variant="outline" size="sm" onClick={addSessionRow}>
-                        <Plus className="mr-1 h-4 w-4" /> Add session
-                      </Button>
-                    )}
+                    <Label>Sessions</Label>
+                    <div className="space-y-2">
+                      {manualSessions.map((row, i) => (
+                        <div key={i} className="flex items-center gap-2">
+                          <Input
+                            placeholder="Label (optional)" value={row.label}
+                            onChange={(e) => updateSessionRow(i, { label: e.target.value })}
+                            aria-label={`Session ${i + 1} label`}
+                          />
+                          <Input
+                            type="time" value={row.time}
+                            onChange={(e) => updateSessionRow(i, { time: e.target.value })}
+                            aria-label={`Session ${i + 1} time`}
+                          />
+                          {manualSessions.length > 1 && (
+                            <Button type="button" variant="ghost" size="icon" onClick={() => removeSessionRow(i)} aria-label={`Remove session ${i + 1}`}>
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          )}
+                        </div>
+                      ))}
+                      {manualSessions.length < 3 && (
+                        <Button type="button" variant="outline" size="sm" onClick={addSessionRow}>
+                          <Plus className="mr-1 h-4 w-4" /> Add session
+                        </Button>
+                      )}
+                    </div>
                   </div>
                 </div>
-              </div>
+              ) : (
+                <div className="space-y-6">
+                  <p className="text-sm text-muted-foreground">
+                    Each date starts from its synced running order. Edit a date to override just that date.
+                  </p>
+                  {assignedDateIds.map((dateId) => {
+                    const date = showDates.find((d) => d.id === dateId);
+                    const schedule = dateSchedules[dateId];
+                    if (!schedule) return null;
+                    const label = date ? dateOptionLabel(date) : dateId;
+                    return (
+                      <div key={dateId} role="group" aria-label={`${label} running order`} className="space-y-4 rounded-lg border p-3">
+                        <p className="font-medium text-foreground">{label}</p>
+                        <div className="space-y-1.5">
+                          <Label htmlFor={`wiz-duration-${dateId}`}>Duration (minutes)</Label>
+                          <Input
+                            id={`wiz-duration-${dateId}`} type="number" min="0"
+                            value={schedule.durationMin}
+                            onChange={(e) => setDateDuration(dateId, e.target.value)}
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <Label>Sessions</Label>
+                          <div className="space-y-2">
+                            {schedule.sessions.map((row, i) => (
+                              <div key={i} className="flex items-center gap-2">
+                                <Input
+                                  placeholder="Label (optional)" value={row.label}
+                                  onChange={(e) => updateDateSessionRow(dateId, i, { label: e.target.value })}
+                                  aria-label={`Session ${i + 1} label`}
+                                />
+                                <Input
+                                  type="time" value={row.time}
+                                  onChange={(e) => updateDateSessionRow(dateId, i, { time: e.target.value })}
+                                  aria-label={`Session ${i + 1} time`}
+                                />
+                                {schedule.sessions.length > 1 && (
+                                  <Button type="button" variant="ghost" size="icon" onClick={() => removeDateSessionRow(dateId, i)} aria-label={`Remove session ${i + 1}`}>
+                                    <Trash2 className="h-4 w-4" />
+                                  </Button>
+                                )}
+                              </div>
+                            ))}
+                            {schedule.sessions.length < 3 && (
+                              <Button type="button" variant="outline" size="sm" onClick={() => addDateSessionRow(dateId)}>
+                                <Plus className="mr-1 h-4 w-4" /> Add session
+                              </Button>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )
             )}
 
             {step === 4 && (
@@ -805,15 +923,31 @@ export function NewOrderWizard({ open, onOpenChange, orgId }: Props) {
                         );
                       })}
                     </div>
+                    <div className="space-y-2">
+                      {assignedDateIds.map((dateId) => {
+                        const date = showDates.find((d) => d.id === dateId);
+                        const schedule = dateSchedules[dateId];
+                        const label = date ? dateOptionLabel(date) : dateId;
+                        const durationText = schedule && schedule.durationMin.trim() !== "" ? `${schedule.durationMin} min` : "Not set";
+                        const sessionsText = schedule ? sessionRowsToStrings(schedule.sessions).join(" · ") || "Not set" : "Not set";
+                        return (
+                          <div key={dateId} role="group" aria-label={`${label} running order`} className="rounded-lg border p-3">
+                            <p className="font-medium text-foreground">{label}</p>
+                            <div className="mt-1 grid grid-cols-2 gap-x-4 gap-y-1">
+                              <div className="space-y-0.5">
+                                <p className="text-xs text-muted-foreground">Duration</p>
+                                <p className="text-sm text-foreground">{durationText}</p>
+                              </div>
+                              <div className="space-y-0.5">
+                                <p className="text-xs text-muted-foreground">Sessions</p>
+                                <p className="text-sm text-foreground">{sessionsText}</p>
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
                     <div className="grid grid-cols-2 gap-x-4 gap-y-3">
-                      {(["duration_min", "sessions"] as EditableOrderFieldKey[]).map((key) => (
-                        <div key={key} className="space-y-0.5">
-                          <p className="text-xs text-muted-foreground">
-                            {key === "duration_min" ? "Duration" : "Sessions"}
-                          </p>
-                          <p className="text-sm text-foreground">{reviewValue(key, reviewData)}</p>
-                        </div>
-                      ))}
                       <div className="space-y-0.5">
                         <p className="text-xs text-muted-foreground">Fee</p>
                         <p className="text-sm text-foreground">{feeDisplay}</p>
