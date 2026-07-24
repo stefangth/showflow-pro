@@ -4431,3 +4431,109 @@ Deno.test("sign falls back to default copy for a legacy snapshot without copy", 
   assertEquals(res.status, 200);
   assertEquals(captured!.copy?.terms_heading, "Terms & conditions"); // stock default
 });
+
+// ── issue_snapshot must not bloat with the agent-signature base64 ────────────
+
+Deno.test("issue freezes only the signature path into issue_snapshot, not the base64 data url", async () => {
+  const { deps, calls } = makeFakeDeps({
+    authUser: { id: "u-admin" },
+    storageDownloadResult: {
+      data: new Blob([new Uint8Array([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a])]),
+      error: null,
+    },
+    tables: {
+      org_memberships: { data: { role: "admin" } },
+      hire_orders: [
+        { when: { __write: false }, data: issuableOrder() },
+        { when: { __write: true }, data: null },
+      ],
+      artists: { data: { user_id: "u-artist" } },
+      app_settings: [
+        {
+          when: { key: "hire_order_letterhead" },
+          data: [{
+            org_id: ORG,
+            value: {
+              legal_name: "Nord GmbH",
+              address_lines: [],
+              agent_signature_path: `${ORG}/agent-signature.png`,
+            },
+          }],
+        },
+        { when: { key: "hire_order_terms" }, data: [TERMS_FILLED] },
+        { when: { key: "hire_order_defaults" }, data: [DEFAULTS] },
+      ],
+    },
+  });
+  let captured: { letterhead: { agent_signature_data_url?: string | null } } | null = null;
+  deps.renderHireOrderPdf = (a) => {
+    captured = a as unknown as typeof captured;
+    return Promise.resolve(new Uint8Array([0x25, 0x50, 0x44, 0x46]));
+  };
+  const res = await handle(
+    makeRequest({ headers: JWT, body: { action: "issue", org_id: ORG, order_ids: ["o-1"] } }),
+    deps,
+  );
+  assertEquals(res.status, 200);
+  // The RENDER still gets the resolved data url so the signature prints on the PDF.
+  assertEquals((captured!.letterhead.agent_signature_data_url ?? "").startsWith("data:image/png;base64,"), true);
+  // The SNAPSHOT keeps only the small path, never the ~2MB base64 blob (it rides
+  // along on every select("*") list/detail fetch).
+  const issuedUpdate = calls.find(
+    (c) => c.table === "hire_orders" && c.method === "update" &&
+      (c.args[0] as { status?: string }).status === "issued",
+  );
+  const snapLetterhead = (issuedUpdate!.args[0] as {
+    issue_snapshot?: { letterhead?: { agent_signature_path?: string; agent_signature_data_url?: string | null } };
+  }).issue_snapshot?.letterhead;
+  assertEquals(snapLetterhead?.agent_signature_path, `${ORG}/agent-signature.png`);
+  assertEquals(snapLetterhead?.agent_signature_data_url, undefined);
+});
+
+Deno.test("sign re-resolves the agent signature from the snapshot path, not a frozen data url", async () => {
+  const snapshotOrder = {
+    ...SIGN_ORDER,
+    issue_snapshot: {
+      letterhead: {
+        legal_name: "Snapshot GmbH",
+        address_lines: [],
+        agent_signature_path: `${ORG}/agent-signature.png`, // path only, no data url
+      },
+      terms: [{ title: "SNAP", body: "x" }],
+      currency: "EUR",
+    },
+  };
+  const { deps } = makeFakeDeps({
+    authUser: { id: "u-artist" },
+    rpcs: { is_feature_enabled: { data: true, error: null } },
+    storageDownloadResult: {
+      data: new Blob([new Uint8Array([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a])]),
+      error: null,
+    },
+    tables: {
+      hire_orders: [
+        { when: { __write: false }, data: snapshotOrder },
+        { when: { __write: true }, data: [{ id: "o-1" }] },
+      ],
+      artists: { data: { id: "a-A" } },
+      org_memberships: { data: [] },
+      app_settings: [
+        { when: { key: "hire_order_countersign" }, data: [{ org_id: ORG, value: { mode: "electronic" } }] },
+        { when: { key: "hire_order_letterhead" }, data: [LETTERHEAD] },
+        { when: { key: "hire_order_terms" }, data: [TERMS_FILLED] },
+        { when: { key: "hire_order_defaults" }, data: [DEFAULTS] },
+      ],
+    },
+  });
+  let captured: { letterhead: { agent_signature_data_url?: string | null } } | null = null;
+  deps.renderHireOrderPdf = (input) => {
+    captured = input as unknown as typeof captured;
+    return Promise.resolve(new Uint8Array([0x25, 0x50, 0x44, 0x46]));
+  };
+  const res = await handle(
+    makeRequest({ headers: { Authorization: "Bearer artist" }, body: SIGN_BODY }),
+    deps,
+  );
+  assertEquals(res.status, 200);
+  assertEquals((captured!.letterhead.agent_signature_data_url ?? "").startsWith("data:image/png;base64,"), true);
+});
