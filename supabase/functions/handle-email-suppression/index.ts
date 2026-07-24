@@ -4,17 +4,17 @@ import type { TablesInsert, TablesUpdate } from "../_shared/database.types.ts";
 import { realDeps, type Deps } from "../_shared/deps.ts";
 import { redactEmail } from "../_shared/identity.ts";
 
-// Resend uses Standard Webhooks (https://www.standardwebhooks.com/)
-// The signing secret is base64-encoded; verification uses HMAC-SHA256.
+// Resend uses Svix-compatible webhooks. Its `whsec_`-prefixed signing secret
+// contains Base64-encoded HMAC key material.
 async function verifyResendWebhook(
   req: Request,
   rawBody: string,
   secret: string,
   nowMs: number
 ): Promise<void> {
-  const webhookId = req.headers.get('webhook-id')
-  const webhookTimestamp = req.headers.get('webhook-timestamp')
-  const webhookSignature = req.headers.get('webhook-signature')
+  const webhookId = req.headers.get('svix-id')
+  const webhookTimestamp = req.headers.get('svix-timestamp')
+  const webhookSignature = req.headers.get('svix-signature')
 
   if (!webhookId || !webhookTimestamp || !webhookSignature) {
     throw Object.assign(new Error('Missing webhook signature headers'), { code: 'missing_headers' })
@@ -26,7 +26,8 @@ async function verifyResendWebhook(
   }
 
   const toSign = `${webhookId}.${webhookTimestamp}.${rawBody}`
-  const secretBytes = Uint8Array.from(atob(secret), (c) => c.charCodeAt(0))
+  const encodedSecret = secret.startsWith('whsec_') ? secret.slice('whsec_'.length) : secret
+  const secretBytes = Uint8Array.from(atob(encodedSecret), (c) => c.charCodeAt(0))
 
   const key = await crypto.subtle.importKey(
     'raw',

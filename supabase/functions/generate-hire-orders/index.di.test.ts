@@ -687,6 +687,126 @@ Deno.test("issue inherits the letterhead agent when the order override is null",
   assertEquals(captured!.letterhead.agent_email, "org@x.com");
 });
 
+Deno.test("issue stamps issued_pdf_sha256 on the issued update", async () => {
+  const { deps, calls } = makeFakeDeps({
+    authUser: { id: "u-admin" },
+    tables: {
+      org_memberships: { data: { role: "admin" } },
+      hire_orders: [
+        { when: { __write: false }, data: issuableOrder() },
+        { when: { __write: true }, data: null },
+      ],
+      artists: { data: { user_id: "u-artist" } },
+      app_settings: [
+        { when: { key: "hire_order_letterhead" }, data: [LETTERHEAD] },
+        { when: { key: "hire_order_terms" }, data: [TERMS_FILLED] },
+        { when: { key: "hire_order_defaults" }, data: [DEFAULTS] },
+      ],
+    },
+  });
+  const res = await handle(makeRequest({ headers: JWT, body: { action: "issue", org_id: ORG, order_ids: ["o-1"] } }), deps);
+  assertEquals(res.status, 200);
+  const issuedUpdate = calls.find(
+    (c) => c.table === "hire_orders" && c.method === "update" && (c.args[0] as { status?: string }).status === "issued",
+  );
+  const upd = issuedUpdate!.args[0] as { issued_pdf_sha256?: string };
+  assert(typeof upd.issued_pdf_sha256 === "string" && /^[0-9a-f]{64}$/.test(upd.issued_pdf_sha256), "64-char hex hash stamped");
+});
+
+Deno.test("issue snapshots the resolved letterhead + terms on the issued update", async () => {
+  // The signed re-render (the sign action) must reproduce the issued document even
+  // if the org edits its letterhead/terms afterwards, so issue freezes both into
+  // issue_snapshot on the ready->issued transition.
+  const { deps, calls } = makeFakeDeps({
+    authUser: { id: "u-admin" },
+    tables: {
+      org_memberships: { data: { role: "admin" } },
+      hire_orders: [
+        { when: { __write: false }, data: issuableOrder() },
+        { when: { __write: true }, data: null },
+      ],
+      artists: { data: { user_id: "u-artist" } },
+      app_settings: [
+        { when: { key: "hire_order_letterhead" }, data: [LETTERHEAD] },
+        { when: { key: "hire_order_terms" }, data: [TERMS_FILLED] },
+        { when: { key: "hire_order_defaults" }, data: [DEFAULTS] },
+      ],
+    },
+  });
+  const res = await handle(makeRequest({ headers: JWT, body: { action: "issue", org_id: ORG, order_ids: ["o-1"] } }), deps);
+  assertEquals(res.status, 200);
+
+  const issuedUpdate = calls.find(
+    (c) => c.table === "hire_orders" && c.method === "update" && (c.args[0] as { status?: string }).status === "issued",
+  );
+  assert(issuedUpdate, "expected the issued update");
+  const snap = (issuedUpdate!.args[0] as {
+    issue_snapshot?: { letterhead?: { legal_name?: string }; terms?: Array<{ title: string }>; countersign_mode?: string };
+  }).issue_snapshot;
+  assert(snap, "the issued update writes issue_snapshot");
+  assertEquals(snap!.letterhead?.legal_name, "Nord GmbH", "snapshot carries the resolved letterhead");
+  assert(Array.isArray(snap!.terms) && snap!.terms.length > 0, "snapshot carries a non-empty terms array");
+  assertEquals(snap!.terms![0].title, "T", "snapshot terms are the resolved variant terms");
+  // The snapshot also freezes the issue-time countersign mode (no setting -> manual default).
+  assertEquals(snap!.countersign_mode, "manual", "snapshot freezes the issue-time countersign mode");
+});
+
+Deno.test("issue freezes the countersign mode into issue_snapshot (electronic)", async () => {
+  // The electronic-vs-manual signing gate must follow the mode the order was ISSUED
+  // under, not the org's live setting, so issue freezes countersign.mode into the
+  // snapshot alongside the letterhead/terms.
+  const { deps, calls } = makeFakeDeps({
+    authUser: { id: "u-admin" },
+    tables: {
+      org_memberships: { data: { role: "admin" } },
+      hire_orders: [
+        { when: { __write: false }, data: issuableOrder() },
+        { when: { __write: true }, data: null },
+      ],
+      artists: { data: { user_id: "u-artist" } },
+      app_settings: [
+        { when: { key: "hire_order_letterhead" }, data: [LETTERHEAD] },
+        { when: { key: "hire_order_terms" }, data: [TERMS_FILLED] },
+        { when: { key: "hire_order_defaults" }, data: [DEFAULTS] },
+        { when: { key: "hire_order_countersign" }, data: [{ org_id: ORG, value: { mode: "electronic" } }] },
+      ],
+    },
+  });
+  const res = await handle(makeRequest({ headers: JWT, body: { action: "issue", org_id: ORG, order_ids: ["o-1"] } }), deps);
+  assertEquals(res.status, 200);
+
+  const issuedUpdate = calls.find(
+    (c) => c.table === "hire_orders" && c.method === "update" && (c.args[0] as { status?: string }).status === "issued",
+  );
+  const snap = (issuedUpdate!.args[0] as { issue_snapshot?: { countersign_mode?: string } }).issue_snapshot;
+  assertEquals(snap!.countersign_mode, "electronic", "snapshot freezes the electronic issue-time mode");
+});
+
+Deno.test("issue in electronic mode emails a signing_url pointing at the in-app order page", async () => {
+  const { deps, invokeCalls } = makeFakeDeps({
+    authUser: { id: "u-admin" },
+    tables: {
+      org_memberships: { data: { role: "admin" } },
+      hire_orders: [
+        { when: { __write: false }, data: issuableOrder() },
+        { when: { __write: true }, data: null },
+      ],
+      artists: { data: { user_id: "u-artist" } },
+      app_settings: [
+        { when: { key: "hire_order_letterhead" }, data: [LETTERHEAD] },
+        { when: { key: "hire_order_terms" }, data: [TERMS_FILLED] },
+        { when: { key: "hire_order_defaults" }, data: [DEFAULTS] },
+        { when: { key: "hire_order_countersign" }, data: [{ org_id: ORG, value: { mode: "electronic" } }] },
+      ],
+    },
+  });
+  await handle(makeRequest({ headers: JWT, body: { action: "issue", org_id: ORG, order_ids: ["o-1"] } }), deps);
+  const email = invokeCalls.find((c) => c.name === "send-transactional-email");
+  const td = (email!.body as { templateData: Record<string, unknown> }).templateData;
+  assertEquals(td.countersign_mode, "electronic");
+  assert(String(td.signing_url).includes("/hire-orders/o-1"), `signing_url was ${td.signing_url}`);
+});
+
 // ── documenso countersign ────────────────────────────────────────────────
 
 /** A fake fetch that plays back the create -> recipient -> distribute sequence
@@ -1184,6 +1304,453 @@ Deno.test("cron-secret caller is accepted (trigger path unchanged)", async () =>
   );
   assertEquals(res.status, 200);
   assertEquals((await res.json()).created, ["ho-cron"]);
+});
+
+// ── sign action ────────────────────────────────────────────────────────────
+
+const SIGN_ORDER = {
+  id: "o-1",
+  org_id: ORG,
+  order_no: "HO-1",
+  status: "issued",
+  artist_id: "a-A",
+  terms_variant: "standard",
+  fee_currency: "EUR",
+  agent_name: null,
+  agent_email: null,
+  issued_pdf_sha256: "c".repeat(64),
+  show_date_id: SD,
+  show_dates: { city_id: "city-1", shows: { program: "Aida", sub_program: null } },
+  data: {
+    artist_name: { value: "Ann", source: "showflow" },
+    recipient_email: { value: "ann@x.de", source: "showflow" },
+    date: { value: "2026-06-15", source: "showflow" },
+    venue: { value: "Colosseum", source: "showflow" },
+    fee: { value: 500, source: "showflow" },
+  },
+};
+
+function signDeps(overrides: { order?: unknown; artist?: unknown; mode?: string; featureOn?: boolean } = {}) {
+  return makeFakeDeps({
+    authUser: { id: "u-artist" },
+    rpcs: { is_feature_enabled: { data: overrides.featureOn ?? true, error: null } },
+    tables: {
+      hire_orders: [
+        { when: { __write: false }, data: overrides.order ?? SIGN_ORDER },
+        { when: { __write: true }, data: [{ id: "o-1" }] }, // the guarded transition matched a row
+      ],
+      // Preserve an EXPLICIT null (unrelated user: the artist lookup finds no row) —
+      // `?? { id: "a-A" }` would swallow it and make every caller look linked.
+      artists: { data: "artist" in overrides ? overrides.artist : { id: "a-A" } },
+      org_memberships: { data: [] },
+      app_settings: [
+        { when: { key: "hire_order_countersign" }, data: [{ org_id: ORG, value: { mode: overrides.mode ?? "electronic" } }] },
+        { when: { key: "hire_order_letterhead" }, data: [LETTERHEAD] },
+        { when: { key: "hire_order_terms" }, data: [TERMS_FILLED] },
+        { when: { key: "hire_order_defaults" }, data: [DEFAULTS] },
+      ],
+    },
+  });
+}
+
+const SIGN_BODY = { action: "sign", org_id: ORG, order_id: "o-1", method: "typed", typed_name: "Ann Lee", consent: true };
+
+Deno.test("sign: linked artist signs an issued electronic order -> countersigned", async () => {
+  const { deps, calls, invokeCalls } = signDeps();
+  const res = await handle(makeRequest({ headers: { Authorization: "Bearer artist" }, body: SIGN_BODY }), deps);
+  assertEquals(res.status, 200);
+  const body = await res.json();
+  assertEquals(body.countersigned, true);
+  // signed PDF uploaded
+  const up = calls.find((c) => c.table === "storage:hire-orders" && c.method === "upload" && String((c.args[0])).endsWith("-signed.pdf"));
+  assert(up, "signed pdf uploaded");
+  // audit row inserted
+  const sig = calls.find((c) => c.table === "hire_order_signatures" && c.method === "insert");
+  assert(sig, "audit row inserted");
+  const row = (sig!.args[0] as Array<Record<string, unknown>>)[0]; // insert([{...}]) -> first row
+  assertEquals(row.method, "typed");
+  assertEquals(row.hire_order_id, "o-1");
+  assertEquals(row.document_sha256, "c".repeat(64));
+  // transitioned with signed_pdf_path + countersign_mode
+  const upd = calls.find((c) => c.table === "hire_orders" && c.method === "update" && (c.args[0] as { status?: string }).status === "countersigned");
+  const patch = upd!.args[0] as { signed_pdf_path?: string; countersign_mode?: string };
+  assert(patch.signed_pdf_path?.endsWith("-signed.pdf"));
+  assertEquals(patch.countersign_mode, "electronic");
+  // countersigned email to the artist
+  const email = invokeCalls.find((c) => c.name === "send-transactional-email");
+  assertEquals((email!.body as { template_name: string }).template_name, "hire-order-countersigned");
+});
+
+Deno.test("sign: an unrelated user is rejected 403", async () => {
+  const { deps } = signDeps({ artist: null });
+  const res = await handle(makeRequest({ headers: { Authorization: "Bearer other" }, body: SIGN_BODY }), deps);
+  assertEquals(res.status, 403);
+});
+
+Deno.test("sign: consent is required", async () => {
+  const { deps } = signDeps();
+  const res = await handle(makeRequest({ headers: { Authorization: "Bearer artist" }, body: { ...SIGN_BODY, consent: false } }), deps);
+  assertEquals(res.status, 400);
+});
+
+Deno.test("sign: a non-issued order is rejected 409", async () => {
+  const { deps } = signDeps({ order: { ...SIGN_ORDER, status: "draft" } });
+  const res = await handle(makeRequest({ headers: { Authorization: "Bearer artist" }, body: SIGN_BODY }), deps);
+  assertEquals(res.status, 409);
+});
+
+Deno.test("sign: already-countersigned order is an idempotent 200", async () => {
+  const { deps } = signDeps({ order: { ...SIGN_ORDER, status: "countersigned" } });
+  const res = await handle(makeRequest({ headers: { Authorization: "Bearer artist" }, body: SIGN_BODY }), deps);
+  assertEquals(res.status, 200);
+  assertEquals((await res.json()).idempotent, true);
+});
+
+Deno.test("sign: 23505 on the audit insert falls through to the guarded flip and completes the countersign when the order is still issued", async () => {
+  // A prior submit inserted the audit row but its status flip then FAILED, leaving
+  // the order stranded at 'issued' with an orphan audit row. This retry passes the
+  // status==="issued" guard, re-does the work, and hits 23505 on the insert. It must
+  // NOT blind-return success: it falls through to the guarded flip, which finds the
+  // order still 'issued', completes the countersign, and runs the side effects once
+  // (the prior submit whose flip failed never ran them).
+  const { deps, calls, invokeCalls } = makeFakeDeps({
+    authUser: { id: "u-artist" },
+    rpcs: { is_feature_enabled: { data: true, error: null } },
+    tables: {
+      hire_orders: [
+        { when: { __write: false }, data: SIGN_ORDER }, // read -> still issued
+        { when: { __write: true }, data: [{ id: "o-1" }] }, // guarded flip matches -> completes
+      ],
+      artists: { data: { id: "a-A" } },
+      org_memberships: { data: [] },
+      hire_order_signatures: { error: { code: "23505" } },
+      app_settings: [
+        { when: { key: "hire_order_countersign" }, data: [{ org_id: ORG, value: { mode: "electronic" } }] },
+        { when: { key: "hire_order_letterhead" }, data: [LETTERHEAD] },
+        { when: { key: "hire_order_terms" }, data: [TERMS_FILLED] },
+        { when: { key: "hire_order_defaults" }, data: [DEFAULTS] },
+      ],
+    },
+  });
+
+  const res = await handle(makeRequest({ headers: { Authorization: "Bearer artist" }, body: SIGN_BODY }), deps);
+  assertEquals(res.status, 200);
+  const body = await res.json();
+  assertEquals(body.countersigned, true);
+  assertEquals(body.idempotent, undefined, "a real completion is not the idempotent no-op");
+
+  // The guarded flip IS the single source of truth: assert it was attempted, not a
+  // blind early-return that reports success without flipping.
+  const flip = calls.find((c) =>
+    c.table === "hire_orders" && c.method === "update" && (c.args[0] as { status?: string }).status === "countersigned");
+  assert(flip, "expected the guarded flip to status countersigned");
+
+  // Side effects ran once, because the flip actually completed the countersign.
+  const email = invokeCalls.find((c) =>
+    c.name === "send-transactional-email" &&
+    (c.body as { template_name?: string }).template_name === "hire-order-countersigned");
+  assert(email, "expected the countersigned email once the flip completed");
+});
+
+Deno.test("sign: 23505 on the audit insert with an already-flipped order is an idempotent 200 with no side effects", async () => {
+  // A concurrent winner already inserted the audit row AND flipped the order. This
+  // loser hits 23505 on insert, falls through to the guarded flip, which matches no
+  // 'issued' row (already countersigned) -> !affected -> idempotent, no side effects
+  // (they belong to the winner).
+  const { deps, calls, invokeCalls } = makeFakeDeps({
+    authUser: { id: "u-artist" },
+    rpcs: { is_feature_enabled: { data: true, error: null } },
+    tables: {
+      hire_orders: [
+        { when: { __write: false }, data: SIGN_ORDER },
+        { when: { __write: true }, data: [] }, // guarded flip matches nothing -> already flipped
+      ],
+      artists: { data: { id: "a-A" } },
+      org_memberships: { data: [] },
+      hire_order_signatures: { error: { code: "23505" } },
+      app_settings: [
+        { when: { key: "hire_order_countersign" }, data: [{ org_id: ORG, value: { mode: "electronic" } }] },
+        { when: { key: "hire_order_letterhead" }, data: [LETTERHEAD] },
+        { when: { key: "hire_order_terms" }, data: [TERMS_FILLED] },
+        { when: { key: "hire_order_defaults" }, data: [DEFAULTS] },
+      ],
+    },
+  });
+
+  const res = await handle(makeRequest({ headers: { Authorization: "Bearer artist" }, body: SIGN_BODY }), deps);
+  assertEquals(res.status, 200);
+  assertEquals((await res.json()).idempotent, true);
+
+  // No side effects — the winning request owns them.
+  assertEquals(calls.filter((c) => c.table === "notifications" && c.method === "insert").length, 0);
+  assertEquals(invokeCalls.filter((c) => c.name === "send-transactional-email").length, 0);
+});
+
+Deno.test("sign: a non-23505 audit-insert error still fails 500 (signature_insert_failed)", async () => {
+  const { deps } = makeFakeDeps({
+    authUser: { id: "u-artist" },
+    rpcs: { is_feature_enabled: { data: true, error: null } },
+    tables: {
+      hire_orders: [
+        { when: { __write: false }, data: SIGN_ORDER },
+        { when: { __write: true }, data: [{ id: "o-1" }] },
+      ],
+      artists: { data: { id: "a-A" } },
+      org_memberships: { data: [] },
+      hire_order_signatures: { error: { code: "23502", message: "not-null violation" } },
+      app_settings: [
+        { when: { key: "hire_order_countersign" }, data: [{ org_id: ORG, value: { mode: "electronic" } }] },
+        { when: { key: "hire_order_letterhead" }, data: [LETTERHEAD] },
+        { when: { key: "hire_order_terms" }, data: [TERMS_FILLED] },
+        { when: { key: "hire_order_defaults" }, data: [DEFAULTS] },
+      ],
+    },
+  });
+  const res = await handle(makeRequest({ headers: { Authorization: "Bearer artist" }, body: SIGN_BODY }), deps);
+  assertEquals(res.status, 500);
+  assertEquals((await res.json()).error, "signature_insert_failed");
+});
+
+Deno.test("sign: manual-mode org is rejected 409 wrong_mode", async () => {
+  const { deps } = signDeps({ mode: "manual" });
+  const res = await handle(makeRequest({ headers: { Authorization: "Bearer artist" }, body: SIGN_BODY }), deps);
+  assertEquals(res.status, 409);
+});
+
+Deno.test("sign: order issued electronic still signs even after the org switched to manual (issue-time mode drives the gate)", async () => {
+  // The order was ISSUED electronic (frozen in issue_snapshot); the org's LIVE
+  // hire_order_countersign is now manual. The gate must follow the frozen issue-time
+  // mode, so the linked artist can still sign — otherwise a mid-flight org switch would
+  // strand the order (the DB gate keys off the same frozen mode).
+  const snapshotOrder = {
+    ...SIGN_ORDER,
+    issue_snapshot: {
+      letterhead: { legal_name: "Snapshot GmbH", address_lines: [] },
+      terms: [{ title: "SNAP", body: "snapshot terms" }],
+      currency: "EUR",
+      countersign_mode: "electronic",
+    },
+  };
+  const { deps } = signDeps({ order: snapshotOrder, mode: "manual" });
+  const res = await handle(makeRequest({ headers: { Authorization: "Bearer artist" }, body: SIGN_BODY }), deps);
+  assertEquals(res.status, 200);
+  assertEquals((await res.json()).countersigned, true);
+});
+
+Deno.test("sign: feature-off org is denied", async () => {
+  const { deps } = signDeps({ featureOn: false });
+  const res = await handle(makeRequest({ headers: { Authorization: "Bearer artist" }, body: SIGN_BODY }), deps);
+  assert(res.status === 403 || res.status === 402, `feature gate status was ${res.status}`);
+});
+
+Deno.test("download-url serves the signed copy once signed_pdf_path is set", async () => {
+  const { deps, calls } = makeFakeDeps({
+    authUser: { id: "u-artist" },
+    tables: {
+      org_memberships: { data: [] },
+      platform_admins: { data: null },
+      hire_orders: { data: { id: "o-1", org_id: ORG, artist_id: "a-A", status: "countersigned", pdf_path: "org-1/HO-1.pdf", signed_pdf_path: "org-1/HO-1-signed.pdf", order_no: "HO-1" } },
+      artists: { data: { id: "a-A" } },
+    },
+  });
+  const res = await handle(makeRequest({ headers: { Authorization: "Bearer artist" }, body: { action: "download-url", org_id: ORG, order_id: "o-1" } }), deps);
+  assertEquals(res.status, 200);
+  const signCall = calls.find((c) => c.table === "storage:hire-orders" && c.method === "createSignedUrl");
+  assertEquals(signCall!.args[0], "org-1/HO-1-signed.pdf");
+});
+
+Deno.test("sign: drawn method uploads the signature image and records method drawn", async () => {
+  const { deps, calls } = signDeps();
+  const res = await handle(makeRequest({
+    headers: { Authorization: "Bearer artist" },
+    body: {
+      action: "sign", org_id: ORG, order_id: "o-1", method: "drawn",
+      signature_png: "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAAC0lEQVR4nGNgAAIAAAUAAXpeqz8AAAAASUVORK5CYII=",
+      consent: true,
+    },
+  }), deps);
+  assertEquals(res.status, 200);
+  assertEquals((await res.json()).countersigned, true);
+
+  // The drawn PNG is uploaded to the signatures/ path (distinct from the signed PDF).
+  const imgUpload = calls.find((c) =>
+    c.table === "storage:hire-orders" && c.method === "upload" && String(c.args[0]).endsWith("signatures/HO-1.png"));
+  assert(imgUpload, "signature image uploaded to signatures/HO-1.png");
+
+  // Audit row carries method drawn + the image path, and no typed_name.
+  const sig = calls.find((c) => c.table === "hire_order_signatures" && c.method === "insert");
+  assert(sig, "audit row inserted");
+  const row = (sig!.args[0] as Array<Record<string, unknown>>)[0]; // insert([{...}]) -> first row
+  assertEquals(row.method, "drawn");
+  assert(String(row.signature_image_path).endsWith("signatures/HO-1.png"), `signature_image_path was ${row.signature_image_path}`);
+  assertEquals(row.typed_name, null);
+});
+
+Deno.test("sign: a malformed drawn-signature payload is a clean 400, not an unhandled 500", async () => {
+  // Prefix-valid but body-undecodable base64 (invalid chars after the data: URL
+  // prefix): decodeBase64 throws. handle() has no try/catch around signOrder, so
+  // without the guard this escapes as a CORS-less 500. It must be a clean 400
+  // invalid_signature (the shape the other payload-validation failures use), and
+  // must bail BEFORE any image upload / audit insert / status flip.
+  const { deps, calls } = signDeps();
+  const res = await handle(makeRequest({
+    headers: { Authorization: "Bearer artist" },
+    body: {
+      action: "sign", org_id: ORG, order_id: "o-1", method: "drawn",
+      signature_png: "data:image/png;base64,!!!not-valid-base64!!!",
+      consent: true,
+    },
+  }), deps);
+  assertEquals(res.status, 400);
+  assertEquals((await res.json()).error, "invalid_signature");
+
+  assertEquals(calls.filter((c) => c.table === "storage:hire-orders" && c.method === "upload").length, 0);
+  assertEquals(calls.filter((c) => c.table === "hire_order_signatures" && c.method === "insert").length, 0);
+  assertEquals(calls.filter((c) => c.table === "hire_orders" && c.method === "update").length, 0);
+});
+
+Deno.test("sign: a valid-base64 but non-PNG drawn-signature payload is a clean 400, not a render 500", async () => {
+  // btoa("not a png") is VALID base64 that decodes fine, so it slips past the
+  // decode try/catch — but the bytes are not a PNG. Without the magic-byte guard
+  // it would be uploaded and then crash the react-pdf <Image> render into an
+  // uncaught CORS-less 500. It must be a clean 400 invalid_signature, bailing
+  // before any upload / audit insert / status flip.
+  const nonPng = btoa("not a png"); // valid base64, non-PNG bytes
+  const { deps, calls } = signDeps();
+  const res = await handle(makeRequest({
+    headers: { Authorization: "Bearer artist" },
+    body: {
+      action: "sign", org_id: ORG, order_id: "o-1", method: "drawn",
+      signature_png: "data:image/png;base64," + nonPng,
+      consent: true,
+    },
+  }), deps);
+  assertEquals(res.status, 400);
+  assertEquals((await res.json()).error, "invalid_signature");
+
+  assertEquals(calls.filter((c) => c.table === "storage:hire-orders" && c.method === "upload").length, 0);
+  assertEquals(calls.filter((c) => c.table === "hire_order_signatures" && c.method === "insert").length, 0);
+  assertEquals(calls.filter((c) => c.table === "hire_orders" && c.method === "update").length, 0);
+});
+
+Deno.test("sign: emails BOTH the artist and the producers when email_producers_on_countersign is on", async () => {
+  // signDeps fixes the countersign seed to { mode: electronic } and never seeds
+  // resolve_show_assignments / usersById, so the producer fan-out is inlined here.
+  const { deps, invokeCalls } = makeFakeDeps({
+    authUser: { id: "u-artist" },
+    rpcs: {
+      is_feature_enabled: { data: true, error: null },
+      resolve_show_assignments: { data: [{ producer_user_id: "p1" }], error: null },
+    },
+    usersById: { p1: { email: "prod@x.de" } }, // admin.auth.admin.getUserById("p1")
+    tables: {
+      hire_orders: [
+        { when: { __write: false }, data: SIGN_ORDER },
+        { when: { __write: true }, data: [{ id: "o-1" }] },
+      ],
+      artists: { data: { id: "a-A" } },
+      org_memberships: { data: [] },
+      app_settings: [
+        { when: { key: "hire_order_countersign" }, data: [{ org_id: ORG, value: { mode: "electronic", email_producers_on_countersign: true } }] },
+        { when: { key: "hire_order_letterhead" }, data: [LETTERHEAD] },
+        { when: { key: "hire_order_terms" }, data: [TERMS_FILLED] },
+        { when: { key: "hire_order_defaults" }, data: [DEFAULTS] },
+      ],
+    },
+  });
+
+  const res = await handle(makeRequest({ headers: { Authorization: "Bearer artist" }, body: SIGN_BODY }), deps);
+  assertEquals(res.status, 200);
+
+  const countersignedEmails = invokeCalls.filter((c) =>
+    c.name === "send-transactional-email" &&
+    (c.body as { template_name: string }).template_name === "hire-order-countersigned");
+  assertEquals(countersignedEmails.length, 2, "one email to the artist, one to the producer");
+  const recipients = countersignedEmails.map((c) => (c.body as { recipient_email: string }).recipient_email).sort();
+  assertEquals(recipients, ["ann@x.de", "prod@x.de"]);
+});
+
+// ── sign renders from the issue snapshot (finding W1) ───────────────────────
+
+/** Capture-shape for the render input's snapshot-relevant fields. */
+type CapturedRender = { terms: Array<{ title: string }>; letterhead: { legal_name?: string } };
+
+Deno.test("sign renders the signed PDF from the issue snapshot, not the current live letterhead/terms", async () => {
+  // The order carries a frozen snapshot; the LIVE hire_order_letterhead/terms settings
+  // are deliberately DIFFERENT. The signed re-render must reproduce the snapshot so the
+  // certificate hash still matches the issued document.
+  const snapshotOrder = {
+    ...SIGN_ORDER,
+    issue_snapshot: {
+      letterhead: { legal_name: "Snapshot GmbH", address_lines: [] },
+      terms: [{ title: "SNAP", body: "snapshot terms" }],
+      currency: "EUR",
+    },
+  };
+  const { deps } = makeFakeDeps({
+    authUser: { id: "u-artist" },
+    rpcs: { is_feature_enabled: { data: true, error: null } },
+    tables: {
+      hire_orders: [
+        { when: { __write: false }, data: snapshotOrder },
+        { when: { __write: true }, data: [{ id: "o-1" }] },
+      ],
+      artists: { data: { id: "a-A" } },
+      org_memberships: { data: [] },
+      app_settings: [
+        { when: { key: "hire_order_countersign" }, data: [{ org_id: ORG, value: { mode: "electronic" } }] },
+        { when: { key: "hire_order_letterhead" }, data: [{ org_id: ORG, value: { legal_name: "Live GmbH", address_lines: [] } }] },
+        { when: { key: "hire_order_terms" }, data: [{ org_id: ORG, value: { lean: [], standard: [{ title: "LIVE", body: "live terms" }], full: [] } }] },
+        { when: { key: "hire_order_defaults" }, data: [DEFAULTS] },
+      ],
+    },
+  });
+  const captured: CapturedRender[] = [];
+  deps.renderHireOrderPdf = (input) => {
+    captured.push(input as unknown as CapturedRender);
+    return Promise.resolve(new Uint8Array([0x25, 0x50, 0x44, 0x46]));
+  };
+
+  const res = await handle(makeRequest({ headers: { Authorization: "Bearer artist" }, body: SIGN_BODY }), deps);
+  assertEquals(res.status, 200);
+  assertEquals(captured.length, 1, "rendered exactly once");
+  assertEquals(captured[0].terms.map((t) => t.title), ["SNAP"], "terms come from the snapshot, not the live setting");
+  assertEquals(captured[0].letterhead.legal_name, "Snapshot GmbH", "letterhead comes from the snapshot");
+});
+
+Deno.test("sign falls back to the live-resolved letterhead/terms for a legacy order with a null issue snapshot", async () => {
+  // Orders issued before the issue_snapshot column carry null; the sign action must
+  // keep working by re-resolving the org's current letterhead/terms for those.
+  const legacyOrder = { ...SIGN_ORDER, issue_snapshot: null };
+  const { deps } = makeFakeDeps({
+    authUser: { id: "u-artist" },
+    rpcs: { is_feature_enabled: { data: true, error: null } },
+    tables: {
+      hire_orders: [
+        { when: { __write: false }, data: legacyOrder },
+        { when: { __write: true }, data: [{ id: "o-1" }] },
+      ],
+      artists: { data: { id: "a-A" } },
+      org_memberships: { data: [] },
+      app_settings: [
+        { when: { key: "hire_order_countersign" }, data: [{ org_id: ORG, value: { mode: "electronic" } }] },
+        { when: { key: "hire_order_letterhead" }, data: [{ org_id: ORG, value: { legal_name: "Live GmbH", address_lines: [] } }] },
+        { when: { key: "hire_order_terms" }, data: [{ org_id: ORG, value: { lean: [], standard: [{ title: "LIVE", body: "live terms" }], full: [] } }] },
+        { when: { key: "hire_order_defaults" }, data: [DEFAULTS] },
+      ],
+    },
+  });
+  const captured: CapturedRender[] = [];
+  deps.renderHireOrderPdf = (input) => {
+    captured.push(input as unknown as CapturedRender);
+    return Promise.resolve(new Uint8Array([0x25, 0x50, 0x44, 0x46]));
+  };
+
+  const res = await handle(makeRequest({ headers: { Authorization: "Bearer artist" }, body: SIGN_BODY }), deps);
+  assertEquals(res.status, 200);
+  assertEquals(captured.length, 1, "rendered exactly once");
+  assertEquals(captured[0].terms.map((t) => t.title), ["LIVE"], "legacy orders fall back to the live-resolved terms");
+  assertEquals(captured[0].letterhead.legal_name, "Live GmbH", "legacy orders fall back to the live letterhead");
 });
 
 // ── producer capability gate (draft / draft-manual / issue) ────────────────

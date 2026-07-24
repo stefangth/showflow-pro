@@ -50,6 +50,26 @@ const errorRate = (m: EdgeFnMetric | null): number =>
 const rejectRate = (m: EdgeFnMetric | null): number =>
   m && m.invocations > 0 ? m.rejected / m.invocations : 0;
 
+const percent = (value: number) => `${(value * 100).toFixed(1)}%`;
+const seconds = (milliseconds: number) => `${(milliseconds / 1000).toFixed(1)}s`;
+
+function metricHealthReason(metric: EdgeFnMetric | null, budget: HealthBudget): string | null {
+  if (!metric || metric.invocations === 0) return null;
+  if (metric.errors + metric.rejected === metric.invocations) {
+    return `All ${metric.invocations} recent calls failed or were rejected`;
+  }
+  if (errorRate(metric) > budget.errorRate) {
+    return `5xx error rate ${percent(errorRate(metric))} exceeds the ${percent(budget.errorRate)} budget`;
+  }
+  if (rejectRate(metric) > budget.rejectRate) {
+    return `4xx rejection rate ${percent(rejectRate(metric))} exceeds the ${percent(budget.rejectRate)} budget`;
+  }
+  if (metric.p95Ms !== null && metric.p95Ms > budget.p95Ms) {
+    return `p95 latency ${seconds(metric.p95Ms)} exceeds the ${seconds(budget.p95Ms)} budget`;
+  }
+  return null;
+}
+
 /** Combine durable cron status with latency/errors to yield the status model. */
 export function deriveJobStatus(cron: CronStatus, metric: EdgeFnMetric | null, budget: HealthBudget): HealthState {
   if (cron === "stale") return "stale";
@@ -58,11 +78,20 @@ export function deriveJobStatus(cron: CronStatus, metric: EdgeFnMetric | null, b
   // green, and ranked below 'degraded' so a brand-new job can't mask a real degraded signal in rollups.
   if (cron === "unknown") return "pending";
   if (metric) {
+    if (metric.invocations > 0 && metric.errors + metric.rejected === metric.invocations) return "down";
     if (errorRate(metric) > budget.errorRate) return "degraded";
     if (rejectRate(metric) > budget.rejectRate) return "degraded";
     if (metric.p95Ms !== null && metric.p95Ms > budget.p95Ms) return "degraded";
   }
   return "operational";
+}
+
+/** Concise, user-facing reason for a scheduled job's non-operational state. */
+export function describeJobHealth(cron: CronStatus, metric: EdgeFnMetric | null, budget: HealthBudget): string | null {
+  if (cron === "stale") return "No recent scheduled dispatch or response was recorded";
+  if (cron === "failing") return "The latest scheduled run failed";
+  if (cron === "unknown") return "This job has not been assessed yet";
+  return metricHealthReason(metric, budget);
 }
 
 /** On-demand functions: no schedule/stale concept; derive purely from metrics.
@@ -78,6 +107,11 @@ export function deriveEdgeFnStatus(metric: EdgeFnMetric | null, budget: HealthBu
   if (rejectRate(metric) > budget.rejectRate) return "degraded";
   if (metric.p95Ms !== null && metric.p95Ms > budget.p95Ms) return "degraded";
   return "operational";
+}
+
+/** Concise, user-facing reason for an on-demand function's non-operational state. */
+export function describeEdgeFnHealth(metric: EdgeFnMetric | null, budget: HealthBudget): string | null {
+  return metricHealthReason(metric, budget);
 }
 
 // Severity for rollups. 'pending' (never assessed) sits just above operational so it never

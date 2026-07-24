@@ -482,3 +482,28 @@ export async function updateHireOrderStatus(
   const { error } = await client.from("hire_orders").update(patch).eq("id", id);
   if (error) throw error;
 }
+
+export interface SignHireOrderArgs {
+  orgId: string;
+  orderId: string;
+  method: "typed" | "drawn";
+  typedName?: string;
+  signaturePng?: string;
+  consent: boolean;
+}
+
+/** Artist-facing in-app signing: invokes generate-hire-orders' `sign` action. */
+export async function signHireOrder(
+  client: SupabaseClient<Database>,
+  args: SignHireOrderArgs,
+): Promise<void> {
+  await invokeHireOrderAction(client, {
+    action: "sign",
+    org_id: args.orgId,
+    order_id: args.orderId,
+    method: args.method,
+    typed_name: args.typedName,
+    signature_png: args.signaturePng,
+    consent: args.consent,
+  });
+}

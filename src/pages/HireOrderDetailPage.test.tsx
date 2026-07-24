@@ -11,7 +11,8 @@ import { createFakeSupabase, type TableSeed } from "@/test/supabaseFake";
 // vi.mock chain), and useAuth as a vi.fn() so each test picks the role.
 const { client } = vi.hoisted(() => ({ client: {} as Record<string, unknown> }));
 vi.mock("@/integrations/supabase/client", () => ({ supabase: client }));
-vi.mock("@/features/auth/AuthContext", () => ({ useAuth: vi.fn() }));
+// Task 9 wires in useMyArtist (via useEffectiveUserId) alongside useAuth.
+vi.mock("@/features/auth/AuthContext", () => ({ useAuth: vi.fn(), useEffectiveUserId: () => "user-1" }));
 vi.mock("@/hooks/useCapabilities", async (orig) => ({ ...(await orig<typeof import("@/hooks/useCapabilities")>()), useCan: vi.fn() }));
 
 function seedClient(seed: Record<string, TableSeed>) {
@@ -84,9 +85,14 @@ function renderPage(id = "ho-1") {
 }
 
 describe("HireOrderDetailPage", () => {
-  beforeEach(() => {
+  beforeEach(() => { seedFor(order()); vi.mocked(useCan).mockReturnValue(true); });
+
+  it("manage_countersign off: Mark countersigned is disabled (page still renders)", async () => {
+    authAs("producer");
     seedFor(order());
-    vi.mocked(useCan).mockReturnValue(true);
+    vi.mocked(useCan).mockImplementation((action: string) => action !== "manage_countersign");
+    renderPage();
+    expect(await screen.findByRole("button", { name: /mark countersigned/i })).toBeDisabled();
   });
 
   it("renders the header with the mono order number and an Awaiting-countersign badge", async () => {
@@ -159,13 +165,48 @@ describe("HireOrderDetailPage", () => {
     });
   });
 
-  it("manage_countersign off: Mark countersigned is disabled, everything else still reads", async () => {
+  it("hides Mark countersigned for a manager on an electronic issued order, showing an awaiting-signature hint", async () => {
+    // Electronic orders must complete via the artist's in-app signature (consent
+    // + audit row + signed PDF). A one-click manager flip would skip all of that,
+    // so the button is gated out of electronic mode and a non-action hint takes
+    // its place so the rail is not empty.
     authAs("producer");
-    vi.mocked(useCan).mockImplementation((action: string) => action !== "manage_countersign");
+    seedClient({
+      hire_orders: { data: order(), error: null },
+      "fn:generate-hire-orders": { data: { url: SIGNED_URL }, error: null },
+      app_settings: { data: [{ org_id: "org-1", value: { mode: "electronic" } }], error: null },
+    });
     renderPage();
-    const btn = await screen.findByRole("button", { name: /mark countersigned/i });
-    expect(btn).toBeDisabled();
-    expect(await screen.findByText("Performance hire order")).toBeInTheDocument();
+    expect(await screen.findByText(/awaiting artist signature/i)).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /mark countersigned/i })).not.toBeInTheDocument();
+  });
+
+  it("keeps Mark countersigned for a manager on a manual-mode issued order", async () => {
+    authAs("producer");
+    seedClient({
+      hire_orders: { data: order(), error: null },
+      "fn:generate-hire-orders": { data: { url: SIGNED_URL }, error: null },
+      app_settings: { data: [{ org_id: "org-1", value: { mode: "manual" } }], error: null },
+    });
+    renderPage();
+    expect(await screen.findByRole("button", { name: /mark countersigned/i })).toBeInTheDocument();
+    expect(screen.queryByText(/awaiting artist signature/i)).not.toBeInTheDocument();
+  });
+
+  it("hides Mark countersigned when the order was ISSUED electronic, even after the org switched to manual (order-mode wins)", async () => {
+    // The order carries a frozen electronic issue-time mode (issue_snapshot), but the
+    // org's live setting is now manual. The manual one-click flip would strand the order
+    // against the DB gate (which also keys off the frozen mode), so it stays hidden and
+    // the awaiting-signature hint shows instead.
+    authAs("producer");
+    seedClient({
+      hire_orders: { data: order({ issue_snapshot: { countersign_mode: "electronic" } }), error: null },
+      "fn:generate-hire-orders": { data: { url: SIGNED_URL }, error: null },
+      app_settings: { data: [{ org_id: "org-1", value: { mode: "manual" } }], error: null },
+    });
+    renderPage();
+    expect(await screen.findByText(/awaiting artist signature/i)).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /mark countersigned/i })).not.toBeInTheDocument();
   });
 
   it("shows a countersigned confirmation chip (no action) once countersigned", async () => {

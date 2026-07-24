@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import {
-  deriveJobStatus, deriveEdgeFnStatus, worstStatus, CRON_JOB_TO_FN,
+  deriveJobStatus, deriveEdgeFnStatus, describeJobHealth, describeEdgeFnHealth, worstStatus, CRON_JOB_TO_FN,
   type EdgeFnMetric, type HealthBudget,
 } from "@/lib/systemHealth";
 
@@ -35,6 +35,9 @@ describe("deriveJobStatus", () => {
   it("is degraded when a healthy cron job is being rejected with 4xx", () => {
     expect(deriveJobStatus("healthy", metric({ invocations: 10, rejected: 3 }), BUDGET)).toBe("degraded");
   });
+  it("is down when every recent scheduled invocation failed or was rejected", () => {
+    expect(deriveJobStatus("healthy", metric({ invocations: 3, errors: 2, rejected: 1 }), BUDGET)).toBe("down");
+  });
 });
 
 describe("deriveEdgeFnStatus", () => {
@@ -61,6 +64,32 @@ describe("deriveEdgeFnStatus", () => {
   });
   it("is down when 4xx and 5xx together account for every call", () => {
     expect(deriveEdgeFnStatus(metric({ invocations: 4, rejected: 2, errors: 2 }), BUDGET)).toBe("down");
+  });
+});
+
+describe("health-status explanations", () => {
+  it("explains a scheduled job whose p95 latency exceeds its budget", () => {
+    expect(describeJobHealth("healthy", metric({ p95Ms: 15_000 }), BUDGET))
+      .toBe("p95 latency 15.0s exceeds the 12.0s budget");
+  });
+
+  it("explains a failed scheduled run before evaluating metrics", () => {
+    expect(describeJobHealth("failing", metric({ p95Ms: 15_000 }), BUDGET))
+      .toBe("The latest scheduled run failed");
+  });
+
+  it("explains a sustained 4xx rejection rate", () => {
+    expect(describeEdgeFnHealth(metric({ invocations: 10, rejected: 3 }), BUDGET))
+      .toBe("4xx rejection rate 30.0% exceeds the 20.0% budget");
+  });
+
+  it("explains an all-failed on-demand function as down", () => {
+    expect(describeEdgeFnHealth(metric({ invocations: 3, errors: 3 }), BUDGET))
+      .toBe("All 3 recent calls failed or were rejected");
+  });
+
+  it("returns no explanation for an operational function", () => {
+    expect(describeEdgeFnHealth(metric(), BUDGET)).toBeNull();
   });
 });
 

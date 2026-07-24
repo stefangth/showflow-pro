@@ -14,7 +14,8 @@ describe("fetchCronHealth", () => {
         data: [{
           job_name: "offer-digest", schedule: "0 16-19 * * *", status: "failing",
           last_status_code: 404, last_ok_at: null, last_error: "HTTP 404",
-          consecutive_failures: 1, last_run_at: null, recent_failures: [],
+          consecutive_failures: 1, last_run_at: null,
+          recent_failures: [{ status_code: 404, error: "HTTP 404", observed_at: "2026-07-23T10:00:00Z" }],
         }],
         error: null,
       },
@@ -22,6 +23,8 @@ describe("fetchCronHealth", () => {
     const rows = await fetchCronHealth(asClient(fake));
     expect(rows).toHaveLength(1);
     expect(rows[0].status).toBe("failing");
+    expect((rows[0] as unknown as { recentFailures: Array<{ error: string | null }> }).recentFailures)
+      .toEqual([{ status_code: 404, error: "HTTP 404", observed_at: "2026-07-23T10:00:00Z" }]);
     expect(fake.calls).toContainEqual({ table: "rpc:get_cron_health", method: "rpc", args: [undefined] });
   });
 

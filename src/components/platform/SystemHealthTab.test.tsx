@@ -18,7 +18,7 @@ describe("SystemHealthTab", () => {
     vi.spyOn(platform, "fetchCronHealth").mockResolvedValue([{
       job_name: "offer-digest", schedule: "0 16-19 * * *", status: "failing",
       last_status_code: 404, last_ok_at: null, last_error: "HTTP 404",
-      consecutive_failures: 1, last_run_at: null, recent_failures: [],
+      consecutive_failures: 1, last_run_at: null, recentFailures: [],
     }]);
     vi.spyOn(platform, "fetchEdgeFnMetrics").mockResolvedValue([]);
     vi.spyOn(platform, "fetchEmailHealth").mockResolvedValue(emailFixture);
@@ -31,7 +31,7 @@ describe("SystemHealthTab", () => {
     vi.spyOn(platform, "fetchCronHealth").mockResolvedValue([{
       job_name: "cron-health-watcher", schedule: "*/15 * * * *", status: "healthy",
       last_status_code: 200, last_ok_at: null, last_error: null,
-      consecutive_failures: 0, last_run_at: "2026-06-24T09:45:00Z", recent_failures: [],
+      consecutive_failures: 0, last_run_at: "2026-06-24T09:45:00Z", recentFailures: [],
     }]);
     vi.spyOn(platform, "fetchEdgeFnMetrics").mockResolvedValue([{
       fn: "cron-health-watcher", invocations: 10, errors: 0, rejected: 0, byStatus: {}, p50Ms: 4000, p95Ms: 18000,
@@ -46,7 +46,7 @@ describe("SystemHealthTab", () => {
     vi.spyOn(platform, "fetchCronHealth").mockResolvedValue([{
       job_name: "airtable-poll", schedule: "*/5 * * * *", status: "healthy",
       last_status_code: 200, last_ok_at: null, last_error: null,
-      consecutive_failures: 0, last_run_at: null, recent_failures: [],
+      consecutive_failures: 0, last_run_at: null, recentFailures: [],
     }]);
     vi.spyOn(platform, "fetchEdgeFnMetrics").mockRejectedValue(new Error("analytics down"));
     vi.spyOn(platform, "fetchEmailHealth").mockResolvedValue(emailFixture);

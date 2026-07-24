@@ -37,6 +37,12 @@ export async function fetchIsSuperAdmin(client: SupabaseClient<Database>, userId
   return data === true;
 }
 
+export interface CronFailure {
+  status_code: number | null;
+  error: string | null;
+  observed_at: string;
+}
+
 export interface CronHealthRow {
   job_name: string;
   schedule: string | null;
@@ -46,7 +52,7 @@ export interface CronHealthRow {
   last_error: string | null;
   consecutive_failures: number;
   last_run_at: string | null;
-  recent_failures: { status_code: number | null; error: string | null; observed_at: string }[];
+  recentFailures: CronFailure[];
 }
 
 /** Per-cron health for the platform System Health tab (super-admin only, enforced inside the RPC). */
@@ -56,7 +62,31 @@ export async function fetchCronHealth(client: SupabaseClient<Database>): Promise
   // shape as fetchPlatformOrgStats below.
   const { data, error } = await client.rpc("get_cron_health" as never);
   if (error) throw error;
-  return (data ?? []) as unknown as CronHealthRow[];
+  return ((data ?? []) as Record<string, unknown>[]).map((row) => {
+    const failures = Array.isArray(row.recent_failures) ? row.recent_failures : [];
+    return {
+      job_name: String(row.job_name ?? ""),
+      schedule: typeof row.schedule === "string" ? row.schedule : null,
+      status: row.status === "healthy" || row.status === "failing" || row.status === "stale" || row.status === "unknown"
+        ? row.status
+        : "unknown",
+      last_status_code: typeof row.last_status_code === "number" ? row.last_status_code : null,
+      last_ok_at: typeof row.last_ok_at === "string" ? row.last_ok_at : null,
+      last_error: typeof row.last_error === "string" ? row.last_error : null,
+      consecutive_failures: Number(row.consecutive_failures ?? 0),
+      last_run_at: typeof row.last_run_at === "string" ? row.last_run_at : null,
+      recentFailures: failures.flatMap((failure) => {
+        if (!failure || typeof failure !== "object") return [];
+        const record = failure as Record<string, unknown>;
+        if (typeof record.observed_at !== "string") return [];
+        return [{
+          status_code: typeof record.status_code === "number" ? record.status_code : null,
+          error: typeof record.error === "string" ? record.error : null,
+          observed_at: record.observed_at,
+        }];
+      }),
+    };
+  });
 }
 
 /** Edge-function metrics for the System Health tab, via the super-admin platform-edge-metrics

@@ -15,7 +15,7 @@
 //   - No em-dashes or en-dashes in rendered copy (house rule); the mock's "—"
 //     and curly quotes become plain ASCII or a middot.
 import * as React from "npm:react@18.3.1";
-import { Document, Font, Page, StyleSheet, Text, View, renderToBuffer } from "npm:@react-pdf/renderer@^4";
+import { Document, Font, Image, Page, StyleSheet, Text, View, renderToBuffer } from "npm:@react-pdf/renderer@^4";
 import { formatMoney, type OrderData, type RenderInput } from "../hireOrders.ts";
 import { GEIST_MEDIUM_B64, GEIST_MONO_REGULAR_B64, GEIST_REGULAR_B64, GEIST_SEMIBOLD_B64 } from "./fonts.ts";
 
@@ -186,6 +186,18 @@ const s = StyleSheet.create({
   signatureLine: { borderBottomWidth: 0.5, borderBottomColor: C.text },
   signatureHint: { fontSize: 9, color: C.faint, marginTop: 5 },
 
+  // Applied (countersigned) signature mark
+  sigMarkTyped: { fontFamily: "Geist", fontSize: 22, fontWeight: 600, color: C.text, marginBottom: 2 },
+  sigMarkImage: { height: 44, marginBottom: 2, objectFit: "contain" },
+  // Certificate page
+  certHeading: { fontSize: 16, fontWeight: 600, marginBottom: 4 },
+  certLead: { fontSize: 11, color: C.muted, marginBottom: 18 },
+  certRow: { flexDirection: "row", borderBottomWidth: 0.5, borderBottomColor: C.line, paddingVertical: 7 },
+  certLabel: { width: "34%", fontSize: 10, color: C.faint },
+  certValue: { flex: 1, fontSize: 10.5, color: C.text },
+  certValueMono: { flex: 1, fontFamily: "GeistMono", fontSize: 9.5, color: C.text },
+  certConsent: { marginTop: 16, fontSize: 10, color: C.muted, lineHeight: 1.4 },
+
   // Footer
   footer: {
     position: "absolute",
@@ -248,6 +260,20 @@ function formatIsoDMY(iso: string): string {
   return formatDateDMY(d.toISOString().slice(0, 10));
 }
 
+/**
+ * `dd/MM/yyyy HH:MM` (UTC) from a full ISO timestamp. The signature certificate
+ * is an audit record, so it needs minute precision: two signatures on the same
+ * calendar day render identically with a date alone. Hour/minute are read on the
+ * UTC clock (deterministic, matches the "(UTC)" label the row carries).
+ */
+function formatIsoDateTimeUTC(iso: string): string {
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return "";
+  const hh = String(d.getUTCHours()).padStart(2, "0");
+  const mm = String(d.getUTCMinutes()).padStart(2, "0");
+  return `${formatDateDMY(d.toISOString().slice(0, 10))} ${hh}:${mm}`;
+}
+
 /** `sessions` is a list of time strings; anything else renders no rows. */
 function sessionsOf(data: OrderData): string[] {
   const value = data.sessions?.value;
@@ -258,7 +284,7 @@ function sessionsOf(data: OrderData): string[] {
 // ── document ─────────────────────────────────────────────────────────────
 
 function HireOrderDoc(input: RenderInput): React.ReactElement {
-  const { data, orderNo, status, letterhead, terms, currency, generatedAtIso } = input;
+  const { data, orderNo, status, letterhead, terms, currency, generatedAtIso, signature } = input;
 
   const artist = str(data, "artist_name");
   const email = str(data, "recipient_email");
@@ -294,7 +320,9 @@ function HireOrderDoc(input: RenderInput): React.ReactElement {
             <Text style={s.orderNo}>{orderNo}</Text>
             <View style={s.badgeRow}>
               <View style={[s.badgeDot, { backgroundColor: status === "preview" ? C.faint : C.accent }]} />
-              <Text style={s.badgeText}>{status === "preview" ? "Preview" : "Issued"}</Text>
+              <Text style={s.badgeText}>
+                {status === "preview" ? "Preview" : status === "countersigned" ? "Countersigned" : "Issued"}
+              </Text>
             </View>
           </View>
         </View>
@@ -411,8 +439,15 @@ function HireOrderDoc(input: RenderInput): React.ReactElement {
           <View style={s.signatureGap} />
           <View style={s.signature}>
             <Text style={s.signatureFor}>{`The Artist · ${artist}`}</Text>
+            {signature
+              ? (signature.method === "drawn" && signature.imageDataUrl
+                ? <Image style={s.sigMarkImage} src={signature.imageDataUrl} />
+                : <Text style={s.sigMarkTyped}>{signature.typedName ?? signature.signerName}</Text>)
+              : null}
             <View style={s.signatureLine} />
-            <Text style={s.signatureHint}>Signature · Date</Text>
+            <Text style={s.signatureHint}>
+              {signature ? `Signed electronically · ${formatIsoDMY(signature.signedAtIso)}` : "Signature · Date"}
+            </Text>
           </View>
         </View>
 
@@ -429,6 +464,25 @@ function HireOrderDoc(input: RenderInput): React.ReactElement {
           />
         </View>
       </Page>
+      {signature ? (
+        <Page size="A4" style={s.page}>
+          <Text style={s.certHeading}>Signature certificate</Text>
+          <Text style={s.certLead}>{`Electronic signature record for hire order ${orderNo}.`}</Text>
+          <View style={s.certRow}><Text style={s.certLabel}>Signer</Text><Text style={s.certValue}>{signature.signerName}</Text></View>
+          {signature.signerEmail ? <View style={s.certRow}><Text style={s.certLabel}>Email</Text><Text style={s.certValue}>{signature.signerEmail}</Text></View> : null}
+          <View style={s.certRow}><Text style={s.certLabel}>Method</Text><Text style={s.certValue}>{signature.method === "drawn" ? "Drawn signature" : "Typed signature"}</Text></View>
+          <View style={s.certRow}><Text style={s.certLabel}>Signed at</Text><Text style={s.certValue}>{`${formatIsoDateTimeUTC(signature.signedAtIso)} (UTC)`}</Text></View>
+          {signature.ip ? <View style={s.certRow}><Text style={s.certLabel}>IP address</Text><Text style={s.certValue}>{signature.ip}</Text></View> : null}
+          {signature.userAgent ? <View style={s.certRow}><Text style={s.certLabel}>Device</Text><Text style={s.certValue}>{signature.userAgent}</Text></View> : null}
+          <View style={s.certRow}><Text style={s.certLabel}>Document SHA-256</Text><Text style={s.certValueMono}>{signature.documentSha256}</Text></View>
+          <Text style={s.certConsent}>{signature.consentText}</Text>
+          <View style={s.footer} fixed>
+            <Text style={s.footerMono}>{orderNo}</Text>
+            <Text style={s.footerText}>{`Generated by ShowFlow Pro · ${formatIsoDMY(generatedAtIso)}`}</Text>
+            <Text style={s.footerMono} render={({ pageNumber, totalPages }) => `Page ${pageNumber} / ${totalPages}`} />
+          </View>
+        </Page>
+      ) : null}
     </Document>
   );
 }

@@ -1068,6 +1068,7 @@ export type Database = {
           fee_currency: string
           id: string
           import_id: string | null
+          issue_snapshot: Json | null
           issued_at: string | null
           issued_pdf_sha256: string | null
           order_no: string
@@ -1094,6 +1095,7 @@ export type Database = {
           fee_currency?: string
           id?: string
           import_id?: string | null
+          issue_snapshot?: Json | null
           issued_at?: string | null
           issued_pdf_sha256?: string | null
           order_no: string
@@ -1120,6 +1122,7 @@ export type Database = {
           fee_currency?: string
           id?: string
           import_id?: string | null
+          issue_snapshot?: Json | null
           issued_at?: string | null
           issued_pdf_sha256?: string | null
           order_no?: string
@@ -2102,6 +2105,7 @@ export type Database = {
       accept_invitation: { Args: { p_token: string }; Returns: Json }
       add_platform_admin: { Args: { p_email: string }; Returns: string }
       anonymize_user: { Args: { p_user: string }; Returns: undefined }
+      app_setting_capability: { Args: { _key: string }; Returns: string }
       bulk_import_artists: {
         Args: { p_org: string; p_rows: Json }
         Returns: Json

@@ -14,7 +14,7 @@ import { formatDateDMY } from "@/lib/dates";
 import type { OrderData } from "@/lib/hireOrders/types";
 import type { HireOrderListRow } from "@/data/hireOrders";
 import { useCan } from "@/hooks/useCapabilities";
-import { useHireOrderAction, useMarkCountersigned, useVoidHireOrder } from "@/hooks/useHireOrders";
+import { useHireOrderAction, useMarkCountersigned, useVoidHireOrder, useHireOrderCountersignMode } from "@/hooks/useHireOrders";
 import { ROUTES } from "@/config/app.config";
 
 /** Read a resolved snapshot field as a trimmed string ("" when absent). */
@@ -56,10 +56,21 @@ export function OrderSlideOver({ order, open, onOpenChange, orgId }: Props) {
   const voidOrder = useVoidHireOrder();
   const canIssue = useCan("issue_hire_orders");
   const canVoid = useCan("void_hire_orders");
+  // Electronic-mode orders complete via the artist's in-app signature, so the
+  // manual "Mark countersigned" one-click flip (which would skip the e-sign
+  // audit trail) is withheld in that mode. Manual mode keeps it.
+  const countersignMode = useHireOrderCountersignMode(orgId);
 
   const lastOrderRef = useRef<HireOrderListRow | null>(null);
   if (order) lastOrderRef.current = order;
   const displayOrder = order ?? lastOrderRef.current;
+
+  // Follow the mode the order was ISSUED under (frozen in issue_snapshot), not the
+  // org's current setting — an electronic-issued order keeps the manual flip withheld
+  // even if the org later switched to manual. Legacy/null snapshots fall back to the
+  // live setting.
+  const orderMode = (displayOrder?.issue_snapshot as { countersign_mode?: string } | null)?.countersign_mode;
+  const isElectronic = (orderMode ?? countersignMode.data?.mode) === "electronic";
 
   const data = (displayOrder?.data ?? {}) as OrderData;
   const artistName = displayOrder?.artists?.name || snap(data, "artist_name") || "Unknown artist";
@@ -159,9 +170,11 @@ export function OrderSlideOver({ order, open, onOpenChange, orgId }: Props) {
                     <Button variant="outline" className="w-full" onClick={handleDownload} disabled={action.isPending}>
                       <Download className="mr-1 h-4 w-4" /> Download
                     </Button>
-                    <Button className="w-full" onClick={handleCountersign} disabled={countersign.isPending}>
-                      Mark countersigned
-                    </Button>
+                    {!isElectronic && (
+                      <Button className="w-full" onClick={handleCountersign} disabled={countersign.isPending}>
+                        Mark countersigned
+                      </Button>
+                    )}
                   </>
                 )}
                 {displayOrder.status === "countersigned" && (

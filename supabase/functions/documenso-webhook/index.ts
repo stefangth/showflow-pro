@@ -1,3 +1,7 @@
+// NOT IN USE (2026-07): superseded by in-app electronic signing (the `sign` action
+// in generate-hire-orders + hire_order_signatures). Retained, dark, for a possible
+// future self-hosted Documenso. See docs/superpowers/specs/2026-07-23-hire-orders-in-app-signing-design.md.
+//
 // documenso-webhook — flips a hire order to countersigned when Documenso reports
 // the document (envelope) completed.
 //

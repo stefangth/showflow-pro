@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { ArrowLeft, Download, FileText, CheckCircle2 } from "lucide-react";
@@ -7,7 +8,15 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { useAuth } from "@/features/auth/AuthContext";
 import { useCan } from "@/hooks/useCapabilities";
-import { useHireOrder, useHireOrderAction, useMarkCountersigned } from "@/hooks/useHireOrders";
+import {
+  useHireOrder,
+  useHireOrderAction,
+  useMarkCountersigned,
+  useHireOrderCountersignMode,
+} from "@/hooks/useHireOrders";
+import { useMyArtist } from "@/hooks/useMyArtist";
+import { canArtistSign } from "@/lib/hireOrders/signing";
+import { SignHireOrderDialog } from "@/components/hireOrders/SignHireOrderDialog";
 import { invokeHireOrderAction, type HireOrderRow } from "@/data/hireOrders";
 import { supabase } from "@/integrations/supabase/client";
 import { formatMoney } from "@/lib/hireOrders/money";
@@ -48,6 +57,25 @@ export default function HireOrderDetailPage() {
   const { data: order, isLoading, isError, error } = useHireOrder(id);
   const action = useHireOrderAction();
   const countersign = useMarkCountersigned();
+  const countersignMode = useHireOrderCountersignMode(orgId);
+  const { data: myArtist } = useMyArtist();
+  const canManage = hasRole("admin") || hasRole("producer");
+  // The signing mode follows the mode the order was ISSUED under (frozen in
+  // issue_snapshot), not the org's current setting — so an electronic-issued order
+  // keeps showing "Review & sign" to the artist and hiding the manual "Mark
+  // countersigned" flip from producers even if the org later switched to manual (which
+  // would otherwise strand the order against the DB gate). Legacy/null snapshots fall
+  // back to the live org setting.
+  const orderMode = (order?.issue_snapshot as { countersign_mode?: string } | null)?.countersign_mode;
+  const effectiveMode = orderMode ?? countersignMode.data?.mode ?? "manual";
+  const canSign = order
+    ? canArtistSign({
+        canManage,
+        status: order.status,
+        mode: effectiveMode,
+        isLinkedArtist: !!myArtist && myArtist.id === order.artist_id,
+      })
+    : false;
 
   const hasPdf = !!order?.pdf_path;
 
@@ -118,8 +146,15 @@ export default function HireOrderDetailPage() {
     );
   }
 
-  return <HireOrderDetail order={order} canManage={hasRole("admin") || hasRole("producer")}
+  // Electronic-mode orders complete via the artist's in-app signature (consent +
+  // audit row + signed PDF), so the manual "Mark countersigned" one-click flip is
+  // hidden for managers in that mode — it would bypass the whole e-sign trail. Keyed
+  // off the order's issue-time mode (see effectiveMode above), not the live setting.
+  const isElectronic = effectiveMode === "electronic";
+
+  return <HireOrderDetail order={order} canManage={canManage} canSign={canSign} orgId={orgId}
     canManageCountersign={canManageCountersign}
+    isElectronic={isElectronic}
     navigateBack={() => navigate(-1)}
     onEdit={() => navigate(ROUTES.HIRE_ORDER_EDIT.replace(":id", order.id))}
     onDownload={handleDownload}
@@ -137,6 +172,9 @@ interface DetailProps {
   order: HireOrderRow;
   canManage: boolean;
   canManageCountersign: boolean;
+  canSign: boolean;
+  orgId: string;
+  isElectronic: boolean;
   navigateBack: () => void;
   onEdit: () => void;
   onDownload: () => void;
@@ -152,9 +190,10 @@ interface DetailProps {
 /** The loaded-state body — split out so the page shell handles loading/error
  *  and this renders the header + document grid for a known-good order. */
 function HireOrderDetail({
-  order, canManage, canManageCountersign, navigateBack, onEdit, onDownload, downloadBusy,
+  order, canManage, canManageCountersign, canSign, orgId, isElectronic, navigateBack, onEdit, onDownload, downloadBusy,
   onCountersign, countersignBusy, pdfUrl, pdfUrlLoading, pdfUrlError, hasPdf,
 }: DetailProps) {
+  const [signOpen, setSignOpen] = useState(false);
   const data = (order.data ?? {}) as OrderData;
   const artistName = order.artists?.name || snap(data, "artist_name") || "Unknown artist";
   const email = snap(data, "recipient_email");
@@ -265,17 +304,23 @@ function HireOrderDetail({
               <PrimaryAction
                 canManage={canManage}
                 canManageCountersign={canManageCountersign}
+                canSign={canSign}
                 status={order.status}
+                isElectronic={isElectronic}
                 hasPdf={hasPdf}
                 onDownload={onDownload}
                 downloadBusy={downloadBusy}
                 onCountersign={onCountersign}
                 countersignBusy={countersignBusy}
+                onSign={() => setSignOpen(true)}
               />
             </CardContent>
           </Card>
         </aside>
       </div>
+      {canSign && (
+        <SignHireOrderDialog orderId={order.id} orgId={orgId} open={signOpen} onOpenChange={setSignOpen} />
+      )}
     </div>
   );
 }
@@ -283,22 +328,43 @@ function HireOrderDetail({
 interface ActionProps {
   canManage: boolean;
   canManageCountersign: boolean;
+  canSign: boolean;
   status: string;
+  isElectronic: boolean;
   hasPdf: boolean;
   onDownload: () => void;
   downloadBusy: boolean;
   onCountersign: () => void;
   countersignBusy: boolean;
+  onSign: () => void;
 }
 
 /** The role- and status-driven primary control in the rail. Producers/admins
- *  can mark an issued order countersigned (and see a confirmation once done);
- *  artists only ever get a download control. `canManageCountersign` gates only
- *  the Mark-countersigned action itself, on top of the broad producer/admin split. */
+ *  can mark an issued order countersigned in MANUAL mode (and see a confirmation
+ *  once done); in electronic mode that manual flip is withheld — the order must
+ *  be completed by the artist's in-app signature, so a manager sees only a hint.
+ *  The linked artist gets an in-app Review & sign action on an issued
+ *  electronic-mode order; everyone else only ever gets a download control.
+ *  `canManageCountersign` gates the Mark-countersigned action itself, on top of
+ *  the broad producer/admin split. */
 function PrimaryAction({
-  canManage, canManageCountersign, status, hasPdf, onDownload, downloadBusy, onCountersign, countersignBusy,
+  canManage, canManageCountersign, canSign, status, isElectronic, hasPdf, onDownload, downloadBusy, onCountersign, countersignBusy, onSign,
 }: ActionProps) {
+  if (canSign) {
+    return (
+      <div className="space-y-2">
+        <Button className="w-full" onClick={onSign}>Review &amp; sign</Button>
+        <Button variant="outline" className="w-full" onClick={onDownload} disabled={!hasPdf || downloadBusy}>
+          <Download className="mr-1 h-4 w-4" /> Download PDF
+        </Button>
+      </div>
+    );
+  }
   if (canManage && status === "issued") {
+    // Electronic mode: the artist completes the order in-app; no manual flip.
+    if (isElectronic) {
+      return <p className="text-sm text-muted-foreground">Awaiting artist signature</p>;
+    }
     return (
       <Button className="w-full" onClick={onCountersign} disabled={countersignBusy || !canManageCountersign}
         title={canManageCountersign ? undefined : "You don't have permission to countersign hire orders"}>
