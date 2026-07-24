@@ -17,7 +17,11 @@
 // makeFakeDeps (deps.renderHireOrderPdf is stubbed). See index.di.test.ts.
 import { json, preflight } from "../_shared/http.ts";
 import { requireCronOrRole, requireOrgRole } from "../_shared/auth.ts";
-import type { TablesInsert, TablesUpdate } from "../_shared/database.types.ts";
+import type {
+  Json,
+  TablesInsert,
+  TablesUpdate,
+} from "../_shared/database.types.ts";
 import type {
   OrgAdminRow,
   ProducerAssignmentRow,
@@ -1039,20 +1043,6 @@ async function draftBatchArtist(
   const data = resolveFields({ showflow, manual, defaults: defaultLayer });
   data.engagement_dates = { value: engagementDates, source: "showflow" };
 
-  const { error: availabilityError } = await deps.admin.rpc(
-    "assert_hire_order_dates_available",
-    {
-      p_org: org,
-      p_artist: input.artist_id,
-      p_dates: dates.map((date) => date.id),
-    },
-  );
-  if (availabilityError) {
-    return isDateAvailabilityConflict(availabilityError)
-      ? { kind: "skipped", reason: "exists" }
-      : { kind: "error", reason: "availability_check_failed" };
-  }
-
   context.nextSeq += 1;
   const baseOrderNo = formatOrderNo(numbering.pattern, {
     prefix: numbering.prefix,
@@ -1069,46 +1059,57 @@ async function draftBatchArtist(
   const currency = typeof currencyValue === "string" && currencyValue
     ? currencyValue
     : defaults.currency;
-  const parent = await insertWithRetry(deps.admin, baseOrderNo, {
-    org_id: org,
-    status: "draft" as const,
-    booking_id: null,
-    artist_id: input.artist_id,
-    show_date_id: firstDate.id,
-    data,
-    fee_amount: feeAmount,
-    fee_currency: currency,
-    terms_variant: "standard",
-    created_by: userId,
-  });
-  if (!("id" in parent)) {
-    return parent.reason === "exists"
-      ? { kind: "skipped", reason: parent.reason }
-      : { kind: "error", reason: parent.reason };
-  }
+  const parent = await createBatchHireOrderWithRetry(
+    deps.admin,
+    baseOrderNo,
+    {
+      p_org: org,
+      p_artist: input.artist_id,
+      p_show_date_ids: dates.map((date) => date.id),
+      p_data: data as unknown as Json,
+      p_fee_amount: feeAmount,
+      p_fee_currency: currency,
+      p_terms_variant: "standard",
+      p_created_by: userId,
+    },
+  );
+  if ("id" in parent) return { kind: "created", id: parent.id };
+  return parent.reason === "exists"
+    ? { kind: "skipped", reason: parent.reason }
+    : { kind: "error", reason: parent.reason };
+}
 
-  const childRows = dates.map((date, position) => ({
-    hire_order_id: parent.id,
-    show_date_id: date.id,
-    org_id: org,
-    position,
-  }));
-  const { error: childError } = await deps.admin
-    .from("hire_order_dates")
-    .insert(childRows as TablesInsert<"hire_order_dates">[]);
-  if (childError) {
-    // Keep a failed aggregate out of active workflows. The availability triggers
-    // ignore void parents, allowing a safe retry after a partial child write.
-    await deps.admin.from("hire_orders").update({ status: "void" }).eq(
-      "id",
-      parent.id,
-    ).eq("status", "draft");
-    return isDateAvailabilityConflict(childError)
-      ? { kind: "skipped", reason: "exists" }
-      : { kind: "error", reason: "date_insert_failed" };
+/**
+ * Create an aggregate parent and its ordered child rows in the database's
+ * transaction. Unlike the legacy single-date insert, a compensating update
+ * cannot make a partial aggregate safe: the RPC must either create every row
+ * or create none. Order-number collisions remain retryable.
+ */
+async function createBatchHireOrderWithRetry(
+  admin: Deps["admin"],
+  baseOrderNo: string,
+  args: Omit<
+    import("../_shared/database.types.ts").Database["public"]["Functions"][
+      "create_hire_order_with_dates"
+    ]["Args"],
+    "p_order_no"
+  >,
+): Promise<{ id: string } | { reason: string }> {
+  for (let attempt = 0; attempt < 20; attempt++) {
+    const { data, error } = await admin.rpc("create_hire_order_with_dates", {
+      ...args,
+      p_order_no: withCollisionSuffix(baseOrderNo, attempt),
+    });
+    if (!error && typeof data === "string") return { id: data };
+    if (
+      isDateAvailabilityConflict(error) || isActiveArtistDateConflict(error)
+    ) {
+      return { reason: "exists" };
+    }
+    if (error && (error as { code?: string }).code === "23505") continue;
+    return { reason: "aggregate_insert_failed" };
   }
-
-  return { kind: "created", id: parent.id };
+  return { reason: "order_no_collision" };
 }
 
 function isDateAvailabilityConflict(error: unknown): boolean {

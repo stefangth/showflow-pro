@@ -663,6 +663,9 @@ const SHOW_DATE_ROW_2 = {
 Deno.test("draft-batch creates one order per artist and snapshots all assigned dates in ascending order", async () => {
   const { deps, calls } = makeFakeDeps({
     authUser: { id: "u-admin" },
+    rpcs: {
+      create_hire_order_with_dates: { data: "ho-new", error: null },
+    },
     tables: {
       org_memberships: { data: { role: "admin" } },
       artists: {
@@ -688,11 +691,7 @@ Deno.test("draft-batch creates one order per artist and snapshots all assigned d
           name: "Hamburg",
         }],
       },
-      hire_orders: [
-        { when: { __write: false }, data: [] },
-        { when: { __write: true }, data: { id: "ho-new" } },
-      ],
-      hire_order_dates: { data: null },
+      hire_orders: { data: [] },
       app_settings: [
         { when: { key: "hire_order_defaults" }, data: [DEFAULTS] },
         { when: { key: "hire_order_numbering" }, data: [NUMBERING] },
@@ -733,29 +732,31 @@ Deno.test("draft-batch creates one order per artist and snapshots all assigned d
   assertEquals(body.skipped, []);
   assertEquals(body.errors, []);
 
-  const parentInserts = calls.filter((c) =>
-    c.table === "hire_orders" && c.method === "insert"
+  const aggregateCreates = calls.filter((c) =>
+    c.table === "rpc:create_hire_order_with_dates"
   );
-  assertEquals(parentInserts.length, 2, "one parent order per artist");
-  const firstParent = parentInserts[0].args[0] as {
-    show_date_id: string;
-    data: Record<string, { value: unknown; source: string }>;
+  assertEquals(
+    aggregateCreates.length,
+    2,
+    "the transactional RPC creates each aggregate parent and its child rows",
+  );
+  const firstAggregate = aggregateCreates[0].args[0] as {
+    p_artist: string;
+    p_show_date_ids: string[];
+    p_data: Record<string, { value: unknown; source: string }>;
   };
+  assertEquals(firstAggregate.p_artist, BATCH_ARTIST_1);
+  assertEquals(firstAggregate.p_show_date_ids, [BATCH_DATE_2, BATCH_DATE_1]);
+  assertEquals(firstAggregate.p_data.date.value, "2026-06-14");
+  assertEquals(firstAggregate.p_data.venue.value, "Venue B");
+  assertEquals(firstAggregate.p_data.city.value, "Hamburg");
   assertEquals(
-    firstParent.show_date_id,
-    BATCH_DATE_2,
-    "legacy parent points at the chronologically first date",
-  );
-  assertEquals(firstParent.data.date.value, "2026-06-14");
-  assertEquals(firstParent.data.venue.value, "Venue B");
-  assertEquals(firstParent.data.city.value, "Hamburg");
-  assertEquals(
-    firstParent.data.fee.value,
+    firstAggregate.p_data.fee.value,
     900,
     "the shared manual layer applies to every artist",
   );
-  assertEquals(firstParent.data.engagement_dates.source, "showflow");
-  assertEquals(firstParent.data.engagement_dates.value, [
+  assertEquals(firstAggregate.p_data.engagement_dates.source, "showflow");
+  assertEquals(firstAggregate.p_data.engagement_dates.value, [
     {
       show_date_id: BATCH_DATE_2,
       date: "2026-06-14",
@@ -770,38 +771,16 @@ Deno.test("draft-batch creates one order per artist and snapshots all assigned d
     },
   ]);
 
-  const dateInserts = calls.filter((c) =>
-    c.table === "hire_order_dates" && c.method === "insert"
-  );
-  assertEquals(dateInserts.length, 2, "one child-date batch per parent");
-  assertEquals(dateInserts[0].args[0], [
-    {
-      hire_order_id: "ho-new",
-      show_date_id: BATCH_DATE_2,
-      org_id: ORG,
-      position: 0,
-    },
-    {
-      hire_order_id: "ho-new",
-      show_date_id: BATCH_DATE_1,
-      org_id: ORG,
-      position: 1,
-    },
-  ]);
-
-  const availabilityCalls = calls.filter((c) =>
-    c.table === "rpc:assert_hire_order_dates_available"
+  assertEquals(
+    calls.some((c) => c.table === "hire_orders" && c.method === "insert"),
+    false,
+    "the edge must not create a parent outside the transactional RPC",
   );
   assertEquals(
-    availabilityCalls.length,
-    2,
-    "availability is checked before every parent insert",
+    calls.some((c) => c.table === "hire_order_dates" && c.method === "insert"),
+    false,
+    "the edge must not create child links outside the transactional RPC",
   );
-  assertEquals(availabilityCalls[0].args[0], {
-    p_org: ORG,
-    p_artist: BATCH_ARTIST_1,
-    p_dates: [BATCH_DATE_2, BATCH_DATE_1],
-  });
 
   for (const table of ["artists", "show_dates"]) {
     assert(
@@ -926,6 +905,9 @@ Deno.test("draft-batch canonicalizes UUIDs before duplicate artist and date dete
 Deno.test("draft-batch keeps artist outcomes independent when one referenced artist is missing", async () => {
   const { deps } = makeFakeDeps({
     authUser: { id: "u-admin" },
+    rpcs: {
+      create_hire_order_with_dates: { data: "ho-2", error: null },
+    },
     tables: {
       org_memberships: { data: { role: "admin" } },
       artists: {
@@ -974,9 +956,12 @@ Deno.test("draft-batch keeps artist outcomes independent when one referenced art
   });
 });
 
-Deno.test("draft-batch continues after one artist's availability RPC fails", async () => {
+Deno.test("draft-batch continues after one transactional aggregate creation fails", async () => {
   const { deps } = makeFakeDeps({
     authUser: { id: "u-admin" },
+    rpcs: {
+      create_hire_order_with_dates: { data: "ho-2", error: null },
+    },
     tables: {
       org_memberships: { data: { role: "admin" } },
       artists: {
@@ -1017,12 +1002,12 @@ Deno.test("draft-batch continues after one artist's availability RPC fails", asy
   const originalRpc = admin.rpc.bind(admin);
   admin.rpc = (name, params) => {
     if (
-      name === "assert_hire_order_dates_available" &&
+      name === "create_hire_order_with_dates" &&
       (params as { p_artist?: string })?.p_artist === BATCH_ARTIST_1
     ) {
       return Promise.resolve({
         data: null,
-        error: { message: "availability service failed" },
+        error: { message: "aggregate creation failed" },
       });
     }
     return originalRpc(name, params);
@@ -1050,7 +1035,7 @@ Deno.test("draft-batch continues after one artist's availability RPC fails", asy
     skipped: [],
     errors: [{
       artist_id: BATCH_ARTIST_1,
-      reason: "availability_check_failed",
+      reason: "aggregate_insert_failed",
     }],
   });
 });

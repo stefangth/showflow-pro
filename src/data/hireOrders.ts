@@ -15,15 +15,46 @@ export async function fetchHireOrdersForDate(
   client: SupabaseClient<Database>,
   showDateId: string,
 ): Promise<HireOrderRow[]> {
-  const { data, error } = await client
-    .from("hire_orders")
-    .select("*, artists(name)")
-    .eq("show_date_id", showDateId)
-    .order("created_at", { ascending: true });
-  if (error) throw error;
-  // The joined `artists(name)` shape isn't distinguishable from the generated
-  // select-string type; isolate the `any` here per house rule.
-  return (data ?? []) as unknown as HireOrderRow[];
+  const [legacyResult, linksResult] = await Promise.all([
+    client
+      .from("hire_orders")
+      .select("*, artists(name)")
+      .eq("show_date_id", showDateId)
+      .order("created_at", { ascending: true }),
+    client
+      .from("hire_order_dates")
+      .select("hire_order_id")
+      .eq("show_date_id", showDateId),
+  ]);
+  if (legacyResult.error) throw legacyResult.error;
+  if (linksResult.error) throw linksResult.error;
+
+  const linkedOrderIds = [...new Set(
+    ((linksResult.data ?? []) as Array<{ hire_order_id: string }>).map((link) =>
+      link.hire_order_id
+    ),
+  )];
+  let linked: HireOrderRow[] = [];
+  if (linkedOrderIds.length > 0) {
+    const { data, error } = await client
+      .from("hire_orders")
+      .select("*, artists(name)")
+      .in("id", linkedOrderIds)
+      .order("created_at", { ascending: true });
+    if (error) throw error;
+    linked = (data ?? []) as unknown as HireOrderRow[];
+  }
+
+  const combined = new Map<string, HireOrderRow>();
+  for (const order of [
+    ...((legacyResult.data ?? []) as unknown as HireOrderRow[]),
+    ...linked,
+  ]) {
+    combined.set(order.id, order);
+  }
+  return [...combined.values()].sort((a, b) =>
+    a.created_at.localeCompare(b.created_at)
+  );
 }
 
 /** A single hire order by id, artist name joined. */
