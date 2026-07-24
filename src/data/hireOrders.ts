@@ -58,6 +58,60 @@ export async function fetchHireOrdersForDate(
   );
 }
 
+export interface HireOrderDateCoverage {
+  id: string;
+  status: HireOrderStatus;
+}
+
+export interface DatesReadyResult {
+  /** Fully-filled show_date ids that have no active (non-void) hire order. */
+  readyIds: string[];
+  /** For every date an active order covers, that order (drives the row chip). */
+  orderByDate: Record<string, HireOrderDateCoverage>;
+}
+
+/**
+ * Which of the org's fully-filled show_dates are ready for a hire order (i.e.
+ * have no active order yet), plus the active order covering each already-ordered
+ * date. Coverage is the legacy `hire_orders.show_date_id` OR an aggregate
+ * `hire_order_dates` child; void orders never cover. `neq` isn't a real filter
+ * in the test fake, so void is filtered in TS after the fetch.
+ */
+export async function fetchDatesReadyForHireOrder(
+  client: SupabaseClient<Database>,
+  orgId: string | null,
+): Promise<DatesReadyResult> {
+  if (!orgId) return { readyIds: [], orderByDate: {} };
+  const [filledResult, ordersResult, linksResult] = await Promise.all([
+    client.from("show_dates").select("id").eq("org_id", orgId).eq("status", "fully_filled"),
+    client.from("hire_orders").select("id, status, show_date_id").eq("org_id", orgId),
+    client.from("hire_order_dates").select("hire_order_id, show_date_id").eq("org_id", orgId),
+  ]);
+  if (filledResult.error) throw filledResult.error;
+  if (ordersResult.error) throw ordersResult.error;
+  if (linksResult.error) throw linksResult.error;
+
+  const activeOrders = (
+    (ordersResult.data ?? []) as Array<{ id: string; status: HireOrderStatus; show_date_id: string | null }>
+  ).filter((o) => o.status !== "void");
+  const activeById = new Map(activeOrders.map((o) => [o.id, o]));
+
+  const orderByDate: Record<string, HireOrderDateCoverage> = {};
+  const cover = (dateId: string, order: HireOrderDateCoverage) => {
+    if (!orderByDate[dateId]) orderByDate[dateId] = order;
+  };
+  for (const o of activeOrders) if (o.show_date_id) cover(o.show_date_id, { id: o.id, status: o.status });
+  for (const link of (linksResult.data ?? []) as Array<{ hire_order_id: string; show_date_id: string }>) {
+    const o = activeById.get(link.hire_order_id);
+    if (o) cover(link.show_date_id, { id: o.id, status: o.status });
+  }
+
+  const readyIds = ((filledResult.data ?? []) as Array<{ id: string }>)
+    .map((r) => r.id)
+    .filter((id) => !orderByDate[id]);
+  return { readyIds, orderByDate };
+}
+
 /** A single hire order by id, artist name joined. */
 export async function fetchHireOrder(
   client: SupabaseClient<Database>,
