@@ -8,6 +8,7 @@ import { render, screen, fireEvent } from "@testing-library/react";
 interface FakeInstance {
   empty: boolean;
   penColor?: string;
+  backgroundColor?: string;
   endStroke?: () => void;
   isEmpty: () => boolean;
   clear: () => void;
@@ -21,8 +22,10 @@ vi.mock("signature_pad", () => ({
     empty = true;
     endStroke?: () => void;
     penColor?: string;
-    constructor(_canvas: unknown, options?: { penColor?: string }) {
+    backgroundColor?: string;
+    constructor(_canvas: unknown, options?: { penColor?: string; backgroundColor?: string }) {
       this.penColor = options?.penColor;
+      this.backgroundColor = options?.backgroundColor;
       instances.push(this);
     }
     isEmpty() { return this.empty; }
@@ -47,15 +50,39 @@ function activateTypeTab() {
 }
 
 describe("SignaturePad", () => {
-  beforeEach(() => { instances.length = 0; });
-  afterEach(() => { document.documentElement.classList.remove("dark"); });
+  beforeEach(() => {
+    instances.length = 0;
+    vi.spyOn(HTMLCanvasElement.prototype, "getContext").mockReturnValue({
+      scale: vi.fn(),
+    } as unknown as CanvasRenderingContext2D);
+  });
+  afterEach(() => {
+    document.documentElement.classList.remove("dark");
+    vi.restoreAllMocks();
+  });
 
-  it("opens Draw first and uses white ink in a dark root", () => {
+  it("exports dark-mode white ink on an opaque dark surface", () => {
     document.documentElement.classList.add("dark");
-    render(<SignaturePad value={null} onChange={vi.fn()} />);
+    const onChange = vi.fn();
+    render(<SignaturePad value={null} onChange={onChange} />);
 
     expect(screen.getByRole("tab", { name: "Draw" })).toHaveAttribute("data-state", "active");
     expect(instances[0].penColor).toBe("#ffffff");
+    expect(instances[0].backgroundColor).toBe("#15131C");
+
+    instances[0].empty = false;
+    instances[0].endStroke?.();
+    expect(onChange).toHaveBeenCalledWith({
+      method: "drawn",
+      pngDataUrl: "data:image/png;base64,DRAWN",
+    });
+  });
+
+  it("exports light-mode ink on an opaque white surface", () => {
+    render(<SignaturePad value={null} onChange={vi.fn()} />);
+
+    expect(instances[0].penColor).toBe("#15131C");
+    expect(instances[0].backgroundColor).toBe("#ffffff");
   });
 
   it("emits a typed value as the name is entered", () => {

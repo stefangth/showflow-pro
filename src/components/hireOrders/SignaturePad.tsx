@@ -42,7 +42,13 @@ export function SignaturePad({ value, onChange, disabled }: Props) {
     node.height = node.offsetHeight * ratio;
     node.getContext("2d")?.scale(ratio, ratio);
     const dark = document.documentElement.classList.contains("dark");
-    const pad = new SignaturePadLib(node, { penColor: dark ? "#ffffff" : "#15131C" });
+    // `backgroundColor` is painted into the canvas by signature_pad, not just
+    // supplied by CSS. That makes the exported PNG opaque: dark-mode white ink
+    // remains visible when the stored image is embedded on the PDF's white page.
+    const pad = new SignaturePadLib(node, {
+      penColor: dark ? "#ffffff" : "#15131C",
+      backgroundColor: dark ? "#15131C" : "#ffffff",
+    });
     pad.addEventListener("endStroke", () => {
       if (pad.isEmpty()) onChangeRef.current(null);
       else onChangeRef.current({ method: "drawn", pngDataUrl: pad.toDataURL("image/png") });

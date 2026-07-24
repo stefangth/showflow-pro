@@ -3,6 +3,36 @@ import type { RenderInput } from "../hireOrders.ts";
 import { renderHireOrderPdf } from "./render.tsx";
 import { extractPdfText } from "./pdfText.ts";
 
+/** Decode the single unfiltered RGBA scanline used by the tiny signature fixture. */
+async function decodeSignatureFixturePixels(dataUrl: string): Promise<Uint8Array> {
+  const encoded = dataUrl.slice(dataUrl.indexOf(",") + 1);
+  const png = Uint8Array.from(atob(encoded), (char) => char.charCodeAt(0));
+  const idatParts: Uint8Array[] = [];
+  let offset = 8; // PNG signature
+  while (offset < png.length) {
+    const length = new DataView(png.buffer, png.byteOffset + offset, 4).getUint32(0);
+    const type = new TextDecoder().decode(png.slice(offset + 4, offset + 8));
+    if (type === "IDAT") idatParts.push(png.slice(offset + 8, offset + 8 + length));
+    offset += 12 + length;
+  }
+  const compressedBytes = new Uint8Array(
+    idatParts.reduce((total, part) => total + part.length, 0),
+  );
+  let compressedOffset = 0;
+  for (const part of idatParts) {
+    compressedBytes.set(part, compressedOffset);
+    compressedOffset += part.length;
+  }
+  const compressed = new Blob([compressedBytes.buffer]);
+  const inflated = new Uint8Array(
+    await new Response(
+      compressed.stream().pipeThrough(new DecompressionStream("deflate")),
+    ).arrayBuffer(),
+  );
+  assertEquals(inflated[0], 0, "fixture uses an unfiltered PNG scanline");
+  return inflated.slice(1);
+}
+
 /** A full OrderData plus letterhead and terms — the shape Task 8 will pass. */
 function makeRenderFixture(): RenderInput {
   return {
@@ -175,8 +205,16 @@ Deno.test("renders a typed-signature countersigned PDF with a real certificate",
 });
 
 Deno.test("renders a drawn-signature countersigned PDF with a real certificate", async () => {
-  // 1x1 transparent PNG data URL
-  const png = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAAC0lEQVR4nGNgAAIAAAUAAXpeqz8AAAAASUVORK5CYII=";
+  // 2x1 opaque RGBA PNG: #15131C background + white ink. A transparent PNG with
+  // white ink can render invisibly on the white PDF page, so keep this fixture
+  // representative of the contrast-bearing dark-mode export.
+  const png =
+    "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAIAAAABCAYAAAD0In+KAAAADklEQVR4nGMQFZb5DwIAEM8FQMsechsAAAAASUVORK5CYII=";
+  assertEquals(
+    await decodeSignatureFixturePixels(png),
+    new Uint8Array([0x15, 0x13, 0x1c, 0xff, 0xff, 0xff, 0xff, 0xff]),
+    "signature bitmap has an opaque non-white background pixel and opaque white ink",
+  );
   const bytes = await renderHireOrderPdf({
     ...BASE,
     status: "countersigned",
@@ -190,6 +228,11 @@ Deno.test("renders a drawn-signature countersigned PDF with a real certificate",
     },
   });
   assert(bytes.length > 0 && bytes[0] === 0x25, "produced a PDF");
+  assertStringIncludes(
+    new TextDecoder("latin1").decode(bytes),
+    "/Subtype /Image",
+    "drawn signature is embedded as an image XObject",
+  );
 
   const text = await extractPdfText(bytes);
   assertStringIncludes(text, "Ann Lee"); // signer

@@ -3085,6 +3085,16 @@ Deno.test("download-url serves the signed copy once signed_pdf_path is set", asy
 
 Deno.test("sign: drawn method uploads the signature image and records method drawn", async () => {
   const { deps, calls } = signDeps();
+  // 2x1 opaque RGBA PNG: one #15131C pixel and one white pixel. This mirrors the
+  // dark-mode canvas export (white ink on an opaque dark surface), so the stored
+  // image and the image handed to the PDF renderer both contain visible contrast.
+  const signaturePng =
+    "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAIAAAABCAYAAAD0In+KAAAADklEQVR4nGMQFZb5DwIAEM8FQMsechsAAAAASUVORK5CYII=";
+  let renderedSignaturePng: string | undefined;
+  deps.renderHireOrderPdf = (input) => {
+    renderedSignaturePng = input.signature?.imageDataUrl;
+    return Promise.resolve(new Uint8Array([0x25, 0x50, 0x44, 0x46]));
+  };
   const res = await handle(
     makeRequest({
       headers: { Authorization: "Bearer artist" },
@@ -3093,8 +3103,7 @@ Deno.test("sign: drawn method uploads the signature image and records method dra
         org_id: ORG,
         order_id: "o-1",
         method: "drawn",
-        signature_png:
-          "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAAC0lEQVR4nGNgAAIAAAUAAXpeqz8AAAAASUVORK5CYII=",
+        signature_png: signaturePng,
         consent: true,
       },
     }),
@@ -3109,6 +3118,16 @@ Deno.test("sign: drawn method uploads the signature image and records method dra
     String(c.args[0]).endsWith("signatures/HO-1.png")
   );
   assert(imgUpload, "signature image uploaded to signatures/HO-1.png");
+  const expectedBytes = Uint8Array.from(
+    atob(signaturePng.slice(signaturePng.indexOf(",") + 1)),
+    (char) => char.charCodeAt(0),
+  );
+  assertEquals(imgUpload!.args[1], expectedBytes);
+  assertEquals(
+    renderedSignaturePng,
+    signaturePng,
+    "the same contrast-bearing PNG is embedded in the signed PDF",
+  );
 
   // Audit row carries method drawn + the image path, and no typed_name.
   const sig = calls.find((c) =>
