@@ -14,7 +14,8 @@
 
 - **`any` is banned.** Lint runs `--max-warnings 0`. Where supabase-js can't infer a shape, define a local row `interface` and cast once with `as unknown as Row[]` right after the error check.
 - **No em dashes or en dashes in any product copy** (UI strings, PDF copy defaults, changelog). Use a period, comma, or middot.
-- **Dual-home discipline.** `src/lib/hireOrders/types.ts` and `supabase/functions/_shared/hireOrders.ts` carry the same types and logic for two runtimes that cannot share an import. `src/lib/hireOrders/pdfCopy.ts` and `supabase/functions/_shared/hire-order-pdf/pdfCopy.ts` must be **byte-identical** (enforced by `src/lib/hireOrders/pdfCopyMirror.test.ts`). Change both in the same commit.
+- **Dual-home discipline.** The Deno edge runtime cannot import from `src/`: the two sides use incompatible module specifier dialects (edge uses explicit `.ts` extensions and `npm:` specifiers, frontend uses the `@/` Vite alias and extensionless bare specifiers), and Supabase deploys only what is under `supabase/functions/`. Shared code is therefore duplicated across the two trees. **This duplication is mandated and is not a defect** — do not "fix" it by extracting a shared import; there is no import path that resolves in both runtimes.
+- **Mirrors are GENERATED, not hand-copied** (Task 0). Edit the **source** file only, then run `npm run sync:mirrors`. Never hand-edit a generated target; `npm run sync:mirrors:check` fails CI if you do. Structural mirrors that the generator cannot cover (`src/lib/hireOrders/types.ts` against `supabase/functions/_shared/hireOrders.ts`, which combines five source files into one) remain hand-maintained: change both in the same commit.
 - **Test-first.** Write the failing test, run it, watch it fail, then implement.
 - **Money is never computed with floats.** Multiply in integer cents.
 - **Tests import the real module.** Never re-implement production logic in a test.
@@ -38,9 +39,12 @@
 
 | File | Responsibility | Action |
 |---|---|---|
-| `src/lib/hireOrders/feeBasis.ts` | `FeeBasis` type + `computeFeeTotal` (cents-safe) | Create |
+| `scripts/sync-mirrors.mjs` | Generates every dual-homed file/block from its source | Create |
+| `scripts/mirrors.manifest.json` | The source-to-target list the generator reads | Create |
+| `src/lib/hireOrders/feeBasis.ts` | `FeeBasis` type + `computeFeeTotal` (cents-safe). **Mirror source.** | Create |
+| `supabase/functions/_shared/feeBasis.ts` | **Generated** mirror of the above | Generated |
 | `src/lib/hireOrders/feeBasis.test.ts` | Unit tests for the above | Create |
-| `supabase/functions/_shared/hireOrders.ts` | Mirror of `FeeBasis` + `computeFeeTotal`; adds `fee_basis`/`fee_per_date` to `OrderFieldKey` | Modify |
+| `supabase/functions/_shared/hireOrders.ts` | Re-exports `./feeBasis.ts`; adds `fee_basis`/`fee_per_date` to `OrderFieldKey` | Modify |
 | `supabase/functions/_shared/hireOrders.test.ts` | Deno tests for the mirror | Modify |
 | `src/lib/hireOrders/types.ts` | Adds `fee_basis`/`fee_per_date` to `OrderFieldKey`, widens `EditableOrderFieldKey` exclusion | Modify |
 | `src/lib/hireOrders/types.test.ts` | Type-level guards | Modify |
@@ -48,7 +52,7 @@
 | `src/components/settings/hireOrders/defaults.ts` | `ORDER_DEFAULTS_DEFAULT` gains the basis | Modify |
 | `supabase/functions/generate-hire-orders/index.ts` | `fee_basis` on the batch body, validation, multiplication, snapshot write | Modify |
 | `supabase/functions/generate-hire-orders/index.di.test.ts` | Edge contract tests | Modify |
-| `src/lib/hireOrders/pdfCopy.ts` + edge mirror | Two new copy keys | Modify (byte-identical) |
+| `src/lib/hireOrders/pdfCopy.ts` | Two new copy keys. **Mirror source**; edge copy regenerated | Modify |
 | `src/components/settings/hireOrders/pdfCopyMeta.ts` | Section entries for the new keys | Modify |
 | `supabase/functions/_shared/hire-order-pdf/render.tsx` | Per-date breakdown line in the fees section | Modify |
 | `supabase/functions/_shared/hire-order-pdf/render.test.ts` | Renderer tests | Modify |
@@ -58,18 +62,348 @@
 
 ---
 
+## Task 0: Mirror generator
+
+**Files:**
+- Create: `scripts/sync-mirrors.mjs`
+- Create: `scripts/mirrors.manifest.json`
+- Create: `scripts/sync-mirrors.test.mjs`
+- Modify: `package.json` (two scripts)
+- Modify: `.github/workflows/ci.yml` (one check step)
+- Modify: the generated target files, to carry a "generated" header
+
+**Interfaces:**
+- Produces: `npm run sync:mirrors` (writes every target from its source) and `npm run sync:mirrors:check` (exit 1 if any target is stale). Every later task that touches a mirrored file uses these.
+
+Dual-homed files exist because the Deno edge runtime cannot import from `src/`. Today the second copy is hand-maintained and a vitest test catches drift **after** someone makes the mistake. This task makes the copy **derived**: one source of truth, a generated target, and a check that fails CI.
+
+Three mirror kinds exist in this repo. The generator covers the first two:
+
+| Kind | Example | Mode |
+|---|---|---|
+| Whole file identical | `src/lib/hireOrders/pdfCopy.ts` | `file` |
+| Sentinel-delimited block | `src/lib/capabilities.ts` | `block` |
+| Structural (5 files into 1) | `src/lib/hireOrders/types.ts` | not covered, stays hand-maintained |
+
+Verified byte-equality before starting: `pdfCopy.ts` and `types.ts`/`database.types.ts` are already identical. `capabilities.ts` already carries `// >>> CAPABILITY REGISTRY MIRROR ... >>>` / `// <<< CAPABILITY REGISTRY MIRROR <<<` sentinels. `entitlements.ts` differs by 79 lines and has **no** sentinels.
+
+- [ ] **Step 1: Write the failing test**
+
+Create `scripts/sync-mirrors.test.mjs`, following the existing `scripts/check-migrations.test.mjs` for style and how it is run:
+
+```js
+import { describe, expect, it } from "vitest";
+import { mkdtempSync, mkdirSync, writeFileSync, readFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join, dirname } from "node:path";
+import { syncMirrors } from "./sync-mirrors.mjs";
+
+function scratch() {
+  return mkdtempSync(join(tmpdir(), "mirrors-"));
+}
+function put(root, rel, text) {
+  const path = join(root, rel);
+  mkdirSync(dirname(path), { recursive: true });
+  writeFileSync(path, text, "utf8");
+  return path;
+}
+
+describe("syncMirrors file mode", () => {
+  it("writes the target from the source", () => {
+    const root = scratch();
+    put(root, "a.ts", "export const x = 1;\n");
+    put(root, "b.ts", "stale\n");
+    const result = syncMirrors({ root, entries: [{ mode: "file", source: "a.ts", target: "b.ts" }] });
+    expect(readFileSync(join(root, "b.ts"), "utf8")).toBe("export const x = 1;\n");
+    expect(result.written).toEqual(["b.ts"]);
+  });
+
+  it("reports nothing written when the target already matches", () => {
+    const root = scratch();
+    put(root, "a.ts", "same\n");
+    put(root, "b.ts", "same\n");
+    const result = syncMirrors({ root, entries: [{ mode: "file", source: "a.ts", target: "b.ts" }] });
+    expect(result.written).toEqual([]);
+  });
+
+  it("check mode reports staleness without writing", () => {
+    const root = scratch();
+    put(root, "a.ts", "new\n");
+    put(root, "b.ts", "old\n");
+    const result = syncMirrors({ root, entries: [{ mode: "file", source: "a.ts", target: "b.ts" }], check: true });
+    expect(result.stale).toEqual(["b.ts"]);
+    expect(readFileSync(join(root, "b.ts"), "utf8")).toBe("old\n");
+  });
+});
+
+describe("syncMirrors block mode", () => {
+  const START = "// >>> M >>>";
+  const END = "// <<< M <<<";
+  const entry = { mode: "block", source: "a.ts", target: "b.ts", start: START, end: END };
+
+  it("replaces only the delimited block, preserving the rest of the target", () => {
+    const root = scratch();
+    put(root, "a.ts", `import x from "npm:x";\n${START}\nexport const R = 1;\n${END}\nsource tail\n`);
+    put(root, "b.ts", `import x from "x";\n${START}\nexport const R = 0;\n${END}\ntarget tail\n`);
+    syncMirrors({ root, entries: [entry] });
+    const out = readFileSync(join(root, "b.ts"), "utf8");
+    expect(out).toContain('import x from "x";');
+    expect(out).toContain("export const R = 1;");
+    expect(out).toContain("target tail");
+    expect(out).not.toContain("source tail");
+  });
+
+  it("throws a named error when a sentinel is missing", () => {
+    const root = scratch();
+    put(root, "a.ts", `${START}\nx\n${END}\n`);
+    put(root, "b.ts", "no sentinels here\n");
+    expect(() => syncMirrors({ root, entries: [entry] })).toThrow(/sentinel/i);
+  });
+});
+
+describe("the real manifest", () => {
+  it("is already in sync, so a clean checkout passes check mode", () => {
+    const result = syncMirrors({ check: true });
+    expect(result.stale).toEqual([]);
+  });
+});
+```
+
+- [ ] **Step 2: Run test to verify it fails**
+
+Run: `npx vitest run scripts/sync-mirrors.test.mjs`
+Expected: FAIL, cannot resolve `./sync-mirrors.mjs`.
+
+If vitest does not pick up files under `scripts/`, check `vite.config.ts` / `vitest` config for an `include` pattern and extend it to cover `scripts/**/*.test.mjs`. `scripts/check-migrations.test.mjs` already exists, so confirm how that one runs and match it.
+
+- [ ] **Step 3: Write the manifest**
+
+Create `scripts/mirrors.manifest.json`:
+
+```json
+{
+  "entries": [
+    {
+      "mode": "file",
+      "source": "src/lib/hireOrders/pdfCopy.ts",
+      "target": "supabase/functions/_shared/hire-order-pdf/pdfCopy.ts",
+      "why": "Editable PDF copy registry. Edge renderer reads it and freezes it into issue_snapshot."
+    },
+    {
+      "mode": "file",
+      "source": "src/integrations/supabase/types.ts",
+      "target": "supabase/functions/_shared/database.types.ts",
+      "why": "Generated Supabase types. Source is itself generated; never hand-edit either side."
+    },
+    {
+      "mode": "block",
+      "source": "src/lib/capabilities.ts",
+      "target": "supabase/functions/_shared/capabilities.ts",
+      "start": "// >>> CAPABILITY REGISTRY MIRROR (keep byte-identical with the twin file) >>>",
+      "end": "// <<< CAPABILITY REGISTRY MIRROR <<<",
+      "why": "Role x action registry. The surrounding imports and helpers differ per runtime."
+    }
+  ]
+}
+```
+
+`entitlements.ts` is deliberately **not** in the manifest yet: it differs by 79 lines and has no sentinels. If, after reading both files, the shared registry is one contiguous region, add the same sentinel pair around it in both files and add a `block` entry. If it is not contiguous, leave it out and say so in your report. Do not restructure `entitlements.ts` to force it to fit.
+
+`hireOrders.ts` and the consent-text pair are out of scope: the first is structural (five source files combined into one), the second is a single string literal in two unrelated application files. Their existing tests stay.
+
+- [ ] **Step 4: Write the generator**
+
+Create `scripts/sync-mirrors.mjs`:
+
+```js
+#!/usr/bin/env node
+// Generates every dual-homed file from its single source of truth.
+//
+// WHY THIS EXISTS: the Deno edge runtime cannot import from src/ (incompatible
+// module specifier dialects, and Supabase deploys only what is under
+// supabase/functions/), so shared code has to exist twice. This script makes
+// the second copy DERIVED rather than duplicated: edit the source, run
+// `npm run sync:mirrors`. `npm run sync:mirrors:check` fails CI when a target
+// is stale or was hand-edited.
+
+import { readFileSync, writeFileSync } from "node:fs";
+import { dirname, join, resolve } from "node:path";
+import { fileURLToPath } from "node:url";
+
+const REPO_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "..");
+
+/** Header stamped onto every generated target, so a reader who opens the file
+ *  directly learns not to edit it. Kept out of the byte comparison by being
+ *  part of the produced content on both sides of the compare. */
+function stamp(sourcePath) {
+  return `// GENERATED FILE. Do not edit.\n` +
+    `// Source: ${sourcePath}\n` +
+    `// Regenerate: npm run sync:mirrors\n`;
+}
+
+function readBlock(text, start, end, path) {
+  const s = text.indexOf(start);
+  const e = text.indexOf(end);
+  if (s === -1 || e === -1) {
+    throw new Error(`mirror sentinel not found in ${path} (looked for ${start})`);
+  }
+  return text.slice(s, e + end.length);
+}
+
+function renderTarget(entry, root) {
+  const sourceText = readFileSync(join(root, entry.source), "utf8");
+  if (entry.mode === "file") {
+    return stamp(entry.source) + sourceText;
+  }
+  if (entry.mode === "block") {
+    const targetPath = join(root, entry.target);
+    const targetText = readFileSync(targetPath, "utf8");
+    const sourceBlock = readBlock(sourceText, entry.start, entry.end, entry.source);
+    const targetBlock = readBlock(targetText, entry.start, entry.end, entry.target);
+    return targetText.replace(targetBlock, sourceBlock);
+  }
+  throw new Error(`unknown mirror mode "${entry.mode}" for ${entry.target}`);
+}
+
+/**
+ * Sync (or check) every manifest entry.
+ * @param {{root?: string, entries?: object[], check?: boolean}} options
+ * @returns {{written: string[], stale: string[]}}
+ */
+export function syncMirrors(options = {}) {
+  const root = options.root ?? REPO_ROOT;
+  const entries = options.entries ??
+    JSON.parse(readFileSync(join(root, "scripts/mirrors.manifest.json"), "utf8")).entries;
+
+  const written = [];
+  const stale = [];
+  for (const entry of entries) {
+    const targetPath = join(root, entry.target);
+    const desired = renderTarget(entry, root);
+    let current = null;
+    try {
+      current = readFileSync(targetPath, "utf8");
+    } catch {
+      current = null;
+    }
+    if (current === desired) continue;
+    if (options.check) {
+      stale.push(entry.target);
+    } else {
+      writeFileSync(targetPath, desired, "utf8");
+      written.push(entry.target);
+    }
+  }
+  return { written, stale };
+}
+
+// CLI. Not run on import, so the tests can call syncMirrors directly.
+if (process.argv[1] === fileURLToPath(import.meta.url)) {
+  const check = process.argv.includes("--check");
+  const { written, stale } = syncMirrors({ check });
+  if (check && stale.length > 0) {
+    console.error(
+      `Mirror targets are stale:\n${stale.map((t) => `  ${t}`).join("\n")}\n\n` +
+        `Edit the SOURCE file, then run: npm run sync:mirrors`,
+    );
+    process.exit(1);
+  }
+  if (check) {
+    console.log("All mirrors in sync.");
+  } else {
+    console.log(
+      written.length === 0
+        ? "All mirrors already in sync."
+        : `Regenerated:\n${written.map((t) => `  ${t}`).join("\n")}`,
+    );
+  }
+}
+```
+
+Note the `file` mode stamps a generated header onto the target. That means the target is no longer byte-identical to the source, so **the existing `pdfCopyMirror.test.ts` and `typesMirror.test.ts` will fail**. Update them in Step 6 to assert what is now true.
+
+- [ ] **Step 5: Run the generator and inspect the result**
+
+```bash
+node scripts/sync-mirrors.mjs
+git diff --stat
+```
+
+Expected: the two `file` targets gain a three-line generated header; the `capabilities.ts` block target is unchanged (already in sync). If any target changes by more than its header, the two copies had already drifted. Stop and report that in your report before continuing: it is a real pre-existing bug, not a generator problem.
+
+- [ ] **Step 6: Update the superseded mirror tests**
+
+`src/lib/hireOrders/pdfCopyMirror.test.ts` and `src/integrations/supabase/typesMirror.test.ts` currently assert raw byte-equality, which the generated header breaks. Rewrite each to assert the target is what the generator would produce, which is the stronger claim:
+
+```ts
+import { describe, expect, it } from "vitest";
+import { syncMirrors } from "../../../scripts/sync-mirrors.mjs";
+
+// The edge runtime cannot import from src/, so this file is dual-homed. It is
+// GENERATED from its source by scripts/sync-mirrors.mjs; this test fails if the
+// target was hand-edited or the source changed without a regen.
+describe("hire-order pdf copy mirror", () => {
+  it("the generated target is in sync with its source", () => {
+    expect(syncMirrors({ check: true }).stale).toEqual([]);
+  });
+});
+```
+
+Both files now assert the same manifest-wide property, so keep only **one** of them and delete the other, leaving a one-line comment at the deleted file's former subject pointing at the surviving test. Keep `capabilitiesMirror.test.ts` and `consentTextMirror.test.ts` as they are: the first is now covered by the manifest but harmlessly, the second is not covered at all.
+
+Correct the relative import depth for wherever you keep the surviving test.
+
+- [ ] **Step 7: Add the npm scripts**
+
+In `package.json`:
+
+```json
+    "sync:mirrors": "node scripts/sync-mirrors.mjs",
+    "sync:mirrors:check": "node scripts/sync-mirrors.mjs --check",
+```
+
+- [ ] **Step 8: Wire the check into CI**
+
+In `.github/workflows/ci.yml`, add a step to the job that already runs `npm ci` and `npm run lint`, placed immediately before the lint step:
+
+```yaml
+      - name: Check generated mirrors are in sync
+        run: npm run sync:mirrors:check
+```
+
+Read the file first and match its existing indentation and step style exactly.
+
+- [ ] **Step 9: Run the full gate**
+
+Run: `npx vitest run && npm run lint && npm run sync:mirrors:check && deno test --allow-all --node-modules-dir=none supabase/functions/`
+Expected: PASS on all four. The Deno suite matters here because the generated header is new content at the top of two files it compiles.
+
+- [ ] **Step 10: Commit**
+
+```bash
+git add scripts/ package.json .github/workflows/ci.yml src/ supabase/
+git commit -m "build: generate dual-homed mirrors instead of hand-copying"
+```
+
+---
+
 ## Task 1: Cents-safe fee multiplication
 
 **Files:**
-- Create: `src/lib/hireOrders/feeBasis.ts`
+- Create: `src/lib/hireOrders/feeBasis.ts` (**mirror source**)
 - Create: `src/lib/hireOrders/feeBasis.test.ts`
-- Modify: `supabase/functions/_shared/hireOrders.ts` (append a new section after the `formatMoney` block, which ends at line 198)
+- Generated: `supabase/functions/_shared/feeBasis.ts` (by `npm run sync:mirrors`, never hand-written)
+- Modify: `scripts/mirrors.manifest.json` (one new `file` entry)
+- Modify: `supabase/functions/_shared/hireOrders.ts` (re-export the generated module)
 - Modify: `supabase/functions/_shared/hireOrders.test.ts`
 
 **Interfaces:**
+- Consumes: `npm run sync:mirrors` (Task 0).
 - Produces: `type FeeBasis = "per_date" | "total"` and `computeFeeTotal(perDateAmount: number, dateCount: number, basis: FeeBasis): number`, exported from **both** runtimes. Tasks 4 and 6 consume it.
 
 This is a separate file from `money.ts` on purpose: that file's header states it is display-only and "never computes with floats". Arithmetic belongs elsewhere.
+
+It is also a standalone file on the edge side rather than a new section appended into `_shared/hireOrders.ts`, so the pair is a clean whole-file mirror the Task 0 generator can own. `_shared/hireOrders.ts` re-exports it, so every existing edge import path keeps working.
 
 - [ ] **Step 1: Write the failing test**
 
@@ -158,36 +492,34 @@ export function computeFeeTotal(
 Run: `npx vitest run src/lib/hireOrders/feeBasis.test.ts`
 Expected: PASS, 6 tests.
 
-- [ ] **Step 5: Mirror into the edge runtime**
+- [ ] **Step 5: Generate the edge mirror**
 
-Append to `supabase/functions/_shared/hireOrders.ts`, immediately after the `formatMoney` function (which currently ends at line 198) and before the `// ── validate ──` banner:
+Add one entry to `scripts/mirrors.manifest.json`:
+
+```json
+    {
+      "mode": "file",
+      "source": "src/lib/hireOrders/feeBasis.ts",
+      "target": "supabase/functions/_shared/feeBasis.ts",
+      "why": "Fee basis type + cents-safe multiplication, used by the frontend wizard and the draft-batch edge action."
+    }
+```
+
+Then generate it:
+
+```bash
+npm run sync:mirrors
+```
+
+Expected output names `supabase/functions/_shared/feeBasis.ts` as regenerated. **Do not hand-write that file.** Confirm it exists and carries the generated header.
+
+Then re-export it from `supabase/functions/_shared/hireOrders.ts`, so every existing edge import path keeps resolving. Add immediately after the `formatMoney` function (which currently ends at line 198) and before the `// ── validate ──` banner:
 
 ```ts
 // ── fee basis ────────────────────────────────────────────────────────────
-// MIRROR: src/lib/hireOrders/feeBasis.ts carries the same type + function
-// (the two runtimes cannot share an import). Change both files in the same
-// commit.
-
-/** "per_date": the entered amount is charged once per engagement date.
- *  "total": the entered amount already covers every date. */
-export type FeeBasis = "per_date" | "total";
-
-/**
- * Total payable for an order, given the amount the producer typed and how many
- * engagement dates the order actually covers. Multiplies in integer cents so
- * `500.1 * 3` cannot store as 1500.3000000000002. Defensive no-ops for a
- * non-finite amount or a date count that is not a positive integer.
- */
-export function computeFeeTotal(
-  perDateAmount: number,
-  dateCount: number,
-  basis: FeeBasis,
-): number {
-  if (basis === "total") return perDateAmount;
-  if (!Number.isFinite(perDateAmount)) return perDateAmount;
-  if (!Number.isInteger(dateCount) || dateCount < 1) return perDateAmount;
-  return (Math.round(perDateAmount * 100) * dateCount) / 100;
-}
+// Re-exported from the generated mirror of src/lib/hireOrders/feeBasis.ts, so
+// callers keep importing everything hire-order from this one module.
+export { computeFeeTotal, type FeeBasis } from "./feeBasis.ts";
 ```
 
 - [ ] **Step 6: Add the edge test**
@@ -672,7 +1004,7 @@ git commit -m "feat(hire-orders): bill per-date fees by surviving date count"
 ## Task 5: Per-date breakdown on the PDF
 
 **Files:**
-- Modify: `src/lib/hireOrders/pdfCopy.ts` **and** `supabase/functions/_shared/hire-order-pdf/pdfCopy.ts` (must stay byte-identical)
+- Modify: `src/lib/hireOrders/pdfCopy.ts` (**mirror source**; the edge copy is regenerated, never hand-edited)
 - Modify: `src/components/settings/hireOrders/pdfCopyMeta.ts:86-92`
 - Modify: `supabase/functions/_shared/hire-order-pdf/render.tsx:501-512`
 - Modify: `supabase/functions/_shared/hire-order-pdf/render.test.ts`
@@ -731,7 +1063,7 @@ Expected: FAIL, the rendered text does not contain "per date".
 
 - [ ] **Step 3: Add the copy keys**
 
-In **both** `pdfCopy.ts` files, add to the `CopyKey` union under the `// Fees` comment:
+Edit **only** `src/lib/hireOrders/pdfCopy.ts` (the mirror source). Add to the `CopyKey` union under the `// Fees` comment:
 
 ```ts
   | "fees_heading"
@@ -753,10 +1085,13 @@ and to `HIRE_ORDER_COPY_DEFAULTS`:
 
 No em or en dashes: "x" is the multiplication sign here, deliberately not the multiplication symbol, which the embedded fonts may not carry.
 
-- [ ] **Step 4: Verify the two files are still byte-identical**
+- [ ] **Step 4: Regenerate the edge mirror**
 
-Run: `npx vitest run src/lib/hireOrders/pdfCopyMirror.test.ts`
-Expected: PASS. If it fails, diff them: `diff src/lib/hireOrders/pdfCopy.ts supabase/functions/_shared/hire-order-pdf/pdfCopy.ts`
+```bash
+npm run sync:mirrors && npm run sync:mirrors:check
+```
+
+Expected: the first command names `supabase/functions/_shared/hire-order-pdf/pdfCopy.ts` as regenerated, the second prints "All mirrors in sync." Never hand-edit the target.
 
 - [ ] **Step 5: Register the keys in the settings metadata**
 
