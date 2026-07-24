@@ -9,6 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { cn } from "@/lib/utils";
 import { formatDateDMY } from "@/lib/dates";
+import { openPdfBase64 } from "@/lib/hireOrders/openPdf";
 import type { OrderData } from "@/lib/hireOrders/types";
 import type { HireOrderRow } from "@/data/hireOrders";
 import { useCan } from "@/hooks/useCapabilities";
@@ -37,14 +38,6 @@ function snapshot(data: OrderData, key: keyof OrderData): string {
   return String(v);
 }
 
-/** Open a base64 PDF in a new tab via a Blob URL. A `data:` URL is blocked by
- *  many browsers when opened in a new tab, so a revocable object URL is used. */
-function openPdf(base64: string): void {
-  const bytes = Uint8Array.from(atob(base64), (c) => c.charCodeAt(0));
-  const url = URL.createObjectURL(new Blob([bytes], { type: "application/pdf" }));
-  window.open(url, "_blank", "noopener,noreferrer");
-  window.setTimeout(() => URL.revokeObjectURL(url), 60_000);
-}
 
 /** Read-only fact cell for the review grid. `mono` renders the value in the
  *  mono face (dates, durations) per the design. */
@@ -201,7 +194,7 @@ export function GenerateHireOrderDialog({ open, onOpenChange, order, showDate, o
       await persist();
       const res = await action.mutateAsync({ action: "preview", org_id: orgId, order_id: order.id });
       const b64 = (res as { pdf_base64?: string } | null)?.pdf_base64;
-      if (b64) openPdf(b64);
+      if (b64) openPdfBase64(b64);
     })().catch(() => {
       /* review/action hooks already toast the failure */
     });
