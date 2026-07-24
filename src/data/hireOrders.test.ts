@@ -156,7 +156,9 @@ describe("fetchHireOrders", () => {
     expect(res.map((r) => r.id)).toEqual(["ho-1", "ho-2", "ho-3"]);
     expect(fake.calls).toContainEqual({ table: "hire_orders", method: "eq", args: ["org_id", "org-1"] });
     expect(fake.calls).toContainEqual({
-      table: "hire_orders", method: "select", args: ["*, artists(name), show_dates(date, venue)"],
+      table: "hire_orders",
+      method: "select",
+      args: ["*, artists(name), show_dates!hire_orders_show_date_id_fkey(date, venue)"],
     });
     expect(fake.calls).toContainEqual({ table: "hire_orders", method: "order", args: ["created_at", { ascending: false }] });
   });

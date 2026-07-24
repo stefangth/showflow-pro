@@ -128,7 +128,7 @@ export async function fetchHireOrders(
   const baseQuery = () => {
     let q = client
       .from("hire_orders")
-      .select("*, artists(name), show_dates(date, venue)")
+      .select("*, artists(name), show_dates!hire_orders_show_date_id_fkey(date, venue)")
       .eq("org_id", orgId)
       .order("created_at", { ascending: false });
     if (filters.status && filters.status.length > 0) {
