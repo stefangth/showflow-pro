@@ -20,6 +20,11 @@ import { applySort, inTimeframe } from '@/components/filters/filterUtils';
 import { ArtistBookingsView } from '@/components/bookings/ArtistBookingsView';
 import { ShowDateDetailSheet } from '@/components/shows/ShowDateDetailSheet';
 import { ShowDateFormDialog } from '@/components/shows/ShowDateFormDialog';
+import { NewOrderWizard } from '@/components/hireOrders/NewOrderWizard';
+import { HireOrderReadyBanner } from '@/components/hireOrders/HireOrderReadyBanner';
+import { useDatesReadyForHireOrder } from '@/hooks/useHireOrders';
+import { useFeature } from '@/hooks/useEntitlements';
+import { useCan } from '@/hooks/useCapabilities';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { showSlots } from '@/lib/settings';
@@ -128,8 +133,15 @@ function ProducerShowsBookings() {
     }
   };
   const [newDateOpen, setNewDateOpen] = useState(false);
-  const { hasRole } = useAuth();
+  const [wizardOpen, setWizardOpen] = useState(false);
+  const { hasRole, currentOrg } = useAuth();
   const canManage = hasRole('admin') || hasRole('producer');
+  const orgId = currentOrg?.id ?? null;
+  // Hire-order CTA: module gate + generate capability + which dates are ready.
+  const hireOrdersOn = useFeature('hire_orders');
+  const canGenerateHireOrders = useCan('generate_hire_orders');
+  const { data: hireOrderReady } = useDatesReadyForHireOrder(hireOrdersOn ? orgId : null);
+  const readyCount = hireOrderReady?.readyIds.length ?? 0;
 
   useEffect(() => {
     const status = searchParams.get('status');
@@ -276,6 +288,16 @@ function ProducerShowsBookings() {
         </div>
         {canManage && <Button onClick={() => setNewDateOpen(true)}>New date</Button>}
       </div>
+
+      {canManage && hireOrdersOn && readyCount > 0 && (
+        <HireOrderReadyBanner
+          title={`${readyCount} ${readyCount === 1 ? 'date is' : 'dates are'} fully filled. Ready for hire order${readyCount === 1 ? '' : 's'}.`}
+          description="Create the orders to confirm the engagements and send them for countersignature."
+          ctaLabel="Generate hire orders"
+          onCta={() => setWizardOpen(true)}
+          disabled={!canGenerateHireOrders}
+        />
+      )}
 
       <div className="flex flex-wrap items-center gap-3">
         <div className="relative flex-1 min-w-[200px] max-w-md">
@@ -487,6 +509,7 @@ function ProducerShowsBookings() {
         onOpenChange={o => { if (!o) setActiveShowDateId(null); }}
       />
       <ShowDateFormDialog open={newDateOpen} onOpenChange={setNewDateOpen} mode="create" />
+      <NewOrderWizard open={wizardOpen} onOpenChange={setWizardOpen} orgId={orgId} />
     </div>
   );
 }
