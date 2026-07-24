@@ -54,8 +54,10 @@ import {
   type OrderFieldKey,
   orderReadyIssues,
   type RenderSignature,
+  resolveEngagementSessions,
   resolveFields,
   resolveTermsClauses,
+  type SessionOverride,
   withCollisionSuffix,
 } from "../_shared/hireOrders.ts";
 
@@ -821,6 +823,9 @@ interface DraftBatchBody {
   org_id: string;
   artists: DraftBatchArtistInput[];
   manual?: NonNullable<FieldLayers["manual"]>;
+  /** Per-date running-order + duration overrides, keyed by show_date_id. Each
+   *  key must be one of the request's selected show_date_ids. */
+  date_overrides?: Record<string, SessionOverride>;
 }
 
 interface DraftBatchResult {
@@ -841,6 +846,8 @@ interface BatchDraftContext {
   artistsById: Map<string, ManualArtistRow>;
   datesById: Map<string, ShowDateRow>;
   cityNamesById: Map<string, string>;
+  /** Validated per-date session/duration overrides, keyed by show_date_id. */
+  dateOverrides: Record<string, SessionOverride>;
   nextSeq: number;
 }
 
@@ -856,6 +863,62 @@ function canonicalUuid(value: unknown): string | null {
   return typeof value === "string" && CANONICAL_UUID_PATTERN.test(value)
     ? value.toLowerCase()
     : null;
+}
+
+/**
+ * Validate the batch's optional `date_overrides` map. Every key must
+ * canonicalize to a show_date_id present in `selectedShowDateIds` (the union
+ * of the request's own artists[].show_date_ids); each override's `sessions`
+ * (if present) must be an array of at most 3 non-blank (post-trim) strings;
+ * each `duration_min` (if present) must be `null` or a finite number `>= 0`.
+ * Returns `null` on any violation, else a normalized map keyed by canonical
+ * show_date_id with trimmed session strings.
+ */
+function validateDateOverrides(
+  raw: DraftBatchBody["date_overrides"],
+  selectedShowDateIds: Set<string>,
+): Record<string, SessionOverride> | null {
+  if (raw === undefined) return {};
+  if (!raw || typeof raw !== "object" || Array.isArray(raw)) return null;
+
+  const result: Record<string, SessionOverride> = {};
+  for (const [rawKey, rawOverride] of Object.entries(raw)) {
+    const dateId = canonicalUuid(rawKey);
+    if (!dateId || !selectedShowDateIds.has(dateId)) return null;
+    if (
+      !rawOverride || typeof rawOverride !== "object" ||
+      Array.isArray(rawOverride)
+    ) {
+      return null;
+    }
+
+    const override: SessionOverride = {};
+    if ("sessions" in rawOverride) {
+      const rawSessions = rawOverride.sessions;
+      if (!Array.isArray(rawSessions) || rawSessions.length > 3) return null;
+      const sessions: string[] = [];
+      for (const session of rawSessions) {
+        if (typeof session !== "string") return null;
+        const trimmed = session.trim();
+        if (trimmed === "") return null;
+        sessions.push(trimmed);
+      }
+      override.sessions = sessions;
+    }
+    if ("duration_min" in rawOverride) {
+      const rawDuration = rawOverride.duration_min;
+      if (
+        rawDuration !== null &&
+        !(typeof rawDuration === "number" && Number.isFinite(rawDuration) &&
+          rawDuration >= 0)
+      ) {
+        return null;
+      }
+      override.duration_min = rawDuration;
+    }
+    result[dateId] = override;
+  }
+  return result;
 }
 
 async function draftBatch(
@@ -913,12 +976,21 @@ async function draftBatch(
     return json({ error: "invalid_fee" }, 400);
   }
 
+  const selectedShowDateIds = new Set(
+    normalizedArtists.flatMap((item) => item.show_date_ids),
+  );
+  const dateOverrides = validateDateOverrides(
+    body.date_overrides,
+    selectedShowDateIds,
+  );
+  if (dateOverrides === null) {
+    return json({ error: "invalid_date_override" }, 400);
+  }
+
   const admin = deps.admin;
   const org = body.org_id;
   const artistIds = normalizedArtists.map((item) => item.artist_id);
-  const showDateIds = [
-    ...new Set(normalizedArtists.flatMap((item) => item.show_date_ids)),
-  ];
+  const showDateIds = [...selectedShowDateIds];
   const [
     artistResult,
     dateResult,
@@ -994,6 +1066,7 @@ async function draftBatch(
     artistsById,
     datesById,
     cityNamesById,
+    dateOverrides,
     nextSeq: sequenceResult.count ?? 0,
   };
   const result: DraftBatchResult = { created: [], skipped: [], errors: [] };
@@ -1040,6 +1113,7 @@ async function draftBatchArtist(
     artistsById,
     datesById,
     cityNamesById,
+    dateOverrides,
   } = context;
   const artist = artistsById.get(input.artist_id);
   if (!artist) return { kind: "error", reason: "artist_not_found" };
@@ -1055,12 +1129,25 @@ async function draftBatchArtist(
   );
 
   const firstDate = dates[0];
-  const engagementDates: EngagementDate[] = dates.map((date) => ({
-    show_date_id: date.id,
-    date: date.date,
-    venue: date.venue,
-    city: date.city_id ? cityNamesById.get(date.city_id) ?? null : null,
-  }));
+  const engagementDates: EngagementDate[] = dates.map((date) => {
+    const dateSessions = [date.session_1, date.session_2, date.session_3]
+      .filter(
+        (time: unknown): time is string =>
+          typeof time === "string" && time !== "",
+      );
+    const resolved = resolveEngagementSessions(
+      { sessions: dateSessions, duration_min: date.duration_minutes },
+      dateOverrides[date.id],
+    );
+    return {
+      show_date_id: date.id,
+      date: date.date,
+      venue: date.venue,
+      city: date.city_id ? cityNamesById.get(date.city_id) ?? null : null,
+      sessions: resolved.sessions,
+      duration_min: resolved.duration_min,
+    };
+  });
 
   const showflow: NonNullable<FieldLayers["showflow"]> = {};
   assign(showflow, "artist_name", artist.name);
@@ -1069,15 +1156,9 @@ async function draftBatchArtist(
   assign(showflow, "date", engagementDates[0].date);
   assign(showflow, "venue", engagementDates[0].venue);
   assign(showflow, "city", engagementDates[0].city);
-  assign(showflow, "duration_min", firstDate.duration_minutes);
-  const sessions = [
-    firstDate.session_1,
-    firstDate.session_2,
-    firstDate.session_3,
-  ].filter(
-    (time: unknown): time is string => typeof time === "string" && time !== "",
-  );
-  if (sessions.length > 0) showflow.sessions = sessions;
+  assign(showflow, "duration_min", engagementDates[0].duration_min);
+  const firstSessions = engagementDates[0].sessions ?? [];
+  if (firstSessions.length > 0) showflow.sessions = firstSessions;
 
   const defaultLayer: NonNullable<FieldLayers["defaults"]> = {
     currency: defaults.currency,

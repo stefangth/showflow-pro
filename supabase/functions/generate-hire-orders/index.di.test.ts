@@ -841,12 +841,16 @@ Deno.test("draft-batch creates one order per artist and snapshots all assigned d
       date: "2026-06-14",
       venue: "Venue B",
       city: "Hamburg",
+      sessions: ["19:00"],
+      duration_min: 90,
     },
     {
       show_date_id: BATCH_DATE_1,
       date: "2026-06-15",
       venue: "Venue A",
       city: "Berlin",
+      sessions: ["19:00"],
+      duration_min: 90,
     },
   ]);
 
@@ -879,6 +883,215 @@ Deno.test("draft-batch creates one order per artist and snapshots all assigned d
   );
   assertEquals(artistLookup?.args[1], [BATCH_ARTIST_1, BATCH_ARTIST_2]);
   assertEquals(dateLookup?.args[1], [BATCH_DATE_1, BATCH_DATE_2]);
+});
+
+Deno.test("draft-batch resolves distinct per-date sessions from each date's own session_1..3", async () => {
+  // BATCH_DATE_1 keeps SHOW_DATE_ROW's session_1 "19:00" / 90min; BATCH_DATE_2
+  // carries its own, DIFFERENT running order + duration.
+  const secondDateRow = {
+    ...SHOW_DATE_ROW_2,
+    session_1: "18:00",
+    session_2: "21:00",
+    session_3: null,
+    duration_minutes: 60,
+  };
+  const { deps, calls } = makeFakeDeps({
+    authUser: { id: "u-admin" },
+    rpcs: {
+      create_hire_order_with_dates: { data: "ho-new", error: null },
+    },
+    tables: {
+      org_memberships: { data: { role: "admin" } },
+      artists: {
+        data: [
+          {
+            id: BATCH_ARTIST_1,
+            name: "Ann",
+            email: "ann@x.de",
+            cast_role: "Lead",
+          },
+        ],
+      },
+      show_dates: { data: [BATCH_SHOW_DATE_ROW_1, secondDateRow] },
+      cities: {
+        data: [{ id: "city-1", name: "Berlin" }, {
+          id: "city-2",
+          name: "Hamburg",
+        }],
+      },
+      hire_orders: { data: [] },
+      app_settings: [
+        { when: { key: "hire_order_defaults" }, data: [DEFAULTS] },
+        { when: { key: "hire_order_numbering" }, data: [NUMBERING] },
+      ],
+    },
+  });
+
+  const res = await handle(
+    makeRequest({
+      headers: JWT,
+      body: {
+        action: "draft-batch",
+        org_id: ORG,
+        artists: [
+          {
+            artist_id: BATCH_ARTIST_1,
+            show_date_ids: [BATCH_DATE_1, BATCH_DATE_2],
+          },
+        ],
+        manual: {},
+      },
+    }),
+    deps,
+  );
+
+  assertEquals(res.status, 200);
+  const body = await res.json();
+  assertEquals(body.created, ["ho-new"]);
+
+  const aggregateCreate = calls.find((c) =>
+    c.table === "rpc:create_hire_order_with_dates"
+  );
+  const args = aggregateCreate!.args[0] as {
+    p_data: {
+      engagement_dates: {
+        value: Array<
+          { show_date_id: string; sessions: string[]; duration_min: number | null }
+        >;
+      };
+    };
+  };
+  const byId = new Map(
+    args.p_data.engagement_dates.value.map((d) => [d.show_date_id, d]),
+  );
+  assertEquals(byId.get(BATCH_DATE_1)?.sessions, ["19:00"]);
+  assertEquals(byId.get(BATCH_DATE_1)?.duration_min, 90);
+  assertEquals(byId.get(BATCH_DATE_2)?.sessions, ["18:00", "21:00"]);
+  assertEquals(byId.get(BATCH_DATE_2)?.duration_min, 60);
+});
+
+Deno.test("draft-batch applies a date_overrides entry to replace one date's sessions", async () => {
+  const { deps, calls } = makeFakeDeps({
+    authUser: { id: "u-admin" },
+    rpcs: {
+      create_hire_order_with_dates: { data: "ho-new", error: null },
+    },
+    tables: {
+      org_memberships: { data: { role: "admin" } },
+      artists: {
+        data: [
+          {
+            id: BATCH_ARTIST_1,
+            name: "Ann",
+            email: "ann@x.de",
+            cast_role: "Lead",
+          },
+        ],
+      },
+      show_dates: { data: [BATCH_SHOW_DATE_ROW_1, SHOW_DATE_ROW_2] },
+      cities: {
+        data: [{ id: "city-1", name: "Berlin" }, {
+          id: "city-2",
+          name: "Hamburg",
+        }],
+      },
+      hire_orders: { data: [] },
+      app_settings: [
+        { when: { key: "hire_order_defaults" }, data: [DEFAULTS] },
+        { when: { key: "hire_order_numbering" }, data: [NUMBERING] },
+      ],
+    },
+  });
+
+  const res = await handle(
+    makeRequest({
+      headers: JWT,
+      body: {
+        action: "draft-batch",
+        org_id: ORG,
+        artists: [
+          {
+            artist_id: BATCH_ARTIST_1,
+            show_date_ids: [BATCH_DATE_1, BATCH_DATE_2],
+          },
+        ],
+        manual: {},
+        date_overrides: {
+          [BATCH_DATE_1]: { sessions: ["20:30"], duration_min: 45 },
+        },
+      },
+    }),
+    deps,
+  );
+
+  assertEquals(res.status, 200);
+  assertEquals((await res.json()).created, ["ho-new"]);
+
+  const aggregateCreate = calls.find((c) =>
+    c.table === "rpc:create_hire_order_with_dates"
+  );
+  const args = aggregateCreate!.args[0] as {
+    p_data: {
+      engagement_dates: {
+        value: Array<
+          { show_date_id: string; sessions: string[]; duration_min: number | null }
+        >;
+      };
+    };
+  };
+  const byId = new Map(
+    args.p_data.engagement_dates.value.map((d) => [d.show_date_id, d]),
+  );
+  // overridden date reflects the override, not the synced session_1..3
+  assertEquals(byId.get(BATCH_DATE_1)?.sessions, ["20:30"]);
+  assertEquals(byId.get(BATCH_DATE_1)?.duration_min, 45);
+  // the other date is untouched: still its own synced session
+  assertEquals(byId.get(BATCH_DATE_2)?.sessions, ["19:00"]);
+  assertEquals(byId.get(BATCH_DATE_2)?.duration_min, 90);
+});
+
+Deno.test("draft-batch rejects a malformed date_overrides entry with 400 invalid_date_override", async () => {
+  for (
+    const dateOverrides of [
+      // more than 3 sessions
+      { [BATCH_DATE_1]: { sessions: ["a", "b", "c", "d"] } },
+      // negative duration
+      { [BATCH_DATE_1]: { duration_min: -5 } },
+      // blank session (post-trim)
+      { [BATCH_DATE_1]: { sessions: ["   "] } },
+      // key isn't among the request's selected show_date_ids
+      { [BATCH_DATE_2]: { sessions: ["19:00"] } },
+    ]
+  ) {
+    const { deps, calls } = makeFakeDeps({
+      authUser: { id: "u-admin" },
+      tables: { org_memberships: { data: { role: "admin" } } },
+    });
+    const res = await handle(
+      makeRequest({
+        headers: JWT,
+        body: {
+          action: "draft-batch",
+          org_id: ORG,
+          artists: [
+            { artist_id: BATCH_ARTIST_1, show_date_ids: [BATCH_DATE_1] },
+          ],
+          manual: {},
+          date_overrides: dateOverrides,
+        },
+      }),
+      deps,
+    );
+    assertEquals(res.status, 400);
+    assertEquals((await res.json()).error, "invalid_date_override");
+    assertEquals(
+      calls.some((call) =>
+        call.table === "artists" || call.table === "show_dates"
+      ),
+      false,
+      "a malformed date_overrides entry must be rejected before batch lookups",
+    );
+  }
 });
 
 Deno.test("draft-batch rejects empty input, duplicate artists, and artists without dates", async () => {
