@@ -1322,12 +1322,17 @@ Deno.test("draft-batch continues after one transactional aggregate creation fail
   );
 
   assertEquals(response.status, 200);
+  // The failing artist surfaces the REAL Postgres reason (here the fake rpc's
+  // message), not the opaque catch-all "aggregate_insert_failed" -- so a genuine
+  // constraint violation (e.g. a stale check constraint) is visible in the batch
+  // response instead of being masked. Mirrors the single-date insertWithRetry,
+  // which already returns error.message.
   assertEquals(await response.json(), {
     created: ["ho-2"],
     skipped: [],
     errors: [{
       artist_id: BATCH_ARTIST_1,
-      reason: "aggregate_insert_failed",
+      reason: "aggregate creation failed",
     }],
   });
 });

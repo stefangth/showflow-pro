@@ -14,6 +14,12 @@
           "title": "Per-date running orders",
           "description": "When a hire order covers several dates, each date now carries its own session times, pulled from the synced event and editable in the new-order wizard."
         }
+      ],
+      "fixed": [
+        {
+          "title": "Creating hire orders with custom terms",
+          "description": "Fixed an error that could block new hire orders from being created after you added or renamed a terms template. New orders, including ones that cover multiple dates, now save reliably."
+        }
       ]
     }
   },
