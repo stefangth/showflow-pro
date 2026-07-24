@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Sparkles, FileText } from "lucide-react";
+import { FileText } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -10,6 +10,7 @@ import { useFeature } from "@/hooks/useEntitlements";
 import { useHireOrdersForDate, useHireOrderAction, useMyHireOrders } from "@/hooks/useHireOrders";
 import type { HireOrderRow } from "@/data/hireOrders";
 import { HireOrderStatusBadge } from "@/components/hireOrders/HireOrderStatusBadge";
+import { HireOrderReadyBanner } from "@/components/hireOrders/HireOrderReadyBanner";
 import { GenerateHireOrderDialog } from "./GenerateHireOrderDialog";
 import type { HireOrderBooking, HireOrderShowDate } from "./types";
 
@@ -100,6 +101,10 @@ function ProducerHireOrders({ showDateId, showDate, bookings, canManage }: Props
   const pendingConfirmed = confirmed.filter((b) => !bookedByActiveOrder.has(b.id));
   const showBanner = pendingConfirmed.length > 0;
   const fullyFilled = showDate.status === "fully_filled";
+  // Name the single confirmed artist in the banner copy; fall back to a generic
+  // phrase when several artists are confirmed on the date.
+  const confirmedNames = confirmed.map((b) => b.artist?.name).filter((n): n is string => !!n);
+  const recipientPhrase = confirmedNames.length === 1 ? confirmedNames[0] : "the confirmed cast";
 
   function handleGenerate() {
     action.mutate({ action: "draft", org_id: orgId, show_date_id: showDateId });
@@ -136,20 +141,15 @@ function ProducerHireOrders({ showDateId, showDate, bookings, canManage }: Props
         ) : (
           <>
             {showBanner && (
-              <div className="rounded-lg border border-accent-200 bg-accent-50 p-4 flex items-start gap-3">
-                <Sparkles className="h-5 w-5 text-accent-700 shrink-0 mt-0.5" />
-                <div className="flex-1 space-y-2">
-                  <p className="text-sm font-medium text-accent-700">
-                    {fullyFilled
-                      ? "This date is fully filled and ready for hire orders"
-                      : "Generate for confirmed artists"}
-                  </p>
-                  <Button size="sm" onClick={handleGenerate} disabled={action.isPending || !canGenerate}
-                    title={canGenerate ? undefined : "You don't have permission to generate hire orders"}>
-                    Generate hire orders
-                  </Button>
-                </div>
-              </div>
+              <HireOrderReadyBanner
+                title={fullyFilled
+                  ? "This date is fully filled. Ready for a hire order."
+                  : "Generate for confirmed artists"}
+                description={`Generate the order to confirm the engagement and send it to ${recipientPhrase} for countersignature.`}
+                ctaLabel="Generate hire order"
+                onCta={handleGenerate}
+                disabled={action.isPending || !canGenerate}
+              />
             )}
 
             {(orders ?? []).length > 0 ? (

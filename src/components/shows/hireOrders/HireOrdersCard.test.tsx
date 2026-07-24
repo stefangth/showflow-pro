@@ -104,8 +104,8 @@ describe("HireOrdersCard", () => {
       <HireOrdersCard showDateId="sd-1" showDate={SHOW_DATE_FILLED} bookings={[CONFIRMED_BOOKING]} canManage />,
     );
     expect(await screen.findByText("Hire orders")).toBeInTheDocument();
-    expect(await screen.findByText(/fully filled and ready for hire orders/i)).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /generate hire orders/i })).toBeInTheDocument();
+    expect(await screen.findByText(/fully filled\. ready for a hire order/i)).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /generate hire order/i })).toBeInTheDocument();
     // No em/en dashes in the banner copy.
     expect(document.body.textContent).not.toMatch(/[—–]/);
   });
@@ -116,8 +116,8 @@ describe("HireOrdersCard", () => {
     renderWithProviders(
       <HireOrdersCard showDateId="sd-1" showDate={SHOW_DATE_FILLED} bookings={[CONFIRMED_BOOKING]} canManage />,
     );
-    expect(await screen.findByText(/fully filled and ready for hire orders/i)).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /generate hire orders/i })).toBeDisabled();
+    expect(await screen.findByText(/fully filled\. ready for a hire order/i)).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /generate hire order/i })).toBeDisabled();
   });
 
   it("uses the non-fully-filled banner copy when the date is not fully filled", async () => {
@@ -126,7 +126,7 @@ describe("HireOrdersCard", () => {
       <HireOrdersCard showDateId="sd-1" showDate={SHOW_DATE_OPEN} bookings={[CONFIRMED_BOOKING]} canManage />,
     );
     expect(await screen.findByText(/generate for confirmed artists/i)).toBeInTheDocument();
-    expect(screen.queryByText(/fully filled and ready/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/fully filled/i)).not.toBeInTheDocument();
   });
 
   it("clicking Generate hire orders invokes the draft action for the date", async () => {
@@ -139,7 +139,7 @@ describe("HireOrdersCard", () => {
     renderWithProviders(
       <HireOrdersCard showDateId="sd-1" showDate={SHOW_DATE_FILLED} bookings={[CONFIRMED_BOOKING]} canManage />,
     );
-    fireEvent.click(await screen.findByRole("button", { name: /generate hire orders/i }));
+    fireEvent.click(await screen.findByRole("button", { name: /generate hire order/i }));
     await waitFor(() => {
       const calls = (client.calls ?? []) as { table: string; method: string; args: unknown[] }[];
       const invoke = calls.find((c) => c.table === "fn:generate-hire-orders" && c.method === "invoke");
@@ -185,7 +185,7 @@ describe("HireOrdersCard", () => {
     expect(screen.getByRole("button", { name: /download/i })).toBeInTheDocument();
 
     // Every confirmed booking already has an order, so no generate banner.
-    expect(screen.queryByRole("button", { name: /generate hire orders/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /generate hire order/i })).not.toBeInTheDocument();
   });
 
   it("surfaces a destructive alert when the orders query fails", async () => {
@@ -220,7 +220,7 @@ describe("HireOrdersCard artist variant (Task 14)", () => {
     expect(screen.queryByText("Hire order")).not.toBeInTheDocument();
     expect(screen.queryByText("Hire orders")).not.toBeInTheDocument();
     // The producer-only controls never appear for an artist viewer.
-    expect(screen.queryByRole("button", { name: /generate hire orders/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /generate hire order/i })).not.toBeInTheDocument();
   });
 
   it("renders nothing when the artist has no order for this date", async () => {
@@ -270,7 +270,7 @@ describe("HireOrdersCard artist variant (Task 14)", () => {
     expect(screen.getByRole("button", { name: /download/i })).toBeInTheDocument();
 
     // Never the producer's controls.
-    expect(screen.queryByRole("button", { name: /generate hire orders/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /generate hire order/i })).not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: /review and issue/i })).not.toBeInTheDocument();
     // No em/en dashes in the row copy.
     expect(document.body.textContent).not.toMatch(/[—–]/);
