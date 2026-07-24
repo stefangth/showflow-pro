@@ -288,8 +288,12 @@ test.describe("Hire orders: producer issues, artist downloads", () => {
       await expect(issueBtn).toBeHidden({ timeout: 2_000 });
     }).toPass({ timeout: 30_000 });
 
-    // The producer card's row now shows the issued status.
-    await expect(page.getByText(/awaiting countersign/i)).toBeVisible({ timeout: 15_000 });
+    // The producer card's row now shows the issued status. Scope to the open sheet
+    // dialog: the bookings table behind it now also shows the order's status chip in
+    // the per-row hire-order cell, so an unscoped match is ambiguous (two badges).
+    await expect(
+      page.getByRole("dialog").getByText(/awaiting countersign/i),
+    ).toBeVisible({ timeout: 15_000 });
 
     // Ground-truth: the order is persisted as issued with an uploaded PDF path.
     await expect(async () => {
