@@ -1,6 +1,6 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database, Json } from "@/integrations/supabase/types";
-import type { OrderData, OrderFieldKey } from "@/lib/hireOrders/types";
+import type { EditableOrderFieldKey, OrderData } from "@/lib/hireOrders/types";
 import { readEdgeError } from "@/lib/edgeErrors";
 
 export type HireOrderStatus = Database["public"]["Enums"]["hire_order_status"];
@@ -8,6 +8,7 @@ export type HireOrderStatus = Database["public"]["Enums"]["hire_order_status"];
 /** A `hire_orders` row, with the linked artist's name joined in (when selected). */
 export type HireOrderRow = Database["public"]["Tables"]["hire_orders"]["Row"] & {
   artists?: { name: string } | null;
+  hire_order_dates?: Array<{ show_date_id: string }> | null;
 };
 
 /** All hire orders for a show date (any status), oldest first, artist name joined. */
@@ -15,15 +16,46 @@ export async function fetchHireOrdersForDate(
   client: SupabaseClient<Database>,
   showDateId: string,
 ): Promise<HireOrderRow[]> {
-  const { data, error } = await client
-    .from("hire_orders")
-    .select("*, artists(name)")
-    .eq("show_date_id", showDateId)
-    .order("created_at", { ascending: true });
-  if (error) throw error;
-  // The joined `artists(name)` shape isn't distinguishable from the generated
-  // select-string type; isolate the `any` here per house rule.
-  return (data ?? []) as unknown as HireOrderRow[];
+  const [legacyResult, linksResult] = await Promise.all([
+    client
+      .from("hire_orders")
+      .select("*, artists(name)")
+      .eq("show_date_id", showDateId)
+      .order("created_at", { ascending: true }),
+    client
+      .from("hire_order_dates")
+      .select("hire_order_id")
+      .eq("show_date_id", showDateId),
+  ]);
+  if (legacyResult.error) throw legacyResult.error;
+  if (linksResult.error) throw linksResult.error;
+
+  const linkedOrderIds = [...new Set(
+    ((linksResult.data ?? []) as Array<{ hire_order_id: string }>).map((link) =>
+      link.hire_order_id
+    ),
+  )];
+  let linked: HireOrderRow[] = [];
+  if (linkedOrderIds.length > 0) {
+    const { data, error } = await client
+      .from("hire_orders")
+      .select("*, artists(name)")
+      .in("id", linkedOrderIds)
+      .order("created_at", { ascending: true });
+    if (error) throw error;
+    linked = (data ?? []) as unknown as HireOrderRow[];
+  }
+
+  const combined = new Map<string, HireOrderRow>();
+  for (const order of [
+    ...((legacyResult.data ?? []) as unknown as HireOrderRow[]),
+    ...linked,
+  ]) {
+    combined.set(order.id, order);
+  }
+  return [...combined.values()].sort((a, b) =>
+    (a.created_at ?? "").localeCompare(b.created_at ?? "")
+  );
 }
 
 /** A single hire order by id, artist name joined. */
@@ -52,7 +84,7 @@ export async function fetchMyHireOrders(
   if (artistIds.length === 0) return [];
   const { data, error } = await client
     .from("hire_orders")
-    .select("*, artists(name)")
+    .select("*, artists(name), hire_order_dates(show_date_id)")
     .in("artist_id", artistIds)
     .in("status", ["issued", "countersigned"])
     .order("created_at", { ascending: false });
@@ -96,7 +128,7 @@ export async function fetchHireOrders(
   const baseQuery = () => {
     let q = client
       .from("hire_orders")
-      .select("*, artists(name), show_dates(date, venue)")
+      .select("*, artists(name), show_dates!hire_orders_show_date_id_fkey(date, venue)")
       .eq("org_id", orgId)
       .order("created_at", { ascending: false });
     if (filters.status && filters.status.length > 0) {
@@ -203,7 +235,7 @@ export async function fetchShowDatesLite(
   }));
 }
 
-/** Invoke the generate-hire-orders edge function (actions: draft/issue/preview/download-url).
+/** Invoke the generate-hire-orders edge function (including draft-batch and immutable resend).
  *  Rethrows with the server's own reason rather than supabase-js's opaque
  *  "non-2xx status code" string — see src/lib/edgeErrors.ts. */
 export async function invokeHireOrderAction(
@@ -309,8 +341,8 @@ export async function updateHireOrderDraft(
  *  (both absent), but a `null` column value is skipped here explicitly too —
  *  same convention as the edge function's own `assign` helper. */
 function assignShowflowField(
-  layer: Partial<Record<OrderFieldKey, unknown>>,
-  key: OrderFieldKey,
+  layer: Partial<Record<EditableOrderFieldKey, unknown>>,
+  key: EditableOrderFieldKey,
   value: unknown,
 ): void {
   if (value === null || value === undefined || value === "") return;
@@ -342,8 +374,8 @@ function assignShowflowField(
 export async function fetchShowflowLayerForOrder(
   client: SupabaseClient<Database>,
   args: { showDateId: string | null; artistId: string | null },
-): Promise<Partial<Record<OrderFieldKey, unknown>>> {
-  const layer: Partial<Record<OrderFieldKey, unknown>> = {};
+): Promise<Partial<Record<EditableOrderFieldKey, unknown>>> {
+  const layer: Partial<Record<EditableOrderFieldKey, unknown>> = {};
 
   const [artistResult, showDateResult] = await Promise.all([
     args.artistId

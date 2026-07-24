@@ -10,12 +10,14 @@ interface Props {
   artist_name?: string
   order_no?: string
   date_label?: string
+  engagement_dates_label?: string
   venue?: string
   city?: string
   fee_label?: string
   download_url?: string
   countersign_mode?: 'manual' | 'documenso' | string
   signing_url?: string
+  is_fully_signed?: boolean
   // Template-override support (applied by send-transactional-email).
   _intro?: string
   _cta_label?: string
@@ -23,20 +25,22 @@ interface Props {
 }
 
 const HireOrderIssuedEmail = ({
-  artist_name, order_no, date_label, venue, city, fee_label,
-  download_url, countersign_mode, signing_url,
+  artist_name, order_no, date_label, engagement_dates_label, venue, city, fee_label,
+  download_url, countersign_mode, signing_url, is_fully_signed,
   _intro, _cta_label, _footer,
 }: Props) => {
   const name = artist_name || 'there'
   const date = date_label || 'your date'
+  const engagementDates = engagement_dates_label || date
   const place = venue || 'the venue'
   const downloadUrl = download_url || APP_URL
-  const ctaLabel = _cta_label || 'View and download'
+  const showSignCta = !is_fully_signed && Boolean(signing_url) &&
+    (countersign_mode === 'documenso' || countersign_mode === 'electronic')
+  const ctaLabel = _cta_label || (showSignCta ? 'Review document' : 'View and download')
   const introText = _intro ||
     `Your hire order for ${date} at ${place} has been issued. Review the details below and download your copy.`
   const footerText = _footer ||
     `Questions about this hire order. Reply to this email and we will help.`
-  const showSignCta = countersign_mode === 'documenso' || countersign_mode === 'electronic'
 
   return (
     <Html lang="en" dir="ltr">
@@ -49,16 +53,11 @@ const HireOrderIssuedEmail = ({
           <Text style={text}>{introText}</Text>
           <Section style={factsSection}>
             {order_no ? <Text style={factRow}><strong>Order.</strong> {order_no}</Text> : null}
-            <Text style={factRow}><strong>Date.</strong> {date}</Text>
+            <Text style={factRow}><strong>Engagement dates.</strong> {engagementDates}</Text>
             <Text style={factRow}><strong>Venue.</strong> {place}</Text>
             {city ? <Text style={factRow}><strong>City.</strong> {city}</Text> : null}
             {fee_label ? <Text style={factRow}><strong>Fee.</strong> {fee_label}</Text> : null}
           </Section>
-          <Section style={section}>
-            <Button href={downloadUrl} style={button}>{ctaLabel}</Button>
-          </Section>
-          <Text style={muted}>Or paste this link into your browser:</Text>
-          <Text style={link}>{downloadUrl}</Text>
           {showSignCta ? (
             <>
               <Text style={text}>Review and sign your hire order online to confirm.</Text>
@@ -66,9 +65,15 @@ const HireOrderIssuedEmail = ({
                 <Button href={signing_url || APP_URL} style={button}>Review and sign</Button>
               </Section>
             </>
-          ) : (
+          ) : null}
+          <Section style={section}>
+            <Button href={downloadUrl} style={button}>{ctaLabel}</Button>
+          </Section>
+          <Text style={muted}>Or paste this link into your browser:</Text>
+          <Text style={link}>{downloadUrl}</Text>
+          {!showSignCta ? (
             <Text style={text}>Reply to confirm, or sign and return the attached PDF.</Text>
-          )}
+          ) : null}
           <Text style={footer}>{footerText}</Text>
         </Container>
       </Body>

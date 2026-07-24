@@ -68,6 +68,27 @@ describe("OrderSlideOver mount/close behavior", () => {
 });
 
 describe("OrderSlideOver countersign-mode gating on an issued order", () => {
+  it("shows created and last-sent timestamps plus View and Resend for an issued order", () => {
+    renderWithProviders(
+      <OrderSlideOver
+        order={order({
+          id: "ho-1",
+          status: "issued",
+          created_at: "2026-07-24T08:00:00Z",
+          last_sent_at: "2026-07-24T09:30:00Z",
+        })}
+        open
+        onOpenChange={vi.fn()}
+        orgId="org-1"
+      />,
+    );
+
+    expect(screen.getByText(/created/i)).toBeInTheDocument();
+    expect(screen.getByText(/last sent/i)).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /^view$/i })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /^resend$/i })).toBeInTheDocument();
+  });
+
   it("keeps Mark countersigned in manual mode (alongside Download)", () => {
     vi.mocked(useHireOrderCountersignMode).mockReturnValue({ data: { mode: "manual" } } as never);
     renderWithProviders(

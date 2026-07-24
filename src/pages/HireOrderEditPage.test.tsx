@@ -240,6 +240,41 @@ describe("HireOrderEditPage", () => {
     await waitFor(() => expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: ["hire-orders"] }));
   });
 
+  it("preserves aggregate engagement dates when an editable field is re-resolved and the full snapshot is saved", async () => {
+    const engagementDates = {
+      value: [
+        { show_date_id: "sd-1", date: "2026-02-01", venue: "Main Hall", city: "Berlin" },
+        { show_date_id: "sd-2", date: "2026-02-02", venue: "Main Hall", city: "Berlin" },
+      ],
+      source: "showflow",
+    };
+    seedFor(order({ data: { ...DATA, engagement_dates: engagementDates } }), {
+      artists: { data: { name: "Ada Lovelace", email: "ada@example.com", cast_role: "Swing" }, error: null },
+      show_dates: {
+        data: {
+          date: "2026-02-01", venue: "Grand Hall", duration_minutes: 120,
+          session_1: "20:00", session_2: null, session_3: null,
+          cities: { name: "Munich" },
+        },
+        error: null,
+      },
+    });
+    renderPage();
+    await screen.findByText("HO-2026-0201-1");
+
+    fireEvent.click(screen.getByRole("button", { name: /refresh from showflow/i }));
+    await waitFor(() => expect(screen.getByLabelText("Role")).toHaveValue("Swing"));
+    fireEvent.change(screen.getByLabelText("Role"), { target: { value: "Understudy" } });
+    fireEvent.click(screen.getByRole("button", { name: /^save draft$/i }));
+
+    await waitFor(() => {
+      const update = updateCalls().at(-1);
+      expect(update).toBeDefined();
+      const patch = update!.args[0] as { data?: Record<string, { value: unknown; source: string }> };
+      expect(patch.data?.engagement_dates).toEqual(engagementDates);
+    });
+  });
+
   it("fetches an initial live preview on mount, before any edit", async () => {
     seedFor(order());
     renderPage();

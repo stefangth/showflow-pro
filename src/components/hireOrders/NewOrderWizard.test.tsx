@@ -1,5 +1,5 @@
 import { describe, expect, it, vi, beforeEach } from "vitest";
-import { fireEvent, screen, waitFor } from "@testing-library/react";
+import { fireEvent, screen, waitFor, within } from "@testing-library/react";
 import { renderWithProviders } from "@/test/renderWithProviders";
 import { createFakeSupabase, type TableSeed } from "@/test/supabaseFake";
 
@@ -31,6 +31,10 @@ const SHOW_DATES = [
     id: "sd1", date: "2026-03-01", venue: "Main Hall", duration_minutes: 90,
     session_1: "19:00", session_2: null, session_3: "22:00", cities: { name: "Berlin" },
   },
+  {
+    id: "sd2", date: "2026-03-02", venue: "Harbour Stage", duration_minutes: 75,
+    session_1: "20:00", session_2: null, session_3: null, cities: { name: "Hamburg" },
+  },
 ];
 
 function seedDefault(extra: Record<string, TableSeed> = {}) {
@@ -45,9 +49,12 @@ function seedDefault(extra: Record<string, TableSeed> = {}) {
 
 function invokeCalls() {
   const calls = (client.calls ?? []) as { table: string; method: string; args: unknown[] }[];
-  return calls
+  const recorded = calls
     .filter((c) => c.table === "fn:generate-hire-orders" && c.method === "invoke")
     .map((c) => c.args[0] as Record<string, unknown>);
+  if (recorded.length > 0) return recorded;
+  const invoke = (client as unknown as { functions?: { invoke?: ReturnType<typeof vi.fn> } }).functions?.invoke;
+  return (invoke?.mock.calls ?? []).map((call) => (call[1] as { body: Record<string, unknown> }).body);
 }
 
 function renderWizard(props: Partial<{ open: boolean; onOpenChange: (o: boolean) => void; orgId: string | null }> = {}) {
@@ -69,17 +76,54 @@ async function flush() {
 async function pickArtist(name: string) {
   fireEvent.click(screen.getByRole("combobox", { name: /select artist/i }));
   fireEvent.click(await screen.findByText(name));
+  fireEvent.click(screen.getByRole("combobox", { name: /select artist/i }));
   await flush();
 }
 
 async function pickShowDate(labelSubstring: string) {
   fireEvent.click(screen.getByRole("combobox", { name: /select show date/i }));
   fireEvent.click(await screen.findByText(new RegExp(labelSubstring, "i")));
+  fireEvent.click(screen.getByRole("combobox", { name: /select show date/i }));
+  fireEvent.click(screen.getByRole("button", { name: /apply selected dates to all/i }));
+  await flush();
+}
+
+async function selectArtists(...names: string[]) {
+  fireEvent.click(screen.getByRole("combobox", { name: /select artist/i }));
+  for (const name of names) fireEvent.click(await screen.findByText(name));
+  fireEvent.click(screen.getByRole("combobox", { name: /select artist/i }));
+  await flush();
+}
+
+async function selectCommonDates(...labels: string[]) {
+  fireEvent.click(screen.getByRole("combobox", { name: /select show date/i }));
+  for (const label of labels) {
+    fireEvent.click(await screen.findByText(new RegExp(label, "i")));
+  }
+  fireEvent.click(screen.getByRole("combobox", { name: /select show date/i }));
+  fireEvent.click(screen.getByRole("button", { name: /apply selected dates to all/i }));
+  await flush();
+}
+
+async function selectCommonDatesWithoutApplying(...labels: string[]) {
+  fireEvent.click(screen.getByRole("combobox", { name: /select show date/i }));
+  for (const label of labels) {
+    fireEvent.click(await screen.findByText(new RegExp(label, "i")));
+  }
+  fireEvent.click(screen.getByRole("combobox", { name: /select show date/i }));
   await flush();
 }
 
 function clickContinue() {
   fireEvent.click(screen.getByRole("button", { name: /^continue$/i }));
+}
+
+async function reachReviewWithFee(fee = "1200") {
+  clickContinue();
+  fireEvent.change(await screen.findByLabelText(/engagement fee/i), { target: { value: fee } });
+  clickContinue();
+  clickContinue();
+  await screen.findByRole("button", { name: /save as draft/i });
 }
 
 describe("NewOrderWizard", () => {
@@ -110,7 +154,7 @@ describe("NewOrderWizard", () => {
     expect(screen.getByLabelText(/^city$/i)).toBeInTheDocument();
   });
 
-  it("keeps Continue disabled on step 1 until an artist and a date are chosen", async () => {
+  it("keeps Continue disabled on step 1 until every artist has an applied date", async () => {
     renderWizard();
     expect(screen.getByRole("button", { name: /^continue$/i })).toBeDisabled();
     await pickArtist("Ann Artist");
@@ -133,10 +177,11 @@ describe("NewOrderWizard", () => {
     expect(screen.getByText(/payable on performance date/i)).toHaveTextContent("$1,200.00");
     clickContinue();
 
-    // Step 3: sessions read from the linked date (read-only), duration pre-filled.
-    expect(await screen.findByText("19:00")).toBeInTheDocument();
-    expect(screen.getByText("22:00")).toBeInTheDocument();
+    // Step 3: the first linked date seeds editable batch-wide running order.
+    expect(await screen.findByLabelText(/session 1 time/i)).toHaveValue("19:00");
+    expect(screen.getByLabelText(/session 2 time/i)).toHaveValue("22:00");
     expect(screen.getByLabelText(/duration/i)).toHaveValue(90);
+    fireEvent.change(screen.getByLabelText(/session 1 label/i), { target: { value: "Main set" } });
     clickContinue();
 
     // Step 4: review + submit.
@@ -146,16 +191,14 @@ describe("NewOrderWizard", () => {
 
     await waitFor(() => expect(invokeCalls().length).toBe(1));
     const body = invokeCalls()[0];
-    expect(body.action).toBe("draft-manual");
+    expect(body.action).toBe("draft-batch");
     expect(body.org_id).toBe(ORG);
-    expect(body.artist_id).toBe("a1");
-    expect(body.show_date_id).toBe("sd1");
+    expect(body.artists).toEqual([{ artist_id: "a1", show_date_ids: ["sd1"] }]);
     const manual = body.manual as Record<string, unknown>;
     expect(manual.fee).toBe(1200);
     expect(manual.currency).toBe("USD");
     expect(manual.duration_min).toBe(90);
-    // sessions came from the linked date (showflow), not a manual override.
-    expect(manual.sessions).toBeUndefined();
+    expect(manual.sessions).toEqual(["Main set 19:00", "22:00"]);
 
     // Success screen.
     expect(await screen.findByText(/hire order created/i)).toBeInTheDocument();
@@ -185,6 +228,7 @@ describe("NewOrderWizard", () => {
     fireEvent.click(await screen.findByRole("button", { name: /save as draft/i }));
     await waitFor(() => expect(invokeCalls().length).toBe(1));
     const body = invokeCalls()[0];
+    expect(body.action).toBe("draft-manual");
     expect(body.artist_id).toBeUndefined();
     expect(body.show_date_id).toBeUndefined();
     const manual = body.manual as Record<string, unknown>;
@@ -210,7 +254,7 @@ describe("NewOrderWizard", () => {
     fireEvent.click(await screen.findByRole("button", { name: /issue and send to artist/i }));
 
     await waitFor(() => expect(invokeCalls().length).toBe(2));
-    expect(invokeCalls()[0].action).toBe("draft-manual");
+    expect(invokeCalls()[0].action).toBe("draft-batch");
     expect(invokeCalls()[1]).toMatchObject({ action: "issue", org_id: ORG, order_ids: ["ho-new-2"] });
 
     expect(await screen.findByText(/hire order created/i)).toBeInTheDocument();
@@ -242,6 +286,48 @@ describe("NewOrderWizard", () => {
     expect(screen.getByRole("button", { name: /issue now/i })).toBeInTheDocument();
   });
 
+  it("retries only unissued orders and retains partial issue success across attempts", async () => {
+    (client as unknown as { functions: { invoke: ReturnType<typeof vi.fn> } }).functions = {
+      invoke: vi.fn()
+        .mockResolvedValueOnce({
+          data: { created: ["ho-new-1", "ho-new-2"] },
+          error: null,
+        })
+        .mockResolvedValueOnce({
+          data: {
+            issued: ["ho-new-1"],
+            failed: [{ order_id: "ho-new-2", issues: ["missing_terms"] }],
+          },
+          error: null,
+        })
+        .mockResolvedValueOnce({
+          data: { issued: ["ho-new-2"], failed: [] },
+          error: null,
+        }),
+    };
+    renderWizard();
+    await selectArtists("Ann Artist", "Ben Booker");
+    await selectCommonDates("Berlin");
+    await reachReviewWithFee();
+
+    fireEvent.click(screen.getByRole("button", { name: /issue and send to artist/i }));
+    await waitFor(() => expect(invokeCalls().length).toBe(2));
+    expect(invokeCalls()[1]).toMatchObject({
+      action: "issue",
+      order_ids: ["ho-new-1", "ho-new-2"],
+    });
+    fireEvent.click(await screen.findByRole("button", { name: /issue now/i }));
+
+    await waitFor(() => expect(invokeCalls().length).toBe(3));
+    expect(invokeCalls()[2]).toMatchObject({
+      action: "issue",
+      order_ids: ["ho-new-2"],
+    });
+    await waitFor(() => {
+      expect(screen.queryByRole("button", { name: /issue now/i })).not.toBeInTheDocument();
+    });
+  });
+
   it("Open order navigates to the hire order detail route with the created id", async () => {
     renderWizard();
     await pickArtist("Ann Artist");
@@ -253,5 +339,151 @@ describe("NewOrderWizard", () => {
     fireEvent.click(await screen.findByRole("button", { name: /save as draft/i }));
     fireEvent.click(await screen.findByRole("button", { name: /open order/i }));
     expect(navigate).toHaveBeenCalledWith("/hire-orders/ho-new-1");
+  });
+
+  it("creates one batch payload row per selected artist with its checked dates", async () => {
+    renderWizard();
+    await selectArtists("Ann Artist", "Ben Booker");
+    await selectCommonDates("Berlin", "Hamburg");
+
+    fireEvent.click(screen.getByRole("checkbox", { name: /ben booker.*hamburg/i }));
+    await reachReviewWithFee();
+
+    const annReview = screen.getByRole("group", { name: /ann artist dates/i });
+    expect(within(annReview).getByText(/berlin/i)).toBeInTheDocument();
+    expect(within(annReview).getByText(/hamburg/i)).toBeInTheDocument();
+    const benReview = screen.getByRole("group", { name: /ben booker dates/i });
+    expect(within(benReview).getByText(/berlin/i)).toBeInTheDocument();
+    expect(within(benReview).queryByText(/hamburg/i)).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: /save as draft/i }));
+    await waitFor(() => expect(invokeCalls().length).toBe(1));
+    expect(invokeCalls()[0]).toMatchObject({
+      action: "draft-batch",
+      org_id: ORG,
+      artists: [
+        { artist_id: "a1", show_date_ids: ["sd1", "sd2"] },
+        { artist_id: "a2", show_date_ids: ["sd1"] },
+      ],
+    });
+  });
+
+  it("removes a deselected common date from every artist assignment", async () => {
+    renderWizard();
+    await selectArtists("Ann Artist", "Ben Booker");
+    await selectCommonDates("Berlin", "Hamburg");
+
+    fireEvent.click(screen.getByRole("combobox", { name: /select show date/i }));
+    fireEvent.click(await screen.findByRole("option", { name: /hamburg/i }));
+    fireEvent.click(screen.getByRole("combobox", { name: /select show date/i }));
+
+    expect(screen.queryByRole("checkbox", { name: /hamburg/i })).not.toBeInTheDocument();
+    await reachReviewWithFee();
+    fireEvent.click(screen.getByRole("button", { name: /save as draft/i }));
+    await waitFor(() => expect(invokeCalls().length).toBe(1));
+    expect(invokeCalls()[0].artists).toEqual([
+      { artist_id: "a1", show_date_ids: ["sd1"] },
+      { artist_id: "a2", show_date_ids: ["sd1"] },
+    ]);
+  });
+
+  it("seeds the shared running order when a date is assigned directly in the matrix", async () => {
+    renderWizard();
+    await selectArtists("Ann Artist");
+    await selectCommonDatesWithoutApplying("Berlin");
+
+    fireEvent.click(screen.getByRole("checkbox", { name: /ann artist.*berlin/i }));
+    expect(screen.getByRole("button", { name: /^continue$/i })).toBeEnabled();
+    clickContinue();
+    fireEvent.change(await screen.findByLabelText(/engagement fee/i), { target: { value: "900" } });
+    clickContinue();
+
+    expect(await screen.findByLabelText(/duration/i)).toHaveValue(90);
+    expect(screen.getByLabelText(/session 1 time/i)).toHaveValue("19:00");
+    expect(screen.getByLabelText(/session 2 time/i)).toHaveValue("22:00");
+  });
+
+  it("re-seeds the shared running order when its first date is removed from all assignments", async () => {
+    renderWizard();
+    await selectArtists("Ann Artist");
+    await selectCommonDates("Berlin", "Hamburg");
+
+    fireEvent.click(screen.getByRole("checkbox", { name: /ann artist.*berlin/i }));
+    await reachReviewWithFee("700");
+
+    expect(screen.getByText("75 min")).toBeInTheDocument();
+    expect(screen.getByText("20:00")).toBeInTheDocument();
+    expect(screen.queryByText("19:00 · 22:00")).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: /save as draft/i }));
+    await waitFor(() => expect(invokeCalls().length).toBe(1));
+    const manual = invokeCalls()[0].manual as Record<string, unknown>;
+    expect(manual.duration_min).toBe(75);
+    expect(manual.sessions).toEqual(["20:00"]);
+  });
+
+  it("removes a deselected artist and its assignments from review and payload", async () => {
+    renderWizard();
+    await selectArtists("Ann Artist", "Ben Booker");
+    await selectCommonDates("Berlin");
+
+    fireEvent.click(screen.getByRole("combobox", { name: /select artist/i }));
+    fireEvent.click(await screen.findByRole("option", { name: /ann artist/i }));
+    fireEvent.click(screen.getByRole("combobox", { name: /select artist/i }));
+    await flush();
+    await reachReviewWithFee();
+
+    expect(screen.queryByRole("group", { name: /ann artist dates/i })).not.toBeInTheDocument();
+    expect(screen.getByRole("group", { name: /ben booker dates/i })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: /save as draft/i }));
+    await waitFor(() => expect(invokeCalls().length).toBe(1));
+    expect(invokeCalls()[0].artists).toEqual([
+      { artist_id: "a2", show_date_ids: ["sd1"] },
+    ]);
+  });
+
+  it("disables Continue when the last assigned date is removed", async () => {
+    renderWizard();
+    await selectArtists("Ann Artist");
+    await selectCommonDates("Berlin");
+    expect(screen.getByRole("button", { name: /^continue$/i })).toBeEnabled();
+
+    fireEvent.click(screen.getByRole("checkbox", { name: /ann artist.*berlin/i }));
+
+    expect(screen.getByRole("button", { name: /^continue$/i })).toBeDisabled();
+  });
+
+  it("issues every successfully created batch order and closes to the tracking list", async () => {
+    (client as unknown as { functions: { invoke: ReturnType<typeof vi.fn> } }).functions = {
+      invoke: vi.fn()
+        .mockResolvedValueOnce({
+          data: {
+            created: ["ho-new-1", "ho-new-2"],
+            skipped: [{ artist_id: "a3", reason: "exists" }],
+            errors: [],
+          },
+          error: null,
+        })
+        .mockResolvedValueOnce({
+          data: { issued: ["ho-new-1", "ho-new-2"], failed: [] },
+          error: null,
+        }),
+    };
+    renderWizard();
+    await selectArtists("Ann Artist", "Ben Booker");
+    await selectCommonDates("Berlin");
+    await reachReviewWithFee();
+    fireEvent.click(screen.getByRole("button", { name: /issue and send to artist/i }));
+
+    await waitFor(() => expect(invokeCalls().length).toBe(2));
+    expect(invokeCalls()[1]).toMatchObject({
+      action: "issue",
+      org_id: ORG,
+      order_ids: ["ho-new-1", "ho-new-2"],
+    });
+    expect(await screen.findByText("2 hire orders created")).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /open order/i })).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: /close and return to hire orders/i }));
+    expect(navigate).toHaveBeenCalledWith("/hire-orders");
   });
 });

@@ -1,4 +1,7 @@
-import { assert, assertEquals } from "https://deno.land/std@0.224.0/assert/mod.ts";
+import {
+  assert,
+  assertEquals,
+} from "https://deno.land/std@0.224.0/assert/mod.ts";
 import { handle } from "./index.ts";
 import { makeFakeDeps, makeRequest } from "../_shared/testing.ts";
 
@@ -9,7 +12,13 @@ const SD = "sd-1";
 const JWT = { Authorization: "Bearer user-jwt" };
 
 /** A confirmed booking row as the draft query returns it (artist joined). */
-function booking(id: string, artistId: string, fee: number | null, name: string, email: string) {
+function booking(
+  id: string,
+  artistId: string,
+  fee: number | null,
+  name: string,
+  email: string,
+) {
   return {
     id,
     artist_id: artistId,
@@ -34,11 +43,23 @@ const SHOW_DATE_ROW = {
   shows: { program: "Aida", sub_program: null },
 };
 
-const NUMBERING = { org_id: ORG, value: { prefix: "HO", pattern: "{prefix}-{yyyy}-{mmdd}-{cast|seq}" } };
+const NUMBERING = {
+  org_id: ORG,
+  value: { prefix: "HO", pattern: "{prefix}-{yyyy}-{mmdd}-{cast|seq}" },
+};
 const DEFAULTS = { org_id: ORG, value: { default_fee: null, currency: "EUR" } };
-const LETTERHEAD = { org_id: ORG, value: { legal_name: "Nord GmbH", address_lines: [], registration_line: "" } };
-const TERMS_FILLED = { org_id: ORG, value: { lean: [], standard: [{ title: "T", body: "B" }], full: [] } };
-const TERMS_EMPTY = { org_id: ORG, value: { lean: [], standard: [], full: [] } };
+const LETTERHEAD = {
+  org_id: ORG,
+  value: { legal_name: "Nord GmbH", address_lines: [], registration_line: "" },
+};
+const TERMS_FILLED = {
+  org_id: ORG,
+  value: { lean: [], standard: [{ title: "T", body: "B" }], full: [] },
+};
+const TERMS_EMPTY = {
+  org_id: ORG,
+  value: { lean: [], standard: [], full: [] },
+};
 
 // ── draft ────────────────────────────────────────────────────────────────
 
@@ -48,7 +69,12 @@ Deno.test("draft creates one order per confirmed booking without an active order
     tables: {
       org_memberships: { data: { role: "admin" } },
       show_dates: { data: SHOW_DATE_ROW },
-      bookings: { data: [booking("b-A", "a-A", 500, "Ann", "ann@x.de"), booking("b-B", "a-B", null, "Ben", "ben@x.de")] },
+      bookings: {
+        data: [
+          booking("b-A", "a-A", 500, "Ann", "ann@x.de"),
+          booking("b-B", "a-B", null, "Ben", "ben@x.de"),
+        ],
+      },
       cities: { data: { name: "Berlin" } },
       hire_orders: [
         { when: { __write: false }, data: [{ booking_id: "b-A" }] },
@@ -61,7 +87,13 @@ Deno.test("draft creates one order per confirmed booking without an active order
     },
   });
 
-  const res = await handle(makeRequest({ headers: JWT, body: { action: "draft", org_id: ORG, show_date_id: SD } }), deps);
+  const res = await handle(
+    makeRequest({
+      headers: JWT,
+      body: { action: "draft", org_id: ORG, show_date_id: SD },
+    }),
+    deps,
+  );
   assertEquals(res.status, 200);
   const body = await res.json();
   assertEquals(body.created, ["ho-new"]);
@@ -75,8 +107,11 @@ Deno.test("draft assigns a distinct order number to every artist on one date (no
   // default pattern differentiates by {seq}, so every artist gets a distinct base
   // order number and ALL six are created — the pre-fix default collapsed the base
   // to the shared cast code and silently lost the 6th to the 5-try collision cap.
-  const six = Array.from({ length: 6 }, (_, i) =>
-    booking(`b-${i}`, `a-${i}`, 500, `Artist ${i}`, `artist${i}@x.de`));
+  const six = Array.from(
+    { length: 6 },
+    (_, i) =>
+      booking(`b-${i}`, `a-${i}`, 500, `Artist ${i}`, `artist${i}@x.de`),
+  );
   const { deps, calls } = makeFakeDeps({
     authUser: { id: "u-admin" },
     tables: {
@@ -89,11 +124,20 @@ Deno.test("draft assigns a distinct order number to every artist on one date (no
         { when: { __write: true }, data: { id: "ho-x" } }, // every insert succeeds
       ],
       // hire_order_numbering intentionally NOT seeded -> the code's NUMBERING_DEFAULT applies.
-      app_settings: [{ when: { key: "hire_order_defaults" }, data: [DEFAULTS] }],
+      app_settings: [{
+        when: { key: "hire_order_defaults" },
+        data: [DEFAULTS],
+      }],
     },
   });
 
-  const res = await handle(makeRequest({ headers: JWT, body: { action: "draft", org_id: ORG, show_date_id: SD } }), deps);
+  const res = await handle(
+    makeRequest({
+      headers: JWT,
+      body: { action: "draft", org_id: ORG, show_date_id: SD },
+    }),
+    deps,
+  );
   assertEquals(res.status, 200);
   const body = await res.json();
   assertEquals(body.created.length, 6, "all six bookings drafted");
@@ -103,7 +147,11 @@ Deno.test("draft assigns a distinct order number to every artist on one date (no
     .filter((c) => c.table === "hire_orders" && c.method === "insert")
     .map((c) => (c.args[0] as { order_no: string }).order_no);
   assertEquals(orderNos.length, 6);
-  assertEquals(new Set(orderNos).size, 6, `expected 6 distinct order numbers, got ${JSON.stringify(orderNos)}`);
+  assertEquals(
+    new Set(orderNos).size,
+    6,
+    `expected 6 distinct order numbers, got ${JSON.stringify(orderNos)}`,
+  );
 });
 
 Deno.test("draft snapshots showflow fields with source tags and org defaults", async () => {
@@ -125,12 +173,23 @@ Deno.test("draft snapshots showflow fields with source tags and org defaults", a
     },
   });
 
-  const res = await handle(makeRequest({ headers: JWT, body: { action: "draft", org_id: ORG, show_date_id: SD } }), deps);
+  const res = await handle(
+    makeRequest({
+      headers: JWT,
+      body: { action: "draft", org_id: ORG, show_date_id: SD },
+    }),
+    deps,
+  );
   assertEquals(res.status, 200);
 
-  const insert = calls.find((c) => c.table === "hire_orders" && c.method === "insert");
+  const insert = calls.find((c) =>
+    c.table === "hire_orders" && c.method === "insert"
+  );
   assert(insert, "expected a hire_orders insert");
-  const row = insert!.args[0] as { data: Record<string, { value: unknown; source: string }>; fee_currency: string };
+  const row = insert!.args[0] as {
+    data: Record<string, { value: unknown; source: string }>;
+    fee_currency: string;
+  };
   assertEquals(row.data.venue.source, "showflow");
   assertEquals(row.data.venue.value, "Venue A");
   assertEquals(row.data.fee.source, "showflow"); // booking carried a fee
@@ -146,7 +205,13 @@ Deno.test("draft 403s when hire_orders entitlement is off", async () => {
     tables: { org_memberships: { data: { role: "admin" } } },
     rpcs: { is_feature_enabled: { data: false, error: null } },
   });
-  const res = await handle(makeRequest({ headers: JWT, body: { action: "draft", org_id: ORG, show_date_id: SD } }), deps);
+  const res = await handle(
+    makeRequest({
+      headers: JWT,
+      body: { action: "draft", org_id: ORG, show_date_id: SD },
+    }),
+    deps,
+  );
   assertEquals(res.status, 403);
   assertEquals((await res.json()).error, "feature_disabled");
 });
@@ -172,16 +237,33 @@ Deno.test("draft with notify inserts hire_orders_ready producer notifications on
   });
 
   const res = await handle(
-    makeRequest({ headers: JWT, body: { action: "draft", org_id: ORG, show_date_id: SD, notify: true } }),
+    makeRequest({
+      headers: JWT,
+      body: { action: "draft", org_id: ORG, show_date_id: SD, notify: true },
+    }),
     deps,
   );
   assertEquals(res.status, 200);
 
-  const notifInserts = calls.filter((c) => c.table === "notifications" && c.method === "insert");
-  assertEquals(notifInserts.length, 1, "producer notifications inserted exactly once");
-  const rows = notifInserts[0].args[0] as Array<{ type: string; user_id: string }>;
-  assert(rows.every((r) => r.type === "hire_orders_ready"), "all rows are hire_orders_ready");
-  assert(rows.some((r) => r.user_id === "p1"), "notifies the resolved producer");
+  const notifInserts = calls.filter((c) =>
+    c.table === "notifications" && c.method === "insert"
+  );
+  assertEquals(
+    notifInserts.length,
+    1,
+    "producer notifications inserted exactly once",
+  );
+  const rows = notifInserts[0].args[0] as Array<
+    { type: string; user_id: string }
+  >;
+  assert(
+    rows.every((r) => r.type === "hire_orders_ready"),
+    "all rows are hire_orders_ready",
+  );
+  assert(
+    rows.some((r) => r.user_id === "p1"),
+    "notifies the resolved producer",
+  );
 });
 
 // ── draft-manual ─────────────────────────────────────────────────────────
@@ -217,7 +299,10 @@ Deno.test("draft-manual with only manual fields creates an unlinked draft where 
   });
 
   const res = await handle(
-    makeRequest({ headers: JWT, body: { action: "draft-manual", org_id: ORG, manual } }),
+    makeRequest({
+      headers: JWT,
+      body: { action: "draft-manual", org_id: ORG, manual },
+    }),
     deps,
   );
   assertEquals(res.status, 200);
@@ -228,11 +313,17 @@ Deno.test("draft-manual with only manual fields creates an unlinked draft where 
   assertEquals(calls.filter((c) => c.table === "artists").length, 0);
   assertEquals(calls.filter((c) => c.table === "show_dates").length, 0);
 
-  const insert = calls.find((c) => c.table === "hire_orders" && c.method === "insert");
+  const insert = calls.find((c) =>
+    c.table === "hire_orders" && c.method === "insert"
+  );
   assert(insert, "expected a hire_orders insert");
   const row = insert!.args[0] as {
-    booking_id: string | null; artist_id: string | null; show_date_id: string | null;
-    fee_currency: string; terms_variant: string; status: string;
+    booking_id: string | null;
+    artist_id: string | null;
+    show_date_id: string | null;
+    fee_currency: string;
+    terms_variant: string;
+    status: string;
     data: Record<string, { value: unknown; source: string }>;
   };
   assertEquals(row.booking_id, null, "manual orders never link a booking");
@@ -241,10 +332,18 @@ Deno.test("draft-manual with only manual fields creates an unlinked draft where 
   assertEquals(row.status, "draft");
   assertEquals(row.terms_variant, "standard");
   for (const key of Object.keys(manual)) {
-    assertEquals(row.data[key]?.source, "manual", `${key} should be source manual`);
+    assertEquals(
+      row.data[key]?.source,
+      "manual",
+      `${key} should be source manual`,
+    );
   }
   assertEquals(row.data.fee.value, 750);
-  assertEquals(row.fee_currency, "USD", "fee_currency follows the resolved (manual) currency, not the org default");
+  assertEquals(
+    row.fee_currency,
+    "USD",
+    "fee_currency follows the resolved (manual) currency, not the org default",
+  );
 });
 
 Deno.test("draft-manual with artist_id and show_date_id resolves showflow fields underneath a manual override", async () => {
@@ -252,7 +351,9 @@ Deno.test("draft-manual with artist_id and show_date_id resolves showflow fields
     authUser: { id: "u-admin" },
     tables: {
       org_memberships: { data: { role: "admin" } },
-      artists: { data: { id: "a-A", name: "Ann", email: "ann@x.de", cast_role: "Lead" } },
+      artists: {
+        data: { id: "a-A", name: "Ann", email: "ann@x.de", cast_role: "Lead" },
+      },
       show_dates: { data: SHOW_DATE_ROW },
       cities: { data: { name: "Berlin" } },
       hire_orders: [
@@ -283,10 +384,13 @@ Deno.test("draft-manual with artist_id and show_date_id resolves showflow fields
   const body = await res.json();
   assertEquals(body.created.length, 1);
 
-  const insert = calls.find((c) => c.table === "hire_orders" && c.method === "insert");
+  const insert = calls.find((c) =>
+    c.table === "hire_orders" && c.method === "insert"
+  );
   assert(insert, "expected a hire_orders insert");
   const row = insert!.args[0] as {
-    artist_id: string | null; show_date_id: string | null;
+    artist_id: string | null;
+    show_date_id: string | null;
     data: Record<string, { value: unknown; source: string }>;
   };
   assertEquals(row.artist_id, "a-A");
@@ -327,7 +431,14 @@ Deno.test("draft-manual does not gate on recipient_email at draft time", async (
     },
   });
   const res = await handle(
-    makeRequest({ headers: JWT, body: { action: "draft-manual", org_id: ORG, manual: { venue: "The Loft" } } }),
+    makeRequest({
+      headers: JWT,
+      body: {
+        action: "draft-manual",
+        org_id: ORG,
+        manual: { venue: "The Loft" },
+      },
+    }),
     deps,
   );
   assertEquals(res.status, 200);
@@ -341,7 +452,10 @@ Deno.test("draft-manual 403s when hire_orders entitlement is off", async () => {
     rpcs: { is_feature_enabled: { data: false, error: null } },
   });
   const res = await handle(
-    makeRequest({ headers: JWT, body: { action: "draft-manual", org_id: ORG, manual: { fee: 500 } } }),
+    makeRequest({
+      headers: JWT,
+      body: { action: "draft-manual", org_id: ORG, manual: { fee: 500 } },
+    }),
     deps,
   );
   assertEquals(res.status, 403);
@@ -363,13 +477,21 @@ Deno.test("draft-manual rejects a non-numeric manual fee with 400 invalid_fee in
     },
   });
   const res = await handle(
-    makeRequest({ headers: JWT, body: { action: "draft-manual", org_id: ORG, manual: { fee: "not-a-number" } } }),
+    makeRequest({
+      headers: JWT,
+      body: {
+        action: "draft-manual",
+        org_id: ORG,
+        manual: { fee: "not-a-number" },
+      },
+    }),
     deps,
   );
   assertEquals(res.status, 400);
   assertEquals(await res.json(), { error: "invalid_fee" });
   assertEquals(
-    calls.filter((c) => c.table === "hire_orders" && c.method === "insert").length,
+    calls.filter((c) => c.table === "hire_orders" && c.method === "insert")
+      .length,
     0,
     "an invalid fee must reject before any insert",
   );
@@ -391,14 +513,22 @@ Deno.test("draft-manual creates the order with the numeric fee when a valid manu
     },
   });
   const res = await handle(
-    makeRequest({ headers: JWT, body: { action: "draft-manual", org_id: ORG, manual: { fee: 500 } } }),
+    makeRequest({
+      headers: JWT,
+      body: { action: "draft-manual", org_id: ORG, manual: { fee: 500 } },
+    }),
     deps,
   );
   assertEquals(res.status, 200);
   assertEquals((await res.json()).created, ["ho-fee-ok"]);
-  const insert = calls.find((c) => c.table === "hire_orders" && c.method === "insert");
+  const insert = calls.find((c) =>
+    c.table === "hire_orders" && c.method === "insert"
+  );
   assert(insert, "expected a hire_orders insert");
-  assertEquals((insert!.args[0] as { fee_amount: number | null }).fee_amount, 500);
+  assertEquals(
+    (insert!.args[0] as { fee_amount: number | null }).fee_amount,
+    500,
+  );
 });
 
 Deno.test("draft-manual creates the order with a null fee when no manual fee is given", async () => {
@@ -417,14 +547,26 @@ Deno.test("draft-manual creates the order with a null fee when no manual fee is 
     },
   });
   const res = await handle(
-    makeRequest({ headers: JWT, body: { action: "draft-manual", org_id: ORG, manual: { venue: "The Loft" } } }),
+    makeRequest({
+      headers: JWT,
+      body: {
+        action: "draft-manual",
+        org_id: ORG,
+        manual: { venue: "The Loft" },
+      },
+    }),
     deps,
   );
   assertEquals(res.status, 200);
   assertEquals((await res.json()).created, ["ho-fee-null"]);
-  const insert = calls.find((c) => c.table === "hire_orders" && c.method === "insert");
+  const insert = calls.find((c) =>
+    c.table === "hire_orders" && c.method === "insert"
+  );
   assert(insert, "expected a hire_orders insert");
-  assertEquals((insert!.args[0] as { fee_amount: number | null }).fee_amount, null);
+  assertEquals(
+    (insert!.args[0] as { fee_amount: number | null }).fee_amount,
+    null,
+  );
 });
 
 Deno.test("draft-manual for an artist/date pair that already has an active order returns created:[] with a skip indicator, no retry", async () => {
@@ -437,14 +579,20 @@ Deno.test("draft-manual for an artist/date pair that already has an active order
     authUser: { id: "u-admin" },
     tables: {
       org_memberships: { data: { role: "admin" } },
-      artists: { data: { id: "a-A", name: "Ann", email: "ann@x.de", cast_role: "Lead" } },
+      artists: {
+        data: { id: "a-A", name: "Ann", email: "ann@x.de", cast_role: "Lead" },
+      },
       show_dates: { data: SHOW_DATE_ROW },
       cities: { data: { name: "Berlin" } },
       hire_orders: [
         { when: { __write: false }, data: [] },
         {
           when: { __write: true },
-          error: { code: "23505", message: 'duplicate key value violates unique constraint "hire_orders_active_artist_date_uniq"' },
+          error: {
+            code: "23505",
+            message:
+              'duplicate key value violates unique constraint "hire_orders_active_artist_date_uniq"',
+          },
         },
       ],
       app_settings: [
@@ -457,18 +605,439 @@ Deno.test("draft-manual for an artist/date pair that already has an active order
   const res = await handle(
     makeRequest({
       headers: JWT,
-      body: { action: "draft-manual", org_id: ORG, artist_id: "a-A", show_date_id: SD, manual: {} },
+      body: {
+        action: "draft-manual",
+        org_id: ORG,
+        artist_id: "a-A",
+        show_date_id: SD,
+        manual: {},
+      },
     }),
     deps,
   );
   assertEquals(res.status, 200);
   const body = await res.json();
   assertEquals(body.created, [], "no order was created");
-  assertEquals(body.skipped, [{ reason: "exists" }], "reports a skip indicator, not a generic error");
-  assertEquals(body.error, undefined, "must not surface as an order_no_collision error");
+  assertEquals(
+    body.skipped,
+    [{ reason: "exists" }],
+    "reports a skip indicator, not a generic error",
+  );
+  assertEquals(
+    body.error,
+    undefined,
+    "must not surface as an order_no_collision error",
+  );
 
-  const inserts = calls.filter((c) => c.table === "hire_orders" && c.method === "insert");
-  assertEquals(inserts.length, 1, "must not retry the collision suffix for a real artist/date duplicate");
+  const inserts = calls.filter((c) =>
+    c.table === "hire_orders" && c.method === "insert"
+  );
+  assertEquals(
+    inserts.length,
+    1,
+    "must not retry the collision suffix for a real artist/date duplicate",
+  );
+});
+
+// ── draft-batch ─────────────────────────────────────────────────────────
+
+const BATCH_ARTIST_1 = "11111111-1111-4111-8111-111111111111";
+const BATCH_ARTIST_2 = "22222222-2222-4222-8222-222222222222";
+const BATCH_ARTIST_3 = "33333333-3333-4333-8333-333333333333";
+const BATCH_DATE_1 = "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa";
+const BATCH_DATE_2 = "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb";
+
+const BATCH_SHOW_DATE_ROW_1 = {
+  ...SHOW_DATE_ROW,
+  id: BATCH_DATE_1,
+};
+
+const SHOW_DATE_ROW_2 = {
+  ...SHOW_DATE_ROW,
+  id: BATCH_DATE_2,
+  city_id: "city-2",
+  date: "2026-06-14",
+  venue: "Venue B",
+};
+
+Deno.test("draft-batch creates one order per artist and snapshots all assigned dates in ascending order", async () => {
+  const { deps, calls } = makeFakeDeps({
+    authUser: { id: "u-admin" },
+    rpcs: {
+      create_hire_order_with_dates: { data: "ho-new", error: null },
+    },
+    tables: {
+      org_memberships: { data: { role: "admin" } },
+      artists: {
+        data: [
+          {
+            id: BATCH_ARTIST_1,
+            name: "Ann",
+            email: "ann@x.de",
+            cast_role: "Lead",
+          },
+          {
+            id: BATCH_ARTIST_2,
+            name: "Ben",
+            email: "ben@x.de",
+            cast_role: "Soloist",
+          },
+        ],
+      },
+      show_dates: { data: [BATCH_SHOW_DATE_ROW_1, SHOW_DATE_ROW_2] },
+      cities: {
+        data: [{ id: "city-1", name: "Berlin" }, {
+          id: "city-2",
+          name: "Hamburg",
+        }],
+      },
+      hire_orders: { data: [] },
+      app_settings: [
+        { when: { key: "hire_order_defaults" }, data: [DEFAULTS] },
+        { when: { key: "hire_order_numbering" }, data: [NUMBERING] },
+      ],
+    },
+  });
+
+  const res = await handle(
+    makeRequest({
+      headers: JWT,
+      body: {
+        action: "draft-batch",
+        org_id: ORG,
+        artists: [
+          {
+            artist_id: BATCH_ARTIST_1,
+            show_date_ids: [BATCH_DATE_1, BATCH_DATE_2],
+          },
+          {
+            artist_id: BATCH_ARTIST_2.toUpperCase(),
+            show_date_ids: [BATCH_DATE_1.toUpperCase()],
+          },
+        ],
+        manual: {
+          fee: 900,
+          currency: "EUR",
+          duration_min: 75,
+          sessions: ["20:00"],
+        },
+      },
+    }),
+    deps,
+  );
+
+  assertEquals(res.status, 200);
+  const body = await res.json();
+  assertEquals(body.created.length, 2);
+  assertEquals(body.skipped, []);
+  assertEquals(body.errors, []);
+
+  const aggregateCreates = calls.filter((c) =>
+    c.table === "rpc:create_hire_order_with_dates"
+  );
+  assertEquals(
+    aggregateCreates.length,
+    2,
+    "the transactional RPC creates each aggregate parent and its child rows",
+  );
+  const firstAggregate = aggregateCreates[0].args[0] as {
+    p_artist: string;
+    p_show_date_ids: string[];
+    p_data: Record<string, { value: unknown; source: string }>;
+  };
+  assertEquals(firstAggregate.p_artist, BATCH_ARTIST_1);
+  assertEquals(firstAggregate.p_show_date_ids, [BATCH_DATE_2, BATCH_DATE_1]);
+  assertEquals(firstAggregate.p_data.date.value, "2026-06-14");
+  assertEquals(firstAggregate.p_data.venue.value, "Venue B");
+  assertEquals(firstAggregate.p_data.city.value, "Hamburg");
+  assertEquals(
+    firstAggregate.p_data.fee.value,
+    900,
+    "the shared manual layer applies to every artist",
+  );
+  assertEquals(firstAggregate.p_data.engagement_dates.source, "showflow");
+  assertEquals(firstAggregate.p_data.engagement_dates.value, [
+    {
+      show_date_id: BATCH_DATE_2,
+      date: "2026-06-14",
+      venue: "Venue B",
+      city: "Hamburg",
+    },
+    {
+      show_date_id: BATCH_DATE_1,
+      date: "2026-06-15",
+      venue: "Venue A",
+      city: "Berlin",
+    },
+  ]);
+
+  assertEquals(
+    calls.some((c) => c.table === "hire_orders" && c.method === "insert"),
+    false,
+    "the edge must not create a parent outside the transactional RPC",
+  );
+  assertEquals(
+    calls.some((c) => c.table === "hire_order_dates" && c.method === "insert"),
+    false,
+    "the edge must not create child links outside the transactional RPC",
+  );
+
+  for (const table of ["artists", "show_dates"]) {
+    assert(
+      calls.some((call) =>
+        call.table === table && call.method === "eq" &&
+        call.args[0] === "org_id" && call.args[1] === ORG
+      ),
+      `${table} batch lookup must be scoped to the request organisation`,
+    );
+  }
+  const artistLookup = calls.find((call) =>
+    call.table === "artists" && call.method === "in" && call.args[0] === "id"
+  );
+  const dateLookup = calls.find((call) =>
+    call.table === "show_dates" && call.method === "in" &&
+    call.args[0] === "id"
+  );
+  assertEquals(artistLookup?.args[1], [BATCH_ARTIST_1, BATCH_ARTIST_2]);
+  assertEquals(dateLookup?.args[1], [BATCH_DATE_1, BATCH_DATE_2]);
+});
+
+Deno.test("draft-batch rejects empty input, duplicate artists, and artists without dates", async () => {
+  for (
+    const [artists, error] of [
+      [[], "artists required"],
+      [[{ artist_id: BATCH_ARTIST_1, show_date_ids: [BATCH_DATE_1] }, {
+        artist_id: BATCH_ARTIST_1,
+        show_date_ids: [BATCH_DATE_2],
+      }], "duplicate_artist_id"],
+      [
+        [{ artist_id: BATCH_ARTIST_1, show_date_ids: [] }],
+        "show_date_ids required",
+      ],
+    ] as const
+  ) {
+    const { deps } = makeFakeDeps({
+      authUser: { id: "u-admin" },
+      tables: { org_memberships: { data: { role: "admin" } } },
+    });
+    const res = await handle(
+      makeRequest({
+        headers: JWT,
+        body: { action: "draft-batch", org_id: ORG, artists, manual: {} },
+      }),
+      deps,
+    );
+    assertEquals(res.status, 400);
+    assertEquals((await res.json()).error, error);
+  }
+});
+
+Deno.test("draft-batch rejects malformed artist and show-date UUIDs before querying", async () => {
+  for (
+    const [artists, error] of [
+      [
+        [{ artist_id: "not-a-uuid", show_date_ids: [BATCH_DATE_1] }],
+        "invalid_artist_id",
+      ],
+      [
+        [{ artist_id: BATCH_ARTIST_1, show_date_ids: ["not-a-uuid"] }],
+        "invalid_show_date_id",
+      ],
+    ] as const
+  ) {
+    const { deps, calls } = makeFakeDeps({
+      authUser: { id: "u-admin" },
+      tables: { org_memberships: { data: { role: "admin" } } },
+    });
+    const response = await handle(
+      makeRequest({
+        headers: JWT,
+        body: { action: "draft-batch", org_id: ORG, artists, manual: {} },
+      }),
+      deps,
+    );
+
+    assertEquals(response.status, 400);
+    assertEquals((await response.json()).error, error);
+    assertEquals(
+      calls.some((call) =>
+        call.table === "artists" || call.table === "show_dates"
+      ),
+      false,
+      "malformed UUIDs must be rejected before batch lookups",
+    );
+  }
+});
+
+Deno.test("draft-batch canonicalizes UUIDs before duplicate artist and date detection", async () => {
+  for (
+    const [artists, error] of [
+      [[
+        { artist_id: BATCH_ARTIST_1, show_date_ids: [BATCH_DATE_1] },
+        {
+          artist_id: BATCH_ARTIST_1.toUpperCase(),
+          show_date_ids: [BATCH_DATE_2],
+        },
+      ], "duplicate_artist_id"],
+      [[{
+        artist_id: BATCH_ARTIST_1,
+        show_date_ids: [BATCH_DATE_1, BATCH_DATE_1.toUpperCase()],
+      }], "duplicate_show_date_id"],
+    ] as const
+  ) {
+    const { deps } = makeFakeDeps({
+      authUser: { id: "u-admin" },
+      tables: { org_memberships: { data: { role: "admin" } } },
+    });
+    const response = await handle(
+      makeRequest({
+        headers: JWT,
+        body: { action: "draft-batch", org_id: ORG, artists, manual: {} },
+      }),
+      deps,
+    );
+
+    assertEquals(response.status, 400);
+    assertEquals((await response.json()).error, error);
+  }
+});
+
+Deno.test("draft-batch keeps artist outcomes independent when one referenced artist is missing", async () => {
+  const { deps } = makeFakeDeps({
+    authUser: { id: "u-admin" },
+    rpcs: {
+      create_hire_order_with_dates: { data: "ho-2", error: null },
+    },
+    tables: {
+      org_memberships: { data: { role: "admin" } },
+      artists: {
+        data: [{
+          id: BATCH_ARTIST_2,
+          name: "Ben",
+          email: "ben@x.de",
+          cast_role: "Soloist",
+        }],
+      },
+      show_dates: { data: [BATCH_SHOW_DATE_ROW_1] },
+      cities: { data: [{ id: "city-1", name: "Berlin" }] },
+      hire_orders: [
+        { when: { __write: false }, data: [] },
+        { when: { __write: true }, data: { id: "ho-2" } },
+      ],
+      hire_order_dates: { data: null },
+      app_settings: [
+        { when: { key: "hire_order_defaults" }, data: [DEFAULTS] },
+        { when: { key: "hire_order_numbering" }, data: [NUMBERING] },
+      ],
+    },
+  });
+
+  const res = await handle(
+    makeRequest({
+      headers: JWT,
+      body: {
+        action: "draft-batch",
+        org_id: ORG,
+        artists: [
+          { artist_id: BATCH_ARTIST_3, show_date_ids: [BATCH_DATE_1] },
+          { artist_id: BATCH_ARTIST_2, show_date_ids: [BATCH_DATE_1] },
+        ],
+        manual: { fee: 900, currency: "EUR" },
+      },
+    }),
+    deps,
+  );
+
+  assertEquals(res.status, 200);
+  assertEquals(await res.json(), {
+    created: ["ho-2"],
+    skipped: [],
+    errors: [{ artist_id: BATCH_ARTIST_3, reason: "artist_not_found" }],
+  });
+});
+
+Deno.test("draft-batch continues after one transactional aggregate creation fails", async () => {
+  const { deps } = makeFakeDeps({
+    authUser: { id: "u-admin" },
+    rpcs: {
+      create_hire_order_with_dates: { data: "ho-2", error: null },
+    },
+    tables: {
+      org_memberships: { data: { role: "admin" } },
+      artists: {
+        data: [
+          {
+            id: BATCH_ARTIST_1,
+            name: "Ann",
+            email: "ann@x.de",
+            cast_role: "Lead",
+          },
+          {
+            id: BATCH_ARTIST_2,
+            name: "Ben",
+            email: "ben@x.de",
+            cast_role: "Soloist",
+          },
+        ],
+      },
+      show_dates: { data: [BATCH_SHOW_DATE_ROW_1] },
+      cities: { data: [{ id: "city-1", name: "Berlin" }] },
+      hire_orders: [
+        { when: { __write: false }, data: [] },
+        { when: { __write: true }, data: { id: "ho-2" } },
+      ],
+      hire_order_dates: { data: null },
+      app_settings: [
+        { when: { key: "hire_order_defaults" }, data: [DEFAULTS] },
+        { when: { key: "hire_order_numbering" }, data: [NUMBERING] },
+      ],
+    },
+  });
+  const admin = deps.admin as unknown as {
+    rpc: (
+      name: string,
+      params?: unknown,
+    ) => Promise<{ data: unknown; error: unknown }>;
+  };
+  const originalRpc = admin.rpc.bind(admin);
+  admin.rpc = (name, params) => {
+    if (
+      name === "create_hire_order_with_dates" &&
+      (params as { p_artist?: string })?.p_artist === BATCH_ARTIST_1
+    ) {
+      return Promise.resolve({
+        data: null,
+        error: { message: "aggregate creation failed" },
+      });
+    }
+    return originalRpc(name, params);
+  };
+
+  const response = await handle(
+    makeRequest({
+      headers: JWT,
+      body: {
+        action: "draft-batch",
+        org_id: ORG,
+        artists: [
+          { artist_id: BATCH_ARTIST_1, show_date_ids: [BATCH_DATE_1] },
+          { artist_id: BATCH_ARTIST_2, show_date_ids: [BATCH_DATE_1] },
+        ],
+        manual: { fee: 900, currency: "EUR" },
+      },
+    }),
+    deps,
+  );
+
+  assertEquals(response.status, 200);
+  assertEquals(await response.json(), {
+    created: ["ho-2"],
+    skipped: [],
+    errors: [{
+      artist_id: BATCH_ARTIST_1,
+      reason: "aggregate_insert_failed",
+    }],
+  });
 });
 
 // ── issue ──────────────────────────────────────────────────────────────
@@ -488,6 +1057,13 @@ function issuableOrder(overrides: Record<string, unknown> = {}) {
       date: { value: "2026-06-15", source: "showflow" },
       venue: { value: "Colosseum", source: "showflow" },
       city: { value: "Berlin", source: "showflow" },
+      engagement_dates: {
+        value: [
+          { show_date_id: "sd-1", date: "2026-06-15", venue: "Colosseum", city: "Berlin" },
+          { show_date_id: "sd-2", date: "2026-06-16", venue: "Huxleys", city: "Berlin" },
+        ],
+        source: "showflow",
+      },
       fee: { value: 500, source: "showflow" },
       currency: { value: "EUR", source: "default" },
     },
@@ -513,25 +1089,48 @@ Deno.test("issue renders, uploads to hire-orders/<org>/<order_no>.pdf, stamps is
     },
   });
 
-  const res = await handle(makeRequest({ headers: JWT, body: { action: "issue", org_id: ORG, order_ids: ["o-1"] } }), deps);
+  const res = await handle(
+    makeRequest({
+      headers: JWT,
+      body: { action: "issue", org_id: ORG, order_ids: ["o-1"] },
+    }),
+    deps,
+  );
   assertEquals(res.status, 200);
   const body = await res.json();
   assertEquals(body.issued, ["o-1"]);
   assertEquals(body.failed, []);
 
   // uploaded to the org-scoped object path in the hire-orders bucket
-  const upload = calls.find((c) => c.table === "storage:hire-orders" && c.method === "upload");
+  const upload = calls.find((c) =>
+    c.table === "storage:hire-orders" && c.method === "upload"
+  );
   assert(upload, "expected a storage upload");
   assertEquals(upload!.args[0], "org-1/HO-1.pdf");
 
   // stamped issued_at + pdf_path on the ready->issued transition
   const issuedUpdate = calls.find(
-    (c) => c.table === "hire_orders" && c.method === "update" && (c.args[0] as { status?: string }).status === "issued",
+    (c) =>
+      c.table === "hire_orders" && c.method === "update" &&
+      (c.args[0] as { status?: string }).status === "issued",
   );
   assert(issuedUpdate, "expected an update to status issued");
-  const upd = issuedUpdate!.args[0] as { issued_at?: string; pdf_path?: string };
+  const upd = issuedUpdate!.args[0] as {
+    issued_at?: string;
+    pdf_path?: string;
+  };
   assert(upd.issued_at, "issued_at stamped");
   assertEquals(upd.pdf_path, "org-1/HO-1.pdf");
+  const sentUpdate = calls.find(
+    (c) =>
+      c.table === "hire_orders" && c.method === "update" &&
+      "last_sent_at" in (c.args[0] as object),
+  );
+  assert(sentUpdate, "successful initial delivery stamps last_sent_at");
+  assertEquals(
+    (sentUpdate!.args[0] as { last_sent_at: string }).last_sent_at,
+    "2026-06-01T12:00:00.000Z",
+  );
 
   // email with the PDF attachment + the full template contract (snake_case, 8 keys)
   const email = invokeCalls.find((c) => c.name === "send-transactional-email");
@@ -554,15 +1153,382 @@ Deno.test("issue renders, uploads to hire-orders/<org>/<order_no>.pdf, stamps is
   assertEquals(td.countersign_mode, "manual"); // org default (no hire_order_countersign seeded)
   // Durable auth-gated detail-page link (re-signs on demand), NOT a 3600s signed URL,
   // and keyed by the order UUID because the route is /hire-orders/:id.
-  assert(String(td.download_url).includes("/hire-orders/o-1"), `download_url was ${td.download_url}`);
+  assert(
+    String(td.download_url).includes("/hire-orders/o-1"),
+    `download_url was ${td.download_url}`,
+  );
   // date_label is a timezone-safe human label, not the raw ISO string.
-  assert(td.date_label !== "2026-06-15" && String(td.date_label).includes("2026"), `date_label was ${td.date_label}`);
+  assert(
+    td.date_label !== "2026-06-15" && String(td.date_label).includes("2026"),
+    `date_label was ${td.date_label}`,
+  );
+  assert(String(td.engagement_dates_label).includes("Jun 15, 2026"));
+  assert(String(td.engagement_dates_label).includes("Jun 16, 2026"));
+  assert(String(td.engagement_dates_label).includes("Huxleys"));
 
   // artist in-app notification (artist has a linked user_id)
-  const notif = calls.find((c) => c.table === "notifications" && c.method === "insert");
+  const notif = calls.find((c) =>
+    c.table === "notifications" && c.method === "insert"
+  );
   assert(notif, "expected an artist notification");
   const rows = notif!.args[0] as Array<{ type: string; user_id: string }>;
-  assert(rows.some((r) => r.type === "hire_order_issued" && r.user_id === "u-artist"));
+  assert(
+    rows.some((r) =>
+      r.type === "hire_order_issued" && r.user_id === "u-artist"
+    ),
+  );
+});
+
+Deno.test("issue keeps the order issued but does not stamp ambiguous email delivery", async () => {
+  for (const data of [null, {}]) {
+    const { deps, calls } = makeFakeDeps({
+      authUser: { id: "u-admin" },
+      emailResult: { data, error: null },
+      tables: {
+        org_memberships: { data: { role: "admin" } },
+        hire_orders: [
+          { when: { __write: false }, data: issuableOrder() },
+          { when: { __write: true }, data: null },
+        ],
+        artists: { data: { user_id: "u-artist" } },
+        app_settings: [
+          { when: { key: "hire_order_letterhead" }, data: [LETTERHEAD] },
+          { when: { key: "hire_order_terms" }, data: [TERMS_FILLED] },
+          { when: { key: "hire_order_defaults" }, data: [DEFAULTS] },
+        ],
+      },
+    });
+
+    const response = await handle(
+      makeRequest({
+        headers: JWT,
+        body: { action: "issue", org_id: ORG, order_ids: ["o-1"] },
+      }),
+      deps,
+    );
+
+    assertEquals(response.status, 200);
+    assertEquals(await response.json(), { issued: ["o-1"], failed: [] });
+    assert(
+      calls.some((call) =>
+        call.table === "hire_orders" && call.method === "update" &&
+        (call.args[0] as { status?: string }).status === "issued"
+      ),
+      "best-effort email non-delivery must preserve the issued transition",
+    );
+    assertEquals(
+      calls.some((call) =>
+        call.table === "hire_orders" && call.method === "update" &&
+        "last_sent_at" in (call.args[0] as object)
+      ),
+      false,
+      "ambiguous delivery must not stamp last_sent_at",
+    );
+  }
+});
+
+// ── resend ──────────────────────────────────────────────────────────────
+
+function installStorageDownload(
+  deps: ReturnType<typeof makeFakeDeps>["deps"],
+  result: { data: Blob | null; error: unknown },
+): string[] {
+  const downloadedPaths: string[] = [];
+  const storage = deps.admin.storage as unknown as {
+    from: (bucket: string) => Record<string, unknown>;
+  };
+  const originalFrom = storage.from.bind(storage);
+  storage.from = (bucket: string) => ({
+    ...originalFrom(bucket),
+    download: (path: string) => {
+      downloadedPaths.push(path);
+      return Promise.resolve(result);
+    },
+  });
+  return downloadedPaths;
+}
+
+Deno.test("resend reuses the stored document and stamps last_sent_at only after the provider accepts", async () => {
+  const { deps, calls, invokeCalls } = makeFakeDeps({
+    authUser: { id: "u-admin" },
+    now: new Date("2026-06-01T12:00:00.000Z"),
+    emailResult: { data: { success: true }, error: null },
+    tables: {
+      org_memberships: { data: { role: "admin" } },
+      hire_orders: [
+        {
+          when: { __write: false },
+          data: issuableOrder({
+            status: "countersigned",
+            pdf_path: `${ORG}/HO-1.pdf`,
+            signed_pdf_path: `${ORG}/HO-1-signed.pdf`,
+            countersign_mode: "electronic",
+            issue_snapshot: { countersign_mode: "electronic" },
+          }),
+        },
+        { when: { __write: true }, data: null },
+      ],
+    },
+  });
+  const downloadedPaths = installStorageDownload(deps, {
+    data: new Blob([new Uint8Array([0x25, 0x50, 0x44, 0x46])], {
+      type: "application/pdf",
+    }),
+    error: null,
+  });
+  deps.renderHireOrderPdf = () => {
+    throw new Error("resend must not render");
+  };
+
+  const response = await handle(
+    makeRequest({
+      headers: JWT,
+      body: { action: "resend", org_id: ORG, order_id: "o-1" },
+    }),
+    deps,
+  );
+
+  assertEquals(response.status, 200);
+  assertEquals(await response.json(), { sent_at: "2026-06-01T12:00:00.000Z" });
+  assertEquals(
+    downloadedPaths,
+    [`${ORG}/HO-1-signed.pdf`],
+    "resend must prefer the immutable signed PDF when one exists",
+  );
+  const email = invokeCalls.find((c) => c.name === "send-transactional-email");
+  assert(email, "stored PDF is delivered through the existing email helper");
+  assertEquals(
+    (email!.body as { idempotency_key: string }).idempotency_key,
+    "hire-order-resend-o-1-2026-06-01T12:00:00.000Z",
+  );
+  assertEquals(
+    (email!.body as { attachments: Array<{ filename: string }> }).attachments[0]
+      .filename,
+    "HO-1-signed.pdf",
+  );
+  const templateData = (email!.body as {
+    templateData: Record<string, unknown>;
+  }).templateData;
+  assertEquals(templateData.is_fully_signed, true);
+  assert(String(templateData.engagement_dates_label).includes("Jun 16, 2026"));
+  const sentUpdate = calls.find(
+    (c) =>
+      c.table === "hire_orders" && c.method === "update" &&
+      "last_sent_at" in (c.args[0] as object),
+  );
+  assert(sentUpdate, "provider acceptance stamps the order");
+  assertEquals(
+    (sentUpdate!.args[0] as { last_sent_at: string }).last_sent_at,
+    "2026-06-01T12:00:00.000Z",
+  );
+});
+
+Deno.test("resend preserves the issued electronic CTA while manual remains manual", async () => {
+  for (
+    const [issueSnapshot, storedMode, expectedMode, expectedSigningUrl] of [
+      [
+        { countersign_mode: "electronic" },
+        "manual",
+        "electronic",
+        "https://app.showflow.pro/hire-orders/o-1",
+      ],
+      [{ countersign_mode: "manual" }, "electronic", "manual", undefined],
+      [
+        null,
+        "electronic",
+        "electronic",
+        "https://app.showflow.pro/hire-orders/o-1",
+      ],
+    ] as const
+  ) {
+    const { deps, invokeCalls } = makeFakeDeps({
+      authUser: { id: "u-admin" },
+      emailResult: { data: { success: true }, error: null },
+      tables: {
+        org_memberships: { data: { role: "admin" } },
+        hire_orders: [
+          {
+            when: { __write: false },
+            data: issuableOrder({
+              status: "issued",
+              pdf_path: `${ORG}/HO-1.pdf`,
+              signed_pdf_path: null,
+              issue_snapshot: issueSnapshot,
+              countersign_mode: storedMode,
+            }),
+          },
+          { when: { __write: true }, data: null },
+        ],
+      },
+    });
+    installStorageDownload(deps, {
+      data: new Blob([new Uint8Array([0x25, 0x50, 0x44, 0x46])], {
+        type: "application/pdf",
+      }),
+      error: null,
+    });
+
+    const response = await handle(
+      makeRequest({
+        headers: JWT,
+        body: { action: "resend", org_id: ORG, order_id: "o-1" },
+      }),
+      deps,
+    );
+
+    assertEquals(response.status, 200);
+    const email = invokeCalls.find((call) =>
+      call.name === "send-transactional-email"
+    );
+    assert(email, "resend should use the issued email template");
+    const templateData = (email!.body as {
+      templateData: {
+        countersign_mode: string;
+        signing_url?: string;
+      };
+    }).templateData;
+    assertEquals(templateData.countersign_mode, expectedMode);
+    assertEquals(templateData.signing_url, expectedSigningUrl);
+  }
+});
+
+Deno.test("resend provider failure leaves last_sent_at unchanged", async () => {
+  const { deps, calls } = makeFakeDeps({
+    authUser: { id: "u-admin" },
+    emailResult: { data: null, error: { message: "provider down" } },
+    tables: {
+      org_memberships: { data: { role: "admin" } },
+      hire_orders: [
+        {
+          when: { __write: false },
+          data: issuableOrder({
+            status: "issued",
+            pdf_path: `${ORG}/HO-1.pdf`,
+            signed_pdf_path: null,
+          }),
+        },
+        { when: { __write: true }, data: null },
+      ],
+    },
+  });
+  installStorageDownload(deps, {
+    data: new Blob([new Uint8Array([0x25, 0x50, 0x44, 0x46])], {
+      type: "application/pdf",
+    }),
+    error: null,
+  });
+
+  const response = await handle(
+    makeRequest({
+      headers: JWT,
+      body: { action: "resend", org_id: ORG, order_id: "o-1" },
+    }),
+    deps,
+  );
+
+  assertEquals(response.status, 502);
+  assertEquals((await response.json()).error, "email_failed");
+  assertEquals(
+    calls.some((c) =>
+      c.table === "hire_orders" && c.method === "update" &&
+      "last_sent_at" in (c.args[0] as object)
+    ),
+    false,
+  );
+});
+
+Deno.test("resend suppressed delivery leaves last_sent_at unchanged", async () => {
+  const { deps, calls } = makeFakeDeps({
+    authUser: { id: "u-admin" },
+    emailResult: {
+      data: { success: false, reason: "email_suppressed" },
+      error: null,
+    },
+    tables: {
+      org_memberships: { data: { role: "admin" } },
+      hire_orders: [
+        {
+          when: { __write: false },
+          data: issuableOrder({
+            status: "issued",
+            pdf_path: `${ORG}/HO-1.pdf`,
+            signed_pdf_path: null,
+          }),
+        },
+        { when: { __write: true }, data: null },
+      ],
+    },
+  });
+  installStorageDownload(deps, {
+    data: new Blob([new Uint8Array([0x25, 0x50, 0x44, 0x46])], {
+      type: "application/pdf",
+    }),
+    error: null,
+  });
+
+  const response = await handle(
+    makeRequest({
+      headers: JWT,
+      body: { action: "resend", org_id: ORG, order_id: "o-1" },
+    }),
+    deps,
+  );
+
+  assertEquals(response.status, 502);
+  assertEquals(
+    calls.some((c) =>
+      c.table === "hire_orders" && c.method === "update" &&
+      "last_sent_at" in (c.args[0] as object)
+    ),
+    false,
+  );
+});
+
+Deno.test("resend rejects null and empty provider data without stamping last_sent_at", async () => {
+  for (const data of [null, {}]) {
+    const { deps, calls } = makeFakeDeps({
+      authUser: { id: "u-admin" },
+      emailResult: { data, error: null },
+      tables: {
+        org_memberships: { data: { role: "admin" } },
+        hire_orders: [
+          {
+            when: { __write: false },
+            data: issuableOrder({
+              status: "issued",
+              pdf_path: `${ORG}/HO-1.pdf`,
+              signed_pdf_path: null,
+            }),
+          },
+          { when: { __write: true }, data: null },
+        ],
+      },
+    });
+    installStorageDownload(deps, {
+      data: new Blob([new Uint8Array([0x25, 0x50, 0x44, 0x46])], {
+        type: "application/pdf",
+      }),
+      error: null,
+    });
+
+    const response = await handle(
+      makeRequest({
+        headers: JWT,
+        body: { action: "resend", org_id: ORG, order_id: "o-1" },
+      }),
+      deps,
+    );
+
+    assertEquals(response.status, 502);
+    assertEquals((await response.json()).error, "email_failed");
+    assertEquals(
+      calls.some((call) =>
+        call.table === "hire_orders" && call.method === "update" &&
+        "last_sent_at" in (call.args[0] as object)
+      ),
+      false,
+    );
+  }
 });
 
 Deno.test("issue refuses orders failing the ready gate and reports issue codes", async () => {
@@ -571,7 +1537,15 @@ Deno.test("issue refuses orders failing the ready gate and reports issue codes",
     tables: {
       org_memberships: { data: { role: "admin" } },
       hire_orders: [
-        { when: { __write: false }, data: issuableOrder({ data: { recipient_email: { value: "ann@x.de", source: "showflow" }, date: { value: "2026-06-15", source: "showflow" } } }) },
+        {
+          when: { __write: false },
+          data: issuableOrder({
+            data: {
+              recipient_email: { value: "ann@x.de", source: "showflow" },
+              date: { value: "2026-06-15", source: "showflow" },
+            },
+          }),
+        },
         { when: { __write: true }, data: null },
       ],
       app_settings: [
@@ -582,13 +1556,22 @@ Deno.test("issue refuses orders failing the ready gate and reports issue codes",
     },
   });
 
-  const res = await handle(makeRequest({ headers: JWT, body: { action: "issue", org_id: ORG, order_ids: ["o-1"] } }), deps);
+  const res = await handle(
+    makeRequest({
+      headers: JWT,
+      body: { action: "issue", org_id: ORG, order_ids: ["o-1"] },
+    }),
+    deps,
+  );
   const body = await res.json();
   assertEquals(body.issued, []);
   assertEquals(body.failed[0].order_id, "o-1");
   assert(body.failed[0].issues.includes("missing_fee"), "reports missing_fee");
   // gate failed before rendering
-  assertEquals(calls.filter((c) => c.table === "storage:hire-orders").length, 0);
+  assertEquals(
+    calls.filter((c) => c.table === "storage:hire-orders").length,
+    0,
+  );
 });
 
 Deno.test("issue refuses an order whose terms variant is empty with missing_terms", async () => {
@@ -608,11 +1591,20 @@ Deno.test("issue refuses an order whose terms variant is empty with missing_term
     },
   });
 
-  const res = await handle(makeRequest({ headers: JWT, body: { action: "issue", org_id: ORG, order_ids: ["o-1"] } }), deps);
+  const res = await handle(
+    makeRequest({
+      headers: JWT,
+      body: { action: "issue", org_id: ORG, order_ids: ["o-1"] },
+    }),
+    deps,
+  );
   const body = await res.json();
   assertEquals(body.issued, []);
   assertEquals(body.failed[0].order_id, "o-1");
-  assert(body.failed[0].issues.includes("missing_terms"), "reports missing_terms");
+  assert(
+    body.failed[0].issues.includes("missing_terms"),
+    "reports missing_terms",
+  );
 });
 
 Deno.test("issue is idempotent per order (already issued -> failed with already_issued)", async () => {
@@ -620,7 +1612,10 @@ Deno.test("issue is idempotent per order (already issued -> failed with already_
     authUser: { id: "u-admin" },
     tables: {
       org_memberships: { data: { role: "admin" } },
-      hire_orders: [{ when: { __write: false }, data: issuableOrder({ status: "issued" }) }],
+      hire_orders: [{
+        when: { __write: false },
+        data: issuableOrder({ status: "issued" }),
+      }],
       app_settings: [
         { when: { key: "hire_order_letterhead" }, data: [LETTERHEAD] },
         { when: { key: "hire_order_terms" }, data: [TERMS_FILLED] },
@@ -629,7 +1624,13 @@ Deno.test("issue is idempotent per order (already issued -> failed with already_
     },
   });
 
-  const res = await handle(makeRequest({ headers: JWT, body: { action: "issue", org_id: ORG, order_ids: ["o-1"] } }), deps);
+  const res = await handle(
+    makeRequest({
+      headers: JWT,
+      body: { action: "issue", org_id: ORG, order_ids: ["o-1"] },
+    }),
+    deps,
+  );
   const body = await res.json();
   assertEquals(body.issued, []);
   assert(body.failed[0].issues.includes("already_issued"));
@@ -641,21 +1642,50 @@ Deno.test("issue merges the order's agent override over the org letterhead", asy
     tables: {
       org_memberships: { data: { role: "admin" } },
       hire_orders: [
-        { when: { __write: false }, data: issuableOrder({ agent_name: "Solo Agent", agent_email: "solo@x.com" }) },
+        {
+          when: { __write: false },
+          data: issuableOrder({
+            agent_name: "Solo Agent",
+            agent_email: "solo@x.com",
+          }),
+        },
         { when: { __write: true }, data: null },
       ],
       artists: { data: { user_id: "u-artist" } },
       app_settings: [
-        { when: { key: "hire_order_letterhead" }, data: [{ org_id: ORG, value: { legal_name: "Nord GmbH", address_lines: [], registration_line: "", agent_name: "Org Agent", agent_email: "org@x.com" } }] },
+        {
+          when: { key: "hire_order_letterhead" },
+          data: [{
+            org_id: ORG,
+            value: {
+              legal_name: "Nord GmbH",
+              address_lines: [],
+              registration_line: "",
+              agent_name: "Org Agent",
+              agent_email: "org@x.com",
+            },
+          }],
+        },
         { when: { key: "hire_order_terms" }, data: [TERMS_FILLED] },
         { when: { key: "hire_order_defaults" }, data: [DEFAULTS] },
       ],
     },
   });
-  let captured: { letterhead: { agent_name?: string; agent_email?: string } } | null = null;
-  deps.renderHireOrderPdf = (a) => { captured = a as unknown as typeof captured; return Promise.resolve(new Uint8Array([0x25, 0x50, 0x44, 0x46])); };
+  let captured:
+    | { letterhead: { agent_name?: string; agent_email?: string } }
+    | null = null;
+  deps.renderHireOrderPdf = (a) => {
+    captured = a as unknown as typeof captured;
+    return Promise.resolve(new Uint8Array([0x25, 0x50, 0x44, 0x46]));
+  };
 
-  const res = await handle(makeRequest({ headers: JWT, body: { action: "issue", org_id: ORG, order_ids: ["o-1"] } }), deps);
+  const res = await handle(
+    makeRequest({
+      headers: JWT,
+      body: { action: "issue", org_id: ORG, order_ids: ["o-1"] },
+    }),
+    deps,
+  );
   assertEquals(res.status, 200);
   assertEquals(captured!.letterhead.agent_name, "Solo Agent");
   assertEquals(captured!.letterhead.agent_email, "solo@x.com");
@@ -667,21 +1697,47 @@ Deno.test("issue inherits the letterhead agent when the order override is null",
     tables: {
       org_memberships: { data: { role: "admin" } },
       hire_orders: [
-        { when: { __write: false }, data: issuableOrder({ agent_name: null, agent_email: null }) },
+        {
+          when: { __write: false },
+          data: issuableOrder({ agent_name: null, agent_email: null }),
+        },
         { when: { __write: true }, data: null },
       ],
       artists: { data: { user_id: "u-artist" } },
       app_settings: [
-        { when: { key: "hire_order_letterhead" }, data: [{ org_id: ORG, value: { legal_name: "Nord GmbH", address_lines: [], registration_line: "", agent_name: "Org Agent", agent_email: "org@x.com" } }] },
+        {
+          when: { key: "hire_order_letterhead" },
+          data: [{
+            org_id: ORG,
+            value: {
+              legal_name: "Nord GmbH",
+              address_lines: [],
+              registration_line: "",
+              agent_name: "Org Agent",
+              agent_email: "org@x.com",
+            },
+          }],
+        },
         { when: { key: "hire_order_terms" }, data: [TERMS_FILLED] },
         { when: { key: "hire_order_defaults" }, data: [DEFAULTS] },
       ],
     },
   });
-  let captured: { letterhead: { agent_name?: string; agent_email?: string } } | null = null;
-  deps.renderHireOrderPdf = (a) => { captured = a as unknown as typeof captured; return Promise.resolve(new Uint8Array([0x25, 0x50, 0x44, 0x46])); };
+  let captured:
+    | { letterhead: { agent_name?: string; agent_email?: string } }
+    | null = null;
+  deps.renderHireOrderPdf = (a) => {
+    captured = a as unknown as typeof captured;
+    return Promise.resolve(new Uint8Array([0x25, 0x50, 0x44, 0x46]));
+  };
 
-  const res = await handle(makeRequest({ headers: JWT, body: { action: "issue", org_id: ORG, order_ids: ["o-1"] } }), deps);
+  const res = await handle(
+    makeRequest({
+      headers: JWT,
+      body: { action: "issue", org_id: ORG, order_ids: ["o-1"] },
+    }),
+    deps,
+  );
   assertEquals(res.status, 200);
   assertEquals(captured!.letterhead.agent_name, "Org Agent");
   assertEquals(captured!.letterhead.agent_email, "org@x.com");
@@ -704,13 +1760,25 @@ Deno.test("issue stamps issued_pdf_sha256 on the issued update", async () => {
       ],
     },
   });
-  const res = await handle(makeRequest({ headers: JWT, body: { action: "issue", org_id: ORG, order_ids: ["o-1"] } }), deps);
+  const res = await handle(
+    makeRequest({
+      headers: JWT,
+      body: { action: "issue", org_id: ORG, order_ids: ["o-1"] },
+    }),
+    deps,
+  );
   assertEquals(res.status, 200);
   const issuedUpdate = calls.find(
-    (c) => c.table === "hire_orders" && c.method === "update" && (c.args[0] as { status?: string }).status === "issued",
+    (c) =>
+      c.table === "hire_orders" && c.method === "update" &&
+      (c.args[0] as { status?: string }).status === "issued",
   );
   const upd = issuedUpdate!.args[0] as { issued_pdf_sha256?: string };
-  assert(typeof upd.issued_pdf_sha256 === "string" && /^[0-9a-f]{64}$/.test(upd.issued_pdf_sha256), "64-char hex hash stamped");
+  assert(
+    typeof upd.issued_pdf_sha256 === "string" &&
+      /^[0-9a-f]{64}$/.test(upd.issued_pdf_sha256),
+    "64-char hex hash stamped",
+  );
 });
 
 Deno.test("issue snapshots the resolved letterhead + terms on the issued update", async () => {
@@ -733,22 +1801,49 @@ Deno.test("issue snapshots the resolved letterhead + terms on the issued update"
       ],
     },
   });
-  const res = await handle(makeRequest({ headers: JWT, body: { action: "issue", org_id: ORG, order_ids: ["o-1"] } }), deps);
+  const res = await handle(
+    makeRequest({
+      headers: JWT,
+      body: { action: "issue", org_id: ORG, order_ids: ["o-1"] },
+    }),
+    deps,
+  );
   assertEquals(res.status, 200);
 
   const issuedUpdate = calls.find(
-    (c) => c.table === "hire_orders" && c.method === "update" && (c.args[0] as { status?: string }).status === "issued",
+    (c) =>
+      c.table === "hire_orders" && c.method === "update" &&
+      (c.args[0] as { status?: string }).status === "issued",
   );
   assert(issuedUpdate, "expected the issued update");
   const snap = (issuedUpdate!.args[0] as {
-    issue_snapshot?: { letterhead?: { legal_name?: string }; terms?: Array<{ title: string }>; countersign_mode?: string };
+    issue_snapshot?: {
+      letterhead?: { legal_name?: string };
+      terms?: Array<{ title: string }>;
+      countersign_mode?: string;
+    };
   }).issue_snapshot;
   assert(snap, "the issued update writes issue_snapshot");
-  assertEquals(snap!.letterhead?.legal_name, "Nord GmbH", "snapshot carries the resolved letterhead");
-  assert(Array.isArray(snap!.terms) && snap!.terms.length > 0, "snapshot carries a non-empty terms array");
-  assertEquals(snap!.terms![0].title, "T", "snapshot terms are the resolved variant terms");
+  assertEquals(
+    snap!.letterhead?.legal_name,
+    "Nord GmbH",
+    "snapshot carries the resolved letterhead",
+  );
+  assert(
+    Array.isArray(snap!.terms) && snap!.terms.length > 0,
+    "snapshot carries a non-empty terms array",
+  );
+  assertEquals(
+    snap!.terms![0].title,
+    "T",
+    "snapshot terms are the resolved variant terms",
+  );
   // The snapshot also freezes the issue-time countersign mode (no setting -> manual default).
-  assertEquals(snap!.countersign_mode, "manual", "snapshot freezes the issue-time countersign mode");
+  assertEquals(
+    snap!.countersign_mode,
+    "manual",
+    "snapshot freezes the issue-time countersign mode",
+  );
 });
 
 Deno.test("issue freezes the countersign mode into issue_snapshot (electronic)", async () => {
@@ -768,18 +1863,35 @@ Deno.test("issue freezes the countersign mode into issue_snapshot (electronic)",
         { when: { key: "hire_order_letterhead" }, data: [LETTERHEAD] },
         { when: { key: "hire_order_terms" }, data: [TERMS_FILLED] },
         { when: { key: "hire_order_defaults" }, data: [DEFAULTS] },
-        { when: { key: "hire_order_countersign" }, data: [{ org_id: ORG, value: { mode: "electronic" } }] },
+        {
+          when: { key: "hire_order_countersign" },
+          data: [{ org_id: ORG, value: { mode: "electronic" } }],
+        },
       ],
     },
   });
-  const res = await handle(makeRequest({ headers: JWT, body: { action: "issue", org_id: ORG, order_ids: ["o-1"] } }), deps);
+  const res = await handle(
+    makeRequest({
+      headers: JWT,
+      body: { action: "issue", org_id: ORG, order_ids: ["o-1"] },
+    }),
+    deps,
+  );
   assertEquals(res.status, 200);
 
   const issuedUpdate = calls.find(
-    (c) => c.table === "hire_orders" && c.method === "update" && (c.args[0] as { status?: string }).status === "issued",
+    (c) =>
+      c.table === "hire_orders" && c.method === "update" &&
+      (c.args[0] as { status?: string }).status === "issued",
   );
-  const snap = (issuedUpdate!.args[0] as { issue_snapshot?: { countersign_mode?: string } }).issue_snapshot;
-  assertEquals(snap!.countersign_mode, "electronic", "snapshot freezes the electronic issue-time mode");
+  const snap = (issuedUpdate!.args[0] as {
+    issue_snapshot?: { countersign_mode?: string };
+  }).issue_snapshot;
+  assertEquals(
+    snap!.countersign_mode,
+    "electronic",
+    "snapshot freezes the electronic issue-time mode",
+  );
 });
 
 Deno.test("issue in electronic mode emails a signing_url pointing at the in-app order page", async () => {
@@ -796,31 +1908,53 @@ Deno.test("issue in electronic mode emails a signing_url pointing at the in-app 
         { when: { key: "hire_order_letterhead" }, data: [LETTERHEAD] },
         { when: { key: "hire_order_terms" }, data: [TERMS_FILLED] },
         { when: { key: "hire_order_defaults" }, data: [DEFAULTS] },
-        { when: { key: "hire_order_countersign" }, data: [{ org_id: ORG, value: { mode: "electronic" } }] },
+        {
+          when: { key: "hire_order_countersign" },
+          data: [{ org_id: ORG, value: { mode: "electronic" } }],
+        },
       ],
     },
   });
-  await handle(makeRequest({ headers: JWT, body: { action: "issue", org_id: ORG, order_ids: ["o-1"] } }), deps);
+  await handle(
+    makeRequest({
+      headers: JWT,
+      body: { action: "issue", org_id: ORG, order_ids: ["o-1"] },
+    }),
+    deps,
+  );
   const email = invokeCalls.find((c) => c.name === "send-transactional-email");
-  const td = (email!.body as { templateData: Record<string, unknown> }).templateData;
+  const td =
+    (email!.body as { templateData: Record<string, unknown> }).templateData;
   assertEquals(td.countersign_mode, "electronic");
-  assert(String(td.signing_url).includes("/hire-orders/o-1"), `signing_url was ${td.signing_url}`);
+  assert(
+    String(td.signing_url).includes("/hire-orders/o-1"),
+    `signing_url was ${td.signing_url}`,
+  );
 });
 
 // ── documenso countersign ────────────────────────────────────────────────
 
 /** A fake fetch that plays back the create -> recipient -> distribute sequence
  *  createAndSendEnvelope issues, keyed by URL suffix (order-independent). */
-function fakeDocumensoFetch(): { fetchImpl: typeof fetch; calls: Array<{ url: string; init?: RequestInit }> } {
+function fakeDocumensoFetch(): {
+  fetchImpl: typeof fetch;
+  calls: Array<{ url: string; init?: RequestInit }>;
+} {
   const calls: Array<{ url: string; init?: RequestInit }> = [];
   const fetchImpl = ((url: string | URL | Request, init?: RequestInit) => {
     const u = String(url);
     calls.push({ url: u, init });
     if (u.endsWith("/envelope/create")) {
-      return Promise.resolve(new Response(JSON.stringify({ id: "envelope_1" }), { status: 200 }));
+      return Promise.resolve(
+        new Response(JSON.stringify({ id: "envelope_1" }), { status: 200 }),
+      );
     }
     if (u.endsWith("/recipient/create-many")) {
-      return Promise.resolve(new Response(JSON.stringify({ data: [{ token: "sign-tok" }] }), { status: 200 }));
+      return Promise.resolve(
+        new Response(JSON.stringify({ data: [{ token: "sign-tok" }] }), {
+          status: 200,
+        }),
+      );
     }
     if (u.endsWith("/distribute")) {
       return Promise.resolve(new Response("{}", { status: 200 }));
@@ -837,7 +1971,10 @@ Deno.test("issue sends a Documenso envelope when countersign mode is documenso: 
     fetchImpl,
     // The base URL is OPERATOR-controlled only, via this edge secret — never the
     // per-org setting (see the ignored `base_url` below, a different host entirely).
-    envVars: { DOCUMENSO_API_TOKEN: "tok-secret", DOCUMENSO_BASE_URL: "https://documenso.test" },
+    envVars: {
+      DOCUMENSO_API_TOKEN: "tok-secret",
+      DOCUMENSO_BASE_URL: "https://documenso.test",
+    },
     tables: {
       org_memberships: { data: { role: "admin" } },
       hire_orders: [
@@ -853,18 +1990,34 @@ Deno.test("issue sends a Documenso envelope when countersign mode is documenso: 
           // An attacker-controlled (or merely stale) org setting base_url that MUST
           // be ignored — the shared DOCUMENSO_API_TOKEN would otherwise leak to it.
           when: { key: "hire_order_countersign" },
-          data: [{ org_id: ORG, value: { mode: "documenso", base_url: "https://attacker.example.com" } }],
+          data: [{
+            org_id: ORG,
+            value: {
+              mode: "documenso",
+              base_url: "https://attacker.example.com",
+            },
+          }],
         },
       ],
     },
   });
 
-  const res = await handle(makeRequest({ headers: JWT, body: { action: "issue", org_id: ORG, order_ids: ["o-1"] } }), deps);
+  const res = await handle(
+    makeRequest({
+      headers: JWT,
+      body: { action: "issue", org_id: ORG, order_ids: ["o-1"] },
+    }),
+    deps,
+  );
   const body = await res.json();
   assertEquals(body.issued, ["o-1"]);
   assertEquals(body.failed, []);
 
-  assertEquals(docCalls.length, 3, "expected the create -> recipient -> distribute sequence");
+  assertEquals(
+    docCalls.length,
+    3,
+    "expected the create -> recipient -> distribute sequence",
+  );
   for (const c of docCalls) {
     assert(
       c.url.startsWith("https://documenso.test/"),
@@ -876,16 +2029,22 @@ Deno.test("issue sends a Documenso envelope when countersign mode is documenso: 
   }
 
   const csUpdate = calls.find(
-    (c) => c.table === "hire_orders" && c.method === "update" && "countersign_mode" in (c.args[0] as object),
+    (c) =>
+      c.table === "hire_orders" && c.method === "update" &&
+      "countersign_mode" in (c.args[0] as object),
   );
   assert(csUpdate, "expected a countersign_mode/documenso_envelope_id update");
-  const csRow = csUpdate!.args[0] as { countersign_mode: string; documenso_envelope_id: string };
+  const csRow = csUpdate!.args[0] as {
+    countersign_mode: string;
+    documenso_envelope_id: string;
+  };
   assertEquals(csRow.countersign_mode, "documenso");
   assertEquals(csRow.documenso_envelope_id, "envelope_1");
 
   const email = invokeCalls.find((c) => c.name === "send-transactional-email");
   assert(email, "expected the issued email");
-  const td = (email!.body as { templateData: Record<string, unknown> }).templateData;
+  const td =
+    (email!.body as { templateData: Record<string, unknown> }).templateData;
   assertEquals(td.countersign_mode, "documenso");
   assertEquals(td.signing_url, "https://documenso.test/sign/sign-tok");
 });
@@ -910,23 +2069,38 @@ Deno.test("issue never calls Documenso when countersign mode is manual", async (
         { when: { key: "hire_order_letterhead" }, data: [LETTERHEAD] },
         { when: { key: "hire_order_terms" }, data: [TERMS_FILLED] },
         { when: { key: "hire_order_defaults" }, data: [DEFAULTS] },
-        { when: { key: "hire_order_countersign" }, data: [{ org_id: ORG, value: { mode: "manual" } }] },
+        {
+          when: { key: "hire_order_countersign" },
+          data: [{ org_id: ORG, value: { mode: "manual" } }],
+        },
       ],
     },
   });
 
-  const res = await handle(makeRequest({ headers: JWT, body: { action: "issue", org_id: ORG, order_ids: ["o-1"] } }), deps);
+  const res = await handle(
+    makeRequest({
+      headers: JWT,
+      body: { action: "issue", org_id: ORG, order_ids: ["o-1"] },
+    }),
+    deps,
+  );
   const body = await res.json();
   assertEquals(body.issued, ["o-1"]);
   assertEquals(fetchCalls, 0, "manual mode must never call Documenso");
 });
 
 Deno.test("issue keeps the order issued with a documenso_failed warning when Documenso errors (never un-issues)", async () => {
-  const fetchImpl = (() => Promise.resolve(new Response("unauthorized", { status: 401 }))) as typeof fetch;
+  const fetchImpl = (() =>
+    Promise.resolve(
+      new Response("unauthorized", { status: 401 }),
+    )) as typeof fetch;
   const { deps, calls, invokeCalls } = makeFakeDeps({
     authUser: { id: "u-admin" },
     fetchImpl,
-    envVars: { DOCUMENSO_API_TOKEN: "tok-secret", DOCUMENSO_BASE_URL: "https://documenso.test" },
+    envVars: {
+      DOCUMENSO_API_TOKEN: "tok-secret",
+      DOCUMENSO_BASE_URL: "https://documenso.test",
+    },
     tables: {
       org_memberships: { data: { role: "admin" } },
       hire_orders: [
@@ -946,30 +2120,52 @@ Deno.test("issue keeps the order issued with a documenso_failed warning when Doc
     },
   });
 
-  const res = await handle(makeRequest({ headers: JWT, body: { action: "issue", org_id: ORG, order_ids: ["o-1"] } }), deps);
+  const res = await handle(
+    makeRequest({
+      headers: JWT,
+      body: { action: "issue", org_id: ORG, order_ids: ["o-1"] },
+    }),
+    deps,
+  );
   const body = await res.json();
-  assertEquals(body.issued, ["o-1"], "the document stays issued despite the Documenso failure");
-  assertEquals(body.failed, [{ order_id: "o-1", issues: ["documenso_failed"] }]);
+  assertEquals(
+    body.issued,
+    ["o-1"],
+    "the document stays issued despite the Documenso failure",
+  );
+  assertEquals(body.failed, [{
+    order_id: "o-1",
+    issues: ["documenso_failed"],
+  }]);
 
   const csUpdate = calls.find(
-    (c) => c.table === "hire_orders" && c.method === "update" && "countersign_mode" in (c.args[0] as object),
+    (c) =>
+      c.table === "hire_orders" && c.method === "update" &&
+      "countersign_mode" in (c.args[0] as object),
   );
   assert(csUpdate, "expected a countersign_mode fallback update");
-  assertEquals((csUpdate!.args[0] as { countersign_mode: string }).countersign_mode, "manual");
+  assertEquals(
+    (csUpdate!.args[0] as { countersign_mode: string }).countersign_mode,
+    "manual",
+  );
 
   const email = invokeCalls.find((c) => c.name === "send-transactional-email");
   assert(email, "expected the issued email to still send");
-  const td = (email!.body as { templateData: Record<string, unknown> }).templateData;
+  const td =
+    (email!.body as { templateData: Record<string, unknown> }).templateData;
   assertEquals(td.countersign_mode, "manual");
   assertEquals(td.signing_url, undefined);
 });
 
 Deno.test("countersign-test is admin-only, checks connectivity against the env-configured host, and never leaks the token", async () => {
   const producerCalls: Array<{ url: string; init?: RequestInit }> = [];
-  const producerFetchImpl = ((url: string | URL | Request, init?: RequestInit) => {
-    producerCalls.push({ url: String(url), init });
-    return Promise.resolve(new Response(JSON.stringify({ data: [] }), { status: 200 }));
-  }) as typeof fetch;
+  const producerFetchImpl =
+    ((url: string | URL | Request, init?: RequestInit) => {
+      producerCalls.push({ url: String(url), init });
+      return Promise.resolve(
+        new Response(JSON.stringify({ data: [] }), { status: 200 }),
+      );
+    }) as typeof fetch;
 
   // Producer passes the coarse draft/issue gate but must be rejected here (admin-only).
   // The request body's base_url is attacker-controllable and MUST be ignored — see
@@ -977,11 +2173,21 @@ Deno.test("countersign-test is admin-only, checks connectivity against the env-c
   const producer = makeFakeDeps({
     authUser: { id: "u-producer" },
     fetchImpl: producerFetchImpl,
-    envVars: { DOCUMENSO_API_TOKEN: "tok-secret", DOCUMENSO_BASE_URL: "https://documenso.test" },
+    envVars: {
+      DOCUMENSO_API_TOKEN: "tok-secret",
+      DOCUMENSO_BASE_URL: "https://documenso.test",
+    },
     tables: { org_memberships: { data: { role: "producer" } } },
   });
   const producerRes = await handle(
-    makeRequest({ headers: JWT, body: { action: "countersign-test", org_id: ORG, base_url: "https://attacker.example.com" } }),
+    makeRequest({
+      headers: JWT,
+      body: {
+        action: "countersign-test",
+        org_id: ORG,
+        base_url: "https://attacker.example.com",
+      },
+    }),
     producer.deps,
   );
   assertEquals(producerRes.status, 403);
@@ -989,29 +2195,50 @@ Deno.test("countersign-test is admin-only, checks connectivity against the env-c
   const adminCalls: Array<{ url: string; init?: RequestInit }> = [];
   const adminFetchImpl = ((url: string | URL | Request, init?: RequestInit) => {
     adminCalls.push({ url: String(url), init });
-    return Promise.resolve(new Response(JSON.stringify({ data: [] }), { status: 200 }));
+    return Promise.resolve(
+      new Response(JSON.stringify({ data: [] }), { status: 200 }),
+    );
   }) as typeof fetch;
   const admin = makeFakeDeps({
     authUser: { id: "u-admin" },
     fetchImpl: adminFetchImpl,
-    envVars: { DOCUMENSO_API_TOKEN: "tok-secret", DOCUMENSO_BASE_URL: "https://documenso.test" },
+    envVars: {
+      DOCUMENSO_API_TOKEN: "tok-secret",
+      DOCUMENSO_BASE_URL: "https://documenso.test",
+    },
     tables: { org_memberships: { data: { role: "admin" } } },
   });
   const adminRes = await handle(
     // A body-supplied base_url (attacker or otherwise) is IGNORED entirely.
-    makeRequest({ headers: JWT, body: { action: "countersign-test", org_id: ORG, base_url: "https://attacker.example.com" } }),
+    makeRequest({
+      headers: JWT,
+      body: {
+        action: "countersign-test",
+        org_id: ORG,
+        base_url: "https://attacker.example.com",
+      },
+    }),
     admin.deps,
   );
   assertEquals(adminRes.status, 200);
   const adminBody = await adminRes.json();
   assertEquals(adminBody.ok, true);
   assert(typeof adminBody.detail === "string");
-  assert(!JSON.stringify(adminBody).includes("tok-secret"), "the token must never be echoed back");
+  assert(
+    !JSON.stringify(adminBody).includes("tok-secret"),
+    "the token must never be echoed back",
+  );
 
-  assertEquals(adminCalls.length, 1, "expected a single Documenso connectivity check request");
+  assertEquals(
+    adminCalls.length,
+    1,
+    "expected a single Documenso connectivity check request",
+  );
   assert(
     adminCalls[0].url.startsWith("https://documenso.test/"),
-    `expected the env-configured host, not the body's base_url: ${adminCalls[0].url}`,
+    `expected the env-configured host, not the body's base_url: ${
+      adminCalls[0].url
+    }`,
   );
   const headers = new Headers(adminCalls[0].init?.headers);
   // Documenso API v1 uses the raw api_... token with no "Bearer " scheme.
@@ -1022,7 +2249,9 @@ Deno.test("countersign-test falls back to the hosted app.documenso.com when DOCU
   const calls: Array<{ url: string }> = [];
   const fetchImpl = ((url: string | URL | Request) => {
     calls.push({ url: String(url) });
-    return Promise.resolve(new Response(JSON.stringify({ data: [] }), { status: 200 }));
+    return Promise.resolve(
+      new Response(JSON.stringify({ data: [] }), { status: 200 }),
+    );
   }) as typeof fetch;
   const { deps } = makeFakeDeps({
     authUser: { id: "u-admin" },
@@ -1031,7 +2260,10 @@ Deno.test("countersign-test falls back to the hosted app.documenso.com when DOCU
     tables: { org_memberships: { data: { role: "admin" } } },
   });
   const res = await handle(
-    makeRequest({ headers: JWT, body: { action: "countersign-test", org_id: ORG } }),
+    makeRequest({
+      headers: JWT,
+      body: { action: "countersign-test", org_id: ORG },
+    }),
     deps,
   );
   assertEquals(res.status, 200);
@@ -1041,18 +2273,31 @@ Deno.test("countersign-test falls back to the hosted app.documenso.com when DOCU
 
 Deno.test("countersign-test rejects a non-https DOCUMENSO_BASE_URL instead of silently falling back", async () => {
   let fetchCalls = 0;
-  const fetchImpl = (() => { fetchCalls++; return Promise.resolve(new Response("{}", { status: 200 })); }) as typeof fetch;
+  const fetchImpl = (() => {
+    fetchCalls++;
+    return Promise.resolve(new Response("{}", { status: 200 }));
+  }) as typeof fetch;
   const { deps } = makeFakeDeps({
     authUser: { id: "u-admin" },
     fetchImpl,
-    envVars: { DOCUMENSO_API_TOKEN: "tok-secret", DOCUMENSO_BASE_URL: "http://insecure.example.com" },
+    envVars: {
+      DOCUMENSO_API_TOKEN: "tok-secret",
+      DOCUMENSO_BASE_URL: "http://insecure.example.com",
+    },
     tables: { org_memberships: { data: { role: "admin" } } },
   });
   const res = await handle(
-    makeRequest({ headers: JWT, body: { action: "countersign-test", org_id: ORG } }),
+    makeRequest({
+      headers: JWT,
+      body: { action: "countersign-test", org_id: ORG },
+    }),
     deps,
   );
-  assertEquals(res.status, 200, "connectivity failures are reported in the body, never a 500");
+  assertEquals(
+    res.status,
+    200,
+    "connectivity failures are reported in the body, never a 500",
+  );
   const body = await res.json();
   assertEquals(body.ok, false);
   assertEquals(body.detail, "documenso_base_url_invalid");
@@ -1060,18 +2305,31 @@ Deno.test("countersign-test rejects a non-https DOCUMENSO_BASE_URL instead of si
 });
 
 Deno.test("countersign-test reports ok:false without throwing when Documenso is unreachable/unauthorized", async () => {
-  const fetchImpl = (() => Promise.resolve(new Response("unauthorized", { status: 401 }))) as typeof fetch;
+  const fetchImpl = (() =>
+    Promise.resolve(
+      new Response("unauthorized", { status: 401 }),
+    )) as typeof fetch;
   const { deps } = makeFakeDeps({
     authUser: { id: "u-admin" },
     fetchImpl,
-    envVars: { DOCUMENSO_API_TOKEN: "tok-secret", DOCUMENSO_BASE_URL: "https://documenso.test" },
+    envVars: {
+      DOCUMENSO_API_TOKEN: "tok-secret",
+      DOCUMENSO_BASE_URL: "https://documenso.test",
+    },
     tables: { org_memberships: { data: { role: "admin" } } },
   });
   const res = await handle(
-    makeRequest({ headers: JWT, body: { action: "countersign-test", org_id: ORG } }),
+    makeRequest({
+      headers: JWT,
+      body: { action: "countersign-test", org_id: ORG },
+    }),
     deps,
   );
-  assertEquals(res.status, 200, "connectivity failures are reported in the body, never a 500");
+  assertEquals(
+    res.status,
+    200,
+    "connectivity failures are reported in the body, never a 500",
+  );
   const resBody = await res.json();
   assertEquals(resBody.ok, false);
   assert(typeof resBody.detail === "string" && resBody.detail.length > 0);
@@ -1087,7 +2345,10 @@ Deno.test("order number collisions get -2 suffix", async () => {
       cities: { data: { name: "Berlin" } },
       hire_orders: [
         { when: { __write: false }, data: [] },
-        { when: { __write: true }, error: { code: "23505", message: "duplicate key" } },
+        {
+          when: { __write: true },
+          error: { code: "23505", message: "duplicate key" },
+        },
       ],
       app_settings: [
         { when: { key: "hire_order_defaults" }, data: [DEFAULTS] },
@@ -1096,13 +2357,22 @@ Deno.test("order number collisions get -2 suffix", async () => {
     },
   });
 
-  await handle(makeRequest({ headers: JWT, body: { action: "draft", org_id: ORG, show_date_id: SD } }), deps);
+  await handle(
+    makeRequest({
+      headers: JWT,
+      body: { action: "draft", org_id: ORG, show_date_id: SD },
+    }),
+    deps,
+  );
 
   const orderNos = calls
     .filter((c) => c.table === "hire_orders" && c.method === "insert")
     .map((c) => (c.args[0] as { order_no: string }).order_no);
   assert(orderNos.length >= 2, "retried after the collision");
-  assert(orderNos.some((n) => n.endsWith("-2")), `expected a -2 suffix, got ${JSON.stringify(orderNos)}`);
+  assert(
+    orderNos.some((n) => n.endsWith("-2")),
+    `expected a -2 suffix, got ${JSON.stringify(orderNos)}`,
+  );
 });
 
 // ── preview ────────────────────────────────────────────────────────────
@@ -1121,12 +2391,23 @@ Deno.test("preview returns base64 pdf without persisting", async () => {
     },
   });
 
-  const res = await handle(makeRequest({ headers: JWT, body: { action: "preview", org_id: ORG, order_id: "o-1" } }), deps);
+  const res = await handle(
+    makeRequest({
+      headers: JWT,
+      body: { action: "preview", org_id: ORG, order_id: "o-1" },
+    }),
+    deps,
+  );
   assertEquals(res.status, 200);
   const body = await res.json();
   assertEquals(body.pdf_base64, "JVBERg=="); // base64 of the fake "%PDF" bytes
   // nothing persisted
-  assertEquals(calls.filter((c) => c.table === "hire_orders" && ["insert", "update"].includes(c.method)).length, 0);
+  assertEquals(
+    calls.filter((c) =>
+      c.table === "hire_orders" && ["insert", "update"].includes(c.method)
+    ).length,
+    0,
+  );
 });
 
 Deno.test("preview merges the order's agent override over the org letterhead", async () => {
@@ -1134,18 +2415,46 @@ Deno.test("preview merges the order's agent override over the org letterhead", a
     authUser: { id: "u-admin" },
     tables: {
       org_memberships: { data: { role: "admin" } },
-      hire_orders: { data: issuableOrder({ agent_name: "Solo Agent", agent_email: "solo@x.com" }) },
+      hire_orders: {
+        data: issuableOrder({
+          agent_name: "Solo Agent",
+          agent_email: "solo@x.com",
+        }),
+      },
       app_settings: [
-        { when: { key: "hire_order_letterhead" }, data: [{ org_id: ORG, value: { legal_name: "Nord GmbH", address_lines: [], registration_line: "", agent_name: "Org Agent", agent_email: "org@x.com" } }] },
+        {
+          when: { key: "hire_order_letterhead" },
+          data: [{
+            org_id: ORG,
+            value: {
+              legal_name: "Nord GmbH",
+              address_lines: [],
+              registration_line: "",
+              agent_name: "Org Agent",
+              agent_email: "org@x.com",
+            },
+          }],
+        },
         { when: { key: "hire_order_terms" }, data: [TERMS_FILLED] },
         { when: { key: "hire_order_defaults" }, data: [DEFAULTS] },
       ],
     },
   });
-  let captured: { letterhead: { agent_name?: string; agent_email?: string } } | null = null;
-  deps.renderHireOrderPdf = (a) => { captured = a as unknown as typeof captured; return Promise.resolve(new Uint8Array([0x25, 0x50, 0x44, 0x46])); };
+  let captured:
+    | { letterhead: { agent_name?: string; agent_email?: string } }
+    | null = null;
+  deps.renderHireOrderPdf = (a) => {
+    captured = a as unknown as typeof captured;
+    return Promise.resolve(new Uint8Array([0x25, 0x50, 0x44, 0x46]));
+  };
 
-  const res = await handle(makeRequest({ headers: JWT, body: { action: "preview", org_id: ORG, order_id: "o-1" } }), deps);
+  const res = await handle(
+    makeRequest({
+      headers: JWT,
+      body: { action: "preview", org_id: ORG, order_id: "o-1" },
+    }),
+    deps,
+  );
   assertEquals(res.status, 200);
   assertEquals(captured!.letterhead.agent_name, "Solo Agent");
   assertEquals(captured!.letterhead.agent_email, "solo@x.com");
@@ -1156,18 +2465,43 @@ Deno.test("preview inherits the letterhead agent when the order override is null
     authUser: { id: "u-admin" },
     tables: {
       org_memberships: { data: { role: "admin" } },
-      hire_orders: { data: issuableOrder({ agent_name: null, agent_email: null }) },
+      hire_orders: {
+        data: issuableOrder({ agent_name: null, agent_email: null }),
+      },
       app_settings: [
-        { when: { key: "hire_order_letterhead" }, data: [{ org_id: ORG, value: { legal_name: "Nord GmbH", address_lines: [], registration_line: "", agent_name: "Org Agent", agent_email: "org@x.com" } }] },
+        {
+          when: { key: "hire_order_letterhead" },
+          data: [{
+            org_id: ORG,
+            value: {
+              legal_name: "Nord GmbH",
+              address_lines: [],
+              registration_line: "",
+              agent_name: "Org Agent",
+              agent_email: "org@x.com",
+            },
+          }],
+        },
         { when: { key: "hire_order_terms" }, data: [TERMS_FILLED] },
         { when: { key: "hire_order_defaults" }, data: [DEFAULTS] },
       ],
     },
   });
-  let captured: { letterhead: { agent_name?: string; agent_email?: string } } | null = null;
-  deps.renderHireOrderPdf = (a) => { captured = a as unknown as typeof captured; return Promise.resolve(new Uint8Array([0x25, 0x50, 0x44, 0x46])); };
+  let captured:
+    | { letterhead: { agent_name?: string; agent_email?: string } }
+    | null = null;
+  deps.renderHireOrderPdf = (a) => {
+    captured = a as unknown as typeof captured;
+    return Promise.resolve(new Uint8Array([0x25, 0x50, 0x44, 0x46]));
+  };
 
-  const res = await handle(makeRequest({ headers: JWT, body: { action: "preview", org_id: ORG, order_id: "o-1" } }), deps);
+  const res = await handle(
+    makeRequest({
+      headers: JWT,
+      body: { action: "preview", org_id: ORG, order_id: "o-1" },
+    }),
+    deps,
+  );
   assertEquals(res.status, 200);
   assertEquals(captured!.letterhead.agent_name, "Org Agent");
   assertEquals(captured!.letterhead.agent_email, "org@x.com");
@@ -1196,7 +2530,10 @@ Deno.test("download-url allows the linked artist and rejects an unrelated artist
     },
   });
   const okRes = await handle(
-    makeRequest({ headers: { Authorization: "Bearer artist-jwt" }, body: { action: "download-url", org_id: ORG, order_id: "o-1" } }),
+    makeRequest({
+      headers: { Authorization: "Bearer artist-jwt" },
+      body: { action: "download-url", org_id: ORG, order_id: "o-1" },
+    }),
     linked.deps,
   );
   assertEquals(okRes.status, 200);
@@ -1215,7 +2552,10 @@ Deno.test("download-url allows the linked artist and rejects an unrelated artist
     },
   });
   const denyRes = await handle(
-    makeRequest({ headers: { Authorization: "Bearer other-jwt" }, body: { action: "download-url", org_id: ORG, order_id: "o-1" } }),
+    makeRequest({
+      headers: { Authorization: "Bearer other-jwt" },
+      body: { action: "download-url", org_id: ORG, order_id: "o-1" },
+    }),
     unrelated.deps,
   );
   assertEquals(denyRes.status, 403);
@@ -1232,7 +2572,10 @@ Deno.test("download-url allows the linked artist and rejects an unrelated artist
     },
   });
   const draftRes = await handle(
-    makeRequest({ headers: { Authorization: "Bearer artist-jwt" }, body: { action: "download-url", org_id: ORG, order_id: "o-1" } }),
+    makeRequest({
+      headers: { Authorization: "Bearer artist-jwt" },
+      body: { action: "download-url", org_id: ORG, order_id: "o-1" },
+    }),
     draft.deps,
   );
   assertEquals(draftRes.status, 403);
@@ -1245,7 +2588,13 @@ Deno.test("rejects non-cron non-producer callers", async () => {
     authUser: { id: "u-artist" },
     tables: { org_memberships: { data: { role: "artist" } } }, // filtered out of [admin, producer]
   });
-  const res = await handle(makeRequest({ headers: JWT, body: { action: "draft", org_id: ORG, show_date_id: SD } }), deps);
+  const res = await handle(
+    makeRequest({
+      headers: JWT,
+      body: { action: "draft", org_id: ORG, show_date_id: SD },
+    }),
+    deps,
+  );
   assertEquals(res.status, 403);
 });
 
@@ -1265,14 +2614,35 @@ Deno.test("rejects a JWT admin of another org targeting this org (cross-tenant)"
       platform_admins: { data: null },
       hire_orders: { data: issuableOrder({ org_id: "org-B" }) },
       app_settings: [
-        { when: { key: "hire_order_letterhead" }, data: [{ org_id: "org-B", value: { legal_name: "B GmbH", address_lines: [] } }] },
-        { when: { key: "hire_order_terms" }, data: [{ org_id: "org-B", value: { lean: [], standard: [], full: [] } }] },
-        { when: { key: "hire_order_defaults" }, data: [{ org_id: "org-B", value: { default_fee: null, currency: "EUR" } }] },
+        {
+          when: { key: "hire_order_letterhead" },
+          data: [{
+            org_id: "org-B",
+            value: { legal_name: "B GmbH", address_lines: [] },
+          }],
+        },
+        {
+          when: { key: "hire_order_terms" },
+          data: [{
+            org_id: "org-B",
+            value: { lean: [], standard: [], full: [] },
+          }],
+        },
+        {
+          when: { key: "hire_order_defaults" },
+          data: [{
+            org_id: "org-B",
+            value: { default_fee: null, currency: "EUR" },
+          }],
+        },
       ],
     },
   });
   const res = await handle(
-    makeRequest({ headers: JWT, body: { action: "preview", org_id: "org-B", order_id: "o-1" } }),
+    makeRequest({
+      headers: JWT,
+      body: { action: "preview", org_id: "org-B", order_id: "o-1" },
+    }),
     deps,
   );
   assertEquals(res.status, 403);
@@ -1320,7 +2690,10 @@ const SIGN_ORDER = {
   agent_email: null,
   issued_pdf_sha256: "c".repeat(64),
   show_date_id: SD,
-  show_dates: { city_id: "city-1", shows: { program: "Aida", sub_program: null } },
+  show_dates: {
+    city_id: "city-1",
+    shows: { program: "Aida", sub_program: null },
+  },
   data: {
     artist_name: { value: "Ann", source: "showflow" },
     recipient_email: { value: "ann@x.de", source: "showflow" },
@@ -1330,10 +2703,19 @@ const SIGN_ORDER = {
   },
 };
 
-function signDeps(overrides: { order?: unknown; artist?: unknown; mode?: string; featureOn?: boolean } = {}) {
+function signDeps(
+  overrides: {
+    order?: unknown;
+    artist?: unknown;
+    mode?: string;
+    featureOn?: boolean;
+  } = {},
+) {
   return makeFakeDeps({
     authUser: { id: "u-artist" },
-    rpcs: { is_feature_enabled: { data: overrides.featureOn ?? true, error: null } },
+    rpcs: {
+      is_feature_enabled: { data: overrides.featureOn ?? true, error: null },
+    },
     tables: {
       hire_orders: [
         { when: { __write: false }, data: overrides.order ?? SIGN_ORDER },
@@ -1341,10 +2723,18 @@ function signDeps(overrides: { order?: unknown; artist?: unknown; mode?: string;
       ],
       // Preserve an EXPLICIT null (unrelated user: the artist lookup finds no row) —
       // `?? { id: "a-A" }` would swallow it and make every caller look linked.
-      artists: { data: "artist" in overrides ? overrides.artist : { id: "a-A" } },
+      artists: {
+        data: "artist" in overrides ? overrides.artist : { id: "a-A" },
+      },
       org_memberships: { data: [] },
       app_settings: [
-        { when: { key: "hire_order_countersign" }, data: [{ org_id: ORG, value: { mode: overrides.mode ?? "electronic" } }] },
+        {
+          when: { key: "hire_order_countersign" },
+          data: [{
+            org_id: ORG,
+            value: { mode: overrides.mode ?? "electronic" },
+          }],
+        },
         { when: { key: "hire_order_letterhead" }, data: [LETTERHEAD] },
         { when: { key: "hire_order_terms" }, data: [TERMS_FILLED] },
         { when: { key: "hire_order_defaults" }, data: [DEFAULTS] },
@@ -1353,55 +2743,108 @@ function signDeps(overrides: { order?: unknown; artist?: unknown; mode?: string;
   });
 }
 
-const SIGN_BODY = { action: "sign", org_id: ORG, order_id: "o-1", method: "typed", typed_name: "Ann Lee", consent: true };
+const SIGN_BODY = {
+  action: "sign",
+  org_id: ORG,
+  order_id: "o-1",
+  method: "typed",
+  typed_name: "Ann Lee",
+  consent: true,
+};
 
 Deno.test("sign: linked artist signs an issued electronic order -> countersigned", async () => {
   const { deps, calls, invokeCalls } = signDeps();
-  const res = await handle(makeRequest({ headers: { Authorization: "Bearer artist" }, body: SIGN_BODY }), deps);
+  const res = await handle(
+    makeRequest({
+      headers: { Authorization: "Bearer artist" },
+      body: SIGN_BODY,
+    }),
+    deps,
+  );
   assertEquals(res.status, 200);
   const body = await res.json();
   assertEquals(body.countersigned, true);
   // signed PDF uploaded
-  const up = calls.find((c) => c.table === "storage:hire-orders" && c.method === "upload" && String((c.args[0])).endsWith("-signed.pdf"));
+  const up = calls.find((c) =>
+    c.table === "storage:hire-orders" && c.method === "upload" &&
+    String(c.args[0]).endsWith("-signed.pdf")
+  );
   assert(up, "signed pdf uploaded");
   // audit row inserted
-  const sig = calls.find((c) => c.table === "hire_order_signatures" && c.method === "insert");
+  const sig = calls.find((c) =>
+    c.table === "hire_order_signatures" && c.method === "insert"
+  );
   assert(sig, "audit row inserted");
   const row = (sig!.args[0] as Array<Record<string, unknown>>)[0]; // insert([{...}]) -> first row
   assertEquals(row.method, "typed");
   assertEquals(row.hire_order_id, "o-1");
   assertEquals(row.document_sha256, "c".repeat(64));
   // transitioned with signed_pdf_path + countersign_mode
-  const upd = calls.find((c) => c.table === "hire_orders" && c.method === "update" && (c.args[0] as { status?: string }).status === "countersigned");
-  const patch = upd!.args[0] as { signed_pdf_path?: string; countersign_mode?: string };
+  const upd = calls.find((c) =>
+    c.table === "hire_orders" && c.method === "update" &&
+    (c.args[0] as { status?: string }).status === "countersigned"
+  );
+  const patch = upd!.args[0] as {
+    signed_pdf_path?: string;
+    countersign_mode?: string;
+  };
   assert(patch.signed_pdf_path?.endsWith("-signed.pdf"));
   assertEquals(patch.countersign_mode, "electronic");
   // countersigned email to the artist
   const email = invokeCalls.find((c) => c.name === "send-transactional-email");
-  assertEquals((email!.body as { template_name: string }).template_name, "hire-order-countersigned");
+  assertEquals(
+    (email!.body as { template_name: string }).template_name,
+    "hire-order-countersigned",
+  );
 });
 
 Deno.test("sign: an unrelated user is rejected 403", async () => {
   const { deps } = signDeps({ artist: null });
-  const res = await handle(makeRequest({ headers: { Authorization: "Bearer other" }, body: SIGN_BODY }), deps);
+  const res = await handle(
+    makeRequest({
+      headers: { Authorization: "Bearer other" },
+      body: SIGN_BODY,
+    }),
+    deps,
+  );
   assertEquals(res.status, 403);
 });
 
 Deno.test("sign: consent is required", async () => {
   const { deps } = signDeps();
-  const res = await handle(makeRequest({ headers: { Authorization: "Bearer artist" }, body: { ...SIGN_BODY, consent: false } }), deps);
+  const res = await handle(
+    makeRequest({
+      headers: { Authorization: "Bearer artist" },
+      body: { ...SIGN_BODY, consent: false },
+    }),
+    deps,
+  );
   assertEquals(res.status, 400);
 });
 
 Deno.test("sign: a non-issued order is rejected 409", async () => {
   const { deps } = signDeps({ order: { ...SIGN_ORDER, status: "draft" } });
-  const res = await handle(makeRequest({ headers: { Authorization: "Bearer artist" }, body: SIGN_BODY }), deps);
+  const res = await handle(
+    makeRequest({
+      headers: { Authorization: "Bearer artist" },
+      body: SIGN_BODY,
+    }),
+    deps,
+  );
   assertEquals(res.status, 409);
 });
 
 Deno.test("sign: already-countersigned order is an idempotent 200", async () => {
-  const { deps } = signDeps({ order: { ...SIGN_ORDER, status: "countersigned" } });
-  const res = await handle(makeRequest({ headers: { Authorization: "Bearer artist" }, body: SIGN_BODY }), deps);
+  const { deps } = signDeps({
+    order: { ...SIGN_ORDER, status: "countersigned" },
+  });
+  const res = await handle(
+    makeRequest({
+      headers: { Authorization: "Bearer artist" },
+      body: SIGN_BODY,
+    }),
+    deps,
+  );
   assertEquals(res.status, 200);
   assertEquals((await res.json()).idempotent, true);
 });
@@ -1425,7 +2868,10 @@ Deno.test("sign: 23505 on the audit insert falls through to the guarded flip and
       org_memberships: { data: [] },
       hire_order_signatures: { error: { code: "23505" } },
       app_settings: [
-        { when: { key: "hire_order_countersign" }, data: [{ org_id: ORG, value: { mode: "electronic" } }] },
+        {
+          when: { key: "hire_order_countersign" },
+          data: [{ org_id: ORG, value: { mode: "electronic" } }],
+        },
         { when: { key: "hire_order_letterhead" }, data: [LETTERHEAD] },
         { when: { key: "hire_order_terms" }, data: [TERMS_FILLED] },
         { when: { key: "hire_order_defaults" }, data: [DEFAULTS] },
@@ -1433,22 +2879,36 @@ Deno.test("sign: 23505 on the audit insert falls through to the guarded flip and
     },
   });
 
-  const res = await handle(makeRequest({ headers: { Authorization: "Bearer artist" }, body: SIGN_BODY }), deps);
+  const res = await handle(
+    makeRequest({
+      headers: { Authorization: "Bearer artist" },
+      body: SIGN_BODY,
+    }),
+    deps,
+  );
   assertEquals(res.status, 200);
   const body = await res.json();
   assertEquals(body.countersigned, true);
-  assertEquals(body.idempotent, undefined, "a real completion is not the idempotent no-op");
+  assertEquals(
+    body.idempotent,
+    undefined,
+    "a real completion is not the idempotent no-op",
+  );
 
   // The guarded flip IS the single source of truth: assert it was attempted, not a
   // blind early-return that reports success without flipping.
   const flip = calls.find((c) =>
-    c.table === "hire_orders" && c.method === "update" && (c.args[0] as { status?: string }).status === "countersigned");
+    c.table === "hire_orders" && c.method === "update" &&
+    (c.args[0] as { status?: string }).status === "countersigned"
+  );
   assert(flip, "expected the guarded flip to status countersigned");
 
   // Side effects ran once, because the flip actually completed the countersign.
   const email = invokeCalls.find((c) =>
     c.name === "send-transactional-email" &&
-    (c.body as { template_name?: string }).template_name === "hire-order-countersigned");
+    (c.body as { template_name?: string }).template_name ===
+      "hire-order-countersigned"
+  );
   assert(email, "expected the countersigned email once the flip completed");
 });
 
@@ -1469,7 +2929,10 @@ Deno.test("sign: 23505 on the audit insert with an already-flipped order is an i
       org_memberships: { data: [] },
       hire_order_signatures: { error: { code: "23505" } },
       app_settings: [
-        { when: { key: "hire_order_countersign" }, data: [{ org_id: ORG, value: { mode: "electronic" } }] },
+        {
+          when: { key: "hire_order_countersign" },
+          data: [{ org_id: ORG, value: { mode: "electronic" } }],
+        },
         { when: { key: "hire_order_letterhead" }, data: [LETTERHEAD] },
         { when: { key: "hire_order_terms" }, data: [TERMS_FILLED] },
         { when: { key: "hire_order_defaults" }, data: [DEFAULTS] },
@@ -1477,13 +2940,26 @@ Deno.test("sign: 23505 on the audit insert with an already-flipped order is an i
     },
   });
 
-  const res = await handle(makeRequest({ headers: { Authorization: "Bearer artist" }, body: SIGN_BODY }), deps);
+  const res = await handle(
+    makeRequest({
+      headers: { Authorization: "Bearer artist" },
+      body: SIGN_BODY,
+    }),
+    deps,
+  );
   assertEquals(res.status, 200);
   assertEquals((await res.json()).idempotent, true);
 
   // No side effects — the winning request owns them.
-  assertEquals(calls.filter((c) => c.table === "notifications" && c.method === "insert").length, 0);
-  assertEquals(invokeCalls.filter((c) => c.name === "send-transactional-email").length, 0);
+  assertEquals(
+    calls.filter((c) => c.table === "notifications" && c.method === "insert")
+      .length,
+    0,
+  );
+  assertEquals(
+    invokeCalls.filter((c) => c.name === "send-transactional-email").length,
+    0,
+  );
 });
 
 Deno.test("sign: a non-23505 audit-insert error still fails 500 (signature_insert_failed)", async () => {
@@ -1497,23 +2973,40 @@ Deno.test("sign: a non-23505 audit-insert error still fails 500 (signature_inser
       ],
       artists: { data: { id: "a-A" } },
       org_memberships: { data: [] },
-      hire_order_signatures: { error: { code: "23502", message: "not-null violation" } },
+      hire_order_signatures: {
+        error: { code: "23502", message: "not-null violation" },
+      },
       app_settings: [
-        { when: { key: "hire_order_countersign" }, data: [{ org_id: ORG, value: { mode: "electronic" } }] },
+        {
+          when: { key: "hire_order_countersign" },
+          data: [{ org_id: ORG, value: { mode: "electronic" } }],
+        },
         { when: { key: "hire_order_letterhead" }, data: [LETTERHEAD] },
         { when: { key: "hire_order_terms" }, data: [TERMS_FILLED] },
         { when: { key: "hire_order_defaults" }, data: [DEFAULTS] },
       ],
     },
   });
-  const res = await handle(makeRequest({ headers: { Authorization: "Bearer artist" }, body: SIGN_BODY }), deps);
+  const res = await handle(
+    makeRequest({
+      headers: { Authorization: "Bearer artist" },
+      body: SIGN_BODY,
+    }),
+    deps,
+  );
   assertEquals(res.status, 500);
   assertEquals((await res.json()).error, "signature_insert_failed");
 });
 
 Deno.test("sign: manual-mode org is rejected 409 wrong_mode", async () => {
   const { deps } = signDeps({ mode: "manual" });
-  const res = await handle(makeRequest({ headers: { Authorization: "Bearer artist" }, body: SIGN_BODY }), deps);
+  const res = await handle(
+    makeRequest({
+      headers: { Authorization: "Bearer artist" },
+      body: SIGN_BODY,
+    }),
+    deps,
+  );
   assertEquals(res.status, 409);
 });
 
@@ -1532,15 +3025,30 @@ Deno.test("sign: order issued electronic still signs even after the org switched
     },
   };
   const { deps } = signDeps({ order: snapshotOrder, mode: "manual" });
-  const res = await handle(makeRequest({ headers: { Authorization: "Bearer artist" }, body: SIGN_BODY }), deps);
+  const res = await handle(
+    makeRequest({
+      headers: { Authorization: "Bearer artist" },
+      body: SIGN_BODY,
+    }),
+    deps,
+  );
   assertEquals(res.status, 200);
   assertEquals((await res.json()).countersigned, true);
 });
 
 Deno.test("sign: feature-off org is denied", async () => {
   const { deps } = signDeps({ featureOn: false });
-  const res = await handle(makeRequest({ headers: { Authorization: "Bearer artist" }, body: SIGN_BODY }), deps);
-  assert(res.status === 403 || res.status === 402, `feature gate status was ${res.status}`);
+  const res = await handle(
+    makeRequest({
+      headers: { Authorization: "Bearer artist" },
+      body: SIGN_BODY,
+    }),
+    deps,
+  );
+  assert(
+    res.status === 403 || res.status === 402,
+    `feature gate status was ${res.status}`,
+  );
 });
 
 Deno.test("download-url serves the signed copy once signed_pdf_path is set", async () => {
@@ -1549,40 +3057,91 @@ Deno.test("download-url serves the signed copy once signed_pdf_path is set", asy
     tables: {
       org_memberships: { data: [] },
       platform_admins: { data: null },
-      hire_orders: { data: { id: "o-1", org_id: ORG, artist_id: "a-A", status: "countersigned", pdf_path: "org-1/HO-1.pdf", signed_pdf_path: "org-1/HO-1-signed.pdf", order_no: "HO-1" } },
+      hire_orders: {
+        data: {
+          id: "o-1",
+          org_id: ORG,
+          artist_id: "a-A",
+          status: "countersigned",
+          pdf_path: "org-1/HO-1.pdf",
+          signed_pdf_path: "org-1/HO-1-signed.pdf",
+          order_no: "HO-1",
+        },
+      },
       artists: { data: { id: "a-A" } },
     },
   });
-  const res = await handle(makeRequest({ headers: { Authorization: "Bearer artist" }, body: { action: "download-url", org_id: ORG, order_id: "o-1" } }), deps);
+  const res = await handle(
+    makeRequest({
+      headers: { Authorization: "Bearer artist" },
+      body: { action: "download-url", org_id: ORG, order_id: "o-1" },
+    }),
+    deps,
+  );
   assertEquals(res.status, 200);
-  const signCall = calls.find((c) => c.table === "storage:hire-orders" && c.method === "createSignedUrl");
+  const signCall = calls.find((c) =>
+    c.table === "storage:hire-orders" && c.method === "createSignedUrl"
+  );
   assertEquals(signCall!.args[0], "org-1/HO-1-signed.pdf");
 });
 
 Deno.test("sign: drawn method uploads the signature image and records method drawn", async () => {
   const { deps, calls } = signDeps();
-  const res = await handle(makeRequest({
-    headers: { Authorization: "Bearer artist" },
-    body: {
-      action: "sign", org_id: ORG, order_id: "o-1", method: "drawn",
-      signature_png: "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAAC0lEQVR4nGNgAAIAAAUAAXpeqz8AAAAASUVORK5CYII=",
-      consent: true,
-    },
-  }), deps);
+  // 2x1 opaque RGBA PNG: one #15131C pixel and one white pixel. This mirrors the
+  // dark-mode canvas export (white ink on an opaque dark surface), so the stored
+  // image and the image handed to the PDF renderer both contain visible contrast.
+  const signaturePng =
+    "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAIAAAABCAYAAAD0In+KAAAADklEQVR4nGMQFZb5DwIAEM8FQMsechsAAAAASUVORK5CYII=";
+  let renderedSignaturePng: string | undefined;
+  deps.renderHireOrderPdf = (input) => {
+    renderedSignaturePng = input.signature?.imageDataUrl;
+    return Promise.resolve(new Uint8Array([0x25, 0x50, 0x44, 0x46]));
+  };
+  const res = await handle(
+    makeRequest({
+      headers: { Authorization: "Bearer artist" },
+      body: {
+        action: "sign",
+        org_id: ORG,
+        order_id: "o-1",
+        method: "drawn",
+        signature_png: signaturePng,
+        consent: true,
+      },
+    }),
+    deps,
+  );
   assertEquals(res.status, 200);
   assertEquals((await res.json()).countersigned, true);
 
   // The drawn PNG is uploaded to the signatures/ path (distinct from the signed PDF).
   const imgUpload = calls.find((c) =>
-    c.table === "storage:hire-orders" && c.method === "upload" && String(c.args[0]).endsWith("signatures/HO-1.png"));
+    c.table === "storage:hire-orders" && c.method === "upload" &&
+    String(c.args[0]).endsWith("signatures/HO-1.png")
+  );
   assert(imgUpload, "signature image uploaded to signatures/HO-1.png");
+  const expectedBytes = Uint8Array.from(
+    atob(signaturePng.slice(signaturePng.indexOf(",") + 1)),
+    (char) => char.charCodeAt(0),
+  );
+  assertEquals(imgUpload!.args[1], expectedBytes);
+  assertEquals(
+    renderedSignaturePng,
+    signaturePng,
+    "the same contrast-bearing PNG is embedded in the signed PDF",
+  );
 
   // Audit row carries method drawn + the image path, and no typed_name.
-  const sig = calls.find((c) => c.table === "hire_order_signatures" && c.method === "insert");
+  const sig = calls.find((c) =>
+    c.table === "hire_order_signatures" && c.method === "insert"
+  );
   assert(sig, "audit row inserted");
   const row = (sig!.args[0] as Array<Record<string, unknown>>)[0]; // insert([{...}]) -> first row
   assertEquals(row.method, "drawn");
-  assert(String(row.signature_image_path).endsWith("signatures/HO-1.png"), `signature_image_path was ${row.signature_image_path}`);
+  assert(
+    String(row.signature_image_path).endsWith("signatures/HO-1.png"),
+    `signature_image_path was ${row.signature_image_path}`,
+  );
   assertEquals(row.typed_name, null);
 });
 
@@ -1593,20 +3152,40 @@ Deno.test("sign: a malformed drawn-signature payload is a clean 400, not an unha
   // invalid_signature (the shape the other payload-validation failures use), and
   // must bail BEFORE any image upload / audit insert / status flip.
   const { deps, calls } = signDeps();
-  const res = await handle(makeRequest({
-    headers: { Authorization: "Bearer artist" },
-    body: {
-      action: "sign", org_id: ORG, order_id: "o-1", method: "drawn",
-      signature_png: "data:image/png;base64,!!!not-valid-base64!!!",
-      consent: true,
-    },
-  }), deps);
+  const res = await handle(
+    makeRequest({
+      headers: { Authorization: "Bearer artist" },
+      body: {
+        action: "sign",
+        org_id: ORG,
+        order_id: "o-1",
+        method: "drawn",
+        signature_png: "data:image/png;base64,!!!not-valid-base64!!!",
+        consent: true,
+      },
+    }),
+    deps,
+  );
   assertEquals(res.status, 400);
   assertEquals((await res.json()).error, "invalid_signature");
 
-  assertEquals(calls.filter((c) => c.table === "storage:hire-orders" && c.method === "upload").length, 0);
-  assertEquals(calls.filter((c) => c.table === "hire_order_signatures" && c.method === "insert").length, 0);
-  assertEquals(calls.filter((c) => c.table === "hire_orders" && c.method === "update").length, 0);
+  assertEquals(
+    calls.filter((c) =>
+      c.table === "storage:hire-orders" && c.method === "upload"
+    ).length,
+    0,
+  );
+  assertEquals(
+    calls.filter((c) =>
+      c.table === "hire_order_signatures" && c.method === "insert"
+    ).length,
+    0,
+  );
+  assertEquals(
+    calls.filter((c) => c.table === "hire_orders" && c.method === "update")
+      .length,
+    0,
+  );
 });
 
 Deno.test("sign: a valid-base64 but non-PNG drawn-signature payload is a clean 400, not a render 500", async () => {
@@ -1617,20 +3196,40 @@ Deno.test("sign: a valid-base64 but non-PNG drawn-signature payload is a clean 4
   // before any upload / audit insert / status flip.
   const nonPng = btoa("not a png"); // valid base64, non-PNG bytes
   const { deps, calls } = signDeps();
-  const res = await handle(makeRequest({
-    headers: { Authorization: "Bearer artist" },
-    body: {
-      action: "sign", org_id: ORG, order_id: "o-1", method: "drawn",
-      signature_png: "data:image/png;base64," + nonPng,
-      consent: true,
-    },
-  }), deps);
+  const res = await handle(
+    makeRequest({
+      headers: { Authorization: "Bearer artist" },
+      body: {
+        action: "sign",
+        org_id: ORG,
+        order_id: "o-1",
+        method: "drawn",
+        signature_png: "data:image/png;base64," + nonPng,
+        consent: true,
+      },
+    }),
+    deps,
+  );
   assertEquals(res.status, 400);
   assertEquals((await res.json()).error, "invalid_signature");
 
-  assertEquals(calls.filter((c) => c.table === "storage:hire-orders" && c.method === "upload").length, 0);
-  assertEquals(calls.filter((c) => c.table === "hire_order_signatures" && c.method === "insert").length, 0);
-  assertEquals(calls.filter((c) => c.table === "hire_orders" && c.method === "update").length, 0);
+  assertEquals(
+    calls.filter((c) =>
+      c.table === "storage:hire-orders" && c.method === "upload"
+    ).length,
+    0,
+  );
+  assertEquals(
+    calls.filter((c) =>
+      c.table === "hire_order_signatures" && c.method === "insert"
+    ).length,
+    0,
+  );
+  assertEquals(
+    calls.filter((c) => c.table === "hire_orders" && c.method === "update")
+      .length,
+    0,
+  );
 });
 
 Deno.test("sign: emails BOTH the artist and the producers when email_producers_on_countersign is on", async () => {
@@ -1640,7 +3239,10 @@ Deno.test("sign: emails BOTH the artist and the producers when email_producers_o
     authUser: { id: "u-artist" },
     rpcs: {
       is_feature_enabled: { data: true, error: null },
-      resolve_show_assignments: { data: [{ producer_user_id: "p1" }], error: null },
+      resolve_show_assignments: {
+        data: [{ producer_user_id: "p1" }],
+        error: null,
+      },
     },
     usersById: { p1: { email: "prod@x.de" } }, // admin.auth.admin.getUserById("p1")
     tables: {
@@ -1651,7 +3253,13 @@ Deno.test("sign: emails BOTH the artist and the producers when email_producers_o
       artists: { data: { id: "a-A" } },
       org_memberships: { data: [] },
       app_settings: [
-        { when: { key: "hire_order_countersign" }, data: [{ org_id: ORG, value: { mode: "electronic", email_producers_on_countersign: true } }] },
+        {
+          when: { key: "hire_order_countersign" },
+          data: [{
+            org_id: ORG,
+            value: { mode: "electronic", email_producers_on_countersign: true },
+          }],
+        },
         { when: { key: "hire_order_letterhead" }, data: [LETTERHEAD] },
         { when: { key: "hire_order_terms" }, data: [TERMS_FILLED] },
         { when: { key: "hire_order_defaults" }, data: [DEFAULTS] },
@@ -1659,21 +3267,38 @@ Deno.test("sign: emails BOTH the artist and the producers when email_producers_o
     },
   });
 
-  const res = await handle(makeRequest({ headers: { Authorization: "Bearer artist" }, body: SIGN_BODY }), deps);
+  const res = await handle(
+    makeRequest({
+      headers: { Authorization: "Bearer artist" },
+      body: SIGN_BODY,
+    }),
+    deps,
+  );
   assertEquals(res.status, 200);
 
   const countersignedEmails = invokeCalls.filter((c) =>
     c.name === "send-transactional-email" &&
-    (c.body as { template_name: string }).template_name === "hire-order-countersigned");
-  assertEquals(countersignedEmails.length, 2, "one email to the artist, one to the producer");
-  const recipients = countersignedEmails.map((c) => (c.body as { recipient_email: string }).recipient_email).sort();
+    (c.body as { template_name: string }).template_name ===
+      "hire-order-countersigned"
+  );
+  assertEquals(
+    countersignedEmails.length,
+    2,
+    "one email to the artist, one to the producer",
+  );
+  const recipients = countersignedEmails.map((c) =>
+    (c.body as { recipient_email: string }).recipient_email
+  ).sort();
   assertEquals(recipients, ["ann@x.de", "prod@x.de"]);
 });
 
 // ── sign renders from the issue snapshot (finding W1) ───────────────────────
 
 /** Capture-shape for the render input's snapshot-relevant fields. */
-type CapturedRender = { terms: Array<{ title: string }>; letterhead: { legal_name?: string } };
+type CapturedRender = {
+  terms: Array<{ title: string }>;
+  letterhead: { legal_name?: string };
+};
 
 Deno.test("sign renders the signed PDF from the issue snapshot, not the current live letterhead/terms", async () => {
   // The order carries a frozen snapshot; the LIVE hire_order_letterhead/terms settings
@@ -1698,9 +3323,28 @@ Deno.test("sign renders the signed PDF from the issue snapshot, not the current 
       artists: { data: { id: "a-A" } },
       org_memberships: { data: [] },
       app_settings: [
-        { when: { key: "hire_order_countersign" }, data: [{ org_id: ORG, value: { mode: "electronic" } }] },
-        { when: { key: "hire_order_letterhead" }, data: [{ org_id: ORG, value: { legal_name: "Live GmbH", address_lines: [] } }] },
-        { when: { key: "hire_order_terms" }, data: [{ org_id: ORG, value: { lean: [], standard: [{ title: "LIVE", body: "live terms" }], full: [] } }] },
+        {
+          when: { key: "hire_order_countersign" },
+          data: [{ org_id: ORG, value: { mode: "electronic" } }],
+        },
+        {
+          when: { key: "hire_order_letterhead" },
+          data: [{
+            org_id: ORG,
+            value: { legal_name: "Live GmbH", address_lines: [] },
+          }],
+        },
+        {
+          when: { key: "hire_order_terms" },
+          data: [{
+            org_id: ORG,
+            value: {
+              lean: [],
+              standard: [{ title: "LIVE", body: "live terms" }],
+              full: [],
+            },
+          }],
+        },
         { when: { key: "hire_order_defaults" }, data: [DEFAULTS] },
       ],
     },
@@ -1711,11 +3355,25 @@ Deno.test("sign renders the signed PDF from the issue snapshot, not the current 
     return Promise.resolve(new Uint8Array([0x25, 0x50, 0x44, 0x46]));
   };
 
-  const res = await handle(makeRequest({ headers: { Authorization: "Bearer artist" }, body: SIGN_BODY }), deps);
+  const res = await handle(
+    makeRequest({
+      headers: { Authorization: "Bearer artist" },
+      body: SIGN_BODY,
+    }),
+    deps,
+  );
   assertEquals(res.status, 200);
   assertEquals(captured.length, 1, "rendered exactly once");
-  assertEquals(captured[0].terms.map((t) => t.title), ["SNAP"], "terms come from the snapshot, not the live setting");
-  assertEquals(captured[0].letterhead.legal_name, "Snapshot GmbH", "letterhead comes from the snapshot");
+  assertEquals(
+    captured[0].terms.map((t) => t.title),
+    ["SNAP"],
+    "terms come from the snapshot, not the live setting",
+  );
+  assertEquals(
+    captured[0].letterhead.legal_name,
+    "Snapshot GmbH",
+    "letterhead comes from the snapshot",
+  );
 });
 
 Deno.test("sign falls back to the live-resolved letterhead/terms for a legacy order with a null issue snapshot", async () => {
@@ -1733,9 +3391,28 @@ Deno.test("sign falls back to the live-resolved letterhead/terms for a legacy or
       artists: { data: { id: "a-A" } },
       org_memberships: { data: [] },
       app_settings: [
-        { when: { key: "hire_order_countersign" }, data: [{ org_id: ORG, value: { mode: "electronic" } }] },
-        { when: { key: "hire_order_letterhead" }, data: [{ org_id: ORG, value: { legal_name: "Live GmbH", address_lines: [] } }] },
-        { when: { key: "hire_order_terms" }, data: [{ org_id: ORG, value: { lean: [], standard: [{ title: "LIVE", body: "live terms" }], full: [] } }] },
+        {
+          when: { key: "hire_order_countersign" },
+          data: [{ org_id: ORG, value: { mode: "electronic" } }],
+        },
+        {
+          when: { key: "hire_order_letterhead" },
+          data: [{
+            org_id: ORG,
+            value: { legal_name: "Live GmbH", address_lines: [] },
+          }],
+        },
+        {
+          when: { key: "hire_order_terms" },
+          data: [{
+            org_id: ORG,
+            value: {
+              lean: [],
+              standard: [{ title: "LIVE", body: "live terms" }],
+              full: [],
+            },
+          }],
+        },
         { when: { key: "hire_order_defaults" }, data: [DEFAULTS] },
       ],
     },
@@ -1746,9 +3423,23 @@ Deno.test("sign falls back to the live-resolved letterhead/terms for a legacy or
     return Promise.resolve(new Uint8Array([0x25, 0x50, 0x44, 0x46]));
   };
 
-  const res = await handle(makeRequest({ headers: { Authorization: "Bearer artist" }, body: SIGN_BODY }), deps);
+  const res = await handle(
+    makeRequest({
+      headers: { Authorization: "Bearer artist" },
+      body: SIGN_BODY,
+    }),
+    deps,
+  );
   assertEquals(res.status, 200);
   assertEquals(captured.length, 1, "rendered exactly once");
-  assertEquals(captured[0].terms.map((t) => t.title), ["LIVE"], "legacy orders fall back to the live-resolved terms");
-  assertEquals(captured[0].letterhead.legal_name, "Live GmbH", "legacy orders fall back to the live letterhead");
+  assertEquals(
+    captured[0].terms.map((t) => t.title),
+    ["LIVE"],
+    "legacy orders fall back to the live-resolved terms",
+  );
+  assertEquals(
+    captured[0].letterhead.legal_name,
+    "Live GmbH",
+    "legacy orders fall back to the live letterhead",
+  );
 });

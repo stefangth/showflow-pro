@@ -43,7 +43,10 @@ function ArtistHireOrders({ showDateId }: Props) {
   const { data: myOrders } = useMyHireOrders();
   const action = useHireOrderAction();
 
-  const order = (myOrders ?? []).find((o) => o.show_date_id === showDateId);
+  const order = (myOrders ?? []).find((o) =>
+    o.show_date_id === showDateId ||
+    o.hire_order_dates?.some((date) => date.show_date_id === showDateId)
+  );
   if (!order) return null;
 
   function handleDownload() {

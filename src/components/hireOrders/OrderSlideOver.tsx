@@ -1,5 +1,5 @@
 import { useRef } from "react";
-import { Download, Pencil } from "lucide-react";
+import { Download, Eye, Pencil, Send } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
@@ -10,7 +10,7 @@ import {
 import { HireOrderStatusBadge } from "@/components/hireOrders/HireOrderStatusBadge";
 import { OrderFactsRail } from "@/components/hireOrders/OrderFactsRail";
 import { formatMoney } from "@/lib/hireOrders/money";
-import { formatDateDMY } from "@/lib/dates";
+import { formatDateDMY, formatTimestampLocal } from "@/lib/dates";
 import type { OrderData } from "@/lib/hireOrders/types";
 import type { HireOrderListRow } from "@/data/hireOrders";
 import { useHireOrderAction, useMarkCountersigned, useVoidHireOrder, useHireOrderCountersignMode } from "@/hooks/useHireOrders";
@@ -114,6 +114,17 @@ export function OrderSlideOver({ order, open, onOpenChange, orgId }: Props) {
     navigate(ROUTES.HIRE_ORDER_EDIT.replace(":id", displayOrder.id));
   }
 
+  function handleView() {
+    if (!displayOrder) return;
+    onOpenChange(false);
+    navigate(ROUTES.HIRE_ORDER_DETAIL.replace(":id", displayOrder.id));
+  }
+
+  function handleResend() {
+    if (!displayOrder) return;
+    action.mutate({ action: "resend", org_id: orgId, order_id: displayOrder.id });
+  }
+
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent className="w-full overflow-y-auto sm:max-w-md">
@@ -150,6 +161,24 @@ export function OrderSlideOver({ order, open, onOpenChange, orgId }: Props) {
 
               <OrderFactsRail fee={fee} duration={duration} sessions={sessions} />
 
+              <div>
+                <h3 className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Delivery</h3>
+                <dl className="mt-3 space-y-3 text-sm">
+                  <div className="flex items-baseline justify-between gap-3">
+                    <dt className="text-muted-foreground">Created</dt>
+                    <dd className="text-right text-foreground">
+                      {displayOrder.created_at ? formatTimestampLocal(displayOrder.created_at) : "Not available"}
+                    </dd>
+                  </div>
+                  <div className="flex items-baseline justify-between gap-3">
+                    <dt className="text-muted-foreground">Last sent</dt>
+                    <dd className="text-right text-foreground">
+                      {displayOrder.last_sent_at ? formatTimestampLocal(displayOrder.last_sent_at) : "Not sent yet"}
+                    </dd>
+                  </div>
+                </dl>
+              </div>
+
               <div className="space-y-2">
                 {(displayOrder.status === "draft" || displayOrder.status === "ready") && (
                   <>
@@ -163,8 +192,14 @@ export function OrderSlideOver({ order, open, onOpenChange, orgId }: Props) {
                 )}
                 {displayOrder.status === "issued" && (
                   <>
+                    <Button variant="outline" className="w-full" onClick={handleView}>
+                      <Eye className="mr-1 h-4 w-4" /> View
+                    </Button>
                     <Button variant="outline" className="w-full" onClick={handleDownload} disabled={action.isPending}>
                       <Download className="mr-1 h-4 w-4" /> Download
+                    </Button>
+                    <Button variant="outline" className="w-full" onClick={handleResend} disabled={action.isPending}>
+                      <Send className="mr-1 h-4 w-4" /> Resend
                     </Button>
                     {!isElectronic && (
                       <Button className="w-full" onClick={handleCountersign} disabled={countersign.isPending}>
@@ -174,9 +209,17 @@ export function OrderSlideOver({ order, open, onOpenChange, orgId }: Props) {
                   </>
                 )}
                 {displayOrder.status === "countersigned" && (
-                  <Button variant="outline" className="w-full" onClick={handleDownload} disabled={action.isPending}>
-                    <Download className="mr-1 h-4 w-4" /> Download
-                  </Button>
+                  <>
+                    <Button variant="outline" className="w-full" onClick={handleView}>
+                      <Eye className="mr-1 h-4 w-4" /> View
+                    </Button>
+                    <Button variant="outline" className="w-full" onClick={handleDownload} disabled={action.isPending}>
+                      <Download className="mr-1 h-4 w-4" /> Download
+                    </Button>
+                    <Button variant="outline" className="w-full" onClick={handleResend} disabled={action.isPending}>
+                      <Send className="mr-1 h-4 w-4" /> Resend
+                    </Button>
+                  </>
                 )}
                 {displayOrder.status !== "void" && (
                   <AlertDialog>

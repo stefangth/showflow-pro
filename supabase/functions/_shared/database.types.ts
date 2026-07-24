@@ -1052,6 +1052,49 @@ export type Database = {
           },
         ]
       }
+      hire_order_dates: {
+        Row: {
+          hire_order_id: string
+          org_id: string
+          position: number
+          show_date_id: string
+        }
+        Insert: {
+          hire_order_id: string
+          org_id: string
+          position: number
+          show_date_id: string
+        }
+        Update: {
+          hire_order_id?: string
+          org_id?: string
+          position?: number
+          show_date_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "hire_order_dates_hire_order_id_fkey"
+            columns: ["hire_order_id"]
+            isOneToOne: false
+            referencedRelation: "hire_orders"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "hire_order_dates_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "hire_order_dates_show_date_id_fkey"
+            columns: ["show_date_id"]
+            isOneToOne: false
+            referencedRelation: "show_dates"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       hire_orders: {
         Row: {
           agent_email: string | null
@@ -1071,6 +1114,7 @@ export type Database = {
           issue_snapshot: Json | null
           issued_at: string | null
           issued_pdf_sha256: string | null
+          last_sent_at: string | null
           order_no: string
           org_id: string
           pdf_path: string | null
@@ -1098,6 +1142,7 @@ export type Database = {
           issue_snapshot?: Json | null
           issued_at?: string | null
           issued_pdf_sha256?: string | null
+          last_sent_at?: string | null
           order_no: string
           org_id: string
           pdf_path?: string | null
@@ -1125,6 +1170,7 @@ export type Database = {
           issue_snapshot?: Json | null
           issued_at?: string | null
           issued_pdf_sha256?: string | null
+          last_sent_at?: string | null
           order_no?: string
           org_id?: string
           pdf_path?: string | null
@@ -2106,6 +2152,10 @@ export type Database = {
       add_platform_admin: { Args: { p_email: string }; Returns: string }
       anonymize_user: { Args: { p_user: string }; Returns: undefined }
       app_setting_capability: { Args: { _key: string }; Returns: string }
+      assert_hire_order_dates_available: {
+        Args: { p_artist: string; p_dates: string[]; p_org: string }
+        Returns: undefined
+      }
       bulk_import_artists: {
         Args: { p_org: string; p_rows: Json }
         Returns: Json
@@ -2119,6 +2169,20 @@ export type Database = {
       compute_show_date_status: {
         Args: { p_show_date_id: string }
         Returns: undefined
+      }
+      create_hire_order_with_dates: {
+        Args: {
+          p_artist: string
+          p_created_by: string | null
+          p_data: Json
+          p_fee_amount: number | null
+          p_fee_currency: string
+          p_order_no: string
+          p_org: string
+          p_show_date_ids: string[]
+          p_terms_variant: string
+        }
+        Returns: string
       }
       cron_health_scan: {
         Args: never
