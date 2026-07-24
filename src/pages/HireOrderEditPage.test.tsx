@@ -470,6 +470,83 @@ describe("HireOrderEditPage", () => {
     await waitFor(() => expect(issueBtn).toBeEnabled());
   });
 
+  it("seeds the selection to the org's real default once the terms query resolves for a brand-new order with no stored terms_variant, without a false Removed chip", async () => {
+    // No stored terms_variant at all -- the state the report's own "Concerns"
+    // section flagged as untested (a brand-new order in an org whose custom
+    // templates don't include "standard").
+    const newOrder = order({ terms_variant: "" });
+    seedFor(newOrder, {
+      app_settings: [
+        {
+          when: { key: "hire_order_letterhead" },
+          data: [{ key: "hire_order_letterhead", org_id: null, value: LETTERHEAD_READY }],
+          error: null,
+        },
+        {
+          when: { key: "hire_order_terms" },
+          data: [
+            {
+              org_id: "org-1",
+              value: {
+                templates: [
+                  { id: "tpl-a", name: "VIP Contract", clauses: [] },
+                  { id: "tpl-b", name: "Standard Package", clauses: [] },
+                ],
+                default_id: "tpl-b",
+              },
+            },
+          ],
+          error: null,
+        },
+      ],
+    });
+    const queryClient = createTestQueryClient();
+    // Pre-cache the order so it's on hand at the VERY FIRST render -- before
+    // the (still-fetching) terms query resolves. This reproduces the exact
+    // race finding 2 describes: the order settles first, the org's real terms
+    // setting settles later, and the seed must not get stuck on whatever
+    // HIRE_ORDER_DEFAULT_TERMS fallback (id "standard") was current at that
+    // first moment.
+    queryClient.setQueryData(["hire-orders", "detail", "ho-1"], newOrder);
+    renderPage("ho-1", { queryClient });
+    await screen.findByText("HO-2026-0201-1");
+    await waitFor(() => {
+      expect(screen.getByRole("radio", { name: "Standard Package" })).toHaveAttribute("aria-checked", "true");
+    });
+    expect(screen.queryByRole("button", { name: /removed/i })).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /issue and send/i })).toBeEnabled();
+  });
+
+  it("shows a 'no terms templates configured' message and blocks issuing when the org has zero terms templates", async () => {
+    // order() carries a genuinely stored terms_variant ("standard"); the org
+    // has since deleted every template, so there's nothing above to "choose"
+    // -- the removed-reference chip/hint would be a dead end here.
+    seedFor(order(), {
+      app_settings: [
+        {
+          when: { key: "hire_order_letterhead" },
+          data: [{ key: "hire_order_letterhead", org_id: null, value: LETTERHEAD_READY }],
+          error: null,
+        },
+        {
+          when: { key: "hire_order_terms" },
+          data: [{ org_id: "org-1", value: { templates: [], default_id: null } }],
+          error: null,
+        },
+      ],
+    });
+    renderPage();
+    await screen.findByText("HO-2026-0201-1");
+    await waitFor(() => {
+      expect(screen.getByText(/no terms templates configured/i)).toBeInTheDocument();
+    });
+    expect(screen.queryByRole("radio")).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /removed/i })).not.toBeInTheDocument();
+    const issueBtn = screen.getByRole("button", { name: /issue and send/i });
+    expect(issueBtn).toBeDisabled();
+    expect(issueBtn.getAttribute("title")).toContain("No terms templates configured");
+  });
+
   it("surfaces a destructive alert when the order cannot be loaded", async () => {
     seedClient({ hire_orders: { data: null, error: new Error("permission denied") } });
     renderPage();

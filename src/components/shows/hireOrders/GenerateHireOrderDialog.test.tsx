@@ -158,6 +158,69 @@ describe("GenerateHireOrderDialog", () => {
     expect(issueBtn).toBeEnabled();
   });
 
+  it("seeds the selection to the org's real default once the terms query resolves for a brand-new order with no stored terms_variant, without a false Removed chip", async () => {
+    seedClient({
+      hire_orders: { data: [], error: null },
+      app_settings: [
+        {
+          when: { key: "hire_order_terms" },
+          data: [
+            {
+              org_id: "org-1",
+              value: {
+                templates: [
+                  { id: "tpl-a", name: "VIP Contract", clauses: [] },
+                  { id: "tpl-b", name: "Standard Package", clauses: [] },
+                ],
+                default_id: "tpl-b",
+              },
+            },
+          ],
+          error: null,
+        },
+      ],
+    });
+    // No stored terms_variant at all -- the state the report's own "Concerns"
+    // section flagged as untested (a brand-new order in an org whose custom
+    // templates don't include "standard").
+    const newOrder = { ...ORDER, terms_variant: "" } as unknown as HireOrderRow;
+    renderWithProviders(
+      <GenerateHireOrderDialog
+        open onOpenChange={vi.fn()} order={newOrder} showDate={SHOW_DATE} orgId="org-1" producerName="Aurora Productions"
+      />,
+    );
+    await waitFor(() => {
+      expect(screen.getByRole("radio", { name: "Standard Package" })).toHaveAttribute("aria-checked", "true");
+    });
+    expect(screen.queryByRole("button", { name: /removed/i })).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Issue and send" })).toBeEnabled();
+  });
+
+  it("shows a 'no terms templates configured' message and blocks issuing when the org has zero terms templates", async () => {
+    seedClient({
+      hire_orders: { data: [], error: null },
+      app_settings: [
+        {
+          when: { key: "hire_order_terms" },
+          data: [{ org_id: "org-1", value: { templates: [], default_id: null } }],
+          error: null,
+        },
+      ],
+    });
+    // ORDER carries a genuinely stored terms_variant ("standard"); the org has
+    // since deleted every template, so there's nothing above to "choose" --
+    // the removed-reference chip/hint would be a dead end here.
+    renderDialog();
+    await waitFor(() => {
+      expect(screen.getByText(/no terms templates configured/i)).toBeInTheDocument();
+    });
+    expect(screen.queryByRole("radio")).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /removed/i })).not.toBeInTheDocument();
+    const issueBtn = screen.getByRole("button", { name: "Issue and send" });
+    expect(issueBtn).toBeDisabled();
+    expect(issueBtn).toHaveAttribute("title", "No terms templates configured");
+  });
+
   it("issue_hire_orders off: Issue and send is disabled, Preview PDF still works", async () => {
     vi.mocked(useCan).mockImplementation((action: string) => action !== "issue_hire_orders");
     renderDialog();

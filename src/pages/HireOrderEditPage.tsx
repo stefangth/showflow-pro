@@ -176,9 +176,27 @@ export default function HireOrderEditPage() {
       if (initiallyCleared.size > 0) setClearedFields(initiallyCleared);
     }
     // `terms` is read only for its effective-default fallback on the very first
-    // seed (guarded by seededRef, so a later terms refetch never re-runs the
-    // seed) -- included so the org's default_id is honored once it's known.
+    // seed (guarded by seededRef, so a later terms refetch never re-runs this
+    // block) -- the dedicated re-seed effect below corrects the selection once
+    // the REAL terms setting resolves for an order with no stored variant.
   }, [order, terms]);
+
+  // The seed above may have used the HIRE_ORDER_DEFAULT_TERMS fallback (id
+  // "standard") for `termsVariant` because the org's real terms setting was
+  // still loading when `order` first arrived. If the order has NO stored
+  // terms_variant, re-seed once the real setting resolves, to the org's
+  // ACTUAL default -- mirrors GenerateHireOrderDialog's one-time-seed pattern.
+  // An order that already has an explicit stored id is NEVER touched here
+  // (even if that id happens to be "standard"), so a genuinely-removed
+  // reference still shows as removed.
+  const variantTouchedRef = useRef(false);
+  const variantSeededRef = useRef(false);
+  useEffect(() => {
+    if (!order || order.terms_variant || variantTouchedRef.current || variantSeededRef.current) return;
+    if (!termsQuery.data) return;
+    variantSeededRef.current = true;
+    setTermsVariant(defaultTemplateId(termsQuery.data) ?? "");
+  }, [order, termsQuery.data]);
 
   const baseLayers = useMemo(() => splitLayers(resolvedData ?? {}), [resolvedData]);
   const manualLayer = useMemo(
@@ -225,6 +243,7 @@ export default function HireOrderEditPage() {
   }
 
   function handleTermsVariant(next: string) {
+    variantTouchedRef.current = true;
     setTermsVariant(next);
     setDirty(true);
   }
@@ -397,9 +416,12 @@ export default function HireOrderEditPage() {
   // selection -- show it as a disabled "removed" chip and require an explicit
   // pick before Issue is allowed.
   const variantIsLive = terms.templates.some((t) => t.id === termsVariant);
+  const hasTermsTemplates = terms.templates.length > 0;
   const issueDisabled = readyIssues.length > 0 || action.isPending || !variantIsLive;
   const issueTitleParts = readyIssues.map((code) => ISSUE_FAILURE_COPY[code] ?? code);
-  if (!variantIsLive) issueTitleParts.push("Choose a terms template before issuing");
+  if (!variantIsLive) {
+    issueTitleParts.push(hasTermsTemplates ? "Choose a terms template before issuing" : "No terms templates configured");
+  }
   const issueTitle = issueTitleParts.length > 0 ? issueTitleParts.join(", ") : undefined;
 
   const currency = fieldString(displayData, "currency") || order.fee_currency || "EUR";
@@ -551,33 +573,44 @@ export default function HireOrderEditPage() {
             </FieldSection>
             <div className="space-y-1.5">
               <p className="text-xs text-muted-foreground">Terms variant</p>
-              <div role="radiogroup" aria-label="Terms variant" className="flex flex-wrap gap-2">
-                {!variantIsLive && termsVariant && (
-                  <Button type="button" variant="outline" size="sm" disabled className="flex-1 text-muted-foreground">
-                    Removed (will use default)
-                  </Button>
-                )}
-                {terms.templates.map((t) => {
-                  const selected = termsVariant === t.id;
-                  return (
-                    <Button
-                      key={t.id}
-                      type="button"
-                      role="radio"
-                      aria-checked={selected}
-                      variant={selected ? "default" : "outline"}
-                      size="sm"
-                      className="flex-1"
-                      onClick={() => handleTermsVariant(t.id)}
-                    >
-                      {t.name}
-                    </Button>
-                  );
-                })}
-              </div>
-              {!variantIsLive && termsVariant && (
+              {hasTermsTemplates ? (
+                <>
+                  <div role="radiogroup" aria-label="Terms variant" className="flex flex-wrap gap-2">
+                    {!variantIsLive && termsVariant && (
+                      <Button type="button" variant="outline" size="sm" disabled className="flex-1 text-muted-foreground">
+                        Removed (will use default)
+                      </Button>
+                    )}
+                    {terms.templates.map((t) => {
+                      const selected = termsVariant === t.id;
+                      return (
+                        <Button
+                          key={t.id}
+                          type="button"
+                          role="radio"
+                          aria-checked={selected}
+                          variant={selected ? "default" : "outline"}
+                          size="sm"
+                          className="flex-1"
+                          onClick={() => handleTermsVariant(t.id)}
+                        >
+                          {t.name}
+                        </Button>
+                      );
+                    })}
+                  </div>
+                  {!variantIsLive && termsVariant && (
+                    <p className="text-xs text-destructive">
+                      This order's saved terms template was removed. Choose one above before issuing.
+                    </p>
+                  )}
+                </>
+              ) : (
+                // No template to pick, live or removed -- an empty radiogroup or a
+                // "Removed" chip would both leave the producer guessing. Say so
+                // plainly: this org has none configured yet.
                 <p className="text-xs text-destructive">
-                  This order's saved terms template was removed. Choose one above before issuing.
+                  No terms templates configured. Add one in Settings → Hire orders before issuing.
                 </p>
               )}
             </div>
