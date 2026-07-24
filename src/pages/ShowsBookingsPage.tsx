@@ -8,7 +8,7 @@ import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Search } from 'lucide-react';
+import { Search, Plus } from 'lucide-react';
 import { format, parseISO } from 'date-fns';
 import { ProgramFilter } from '@/components/filters/ProgramFilter';
 import { TimeframeFilter, type TimeframeValue } from '@/components/filters/TimeframeFilter';
@@ -22,7 +22,8 @@ import { ShowDateDetailSheet } from '@/components/shows/ShowDateDetailSheet';
 import { ShowDateFormDialog } from '@/components/shows/ShowDateFormDialog';
 import { NewOrderWizard } from '@/components/hireOrders/NewOrderWizard';
 import { HireOrderReadyBanner } from '@/components/hireOrders/HireOrderReadyBanner';
-import { useDatesReadyForHireOrder } from '@/hooks/useHireOrders';
+import { useDatesReadyForHireOrder, useHireOrderAction } from '@/hooks/useHireOrders';
+import { HireOrderStatusBadge } from '@/components/hireOrders/HireOrderStatusBadge';
 import { useFeature } from '@/hooks/useEntitlements';
 import { useCan } from '@/hooks/useCapabilities';
 import { Button } from '@/components/ui/button';
@@ -142,6 +143,12 @@ function ProducerShowsBookings() {
   const canGenerateHireOrders = useCan('generate_hire_orders');
   const { data: hireOrderReady } = useDatesReadyForHireOrder(hireOrdersOn ? orgId : null);
   const readyCount = hireOrderReady?.readyIds.length ?? 0;
+  const readySet = useMemo(() => new Set(hireOrderReady?.readyIds ?? []), [hireOrderReady]);
+  const hireOrderAction = useHireOrderAction();
+  const draftHireOrderForDate = (dateId: string) => {
+    if (!orgId) return;
+    hireOrderAction.mutate({ action: 'draft', org_id: orgId, show_date_id: dateId, notify: false });
+  };
 
   useEffect(() => {
     const status = searchParams.get('status');
@@ -393,16 +400,39 @@ function ProducerShowsBookings() {
                       case 'cities.name': return (
                         <TableCell key={colId}>{sd.city?.name || <span className="text-muted-foreground">—</span>}</TableCell>
                       );
-                      case 'show_dates.status': return (
-                        <TableCell key={colId}>
-                          <Badge variant="secondary" className={STATUS_STYLE[status] ?? STATUS_STYLE.open}>
-                            {STATUS_LABEL[status] ?? status}
-                          </Badge>
-                          {sd.status === 'cancelled' && sd.cancellation_reason && (
-                            <div className="mt-1 text-xs text-destructive">{sd.cancellation_reason}</div>
-                          )}
-                        </TableCell>
-                      );
+                      case 'show_dates.status': {
+                        // Inline hire-order affordance: a fully-filled, unordered date
+                        // flips to a per-row Generate CTA; once ordered it shows the
+                        // order's status chip. Gated by the module + generate capability.
+                        const activeOrder = hireOrderReady?.orderByDate[sd.id];
+                        const readyForOrder = readySet.has(sd.id);
+                        return (
+                          <TableCell key={colId}>
+                            <Badge variant="secondary" className={STATUS_STYLE[status] ?? STATUS_STYLE.open}>
+                              {STATUS_LABEL[status] ?? status}
+                            </Badge>
+                            {sd.status === 'cancelled' && sd.cancellation_reason && (
+                              <div className="mt-1 text-xs text-destructive">{sd.cancellation_reason}</div>
+                            )}
+                            {hireOrdersOn && canManage && activeOrder && (
+                              <div className="mt-1.5"><HireOrderStatusBadge status={activeOrder.status} /></div>
+                            )}
+                            {hireOrdersOn && canManage && !activeOrder && readyForOrder && (
+                              <div className="mt-1.5">
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  className="h-7 px-2 text-xs"
+                                  disabled={!canGenerateHireOrders || hireOrderAction.isPending}
+                                  onClick={(e) => { e.stopPropagation(); draftHireOrderForDate(sd.id); }}
+                                >
+                                  <Plus className="mr-1 h-3 w-3" /> Generate hire order
+                                </Button>
+                              </div>
+                            )}
+                          </TableCell>
+                        );
+                      }
                       case 'show_dates.notes': return (
                         <TableCell key={colId} className="text-xs text-muted-foreground max-w-[200px] truncate">
                           {sd.notes || '—'}
