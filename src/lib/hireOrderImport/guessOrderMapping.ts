@@ -1,8 +1,8 @@
-// Best-effort auto-match of hire-order import sheet headers to OrderFieldKey,
+// Best-effort auto-match of hire-order import sheet headers to editable order fields,
 // covering both English and German header conventions.
-import type { OrderFieldKey } from "@/lib/hireOrders/types";
+import type { EditableOrderFieldKey } from "@/lib/hireOrders/types";
 
-export type OrderColumnMapping = Partial<Record<OrderFieldKey, string>>;
+export type OrderColumnMapping = Partial<Record<EditableOrderFieldKey, string>>;
 
 /**
  * Per-field patterns split into `strong` (exact/specific) and `weak` (loose,
@@ -14,7 +14,7 @@ export type OrderColumnMapping = Partial<Record<OrderFieldKey, string>>;
  * `sessions` has no sheet-column convention in the source brief and is never
  * auto-guessed here — it stays a manual/default-layer field.
  */
-const RULES: { field: OrderFieldKey; strong: RegExp[]; weak: RegExp[] }[] = [
+const RULES: { field: EditableOrderFieldKey; strong: RegExp[]; weak: RegExp[] }[] = [
   {
     field: "artist_name",
     strong: [/^artist([-_ ]?name)?$/, /^künstler$/, /^name$/],

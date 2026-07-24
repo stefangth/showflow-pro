@@ -199,6 +199,41 @@ describe("useHireOrderAction", () => {
     expect(toast.error).not.toHaveBeenCalled();
   });
 
+  it("summarizes draft-batch created, skipped, and failed artist outcomes", async () => {
+    vi.mocked(invokeHireOrderAction).mockResolvedValue({
+      created: ["ho-1", "ho-2"],
+      skipped: [{ artist_id: "a-3", reason: "exists" }],
+      errors: [{ artist_id: "a-4", reason: "artist_not_found" }],
+    });
+    const { Wrapper } = wrapper();
+    const { result } = renderHook(() => useHireOrderAction(), { wrapper: Wrapper });
+
+    await act(async () => {
+      await result.current.mutateAsync({
+        action: "draft-batch",
+        org_id: "org-1",
+        artists: [],
+        manual: {},
+      });
+    });
+
+    expect(toast.success).toHaveBeenCalledWith("Drafted 2 hire orders");
+    expect(toast.warning).toHaveBeenCalledWith("1 artist skipped: already ordered");
+    expect(toast.error).toHaveBeenCalledWith("1 artist failed: artist not found");
+  });
+
+  it("toasts after a successful resend", async () => {
+    vi.mocked(invokeHireOrderAction).mockResolvedValue({ sent_at: "2026-06-01T12:00:00.000Z" });
+    const { Wrapper } = wrapper();
+    const { result } = renderHook(() => useHireOrderAction(), { wrapper: Wrapper });
+
+    await act(async () => {
+      await result.current.mutateAsync({ action: "resend", org_id: "org-1", order_id: "ho-1" });
+    });
+
+    expect(toast.success).toHaveBeenCalledWith("Hire order resent");
+  });
+
   it("toasts issued and failed counts separately for issue, with friendly copy for missing_terms", async () => {
     vi.mocked(invokeHireOrderAction).mockResolvedValue({
       issued: ["ho-1"],
@@ -294,7 +329,7 @@ describe("useHireOrderAction", () => {
     expect(toast.error).not.toHaveBeenCalled();
   });
 
-  it("does NOT invalidate hire-orders for the read-only preview and download-url actions, but still does for draft/issue/draft-manual", async () => {
+  it("does NOT invalidate hire-orders for read-only actions, but does for draft, issue, draft-manual, draft-batch, and resend", async () => {
     const { Wrapper, qc } = wrapper();
     const invalidateSpy = vi.spyOn(qc, "invalidateQueries");
     const { result } = renderHook(() => useHireOrderAction(), { wrapper: Wrapper });
@@ -332,6 +367,20 @@ describe("useHireOrderAction", () => {
     vi.mocked(invokeHireOrderAction).mockResolvedValue({ id: "ho-new" });
     await act(async () => {
       await result.current.mutateAsync({ action: "draft-manual", org_id: "org-1", manual: {} });
+    });
+    expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: ["hire-orders"] });
+    invalidateSpy.mockClear();
+
+    vi.mocked(invokeHireOrderAction).mockResolvedValue({ created: ["ho-batch"], skipped: [], errors: [] });
+    await act(async () => {
+      await result.current.mutateAsync({ action: "draft-batch", org_id: "org-1", artists: [], manual: {} });
+    });
+    expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: ["hire-orders"] });
+    invalidateSpy.mockClear();
+
+    vi.mocked(invokeHireOrderAction).mockResolvedValue({ sent_at: "2026-06-01T12:00:00.000Z" });
+    await act(async () => {
+      await result.current.mutateAsync({ action: "resend", org_id: "org-1", order_id: "ho-1" });
     });
     expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: ["hire-orders"] });
   });

@@ -14,7 +14,7 @@ import { createSingleFlightRunner } from "@/lib/singleFlight";
 import { resolveFields } from "@/lib/hireOrders/resolveFields";
 import { orderReadyIssues } from "@/lib/hireOrders/validate";
 import { formatMoney } from "@/lib/hireOrders/money";
-import { ORDER_FIELD_KEYS, type OrderData, type OrderFieldKey } from "@/lib/hireOrders/types";
+import { ORDER_FIELD_KEYS, type EditableOrderFieldKey, type OrderData } from "@/lib/hireOrders/types";
 import { ROUTES } from "@/config/app.config";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -34,7 +34,7 @@ const TERMS_VARIANTS = [
   { key: "full", label: "Full" },
 ] as const;
 
-const FIELD_LABELS: Record<OrderFieldKey, string> = {
+const FIELD_LABELS: Record<EditableOrderFieldKey, string> = {
   artist_name: "Artist name",
   recipient_email: "Recipient email",
   role: "Role",
@@ -53,7 +53,7 @@ const FIELD_LABELS: Record<OrderFieldKey, string> = {
  *  `sessions`) are joined with " · " for the text input; typing a new value
  *  back in always stores a plain string (resolveFields doesn't care about the
  *  type, only presence, and every downstream consumer stringifies anyway). */
-function fieldString(data: OrderData, key: OrderFieldKey): string {
+function fieldString(data: OrderData, key: EditableOrderFieldKey): string {
   const v = data[key]?.value;
   if (v === undefined || v === null) return "";
   if (Array.isArray(v)) return (v as unknown[]).join(" · ");
@@ -69,17 +69,18 @@ function fieldString(data: OrderData, key: OrderFieldKey): string {
  *  `manual` the moment it's overlaid with a session edit (see `manualLayer`
  *  in the component below). */
 interface SplitLayers {
-  showflow: Partial<Record<OrderFieldKey, unknown>>;
-  sheet: Partial<Record<OrderFieldKey, unknown>>;
-  manual: Partial<Record<OrderFieldKey, unknown>>;
-  defaults: Partial<Record<OrderFieldKey, unknown>>;
+  showflow: Partial<Record<EditableOrderFieldKey, unknown>>;
+  sheet: Partial<Record<EditableOrderFieldKey, unknown>>;
+  manual: Partial<Record<EditableOrderFieldKey, unknown>>;
+  defaults: Partial<Record<EditableOrderFieldKey, unknown>>;
+  engagement_dates?: OrderData["engagement_dates"];
 }
 
 function splitLayers(data: OrderData): SplitLayers {
-  const showflow: Partial<Record<OrderFieldKey, unknown>> = {};
-  const sheet: Partial<Record<OrderFieldKey, unknown>> = {};
-  const manual: Partial<Record<OrderFieldKey, unknown>> = {};
-  const defaults: Partial<Record<OrderFieldKey, unknown>> = {};
+  const showflow: Partial<Record<EditableOrderFieldKey, unknown>> = {};
+  const sheet: Partial<Record<EditableOrderFieldKey, unknown>> = {};
+  const manual: Partial<Record<EditableOrderFieldKey, unknown>> = {};
+  const defaults: Partial<Record<EditableOrderFieldKey, unknown>> = {};
   for (const key of ORDER_FIELD_KEYS) {
     const field = data[key];
     if (!field) continue;
@@ -87,7 +88,7 @@ function splitLayers(data: OrderData): SplitLayers {
       field.source === "showflow" ? showflow : field.source === "sheet" ? sheet : field.source === "manual" ? manual : defaults;
     bucket[key] = field.value;
   }
-  return { showflow, sheet, manual, defaults };
+  return { showflow, sheet, manual, defaults, engagement_dates: data.engagement_dates };
 }
 
 const READ_ONLY_STATUSES = new Set(["issued", "countersigned", "void"]);
@@ -103,7 +104,7 @@ const READ_ONLY_STATUSES = new Set(["issued", "countersigned", "void"]);
  * patch sent to `updateHireOrderDraft`. Does not touch the shared
  * `resolveFields` itself — that module is dual-homed with the edge function.
  */
-function applyClearedOverrides(data: OrderData, cleared: Set<OrderFieldKey>): OrderData {
+function applyClearedOverrides(data: OrderData, cleared: Set<EditableOrderFieldKey>): OrderData {
   if (cleared.size === 0) return data;
   const out: OrderData = { ...data };
   for (const key of cleared) {
@@ -139,12 +140,12 @@ export default function HireOrderEditPage() {
   });
 
   const [resolvedData, setResolvedData] = useState<OrderData | null>(null);
-  const [sessionEdits, setSessionEdits] = useState<Partial<Record<OrderFieldKey, unknown>>>({});
+  const [sessionEdits, setSessionEdits] = useState<Partial<Record<EditableOrderFieldKey, unknown>>>({});
   // Fields the user explicitly blanked (typed "" into). Persists across a
   // Save (unlike sessionEdits, which resets) so a saved-then-reloaded empty
   // field doesn't silently revert the next time displayData is derived —
   // see applyClearedOverrides above.
-  const [clearedFields, setClearedFields] = useState<Set<OrderFieldKey>>(new Set());
+  const [clearedFields, setClearedFields] = useState<Set<EditableOrderFieldKey>>(new Set());
   const [dirty, setDirty] = useState(false);
   const [termsVariant, setTermsVariant] = useState("standard");
   const [previewSrc, setPreviewSrc] = useState<string | null>(null);
@@ -165,7 +166,7 @@ export default function HireOrderEditPage() {
       // durable, on-the-record marker for "the user cleared this" — restore
       // clearedFields from it so a reload doesn't let the field silently
       // revert to its showflow/sheet/default fallback.
-      const initiallyCleared = new Set<OrderFieldKey>();
+      const initiallyCleared = new Set<EditableOrderFieldKey>();
       for (const key of ORDER_FIELD_KEYS) {
         const field = data[key];
         if (field && field.source === "manual" && field.value === "") initiallyCleared.add(key);
@@ -180,10 +181,12 @@ export default function HireOrderEditPage() {
     [baseLayers.manual, sessionEdits],
   );
   const displayData = useMemo(() => {
-    const resolved = resolveFields({
+    const editable = resolveFields({
       showflow: baseLayers.showflow, sheet: baseLayers.sheet, manual: manualLayer, defaults: baseLayers.defaults,
     });
-    return applyClearedOverrides(resolved, clearedFields);
+    const rebuilt: OrderData = { ...editable };
+    if (baseLayers.engagement_dates) rebuilt.engagement_dates = baseLayers.engagement_dates;
+    return applyClearedOverrides(rebuilt, clearedFields);
   }, [baseLayers, manualLayer, clearedFields]);
 
   /** Fold the given snapshot in as the new baseline: session edits are already
@@ -203,7 +206,7 @@ export default function HireOrderEditPage() {
     return { data: displayData, fee_amount: feeAmount, fee_currency: currency, terms_variant: termsVariant };
   }
 
-  function handleFieldChange(key: OrderFieldKey, raw: string) {
+  function handleFieldChange(key: EditableOrderFieldKey, raw: string) {
     setSessionEdits((prev) => ({ ...prev, [key]: raw }));
     setClearedFields((prev) => {
       const isCleared = raw === "";
@@ -319,14 +322,16 @@ export default function HireOrderEditPage() {
   async function handleRefresh() {
     if (!order || !canRefresh) return;
     try {
-      const preservedManual: Partial<Record<OrderFieldKey, unknown>> = {};
+      const preservedManual: Partial<Record<EditableOrderFieldKey, unknown>> = {};
       for (const key of ORDER_FIELD_KEYS) {
         if (displayData[key]?.source === "manual") preservedManual[key] = displayData[key]!.value;
       }
       const freshLayer = await fetchShowflowLayerForOrder(supabase, {
         showDateId: order.show_date_id, artistId: order.artist_id,
       });
-      const refreshed = resolveFields({ showflow: freshLayer, manual: preservedManual, defaults: baseLayers.defaults });
+      const editable = resolveFields({ showflow: freshLayer, manual: preservedManual, defaults: baseLayers.defaults });
+      const refreshed: OrderData = { ...editable };
+      if (baseLayers.engagement_dates) refreshed.engagement_dates = baseLayers.engagement_dates;
       commit(refreshed, true);
       toast.success("Refreshed from ShowFlow");
     } catch (e) {

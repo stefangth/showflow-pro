@@ -16,7 +16,7 @@ import {
   type ResolvedImportRow,
 } from "@/lib/hireOrderImport/buildOrderRows";
 import { resolveFields } from "@/lib/hireOrders/resolveFields";
-import type { OrderFieldKey } from "@/lib/hireOrders/types";
+import type { EditableOrderFieldKey } from "@/lib/hireOrders/types";
 import { useArtistsLite, useShowDatesLite, useBulkImportHireOrders, useCreateArtistLite } from "@/hooks/useHireOrders";
 import type { BulkImportHireOrdersRow } from "@/data/hireOrders";
 import { ROUTES } from "@/config/app.config";
@@ -303,7 +303,7 @@ export function HireOrderImportDialog({ open, onOpenChange, orgId }: Props) {
       const rpcRows: BulkImportHireOrdersRow[] = chosen.map((r) => {
         const data = resolveFields({
           sheet: r.sheet,
-          manual: (manualEdits[r.rowIndex] ?? {}) as Partial<Record<OrderFieldKey, unknown>>,
+          manual: (manualEdits[r.rowIndex] ?? {}) as Partial<Record<EditableOrderFieldKey, unknown>>,
           defaults: {
             currency: defaultsQuery.data?.currency ?? DEFAULTS_FALLBACK.currency,
             ...(defaultsQuery.data?.default_fee != null ? { fee: defaultsQuery.data.default_fee } : {}),

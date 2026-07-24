@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from "vitest";
+import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { render, screen, fireEvent } from "@testing-library/react";
 
 // Mock the canvas library — jsdom cannot draw. The fake mirrors signature_pad@5's real
@@ -7,6 +7,8 @@ import { render, screen, fireEvent } from "@testing-library/react";
 // exercised end to end.
 interface FakeInstance {
   empty: boolean;
+  penColor?: string;
+  backgroundColor?: string;
   endStroke?: () => void;
   isEmpty: () => boolean;
   clear: () => void;
@@ -19,7 +21,13 @@ vi.mock("signature_pad", () => ({
   default: class {
     empty = true;
     endStroke?: () => void;
-    constructor(_canvas: unknown) { instances.push(this); }
+    penColor?: string;
+    backgroundColor?: string;
+    constructor(_canvas: unknown, options?: { penColor?: string; backgroundColor?: string }) {
+      this.penColor = options?.penColor;
+      this.backgroundColor = options?.backgroundColor;
+      instances.push(this);
+    }
     isEmpty() { return this.empty; }
     clear() { this.empty = true; }
     toDataURL() { return "data:image/png;base64,DRAWN"; }
@@ -37,12 +45,50 @@ function activateDrawTab() {
   fireEvent.mouseDown(screen.getByRole("tab", { name: "Draw" }), { button: 0 });
 }
 
+function activateTypeTab() {
+  fireEvent.mouseDown(screen.getByRole("tab", { name: "Type" }), { button: 0 });
+}
+
 describe("SignaturePad", () => {
-  beforeEach(() => { instances.length = 0; });
+  beforeEach(() => {
+    instances.length = 0;
+    vi.spyOn(HTMLCanvasElement.prototype, "getContext").mockReturnValue({
+      scale: vi.fn(),
+    } as unknown as CanvasRenderingContext2D);
+  });
+  afterEach(() => {
+    document.documentElement.classList.remove("dark");
+    vi.restoreAllMocks();
+  });
+
+  it("exports dark-mode white ink on an opaque dark surface", () => {
+    document.documentElement.classList.add("dark");
+    const onChange = vi.fn();
+    render(<SignaturePad value={null} onChange={onChange} />);
+
+    expect(screen.getByRole("tab", { name: "Draw" })).toHaveAttribute("data-state", "active");
+    expect(instances[0].penColor).toBe("#ffffff");
+    expect(instances[0].backgroundColor).toBe("#15131C");
+
+    instances[0].empty = false;
+    instances[0].endStroke?.();
+    expect(onChange).toHaveBeenCalledWith({
+      method: "drawn",
+      pngDataUrl: "data:image/png;base64,DRAWN",
+    });
+  });
+
+  it("exports light-mode ink on an opaque white surface", () => {
+    render(<SignaturePad value={null} onChange={vi.fn()} />);
+
+    expect(instances[0].penColor).toBe("#15131C");
+    expect(instances[0].backgroundColor).toBe("#ffffff");
+  });
 
   it("emits a typed value as the name is entered", () => {
     const onChange = vi.fn();
     render(<SignaturePad value={null} onChange={onChange} />);
+    activateTypeTab();
     fireEvent.change(screen.getByPlaceholderText(/full legal name/i), { target: { value: "Ann Lee" } });
     expect(onChange).toHaveBeenCalledWith({ method: "typed", typedName: "Ann Lee" });
   });
@@ -50,15 +96,14 @@ describe("SignaturePad", () => {
   it("clears the typed value to null when emptied", () => {
     const onChange = vi.fn();
     render(<SignaturePad value={{ method: "typed", typedName: "X" }} onChange={onChange} />);
+    activateTypeTab();
     fireEvent.change(screen.getByPlaceholderText(/full legal name/i), { target: { value: "" } });
     expect(onChange).toHaveBeenCalledWith(null);
   });
 
-  it("constructs the pad once the Draw tab is activated (not eagerly on mount)", () => {
+  it("constructs the pad on mount because Draw is active first", () => {
     const onChange = vi.fn();
     render(<SignaturePad value={null} onChange={onChange} />);
-    expect(instances).toHaveLength(0);
-    activateDrawTab();
     expect(instances).toHaveLength(1);
   });
 

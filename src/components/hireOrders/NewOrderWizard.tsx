@@ -9,12 +9,13 @@ import { useArtistsLite, useShowDatesLite, useHireOrderAction } from "@/hooks/us
 import type { ArtistLite, ShowDateLite } from "@/data/hireOrders";
 import { resolveFields } from "@/lib/hireOrders/resolveFields";
 import { formatMoney } from "@/lib/hireOrders/money";
-import type { FieldLayers, OrderData, OrderFieldKey } from "@/lib/hireOrders/types";
+import type { EditableOrderFieldKey, FieldLayers, OrderData } from "@/lib/hireOrders/types";
 import { formatDateDMY } from "@/lib/dates";
 import { ROUTES } from "@/config/app.config";
 import { cn } from "@/lib/utils";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -36,6 +37,19 @@ const CURRENCIES = ["EUR", "USD", "CHF"];
 interface OrderDefaultsLite { default_fee: number | null; currency: string }
 const DEFAULTS_FALLBACK: OrderDefaultsLite = { default_fee: null, currency: "EUR" };
 
+interface BatchOutcomeRow { artist_id: string; reason: string }
+interface BatchDraftResult {
+  created?: string[];
+  skipped?: BatchOutcomeRow[];
+  errors?: BatchOutcomeRow[];
+}
+interface WizardResult {
+  created: string[];
+  issued: string[];
+  skipped: BatchOutcomeRow[];
+  errors: BatchOutcomeRow[];
+}
+
 const STEPS: { step: WizardStep; label: string }[] = [
   { step: 1, label: "Confirm engagement" },
   { step: 2, label: "Fees and deposit" },
@@ -43,7 +57,7 @@ const STEPS: { step: WizardStep; label: string }[] = [
   { step: 4, label: "Review and issue" },
 ];
 
-const REVIEW_ROWS: { key: OrderFieldKey; label: string }[] = [
+const REVIEW_ROWS: { key: EditableOrderFieldKey; label: string }[] = [
   { key: "artist_name", label: "Artist" },
   { key: "recipient_email", label: "Recipient email" },
   { key: "date", label: "Date" },
@@ -60,7 +74,7 @@ function dateOptionLabel(d: ShowDateLite): string {
   return parts.join(" · ");
 }
 
-function reviewValue(key: OrderFieldKey, data: OrderData): string {
+function reviewValue(key: EditableOrderFieldKey, data: OrderData): string {
   const v = data[key]?.value;
   if (v === undefined || v === null || v === "") return "Not set";
   if (key === "date" && typeof v === "string") return formatDateDMY(v);
@@ -69,26 +83,31 @@ function reviewValue(key: OrderFieldKey, data: OrderData): string {
   return String(v);
 }
 
-/** A searchable combobox over a lite id-bearing list (artists or show dates).
- *  Shared by both pickers in step 1 — Task 5's import wizard reuses the same
- *  fetchArtistsLite/fetchShowDatesLite rows this renders. */
-function PickerCombobox<T extends { id: string }>({
-  items, value, onChange, getLabel, getSearchText, placeholder, ariaLabel, emptyText,
+/** Searchable multi-select shared by the artist and common-date pickers. */
+function MultiPickerCombobox<T extends { id: string }>({
+  items, values, onToggle, getLabel, getSearchText, placeholder, ariaLabel, emptyText, selectionNoun,
 }: {
   items: T[];
-  value: string | null;
-  onChange: (id: string) => void;
+  values: string[];
+  onToggle: (id: string) => void;
   getLabel: (item: T) => string;
   getSearchText: (item: T) => string;
   placeholder: string;
   ariaLabel: string;
   emptyText: string;
+  selectionNoun: string;
 }) {
   const [open, setOpen] = useState(false);
   const [search, setSearch] = useState("");
-  const selected = items.find((i) => i.id === value) ?? null;
   const needle = search.trim().toLowerCase();
   const matches = needle ? items.filter((i) => getSearchText(i).toLowerCase().includes(needle)) : items;
+  const singleSelection = values.length === 1 ? items.find((item) => item.id === values[0]) : null;
+  const selectedLabel =
+    values.length === 0
+      ? placeholder
+      : singleSelection
+        ? getLabel(singleSelection)
+        : `${values.length} ${selectionNoun} selected`;
 
   return (
     <Popover open={open} onOpenChange={(o) => { setOpen(o); if (!o) setSearch(""); }}>
@@ -101,7 +120,7 @@ function PickerCombobox<T extends { id: string }>({
           aria-label={ariaLabel}
           className="w-full justify-between font-normal"
         >
-          <span className="truncate">{selected ? getLabel(selected) : placeholder}</span>
+          <span className="truncate">{selectedLabel}</span>
           <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
         </Button>
       </PopoverTrigger>
@@ -117,8 +136,19 @@ function PickerCombobox<T extends { id: string }>({
                   <CommandItem
                     key={item.id}
                     value={item.id}
-                    onSelect={() => { onChange(item.id); setOpen(false); setSearch(""); }}
+                    role="checkbox"
+                    aria-checked={values.includes(item.id)}
+                    aria-label={getLabel(item)}
+                    onSelect={() => onToggle(item.id)}
                   >
+                    <Checkbox
+                      checked={values.includes(item.id)}
+                      onCheckedChange={() => onToggle(item.id)}
+                      onClick={(event) => event.stopPropagation()}
+                      aria-label={`Select ${getLabel(item)}`}
+                      tabIndex={-1}
+                      className="mr-2"
+                    />
                     {getLabel(item)}
                   </CommandItem>
                 ))}
@@ -133,13 +163,12 @@ function PickerCombobox<T extends { id: string }>({
 
 /**
  * V5 guided wizard: Confirm engagement -> Fees and deposit -> Running order ->
- * Review and issue, for creating a single new hire order — including a fully
- * manual engagement with no linked artist or show date at all.
+ * Review and issue. Linked engagements create one aggregate order per selected
+ * artist; the no-linked-date path remains a single manual order.
  *
- * Submits via the `draft-manual` edge action (never links a booking). "Save as
- * draft" creates the order and stops there; "Issue and send to artist" creates
- * it then immediately issues it. Both land on the same success screen, which
- * hides "Issue now" once the order is already issued.
+ * Linked engagements submit through `draft-batch`; manual engagements keep
+ * using `draft-manual`. Both can stop at draft or immediately issue every order
+ * that was created successfully.
  */
 export function NewOrderWizard({ open, onOpenChange, orgId }: Props) {
   const navigate = useNavigate();
@@ -163,8 +192,9 @@ export function NewOrderWizard({ open, onOpenChange, orgId }: Props) {
 
   const [step, setStep] = useState<WizardStep>(1);
   const [manualMode, setManualMode] = useState(false);
-  const [artistId, setArtistId] = useState<string | null>(null);
-  const [showDateId, setShowDateId] = useState<string | null>(null);
+  const [selectedArtistIds, setSelectedArtistIds] = useState<string[]>([]);
+  const [selectedShowDateIds, setSelectedShowDateIds] = useState<string[]>([]);
+  const [artistDateIds, setArtistDateIds] = useState<Record<string, string[]>>({});
   const [manualArtistName, setManualArtistName] = useState("");
   const [manualEmail, setManualEmail] = useState("");
   const [manualDate, setManualDate] = useState("");
@@ -174,13 +204,15 @@ export function NewOrderWizard({ open, onOpenChange, orgId }: Props) {
   const [currency, setCurrency] = useState("EUR");
   const [durationMin, setDurationMin] = useState("");
   const [manualSessions, setManualSessions] = useState<SessionRow[]>([{ label: "", time: "" }]);
+  const [batchScheduleSourceDateId, setBatchScheduleSourceDateId] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState<"draft" | "issue" | null>(null);
-  const [result, setResult] = useState<{ id: string; issued: boolean } | null>(null);
+  const [result, setResult] = useState<WizardResult | null>(null);
 
   function resetForm() {
-    setStep(1); setManualMode(false); setArtistId(null); setShowDateId(null);
+    setStep(1); setManualMode(false); setSelectedArtistIds([]); setSelectedShowDateIds([]); setArtistDateIds({});
     setManualArtistName(""); setManualEmail(""); setManualDate(""); setManualVenue(""); setManualCity("");
     setFee(""); setDurationMin(""); setManualSessions([{ label: "", time: "" }]);
+    setBatchScheduleSourceDateId(null);
     setSubmitting(null); setResult(null);
     seededDefaultsRef.current = false; setCurrency("EUR");
   }
@@ -192,20 +224,108 @@ export function NewOrderWizard({ open, onOpenChange, orgId }: Props) {
 
   function switchMode(next: boolean) {
     setManualMode(next);
-    if (next) { setArtistId(null); setShowDateId(null); }
+    if (next) {
+      setSelectedArtistIds([]);
+      setSelectedShowDateIds([]);
+      setArtistDateIds({});
+      setBatchScheduleSourceDateId(null);
+    }
   }
 
-  function pickShowDate(id: string) {
-    setShowDateId(id);
-    const found = showDates.find((d) => d.id === id);
-    setDurationMin(found?.duration_minutes != null ? String(found.duration_minutes) : "");
+  function syncBatchSchedule(
+    nextArtistIds: string[],
+    nextShowDateIds: string[],
+    nextArtistDateIds: Record<string, string[]>,
+  ) {
+    const remainsAssigned =
+      batchScheduleSourceDateId != null &&
+      nextArtistIds.some((artistId) =>
+        (nextArtistDateIds[artistId] ?? []).includes(batchScheduleSourceDateId),
+      );
+    if (remainsAssigned) return;
+
+    const nextSourceDateId =
+      nextShowDateIds.find((showDateId) =>
+        nextArtistIds.some((artistId) =>
+          (nextArtistDateIds[artistId] ?? []).includes(showDateId),
+        ),
+      ) ?? null;
+    const nextSourceDate = showDates.find((date) => date.id === nextSourceDateId);
+    setBatchScheduleSourceDateId(nextSourceDateId);
+    setDurationMin(
+      nextSourceDate?.duration_minutes != null
+        ? String(nextSourceDate.duration_minutes)
+        : "",
+    );
+    setManualSessions(
+      nextSourceDate && nextSourceDate.sessions.length > 0
+        ? nextSourceDate.sessions.map((time) => ({ label: "", time }))
+        : [{ label: "", time: "" }],
+    );
   }
 
-  const linkedArtist = !manualMode ? artists.find((a) => a.id === artistId) ?? null : null;
-  const linkedDate = !manualMode ? showDates.find((d) => d.id === showDateId) ?? null : null;
-  const hasLinkedSessions = !!linkedDate && linkedDate.sessions.length > 0;
+  function toggleArtist(id: string) {
+    if (selectedArtistIds.includes(id)) {
+      const nextArtistIds = selectedArtistIds.filter((artistId) => artistId !== id);
+      const nextArtistDateIds = { ...artistDateIds };
+      delete nextArtistDateIds[id];
+      setSelectedArtistIds(nextArtistIds);
+      setArtistDateIds(nextArtistDateIds);
+      syncBatchSchedule(nextArtistIds, selectedShowDateIds, nextArtistDateIds);
+      return;
+    }
+    setSelectedArtistIds((ids) => [...ids, id]);
+    setArtistDateIds((current) => ({ ...current, [id]: current[id] ?? [] }));
+  }
 
-  const canContinueStep1 = manualMode ? manualArtistName.trim() !== "" : !!artistId && !!showDateId;
+  function toggleShowDate(id: string) {
+    if (selectedShowDateIds.includes(id)) {
+      const nextShowDateIds = selectedShowDateIds.filter((showDateId) => showDateId !== id);
+      const nextArtistDateIds =
+        Object.fromEntries(
+          Object.entries(artistDateIds).map(([artistId, ids]) => [
+            artistId,
+            ids.filter((showDateId) => showDateId !== id),
+          ]),
+        );
+      setSelectedShowDateIds(nextShowDateIds);
+      setArtistDateIds(nextArtistDateIds);
+      syncBatchSchedule(selectedArtistIds, nextShowDateIds, nextArtistDateIds);
+      return;
+    }
+    setSelectedShowDateIds((ids) => [...ids, id]);
+  }
+
+  function applySelectedDatesToAll() {
+    const nextArtistDateIds = Object.fromEntries(
+      selectedArtistIds.map((artistId) => [artistId, [...selectedShowDateIds]]),
+    );
+    setArtistDateIds(nextArtistDateIds);
+    syncBatchSchedule(selectedArtistIds, selectedShowDateIds, nextArtistDateIds);
+  }
+
+  function toggleArtistDate(artistId: string, showDateId: string) {
+    const assigned = new Set(artistDateIds[artistId] ?? []);
+    if (assigned.has(showDateId)) assigned.delete(showDateId);
+    else assigned.add(showDateId);
+    const nextArtistDateIds = {
+      ...artistDateIds,
+      [artistId]: selectedShowDateIds.filter((id) => assigned.has(id)),
+    };
+    setArtistDateIds(nextArtistDateIds);
+    syncBatchSchedule(selectedArtistIds, selectedShowDateIds, nextArtistDateIds);
+  }
+
+  const linkedArtist = !manualMode ? artists.find((a) => a.id === selectedArtistIds[0]) ?? null : null;
+  const linkedDate =
+    !manualMode
+      ? showDates.find((d) => d.id === batchScheduleSourceDateId) ?? null
+      : null;
+
+  const canContinueStep1 = manualMode
+    ? manualArtistName.trim() !== ""
+    : selectedArtistIds.length > 0 &&
+      selectedArtistIds.every((artistId) => (artistDateIds[artistId]?.length ?? 0) > 0);
   const canContinueStep2 = fee.trim() !== "" && !Number.isNaN(Number(fee));
   const canContinue = step === 1 ? canContinueStep1 : step === 2 ? canContinueStep2 : true;
 
@@ -219,8 +339,8 @@ export function NewOrderWizard({ open, onOpenChange, orgId }: Props) {
     setManualSessions((rows) => rows.map((r, idx) => (idx === i ? { ...r, ...patch } : r)));
   }
 
-  function buildManualDict(): Partial<Record<OrderFieldKey, unknown>> {
-    const manual: Partial<Record<OrderFieldKey, unknown>> = {};
+  function buildManualDict(): Partial<Record<EditableOrderFieldKey, unknown>> {
+    const manual: Partial<Record<EditableOrderFieldKey, unknown>> = {};
     if (manualMode) {
       if (manualArtistName.trim()) manual.artist_name = manualArtistName.trim();
       if (manualEmail.trim()) manual.recipient_email = manualEmail.trim();
@@ -231,12 +351,10 @@ export function NewOrderWizard({ open, onOpenChange, orgId }: Props) {
     if (fee.trim() !== "" && !Number.isNaN(Number(fee))) manual.fee = Number(fee);
     if (currency) manual.currency = currency;
     if (durationMin.trim() !== "" && !Number.isNaN(Number(durationMin))) manual.duration_min = Number(durationMin);
-    if (!hasLinkedSessions) {
-      const sessions = manualSessions
-        .filter((s) => s.time.trim() !== "")
-        .map((s) => (s.label.trim() ? `${s.label.trim()} ${s.time.trim()}` : s.time.trim()));
-      if (sessions.length > 0) manual.sessions = sessions;
-    }
+    const sessions = manualSessions
+      .filter((s) => s.time.trim() !== "")
+      .map((s) => (s.label.trim() ? `${s.label.trim()} ${s.time.trim()}` : s.time.trim()));
+    if (sessions.length > 0) manual.sessions = sessions;
     return manual;
   }
 
@@ -244,7 +362,7 @@ export function NewOrderWizard({ open, onOpenChange, orgId }: Props) {
   // step-4 summary matches what actually gets stored. `role` is intentionally
   // absent here (fetchArtistsLite doesn't carry cast_role) — the server-side
   // showflow layer can still resolve it from the artists table directly.
-  const previewShowflow: Partial<Record<OrderFieldKey, unknown>> = {};
+  const previewShowflow: Partial<Record<EditableOrderFieldKey, unknown>> = {};
   if (linkedArtist) {
     previewShowflow.artist_name = linkedArtist.name;
     if (linkedArtist.email) previewShowflow.recipient_email = linkedArtist.email;
@@ -256,7 +374,7 @@ export function NewOrderWizard({ open, onOpenChange, orgId }: Props) {
     if (linkedDate.duration_minutes != null) previewShowflow.duration_min = linkedDate.duration_minutes;
     if (linkedDate.sessions.length > 0) previewShowflow.sessions = linkedDate.sessions;
   }
-  const previewDefaults: Partial<Record<OrderFieldKey, unknown>> = {
+  const previewDefaults: Partial<Record<EditableOrderFieldKey, unknown>> = {
     currency: defaultsQuery.data?.currency ?? "EUR",
   };
   if (defaultsQuery.data?.default_fee != null) previewDefaults.fee = defaultsQuery.data.default_fee;
@@ -269,12 +387,35 @@ export function NewOrderWizard({ open, onOpenChange, orgId }: Props) {
       : "Not set";
 
   function draftBody() {
+    if (!manualMode) {
+      return {
+        action: "draft-batch" as const,
+        org_id: orgId,
+        artists: selectedArtistIds.map((artist_id) => ({
+          artist_id,
+          show_date_ids: artistDateIds[artist_id] ?? [],
+        })),
+        manual: buildManualDict(),
+      };
+    }
     return {
       action: "draft-manual" as const,
       org_id: orgId,
-      artist_id: !manualMode && artistId ? artistId : undefined,
-      show_date_id: !manualMode && showDateId ? showDateId : undefined,
       manual: buildManualDict(),
+    };
+  }
+
+  function resultFromDraft(response: BatchDraftResult): WizardResult | null {
+    const created = response.created ?? [];
+    if (created.length === 0) {
+      toast.error("Could not create any hire orders");
+      return null;
+    }
+    return {
+      created,
+      issued: [],
+      skipped: response.skipped ?? [],
+      errors: response.errors ?? [],
     };
   }
 
@@ -282,10 +423,8 @@ export function NewOrderWizard({ open, onOpenChange, orgId }: Props) {
     if (!orgId) return;
     setSubmitting("draft");
     try {
-      const res = (await action.mutateAsync(draftBody())) as { created?: string[] };
-      const id = res.created?.[0];
-      if (!id) { toast.error("Could not create the hire order"); return; }
-      setResult({ id, issued: false });
+      const nextResult = resultFromDraft((await action.mutateAsync(draftBody())) as BatchDraftResult);
+      if (nextResult) setResult(nextResult);
     } catch {
       // useHireOrderAction already toasts the failure.
     } finally {
@@ -297,20 +436,26 @@ export function NewOrderWizard({ open, onOpenChange, orgId }: Props) {
     if (!orgId) return;
     setSubmitting("issue");
     try {
-      const draftRes = (await action.mutateAsync(draftBody())) as { created?: string[] };
-      const id = draftRes.created?.[0];
-      if (!id) { toast.error("Could not create the hire order"); return; }
+      const nextResult = resultFromDraft((await action.mutateAsync(draftBody())) as BatchDraftResult);
+      if (!nextResult) return;
       // The draft now exists regardless of whether issuing below succeeds — show
-      // the success screen either way, so a network hiccup on the issue call
-      // doesn't strand the user on step 4 with no way back to the order they
-      // just created (they can retry via "Issue now" on the success screen).
-      setResult({ id, issued: false });
+      // the success screen after the issue attempt either way, so a network
+      // hiccup doesn't strand the user on step 4 with no way back to the order
+      // they just created (they can retry via "Issue now" on the success screen).
       try {
-        const issueRes = (await action.mutateAsync({ action: "issue", org_id: orgId, order_ids: [id] })) as { issued?: string[] };
-        if ((issueRes.issued ?? []).includes(id)) setResult({ id, issued: true });
+        const issueRes = (await action.mutateAsync({
+          action: "issue",
+          org_id: orgId,
+          order_ids: nextResult.created,
+        })) as { issued?: string[] };
+        setResult({
+          ...nextResult,
+          issued: nextResult.created.filter((id) => (issueRes.issued ?? []).includes(id)),
+        });
       } catch {
         // useHireOrderAction already toasts the issue failure; the draft itself
         // still succeeded, so the success screen stays up with "Issue now".
+        setResult(nextResult);
       }
     } catch {
       // useHireOrderAction already toasts the draft failure.
@@ -321,10 +466,21 @@ export function NewOrderWizard({ open, onOpenChange, orgId }: Props) {
 
   async function handleIssueNow() {
     if (!orgId || !result) return;
+    const alreadyIssued = new Set(result.issued);
+    const pendingOrderIds = result.created.filter((id) => !alreadyIssued.has(id));
+    if (pendingOrderIds.length === 0) return;
     setSubmitting("issue");
     try {
-      const issueRes = (await action.mutateAsync({ action: "issue", org_id: orgId, order_ids: [result.id] })) as { issued?: string[] };
-      if ((issueRes.issued ?? []).includes(result.id)) setResult({ ...result, issued: true });
+      const issueRes = (await action.mutateAsync({
+        action: "issue",
+        org_id: orgId,
+        order_ids: pendingOrderIds,
+      })) as { issued?: string[] };
+      const newlyIssued = new Set(issueRes.issued ?? []);
+      setResult({
+        ...result,
+        issued: result.created.filter((id) => alreadyIssued.has(id) || newlyIssued.has(id)),
+      });
     } catch {
       // useHireOrderAction already toasts the failure.
     } finally {
@@ -333,15 +489,23 @@ export function NewOrderWizard({ open, onOpenChange, orgId }: Props) {
   }
 
   function handleOpenOrder() {
-    if (!result) return;
-    const id = result.id;
+    if (!result || result.created.length !== 1) return;
+    const id = result.created[0];
     handleOpenChange(false);
     navigate(ROUTES.HIRE_ORDER_DETAIL.replace(":id", id));
   }
 
+  function handleCloseResult() {
+    handleOpenChange(false);
+    navigate(ROUTES.HIRE_ORDERS);
+  }
+
+  const allCreatedOrdersIssued =
+    !!result && result.created.every((id) => result.issued.includes(id));
+
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
-      <DialogContent className="max-h-[85vh] overflow-y-auto sm:max-w-lg">
+      <DialogContent className="max-h-[85vh] overflow-y-auto sm:max-w-3xl">
         <DialogHeader>
           <DialogTitle className="font-display">New hire order</DialogTitle>
           <DialogDescription>Confirm the engagement, set the fee, and issue a hire order.</DialogDescription>
@@ -352,10 +516,33 @@ export function NewOrderWizard({ open, onOpenChange, orgId }: Props) {
             <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-accent-50">
               <CheckCircle2 className="h-6 w-6 text-accent-700" />
             </div>
-            <p className="text-lg font-medium">Hire order created</p>
+            <p className="text-lg font-medium">
+              {result.created.length} hire order{result.created.length === 1 ? "" : "s"} created
+            </p>
+            {(result.skipped.length > 0 || result.errors.length > 0) && (
+              <div className="space-y-1 text-sm text-muted-foreground">
+                {result.skipped.length > 0 && (
+                  <p>{result.skipped.length} artist{result.skipped.length === 1 ? "" : "s"} skipped</p>
+                )}
+                {result.errors.length > 0 && (
+                  <p>{result.errors.length} artist{result.errors.length === 1 ? "" : "s"} failed</p>
+                )}
+              </div>
+            )}
             <div className="flex justify-center gap-2">
-              <Button type="button" variant="outline" onClick={handleOpenOrder}>Open order</Button>
-              {!result.issued && (
+              {result.created.length === 1 ? (
+                <Button type="button" variant="outline" onClick={handleOpenOrder}>Open order</Button>
+              ) : (
+                <Button
+                  type="button"
+                  variant="outline"
+                  aria-label="Close and return to hire orders"
+                  onClick={handleCloseResult}
+                >
+                  Close
+                </Button>
+              )}
+              {!allCreatedOrdersIssued && (
                 <Button type="button" onClick={handleIssueNow} disabled={submitting !== null}>Issue now</Button>
               )}
             </div>
@@ -405,31 +592,84 @@ export function NewOrderWizard({ open, onOpenChange, orgId }: Props) {
                 {!manualMode ? (
                   <div className="space-y-3">
                     <div className="space-y-1.5">
-                      <Label>Artist</Label>
-                      <PickerCombobox
+                      <Label>Artists</Label>
+                      <MultiPickerCombobox
                         items={artists}
-                        value={artistId}
-                        onChange={setArtistId}
+                        values={selectedArtistIds}
+                        onToggle={toggleArtist}
                         getLabel={(a: ArtistLite) => a.name}
                         getSearchText={(a: ArtistLite) => a.name}
-                        placeholder="Choose an artist"
+                        placeholder="Choose artists"
                         ariaLabel="Select artist"
                         emptyText="No artists found."
+                        selectionNoun="artists"
                       />
                     </div>
                     <div className="space-y-1.5">
-                      <Label>Show date</Label>
-                      <PickerCombobox
+                      <Label>Common show dates</Label>
+                      <MultiPickerCombobox
                         items={showDates}
-                        value={showDateId}
-                        onChange={pickShowDate}
+                        values={selectedShowDateIds}
+                        onToggle={toggleShowDate}
                         getLabel={dateOptionLabel}
                         getSearchText={dateOptionLabel}
-                        placeholder="Choose a date"
+                        placeholder="Choose dates"
                         ariaLabel="Select show date"
                         emptyText="No show dates found."
+                        selectionNoun="dates"
                       />
                     </div>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={applySelectedDatesToAll}
+                      disabled={selectedArtistIds.length === 0 || selectedShowDateIds.length === 0}
+                    >
+                      Apply selected dates to all
+                    </Button>
+                    {selectedArtistIds.length > 0 && selectedShowDateIds.length > 0 && (
+                      <div className="overflow-x-auto rounded-lg border">
+                        <table className="w-full text-left text-sm">
+                          <thead className="bg-muted/50 text-xs text-muted-foreground">
+                            <tr>
+                              <th className="px-3 py-2 font-medium">Artist</th>
+                              {selectedShowDateIds.map((showDateId) => {
+                                const date = showDates.find((item) => item.id === showDateId);
+                                return (
+                                  <th key={showDateId} className="min-w-32 px-3 py-2 font-medium">
+                                    {date ? dateOptionLabel(date) : showDateId}
+                                  </th>
+                                );
+                              })}
+                            </tr>
+                          </thead>
+                          <tbody className="divide-y">
+                            {selectedArtistIds.map((artistId) => {
+                              const artist = artists.find((item) => item.id === artistId);
+                              return (
+                                <tr key={artistId}>
+                                  <th className="px-3 py-2 font-medium">{artist?.name ?? artistId}</th>
+                                  {selectedShowDateIds.map((showDateId) => {
+                                    const date = showDates.find((item) => item.id === showDateId);
+                                    const dateLabel = date ? dateOptionLabel(date) : showDateId;
+                                    return (
+                                      <td key={showDateId} className="px-3 py-2">
+                                        <Checkbox
+                                          checked={(artistDateIds[artistId] ?? []).includes(showDateId)}
+                                          onCheckedChange={() => toggleArtistDate(artistId, showDateId)}
+                                          aria-label={`${artist?.name ?? artistId} ${dateLabel}`}
+                                        />
+                                      </td>
+                                    );
+                                  })}
+                                </tr>
+                              );
+                            })}
+                          </tbody>
+                        </table>
+                      </div>
+                    )}
                   </div>
                 ) : (
                   <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
@@ -494,56 +734,93 @@ export function NewOrderWizard({ open, onOpenChange, orgId }: Props) {
                 </div>
                 <div className="space-y-2">
                   <Label>Sessions</Label>
-                  {hasLinkedSessions ? (
-                    <ul className="space-y-1 text-sm text-foreground">
-                      {linkedDate!.sessions.map((s, i) => <li key={i} className="font-mono">{s}</li>)}
-                    </ul>
-                  ) : (
-                    <div className="space-y-2">
-                      {manualSessions.map((row, i) => (
-                        <div key={i} className="flex items-center gap-2">
-                          <Input
-                            placeholder="Label (optional)" value={row.label}
-                            onChange={(e) => updateSessionRow(i, { label: e.target.value })}
-                            aria-label={`Session ${i + 1} label`}
-                          />
-                          <Input
-                            type="time" value={row.time}
-                            onChange={(e) => updateSessionRow(i, { time: e.target.value })}
-                            aria-label={`Session ${i + 1} time`}
-                          />
-                          {manualSessions.length > 1 && (
-                            <Button type="button" variant="ghost" size="icon" onClick={() => removeSessionRow(i)} aria-label={`Remove session ${i + 1}`}>
-                              <Trash2 className="h-4 w-4" />
-                            </Button>
-                          )}
-                        </div>
-                      ))}
-                      {manualSessions.length < 3 && (
-                        <Button type="button" variant="outline" size="sm" onClick={addSessionRow}>
-                          <Plus className="mr-1 h-4 w-4" /> Add session
-                        </Button>
-                      )}
-                    </div>
-                  )}
+                  <div className="space-y-2">
+                    {manualSessions.map((row, i) => (
+                      <div key={i} className="flex items-center gap-2">
+                        <Input
+                          placeholder="Label (optional)" value={row.label}
+                          onChange={(e) => updateSessionRow(i, { label: e.target.value })}
+                          aria-label={`Session ${i + 1} label`}
+                        />
+                        <Input
+                          type="time" value={row.time}
+                          onChange={(e) => updateSessionRow(i, { time: e.target.value })}
+                          aria-label={`Session ${i + 1} time`}
+                        />
+                        {manualSessions.length > 1 && (
+                          <Button type="button" variant="ghost" size="icon" onClick={() => removeSessionRow(i)} aria-label={`Remove session ${i + 1}`}>
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        )}
+                      </div>
+                    ))}
+                    {manualSessions.length < 3 && (
+                      <Button type="button" variant="outline" size="sm" onClick={addSessionRow}>
+                        <Plus className="mr-1 h-4 w-4" /> Add session
+                      </Button>
+                    )}
+                  </div>
                 </div>
               </div>
             )}
 
             {step === 4 && (
               <div className="space-y-4">
-                <div className="grid grid-cols-2 gap-x-4 gap-y-3">
-                  {REVIEW_ROWS.map((r) => (
-                    <div key={r.key} className="space-y-0.5">
-                      <p className="text-xs text-muted-foreground">{r.label}</p>
-                      <p className="text-sm text-foreground">{reviewValue(r.key, reviewData)}</p>
+                {manualMode ? (
+                  <div className="grid grid-cols-2 gap-x-4 gap-y-3">
+                    {REVIEW_ROWS.map((r) => (
+                      <div key={r.key} className="space-y-0.5">
+                        <p className="text-xs text-muted-foreground">{r.label}</p>
+                        <p className="text-sm text-foreground">{reviewValue(r.key, reviewData)}</p>
+                      </div>
+                    ))}
+                    <div className="space-y-0.5">
+                      <p className="text-xs text-muted-foreground">Fee</p>
+                      <p className="text-sm text-foreground">{feeDisplay}</p>
                     </div>
-                  ))}
-                  <div className="space-y-0.5">
-                    <p className="text-xs text-muted-foreground">Fee</p>
-                    <p className="text-sm text-foreground">{feeDisplay}</p>
                   </div>
-                </div>
+                ) : (
+                  <>
+                    <div className="space-y-2">
+                      {selectedArtistIds.map((artistId) => {
+                        const artist = artists.find((item) => item.id === artistId);
+                        const assignedDates = (artistDateIds[artistId] ?? [])
+                          .map((showDateId) => showDates.find((item) => item.id === showDateId))
+                          .filter((date): date is ShowDateLite => !!date);
+                        const artistName = artist?.name ?? artistId;
+                        return (
+                          <div
+                            key={artistId}
+                            role="group"
+                            aria-label={`${artistName} dates`}
+                            className="rounded-lg border p-3"
+                          >
+                            <p className="font-medium text-foreground">{artistName}</p>
+                            <ul className="mt-1 space-y-1 text-sm text-muted-foreground">
+                              {assignedDates.map((date) => (
+                                <li key={date.id}>{dateOptionLabel(date)}</li>
+                              ))}
+                            </ul>
+                          </div>
+                        );
+                      })}
+                    </div>
+                    <div className="grid grid-cols-2 gap-x-4 gap-y-3">
+                      {(["duration_min", "sessions"] as EditableOrderFieldKey[]).map((key) => (
+                        <div key={key} className="space-y-0.5">
+                          <p className="text-xs text-muted-foreground">
+                            {key === "duration_min" ? "Duration" : "Sessions"}
+                          </p>
+                          <p className="text-sm text-foreground">{reviewValue(key, reviewData)}</p>
+                        </div>
+                      ))}
+                      <div className="space-y-0.5">
+                        <p className="text-xs text-muted-foreground">Fee</p>
+                        <p className="text-sm text-foreground">{feeDisplay}</p>
+                      </div>
+                    </div>
+                  </>
+                )}
                 <div className="flex items-center gap-3 rounded-lg border border-dashed border-border p-4 text-muted-foreground">
                   <FileText className="h-8 w-8 shrink-0" />
                   <p className="text-xs">Document preview available once the order is created.</p>

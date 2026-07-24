@@ -37,6 +37,41 @@ describe("fetchHireOrdersForDate", () => {
     const fake = createFakeSupabase({ hire_orders: { data: null, error: null } });
     expect(await fetchHireOrdersForDate(fake as never, "d1")).toEqual([]);
   });
+
+  it("includes aggregate orders linked to the date and deduplicates a legacy parent", async () => {
+    const legacy = {
+      id: "ho-legacy",
+      show_date_id: "d1",
+      created_at: "2026-06-01T00:00:00Z",
+      artists: { name: "Lena" },
+    };
+    const aggregate = {
+      id: "ho-aggregate",
+      show_date_id: null,
+      created_at: "2026-06-02T00:00:00Z",
+      artists: { name: "Miro" },
+    };
+    const fake = createFakeSupabase({
+      hire_order_dates: {
+        data: [
+          { hire_order_id: "ho-legacy" },
+          { hire_order_id: "ho-aggregate" },
+        ],
+        error: null,
+      },
+      hire_orders: [
+        { when: { show_date_id: "d1" }, data: [legacy], error: null },
+        { data: [legacy, aggregate], error: null },
+      ],
+    });
+
+    await expect(fetchHireOrdersForDate(fake as never, "d1")).resolves.toEqual([
+      legacy,
+      aggregate,
+    ]);
+    expect(fake.calls).toContainEqual({ table: "hire_order_dates", method: "eq", args: ["show_date_id", "d1"] });
+    expect(fake.calls).toContainEqual({ table: "hire_orders", method: "in", args: ["id", ["ho-legacy", "ho-aggregate"]] });
+  });
 });
 
 describe("fetchHireOrder", () => {
@@ -63,6 +98,11 @@ describe("fetchMyHireOrders", () => {
     });
     const res = await fetchMyHireOrders(fake as never, ["a1", "a2"]);
     expect(res).toEqual([{ id: "ho-1", artist_id: "a1", status: "issued" }]);
+    expect(fake.calls).toContainEqual({
+      table: "hire_orders",
+      method: "select",
+      args: ["*, artists(name), hire_order_dates(show_date_id)"],
+    });
     expect(fake.calls).toContainEqual({ table: "hire_orders", method: "in", args: ["artist_id", ["a1", "a2"]] });
     expect(fake.calls).toContainEqual({ table: "hire_orders", method: "in", args: ["status", ["issued", "countersigned"]] });
   });
@@ -116,7 +156,9 @@ describe("fetchHireOrders", () => {
     expect(res.map((r) => r.id)).toEqual(["ho-1", "ho-2", "ho-3"]);
     expect(fake.calls).toContainEqual({ table: "hire_orders", method: "eq", args: ["org_id", "org-1"] });
     expect(fake.calls).toContainEqual({
-      table: "hire_orders", method: "select", args: ["*, artists(name), show_dates(date, venue)"],
+      table: "hire_orders",
+      method: "select",
+      args: ["*, artists(name), show_dates!hire_orders_show_date_id_fkey(date, venue)"],
     });
     expect(fake.calls).toContainEqual({ table: "hire_orders", method: "order", args: ["created_at", { ascending: false }] });
   });

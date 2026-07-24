@@ -276,6 +276,33 @@ describe("HireOrdersCard artist variant (Task 14)", () => {
     expect(document.body.textContent).not.toMatch(/[—–]/);
   });
 
+  it("renders an aggregate order when this show date is linked through hire_order_dates", async () => {
+    authAs("org-on");
+    vi.mocked(useMyArtist).mockReturnValue({ data: { id: "ar-1" } } as never);
+    seedClient({
+      ...ENTITLEMENTS,
+      hire_orders: {
+        data: [
+          order({
+            id: "ho-aggregate",
+            order_no: "HO-2026-MULTI-1",
+            show_date_id: null,
+            artist_id: "ar-1",
+            status: "issued",
+            hire_order_dates: [{ show_date_id: "sd-1" }],
+          }),
+        ],
+        error: null,
+      },
+    });
+    renderWithProviders(
+      <HireOrdersCard showDateId="sd-1" showDate={SHOW_DATE_FILLED} bookings={[CONFIRMED_BOOKING]} canManage={false} />,
+    );
+
+    expect(await screen.findByText("Hire order")).toBeInTheDocument();
+    expect(screen.getByText("HO-2026-MULTI-1")).toBeInTheDocument();
+  });
+
   it("clicking Download invokes the download-url action for the artist's own order", async () => {
     authAs("org-on");
     vi.mocked(useMyArtist).mockReturnValue({ data: { id: "ar-1" } } as never);
