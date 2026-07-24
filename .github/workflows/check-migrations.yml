@@ -1,0 +1,24 @@
+name: Check migrations applied
+
+# Fails when a migration merged to main has NOT been applied to production.
+# Detect-only (never auto-applies). Name-based, drift-tolerant. Uses the same
+# SUPABASE_ACCESS_TOKEN secret as deploy-functions.yml, no new secret.
+on:
+  push:
+    branches: [main]
+    paths: ["supabase/migrations/**"]
+  workflow_dispatch: {}
+
+jobs:
+  check-migrations:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+      - name: Check every repo migration is applied to production
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+          SUPABASE_PROJECT_REF: epweartpzwvcasrzyueh
+        run: node scripts/check-migrations.mjs
