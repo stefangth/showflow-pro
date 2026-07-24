@@ -456,6 +456,28 @@ describe("NewOrderWizard", () => {
     expect(screen.getByLabelText(/hamburg session 1 time/i)).toHaveValue("20:00");
   });
 
+  it("copies one date's duration to every other date via 'Copy to all dates', leaving sessions intact", async () => {
+    renderWizard();
+    await selectArtists("Ann Artist");
+    await selectCommonDates("Berlin", "Hamburg");
+    clickContinue();
+    fireEvent.change(await screen.findByLabelText(/engagement fee/i), { target: { value: "1000" } });
+    clickContinue();
+
+    const berlin = await screen.findByRole("group", { name: /berlin/i });
+    const hamburg = screen.getByRole("group", { name: /hamburg/i });
+    // Berlin syncs 90 min, Hamburg 75 min.
+    expect(within(hamburg).getByLabelText(/duration/i)).toHaveValue(75);
+
+    fireEvent.change(within(berlin).getByLabelText(/duration/i), { target: { value: "120" } });
+    fireEvent.click(within(berlin).getByRole("button", { name: /copy to all dates/i }));
+
+    // Every date now carries Berlin's 120; Hamburg's sessions are untouched.
+    expect(within(hamburg).getByLabelText(/duration/i)).toHaveValue(120);
+    expect(within(berlin).getByLabelText(/duration/i)).toHaveValue(120);
+    expect(within(hamburg).getByLabelText(/session 1 time/i)).toHaveValue("20:00");
+  });
+
   it("sends a date_overrides entry only for the date whose running order was edited", async () => {
     renderWizard();
     await selectArtists("Ann Artist");

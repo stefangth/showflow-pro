@@ -10,6 +10,7 @@ import type { ArtistLite, ShowDateLite } from "@/data/hireOrders";
 import { resolveFields } from "@/lib/hireOrders/resolveFields";
 import { formatMoney } from "@/lib/hireOrders/money";
 import type { SessionOverride } from "@/lib/hireOrders/engagementDates";
+import { copyDurationToAll } from "@/lib/hireOrders/durationFill";
 import type { EditableOrderFieldKey, FieldLayers, OrderData } from "@/lib/hireOrders/types";
 import { formatDateDMY } from "@/lib/dates";
 import { ROUTES } from "@/config/app.config";
@@ -852,6 +853,21 @@ export function NewOrderWizard({ open, onOpenChange, orgId }: Props) {
                             value={schedule.durationMin}
                             onChange={(e) => setDateDuration(dateId, e.target.value)}
                           />
+                          {/* Once this date has a valid duration and there is more than one
+                              assigned date, offer to stamp it into every other date. */}
+                          {assignedDateIds.length > 1 && parseDurationValue(schedule.durationMin) !== null && (
+                            <Button
+                              type="button" variant="link" size="sm"
+                              className="h-auto p-0 text-xs"
+                              aria-label={`Copy to all dates (${label})`}
+                              onClick={() => {
+                                setDateSchedules((current) => copyDurationToAll(current, dateId));
+                                toast.success("Applied this duration to all dates");
+                              }}
+                            >
+                              Copy to all dates
+                            </Button>
+                          )}
                         </div>
                         <div className="space-y-2">
                           <Label>Sessions</Label>
