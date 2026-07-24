@@ -63,3 +63,32 @@ describe("LetterheadCard address field", () => {
     });
   });
 });
+
+describe("LetterheadCard agent signature", () => {
+  it("uploads a PNG, previews it, and persists the returned path on Save", async () => {
+    seedClient({
+      app_settings: { data: [], error: null },
+      "fn:generate-hire-orders": {
+        data: { path: "org-1/agent-signature.png", url: "https://signed.test/sig.png" },
+        error: null,
+      },
+    });
+    renderWithProviders(<LetterheadCard orgId="org-1" />);
+    await screen.findByLabelText("Legal name");
+
+    const fileInput = screen.getByLabelText("Upload agent signature PNG");
+    const file = new File([new Uint8Array([0x89, 0x50, 0x4e, 0x47])], "sig.png", { type: "image/png" });
+    fireEvent.change(fileInput, { target: { files: [file] } });
+
+    const preview = await screen.findByAltText("Agent signature preview");
+    expect(preview).toHaveAttribute("src", "https://signed.test/sig.png");
+
+    fireEvent.click(screen.getByRole("button", { name: "Save letterhead" }));
+    await waitFor(() => {
+      const calls = (client.calls ?? []) as { table: string; method: string; args: unknown[] }[];
+      const upsert = calls.find((c) => c.table === "app_settings" && c.method === "upsert");
+      const value = (upsert!.args[0] as { value: { agent_signature_path?: string } }).value;
+      expect(value.agent_signature_path).toBe("org-1/agent-signature.png");
+    });
+  });
+});

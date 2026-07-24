@@ -1,8 +1,9 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type ChangeEvent } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { resolveOrgSetting, upsertOrgSetting } from "@/data/settings";
+import { uploadAgentSignature } from "@/data/hireOrders";
 import type { Json } from "@/integrations/supabase/types";
 import { LETTERHEAD_DEFAULT } from "./defaults";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -21,6 +22,10 @@ export interface Letterhead {
   registration_line: string;
   agent_name?: string;
   agent_email?: string;
+  /** Storage path of the org's booking-agent signature PNG (hire-orders bucket),
+   *  drawn on the producer line of issued PDFs. Uploaded via the edge action;
+   *  persisted here by Save. */
+  agent_signature_path?: string | null;
 }
 
 /** One address line per row. On SAVE only: trim trailing whitespace per line
@@ -71,6 +76,41 @@ export function LetterheadCard({ orgId, readOnly = false }: { orgId: string | nu
     },
     onError: (e: Error) => toast.error(e.message),
   });
+
+  // Agent-signature upload: the edge action stores the PNG and returns its path +
+  // a signed preview URL; the path lands in `form` and is persisted by Save.
+  const [signaturePreviewUrl, setSignaturePreviewUrl] = useState<string | null>(null);
+  const fileRef = useRef<HTMLInputElement>(null);
+  const uploadSig = useMutation({
+    mutationFn: (png: string) => uploadAgentSignature(supabase, { org_id: orgId!, signature_png: png }),
+    onSuccess: ({ path, url }) => {
+      setForm((f) => ({ ...f, agent_signature_path: path }));
+      setSignaturePreviewUrl(url);
+      toast.success("Signature uploaded. Save the letterhead to apply.");
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+  function onPickSignatureFile(e: ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    e.target.value = ""; // allow re-picking the same file
+    if (!file) return;
+    if (file.type !== "image/png") {
+      toast.error("Please choose a PNG image");
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = () => {
+      const dataUrl = typeof reader.result === "string" ? reader.result : "";
+      if (dataUrl.startsWith("data:image/png;base64,")) uploadSig.mutate(dataUrl);
+      else toast.error("Please choose a PNG image");
+    };
+    reader.readAsDataURL(file);
+  }
+  function removeSignature() {
+    setForm((f) => ({ ...f, agent_signature_path: null }));
+    setSignaturePreviewUrl(null);
+  }
+  const hasSignature = !!(signaturePreviewUrl || form.agent_signature_path);
 
   if (isLoading) return <Skeleton className="h-64 w-full" />;
   // Read failed: render the error INSTEAD of the form. Falling through would show
@@ -145,6 +185,51 @@ export function LetterheadCard({ orgId, readOnly = false }: { orgId: string | nu
               onChange={(e) => setForm((f) => ({ ...f, agent_email: e.target.value }))}
             />
           </div>
+        </div>
+        <div className="space-y-2">
+          <Label>Agent signature (optional)</Label>
+          <p className="text-xs text-muted-foreground">
+            A PNG of the booking agent's signature, drawn on the producer line of issued hire orders. Save the letterhead to apply.
+          </p>
+          {hasSignature && (
+            <div className="flex items-center gap-3 rounded-md border border-border p-2 w-fit">
+              {signaturePreviewUrl ? (
+                <img
+                  src={signaturePreviewUrl}
+                  alt="Agent signature preview"
+                  className="h-12 w-auto max-w-[200px] object-contain"
+                />
+              ) : (
+                <span className="text-sm text-muted-foreground">Signature on file</span>
+              )}
+              {!readOnly && (
+                <Button type="button" variant="ghost" size="sm" onClick={removeSignature}>
+                  Remove
+                </Button>
+              )}
+            </div>
+          )}
+          {!readOnly && (
+            <>
+              <input
+                ref={fileRef}
+                type="file"
+                accept="image/png"
+                className="hidden"
+                onChange={onPickSignatureFile}
+                aria-label="Upload agent signature PNG"
+              />
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                disabled={uploadSig.isPending || !orgId}
+                onClick={() => fileRef.current?.click()}
+              >
+                {hasSignature ? "Replace signature" : "Upload PNG"}
+              </Button>
+            </>
+          )}
         </div>
         <Button onClick={() => save.mutate()} disabled={readOnly || save.isPending || !orgId}>
           Save letterhead
