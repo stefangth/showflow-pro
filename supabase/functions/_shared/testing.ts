@@ -51,6 +51,8 @@ export interface FakeClientOptions {
   storageUploadResult?: { data?: unknown; error?: unknown };
   /** Seeded result for storage.from(bucket).createSignedUrl(...) (default: a signed URL). */
   storageSignedUrlResult?: { data?: unknown; error?: unknown };
+  /** Seeded result for storage.from(bucket).download(...) (default: no object). */
+  storageDownloadResult?: { data?: unknown; error?: unknown };
   /**
    * Seeded auth-user roster for admin.auth.admin.listUsers() (default: derived from
    * usersById, unchanged). When provided, listUsers() returns exactly this roster —
@@ -350,6 +352,10 @@ export function createFakeClient(opts: FakeClientOptions = {}) {
               opts.storageSignedUrlResult ??
                 { data: { signedUrl: `https://signed.test/${bucket}/${path}` }, error: null },
             );
+          },
+          download: (path: string) => {
+            calls.push({ table: `storage:${bucket}`, method: "download", args: [path] });
+            return Promise.resolve(opts.storageDownloadResult ?? { data: null, error: null });
           },
         };
       },

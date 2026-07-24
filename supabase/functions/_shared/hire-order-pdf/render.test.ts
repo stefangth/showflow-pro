@@ -247,6 +247,21 @@ Deno.test("issued render (no signature) is unchanged shape", async () => {
   assert(bytes.length > 0 && bytes[0] === 0x25);
 });
 
+Deno.test("issued render embeds the org agent signature image on the producer line when present", async () => {
+  const png =
+    "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAIAAAABCAYAAAD0In+KAAAADklEQVR4nGMQFZb5DwIAEM8FQMsechsAAAAASUVORK5CYII=";
+  const bytes = await renderHireOrderPdf({
+    ...BASE,
+    letterhead: { ...BASE.letterhead, agent_signature_data_url: png },
+  });
+  assert(bytes.length > 0 && bytes[0] === 0x25, "produced a PDF");
+  assertStringIncludes(
+    new TextDecoder("latin1").decode(bytes),
+    "/Subtype /Image",
+    "agent signature is embedded as an image XObject on the producer line",
+  );
+});
+
 Deno.test("aggregate PDF renders every engagement date with its own running order beneath it", async () => {
   // Task B3: once B1/B2 populate each engagement date's own `sessions`, an
   // aggregate order (2+ dates) must render each date's Call/Time rows beneath

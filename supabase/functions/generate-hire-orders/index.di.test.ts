@@ -1425,6 +1425,56 @@ Deno.test("draft-batch skips an artist whose every requested date is already cov
   assertEquals(calls.filter((c) => c.table === "rpc:create_hire_order_with_dates").length, 0);
 });
 
+// ── agent signature ──────────────────────────────────────────────────────
+
+// A real 1x1 transparent PNG (valid 8-byte signature) for the upload tests.
+const TINY_PNG_DATA_URL =
+  "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==";
+
+Deno.test("upload-agent-signature stores a valid PNG at the org path and returns a signed url", async () => {
+  const { deps, calls } = makeFakeDeps({
+    authUser: { id: "u-admin" },
+    rpcs: { is_feature_enabled: { data: true, error: null } },
+    tables: { org_memberships: { data: { role: "admin" } } },
+  });
+  const res = await handle(
+    makeRequest({ headers: JWT, body: { action: "upload-agent-signature", org_id: ORG, signature_png: TINY_PNG_DATA_URL } }),
+    deps,
+  );
+  assertEquals(res.status, 200);
+  const body = await res.json();
+  assertEquals(body.path, `${ORG}/agent-signature.png`);
+  assertEquals(typeof body.url, "string");
+  const upload = calls.find((c) => c.table === "storage:hire-orders" && c.method === "upload");
+  assertEquals(upload!.args[0], `${ORG}/agent-signature.png`);
+});
+
+Deno.test("upload-agent-signature rejects a non-PNG payload with 400", async () => {
+  const { deps } = makeFakeDeps({
+    authUser: { id: "u-admin" },
+    rpcs: { is_feature_enabled: { data: true, error: null } },
+    tables: { org_memberships: { data: { role: "admin" } } },
+  });
+  const res = await handle(
+    makeRequest({ headers: JWT, body: { action: "upload-agent-signature", org_id: ORG, signature_png: "data:image/png;base64,AAAA" } }),
+    deps,
+  );
+  assertEquals(res.status, 400);
+});
+
+Deno.test("upload-agent-signature requires admin (a producer gets 403)", async () => {
+  const { deps } = makeFakeDeps({
+    authUser: { id: "u-prod" },
+    rpcs: { is_feature_enabled: { data: true, error: null } },
+    tables: { org_memberships: { data: { role: "producer" } } },
+  });
+  const res = await handle(
+    makeRequest({ headers: JWT, body: { action: "upload-agent-signature", org_id: ORG, signature_png: TINY_PNG_DATA_URL } }),
+    deps,
+  );
+  assertEquals(res.status, 403);
+});
+
 // ── issue ──────────────────────────────────────────────────────────────
 
 function issuableOrder(overrides: Record<string, unknown> = {}) {
@@ -2159,6 +2209,51 @@ Deno.test("issue merges the order's agent override over the org letterhead", asy
   assertEquals(res.status, 200);
   assertEquals(captured!.letterhead.agent_name, "Solo Agent");
   assertEquals(captured!.letterhead.agent_email, "solo@x.com");
+});
+
+Deno.test("issue resolves the org agent signature and passes it to the renderer as a data url", async () => {
+  const { deps } = makeFakeDeps({
+    authUser: { id: "u-admin" },
+    storageDownloadResult: {
+      data: new Blob([new Uint8Array([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a])]),
+      error: null,
+    },
+    tables: {
+      org_memberships: { data: { role: "admin" } },
+      hire_orders: [
+        { when: { __write: false }, data: issuableOrder() },
+        { when: { __write: true }, data: null },
+      ],
+      artists: { data: { user_id: "u-artist" } },
+      app_settings: [
+        {
+          when: { key: "hire_order_letterhead" },
+          data: [{
+            org_id: ORG,
+            value: {
+              legal_name: "Nord GmbH",
+              address_lines: [],
+              agent_signature_path: `${ORG}/agent-signature.png`,
+            },
+          }],
+        },
+        { when: { key: "hire_order_terms" }, data: [TERMS_FILLED] },
+        { when: { key: "hire_order_defaults" }, data: [DEFAULTS] },
+      ],
+    },
+  });
+  let captured: { letterhead: { agent_signature_data_url?: string | null } } | null = null;
+  deps.renderHireOrderPdf = (a) => {
+    captured = a as unknown as typeof captured;
+    return Promise.resolve(new Uint8Array([0x25, 0x50, 0x44, 0x46]));
+  };
+  const res = await handle(
+    makeRequest({ headers: JWT, body: { action: "issue", org_id: ORG, order_ids: ["o-1"] } }),
+    deps,
+  );
+  assertEquals(res.status, 200);
+  const url = captured!.letterhead.agent_signature_data_url ?? "";
+  assertEquals(url.startsWith("data:image/png;base64,"), true);
 });
 
 Deno.test("issue inherits the letterhead agent when the order override is null", async () => {

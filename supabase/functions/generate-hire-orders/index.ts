@@ -323,6 +323,13 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
       return resendOrder(deps, body);
     case "preview":
       return previewOrder(deps, body);
+    case "upload-agent-signature": {
+      // Admin-only (mirrors countersign-test): the coarse gate above accepts
+      // admin OR producer, so re-check admin here. Feature already gated above.
+      const adminGate = await requireOrgRole(deps, req, body.org_id, ["admin"]);
+      if (!adminGate.ok) return adminGate.response;
+      return uploadAgentSignature(deps, body);
+    }
     case "countersign-test": {
       // NOT IN USE: dormant Documenso path, no org can select 'documenso' since the
       // settings UI offers only manual|electronic. Retained for a future self-hosted Documenso.
@@ -1316,6 +1323,79 @@ function isDateAvailabilityConflict(error: unknown): boolean {
   );
 }
 
+// ── agent signature ───────────────────────────────────────────────────────
+
+interface AgentSignatureBody {
+  org_id: string;
+  signature_png?: string;
+}
+
+/**
+ * Store the org's booking-agent signature PNG in the hire-orders bucket and
+ * return its path + a short-lived signed URL for a settings preview. Admin-only
+ * (re-checked by the caller). The path is persisted into hire_order_letterhead by
+ * the settings UI's normal save, so this action's ONLY side effect is the bytes
+ * (single writer for the setting). Reuses the sign action's PNG validation
+ * (prefix + size cap + 8-byte magic).
+ */
+async function uploadAgentSignature(
+  deps: Deps,
+  body: AgentSignatureBody,
+): Promise<Response> {
+  const admin = deps.admin;
+  const org = body.org_id;
+  const png = body.signature_png;
+  if (
+    typeof png !== "string" ||
+    !png.startsWith("data:image/png;base64,") ||
+    png.length > MAX_SIGNATURE_PNG_CHARS
+  ) {
+    return json({ error: "invalid_png" }, 400);
+  }
+  let bytes: Uint8Array;
+  try {
+    bytes = decodeBase64(png.slice(png.indexOf(",") + 1));
+  } catch {
+    return json({ error: "invalid_png" }, 400);
+  }
+  const PNG_SIG = [0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a];
+  if (bytes.length < 8 || PNG_SIG.some((b, i) => bytes[i] !== b)) {
+    return json({ error: "invalid_png" }, 400);
+  }
+  const path = `${org}/agent-signature.png`;
+  const { error: upErr } = await admin.storage.from(BUCKET).upload(path, bytes, {
+    contentType: "image/png",
+    upsert: true,
+  });
+  if (upErr) return json({ error: "upload_failed" }, 500);
+  const { data: signed } = await admin.storage.from(BUCKET).createSignedUrl(
+    path,
+    SIGNED_URL_TTL,
+  );
+  return json({ path, url: signed?.signedUrl ?? null });
+}
+
+/**
+ * Download the org's stored agent-signature PNG and return it as a
+ * `data:image/png;base64,...` URL for the renderer's producer signature line.
+ * Returns null (blank line) when no path is set or the object is missing, so a
+ * missing signature never blocks issuing.
+ */
+async function resolveAgentSignatureDataUrl(
+  admin: Deps["admin"],
+  path: string | null | undefined,
+): Promise<string | null> {
+  if (!path) return null;
+  const { data, error } = await admin.storage.from(BUCKET).download(path);
+  if (error || !data) return null;
+  try {
+    const bytes = new Uint8Array(await (data as Blob).arrayBuffer());
+    return `data:image/png;base64,${encodeBase64(bytes)}`;
+  } catch {
+    return null;
+  }
+}
+
 // ── issue ────────────────────────────────────────────────────────────────
 
 interface IssueBody {
@@ -1446,6 +1526,10 @@ async function issueOne(
     ...letterhead,
     agent_name: o.agent_name ?? letterhead.agent_name,
     agent_email: o.agent_email ?? letterhead.agent_email,
+    agent_signature_data_url: await resolveAgentSignatureDataUrl(
+      admin,
+      letterhead.agent_signature_path,
+    ),
   };
   const currency = o.fee_currency ?? defaults.currency ?? "EUR";
   const bytes = await deps.renderHireOrderPdf({
@@ -1861,6 +1945,10 @@ async function previewOrder(deps: Deps, body: PreviewBody): Promise<Response> {
     ...letterhead,
     agent_name: o.agent_name ?? letterhead.agent_name,
     agent_email: o.agent_email ?? letterhead.agent_email,
+    agent_signature_data_url: await resolveAgentSignatureDataUrl(
+      admin,
+      letterhead.agent_signature_path,
+    ),
   };
   const bytes = await deps.renderHireOrderPdf({
     data: o.data as OrderData,
