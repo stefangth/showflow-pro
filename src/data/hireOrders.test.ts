@@ -98,6 +98,11 @@ describe("fetchMyHireOrders", () => {
     });
     const res = await fetchMyHireOrders(fake as never, ["a1", "a2"]);
     expect(res).toEqual([{ id: "ho-1", artist_id: "a1", status: "issued" }]);
+    expect(fake.calls).toContainEqual({
+      table: "hire_orders",
+      method: "select",
+      args: ["*, artists(name), hire_order_dates(show_date_id)"],
+    });
     expect(fake.calls).toContainEqual({ table: "hire_orders", method: "in", args: ["artist_id", ["a1", "a2"]] });
     expect(fake.calls).toContainEqual({ table: "hire_orders", method: "in", args: ["status", ["issued", "countersigned"]] });
   });

@@ -8,6 +8,7 @@ export type HireOrderStatus = Database["public"]["Enums"]["hire_order_status"];
 /** A `hire_orders` row, with the linked artist's name joined in (when selected). */
 export type HireOrderRow = Database["public"]["Tables"]["hire_orders"]["Row"] & {
   artists?: { name: string } | null;
+  hire_order_dates?: Array<{ show_date_id: string }> | null;
 };
 
 /** All hire orders for a show date (any status), oldest first, artist name joined. */
@@ -53,7 +54,7 @@ export async function fetchHireOrdersForDate(
     combined.set(order.id, order);
   }
   return [...combined.values()].sort((a, b) =>
-    a.created_at.localeCompare(b.created_at)
+    (a.created_at ?? "").localeCompare(b.created_at ?? "")
   );
 }
 
@@ -83,7 +84,7 @@ export async function fetchMyHireOrders(
   if (artistIds.length === 0) return [];
   const { data, error } = await client
     .from("hire_orders")
-    .select("*, artists(name)")
+    .select("*, artists(name), hire_order_dates(show_date_id)")
     .in("artist_id", artistIds)
     .in("status", ["issued", "countersigned"])
     .order("created_at", { ascending: false });
