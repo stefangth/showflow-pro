@@ -10,6 +10,9 @@ What's new in ShowFlow, newest first.
 - **Name your own terms templates** — Rename, add, and remove the terms templates on your hire orders in Settings → Hire orders. Pick a default that new orders start from.
 - **Per-date running orders** — When a hire order covers several dates, each date now carries its own session times, pulled from the synced event and editable in the new-order wizard.
 
+### Fixed
+- **Creating hire orders with custom terms** — Fixed an error that could block new hire orders from being created after you added or renamed a terms template. New orders, including ones that cover multiple dates, now save reliably.
+
 ## 1.11.0 — July 23, 2026
 
 *Granular producer permissions*

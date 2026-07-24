@@ -1231,7 +1231,13 @@ async function createBatchHireOrderWithRetry(
       return { reason: "exists" };
     }
     if (error && (error as { code?: string }).code === "23505") continue;
-    return { reason: "aggregate_insert_failed" };
+    // Surface the REAL Postgres reason instead of an opaque catch-all, so a
+    // genuine constraint violation (e.g. a stale check constraint) shows up in
+    // the batch response rather than being masked. Mirrors the single-date
+    // insertWithRetry, which already returns error.message.
+    return {
+      reason: (error as { message?: string })?.message ?? "aggregate_insert_failed",
+    };
   }
   return { reason: "order_no_collision" };
 }

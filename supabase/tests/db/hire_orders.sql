@@ -65,7 +65,7 @@
 -- restrictive on top of both, same shape as org_entitlements.sql.
 BEGIN;
 CREATE EXTENSION IF NOT EXISTS pgtap WITH SCHEMA extensions;
-SELECT plan(56);
+SELECT plan(57);
 
 CREATE OR REPLACE FUNCTION pg_temp.act_as(_uid text) RETURNS void LANGUAGE plpgsql AS $$
 BEGIN
@@ -164,6 +164,19 @@ SELECT throws_ok(
     VALUES ('00000000-0000-0000-0000-00000000f0a1', 'HO-BOOKED-2', '{}'::jsonb, 'eeeeeeee-f0a1-0001-0000-000000000000')$$,
   '23505', NULL,
   'a second active hire order on the same booking is rejected (partial unique index)');
+
+-- terms_variant is a FREE-FORM template id since PR #193 (dynamic terms templates
+-- mint crypto.randomUUID() ids; resolveTermsClauses tolerates stale/unknown ids by
+-- falling back to the org default). The legacy value check that only allowed
+-- lean/standard/full was dropped in
+-- 20260724160549_drop_hire_orders_terms_variant_check.sql. A custom-uuid
+-- terms_variant must now insert cleanly -- it previously raised 23514, which the
+-- multi-date draft-batch path masked as "aggregate_insert_failed".
+SELECT lives_ok(
+  $$INSERT INTO public.hire_orders (org_id, order_no, data, terms_variant)
+    VALUES ('00000000-0000-0000-0000-00000000f0a1', 'HO-TERMS-UUID', '{}'::jsonb,
+            'f47ac10b-58cc-4372-a567-0e02b2c3d479')$$,
+  'a custom (uuid) terms_variant is accepted after the legacy value check is dropped');
 
 -- ────────────────────────────────────────────────────────────────────────────
 -- RLS: org isolation
