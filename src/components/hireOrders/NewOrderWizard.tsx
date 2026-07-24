@@ -37,7 +37,14 @@ interface SessionRow { label: string; time: string }
 interface DateSchedule { sessions: SessionRow[]; durationMin: string }
 
 /** Seed a date's step-3 running order from its synced sessions/duration. An
- *  empty synced session list still shows one blank row to type into. */
+ *  empty synced session list still shows one blank row to type into.
+ *  Lossless round-trip invariant: `session_1/2/3` are always plain "HH:MM"
+ *  (enforced by `ShowDateFormDialog`'s zod schema and `airtable-poll`'s
+ *  `parseTime`, both of which only ever produce/accept a bare time string,
+ *  never a labelled one), so seeding the whole synced string into `time` with
+ *  an empty `label` is always faithful, and `sessionRowsToStrings` folding it
+ *  back with no label prefix reproduces the original string exactly when the
+ *  row is left unedited. */
 function seedDateSchedule(date: ShowDateLite | undefined): DateSchedule {
   return {
     sessions:
@@ -927,9 +934,10 @@ export function NewOrderWizard({ open, onOpenChange, orgId }: Props) {
                       {assignedDateIds.map((dateId) => {
                         const date = showDates.find((d) => d.id === dateId);
                         const schedule = dateSchedules[dateId];
+                        if (!schedule) return null;
                         const label = date ? dateOptionLabel(date) : dateId;
-                        const durationText = schedule && schedule.durationMin.trim() !== "" ? `${schedule.durationMin} min` : "Not set";
-                        const sessionsText = schedule ? sessionRowsToStrings(schedule.sessions).join(" · ") || "Not set" : "Not set";
+                        const durationText = schedule.durationMin.trim() !== "" ? `${schedule.durationMin} min` : "Not set";
+                        const sessionsText = sessionRowsToStrings(schedule.sessions).join(" · ") || "Not set";
                         return (
                           <div key={dateId} role="group" aria-label={`${label} running order`} className="rounded-lg border p-3">
                             <p className="font-medium text-foreground">{label}</p>

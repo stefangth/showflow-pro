@@ -471,6 +471,50 @@ describe("NewOrderWizard", () => {
     expect(manual.sessions).toBeUndefined();
   });
 
+  it("sends only duration_min when a date's duration is edited but its sessions are untouched", async () => {
+    renderWizard();
+    await selectArtists("Ann Artist");
+    await selectCommonDates("Berlin", "Hamburg");
+    clickContinue();
+    fireEvent.change(await screen.findByLabelText(/engagement fee/i), { target: { value: "1000" } });
+    clickContinue();
+
+    const berlin = await screen.findByRole("group", { name: /berlin/i });
+    fireEvent.change(within(berlin).getByLabelText(/duration/i), { target: { value: "100" } });
+    clickContinue();
+
+    fireEvent.click(await screen.findByRole("button", { name: /save as draft/i }));
+    await waitFor(() => expect(invokeCalls().length).toBe(1));
+    const body = invokeCalls()[0];
+    // Only duration changed (sessions still match the synced baseline), so the
+    // override for sd1 must carry duration_min and NOT a sessions key; sd2 was
+    // never touched and stays absent from date_overrides entirely.
+    expect(body.date_overrides).toEqual({ sd1: { duration_min: 100 } });
+  });
+
+  it("sends an explicit empty sessions clear when a date's session times are all blanked out", async () => {
+    renderWizard();
+    await selectArtists("Ann Artist");
+    await selectCommonDates("Berlin", "Hamburg");
+    clickContinue();
+    fireEvent.change(await screen.findByLabelText(/engagement fee/i), { target: { value: "1000" } });
+    clickContinue();
+
+    const berlin = await screen.findByRole("group", { name: /berlin/i });
+    fireEvent.change(within(berlin).getByLabelText(/session 1 time/i), { target: { value: "" } });
+    fireEvent.change(within(berlin).getByLabelText(/session 2 time/i), { target: { value: "" } });
+    clickContinue();
+
+    fireEvent.click(await screen.findByRole("button", { name: /save as draft/i }));
+    await waitFor(() => expect(invokeCalls().length).toBe(1));
+    const body = invokeCalls()[0];
+    // Blanking every session time on sd1 (which had synced sessions) is an
+    // explicit clear: the override carries `sessions: []`, distinct from sd2
+    // (never touched), which is absent from date_overrides altogether rather
+    // than present with an empty array.
+    expect(body.date_overrides).toEqual({ sd1: { sessions: [] } });
+  });
+
   it("omits date_overrides entirely when no running order is edited", async () => {
     renderWizard();
     await selectArtists("Ann Artist");
