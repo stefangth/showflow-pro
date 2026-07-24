@@ -6,10 +6,13 @@
 // applyTokens. Per-org overrides live in the `hire_order_copy` app-setting and
 // are merged over these defaults by resolveHireOrderCopy.
 //
-// DUAL-HOME: byte-identical to supabase/functions/_shared/hire-order-pdf/pdfCopy.ts
-// (the edge renderer can't import from src/). Edit both in the same commit;
-// pdfCopyMirror.test.ts enforces byte-equality. No relative imports here so the
-// two files can be identical.
+// DUAL-HOME PAIR: src/lib/hireOrders/pdfCopy.ts (edit here) generates
+// supabase/functions/_shared/hire-order-pdf/pdfCopy.ts (the edge renderer
+// can't import from src/). After editing the source, run
+// `npm run sync:mirrors`; never hand-edit the generated target directly.
+// pdfCopyMirror.test.ts and CI's sync:mirrors:check fail if the two drift.
+// No relative imports here, since the same body must run unchanged in
+// both the browser bundle and the edge runtime.
 //
 // HOUSE RULE: no em/en dashes in defaults. Use middot, comma, or period.
 
