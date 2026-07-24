@@ -1,10 +1,13 @@
 import { assertEquals } from "./test-asserts.ts";
 import {
   ORDER_FIELD_KEYS,
+  defaultTemplateId,
   formatMoney,
   formatOrderNo,
+  normalizeTermsSetting,
   orderReadyIssues,
   resolveFields,
+  resolveTermsClauses,
   withCollisionSuffix,
 } from "./hireOrders.ts";
 
@@ -109,4 +112,82 @@ Deno.test("orderReadyIssues: ready gate requires fee, recipient email, date, and
   }
   const ok = resolveFields({ manual: { fee: "4500", recipient_email: "a@b.de", date: "2026-06-15", artist_name: "M" } });
   assertEquals(orderReadyIssues(ok, { legal_name: "Aurora GmbH" }), []);
+});
+
+// ── terms ────────────────────────────────────────────────────────────────
+
+Deno.test("normalizeTermsSetting: passes a valid new-shape value through unchanged", () => {
+  const v = { templates: [{ id: "a", name: "A", clauses: [{ title: "t", body: "b" }] }], default_id: "a" };
+  assertEquals(normalizeTermsSetting(v), v);
+});
+
+Deno.test("normalizeTermsSetting: converts the legacy lean/standard/full shape to three templates, default standard", () => {
+  const legacy = { lean: [], standard: [{ title: "S", body: "sb" }], full: [] };
+  assertEquals(normalizeTermsSetting(legacy), {
+    templates: [
+      { id: "lean", name: "Lean", clauses: [] },
+      { id: "standard", name: "Standard", clauses: [{ title: "S", body: "sb" }] },
+      { id: "full", name: "Full", clauses: [] },
+    ],
+    default_id: "standard",
+  });
+});
+
+Deno.test("normalizeTermsSetting: returns empty for missing/junk input", () => {
+  assertEquals(normalizeTermsSetting(null), { templates: [], default_id: null });
+  assertEquals(normalizeTermsSetting({}), { templates: [], default_id: null });
+  assertEquals(normalizeTermsSetting({ templates: "nope" }), { templates: [], default_id: null });
+});
+
+Deno.test("normalizeTermsSetting: drops malformed templates and clauses", () => {
+  const v = {
+    templates: [
+      { id: "a", name: "A", clauses: [{ title: "t", body: "b" }, { title: 1 }] },
+      { name: "no id" },
+    ],
+    default_id: "a",
+  };
+  assertEquals(normalizeTermsSetting(v), {
+    templates: [{ id: "a", name: "A", clauses: [{ title: "t", body: "b" }] }],
+    default_id: "a",
+  });
+});
+
+Deno.test("defaultTemplateId: returns default_id when it points at an existing template", () => {
+  assertEquals(defaultTemplateId({ templates: [{ id: "a", name: "A", clauses: [] }], default_id: "a" }), "a");
+});
+
+Deno.test("defaultTemplateId: falls back to the first template when default_id is missing or stale", () => {
+  assertEquals(defaultTemplateId({ templates: [{ id: "a", name: "A", clauses: [] }], default_id: "gone" }), "a");
+  assertEquals(defaultTemplateId({ templates: [{ id: "a", name: "A", clauses: [] }], default_id: null }), "a");
+});
+
+Deno.test("defaultTemplateId: returns null when there are no templates", () => {
+  assertEquals(defaultTemplateId({ templates: [], default_id: null }), null);
+});
+
+Deno.test("resolveTermsClauses: returns the referenced template's clauses", () => {
+  const setting = {
+    templates: [
+      { id: "a", name: "A", clauses: [{ title: "ta", body: "ba" }] },
+      { id: "b", name: "B", clauses: [{ title: "tb", body: "bb" }] },
+    ],
+    default_id: "b",
+  };
+  assertEquals(resolveTermsClauses(setting, "a"), [{ title: "ta", body: "ba" }]);
+});
+
+Deno.test("resolveTermsClauses: falls back to the default template when the id is unknown (deleted)", () => {
+  const setting = {
+    templates: [
+      { id: "a", name: "A", clauses: [{ title: "ta", body: "ba" }] },
+      { id: "b", name: "B", clauses: [{ title: "tb", body: "bb" }] },
+    ],
+    default_id: "b",
+  };
+  assertEquals(resolveTermsClauses(setting, "gone"), [{ title: "tb", body: "bb" }]);
+});
+
+Deno.test("resolveTermsClauses: returns [] when neither the id nor a default resolves", () => {
+  assertEquals(resolveTermsClauses({ templates: [], default_id: null }, "x"), []);
 });
