@@ -89,6 +89,75 @@ describe("GenerateHireOrderDialog", () => {
     expect(screen.getByRole("radio", { name: "Full" })).toBeInTheDocument();
   });
 
+  it("renders one radio per org template, labelled by name, checked by the order's stored id", async () => {
+    seedClient({
+      hire_orders: { data: [], error: null },
+      app_settings: [
+        {
+          when: { key: "hire_order_terms" },
+          data: [
+            {
+              org_id: "org-1",
+              value: {
+                templates: [
+                  { id: "tpl-a", name: "VIP Contract", clauses: [] },
+                  { id: "tpl-b", name: "Standard Package", clauses: [] },
+                ],
+                default_id: "tpl-a",
+              },
+            },
+          ],
+          error: null,
+        },
+      ],
+    });
+    const customOrder = { ...ORDER, terms_variant: "tpl-b" } as unknown as HireOrderRow;
+    renderWithProviders(
+      <GenerateHireOrderDialog
+        open onOpenChange={vi.fn()} order={customOrder} showDate={SHOW_DATE} orgId="org-1" producerName="Aurora Productions"
+      />,
+    );
+    await waitFor(() => {
+      expect(screen.getByRole("radio", { name: "VIP Contract" })).toBeInTheDocument();
+      expect(screen.getByRole("radio", { name: "Standard Package" })).toHaveAttribute("aria-checked", "true");
+      // The old hardcoded variants must be gone once the org's templates load.
+      expect(screen.queryByRole("radio", { name: "Lean" })).not.toBeInTheDocument();
+      expect(screen.queryByRole("radio", { name: "Full" })).not.toBeInTheDocument();
+    });
+  });
+
+  it("shows a disabled removed chip when the order's stored terms_variant is no longer among the org's templates, and blocks issuing until a live template is chosen", async () => {
+    seedClient({
+      hire_orders: { data: [], error: null },
+      app_settings: [
+        {
+          when: { key: "hire_order_terms" },
+          data: [
+            { org_id: "org-1", value: { templates: [{ id: "tpl-a", name: "VIP Contract", clauses: [] }], default_id: "tpl-a" } },
+          ],
+          error: null,
+        },
+      ],
+    });
+    const customOrder = { ...ORDER, terms_variant: "deleted-tpl" } as unknown as HireOrderRow;
+    renderWithProviders(
+      <GenerateHireOrderDialog
+        open onOpenChange={vi.fn()} order={customOrder} showDate={SHOW_DATE} orgId="org-1" producerName="Aurora Productions"
+      />,
+    );
+    await waitFor(() => {
+      expect(screen.getByRole("button", { name: /removed/i })).toBeDisabled();
+      expect(screen.getByRole("radio", { name: "VIP Contract" })).toBeInTheDocument();
+    });
+    const issueBtn = screen.getByRole("button", { name: "Issue and send" });
+    expect(issueBtn).toBeDisabled();
+    expect(issueBtn).toHaveAttribute("title", "Choose a terms template before issuing");
+
+    // Picking the live template clears the block, without the app ever crashing.
+    fireEvent.click(screen.getByRole("radio", { name: "VIP Contract" }));
+    expect(issueBtn).toBeEnabled();
+  });
+
   it("issue_hire_orders off: Issue and send is disabled, Preview PDF still works", async () => {
     vi.mocked(useCan).mockImplementation((action: string) => action !== "issue_hire_orders");
     renderDialog();
@@ -180,10 +249,13 @@ describe("GenerateHireOrderDialog", () => {
   it("prefills agent fields from the org letterhead default", async () => {
     seedClient({
       hire_orders: { data: [], error: null },
-      app_settings: {
-        data: [{ org_id: "org-1", value: { legal_name: "Aurora", address_lines: [], agent_name: "Org Agent", agent_email: "org@x.com" } }],
-        error: null,
-      },
+      app_settings: [
+        {
+          when: { key: "hire_order_letterhead" },
+          data: [{ org_id: "org-1", value: { legal_name: "Aurora", address_lines: [], agent_name: "Org Agent", agent_email: "org@x.com" } }],
+          error: null,
+        },
+      ],
     });
     renderDialog();
     // The inputs render immediately but are disabled while the letterhead query is
@@ -198,10 +270,13 @@ describe("GenerateHireOrderDialog", () => {
   it("disables the agent inputs until the org letterhead default loads (no type-before-seed race)", async () => {
     seedClient({
       hire_orders: { data: [], error: null },
-      app_settings: {
-        data: [{ org_id: "org-1", value: { legal_name: "Aurora", address_lines: [], agent_name: "Org Agent", agent_email: "org@x.com" } }],
-        error: null,
-      },
+      app_settings: [
+        {
+          when: { key: "hire_order_letterhead" },
+          data: [{ org_id: "org-1", value: { legal_name: "Aurora", address_lines: [], agent_name: "Org Agent", agent_email: "org@x.com" } }],
+          error: null,
+        },
+      ],
     });
     renderDialog();
     // Cold cache: on the first render the letterhead query is still pending, so the
@@ -219,7 +294,7 @@ describe("GenerateHireOrderDialog", () => {
   it("keeps the agent inputs disabled when the letterhead fetch fails (never shows a misleading blank)", async () => {
     seedClient({
       hire_orders: { data: [], error: null },
-      app_settings: { data: null, error: { message: "boom" } },
+      app_settings: [{ when: { key: "hire_order_letterhead" }, data: null, error: { message: "boom" } }],
     });
     const { queryClient } = renderDialog();
     // The query errors, so no default is ever known. The fields must stay disabled
@@ -249,10 +324,13 @@ describe("GenerateHireOrderDialog", () => {
   it("persists an edited agent name + email on issue", async () => {
     seedClient({
       hire_orders: { data: [], error: null },
-      app_settings: {
-        data: [{ org_id: "org-1", value: { legal_name: "Aurora", address_lines: [], agent_name: "Org Agent", agent_email: "org@x.com" } }],
-        error: null,
-      },
+      app_settings: [
+        {
+          when: { key: "hire_order_letterhead" },
+          data: [{ org_id: "org-1", value: { legal_name: "Aurora", address_lines: [], agent_name: "Org Agent", agent_email: "org@x.com" } }],
+          error: null,
+        },
+      ],
       "fn:generate-hire-orders": { data: { issued: ["ho-1"], failed: [] }, error: null },
     });
     renderDialog();
@@ -275,10 +353,13 @@ describe("GenerateHireOrderDialog", () => {
   it("clearing a prefilled agent field persists an empty string", async () => {
     seedClient({
       hire_orders: { data: [], error: null },
-      app_settings: {
-        data: [{ org_id: "org-1", value: { legal_name: "Aurora", address_lines: [], agent_name: "Org Agent", agent_email: "org@x.com" } }],
-        error: null,
-      },
+      app_settings: [
+        {
+          when: { key: "hire_order_letterhead" },
+          data: [{ org_id: "org-1", value: { legal_name: "Aurora", address_lines: [], agent_name: "Org Agent", agent_email: "org@x.com" } }],
+          error: null,
+        },
+      ],
       "fn:generate-hire-orders": { data: { issued: ["ho-1"], failed: [] }, error: null },
     });
     renderDialog();
@@ -305,10 +386,13 @@ describe("GenerateHireOrderDialog", () => {
   it("editing only the agent email writes only agent_email", async () => {
     seedClient({
       hire_orders: { data: [], error: null },
-      app_settings: {
-        data: [{ org_id: "org-1", value: { legal_name: "Aurora", address_lines: [], agent_name: "Org Agent", agent_email: "org@x.com" } }],
-        error: null,
-      },
+      app_settings: [
+        {
+          when: { key: "hire_order_letterhead" },
+          data: [{ org_id: "org-1", value: { legal_name: "Aurora", address_lines: [], agent_name: "Org Agent", agent_email: "org@x.com" } }],
+          error: null,
+        },
+      ],
       "fn:generate-hire-orders": { data: { issued: ["ho-1"], failed: [] }, error: null },
     });
     renderDialog();

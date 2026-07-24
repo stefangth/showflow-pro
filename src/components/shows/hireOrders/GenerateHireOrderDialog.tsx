@@ -12,11 +12,13 @@ import { formatDateDMY } from "@/lib/dates";
 import type { OrderData } from "@/lib/hireOrders/types";
 import type { HireOrderRow } from "@/data/hireOrders";
 import { useCan } from "@/hooks/useCapabilities";
-import { useHireOrderAction, useUpdateHireOrderReview } from "@/hooks/useHireOrders";
+import { useHireOrderAction, useUpdateHireOrderReview, useHireOrderTerms } from "@/hooks/useHireOrders";
 import { supabase } from "@/integrations/supabase/client";
 import { resolveOrgSetting } from "@/data/settings";
 import type { Letterhead } from "@/components/settings/hireOrders/LetterheadCard";
 import { LETTERHEAD_DEFAULT } from "@/components/settings/hireOrders/defaults";
+import { HIRE_ORDER_DEFAULT_TERMS } from "@/config/app.config";
+import { defaultTemplateId } from "@/lib/hireOrders/terms";
 import type { HireOrderShowDate } from "./types";
 
 interface Props {
@@ -27,13 +29,6 @@ interface Props {
   orgId: string;
   producerName: string;
 }
-
-/** The plan's terms variants, in order. Labels double as the persisted keys. */
-const TERMS_VARIANTS = [
-  { key: "lean", label: "Lean" },
-  { key: "standard", label: "Standard" },
-  { key: "full", label: "Full" },
-] as const;
 
 /** Read a resolved snapshot field as a trimmed string ("" when absent). */
 function snapshot(data: OrderData, key: keyof OrderData): string {
@@ -81,14 +76,26 @@ export function GenerateHireOrderDialog({ open, onOpenChange, order, showDate, o
     [showDate.show?.program, showDate.show?.sub_program].filter(Boolean).join(" · ");
   const currency = order.fee_currency || "EUR";
 
+  // Org terms templates — reuses the same query key as TermsVariantsCard so the
+  // cache is shared. Falls back to the shared seed defaults (same shape the
+  // hardcoded picker used to render) while the query is loading or errored, so
+  // the picker never renders empty.
+  const termsQuery = useHireOrderTerms(orgId);
+  const terms = termsQuery.data ?? HIRE_ORDER_DEFAULT_TERMS;
+
   // The loaded order's fee/variant, captured once as the comparison baseline
   // for persist() below (the dialog is remounted per order via `key={order.id}`
   // in HireOrdersCard, so `order` itself never changes under an open dialog).
   const initialFeeAmount = order.fee_amount ?? null;
-  const initialVariant = order.terms_variant || "standard";
+  const initialVariant = order.terms_variant || defaultTemplateId(terms) || "";
 
   const [fee, setFee] = useState<string>(order.fee_amount != null ? String(order.fee_amount) : "");
   const [variant, setVariant] = useState<string>(initialVariant);
+  // The order's stored terms_variant no longer matches any live template (its
+  // template was deleted in Settings). Never silently drop or auto-correct the
+  // selection -- show it as a disabled "removed" chip and require an explicit
+  // pick before Issue is allowed (see the radiogroup + Issue button below).
+  const variantIsLive = terms.templates.some((t) => t.id === variant);
 
   // Org letterhead default — reuses the same query key as LetterheadCard so the cache is shared.
   const { data: letterhead, isError: letterheadError } = useQuery({
@@ -238,25 +245,35 @@ export function GenerateHireOrderDialog({ open, onOpenChange, order, showDate, o
           {/* Terms variant */}
           <div className="space-y-1.5">
             <Label className="text-xs text-muted-foreground">Terms</Label>
-            <div role="radiogroup" aria-label="Terms variant" className="flex gap-2">
-              {TERMS_VARIANTS.map((v) => {
-                const selected = variant === v.key;
+            <div role="radiogroup" aria-label="Terms variant" className="flex flex-wrap gap-2">
+              {!variantIsLive && variant && (
+                <Button type="button" variant="outline" size="sm" disabled className="flex-1 text-muted-foreground">
+                  Removed (will use default)
+                </Button>
+              )}
+              {terms.templates.map((t) => {
+                const selected = variant === t.id;
                 return (
                   <Button
-                    key={v.key}
+                    key={t.id}
                     type="button"
                     role="radio"
                     aria-checked={selected}
                     variant={selected ? "default" : "outline"}
                     size="sm"
                     className="flex-1"
-                    onClick={() => setVariant(v.key)}
+                    onClick={() => setVariant(t.id)}
                   >
-                    {v.label}
+                    {t.name}
                   </Button>
                 );
               })}
             </div>
+            {!variantIsLive && variant && (
+              <p className="text-xs text-destructive">
+                This order's saved terms template was removed. Choose one above before issuing.
+              </p>
+            )}
           </div>
 
           {/* Booking agent — prefilled from the org letterhead, overridable per order */}
@@ -305,8 +322,14 @@ export function GenerateHireOrderDialog({ open, onOpenChange, order, showDate, o
         <DialogFooter className="gap-2 sm:gap-2">
           <Button variant="ghost" onClick={handlePreview} disabled={busy}>Preview PDF</Button>
           <Button variant="ghost" onClick={() => onOpenChange(false)} disabled={busy}>Cancel</Button>
-          <Button onClick={handleIssue} disabled={busy || !canIssue}
-            title={canIssue ? undefined : "You don't have permission to issue hire orders"}>
+          <Button onClick={handleIssue} disabled={busy || !canIssue || !variantIsLive}
+            title={
+              !canIssue
+                ? "You don't have permission to issue hire orders"
+                : !variantIsLive
+                  ? "Choose a terms template before issuing"
+                  : undefined
+            }>
             Issue and send
           </Button>
         </DialogFooter>

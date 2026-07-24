@@ -5,6 +5,8 @@ import { useMyArtist } from "@/hooks/useMyArtist";
 import { resolveOrgSetting } from "@/data/settings";
 import { COUNTERSIGN_DEFAULT } from "@/components/settings/hireOrders/defaults";
 import type { HireOrderCountersign } from "@/components/settings/hireOrders/CountersignCard";
+import { HIRE_ORDER_DEFAULT_TERMS } from "@/config/app.config";
+import { normalizeTermsSetting, type HireOrderTermsSetting } from "@/lib/hireOrders/terms";
 import {
   fetchHireOrdersForDate,
   fetchHireOrder,
@@ -300,6 +302,23 @@ export function useMarkCountersigned() {
     onError: (error: Error) => {
       toast.error(error.message || "Could not mark as countersigned");
     },
+  });
+}
+
+/** The org's terms-templates setting (id/name/clauses list + default), for the
+ *  three order pickers (GenerateHireOrderDialog, HireOrderEditPage, and the
+ *  import wizard's row default). Reuses the same query key as TermsVariantsCard
+ *  so the cache is shared -- a save in Settings invalidates ["app-settings"]
+ *  and every picker refetches. Normalizes (tolerating the legacy
+ *  {lean,standard,full} shape) so every consumer reads the same shape. */
+export function useHireOrderTerms(orgId: string | null) {
+  return useQuery<HireOrderTermsSetting>({
+    queryKey: ["app-settings", "hire_order_terms", orgId],
+    queryFn: async () => {
+      const raw = await resolveOrgSetting<unknown>(supabase, orgId, "hire_order_terms", HIRE_ORDER_DEFAULT_TERMS);
+      return normalizeTermsSetting(raw);
+    },
+    enabled: Boolean(orgId),
   });
 }
 

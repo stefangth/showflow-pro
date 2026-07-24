@@ -16,10 +16,13 @@ import {
   type ResolvedImportRow,
 } from "@/lib/hireOrderImport/buildOrderRows";
 import { resolveFields } from "@/lib/hireOrders/resolveFields";
+import { defaultTemplateId } from "@/lib/hireOrders/terms";
 import type { EditableOrderFieldKey } from "@/lib/hireOrders/types";
-import { useArtistsLite, useShowDatesLite, useBulkImportHireOrders, useCreateArtistLite } from "@/hooks/useHireOrders";
+import {
+  useArtistsLite, useShowDatesLite, useBulkImportHireOrders, useCreateArtistLite, useHireOrderTerms,
+} from "@/hooks/useHireOrders";
 import type { BulkImportHireOrdersRow } from "@/data/hireOrders";
-import { ROUTES } from "@/config/app.config";
+import { ROUTES, HIRE_ORDER_DEFAULT_TERMS } from "@/config/app.config";
 import { cn } from "@/lib/utils";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -74,6 +77,10 @@ export function HireOrderImportDialog({ open, onOpenChange, orgId }: Props) {
     queryFn: () => resolveOrgSetting<OrderDefaultsLite>(supabase, orgId, "hire_order_defaults", DEFAULTS_FALLBACK),
     enabled: !!orgId,
   });
+  // Org terms templates — every imported draft row starts on the org's default
+  // template (reuses the same query key as TermsVariantsCard so the cache is
+  // shared). Falls back to the shared seed defaults while loading/errored.
+  const termsQuery = useHireOrderTerms(orgId);
 
   const [step, setStep] = useState<Step>("source");
   const [rawSheets, setRawSheets] = useState<RawSheet[]>([]);
@@ -299,6 +306,8 @@ export function HireOrderImportDialog({ open, onOpenChange, orgId }: Props) {
     const chosen = resolvedRows.filter((r) => selection.has(r.rowIndex));
     if (chosen.length === 0) return;
     setSubmitting(true);
+    const terms = termsQuery.data ?? HIRE_ORDER_DEFAULT_TERMS;
+    const termsVariant = defaultTemplateId(terms) ?? "standard";
     try {
       const rpcRows: BulkImportHireOrdersRow[] = chosen.map((r) => {
         const data = resolveFields({
@@ -327,7 +336,7 @@ export function HireOrderImportDialog({ open, onOpenChange, orgId }: Props) {
           data,
           ...(Number.isFinite(feeNumeric) ? { fee_amount: feeNumeric } : {}),
           fee_currency: currency,
-          terms_variant: "standard",
+          terms_variant: termsVariant,
         };
       });
 
