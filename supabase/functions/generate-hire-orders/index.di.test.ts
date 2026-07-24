@@ -4212,3 +4212,222 @@ Deno.test("issue: admin bypasses the capability gate entirely (never calls is_ca
   assertEquals(res.status, 200);
   assertEquals(calls.some((c) => c.table === "rpc:is_capability_enabled"), false);
 });
+
+// ── editable pdf copy (part E) ──────────────────────────────────────────────
+
+const COPY_SETTING = (value: Record<string, string>) => ({ org_id: ORG, value });
+
+Deno.test("preview: an ad-hoc copy_override reaches the renderer", async () => {
+  const { deps } = makeFakeDeps({
+    authUser: { id: "u-admin" },
+    tables: {
+      org_memberships: { data: { role: "admin" } },
+      hire_orders: { data: issuableOrder() },
+      app_settings: [
+        { when: { key: "hire_order_letterhead" }, data: [LETTERHEAD] },
+        { when: { key: "hire_order_terms" }, data: [TERMS_FILLED] },
+        { when: { key: "hire_order_defaults" }, data: [DEFAULTS] },
+      ],
+    },
+  });
+  let captured: { copy?: Record<string, string> } | null = null;
+  deps.renderHireOrderPdf = (a) => {
+    captured = a as unknown as typeof captured;
+    return Promise.resolve(new Uint8Array([0x25, 0x50, 0x44, 0x46]));
+  };
+  const res = await handle(
+    makeRequest({
+      headers: JWT,
+      body: { action: "preview", org_id: ORG, order_id: "o-1", copy_override: { terms_heading: "Bespoke terms" } },
+    }),
+    deps,
+  );
+  assertEquals(res.status, 200);
+  assertEquals(captured!.copy?.terms_heading, "Bespoke terms");
+  // untouched keys still resolve to their defaults (full record)
+  assertEquals(captured!.copy?.fees_total, "Total payable");
+});
+
+Deno.test("preview: copy_override wins over the stored org copy setting", async () => {
+  const { deps } = makeFakeDeps({
+    authUser: { id: "u-admin" },
+    tables: {
+      org_memberships: { data: { role: "admin" } },
+      hire_orders: { data: issuableOrder() },
+      app_settings: [
+        { when: { key: "hire_order_letterhead" }, data: [LETTERHEAD] },
+        { when: { key: "hire_order_terms" }, data: [TERMS_FILLED] },
+        { when: { key: "hire_order_defaults" }, data: [DEFAULTS] },
+        { when: { key: "hire_order_copy" }, data: [COPY_SETTING({ terms_heading: "Stored" })] },
+      ],
+    },
+  });
+  let captured: { copy?: Record<string, string> } | null = null;
+  deps.renderHireOrderPdf = (a) => {
+    captured = a as unknown as typeof captured;
+    return Promise.resolve(new Uint8Array([0x25, 0x50, 0x44, 0x46]));
+  };
+  const res = await handle(
+    makeRequest({
+      headers: JWT,
+      body: { action: "preview", org_id: ORG, order_id: "o-1", copy_override: { terms_heading: "Adhoc" } },
+    }),
+    deps,
+  );
+  assertEquals(res.status, 200);
+  assertEquals(captured!.copy?.terms_heading, "Adhoc");
+});
+
+Deno.test("preview: with no order_id renders a sample document with the copy override", async () => {
+  const { deps, calls } = makeFakeDeps({
+    authUser: { id: "u-admin" },
+    tables: {
+      org_memberships: { data: { role: "admin" } },
+      app_settings: [
+        { when: { key: "hire_order_letterhead" }, data: [LETTERHEAD] },
+        { when: { key: "hire_order_terms" }, data: [TERMS_FILLED] },
+        { when: { key: "hire_order_defaults" }, data: [DEFAULTS] },
+      ],
+    },
+  });
+  let captured:
+    | { copy?: Record<string, string>; status?: string; data?: Record<string, { value?: unknown }> }
+    | null = null;
+  deps.renderHireOrderPdf = (a) => {
+    captured = a as unknown as typeof captured;
+    return Promise.resolve(new Uint8Array([0x25, 0x50, 0x44, 0x46]));
+  };
+  const res = await handle(
+    makeRequest({
+      headers: JWT,
+      body: { action: "preview", org_id: ORG, copy_override: { terms_heading: "Bespoke terms" } },
+    }),
+    deps,
+  );
+  assertEquals(res.status, 200);
+  const body = await res.json();
+  assertEquals(body.pdf_base64, "JVBERg=="); // base64 of the fake "%PDF" bytes
+  assertEquals(captured!.status, "preview");
+  assertEquals(captured!.copy?.terms_heading, "Bespoke terms");
+  // representative sample data so the preview isn't a blank document
+  assert(captured!.data?.artist_name?.value, "sample data carries an artist name");
+  // no order was looked up and nothing was persisted
+  assertEquals(calls.filter((c) => c.table === "hire_orders").length, 0);
+});
+
+Deno.test("issue freezes the resolved copy into issue_snapshot", async () => {
+  const { deps, calls } = makeFakeDeps({
+    authUser: { id: "u-admin" },
+    tables: {
+      org_memberships: { data: { role: "admin" } },
+      hire_orders: [
+        { when: { __write: false }, data: issuableOrder() },
+        { when: { __write: true }, data: null },
+      ],
+      artists: { data: { user_id: "u-artist" } },
+      app_settings: [
+        { when: { key: "hire_order_letterhead" }, data: [LETTERHEAD] },
+        { when: { key: "hire_order_terms" }, data: [TERMS_FILLED] },
+        { when: { key: "hire_order_defaults" }, data: [DEFAULTS] },
+        { when: { key: "hire_order_copy" }, data: [COPY_SETTING({ terms_heading: "Frozen heading" })] },
+      ],
+    },
+  });
+  const res = await handle(
+    makeRequest({ headers: JWT, body: { action: "issue", org_id: ORG, order_ids: ["o-1"] } }),
+    deps,
+  );
+  assertEquals(res.status, 200);
+  const issuedUpdate = calls.find(
+    (c) => c.table === "hire_orders" && c.method === "update" &&
+      (c.args[0] as { status?: string }).status === "issued",
+  );
+  assert(issuedUpdate, "expected the issued update");
+  const snap = (issuedUpdate!.args[0] as { issue_snapshot?: { copy?: Record<string, string> } }).issue_snapshot;
+  assertEquals(snap?.copy?.terms_heading, "Frozen heading");
+  // the frozen copy is the FULL resolved record, so untouched keys are present too
+  assertEquals(snap?.copy?.fees_total, "Total payable");
+});
+
+Deno.test("sign re-renders using snapshot.copy, ignoring a later live copy edit", async () => {
+  const snapshotOrder = {
+    ...SIGN_ORDER,
+    issue_snapshot: {
+      letterhead: { legal_name: "Snapshot GmbH", address_lines: [] },
+      terms: [{ title: "SNAP", body: "snapshot terms" }],
+      currency: "EUR",
+      copy: { terms_heading: "Frozen heading" }, // partial snapshot copy is fine
+    },
+  };
+  const { deps } = makeFakeDeps({
+    authUser: { id: "u-artist" },
+    rpcs: { is_feature_enabled: { data: true, error: null } },
+    tables: {
+      hire_orders: [
+        { when: { __write: false }, data: snapshotOrder },
+        { when: { __write: true }, data: [{ id: "o-1" }] },
+      ],
+      artists: { data: { id: "a-A" } },
+      org_memberships: { data: [] },
+      app_settings: [
+        { when: { key: "hire_order_countersign" }, data: [{ org_id: ORG, value: { mode: "electronic" } }] },
+        { when: { key: "hire_order_letterhead" }, data: [{ org_id: ORG, value: { legal_name: "Live GmbH", address_lines: [] } }] },
+        { when: { key: "hire_order_terms" }, data: [TERMS_FILLED] },
+        { when: { key: "hire_order_defaults" }, data: [DEFAULTS] },
+        { when: { key: "hire_order_copy" }, data: [COPY_SETTING({ terms_heading: "Changed live" })] },
+      ],
+    },
+  });
+  let captured: { copy?: Record<string, string> } | null = null;
+  deps.renderHireOrderPdf = (input) => {
+    captured = input as unknown as typeof captured;
+    return Promise.resolve(new Uint8Array([0x25, 0x50, 0x44, 0x46]));
+  };
+  const res = await handle(
+    makeRequest({ headers: { Authorization: "Bearer artist" }, body: SIGN_BODY }),
+    deps,
+  );
+  assertEquals(res.status, 200);
+  assertEquals(captured!.copy?.terms_heading, "Frozen heading");
+});
+
+Deno.test("sign falls back to default copy for a legacy snapshot without copy", async () => {
+  const legacySnapshotOrder = {
+    ...SIGN_ORDER,
+    issue_snapshot: {
+      letterhead: { legal_name: "Snapshot GmbH", address_lines: [] },
+      terms: [{ title: "SNAP", body: "snapshot terms" }],
+      currency: "EUR",
+      // no `copy` — issued before part E
+    },
+  };
+  const { deps } = makeFakeDeps({
+    authUser: { id: "u-artist" },
+    rpcs: { is_feature_enabled: { data: true, error: null } },
+    tables: {
+      hire_orders: [
+        { when: { __write: false }, data: legacySnapshotOrder },
+        { when: { __write: true }, data: [{ id: "o-1" }] },
+      ],
+      artists: { data: { id: "a-A" } },
+      org_memberships: { data: [] },
+      app_settings: [
+        { when: { key: "hire_order_countersign" }, data: [{ org_id: ORG, value: { mode: "electronic" } }] },
+        { when: { key: "hire_order_letterhead" }, data: [LETTERHEAD] },
+        { when: { key: "hire_order_terms" }, data: [TERMS_FILLED] },
+        { when: { key: "hire_order_defaults" }, data: [DEFAULTS] },
+      ],
+    },
+  });
+  let captured: { copy?: Record<string, string> } | null = null;
+  deps.renderHireOrderPdf = (input) => {
+    captured = input as unknown as typeof captured;
+    return Promise.resolve(new Uint8Array([0x25, 0x50, 0x44, 0x46]));
+  };
+  const res = await handle(
+    makeRequest({ headers: { Authorization: "Bearer artist" }, body: SIGN_BODY }),
+    deps,
+  );
+  assertEquals(res.status, 200);
+  assertEquals(captured!.copy?.terms_heading, "Terms & conditions"); // stock default
+});

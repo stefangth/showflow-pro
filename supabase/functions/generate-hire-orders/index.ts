@@ -60,6 +60,7 @@ import {
   type SessionOverride,
   withCollisionSuffix,
 } from "../_shared/hireOrders.ts";
+import { type HireOrderCopy, resolveHireOrderCopy } from "../_shared/hire-order-pdf/pdfCopy.ts";
 
 // ── settings shapes + fallbacks (mirror src/components/settings/hireOrders/*) ──
 
@@ -96,6 +97,11 @@ interface IssueSnapshot {
   terms: HireOrderTerm[];
   currency: string;
   countersign_mode: string;
+  /** Resolved copy dictionary frozen at issue so a countersigned re-render
+   *  reproduces the exact issued wording even if the org later edits its copy.
+   *  Stored as the FULL resolved record. Legacy snapshots (issued before part E)
+   *  lack it -> signOrder falls back to the live setting / defaults. */
+  copy?: HireOrderCopy;
 }
 
 const NUMBERING_DEFAULT: Numbering = {
@@ -117,6 +123,8 @@ const TERMS_DEFAULT: HireOrderTermsSetting = {
  *  regardless of which id it stores. */
 const FALLBACK_TERMS_VARIANT = "standard";
 const COUNTERSIGN_DEFAULT: Countersign = { mode: "manual" };
+/** No stored overrides -> resolveHireOrderCopy fills every key from the defaults. */
+const COPY_DEFAULT: Partial<HireOrderCopy> = {};
 
 const BUCKET = "hire-orders";
 const SIGNED_URL_TTL = 3600;
@@ -1477,6 +1485,15 @@ async function issueOrders(
     ),
   ]);
   const termsSetting = normalizeTermsSetting(rawTerms);
+  // Resolve the org's editable PDF copy ONCE for the whole batch (frozen per order
+  // into issue_snapshot.copy below).
+  const copyOverride = await resolveOrgSetting<Partial<HireOrderCopy>>(
+    admin,
+    org,
+    "hire_order_copy",
+    COPY_DEFAULT,
+  );
+  const copy = resolveHireOrderCopy(copyOverride);
   // Resolve the shared org agent signature ONCE for the whole batch; issueOne runs
   // per order below, so resolving inside it would re-download the same PNG N times.
   const agentSignatureDataUrl = await resolveAgentSignatureDataUrl(
@@ -1498,6 +1515,7 @@ async function issueOrders(
         defaults,
         countersign,
         agentSignatureDataUrl,
+        copy,
       );
       if (outcome.ok) {
         issued.push(orderId);
@@ -1534,6 +1552,7 @@ async function issueOne(
   defaults: OrderDefaults,
   countersign: Countersign,
   agentSignatureDataUrl: string | null,
+  copy: HireOrderCopy,
 ): Promise<{ ok: true; warning?: string } | { ok: false; issues: string[] }> {
   const admin = deps.admin;
 
@@ -1589,6 +1608,7 @@ async function issueOne(
     terms: variantTerms,
     currency,
     generatedAtIso: deps.now().toISOString(),
+    copy,
   });
 
   const path = `${org}/${o.order_no}.pdf`;
@@ -1606,6 +1626,7 @@ async function issueOne(
     terms: variantTerms,
     currency,
     countersign_mode: countersign.mode,
+    copy,
   };
   const { error: issueErr } = await admin
     .from("hire_orders")
@@ -1954,26 +1975,41 @@ async function notifyArtist(
 
 interface PreviewBody {
   org_id: string;
-  order_id: string;
+  /** Absent -> a representative sample document (used by the copy settings card,
+   *  which previews wording without a specific order). */
+  order_id?: string;
+  /** Ad-hoc copy overrides layered over the org's stored copy, so the settings
+   *  card can preview unsaved edits. */
+  copy_override?: Partial<HireOrderCopy>;
+}
+
+/** A representative order for the settings-page copy preview: exercises every
+ *  section (parties, facts, a two-session running order, notes, fees) so the
+ *  admin sees their wording in context even before any real order exists. */
+function sampleOrderData(): OrderData {
+  return {
+    artist_name: { value: "Alex Rivera", source: "showflow" },
+    recipient_email: { value: "alex@example.com", source: "showflow" },
+    role: { value: "Lead", source: "showflow" },
+    cast: { value: "A-cast", source: "showflow" },
+    date: { value: "2026-06-15", source: "showflow" },
+    venue: { value: "Grand Theatre", source: "showflow" },
+    city: { value: "Berlin", source: "showflow" },
+    duration_min: { value: 90, source: "manual" },
+    sessions: { value: ["18:00", "20:30"], source: "showflow" },
+    fee: { value: "1500.00", source: "manual" },
+    currency: { value: "EUR", source: "default" },
+    notes: { value: "Backline provided by the venue.", source: "manual" },
+  };
 }
 
 async function previewOrder(deps: Deps, body: PreviewBody): Promise<Response> {
   const admin = deps.admin;
   const org = body.org_id;
-  if (!body.order_id) return json({ error: "order_id required" }, 400);
 
-  const { data: order } = await admin
-    .from("hire_orders")
-    .select(
-      "id, org_id, order_no, data, terms_variant, fee_currency, agent_name, agent_email",
-    )
-    .eq("id", body.order_id)
-    .eq("org_id", org)
-    .maybeSingle();
-  if (!order) return json({ error: "not_found" }, 404);
-  const o = order as unknown as PreviewOrderRow;
-
-  const [letterhead, rawTerms, defaults] = await Promise.all([
+  // Resolve the org's stored copy, then layer any ad-hoc override on top (override
+  // wins per key) so the settings-card preview reflects unsaved edits.
+  const [letterhead, rawTerms, defaults, storedCopy] = await Promise.all([
     resolveOrgSetting<HireOrderLetterhead>(
       admin,
       org,
@@ -1987,8 +2023,42 @@ async function previewOrder(deps: Deps, body: PreviewBody): Promise<Response> {
       "hire_order_defaults",
       DEFAULTS_DEFAULT,
     ),
+    resolveOrgSetting<Partial<HireOrderCopy>>(
+      admin,
+      org,
+      "hire_order_copy",
+      COPY_DEFAULT,
+    ),
   ]);
+  const copy = resolveHireOrderCopy({ ...storedCopy, ...(body.copy_override ?? {}) });
   const termsSetting = normalizeTermsSetting(rawTerms);
+
+  // With no order_id, render a representative sample (copy settings preview);
+  // otherwise preview the specific order.
+  let o: PreviewOrderRow;
+  if (body.order_id) {
+    const { data: order } = await admin
+      .from("hire_orders")
+      .select(
+        "id, org_id, order_no, data, terms_variant, fee_currency, agent_name, agent_email",
+      )
+      .eq("id", body.order_id)
+      .eq("org_id", org)
+      .maybeSingle();
+    if (!order) return json({ error: "not_found" }, 404);
+    o = order as unknown as PreviewOrderRow;
+  } else {
+    o = {
+      id: "",
+      org_id: org,
+      order_no: "HO-PREVIEW",
+      data: sampleOrderData(),
+      terms_variant: null,
+      fee_currency: null,
+      agent_name: null,
+      agent_email: null,
+    };
+  }
 
   const effectiveLetterhead: HireOrderLetterhead = {
     ...letterhead,
@@ -2007,6 +2077,7 @@ async function previewOrder(deps: Deps, body: PreviewBody): Promise<Response> {
     terms: resolveTermsClauses(termsSetting, o.terms_variant),
     currency: o.fee_currency ?? defaults.currency ?? "EUR",
     generatedAtIso: deps.now().toISOString(),
+    copy,
   });
 
   return json({ pdf_base64: encodeBase64(bytes) });
@@ -2257,6 +2328,7 @@ async function signOrder(
   let renderLetterhead: HireOrderLetterhead;
   let renderTerms: HireOrderTerm[];
   let currency: string;
+  let renderCopy: HireOrderCopy;
   if (snapshot && snapshot.letterhead && Array.isArray(snapshot.terms)) {
     // The snapshot letterhead already includes the per-order agent override baked in
     // at issue time, so do NOT re-merge o.agent_name/agent_email here.
@@ -2264,6 +2336,10 @@ async function signOrder(
     renderTerms = snapshot.terms;
     currency = snapshot.currency ?? o.fee_currency ?? defaults.currency ??
       "EUR";
+    // Reproduce the issued wording. snapshot.copy is a full record for part-E
+    // orders and undefined for legacy ones; resolveHireOrderCopy fills any gaps
+    // from the current defaults either way.
+    renderCopy = resolveHireOrderCopy(snapshot.copy);
   } else {
     const termsSetting = normalizeTermsSetting(rawTerms);
     renderLetterhead = {
@@ -2273,6 +2349,14 @@ async function signOrder(
     };
     renderTerms = resolveTermsClauses(termsSetting, o.terms_variant);
     currency = o.fee_currency ?? defaults.currency ?? "EUR";
+    // No snapshot (legacy order): re-resolve the org's current copy setting.
+    const storedCopy = await resolveOrgSetting<Partial<HireOrderCopy>>(
+      admin,
+      org,
+      "hire_order_copy",
+      COPY_DEFAULT,
+    );
+    renderCopy = resolveHireOrderCopy(storedCopy);
   }
   const signature: RenderSignature = {
     method,
@@ -2295,6 +2379,7 @@ async function signOrder(
     currency,
     generatedAtIso: signedAtIso,
     signature,
+    copy: renderCopy,
   });
 
   // Upload the signed copy (keeps the original issued pdf_path intact).
