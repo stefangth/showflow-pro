@@ -21,6 +21,10 @@ export interface EngagementDate {
   date: string;
   venue: string | null;
   city: string | null;
+  /** Per-date running order + duration override. Optional: legacy stored
+   *  `engagement_dates` rows predate these fields. */
+  sessions?: string[];
+  duration_min?: number | null;
 }
 
 export type OrderFieldKey =
@@ -65,6 +69,29 @@ export interface FieldLayers {
   sheet?: Partial<Record<EditableOrderFieldKey, unknown>>;
   manual?: Partial<Record<EditableOrderFieldKey, unknown>>;
   defaults?: Partial<Record<EditableOrderFieldKey, unknown>>;
+}
+
+// ── engagementDates ──────────────────────────────────────────────────────
+// MIRROR: src/lib/hireOrders/engagementDates.ts carries a byte-identical
+// copy of this type + function (the two runtimes cannot share an import).
+// Change both files in the same commit.
+
+export interface SessionOverride {
+  sessions?: string[];
+  duration_min?: number | null;
+}
+
+/** Merge a show_date's synced running order with an optional wizard override.
+ *  `sessions`/`duration_min` are each overridden only when present on the
+ *  override (an empty `sessions` array is an explicit clear, not "absent"). */
+export function resolveEngagementSessions(
+  synced: { sessions: string[]; duration_min: number | null },
+  override: SessionOverride | undefined,
+): { sessions: string[]; duration_min: number | null } {
+  return {
+    sessions: override && override.sessions !== undefined ? override.sessions : synced.sessions,
+    duration_min: override && override.duration_min !== undefined ? override.duration_min : synced.duration_min,
+  };
 }
 
 // ── resolveFields ────────────────────────────────────────────────────────

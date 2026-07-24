@@ -6,6 +6,7 @@ import {
   formatOrderNo,
   normalizeTermsSetting,
   orderReadyIssues,
+  resolveEngagementSessions,
   resolveFields,
   resolveTermsClauses,
   withCollisionSuffix,
@@ -190,4 +191,22 @@ Deno.test("resolveTermsClauses: falls back to the default template when the id i
 
 Deno.test("resolveTermsClauses: returns [] when neither the id nor a default resolves", () => {
   assertEquals(resolveTermsClauses({ templates: [], default_id: null }, "x"), []);
+});
+
+// ── engagementDates ──────────────────────────────────────────────────────
+
+Deno.test("resolveEngagementSessions: uses synced values when there is no override", () => {
+  const synced = { sessions: ["19:00", "21:00"], duration_min: 90 };
+  assertEquals(resolveEngagementSessions(synced, undefined), synced);
+});
+
+Deno.test("resolveEngagementSessions: lets an override replace sessions and/or duration", () => {
+  const synced = { sessions: ["19:00", "21:00"], duration_min: 90 };
+  assertEquals(resolveEngagementSessions(synced, { sessions: ["20:00"] }), { sessions: ["20:00"], duration_min: 90 });
+  assertEquals(resolveEngagementSessions(synced, { duration_min: 120 }), { sessions: ["19:00", "21:00"], duration_min: 120 });
+});
+
+Deno.test("resolveEngagementSessions: treats an empty override sessions array as an explicit clear", () => {
+  const synced = { sessions: ["19:00", "21:00"], duration_min: 90 };
+  assertEquals(resolveEngagementSessions(synced, { sessions: [] }), { sessions: [], duration_min: 90 });
 });
