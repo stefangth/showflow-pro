@@ -105,6 +105,15 @@ async function selectCommonDates(...labels: string[]) {
   await flush();
 }
 
+async function selectCommonDatesWithoutApplying(...labels: string[]) {
+  fireEvent.click(screen.getByRole("combobox", { name: /select show date/i }));
+  for (const label of labels) {
+    fireEvent.click(await screen.findByText(new RegExp(label, "i")));
+  }
+  fireEvent.click(screen.getByRole("combobox", { name: /select show date/i }));
+  await flush();
+}
+
 function clickContinue() {
   fireEvent.click(screen.getByRole("button", { name: /^continue$/i }));
 }
@@ -277,6 +286,48 @@ describe("NewOrderWizard", () => {
     expect(screen.getByRole("button", { name: /issue now/i })).toBeInTheDocument();
   });
 
+  it("retries only unissued orders and retains partial issue success across attempts", async () => {
+    (client as unknown as { functions: { invoke: ReturnType<typeof vi.fn> } }).functions = {
+      invoke: vi.fn()
+        .mockResolvedValueOnce({
+          data: { created: ["ho-new-1", "ho-new-2"] },
+          error: null,
+        })
+        .mockResolvedValueOnce({
+          data: {
+            issued: ["ho-new-1"],
+            failed: [{ order_id: "ho-new-2", issues: ["missing_terms"] }],
+          },
+          error: null,
+        })
+        .mockResolvedValueOnce({
+          data: { issued: ["ho-new-2"], failed: [] },
+          error: null,
+        }),
+    };
+    renderWizard();
+    await selectArtists("Ann Artist", "Ben Booker");
+    await selectCommonDates("Berlin");
+    await reachReviewWithFee();
+
+    fireEvent.click(screen.getByRole("button", { name: /issue and send to artist/i }));
+    await waitFor(() => expect(invokeCalls().length).toBe(2));
+    expect(invokeCalls()[1]).toMatchObject({
+      action: "issue",
+      order_ids: ["ho-new-1", "ho-new-2"],
+    });
+    fireEvent.click(await screen.findByRole("button", { name: /issue now/i }));
+
+    await waitFor(() => expect(invokeCalls().length).toBe(3));
+    expect(invokeCalls()[2]).toMatchObject({
+      action: "issue",
+      order_ids: ["ho-new-2"],
+    });
+    await waitFor(() => {
+      expect(screen.queryByRole("button", { name: /issue now/i })).not.toBeInTheDocument();
+    });
+  });
+
   it("Open order navigates to the hire order detail route with the created id", async () => {
     renderWizard();
     await pickArtist("Ann Artist");
@@ -334,6 +385,72 @@ describe("NewOrderWizard", () => {
       { artist_id: "a1", show_date_ids: ["sd1"] },
       { artist_id: "a2", show_date_ids: ["sd1"] },
     ]);
+  });
+
+  it("seeds the shared running order when a date is assigned directly in the matrix", async () => {
+    renderWizard();
+    await selectArtists("Ann Artist");
+    await selectCommonDatesWithoutApplying("Berlin");
+
+    fireEvent.click(screen.getByRole("checkbox", { name: /ann artist.*berlin/i }));
+    expect(screen.getByRole("button", { name: /^continue$/i })).toBeEnabled();
+    clickContinue();
+    fireEvent.change(await screen.findByLabelText(/engagement fee/i), { target: { value: "900" } });
+    clickContinue();
+
+    expect(await screen.findByLabelText(/duration/i)).toHaveValue(90);
+    expect(screen.getByLabelText(/session 1 time/i)).toHaveValue("19:00");
+    expect(screen.getByLabelText(/session 2 time/i)).toHaveValue("22:00");
+  });
+
+  it("re-seeds the shared running order when its first date is removed from all assignments", async () => {
+    renderWizard();
+    await selectArtists("Ann Artist");
+    await selectCommonDates("Berlin", "Hamburg");
+
+    fireEvent.click(screen.getByRole("checkbox", { name: /ann artist.*berlin/i }));
+    await reachReviewWithFee("700");
+
+    expect(screen.getByText("75 min")).toBeInTheDocument();
+    expect(screen.getByText("20:00")).toBeInTheDocument();
+    expect(screen.queryByText("19:00 · 22:00")).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: /save as draft/i }));
+    await waitFor(() => expect(invokeCalls().length).toBe(1));
+    const manual = invokeCalls()[0].manual as Record<string, unknown>;
+    expect(manual.duration_min).toBe(75);
+    expect(manual.sessions).toEqual(["20:00"]);
+  });
+
+  it("removes a deselected artist and its assignments from review and payload", async () => {
+    renderWizard();
+    await selectArtists("Ann Artist", "Ben Booker");
+    await selectCommonDates("Berlin");
+
+    fireEvent.click(screen.getByRole("combobox", { name: /select artist/i }));
+    fireEvent.click(await screen.findByRole("option", { name: /ann artist/i }));
+    fireEvent.click(screen.getByRole("combobox", { name: /select artist/i }));
+    await flush();
+    await reachReviewWithFee();
+
+    expect(screen.queryByRole("group", { name: /ann artist dates/i })).not.toBeInTheDocument();
+    expect(screen.getByRole("group", { name: /ben booker dates/i })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: /save as draft/i }));
+    await waitFor(() => expect(invokeCalls().length).toBe(1));
+    expect(invokeCalls()[0].artists).toEqual([
+      { artist_id: "a2", show_date_ids: ["sd1"] },
+    ]);
+  });
+
+  it("disables Continue when the last assigned date is removed", async () => {
+    renderWizard();
+    await selectArtists("Ann Artist");
+    await selectCommonDates("Berlin");
+    expect(screen.getByRole("button", { name: /^continue$/i })).toBeEnabled();
+
+    fireEvent.click(screen.getByRole("checkbox", { name: /ann artist.*berlin/i }));
+
+    expect(screen.getByRole("button", { name: /^continue$/i })).toBeDisabled();
   });
 
   it("issues every successfully created batch order and closes to the tracking list", async () => {

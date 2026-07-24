@@ -204,6 +204,7 @@ export function NewOrderWizard({ open, onOpenChange, orgId }: Props) {
   const [currency, setCurrency] = useState("EUR");
   const [durationMin, setDurationMin] = useState("");
   const [manualSessions, setManualSessions] = useState<SessionRow[]>([{ label: "", time: "" }]);
+  const [batchScheduleSourceDateId, setBatchScheduleSourceDateId] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState<"draft" | "issue" | null>(null);
   const [result, setResult] = useState<WizardResult | null>(null);
 
@@ -211,6 +212,7 @@ export function NewOrderWizard({ open, onOpenChange, orgId }: Props) {
     setStep(1); setManualMode(false); setSelectedArtistIds([]); setSelectedShowDateIds([]); setArtistDateIds({});
     setManualArtistName(""); setManualEmail(""); setManualDate(""); setManualVenue(""); setManualCity("");
     setFee(""); setDurationMin(""); setManualSessions([{ label: "", time: "" }]);
+    setBatchScheduleSourceDateId(null);
     setSubmitting(null); setResult(null);
     seededDefaultsRef.current = false; setCurrency("EUR");
   }
@@ -226,17 +228,50 @@ export function NewOrderWizard({ open, onOpenChange, orgId }: Props) {
       setSelectedArtistIds([]);
       setSelectedShowDateIds([]);
       setArtistDateIds({});
+      setBatchScheduleSourceDateId(null);
     }
+  }
+
+  function syncBatchSchedule(
+    nextArtistIds: string[],
+    nextShowDateIds: string[],
+    nextArtistDateIds: Record<string, string[]>,
+  ) {
+    const remainsAssigned =
+      batchScheduleSourceDateId != null &&
+      nextArtistIds.some((artistId) =>
+        (nextArtistDateIds[artistId] ?? []).includes(batchScheduleSourceDateId),
+      );
+    if (remainsAssigned) return;
+
+    const nextSourceDateId =
+      nextShowDateIds.find((showDateId) =>
+        nextArtistIds.some((artistId) =>
+          (nextArtistDateIds[artistId] ?? []).includes(showDateId),
+        ),
+      ) ?? null;
+    const nextSourceDate = showDates.find((date) => date.id === nextSourceDateId);
+    setBatchScheduleSourceDateId(nextSourceDateId);
+    setDurationMin(
+      nextSourceDate?.duration_minutes != null
+        ? String(nextSourceDate.duration_minutes)
+        : "",
+    );
+    setManualSessions(
+      nextSourceDate && nextSourceDate.sessions.length > 0
+        ? nextSourceDate.sessions.map((time) => ({ label: "", time }))
+        : [{ label: "", time: "" }],
+    );
   }
 
   function toggleArtist(id: string) {
     if (selectedArtistIds.includes(id)) {
-      setSelectedArtistIds((ids) => ids.filter((artistId) => artistId !== id));
-      setArtistDateIds((current) => {
-        const next = { ...current };
-        delete next[id];
-        return next;
-      });
+      const nextArtistIds = selectedArtistIds.filter((artistId) => artistId !== id);
+      const nextArtistDateIds = { ...artistDateIds };
+      delete nextArtistDateIds[id];
+      setSelectedArtistIds(nextArtistIds);
+      setArtistDateIds(nextArtistDateIds);
+      syncBatchSchedule(nextArtistIds, selectedShowDateIds, nextArtistDateIds);
       return;
     }
     setSelectedArtistIds((ids) => [...ids, id]);
@@ -245,47 +280,47 @@ export function NewOrderWizard({ open, onOpenChange, orgId }: Props) {
 
   function toggleShowDate(id: string) {
     if (selectedShowDateIds.includes(id)) {
-      setSelectedShowDateIds((ids) => ids.filter((showDateId) => showDateId !== id));
-      setArtistDateIds((current) =>
+      const nextShowDateIds = selectedShowDateIds.filter((showDateId) => showDateId !== id);
+      const nextArtistDateIds =
         Object.fromEntries(
-          Object.entries(current).map(([artistId, ids]) => [
+          Object.entries(artistDateIds).map(([artistId, ids]) => [
             artistId,
             ids.filter((showDateId) => showDateId !== id),
           ]),
-        ),
-      );
+        );
+      setSelectedShowDateIds(nextShowDateIds);
+      setArtistDateIds(nextArtistDateIds);
+      syncBatchSchedule(selectedArtistIds, nextShowDateIds, nextArtistDateIds);
       return;
     }
     setSelectedShowDateIds((ids) => [...ids, id]);
   }
 
   function applySelectedDatesToAll() {
-    setArtistDateIds(
-      Object.fromEntries(selectedArtistIds.map((artistId) => [artistId, [...selectedShowDateIds]])),
+    const nextArtistDateIds = Object.fromEntries(
+      selectedArtistIds.map((artistId) => [artistId, [...selectedShowDateIds]]),
     );
-    const firstDate = showDates.find((date) => date.id === selectedShowDateIds[0]);
-    setDurationMin(firstDate?.duration_minutes != null ? String(firstDate.duration_minutes) : "");
-    setManualSessions(
-      firstDate && firstDate.sessions.length > 0
-        ? firstDate.sessions.map((time) => ({ label: "", time }))
-        : [{ label: "", time: "" }],
-    );
+    setArtistDateIds(nextArtistDateIds);
+    syncBatchSchedule(selectedArtistIds, selectedShowDateIds, nextArtistDateIds);
   }
 
   function toggleArtistDate(artistId: string, showDateId: string) {
-    setArtistDateIds((current) => {
-      const assigned = new Set(current[artistId] ?? []);
-      if (assigned.has(showDateId)) assigned.delete(showDateId);
-      else assigned.add(showDateId);
-      return {
-        ...current,
-        [artistId]: selectedShowDateIds.filter((id) => assigned.has(id)),
-      };
-    });
+    const assigned = new Set(artistDateIds[artistId] ?? []);
+    if (assigned.has(showDateId)) assigned.delete(showDateId);
+    else assigned.add(showDateId);
+    const nextArtistDateIds = {
+      ...artistDateIds,
+      [artistId]: selectedShowDateIds.filter((id) => assigned.has(id)),
+    };
+    setArtistDateIds(nextArtistDateIds);
+    syncBatchSchedule(selectedArtistIds, selectedShowDateIds, nextArtistDateIds);
   }
 
   const linkedArtist = !manualMode ? artists.find((a) => a.id === selectedArtistIds[0]) ?? null : null;
-  const linkedDate = !manualMode ? showDates.find((d) => d.id === selectedShowDateIds[0]) ?? null : null;
+  const linkedDate =
+    !manualMode
+      ? showDates.find((d) => d.id === batchScheduleSourceDateId) ?? null
+      : null;
 
   const canContinueStep1 = manualMode
     ? manualArtistName.trim() !== ""
@@ -404,20 +439,23 @@ export function NewOrderWizard({ open, onOpenChange, orgId }: Props) {
       const nextResult = resultFromDraft((await action.mutateAsync(draftBody())) as BatchDraftResult);
       if (!nextResult) return;
       // The draft now exists regardless of whether issuing below succeeds — show
-      // the success screen either way, so a network hiccup on the issue call
-      // doesn't strand the user on step 4 with no way back to the order they
-      // just created (they can retry via "Issue now" on the success screen).
-      setResult(nextResult);
+      // the success screen after the issue attempt either way, so a network
+      // hiccup doesn't strand the user on step 4 with no way back to the order
+      // they just created (they can retry via "Issue now" on the success screen).
       try {
         const issueRes = (await action.mutateAsync({
           action: "issue",
           org_id: orgId,
           order_ids: nextResult.created,
         })) as { issued?: string[] };
-        setResult({ ...nextResult, issued: issueRes.issued ?? [] });
+        setResult({
+          ...nextResult,
+          issued: nextResult.created.filter((id) => (issueRes.issued ?? []).includes(id)),
+        });
       } catch {
         // useHireOrderAction already toasts the issue failure; the draft itself
         // still succeeded, so the success screen stays up with "Issue now".
+        setResult(nextResult);
       }
     } catch {
       // useHireOrderAction already toasts the draft failure.
@@ -428,14 +466,21 @@ export function NewOrderWizard({ open, onOpenChange, orgId }: Props) {
 
   async function handleIssueNow() {
     if (!orgId || !result) return;
+    const alreadyIssued = new Set(result.issued);
+    const pendingOrderIds = result.created.filter((id) => !alreadyIssued.has(id));
+    if (pendingOrderIds.length === 0) return;
     setSubmitting("issue");
     try {
       const issueRes = (await action.mutateAsync({
         action: "issue",
         org_id: orgId,
-        order_ids: result.created,
+        order_ids: pendingOrderIds,
       })) as { issued?: string[] };
-      setResult({ ...result, issued: issueRes.issued ?? [] });
+      const newlyIssued = new Set(issueRes.issued ?? []);
+      setResult({
+        ...result,
+        issued: result.created.filter((id) => alreadyIssued.has(id) || newlyIssued.has(id)),
+      });
     } catch {
       // useHireOrderAction already toasts the failure.
     } finally {
