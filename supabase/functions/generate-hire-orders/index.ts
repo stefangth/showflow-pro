@@ -244,6 +244,8 @@ interface ResendOrderRow extends EmailOrderRow {
   pdf_path: string | null;
   signed_pdf_path: string | null;
   fee_currency: string | null;
+  countersign_mode: string | null;
+  issue_snapshot: Pick<IssueSnapshot, "countersign_mode"> | null;
 }
 
 // ── entry ──────────────────────────────────────────────────────────────────
@@ -1483,6 +1485,44 @@ interface ResendBody {
   order_id: string;
 }
 
+type IssuedCountersignMode = "manual" | "documenso" | "electronic";
+
+function isIssuedCountersignMode(
+  value: unknown,
+): value is IssuedCountersignMode {
+  return value === "manual" || value === "documenso" ||
+    value === "electronic";
+}
+
+function resendSigningDelivery(
+  order: ResendOrderRow,
+): { countersignMode: IssuedCountersignMode; signingUrl: string | null } {
+  const snapshotMode = order.issue_snapshot?.countersign_mode;
+  const issuedMode = isIssuedCountersignMode(snapshotMode)
+    ? snapshotMode
+    : isIssuedCountersignMode(order.countersign_mode)
+    ? order.countersign_mode
+    : "manual";
+
+  if (issuedMode === "electronic") {
+    return {
+      countersignMode: "electronic",
+      signingUrl: `${APP_URL}/hire-orders/${order.id}`,
+    };
+  }
+
+  // A Documenso signing URL needs the recipient token returned at envelope
+  // creation. Historical rows retain only documenso_envelope_id, which is not a
+  // signing credential and cannot safely be turned into that URL. Until a valid
+  // immutable signing URL is persisted, resend those legacy deliveries as manual
+  // instead of rendering a misleading "Review and sign" link.
+  if (issuedMode === "documenso") {
+    return { countersignMode: "manual", signingUrl: null };
+  }
+
+  return { countersignMode: "manual", signingUrl: null };
+}
+
 async function resendOrder(deps: Deps, body: ResendBody): Promise<Response> {
   const org = body.org_id;
   if (!body.order_id) return json({ error: "order_id required" }, 400);
@@ -1490,7 +1530,7 @@ async function resendOrder(deps: Deps, body: ResendBody): Promise<Response> {
   const { data: orderRaw, error: orderError } = await deps.admin
     .from("hire_orders")
     .select(
-      "id, status, data, order_no, artist_id, pdf_path, signed_pdf_path, fee_currency",
+      "id, status, data, order_no, artist_id, pdf_path, signed_pdf_path, fee_currency, countersign_mode, issue_snapshot",
     )
     .eq("id", body.order_id)
     .eq("org_id", org)
@@ -1516,6 +1556,7 @@ async function resendOrder(deps: Deps, body: ResendBody): Promise<Response> {
   }
   const bytes = new Uint8Array(await storedPdf.arrayBuffer());
   const currency = order.fee_currency || strField(data, "currency") || "EUR";
+  const signingDelivery = resendSigningDelivery(order);
   const delivered = await sendIssuedEmail(
     deps,
     org,
@@ -1523,8 +1564,8 @@ async function resendOrder(deps: Deps, body: ResendBody): Promise<Response> {
     data,
     bytes,
     currency,
-    "manual",
-    null,
+    signingDelivery.countersignMode,
+    signingDelivery.signingUrl,
     "resend",
   ).catch((error) => {
     console.error("generate-hire-orders: resend failed", {

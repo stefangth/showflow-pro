@@ -1321,6 +1321,75 @@ Deno.test("resend reuses the stored document and stamps last_sent_at only after 
   );
 });
 
+Deno.test("resend preserves the issued electronic CTA while manual remains manual", async () => {
+  for (
+    const [issueSnapshot, storedMode, expectedMode, expectedSigningUrl] of [
+      [
+        { countersign_mode: "electronic" },
+        "manual",
+        "electronic",
+        "https://app.showflow.pro/hire-orders/o-1",
+      ],
+      [{ countersign_mode: "manual" }, "electronic", "manual", undefined],
+      [
+        null,
+        "electronic",
+        "electronic",
+        "https://app.showflow.pro/hire-orders/o-1",
+      ],
+    ] as const
+  ) {
+    const { deps, invokeCalls } = makeFakeDeps({
+      authUser: { id: "u-admin" },
+      emailResult: { data: { success: true }, error: null },
+      tables: {
+        org_memberships: { data: { role: "admin" } },
+        hire_orders: [
+          {
+            when: { __write: false },
+            data: issuableOrder({
+              status: "issued",
+              pdf_path: `${ORG}/HO-1.pdf`,
+              signed_pdf_path: null,
+              issue_snapshot: issueSnapshot,
+              countersign_mode: storedMode,
+            }),
+          },
+          { when: { __write: true }, data: null },
+        ],
+      },
+    });
+    installStorageDownload(deps, {
+      data: new Blob([new Uint8Array([0x25, 0x50, 0x44, 0x46])], {
+        type: "application/pdf",
+      }),
+      error: null,
+    });
+
+    const response = await handle(
+      makeRequest({
+        headers: JWT,
+        body: { action: "resend", org_id: ORG, order_id: "o-1" },
+      }),
+      deps,
+    );
+
+    assertEquals(response.status, 200);
+    const email = invokeCalls.find((call) =>
+      call.name === "send-transactional-email"
+    );
+    assert(email, "resend should use the issued email template");
+    const templateData = (email!.body as {
+      templateData: {
+        countersign_mode: string;
+        signing_url?: string;
+      };
+    }).templateData;
+    assertEquals(templateData.countersign_mode, expectedMode);
+    assertEquals(templateData.signing_url, expectedSigningUrl);
+  }
+});
+
 Deno.test("resend provider failure leaves last_sent_at unchanged", async () => {
   const { deps, calls } = makeFakeDeps({
     authUser: { id: "u-admin" },
