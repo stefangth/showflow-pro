@@ -9,6 +9,8 @@
 // EXCEPTION: the renderer port at the bottom of this file is edge-only and
 // has no src/ twin — see the comment there.
 
+import type { HireOrderCopy } from "./hire-order-pdf/pdfCopy.ts";
+
 export type FieldSource = "showflow" | "sheet" | "manual" | "default";
 
 export interface FieldValue<T = unknown> {
@@ -354,6 +356,10 @@ export interface RenderInput {
   /** Present only for a countersigned render — draws the artist's mark on the
    *  signature line and appends the signature-certificate page. */
   signature?: RenderSignature;
+  /** Resolved, complete copy dictionary (org overrides merged over defaults).
+   *  Omitted in legacy call sites/tests -> the renderer uses the built-in
+   *  defaults, reproducing the previous hardcoded strings exactly. */
+  copy?: HireOrderCopy;
 }
 
 /** Audit + mark data for a countersigned render. */
