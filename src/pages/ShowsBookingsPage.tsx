@@ -149,6 +149,12 @@ function ProducerShowsBookings() {
     if (!orgId) return;
     hireOrderAction.mutate({ action: 'draft', org_id: orgId, show_date_id: dateId, notify: false });
   };
+  // Only the row whose draft is in flight shows pending. The mutation instance is
+  // shared across every row's button, so gating on `isPending` alone would disable
+  // all ready rows on any single click.
+  const pendingHireOrderDateId = hireOrderAction.isPending
+    ? (hireOrderAction.variables as { show_date_id?: string } | undefined)?.show_date_id
+    : undefined;
 
   useEffect(() => {
     const status = searchParams.get('status');
@@ -423,7 +429,7 @@ function ProducerShowsBookings() {
                                   size="sm"
                                   variant="outline"
                                   className="h-7 px-2 text-xs"
-                                  disabled={!canGenerateHireOrders || hireOrderAction.isPending}
+                                  disabled={!canGenerateHireOrders || pendingHireOrderDateId === sd.id}
                                   onClick={(e) => { e.stopPropagation(); draftHireOrderForDate(sd.id); }}
                                 >
                                   <Plus className="mr-1 h-3 w-3" /> Generate hire order
