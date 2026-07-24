@@ -41,17 +41,23 @@ import {
   encodeBase64,
 } from "https://deno.land/std@0.224.0/encoding/base64.ts";
 import {
+  defaultTemplateId,
   type EngagementDate,
   type FieldLayers,
   formatMoney,
   formatOrderNo,
   type HireOrderLetterhead,
   type HireOrderTerm,
+  type HireOrderTermsSetting,
+  normalizeTermsSetting,
   type OrderData,
   type OrderFieldKey,
   orderReadyIssues,
   type RenderSignature,
+  resolveEngagementSessions,
   resolveFields,
+  resolveTermsClauses,
+  type SessionOverride,
   withCollisionSuffix,
 } from "../_shared/hireOrders.ts";
 
@@ -65,12 +71,6 @@ interface OrderDefaults {
   default_fee: number | null;
   currency: string;
 }
-interface TermsVariants {
-  lean: HireOrderTerm[];
-  standard: HireOrderTerm[];
-  full: HireOrderTerm[];
-}
-type TermsVariant = keyof TermsVariants;
 interface Countersign {
   // 'documenso' is retained for the dormant Documenso path (see issueOne + _shared/documenso.ts).
   mode: "manual" | "documenso" | "electronic";
@@ -107,7 +107,15 @@ const LETTERHEAD_DEFAULT: HireOrderLetterhead = {
   legal_name: "",
   address_lines: [],
 };
-const TERMS_DEFAULT: TermsVariants = { lean: [], standard: [], full: [] };
+const TERMS_DEFAULT: HireOrderTermsSetting = {
+  templates: [],
+  default_id: null,
+};
+/** Fallback template id when the org has authored no templates at all (empty-template
+ *  orgs get no real default_id from `defaultTemplateId`); kept only so drafts always
+ *  carry a string — the readiness/missing_terms gate blocks issuing such an order
+ *  regardless of which id it stores. */
+const FALLBACK_TERMS_VARIANT = "standard";
 const COUNTERSIGN_DEFAULT: Countersign = { mode: "manual" };
 
 const BUCKET = "hire-orders";
@@ -392,8 +400,8 @@ async function draftOrders(
     ),
   );
 
-  // Settings for the snapshot + numbering.
-  const [defaults, numbering] = await Promise.all([
+  // Settings for the snapshot + numbering + the org's default terms template.
+  const [defaults, numbering, rawTerms] = await Promise.all([
     resolveOrgSetting<OrderDefaults>(
       admin,
       org,
@@ -406,7 +414,11 @@ async function draftOrders(
       "hire_order_numbering",
       NUMBERING_DEFAULT,
     ),
+    resolveOrgSetting<unknown>(admin, org, "hire_order_terms", TERMS_DEFAULT),
   ]);
+  const termsSetting = normalizeTermsSetting(rawTerms);
+  const defaultTermsVariant = defaultTemplateId(termsSetting) ??
+    FALLBACK_TERMS_VARIANT;
 
   // City name (showflow field).
   let cityName: string | null = null;
@@ -495,7 +507,7 @@ async function draftOrders(
         data,
         fee_amount: feeAmount,
         fee_currency: defaults.currency,
-        terms_variant: "standard",
+        terms_variant: defaultTermsVariant,
         created_by: userId,
       };
 
@@ -668,7 +680,7 @@ async function draftManual(
     return json({ error: "invalid_fee" }, 400);
   }
 
-  const [defaults, numbering] = await Promise.all([
+  const [defaults, numbering, rawTerms] = await Promise.all([
     resolveOrgSetting<OrderDefaults>(
       admin,
       org,
@@ -681,7 +693,11 @@ async function draftManual(
       "hire_order_numbering",
       NUMBERING_DEFAULT,
     ),
+    resolveOrgSetting<unknown>(admin, org, "hire_order_terms", TERMS_DEFAULT),
   ]);
+  const defaultTermsVariant =
+    defaultTemplateId(normalizeTermsSetting(rawTerms)) ??
+      FALLBACK_TERMS_VARIANT;
 
   const showflow: Partial<Record<OrderFieldKey, unknown>> = {};
   let castCode: string | undefined;
@@ -779,7 +795,7 @@ async function draftManual(
     data,
     fee_amount: feeAmount,
     fee_currency: currency,
-    terms_variant: "standard",
+    terms_variant: defaultTermsVariant,
     created_by: userId,
   };
 
@@ -807,6 +823,9 @@ interface DraftBatchBody {
   org_id: string;
   artists: DraftBatchArtistInput[];
   manual?: NonNullable<FieldLayers["manual"]>;
+  /** Per-date running-order + duration overrides, keyed by show_date_id. Each
+   *  key must be one of the request's selected show_date_ids. */
+  date_overrides?: Record<string, SessionOverride>;
 }
 
 interface DraftBatchResult {
@@ -822,9 +841,13 @@ interface BatchDraftContext {
   manual: NonNullable<FieldLayers["manual"]>;
   defaults: OrderDefaults;
   numbering: Numbering;
+  /** The org's default terms-template id, resolved once for the whole batch. */
+  defaultTermsVariant: string;
   artistsById: Map<string, ManualArtistRow>;
   datesById: Map<string, ShowDateRow>;
   cityNamesById: Map<string, string>;
+  /** Validated per-date session/duration overrides, keyed by show_date_id. */
+  dateOverrides: Record<string, SessionOverride>;
   nextSeq: number;
 }
 
@@ -840,6 +863,62 @@ function canonicalUuid(value: unknown): string | null {
   return typeof value === "string" && CANONICAL_UUID_PATTERN.test(value)
     ? value.toLowerCase()
     : null;
+}
+
+/**
+ * Validate the batch's optional `date_overrides` map. Every key must
+ * canonicalize to a show_date_id present in `selectedShowDateIds` (the union
+ * of the request's own artists[].show_date_ids); each override's `sessions`
+ * (if present) must be an array of at most 3 non-blank (post-trim) strings;
+ * each `duration_min` (if present) must be `null` or a finite number `>= 0`.
+ * Returns `null` on any violation, else a normalized map keyed by canonical
+ * show_date_id with trimmed session strings.
+ */
+function validateDateOverrides(
+  raw: DraftBatchBody["date_overrides"],
+  selectedShowDateIds: Set<string>,
+): Record<string, SessionOverride> | null {
+  if (raw === undefined) return {};
+  if (!raw || typeof raw !== "object" || Array.isArray(raw)) return null;
+
+  const result: Record<string, SessionOverride> = {};
+  for (const [rawKey, rawOverride] of Object.entries(raw)) {
+    const dateId = canonicalUuid(rawKey);
+    if (!dateId || !selectedShowDateIds.has(dateId)) return null;
+    if (
+      !rawOverride || typeof rawOverride !== "object" ||
+      Array.isArray(rawOverride)
+    ) {
+      return null;
+    }
+
+    const override: SessionOverride = {};
+    if ("sessions" in rawOverride) {
+      const rawSessions = rawOverride.sessions;
+      if (!Array.isArray(rawSessions) || rawSessions.length > 3) return null;
+      const sessions: string[] = [];
+      for (const session of rawSessions) {
+        if (typeof session !== "string") return null;
+        const trimmed = session.trim();
+        if (trimmed === "") return null;
+        sessions.push(trimmed);
+      }
+      override.sessions = sessions;
+    }
+    if ("duration_min" in rawOverride) {
+      const rawDuration = rawOverride.duration_min;
+      if (
+        rawDuration !== null &&
+        !(typeof rawDuration === "number" && Number.isFinite(rawDuration) &&
+          rawDuration >= 0)
+      ) {
+        return null;
+      }
+      override.duration_min = rawDuration;
+    }
+    result[dateId] = override;
+  }
+  return result;
 }
 
 async function draftBatch(
@@ -897,43 +976,62 @@ async function draftBatch(
     return json({ error: "invalid_fee" }, 400);
   }
 
+  const selectedShowDateIds = new Set(
+    normalizedArtists.flatMap((item) => item.show_date_ids),
+  );
+  const dateOverrides = validateDateOverrides(
+    body.date_overrides,
+    selectedShowDateIds,
+  );
+  if (dateOverrides === null) {
+    return json({ error: "invalid_date_override" }, 400);
+  }
+
   const admin = deps.admin;
   const org = body.org_id;
   const artistIds = normalizedArtists.map((item) => item.artist_id);
-  const showDateIds = [
-    ...new Set(normalizedArtists.flatMap((item) => item.show_date_ids)),
-  ];
-  const [artistResult, dateResult, defaults, numbering, sequenceResult] =
-    await Promise.all([
-      admin.from("artists")
-        .select("id, name, email, cast_role")
-        .eq("org_id", org)
-        .in("id", artistIds),
-      admin.from("show_dates")
-        .select(
-          "id, org_id, show_id, city_id, date, venue, duration_minutes, notes, session_1, session_2, session_3, shows(program, sub_program)",
-        )
-        .eq("org_id", org)
-        .in("id", showDateIds),
-      resolveOrgSetting<OrderDefaults>(
-        admin,
-        org,
-        "hire_order_defaults",
-        DEFAULTS_DEFAULT,
-      ),
-      resolveOrgSetting<Numbering>(
-        admin,
-        org,
-        "hire_order_numbering",
-        NUMBERING_DEFAULT,
-      ),
-      admin.from("hire_orders")
-        .select("id", { count: "exact", head: true })
-        .eq("org_id", org)
-        .neq("status", "void"),
-    ]);
+  const showDateIds = [...selectedShowDateIds];
+  const [
+    artistResult,
+    dateResult,
+    defaults,
+    numbering,
+    rawTerms,
+    sequenceResult,
+  ] = await Promise.all([
+    admin.from("artists")
+      .select("id, name, email, cast_role")
+      .eq("org_id", org)
+      .in("id", artistIds),
+    admin.from("show_dates")
+      .select(
+        "id, org_id, show_id, city_id, date, venue, duration_minutes, notes, session_1, session_2, session_3, shows(program, sub_program)",
+      )
+      .eq("org_id", org)
+      .in("id", showDateIds),
+    resolveOrgSetting<OrderDefaults>(
+      admin,
+      org,
+      "hire_order_defaults",
+      DEFAULTS_DEFAULT,
+    ),
+    resolveOrgSetting<Numbering>(
+      admin,
+      org,
+      "hire_order_numbering",
+      NUMBERING_DEFAULT,
+    ),
+    resolveOrgSetting<unknown>(admin, org, "hire_order_terms", TERMS_DEFAULT),
+    admin.from("hire_orders")
+      .select("id", { count: "exact", head: true })
+      .eq("org_id", org)
+      .neq("status", "void"),
+  ]);
   if (artistResult.error) return json({ error: "artist_lookup_failed" }, 500);
   if (dateResult.error) return json({ error: "show_date_lookup_failed" }, 500);
+  const defaultTermsVariant =
+    defaultTemplateId(normalizeTermsSetting(rawTerms)) ??
+      FALLBACK_TERMS_VARIANT;
 
   const artists = (artistResult.data ?? []) as unknown as ManualArtistRow[];
   const dates = (dateResult.data ?? []) as unknown as ShowDateRow[];
@@ -964,9 +1062,11 @@ async function draftBatch(
     manual,
     defaults,
     numbering,
+    defaultTermsVariant,
     artistsById,
     datesById,
     cityNamesById,
+    dateOverrides,
     nextSeq: sequenceResult.count ?? 0,
   };
   const result: DraftBatchResult = { created: [], skipped: [], errors: [] };
@@ -1009,9 +1109,11 @@ async function draftBatchArtist(
     manual,
     defaults,
     numbering,
+    defaultTermsVariant,
     artistsById,
     datesById,
     cityNamesById,
+    dateOverrides,
   } = context;
   const artist = artistsById.get(input.artist_id);
   if (!artist) return { kind: "error", reason: "artist_not_found" };
@@ -1027,12 +1129,25 @@ async function draftBatchArtist(
   );
 
   const firstDate = dates[0];
-  const engagementDates: EngagementDate[] = dates.map((date) => ({
-    show_date_id: date.id,
-    date: date.date,
-    venue: date.venue,
-    city: date.city_id ? cityNamesById.get(date.city_id) ?? null : null,
-  }));
+  const engagementDates: EngagementDate[] = dates.map((date) => {
+    const dateSessions = [date.session_1, date.session_2, date.session_3]
+      .filter(
+        (time: unknown): time is string =>
+          typeof time === "string" && time !== "",
+      );
+    const resolved = resolveEngagementSessions(
+      { sessions: dateSessions, duration_min: date.duration_minutes },
+      dateOverrides[date.id],
+    );
+    return {
+      show_date_id: date.id,
+      date: date.date,
+      venue: date.venue,
+      city: date.city_id ? cityNamesById.get(date.city_id) ?? null : null,
+      sessions: resolved.sessions,
+      duration_min: resolved.duration_min,
+    };
+  });
 
   const showflow: NonNullable<FieldLayers["showflow"]> = {};
   assign(showflow, "artist_name", artist.name);
@@ -1041,15 +1156,9 @@ async function draftBatchArtist(
   assign(showflow, "date", engagementDates[0].date);
   assign(showflow, "venue", engagementDates[0].venue);
   assign(showflow, "city", engagementDates[0].city);
-  assign(showflow, "duration_min", firstDate.duration_minutes);
-  const sessions = [
-    firstDate.session_1,
-    firstDate.session_2,
-    firstDate.session_3,
-  ].filter(
-    (time: unknown): time is string => typeof time === "string" && time !== "",
-  );
-  if (sessions.length > 0) showflow.sessions = sessions;
+  assign(showflow, "duration_min", engagementDates[0].duration_min);
+  const firstSessions = engagementDates[0].sessions ?? [];
+  if (firstSessions.length > 0) showflow.sessions = firstSessions;
 
   const defaultLayer: NonNullable<FieldLayers["defaults"]> = {
     currency: defaults.currency,
@@ -1084,7 +1193,7 @@ async function draftBatchArtist(
       p_data: data as unknown as Json,
       p_fee_amount: feeAmount,
       p_fee_currency: currency,
-      p_terms_variant: "standard",
+      p_terms_variant: defaultTermsVariant,
       p_created_by: userId,
     },
   );
@@ -1151,19 +1260,14 @@ async function issueOrders(
   const orderIds = Array.isArray(body.order_ids) ? body.order_ids : [];
   if (orderIds.length === 0) return json({ error: "order_ids required" }, 400);
 
-  const [letterhead, terms, defaults, countersign] = await Promise.all([
+  const [letterhead, rawTerms, defaults, countersign] = await Promise.all([
     resolveOrgSetting<HireOrderLetterhead>(
       admin,
       org,
       "hire_order_letterhead",
       LETTERHEAD_DEFAULT,
     ),
-    resolveOrgSetting<TermsVariants>(
-      admin,
-      org,
-      "hire_order_terms",
-      TERMS_DEFAULT,
-    ),
+    resolveOrgSetting<unknown>(admin, org, "hire_order_terms", TERMS_DEFAULT),
     resolveOrgSetting<OrderDefaults>(
       admin,
       org,
@@ -1177,6 +1281,7 @@ async function issueOrders(
       COUNTERSIGN_DEFAULT,
     ),
   ]);
+  const termsSetting = normalizeTermsSetting(rawTerms);
 
   const issued: string[] = [];
   const failed: Array<{ order_id: string; issues: string[] }> = [];
@@ -1188,7 +1293,7 @@ async function issueOrders(
         org,
         orderId,
         letterhead,
-        terms,
+        termsSetting,
         defaults,
         countersign,
       );
@@ -1223,7 +1328,7 @@ async function issueOne(
   org: string,
   orderId: string,
   letterhead: HireOrderLetterhead,
-  terms: TermsVariants,
+  termsSetting: HireOrderTermsSetting,
   defaults: OrderDefaults,
   countersign: Countersign,
 ): Promise<{ ok: true; warning?: string } | { ok: false; issues: string[] }> {
@@ -1247,8 +1352,7 @@ async function issueOne(
   if (o.status === "void") return { ok: false, issues: ["voided"] };
 
   const data = o.data as OrderData;
-  const variant = (o.terms_variant as TermsVariant) ?? "standard";
-  const variantTerms = terms[variant] ?? [];
+  const variantTerms = resolveTermsClauses(termsSetting, o.terms_variant);
 
   // Readiness gate (four frozen codes) + the terms gate (org must have authored
   // clauses for this variant before it can issue).
@@ -1663,19 +1767,14 @@ async function previewOrder(deps: Deps, body: PreviewBody): Promise<Response> {
   if (!order) return json({ error: "not_found" }, 404);
   const o = order as unknown as PreviewOrderRow;
 
-  const [letterhead, terms, defaults] = await Promise.all([
+  const [letterhead, rawTerms, defaults] = await Promise.all([
     resolveOrgSetting<HireOrderLetterhead>(
       admin,
       org,
       "hire_order_letterhead",
       LETTERHEAD_DEFAULT,
     ),
-    resolveOrgSetting<TermsVariants>(
-      admin,
-      org,
-      "hire_order_terms",
-      TERMS_DEFAULT,
-    ),
+    resolveOrgSetting<unknown>(admin, org, "hire_order_terms", TERMS_DEFAULT),
     resolveOrgSetting<OrderDefaults>(
       admin,
       org,
@@ -1683,7 +1782,7 @@ async function previewOrder(deps: Deps, body: PreviewBody): Promise<Response> {
       DEFAULTS_DEFAULT,
     ),
   ]);
-  const variant = (o.terms_variant as TermsVariant) ?? "standard";
+  const termsSetting = normalizeTermsSetting(rawTerms);
 
   const effectiveLetterhead: HireOrderLetterhead = {
     ...letterhead,
@@ -1695,7 +1794,7 @@ async function previewOrder(deps: Deps, body: PreviewBody): Promise<Response> {
     orderNo: o.order_no,
     status: "preview",
     letterhead: effectiveLetterhead,
-    terms: terms[variant] ?? [],
+    terms: resolveTermsClauses(termsSetting, o.terms_variant),
     currency: o.fee_currency ?? defaults.currency ?? "EUR",
     generatedAtIso: deps.now().toISOString(),
   });
@@ -1942,19 +2041,14 @@ async function signOrder(
   // exact issued document the certificate hash attests to (finding W1). Legacy
   // orders issued before the issue_snapshot column carry null and fall back to
   // re-resolving the org's CURRENT letterhead/terms + the per-order agent override.
-  const [letterhead, terms, defaults] = await Promise.all([
+  const [letterhead, rawTerms, defaults] = await Promise.all([
     resolveOrgSetting<HireOrderLetterhead>(
       admin,
       org,
       "hire_order_letterhead",
       LETTERHEAD_DEFAULT,
     ),
-    resolveOrgSetting<TermsVariants>(
-      admin,
-      org,
-      "hire_order_terms",
-      TERMS_DEFAULT,
-    ),
+    resolveOrgSetting<unknown>(admin, org, "hire_order_terms", TERMS_DEFAULT),
     resolveOrgSetting<OrderDefaults>(
       admin,
       org,
@@ -1974,13 +2068,13 @@ async function signOrder(
     currency = snapshot.currency ?? o.fee_currency ?? defaults.currency ??
       "EUR";
   } else {
-    const variant = (o.terms_variant as TermsVariant) ?? "standard";
+    const termsSetting = normalizeTermsSetting(rawTerms);
     renderLetterhead = {
       ...letterhead,
       agent_name: o.agent_name ?? letterhead.agent_name,
       agent_email: o.agent_email ?? letterhead.agent_email,
     };
-    renderTerms = terms[variant] ?? [];
+    renderTerms = resolveTermsClauses(termsSetting, o.terms_variant);
     currency = o.fee_currency ?? defaults.currency ?? "EUR";
   }
   const signature: RenderSignature = {

@@ -274,6 +274,52 @@ describe("HireOrderImportDialog", () => {
     expect(navigate).toHaveBeenCalledWith("/hire-orders");
   });
 
+  it("defaults each imported row's terms_variant to the org's default template id, not a hardcoded value", async () => {
+    seedClient({
+      artists: { data: [ANN], error: null },
+      show_dates: { data: [SHOW_DATE], error: null },
+      app_settings: [
+        {
+          when: { key: "hire_order_terms" },
+          data: [
+            {
+              org_id: ORG,
+              value: {
+                templates: [
+                  { id: "vip", name: "VIP Contract", clauses: [] },
+                  { id: "standard", name: "Standard", clauses: [] },
+                ],
+                default_id: "vip",
+              },
+            },
+          ],
+          error: null,
+        },
+      ],
+      "rpc:bulk_import_hire_orders": {
+        data: [
+          { row_index: 2, status: "created", order_id: "ho-1" },
+          { row_index: 3, status: "skipped_existing" },
+        ],
+        error: null,
+      },
+    });
+    await walkToResolve();
+
+    fireEvent.click(screen.getByRole("combobox", { name: /link or create artist for new person/i }));
+    fireEvent.click(await screen.findByRole("option", { name: "Ann Artist" }));
+    await flush();
+    fireEvent.click(screen.getByRole("button", { name: /^continue$/i })); // -> review
+
+    await screen.findByText("Needs attention");
+    fireEvent.click(screen.getByRole("button", { name: /import 2 orders/i }));
+
+    await waitFor(() => expect(rpcCalls("bulk_import_hire_orders").length).toBe(1));
+    const rows = rpcCalls("bulk_import_hire_orders")[0].p_rows as Record<string, unknown>[];
+    expect(rows.length).toBeGreaterThan(0);
+    for (const row of rows) expect(row.terms_variant).toBe("vip");
+  });
+
   it("creates a new artist from the Resolve step and links it automatically", async () => {
     seedClient({
       artists: [

@@ -12,6 +12,10 @@
 //   - The mock's per-row running-order "Notes" column has no data source in v1
 //     (`sessions` is a list of times), so the table is Call/Time and the
 //     order-level `notes` field renders beneath it.
+//   - Aggregates (2+ engagement dates, Task B3) render each date's OWN
+//     running order (from that date's `EngagementDate.sessions`) inline
+//     beneath its date/venue/city row, instead of the single shared table;
+//     the shared table only applies to 0/1 engagement dates.
 //   - No em-dashes or en-dashes in rendered copy (house rule); the mock's "—"
 //     and curly quotes become plain ASCII or a middot.
 import * as React from "npm:react@18.3.1";
@@ -297,17 +301,31 @@ function sessionsOf(data: OrderData): string[] {
   return value.filter((v) => v !== undefined && v !== null && v !== "").map(String);
 }
 
+/**
+ * Validated engagement dates, each carrying its own `sessions`/`duration_min`
+ * (Task B3). Both are optional on the stored type because legacy rows
+ * predate them; normalize a missing or malformed value to `[]` / `null`
+ * rather than propagating `undefined` into the renderer.
+ */
 function engagementDatesOf(data: OrderData): EngagementDate[] {
   const value = data.engagement_dates?.value;
   if (!Array.isArray(value)) return [];
-  return value.filter((item): item is EngagementDate => {
-    if (!item || typeof item !== "object") return false;
-    const row = item as Partial<EngagementDate>;
-    return typeof row.show_date_id === "string" &&
-      typeof row.date === "string" &&
-      (row.venue === null || typeof row.venue === "string") &&
-      (row.city === null || typeof row.city === "string");
-  });
+  return value
+    .filter((item): item is EngagementDate => {
+      if (!item || typeof item !== "object") return false;
+      const row = item as Partial<EngagementDate>;
+      return typeof row.show_date_id === "string" &&
+        typeof row.date === "string" &&
+        (row.venue === null || typeof row.venue === "string") &&
+        (row.city === null || typeof row.city === "string");
+    })
+    .map((item) => ({
+      ...item,
+      sessions: Array.isArray(item.sessions) && item.sessions.every((v) => typeof v === "string")
+        ? item.sessions
+        : [],
+      duration_min: typeof item.duration_min === "number" ? item.duration_min : null,
+    }));
 }
 
 // ── document ─────────────────────────────────────────────────────────────
@@ -418,18 +436,29 @@ function HireOrderDoc(input: RenderInput): React.ReactElement {
             <View style={s.section}>
               <Text style={s.sectionHeading}>Engagement dates</Text>
               {engagementDates.map((item) => (
-                <View key={item.show_date_id} style={s.engagementDateRow} wrap={false}>
-                  <Text style={s.engagementDateValue}>{formatDateDMY(item.date)}</Text>
-                  <Text style={s.engagementDatePlace}>{item.venue ?? ""}</Text>
-                  <Text style={s.engagementDateCity}>{item.city ?? ""}</Text>
+                <View key={item.show_date_id}>
+                  <View style={s.engagementDateRow} wrap={false}>
+                    <Text style={s.engagementDateValue}>{formatDateDMY(item.date)}</Text>
+                    <Text style={s.engagementDatePlace}>{item.venue ?? ""}</Text>
+                    <Text style={s.engagementDateCity}>{item.city ?? ""}</Text>
+                  </View>
+                  {(item.sessions ?? []).map((time, i) => (
+                    <View key={i} style={s.tableRow} wrap={false}>
+                      <Text style={[s.cellLabel, s.colCall]}>{`Session ${i + 1}`}</Text>
+                      <Text style={[s.cellTime, s.colTime]}>{time}</Text>
+                    </View>
+                  ))}
                 </View>
               ))}
             </View>
           )
           : null}
 
-        {/* Running order */}
-        {sessions.length > 0
+        {/* Running order: the single shared table only applies to 0/1
+            engagement dates. Aggregates (isAggregate, 2+ dates) render each
+            date's own running order inline above instead, from that date's
+            own `sessions` (see the engagement-dates block). */}
+        {!isAggregate && sessions.length > 0
           ? (
             <View style={s.section}>
               <Text style={s.sectionHeading}>{venue ? `Running order, ${venue}` : "Running order"}</Text>
@@ -443,7 +472,20 @@ function HireOrderDoc(input: RenderInput): React.ReactElement {
                   <Text style={[s.cellTime, s.colTime]}>{time}</Text>
                 </View>
               ))}
-              {notes ? <Text style={s.notes}>{`Notes: ${notes}`}</Text> : null}
+            </View>
+          )
+          : null}
+
+        {/* Order-level notes: NOT gated on !isAggregate. It used to render only
+            inside the single-date running-order block above, so a 2+-date
+            (aggregate) order silently dropped its notes from the document of
+            record even though notes is editable for aggregates too
+            (HireOrderEditPage). Rendered as its own section so both shapes
+            show it exactly once. */}
+        {notes
+          ? (
+            <View style={s.section}>
+              <Text style={s.notes}>{`Notes: ${notes}`}</Text>
             </View>
           )
           : null}

@@ -177,7 +177,7 @@ describe("NewOrderWizard", () => {
     expect(screen.getByText(/payable on performance date/i)).toHaveTextContent("$1,200.00");
     clickContinue();
 
-    // Step 3: the first linked date seeds editable batch-wide running order.
+    // Step 3: the linked date seeds an editable per-date running order.
     expect(await screen.findByLabelText(/session 1 time/i)).toHaveValue("19:00");
     expect(screen.getByLabelText(/session 2 time/i)).toHaveValue("22:00");
     expect(screen.getByLabelText(/duration/i)).toHaveValue(90);
@@ -197,8 +197,12 @@ describe("NewOrderWizard", () => {
     const manual = body.manual as Record<string, unknown>;
     expect(manual.fee).toBe(1200);
     expect(manual.currency).toBe("USD");
-    expect(manual.duration_min).toBe(90);
-    expect(manual.sessions).toEqual(["Main set 19:00", "22:00"]);
+    // Sessions + duration are per-date overrides now, not in the shared manual dict.
+    expect(manual.duration_min).toBeUndefined();
+    expect(manual.sessions).toBeUndefined();
+    // Only the edited date is overridden; session 1 gained a "Main set" label, and
+    // its duration was untouched (90 == synced) so no duration_min in the override.
+    expect(body.date_overrides).toEqual({ sd1: { sessions: ["Main set 19:00", "22:00"] } });
 
     // Success screen.
     expect(await screen.findByText(/hire order created/i)).toBeInTheDocument();
@@ -387,7 +391,7 @@ describe("NewOrderWizard", () => {
     ]);
   });
 
-  it("seeds the shared running order when a date is assigned directly in the matrix", async () => {
+  it("seeds a per-date running order when a date is assigned directly in the matrix", async () => {
     renderWizard();
     await selectArtists("Ann Artist");
     await selectCommonDatesWithoutApplying("Berlin");
@@ -403,7 +407,7 @@ describe("NewOrderWizard", () => {
     expect(screen.getByLabelText(/session 2 time/i)).toHaveValue("22:00");
   });
 
-  it("re-seeds the shared running order when its first date is removed from all assignments", async () => {
+  it("drops a de-assigned date's running order and sends no override for the untouched remainder", async () => {
     renderWizard();
     await selectArtists("Ann Artist");
     await selectCommonDates("Berlin", "Hamburg");
@@ -411,15 +415,122 @@ describe("NewOrderWizard", () => {
     fireEvent.click(screen.getByRole("checkbox", { name: /ann artist.*berlin/i }));
     await reachReviewWithFee("700");
 
+    // Only Hamburg remains, showing its own synced running order in review.
     expect(screen.getByText("75 min")).toBeInTheDocument();
     expect(screen.getByText("20:00")).toBeInTheDocument();
     expect(screen.queryByText("19:00 · 22:00")).not.toBeInTheDocument();
 
     fireEvent.click(screen.getByRole("button", { name: /save as draft/i }));
     await waitFor(() => expect(invokeCalls().length).toBe(1));
-    const manual = invokeCalls()[0].manual as Record<string, unknown>;
-    expect(manual.duration_min).toBe(75);
-    expect(manual.sessions).toEqual(["20:00"]);
+    const body = invokeCalls()[0];
+    // Hamburg was never edited (its running order still matches sync), so no override
+    // is sent, and the shared manual dict no longer carries sessions/duration.
+    expect(body.date_overrides).toBeUndefined();
+    const manual = body.manual as Record<string, unknown>;
+    expect(manual.duration_min).toBeUndefined();
+    expect(manual.sessions).toBeUndefined();
+  });
+
+  it("renders a per-date running order section for each selected date, prefilled from synced sessions", async () => {
+    renderWizard();
+    await selectArtists("Ann Artist");
+    await selectCommonDates("Berlin", "Hamburg");
+    clickContinue();
+    fireEvent.change(await screen.findByLabelText(/engagement fee/i), { target: { value: "1000" } });
+    clickContinue();
+
+    const berlin = await screen.findByRole("group", { name: /berlin/i });
+    const hamburg = screen.getByRole("group", { name: /hamburg/i });
+    expect(within(berlin).getByLabelText(/session 1 time/i)).toHaveValue("19:00");
+    expect(within(berlin).getByLabelText(/session 2 time/i)).toHaveValue("22:00");
+    expect(within(berlin).getByLabelText(/duration/i)).toHaveValue(90);
+    expect(within(hamburg).getByLabelText(/session 1 time/i)).toHaveValue("20:00");
+    expect(within(hamburg).getByLabelText(/duration/i)).toHaveValue(75);
+
+    // Each date's session controls carry a date-prefixed aria-label (mirroring the
+    // `${label} running order` group label one level up), so a screen-reader user
+    // can tell which date's "Session 1 time" they're on even without the DOM
+    // grouping a sighted user relies on: querying the whole document (no `within`
+    // scoping) by the date-qualified name still resolves exactly one element.
+    expect(screen.getByLabelText(/berlin session 1 time/i)).toHaveValue("19:00");
+    expect(screen.getByLabelText(/hamburg session 1 time/i)).toHaveValue("20:00");
+  });
+
+  it("sends a date_overrides entry only for the date whose running order was edited", async () => {
+    renderWizard();
+    await selectArtists("Ann Artist");
+    await selectCommonDates("Berlin", "Hamburg");
+    clickContinue();
+    fireEvent.change(await screen.findByLabelText(/engagement fee/i), { target: { value: "1000" } });
+    clickContinue();
+
+    const berlin = await screen.findByRole("group", { name: /berlin/i });
+    fireEvent.change(within(berlin).getByLabelText(/session 1 time/i), { target: { value: "18:30" } });
+    clickContinue();
+
+    fireEvent.click(await screen.findByRole("button", { name: /save as draft/i }));
+    await waitFor(() => expect(invokeCalls().length).toBe(1));
+    const body = invokeCalls()[0];
+    expect(body.action).toBe("draft-batch");
+    // Only sd1 changed (its first session time); sd2 stays untouched and absent.
+    expect(body.date_overrides).toEqual({ sd1: { sessions: ["18:30", "22:00"] } });
+    const manual = body.manual as Record<string, unknown>;
+    expect(manual.duration_min).toBeUndefined();
+    expect(manual.sessions).toBeUndefined();
+  });
+
+  it("sends only duration_min when a date's duration is edited but its sessions are untouched", async () => {
+    renderWizard();
+    await selectArtists("Ann Artist");
+    await selectCommonDates("Berlin", "Hamburg");
+    clickContinue();
+    fireEvent.change(await screen.findByLabelText(/engagement fee/i), { target: { value: "1000" } });
+    clickContinue();
+
+    const berlin = await screen.findByRole("group", { name: /berlin/i });
+    fireEvent.change(within(berlin).getByLabelText(/duration/i), { target: { value: "100" } });
+    clickContinue();
+
+    fireEvent.click(await screen.findByRole("button", { name: /save as draft/i }));
+    await waitFor(() => expect(invokeCalls().length).toBe(1));
+    const body = invokeCalls()[0];
+    // Only duration changed (sessions still match the synced baseline), so the
+    // override for sd1 must carry duration_min and NOT a sessions key; sd2 was
+    // never touched and stays absent from date_overrides entirely.
+    expect(body.date_overrides).toEqual({ sd1: { duration_min: 100 } });
+  });
+
+  it("sends an explicit empty sessions clear when a date's session times are all blanked out", async () => {
+    renderWizard();
+    await selectArtists("Ann Artist");
+    await selectCommonDates("Berlin", "Hamburg");
+    clickContinue();
+    fireEvent.change(await screen.findByLabelText(/engagement fee/i), { target: { value: "1000" } });
+    clickContinue();
+
+    const berlin = await screen.findByRole("group", { name: /berlin/i });
+    fireEvent.change(within(berlin).getByLabelText(/session 1 time/i), { target: { value: "" } });
+    fireEvent.change(within(berlin).getByLabelText(/session 2 time/i), { target: { value: "" } });
+    clickContinue();
+
+    fireEvent.click(await screen.findByRole("button", { name: /save as draft/i }));
+    await waitFor(() => expect(invokeCalls().length).toBe(1));
+    const body = invokeCalls()[0];
+    // Blanking every session time on sd1 (which had synced sessions) is an
+    // explicit clear: the override carries `sessions: []`, distinct from sd2
+    // (never touched), which is absent from date_overrides altogether rather
+    // than present with an empty array.
+    expect(body.date_overrides).toEqual({ sd1: { sessions: [] } });
+  });
+
+  it("omits date_overrides entirely when no running order is edited", async () => {
+    renderWizard();
+    await selectArtists("Ann Artist");
+    await selectCommonDates("Berlin", "Hamburg");
+    await reachReviewWithFee();
+    fireEvent.click(screen.getByRole("button", { name: /save as draft/i }));
+    await waitFor(() => expect(invokeCalls().length).toBe(1));
+    expect(invokeCalls()[0].date_overrides).toBeUndefined();
   });
 
   it("removes a deselected artist and its assignments from review and payload", async () => {

@@ -15,6 +15,10 @@ export interface EngagementDate {
   date: string;
   venue: string | null;
   city: string | null;
+  /** Per-date running order + duration override. Optional: legacy stored
+   *  `engagement_dates` rows predate these fields. */
+  sessions?: string[];
+  duration_min?: number | null;
 }
 
 export type OrderFieldKey =

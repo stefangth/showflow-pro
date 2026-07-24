@@ -1,6 +1,7 @@
 import { describe, expect, it, vi, beforeEach, afterEach } from "vitest";
 import { fireEvent, screen, waitFor } from "@testing-library/react";
 import { renderWithProviders } from "@/test/renderWithProviders";
+import { createTestQueryClient } from "@/test/queryClient";
 import { createFakeSupabase, type TableSeed } from "@/test/supabaseFake";
 
 // The dialog reaches the shared client only through its Task-11 hooks
@@ -20,6 +21,7 @@ function seedClient(seed: Record<string, TableSeed>) {
 
 import { useCan } from "@/hooks/useCapabilities";
 import { GenerateHireOrderDialog } from "./GenerateHireOrderDialog";
+import { TermsVariantsCard } from "@/components/settings/hireOrders/TermsVariantsCard";
 import type { HireOrderRow } from "@/data/hireOrders";
 
 const SHOW_DATE = {
@@ -87,6 +89,178 @@ describe("GenerateHireOrderDialog", () => {
     expect(screen.getByRole("radio", { name: "Lean" })).toBeInTheDocument();
     expect(screen.getByRole("radio", { name: "Standard" })).toHaveAttribute("aria-checked", "true");
     expect(screen.getByRole("radio", { name: "Full" })).toBeInTheDocument();
+  });
+
+  it("renders one radio per org template, labelled by name, checked by the order's stored id", async () => {
+    seedClient({
+      hire_orders: { data: [], error: null },
+      app_settings: [
+        {
+          when: { key: "hire_order_terms" },
+          data: [
+            {
+              org_id: "org-1",
+              value: {
+                templates: [
+                  { id: "tpl-a", name: "VIP Contract", clauses: [] },
+                  { id: "tpl-b", name: "Standard Package", clauses: [] },
+                ],
+                default_id: "tpl-a",
+              },
+            },
+          ],
+          error: null,
+        },
+      ],
+    });
+    const customOrder = { ...ORDER, terms_variant: "tpl-b" } as unknown as HireOrderRow;
+    renderWithProviders(
+      <GenerateHireOrderDialog
+        open onOpenChange={vi.fn()} order={customOrder} showDate={SHOW_DATE} orgId="org-1" producerName="Aurora Productions"
+      />,
+    );
+    await waitFor(() => {
+      expect(screen.getByRole("radio", { name: "VIP Contract" })).toBeInTheDocument();
+      expect(screen.getByRole("radio", { name: "Standard Package" })).toHaveAttribute("aria-checked", "true");
+      // The old hardcoded variants must be gone once the org's templates load.
+      expect(screen.queryByRole("radio", { name: "Lean" })).not.toBeInTheDocument();
+      expect(screen.queryByRole("radio", { name: "Full" })).not.toBeInTheDocument();
+    });
+  });
+
+  it("falls back to a placeholder label when a saved template's name is blank, instead of an unlabeled radio", async () => {
+    // TermsVariantsCard has no non-blank guard on save, so a template can reach
+    // this picker with name: "". Rendering {t.name} directly (no fallback) would
+    // produce a radio with an empty accessible name -- invisible to sighted users
+    // and unannounced to screen readers. The picker must supply a fallback label.
+    seedClient({
+      hire_orders: { data: [], error: null },
+      app_settings: [
+        {
+          when: { key: "hire_order_terms" },
+          data: [
+            {
+              org_id: "org-1",
+              value: {
+                templates: [
+                  { id: "tpl-a", name: "", clauses: [] },
+                  { id: "tpl-b", name: "Standard Package", clauses: [] },
+                ],
+                default_id: "tpl-b",
+              },
+            },
+          ],
+          error: null,
+        },
+      ],
+    });
+    const customOrder = { ...ORDER, terms_variant: "tpl-b" } as unknown as HireOrderRow;
+    renderWithProviders(
+      <GenerateHireOrderDialog
+        open onOpenChange={vi.fn()} order={customOrder} showDate={SHOW_DATE} orgId="org-1" producerName="Aurora Productions"
+      />,
+    );
+    await waitFor(() => {
+      expect(screen.getByRole("radio", { name: "Untitled template" })).toBeInTheDocument();
+      expect(screen.getByRole("radio", { name: "Standard Package" })).toBeInTheDocument();
+    });
+    // No radio without an accessible name should slip through.
+    expect(screen.getByRole("radio", { name: "Untitled template" })).toHaveAccessibleName("Untitled template");
+  });
+
+  it("shows a disabled removed chip when the order's stored terms_variant is no longer among the org's templates, and blocks issuing until a live template is chosen", async () => {
+    seedClient({
+      hire_orders: { data: [], error: null },
+      app_settings: [
+        {
+          when: { key: "hire_order_terms" },
+          data: [
+            { org_id: "org-1", value: { templates: [{ id: "tpl-a", name: "VIP Contract", clauses: [] }], default_id: "tpl-a" } },
+          ],
+          error: null,
+        },
+      ],
+    });
+    const customOrder = { ...ORDER, terms_variant: "deleted-tpl" } as unknown as HireOrderRow;
+    renderWithProviders(
+      <GenerateHireOrderDialog
+        open onOpenChange={vi.fn()} order={customOrder} showDate={SHOW_DATE} orgId="org-1" producerName="Aurora Productions"
+      />,
+    );
+    await waitFor(() => {
+      expect(screen.getByRole("button", { name: /removed/i })).toBeDisabled();
+      expect(screen.getByRole("radio", { name: "VIP Contract" })).toBeInTheDocument();
+    });
+    const issueBtn = screen.getByRole("button", { name: "Issue and send" });
+    expect(issueBtn).toBeDisabled();
+    expect(issueBtn).toHaveAttribute("title", "Choose a terms template before issuing");
+
+    // Picking the live template clears the block, without the app ever crashing.
+    fireEvent.click(screen.getByRole("radio", { name: "VIP Contract" }));
+    expect(issueBtn).toBeEnabled();
+  });
+
+  it("seeds the selection to the org's real default once the terms query resolves for a brand-new order with no stored terms_variant, without a false Removed chip", async () => {
+    seedClient({
+      hire_orders: { data: [], error: null },
+      app_settings: [
+        {
+          when: { key: "hire_order_terms" },
+          data: [
+            {
+              org_id: "org-1",
+              value: {
+                templates: [
+                  { id: "tpl-a", name: "VIP Contract", clauses: [] },
+                  { id: "tpl-b", name: "Standard Package", clauses: [] },
+                ],
+                default_id: "tpl-b",
+              },
+            },
+          ],
+          error: null,
+        },
+      ],
+    });
+    // No stored terms_variant at all -- the state the report's own "Concerns"
+    // section flagged as untested (a brand-new order in an org whose custom
+    // templates don't include "standard").
+    const newOrder = { ...ORDER, terms_variant: "" } as unknown as HireOrderRow;
+    renderWithProviders(
+      <GenerateHireOrderDialog
+        open onOpenChange={vi.fn()} order={newOrder} showDate={SHOW_DATE} orgId="org-1" producerName="Aurora Productions"
+      />,
+    );
+    await waitFor(() => {
+      expect(screen.getByRole("radio", { name: "Standard Package" })).toHaveAttribute("aria-checked", "true");
+    });
+    expect(screen.queryByRole("button", { name: /removed/i })).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Issue and send" })).toBeEnabled();
+  });
+
+  it("shows a 'no terms templates configured' message and blocks issuing when the org has zero terms templates", async () => {
+    seedClient({
+      hire_orders: { data: [], error: null },
+      app_settings: [
+        {
+          when: { key: "hire_order_terms" },
+          data: [{ org_id: "org-1", value: { templates: [], default_id: null } }],
+          error: null,
+        },
+      ],
+    });
+    // ORDER carries a genuinely stored terms_variant ("standard"); the org has
+    // since deleted every template, so there's nothing above to "choose" --
+    // the removed-reference chip/hint would be a dead end here.
+    renderDialog();
+    await waitFor(() => {
+      expect(screen.getByText(/no terms templates configured/i)).toBeInTheDocument();
+    });
+    expect(screen.queryByRole("radio")).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /removed/i })).not.toBeInTheDocument();
+    const issueBtn = screen.getByRole("button", { name: "Issue and send" });
+    expect(issueBtn).toBeDisabled();
+    expect(issueBtn).toHaveAttribute("title", "No terms templates configured");
   });
 
   it("issue_hire_orders off: Issue and send is disabled, Preview PDF still works", async () => {
@@ -180,10 +354,13 @@ describe("GenerateHireOrderDialog", () => {
   it("prefills agent fields from the org letterhead default", async () => {
     seedClient({
       hire_orders: { data: [], error: null },
-      app_settings: {
-        data: [{ org_id: "org-1", value: { legal_name: "Aurora", address_lines: [], agent_name: "Org Agent", agent_email: "org@x.com" } }],
-        error: null,
-      },
+      app_settings: [
+        {
+          when: { key: "hire_order_letterhead" },
+          data: [{ org_id: "org-1", value: { legal_name: "Aurora", address_lines: [], agent_name: "Org Agent", agent_email: "org@x.com" } }],
+          error: null,
+        },
+      ],
     });
     renderDialog();
     // The inputs render immediately but are disabled while the letterhead query is
@@ -198,10 +375,13 @@ describe("GenerateHireOrderDialog", () => {
   it("disables the agent inputs until the org letterhead default loads (no type-before-seed race)", async () => {
     seedClient({
       hire_orders: { data: [], error: null },
-      app_settings: {
-        data: [{ org_id: "org-1", value: { legal_name: "Aurora", address_lines: [], agent_name: "Org Agent", agent_email: "org@x.com" } }],
-        error: null,
-      },
+      app_settings: [
+        {
+          when: { key: "hire_order_letterhead" },
+          data: [{ org_id: "org-1", value: { legal_name: "Aurora", address_lines: [], agent_name: "Org Agent", agent_email: "org@x.com" } }],
+          error: null,
+        },
+      ],
     });
     renderDialog();
     // Cold cache: on the first render the letterhead query is still pending, so the
@@ -219,7 +399,7 @@ describe("GenerateHireOrderDialog", () => {
   it("keeps the agent inputs disabled when the letterhead fetch fails (never shows a misleading blank)", async () => {
     seedClient({
       hire_orders: { data: [], error: null },
-      app_settings: { data: null, error: { message: "boom" } },
+      app_settings: [{ when: { key: "hire_order_letterhead" }, data: null, error: { message: "boom" } }],
     });
     const { queryClient } = renderDialog();
     // The query errors, so no default is ever known. The fields must stay disabled
@@ -249,10 +429,13 @@ describe("GenerateHireOrderDialog", () => {
   it("persists an edited agent name + email on issue", async () => {
     seedClient({
       hire_orders: { data: [], error: null },
-      app_settings: {
-        data: [{ org_id: "org-1", value: { legal_name: "Aurora", address_lines: [], agent_name: "Org Agent", agent_email: "org@x.com" } }],
-        error: null,
-      },
+      app_settings: [
+        {
+          when: { key: "hire_order_letterhead" },
+          data: [{ org_id: "org-1", value: { legal_name: "Aurora", address_lines: [], agent_name: "Org Agent", agent_email: "org@x.com" } }],
+          error: null,
+        },
+      ],
       "fn:generate-hire-orders": { data: { issued: ["ho-1"], failed: [] }, error: null },
     });
     renderDialog();
@@ -275,10 +458,13 @@ describe("GenerateHireOrderDialog", () => {
   it("clearing a prefilled agent field persists an empty string", async () => {
     seedClient({
       hire_orders: { data: [], error: null },
-      app_settings: {
-        data: [{ org_id: "org-1", value: { legal_name: "Aurora", address_lines: [], agent_name: "Org Agent", agent_email: "org@x.com" } }],
-        error: null,
-      },
+      app_settings: [
+        {
+          when: { key: "hire_order_letterhead" },
+          data: [{ org_id: "org-1", value: { legal_name: "Aurora", address_lines: [], agent_name: "Org Agent", agent_email: "org@x.com" } }],
+          error: null,
+        },
+      ],
       "fn:generate-hire-orders": { data: { issued: ["ho-1"], failed: [] }, error: null },
     });
     renderDialog();
@@ -305,10 +491,13 @@ describe("GenerateHireOrderDialog", () => {
   it("editing only the agent email writes only agent_email", async () => {
     seedClient({
       hire_orders: { data: [], error: null },
-      app_settings: {
-        data: [{ org_id: "org-1", value: { legal_name: "Aurora", address_lines: [], agent_name: "Org Agent", agent_email: "org@x.com" } }],
-        error: null,
-      },
+      app_settings: [
+        {
+          when: { key: "hire_order_letterhead" },
+          data: [{ org_id: "org-1", value: { legal_name: "Aurora", address_lines: [], agent_name: "Org Agent", agent_email: "org@x.com" } }],
+          error: null,
+        },
+      ],
       "fn:generate-hire-orders": { data: { issued: ["ho-1"], failed: [] }, error: null },
     });
     renderDialog();
@@ -329,5 +518,48 @@ describe("GenerateHireOrderDialog", () => {
       // The name was never touched -- its key must be absent.
       expect("agent_name" in patch).toBe(false);
     });
+  });
+
+  // React Query pitfall (see the "React Query key projection pitfall" house
+  // lesson): TermsVariantsCard and this dialog register a useQuery under the
+  // SAME key (["app-settings","hire_order_terms",orgId]) so a save in Settings
+  // busts every picker's cache. That only works if BOTH queryFns resolve to the
+  // identical HireOrderTermsSetting shape. A legacy-shape org (never re-saved
+  // since the {lean,standard,full} -> {templates,default_id} migration) proves
+  // it: mount the card first so it populates the shared cache, then mount this
+  // dialog against the SAME QueryClient and assert it renders the legacy
+  // templates instead of crashing on `terms.templates` being undefined.
+  it("shares the terms cache with TermsVariantsCard: a legacy-shape org still renders three templates, no crash", async () => {
+    seedClient({
+      hire_orders: { data: [], error: null },
+      app_settings: [
+        {
+          when: { key: "hire_order_terms" },
+          data: [
+            {
+              org_id: "org-1",
+              value: { lean: [{ title: "Fee", body: "Paid on the day." }], standard: [], full: [] },
+            },
+          ],
+          error: null,
+        },
+      ],
+    });
+
+    const queryClient = createTestQueryClient();
+    renderWithProviders(<TermsVariantsCard orgId="org-1" />, { queryClient });
+    // Let the card's own query resolve and populate the shared cache key.
+    await screen.findByDisplayValue("Lean");
+
+    renderWithProviders(
+      <GenerateHireOrderDialog
+        open onOpenChange={vi.fn()} order={ORDER} showDate={SHOW_DATE} orgId="org-1" producerName="Aurora Productions"
+      />,
+      { queryClient },
+    );
+
+    expect(screen.getByRole("radio", { name: "Lean" })).toBeInTheDocument();
+    expect(screen.getByRole("radio", { name: "Standard" })).toBeInTheDocument();
+    expect(screen.getByRole("radio", { name: "Full" })).toBeInTheDocument();
   });
 });

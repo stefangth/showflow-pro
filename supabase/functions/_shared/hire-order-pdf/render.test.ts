@@ -247,15 +247,30 @@ Deno.test("issued render (no signature) is unchanged shape", async () => {
   assert(bytes.length > 0 && bytes[0] === 0x25);
 });
 
-Deno.test("aggregate PDF renders every engagement date before the running order", async () => {
+Deno.test("aggregate PDF renders every engagement date with its own running order beneath it", async () => {
+  // Task B3: once B1/B2 populate each engagement date's own `sessions`, an
+  // aggregate order (2+ dates) must render each date's Call/Time rows beneath
+  // that date's own date/venue/city line, in document order.
   const bytes = await renderHireOrderPdf({
     ...makeRenderFixture(),
     data: {
       ...makeRenderFixture().data,
       engagement_dates: {
         value: [
-          { show_date_id: "sd-1", date: "2026-08-15", venue: "Tempodrom", city: "Berlin" },
-          { show_date_id: "sd-2", date: "2026-08-16", venue: "Kulturhaus", city: "Hamburg" },
+          {
+            show_date_id: "sd-1",
+            date: "2026-08-15",
+            venue: "Tempodrom",
+            city: "Berlin",
+            sessions: ["18:00", "20:00"],
+          },
+          {
+            show_date_id: "sd-2",
+            date: "2026-08-16",
+            venue: "Kulturhaus",
+            city: "Hamburg",
+            sessions: ["19:30"],
+          },
         ],
         source: "showflow",
       },
@@ -271,10 +286,95 @@ Deno.test("aggregate PDF renders every engagement date before the running order"
   assertStringIncludes(text, "16/08/2026");
   assertStringIncludes(text, "Kulturhaus");
   assertStringIncludes(text, "Hamburg");
+  // Each date's own session times render, in document order beneath its row.
+  assertStringIncludes(text, "18:00");
+  assertStringIncludes(text, "20:00");
+  assertStringIncludes(text, "19:30");
+  // The facts strip's summary joins both dates ("15/08/2026 · 16/08/2026"),
+  // so a bare "16/08/2026" also occurs before the "Engagement dates" section;
+  // anchor on the date+venue run, which only occurs once (in its own row).
+  assertStringIncludes(text, "16/08/2026Kulturhaus");
   assert(
-    text.indexOf("Engagement dates") < text.indexOf("Running order"),
-    "engagement dates render before the running order",
+    text.indexOf("Engagement dates") < text.indexOf("18:00"),
+    "the engagement dates heading renders before any per-date session time",
   );
+  assert(
+    text.indexOf("18:00") < text.indexOf("16/08/2026Kulturhaus"),
+    "the first date's own sessions render before the second date's row",
+  );
+  assert(
+    text.indexOf("16/08/2026Kulturhaus") < text.indexOf("19:30"),
+    "the second date's own session renders beneath its own row",
+  );
+});
+
+Deno.test("aggregate PDF with two dates renders both dates' distinct session times and suppresses the shared table", async () => {
+  const bytes = await renderHireOrderPdf({
+    ...makeRenderFixture(),
+    data: {
+      ...makeRenderFixture().data,
+      // The fixture's own top-level `sessions` is ["19:00", "21:00"]; the two
+      // engagement dates below use disjoint times so a leaked shared table
+      // would be distinguishable from genuine per-date rendering.
+      engagement_dates: {
+        value: [
+          {
+            show_date_id: "sd-1",
+            date: "2026-09-01",
+            venue: "Astra",
+            city: "Berlin",
+            sessions: ["17:15", "19:15"],
+          },
+          {
+            show_date_id: "sd-2",
+            date: "2026-09-02",
+            venue: "Docks",
+            city: "Hamburg",
+            sessions: ["18:45"],
+          },
+        ],
+        source: "showflow",
+      },
+    },
+  });
+
+  const text = await extractPdfText(bytes);
+  // Both dates' own distinct session times render.
+  assertStringIncludes(text, "17:15");
+  assertStringIncludes(text, "19:15");
+  assertStringIncludes(text, "18:45");
+  // The shared top-level running order (this fixture's own `sessions` field,
+  // 19:00/21:00) is suppressed entirely once the order is an aggregate: no
+  // "Running order" heading, and neither of its own times leak into the text.
+  assertEquals(text.includes("Running order"), false);
+  assertEquals(text.includes("19:00"), false);
+  assertEquals(text.includes("21:00"), false);
+});
+
+Deno.test("single engagement date still renders the one shared top-level running order unchanged", async () => {
+  // 0 or 1 engagement dates is NOT an aggregate: the per-date rendering path
+  // must not engage, and the single shared running-order table (sourced from
+  // the order's own top-level `sessions`) renders exactly as it does with no
+  // engagement_dates at all.
+  const text = await extractPdfText(await renderHireOrderPdf({
+    ...makeRenderFixture(),
+    data: {
+      ...makeRenderFixture().data,
+      engagement_dates: {
+        value: [
+          { show_date_id: "sd-1", date: "2026-06-15", venue: "Colosseum Berlin", city: "Berlin" },
+        ],
+        source: "showflow",
+      },
+    },
+  }));
+
+  assertEquals(text.includes("Engagement dates"), false);
+  assertStringIncludes(text, "Running order, Colosseum Berlin");
+  assertStringIncludes(text, "Session 1");
+  assertStringIncludes(text, "19:00");
+  assertStringIncludes(text, "Session 2");
+  assertStringIncludes(text, "21:00");
 });
 
 Deno.test("single-date PDF retains the legacy date presentation", async () => {
@@ -294,4 +394,40 @@ Deno.test("single-date PDF retains the legacy date presentation", async () => {
   assertEquals(text.includes("Engagement dates"), false);
   assertStringIncludes(text, "15/08/2026");
   assertStringIncludes(text, "Tempodrom");
+});
+
+Deno.test("aggregate PDF still renders order-level notes (not dropped just because it has 2+ dates)", async () => {
+  // notes is editable for aggregates (HireOrderEditPage notes field) and is the
+  // document of record -- an aggregate order must not silently omit it just
+  // because the single-date running-order block (which used to be the only
+  // place notes rendered) is gated off for isAggregate.
+  const bytes = await renderHireOrderPdf({
+    ...makeRenderFixture(),
+    data: {
+      ...makeRenderFixture().data,
+      notes: { value: "Load-in via the stage door from 17:00.", source: "manual" },
+      engagement_dates: {
+        value: [
+          { show_date_id: "sd-1", date: "2026-08-15", venue: "Tempodrom", city: "Berlin", sessions: ["18:00"] },
+          { show_date_id: "sd-2", date: "2026-08-16", venue: "Kulturhaus", city: "Hamburg", sessions: ["19:30"] },
+        ],
+        source: "showflow",
+      },
+    },
+  });
+
+  const text = await extractPdfText(bytes);
+  assertStringIncludes(text, "Engagement dates");
+  assertStringIncludes(text, "Notes: Load-in via the stage door from 17:00.");
+});
+
+Deno.test("single-date PDF still renders its order-level notes unchanged", async () => {
+  // Guards against the aggregate fix double-rendering or dropping notes for the
+  // 0/1-engagement-date (non-aggregate) shape.
+  const text = await extractPdfText(await renderHireOrderPdf(makeRenderFixture()));
+
+  assertStringIncludes(text, "Notes: Backline provided by the venue.");
+  // Exactly one occurrence -- the fix must not duplicate the notes line.
+  const occurrences = text.split("Notes: Backline provided by the venue.").length - 1;
+  assertEquals(occurrences, 1, "notes must render exactly once for a single-date order");
 });

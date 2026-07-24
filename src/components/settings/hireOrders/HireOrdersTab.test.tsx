@@ -87,8 +87,11 @@ describe("HireOrdersTab", () => {
   it("offers exactly manual and electronic countersign options, manual by default", async () => {
     authAs("org-on");
     renderWithProviders(<HireOrdersTab />);
-    await screen.findByText("Countersign mode");
-    const radios = screen.getAllByRole("radio");
+    const countersignHeading = await screen.findByText("Countersign mode");
+    // Scope to the Countersign card: Terms also renders role="radio" controls now
+    // (one "Default" radio per template), so a page-wide query would over-count.
+    const countersignCard = countersignHeading.parentElement!.parentElement!;
+    const radios = within(countersignCard).getAllByRole("radio");
     expect(radios).toHaveLength(2);
     expect(screen.getByRole("radio", { name: /manual/i })).toBeInTheDocument();
     expect(screen.getByRole("radio", { name: /electronic signature/i })).toBeInTheDocument();
@@ -136,20 +139,20 @@ describe("HireOrdersTab", () => {
     });
   });
 
-  it("lists three terms variant sub-editors (lean, standard, full), all empty by default", async () => {
+  it("lists three terms templates (lean, standard, full), all empty by default", async () => {
     authAs("org-on");
     renderWithProviders(<HireOrdersTab />);
     await screen.findByText("Terms");
 
-    expect(screen.getByText("Lean")).toBeInTheDocument();
-    expect(screen.getByText("Standard")).toBeInTheDocument();
-    expect(screen.getByText("Full")).toBeInTheDocument();
+    expect(screen.getByDisplayValue("Lean")).toBeInTheDocument();
+    expect(screen.getByDisplayValue("Standard")).toBeInTheDocument();
+    expect(screen.getByDisplayValue("Full")).toBeInTheDocument();
 
     // ShowFlow seeds NO clause text (HIRE_ORDER_DEFAULT_TERMS is empty for every
-    // variant): terms are the org's own legal responsibility, authored here before
-    // issuing. So every variant starts with zero clause rows and an empty state.
-    for (const variant of ["Lean", "Standard", "Full"]) {
-      const section = screen.getByText(variant).closest("div")!.parentElement as HTMLElement;
+    // template): terms are the org's own legal responsibility, authored here before
+    // issuing. So every template starts with zero clause rows and an empty state.
+    for (const [variant, id] of [["Lean", "lean"], ["Standard", "standard"], ["Full", "full"]] as const) {
+      const section = screen.getByTestId(`terms-template-${id}`);
       expect(within(section).queryAllByLabelText(new RegExp(`${variant} clause \\d+ title`, "i"))).toHaveLength(0);
       expect(within(section).getByText(/no clauses yet/i)).toBeInTheDocument();
     }
@@ -241,7 +244,7 @@ describe("HireOrdersTab", () => {
     authAs("org-on");
     renderWithProviders(<HireOrdersTab />);
     await screen.findByText("Terms");
-    const standardSection = screen.getByText("Standard").closest("div")!.parentElement as HTMLElement;
+    const standardSection = screen.getByTestId("terms-template-standard");
 
     // Add two rows to the empty variant; the empty state gives way to the editors.
     fireEvent.click(within(standardSection).getByRole("button", { name: /add clause/i }));

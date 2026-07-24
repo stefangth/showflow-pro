@@ -14,9 +14,15 @@ vi.mock("@/data/hireOrders", () => ({
   updateHireOrderStatus: vi.fn(),
   updateHireOrderDraft: vi.fn(),
 }));
+// useHireOrderTerms is the only useHireOrders.ts consumer of resolveOrgSetting
+// exercised in this file (useHireOrderCountersignMode has no unit test here),
+// so mocking the whole module is safe.
+vi.mock("@/data/settings", () => ({ resolveOrgSetting: vi.fn() }));
 
 import { toast } from "sonner";
 import { useMyArtist } from "@/hooks/useMyArtist";
+import { resolveOrgSetting } from "@/data/settings";
+import { HIRE_ORDER_DEFAULT_TERMS } from "@/config/app.config";
 import {
   fetchHireOrdersForDate,
   fetchHireOrder,
@@ -35,6 +41,7 @@ import {
   useMarkCountersigned,
   useVoidHireOrder,
   useUpdateHireOrderDraft,
+  useHireOrderTerms,
 } from "./useHireOrders";
 
 function wrapper() {
@@ -128,6 +135,50 @@ describe("useHireOrders", () => {
     const { result } = renderHook(() => useHireOrders(null), { wrapper: Wrapper });
     expect(result.current.fetchStatus).toBe("idle");
     expect(fetchHireOrders).not.toHaveBeenCalled();
+  });
+});
+
+describe("useHireOrderTerms", () => {
+  beforeEach(() => vi.clearAllMocks());
+
+  it("resolves the org's hire_order_terms setting (with the shared default fallback) and normalizes it", async () => {
+    vi.mocked(resolveOrgSetting).mockResolvedValue({
+      templates: [{ id: "tpl-a", name: "VIP Contract", clauses: [] }],
+      default_id: "tpl-a",
+    } as never);
+    const { Wrapper } = wrapper();
+    const { result } = renderHook(() => useHireOrderTerms("org-1"), { wrapper: Wrapper });
+    await waitFor(() => expect(result.current.isSuccess).toBe(true));
+    expect(result.current.data).toEqual({
+      templates: [{ id: "tpl-a", name: "VIP Contract", clauses: [] }],
+      default_id: "tpl-a",
+    });
+    expect(resolveOrgSetting).toHaveBeenCalledWith(
+      expect.anything(),
+      "org-1",
+      "hire_order_terms",
+      HIRE_ORDER_DEFAULT_TERMS,
+    );
+  });
+
+  it("normalizes the legacy lean/standard/full shape into the templates array", async () => {
+    vi.mocked(resolveOrgSetting).mockResolvedValue({
+      lean: [],
+      standard: [{ title: "Payment", body: "Net 30" }],
+      full: [],
+    } as never);
+    const { Wrapper } = wrapper();
+    const { result } = renderHook(() => useHireOrderTerms("org-1"), { wrapper: Wrapper });
+    await waitFor(() => expect(result.current.isSuccess).toBe(true));
+    expect(result.current.data?.templates.map((t) => t.id)).toEqual(["lean", "standard", "full"]);
+    expect(result.current.data?.default_id).toBe("standard");
+  });
+
+  it("stays disabled without an orgId", () => {
+    const { Wrapper } = wrapper();
+    const { result } = renderHook(() => useHireOrderTerms(null), { wrapper: Wrapper });
+    expect(result.current.fetchStatus).toBe("idle");
+    expect(resolveOrgSetting).not.toHaveBeenCalled();
   });
 });
 

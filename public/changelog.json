@@ -1,5 +1,23 @@
 [
   {
+    "version": "1.12.0",
+    "date": "2026-07-24",
+    "dateLabel": "July 24, 2026",
+    "title": "More flexible hire orders",
+    "changes": {
+      "new": [
+        {
+          "title": "Name your own terms templates",
+          "description": "Rename, add, and remove the terms templates on your hire orders in Settings → Hire orders. Pick a default that new orders start from."
+        },
+        {
+          "title": "Per-date running orders",
+          "description": "When a hire order covers several dates, each date now carries its own session times, pulled from the synced event and editable in the new-order wizard."
+        }
+      ]
+    }
+  },
+  {
     "version": "1.11.0",
     "date": "2026-07-23",
     "dateLabel": "July 23, 2026",

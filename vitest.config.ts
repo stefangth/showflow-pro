@@ -15,7 +15,7 @@ export default defineConfig({
       VITE_SUPABASE_PROJECT_ID: "test",
     },
     setupFiles: ["./src/test/setup.ts"],
-    include: ["src/**/*.{test,spec}.{ts,tsx}"],
+    include: ["src/**/*.{test,spec}.{ts,tsx}", "scripts/**/*.test.{ts,mjs}"],
     coverage: {
       provider: "v8",
       reporter: ["text", "html"],
