@@ -46,13 +46,14 @@ function authAs(orgId: string) {
 describe("HireOrdersTab", () => {
   beforeEach(() => seedClient(OK_SEED));
 
-  it("renders all five cards when the org is entitled", async () => {
+  it("renders all six cards when the org is entitled", async () => {
     authAs("org-on");
     renderWithProviders(<HireOrdersTab />);
     await screen.findByText("Letterhead");
     expect(screen.getByText("Order defaults")).toBeInTheDocument();
     expect(screen.getByText("Numbering")).toBeInTheDocument();
     expect(screen.getByText("Terms")).toBeInTheDocument();
+    expect(screen.getByText("PDF copy")).toBeInTheDocument();
     expect(screen.getByText("Countersign mode")).toBeInTheDocument();
   });
 
@@ -177,8 +178,8 @@ describe("HireOrdersTab", () => {
 
       // Every card that reads app_settings surfaces the failure. Each card owns its own
       // query, so they settle independently: wait for the count rather than
-      // findAllByRole, which resolves on the FIRST match and would race the other four.
-      await waitFor(() => expect(screen.getAllByRole("alert")).toHaveLength(5));
+      // findAllByRole, which resolves on the FIRST match and would race the other five.
+      await waitFor(() => expect(screen.getAllByRole("alert")).toHaveLength(6));
       expect(screen.getByText(/could not load the letterhead settings/i)).toBeInTheDocument();
       expect(screen.getByText(/could not load the terms settings/i)).toBeInTheDocument();
       // ...carrying the underlying reason, not a bare "something went wrong".
