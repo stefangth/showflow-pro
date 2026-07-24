@@ -18,14 +18,26 @@ export function diffMigrations(repoNames, appliedNames) {
 
 /** Applied migration names in production, via the Supabase Management API. */
 async function fetchAppliedNames(ref, token) {
-  const res = await fetch(`https://api.supabase.com/v1/projects/${ref}/database/query`, {
-    method: "POST",
-    headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
-    body: JSON.stringify({ query: "select name from supabase_migrations.schema_migrations" }),
-  });
-  if (!res.ok) throw new Error(`Management API query failed: ${res.status} ${await res.text()}`);
-  const rows = await res.json();
-  return new Set(rows.map((r) => r.name).filter((n) => typeof n === "string" && n.length > 0));
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 30_000);
+  try {
+    const res = await fetch(`https://api.supabase.com/v1/projects/${ref}/database/query`, {
+      method: "POST",
+      headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+      body: JSON.stringify({ query: "select name from supabase_migrations.schema_migrations" }),
+      signal: controller.signal,
+    });
+    if (!res.ok) throw new Error(`Management API query failed: ${res.status} ${await res.text()}`);
+    const rows = await res.json();
+    return new Set(rows.map((r) => r.name).filter((n) => typeof n === "string" && n.length > 0));
+  } catch (e) {
+    if (e.name === "AbortError") {
+      throw new Error("Management API query timed out after 30s");
+    }
+    throw e;
+  } finally {
+    clearTimeout(timeout);
+  }
 }
 
 async function main() {
