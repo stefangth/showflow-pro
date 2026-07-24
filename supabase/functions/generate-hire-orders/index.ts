@@ -832,6 +832,9 @@ interface DraftBatchResult {
   created: string[];
   skipped: Array<{ artist_id: string; reason: string }>;
   errors: Array<{ artist_id: string; reason: string }>;
+  /** Partial success: an order WAS created for the artist, but these of their
+   *  requested dates were dropped because an active order already covered them. */
+  date_conflicts: Array<{ artist_id: string; dropped: string[] }>;
 }
 
 interface BatchDraftContext {
@@ -852,7 +855,7 @@ interface BatchDraftContext {
 }
 
 type BatchArtistOutcome =
-  | { kind: "created"; id: string }
+  | { kind: "created"; id: string; droppedDates: string[] }
   | { kind: "skipped"; reason: string }
   | { kind: "error"; reason: string };
 
@@ -1069,13 +1072,17 @@ async function draftBatch(
     dateOverrides,
     nextSeq: sequenceResult.count ?? 0,
   };
-  const result: DraftBatchResult = { created: [], skipped: [], errors: [] };
+  const result: DraftBatchResult = { created: [], skipped: [], errors: [], date_conflicts: [] };
 
   for (const input of normalizedArtists) {
     try {
       const outcome = await draftBatchArtist(context, input);
-      if (outcome.kind === "created") result.created.push(outcome.id);
-      else if (outcome.kind === "skipped") {
+      if (outcome.kind === "created") {
+        result.created.push(outcome.id);
+        if (outcome.droppedDates.length > 0) {
+          result.date_conflicts.push({ artist_id: input.artist_id, dropped: outcome.droppedDates });
+        }
+      } else if (outcome.kind === "skipped") {
         result.skipped.push({
           artist_id: input.artist_id,
           reason: outcome.reason,
@@ -1094,7 +1101,54 @@ async function draftBatch(
     }
   }
 
-  return json(result);
+  // Omit date_conflicts when empty so callers/tests that predate partial success
+  // see the exact same {created, skipped, errors} shape as before.
+  const { date_conflicts, ...rest } = result;
+  return json(date_conflicts.length > 0 ? result : rest);
+}
+
+/**
+ * Which of `requested` show-date ids are already covered by an ACTIVE (non-void)
+ * hire order for this artist in this org -- the legacy hire_orders.show_date_id
+ * or an aggregate hire_order_dates child. Mirrors what
+ * assert_hire_order_dates_available raises on, but as a READ so the batch can DROP
+ * the covered dates and still create the order for the rest (partial success)
+ * instead of failing the whole artist. `neq` isn't a real filter in the test fake,
+ * so void rows are also filtered in TS.
+ */
+async function coveredDatesForArtist(
+  admin: Deps["admin"],
+  org: string,
+  artist: string,
+  requested: string[],
+): Promise<Set<string>> {
+  const requestedSet = new Set(requested);
+  const covered = new Set<string>();
+  const { data: orderRows } = await admin
+    .from("hire_orders")
+    .select("id, show_date_id, status")
+    .eq("org_id", org)
+    .eq("artist_id", artist)
+    .neq("status", "void");
+  const active = ((orderRows ?? []) as Array<
+    { id: string; show_date_id: string | null; status: string }
+  >).filter((o) => o.status !== "void");
+  for (const o of active) {
+    if (o.show_date_id && requestedSet.has(o.show_date_id)) covered.add(o.show_date_id);
+  }
+  const activeIds = active.map((o) => o.id);
+  if (activeIds.length > 0) {
+    const { data: linkRows } = await admin
+      .from("hire_order_dates")
+      .select("show_date_id, hire_order_id")
+      .in("hire_order_id", activeIds);
+    for (
+      const l of (linkRows ?? []) as Array<{ show_date_id: string; hire_order_id: string }>
+    ) {
+      if (requestedSet.has(l.show_date_id)) covered.add(l.show_date_id);
+    }
+  }
+  return covered;
 }
 
 /** Draft exactly one aggregate parent and its ordered child-date rows. */
@@ -1118,12 +1172,25 @@ async function draftBatchArtist(
   const artist = artistsById.get(input.artist_id);
   if (!artist) return { kind: "error", reason: "artist_not_found" };
 
-  const dates: ShowDateRow[] = [];
+  const allDates: ShowDateRow[] = [];
   for (const id of input.show_date_ids) {
     const date = datesById.get(id);
     if (!date) return { kind: "error", reason: "show_date_not_found" };
-    dates.push(date);
+    allDates.push(date);
   }
+
+  // Partial success: drop the dates an active order already covers for this
+  // artist and create the order for the rest; skip only if EVERY date is covered.
+  const covered = await coveredDatesForArtist(
+    deps.admin,
+    org,
+    input.artist_id,
+    input.show_date_ids,
+  );
+  const dates = allDates.filter((d) => !covered.has(d.id));
+  if (dates.length === 0) return { kind: "skipped", reason: "exists" };
+  const droppedDates = allDates.filter((d) => covered.has(d.id)).map((d) => d.id);
+
   dates.sort((a, b) =>
     a.date.localeCompare(b.date) || a.id.localeCompare(b.id)
   );
@@ -1197,7 +1264,7 @@ async function draftBatchArtist(
       p_created_by: userId,
     },
   );
-  if ("id" in parent) return { kind: "created", id: parent.id };
+  if ("id" in parent) return { kind: "created", id: parent.id, droppedDates };
   return parent.reason === "exists"
     ? { kind: "skipped", reason: parent.reason }
     : { kind: "error", reason: parent.reason };
