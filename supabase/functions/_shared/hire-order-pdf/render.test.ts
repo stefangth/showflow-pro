@@ -2,6 +2,7 @@ import { assert, assertEquals, assertStringIncludes } from "https://deno.land/st
 import type { RenderInput } from "../hireOrders.ts";
 import { renderHireOrderPdf } from "./render.tsx";
 import { extractPdfText } from "./pdfText.ts";
+import { resolveHireOrderCopy } from "./pdfCopy.ts";
 
 /** Decode the single unfiltered RGBA scanline used by the tiny signature fixture. */
 async function decodeSignatureFixturePixels(dataUrl: string): Promise<Uint8Array> {
@@ -154,6 +155,24 @@ Deno.test("renders no em-dashes or en-dashes in the document copy", async () => 
 
   assertEquals(text.includes("—"), false, "em-dash found in rendered copy");
   assertEquals(text.includes("–"), false, "en-dash found in rendered copy");
+});
+
+Deno.test("an org copy override changes the printed heading", async () => {
+  const bytes = await renderHireOrderPdf({
+    ...makeRenderFixture(),
+    copy: resolveHireOrderCopy({ terms_heading: "Conditions of engagement" }),
+  });
+  const text = await extractPdfText(bytes);
+  assertStringIncludes(text, "Conditions of engagement");
+  assertEquals(text.includes("Terms & conditions"), false);
+});
+
+Deno.test("omitting copy renders the stock defaults unchanged", async () => {
+  // No `copy` on the input -> the renderer falls back to the built-in defaults,
+  // so existing callers/tests are byte-for-byte unaffected.
+  const text = await extractPdfText(await renderHireOrderPdf(makeRenderFixture()));
+  assertStringIncludes(text, "Terms & conditions");
+  assertStringIncludes(text, "Performance hire order");
 });
 
 const BASE: RenderInput = {

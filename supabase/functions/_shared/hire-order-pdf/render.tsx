@@ -27,6 +27,7 @@ import {
   type RenderInput,
 } from "../hireOrders.ts";
 import { GEIST_MEDIUM_B64, GEIST_MONO_REGULAR_B64, GEIST_REGULAR_B64, GEIST_SEMIBOLD_B64 } from "./fonts.ts";
+import { applyTokens, HIRE_ORDER_COPY_DEFAULTS, type HireOrderCopy } from "./pdfCopy.ts";
 
 // ── fonts ────────────────────────────────────────────────────────────────
 // Registered from base64 data URIs, NOT Uint8Arrays: the Task 5 spike proved
@@ -332,6 +333,9 @@ function engagementDatesOf(data: OrderData): EngagementDate[] {
 
 function HireOrderDoc(input: RenderInput): React.ReactElement {
   const { data, orderNo, status, letterhead, terms, currency, generatedAtIso, signature } = input;
+  // Every printed string reads from here: org overrides merged over defaults by
+  // the caller, or the built-in defaults when `copy` is absent (legacy callers).
+  const copy: HireOrderCopy = input.copy ?? HIRE_ORDER_COPY_DEFAULTS;
 
   const artist = str(data, "artist_name");
   const email = str(data, "recipient_email");
@@ -352,7 +356,11 @@ function HireOrderDoc(input: RenderInput): React.ReactElement {
   const dateLabel = isAggregate
     ? engagementDates.map((item) => formatDateDMY(item.date)).join(" · ")
     : formatDateDMY(date);
-  const billing = role && cast ? `${role} · billed as ${cast}` : cast ? `Billed as ${cast}` : role;
+  const billing = role && cast
+    ? applyTokens(copy.billing_role_and_cast, { role, cast })
+    : cast
+    ? applyTokens(copy.billing_cast_only, { cast })
+    : role;
 
   return (
     <Document title={`Hire order ${orderNo}`} author={letterhead.legal_name} creator="ShowFlow Pro">
@@ -368,12 +376,12 @@ function HireOrderDoc(input: RenderInput): React.ReactElement {
             {letterhead.registration_line ? <Text style={s.eyebrow}>{letterhead.registration_line}</Text> : null}
           </View>
           <View>
-            <Text style={s.eyebrowRight}>Performance hire order</Text>
+            <Text style={s.eyebrowRight}>{copy.header_eyebrow}</Text>
             <Text style={s.orderNo}>{orderNo}</Text>
             <View style={s.badgeRow}>
               <View style={[s.badgeDot, { backgroundColor: status === "preview" ? C.faint : C.accent }]} />
               <Text style={s.badgeText}>
-                {status === "preview" ? "Preview" : status === "countersigned" ? "Countersigned" : "Issued"}
+                {status === "preview" ? copy.badge_preview : status === "countersigned" ? copy.badge_countersigned : copy.badge_issued}
               </Text>
             </View>
           </View>
@@ -381,7 +389,7 @@ function HireOrderDoc(input: RenderInput): React.ReactElement {
 
         {/* Title */}
         <View style={s.title}>
-          <Text style={s.titleLead}>This order confirms the engagement of</Text>
+          <Text style={s.titleLead}>{copy.title_lead}</Text>
           <Text style={s.artistName}>{artist}</Text>
           {billing ? <Text style={s.titleSub}>{billing}</Text> : null}
         </View>
@@ -389,52 +397,52 @@ function HireOrderDoc(input: RenderInput): React.ReactElement {
         {/* Parties */}
         <View style={s.parties}>
           <View style={s.party}>
-            <Text style={s.partyLabel}>Hiring party, the Producer</Text>
+            <Text style={s.partyLabel}>{copy.party_producer_label}</Text>
             <Text style={s.partyName}>{letterhead.legal_name}</Text>
             {letterhead.address_lines.map((line, i) => <Text key={i} style={s.partyLine}>{line}</Text>)}
             {letterhead.agent_name
-              ? <Text style={s.partyLine}>{`Booking agent: ${letterhead.agent_name}`}</Text>
+              ? <Text style={s.partyLine}>{applyTokens(copy.party_agent, { agent_name: letterhead.agent_name })}</Text>
               : null}
             {letterhead.agent_email ? <Text style={s.partyLine}>{letterhead.agent_email}</Text> : null}
           </View>
           <View style={s.partyGap} />
           <View style={s.party}>
-            <Text style={s.partyLabel}>Engaged artist, the Artist</Text>
+            <Text style={s.partyLabel}>{copy.party_artist_label}</Text>
             <Text style={s.partyName}>{artist}</Text>
             {email ? <Text style={s.partyLine}>{email}</Text> : null}
-            {cast ? <Text style={s.partyLine}>{`Cast reference: ${cast}`}</Text> : null}
-            {role ? <Text style={s.partyLine}>{`Engagement: ${role}`}</Text> : null}
+            {cast ? <Text style={s.partyLine}>{applyTokens(copy.party_cast_reference, { cast })}</Text> : null}
+            {role ? <Text style={s.partyLine}>{applyTokens(copy.party_engagement, { role })}</Text> : null}
           </View>
         </View>
 
         {/* Facts strip */}
         <View style={s.facts}>
           <View style={s.factCell}>
-            <Text style={s.factLabel}>Date</Text>
+            <Text style={s.factLabel}>{copy.facts_date_label}</Text>
             <Text style={s.factValueMono}>{dateLabel}</Text>
-            <Text style={s.factSub}>{isAggregate ? `${engagementDates.length} dates` : weekdayOf(date)}</Text>
+            <Text style={s.factSub}>{isAggregate ? applyTokens(copy.facts_dates_count, { count: engagementDates.length }) : weekdayOf(date)}</Text>
           </View>
           <View style={[s.factCell, s.factDivider]}>
-            <Text style={s.factLabel}>Venue</Text>
+            <Text style={s.factLabel}>{copy.facts_venue_label}</Text>
             <Text style={s.factValue}>{venue}</Text>
             <Text style={s.factSub}>{city}</Text>
           </View>
           <View style={[s.factCell, s.factDivider]}>
-            <Text style={s.factLabel}>Performance</Text>
-            <Text style={s.factValueMono}>{duration ? `${duration} min` : ""}</Text>
-            <Text style={s.factSub}>{sessions.length > 1 ? `${sessions.length} sessions` : "Single set"}</Text>
+            <Text style={s.factLabel}>{copy.facts_performance_label}</Text>
+            <Text style={s.factValueMono}>{duration ? applyTokens(copy.facts_duration, { duration }) : ""}</Text>
+            <Text style={s.factSub}>{sessions.length > 1 ? applyTokens(copy.facts_sessions_count, { count: sessions.length }) : copy.facts_single_set}</Text>
           </View>
           <View style={[s.factCell, s.factDivider, s.factCellFee]}>
-            <Text style={s.factLabel}>Engagement fee</Text>
+            <Text style={s.factLabel}>{copy.facts_fee_label}</Text>
             <Text style={s.factValueMono}>{feeText}</Text>
-            <Text style={s.factSub}>net of VAT</Text>
+            <Text style={s.factSub}>{copy.facts_fee_sub}</Text>
           </View>
         </View>
 
         {isAggregate
           ? (
             <View style={s.section}>
-              <Text style={s.sectionHeading}>Engagement dates</Text>
+              <Text style={s.sectionHeading}>{copy.engagement_dates_heading}</Text>
               {engagementDates.map((item) => (
                 <View key={item.show_date_id}>
                   <View style={s.engagementDateRow} wrap={false}>
@@ -444,7 +452,7 @@ function HireOrderDoc(input: RenderInput): React.ReactElement {
                   </View>
                   {(item.sessions ?? []).map((time, i) => (
                     <View key={i} style={s.tableRow} wrap={false}>
-                      <Text style={[s.cellLabel, s.colCall]}>{`Session ${i + 1}`}</Text>
+                      <Text style={[s.cellLabel, s.colCall]}>{applyTokens(copy.session_label, { n: i + 1 })}</Text>
                       <Text style={[s.cellTime, s.colTime]}>{time}</Text>
                     </View>
                   ))}
@@ -461,14 +469,14 @@ function HireOrderDoc(input: RenderInput): React.ReactElement {
         {!isAggregate && sessions.length > 0
           ? (
             <View style={s.section}>
-              <Text style={s.sectionHeading}>{venue ? `Running order, ${venue}` : "Running order"}</Text>
+              <Text style={s.sectionHeading}>{venue ? applyTokens(copy.running_order_heading_venue, { venue }) : copy.running_order_heading}</Text>
               <View style={s.tableHead}>
-                <Text style={[s.tableHeadCell, s.colCall]}>Call</Text>
-                <Text style={[s.tableHeadCell, s.colTime]}>Time</Text>
+                <Text style={[s.tableHeadCell, s.colCall]}>{copy.table_call}</Text>
+                <Text style={[s.tableHeadCell, s.colTime]}>{copy.table_time}</Text>
               </View>
               {sessions.map((time, i) => (
                 <View key={i} style={s.tableRow} wrap={false}>
-                  <Text style={[s.cellLabel, s.colCall]}>{`Session ${i + 1}`}</Text>
+                  <Text style={[s.cellLabel, s.colCall]}>{applyTokens(copy.session_label, { n: i + 1 })}</Text>
                   <Text style={[s.cellTime, s.colTime]}>{time}</Text>
                 </View>
               ))}
@@ -485,20 +493,20 @@ function HireOrderDoc(input: RenderInput): React.ReactElement {
         {notes
           ? (
             <View style={s.section}>
-              <Text style={s.notes}>{`Notes: ${notes}`}</Text>
+              <Text style={s.notes}>{applyTokens(copy.notes_prefix, { notes })}</Text>
             </View>
           )
           : null}
 
         {/* Fees */}
         <View style={s.section}>
-          <Text style={s.sectionHeading}>Fees & payment schedule</Text>
+          <Text style={s.sectionHeading}>{copy.fees_heading}</Text>
           <View style={s.feeRow}>
-            <Text style={s.feeLabel}>Engagement fee</Text>
+            <Text style={s.feeLabel}>{copy.fees_engagement_fee}</Text>
             <Text style={s.feeValue}>{feeText}</Text>
           </View>
           <View style={s.totalRow}>
-            <Text style={s.totalLabel}>Total payable</Text>
+            <Text style={s.totalLabel}>{copy.fees_total}</Text>
             <Text style={s.totalValue}>{feeText}</Text>
           </View>
         </View>
@@ -507,7 +515,7 @@ function HireOrderDoc(input: RenderInput): React.ReactElement {
         {terms.length > 0
           ? (
             <View style={s.section}>
-              <Text style={s.sectionHeading}>Terms & conditions</Text>
+              <Text style={s.sectionHeading}>{copy.terms_heading}</Text>
               {terms.map((clause, i) => (
                 <View key={i} style={s.clause} wrap={false}>
                   <Text style={s.clauseNo}>{i + 1}</Text>
@@ -523,16 +531,16 @@ function HireOrderDoc(input: RenderInput): React.ReactElement {
         {/* Signatures */}
         <View style={s.signatures} wrap={false}>
           <View style={s.signature}>
-            <Text style={s.signatureFor}>{`For the Producer · ${letterhead.legal_name}`}</Text>
+            <Text style={s.signatureFor}>{applyTokens(copy.signature_for_producer, { legal_name: letterhead.legal_name })}</Text>
             {letterhead.agent_signature_data_url
               ? <Image style={s.sigMarkImage} src={letterhead.agent_signature_data_url} />
               : null}
             <View style={s.signatureLine} />
-            <Text style={s.signatureHint}>{`Name · Date ${formatDateDMY(date)}`}</Text>
+            <Text style={s.signatureHint}>{applyTokens(copy.signature_producer_hint, { date: formatDateDMY(date) })}</Text>
           </View>
           <View style={s.signatureGap} />
           <View style={s.signature}>
-            <Text style={s.signatureFor}>{`The Artist · ${artist}`}</Text>
+            <Text style={s.signatureFor}>{applyTokens(copy.signature_for_artist, { artist })}</Text>
             {signature
               ? (signature.method === "drawn" && signature.imageDataUrl
                 ? <Image style={s.sigMarkImage} src={signature.imageDataUrl} />
@@ -540,18 +548,18 @@ function HireOrderDoc(input: RenderInput): React.ReactElement {
               : null}
             <View style={s.signatureLine} />
             <Text style={s.signatureHint}>
-              {signature ? `Signed electronically · ${formatIsoDMY(signature.signedAtIso)}` : "Signature · Date"}
+              {signature ? applyTokens(copy.signature_signed_electronically, { date: formatIsoDMY(signature.signedAtIso) }) : copy.signature_artist_hint}
             </Text>
           </View>
         </View>
 
-        {status === "preview" ? <Text style={s.watermark} fixed>PREVIEW</Text> : null}
+        {status === "preview" ? <Text style={s.watermark} fixed>{copy.watermark}</Text> : null}
 
         {/* Footer. Page numbers are rendered, not hardcoded "1 / 1": long terms
             can push the document past one page. */}
         <View style={s.footer} fixed>
           <Text style={s.footerMono}>{orderNo}</Text>
-          <Text style={s.footerText}>{`Generated by ShowFlow Pro · ${formatIsoDMY(generatedAtIso)}`}</Text>
+          <Text style={s.footerText}>{applyTokens(copy.footer_generated, { date: formatIsoDMY(generatedAtIso) })}</Text>
           <Text
             style={s.footerMono}
             render={({ pageNumber, totalPages }) => `Page ${pageNumber} / ${totalPages}`}
@@ -560,19 +568,19 @@ function HireOrderDoc(input: RenderInput): React.ReactElement {
       </Page>
       {signature ? (
         <Page size="A4" style={s.page}>
-          <Text style={s.certHeading}>Signature certificate</Text>
-          <Text style={s.certLead}>{`Electronic signature record for hire order ${orderNo}.`}</Text>
-          <View style={s.certRow}><Text style={s.certLabel}>Signer</Text><Text style={s.certValue}>{signature.signerName}</Text></View>
-          {signature.signerEmail ? <View style={s.certRow}><Text style={s.certLabel}>Email</Text><Text style={s.certValue}>{signature.signerEmail}</Text></View> : null}
-          <View style={s.certRow}><Text style={s.certLabel}>Method</Text><Text style={s.certValue}>{signature.method === "drawn" ? "Drawn signature" : "Typed signature"}</Text></View>
-          <View style={s.certRow}><Text style={s.certLabel}>Signed at</Text><Text style={s.certValue}>{`${formatIsoDateTimeUTC(signature.signedAtIso)} (UTC)`}</Text></View>
-          {signature.ip ? <View style={s.certRow}><Text style={s.certLabel}>IP address</Text><Text style={s.certValue}>{signature.ip}</Text></View> : null}
-          {signature.userAgent ? <View style={s.certRow}><Text style={s.certLabel}>Device</Text><Text style={s.certValue}>{signature.userAgent}</Text></View> : null}
-          <View style={s.certRow}><Text style={s.certLabel}>Document SHA-256</Text><Text style={s.certValueMono}>{signature.documentSha256}</Text></View>
+          <Text style={s.certHeading}>{copy.cert_heading}</Text>
+          <Text style={s.certLead}>{applyTokens(copy.cert_lead, { orderNo })}</Text>
+          <View style={s.certRow}><Text style={s.certLabel}>{copy.cert_signer}</Text><Text style={s.certValue}>{signature.signerName}</Text></View>
+          {signature.signerEmail ? <View style={s.certRow}><Text style={s.certLabel}>{copy.cert_email}</Text><Text style={s.certValue}>{signature.signerEmail}</Text></View> : null}
+          <View style={s.certRow}><Text style={s.certLabel}>{copy.cert_method}</Text><Text style={s.certValue}>{signature.method === "drawn" ? copy.cert_method_drawn : copy.cert_method_typed}</Text></View>
+          <View style={s.certRow}><Text style={s.certLabel}>{copy.cert_signed_at}</Text><Text style={s.certValue}>{applyTokens(copy.cert_signed_at_value, { datetime: formatIsoDateTimeUTC(signature.signedAtIso) })}</Text></View>
+          {signature.ip ? <View style={s.certRow}><Text style={s.certLabel}>{copy.cert_ip}</Text><Text style={s.certValue}>{signature.ip}</Text></View> : null}
+          {signature.userAgent ? <View style={s.certRow}><Text style={s.certLabel}>{copy.cert_device}</Text><Text style={s.certValue}>{signature.userAgent}</Text></View> : null}
+          <View style={s.certRow}><Text style={s.certLabel}>{copy.cert_sha}</Text><Text style={s.certValueMono}>{signature.documentSha256}</Text></View>
           <Text style={s.certConsent}>{signature.consentText}</Text>
           <View style={s.footer} fixed>
             <Text style={s.footerMono}>{orderNo}</Text>
-            <Text style={s.footerText}>{`Generated by ShowFlow Pro · ${formatIsoDMY(generatedAtIso)}`}</Text>
+            <Text style={s.footerText}>{applyTokens(copy.footer_generated, { date: formatIsoDMY(generatedAtIso) })}</Text>
             <Text style={s.footerMono} render={({ pageNumber, totalPages }) => `Page ${pageNumber} / ${totalPages}`} />
           </View>
         </Page>
