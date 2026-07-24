@@ -1591,20 +1591,26 @@ async function issueOne(
     if (error) return { ok: false, issues: ["transition_failed"] };
   }
 
+  // Snapshot letterhead carries the small agent_signature_path only. The resolved
+  // ~2MB base64 data url is merged in ONLY for the render call below and never
+  // frozen into issue_snapshot: that snapshot rides along on every select("*")
+  // list/detail fetch, so freezing the blob would duplicate it into every issued
+  // order's row and pull it down on every read. signOrder re-resolves it from the
+  // frozen path at sign time (matches how the artist's own signature is stored as
+  // a path and resolved on demand).
   const effectiveLetterhead: HireOrderLetterhead = {
     ...letterhead,
     agent_name: o.agent_name ?? letterhead.agent_name,
     agent_email: o.agent_email ?? letterhead.agent_email,
-    // Resolved once per batch by issueOrders and passed in, so a bulk issue never
-    // re-downloads the shared org signature PNG once per order (N+1).
-    agent_signature_data_url: agentSignatureDataUrl,
   };
   const currency = o.fee_currency ?? defaults.currency ?? "EUR";
   const bytes = await deps.renderHireOrderPdf({
     data,
     orderNo: o.order_no,
     status: "issued",
-    letterhead: effectiveLetterhead,
+    // Resolved once per batch by issueOrders and passed in, so a bulk issue never
+    // re-downloads the shared org signature PNG once per order (N+1).
+    letterhead: { ...effectiveLetterhead, agent_signature_data_url: agentSignatureDataUrl },
     terms: variantTerms,
     currency,
     generatedAtIso: deps.now().toISOString(),
@@ -2358,6 +2364,16 @@ async function signOrder(
     );
     renderCopy = resolveHireOrderCopy(storedCopy);
   }
+  // The snapshot/live letterhead carries only agent_signature_path (never the base64
+  // blob, see issueOne). Resolve the data url fresh so the signed re-render still draws
+  // the org agent signature. A missing path (legacy/no signature) resolves to null.
+  renderLetterhead = {
+    ...renderLetterhead,
+    agent_signature_data_url: await resolveAgentSignatureDataUrl(
+      admin,
+      renderLetterhead.agent_signature_path,
+    ),
+  };
   const signature: RenderSignature = {
     method,
     typedName: method === "typed" ? typedName : undefined,
