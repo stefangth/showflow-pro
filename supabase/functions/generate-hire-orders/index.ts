@@ -1420,6 +1420,8 @@ async function sendIssuedEmail(
   countersignMode: string,
   signingUrl: string | null,
   deliveryKind: "issued" | "resend",
+  isFullySigned = false,
+  attachmentFilename = `${order.order_no}.pdf`,
 ): Promise<boolean> {
   const recipient = strField(data, "recipient_email");
   if (!recipient) {
@@ -1450,15 +1452,17 @@ async function sendIssuedEmail(
       artist_name: strField(data, "artist_name"),
       order_no: order.order_no,
       date_label: dateLabel(strField(data, "date")),
+      engagement_dates_label: engagementDatesLabel(data),
       venue: strField(data, "venue"),
       city: strField(data, "city"),
       fee_label: feeLabel,
       download_url: `${APP_URL}/hire-orders/${order.id}`,
       countersign_mode: countersignMode,
       signing_url: signingUrl ?? undefined,
+      is_fully_signed: isFullySigned,
     },
     attachments: [{
-      filename: `${order.order_no}.pdf`,
+      filename: attachmentFilename,
       content_base64: encodeBase64(bytes),
     }],
     idempotency_key: deliveryKind === "resend"
@@ -1568,6 +1572,8 @@ async function resendOrder(deps: Deps, body: ResendBody): Promise<Response> {
     signingDelivery.countersignMode,
     signingDelivery.signingUrl,
     "resend",
+    order.status === "countersigned",
+    path.slice(path.lastIndexOf("/") + 1),
   ).catch((error) => {
     console.error("generate-hire-orders: resend failed", {
       org,
@@ -2297,6 +2303,20 @@ function dateLabel(dateOnly: string): string {
     year: "numeric",
     timeZone: "UTC",
   });
+}
+
+/** Human-readable complete schedule for aggregate hire-order delivery emails. */
+function engagementDatesLabel(data: OrderData): string {
+  const dates = data.engagement_dates?.value;
+  if (!Array.isArray(dates) || dates.length === 0) {
+    return dateLabel(strField(data, "date"));
+  }
+  return dates.map((engagement) => {
+    const location = [engagement.venue, engagement.city]
+      .filter((part): part is string => typeof part === "string" && part.trim() !== "")
+      .join(", ");
+    return [dateLabel(engagement.date), location].filter(Boolean).join(" · ");
+  }).join("; ");
 }
 
 if (import.meta.main) Deno.serve((req) => handle(req, realDeps()));

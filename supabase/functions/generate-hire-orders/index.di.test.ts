@@ -1057,6 +1057,13 @@ function issuableOrder(overrides: Record<string, unknown> = {}) {
       date: { value: "2026-06-15", source: "showflow" },
       venue: { value: "Colosseum", source: "showflow" },
       city: { value: "Berlin", source: "showflow" },
+      engagement_dates: {
+        value: [
+          { show_date_id: "sd-1", date: "2026-06-15", venue: "Colosseum", city: "Berlin" },
+          { show_date_id: "sd-2", date: "2026-06-16", venue: "Huxleys", city: "Berlin" },
+        ],
+        source: "showflow",
+      },
       fee: { value: 500, source: "showflow" },
       currency: { value: "EUR", source: "default" },
     },
@@ -1155,6 +1162,9 @@ Deno.test("issue renders, uploads to hire-orders/<org>/<order_no>.pdf, stamps is
     td.date_label !== "2026-06-15" && String(td.date_label).includes("2026"),
     `date_label was ${td.date_label}`,
   );
+  assert(String(td.engagement_dates_label).includes("Jun 15, 2026"));
+  assert(String(td.engagement_dates_label).includes("Jun 16, 2026"));
+  assert(String(td.engagement_dates_label).includes("Huxleys"));
 
   // artist in-app notification (artist has a linked user_id)
   const notif = calls.find((c) =>
@@ -1252,6 +1262,8 @@ Deno.test("resend reuses the stored document and stamps last_sent_at only after 
             status: "countersigned",
             pdf_path: `${ORG}/HO-1.pdf`,
             signed_pdf_path: `${ORG}/HO-1-signed.pdf`,
+            countersign_mode: "electronic",
+            issue_snapshot: { countersign_mode: "electronic" },
           }),
         },
         { when: { __write: true }, data: null },
@@ -1292,8 +1304,13 @@ Deno.test("resend reuses the stored document and stamps last_sent_at only after 
   assertEquals(
     (email!.body as { attachments: Array<{ filename: string }> }).attachments[0]
       .filename,
-    "HO-1.pdf",
+    "HO-1-signed.pdf",
   );
+  const templateData = (email!.body as {
+    templateData: Record<string, unknown>;
+  }).templateData;
+  assertEquals(templateData.is_fully_signed, true);
+  assert(String(templateData.engagement_dates_label).includes("Jun 16, 2026"));
   const sentUpdate = calls.find(
     (c) =>
       c.table === "hire_orders" && c.method === "update" &&
