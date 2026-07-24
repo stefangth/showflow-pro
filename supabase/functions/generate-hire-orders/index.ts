@@ -17,6 +17,7 @@
 // makeFakeDeps (deps.renderHireOrderPdf is stubbed). See index.di.test.ts.
 import { json, preflight } from "../_shared/http.ts";
 import { requireCronOrRole, requireOrgRole } from "../_shared/auth.ts";
+import { requireCapability } from "../_shared/capabilities.ts";
 import type {
   Json,
   TablesInsert,
@@ -286,6 +287,20 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
 
   const denied = await requireFeature(deps, body.org_id, "hire_orders");
   if (denied) return denied;
+
+  // Producer capability gate for draft/draft-manual/issue. Admins/super-admins and
+  // cron callers already passed the gate above (org role or the cron secret) and
+  // bypass this entirely; a caller who is only a producer (not admin) additionally
+  // needs the per-action capability. preview, download-url (its own auth, earlier),
+  // and countersign-test (admin-only, re-checked in its own case below) stay ungated.
+  if (!isCron && (body.action === "draft" || body.action === "draft-manual" || body.action === "issue")) {
+    const adminGate = await requireOrgRole(deps, req, body.org_id, ["admin"]);
+    if (!adminGate.ok) {
+      const capability = body.action === "issue" ? "producer_can_issue_hire_orders" : "producer_can_generate_hire_orders";
+      const capGate = await requireCapability(deps, body.org_id, capability);
+      if (capGate) return capGate;
+    }
+  }
 
   switch (body.action) {
     case "draft":

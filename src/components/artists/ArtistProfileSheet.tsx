@@ -3,7 +3,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/features/auth/AuthContext';
 import { useEditorConfig } from '@/features/editor/EditorContext';
-import { useCapability } from '@/hooks/useCapabilities';
+import { useCapability, useCan } from '@/hooks/useCapabilities';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from '@/components/ui/sheet';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -35,11 +35,12 @@ export function ArtistProfileSheet({ artistId, open, onOpenChange }: Props) {
   const isRealAdmin = roles.includes('admin');
   const { toast } = useToast();
   const qc = useQueryClient();
-  const canEdit = hasRole('admin') || hasRole('producer');
+  const canEdit = useCan('edit_artists');
   const isAdmin = hasRole('admin');
   const isProducer = hasRole('producer');
   const producerCanInvite = useCapability('producer_can_invite');
   const canInvite = isAdmin || (isProducer && producerCanInvite);
+  const canResendAccountInvite = useCan('resend_account_invite');
   // Reuse the admin-only member list (list_org_members) to resolve the linked account.
   // Only enabled for admins — producers get the badge only (no PII), per ADR-0011.
   const { data: orgMembers, isLoading: membersLoading } = useOrgMembers(
@@ -301,9 +302,9 @@ export function ArtistProfileSheet({ artistId, open, onOpenChange }: Props) {
               bookingEmail={artist.email}
               account={linkedMember ? { email: linkedMember.email, display_name: linkedMember.display_name } : undefined}
               accountLoading={isAdmin && !!artist.user_id && membersLoading}
-              canSeeAccount={isAdmin}
+              canSeeAccount={canResendAccountInvite}
               canInvite={canInvite}
-              canResend={isAdmin}
+              canResend={canResendAccountInvite}
               onInvite={() => invite.mutate()}
               onResend={() => resend.mutate()}
               inviteBusy={invite.isPending || resend.isPending}

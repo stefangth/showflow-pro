@@ -13,7 +13,9 @@ const { client } = vi.hoisted(() => ({ client: {} as Record<string, unknown> }))
 vi.mock("@/integrations/supabase/client", () => ({ supabase: client }));
 Object.assign(client, createFakeSupabase({ skills: { data: [], error: null } }));
 vi.mock("@/features/auth/AuthContext", () => ({ useAuth: () => ({ currentOrg: { id: "org-1" }, user: { id: "u1" }, hasRole: () => true }) }));
+vi.mock("@/hooks/useCapabilities", async (orig) => ({ ...(await orig<typeof import("@/hooks/useCapabilities")>()), useCan: vi.fn() }));
 
+import { useCan } from "@/hooks/useCapabilities";
 import { ShowFormDialog } from "./ShowFormDialog";
 
 const SHOW_WITH_SKILL = {
@@ -23,7 +25,15 @@ const SHOW_WITH_SKILL = {
 };
 
 describe("ShowFormDialog", () => {
-  beforeEach(() => vi.clearAllMocks());
+  beforeEach(() => { vi.clearAllMocks(); vi.mocked(useCan).mockReturnValue(true); });
+
+  it("edit_scheduling off: slot fields are disabled, other fields stay editable", () => {
+    vi.mocked(useCan).mockReturnValue(false);
+    renderWithProviders(<ShowFormDialog open onOpenChange={() => {}} allShows={[]} show={{ id: "s1", program: "P", sub_program: null, category: null, description: null, status: "active", main_cast_slots: 2, understudy_slots: 1, airtable_program_key: null, sort_order: 1, dateCount: 0 }} />);
+    expect(screen.getByLabelText(/main cast/i)).toBeDisabled();
+    expect(screen.getByLabelText(/understudy/i)).toBeDisabled();
+    expect(screen.getByLabelText(/^program/i)).not.toBeDisabled();
+  });
 
   it("create: requires a program/sub-program label", async () => {
     renderWithProviders(<ShowFormDialog open onOpenChange={() => {}} allShows={[]} />);

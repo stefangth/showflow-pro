@@ -1,5 +1,6 @@
 import { preflight, json } from "../_shared/http.ts";
 import { isServiceRole, requireRole, requireOrgRole } from "../_shared/auth.ts";
+import { requireCapability } from "../_shared/capabilities.ts";
 import { realDeps, type Deps } from "../_shared/deps.ts";
 
 /**
@@ -43,12 +44,19 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
 
   // Org-scoped authorization (service-role / cron bypasses; super-admins accepted).
   // Resolve the date's org and require the caller to hold the role IN THAT org.
+  // Admins bypass the capability gate outright; a producer additionally needs
+  // producer_can_run_offer_engine on for this org.
   if (!isServiceRole(deps, req)) {
     const { data: sd } = await admin
       .from("show_dates").select("org_id").eq("id", show_date_id).maybeSingle();
     if (!sd) return json({ error: "Show date not found" }, 404);
-    const auth = await requireOrgRole(deps, req, sd.org_id, ["admin", "producer"]);
-    if (!auth.ok) return auth.response;
+    const adminAuth = await requireOrgRole(deps, req, sd.org_id, ["admin"]);
+    if (!adminAuth.ok) {
+      const producerAuth = await requireOrgRole(deps, req, sd.org_id, ["producer"]);
+      if (!producerAuth.ok) return producerAuth.response;
+      const capGate = await requireCapability(deps, sd.org_id, "producer_can_run_offer_engine");
+      if (capGate) return capGate;
+    }
   }
 
   // Close the tier FIRST. The two writes aren't transactional, so order picks

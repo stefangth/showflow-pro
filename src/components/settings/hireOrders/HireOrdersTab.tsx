@@ -75,11 +75,18 @@ function HireOrdersRail() {
   );
 }
 
+interface Props {
+  /** Capability floor: cards still render the org's saved values, but a producer
+   *  without `edit_hire_order_settings` can't change or save them. Admins always
+   *  pass `false` here. */
+  readOnly?: boolean;
+}
+
 /** Settings → Hire orders tab: letterhead, defaults, numbering, terms, countersign
- *  mode. Admin-gated by the caller (SettingsPage); self-gated here on the
+ *  mode. Admin/producer-gated by the caller (SettingsPage); self-gated here on the
  *  hire_orders entitlement so the tab renders nothing at all when the org isn't
  *  entitled, even if reached directly (the module ships default-off). */
-export function HireOrdersTab() {
+export function HireOrdersTab({ readOnly = false }: Props) {
   const { currentOrg } = useAuth();
   const orgId = currentOrg?.id ?? null;
   const entitled = useFeature("hire_orders");
@@ -89,11 +96,11 @@ export function HireOrdersTab() {
   return (
     <div className="grid gap-5 lg:grid-cols-[1fr_320px]">
       <div className="space-y-4">
-        <LetterheadCard orgId={orgId} />
-        <OrderDefaultsCard orgId={orgId} />
-        <NumberingCard orgId={orgId} />
-        <TermsVariantsCard orgId={orgId} />
-        <CountersignCard orgId={orgId} />
+        <LetterheadCard orgId={orgId} readOnly={readOnly} />
+        <OrderDefaultsCard orgId={orgId} readOnly={readOnly} />
+        <NumberingCard orgId={orgId} readOnly={readOnly} />
+        <TermsVariantsCard orgId={orgId} readOnly={readOnly} />
+        <CountersignCard orgId={orgId} readOnly={readOnly} />
       </div>
       <HireOrdersRail />
     </div>

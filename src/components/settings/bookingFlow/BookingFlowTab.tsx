@@ -32,9 +32,14 @@ interface Props {
   saving: boolean;
   onSave: () => void;
   onDiscard: () => void;
+  /** Capability floor: the org is entitled and the values render normally, but this
+   *  user (a producer without `edit_booking_settings`) can't change them. Distinct from
+   *  `locked` below (module not entitled at all) — see the from-address/EmailTemplatesCard
+   *  carve-out, which stays keyed on `locked` only. */
+  readOnly?: boolean;
 }
 
-export function BookingFlowTab({ get, set, dirtyKeys, saving, onSave, onDiscard }: Props) {
+export function BookingFlowTab({ get, set, dirtyKeys, saving, onSave, onDiscard, readOnly = false }: Props) {
   const { currentOrg } = useAuth();
   const orgId = currentOrg?.id ?? null;
 
@@ -44,6 +49,9 @@ export function BookingFlowTab({ get, set, dirtyKeys, saving, onSave, onDiscard 
   // showing it would misrepresent what the standard flow actually does.
   const locked = !useFeature("booking_flow");
   const flow = normalizeBookingFlow(locked ? null : get("booking_flow"));
+  // Either reason disables the flow steps/presets/rail-save; only `locked` swaps in the
+  // classic-defaults display and its own alert copy.
+  const stepsDisabled = locked || readOnly;
 
   // SettingsPage's `get` returns '' for keys with no draft/persisted value, so a
   // bare `?? default` would leave `Number('')` === 0. Coerce explicitly instead.
@@ -130,7 +138,7 @@ export function BookingFlowTab({ get, set, dirtyKeys, saving, onSave, onDiscard 
           </AlertDescription>
         </Alert>
       )}
-      <FlowPresets active={matchPreset(flow)} onSelect={onPreset} disabled={locked} />
+      <FlowPresets active={matchPreset(flow)} onSelect={onPreset} disabled={stepsDisabled} />
       <div className="grid gap-5 lg:grid-cols-[1fr_340px]">
         <FlowTimeline
           flow={flow}
@@ -139,7 +147,7 @@ export function BookingFlowTab({ get, set, dirtyKeys, saving, onSave, onDiscard 
           onTimesChange={onTimesChange}
           customFields={customFields}
           referencePreview={referencePreview}
-          disabled={locked}
+          disabled={stepsDisabled}
         />
         <FlowRail
           flow={flow}
@@ -151,7 +159,7 @@ export function BookingFlowTab({ get, set, dirtyKeys, saving, onSave, onDiscard 
           audit={audit.data ?? []}
           isLoading={audit.isLoading}
           isError={audit.isError}
-          locked={locked}
+          locked={stepsDisabled}
         />
       </div>
       <div className="max-w-sm space-y-2">
@@ -160,11 +168,12 @@ export function BookingFlowTab({ get, set, dirtyKeys, saving, onSave, onDiscard 
           id="resend-from-address"
           placeholder={BOOKING_ENGINE_DEFAULTS.resend_from_address}
           value={(get("resend_from_address") as string) ?? ""}
+          disabled={readOnly}
           onChange={(e) => set("resend_from_address", e.target.value)}
         />
         <p className="text-xs text-muted-foreground">Overrides the default sender address for all outgoing emails.</p>
       </div>
-      <EmailTemplatesCard get={get} set={set} />
+      <EmailTemplatesCard get={get} set={set} readOnly={readOnly} />
     </div>
   );
 }

@@ -13,6 +13,7 @@ const { client } = vi.hoisted(() => ({ client: {} as Record<string, unknown> }))
 vi.mock("@/integrations/supabase/client", () => ({ supabase: client }));
 // Task 9 wires in useMyArtist (via useEffectiveUserId) alongside useAuth.
 vi.mock("@/features/auth/AuthContext", () => ({ useAuth: vi.fn(), useEffectiveUserId: () => "user-1" }));
+vi.mock("@/hooks/useCapabilities", async (orig) => ({ ...(await orig<typeof import("@/hooks/useCapabilities")>()), useCan: vi.fn() }));
 
 function seedClient(seed: Record<string, TableSeed>) {
   for (const key of Object.keys(client)) delete client[key];
@@ -20,6 +21,7 @@ function seedClient(seed: Record<string, TableSeed>) {
 }
 
 import { useAuth } from "@/features/auth/AuthContext";
+import { useCan } from "@/hooks/useCapabilities";
 import HireOrderDetailPage from "./HireOrderDetailPage";
 
 type Role = "producer" | "admin" | "artist";
@@ -83,7 +85,15 @@ function renderPage(id = "ho-1") {
 }
 
 describe("HireOrderDetailPage", () => {
-  beforeEach(() => seedFor(order()));
+  beforeEach(() => { seedFor(order()); vi.mocked(useCan).mockReturnValue(true); });
+
+  it("manage_countersign off: Mark countersigned is disabled (page still renders)", async () => {
+    authAs("producer");
+    seedFor(order());
+    vi.mocked(useCan).mockImplementation((action: string) => action !== "manage_countersign");
+    renderPage();
+    expect(await screen.findByRole("button", { name: /mark countersigned/i })).toBeDisabled();
+  });
 
   it("renders the header with the mono order number and an Awaiting-countersign badge", async () => {
     authAs("producer");

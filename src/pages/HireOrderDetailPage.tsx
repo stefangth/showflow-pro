@@ -7,6 +7,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { useAuth } from "@/features/auth/AuthContext";
+import { useCan } from "@/hooks/useCapabilities";
 import {
   useHireOrder,
   useHireOrderAction,
@@ -49,6 +50,9 @@ export default function HireOrderDetailPage() {
   const navigate = useNavigate();
   const { currentOrg, hasRole } = useAuth();
   const orgId = currentOrg?.id ?? "";
+  // Gates only the "Mark countersigned" control below -- the broad canManage
+  // producer/admin-vs-artist split (Edit visibility, the download fallback) is unchanged.
+  const canManageCountersign = useCan("manage_countersign");
 
   const { data: order, isLoading, isError, error } = useHireOrder(id);
   const action = useHireOrderAction();
@@ -149,6 +153,7 @@ export default function HireOrderDetailPage() {
   const isElectronic = effectiveMode === "electronic";
 
   return <HireOrderDetail order={order} canManage={canManage} canSign={canSign} orgId={orgId}
+    canManageCountersign={canManageCountersign}
     isElectronic={isElectronic}
     navigateBack={() => navigate(-1)}
     onEdit={() => navigate(ROUTES.HIRE_ORDER_EDIT.replace(":id", order.id))}
@@ -166,6 +171,7 @@ export default function HireOrderDetailPage() {
 interface DetailProps {
   order: HireOrderRow;
   canManage: boolean;
+  canManageCountersign: boolean;
   canSign: boolean;
   orgId: string;
   isElectronic: boolean;
@@ -184,7 +190,7 @@ interface DetailProps {
 /** The loaded-state body — split out so the page shell handles loading/error
  *  and this renders the header + document grid for a known-good order. */
 function HireOrderDetail({
-  order, canManage, canSign, orgId, isElectronic, navigateBack, onEdit, onDownload, downloadBusy,
+  order, canManage, canManageCountersign, canSign, orgId, isElectronic, navigateBack, onEdit, onDownload, downloadBusy,
   onCountersign, countersignBusy, pdfUrl, pdfUrlLoading, pdfUrlError, hasPdf,
 }: DetailProps) {
   const [signOpen, setSignOpen] = useState(false);
@@ -297,6 +303,7 @@ function HireOrderDetail({
               <OrderFactsRail fee={fee} duration={duration} sessions={sessions} />
               <PrimaryAction
                 canManage={canManage}
+                canManageCountersign={canManageCountersign}
                 canSign={canSign}
                 status={order.status}
                 isElectronic={isElectronic}
@@ -320,6 +327,7 @@ function HireOrderDetail({
 
 interface ActionProps {
   canManage: boolean;
+  canManageCountersign: boolean;
   canSign: boolean;
   status: string;
   isElectronic: boolean;
@@ -336,9 +344,11 @@ interface ActionProps {
  *  once done); in electronic mode that manual flip is withheld — the order must
  *  be completed by the artist's in-app signature, so a manager sees only a hint.
  *  The linked artist gets an in-app Review & sign action on an issued
- *  electronic-mode order; everyone else only ever gets a download control. */
+ *  electronic-mode order; everyone else only ever gets a download control.
+ *  `canManageCountersign` gates the Mark-countersigned action itself, on top of
+ *  the broad producer/admin split. */
 function PrimaryAction({
-  canManage, canSign, status, isElectronic, hasPdf, onDownload, downloadBusy, onCountersign, countersignBusy, onSign,
+  canManage, canManageCountersign, canSign, status, isElectronic, hasPdf, onDownload, downloadBusy, onCountersign, countersignBusy, onSign,
 }: ActionProps) {
   if (canSign) {
     return (
@@ -356,7 +366,8 @@ function PrimaryAction({
       return <p className="text-sm text-muted-foreground">Awaiting artist signature</p>;
     }
     return (
-      <Button className="w-full" onClick={onCountersign} disabled={countersignBusy}>
+      <Button className="w-full" onClick={onCountersign} disabled={countersignBusy || !canManageCountersign}
+        title={canManageCountersign ? undefined : "You don't have permission to countersign hire orders"}>
         Mark countersigned
       </Button>
     );

@@ -77,6 +77,60 @@ Deno.test("airtable-schema: non-admin (no membership, not super-admin) → 403",
   assertEquals(res.status, 403);
 });
 
+// === Spec: producer_can_configure_airtable capability ===
+//
+// Admins/super-admins bypass the capability gate outright (requireOrgRole's admin
+// check passes first). A caller who is only a producer of the target org must
+// additionally hold the producer_can_configure_airtable capability.
+
+Deno.test("airtable-schema: producer with producer_can_configure_airtable ON → 200", async () => {
+  const fetchImpl: typeof fetch = () => Promise.resolve(airtableJson({ bases: [] })) as Promise<Response>;
+  const { deps } = makeFakeDeps({
+    authUser: { id: "u-producer" },
+    tables: {
+      org_memberships: { data: { role: "producer" }, error: null },
+      platform_admins: { data: null, error: null },
+    },
+    rpcs: {
+      get_org_airtable_key: { data: PAT, error: null },
+      is_capability_enabled: { data: true, error: null },
+    },
+    fetchImpl,
+  });
+  const res = await handle(adminReq({ org_id: ORG }), deps);
+  assertEquals(res.status, 200);
+  assertEquals((await res.json()).schemaAccessible, true);
+});
+
+Deno.test("airtable-schema: producer with producer_can_configure_airtable OFF → 403 capability_disabled, no Airtable fetch", async () => {
+  let fetched = 0;
+  const { deps } = makeFakeDeps({
+    authUser: { id: "u-producer" },
+    tables: {
+      org_memberships: { data: { role: "producer" }, error: null },
+      platform_admins: { data: null, error: null },
+    },
+    rpcs: {
+      get_org_airtable_key: { data: PAT, error: null },
+      is_capability_enabled: { data: false, error: null },
+    },
+    fetchImpl: () => { fetched++; return Promise.resolve(airtableJson({})) as Promise<Response>; },
+  });
+  const res = await handle(adminReq({ org_id: ORG }), deps);
+  assertEquals(res.status, 403);
+  assertEquals((await res.json()).error, "capability_disabled");
+  assertEquals(fetched, 0);
+});
+
+Deno.test("airtable-schema: admin bypasses the capability gate entirely (never calls is_capability_enabled)", async () => {
+  const { deps, calls } = adminDeps({
+    fetchImpl: () => Promise.resolve(airtableJson({ bases: [] })) as Promise<Response>,
+  });
+  const res = await handle(adminReq({ org_id: ORG }), deps);
+  assertEquals(res.status, 200);
+  assertEquals(calls.some((c) => c.table === "rpc:is_capability_enabled"), false);
+});
+
 Deno.test("airtable-schema: no Vault key → 400, no Airtable fetch", async () => {
   let fetched = 0;
   const { deps } = adminDeps({

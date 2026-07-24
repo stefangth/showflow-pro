@@ -1,5 +1,6 @@
 import { preflight, json } from "../_shared/http.ts";
 import { requireCronSecret, requireOrgRole } from "../_shared/auth.ts";
+import { requireCapability } from "../_shared/capabilities.ts";
 import type { Json, TablesInsert, TablesUpdate } from "../_shared/database.types.ts";
 import { realDeps, type Deps } from "../_shared/deps.ts";
 import { getActiveOrgs, resolveOrgSetting } from "../_shared/settings.ts";
@@ -546,9 +547,10 @@ async function syncOneOrg(deps: Deps, orgId: string): Promise<OrgSyncResult | nu
  * Disabled orgs are skipped silently. One org's failure never aborts the others.
  *
  * Auth: TWO paths. (1) X-Cron-Secret header → the cross-org fan-out over EVERY active
- * org (gated per-org by airtable_poll_interval_minutes). (2) An org-admin JWT + { org_id }
- * body → a manual "Sync now" for that ONE org only (requireOrgRole, gate bypassed). The
- * fan-out is never reachable via a JWT, so a single org's admin can't drive cross-org writes.
+ * org (gated per-org by airtable_poll_interval_minutes). (2) An org-admin (or a producer
+ * with producer_can_trigger_sync on) JWT + { org_id } body → a manual "Sync now" for that
+ * ONE org only (requireOrgRole, interval gate bypassed). The fan-out is never reachable
+ * via a JWT, so a single org's admin/producer can't drive cross-org writes.
  */
 export async function handle(req: Request, deps: Deps): Promise<Response> {
   if (req.method === "OPTIONS") return preflight();
@@ -565,8 +567,15 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
     try { body = await req.json(); } catch { /* empty/invalid body → handled below */ }
     const orgId = body?.org_id;
     if (!orgId) return json({ error: "org_id required" }, 400);
-    const roleCheck = await requireOrgRole(deps, req, orgId, ["admin"]);
-    if (!roleCheck.ok) return roleCheck.response;
+    // Admins bypass the capability gate outright; a producer additionally needs
+    // producer_can_trigger_sync on for this org.
+    const adminCheck = await requireOrgRole(deps, req, orgId, ["admin"]);
+    if (!adminCheck.ok) {
+      const producerCheck = await requireOrgRole(deps, req, orgId, ["producer"]);
+      if (!producerCheck.ok) return producerCheck.response;
+      const capGate = await requireCapability(deps, orgId, "producer_can_trigger_sync");
+      if (capGate) return capGate;
+    }
     try {
       const result = await syncOneOrg(deps, orgId);
       return json({ ok: true, orgs_synced: result ? 1 : 0, result });

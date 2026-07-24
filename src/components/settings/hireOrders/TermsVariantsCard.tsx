@@ -28,10 +28,12 @@ function ClauseListEditor({
   variantKey,
   clauses,
   onChange,
+  readOnly = false,
 }: {
   variantKey: VariantKey;
   clauses: HireOrderClause[];
   onChange: (next: HireOrderClause[]) => void;
+  readOnly?: boolean;
 }) {
   const label = VARIANT_LABELS[variantKey];
   return (
@@ -42,6 +44,7 @@ function ClauseListEditor({
           type="button"
           variant="outline"
           size="sm"
+          disabled={readOnly}
           onClick={() => onChange([...clauses, { title: "", body: "" }])}
         >
           <Plus className="h-3.5 w-3.5 mr-1.5" />
@@ -62,6 +65,7 @@ function ClauseListEditor({
               value={clause.title}
               placeholder="Clause title"
               className="flex-1"
+              disabled={readOnly}
               onChange={(e) =>
                 onChange(clauses.map((c, j) => (j === i ? { ...c, title: e.target.value } : c)))
               }
@@ -71,6 +75,7 @@ function ClauseListEditor({
               variant="ghost"
               size="icon"
               aria-label={`Remove ${label} clause ${i + 1}`}
+              disabled={readOnly}
               onClick={() => onChange(clauses.filter((_, j) => j !== i))}
             >
               <Trash2 className="h-3.5 w-3.5" />
@@ -81,6 +86,7 @@ function ClauseListEditor({
             rows={2}
             value={clause.body}
             placeholder="Clause text"
+            disabled={readOnly}
             onChange={(e) =>
               onChange(clauses.map((c, j) => (j === i ? { ...c, body: e.target.value } : c)))
             }
@@ -91,7 +97,7 @@ function ClauseListEditor({
   );
 }
 
-export function TermsVariantsCard({ orgId }: { orgId: string | null }) {
+export function TermsVariantsCard({ orgId, readOnly = false }: { orgId: string | null; readOnly?: boolean }) {
   const qc = useQueryClient();
   const { data, isLoading, isError, error } = useQuery({
     queryKey: ["app-settings", "hire_order_terms", orgId],
@@ -144,12 +150,12 @@ export function TermsVariantsCard({ orgId }: { orgId: string | null }) {
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-6">
-        <ClauseListEditor variantKey="lean" clauses={form.lean} onChange={(next) => setForm((f) => ({ ...f, lean: next }))} />
+        <ClauseListEditor variantKey="lean" clauses={form.lean} onChange={(next) => setForm((f) => ({ ...f, lean: next }))} readOnly={readOnly} />
         <Separator />
-        <ClauseListEditor variantKey="standard" clauses={form.standard} onChange={(next) => setForm((f) => ({ ...f, standard: next }))} />
+        <ClauseListEditor variantKey="standard" clauses={form.standard} onChange={(next) => setForm((f) => ({ ...f, standard: next }))} readOnly={readOnly} />
         <Separator />
-        <ClauseListEditor variantKey="full" clauses={form.full} onChange={(next) => setForm((f) => ({ ...f, full: next }))} />
-        <Button onClick={() => save.mutate()} disabled={save.isPending || !orgId}>
+        <ClauseListEditor variantKey="full" clauses={form.full} onChange={(next) => setForm((f) => ({ ...f, full: next }))} readOnly={readOnly} />
+        <Button onClick={() => save.mutate()} disabled={readOnly || save.isPending || !orgId}>
           Save terms
         </Button>
       </CardContent>

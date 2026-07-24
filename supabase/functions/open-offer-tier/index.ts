@@ -1,5 +1,6 @@
 import { preflight, json } from "../_shared/http.ts";
 import { isServiceRole, requireRole, requireOrgRole } from "../_shared/auth.ts";
+import { requireCapability } from "../_shared/capabilities.ts";
 import type { TablesInsert } from "../_shared/database.types.ts";
 import { resolveBookingFlow, referenceLabel } from "../_shared/bookingFlow.ts";
 import { emailWasSent, realDeps, type Deps } from "../_shared/deps.ts";
@@ -71,10 +72,16 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
 
   // Org-scoped authorization: an admin/producer may only open offers for a date in
   // their OWN org. Service-role (cron / airtable-poll) bypasses; requireOrgRole also
-  // accepts super-admins.
+  // accepts super-admins. Admins bypass the capability gate outright; a producer
+  // additionally needs producer_can_run_offer_engine on for this org.
   if (!isServiceRole(deps, req)) {
-    const auth = await requireOrgRole(deps, req, showDate.org_id, ["admin", "producer"])
-    if (!auth.ok) return auth.response
+    const adminAuth = await requireOrgRole(deps, req, showDate.org_id, ["admin"])
+    if (!adminAuth.ok) {
+      const producerAuth = await requireOrgRole(deps, req, showDate.org_id, ["producer"])
+      if (!producerAuth.ok) return producerAuth.response
+      const capGate = await requireCapability(deps, showDate.org_id, "producer_can_run_offer_engine")
+      if (capGate) return capGate
+    }
   }
 
   // Direct-booking orgs (booking_flow.artist_acceptance = false) skip the offer

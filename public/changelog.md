@@ -2,6 +2,19 @@
 
 What's new in ShowFlow, newest first.
 
+## 1.11.0 — July 23, 2026
+
+*Granular producer permissions*
+
+### New
+- **Roles & permissions** — A new Settings section lets admins decide exactly what producers may do in the organization, from creating productions and confirming bookings to issuing hire orders. Rights are grouped by area, and the more consequential ones ask for confirmation before they change.
+- **Invitation controls on the Artists page** — Producers can now resend or revoke a pending artist invitation right where they manage the roster, instead of asking an admin.
+
+### Improved
+- **Producers can manage the artist roster** — Adding an artist, importing artists in bulk, and sending app invites are now available to producers by default. Admins can switch any of these off for their organization.
+- **More settings visible to producers** — Booking flow, Airtable sync, Filters, Notifications, Hire orders, and Organization now open for producers in read-only form, so they can see how the organization is set up. Editing stays available only where an admin has granted the right.
+- **Permissions apply everywhere** — Every right is enforced by the server as well as the interface, so a turned-off right blocks the action itself, not just the button.
+
 ## 1.10.3 — July 22, 2026
 
 *Easier settings navigation*

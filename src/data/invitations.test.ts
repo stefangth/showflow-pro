@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { createFakeSupabase } from "@/test/supabaseFake";
-import { createInvitation, fetchOrgInvitations, revokeInvitation, acceptInvitation, acceptInviteUrl, resendInvitation, inviteArtistToApp } from "./invitations";
+import { createInvitation, fetchOrgInvitations, revokeInvitation, acceptInvitation, acceptInviteUrl, resendInvitation, inviteArtistToApp, fetchPendingArtistInvitations } from "./invitations";
 
 const INV = { id: "inv1", org_id: "o1", email: "x@y.com", role: "producer", status: "pending", token: "tok123", expires_at: "2099-01-01" };
 
@@ -121,5 +121,33 @@ describe("inviteArtistToApp", () => {
       method: "invoke",
       args: [{ org_id: "o1", email: "x@y.com", role: "artist", app_origin: window.location.origin, artist_id: "art-1" }],
     });
+  });
+});
+
+describe("fetchPendingArtistInvitations", () => {
+  it("queries org_invitations by org_id, status pending, role artist, and maps artist_id -> artistId", async () => {
+    const rows = [
+      { id: "inv1", artist_id: "art-1", email: "a1@x.com" },
+      { id: "inv2", artist_id: null, email: "a2@x.com" },
+    ];
+    const fake = createFakeSupabase({ org_invitations: { data: rows, error: null } });
+    const result = await fetchPendingArtistInvitations(fake as never, "o1");
+    expect(result).toEqual([
+      { id: "inv1", artistId: "art-1", email: "a1@x.com" },
+      { id: "inv2", artistId: null, email: "a2@x.com" },
+    ]);
+    expect(fake.calls).toContainEqual({ table: "org_invitations", method: "eq", args: ["org_id", "o1"] });
+    expect(fake.calls).toContainEqual({ table: "org_invitations", method: "eq", args: ["status", "pending"] });
+    expect(fake.calls).toContainEqual({ table: "org_invitations", method: "eq", args: ["role", "artist"] });
+  });
+
+  it("returns [] when there are no pending artist invitations", async () => {
+    const fake = createFakeSupabase({ org_invitations: { data: [], error: null } });
+    expect(await fetchPendingArtistInvitations(fake as never, "o1")).toEqual([]);
+  });
+
+  it("throws on error", async () => {
+    const fake = createFakeSupabase({ org_invitations: { data: null, error: { message: "boom" } } });
+    await expect(fetchPendingArtistInvitations(fake as never, "o1")).rejects.toBeTruthy();
   });
 });

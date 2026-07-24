@@ -31,7 +31,17 @@ Object.assign(client, createFakeSupabase({
 // vi.hoisted holder pattern in BookingFlowTab.test.tsx.
 vi.mock("@/features/auth/AuthContext", () => ({ useAuth: vi.fn() }));
 
+// useCan is mocked directly (rather than seeding org_capabilities/org_capability_policies)
+// so ON/OFF states are one-line, synchronous, and don't depend on the real resolver's
+// async settle. Every other export of the module (useCapabilityMatrix, etc., used by the
+// admin-only PermissionsTab, which these tests never mount) keeps its real implementation.
+vi.mock("@/hooks/useCapabilities", async (orig) => ({
+  ...(await orig<typeof import("@/hooks/useCapabilities")>()),
+  useCan: vi.fn(),
+}));
+
 import { useAuth } from "@/features/auth/AuthContext";
+import { useCan } from "@/hooks/useCapabilities";
 import SettingsPage from "./SettingsPage";
 
 const DEFAULT_AUTH = {
@@ -40,6 +50,13 @@ const DEFAULT_AUTH = {
   isSuperAdmin: false,
   refreshOrgs: async () => {},
 };
+
+// Real useCan always returns true for admins regardless of capability state; every
+// existing test in this file exercises an admin, so default the mock the same way —
+// only the producer-specific describe block below overrides it per action key.
+beforeEach(() => {
+  vi.mocked(useCan).mockReturnValue(true);
+});
 
 describe("SettingsPage Booking flow tab Save affordance", () => {
   beforeEach(() => {
@@ -139,15 +156,62 @@ describe("SettingsPage grouped vertical nav", () => {
     expect(await screen.findByRole("tab", { name: /casts & cities/i })).toHaveAttribute("aria-selected", "true");
   });
 
-  it("hides admin-only sections and empty group headings for a producer", async () => {
+  // Broad Settings, read-only floor: these tabs used to be admin-only. A producer now
+  // sees them too (read-only unless granted the matching capability) — only the rights
+  // matrix itself ("Roles & permissions") stays admin-only.
+  it("shows a producer the previously admin-only nav items, but not Roles & permissions", async () => {
     vi.mocked(useAuth).mockReturnValue({
       ...DEFAULT_AUTH,
       hasRole: (r: string) => r === "producer",
     } as never);
     renderWithProviders(<MemoryRouter><SettingsPage /></MemoryRouter>);
     await screen.findByRole("tab", { name: /scheduling/i });
-    expect(screen.queryByRole("tab", { name: /airtable sync/i })).not.toBeInTheDocument();
-    // Filters + Notifications are admin-only, so the whole Preferences group disappears.
-    expect(screen.queryByText("Preferences")).not.toBeInTheDocument();
+    expect(screen.getByRole("tab", { name: /airtable sync/i })).toBeInTheDocument();
+    expect(screen.getByRole("tab", { name: /booking flow/i })).toBeInTheDocument();
+    expect(screen.getByRole("tab", { name: /^filters$/i })).toBeInTheDocument();
+    expect(screen.getByRole("tab", { name: /^notifications$/i })).toBeInTheDocument();
+    expect(screen.getByRole("tab", { name: /^organization$/i })).toBeInTheDocument();
+    expect(screen.queryByRole("tab", { name: /roles & permissions/i })).not.toBeInTheDocument();
+  });
+});
+
+describe("SettingsPage producer capability read-only floor", () => {
+  // The Filters and Notifications sections are rendered inline (not separate tab
+  // components), so their read-only threading is exercised here rather than in a
+  // component-level test file.
+  beforeEach(() => {
+    vi.mocked(useAuth).mockReturnValue({
+      ...DEFAULT_AUTH,
+      hasRole: (r: string) => r === "producer",
+    } as never);
+  });
+
+  it("disables the Notifications switch (but still shows its value) when edit_filter_settings is off", async () => {
+    vi.mocked(useCan).mockImplementation((action: string) => action !== "edit_filter_settings");
+    renderWithProviders(<MemoryRouter><SettingsPage /></MemoryRouter>);
+    fireEvent.mouseDown(await screen.findByRole("tab", { name: /^notifications$/i }));
+
+    const toggle = await screen.findByRole("switch");
+    expect(toggle).toBeDisabled();
+    // Read floor: the value (default on) still renders, just can't be changed.
+    expect(toggle).toHaveAttribute("aria-checked", "true");
+  });
+
+  it("enables the Notifications switch once edit_filter_settings is on", async () => {
+    vi.mocked(useCan).mockImplementation(() => true);
+    renderWithProviders(<MemoryRouter><SettingsPage /></MemoryRouter>);
+    fireEvent.mouseDown(await screen.findByRole("tab", { name: /^notifications$/i }));
+
+    expect(await screen.findByRole("switch")).toBeEnabled();
+  });
+
+  it("disables every Filter-visibility switch when edit_filter_settings is off", async () => {
+    vi.mocked(useCan).mockImplementation((action: string) => action !== "edit_filter_settings");
+    renderWithProviders(<MemoryRouter><SettingsPage /></MemoryRouter>);
+    fireEvent.mouseDown(await screen.findByRole("tab", { name: /^filters$/i }));
+
+    const switches = await screen.findAllByRole("switch");
+    expect(switches.length).toBeGreaterThan(0);
+    for (const s of switches) expect(s).toBeDisabled();
   });
 });

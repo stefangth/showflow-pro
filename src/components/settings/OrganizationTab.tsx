@@ -14,8 +14,15 @@ import { Label } from "@/components/ui/label";
 const schema = z.object({ name: z.string().min(1, "Required") });
 type Values = z.infer<typeof schema>;
 
-/** Admin-only: rename the current org (name only; slug is shown read-only). */
-export function OrganizationTab() {
+interface Props {
+  /** Capability floor: the org name still renders, but a producer without
+   *  `rename_org` can't submit a change. Admins always pass `false` here. */
+  readOnly?: boolean;
+}
+
+/** Rename the current org (name only; slug is shown read-only). Producers see this tab
+ *  read-only unless granted the `rename_org` capability; admins always may edit. */
+export function OrganizationTab({ readOnly = false }: Props) {
   const { currentOrg, refreshOrgs } = useAuth();
   const form = useForm<Values>({ resolver: zodResolver(schema), values: { name: currentOrg?.name ?? "" } });
 
@@ -40,14 +47,14 @@ export function OrganizationTab() {
         <form onSubmit={form.handleSubmit((v) => mutation.mutate(v))} className="space-y-4 max-w-md">
           <div className="space-y-1.5">
             <Label htmlFor="org-name">Organization name</Label>
-            <Input id="org-name" {...form.register("name")} />
+            <Input id="org-name" disabled={readOnly} {...form.register("name")} />
             {form.formState.errors.name && <p className="text-xs text-destructive">{form.formState.errors.name.message}</p>}
           </div>
           <div className="space-y-1.5">
             <Label htmlFor="org-slug">Slug</Label>
             <Input id="org-slug" value={currentOrg.slug} disabled readOnly />
           </div>
-          <Button type="submit" disabled={mutation.isPending}>{mutation.isPending ? "Saving…" : "Save"}</Button>
+          <Button type="submit" disabled={readOnly || mutation.isPending}>{mutation.isPending ? "Saving…" : "Save"}</Button>
         </form>
       </CardContent>
     </Card>

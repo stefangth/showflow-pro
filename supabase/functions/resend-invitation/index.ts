@@ -1,5 +1,6 @@
 import { preflight, json } from "../_shared/http.ts";
 import { requireOrgRole } from "../_shared/auth.ts";
+import { requireCapability } from "../_shared/capabilities.ts";
 import { realDeps, type Deps } from "../_shared/deps.ts";
 import { deliverOrgInvitation } from "../_shared/invitations.ts";
 
@@ -20,9 +21,16 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
       .maybeSingle();
 
     // Authorize BEFORE disclosing anything (same 403 whether missing or unauthorized).
+    // Admins bypass the capability gate outright; a producer additionally needs
+    // producer_can_view_linked_accounts on for this org.
     if (!invite) return json({ error: "Forbidden" }, 403);
-    const auth = await requireOrgRole(deps, req, invite.org_id, ["admin"]);
-    if (!auth.ok) return auth.response;
+    const adminAuth = await requireOrgRole(deps, req, invite.org_id, ["admin"]);
+    if (!adminAuth.ok) {
+      const prodAuth = await requireOrgRole(deps, req, invite.org_id, ["producer"]);
+      if (!prodAuth.ok) return prodAuth.response;
+      const capGate = await requireCapability(deps, invite.org_id, "producer_can_view_linked_accounts");
+      if (capGate) return capGate;
+    }
 
     if (invite.status !== "pending") return json({ error: "Invitation is not pending" }, 409);
 

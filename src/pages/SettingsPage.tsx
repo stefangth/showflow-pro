@@ -8,6 +8,7 @@ import { supabase } from '@/integrations/supabase/client';
 import type { Json } from '@/integrations/supabase/types';
 import { useAuth } from '@/features/auth/AuthContext';
 import { useFeature } from '@/hooks/useEntitlements';
+import { useCan } from '@/hooks/useCapabilities';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
@@ -15,7 +16,7 @@ import { Switch } from '@/components/ui/switch';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { toast } from 'sonner';
-import { Settings as SettingsIcon, Database, Bell, Wand2, Save, SlidersHorizontal, MapPin, Clock, BookOpen, UserCog, Building2, FileSignature } from 'lucide-react';
+import { Settings as SettingsIcon, Database, Bell, Wand2, Save, SlidersHorizontal, MapPin, Clock, BookOpen, UserCog, Building2, FileSignature, ShieldCheck } from 'lucide-react';
 import { upsertOrgSetting, mergeOrgRows } from '@/data/settings';
 import { computeSettingsDirtyKeys } from '@/lib/settings';
 import { AirtableSyncTab } from '@/components/settings/AirtableSyncTab';
@@ -26,6 +27,7 @@ import { DocumentationTab } from '@/components/settings/DocumentationTab';
 import { BookingFlowTab } from '@/components/settings/bookingFlow/BookingFlowTab';
 import { BOOKING_AUDIT_KEYS } from '@/components/settings/bookingFlow/auditKeys';
 import { HireOrdersTab } from '@/components/settings/hireOrders/HireOrdersTab';
+import { PermissionsTab } from '@/components/settings/permissions/PermissionsTab';
 
 type FilterKey = 'program' | 'timeframe' | 'sort' | 'status';
 const FILTER_KEYS: FilterKey[] = ['program', 'timeframe', 'sort', 'status'];
@@ -141,6 +143,16 @@ export default function SettingsPage() {
   const canEnter = isAdmin || isProducer;
   const { schedulingWarnings } = useSettingsWarnings();
 
+  // Broad Settings, read-only floor: these tabs are now visible to producers, but every
+  // write control inside them stays gated behind its own capability (admins always pass,
+  // see useCan). Called unconditionally at top level for every render — Rules of Hooks.
+  const canEditBookingSettings = useCan('edit_booking_settings');
+  const canConfigureAirtable = useCan('configure_airtable');
+  const canTriggerSync = useCan('trigger_sync');
+  const canEditHireOrderSettings = useCan('edit_hire_order_settings');
+  const canEditFilterSettings = useCan('edit_filter_settings');
+  const canRenameOrg = useCan('rename_org');
+
   // Controlled so we know which tab is active: the Booking flow tab renders its own
   // scoped Save/Discard in FlowRail, and the page-level control must defer to it there.
   const [activeTab, setActiveTab] = useState(isAdmin ? 'organization' : 'scheduling');
@@ -225,19 +237,20 @@ export default function SettingsPage() {
 
   const navGroups: { heading: string; items: { value: string; label: string; icon: typeof Building2; show: boolean; dot?: boolean }[] }[] = [
     { heading: "Organization", items: [
-      { value: "organization", label: "Organization", icon: Building2, show: isAdmin },
+      { value: "organization", label: "Organization", icon: Building2, show: isAdmin || isProducer },
+      { value: "permissions", label: "Roles & permissions", icon: ShieldCheck, show: isAdmin },
       { value: "production-ownership", label: "Production Ownership", icon: UserCog, show: isAdmin || isProducer },
       { value: "casts-cities", label: "Casts & Cities", icon: MapPin, show: true },
     ] },
     { heading: "Automation", items: [
-      { value: "airtable", label: "Airtable Sync", icon: Database, show: isAdmin },
-      { value: "booking", label: "Booking flow", icon: Wand2, show: isAdmin },
+      { value: "airtable", label: "Airtable Sync", icon: Database, show: isAdmin || isProducer },
+      { value: "booking", label: "Booking flow", icon: Wand2, show: isAdmin || isProducer },
       { value: "scheduling", label: "Scheduling", icon: Clock, show: true, dot: schedulingWarnings > 0 },
-      { value: "hire-orders", label: "Hire orders", icon: FileSignature, show: isAdmin && hireOrdersEntitled },
+      { value: "hire-orders", label: "Hire orders", icon: FileSignature, show: (isAdmin || isProducer) && hireOrdersEntitled },
     ] },
     { heading: "Preferences", items: [
-      { value: "filters", label: "Filters", icon: SlidersHorizontal, show: isAdmin },
-      { value: "notifications", label: "Notifications", icon: Bell, show: isAdmin },
+      { value: "filters", label: "Filters", icon: SlidersHorizontal, show: isAdmin || isProducer },
+      { value: "notifications", label: "Notifications", icon: Bell, show: isAdmin || isProducer },
     ] },
     { heading: "Help", items: [
       { value: "docs", label: "Documentation", icon: BookOpen, show: true },
@@ -334,14 +347,20 @@ export default function SettingsPage() {
           </Card>
         </TabsContent>
 
-        {isAdmin && (
+        {(isAdmin || isProducer) && (
           <TabsContent value="organization" className="mt-4">
-            <OrganizationTab />
+            <OrganizationTab readOnly={!canRenameOrg} />
+          </TabsContent>
+        )}
+
+        {isAdmin && (
+          <TabsContent value="permissions" className="mt-4">
+            <PermissionsTab />
           </TabsContent>
         )}
 
         <TabsContent value="airtable" className="mt-4">
-          <AirtableSyncTab orgId={orgId} />
+          <AirtableSyncTab orgId={orgId} readOnly={!canConfigureAirtable} canTriggerSync={canTriggerSync} />
         </TabsContent>
 
         <TabsContent value="filters" className="mt-4 space-y-6">
@@ -376,6 +395,7 @@ export default function SettingsPage() {
                                   <td key={key} className="text-center py-2 px-2">
                                     <Switch
                                       checked={!!row[key]}
+                                      disabled={!canEditFilterSettings}
                                       onCheckedChange={(v) => {
                                         const all = (get('filters_visibility', {}) as FiltersVisibility) ?? {};
                                         const nextPage = { ...(all[page] ?? {}) };
@@ -410,12 +430,13 @@ export default function SettingsPage() {
             saving={saveMutation.isPending}
             onSave={handleSaveBooking}
             onDiscard={handleDiscardBooking}
+            readOnly={!canEditBookingSettings}
           />
         </TabsContent>
 
-        {isAdmin && hireOrdersEntitled && (
+        {(isAdmin || isProducer) && hireOrdersEntitled && (
           <TabsContent value="hire-orders" className="mt-4">
-            <HireOrdersTab />
+            <HireOrdersTab readOnly={!canEditHireOrderSettings} />
           </TabsContent>
         )}
 
@@ -433,6 +454,7 @@ export default function SettingsPage() {
                 </div>
                 <Switch
                   checked={!!get('notifications_enabled', true)}
+                  disabled={!canEditFilterSettings}
                   onCheckedChange={v => set('notifications_enabled', v)}
                 />
               </div>

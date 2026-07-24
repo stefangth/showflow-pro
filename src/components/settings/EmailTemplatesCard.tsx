@@ -31,7 +31,7 @@ const EMAIL_TEMPLATE_LABELS: Record<EmailTemplateKey, string> = {
   'hire-order-issued': 'Hire Order Issued',
 };
 
-export function EmailTemplatesCard({ get, set }: { get: (key: string, fallback?: unknown) => unknown; set: (key: string, value: unknown) => void }) {
+export function EmailTemplatesCard({ get, set, readOnly = false }: { get: (key: string, fallback?: unknown) => unknown; set: (key: string, value: unknown) => void; readOnly?: boolean }) {
   const [previewOpen, setPreviewOpen] = useState(false);
   const [previewHtml, setPreviewHtml] = useState('');
   const [previewLoading, setPreviewLoading] = useState(false);
@@ -94,6 +94,7 @@ export function EmailTemplatesCard({ get, set }: { get: (key: string, fallback?:
                   <Input
                     placeholder="Default subject"
                     value={(overrides[templateKey]?.subject) ?? ''}
+                    disabled={readOnly}
                     onChange={e => setOverride(templateKey, 'subject', e.target.value)}
                   />
                 </div>
@@ -102,6 +103,7 @@ export function EmailTemplatesCard({ get, set }: { get: (key: string, fallback?:
                   <Input
                     placeholder="Default CTA label"
                     value={(overrides[templateKey]?.cta_label) ?? ''}
+                    disabled={readOnly}
                     onChange={e => setOverride(templateKey, 'cta_label', e.target.value)}
                   />
                 </div>
@@ -110,6 +112,7 @@ export function EmailTemplatesCard({ get, set }: { get: (key: string, fallback?:
                   <Input
                     placeholder="Default intro text"
                     value={(overrides[templateKey]?.intro) ?? ''}
+                    disabled={readOnly}
                     onChange={e => setOverride(templateKey, 'intro', e.target.value)}
                   />
                 </div>
@@ -118,6 +121,7 @@ export function EmailTemplatesCard({ get, set }: { get: (key: string, fallback?:
                   <Input
                     placeholder="Default footer text"
                     value={(overrides[templateKey]?.footer) ?? ''}
+                    disabled={readOnly}
                     onChange={e => setOverride(templateKey, 'footer', e.target.value)}
                   />
                 </div>

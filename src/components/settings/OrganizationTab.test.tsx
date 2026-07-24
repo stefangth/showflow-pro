@@ -36,4 +36,21 @@ describe("OrganizationTab", () => {
     await waitFor(() => expect(renameOrg).toHaveBeenCalledWith({}, "org-1", "Acme Theatre"));
     await waitFor(() => expect(refreshOrgs).toHaveBeenCalled());
   });
+
+  // Capability read-only floor: a producer without `rename_org` sees the real org name
+  // but can't submit a change.
+  describe("readOnly", () => {
+    it("disables the name input and Save button, but still shows the real name", () => {
+      renderWithProviders(<OrganizationTab readOnly />);
+      expect(screen.getByLabelText(/organization name/i)).toHaveValue("Acme");
+      expect(screen.getByLabelText(/organization name/i)).toBeDisabled();
+      expect(screen.getByRole("button", { name: /save/i })).toBeDisabled();
+    });
+
+    it("leaves the input and Save button enabled when readOnly is false", () => {
+      renderWithProviders(<OrganizationTab readOnly={false} />);
+      expect(screen.getByLabelText(/organization name/i)).toBeEnabled();
+      expect(screen.getByRole("button", { name: /save/i })).toBeEnabled();
+    });
+  });
 });

@@ -1,21 +1,115 @@
 import { describe, expect, it } from "vitest";
 import {
-  CAPABILITY_KEYS, CAPABILITY_REGISTRY, enabledCapabilities, isCapabilityEnabled,
+  CAPABILITY_DEFS,
+  CAPABILITY_KEYS,
+  capabilityByKey,
+  capabilityFor,
+  enabledCapabilities,
+  isCapabilityEnabled,
 } from "./capabilities";
+import { resolveCapability, resolveAllCapabilities } from "./capabilities";
+import { CAPABILITY_GROUPS, capabilitiesByGroup } from "./capabilities";
 
-describe("capabilities registry", () => {
-  it("producer_can_invite defaults to off (no row)", () => {
-    expect(isCapabilityEnabled([], "producer_can_invite")).toBe(false);
-    expect(enabledCapabilities([]).has("producer_can_invite")).toBe(false);
+describe("capability registry", () => {
+  it("has 27 producer rights, all role=producer, unique keys", () => {
+    expect(CAPABILITY_DEFS).toHaveLength(27);
+    expect(CAPABILITY_DEFS.every((d) => d.role === "producer")).toBe(true);
+    expect(new Set(CAPABILITY_KEYS).size).toBe(27);
   });
-  it("an explicit enabled row overrides the default", () => {
-    expect(isCapabilityEnabled([{ capability: "producer_can_invite", enabled: true }], "producer_can_invite")).toBe(true);
+
+  it("pins the spec defaults (§5 / §9)", () => {
+    const on = (k: string) => capabilityByKey(k)!.defaultEnabled;
+    // §9 default-ON-beyond-today
+    expect(on("producer_can_invite")).toBe(true);
+    expect(on("producer_can_manage_invitations")).toBe(true);
+    expect(on("producer_can_view_linked_accounts")).toBe(true);
+    expect(on("producer_can_issue_hire_orders")).toBe(true);
+    expect(on("producer_can_void_hire_orders")).toBe(true);
+    expect(on("producer_can_add_artists")).toBe(true);
+    // sensitive, default OFF
+    expect(on("producer_can_hard_delete_productions")).toBe(false);
+    expect(on("producer_can_edit_booking_settings")).toBe(false);
+    expect(on("producer_can_rename_org")).toBe(false);
+    expect(on("producer_can_configure_airtable")).toBe(false);
   });
-  it("an explicit disabled row stays off", () => {
-    expect(isCapabilityEnabled([{ capability: "producer_can_invite", enabled: false }], "producer_can_invite")).toBe(false);
+
+  it("capabilityFor maps (role, action) to its def", () => {
+    expect(capabilityFor("producer", "issue_hire_orders")?.key).toBe("producer_can_issue_hire_orders");
+    expect(capabilityFor("producer", "does_not_exist")).toBeUndefined();
   });
-  it("CAPABILITY_KEYS matches the registry", () => {
-    expect(CAPABILITY_KEYS).toEqual(Object.keys(CAPABILITY_REGISTRY));
-    expect(CAPABILITY_REGISTRY.producer_can_invite.defaultEnabled).toBe(false);
+
+  it("enabledCapabilities falls back to registry defaults for missing rows", () => {
+    const set = enabledCapabilities([{ capability: "producer_can_hard_delete_productions", enabled: true }]);
+    expect(set.has("producer_can_hard_delete_productions")).toBe(true); // override
+    expect(set.has("producer_can_invite")).toBe(true); // default on
+    expect(set.has("producer_can_rename_org")).toBe(false); // default off
+    expect(isCapabilityEnabled([], "producer_can_issue_hire_orders")).toBe(true);
+  });
+
+  it("hire-order rights carry the module gate", () => {
+    expect(capabilityByKey("producer_can_issue_hire_orders")!.module).toBe("hire_orders");
+    expect(capabilityByKey("producer_can_invite")!.module).toBeUndefined();
+  });
+});
+
+describe("layered resolver", () => {
+  const KEY = "producer_can_rename_org"; // registry default false
+
+  it("registry default when nothing set", () => {
+    expect(resolveCapability(KEY, { registryDefault: false })).toEqual({
+      effective: false, locked: false, source: "registry",
+    });
+  });
+
+  it("org override wins over registry default", () => {
+    expect(resolveCapability(KEY, { orgRow: { capability: KEY, enabled: true }, registryDefault: false }))
+      .toEqual({ effective: true, locked: false, source: "org" });
+  });
+
+  it("platform default applies when no org override", () => {
+    expect(resolveCapability(KEY, { policyRow: { capability: KEY, enabled: true, locked: false }, registryDefault: false }))
+      .toEqual({ effective: true, locked: false, source: "policy_default" });
+  });
+
+  it("lock overrides the org override and reports locked", () => {
+    expect(resolveCapability(KEY, {
+      orgRow: { capability: KEY, enabled: true },
+      policyRow: { capability: KEY, enabled: false, locked: true },
+      registryDefault: false,
+    })).toEqual({ effective: false, locked: true, source: "policy_lock" });
+  });
+
+  it("lock with null platform value falls back to registry default", () => {
+    expect(resolveCapability(KEY, {
+      policyRow: { capability: KEY, enabled: null, locked: true },
+      registryDefault: true,
+    })).toEqual({ effective: true, locked: true, source: "policy_lock" });
+  });
+
+  it("resolveAllCapabilities covers every registry key", () => {
+    const map = resolveAllCapabilities([], []);
+    expect(map.size).toBe(27);
+    expect(map.get("producer_can_invite")!.effective).toBe(true);
+    expect(map.get("producer_can_rename_org")!.effective).toBe(false);
+  });
+});
+
+describe("capability grouping", () => {
+  it("lists the 7 groups in registry order", () => {
+    expect(CAPABILITY_GROUPS).toEqual([
+      "Members & access",
+      "Productions & show dates",
+      "Bookings & engine",
+      "Artists",
+      "Hire orders",
+      "Settings & organization",
+      "Integrations",
+    ]);
+  });
+  it("capabilitiesByGroup partitions all 27 defs, preserving order", () => {
+    const groups = capabilitiesByGroup();
+    expect(groups.map((g) => g.group)).toEqual(CAPABILITY_GROUPS);
+    expect(groups.reduce((n, g) => n + g.defs.length, 0)).toBe(27);
+    expect(groups[0].defs.every((d) => d.group === "Members & access")).toBe(true);
   });
 });

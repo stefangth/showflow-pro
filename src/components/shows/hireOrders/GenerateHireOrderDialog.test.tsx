@@ -8,12 +8,17 @@ import { createFakeSupabase, type TableSeed } from "@/test/supabaseFake";
 // generate-hire-orders invoke). Same hoisted-fake harness as the card test.
 const { client } = vi.hoisted(() => ({ client: {} as Record<string, unknown> }));
 vi.mock("@/integrations/supabase/client", () => ({ supabase: client }));
+// The dialog now gates the Issue control on the issue_hire_orders capability.
+// No AuthContext mock is needed elsewhere in this file, so mock useCan directly
+// rather than pulling in a real AuthProvider.
+vi.mock("@/hooks/useCapabilities", async (orig) => ({ ...(await orig<typeof import("@/hooks/useCapabilities")>()), useCan: vi.fn() }));
 
 function seedClient(seed: Record<string, TableSeed>) {
   for (const key of Object.keys(client)) delete client[key];
   Object.assign(client, createFakeSupabase(seed));
 }
 
+import { useCan } from "@/hooks/useCapabilities";
 import { GenerateHireOrderDialog } from "./GenerateHireOrderDialog";
 import type { HireOrderRow } from "@/data/hireOrders";
 
@@ -49,6 +54,7 @@ beforeEach(() => {
   vi.stubGlobal("open", openSpy);
   // jsdom does not implement object URLs.
   vi.stubGlobal("URL", { ...URL, createObjectURL: vi.fn(() => "blob:fake"), revokeObjectURL: vi.fn() });
+  vi.mocked(useCan).mockReturnValue(true);
 });
 afterEach(() => vi.unstubAllGlobals());
 
@@ -81,6 +87,13 @@ describe("GenerateHireOrderDialog", () => {
     expect(screen.getByRole("radio", { name: "Lean" })).toBeInTheDocument();
     expect(screen.getByRole("radio", { name: "Standard" })).toHaveAttribute("aria-checked", "true");
     expect(screen.getByRole("radio", { name: "Full" })).toBeInTheDocument();
+  });
+
+  it("issue_hire_orders off: Issue and send is disabled, Preview PDF still works", async () => {
+    vi.mocked(useCan).mockImplementation((action: string) => action !== "issue_hire_orders");
+    renderDialog();
+    expect(screen.getByRole("button", { name: "Issue and send" })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Preview PDF" })).toBeEnabled();
   });
 
   it("persists the edited fee + variant then invokes issue, and closes on success", async () => {

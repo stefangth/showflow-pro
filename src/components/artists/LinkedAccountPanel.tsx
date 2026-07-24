@@ -14,12 +14,13 @@ interface LinkedAccountPanelProps {
   account?: { email: string | null; display_name: string | null };
   /** True while the admin account lookup is in flight. */
   accountLoading?: boolean;
-  /** Whether the viewer may see account-level PII (admins). Producers get the status only. */
+  /** Whether the viewer may see account-level PII (admins, or producers with the
+   *  `resend_account_invite` capability). Others get the status chip only. */
   canSeeAccount: boolean;
   /** Whether the viewer may invite/create (admins, or producers with the capability). */
   canInvite: boolean;
-  /** Whether the viewer may resend a pending invite. Defaults to canInvite; kept admin-only
-   *  in ArtistProfileSheet because resend reads org_invitations (admin-only RLS). */
+  /** Whether the viewer may resend a pending invite. Defaults to canInvite; ArtistProfileSheet
+   *  gates it on the `resend_account_invite` capability (admins always, producers per-org). */
   canResend?: boolean;
   onInvite?: () => void;
   onResend?: () => void;

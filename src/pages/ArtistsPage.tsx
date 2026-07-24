@@ -10,7 +10,7 @@ import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
-import { Plus, Search, Upload } from 'lucide-react';
+import { Plus, Search, Upload, RefreshCw, X } from 'lucide-react';
 import { motion } from 'framer-motion';
 import type { Artist } from '@/types';
 import { ProgramFilter } from '@/components/filters/ProgramFilter';
@@ -23,11 +23,13 @@ import { ArtistProfileSheet } from '@/components/artists/ArtistProfileSheet';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Skeleton } from '@/components/ui/skeleton';
 import { usePendingInvitedArtists } from '@/hooks/usePendingInvitedArtists';
+import { usePendingArtistInvitations } from '@/hooks/usePendingArtistInvitations';
 import { artistAccountState } from '@/lib/artistAccount';
 import { parseDateOnly } from '@/lib/dates';
 import { AccountStatusChip } from '@/components/artists/AccountStatusChip';
 import { ArtistImportDialog } from '@/components/artists/ArtistImportDialog';
-import { inviteArtistToApp } from '@/data/invitations';
+import { inviteArtistToApp, revokeInvitation, resendInvitation } from '@/data/invitations';
+import { useCan } from '@/hooks/useCapabilities';
 
 type BookingJoin = {
   id: string; artist_id: string; status: string;
@@ -38,10 +40,14 @@ type SkillJoin = { artist_id: string; skill: { id: string; name: string } | null
 type CastJoin = { artist_id: string; cast: { id: string; name: string } | null };
 
 export default function ArtistsPage() {
-  const { hasRole, currentOrg } = useAuth();
+  const { currentOrg } = useAuth();
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const { canSee } = useFilterVisibility('artists');
+  const canAddArtists = useCan('add_artists');
+  const canInviteArtists = useCan('invite_artists');
+  const canResendArtistInvite = useCan('resend_account_invite');
+  const canManageArtistInvitations = useCan('manage_artist_invitations');
 
   const [search, setSearch] = useState('');
   const [programs, setPrograms] = useState<string[]>([]);
@@ -68,6 +74,15 @@ export default function ArtistsPage() {
     () => (artists ?? []).map((a) => a.email).filter((e): e is string => !!e),
     [artists],
   );
+
+  const { data: pendingArtistInvitations } = usePendingArtistInvitations(currentOrg?.id);
+  const pendingInvitesByArtist = useMemo(() => {
+    const map = new Map<string, { id: string; email: string }>();
+    (pendingArtistInvitations ?? []).forEach((inv) => {
+      if (inv.artistId) map.set(inv.artistId, { id: inv.id, email: inv.email });
+    });
+    return map;
+  }, [pendingArtistInvitations]);
 
   const { data: bookings } = useQuery({
     queryKey: ['bookings', 'light'],
@@ -167,6 +182,21 @@ export default function ArtistsPage() {
     onError: (err: Error) => toast({ title: 'Error', description: err.message, variant: 'destructive' }),
   });
 
+  const revokeInvite = useMutation({
+    mutationFn: (invitationId: string) => revokeInvitation(supabase, invitationId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['artists'] }); // prefix also busts ['artists','pending-invitations']
+      toast({ title: 'Invite revoked' });
+    },
+    onError: (err: Error) => toast({ title: 'Error', description: err.message, variant: 'destructive' }),
+  });
+
+  const resendInvite = useMutation({
+    mutationFn: (invitationId: string) => resendInvitation(supabase, invitationId),
+    onSuccess: () => toast({ title: 'Invite re-sent' }),
+    onError: (err: Error) => toast({ title: 'Error', description: err.message, variant: 'destructive' }),
+  });
+
   const programOptions = useMemo(() => {
     const set = new Set<string>();
     bookings?.forEach(b => b.show_date?.show?.program && set.add(b.show_date.show.program));
@@ -231,12 +261,12 @@ export default function ArtistsPage() {
           <p className="text-muted-foreground mt-1">Manage your artist roster</p>
         </div>
         <div className="flex items-center gap-2">
-        {(hasRole('producer') || hasRole('admin')) && (
+        {canAddArtists && (
           <Button variant="outline" onClick={() => setImportOpen(true)}>
             <Upload className="h-4 w-4 mr-2" />Import from sheet
           </Button>
         )}
-        {hasRole('admin') && (
+        {canAddArtists && (
           <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
             <DialogTrigger asChild>
               <Button><Plus className="h-4 w-4 mr-2" />Add Artist</Button>
@@ -310,11 +340,12 @@ export default function ArtistsPage() {
                       </div>
                       {(() => {
                         const accountState = artistAccountState(artist, pendingSet);
+                        const pendingInvite = pendingInvitesByArtist.get(artist.id);
                         return (
                           <div className="flex flex-col items-end gap-2">
                             <Badge variant="secondary" className={statusColor[artist.status] ?? ''}>{artist.status}</Badge>
                             <AccountStatusChip state={accountState} />
-                            {accountState === 'none' && hasRole('admin') && (
+                            {accountState === 'none' && canInviteArtists && (
                               <Button
                                 size="sm"
                                 variant="outline"
@@ -324,6 +355,34 @@ export default function ArtistsPage() {
                               >
                                 Invite
                               </Button>
+                            )}
+                            {pendingInvite && (canResendArtistInvite || canManageArtistInvitations) && (
+                              <div className="flex items-center gap-1">
+                                {canResendArtistInvite && (
+                                  <Button
+                                    size="icon"
+                                    variant="ghost"
+                                    className="h-6 w-6"
+                                    aria-label="Resend invite"
+                                    onClick={(e) => { e.stopPropagation(); resendInvite.mutate(pendingInvite.id); }}
+                                    disabled={resendInvite.isPending}
+                                  >
+                                    <RefreshCw className="h-3.5 w-3.5" />
+                                  </Button>
+                                )}
+                                {canManageArtistInvitations && (
+                                  <Button
+                                    size="icon"
+                                    variant="ghost"
+                                    className="h-6 w-6"
+                                    aria-label="Revoke invite"
+                                    onClick={(e) => { e.stopPropagation(); revokeInvite.mutate(pendingInvite.id); }}
+                                    disabled={revokeInvite.isPending}
+                                  >
+                                    <X className="h-3.5 w-3.5" />
+                                  </Button>
+                                )}
+                              </div>
                             )}
                           </div>
                         );
@@ -364,7 +423,7 @@ export default function ArtistsPage() {
           onOpenChange={setImportOpen}
           orgId={currentOrg.id}
           existingEmails={existingEmails}
-          canInvite={hasRole('admin')}
+          canInvite={canInviteArtists}
         />
       )}
     </div>

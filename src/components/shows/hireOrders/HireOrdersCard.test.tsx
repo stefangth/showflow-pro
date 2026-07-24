@@ -17,6 +17,9 @@ vi.mock("@/features/auth/AuthContext", () => ({ useAuth: vi.fn() }));
 // directly (same convention as useHireOrders.test.ts / the flowCopy dashboard
 // tests) keeps this file from needing a real AuthProvider.
 vi.mock("@/hooks/useMyArtist", () => ({ useMyArtist: vi.fn() }));
+// The producer branch now gates "Generate hire orders" on the generate_hire_orders
+// capability; mock useCan the same way the other useAuth-mocking test files do.
+vi.mock("@/hooks/useCapabilities", async (orig) => ({ ...(await orig<typeof import("@/hooks/useCapabilities")>()), useCan: vi.fn() }));
 
 function seedClient(seed: Record<string, TableSeed>) {
   for (const key of Object.keys(client)) delete client[key];
@@ -25,6 +28,7 @@ function seedClient(seed: Record<string, TableSeed>) {
 
 import { useAuth } from "@/features/auth/AuthContext";
 import { useMyArtist } from "@/hooks/useMyArtist";
+import { useCan } from "@/hooks/useCapabilities";
 import { HireOrdersCard } from "./HireOrdersCard";
 
 function authAs(orgId: string) {
@@ -80,6 +84,7 @@ describe("HireOrdersCard", () => {
   beforeEach(() => {
     seedClient({ ...ENTITLEMENTS, hire_orders: { data: [], error: null } });
     vi.mocked(useMyArtist).mockReset();
+    vi.mocked(useCan).mockReturnValue(true);
   });
 
   it("renders nothing when the org is not entitled to hire_orders", async () => {
@@ -103,6 +108,16 @@ describe("HireOrdersCard", () => {
     expect(screen.getByRole("button", { name: /generate hire orders/i })).toBeInTheDocument();
     // No em/en dashes in the banner copy.
     expect(document.body.textContent).not.toMatch(/[—–]/);
+  });
+
+  it("generate_hire_orders off: Generate hire orders is disabled, the banner still reads", async () => {
+    authAs("org-on");
+    vi.mocked(useCan).mockReturnValue(false);
+    renderWithProviders(
+      <HireOrdersCard showDateId="sd-1" showDate={SHOW_DATE_FILLED} bookings={[CONFIRMED_BOOKING]} canManage />,
+    );
+    expect(await screen.findByText(/fully filled and ready for hire orders/i)).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /generate hire orders/i })).toBeDisabled();
   });
 
   it("uses the non-fully-filled banner copy when the date is not fully filled", async () => {

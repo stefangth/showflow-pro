@@ -1,5 +1,37 @@
 [
   {
+    "version": "1.11.0",
+    "date": "2026-07-23",
+    "dateLabel": "July 23, 2026",
+    "title": "Granular producer permissions",
+    "changes": {
+      "new": [
+        {
+          "title": "Roles & permissions",
+          "description": "A new Settings section lets admins decide exactly what producers may do in the organization, from creating productions and confirming bookings to issuing hire orders. Rights are grouped by area, and the more consequential ones ask for confirmation before they change."
+        },
+        {
+          "title": "Invitation controls on the Artists page",
+          "description": "Producers can now resend or revoke a pending artist invitation right where they manage the roster, instead of asking an admin."
+        }
+      ],
+      "improved": [
+        {
+          "title": "Producers can manage the artist roster",
+          "description": "Adding an artist, importing artists in bulk, and sending app invites are now available to producers by default. Admins can switch any of these off for their organization."
+        },
+        {
+          "title": "More settings visible to producers",
+          "description": "Booking flow, Airtable sync, Filters, Notifications, Hire orders, and Organization now open for producers in read-only form, so they can see how the organization is set up. Editing stays available only where an admin has granted the right."
+        },
+        {
+          "title": "Permissions apply everywhere",
+          "description": "Every right is enforced by the server as well as the interface, so a turned-off right blocks the action itself, not just the button."
+        }
+      ]
+    }
+  },
+  {
     "version": "1.10.3",
     "date": "2026-07-22",
     "dateLabel": "July 22, 2026",

@@ -1,11 +1,14 @@
-import { describe, expect, it, vi } from "vitest";
+import { describe, expect, it, vi, beforeEach } from "vitest";
 import { screen, within } from "@testing-library/react";
 import { renderWithProviders } from "@/test/renderWithProviders";
 import { OrderSlideOver } from "./OrderSlideOver";
 import { useHireOrderCountersignMode } from "@/hooks/useHireOrders";
+import { useCan } from "@/hooks/useCapabilities";
 import type { HireOrderListRow } from "@/data/hireOrders";
 
 vi.mock("react-router-dom", () => ({ useNavigate: () => vi.fn() }));
+// The panel gates Issue/Void on capabilities; mock useCan directly (no AuthProvider here).
+vi.mock("@/hooks/useCapabilities", async (orig) => ({ ...(await orig<typeof import("@/hooks/useCapabilities")>()), useCan: vi.fn() }));
 
 // Keep the real mutation hooks (they never auto-fire), but stub the one query
 // hook so no real network read runs on mount and each test can pick the mode.
@@ -28,6 +31,8 @@ function order(overrides: Partial<HireOrderListRow> & { id: string } = { id: "ho
     ...overrides,
   } as HireOrderListRow;
 }
+
+beforeEach(() => vi.mocked(useCan).mockReturnValue(true));
 
 describe("OrderSlideOver mount/close behavior", () => {
   it("mounts the Sheet driven by `open`, not gated on `order` being non-null", () => {
@@ -125,5 +130,20 @@ describe("OrderSlideOver countersign-mode gating on an issued order", () => {
     const dialog = screen.getByRole("dialog");
     expect(within(dialog).queryByRole("button", { name: /mark countersigned/i })).not.toBeInTheDocument();
     expect(within(dialog).getByRole("button", { name: /download/i })).toBeInTheDocument();
+  });
+});
+
+describe("OrderSlideOver capability gates", () => {
+  it("issue_hire_orders off: Issue and send is disabled on a draft order", () => {
+    vi.mocked(useCan).mockImplementation((action: string) => action !== "issue_hire_orders");
+    renderWithProviders(<OrderSlideOver order={order({ id: "ho-1", status: "draft" })} open onOpenChange={() => {}} orgId="org-1" />);
+    expect(screen.getByRole("button", { name: /issue and send/i })).toBeDisabled();
+  });
+
+  it("void_hire_orders off: Void is disabled, everything else still reads", () => {
+    vi.mocked(useCan).mockImplementation((action: string) => action !== "void_hire_orders");
+    renderWithProviders(<OrderSlideOver order={order({ id: "ho-1", status: "draft" })} open onOpenChange={() => {}} orgId="org-1" />);
+    expect(screen.getByRole("button", { name: /^void$/i })).toBeDisabled();
+    expect(screen.getByText("Ada Lovelace")).toBeInTheDocument();
   });
 });

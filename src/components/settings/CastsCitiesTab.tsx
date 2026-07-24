@@ -2,6 +2,8 @@ import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
+import { useCan } from '@/hooks/useCapabilities';
+import { useAuth } from '@/features/auth/AuthContext';
 import { useAllCities } from '@/hooks/useAllCities';
 import { ROUTES } from '@/config/app.config';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -24,7 +26,16 @@ type ShowOption = { id: string; program: string; sub_program: string | null };
  */
 export function CastsCitiesTab({ currentOrgId, canEnter }: { currentOrgId: string | undefined; canEnter: boolean }) {
   const qc = useQueryClient();
+  const { hasRole } = useAuth();
   const orgId = currentOrgId ?? null;
+  // canEnter (role: admin/producer, set by the Settings nav) keeps gating READ — the
+  // queries below and their `enabled` flags are unchanged. canManage is the new
+  // capability gate for the write controls only (read-only floor).
+  const canManage = useCan('manage_cities');
+  // Deleting a city stays admin-only server-side (cities DELETE RLS is not
+  // capability-gated), so gate the remove-city control on admin to avoid a
+  // producer clicking an enabled button that RLS silently rejects.
+  const canDeleteCity = hasRole('admin');
 
   const { data: cities } = useAllCities(canEnter);
   const [newCity, setNewCity] = useState('');
@@ -209,7 +220,7 @@ export function CastsCitiesTab({ currentOrgId, canEnter }: { currentOrgId: strin
             onSubmit={(e) => { e.preventDefault(); if (newCity.trim()) addCity.mutate(newCity.trim()); }}
           >
             <Input placeholder="New city name" value={newCity} onChange={e => setNewCity(e.target.value)} />
-            <Button type="submit" disabled={!newCity.trim() || addCity.isPending}>
+            <Button type="submit" disabled={!canManage || !newCity.trim() || addCity.isPending}>
               <Plus className="h-4 w-4 mr-1" />Add
             </Button>
           </form>
@@ -219,8 +230,9 @@ export function CastsCitiesTab({ currentOrgId, canEnter }: { currentOrgId: strin
                 {c.name}
                 <button
                   onClick={() => removeCity.mutate(c.id)}
-                  className="rounded hover:bg-background/40 p-0.5"
+                  className="rounded hover:bg-background/40 p-0.5 disabled:opacity-50 disabled:pointer-events-none"
                   aria-label={`Remove ${c.name}`}
+                  disabled={!canDeleteCity}
                 >
                   <Trash2 className="h-3 w-3" />
                 </button>
@@ -306,8 +318,9 @@ export function CastsCitiesTab({ currentOrgId, canEnter }: { currentOrgId: strin
                             <span className="text-sm flex-1">{cast?.name ?? '–'}</span>
                             <button
                               onClick={() => deleteCastPriority.mutate(a.id)}
-                              className="rounded hover:bg-muted p-0.5 text-muted-foreground hover:text-destructive"
+                              className="rounded hover:bg-muted p-0.5 text-muted-foreground hover:text-destructive disabled:opacity-50 disabled:pointer-events-none"
                               aria-label="Remove assignment"
+                              disabled={!canManage}
                             >
                               <Trash2 className="h-3.5 w-3.5" />
                             </button>
@@ -367,7 +380,7 @@ export function CastsCitiesTab({ currentOrgId, canEnter }: { currentOrgId: strin
                 </div>
                 <Button
                   size="sm"
-                  disabled={!newPriorityCityId || !newPriorityCastId || addCastPriority.isPending}
+                  disabled={!canManage || !newPriorityCityId || !newPriorityCastId || addCastPriority.isPending}
                   onClick={() => addCastPriority.mutate()}
                 >
                   <Plus className="h-4 w-4 mr-1" />Assign
@@ -399,7 +412,7 @@ export function CastsCitiesTab({ currentOrgId, canEnter }: { currentOrgId: strin
                             <Button
                               variant="ghost"
                               size="sm"
-                              disabled={clearShowPriority.isPending}
+                              disabled={!canManage || clearShowPriority.isPending}
                               onClick={() => clearShowPriority.mutate(a.id)}
                             >
                               Clear tier
@@ -460,7 +473,7 @@ export function CastsCitiesTab({ currentOrgId, canEnter }: { currentOrgId: strin
                 </div>
                 <Button
                   size="sm"
-                  disabled={!newPriorityCityId || !newPriorityCastId || assignShowPriority.isPending}
+                  disabled={!canManage || !newPriorityCityId || !newPriorityCastId || assignShowPriority.isPending}
                   onClick={() => assignShowPriority.mutate()}
                 >
                   <Plus className="h-4 w-4 mr-1" />Assign

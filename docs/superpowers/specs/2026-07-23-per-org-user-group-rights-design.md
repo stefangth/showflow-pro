@@ -1,0 +1,236 @@
+# Per-org user group rights — granular permissions matrix
+
+- **Date:** 2026-07-23
+- **Branch:** `claude/per-org-user-group-rights-d91601`
+- **Status:** Design approved; spec under review
+- **Builds on:** PR #187 (per-org capability flags — `producer_can_invite`, the `org_capabilities` table, the three-mirror registry)
+
+---
+
+## 1. Goal
+
+Turn the single super-admin-only `producer_can_invite` toggle into a real, granular **user group rights** system: a per-org **role × capability matrix** that both **org admins** and **platform (super) admins** manage, enforced end-to-end (UI + edge + RLS). "User group" maps to the existing role (`admin` / `producer` / `artist`); a "right" is a discrete action a role may or may not perform within an org.
+
+This is net-new configurability layered on the existing three roles. It does **not** introduce custom/arbitrary roles, and it does **not** touch the `app_role` enum or the `has_role()` RLS plumbing.
+
+## 2. Decisions (resolved in brainstorming)
+
+| Fork | Decision |
+|---|---|
+| **Model** | Role × capability matrix on the existing 3 roles, extending `org_capabilities`. No new roles, no `app_role`/`has_role()` changes. |
+| **Enforcement** | Defense in depth: UI gate + edge `requireCapability` + capability-aware RLS, each with tests. |
+| **First-cut scope** | Full catalog on day one — all 27 producer rights wired and enforced. |
+| **Governance** | Platform admin sets per-org defaults and can **lock** rights; org admin tunes everything unlocked. Two-layer storage. |
+| **(a) Admin invariant** | Admin is never a stored capability — admins always hold everything by default. |
+| **(b) Platform UI** | The full matrix replaces the lone `producer_can_invite` toggle in `EditOrgDialog`, reached via a "Manage all rights" button; a compact summary stays in the dialog. |
+| **(c) Rollout** | Ship **live**. No staged/dark flag. |
+| **Read-only floor** | Capabilities gate **mutations only**. A producer whose right is off keeps **read-only** access to the surface/data — SELECT/read policies are never capability-gated. |
+| **Producer default posture** | Most defaults reproduce today's gate, but some rights **default ON beyond today** — full artist management on the Artists page (invite, single-add, resend, manage artist invites) plus issue/void hire orders. See §9. Producers gain these on deploy. |
+
+## 3. Data model
+
+Two layers, resolved by one function. The existing `org_capabilities` table is kept as-is; one platform table is added.
+
+### Tables
+
+- **`org_capabilities`** *(exists — PR #187)* — org-admin **overrides**. `(org_id, capability, enabled, updated_by, updated_at)`, PK `(org_id, capability)`. RLS **extended**: org **admins** may write (previously super-admin only), but only for rights that are **not locked**. Super-admins retain full write.
+- **`org_capability_policies`** *(new)* — the **platform layer**. `(org_id, capability, enabled bool null, locked bool not null default false, updated_by, updated_at)`, PK `(org_id, capability)`. RLS: super-admin write only; org members read (needed to render effective value + lock state). Restrictive `org_isolation` policy per the tenant template. Audited into `settings_audit_log` (key `capability_policy:<name>`) by a `log_org_capability_policy_change` trigger, and `updated_at`/`updated_by` stamped by a `stamp_org_capability_policy` trigger — mirroring the existing `org_capabilities` triggers.
+
+### Resolver — upgrade `is_capability_enabled(_org, _capability)` in place
+
+The signature is unchanged, so **every existing caller (edge `requireCapability` and any RLS policy) gets layered semantics for free**:
+
+```
+policy := org_capability_policies[_org, _capability]
+if policy.locked then
+    return coalesce(policy.enabled, registry_default(_capability))   -- platform wins
+end if
+org := org_capabilities[_org, _capability]
+if org exists then
+    return org.enabled                                              -- org tunes
+end if
+return coalesce(policy.enabled, registry_default(_capability))       -- platform default, then registry
+```
+
+`registry_default(_capability)` is the SQL twin of the TS registry: a `case` arm per key. Two helper functions are added for the UI:
+- `is_capability_locked(_org, _capability) → bool`
+- (Optional, if needed for the matrix render) a set-returning `resolve_org_capabilities(_org)` that returns `(capability, effective bool, locked bool, source text)` in one round-trip.
+
+### Why keep the `is_capability_enabled` signature stable
+
+Changing it would ripple into `supabase/functions/_shared/capabilities.ts` and every RLS policy that calls it. Keeping `(_org, _capability text)` and encoding the role inside the key string (see §4) means the whole enforcement surface is additive.
+
+## 4. Registry
+
+`src/lib/capabilities.ts` becomes a structured catalog, replacing the ad-hoc `CapabilityKey` union. Mirrored **byte-identically** into `supabase/functions/_shared/capabilities.ts`, with every `key → defaultEnabled` also added to the SQL `is_capability_enabled` `case`. (Three-mirror discipline, exactly as entitlements.)
+
+```ts
+type GrantableRole = 'producer' | 'artist';
+
+interface CapabilityDef {
+  key: string;              // storage key → org_capabilities + is_capability_enabled, e.g. 'producer_can_issue_hire_orders'
+  action: string;           // matrix row id, e.g. 'issue_hire_orders'
+  role: GrantableRole;      // matrix column this cell grants
+  group: string;            // matrix section, e.g. 'Hire orders'
+  label: string;
+  description: string;
+  risk: 'standard' | 'sensitive';
+  defaultEnabled: boolean;  // MUST equal today's hardcoded gate (safety invariant)
+  module?: FeatureKey;      // e.g. 'hire_orders' — cell hidden when module off
+  enforcement: ('ui' | 'edge' | 'rls')[]; // documents where the check lives
+}
+```
+
+**Invariants:**
+- **Admin is never in the registry.** Admins always hold every right; the matrix shows the admin column read-only ✓. This structurally prevents "removed the last admin's power," and it is why platform-tier powers (delete org, toggle modules, manage platform admins) are simply **not capabilities**.
+- **`producer_can_invite` keeps its exact key** — it becomes the `(producer, invite_artists)` cell. No data migration; the existing `org_capabilities` row and edge check keep working. Its default changes off → **on** (see §9), so PR #187's SQL default arm flips to `true`.
+- **Read-only floor** — capabilities gate mutations only. A producer whose right is off keeps read-only access to that surface; SELECT/read policies are never capability-gated (§6).
+- **Defaults reflect the intended producer posture.** Most `defaultEnabled` values reproduce today's gate; the 5 rights listed in §9 intentionally default ON beyond today. A unit test pins each default to its intended value and flags any *unlisted* divergence from today's gate.
+- **Artist has no togglable cells in v1** (the column exists for completeness). Artist "download own issued PDF" stays governed by the existing per-order `download-url` auth, not a capability.
+- **Admin power tools are excluded** — Editor mode, page-access/column editing, and "View as" impersonation stay real-admin-only (delegating impersonation is a security concern), not capabilities.
+
+## 5. The catalog (full, day one)
+
+Legend: default is the effective value for a fresh org. Most reproduce today's gate; **bold on** marks the 5 rights that intentionally default beyond today (§9). `S` = standard, `!` = sensitive (confirm + audit). Module column blank unless gated.
+
+### A. Members & access
+Producer-grantable rights here are only those with a producer-reachable surface — the **Artists** page — because the read-only-reach decision keeps the **Admin console admin-only** (narrow-Admin).
+
+| key | action / label | role | default | risk | enforcement | surface / replaces |
+|---|---|---|---|---|---|---|
+| `producer_can_invite` *(exists)* | Invite artist to the app | producer | **on** | S | edge (`create-invitation`, wired) | Artists page; admin-only + this cap (was off) |
+| `producer_can_manage_invitations` | Revoke / resend **artist** invitations | producer | **on** | S | edge (`resend-invitation`) + RLS (`org_invitations` where role=`artist`) | Artists page (pending-invite chip); admin-only |
+
+**Admin-only in v1 (not producer-grantable)** — these live only in the admin-only Admin console, so under narrow-Admin there is no producer surface to exercise them; they stay admin-only and are candidates to graduate later if a producer members surface is ever built:
+`invite_producers`, `change_member_roles`, `remove_members`. Inviting/promoting **admins** is likewise never a capability (a producer granting admin would be escalation).
+
+### B. Productions & show dates
+| key | action / label | role | default | risk | enforcement | replaces |
+|---|---|---|---|---|---|---|
+| `producer_can_manage_productions` | Create / edit productions | producer | on | S | RLS (`shows` ins/upd) | admin+producer |
+| `producer_can_archive_productions` | Archive productions | producer | on | S | RLS (`shows` upd) | admin+producer |
+| `producer_can_reorder_productions` | Reorder productions | producer | on | S | RLS (`shows` upd sort) | admin+producer |
+| `producer_can_hard_delete_productions` | Hard-delete productions | producer | off | ! | RLS (`shows` del) | admin-only |
+| `producer_can_manage_show_dates` | Create / edit show dates | producer | on | S | RLS (`show_dates` ins/upd) | admin+producer |
+| `producer_can_hard_delete_show_dates` | Hard-delete show dates | producer | off | ! | RLS (`show_dates` del) | admin-only |
+
+### C. Bookings & engine
+| key | action / label | role | default | risk | enforcement | replaces |
+|---|---|---|---|---|---|---|
+| `producer_can_manage_casts` | Manage casts | producer | on | S | RLS (`casts`, `cast_members`) | admin+producer |
+| `producer_can_run_offer_engine` | Open / close offer tiers | producer | on | S | edge (`open-offer-tier`, `close-offer-tier`) | admin+producer |
+| `producer_can_confirm_bookings` | Confirm bookings | producer | on | S | RLS (`bookings` upd) | admin+producer |
+| `producer_can_edit_booking_settings` | Edit booking-engine settings | producer | off | ! | RLS (`app_settings` booking keys) | admin-only |
+
+### D. Artists
+Producers **fully manage the artist roster** via the existing Artists page (per the artist-management directive): add, edit, invite, and resend — all default on. (`producer_can_invite` in §5.A supplies "invite artist"; `producer_can_view_linked_accounts` supplies "resend".)
+
+| key | action / label | role | default | risk | enforcement | replaces |
+|---|---|---|---|---|---|---|
+| `producer_can_add_artists` | Add artist (single dialog **and** bulk import) | producer | **on** | S | RLS (`artists` ins) + RPC `bulk_import_artists` | import was producer; single "Add Artist" was admin-only |
+| `producer_can_edit_artists` | Edit artist details, skills & status | producer | on | S | RLS (`artists` upd, `artist_skills`) | admin+producer |
+| `producer_can_view_linked_accounts` | Resend account invite (panel always visible per read-only floor) | producer | **on** | S | edge (resend) | admin-only |
+
+### E. Hire orders — `module: hire_orders`
+| key | action / label | role | default | risk | enforcement | replaces |
+|---|---|---|---|---|---|---|
+| `producer_can_generate_hire_orders` | Generate / draft orders | producer | on | S | edge (`generate-hire-orders` draft) | admin+producer |
+| `producer_can_issue_hire_orders` | Issue orders | producer | **on** | ! | edge (`generate-hire-orders` issue) | admin-only |
+| `producer_can_void_hire_orders` | Void orders | producer | **on** | ! | edge / RLS (void path) | admin-only |
+| `producer_can_manage_countersign` | Manage countersign | producer | on | S | edge / RLS | admin+producer |
+| `producer_can_edit_hire_order_settings` | Edit hire-order settings | producer | off | ! | RLS (`app_settings` hire-order keys) | admin-only |
+
+### F. Settings & organization
+| key | action / label | role | default | risk | enforcement | replaces |
+|---|---|---|---|---|---|---|
+| `producer_can_rename_org` | Rename organization | producer | off | ! | RLS (`organizations` upd) | admin-only |
+| `producer_can_manage_ownership` | Manage production ownership | producer | on | S | RLS | admin+producer |
+| `producer_can_manage_cities` | Manage casts & cities | producer | on | S | RLS (`cities`, casts) | admin+producer |
+| `producer_can_edit_filter_settings` | Edit filters / notification defaults | producer | off | S | RLS (`app_settings` filter/notif keys) | admin-only |
+| `producer_can_edit_scheduling` | Edit scheduling settings | producer | on | S | RLS (`app_settings` scheduling keys) | admin+producer |
+
+### G. Integrations
+| key | action / label | role | default | risk | enforcement | replaces |
+|---|---|---|---|---|---|---|
+| `producer_can_configure_airtable` | Configure Airtable sync (mapping, keys) | producer | off | ! | edge (`airtable-schema`) + RLS (airtable settings) | admin-only |
+| `producer_can_trigger_sync` | Trigger manual "Sync now" | producer | off | S | edge (`airtable-poll` single-org) | admin-only |
+
+**Total: 27 producer capabilities** (1 pre-existing, 26 new). Three member-management rights (`invite_producers`, `change_member_roles`, `remove_members`) stay admin-only in v1 per the narrow-Admin decision. Exact count and each "replaces" gate are verified per-right during planning.
+
+**Read-only floor (rule 0).** Capabilities gate **mutations only**. Producer SELECT/read policies are **never** capability-gated — the producer role keeps its existing org-scoped read access unconditionally. When a right is off, the surface renders **read-only** (control disabled/hidden), never removed. This means:
+- RLS changes touch **INSERT/UPDATE/DELETE policies only**, never SELECT.
+- Edge read endpoints (e.g. `download-url`, and the read side of `airtable-schema`) are not capability-gated for producers; only the mutating actions are. (The Airtable PAT is never returned to the client regardless.)
+- Each gated UI surface needs a **read-only rendering** for producers when the right is off — additional UI work versus simply hiding.
+
+**Reach (decided): broad for Settings, narrow for Admin.**
+- **Settings (broad)** — the currently admin-only Settings tabs (**Booking flow, Airtable, Filters, Notifications**, plus the org-rename control on Organization) become **producer-visible read-only**; the write is gated by the corresponding capability. This is new tab-level gating + read-only tab bodies for producers.
+- **Admin console (narrow)** — the Admin route stays **admin-only**. Producers get no read-only members/invites view. Consequently the only producer-grantable member/access rights are those with an existing Artists-page surface (`producer_can_invite`, `producer_can_manage_invitations` for artist invites); `invite_producers` / `change_member_roles` / `remove_members` stay admin-only in v1 (§5.A).
+
+Each right then lands in up to three places:
+
+1. **UI** — new hook `useCan(action: string): boolean` (admin → always true; else resolve the `${role}_can_${action}` cell from `useCapabilities()` with registry-default fallback) plus a pure `can(role, action, rows)` for logic tests. Replaces the scattered `hasRole('admin') || hasRole('producer')` **write** checks at the gate sites in §5's "replaces" column, rendering read-only instead of hiding.
+2. **Edge** — `requireCapability(deps, org_id, key)` inserted **after** the role gate, following the `create-invitation` double-gate. Applies to the `edge`-tagged rights (mutating actions only).
+3. **RLS** — the table's **write** policy gains `OR (has_org_role(uid, org_id, 'producer') AND is_capability_enabled(org_id, '<key>'))`. Applies to the `rls`-tagged rights. The `SECURITY DEFINER` RPC `bulk_import_artists` gets an in-body capability check instead of a policy change. (`set_org_member_role` / `remove_org_member` stay admin-only — not producer-gated in v1.)
+
+**Tests per right:**
+- Vitest: `can()` resolver truth table; a mirror byte-equality test (src registry == edge registry); a defaults-posture test that pins each `defaultEnabled` and asserts only the §9 five diverge from today's gate.
+- pgTAP: layered `is_capability_enabled` (locked / override / platform-default / registry-default paths); for each `rls` right — producer **write** denied when off, allowed when on, admin always allowed, cross-org isolation holds; and a **read-only-floor** assertion that producer SELECT succeeds regardless of the capability.
+- Deno: `requireCapability` present and fail-closed on each `edge` right's mutating action.
+- Playwright: one headline E2E covering both directions and the read-only floor — admin turns OFF a default-on right (issue orders) → producer can no longer issue but still **views** the order; admin turns ON a default-off right (hard-delete production) → producer can delete.
+
+Realistic RLS surface: ~15–20 policies/RPCs to audit and extend. This is the bulk of the work and is enumerated explicitly in the implementation plan.
+
+## 7. The menu — one component, two homes
+
+A shared `PermissionsMatrix` component: rows = actions grouped by `group`, columns = roles (`admin` read-only ✓, `producer`, `artist`), cells = toggle / lock / read-only depending on context and risk.
+
+```
+Roles & permissions                              org: Acme Productions
+
+  MEMBERS & ACCESS                admin   producer   artist
+  Invite artists                    ✓      [ ON ]      —
+  Change member roles  !            ✓      [ off ]     —
+  Remove members  !                 ✓        —         —
+  …
+  HIRE ORDERS  (module: on)        admin   producer   artist
+  Generate orders                   ✓      [ ON ]      —
+  Issue orders  !                   ✓      [ off ]🔒   —     managed by ShowFlow
+  …
+```
+
+- **Settings → "Roles & permissions"** — new tab, **admin-only** (`SettingsPage`; new `PermissionsTab`). Org admins toggle unlocked producer/artist cells. Admin column read-only ✓. Locked cells disabled with a "managed by ShowFlow" note. Module-gated rows hidden when the module is off. Sensitive (`!`) toggles prompt a confirm dialog. Writes go to `org_capabilities` (RLS blocks locked cells server-side too).
+- **Platform console → per-org** — the same component with two extras per cell: a **lock** control and the platform-default setter. Writes go to `org_capability_policies`. This replaces the single `producer_can_invite` switch in `EditOrgDialog`; the dialog keeps a compact "N rights customized, M locked" summary with a **"Manage all rights"** button that opens the full matrix.
+
+## 8. Guardrails
+
+- **No privilege escalation** — platform-tier powers are not capabilities, so they can't be granted; inviting/promoting admins and impersonation stay admin-only and off-registry.
+- **Sensitive tier (`!`)** — confirm dialog in the UI, and audited server-side (existing `org_capabilities` audit trigger + new `org_capability_policies` trigger).
+- **Locked rights** — platform admins' governance lever for managed/regulated tenants; enforced in RLS (org-admin writes to a locked capability are rejected), not just hidden in the UI.
+- **Read-only floor** — a producer who loses a right never loses visibility; only the mutating action is removed.
+
+## 9. Rollout & safety
+
+- **Ship live**, no dark entitlement. Behavior is preserved on deploy for every right **except** those that intentionally default ON beyond today's gates. On deploy, producers in **every existing org** gain:
+  - **Full artist management** on the Artists page (per the directive): `producer_can_invite`, `producer_can_add_artists` (the single "Add Artist" dialog, formerly admin-only — bulk import was already producer), `producer_can_view_linked_accounts` (resend), `producer_can_manage_invitations` (artist invites). All low-stakes, non-destructive roster actions.
+  - **Hire-order issue / void** (`producer_can_issue_hire_orders`, `producer_can_void_hire_orders`) — the **most consequential**: a producer can then send or cancel legal PDFs to artists without admin action.
+  
+  All of this is deliberate and **reversible per-org** (admin or platform toggles the right off); every other right behaves exactly as today until retuned.
+- **Backward compatible (data)** — the `producer_can_invite` row and every `org_capabilities` value survive unchanged; only the *registry default* for that key flips off → on, so orgs that never set an override now read `on`. An org that had explicitly set it `off` keeps `off`.
+- **Changelog** — customer-facing "New" entry (Settings → Roles & permissions). Per project convention, no mention of platform/super-admin surfaces (the platform lock layer is not described in the public changelog).
+- **System map** — no new automation triggers, so `docs/system-map.md` / `src/data/systemMap.ts` are unaffected. `docs/adr/README.md` key-decisions and `CLAUDE.md` capability notes get a short update.
+
+## 10. Out of scope (v1)
+
+- Custom/arbitrary roles or named groups beyond `admin`/`producer`/`artist`.
+- Grantable artist capabilities (column present, no togglable cells).
+- **Producer member/role management** (`invite_producers`, `change_member_roles`, `remove_members`) — admin-only in v1 because the Admin console stays admin-only (narrow-Admin). Graduate later if a producer members surface is built.
+- Delegating admin power tools (Editor mode, impersonation).
+- Per-field/per-column permissions (the editor system already covers column visibility separately).
+
+## 11. Open questions / risks
+
+- **Read-only floor reach** *(decided: broad Settings, narrow Admin — see §6)* — Settings admin-only tabs become producer read-only; the Admin console stays admin-only, which is why the three member-management rights are admin-only in v1 (§5.A).
+- **`confirm_bookings` RLS** — the `bookings` table has many status transitions; the capability must gate only the producer confirm path without loosening other transitions. Verify the exact policy shape during planning; may need a narrower `WITH CHECK` or a dedicated RPC.
+- **`app_settings` key partitioning** — several rights gate subsets of `app_settings` (booking, hire-order, filter, scheduling keys). Confirm the policies can discriminate by key prefix, or introduce a small mapping, so one right doesn't accidentally gate another's keys.
+- **Per-row `is_capability_enabled` cost in RLS** — evaluate whether the function call per row needs `STABLE`/marking or a join-friendly variant for hot tables (`bookings`, `show_dates`).
+- **Registry size** — 27 mirrored keys across three files; the mirror byte-equality test and the SQL `case` must stay in sync (guarded by tests, but a real maintenance surface).

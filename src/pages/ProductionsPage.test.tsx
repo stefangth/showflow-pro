@@ -5,10 +5,14 @@ import { renderWithProviders } from "@/test/renderWithProviders";
 const reorderShows = vi.fn((..._a: unknown[]) => Promise.resolve());
 const archiveShow = vi.fn((..._a: unknown[]) => Promise.resolve());
 const deleteShow = vi.fn((..._a: unknown[]) => Promise.resolve());
-let role = "admin";
 vi.mock("@/integrations/supabase/client", () => ({ supabase: {} }));
-vi.mock("@/features/auth/AuthContext", () => ({ useAuth: () => ({ currentOrg: { id: "org-1" }, user: { id: "u1" }, hasRole: (r: string) => r === role || r === "producer" }) }));
+vi.mock("@/features/auth/AuthContext", () => ({ useAuth: () => ({ currentOrg: { id: "org-1" }, user: { id: "u1" }, hasRole: () => true }) }));
+vi.mock("@/hooks/useCapabilities", async (orig) => ({ ...(await orig<typeof import("@/hooks/useCapabilities")>()), useCan: vi.fn() }));
 vi.mock("@/data/shows", async (orig) => ({ ...(await orig<typeof import("@/data/shows")>()), reorderShows: (...a: unknown[]) => reorderShows(...a), archiveShow: (...a: unknown[]) => archiveShow(...a), deleteShow: (...a: unknown[]) => deleteShow(...a) }));
+
+import { useCan } from "@/hooks/useCapabilities";
+const mockUseCan = (allowed: Record<string, boolean>) =>
+  vi.mocked(useCan).mockImplementation((action: string) => allowed[action] ?? true);
 
 const SHOWS = [
   { id: "s1", program: "Manual", sub_program: null, category: null, description: null, status: "active", main_cast_slots: 2, understudy_slots: 1, airtable_program_key: null, sort_order: 1, dateCount: 0 },
@@ -41,7 +45,7 @@ vi.mock("@/features/editor/ColumnLayoutEditor", () => ({ ColumnLayoutEditor: () 
 import ProductionsPage from "./ProductionsPage";
 
 describe("ProductionsPage", () => {
-  beforeEach(() => { vi.clearAllMocks(); role = "admin"; });
+  beforeEach(() => { vi.clearAllMocks(); mockUseCan({}); }); // all capabilities default true
 
   it("uses the full program · sub_program identity label for compound shows", () => {
     renderWithProviders(<ProductionsPage />);
@@ -61,10 +65,43 @@ describe("ProductionsPage", () => {
     expect(screen.getByTestId("delete-s2")).toBeDisabled();     // synced + has dates
   });
 
-  it("producers see no delete control", () => {
-    role = "producer-only"; // hasRole('admin') === false
+  it("hard_delete_productions off: no delete control renders (read stays)", () => {
+    mockUseCan({ hard_delete_productions: false });
     renderWithProviders(<ProductionsPage />);
     expect(screen.queryByTestId("delete-s1")).not.toBeInTheDocument();
+    expect(screen.getByText("Manual")).toBeInTheDocument();
+  });
+
+  it("manage_productions off: create and edit are disabled, read stays", () => {
+    mockUseCan({ manage_productions: false });
+    renderWithProviders(<ProductionsPage />);
+    expect(screen.getByRole("button", { name: "New production" })).toBeDisabled();
+    expect(screen.getByLabelText("Edit TJE · Murder")).toBeDisabled();
+    expect(screen.getByText("Manual")).toBeInTheDocument();
+  });
+
+  it("manage_productions on: create and edit are enabled", () => {
+    renderWithProviders(<ProductionsPage />);
+    expect(screen.getByRole("button", { name: "New production" })).not.toBeDisabled();
+    expect(screen.getByLabelText("Edit TJE · Murder")).not.toBeDisabled();
+  });
+
+  it("archive_productions off: archive toggle is disabled for every row", () => {
+    mockUseCan({ archive_productions: false });
+    renderWithProviders(<ProductionsPage />);
+    screen.getAllByLabelText("Toggle archive").forEach((btn) => expect(btn).toBeDisabled());
+  });
+
+  it("reorder_productions off: no drag handles render, rows still read", () => {
+    mockUseCan({ reorder_productions: false });
+    const { container } = renderWithProviders(<ProductionsPage />);
+    expect(container.querySelectorAll(".cursor-grab")).toHaveLength(0);
+    expect(screen.getByText("Manual")).toBeInTheDocument();
+  });
+
+  it("reorder_productions on: drag handles render for the active list", () => {
+    const { container } = renderWithProviders(<ProductionsPage />);
+    expect(container.querySelectorAll(".cursor-grab").length).toBeGreaterThan(0);
   });
 
   it("renders configured columns with headers and a date count", () => {

@@ -22,7 +22,7 @@ export interface HireOrderCountersign {
   email_producers_on_countersign?: boolean;
 }
 
-export function CountersignCard({ orgId }: { orgId: string | null }) {
+export function CountersignCard({ orgId, readOnly = false }: { orgId: string | null; readOnly?: boolean }) {
   const qc = useQueryClient();
   const { data, isLoading, isError, error } = useQuery({
     queryKey: ["app-settings", "hire_order_countersign", orgId],
@@ -74,6 +74,7 @@ export function CountersignCard({ orgId }: { orgId: string | null }) {
         <RadioGroup
           value={form.mode}
           onValueChange={(v) => setForm((f) => ({ ...f, mode: v as CountersignMode }))}
+          disabled={readOnly}
           className="gap-3"
         >
           <div className="flex items-start gap-3 rounded-lg border border-border p-3">
@@ -111,7 +112,7 @@ export function CountersignCard({ orgId }: { orgId: string | null }) {
             </Label>
           </div>
         )}
-        <Button onClick={() => save.mutate()} disabled={save.isPending || !orgId}>
+        <Button onClick={() => save.mutate()} disabled={save.isPending || !orgId || readOnly}>
           Save countersign mode
         </Button>
       </CardContent>

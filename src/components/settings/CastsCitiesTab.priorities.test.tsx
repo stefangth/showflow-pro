@@ -10,7 +10,7 @@ import { createFakeSupabase, type FakeSupabase } from "@/test/supabaseFake";
 const { client } = vi.hoisted(() => ({ client: {} as Record<string, unknown> }));
 vi.mock("@/integrations/supabase/client", () => ({ supabase: client }));
 vi.mock("@/features/auth/AuthContext", () => ({
-  useAuth: () => ({ currentOrg: { id: "org-1", name: "Test Org", slug: "test-org" } }),
+  useAuth: () => ({ currentOrg: { id: "org-1", name: "Test Org", slug: "test-org" }, hasRole: (r: string) => r === "producer" }),
 }));
 
 import { CastsCitiesTab } from "./CastsCitiesTab";
