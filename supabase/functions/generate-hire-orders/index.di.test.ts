@@ -2256,6 +2256,49 @@ Deno.test("issue resolves the org agent signature and passes it to the renderer 
   assertEquals(url.startsWith("data:image/png;base64,"), true);
 });
 
+Deno.test("bulk issue downloads the shared agent signature once, not once per order", async () => {
+  const { deps, calls } = makeFakeDeps({
+    authUser: { id: "u-admin" },
+    storageDownloadResult: {
+      data: new Blob([new Uint8Array([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a])]),
+      error: null,
+    },
+    tables: {
+      org_memberships: { data: { role: "admin" } },
+      hire_orders: [
+        { when: { __write: false }, data: issuableOrder() },
+        { when: { __write: true }, data: null },
+      ],
+      artists: { data: { user_id: "u-artist" } },
+      app_settings: [
+        {
+          when: { key: "hire_order_letterhead" },
+          data: [{
+            org_id: ORG,
+            value: {
+              legal_name: "Nord GmbH",
+              address_lines: [],
+              agent_signature_path: `${ORG}/agent-signature.png`,
+            },
+          }],
+        },
+        { when: { key: "hire_order_terms" }, data: [TERMS_FILLED] },
+        { when: { key: "hire_order_defaults" }, data: [DEFAULTS] },
+      ],
+    },
+  });
+  deps.renderHireOrderPdf = () => Promise.resolve(new Uint8Array([0x25, 0x50, 0x44, 0x46]));
+
+  const res = await handle(
+    makeRequest({ headers: JWT, body: { action: "issue", org_id: ORG, order_ids: ["o-1", "o-2"] } }),
+    deps,
+  );
+  assertEquals(res.status, 200);
+  // Both orders share the org's single signature; it must be fetched once for the
+  // whole batch, not once per order.
+  assertEquals(calls.filter((c) => c.method === "download").length, 1);
+});
+
 Deno.test("issue inherits the letterhead agent when the order override is null", async () => {
   const { deps } = makeFakeDeps({
     authUser: { id: "u-admin" },

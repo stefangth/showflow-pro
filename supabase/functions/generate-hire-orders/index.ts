@@ -1435,6 +1435,12 @@ async function issueOrders(
     ),
   ]);
   const termsSetting = normalizeTermsSetting(rawTerms);
+  // Resolve the shared org agent signature ONCE for the whole batch; issueOne runs
+  // per order below, so resolving inside it would re-download the same PNG N times.
+  const agentSignatureDataUrl = await resolveAgentSignatureDataUrl(
+    admin,
+    letterhead.agent_signature_path,
+  );
 
   const issued: string[] = [];
   const failed: Array<{ order_id: string; issues: string[] }> = [];
@@ -1449,6 +1455,7 @@ async function issueOrders(
         termsSetting,
         defaults,
         countersign,
+        agentSignatureDataUrl,
       );
       if (outcome.ok) {
         issued.push(orderId);
@@ -1484,6 +1491,7 @@ async function issueOne(
   termsSetting: HireOrderTermsSetting,
   defaults: OrderDefaults,
   countersign: Countersign,
+  agentSignatureDataUrl: string | null,
 ): Promise<{ ok: true; warning?: string } | { ok: false; issues: string[] }> {
   const admin = deps.admin;
 
@@ -1526,10 +1534,9 @@ async function issueOne(
     ...letterhead,
     agent_name: o.agent_name ?? letterhead.agent_name,
     agent_email: o.agent_email ?? letterhead.agent_email,
-    agent_signature_data_url: await resolveAgentSignatureDataUrl(
-      admin,
-      letterhead.agent_signature_path,
-    ),
+    // Resolved once per batch by issueOrders and passed in, so a bulk issue never
+    // re-downloads the shared org signature PNG once per order (N+1).
+    agent_signature_data_url: agentSignatureDataUrl,
   };
   const currency = o.fee_currency ?? defaults.currency ?? "EUR";
   const bytes = await deps.renderHireOrderPdf({

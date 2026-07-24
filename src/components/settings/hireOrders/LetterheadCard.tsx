@@ -107,6 +107,12 @@ export function LetterheadCard({ orgId, readOnly = false }: { orgId: string | nu
     reader.readAsDataURL(file);
   }
   function removeSignature() {
+    // Clears the reference only (persisted on the next Save). The PNG object is
+    // intentionally left in storage: the hire-orders bucket has no client delete
+    // policy (writes go through the service role), the path is fixed
+    // (`<org>/agent-signature.png`) so a later re-upload overwrites it in place, and
+    // a single orphaned PNG in the private, org-scoped bucket is harmless. Add a
+    // service-role delete to the edge function if storage hygiene ever matters.
     setForm((f) => ({ ...f, agent_signature_path: null }));
     setSignaturePreviewUrl(null);
   }
