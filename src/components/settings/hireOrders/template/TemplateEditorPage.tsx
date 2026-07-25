@@ -49,6 +49,43 @@ function compactCopy(form: Partial<HireOrderCopy>): Partial<HireOrderCopy> {
   return out;
 }
 
+/** True for a non-null object with at least one own key - the same tolerant
+ *  check TemplateOutline / TemplateInspector use to decide "modified" (kept
+ *  local here too rather than shared, since it is four lines and none of
+ *  these three files import from one another). */
+function hasOwnKeys(value: unknown): boolean {
+  return typeof value === "object" && value !== null && Object.keys(value).length > 0;
+}
+
+/**
+ * Unlike compactCopy above, the theme draft is not built field-by-field
+ * against a flat default map, so it needs its own pass: drop a role entry
+ * that carries no fields (TemplateInspector's "Document font" clears a
+ * role's one-and-only field by deleting that field, not the whole role -
+ * see clearRoleField - so a role can legitimately end up hollow, `{}`,
+ * without ever going through the whole-role Reset) and drop `base` when it
+ * is likewise empty. Compaction only removes hollow entries that resolve
+ * identically to "absent" - it never touches a role or base that still
+ * carries a real field, and never invents one that was not already there.
+ * Same "unchanged means absent" principle compactCopy already applies to
+ * copy, now applied on the theme side before it reaches storage - a hollow
+ * `{}` is harmless in memory (hasOwnKeys already treats it as unmodified)
+ * but stored settings are hand-editable JSON that people read.
+ */
+function compactTheme(draft: HireOrderThemeOverride): HireOrderThemeOverride {
+  const next: HireOrderThemeOverride = { ...draft };
+  if (!hasOwnKeys(next.base)) delete next.base;
+  if (next.roles) {
+    const roles: NonNullable<HireOrderThemeOverride["roles"]> = {};
+    for (const [role, style] of Object.entries(next.roles)) {
+      if (hasOwnKeys(style)) roles[role] = style;
+    }
+    if (Object.keys(roles).length > 0) next.roles = roles;
+    else delete next.roles;
+  }
+  return next;
+}
+
 /**
  * The PDF template editor: a three-pane workspace (document outline, live
  * preview, element inspector) over the org's `hire_order_copy` and
@@ -105,7 +142,7 @@ export default function TemplateEditorPage({ readOnly: readOnlyProp }: { readOnl
     mutationFn: async () => {
       if (!orgId) throw new Error("No active organization");
       await upsertOrgSetting(supabase, orgId, "hire_order_copy", compactCopy(copyDraft) as unknown as Json);
-      await upsertOrgSetting(supabase, orgId, "hire_order_theme", themeDraft as unknown as Json);
+      await upsertOrgSetting(supabase, orgId, "hire_order_theme", compactTheme(themeDraft) as unknown as Json);
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["app-settings"] });

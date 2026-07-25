@@ -58,7 +58,7 @@ describe("TemplateInspector", () => {
     expect(screen.getByRole("button", { name: /Reset Total row/ })).toBeInTheDocument();
   });
 
-  it("disables every control in read-only mode", () => {
+  it("disables every control in read-only mode (role branch)", () => {
     render(<TemplateInspector selected="totalLabel" {...props} readOnly />);
     expect(screen.getByLabelText("Total row")).toBeDisabled();
     expect(screen.getByLabelText("Size")).toBeDisabled();
@@ -67,14 +67,45 @@ describe("TemplateInspector", () => {
     expect(screen.getByRole("combobox", { name: "Colour" })).toBeDisabled();
   });
 
+  // The role branch's read-only test above only exercises half this pane -
+  // the Document branch has its own 13 controls (2 font pickers, a slider,
+  // 7 colour swatches, 3 margins) and none of them were under a regression
+  // net before this test. A producer without edit_hire_order_settings who
+  // could still drag the scale slider or swap a colour would be a real
+  // permissions hole, not just a cosmetic one.
+  it("disables every control in read-only mode (document branch)", () => {
+    render(<TemplateInspector selected="document" {...props} readOnly />);
+    expect(screen.getByRole("combobox", { name: "Body font" })).toBeDisabled();
+    expect(screen.getByRole("combobox", { name: "Numeric font" })).toBeDisabled();
+    // The Slider's root is a <span>, which jest-dom's toBeDisabled() never
+    // considers disable-able (only native form elements qualify) - Radix
+    // marks it via aria-disabled/data-disabled instead, so that is what a
+    // test has to check for this one control.
+    expect(screen.getByLabelText("Text size")).toHaveAttribute("aria-disabled", "true");
+    for (const label of [
+      "Text",
+      "Muted text",
+      "Faint text",
+      "Accent",
+      "Rules and borders",
+      "Fee cell background",
+      "Total row background",
+    ]) {
+      expect(screen.getByLabelText(label)).toBeDisabled();
+    }
+    for (const label of ["Left and right", "Top", "Bottom"]) {
+      expect(screen.getByLabelText(label)).toBeDisabled();
+    }
+  });
+
   // --- No-null-into-the-draft invariant -------------------------------------
   // Every one of these asserts on the exact object passed to onCopyChange /
   // onThemeChange after a "clear" action: the key under test must be ABSENT,
-  // never present with a null or undefined value. Object.keys / toHaveProperty
-  // catch a present-but-nulled key that .toBeUndefined() alone would miss (a
-  // deleted key and a key explicitly set to undefined both read as
-  // `undefined` through property access, but only the deleted key is absent
-  // from Object.keys - see the CONTROLLER ADDENDUM).
+  // never present with a null or undefined value (see the CONTROLLER
+  // ADDENDUM). `.not.toHaveProperty(key)` alone already fails for a
+  // present-but-undefined key in this repo's Vitest/jest-dom setup; the
+  // paired `Object.keys(...).not.toContain(key)` is not load-bearing on top
+  // of it, it is just a second, equally direct way to say the same thing.
 
   it("resetting a copy field deletes the key rather than nulling it", () => {
     const onCopyChange = vi.fn();
