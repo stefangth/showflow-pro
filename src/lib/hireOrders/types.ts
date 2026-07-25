@@ -34,9 +34,16 @@ export type OrderFieldKey =
   | "fee"
   | "currency"
   | "notes"
-  | "engagement_dates";
+  | "engagement_dates"
+  // Derived by the server from the producer's fee entry, never hand-edited:
+  // `fee` always holds the TOTAL payable, these two explain how it was reached.
+  | "fee_basis"
+  | "fee_per_date";
 
-export type EditableOrderFieldKey = Exclude<OrderFieldKey, "engagement_dates">;
+export type EditableOrderFieldKey = Exclude<
+  OrderFieldKey,
+  "engagement_dates" | "fee_basis" | "fee_per_date"
+>;
 
 /** Fixed iteration order for resolveFields and any UI that lists order fields. */
 export const ORDER_FIELD_KEYS: EditableOrderFieldKey[] = [
