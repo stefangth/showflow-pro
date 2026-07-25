@@ -247,6 +247,27 @@ describe("TemplateEditorPage", () => {
       expect(value.roles?.feeLabel).toEqual({ weight: 500 });
     });
 
+    // "Open exact PDF" layers its override over the org's STORED theme
+    // server-side, so it has to send what Save would persist. It used to send
+    // the raw draft while compacting the copy beside it.
+    it("compacts the theme override sent by Open exact PDF, like the copy beside it", async () => {
+      seedTheme({ base: {}, roles: { totalLabel: {}, feeLabel: { weight: 500 } } });
+      renderPage();
+      await waitFor(() =>
+        expect(screen.getByRole("navigation", { name: "Document outline" })).toBeInTheDocument(),
+      );
+      fireEvent.click(screen.getByRole("button", { name: "Open exact PDF" }));
+
+      const body = await waitFor(() => {
+        const call = (client.calls as RecordedCall[]).find((c) => c.table === "fn:generate-hire-orders");
+        if (!call) throw new Error("no preview invocation recorded yet");
+        return call.args[0] as { theme_override: HireOrderThemeOverride };
+      });
+      expect(body.theme_override).not.toHaveProperty("base");
+      expect(body.theme_override.roles).not.toHaveProperty("totalLabel");
+      expect(body.theme_override.roles?.feeLabel).toEqual({ weight: 500 });
+    });
+
     it("drops every hollow role and an empty base when the draft has nothing real left", async () => {
       seedTheme({ base: {}, roles: { totalLabel: {}, feeLabel: {} } });
       renderPage();

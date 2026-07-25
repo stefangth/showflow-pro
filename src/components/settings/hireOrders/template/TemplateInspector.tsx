@@ -67,6 +67,24 @@ const MARGIN_LABELS: Record<(typeof MARGIN_KEYS)[number], string> = {
   marginBottom: "Bottom",
 };
 
+/**
+ * The numeric value of a number input, or `null` when the field holds nothing
+ * usable yet.
+ *
+ * An emptied `<input type="number">` reports `""`, and `Number("")` is 0 - so
+ * clearing the size field used to persist `size: 0`, display "0", mark the
+ * role modified, and leave the preview showing 5pt (themeRoleStyle clamps).
+ * The same applies to letter spacing and the page margins. A `null` here means
+ * "leave the draft alone": the user is mid-edit, and half-typed input is not a
+ * value to store. `Number.isFinite` also rejects the transient states a number
+ * input reports while a value is being typed (e.g. "1e").
+ */
+function numericInputValue(raw: string): number | null {
+  if (raw.trim() === "") return null;
+  const parsed = Number(raw);
+  return Number.isFinite(parsed) ? parsed : null;
+}
+
 /** True for a non-null object with at least one own key. Guards both
  *  directions a hand-edited app_settings blob (or a stray bug) could go
  *  wrong: present-but-empty must NOT read as modified, and a stray `null`
@@ -310,7 +328,10 @@ function RoleStyleControls({ role, readOnly, themeDraft, setRole, clearRoleField
             step={0.5}
             value={style.size}
             disabled={readOnly}
-            onChange={(e) => setRole(role.key, { size: Number(e.target.value) })}
+            onChange={(e) => {
+              const size = numericInputValue(e.target.value);
+              if (size !== null) setRole(role.key, { size });
+            }}
           />
         </div>
       )}
@@ -361,7 +382,10 @@ function RoleStyleControls({ role, readOnly, themeDraft, setRole, clearRoleField
           step={0.1}
           value={style.letterSpacing ?? 0}
           disabled={readOnly}
-          onChange={(e) => setRole(role.key, { letterSpacing: Number(e.target.value) })}
+          onChange={(e) => {
+            const letterSpacing = numericInputValue(e.target.value);
+            if (letterSpacing !== null) setRole(role.key, { letterSpacing });
+          }}
         />
       </div>
 
@@ -510,9 +534,10 @@ function DocumentInspector({ readOnly, themeDraft, setBase, resetBase }: Documen
                   max={key === "marginX" ? 80 : 90}
                   value={page[key]}
                   disabled={readOnly}
-                  onChange={(e) =>
-                    setBase({ page: { ...themeDraft.base?.page, [key]: Number(e.target.value) } })
-                  }
+                  onChange={(e) => {
+                    const margin = numericInputValue(e.target.value);
+                    if (margin !== null) setBase({ page: { ...themeDraft.base?.page, [key]: margin } });
+                  }}
                 />
               </div>
             ))}

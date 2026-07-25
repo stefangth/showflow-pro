@@ -265,4 +265,48 @@ describe("TemplateInspector", () => {
     const arg = onThemeChange.mock.calls[0][0] as HireOrderThemeOverride;
     expect(arg.base?.page).toEqual({ marginX: 50, marginTop: 45 });
   });
+
+  // A cleared `<input type="number">` reports "", and Number("") is 0. That
+  // used to persist `size: 0` / `letterSpacing: 0` / `marginTop: 0`, display
+  // "0", mark the role modified and leave the preview clamped to 5pt.
+  describe("clearing a numeric field", () => {
+    it("does not write a size of 0", () => {
+      const onThemeChange = vi.fn();
+      render(<TemplateInspector selected="totalLabel" {...props} onThemeChange={onThemeChange} />);
+      fireEvent.change(screen.getByLabelText("Size"), { target: { value: "" } });
+      expect(onThemeChange).not.toHaveBeenCalled();
+    });
+
+    it("does not write a letter spacing of 0", () => {
+      const onThemeChange = vi.fn();
+      render(<TemplateInspector selected="totalLabel" {...props} onThemeChange={onThemeChange} />);
+      fireEvent.change(screen.getByLabelText("Letter spacing"), { target: { value: "" } });
+      expect(onThemeChange).not.toHaveBeenCalled();
+    });
+
+    it("does not write a page margin of 0", () => {
+      const onThemeChange = vi.fn();
+      render(<TemplateInspector selected="document" {...props} onThemeChange={onThemeChange} />);
+      fireEvent.change(screen.getByLabelText("Left and right"), { target: { value: "" } });
+      expect(onThemeChange).not.toHaveBeenCalled();
+    });
+
+    it("still writes a real edit", () => {
+      const onThemeChange = vi.fn();
+      render(<TemplateInspector selected="totalLabel" {...props} onThemeChange={onThemeChange} />);
+      fireEvent.change(screen.getByLabelText("Size"), { target: { value: "14" } });
+      const arg = onThemeChange.mock.calls[0][0] as HireOrderThemeOverride;
+      expect(arg.roles?.totalLabel).toEqual({ size: 14 });
+    });
+
+    it("still allows an explicit zero letter spacing", () => {
+      // "0" is a legitimate value here, unlike the empty string it used to be
+      // conflated with.
+      const onThemeChange = vi.fn();
+      render(<TemplateInspector selected="totalLabel" {...props} onThemeChange={onThemeChange} />);
+      fireEvent.change(screen.getByLabelText("Letter spacing"), { target: { value: "0" } });
+      const arg = onThemeChange.mock.calls[0][0] as HireOrderThemeOverride;
+      expect(arg.roles?.totalLabel).toEqual({ letterSpacing: 0 });
+    });
+  });
 });

@@ -108,7 +108,7 @@ export function buildStyles(
   // themeRoleStyle: the page's inherited default must stay independent of
   // whatever family a single role (e.g. titleLead) happens to resolve to,
   // so overriding one role's font never silently drags the whole document
-  // along with it (see reactPdfFamilyName's doc comment in pdfTheme.ts).
+  // along with it (see safeReactPdfFamilyName's doc comment in pdfTheme.ts).
   const bodyFamily = safeReactPdfFamilyName(theme.base.fontFamily, available);
 
   return StyleSheet.create({
