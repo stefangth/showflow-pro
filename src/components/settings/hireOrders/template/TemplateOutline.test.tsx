@@ -72,6 +72,19 @@ describe("TemplateOutline", () => {
     expect(screen.queryByRole("button", { name: /Section heading, modified/ })).not.toBeInTheDocument();
   });
 
+  it("does not mark a role modified when its style override is an explicit null", () => {
+    // The typed HireOrderThemeOverride never allows this, but the value
+    // ultimately comes from a hand-editable app_settings JSON blob, and a
+    // stray `null` there resolves to the hard-coded default rather than a
+    // stored value - it must read as unmodified, the same as an absent key,
+    // not throw and not count as an override.
+    const themeDraft = { roles: { sectionHeading: null } } as unknown as Parameters<
+      typeof TemplateOutline
+    >[0]["themeDraft"];
+    render(<TemplateOutline selected="document" onSelect={vi.fn()} copyDraft={{}} themeDraft={themeDraft} />);
+    expect(screen.getByRole("button", { name: "Section heading" })).toBeInTheDocument();
+  });
+
   it("marks nothing modified when both drafts are empty", () => {
     render(<TemplateOutline selected="document" onSelect={vi.fn()} copyDraft={{}} themeDraft={{}} />);
     expect(screen.getByRole("button", { name: "Document" })).toBeInTheDocument();
