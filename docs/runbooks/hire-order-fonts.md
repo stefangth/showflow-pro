@@ -7,14 +7,27 @@
 
 The hire-order PDF theme (`src/lib/hireOrders/pdf/pdfTheme.ts`, mirrored to
 `supabase/functions/_shared/hire-order-pdf/pdfTheme.ts`) declares a curated `FONT_FAMILIES`
-registry that a per-org theme can select from. Geist and Geist Mono are the defaults and ship
-base64-embedded directly in the edge function (`fonts.ts`), so the default render path performs
-**zero** network I/O and can never fail. Every other family (Inter, IBM Plex Sans, Source Serif,
-Libre Baskerville, IBM Plex Mono) is fetched at render time from the `hire-order-fonts` Storage
-bucket. Until that bucket is provisioned and populated, every non-default family fails to load and
-the renderer degrades gracefully to a react-pdf standard font (see "Failure behaviour" below) -
-this is by design, not a bug, but it means the font picker has no real effect until this runbook's
-steps are complete.
+registry. Geist and Geist Mono are the defaults and ship base64-embedded directly in the edge
+function (`fonts.ts`), so the default render path performs **zero** network I/O and can never fail.
+Every other family (Inter, IBM Plex Sans, Source Serif, Libre Baskerville, IBM Plex Mono) is
+fetched at render time from the `hire-order-fonts` Storage bucket.
+
+**The editor's font picker only offers a family once its files are actually uploaded.** Each
+`FONT_FAMILIES` entry carries a `pendingUpload?: true` flag; `selectableFontFamilies()` (also in
+`pdfTheme.ts`) filters it out of the picker's choices. Today only Geist and Geist Mono are
+selectable - the other five stay in the registry (the picker's job is to build the future library,
+not to expose entries with no backing files) but are invisible to a user until an operator
+completes **both** steps below: uploading the files to the bucket, **and** flipping that family's
+`pendingUpload` flag off in `pdfTheme.ts`. Uploading alone does nothing for the picker - see
+"Two-step activation" under "How to add (or replace) a family".
+
+`pendingUpload` gates the *picker* only. A stored theme that already references a pending family
+(or a role-level override that does) keeps resolving to it via `resolveHireOrderTheme` regardless
+of the flag, and `familiesInUse`/`registerFonts` still attempt to load it at render time - so if
+its files are already in the bucket even though the flag hasn't been flipped yet, that stored
+reference renders correctly; it just can't be *newly chosen* from the picker. A family whose files
+are genuinely still missing (the normal pre-upload state) fails to load and the renderer degrades
+gracefully to a react-pdf standard font (see "Failure behaviour" below) - by design, not a bug.
 
 ## Bucket
 
@@ -125,6 +138,14 @@ entries.
 
 ## How to add (or replace) a family
 
+> **Two-step activation - do not skip step 7.** Uploading a family's TTFs to the bucket is *not*
+> enough to make it choosable. `pendingUpload: true` in `FONT_FAMILIES` is what keeps a family out
+> of `selectableFontFamilies()` (the editor's picker), and nothing about the upload itself clears
+> that flag. A family uploaded but never flipped is **invisible in the picker forever** - the files
+> sit in the bucket, fully fetchable, with no UI path for anyone to choose them. Steps 1-6 get the
+> files onto the bucket; step 7 is the separate, easy-to-forget code change that actually turns the
+> family on.
+
 1. Confirm the licence is OFL (or another licence the org is comfortable redistributing under a
    public bucket - this registry's existing convention is OFL-only).
 2. Download the static TTF files for the weights you need (400/500/600). If a weight doesn't
@@ -134,11 +155,14 @@ entries.
 4. Add (or edit) the entry in **`src/lib/hireOrders/pdf/pdfTheme.ts`**'s `FONT_FAMILIES` array,
    then run `npm run sync:mirrors` to regenerate the edge copy at
    `supabase/functions/_shared/hire-order-pdf/pdfTheme.ts`. **Never hand-edit the generated
-   target** - CI's `sync:mirrors:check` will fail if the two drift.
+   target** - CI's `sync:mirrors:check` will fail if the two drift. A brand-new family should be
+   added with `pendingUpload: true` (it has no files yet); leave that flag on an existing entry
+   until step 7.
 5. Upload the files to the bucket, matching the `path` values exactly. Two options:
    - **Supabase dashboard** → Storage → `hire-order-fonts` → upload into the matching folder.
    - **`scripts/upload-hire-order-fonts.ts`** (this repo) - derives the exact required path set
-     from `FONT_FAMILIES` itself, so it can never drift from the registry:
+     from `FONT_FAMILIES` itself, so it can never drift from the registry (this ignores
+     `pendingUpload`; it uploads files for every family in the registry, activated or not):
      ```bash
      SUPABASE_URL=https://epweartpzwvcasrzyueh.supabase.co \
      SUPABASE_SERVICE_ROLE_KEY=<service-role-key> \
@@ -152,6 +176,13 @@ entries.
    curl -sI "https://epweartpzwvcasrzyueh.supabase.co/storage/v1/object/public/hire-order-fonts/<path>" | head -3
    ```
    Expected: `HTTP/2 200` and `content-type: font/ttf` (or `application/octet-stream`).
+7. **Activate the family.** In **`src/lib/hireOrders/pdf/pdfTheme.ts`**, remove that family's
+   `pendingUpload: true` (or set it to `false`) now that every file it needs has been confirmed
+   fetchable in step 6, then run `npm run sync:mirrors` again. Only after this step does
+   `selectableFontFamilies()` include the family and the editor's picker offer it. Same
+   mirror-sync rule as step 4: never hand-edit
+   `supabase/functions/_shared/hire-order-pdf/pdfTheme.ts` directly - CI's `sync:mirrors:check`
+   fails if the two drift.
 
 ### If an upload fails
 
@@ -195,13 +226,24 @@ automated coverage of every branch above (fake-fetch injected, no real network).
       that did this work, and the downloaded TTFs themselves were never committed (this bucket's
       whole point is that fonts are Storage objects, not repo assets - see "Why this isn't
       checked into git" below).
-      **A human with the service role key must (re-)acquire the 18 files and run
-      `scripts/upload-hire-order-fonts.ts` (or use the dashboard) before any non-default theme
-      actually renders with its intended typeface** - until then every non-default family degrades
-      to a standard font, which is safe (never broken output) but not the intended result.
+      **A human with the service role key must (re-)acquire the 18 files, run
+      `scripts/upload-hire-order-fonts.ts` (or use the dashboard), AND flip each uploaded family's
+      `pendingUpload` flag off in `pdfTheme.ts`** (step 7 of "How to add [or replace] a family")
+      before that family is either selectable in the editor's picker or renders with its intended
+      typeface - until then every non-default family stays out of the picker and, if a stored theme
+      somehow already referenced it, degrades to a standard font, which is safe (never broken
+      output) but not the intended result.
 - [x] Degradation logic (all-or-nothing registration, non-sticky retry, content sniffer, standard-
       font substitution) is fully covered by `pdfDeps.test.ts` against a fake fetch - this does not
       depend on the bucket being populated.
+- [x] **Amendment (2026-07-25, same day):** the editor's font picker now sources its choices from
+      `selectableFontFamilies()`, not `FONT_FAMILIES` directly. Every non-embedded family carries
+      `pendingUpload: true` and is excluded from the picker until an operator completes the
+      two-step activation above. This closes the gap where the picker would otherwise offer five
+      families that silently degrade to a standard font on first use - now only Geist and Geist
+      Mono (the two `embedded: true` design-system fonts, zero network I/O, cannot fail) are
+      offered until real files exist. `resolveHireOrderTheme` is unaffected by this flag: it still
+      accepts any registry key, so an already-stored or hand-edited override is never rejected.
 
 ### Why this isn't checked into git, and how to get the files
 

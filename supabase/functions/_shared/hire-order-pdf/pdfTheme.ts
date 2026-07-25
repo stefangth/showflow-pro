@@ -47,6 +47,16 @@ export interface FontFamilyDef {
   /** Geist ships base64-embedded in the edge function, so it never needs a
    *  fetch. Everything else is fetched on demand. */
   embedded?: true;
+  /** True while this family's TTFs have not yet been uploaded to the
+   *  `hire-order-fonts` Storage bucket (see docs/runbooks/hire-order-fonts.md).
+   *  `selectableFontFamilies()` uses this to keep an unusable family out of
+   *  the editor's font picker; it deliberately does NOT gate anything else
+   *  here — see resolveHireOrderTheme's `isFamilyKey` for why a pending
+   *  family must still be an ACCEPTED stored value. Flip to omitted (or
+   *  `false`) in the same commit that uploads the files, then run
+   *  `npm run sync:mirrors` — an upload with no flag flip leaves the family
+   *  invisible in the picker forever. */
+  pendingUpload?: true;
 }
 
 export const FONT_FAMILIES: FontFamilyDef[] = [
@@ -67,6 +77,7 @@ export const FONT_FAMILIES: FontFamilyDef[] = [
     label: "Inter",
     kind: "sans",
     family: "Inter",
+    pendingUpload: true,
     files: [
       { weight: 400, path: "inter/Inter-Regular.ttf" },
       { weight: 500, path: "inter/Inter-Medium.ttf" },
@@ -78,6 +89,7 @@ export const FONT_FAMILIES: FontFamilyDef[] = [
     label: "IBM Plex Sans",
     kind: "sans",
     family: "PlexSans",
+    pendingUpload: true,
     files: [
       { weight: 400, path: "plex-sans/IBMPlexSans-Regular.ttf" },
       { weight: 500, path: "plex-sans/IBMPlexSans-Medium.ttf" },
@@ -89,6 +101,7 @@ export const FONT_FAMILIES: FontFamilyDef[] = [
     label: "Source Serif",
     kind: "serif",
     family: "SourceSerif",
+    pendingUpload: true,
     // Adobe's static release (github.com/adobe-fonts/source-serif) ships
     // ExtraLight/Light/Regular/Semibold/Bold/Black -- no discrete 500 cut.
     // Weight 500 reuses the Regular file rather than pointing at a
@@ -106,6 +119,7 @@ export const FONT_FAMILIES: FontFamilyDef[] = [
     label: "Libre Baskerville",
     kind: "serif",
     family: "LibreBaskerville",
+    pendingUpload: true,
     files: [
       { weight: 400, path: "libre-baskerville/LibreBaskerville-Regular.ttf" },
       { weight: 500, path: "libre-baskerville/LibreBaskerville-Medium.ttf" },
@@ -129,6 +143,7 @@ export const FONT_FAMILIES: FontFamilyDef[] = [
     label: "IBM Plex Mono",
     kind: "mono",
     family: "PlexMono",
+    pendingUpload: true,
     files: [
       { weight: 400, path: "plex-mono/IBMPlexMono-Regular.ttf" },
       { weight: 500, path: "plex-mono/IBMPlexMono-Medium.ttf" },
@@ -136,6 +151,27 @@ export const FONT_FAMILIES: FontFamilyDef[] = [
     ],
   },
 ];
+
+/**
+ * Families a user may actually pick today — the design-system fonts
+ * (`embedded: true`), which are base64-embedded on the edge and therefore
+ * resolve with zero network I/O and can never fail. The other five entries
+ * stay in `FONT_FAMILIES` (never delete them: the registry doubles as the
+ * catalog `docs/runbooks/hire-order-fonts.md` documents and the source
+ * `scripts/upload-hire-order-fonts.ts` derives its required-path list from)
+ * but are excluded here until an operator uploads their TTFs to the
+ * `hire-order-fonts` bucket AND flips `pendingUpload` off in this file (see
+ * that field's doc comment above). The editor's font pickers (a later task)
+ * must call this instead of reading `FONT_FAMILIES` directly, so a family
+ * never becomes choosable before its files exist.
+ *
+ * This governs the picker only — `resolveHireOrderTheme` still accepts (and
+ * `familiesInUse`/`registerFonts` still attempt) any key in the full
+ * registry regardless of `pendingUpload`; see `isFamilyKey`'s doc comment.
+ */
+export function selectableFontFamilies(): FontFamilyDef[] {
+  return FONT_FAMILIES.filter((f) => !f.pendingUpload);
+}
 
 export type RoleKey =
   // Letterhead
@@ -336,6 +372,15 @@ function num(value: unknown, fallback: number, min: number, max: number): number
     : fallback;
 }
 
+/** Deliberately checks membership in the FULL registry, not
+ *  `selectableFontFamilies()` — `pendingUpload` gates what the editor's
+ *  picker OFFERS, never what a stored theme is ALLOWED to reference. An org
+ *  that already has a `pendingUpload` family saved (or one whose files land
+ *  after this ships) must keep resolving to that family, not silently fall
+ *  back to the default the moment `resolveHireOrderTheme` sees it — that
+ *  would be a worse regression than the picker briefly offering a family
+ *  before its files exist. See the `pendingUpload` field's doc comment on
+ *  `FontFamilyDef` for the picker-side half of this split. */
 function isFamilyKey(value: unknown): value is FontFamilyKey {
   return typeof value === "string" &&
     FONT_FAMILIES.some((f) => f.key === value);

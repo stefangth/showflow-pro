@@ -6,6 +6,7 @@ import {
   MONO_ROLE_KEYS,
   resolveHireOrderTheme,
   safeReactPdfFamilyName,
+  selectableFontFamilies,
   THEME_ROLE_KEYS,
   themeRoleStyle,
 } from "./pdfTheme";
@@ -216,5 +217,48 @@ describe("FONT_FAMILIES registry", () => {
     const byWeight = Object.fromEntries(def.files.map((f) => [f.weight, f.path]));
     expect(byWeight[500]).toBe(byWeight[400]);
     expect(byWeight[600]).not.toBe(byWeight[400]);
+  });
+});
+
+describe("selectableFontFamilies", () => {
+  it("returns exactly the two embedded design-system families today", () => {
+    expect(selectableFontFamilies().map((f) => f.key).sort()).toEqual([
+      "geist",
+      "geist-mono",
+    ]);
+  });
+
+  it("every selectable family is embedded, so a picker choice can never fail to load", () => {
+    for (const def of selectableFontFamilies()) {
+      expect(def.embedded).toBe(true);
+    }
+  });
+
+  it("excludes every family still awaiting a font upload", () => {
+    for (const def of selectableFontFamilies()) {
+      expect(def.pendingUpload).toBeFalsy();
+    }
+  });
+
+  it("FONT_FAMILIES itself is untouched: all seven entries remain, five pending", () => {
+    expect(FONT_FAMILIES).toHaveLength(7);
+    expect(FONT_FAMILIES.filter((f) => f.pendingUpload)).toHaveLength(5);
+  });
+});
+
+describe("resolveHireOrderTheme accepts a pending family", () => {
+  it("a stored base.fontFamily pointing at a pendingUpload family still resolves to it, not the default", () => {
+    const pending = FONT_FAMILIES.find((f) => f.pendingUpload);
+    expect(pending).toBeDefined();
+    const theme = resolveHireOrderTheme({ base: { fontFamily: pending!.key } });
+    expect(theme.base.fontFamily).toBe(pending!.key);
+    expect(theme.base.fontFamily).not.toBe(HIRE_ORDER_THEME_DEFAULTS.base.fontFamily);
+  });
+
+  it("a stored per-role family override pointing at a pendingUpload family still resolves and is included by familiesInUse", () => {
+    const pending = FONT_FAMILIES.find((f) => f.pendingUpload)!;
+    const theme = resolveHireOrderTheme({ roles: { totalValue: { family: pending.key } } });
+    expect(theme.roles.totalValue.family).toBe(pending.key);
+    expect(familiesInUse(theme).map((f) => f.key)).toContain(pending.key);
   });
 });
