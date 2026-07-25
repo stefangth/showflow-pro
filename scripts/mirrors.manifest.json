@@ -28,7 +28,13 @@
       "mode": "file",
       "source": "src/lib/hireOrders/pdf/fonts.ts",
       "target": "supabase/functions/_shared/hire-order-pdf/fonts.ts",
-      "why": "Geist + Geist Mono base64 bytes. BOTH pdfDeps shims embed them so the default theme renders with zero network I/O on either runtime; mirrored rather than hand-duplicated because the literal is ~700KB."
+      "why": "Geist + Geist Mono bytes, gzipped then base64-encoded. BOTH pdfDeps shims embed them so the default theme renders with zero network I/O on either runtime; mirrored rather than hand-duplicated because the literal is still ~330KB even gzipped."
+    },
+    {
+      "mode": "file",
+      "source": "src/lib/hireOrders/pdf/fontInflate.ts",
+      "target": "supabase/functions/_shared/hire-order-pdf/fontInflate.ts",
+      "why": "Inflates fonts.ts's gzip-compressed base64 back to plain base64 for a data: URI. DecompressionStream(\"gzip\") behaves identically on both runtimes, so this is one implementation rather than two; both (NOT mirrored) pdfDeps.ts shims call it."
     },
     {
       "mode": "file",

@@ -99,6 +99,49 @@ does *not* carry that 700KB of base64 - it fetches every family, including Geist
 bucket. Skip uploading Geist and the live preview breaks for the default theme even though the
 real, issued PDF is unaffected.
 
+## Regenerating the embedded Geist/Geist Mono bytes (`fonts.ts`)
+
+`src/lib/hireOrders/pdf/fonts.ts` (mirrored to
+`supabase/functions/_shared/hire-order-pdf/fonts.ts`) embeds the four Geist/Geist Mono TTFs
+directly as source, gzip-compressed at level 9 then base64-encoded (`GEIST_REGULAR_GZ_B64`,
+`GEIST_MEDIUM_GZ_B64`, `GEIST_SEMIBOLD_GZ_B64`, `GEIST_MONO_REGULAR_GZ_B64`). Gzipping matters
+here specifically: base64-of-raw-TTF for all four files came to ~709KB and was roughly 60% of the
+deployed `generate-hire-orders` edge function's payload, which pushed the Supabase Preview
+function deploy over its request-size ceiling (`413 request entity too large`). Gzip shrinks that
+by more than half with no loss of fidelity - see `fontInflate.test.ts` for the proof (below).
+
+**To replace a Geist file** (a font update, a licence-required re-derivation, etc.):
+
+1. Obtain the four new TTF files (`Geist-Regular.ttf`, `Geist-Medium.ttf`, `Geist-SemiBold.ttf`,
+   `GeistMono-Regular.ttf`), verified with `file <path>` exactly as for any other family (see "TTF
+   only, no exceptions" above).
+2. Regenerate the source file:
+   ```bash
+   node scripts/compress-fonts.mjs \
+     --regular <path/to/Geist-Regular.ttf> \
+     --medium <path/to/Geist-Medium.ttf> \
+     --semibold <path/to/Geist-SemiBold.ttf> \
+     --mono-regular <path/to/GeistMono-Regular.ttf>
+   ```
+   This writes `src/lib/hireOrders/pdf/fonts.ts` directly - never hand-edit it or its generated
+   edge twin.
+3. `npm run sync:mirrors` to regenerate `supabase/functions/_shared/hire-order-pdf/fonts.ts`.
+4. Run the golden-hash render tests
+   (`deno test --allow-all --node-modules-dir=none supabase/functions/_shared/hire-order-pdf/render.test.ts`).
+   A genuine font change is expected to fail `countersigned aggregate renders exactly as the
+   committed golden` / `single-date preview renders exactly as the committed golden` - see
+   `render.test.ts`'s own `UPDATE_HIRE_ORDER_PDF_GOLDEN` instructions for how to move the pin once
+   the change is reviewed and intended.
+
+**At render/registration time**, both `pdfDeps.ts` shims inflate these bytes back to plain
+base64 via `inflateFontGzB64` (`src/lib/hireOrders/pdf/fontInflate.ts`, mirrored to
+`supabase/functions/_shared/hire-order-pdf/fontInflate.ts`) before building the
+`data:font/ttf;base64,...` URI `Font.register` needs - `Font.register({ src: <Uint8Array> })`
+still fails on the edge runtime exactly as described in `fonts.ts`'s own header comment, so the
+gzip layer changes what's inside the base64 string, not the fact that a base64 data URI is
+required. Inflation happens once per isolate/session, behind the same `registered` guard that
+already deduplicates the `Font.register` calls, so the cost lands on cold start only.
+
 ## Licences
 
 Every family below is SIL Open Font License 1.1 (OFL), confirmed against each project's own
@@ -106,7 +149,7 @@ Every family below is SIL Open Font License 1.1 (OFL), confirmed against each pr
 
 | Family | Source | Licence |
 |---|---|---|
-| Geist / Geist Mono | github.com/vercel/geist-font | OFL 1.1 (already embedded; re-derive from `fonts.ts`'s base64 if the files are ever needed again - see below) |
+| Geist / Geist Mono | github.com/vercel/geist-font | OFL 1.1 (already embedded, gzip-compressed then base64-encoded; re-derive with `inflateFontGzB64` if the raw files are ever needed again - see "Regenerating the embedded Geist/Geist Mono bytes" above and "Why this isn't checked into git" below) |
 | Inter | github.com/rsms/inter, release v4.1 | OFL 1.1 |
 | IBM Plex Sans | github.com/IBM/plex, release `@ibm/plex-sans@1.1.0` | OFL 1.1 |
 | IBM Plex Mono | github.com/IBM/plex, release `@ibm/plex-mono@2.5.0` | OFL 1.1 |
@@ -260,6 +303,8 @@ running the upload script:
 2. **If it is not available, re-derive the same set from scratch** using the Licences table above:
    every family pins an exact release, package version, or commit, so the set is fully
    reproducible without the original attachment. Re-run steps 2-3 of "How to add (or replace) a
-   family" below for each of the seven families (Geist/Geist Mono can also be re-derived by
-   base64-decoding the constants in `src/lib/hireOrders/pdf/fonts.ts`, which
-   *is* committed, rather than re-fetched from Vercel).
+   family" below for each of the seven families (Geist/Geist Mono can also be re-derived from
+   `src/lib/hireOrders/pdf/fonts.ts`, which *is* committed, rather than re-fetched from Vercel -
+   its `*_GZ_B64` constants are base64 of GZIPPED TTF bytes, so decoding needs a gunzip step on top
+   of the base64 decode; `inflateFontGzB64` in `fontInflate.ts` does exactly that and is the
+   easiest way to get plain bytes back out, e.g. via a short Node/Deno script that imports it).

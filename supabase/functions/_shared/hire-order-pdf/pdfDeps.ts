@@ -16,7 +16,13 @@ export { renderToBuffer } from "npm:@react-pdf/renderer@^4";
 export type { ReactElement } from "npm:react@18.3.1";
 
 import { Font } from "npm:@react-pdf/renderer@^4";
-import { GEIST_MEDIUM_B64, GEIST_MONO_REGULAR_B64, GEIST_REGULAR_B64, GEIST_SEMIBOLD_B64 } from "./fonts.ts";
+import { inflateFontGzB64 } from "./fontInflate.ts";
+import {
+  GEIST_MEDIUM_GZ_B64,
+  GEIST_MONO_REGULAR_GZ_B64,
+  GEIST_REGULAR_GZ_B64,
+  GEIST_SEMIBOLD_GZ_B64,
+} from "./fonts.ts";
 import { type FontFamilyDef, type FontFamilyKey } from "./pdfTheme.ts";
 
 const FONT_BUCKET_URL = `${Deno.env.get("SUPABASE_URL") ?? ""}/storage/v1/object/public/hire-order-fonts`;
@@ -137,17 +143,28 @@ export async function registerFonts(
 ): Promise<Set<FontFamilyKey>> {
   const available = new Set<FontFamilyKey>();
   if (!registered.has("Geist")) {
+    // fonts.ts stores these gzip-compressed; inflate once, here, behind this
+    // same `registered` guard, so the cost lands on the isolate's first
+    // render (cold start) rather than every render. See fontInflate.ts and
+    // fonts.ts's header comment for why gzip and why a re-encode is still
+    // required.
+    const [regularB64, mediumB64, semiboldB64, monoRegularB64] = await Promise.all([
+      inflateFontGzB64(GEIST_REGULAR_GZ_B64),
+      inflateFontGzB64(GEIST_MEDIUM_GZ_B64),
+      inflateFontGzB64(GEIST_SEMIBOLD_GZ_B64),
+      inflateFontGzB64(GEIST_MONO_REGULAR_GZ_B64),
+    ]);
     Font.register({
       family: "Geist",
       fonts: [
-        { src: `data:font/ttf;base64,${GEIST_REGULAR_B64}`, fontWeight: 400 },
-        { src: `data:font/ttf;base64,${GEIST_MEDIUM_B64}`, fontWeight: 500 },
-        { src: `data:font/ttf;base64,${GEIST_SEMIBOLD_B64}`, fontWeight: 600 },
+        { src: `data:font/ttf;base64,${regularB64}`, fontWeight: 400 },
+        { src: `data:font/ttf;base64,${mediumB64}`, fontWeight: 500 },
+        { src: `data:font/ttf;base64,${semiboldB64}`, fontWeight: 600 },
       ],
     });
     Font.register({
       family: "GeistMono",
-      fonts: [{ src: `data:font/ttf;base64,${GEIST_MONO_REGULAR_B64}`, fontWeight: 400 }],
+      fonts: [{ src: `data:font/ttf;base64,${monoRegularB64}`, fontWeight: 400 }],
     });
     // react-pdf hyphenates at line breaks by default, which would render an
     // org called "Buehnenproduktionsgesellschaft" as "Buehnenproduktions-".
