@@ -5033,3 +5033,285 @@ Deno.test("sign re-resolves the agent signature from the snapshot path, not a fr
   assertEquals(res.status, 200);
   assertEquals((captured!.letterhead.agent_signature_data_url ?? "").startsWith("data:image/png;base64,"), true);
 });
+
+// ── editable pdf theme (task 7) ──────────────────────────────────────────────
+
+const THEME_SETTING = (value: Record<string, unknown>) => ({ org_id: ORG, value });
+
+Deno.test("preview: theme_override reaches the renderer, layered over the stored theme", async () => {
+  const { deps } = makeFakeDeps({
+    authUser: { id: "u-admin" },
+    tables: {
+      org_memberships: { data: { role: "admin" } },
+      hire_orders: { data: issuableOrder() },
+      app_settings: [
+        { when: { key: "hire_order_letterhead" }, data: [LETTERHEAD] },
+        { when: { key: "hire_order_terms" }, data: [TERMS_FILLED] },
+        { when: { key: "hire_order_defaults" }, data: [DEFAULTS] },
+        { when: { key: "hire_order_theme" }, data: [THEME_SETTING({ base: { scale: 1.2 } })] },
+      ],
+    },
+  });
+  let captured: { theme?: { base: { scale: number } } } | null = null;
+  deps.renderHireOrderPdf = (a) => {
+    captured = a as unknown as typeof captured;
+    return Promise.resolve(new Uint8Array([0x25, 0x50, 0x44, 0x46]));
+  };
+  const res = await handle(
+    makeRequest({
+      headers: JWT,
+      body: {
+        action: "preview",
+        org_id: ORG,
+        order_id: "o-1",
+        theme_override: { base: { scale: 1.4 } },
+      },
+    }),
+    deps,
+  );
+  assertEquals(res.status, 200);
+  assertEquals(captured!.theme?.base.scale, 1.4);
+});
+
+Deno.test("preview: falls back to the stored theme when no theme_override is sent", async () => {
+  const { deps } = makeFakeDeps({
+    authUser: { id: "u-admin" },
+    tables: {
+      org_memberships: { data: { role: "admin" } },
+      hire_orders: { data: issuableOrder() },
+      app_settings: [
+        { when: { key: "hire_order_letterhead" }, data: [LETTERHEAD] },
+        { when: { key: "hire_order_terms" }, data: [TERMS_FILLED] },
+        { when: { key: "hire_order_defaults" }, data: [DEFAULTS] },
+        { when: { key: "hire_order_theme" }, data: [THEME_SETTING({ base: { scale: 1.2 } })] },
+      ],
+    },
+  });
+  let captured: { theme?: { base: { scale: number } } } | null = null;
+  deps.renderHireOrderPdf = (a) => {
+    captured = a as unknown as typeof captured;
+    return Promise.resolve(new Uint8Array([0x25, 0x50, 0x44, 0x46]));
+  };
+  const res = await handle(
+    makeRequest({
+      headers: JWT,
+      body: { action: "preview", org_id: ORG, order_id: "o-1" },
+    }),
+    deps,
+  );
+  assertEquals(res.status, 200);
+  assertEquals(captured!.theme?.base.scale, 1.2);
+});
+
+// layerThemeOverride merges per FIELD at every depth (base scalars, base.colors,
+// base.page, and each role's individual style fields) rather than wholesale per
+// top-level group or per role key -- see the doc comment on layerThemeOverride
+// in index.ts for why. This test is what proves that choice: an ad-hoc override
+// that only tweaks ONE field of a role must not wipe the rest of that role's
+// stored customization.
+Deno.test("preview: theme_override merges per role FIELD, not per whole role", async () => {
+  const { deps } = makeFakeDeps({
+    authUser: { id: "u-admin" },
+    tables: {
+      org_memberships: { data: { role: "admin" } },
+      hire_orders: { data: issuableOrder() },
+      app_settings: [
+        { when: { key: "hire_order_letterhead" }, data: [LETTERHEAD] },
+        { when: { key: "hire_order_terms" }, data: [TERMS_FILLED] },
+        { when: { key: "hire_order_defaults" }, data: [DEFAULTS] },
+        {
+          when: { key: "hire_order_theme" },
+          data: [THEME_SETTING({ roles: { sectionHeading: { size: 20, color: "accent" } } })],
+        },
+      ],
+    },
+  });
+  let captured:
+    | { theme?: { roles: Record<string, { size?: number; color?: string; weight?: number }> } }
+    | null = null;
+  deps.renderHireOrderPdf = (a) => {
+    captured = a as unknown as typeof captured;
+    return Promise.resolve(new Uint8Array([0x25, 0x50, 0x44, 0x46]));
+  };
+  const res = await handle(
+    makeRequest({
+      headers: JWT,
+      body: {
+        action: "preview",
+        org_id: ORG,
+        order_id: "o-1",
+        // Only tweaks weight; size/color must survive from the stored theme.
+        theme_override: { roles: { sectionHeading: { weight: 600 } } },
+      },
+    }),
+    deps,
+  );
+  assertEquals(res.status, 200);
+  const role = captured!.theme?.roles.sectionHeading;
+  assertEquals(role?.weight, 600, "the ad-hoc field wins");
+  assertEquals(role?.size, 20, "the stored field survives a per-field merge");
+  assertEquals(role?.color, "accent", "the stored field survives a per-field merge");
+});
+
+Deno.test("issue freezes the resolved theme into issue_snapshot, without font bytes", async () => {
+  const { deps, calls } = makeFakeDeps({
+    authUser: { id: "u-admin" },
+    tables: {
+      org_memberships: { data: { role: "admin" } },
+      hire_orders: [
+        { when: { __write: false }, data: issuableOrder() },
+        { when: { __write: true }, data: null },
+      ],
+      artists: { data: { user_id: "u-artist" } },
+      app_settings: [
+        { when: { key: "hire_order_letterhead" }, data: [LETTERHEAD] },
+        { when: { key: "hire_order_terms" }, data: [TERMS_FILLED] },
+        { when: { key: "hire_order_defaults" }, data: [DEFAULTS] },
+        { when: { key: "hire_order_theme" }, data: [THEME_SETTING({ base: { scale: 1.3 } })] },
+      ],
+    },
+  });
+  const res = await handle(
+    makeRequest({ headers: JWT, body: { action: "issue", org_id: ORG, order_ids: ["o-1"] } }),
+    deps,
+  );
+  assertEquals(res.status, 200);
+  const issuedUpdate = calls.find(
+    (c) => c.table === "hire_orders" && c.method === "update" &&
+      (c.args[0] as { status?: string }).status === "issued",
+  );
+  assert(issuedUpdate, "expected the issued update");
+  const snap = (issuedUpdate!.args[0] as { issue_snapshot?: { theme?: { base: { scale: number } } } })
+    .issue_snapshot;
+  assertEquals(snap?.theme?.base.scale, 1.3);
+  // Font BYTES must never reach the snapshot -- HireOrderTheme carries only
+  // FontFamilyKey strings (e.g. "geist"), never react-pdf font file data, so no
+  // base64 payload should appear anywhere in the frozen snapshot.
+  assertEquals(JSON.stringify(snap).includes("base64"), false);
+});
+
+Deno.test("sign re-renders using snapshot.theme, ignoring a later live theme edit", async () => {
+  const snapshotOrder = {
+    ...SIGN_ORDER,
+    issue_snapshot: {
+      letterhead: { legal_name: "Snapshot GmbH", address_lines: [] },
+      terms: [{ title: "SNAP", body: "snapshot terms" }],
+      currency: "EUR",
+      theme: { base: { scale: 1.25 } }, // partial snapshot theme is fine (resolver fills gaps)
+    },
+  };
+  const { deps } = makeFakeDeps({
+    authUser: { id: "u-artist" },
+    rpcs: { is_feature_enabled: { data: true, error: null } },
+    tables: {
+      hire_orders: [
+        { when: { __write: false }, data: snapshotOrder },
+        { when: { __write: true }, data: [{ id: "o-1" }] },
+      ],
+      artists: { data: { id: "a-A" } },
+      org_memberships: { data: [] },
+      app_settings: [
+        { when: { key: "hire_order_countersign" }, data: [{ org_id: ORG, value: { mode: "electronic" } }] },
+        {
+          when: { key: "hire_order_letterhead" },
+          data: [{ org_id: ORG, value: { legal_name: "Live GmbH", address_lines: [] } }],
+        },
+        { when: { key: "hire_order_terms" }, data: [TERMS_FILLED] },
+        { when: { key: "hire_order_defaults" }, data: [DEFAULTS] },
+        // Live setting changed AFTER issue; the signed re-render must ignore it.
+        { when: { key: "hire_order_theme" }, data: [THEME_SETTING({ base: { scale: 1.45 } })] },
+      ],
+    },
+  });
+  let captured: { theme?: { base: { scale: number } } } | null = null;
+  deps.renderHireOrderPdf = (input) => {
+    captured = input as unknown as typeof captured;
+    return Promise.resolve(new Uint8Array([0x25, 0x50, 0x44, 0x46]));
+  };
+  const res = await handle(
+    makeRequest({ headers: { Authorization: "Bearer artist" }, body: SIGN_BODY }),
+    deps,
+  );
+  assertEquals(res.status, 200);
+  assertEquals(captured!.theme?.base.scale, 1.25);
+});
+
+Deno.test("sign falls back to the built-in default theme for a snapshot without a theme field", async () => {
+  const legacySnapshotOrder = {
+    ...SIGN_ORDER,
+    issue_snapshot: {
+      letterhead: { legal_name: "Snapshot GmbH", address_lines: [] },
+      terms: [{ title: "SNAP", body: "snapshot terms" }],
+      currency: "EUR",
+      // no `theme` key -- issued before this change
+    },
+  };
+  const { deps } = makeFakeDeps({
+    authUser: { id: "u-artist" },
+    rpcs: { is_feature_enabled: { data: true, error: null } },
+    tables: {
+      hire_orders: [
+        { when: { __write: false }, data: legacySnapshotOrder },
+        { when: { __write: true }, data: [{ id: "o-1" }] },
+      ],
+      artists: { data: { id: "a-A" } },
+      org_memberships: { data: [] },
+      app_settings: [
+        { when: { key: "hire_order_countersign" }, data: [{ org_id: ORG, value: { mode: "electronic" } }] },
+        { when: { key: "hire_order_letterhead" }, data: [LETTERHEAD] },
+        { when: { key: "hire_order_terms" }, data: [TERMS_FILLED] },
+        { when: { key: "hire_order_defaults" }, data: [DEFAULTS] },
+        // A live theme setting exists, but a present snapshot (letterhead + terms both
+        // there) must NOT consult it -- only a wholly missing/invalid snapshot does
+        // (see the next test). Missing `theme` falls to the BUILT-IN default instead,
+        // exactly mirroring how a snapshot without `copy` behaves.
+        { when: { key: "hire_order_theme" }, data: [THEME_SETTING({ base: { scale: 1.45 } })] },
+      ],
+    },
+  });
+  let captured: { theme?: { base: { scale: number } } } | null = null;
+  deps.renderHireOrderPdf = (input) => {
+    captured = input as unknown as typeof captured;
+    return Promise.resolve(new Uint8Array([0x25, 0x50, 0x44, 0x46]));
+  };
+  const res = await handle(
+    makeRequest({ headers: { Authorization: "Bearer artist" }, body: SIGN_BODY }),
+    deps,
+  );
+  assertEquals(res.status, 200);
+  assertEquals(captured!.theme?.base.scale, 1); // stock default, ignoring the live 1.45 setting
+});
+
+Deno.test("sign re-resolves the live theme setting for a legacy order with a null issue snapshot", async () => {
+  const legacyOrder = { ...SIGN_ORDER, issue_snapshot: null };
+  const { deps } = makeFakeDeps({
+    authUser: { id: "u-artist" },
+    rpcs: { is_feature_enabled: { data: true, error: null } },
+    tables: {
+      hire_orders: [
+        { when: { __write: false }, data: legacyOrder },
+        { when: { __write: true }, data: [{ id: "o-1" }] },
+      ],
+      artists: { data: { id: "a-A" } },
+      org_memberships: { data: [] },
+      app_settings: [
+        { when: { key: "hire_order_countersign" }, data: [{ org_id: ORG, value: { mode: "electronic" } }] },
+        { when: { key: "hire_order_letterhead" }, data: [LETTERHEAD] },
+        { when: { key: "hire_order_terms" }, data: [TERMS_FILLED] },
+        { when: { key: "hire_order_defaults" }, data: [DEFAULTS] },
+        { when: { key: "hire_order_theme" }, data: [THEME_SETTING({ base: { scale: 1.45 } })] },
+      ],
+    },
+  });
+  let captured: { theme?: { base: { scale: number } } } | null = null;
+  deps.renderHireOrderPdf = (input) => {
+    captured = input as unknown as typeof captured;
+    return Promise.resolve(new Uint8Array([0x25, 0x50, 0x44, 0x46]));
+  };
+  const res = await handle(
+    makeRequest({ headers: { Authorization: "Bearer artist" }, body: SIGN_BODY }),
+    deps,
+  );
+  assertEquals(res.status, 200);
+  assertEquals(captured!.theme?.base.scale, 1.45, "no issue_snapshot at all -> re-resolve the live theme setting");
+});

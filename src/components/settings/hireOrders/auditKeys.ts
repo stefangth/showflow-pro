@@ -12,4 +12,5 @@ export const HIRE_ORDER_AUDIT_KEYS = [
   "hire_order_defaults",
   "hire_order_countersign",
   "hire_order_copy",
+  "hire_order_theme",
 ];

@@ -20,6 +20,7 @@ const KEY_LABELS: Record<string, string> = {
   hire_order_defaults: "Order defaults",
   hire_order_countersign: "Countersign mode",
   hire_order_copy: "PDF copy",
+  hire_order_theme: "PDF template",
 };
 
 function describeEntry(entry: { key: string }): string {

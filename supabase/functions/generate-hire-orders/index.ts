@@ -64,6 +64,12 @@ import {
   withCollisionSuffix,
 } from "../_shared/hireOrders.ts";
 import { type HireOrderCopy, resolveHireOrderCopy } from "../_shared/hire-order-pdf/pdfCopy.ts";
+import {
+  type HireOrderTheme,
+  type HireOrderThemeOverride,
+  type LooseRoleStyle,
+  resolveHireOrderTheme,
+} from "../_shared/hire-order-pdf/pdfTheme.ts";
 
 // ── settings shapes + fallbacks (mirror src/components/settings/hireOrders/*) ──
 
@@ -106,6 +112,13 @@ interface IssueSnapshot {
    *  Stored as the FULL resolved record. Legacy snapshots (issued before part E)
    *  lack it -> signOrder falls back to the live setting / defaults. */
   copy?: HireOrderCopy;
+  /** Resolved PDF theme frozen at issue so a countersigned re-render reproduces
+   *  the exact issued typography/colour even if the org later re-themes. Stored
+   *  as the FULL resolved theme (base + roles) -- HireOrderTheme carries only
+   *  FontFamilyKey strings, never font FILE BYTES, so freezing it never bloats
+   *  the snapshot (see FONT_FAMILIES in pdfTheme.ts). Legacy snapshots (issued
+   *  before this) lack it -> signOrder falls back to the live setting / defaults. */
+  theme?: HireOrderTheme;
 }
 
 const NUMBERING_DEFAULT: Numbering = {
@@ -167,6 +180,44 @@ const FALLBACK_TERMS_VARIANT = "standard";
 const COUNTERSIGN_DEFAULT: Countersign = { mode: "manual" };
 /** No stored overrides -> resolveHireOrderCopy fills every key from the defaults. */
 const COPY_DEFAULT: Partial<HireOrderCopy> = {};
+/** No stored overrides -> resolveHireOrderTheme fills every key from the defaults. */
+const THEME_DEFAULT: HireOrderThemeOverride = {};
+
+/**
+ * Layer an ad-hoc theme override (unsaved editor edits) over the org's stored
+ * theme override, field by field at EVERY depth -- not wholesale per top-level
+ * group and not wholesale per role key. `base.colors`/`base.page` and each
+ * role's individual style fields (family/size/weight/color/letterSpacing/
+ * transform) are all objects a caller may send only a partial update for, so a
+ * shallow `{...stored.base, ...adhoc.base}` (or `{...stored.roles, ...adhoc.roles}`)
+ * would let a preview that tweaks a single field of one role silently drop the
+ * rest of that role's (or that group's) stored customization. Both inputs are
+ * themselves untrusted/partial JSON (mirrors HireOrderThemeOverride's own
+ * looseness); resolveHireOrderTheme remains the only narrowing point -- this
+ * only merges the two override layers before handing them to it.
+ */
+function layerThemeOverride(
+  stored: HireOrderThemeOverride,
+  adhoc: HireOrderThemeOverride | undefined,
+): HireOrderThemeOverride {
+  const roleKeys = new Set<string>([
+    ...Object.keys(stored.roles ?? {}),
+    ...Object.keys(adhoc?.roles ?? {}),
+  ]);
+  const roles: Record<string, LooseRoleStyle> = {};
+  for (const key of roleKeys) {
+    roles[key] = { ...(stored.roles?.[key] ?? {}), ...(adhoc?.roles?.[key] ?? {}) };
+  }
+  return {
+    base: {
+      ...stored.base,
+      ...adhoc?.base,
+      colors: { ...stored.base?.colors, ...adhoc?.base?.colors },
+      page: { ...stored.base?.page, ...adhoc?.base?.page },
+    },
+    roles,
+  };
+}
 
 const BUCKET = "hire-orders";
 const SIGNED_URL_TTL = 3600;
@@ -1586,6 +1637,15 @@ async function issueOrders(
     COPY_DEFAULT,
   );
   const copy = resolveHireOrderCopy(copyOverride);
+  // Resolve the org's editable PDF theme ONCE for the whole batch (frozen per order
+  // into issue_snapshot.theme below), same shape as copy above.
+  const themeOverride = await resolveOrgSetting<HireOrderThemeOverride>(
+    admin,
+    org,
+    "hire_order_theme",
+    THEME_DEFAULT,
+  );
+  const theme = resolveHireOrderTheme(themeOverride);
   // Resolve the shared org agent signature ONCE for the whole batch; issueOne runs
   // per order below, so resolving inside it would re-download the same PNG N times.
   const agentSignatureDataUrl = await resolveAgentSignatureDataUrl(
@@ -1608,6 +1668,7 @@ async function issueOrders(
         countersign,
         agentSignatureDataUrl,
         copy,
+        theme,
       );
       if (outcome.ok) {
         issued.push(orderId);
@@ -1645,6 +1706,7 @@ async function issueOne(
   countersign: Countersign,
   agentSignatureDataUrl: string | null,
   copy: HireOrderCopy,
+  theme: HireOrderTheme,
 ): Promise<{ ok: true; warning?: string } | { ok: false; issues: string[] }> {
   const admin = deps.admin;
 
@@ -1707,6 +1769,7 @@ async function issueOne(
     currency,
     generatedAtIso: deps.now().toISOString(),
     copy,
+    theme,
   });
 
   const path = `${org}/${o.order_no}.pdf`;
@@ -1725,6 +1788,7 @@ async function issueOne(
     currency,
     countersign_mode: countersign.mode,
     copy,
+    theme,
   };
   const { error: issueErr } = await admin
     .from("hire_orders")
@@ -2079,6 +2143,9 @@ interface PreviewBody {
   /** Ad-hoc copy overrides layered over the org's stored copy, so the settings
    *  card can preview unsaved edits. */
   copy_override?: Partial<HireOrderCopy>;
+  /** Ad-hoc theme overrides layered over the org's stored theme, so the editor
+   *  can preview unsaved edits. */
+  theme_override?: HireOrderThemeOverride;
 }
 
 /** A representative order for the settings-page copy preview: exercises every
@@ -2105,9 +2172,9 @@ async function previewOrder(deps: Deps, body: PreviewBody): Promise<Response> {
   const admin = deps.admin;
   const org = body.org_id;
 
-  // Resolve the org's stored copy, then layer any ad-hoc override on top (override
-  // wins per key) so the settings-card preview reflects unsaved edits.
-  const [letterhead, rawTerms, defaults, storedCopy] = await Promise.all([
+  // Resolve the org's stored copy/theme, then layer any ad-hoc override on top
+  // (override wins) so the settings-card / editor preview reflects unsaved edits.
+  const [letterhead, rawTerms, defaults, storedCopy, storedTheme] = await Promise.all([
     resolveOrgSetting<HireOrderLetterhead>(
       admin,
       org,
@@ -2122,8 +2189,15 @@ async function previewOrder(deps: Deps, body: PreviewBody): Promise<Response> {
       "hire_order_copy",
       COPY_DEFAULT,
     ),
+    resolveOrgSetting<HireOrderThemeOverride>(
+      admin,
+      org,
+      "hire_order_theme",
+      THEME_DEFAULT,
+    ),
   ]);
   const copy = resolveHireOrderCopy({ ...storedCopy, ...(body.copy_override ?? {}) });
+  const theme = resolveHireOrderTheme(layerThemeOverride(storedTheme, body.theme_override));
   const termsSetting = normalizeTermsSetting(rawTerms);
 
   // With no order_id, render a representative sample (copy settings preview);
@@ -2171,6 +2245,7 @@ async function previewOrder(deps: Deps, body: PreviewBody): Promise<Response> {
     currency: o.fee_currency ?? defaults.currency ?? "EUR",
     generatedAtIso: deps.now().toISOString(),
     copy,
+    theme,
   });
 
   return json({ pdf_base64: encodeBase64(bytes) });
@@ -2417,6 +2492,7 @@ async function signOrder(
   let renderTerms: HireOrderTerm[];
   let currency: string;
   let renderCopy: HireOrderCopy;
+  let renderTheme: HireOrderTheme;
   if (snapshot && snapshot.letterhead && Array.isArray(snapshot.terms)) {
     // The snapshot letterhead already includes the per-order agent override baked in
     // at issue time, so do NOT re-merge o.agent_name/agent_email here.
@@ -2428,6 +2504,10 @@ async function signOrder(
     // orders and undefined for legacy ones; resolveHireOrderCopy fills any gaps
     // from the current defaults either way.
     renderCopy = resolveHireOrderCopy(snapshot.copy);
+    // Reproduce the issued typography/colour. snapshot.theme is a full resolved
+    // theme for orders issued after this change and undefined for older ones;
+    // resolveHireOrderTheme fills any gaps from the built-in defaults either way.
+    renderTheme = resolveHireOrderTheme(snapshot.theme);
   } else {
     const termsSetting = normalizeTermsSetting(rawTerms);
     renderLetterhead = {
@@ -2437,7 +2517,7 @@ async function signOrder(
     };
     renderTerms = resolveTermsClauses(termsSetting, o.terms_variant);
     currency = o.fee_currency ?? defaults.currency ?? "EUR";
-    // No snapshot (legacy order): re-resolve the org's current copy setting.
+    // No snapshot (legacy order): re-resolve the org's current copy/theme setting.
     const storedCopy = await resolveOrgSetting<Partial<HireOrderCopy>>(
       admin,
       org,
@@ -2445,6 +2525,13 @@ async function signOrder(
       COPY_DEFAULT,
     );
     renderCopy = resolveHireOrderCopy(storedCopy);
+    const storedTheme = await resolveOrgSetting<HireOrderThemeOverride>(
+      admin,
+      org,
+      "hire_order_theme",
+      THEME_DEFAULT,
+    );
+    renderTheme = resolveHireOrderTheme(storedTheme);
   }
   // The snapshot/live letterhead carries only agent_signature_path (never the base64
   // blob, see issueOne). Resolve the data url fresh so the signed re-render still draws
@@ -2478,6 +2565,7 @@ async function signOrder(
     generatedAtIso: signedAtIso,
     signature,
     copy: renderCopy,
+    theme: renderTheme,
   });
 
   // Upload the signed copy (keeps the original issued pdf_path intact).
