@@ -197,6 +197,11 @@ export function formatMoney(amount: string | number, currency: string): string {
   return `${symbol}${formatted}`;
 }
 
+// ── fee basis ────────────────────────────────────────────────────────────
+// Re-exported from the generated mirror of src/lib/hireOrders/feeBasis.ts, so
+// callers keep importing everything hire-order from this one module.
+export { computeFeeTotal, type FeeBasis } from "./feeBasis.ts";
+
 // ── validate ─────────────────────────────────────────────────────────────
 
 function isBlank(value: unknown): boolean {

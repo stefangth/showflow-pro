@@ -1,6 +1,7 @@
 import { assertEquals } from "./test-asserts.ts";
 import {
   ORDER_FIELD_KEYS,
+  computeFeeTotal,
   defaultTemplateId,
   formatMoney,
   formatOrderNo,
@@ -209,4 +210,21 @@ Deno.test("resolveEngagementSessions: lets an override replace sessions and/or d
 Deno.test("resolveEngagementSessions: treats an empty override sessions array as an explicit clear", () => {
   const synced = { sessions: ["19:00", "21:00"], duration_min: 90 };
   assertEquals(resolveEngagementSessions(synced, { sessions: [] }), { sessions: [], duration_min: 90 });
+});
+
+// ── feeBasis ─────────────────────────────────────────────────────────────
+
+Deno.test("computeFeeTotal multiplies per-date fees in exact cents", () => {
+  assertEquals(computeFeeTotal(500, 3, "per_date"), 1500);
+  assertEquals(computeFeeTotal(500.1, 3, "per_date"), 1500.3);
+  assertEquals(computeFeeTotal(500, 1, "per_date"), 500);
+});
+
+Deno.test("computeFeeTotal leaves a total-basis fee alone", () => {
+  assertEquals(computeFeeTotal(1500, 3, "total"), 1500);
+});
+
+Deno.test("computeFeeTotal no-ops on a nonsensical date count", () => {
+  assertEquals(computeFeeTotal(500, 0, "per_date"), 500);
+  assertEquals(computeFeeTotal(500, -2, "per_date"), 500);
 });

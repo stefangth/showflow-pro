@@ -13,6 +13,12 @@
       "why": "Generated Supabase types. Source is itself generated; never hand-edit either side."
     },
     {
+      "mode": "file",
+      "source": "src/lib/hireOrders/feeBasis.ts",
+      "target": "supabase/functions/_shared/feeBasis.ts",
+      "why": "Fee basis type + cents-safe multiplication, used by the frontend wizard and the draft-batch edge action."
+    },
+    {
       "mode": "block",
       "source": "src/lib/capabilities.ts",
       "target": "supabase/functions/_shared/capabilities.ts",
