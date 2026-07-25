@@ -465,3 +465,129 @@ Deno.test("single-date PDF still renders its order-level notes unchanged", async
   const occurrences = text.split("Notes: Backline provided by the venue.").length - 1;
   assertEquals(occurrences, 1, "notes must render exactly once for a single-date order");
 });
+
+/** Same text-extraction pattern used throughout this file, as a named helper
+ *  for the fee-breakdown tests below. */
+async function renderToText(input: RenderInput): Promise<string> {
+  return await extractPdfText(await renderHireOrderPdf(input));
+}
+
+Deno.test("fees section prints a per-date breakdown for an aggregate order", async () => {
+  const text = await renderToText({
+    ...BASE,
+    data: {
+      ...BASE.data,
+      fee: { value: 1500, source: "manual" },
+      fee_basis: { value: "per_date", source: "manual" },
+      fee_per_date: { value: 500, source: "manual" },
+      engagement_dates: {
+        value: [
+          { show_date_id: "d1", date: "2026-06-15", venue: "A", city: "Berlin" },
+          { show_date_id: "d2", date: "2026-06-16", venue: "B", city: "Hamburg" },
+          { show_date_id: "d3", date: "2026-06-17", venue: "C", city: "Munich" },
+        ],
+        source: "showflow",
+      },
+    },
+  });
+  assertStringIncludes(text, "500.00 per date x 3 dates");
+  assertStringIncludes(text, "1,500.00");
+});
+
+Deno.test("fees section keeps the plain engagement-fee label for a total-basis order", async () => {
+  const text = await renderToText({
+    ...BASE,
+    data: {
+      ...BASE.data,
+      fee: { value: 1500, source: "manual" },
+      fee_basis: { value: "total", source: "manual" },
+    },
+  });
+  assertStringIncludes(text, "Engagement fee");
+  assertEquals(text.includes("per date"), false);
+});
+
+Deno.test("fees section prints the singular per-date breakdown for a single-date per-date order", async () => {
+  // A single-date order carries no `engagement_dates` (per Task 4: fee_basis
+  // can be "per_date" even for a 1-date order), so engagementDates.length is 0
+  // and the renderer falls back to a date count of 1, using the singular
+  // template rather than "x 1 dates".
+  const text = await renderToText({
+    ...BASE,
+    data: {
+      ...BASE.data,
+      fee: { value: 500, source: "manual" },
+      fee_basis: { value: "per_date", source: "manual" },
+      fee_per_date: { value: 500, source: "manual" },
+    },
+  });
+  assertStringIncludes(text, "500.00 per date");
+  assertEquals(text.includes("dates"), false);
+});
+
+Deno.test("fees section refuses a breakdown that does not multiply up to the stored total", async () => {
+  // A snapshot whose derived fields contradict its own total: 500 per date x 3
+  // dates is 1500, but the stored fee is 1200 (what a later fee edit that kept
+  // the derived fields leaves behind). Printing "500.00 per date x 3 dates"
+  // above a 1,200.00 total would put false arithmetic on an immutable,
+  // artist-facing document, so the renderer degrades to the plain label. This
+  // guard covers ANY writer, present or future, not just the one that was
+  // fixed alongside it.
+  const text = await renderToText({
+    ...BASE,
+    data: {
+      ...BASE.data,
+      fee: { value: 1200, source: "manual" },
+      fee_basis: { value: "per_date", source: "manual" },
+      fee_per_date: { value: 500, source: "manual" },
+      engagement_dates: {
+        value: [
+          { show_date_id: "d1", date: "2026-06-15", venue: "A", city: "Berlin" },
+          { show_date_id: "d2", date: "2026-06-16", venue: "B", city: "Hamburg" },
+          { show_date_id: "d3", date: "2026-06-17", venue: "C", city: "Munich" },
+        ],
+        source: "showflow",
+      },
+    },
+  });
+  assertStringIncludes(text, "Engagement fee");
+  assertStringIncludes(text, "1,200.00");
+  assertEquals(text.includes("per date"), false);
+  assertEquals(text.includes("500.00"), false);
+});
+
+Deno.test("fees section prints a fractional per-date breakdown that reconciles only in cents", async () => {
+  // 500.10 x 3 is 1500.3000000000002 in binary floating point: a float equality
+  // check in the guard would reject this CORRECT breakdown and silently drop
+  // the line. The reconcile runs in integer cents, so it prints.
+  const text = await renderToText({
+    ...BASE,
+    data: {
+      ...BASE.data,
+      fee: { value: 1500.3, source: "manual" },
+      fee_basis: { value: "per_date", source: "manual" },
+      fee_per_date: { value: 500.1, source: "manual" },
+      engagement_dates: {
+        value: [
+          { show_date_id: "d1", date: "2026-06-15", venue: "A", city: "Berlin" },
+          { show_date_id: "d2", date: "2026-06-16", venue: "B", city: "Hamburg" },
+          { show_date_id: "d3", date: "2026-06-17", venue: "C", city: "Munich" },
+        ],
+        source: "showflow",
+      },
+    },
+  });
+  assertStringIncludes(text, "500.10 per date x 3 dates");
+  assertStringIncludes(text, "1,500.30");
+});
+
+Deno.test("fees section renders the plain engagement-fee label unchanged for a legacy order with no fee_basis snapshot", async () => {
+  // Every hire order created before this feature has no fee_basis/fee_per_date
+  // in its snapshot, and issued orders are immutable, so this shape renders
+  // forever going forward. It must keep printing exactly what it prints today:
+  // the plain "Engagement fee" label and the unchanged total.
+  const text = await renderToText(BASE);
+  assertStringIncludes(text, "Engagement fee");
+  assertStringIncludes(text, "850.00");
+  assertEquals(text.includes("per date"), false);
+});

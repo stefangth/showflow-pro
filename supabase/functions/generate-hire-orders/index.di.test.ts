@@ -2,7 +2,7 @@ import {
   assert,
   assertEquals,
 } from "https://deno.land/std@0.224.0/assert/mod.ts";
-import { handle } from "./index.ts";
+import { handle, resolveOrderDefaults } from "./index.ts";
 import { makeFakeDeps, makeRequest } from "../_shared/testing.ts";
 
 // ── shared fixtures ──────────────────────────────────────────────────────
@@ -99,6 +99,112 @@ const TERMS_TEMPLATES_DEFAULT_EMPTY = {
     default_id: "current-default",
   },
 };
+
+// ── resolveOrderDefaults (hire_order_defaults, legacy-org + validation) ────
+//
+// resolveOrgSetting replaces the fallback wholesale on a match rather than
+// merging field-by-field (src/data/settings.ts:53, _shared/settings.ts:41), so
+// an org that saved hire_order_defaults before default_fee_basis existed has a
+// stored {default_fee, currency} row with the key entirely absent. And because
+// app_settings holds hand-editable JSON with no validation on the way in, a
+// stored default_fee_basis can also be garbage ("" , "weekly", ...) rather than
+// simply missing. resolveOrderDefaults is the single resolution path for this
+// setting across every action in this file (draft/draft-manual/draft-batch/
+// issue/preview/sign), so its one piece of real logic — falling back to
+// "per_date" for anything that isn't exactly a legal FeeBasis — is tested
+// directly here rather than through an action whose response never surfaces
+// default_fee_basis.
+
+Deno.test("resolveOrderDefaults: a legacy stored default with no basis key resolves to per_date, other fields unchanged", async () => {
+  const { deps } = makeFakeDeps({
+    tables: {
+      app_settings: [
+        {
+          when: { key: "hire_order_defaults" },
+          data: [{ org_id: ORG, value: { default_fee: 500, currency: "USD" } }],
+        },
+      ],
+    },
+  });
+
+  const defaults = await resolveOrderDefaults(deps.admin, ORG);
+  assertEquals(defaults.default_fee_basis, "per_date");
+  assertEquals(defaults.default_fee, 500);
+  assertEquals(defaults.currency, "USD");
+});
+
+Deno.test("resolveOrderDefaults: a stored basis of total is not clobbered by the validation", async () => {
+  const { deps } = makeFakeDeps({
+    tables: {
+      app_settings: [
+        {
+          when: { key: "hire_order_defaults" },
+          data: [{ org_id: ORG, value: { default_fee: 500, currency: "USD", default_fee_basis: "total" } }],
+        },
+      ],
+    },
+  });
+
+  const defaults = await resolveOrderDefaults(deps.admin, ORG);
+  assertEquals(defaults.default_fee_basis, "total");
+  assertEquals(defaults.default_fee, 500);
+  assertEquals(defaults.currency, "USD");
+});
+
+Deno.test("resolveOrderDefaults: a stored empty-string basis (falsy but defined) resolves to per_date", async () => {
+  // The case a plain `?? "per_date"` gets wrong: "" is defined, so `??` would
+  // pass it straight through as if it were a legal FeeBasis.
+  const { deps } = makeFakeDeps({
+    tables: {
+      app_settings: [
+        {
+          when: { key: "hire_order_defaults" },
+          data: [{ org_id: ORG, value: { default_fee: 500, currency: "USD", default_fee_basis: "" } }],
+        },
+      ],
+    },
+  });
+
+  const defaults = await resolveOrderDefaults(deps.admin, ORG);
+  assertEquals(defaults.default_fee_basis, "per_date");
+  assertEquals(defaults.default_fee, 500);
+  assertEquals(defaults.currency, "USD");
+});
+
+Deno.test("resolveOrderDefaults: a stored non-FeeBasis string resolves to per_date", async () => {
+  const { deps } = makeFakeDeps({
+    tables: {
+      app_settings: [
+        {
+          when: { key: "hire_order_defaults" },
+          data: [{ org_id: ORG, value: { default_fee: 500, currency: "USD", default_fee_basis: "weekly" } }],
+        },
+      ],
+    },
+  });
+
+  const defaults = await resolveOrderDefaults(deps.admin, ORG);
+  assertEquals(defaults.default_fee_basis, "per_date");
+});
+
+Deno.test("resolveOrderDefaults: a stored basis of toString does not sneak past validation via the prototype chain", async () => {
+  // `in` walks the prototype chain, so a naive `value in FEE_BASIS_VALUES` check
+  // would incorrectly accept "toString"/"constructor"/"hasOwnProperty" as legal
+  // FeeBasis strings. Regression guard for the hasOwnProperty-based fix.
+  const { deps } = makeFakeDeps({
+    tables: {
+      app_settings: [
+        {
+          when: { key: "hire_order_defaults" },
+          data: [{ org_id: ORG, value: { default_fee: 500, currency: "USD", default_fee_basis: "toString" } }],
+        },
+      ],
+    },
+  });
+
+  const defaults = await resolveOrderDefaults(deps.admin, ORG);
+  assertEquals(defaults.default_fee_basis, "per_date");
+});
 
 // ── draft ────────────────────────────────────────────────────────────────
 
@@ -648,6 +754,140 @@ Deno.test("draft-manual creates the order with a null fee when no manual fee is 
   );
 });
 
+/** Deps for the draft-manual fee-basis cases below: the same admin/settings
+ *  seed the other draft-manual tests use, plus a reader for the inserted row's
+ *  snapshot. */
+function makeManualDeps(insertedId = "ho-basis") {
+  const { deps, calls } = makeFakeDeps({
+    authUser: { id: "u-admin" },
+    tables: {
+      org_memberships: { data: { role: "admin" } },
+      hire_orders: [
+        { when: { __write: false }, data: [] },
+        { when: { __write: true }, data: { id: insertedId } },
+      ],
+      app_settings: [
+        { when: { key: "hire_order_defaults" }, data: [DEFAULTS] },
+        { when: { key: "hire_order_numbering" }, data: [NUMBERING] },
+      ],
+    },
+  });
+  const insertedData = () => {
+    const insert = calls.find((c) =>
+      c.table === "hire_orders" && c.method === "insert"
+    );
+    assert(insert, "expected a hire_orders insert");
+    return (insert!.args[0] as {
+      data: Record<string, { value: unknown; source: string } | undefined>;
+    }).data;
+  };
+  return { deps, calls, insertedData };
+}
+
+Deno.test("draft-manual stores the request's per-date fee basis in the snapshot", async () => {
+  // The wizard shows "500.00 per date" on step 4 for a manual order, so the
+  // snapshot has to say the same thing. A manual order is single-date, so
+  // per-date x 1 is the entered amount and no total changes.
+  const { deps, insertedData } = makeManualDeps();
+  const res = await handle(
+    makeRequest({
+      headers: JWT,
+      body: {
+        action: "draft-manual",
+        org_id: ORG,
+        manual: { fee: 500 },
+        fee_basis: "per_date",
+      },
+    }),
+    deps,
+  );
+  assertEquals(res.status, 200);
+  const data = insertedData();
+  assertEquals(data.fee?.value, 500);
+  assertEquals(data.fee_basis?.value, "per_date");
+  assertEquals(data.fee_per_date?.value, 500);
+});
+
+Deno.test("draft-manual stores a total fee basis and records no per-date amount", async () => {
+  const { deps, insertedData } = makeManualDeps();
+  const res = await handle(
+    makeRequest({
+      headers: JWT,
+      body: {
+        action: "draft-manual",
+        org_id: ORG,
+        manual: { fee: 500 },
+        fee_basis: "total",
+      },
+    }),
+    deps,
+  );
+  assertEquals(res.status, 200);
+  const data = insertedData();
+  assertEquals(data.fee_basis?.value, "total");
+  assertEquals(data.fee_per_date, undefined);
+});
+
+Deno.test("draft-manual falls back to the org's default fee basis when the request omits one", async () => {
+  const { deps, insertedData } = makeManualDeps();
+  const res = await handle(
+    makeRequest({
+      headers: JWT,
+      body: { action: "draft-manual", org_id: ORG, manual: { fee: 500 } },
+    }),
+    deps,
+  );
+  assertEquals(res.status, 200);
+  // DEFAULTS predates default_fee_basis, so resolveOrderDefaults supplies per_date.
+  assertEquals(insertedData().fee_basis?.value, "per_date");
+});
+
+Deno.test("draft-manual omits fee_basis and fee_per_date when no fee is entered", async () => {
+  const { deps, insertedData } = makeManualDeps();
+  const res = await handle(
+    makeRequest({
+      headers: JWT,
+      body: {
+        action: "draft-manual",
+        org_id: ORG,
+        manual: { venue: "The Loft" },
+        fee_basis: "per_date",
+      },
+    }),
+    deps,
+  );
+  assertEquals(res.status, 200);
+  const data = insertedData();
+  assertEquals(data.fee_basis, undefined);
+  assertEquals(data.fee_per_date, undefined);
+});
+
+Deno.test("draft-manual rejects an unknown fee_basis with the same 400 draft-batch returns", async () => {
+  // One action accepting what the other rejects is how a bad basis reaches the
+  // snapshot in the first place.
+  const { deps, calls } = makeManualDeps();
+  const res = await handle(
+    makeRequest({
+      headers: JWT,
+      body: {
+        action: "draft-manual",
+        org_id: ORG,
+        manual: { fee: 500 },
+        fee_basis: "weekly",
+      },
+    }),
+    deps,
+  );
+  assertEquals(res.status, 400);
+  assertEquals(await res.json(), { error: "invalid_fee_basis" });
+  assertEquals(
+    calls.filter((c) => c.table === "hire_orders" && c.method === "insert")
+      .length,
+    0,
+    "an invalid fee basis must reject before any insert",
+  );
+});
+
 Deno.test("draft-manual for an artist/date pair that already has an active order returns created:[] with a skip indicator, no retry", async () => {
   // Simulates the hire_orders_active_artist_date_uniq backstop firing: the insert
   // returns a 23505 whose message names that index (exactly the shape supabase-js
@@ -831,8 +1071,10 @@ Deno.test("draft-batch creates one order per artist and snapshots all assigned d
   assertEquals(firstAggregate.p_data.city.value, "Hamburg");
   assertEquals(
     firstAggregate.p_data.fee.value,
-    900,
-    "the shared manual layer applies to every artist",
+    1800,
+    "the shared manual fee (900) is entered once, and the org's default per_date " +
+      "basis (no fee_basis in the request, DEFAULTS carries no override) multiplies " +
+      "it by this artist's 2 surviving dates",
   );
   assertEquals(firstAggregate.p_data.engagement_dates.source, "showflow");
   assertEquals(firstAggregate.p_data.engagement_dates.value, [
@@ -1424,6 +1666,217 @@ Deno.test("draft-batch skips an artist whose every requested date is already cov
   assertEquals(body.skipped, [{ artist_id: BATCH_ARTIST_1, reason: "exists" }]);
   assertEquals(calls.filter((c) => c.table === "rpc:create_hire_order_with_dates").length, 0);
 });
+
+// ── draft-batch: per-date fee multiplication ────────────────────────────────
+
+const ARTIST_A = "44444444-4444-4444-8444-444444444444";
+const DATE_1 = "55555555-5555-4555-8555-555555555555";
+const DATE_2 = "66666666-6666-4666-8666-666666666666";
+const DATE_3 = "77777777-7777-4777-8777-777777777777";
+
+/**
+ * Fake deps for the fee-basis tests: one artist (ARTIST_A) and up to three
+ * show_dates (DATE_1/2/3, one per entry in `dates`), built the same way as the
+ * draft-batch fixtures above (SHOW_DATE_ROW spread + id/date override,
+ * hire_orders array-seed keyed by `artist_id` for the coverage read). Passing
+ * `coveredDateIds` seeds an active order covering those dates for ARTIST_A, so
+ * `coveredDatesForArtist` drops them exactly like the partial-success fixture
+ * above (BATCH_ARTIST_1 / BATCH_DATE_1).
+ *
+ * `inserted.hire_orders` reads back what the transactional RPC was called
+ * with after `handle` runs: `{ data, fee_amount }`, mirroring the args
+ * `draftBatchArtist` passes to `create_hire_order_with_dates`.
+ */
+function makeBatchDeps(
+  opts: { dates: string[]; coveredDateIds?: string[] },
+) {
+  const ids = [DATE_1, DATE_2, DATE_3].slice(0, opts.dates.length);
+  const showDateRows = ids.map((id, i) => ({
+    ...SHOW_DATE_ROW,
+    id,
+    date: opts.dates[i],
+  }));
+  const coveredDateIds = opts.coveredDateIds ?? [];
+  const coveredRows = coveredDateIds.map((id, i) => ({
+    id: `cov-${i}`,
+    show_date_id: id,
+    status: "issued",
+  }));
+
+  const { deps, calls } = makeFakeDeps({
+    authUser: { id: "u-admin" },
+    rpcs: { create_hire_order_with_dates: { data: "ho-new", error: null } },
+    tables: {
+      org_memberships: { data: { role: "admin" } },
+      artists: {
+        data: [{ id: ARTIST_A, name: "Ann", email: "ann@x.de", cast_role: "Lead" }],
+      },
+      show_dates: { data: showDateRows },
+      cities: { data: [{ id: "city-1", name: "Berlin" }] },
+      hire_orders: coveredRows.length > 0
+        ? [{ when: { artist_id: ARTIST_A }, data: coveredRows }, { data: [] }]
+        : { data: [] },
+      hire_order_dates: { data: [] },
+      app_settings: [
+        { when: { key: "hire_order_defaults" }, data: [DEFAULTS] },
+        { when: { key: "hire_order_numbering" }, data: [NUMBERING] },
+      ],
+    },
+  });
+
+  const inserted = {
+    // Maps the RPC's p_-prefixed args (p_data, p_fee_amount — see
+    // create_hire_order_with_dates's signature) onto the plain field names the
+    // brief's assertions read, so a test can say `order.data.fee.value` instead
+    // of reaching into the RPC's own argument-naming convention.
+    get hire_orders() {
+      return calls
+        .filter((c) => c.table === "rpc:create_hire_order_with_dates")
+        .map((c) => {
+          const args = c.args[0] as {
+            p_data: Record<string, { value: unknown; source: string }>;
+            p_fee_amount: number | null;
+          };
+          return { data: args.p_data, fee_amount: args.p_fee_amount };
+        });
+    },
+  };
+  return { deps, calls, inserted };
+}
+
+/** Build a draft-batch request body, defaulting `action`/`org_id` the way
+ *  every case in this section needs them. */
+function batchRequest(overrides: Record<string, unknown>): Request {
+  return makeRequest({
+    headers: JWT,
+    body: { action: "draft-batch", org_id: ORG, ...overrides },
+  });
+}
+
+Deno.test("draft-batch multiplies a per-date fee by the artist's date count", async () => {
+  const { deps, inserted } = makeBatchDeps({
+    dates: ["2026-06-15", "2026-06-16", "2026-06-17"],
+  });
+  const res = await handle(
+    batchRequest({
+      artists: [{ artist_id: ARTIST_A, show_date_ids: [DATE_1, DATE_2, DATE_3] }],
+      manual: { fee: 500 },
+      fee_basis: "per_date",
+    }),
+    deps,
+  );
+  assertEquals(res.status, 200);
+  const order = inserted.hire_orders[0];
+  assertEquals(order.data.fee.value, 1500);
+  assertEquals(order.data.fee_per_date.value, 500);
+  assertEquals(order.data.fee_basis.value, "per_date");
+  assertEquals(order.fee_amount, 1500);
+});
+
+Deno.test("draft-batch bills only the dates that survive the covered-date drop", async () => {
+  // DATE_3 is already covered by an active order for this artist.
+  const { deps, inserted } = makeBatchDeps({
+    dates: ["2026-06-15", "2026-06-16", "2026-06-17"],
+    coveredDateIds: [DATE_3],
+  });
+  const res = await handle(
+    batchRequest({
+      artists: [{ artist_id: ARTIST_A, show_date_ids: [DATE_1, DATE_2, DATE_3] }],
+      manual: { fee: 500 },
+      fee_basis: "per_date",
+    }),
+    deps,
+  );
+  assertEquals(res.status, 200);
+  // Two dates survive, so the total is 1000 and not 1500.
+  assertEquals(inserted.hire_orders[0].data.fee.value, 1000);
+});
+
+Deno.test("draft-batch leaves a total-basis fee unmultiplied and records no per-date amount", async () => {
+  const { deps, inserted } = makeBatchDeps({ dates: ["2026-06-15", "2026-06-16"] });
+  const res = await handle(
+    batchRequest({
+      artists: [{ artist_id: ARTIST_A, show_date_ids: [DATE_1, DATE_2] }],
+      manual: { fee: 1500 },
+      fee_basis: "total",
+    }),
+    deps,
+  );
+  assertEquals(res.status, 200);
+  const order = inserted.hire_orders[0];
+  assertEquals(order.data.fee.value, 1500);
+  assertEquals(order.data.fee_basis.value, "total");
+  assertEquals(order.data.fee_per_date, undefined);
+});
+
+Deno.test("draft-batch is exact for a fractional per-date fee through the real call path", async () => {
+  // 500.10 * 3 in binary floating point is 1500.3000000000002, which would be
+  // stored and printed verbatim on the PDF. computeFeeTotal multiplies in
+  // integer cents; this asserts the whole action keeps that property, not just
+  // the helper in isolation.
+  const { deps, inserted } = makeBatchDeps({
+    dates: ["2026-06-15", "2026-06-16", "2026-06-17"],
+  });
+  const res = await handle(
+    batchRequest({
+      artists: [{ artist_id: ARTIST_A, show_date_ids: [DATE_1, DATE_2, DATE_3] }],
+      manual: { fee: 500.1 },
+      fee_basis: "per_date",
+    }),
+    deps,
+  );
+  assertEquals(res.status, 200);
+  const order = inserted.hire_orders[0];
+  assertEquals(order.data.fee.value, 1500.3);
+  assertEquals(order.fee_amount, 1500.3);
+  assertEquals(order.data.fee_per_date.value, 500.1);
+});
+
+Deno.test("draft-batch omits fee_basis and fee_per_date entirely when no fee is entered", async () => {
+  // The shape the PDF renderer's reconcile guard depends on: with no fee there
+  // is nothing for a breakdown to explain, so the keys must be ABSENT rather
+  // than present with a null amount.
+  const { deps, inserted } = makeBatchDeps({ dates: ["2026-06-15", "2026-06-16"] });
+  const res = await handle(
+    batchRequest({
+      artists: [{ artist_id: ARTIST_A, show_date_ids: [DATE_1, DATE_2] }],
+      manual: { venue: "The Loft" },
+      fee_basis: "per_date",
+    }),
+    deps,
+  );
+  assertEquals(res.status, 200);
+  const order = inserted.hire_orders[0];
+  assertEquals(order.fee_amount, null);
+  assertEquals(order.data.fee_basis, undefined);
+  assertEquals(order.data.fee_per_date, undefined);
+});
+
+Deno.test("draft-batch rejects an unknown fee_basis", async () => {
+  const { deps } = makeBatchDeps({ dates: ["2026-06-15"] });
+  const res = await handle(
+    batchRequest({
+      artists: [{ artist_id: ARTIST_A, show_date_ids: [DATE_1] }],
+      manual: { fee: 500 },
+      fee_basis: "weekly",
+    }),
+    deps,
+  );
+  assertEquals(res.status, 400);
+  assertEquals((await res.json()).error, "invalid_fee_basis");
+});
+
+// NOTE: the brief's fifth test in this group ("draft-batch refuses to bill an
+// order with no surviving dates") is intentionally NOT reproduced here. See
+// the no_billable_dates guard comment in draftBatchArtist (index.ts) and the
+// task report for why it is unreachable through this file's public surface:
+// `dates.length === 0` is checked once already, a few lines above the new
+// guard, with an early `return { kind: "skipped", reason: "exists" }` — the
+// exact same `const dates` value is read both times (nothing reassigns or
+// filters it in between), so no request shape can make the first check pass
+// and the second one fail. Reaching the new guard requires a future refactor
+// to remove or reorder that earlier check, which is exactly the scenario the
+// guard's comment says it exists for.
 
 // ── agent signature ──────────────────────────────────────────────────────
 

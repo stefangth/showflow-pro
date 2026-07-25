@@ -41,14 +41,17 @@ import {
   encodeBase64,
 } from "https://deno.land/std@0.224.0/encoding/base64.ts";
 import {
+  computeFeeTotal,
   defaultTemplateId,
   type EngagementDate,
+  type FeeBasis,
   type FieldLayers,
   formatMoney,
   formatOrderNo,
   type HireOrderLetterhead,
   type HireOrderTerm,
   type HireOrderTermsSetting,
+  isFeeBasis,
   normalizeTermsSetting,
   type OrderData,
   type OrderFieldKey,
@@ -71,6 +74,7 @@ interface Numbering {
 interface OrderDefaults {
   default_fee: number | null;
   currency: string;
+  default_fee_basis: FeeBasis;
 }
 interface Countersign {
   // 'documenso' is retained for the dormant Documenso path (see issueOne + _shared/documenso.ts).
@@ -108,7 +112,45 @@ const NUMBERING_DEFAULT: Numbering = {
   prefix: "HO",
   pattern: "{prefix}-{yyyy}-{mmdd}-{seq}",
 };
-const DEFAULTS_DEFAULT: OrderDefaults = { default_fee: null, currency: "EUR" };
+const DEFAULTS_DEFAULT: OrderDefaults = {
+  default_fee: null,
+  currency: "EUR",
+  default_fee_basis: "per_date",
+};
+
+/**
+ * Resolve hire_order_defaults, validating default_fee_basis rather than just
+ * null-checking it. resolveOrgSetting (../_shared/settings.ts) replaces the
+ * fallback wholesale on a match rather than merging field-by-field, so an
+ * org's old {default_fee, currency} row (saved before default_fee_basis
+ * existed) resolves with the key entirely absent — and a hand-edited or
+ * pre-validation row could carry any other string, or a non-string, in its
+ * place. A plain `?? "per_date"` would pass a value like `""` straight
+ * through as if it were legal: downstream that silently multiplies fees as
+ * "per_date" while the PDF's per-date breakdown line (keyed on the literal
+ * "per_date") never renders — a correct total with a missing explanation,
+ * the kind of bug nobody can reproduce. Falling back to "per_date" for
+ * anything that isn't exactly "per_date" or "total" closes that gap.
+ *
+ * Exported (the file's only other export is `handle`) so index.di.test.ts can
+ * exercise the validation directly instead of threading it through an action
+ * whose response happens to expose default_fee_basis.
+ */
+export async function resolveOrderDefaults(
+  admin: Deps["admin"],
+  org: string,
+): Promise<OrderDefaults> {
+  const raw = await resolveOrgSetting<OrderDefaults>(
+    admin,
+    org,
+    "hire_order_defaults",
+    DEFAULTS_DEFAULT,
+  );
+  return {
+    ...raw,
+    default_fee_basis: isFeeBasis(raw.default_fee_basis) ? raw.default_fee_basis : "per_date",
+  };
+}
 const LETTERHEAD_DEFAULT: HireOrderLetterhead = {
   legal_name: "",
   address_lines: [],
@@ -422,12 +464,7 @@ async function draftOrders(
 
   // Settings for the snapshot + numbering + the org's default terms template.
   const [defaults, numbering, rawTerms] = await Promise.all([
-    resolveOrgSetting<OrderDefaults>(
-      admin,
-      org,
-      "hire_order_defaults",
-      DEFAULTS_DEFAULT,
-    ),
+    resolveOrderDefaults(admin, org),
     resolveOrgSetting<Numbering>(
       admin,
       org,
@@ -665,6 +702,10 @@ interface DraftManualBody {
   artist_id?: string;
   show_date_id?: string;
   manual?: Partial<Record<OrderFieldKey, unknown>>;
+  /** How `manual.fee` should be read. Same contract as draft-batch's: top-level
+   *  because the basis is not an editable order field, and omitted falls back
+   *  to the org's `default_fee_basis`. */
+  fee_basis?: FeeBasis;
 }
 
 /**
@@ -699,14 +740,14 @@ async function draftManual(
   if (manualFeeProvided && !Number.isFinite(Number(manualFeeRaw))) {
     return json({ error: "invalid_fee" }, 400);
   }
+  // Same gate, same error code as draft-batch: one action accepting a basis the
+  // other rejects is how an illegal value reaches a snapshot in the first place.
+  if (body.fee_basis !== undefined && !isFeeBasis(body.fee_basis)) {
+    return json({ error: "invalid_fee_basis" }, 400);
+  }
 
   const [defaults, numbering, rawTerms] = await Promise.all([
-    resolveOrgSetting<OrderDefaults>(
-      admin,
-      org,
-      "hire_order_defaults",
-      DEFAULTS_DEFAULT,
-    ),
+    resolveOrderDefaults(admin, org),
     resolveOrgSetting<Numbering>(
       admin,
       org,
@@ -798,6 +839,20 @@ async function draftManual(
     feeValue === undefined || feeValue === null || feeValue === ""
       ? null
       : Number(feeValue);
+  // Record how the entered fee was meant to be read, exactly as draft-batch
+  // does. A manual order is single-date, so per-date x 1 is the entered amount
+  // and no total changes here — only the snapshot gains the explanation the
+  // wizard already shows the producer on step 4. Both keys stay ABSENT when
+  // there is no fee: there would be nothing for them to explain, and that is
+  // the shape the PDF renderer's reconcile guard expects.
+  if (feeAmount !== null) {
+    const feeBasis: FeeBasis = body.fee_basis ?? defaults.default_fee_basis;
+    const feeSource = data.fee?.source ?? "manual";
+    data.fee_basis = { value: feeBasis, source: feeSource };
+    if (feeBasis === "per_date") {
+      data.fee_per_date = { value: feeAmount, source: feeSource };
+    }
+  }
   // fee_currency follows the RESOLVED currency (which a producer can override at
   // step 2), not blindly the org default — draftOrders can hardcode the org
   // default because a booking never carries its own currency; a wizard order can.
@@ -843,6 +898,10 @@ interface DraftBatchBody {
   org_id: string;
   artists: DraftBatchArtistInput[];
   manual?: NonNullable<FieldLayers["manual"]>;
+  /** How `manual.fee` should be read. Top-level rather than inside `manual`
+   *  because the basis is not an editable order field. Omitted falls back to
+   *  the org's `default_fee_basis`. */
+  fee_basis?: FeeBasis;
   /** Per-date running-order + duration overrides, keyed by show_date_id. Each
    *  key must be one of the request's selected show_date_ids. */
   date_overrides?: Record<string, SessionOverride>;
@@ -864,6 +923,8 @@ interface BatchDraftContext {
   manual: NonNullable<FieldLayers["manual"]>;
   defaults: OrderDefaults;
   numbering: Numbering;
+  /** Resolved once for the batch: the request's basis, else the org default. */
+  feeBasis: FeeBasis;
   /** The org's default terms-template id, resolved once for the whole batch. */
   defaultTermsVariant: string;
   artistsById: Map<string, ManualArtistRow>;
@@ -998,6 +1059,14 @@ async function draftBatch(
   if (manualFeeProvided && !Number.isFinite(Number(manualFeeRaw))) {
     return json({ error: "invalid_fee" }, 400);
   }
+  // isFeeBasis, never a hand-rolled pair of !== comparisons: its
+  // Record<FeeBasis, true> sentinel picks up a future third member at compile
+  // time, so resolveOrderDefaults would accept one that a hand-rolled check
+  // here would still 400 on. That divergence is what the sentinel exists to
+  // prevent.
+  if (body.fee_basis !== undefined && !isFeeBasis(body.fee_basis)) {
+    return json({ error: "invalid_fee_basis" }, 400);
+  }
 
   const selectedShowDateIds = new Set(
     normalizedArtists.flatMap((item) => item.show_date_ids),
@@ -1032,12 +1101,7 @@ async function draftBatch(
       )
       .eq("org_id", org)
       .in("id", showDateIds),
-    resolveOrgSetting<OrderDefaults>(
-      admin,
-      org,
-      "hire_order_defaults",
-      DEFAULTS_DEFAULT,
-    ),
+    resolveOrderDefaults(admin, org),
     resolveOrgSetting<Numbering>(
       admin,
       org,
@@ -1085,6 +1149,9 @@ async function draftBatch(
     manual,
     defaults,
     numbering,
+    // No third fallback: resolveOrderDefaults already guarantees
+    // default_fee_basis is a legal FeeBasis.
+    feeBasis: body.fee_basis ?? defaults.default_fee_basis,
     defaultTermsVariant,
     artistsById,
     datesById,
@@ -1183,6 +1250,7 @@ async function draftBatchArtist(
     manual,
     defaults,
     numbering,
+    feeBasis,
     defaultTermsVariant,
     artistsById,
     datesById,
@@ -1261,11 +1329,40 @@ async function draftBatchArtist(
     castCode: castCodeFromLabel(firstDate.shows?.program ?? null),
     seq: context.nextSeq,
   });
-  const feeValue = data.fee?.value;
-  const feeAmount =
-    feeValue === undefined || feeValue === null || feeValue === ""
+  // `data.fee` is the amount the producer entered. For a per-date basis it is a
+  // UNIT price, so the stored fee becomes unit x the dates that SURVIVED the
+  // covered-date drop above (`dates`, not `allDates`): a 3-date request that
+  // drops one already-covered date bills 2. The stored `fee` is always the TOTAL
+  // payable, which is what every consumer (KPIs, readiness, the PDF total)
+  // expects; `fee_basis` and `fee_per_date` only explain how it was reached.
+  const enteredFeeValue = data.fee?.value;
+  const enteredFee =
+    enteredFeeValue === undefined || enteredFeeValue === null ||
+      enteredFeeValue === ""
       ? null
-      : Number(feeValue);
+      : Number(enteredFeeValue);
+  // Guard the persistence boundary. computeFeeTotal is deliberately total: it
+  // returns the amount unchanged for a date count that is not a positive
+  // integer, because the wizard also calls it for live display where a zero
+  // count is a normal transient state mid-edit. That leniency is wrong HERE,
+  // where the result is about to be billed: a zero count would silently store
+  // the single-date fee as the whole engagement's total. `dates.length >= 1` is
+  // already guaranteed by the early return above, so this can only fire if a
+  // future refactor removes that guard.
+  if (!Number.isInteger(dates.length) || dates.length < 1) {
+    return { kind: "error", reason: "no_billable_dates" };
+  }
+  const feeAmount = enteredFee === null
+    ? null
+    : computeFeeTotal(enteredFee, dates.length, feeBasis);
+  if (feeAmount !== null) {
+    const feeSource = data.fee?.source ?? "manual";
+    data.fee = { value: feeAmount, source: feeSource };
+    data.fee_basis = { value: feeBasis, source: feeSource };
+    if (feeBasis === "per_date") {
+      data.fee_per_date = { value: enteredFee, source: feeSource };
+    }
+  }
   const currencyValue = data.currency?.value;
   const currency = typeof currencyValue === "string" && currencyValue
     ? currencyValue
@@ -1471,12 +1568,7 @@ async function issueOrders(
       LETTERHEAD_DEFAULT,
     ),
     resolveOrgSetting<unknown>(admin, org, "hire_order_terms", TERMS_DEFAULT),
-    resolveOrgSetting<OrderDefaults>(
-      admin,
-      org,
-      "hire_order_defaults",
-      DEFAULTS_DEFAULT,
-    ),
+    resolveOrderDefaults(admin, org),
     resolveOrgSetting<Countersign>(
       admin,
       org,
@@ -2023,12 +2115,7 @@ async function previewOrder(deps: Deps, body: PreviewBody): Promise<Response> {
       LETTERHEAD_DEFAULT,
     ),
     resolveOrgSetting<unknown>(admin, org, "hire_order_terms", TERMS_DEFAULT),
-    resolveOrgSetting<OrderDefaults>(
-      admin,
-      org,
-      "hire_order_defaults",
-      DEFAULTS_DEFAULT,
-    ),
+    resolveOrderDefaults(admin, org),
     resolveOrgSetting<Partial<HireOrderCopy>>(
       admin,
       org,
@@ -2323,12 +2410,7 @@ async function signOrder(
       LETTERHEAD_DEFAULT,
     ),
     resolveOrgSetting<unknown>(admin, org, "hire_order_terms", TERMS_DEFAULT),
-    resolveOrgSetting<OrderDefaults>(
-      admin,
-      org,
-      "hire_order_defaults",
-      DEFAULTS_DEFAULT,
-    ),
+    resolveOrderDefaults(admin, org),
   ]);
   const snapshot = o.issue_snapshot;
   let renderLetterhead: HireOrderLetterhead;

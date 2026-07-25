@@ -1,7 +1,9 @@
 // Per-org capability flags ("user rights"). Pure logic only, no DB access.
-// MIRROR: supabase/functions/_shared/capabilities.ts carries the same
-// registry + resolvers (the two runtimes cannot share an import). Change
-// both files in the same commit. SQL twin: public.is_capability_enabled().
+// GENERATED MIRROR SOURCE: the registry between the sentinels below is
+// copied into supabase/functions/_shared/capabilities.ts by
+// `npm run sync:mirrors` (the two runtimes cannot share an import). Edit
+// the block here, then run `npm run sync:mirrors`; never hand-edit the
+// block in the target directly. SQL twin: public.is_capability_enabled().
 //
 // Capabilities are permission GRANTS (who may do an action), distinct from
 // module entitlements (whether a feature exists; see entitlements.ts).

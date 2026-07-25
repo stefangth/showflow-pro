@@ -1,5 +1,5 @@
 import { describe, expect, it, vi, beforeEach } from "vitest";
-import { fireEvent, screen, waitFor, within } from "@testing-library/react";
+import { act, fireEvent, screen, waitFor, within } from "@testing-library/react";
 import { renderWithProviders } from "@/test/renderWithProviders";
 import { createFakeSupabase, type TableSeed } from "@/test/supabaseFake";
 
@@ -84,7 +84,7 @@ async function pickShowDate(labelSubstring: string) {
   fireEvent.click(screen.getByRole("combobox", { name: /select show date/i }));
   fireEvent.click(await screen.findByText(new RegExp(labelSubstring, "i")));
   fireEvent.click(screen.getByRole("combobox", { name: /select show date/i }));
-  fireEvent.click(screen.getByRole("button", { name: /apply selected dates to all/i }));
+  fireEvent.click(screen.getByRole("button", { name: /reset all to selected dates/i }));
   await flush();
 }
 
@@ -101,7 +101,7 @@ async function selectCommonDates(...labels: string[]) {
     fireEvent.click(await screen.findByText(new RegExp(label, "i")));
   }
   fireEvent.click(screen.getByRole("combobox", { name: /select show date/i }));
-  fireEvent.click(screen.getByRole("button", { name: /apply selected dates to all/i }));
+  fireEvent.click(screen.getByRole("button", { name: /reset all to selected dates/i }));
   await flush();
 }
 
@@ -121,6 +121,77 @@ function clickContinue() {
 async function reachReviewWithFee(fee = "1200") {
   clickContinue();
   fireEvent.change(await screen.findByLabelText(/engagement fee/i), { target: { value: fee } });
+  clickContinue();
+  clickContinue();
+  await screen.findByRole("button", { name: /save as draft/i });
+}
+
+// Render the wizard, select artists + common dates (applied to all by default,
+// same as selectCommonDates), then optionally uncheck specific artist/date
+// matrix cells so callers can set up unequal per-artist date counts. Lands on
+// step 2 (Fees and deposit) with the fee field ready. Built from the existing
+// selectArtists/selectCommonDates/clickContinue helpers above, not a
+// reimplementation of them.
+async function openWizardAtStep2({
+  artists,
+  dates,
+  assignments,
+}: {
+  artists: string[];
+  dates: string[];
+  assignments?: Record<string, string[]>;
+}) {
+  renderWizard();
+  await selectArtists(...artists);
+  await selectCommonDates(...dates);
+  if (assignments) {
+    for (const artistName of artists) {
+      const keep = new Set(assignments[artistName] ?? dates);
+      for (const dateLabel of dates) {
+        if (!keep.has(dateLabel)) {
+          fireEvent.click(
+            screen.getByRole("checkbox", { name: new RegExp(`${artistName}.*${dateLabel}`, "i") }),
+          );
+        }
+      }
+    }
+  }
+  clickContinue();
+  await screen.findByLabelText(/engagement fee/i);
+}
+
+// Walk a single linked artist+date through to step 4 and save it as a draft,
+// mirroring the manual step sequence in "walks a linked artist+date through to
+// review…" below. Returns the recorded generate-hire-orders request body.
+async function completeWizard({ fee }: { fee: string }) {
+  renderWizard();
+  await pickArtist("Ann Artist");
+  await pickShowDate("Berlin");
+  clickContinue();
+  fireEvent.change(await screen.findByLabelText(/engagement fee/i), { target: { value: fee } });
+  clickContinue();
+  clickContinue();
+  fireEvent.click(await screen.findByRole("button", { name: /save as draft/i }));
+  await waitFor(() => expect(invokeCalls().length).toBe(1));
+  return invokeCalls()[0];
+}
+
+// Continue from openWizardAtStep2's step-2 landing through step 3 (nothing
+// there gates Continue) to step 4, entering the fee - and, when given,
+// switching the fee basis - along the way.
+async function openWizardAtStep4(options: {
+  artists: string[];
+  dates: string[];
+  assignments?: Record<string, string[]>;
+  fee: string;
+  basis?: "per_date" | "total";
+}) {
+  await openWizardAtStep2(options);
+  fireEvent.change(screen.getByLabelText(/engagement fee/i), { target: { value: options.fee } });
+  if (options.basis === "total") {
+    fireEvent.click(screen.getByLabelText(/fee basis/i));
+    fireEvent.click(await screen.findByRole("option", { name: /total for all dates/i }));
+  }
   clickContinue();
   clickContinue();
   await screen.findByRole("button", { name: /save as draft/i });
@@ -174,7 +245,7 @@ describe("NewOrderWizard", () => {
     // Step 2: fee/currency (currency defaulted from org settings to USD).
     expect(await screen.findByLabelText(/engagement fee/i)).toBeInTheDocument();
     fireEvent.change(screen.getByLabelText(/engagement fee/i), { target: { value: "1200" } });
-    expect(screen.getByText(/payable on performance date/i)).toHaveTextContent("$1,200.00");
+    expect(screen.getByTestId("wiz-fee-summary")).toHaveTextContent("$1,200.00 per date");
     clickContinue();
 
     // Step 3: the linked date seeds an editable per-date running order.
@@ -391,12 +462,58 @@ describe("NewOrderWizard", () => {
     ]);
   });
 
+  it("keeps a re-added date in append order on both selectedShowDateIds and the artist's own assignment", async () => {
+    // Regression for the functional-update fix: select A, select B, deselect
+    // A, reselect A. Since both setters now only ever append (never read a
+    // precomputed sibling value), the reselected date A must land at the END
+    // on both selectedShowDateIds (checked via the matrix's column order) and
+    // Ann Artist's own assignment (checked via the actual submitted
+    // show_date_ids), i.e. [B, A] on both sides - not just one.
+    renderWizard();
+    await selectArtists("Ann Artist");
+    await selectCommonDatesWithoutApplying("Berlin", "Hamburg"); // A, then B
+
+    // Deselect A (Berlin) via the common date picker - the same deselect path
+    // toggleShowDate takes in normal use.
+    fireEvent.click(screen.getByRole("combobox", { name: /select show date/i }));
+    fireEvent.click(await screen.findByRole("option", { name: /berlin/i }));
+    fireEvent.click(screen.getByRole("combobox", { name: /select show date/i }));
+    await flush();
+
+    // Reselect A (Berlin): it is appended at the end of both arrays.
+    await selectCommonDatesWithoutApplying("Berlin");
+
+    // selectedShowDateIds order, read off the matrix's column headers.
+    const headers = screen.getAllByRole("columnheader");
+    expect(headers[1]).toHaveTextContent(/hamburg/i);
+    expect(headers[2]).toHaveTextContent(/berlin/i);
+
+    // artistDateIds["a1"] order, read off the actual submitted payload.
+    await reachReviewWithFee();
+    fireEvent.click(screen.getByRole("button", { name: /save as draft/i }));
+    await waitFor(() => expect(invokeCalls().length).toBe(1));
+    expect(invokeCalls()[0].artists).toEqual([
+      { artist_id: "a1", show_date_ids: ["sd2", "sd1"] },
+    ]);
+  });
+
   it("seeds a per-date running order when a date is assigned directly in the matrix", async () => {
     renderWizard();
     await selectArtists("Ann Artist");
+    // Selecting a date now auto-assigns it to every already-selected artist, so
+    // the checkbox starts checked. Round-trip through BOTH branches of direct
+    // matrix assignment (toggleArtistDate) - uncheck, then recheck - asserting
+    // the intermediate unchecked/disabled state so a no-op toggle could not
+    // pass this test silently.
     await selectCommonDatesWithoutApplying("Berlin");
+    expect(screen.getByRole("checkbox", { name: /ann artist.*berlin/i })).toBeChecked();
 
     fireEvent.click(screen.getByRole("checkbox", { name: /ann artist.*berlin/i }));
+    expect(screen.getByRole("checkbox", { name: /ann artist.*berlin/i })).not.toBeChecked();
+    expect(screen.getByRole("button", { name: /^continue$/i })).toBeDisabled();
+
+    fireEvent.click(screen.getByRole("checkbox", { name: /ann artist.*berlin/i }));
+    expect(screen.getByRole("checkbox", { name: /ann artist.*berlin/i })).toBeChecked();
     expect(screen.getByRole("button", { name: /^continue$/i })).toBeEnabled();
     clickContinue();
     fireEvent.change(await screen.findByLabelText(/engagement fee/i), { target: { value: "900" } });
@@ -618,5 +735,182 @@ describe("NewOrderWizard", () => {
     expect(screen.queryByRole("button", { name: /open order/i })).not.toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: /close and return to hire orders/i }));
     expect(navigate).toHaveBeenCalledWith("/hire-orders");
+  });
+
+  it("shows the per-date total for equal date counts", async () => {
+    await openWizardAtStep2({ artists: ["Ann Artist"], dates: ["Berlin", "Hamburg"] });
+    fireEvent.change(screen.getByLabelText(/engagement fee/i), { target: { value: "500" } });
+    expect(screen.getByTestId("wiz-fee-summary")).toHaveTextContent(
+      "$500.00 per date x 2 dates = $1,000.00",
+    );
+  });
+
+  it("shows a range when artists have different date counts", async () => {
+    await openWizardAtStep2({
+      artists: ["Ann Artist", "Ben Booker"],
+      dates: ["Berlin", "Hamburg"],
+      assignments: { "Ann Artist": ["Berlin"], "Ben Booker": ["Berlin", "Hamburg"] },
+    });
+    fireEvent.change(screen.getByLabelText(/engagement fee/i), { target: { value: "500" } });
+    expect(screen.getByTestId("wiz-fee-summary")).toHaveTextContent(
+      "$500.00 per date. Totals range from $500.00 to $1,000.00 by artist.",
+    );
+  });
+
+  it("shows the flat total when the basis is total", async () => {
+    await openWizardAtStep2({ artists: ["Ann Artist"], dates: ["Berlin"] });
+    fireEvent.change(screen.getByLabelText(/engagement fee/i), { target: { value: "1500" } });
+    fireEvent.click(screen.getByLabelText(/fee basis/i));
+    fireEvent.click(await screen.findByRole("option", { name: /total for all dates/i }));
+    expect(screen.getByTestId("wiz-fee-summary")).toHaveTextContent("$1,500.00 total for all dates");
+  });
+
+  // `hire_order_defaults` is hand-editable JSON in app_settings, so the stored basis is
+  // untrusted. Seeding it into wizard state without validating would produce a basis the
+  // server's own isFeeBasis gate then rejects with a 400, breaking submission with no clue why.
+  it("ignores a garbage stored fee basis instead of seeding it", async () => {
+    seedDefault({
+      app_settings: {
+        data: [{ org_id: ORG, value: { default_fee: null, currency: "USD", default_fee_basis: "weekly" } }],
+        error: null,
+      },
+    });
+    // Assert on the SUBMITTED BODY, not the step-2 summary: feeSummaryText only branches
+    // on `=== "total"`, so a poisoned "weekly" state renders identical per-date wording and
+    // a summary assertion would pass against the unguarded code too.
+    const body = await completeWizard({ fee: "500" });
+    expect(body.fee_basis).toBe("per_date");
+  });
+
+  it("seeds a valid stored fee basis from the org defaults", async () => {
+    seedDefault({
+      app_settings: {
+        data: [{ org_id: ORG, value: { default_fee: null, currency: "USD", default_fee_basis: "total" } }],
+        error: null,
+      },
+    });
+    await openWizardAtStep2({ artists: ["Ann Artist"], dates: ["Berlin", "Hamburg"] });
+    fireEvent.change(screen.getByLabelText(/engagement fee/i), { target: { value: "1500" } });
+    expect(screen.getByTestId("wiz-fee-summary")).toHaveTextContent("$1,500.00 total for all dates");
+  });
+
+  it("sends fee_basis in the draft body", async () => {
+    const body = await completeWizard({ fee: "500" });
+    expect(body).toMatchObject({
+      action: "draft-batch",
+      fee_basis: "per_date",
+      manual: expect.objectContaining({ fee: 500 }),
+    });
+  });
+
+  it("shows the multiplied total on step 4, not the bare unit price, for a single artist across multiple dates", async () => {
+    await openWizardAtStep4({ artists: ["Ann Artist"], dates: ["Berlin", "Hamburg"], fee: "500" });
+    const summary = screen.getByTestId("wiz-fee-summary");
+    expect(summary).toHaveTextContent("$500.00 per date x 2 dates = $1,000.00");
+    // Regression guard: the pre-fix step 4 showed exactly this bare figure
+    // (the per-date unit price) while the server billed the multiplied total.
+    expect(summary).not.toHaveTextContent(/^\$500\.00$/);
+  });
+
+  it("shows each artist's own total on step 4 when artists have different date counts, and the totals differ", async () => {
+    await openWizardAtStep4({
+      artists: ["Ann Artist", "Ben Booker"],
+      dates: ["Berlin", "Hamburg"],
+      assignments: { "Ann Artist": ["Berlin"], "Ben Booker": ["Berlin", "Hamburg"] },
+      fee: "500",
+    });
+    const annFee = screen.getByTestId("wiz-artist-fee-a1");
+    const benFee = screen.getByTestId("wiz-artist-fee-a2");
+    expect(annFee).toHaveTextContent("$500.00 per date");
+    expect(benFee).toHaveTextContent("$500.00 per date x 2 dates = $1,000.00");
+    // This is the case a single collapsed aggregate number can never satisfy:
+    // the two artists' own totals genuinely differ.
+    expect(annFee.textContent).not.toBe(benFee.textContent);
+  });
+
+  it("shows the flat total on step 4, not a multiplied figure, when the basis is total", async () => {
+    await openWizardAtStep4({
+      artists: ["Ann Artist"],
+      dates: ["Berlin", "Hamburg"],
+      fee: "1500",
+      basis: "total",
+    });
+    expect(screen.getByTestId("wiz-fee-summary")).toHaveTextContent("$1,500.00 total for all dates");
+  });
+
+  it("shows the basis qualifier on step 4 in manual mode, alongside the entered fee", async () => {
+    renderWizard();
+    fireEvent.click(screen.getByRole("button", { name: /no linked date/i }));
+    fireEvent.change(screen.getByLabelText(/artist name/i), { target: { value: "Walk-in Artist" } });
+    clickContinue();
+    fireEvent.change(await screen.findByLabelText(/engagement fee/i), { target: { value: "500" } });
+    clickContinue();
+    clickContinue();
+    await screen.findByRole("button", { name: /save as draft/i });
+    expect(screen.getByTestId("wiz-fee-summary")).toHaveTextContent("$500.00 per date");
+  });
+
+  it("pre-assigns a newly selected date to every selected artist", async () => {
+    renderWizard();
+    await selectArtists("Ann Artist", "Ben Booker");
+    await selectCommonDatesWithoutApplying("Berlin");
+    expect(screen.getByRole("checkbox", { name: /ann artist.*berlin/i })).toBeChecked();
+    expect(screen.getByRole("checkbox", { name: /ben booker.*berlin/i })).toBeChecked();
+  });
+
+  it("seeds a newly selected artist with the dates already selected", async () => {
+    renderWizard();
+    await selectCommonDatesWithoutApplying("Berlin", "Hamburg");
+    await selectArtists("Ann Artist");
+    expect(screen.getByRole("checkbox", { name: /ann artist.*berlin/i })).toBeChecked();
+    expect(screen.getByRole("checkbox", { name: /ann artist.*hamburg/i })).toBeChecked();
+  });
+
+  it("unblocks Continue without pressing Reset all to selected dates", async () => {
+    renderWizard();
+    await selectArtists("Ann Artist");
+    await selectCommonDatesWithoutApplying("Berlin");
+    expect(screen.getByRole("button", { name: /^continue$/i })).toBeEnabled();
+  });
+
+  it("still lets a producer deselect one artist's date after auto-assignment", async () => {
+    renderWizard();
+    await selectArtists("Ann Artist", "Ben Booker");
+    await selectCommonDatesWithoutApplying("Berlin");
+    fireEvent.click(screen.getByRole("checkbox", { name: /ben booker.*berlin/i }));
+    expect(screen.getByRole("checkbox", { name: /ann artist.*berlin/i })).toBeChecked();
+    expect(screen.getByRole("checkbox", { name: /ben booker.*berlin/i })).not.toBeChecked();
+    // Ben now has no dates, so step 1 is incomplete again.
+    expect(screen.getByRole("button", { name: /^continue$/i })).toBeDisabled();
+  });
+
+  it("drops every artist's assignments when two are deselected inside one batched update", async () => {
+    // The deselect branch used to build its next map from the RENDER closure and
+    // write it wholesale, so two deselects that React batches into one update
+    // both read the pre-batch map and the second write resurrected the first
+    // artist's assignments. The stale entry then wins over a fresh seed when
+    // that artist is re-selected -- Ann comes back with her old single date
+    // instead of the two dates currently selected.
+    renderWizard();
+    await selectArtists("Ann Artist", "Ben Booker");
+    await selectCommonDates("Berlin", "Hamburg");
+    fireEvent.click(screen.getByRole("checkbox", { name: /ann artist.*hamburg/i }));
+
+    fireEvent.click(screen.getByRole("combobox", { name: /select artist/i }));
+    const annOption = await screen.findByRole("option", { name: /ann artist/i });
+    const benOption = await screen.findByRole("option", { name: /ben booker/i });
+    // One act() around both clicks: the nested acts defer their flush to the
+    // outer one, so React sees a single batched update -- the shape a future
+    // bulk "deselect all" would produce.
+    await act(async () => {
+      fireEvent.click(annOption);
+      fireEvent.click(benOption);
+    });
+    fireEvent.click(screen.getByRole("combobox", { name: /select artist/i }));
+    await flush();
+
+    await selectArtists("Ann Artist");
+    expect(screen.getByRole("checkbox", { name: /ann artist.*berlin/i })).toBeChecked();
+    expect(screen.getByRole("checkbox", { name: /ann artist.*hamburg/i })).toBeChecked();
   });
 });

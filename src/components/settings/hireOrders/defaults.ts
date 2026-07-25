@@ -16,4 +16,8 @@ export const LETTERHEAD_DEFAULT: Letterhead = {
 
 export const NUMBERING_DEFAULT: HireOrderNumbering = { prefix: "HO", pattern: "{prefix}-{yyyy}-{mmdd}-{seq}" };
 
-export const ORDER_DEFAULTS_DEFAULT: HireOrderDefaults = { default_fee: null, currency: "EUR" };
+export const ORDER_DEFAULTS_DEFAULT: HireOrderDefaults = {
+  default_fee: null,
+  currency: "EUR",
+  default_fee_basis: "per_date",
+};

@@ -1,0 +1,38 @@
+{
+  "entries": [
+    {
+      "mode": "file",
+      "source": "src/lib/hireOrders/pdfCopy.ts",
+      "target": "supabase/functions/_shared/hire-order-pdf/pdfCopy.ts",
+      "why": "Editable PDF copy registry. Edge renderer reads it and freezes it into issue_snapshot."
+    },
+    {
+      "mode": "file",
+      "source": "src/integrations/supabase/types.ts",
+      "target": "supabase/functions/_shared/database.types.ts",
+      "why": "Generated Supabase types. Source is itself generated; never hand-edit either side."
+    },
+    {
+      "mode": "file",
+      "source": "src/lib/hireOrders/feeBasis.ts",
+      "target": "supabase/functions/_shared/feeBasis.ts",
+      "why": "Fee basis type + cents-safe multiplication, used by the frontend wizard and the draft-batch edge action."
+    },
+    {
+      "mode": "block",
+      "source": "src/lib/capabilities.ts",
+      "target": "supabase/functions/_shared/capabilities.ts",
+      "start": "// >>> CAPABILITY REGISTRY MIRROR (keep byte-identical with the twin file) >>>",
+      "end": "// <<< CAPABILITY REGISTRY MIRROR <<<",
+      "why": "Role x action registry. The surrounding imports and helpers differ per runtime."
+    },
+    {
+      "mode": "block",
+      "source": "src/lib/entitlements.ts",
+      "target": "supabase/functions/_shared/entitlements.ts",
+      "start": "// >>> ENTITLEMENTS REGISTRY MIRROR (keep byte-identical with the twin file) >>>",
+      "end": "// <<< ENTITLEMENTS REGISTRY MIRROR <<<",
+      "why": "Feature registry + pure resolvers. The edge file adds DB-backed helpers below the block that have no frontend mirror."
+    }
+  ]
+}

@@ -2,6 +2,17 @@
 
 What's new in ShowFlow, newest first.
 
+## 1.13.0 — July 25, 2026
+
+*Clearer fees on multi-date hire orders*
+
+### New
+- **Fee per date or total** — When a hire order covers several dates, choose whether the engagement fee applies to each date or to the whole engagement. A per-date fee is multiplied by the number of dates, and the wizard shows the running total as you enter it and again on the review step. Set your organization's default choice in Settings → Hire orders → Order defaults.
+- **Fee breakdown on the PDF** — A per-date order now prints a line such as "500.00 per date x 3 dates" above the total, so the artist can see how it was reached.
+
+### Improved
+- **Dates carry into the artist grid** — Dates picked in the first step of the new order wizard are now assigned to every selected artist automatically, so the grid starts filled in instead of empty. Uncheck any dates that do not apply, then continue.
+
 ## 1.12.0 — July 24, 2026
 
 *More flexible hire orders*

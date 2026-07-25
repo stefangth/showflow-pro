@@ -1,6 +1,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database, Json } from "@/integrations/supabase/types";
 import type { EditableOrderFieldKey, OrderData } from "@/lib/hireOrders/types";
+import { feeCents } from "@/lib/hireOrders/feeBasis";
 import { readEdgeError } from "@/lib/edgeErrors";
 
 export type HireOrderStatus = Database["public"]["Enums"]["hire_order_status"];
@@ -319,6 +320,15 @@ export interface HireOrderReview {
  * snapshot (`data.fee.value`), so the two must stay in step. Every other
  * snapshot field is preserved untouched.
  *
+ * A CHANGED fee also clears the server-derived `fee_basis`/`fee_per_date`
+ * snapshot keys. They exist only to explain how the stored TOTAL was reached
+ * (`fee_per_date` x engagement dates === `fee`), so a total this function
+ * rewrites without touching them would issue a PDF whose breakdown line
+ * contradicts its own total. Dropping them degrades the document to the plain
+ * "Engagement fee" label, which is exactly what every order created before the
+ * per-date feature already prints. A fee left unchanged (a terms-only or
+ * agent-only edit) keeps them, so the breakdown survives an unrelated edit.
+ *
  * `fee_amount`/`terms_variant`/`data` are ALWAYS written. `agent_name` and
  * `agent_email` are each written independently, and only when their key is
  * present on `review` (`undefined` means "leave the column unchanged" —
@@ -339,7 +349,15 @@ export async function updateHireOrderReview(
     currentData && typeof currentData === "object" && !Array.isArray(currentData)
       ? (currentData as Record<string, unknown>)
       : {};
-  const data = { ...base, fee: { value: review.feeAmount, source: "manual" } };
+  const data: Record<string, unknown> = {
+    ...base,
+    fee: { value: review.feeAmount, source: "manual" },
+  };
+  const previousFee = (base.fee as { value?: unknown } | undefined)?.value;
+  if (feeCents(previousFee) !== feeCents(review.feeAmount)) {
+    delete data.fee_basis;
+    delete data.fee_per_date;
+  }
   const patch: Database["public"]["Tables"]["hire_orders"]["Update"] = {
     fee_amount: review.feeAmount,
     terms_variant: review.termsVariant,

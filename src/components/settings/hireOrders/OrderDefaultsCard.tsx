@@ -4,6 +4,7 @@ import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { resolveOrgSetting, upsertOrgSetting } from "@/data/settings";
 import type { Json } from "@/integrations/supabase/types";
+import { type FeeBasis, isFeeBasis } from "@/lib/hireOrders/feeBasis";
 import { ORDER_DEFAULTS_DEFAULT } from "./defaults";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -17,6 +18,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 export interface HireOrderDefaults {
   default_fee: number | null;
   currency: string;
+  /** Whether `default_fee` is charged once per engagement date or covers the
+   *  whole engagement. Prefills the wizard; a producer can switch per order. */
+  default_fee_basis: FeeBasis;
 }
 
 /** Kept in sync with the CURRENCY_SYMBOLS map in src/lib/hireOrders/money.ts. */
@@ -37,7 +41,17 @@ export function OrderDefaultsCard({ orgId, readOnly = false }: { orgId: string |
   useEffect(() => {
     if (data && !seededRef.current) {
       seededRef.current = true;
-      setForm(data);
+      // resolveOrgSetting replaces the fallback wholesale on a match rather than
+      // merging field-by-field, so an org that saved this setting before
+      // default_fee_basis existed comes back with the key entirely absent — and
+      // nothing validates this hand-editable JSON on the way in, so it can also
+      // hold "" or "weekly". Validate with the same predicate the server uses
+      // (a bare `??` would let those through and render the Select blank while
+      // the server bills per_date), so the control shows what will happen.
+      setForm({
+        ...data,
+        default_fee_basis: isFeeBasis(data.default_fee_basis) ? data.default_fee_basis : "per_date",
+      });
     }
   }, [data]);
 
@@ -70,11 +84,12 @@ export function OrderDefaultsCard({ orgId, readOnly = false }: { orgId: string |
       <CardHeader>
         <CardTitle className="font-display">Order defaults</CardTitle>
         <CardDescription>
-          Prefills a new hire order's fee and currency. A producer can always adjust the fee per order.
+          Prefills a new hire order's fee, basis, and currency. A per-date fee is multiplied by the
+          number of engagement dates on the order. A producer can always adjust it per order.
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
           <div className="space-y-1.5">
             <Label htmlFor="ho-default-fee">Default fee</Label>
             <Input
@@ -98,6 +113,20 @@ export function OrderDefaultsCard({ orgId, readOnly = false }: { orgId: string |
                 {CURRENCIES.map((c) => (
                   <SelectItem key={c} value={c}>{c}</SelectItem>
                 ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="space-y-1.5 sm:col-span-2 lg:col-span-1">
+            <Label htmlFor="ho-fee-basis">Fee basis</Label>
+            <Select
+              value={form.default_fee_basis}
+              onValueChange={(v) => setForm((f) => ({ ...f, default_fee_basis: v as FeeBasis }))}
+              disabled={readOnly}
+            >
+              <SelectTrigger id="ho-fee-basis" aria-label="Fee basis"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="per_date">Per date</SelectItem>
+                <SelectItem value="total">Total for all dates</SelectItem>
               </SelectContent>
             </Select>
           </div>

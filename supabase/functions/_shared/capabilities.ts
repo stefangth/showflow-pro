@@ -1,8 +1,10 @@
-// Per-org capability flags ("user rights"). Pure logic (the mirror block)
-// plus edge-only DB-backed helpers (below the divider).
-// MIRROR: src/lib/capabilities.ts carries the same registry + resolvers
-// (the two runtimes cannot share an import). Change both files in the same
-// commit. SQL twin: public.is_capability_enabled().
+// Per-org capability flags ("user rights"). This file is split at the
+// sentinel markers below: the registry block between them is GENERATED
+// from src/lib/capabilities.ts by `npm run sync:mirrors`; edit the source,
+// then regenerate, and never hand-edit the block here. The imports below
+// and the edge-only DB-backed helpers past the block ARE hand-maintained
+// in this file and are runtime-specific (the edge runtime cannot import
+// from src/). SQL twin: public.is_capability_enabled().
 import type { SupabaseClient } from "npm:@supabase/supabase-js@2";
 import type { Deps } from "./deps.ts";
 import { json } from "./http.ts";

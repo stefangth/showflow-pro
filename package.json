@@ -1,7 +1,7 @@
 {
   "name": "vite_react_shadcn_ts",
   "private": true,
-  "version": "1.12.0",
+  "version": "1.13.0",
   "type": "module",
   "scripts": {
     "dev": "vite",
@@ -14,7 +14,9 @@
     "test:coverage": "vitest run --coverage",
     "test:db": "supabase test db",
     "test:functions": "deno test --allow-all supabase/functions/",
-    "test:e2e": "playwright test --config=e2e/playwright.config.ts"
+    "test:e2e": "playwright test --config=e2e/playwright.config.ts",
+    "sync:mirrors": "node scripts/sync-mirrors.mjs",
+    "sync:mirrors:check": "node scripts/sync-mirrors.mjs --check"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.10.0",

@@ -9,6 +9,7 @@ import { useArtistsLite, useShowDatesLite, useHireOrderAction } from "@/hooks/us
 import type { ArtistLite, ShowDateLite } from "@/data/hireOrders";
 import { resolveFields } from "@/lib/hireOrders/resolveFields";
 import { formatMoney } from "@/lib/hireOrders/money";
+import { computeFeeTotal, type FeeBasis, isFeeBasis } from "@/lib/hireOrders/feeBasis";
 import type { SessionOverride } from "@/lib/hireOrders/engagementDates";
 import { copyDurationToAll } from "@/lib/hireOrders/durationFill";
 import type { EditableOrderFieldKey, FieldLayers, OrderData } from "@/lib/hireOrders/types";
@@ -74,8 +75,12 @@ function parseDurationValue(value: string): number | null {
 /** Kept in sync with the CURRENCIES list in OrderDefaultsCard.tsx / CURRENCY_SYMBOLS in money.ts. */
 const CURRENCIES = ["EUR", "USD", "CHF"];
 
-interface OrderDefaultsLite { default_fee: number | null; currency: string }
-const DEFAULTS_FALLBACK: OrderDefaultsLite = { default_fee: null, currency: "EUR" };
+/** `default_fee_basis` is deliberately `string`, not `FeeBasis`: this comes from the
+ *  hand-editable `hire_order_defaults` app-setting, so the stored value is untrusted
+ *  until `isFeeBasis` narrows it. Typing it as `FeeBasis` here would be a lie that
+ *  lets a truthy check pass for validation. */
+interface OrderDefaultsLite { default_fee: number | null; currency: string; default_fee_basis: string }
+const DEFAULTS_FALLBACK: OrderDefaultsLite = { default_fee: null, currency: "EUR", default_fee_basis: "per_date" };
 
 interface BatchOutcomeRow { artist_id: string; reason: string }
 interface BatchDraftResult {
@@ -227,6 +232,15 @@ export function NewOrderWizard({ open, onOpenChange, orgId }: Props) {
       seededDefaultsRef.current = true;
       setCurrency(defaultsQuery.data.currency);
       if (defaultsQuery.data.default_fee != null) setFee(String(defaultsQuery.data.default_fee));
+      // Validate, do not just null-check: a garbage stored basis would seed an invalid
+      // wizard state that the server's own isFeeBasis gate then rejects with a 400,
+      // breaking submission with no clue why. Matches OrderDefaultsCard's read.
+      // Validate, do not just null-check: a garbage stored basis would seed an invalid
+      // wizard state that the server's own isFeeBasis gate then rejects with a 400,
+      // breaking submission with no clue why. Matches OrderDefaultsCard's read.
+      if (isFeeBasis(defaultsQuery.data.default_fee_basis)) {
+        setFeeBasis(defaultsQuery.data.default_fee_basis);
+      }
     }
   }, [defaultsQuery.data]);
 
@@ -241,6 +255,7 @@ export function NewOrderWizard({ open, onOpenChange, orgId }: Props) {
   const [manualVenue, setManualVenue] = useState("");
   const [manualCity, setManualCity] = useState("");
   const [fee, setFee] = useState("");
+  const [feeBasis, setFeeBasis] = useState<FeeBasis>("per_date");
   const [currency, setCurrency] = useState("EUR");
   const [durationMin, setDurationMin] = useState("");
   const [manualSessions, setManualSessions] = useState<SessionRow[]>([{ label: "", time: "" }]);
@@ -252,7 +267,7 @@ export function NewOrderWizard({ open, onOpenChange, orgId }: Props) {
   function resetForm() {
     setStep(1); setManualMode(false); setSelectedArtistIds([]); setSelectedShowDateIds([]); setArtistDateIds({});
     setManualArtistName(""); setManualEmail(""); setManualDate(""); setManualVenue(""); setManualCity("");
-    setFee(""); setDurationMin(""); setManualSessions([{ label: "", time: "" }]);
+    setFee(""); setFeeBasis("per_date"); setDurationMin(""); setManualSessions([{ label: "", time: "" }]);
     setDateSchedules({});
     setSubmitting(null); setResult(null);
     seededDefaultsRef.current = false; setCurrency("EUR");
@@ -274,14 +289,36 @@ export function NewOrderWizard({ open, onOpenChange, orgId }: Props) {
 
   function toggleArtist(id: string) {
     if (selectedArtistIds.includes(id)) {
-      const nextArtistDateIds = { ...artistDateIds };
-      delete nextArtistDateIds[id];
       setSelectedArtistIds((ids) => ids.filter((artistId) => artistId !== id));
-      setArtistDateIds(nextArtistDateIds);
+      // Functional, reading only its own prior state plus the constant `id`:
+      // building the next map from the render closure and writing it wholesale
+      // would make two deselects that React batches into one update both read
+      // the pre-batch map, so the second write would resurrect the first
+      // artist's assignments. Same reasoning as toggleShowDate below.
+      setArtistDateIds((current) => {
+        if (!(id in current)) return current;
+        const next = { ...current };
+        delete next[id];
+        return next;
+      });
       return;
     }
     setSelectedArtistIds((ids) => [...ids, id]);
-    setArtistDateIds((current) => ({ ...current, [id]: current[id] ?? [] }));
+    // Seed a newly selected artist with every date already picked above, so the
+    // common case (everyone plays every selected date) needs no grid work.
+    // This reads selectedShowDateIds (a sibling state, not artistDateIds's own
+    // prior value) because a brand-new artist needs a full snapshot of what is
+    // currently selected, not an incremental append - unlike toggleShowDate's
+    // append-only case below, there is no way to derive that snapshot from
+    // artistDateIds's own updater alone. Safe because this handler never
+    // mutates selectedShowDateIds itself, so repeated calls in one batch (e.g.
+    // a future "select all artists" action) all read the same correct value;
+    // the same closure-read-of-a-sibling-state pattern is already used,
+    // unchanged, by toggleArtistDate below.
+    setArtistDateIds((current) => ({
+      ...current,
+      [id]: current[id] ?? [...selectedShowDateIds],
+    }));
   }
 
   function toggleShowDate(id: string) {
@@ -298,6 +335,22 @@ export function NewOrderWizard({ open, onOpenChange, orgId }: Props) {
       return;
     }
     setSelectedShowDateIds((ids) => [...ids, id]);
+    // Assign the new date to every selected artist by default. Each artist's
+    // list is always kept as an order-preserving subsequence of
+    // selectedShowDateIds (see the deselect branch above, toggleArtistDate,
+    // and applySelectedDatesToAll), and selectedShowDateIds only ever grows by
+    // appending the new id at the end, so appending it here too keeps that
+    // invariant. Both setters are now fully functional and read only their
+    // own prior state plus the constant `id` - no dependency on the other's
+    // just-computed value, so a bulk caller invoking this repeatedly in one
+    // batch can never drop an update (setters must stay pure and cannot call
+    // each other, so precomputing a shared "next" value up front is not an
+    // option here).
+    setArtistDateIds((current) =>
+      Object.fromEntries(
+        Object.entries(current).map(([artistId, ids]) => [artistId, [...ids, id]]),
+      ),
+    );
   }
 
   function applySelectedDatesToAll() {
@@ -448,10 +501,45 @@ export function NewOrderWizard({ open, onOpenChange, orgId }: Props) {
   const manualDict = buildManualDict();
   const previewLayers: FieldLayers = { showflow: previewShowflow, manual: manualDict, defaults: previewDefaults };
   const reviewData = resolveFields(previewLayers);
-  const feeDisplay =
-    reviewData.fee?.value != null && reviewData.fee.value !== ""
-      ? formatMoney(reviewData.fee.value as string | number, (reviewData.currency?.value as string) || currency)
-      : "Not set";
+
+  // Per-artist date counts drive the fee summary: with a per-date basis each
+  // artist's total is their own count x the unit price, so unequal counts have no
+  // single total to show.
+  const feeAmountNum = fee.trim() !== "" && !Number.isNaN(Number(fee)) ? Number(fee) : null;
+  const artistDateCounts = manualMode
+    ? [1]
+    : selectedArtistIds.map((id) => (artistDateIds[id] ?? []).length).filter((n) => n > 0);
+  const minDateCount = artistDateCounts.length > 0 ? Math.min(...artistDateCounts) : 1;
+  const maxDateCount = artistDateCounts.length > 0 ? Math.max(...artistDateCounts) : 1;
+
+  function feeSummaryText(): string {
+    if (feeAmountNum === null) return "Not set";
+    const unit = formatMoney(feeAmountNum, currency);
+    if (feeBasis === "total") return `${unit} total for all dates`;
+    if (maxDateCount === 1 && minDateCount === 1) return `${unit} per date`;
+    if (minDateCount === maxDateCount) {
+      const total = formatMoney(computeFeeTotal(feeAmountNum, maxDateCount, "per_date"), currency);
+      return `${unit} per date x ${maxDateCount} dates = ${total}`;
+    }
+    const low = formatMoney(computeFeeTotal(feeAmountNum, minDateCount, "per_date"), currency);
+    const high = formatMoney(computeFeeTotal(feeAmountNum, maxDateCount, "per_date"), currency);
+    return `${unit} per date. Totals range from ${low} to ${high} by artist.`;
+  }
+
+  // Step 4's per-artist equivalent of feeSummaryText(): when artists have
+  // unequal date counts there is no single aggregate total (feeSummaryText
+  // shows a range for that), but each artist's OWN total is always exact, so
+  // step 4 shows it directly rather than making the producer re-derive it from
+  // the range. Same wording as feeSummaryText's equal-count branch, computed
+  // via computeFeeTotal (never inline multiplication).
+  function artistFeeLine(dateCount: number): string {
+    if (feeAmountNum === null) return "Not set";
+    const unit = formatMoney(feeAmountNum, currency);
+    if (feeBasis === "total") return `${unit} total for all dates`;
+    if (dateCount <= 1) return `${unit} per date`;
+    const total = formatMoney(computeFeeTotal(feeAmountNum, dateCount, "per_date"), currency);
+    return `${unit} per date x ${dateCount} dates = ${total}`;
+  }
 
   function draftBody() {
     if (!manualMode) {
@@ -464,6 +552,7 @@ export function NewOrderWizard({ open, onOpenChange, orgId }: Props) {
           show_date_ids: artistDateIds[artist_id] ?? [],
         })),
         manual: buildManualDict(),
+        fee_basis: feeBasis,
         // Only sent when the producer edited at least one date's running order.
         ...(Object.keys(dateOverrides).length > 0 ? { date_overrides: dateOverrides } : {}),
       };
@@ -472,6 +561,7 @@ export function NewOrderWizard({ open, onOpenChange, orgId }: Props) {
       action: "draft-manual" as const,
       org_id: orgId,
       manual: buildManualDict(),
+      fee_basis: feeBasis,
     };
   }
 
@@ -696,7 +786,7 @@ export function NewOrderWizard({ open, onOpenChange, orgId }: Props) {
                       onClick={applySelectedDatesToAll}
                       disabled={selectedArtistIds.length === 0 || selectedShowDateIds.length === 0}
                     >
-                      Apply selected dates to all
+                      Reset all to selected dates
                     </Button>
                     {selectedArtistIds.length > 0 && selectedShowDateIds.length > 0 && (
                       <div className="overflow-x-auto rounded-lg border">
@@ -770,13 +860,23 @@ export function NewOrderWizard({ open, onOpenChange, orgId }: Props) {
 
             {step === 2 && (
               <div className="space-y-4">
-                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
                   <div className="space-y-1.5">
                     <Label htmlFor="wiz-fee">Engagement fee</Label>
                     <Input
                       id="wiz-fee" type="number" inputMode="decimal" min="0" step="0.01"
                       value={fee} onChange={(e) => setFee(e.target.value)} placeholder="0.00"
                     />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label htmlFor="wiz-fee-basis">Fee basis</Label>
+                    <Select value={feeBasis} onValueChange={(v) => setFeeBasis(v as FeeBasis)}>
+                      <SelectTrigger id="wiz-fee-basis" aria-label="Fee basis"><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="per_date">Per date</SelectItem>
+                        <SelectItem value="total">Total for all dates</SelectItem>
+                      </SelectContent>
+                    </Select>
                   </div>
                   <div className="space-y-1.5">
                     <Label htmlFor="wiz-currency">Currency</Label>
@@ -789,8 +889,8 @@ export function NewOrderWizard({ open, onOpenChange, orgId }: Props) {
                   </div>
                 </div>
                 <div className="rounded-lg border border-accent-200 bg-accent-50 p-3">
-                  <p className="text-xs text-accent-700">
-                    Payable on performance date: {fee.trim() !== "" && !Number.isNaN(Number(fee)) ? formatMoney(Number(fee), currency) : "Not set"}
+                  <p className="text-xs text-accent-700" data-testid="wiz-fee-summary">
+                    {feeSummaryText()}
                   </p>
                 </div>
               </div>
@@ -917,7 +1017,7 @@ export function NewOrderWizard({ open, onOpenChange, orgId }: Props) {
                     ))}
                     <div className="space-y-0.5">
                       <p className="text-xs text-muted-foreground">Fee</p>
-                      <p className="text-sm text-foreground">{feeDisplay}</p>
+                      <p className="text-sm text-foreground" data-testid="wiz-fee-summary">{feeSummaryText()}</p>
                     </div>
                   </div>
                 ) : (
@@ -942,6 +1042,12 @@ export function NewOrderWizard({ open, onOpenChange, orgId }: Props) {
                                 <li key={date.id}>{dateOptionLabel(date)}</li>
                               ))}
                             </ul>
+                            <p
+                              className="mt-2 text-xs text-muted-foreground"
+                              data-testid={`wiz-artist-fee-${artistId}`}
+                            >
+                              {artistFeeLine((artistDateIds[artistId] ?? []).length)}
+                            </p>
                           </div>
                         );
                       })}
@@ -974,7 +1080,7 @@ export function NewOrderWizard({ open, onOpenChange, orgId }: Props) {
                     <div className="grid grid-cols-2 gap-x-4 gap-y-3">
                       <div className="space-y-0.5">
                         <p className="text-xs text-muted-foreground">Fee</p>
-                        <p className="text-sm text-foreground">{feeDisplay}</p>
+                        <p className="text-sm text-foreground" data-testid="wiz-fee-summary">{feeSummaryText()}</p>
                       </div>
                     </div>
                   </>

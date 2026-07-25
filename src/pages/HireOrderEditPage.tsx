@@ -16,6 +16,7 @@ import { createSingleFlightRunner } from "@/lib/singleFlight";
 import { resolveFields } from "@/lib/hireOrders/resolveFields";
 import { orderReadyIssues } from "@/lib/hireOrders/validate";
 import { formatMoney } from "@/lib/hireOrders/money";
+import { feeCents } from "@/lib/hireOrders/feeBasis";
 import { defaultTemplateId } from "@/lib/hireOrders/terms";
 import { ORDER_FIELD_KEYS, type EditableOrderFieldKey, type OrderData } from "@/lib/hireOrders/types";
 import { ROUTES, HIRE_ORDER_DEFAULT_TERMS } from "@/config/app.config";
@@ -71,6 +72,14 @@ interface SplitLayers {
   manual: Partial<Record<EditableOrderFieldKey, unknown>>;
   defaults: Partial<Record<EditableOrderFieldKey, unknown>>;
   engagement_dates?: OrderData["engagement_dates"];
+  /** Server-derived, not editable and therefore not in ORDER_FIELD_KEYS, so
+   *  they must be carried across a re-resolution the same way
+   *  `engagement_dates` is — see `carryDerivedFeeFields`. */
+  fee_basis?: OrderData["fee_basis"];
+  fee_per_date?: OrderData["fee_per_date"];
+  /** The snapshot's own fee, the baseline every re-resolution compares against
+   *  to decide whether the two fields above still describe it. */
+  fee?: OrderData["fee"];
 }
 
 function splitLayers(data: OrderData): SplitLayers {
@@ -85,7 +94,34 @@ function splitLayers(data: OrderData): SplitLayers {
       field.source === "showflow" ? showflow : field.source === "sheet" ? sheet : field.source === "manual" ? manual : defaults;
     bucket[key] = field.value;
   }
-  return { showflow, sheet, manual, defaults, engagement_dates: data.engagement_dates };
+  return {
+    showflow, sheet, manual, defaults,
+    engagement_dates: data.engagement_dates,
+    fee_basis: data.fee_basis,
+    fee_per_date: data.fee_per_date,
+    fee: data.fee,
+  };
+}
+
+/**
+ * Re-attach the stored `fee_basis`/`fee_per_date` to a freshly re-resolved
+ * snapshot, but only while they still describe its fee.
+ *
+ * `resolveFields` only knows the twelve EDITABLE keys, so every rebuild here
+ * starts without these two. Dropping them unconditionally would let a notes
+ * typo fix permanently strip an aggregate order's per-date breakdown; keeping
+ * them unconditionally would leave "500.00 per date x 3 dates" printed above a
+ * total the producer just lowered. So: carry them when the fee is untouched,
+ * clear them the moment it changes (the same invariant `updateHireOrderReview`
+ * enforces, and the PDF renderer guards at the last mile). Compared in integer
+ * cents, so a stored `"1500.00"` and a typed `1500` are the same fee.
+ */
+function carryDerivedFeeFields(next: OrderData, source: SplitLayers): OrderData {
+  if (feeCents(next.fee?.value) !== feeCents(source.fee?.value)) return next;
+  const out: OrderData = { ...next };
+  if (source.fee_basis) out.fee_basis = source.fee_basis;
+  if (source.fee_per_date) out.fee_per_date = source.fee_per_date;
+  return out;
 }
 
 const READ_ONLY_STATUSES = new Set(["issued", "countersigned", "void"]);
@@ -209,7 +245,9 @@ export default function HireOrderEditPage() {
     });
     const rebuilt: OrderData = { ...editable };
     if (baseLayers.engagement_dates) rebuilt.engagement_dates = baseLayers.engagement_dates;
-    return applyClearedOverrides(rebuilt, clearedFields);
+    // After applyClearedOverrides, never before: an explicitly blanked fee is
+    // a fee change too, and only the post-override snapshot knows that.
+    return carryDerivedFeeFields(applyClearedOverrides(rebuilt, clearedFields), baseLayers);
   }, [baseLayers, manualLayer, clearedFields]);
 
   /** Fold the given snapshot in as the new baseline: session edits are already
@@ -356,7 +394,7 @@ export default function HireOrderEditPage() {
       const editable = resolveFields({ showflow: freshLayer, manual: preservedManual, defaults: baseLayers.defaults });
       const refreshed: OrderData = { ...editable };
       if (baseLayers.engagement_dates) refreshed.engagement_dates = baseLayers.engagement_dates;
-      commit(refreshed, true);
+      commit(carryDerivedFeeFields(refreshed, baseLayers), true);
       toast.success("Refreshed from ShowFlow");
     } catch (e) {
       toast.error((e as Error).message || "Could not refresh from ShowFlow");
