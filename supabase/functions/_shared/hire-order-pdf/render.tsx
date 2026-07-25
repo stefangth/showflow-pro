@@ -38,10 +38,11 @@ import { feeBreakdownReconciles } from "../feeBasis.ts";
 import { applyTokens, HIRE_ORDER_COPY_DEFAULTS, type HireOrderCopy } from "./pdfCopy.ts";
 import {
   familiesInUse,
+  type FontFamilyKey,
   HIRE_ORDER_THEME_DEFAULTS,
   type HireOrderTheme,
-  reactPdfFamilyName,
   type RoleKey,
+  safeReactPdfFamilyName,
   themeRoleStyle,
 } from "./pdfTheme.ts";
 
@@ -72,16 +73,24 @@ import {
 // NOT editable; only typography and colour come from the theme, via
 // themeRoleStyle. Adding a role means adding it to pdfTheme.ts first.
 
-export function buildStyles(theme: HireOrderTheme) {
+/**
+ * `available` is the set `registerFonts` actually managed to load for THIS
+ * render (omitted = "everything available", i.e. resolve normally — every
+ * existing test call site that doesn't pass it keeps behaving exactly as
+ * before). Any family key not in it renders in a react-pdf standard font
+ * instead (`safeReactPdfFamilyName`), never a family name react-pdf has no
+ * working registration for.
+ */
+export function buildStyles(theme: HireOrderTheme, available?: ReadonlySet<FontFamilyKey>) {
   const c = theme.base.colors;
-  const r = (role: RoleKey) => themeRoleStyle(theme, role);
+  const r = (role: RoleKey) => themeRoleStyle(theme, role, available);
   const { marginX, marginTop, marginBottom } = theme.base.page;
   // Resolved directly from theme.base.fontFamily, NOT via any role's
   // themeRoleStyle: the page's inherited default must stay independent of
   // whatever family a single role (e.g. titleLead) happens to resolve to,
   // so overriding one role's font never silently drags the whole document
   // along with it (see reactPdfFamilyName's doc comment in pdfTheme.ts).
-  const bodyFamily = reactPdfFamilyName(theme.base.fontFamily);
+  const bodyFamily = safeReactPdfFamilyName(theme.base.fontFamily, available);
 
   return StyleSheet.create({
     page: {
@@ -226,7 +235,7 @@ export function buildStyles(theme: HireOrderTheme) {
       paddingTop: 8,
     },
     footerText: { ...r("footerText") },
-    footerMono: { ...r("footerText"), fontFamily: themeRoleStyle(theme, "factValueMono").fontFamily },
+    footerMono: { ...r("footerText"), fontFamily: r("factValueMono").fontFamily },
 
     // Watermark
     watermark: {
@@ -323,13 +332,16 @@ function engagementDatesOf(data: OrderData): EngagementDate[] {
 
 // ── document ─────────────────────────────────────────────────────────────
 
-function HireOrderDoc(input: RenderInput): ReactElement {
-  const { data, orderNo, status, letterhead, terms, currency, generatedAtIso, signature } = input;
+/** `available` is set by `renderHireOrderPdf` only — it is `registerFonts`'
+ *  result for THIS render, not a caller-facing part of `RenderInput` (see
+ *  `docTypes.ts`), so it is added here rather than on the shared type. */
+function HireOrderDoc(input: RenderInput & { available?: ReadonlySet<FontFamilyKey> }): ReactElement {
+  const { data, orderNo, status, letterhead, terms, currency, generatedAtIso, signature, available } = input;
   // Every printed string reads from here: org overrides merged over defaults by
   // the caller, or the built-in defaults when `copy` is absent (legacy callers).
   const copy: HireOrderCopy = input.copy ?? HIRE_ORDER_COPY_DEFAULTS;
   const theme = input.theme ?? HIRE_ORDER_THEME_DEFAULTS;
-  const s = buildStyles(theme);
+  const s = buildStyles(theme, available);
 
   const artist = str(data, "artist_name");
   const email = str(data, "recipient_email");
@@ -606,9 +618,13 @@ function HireOrderDoc(input: RenderInput): ReactElement {
 }
 
 /** Concrete `RenderHireOrderPdf`. Registers the theme's fonts before
- *  rendering, so a cold isolate/session never renders with a missing family. */
+ *  rendering, so a cold isolate/session never renders with a missing family;
+ *  `available` (which families genuinely loaded) flows into `HireOrderDoc` so
+ *  a family `registerFonts` could not load renders in a standard font for
+ *  THIS document rather than throwing — see pdfDeps.ts and pdfTheme.ts's
+ *  `safeReactPdfFamilyName`. */
 export async function renderHireOrderPdf(input: RenderInput): Promise<Uint8Array> {
   const theme = input.theme ?? HIRE_ORDER_THEME_DEFAULTS;
-  await registerFonts(familiesInUse(theme));
-  return new Uint8Array(await renderToBuffer(<HireOrderDoc {...input} />));
+  const available = await registerFonts(familiesInUse(theme));
+  return new Uint8Array(await renderToBuffer(<HireOrderDoc {...input} available={available} />));
 }

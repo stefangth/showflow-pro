@@ -5370,6 +5370,7 @@
   },
   "workspace": {
     "dependencies": [
+      "npm:@types/react@18.3.1",
       "npm:react@18.3.1"
     ],
     "packageJson": {

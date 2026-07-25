@@ -417,13 +417,45 @@ export function reactPdfFamilyName(key: FontFamilyKey): string {
   return def.family;
 }
 
+/** Every key in the registry — the default `available` set, meaning "resolve
+ *  normally" (no fetch has failed). registerFonts passes the REAL available
+ *  set it produced; every existing caller that omits the argument keeps
+ *  resolving exactly as before. */
+const ALL_FAMILY_KEYS: ReadonlySet<FontFamilyKey> = new Set(FONT_FAMILIES.map((f) => f.key));
+
+/**
+ * Like `reactPdfFamilyName`, but falls back to a react-pdf STANDARD font when
+ * `key` is not in `available` — used when `registerFonts` could not load the
+ * intended family for this particular render (see pdfDeps.ts). "Helvetica"
+ * and "Courier" are pre-registered by react-pdf's own FontStore constructor,
+ * so this never touches `Font.register` and can never collide with (or be
+ * shadowed by) a real family that loads successfully on a later render: the
+ * real family name is registered once, only on a genuine full success, and
+ * never with fallback data — see pdfDeps.ts's registerFonts doc comment for
+ * why re-registering the same name with different data is unsafe.
+ */
+export function safeReactPdfFamilyName(
+  key: FontFamilyKey,
+  available: ReadonlySet<FontFamilyKey> = ALL_FAMILY_KEYS,
+): string {
+  if (available.has(key)) return reactPdfFamilyName(key);
+  const def = FONT_FAMILIES.find((f) => f.key === key);
+  return def?.kind === "mono" ? "Courier" : "Helvetica";
+}
+
 /** react-pdf text style for one role: base scale applied, colour key resolved,
- *  family key resolved to its react-pdf family name. */
-export function themeRoleStyle(theme: HireOrderTheme, role: RoleKey): RoleTextStyle {
+ *  family key resolved to its react-pdf family name (or a standard-font
+ *  fallback — see `safeReactPdfFamilyName` — for a family `available`
+ *  excludes; omitting `available` resolves every key normally). */
+export function themeRoleStyle(
+  theme: HireOrderTheme,
+  role: RoleKey,
+  available: ReadonlySet<FontFamilyKey> = ALL_FAMILY_KEYS,
+): RoleTextStyle {
   const style = theme.roles[role];
   const familyKey = style.family ??
     (MONO_ROLE_KEYS.has(role) ? theme.base.monoFamily : theme.base.fontFamily);
-  const out: RoleTextStyle = { fontFamily: reactPdfFamilyName(familyKey) };
+  const out: RoleTextStyle = { fontFamily: safeReactPdfFamilyName(familyKey, available) };
   if (style.size !== undefined) {
     // Round to 2dp: react-pdf accepts fractional sizes, but unrounded float
     // products would make snapshot comparisons noisy.
