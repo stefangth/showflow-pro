@@ -4,7 +4,7 @@ import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { resolveOrgSetting, upsertOrgSetting } from "@/data/settings";
 import type { Json } from "@/integrations/supabase/types";
-import type { FeeBasis } from "@/lib/hireOrders/feeBasis";
+import { type FeeBasis, isFeeBasis } from "@/lib/hireOrders/feeBasis";
 import { ORDER_DEFAULTS_DEFAULT } from "./defaults";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -43,9 +43,15 @@ export function OrderDefaultsCard({ orgId, readOnly = false }: { orgId: string |
       seededRef.current = true;
       // resolveOrgSetting replaces the fallback wholesale on a match rather than
       // merging field-by-field, so an org that saved this setting before
-      // default_fee_basis existed comes back with the key entirely absent.
-      // Coerce here so the Select never renders empty.
-      setForm({ ...data, default_fee_basis: data.default_fee_basis ?? "per_date" });
+      // default_fee_basis existed comes back with the key entirely absent — and
+      // nothing validates this hand-editable JSON on the way in, so it can also
+      // hold "" or "weekly". Validate with the same predicate the server uses
+      // (a bare `??` would let those through and render the Select blank while
+      // the server bills per_date), so the control shows what will happen.
+      setForm({
+        ...data,
+        default_fee_basis: isFeeBasis(data.default_fee_basis) ? data.default_fee_basis : "per_date",
+      });
     }
   }, [data]);
 

@@ -277,10 +277,18 @@ export function NewOrderWizard({ open, onOpenChange, orgId }: Props) {
 
   function toggleArtist(id: string) {
     if (selectedArtistIds.includes(id)) {
-      const nextArtistDateIds = { ...artistDateIds };
-      delete nextArtistDateIds[id];
       setSelectedArtistIds((ids) => ids.filter((artistId) => artistId !== id));
-      setArtistDateIds(nextArtistDateIds);
+      // Functional, reading only its own prior state plus the constant `id`:
+      // building the next map from the render closure and writing it wholesale
+      // would make two deselects that React batches into one update both read
+      // the pre-batch map, so the second write would resurrect the first
+      // artist's assignments. Same reasoning as toggleShowDate below.
+      setArtistDateIds((current) => {
+        if (!(id in current)) return current;
+        const next = { ...current };
+        delete next[id];
+        return next;
+      });
       return;
     }
     setSelectedArtistIds((ids) => [...ids, id]);

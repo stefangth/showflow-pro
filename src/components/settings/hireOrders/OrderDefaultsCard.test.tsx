@@ -44,4 +44,43 @@ describe("OrderDefaultsCard fee basis", () => {
     await waitFor(() => expect(screen.getByLabelText("Default fee")).toHaveValue(500));
     expect(screen.getByLabelText("Fee basis")).toHaveTextContent("Per date");
   });
+
+  // A `??` coercion only catches null/undefined, so a stored "" or "weekly"
+  // survives into the Select and renders it blank -- while the server (which
+  // validates the value with isFeeBasis) bills the order as per_date. The
+  // control must show what will actually happen.
+  it.each(["", "weekly", 7, null])(
+    "shows the per date fallback the server uses for a stored basis of %p",
+    async (stored) => {
+      seedClient({
+        app_settings: {
+          data: [{
+            key: "hire_order_defaults",
+            org_id: "org-1",
+            value: { default_fee: 500, currency: "USD", default_fee_basis: stored },
+          }],
+          error: null,
+        },
+      });
+      renderWithProviders(<OrderDefaultsCard orgId="org-1" />);
+      await waitFor(() => expect(screen.getByLabelText("Default fee")).toHaveValue(500));
+      expect(screen.getByLabelText("Fee basis")).toHaveTextContent("Per date");
+    },
+  );
+
+  it("keeps a stored total basis untouched", async () => {
+    seedClient({
+      app_settings: {
+        data: [{
+          key: "hire_order_defaults",
+          org_id: "org-1",
+          value: { default_fee: 500, currency: "USD", default_fee_basis: "total" },
+        }],
+        error: null,
+      },
+    });
+    renderWithProviders(<OrderDefaultsCard orgId="org-1" />);
+    await waitFor(() => expect(screen.getByLabelText("Default fee")).toHaveValue(500));
+    expect(screen.getByLabelText("Fee basis")).toHaveTextContent("Total for all dates");
+  });
 });

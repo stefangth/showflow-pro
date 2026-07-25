@@ -1,5 +1,5 @@
 import { describe, expect, it, vi, beforeEach } from "vitest";
-import { fireEvent, screen, waitFor, within } from "@testing-library/react";
+import { act, fireEvent, screen, waitFor, within } from "@testing-library/react";
 import { renderWithProviders } from "@/test/renderWithProviders";
 import { createFakeSupabase, type TableSeed } from "@/test/supabaseFake";
 
@@ -853,5 +853,35 @@ describe("NewOrderWizard", () => {
     expect(screen.getByRole("checkbox", { name: /ben booker.*berlin/i })).not.toBeChecked();
     // Ben now has no dates, so step 1 is incomplete again.
     expect(screen.getByRole("button", { name: /^continue$/i })).toBeDisabled();
+  });
+
+  it("drops every artist's assignments when two are deselected inside one batched update", async () => {
+    // The deselect branch used to build its next map from the RENDER closure and
+    // write it wholesale, so two deselects that React batches into one update
+    // both read the pre-batch map and the second write resurrected the first
+    // artist's assignments. The stale entry then wins over a fresh seed when
+    // that artist is re-selected -- Ann comes back with her old single date
+    // instead of the two dates currently selected.
+    renderWizard();
+    await selectArtists("Ann Artist", "Ben Booker");
+    await selectCommonDates("Berlin", "Hamburg");
+    fireEvent.click(screen.getByRole("checkbox", { name: /ann artist.*hamburg/i }));
+
+    fireEvent.click(screen.getByRole("combobox", { name: /select artist/i }));
+    const annOption = await screen.findByRole("option", { name: /ann artist/i });
+    const benOption = await screen.findByRole("option", { name: /ben booker/i });
+    // One act() around both clicks: the nested acts defer their flush to the
+    // outer one, so React sees a single batched update -- the shape a future
+    // bulk "deselect all" would produce.
+    await act(async () => {
+      fireEvent.click(annOption);
+      fireEvent.click(benOption);
+    });
+    fireEvent.click(screen.getByRole("combobox", { name: /select artist/i }));
+    await flush();
+
+    await selectArtists("Ann Artist");
+    expect(screen.getByRole("checkbox", { name: /ann artist.*berlin/i })).toBeChecked();
+    expect(screen.getByRole("checkbox", { name: /ann artist.*hamburg/i })).toBeChecked();
   });
 });
