@@ -51,6 +51,8 @@ export type CopyKey =
   // Fees
   | "fees_heading"
   | "fees_engagement_fee"
+  | "fees_per_date"
+  | "fees_per_date_single"
   | "fees_total"
   // Terms
   | "terms_heading"
@@ -117,6 +119,8 @@ export const HIRE_ORDER_COPY_DEFAULTS: HireOrderCopy = {
 
   fees_heading: "Fees & payment schedule",
   fees_engagement_fee: "Engagement fee",
+  fees_per_date: "{{amount}} per date x {{count}} dates",
+  fees_per_date_single: "{{amount}} per date",
   fees_total: "Total payable",
 
   terms_heading: "Terms & conditions",

@@ -87,6 +87,8 @@ export const COPY_SECTIONS: CopySection[] = [
     fields: [
       { key: "fees_heading", label: "Fees heading", tokens: [] },
       { key: "fees_engagement_fee", label: "Engagement fee row", tokens: [] },
+      { key: "fees_per_date", label: "Per-date breakdown row", tokens: ["amount", "count"] },
+      { key: "fees_per_date_single", label: "Per-date breakdown row (one date)", tokens: ["amount"] },
       { key: "fees_total", label: "Total row", tokens: [] },
     ],
   },

@@ -352,6 +352,22 @@ function HireOrderDoc(input: RenderInput): React.ReactElement {
     : formatMoney(fee as string | number, currency);
   const sessions = sessionsOf(data);
   const engagementDates = engagementDatesOf(data);
+  const feeBasis = str(data, "fee_basis");
+  const feePerDateValue = data.fee_per_date?.value;
+  // Aggregate orders carry engagement_dates; a single-date order has none, so
+  // fall back to 1 rather than 0 (which would print "x 0 dates").
+  const feeDateCount = engagementDates.length || 1;
+  const feeBreakdown =
+    feeBasis === "per_date" && feePerDateValue !== undefined &&
+      feePerDateValue !== null && feePerDateValue !== ""
+      ? applyTokens(
+        feeDateCount === 1 ? copy.fees_per_date_single : copy.fees_per_date,
+        {
+          amount: formatMoney(feePerDateValue as string | number, currency),
+          count: feeDateCount,
+        },
+      )
+      : "";
   const isAggregate = engagementDates.length > 1;
   const dateLabel = isAggregate
     ? engagementDates.map((item) => formatDateDMY(item.date)).join(" · ")
@@ -502,7 +518,7 @@ function HireOrderDoc(input: RenderInput): React.ReactElement {
         <View style={s.section}>
           <Text style={s.sectionHeading}>{copy.fees_heading}</Text>
           <View style={s.feeRow}>
-            <Text style={s.feeLabel}>{copy.fees_engagement_fee}</Text>
+            <Text style={s.feeLabel}>{feeBreakdown || copy.fees_engagement_fee}</Text>
             <Text style={s.feeValue}>{feeText}</Text>
           </View>
           <View style={s.totalRow}>
