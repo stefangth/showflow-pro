@@ -276,6 +276,9 @@ existing `preview` action. Only the preview mechanism changes; the theme registr
 outline, the inspector, the highlight (which is server-side either way) and the persistence
 model are all unaffected. This is why the registry work does not depend on the spike.
 
+**Spike result (2026-07-25):** react-pdf v4 renders in the browser under Vite.
+Config required: none.
+
 ---
 
 ## 5. Persistence and freezing
