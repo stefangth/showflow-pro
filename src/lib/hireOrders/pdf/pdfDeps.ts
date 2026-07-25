@@ -4,14 +4,28 @@
 // one place the two differ. The Deno twin lives at
 // supabase/functions/_shared/hire-order-pdf/pdfDeps.ts.
 //
-// Fonts come from the same public Storage bucket the edge renderer uses,
-// including Geist: the browser has no reason to carry 700KB of base64.
+// Geist and Geist Mono are base64-embedded from ./fonts.ts, exactly as the
+// edge shim does, so the DEFAULT theme renders with zero network I/O here
+// too. Earlier this file fetched every family (Geist included) from the
+// public `hire-order-fonts` Storage bucket, which is empty until an operator
+// uploads to it: every fetch 400'd, `available` came back empty and the live
+// preview silently fell back to Helvetica. That is not merely a different
+// typeface - Helvetica and Geist have different metrics, so line breaks and
+// pagination differ, and an org could size text to fit in a preview that the
+// real PDF then reflows. The bytes are shared with the edge through the
+// mirror (scripts/mirrors.manifest.json), never hand-duplicated. Everything
+// else is still fetched from the bucket on demand.
+//
+// The extra weight is paid only on entering the editor: this module is
+// reached solely through render.tsx -> TemplateDocumentPane ->
+// TemplateEditorPage, which App.tsx `lazy()`-loads.
 
 export { Document, Image, Page, StyleSheet, Text, View } from "@react-pdf/renderer";
 export type { ReactElement } from "react";
 
 import { Font, pdf } from "@react-pdf/renderer";
 import type { ReactElement } from "react";
+import { GEIST_MEDIUM_B64, GEIST_MONO_REGULAR_B64, GEIST_REGULAR_B64, GEIST_SEMIBOLD_B64 } from "./fonts.ts";
 import { type FontFamilyDef, type FontFamilyKey } from "./pdfTheme.ts";
 
 /**
@@ -32,21 +46,35 @@ const FONT_BUCKET_URL =
   `${import.meta.env.VITE_SUPABASE_URL ?? ""}/storage/v1/object/public/hire-order-fonts`;
 
 // A hanging Storage endpoint must not stall every themed preview render for
-// the rest of the page session: non-sticky retry (see `registered` below)
-// means a slow/hung response is retried on every call, so an unbounded fetch
-// would compound rather than just cost one render. Matches the edge shim's
-// FONT_FETCH_TIMEOUT_MS.
+// the rest of the page session: a failed family is retried once its
+// FONT_FAILURE_TTL_MS lapses, so an unbounded fetch would compound rather
+// than just cost one render. Matches the edge shim's FONT_FETCH_TIMEOUT_MS.
 const FONT_FETCH_TIMEOUT_MS = 8000;
 
-// Names react-pdf has a REAL, working registration for. Added only once a
-// family's fetch has genuinely, fully succeeded. Never removed -
-// `Font.register` is append-only and first-match-wins internally (confirmed
-// by reading @react-pdf/font's FontFamily.register/resolve), so a family
-// already registered for real must never be registered again with different
-// data: the OLD source would keep winning forever, silently. A family that
-// is NOT in this set is safe to retry on the next call.
+// Names react-pdf has a REAL, working registration for. Geist/GeistMono are
+// added unconditionally below (embedded, can't fail); everything else is
+// added only once a family's fetch has genuinely, fully succeeded. Never
+// removed - `Font.register` is append-only and first-match-wins internally
+// (confirmed by reading @react-pdf/font's FontFamily.register/resolve), so a
+// family already registered for real must never be registered again with
+// different data: the OLD source would keep winning forever, silently. A
+// family that is NOT in this set is safe to retry on the next call.
 const registered = new Set<string>();
-let hyphenationSet = false;
+
+// How long a FAILED family fetch is remembered before it is retried.
+//
+// The edge deliberately has no such cache: a warm isolate lives for hours and
+// a family that failed once should get a fresh attempt on the next document.
+// A browser session is different - the preview re-renders on a debounce as
+// the user types, so an org whose stored theme names a family the bucket has
+// not been provisioned with (`resolveHireOrderTheme` accepts any registry key,
+// including `pendingUpload` ones the picker hides) would fire three doomed
+// requests and log three errors per keystroke batch. 30s is short enough that
+// an operator who uploads the missing files sees them appear without a
+// reload, and long enough that a burst of edits costs one attempt, not one
+// per frame.
+const FONT_FAILURE_TTL_MS = 30_000;
+const failedAt = new Map<string, number>();
 
 function bytesToBase64(bytes: Uint8Array): string {
   let binary = "";
@@ -91,8 +119,8 @@ function looksLikeFont(bytes: Uint8Array): boolean {
  * with no trace would look like this renderer is simply broken.
  *
  * `fetchImpl` is injected (defaulted to the global `fetch` by the caller) so
- * this mirrors the edge shim's shape, even though today's tests exercise the
- * failure paths on the edge runtime only (see pdfDeps.test.ts).
+ * this mirrors the edge shim's shape and the failure paths are testable
+ * against a fake network (see pdfDeps.test.ts beside this file).
  */
 async function loadFontDataUrl(path: string, family: string, fetchImpl: typeof fetch): Promise<string | null> {
   const url = `${FONT_BUCKET_URL}/${path}`;
@@ -124,38 +152,70 @@ async function loadFontDataUrl(path: string, family: string, fetchImpl: typeof f
 }
 
 /**
- * Register the families a theme uses, all from the public font bucket
- * (including Geist - the browser has no reason to carry 700KB of base64).
- * ALL of a family's weight files must load for it to be registered at all -
- * a partial set (some weights real, some substituted) would render body text
- * and headings in visibly different typefaces, which reads as a bug rather
- * than a fallback. A family that fails (any weight) is left unregistered:
- * `renderHireOrderPdf` (render.tsx) uses the returned set to render that
- * family's text in a react-pdf standard font (Helvetica/Courier) for THIS
- * document only, via `safeReactPdfFamilyName` - it is never registered under
- * a fallback, so the next call (e.g. the next live-preview render in the
- * same page session) retries the real fetch rather than inheriting a
- * transient failure for the rest of the session.
+ * Register the families a theme uses. Geist and Geist Mono are base64-embedded
+ * (./fonts.ts, shared with the edge through the mirror) so the DEFAULT theme
+ * never touches the network and can never fail. Anything else is fetched from
+ * the public font bucket and embedded as a data URL; ALL of a family's weight
+ * files must load for it to be registered at all - a partial set (some weights
+ * real, some substituted) would render body text and headings in visibly
+ * different typefaces, which reads as a bug rather than a fallback. A family
+ * that fails (any weight) is left unregistered: `renderHireOrderPdf`
+ * (render.tsx) uses the returned set to render that family's text in a
+ * react-pdf standard font (Helvetica/Courier) for THIS document only, via
+ * `safeReactPdfFamilyName` - it is never registered under a fallback, so a
+ * later call retries the real fetch (after FONT_FAILURE_TTL_MS) rather than
+ * inheriting a transient failure for the rest of the page session.
  *
  * `fetchImpl` defaults to the global `fetch` (production callers, and
  * render.tsx's own `registerFonts(familiesInUse(theme))` call, never pass
- * one).
+ * one); tests inject a fake so the failure paths run against no real network.
  */
 export async function registerFonts(
   families: FontFamilyDef[],
   fetchImpl: typeof fetch = fetch,
 ): Promise<Set<FontFamilyKey>> {
-  if (!hyphenationSet) {
-    // See render.tsx's fonts comment: react-pdf's default hyphenation would
-    // break names/venues/emails mid-word.
-    Font.registerHyphenationCallback((word) => [word]);
-    hyphenationSet = true;
-  }
   const available = new Set<FontFamilyKey>();
+  if (!registered.has("Geist")) {
+    Font.register({
+      family: "Geist",
+      fonts: [
+        { src: `data:font/ttf;base64,${GEIST_REGULAR_B64}`, fontWeight: 400 },
+        { src: `data:font/ttf;base64,${GEIST_MEDIUM_B64}`, fontWeight: 500 },
+        { src: `data:font/ttf;base64,${GEIST_SEMIBOLD_B64}`, fontWeight: 600 },
+      ],
+    });
+    Font.register({
+      family: "GeistMono",
+      fonts: [{ src: `data:font/ttf;base64,${GEIST_MONO_REGULAR_B64}`, fontWeight: 400 }],
+    });
+    // See render.tsx's fonts comment: react-pdf's default hyphenation would
+    // break names/venues/emails mid-word. Set once, alongside the default
+    // fonts, exactly as the edge shim does.
+    Font.registerHyphenationCallback((word) => [word]);
+    registered.add("Geist");
+    registered.add("GeistMono");
+  }
+  available.add("geist");
+  available.add("geist-mono");
+
   for (const def of families) {
+    if (def.embedded) {
+      // geist/geist-mono are already Font.register'd and available'd above,
+      // via base64 rather than a fetch. Marking `available` here too (not
+      // just relying on the two hardcoded adds above) means a FUTURE third
+      // embedded family that reaches this loop is correctly available
+      // without a fetch, rather than silently falling through to the
+      // Helvetica/Courier substitute despite registering fine.
+      available.add(def.key);
+      continue;
+    }
     if (registered.has(def.family)) {
       available.add(def.key);
       continue;
+    }
+    const lastFailure = failedAt.get(def.family);
+    if (lastFailure !== undefined && Date.now() - lastFailure < FONT_FAILURE_TTL_MS) {
+      continue; // recently failed: skip silently, retried once the TTL lapses
     }
     const loaded = await Promise.all(def.files.map((f) => loadFontDataUrl(f.path, def.family, fetchImpl)));
     if (loaded.some((src) => src === null)) {
@@ -164,13 +224,15 @@ export async function registerFonts(
         key: def.key,
         failedPaths: def.files.filter((_, i) => loaded[i] === null).map((f) => f.path),
       });
-      continue; // stays unregistered: retried on the next registerFonts call
+      failedAt.set(def.family, Date.now());
+      continue; // stays unregistered: retried after FONT_FAILURE_TTL_MS
     }
     Font.register({
       family: def.family,
       fonts: def.files.map((f, i) => ({ src: loaded[i] as string, fontWeight: f.weight })),
     });
     registered.add(def.family);
+    failedAt.delete(def.family);
     available.add(def.key);
   }
   return available;

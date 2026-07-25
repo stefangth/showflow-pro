@@ -261,5 +261,5 @@ running the upload script:
    every family pins an exact release, package version, or commit, so the set is fully
    reproducible without the original attachment. Re-run steps 2-3 of "How to add (or replace) a
    family" below for each of the seven families (Geist/Geist Mono can also be re-derived by
-   base64-decoding the constants in `supabase/functions/_shared/hire-order-pdf/fonts.ts`, which
+   base64-decoding the constants in `src/lib/hireOrders/pdf/fonts.ts`, which
    *is* committed, rather than re-fetched from Vercel).

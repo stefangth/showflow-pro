@@ -1,6 +1,3 @@
-// GENERATED FILE. Do not edit.
-// Source: src/lib/hireOrders/pdf/fonts.ts
-// Regenerate: npm run sync:mirrors
 // Geist + Geist Mono TTFs, base64-encoded, embedded as source.
 //
 // DUAL-HOME PAIR: src/lib/hireOrders/pdf/fonts.ts (edit here) generates

@@ -26,6 +26,12 @@
     },
     {
       "mode": "file",
+      "source": "src/lib/hireOrders/pdf/fonts.ts",
+      "target": "supabase/functions/_shared/hire-order-pdf/fonts.ts",
+      "why": "Geist + Geist Mono base64 bytes. BOTH pdfDeps shims embed them so the default theme renders with zero network I/O on either runtime; mirrored rather than hand-duplicated because the literal is ~700KB."
+    },
+    {
+      "mode": "file",
       "source": "src/lib/hireOrders/pdf/pdfTheme.ts",
       "target": "supabase/functions/_shared/hire-order-pdf/pdfTheme.ts",
       "why": "Editable PDF theme registry. The edge renderer builds its StyleSheet from it and freezes the resolved theme into issue_snapshot."
