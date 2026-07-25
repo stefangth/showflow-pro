@@ -176,6 +176,27 @@ async function completeWizard({ fee }: { fee: string }) {
   return invokeCalls()[0];
 }
 
+// Continue from openWizardAtStep2's step-2 landing through step 3 (nothing
+// there gates Continue) to step 4, entering the fee - and, when given,
+// switching the fee basis - along the way.
+async function openWizardAtStep4(options: {
+  artists: string[];
+  dates: string[];
+  assignments?: Record<string, string[]>;
+  fee: string;
+  basis?: "per_date" | "total";
+}) {
+  await openWizardAtStep2(options);
+  fireEvent.change(screen.getByLabelText(/engagement fee/i), { target: { value: options.fee } });
+  if (options.basis === "total") {
+    fireEvent.click(screen.getByLabelText(/fee basis/i));
+    fireEvent.click(await screen.findByRole("option", { name: /total for all dates/i }));
+  }
+  clickContinue();
+  clickContinue();
+  await screen.findByRole("button", { name: /save as draft/i });
+}
+
 describe("NewOrderWizard", () => {
   beforeEach(() => {
     navigate.mockClear();
@@ -705,5 +726,52 @@ describe("NewOrderWizard", () => {
       fee_basis: "per_date",
       manual: expect.objectContaining({ fee: 500 }),
     });
+  });
+
+  it("shows the multiplied total on step 4, not the bare unit price, for a single artist across multiple dates", async () => {
+    await openWizardAtStep4({ artists: ["Ann Artist"], dates: ["Berlin", "Hamburg"], fee: "500" });
+    const summary = screen.getByTestId("wiz-fee-summary");
+    expect(summary).toHaveTextContent("$500.00 per date x 2 dates = $1,000.00");
+    // Regression guard: the pre-fix step 4 showed exactly this bare figure
+    // (the per-date unit price) while the server billed the multiplied total.
+    expect(summary).not.toHaveTextContent(/^\$500\.00$/);
+  });
+
+  it("shows each artist's own total on step 4 when artists have different date counts, and the totals differ", async () => {
+    await openWizardAtStep4({
+      artists: ["Ann Artist", "Ben Booker"],
+      dates: ["Berlin", "Hamburg"],
+      assignments: { "Ann Artist": ["Berlin"], "Ben Booker": ["Berlin", "Hamburg"] },
+      fee: "500",
+    });
+    const annFee = screen.getByTestId("wiz-artist-fee-a1");
+    const benFee = screen.getByTestId("wiz-artist-fee-a2");
+    expect(annFee).toHaveTextContent("$500.00 per date");
+    expect(benFee).toHaveTextContent("$500.00 per date x 2 dates = $1,000.00");
+    // This is the case a single collapsed aggregate number can never satisfy:
+    // the two artists' own totals genuinely differ.
+    expect(annFee.textContent).not.toBe(benFee.textContent);
+  });
+
+  it("shows the flat total on step 4, not a multiplied figure, when the basis is total", async () => {
+    await openWizardAtStep4({
+      artists: ["Ann Artist"],
+      dates: ["Berlin", "Hamburg"],
+      fee: "1500",
+      basis: "total",
+    });
+    expect(screen.getByTestId("wiz-fee-summary")).toHaveTextContent("$1,500.00 total for all dates");
+  });
+
+  it("shows the basis qualifier on step 4 in manual mode, alongside the entered fee", async () => {
+    renderWizard();
+    fireEvent.click(screen.getByRole("button", { name: /no linked date/i }));
+    fireEvent.change(screen.getByLabelText(/artist name/i), { target: { value: "Walk-in Artist" } });
+    clickContinue();
+    fireEvent.change(await screen.findByLabelText(/engagement fee/i), { target: { value: "500" } });
+    clickContinue();
+    clickContinue();
+    await screen.findByRole("button", { name: /save as draft/i });
+    expect(screen.getByTestId("wiz-fee-summary")).toHaveTextContent("$500.00 per date");
   });
 });

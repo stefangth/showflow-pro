@@ -451,10 +451,6 @@ export function NewOrderWizard({ open, onOpenChange, orgId }: Props) {
   const manualDict = buildManualDict();
   const previewLayers: FieldLayers = { showflow: previewShowflow, manual: manualDict, defaults: previewDefaults };
   const reviewData = resolveFields(previewLayers);
-  const feeDisplay =
-    reviewData.fee?.value != null && reviewData.fee.value !== ""
-      ? formatMoney(reviewData.fee.value as string | number, (reviewData.currency?.value as string) || currency)
-      : "Not set";
 
   // Per-artist date counts drive the fee summary: with a per-date basis each
   // artist's total is their own count x the unit price, so unequal counts have no
@@ -478,6 +474,21 @@ export function NewOrderWizard({ open, onOpenChange, orgId }: Props) {
     const low = formatMoney(computeFeeTotal(feeAmountNum, minDateCount, "per_date"), currency);
     const high = formatMoney(computeFeeTotal(feeAmountNum, maxDateCount, "per_date"), currency);
     return `${unit} per date. Totals range from ${low} to ${high} by artist.`;
+  }
+
+  // Step 4's per-artist equivalent of feeSummaryText(): when artists have
+  // unequal date counts there is no single aggregate total (feeSummaryText
+  // shows a range for that), but each artist's OWN total is always exact, so
+  // step 4 shows it directly rather than making the producer re-derive it from
+  // the range. Same wording as feeSummaryText's equal-count branch, computed
+  // via computeFeeTotal (never inline multiplication).
+  function artistFeeLine(dateCount: number): string {
+    if (feeAmountNum === null) return "Not set";
+    const unit = formatMoney(feeAmountNum, currency);
+    if (feeBasis === "total") return `${unit} total for all dates`;
+    if (dateCount <= 1) return `${unit} per date`;
+    const total = formatMoney(computeFeeTotal(feeAmountNum, dateCount, "per_date"), currency);
+    return `${unit} per date x ${dateCount} dates = ${total}`;
   }
 
   function draftBody() {
@@ -956,7 +967,7 @@ export function NewOrderWizard({ open, onOpenChange, orgId }: Props) {
                     ))}
                     <div className="space-y-0.5">
                       <p className="text-xs text-muted-foreground">Fee</p>
-                      <p className="text-sm text-foreground">{feeDisplay}</p>
+                      <p className="text-sm text-foreground" data-testid="wiz-fee-summary">{feeSummaryText()}</p>
                     </div>
                   </div>
                 ) : (
@@ -981,6 +992,12 @@ export function NewOrderWizard({ open, onOpenChange, orgId }: Props) {
                                 <li key={date.id}>{dateOptionLabel(date)}</li>
                               ))}
                             </ul>
+                            <p
+                              className="mt-2 text-xs text-muted-foreground"
+                              data-testid={`wiz-artist-fee-${artistId}`}
+                            >
+                              {artistFeeLine((artistDateIds[artistId] ?? []).length)}
+                            </p>
                           </div>
                         );
                       })}
@@ -1013,7 +1030,7 @@ export function NewOrderWizard({ open, onOpenChange, orgId }: Props) {
                     <div className="grid grid-cols-2 gap-x-4 gap-y-3">
                       <div className="space-y-0.5">
                         <p className="text-xs text-muted-foreground">Fee</p>
-                        <p className="text-sm text-foreground">{feeDisplay}</p>
+                        <p className="text-sm text-foreground" data-testid="wiz-fee-summary">{feeSummaryText()}</p>
                       </div>
                     </div>
                   </>
