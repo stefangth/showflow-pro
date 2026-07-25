@@ -288,6 +288,98 @@ describe("HireOrderEditPage", () => {
     });
   });
 
+  describe("derived fee fields", () => {
+    // A 3-date aggregate billed at 500 per date. `fee` is the TOTAL; the two
+    // derived keys explain how it was reached and are not editable fields, so
+    // resolveFields knows nothing about them.
+    const PER_DATE_DATA = {
+      ...DATA,
+      fee: { value: 1500, source: "manual" },
+      fee_basis: { value: "per_date", source: "manual" },
+      fee_per_date: { value: 500, source: "manual" },
+      engagement_dates: {
+        value: [
+          { show_date_id: "sd-1", date: "2026-02-01", venue: "Main Hall", city: "Berlin" },
+          { show_date_id: "sd-2", date: "2026-02-02", venue: "Main Hall", city: "Berlin" },
+          { show_date_id: "sd-3", date: "2026-02-03", venue: "Main Hall", city: "Berlin" },
+        ],
+        source: "showflow",
+      },
+    };
+
+    async function saveAfter(edit: () => void) {
+      seedFor(order({ data: PER_DATE_DATA, fee_amount: 1500 }));
+      renderPage();
+      await screen.findByText("HO-2026-0201-1");
+      edit();
+      fireEvent.click(screen.getByRole("button", { name: /^save draft$/i }));
+      let patch: { data?: Record<string, unknown> } = {};
+      await waitFor(() => {
+        const update = updateCalls().at(-1);
+        expect(update).toBeDefined();
+        patch = update!.args[0] as { data?: Record<string, unknown> };
+        expect(patch.data).toBeDefined();
+      });
+      return patch;
+    }
+
+    it("carries fee_basis and fee_per_date through an edit that leaves the fee alone", async () => {
+      // Without this, fixing a typo in the notes silently strips the PDF's
+      // per-date breakdown from an aggregate order.
+      const patch = await saveAfter(() =>
+        fireEvent.change(screen.getByLabelText("Notes"), { target: { value: "Bring two mics" } })
+      );
+      expect(patch.data?.fee_basis).toEqual({ value: "per_date", source: "manual" });
+      expect(patch.data?.fee_per_date).toEqual({ value: 500, source: "manual" });
+      expect(patch.data?.notes).toEqual({ value: "Bring two mics", source: "manual" });
+    });
+
+    it("drops both derived fields when the fee itself is edited", async () => {
+      const patch = await saveAfter(() =>
+        fireEvent.change(screen.getByLabelText("Engagement fee"), { target: { value: "1200" } })
+      );
+      expect(patch.data && "fee_basis" in patch.data).toBe(false);
+      expect(patch.data && "fee_per_date" in patch.data).toBe(false);
+      expect(patch.data?.fee).toEqual({ value: "1200", source: "manual" });
+    });
+
+    it("drops both derived fields when the fee is cleared", async () => {
+      const patch = await saveAfter(() =>
+        fireEvent.change(screen.getByLabelText("Engagement fee"), { target: { value: "" } })
+      );
+      expect(patch.data && "fee_basis" in patch.data).toBe(false);
+      expect(patch.data && "fee_per_date" in patch.data).toBe(false);
+    });
+
+    it("keeps them across a Refresh from ShowFlow that leaves the fee alone", async () => {
+      seedFor(order({ data: PER_DATE_DATA, fee_amount: 1500 }), {
+        artists: { data: { name: "Ada Lovelace", email: "ada@example.com", cast_role: "Swing" }, error: null },
+        show_dates: {
+          data: {
+            date: "2026-02-01", venue: "Grand Hall", duration_minutes: 120,
+            session_1: "20:00", session_2: null, session_3: null,
+            cities: { name: "Munich" },
+          },
+          error: null,
+        },
+      });
+      renderPage();
+      await screen.findByText("HO-2026-0201-1");
+
+      fireEvent.click(screen.getByRole("button", { name: /refresh from showflow/i }));
+      await waitFor(() => expect(screen.getByLabelText("Role")).toHaveValue("Swing"));
+      fireEvent.click(screen.getByRole("button", { name: /^save draft$/i }));
+
+      await waitFor(() => {
+        const update = updateCalls().at(-1);
+        expect(update).toBeDefined();
+        const patch = update!.args[0] as { data?: Record<string, unknown> };
+        expect(patch.data?.fee_basis).toEqual({ value: "per_date", source: "manual" });
+        expect(patch.data?.fee_per_date).toEqual({ value: 500, source: "manual" });
+      });
+    });
+  });
+
   it("fetches an initial live preview on mount, before any edit", async () => {
     seedFor(order());
     renderPage();
