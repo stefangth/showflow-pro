@@ -764,20 +764,20 @@ Append to `supabase/functions/_shared/hire-order-pdf/render.test.ts`:
 
 ```ts
 Deno.test("default theme renders byte-identically to no theme at all", async () => {
-  const withoutTheme = await renderHireOrderPdf({ ...baseInput, generatedAtIso: FIXED_ISO });
+  const withoutTheme = await renderHireOrderPdf({ ...BASE, generatedAtIso: "2026-08-01T10:00:00.000Z" });
   const withTheme = await renderHireOrderPdf({
-    ...baseInput,
-    generatedAtIso: FIXED_ISO,
+    ...BASE,
+    generatedAtIso: "2026-08-01T10:00:00.000Z",
     theme: resolveHireOrderTheme(),
   });
   assertEquals(withTheme.length, withoutTheme.length);
 });
 
 Deno.test("a theme override changes the rendered document", async () => {
-  const plain = await renderHireOrderPdf({ ...baseInput, generatedAtIso: FIXED_ISO });
+  const plain = await renderHireOrderPdf({ ...BASE, generatedAtIso: "2026-08-01T10:00:00.000Z" });
   const scaled = await renderHireOrderPdf({
-    ...baseInput,
-    generatedAtIso: FIXED_ISO,
+    ...BASE,
+    generatedAtIso: "2026-08-01T10:00:00.000Z",
     theme: resolveHireOrderTheme({ base: { scale: 1.4 } }),
   });
   assertNotEquals(scaled.length, plain.length);
@@ -805,7 +805,7 @@ Deno.test("buildStyles applies base scale and page margins", () => {
 });
 ```
 
-`FIXED_ISO` must be a constant so the footer's generated date does not vary between the two renders in the first test. If the existing test file has no such constant, add `const FIXED_ISO = "2026-06-01T10:00:00.000Z";` at the top and use it.
+The generated date must be pinned so the footer does not vary between the two renders being compared in the first test. `BASE` (the shared fixture at `render.test.ts:178`) already carries `generatedAtIso: "2026-08-01T10:00:00.000Z"`, so spreading `...BASE` without overriding it is sufficient; the explicit override above is belt and braces. `renderToText(input)` already exists at `render.test.ts:471` and returns the document's extracted text.
 
 - [ ] **Step 2: Run test to verify it fails**
 
@@ -1426,21 +1426,21 @@ Append to `render.test.ts`:
 
 ```ts
 Deno.test("highlightRole changes the rendered document", async () => {
-  const plain = await renderHireOrderPdf({ ...baseInput, generatedAtIso: FIXED_ISO });
+  const plain = await renderHireOrderPdf({ ...BASE, generatedAtIso: "2026-08-01T10:00:00.000Z" });
   const lit = await renderHireOrderPdf({
-    ...baseInput,
-    generatedAtIso: FIXED_ISO,
+    ...BASE,
+    generatedAtIso: "2026-08-01T10:00:00.000Z",
     highlightRole: "sectionHeading",
   });
   assertNotEquals(lit.length, plain.length);
 });
 
 Deno.test("highlightRole is ignored for a role the document does not use", async () => {
-  const plain = await renderHireOrderPdf({ ...baseInput, generatedAtIso: FIXED_ISO });
+  const plain = await renderHireOrderPdf({ ...BASE, generatedAtIso: "2026-08-01T10:00:00.000Z" });
   const lit = await renderHireOrderPdf({
-    ...baseInput,
-    generatedAtIso: FIXED_ISO,
-    // baseInput has no signature, so the certificate page is absent.
+    ...BASE,
+    generatedAtIso: "2026-08-01T10:00:00.000Z",
+    // BASE has no signature, so the certificate page is absent.
     highlightRole: "certLabel",
   });
   assertEquals(lit.length, plain.length);
