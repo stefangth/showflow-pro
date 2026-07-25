@@ -1,7 +1,13 @@
 // How a producer entered the engagement fee for an aggregate (multi-date) order.
-// MIRROR: supabase/functions/_shared/hireOrders.ts carries the same type +
-// function (the two runtimes cannot share an import). Change both files in the
-// same commit.
+//
+// DUAL-HOME PAIR: src/lib/hireOrders/feeBasis.ts generates
+// supabase/functions/_shared/feeBasis.ts (the edge runtime can't import from
+// src/). Edit src/lib/hireOrders/feeBasis.ts, then run `npm run sync:mirrors`;
+// never hand-edit supabase/functions/_shared/feeBasis.ts directly. CI's
+// sync:mirrors:check fails if the two drift. supabase/functions/_shared/
+// hireOrders.ts re-exports computeFeeTotal and FeeBasis from the generated
+// file, so edge callers can import either from hireOrders.ts or from
+// feeBasis.ts directly.
 
 /** "per_date": the entered amount is charged once per engagement date.
  *  "total": the entered amount already covers every date. */
