@@ -1,5 +1,5 @@
 {
-  "nodeModulesDir": "auto",
+  "//": "Ambient JSX config for the whole-suite `deno test` invocation (CI runs it from the repo root, where render.tsx would otherwise be compiled in classic JSX mode). Deliberately does NOT set `nodeModulesDir`: this file sits next to the frontend package.json, so `nodeModulesDir: \"auto\"` here makes Deno resolve that entire ~760-package dependency tree into the module graph of every edge function that has no deno.json of its own. `supabase functions deploy` resolves config by walking up from each function's directory, so those functions inherit this file, and their bundles jumped to ~52MB and were rejected with HTTP 413 by the create-function endpoint (Supabase Preview, PR #198). CI's deno test already passes --node-modules-dir=none, so nothing here needed it. Per-function deno.json files (e.g. generate-hire-orders) may set it safely: no package.json sits beside them.",
   "compilerOptions": {
     "jsx": "react-jsx",
     "jsxImportSource": "npm:react@18.3.1",
