@@ -157,7 +157,7 @@ describe("TemplateDocumentPane", () => {
     const { rerender } = render(<TemplateDocumentPane input={withNotes("a")} />);
     await act(async () => {
       await vi.advanceTimersByTimeAsync(DEBOUNCE_MS);
-    });// render #1 (earlier-started) is now in flight, awaiting `first`
+    }); // render #1 (earlier-started) is now in flight, awaiting `first`
 
     rerender(<TemplateDocumentPane input={withNotes("ab")} />);
     await act(async () => {
@@ -261,6 +261,41 @@ describe("TemplateDocumentPane", () => {
     expect(createObjectURLMock).not.toHaveBeenCalled();
 
     unmount();
+    expect(revokeObjectURLMock).not.toHaveBeenCalled();
+  });
+
+  it("does not leak an object URL when unmounted while a render is in flight", async () => {
+    // The debounce timer has already fired (renderHireOrderPdf is running),
+    // but nothing has resolved yet - then the component unmounts. Unlike the
+    // "no render has resolved yet" test above, this one resolves the pending
+    // promise AFTER unmount: a naive implementation only clears the debounce
+    // timer on unmount (a no-op once it has already fired) and never
+    // invalidates the in-flight render's run token, so the late resolution
+    // still passes its stale-check, creates a fresh object URL, and that URL
+    // is created after the unmount cleanup already ran - so nothing ever
+    // revokes it. That is the leak: one blob URL per unmounted-mid-render
+    // edit, for the lifetime of the tab.
+    vi.useFakeTimers();
+    const pending = deferred<Uint8Array>();
+    vi.mocked(renderHireOrderPdf).mockReturnValueOnce(pending.promise);
+    const { unmount } = render(<TemplateDocumentPane input={baseInput} />);
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(DEBOUNCE_MS);
+    });
+    expect(renderHireOrderPdf).toHaveBeenCalledTimes(1);
+    expect(createObjectURLMock).not.toHaveBeenCalled();
+
+    unmount();
+    expect(revokeObjectURLMock).not.toHaveBeenCalled(); // nothing to revoke yet
+
+    // The in-flight render resolves AFTER unmount.
+    await act(async () => {
+      pending.resolve(new Uint8Array([9]));
+      await pending.promise;
+    });
+    // The late resolution must be treated as stale: no URL created (and so
+    // nothing left dangling for revokeObjectURL to ever have to clean up).
+    expect(createObjectURLMock).not.toHaveBeenCalled();
     expect(revokeObjectURLMock).not.toHaveBeenCalled();
   });
 });

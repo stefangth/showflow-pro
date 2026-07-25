@@ -64,7 +64,20 @@ export function TemplateDocumentPane({ input }: TemplateDocumentPaneProps) {
 
   // Release the last object URL when the pane itself unmounts (the
   // "superseded by a newer render" case is handled above, per render).
+  //
+  // Also invalidate any render still in flight: `clearTimeout` in the effect
+  // above is a no-op once the debounce timer has already fired, so a render
+  // that started before unmount but is still awaiting `renderHireOrderPdf`
+  // keeps running - and without this, its `id === runId.current` check would
+  // still hold (nothing else bumps the token on unmount), so it would create
+  // a fresh object URL, past this cleanup's only chance to revoke it. Bumping
+  // the token here makes that late resolution's id check fail, so it bails
+  // out BEFORE ever calling `URL.createObjectURL` (see the two `id !==
+  // runId.current` checks above) - no URL is created, so there is nothing
+  // left to revoke, rather than "revoke it after the fact" (which a resolved
+  // promise's continuation, running after this cleanup, could never reach).
   useEffect(() => () => {
+    runId.current += 1;
     if (urlRef.current) URL.revokeObjectURL(urlRef.current);
   }, []);
 
