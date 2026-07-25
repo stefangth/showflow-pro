@@ -84,7 +84,7 @@ async function pickShowDate(labelSubstring: string) {
   fireEvent.click(screen.getByRole("combobox", { name: /select show date/i }));
   fireEvent.click(await screen.findByText(new RegExp(labelSubstring, "i")));
   fireEvent.click(screen.getByRole("combobox", { name: /select show date/i }));
-  fireEvent.click(screen.getByRole("button", { name: /apply selected dates to all/i }));
+  fireEvent.click(screen.getByRole("button", { name: /reset all to selected dates/i }));
   await flush();
 }
 
@@ -101,7 +101,7 @@ async function selectCommonDates(...labels: string[]) {
     fireEvent.click(await screen.findByText(new RegExp(label, "i")));
   }
   fireEvent.click(screen.getByRole("combobox", { name: /select show date/i }));
-  fireEvent.click(screen.getByRole("button", { name: /apply selected dates to all/i }));
+  fireEvent.click(screen.getByRole("button", { name: /reset all to selected dates/i }));
   await flush();
 }
 
@@ -465,8 +465,11 @@ describe("NewOrderWizard", () => {
   it("seeds a per-date running order when a date is assigned directly in the matrix", async () => {
     renderWizard();
     await selectArtists("Ann Artist");
+    // Selecting a date now auto-assigns it to every already-selected artist, so
+    // the checkbox starts checked. Uncheck then recheck it to exercise direct
+    // matrix assignment (toggleArtistDate) itself, not just the auto-seed.
     await selectCommonDatesWithoutApplying("Berlin");
-
+    fireEvent.click(screen.getByRole("checkbox", { name: /ann artist.*berlin/i }));
     fireEvent.click(screen.getByRole("checkbox", { name: /ann artist.*berlin/i }));
     expect(screen.getByRole("button", { name: /^continue$/i })).toBeEnabled();
     clickContinue();
@@ -773,5 +776,39 @@ describe("NewOrderWizard", () => {
     clickContinue();
     await screen.findByRole("button", { name: /save as draft/i });
     expect(screen.getByTestId("wiz-fee-summary")).toHaveTextContent("$500.00 per date");
+  });
+
+  it("pre-assigns a newly selected date to every selected artist", async () => {
+    renderWizard();
+    await selectArtists("Ann Artist", "Ben Booker");
+    await selectCommonDatesWithoutApplying("Berlin");
+    expect(screen.getByRole("checkbox", { name: /ann artist.*berlin/i })).toBeChecked();
+    expect(screen.getByRole("checkbox", { name: /ben booker.*berlin/i })).toBeChecked();
+  });
+
+  it("seeds a newly selected artist with the dates already selected", async () => {
+    renderWizard();
+    await selectCommonDatesWithoutApplying("Berlin", "Hamburg");
+    await selectArtists("Ann Artist");
+    expect(screen.getByRole("checkbox", { name: /ann artist.*berlin/i })).toBeChecked();
+    expect(screen.getByRole("checkbox", { name: /ann artist.*hamburg/i })).toBeChecked();
+  });
+
+  it("unblocks Continue without pressing Reset all to selected dates", async () => {
+    renderWizard();
+    await selectArtists("Ann Artist");
+    await selectCommonDatesWithoutApplying("Berlin");
+    expect(screen.getByRole("button", { name: /^continue$/i })).toBeEnabled();
+  });
+
+  it("still lets a producer deselect one artist's date after auto-assignment", async () => {
+    renderWizard();
+    await selectArtists("Ann Artist", "Ben Booker");
+    await selectCommonDatesWithoutApplying("Berlin");
+    fireEvent.click(screen.getByRole("checkbox", { name: /ben booker.*berlin/i }));
+    expect(screen.getByRole("checkbox", { name: /ann artist.*berlin/i })).toBeChecked();
+    expect(screen.getByRole("checkbox", { name: /ben booker.*berlin/i })).not.toBeChecked();
+    // Ben now has no dates, so step 1 is incomplete again.
+    expect(screen.getByRole("button", { name: /^continue$/i })).toBeDisabled();
   });
 });

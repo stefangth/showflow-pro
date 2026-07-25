@@ -284,7 +284,12 @@ export function NewOrderWizard({ open, onOpenChange, orgId }: Props) {
       return;
     }
     setSelectedArtistIds((ids) => [...ids, id]);
-    setArtistDateIds((current) => ({ ...current, [id]: current[id] ?? [] }));
+    // Seed a newly selected artist with every date already picked above, so the
+    // common case (everyone plays every selected date) needs no grid work.
+    setArtistDateIds((current) => ({
+      ...current,
+      [id]: current[id] ?? [...selectedShowDateIds],
+    }));
   }
 
   function toggleShowDate(id: string) {
@@ -300,7 +305,18 @@ export function NewOrderWizard({ open, onOpenChange, orgId }: Props) {
       );
       return;
     }
-    setSelectedShowDateIds((ids) => [...ids, id]);
+    const nextSelected = [...selectedShowDateIds, id];
+    setSelectedShowDateIds(nextSelected);
+    // Assign the new date to every selected artist by default. Ordering follows
+    // the common picker so the grid's columns and each row's set agree.
+    setArtistDateIds((current) =>
+      Object.fromEntries(
+        Object.entries(current).map(([artistId, ids]) => [
+          artistId,
+          nextSelected.filter((showDateId) => ids.includes(showDateId) || showDateId === id),
+        ]),
+      ),
+    );
   }
 
   function applySelectedDatesToAll() {
@@ -736,7 +752,7 @@ export function NewOrderWizard({ open, onOpenChange, orgId }: Props) {
                       onClick={applySelectedDatesToAll}
                       disabled={selectedArtistIds.length === 0 || selectedShowDateIds.length === 0}
                     >
-                      Apply selected dates to all
+                      Reset all to selected dates
                     </Button>
                     {selectedArtistIds.length > 0 && selectedShowDateIds.length > 0 && (
                       <div className="overflow-x-auto rounded-lg border">
