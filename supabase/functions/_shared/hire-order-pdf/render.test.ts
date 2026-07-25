@@ -626,7 +626,7 @@ function normalizeVolatilePdfBytes(bytes: Uint8Array): string {
 // whole theming refactor was "the defaults render byte-for-byte what they
 // rendered BEFORE the refactor". Nothing in-process can express that, because
 // the pre-refactor renderer no longer exists. A committed fixture can: these
-// two files were generated from the post-refactor renderer at the point where
+// two hashes were computed from the post-refactor renderer at the point where
 // byte-identity to pre-refactor output had been verified against a temporary
 // worktree of the pre-refactor commit, so pinning them forward pins that
 // property forward. From here, ANY change to a built-in default or to the
@@ -640,64 +640,90 @@ function normalizeVolatilePdfBytes(bytes: Uint8Array): string {
 // is a renderer change to every org's legal document and should be reviewed,
 // not absorbed silently.
 //
+// HASH, NOT BYTES: this used to compare against two committed *.golden files
+// (~118KB combined) holding the full normalized output. Those files lived
+// under supabase/functions/_shared/hire-order-pdf/, and the Supabase preview
+// deploy started failing with a 413 (request entity too large) once they were
+// added, on top of fonts.ts (~708KB of embedded base64 font data, already
+// close to whatever the ceiling is). A SHA-256 of the same normalized string
+// gives identical guard strength - any byte change still fails - at 64 hex
+// characters instead of tens of kilobytes. Kept as an inline constant here
+// rather than a third small file, since a file of any size in this directory
+// is a candidate for being swept into a future deploy payload; a value baked
+// into the test source is not a file that can be added to that tree at all.
+//
 // REGENERATING (only when the change is intended, and review the diff):
 //   UPDATE_HIRE_ORDER_PDF_GOLDEN=1 \
 //     deno test --allow-all --node-modules-dir=none supabase/functions/
+// This does not fail the test; it logs the new hash to paste into
+// GOLDEN_HASHES below, plus a temp-file path holding the full normalized
+// output so the change can be reviewed before committing the new hash.
 
-const GOLDEN_DIR = new URL("./__golden__/", import.meta.url);
+/** Expected SHA-256 (hex) of the normalized render for each golden fixture.
+ *  Regenerate via UPDATE_HIRE_ORDER_PDF_GOLDEN=1 (see above) - it logs the
+ *  new hash rather than writing it here, since only a human reviewing the
+ *  rendered diff should decide to move this pin. */
+const GOLDEN_HASHES: Record<string, string> = {
+  "countersigned-aggregate": "caa0cff1b2d2af4033f87e2d4661d2641366b8490634ef91dcf6f8c6ac4b494f",
+  "single-date-preview": "010ca741ca8c435e2ad74afdd1140435dc87900b0d3b192f192d462fc2738442",
+};
 
-// The fixture files hold the NORMALIZED string encoded as UTF-8, not the raw
-// PDF bytes. Re-encoding the normalized string back to one byte per character
-// would be lossy: `normalizeVolatilePdfBytes` decodes with TextDecoder
-//("latin1"), and in the WHATWG encoding standard "latin1" is a label for
-// windows-1252, not ISO-8859-1 - bytes 0x80-0x9F decode to characters well
-// outside 0-255 (0x80 -> U+20AC), which `charCodeAt` then truncates. That
-// silently corrupted a handful of bytes inside the compressed streams and made
-// a freshly written fixture fail to match its own render. UTF-8 round-trips
-// any string exactly. The files are consequently not valid PDFs, which is
-// fine: they are comparison fixtures, not documents.
+async function sha256Hex(text: string): Promise<string> {
+  const digest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(text));
+  return Array.from(new Uint8Array(digest)).map((byte) => byte.toString(16).padStart(2, "0")).join("");
+}
 
-/** Index of the first differing character, or -1 when the two are equal. */
-function firstDifference(a: string, b: string): number {
-  const limit = Math.min(a.length, b.length);
-  for (let i = 0; i < limit; i++) {
-    if (a[i] !== b[i]) return i;
-  }
-  return a.length === b.length ? -1 : limit;
+/** Dumps the full normalized render to a temp file so a mismatch (or a
+ *  regeneration) can be inspected or diffed by hand, without committing the
+ *  bytes anywhere. */
+async function writeActualDump(name: string, actual: string): Promise<string> {
+  const path = await Deno.makeTempFile({
+    prefix: `hire-order-pdf-golden-${name}-`,
+    suffix: ".actual.txt",
+  });
+  await Deno.writeTextFile(path, actual);
+  return path;
 }
 
 async function assertMatchesGolden(name: string, bytes: Uint8Array): Promise<void> {
   const actual = normalizeVolatilePdfBytes(bytes);
-  const url = new URL(`${name}.golden`, GOLDEN_DIR);
+  const actualHash = await sha256Hex(actual);
 
   if (Deno.env.get("UPDATE_HIRE_ORDER_PDF_GOLDEN") === "1") {
-    await Deno.mkdir(GOLDEN_DIR, { recursive: true });
-    await Deno.writeFile(url, new TextEncoder().encode(actual));
+    const dumpPath = await writeActualDump(name, actual);
+    console.log(
+      `[golden:${name}] sha256 ${actualHash}\n` +
+        `  Paste this into GOLDEN_HASHES["${name}"] in render.test.ts once you have\n` +
+        `  reviewed the change. Full normalized output written to:\n` +
+        `    ${dumpPath}`,
+    );
     return;
   }
 
-  let expected: string;
-  try {
-    expected = new TextDecoder().decode(await Deno.readFile(url));
-  } catch {
+  const expectedHash = GOLDEN_HASHES[name];
+  if (expectedHash === undefined) {
     throw new Error(
-      `golden fixture "${name}" is missing. If this is a new fixture, generate it with:\n` +
+      `golden hash "${name}" is missing from GOLDEN_HASHES in render.test.ts. If this is a new fixture, generate it with:\n` +
         `  UPDATE_HIRE_ORDER_PDF_GOLDEN=1 deno test --allow-all --node-modules-dir=none supabase/functions/`,
     );
   }
+  if (actualHash === expectedHash) return;
 
-  const at = firstDifference(actual, expected);
-  if (at === -1) return;
+  const dumpPath = await writeActualDump(name, actual);
   throw new Error(
     `the default-theme render of "${name}" changed.\n\n` +
       `This document is what every org's hire order looks like with no theme override, so a\n` +
       `change here restyles a legal document. The usual cause is an edited built-in default in\n` +
       `pdfTheme.ts (a size, weight, colour, letter-spacing or page margin) or a structural change\n` +
       `in render.tsx.\n\n` +
-      `  first difference at character ${at} (golden ${expected.length} chars, rendered ${actual.length})\n` +
-      `  golden:   ${JSON.stringify(expected.slice(Math.max(0, at - 24), at + 24))}\n` +
-      `  rendered: ${JSON.stringify(actual.slice(Math.max(0, at - 24), at + 24))}\n\n` +
-      `If the change is intended, regenerate and review the diff in the PR:\n` +
+      `  expected sha256: ${expectedHash}\n` +
+      `  actual   sha256: ${actualHash}\n` +
+      `  full normalized output (${actual.length} chars) written to:\n` +
+      `    ${dumpPath}\n\n` +
+      `To see exactly what changed, diff that file against a dump of the pre-change render (re-run\n` +
+      `this same command against the commit before your change, with UPDATE_HIRE_ORDER_PDF_GOLDEN=1,\n` +
+      `to get the other side of the diff).\n\n` +
+      `If the change is intended, update GOLDEN_HASHES["${name}"] to the actual hash above:\n` +
       `  UPDATE_HIRE_ORDER_PDF_GOLDEN=1 deno test --allow-all --node-modules-dir=none supabase/functions/`,
   );
 }
