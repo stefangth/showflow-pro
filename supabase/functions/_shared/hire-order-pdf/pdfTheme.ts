@@ -180,8 +180,9 @@ export type RoleKey =
   | "certValue";
 
 export interface RoleStyle {
-  /** Omitted means "inherit base.fontFamily" (or base.monoFamily for the
-   *  roles whose default is mono). */
+  /** Omitted means "inherit the theme's base family for this role's kind":
+   *  base.monoFamily for the roles in MONO_ROLE_KEYS, base.fontFamily for
+   *  every other role. themeRoleStyle applies this fallback. */
   family?: FontFamilyKey;
   size?: number;
   weight?: 400 | 500 | 600;
@@ -251,7 +252,7 @@ export const HIRE_ORDER_THEME_DEFAULTS: HireOrderTheme = {
   roles: {
     legalName: { size: 16, weight: 600, color: "text" },
     letterheadLine: { size: 9, weight: 400, color: "faint" },
-    orderNumber: { family: "geist-mono", size: 15, weight: 600, color: "text" },
+    orderNumber: { size: 15, weight: 600, color: "text" },
     statusBadge: { size: 9, weight: 500, color: "muted" },
 
     titleLead: { size: 11, weight: 400, color: "muted" },
@@ -264,22 +265,22 @@ export const HIRE_ORDER_THEME_DEFAULTS: HireOrderTheme = {
 
     factLabel: { size: 8, weight: 400, color: "faint" },
     factValue: { size: 12, weight: 500, color: "text" },
-    factValueMono: { family: "geist-mono", size: 12, weight: 400, color: "text" },
+    factValueMono: { size: 12, weight: 400, color: "text" },
     factSub: { size: 9, weight: 400, color: "muted" },
 
     sectionHeading: { size: 12, weight: 600, color: "text" },
 
     tableHeadCell: { size: 8, weight: 400, color: "faint" },
     tableCellLabel: { size: 12, weight: 600, color: "text" },
-    tableCellMono: { family: "geist-mono", size: 12, weight: 400, color: "text" },
+    tableCellMono: { size: 12, weight: 400, color: "text" },
     notes: { size: 11, weight: 400, color: "muted" },
 
     feeLabel: { size: 12, weight: 400, color: "text" },
-    feeValue: { family: "geist-mono", size: 12, weight: 400, color: "text" },
+    feeValue: { size: 12, weight: 400, color: "text" },
     totalLabel: { size: 12, weight: 600, color: "text", letterSpacing: 0.4, transform: "uppercase" },
-    totalValue: { family: "geist-mono", size: 17, weight: 600, color: "text" },
+    totalValue: { size: 17, weight: 600, color: "text" },
 
-    clauseNumber: { family: "geist-mono", size: 11, weight: 600, color: "accent" },
+    clauseNumber: { size: 11, weight: 600, color: "accent" },
     clauseTitle: { weight: 600, color: "text" },
     clauseBody: { size: 10.5, weight: 400, color: "muted" },
 
@@ -300,6 +301,21 @@ export const HIRE_ORDER_THEME_DEFAULTS: HireOrderTheme = {
 export const THEME_ROLE_KEYS = Object.keys(
   HIRE_ORDER_THEME_DEFAULTS.roles,
 ) as RoleKey[];
+
+/** Roles whose default typeface is the mono family rather than the base sans
+ *  family. themeRoleStyle consults this to pick which base family a role
+ *  with no explicit `family` override falls back to. Listed explicitly
+ *  (not derived from the defaults) because removing a role's default
+ *  `family` no longer signals "this role is mono" once overrides can also
+ *  omit `family` on a sans role. */
+export const MONO_ROLE_KEYS: ReadonlySet<RoleKey> = new Set<RoleKey>([
+  "orderNumber",
+  "factValueMono",
+  "tableCellMono",
+  "feeValue",
+  "totalValue",
+  "clauseNumber",
+]);
 
 const HEX = /^#[0-9a-fA-F]{6}$/;
 
@@ -394,7 +410,8 @@ export interface RoleTextStyle {
  *  family key resolved to its react-pdf family name. */
 export function themeRoleStyle(theme: HireOrderTheme, role: RoleKey): RoleTextStyle {
   const style = theme.roles[role];
-  const familyKey = style.family ?? theme.base.fontFamily;
+  const familyKey = style.family ??
+    (MONO_ROLE_KEYS.has(role) ? theme.base.monoFamily : theme.base.fontFamily);
   const def = FONT_FAMILIES.find((f) => f.key === familyKey) ?? FONT_FAMILIES[0];
   const out: RoleTextStyle = { fontFamily: def.family };
   if (style.size !== undefined) {
