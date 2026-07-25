@@ -1,7 +1,7 @@
 import { act, cleanup, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { TemplateDocumentPane } from "./TemplateDocumentPane";
-import { sampleRenderInput } from "./sampleDocument";
+import { sampleRenderInput } from "@/lib/hireOrders/pdf/sampleDocument";
 import { resolveHireOrderCopy } from "@/lib/hireOrders/pdf/pdfCopy";
 import { resolveHireOrderTheme } from "@/lib/hireOrders/pdf/pdfTheme";
 import type { RenderInput } from "@/lib/hireOrders/pdf/docTypes";
@@ -19,7 +19,7 @@ import { renderHireOrderPdf } from "@/lib/hireOrders/pdf/render";
 
 const DEBOUNCE_MS = 250;
 
-const baseInput = sampleRenderInput(resolveHireOrderCopy(), resolveHireOrderTheme());
+const baseInput = sampleRenderInput({ copy: resolveHireOrderCopy(), theme: resolveHireOrderTheme() });
 
 /** A distinct RenderInput per "keystroke" - same shape as baseInput, just a
  *  different notes value, so identity (and therefore the effect dependency)

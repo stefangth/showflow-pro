@@ -5,6 +5,11 @@ import {
 import { handle, resolveOrderDefaults } from "./index.ts";
 import { makeFakeDeps, makeRequest } from "../_shared/testing.ts";
 import type { RenderInput } from "../_shared/hireOrders.ts";
+import {
+  SAMPLE_LETTERHEAD,
+  SAMPLE_ORDER_NO,
+  SAMPLE_TERMS,
+} from "../_shared/hire-order-pdf/sampleDocument.ts";
 
 // ── shared fixtures ──────────────────────────────────────────────────────
 
@@ -4809,6 +4814,102 @@ Deno.test("preview: with no order_id renders a sample document with the copy ove
   assert(captured!.data?.artist_name?.value, "sample data carries an artist name");
   // no order was looked up and nothing was persisted
   assertEquals(calls.filter((c) => c.table === "hire_orders").length, 0);
+});
+
+// The template editor's "Open exact PDF" is the exactness check for its live
+// browser preview, so the two documents must be the SAME document. The server
+// sample used to carry no signature, no engagement dates and no fee basis, so
+// the exact PDF was missing the certificate page, the signature mark, the
+// engagement-dates section and the fee-breakdown line the preview showed.
+// Both sides now compose through _shared/hire-order-pdf/sampleDocument.ts.
+Deno.test("preview: the sample document carries every section the editor can style", async () => {
+  const { deps } = makeFakeDeps({
+    authUser: { id: "u-admin" },
+    tables: {
+      org_memberships: { data: { role: "admin" } },
+      app_settings: [
+        { when: { key: "hire_order_letterhead" }, data: [LETTERHEAD] },
+        { when: { key: "hire_order_terms" }, data: [TERMS_FILLED] },
+        { when: { key: "hire_order_defaults" }, data: [DEFAULTS] },
+      ],
+    },
+  });
+  let captured: RenderInput | null = null;
+  deps.renderHireOrderPdf = (a) => {
+    captured = a as RenderInput;
+    return Promise.resolve(new Uint8Array([0x25, 0x50, 0x44, 0x46]));
+  };
+  const res = await handle(
+    makeRequest({ headers: JWT, body: { action: "preview", org_id: ORG } }),
+    deps,
+  );
+  assertEquals(res.status, 200);
+
+  const input = captured as unknown as RenderInput;
+  assertEquals(input.orderNo, SAMPLE_ORDER_NO);
+  assertEquals(input.status, "preview");
+  assert(input.signature, "sample carries a synthetic countersignature (certificate page)");
+  assertEquals((input.data.engagement_dates?.value as unknown[]).length, 3);
+  assertEquals(input.data.fee_basis?.value, "per_date");
+  // The org's OWN letterhead and terms, never the fixtures, when it has them.
+  assertEquals(input.letterhead.legal_name, "Nord GmbH");
+  assertEquals(input.terms, [{ title: "T", body: "B" }]);
+});
+
+Deno.test("preview: the sample falls back to the fixture letterhead and terms only when the org has none", async () => {
+  const { deps } = makeFakeDeps({
+    authUser: { id: "u-admin" },
+    tables: {
+      org_memberships: { data: { role: "admin" } },
+      app_settings: [
+        { when: { key: "hire_order_defaults" }, data: [DEFAULTS] },
+        { data: [] },
+      ],
+    },
+  });
+  let captured: RenderInput | null = null;
+  deps.renderHireOrderPdf = (a) => {
+    captured = a as RenderInput;
+    return Promise.resolve(new Uint8Array([0x25, 0x50, 0x44, 0x46]));
+  };
+  await handle(makeRequest({ headers: JWT, body: { action: "preview", org_id: ORG } }), deps);
+
+  const input = captured as unknown as RenderInput;
+  // An unconfigured org would otherwise preview a blank letterhead block and
+  // no terms section at all, leaving those roles unstylable.
+  assertEquals(input.letterhead.legal_name, SAMPLE_LETTERHEAD.legal_name);
+  assertEquals(input.terms, SAMPLE_TERMS);
+});
+
+Deno.test("preview: a REAL order never borrows the sample fixtures", async () => {
+  const { deps } = makeFakeDeps({
+    authUser: { id: "u-admin" },
+    tables: {
+      org_memberships: { data: { role: "admin" } },
+      hire_orders: { data: { id: "o-1", org_id: ORG, order_no: "HO-9", data: {}, terms_variant: null } },
+      app_settings: [
+        { when: { key: "hire_order_defaults" }, data: [DEFAULTS] },
+        { data: [] },
+      ],
+    },
+  });
+  let captured: RenderInput | null = null;
+  deps.renderHireOrderPdf = (a) => {
+    captured = a as RenderInput;
+    return Promise.resolve(new Uint8Array([0x25, 0x50, 0x44, 0x46]));
+  };
+  await handle(
+    makeRequest({ headers: JWT, body: { action: "preview", org_id: ORG, order_id: "o-1" } }),
+    deps,
+  );
+
+  const input = captured as unknown as RenderInput;
+  // Fabricating a letterhead onto a real order's preview would misrepresent
+  // the document of record.
+  assertEquals(input.orderNo, "HO-9");
+  assertEquals(input.letterhead.legal_name, "");
+  assertEquals(input.terms, []);
+  assertEquals(input.signature, undefined);
 });
 
 Deno.test("issue freezes the resolved copy into issue_snapshot", async () => {

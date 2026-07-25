@@ -49,6 +49,12 @@
       "why": "The hire-order PDF renderer itself, so the settings editor can preview the real document in the browser. Only pdfDeps.ts (NOT mirrored) differs per runtime."
     },
     {
+      "mode": "file",
+      "source": "src/lib/hireOrders/pdf/sampleDocument.ts",
+      "target": "supabase/functions/_shared/hire-order-pdf/sampleDocument.ts",
+      "why": "The sample order both preview surfaces render. Shared so the editor's live browser preview and the server's 'Open exact PDF' cannot drift into showing different documents."
+    },
+    {
       "mode": "block",
       "source": "src/lib/capabilities.ts",
       "target": "supabase/functions/_shared/capabilities.ts",

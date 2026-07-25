@@ -17,6 +17,14 @@ vi.mock("@/hooks/useCapabilities", async (orig) => ({
   ...(await orig<typeof import("@/hooks/useCapabilities")>()),
   useCan: vi.fn(),
 }));
+// Spy, not a stub: the REAL composer still runs (so these tests cannot pass
+// against a broken one), but its arguments are recorded. The preview document
+// is the page's main output and RenderInput is the contract every other
+// renderer test asserts against, so this is the observable edge of the page.
+vi.mock("@/lib/hireOrders/pdf/sampleDocument", async (orig) => {
+  const actual = await orig<typeof import("@/lib/hireOrders/pdf/sampleDocument")>();
+  return { ...actual, sampleRenderInput: vi.fn(actual.sampleRenderInput) };
+});
 
 function seedClient(seed: Record<string, TableSeed>) {
   for (const key of Object.keys(client)) delete client[key];
@@ -29,6 +37,7 @@ import TemplateEditorPage from "./TemplateEditorPage";
 import { TEMPLATE_SECTIONS } from "./templateMeta";
 import { THEME_ROLE_KEYS, type HireOrderThemeOverride } from "@/lib/hireOrders/pdf/pdfTheme";
 import { HIRE_ORDER_COPY_DEFAULTS, type CopyKey } from "@/lib/hireOrders/pdf/pdfCopy";
+import { SAMPLE_LETTERHEAD, SAMPLE_TERMS, sampleRenderInput } from "@/lib/hireOrders/pdf/sampleDocument";
 
 function authAs() {
   vi.mocked(useAuth).mockReturnValue({
@@ -58,8 +67,24 @@ function seedTheme(value: HireOrderThemeOverride) {
     app_settings: [
       { when: { key: "hire_order_theme" }, data: [{ key: "hire_order_theme", org_id: "org-1", value }] },
       { when: { key: "hire_order_copy" }, data: [] },
+      // The page also reads the org's letterhead + terms for the preview;
+      // an unmatched read has to resolve to "org has none", not to nothing.
+      { data: [] },
     ],
   });
+}
+
+/** The RenderInput the page most recently composed for the preview pane. Read
+ *  off the spy's RESULTS, not its arguments: the real composer runs, so this
+ *  is the document the pane actually renders. Synchronous on purpose - callers
+ *  wrap their ASSERTION in waitFor, so the settled value is the one asserted
+ *  rather than whichever frame happened to exist when a wrapper first
+ *  resolved. */
+function lastRenderInput() {
+  const results = vi.mocked(sampleRenderInput).mock.results;
+  const last = results[results.length - 1];
+  if (!last || last.type !== "return") throw new Error("sampleRenderInput has not returned yet");
+  return last.value;
 }
 
 interface RecordedCall { table: string; method: string; args: unknown[] }
@@ -123,6 +148,55 @@ describe("TemplateEditorPage", () => {
     renderPage();
     expect(await screen.findByText(/Could not load the PDF template settings/)).toBeInTheDocument();
     expect(screen.queryByRole("navigation", { name: "Document outline" })).not.toBeInTheDocument();
+  });
+
+  // Fix: the preview used to render an INVENTED letterhead and two invented
+  // terms clauses while the server's "Open exact PDF" used the org's real
+  // ones. An org styling legalName / partyLine / clauseTitle / clauseBody was
+  // therefore styling text it would never see.
+  describe("previewing against the org's own document", () => {
+    it("renders the org's letterhead and default terms template, not the fixtures", async () => {
+      seedClient({
+        app_settings: [
+          {
+            when: { key: "hire_order_letterhead" },
+            data: [{
+              key: "hire_order_letterhead",
+              org_id: "org-1",
+              value: { legal_name: "Nord Productions GmbH", address_lines: ["Berlin"], registration_line: "HRB 1 B" },
+            }],
+          },
+          {
+            when: { key: "hire_order_terms" },
+            data: [{
+              key: "hire_order_terms",
+              org_id: "org-1",
+              value: {
+                templates: [{ id: "t1", name: "Standard", clauses: [{ title: "Cancellation", body: "Fourteen days." }] }],
+                default_id: "t1",
+              },
+            }],
+          },
+          { data: [] },
+        ],
+      });
+      renderPage();
+
+      await waitFor(() => {
+        expect(lastRenderInput().letterhead?.legal_name).toBe("Nord Productions GmbH");
+      });
+      expect(lastRenderInput().terms).toEqual([{ title: "Cancellation", body: "Fourteen days." }]);
+    });
+
+    it("falls back to the fixtures only when the org has authored neither", async () => {
+      seedClient({ app_settings: { data: [], error: null } });
+      renderPage();
+
+      await waitFor(() => {
+        expect(lastRenderInput().letterhead?.legal_name).toBe(SAMPLE_LETTERHEAD.legal_name);
+      });
+      expect(lastRenderInput().terms).toEqual(SAMPLE_TERMS);
+    });
   });
 
   // The theme draft is saved as-is, unlike the copy draft (which goes

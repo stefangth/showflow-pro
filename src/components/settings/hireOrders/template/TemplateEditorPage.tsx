@@ -21,6 +21,11 @@ import {
   type HireOrderThemeOverride,
   type RoleKey,
 } from "@/lib/hireOrders/pdf/pdfTheme";
+import { sampleRenderInput } from "@/lib/hireOrders/pdf/sampleDocument";
+import { resolveTermsClauses } from "@/lib/hireOrders/terms";
+import { useHireOrderTerms } from "@/hooks/useHireOrders";
+import { LETTERHEAD_DEFAULT } from "../defaults";
+import type { Letterhead } from "../LetterheadCard";
 import type { Json } from "@/integrations/supabase/types";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -29,7 +34,6 @@ import { ResizableHandle, ResizablePanel, ResizablePanelGroup } from "@/componen
 import { TemplateOutline } from "./TemplateOutline";
 import { TemplateInspector } from "./TemplateInspector";
 import { TemplateDocumentPane } from "./TemplateDocumentPane";
-import { sampleRenderInput } from "./sampleDocument";
 
 const COPY_DEFAULT: Partial<HireOrderCopy> = {};
 const THEME_DEFAULT: HireOrderThemeOverride = {};
@@ -115,6 +119,23 @@ export default function TemplateEditorPage({ readOnly: readOnlyProp }: { readOnl
     queryFn: () => resolveOrgSetting<HireOrderThemeOverride>(supabase, orgId, "hire_order_theme", THEME_DEFAULT),
     enabled: Boolean(orgId),
   });
+  // The preview must show the org's OWN letterhead and terms: `legalName`,
+  // `partyLine`, `clauseTitle` and `clauseBody` are editable roles, and
+  // styling an invented fixture the org will never see is no styling at all.
+  // Both share their query key with LetterheadCard / TermsVariantsCard, so
+  // saving either card updates this preview without a refetch of its own.
+  // Neither read blocks the editor: a failure here degrades to the sample
+  // fixtures (see sampleLetterhead / sampleTerms), it does not hide the
+  // copy/theme the page exists to edit.
+  const letterheadQuery = useQuery({
+    queryKey: ["app-settings", "hire_order_letterhead", orgId],
+    queryFn: () => resolveOrgSetting<Letterhead>(supabase, orgId, "hire_order_letterhead", LETTERHEAD_DEFAULT),
+    enabled: Boolean(orgId),
+  });
+  // useHireOrderTerms rather than a hand-rolled query: it already owns this
+  // exact key and projection, and two queryFns on one key that resolve
+  // different defaults would make whichever ran first win the cache.
+  const termsQuery = useHireOrderTerms(orgId);
 
   // Draft overrides. Seeded once when server data first arrives (same
   // seeded-ref pattern as PdfCopyCard); a later unrelated refetch must not
@@ -133,9 +154,23 @@ export default function TemplateEditorPage({ readOnly: readOnlyProp }: { readOnl
 
   const copy = useMemo(() => resolveHireOrderCopy(copyDraft), [copyDraft]);
   const theme = useMemo(() => resolveHireOrderTheme(themeDraft), [themeDraft]);
+  // The org's default terms template, which is what an order with no explicit
+  // variant renders (the same `resolveTermsClauses(setting, null)` the server
+  // applies to the sample order).
+  const termsClauses = useMemo(
+    () => (termsQuery.data ? resolveTermsClauses(termsQuery.data, null) : null),
+    [termsQuery.data],
+  );
   const renderInput = useMemo(
-    () => sampleRenderInput(copy, theme, selected === "document" ? undefined : selected),
-    [copy, theme, selected],
+    () =>
+      sampleRenderInput({
+        copy,
+        theme,
+        highlightRole: selected === "document" ? undefined : selected,
+        letterhead: letterheadQuery.data ?? null,
+        terms: termsClauses,
+      }),
+    [copy, theme, selected, letterheadQuery.data, termsClauses],
   );
 
   const save = useMutation({
@@ -157,7 +192,10 @@ export default function TemplateEditorPage({ readOnly: readOnlyProp }: { readOnl
         action: "preview",
         org_id: orgId,
         copy_override: compactCopy(copyDraft),
-        theme_override: themeDraft,
+        // Compacted like the copy beside it: the server layers this over the
+        // org's stored theme, so an uncompacted hollow role would send a
+        // different payload than Save persists for the same on-screen state.
+        theme_override: compactTheme(themeDraft),
       }),
     onSuccess: (res) => {
       const b64 = (res as { pdf_base64?: string } | null)?.pdf_base64;
@@ -166,7 +204,14 @@ export default function TemplateEditorPage({ readOnly: readOnlyProp }: { readOnl
     onError: (e: Error) => toast.error(e.message),
   });
 
-  if (copyQuery.isLoading || themeQuery.isLoading) return <Skeleton className="h-[80vh] w-full" />;
+  // Letterhead and terms join the loading gate so the first paint is not the
+  // sample fixtures visibly swapping to the org's own text a moment later.
+  // They deliberately do NOT join the error gate below: if only they fail the
+  // editor still does its job against the fixtures, whereas a failed copy or
+  // theme read would show defaults as if they were the org's saved values.
+  if (copyQuery.isLoading || themeQuery.isLoading || letterheadQuery.isLoading || termsQuery.isLoading) {
+    return <Skeleton className="h-[80vh] w-full" />;
+  }
   // A failed read must not fall through to the defaults: the editor would show
   // them as if they were the org's values, and a Save from there would
   // overwrite real stored copy/theme.

@@ -65,6 +65,11 @@ import {
 } from "../_shared/hireOrders.ts";
 import { type HireOrderCopy, resolveHireOrderCopy } from "../_shared/hire-order-pdf/pdfCopy.ts";
 import {
+  SAMPLE_ORDER_NO,
+  sampleOrderData,
+  sampleRenderInput,
+} from "../_shared/hire-order-pdf/sampleDocument.ts";
+import {
   type HireOrderTheme,
   type HireOrderThemeOverride,
   type LooseRoleStyle,
@@ -2148,26 +2153,6 @@ interface PreviewBody {
   theme_override?: HireOrderThemeOverride;
 }
 
-/** A representative order for the settings-page copy preview: exercises every
- *  section (parties, facts, a two-session running order, notes, fees) so the
- *  admin sees their wording in context even before any real order exists. */
-function sampleOrderData(): OrderData {
-  return {
-    artist_name: { value: "Alex Rivera", source: "showflow" },
-    recipient_email: { value: "alex@example.com", source: "showflow" },
-    role: { value: "Lead", source: "showflow" },
-    cast: { value: "A-cast", source: "showflow" },
-    date: { value: "2026-06-15", source: "showflow" },
-    venue: { value: "Grand Theatre", source: "showflow" },
-    city: { value: "Berlin", source: "showflow" },
-    duration_min: { value: 90, source: "manual" },
-    sessions: { value: ["18:00", "20:30"], source: "showflow" },
-    fee: { value: "1500.00", source: "manual" },
-    currency: { value: "EUR", source: "default" },
-    notes: { value: "Backline provided by the venue.", source: "manual" },
-  };
-}
-
 async function previewOrder(deps: Deps, body: PreviewBody): Promise<Response> {
   const admin = deps.admin;
   const org = body.org_id;
@@ -2218,7 +2203,7 @@ async function previewOrder(deps: Deps, body: PreviewBody): Promise<Response> {
     o = {
       id: "",
       org_id: org,
-      order_no: "HO-PREVIEW",
+      order_no: SAMPLE_ORDER_NO,
       data: sampleOrderData(),
       terms_variant: null,
       fee_currency: null,
@@ -2226,6 +2211,7 @@ async function previewOrder(deps: Deps, body: PreviewBody): Promise<Response> {
       agent_email: null,
     };
   }
+  const isSample = !body.order_id;
 
   const effectiveLetterhead: HireOrderLetterhead = {
     ...letterhead,
@@ -2236,17 +2222,35 @@ async function previewOrder(deps: Deps, body: PreviewBody): Promise<Response> {
       letterhead.agent_signature_path,
     ),
   };
-  const bytes = await deps.renderHireOrderPdf({
-    data: o.data as OrderData,
-    orderNo: o.order_no,
-    status: "preview",
-    letterhead: effectiveLetterhead,
-    terms: resolveTermsClauses(termsSetting, o.terms_variant),
-    currency: o.fee_currency ?? defaults.currency ?? "EUR",
-    generatedAtIso: deps.now().toISOString(),
-    copy,
-    theme,
-  });
+  const clauses = resolveTermsClauses(termsSetting, o.terms_variant);
+  // The sample path is what the template editor's "Open exact PDF" opens, so
+  // it goes through the SAME shared composer the editor's live browser
+  // preview uses (sampleRenderInput): same signature, same engagement dates,
+  // same fee basis, and the same fixture fallback for an org that has
+  // authored no letterhead or terms. A real order (order_id present) never
+  // borrows those fixtures.
+  const bytes = await deps.renderHireOrderPdf(
+    isSample
+      ? sampleRenderInput({
+        copy,
+        theme,
+        letterhead: effectiveLetterhead,
+        terms: clauses,
+        currency: o.fee_currency ?? defaults.currency ?? "EUR",
+        generatedAtIso: deps.now().toISOString(),
+      })
+      : {
+        data: o.data as OrderData,
+        orderNo: o.order_no,
+        status: "preview",
+        letterhead: effectiveLetterhead,
+        terms: clauses,
+        currency: o.fee_currency ?? defaults.currency ?? "EUR",
+        generatedAtIso: deps.now().toISOString(),
+        copy,
+        theme,
+      },
+  );
 
   return json({ pdf_base64: encodeBase64(bytes) });
 }
