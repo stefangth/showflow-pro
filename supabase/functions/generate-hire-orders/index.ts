@@ -51,6 +51,7 @@ import {
   type HireOrderLetterhead,
   type HireOrderTerm,
   type HireOrderTermsSetting,
+  isFeeBasis,
   normalizeTermsSetting,
   type OrderData,
   type OrderFieldKey,
@@ -116,25 +117,6 @@ const DEFAULTS_DEFAULT: OrderDefaults = {
   currency: "EUR",
   default_fee_basis: "per_date",
 };
-
-/**
- * Every legal FeeBasis value, keyed as a Record so the object literal fails to
- * compile if a member is ever added to the FeeBasis union without a matching
- * key here — the exhaustiveness is enforced by the type checker, not by
- * remembering to update a hand-written list of string comparisons.
- */
-const FEE_BASIS_VALUES: Record<FeeBasis, true> = { per_date: true, total: true };
-
-/** True only for the exact legal FeeBasis strings. app_settings holds
- *  hand-editable JSON with nothing validating it on the way in, so a stored
- *  default_fee_basis can be "" , "weekly", null, or any other garbage.
- *  Uses `hasOwnProperty` rather than `in`: `in` walks the prototype chain, so
- *  "toString"/"constructor"/"hasOwnProperty" would otherwise pass straight
- *  through as if they were legal FeeBasis values. */
-function isFeeBasis(value: unknown): value is FeeBasis {
-  return typeof value === "string" &&
-    Object.prototype.hasOwnProperty.call(FEE_BASIS_VALUES, value);
-}
 
 /**
  * Resolve hire_order_defaults, validating default_fee_basis rather than just
@@ -720,6 +702,10 @@ interface DraftManualBody {
   artist_id?: string;
   show_date_id?: string;
   manual?: Partial<Record<OrderFieldKey, unknown>>;
+  /** How `manual.fee` should be read. Same contract as draft-batch's: top-level
+   *  because the basis is not an editable order field, and omitted falls back
+   *  to the org's `default_fee_basis`. */
+  fee_basis?: FeeBasis;
 }
 
 /**
@@ -753,6 +739,11 @@ async function draftManual(
     manualFeeRaw !== null && manualFeeRaw !== "";
   if (manualFeeProvided && !Number.isFinite(Number(manualFeeRaw))) {
     return json({ error: "invalid_fee" }, 400);
+  }
+  // Same gate, same error code as draft-batch: one action accepting a basis the
+  // other rejects is how an illegal value reaches a snapshot in the first place.
+  if (body.fee_basis !== undefined && !isFeeBasis(body.fee_basis)) {
+    return json({ error: "invalid_fee_basis" }, 400);
   }
 
   const [defaults, numbering, rawTerms] = await Promise.all([
@@ -848,6 +839,20 @@ async function draftManual(
     feeValue === undefined || feeValue === null || feeValue === ""
       ? null
       : Number(feeValue);
+  // Record how the entered fee was meant to be read, exactly as draft-batch
+  // does. A manual order is single-date, so per-date x 1 is the entered amount
+  // and no total changes here — only the snapshot gains the explanation the
+  // wizard already shows the producer on step 4. Both keys stay ABSENT when
+  // there is no fee: there would be nothing for them to explain, and that is
+  // the shape the PDF renderer's reconcile guard expects.
+  if (feeAmount !== null) {
+    const feeBasis: FeeBasis = body.fee_basis ?? defaults.default_fee_basis;
+    const feeSource = data.fee?.source ?? "manual";
+    data.fee_basis = { value: feeBasis, source: feeSource };
+    if (feeBasis === "per_date") {
+      data.fee_per_date = { value: feeAmount, source: feeSource };
+    }
+  }
   // fee_currency follows the RESOLVED currency (which a producer can override at
   // step 2), not blindly the org default — draftOrders can hardcode the org
   // default because a booking never carries its own currency; a wizard order can.
@@ -1054,10 +1059,12 @@ async function draftBatch(
   if (manualFeeProvided && !Number.isFinite(Number(manualFeeRaw))) {
     return json({ error: "invalid_fee" }, 400);
   }
-  if (
-    body.fee_basis !== undefined &&
-    body.fee_basis !== "per_date" && body.fee_basis !== "total"
-  ) {
+  // isFeeBasis, never a hand-rolled pair of !== comparisons: its
+  // Record<FeeBasis, true> sentinel picks up a future third member at compile
+  // time, so resolveOrderDefaults would accept one that a hand-rolled check
+  // here would still 400 on. That divergence is what the sentinel exists to
+  // prevent.
+  if (body.fee_basis !== undefined && !isFeeBasis(body.fee_basis)) {
     return json({ error: "invalid_fee_basis" }, 400);
   }
 
@@ -1142,7 +1149,9 @@ async function draftBatch(
     manual,
     defaults,
     numbering,
-    feeBasis: body.fee_basis ?? defaults.default_fee_basis ?? "per_date",
+    // No third fallback: resolveOrderDefaults already guarantees
+    // default_fee_basis is a legal FeeBasis.
+    feeBasis: body.fee_basis ?? defaults.default_fee_basis,
     defaultTermsVariant,
     artistsById,
     datesById,

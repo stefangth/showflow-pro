@@ -754,6 +754,140 @@ Deno.test("draft-manual creates the order with a null fee when no manual fee is 
   );
 });
 
+/** Deps for the draft-manual fee-basis cases below: the same admin/settings
+ *  seed the other draft-manual tests use, plus a reader for the inserted row's
+ *  snapshot. */
+function makeManualDeps(insertedId = "ho-basis") {
+  const { deps, calls } = makeFakeDeps({
+    authUser: { id: "u-admin" },
+    tables: {
+      org_memberships: { data: { role: "admin" } },
+      hire_orders: [
+        { when: { __write: false }, data: [] },
+        { when: { __write: true }, data: { id: insertedId } },
+      ],
+      app_settings: [
+        { when: { key: "hire_order_defaults" }, data: [DEFAULTS] },
+        { when: { key: "hire_order_numbering" }, data: [NUMBERING] },
+      ],
+    },
+  });
+  const insertedData = () => {
+    const insert = calls.find((c) =>
+      c.table === "hire_orders" && c.method === "insert"
+    );
+    assert(insert, "expected a hire_orders insert");
+    return (insert!.args[0] as {
+      data: Record<string, { value: unknown; source: string } | undefined>;
+    }).data;
+  };
+  return { deps, calls, insertedData };
+}
+
+Deno.test("draft-manual stores the request's per-date fee basis in the snapshot", async () => {
+  // The wizard shows "500.00 per date" on step 4 for a manual order, so the
+  // snapshot has to say the same thing. A manual order is single-date, so
+  // per-date x 1 is the entered amount and no total changes.
+  const { deps, insertedData } = makeManualDeps();
+  const res = await handle(
+    makeRequest({
+      headers: JWT,
+      body: {
+        action: "draft-manual",
+        org_id: ORG,
+        manual: { fee: 500 },
+        fee_basis: "per_date",
+      },
+    }),
+    deps,
+  );
+  assertEquals(res.status, 200);
+  const data = insertedData();
+  assertEquals(data.fee?.value, 500);
+  assertEquals(data.fee_basis?.value, "per_date");
+  assertEquals(data.fee_per_date?.value, 500);
+});
+
+Deno.test("draft-manual stores a total fee basis and records no per-date amount", async () => {
+  const { deps, insertedData } = makeManualDeps();
+  const res = await handle(
+    makeRequest({
+      headers: JWT,
+      body: {
+        action: "draft-manual",
+        org_id: ORG,
+        manual: { fee: 500 },
+        fee_basis: "total",
+      },
+    }),
+    deps,
+  );
+  assertEquals(res.status, 200);
+  const data = insertedData();
+  assertEquals(data.fee_basis?.value, "total");
+  assertEquals(data.fee_per_date, undefined);
+});
+
+Deno.test("draft-manual falls back to the org's default fee basis when the request omits one", async () => {
+  const { deps, insertedData } = makeManualDeps();
+  const res = await handle(
+    makeRequest({
+      headers: JWT,
+      body: { action: "draft-manual", org_id: ORG, manual: { fee: 500 } },
+    }),
+    deps,
+  );
+  assertEquals(res.status, 200);
+  // DEFAULTS predates default_fee_basis, so resolveOrderDefaults supplies per_date.
+  assertEquals(insertedData().fee_basis?.value, "per_date");
+});
+
+Deno.test("draft-manual omits fee_basis and fee_per_date when no fee is entered", async () => {
+  const { deps, insertedData } = makeManualDeps();
+  const res = await handle(
+    makeRequest({
+      headers: JWT,
+      body: {
+        action: "draft-manual",
+        org_id: ORG,
+        manual: { venue: "The Loft" },
+        fee_basis: "per_date",
+      },
+    }),
+    deps,
+  );
+  assertEquals(res.status, 200);
+  const data = insertedData();
+  assertEquals(data.fee_basis, undefined);
+  assertEquals(data.fee_per_date, undefined);
+});
+
+Deno.test("draft-manual rejects an unknown fee_basis with the same 400 draft-batch returns", async () => {
+  // One action accepting what the other rejects is how a bad basis reaches the
+  // snapshot in the first place.
+  const { deps, calls } = makeManualDeps();
+  const res = await handle(
+    makeRequest({
+      headers: JWT,
+      body: {
+        action: "draft-manual",
+        org_id: ORG,
+        manual: { fee: 500 },
+        fee_basis: "weekly",
+      },
+    }),
+    deps,
+  );
+  assertEquals(res.status, 400);
+  assertEquals(await res.json(), { error: "invalid_fee_basis" });
+  assertEquals(
+    calls.filter((c) => c.table === "hire_orders" && c.method === "insert")
+      .length,
+    0,
+    "an invalid fee basis must reject before any insert",
+  );
+});
+
 Deno.test("draft-manual for an artist/date pair that already has an active order returns created:[] with a skip indicator, no retry", async () => {
   // Simulates the hire_orders_active_artist_date_uniq backstop firing: the insert
   // returns a 23505 whose message names that index (exactly the shape supabase-js
@@ -1672,6 +1806,49 @@ Deno.test("draft-batch leaves a total-basis fee unmultiplied and records no per-
   const order = inserted.hire_orders[0];
   assertEquals(order.data.fee.value, 1500);
   assertEquals(order.data.fee_basis.value, "total");
+  assertEquals(order.data.fee_per_date, undefined);
+});
+
+Deno.test("draft-batch is exact for a fractional per-date fee through the real call path", async () => {
+  // 500.10 * 3 in binary floating point is 1500.3000000000002, which would be
+  // stored and printed verbatim on the PDF. computeFeeTotal multiplies in
+  // integer cents; this asserts the whole action keeps that property, not just
+  // the helper in isolation.
+  const { deps, inserted } = makeBatchDeps({
+    dates: ["2026-06-15", "2026-06-16", "2026-06-17"],
+  });
+  const res = await handle(
+    batchRequest({
+      artists: [{ artist_id: ARTIST_A, show_date_ids: [DATE_1, DATE_2, DATE_3] }],
+      manual: { fee: 500.1 },
+      fee_basis: "per_date",
+    }),
+    deps,
+  );
+  assertEquals(res.status, 200);
+  const order = inserted.hire_orders[0];
+  assertEquals(order.data.fee.value, 1500.3);
+  assertEquals(order.fee_amount, 1500.3);
+  assertEquals(order.data.fee_per_date.value, 500.1);
+});
+
+Deno.test("draft-batch omits fee_basis and fee_per_date entirely when no fee is entered", async () => {
+  // The shape the PDF renderer's reconcile guard depends on: with no fee there
+  // is nothing for a breakdown to explain, so the keys must be ABSENT rather
+  // than present with a null amount.
+  const { deps, inserted } = makeBatchDeps({ dates: ["2026-06-15", "2026-06-16"] });
+  const res = await handle(
+    batchRequest({
+      artists: [{ artist_id: ARTIST_A, show_date_ids: [DATE_1, DATE_2] }],
+      manual: { venue: "The Loft" },
+      fee_basis: "per_date",
+    }),
+    deps,
+  );
+  assertEquals(res.status, 200);
+  const order = inserted.hire_orders[0];
+  assertEquals(order.fee_amount, null);
+  assertEquals(order.data.fee_basis, undefined);
   assertEquals(order.data.fee_per_date, undefined);
 });
 
