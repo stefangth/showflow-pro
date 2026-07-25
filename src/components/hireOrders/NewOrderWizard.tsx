@@ -286,6 +286,15 @@ export function NewOrderWizard({ open, onOpenChange, orgId }: Props) {
     setSelectedArtistIds((ids) => [...ids, id]);
     // Seed a newly selected artist with every date already picked above, so the
     // common case (everyone plays every selected date) needs no grid work.
+    // This reads selectedShowDateIds (a sibling state, not artistDateIds's own
+    // prior value) because a brand-new artist needs a full snapshot of what is
+    // currently selected, not an incremental append - unlike toggleShowDate's
+    // append-only case below, there is no way to derive that snapshot from
+    // artistDateIds's own updater alone. Safe because this handler never
+    // mutates selectedShowDateIds itself, so repeated calls in one batch (e.g.
+    // a future "select all artists" action) all read the same correct value;
+    // the same closure-read-of-a-sibling-state pattern is already used,
+    // unchanged, by toggleArtistDate below.
     setArtistDateIds((current) => ({
       ...current,
       [id]: current[id] ?? [...selectedShowDateIds],
@@ -305,16 +314,21 @@ export function NewOrderWizard({ open, onOpenChange, orgId }: Props) {
       );
       return;
     }
-    const nextSelected = [...selectedShowDateIds, id];
-    setSelectedShowDateIds(nextSelected);
-    // Assign the new date to every selected artist by default. Ordering follows
-    // the common picker so the grid's columns and each row's set agree.
+    setSelectedShowDateIds((ids) => [...ids, id]);
+    // Assign the new date to every selected artist by default. Each artist's
+    // list is always kept as an order-preserving subsequence of
+    // selectedShowDateIds (see the deselect branch above, toggleArtistDate,
+    // and applySelectedDatesToAll), and selectedShowDateIds only ever grows by
+    // appending the new id at the end, so appending it here too keeps that
+    // invariant. Both setters are now fully functional and read only their
+    // own prior state plus the constant `id` - no dependency on the other's
+    // just-computed value, so a bulk caller invoking this repeatedly in one
+    // batch can never drop an update (setters must stay pure and cannot call
+    // each other, so precomputing a shared "next" value up front is not an
+    // option here).
     setArtistDateIds((current) =>
       Object.fromEntries(
-        Object.entries(current).map(([artistId, ids]) => [
-          artistId,
-          nextSelected.filter((showDateId) => ids.includes(showDateId) || showDateId === id),
-        ]),
+        Object.entries(current).map(([artistId, ids]) => [artistId, [...ids, id]]),
       ),
     );
   }

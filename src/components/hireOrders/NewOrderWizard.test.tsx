@@ -462,15 +462,58 @@ describe("NewOrderWizard", () => {
     ]);
   });
 
+  it("keeps a re-added date in append order on both selectedShowDateIds and the artist's own assignment", async () => {
+    // Regression for the functional-update fix: select A, select B, deselect
+    // A, reselect A. Since both setters now only ever append (never read a
+    // precomputed sibling value), the reselected date A must land at the END
+    // on both selectedShowDateIds (checked via the matrix's column order) and
+    // Ann Artist's own assignment (checked via the actual submitted
+    // show_date_ids), i.e. [B, A] on both sides - not just one.
+    renderWizard();
+    await selectArtists("Ann Artist");
+    await selectCommonDatesWithoutApplying("Berlin", "Hamburg"); // A, then B
+
+    // Deselect A (Berlin) via the common date picker - the same deselect path
+    // toggleShowDate takes in normal use.
+    fireEvent.click(screen.getByRole("combobox", { name: /select show date/i }));
+    fireEvent.click(await screen.findByRole("option", { name: /berlin/i }));
+    fireEvent.click(screen.getByRole("combobox", { name: /select show date/i }));
+    await flush();
+
+    // Reselect A (Berlin): it is appended at the end of both arrays.
+    await selectCommonDatesWithoutApplying("Berlin");
+
+    // selectedShowDateIds order, read off the matrix's column headers.
+    const headers = screen.getAllByRole("columnheader");
+    expect(headers[1]).toHaveTextContent(/hamburg/i);
+    expect(headers[2]).toHaveTextContent(/berlin/i);
+
+    // artistDateIds["a1"] order, read off the actual submitted payload.
+    await reachReviewWithFee();
+    fireEvent.click(screen.getByRole("button", { name: /save as draft/i }));
+    await waitFor(() => expect(invokeCalls().length).toBe(1));
+    expect(invokeCalls()[0].artists).toEqual([
+      { artist_id: "a1", show_date_ids: ["sd2", "sd1"] },
+    ]);
+  });
+
   it("seeds a per-date running order when a date is assigned directly in the matrix", async () => {
     renderWizard();
     await selectArtists("Ann Artist");
     // Selecting a date now auto-assigns it to every already-selected artist, so
-    // the checkbox starts checked. Uncheck then recheck it to exercise direct
-    // matrix assignment (toggleArtistDate) itself, not just the auto-seed.
+    // the checkbox starts checked. Round-trip through BOTH branches of direct
+    // matrix assignment (toggleArtistDate) - uncheck, then recheck - asserting
+    // the intermediate unchecked/disabled state so a no-op toggle could not
+    // pass this test silently.
     await selectCommonDatesWithoutApplying("Berlin");
+    expect(screen.getByRole("checkbox", { name: /ann artist.*berlin/i })).toBeChecked();
+
     fireEvent.click(screen.getByRole("checkbox", { name: /ann artist.*berlin/i }));
+    expect(screen.getByRole("checkbox", { name: /ann artist.*berlin/i })).not.toBeChecked();
+    expect(screen.getByRole("button", { name: /^continue$/i })).toBeDisabled();
+
     fireEvent.click(screen.getByRole("checkbox", { name: /ann artist.*berlin/i }));
+    expect(screen.getByRole("checkbox", { name: /ann artist.*berlin/i })).toBeChecked();
     expect(screen.getByRole("button", { name: /^continue$/i })).toBeEnabled();
     clickContinue();
     fireEvent.change(await screen.findByLabelText(/engagement fee/i), { target: { value: "900" } });
