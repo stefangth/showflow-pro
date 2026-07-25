@@ -98,7 +98,7 @@ Every family below is SIL Open Font License 1.1 (OFL), confirmed against each pr
 | IBM Plex Sans | github.com/IBM/plex, release `@ibm/plex-sans@1.1.0` | OFL 1.1 |
 | IBM Plex Mono | github.com/IBM/plex, release `@ibm/plex-mono@2.5.0` | OFL 1.1 |
 | Source Serif 4 | github.com/adobe-fonts/source-serif, release `4.005R` | OFL 1.1 |
-| Libre Baskerville | github.com/impallari/Libre-Baskerville (no GitHub releases; fetched from the repo's `fonts/ttf/` directly at `master`) | OFL 1.1 |
+| Libre Baskerville | github.com/impallari/Libre-Baskerville, commit `9852edf7` (2025-10-16) - no GitHub releases or tags exist for this repo, so this pins to the exact commit the files in this task were fetched from rather than the moving `master` branch | OFL 1.1 |
 
 ### Registry corrections made alongside this runbook (Task 5)
 
