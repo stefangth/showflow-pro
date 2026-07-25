@@ -616,6 +616,150 @@ function normalizeVolatilePdfBytes(bytes: Uint8Array): string {
     .replace(/<[0-9a-f]{32}>/g, "<NORMALIZED>");
 }
 
+// ── golden fixtures: the built-in defaults must keep rendering as they do ──
+//
+// WHY A GOLDEN AND NOT A SELF-COMPARISON: the test below this block pins
+// `resolveHireOrderTheme() === HIRE_ORDER_THEME_DEFAULTS`, which is a real
+// property but a narrow one - both of its operands are computed from the same
+// defaults, so a one-character change to a default size or colour moves both
+// sides together and the assertion still passes. The acceptance gate for the
+// whole theming refactor was "the defaults render byte-for-byte what they
+// rendered BEFORE the refactor". Nothing in-process can express that, because
+// the pre-refactor renderer no longer exists. A committed fixture can: these
+// two files were generated from the post-refactor renderer at the point where
+// byte-identity to pre-refactor output had been verified against a temporary
+// worktree of the pre-refactor commit, so pinning them forward pins that
+// property forward. From here, ANY change to a built-in default or to the
+// renderer's structure fails these two tests and has to be looked at.
+//
+// DETERMINISM: normalizeVolatilePdfBytes blanks the only three things pdfkit
+// stamps from wall-clock time or randomness (see its own doc comment). What is
+// left is reproducible across processes and machines given the pinned
+// @react-pdf/renderer (deno.lock: 4.5.1) and the pinned Deno (CI: v2.5.6).
+// A version bump of either is expected to fail these, which is the point: it
+// is a renderer change to every org's legal document and should be reviewed,
+// not absorbed silently.
+//
+// REGENERATING (only when the change is intended, and review the diff):
+//   UPDATE_HIRE_ORDER_PDF_GOLDEN=1 \
+//     deno test --allow-all --node-modules-dir=none supabase/functions/
+
+const GOLDEN_DIR = new URL("./__golden__/", import.meta.url);
+
+// The fixture files hold the NORMALIZED string encoded as UTF-8, not the raw
+// PDF bytes. Re-encoding the normalized string back to one byte per character
+// would be lossy: `normalizeVolatilePdfBytes` decodes with TextDecoder
+//("latin1"), and in the WHATWG encoding standard "latin1" is a label for
+// windows-1252, not ISO-8859-1 - bytes 0x80-0x9F decode to characters well
+// outside 0-255 (0x80 -> U+20AC), which `charCodeAt` then truncates. That
+// silently corrupted a handful of bytes inside the compressed streams and made
+// a freshly written fixture fail to match its own render. UTF-8 round-trips
+// any string exactly. The files are consequently not valid PDFs, which is
+// fine: they are comparison fixtures, not documents.
+
+/** Index of the first differing character, or -1 when the two are equal. */
+function firstDifference(a: string, b: string): number {
+  const limit = Math.min(a.length, b.length);
+  for (let i = 0; i < limit; i++) {
+    if (a[i] !== b[i]) return i;
+  }
+  return a.length === b.length ? -1 : limit;
+}
+
+async function assertMatchesGolden(name: string, bytes: Uint8Array): Promise<void> {
+  const actual = normalizeVolatilePdfBytes(bytes);
+  const url = new URL(`${name}.golden`, GOLDEN_DIR);
+
+  if (Deno.env.get("UPDATE_HIRE_ORDER_PDF_GOLDEN") === "1") {
+    await Deno.mkdir(GOLDEN_DIR, { recursive: true });
+    await Deno.writeFile(url, new TextEncoder().encode(actual));
+    return;
+  }
+
+  let expected: string;
+  try {
+    expected = new TextDecoder().decode(await Deno.readFile(url));
+  } catch {
+    throw new Error(
+      `golden fixture "${name}" is missing. If this is a new fixture, generate it with:\n` +
+        `  UPDATE_HIRE_ORDER_PDF_GOLDEN=1 deno test --allow-all --node-modules-dir=none supabase/functions/`,
+    );
+  }
+
+  const at = firstDifference(actual, expected);
+  if (at === -1) return;
+  throw new Error(
+    `the default-theme render of "${name}" changed.\n\n` +
+      `This document is what every org's hire order looks like with no theme override, so a\n` +
+      `change here restyles a legal document. The usual cause is an edited built-in default in\n` +
+      `pdfTheme.ts (a size, weight, colour, letter-spacing or page margin) or a structural change\n` +
+      `in render.tsx.\n\n` +
+      `  first difference at character ${at} (golden ${expected.length} chars, rendered ${actual.length})\n` +
+      `  golden:   ${JSON.stringify(expected.slice(Math.max(0, at - 24), at + 24))}\n` +
+      `  rendered: ${JSON.stringify(actual.slice(Math.max(0, at - 24), at + 24))}\n\n` +
+      `If the change is intended, regenerate and review the diff in the PR:\n` +
+      `  UPDATE_HIRE_ORDER_PDF_GOLDEN=1 deno test --allow-all --node-modules-dir=none supabase/functions/`,
+  );
+}
+
+/** A countersigned aggregate: three engagement dates with their own running
+ *  orders, order-level notes, a reconciling per-date fee breakdown, terms, a
+ *  typed signature mark and therefore the signature certificate page. Between
+ *  them these two fixtures reach every section the renderer can draw. */
+function goldenCountersignedAggregate(): RenderInput {
+  const base = makeRenderFixture();
+  return {
+    ...base,
+    status: "countersigned",
+    generatedAtIso: "2026-08-01T10:00:00.000Z",
+    data: {
+      ...base.data,
+      fee: { value: "4500.00", source: "sheet" },
+      fee_basis: { value: "per_date", source: "manual" },
+      fee_per_date: { value: "1500.00", source: "manual" },
+      engagement_dates: {
+        value: [
+          { show_date_id: "g-1", date: "2026-06-15", venue: "Colosseum Berlin", city: "Berlin", sessions: ["19:00", "21:00"], duration_min: 90 },
+          { show_date_id: "g-2", date: "2026-06-16", venue: "Kammerspiele", city: "Hamburg", sessions: ["19:30"], duration_min: 90 },
+          { show_date_id: "g-3", date: "2026-06-17", venue: "Volksbuehne", city: "Munich", sessions: ["18:00", "20:30"], duration_min: 120 },
+        ],
+        source: "showflow",
+      },
+    },
+    signature: {
+      method: "typed",
+      typedName: "Mara Müller",
+      signerName: "Mara Müller",
+      signerEmail: "mara@example.de",
+      signedAtIso: "2026-06-02T09:30:00.000Z",
+      ip: "203.0.113.5",
+      userAgent: "Mozilla/5.0",
+      documentSha256: "c".repeat(64),
+      consentText: "By signing, I agree that this is binding.",
+    },
+  };
+}
+
+/** A single-date preview: the watermark, the one shared top-level running
+ *  order, and no terms section at all. Deliberately the opposite shape to the
+ *  aggregate above. */
+function goldenSingleDatePreview(): RenderInput {
+  return {
+    ...makeRenderFixture(),
+    status: "preview",
+    terms: [],
+    generatedAtIso: "2026-08-01T10:00:00.000Z",
+  };
+}
+
+Deno.test("countersigned aggregate renders exactly as the committed golden", async () => {
+  await assertMatchesGolden("countersigned-aggregate", await renderHireOrderPdf(goldenCountersignedAggregate()));
+});
+
+Deno.test("single-date preview renders exactly as the committed golden", async () => {
+  await assertMatchesGolden("single-date-preview", await renderHireOrderPdf(goldenSingleDatePreview()));
+});
+
 Deno.test("default theme renders byte-identically to no theme at all", async () => {
   const withoutTheme = await renderHireOrderPdf({ ...BASE, generatedAtIso: "2026-08-01T10:00:00.000Z" });
   const withTheme = await renderHireOrderPdf({
