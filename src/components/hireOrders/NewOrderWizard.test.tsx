@@ -765,6 +765,35 @@ describe("NewOrderWizard", () => {
     expect(screen.getByTestId("wiz-fee-summary")).toHaveTextContent("$1,500.00 total for all dates");
   });
 
+  // `hire_order_defaults` is hand-editable JSON in app_settings, so the stored basis is
+  // untrusted. Seeding it into wizard state without validating would produce a basis the
+  // server's own isFeeBasis gate then rejects with a 400, breaking submission with no clue why.
+  it("ignores a garbage stored fee basis instead of seeding it", async () => {
+    seedDefault({
+      app_settings: {
+        data: [{ org_id: ORG, value: { default_fee: null, currency: "USD", default_fee_basis: "weekly" } }],
+        error: null,
+      },
+    });
+    // Assert on the SUBMITTED BODY, not the step-2 summary: feeSummaryText only branches
+    // on `=== "total"`, so a poisoned "weekly" state renders identical per-date wording and
+    // a summary assertion would pass against the unguarded code too.
+    const body = await completeWizard({ fee: "500" });
+    expect(body.fee_basis).toBe("per_date");
+  });
+
+  it("seeds a valid stored fee basis from the org defaults", async () => {
+    seedDefault({
+      app_settings: {
+        data: [{ org_id: ORG, value: { default_fee: null, currency: "USD", default_fee_basis: "total" } }],
+        error: null,
+      },
+    });
+    await openWizardAtStep2({ artists: ["Ann Artist"], dates: ["Berlin", "Hamburg"] });
+    fireEvent.change(screen.getByLabelText(/engagement fee/i), { target: { value: "1500" } });
+    expect(screen.getByTestId("wiz-fee-summary")).toHaveTextContent("$1,500.00 total for all dates");
+  });
+
   it("sends fee_basis in the draft body", async () => {
     const body = await completeWizard({ fee: "500" });
     expect(body).toMatchObject({

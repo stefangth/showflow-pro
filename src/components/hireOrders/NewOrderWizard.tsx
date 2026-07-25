@@ -9,7 +9,7 @@ import { useArtistsLite, useShowDatesLite, useHireOrderAction } from "@/hooks/us
 import type { ArtistLite, ShowDateLite } from "@/data/hireOrders";
 import { resolveFields } from "@/lib/hireOrders/resolveFields";
 import { formatMoney } from "@/lib/hireOrders/money";
-import { computeFeeTotal, type FeeBasis } from "@/lib/hireOrders/feeBasis";
+import { computeFeeTotal, type FeeBasis, isFeeBasis } from "@/lib/hireOrders/feeBasis";
 import type { SessionOverride } from "@/lib/hireOrders/engagementDates";
 import { copyDurationToAll } from "@/lib/hireOrders/durationFill";
 import type { EditableOrderFieldKey, FieldLayers, OrderData } from "@/lib/hireOrders/types";
@@ -75,7 +75,11 @@ function parseDurationValue(value: string): number | null {
 /** Kept in sync with the CURRENCIES list in OrderDefaultsCard.tsx / CURRENCY_SYMBOLS in money.ts. */
 const CURRENCIES = ["EUR", "USD", "CHF"];
 
-interface OrderDefaultsLite { default_fee: number | null; currency: string; default_fee_basis: FeeBasis }
+/** `default_fee_basis` is deliberately `string`, not `FeeBasis`: this comes from the
+ *  hand-editable `hire_order_defaults` app-setting, so the stored value is untrusted
+ *  until `isFeeBasis` narrows it. Typing it as `FeeBasis` here would be a lie that
+ *  lets a truthy check pass for validation. */
+interface OrderDefaultsLite { default_fee: number | null; currency: string; default_fee_basis: string }
 const DEFAULTS_FALLBACK: OrderDefaultsLite = { default_fee: null, currency: "EUR", default_fee_basis: "per_date" };
 
 interface BatchOutcomeRow { artist_id: string; reason: string }
@@ -228,7 +232,15 @@ export function NewOrderWizard({ open, onOpenChange, orgId }: Props) {
       seededDefaultsRef.current = true;
       setCurrency(defaultsQuery.data.currency);
       if (defaultsQuery.data.default_fee != null) setFee(String(defaultsQuery.data.default_fee));
-      if (defaultsQuery.data.default_fee_basis) setFeeBasis(defaultsQuery.data.default_fee_basis);
+      // Validate, do not just null-check: a garbage stored basis would seed an invalid
+      // wizard state that the server's own isFeeBasis gate then rejects with a 400,
+      // breaking submission with no clue why. Matches OrderDefaultsCard's read.
+      // Validate, do not just null-check: a garbage stored basis would seed an invalid
+      // wizard state that the server's own isFeeBasis gate then rejects with a 400,
+      // breaking submission with no clue why. Matches OrderDefaultsCard's read.
+      if (isFeeBasis(defaultsQuery.data.default_fee_basis)) {
+        setFeeBasis(defaultsQuery.data.default_fee_basis);
+      }
     }
   }, [defaultsQuery.data]);
 
