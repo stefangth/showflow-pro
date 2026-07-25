@@ -1,3 +1,6 @@
+// GENERATED FILE. Do not edit.
+// Source: src/lib/hireOrders/money.ts
+// Regenerate: npm run sync:mirrors
 // Hire order money formatting — display only, never computes with floats.
 //
 // DUAL-HOME PAIR: this file (edit here) generates supabase/functions/_shared/

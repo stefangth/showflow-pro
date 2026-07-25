@@ -39,6 +39,13 @@ export default tseslint.config(
   // context modules deliberately co-locate provider + hooks (editing them
   // full-reloads the dev server; accepted). Splitting them for fast refresh
   // is deferred to a standalone PR — that PR deletes this carve-out.
+  //
+  // render.tsx is the hire-order PDF document: dual-homed (byte-identical
+  // with its generated supabase/functions/ mirror, which is why it can't
+  // just export buildStyles/renderHireOrderPdf from a second file) and never
+  // mounted as a live DOM component, so Fast Refresh has nothing to do with
+  // it either way — it's called once to produce PDF bytes, in the browser
+  // (settings preview) or on the edge (issue/download).
   {
     files: [
       "src/components/ui/**",
@@ -46,6 +53,7 @@ export default tseslint.config(
       "src/features/auth/AuthContext.tsx",
       "src/features/editor/EditorContext.tsx",
       "src/features/consent/ConsentContext.tsx",
+      "src/lib/hireOrders/pdf/render.tsx",
     ],
     rules: { "react-refresh/only-export-components": "off" },
   },

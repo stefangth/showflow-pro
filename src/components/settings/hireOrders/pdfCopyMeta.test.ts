@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { HIRE_ORDER_COPY_DEFAULTS, type CopyKey } from "@/lib/hireOrders/pdfCopy";
+import { HIRE_ORDER_COPY_DEFAULTS, type CopyKey } from "@/lib/hireOrders/pdf/pdfCopy";
 import { COPY_SECTIONS, hasBadDash } from "./pdfCopyMeta";
 
 describe("COPY_SECTIONS", () => {

@@ -2,7 +2,7 @@
   "entries": [
     {
       "mode": "file",
-      "source": "src/lib/hireOrders/pdfCopy.ts",
+      "source": "src/lib/hireOrders/pdf/pdfCopy.ts",
       "target": "supabase/functions/_shared/hire-order-pdf/pdfCopy.ts",
       "why": "Editable PDF copy registry. Edge renderer reads it and freezes it into issue_snapshot."
     },
@@ -20,9 +20,27 @@
     },
     {
       "mode": "file",
+      "source": "src/lib/hireOrders/money.ts",
+      "target": "supabase/functions/_shared/money.ts",
+      "why": "Money formatting. render.tsx (below) needs it from a path that resolves identically on both runtimes; previously it was hand-duplicated inline in _shared/hireOrders.ts, which stays a re-export of this file."
+    },
+    {
+      "mode": "file",
       "source": "src/lib/hireOrders/pdf/pdfTheme.ts",
       "target": "supabase/functions/_shared/hire-order-pdf/pdfTheme.ts",
       "why": "Editable PDF theme registry. The edge renderer builds its StyleSheet from it and freezes the resolved theme into issue_snapshot."
+    },
+    {
+      "mode": "file",
+      "source": "src/lib/hireOrders/pdf/docTypes.ts",
+      "target": "supabase/functions/_shared/hire-order-pdf/docTypes.ts",
+      "why": "Hire-order document domain types (OrderData, RenderInput, etc). Both runtimes' pre-existing homes (_shared/hireOrders.ts, src/lib/hireOrders/types.ts) re-export from here instead of redeclaring."
+    },
+    {
+      "mode": "file",
+      "source": "src/lib/hireOrders/pdf/render.tsx",
+      "target": "supabase/functions/_shared/hire-order-pdf/render.tsx",
+      "why": "The hire-order PDF renderer itself, so the settings editor can preview the real document in the browser. Only pdfDeps.ts (NOT mirrored) differs per runtime."
     },
     {
       "mode": "block",

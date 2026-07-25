@@ -1,6 +1,3 @@
-// GENERATED FILE. Do not edit.
-// Source: src/lib/hireOrders/pdf/render.tsx
-// Regenerate: npm run sync:mirrors
 // The hire-order PDF. Concrete implementation of `RenderHireOrderPdf`
 // (docTypes.ts's RenderInput -> Uint8Array). DUAL-HOMED: this file is
 // byte-identical on both runtimes (mirror source is

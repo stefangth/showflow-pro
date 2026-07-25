@@ -5,7 +5,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { resolveOrgSetting, upsertOrgSetting } from "@/data/settings";
 import { invokeHireOrderAction } from "@/data/hireOrders";
 import { openPdfBase64 } from "@/lib/hireOrders/openPdf";
-import { HIRE_ORDER_COPY_DEFAULTS, type CopyKey, type HireOrderCopy } from "@/lib/hireOrders/pdfCopy";
+import { HIRE_ORDER_COPY_DEFAULTS, type CopyKey, type HireOrderCopy } from "@/lib/hireOrders/pdf/pdfCopy";
 import { COPY_SECTIONS, hasBadDash } from "./pdfCopyMeta";
 import type { Json } from "@/integrations/supabase/types";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
