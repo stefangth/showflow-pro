@@ -145,7 +145,7 @@ export default function TemplateEditorPage({ readOnly: readOnlyProp }: { readOnl
   }
 
   return (
-    <div className="flex h-[calc(100vh-8rem)] flex-col gap-3">
+    <div className="flex h-full flex-col gap-3">
       <div className="flex items-center justify-between gap-3">
         <div className="flex items-center gap-2">
           <Button asChild variant="ghost" size="sm">
