@@ -24,14 +24,49 @@ const FONT_BUCKET_URL = `${Deno.env.get("SUPABASE_URL") ?? ""}/storage/v1/object
 
 const registered = new Set<string>();
 
+function bytesToBase64(bytes: Uint8Array): string {
+  let binary = "";
+  // Chunked, not a single `String.fromCharCode(...bytes)`: spreading a whole
+  // font file (100-300KB) into one call argument list blows the call stack.
+  const chunkSize = 0x8000;
+  for (let i = 0; i < bytes.length; i += chunkSize) {
+    binary += String.fromCharCode(...bytes.subarray(i, i + chunkSize));
+  }
+  return btoa(binary);
+}
+
+/**
+ * Fetch one font file and turn it into a self-contained `data:` URL, or
+ * `null` on any failure (network error, non-2xx, provisioning not done yet).
+ * A data URL never triggers a further fetch inside react-pdf's OWN lazy font
+ * loader (`FontSource._load`, which runs during PDF layout, not during
+ * `Font.register`) - registering a bare Storage URL instead would let a bad
+ * response surface as an unhandled "Unknown font format" render-time throw
+ * (confirmed against the browser build's identical code path during Task 4):
+ * `Font.register`'s own try/catch does NOT catch that, since the fetch it
+ * wraps is deferred.
+ */
+async function loadFontDataUrl(path: string): Promise<string | null> {
+  try {
+    const response = await fetch(`${FONT_BUCKET_URL}/${path}`);
+    if (!response.ok) return null;
+    return `data:font/ttf;base64,${bytesToBase64(new Uint8Array(await response.arrayBuffer()))}`;
+  } catch (_error) {
+    return null;
+  }
+}
+
 /**
  * Register the families a theme uses. Geist and Geist Mono are base64-embedded
- * so the DEFAULT theme never touches the network; anything else is fetched from
- * the public font bucket and memoised per isolate.
- *
- * Registration failures are swallowed on purpose: react-pdf falls back to an
- * already-registered family, so a bad font produces a plain-looking document
- * rather than a failed issue.
+ * so the DEFAULT theme never touches the network. Anything else is fetched
+ * from the public font bucket and embedded as a data URL up front; a file
+ * that fails to fetch falls back to the PDF-standard Helvetica for that
+ * weight, so the family NAME is always backed by a working registration -
+ * react-pdf throws "Font family not registered" for any name it has never
+ * seen at all, so leaving a family unregistered on failure is not an option
+ * either. This is how a Storage bucket that is not yet provisioned (or a
+ * single missing file) degrades to a plain-looking document instead of a
+ * failed issue.
  */
 export async function registerFonts(families: FontFamilyDef[]): Promise<void> {
   if (!registered.has("Geist")) {
@@ -58,17 +93,17 @@ export async function registerFonts(families: FontFamilyDef[]): Promise<void> {
 
   for (const def of families) {
     if (def.embedded || registered.has(def.family)) continue;
+    const fonts = await Promise.all(
+      def.files.map(async (f) => ({
+        src: (await loadFontDataUrl(f.path)) ?? (f.weight >= 600 ? "Helvetica-Bold" : "Helvetica"),
+        fontWeight: f.weight,
+      })),
+    );
     try {
-      Font.register({
-        family: def.family,
-        fonts: def.files.map((f) => ({
-          src: `${FONT_BUCKET_URL}/${f.path}`,
-          fontWeight: f.weight,
-        })),
-      });
+      Font.register({ family: def.family, fonts });
       registered.add(def.family);
     } catch (_error) {
-      // Leave it unregistered: react-pdf falls back rather than throwing.
+      // Leave it unregistered.
     }
   }
 }
