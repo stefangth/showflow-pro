@@ -13,6 +13,14 @@
         {
           "title": "Fee breakdown on the PDF",
           "description": "A per-date order now prints a line such as \"500.00 per date x 3 dates\" above the total, so the artist can see how it was reached."
+        },
+        {
+          "title": "PDF template editor",
+          "description": "Settings → Hire orders → PDF template opens a live editor for the hire order document. Pick any element from the outline, then change its wording, font, size, weight, colour, spacing, or letter case, and watch the real PDF update as you type. Changes apply to the next order issued, not to documents already issued."
+        },
+        {
+          "title": "Scale the whole document at once",
+          "description": "A single control in the template editor's Document panel grows or shrinks every element together, so the type hierarchy stays intact instead of resizing each line by hand."
         }
       ],
       "improved": [

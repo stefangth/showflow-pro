@@ -10,7 +10,7 @@ import { OrderDefaultsCard } from "./OrderDefaultsCard";
 import { NumberingCard } from "./NumberingCard";
 import { TermsVariantsCard } from "./TermsVariantsCard";
 import { CountersignCard } from "./CountersignCard";
-import { PdfCopyCard } from "./PdfCopyCard";
+import { PdfTemplateCard } from "./PdfTemplateCard";
 import { HIRE_ORDER_AUDIT_KEYS } from "./auditKeys";
 
 const KEY_LABELS: Record<string, string> = {
@@ -103,7 +103,7 @@ export function HireOrdersTab({ readOnly = false }: Props) {
         <OrderDefaultsCard orgId={orgId} readOnly={readOnly} />
         <NumberingCard orgId={orgId} readOnly={readOnly} />
         <TermsVariantsCard orgId={orgId} readOnly={readOnly} />
-        <PdfCopyCard orgId={orgId} readOnly={readOnly} />
+        <PdfTemplateCard orgId={orgId} readOnly={readOnly} />
         <CountersignCard orgId={orgId} readOnly={readOnly} />
       </div>
       <HireOrdersRail />

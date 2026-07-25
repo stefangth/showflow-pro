@@ -1,5 +1,6 @@
 import { describe, expect, it, vi, beforeEach } from "vitest";
 import { fireEvent, screen, waitFor, within } from "@testing-library/react";
+import { MemoryRouter } from "react-router-dom";
 import { renderWithProviders } from "@/test/renderWithProviders";
 import { createFakeSupabase, type TableSeed } from "@/test/supabaseFake";
 
@@ -43,23 +44,34 @@ function authAs(orgId: string) {
   vi.mocked(useAuth).mockReturnValue({ currentOrg: { id: orgId, name: "Test Org", slug: "test-org" } } as never);
 }
 
+// PdfTemplateCard renders a react-router <Link> to the template editor route, so every
+// render needs a Router ancestor (matches TemplateEditorPage.test.tsx's own MemoryRouter
+// wrapping for the same reason).
+function renderTab(props: { readOnly?: boolean } = {}) {
+  return renderWithProviders(
+    <MemoryRouter>
+      <HireOrdersTab {...props} />
+    </MemoryRouter>,
+  );
+}
+
 describe("HireOrdersTab", () => {
   beforeEach(() => seedClient(OK_SEED));
 
   it("renders all six cards when the org is entitled", async () => {
     authAs("org-on");
-    renderWithProviders(<HireOrdersTab />);
+    renderTab();
     await screen.findByText("Letterhead");
     expect(screen.getByText("Order defaults")).toBeInTheDocument();
     expect(screen.getByText("Numbering")).toBeInTheDocument();
     expect(screen.getByText("Terms")).toBeInTheDocument();
-    expect(screen.getByText("PDF copy")).toBeInTheDocument();
+    expect(screen.getByText("PDF template")).toBeInTheDocument();
     expect(screen.getByText("Countersign mode")).toBeInTheDocument();
   });
 
   it("renders nothing when the org is not entitled to hire_orders", async () => {
     authAs("org-off");
-    const { queryClient } = renderWithProviders(<HireOrdersTab />);
+    const { queryClient } = renderTab();
     await waitFor(() =>
       expect(queryClient.getQueryState(["entitlements", "org-off"])?.status).toBe("success"),
     );
@@ -69,7 +81,7 @@ describe("HireOrdersTab", () => {
 
   it("persists the letterhead legal name via upsertOrgSetting on Save", async () => {
     authAs("org-on");
-    renderWithProviders(<HireOrdersTab />);
+    renderTab();
     const legalName = await screen.findByLabelText("Legal name");
     fireEvent.change(legalName, { target: { value: "Aurora Productions GmbH" } });
     fireEvent.click(screen.getByRole("button", { name: "Save letterhead" }));
@@ -87,7 +99,7 @@ describe("HireOrdersTab", () => {
 
   it("offers exactly manual and electronic countersign options, manual by default", async () => {
     authAs("org-on");
-    renderWithProviders(<HireOrdersTab />);
+    renderTab();
     const countersignHeading = await screen.findByText("Countersign mode");
     // Scope to the Countersign card: Terms also renders role="radio" controls now
     // (one "Default" radio per template), so a page-wide query would over-count.
@@ -104,7 +116,7 @@ describe("HireOrdersTab", () => {
 
   it("shows the producer-email checkbox only once electronic is selected, and keeps it togglable", async () => {
     authAs("org-on");
-    renderWithProviders(<HireOrdersTab />);
+    renderTab();
     await screen.findByText("Countersign mode");
     expect(screen.queryByLabelText(/also email producers the signed copy/i)).not.toBeInTheDocument();
 
@@ -119,7 +131,7 @@ describe("HireOrdersTab", () => {
 
   it("persists the electronic mode and producer-email flag via upsertOrgSetting on Save", async () => {
     authAs("org-on");
-    renderWithProviders(<HireOrdersTab />);
+    renderTab();
     await screen.findByText("Countersign mode");
     fireEvent.click(screen.getByRole("radio", { name: /electronic signature/i }));
     fireEvent.click(screen.getByRole("checkbox", { name: /also email producers the signed copy/i }));
@@ -142,7 +154,7 @@ describe("HireOrdersTab", () => {
 
   it("lists three terms templates (lean, standard, full), all empty by default", async () => {
     authAs("org-on");
-    renderWithProviders(<HireOrdersTab />);
+    renderTab();
     await screen.findByText("Terms");
 
     expect(screen.getByDisplayValue("Lean")).toBeInTheDocument();
@@ -174,7 +186,7 @@ describe("HireOrdersTab", () => {
     it("shows a destructive alert and no Save control, instead of an editable blank form", async () => {
       seedClient(FAILING_SEED);
       authAs("org-on");
-      renderWithProviders(<HireOrdersTab />);
+      renderTab();
 
       // Every card that reads app_settings surfaces the failure. Each card owns its own
       // query, so they settle independently: wait for the count rather than
@@ -194,7 +206,7 @@ describe("HireOrdersTab", () => {
 
     it("recovers to the normal editable form once the read succeeds", async () => {
       authAs("org-on");
-      renderWithProviders(<HireOrdersTab />);
+      renderTab();
 
       // Guard against the alert becoming a permanent state: the happy path still works.
       expect(await screen.findByLabelText("Legal name")).toBeInTheDocument();
@@ -209,7 +221,7 @@ describe("HireOrdersTab", () => {
   describe("readOnly (capability floor)", () => {
     it("disables a representative write control on every card, but still renders real values", async () => {
       authAs("org-on");
-      renderWithProviders(<HireOrdersTab readOnly />);
+      renderTab({ readOnly: true });
 
       // Each card resolves its own independent query — await a checkpoint per card
       // rather than relying on the first one to imply the rest have settled too.
@@ -233,7 +245,7 @@ describe("HireOrdersTab", () => {
 
     it("leaves every card's controls enabled when readOnly is false", async () => {
       authAs("org-on");
-      renderWithProviders(<HireOrdersTab readOnly={false} />);
+      renderTab({ readOnly: false });
 
       expect(await screen.findByLabelText("Legal name")).toBeEnabled();
       expect(screen.getByRole("button", { name: "Save letterhead" })).toBeEnabled();
@@ -243,7 +255,7 @@ describe("HireOrdersTab", () => {
 
   it("adds and removes clause rows on a variant that starts empty", async () => {
     authAs("org-on");
-    renderWithProviders(<HireOrdersTab />);
+    renderTab();
     await screen.findByText("Terms");
     const standardSection = screen.getByTestId("terms-template-standard");
 

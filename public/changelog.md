@@ -9,6 +9,8 @@ What's new in ShowFlow, newest first.
 ### New
 - **Fee per date or total** — When a hire order covers several dates, choose whether the engagement fee applies to each date or to the whole engagement. A per-date fee is multiplied by the number of dates, and the wizard shows the running total as you enter it and again on the review step. Set your organization's default choice in Settings → Hire orders → Order defaults.
 - **Fee breakdown on the PDF** — A per-date order now prints a line such as "500.00 per date x 3 dates" above the total, so the artist can see how it was reached.
+- **PDF template editor** — Settings → Hire orders → PDF template opens a live editor for the hire order document. Pick any element from the outline, then change its wording, font, size, weight, colour, spacing, or letter case, and watch the real PDF update as you type. Changes apply to the next order issued, not to documents already issued.
+- **Scale the whole document at once** — A single control in the template editor's Document panel grows or shrinks every element together, so the type hierarchy stays intact instead of resizing each line by hand.
 
 ### Improved
 - **Dates carry into the artist grid** — Dates picked in the first step of the new order wizard are now assigned to every selected artist automatically, so the grid starts filled in instead of empty. Uncheck any dates that do not apply, then continue.
