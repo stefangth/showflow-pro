@@ -41,6 +41,7 @@ import {
   encodeBase64,
 } from "https://deno.land/std@0.224.0/encoding/base64.ts";
 import {
+  computeFeeTotal,
   defaultTemplateId,
   type EngagementDate,
   type FeeBasis,
@@ -126,9 +127,13 @@ const FEE_BASIS_VALUES: Record<FeeBasis, true> = { per_date: true, total: true }
 
 /** True only for the exact legal FeeBasis strings. app_settings holds
  *  hand-editable JSON with nothing validating it on the way in, so a stored
- *  default_fee_basis can be "" , "weekly", null, or any other garbage. */
+ *  default_fee_basis can be "" , "weekly", null, or any other garbage.
+ *  Uses `hasOwnProperty` rather than `in`: `in` walks the prototype chain, so
+ *  "toString"/"constructor"/"hasOwnProperty" would otherwise pass straight
+ *  through as if they were legal FeeBasis values. */
 function isFeeBasis(value: unknown): value is FeeBasis {
-  return typeof value === "string" && value in FEE_BASIS_VALUES;
+  return typeof value === "string" &&
+    Object.prototype.hasOwnProperty.call(FEE_BASIS_VALUES, value);
 }
 
 /**
@@ -888,6 +893,10 @@ interface DraftBatchBody {
   org_id: string;
   artists: DraftBatchArtistInput[];
   manual?: NonNullable<FieldLayers["manual"]>;
+  /** How `manual.fee` should be read. Top-level rather than inside `manual`
+   *  because the basis is not an editable order field. Omitted falls back to
+   *  the org's `default_fee_basis`. */
+  fee_basis?: FeeBasis;
   /** Per-date running-order + duration overrides, keyed by show_date_id. Each
    *  key must be one of the request's selected show_date_ids. */
   date_overrides?: Record<string, SessionOverride>;
@@ -909,6 +918,8 @@ interface BatchDraftContext {
   manual: NonNullable<FieldLayers["manual"]>;
   defaults: OrderDefaults;
   numbering: Numbering;
+  /** Resolved once for the batch: the request's basis, else the org default. */
+  feeBasis: FeeBasis;
   /** The org's default terms-template id, resolved once for the whole batch. */
   defaultTermsVariant: string;
   artistsById: Map<string, ManualArtistRow>;
@@ -1043,6 +1054,12 @@ async function draftBatch(
   if (manualFeeProvided && !Number.isFinite(Number(manualFeeRaw))) {
     return json({ error: "invalid_fee" }, 400);
   }
+  if (
+    body.fee_basis !== undefined &&
+    body.fee_basis !== "per_date" && body.fee_basis !== "total"
+  ) {
+    return json({ error: "invalid_fee_basis" }, 400);
+  }
 
   const selectedShowDateIds = new Set(
     normalizedArtists.flatMap((item) => item.show_date_ids),
@@ -1125,6 +1142,7 @@ async function draftBatch(
     manual,
     defaults,
     numbering,
+    feeBasis: body.fee_basis ?? defaults.default_fee_basis ?? "per_date",
     defaultTermsVariant,
     artistsById,
     datesById,
@@ -1223,6 +1241,7 @@ async function draftBatchArtist(
     manual,
     defaults,
     numbering,
+    feeBasis,
     defaultTermsVariant,
     artistsById,
     datesById,
@@ -1301,11 +1320,40 @@ async function draftBatchArtist(
     castCode: castCodeFromLabel(firstDate.shows?.program ?? null),
     seq: context.nextSeq,
   });
-  const feeValue = data.fee?.value;
-  const feeAmount =
-    feeValue === undefined || feeValue === null || feeValue === ""
+  // `data.fee` is the amount the producer entered. For a per-date basis it is a
+  // UNIT price, so the stored fee becomes unit x the dates that SURVIVED the
+  // covered-date drop above (`dates`, not `allDates`): a 3-date request that
+  // drops one already-covered date bills 2. The stored `fee` is always the TOTAL
+  // payable, which is what every consumer (KPIs, readiness, the PDF total)
+  // expects; `fee_basis` and `fee_per_date` only explain how it was reached.
+  const enteredFeeValue = data.fee?.value;
+  const enteredFee =
+    enteredFeeValue === undefined || enteredFeeValue === null ||
+      enteredFeeValue === ""
       ? null
-      : Number(feeValue);
+      : Number(enteredFeeValue);
+  // Guard the persistence boundary. computeFeeTotal is deliberately total: it
+  // returns the amount unchanged for a date count that is not a positive
+  // integer, because the wizard also calls it for live display where a zero
+  // count is a normal transient state mid-edit. That leniency is wrong HERE,
+  // where the result is about to be billed: a zero count would silently store
+  // the single-date fee as the whole engagement's total. `dates.length >= 1` is
+  // already guaranteed by the early return above, so this can only fire if a
+  // future refactor removes that guard.
+  if (!Number.isInteger(dates.length) || dates.length < 1) {
+    return { kind: "error", reason: "no_billable_dates" };
+  }
+  const feeAmount = enteredFee === null
+    ? null
+    : computeFeeTotal(enteredFee, dates.length, feeBasis);
+  if (feeAmount !== null) {
+    const feeSource = data.fee?.source ?? "manual";
+    data.fee = { value: feeAmount, source: feeSource };
+    data.fee_basis = { value: feeBasis, source: feeSource };
+    if (feeBasis === "per_date") {
+      data.fee_per_date = { value: enteredFee, source: feeSource };
+    }
+  }
   const currencyValue = data.currency?.value;
   const currency = typeof currencyValue === "string" && currencyValue
     ? currencyValue
