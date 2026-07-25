@@ -14,7 +14,7 @@
 // No relative imports other than ./pdfTheme.ts and ./pdfCopy.ts so the two
 // files can be identical.
 
-import type { HireOrderTheme } from "./pdfTheme.ts";
+import type { HireOrderTheme, RoleKey } from "./pdfTheme.ts";
 import type { HireOrderCopy } from "./pdfCopy.ts";
 
 export type FieldSource = "showflow" | "sheet" | "manual" | "default";
@@ -168,4 +168,8 @@ export interface RenderInput {
   /** Resolved theme. Absent means the built-in defaults, so legacy callers and
    *  the auto-draft trigger keep rendering exactly as before. */
   theme?: HireOrderTheme;
+  /** Preview only. Draws an accent outline around every element with this role
+   *  so the settings editor can show which element the outline row selects.
+   *  Never set on the issue path. */
+  highlightRole?: RoleKey;
 }

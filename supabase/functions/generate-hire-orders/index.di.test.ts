@@ -4,6 +4,7 @@ import {
 } from "https://deno.land/std@0.224.0/assert/mod.ts";
 import { handle, resolveOrderDefaults } from "./index.ts";
 import { makeFakeDeps, makeRequest } from "../_shared/testing.ts";
+import type { RenderInput } from "../_shared/hireOrders.ts";
 
 // ── shared fixtures ──────────────────────────────────────────────────────
 
@@ -2153,6 +2154,48 @@ Deno.test("issue keeps the order issued but does not stamp ambiguous email deliv
       "ambiguous delivery must not stamp last_sent_at",
     );
   }
+});
+
+// `highlightRole` (docTypes.ts) is a preview-only field: an accent outline
+// around a heading on an issued, hashed, artist-emailed PDF would be a real
+// defect on a legal document. This guards the issue path never threads it
+// through, by capturing what the renderer actually received (not merely that
+// the request succeeded) — so a future change that wires the editor's
+// selection into the issue call fails this test even though `issue` still
+// returns 200 and a PDF.
+Deno.test("issue never passes highlightRole to the renderer", async () => {
+  const renderCalls: RenderInput[] = [];
+  const { deps } = makeFakeDeps({
+    authUser: { id: "u-admin" },
+    tables: {
+      org_memberships: { data: { role: "admin" } },
+      hire_orders: [
+        { when: { __write: false }, data: issuableOrder() },
+        { when: { __write: true }, data: null },
+      ],
+      artists: { data: { user_id: "u-artist" } },
+      app_settings: [
+        { when: { key: "hire_order_letterhead" }, data: [LETTERHEAD] },
+        { when: { key: "hire_order_terms" }, data: [TERMS_FILLED] },
+        { when: { key: "hire_order_defaults" }, data: [DEFAULTS] },
+      ],
+    },
+  });
+  deps.renderHireOrderPdf = (input) => {
+    renderCalls.push(input);
+    return Promise.resolve(new Uint8Array([0x25, 0x50, 0x44, 0x46]));
+  };
+
+  const res = await handle(
+    makeRequest({
+      headers: JWT,
+      body: { action: "issue", org_id: ORG, order_ids: ["o-1"] },
+    }),
+    deps,
+  );
+  assertEquals(res.status, 200);
+  assertEquals(renderCalls.length, 1, "expected exactly one render call for the issued order");
+  assertEquals(renderCalls[0].highlightRole, undefined);
 });
 
 // ── resend ──────────────────────────────────────────────────────────────

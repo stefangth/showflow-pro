@@ -660,6 +660,27 @@ Deno.test("buildStyles applies base scale and page margins", () => {
   assertEquals(s.footer.right, 60);
 });
 
+Deno.test("highlightRole changes the rendered document", async () => {
+  const plain = await renderHireOrderPdf({ ...BASE, generatedAtIso: "2026-08-01T10:00:00.000Z" });
+  const lit = await renderHireOrderPdf({
+    ...BASE,
+    generatedAtIso: "2026-08-01T10:00:00.000Z",
+    highlightRole: "sectionHeading",
+  });
+  assertNotEquals(lit.length, plain.length);
+});
+
+Deno.test("highlightRole is ignored for a role the document does not use", async () => {
+  const plain = await renderHireOrderPdf({ ...BASE, generatedAtIso: "2026-08-01T10:00:00.000Z" });
+  const lit = await renderHireOrderPdf({
+    ...BASE,
+    generatedAtIso: "2026-08-01T10:00:00.000Z",
+    // BASE has no signature, so the certificate page is absent.
+    highlightRole: "certLabel",
+  });
+  assertEquals(lit.length, plain.length);
+});
+
 Deno.test("overriding one role's family does not change the page's inherited default font", () => {
   // Regression: the page's fontFamily used to be read back out of
   // themeRoleStyle(theme, "titleLead") rather than resolved from

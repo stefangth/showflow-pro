@@ -77,10 +77,29 @@ import {
  * before). Any family key not in it renders in a react-pdf standard font
  * instead (`safeReactPdfFamilyName`), never a family name react-pdf has no
  * working registration for.
+ *
+ * `highlightRole` is PREVIEW-ONLY (see `RenderInput.highlightRole` in
+ * docTypes.ts): every element resolving that one role gets an accent outline
+ * so the settings editor can show which document element an outline row
+ * selects. It must never be threaded through the issue path.
  */
-export function buildStyles(theme: HireOrderTheme, available?: ReadonlySet<FontFamilyKey>) {
+export function buildStyles(
+  theme: HireOrderTheme,
+  available?: ReadonlySet<FontFamilyKey>,
+  highlightRole?: RoleKey,
+) {
   const c = theme.base.colors;
-  const r = (role: RoleKey) => themeRoleStyle(theme, role, available);
+  const r = (role: RoleKey) => {
+    const style = themeRoleStyle(theme, role, available);
+    if (role !== highlightRole) return style;
+    // Theme's own colours, not hardcoded hex, so a retheme can never make the
+    // highlight invisible against its own background.
+    return {
+      ...style,
+      backgroundColor: theme.base.colors.feeCell,
+      border: `0.5pt solid ${theme.base.colors.accent}`,
+    };
+  };
   const { marginX, marginTop, marginBottom } = theme.base.page;
   // Resolved directly from theme.base.fontFamily, NOT via any role's
   // themeRoleStyle: the page's inherited default must stay independent of
@@ -338,7 +357,7 @@ function HireOrderDoc(input: RenderInput & { available?: ReadonlySet<FontFamilyK
   // the caller, or the built-in defaults when `copy` is absent (legacy callers).
   const copy: HireOrderCopy = input.copy ?? HIRE_ORDER_COPY_DEFAULTS;
   const theme = input.theme ?? HIRE_ORDER_THEME_DEFAULTS;
-  const s = buildStyles(theme, available);
+  const s = buildStyles(theme, available, input.highlightRole);
 
   const artist = str(data, "artist_name");
   const email = str(data, "recipient_email");
