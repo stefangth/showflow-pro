@@ -122,8 +122,12 @@ const DEFAULTS_DEFAULT: OrderDefaults = {
  * the fallback wholesale on a match rather than merging field-by-field, so an
  * org's old {default_fee, currency} row would otherwise resolve with
  * default_fee_basis left undefined despite the FeeBasis type promising a value.
+ *
+ * Exported (the file's only other export is `handle`) so index.di.test.ts can
+ * exercise the coercion directly instead of threading it through an action
+ * whose response happens to expose default_fee_basis.
  */
-async function resolveOrderDefaults(
+export async function resolveOrderDefaults(
   admin: Deps["admin"],
   org: string,
 ): Promise<OrderDefaults> {

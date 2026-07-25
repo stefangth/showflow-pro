@@ -83,7 +83,7 @@ export function OrderDefaultsCard({ orgId, readOnly = false }: { orgId: string |
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
           <div className="space-y-1.5">
             <Label htmlFor="ho-default-fee">Default fee</Label>
             <Input
@@ -110,7 +110,7 @@ export function OrderDefaultsCard({ orgId, readOnly = false }: { orgId: string |
               </SelectContent>
             </Select>
           </div>
-          <div className="space-y-1.5">
+          <div className="space-y-1.5 sm:col-span-2 lg:col-span-1">
             <Label htmlFor="ho-fee-basis">Fee basis</Label>
             <Select
               value={form.default_fee_basis}

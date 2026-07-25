@@ -2,7 +2,7 @@ import {
   assert,
   assertEquals,
 } from "https://deno.land/std@0.224.0/assert/mod.ts";
-import { handle } from "./index.ts";
+import { handle, resolveOrderDefaults } from "./index.ts";
 import { makeFakeDeps, makeRequest } from "../_shared/testing.ts";
 
 // ── shared fixtures ──────────────────────────────────────────────────────
@@ -99,6 +99,54 @@ const TERMS_TEMPLATES_DEFAULT_EMPTY = {
     default_id: "current-default",
   },
 };
+
+// ── resolveOrderDefaults (hire_order_defaults, legacy-org coercion) ────────
+//
+// resolveOrgSetting replaces the fallback wholesale on a match rather than
+// merging field-by-field (src/data/settings.ts:53, _shared/settings.ts:41), so
+// an org that saved hire_order_defaults before default_fee_basis existed has a
+// stored {default_fee, currency} row with the key entirely absent.
+// resolveOrderDefaults is the single resolution path for this setting across
+// every action in this file (draft/draft-manual/draft-batch/issue/preview/sign),
+// so its one piece of real logic — the `?? "per_date"` coercion — is tested
+// directly here rather than through an action whose response never surfaces
+// default_fee_basis.
+
+Deno.test("resolveOrderDefaults: a legacy stored default with no basis key resolves to per_date, other fields unchanged", async () => {
+  const { deps } = makeFakeDeps({
+    tables: {
+      app_settings: [
+        {
+          when: { key: "hire_order_defaults" },
+          data: [{ org_id: ORG, value: { default_fee: 500, currency: "USD" } }],
+        },
+      ],
+    },
+  });
+
+  const defaults = await resolveOrderDefaults(deps.admin, ORG);
+  assertEquals(defaults.default_fee_basis, "per_date");
+  assertEquals(defaults.default_fee, 500);
+  assertEquals(defaults.currency, "USD");
+});
+
+Deno.test("resolveOrderDefaults: a stored basis of total is not clobbered by the coercion", async () => {
+  const { deps } = makeFakeDeps({
+    tables: {
+      app_settings: [
+        {
+          when: { key: "hire_order_defaults" },
+          data: [{ org_id: ORG, value: { default_fee: 500, currency: "USD", default_fee_basis: "total" } }],
+        },
+      ],
+    },
+  });
+
+  const defaults = await resolveOrderDefaults(deps.admin, ORG);
+  assertEquals(defaults.default_fee_basis, "total");
+  assertEquals(defaults.default_fee, 500);
+  assertEquals(defaults.currency, "USD");
+});
 
 // ── draft ────────────────────────────────────────────────────────────────
 
