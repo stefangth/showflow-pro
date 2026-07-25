@@ -1,8 +1,9 @@
-import { assert, assertEquals, assertStringIncludes } from "https://deno.land/std@0.224.0/assert/mod.ts";
+import { assert, assertEquals, assertNotEquals, assertStringIncludes } from "https://deno.land/std@0.224.0/assert/mod.ts";
 import type { RenderInput } from "../hireOrders.ts";
-import { renderHireOrderPdf } from "./render.tsx";
+import { buildStyles, renderHireOrderPdf } from "./render.tsx";
 import { extractPdfText } from "./pdfText.ts";
 import { resolveHireOrderCopy } from "./pdfCopy.ts";
+import { resolveHireOrderTheme } from "./pdfTheme.ts";
 
 /** Decode the single unfiltered RGBA scanline used by the tiny signature fixture. */
 async function decodeSignatureFixturePixels(dataUrl: string): Promise<Uint8Array> {
@@ -590,4 +591,45 @@ Deno.test("fees section renders the plain engagement-fee label unchanged for a l
   assertStringIncludes(text, "Engagement fee");
   assertStringIncludes(text, "850.00");
   assertEquals(text.includes("per date"), false);
+});
+
+Deno.test("default theme renders byte-identically to no theme at all", async () => {
+  const withoutTheme = await renderHireOrderPdf({ ...BASE, generatedAtIso: "2026-08-01T10:00:00.000Z" });
+  const withTheme = await renderHireOrderPdf({
+    ...BASE,
+    generatedAtIso: "2026-08-01T10:00:00.000Z",
+    theme: resolveHireOrderTheme(),
+  });
+  assertEquals(withTheme.length, withoutTheme.length);
+});
+
+Deno.test("a theme override changes the rendered document", async () => {
+  const plain = await renderHireOrderPdf({ ...BASE, generatedAtIso: "2026-08-01T10:00:00.000Z" });
+  const scaled = await renderHireOrderPdf({
+    ...BASE,
+    generatedAtIso: "2026-08-01T10:00:00.000Z",
+    theme: resolveHireOrderTheme({ base: { scale: 1.4 } }),
+  });
+  assertNotEquals(scaled.length, plain.length);
+});
+
+Deno.test("buildStyles applies role size, weight and colour", () => {
+  const theme = resolveHireOrderTheme({
+    roles: { sectionHeading: { size: 20, weight: 400, color: "accent" } },
+  });
+  const s = buildStyles(theme);
+  assertEquals(s.sectionHeading.fontSize, 20);
+  assertEquals(s.sectionHeading.fontWeight, 400);
+  assertEquals(s.sectionHeading.color, theme.base.colors.accent);
+  // Structure survives the theming.
+  assertEquals(s.sectionHeading.marginBottom, 8);
+});
+
+Deno.test("buildStyles applies base scale and page margins", () => {
+  const theme = resolveHireOrderTheme({ base: { scale: 1.5, page: { marginX: 60 } } });
+  const s = buildStyles(theme);
+  assertEquals(s.sectionHeading.fontSize, 18);
+  assertEquals(s.page.paddingHorizontal, 60);
+  assertEquals(s.footer.left, 60);
+  assertEquals(s.footer.right, 60);
 });

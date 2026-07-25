@@ -29,6 +29,12 @@ import {
 import { feeBreakdownReconciles } from "../feeBasis.ts";
 import { GEIST_MEDIUM_B64, GEIST_MONO_REGULAR_B64, GEIST_REGULAR_B64, GEIST_SEMIBOLD_B64 } from "./fonts.ts";
 import { applyTokens, HIRE_ORDER_COPY_DEFAULTS, type HireOrderCopy } from "./pdfCopy.ts";
+import {
+  HIRE_ORDER_THEME_DEFAULTS,
+  type HireOrderTheme,
+  type RoleKey,
+  themeRoleStyle,
+} from "./pdfTheme.ts";
 
 // ── fonts ────────────────────────────────────────────────────────────────
 // Registered from base64 data URIs, NOT Uint8Arrays: the Task 5 spike proved
@@ -61,193 +67,174 @@ Font.register({
 // across JSX children. Keep it that way.
 Font.registerHyphenationCallback((word) => [word]);
 
-// ── tokens ───────────────────────────────────────────────────────────────
-// Mirrors the app's design tokens in src/index.css, resolved to hex because a
-// PDF has no CSS custom properties and always renders on white paper.
+// ── styles ───────────────────────────────────────────────────────────────
+// Built per render from the resolved theme. Structural properties (flex,
+// borders, padding, widths, lineHeight, absolute positioning) stay here and are
+// NOT editable; only typography and colour come from the theme, via
+// themeRoleStyle. Adding a role means adding it to pdfTheme.ts first.
 
-const C = {
-  text: "#15131C", // --foreground
-  muted: "#5B5A57", // --muted-foreground
-  faint: "#8B8A85", // --text-faint
-  accent: "#4738B0", // --accent-700 (the -600 stop is too light on paper)
-  line: "#E5E2DA", // --line-strong, flattened onto white
-  feeCell: "#F4F1FF", // --accent-50
-  surface2: "#FAF8F4", // --muted
-  white: "#FFFFFF",
-} as const;
+export function buildStyles(theme: HireOrderTheme) {
+  const c = theme.base.colors;
+  const r = (role: RoleKey) => themeRoleStyle(theme, role);
+  const { marginX, marginTop, marginBottom } = theme.base.page;
+  const bodyFamily = themeRoleStyle(theme, "titleLead").fontFamily;
 
-const s = StyleSheet.create({
-  page: {
-    fontFamily: "Geist",
-    fontWeight: 400,
-    fontSize: 11,
-    color: C.text,
-    backgroundColor: C.white,
-    paddingTop: 40,
-    paddingBottom: 60, // clears the fixed footer
-    paddingHorizontal: 44,
-  },
+  return StyleSheet.create({
+    page: {
+      fontFamily: bodyFamily,
+      fontWeight: 400,
+      fontSize: 11,
+      color: c.text,
+      backgroundColor: "#FFFFFF",
+      paddingTop: marginTop,
+      paddingBottom: marginBottom,
+      paddingHorizontal: marginX,
+    },
 
-  // Letterhead
-  letterhead: { flexDirection: "row", justifyContent: "space-between", alignItems: "flex-start" },
-  brandRow: { flexDirection: "row", alignItems: "center", marginBottom: 6 },
-  brandTile: {
-    width: 26,
-    height: 26,
-    borderRadius: 6,
-    backgroundColor: C.text,
-    color: C.white,
-    fontSize: 13,
-    fontWeight: 600,
-    textAlign: "center",
-    paddingTop: 6,
-    marginRight: 8,
-  },
-  legalName: { fontSize: 16, fontWeight: 600 },
-  eyebrow: { fontSize: 9, color: C.faint, marginTop: 2 },
-  eyebrowRight: { fontSize: 9, color: C.faint, textAlign: "right" },
-  orderNo: { fontFamily: "GeistMono", fontSize: 15, fontWeight: 600, marginTop: 3, textAlign: "right" },
-  badgeRow: { flexDirection: "row", alignItems: "center", justifyContent: "flex-end", marginTop: 5 },
-  badgeDot: { width: 5, height: 5, borderRadius: 2.5, marginRight: 4 },
-  badgeText: { fontSize: 9, fontWeight: 500, color: C.muted },
+    // Letterhead
+    letterhead: { flexDirection: "row", justifyContent: "space-between", alignItems: "flex-start" },
+    brandRow: { flexDirection: "row", alignItems: "center", marginBottom: 6 },
+    brandTile: {
+      width: 26,
+      height: 26,
+      borderRadius: 6,
+      backgroundColor: c.text,
+      color: "#FFFFFF",
+      fontSize: 13,
+      fontWeight: 600,
+      textAlign: "center",
+      paddingTop: 6,
+      marginRight: 8,
+    },
+    legalName: { ...r("legalName") },
+    eyebrow: { ...r("letterheadLine"), marginTop: 2 },
+    eyebrowRight: { ...r("letterheadLine"), textAlign: "right" },
+    orderNo: { ...r("orderNumber"), marginTop: 3, textAlign: "right" },
+    badgeRow: { flexDirection: "row", alignItems: "center", justifyContent: "flex-end", marginTop: 5 },
+    badgeDot: { width: 5, height: 5, borderRadius: 2.5, marginRight: 4 },
+    badgeText: { ...r("statusBadge") },
 
-  // Title
-  title: { marginTop: 22 },
-  titleLead: { fontSize: 11, color: C.muted },
-  artistName: { fontSize: 30, fontWeight: 600, letterSpacing: -0.5, marginTop: 4 },
-  titleSub: { fontSize: 12, color: C.muted, marginTop: 4 },
+    // Title
+    title: { marginTop: 22 },
+    titleLead: { ...r("titleLead") },
+    artistName: { ...r("artistName"), marginTop: 4 },
+    titleSub: { ...r("titleSub"), marginTop: 4 },
 
-  // Parties
-  parties: { flexDirection: "row", marginTop: 22 },
-  party: { flex: 1 },
-  partyGap: { width: 28 },
-  partyLabel: { fontSize: 9, color: C.faint, marginBottom: 5 },
-  partyName: { fontSize: 13.5, fontWeight: 600 },
-  partyLine: { fontSize: 11, color: C.muted, marginTop: 2 },
+    // Parties
+    parties: { flexDirection: "row", marginTop: 22 },
+    party: { flex: 1 },
+    partyGap: { width: 28 },
+    partyLabel: { ...r("partyLabel"), marginBottom: 5 },
+    partyName: { ...r("partyName") },
+    partyLine: { ...r("partyLine"), marginTop: 2 },
 
-  // Facts strip
-  facts: {
-    flexDirection: "row",
-    marginTop: 22,
-    borderWidth: 0.5,
-    borderColor: C.line,
-    borderRadius: 10,
-    overflow: "hidden",
-  },
-  factCell: { flex: 1, padding: 10 },
-  factDivider: { borderLeftWidth: 0.5, borderLeftColor: C.line },
-  factCellFee: { backgroundColor: C.feeCell },
-  factLabel: { fontSize: 8, color: C.faint, marginBottom: 3 },
-  factValue: { fontSize: 12, fontWeight: 500 },
-  factValueMono: { fontFamily: "GeistMono", fontSize: 12, fontWeight: 400 },
-  factSub: { fontSize: 9, color: C.muted, marginTop: 2 },
+    // Facts strip
+    facts: {
+      flexDirection: "row",
+      marginTop: 22,
+      borderWidth: 0.5,
+      borderColor: c.line,
+      borderRadius: 10,
+      overflow: "hidden",
+    },
+    factCell: { flex: 1, padding: 10 },
+    factDivider: { borderLeftWidth: 0.5, borderLeftColor: c.line },
+    factCellFee: { backgroundColor: c.feeCell },
+    factLabel: { ...r("factLabel"), marginBottom: 3 },
+    factValue: { ...r("factValue") },
+    factValueMono: { ...r("factValueMono") },
+    factSub: { ...r("factSub"), marginTop: 2 },
 
-  // Section
-  section: { marginTop: 20 },
-  sectionHeading: { fontSize: 12, fontWeight: 600, marginBottom: 8 },
+    // Section
+    section: { marginTop: 20 },
+    sectionHeading: { ...r("sectionHeading"), marginBottom: 8 },
 
-  // Running order
-  tableHead: {
-    flexDirection: "row",
-    borderBottomWidth: 0.5,
-    borderBottomColor: C.line,
-    paddingBottom: 5,
-  },
-  tableHeadCell: { fontSize: 8, color: C.faint },
-  tableRow: {
-    flexDirection: "row",
-    borderBottomWidth: 0.5,
-    borderBottomColor: C.line,
-    paddingVertical: 6,
-  },
-  colCall: { width: "30%" },
-  colTime: { width: "70%" },
-  cellLabel: { fontSize: 12, fontWeight: 600 },
-  cellTime: { fontFamily: "GeistMono", fontSize: 12 },
-  notes: { fontSize: 11, color: C.muted, marginTop: 8 },
+    // Running order
+    tableHead: { flexDirection: "row", borderBottomWidth: 0.5, borderBottomColor: c.line, paddingBottom: 5 },
+    tableHeadCell: { ...r("tableHeadCell") },
+    tableRow: { flexDirection: "row", borderBottomWidth: 0.5, borderBottomColor: c.line, paddingVertical: 6 },
+    colCall: { width: "30%" },
+    colTime: { width: "70%" },
+    cellLabel: { ...r("tableCellLabel") },
+    cellTime: { ...r("tableCellMono") },
+    notes: { ...r("notes"), marginTop: 8 },
 
-  // Aggregate engagement dates
-  engagementDateRow: {
-    flexDirection: "row",
-    borderBottomWidth: 0.5,
-    borderBottomColor: C.line,
-    paddingVertical: 6,
-  },
-  engagementDateValue: { width: "28%", fontFamily: "GeistMono", fontSize: 10.5 },
-  engagementDatePlace: { flex: 1, fontSize: 10.5 },
-  engagementDateCity: { width: "25%", fontSize: 10.5, color: C.muted },
+    // Aggregate engagement dates
+    engagementDateRow: { flexDirection: "row", borderBottomWidth: 0.5, borderBottomColor: c.line, paddingVertical: 6 },
+    engagementDateValue: { ...r("tableCellMono"), width: "28%", fontSize: 10.5 },
+    engagementDatePlace: { ...r("factValue"), flex: 1, fontSize: 10.5, fontWeight: 400 },
+    engagementDateCity: { ...r("partyLine"), width: "25%", fontSize: 10.5 },
 
-  // Fees
-  feeRow: { flexDirection: "row", justifyContent: "space-between", paddingVertical: 6 },
-  feeLabel: { fontSize: 12 },
-  feeValue: { fontFamily: "GeistMono", fontSize: 12 },
-  totalRow: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    borderTopWidth: 1.5,
-    borderTopColor: C.text,
-    backgroundColor: C.surface2,
-    paddingVertical: 9,
-    paddingHorizontal: 10,
-  },
-  totalLabel: { fontSize: 12, fontWeight: 600, textTransform: "uppercase", letterSpacing: 0.4 },
-  totalValue: { fontFamily: "GeistMono", fontSize: 17, fontWeight: 600 },
+    // Fees
+    feeRow: { flexDirection: "row", justifyContent: "space-between", paddingVertical: 6 },
+    feeLabel: { ...r("feeLabel") },
+    feeValue: { ...r("feeValue") },
+    totalRow: {
+      flexDirection: "row",
+      justifyContent: "space-between",
+      alignItems: "center",
+      borderTopWidth: 1.5,
+      borderTopColor: c.text,
+      backgroundColor: c.surface2,
+      paddingVertical: 9,
+      paddingHorizontal: 10,
+    },
+    totalLabel: { ...r("totalLabel") },
+    totalValue: { ...r("totalValue") },
 
-  // Terms
-  clause: { flexDirection: "row", marginBottom: 7 },
-  clauseNo: { fontFamily: "GeistMono", fontSize: 11, fontWeight: 600, color: C.accent, width: 18 },
-  clauseBody: { flex: 1, fontSize: 10.5, color: C.muted, lineHeight: 1.4 },
-  clauseTitle: { fontWeight: 600, color: C.text },
+    // Terms
+    clause: { flexDirection: "row", marginBottom: 7 },
+    clauseNo: { ...r("clauseNumber"), width: 18 },
+    clauseBody: { ...r("clauseBody"), flex: 1, lineHeight: 1.4 },
+    clauseTitle: { ...r("clauseTitle") },
 
-  // Signatures
-  signatures: { flexDirection: "row", marginTop: 28 },
-  signature: { flex: 1 },
-  signatureGap: { width: 40 },
-  signatureFor: { fontSize: 11, fontWeight: 500, marginBottom: 26 },
-  signatureLine: { borderBottomWidth: 0.5, borderBottomColor: C.text },
-  signatureHint: { fontSize: 9, color: C.faint, marginTop: 5 },
+    // Signatures
+    signatures: { flexDirection: "row", marginTop: 28 },
+    signature: { flex: 1 },
+    signatureGap: { width: 40 },
+    signatureFor: { ...r("signatureFor"), marginBottom: 26 },
+    signatureLine: { borderBottomWidth: 0.5, borderBottomColor: c.text },
+    signatureHint: { ...r("signatureHint"), marginTop: 5 },
 
-  // Applied (countersigned) signature mark
-  sigMarkTyped: { fontFamily: "Geist", fontSize: 22, fontWeight: 600, color: C.text, marginBottom: 2 },
-  sigMarkImage: { height: 44, marginBottom: 2, objectFit: "contain" },
-  // Certificate page
-  certHeading: { fontSize: 16, fontWeight: 600, marginBottom: 4 },
-  certLead: { fontSize: 11, color: C.muted, marginBottom: 18 },
-  certRow: { flexDirection: "row", borderBottomWidth: 0.5, borderBottomColor: C.line, paddingVertical: 7 },
-  certLabel: { width: "34%", fontSize: 10, color: C.faint },
-  certValue: { flex: 1, fontSize: 10.5, color: C.text },
-  certValueMono: { flex: 1, fontFamily: "GeistMono", fontSize: 9.5, color: C.text },
-  certConsent: { marginTop: 16, fontSize: 10, color: C.muted, lineHeight: 1.4 },
+    // Applied (countersigned) signature mark
+    sigMarkTyped: { ...r("signatureMarkTyped"), marginBottom: 2 },
+    sigMarkImage: { height: 44, marginBottom: 2, objectFit: "contain" },
 
-  // Footer
-  footer: {
-    position: "absolute",
-    bottom: 26,
-    left: 44,
-    right: 44,
-    flexDirection: "row",
-    justifyContent: "space-between",
-    borderTopWidth: 0.5,
-    borderTopColor: C.line,
-    paddingTop: 8,
-  },
-  footerText: { fontSize: 8.5, color: C.faint },
-  footerMono: { fontFamily: "GeistMono", fontSize: 8.5, color: C.faint },
+    // Certificate page
+    certHeading: { ...r("certHeading"), marginBottom: 4 },
+    certLead: { ...r("certLead"), marginBottom: 18 },
+    certRow: { flexDirection: "row", borderBottomWidth: 0.5, borderBottomColor: c.line, paddingVertical: 7 },
+    certLabel: { ...r("certLabel"), width: "34%" },
+    certValue: { ...r("certValue"), flex: 1 },
+    certValueMono: { ...r("factValueMono"), flex: 1, fontSize: 9.5 },
+    certConsent: { ...r("certLead"), marginTop: 16, marginBottom: 0, fontSize: 10, lineHeight: 1.4 },
 
-  // Watermark
-  watermark: {
-    position: "absolute",
-    top: 360,
-    left: 90,
-    fontSize: 48,
-    fontWeight: 600,
-    letterSpacing: 6,
-    color: C.text,
-    opacity: 0.08,
-    transform: "rotate(-30deg)",
-  },
-});
+    // Footer
+    footer: {
+      position: "absolute",
+      bottom: 26,
+      left: marginX,
+      right: marginX,
+      flexDirection: "row",
+      justifyContent: "space-between",
+      borderTopWidth: 0.5,
+      borderTopColor: c.line,
+      paddingTop: 8,
+    },
+    footerText: { ...r("footerText") },
+    footerMono: { ...r("footerText"), fontFamily: themeRoleStyle(theme, "factValueMono").fontFamily },
+
+    // Watermark
+    watermark: {
+      ...r("watermark"),
+      position: "absolute",
+      top: 360,
+      left: 90,
+      opacity: 0.08,
+      transform: "rotate(-30deg)",
+    },
+  });
+}
 
 // ── field + date helpers ─────────────────────────────────────────────────
 
@@ -337,6 +324,8 @@ function HireOrderDoc(input: RenderInput): React.ReactElement {
   // Every printed string reads from here: org overrides merged over defaults by
   // the caller, or the built-in defaults when `copy` is absent (legacy callers).
   const copy: HireOrderCopy = input.copy ?? HIRE_ORDER_COPY_DEFAULTS;
+  const theme = input.theme ?? HIRE_ORDER_THEME_DEFAULTS;
+  const s = buildStyles(theme);
 
   const artist = str(data, "artist_name");
   const email = str(data, "recipient_email");
@@ -402,7 +391,7 @@ function HireOrderDoc(input: RenderInput): React.ReactElement {
             <Text style={s.eyebrowRight}>{copy.header_eyebrow}</Text>
             <Text style={s.orderNo}>{orderNo}</Text>
             <View style={s.badgeRow}>
-              <View style={[s.badgeDot, { backgroundColor: status === "preview" ? C.faint : C.accent }]} />
+              <View style={[s.badgeDot, { backgroundColor: status === "preview" ? theme.base.colors.faint : theme.base.colors.accent }]} />
               <Text style={s.badgeText}>
                 {status === "preview" ? copy.badge_preview : status === "countersigned" ? copy.badge_countersigned : copy.badge_issued}
               </Text>

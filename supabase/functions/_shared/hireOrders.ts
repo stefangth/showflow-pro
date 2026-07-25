@@ -10,6 +10,7 @@
 // has no src/ twin — see the comment there.
 
 import type { HireOrderCopy } from "./hire-order-pdf/pdfCopy.ts";
+import type { HireOrderTheme } from "./hire-order-pdf/pdfTheme.ts";
 
 export type FieldSource = "showflow" | "sheet" | "manual" | "default";
 
@@ -391,6 +392,9 @@ export interface RenderInput {
    *  Omitted in legacy call sites/tests -> the renderer uses the built-in
    *  defaults, reproducing the previous hardcoded strings exactly. */
   copy?: HireOrderCopy;
+  /** Resolved theme. Absent means the built-in defaults, so legacy callers and
+   *  the auto-draft trigger keep rendering exactly as before. */
+  theme?: HireOrderTheme;
 }
 
 /** Audit + mark data for a countersigned render. */
