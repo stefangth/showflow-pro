@@ -9,6 +9,7 @@ import { useArtistsLite, useShowDatesLite, useHireOrderAction } from "@/hooks/us
 import type { ArtistLite, ShowDateLite } from "@/data/hireOrders";
 import { resolveFields } from "@/lib/hireOrders/resolveFields";
 import { formatMoney } from "@/lib/hireOrders/money";
+import { computeFeeTotal, type FeeBasis } from "@/lib/hireOrders/feeBasis";
 import type { SessionOverride } from "@/lib/hireOrders/engagementDates";
 import { copyDurationToAll } from "@/lib/hireOrders/durationFill";
 import type { EditableOrderFieldKey, FieldLayers, OrderData } from "@/lib/hireOrders/types";
@@ -74,8 +75,8 @@ function parseDurationValue(value: string): number | null {
 /** Kept in sync with the CURRENCIES list in OrderDefaultsCard.tsx / CURRENCY_SYMBOLS in money.ts. */
 const CURRENCIES = ["EUR", "USD", "CHF"];
 
-interface OrderDefaultsLite { default_fee: number | null; currency: string }
-const DEFAULTS_FALLBACK: OrderDefaultsLite = { default_fee: null, currency: "EUR" };
+interface OrderDefaultsLite { default_fee: number | null; currency: string; default_fee_basis: FeeBasis }
+const DEFAULTS_FALLBACK: OrderDefaultsLite = { default_fee: null, currency: "EUR", default_fee_basis: "per_date" };
 
 interface BatchOutcomeRow { artist_id: string; reason: string }
 interface BatchDraftResult {
@@ -227,6 +228,7 @@ export function NewOrderWizard({ open, onOpenChange, orgId }: Props) {
       seededDefaultsRef.current = true;
       setCurrency(defaultsQuery.data.currency);
       if (defaultsQuery.data.default_fee != null) setFee(String(defaultsQuery.data.default_fee));
+      if (defaultsQuery.data.default_fee_basis) setFeeBasis(defaultsQuery.data.default_fee_basis);
     }
   }, [defaultsQuery.data]);
 
@@ -241,6 +243,7 @@ export function NewOrderWizard({ open, onOpenChange, orgId }: Props) {
   const [manualVenue, setManualVenue] = useState("");
   const [manualCity, setManualCity] = useState("");
   const [fee, setFee] = useState("");
+  const [feeBasis, setFeeBasis] = useState<FeeBasis>("per_date");
   const [currency, setCurrency] = useState("EUR");
   const [durationMin, setDurationMin] = useState("");
   const [manualSessions, setManualSessions] = useState<SessionRow[]>([{ label: "", time: "" }]);
@@ -252,7 +255,7 @@ export function NewOrderWizard({ open, onOpenChange, orgId }: Props) {
   function resetForm() {
     setStep(1); setManualMode(false); setSelectedArtistIds([]); setSelectedShowDateIds([]); setArtistDateIds({});
     setManualArtistName(""); setManualEmail(""); setManualDate(""); setManualVenue(""); setManualCity("");
-    setFee(""); setDurationMin(""); setManualSessions([{ label: "", time: "" }]);
+    setFee(""); setFeeBasis("per_date"); setDurationMin(""); setManualSessions([{ label: "", time: "" }]);
     setDateSchedules({});
     setSubmitting(null); setResult(null);
     seededDefaultsRef.current = false; setCurrency("EUR");
@@ -453,6 +456,30 @@ export function NewOrderWizard({ open, onOpenChange, orgId }: Props) {
       ? formatMoney(reviewData.fee.value as string | number, (reviewData.currency?.value as string) || currency)
       : "Not set";
 
+  // Per-artist date counts drive the fee summary: with a per-date basis each
+  // artist's total is their own count x the unit price, so unequal counts have no
+  // single total to show.
+  const feeAmountNum = fee.trim() !== "" && !Number.isNaN(Number(fee)) ? Number(fee) : null;
+  const artistDateCounts = manualMode
+    ? [1]
+    : selectedArtistIds.map((id) => (artistDateIds[id] ?? []).length).filter((n) => n > 0);
+  const minDateCount = artistDateCounts.length > 0 ? Math.min(...artistDateCounts) : 1;
+  const maxDateCount = artistDateCounts.length > 0 ? Math.max(...artistDateCounts) : 1;
+
+  function feeSummaryText(): string {
+    if (feeAmountNum === null) return "Not set";
+    const unit = formatMoney(feeAmountNum, currency);
+    if (feeBasis === "total") return `${unit} total for all dates`;
+    if (maxDateCount === 1 && minDateCount === 1) return `${unit} per date`;
+    if (minDateCount === maxDateCount) {
+      const total = formatMoney(computeFeeTotal(feeAmountNum, maxDateCount, "per_date"), currency);
+      return `${unit} per date x ${maxDateCount} dates = ${total}`;
+    }
+    const low = formatMoney(computeFeeTotal(feeAmountNum, minDateCount, "per_date"), currency);
+    const high = formatMoney(computeFeeTotal(feeAmountNum, maxDateCount, "per_date"), currency);
+    return `${unit} per date. Totals range from ${low} to ${high} by artist.`;
+  }
+
   function draftBody() {
     if (!manualMode) {
       const dateOverrides = buildDateOverrides();
@@ -464,6 +491,7 @@ export function NewOrderWizard({ open, onOpenChange, orgId }: Props) {
           show_date_ids: artistDateIds[artist_id] ?? [],
         })),
         manual: buildManualDict(),
+        fee_basis: feeBasis,
         // Only sent when the producer edited at least one date's running order.
         ...(Object.keys(dateOverrides).length > 0 ? { date_overrides: dateOverrides } : {}),
       };
@@ -472,6 +500,7 @@ export function NewOrderWizard({ open, onOpenChange, orgId }: Props) {
       action: "draft-manual" as const,
       org_id: orgId,
       manual: buildManualDict(),
+      fee_basis: feeBasis,
     };
   }
 
@@ -770,13 +799,23 @@ export function NewOrderWizard({ open, onOpenChange, orgId }: Props) {
 
             {step === 2 && (
               <div className="space-y-4">
-                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
                   <div className="space-y-1.5">
                     <Label htmlFor="wiz-fee">Engagement fee</Label>
                     <Input
                       id="wiz-fee" type="number" inputMode="decimal" min="0" step="0.01"
                       value={fee} onChange={(e) => setFee(e.target.value)} placeholder="0.00"
                     />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label htmlFor="wiz-fee-basis">Fee basis</Label>
+                    <Select value={feeBasis} onValueChange={(v) => setFeeBasis(v as FeeBasis)}>
+                      <SelectTrigger id="wiz-fee-basis" aria-label="Fee basis"><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="per_date">Per date</SelectItem>
+                        <SelectItem value="total">Total for all dates</SelectItem>
+                      </SelectContent>
+                    </Select>
                   </div>
                   <div className="space-y-1.5">
                     <Label htmlFor="wiz-currency">Currency</Label>
@@ -789,8 +828,8 @@ export function NewOrderWizard({ open, onOpenChange, orgId }: Props) {
                   </div>
                 </div>
                 <div className="rounded-lg border border-accent-200 bg-accent-50 p-3">
-                  <p className="text-xs text-accent-700">
-                    Payable on performance date: {fee.trim() !== "" && !Number.isNaN(Number(fee)) ? formatMoney(Number(fee), currency) : "Not set"}
+                  <p className="text-xs text-accent-700" data-testid="wiz-fee-summary">
+                    {feeSummaryText()}
                   </p>
                 </div>
               </div>

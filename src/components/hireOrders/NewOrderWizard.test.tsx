@@ -126,6 +126,56 @@ async function reachReviewWithFee(fee = "1200") {
   await screen.findByRole("button", { name: /save as draft/i });
 }
 
+// Render the wizard, select artists + common dates (applied to all by default,
+// same as selectCommonDates), then optionally uncheck specific artist/date
+// matrix cells so callers can set up unequal per-artist date counts. Lands on
+// step 2 (Fees and deposit) with the fee field ready. Built from the existing
+// selectArtists/selectCommonDates/clickContinue helpers above, not a
+// reimplementation of them.
+async function openWizardAtStep2({
+  artists,
+  dates,
+  assignments,
+}: {
+  artists: string[];
+  dates: string[];
+  assignments?: Record<string, string[]>;
+}) {
+  renderWizard();
+  await selectArtists(...artists);
+  await selectCommonDates(...dates);
+  if (assignments) {
+    for (const artistName of artists) {
+      const keep = new Set(assignments[artistName] ?? dates);
+      for (const dateLabel of dates) {
+        if (!keep.has(dateLabel)) {
+          fireEvent.click(
+            screen.getByRole("checkbox", { name: new RegExp(`${artistName}.*${dateLabel}`, "i") }),
+          );
+        }
+      }
+    }
+  }
+  clickContinue();
+  await screen.findByLabelText(/engagement fee/i);
+}
+
+// Walk a single linked artist+date through to step 4 and save it as a draft,
+// mirroring the manual step sequence in "walks a linked artist+date through to
+// review…" below. Returns the recorded generate-hire-orders request body.
+async function completeWizard({ fee }: { fee: string }) {
+  renderWizard();
+  await pickArtist("Ann Artist");
+  await pickShowDate("Berlin");
+  clickContinue();
+  fireEvent.change(await screen.findByLabelText(/engagement fee/i), { target: { value: fee } });
+  clickContinue();
+  clickContinue();
+  fireEvent.click(await screen.findByRole("button", { name: /save as draft/i }));
+  await waitFor(() => expect(invokeCalls().length).toBe(1));
+  return invokeCalls()[0];
+}
+
 describe("NewOrderWizard", () => {
   beforeEach(() => {
     navigate.mockClear();
@@ -174,7 +224,7 @@ describe("NewOrderWizard", () => {
     // Step 2: fee/currency (currency defaulted from org settings to USD).
     expect(await screen.findByLabelText(/engagement fee/i)).toBeInTheDocument();
     fireEvent.change(screen.getByLabelText(/engagement fee/i), { target: { value: "1200" } });
-    expect(screen.getByText(/payable on performance date/i)).toHaveTextContent("$1,200.00");
+    expect(screen.getByTestId("wiz-fee-summary")).toHaveTextContent("$1,200.00 per date");
     clickContinue();
 
     // Step 3: the linked date seeds an editable per-date running order.
@@ -618,5 +668,42 @@ describe("NewOrderWizard", () => {
     expect(screen.queryByRole("button", { name: /open order/i })).not.toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: /close and return to hire orders/i }));
     expect(navigate).toHaveBeenCalledWith("/hire-orders");
+  });
+
+  it("shows the per-date total for equal date counts", async () => {
+    await openWizardAtStep2({ artists: ["Ann Artist"], dates: ["Berlin", "Hamburg"] });
+    fireEvent.change(screen.getByLabelText(/engagement fee/i), { target: { value: "500" } });
+    expect(screen.getByTestId("wiz-fee-summary")).toHaveTextContent(
+      "$500.00 per date x 2 dates = $1,000.00",
+    );
+  });
+
+  it("shows a range when artists have different date counts", async () => {
+    await openWizardAtStep2({
+      artists: ["Ann Artist", "Ben Booker"],
+      dates: ["Berlin", "Hamburg"],
+      assignments: { "Ann Artist": ["Berlin"], "Ben Booker": ["Berlin", "Hamburg"] },
+    });
+    fireEvent.change(screen.getByLabelText(/engagement fee/i), { target: { value: "500" } });
+    expect(screen.getByTestId("wiz-fee-summary")).toHaveTextContent(
+      "$500.00 per date. Totals range from $500.00 to $1,000.00 by artist.",
+    );
+  });
+
+  it("shows the flat total when the basis is total", async () => {
+    await openWizardAtStep2({ artists: ["Ann Artist"], dates: ["Berlin"] });
+    fireEvent.change(screen.getByLabelText(/engagement fee/i), { target: { value: "1500" } });
+    fireEvent.click(screen.getByLabelText(/fee basis/i));
+    fireEvent.click(await screen.findByRole("option", { name: /total for all dates/i }));
+    expect(screen.getByTestId("wiz-fee-summary")).toHaveTextContent("$1,500.00 total for all dates");
+  });
+
+  it("sends fee_basis in the draft body", async () => {
+    const body = await completeWizard({ fee: "500" });
+    expect(body).toMatchObject({
+      action: "draft-batch",
+      fee_basis: "per_date",
+      manual: expect.objectContaining({ fee: 500 }),
+    });
   });
 });
