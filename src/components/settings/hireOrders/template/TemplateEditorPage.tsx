@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link } from "react-router-dom";
 import { toast } from "sonner";
@@ -79,17 +79,20 @@ export default function TemplateEditorPage({ readOnly: readOnlyProp }: { readOnl
     enabled: Boolean(orgId),
   });
 
-  // Draft overrides. Seeded once when server data first arrives; a later
-  // unrelated refetch must not clobber in-progress edits.
+  // Draft overrides. Seeded once when server data first arrives (same
+  // seeded-ref pattern as PdfCopyCard); a later unrelated refetch must not
+  // clobber in-progress edits.
   const [copyDraft, setCopyDraft] = useState<Partial<HireOrderCopy>>({});
   const [themeDraft, setThemeDraft] = useState<HireOrderThemeOverride>({});
   const [selected, setSelected] = useState<RoleKey | "document">("document");
   const seeded = useRef(false);
-  if (!seeded.current && copyQuery.data && themeQuery.data) {
-    seeded.current = true;
-    setCopyDraft(copyQuery.data);
-    setThemeDraft(themeQuery.data);
-  }
+  useEffect(() => {
+    if (!seeded.current && copyQuery.data && themeQuery.data) {
+      seeded.current = true;
+      setCopyDraft(copyQuery.data);
+      setThemeDraft(themeQuery.data);
+    }
+  }, [copyQuery.data, themeQuery.data]);
 
   const copy = useMemo(() => resolveHireOrderCopy(copyDraft), [copyDraft]);
   const theme = useMemo(() => resolveHireOrderTheme(themeDraft), [themeDraft]);

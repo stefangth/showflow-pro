@@ -68,4 +68,13 @@ describe("requiredFeatureForPath", () => {
   it("does not match an empty `:param` segment", () => {
     expect(requiredFeatureForPath("/hire-orders/")).toBeUndefined();
   });
+
+  it("gates the pdf template editor route on its own exact key, never the /hire-orders/:id pattern", () => {
+    // /settings/hire-orders/template contains the literal segment "hire-orders",
+    // but it must resolve via its own exact ROUTE_FEATURES entry — never by
+    // accidentally pattern-matching /hire-orders/:id (different segment counts,
+    // 4 vs 3, keep them isolated regardless).
+    expect(ROUTE_FEATURES["/settings/hire-orders/template"]).toBe("hire_orders");
+    expect(requiredFeatureForPath("/settings/hire-orders/template")).toBe("hire_orders");
+  });
 });
