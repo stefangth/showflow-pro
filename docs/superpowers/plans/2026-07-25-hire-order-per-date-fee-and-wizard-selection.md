@@ -877,6 +877,27 @@ Deno.test("draft-batch leaves a total-basis fee unmultiplied and records no per-
   assertEquals(order.data.fee_per_date, undefined);
 });
 
+Deno.test("draft-batch refuses to bill an order with no surviving dates", async () => {
+  // Regression guard for the persistence-boundary check. computeFeeTotal is
+  // deliberately lenient about a bad date count (the wizard needs that for live
+  // display), so the server must not rely on it to catch this. Reaching this
+  // state requires the covered-date early return to be bypassed, which is why
+  // the fixture forces an empty surviving set directly.
+  const { deps, inserted } = makeBatchDeps({ dates: [], forceEmptySurvivingDates: true });
+  const res = await handle(
+    batchRequest({
+      artists: [{ artist_id: ARTIST_A, show_date_ids: [DATE_1] }],
+      manual: { fee: 500 },
+      fee_basis: "per_date",
+    }),
+    deps,
+  );
+  assertEquals(res.status, 200);
+  // No order is written, and the failure is named rather than silent.
+  assertEquals(inserted.hire_orders.length, 0);
+  assertEquals((await res.json()).errors[0].reason, "no_billable_dates");
+});
+
 Deno.test("draft-batch rejects an unknown fee_basis", async () => {
   const { deps } = makeBatchDeps({ dates: ["2026-06-15"] });
   const res = await handle(
@@ -967,6 +988,17 @@ with:
       enteredFeeValue === ""
       ? null
       : Number(enteredFeeValue);
+  // Guard the persistence boundary. computeFeeTotal is deliberately total: it
+  // returns the amount unchanged for a date count that is not a positive
+  // integer, because the wizard also calls it for live display where a zero
+  // count is a normal transient state mid-edit. That leniency is wrong HERE,
+  // where the result is about to be billed: a zero count would silently store
+  // the single-date fee as the whole engagement's total. `dates.length >= 1` is
+  // already guaranteed by the early return above, so this can only fire if a
+  // future refactor removes that guard.
+  if (!Number.isInteger(dates.length) || dates.length < 1) {
+    return { kind: "error", reason: "no_billable_dates" };
+  }
   const feeAmount = enteredFee === null
     ? null
     : computeFeeTotal(enteredFee, dates.length, feeBasis);
