@@ -19,6 +19,12 @@
       "why": "Fee basis type + cents-safe multiplication, used by the frontend wizard and the draft-batch edge action."
     },
     {
+      "mode": "file",
+      "source": "src/lib/hireOrders/pdf/pdfTheme.ts",
+      "target": "supabase/functions/_shared/hire-order-pdf/pdfTheme.ts",
+      "why": "Editable PDF theme registry. The edge renderer builds its StyleSheet from it and freezes the resolved theme into issue_snapshot."
+    },
+    {
       "mode": "block",
       "source": "src/lib/capabilities.ts",
       "target": "supabase/functions/_shared/capabilities.ts",
