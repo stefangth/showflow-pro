@@ -412,6 +412,73 @@ describe("updateHireOrderReview agent override", () => {
   });
 });
 
+describe("updateHireOrderReview derived fee fields", () => {
+  /** A 3-date aggregate billed at 500 per date: fee is the TOTAL, the two
+   *  derived keys explain how it was reached. */
+  const PER_DATE_SNAPSHOT = {
+    artist_name: { value: "Ada", source: "showflow" },
+    fee: { value: 1500, source: "manual" },
+    fee_basis: { value: "per_date", source: "manual" },
+    fee_per_date: { value: 500, source: "manual" },
+    engagement_dates: {
+      value: [
+        { show_date_id: "d1", date: "2026-06-15", venue: "A", city: "Berlin" },
+        { show_date_id: "d2", date: "2026-06-16", venue: "B", city: "Hamburg" },
+        { show_date_id: "d3", date: "2026-06-17", venue: "C", city: "Munich" },
+      ],
+      source: "showflow",
+    },
+  };
+
+  async function review(feeAmount: number | null, currentData: Record<string, unknown> = PER_DATE_SNAPSHOT) {
+    const fake = createFakeSupabase({ hire_orders: { data: null, error: null } });
+    await updateHireOrderReview(
+      fake as never,
+      "ho-1",
+      { feeAmount, termsVariant: "standard" },
+      currentData as never,
+    );
+    const update = fake.calls.find((c) => c.table === "hire_orders" && c.method === "update");
+    return (update!.args[0] as { data: Record<string, unknown> }).data;
+  }
+
+  it("drops fee_basis and fee_per_date when the fee is changed", async () => {
+    // Without this, the order issues a PDF reading "500.00 per date x 3 dates"
+    // above a 1,200.00 total -- false arithmetic on an immutable document.
+    const data = await review(1200);
+    expect("fee_basis" in data).toBe(false);
+    expect("fee_per_date" in data).toBe(false);
+    expect(data.fee).toEqual({ value: 1200, source: "manual" });
+    // Everything else in the snapshot is still preserved untouched.
+    expect(data.artist_name).toEqual({ value: "Ada", source: "showflow" });
+    expect(data.engagement_dates).toEqual(PER_DATE_SNAPSHOT.engagement_dates);
+  });
+
+  it("keeps them when the fee is unchanged (a terms-only or agent-only edit)", async () => {
+    const data = await review(1500);
+    expect(data.fee_basis).toEqual({ value: "per_date", source: "manual" });
+    expect(data.fee_per_date).toEqual({ value: 500, source: "manual" });
+  });
+
+  it("treats the string spelling of the stored fee as unchanged", async () => {
+    const data = await review(1500, { ...PER_DATE_SNAPSHOT, fee: { value: "1500.00", source: "sheet" } });
+    expect(data.fee_basis).toEqual({ value: "per_date", source: "manual" });
+  });
+
+  it("drops them when the fee is cleared entirely", async () => {
+    const data = await review(null);
+    expect("fee_basis" in data).toBe(false);
+    expect("fee_per_date" in data).toBe(false);
+    expect(data.fee).toEqual({ value: null, source: "manual" });
+  });
+
+  it("leaves a legacy snapshot with no derived fields alone", async () => {
+    const data = await review(1200, { fee: { value: 1500, source: "manual" } });
+    expect("fee_basis" in data).toBe(false);
+    expect(data.fee).toEqual({ value: 1200, source: "manual" });
+  });
+});
+
 describe("fetchShowflowLayerForOrder", () => {
   it("returns {} without querying when both ids are null", async () => {
     const fake = createFakeSupabase({});

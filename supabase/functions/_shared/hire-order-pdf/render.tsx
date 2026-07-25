@@ -26,6 +26,7 @@ import {
   type OrderData,
   type RenderInput,
 } from "../hireOrders.ts";
+import { feeBreakdownReconciles } from "../feeBasis.ts";
 import { GEIST_MEDIUM_B64, GEIST_MONO_REGULAR_B64, GEIST_REGULAR_B64, GEIST_SEMIBOLD_B64 } from "./fonts.ts";
 import { applyTokens, HIRE_ORDER_COPY_DEFAULTS, type HireOrderCopy } from "./pdfCopy.ts";
 
@@ -357,9 +358,15 @@ function HireOrderDoc(input: RenderInput): React.ReactElement {
   // Aggregate orders carry engagement_dates; a single-date order has none, so
   // fall back to 1 rather than 0 (which would print "x 0 dates").
   const feeDateCount = engagementDates.length || 1;
+  // Last mile before an immutable document: print the breakdown ONLY when it
+  // reconciles with the total right above it, in integer cents. `fee_basis` /
+  // `fee_per_date` are derived at draft time, and any writer that changes `fee`
+  // without clearing them leaves a snapshot whose breakdown contradicts its own
+  // total ("500.00 per date x 3 dates" over a 1,200.00 total). This renderer
+  // formats immutable snapshots forever, for every writer that will ever exist,
+  // so the guard lives here and not only in the writers.
   const feeBreakdown =
-    feeBasis === "per_date" && feePerDateValue !== undefined &&
-      feePerDateValue !== null && feePerDateValue !== ""
+    feeBasis === "per_date" && feeBreakdownReconciles(feePerDateValue, fee, feeDateCount)
       ? applyTokens(
         feeDateCount === 1 ? copy.fees_per_date_single : copy.fees_per_date,
         {

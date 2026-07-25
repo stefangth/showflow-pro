@@ -69,6 +69,19 @@ export const ORDER_FIELD_KEYS: EditableOrderFieldKey[] = [
   "notes",
 ];
 
+/**
+ * A resolved order snapshot.
+ *
+ * INVARIANT: `fee_basis` and `fee_per_date` are valid only while
+ * `fee_per_date x |engagement_dates| === fee` (compared in integer cents; a
+ * snapshot with no `engagement_dates` counts as one date). They are derived
+ * server-side from the producer's fee entry and describe how THIS total was
+ * reached, so any writer that changes `fee` must clear them or recompute them
+ * in the same write. A stale pair puts a breakdown line on the PDF that
+ * contradicts the total printed beneath it, and issued orders are immutable.
+ * `feeBreakdownReconciles` (./feeBasis.ts) is the shared predicate; the PDF
+ * renderer applies it as a last-mile guard.
+ */
 export type OrderData =
   & Partial<Record<OrderFieldKey, FieldValue>>
   & { engagement_dates?: FieldValue<EngagementDate[]> };
@@ -207,7 +220,13 @@ export function formatMoney(amount: string | number, currency: string): string {
 // ── fee basis ────────────────────────────────────────────────────────────
 // Re-exported from the generated mirror of src/lib/hireOrders/feeBasis.ts, so
 // callers keep importing everything hire-order from this one module.
-export { computeFeeTotal, type FeeBasis } from "./feeBasis.ts";
+export {
+  computeFeeTotal,
+  feeBreakdownReconciles,
+  feeCents,
+  type FeeBasis,
+  isFeeBasis,
+} from "./feeBasis.ts";
 
 // ── validate ─────────────────────────────────────────────────────────────
 
