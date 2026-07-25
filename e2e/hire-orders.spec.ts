@@ -436,7 +436,10 @@ test.describe("Hire orders: PDF template editor", () => {
     // navViaSidebar's own comment describes) - this still forces a genuine
     // remount of TemplateEditorPage, so the values shown below can only have
     // come from the org's persisted `hire_order_theme` setting.
-    await page.getByRole("link", { name: "Settings" }).click();
+    // Scoped to main: the sidebar also has a "Settings" link, so an unscoped
+    // getByRole is a strict-mode violation. The editor's own back-link is the
+    // one this step means, and clicking it exercises the real return path.
+    await page.getByRole("main").getByRole("link", { name: "Settings" }).click();
     await expect(page).toHaveURL(/\/settings$/);
     await page.getByRole("tab", { name: /hire orders/i }).click();
     await page.getByRole("link", { name: "Open template editor" }).click();
