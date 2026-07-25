@@ -1423,9 +1423,14 @@ git commit -m "feat(hire-orders): public font bucket for pdf theme families"
 ## Task 6: Selection highlight
 
 **Files:**
-- Modify: `supabase/functions/_shared/hire-order-pdf/render.tsx` and its browser mirror
-- Modify: `supabase/functions/_shared/hire-order-pdf/docTypes.ts` and its browser mirror
-- Modify: `supabase/functions/_shared/hire-order-pdf/render.test.ts`
+- Modify: `src/lib/hireOrders/pdf/render.tsx` (**mirror source**; the edge copy is regenerated)
+- Modify: `src/lib/hireOrders/pdf/docTypes.ts` (**mirror source**)
+- Modify: `supabase/functions/_shared/hire-order-pdf/render.test.ts` (edge-only, not mirrored)
+- Run: `npm run sync:mirrors` after editing either source
+
+NOTE: Task 4 flipped the mirror direction. `render.tsx`, `docTypes.ts`, `pdfCopy.ts`, `pdfTheme.ts`
+and `money.ts` now live under `src/` as SOURCES; their `supabase/functions/` twins are GENERATED
+and must never be hand-edited. `render.test.ts` and the two `pdfDeps.ts` shims are NOT mirrored.
 
 **Interfaces:**
 - Produces: `RenderInput.highlightRole?: RoleKey`. Task 8 sets it from the editor's selection.
@@ -1466,7 +1471,7 @@ Expected: FAIL, `highlightRole` is not a property of `RenderInput`.
 
 - [ ] **Step 3: Add the field**
 
-In `docTypes.ts` (both mirrors), add to `RenderInput`:
+In `src/lib/hireOrders/pdf/docTypes.ts` (the mirror SOURCE; regenerate afterwards), add to `RenderInput`:
 
 ```ts
   /** Preview only. Draws an accent outline around every element with this role
