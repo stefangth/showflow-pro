@@ -39,20 +39,29 @@ function nonFontResponse(): Response {
   return new Response("<!doctype html><html><body>not a font</body></html>", { status: 200 });
 }
 
+interface RecordedCall {
+  url: string;
+  init?: RequestInit;
+}
+
 interface FakeFetch {
   fetchFn: typeof fetch;
-  calls: string[];
+  calls: RecordedCall[];
 }
 
 /** Dispatches on the URL's path suffix (the part after `.../hire-order-fonts/`)
  *  so callers can key handlers by the FontFamilyDef `path` values directly,
- *  same pattern as documenso.test.ts's fakeFetch. A path with no handler
- *  throws, so an unexpected fetch fails loudly rather than hanging. */
+ *  same pattern as documenso.test.ts's fakeFetch. Also records `init` (not
+ *  just the URL), same as documenso.test.ts's fakeFetch, so a test can
+ *  inspect what registerFonts actually passed to `fetch` - e.g. that the C3
+ *  timeout's AbortSignal really reached the call, not just that the source
+ *  reads that way. A path with no handler throws, so an unexpected fetch
+ *  fails loudly rather than hanging. */
 function fakeFetch(handlers: Record<string, () => Response>): FakeFetch {
-  const calls: string[] = [];
-  const fetchFn = ((url: string | URL | Request) => {
+  const calls: RecordedCall[] = [];
+  const fetchFn = ((url: string | URL | Request, init?: RequestInit) => {
     const u = String(url);
-    calls.push(u);
+    calls.push({ url: u, init });
     for (const [suffix, handler] of Object.entries(handlers)) {
       if (u.endsWith(suffix)) return Promise.resolve(handler());
     }
@@ -64,9 +73,9 @@ function fakeFetch(handlers: Record<string, () => Response>): FakeFetch {
 /** A fetch that must never be called at all - used to prove a code path
  *  short-circuits before reaching the network (the C2 embedded-family fix). */
 function neverCalledFetch(): FakeFetch {
-  const calls: string[] = [];
-  const fetchFn = (() => {
-    calls.push("unexpected call");
+  const calls: RecordedCall[] = [];
+  const fetchFn = ((url: string | URL | Request, init?: RequestInit) => {
+    calls.push({ url: String(url), init });
     throw new Error("fetch should not have been called");
   }) as typeof fetch;
   return { fetchFn, calls };
@@ -96,6 +105,17 @@ Deno.test("a family whose fetch fails does not get registered, and a later call 
   });
   const afterRetry = await registerFonts([inter], succeeding.fetchFn);
   assertEquals(afterRetry.has("inter"), true, "a retried family that now fully succeeds must become available");
+  // `available.has("inter")` alone has a blind spot: imagine a regression
+  // that hoists `registered.add(def.family)` out of the success branch so a
+  // FAILED family lands in the cache too. Under that bug, THIS call's
+  // `registered.has("Inter")` would already be (wrongly) true from the first
+  // call's failure, so the loop would hit its early-return branch
+  // (`available.add(def.key); continue;`) without ever calling
+  // `loadFontDataUrl` - `available.has("inter")` would still read `true`,
+  // for the wrong reason, and `succeeding.calls.length` would be 0, not 3.
+  // Asserting the call count is what actually proves this call re-fetched
+  // rather than served a cached (and, under that bug, incorrect) answer.
+  assertEquals(succeeding.calls.length, 3, "the retry must actually re-fetch all three weights, not read from a cache");
 
   // Third call: a real success IS sticky - once genuinely registered, a
   // later call must not re-fetch (Font.register is append-only and
@@ -210,4 +230,27 @@ Deno.test("registerFonts always marks geist and geist-mono available with zero f
   assert(available.has("geist"));
   assert(available.has("geist-mono"));
   assertEquals(mustNotBeCalled.calls.length, 0);
+});
+
+Deno.test("C3: every font fetch is bounded by an AbortSignal timeout", async () => {
+  // Correct by inspection of pdfDeps.ts is not the same as proven: this
+  // asserts the timeout signal actually reaches the call fetchImpl receives,
+  // not just that FONT_FETCH_TIMEOUT_MS exists somewhere in the source.
+  // Placed last in the file (rather than reusing an already-exercised
+  // family) and lets `plex-mono` register for real, so it carries no
+  // assumption about, and leaves no residue for, any other test's fetch
+  // outcome for a given family.
+  const plexMono = realDef("plex-mono");
+  const { fetchFn, calls } = fakeFetch({
+    "IBMPlexMono-Regular.ttf": fontResponse,
+    "IBMPlexMono-Medium.ttf": fontResponse,
+    "IBMPlexMono-SemiBold.ttf": fontResponse,
+  });
+
+  await registerFonts([plexMono], fetchFn);
+
+  assertEquals(calls.length, 3);
+  for (const call of calls) {
+    assert(call.init?.signal instanceof AbortSignal, `expected an AbortSignal on the request to ${call.url}`);
+  }
 });

@@ -153,6 +153,24 @@ entries.
    ```
    Expected: `HTTP/2 200` and `content-type: font/ttf` (or `application/octet-stream`).
 
+### If an upload fails
+
+`scripts/upload-hire-order-fonts.ts` prints one line per object and exits non-zero if anything
+went wrong, so a failed run is never silent:
+
+- `MISSING <path> (expected at <local-dir>/<path>)` - the local file isn't where `--dir` says it
+  should be. Fix the path or re-download the file; nothing was uploaded for that entry.
+- `NOT A TTF <path> (<n> bytes, failed the magic-byte check)` - the local file exists but isn't
+  real TrueType data (see "TTF only, no exceptions" above). Re-download from the source in the
+  licence table; do not rename a WOFF/WOFF2 to `.ttf` to force past this check.
+- `FAILED <path> (HTTP <status>: <body>)` - the upload request itself failed (bad/expired service
+  role key, wrong `SUPABASE_URL`, network issue, or a Storage-side error). Re-run the script after
+  fixing the cause; it's safe to re-run (`x-upsert: true` overwrites rather than 409ing on objects
+  that already uploaded successfully in a prior partial run).
+- The script exits 1 if any object hit any of the three cases above, 0 only when every required
+  object uploaded (or, under `--dry-run`, verified locally) cleanly. Check the exit code in
+  scripted/CI usage rather than only skimming the console output.
+
 ## Failure behaviour (already covered by tests, informational)
 
 `registerFonts` (both `pdfDeps.ts` shims) treats a family's weight files as all-or-nothing: if any
@@ -170,15 +188,36 @@ automated coverage of every branch above (fake-fetch injected, no real network).
 
 - [x] Bucket created, public-read policy applied (migration
       `20260725083229_hire_order_fonts_storage.sql`, applied to prod).
-- [x] All 18 required TTF files downloaded from their official sources above, verified as real
-      TrueType data (`file` check), and packaged for upload (delivered separately - see the task
-      handoff).
-- [ ] **Files are NOT yet uploaded to the bucket.** No Storage write credential (service role key)
-      was available in the environment that did this work. **A human with the service role key
-      must run `scripts/upload-hire-order-fonts.ts` (or use the dashboard) against the prepared
-      files before any non-default theme actually renders with its intended typeface** - until
-      then every non-default family degrades to a standard font, which is safe (never broken
-      output) but not the intended result.
+- [x] All 18 required TTF files were downloaded from their official sources (the licence table
+      above) and verified as real TrueType data (`file` check) during Task 5.
+- [ ] **Files are NOT yet uploaded to the bucket, and the verified copies are NOT in this repo or
+      worktree.** No Storage write credential (service role key) was available in the environment
+      that did this work, and the downloaded TTFs themselves were never committed (this bucket's
+      whole point is that fonts are Storage objects, not repo assets - see "Why this isn't
+      checked into git" below).
+      **A human with the service role key must (re-)acquire the 18 files and run
+      `scripts/upload-hire-order-fonts.ts` (or use the dashboard) before any non-default theme
+      actually renders with its intended typeface** - until then every non-default family degrades
+      to a standard font, which is safe (never broken output) but not the intended result.
 - [x] Degradation logic (all-or-nothing registration, non-sticky retry, content sniffer, standard-
       font substitution) is fully covered by `pdfDeps.test.ts` against a fake fetch - this does not
       depend on the bucket being populated.
+
+### Why this isn't checked into git, and how to get the files
+
+Font binaries belong in the Storage bucket, not the app repo (this is exactly the "no client
+writes, operator-uploaded" model the bucket's RLS policy encodes) - so Task 5 never intended to
+commit them, and the copies verified during that task were session-local, not persisted anywhere
+in this repository or its history. There are two ways to get the 18 files onto disk before
+running the upload script:
+
+1. **The Task 5 session sent a ready-to-upload zip as a chat attachment** (18 files, pre-arranged
+   in the `<family-key>/<filename>.ttf` layout this runbook documents, already `file`-verified).
+   If that attachment is still available to you, unzip it and point `--dir` at it - no
+   re-downloading needed.
+2. **If it is not available, re-derive the same set from scratch** using the Licences table above:
+   every family pins an exact release, package version, or commit, so the set is fully
+   reproducible without the original attachment. Re-run steps 2-3 of "How to add (or replace) a
+   family" below for each of the seven families (Geist/Geist Mono can also be re-derived by
+   base64-decoding the constants in `supabase/functions/_shared/hire-order-pdf/fonts.ts`, which
+   *is* committed, rather than re-fetched from Vercel).
