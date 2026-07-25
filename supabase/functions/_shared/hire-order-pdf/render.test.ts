@@ -593,6 +593,29 @@ Deno.test("fees section renders the plain engagement-fee label unchanged for a l
   assertEquals(text.includes("per date"), false);
 });
 
+/**
+ * pdfkit/fontkit stamp three things into every render from wall-clock time or
+ * randomness, never from anything this renderer controls: a random 6-letter
+ * subset tag per embedded font subset (e.g. "NCGJHG+Geist-SemiBold", a fresh
+ * tag on every call), the `/CreationDate` (a real `new Date()`, NOT
+ * `generatedAtIso` — that only feeds the printed footer text), and the
+ * trailer `/ID` (a hash seeded by those). Confirmed empirically: rendering
+ * the exact same `RenderInput` twice, 5 times over, differs in exactly these
+ * bytes every time and nowhere else. A raw `assertEquals` on the two
+ * `Uint8Array`s would therefore fail on every run regardless of whether
+ * `buildStyles` is correct, which is a worse instrument than the length
+ * check it would replace. Blanking exactly these three patterns first is
+ * what makes a true content-equality check on everything the theme DOES
+ * control (every font size, colour, weight, letter-spacing, margin) both
+ * meaningful and stable.
+ */
+function normalizeVolatilePdfBytes(bytes: Uint8Array): string {
+  return new TextDecoder("latin1").decode(bytes)
+    .replace(/[A-Z]{6}\+/g, "SUBSET+")
+    .replace(/\(D:\d{14}Z\)/g, "(D:NORMALIZED)")
+    .replace(/<[0-9a-f]{32}>/g, "<NORMALIZED>");
+}
+
 Deno.test("default theme renders byte-identically to no theme at all", async () => {
   const withoutTheme = await renderHireOrderPdf({ ...BASE, generatedAtIso: "2026-08-01T10:00:00.000Z" });
   const withTheme = await renderHireOrderPdf({
@@ -600,7 +623,10 @@ Deno.test("default theme renders byte-identically to no theme at all", async () 
     generatedAtIso: "2026-08-01T10:00:00.000Z",
     theme: resolveHireOrderTheme(),
   });
-  assertEquals(withTheme.length, withoutTheme.length);
+  // Full content equality, not a length check: two transcription errors with
+  // equal net encoded length would both slip through a scalar comparison.
+  // See normalizeVolatilePdfBytes for why the raw bytes aren't compared directly.
+  assertEquals(normalizeVolatilePdfBytes(withTheme), normalizeVolatilePdfBytes(withoutTheme));
 });
 
 Deno.test("a theme override changes the rendered document", async () => {
@@ -632,4 +658,17 @@ Deno.test("buildStyles applies base scale and page margins", () => {
   assertEquals(s.page.paddingHorizontal, 60);
   assertEquals(s.footer.left, 60);
   assertEquals(s.footer.right, 60);
+});
+
+Deno.test("overriding one role's family does not change the page's inherited default font", () => {
+  // Regression: the page's fontFamily used to be read back out of
+  // themeRoleStyle(theme, "titleLead") rather than resolved from
+  // theme.base.fontFamily directly. That was byte-identical only by
+  // coincidence (no default role sets an explicit `family`) and would have
+  // silently dragged the whole document onto titleLead's font the moment a
+  // per-role override existed, as it does here.
+  const theme = resolveHireOrderTheme({ roles: { titleLead: { family: "inter" } } });
+  const s = buildStyles(theme);
+  assertEquals(s.titleLead.fontFamily, "Inter");
+  assertEquals(s.page.fontFamily, "Geist");
 });

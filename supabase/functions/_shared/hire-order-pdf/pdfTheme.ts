@@ -406,14 +406,24 @@ export interface RoleTextStyle {
   textTransform?: "none" | "uppercase";
 }
 
+/** Map a font-family key to its registered react-pdf family name. Exported so
+ *  a caller can resolve `theme.base.fontFamily` (the document's inherited
+ *  default) directly, without going through any particular role — a role's
+ *  resolved family is that role's own override-or-fallback, and must not be
+ *  read back out as "the" document default (see the renderer's `bodyFamily`,
+ *  which uses this rather than themeRoleStyle(theme, someRole).fontFamily). */
+export function reactPdfFamilyName(key: FontFamilyKey): string {
+  const def = FONT_FAMILIES.find((f) => f.key === key) ?? FONT_FAMILIES[0];
+  return def.family;
+}
+
 /** react-pdf text style for one role: base scale applied, colour key resolved,
  *  family key resolved to its react-pdf family name. */
 export function themeRoleStyle(theme: HireOrderTheme, role: RoleKey): RoleTextStyle {
   const style = theme.roles[role];
   const familyKey = style.family ??
     (MONO_ROLE_KEYS.has(role) ? theme.base.monoFamily : theme.base.fontFamily);
-  const def = FONT_FAMILIES.find((f) => f.key === familyKey) ?? FONT_FAMILIES[0];
-  const out: RoleTextStyle = { fontFamily: def.family };
+  const out: RoleTextStyle = { fontFamily: reactPdfFamilyName(familyKey) };
   if (style.size !== undefined) {
     // Round to 2dp: react-pdf accepts fractional sizes, but unrounded float
     // products would make snapshot comparisons noisy.

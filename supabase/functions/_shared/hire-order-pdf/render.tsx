@@ -32,6 +32,7 @@ import { applyTokens, HIRE_ORDER_COPY_DEFAULTS, type HireOrderCopy } from "./pdf
 import {
   HIRE_ORDER_THEME_DEFAULTS,
   type HireOrderTheme,
+  reactPdfFamilyName,
   type RoleKey,
   themeRoleStyle,
 } from "./pdfTheme.ts";
@@ -77,7 +78,12 @@ export function buildStyles(theme: HireOrderTheme) {
   const c = theme.base.colors;
   const r = (role: RoleKey) => themeRoleStyle(theme, role);
   const { marginX, marginTop, marginBottom } = theme.base.page;
-  const bodyFamily = themeRoleStyle(theme, "titleLead").fontFamily;
+  // Resolved directly from theme.base.fontFamily, NOT via any role's
+  // themeRoleStyle: the page's inherited default must stay independent of
+  // whatever family a single role (e.g. titleLead) happens to resolve to,
+  // so overriding one role's font never silently drags the whole document
+  // along with it (see reactPdfFamilyName's doc comment in pdfTheme.ts).
+  const bodyFamily = reactPdfFamilyName(theme.base.fontFamily);
 
   return StyleSheet.create({
     page: {
