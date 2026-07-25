@@ -43,6 +43,7 @@ import {
 import {
   defaultTemplateId,
   type EngagementDate,
+  type FeeBasis,
   type FieldLayers,
   formatMoney,
   formatOrderNo,
@@ -71,6 +72,7 @@ interface Numbering {
 interface OrderDefaults {
   default_fee: number | null;
   currency: string;
+  default_fee_basis: FeeBasis;
 }
 interface Countersign {
   // 'documenso' is retained for the dormant Documenso path (see issueOne + _shared/documenso.ts).
@@ -108,7 +110,31 @@ const NUMBERING_DEFAULT: Numbering = {
   prefix: "HO",
   pattern: "{prefix}-{yyyy}-{mmdd}-{seq}",
 };
-const DEFAULTS_DEFAULT: OrderDefaults = { default_fee: null, currency: "EUR" };
+const DEFAULTS_DEFAULT: OrderDefaults = {
+  default_fee: null,
+  currency: "EUR",
+  default_fee_basis: "per_date",
+};
+
+/**
+ * Resolve hire_order_defaults, coercing a legacy stored value saved before
+ * default_fee_basis existed. resolveOrgSetting (../_shared/settings.ts) replaces
+ * the fallback wholesale on a match rather than merging field-by-field, so an
+ * org's old {default_fee, currency} row would otherwise resolve with
+ * default_fee_basis left undefined despite the FeeBasis type promising a value.
+ */
+async function resolveOrderDefaults(
+  admin: Deps["admin"],
+  org: string,
+): Promise<OrderDefaults> {
+  const raw = await resolveOrgSetting<OrderDefaults>(
+    admin,
+    org,
+    "hire_order_defaults",
+    DEFAULTS_DEFAULT,
+  );
+  return { ...raw, default_fee_basis: raw.default_fee_basis ?? "per_date" };
+}
 const LETTERHEAD_DEFAULT: HireOrderLetterhead = {
   legal_name: "",
   address_lines: [],
@@ -422,12 +448,7 @@ async function draftOrders(
 
   // Settings for the snapshot + numbering + the org's default terms template.
   const [defaults, numbering, rawTerms] = await Promise.all([
-    resolveOrgSetting<OrderDefaults>(
-      admin,
-      org,
-      "hire_order_defaults",
-      DEFAULTS_DEFAULT,
-    ),
+    resolveOrderDefaults(admin, org),
     resolveOrgSetting<Numbering>(
       admin,
       org,
@@ -701,12 +722,7 @@ async function draftManual(
   }
 
   const [defaults, numbering, rawTerms] = await Promise.all([
-    resolveOrgSetting<OrderDefaults>(
-      admin,
-      org,
-      "hire_order_defaults",
-      DEFAULTS_DEFAULT,
-    ),
+    resolveOrderDefaults(admin, org),
     resolveOrgSetting<Numbering>(
       admin,
       org,
@@ -1032,12 +1048,7 @@ async function draftBatch(
       )
       .eq("org_id", org)
       .in("id", showDateIds),
-    resolveOrgSetting<OrderDefaults>(
-      admin,
-      org,
-      "hire_order_defaults",
-      DEFAULTS_DEFAULT,
-    ),
+    resolveOrderDefaults(admin, org),
     resolveOrgSetting<Numbering>(
       admin,
       org,
@@ -1471,12 +1482,7 @@ async function issueOrders(
       LETTERHEAD_DEFAULT,
     ),
     resolveOrgSetting<unknown>(admin, org, "hire_order_terms", TERMS_DEFAULT),
-    resolveOrgSetting<OrderDefaults>(
-      admin,
-      org,
-      "hire_order_defaults",
-      DEFAULTS_DEFAULT,
-    ),
+    resolveOrderDefaults(admin, org),
     resolveOrgSetting<Countersign>(
       admin,
       org,
@@ -2023,12 +2029,7 @@ async function previewOrder(deps: Deps, body: PreviewBody): Promise<Response> {
       LETTERHEAD_DEFAULT,
     ),
     resolveOrgSetting<unknown>(admin, org, "hire_order_terms", TERMS_DEFAULT),
-    resolveOrgSetting<OrderDefaults>(
-      admin,
-      org,
-      "hire_order_defaults",
-      DEFAULTS_DEFAULT,
-    ),
+    resolveOrderDefaults(admin, org),
     resolveOrgSetting<Partial<HireOrderCopy>>(
       admin,
       org,
@@ -2323,12 +2324,7 @@ async function signOrder(
       LETTERHEAD_DEFAULT,
     ),
     resolveOrgSetting<unknown>(admin, org, "hire_order_terms", TERMS_DEFAULT),
-    resolveOrgSetting<OrderDefaults>(
-      admin,
-      org,
-      "hire_order_defaults",
-      DEFAULTS_DEFAULT,
-    ),
+    resolveOrderDefaults(admin, org),
   ]);
   const snapshot = o.issue_snapshot;
   let renderLetterhead: HireOrderLetterhead;
