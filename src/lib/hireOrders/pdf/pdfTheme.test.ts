@@ -1,9 +1,11 @@
 import { describe, expect, it } from "vitest";
 import {
   familiesInUse,
+  FONT_FAMILIES,
   HIRE_ORDER_THEME_DEFAULTS,
   MONO_ROLE_KEYS,
   resolveHireOrderTheme,
+  safeReactPdfFamilyName,
   THEME_ROLE_KEYS,
   themeRoleStyle,
 } from "./pdfTheme";
@@ -164,5 +166,55 @@ describe("familiesInUse", () => {
   it("a per-role family override is included", () => {
     const theme = resolveHireOrderTheme({ roles: { totalValue: { family: "source-serif" } } });
     expect(familiesInUse(theme).map((f) => f.key)).toContain("source-serif");
+  });
+});
+
+// safeReactPdfFamilyName's degradation logic is exercised end-to-end (through
+// a real registerFonts failure) by supabase/functions/_shared/hire-order-pdf/
+// pdfDeps.test.ts on the edge runtime; these are the pure-function unit cases
+// for the same code (pdfTheme.ts is dual-homed and byte-identical there).
+describe("safeReactPdfFamilyName", () => {
+  it("resolves a family that IS available to its real react-pdf family name", () => {
+    expect(safeReactPdfFamilyName("inter", new Set(["inter"]))).toBe("Inter");
+  });
+
+  it("falls back to Helvetica for an unavailable sans family", () => {
+    expect(safeReactPdfFamilyName("plex-sans", new Set())).toBe("Helvetica");
+  });
+
+  it("falls back to Courier for an unavailable mono family", () => {
+    expect(safeReactPdfFamilyName("plex-mono", new Set())).toBe("Courier");
+  });
+
+  it("falls back to Times-Roman, not Helvetica, for an unavailable serif family", () => {
+    expect(safeReactPdfFamilyName("source-serif", new Set())).toBe("Times-Roman");
+    expect(safeReactPdfFamilyName("libre-baskerville", new Set())).toBe("Times-Roman");
+  });
+
+  it("defaults `available` to every registered key, so an omitted argument resolves normally", () => {
+    expect(safeReactPdfFamilyName("plex-mono")).toBe("PlexMono");
+  });
+});
+
+describe("FONT_FAMILIES registry", () => {
+  it("every family declares at least one weight file and a unique react-pdf family name", () => {
+    const names = FONT_FAMILIES.map((f) => f.family);
+    expect(new Set(names).size).toBe(names.length);
+    for (const def of FONT_FAMILIES) {
+      expect(def.files.length).toBeGreaterThan(0);
+    }
+  });
+
+  it("libre-baskerville has three distinct weight files (not a duplicated Bold standing in for 500/600)", () => {
+    const def = FONT_FAMILIES.find((f) => f.key === "libre-baskerville")!;
+    const paths = def.files.map((f) => f.path);
+    expect(new Set(paths).size).toBe(3);
+  });
+
+  it("source-serif's weight 500 reuses the Regular file, because Adobe's static release has no discrete Medium cut", () => {
+    const def = FONT_FAMILIES.find((f) => f.key === "source-serif")!;
+    const byWeight = Object.fromEntries(def.files.map((f) => [f.weight, f.path]));
+    expect(byWeight[500]).toBe(byWeight[400]);
+    expect(byWeight[600]).not.toBe(byWeight[400]);
   });
 });

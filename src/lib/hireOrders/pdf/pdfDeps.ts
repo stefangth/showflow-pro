@@ -31,6 +31,13 @@ export async function renderToBuffer(document: ReactElement): Promise<Uint8Array
 const FONT_BUCKET_URL =
   `${import.meta.env.VITE_SUPABASE_URL ?? ""}/storage/v1/object/public/hire-order-fonts`;
 
+// A hanging Storage endpoint must not stall every themed preview render for
+// the rest of the page session: non-sticky retry (see `registered` below)
+// means a slow/hung response is retried on every call, so an unbounded fetch
+// would compound rather than just cost one render. Matches the edge shim's
+// FONT_FETCH_TIMEOUT_MS.
+const FONT_FETCH_TIMEOUT_MS = 8000;
+
 // Names react-pdf has a REAL, working registration for. Added only once a
 // family's fetch has genuinely, fully succeeded. Never removed -
 // `Font.register` is append-only and first-match-wins internally (confirmed
@@ -69,22 +76,35 @@ function looksLikeFont(bytes: Uint8Array): boolean {
 
 /**
  * Fetch one font file and turn it into a self-contained `data:` URL, or
- * `null` on any failure (network error, non-2xx, wrong content, provisioning
- * not done yet). A data URL never triggers a further fetch inside react-pdf's
- * OWN lazy font loader (`FontSource._load`, which runs during PDF layout,
- * not during `Font.register`) - registering a bare Storage URL instead would
- * let a bad response surface as an unhandled "Unknown font format"
+ * `null` on any failure (network error, non-2xx, wrong content, timeout,
+ * provisioning not done yet). Bounded by `FONT_FETCH_TIMEOUT_MS` via
+ * `AbortSignal.timeout` - failure here is non-sticky (see `registered`
+ * below), so a hanging endpoint with no bound would stall every themed
+ * preview render, not just the first. A data URL never triggers a further
+ * fetch inside react-pdf's OWN lazy font loader (`FontSource._load`, which
+ * runs during PDF layout, not during `Font.register`) - registering a bare
+ * Storage URL instead would let a bad response surface as an unhandled
+ * "Unknown font format"
  * render-time throw, past the point this function's own error handling can
  * catch it. Every failure is logged here (not just aggregated by the caller)
  * so it's visible in the console - a preview degrading to the wrong typeface
  * with no trace would look like this renderer is simply broken.
+ *
+ * `fetchImpl` is injected (defaulted to the global `fetch` by the caller) so
+ * this mirrors the edge shim's shape, even though today's tests exercise the
+ * failure paths on the edge runtime only (see pdfDeps.test.ts).
  */
-async function loadFontDataUrl(path: string, family: string): Promise<string | null> {
+async function loadFontDataUrl(path: string, family: string, fetchImpl: typeof fetch): Promise<string | null> {
   const url = `${FONT_BUCKET_URL}/${path}`;
   try {
-    const response = await fetch(url);
+    const response = await fetchImpl(url, { signal: AbortSignal.timeout(FONT_FETCH_TIMEOUT_MS) });
     if (!response.ok) {
       console.error("hire-order-pdf: font fetch failed", { family, url, status: response.status });
+      // Drain the body: an unconsumed response stream on a real fetch leaves
+      // the underlying connection resource open (see the edge shim's
+      // matching comment; found via a live smoke test against the real
+      // bucket in Task 5).
+      await response.body?.cancel();
       return null;
     }
     const bytes = new Uint8Array(await response.arrayBuffer());
@@ -116,8 +136,15 @@ async function loadFontDataUrl(path: string, family: string): Promise<string | n
  * a fallback, so the next call (e.g. the next live-preview render in the
  * same page session) retries the real fetch rather than inheriting a
  * transient failure for the rest of the session.
+ *
+ * `fetchImpl` defaults to the global `fetch` (production callers, and
+ * render.tsx's own `registerFonts(familiesInUse(theme))` call, never pass
+ * one).
  */
-export async function registerFonts(families: FontFamilyDef[]): Promise<Set<FontFamilyKey>> {
+export async function registerFonts(
+  families: FontFamilyDef[],
+  fetchImpl: typeof fetch = fetch,
+): Promise<Set<FontFamilyKey>> {
   if (!hyphenationSet) {
     // See render.tsx's fonts comment: react-pdf's default hyphenation would
     // break names/venues/emails mid-word.
@@ -130,7 +157,7 @@ export async function registerFonts(families: FontFamilyDef[]): Promise<Set<Font
       available.add(def.key);
       continue;
     }
-    const loaded = await Promise.all(def.files.map((f) => loadFontDataUrl(f.path, def.family)));
+    const loaded = await Promise.all(def.files.map((f) => loadFontDataUrl(f.path, def.family, fetchImpl)));
     if (loaded.some((src) => src === null)) {
       console.error("hire-order-pdf: font family incomplete, not registering", {
         family: def.family,

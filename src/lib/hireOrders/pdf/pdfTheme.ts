@@ -86,9 +86,15 @@ export const FONT_FAMILIES: FontFamilyDef[] = [
     label: "Source Serif",
     kind: "serif",
     family: "SourceSerif",
+    // Adobe's static release (github.com/adobe-fonts/source-serif) ships
+    // ExtraLight/Light/Regular/Semibold/Bold/Black -- no discrete 500 cut.
+    // Weight 500 reuses the Regular file rather than pointing at a
+    // Medium.ttf that does not exist in the release (see docs/runbooks/
+    // hire-order-fonts.md), the same "duplicate the nearest available
+    // file" convention Libre Baskerville uses below.
     files: [
       { weight: 400, path: "source-serif/SourceSerif4-Regular.ttf" },
-      { weight: 500, path: "source-serif/SourceSerif4-Medium.ttf" },
+      { weight: 500, path: "source-serif/SourceSerif4-Regular.ttf" },
       { weight: 600, path: "source-serif/SourceSerif4-SemiBold.ttf" },
     ],
   },
@@ -99,8 +105,8 @@ export const FONT_FAMILIES: FontFamilyDef[] = [
     family: "LibreBaskerville",
     files: [
       { weight: 400, path: "libre-baskerville/LibreBaskerville-Regular.ttf" },
-      { weight: 500, path: "libre-baskerville/LibreBaskerville-Bold.ttf" },
-      { weight: 600, path: "libre-baskerville/LibreBaskerville-Bold.ttf" },
+      { weight: 500, path: "libre-baskerville/LibreBaskerville-Medium.ttf" },
+      { weight: 600, path: "libre-baskerville/LibreBaskerville-SemiBold.ttf" },
     ],
   },
   {
@@ -423,13 +429,16 @@ const ALL_FAMILY_KEYS: ReadonlySet<FontFamilyKey> = new Set(FONT_FAMILIES.map((f
 /**
  * Like `reactPdfFamilyName`, but falls back to a react-pdf STANDARD font when
  * `key` is not in `available` — used when `registerFonts` could not load the
- * intended family for this particular render (see pdfDeps.ts). "Helvetica"
- * and "Courier" are pre-registered by react-pdf's own FontStore constructor,
- * so this never touches `Font.register` and can never collide with (or be
- * shadowed by) a real family that loads successfully on a later render: the
- * real family name is registered once, only on a genuine full success, and
- * never with fallback data — see pdfDeps.ts's registerFonts doc comment for
- * why re-registering the same name with different data is unsafe.
+ * intended family for this particular render (see pdfDeps.ts). "Helvetica",
+ * "Courier" and "Times-Roman" are all pre-registered by react-pdf's own
+ * FontStore constructor (confirmed in @react-pdf/font's FontStore
+ * constructor, which registers all three alongside their bold/oblique/italic
+ * variants), so this never touches `Font.register` and can never collide
+ * with (or be shadowed by) a real family that loads successfully on a later
+ * render: the real family name is registered once, only on a genuine full
+ * success, and never with fallback data — see pdfDeps.ts's registerFonts doc
+ * comment for why re-registering the same name with different data is
+ * unsafe.
  */
 export function safeReactPdfFamilyName(
   key: FontFamilyKey,
@@ -437,7 +446,9 @@ export function safeReactPdfFamilyName(
 ): string {
   if (available.has(key)) return reactPdfFamilyName(key);
   const def = FONT_FAMILIES.find((f) => f.key === key);
-  return def?.kind === "mono" ? "Courier" : "Helvetica";
+  if (def?.kind === "mono") return "Courier";
+  if (def?.kind === "serif") return "Times-Roman";
+  return "Helvetica";
 }
 
 /** react-pdf text style for one role: base scale applied, colour key resolved,

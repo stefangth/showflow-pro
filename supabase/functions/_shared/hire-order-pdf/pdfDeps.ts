@@ -21,6 +21,13 @@ import { type FontFamilyDef, type FontFamilyKey } from "./pdfTheme.ts";
 
 const FONT_BUCKET_URL = `${Deno.env.get("SUPABASE_URL") ?? ""}/storage/v1/object/public/hire-order-fonts`;
 
+// A hanging Storage endpoint must not stall every themed render for the rest
+// of the isolate's life: non-sticky retry (see `registered` below) means a
+// slow/hung response is retried on every call, so an unbounded fetch would
+// compound rather than just cost one render. 8s matches fetch-remote-sheet's
+// TIMEOUT_MS for the same "small file over HTTP" shape.
+const FONT_FETCH_TIMEOUT_MS = 8000;
+
 // Names react-pdf has a REAL, working registration for. Geist/GeistMono are
 // added unconditionally below (embedded, can't fail); everything else is
 // added only once a family's fetch has genuinely, fully succeeded. Never
@@ -58,23 +65,34 @@ function looksLikeFont(bytes: Uint8Array): boolean {
 
 /**
  * Fetch one font file and turn it into a self-contained `data:` URL, or
- * `null` on any failure (network error, non-2xx, wrong content, provisioning
- * not done yet). A data URL never triggers a further fetch inside react-pdf's
- * OWN lazy font loader (`FontSource._load`, which runs during PDF layout,
- * not during `Font.register`) - registering a bare Storage URL instead would
- * let a bad response surface as an unhandled "Unknown font format"
- * render-time throw, past the point this function's own error handling can
- * catch it. Every failure is logged here (not just aggregated by the caller)
- * so an operator can find the family, path and cause in edge logs - this
- * degrades a document's typography, silently to the artist and producer, and
- * needs to be visible somewhere.
+ * `null` on any failure (network error, non-2xx, wrong content, timeout,
+ * provisioning not done yet). Bounded by `FONT_FETCH_TIMEOUT_MS` via
+ * `AbortSignal.timeout` - failure here is non-sticky (see `registered`
+ * below), so a hanging endpoint with no bound would stall every themed
+ * render, not just the first. A data URL never triggers a further fetch
+ * inside react-pdf's OWN lazy font loader (`FontSource._load`, which runs
+ * during PDF layout, not during `Font.register`) - registering a bare
+ * Storage URL instead would let a bad response surface as an unhandled
+ * "Unknown font format" render-time throw, past the point this function's
+ * own error handling can catch it. Every failure is logged here (not just
+ * aggregated by the caller) so an operator can find the family, path and
+ * cause in edge logs - this degrades a document's typography, silently to
+ * the artist and producer, and needs to be visible somewhere.
+ *
+ * `fetchImpl` is injected (defaulted to the global `fetch` by the caller)
+ * so tests can exercise every branch above against a fake network.
  */
-async function loadFontDataUrl(path: string, family: string): Promise<string | null> {
+async function loadFontDataUrl(path: string, family: string, fetchImpl: typeof fetch): Promise<string | null> {
   const url = `${FONT_BUCKET_URL}/${path}`;
   try {
-    const response = await fetch(url);
+    const response = await fetchImpl(url, { signal: AbortSignal.timeout(FONT_FETCH_TIMEOUT_MS) });
     if (!response.ok) {
       console.error("hire-order-pdf: font fetch failed", { family, url, status: response.status });
+      // Drain the body: an unconsumed response stream on a real fetch leaves
+      // the underlying connection resource open. Found via a live smoke test
+      // against the (currently empty) bucket, where every non-2xx here
+      // tripped Deno's leak sanitizer.
+      await response.body?.cancel();
       return null;
     }
     const bytes = new Uint8Array(await response.arrayBuffer());
@@ -107,8 +125,16 @@ async function loadFontDataUrl(path: string, family: string): Promise<string | n
  * a fallback, so the next render into this same warm isolate retries the
  * real fetch rather than inheriting a transient failure for the isolate's
  * entire lifetime.
+ *
+ * `fetchImpl` defaults to the global `fetch` (production callers, and
+ * render.tsx's own `registerFonts(familiesInUse(theme))` call, never pass
+ * one); tests inject a fake so the failure paths run against no real
+ * network.
  */
-export async function registerFonts(families: FontFamilyDef[]): Promise<Set<FontFamilyKey>> {
+export async function registerFonts(
+  families: FontFamilyDef[],
+  fetchImpl: typeof fetch = fetch,
+): Promise<Set<FontFamilyKey>> {
   const available = new Set<FontFamilyKey>();
   if (!registered.has("Geist")) {
     Font.register({
@@ -135,12 +161,21 @@ export async function registerFonts(families: FontFamilyDef[]): Promise<Set<Font
   available.add("geist-mono");
 
   for (const def of families) {
-    if (def.embedded) continue; // geist/geist-mono, already handled above
+    if (def.embedded) {
+      // geist/geist-mono are already Font.register'd and available'd above,
+      // via base64 rather than a fetch. Marking `available` here too (not
+      // just relying on the two hardcoded adds above) means a FUTURE third
+      // embedded family that reaches this loop is correctly available
+      // without a fetch, rather than silently falling through to the
+      // Helvetica/Courier substitute despite registering fine.
+      available.add(def.key);
+      continue;
+    }
     if (registered.has(def.family)) {
       available.add(def.key);
       continue;
     }
-    const loaded = await Promise.all(def.files.map((f) => loadFontDataUrl(f.path, def.family)));
+    const loaded = await Promise.all(def.files.map((f) => loadFontDataUrl(f.path, def.family, fetchImpl)));
     if (loaded.some((src) => src === null)) {
       console.error("hire-order-pdf: font family incomplete, not registering", {
         family: def.family,
