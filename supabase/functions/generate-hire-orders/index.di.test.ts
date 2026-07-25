@@ -100,15 +100,18 @@ const TERMS_TEMPLATES_DEFAULT_EMPTY = {
   },
 };
 
-// ── resolveOrderDefaults (hire_order_defaults, legacy-org coercion) ────────
+// ── resolveOrderDefaults (hire_order_defaults, legacy-org + validation) ────
 //
 // resolveOrgSetting replaces the fallback wholesale on a match rather than
 // merging field-by-field (src/data/settings.ts:53, _shared/settings.ts:41), so
 // an org that saved hire_order_defaults before default_fee_basis existed has a
-// stored {default_fee, currency} row with the key entirely absent.
-// resolveOrderDefaults is the single resolution path for this setting across
-// every action in this file (draft/draft-manual/draft-batch/issue/preview/sign),
-// so its one piece of real logic — the `?? "per_date"` coercion — is tested
+// stored {default_fee, currency} row with the key entirely absent. And because
+// app_settings holds hand-editable JSON with no validation on the way in, a
+// stored default_fee_basis can also be garbage ("" , "weekly", ...) rather than
+// simply missing. resolveOrderDefaults is the single resolution path for this
+// setting across every action in this file (draft/draft-manual/draft-batch/
+// issue/preview/sign), so its one piece of real logic — falling back to
+// "per_date" for anything that isn't exactly a legal FeeBasis — is tested
 // directly here rather than through an action whose response never surfaces
 // default_fee_basis.
 
@@ -130,7 +133,7 @@ Deno.test("resolveOrderDefaults: a legacy stored default with no basis key resol
   assertEquals(defaults.currency, "USD");
 });
 
-Deno.test("resolveOrderDefaults: a stored basis of total is not clobbered by the coercion", async () => {
+Deno.test("resolveOrderDefaults: a stored basis of total is not clobbered by the validation", async () => {
   const { deps } = makeFakeDeps({
     tables: {
       app_settings: [
@@ -146,6 +149,42 @@ Deno.test("resolveOrderDefaults: a stored basis of total is not clobbered by the
   assertEquals(defaults.default_fee_basis, "total");
   assertEquals(defaults.default_fee, 500);
   assertEquals(defaults.currency, "USD");
+});
+
+Deno.test("resolveOrderDefaults: a stored empty-string basis (falsy but defined) resolves to per_date", async () => {
+  // The case a plain `?? "per_date"` gets wrong: "" is defined, so `??` would
+  // pass it straight through as if it were a legal FeeBasis.
+  const { deps } = makeFakeDeps({
+    tables: {
+      app_settings: [
+        {
+          when: { key: "hire_order_defaults" },
+          data: [{ org_id: ORG, value: { default_fee: 500, currency: "USD", default_fee_basis: "" } }],
+        },
+      ],
+    },
+  });
+
+  const defaults = await resolveOrderDefaults(deps.admin, ORG);
+  assertEquals(defaults.default_fee_basis, "per_date");
+  assertEquals(defaults.default_fee, 500);
+  assertEquals(defaults.currency, "USD");
+});
+
+Deno.test("resolveOrderDefaults: a stored non-FeeBasis string resolves to per_date", async () => {
+  const { deps } = makeFakeDeps({
+    tables: {
+      app_settings: [
+        {
+          when: { key: "hire_order_defaults" },
+          data: [{ org_id: ORG, value: { default_fee: 500, currency: "USD", default_fee_basis: "weekly" } }],
+        },
+      ],
+    },
+  });
+
+  const defaults = await resolveOrderDefaults(deps.admin, ORG);
+  assertEquals(defaults.default_fee_basis, "per_date");
 });
 
 // ── draft ────────────────────────────────────────────────────────────────

@@ -117,14 +117,36 @@ const DEFAULTS_DEFAULT: OrderDefaults = {
 };
 
 /**
- * Resolve hire_order_defaults, coercing a legacy stored value saved before
- * default_fee_basis existed. resolveOrgSetting (../_shared/settings.ts) replaces
- * the fallback wholesale on a match rather than merging field-by-field, so an
- * org's old {default_fee, currency} row would otherwise resolve with
- * default_fee_basis left undefined despite the FeeBasis type promising a value.
+ * Every legal FeeBasis value, keyed as a Record so the object literal fails to
+ * compile if a member is ever added to the FeeBasis union without a matching
+ * key here — the exhaustiveness is enforced by the type checker, not by
+ * remembering to update a hand-written list of string comparisons.
+ */
+const FEE_BASIS_VALUES: Record<FeeBasis, true> = { per_date: true, total: true };
+
+/** True only for the exact legal FeeBasis strings. app_settings holds
+ *  hand-editable JSON with nothing validating it on the way in, so a stored
+ *  default_fee_basis can be "" , "weekly", null, or any other garbage. */
+function isFeeBasis(value: unknown): value is FeeBasis {
+  return typeof value === "string" && value in FEE_BASIS_VALUES;
+}
+
+/**
+ * Resolve hire_order_defaults, validating default_fee_basis rather than just
+ * null-checking it. resolveOrgSetting (../_shared/settings.ts) replaces the
+ * fallback wholesale on a match rather than merging field-by-field, so an
+ * org's old {default_fee, currency} row (saved before default_fee_basis
+ * existed) resolves with the key entirely absent — and a hand-edited or
+ * pre-validation row could carry any other string, or a non-string, in its
+ * place. A plain `?? "per_date"` would pass a value like `""` straight
+ * through as if it were legal: downstream that silently multiplies fees as
+ * "per_date" while the PDF's per-date breakdown line (keyed on the literal
+ * "per_date") never renders — a correct total with a missing explanation,
+ * the kind of bug nobody can reproduce. Falling back to "per_date" for
+ * anything that isn't exactly "per_date" or "total" closes that gap.
  *
  * Exported (the file's only other export is `handle`) so index.di.test.ts can
- * exercise the coercion directly instead of threading it through an action
+ * exercise the validation directly instead of threading it through an action
  * whose response happens to expose default_fee_basis.
  */
 export async function resolveOrderDefaults(
@@ -137,7 +159,10 @@ export async function resolveOrderDefaults(
     "hire_order_defaults",
     DEFAULTS_DEFAULT,
   );
-  return { ...raw, default_fee_basis: raw.default_fee_basis ?? "per_date" };
+  return {
+    ...raw,
+    default_fee_basis: isFeeBasis(raw.default_fee_basis) ? raw.default_fee_basis : "per_date",
+  };
 }
 const LETTERHEAD_DEFAULT: HireOrderLetterhead = {
   legal_name: "",
