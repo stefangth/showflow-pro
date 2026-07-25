@@ -29,6 +29,11 @@ function readBlock(text, start, end, path) {
   if (s === -1 || e === -1) {
     throw new Error(`mirror sentinel not found in ${path} (looked for ${start})`);
   }
+  // Inverted sentinels would slice a negative-length range and yield an empty
+  // or garbage block instead of failing, so reject them by name.
+  if (e < s) {
+    throw new Error(`mirror sentinel order inverted in ${path} (${end} appears before ${start})`);
+  }
   return text.slice(s, e + end.length);
 }
 
@@ -39,10 +44,24 @@ function renderTarget(entry, root) {
   }
   if (entry.mode === "block") {
     const targetPath = join(root, entry.target);
-    const targetText = readFileSync(targetPath, "utf8");
+    // Block mode splices into an existing target, so a missing file is a
+    // manifest error, not a first-run condition. Say which entry is wrong
+    // instead of letting a bare ENOENT escape.
+    let targetText;
+    try {
+      targetText = readFileSync(targetPath, "utf8");
+    } catch {
+      throw new Error(
+        `mirror target not found: ${entry.target} (block mode splices into an existing file)`,
+      );
+    }
     const sourceBlock = readBlock(sourceText, entry.start, entry.end, entry.source);
     const targetBlock = readBlock(targetText, entry.start, entry.end, entry.target);
-    return targetText.replace(targetBlock, sourceBlock);
+    // Replacer FUNCTION, never the raw string: `$&`, "$`", "$'" and `$$` are
+    // special in a replacement string even when the search pattern is a plain
+    // string, so a registry value containing one would be silently rewritten
+    // rather than copied. A function replacement is returned verbatim.
+    return targetText.replace(targetBlock, () => sourceBlock);
   }
   throw new Error(`unknown mirror mode "${entry.mode}" for ${entry.target}`);
 }

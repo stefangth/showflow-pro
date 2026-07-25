@@ -73,6 +73,37 @@ describe("syncMirrors block mode", () => {
     put(root, "b.ts", "no sentinels here\n");
     expect(() => syncMirrors({ root, entries: [entry] })).toThrow(/sentinel/i);
   });
+
+  it("copies a block containing $-patterns verbatim", () => {
+    // `String.prototype.replace` gives `$&`, "$`", "$'" and `$$` special meaning
+    // in the REPLACEMENT string even when the search pattern is a plain string,
+    // so a registry value that happens to contain one would be silently
+    // rewritten into surrounding target text instead of copied. The generated
+    // targets are the capability and entitlement registries, so this must be a
+    // byte-for-byte copy, not a pattern expansion.
+    const root = scratch();
+    const dollars = 'export const PRICE = "$& $` $\' $$ 100";';
+    put(root, "a.ts", `head\n${START}\n${dollars}\n${END}\nsource tail\n`);
+    put(root, "b.ts", `other head\n${START}\nexport const PRICE = "";\n${END}\ntarget tail\n`);
+    syncMirrors({ root, entries: [entry] });
+    const out = readFileSync(join(root, "b.ts"), "utf8");
+    expect(out).toBe(`other head\n${START}\n${dollars}\n${END}\ntarget tail\n`);
+  });
+
+  it("throws a named error when the end sentinel appears before the start sentinel", () => {
+    const root = scratch();
+    put(root, "a.ts", `${START}\nx\n${END}\n`);
+    // Sentinels present but inverted: a plain indexOf pair would slice a
+    // negative-length range and silently produce an empty or garbage block.
+    put(root, "b.ts", `${END}\nx\n${START}\n`);
+    expect(() => syncMirrors({ root, entries: [entry] })).toThrow(/sentinel/i);
+  });
+
+  it("throws a named error when a block-mode target file does not exist", () => {
+    const root = scratch();
+    put(root, "a.ts", `${START}\nx\n${END}\n`);
+    expect(() => syncMirrors({ root, entries: [entry] })).toThrow(/mirror target not found/i);
+  });
 });
 
 describe("the real manifest", () => {
