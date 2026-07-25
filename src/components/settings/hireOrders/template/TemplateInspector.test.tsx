@@ -77,11 +77,12 @@ describe("TemplateInspector", () => {
     render(<TemplateInspector selected="document" {...props} readOnly />);
     expect(screen.getByRole("combobox", { name: "Body font" })).toBeDisabled();
     expect(screen.getByRole("combobox", { name: "Numeric font" })).toBeDisabled();
-    // The Slider's root is a <span>, which jest-dom's toBeDisabled() never
-    // considers disable-able (only native form elements qualify) - Radix
-    // marks it via aria-disabled/data-disabled instead, so that is what a
-    // test has to check for this one control.
-    expect(screen.getByLabelText("Text size")).toHaveAttribute("aria-disabled", "true");
+    // The Slider's interactive element (role="slider", labelled "Text size")
+    // is the Thumb, a <span>, which jest-dom's toBeDisabled() never considers
+    // disable-able (only native form elements qualify) - Radix marks it via
+    // data-disabled instead, so that is what a test has to check for this
+    // one control.
+    expect(screen.getByLabelText("Text size")).toHaveAttribute("data-disabled");
     for (const label of [
       "Text",
       "Muted text",
