@@ -52,7 +52,8 @@
       "mode": "file",
       "source": "src/lib/hireOrders/pdf/render.tsx",
       "target": "supabase/functions/_shared/hire-order-pdf/render.tsx",
-      "why": "The hire-order PDF renderer itself, so the settings editor can preview the real document in the browser. Only pdfDeps.ts (NOT mirrored) differs per runtime."
+      "why": "The hire-order PDF renderer itself, so the settings editor can preview the real document in the browser. Only pdfDeps.ts (NOT mirrored) differs per runtime. The edge copy is prefixed with a JSX pragma (`prelude`) so it compiles without a repo-root deno.json, which every edge function would inherit.",
+      "prelude": "/** @jsxImportSource npm:react@18.3.1 */"
     },
     {
       "mode": "file",

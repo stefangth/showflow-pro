@@ -1,3 +1,4 @@
+/** @jsxImportSource npm:react@18.3.1 */
 // GENERATED FILE. Do not edit.
 // Source: src/lib/hireOrders/pdf/render.tsx
 // Regenerate: npm run sync:mirrors

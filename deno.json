@@ -1,9 +1,0 @@
-{
-  "//": "Ambient JSX config for the whole-suite `deno test` invocation (CI runs it from the repo root, where render.tsx would otherwise be compiled in classic JSX mode). `nodeModulesDir: \"none\"` is load-bearing and must stay: this file sits next to the frontend package.json, and Deno enables local node_modules resolution whenever a config file has a package.json beside it. Omitting the key does NOT mean off. `supabase functions deploy` resolves config by walking up from each function's directory, so the ten functions with no deno.json of their own inherit this file; with node_modules resolution on, their imports resolve to file:// paths inside the repo's node_modules instead of `npm:` specifiers, which makes the CLI upload those files as part of the function payload. The create-function endpoint rejected that with HTTP 413 (Supabase Preview, PR #198). Per-function deno.json files (e.g. generate-hire-orders) may set it differently: no package.json sits beside them.",
-  "nodeModulesDir": "none",
-  "compilerOptions": {
-    "jsx": "react-jsx",
-    "jsxImportSource": "npm:react@18.3.1",
-    "types": ["npm:@types/react@18.3.1"]
-  }
-}
