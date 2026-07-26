@@ -46,7 +46,12 @@ import { adminClient, tagEmail } from "./helpers/supabase";
 import { BOOTSTRAP_ORG_ID, deleteUserByEmail } from "./helpers/users";
 import { loginAsAndAwaitDashboard, navViaSidebar } from "./helpers/auth";
 import { seedConsent } from "./helpers/consent";
-import { TEST_PRODUCER_EMAIL, TEST_PRODUCER_PASSWORD } from "./global-setup";
+import {
+  TEST_ADMIN_EMAIL,
+  TEST_ADMIN_PASSWORD,
+  TEST_PRODUCER_EMAIL,
+  TEST_PRODUCER_PASSWORD,
+} from "./global-setup";
 import {
   cleanupBookingFixture,
   seedBookingFixture,
@@ -351,5 +356,96 @@ test.describe("Hire orders: producer issues, artist downloads", () => {
     expect(pdf.status()).toBe(200);
     expect(pdf.headers()["content-type"]).toContain("application/pdf");
     expect((await pdf.body()).byteLength).toBeGreaterThan(0);
+  });
+});
+
+/**
+ * The PDF template editor: Settings > Hire orders > PDF template opens a
+ * three-pane workspace (TemplateEditorPage) over the SAME hire_order_theme /
+ * hire_order_copy org settings the old PdfCopyCard used to edit directly.
+ * This spec enters through the real UI entry point (the PdfTemplateCard's
+ * "Open template editor" link, not a direct `page.goto`), changes a
+ * document-wide control and a per-role control, saves, then leaves and
+ * re-enters the editor via the same UI path to prove the change round-tripped
+ * through `app_settings` rather than only living in React state.
+ *
+ * A separate `test.describe` (own beforeAll/afterAll) rather than folding
+ * into the block above: this exercises the settings surface, not the
+ * producer/artist issue-and-download lifecycle, and the file's top-level
+ * `test.describe.configure({ mode: "serial" })` already guarantees this runs
+ * strictly after that block's afterAll has cleared the entitlement, so there
+ * is no race re-enabling it here.
+ */
+test.describe("Hire orders: PDF template editor", () => {
+  test.beforeAll(async () => {
+    await setHireOrdersEntitlement(true);
+  });
+
+  test.afterAll(async () => {
+    // Leave no stray hire_order_theme override behind for later specs/runs.
+    const admin = adminClient();
+    const { error } = await admin
+      .from("app_settings")
+      .delete()
+      .eq("org_id", BOOTSTRAP_ORG_ID)
+      .eq("key", "hire_order_theme");
+    if (error) throw error;
+    await clearHireOrdersEntitlement();
+  });
+
+  test.beforeEach(async ({ page }) => {
+    await seedConsent(page);
+  });
+
+  test("admin can retheme the hire order PDF", async ({ page }) => {
+    await loginAsAndAwaitDashboard(page, TEST_ADMIN_EMAIL, TEST_ADMIN_PASSWORD);
+    await navViaSidebar(page, /^settings$/i);
+    await page.getByRole("tab", { name: /hire orders/i }).click();
+
+    // Enter via the card this task ships, not a deep link, so the spec also
+    // proves PdfTemplateCard actually wires up to the editor route.
+    await page.getByRole("link", { name: "Open template editor" }).click();
+    await expect(page).toHaveURL(/\/settings\/hire-orders\/template$/);
+    await expect(page.getByRole("navigation", { name: "Document outline" })).toBeVisible();
+
+    // Document pane: nudge the whole-document text scale. This control is a
+    // Radix Slider (an ARIA role="slider" span backed by a visually-hidden
+    // bubble <input> that only exists to make the value participate in form
+    // submission) rather than a real <input>, so `.fill()` does not apply to
+    // it - drive it with arrow keys instead. Six ArrowRight presses at the
+    // slider's 0.05 step land exactly on 1.30 (rendered as "130%"), which
+    // doubles as a precise, non-flaky assertion that the control responded.
+    await page.getByRole("button", { name: "Document" }).click();
+    const scaleSlider = page.getByRole("slider", { name: "Text size" });
+    await scaleSlider.focus();
+    for (let i = 0; i < 6; i++) {
+      await scaleSlider.press("ArrowRight");
+    }
+    await expect(page.getByText("130%")).toBeVisible();
+    await expect(page.getByTitle("Hire order preview")).toBeVisible();
+
+    // Section heading: a real number <input>, so `.fill()` is correct here.
+    await page.getByRole("button", { name: "Section heading" }).click();
+    await page.getByLabel("Size").fill("18");
+    await page.getByRole("button", { name: "Save template" }).click();
+    await expect(page.getByText("PDF template saved")).toBeVisible();
+
+    // Leave the editor and come back through the same UI path (rather than
+    // page.reload(), which would re-run the ProtectedRoute role check against
+    // a freshly-mounted AuthContext and risks the async-role-load race
+    // navViaSidebar's own comment describes) - this still forces a genuine
+    // remount of TemplateEditorPage, so the values shown below can only have
+    // come from the org's persisted `hire_order_theme` setting.
+    // Scoped to main: the sidebar also has a "Settings" link, so an unscoped
+    // getByRole is a strict-mode violation. The editor's own back-link is the
+    // one this step means, and clicking it exercises the real return path.
+    await page.getByRole("main").getByRole("link", { name: "Settings" }).click();
+    await expect(page).toHaveURL(/\/settings$/);
+    await page.getByRole("tab", { name: /hire orders/i }).click();
+    await page.getByRole("link", { name: "Open template editor" }).click();
+    await expect(page.getByRole("navigation", { name: "Document outline" })).toBeVisible();
+
+    await page.getByRole("button", { name: /Section heading, modified/ }).click();
+    await expect(page.getByLabel("Size")).toHaveValue("18");
   });
 });

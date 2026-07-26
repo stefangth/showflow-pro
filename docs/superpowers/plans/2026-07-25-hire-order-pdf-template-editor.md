@@ -16,7 +16,8 @@
 
 - **`any` is banned.** Lint runs `--max-warnings 0`.
 - **No em dashes or en dashes in product copy** (UI strings, PDF copy defaults, changelog). Use a period, comma, or middot.
-- **Byte-identical mirrors.** `pdfCopy.ts`, `pdfTheme.ts`, `docTypes.ts` and `render.tsx` each exist twice and must match byte for byte, enforced by mirror tests. They may contain **no relative imports other than `./pdfDeps.ts`, `./pdfCopy.ts`, `./pdfTheme.ts` and `./docTypes.ts`**, because those are the only paths that resolve identically on both sides.
+- **Mirrors are GENERATED, not hand-copied.** The preceding plan added `scripts/sync-mirrors.mjs` and `scripts/mirrors.manifest.json`. `pdfCopy.ts`, `pdfTheme.ts`, `docTypes.ts` and `render.tsx` each exist twice; the copy under `supabase/functions/` is **generated from the source under `src/`**. Add a `mode: "file"` manifest entry, edit only the source, and run `npm run sync:mirrors`. Never hand-edit a generated target and never `cp` one into place; `npm run sync:mirrors:check` gates CI. Generated file-mode targets carry an automatic three-line `// GENERATED FILE. Do not edit.` header, so a target is **not** byte-identical to its source, it is source-plus-header. Any test asserting raw byte-equality between the pair is wrong; assert `syncMirrors({ check: true }).stale` is empty instead.
+- Mirrored files may contain **no relative imports other than `./pdfDeps.ts`, `./pdfCopy.ts`, `./pdfTheme.ts` and `./docTypes.ts`**, because those are the only paths that resolve identically on both sides.
 - **Semantic design tokens only** in app UI (`bg-background`, `text-foreground`, `border-border`). Never `bg-white`. Note that accent numbered stops (`accent-50` to `accent-900`) are plain hex and **do not support Tailwind opacity modifiers** such as `bg-accent-500/20`.
 - **Defaults must render byte-identically to today.** That is the acceptance gate for the renderer refactor.
 - **Test-first.** Write the failing test, run it, watch it fail, then implement.
@@ -161,9 +162,9 @@ git commit -m "build: add @react-pdf/renderer for the browser preview"
 
 **Files:**
 - Create: `src/lib/hireOrders/pdf/pdfTheme.ts`
-- Create: `supabase/functions/_shared/hire-order-pdf/pdfTheme.ts` (byte-identical)
+- Generated: `supabase/functions/_shared/hire-order-pdf/pdfTheme.ts` (by `npm run sync:mirrors`, never hand-written)
+- Modify: `scripts/mirrors.manifest.json` (one new `file` entry)
 - Create: `src/lib/hireOrders/pdf/pdfTheme.test.ts`
-- Create: `src/lib/hireOrders/pdf/pdfThemeMirror.test.ts`
 
 **Interfaces:**
 - Produces: `RoleKey`, `RoleStyle`, `ThemeColorKey`, `FontFamilyKey`, `HireOrderTheme`, `HIRE_ORDER_THEME_DEFAULTS`, `THEME_ROLE_KEYS`, `FONT_FAMILIES`, `resolveHireOrderTheme(overrides?): HireOrderTheme`, `themeRoleStyle(theme, role)`. Tasks 3, 5, 7, 8, 9, 10 all consume these.
@@ -280,10 +281,12 @@ Create `src/lib/hireOrders/pdf/pdfTheme.ts`:
 // `hire_order_theme` app-setting and are merged over these defaults by
 // resolveHireOrderTheme.
 //
-// DUAL-HOME: byte-identical to supabase/functions/_shared/hire-order-pdf/
-// pdfTheme.ts (the edge renderer can't import from src/). Edit both in the same
-// commit; pdfThemeMirror.test.ts enforces byte-equality. No relative imports
-// here so the two files can be identical.
+// DUAL-HOME PAIR: src/lib/hireOrders/pdf/pdfTheme.ts generates
+// supabase/functions/_shared/hire-order-pdf/pdfTheme.ts (the edge renderer can't
+// import from src/). Edit src/lib/hireOrders/pdf/pdfTheme.ts, then run
+// `npm run sync:mirrors`; never hand-edit the generated target. CI's
+// sync:mirrors:check fails if the two drift. No relative imports here so the
+// two files can be identical.
 //
 // Defaults are transcribed from the pre-theme StyleSheet. Do not "tidy" them:
 // a default-theme render must be byte-identical to the pre-theme output.
@@ -704,32 +707,34 @@ Expected: PASS, 14 tests.
 
 - [ ] **Step 5: Create the mirror and its guard**
 
+Add a manifest entry to `scripts/mirrors.manifest.json`:
+
+```json
+    {
+      "mode": "file",
+      "source": "src/lib/hireOrders/pdf/pdfTheme.ts",
+      "target": "supabase/functions/_shared/hire-order-pdf/pdfTheme.ts",
+      "why": "Editable PDF theme registry. The edge renderer builds its StyleSheet from it and freezes the resolved theme into issue_snapshot."
+    }
+```
+
+Then generate the target:
+
 ```bash
-mkdir -p supabase/functions/_shared/hire-order-pdf
-cp src/lib/hireOrders/pdf/pdfTheme.ts supabase/functions/_shared/hire-order-pdf/pdfTheme.ts
+npm run sync:mirrors && npm run sync:mirrors:check
 ```
 
-Create `src/lib/hireOrders/pdf/pdfThemeMirror.test.ts`:
+Do **not** `cp` the file and do not hand-write the target. The generator prepends a three-line `// GENERATED FILE. Do not edit.` header, so the target is source-plus-header, not byte-identical to the source.
 
-```ts
-import { readFileSync } from "node:fs";
-import { describe, expect, it } from "vitest";
+No new mirror test is needed. `src/lib/hireOrders/pdfCopyMirror.test.ts` already asserts the manifest-wide property `syncMirrors({ check: true }).stale` is empty, which covers every entry including the one you just added. Adding a second test asserting the same thing would duplicate it.
 
-// The theme registry is dual-homed because the Deno edge renderer can't import
-// from src/. The two files must be byte-identical: the editor shows defaults +
-// reset, the edge renders from them and freezes them into the issue snapshot.
-// If they drift, a preview and its issued PDF would look different.
-describe("hire-order pdf theme mirror", () => {
-  it("src and edge pdfTheme.ts are byte-identical", () => {
-    const a = readFileSync("src/lib/hireOrders/pdf/pdfTheme.ts", "utf8");
-    const b = readFileSync(
-      "supabase/functions/_shared/hire-order-pdf/pdfTheme.ts",
-      "utf8",
-    );
-    expect(a).toBe(b);
-  });
-});
+Confirm the new pair is actually covered:
+
+```bash
+npx vitest run src/lib/hireOrders/pdfCopyMirror.test.ts
 ```
+
+Then prove the guard bites: hand-edit one character in the generated target, re-run that test, watch it fail, then run `npm run sync:mirrors` to restore. Report the failure output.
 
 - [ ] **Step 6: Run both guards**
 
@@ -1047,13 +1052,13 @@ git commit -m "refactor(hire-orders): renderer builds its stylesheet from the th
 ## Task 4: Share the renderer with the browser
 
 **Files:**
-- Create: `supabase/functions/_shared/hire-order-pdf/docTypes.ts`
-- Create: `src/lib/hireOrders/pdf/docTypes.ts` (byte-identical)
-- Create: `supabase/functions/_shared/hire-order-pdf/pdfDeps.ts` (Deno)
-- Create: `src/lib/hireOrders/pdf/pdfDeps.ts` (browser, deliberately different)
-- Move: `src/lib/hireOrders/pdfCopy.ts` to `src/lib/hireOrders/pdf/pdfCopy.ts`
-- Create: `src/lib/hireOrders/pdf/render.tsx` (byte-identical to the edge copy)
-- Create: `src/lib/hireOrders/pdf/renderMirror.test.ts`
+- Create: `src/lib/hireOrders/pdf/docTypes.ts` (**mirror source**)
+- Generated: `supabase/functions/_shared/hire-order-pdf/docTypes.ts`
+- Create: `supabase/functions/_shared/hire-order-pdf/pdfDeps.ts` (Deno, NOT mirrored)
+- Create: `src/lib/hireOrders/pdf/pdfDeps.ts` (browser, NOT mirrored, deliberately different)
+- Move: `src/lib/hireOrders/pdfCopy.ts` to `src/lib/hireOrders/pdf/pdfCopy.ts` (**mirror source**; update its manifest entry)
+- Move: `render.tsx` so `src/lib/hireOrders/pdf/render.tsx` is the **mirror source** and the edge copy is generated
+- Modify: `scripts/mirrors.manifest.json` (entries for `docTypes.ts` and `render.tsx`; update the `pdfCopy.ts` source path)
 - Modify: `supabase/functions/_shared/hireOrders.ts`, `src/lib/hireOrders/types.ts` (re-export from `docTypes.ts`)
 - Modify: `src/lib/hireOrders/pdfCopyMirror.test.ts` (new paths)
 
@@ -1306,12 +1311,19 @@ export async function renderHireOrderPdf(input: RenderInput): Promise<Uint8Array
 }
 ```
 
-- [ ] **Step 7: Copy the file to the browser side**
+- [ ] **Step 7: Flip render.tsx so `src/` is the source, then generate the edge copy**
+
+The generator only runs source-under-`src/` to target-under-`supabase/functions/`. `render.tsx` currently lives only on the edge side, so it has to move, not be copied:
 
 ```bash
-cp supabase/functions/_shared/hire-order-pdf/render.tsx src/lib/hireOrders/pdf/render.tsx
+mkdir -p src/lib/hireOrders/pdf
+git mv supabase/functions/_shared/hire-order-pdf/render.tsx src/lib/hireOrders/pdf/render.tsx
 git mv src/lib/hireOrders/pdfCopy.ts src/lib/hireOrders/pdf/pdfCopy.ts
 ```
+
+Then add manifest entries for `render.tsx` and `docTypes.ts`, update the existing `pdfCopy.ts` entry's `source` to its new path, and run `npm run sync:mirrors` to regenerate all three edge targets. Never `cp` a target into place.
+
+Note the edge function imports `./hire-order-pdf/render.tsx`; that path still resolves because the generated target lands back at exactly that location. Verify with `deno check` before moving on.
 
 Update `src/lib/hireOrders/pdfCopyMirror.test.ts` to the new path, and update every importer of `@/lib/hireOrders/pdfCopy` to `@/lib/hireOrders/pdf/pdfCopy`:
 
@@ -1411,9 +1423,14 @@ git commit -m "feat(hire-orders): public font bucket for pdf theme families"
 ## Task 6: Selection highlight
 
 **Files:**
-- Modify: `supabase/functions/_shared/hire-order-pdf/render.tsx` and its browser mirror
-- Modify: `supabase/functions/_shared/hire-order-pdf/docTypes.ts` and its browser mirror
-- Modify: `supabase/functions/_shared/hire-order-pdf/render.test.ts`
+- Modify: `src/lib/hireOrders/pdf/render.tsx` (**mirror source**; the edge copy is regenerated)
+- Modify: `src/lib/hireOrders/pdf/docTypes.ts` (**mirror source**)
+- Modify: `supabase/functions/_shared/hire-order-pdf/render.test.ts` (edge-only, not mirrored)
+- Run: `npm run sync:mirrors` after editing either source
+
+NOTE: Task 4 flipped the mirror direction. `render.tsx`, `docTypes.ts`, `pdfCopy.ts`, `pdfTheme.ts`
+and `money.ts` now live under `src/` as SOURCES; their `supabase/functions/` twins are GENERATED
+and must never be hand-edited. `render.test.ts` and the two `pdfDeps.ts` shims are NOT mirrored.
 
 **Interfaces:**
 - Produces: `RenderInput.highlightRole?: RoleKey`. Task 8 sets it from the editor's selection.
@@ -1454,7 +1471,7 @@ Expected: FAIL, `highlightRole` is not a property of `RenderInput`.
 
 - [ ] **Step 3: Add the field**
 
-In `docTypes.ts` (both mirrors), add to `RenderInput`:
+In `src/lib/hireOrders/pdf/docTypes.ts` (the mirror SOURCE; regenerate afterwards), add to `RenderInput`:
 
 ```ts
   /** Preview only. Draws an accent outline around every element with this role
@@ -1509,9 +1526,10 @@ Reuse the existing issue-path fixture in that file; if it does not already captu
 - [ ] **Step 7: Sync the mirror and run everything**
 
 ```bash
-cp supabase/functions/_shared/hire-order-pdf/render.tsx src/lib/hireOrders/pdf/render.tsx
-cp supabase/functions/_shared/hire-order-pdf/docTypes.ts src/lib/hireOrders/pdf/docTypes.ts
+npm run sync:mirrors && npm run sync:mirrors:check
 ```
+
+Edit only the sources under `src/lib/hireOrders/pdf/`; the edge targets are regenerated.
 
 Run: `npx vitest run src/lib/hireOrders/pdf/ && deno test --allow-all --node-modules-dir=none supabase/functions/`
 Expected: PASS.

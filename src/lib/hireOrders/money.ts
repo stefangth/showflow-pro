@@ -1,6 +1,12 @@
 // Hire order money formatting — display only, never computes with floats.
-// MIRROR: supabase/functions/_shared/hireOrders.ts carries the same logic
-// (the two runtimes cannot share an import). Change both files in the same commit.
+//
+// DUAL-HOME PAIR: this file (edit here) generates supabase/functions/_shared/
+// money.ts (the edge renderer can't import from src/). After editing, run
+// `npm run sync:mirrors`; never hand-edit the generated target.
+// _shared/hireOrders.ts re-exports formatMoney from the generated target so
+// its existing importers are unaffected. No relative imports here, since the
+// same body must run unchanged in both the browser bundle and the edge
+// runtime (render.tsx imports it directly via ../money.ts).
 
 /** Currency symbol prefix. CHF's trailing space is by design — preserve it. */
 const CURRENCY_SYMBOLS: Record<string, string> = {

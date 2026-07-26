@@ -106,6 +106,17 @@ export function realDeps(getEnv: (k: string) => string | undefined = (k) => Deno
     // edge-function test that imports deps.ts. Deferring it to first render keeps
     // the test graph light and the module cost out of cold-start until a PDF is
     // actually generated.
+    //
+    // render.tsx's JSX needs the automatic runtime (jsx: react-jsx,
+    // jsxImportSource: npm:react@18.3.1) - today that's declared both by the
+    // repo-root deno.json (covers the whole-suite `deno test` CI invocation,
+    // whose CWD is the repo root) and by generate-hire-orders/deno.json
+    // (covers `supabase functions deploy`, which resolves config relative to
+    // the function being deployed, not the repo root). If another function
+    // starts calling realDeps().renderHireOrderPdf, it needs the SAME
+    // compilerOptions in its own deno.json or this import fails at runtime
+    // with "React is not defined" (deploy-time, not caught by `deno check`
+    // run from within that function's own directory during development).
     renderHireOrderPdf: async (input) => {
       const { renderHireOrderPdf } = await import("./hire-order-pdf/render.tsx");
       return renderHireOrderPdf(input);

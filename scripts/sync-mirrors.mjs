@@ -37,10 +37,26 @@ function readBlock(text, start, end, path) {
   return text.slice(s, e + end.length);
 }
 
+/** Optional first line of a generated target, for directives the SOURCE runtime
+ *  must not carry. Only `file` mode supports it, and it lands above the stamp
+ *  because compiler pragmas must precede all other content to take effect.
+ *
+ *  The motivating case is render.tsx: the edge copy needs
+ *  `@jsxImportSource npm:react@18.3.1` to compile its JSX, but that specifier is
+ *  meaningless to Vite, so it cannot live in the shared source. Declaring the
+ *  same thing in a repo-root deno.json instead is what broke PR #198: every edge
+ *  function resolves config by walking up from its own directory, so all 26
+ *  inherited it and expanded react-pdf's whole module tree into their bundles
+ *  (29 modules each, vs 2 with a per-file pragma), and the deploy failed with
+ *  HTTP 413. Keep JSX configuration scoped to the one file that needs it. */
+function prelude(entry) {
+  return entry.prelude ? `${entry.prelude}\n` : "";
+}
+
 function renderTarget(entry, root) {
   const sourceText = readFileSync(join(root, entry.source), "utf8");
   if (entry.mode === "file") {
-    return stamp(entry.source) + sourceText;
+    return prelude(entry) + stamp(entry.source) + sourceText;
   }
   if (entry.mode === "block") {
     const targetPath = join(root, entry.target);

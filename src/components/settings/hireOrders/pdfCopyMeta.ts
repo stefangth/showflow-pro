@@ -6,7 +6,7 @@
 // guard that keeps this grouping in sync with the registry: add a CopyKey and
 // this file must place it in a section, or the test fails.
 
-import type { CopyKey } from "@/lib/hireOrders/pdfCopy";
+import type { CopyKey } from "@/lib/hireOrders/pdf/pdfCopy";
 
 export interface CopyField {
   key: CopyKey;

@@ -1,9 +1,11 @@
+import { lazy, Suspense } from "react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Route, Routes, Navigate } from "react-router-dom";
 import { ThemeProvider } from "next-themes";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
+import { Skeleton } from "@/components/ui/skeleton";
 import { AuthProvider } from "@/features/auth/AuthContext";
 import { EditorProvider } from "@/features/editor/EditorContext";
 import { ConsentProvider } from "@/features/consent/ConsentContext";
@@ -32,6 +34,11 @@ import HireOrderDetailPage from "./pages/HireOrderDetailPage";
 import HireOrderEditPage from "./pages/HireOrderEditPage";
 import NotFound from "./pages/NotFound";
 
+// Lazy-loaded so @react-pdf/renderer (the browser PDF preview it drives) stays
+// out of the main bundle — it only loads when an admin/producer actually opens
+// the template editor. Same pattern as DocumentationTab's System Map tabs.
+const TemplateEditorPage = lazy(() => import("@/components/settings/hireOrders/template/TemplateEditorPage"));
+
 const queryClient = new QueryClient();
 
 const App = () => (
@@ -55,6 +62,18 @@ const App = () => (
             <Route path={ROUTES.HIRE_ORDERS} element={<ProtectedRoute requiredRoles={['admin', 'producer']}><AppLayout><HireOrdersPage /></AppLayout></ProtectedRoute>} />
             <Route path={ROUTES.HIRE_ORDER_DETAIL} element={<ProtectedRoute requiredRoles={['admin', 'producer', 'artist']}><AppLayout><HireOrderDetailPage /></AppLayout></ProtectedRoute>} />
             <Route path={ROUTES.HIRE_ORDER_EDIT} element={<ProtectedRoute requiredRoles={['admin', 'producer']}><AppLayout><HireOrderEditPage /></AppLayout></ProtectedRoute>} />
+            <Route
+              path={ROUTES.HIRE_ORDER_TEMPLATE}
+              element={
+                <ProtectedRoute requiredRoles={['admin', 'producer']}>
+                  <AppLayout>
+                    <Suspense fallback={<Skeleton className="h-[80vh] w-full" />}>
+                      <TemplateEditorPage />
+                    </Suspense>
+                  </AppLayout>
+                </ProtectedRoute>
+              }
+            />
             <Route path={ROUTES.AVAILABILITY} element={<ProtectedRoute requiredRoles={['artist']}><AppLayout><AvailabilityPage /></AppLayout></ProtectedRoute>} />
             <Route path={ROUTES.ADMIN} element={<ProtectedRoute requiredRoles={['admin']}><AppLayout><AdminPage /></AppLayout></ProtectedRoute>} />
             <Route path={ROUTES.SETTINGS} element={<ProtectedRoute requiredRoles={['admin', 'producer']}><AppLayout><SettingsPage /></AppLayout></ProtectedRoute>} />

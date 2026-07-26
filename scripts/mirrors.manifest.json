@@ -2,7 +2,7 @@
   "entries": [
     {
       "mode": "file",
-      "source": "src/lib/hireOrders/pdfCopy.ts",
+      "source": "src/lib/hireOrders/pdf/pdfCopy.ts",
       "target": "supabase/functions/_shared/hire-order-pdf/pdfCopy.ts",
       "why": "Editable PDF copy registry. Edge renderer reads it and freezes it into issue_snapshot."
     },
@@ -17,6 +17,49 @@
       "source": "src/lib/hireOrders/feeBasis.ts",
       "target": "supabase/functions/_shared/feeBasis.ts",
       "why": "Fee basis type + cents-safe multiplication, used by the frontend wizard and the draft-batch edge action."
+    },
+    {
+      "mode": "file",
+      "source": "src/lib/hireOrders/money.ts",
+      "target": "supabase/functions/_shared/money.ts",
+      "why": "Money formatting. render.tsx (below) needs it from a path that resolves identically on both runtimes; previously it was hand-duplicated inline in _shared/hireOrders.ts, which stays a re-export of this file."
+    },
+    {
+      "mode": "file",
+      "source": "src/lib/hireOrders/pdf/fonts.ts",
+      "target": "supabase/functions/_shared/hire-order-pdf/fonts.ts",
+      "why": "Geist + Geist Mono bytes, gzipped then base64-encoded. BOTH pdfDeps shims embed them so the default theme renders with zero network I/O on either runtime; mirrored rather than hand-duplicated because the literal is still ~330KB even gzipped."
+    },
+    {
+      "mode": "file",
+      "source": "src/lib/hireOrders/pdf/fontInflate.ts",
+      "target": "supabase/functions/_shared/hire-order-pdf/fontInflate.ts",
+      "why": "Inflates fonts.ts's gzip-compressed base64 back to plain base64 for a data: URI. DecompressionStream(\"gzip\") behaves identically on both runtimes, so this is one implementation rather than two; both (NOT mirrored) pdfDeps.ts shims call it."
+    },
+    {
+      "mode": "file",
+      "source": "src/lib/hireOrders/pdf/pdfTheme.ts",
+      "target": "supabase/functions/_shared/hire-order-pdf/pdfTheme.ts",
+      "why": "Editable PDF theme registry. The edge renderer builds its StyleSheet from it and freezes the resolved theme into issue_snapshot."
+    },
+    {
+      "mode": "file",
+      "source": "src/lib/hireOrders/pdf/docTypes.ts",
+      "target": "supabase/functions/_shared/hire-order-pdf/docTypes.ts",
+      "why": "Hire-order document domain types (OrderData, RenderInput, etc). Both runtimes' pre-existing homes (_shared/hireOrders.ts, src/lib/hireOrders/types.ts) re-export from here instead of redeclaring."
+    },
+    {
+      "mode": "file",
+      "source": "src/lib/hireOrders/pdf/render.tsx",
+      "target": "supabase/functions/_shared/hire-order-pdf/render.tsx",
+      "why": "The hire-order PDF renderer itself, so the settings editor can preview the real document in the browser. Only pdfDeps.ts (NOT mirrored) differs per runtime. The edge copy is prefixed with a JSX pragma (`prelude`) so it compiles without a repo-root deno.json, which every edge function would inherit.",
+      "prelude": "/** @jsxImportSource npm:react@18.3.1 */"
+    },
+    {
+      "mode": "file",
+      "source": "src/lib/hireOrders/pdf/sampleDocument.ts",
+      "target": "supabase/functions/_shared/hire-order-pdf/sampleDocument.ts",
+      "why": "The sample order both preview surfaces render. Shared so the editor's live browser preview and the server's 'Open exact PDF' cannot drift into showing different documents."
     },
     {
       "mode": "block",

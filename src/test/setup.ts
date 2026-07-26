@@ -25,6 +25,18 @@ if (typeof globalThis !== "undefined" && !("ResizeObserver" in globalThis)) {
   (globalThis as unknown as { ResizeObserver: unknown }).ResizeObserver = ResizeObserverStub;
 }
 
+// jsdom ships no `AbortSignal.timeout` (every browser this app supports does).
+// Without it the bounded font fetch in src/lib/hireOrders/pdf/pdfDeps.ts throws
+// a TypeError before it ever calls fetch, which its own error handling then
+// swallows — so the network branch under test would silently never run.
+if (typeof AbortSignal !== "undefined" && typeof AbortSignal.timeout !== "function") {
+  (AbortSignal as unknown as { timeout: (ms: number) => AbortSignal }).timeout = (ms: number) => {
+    const controller = new AbortController();
+    setTimeout(() => controller.abort(new DOMException("TimeoutError", "TimeoutError")), ms);
+    return controller.signal;
+  };
+}
+
 // Radix UI primitives (Popover, Select, …) call these in jsdom, which doesn't
 // implement them — without the stubs, opening a popover/menu throws in tests.
 if (typeof Element !== "undefined") {

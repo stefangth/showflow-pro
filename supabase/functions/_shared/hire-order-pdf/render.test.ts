@@ -1,8 +1,9 @@
-import { assert, assertEquals, assertStringIncludes } from "https://deno.land/std@0.224.0/assert/mod.ts";
+import { assert, assertEquals, assertNotEquals, assertStringIncludes } from "https://deno.land/std@0.224.0/assert/mod.ts";
 import type { RenderInput } from "../hireOrders.ts";
-import { renderHireOrderPdf } from "./render.tsx";
+import { buildStyles, renderHireOrderPdf } from "./render.tsx";
 import { extractPdfText } from "./pdfText.ts";
 import { resolveHireOrderCopy } from "./pdfCopy.ts";
+import { resolveHireOrderTheme } from "./pdfTheme.ts";
 
 /** Decode the single unfiltered RGBA scanline used by the tiny signature fixture. */
 async function decodeSignatureFixturePixels(dataUrl: string): Promise<Uint8Array> {
@@ -590,4 +591,275 @@ Deno.test("fees section renders the plain engagement-fee label unchanged for a l
   assertStringIncludes(text, "Engagement fee");
   assertStringIncludes(text, "850.00");
   assertEquals(text.includes("per date"), false);
+});
+
+/**
+ * pdfkit/fontkit stamp three things into every render from wall-clock time or
+ * randomness, never from anything this renderer controls: a random 6-letter
+ * subset tag per embedded font subset (e.g. "NCGJHG+Geist-SemiBold", a fresh
+ * tag on every call), the `/CreationDate` (a real `new Date()`, NOT
+ * `generatedAtIso` — that only feeds the printed footer text), and the
+ * trailer `/ID` (a hash seeded by those). Confirmed empirically: rendering
+ * the exact same `RenderInput` twice, 5 times over, differs in exactly these
+ * bytes every time and nowhere else. A raw `assertEquals` on the two
+ * `Uint8Array`s would therefore fail on every run regardless of whether
+ * `buildStyles` is correct, which is a worse instrument than the length
+ * check it would replace. Blanking exactly these three patterns first is
+ * what makes a true content-equality check on everything the theme DOES
+ * control (every font size, colour, weight, letter-spacing, margin) both
+ * meaningful and stable.
+ */
+function normalizeVolatilePdfBytes(bytes: Uint8Array): string {
+  return new TextDecoder("latin1").decode(bytes)
+    .replace(/[A-Z]{6}\+/g, "SUBSET+")
+    .replace(/\(D:\d{14}Z\)/g, "(D:NORMALIZED)")
+    .replace(/<[0-9a-f]{32}>/g, "<NORMALIZED>");
+}
+
+// ── golden fixtures: the built-in defaults must keep rendering as they do ──
+//
+// WHY A GOLDEN AND NOT A SELF-COMPARISON: the test below this block pins
+// `resolveHireOrderTheme() === HIRE_ORDER_THEME_DEFAULTS`, which is a real
+// property but a narrow one - both of its operands are computed from the same
+// defaults, so a one-character change to a default size or colour moves both
+// sides together and the assertion still passes. The acceptance gate for the
+// whole theming refactor was "the defaults render byte-for-byte what they
+// rendered BEFORE the refactor". Nothing in-process can express that, because
+// the pre-refactor renderer no longer exists. A committed fixture can: these
+// two hashes were computed from the post-refactor renderer at the point where
+// byte-identity to pre-refactor output had been verified against a temporary
+// worktree of the pre-refactor commit, so pinning them forward pins that
+// property forward. From here, ANY change to a built-in default or to the
+// renderer's structure fails these two tests and has to be looked at.
+//
+// DETERMINISM: normalizeVolatilePdfBytes blanks the only three things pdfkit
+// stamps from wall-clock time or randomness (see its own doc comment). What is
+// left is reproducible across processes and machines given the pinned
+// @react-pdf/renderer (deno.lock: 4.5.1) and the pinned Deno (CI: v2.5.6).
+// A version bump of either is expected to fail these, which is the point: it
+// is a renderer change to every org's legal document and should be reviewed,
+// not absorbed silently.
+//
+// HASH, NOT BYTES: this used to compare against two committed *.golden files
+// (~118KB combined) holding the full normalized output. Those files lived
+// under supabase/functions/_shared/hire-order-pdf/, and the Supabase preview
+// deploy started failing with a 413 (request entity too large) once they were
+// added, on top of fonts.ts (~708KB of embedded base64 font data, already
+// close to whatever the ceiling is). A SHA-256 of the same normalized string
+// gives identical guard strength - any byte change still fails - at 64 hex
+// characters instead of tens of kilobytes. Kept as an inline constant here
+// rather than a third small file, since a file of any size in this directory
+// is a candidate for being swept into a future deploy payload; a value baked
+// into the test source is not a file that can be added to that tree at all.
+//
+// REGENERATING (only when the change is intended, and review the diff):
+//   UPDATE_HIRE_ORDER_PDF_GOLDEN=1 \
+//     deno test --allow-all --node-modules-dir=none supabase/functions/
+// This does not fail the test; it logs the new hash to paste into
+// GOLDEN_HASHES below, plus a temp-file path holding the full normalized
+// output so the change can be reviewed before committing the new hash.
+
+/** Expected SHA-256 (hex) of the normalized render for each golden fixture.
+ *  Regenerate via UPDATE_HIRE_ORDER_PDF_GOLDEN=1 (see above) - it logs the
+ *  new hash rather than writing it here, since only a human reviewing the
+ *  rendered diff should decide to move this pin. */
+const GOLDEN_HASHES: Record<string, string> = {
+  "countersigned-aggregate": "caa0cff1b2d2af4033f87e2d4661d2641366b8490634ef91dcf6f8c6ac4b494f",
+  "single-date-preview": "010ca741ca8c435e2ad74afdd1140435dc87900b0d3b192f192d462fc2738442",
+};
+
+async function sha256Hex(text: string): Promise<string> {
+  const digest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(text));
+  return Array.from(new Uint8Array(digest)).map((byte) => byte.toString(16).padStart(2, "0")).join("");
+}
+
+/** Dumps the full normalized render to a temp file so a mismatch (or a
+ *  regeneration) can be inspected or diffed by hand, without committing the
+ *  bytes anywhere. */
+async function writeActualDump(name: string, actual: string): Promise<string> {
+  const path = await Deno.makeTempFile({
+    prefix: `hire-order-pdf-golden-${name}-`,
+    suffix: ".actual.txt",
+  });
+  await Deno.writeTextFile(path, actual);
+  return path;
+}
+
+async function assertMatchesGolden(name: string, bytes: Uint8Array): Promise<void> {
+  const actual = normalizeVolatilePdfBytes(bytes);
+  const actualHash = await sha256Hex(actual);
+
+  if (Deno.env.get("UPDATE_HIRE_ORDER_PDF_GOLDEN") === "1") {
+    const dumpPath = await writeActualDump(name, actual);
+    console.log(
+      `[golden:${name}] sha256 ${actualHash}\n` +
+        `  Paste this into GOLDEN_HASHES["${name}"] in render.test.ts once you have\n` +
+        `  reviewed the change. Full normalized output written to:\n` +
+        `    ${dumpPath}`,
+    );
+    return;
+  }
+
+  const expectedHash = GOLDEN_HASHES[name];
+  if (expectedHash === undefined) {
+    throw new Error(
+      `golden hash "${name}" is missing from GOLDEN_HASHES in render.test.ts. If this is a new fixture, generate it with:\n` +
+        `  UPDATE_HIRE_ORDER_PDF_GOLDEN=1 deno test --allow-all --node-modules-dir=none supabase/functions/`,
+    );
+  }
+  if (actualHash === expectedHash) return;
+
+  const dumpPath = await writeActualDump(name, actual);
+  throw new Error(
+    `the default-theme render of "${name}" changed.\n\n` +
+      `This document is what every org's hire order looks like with no theme override, so a\n` +
+      `change here restyles a legal document. The usual cause is an edited built-in default in\n` +
+      `pdfTheme.ts (a size, weight, colour, letter-spacing or page margin) or a structural change\n` +
+      `in render.tsx.\n\n` +
+      `  expected sha256: ${expectedHash}\n` +
+      `  actual   sha256: ${actualHash}\n` +
+      `  full normalized output (${actual.length} chars) written to:\n` +
+      `    ${dumpPath}\n\n` +
+      `To see exactly what changed, diff that file against a dump of the pre-change render (re-run\n` +
+      `this same command against the commit before your change, with UPDATE_HIRE_ORDER_PDF_GOLDEN=1,\n` +
+      `to get the other side of the diff).\n\n` +
+      `If the change is intended, update GOLDEN_HASHES["${name}"] to the actual hash above:\n` +
+      `  UPDATE_HIRE_ORDER_PDF_GOLDEN=1 deno test --allow-all --node-modules-dir=none supabase/functions/`,
+  );
+}
+
+/** A countersigned aggregate: three engagement dates with their own running
+ *  orders, order-level notes, a reconciling per-date fee breakdown, terms, a
+ *  typed signature mark and therefore the signature certificate page. Between
+ *  them these two fixtures reach every section the renderer can draw. */
+function goldenCountersignedAggregate(): RenderInput {
+  const base = makeRenderFixture();
+  return {
+    ...base,
+    status: "countersigned",
+    generatedAtIso: "2026-08-01T10:00:00.000Z",
+    data: {
+      ...base.data,
+      fee: { value: "4500.00", source: "sheet" },
+      fee_basis: { value: "per_date", source: "manual" },
+      fee_per_date: { value: "1500.00", source: "manual" },
+      engagement_dates: {
+        value: [
+          { show_date_id: "g-1", date: "2026-06-15", venue: "Colosseum Berlin", city: "Berlin", sessions: ["19:00", "21:00"], duration_min: 90 },
+          { show_date_id: "g-2", date: "2026-06-16", venue: "Kammerspiele", city: "Hamburg", sessions: ["19:30"], duration_min: 90 },
+          { show_date_id: "g-3", date: "2026-06-17", venue: "Volksbuehne", city: "Munich", sessions: ["18:00", "20:30"], duration_min: 120 },
+        ],
+        source: "showflow",
+      },
+    },
+    signature: {
+      method: "typed",
+      typedName: "Mara Müller",
+      signerName: "Mara Müller",
+      signerEmail: "mara@example.de",
+      signedAtIso: "2026-06-02T09:30:00.000Z",
+      ip: "203.0.113.5",
+      userAgent: "Mozilla/5.0",
+      documentSha256: "c".repeat(64),
+      consentText: "By signing, I agree that this is binding.",
+    },
+  };
+}
+
+/** A single-date preview: the watermark, the one shared top-level running
+ *  order, and no terms section at all. Deliberately the opposite shape to the
+ *  aggregate above. */
+function goldenSingleDatePreview(): RenderInput {
+  return {
+    ...makeRenderFixture(),
+    status: "preview",
+    terms: [],
+    generatedAtIso: "2026-08-01T10:00:00.000Z",
+  };
+}
+
+Deno.test("countersigned aggregate renders exactly as the committed golden", async () => {
+  await assertMatchesGolden("countersigned-aggregate", await renderHireOrderPdf(goldenCountersignedAggregate()));
+});
+
+Deno.test("single-date preview renders exactly as the committed golden", async () => {
+  await assertMatchesGolden("single-date-preview", await renderHireOrderPdf(goldenSingleDatePreview()));
+});
+
+Deno.test("default theme renders byte-identically to no theme at all", async () => {
+  const withoutTheme = await renderHireOrderPdf({ ...BASE, generatedAtIso: "2026-08-01T10:00:00.000Z" });
+  const withTheme = await renderHireOrderPdf({
+    ...BASE,
+    generatedAtIso: "2026-08-01T10:00:00.000Z",
+    theme: resolveHireOrderTheme(),
+  });
+  // Full content equality, not a length check: two transcription errors with
+  // equal net encoded length would both slip through a scalar comparison.
+  // See normalizeVolatilePdfBytes for why the raw bytes aren't compared directly.
+  assertEquals(normalizeVolatilePdfBytes(withTheme), normalizeVolatilePdfBytes(withoutTheme));
+});
+
+Deno.test("a theme override changes the rendered document", async () => {
+  const plain = await renderHireOrderPdf({ ...BASE, generatedAtIso: "2026-08-01T10:00:00.000Z" });
+  const scaled = await renderHireOrderPdf({
+    ...BASE,
+    generatedAtIso: "2026-08-01T10:00:00.000Z",
+    theme: resolveHireOrderTheme({ base: { scale: 1.4 } }),
+  });
+  assertNotEquals(scaled.length, plain.length);
+});
+
+Deno.test("buildStyles applies role size, weight and colour", () => {
+  const theme = resolveHireOrderTheme({
+    roles: { sectionHeading: { size: 20, weight: 400, color: "accent" } },
+  });
+  const s = buildStyles(theme);
+  assertEquals(s.sectionHeading.fontSize, 20);
+  assertEquals(s.sectionHeading.fontWeight, 400);
+  assertEquals(s.sectionHeading.color, theme.base.colors.accent);
+  // Structure survives the theming.
+  assertEquals(s.sectionHeading.marginBottom, 8);
+});
+
+Deno.test("buildStyles applies base scale and page margins", () => {
+  const theme = resolveHireOrderTheme({ base: { scale: 1.5, page: { marginX: 60 } } });
+  const s = buildStyles(theme);
+  assertEquals(s.sectionHeading.fontSize, 18);
+  assertEquals(s.page.paddingHorizontal, 60);
+  assertEquals(s.footer.left, 60);
+  assertEquals(s.footer.right, 60);
+});
+
+Deno.test("highlightRole changes the rendered document", async () => {
+  const plain = await renderHireOrderPdf({ ...BASE, generatedAtIso: "2026-08-01T10:00:00.000Z" });
+  const lit = await renderHireOrderPdf({
+    ...BASE,
+    generatedAtIso: "2026-08-01T10:00:00.000Z",
+    highlightRole: "sectionHeading",
+  });
+  assertNotEquals(lit.length, plain.length);
+});
+
+Deno.test("highlightRole is ignored for a role the document does not use", async () => {
+  const plain = await renderHireOrderPdf({ ...BASE, generatedAtIso: "2026-08-01T10:00:00.000Z" });
+  const lit = await renderHireOrderPdf({
+    ...BASE,
+    generatedAtIso: "2026-08-01T10:00:00.000Z",
+    // BASE has no signature, so the certificate page is absent.
+    highlightRole: "certLabel",
+  });
+  assertEquals(lit.length, plain.length);
+});
+
+Deno.test("overriding one role's family does not change the page's inherited default font", () => {
+  // Regression: the page's fontFamily used to be read back out of
+  // themeRoleStyle(theme, "titleLead") rather than resolved from
+  // theme.base.fontFamily directly. That was byte-identical only by
+  // coincidence (no default role sets an explicit `family`) and would have
+  // silently dragged the whole document onto titleLead's font the moment a
+  // per-role override existed, as it does here.
+  const theme = resolveHireOrderTheme({ roles: { titleLead: { family: "inter" } } });
+  const s = buildStyles(theme);
+  assertEquals(s.titleLead.fontFamily, "Inter");
+  assertEquals(s.page.fontFamily, "Geist");
 });

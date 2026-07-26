@@ -1,97 +1,28 @@
 // Hire order pure logic — field resolution, order numbers, money formatting,
-// readiness validation. MIRROR: src/lib/hireOrders/{types,resolveFields,
-// orderNo,money,validate}.ts carries the same types + logic split across
-// files (the two runtimes cannot share an import); this file combines them
-// into one per edge convention (see src/lib/entitlements.ts /
-// _shared/entitlements.ts for the house precedent of this pattern). Change
-// both homes in the same commit.
+// readiness validation. MIRROR: src/lib/hireOrders/{resolveFields,orderNo,
+// validate}.ts carries the same logic split across files (the two runtimes
+// cannot share an import); this file combines them into one per edge
+// convention (see src/lib/entitlements.ts / _shared/entitlements.ts for the
+// house precedent of this pattern). Change both homes in the same commit.
 //
-// EXCEPTION: the renderer port at the bottom of this file is edge-only and
-// has no src/ twin — see the comment there.
+// The domain types (OrderData, RenderInput, etc) and money formatting used to
+// be declared inline here too, some of them commented "edge-only". Both
+// stopped being true: render.tsx is now dual-homed for the browser preview,
+// so those live in ./hire-order-pdf/docTypes.ts and ./money.ts respectively
+// (each a generated mirror of a src/lib/hireOrders source) and are
+// re-exported below rather than redeclared, so every existing import from
+// this module keeps resolving unchanged.
 
-import type { HireOrderCopy } from "./hire-order-pdf/pdfCopy.ts";
+import {
+  type FieldLayers,
+  type FieldSource,
+  type HireOrderTerm,
+  ORDER_FIELD_KEYS,
+  type OrderData,
+  type RenderInput,
+} from "./hire-order-pdf/docTypes.ts";
 
-export type FieldSource = "showflow" | "sheet" | "manual" | "default";
-
-export interface FieldValue<T = unknown> {
-  value: T;
-  source: FieldSource;
-}
-
-export interface EngagementDate {
-  show_date_id: string;
-  date: string;
-  venue: string | null;
-  city: string | null;
-  /** Per-date running order + duration override. Optional: legacy stored
-   *  `engagement_dates` rows predate these fields. */
-  sessions?: string[];
-  duration_min?: number | null;
-}
-
-export type OrderFieldKey =
-  | "artist_name"
-  | "recipient_email"
-  | "role"
-  | "cast"
-  | "date"
-  | "venue"
-  | "city"
-  | "duration_min"
-  | "sessions"
-  | "fee"
-  | "currency"
-  | "notes"
-  | "engagement_dates"
-  // Derived by the server from the producer's fee entry, never hand-edited:
-  // `fee` always holds the TOTAL payable, these two explain how it was reached.
-  | "fee_basis"
-  | "fee_per_date";
-
-export type EditableOrderFieldKey = Exclude<
-  OrderFieldKey,
-  "engagement_dates" | "fee_basis" | "fee_per_date"
->;
-
-/** Fixed iteration order for resolveFields and any UI that lists order fields. */
-export const ORDER_FIELD_KEYS: EditableOrderFieldKey[] = [
-  "artist_name",
-  "recipient_email",
-  "role",
-  "cast",
-  "date",
-  "venue",
-  "city",
-  "duration_min",
-  "sessions",
-  "fee",
-  "currency",
-  "notes",
-];
-
-/**
- * A resolved order snapshot.
- *
- * INVARIANT: `fee_basis` and `fee_per_date` are valid only while
- * `fee_per_date x |engagement_dates| === fee` (compared in integer cents; a
- * snapshot with no `engagement_dates` counts as one date). They are derived
- * server-side from the producer's fee entry and describe how THIS total was
- * reached, so any writer that changes `fee` must clear them or recompute them
- * in the same write. A stale pair puts a breakdown line on the PDF that
- * contradicts the total printed beneath it, and issued orders are immutable.
- * `feeBreakdownReconciles` (./feeBasis.ts) is the shared predicate; the PDF
- * renderer applies it as a last-mile guard.
- */
-export type OrderData =
-  & Partial<Record<OrderFieldKey, FieldValue>>
-  & { engagement_dates?: FieldValue<EngagementDate[]> };
-
-export interface FieldLayers {
-  showflow?: Partial<Record<EditableOrderFieldKey, unknown>>;
-  sheet?: Partial<Record<EditableOrderFieldKey, unknown>>;
-  manual?: Partial<Record<EditableOrderFieldKey, unknown>>;
-  defaults?: Partial<Record<EditableOrderFieldKey, unknown>>;
-}
+export * from "./hire-order-pdf/docTypes.ts";
 
 // ── engagementDates ──────────────────────────────────────────────────────
 // MIRROR: src/lib/hireOrders/engagementDates.ts carries a byte-identical
@@ -193,29 +124,9 @@ export function withCollisionSuffix(orderNo: string, attempt: number): string {
 }
 
 // ── money ────────────────────────────────────────────────────────────────
-
-/** Currency symbol prefix. CHF's trailing space is by design — preserve it. */
-const CURRENCY_SYMBOLS: Record<string, string> = {
-  EUR: "€",
-  USD: "$",
-  CHF: "CHF ",
-};
-
-/**
- * Format an amount for display with a currency symbol, two decimals, and
- * thousands separators (e.g. "€4,500.00"). Formats only — the amount is
- * parsed for display purposes, never used in arithmetic; storage stays
- * `numeric(10,2)` in SQL.
- */
-export function formatMoney(amount: string | number, currency: string): string {
-  const numeric = typeof amount === "string" ? Number(amount) : amount;
-  const formatted = new Intl.NumberFormat("en-US", {
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
-  }).format(numeric);
-  const symbol = CURRENCY_SYMBOLS[currency] ?? `${currency} `;
-  return `${symbol}${formatted}`;
-}
+// Re-exported from the generated mirror of src/lib/hireOrders/money.ts, so
+// callers keep importing everything hire-order from this one module.
+export { formatMoney } from "./money.ts";
 
 // ── fee basis ────────────────────────────────────────────────────────────
 // Re-exported from the generated mirror of src/lib/hireOrders/feeBasis.ts, so
@@ -252,8 +163,8 @@ export function orderReadyIssues(data: OrderData, letterhead: unknown): string[]
 // ── terms ────────────────────────────────────────────────────────────────
 // MIRROR: src/lib/hireOrders/terms.ts carries a byte-identical copy of these
 // types + helpers (the two runtimes cannot share an import). Change both
-// files in the same commit. `HireOrderClause` aliases `HireOrderTerm` below
-// (declared in the renderer port section) rather than duplicating it.
+// files in the same commit. `HireOrderClause` aliases `HireOrderTerm`
+// (imported above from docTypes.ts) rather than duplicating it.
 
 export type HireOrderClause = HireOrderTerm;
 
@@ -343,70 +254,10 @@ export function resolveTermsClauses(
 
 // ── renderer port ────────────────────────────────────────────────────────
 //
-// Edge-only, deliberately NOT mirrored in src/lib/hireOrders/: the frontend
-// never renders PDFs (it previews and downloads what the edge function
-// produced), so there is nothing for a browser-side twin to implement.
-//
-// The port exists so the generate-hire-orders function can inject the
-// renderer through `Deps` and be tested without paying for a real render.
-// The concrete implementation is `./hire-order-pdf/render.tsx`.
-
-export interface HireOrderLetterhead {
-  legal_name: string;
-  address_lines: string[];
-  registration_line?: string;
-  agent_name?: string;
-  agent_email?: string;
-  /** Storage path of the org's booking-agent signature PNG (in the hire-orders
-   *  bucket), drawn on the producer signature line of issued PDFs. */
-  agent_signature_path?: string | null;
-  /** Resolved at issue/preview time from `agent_signature_path`: the PNG as a
-   *  `data:image/png;base64,...` URL for the renderer. Never persisted. */
-  agent_signature_data_url?: string | null;
-}
-
-export interface HireOrderTerm {
-  title: string;
-  body: string;
-}
-
-export interface RenderInput {
-  /** The order's field snapshot, already resolved by `resolveFields`. */
-  data: OrderData;
-  orderNo: string;
-  /** `preview` overlays a watermark; `issued` is the document of record;
-   *  `countersigned` renders the artist's signature + a certificate page. */
-  status: "issued" | "preview" | "countersigned";
-  letterhead: HireOrderLetterhead;
-  /** The org's terms. Empty is the seeded default — the section is omitted. */
-  terms: HireOrderTerm[];
-  /** Currency code for `formatMoney` (e.g. "EUR"). */
-  currency: string;
-  /** Timestamp shown in the footer; rendered as a UTC calendar date. */
-  generatedAtIso: string;
-  /** Present only for a countersigned render — draws the artist's mark on the
-   *  signature line and appends the signature-certificate page. */
-  signature?: RenderSignature;
-  /** Resolved, complete copy dictionary (org overrides merged over defaults).
-   *  Omitted in legacy call sites/tests -> the renderer uses the built-in
-   *  defaults, reproducing the previous hardcoded strings exactly. */
-  copy?: HireOrderCopy;
-}
-
-/** Audit + mark data for a countersigned render. */
-export interface RenderSignature {
-  method: "typed" | "drawn";
-  /** Typed full name (method 'typed'). */
-  typedName?: string;
-  /** `data:image/png;base64,...` (method 'drawn'). */
-  imageDataUrl?: string;
-  signerName: string;
-  signerEmail?: string;
-  signedAtIso: string;
-  ip?: string;
-  userAgent?: string;
-  documentSha256: string;
-  consentText: string;
-}
-
+// RenderInput, HireOrderLetterhead, HireOrderTerm and RenderSignature (used
+// above and re-exported via `export *`) now live in ./hire-order-pdf/
+// docTypes.ts, dual-homed for the browser preview — see the file header.
+// `RenderHireOrderPdf` stays here: it is the DI port type for `Deps`
+// (`_shared/deps.ts`), which only exists on the edge runtime. The concrete
+// implementation is `./hire-order-pdf/render.tsx`.
 export type RenderHireOrderPdf = (input: RenderInput) => Promise<Uint8Array>;

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { syncMirrors } from "../../../scripts/sync-mirrors.mjs";
+import { syncMirrors } from "../../../../scripts/sync-mirrors.mjs";
 
 // The edge runtime cannot import from src/, so this file is dual-homed. It is
 // GENERATED from its source by scripts/sync-mirrors.mjs; this test fails if the
