@@ -67,7 +67,7 @@ These are public values (anon key, not service role). Never commit `.env`. The s
 
 ## Versioning & changelog
 
-- **Semver tags on releases.** Tag the release commit `vMAJOR.MINOR.PATCH` (`git tag -a v1.4.0 -m "<theme>"` then `git push origin --tags`). MINOR = new user-facing features, PATCH = fixes, MAJOR = breaking changes. Tags exist through `v1.4.0` (Jun 21, 2026) — versions since then (`1.4.1`–`1.8.0`, current) shipped without tags; catch up the tagging when convenient, don't skip it going forward.
+- **Semver tags on releases.** Tag the release commit `vMAJOR.MINOR.PATCH` (`git tag -a v1.4.0 -m "<theme>"` then `git push origin --tags`). MINOR = new user-facing features, PATCH = fixes, MAJOR = breaking changes. Tags exist through `v1.9.0` (Jul 15, 2026) — versions since then (`1.9.1`–`1.13.0`, current) shipped without tags; catch up the tagging when convenient, don't skip it going forward.
 - **Bump the version in two places to match the tag:** `version` in `package.json` and `APP_META.VERSION` in `src/config/app.config.ts` (the latter renders next to the brand name in the top-left of `AppLayout`).
 - **Update `public/changelog.md`** (the single source of truth). Add a newest-first block: `## X.Y.Z — Mon D, YYYY`, a one-line `*theme*`, then `### New` / `### Improved` / `### Fixed` bullets written for end users (no refactors, tests, CI, or docs). Bullets use the form `- **Title** — description`. Never mention super-admin or platform-admin actions (Platform console, org provisioning, org-module toggles, etc.) — there is no public super-admin or platform-admin role, so those changes have no customer-facing angle and don't belong in this file at all.
 - **Regenerate the JSON:** `deno run --allow-read --allow-write scripts/changelog-to-json.ts` rewrites `public/changelog.json` from the markdown — never hand-edit the JSON.
@@ -94,19 +94,29 @@ src/
     filters/       # Reusable filter/sort/view-toggle controls
     platform/      # Super-admin platform console UI (OrganizationsTab, PlatformAdminsTab,
                    #   PlatformDefaultsTab, EditOrgDialog, NewOrgDialog, OrgInvitePopover,
-                   #   OrgMembersPopover, SystemHealthTab) + pure utilities (platformFormat.ts,
-                   #   templateText.ts) + systemHealth/ (OverallStatusBanner, DomainSummaryGrid,
-                   #   EdgeFunctionsPanel, ScheduledJobsPanel, primitives)
+                   #   OrgMembersPopover, SystemHealthTab, UsersTab + UserDetailSheet — cross-org
+                   #   user management: change email, send password reset, suspend/unsuspend,
+                   #   delete) + pure utilities (platformFormat.ts, templateText.ts) +
+                   #   systemHealth/ (OverallStatusBanner, DomainSummaryGrid, EdgeFunctionsPanel,
+                   #   ScheduledJobsPanel, primitives)
     catalog/       # Production catalog CRUD: ShowFormDialog (create/edit shows) + ProductionsPage support
     shows/         # ShowDateDetailSheet — the full per-date booking management surface;
                    #   ShowDateFormDialog — create/edit show_dates (in-app);
                    #   hireOrders/ (HireOrdersCard + GenerateHireOrderDialog: the per-date
                    #   hire-order surface embedded in ShowDateDetailSheet, feature-gated)
-    hireOrders/    # Shared hire-order document primitives (OrderFactsRail, OrderTimeline)
-                   #   used by the HireOrderDetailPage viewer
+    hireOrders/    # The hire-orders list/detail UI: OrdersKpis + OrdersTable + OrderSlideOver
+                   #   (HireOrdersPage), NewOrderWizard (+ import/ bulk-import dialog),
+                   #   HireOrderReadyBanner + HireOrderStatusBadge, SignHireOrderDialog +
+                   #   SignaturePad (artist in-app signing), edit/ (HireOrderEditPage draft
+                   #   editing surfaces), and the shared document primitives OrderFactsRail /
+                   #   OrderTimeline reused by the HireOrderDetailPage viewer
     settings/      # AirtableSyncTab (schema-driven mapping + catalog linking), OrganizationTab,
                    #   CastsCitiesTab, ProductionOwnershipTab, DocumentationTab (+ MarkdownDoc,
                    #   SystemMapCanvas, SystemMapReference — Settings → Documentation → System Map),
+                   #   EmailTemplatesCard, permissions/ (PermissionsTab, PermissionsMatrix,
+                   #   PermissionRow — Settings → Roles & permissions, the capability-matrix UI,
+                   #   admin-only), bookingFlow/ (BookingFlowTab, FlowRail, FlowTimeline,
+                   #   FlowPresets — Settings → Booking flow visual editor + audit trail),
                    #   hireOrders/HireOrdersTab (Letterhead, Numbering, OrderDefaults,
                    #   TermsVariants, Countersign cards; Settings > Hire orders, admin-only)
                    #   + hireOrders/template/ (the PDF template WYSIWYG editor at
@@ -120,9 +130,10 @@ src/
   data/            # Data-access layer: fetchX(client, args) / mutateX(client, args) functions
                    #   that take the Supabase client as a parameter. Hooks are thin wrappers.
                    #   Domains: account, admin, artistImport, artists, airtableKey, airtableMapping,
-                   #   airtableSchema, airtableSettings, airtableSync, bookings, cities, customFields,
-                   #   entitlements, hireOrders, invitations, members, notificationPreferences,
-                   #   notifications, orgs, platform, profiles, remoteSheet, settings, shows, showDates,
+                   #   airtableSchema, airtableSettings, airtableSync, blockedDates, bookings,
+                   #   capabilities, cities, customFields, eligibility, entitlements, hireOrders,
+                   #   invitations, members, notificationPreferences, notifications, orgs, platform,
+                   #   platformUsers, profiles, remoteSheet, settings, settingsAudit, shows, showDates,
                    #   skills, systemMap.
                    #   Test with supabaseFake.ts (never vi.mock the client).
   features/
@@ -143,13 +154,16 @@ src/
                    #   editor_table_permissions). EditorProvider wraps the whole app.
                    #   Read-only hook for page components: useEditorConfig().
   hooks/           # Domain hooks (useMyArtist, useEligibleArtists, useChatParticipant,
-                   #   useArtistEligibleDates, useSettingsWarnings,
+                   #   useArtistEligibleDates, useSettingsWarnings, useSettingsAudit,
                    #   useSkills/useArtistSkills, useNotifications/useMarkNotificationRead/
                    #   useMarkAllNotificationsRead, useNotificationPreferences,
                    #   useMyProfile/useUpdateMyProfile,
                    #   useOrgMembers/useRemoveOrgMember/useSetOrgMemberRole,
-                   #   usePendingInvitedArtists, useNavCounts (sidebar badge counts),
-                   #   useSystemHealth, useShows/useShowDates/useCities/useAllCities)
+                   #   usePendingInvitedArtists, usePendingArtistInvitations,
+                   #   useNavCounts (sidebar badge counts),
+                   #   useSystemHealth, useShows/useShowDates/useCities/useAllCities,
+                   #   useCapabilities (useCan), useEntitlements (useFeature), useBookingFlow,
+                   #   useHireOrders, usePlatformUsers)
                    #   + UI hooks (use-mobile, use-toast)
   integrations/
     supabase/
@@ -168,8 +182,14 @@ src/
                    #   ProfilePage (ROUTES.PROFILE) — user profile + in-app password change
                    #   ResetPasswordPage (ROUTES.RESET_PASSWORD) — request + set (public, no auth)
                    #   PlatformPage (ROUTES.PLATFORM) — super-admin console; uses PlatformRoute
+                   #   HireOrdersPage (ROUTES.HIRE_ORDERS, /hire-orders): the orders list
+                   #     dashboard (KPIs, table, new-order wizard, bulk import; feature-gated route)
                    #   HireOrderDetailPage (ROUTES.HIRE_ORDER_DETAIL, /hire-orders/:id): the
                    #     single hire-order viewer (admin/producer/artist; feature-gated route)
+                   #   HireOrderEditPage (ROUTES.HIRE_ORDER_EDIT, /hire-orders/:id/edit): draft
+                   #     editing before issue (admin/producer; feature-gated route)
+                   #   FeatureDisabledScreen — shown by feature-gated routes when the org's
+                   #     entitlement is off, instead of a 404
                    #   Public pages (no auth): UnsubscribePage, PrivacyPage, ImpressumPage,
                    #   AcceptInvitePage, ResetPasswordPage
                    #   /signup redirects to /login (no standalone signup page).
@@ -238,11 +258,11 @@ When adding a new page:
   - **Airtable sync:** `airtable-schema` (admin-only, user-JWT via `requireOrgRole(org_id, ['admin'])`) reads the org's Airtable schema with the Vault PAT for the mapping UI — returns `{ schemaAccessible, bases }` (no `baseId` in body) or `{ schemaAccessible, tables }` (with `baseId`); an Airtable `403` (PAT missing the `schema.bases:read` scope) surfaces as `{ schemaAccessible: false }` so the UI falls back to typed inputs, and the PAT is never returned to the client. `airtable-poll` is the `*/5 * * * *` cron that upserts `show_dates` from each org's base (each org is throttled by its `airtable_poll_interval_minutes` setting, min 5; an org-admin "Sync now" triggers a single-org poll on demand) (see the Airtable-sync key decision in `docs/adr/README.md`).
   - **Transactional email:** `send-transactional-email`, `preview-transactional-email`, `handle-email-suppression`, `handle-email-unsubscribe`. New templates must be registered in `_shared/transactional-email-templates/registry.ts`.
   - **Booking engine:** `open-offer-tier` (create suggested bookings) and `close-offer-tier` (close a tier ± withdraw its pending offers) are per-request endpoints taking a `show_date_id`, not crons. The cron functions — `expire-offers` (hourly expiry), `send-offer-digest` (daily 19:00 Berlin), `send-confirmation-digest` (daily 20:00 Berlin) — are org-aware: they iterate active orgs via `getActiveOrgs(admin)` from `_shared/settings.ts` and resolve settings per-org with `resolveOrgSetting`.
-  - **Watchers:** `tier-at-risk-watcher` — scans open offer tiers and fires an in-app `tier_at_risk` notification when remaining pending + accepted < required slots. Idempotent (one notification per date/tier). No email; visual only. `cron-health-watcher` — 15-min cron that classifies every cron job healthy/failing/stale from the dispatch-capture tables and alerts super-admins on failure transitions.
-  - **Platform (super-admin):** `provision-org` (atomic org creation + catalog seeding + first-admin invite, requires super-admin); `resend-invitation` (resend an existing `org_invitations` row's email); `platform-edge-metrics` (System Health metrics proxy to the Supabase Analytics API via the dedicated `ANALYTICS` PAT).
+  - **Watchers:** `tier-at-risk-watcher` — scans open offer tiers and fires an in-app `tier_at_risk` notification when remaining pending + accepted < required slots. Idempotent (one notification per date/tier). No email; visual only. `cron-health-watcher` — 15-min cron that classifies every cron job healthy/failing/stale from the dispatch-capture tables and alerts super-admins on failure transitions. `email-health-watcher` — 15-min cron (`X-Cron-Secret` only, no org-role fallback) that snapshots email deliverability over the alert window (`email_health_snapshot` RPC), derives healthy/degraded/down, and alerts super-admins **in-app only** on a transition into degraded/down (idempotent via `email_health_state.last_state`; rate alerts are volume-gated so a couple of bounces can't false-alarm).
+  - **Platform (super-admin):** `provision-org` (atomic org creation + catalog seeding + first-admin invite, requires super-admin); `resend-invitation` (resend an existing `org_invitations` row's email); `platform-edge-metrics` (System Health metrics proxy to the Supabase Analytics API via the dedicated `ANALYTICS` PAT); `platform-list-users` (cross-org user list: memberships, orgs, linked artists — for the Platform → Users console); `platform-manage-user` (`change_email` / `send_password_reset` / `suspend` / `unsuspend` / `delete` on any auth user, guarded against suspending/deleting the last remaining super-admin, every action appended to `platform_audit_log`).
   - **Account & data (GDPR):** `delete-my-account` (authenticated; last-admin-guarded via `sole_admin_orgs`; calls `anonymize_user` **via the caller's JWT client** then `auth.admin.deleteUser`) and `export-org-data` (super-admin; full org JSON bundle). Per-user export is the `export_my_data` RPC; org deletion is the `delete_org` RPC (super-admin); account anonymization is the `anonymize_user` RPC.
   - **Import:** `fetch-remote-sheet` — SSRF-guarded proxy that fetches a public Google Sheets CSV for the bulk artist import (`requireOrgRole(org_id, ['producer','admin'])`; host-allowlisted to `docs.google.com` published-CSV URLs, no redirect following, size/timeout caps). The bulk insert itself is the `bulk_import_artists(p_org, p_rows)` RPC — a producer/admin-guarded `SECURITY DEFINER` set-based insert with server-side dedup on `lower(email)`, returning a per-row jsonb status array. Client parse/map/dedup lives in the pure `src/lib/artistImport/*` modules behind the `ArtistImportDialog` wizard.
-  - **Hire orders:** `generate-hire-orders` is the hire-order engine: one endpoint, four per-request actions. `draft` creates draft orders from a date's confirmed bookings (snapshotting fields via `resolveFields`); `issue` readiness-gates, renders the PDF, uploads it to the `hire-orders` bucket, stamps `issued`, emails the artist the PDF attachment and notifies them; `preview` returns a watermarked PDF and persists nothing; `download-url` returns a signed URL for producers, super-admins, or the linked artist on issued/countersigned orders. It runs `verify_jwt = false` in `config.toml` because the auto-draft DB trigger calls it with `X-Cron-Secret`, so it self-authorizes via `requireCronOrRole(['admin','producer'])` for cron callers or `requireOrgRole(org_id, ['admin','producer'])` for JWT callers, then `requireFeature(org, 'hire_orders')`. `download-url` runs its own per-order auth ahead of that gate. When a show_date transitions into `fully_filled`, the feature-gated `dispatch_hire_order_drafts` DB trigger fires the `draft` action so orders are auto-drafted; issuing stays a human action in the UI. Frontend data access is `src/data/hireOrders.ts` with thin hooks in `src/hooks/useHireOrders.ts`. Ships DARK (the `hire_orders` entitlement defaults off).
+  - **Hire orders:** `generate-hire-orders` is the hire-order engine: one endpoint, now eleven per-request actions (grew from an original four as the feature matured — grep `case "` / `body.action ===` at the top of `index.ts` for the current source of truth). `draft` creates draft orders from a date's confirmed bookings (snapshotting fields via `resolveFields`); `draft-manual` creates one draft from the new-order wizard with a free artist × date choice and producer-entered fields; `draft-batch` creates one aggregate draft per artist across several assigned dates; `issue` readiness-gates, renders the PDF, uploads it to the `hire-orders` bucket, stamps `issued`, emails the artist the PDF attachment and notifies them (plus sends a Documenso countersign envelope if the org were in that dormant mode — see below); `resend` re-emails the already-stored issued/countersigned PDF unchanged; `preview` returns a watermarked PDF and persists nothing; `download-url` returns a signed URL for producers, super-admins, or the linked artist on issued/countersigned orders; `sign` is the artist's **in-app electronic signature**: re-renders the PDF with a signature/certificate, stores `signed_pdf_path` + a `hire_order_signatures` audit row, and flips the order to `countersigned`; `upload-agent-signature` / `agent-signature-url` store and serve the booking agent's own signature image (uploaded once in Settings → Hire orders → Letterhead, printed on the producer line of every issued order); `countersign-test` is an admin-only Documenso connectivity check surfaced on the settings Countersign card. Orders have two countersign modes selectable in Settings → Hire orders: `manual` (offline signature) and `electronic` (the in-app `sign` flow, `SignHireOrderDialog` + `SignaturePad`). A third mode, `documenso`, exists in the code and DB enum but is **dormant/unreachable** — the settings UI only offers manual|electronic — retained for a possible future self-hosted Documenso integration; its companion `documenso-webhook` edge function (flips an order to `countersigned` when Documenso reports the envelope completed) is similarly dark and NOT wired to any live flow. The function runs `verify_jwt = false` in `config.toml` because the auto-draft DB trigger calls it with `X-Cron-Secret`, so it self-authorizes via `requireCronOrRole(['admin','producer'])` for cron callers or `requireOrgRole(org_id, ['admin','producer'])`/`requireCapability` for JWT callers, then `requireFeature(org, 'hire_orders')`. `download-url` and `sign` run their own per-order auth ahead of that gate. When a show_date transitions into `fully_filled`, the feature-gated `dispatch_hire_order_drafts` DB trigger fires the `draft` action so orders are auto-drafted; issuing stays a human action in the UI. Frontend data access is `src/data/hireOrders.ts` with thin hooks in `src/hooks/useHireOrders.ts`. Ships DARK (the `hire_orders` entitlement defaults off).
 - Use the service role key only when bypassing RLS is intentional (admin endpoints). Always re-verify the caller's role server-side first via `requireRole` (any-org), `requireOrgRole(org_id, [...])` (org-scoped), or `requireSuperAdmin` (platform-admin endpoints) from `_shared/auth.ts` — see `create-invitation` / `provision-org` for patterns. `requireOrgRole` automatically accepts super-admins so god-mode works on org-scoped endpoints.
 - Read secrets via `Deno.env.get('SECRET_NAME')`.
 
