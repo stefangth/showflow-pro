@@ -299,6 +299,8 @@ CI runs all of these (`.github/workflows/ci.yml`).
 ### Database changes
 
 - Schema changes go through the migration tool — never hand-edit `supabase/migrations/` or `src/integrations/supabase/types.ts`.
+- **Nullable RPC arguments have no home in the generated types.** PostgREST type-gen marks every function arg non-null and cannot express `CALLED ON NULL INPUT`, so an RPC that legitimately takes NULL still generates `p_foo: string`. Do not widen it in `types.ts` — that quietly makes the file un-regenerable and the next `supabase gen types` breaks the build. Declare a widened args type in `supabase/functions/_shared/rows.ts` (see `ResolveShowAssignmentsArgs`, `CreateHireOrderWithDatesArgs`) and cast at the `.rpc()` call. `scripts/generatedTypes.test.ts` guards this.
+- **Regenerating the types:** `supabase gen types typescript --project-id <id> > src/integrations/supabase/types.ts`, then `npm run sync:mirrors` for the edge mirror. Verify with `npm run sync:mirrors:check`, `npx tsc -p tsconfig.app.json --noEmit`, and `deno check --node-modules-dir=none` on any edge function you touched — the edge runtime is not covered by `tsc`.
 - Every new table needs RLS enabled and explicit policies. Default to `authenticated` role; on tenant tables restrict reads by `is_org_member(auth.uid(), org_id)` and writes by `has_org_role(auth.uid(), org_id, ...)` (the uniform org-isolation template), plus the RESTRICTIVE `org_isolation` policy (pooled multi-tenancy: ADR-0003).
 - Use the `update_updated_at_column()` trigger on tables with `updated_at`.
 

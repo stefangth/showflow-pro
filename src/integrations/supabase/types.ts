@@ -12,6 +12,31 @@ export type Database = {
   __InternalSupabase: {
     PostgrestVersion: "14.5"
   }
+  graphql_public: {
+    Tables: {
+      [_ in never]: never
+    }
+    Views: {
+      [_ in never]: never
+    }
+    Functions: {
+      graphql: {
+        Args: {
+          extensions?: Json
+          operationName?: string
+          query?: string
+          variables?: Json
+        }
+        Returns: Json
+      }
+    }
+    Enums: {
+      [_ in never]: never
+    }
+    CompositeTypes: {
+      [_ in never]: never
+    }
+  }
   public: {
     Tables: {
       airtable_sync_log: {
@@ -747,6 +772,7 @@ export type Database = {
           job_name: string
           last_dispatched_at: string | null
           last_error: string | null
+          last_observation_key: string | null
           last_ok_at: string | null
           last_response_at: string | null
           last_status_code: number | null
@@ -759,6 +785,7 @@ export type Database = {
           job_name: string
           last_dispatched_at?: string | null
           last_error?: string | null
+          last_observation_key?: string | null
           last_ok_at?: string | null
           last_response_at?: string | null
           last_status_code?: number | null
@@ -771,6 +798,7 @@ export type Database = {
           job_name?: string
           last_dispatched_at?: string | null
           last_error?: string | null
+          last_observation_key?: string | null
           last_ok_at?: string | null
           last_response_at?: string | null
           last_status_code?: number | null
@@ -942,6 +970,49 @@ export type Database = {
         }
         Relationships: []
       }
+      hire_order_dates: {
+        Row: {
+          hire_order_id: string
+          org_id: string
+          position: number
+          show_date_id: string
+        }
+        Insert: {
+          hire_order_id: string
+          org_id: string
+          position: number
+          show_date_id: string
+        }
+        Update: {
+          hire_order_id?: string
+          org_id?: string
+          position?: number
+          show_date_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "hire_order_dates_hire_order_id_fkey"
+            columns: ["hire_order_id"]
+            isOneToOne: false
+            referencedRelation: "hire_orders"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "hire_order_dates_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "hire_order_dates_show_date_id_fkey"
+            columns: ["show_date_id"]
+            isOneToOne: false
+            referencedRelation: "show_dates"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       hire_order_imports: {
         Row: {
           created_at: string
@@ -1048,49 +1119,6 @@ export type Database = {
             columns: ["org_id"]
             isOneToOne: false
             referencedRelation: "organizations"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      hire_order_dates: {
-        Row: {
-          hire_order_id: string
-          org_id: string
-          position: number
-          show_date_id: string
-        }
-        Insert: {
-          hire_order_id: string
-          org_id: string
-          position: number
-          show_date_id: string
-        }
-        Update: {
-          hire_order_id?: string
-          org_id?: string
-          position?: number
-          show_date_id?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "hire_order_dates_hire_order_id_fkey"
-            columns: ["hire_order_id"]
-            isOneToOne: false
-            referencedRelation: "hire_orders"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "hire_order_dates_org_id_fkey"
-            columns: ["org_id"]
-            isOneToOne: false
-            referencedRelation: "organizations"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "hire_order_dates_show_date_id_fkey"
-            columns: ["show_date_id"]
-            isOneToOne: false
-            referencedRelation: "show_dates"
             referencedColumns: ["id"]
           },
         ]
@@ -2173,9 +2201,9 @@ export type Database = {
       create_hire_order_with_dates: {
         Args: {
           p_artist: string
-          p_created_by: string | null
+          p_created_by: string
           p_data: Json
-          p_fee_amount: number | null
+          p_fee_amount: number
           p_fee_currency: string
           p_order_no: string
           p_org: string
@@ -2187,6 +2215,7 @@ export type Database = {
       cron_health_scan: {
         Args: never
         Returns: {
+          answered_at: string
           dispatched_at: string
           error_msg: string
           job_name: string
@@ -2516,6 +2545,9 @@ export type CompositeTypes<
     : never
 
 export const Constants = {
+  graphql_public: {
+    Enums: {},
+  },
   public: {
     Enums: {
       app_role: ["admin", "producer", "artist"],

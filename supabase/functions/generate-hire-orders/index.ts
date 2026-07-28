@@ -19,11 +19,13 @@ import { json, preflight } from "../_shared/http.ts";
 import { requireCronOrRole, requireOrgRole } from "../_shared/auth.ts";
 import { requireCapability } from "../_shared/capabilities.ts";
 import type {
+  Database,
   Json,
   TablesInsert,
   TablesUpdate,
 } from "../_shared/database.types.ts";
 import type {
+  CreateHireOrderWithDatesArgs,
   OrgAdminRow,
   ProducerAssignmentRow,
   ResolveShowAssignmentsArgs,
@@ -1452,18 +1454,22 @@ async function draftBatchArtist(
 async function createBatchHireOrderWithRetry(
   admin: Deps["admin"],
   baseOrderNo: string,
-  args: Omit<
-    import("../_shared/database.types.ts").Database["public"]["Functions"][
-      "create_hire_order_with_dates"
-    ]["Args"],
-    "p_order_no"
-  >,
+  args: Omit<CreateHireOrderWithDatesArgs, "p_order_no">,
 ): Promise<{ id: string } | { reason: string }> {
   for (let attempt = 0; attempt < 20; attempt++) {
-    const { data, error } = await admin.rpc("create_hire_order_with_dates", {
+    const rpcArgs: CreateHireOrderWithDatesArgs = {
       ...args,
       p_order_no: withCollisionSuffix(baseOrderNo, attempt),
-    });
+    };
+    // The one place the nullable fee/creator have to be re-narrowed: type-gen
+    // marks every RPC arg non-null, but the function is CALLED ON NULL INPUT
+    // and stores both NULLs verbatim. See CreateHireOrderWithDatesArgs.
+    const { data, error } = await admin.rpc(
+      "create_hire_order_with_dates",
+      rpcArgs as Database["public"]["Functions"][
+        "create_hire_order_with_dates"
+      ]["Args"],
+    );
     if (!error && typeof data === "string") return { id: data };
     if (
       isDateAvailabilityConflict(error) || isActiveArtistDateConflict(error)

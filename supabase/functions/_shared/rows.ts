@@ -7,6 +7,31 @@ import type { Database } from "./database.types.ts";
 export type ResolveShowAssignmentsArgs =
   Database["public"]["Functions"]["resolve_show_assignments"]["Args"];
 
+/** Args of the create_hire_order_with_dates RPC, with the two arguments the SQL
+ *  function genuinely accepts as NULL widened back to nullable.
+ *
+ *  Same type-gen limitation as above, handled one step earlier. Where
+ *  resolve_show_assignments builds its args literal directly at the `.rpc()`
+ *  call — so casting there loses nothing — these args travel through a helper
+ *  (`createBatchHireOrderWithRetry`), and staying honestly typed until the call
+ *  is worth the extra type. The cast happens at the `.rpc()` boundary only.
+ *
+ *  Both NULLs are meaningful, not placeholders: `p_fee_amount` is NULL when no
+ *  fee was entered (0 would mean "free"), and `p_created_by` is NULL on the
+ *  cron/trigger auto-draft path, which runs on X-Cron-Secret and has no user.
+ *  The function (20260724130000) is CALLED ON NULL INPUT and stores both
+ *  verbatim; `hire_orders.fee_amount` and `.created_by` are nullable, and the
+ *  latter's FK is ON DELETE SET NULL, so the schema produces NULL on its own.
+ *
+ *  Do NOT express this by hand-editing the generated types instead — that is
+ *  what made types.ts un-regenerable. See scripts/generatedTypes.test.ts. */
+export type CreateHireOrderWithDatesArgs =
+  & Omit<
+    Database["public"]["Functions"]["create_hire_order_with_dates"]["Args"],
+    "p_fee_amount" | "p_created_by"
+  >
+  & { p_fee_amount: number | null; p_created_by: string | null };
+
 /** Joined-row shapes shared by the booking-engine crons and webhooks.
  *  Fields mirror the select strings at the call sites — if you change a
  *  select, change the interface in the same commit. */
