@@ -2,7 +2,7 @@
 -- the watcher); get_cron_health is super-admin-gated (the dashboard feed).
 BEGIN;
 CREATE EXTENSION IF NOT EXISTS pgtap WITH SCHEMA extensions;
-SELECT plan(7);
+SELECT plan(8);
 
 SELECT has_function('public', 'cron_health_scan', 'cron_health_scan exists');
 SELECT has_function('public', 'get_cron_health', 'get_cron_health exists');
@@ -55,6 +55,18 @@ SELECT ok(
   (SELECT responded_at IS NULL AND status_code IS NULL AND answered_at IS NULL
    FROM public.cron_health_scan() WHERE job_name = 'airtable-poll'),
   'a job with only in-flight dispatches reports a null outcome'
+);
+
+-- Volatility guard. cron_health_scan reads net._http_response, which pg_net's background worker
+-- mutates outside the calling transaction, so it must be VOLATILE -- STABLE lets the planner cache
+-- the rows within a statement and hide responses that landed mid-transaction. This regressed once
+-- already: the DROP + CREATE that added answered_at was templated from the pre-fix body and shipped
+-- STABLE. Nothing else in this suite would catch it, since every test calls the function fresh.
+SELECT is(
+  (SELECT p.provolatile FROM pg_proc p JOIN pg_namespace n ON n.oid = p.pronamespace
+   WHERE n.nspname = 'public' AND p.proname = 'cron_health_scan'),
+  'v'::"char",
+  'cron_health_scan is VOLATILE (it reads net._http_response, mutated outside the transaction)'
 );
 
 -- get_cron_health() is gated: a plain authenticated user gets zero rows even though state exists.
