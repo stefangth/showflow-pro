@@ -750,6 +750,7 @@ export type Database = {
           job_name: string
           last_dispatched_at: string | null
           last_error: string | null
+          last_observation_key: string | null
           last_ok_at: string | null
           last_response_at: string | null
           last_status_code: number | null
@@ -762,6 +763,7 @@ export type Database = {
           job_name: string
           last_dispatched_at?: string | null
           last_error?: string | null
+          last_observation_key?: string | null
           last_ok_at?: string | null
           last_response_at?: string | null
           last_status_code?: number | null
@@ -774,6 +776,7 @@ export type Database = {
           job_name?: string
           last_dispatched_at?: string | null
           last_error?: string | null
+          last_observation_key?: string | null
           last_ok_at?: string | null
           last_response_at?: string | null
           last_status_code?: number | null

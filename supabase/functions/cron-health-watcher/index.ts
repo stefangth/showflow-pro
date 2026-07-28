@@ -19,10 +19,14 @@ import { appUrl } from "../_shared/app-url.ts";
  *   - dispatched recently with a response                -> healthy (2xx) / failing (non-2xx/timeout);
  *   - never dispatched                                   -> unknown (skip).
  *
- * SELF-MONITORING CAVEAT: this watcher cannot detect its OWN per-invocation failures
- * from the dispatch path — by the time it runs, its own dispatch row is the freshest
- * (response still in-flight), so it classifies itself pending and skips. Watcher liveness
- * must be observed externally — the dashboard surfaces its `last_run_at` from
+ * SELF-MONITORING: the watcher's own dispatch is in flight for the whole time it runs, so it can
+ * never see a response to the request that invoked it. cron_health_scan therefore reports the
+ * outcome of the newest ANSWERED dispatch (answered_at) while dispatched_at still tracks the
+ * newest dispatch of any kind, which is what lets the watcher classify itself from its previous
+ * completed run. Before that split it could mark itself failing (pg_net abandons its request at
+ * the timeout and writes timed_out, which the still-running watcher then reads) but never mark
+ * itself healthy again — prod sat at last_ok_at 2026-06-24 while returning 200 every 15 minutes.
+ * Liveness is still observed externally: the dashboard surfaces `last_run_at` from
  * cron.job_run_details; if that ages, the watcher itself has stopped.
  *
  * Auth: X-Cron-Secret (pg_cron) only — platform-scoped, so no org-admin JWT fallback.
@@ -41,8 +45,9 @@ export const KNOWN_JOBS: Record<string, number> = {
 
 type ScanRow = {
   job_name: string;
-  request_id: number;
-  dispatched_at: string;
+  request_id: number | null;
+  dispatched_at: string; // newest dispatch of any kind — the staleness source
+  answered_at: string | null; // dispatch the outcome below came from; may be older
   status_code: number | null;
   timed_out: boolean | null;
   error_msg: string | null;
@@ -54,6 +59,7 @@ type StateRow = {
   alerted_at: string | null;
   last_ok_at: string | null;
   consecutive_failures: number;
+  last_observation_key: string | null;
 };
 
 export async function handle(req: Request, deps: Deps): Promise<Response> {
@@ -79,7 +85,7 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
   const byJob = new Map(((scan ?? []) as ScanRow[]).map((r) => [r.job_name, r]));
 
   const { data: stateData, error: stateErr } = await admin
-    .from("cron_health_state").select("job_name, status, alerted_at, last_ok_at, consecutive_failures");
+    .from("cron_health_state").select("job_name, status, alerted_at, last_ok_at, consecutive_failures, last_observation_key");
   if (stateErr) {
     console.error("cron-health-watcher: state read failed, aborting to prevent alert storm", stateErr);
     return json({ error: "state_read_failed", detail: (stateErr as { message?: string }).message }, 503);
@@ -121,6 +127,14 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
     const failing = status !== "healthy";
     const wasFailing = prevStatus === "failing" || prevStatus === "stale";
 
+    // consecutive_failures counts distinct failed OBSERVATIONS, not watcher passes. An hourly job
+    // scanned by a */15 watcher re-reads the same dispatch row up to 4 times; incrementing on each
+    // pass turned one timeout into "3 consecutive failures" on the prod dashboard.
+    const observationKey = status === "stale"
+      ? `stale:${row.dispatched_at}`
+      : `req:${row.request_id}`;
+    const repeatObservation = prev?.last_observation_key === observationKey;
+
     const { error: upsertErr } = await admin.from("cron_health_state").upsert({
       job_name: jobName,
       status,
@@ -129,7 +143,10 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
       last_dispatched_at: row.dispatched_at,
       last_ok_at: status === "healthy" ? now.toISOString() : (prev?.last_ok_at ?? null),
       last_error: error,
-      consecutive_failures: failing ? (prev?.consecutive_failures ?? 0) + 1 : 0,
+      consecutive_failures: failing
+        ? (repeatObservation ? (prev?.consecutive_failures ?? 0) : (prev?.consecutive_failures ?? 0) + 1)
+        : 0,
+      last_observation_key: observationKey,
       // Only stamp alerted_at when an alert is actually sent (the !wasFailing transition below).
       // When already failing, preserve the existing value (may be null if a prior write was lost) —
       // never fabricate a timestamp.

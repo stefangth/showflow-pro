@@ -61,9 +61,12 @@ Deno.test("cron-health-watcher: consecutive_failures increments from the previou
     tables: {
       app_settings: { data: { value: SECRET } },
       platform_admins: { data: [{ user_id: "super-1" }] },
-      cron_health_state: { data: [{ job_name: "offer-digest", status: "failing", alerted_at: "2026-06-23T09:00:00Z", last_ok_at: null, consecutive_failures: 3 }] },
+      // last_observation_key names an EARLIER dispatch than the scan's request_id, so this run is a
+      // genuinely new observation and must increment. Without the key the fixture's undefined would
+      // compare unequal to "req:4" anyway, and the test would pass without exercising the gate.
+      cron_health_state: { data: [{ job_name: "offer-digest", status: "failing", alerted_at: "2026-06-23T09:00:00Z", last_ok_at: null, consecutive_failures: 3, last_observation_key: "req:3" }] },
     },
-    rpcs: { cron_health_scan: { data: [{ job_name: "offer-digest", request_id: 4, dispatched_at: recent, status_code: 500, timed_out: false, error_msg: null, responded_at: recent }] } },
+    rpcs: { cron_health_scan: { data: [{ job_name: "offer-digest", request_id: 4, dispatched_at: recent, answered_at: recent, status_code: 500, timed_out: false, error_msg: null, responded_at: recent }] } },
     now: NOW,
   });
   await handle(cronReq(), deps);
@@ -164,6 +167,88 @@ Deno.test("cron-health-watcher: aborts 503 on a state-read error (prevents alert
   const res = await handle(cronReq(), deps);
   assertEquals(res.status, 503);
   assertEquals(invokeCalls.filter((c) => c.name === "send-transactional-email").length, 0);
+});
+
+Deno.test("cron-health-watcher: re-reading the SAME dispatch does not re-increment consecutive_failures", async () => {
+  // An hourly job scanned by a */15 watcher re-reads one dispatch row up to 4 times. Counting
+  // watcher passes turned a single timeout into "3 consecutive failures" on the prod dashboard.
+  const { deps, calls } = makeFakeDeps({
+    tables: {
+      app_settings: { data: { value: SECRET } },
+      platform_admins: { data: [{ user_id: "super-1" }] },
+      cron_health_state: { data: [{ job_name: "expire-offers-hourly", status: "failing", alerted_at: "2026-06-23T09:00:00Z", last_ok_at: null, consecutive_failures: 1, last_observation_key: "req:42" }] },
+    },
+    rpcs: {
+      cron_health_scan: { data: [{ job_name: "expire-offers-hourly", request_id: 42, dispatched_at: recent, answered_at: recent, status_code: null, timed_out: true, error_msg: null, responded_at: recent }] },
+    },
+    now: NOW,
+  });
+  await handle(cronReq(), deps);
+  const upsert = calls.find((c) => c.table === "cron_health_state" && c.method === "upsert");
+  const payload = (upsert?.args?.[0] ?? {}) as { consecutive_failures?: number; last_observation_key?: string };
+  assertEquals(payload.consecutive_failures, 1);
+  assertEquals(payload.last_observation_key, "req:42");
+});
+
+Deno.test("cron-health-watcher: a NEW failed dispatch does increment consecutive_failures", async () => {
+  const { deps, calls } = makeFakeDeps({
+    tables: {
+      app_settings: { data: { value: SECRET } },
+      platform_admins: { data: [{ user_id: "super-1" }] },
+      cron_health_state: { data: [{ job_name: "expire-offers-hourly", status: "failing", alerted_at: "2026-06-23T09:00:00Z", last_ok_at: null, consecutive_failures: 1, last_observation_key: "req:42" }] },
+    },
+    rpcs: {
+      cron_health_scan: { data: [{ job_name: "expire-offers-hourly", request_id: 43, dispatched_at: recent, answered_at: recent, status_code: null, timed_out: true, error_msg: null, responded_at: recent }] },
+    },
+    now: NOW,
+  });
+  await handle(cronReq(), deps);
+  const upsert = calls.find((c) => c.table === "cron_health_state" && c.method === "upsert");
+  const payload = (upsert?.args?.[0] ?? {}) as { consecutive_failures?: number; last_observation_key?: string };
+  assertEquals(payload.consecutive_failures, 2);
+  assertEquals(payload.last_observation_key, "req:43");
+});
+
+Deno.test("cron-health-watcher: recovers itself from a previous answered dispatch while its own is in flight", async () => {
+  // The watcher's own dispatch is in flight for its whole run, so the scan reports a newer
+  // dispatched_at than answered_at. It must still classify from the answered 200 and recover,
+  // rather than skipping itself forever (prod last_ok_at was stuck at 2026-06-24).
+  const { deps, calls } = makeFakeDeps({
+    tables: {
+      app_settings: { data: { value: SECRET } },
+      platform_admins: { data: [{ user_id: "super-1" }] },
+      cron_health_state: { data: [{ job_name: "cron-health-watcher", status: "failing", alerted_at: "2026-06-23T09:00:00Z", last_ok_at: null, consecutive_failures: 5, last_observation_key: "req:98" }] },
+    },
+    rpcs: {
+      cron_health_scan: { data: [{ job_name: "cron-health-watcher", request_id: 99, dispatched_at: recent, answered_at: "2026-06-23T09:45:00.000Z", status_code: 200, timed_out: false, error_msg: null, responded_at: "2026-06-23T09:45:10.000Z" }] },
+    },
+    now: NOW,
+  });
+  const res = await handle(cronReq(), deps);
+  assertEquals(res.status, 200);
+  const upsert = calls.find((c) => c.table === "cron_health_state" && c.method === "upsert");
+  const payload = (upsert?.args?.[0] ?? {}) as { status?: string; consecutive_failures?: number; alerted_at?: string | null };
+  assertEquals(payload.status, "healthy");
+  assertEquals(payload.consecutive_failures, 0);
+  assertEquals(payload.alerted_at, null);
+  assertEquals((await res.json()).recovered, 1);
+});
+
+Deno.test("cron-health-watcher: a repeated STALE observation does not re-increment either", async () => {
+  const { deps, calls } = makeFakeDeps({
+    tables: {
+      app_settings: { data: { value: SECRET } },
+      platform_admins: { data: [{ user_id: "super-1" }] },
+      cron_health_state: { data: [{ job_name: "offer-digest", status: "stale", alerted_at: "2026-06-23T09:00:00Z", last_ok_at: null, consecutive_failures: 2, last_observation_key: `stale:${stale}` }] },
+    },
+    rpcs: {
+      cron_health_scan: { data: [{ job_name: "offer-digest", request_id: null, dispatched_at: stale, answered_at: null, status_code: null, timed_out: null, error_msg: null, responded_at: null }] },
+    },
+    now: NOW,
+  });
+  await handle(cronReq(), deps);
+  const upsert = calls.find((c) => c.table === "cron_health_state" && c.method === "upsert");
+  assertEquals(((upsert?.args?.[0]) as { consecutive_failures?: number }).consecutive_failures, 2);
 });
 
 Deno.test("cron-health-watcher: a job with no dispatch row is skipped (no false alert)", async () => {
