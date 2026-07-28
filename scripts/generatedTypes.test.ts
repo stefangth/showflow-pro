@@ -55,22 +55,24 @@ describe("generated supabase types stay generator-faithful", () => {
   });
 });
 
-/** Every `name: type | null` line that sits inside a Functions `Args: {` block. */
+/** Every nullable ARGUMENT of a Functions `Args: {` block.
+ *
+ *  Scoped by brace depth rather than indentation: an argument is a DIRECT child
+ *  of `Args`, so a nullable field nested inside one (were the generator ever to
+ *  emit an inline object arg rather than a `Json`/type reference) is not an arg
+ *  and must not be flagged. Depth also makes this independent of how the
+ *  generator happens to indent. */
 function nullableRpcArgs(source: string): string[] {
   const offenders: string[] = [];
-  let argsIndent: number | null = null;
+  let depth = 0; // brace depth within the current Args block; 0 = outside one
 
   for (const line of functionsSection(source).split("\n")) {
-    const indent = line.length - line.trimStart().length;
-    if (argsIndent !== null && indent <= argsIndent && line.trim() === "}") {
-      argsIndent = null;
+    if (depth === 0) {
+      if (/^\s*Args: \{\s*$/.test(line)) depth = 1;
       continue;
     }
-    if (argsIndent === null) {
-      if (/^\s*Args: \{\s*$/.test(line)) argsIndent = indent;
-      continue;
-    }
-    if (line.includes("| null")) offenders.push(line.trim());
+    if (depth === 1 && line.includes("| null")) offenders.push(line.trim());
+    depth += (line.match(/\{/g)?.length ?? 0) - (line.match(/\}/g)?.length ?? 0);
   }
   return offenders;
 }
