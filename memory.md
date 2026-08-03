@@ -6,7 +6,7 @@
 
 ## Current date
 
-2026-07-06
+2026-08-03
 
 ---
 
@@ -16,7 +16,7 @@
 |--------|---------|
 | `main` | Production — never push directly; PRs merge straight to `main` |
 | `dev` | Exists on remote but stale/unused — recent PRs target `main` directly, not `dev` |
-| `claude/tender-bohr-t3t5ep` | Current Claude Code session (docs sync) |
+| `claude/adoring-knuth-ysy45w` | Current Claude Code session (docs sync) |
 
 ---
 
@@ -37,6 +37,8 @@ _(nothing active)_
 
 Note: `AIRTABLE_SYNC` was removed from `FEATURES` in app.config.ts. Airtable sync is now fully implemented; it is enabled per-org via the `airtable_sync_enabled` key in `app_settings`.
 
+This table only covers the original static flags. Everything added since (hire orders, per-org capability rights, booking-flow presets, ...) uses one of the two newer per-org mechanisms instead — see the entitlements/capabilities key decisions in `docs/adr/README.md`: **entitlements** (`src/lib/entitlements.ts`, `org_entitlements` table) gate whether a module exists at all (`hire_orders` ships with its entitlement off by default); **capabilities** (`src/lib/capabilities.ts`, `org_capabilities`/`org_capability_policies`) gate who may act once a module is on.
+
 ---
 
 ## Known issues / tech debt
@@ -44,7 +46,9 @@ Note: `AIRTABLE_SYNC` was removed from `FEATURES` in app.config.ts. Airtable syn
 | Issue | Impact | Notes |
 |-------|--------|-------|
 | No seed-test-data edge function | Dev setup friction | Must bootstrap first org admin out-of-band (Supabase dashboard); org admin then invites others via Admin → Invites |
-| Releases since `v1.4.0` are untagged | Process gap | `package.json`/changelog are at `1.8.0` (Jul 5) but the last git tag is `v1.4.0` (Jun 21) — versions `1.4.1`–`1.8.0` shipped without a corresponding `git tag`. Catch up when convenient. |
+| Releases since `v1.9.0` are untagged | Process gap | `package.json`/changelog are at `1.13.0` (Jul 25) but the last git tag is `v1.9.0` (Jul 15) — versions `1.9.1`–`1.13.0` shipped without a corresponding `git tag`. Catch up when convenient. |
+| Dormant Documenso countersign path | Dead-code-shaped but intentional | `generate-hire-orders`'s `documenso` countersign mode + the `documenso-webhook` function are unreachable from the UI (Settings only offers manual\|electronic) — superseded by in-app electronic signing (#188) but deliberately retained for a possible future self-hosted Documenso. Don't "clean this up" without checking `docs/superpowers/specs/2026-07-23-hire-orders-in-app-signing-design.md` first. |
+| Doc-sync PRs keep going stale before merge | Process gap | Two prior scheduled sync attempts (#182, #199) were fully verified (a `claude[bot]` review confirmed every claim in #199 against source) but sat unmerged long enough that `main` moved past their base and they were closed as blocked/stale rather than merged. This pass (2026-08-03) reused their verified diffs directly. If this keeps recurring, consider merging doc-sync PRs same-day rather than leaving them queued. |
 
 ---
 
@@ -67,6 +71,18 @@ Note: `AIRTABLE_SYNC` was removed from `FEATURES` in app.config.ts. Airtable syn
 | 2026-06-23 | Key architecture decisions moved out of `CLAUDE.md` into `docs/adr/README.md` ("Key decisions" operational summary + linked ADRs) | Single home for the *what/where* + *why*; `CLAUDE.md` stayed too long to keep accurate inline (ADR-0008 superseded) |
 | 2026-06-23 | CI auto-deploys every edge function on merge to `main` (`.github/workflows/deploy-functions.yml`); Lovable build tooling retired | Removes the manual deploy step for the common case; new functions need a `[functions.<name>]` block in `supabase/config.toml` or they deploy JWT-locked |
 | 2026-07-05 | Airtable poll cadence is per-org configurable (`airtable_poll_interval_minutes`, min 5) with an on-demand "Sync now" | Orgs with low-frequency Airtable changes don't need the default 5-min cron sweep; admins can force a sync between cycles |
+| 2026-07-15 | Booking flow is a configurable per-org policy (Classic / Fast-track / Direct-book presets or custom), resolved via `useBookingFlow`/`fetchBookingFlow`; `availability` table finally dropped for `blocked_dates` (ADR-0007 completed) | One booking-tier pipeline no longer fits every org; direct-book and fast-track skip stages of the classic offer flow. Required skills for shows/dates (`eligibility.ts`) plumb through offers, direct booking, and understudy promotion |
+| 2026-07-16 | Cast eligibility ladders can be scoped per show (`show_cast_eligibility`), falling back to the org-wide `cast_city_priority` list | Some shows need a different tier order per city than the org default, without duplicating the whole priority config |
+| 2026-07-17 | Per-org module entitlements (`src/lib/entitlements.ts` `FeatureKey`/`FEATURE_REGISTRY`, dual-homed to `_shared/entitlements.ts` and SQL `is_feature_enabled()`) gate `booking_flow` and `hire_orders`; toggled in the Platform console per org | Lets new feature modules ship dark and roll out org-by-org instead of a global flag flip |
+| 2026-07-18 | Hire orders module added, ships DARK (`hire_orders` entitlement defaults off) | `generate-hire-orders` engine (draft → issue → PDF → email), issued PDFs stored in the `hire-orders` bucket; optional Documenso countersigning at launch (superseded five days later, see below) |
+| 2026-07-18–19 | Zero-warning ESLint gate (`--max-warnings 0`) with `any` banned outside `src/data/**`/edge functions/test stubs; all pre-existing `any` casts replaced with explicit row types or the new typed test helpers (`src/test/castHelpers.ts`, `_shared/testing.ts`) | Prevents new type-safety regressions from accumulating silently; the typed helpers keep the one-cast-at-the-boundary rule enforceable in tests |
+| 2026-07-19 | Auth readiness is derived (`sessionState.ts`'s `computeAuthReady(bootstrapped, userId, identityUserId)`) instead of toggled by an imperative `loading` flag; `src/config/env.ts`'s `missingClientEnv()` renders a config-error screen instead of a blank page when required env vars are missing | The imperative `loading` flag raced against async identity resolution and could flash a signed-in-but-org-less render (NoOrgScreen); deriving readiness from state makes that render impossible by construction rather than raced away |
+| 2026-07-23 | In-app electronic signing replaces Documenso as the primary countersign path (#188) | The artist signs in-app (`sign` action, `SignHireOrderDialog`/`SignaturePad`) rather than through a third-party e-sign vendor; the `documenso` countersign mode and `documenso-webhook` function are retained but dormant/unreachable from the UI |
+| 2026-07-23 | Per-org capability matrix ("user group rights") added: `src/lib/capabilities.ts` registry, layered resolution platform-lock → org-override → platform-default → registry-default (#192, v1.11.0) | Separates "does this module exist" (entitlements) from "who may use it" (capabilities); lets admins grant/withhold specific producer rights without an all-or-nothing producer role |
+| 2026-07-23 | Platform super-admin user-management console added: cross-org user list + change-email/reset-password/suspend/delete, all appended to `platform_audit_log` (#186) | Super-admins previously had no first-party way to manage a user's auth account outside the Supabase dashboard |
+| 2026-07-25 | Hire-order PDF template WYSIWYG editor over a semantic role registry (`src/lib/hireOrders/pdf/pdfTheme.ts`), plus per-date-vs-total fee basis (#197, #198, v1.13.0) | Orgs can restyle the issued PDF (wording, font, size, colour, spacing) without a code change; multi-date orders needed a fee model that distinguishes "per date" from "for the whole engagement" |
+| 2026-07-28 | `types.ts` nullability for RPC args now lives in hand-maintained `_shared/rows.ts`, not a hand-widened edit inside the generated file (#201) | PostgREST type-gen marks every RPC arg non-null and can't express `CALLED ON NULL INPUT`; PR #191 had hand-widened two args directly in the GENERATED `types.ts`, which silently made it un-regenerable and forced a second hand-edit in #200. Moving the widening to the existing `_shared/rows.ts` pattern (already used for `ResolveShowAssignmentsArgs`) restores clean regeneration |
+| 2026-07-28 | Cron dispatch minutes staggered + `pg_net` timeout raised to 90s; `cron-health-watcher` reads job outcome from the newest *answered* dispatch and counts consecutive failures per observation, not per scan pass (#200) | Concurrent cron dispatches at the same minute were timing out under load and being misclassified as failures, which could trip false failure-transition alerts to super-admins |
 
 ---
 
@@ -88,6 +104,15 @@ Edge functions additionally use `SUPABASE_SERVICE_ROLE_KEY` (set in Supabase das
 
 | Date | Change |
 |------|--------|
+| 2026-08-03 | Updated `CLAUDE.md` and `memory.md` — closed a four-week doc gap (two prior sync attempts, #182 and #199, were fully verified — including a `claude[bot]` LGTM review on #199 — but went stale before merge and were closed unmerged). Reused both PRs' already-verified diffs directly, re-checked every claim against current source, and added what postdated both (the #200/#201 cron and RPC-type-regeneration fixes): rewrote the Booking workflow section for the configurable `booking_flow` policy (Settings → Booking flow, replacing the stale "Booking Engine" wording), documented required skills/skill-aware understudy promotion, added `sessionState.ts`/`env.ts`/`bookingFlow.ts`/`eligibility.ts`/`hireOrders.ts` to Key files, expanded the `hireOrders/`/`settings/`/`platform/`/`shows/` component trees (WYSIWYG PDF template editor, permissions matrix, booking-flow editor, platform Users console, booking-flow-aware show-date surfaces), filled in 5 missing `src/data/` domains and 7 missing `src/hooks/`, added `HireOrdersPage`/`HireOrderEditPage`/`FeatureDisabledScreen` to pages, rewrote the hire-orders edge-function bullet for its now-eleven actions plus in-app signing and the dormant Documenso path, added `email-health-watcher`/`platform-list-users`/`platform-manage-user` to the edge-function bullets, and corrected the versioning section's tag range (tags reach `v1.9.0`; `1.9.1`–`1.13.0` untagged). Current app version: `1.13.0` |
+| 2026-07-28 | Cron dispatch reliability: staggered dispatch minutes, 90s `pg_net` timeout, per-observation consecutive-failure counting, newest-answered-dispatch outcome read (#200); `types.ts` made cleanly regenerable again by moving nullable-RPC-arg widening into `_shared/rows.ts` instead of hand-editing the generated file (#201) |
+| 2026-07-25 | Hire-order PDF template WYSIWYG editor (outline / live preview / inspector over `pdfTheme.ts`) + per-date-vs-total fee basis with a cents-safe multiplier and PDF breakdown line (#197, #198, v1.13.0) |
+| 2026-07-24 | Named/rename-able terms templates, per-date session times, booking-agent signature upload, hire-order CTAs surfaced on Shows & Bookings + the show-date sheet, wizard duration-copy and date pre-selection (#193 + follow-on commits, v1.12.0) |
+| 2026-07-23 | Hire-order batching/delivery/signing overhaul; **in-app electronic signing added and Documenso countersigning superseded** (ships dark) (#188, #191); per-org capability matrix ("user group rights") + `producer_can_invite` flag (#187, #192, v1.11.0); platform super-admin user-management console (#186); system-health degraded-state explanations + email-health webhook delivery-tracking fix (#189, #190) |
+| 2026-07-19–22 | Auth loading-race fixes: `sessionState.ts` derived readiness (#179–181), config-error screen for missing env; Settings moved to a grouped side-nav (v1.10.3); multi-tab auth-lock endless-spinner fix (v1.10.2); locked (not hidden) sidebar modules + auto-open-tier-on-new-date fix (v1.10.1); system-health 4xx blindness / entitlement UX / `open-offer-tier` 401 fixes (#183) |
+| 2026-07-18–19 | Zero-warning lint gate + full `any` sweep across frontend, edge functions, and test stubs (typed cast helpers added) (#177); exposed Resend key rotated out of the repo (#178) |
+| 2026-07-17–18 | Hire orders launched, ships dark (v1.10.0, #169–175, #183): draft/issue/preview/PDF engagement sheets, bulk import wizard, Hire orders page + split builder, Documenso countersigning, per-org module entitlements + Platform console toggles |
+| 2026-07-15–16 | Booking flow editor + configurable eligibility (v1.9.0, #162–168): presets (Classic/Fast-track/Direct book), direct booking, fast-track, auto-escalation, show-scoped cast priorities, required skills, skill-aware understudy promotion, Settings change history |
 | 2026-07-06 | Updated `CLAUDE.md` and `memory.md` — closed a month-long doc gap (two prior sync attempts, #116 and #142, were closed unmerged): fixed `src/data/` domain list, `src/hooks/` list, `components/platform/` and `components/settings/` trees, the `close-offer-tier`/`open-offer-tier` "cron function" ambiguity flagged in #142's review, `src/data/account.ts` key-files row, and the versioning section's stale tag range. Current app version: `1.8.0` |
 | 2026-07-05 | Configurable Airtable poll interval + "Sync now" (#152, v1.8.0) — per-org `airtable_poll_interval_minutes`, super-admin platform default |
 | 2026-07-05 | In-app automation system map — Settings → Documentation → System Map canvas (#149–151), mirrors `docs/system-map.md` via `src/data/systemMap.ts` |
