@@ -2,6 +2,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database, Json } from "@/integrations/supabase/types";
 import type { Organization } from "@/data/orgs";
 import type { EdgeFnMetric, EmailHealth } from "@/lib/systemHealth";
+import type { HealthDay } from "@/lib/uptime";
 import { BOOKING_ENGINE_DEFAULTS, SYSTEM_HEALTH, type AppRole } from "@/config/app.config";
 import type { EntitlementRow, FeatureKey } from "@/lib/entitlements";
 
@@ -87,6 +88,28 @@ export async function fetchCronHealth(client: SupabaseClient<Database>): Promise
       }),
     };
   });
+}
+
+/** Daily health rollup for the System Health uptime bar (super-admin only, enforced in the RPC).
+ *  Returns one row per (day, function) for days that actually recorded traffic — days with no
+ *  row are absent, and the bar renders them as "no data" rather than as uptime. */
+export async function fetchHealthDaily(
+  client: SupabaseClient<Database>,
+  days: number = SYSTEM_HEALTH.uptimeDays,
+): Promise<HealthDay[]> {
+  const { data, error } = await client.rpc("get_health_daily", { p_days: days });
+  if (error) throw error;
+  return (data ?? []).map((row) => ({
+    day: row.day,
+    fn: row.fn,
+    runs: row.runs,
+    failures: row.failures,
+    rejected: row.rejected,
+    // Nullable in the table: an idle day has no status code and no latency sample. Coercing
+    // either to 0 would print "HTTP 0" / "0.0s" as though they were measurements.
+    worst_status: row.worst_status,
+    p95_ms: row.p95_ms,
+  }));
 }
 
 /** Edge-function metrics for the System Health tab, via the super-admin platform-edge-metrics

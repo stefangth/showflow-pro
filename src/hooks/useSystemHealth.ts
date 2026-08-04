@@ -1,6 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { fetchCronHealth, fetchEdgeFnLogs, fetchEdgeFnMetrics, fetchEmailHealth } from "@/data/platform";
+import { fetchCronHealth, fetchEdgeFnLogs, fetchEdgeFnMetrics, fetchEmailHealth, fetchHealthDaily } from "@/data/platform";
 import { EMAIL_HEALTH, SYSTEM_HEALTH } from "@/config/app.config";
 
 export function useCronHealth() {
@@ -8,6 +8,18 @@ export function useCronHealth() {
     queryKey: ["platform", "cron-health"],
     queryFn: () => fetchCronHealth(supabase),
     refetchInterval: SYSTEM_HEALTH.refetchMs,
+  });
+}
+
+/** Daily rollup behind the uptime bar. Cheap (one indexed RPC over ~30 days x ~26 functions),
+ *  so unlike the Analytics-backed queries below it has no rate-limit concerns. */
+export function useHealthDaily() {
+  return useQuery({
+    queryKey: ["platform", "health-daily", SYSTEM_HEALTH.uptimeDays],
+    queryFn: () => fetchHealthDaily(supabase, SYSTEM_HEALTH.uptimeDays),
+    refetchInterval: SYSTEM_HEALTH.refetchMs,
+    // Supplementary like the other panels: a rollup outage must not blank the tab.
+    retry: 1,
   });
 }
 
