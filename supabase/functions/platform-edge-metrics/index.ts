@@ -2,6 +2,7 @@ import { preflight, json } from "../_shared/http.ts";
 import { requireSuperAdmin } from "../_shared/auth.ts";
 import { realDeps, type Deps } from "../_shared/deps.ts";
 import { toIsoTimestamp } from "../_shared/analyticsTime.ts";
+import { deriveRef, fetchFnSlugs } from "../_shared/analyticsApi.ts";
 
 const MAX_WINDOW_MIN = 1440; // Management API caps the analytics range at 24h.
 
@@ -38,31 +39,6 @@ const LOGS_SQL =
   "from function_logs t cross join unnest(t.metadata) m " +
   "where m.function_id = '{FN_ID}' and m.level in ('error','warning') " +
   "order by t.timestamp desc limit 25";
-
-function deriveRef(url?: string): string | null {
-  const m = (url ?? "").match(/https?:\/\/([a-z0-9]+)\.supabase\.co/i);
-  return m ? m[1] : null;
-}
-
-/** id -> slug map from the Management API (GET /v1/projects/{ref}/functions returns a bare
- *  array of { id, slug, name, ... }). Best-effort: a failure degrades to id-labelled metrics
- *  rather than blanking the panel, so latency data survives a name-resolution outage. */
-async function fetchFnSlugs(deps: Deps, ref: string, token: string): Promise<Map<string, string>> {
-  const map = new Map<string, string>();
-  try {
-    const res = await deps.fetch(`https://api.supabase.com/v1/projects/${ref}/functions`, {
-      headers: { Authorization: `Bearer ${token}` },
-    });
-    if (!res.ok) return map;
-    const parsed = await res.json().catch(() => null);
-    const list = Array.isArray(parsed) ? parsed : ((parsed as { functions?: unknown } | null)?.functions ?? []);
-    for (const f of list as Array<{ id?: string; slug?: string; name?: string }>) {
-      const label = f?.slug ?? f?.name;
-      if (f?.id && label) map.set(f.id, label);
-    }
-  } catch (_e) { /* degrade to id labels */ }
-  return map;
-}
 
 function aggregate(rows: RawRow[], idToSlug: Map<string, string>): EdgeFnMetric[] {
   const byFn = new Map<string, RawRow[]>();

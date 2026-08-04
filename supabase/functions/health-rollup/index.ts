@@ -2,6 +2,7 @@ import { preflight, json } from "../_shared/http.ts";
 import { requireCronOrRole } from "../_shared/auth.ts";
 import { realDeps, type Deps } from "../_shared/deps.ts";
 import { analyticsDayKey } from "../_shared/analyticsTime.ts";
+import { deriveRef, fetchFnSlugs } from "../_shared/analyticsApi.ts";
 import type { Json } from "../_shared/database.types.ts";
 
 /**
@@ -52,30 +53,6 @@ interface DailyRow {
   rejected: number;
   worst_status: number | null;
   p95_ms: number | null;
-}
-
-function deriveRef(url?: string): string | null {
-  const m = (url ?? "").match(/https?:\/\/([a-z0-9]+)\.supabase\.co/i);
-  return m ? m[1] : null;
-}
-
-/** id -> slug from the Management API. Best-effort: on failure rows keep their raw id, which
- *  still produces a usable (if ugly) series rather than dropping the day entirely. */
-async function fetchFnSlugs(deps: Deps, ref: string, token: string): Promise<Map<string, string>> {
-  const map = new Map<string, string>();
-  try {
-    const res = await deps.fetch(`https://api.supabase.com/v1/projects/${ref}/functions`, {
-      headers: { Authorization: `Bearer ${token}` },
-    });
-    if (!res.ok) return map;
-    const parsed = await res.json().catch(() => null);
-    const list = Array.isArray(parsed) ? parsed : ((parsed as { functions?: unknown } | null)?.functions ?? []);
-    for (const f of list as Array<{ id?: string; slug?: string; name?: string }>) {
-      const label = f?.slug ?? f?.name;
-      if (f?.id && label) map.set(f.id, label);
-    }
-  } catch (_e) { /* degrade to id labels */ }
-  return map;
 }
 
 /** UTC calendar day. The bar is an operational record written by a server with no user
