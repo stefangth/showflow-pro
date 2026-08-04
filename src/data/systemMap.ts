@@ -29,7 +29,7 @@ export interface SystemMapEdge {
 }
 
 export const SYSTEM_MAP_NODES: SystemMapNode[] = [
-  // ---- triggers: crons (8)
+  // ---- triggers: crons (9)
   {
     id: "c_poll",
     column: "trigger",
@@ -104,6 +104,19 @@ export const SYSTEM_MAP_NODES: SystemMapNode[] = [
       Fires: "cron-health-watcher",
       Note: "30s dispatch timeout on every job; each tick recorded in cron_health_dispatch",
       Cite: "20260624101342 + 20260623042017",
+    },
+  },
+  {
+    id: "c_healthrollup",
+    column: "trigger",
+    kind: "cron",
+    label: "health-rollup clock",
+    sub: "7-59/15 * * * * — every 15 min",
+    subsystems: ["platform"],
+    detail: {
+      Fires: "health-rollup",
+      Note: "recomputes today and yesterday from the Analytics API into health_daily; the durable source behind the System Health 30-day uptime bar (Analytics itself retains only 24h)",
+      Cite: "20260804181035_health_rollup_cron.sql",
     },
   },
   {
@@ -184,7 +197,7 @@ export const SYSTEM_MAP_NODES: SystemMapNode[] = [
       Cite: "src/pages/UnsubscribePage.tsx · handle-email-suppression · documenso-webhook",
     },
   },
-  // ---- edge functions (24)
+  // ---- edge functions (25)
   {
     id: "f_poll",
     column: "fn",
@@ -430,6 +443,23 @@ export const SYSTEM_MAP_NODES: SystemMapNode[] = [
       Effects: "none — in-app only by design, no email backstop (email is the thing being monitored)",
       Guard: "volume floor (EMAIL_ALERT.minVolumeForAlert) suppresses a low-sample degraded/down back to operational unless raw failures alone clear the floor",
       Cite: "email-health-watcher/index.ts:21-90",
+    },
+  },
+  {
+    id: "f_healthrollup",
+    column: "fn",
+    kind: "fn",
+    label: "health-rollup",
+    sub: "cron secret only",
+    subsystems: ["platform"],
+    detail: {
+      Trigger: "cron every 15 min at :07 — same dispatch idiom as cron-health-watcher",
+      Auth: "requireCronOrRole with empty role list — only the secret can authorize · verify_jwt=false",
+      Reads: "Supabase Analytics API (function_edge_logs) for today + yesterday; Management API for function_id → slug",
+      Writes: "health_daily upsert, one row per (day, function slug): runs, failures, 4xx rejections, worst status, p95",
+      Effects: "none — it is a recorder; the System Health 30-day uptime bar reads what it writes",
+      Guard: "recomputes whole days rather than incrementing (idempotent under double-fire/retry); aborts without writing on an Analytics error so an outage cannot leave a permanent hole in the bar",
+      Cite: "health-rollup/index.ts",
     },
   },
   {
@@ -682,6 +712,20 @@ export const SYSTEM_MAP_NODES: SystemMapNode[] = [
     },
   },
   {
+    id: "d_healthdaily",
+    column: "db",
+    kind: "db",
+    label: "health_daily",
+    sub: "one row per day per function",
+    subsystems: ["platform"],
+    detail: {
+      Rows: "day, fn, runs, failures (5xx or no response), rejected (4xx), worst_status, p95_ms — PK (day, fn)",
+      Why: "the Analytics API retains 24h, so the 30-day uptime bar has no other source; nothing can be backfilled, history starts at first run",
+      Access: "super-admin SELECT only; no write policy (the service-role rollup bypasses RLS)",
+      Cite: "20260804180545_health_daily.sql · get_health_daily(p_days)",
+    },
+  },
+  {
     id: "d_emaillog",
     column: "db",
     kind: "db",
@@ -909,6 +953,7 @@ export const SYSTEM_MAP_EDGES: SystemMapEdge[] = [
   { from: "c_risk", to: "f_risk" },
   { from: "c_health", to: "f_health" },
   { from: "c_emailhealth", to: "f_emailhealth" },
+  { from: "c_healthrollup", to: "f_healthrollup" },
   // user → fn
   { from: "u_artist", to: "f_delacct" },
   { from: "u_prod", to: "f_open" },
@@ -968,6 +1013,7 @@ export const SYSTEM_MAP_EDGES: SystemMapEdge[] = [
   { from: "f_health", to: "d_cronhealth" },
   { from: "f_health", to: "d_notif" },
   { from: "f_emailhealth", to: "d_emaillog", label: "email_health_snapshot read + health_state upsert" },
+  { from: "f_healthrollup", to: "d_healthdaily", label: "upsert today + yesterday" },
   { from: "f_emailhealth", to: "d_notif" },
   { from: "c_prune", to: "d_emaillog", label: "prune retention window" },
   // fn ⇢ db reads (dashed)

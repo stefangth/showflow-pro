@@ -112,6 +112,9 @@ describe("CRON_JOB_TO_FN", () => {
     expect(CRON_JOB_TO_FN["offer-digest"]).toBe("send-offer-digest");
     expect(CRON_JOB_TO_FN["expire-offers-hourly"]).toBe("expire-offers");
   });
+  it("maps the health rollup job to its function slug", () => {
+    expect(CRON_JOB_TO_FN["health-rollup"]).toBe("health-rollup");
+  });
 });
 
 describe("describeOutcome", () => {
