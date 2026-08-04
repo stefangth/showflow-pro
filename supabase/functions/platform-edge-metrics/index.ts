@@ -2,7 +2,7 @@ import { preflight, json } from "../_shared/http.ts";
 import { requireSuperAdmin } from "../_shared/auth.ts";
 import { realDeps, type Deps } from "../_shared/deps.ts";
 import { toIsoTimestamp } from "../_shared/analyticsTime.ts";
-import { deriveRef, fetchFnSlugs } from "../_shared/analyticsApi.ts";
+import { deriveRef, fetchFnSlugs, metricsSql, type AnalyticsRow } from "../_shared/analyticsApi.ts";
 
 const MAX_WINDOW_MIN = 1440; // Management API caps the analytics range at 24h.
 
@@ -15,17 +15,11 @@ interface EdgeFnMetric {
   lastFailure: { status: number; at: string } | null;
   recent: { status: number; ms: number; at?: string }[];
 }
-// `timestamp` is a MICROSECOND epoch integer, not an ISO string (verified against the live
-// API 2026-08-04). Normalise it through toIsoTimestamp before it reaches a Date or the client.
-interface RawRow { function_id?: string; status_code?: number; execution_time_ms?: number; timestamp?: number | string }
+type RawRow = AnalyticsRow;
 
-// The function_edge_logs schema keys each row by function_id (a UUID) — there is NO
-// function_name column (verified against the live Analytics API). function_id -> slug
-// resolution happens in fetchFnSlugs below. Keep the SQL in this one constant.
-const METRICS_SQL =
-  "select m.function_id, r.status_code, m.execution_time_ms, t.timestamp " +
-  "from function_edge_logs t cross join unnest(t.metadata) m cross join unnest(m.response) r " +
-  "order by t.timestamp desc limit 2000";
+// 2000: this samples recent runs for the live panel (p50/p95 + the last 20 outcomes), it does
+// not need to see a whole day. health-rollup uses a far higher cap for the opposite reason.
+const METRICS_SQL = metricsSql(2000);
 
 // UNVERIFIED against the live Analytics API — the ANALYTICS PAT is an edge secret not
 // available locally (decision 2026-07-21, confirmed with the repo owner), so this SQL is

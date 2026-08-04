@@ -2,7 +2,7 @@ import { preflight, json } from "../_shared/http.ts";
 import { requireCronOrRole } from "../_shared/auth.ts";
 import { realDeps, type Deps } from "../_shared/deps.ts";
 import { analyticsDayKey } from "../_shared/analyticsTime.ts";
-import { deriveRef, fetchFnSlugs } from "../_shared/analyticsApi.ts";
+import { deriveRef, fetchFnSlugs, metricsSql, type AnalyticsRow } from "../_shared/analyticsApi.ts";
 import type { Json } from "../_shared/database.types.ts";
 
 /**
@@ -26,24 +26,12 @@ import type { Json } from "../_shared/database.types.ts";
  * list means the requireRole fallback matches nothing, so no JWT can trigger this.
  */
 
-// Same shape as platform-edge-metrics' METRICS_SQL. The Analytics API keys rows by function_id
-// (a UUID); there is no function_name column, so slugs are resolved separately below.
-const METRICS_SQL =
-  "select m.function_id, r.status_code, m.execution_time_ms, t.timestamp " +
-  "from function_edge_logs t cross join unnest(t.metadata) m cross join unnest(m.response) r " +
-  // 10000, vs platform-edge-metrics' 2000 for the same query shape: that one samples the last
-  // 20 runs for a sparkline, this one must count a WHOLE day across every function (~500/day
-  // today, with headroom for growth). A truncated read here would under-count a day.
-  "order by t.timestamp desc limit 10000";
+// 10000, vs platform-edge-metrics' 2000: that one samples the last 20 runs for a sparkline,
+// this one must count a WHOLE day across every function (~500/day today, with headroom for
+// growth). A truncated read here would silently under-count a day.
+const METRICS_SQL = metricsSql(10000);
 
-interface RawRow {
-  function_id?: string;
-  status_code?: number;
-  execution_time_ms?: number;
-  // Microseconds since the epoch, as an integer — NOT an ISO string. Always read it
-  // through analyticsDayKey/toIsoTimestamp; see _shared/analyticsTime.ts.
-  timestamp?: number | string;
-}
+type RawRow = AnalyticsRow;
 
 interface DailyRow {
   day: string;

@@ -9,6 +9,29 @@ import type { Deps } from "./deps.ts";
  * Timestamp handling lives next door in analyticsTime.ts.
  */
 
+/**
+ * One per-invocation row from `function_edge_logs`. The API keys rows by `function_id` (a
+ * UUID) — there is NO function_name column, which is why fetchFnSlugs exists — and returns
+ * `timestamp` as a MICROSECOND epoch integer, never an ISO string. Read every timestamp
+ * through analyticsTime.ts rather than passing it to `new Date()`.
+ */
+export interface AnalyticsRow {
+  function_id?: string;
+  status_code?: number;
+  execution_time_ms?: number;
+  timestamp?: number | string;
+}
+
+/**
+ * The per-invocation metrics query. `limit` is the only thing that varies between callers:
+ * platform-edge-metrics samples recent runs for the live panel, health-rollup has to count a
+ * whole day across every function, and a limit set too low there silently under-counts.
+ */
+export const metricsSql = (limit: number): string =>
+  "select m.function_id, r.status_code, m.execution_time_ms, t.timestamp " +
+  "from function_edge_logs t cross join unnest(t.metadata) m cross join unnest(m.response) r " +
+  `order by t.timestamp desc limit ${limit}`;
+
 /** Project ref from a SUPABASE_URL, for the Management API path. */
 export function deriveRef(url?: string): string | null {
   const m = (url ?? "").match(/https?:\/\/([a-z0-9]+)\.supabase\.co/i);
