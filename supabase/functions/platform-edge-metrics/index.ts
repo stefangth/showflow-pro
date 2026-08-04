@@ -1,6 +1,8 @@
 import { preflight, json } from "../_shared/http.ts";
 import { requireSuperAdmin } from "../_shared/auth.ts";
 import { realDeps, type Deps } from "../_shared/deps.ts";
+import { toIsoTimestamp } from "../_shared/analyticsTime.ts";
+import { deriveRef, fetchFnSlugs, metricsSql, type AnalyticsRow } from "../_shared/analyticsApi.ts";
 
 const MAX_WINDOW_MIN = 1440; // Management API caps the analytics range at 24h.
 
@@ -13,15 +15,11 @@ interface EdgeFnMetric {
   lastFailure: { status: number; at: string } | null;
   recent: { status: number; ms: number; at?: string }[];
 }
-interface RawRow { function_id?: string; status_code?: number; execution_time_ms?: number; timestamp?: string }
+type RawRow = AnalyticsRow;
 
-// The function_edge_logs schema keys each row by function_id (a UUID) — there is NO
-// function_name column (verified against the live Analytics API). function_id -> slug
-// resolution happens in fetchFnSlugs below. Keep the SQL in this one constant.
-const METRICS_SQL =
-  "select m.function_id, r.status_code, m.execution_time_ms, t.timestamp " +
-  "from function_edge_logs t cross join unnest(t.metadata) m cross join unnest(m.response) r " +
-  "order by t.timestamp desc limit 2000";
+// 2000: this samples recent runs for the live panel (p50/p95 + the last 20 outcomes), it does
+// not need to see a whole day. health-rollup uses a far higher cap for the opposite reason.
+const METRICS_SQL = metricsSql(2000);
 
 // UNVERIFIED against the live Analytics API — the ANALYTICS PAT is an edge secret not
 // available locally (decision 2026-07-21, confirmed with the repo owner), so this SQL is
@@ -36,31 +34,6 @@ const LOGS_SQL =
   "where m.function_id = '{FN_ID}' and m.level in ('error','warning') " +
   "order by t.timestamp desc limit 25";
 
-function deriveRef(url?: string): string | null {
-  const m = (url ?? "").match(/https?:\/\/([a-z0-9]+)\.supabase\.co/i);
-  return m ? m[1] : null;
-}
-
-/** id -> slug map from the Management API (GET /v1/projects/{ref}/functions returns a bare
- *  array of { id, slug, name, ... }). Best-effort: a failure degrades to id-labelled metrics
- *  rather than blanking the panel, so latency data survives a name-resolution outage. */
-async function fetchFnSlugs(deps: Deps, ref: string, token: string): Promise<Map<string, string>> {
-  const map = new Map<string, string>();
-  try {
-    const res = await deps.fetch(`https://api.supabase.com/v1/projects/${ref}/functions`, {
-      headers: { Authorization: `Bearer ${token}` },
-    });
-    if (!res.ok) return map;
-    const parsed = await res.json().catch(() => null);
-    const list = Array.isArray(parsed) ? parsed : ((parsed as { functions?: unknown } | null)?.functions ?? []);
-    for (const f of list as Array<{ id?: string; slug?: string; name?: string }>) {
-      const label = f?.slug ?? f?.name;
-      if (f?.id && label) map.set(f.id, label);
-    }
-  } catch (_e) { /* degrade to id labels */ }
-  return map;
-}
-
 function aggregate(rows: RawRow[], idToSlug: Map<string, string>): EdgeFnMetric[] {
   const byFn = new Map<string, RawRow[]>();
   for (const r of rows) {
@@ -73,7 +46,10 @@ function aggregate(rows: RawRow[], idToSlug: Map<string, string>): EdgeFnMetric[
     const pct = (p: number): number | null =>
       // Nearest-rank: ceil(p% * N) - 1. Plain floor returns the MAX for p95 when N is a multiple of 20.
       lat.length === 0 ? null : lat[Math.min(lat.length - 1, Math.max(0, Math.ceil((p / 100) * lat.length) - 1))];
-    const sorted = [...rs].sort((a, b) => String(b.timestamp).localeCompare(String(a.timestamp)));
+    // Sort on the normalised ISO value: raw microsecond integers compare correctly as numbers
+    // but not reliably as strings once their digit count changes.
+    const iso = (r: RawRow) => toIsoTimestamp(r.timestamp) ?? "";
+    const sorted = [...rs].sort((a, b) => iso(b).localeCompare(iso(a)));
     const last = sorted[0];
     const byStatus: Record<string, number> = {};
     for (const r of rs) {
@@ -95,16 +71,19 @@ function aggregate(rows: RawRow[], idToSlug: Map<string, string>): EdgeFnMetric[
       byStatus,
       p50Ms: pct(50),
       p95Ms: pct(95),
-      lastInvokedAt: last?.timestamp ?? null,
+      lastInvokedAt: last ? iso(last) || null : null,
       lastStatus: last?.status_code ?? null,
-      lastFailure: failure ? { status: Number(failure.status_code), at: String(failure.timestamp) } : null,
+      lastFailure: failure ? { status: Number(failure.status_code), at: iso(failure) } : null,
       // `at` carries each tick's own time so the dashboard timeline can say WHEN a run
       // failed on hover; omitted (not null) when the row has no usable timestamp.
-      recent: sorted.slice(0, 20).map((r) => ({
-        status: Number(r.status_code) || 0,
-        ms: Number(r.execution_time_ms) || 0,
-        ...(r.timestamp ? { at: String(r.timestamp) } : {}),
-      })),
+      recent: sorted.slice(0, 20).map((r) => {
+        const at = toIsoTimestamp(r.timestamp);
+        return {
+          status: Number(r.status_code) || 0,
+          ms: Number(r.execution_time_ms) || 0,
+          ...(at ? { at } : {}),
+        };
+      }),
     };
   });
 }

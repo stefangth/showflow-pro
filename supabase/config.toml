@@ -71,6 +71,12 @@ verify_jwt = false
 [functions.handle-email-unsubscribe]
 verify_jwt = false
 
+# health-rollup: dispatched by pg_cron with X-Cron-Secret, never with a JWT. It
+# self-authorizes via requireCronOrRole(deps, req, []) — the empty role list means
+# the requireRole fallback matches nothing, so only the cron secret gets in.
+[functions.health-rollup]
+verify_jwt = false
+
 # documenso-webhook: Documenso carries no Supabase JWT on its webhook deliveries;
 # the handler self-authorizes via a constant-time compare against the
 # Vault-backed DOCUMENSO_WEBHOOK_SECRET edge secret (X-Documenso-Secret header).

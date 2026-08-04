@@ -41,6 +41,9 @@ export const KNOWN_JOBS: Record<string, number> = {
   "airtable-poll": 30,
   "cron-health-watcher": 60, // displayed only; see SELF-MONITORING above.
   "email-health-watcher": 60, // */15 job; same max-silence as its sibling cron-health-watcher.
+  // */15 job. Without this entry the rollup would be the one unmonitored cron: it could stop
+  // writing and the System Health uptime bar would quietly flatline with nobody alerted.
+  "health-rollup": 60,
 };
 
 type ScanRow = {

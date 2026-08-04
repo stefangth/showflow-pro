@@ -201,7 +201,8 @@ Deno.test("lastFailure reports the most recent non-2xx, not the most recent call
   const res = await handle(superReq(), deps);
 
   const body = await res.json() as { functions: Array<Record<string, unknown>> };
-  assertEquals(body.functions[0].lastFailure, { status: 401, at: "2026-07-21T09:00:00Z" });
+  // Normalised to a full ISO instant, whatever units the row arrived in.
+  assertEquals(body.functions[0].lastFailure, { status: 401, at: "2026-07-21T09:00:00.000Z" });
 });
 
 Deno.test("lastFailure is null when every call succeeded", async () => {
@@ -250,4 +251,25 @@ Deno.test("logs action rejects a missing fn", async () => {
   const { deps } = superDeps(routeFetch({ result: [] }));
   const res = await handle(superReq({ action: "logs" }), deps);
   assertEquals(res.status, 400);
+});
+
+Deno.test("reads the microsecond epoch timestamps the live Analytics API returns", async () => {
+  // The API returns `timestamp` as a microsecond epoch integer, NOT an ISO string (verified
+  // 2026-08-04). Passing it to `new Date()` unconverted yields the year 58,000 silently, which
+  // is what made health-rollup aggregate nothing and rendered "Last failure Invalid Date" here.
+  const rows = {
+    result: [
+      { function_id: TIER_ID, status_code: 502, execution_time_ms: 4200, timestamp: 1785867796145000 },
+      { function_id: TIER_ID, status_code: 200, execution_time_ms: 400, timestamp: 1785867700000000 },
+    ],
+  };
+  const fnList = [{ id: TIER_ID, slug: "open-offer-tier", name: "open-offer-tier" }];
+  const { deps } = superDeps(routeFetch(rows, fnList));
+  const res = await handle(superReq(), deps);
+
+  const body = await res.json() as { functions: Array<Record<string, unknown>> };
+  const fn = body.functions[0];
+  assertEquals(fn.lastFailure, { status: 502, at: "2026-08-04T18:23:16.145Z" });
+  assertEquals(fn.lastInvokedAt, "2026-08-04T18:23:16.145Z");
+  assertEquals((fn.recent as Array<{ at?: string }>)[0].at, "2026-08-04T18:23:16.145Z");
 });

@@ -16,24 +16,24 @@ describe("EdgeFunctionsPanel", () => {
   afterEach(() => vi.restoreAllMocks());
 
   it("shows the status-code breakdown so the failure is identifiable", () => {
-    renderWithProviders(<EdgeFunctionsPanel metrics={[metric()]} />);
+    renderWithProviders(<EdgeFunctionsPanel metrics={[metric()]} healthDaily={[]} />);
     expect(screen.getByText("401 × 48")).toBeInTheDocument();
   });
 
   it("reports rejected calls alongside errors", () => {
-    renderWithProviders(<EdgeFunctionsPanel metrics={[metric()]} />);
+    renderWithProviders(<EdgeFunctionsPanel metrics={[metric()]} healthDaily={[]} />);
     expect(screen.getByText(/48 rejected/)).toBeInTheDocument();
     expect(screen.getByText(/0 errors/)).toBeInTheDocument();
   });
 
   it("marks an all-rejected function as Down, not Operational", () => {
-    renderWithProviders(<EdgeFunctionsPanel metrics={[metric()]} />);
+    renderWithProviders(<EdgeFunctionsPanel metrics={[metric()]} healthDaily={[]} />);
     expect(screen.getByText("Down")).toBeInTheDocument();
     expect(screen.queryByText("Operational")).not.toBeInTheDocument();
   });
 
   it("notes when no call succeeded in the window", () => {
-    renderWithProviders(<EdgeFunctionsPanel metrics={[metric()]} />);
+    renderWithProviders(<EdgeFunctionsPanel metrics={[metric()]} healthDaily={[]} />);
     expect(screen.getByText(/no 2xx in this window/)).toBeInTheDocument();
   });
 
@@ -41,19 +41,19 @@ describe("EdgeFunctionsPanel", () => {
     renderWithProviders(<EdgeFunctionsPanel metrics={[metric({
       fn: "generate-hire-orders", invocations: 6, rejected: 0, errors: 0,
       byStatus: { "200": 6 }, lastStatus: 200, lastFailure: null,
-    })]} />);
+    })]} healthDaily={[]} />);
     expect(screen.getByText("Operational")).toBeInTheDocument();
     expect(screen.queryByText(/rejected/)).not.toBeInTheDocument();
     expect(screen.queryByText(/no 2xx/)).not.toBeInTheDocument();
   });
 
   it("gives the run timeline a text equivalent for screen readers", () => {
-    renderWithProviders(<EdgeFunctionsPanel metrics={[metric()]} />);
+    renderWithProviders(<EdgeFunctionsPanel metrics={[metric()]} healthDaily={[]} />);
     expect(screen.getByText(/48 calls, 48 rejected, 0 errors/)).toBeInTheDocument();
   });
 
   it("offers a log drill-down only for a function with faults", () => {
-    renderWithProviders(<EdgeFunctionsPanel metrics={[metric()]} />);
+    renderWithProviders(<EdgeFunctionsPanel metrics={[metric()]} healthDaily={[]} />);
     expect(screen.getByRole("button", { name: /view recent errors/i })).toBeInTheDocument();
   });
 
@@ -61,17 +61,17 @@ describe("EdgeFunctionsPanel", () => {
     renderWithProviders(<EdgeFunctionsPanel metrics={[metric({
       fn: "generate-hire-orders", invocations: 6, rejected: 0, errors: 0,
       byStatus: { "200": 6 }, lastStatus: 200, lastFailure: null,
-    })]} />);
+    })]} healthDaily={[]} />);
     expect(screen.queryByRole("button", { name: /view recent errors/i })).not.toBeInTheDocument();
   });
 
   it("explains an elevated 5xx rate", () => {
-    renderWithProviders(<EdgeFunctionsPanel metrics={[metric({ invocations: 10, errors: 2, rejected: 0, byStatus: { "200": 8, "500": 2 } })]} />);
+    renderWithProviders(<EdgeFunctionsPanel metrics={[metric({ invocations: 10, errors: 2, rejected: 0, byStatus: { "200": 8, "500": 2 } })]} healthDaily={[]} />);
     expect(screen.getByText("5xx error rate 20.0% exceeds the 5.0% budget")).toBeInTheDocument();
   });
 
   it("opens the recent-error detail region", () => {
-    renderWithProviders(<EdgeFunctionsPanel metrics={[metric()]} />);
+    renderWithProviders(<EdgeFunctionsPanel metrics={[metric()]} healthDaily={[]} />);
     fireEvent.click(screen.getByRole("button", { name: /view recent errors/i }));
     expect(screen.getByRole("button", { name: /hide recent errors/i })).toBeInTheDocument();
     expect(screen.getByText("Loading log lines.")).toBeInTheDocument();
@@ -85,8 +85,21 @@ describe("EdgeFunctionsPanel", () => {
       isLoading: false,
     } as unknown as ReturnType<typeof systemHealthHooks.useEdgeFnLogs>);
 
-    renderWithProviders(<EdgeFunctionsPanel metrics={[metric()]} />);
+    renderWithProviders(<EdgeFunctionsPanel metrics={[metric()]} healthDaily={[]} />);
     fireEvent.click(screen.getByRole("button", { name: /view recent errors/i }));
     expect(screen.getByText("Log lines unavailable: analytics request returned 502")).toBeInTheDocument();
+  });
+
+  it("draws an uptime bar per on-demand function", () => {
+    const { container } = renderWithProviders(
+      <EdgeFunctionsPanel
+        metrics={[metric({ fn: "create-invitation" })]}
+        healthDaily={[{
+          day: new Date().toISOString().slice(0, 10), fn: "create-invitation",
+          runs: 4, failures: 0, rejected: 0, worst_status: 200, p95_ms: 800,
+        }]}
+      />,
+    );
+    expect(container.querySelectorAll("[data-uptime-day]")).toHaveLength(30);
   });
 });

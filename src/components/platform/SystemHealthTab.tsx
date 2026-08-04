@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { useCronHealth, useEdgeFnMetrics, useEmailHealth } from "@/hooks/useSystemHealth";
+import { useCronHealth, useEdgeFnMetrics, useEmailHealth, useHealthDaily } from "@/hooks/useSystemHealth";
 import { OverallStatusBanner } from "./systemHealth/OverallStatusBanner";
 import { DomainSummaryGrid } from "./systemHealth/DomainSummaryGrid";
 import { ScheduledJobsPanel } from "./systemHealth/ScheduledJobsPanel";
@@ -15,6 +15,7 @@ import { SYSTEM_HEALTH_BUDGET as budget, EMAIL_HEALTH } from "@/config/app.confi
 export function SystemHealthTab() {
   const cron = useCronHealth();
   const edge = useEdgeFnMetrics();
+  const daily = useHealthDaily();
   // Explicit `number` — EMAIL_HEALTH.windowMinutes is a literal (1440) via `as const`, which would
   // otherwise narrow the setter to Dispatch<SetStateAction<1440>> and reject the panel's (m: number) toggle.
   const [emailWindow, setEmailWindow] = useState<number>(EMAIL_HEALTH.windowMinutes);
@@ -26,6 +27,10 @@ export function SystemHealthTab() {
 
   const cronRows = cron.data ?? [];
   const metrics = edge.data ?? [];
+  // Empty array is the correct fallback, not a loading gate: the bar then renders all "no data"
+  // cells, which is exactly right before the rollup has run, and a rollup outage must not
+  // blank the whole tab.
+  const healthDaily = daily.data ?? [];
   const byFn = new Map(metrics.map((m) => [m.fn, m]));
 
   const jobStates: HealthState[] = cronRows.map((c) =>
@@ -59,8 +64,8 @@ export function SystemHealthTab() {
             : email.data ? `${email.data.sent} sent · ${(email.data.bounceRate * 100).toFixed(1)}% bounce`
             : "loading…" },
       ]} />
-      <ScheduledJobsPanel cronRows={cronRows} metrics={metrics} />
-      <EdgeFunctionsPanel metrics={metrics} />
+      <ScheduledJobsPanel cronRows={cronRows} metrics={metrics} healthDaily={healthDaily} />
+      <EdgeFunctionsPanel metrics={metrics} healthDaily={healthDaily} />
       {email.data && (
         <EmailDeliveryPanel health={email.data} state={emailState} window={emailWindow} onWindowChange={setEmailWindow} />
       )}
