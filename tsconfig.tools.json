@@ -1,0 +1,54 @@
+{
+  // Type-checks everything OUTSIDE src/ that tsc would otherwise never see.
+  //
+  // tsconfig.app.json only includes "src", and ESLint here is the non-type-aware
+  // `typescript-eslint recommended` config, so before this project existed a type
+  // error in an e2e spec surfaced only when Playwright ran (main-targeted PRs
+  // only), and one in a scripts test surfaced never — vitest transpiles with
+  // esbuild and does not type-check.
+  //
+  // Deliberately NOT included: scripts/changelog-to-json.ts and
+  // scripts/upload-hire-order-fonts.ts. Both are Deno programs (see their
+  // `#!/usr/bin/env -S deno run` shebangs) and use the Deno global, so they are
+  // covered by `deno check` in the CI function-tests job, not by tsc. The .mjs
+  // scripts are plain JS and are not type-checked by anyone (allowJs is off).
+  //
+  // `strict: true` here (tsconfig.app.json is strict: false). The e2e helpers
+  // and the two scripts tests are new-ish code that already passes strict, and
+  // strictNullChecks is most of the value. Caveat: tsc follows imports, so the
+  // handful of src/ modules the e2e specs import (app.config.ts,
+  // lib/entitlements.ts, lib/hireOrders/terms.ts and their transitive imports)
+  // ARE checked under strict by this project and non-strict by the app project.
+  // If a future edit to one of those fails only the "Typecheck tools" step,
+  // that is why — fix it strictly, or relax this flag.
+  //
+  // No "vitest/globals" in `types`: both scripts/*.test.ts files import
+  // describe/it/expect from "vitest" explicitly, so adding the globals would
+  // only let an e2e spec reach for vitest's `expect` and still type-check
+  // while failing under Playwright at runtime.
+  "compilerOptions": {
+    "target": "ES2022",
+    "lib": ["ES2023", "DOM"],
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "allowImportingTsExtensions": true,
+    "isolatedModules": true,
+    "moduleDetection": "force",
+    "noEmit": true,
+    "skipLibCheck": true,
+    "strict": true,
+    "noUnusedLocals": false,
+    "noUnusedParameters": false,
+    "noFallthroughCasesInSwitch": true,
+    "types": ["node"],
+    "paths": {
+      "@/*": ["./src/*"]
+    }
+  },
+  "include": [
+    "e2e",
+    "scripts/**/*.test.ts",
+    "vite.config.ts",
+    "vitest.config.ts"
+  ]
+}
