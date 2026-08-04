@@ -40,8 +40,12 @@ export function LatencyStat({ p95Ms }: { p95Ms: number | null }) {
  *  Ticks are wide enough to be a comfortable pointer target rather than hairlines. */
 export function RunTimeline({ metric, p95BudgetMs }: { metric: EdgeFnMetric | null; p95BudgetMs: number }) {
   const ticks = (metric?.recent ?? []).slice(0, 20);
+  // status <= 0 is the proxy's stand-in for a run that produced no HTTP response at all —
+  // as much a failure as a 5xx, and below 400, so it must be checked before the thresholds
+  // or it paints green while its own tooltip reads "no response".
   const tone = (o: EdgeFnOutcome) =>
-    o.status >= 500 ? "bg-destructive" : o.status >= 400 || o.ms > p95BudgetMs ? "bg-warning" : "bg-success";
+    o.status <= 0 || o.status >= 500 ? "bg-destructive"
+      : o.status >= 400 || o.ms > p95BudgetMs ? "bg-warning" : "bg-success";
   if (ticks.length === 0) return <span className="text-xs text-muted-foreground">no recent runs</span>;
   return (
     // Its own provider: the panel renders inside App's TooltipProvider, but nesting is

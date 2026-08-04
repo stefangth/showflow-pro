@@ -49,6 +49,15 @@ describe("RunTimeline", () => {
     expect(await screen.findAllByText(/HTTP 502 · 4\.2s/)).not.toHaveLength(0);
   });
 
+  it("colours a run that never got an HTTP response as a failure", () => {
+    // status 0 is the proxy's stand-in for "no response". It is below 400, so a naive
+    // threshold check painted it green while its own tooltip read "no response".
+    const { container } = render(
+      <RunTimeline metric={metric([{ status: 0, ms: 0 }])} p95BudgetMs={12000} />,
+    );
+    expect(container.querySelector("[data-run-tick]")?.className).toContain("bg-destructive");
+  });
+
   it("says so when there are no recent runs", () => {
     render(<RunTimeline metric={metric([])} p95BudgetMs={12000} />);
     expect(screen.getByText("no recent runs")).toBeInTheDocument();
