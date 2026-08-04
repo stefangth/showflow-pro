@@ -34,8 +34,19 @@ npm run dev          # local dev server (Vite, port 5173)
 npm run build        # production build
 npm run lint         # eslint (zero-warning gate: --max-warnings 0)
 npx vitest run       # unit tests (vitest + jsdom; setup in src/test/setup.ts)
+npm run test:coverage # what CI runs: the same suite + the coverage thresholds
 npm run test:watch   # vitest watch mode
 ```
+
+**Type-checking is split across three projects** — run all three, none of them subsumes the others:
+
+```bash
+npx tsc -p tsconfig.app.json --noEmit    # src/
+npx tsc -p tsconfig.tools.json --noEmit  # e2e/, scripts/*.test.ts, build configs
+deno check --node-modules-dir=none supabase/functions/*/index.ts  # the edge runtime
+```
+
+CI runs `vitest run --coverage` (not a bare `vitest run`): the thresholds in `vitest.config.ts` only apply under `--coverage`, and the suite is executed exactly once — do not add a second job that re-runs it uninstrumented.
 
 Edge functions deploy automatically **on merge to `main`** via `.github/workflows/deploy-functions.yml`: the Supabase CLI deploys every function in `supabase/functions/` to the live project (`epweartpzwvcasrzyueh`). No manual deploy step for changes that land on `main`. When you add a **new** function, give it a `[functions.<name>]` block in `supabase/config.toml` (default `verify_jwt = true`; set `false` for public webhooks and cron callers that use `X-Cron-Secret`) — an unlisted function would deploy with JWT verification forced on and break those callers. To deploy off-cycle (a backfill, or before a merge) run the workflow manually (Actions → "Deploy Edge Functions" → Run workflow) or use the Supabase MCP `deploy_edge_function`. Removing a function still needs a manual `supabase functions delete <name>` — the deploy never deletes.
 

@@ -29,13 +29,19 @@ export default defineConfig({
         "src/main.tsx",
       ],
       thresholds: {
-        // Conservative starting gate — ratchet up over time, never down.
-        // Most pages/components aren't unit-covered yet; the data/lib layers are.
-        // The gate exists to prevent regression, not to assert high coverage.
-        statements: 25,
-        branches: 60,
-        functions: 40,
-        lines: 25,
+        // Ratchet up over time, never down. The gate exists to prevent
+        // regression, not to assert high coverage — so each number sits a few
+        // points under the actual at the time it was last raised, leaving room
+        // for a PR that adds a not-yet-covered page without going red.
+        //
+        // Raised 2026-08-05 from 25/60/40/25, which the suite had long outgrown
+        // (actuals were 78.36 / 81.23 / 66.26 / 78.36 — years of slack, so a
+        // real regression could never have tripped it). Re-check the actuals in
+        // the CI job output before raising these again.
+        statements: 75,
+        branches: 78,
+        functions: 63,
+        lines: 75,
       },
     },
   },
