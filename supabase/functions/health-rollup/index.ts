@@ -1,6 +1,7 @@
 import { preflight, json } from "../_shared/http.ts";
 import { requireCronOrRole } from "../_shared/auth.ts";
 import { realDeps, type Deps } from "../_shared/deps.ts";
+import { analyticsDayKey } from "../_shared/analyticsTime.ts";
 
 /**
  * Daily health rollup. Every 15 min: read per-invocation outcomes from the Supabase Analytics
@@ -8,7 +9,9 @@ import { realDeps, type Deps } from "../_shared/deps.ts";
  *
  * WHY THIS EXISTS: the Analytics API retains 24 hours. The System Health console's 30-day
  * uptime bar cannot be derived from it, so the counts have to be durably recorded as they age
- * out. Nothing can be backfilled — history starts the day this first runs.
+ * out. Nothing can be backfilled — history starts the day this first runs, and that first
+ * "yesterday" row is necessarily partial (most of it had already aged out of Analytics before
+ * the first pass). Every subsequent day is captured whole because the rollup sees it live.
  *
  * WHY RECOMPUTE, NOT INCREMENT: the writer must be idempotent. pg_cron can double-fire, a run
  * can be retried, and a partial write must not permanently skew a day's counts. Each pass
@@ -32,7 +35,9 @@ interface RawRow {
   function_id?: string;
   status_code?: number;
   execution_time_ms?: number;
-  timestamp?: string;
+  // Microseconds since the epoch, as an integer — NOT an ISO string. Always read it
+  // through analyticsDayKey/toIsoTimestamp; see _shared/analyticsTime.ts.
+  timestamp?: number | string;
 }
 
 interface DailyRow {
@@ -76,10 +81,8 @@ const dayKey = (d: Date): string => d.toISOString().slice(0, 10);
 function aggregate(rows: RawRow[], idToSlug: Map<string, string>, days: Set<string>): DailyRow[] {
   const buckets = new Map<string, RawRow[]>();
   for (const r of rows) {
-    if (!r.timestamp) continue;
-    const at = new Date(r.timestamp);
-    if (Number.isNaN(at.getTime())) continue;
-    const day = dayKey(at);
+    const day = analyticsDayKey(r.timestamp);
+    if (day === null) continue;
     // Only the days this pass recomputes. A partial older day would overwrite a complete one.
     if (!days.has(day)) continue;
     const fn = (r.function_id && idToSlug.get(r.function_id)) || r.function_id || "unattributed";
@@ -120,33 +123,62 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
   if (!ref || !token) return json({ error: "metrics_unconfigured" }, 500);
 
   const now = deps.now();
-  // Start of yesterday (UTC) through now: exactly the two days this pass rewrites.
-  const start = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() - 1));
-  const days = new Set([dayKey(start), dayKey(now)]);
+  const startOfDay = (d: Date, offsetDays = 0) =>
+    new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate() + offsetDays));
+  const todayStart = startOfDay(now);
+  const yesterdayStart = startOfDay(now, -1);
 
-  const url = `https://api.supabase.com/v1/projects/${ref}/analytics/endpoints/logs.all` +
-    `?iso_timestamp_start=${encodeURIComponent(start.toISOString())}` +
-    `&iso_timestamp_end=${encodeURIComponent(now.toISOString())}` +
-    `&sql=${encodeURIComponent(METRICS_SQL)}`;
+  // ONE REQUEST PER DAY, not one spanning both. The Analytics API caps a query's range at
+  // 24 hours and clamps anything longer silently: asking for yesterday-00:00 through now
+  // (up to 48h) came back holding only yesterday's rows, so today's bar never filled in.
+  // Two calls per pass is well inside the ANALYTICS PAT's 60 req/min budget.
+  const windows: Array<{ day: string; start: Date; end: Date }> = [
+    { day: dayKey(yesterdayStart), start: yesterdayStart, end: todayStart },
+    { day: dayKey(now), start: todayStart, end: now },
+  ];
 
-  let res: Response;
-  try {
-    res = await deps.fetch(url, { headers: { Authorization: `Bearer ${token}` } });
-  } catch (e) {
-    console.error("[health-rollup] Analytics fetch threw:", e instanceof Error ? e.message : String(e));
-    return json({ error: "analytics_unavailable" }, 502);
+  const rows: DailyRow[] = [];
+  let fetched = 0;
+  let idToSlug = new Map<string, string>();
+
+  for (const w of windows) {
+    const url = `https://api.supabase.com/v1/projects/${ref}/analytics/endpoints/logs.all` +
+      `?iso_timestamp_start=${encodeURIComponent(w.start.toISOString())}` +
+      `&iso_timestamp_end=${encodeURIComponent(w.end.toISOString())}` +
+      `&sql=${encodeURIComponent(METRICS_SQL)}`;
+
+    let res: Response;
+    try {
+      res = await deps.fetch(url, { headers: { Authorization: `Bearer ${token}` } });
+    } catch (e) {
+      console.error("[health-rollup] Analytics fetch threw:", e instanceof Error ? e.message : String(e));
+      return json({ error: "analytics_unavailable" }, 502);
+    }
+    if (!res.ok) {
+      // Abort the whole pass without writing anything. A partial or empty rollup written over
+      // a real day would turn a transient metrics outage into a permanent hole in the bar.
+      console.error(`[health-rollup] Analytics ${res.status}:`, (await res.text().catch(() => "")).slice(0, 300));
+      return json({ error: "analytics_unavailable", status: res.status }, 502);
+    }
+
+    const payload = await res.json().catch(() => ({ result: [] }));
+    const raw = Array.isArray((payload as { result?: unknown }).result) ? (payload as { result: RawRow[] }).result : [];
+    fetched += raw.length;
+    if (raw.length === 0) continue;
+    // Resolve slugs once, lazily — the map is the same for both windows.
+    if (idToSlug.size === 0) idToSlug = await fetchFnSlugs(deps, ref, token);
+    rows.push(...aggregate(raw, idToSlug, new Set([w.day])));
   }
-  if (!res.ok) {
-    // Abort without writing. A partial or empty rollup written over a real day would turn a
-    // metrics outage into a permanent hole in the uptime bar.
-    console.error(`[health-rollup] Analytics ${res.status}:`, (await res.text().catch(() => "")).slice(0, 300));
-    return json({ error: "analytics_unavailable", status: res.status }, 502);
-  }
 
-  const payload = await res.json().catch(() => ({ result: [] }));
-  const raw = Array.isArray((payload as { result?: unknown }).result) ? (payload as { result: RawRow[] }).result : [];
-  const idToSlug = raw.length ? await fetchFnSlugs(deps, ref, token) : new Map<string, string>();
-  const rows = aggregate(raw, idToSlug, days);
+  // "Fetched N, aggregated 0" is the one failure this function can hit while still returning
+  // 200, and it is silent otherwise: the bar would just never fill in. Log the discriminating
+  // fact (a raw timestamp) so the cause is visible without a redeploy.
+  if (fetched > 0 && rows.length === 0) {
+    console.error("[health-rollup] fetched rows but aggregated none", {
+      fetched,
+      wantDays: windows.map((w) => w.day),
+    });
+  }
 
   if (rows.length > 0) {
     const { error } = await deps.admin.from("health_daily").upsert(
@@ -159,7 +191,7 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
     }
   }
 
-  return json({ days: days.size, rows: rows.length });
+  return json({ days: windows.length, rows: rows.length, fetched });
 }
 
 if (import.meta.main) Deno.serve((req) => handle(req, realDeps()));

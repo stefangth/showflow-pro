@@ -1,6 +1,7 @@
 import { preflight, json } from "../_shared/http.ts";
 import { requireSuperAdmin } from "../_shared/auth.ts";
 import { realDeps, type Deps } from "../_shared/deps.ts";
+import { toIsoTimestamp } from "../_shared/analyticsTime.ts";
 
 const MAX_WINDOW_MIN = 1440; // Management API caps the analytics range at 24h.
 
@@ -13,7 +14,9 @@ interface EdgeFnMetric {
   lastFailure: { status: number; at: string } | null;
   recent: { status: number; ms: number; at?: string }[];
 }
-interface RawRow { function_id?: string; status_code?: number; execution_time_ms?: number; timestamp?: string }
+// `timestamp` is a MICROSECOND epoch integer, not an ISO string (verified against the live
+// API 2026-08-04). Normalise it through toIsoTimestamp before it reaches a Date or the client.
+interface RawRow { function_id?: string; status_code?: number; execution_time_ms?: number; timestamp?: number | string }
 
 // The function_edge_logs schema keys each row by function_id (a UUID) — there is NO
 // function_name column (verified against the live Analytics API). function_id -> slug
@@ -73,7 +76,10 @@ function aggregate(rows: RawRow[], idToSlug: Map<string, string>): EdgeFnMetric[
     const pct = (p: number): number | null =>
       // Nearest-rank: ceil(p% * N) - 1. Plain floor returns the MAX for p95 when N is a multiple of 20.
       lat.length === 0 ? null : lat[Math.min(lat.length - 1, Math.max(0, Math.ceil((p / 100) * lat.length) - 1))];
-    const sorted = [...rs].sort((a, b) => String(b.timestamp).localeCompare(String(a.timestamp)));
+    // Sort on the normalised ISO value: raw microsecond integers compare correctly as numbers
+    // but not reliably as strings once their digit count changes.
+    const iso = (r: RawRow) => toIsoTimestamp(r.timestamp) ?? "";
+    const sorted = [...rs].sort((a, b) => iso(b).localeCompare(iso(a)));
     const last = sorted[0];
     const byStatus: Record<string, number> = {};
     for (const r of rs) {
@@ -95,16 +101,19 @@ function aggregate(rows: RawRow[], idToSlug: Map<string, string>): EdgeFnMetric[
       byStatus,
       p50Ms: pct(50),
       p95Ms: pct(95),
-      lastInvokedAt: last?.timestamp ?? null,
+      lastInvokedAt: last ? iso(last) || null : null,
       lastStatus: last?.status_code ?? null,
-      lastFailure: failure ? { status: Number(failure.status_code), at: String(failure.timestamp) } : null,
+      lastFailure: failure ? { status: Number(failure.status_code), at: iso(failure) } : null,
       // `at` carries each tick's own time so the dashboard timeline can say WHEN a run
       // failed on hover; omitted (not null) when the row has no usable timestamp.
-      recent: sorted.slice(0, 20).map((r) => ({
-        status: Number(r.status_code) || 0,
-        ms: Number(r.execution_time_ms) || 0,
-        ...(r.timestamp ? { at: String(r.timestamp) } : {}),
-      })),
+      recent: sorted.slice(0, 20).map((r) => {
+        const at = toIsoTimestamp(r.timestamp);
+        return {
+          status: Number(r.status_code) || 0,
+          ms: Number(r.execution_time_ms) || 0,
+          ...(at ? { at } : {}),
+        };
+      }),
     };
   });
 }
