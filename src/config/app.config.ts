@@ -88,6 +88,14 @@ export const SYSTEM_HEALTH = {
    *  Looser than errorRateBudget: an occasional validation 400 is normal traffic,
    *  a sustained rejection rate is a broken caller. */
   rejectRateBudget: 0.2,
+  /** Days covered by the scheduled-job incident timeline. The per-run timeline can only reach
+   *  back as far as the Analytics window (24h) and its last 20 ticks — for airtable-poll that is
+   *  under two hours — so a failure that was emailed out this morning had no trace on the page.
+   *  This strip is fed by cron_health_log instead, which is durable. */
+  historyDays: 7,
+  /** cron-health-watcher prunes cron_health_log at this age — the incident timeline and the
+   *  failure list cannot show anything older, so it is what the UI labels itself with. */
+  logRetentionDays: 30,
 } as const;
 
 /** Health budget for the systemHealth derivation functions — defined once, imported by every

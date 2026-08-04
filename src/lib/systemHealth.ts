@@ -1,8 +1,23 @@
 export type HealthState = "operational" | "pending" | "degraded" | "down" | "stale";
 export type CronStatus = "healthy" | "failing" | "stale" | "unknown";
 
-/** A single recent invocation outcome, for the run timeline (most-recent-first). */
-export interface EdgeFnOutcome { status: number; ms: number }
+/** A single recent invocation outcome, for the run timeline (most-recent-first).
+ *  `at` is optional: it was added after the first shipped shape, so a metric cached
+ *  from an older proxy response still renders (just without a time in its tooltip). */
+export interface EdgeFnOutcome { status: number; ms: number; at?: string }
+
+/** One-line detail for a single run tick — the timeline's hover tooltip.
+ *  Status code first: it is the whole reason someone is pointing at a red tick. */
+export function describeOutcome(o: EdgeFnOutcome): string {
+  const parts = [o.status > 0 ? `HTTP ${o.status}` : "no response", seconds(o.ms)];
+  // A full local timestamp, not lib/dates' date-only helpers: "which day" is useless
+  // when you are placing a fault inside the last 24 hours. The Analytics API's row
+  // shape is only partly verified, so an unparseable value drops the segment rather
+  // than rendering "Invalid Date" into the tooltip.
+  const at = o.at ? new Date(o.at) : null;
+  if (at && !Number.isNaN(at.getTime())) parts.push(at.toLocaleString());
+  return parts.join(" · ");
+}
 
 /** Per-function metrics from the platform-edge-metrics proxy over the lookback window.
  *  This shape is mirrored by the edge function's JSON output — keep the two in sync. */
@@ -21,6 +36,55 @@ export interface EdgeFnMetric {
   /** Most recent non-2xx outcome in the window, or null if every call succeeded. */
   lastFailure: { status: number; at: string } | null;
   recent: EdgeFnOutcome[];
+}
+
+/** One recorded cron failure incident (a cron_health_log row, as mapped by fetchCronHealth).
+ *  Structural on purpose so this module doesn't depend on the data layer. */
+export interface FailureRecord { status_code: number | null; error: string | null; observed_at: string }
+
+/** One day of the scheduled-job incident timeline. */
+export interface FailureDay { key: string; date: Date; count: number; latest: FailureRecord | null }
+
+/** Local calendar day, not UTC: every timestamp the panel prints is local, so a failure at
+ *  01:00 Berlin must land on the cell the operator would call "today". */
+const localDayKey = (d: Date): string =>
+  `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+
+/**
+ * Bucket recorded failure incidents into one cell per day, oldest first, ending on `now`'s day.
+ * Days with nothing recorded come back with count 0 — that means "no failure was logged", which
+ * is not quite the same as "the job ran fine", and the tooltip copy says exactly that.
+ */
+export function dailyFailureBuckets(failures: FailureRecord[], days: number, now: Date): FailureDay[] {
+  const byDay = new Map<string, FailureRecord[]>();
+  for (const f of failures) {
+    const at = new Date(f.observed_at);
+    if (Number.isNaN(at.getTime())) continue;
+    const key = localDayKey(at);
+    const bucket = byDay.get(key);
+    if (bucket) bucket.push(f); else byDay.set(key, [f]);
+  }
+  const out: FailureDay[] = [];
+  for (let back = days - 1; back >= 0; back--) {
+    // Date arithmetic via the constructor's day overflow — correct across month and DST boundaries.
+    const date = new Date(now.getFullYear(), now.getMonth(), now.getDate() - back);
+    const key = localDayKey(date);
+    const hits = [...(byDay.get(key) ?? [])].sort((a, b) => b.observed_at.localeCompare(a.observed_at));
+    out.push({ key, date, count: hits.length, latest: hits[0] ?? null });
+  }
+  return out;
+}
+
+/** Tooltip line for one day of the incident timeline. */
+export function describeFailureDay(day: FailureDay): string {
+  const label = day.date.toLocaleDateString(undefined, { weekday: "short", day: "numeric", month: "short" });
+  if (day.count === 0 || !day.latest) return `${label} · no failures recorded`;
+  const code = day.latest.status_code === null ? "no HTTP response" : `HTTP ${day.latest.status_code}`;
+  const parts = [label, `${day.count} ${day.count === 1 ? "failure" : "failures"}`, code];
+  // The watcher stores `HTTP 502` as the error text for a bare status failure — repeating it
+  // would make every tooltip read "HTTP 502 · HTTP 502".
+  if (day.latest.error && day.latest.error !== code) parts.push(day.latest.error);
+  return parts.join(" · ");
 }
 
 export interface HealthBudget {

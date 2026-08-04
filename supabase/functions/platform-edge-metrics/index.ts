@@ -11,7 +11,7 @@ interface EdgeFnMetric {
   p50Ms: number | null; p95Ms: number | null;
   lastInvokedAt: string | null; lastStatus: number | null;
   lastFailure: { status: number; at: string } | null;
-  recent: { status: number; ms: number }[];
+  recent: { status: number; ms: number; at?: string }[];
 }
 interface RawRow { function_id?: string; status_code?: number; execution_time_ms?: number; timestamp?: string }
 
@@ -98,7 +98,13 @@ function aggregate(rows: RawRow[], idToSlug: Map<string, string>): EdgeFnMetric[
       lastInvokedAt: last?.timestamp ?? null,
       lastStatus: last?.status_code ?? null,
       lastFailure: failure ? { status: Number(failure.status_code), at: String(failure.timestamp) } : null,
-      recent: sorted.slice(0, 20).map((r) => ({ status: Number(r.status_code) || 0, ms: Number(r.execution_time_ms) || 0 })),
+      // `at` carries each tick's own time so the dashboard timeline can say WHEN a run
+      // failed on hover; omitted (not null) when the row has no usable timestamp.
+      recent: sorted.slice(0, 20).map((r) => ({
+        status: Number(r.status_code) || 0,
+        ms: Number(r.execution_time_ms) || 0,
+        ...(r.timestamp ? { at: String(r.timestamp) } : {}),
+      })),
     };
   });
 }
