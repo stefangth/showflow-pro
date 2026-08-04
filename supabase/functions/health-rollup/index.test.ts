@@ -25,10 +25,13 @@ function depsFor(slug: string, rows: unknown[], fetchImpl?: typeof fetch) {
 
 const cronReq = () => makeRequest({ headers: { "X-Cron-Secret": SECRET }, body: {} });
 
-/** The rows the handler upserted into health_daily, as recorded by the fake client. */
+/** The rows the handler sent to upsert_health_daily, as recorded by the fake client.
+ *  The write goes through the RPC, not a plain .upsert(), so that a truncated re-read of an
+ *  older day can never shrink its stored counts (the monotonic guard lives in SQL). */
 function upserted(calls: Array<{ table: string; method: string; args: unknown[] }>) {
-  const call = calls.find((c) => c.table === "health_daily" && c.method === "upsert");
-  return (call?.args[0] ?? []) as Record<string, unknown>[];
+  const call = calls.find((c) => c.table === "rpc:upsert_health_daily");
+  const args = call?.args[0] as { p_rows?: unknown } | undefined;
+  return (args?.p_rows ?? []) as Record<string, unknown>[];
 }
 
 Deno.test("aggregates a day into runs, failures and worst status", async () => {
@@ -108,5 +111,5 @@ Deno.test("returns 502 without writing when Analytics is unavailable", async () 
 
   assertEquals(res.status, 502);
   // A partial rollup written over a real day would turn a metrics outage into a permanent hole.
-  assertEquals(calls.some((c) => c.table === "health_daily" && c.method === "upsert"), false);
+  assertEquals(calls.some((c) => c.table === "rpc:upsert_health_daily"), false);
 });

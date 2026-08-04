@@ -1,3 +1,5 @@
+import { SYSTEM_HEALTH } from "@/config/app.config";
+
 /** One health_daily row as returned by get_health_daily. Mirrors the table's columns. */
 export interface HealthDay {
   day: string;              // 'YYYY-MM-DD' (UTC calendar day, as written by health-rollup)
@@ -20,9 +22,11 @@ export interface UptimeCell {
   worstStatus: number | null;
 }
 
-/** 4xx fraction above which a day reads degraded. Mirrors SYSTEM_HEALTH.rejectRateBudget:
- *  an occasional validation 400 is normal traffic, a sustained rejection rate is a broken caller. */
-const REJECT_RATE_BUDGET = 0.2;
+/** 4xx fraction above which a day reads degraded. Imported rather than redeclared: a local
+ *  copy would drift from the live-status thresholds silently, and the bar and the pill would
+ *  then disagree about the same function. An occasional validation 400 is normal traffic; a
+ *  sustained rejection rate is a broken caller. */
+const REJECT_RATE_BUDGET = SYSTEM_HEALTH.rejectRateBudget;
 
 const EMPTY = (day: string): UptimeCell =>
   ({ day, state: "nodata", runs: 0, failures: 0, rejected: 0, worstStatus: null });

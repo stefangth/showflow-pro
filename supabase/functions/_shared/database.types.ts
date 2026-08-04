@@ -2455,6 +2455,7 @@ export type Database = {
           org_name: string
         }[]
       }
+      upsert_health_daily: { Args: { p_rows: Json }; Returns: number }
     }
     Enums: {
       app_role: "admin" | "producer" | "artist"

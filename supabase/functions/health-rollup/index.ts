@@ -2,6 +2,7 @@ import { preflight, json } from "../_shared/http.ts";
 import { requireCronOrRole } from "../_shared/auth.ts";
 import { realDeps, type Deps } from "../_shared/deps.ts";
 import { analyticsDayKey } from "../_shared/analyticsTime.ts";
+import type { Json } from "../_shared/database.types.ts";
 
 /**
  * Daily health rollup. Every 15 min: read per-invocation outcomes from the Supabase Analytics
@@ -29,6 +30,9 @@ import { analyticsDayKey } from "../_shared/analyticsTime.ts";
 const METRICS_SQL =
   "select m.function_id, r.status_code, m.execution_time_ms, t.timestamp " +
   "from function_edge_logs t cross join unnest(t.metadata) m cross join unnest(m.response) r " +
+  // 10000, vs platform-edge-metrics' 2000 for the same query shape: that one samples the last
+  // 20 runs for a sparkline, this one must count a WHOLE day across every function (~500/day
+  // today, with headroom for growth). A truncated read here would under-count a day.
   "order by t.timestamp desc limit 10000";
 
 interface RawRow {
@@ -181,10 +185,15 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
   }
 
   if (rows.length > 0) {
-    const { error } = await deps.admin.from("health_daily").upsert(
-      rows.map((r) => ({ ...r, updated_at: now.toISOString() })),
-      { onConflict: "day,fn" },
-    );
+    // Via the RPC, not a plain .upsert(): the write must never REDUCE a day's counts.
+    // Analytics retention is a rolling 24 hours, so a pass late on day N+1 can only see the
+    // tail of day N — re-reading "yesterday" at 18:00 returns roughly six hours of it. A plain
+    // overwrite would replace a complete day with that sliver and decay it further every 15
+    // minutes. upsert_health_daily applies the update only when runs >= the stored value, so a
+    // truncated read is ignored while genuine growth and identical re-runs both still apply.
+    // jsonb arg: the generated type is the structural `Json`, so the row array is cast once
+    // here at the call boundary (same idiom as generate-hire-orders' p_data).
+    const { error } = await deps.admin.rpc("upsert_health_daily", { p_rows: rows as unknown as Json });
     if (error) {
       console.error("[health-rollup] upsert failed", error);
       return json({ error: "upsert_failed" }, 500);
