@@ -970,6 +970,39 @@ export type Database = {
         }
         Relationships: []
       }
+      health_daily: {
+        Row: {
+          day: string
+          failures: number
+          fn: string
+          p95_ms: number | null
+          rejected: number
+          runs: number
+          updated_at: string
+          worst_status: number | null
+        }
+        Insert: {
+          day: string
+          failures?: number
+          fn: string
+          p95_ms?: number | null
+          rejected?: number
+          runs?: number
+          updated_at?: string
+          worst_status?: number | null
+        }
+        Update: {
+          day?: string
+          failures?: number
+          fn?: string
+          p95_ms?: number | null
+          rejected?: number
+          runs?: number
+          updated_at?: string
+          worst_status?: number | null
+        }
+        Relationships: []
+      }
       hire_order_dates: {
         Row: {
           hire_order_id: string
@@ -2251,6 +2284,18 @@ export type Database = {
       get_cron_secret: { Args: never; Returns: string }
       get_effective_booking_flow: { Args: { _org: string }; Returns: Json }
       get_email_health: { Args: { p_window_minutes?: number }; Returns: Json }
+      get_health_daily: {
+        Args: { p_days: number }
+        Returns: {
+          day: string
+          failures: number
+          fn: string
+          p95_ms: number
+          rejected: number
+          runs: number
+          worst_status: number
+        }[]
+      }
       get_org_airtable_key: { Args: { _org: string }; Returns: string }
       get_org_airtable_key_status: {
         Args: { _org: string }
