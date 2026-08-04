@@ -1,19 +1,28 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { StatusPill, StatusDot, LatencyStat, RunTimeline, IncidentTimeline } from "./primitives";
+import { StatusPill, StatusDot, LatencyStat } from "./primitives";
+import { UptimeBar } from "./UptimeBar";
+import { RecentRunsList } from "./RecentRunsList";
 import { describeJobHealth, deriveJobStatus, CRON_JOB_TO_FN, type EdgeFnMetric } from "@/lib/systemHealth";
+import type { HealthDay } from "@/lib/uptime";
 import { SYSTEM_HEALTH_BUDGET as budget, SYSTEM_HEALTH } from "@/config/app.config";
 import type { CronHealthRow } from "@/data/platform";
 
-export function ScheduledJobsPanel({ cronRows, metrics }: { cronRows: CronHealthRow[]; metrics: EdgeFnMetric[] }) {
+export function ScheduledJobsPanel({ cronRows, metrics, healthDaily }: {
+  cronRows: CronHealthRow[]; metrics: EdgeFnMetric[]; healthDaily: HealthDay[];
+}) {
   const byFn = new Map(metrics.map((m) => [m.fn, m]));
   return (
     <Card>
       <CardHeader><CardTitle className="font-display text-base">Scheduled jobs</CardTitle></CardHeader>
       <CardContent className="space-y-3">
         {cronRows.map((c) => {
-          const metric = byFn.get(CRON_JOB_TO_FN[c.job_name] ?? c.job_name) ?? null;
+          // Jobs are keyed by cron name, metrics and rollups by deployed slug — they differ for
+          // the digests and watchers, so both lookups go through CRON_JOB_TO_FN.
+          const slug = CRON_JOB_TO_FN[c.job_name] ?? c.job_name;
+          const metric = byFn.get(slug) ?? null;
           const state = deriveJobStatus(c.status, metric, budget);
           const reason = describeJobHealth(c.status, metric, budget);
+          const rollup = healthDaily.filter((r) => r.fn === slug);
           return (
             <div key={c.job_name} className="rounded-lg border border-border p-3">
               <div className="flex items-center gap-3">
@@ -21,25 +30,19 @@ export function ScheduledJobsPanel({ cronRows, metrics }: { cronRows: CronHealth
                 <span className="font-mono text-sm font-medium flex-1 truncate">{c.job_name}</span>
                 <StatusPill state={state} />
               </div>
-              <div className="mt-2 flex flex-wrap items-center gap-2 pl-5 text-xs text-muted-foreground">
-                <RunTimeline metric={metric} p95BudgetMs={budget.p95Ms} />
+              <div className="mt-3">
+                <UptimeBar rows={rollup} days={SYSTEM_HEALTH.uptimeDays} />
+              </div>
+              <div className="mt-2 flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
                 <LatencyStat p95Ms={metric?.p95Ms ?? null} />
                 <span>· {c.schedule ?? "—"}</span>
                 {c.last_run_at && <span>· last run {new Date(c.last_run_at).toLocaleString()}</span>}
                 {c.last_error && <span>· {c.last_error}</span>}
               </div>
-              {/* Two different clocks, deliberately stacked: RunTimeline above covers the last 20
-                  runs (under two hours for a five-minute job, and nothing at all beyond the 24h
-                  Analytics window), while this one covers the last 7 days from the durable
-                  cron_health_log. Neither one alone answers "what failed and when". */}
-              <div className="mt-2 pl-5">
-                <IncidentTimeline failures={c.recentFailures.map((f) => ({
-                  status_code: f.status_code, error: f.error, observed_at: f.observed_at,
-                }))} days={SYSTEM_HEALTH.historyDays} />
-              </div>
-              {reason && <p className="mt-2 pl-5 text-xs text-muted-foreground">{reason}</p>}
+              {reason && <p className="mt-2 text-xs text-muted-foreground">{reason}</p>}
+              <RecentRunsList recent={metric?.recent ?? []} />
               {c.recentFailures.length > 0 && (
-                <details className="mt-2 pl-5 text-xs text-muted-foreground">
+                <details className="mt-2 text-xs text-muted-foreground">
                   {/* The count and latest time live in the closed summary on purpose: a job
                       that failed hours ago is healthy again now, so its row is green and the
                       only trace of the alert that was emailed out would otherwise be hidden

@@ -2,7 +2,7 @@ import { describe, it, expect } from "vitest";
 
 import {
   deriveJobStatus, deriveEdgeFnStatus, describeJobHealth, describeEdgeFnHealth, describeOutcome,
-  dailyFailureBuckets, describeFailureDay, worstStatus, CRON_JOB_TO_FN,
+  worstStatus, CRON_JOB_TO_FN,
   type EdgeFnMetric, type HealthBudget,
 } from "@/lib/systemHealth";
 
@@ -131,81 +131,5 @@ describe("describeOutcome", () => {
   });
   it("reads a missing status code as no response rather than HTTP 0", () => {
     expect(describeOutcome({ status: 0, ms: 0 })).toContain("no response");
-  });
-});
-
-describe("dailyFailureBuckets", () => {
-  const now = new Date(2026, 7, 4, 17, 0, 0); // 4 Aug 2026, local
-  const at = (y: number, m: number, d: number, h = 12) => new Date(y, m, d, h).toISOString();
-
-  it("returns one bucket per day, oldest first, ending today", () => {
-    const days = dailyFailureBuckets([], 7, now);
-    expect(days).toHaveLength(7);
-    expect(days[0].date.getDate()).toBe(29); // 29 Jul — crosses the month boundary
-    expect(days[6].date.getDate()).toBe(4);
-  });
-
-  it("counts every failure recorded on a day and keeps the latest one", () => {
-    const days = dailyFailureBuckets([
-      { status_code: 502, error: "HTTP 502", observed_at: at(2026, 7, 4, 11) },
-      { status_code: 504, error: "timed out", observed_at: at(2026, 7, 4, 15) },
-    ], 7, now);
-    const today = days[6];
-    expect(today.count).toBe(2);
-    expect(today.latest?.status_code).toBe(504);
-  });
-
-  it("leaves days with no recorded failure empty", () => {
-    const days = dailyFailureBuckets(
-      [{ status_code: 502, error: "HTTP 502", observed_at: at(2026, 7, 2) }], 7, now);
-    expect(days.filter((d) => d.count > 0)).toHaveLength(1);
-    expect(days[4].count).toBe(1); // 2 Aug
-  });
-
-  it("ignores failures outside the window and unparseable timestamps", () => {
-    const days = dailyFailureBuckets([
-      { status_code: 500, error: null, observed_at: at(2026, 6, 20) },
-      { status_code: 500, error: null, observed_at: "not-a-date" },
-    ], 7, now);
-    expect(days.every((d) => d.count === 0)).toBe(true);
-  });
-});
-
-describe("describeFailureDay", () => {
-  const day = (over: Partial<ReturnType<typeof dailyFailureBuckets>[number]>) =>
-    ({ key: "2026-08-04", date: new Date(2026, 7, 4), count: 0, latest: null, ...over });
-
-  it("says so when nothing failed that day", () => {
-    expect(describeFailureDay(day({}))).toContain("no failures recorded");
-  });
-
-  it("reports the count and the status code", () => {
-    const text = describeFailureDay(day({
-      count: 1, latest: { status_code: 502, error: "HTTP 502", observed_at: "2026-08-04T09:24:06Z" },
-    }));
-    expect(text).toContain("1 failure");
-    expect(text).toContain("HTTP 502");
-  });
-
-  it("pluralises and appends an error that adds something beyond the code", () => {
-    const text = describeFailureDay(day({
-      count: 2, latest: { status_code: 504, error: "timed out", observed_at: "2026-08-04T09:24:06Z" },
-    }));
-    expect(text).toContain("2 failures");
-    expect(text).toContain("timed out");
-  });
-
-  it("does not repeat the status code when the error is just that code", () => {
-    const text = describeFailureDay(day({
-      count: 1, latest: { status_code: 502, error: "HTTP 502", observed_at: "2026-08-04T09:24:06Z" },
-    }));
-    expect(text.match(/HTTP 502/g)).toHaveLength(1);
-  });
-
-  it("names a failure with no HTTP response at all", () => {
-    const text = describeFailureDay(day({
-      count: 1, latest: { status_code: null, error: "timed out", observed_at: "2026-08-04T09:24:06Z" },
-    }));
-    expect(text).toContain("no HTTP response");
   });
 });

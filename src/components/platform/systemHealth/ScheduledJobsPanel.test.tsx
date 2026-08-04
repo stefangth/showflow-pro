@@ -16,7 +16,7 @@ const metric: EdgeFnMetric = {
 
 describe("ScheduledJobsPanel", () => {
   it("shows a slow-but-200 job as Degraded, not Down", () => {
-    render(<ScheduledJobsPanel cronRows={[cron]} metrics={[metric]} />);
+    render(<ScheduledJobsPanel cronRows={[cron]} metrics={[metric]} healthDaily={[]} />);
     expect(screen.getByText("cron-health-watcher")).toBeInTheDocument();
     expect(screen.getByText("Degraded")).toBeInTheDocument();
     expect(screen.getByText("p95 latency 18.0s exceeds the 12.0s budget")).toBeInTheDocument();
@@ -33,7 +33,7 @@ describe("ScheduledJobsPanel", () => {
       }],
     } as unknown as CronHealthRow;
 
-    render(<ScheduledJobsPanel cronRows={[withFailureHistory]} metrics={[metric]} />);
+    render(<ScheduledJobsPanel cronRows={[withFailureHistory]} metrics={[metric]} healthDaily={[]} />);
     // The count and the latest failure time are visible while collapsed, so a job that
     // has recovered still shows a trace of the alert that was emailed out.
     const summary = screen.getByText(/Failure history \(1 in 30 days\)/);
@@ -43,24 +43,35 @@ describe("ScheduledJobsPanel", () => {
     expect(screen.getByText(/timed out/)).toBeInTheDocument();
   });
 
-  it("draws a 7-day incident timeline even for a job that has since recovered", () => {
-    const recovered = {
-      ...cron,
-      status: "healthy",
-      recentFailures: [{
-        status_code: 502,
-        error: "HTTP 502",
-        // This morning: long past the last 20 runs of a */15 job, so the run timeline
-        // cannot show it — the whole reason the day cells exist.
-        observed_at: new Date(new Date().setHours(2, 39, 5, 0)).toISOString(),
-      }],
-    } as unknown as CronHealthRow;
+  it("draws an uptime bar for the job from its function's rollup", () => {
+    const { container } = render(
+      <ScheduledJobsPanel
+        cronRows={[cron]}
+        metrics={[metric]}
+        healthDaily={[{
+          day: new Date().toISOString().slice(0, 10), fn: "cron-health-watcher",
+          runs: 96, failures: 0, rejected: 0, worst_status: 200, p95_ms: 4000,
+        }]}
+      />,
+    );
+    expect(container.querySelectorAll("[data-uptime-day]")).toHaveLength(30);
+    expect(screen.getByText(/100\.0% uptime/)).toBeInTheDocument();
+  });
 
-    const { container } = render(<ScheduledJobsPanel cronRows={[recovered]} metrics={[metric]} />);
-    const cells = container.querySelectorAll("[data-incident-day]");
-    expect(cells).toHaveLength(7);
-    // Today is the last cell, and it is the only one carrying a failure.
-    expect(cells[6].getAttribute("data-failures")).toBe("1");
-    expect([...cells].filter((c) => c.getAttribute("data-failures") !== "0")).toHaveLength(1);
+  it("maps a job whose cron name differs from its function slug", () => {
+    // offer-digest -> send-offer-digest. Keying the rollup lookup by job_name would
+    // silently show an empty bar for every job in CRON_JOB_TO_FN that gets renamed.
+    const digest = { ...cron, job_name: "offer-digest" } as CronHealthRow;
+    render(
+      <ScheduledJobsPanel
+        cronRows={[digest]}
+        metrics={[]}
+        healthDaily={[{
+          day: new Date().toISOString().slice(0, 10), fn: "send-offer-digest",
+          runs: 4, failures: 1, rejected: 0, worst_status: 500, p95_ms: 1000,
+        }]}
+      />,
+    );
+    expect(screen.getByText(/75\.0% uptime/)).toBeInTheDocument();
   });
 });

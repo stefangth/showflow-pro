@@ -1,9 +1,12 @@
 import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { StatusPill, StatusDot, LatencyStat, RunTimeline } from "./primitives";
+import { StatusPill, StatusDot, LatencyStat } from "./primitives";
+import { UptimeBar } from "./UptimeBar";
+import { RecentRunsList } from "./RecentRunsList";
 import { describeEdgeFnHealth, deriveEdgeFnStatus, CRON_FNS, type EdgeFnMetric } from "@/lib/systemHealth";
-import { SYSTEM_HEALTH_BUDGET as budget } from "@/config/app.config";
+import { SYSTEM_HEALTH_BUDGET as budget, SYSTEM_HEALTH } from "@/config/app.config";
+import type { HealthDay } from "@/lib/uptime";
 import { useEdgeFnLogs } from "@/hooks/useSystemHealth";
 import { edgeLogUnavailableMessage } from "./edgeLogCopy";
 
@@ -16,17 +19,17 @@ function statusChips(byStatus: Record<string, number>) {
     .sort((a, b) => b.count - a.count);
 }
 
-function EdgeFnRow({ m }: { m: EdgeFnMetric }) {
+function EdgeFnRow({ m, rollup }: { m: EdgeFnMetric; rollup: HealthDay[] }) {
   const [open, setOpen] = useState(false);
   const state = deriveEdgeFnStatus(m, budget);
   const chips = statusChips(m.byStatus);
   const succeeded = m.invocations - m.errors - m.rejected;
   const hasFaults = m.errors + m.rejected > 0;
   const reason = describeEdgeFnHealth(m, budget);
-  // A single combined line, not three separate spans: it is both the visible stat
-  // readout and the text equivalent for the aria-hidden RunTimeline ticks next to it.
-  // Splitting it into per-stat spans as well would duplicate the same numbers into a
-  // second DOM node, which is redundant for sighted and screen-reader users alike.
+  // A single combined line, not three separate spans: splitting it per stat would duplicate
+  // the same numbers into extra DOM nodes, which is redundant for sighted and screen-reader
+  // users alike. It covers the last 24h (the Analytics window), whereas the bar above covers
+  // 30 days — the two are different clocks and the row reads top-down from long to short.
   const summary = m.rejected > 0
     ? `${m.invocations} calls, ${m.rejected} rejected, ${m.errors} errors`
     : `${m.invocations} calls, ${m.errors} errors`;
@@ -42,14 +45,16 @@ function EdgeFnRow({ m }: { m: EdgeFnMetric }) {
         <span className="font-mono text-sm font-medium flex-1 truncate">{m.fn}</span>
         <StatusPill state={state} />
       </div>
-      <div className="mt-2 flex flex-wrap items-center gap-2 pl-5 text-xs text-muted-foreground">
-        <RunTimeline metric={m} p95BudgetMs={budget.p95Ms} />
+      <div className="mt-3">
+        <UptimeBar rows={rollup} days={SYSTEM_HEALTH.uptimeDays} />
+      </div>
+      <div className="mt-2 flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
         <LatencyStat p95Ms={m.p95Ms} />
         <span className={m.rejected > 0 || m.errors > 0 ? "text-destructive" : undefined}>· {summary}</span>
       </div>
-      {reason && <p className="mt-2 pl-5 text-xs text-muted-foreground">{reason}</p>}
+      {reason && <p className="mt-2 text-xs text-muted-foreground">{reason}</p>}
       {chips.length > 0 && (
-        <div className="mt-2 flex flex-wrap items-center gap-2 pl-5 text-xs">
+        <div className="mt-2 flex flex-wrap items-center gap-2 text-xs">
           {chips.map((c) => (
             <span
               key={c.code}
@@ -65,8 +70,9 @@ function EdgeFnRow({ m }: { m: EdgeFnMetric }) {
           )}
         </div>
       )}
+      <RecentRunsList recent={m.recent} />
       {hasFaults && (
-        <div className="mt-2 pl-5">
+        <div className="mt-2">
           {m.lastFailure && (
             <p className="text-xs text-muted-foreground">
               {/* A full local timestamp, not lib/dates' date-only helpers: "which day did
@@ -95,7 +101,9 @@ function EdgeFnRow({ m }: { m: EdgeFnMetric }) {
   );
 }
 
-export function EdgeFunctionsPanel({ metrics }: { metrics: EdgeFnMetric[] }) {
+export function EdgeFunctionsPanel({ metrics, healthDaily }: {
+  metrics: EdgeFnMetric[]; healthDaily: HealthDay[];
+}) {
   // Non-cron functions only — cron-invoked functions live in the Scheduled jobs panel, and
   // double-listing them here would duplicate their status pills (and double-count health).
   const rows = metrics.filter((m) => !CRON_FNS.has(m.fn));
@@ -103,7 +111,7 @@ export function EdgeFunctionsPanel({ metrics }: { metrics: EdgeFnMetric[] }) {
     <Card>
       <CardHeader><CardTitle className="font-display text-base">Edge functions</CardTitle></CardHeader>
       <CardContent className="space-y-3">
-        {rows.map((m) => <EdgeFnRow key={m.fn} m={m} />)}
+        {rows.map((m) => <EdgeFnRow key={m.fn} m={m} rollup={healthDaily.filter((r) => r.fn === m.fn)} />)}
         {rows.length === 0 && <p className="text-sm text-muted-foreground">No edge-function activity in the window.</p>}
       </CardContent>
     </Card>
