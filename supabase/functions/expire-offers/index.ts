@@ -34,14 +34,13 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
 
   const now = deps.now()
 
-  // 1. Expire stale offers
-  const { error: rpcErr } = await admin.rpc('expire_soft_bookings')
-  if (rpcErr) return json({ error: `expire_soft_bookings: ${rpcErr.message}` }, 500)
-
-  // 1.5. Reminder pass (Milestone C — Task 11): notify artists whose offer expires
-  // within the next 24h and haven't already been reminded. Runs before the escalation
-  // scan; org-gated on booking_flow.expiry_reminder (and artist_acceptance, since a
-  // direct-booking org never creates suggested offers to remind about).
+  // Resolved BEFORE the expiry RPC below, because the RPC's own gate is the one
+  // guard in this module that lives purely in SQL. Edge functions auto-deploy on
+  // merge while migrations are applied by hand, so in any environment where
+  // 20260806151909 has not landed yet, expire_soft_bookings() is still the
+  // fleet-wide SECURITY DEFINER sweep it used to be and would drain an unentitled
+  // org's pending offers irreversibly. Skipping the call when nothing is entitled
+  // makes the freeze hold regardless of migration state.
   let remindersSent = 0
   let reminderOrgs: Array<{ id: string }> = []
   try {
@@ -51,6 +50,17 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
   } catch (e) {
     console.error('expire-offers: failed to fetch active orgs for reminder pass', { error: (e as Error).message })
   }
+
+  // 1. Expire stale offers
+  if (reminderOrgs.length > 0) {
+    const { error: rpcErr } = await admin.rpc('expire_soft_bookings')
+    if (rpcErr) return json({ error: `expire_soft_bookings: ${rpcErr.message}` }, 500)
+  }
+
+  // 1.5. Reminder pass (Milestone C — Task 11): notify artists whose offer expires
+  // within the next 24h and haven't already been reminded. Runs before the escalation
+  // scan; org-gated on booking_flow.expiry_reminder (and artist_acceptance, since a
+  // direct-booking org never creates suggested offers to remind about).
 
   // Active-AND-entitled org id set, shared by BOTH the reminder pass and the escalation
   // scan below. The escalation scan derives its org from show_dates.org_id, which can

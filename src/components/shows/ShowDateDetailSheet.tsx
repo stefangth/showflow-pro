@@ -80,7 +80,9 @@ function AssignedArtistsCard({ bookings, canManage, showConfirm, onConfirm, onCa
   onConfirm: (bookingId: string) => void;
   onCancel: (bookingId: string) => void;
 }) {
-  const { active, main, understudy } = deriveBookingGroups(bookings);
+  // Memoized: this card re-renders with the whole sheet, and the grouping is the
+  // same sort/filter work the sheet already memoizes for bookedArtistIds.
+  const { active, main, understudy } = useMemo(() => deriveBookingGroups(bookings), [bookings]);
   return (
     <Card>
       <CardHeader>
@@ -152,10 +154,14 @@ export function BookingCardSection({
   children: ReactNode;
 }) {
   const noop = () => {};
+  // The preview exists so a frozen cast stays readable. With no cast there is
+  // nothing to keep readable, so the notice stands alone rather than being
+  // followed by a card whose only content is "No artists assigned yet".
+  const hasCast = deriveBookingGroups(bookings).active.length > 0;
   return (
     <ModuleGate
       feature="booking_flow"
-      preview={
+      preview={hasCast ? (
         <AssignedArtistsCard
           bookings={bookings}
           canManage={false}
@@ -163,7 +169,7 @@ export function BookingCardSection({
           onConfirm={noop}
           onCancel={noop}
         />
-      }
+      ) : undefined}
     >
       {children}
       <AssignedArtistsCard
@@ -515,7 +521,7 @@ export function ShowDateDetailSheet({ showDateId, open, onOpenChange }: Props) {
     onSuccess: ({ affected }) => {
       queryClient.invalidateQueries({ queryKey: ['bookings'] });
       if (affected === 0) {
-        toast.error('This booking changed — refresh and retry');
+        toast.error('This booking could not be updated. Refresh and retry.');
       } else {
         toast.success('Booking updated');
       }

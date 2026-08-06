@@ -115,7 +115,12 @@ vi.mock("@/hooks/useBookingFlow", () => ({
 // Task 4: booking_flow gates the offers/response region. Default every test
 // to entitled so the pre-existing assertions below keep exercising the real
 // content; the one gate-off test overrides per-feature.
-vi.mock("@/hooks/useEntitlements", () => ({ useFeature: vi.fn() }));
+vi.mock("@/hooks/useEntitlements", () => {
+  const useFeature = vi.fn();
+  // ModuleGate reads useModuleGate; derive it from the mocked useFeature so the
+  // existing per-test vi.mocked(useFeature) setup drives both.
+  return { useFeature, useModuleGate: (f: string) => ({ allow: useFeature(f), pending: false }) };
+});
 
 import { useFeature } from "@/hooks/useEntitlements";
 import { ArtistDashboard } from "./ArtistDashboard";

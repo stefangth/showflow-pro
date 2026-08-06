@@ -16,6 +16,7 @@ import { ArtistDashboard } from '@/components/dashboard/ArtistDashboard';
 import { TierAttentionCard } from '@/components/dashboard/TierAttentionCard';
 import { DirectBookingCard } from '@/components/dashboard/DirectBookingCard';
 import { ModuleGate } from '@/components/layout/ModuleGate';
+import { useFeature } from '@/hooks/useEntitlements';
 import { showSlots } from '@/lib/settings';
 import { formatDateDMY } from '@/lib/dates';
 import { useReferenceField, useBookingFlow } from '@/hooks/useBookingFlow';
@@ -63,6 +64,7 @@ function ProducerDashboard() {
   const orgId = currentOrg?.id ?? null;
   // Only the bulk Confirm action is capability-gated (decline/cancel is deliberately not).
   const canConfirmBookings = useCan('confirm_bookings');
+  const bookingFlowEnabled = useFeature('booking_flow');
   const { reference, customFieldKey } = useReferenceField();
   const flow = useBookingFlow().data ?? BOOKING_FLOW_DEFAULTS;
   const [selected, setSelected] = useState<Set<string>>(new Set());
@@ -106,15 +108,17 @@ function ProducerDashboard() {
     [upcomingDates, confirmedMainByDate],
   );
 
+  // Both reads feed regions inside ProducerBookingSection, so without the module
+  // their results are fetched and then discarded on every dashboard load.
   const { data: softBookedRows } = useQuery({
     queryKey: ['bookings', 'soft-booked', orgId],
-    enabled: !!orgId,
+    enabled: !!orgId && bookingFlowEnabled,
     queryFn: () => fetchSoftBookedRows(supabase, orgId),
   });
 
   const { data: attentionRows } = useQuery({
     queryKey: ['bookings', 'tier-attention', orgId],
-    enabled: Boolean(orgId) && flow.artist_acceptance,
+    enabled: Boolean(orgId) && flow.artist_acceptance && bookingFlowEnabled,
     queryFn: () => fetchTierAttention(supabase, { orgId, today: todayStr }),
   });
   // Deliberately NOT memoized: structural sharing keeps attentionRows

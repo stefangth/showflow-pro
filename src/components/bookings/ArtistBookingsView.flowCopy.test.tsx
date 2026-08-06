@@ -76,9 +76,11 @@ vi.mock("@/hooks/useArtistEligibleDates", () => ({
 // a booking_flow gate around the whole list/calendar region, so that one
 // must stay on independently or every assertion below (which reads the
 // gated table) would see the module notice instead.
-vi.mock("@/hooks/useEntitlements", () => ({
-  useFeature: (feature: string) => feature === "booking_flow",
-}));
+vi.mock("@/hooks/useEntitlements", () => {
+  const useFeature = (feature: string) => feature === "booking_flow";
+  // ModuleGate reads useModuleGate; derive it from the same rule so the two stay in step.
+  return { useFeature, useModuleGate: (f: string) => ({ allow: useFeature(f), pending: false }) };
+});
 
 // Keep the list column machinery minimal but include the status column so the
 // per-row status badge (bookingStatusLabels) actually renders.

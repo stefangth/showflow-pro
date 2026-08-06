@@ -48,9 +48,15 @@ export function useNavCounts(): { pendingConfirmations: number; openOffers: numb
     queryFn: () => fetchAwaitingCountersignCount(supabase, orgId!),
   });
 
+  // Gate the VALUES, not just `enabled`. booking_flow is default-on, so useFeature
+  // reports true while entitlements load and both booking queries fire and resolve;
+  // flipping `enabled` to false afterwards does not evict what React Query already
+  // cached, so an unentitled org would keep rendering a live count next to a locked
+  // nav item. (hire_orders is default-off, so its query never fires during loading
+  // and it does not need the same treatment.)
   return {
-    pendingConfirmations: pending.data ?? 0,
-    openOffers: offers.data ?? 0,
+    pendingConfirmations: hasBookingFlow ? (pending.data ?? 0) : 0,
+    openOffers: hasBookingFlow ? (offers.data ?? 0) : 0,
     awaitingCountersign: awaitingCountersign.data ?? 0,
   };
 }

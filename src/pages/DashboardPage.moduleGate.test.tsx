@@ -6,7 +6,10 @@ import { createFakeSupabase, type TableSeed } from "@/test/supabaseFake";
 
 const { client } = vi.hoisted(() => ({ client: {} as Record<string, unknown> }));
 vi.mock("@/integrations/supabase/client", () => ({ supabase: client }));
-vi.mock("@/hooks/useEntitlements", () => ({ useFeature: vi.fn() }));
+vi.mock("@/hooks/useEntitlements", () => {
+  const useFeature = vi.fn();
+  return { useFeature, useModuleGate: (f: string) => ({ allow: useFeature(f), pending: false }) };
+});
 vi.mock("@/features/auth/AuthContext", () => ({ useAuth: vi.fn() }));
 vi.mock("@/hooks/useCapabilities", async (orig) => ({
   ...(await orig<typeof import("@/hooks/useCapabilities")>()),

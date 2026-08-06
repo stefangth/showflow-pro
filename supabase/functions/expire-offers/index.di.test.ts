@@ -59,13 +59,17 @@ Deno.test("expire-offers: runs expiry RPC and reports zero escalations when no o
   const { deps, calls } = makeFakeDeps({
     tables: {
       app_settings: { data: { value: "s" }, error: null },
+      // One active, entitled org: the expiry RPC is skipped entirely when nothing is
+      // entitled (the RPC is fleet-wide and its own gate lives only in SQL), so a
+      // test asserting the RPC ran has to seed an org that reaches it.
+      organizations: { data: [{ id: "org-1" }], error: null },
       show_date_offer_tiers: { data: [], error: null },
     },
     rpcs: { expire_soft_bookings: { data: null, error: null } },
   });
   const res = await handle(makeRequest({ headers: { "X-Cron-Secret": "s" } }), deps);
   assertEquals(res.status, 200);
-  // No `organizations` seed → getActiveOrgs() returns [] → the reminder pass is a no-op.
+  // No due bookings seeded → the reminder pass finds nothing to send.
   assertEquals(await res.json(), { expired: true, escalations: 0, reminders_sent: 0 });
   assertEquals(calls.some((c) => c.table === "rpc:expire_soft_bookings"), true);
 });
@@ -119,7 +123,9 @@ Deno.test("expire-offers: no auth credentials returns 401", async () => {
 
 Deno.test("expire-offers: expire_soft_bookings RPC error → 500 with message", async () => {
   const { deps } = makeFakeDeps({
-    tables: { app_settings: appSettingsSeed() },
+    // Entitled org seeded so the expiry RPC is actually reached (it is skipped when
+    // no org is entitled), which is what this test is about.
+    tables: { app_settings: appSettingsSeed(), organizations: { data: [{ id: "org-1" }], error: null } },
     rpcs: { expire_soft_bookings: { data: null, error: { message: "boom" } } },
   });
   const res = await handle(cronReq(), deps);
@@ -134,6 +140,9 @@ Deno.test("expire-offers: empty open tiers → escalations: 0", async () => {
   const { deps, calls } = makeFakeDeps({
     tables: {
       app_settings: appSettingsSeed(),
+      // Entitled org seeded so the expiry RPC is reached; it is skipped when nothing
+      // is entitled.
+      organizations: { data: [{ id: "org-1" }], error: null },
       show_date_offer_tiers: { data: [], error: null },
     },
     rpcs: { expire_soft_bookings: { data: null, error: null } },

@@ -17,10 +17,16 @@ vi.mock("@/hooks/useCapabilities", async (orig) => ({
   ...(await orig<typeof import("@/hooks/useCapabilities")>()),
   useCan: vi.fn(),
 }));
-vi.mock("@/hooks/useEntitlements", async (orig) => ({
-  ...(await orig<typeof import("@/hooks/useEntitlements")>()),
-  useFeature: vi.fn(),
-}));
+vi.mock("@/hooks/useEntitlements", async (orig) => {
+  const useFeature = vi.fn();
+  return {
+    ...(await orig<typeof import("@/hooks/useEntitlements")>()),
+    useFeature,
+    // ModuleGate reads useModuleGate; derive it from the mocked useFeature so the
+    // existing per-test vi.mocked(useFeature) setup drives both.
+    useModuleGate: (f: string) => ({ allow: useFeature(f), pending: false }),
+  };
+});
 vi.mock("@/features/editor/EditorContext", () => ({ useEditorConfig: () => ({ isEditorMode: false }) }));
 vi.mock("@/hooks/useEligibleArtists", () => ({
   useEligibleArtists: () => ({ data: { artistIds: null, castIds: [] }, isError: false }),

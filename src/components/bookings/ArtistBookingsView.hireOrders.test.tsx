@@ -59,10 +59,12 @@ vi.mock("@/hooks/useArtistEligibleDates", () => ({
 // independently of hireOrdersEnabled so toggling hire_orders in these tests
 // doesn't also hide the booking rows the assertions read.
 const featureHolder = { hireOrdersEnabled: true };
-vi.mock("@/hooks/useEntitlements", () => ({
-  useFeature: (feature: string) =>
-    feature === "hire_orders" ? featureHolder.hireOrdersEnabled : true,
-}));
+vi.mock("@/hooks/useEntitlements", () => {
+  const useFeature = (feature: string) =>
+    feature === "hire_orders" ? featureHolder.hireOrdersEnabled : true;
+  // ModuleGate reads useModuleGate; derive it from the same rule so the two stay in step.
+  return { useFeature, useModuleGate: (f: string) => ({ allow: useFeature(f), pending: false }) };
+});
 
 vi.mock("react-router-dom", () => ({
   Link: ({ to, children, ...rest }: { to: string; children?: React.ReactNode }) => (

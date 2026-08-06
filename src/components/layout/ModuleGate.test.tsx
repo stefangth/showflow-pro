@@ -1,6 +1,9 @@
 import { describe, it, expect, vi } from "vitest";
 import { render, screen } from "@testing-library/react";
-vi.mock("@/hooks/useEntitlements", () => ({ useFeature: vi.fn() }));
+vi.mock("@/hooks/useEntitlements", () => {
+  const useFeature = vi.fn();
+  return { useFeature, useModuleGate: (f: string) => ({ allow: useFeature(f), pending: false }) };
+});
 import { useFeature } from "@/hooks/useEntitlements";
 import { ModuleGate } from "./ModuleGate";
 

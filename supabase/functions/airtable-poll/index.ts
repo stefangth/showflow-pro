@@ -424,8 +424,10 @@ async function syncOrg(deps: Deps, orgId: string, baseId: string, tableName: str
   let tiersOpened = 0;
   let tiersAttempted = 0;
   const flow = await resolveBookingFlow(admin, orgId);
-  const bookingEnabled = await checkFeature(admin, orgId, "booking_flow");
-  if (bookingEnabled && flow.auto_open_tier1 && flow.artist_acceptance) {
+  // Flow flags first: they are already resolved in memory, so an org that turned
+  // auto-open off or runs direct-booking short-circuits before paying for the
+  // entitlement round-trip on every poll.
+  if (flow.auto_open_tier1 && flow.artist_acceptance && await checkFeature(admin, orgId, "booking_flow")) {
     let candidates = [...newDateIds];
     // Also cover UPDATED dates that just gained a session but have no tier-1 row yet.
     // Over-inclusion is safe: open-offer-tier no-ops benignly for not-ready dates, so no

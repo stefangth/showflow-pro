@@ -45,6 +45,7 @@ export function ArtistDashboard() {
   const meter = artistMeter(flow);
 
   const hireOrdersEnabled = useFeature('hire_orders');
+  const bookingFlowEnabled = useFeature('booking_flow');
   const { data: myHireOrders } = useMyHireOrders();
   const { currentOrg } = useAuth();
   const hireOrderAction = useHireOrderAction();
@@ -68,7 +69,9 @@ export function ArtistDashboard() {
   // the note in AvailabilityPage.
   const { data: myBookings, isError: bookingsError } = useQuery({
     queryKey: ['bookings', 'artist-dashboard', artist?.id],
-    enabled: !!artist?.id,
+    // Module-gated: without booking_flow the offers region never renders, so this
+    // read would be discarded on every dashboard load.
+    enabled: !!artist?.id && bookingFlowEnabled,
     queryFn: async () => {
       const { data, error } = await supabase
         .from('bookings')
@@ -133,14 +136,17 @@ export function ArtistDashboard() {
     <div className="space-y-6">
       <div>
         <h1 className="font-display text-[32px] font-semibold tracking-tight">Dashboard</h1>
+        {/* Stays in the heading block so it reads as a subtitle (mt-1, not the
+            parent's space-y-6), but still module-gated: the sentence describes the
+            offer pipeline ("your response rate on dates you've been offered"),
+            which does not run at all without the module. Gated with a bare
+            conditional rather than ModuleGate so the page shows one notice, not two. */}
+        {bookingFlowEnabled && (
+          <p className="text-muted-foreground mt-1">{meter.headerSentence}</p>
+        )}
       </div>
 
       <ModuleGate feature="booking_flow">
-        {/* Inside the gate on purpose: this sentence describes the offer pipeline
-            ("your response rate on dates you've been offered"), which does not run
-            at all without the module. */}
-        <p className="text-muted-foreground">{meter.headerSentence}</p>
-
         {bookingsError && (
           <Alert variant="destructive">
             <AlertDescription>Failed to load your offers. Please refresh.</AlertDescription>

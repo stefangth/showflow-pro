@@ -1,7 +1,7 @@
 import type { ReactNode } from "react";
 import { Lock } from "lucide-react";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { useFeature } from "@/hooks/useEntitlements";
+import { useModuleGate } from "@/hooks/useEntitlements";
 import { FEATURE_REGISTRY, type FeatureKey } from "@/lib/entitlements";
 
 /**
@@ -13,14 +13,20 @@ import { FEATURE_REGISTRY, type FeatureKey } from "@/lib/entitlements";
  *
  * Copy is derived from FEATURE_REGISTRY so it cannot drift from
  * FeatureDisabledScreen, which gates the route-level equivalent.
+ *
+ * Uses useModuleGate rather than useFeature: this gate must not fail open while
+ * entitlements load, and must exempt super-admins. See that hook for why.
  */
 export function ModuleGate({ feature, children, preview }: {
   feature: FeatureKey;
   children: ReactNode;
   preview?: ReactNode;
 }) {
-  const enabled = useFeature(feature);
-  if (enabled) return <>{children}</>;
+  const { allow, pending } = useModuleGate(feature);
+  if (allow) return <>{children}</>;
+  // Entitlements unresolved: render nothing rather than mounting live controls
+  // we may be about to take away.
+  if (pending) return null;
   const def = FEATURE_REGISTRY[feature];
   return (
     <div data-testid={`module-gate-${feature}`} className="space-y-3">
