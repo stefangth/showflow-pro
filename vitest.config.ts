@@ -13,6 +13,13 @@ export default defineConfig({
       VITE_SUPABASE_URL: "http://localhost:54321",
       VITE_SUPABASE_PUBLISHABLE_KEY: "test-anon-key",
       VITE_SUPABASE_PROJECT_ID: "test",
+      // Pin the dev auto-login OFF for the suite. `devAutoLogin` is guarded by
+      // `import.meta.env.DEV`, which is TRUE under vitest, so a developer who
+      // enables VITE_DEV_AUTOLOGIN in their local .env would otherwise have
+      // AuthProvider attempt a real sign-in on mount inside tests. That turns
+      // AuthContext.bootstrapResilience.test.tsx red on their machine and green
+      // in CI (which has no .env), which is the worst possible split.
+      VITE_DEV_AUTOLOGIN: "false",
     },
     setupFiles: ["./src/test/setup.ts"],
     include: ["src/**/*.{test,spec}.{ts,tsx}", "scripts/**/*.test.{ts,mjs}"],
