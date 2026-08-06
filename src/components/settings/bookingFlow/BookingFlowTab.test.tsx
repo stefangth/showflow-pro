@@ -134,7 +134,7 @@ describe("BookingFlowTab", () => {
       await waitFor(() => expect(screen.getByText("Booking flow is not enabled")).toBeInTheDocument());
       expect(
         screen.getByText(
-          "Your booking pipeline runs the standard flow. Contact your ShowFlow administrator to enable configuration.",
+          "Booking is switched off for your organization, so no offers, reminders or confirmations are sent. Contact your ShowFlow administrator to enable it.",
         ),
       ).toBeInTheDocument();
 
@@ -167,6 +167,14 @@ describe("BookingFlowTab", () => {
 
       await waitFor(() => expect(screen.getByText("Booking flow is not enabled")).toBeInTheDocument());
       expect(screen.queryByText(/previewing unsaved draft/i)).not.toBeInTheDocument();
+    });
+
+    it("tells the admin the pipeline is stopped, not running the standard flow", async () => {
+      vi.mocked(useAuth).mockReturnValue({ currentOrg: { id: "org-locked" } } as never);
+      renderWithProviders(<Harness />);
+
+      expect(await screen.findByText("Booking flow is not enabled")).toBeInTheDocument();
+      expect(screen.queryByText(/runs the standard flow/i)).not.toBeInTheDocument();
     });
 
     it("leaves the entitled path unchanged: no lock notice, Save present", async () => {

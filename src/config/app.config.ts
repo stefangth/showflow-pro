@@ -21,6 +21,7 @@ export const ROUTE_FEATURES: Record<string, FeatureKey> = {
   '/hire-orders/:id': 'hire_orders',
   '/hire-orders/:id/edit': 'hire_orders',
   '/settings/hire-orders/template': 'hire_orders',
+  '/availability': 'booking_flow',
 };
 
 /** Whether a route pattern (which may carry `:param` segments) matches a

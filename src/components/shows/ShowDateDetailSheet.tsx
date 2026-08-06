@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useMemo, useState, type ReactNode } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { format } from 'date-fns';
 import { toast } from 'sonner';
@@ -59,6 +59,7 @@ import { BookingRow } from '@/components/shows/BookingRow';
 import { useCancelShowDate, useDeleteShowDate } from '@/hooks/useShowDates';
 import { useAllCities } from '@/hooks/useAllCities';
 import { isSyncedDate, canHardDeleteDate } from '@/lib/catalog';
+import { ModuleGate } from '@/components/layout/ModuleGate';
 import type { Booking, Artist } from '@/types';
 
 interface Props {
@@ -68,6 +69,119 @@ interface Props {
 }
 
 type BookingWithArtist = Booking & { artist: Pick<Artist, 'id' | 'name'> };
+
+/** The assigned-artists card: the sheet's single cast surface. `canManage=false`
+ *  renders every row without its Confirm/Cancel controls, which is exactly the
+ *  shape the locked module preview needs. */
+function AssignedArtistsCard({ bookings, canManage, showConfirm, onConfirm, onCancel }: {
+  bookings: BookingWithArtist[];
+  canManage: boolean;
+  showConfirm: boolean;
+  onConfirm: (bookingId: string) => void;
+  onCancel: (bookingId: string) => void;
+}) {
+  // Memoized: this card re-renders with the whole sheet, and the grouping is the
+  // same sort/filter work the sheet already memoizes for bookedArtistIds.
+  const { active, main, understudy } = useMemo(() => deriveBookingGroups(bookings), [bookings]);
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="font-display text-lg flex items-center gap-2">
+          <Users className="h-5 w-5" />Assigned Artists
+        </CardTitle>
+      </CardHeader>
+      <CardContent>
+        {active.length > 0 ? (
+          <div className="space-y-4">
+            {main.length > 0 && (
+              <div className="space-y-2">
+                <p className="text-xs text-muted-foreground uppercase tracking-wide">Main cast</p>
+                {main.map(b => (
+                  <BookingRow
+                    key={b.id}
+                    booking={b}
+                    canManage={canManage}
+                    // Gated on confirm_bookings: false hides just the Confirm action
+                    // (Cancel stays available under the broad canManage read/manage gate).
+                    showConfirm={showConfirm}
+                    onConfirm={onConfirm}
+                    onCancel={onCancel}
+                  />
+                ))}
+              </div>
+            )}
+            {understudy.length > 0 && (
+              <div className="space-y-2">
+                <p className="text-xs text-muted-foreground uppercase tracking-wide">Understudies</p>
+                {understudy.map(b => (
+                  <BookingRow
+                    key={b.id}
+                    booking={b}
+                    canManage={canManage}
+                    showConfirm={showConfirm}
+                    onConfirm={onConfirm}
+                    onCancel={onCancel}
+                  />
+                ))}
+              </div>
+            )}
+          </div>
+        ) : (
+          <p className="text-sm text-muted-foreground">No artists assigned yet</p>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
+/** The sheet's whole booking region, behind one module gate.
+ *
+ *  Entitled: the offers / direct-book UI passed as children, followed by the live
+ *  assigned-artists card with its Confirm/Cancel controls.
+ *
+ *  Not entitled: a single module notice plus the SAME assigned-artists card rendered
+ *  read-only. One gate and one cast rendering on purpose — an ungated second copy of
+ *  the cast both duplicated the list and left a Cancel button whose write the RLS
+ *  floor would reject with a misleading "this booking changed" toast. */
+export function BookingCardSection({
+  bookings, canManage, showConfirm, onConfirm, onCancel, children,
+}: {
+  bookings: BookingWithArtist[];
+  canManage: boolean;
+  showConfirm: boolean;
+  onConfirm: (bookingId: string) => void;
+  onCancel: (bookingId: string) => void;
+  children: ReactNode;
+}) {
+  const noop = () => {};
+  // The preview exists so a frozen cast stays readable. With no cast there is
+  // nothing to keep readable, so the notice stands alone rather than being
+  // followed by a card whose only content is "No artists assigned yet".
+  const hasCast = deriveBookingGroups(bookings).active.length > 0;
+  return (
+    <ModuleGate
+      feature="booking_flow"
+      preview={hasCast ? (
+        <AssignedArtistsCard
+          bookings={bookings}
+          canManage={false}
+          showConfirm={false}
+          onConfirm={noop}
+          onCancel={noop}
+        />
+      ) : undefined}
+    >
+      {children}
+      <AssignedArtistsCard
+        bookings={bookings}
+        canManage={canManage}
+        showConfirm={showConfirm}
+        onConfirm={onConfirm}
+        onCancel={onCancel}
+      />
+    </ModuleGate>
+  );
+}
 
 /** Joined row shape of the show-date-detail select below — mirror the select string. */
 interface ShowDateDetailRow {
@@ -278,12 +392,12 @@ export function ShowDateDetailSheet({ showDateId, open, onOpenChange }: Props) {
     }),
   });
 
-  const {
-    active: activeBookings,
-    main: mainBookings,
-    understudy: understudyBookings,
-    bookedArtistIds,
-  } = useMemo(() => deriveBookingGroups(bookingsForDate ?? []), [bookingsForDate]);
+  // The main/understudy split now lives in AssignedArtistsCard, which derives it
+  // from the same helper on the bookings it is handed.
+  const { bookedArtistIds } = useMemo(
+    () => deriveBookingGroups(bookingsForDate ?? []),
+    [bookingsForDate],
+  );
 
   // Eligible artists (with names) for direct-booking mode. deriveDirectBookList
   // fails closed while eligibility/blocked/skill data is unresolved and excludes
@@ -407,7 +521,7 @@ export function ShowDateDetailSheet({ showDateId, open, onOpenChange }: Props) {
     onSuccess: ({ affected }) => {
       queryClient.invalidateQueries({ queryKey: ['bookings'] });
       if (affected === 0) {
-        toast.error('This booking changed — refresh and retry');
+        toast.error('This booking could not be updated. Refresh and retry.');
       } else {
         toast.success('Booking updated');
       }
@@ -713,121 +827,79 @@ export function ShowDateDetailSheet({ showDateId, open, onOpenChange }: Props) {
                 </div>
               )}
 
-              {/* Offers (tiered) or direct booking, gated to producers on live dates */}
-              {canManage && showDate.status !== 'cancelled' && (
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="font-display text-base">
-                      {flow.artist_acceptance ? 'Offers' : 'Book artists'}
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent className="space-y-4">
-                    {flow.artist_acceptance ? (
-                      <>
-                        <TierTimeline
-                          showDateId={showDate.id}
-                          cityId={cityId}
-                          dateLabel={formatDateDMY(showDate.date)}
-                          flow={flow}
-                          bookings={bookingsForDate ?? []}
-                          canManage={canRunOfferEngine}
-                          hasSession={hasSession}
-                          tiers={tiersQ.data ?? { priorities: [], hasAdHoc: false }}
-                          ladderSource={tiersQ.data?.source ?? "org"}
+              {/* The booking region: offers / direct booking (producers, live dates
+                  only) plus the assigned-artists card, behind one module gate. */}
+              <BookingCardSection
+                bookings={bookingsForDate ?? []}
+                canManage={canManage}
+                showConfirm={canConfirmBookings}
+                onConfirm={(bookingId) => updateBookingStatus.mutate({ bookingId, status: 'confirmed' })}
+                onCancel={(bookingId) => updateBookingStatus.mutate({ bookingId, status: 'cancelled' })}
+              >
+                {canManage && showDate.status !== 'cancelled' && (
+                  <Card>
+                    <CardHeader>
+                      <CardTitle className="font-display text-base">
+                        {flow.artist_acceptance ? 'Offers' : 'Book artists'}
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                      {flow.artist_acceptance ? (
+                        <>
+                          <TierTimeline
+                            showDateId={showDate.id}
+                            cityId={cityId}
+                            dateLabel={formatDateDMY(showDate.date)}
+                            flow={flow}
+                            bookings={bookingsForDate ?? []}
+                            canManage={canRunOfferEngine}
+                            hasSession={hasSession}
+                            tiers={tiersQ.data ?? { priorities: [], hasAdHoc: false }}
+                            ladderSource={tiersQ.data?.source ?? "org"}
+                            skills={orgSkills ?? []}
+                            openedTiers={openedQ.data ?? []}
+                            isLoadingTiers={tiersQ.isLoading}
+                            isLoadingOpened={openedQ.isLoading}
+                            openPending={openOffers.isPending}
+                            closePending={closeOffers.isPending}
+                            onOpenTier={(tier, skillFilterIds) => openOffers.mutate({ tier, skillFilterIds })}
+                            onCloseTier={(tier, withdraw) => closeOffers.mutate({ tier, withdraw })}
+                            onPreviewTier={(tier, skillFilterIds) => setDryRun({ tier, skillFilterIds })}
+                          />
+                          <DryRunDialog
+                            open={Boolean(dryRun)}
+                            onOpenChange={(o) => { if (!o) setDryRun(null); }}
+                            tier={dryRun?.tier ?? null}
+                            result={dryRunQ.data ?? null}
+                            loading={dryRunQ.isLoading}
+                            flow={flow}
+                            confirmPending={openOffers.isPending}
+                            onConfirm={() => {
+                              if (dryRun) openOffers.mutate({ tier: dryRun.tier, skillFilterIds: dryRun.skillFilterIds });
+                              setDryRun(null);
+                            }}
+                          />
+                        </>
+                      ) : (
+                        <EligibilityBookList
+                          artists={eligibleArtistList}
+                          loading={directListLoading}
+                          error={directListError}
+                          bookedArtistIds={bookedArtistIds}
+                          onBook={(artistId, isUnderstudy) =>
+                            createBookingMutation.mutate({ artistId, isUnderstudy })}
+                          booking={createBookingMutation.isPending}
                           skills={orgSkills ?? []}
-                          openedTiers={openedQ.data ?? []}
-                          isLoadingTiers={tiersQ.isLoading}
-                          isLoadingOpened={openedQ.isLoading}
-                          openPending={openOffers.isPending}
-                          closePending={closeOffers.isPending}
-                          onOpenTier={(tier, skillFilterIds) => openOffers.mutate({ tier, skillFilterIds })}
-                          onCloseTier={(tier, withdraw) => closeOffers.mutate({ tier, withdraw })}
-                          onPreviewTier={(tier, skillFilterIds) => setDryRun({ tier, skillFilterIds })}
+                          selectedSkillIds={directSkillFilterIds}
+                          onSkillFilterChange={(id) =>
+                            setDirectSkillFilterIds((prev) =>
+                              prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id])}
                         />
-                        <DryRunDialog
-                          open={Boolean(dryRun)}
-                          onOpenChange={(o) => { if (!o) setDryRun(null); }}
-                          tier={dryRun?.tier ?? null}
-                          result={dryRunQ.data ?? null}
-                          loading={dryRunQ.isLoading}
-                          flow={flow}
-                          confirmPending={openOffers.isPending}
-                          onConfirm={() => {
-                            if (dryRun) openOffers.mutate({ tier: dryRun.tier, skillFilterIds: dryRun.skillFilterIds });
-                            setDryRun(null);
-                          }}
-                        />
-                      </>
-                    ) : (
-                      <EligibilityBookList
-                        artists={eligibleArtistList}
-                        loading={directListLoading}
-                        error={directListError}
-                        bookedArtistIds={bookedArtistIds}
-                        onBook={(artistId, isUnderstudy) =>
-                          createBookingMutation.mutate({ artistId, isUnderstudy })}
-                        booking={createBookingMutation.isPending}
-                        skills={orgSkills ?? []}
-                        selectedSkillIds={directSkillFilterIds}
-                        onSkillFilterChange={(id) =>
-                          setDirectSkillFilterIds((prev) =>
-                            prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id])}
-                      />
-                    )}
-                  </CardContent>
-                </Card>
-              )}
-
-              {/* Assigned Artists */}
-              <Card>
-                <CardHeader>
-                  <CardTitle className="font-display text-lg flex items-center gap-2">
-                    <Users className="h-5 w-5" />Assigned Artists
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  {activeBookings.length > 0 ? (
-                    <div className="space-y-4">
-                      {mainBookings.length > 0 && (
-                        <div className="space-y-2">
-                          <p className="text-xs text-muted-foreground uppercase tracking-wide">Main cast</p>
-                          {mainBookings.map(b => (
-                            <BookingRow
-                              key={b.id}
-                              booking={b}
-                              canManage={canManage}
-                              // Gated on confirm_bookings: false hides just the Confirm action
-                              // (Cancel stays available under the broad canManage read/manage gate).
-                              showConfirm={canConfirmBookings}
-                              onConfirm={(bookingId) => updateBookingStatus.mutate({ bookingId, status: 'confirmed' })}
-                              onCancel={(bookingId) => updateBookingStatus.mutate({ bookingId, status: 'cancelled' })}
-                            />
-                          ))}
-                        </div>
                       )}
-                      {understudyBookings.length > 0 && (
-                        <div className="space-y-2">
-                          <p className="text-xs text-muted-foreground uppercase tracking-wide">Understudies</p>
-                          {understudyBookings.map(b => (
-                            <BookingRow
-                              key={b.id}
-                              booking={b}
-                              canManage={canManage}
-                              // Gated on confirm_bookings: false hides just the Confirm action
-                              // (Cancel stays available under the broad canManage read/manage gate).
-                              showConfirm={canConfirmBookings}
-                              onConfirm={(bookingId) => updateBookingStatus.mutate({ bookingId, status: 'confirmed' })}
-                              onCancel={(bookingId) => updateBookingStatus.mutate({ bookingId, status: 'cancelled' })}
-                            />
-                          ))}
-                        </div>
-                      )}
-                    </div>
-                  ) : (
-                    <p className="text-sm text-muted-foreground">No artists assigned yet</p>
-                  )}
-                </CardContent>
-              </Card>
+                    </CardContent>
+                  </Card>
+                )}
+              </BookingCardSection>
 
               {/* Hire orders (feature-gated; producer/admin management surface) */}
               <HireOrdersCard

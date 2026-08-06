@@ -40,9 +40,11 @@ vi.mock("@/hooks/useBookingFlow", () => ({
 }));
 
 const featureHolder = { enabled: true };
-vi.mock("@/hooks/useEntitlements", () => ({
-  useFeature: () => featureHolder.enabled,
-}));
+vi.mock("@/hooks/useEntitlements", () => {
+  const useFeature = () => featureHolder.enabled;
+  // ModuleGate reads useModuleGate; derive it from the same rule so the two stay in step.
+  return { useFeature, useModuleGate: () => ({ allow: useFeature(), pending: false }) };
+});
 
 import { ArtistDashboard } from "./ArtistDashboard";
 

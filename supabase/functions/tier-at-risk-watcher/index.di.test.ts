@@ -1163,6 +1163,100 @@ Deno.test("tier-at-risk-watcher: disabling at_risk_alerts clears the org's exist
   assertEquals(inArgs[1].includes("notif-stale"), true);
 });
 
+// ── Task 6: module gate — per-org booking_flow entitlement (checkFeature) ─────
+//
+// Unlike the other cron callers, this handler never calls getActiveOrgs — it
+// scans open tiers directly and derives the org from show_dates.org_id, so it
+// is gated with a per-org checkFeature call cached in entitledByOrg (mirrors
+// flowByOrg). Placed before resolveBookingFlow: resolveBookingFlow itself
+// fails open to permissive defaults on an entitlement-check failure, so
+// flow.at_risk_alerts alone would NOT be a safe gate for an unentitled org.
+
+Deno.test("tier-at-risk-watcher: unentitled org (booking_flow off) produces no notifications", async () => {
+  const tierId = "tier-unentitled";
+  const sdId = "sd-unentitled";
+
+  const { deps, calls } = makeFakeDeps({
+    tables: {
+      app_settings: makeBaseSettings(),
+      show_date_offer_tiers: { data: [makeTier(tierId, sdId)], error: null },
+      notifications: { data: [], error: null },
+      show_dates: { data: makeShowDate(sdId, "MusicalA", "MainShow"), error: null },
+      // Would be at-risk (1 pending < 3 required) if the org were entitled.
+      bookings: { data: [{ status: "suggested" }], error: null },
+    },
+    rpcs: {
+      resolve_show_assignments: { data: [{ producer_user_id: "prod-1" }], error: null },
+      is_feature_enabled: { data: false, error: null },
+    },
+  });
+
+  const res = await handle(makeRequest({ headers: CRON_OK }), deps);
+  assertEquals(res.status, 200);
+  const body = await res.json();
+  assertEquals(body.at_risk_count, 0, "unentitled org must not be counted at-risk");
+
+  const insertCalls = calls.filter((c) => c.table === "notifications" && c.method === "insert");
+  assertEquals(insertCalls.length, 0, "no notification inserted for an unentitled org");
+});
+
+Deno.test("tier-at-risk-watcher: disabling the entitlement clears the org's existing tier_at_risk notification", async () => {
+  // A gated-out tier is simply never added to stillAtRiskTierIds, so the existing
+  // recovery pass clears any stale notification for it — same mechanism as the
+  // at_risk_alerts=false case above it in the file.
+  const tierId = "tier-unentitled-stale";
+  const sdId = "sd-unentitled-stale";
+  const existingNotif = { id: "notif-unent-stale", user_id: "prod-1", related_entity_id: tierId };
+
+  const { deps, calls } = makeFakeDeps({
+    tables: {
+      app_settings: makeBaseSettings(),
+      show_date_offer_tiers: { data: [makeTier(tierId, sdId)], error: null },
+      notifications: { data: [existingNotif], error: null },
+      show_dates: { data: makeShowDate(sdId, "MusicalA", "MainShow"), error: null },
+      bookings: { data: [{ status: "suggested" }], error: null },
+    },
+    rpcs: {
+      resolve_show_assignments: { data: [{ producer_user_id: "prod-1" }], error: null },
+      is_feature_enabled: { data: false, error: null },
+    },
+  });
+
+  const res = await handle(makeRequest({ headers: CRON_OK }), deps);
+  const body = await res.json();
+  assertEquals(body.at_risk_count, 0);
+  assertEquals(body.cleared, 1, "stale notification must be cleared once the org is unentitled");
+
+  const deleteCalls = calls.filter((c) => c.table === "notifications" && c.method === "delete");
+  assertEquals(deleteCalls.length > 0, true);
+});
+
+// Pin the fail-OPEN contract for booking_flow: a transient is_feature_enabled RPC
+// error must never silently disable live production booking traffic.
+Deno.test("tier-at-risk-watcher: keeps alerting when the entitlement RPC errors (booking_flow fails open)", async () => {
+  const tierId = "tier-entfail";
+  const sdId = "sd-entfail";
+
+  const { deps } = makeFakeDeps({
+    tables: {
+      app_settings: makeBaseSettings(),
+      show_date_offer_tiers: { data: [makeTier(tierId, sdId)], error: null },
+      notifications: { data: [], error: null },
+      show_dates: { data: makeShowDate(sdId, "MusicalA", "MainShow"), error: null },
+      bookings: { data: [{ status: "suggested" }], error: null },
+    },
+    rpcs: {
+      resolve_show_assignments: { data: [{ producer_user_id: "prod-1" }], error: null },
+      is_feature_enabled: { data: null, error: { message: "boom" } },
+    },
+  });
+
+  const res = await handle(makeRequest({ headers: CRON_OK }), deps);
+  assertEquals(res.status, 200);
+  const body = await res.json();
+  assertEquals(body.at_risk_count, 1, "booking_flow fails open on an is_feature_enabled RPC error");
+});
+
 // ── Fix B (PR #161 round 3): booking_flow read error must not abort the scan ──
 //
 // A throw from resolveBookingFlow inside the loop would abort the whole handler,
