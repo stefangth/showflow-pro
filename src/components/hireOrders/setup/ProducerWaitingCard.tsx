@@ -20,7 +20,11 @@ export function ProducerWaitingCard({ steps }: { steps: SetupStep[] }) {
     <Card>
       <CardContent className="space-y-3 p-4">
         <div>
-          <p className="text-[10px] font-semibold uppercase tracking-wider text-amber-600">Waiting on your admin</p>
+          {/* text-amber-600 would be Tailwind's built-in #d97706 (no dark-mode
+              override); the --amber-600 var lifts to #F2B23C on a dark card. */}
+          <p className="text-[10px] font-semibold uppercase tracking-wider text-[var(--amber-600)]">
+            Waiting on your admin
+          </p>
           <p className="mt-1.5 font-display text-base font-semibold">Draft now, issue later</p>
           <p className="mt-1 text-xs leading-[19px] text-muted-foreground">
             Nothing stops you building orders. An admin needs to finish setup before anything can be sent.

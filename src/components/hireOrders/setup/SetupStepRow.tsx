@@ -1,5 +1,7 @@
-import type { ReactNode } from "react";
+import { useId, type ReactNode } from "react";
 import { Check } from "lucide-react";
+import { badgeVariants } from "@/components/ui/badge";
+import { cn } from "@/lib/utils";
 
 export interface SetupStepRowProps {
   /** 1-based position, shown while the step is outstanding. */
@@ -19,12 +21,14 @@ export interface SetupStepRowProps {
 export function SetupStepRow({
   index, title, hint, done, blocksIssue, expanded, onToggle, children,
 }: SetupStepRowProps) {
+  const panelId = useId();
   return (
     <div className="border-b border-border last:border-b-0">
       <button
         type="button"
         onClick={onToggle}
         aria-expanded={expanded}
+        aria-controls={panelId}
         className="flex w-full items-start gap-2.5 p-3 text-left hover:bg-muted/50"
       >
         {done ? (
@@ -40,13 +44,17 @@ export function SetupStepRow({
           <span className="block text-sm font-medium">{title}</span>
           <span className="mt-0.5 block text-xs leading-[17px] text-muted-foreground">{hint}</span>
         </span>
+        {/* The design-system "risk" tone, taken from the Badge's own cva so the amber
+            stays on the --amber-* vars (which carry the dark-mode override) rather than
+            Tailwind's built-in amber palette. A span, not <Badge>, because this sits
+            inside a button and a div there is invalid markup. */}
         {!done && blocksIssue && (
-          <span className="shrink-0 rounded bg-amber-100 px-1.5 py-0.5 text-[11px] font-semibold text-amber-600">
+          <span className={cn(badgeVariants({ variant: "risk" }), "shrink-0 font-semibold")}>
             Blocks issue
           </span>
         )}
       </button>
-      {expanded && <div className="border-t border-border bg-muted/40 p-3">{children}</div>}
+      {expanded && <div id={panelId} className="border-t border-border bg-muted/40 p-3">{children}</div>}
     </div>
   );
 }

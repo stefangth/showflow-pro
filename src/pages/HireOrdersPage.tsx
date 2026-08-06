@@ -11,12 +11,14 @@ import { OrderSlideOver } from "@/components/hireOrders/OrderSlideOver";
 import { NewOrderWizard } from "@/components/hireOrders/NewOrderWizard";
 import { HireOrderImportDialog } from "@/components/hireOrders/import/HireOrderImportDialog";
 import { SetupRail } from "@/components/hireOrders/setup/SetupRail";
+import { useSetupRailVisible } from "@/components/hireOrders/setup/useSetupRailVisible";
 import { FeatureOffBanner } from "@/components/layout/FeatureOffBanner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import type { HireOrderStatus } from "@/data/hireOrders";
 import { ROUTES } from "@/config/app.config";
+import { cn } from "@/lib/utils";
 
 /** The spreadsheet-import wizard shipped in Task 5. */
 const IMPORT_READY = true;
@@ -74,7 +76,7 @@ export default function HireOrdersPage() {
     return () => clearTimeout(timer);
   }, [search]);
 
-  const { data: allOrders = [] } = useHireOrders(orgId, {});
+  const { data: allOrders = [], isLoading: allOrdersLoading } = useHireOrders(orgId, {});
 
   const filters = useMemo(
     () => ({ status: chipToStatusFilter(statusChip), search: debouncedSearch.trim() || undefined }),
@@ -82,9 +84,19 @@ export default function HireOrdersPage() {
   );
   const { data: filteredOrders = [], isLoading } = useHireOrders(orgId, filters);
 
-  const { data: ready } = useDatesReadyForHireOrder(orgId);
+  // Nothing here can be actioned while the module is off, so don't read for it.
+  const { data: ready } = useDatesReadyForHireOrder(featureOn ? orgId : null);
   const readyCount = ready?.readyIds.length ?? 0;
-  const noOrdersYet = allOrders.length === 0;
+  // Settled-and-empty, not just empty: an org that does have orders would otherwise
+  // flash "N dates are ready" on every mount, before the first page arrived.
+  const noOrdersYet = !allOrdersLoading && allOrders.length === 0;
+
+  // A null child does not collapse a grid track, so the page has to know whether the
+  // rail will render before it picks its column template. Gated on the entitlement
+  // too: app_settings RLS checks role, not entitlement, so an unentitled org's setup
+  // writes would land, directly contradicting the FeatureOffBanner above.
+  const setupRailVisible = useSetupRailVisible(orgId);
+  const showSetupRail = featureOn && setupRailVisible;
 
   const stats = computeOrderKpis(allOrders);
   const selectedOrder =
@@ -116,7 +128,10 @@ export default function HireOrdersPage() {
 
       <OrdersKpis orders={allOrders} />
 
-      <div className="grid gap-5 lg:grid-cols-[1fr_340px] lg:items-start">
+      <div
+        data-testid="orders-layout"
+        className={cn("grid gap-5", showSetupRail && "lg:grid-cols-[1fr_340px] lg:items-start")}
+      >
         <div className="min-w-0 space-y-4">
           <div className="flex flex-wrap items-center gap-3">
             <div className="flex items-center gap-1.5">
@@ -155,14 +170,17 @@ export default function HireOrdersPage() {
           {noOrdersYet && readyCount > 0 && (
             <p className="text-xs text-muted-foreground">
               {readyCount} {readyCount === 1 ? "date is" : "dates are"} fully cast and ready for an order.{" "}
-              <Link to={ROUTES.BOOKINGS} className="text-accent-600 underline-offset-2 hover:underline">
+              {/* text-primary, not the accent-600 stop: the numbered accent stops are
+                  immutable across modes and pair with an accent background, so bare on
+                  a card this link sat near 2.3:1 in dark. */}
+              <Link to={ROUTES.BOOKINGS} className="text-primary underline-offset-2 hover:underline">
                 Generate from Shows and bookings
               </Link>
               , or use New order above.
             </p>
           )}
         </div>
-        <SetupRail orgId={orgId} />
+        {showSetupRail && <SetupRail orgId={orgId} />}
       </div>
 
       <OrderSlideOver

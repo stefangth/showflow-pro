@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { screen, waitFor } from "@testing-library/react";
+import { fireEvent, screen, waitFor } from "@testing-library/react";
 import { renderWithProviders } from "@/test/renderWithProviders";
 import { createFakeSupabase, type TableSeed } from "@/test/supabaseFake";
 
@@ -41,6 +41,9 @@ describe("SetupRail", () => {
     renderWithProviders(<SetupRail orgId="org-1" />);
     expect(await screen.findByText(/An admin needs to finish setup/i)).toBeInTheDocument();
     expect(screen.queryByText("Blocks issue")).not.toBeInTheDocument();
+    // The eyebrow must ride the --amber-600 var, which lifts to #F2B23C on a dark
+    // card; Tailwind's built-in amber-600 stays #d97706 and fails contrast there.
+    expect(screen.getByText("Waiting on your admin").className).toContain("var(--amber-600)");
   });
 
   it("renders nothing once the org is fully set up", async () => {
@@ -84,5 +87,65 @@ describe("SetupRail", () => {
     localStorage.setItem("showflow.hireOrderSetup.hidden.org-1", "true");
     const { container } = renderWithProviders(<SetupRail orgId="org-1" />);
     await waitFor(() => expect(container).toBeEmptyDOMElement());
+  });
+
+  it("shows the rail again after switching to an org that never dismissed it", async () => {
+    // The route does not remount on switchOrg, so a dismissal read once at mount
+    // would hide the rail for the rest of the session on every other org, i.e. on
+    // exactly the newly provisioned org that needs it.
+    localStorage.setItem("showflow.hireOrderSetup.hidden.org-1", "true");
+    const { container, rerender } = renderWithProviders(<SetupRail orgId="org-1" />);
+    await waitFor(() => expect(container).toBeEmptyDOMElement());
+
+    rerender(<SetupRail orgId="org-2" />);
+    expect(await screen.findByText("Letterhead")).toBeInTheDocument();
+  });
+
+  it("renders nothing for a producer once nothing blocks issuing", async () => {
+    // Letterhead and terms set, no countersign row. Countersign never blocks issuing,
+    // so telling a producer an admin must "finish setup before anything can be sent"
+    // would be false and would never clear.
+    canRef.value = false;
+    seedClient({
+      app_settings: [
+        {
+          when: { key: "hire_order_letterhead" },
+          data: [{ key: "hire_order_letterhead", org_id: "org-1", value: { legal_name: "Aurora GmbH", address_lines: [], registration_line: "" } }],
+        },
+        {
+          when: { key: "hire_order_terms" },
+          data: [{ key: "hire_order_terms", org_id: "org-1", value: { templates: [{ id: "t1", name: "Standard", clauses: [{ title: "Fee", body: "14 days." }] }], default_id: "t1" } }],
+        },
+        { when: { key: "hire_order_countersign" }, data: [] },
+      ],
+    });
+    const { container, queryClient } = renderWithProviders(<SetupRail orgId="org-1" />);
+    await waitFor(() => {
+      expect(queryClient.getQueryState(["app-settings", "hire_order_letterhead", "org-1"])?.status).toBe("success");
+      expect(queryClient.getQueryState(["app-settings", "hire_order_terms", "org-1"])?.status).toBe("success");
+      expect(queryClient.getQueryState(["app-settings", "hire_order_countersign", "exists", "org-1"])?.status).toBe("success");
+    });
+    expect(container).toBeEmptyDOMElement();
+  });
+
+  it("styles the blocking chip with the design-system amber tokens", async () => {
+    // bg-amber-100 / text-amber-600 resolve to Tailwind's built-in palette, which
+    // carries no dark-mode override; the --amber-* vars in index.css do.
+    renderWithProviders(<SetupRail orgId="org-1" />);
+    const chip = (await screen.findAllByText("Blocks issue"))[0];
+    expect(chip.className).toContain("var(--amber-100)");
+    expect(chip.className).toContain("var(--amber-600)");
+  });
+
+  it("associates each disclosure button with the panel it expands", async () => {
+    renderWithProviders(<SetupRail orgId="org-1" />);
+    const button = (await screen.findByText("Letterhead")).closest("button") as HTMLButtonElement;
+    const panelId = button.getAttribute("aria-controls");
+    expect(panelId).toBeTruthy();
+    expect(button).toHaveAttribute("aria-expanded", "false");
+
+    fireEvent.click(button);
+    expect(button).toHaveAttribute("aria-expanded", "true");
+    expect(document.getElementById(panelId!)).toBeInTheDocument();
   });
 });

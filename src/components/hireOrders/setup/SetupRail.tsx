@@ -10,6 +10,7 @@ import { TermsStep } from "./TermsStep";
 import { CountersignStep } from "./CountersignStep";
 import { ProducerWaitingCard } from "./ProducerWaitingCard";
 import { useRailDismissed } from "./useRailDismissed";
+import { useSetupRailVisible } from "./useSetupRailVisible";
 
 const TITLES: Record<SetupStepKey, string> = {
   letterhead: "Letterhead",
@@ -40,12 +41,13 @@ const HINTS: Record<SetupStepKey, { todo: string; done: string }> = {
  * writes through the same data path as the Settings cards.
  */
 export function SetupRail({ orgId }: { orgId: string | null }) {
+  const visible = useSetupRailVisible(orgId);
   const canEditSettings = useCan("edit_hire_order_settings");
-  const { status, isLoading } = useHireOrderSetupStatus(orgId);
-  const [dismissed, dismiss] = useRailDismissed(orgId);
+  const { status } = useHireOrderSetupStatus(orgId);
+  const [, dismiss] = useRailDismissed(orgId);
   const [open, setOpen] = useState<SetupStepKey | null>(null);
 
-  if (isLoading || dismissed || status.complete) return null;
+  if (!visible) return null;
   if (!canEditSettings) return <ProducerWaitingCard steps={status.steps} />;
 
   const toggle = (key: SetupStepKey) => setOpen((cur) => (cur === key ? null : key));
@@ -55,7 +57,10 @@ export function SetupRail({ orgId }: { orgId: string | null }) {
       <CardContent className="p-0">
         <div className="border-b border-border p-4">
           <div className="flex items-center justify-between">
-            <p className="text-[10px] font-semibold uppercase tracking-wider text-accent-600">
+            {/* Semantic token, not a numbered accent stop: accent-600 is the same dark
+                violet in both modes (the scale is immutable by design), which is ~2.3:1
+                on the dark card. Every other eyebrow in the app reads muted. */}
+            <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
               Set up · {status.doneCount} of {status.totalCount}
             </p>
             <Button variant="ghost" size="sm" className="h-auto p-1 text-xs" onClick={dismiss}>

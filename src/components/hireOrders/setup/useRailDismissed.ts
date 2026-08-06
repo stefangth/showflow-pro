@@ -1,4 +1,4 @@
-import { useCallback, useState } from "react";
+import { useCallback, useSyncExternalStore } from "react";
 
 /** Per-browser, per-org dismissal of the setup rail.
  *
@@ -10,13 +10,25 @@ function storageKey(orgId: string | null): string {
   return `showflow.hireOrderSetup.hidden.${orgId ?? "none"}`;
 }
 
+/** Every mounted reader of the dismissal, so a Hide click updates all of them at once.
+ *  Two components read this (the rail and the page's layout decision) and switchOrg
+ *  does not remount the route, so neither a one-shot read at mount nor a per-instance
+ *  useState would stay correct. */
+const listeners = new Set<() => void>();
+
+function subscribe(onChange: () => void): () => void {
+  listeners.add(onChange);
+  return () => { listeners.delete(onChange); };
+}
+
 export function useRailDismissed(orgId: string | null): [boolean, () => void] {
-  const [dismissed, setDismissed] = useState<boolean>(
+  const dismissed = useSyncExternalStore(
+    subscribe,
     () => localStorage.getItem(storageKey(orgId)) === "true",
   );
   const dismiss = useCallback(() => {
     localStorage.setItem(storageKey(orgId), "true");
-    setDismissed(true);
+    for (const notify of listeners) notify();
   }, [orgId]);
   return [dismissed, dismiss];
 }

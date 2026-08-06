@@ -26,9 +26,15 @@ vi.mock("react-router-dom", () => ({
   ),
 }));
 // The rail is exercised on its own in SetupRail.test.tsx; stub it here so this
-// page's tests don't also have to seed its three app_settings reads.
+// page's tests don't also have to seed its three app_settings reads. The page
+// reads the same visibility decision the rail does (a null child does not
+// collapse a grid track), so the stub covers both exports.
+const { railVisible } = vi.hoisted(() => ({ railVisible: { value: true } }));
 vi.mock("@/components/hireOrders/setup/SetupRail", () => ({
   SetupRail: () => <div data-testid="setup-rail" />,
+}));
+vi.mock("@/components/hireOrders/setup/useSetupRailVisible", () => ({
+  useSetupRailVisible: () => railVisible.value,
 }));
 
 function seedClient(seed: Record<string, TableSeed>) {
@@ -124,6 +130,7 @@ describe("HireOrdersPage", () => {
   beforeEach(() => {
     navigate.mockClear();
     authAs("producer");
+    railVisible.value = true;
     seedFor(ROWS);
   });
 
@@ -426,10 +433,34 @@ describe("HireOrdersPage", () => {
     expect(screen.getByRole("button", { name: /import from spreadsheet/i })).toBeEnabled();
   });
 
-  it("mounts the setup rail", async () => {
+  it("mounts the setup rail and reserves its column", async () => {
     renderPage();
     await screen.findByText("Hire orders");
     expect(screen.getByTestId("setup-rail")).toBeInTheDocument();
+    expect(screen.getByTestId("orders-layout").className).toContain("lg:grid-cols-[1fr_340px]");
+  });
+
+  it("drops the rail column once the rail has retired", async () => {
+    // A rail that renders null does NOT collapse its grid track: the track comes
+    // from grid-template-columns. Left unconditional, every org loses 340px of
+    // orders-table width forever once setup is done, which is the steady state.
+    railVisible.value = false;
+    renderPage();
+    await screen.findByText("Hire orders");
+    expect(screen.queryByTestId("setup-rail")).not.toBeInTheDocument();
+    expect(screen.getByTestId("orders-layout").className).not.toContain("lg:grid-cols-");
+  });
+
+  it("does not mount the setup rail when the module is off", async () => {
+    // Super-admins bypass the route's entitlement gate, and hire_orders defaults
+    // off, so a module-off org is the normal case for them. The page must not
+    // offer an interactive setup checklist right beside its own "changes cannot
+    // be saved" banner -- app_settings RLS checks role, not entitlement, so those
+    // saves would land and configure a module the org does not have.
+    seedFor(ROWS, { org_entitlements: { data: [{ feature: "hire_orders", enabled: false }], error: null } });
+    renderPage();
+    await screen.findByText(/Hire orders is off for this organization/);
+    expect(screen.queryByTestId("setup-rail")).not.toBeInTheDocument();
   });
 
   it("points at the dates that are ready when there are no orders yet", async () => {
@@ -443,5 +474,22 @@ describe("HireOrdersPage", () => {
     });
     renderPage();
     expect(await screen.findByText(/2 dates are fully cast and ready/i)).toBeInTheDocument();
+    // A semantic token, not a numbered accent stop: those are identical in light
+    // and dark by design, so bare on a card the link failed contrast in dark.
+    expect(screen.getByText(/Generate from Shows and bookings/).className).toContain("text-primary");
+  });
+
+  it("never points at ready dates for an org that already has orders", async () => {
+    // noOrdersYet read `allOrders.length === 0` without consulting the query's
+    // loading state, so this pointer flashed on every mount of an org that has
+    // orders, before the first page of them arrived.
+    seedFor(ROWS, {
+      show_dates: { data: [{ id: "d1", status: "fully_filled" }], error: null },
+      hire_order_dates: { data: [], error: null },
+    });
+    renderPage();
+    await screen.findByText("Hire orders");
+    await waitFor(() => expect(screen.getAllByText(/HO-2026-0201-1/).length).toBeGreaterThan(0));
+    expect(screen.queryByText(/fully cast and ready/i)).not.toBeInTheDocument();
   });
 });
