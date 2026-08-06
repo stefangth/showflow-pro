@@ -193,6 +193,11 @@ practice rather than by assumption. This is the highest-risk part of the change.
 - No change to `hire_orders`. If an org has `hire_orders` on and `booking_flow` off,
   existing confirmed bookings can still produce hire orders. The modules stay independent;
   freeze semantics mean prior data keeps working.
-- No migration of existing org entitlement rows. `booking_flow` remains `defaultEnabled:
-  true`, so no live org changes behaviour on deploy.
+- No migration of existing org entitlement rows. `booking_flow` keeps
+  `defaultEnabled: true`, so an org with **no** `org_entitlements` row for it is
+  unaffected on deploy. That is **not** the same as "no live org changes behaviour":
+  an org carrying an explicit `booking_flow` row with `enabled = false` resolves to
+  off and goes dark the moment this ships — which is the state both current live orgs
+  (Bootstrap Org, Fever) are in. Flipping those rows back on is a deliberate human
+  decision, not part of this change.
 - No changes to the offer/booking domain logic itself — only gates around it.
