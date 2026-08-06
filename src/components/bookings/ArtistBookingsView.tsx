@@ -54,6 +54,7 @@ export function ArtistBookingsView() {
   const { data: artist } = useMyArtist();
   const { data: eligibleDates, isLoading } = useArtistEligibleDates();
   const hireOrdersEnabled = useFeature('hire_orders');
+  const bookingFlowEnabled = useFeature('booking_flow');
   const { data: myHireOrders } = useMyHireOrders();
   const { reference, customFieldKey } = useReferenceField();
   const flowQ = useBookingFlow();
@@ -73,7 +74,9 @@ export function ArtistBookingsView() {
   // Query cache — see the note in AvailabilityPage.
   const { data: myBookings, isError: bookingsError } = useQuery({
     queryKey: ['bookings', 'artist-bookings-view', artist?.id],
-    enabled: !!artist?.id,
+    // Module-gated: the list region below sits inside ModuleGate, so without
+    // booking_flow this read would be fetched and then discarded on every visit.
+    enabled: !!artist?.id && bookingFlowEnabled,
     queryFn: async () => {
       const { data, error } = await supabase
         .from('bookings')
@@ -87,7 +90,7 @@ export function ArtistBookingsView() {
 
   const { data: cancelledEntries } = useQuery({
     queryKey: ['bookings', 'artist-cancelled', artist?.id],
-    enabled: !!artist?.id,
+    enabled: !!artist?.id && bookingFlowEnabled,
     queryFn: () => fetchMyCancelledDateBookings(supabase, artist!.id),
   });
 
