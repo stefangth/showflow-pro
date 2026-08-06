@@ -639,6 +639,24 @@ describe("HireOrderEditPage", () => {
     expect(issueBtn.getAttribute("title")).toContain("No terms templates configured");
   });
 
+  // I1: the callout is fed fail-safe blockers (an unread org setting reads as a gap),
+  // so the page must hand it the read's own state and let it stay honest. Without
+  // that, a transient app_settings failure on a correctly configured org prints a
+  // confident, wrong statement about the customer's own document.
+  it("does not state a failed org-settings read as a gap on the document", async () => {
+    seedClient({
+      hire_orders: { data: order(), error: null },
+      app_settings: { data: null, error: new Error("boom") },
+      "fn:generate-hire-orders": { data: { pdf_base64: PREVIEW_PDF_B64 }, error: null },
+    });
+    renderPage();
+    await screen.findByText("HO-2026-0201-1");
+
+    await waitFor(() => expect(screen.getByText(/could not check/i)).toBeInTheDocument());
+    expect(screen.queryByText(/The header on this document is empty/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/back page of this document/i)).not.toBeInTheDocument();
+  });
+
   it("surfaces a destructive alert when the order cannot be loaded", async () => {
     seedClient({ hire_orders: { data: null, error: new Error("permission denied") } });
     renderPage();

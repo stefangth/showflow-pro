@@ -383,11 +383,15 @@ export default function HireOrderEditPage() {
 
   const canRefresh = !!order && (!!order.show_date_id || !!order.artist_id);
 
-  // Feeds SetupCallout only -- called unconditionally, ABOVE the isLoading/isError/
-  // isReadOnly early returns below, because it is a hook (Rules of Hooks). The
-  // existing readyIssues/issueDisabled/issueTitle gate (below the early returns)
-  // stays the single source of truth for whether Issue is actually disabled.
-  const { blockers } = useOrderBlockers(orgId, order ? { data: displayData, terms_variant: termsVariant } : null);
+  // The ONE readiness rule on this page: it feeds both the callout and the Issue
+  // gate below, and it is what the edge function's issueOne actually enforces.
+  // Called unconditionally, ABOVE the isLoading/isError/isReadOnly early returns
+  // below, because it is a hook (Rules of Hooks). Its own read state travels with
+  // it: the blockers are fail-safe, so an unread setting looks exactly like an
+  // unconfigured org and neither surface may present it as one.
+  const {
+    blockers, isLoading: blockersLoading, isError: blockersError,
+  } = useOrderBlockers(orgId, order ? { data: displayData, terms_variant: termsVariant } : null);
 
   async function handleRefresh() {
     if (!order || !canRefresh) return;
@@ -676,7 +680,7 @@ export default function HireOrderEditPage() {
 
         {/* RIGHT: live document preview */}
         <div>
-          <SetupCallout orgId={orgId} blockers={blockers} />
+          <SetupCallout orgId={orgId} blockers={blockers} isLoading={blockersLoading} isError={blockersError} />
           <div className="rounded-xl border border-border bg-muted p-3 sm:p-4">
             <div className="sticky top-4 z-10 mb-3 flex justify-center">
               <span className="rounded-full border border-border bg-card px-3 py-1 text-xs font-medium text-muted-foreground shadow-elev1">

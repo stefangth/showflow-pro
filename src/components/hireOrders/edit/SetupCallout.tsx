@@ -1,5 +1,15 @@
+import { AlertTriangle } from "lucide-react";
 import type { Blocker } from "@/lib/hireOrders/preflight";
 import { BlockerList } from "@/components/hireOrders/BlockerList";
+
+export interface SetupCalloutProps {
+  orgId: string | null;
+  blockers: Blocker[];
+  /** The org-settings read behind `blockers` has not landed yet. */
+  isLoading: boolean;
+  /** The org-settings read behind `blockers` failed. */
+  isError: boolean;
+}
 
 /**
  * Org-level gaps, called out over the live document preview.
@@ -10,18 +20,42 @@ import { BlockerList } from "@/components/hireOrders/BlockerList";
  *
  * Renders nothing when there is nothing org-level to say, so it never occupies space on
  * a configured org.
+ *
+ * `isLoading` / `isError` are required, not optional, because the blockers handed down
+ * here are deliberately fail-safe: an unread or failed settings read produces
+ * missing_letterhead and missing_terms exactly as an unconfigured org does. Stating that
+ * as a fact about the customer's document would be a confident, wrong claim, so this
+ * says nothing until the read has landed and says the check failed when it did.
  */
-export function SetupCallout({ orgId, blockers }: { orgId: string | null; blockers: Blocker[] }) {
+export function SetupCallout({ orgId, blockers, isLoading, isError }: SetupCalloutProps) {
+  if (isLoading) return null;
+
+  if (isError) {
+    return (
+      <div className="mb-3 flex items-center gap-2.5 rounded-lg border border-border p-3">
+        <AlertTriangle className="h-4 w-4 shrink-0 text-[var(--amber-600)]" />
+        <p className="text-sm text-muted-foreground">
+          Could not check this organization's hire order setup. Reload the page before issuing.
+        </p>
+      </div>
+    );
+  }
+
   const orgBlockers = blockers.filter((b) => b.scope === "org");
   if (orgBlockers.length === 0) return null;
 
+  const missingLetterhead = orgBlockers.some((b) => b.key === "missing_letterhead");
+  const missingTerms = orgBlockers.some((b) => b.key === "missing_terms");
+  const headline =
+    missingLetterhead && missingTerms
+      ? "The header and the back page of this document are empty"
+      : missingLetterhead
+        ? "The header on this document is empty"
+        : "The back page of this document is empty";
+
   return (
     <div className="mb-3 rounded-lg border border-accent-200 bg-accent-50 p-3">
-      <p className="text-sm font-semibold text-accent-700">
-        {orgBlockers.some((b) => b.key === "missing_letterhead")
-          ? "The header on this document is empty"
-          : "The back page of this document is empty"}
-      </p>
+      <p className="text-sm font-semibold text-accent-700">{headline}</p>
       <p className="mt-0.5 text-xs text-muted-foreground">
         Set it once here and every future order carries it. This is not specific to this order.
       </p>
