@@ -195,3 +195,9 @@ export const APP_META = {
   /** Public marketing site — used for the "Book a demo" CTA on the login page. */
   MARKETING_URL: 'https://showflow.pro',
 } as const;
+
+/**
+ * Public changelog, rendered by the marketing site from this repo's `public/changelog.md`.
+ * Opened from the version pill in the brand wordmark.
+ */
+export const CHANGELOG_URL = `${APP_META.MARKETING_URL}/changelog`;

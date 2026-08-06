@@ -6,6 +6,7 @@ import type { Json } from '@/integrations/supabase/types';
 import { useAuth } from '@/features/auth/AuthContext';
 import { upsertOrgSetting } from '@/data/settings';
 import { resolveEditorRows, type EditorSettingRow } from './orgEditorConfig';
+import { canUseEditor } from './editorAccess';
 import type { AppRole } from '@/config/app.config';
 import { resolveColumnTemplate, pageColumnDefs, COMPUTED_LABELS, customFieldDefToColumnDef, CUSTOM_FIELD_PAGES } from './columnRegistries';
 import { fetchCustomFieldDefs, type CustomFieldDefinition } from '@/data/customFields';
@@ -48,13 +49,13 @@ interface EditorContextType {
 const EditorContext = createContext<EditorContextType | undefined>(undefined);
 
 export function EditorProvider({ children }: { children: ReactNode }) {
-  const { roles, currentOrg } = useAuth();
-  const isRealAdmin = roles.includes('admin');
+  const { roles, currentOrg, isSuperAdmin } = useAuth();
+  const canEdit = canUseEditor(roles, isSuperAdmin);
   const orgId = currentOrg?.id ?? null;
   const qc = useQueryClient();
 
   const [isEditorMode, setIsEditorMode] = useState(
-    () => isRealAdmin && localStorage.getItem(EDITOR_MODE_KEY) === 'true'
+    () => canEdit && localStorage.getItem(EDITOR_MODE_KEY) === 'true'
   );
   const [isSidePanelOpen, setSidePanelOpen] = useState(false);
 
@@ -67,12 +68,12 @@ export function EditorProvider({ children }: { children: ReactNode }) {
     }
   }, [isEditorMode]);
 
-  // If the user loses admin role, exit editor mode
+  // If the user loses editor access, exit editor mode
   useEffect(() => {
-    if (!isRealAdmin && isEditorMode) {
+    if (!canEdit && isEditorMode) {
       setIsEditorMode(false);
     }
-  }, [isRealAdmin, isEditorMode]);
+  }, [canEdit, isEditorMode]);
 
   // Fetch editor configs — org-scoped (override ?? platform default), keyed by orgId
   const { data: rawSettings, isLoading: isConfigLoading } = useQuery({

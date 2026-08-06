@@ -149,7 +149,9 @@ src/
                    #   (key: showflow.consent.v1; categories: analytics, sessionReplay, errorTracking)
                    #   ConsentProvider wraps the routing tree (inside BrowserRouter, outside AuthProvider/EditorProvider).
     editor/        # Admin-only UI editor: EditorContext, EditorToolbar, EditorSidePanel,
-                   #   ColumnLayoutEditor, columnRegistries, types.
+                   #   ColumnLayoutEditor, columnRegistries, types,
+                   #   editorAccess.ts (canUseEditor — the org-admin-or-super-admin gate
+                   #   shared by the provider, toolbar, toggle and AppLayout).
                    #   Persists page access / column templates / table permissions in
                    #   app_settings (keys: editor_page_access, editor_column_templates,
                    #   editor_table_permissions). EditorProvider wraps the whole app.

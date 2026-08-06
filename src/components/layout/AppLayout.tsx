@@ -14,6 +14,7 @@ import { cn } from '@/lib/utils';
 import { useSettingsWarnings } from '@/hooks/useSettingsWarnings';
 import { useEditorConfig } from '@/features/editor/EditorContext';
 import { EditorToolbar, EditorModeToggle } from '@/features/editor/EditorToolbar';
+import { canUseEditor } from '@/features/editor/editorAccess';
 import { StageMark } from '@/components/brand/StageMark';
 import { BrandWordmark } from '@/components/brand/BrandWordmark';
 import { OrgSwitcher } from '@/components/layout/OrgSwitcher';
@@ -64,6 +65,10 @@ export default function AppLayout({ children }: AppLayoutProps) {
   useEffect(() => { if (collapsed) setProfileMenuOpen(false); }, [collapsed]);
 
   const isRealAdmin = roles.includes('admin');
+  // Distinct from isRealAdmin, which also drives nav visibility (visibleNavItems takes
+  // isSuperAdmin separately and handles god-mode its own way). Editor mode alone widens
+  // to super-admins, so they keep the toolbar in orgs they hold no membership in.
+  const canEditor = canUseEditor(roles, isSuperAdmin);
   const unreadCount = notifications.filter(n => !n.read).length;
 
   const displayName = (myProfile?.display_name?.trim() || user?.email?.split('@')[0] || 'Account');
@@ -343,7 +348,7 @@ export default function AppLayout({ children }: AppLayoutProps) {
 
           <div className="flex-1" />
           <div className="flex items-center gap-1">
-            {isRealAdmin && <EditorModeToggle />}
+            {canEditor && <EditorModeToggle />}
 
             <ThemeToggle />
 
@@ -374,11 +379,11 @@ export default function AppLayout({ children }: AppLayoutProps) {
         </header>
 
         {/* Editor toolbar */}
-        {isEditorMode && isRealAdmin && <EditorToolbar />}
+        {isEditorMode && canEditor && <EditorToolbar />}
 
         {/* Page content */}
         <main className="flex-1 overflow-y-auto p-4 sm:p-6">
-          {isEditorMode && isRealAdmin && (
+          {isEditorMode && canEditor && (
             <div className="mb-4">
               <Badge variant="neutral" className="font-mono">
                 {ROUTE_TO_FILE[location.pathname] ?? 'Unknown page'}

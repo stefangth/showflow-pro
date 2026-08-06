@@ -1,4 +1,4 @@
-import { Eye, Pencil, Settings, User, X } from 'lucide-react';
+import { Building2, Eye, Pencil, Settings, User, X } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -9,6 +9,7 @@ import { useAuth } from '@/features/auth/AuthContext';
 import type { AppRole } from '@/config/app.config';
 import { supabase } from '@/integrations/supabase/client';
 import { useEditor } from './EditorContext';
+import { canUseEditor } from './editorAccess';
 import { EditorSidePanel } from './EditorSidePanel';
 
 interface IamUser {
@@ -18,14 +19,14 @@ interface IamUser {
 }
 
 export function EditorToolbar() {
-  const { roles, viewAsRole, setViewAsRole, viewAsUser, setViewAsUser, currentOrg } = useAuth();
+  const { roles, viewAsRole, setViewAsRole, viewAsUser, setViewAsUser, currentOrg, orgs, switchOrg, isSuperAdmin } = useAuth();
   const { isEditorMode, enableEditorMode, disableEditorMode, isSidePanelOpen, setSidePanelOpen } = useEditor();
 
-  const isRealAdmin = roles.includes('admin');
+  const canEdit = canUseEditor(roles, isSuperAdmin);
 
   const { data: iamUsers } = useQuery({
     queryKey: ['admin-iam-users', currentOrg?.id],
-    enabled: isRealAdmin && isEditorMode,
+    enabled: canEdit && isEditorMode,
     queryFn: async () => {
       const { data, error } = await supabase.functions.invoke('admin-list-users', {
         body: { org_id: currentOrg?.id },
@@ -38,7 +39,7 @@ export function EditorToolbar() {
     staleTime: 60_000,
   });
 
-  if (!isRealAdmin) return null;
+  if (!canEdit) return null;
 
   if (!isEditorMode) {
     return (
@@ -67,6 +68,34 @@ export function EditorToolbar() {
         </Badge>
 
         <Separator orientation="vertical" className="h-5 bg-warning/30" />
+
+        {orgs.length > 1 && (
+          <div className="flex items-center gap-2 shrink-0">
+            <Building2 className="h-4 w-4 text-muted-foreground" />
+            <span className="text-muted-foreground text-xs">Org:</span>
+            <Select
+              value={currentOrg?.id ?? ''}
+              onValueChange={v => {
+                if (v === currentOrg?.id) return;
+                // The impersonated user belongs to the org being left — it would not
+                // even appear in the new org's list — so drop it before switching.
+                setViewAsUser(null);
+                switchOrg(v);
+              }}
+            >
+              <SelectTrigger className="h-7 w-44 text-xs" aria-label="Editor organization">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {orgs.map(o => (
+                  <SelectItem key={o.id} value={o.id} className="text-xs">
+                    {o.name}{o.status === 'suspended' ? ' (suspended)' : ''}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        )}
 
         <div className="flex items-center gap-2 shrink-0">
           <Eye className="h-4 w-4 text-muted-foreground" />
@@ -156,10 +185,10 @@ export function EditorToolbar() {
 
 /** Toggle button rendered inside the topbar for admins when editor mode is off. */
 export function EditorModeToggle() {
-  const { roles } = useAuth();
+  const { roles, isSuperAdmin } = useAuth();
   const { isEditorMode, enableEditorMode, disableEditorMode } = useEditor();
 
-  if (!roles.includes('admin')) return null;
+  if (!canUseEditor(roles, isSuperAdmin)) return null;
 
   return (
     <Tooltip>
