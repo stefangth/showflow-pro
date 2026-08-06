@@ -31,7 +31,7 @@ export function TermsLibraryPicker({
   if (library.length === 0) {
     return (
       <p className="rounded-lg border border-dashed border-border p-3 text-xs text-muted-foreground">
-        No templates in the library yet. Add your clauses below instead.
+        No templates in the library yet. You can author your own clauses instead.
       </p>
     );
   }

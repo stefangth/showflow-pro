@@ -664,7 +664,14 @@ export async function fetchTermsLibrary(
   const value = await resolveOrgSetting<TermsLibraryValue>(client, null, TERMS_LIBRARY_KEY, {
     templates: HIRE_ORDER_STARTER_TERMS,
   });
-  return Array.isArray(value?.templates) ? value.templates : HIRE_ORDER_STARTER_TERMS;
+  if (!Array.isArray(value?.templates)) return HIRE_ORDER_STARTER_TERMS;
+  // Per-element validation, not just the array shape: the row is writable by SQL as
+  // well as by the platform card, and every consumer dereferences `clauses`, so one
+  // malformed entry would throw where it renders rather than fail here.
+  return value.templates.filter(
+    (t): t is HireOrderTemplate =>
+      !!t && typeof t.id === "string" && typeof t.name === "string" && Array.isArray(t.clauses),
+  );
 }
 
 /** Copy library templates into the org's own `hire_order_terms` and return the result. */

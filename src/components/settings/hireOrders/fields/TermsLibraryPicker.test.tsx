@@ -35,7 +35,10 @@ describe("TermsLibraryPicker", () => {
   });
 
   it("renders an explanatory empty state when the library is empty", () => {
+    // Surface-neutral copy: the picker is mounted in Settings, in the setup rail and
+    // (next) in the issue preflight, and only Settings has a clause editor "below".
     render(<TermsLibraryPicker library={[]} selectedIds={[]} alreadyHeldIds={[]} onToggle={vi.fn()} />);
     expect(screen.getByText(/No templates in the library/i)).toBeInTheDocument();
+    expect(screen.queryByText(/below/i)).not.toBeInTheDocument();
   });
 });

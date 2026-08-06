@@ -661,6 +661,23 @@ describe("fetchTermsLibrary", () => {
     });
     expect(await fetchTermsLibrary(fake as never)).toEqual(HIRE_ORDER_STARTER_TERMS);
   });
+
+  it("drops individual templates that are not usable", async () => {
+    // The row is reachable by SQL, not only through the platform card's validated
+    // save. Every consumer reads t.clauses.length, so one clause-less entry would
+    // throw a TypeError and take down the whole Settings terms card and the rail.
+    const good = { id: "p1", name: "Custom", clauses: [{ title: "A", body: "B" }] };
+    const fake = createFakeSupabase({
+      app_settings: {
+        data: [{
+          org_id: null,
+          value: { templates: [good, { id: "p2", name: "No clauses" }, null, { name: "No id", clauses: [] }] },
+        }],
+        error: null,
+      },
+    });
+    expect(await fetchTermsLibrary(fake as never)).toEqual([good]);
+  });
 });
 
 describe("importTermsTemplates", () => {
