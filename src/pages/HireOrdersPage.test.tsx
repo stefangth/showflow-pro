@@ -109,6 +109,49 @@ const ROWS = [
 
 const SIGNED_URL = "https://signed.example/orders/ho-3.pdf?token=abc";
 
+// The bulk-issue tests below now go through BatchIssuePreflightDialog, which checks
+// every selected order's data (fee, recipient email, date, terms) against the org's
+// letterhead and terms before it will offer to issue anything. ROWS' fixtures don't
+// carry a `data.fee`/`data.date`/`terms_variant` (the KPI/table tests that use ROWS
+// unmodified never needed them), so the two bulk-issue tests below seed their own
+// clean rows and a configured org, matching the fake's documented gotcha: the two
+// app_settings keys must be separate array `when` entries or one read clobbers the other.
+const READY_APP_SETTINGS: TableSeed = [
+  {
+    when: { key: "hire_order_letterhead" },
+    data: [{ org_id: "org-1", value: { legal_name: "Aurora GmbH", address_lines: [], registration_line: "" } }],
+  },
+  {
+    when: { key: "hire_order_terms" },
+    data: [{
+      org_id: "org-1",
+      value: { templates: [{ id: "standard", name: "Standard", clauses: [{ title: "Fee", body: "14 days." }] }], default_id: "standard" },
+    }],
+  },
+];
+
+function readyOrder(overrides: Record<string, unknown> = {}) {
+  return order({
+    terms_variant: "standard",
+    data: {
+      artist_name: { value: "Ada Lovelace", source: "showflow" },
+      recipient_email: { value: "ada@example.com", source: "showflow" },
+      date: { value: "2026-02-01", source: "showflow" },
+      fee: { value: "1000.00", source: "manual" },
+    },
+    ...overrides,
+  });
+}
+
+/** Click "Issue selected" (now opens BatchIssuePreflightDialog), wait for it to
+ *  report the expected count clean, then confirm from the dialog. */
+async function openBulkDialogAndConfirm(expectedCount: number) {
+  fireEvent.click(screen.getByRole("button", { name: /issue selected/i }));
+  const confirmBtn = await screen.findByRole("button", { name: new RegExp(`Issue ${expectedCount} orders?`, "i") });
+  await waitFor(() => expect(confirmBtn).toBeEnabled());
+  fireEvent.click(confirmBtn);
+}
+
 function seedFor(rows: Record<string, unknown>[], extra: Record<string, TableSeed> = {}) {
   seedClient({
     hire_orders: { data: rows, error: null },
@@ -323,13 +366,23 @@ describe("HireOrdersPage", () => {
   });
 
   it("issues the selected draft/ready orders via the bulk bar", async () => {
+    seedFor(
+      [
+        readyOrder({ id: "ho-1", order_no: "HO-2026-0201-1", status: "draft", fee_amount: 1000, created_at: "2026-01-10T09:00:00Z" }),
+        readyOrder({
+          id: "ho-2", order_no: "HO-2026-0301-1", status: "ready", fee_amount: 2000, created_at: "2026-01-09T09:00:00Z",
+          artists: { name: "Zed Zeta" }, show_dates: { date: "2026-03-01", venue: "West Wing" },
+        }),
+      ],
+      { app_settings: READY_APP_SETTINGS },
+    );
     renderPage();
     await screen.findByText("HO-2026-0201-1");
     fireEvent.click(screen.getByRole("checkbox", { name: /select order ho-2026-0201-1/i }));
     fireEvent.click(screen.getByRole("checkbox", { name: /select order ho-2026-0301-1/i }));
     const issueBtn = screen.getByRole("button", { name: /issue selected/i });
     expect(issueBtn).toBeEnabled();
-    fireEvent.click(issueBtn);
+    await openBulkDialogAndConfirm(2);
     await waitFor(() => {
       const calls = (client.calls ?? []) as { table: string; method: string; args: unknown[] }[];
       const invoke = calls.find((c) => c.table === "fn:generate-hire-orders" && c.method === "invoke");
@@ -355,6 +408,17 @@ describe("HireOrdersPage", () => {
   });
 
   it("sends only the still-visible, still-issuable ids when a filter change hides part of a prior selection", async () => {
+    seedFor(
+      [
+        readyOrder({ id: "ho-1", order_no: "HO-2026-0201-1", status: "draft", fee_amount: 1000, created_at: "2026-01-10T09:00:00Z" }),
+        readyOrder({
+          id: "ho-2", order_no: "HO-2026-0301-1", status: "ready", fee_amount: 2000, created_at: "2026-01-09T09:00:00Z",
+          artists: { name: "Zed Zeta" }, show_dates: { date: "2026-03-01", venue: "West Wing" },
+        }),
+        ...ROWS.slice(2),
+      ],
+      { app_settings: READY_APP_SETTINGS },
+    );
     renderPage();
     await screen.findByText("HO-2026-0201-1");
     fireEvent.click(screen.getByRole("checkbox", { name: /select order ho-2026-0201-1/i })); // ho-1, draft
@@ -367,7 +431,7 @@ describe("HireOrdersPage", () => {
     await waitFor(() => expect(screen.queryByText("HO-2026-0301-1")).not.toBeInTheDocument());
     expect(screen.getByText("HO-2026-0201-1")).toBeInTheDocument();
 
-    fireEvent.click(screen.getByRole("button", { name: /issue selected/i }));
+    await openBulkDialogAndConfirm(1);
     await waitFor(() => {
       const calls = (client.calls ?? []) as { table: string; method: string; args: unknown[] }[];
       const invoke = calls.find((c) => c.table === "fn:generate-hire-orders" && c.method === "invoke");
