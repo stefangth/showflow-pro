@@ -119,3 +119,20 @@ describe("useNavCounts", () => {
     expect(fetchAwaitingCountersignCount).not.toHaveBeenCalled();
   });
 });
+
+describe("useNavCounts booking_flow gating", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    vi.mocked(useAuth).mockReturnValue({ currentOrg: { id: "org-1" }, hasRole: () => true } as never);
+    vi.mocked(useMyArtist).mockReturnValue({ data: { id: "artist-1" } } as never);
+  });
+
+  it("does not query booking counts when booking_flow is off", async () => {
+    vi.mocked(useFeature).mockImplementation((f) => f !== "booking_flow");
+    const { result } = renderHook(() => useNavCounts(), { wrapper: wrapper() });
+    expect(fetchPendingConfirmationsCount).not.toHaveBeenCalled();
+    expect(fetchMyOpenOffersCount).not.toHaveBeenCalled();
+    expect(result.current.pendingConfirmations).toBe(0);
+    expect(result.current.openOffers).toBe(0);
+  });
+});

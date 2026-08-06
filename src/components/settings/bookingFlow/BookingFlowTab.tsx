@@ -133,8 +133,8 @@ export function BookingFlowTab({ get, set, dirtyKeys, saving, onSave, onDiscard,
           <Lock className="h-4 w-4" />
           <AlertTitle>Booking flow is not enabled</AlertTitle>
           <AlertDescription>
-            Your booking pipeline runs the standard flow. Contact your ShowFlow administrator to enable
-            configuration.
+            Booking is switched off for your organization, so no offers, reminders or
+            confirmations are sent. Contact your ShowFlow administrator to enable it.
           </AlertDescription>
         </Alert>
       )}

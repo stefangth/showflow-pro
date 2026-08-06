@@ -19,6 +19,7 @@ export function useNavCounts(): { pendingConfirmations: number; openOffers: numb
   const { currentOrg, hasRole } = useAuth();
   const { data: artist } = useMyArtist();
   const hasHireOrders = useFeature("hire_orders");
+  const hasBookingFlow = useFeature("booking_flow");
 
   const orgId = currentOrg?.id ?? null;
   const canSeeOrgBookings = hasRole("admin") || hasRole("producer");
@@ -26,7 +27,7 @@ export function useNavCounts(): { pendingConfirmations: number; openOffers: numb
 
   const pending = useQuery({
     queryKey: ["bookings", "nav-pending-confirmations", orgId],
-    enabled: canSeeOrgBookings && !!orgId,
+    enabled: canSeeOrgBookings && !!orgId && hasBookingFlow,
     // Badge freshness without hammering on every focus/navigation; booking
     // mutations still invalidate ['bookings'] for immediate updates.
     staleTime: 60_000,
@@ -35,7 +36,7 @@ export function useNavCounts(): { pendingConfirmations: number; openOffers: numb
 
   const offers = useQuery({
     queryKey: ["bookings", "nav-open-offers", artistId],
-    enabled: !!artistId,
+    enabled: !!artistId && hasBookingFlow,
     staleTime: 60_000,
     queryFn: () => fetchMyOpenOffersCount(supabase, artistId!),
   });

@@ -77,4 +77,9 @@ describe("requiredFeatureForPath", () => {
     expect(ROUTE_FEATURES["/settings/hire-orders/template"]).toBe("hire_orders");
     expect(requiredFeatureForPath("/settings/hire-orders/template")).toBe("hire_orders");
   });
+
+  it("gates /availability behind booking_flow", () => {
+    expect(ROUTE_FEATURES["/availability"]).toBe("booking_flow");
+    expect(requiredFeatureForPath("/availability")).toBe("booking_flow");
+  });
 });
