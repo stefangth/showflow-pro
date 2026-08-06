@@ -1,6 +1,5 @@
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { useQuery } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { ArrowLeft, RefreshCw } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
@@ -9,12 +8,8 @@ import {
   useHireOrder, useHireOrderAction, useUpdateHireOrderDraft, useHireOrderTerms, ISSUE_FAILURE_COPY,
 } from "@/hooks/useHireOrders";
 import { fetchShowflowLayerForOrder, type UpdateHireOrderDraftPatch } from "@/data/hireOrders";
-import { resolveOrgSetting } from "@/data/settings";
-import { type Letterhead } from "@/components/settings/hireOrders/LetterheadCard";
-import { LETTERHEAD_DEFAULT } from "@/components/settings/hireOrders/defaults";
 import { createSingleFlightRunner } from "@/lib/singleFlight";
 import { resolveFields } from "@/lib/hireOrders/resolveFields";
-import { orderReadyIssues } from "@/lib/hireOrders/validate";
 import { formatMoney } from "@/lib/hireOrders/money";
 import { feeCents } from "@/lib/hireOrders/feeBasis";
 import { defaultTemplateId } from "@/lib/hireOrders/terms";
@@ -168,11 +163,10 @@ export default function HireOrderEditPage() {
   const action = useHireOrderAction();
   const updateDraft = useUpdateHireOrderDraft();
 
-  const letterheadQuery = useQuery({
-    queryKey: ["app-settings", "hire_order_letterhead", orgId],
-    queryFn: () => resolveOrgSetting<Letterhead>(supabase, orgId, "hire_order_letterhead", LETTERHEAD_DEFAULT),
-    enabled: !!orgId,
-  });
+  // The org's letterhead is read by `useOrderBlockers` below, on the same
+  // ["app-settings", "hire_order_letterhead", orgId] key: this page no longer
+  // observes it separately, because nothing here reads the letterhead except the
+  // readiness rule, and that rule now lives in one place.
 
   // Org terms templates — reuses the same query key as TermsVariantsCard so the
   // cache is shared. Falls back to the shared seed defaults while loading/errored.
@@ -459,20 +453,34 @@ export default function HireOrderEditPage() {
     );
   }
 
-  const letterhead = letterheadQuery.data ?? LETTERHEAD_DEFAULT;
-  const readyIssues = orderReadyIssues(displayData, letterhead);
   // The stored terms_variant no longer matches any live template (its template
   // was deleted in Settings). Never silently drop or auto-correct the
   // selection -- show it as a disabled "removed" chip and require an explicit
-  // pick before Issue is allowed.
+  // pick before Issue is allowed. Stricter than the readiness rule on purpose:
+  // resolveTermsClauses falls back to the org default for a dead reference, so
+  // `blockers` alone would let a deleted reference through silently.
   const variantIsLive = terms.templates.some((t) => t.id === termsVariant);
   const hasTermsTemplates = terms.templates.length > 0;
-  const issueDisabled = readyIssues.length > 0 || action.isPending || !variantIsLive;
-  const issueTitleParts = readyIssues.map((code) => ISSUE_FAILURE_COPY[code] ?? code);
+
+  // `blockers` (computeBlockers, via useOrderBlockers above) is the readiness rule,
+  // the same one the slide-over and the bulk bar preflight on and the same one
+  // issueOne enforces server-side. It replaces this page's old `orderReadyIssues`
+  // gate, which carried no terms rule and so enabled this button for orders the
+  // server rejects with `missing_terms`. The two conditions below it are this
+  // page's own, and neither is expressible as a blocker.
+  const issueTitleParts = blockers.map((b) => ISSUE_FAILURE_COPY[b.key] ?? b.key);
   if (!variantIsLive) {
     issueTitleParts.push(hasTermsTemplates ? "Choose a terms template before issuing" : "No terms templates configured");
   }
-  const issueTitle = issueTitleParts.length > 0 ? issueTitleParts.join(", ") : undefined;
+  const issueDisabled =
+    blockersLoading || blockersError || blockers.length > 0 || action.isPending || !variantIsLive;
+  const issueTitle = blockersLoading
+    ? "Checking this order"
+    : blockersError
+      ? "Could not check this order. Reload the page and try again."
+      : issueTitleParts.length > 0
+        ? issueTitleParts.join(", ")
+        : undefined;
 
   const currency = fieldString(displayData, "currency") || order.fee_currency || "EUR";
   const feeDisplay =
