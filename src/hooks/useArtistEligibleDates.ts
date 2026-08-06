@@ -2,6 +2,7 @@ import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useMyArtist } from './useMyArtist';
 import { useAuth } from '@/features/auth/AuthContext';
+import { useFeature } from './useEntitlements';
 import { fetchUpcomingShowDates } from '@/data/showDates';
 import { toDateKey } from '@/lib/dates';
 import { artistHasAllSkills } from '@/lib/eligibility';
@@ -37,10 +38,15 @@ export function useArtistEligibleDates() {
   const { data: artist } = useMyArtist();
   const { currentOrg } = useAuth();
   const orgId = currentOrg?.id ?? null;
+  // Eligible dates exist only to drive the offer/booking surfaces, so they are
+  // module data by definition. Gating here rather than at each call site closes
+  // it for every consumer at once (ArtistBookingsView reaches this through the
+  // unguarded /bookings route, so it has no route-level gate to rely on).
+  const bookingFlowEnabled = useFeature('booking_flow');
 
   return useQuery({
     queryKey: ['artist-eligible-dates', artist?.id, orgId],
-    enabled: !!artist?.id && !!orgId,
+    enabled: !!artist?.id && !!orgId && bookingFlowEnabled,
     queryFn: async (): Promise<EligibleDate[]> => {
       // 1. Casts the artist belongs to
       const { data: memberships } = await supabase

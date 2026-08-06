@@ -1,6 +1,7 @@
 import { preflight, json } from "../_shared/http.ts";
 import { isServiceRole, requireRole, requireOrgRole } from "../_shared/auth.ts";
 import { requireCapability } from "../_shared/capabilities.ts";
+import { requireFeature } from "../_shared/entitlements.ts";
 import type { TablesInsert } from "../_shared/database.types.ts";
 import { resolveBookingFlow, referenceLabel } from "../_shared/bookingFlow.ts";
 import { emailWasSent, realDeps, type Deps } from "../_shared/deps.ts";
@@ -82,6 +83,12 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
       const capGate = await requireCapability(deps, showDate.org_id, "producer_can_run_offer_engine")
       if (capGate) return capGate
     }
+
+    // Module gate: booking_flow must be entitled for this org. Placed after the
+    // org-scoped auth/capability check succeeds (so the org id is known and the
+    // caller is already authorized) and before any booking work below.
+    const denied = await requireFeature(deps, showDate.org_id, "booking_flow")
+    if (denied) return denied
   }
 
   // Direct-booking orgs (booking_flow.artist_acceptance = false) skip the offer

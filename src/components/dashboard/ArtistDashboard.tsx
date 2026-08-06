@@ -12,6 +12,7 @@ import { useMyArtist } from '@/hooks/useMyArtist';
 import { useMyHireOrders, useHireOrderAction } from '@/hooks/useHireOrders';
 import { HireOrderStatusBadge } from '@/components/hireOrders/HireOrderStatusBadge';
 import { useFeature } from '@/hooks/useEntitlements';
+import { ModuleGate } from '@/components/layout/ModuleGate';
 import { useAuth } from '@/features/auth/AuthContext';
 import { formatDateDMY } from '@/lib/dates';
 import { useBookingFlow, useReferenceField } from '@/hooks/useBookingFlow';
@@ -44,6 +45,7 @@ export function ArtistDashboard() {
   const meter = artistMeter(flow);
 
   const hireOrdersEnabled = useFeature('hire_orders');
+  const bookingFlowEnabled = useFeature('booking_flow');
   const { data: myHireOrders } = useMyHireOrders();
   const { currentOrg } = useAuth();
   const hireOrderAction = useHireOrderAction();
@@ -67,7 +69,9 @@ export function ArtistDashboard() {
   // the note in AvailabilityPage.
   const { data: myBookings, isError: bookingsError } = useQuery({
     queryKey: ['bookings', 'artist-dashboard', artist?.id],
-    enabled: !!artist?.id,
+    // Module-gated: without booking_flow the offers region never renders, so this
+    // read would be discarded on every dashboard load.
+    enabled: !!artist?.id && bookingFlowEnabled,
     queryFn: async () => {
       const { data, error } = await supabase
         .from('bookings')
@@ -132,95 +136,102 @@ export function ArtistDashboard() {
     <div className="space-y-6">
       <div>
         <h1 className="font-display text-[32px] font-semibold tracking-tight">Dashboard</h1>
-        <p className="text-muted-foreground mt-1">
-          {meter.headerSentence}
-        </p>
-      </div>
-
-      {bookingsError && (
-        <Alert variant="destructive">
-          <AlertDescription>Failed to load your offers. Please refresh.</AlertDescription>
-        </Alert>
-      )}
-
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <Link
-          to={meter.filterUnanswered ? `${ROUTES.AVAILABILITY}?filter=unanswered` : ROUTES.AVAILABILITY}
-          className="block"
-        >
-          <Card className="hover:shadow-elev3 transition-shadow cursor-pointer h-full">
-            <CardContent className="pt-6">
-              <div className="flex items-start justify-between mb-4">
-                <p className="text-sm text-muted-foreground font-medium">{meter.title}</p>
-                <CalendarDays className="h-8 w-8 text-primary opacity-30" />
-              </div>
-              <div className="flex items-baseline gap-2 mb-3">
-                <p className="text-[36px] font-display font-semibold tracking-tight">{pct}%</p>
-                <p className="text-sm text-muted-foreground">
-                  {responded} of {total} dates
-                </p>
-              </div>
-              <div className="space-y-1">
-                <div className="h-1.5 rounded-full bg-muted overflow-hidden">
-                  <div
-                    className="h-full bg-primary transition-all"
-                    style={{ width: `${pct}%` }}
-                  />
-                </div>
-              </div>
-              <p className="text-xs text-muted-foreground mt-3">
-                {meter.footer}
-              </p>
-            </CardContent>
-          </Card>
-        </Link>
-
-        {/* Direct-booking orgs have no offer step, so there is never anything
-            to respond to; hide the card instead of showing offer language. */}
-        {flow.artist_acceptance && (
-        <Card>
-          <CardHeader>
-            <CardTitle className="font-display flex items-center gap-2 text-base">
-              <MessageCircleQuestion className="h-4 w-4" />
-              Awaiting your response
-              <Badge variant="secondary">{unanswered.length}</Badge>
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            {unanswered.length === 0 ? (
-              <p className="text-sm text-muted-foreground">
-                You're all caught up. No pending offers.
-              </p>
-            ) : (
-              <div className="space-y-2 max-h-72 overflow-y-auto">
-                {unanswered.slice(0, 8).map((d) => (
-                  <Link
-                    key={d.id}
-                    to={`${ROUTES.AVAILABILITY}?filter=unanswered`}
-                    className="flex items-center justify-between p-2 rounded-md hover:bg-muted text-sm"
-                  >
-                    <div className="min-w-0">
-                      <p className="font-medium truncate">
-                        {referenceLabel({ reference, show: d.show, custom: d.custom, customFieldKey })}
-                      </p>
-                      <p className="text-xs text-muted-foreground">{formatDateDMY(d.date)}</p>
-                    </div>
-                    <Badge variant="outline" className="text-xs">
-                      Respond
-                    </Badge>
-                  </Link>
-                ))}
-                {unanswered.length > 8 && (
-                  <p className="text-xs text-muted-foreground text-center pt-1">
-                    +{unanswered.length - 8} more
-                  </p>
-                )}
-              </div>
-            )}
-          </CardContent>
-        </Card>
+        {/* Stays in the heading block so it reads as a subtitle (mt-1, not the
+            parent's space-y-6), but still module-gated: the sentence describes the
+            offer pipeline ("your response rate on dates you've been offered"),
+            which does not run at all without the module. Gated with a bare
+            conditional rather than ModuleGate so the page shows one notice, not two. */}
+        {bookingFlowEnabled && (
+          <p className="text-muted-foreground mt-1">{meter.headerSentence}</p>
         )}
       </div>
+
+      <ModuleGate feature="booking_flow">
+        {bookingsError && (
+          <Alert variant="destructive">
+            <AlertDescription>Failed to load your offers. Please refresh.</AlertDescription>
+          </Alert>
+        )}
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <Link
+            to={meter.filterUnanswered ? `${ROUTES.AVAILABILITY}?filter=unanswered` : ROUTES.AVAILABILITY}
+            className="block"
+          >
+            <Card className="hover:shadow-elev3 transition-shadow cursor-pointer h-full">
+              <CardContent className="pt-6">
+                <div className="flex items-start justify-between mb-4">
+                  <p className="text-sm text-muted-foreground font-medium">{meter.title}</p>
+                  <CalendarDays className="h-8 w-8 text-primary opacity-30" />
+                </div>
+                <div className="flex items-baseline gap-2 mb-3">
+                  <p className="text-[36px] font-display font-semibold tracking-tight">{pct}%</p>
+                  <p className="text-sm text-muted-foreground">
+                    {responded} of {total} dates
+                  </p>
+                </div>
+                <div className="space-y-1">
+                  <div className="h-1.5 rounded-full bg-muted overflow-hidden">
+                    <div
+                      className="h-full bg-primary transition-all"
+                      style={{ width: `${pct}%` }}
+                    />
+                  </div>
+                </div>
+                <p className="text-xs text-muted-foreground mt-3">
+                  {meter.footer}
+                </p>
+              </CardContent>
+            </Card>
+          </Link>
+
+          {/* Direct-booking orgs have no offer step, so there is never anything
+              to respond to; hide the card instead of showing offer language. */}
+          {flow.artist_acceptance && (
+          <Card>
+            <CardHeader>
+              <CardTitle className="font-display flex items-center gap-2 text-base">
+                <MessageCircleQuestion className="h-4 w-4" />
+                Awaiting your response
+                <Badge variant="secondary">{unanswered.length}</Badge>
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              {unanswered.length === 0 ? (
+                <p className="text-sm text-muted-foreground">
+                  You're all caught up. No pending offers.
+                </p>
+              ) : (
+                <div className="space-y-2 max-h-72 overflow-y-auto">
+                  {unanswered.slice(0, 8).map((d) => (
+                    <Link
+                      key={d.id}
+                      to={`${ROUTES.AVAILABILITY}?filter=unanswered`}
+                      className="flex items-center justify-between p-2 rounded-md hover:bg-muted text-sm"
+                    >
+                      <div className="min-w-0">
+                        <p className="font-medium truncate">
+                          {referenceLabel({ reference, show: d.show, custom: d.custom, customFieldKey })}
+                        </p>
+                        <p className="text-xs text-muted-foreground">{formatDateDMY(d.date)}</p>
+                      </div>
+                      <Badge variant="outline" className="text-xs">
+                        Respond
+                      </Badge>
+                    </Link>
+                  ))}
+                  {unanswered.length > 8 && (
+                    <p className="text-xs text-muted-foreground text-center pt-1">
+                      +{unanswered.length - 8} more
+                    </p>
+                  )}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+          )}
+        </div>
+      </ModuleGate>
 
       {hireOrdersEnabled && (myHireOrders?.length ?? 0) > 0 && (
         <Card>

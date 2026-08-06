@@ -1,4 +1,4 @@
-import { describe, it, expect, vi } from "vitest";
+import { describe, it, expect, vi, beforeEach } from "vitest";
 import { screen } from "@testing-library/react";
 import { renderWithProviders } from "@/test/renderWithProviders";
 import { createFakeSupabase } from "@/test/supabaseFake";
@@ -112,9 +112,28 @@ vi.mock("@/hooks/useBookingFlow", () => ({
   useReferenceField: () => ({ reference: { source: "show" }, customFieldKey: null }),
 }));
 
+// Task 4: booking_flow gates the offers/response region. Default every test
+// to entitled so the pre-existing assertions below keep exercising the real
+// content; the one gate-off test overrides per-feature.
+vi.mock("@/hooks/useEntitlements", () => {
+  const useFeature = vi.fn();
+  // ModuleGate reads useModuleGate; derive it from the mocked useFeature so the
+  // existing per-test vi.mocked(useFeature) setup drives both.
+  return { useFeature, useModuleGate: (f: string) => ({ allow: useFeature(f), pending: false }) };
+});
+
+import { useFeature } from "@/hooks/useEntitlements";
 import { ArtistDashboard } from "./ArtistDashboard";
 
+function renderDashboard() {
+  return renderWithProviders(<ArtistDashboard />);
+}
+
 describe("ArtistDashboard flow-aware meter (Task 3)", () => {
+  beforeEach(() => {
+    vi.mocked(useFeature).mockReturnValue(true);
+  });
+
   it("classic flow: keeps the Response rate meter (confirmed + soft_booked count)", async () => {
     flowHolder.flow = BOOKING_FLOW_DEFAULTS;
     renderWithProviders(<ArtistDashboard />);
@@ -152,5 +171,27 @@ describe("ArtistDashboard flow-aware meter (Task 3)", () => {
     renderWithProviders(<ArtistDashboard />);
     expect(await screen.findByText("Booked dates")).toBeInTheDocument();
     expect(screen.queryByText("Awaiting your response")).not.toBeInTheDocument();
+  });
+
+  it("shows the module notice instead of offers when booking_flow is off", async () => {
+    vi.mocked(useFeature).mockImplementation((f) => f !== "booking_flow");
+    renderDashboard();
+    expect(await screen.findByTestId("module-gate-booking_flow")).toBeInTheDocument();
+  });
+
+  it("drops the pipeline header sentence with the gated region", async () => {
+    flowHolder.flow = BOOKING_FLOW_DEFAULTS;
+    const sentence = "Your response rate on dates you've been offered.";
+
+    vi.mocked(useFeature).mockReturnValue(true);
+    const on = renderDashboard();
+    expect(await on.findByText(sentence)).toBeInTheDocument();
+    on.unmount();
+
+    vi.mocked(useFeature).mockImplementation((f) => f !== "booking_flow");
+    renderDashboard();
+    expect(await screen.findByTestId("module-gate-booking_flow")).toBeInTheDocument();
+    // The sentence describes an offer pipeline that no longer runs.
+    expect(screen.queryByText(sentence)).not.toBeInTheDocument();
   });
 });

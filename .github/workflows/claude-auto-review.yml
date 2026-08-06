@@ -5,13 +5,25 @@ on:
     types: [opened, synchronize]
   issue_comment:
     types: [created]
+  # Manual trigger, mirroring ci.yml. Added after the 2026-08-06 Actions incident
+  # throttled webhook delivery, so pull_request events stopped creating runs and a
+  # pushed commit could not be reviewed at all. A dispatch carries no PR context,
+  # hence the explicit PR number.
+  workflow_dispatch:
+    inputs:
+      pr:
+        description: "PR number to review"
+        required: true
+        type: string
 
 jobs:
   review:
-    # PR events (opened/synchronize) always review. A comment only triggers a
-    # re-review when it @claude-mentions on a pull request (not a plain issue).
+    # PR events (opened/synchronize) always review, as does an explicit manual
+    # dispatch. A comment only triggers a re-review when it @claude-mentions on a
+    # pull request (not a plain issue).
     if: >-
       github.event_name == 'pull_request' ||
+      github.event_name == 'workflow_dispatch' ||
       (github.event.issue.pull_request && contains(github.event.comment.body, '@claude'))
     runs-on: ubuntu-latest
     permissions:
@@ -21,9 +33,10 @@ jobs:
     steps:
       - uses: actions/checkout@v6
         with:
-          # On an @claude comment the event ref is the default branch, so check
-          # out the PR head explicitly; pull_request events keep their default.
-          ref: ${{ github.event.issue.pull_request && format('refs/pull/{0}/head', github.event.issue.number) || '' }}
+          # On an @claude comment, and on a manual dispatch, the event ref is the
+          # default branch, so check out the PR head explicitly; pull_request
+          # events keep their default.
+          ref: ${{ github.event_name == 'workflow_dispatch' && format('refs/pull/{0}/head', inputs.pr) || (github.event.issue.pull_request && format('refs/pull/{0}/head', github.event.issue.number) || '') }}
           fetch-depth: 1
 
       - uses: anthropics/claude-code-action@v1
@@ -31,7 +44,7 @@ jobs:
           claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }} 
           prompt: |
             REPO: ${{ github.repository }}
-            PR NUMBER: ${{ github.event.pull_request.number || github.event.issue.number }}
+            PR NUMBER: ${{ github.event.pull_request.number || github.event.issue.number || inputs.pr }}
 
             Please review this pull request with a focus on:
             - Code quality and best practices

@@ -19,6 +19,7 @@ export function useNavCounts(): { pendingConfirmations: number; openOffers: numb
   const { currentOrg, hasRole } = useAuth();
   const { data: artist } = useMyArtist();
   const hasHireOrders = useFeature("hire_orders");
+  const hasBookingFlow = useFeature("booking_flow");
 
   const orgId = currentOrg?.id ?? null;
   const canSeeOrgBookings = hasRole("admin") || hasRole("producer");
@@ -26,7 +27,7 @@ export function useNavCounts(): { pendingConfirmations: number; openOffers: numb
 
   const pending = useQuery({
     queryKey: ["bookings", "nav-pending-confirmations", orgId],
-    enabled: canSeeOrgBookings && !!orgId,
+    enabled: canSeeOrgBookings && !!orgId && hasBookingFlow,
     // Badge freshness without hammering on every focus/navigation; booking
     // mutations still invalidate ['bookings'] for immediate updates.
     staleTime: 60_000,
@@ -35,7 +36,7 @@ export function useNavCounts(): { pendingConfirmations: number; openOffers: numb
 
   const offers = useQuery({
     queryKey: ["bookings", "nav-open-offers", artistId],
-    enabled: !!artistId,
+    enabled: !!artistId && hasBookingFlow,
     staleTime: 60_000,
     queryFn: () => fetchMyOpenOffersCount(supabase, artistId!),
   });
@@ -47,9 +48,15 @@ export function useNavCounts(): { pendingConfirmations: number; openOffers: numb
     queryFn: () => fetchAwaitingCountersignCount(supabase, orgId!),
   });
 
+  // Gate the VALUES, not just `enabled`. booking_flow is default-on, so useFeature
+  // reports true while entitlements load and both booking queries fire and resolve;
+  // flipping `enabled` to false afterwards does not evict what React Query already
+  // cached, so an unentitled org would keep rendering a live count next to a locked
+  // nav item. (hire_orders is default-off, so its query never fires during loading
+  // and it does not need the same treatment.)
   return {
-    pendingConfirmations: pending.data ?? 0,
-    openOffers: offers.data ?? 0,
+    pendingConfirmations: hasBookingFlow ? (pending.data ?? 0) : 0,
+    openOffers: hasBookingFlow ? (offers.data ?? 0) : 0,
     awaitingCountersign: awaitingCountersign.data ?? 0,
   };
 }

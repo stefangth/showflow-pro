@@ -1438,6 +1438,129 @@ Deno.test("airtable-poll: artist_acceptance=false (direct booking) → no open-o
   assertEquals(body.tiers_opened, 0);
 });
 
+// ─────────────────────────────────────────────────────────────────────────────
+// Task 6: module gate — booking_flow entitlement gates ONLY the tier-1 auto-open,
+// not the date sync itself. syncOrg is shared by the cron fan-out AND the manual
+// "Sync now" JWT path, so the gate lives inside syncOrg (checkFeature), not the
+// getActiveOrgs()-level filter used by the digest crons.
+//
+// LOAD-BEARING: this is one of only two paths (the other is expire-offers'
+// auto-escalation) where a service-role/cron caller can open an offer tier
+// without ever going through the JWT-only requireFeature gate on
+// open-offer-tier. resolveBookingFlow itself fails open to permissive defaults
+// (auto_open_tier1: true) when the org is unentitled, so flow.auto_open_tier1
+// alone is NOT a safe gate — the explicit checkFeature call is what actually
+// closes this hole.
+// ─────────────────────────────────────────────────────────────────────────────
+
+Deno.test("airtable-poll LOAD-BEARING: unentitled org — date sync still runs, tier-1 auto-open is skipped", async () => {
+  const { deps, invokeCalls } = makeFakeDeps({
+    tables: {
+      app_settings: [
+        { when: { key: "cron_secret" }, data: { value: "secret123" } },
+        ...ENABLED_SETTINGS,
+      ],
+      organizations: { data: [{ id: ORG }], error: null },
+      shows: { data: [{ id: "show-uuid-1", airtable_program_key: "TestShow" }], error: null },
+      cities: { data: [{ id: "city-uuid-berlin", airtable_city_key: "berlin" }], error: null },
+      show_dates: { data: [], error: null },
+      airtable_sync_log: { data: { id: "log-1" }, error: null },
+      airtable_sync_record_log: { data: [], error: null },
+      org_memberships: { data: [], error: null },
+      notifications: { data: null, error: null },
+    },
+    rpcs: {
+      get_org_airtable_key: { data: "key", error: null },
+      get_cron_secret: { data: "secret123", error: null },
+      is_feature_enabled: { data: false, error: null },
+    },
+    fetchImpl: () =>
+      Promise.resolve(
+        makeAirtableResponse([makeRecord("recNEW003", { Date: "2026-07-17", SubProgram: "TestShow" })]),
+      ) as Promise<Response>,
+  });
+
+  // Give the inserted new date a real id so, WITHOUT the entitlement gate, tier 1 WOULD open
+  // (flow.auto_open_tier1 defaults true, including resolveBookingFlow's own unentitled fallback).
+  const originalFrom = bindFakeFrom(deps.admin);
+  setFakeFrom(deps.admin, (table: string) => {
+    const chain = originalFrom(table);
+    if (table === "show_dates") {
+      const originalInsert = chain.insert.bind(chain);
+      chain.insert = (payload: unknown) => {
+        const insertChain = (originalInsert as (x: unknown) => ReturnType<typeof originalInsert>)(payload);
+        insertChain.single = () => Promise.resolve({ data: { id: "new-date-uuid-003" }, error: null });
+        return insertChain;
+      };
+    }
+    return chain;
+  });
+
+  const res = await handle(authReq(), deps);
+  assertEquals(res.status, 200);
+  const body = await res.json();
+  // The date sync runs regardless of entitlement.
+  assertEquals(body.new_dates, 1);
+
+  // LOAD-BEARING: tier-1 auto-open must be skipped for an unentitled org.
+  const offerCalls = invokeCalls.filter((c) => c.name === "open-offer-tier");
+  assertEquals(offerCalls.length, 0);
+  assertEquals(body.tiers_opened, 0);
+});
+
+// Pin the fail-OPEN contract for booking_flow: a transient is_feature_enabled RPC
+// error must never silently disable live production booking traffic.
+Deno.test("airtable-poll: keeps auto-opening tier 1 when the entitlement RPC errors (booking_flow fails open)", async () => {
+  const { deps, invokeCalls } = makeFakeDeps({
+    tables: {
+      app_settings: [
+        { when: { key: "cron_secret" }, data: { value: "secret123" } },
+        ...ENABLED_SETTINGS,
+      ],
+      organizations: { data: [{ id: ORG }], error: null },
+      shows: { data: [{ id: "show-uuid-1", airtable_program_key: "TestShow" }], error: null },
+      cities: { data: [{ id: "city-uuid-berlin", airtable_city_key: "berlin" }], error: null },
+      show_dates: { data: [], error: null },
+      airtable_sync_log: { data: { id: "log-1" }, error: null },
+      airtable_sync_record_log: { data: [], error: null },
+      org_memberships: { data: [], error: null },
+      notifications: { data: null, error: null },
+    },
+    rpcs: {
+      get_org_airtable_key: { data: "key", error: null },
+      get_cron_secret: { data: "secret123", error: null },
+      is_feature_enabled: { data: null, error: { message: "boom" } },
+    },
+    fetchImpl: () =>
+      Promise.resolve(
+        makeAirtableResponse([makeRecord("recNEW004", { Date: "2026-07-18", SubProgram: "TestShow" })]),
+      ) as Promise<Response>,
+  });
+
+  const originalFrom = bindFakeFrom(deps.admin);
+  setFakeFrom(deps.admin, (table: string) => {
+    const chain = originalFrom(table);
+    if (table === "show_dates") {
+      const originalInsert = chain.insert.bind(chain);
+      chain.insert = (payload: unknown) => {
+        const insertChain = (originalInsert as (x: unknown) => ReturnType<typeof originalInsert>)(payload);
+        insertChain.single = () => Promise.resolve({ data: { id: "new-date-uuid-004" }, error: null });
+        return insertChain;
+      };
+    }
+    return chain;
+  });
+
+  const res = await handle(authReq(), deps);
+  assertEquals(res.status, 200);
+  const body = await res.json();
+  assertEquals(body.new_dates, 1);
+
+  const offerCalls = invokeCalls.filter((c) => c.name === "open-offer-tier");
+  assertEquals(offerCalls.length, 1, "booking_flow fails open on an is_feature_enabled RPC error");
+  assertEquals(body.tiers_opened, 1);
+});
+
 Deno.test("airtable-poll: updated date with session and no tier-1 row is auto-opened", async () => {
   const { deps, invokeCalls } = makeFakeDeps({
     tables: {

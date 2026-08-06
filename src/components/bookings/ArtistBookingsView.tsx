@@ -19,6 +19,7 @@ import { fetchMyCancelledDateBookings, mergeArtistCancelledDates, type Cancelled
 import { useMyArtist } from '@/hooks/useMyArtist';
 import { useMyHireOrders } from '@/hooks/useHireOrders';
 import { useFeature } from '@/hooks/useEntitlements';
+import { ModuleGate } from '@/components/layout/ModuleGate';
 import { useBookingFlow, useReferenceField } from '@/hooks/useBookingFlow';
 import { bookingStatusBadgeClass } from '@/lib/bookings';
 import { BOOKING_FLOW_DEFAULTS, referenceLabel } from '@/lib/bookingFlow';
@@ -53,6 +54,7 @@ export function ArtistBookingsView() {
   const { data: artist } = useMyArtist();
   const { data: eligibleDates, isLoading } = useArtistEligibleDates();
   const hireOrdersEnabled = useFeature('hire_orders');
+  const bookingFlowEnabled = useFeature('booking_flow');
   const { data: myHireOrders } = useMyHireOrders();
   const { reference, customFieldKey } = useReferenceField();
   const flowQ = useBookingFlow();
@@ -72,7 +74,9 @@ export function ArtistBookingsView() {
   // Query cache — see the note in AvailabilityPage.
   const { data: myBookings, isError: bookingsError } = useQuery({
     queryKey: ['bookings', 'artist-bookings-view', artist?.id],
-    enabled: !!artist?.id,
+    // Module-gated: the list region below sits inside ModuleGate, so without
+    // booking_flow this read would be fetched and then discarded on every visit.
+    enabled: !!artist?.id && bookingFlowEnabled,
     queryFn: async () => {
       const { data, error } = await supabase
         .from('bookings')
@@ -86,7 +90,7 @@ export function ArtistBookingsView() {
 
   const { data: cancelledEntries } = useQuery({
     queryKey: ['bookings', 'artist-cancelled', artist?.id],
-    enabled: !!artist?.id,
+    enabled: !!artist?.id && bookingFlowEnabled,
     queryFn: () => fetchMyCancelledDateBookings(supabase, artist!.id),
   });
 
@@ -143,164 +147,168 @@ export function ArtistBookingsView() {
         <p className="text-muted-foreground mt-1">{pageCopy.subtitle}</p>
       </div>
 
-      <div className="flex flex-wrap items-center gap-3">
-        <TimeframeFilter value={timeframe} onChange={setTimeframe} />
-        <SortControl value={sort} onChange={setSort} chronoLabel="Date" />
-        <div className="ml-auto">
-          <ViewToggle value={view} onChange={setView} />
+      <ModuleGate feature="booking_flow">
+        {/* Inside the gate: these controls filter, sort and lay out the eligible-date
+            table below, which does not exist at all without the booking module. */}
+        <div className="flex flex-wrap items-center gap-3">
+          <TimeframeFilter value={timeframe} onChange={setTimeframe} />
+          <SortControl value={sort} onChange={setSort} chronoLabel="Date" />
+          <div className="ml-auto">
+            <ViewToggle value={view} onChange={setView} />
+          </div>
         </div>
-      </div>
 
-      <ColumnLayoutEditor pageKey="bookings-artist" />
+        <ColumnLayoutEditor pageKey="bookings-artist" />
 
-      {bookingsError ? (
-        <Alert variant="destructive">
-          <AlertDescription>Failed to load your bookings. Please refresh.</AlertDescription>
-        </Alert>
-      ) : isLoading ? (
-        <div className="space-y-2">
-          {[1, 2, 3, 4].map((i) => (
-            <Skeleton key={i} className="h-12" />
-          ))}
-        </div>
-      ) : view === 'list' ? (
-        <Card>
-          <CardContent className="p-0 overflow-x-auto">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  {columnHeaders.map(({ columnId, headerLabel }) => (
-                    <TableHead key={columnId} className={isEditorMode ? 'font-mono text-xs' : 'text-xs'}>
-                      {headerLabel}
-                    </TableHead>
-                  ))}
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {filtered.map((d) => {
-                  const status = statusFor(d);
-                  const cancelled = isCancelledEntry(d);
-                  const cellFor = (colId: string) => {
-                    switch (colId) {
-                      case 'show_dates.date': return (
-                        <TableCell key={colId} className="font-medium whitespace-nowrap">
-                          {formatDateDMY(d.date)}
-                        </TableCell>
-                      );
-                      case 'shows.program': return (
-                        <TableCell key={colId}>
-                          {d.show
-                            ? referenceLabel({ reference, show: d.show, custom: customFor(d), customFieldKey })
-                            : <span className="text-muted-foreground">—</span>}
-                        </TableCell>
-                      );
-                      case 'shows.sub_program': return (
-                        <TableCell key={colId}>{d.show?.sub_program ?? <span className="text-muted-foreground">—</span>}</TableCell>
-                      );
-                      case 'show_dates.venue': return (
-                        <TableCell key={colId}>
-                          {d.venue || <span className="text-muted-foreground">—</span>}
-                        </TableCell>
-                      );
-                      case 'show_dates.session_1': return (
-                        <TableCell key={colId} className="whitespace-nowrap">
-                          {d.session_1 ? d.session_1.slice(0, 5) : '—'}
-                        </TableCell>
-                      );
-                      case 'show_dates.session_2': return (
-                        <TableCell key={colId} className="whitespace-nowrap">
-                          {d.session_2 ? d.session_2.slice(0, 5) : '—'}
-                        </TableCell>
-                      );
-                      case 'show_dates.session_3': return (
-                        <TableCell key={colId} className="whitespace-nowrap">
-                          {d.session_3 ? d.session_3.slice(0, 5) : '—'}
-                        </TableCell>
-                      );
-                      case '_computed.my_status': return (
-                        <TableCell key={colId}>
-                          <Badge variant="secondary" className={bookingStatusBadgeClass(status)}>
-                            {statusLabels[status] ?? status}
-                          </Badge>
-                          {cancelled && d.cancellation_reason && (
-                            <div className="mt-1 text-xs text-destructive">{d.cancellation_reason}</div>
-                          )}
-                          {hireOrdersEnabled && hireOrderIdByDateId.has(d.id) && (
-                            <Link
-                              to={ROUTES.HIRE_ORDER_DETAIL.replace(':id', hireOrderIdByDateId.get(d.id)!)}
-                              onClick={(e) => e.stopPropagation()}
-                              className="mt-1 inline-flex items-center gap-1 text-xs text-primary hover:underline"
-                            >
-                              <FileText className="h-3 w-3" />
-                              Hire order
-                            </Link>
-                          )}
-                        </TableCell>
-                      );
-                      default: return (
-                        <TableCell key={colId} className="text-xs text-muted-foreground">—</TableCell>
-                      );
-                    }
-                  };
-                  return (
-                    <TableRow
-                      key={d.id}
-                      className="cursor-pointer"
-                      onClick={() => setActiveShowDateId(d.id)}
-                    >
-                      {orderedColumns.filter(c => c.visible).map(c => cellFor(c.columnId))}
-                    </TableRow>
-                  );
-                })}
-                {filtered.length === 0 && (
+        {bookingsError ? (
+          <Alert variant="destructive">
+            <AlertDescription>Failed to load your bookings. Please refresh.</AlertDescription>
+          </Alert>
+        ) : isLoading ? (
+          <div className="space-y-2">
+            {[1, 2, 3, 4].map((i) => (
+              <Skeleton key={i} className="h-12" />
+            ))}
+          </div>
+        ) : view === 'list' ? (
+          <Card>
+            <CardContent className="p-0 overflow-x-auto">
+              <Table>
+                <TableHeader>
                   <TableRow>
-                    <TableCell colSpan={visibleCount || 5} className="text-center text-muted-foreground py-12">
-                      No eligible dates yet. Once you're added to a cast, offered dates appear here.
-                    </TableCell>
+                    {columnHeaders.map(({ columnId, headerLabel }) => (
+                      <TableHead key={columnId} className={isEditorMode ? 'font-mono text-xs' : 'text-xs'}>
+                        {headerLabel}
+                      </TableHead>
+                    ))}
                   </TableRow>
-                )}
-              </TableBody>
-            </Table>
-          </CardContent>
-        </Card>
-      ) : (
-        <EntityCalendar
-          items={calendarItems}
-          getDate={(it) => it.date}
-          emptyMessage="No eligible dates"
-          renderItem={(it) => {
-            const d = it.eligible;
-            const status = statusFor(d);
-            const cancelled = isCancelledEntry(d);
-            return (
-              <Card
-                className="hover:shadow-elev2 transition-shadow cursor-pointer"
-                onClick={() => setActiveShowDateId(d.id)}
-              >
-                <CardContent className="py-3 flex items-center justify-between gap-3">
-                  <div className="min-w-0">
-                    <p className="font-medium truncate">
-                      {d.show
-                        ? referenceLabel({ reference, show: d.show, custom: customFor(d), customFieldKey })
-                        : '—'}
-                    </p>
-                    <p className="text-xs text-muted-foreground truncate">
-                      {d.venue ?? ''}
-                      {d.session_1 ? ` • ${d.session_1.slice(0, 5)}` : ''}
-                    </p>
-                    {cancelled && d.cancellation_reason && (
-                      <p className="text-xs text-destructive truncate">{d.cancellation_reason}</p>
-                    )}
-                  </div>
-                  <Badge variant="secondary" className={bookingStatusBadgeClass(status)}>
-                    {statusLabels[status] ?? status}
-                  </Badge>
-                </CardContent>
-              </Card>
-            );
-          }}
-        />
-      )}
+                </TableHeader>
+                <TableBody>
+                  {filtered.map((d) => {
+                    const status = statusFor(d);
+                    const cancelled = isCancelledEntry(d);
+                    const cellFor = (colId: string) => {
+                      switch (colId) {
+                        case 'show_dates.date': return (
+                          <TableCell key={colId} className="font-medium whitespace-nowrap">
+                            {formatDateDMY(d.date)}
+                          </TableCell>
+                        );
+                        case 'shows.program': return (
+                          <TableCell key={colId}>
+                            {d.show
+                              ? referenceLabel({ reference, show: d.show, custom: customFor(d), customFieldKey })
+                              : <span className="text-muted-foreground">—</span>}
+                          </TableCell>
+                        );
+                        case 'shows.sub_program': return (
+                          <TableCell key={colId}>{d.show?.sub_program ?? <span className="text-muted-foreground">—</span>}</TableCell>
+                        );
+                        case 'show_dates.venue': return (
+                          <TableCell key={colId}>
+                            {d.venue || <span className="text-muted-foreground">—</span>}
+                          </TableCell>
+                        );
+                        case 'show_dates.session_1': return (
+                          <TableCell key={colId} className="whitespace-nowrap">
+                            {d.session_1 ? d.session_1.slice(0, 5) : '—'}
+                          </TableCell>
+                        );
+                        case 'show_dates.session_2': return (
+                          <TableCell key={colId} className="whitespace-nowrap">
+                            {d.session_2 ? d.session_2.slice(0, 5) : '—'}
+                          </TableCell>
+                        );
+                        case 'show_dates.session_3': return (
+                          <TableCell key={colId} className="whitespace-nowrap">
+                            {d.session_3 ? d.session_3.slice(0, 5) : '—'}
+                          </TableCell>
+                        );
+                        case '_computed.my_status': return (
+                          <TableCell key={colId}>
+                            <Badge variant="secondary" className={bookingStatusBadgeClass(status)}>
+                              {statusLabels[status] ?? status}
+                            </Badge>
+                            {cancelled && d.cancellation_reason && (
+                              <div className="mt-1 text-xs text-destructive">{d.cancellation_reason}</div>
+                            )}
+                            {hireOrdersEnabled && hireOrderIdByDateId.has(d.id) && (
+                              <Link
+                                to={ROUTES.HIRE_ORDER_DETAIL.replace(':id', hireOrderIdByDateId.get(d.id)!)}
+                                onClick={(e) => e.stopPropagation()}
+                                className="mt-1 inline-flex items-center gap-1 text-xs text-primary hover:underline"
+                              >
+                                <FileText className="h-3 w-3" />
+                                Hire order
+                              </Link>
+                            )}
+                          </TableCell>
+                        );
+                        default: return (
+                          <TableCell key={colId} className="text-xs text-muted-foreground">—</TableCell>
+                        );
+                      }
+                    };
+                    return (
+                      <TableRow
+                        key={d.id}
+                        className="cursor-pointer"
+                        onClick={() => setActiveShowDateId(d.id)}
+                      >
+                        {orderedColumns.filter(c => c.visible).map(c => cellFor(c.columnId))}
+                      </TableRow>
+                    );
+                  })}
+                  {filtered.length === 0 && (
+                    <TableRow>
+                      <TableCell colSpan={visibleCount || 5} className="text-center text-muted-foreground py-12">
+                        No eligible dates yet. Once you're added to a cast, offered dates appear here.
+                      </TableCell>
+                    </TableRow>
+                  )}
+                </TableBody>
+              </Table>
+            </CardContent>
+          </Card>
+        ) : (
+          <EntityCalendar
+            items={calendarItems}
+            getDate={(it) => it.date}
+            emptyMessage="No eligible dates"
+            renderItem={(it) => {
+              const d = it.eligible;
+              const status = statusFor(d);
+              const cancelled = isCancelledEntry(d);
+              return (
+                <Card
+                  className="hover:shadow-elev2 transition-shadow cursor-pointer"
+                  onClick={() => setActiveShowDateId(d.id)}
+                >
+                  <CardContent className="py-3 flex items-center justify-between gap-3">
+                    <div className="min-w-0">
+                      <p className="font-medium truncate">
+                        {d.show
+                          ? referenceLabel({ reference, show: d.show, custom: customFor(d), customFieldKey })
+                          : '—'}
+                      </p>
+                      <p className="text-xs text-muted-foreground truncate">
+                        {d.venue ?? ''}
+                        {d.session_1 ? ` • ${d.session_1.slice(0, 5)}` : ''}
+                      </p>
+                      {cancelled && d.cancellation_reason && (
+                        <p className="text-xs text-destructive truncate">{d.cancellation_reason}</p>
+                      )}
+                    </div>
+                    <Badge variant="secondary" className={bookingStatusBadgeClass(status)}>
+                      {statusLabels[status] ?? status}
+                    </Badge>
+                  </CardContent>
+                </Card>
+              );
+            }}
+          />
+        )}
+      </ModuleGate>
 
       <ShowDateDetailSheet
         showDateId={activeShowDateId}

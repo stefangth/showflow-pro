@@ -10,6 +10,17 @@ on:
     branches: ["**"]
   push:
     branches: [main]
+  # Manual trigger. During the 2026-08-06 GitHub Actions incident, webhook
+  # delivery was throttled and push/pull_request events silently failed to
+  # create runs, leaving commits untestable with no way to launch CI by hand.
+  # Note GitHub only offers this for workflows present on the DEFAULT branch,
+  # so it becomes usable once this lands on `main`.
+  workflow_dispatch:
+    inputs:
+      ref:
+        description: "Git ref to test (defaults to the branch the run is dispatched on)"
+        required: false
+        type: string
 
 
 concurrency:

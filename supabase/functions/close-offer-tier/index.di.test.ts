@@ -216,3 +216,34 @@ Deno.test("close-offer-tier: tier closed but withdraw fails → 500 (tier alread
   const tierUpdate = calls.find((c) => c.table === "show_date_offer_tiers" && c.method === "update");
   assertExists(tierUpdate, "tier must be closed before attempting the withdraw");
 });
+
+// ---------------------------------------------------------------------------
+// Module gate: booking_flow entitlement
+//
+// Placed after the org-scoped auth/capability check succeeds (using the
+// already-resolved sd.org_id), before any booking work. Only exercised on the
+// JWT (non-service-role) path, mirroring the existing org-scoped-auth tests
+// above — service-role/cron callers never enter that auth block at all.
+// ---------------------------------------------------------------------------
+
+Deno.test("close-offer-tier: 403s when booking_flow entitlement is off", async () => {
+  const { deps, calls } = makeFakeDeps({
+    envVars,
+    authUser: { id: "u-producer" },
+    tables: {
+      show_dates: { data: { id: "d1", org_id: "org-A" }, error: null },
+      org_memberships: { data: { role: "producer" }, error: null },
+    },
+    rpcs: {
+      is_capability_enabled: { data: true, error: null },
+      is_feature_enabled: { data: false, error: null },
+    },
+  });
+  const res = await handle(
+    makeRequest({ headers: { Authorization: "Bearer user" }, body: { show_date_id: "d1", tier: 1, withdraw: false } }),
+    deps,
+  );
+  assertEquals(res.status, 403);
+  assertEquals((await res.json()).error, "feature_disabled");
+  assertEquals(calls.some((c) => c.table === "show_date_offer_tiers" && c.method === "update"), false);
+});

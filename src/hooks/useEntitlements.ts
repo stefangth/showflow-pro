@@ -24,3 +24,24 @@ export function useFeature(feature: FeatureKey): boolean {
   if (isLoading) return FEATURE_REGISTRY[feature].defaultEnabled;
   return features.has(feature);
 }
+
+/**
+ * Gate state for an in-page module surface (see ModuleGate). Differs from
+ * useFeature in two deliberate ways:
+ *
+ *  - It does NOT fail open while entitlements load. useFeature reports a
+ *    default-on module as enabled during that window, which for an in-page gate
+ *    means mounting real write controls for an org that may turn out to be
+ *    unentitled; those writes are rejected by the RLS floor, so the user gets a
+ *    misleading failure. `pending` lets the caller render nothing instead.
+ *  - It exempts super-admins, matching visibleNavItems ("Super-admins are never
+ *    locked") and ProtectedRoute. Without it those two gates would admit a
+ *    super-admin to a page whose every region this gate then blanked.
+ */
+export function useModuleGate(feature: FeatureKey): { allow: boolean; pending: boolean } {
+  const { features, isLoading } = useEntitlements();
+  const { isSuperAdmin } = useAuth();
+  if (isSuperAdmin) return { allow: true, pending: false };
+  if (isLoading) return { allow: false, pending: true };
+  return { allow: features.has(feature), pending: false };
+}

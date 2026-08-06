@@ -2,6 +2,7 @@ import { preflight, json } from "../_shared/http.ts";
 import { requireCronOrRole } from "../_shared/auth.ts";
 import { realDeps, type Deps } from "../_shared/deps.ts";
 import { countAccepted, countPendingNotExpired, isFutureOrToday, requiredPrimarySlots } from "../_shared/tierFill.ts";
+import { checkFeature } from "../_shared/entitlements.ts";
 import { resolveBookingFlow, type BookingFlow } from "../_shared/bookingFlow.ts";
 import type { OrgAdminRow, ProducerAssignmentRow, ResolveShowAssignmentsArgs, ShowJoin } from "../_shared/rows.ts";
 
@@ -80,6 +81,9 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
   // Cache resolveBookingFlow per org — multiple open tiers in a single scan can belong
   // to the same org, and the flow doesn't change mid-scan (mirrors expire-offers).
   const flowByOrg = new Map<string, BookingFlow>()
+  // Entitlement cache mirroring flowByOrg: several open tiers in one scan can
+  // belong to the same org, and entitlement does not change mid-scan.
+  const entitledByOrg = new Map<string, boolean>()
 
   for (const row of openTiers as Array<{ id: string; show_date_id: string; tier: number }>) {
     // Resolve show date + show meta (including slot capacity columns)
@@ -99,6 +103,23 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
     // for it exactly as it would for any other skipped tier, so disabling alerts clears
     // stale notifications automatically with no extra code.
     const orgId = sdRow.org_id
+
+    // Module gate: booking_flow must be entitled for this org. Checked BEFORE
+    // resolveBookingFlow below, because resolveBookingFlow itself fails open to
+    // permissive defaults (at_risk_alerts: true, artist_acceptance: true) on an
+    // entitlement-check failure — flow.at_risk_alerts alone is NOT a safe gate for
+    // an unentitled org. Cached per org like flowByOrg: several open tiers in one
+    // scan can belong to the same org, and entitlement doesn't change mid-scan. An
+    // unentitled tier is simply `continue`d before it's added to stillAtRiskTierIds,
+    // so the existing recovery pass clears any stale notification for it exactly as
+    // it would for a disabled-alerts skip.
+    let entitled = entitledByOrg.get(orgId)
+    if (entitled === undefined) {
+      entitled = await checkFeature(admin, orgId, 'booking_flow')
+      entitledByOrg.set(orgId, entitled)
+    }
+    if (!entitled) continue
+
     // A per-org booking-flow read failure must not abort the whole scan; that would
     // also skip the stale-clear pass after the loop. Skip just this tier (leaving it out
     // of stillAtRiskTierIds, so the recovery pass clears any stale alert for it, exactly

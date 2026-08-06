@@ -1,5 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { NAV_ITEMS, visibleNavItems, groupNavBySections, type NavItem } from "./navItems";
+import { ROUTES } from "@/config/app.config";
 
 const ctx = (over: Partial<{ isEditorMode: boolean; isRealAdmin: boolean; isSuperAdmin: boolean; roles: string[]; enabledFeatures: Set<string>; entitlementsLoading: boolean }> = {}) => {
   const { isEditorMode = false, isRealAdmin = false, isSuperAdmin = false, roles = [], enabledFeatures = new Set<string>(), entitlementsLoading = false } = over;
@@ -136,6 +137,19 @@ describe("hire orders nav item", () => {
     expect(item?.badge).toBe("awaitingCountersign");
     expect(item?.section).toBe("workspace");
     expect(item?.feature).toBe("hire_orders");
+  });
+});
+
+describe("availability nav item", () => {
+  it("locks the Availability item when booking_flow is off", () => {
+    const items = visibleNavItems(NAV_ITEMS, ctx({ roles: ["artist"] }));
+    const availability = items.find((i) => i.to === ROUTES.AVAILABILITY);
+    expect(availability?.locked).toBe(true);
+  });
+
+  it("leaves Availability unlocked when booking_flow is on", () => {
+    const items = visibleNavItems(NAV_ITEMS, ctx({ roles: ["artist"], enabledFeatures: new Set(["booking_flow"]) }));
+    expect(items.find((i) => i.to === ROUTES.AVAILABILITY)?.locked).toBe(false);
   });
 });
 
