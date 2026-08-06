@@ -2,6 +2,8 @@ import { useEffect, useMemo, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
+import { fetchBookingCountsByDate } from '@/data/bookings';
+import { fetchShowDatesList } from '@/data/showDates';
 import { useAuth } from '@/features/auth/AuthContext';
 import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -185,43 +187,15 @@ function ProducerShowsBookings() {
   }, [queryClient]);
 
   const { data: bookingCounts } = useQuery({
-    queryKey: ['bookings', 'counts-by-date'],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from('bookings')
-        .select('show_date_id, status, is_understudy')
-        .neq('status', 'cancelled');
-      if (error) throw error;
-      interface CountRow { show_date_id: string; status: string; is_understudy: boolean }
-      const rows = (data ?? []) as unknown as CountRow[];
-      const map = new Map<string, { confirmedMain: number; confirmedUs: number; total: number }>();
-      rows.forEach((b) => {
-        const cur = map.get(b.show_date_id) ?? { confirmedMain: 0, confirmedUs: 0, total: 0 };
-        cur.total += 1;
-        if (b.status === 'confirmed') {
-          if (b.is_understudy) cur.confirmedUs += 1;
-          else cur.confirmedMain += 1;
-        }
-        map.set(b.show_date_id, cur);
-      });
-      return map;
-    },
+    queryKey: ['bookings', 'counts-by-date', currentOrg?.id],
+    enabled: !!currentOrg,
+    queryFn: () => fetchBookingCountsByDate(supabase, currentOrg?.id ?? null),
   });
 
   const { data: showDates, isLoading } = useQuery({
-    queryKey: ['show-dates', 'list'],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from('show_dates')
-        .select(`
-          id, date, session_1, session_2, session_3, venue, status, notes, city_id, show_id, custom, cancellation_reason,
-          show:shows(id, program, sub_program, status, main_cast_slots, understudy_slots),
-          city:cities(id, name)
-        `)
-        .order('date', { ascending: true });
-      if (error) throw error;
-      return data as unknown as ShowDateRow[];
-    },
+    queryKey: ['show-dates', 'list', currentOrg?.id],
+    enabled: !!currentOrg,
+    queryFn: () => fetchShowDatesList<ShowDateRow>(supabase, currentOrg?.id ?? null),
   });
 
   const programOptions = useMemo(() => {

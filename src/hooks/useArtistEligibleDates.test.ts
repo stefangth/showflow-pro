@@ -20,6 +20,12 @@ vi.mock("./useMyArtist", () => ({
   useMyArtist: vi.fn(),
 }));
 
+// The hook is org-scoped now: it reads the active org and passes it to
+// fetchUpcomingShowDates, so the show_dates read can never span orgs.
+vi.mock("@/features/auth/AuthContext", () => ({
+  useAuth: () => ({ currentOrg: { id: "org-uuid-1" } }),
+}));
+
 // toDateKey is a pure utility — use its real implementation
 vi.mock("@/lib/dates", () => ({
   toDateKey: (d: Date) => d.toISOString().slice(0, 10),
@@ -42,6 +48,16 @@ function mockFrom(impl: (table: string) => unknown) {
   vi.mocked(supabase.from).mockImplementation(
     partialMock<SupabaseClient<Database>["from"]>(impl),
   );
+}
+
+/** show_dates chain stub: select -> eq(org_id) -> gte -> neq -> order -> result.
+ *  The eq() link is the org filter fetchUpcomingShowDates applies. */
+function showDatesStub(result: { data: unknown; error: unknown }) {
+  const order = vi.fn().mockResolvedValue(result);
+  const neq = vi.fn().mockReturnValue({ order });
+  const gte = vi.fn().mockReturnValue({ neq });
+  const eq = vi.fn().mockReturnValue({ gte });
+  return { select: vi.fn().mockReturnValue({ eq }) };
 }
 
 const ARTIST_ID = "artist-uuid-1";
@@ -163,18 +179,7 @@ describe("useArtistEligibleDates", () => {
         };
       }
       if (table === "show_dates") {
-        return {
-          select: vi.fn().mockReturnValue({
-            gte: vi.fn().mockReturnValue({
-              neq: vi.fn().mockReturnValue({
-                order: vi.fn().mockResolvedValue({
-                  data: [sampleDate],
-                  error: null,
-                }),
-              }),
-            }),
-          }),
-        };
+        return showDatesStub({ data: [sampleDate], error: null, });
       }
       return emptySkillRequirementTables(table) ?? ({});
     });
@@ -223,18 +228,7 @@ describe("useArtistEligibleDates", () => {
         };
       }
       if (table === "show_dates") {
-        return {
-          select: vi.fn().mockReturnValue({
-            gte: vi.fn().mockReturnValue({
-              neq: vi.fn().mockReturnValue({
-                order: vi.fn().mockResolvedValue({
-                  data: [sampleDate],
-                  error: null,
-                }),
-              }),
-            }),
-          }),
-        };
+        return showDatesStub({ data: [sampleDate], error: null, });
       }
       return emptySkillRequirementTables(table) ?? ({});
     });
@@ -284,11 +278,13 @@ describe("useArtistEligibleDates", () => {
           select: vi.fn((arg: string) => {
             selectArg = arg;
             return {
-              gte: vi.fn().mockReturnValue({
-                neq: vi.fn().mockReturnValue({
-                  order: vi.fn().mockResolvedValue({
-                    data: [{ ...sampleDate, custom: { booking_ref: "FV-2033" } }],
-                    error: null,
+              eq: vi.fn().mockReturnValue({
+                gte: vi.fn().mockReturnValue({
+                  neq: vi.fn().mockReturnValue({
+                    order: vi.fn().mockResolvedValue({
+                      data: [{ ...sampleDate, custom: { booking_ref: "FV-2033" } }],
+                      error: null,
+                    }),
                   }),
                 }),
               }),
@@ -336,15 +332,7 @@ describe("useArtistEligibleDates", () => {
         };
       }
       if (table === "show_dates") {
-        return {
-          select: vi.fn().mockReturnValue({
-            gte: vi.fn().mockReturnValue({
-              neq: vi.fn().mockReturnValue({
-                order: vi.fn().mockResolvedValue({ data: [sampleDate], error: null }),
-              }),
-            }),
-          }),
-        };
+        return showDatesStub({ data: [sampleDate], error: null });
       }
       // Artist has no skills at all, so the s-judge requirement is unmet.
       if (table === "artist_skills") {
@@ -412,15 +400,7 @@ describe("useArtistEligibleDates", () => {
         };
       }
       if (table === "show_dates") {
-        return {
-          select: vi.fn().mockReturnValue({
-            gte: vi.fn().mockReturnValue({
-              neq: vi.fn().mockReturnValue({
-                order: vi.fn().mockResolvedValue({ data: [sampleDate], error: null }),
-              }),
-            }),
-          }),
-        };
+        return showDatesStub({ data: [sampleDate], error: null });
       }
       // Artist holds the required skill this time, so the date stays eligible.
       if (table === "artist_skills") {
@@ -487,15 +467,7 @@ describe("useArtistEligibleDates", () => {
         };
       }
       if (table === "show_dates") {
-        return {
-          select: vi.fn().mockReturnValue({
-            gte: vi.fn().mockReturnValue({
-              neq: vi.fn().mockReturnValue({
-                order: vi.fn().mockResolvedValue({ data: [sampleDate, sampleDate2], error: null }),
-              }),
-            }),
-          }),
-        };
+        return showDatesStub({ data: [sampleDate, sampleDate2], error: null });
       }
       if (table === "artist_skills") {
         return {
@@ -563,15 +535,7 @@ describe("useArtistEligibleDates", () => {
         };
       }
       if (table === "show_dates") {
-        return {
-          select: vi.fn().mockReturnValue({
-            gte: vi.fn().mockReturnValue({
-              neq: vi.fn().mockReturnValue({
-                order: vi.fn().mockResolvedValue({ data: [sampleDate, sampleDate2], error: null }),
-              }),
-            }),
-          }),
-        };
+        return showDatesStub({ data: [sampleDate, sampleDate2], error: null });
       }
       // No requirement rows anywhere, and the artist has no skills either.
       return emptySkillRequirementTables(table) ?? ({});
@@ -628,18 +592,7 @@ describe("useArtistEligibleDates", () => {
         };
       }
       if (table === "show_dates") {
-        return {
-          select: vi.fn().mockReturnValue({
-            gte: vi.fn().mockReturnValue({
-              neq: vi.fn().mockReturnValue({
-                order: vi.fn().mockResolvedValue({
-                  data: null,
-                  error: new Error("Network error"),
-                }),
-              }),
-            }),
-          }),
-        };
+        return showDatesStub({ data: null, error: new Error("Network error"), });
       }
       return {};
     });

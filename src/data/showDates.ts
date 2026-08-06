@@ -57,3 +57,47 @@ export async function fetchShowDatesForShow(client: SupabaseClient<Database>, sh
   if (error) throw error;
   return (data ?? []) as DupCheckDate[];
 }
+
+/* ------------------------------------------------------------------------- *
+ * Org-scoped list reads. The explicit org filter is load-bearing: RLS scopes to
+ * every org the caller may read, not to the org being viewed (ADR-0003).
+ * ------------------------------------------------------------------------- */
+
+const SHOW_DATE_LIST_COLS =
+  "id, date, session_1, session_2, session_3, venue, status, notes, city_id, show_id, custom, cancellation_reason, " +
+  "show:shows(id, program, sub_program, status, main_cast_slots, understudy_slots), " +
+  "city:cities(id, name)";
+
+/** Every show_date in the org, with show + city, for the bookings grid. */
+export async function fetchShowDatesList<T>(
+  client: SupabaseClient<Database>,
+  orgId: string | null,
+): Promise<T[]> {
+  if (!orgId) return [];
+  const { data, error } = await client
+    .from("show_dates")
+    .select(SHOW_DATE_LIST_COLS)
+    .eq("org_id", orgId)
+    .order("date", { ascending: true });
+  if (error) throw error;
+  return (data ?? []) as unknown as T[];
+}
+
+/** The org's upcoming, non-cancelled dates from `today` (yyyy-mm-dd) onward. */
+export async function fetchUpcomingShowDates<T>(
+  client: SupabaseClient<Database>,
+  orgId: string | null,
+  today: string,
+  columns = "id, date, show_id, show:shows(program, sub_program, main_cast_slots, understudy_slots)",
+): Promise<T[]> {
+  if (!orgId) return [];
+  const { data, error } = await client
+    .from("show_dates")
+    .select(columns)
+    .eq("org_id", orgId)
+    .gte("date", today)
+    .neq("status", "cancelled")
+    .order("date", { ascending: true });
+  if (error) throw error;
+  return (data ?? []) as unknown as T[];
+}

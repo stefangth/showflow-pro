@@ -6,7 +6,7 @@ describe("fetchSkills", () => {
   it("selects id,name ordered by name", async () => {
     const rows = [{ id: "s1", name: "Acro" }];
     const fake = createFakeSupabase({ skills: { data: rows, error: null } });
-    expect(await fetchSkills(fake as never)).toEqual(rows);
+    expect(await fetchSkills(fake as never, "org-1")).toEqual(rows);
     expect(fake.calls).toContainEqual({ table: "skills", method: "select", args: ["id, name"] });
     expect(fake.calls).toContainEqual({ table: "skills", method: "order", args: ["name"] });
   });

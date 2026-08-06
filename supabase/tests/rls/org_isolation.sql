@@ -7,7 +7,7 @@
 --   0000…a000 org A (iso-a) 0000…b000 org B (iso-b)
 BEGIN;
 CREATE EXTENSION IF NOT EXISTS pgtap WITH SCHEMA extensions;
-SELECT plan(9);
+SELECT plan(15);
 
 SET session_replication_role = replica;
 
@@ -78,6 +78,53 @@ SELECT is((SELECT count(*)::int FROM public.shows WHERE id IN
             ('cccccccc-cccc-000a-0000-000000000000','cccccccc-cccc-000b-0000-000000000000')),2,
           'super-admin sees both orgs shows');
 RESET ROLE;
+
+
+-- ══ Active-org narrowing (x-active-org header) ═══════════════════════════════
+-- The header narrows god-mode/multi-org reads to the org actually being viewed.
+-- Everything above ran with NO header set, which is why those expectations
+-- (including "super-admin sees both") are unchanged — absent header = no narrowing.
+
+-- Super-admin viewing org A sees only org A.
+SELECT set_config('request.jwt.claims','{"sub":"aaaaaaaa-aaaa-0001-0000-000000000000","role":"authenticated"}',true);
+SELECT set_config('request.headers','{"x-active-org":"00000000-0000-0000-0000-00000000a000"}',true);
+SET LOCAL ROLE authenticated;
+SELECT is((SELECT count(*)::int FROM public.shows WHERE id='cccccccc-cccc-000a-0000-000000000000'),1,
+          'super-admin in org A sees A show');
+SELECT is((SELECT count(*)::int FROM public.shows WHERE id='cccccccc-cccc-000b-0000-000000000000'),0,
+          'super-admin in org A does NOT see B show');
+-- …and cannot write into the org it is not currently viewing.
+SELECT throws_ok(
+  $$INSERT INTO public.shows (program, sub_program, org_id)
+    VALUES ('x','y','00000000-0000-0000-0000-00000000b000')$$,
+  '42501', null, 'super-admin in org A cannot insert into org B');
+RESET ROLE;
+
+-- Switching the header switches the visible org.
+SELECT set_config('request.headers','{"x-active-org":"00000000-0000-0000-0000-00000000b000"}',true);
+SET LOCAL ROLE authenticated;
+SELECT is((SELECT count(*)::int FROM public.shows WHERE id='cccccccc-cccc-000b-0000-000000000000'),1,
+          'super-admin in org B sees B show');
+RESET ROLE;
+
+-- A malformed header must degrade to "no narrowing", never raise: this predicate runs
+-- per row on every tenant table, so an exception here would be a total outage.
+SELECT set_config('request.headers','{"x-active-org":"not-a-uuid"}',true);
+SET LOCAL ROLE authenticated;
+SELECT is((SELECT count(*)::int FROM public.shows WHERE id IN
+            ('cccccccc-cccc-000a-0000-000000000000','cccccccc-cccc-000b-0000-000000000000')),2,
+          'malformed active-org header is ignored rather than fatal');
+RESET ROLE;
+
+-- The header can only ever NARROW. Org-B's producer naming org A gets nothing:
+-- the conjunct is ANDed with is_org_member, so forging it grants no new access.
+SELECT set_config('request.jwt.claims','{"sub":"aaaaaaaa-aaaa-00b2-0000-000000000000","role":"authenticated"}',true);
+SELECT set_config('request.headers','{"x-active-org":"00000000-0000-0000-0000-00000000a000"}',true);
+SET LOCAL ROLE authenticated;
+SELECT is((SELECT count(*)::int FROM public.shows WHERE id='cccccccc-cccc-000a-0000-000000000000'),0,
+          'forged active-org header cannot widen a non-member into org A');
+RESET ROLE;
+SELECT set_config('request.headers','',true);
 
 SELECT * FROM finish();
 ROLLBACK;

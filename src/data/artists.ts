@@ -12,18 +12,56 @@ export async function fetchPendingInvitedArtistIds(
   return (data ?? []) as string[];
 }
 
-/** Fetch the artists row linked to a given auth user id (or null). */
+/**
+ * The artists row linked to a given auth user, in the ACTIVE org (or null).
+ *
+ * The org filter is required for correctness, not just tidiness: one auth user can be
+ * linked to an `artists` row in several orgs, and RLS returns all of them, so an
+ * unfiltered `maybeSingle()` errors on multiple rows (or resolves the wrong org's
+ * artist). Every artist-facing booking view keys off the id this returns.
+ */
 export async function fetchMyArtist(
   client: SupabaseClient<Database>,
   userId: string,
+  orgId: string | null,
 ): Promise<Artist | null> {
+  if (!orgId) return null;
   const { data, error } = await client
     .from("artists")
     .select("*")
+    .eq("org_id", orgId)
     .eq("user_id", userId)
     .maybeSingle();
   if (error) throw error;
   return (data as Artist | null) ?? null;
+}
+
+/** The org's artists, alphabetical — the artists list surface. */
+export async function fetchArtists(
+  client: SupabaseClient<Database>,
+  orgId: string | null,
+): Promise<Artist[]> {
+  if (!orgId) return [];
+  const { data, error } = await client
+    .from("artists").select("*").eq("org_id", orgId).order("name", { ascending: true });
+  if (error) throw error;
+  return (data ?? []) as Artist[];
+}
+
+/** Minimal active-artist options for the direct-book / eligibility pickers. */
+export async function fetchActiveArtistOptions(
+  client: SupabaseClient<Database>,
+  orgId: string | null,
+): Promise<{ id: string; name: string }[]> {
+  if (!orgId) return [];
+  const { data, error } = await client
+    .from("artists")
+    .select("id, name")
+    .eq("org_id", orgId)
+    .eq("status", "active")
+    .order("name");
+  if (error) throw error;
+  return (data ?? []) as { id: string; name: string }[];
 }
 
 /** A show_date the artist was booked on that was cancelled via a date cancellation. */

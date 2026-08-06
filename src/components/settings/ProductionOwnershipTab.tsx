@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
+import { fetchShowAssignments, fetchProgramSubProgramPairs } from '@/data/showAssignments';
 import { useCan } from '@/hooks/useCapabilities';
 import { useAllCities } from '@/hooks/useAllCities';
 import { fetchOrgProducers } from '@/data/orgs';
@@ -16,8 +17,6 @@ import { toast } from 'sonner';
 // forbids empty-string SelectItem values.
 const ANY_SCOPE = '__any__';
 
-type ProgramSubProgramPair = { program: string; sub_program: string };
-type ShowAssignmentRow = { id: string; producer_user_id: string; program: string; sub_program: string | null; city_id: string | null };
 
 interface Props {
   /** Raw currentOrg?.id — kept undefined-able to preserve exact React Query keys. */
@@ -40,39 +39,14 @@ export function ProductionOwnershipTab({ currentOrgId, canEnter }: Props) {
 
   const { data: showProgramSubProgramPairs } = useQuery({
     queryKey: ['shows-program-sub-programs', currentOrgId],
-    enabled: canEnter,
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from('shows')
-        .select('program, sub_program')
-        .not('program', 'is', null)
-        .not('sub_program', 'is', null);
-      if (error) throw error;
-      const seen = new Set<string>();
-      const pairs: ProgramSubProgramPair[] = [];
-      (data ?? []).forEach(r => {
-        const key = `${r.program}::${r.sub_program}`;
-        if (!seen.has(key)) {
-          seen.add(key);
-          pairs.push({ program: r.program as string, sub_program: r.sub_program as string });
-        }
-      });
-      pairs.sort((a, b) => a.program.localeCompare(b.program) || a.sub_program.localeCompare(b.sub_program));
-      return pairs;
-    },
+    enabled: canEnter && !!currentOrgId,
+    queryFn: () => fetchProgramSubProgramPairs(supabase, currentOrgId ?? null),
   });
 
   const { data: showAssignments } = useQuery({
-    queryKey: ['show-assignments'],
-    enabled: canEnter,
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from('show_assignments')
-        .select('id, producer_user_id, program, sub_program, city_id')
-        .order('program').order('sub_program').order('created_at');
-      if (error) throw error;
-      return (data ?? []) as ShowAssignmentRow[];
-    },
+    queryKey: ['show-assignments', currentOrgId],
+    enabled: canEnter && !!currentOrgId,
+    queryFn: () => fetchShowAssignments(supabase, currentOrgId ?? null),
   });
 
   const { data: producerUsers } = useQuery({

@@ -1,6 +1,7 @@
 import { createContext, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
+import { setActiveOrg } from '@/integrations/supabase/activeOrg';
 import type { User, Session } from '@supabase/supabase-js';
 import type { AppRole } from '@/config/app.config';
 import { fetchMyMemberships, type Membership, type Organization } from '@/data/orgs';
@@ -83,6 +84,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const currentOrg = orgs.find((o) => o.id === currentOrgId) ?? orgs[0] ?? null;
   /** Roles are scoped to the active org, so hasRole() keeps its signature. */
   const roles = rolesForOrg(memberships, currentOrg?.id ?? null);
+
+  // Mirror the active org onto every PostgREST request, so the org_isolation policy
+  // can narrow rows server-side (see integrations/supabase/activeOrg.ts). Tracks the
+  // DERIVED currentOrg, not currentOrgId, because the latter is null until a switch
+  // and the effective org falls back to orgs[0]. Assigned during render rather than
+  // in an effect: effects run after children mount, so the first query of a newly
+  // entered org would otherwise go out under the previous org's header. The setter
+  // is an idempotent write to a module variable, so a double render is harmless.
+  setActiveOrg(currentOrg?.id ?? null);
 
   // `loading` for route guards: true until identity is resolved for the current
   // user. Derived so the sign-in / account-switch flash is impossible by

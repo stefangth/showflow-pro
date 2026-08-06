@@ -13,11 +13,10 @@ import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Plus, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
-import type { Cast } from '@/types';
 import { fetchShowPriorityRows, setShowCastPriority, clearShowCastPriority } from '@/data/eligibility';
+import { fetchCasts, fetchCastMemberCounts, fetchCastCityPriority } from '@/data/casts';
+import { fetchShowOptions } from '@/data/shows';
 
-type CastCityPriorityRow = { id: string; cast_id: string; city_id: string; priority: number };
-type ShowOption = { id: string; program: string; sub_program: string | null };
 
 /**
  * Settings → Casts & Cities. Self-contained: owns its own cities/casts/priority
@@ -59,37 +58,19 @@ export function CastsCitiesTab({ currentOrgId, canEnter }: { currentOrgId: strin
 
   const { data: casts } = useQuery({
     queryKey: ['casts', currentOrgId],
-    enabled: canEnter,
-    queryFn: async () => {
-      const { data, error } = await supabase.from('casts').select('*').order('name');
-      if (error) throw error;
-      return data as Cast[];
-    },
+    enabled: canEnter && !!orgId,
+    queryFn: () => fetchCasts(supabase, orgId),
   });
   const { data: castCounts } = useQuery({
-    queryKey: ['cast-members-counts'],
-    enabled: canEnter,
-    queryFn: async () => {
-      const { data, error } = await supabase.from('cast_members').select('cast_id');
-      if (error) throw error;
-      const map: Record<string, number> = {};
-      (data ?? []).forEach(r => { map[r.cast_id] = (map[r.cast_id] ?? 0) + 1; });
-      return map;
-    },
+    queryKey: ['cast-members-counts', currentOrgId],
+    enabled: canEnter && !!orgId,
+    queryFn: () => fetchCastMemberCounts(supabase, orgId),
   });
 
   const { data: castCityPriorities } = useQuery({
     queryKey: ['cast-city-priority', currentOrgId],
-    enabled: canEnter,
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from('cast_city_priority')
-        .select('id, cast_id, city_id, priority')
-        .order('city_id')
-        .order('priority');
-      if (error) throw error;
-      return (data ?? []) as CastCityPriorityRow[];
-    },
+    enabled: canEnter && !!orgId,
+    queryFn: () => fetchCastCityPriority(supabase, orgId),
   });
 
   useEffect(() => {
@@ -149,23 +130,10 @@ export function CastsCitiesTab({ currentOrgId, canEnter }: { currentOrgId: strin
     setNewPriorityCastId('');
   };
 
-  // Org-scoped like fetchShowsWithStats (src/data/shows.ts): god-mode RLS returns rows
-  // across ALL of a super-admin's orgs, so relying on RLS alone could list another
-  // org's shows in the scope dropdown.
   const { data: allShows } = useQuery({
     queryKey: ['shows', 'for-priority-scope', orgId],
     enabled: canEnter && !!orgId,
-    queryFn: async () => {
-      if (!orgId) return [];
-      const { data, error } = await supabase
-        .from('shows')
-        .select('id, program, sub_program')
-        .eq('org_id', orgId)
-        .order('sort_order', { ascending: true, nullsFirst: false })
-        .order('program');
-      if (error) throw error;
-      return (data ?? []) as ShowOption[];
-    },
+    queryFn: () => fetchShowOptions(supabase, orgId),
   });
 
   const showPrioritiesQ = useQuery({

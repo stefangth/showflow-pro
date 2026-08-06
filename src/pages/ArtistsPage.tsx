@@ -2,6 +2,10 @@ import { useState, useMemo, useCallback } from 'react';
 import { getAvatarTone } from '@/lib/avatar';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
+import { fetchArtists } from '@/data/artists';
+import { fetchBookingsLight } from '@/data/bookings';
+import { fetchSkillsByArtist } from '@/data/skills';
+import { fetchCastsByArtist } from '@/data/casts';
 import { useAuth } from '@/features/auth/AuthContext';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -36,8 +40,6 @@ type BookingJoin = {
   show_date: { date: string; show: { program: string | null; sub_program: string | null } } | null;
 };
 
-type SkillJoin = { artist_id: string; skill: { id: string; name: string } | null };
-type CastJoin = { artist_id: string; cast: { id: string; name: string } | null };
 
 export default function ArtistsPage() {
   const { currentOrg } = useAuth();
@@ -60,12 +62,9 @@ export default function ArtistsPage() {
   const [profileArtistId, setProfileArtistId] = useState<string | null>(null);
 
   const { data: artists, isLoading } = useQuery({
-    queryKey: ['artists'],
-    queryFn: async () => {
-      const { data, error } = await supabase.from('artists').select('*').order('name', { ascending: true });
-      if (error) throw error;
-      return data as Artist[];
-    },
+    queryKey: ['artists', 'list', currentOrg?.id],
+    enabled: !!currentOrg,
+    queryFn: () => fetchArtists(supabase, currentOrg?.id ?? null),
   });
 
   const { data: pendingIds } = usePendingInvitedArtists(currentOrg?.id);
@@ -85,50 +84,21 @@ export default function ArtistsPage() {
   }, [pendingArtistInvitations]);
 
   const { data: bookings } = useQuery({
-    queryKey: ['bookings', 'light'],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from('bookings')
-        .select('id, artist_id, status, show_date:show_dates(date, show:shows(program, sub_program))')
-        .neq('status', 'cancelled');
-      if (error) throw error;
-      return (data ?? []) as unknown as BookingJoin[];
-    },
+    queryKey: ['bookings', 'light', currentOrg?.id],
+    enabled: !!currentOrg,
+    queryFn: () => fetchBookingsLight(supabase, currentOrg?.id ?? null),
   });
 
   const { data: skillsByArtist } = useQuery({
-    queryKey: ['artist-skills', 'all'],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from('artist_skills')
-        .select('artist_id, skill:skills(id, name)');
-      if (error) throw error;
-      const map = new Map<string, { id: string; name: string }[]>();
-      ((data ?? []) as unknown as SkillJoin[]).forEach((r) => {
-        if (!r.skill) return;
-        const arr = map.get(r.artist_id) ?? [];
-        arr.push(r.skill);
-        map.set(r.artist_id, arr);
-      });
-      return map;
-    },
+    queryKey: ['artist-skills', 'all', currentOrg?.id],
+    enabled: !!currentOrg,
+    queryFn: () => fetchSkillsByArtist(supabase, currentOrg?.id ?? null),
   });
 
   const { data: artistCasts } = useQuery({
-    queryKey: ['artist-casts'],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from('cast_members')
-        .select('artist_id, cast:casts(id, name)');
-      if (error) throw error;
-      const map = new Map<string, { id: string; name: string }[]>();
-      ((data ?? []) as unknown as CastJoin[]).forEach((r) => {
-        const arr = map.get(r.artist_id) ?? [];
-        if (r.cast) arr.push(r.cast);
-        map.set(r.artist_id, arr);
-      });
-      return map;
-    },
+    queryKey: ['artist-casts', currentOrg?.id],
+    enabled: !!currentOrg,
+    queryFn: () => fetchCastsByArtist(supabase, currentOrg?.id ?? null),
   });
 
   const createArtist = useMutation({
