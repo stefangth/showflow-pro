@@ -38,10 +38,11 @@ has. Four decisions fix its meaning:
 1. **Scope: everything booking goes dark.** Off means no bookings at all — both the
    tiered offer engine *and* the direct "Book artists" path. An unentitled org uses
    ShowFlow as a show/date catalog plus artist directory.
-2. **Treatment: hybrid.** Dedicated nav items and routes are hidden (the `hire_orders`
-   pattern). Booking regions that sit inside a page which stays visible are rendered
-   greyed and inert with a short explanation, so producers learn *why* rather than
-   wondering where the section went.
+2. **Treatment: greyed and inert throughout.** Nav items for gated modules are locked
+   (greyed, non-navigable) rather than hidden, and routes reached directly render
+   `FeatureDisabledScreen`. Booking regions inside a page that stays visible are likewise
+   greyed with a short explanation, so producers learn *why* rather than wondering where
+   the section went.
 3. **Existing data: freeze, cast stays readable.** Disabling touches no rows. Pending
    offers sit un-actioned; the engine stops. The show date keeps a read-only list of who
    is confirmed. Re-enabling resumes exactly where it left off. No draining of pending
@@ -105,10 +106,10 @@ still serves entitled orgs whose config is absent.
 |---|---|
 | `open-offer-tier` | `requireFeature(deps, org_id, "booking_flow")` |
 | `close-offer-tier` | `requireFeature(deps, org_id, "booking_flow")` |
-| `expire-offers` | `filterEntitledOrgs` over `getActiveOrgs` |
+| `expire-offers` | `filterEntitledOrgs` over `getActiveOrgs`; the derived `activeOrgIds` set already gates both the reminder pass and the escalation scan, so one filter closes both |
 | `send-offer-digest` | `filterEntitledOrgs` over `getActiveOrgs` |
 | `send-confirmation-digest` | `filterEntitledOrgs` over `getActiveOrgs` |
-| `tier-at-risk-watcher` | `filterEntitledOrgs` over `getActiveOrgs` |
+| `tier-at-risk-watcher` | does **not** call `getActiveOrgs` — it scans open tiers and derives the org from `show_dates.org_id`, caching flow per org. Gate with a per-org entitlement check reusing that cache's shape |
 | `airtable-poll` | keeps syncing dates; skips tier-1 auto-open for unentitled orgs |
 
 `filterEntitledOrgs` already exists in `supabase/functions/_shared/entitlements.ts`. Its
@@ -129,10 +130,14 @@ each other. The fail-open branch gets a test so the rationale stays pinned.
 
 ## 3. Frontend
 
-### Hidden (existing mechanism, no new code)
+### Nav and route (existing mechanism, no new code)
 
-- `navItems.ts`: `/availability` gains `feature: 'booking_flow'`. The `feature` field and
-  its filtering already exist — `hire_orders` uses it.
+- `navItems.ts`: `/availability` gains `feature: 'booking_flow'`. Nothing else is needed —
+  `visibleNavItems` already turns a `feature` into `locked: true` for unentitled
+  non-super-admins, which the sidebar renders greyed and inert. Note this is *locking, not
+  hiding*: the function's contract is explicitly "a member who cannot use a module should
+  still be able to see that it exists", and it fails open while entitlements load so an
+  entitled org never sees a one-round-trip flash of locked.
 - `ROUTE_FEATURES`: `'/availability': 'booking_flow'`, so a direct URL renders
   `FeatureDisabledScreen` via `ProtectedRoute`.
 
