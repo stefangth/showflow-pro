@@ -45,11 +45,12 @@ function seedClient(seed: Record<string, TableSeed>) {
 import { useAuth } from "@/features/auth/AuthContext";
 import HireOrdersPage from "./HireOrdersPage";
 
-function authAs(role: "admin" | "producer" = "producer", orgId = "org-1") {
+function authAs(role: "admin" | "producer" = "producer", orgId = "org-1", isSuperAdmin = false) {
   vi.mocked(useAuth).mockReturnValue({
     currentOrg: { id: orgId, name: "Aurora Productions", slug: "aurora" },
     hasRole: (r: string) => r === role,
     roles: [role],
+    isSuperAdmin,
   } as never);
 }
 
@@ -500,7 +501,11 @@ describe("HireOrdersPage", () => {
   it("mounts the setup rail and reserves its column", async () => {
     renderPage();
     await screen.findByText("Hire orders");
-    expect(screen.getByTestId("setup-rail")).toBeInTheDocument();
+    // findBy, not getBy: the rail runs on the RAW entitlement with no fail-open, so it
+    // appears once org_entitlements resolves rather than optimistically on first
+    // paint. That wait is the point. Mounting a live app_settings write surface before
+    // knowing the org is entitled is what the two-gate split exists to prevent.
+    expect(await screen.findByTestId("setup-rail")).toBeInTheDocument();
     expect(screen.getByTestId("orders-layout").className).toContain("lg:grid-cols-[1fr_340px]");
   });
 
@@ -525,6 +530,21 @@ describe("HireOrdersPage", () => {
     renderPage();
     await screen.findByText(/Hire orders is off for this organization/);
     expect(screen.queryByTestId("setup-rail")).not.toBeInTheDocument();
+  });
+
+  it("withholds the setup rail from a super-admin on a module-off org", async () => {
+    // The page runs two gates on purpose. useModuleGate exempts super-admins, so
+    // god-mode still gets the page itself and no off-state banner. The setup rail is
+    // a WRITE surface and runs on the raw entitlement instead: app_settings RLS
+    // checks role, not entitlement, so a super-admin confirming the rail here would
+    // really write those settings and configure a module this org does not have.
+    authAs("admin", "org-1", true);
+    seedFor(ROWS, { org_entitlements: { data: [{ feature: "hire_orders", enabled: false }], error: null } });
+    renderPage();
+    await screen.findByText("Hire orders");
+    expect(screen.queryByTestId("setup-rail")).not.toBeInTheDocument();
+    // The super-admin exemption is what distinguishes this from the test above.
+    expect(screen.queryByText(/Hire orders is off for this organization/)).not.toBeInTheDocument();
   });
 
   it("points at the dates that are ready when there are no orders yet", async () => {

@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { Search } from "lucide-react";
 import { Link } from "react-router-dom";
 import { useAuth } from "@/features/auth/AuthContext";
-import { useEntitlements } from "@/hooks/useEntitlements";
+import { useEntitlements, useModuleGate } from "@/hooks/useEntitlements";
 import { useHireOrders, useDatesReadyForHireOrder } from "@/hooks/useHireOrders";
 import { OrdersKpis } from "@/components/hireOrders/OrdersKpis";
 import { computeOrderKpis } from "@/lib/hireOrders/kpis";
@@ -53,12 +53,24 @@ function chipToStatusFilter(chip: StatusChip): HireOrderStatus[] | undefined {
 export default function HireOrdersPage() {
   const { currentOrg } = useAuth();
   const orgId = currentOrg?.id ?? null;
-  // Fail open while entitlements are loading: useFeature falls back to the
-  // registry default (false for hire_orders), which flashed the off-state
-  // banner and disabled buttons on every fresh mount for orgs that actually
-  // have the module on. Show the off-state only once the query has resolved.
-  const { features, isLoading: entitlementsLoading } = useEntitlements();
-  const featureOn = entitlementsLoading || features.has("hire_orders");
+  // TWO gates, deliberately, because they answer different questions.
+  //
+  // `allow` / `pending` (useModuleGate) governs what this page OFFERS. It neither
+  // fails open while entitlements load -- which would mount live controls for an org
+  // that may turn out unentitled -- nor flashes the off-state banner at an entitled
+  // org, because `pending` lets both the banner and the controls stay quiet until the
+  // answer is known. That replaces the old `entitlementsLoading || ...` fail-open,
+  // which existed only to suppress that flash and had no better tool at the time.
+  const { allow: featureOn, pending: featurePending } = useModuleGate("hire_orders");
+  // `entitledForWrites` governs what this page lets anyone CHANGE, and is the raw
+  // entitlement: no fail-open, and no super-admin exemption. useModuleGate exempts
+  // super-admins so god-mode can read any org's surfaces, which is right for viewing
+  // and wrong here -- app_settings RLS checks role, not entitlement, so a super-admin
+  // confirming the setup rail on an unentitled org would really write those settings
+  // and configure a module the org does not have, next to a banner saying changes
+  // cannot be saved.
+  const { features } = useEntitlements();
+  const entitledForWrites = features.has("hire_orders");
 
   const [statusChip, setStatusChip] = useState<StatusChip>("all");
   const [search, setSearch] = useState("");
@@ -95,14 +107,13 @@ export default function HireOrdersPage() {
   // rail will render before it picks its column template. Gated on the entitlement
   // too: app_settings RLS checks role, not entitlement, so an unentitled org's setup
   // writes would land, directly contradicting the FeatureOffBanner above.
-  // Gated on featureOn the same way the ready-dates read above is: ungated this fired
-  // three app_settings reads on every visit by an org without the entitlement, whose
-  // result was then discarded. The `featureOn &&` stays as well as the null argument:
-  // this is the gate that keeps an interactive setup checklist off a page already
-  // showing "changes cannot be saved", and it should not depend on another module's
+  // Gated on the raw entitlement so the three app_settings reads never fire for an
+  // org that cannot use them. The `&&` stays as well as the null argument: this is
+  // the gate that keeps an interactive setup checklist off a page already showing
+  // "changes cannot be saved", and it should not depend on another module's
   // null-handling to hold.
-  const setupRailVisible = useSetupRailVisible(featureOn ? orgId : null);
-  const showSetupRail = featureOn && setupRailVisible;
+  const setupRailVisible = useSetupRailVisible(entitledForWrites ? orgId : null);
+  const showSetupRail = entitledForWrites && setupRailVisible;
 
   const stats = computeOrderKpis(allOrders);
   const selectedOrder =
@@ -110,7 +121,10 @@ export default function HireOrdersPage() {
 
   return (
     <div className="space-y-6">
-      {!featureOn && <FeatureOffBanner feature="hire_orders" />}
+      {/* `!featurePending` is what stops the old flash: while entitlements resolve,
+          featureOn is false but the answer is not known yet, so say nothing rather
+          than telling an entitled org its module is off. */}
+      {!featureOn && !featurePending && <FeatureOffBanner feature="hire_orders" />}
 
       <div className="flex items-start justify-between gap-3">
         <div>
