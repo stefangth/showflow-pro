@@ -5,19 +5,25 @@ import { hasOrgSettingRow, resolveOrgSetting } from "@/data/settings";
 import { fetchTermsLibrary, importTermsTemplates } from "@/data/hireOrders";
 import { LETTERHEAD_DEFAULT } from "@/components/settings/hireOrders/defaults";
 import type { Letterhead } from "@/components/settings/hireOrders/LetterheadCard";
-import { normalizeTermsSetting, type HireOrderTermsSetting } from "@/lib/hireOrders/terms";
+import { normalizeTermsSetting } from "@/lib/hireOrders/terms";
+import { HIRE_ORDER_DEFAULT_TERMS } from "@/config/app.config";
 import { computeSetupStatus, type HireOrderSetupStatus } from "@/lib/hireOrders/setupStatus";
 
-const EMPTY_TERMS: HireOrderTermsSetting = { templates: [], default_id: null };
-
 /** The org's own resolved terms setting, normalized. Shared by the status hook, the
- *  rail's terms step and the import mutation, so all three read one cache entry. */
+ *  rail's terms step and the import mutation, so all three read one cache entry.
+ *
+ *  The fallback MUST stay identical to TermsVariantsCard's, which observes the same
+ *  query key: two observers of one key with different fallbacks make the cached value
+ *  depend on which surface mounted first, so the same import would append onto a
+ *  different base depending on where it was started. */
 export function useOrgTerms(orgId: string | null) {
   return useQuery({
     queryKey: ["app-settings", "hire_order_terms", orgId],
     enabled: !!orgId,
     queryFn: async () =>
-      normalizeTermsSetting(await resolveOrgSetting<unknown>(supabase, orgId, "hire_order_terms", null)),
+      normalizeTermsSetting(
+        await resolveOrgSetting<unknown>(supabase, orgId, "hire_order_terms", HIRE_ORDER_DEFAULT_TERMS),
+      ),
   });
 }
 
@@ -43,9 +49,12 @@ export function useHireOrderSetupStatus(orgId: string | null): {
   });
 
   const isLoading = !!orgId && (letterhead.isLoading || terms.isLoading || countersign.isLoading);
+  // No `?? EMPTY_TERMS` fallback: an unread setting is passed through as undefined so
+  // computeSetupStatus reports the step outstanding, rather than being told the org
+  // genuinely holds an empty terms library.
   const status = computeSetupStatus({
     letterhead: letterhead.data ?? null,
-    terms: terms.data ?? EMPTY_TERMS,
+    terms: terms.data,
     countersignChosen: countersign.data ?? false,
   });
   return { status, isLoading };
@@ -60,7 +69,15 @@ export function useTermsLibrary() {
   });
 }
 
-/** Copy the chosen library templates into the org's own terms setting. */
+/**
+ * Copy the chosen library templates into the org's own terms setting.
+ *
+ * Refuses to run when the org's current terms have not been read. The merge APPENDS to
+ * `current`, so substituting an empty set there would turn an import into a full
+ * replacement of the org's authored contract library. The guard lives in the hook, not
+ * in a caller's early return, because a caller opened on a cold cache (an issue
+ * preflight, a batch repair) is exactly where a mistimed click would land.
+ */
 export function useImportTermsTemplates(orgId: string | null) {
   const qc = useQueryClient();
   const library = useTermsLibrary();
@@ -68,13 +85,11 @@ export function useImportTermsTemplates(orgId: string | null) {
   return useMutation({
     mutationFn: ({ templateIds }: { templateIds: string[] }) => {
       if (!orgId) throw new Error("No active organization");
+      const current = terms.data;
+      if (!current) throw new Error("Terms could not be loaded. Reload and try again.");
       const chosen = (library.data ?? []).filter((t) => templateIds.includes(t.id));
       if (chosen.length === 0) throw new Error("Select a template to add");
-      return importTermsTemplates(supabase, {
-        orgId,
-        current: terms.data ?? EMPTY_TERMS,
-        templates: chosen,
-      });
+      return importTermsTemplates(supabase, { orgId, current, templates: chosen });
     },
     onSuccess: (next) => {
       qc.invalidateQueries({ queryKey: ["app-settings"] });

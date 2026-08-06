@@ -146,6 +146,33 @@ describe("TermsVariantsCard", () => {
     });
   });
 
+  it("keeps an imported template when Save is pressed straight afterwards", async () => {
+    // The import writes the merged value to app_settings, but the clause editor
+    // below is seeded-once local state. If the import does not feed that state,
+    // the very next Save persists the pre-import list and silently deletes every
+    // imported clause.
+    renderWithProviders(<TermsVariantsCard orgId="org-1" />);
+    await screen.findByDisplayValue("Lean");
+
+    fireEvent.click(screen.getByRole("checkbox", { name: "Standard engagement" }));
+    fireEvent.click(screen.getByRole("button", { name: /add to this organization/i }));
+    // The imported template appears in the editor below, as its own name input.
+    expect(await screen.findByDisplayValue("Standard engagement")).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "Save terms" }));
+
+    await waitFor(() => {
+      const calls = (client.calls ?? []) as { table: string; method: string; args: unknown[] }[];
+      const upserts = calls.filter((c) => c.table === "app_settings" && c.method === "upsert");
+      expect(upserts).toHaveLength(2);
+      const payload = upserts[1].args[0] as {
+        value: { templates: { id: string }[]; default_id: string | null };
+      };
+      expect(payload.value.templates.map((t) => t.id)).toContain("platform-standard-engagement");
+      expect(payload.value.default_id).toBe("platform-standard-engagement");
+    });
+  });
+
   it("Save persists the first template as default_id when it was null (no explicit default yet)", async () => {
     seedClient({
       app_settings: {

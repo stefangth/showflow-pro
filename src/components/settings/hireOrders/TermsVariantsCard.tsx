@@ -211,7 +211,16 @@ export function TermsVariantsCard({ orgId, readOnly = false }: { orgId: string |
               size="sm"
               variant="outline"
               disabled={readOnly || picked.length === 0 || importTerms.isPending}
-              onClick={() => importTerms.mutate({ templateIds: picked }, { onSuccess: () => setPicked([]) })}
+              // The clause editor below is seeded-once local state, so the import MUST
+              // feed it the merged value. Without this, the editor keeps showing the
+              // pre-import list and the card's own Save then persists that stale list,
+              // deleting every clause the import just added.
+              onClick={() =>
+                importTerms.mutate(
+                  { templateIds: picked },
+                  { onSuccess: (next) => { setForm(next); setPicked([]); } },
+                )
+              }
             >
               Add to this organization
             </Button>
