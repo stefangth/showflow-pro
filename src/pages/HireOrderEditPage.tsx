@@ -28,6 +28,8 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { HireOrderStatusBadge } from "@/components/hireOrders/HireOrderStatusBadge";
 import { FieldSection } from "@/components/hireOrders/edit/FieldSection";
+import { useOrderBlockers } from "@/hooks/useOrderBlockers";
+import { SetupCallout } from "@/components/hireOrders/edit/SetupCallout";
 
 /** Kept in sync with CURRENCY_SYMBOLS in money.ts / CURRENCIES in NewOrderWizard.tsx. */
 const CURRENCIES = ["EUR", "USD", "CHF"];
@@ -381,6 +383,12 @@ export default function HireOrderEditPage() {
 
   const canRefresh = !!order && (!!order.show_date_id || !!order.artist_id);
 
+  // Feeds SetupCallout only -- called unconditionally, ABOVE the isLoading/isError/
+  // isReadOnly early returns below, because it is a hook (Rules of Hooks). The
+  // existing readyIssues/issueDisabled/issueTitle gate (below the early returns)
+  // stays the single source of truth for whether Issue is actually disabled.
+  const { blockers } = useOrderBlockers(orgId, order ? { data: displayData, terms_variant: termsVariant } : null);
+
   async function handleRefresh() {
     if (!order || !canRefresh) return;
     try {
@@ -667,21 +675,24 @@ export default function HireOrderEditPage() {
         </div>
 
         {/* RIGHT: live document preview */}
-        <div className="rounded-xl border border-border bg-muted p-3 sm:p-4">
-          <div className="sticky top-4 z-10 mb-3 flex justify-center">
-            <span className="rounded-full border border-border bg-card px-3 py-1 text-xs font-medium text-muted-foreground shadow-elev1">
-              Live preview, updates as you edit
-            </span>
+        <div>
+          <SetupCallout orgId={orgId} blockers={blockers} />
+          <div className="rounded-xl border border-border bg-muted p-3 sm:p-4">
+            <div className="sticky top-4 z-10 mb-3 flex justify-center">
+              <span className="rounded-full border border-border bg-card px-3 py-1 text-xs font-medium text-muted-foreground shadow-elev1">
+                Live preview, updates as you edit
+              </span>
+            </div>
+            {previewSrc ? (
+              <iframe
+                title="Hire order live preview"
+                src={previewSrc}
+                className="h-[600px] w-full rounded-lg border border-border bg-background lg:h-[720px]"
+              />
+            ) : (
+              <Skeleton className="h-[600px] w-full rounded-lg" />
+            )}
           </div>
-          {previewSrc ? (
-            <iframe
-              title="Hire order live preview"
-              src={previewSrc}
-              className="h-[600px] w-full rounded-lg border border-border bg-background lg:h-[720px]"
-            />
-          ) : (
-            <Skeleton className="h-[600px] w-full rounded-lg" />
-          )}
         </div>
       </div>
     </div>
