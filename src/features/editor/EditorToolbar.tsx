@@ -76,13 +76,17 @@ export function EditorToolbar() {
             <Building2 className="h-4 w-4 text-muted-foreground" />
             <span className="text-muted-foreground text-xs">Org:</span>
             <Select
+              // `?? ''` keeps the Select controlled; passing undefined would hand it
+              // back to Radix as uncontrolled. currentOrg falls back to orgs[0], so the
+              // empty case is unreachable today — the placeholder is there so it reads
+              // as an empty state rather than a blank trigger if that ever changes.
               value={currentOrg?.id ?? ''}
               // switchOrg clears the impersonated user itself, so every entry point
               // gets that behavior, not just this one.
               onValueChange={v => { if (v !== currentOrg?.id) switchOrg(v); }}
             >
               <SelectTrigger className="h-7 w-44 text-xs" aria-label="Editor organization">
-                <SelectValue />
+                <SelectValue placeholder="Select organization" />
               </SelectTrigger>
               <SelectContent>
                 {orgs.map(o => (

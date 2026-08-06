@@ -80,6 +80,15 @@ describe("EditorToolbar org selector", () => {
     expect(await screen.findByRole("option", { name: "Dormant Co (suspended)" })).toBeInTheDocument();
   });
 
+  it("names the empty state rather than showing a blank trigger when there is no active org", () => {
+    // Not reachable today (currentOrg falls back to orgs[0]), but the value prop has to
+    // stay a string to keep the Select controlled, so the empty case should still read.
+    setAuth({ currentOrg: null });
+    renderWithProviders(<EditorToolbar />);
+
+    expect(orgSelect()).toHaveTextContent("Select organization");
+  });
+
   it("will not let an ordinary admin switch into a suspended org", async () => {
     // ProtectedRoute swaps the whole layout for SuspendedOrgScreen, taking this very
     // toolbar with it, so entering one is a one-way trip for a non-super-admin.
