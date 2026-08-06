@@ -44,8 +44,9 @@ export default function DashboardPage() {
   return <ProducerDashboard />;
 }
 
-/** Producer dashboard booking region. One gate for both attention cards, since
- *  neither is meaningful without the booking module. */
+/** Producer dashboard booking region: the "Ready to Confirm" bulk-action card plus
+ *  both attention cards. One gate for all three, since none is meaningful without
+ *  the booking module and every one of them either reads or writes bookings. */
 export function ProducerBookingSection({ children }: { children: React.ReactNode }) {
   return <ModuleGate feature="booking_flow">{children}</ModuleGate>;
 }
@@ -222,82 +223,85 @@ function ProducerDashboard() {
         <p className="text-muted-foreground mt-1">Cast confirmation status across upcoming dates.</p>
       </div>
 
-      {/* Ready to confirm. Backlog-driven, not policy-driven: under auto-confirm,
-          new soft_booked rows do not arise, so the card self-hides; any that
-          exist are backlog from a previous policy and need the affordance. */}
-      {(softBookedRows?.length ?? 0) > 0 && (
-        <Card>
-          <CardHeader>
-            <div className="flex items-center justify-between flex-wrap gap-3">
-              <CardTitle className="font-display flex items-center gap-2 text-base">
-                <CheckCircle2 className="h-4 w-4 text-warning" />
-                Ready to Confirm
-                <Badge variant="secondary">{softBookedRows!.length}</Badge>
-              </CardTitle>
-              {selected.size > 0 && (
-                <div className="flex gap-2">
-                  <Button
-                    size="sm"
-                    variant="default"
-                    className="text-xs"
-                    disabled={bulkConfirm.isPending || bulkDecline.isPending || !canConfirmBookings}
-                    title={canConfirmBookings ? undefined : "You don't have permission to confirm bookings"}
-                    onClick={() => bulkConfirm.mutate([...selected])}
-                  >
-                    <CheckCircle2 className="h-3.5 w-3.5 mr-1" />
-                    Confirm {selected.size}
-                  </Button>
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    className="text-xs hover:bg-destructive/10 hover:text-destructive"
-                    disabled={bulkConfirm.isPending || bulkDecline.isPending}
-                    onClick={() => bulkDecline.mutate([...selected])}
-                  >
-                    <XCircle className="h-3.5 w-3.5 mr-1" />
-                    Decline {selected.size}
-                  </Button>
-                </div>
-              )}
-            </div>
-          </CardHeader>
-          <CardContent className="p-0">
-            <div className="divide-y divide-border">
-              {/* Select-all header */}
-              <div className="flex items-center gap-3 px-4 py-2 bg-muted/30 text-xs text-muted-foreground">
-                <Checkbox checked={allSelected} onCheckedChange={toggleAll} />
-                <span className="flex-1">Artist</span>
-                <span className="w-40">Date / Show</span>
-                <span className="w-20 text-right">Type</span>
-              </div>
-              {softBookedRows!.map((row) => (
-                <div key={row.id} className="flex items-center gap-3 px-4 py-3 hover:bg-muted/20">
-                  <Checkbox
-                    checked={selected.has(row.id)}
-                    onCheckedChange={() => toggleOne(row.id)}
-                  />
-                  <span className="flex-1 text-sm font-medium truncate">
-                    {row.artist?.name ?? '—'}
-                  </span>
-                  <div className="w-40 min-w-0">
-                    <p className="text-sm truncate">
-                      {referenceLabel({ reference, show: row.show_date?.show ?? null, custom: null, customFieldKey })}
-                    </p>
-                    <p className="text-xs text-muted-foreground">{formatDateDMY(row.show_date?.date ?? '')}</p>
-                  </div>
-                  <div className="w-20 text-right">
-                    <Badge variant="outline" className="text-xs">
-                      {row.is_understudy ? 'Understudy' : 'Main'}
-                    </Badge>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
-      )}
-
       <ProducerBookingSection>
+        {/* Ready to confirm. Backlog-driven, not policy-driven: under auto-confirm,
+            new soft_booked rows do not arise, so the card self-hides; any that
+            exist are backlog from a previous policy and need the affordance.
+            Inside the module gate: the freeze decision deliberately preserves that
+            soft_booked backlog, so an unentitled org is exactly the case where this
+            card would otherwise appear with live bulk-write controls. */}
+        {(softBookedRows?.length ?? 0) > 0 && (
+          <Card>
+            <CardHeader>
+              <div className="flex items-center justify-between flex-wrap gap-3">
+                <CardTitle className="font-display flex items-center gap-2 text-base">
+                  <CheckCircle2 className="h-4 w-4 text-warning" />
+                  Ready to Confirm
+                  <Badge variant="secondary">{softBookedRows!.length}</Badge>
+                </CardTitle>
+                {selected.size > 0 && (
+                  <div className="flex gap-2">
+                    <Button
+                      size="sm"
+                      variant="default"
+                      className="text-xs"
+                      disabled={bulkConfirm.isPending || bulkDecline.isPending || !canConfirmBookings}
+                      title={canConfirmBookings ? undefined : "You don't have permission to confirm bookings"}
+                      onClick={() => bulkConfirm.mutate([...selected])}
+                    >
+                      <CheckCircle2 className="h-3.5 w-3.5 mr-1" />
+                      Confirm {selected.size}
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="text-xs hover:bg-destructive/10 hover:text-destructive"
+                      disabled={bulkConfirm.isPending || bulkDecline.isPending}
+                      onClick={() => bulkDecline.mutate([...selected])}
+                    >
+                      <XCircle className="h-3.5 w-3.5 mr-1" />
+                      Decline {selected.size}
+                    </Button>
+                  </div>
+                )}
+              </div>
+            </CardHeader>
+            <CardContent className="p-0">
+              <div className="divide-y divide-border">
+                {/* Select-all header */}
+                <div className="flex items-center gap-3 px-4 py-2 bg-muted/30 text-xs text-muted-foreground">
+                  <Checkbox checked={allSelected} onCheckedChange={toggleAll} />
+                  <span className="flex-1">Artist</span>
+                  <span className="w-40">Date / Show</span>
+                  <span className="w-20 text-right">Type</span>
+                </div>
+                {softBookedRows!.map((row) => (
+                  <div key={row.id} className="flex items-center gap-3 px-4 py-3 hover:bg-muted/20">
+                    <Checkbox
+                      checked={selected.has(row.id)}
+                      onCheckedChange={() => toggleOne(row.id)}
+                    />
+                    <span className="flex-1 text-sm font-medium truncate">
+                      {row.artist?.name ?? '—'}
+                    </span>
+                    <div className="w-40 min-w-0">
+                      <p className="text-sm truncate">
+                        {referenceLabel({ reference, show: row.show_date?.show ?? null, custom: null, customFieldKey })}
+                      </p>
+                      <p className="text-xs text-muted-foreground">{formatDateDMY(row.show_date?.date ?? '')}</p>
+                    </div>
+                    <div className="w-20 text-right">
+                      <Badge variant="outline" className="text-xs">
+                        {row.is_understudy ? 'Understudy' : 'Main'}
+                      </Badge>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
         {flow.artist_acceptance && (
           <TierAttentionCard
             items={attentionItems}
