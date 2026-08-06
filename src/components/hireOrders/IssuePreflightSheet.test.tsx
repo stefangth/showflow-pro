@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { screen, waitFor } from "@testing-library/react";
+import { act, screen, waitFor } from "@testing-library/react";
 import { renderWithProviders } from "@/test/renderWithProviders";
+import { createTestQueryClient } from "@/test/queryClient";
 import { createFakeSupabase, type TableSeed } from "@/test/supabaseFake";
 
 // IssuePreflightSheet navigates to the edit page on an order-scoped "Open the
@@ -104,5 +105,32 @@ describe("IssuePreflightSheet", () => {
     expect(await screen.findAllByText(/could not check/i)).not.toHaveLength(0);
     expect(screen.getByRole("button", { name: "Issue and send" })).toBeDisabled();
     expect(screen.queryByText(/Ready to issue/i)).not.toBeInTheDocument();
+  });
+
+  // The `&& !isError` fail-safe on `clean`, pinned on its own. The test above only
+  // reaches the error COPY: with nothing ever read, the fallbacks produce
+  // missing_letterhead + missing_terms, so `clean` is empty because of the blockers,
+  // not because of the guard. React Query keeps the last good `data` when a
+  // BACKGROUND refetch fails, so "errored, with good stale settings still cached" is
+  // reachable, and it is the only state where the guard is what disables the button.
+  it("stops presenting a clean bill of health when a background refetch fails, even though the last good settings are still cached", async () => {
+    seedClient(READY_SEED);
+    const queryClient = createTestQueryClient();
+    renderWithProviders(
+      <IssuePreflightSheet open orgId="org-1" order={ORDER} onOpenChange={vi.fn()} onConfirm={vi.fn()} />,
+      { queryClient },
+    );
+    await waitFor(() => expect(screen.getByRole("button", { name: "Issue and send" })).toBeEnabled());
+
+    // The refetch fails; the good letterhead and terms stay in the cache, so
+    // computeBlockers still returns [] from them.
+    seedClient({ app_settings: { data: null, error: new Error("boom") } });
+    await act(async () => {
+      await queryClient.invalidateQueries({ queryKey: ["app-settings"] });
+    });
+
+    await waitFor(() => expect(screen.getByRole("button", { name: "Issue and send" })).toBeDisabled());
+    expect(screen.queryByText(/Ready to issue/i)).not.toBeInTheDocument();
+    expect(screen.getAllByText(/could not check/i)).not.toHaveLength(0);
   });
 });

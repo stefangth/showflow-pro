@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { screen, waitFor } from "@testing-library/react";
+import { act, screen, waitFor } from "@testing-library/react";
 import { renderWithProviders } from "@/test/renderWithProviders";
+import { createTestQueryClient } from "@/test/queryClient";
 import { createFakeSupabase, type TableSeed } from "@/test/supabaseFake";
 
 const { client } = vi.hoisted(() => ({ client: {} as Record<string, unknown> }));
@@ -87,5 +88,28 @@ describe("BatchIssuePreflightDialog", () => {
     expect(await screen.findAllByText(/could not check/i)).not.toHaveLength(0);
     const btn = screen.getByRole("button", { name: /Issue \d+ orders?/i });
     expect(btn).toBeDisabled();
+  });
+
+  // The `isError ? [] : ...` fail-safe on `clean`, pinned on its own. The test above
+  // only reaches the error COPY: with nothing ever read, the fallbacks block every
+  // order anyway, so `clean` is empty for that reason rather than because of the
+  // guard. React Query keeps the last good `data` when a BACKGROUND refetch fails,
+  // so "errored, with good stale settings still cached" is reachable, and it is the
+  // only state where the guard is what holds the selection back.
+  it("stops treating the selection as issuable when a background refetch fails, even though the last good settings are still cached", async () => {
+    const queryClient = createTestQueryClient();
+    renderWithProviders(
+      <BatchIssuePreflightDialog open orgId="org-1" orders={[CLEAN, NO_FEE]} onOpenChange={vi.fn()} onConfirm={vi.fn()} />,
+      { queryClient },
+    );
+    expect(await screen.findByRole("button", { name: /Issue 1 order/i })).toBeEnabled();
+
+    seedClient({ app_settings: { data: null, error: new Error("boom") } });
+    await act(async () => {
+      await queryClient.invalidateQueries({ queryKey: ["app-settings"] });
+    });
+
+    await waitFor(() => expect(screen.getByRole("button", { name: /Issue 0 orders/i })).toBeDisabled());
+    expect(screen.queryByText(/can be issued now/i)).not.toBeInTheDocument();
   });
 });
