@@ -16,7 +16,9 @@ vi.mock("./EditorSidePanel", () => ({ EditorSidePanel: () => null }));
 
 import { useAuth } from "@/features/auth/AuthContext";
 import { useEditor } from "./EditorContext";
-import { EditorToolbar } from "./EditorToolbar";
+import { EditorToolbar, EditorPageBadge } from "./EditorToolbar";
+import { MemoryRouter } from "react-router-dom";
+import { ROUTES } from "@/config/app.config";
 
 const ACME = { id: "o1", name: "Acme", slug: "acme", status: "active" };
 const BETA = { id: "o2", name: "Beta Productions", slug: "beta", status: "active" };
@@ -78,8 +80,32 @@ describe("EditorToolbar org selector", () => {
     expect(await screen.findByRole("option", { name: "Dormant Co (suspended)" })).toBeInTheDocument();
   });
 
-  it("switches the app to the chosen org and drops the impersonated user", async () => {
-    const { switchOrg, setViewAsUser } = setAuth({
+  it("will not let an ordinary admin switch into a suspended org", async () => {
+    // ProtectedRoute swaps the whole layout for SuspendedOrgScreen, taking this very
+    // toolbar with it, so entering one is a one-way trip for a non-super-admin.
+    const { switchOrg } = setAuth({ orgs: [ACME, GONE] });
+    renderWithProviders(<EditorToolbar />);
+
+    fireEvent.click(orgSelect());
+    fireEvent.click(await screen.findByRole("option", { name: "Dormant Co (suspended)" }));
+
+    expect(switchOrg).not.toHaveBeenCalled();
+  });
+
+  it("lets a super-admin into a suspended org, since they bypass the suspended screen", async () => {
+    const { switchOrg } = setAuth({ orgs: [ACME, GONE], roles: [], isSuperAdmin: true });
+    renderWithProviders(<EditorToolbar />);
+
+    fireEvent.click(orgSelect());
+    fireEvent.click(await screen.findByRole("option", { name: "Dormant Co (suspended)" }));
+
+    expect(switchOrg).toHaveBeenCalledWith(GONE.id);
+  });
+
+  it("switches the app to the chosen org", async () => {
+    // Dropping the impersonated user is switchOrg's job, not the toolbar's — see
+    // AuthContext.switchOrg.test.tsx.
+    const { switchOrg } = setAuth({
       viewAsUser: { id: "u1", email: "someone@acme.test", roles: ["producer"] },
     });
     renderWithProviders(<EditorToolbar />);
@@ -88,20 +114,53 @@ describe("EditorToolbar org selector", () => {
     fireEvent.click(await screen.findByRole("option", { name: "Beta Productions" }));
 
     expect(switchOrg).toHaveBeenCalledWith(BETA.id);
-    // The impersonated user belongs to the previous org and would not even appear in
-    // the new org's dropdown, so it must not survive the switch.
-    expect(setViewAsUser).toHaveBeenCalledWith(null);
   });
 
   it("does nothing when the already-active org is re-selected", async () => {
-    const { switchOrg, setViewAsUser } = setAuth();
+    const { switchOrg } = setAuth();
     renderWithProviders(<EditorToolbar />);
 
     fireEvent.click(orgSelect());
     fireEvent.click(await screen.findByRole("option", { name: "Acme" }));
 
     expect(switchOrg).not.toHaveBeenCalled();
-    expect(setViewAsUser).not.toHaveBeenCalled();
+  });
+});
+
+describe("EditorPageBadge", () => {
+  function renderBadge(path: string) {
+    return renderWithProviders(
+      <MemoryRouter initialEntries={[path]}>
+        <EditorPageBadge />
+      </MemoryRouter>,
+    );
+  }
+
+  it("names the source file for the current route", () => {
+    setAuth();
+    renderBadge(ROUTES.BOOKINGS);
+    expect(screen.getByText("ShowsBookingsPage.tsx")).toBeInTheDocument();
+  });
+
+  it("falls back for a route with no mapping", () => {
+    setAuth();
+    renderBadge("/nowhere");
+    expect(screen.getByText("Unknown page")).toBeInTheDocument();
+  });
+
+  it("renders nothing outside editor mode", () => {
+    setAuth();
+    vi.mocked(useEditor).mockReturnValue(
+      partialMock<ReturnType<typeof useEditor>>({ isEditorMode: false }),
+    );
+    const { container } = renderBadge(ROUTES.BOOKINGS);
+    expect(container.querySelector("[class*='font-mono']")).toBeNull();
+  });
+
+  it("renders nothing for a producer, without AppLayout having to gate it", () => {
+    setAuth({ roles: ["producer"] });
+    const { container } = renderBadge(ROUTES.BOOKINGS);
+    expect(container.querySelector("[class*='font-mono']")).toBeNull();
   });
 });
 

@@ -1,13 +1,15 @@
 import { Building2, Eye, Pencil, Settings, User, X } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
+import { useLocation } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Separator } from '@/components/ui/separator';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { useAuth } from '@/features/auth/AuthContext';
-import type { AppRole } from '@/config/app.config';
+import { ROUTES, type AppRole } from '@/config/app.config';
 import { supabase } from '@/integrations/supabase/client';
+import { isOrgSuspended, orgOptionLabel } from '@/lib/orgs';
 import { useEditor } from './EditorContext';
 import { canUseEditor } from './editorAccess';
 import { EditorSidePanel } from './EditorSidePanel';
@@ -75,21 +77,25 @@ export function EditorToolbar() {
             <span className="text-muted-foreground text-xs">Org:</span>
             <Select
               value={currentOrg?.id ?? ''}
-              onValueChange={v => {
-                if (v === currentOrg?.id) return;
-                // The impersonated user belongs to the org being left — it would not
-                // even appear in the new org's list — so drop it before switching.
-                setViewAsUser(null);
-                switchOrg(v);
-              }}
+              // switchOrg clears the impersonated user itself, so every entry point
+              // gets that behavior, not just this one.
+              onValueChange={v => { if (v !== currentOrg?.id) switchOrg(v); }}
             >
               <SelectTrigger className="h-7 w-44 text-xs" aria-label="Editor organization">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
                 {orgs.map(o => (
-                  <SelectItem key={o.id} value={o.id} className="text-xs">
-                    {o.name}{o.status === 'suspended' ? ' (suspended)' : ''}
+                  <SelectItem
+                    key={o.id}
+                    value={o.id}
+                    className="text-xs"
+                    // Entering a suspended org swaps the layout for SuspendedOrgScreen,
+                    // taking this toolbar with it — a one-way trip. Super-admins bypass
+                    // that check, so it is only a trap for ordinary admins.
+                    disabled={isOrgSuspended(o) && !isSuperAdmin}
+                  >
+                    {orgOptionLabel(o)}
                   </SelectItem>
                 ))}
               </SelectContent>
@@ -180,6 +186,42 @@ export function EditorToolbar() {
 
       <EditorSidePanel open={isSidePanelOpen} onOpenChange={setSidePanelOpen} />
     </>
+  );
+}
+
+/**
+ * Which source file backs the route being viewed. Editor-mode only: it is a wayfinding
+ * aid for whoever is configuring the page, not product UI.
+ */
+const ROUTE_TO_FILE: Record<string, string> = {
+  [ROUTES.DASHBOARD]:    'DashboardPage.tsx',
+  [ROUTES.BOOKINGS]:     'ShowsBookingsPage.tsx',
+  [ROUTES.PRODUCTIONS]:  'ProductionsPage.tsx',
+  [ROUTES.HIRE_ORDERS]:  'HireOrdersPage.tsx',
+  [ROUTES.ARTISTS]:      'ArtistsPage.tsx',
+  [ROUTES.AVAILABILITY]: 'AvailabilityPage.tsx',
+  [ROUTES.ADMIN]:        'AdminPage.tsx',
+  [ROUTES.SETTINGS]:     'SettingsPage.tsx',
+  [ROUTES.CHATS]:        'ChatsListPage.tsx',
+};
+
+/**
+ * The page-file badge shown above page content in editor mode. Self-gating, like the
+ * toolbar and the toggle, so its host does not have to restate who may see the editor.
+ */
+export function EditorPageBadge() {
+  const { roles, isSuperAdmin } = useAuth();
+  const { isEditorMode } = useEditor();
+  const location = useLocation();
+
+  if (!isEditorMode || !canUseEditor(roles, isSuperAdmin)) return null;
+
+  return (
+    <div className="mb-4">
+      <Badge variant="neutral" className="font-mono">
+        {ROUTE_TO_FILE[location.pathname] ?? 'Unknown page'}
+      </Badge>
+    </div>
   );
 }
 

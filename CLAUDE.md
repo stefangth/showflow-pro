@@ -83,6 +83,7 @@ These are public values (anon key, not service role). Never commit `.env`. The s
 - **Update `public/changelog.md`** (the single source of truth). Add a newest-first block: `## X.Y.Z — Mon D, YYYY`, a one-line `*theme*`, then `### New` / `### Improved` / `### Fixed` bullets written for end users (no refactors, tests, CI, or docs). Bullets use the form `- **Title** — description`. Never mention super-admin or platform-admin actions (Platform console, org provisioning, org-module toggles, etc.) — there is no public super-admin or platform-admin role, so those changes have no customer-facing angle and don't belong in this file at all.
 - **Regenerate the JSON:** `deno run --allow-read --allow-write scripts/changelog-to-json.ts` rewrites `public/changelog.json` from the markdown — never hand-edit the JSON.
 - **Both files are served publicly** at `/changelog.md` and `/changelog.json` with `Access-Control-Allow-Origin: *` (see `vercel.json`) and consumed by the standalone landing-page repo. Don't rename or move them without updating the landing page.
+- **The dependency runs both ways.** `CHANGELOG_URL` in `src/config/app.config.ts` points the in-app version pill at the landing page's `/changelog` route. Nothing in this repo can typecheck or test that route, so renaming it there silently 404s the pill — change it in both repos together.
 
 ---
 

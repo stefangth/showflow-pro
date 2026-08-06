@@ -4,23 +4,6 @@ import { QueryClientProvider } from "@tanstack/react-query";
 import type { Session } from "@supabase/supabase-js";
 import { createTestQueryClient } from "@/test/queryClient";
 
-// jsdom here runs with an opaque document URL, so it exposes no localStorage;
-// AuthContext reads/writes it (currentOrg persistence). Minimal in-memory stub.
-if (typeof globalThis.localStorage === "undefined") {
-  const store = new Map<string, string>();
-  Object.defineProperty(globalThis, "localStorage", {
-    configurable: true,
-    value: {
-      getItem: (k: string) => (store.has(k) ? store.get(k)! : null),
-      setItem: (k: string, v: string) => void store.set(k, String(v)),
-      removeItem: (k: string) => void store.delete(k),
-      clear: () => store.clear(),
-      key: (i: number) => Array.from(store.keys())[i] ?? null,
-      get length() { return store.size; },
-    },
-  });
-}
-
 // Controllable Supabase auth mock. The bug is in the initial-session bootstrap
 // (`getSession`), so `getSession` is a per-test vi.fn — we never fire an
 // onAuthStateChange event, isolating recovery to the bootstrap path alone.

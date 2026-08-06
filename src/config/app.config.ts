@@ -197,7 +197,11 @@ export const APP_META = {
 } as const;
 
 /**
- * Public changelog, rendered by the marketing site from this repo's `public/changelog.md`.
- * Opened from the version pill in the brand wordmark.
+ * Public changelog, opened from the version pill in the brand wordmark.
+ *
+ * CROSS-REPO CONTRACT: this route is owned by the standalone landing-page repo, which
+ * renders it from this repo's `public/changelog.md`. Nothing here can typecheck or test
+ * it, so renaming or removing that route silently turns the version pill into a 404.
+ * Change it there and here together.
  */
 export const CHANGELOG_URL = `${APP_META.MARKETING_URL}/changelog`;

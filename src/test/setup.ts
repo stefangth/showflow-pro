@@ -1,6 +1,7 @@
 // Use the vitest-flavored entrypoint so the custom matchers (toBeInTheDocument,
 // etc.) augment vitest's `expect` for the typechecker, not just at runtime.
 import "@testing-library/jest-dom/vitest";
+import { afterEach } from "vitest";
 
 if (typeof window !== 'undefined') Object.defineProperty(window, "matchMedia", {
   writable: true,
@@ -17,14 +18,15 @@ if (typeof window !== 'undefined') Object.defineProperty(window, "matchMedia", {
 });
 
 // This jsdom runs on an opaque origin, which leaves `localStorage` undefined rather
-// than merely empty. Components that read it during render (EditorProvider's initial
-// editor-mode state, AuthContext's remembered org) would throw on mount. An in-memory
-// stand-in keeps them testable; each file clears what it sets.
+// than merely empty. Components that read it during render (EditorProvider's persisted
+// editor-mode flag, AuthContext's remembered org) would throw on mount. An in-memory
+// stand-in keeps them testable.
 // Installed unconditionally rather than behind a `!window.localStorage` probe: vitest
 // puts jsdom's globals on the Node global object, so *reading* the property at all hits
 // Node's own experimental getter and prints "localStorage is not available because
-// --localstorage-file was not provided" once per worker. Defining over it is silent, and
-// a fresh in-memory Storage per worker is what we want for isolation anyway.
+// --localstorage-file was not provided". Defining over it is silent.
+// setupFiles run once per TEST FILE, so the store below is shared by every test in a
+// file — the afterEach further down clears it so ordering can't leak between tests.
 if (typeof window !== "undefined") {
   const store = new Map<string, string>();
   const memoryStorage: Storage = {
@@ -36,6 +38,7 @@ if (typeof window !== "undefined") {
     clear: () => store.clear(),
   };
   Object.defineProperty(window, "localStorage", { value: memoryStorage, writable: true, configurable: true });
+  afterEach(() => memoryStorage.clear());
 }
 
 if (typeof globalThis !== "undefined" && !("ResizeObserver" in globalThis)) {
