@@ -474,13 +474,13 @@ export default function HireOrderEditPage() {
   }
   const issueDisabled =
     blockersLoading || blockersError || blockers.length > 0 || action.isPending || !variantIsLive;
-  const issueTitle = blockersLoading
-    ? "Checking this order"
-    : blockersError
-      ? "Could not check this order. Reload the page and try again."
-      : issueTitleParts.length > 0
-        ? issueTitleParts.join(", ")
-        : undefined;
+  // The read-state prefix is prepended, not substituted: `issueTitleParts` can already
+  // hold the deleted-terms-template reason, which is derived from `terms` (not from the
+  // blockers read) and is the one thing the producer can act on. Dropping it while the
+  // settings read is in flight hides it exactly when they hover to find out why.
+  if (blockersLoading) issueTitleParts.unshift("Checking this order");
+  else if (blockersError) issueTitleParts.unshift("Could not check this order. Reload the page and try again.");
+  const issueTitle = issueTitleParts.length > 0 ? issueTitleParts.join(", ") : undefined;
 
   const currency = fieldString(displayData, "currency") || order.fee_currency || "EUR";
   const feeDisplay =

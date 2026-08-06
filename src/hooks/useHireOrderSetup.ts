@@ -36,11 +36,7 @@ export function useHireOrderSetupStatus(orgId: string | null): {
   status: HireOrderSetupStatus;
   isLoading: boolean;
 } {
-  const letterhead = useQuery({
-    queryKey: ["app-settings", "hire_order_letterhead", orgId],
-    enabled: !!orgId,
-    queryFn: () => resolveOrgSetting<Letterhead>(supabase, orgId, "hire_order_letterhead", LETTERHEAD_DEFAULT),
-  });
+  const letterhead = useOrgLetterhead(orgId);
   const terms = useOrgTerms(orgId);
   const countersign = useQuery({
     queryKey: ["app-settings", "hire_order_countersign", "exists", orgId],
@@ -60,10 +56,31 @@ export function useHireOrderSetupStatus(orgId: string | null): {
   return { status, isLoading };
 }
 
-/** The platform terms library. Org-independent, so it is cached once per session. */
+/** The org's resolved `hire_order_letterhead`.
+ *
+ *  One home for a query that five surfaces need (setup status, order blockers, the
+ *  batch dialog, the rail's letterhead step, the preflight's inline fix). Inlining it
+ *  per call site meant the key, the fallback and the `enabled` condition had to be kept
+ *  identical by hand in eight places, and any drift would silently split the cache.
+ *  Pass `null` to keep it idle, which is how callers gate on `open` or on an
+ *  entitlement. */
+export function useOrgLetterhead(orgId: string | null) {
+  return useQuery({
+    queryKey: ["app-settings", "hire_order_letterhead", orgId],
+    enabled: !!orgId,
+    queryFn: () => resolveOrgSetting<Letterhead>(supabase, orgId, "hire_order_letterhead", LETTERHEAD_DEFAULT),
+  });
+}
+
+/** The platform terms library. Org-independent, so it is cached once per session.
+ *
+ *  Keyed under `app-settings`, NOT `hire-orders`: it is a platform app_settings row,
+ *  and the hire-orders domain is invalidated wholesale after every draft, issue and
+ *  resend (`invalidateHireOrders`). Under the old key a batch of ten issues refetched
+ *  this row ten times and its staleTime never applied. */
 export function useTermsLibrary() {
   return useQuery({
-    queryKey: ["hire-orders", "terms-library"],
+    queryKey: ["app-settings", "hire_order_terms_library"],
     queryFn: () => fetchTermsLibrary(supabase),
     staleTime: 5 * 60_000,
   });

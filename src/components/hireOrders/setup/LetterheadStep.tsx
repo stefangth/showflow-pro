@@ -1,10 +1,11 @@
 import { useEffect, useRef, useState } from "react";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
-import { resolveOrgSetting, upsertOrgSetting } from "@/data/settings";
+import { upsertOrgSetting } from "@/data/settings";
 import { LETTERHEAD_DEFAULT } from "@/components/settings/hireOrders/defaults";
 import type { Letterhead } from "@/components/settings/hireOrders/LetterheadCard";
+import { useOrgLetterhead } from "@/hooks/useHireOrderSetup";
 import { LetterheadFields } from "@/components/settings/hireOrders/fields/LetterheadFields";
 import { linesFromText, mergeLetterhead, serializeLines } from "@/lib/hireOrders/letterhead";
 import type { Json } from "@/integrations/supabase/types";
@@ -21,11 +22,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
  *  and agent signature that only Settings renders. */
 export function LetterheadStep({ orgId, onDone }: { orgId: string | null; onDone: () => void }) {
   const qc = useQueryClient();
-  const stored = useQuery({
-    queryKey: ["app-settings", "hire_order_letterhead", orgId],
-    enabled: !!orgId,
-    queryFn: () => resolveOrgSetting<Letterhead>(supabase, orgId, "hire_order_letterhead", LETTERHEAD_DEFAULT),
-  });
+  const stored = useOrgLetterhead(orgId);
 
   const [form, setForm] = useState<Letterhead>(LETTERHEAD_DEFAULT);
   const [addressText, setAddressText] = useState("");

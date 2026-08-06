@@ -1,13 +1,13 @@
 import { useState } from "react";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { AlertCircle, Lock } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
-import { resolveOrgSetting, upsertOrgSetting } from "@/data/settings";
-import { LETTERHEAD_DEFAULT } from "@/components/settings/hireOrders/defaults";
-import type { Letterhead } from "@/components/settings/hireOrders/LetterheadCard";
+import { upsertOrgSetting } from "@/data/settings";
 import { TermsLibraryPicker } from "@/components/settings/hireOrders/fields/TermsLibraryPicker";
-import { useImportTermsTemplates, useOrgTerms, useTermsLibrary } from "@/hooks/useHireOrderSetup";
+import {
+  useImportTermsTemplates, useOrgLetterhead, useOrgTerms, useTermsLibrary,
+} from "@/hooks/useHireOrderSetup";
 import { mergeLetterhead } from "@/lib/hireOrders/letterhead";
 import { BLOCKER_COPY, type Blocker, type BlockerKey } from "@/lib/hireOrders/preflight";
 import type { Json } from "@/integrations/supabase/types";
@@ -28,11 +28,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
  *  never renders and so can never carry forward on its own. */
 function LetterheadFix({ orgId, idPrefix }: { orgId: string | null; idPrefix: string }) {
   const qc = useQueryClient();
-  const stored = useQuery({
-    queryKey: ["app-settings", "hire_order_letterhead", orgId],
-    enabled: !!orgId,
-    queryFn: () => resolveOrgSetting<Letterhead>(supabase, orgId, "hire_order_letterhead", LETTERHEAD_DEFAULT),
-  });
+  const stored = useOrgLetterhead(orgId);
   const [legalName, setLegalName] = useState("");
   const save = useMutation({
     mutationFn: () => {

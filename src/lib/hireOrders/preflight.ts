@@ -45,29 +45,40 @@ function isBlockerKey(value: string): value is BlockerKey {
   return (BLOCKER_ORDER as readonly string[]).includes(value);
 }
 
-/** User-facing copy per blocker. Kept beside the rule so a new code cannot ship
- *  without text, unlike ISSUE_FAILURE_COPY which deliberately falls back to the raw
- *  code for internal failure modes. */
-export const BLOCKER_COPY: Record<BlockerKey, { label: string; detail: string }> = {
+/** The single source for the blocker vocabulary, in all three registers a surface
+ *  needs. Kept beside the rule so a new code cannot ship without text.
+ *
+ *  `label` names the thing (a row heading in the preflight list), `detail` explains
+ *  what is wrong with it (the line under that heading), and `action` says what to do
+ *  about it in one imperative clause, for places with room for only one string: the
+ *  edge function's failure toasts and the Issue button's tooltip. `ISSUE_FAILURE_COPY`
+ *  in useHireOrders.ts is built from `action` rather than restating these five codes,
+ *  so one blocker cannot read two different ways on two surfaces. */
+export const BLOCKER_COPY: Record<BlockerKey, { label: string; detail: string; action: string }> = {
   missing_fee: {
     label: "Engagement fee",
     detail: "This order has no fee. An order cannot go out without one.",
+    action: "Set an engagement fee before issuing",
   },
   missing_recipient_email: {
     label: "Recipient email",
     detail: "There is no address to send the order to.",
+    action: "Add a recipient email before issuing",
   },
   missing_date: {
     label: "Engagement date",
     detail: "This order has no date on it.",
+    action: "Set a show date before issuing",
   },
   missing_letterhead: {
     label: "Letterhead legal name",
     detail: "The document header is empty. A hire order needs a legal party on it.",
+    action: "Add a letterhead in Settings before issuing",
   },
   missing_terms: {
     label: "Terms template",
     detail: "No clauses are configured for this order's terms, so the back page would be blank.",
+    action: "Add terms in Settings before issuing",
   },
 };
 

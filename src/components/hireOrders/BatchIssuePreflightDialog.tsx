@@ -1,11 +1,6 @@
 import { AlertTriangle } from "lucide-react";
-import { useQuery } from "@tanstack/react-query";
-import { supabase } from "@/integrations/supabase/client";
-import { resolveOrgSetting } from "@/data/settings";
 import { useCan } from "@/hooks/useCapabilities";
-import { useOrgTerms } from "@/hooks/useHireOrderSetup";
-import { LETTERHEAD_DEFAULT } from "@/components/settings/hireOrders/defaults";
-import type { Letterhead } from "@/components/settings/hireOrders/LetterheadCard";
+import { useOrgLetterhead, useOrgTerms } from "@/hooks/useHireOrderSetup";
 import { BLOCKER_COPY, computeBlockers } from "@/lib/hireOrders/preflight";
 import type { HireOrderTermsSetting } from "@/lib/hireOrders/terms";
 import type { OrderData } from "@/lib/hireOrders/types";
@@ -49,14 +44,9 @@ export function BatchIssuePreflightDialog({
   open, onOpenChange, orgId, orders, onConfirm, isIssuing = false,
 }: BatchIssuePreflightDialogProps) {
   const canEditSettings = useCan("edit_hire_order_settings");
-  const letterhead = useQuery({
-    queryKey: ["app-settings", "hire_order_letterhead", orgId],
-    enabled: !!orgId && open,
-    queryFn: () => resolveOrgSetting<Letterhead>(supabase, orgId, "hire_order_letterhead", LETTERHEAD_DEFAULT),
-  });
-  // Gated on `open` like the letterhead query above it: the two halves of one check
-  // should not read on different schedules, and this dialog is mounted on every
-  // /hire-orders render, so an ungated read here costs a round trip per page load.
+  // Both halves of one check gated on `open` the same way: this dialog is mounted on
+  // every /hire-orders render, so an ungated read costs a round trip per page load.
+  const letterhead = useOrgLetterhead(open ? orgId : null);
   const terms = useOrgTerms(open ? orgId : null);
   const isLoading = !!orgId && (letterhead.isLoading || terms.isLoading);
   // Carried forward from plan 1's review: an unread setting is not an empty setting.
@@ -65,16 +55,22 @@ export function BatchIssuePreflightDialog({
   // once, not one), but the same isError honesty applies.
   const isError = !!orgId && (letterhead.isError || terms.isError);
 
-  const checked = orders.map((o) => ({
-    order: o,
-    blockers: computeBlockers({
-      data: o.data,
-      letterhead: letterhead.data ?? null,
-      terms: terms.data ?? EMPTY_TERMS,
-      termsVariant: o.terms_variant,
-      canEditSettings,
-    }),
-  }));
+  // Gated on `open` like the two reads above. OrdersTable mounts this dialog on every
+  // render and rebuilds its `orders` prop inline, so ungated this ran computeBlockers
+  // for every selected row on every keystroke in the search box and threw the result
+  // away.
+  const checked = !open
+    ? []
+    : orders.map((o) => ({
+        order: o,
+        blockers: computeBlockers({
+          data: o.data,
+          letterhead: letterhead.data ?? null,
+          terms: terms.data ?? EMPTY_TERMS,
+          termsVariant: o.terms_variant,
+          canEditSettings,
+        }),
+      }));
   const clean = isError ? [] : checked.filter((c) => c.blockers.length === 0);
   const blocked = checked.filter((c) => c.blockers.length > 0);
 

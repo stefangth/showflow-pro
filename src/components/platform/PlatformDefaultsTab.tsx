@@ -332,13 +332,22 @@ function HireOrderTermsLibraryCard() {
         if (!t || typeof t.id !== "string" || typeof t.name !== "string" || !Array.isArray(t.clauses)) {
           throw new Error("Every template needs an id, a name and a clauses array");
         }
+        // Validate the clause objects too, not just the array around them. Every
+        // consumer dereferences clause.title (the picker joins them into its subtitle,
+        // the renderer prints them), so one null or untitled clause here would throw
+        // wherever it renders, for every org at once.
+        for (const c of t.clauses) {
+          if (!c || typeof c.title !== "string" || typeof c.body !== "string") {
+            throw new Error(`Every clause in "${t.name}" needs a title and a body string`);
+          }
+        }
       }
       return savePlatformSetting(supabase, TERMS_LIBRARY_KEY, { templates } as unknown as Json);
     },
     onSuccess: () => {
       setParseError(null);
       qc.invalidateQueries({ queryKey: ["platform", "terms-library"] });
-      qc.invalidateQueries({ queryKey: ["hire-orders", "terms-library"] });
+      qc.invalidateQueries({ queryKey: ["app-settings", "hire_order_terms_library"] });
       toast.success("Terms library saved");
     },
     onError: (e: Error) => setParseError(e.message),

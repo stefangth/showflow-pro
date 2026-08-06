@@ -95,7 +95,13 @@ export default function HireOrdersPage() {
   // rail will render before it picks its column template. Gated on the entitlement
   // too: app_settings RLS checks role, not entitlement, so an unentitled org's setup
   // writes would land, directly contradicting the FeatureOffBanner above.
-  const setupRailVisible = useSetupRailVisible(orgId);
+  // Gated on featureOn the same way the ready-dates read above is: ungated this fired
+  // three app_settings reads on every visit by an org without the entitlement, whose
+  // result was then discarded. The `featureOn &&` stays as well as the null argument:
+  // this is the gate that keeps an interactive setup checklist off a page already
+  // showing "changes cannot be saved", and it should not depend on another module's
+  // null-handling to hold.
+  const setupRailVisible = useSetupRailVisible(featureOn ? orgId : null);
   const showSetupRail = featureOn && setupRailVisible;
 
   const stats = computeOrderKpis(allOrders);

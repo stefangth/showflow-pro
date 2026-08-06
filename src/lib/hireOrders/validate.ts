@@ -5,8 +5,14 @@
 
 import type { OrderData } from "./types";
 
+/** Whitespace counts as blank. A legal name of "   " is not a legal party, and a
+ *  fee or email of "   " is not a value either. Without the trim, the rail's
+ *  `computeSetupStatus` (which does trim) and this rule disagree, so one surface
+ *  says "Blocks issue" while the other enables Issue and the PDF goes out with an
+ *  empty letterhead header. */
 function isBlank(value: unknown): boolean {
-  return value === undefined || value === null || value === "";
+  if (typeof value === "string") return value.trim() === "";
+  return value === undefined || value === null;
 }
 
 /**

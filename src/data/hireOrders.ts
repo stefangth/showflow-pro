@@ -667,11 +667,18 @@ export async function fetchTermsLibrary(
   if (!Array.isArray(value?.templates)) return HIRE_ORDER_STARTER_TERMS;
   // Per-element validation, not just the array shape: the row is writable by SQL as
   // well as by the platform card, and every consumer dereferences `clauses`, so one
-  // malformed entry would throw where it renders rather than fail here.
-  return value.templates.filter(
-    (t): t is HireOrderTemplate =>
-      !!t && typeof t.id === "string" && typeof t.name === "string" && Array.isArray(t.clauses),
-  );
+  // malformed entry would throw where it renders rather than fail here. The clause
+  // objects are validated too, not just the array around them: the picker joins
+  // `clause.title` into its subtitle and the renderer prints both fields.
+  return value.templates
+    .filter(
+      (t): t is HireOrderTemplate =>
+        !!t && typeof t.id === "string" && typeof t.name === "string" && Array.isArray(t.clauses),
+    )
+    .map((t) => ({
+      ...t,
+      clauses: t.clauses.filter((c) => !!c && typeof c.title === "string" && typeof c.body === "string"),
+    }));
 }
 
 /** Copy library templates into the org's own `hire_order_terms` and return the result. */

@@ -16,9 +16,18 @@ function storageKey(orgId: string | null): string {
  *  useState would stay correct. */
 const listeners = new Set<() => void>();
 
+/** The backing store is localStorage, which is shared across every tab on the origin,
+ *  so the subscription has to be too. The in-document listener set covers the tab that
+ *  clicked Hide (a `storage` event does not fire on the tab that wrote it); the
+ *  `storage` listener covers every other open tab, which would otherwise keep the rail
+ *  and its grid column until reload. */
 function subscribe(onChange: () => void): () => void {
   listeners.add(onChange);
-  return () => { listeners.delete(onChange); };
+  window.addEventListener("storage", onChange);
+  return () => {
+    listeners.delete(onChange);
+    window.removeEventListener("storage", onChange);
+  };
 }
 
 export function useRailDismissed(orgId: string | null): [boolean, () => void] {

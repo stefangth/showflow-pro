@@ -16,6 +16,10 @@ export function useSetupRailVisible(orgId: string | null): boolean {
   const { status, isLoading } = useHireOrderSetupStatus(orgId);
   const [dismissed] = useRailDismissed(orgId);
 
+  // No org (or a caller passing null to gate on the `hire_orders` entitlement) means
+  // nothing to set up and nothing to read. Without this the all-false status of an
+  // idle query would read as "cannot issue" and show the rail.
+  if (!orgId) return false;
   if (isLoading || dismissed || status.complete) return false;
   // A producer is only told about setup while issuing is ACTUALLY blocked. Countersign
   // is deliberately not a blocker, so an org that can already issue must never show a

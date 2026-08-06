@@ -1,10 +1,5 @@
-import { useQuery } from "@tanstack/react-query";
-import { supabase } from "@/integrations/supabase/client";
-import { resolveOrgSetting } from "@/data/settings";
 import { useCan } from "@/hooks/useCapabilities";
-import { useOrgTerms } from "@/hooks/useHireOrderSetup";
-import { LETTERHEAD_DEFAULT } from "@/components/settings/hireOrders/defaults";
-import type { Letterhead } from "@/components/settings/hireOrders/LetterheadCard";
+import { useOrgLetterhead, useOrgTerms } from "@/hooks/useHireOrderSetup";
 import { computeBlockers, type Blocker } from "@/lib/hireOrders/preflight";
 import type { HireOrderTermsSetting } from "@/lib/hireOrders/terms";
 import type { OrderData } from "@/lib/hireOrders/types";
@@ -29,11 +24,7 @@ export function useOrderBlockers(
   order: BlockableOrder | null | undefined,
 ): { blockers: Blocker[]; isLoading: boolean; isError: boolean; canEditSettings: boolean } {
   const canEditSettings = useCan("edit_hire_order_settings");
-  const letterhead = useQuery({
-    queryKey: ["app-settings", "hire_order_letterhead", orgId],
-    enabled: !!orgId,
-    queryFn: () => resolveOrgSetting<Letterhead>(supabase, orgId, "hire_order_letterhead", LETTERHEAD_DEFAULT),
-  });
+  const letterhead = useOrgLetterhead(orgId);
   const terms = useOrgTerms(orgId);
 
   const isLoading = !!orgId && (letterhead.isLoading || terms.isLoading);

@@ -39,7 +39,10 @@ export function IssuePreflightSheet({
 }: IssuePreflightSheetProps) {
   const navigate = useNavigate();
   const { blockers, isLoading, isError } = useOrderBlockers(orgId, order);
-  const clean = blockers.length === 0 && !isError;
+  // `!!order` is part of the claim, not a caller's job: with no order there is nothing
+  // to check, and useOrderBlockers returns an empty list for it. Without this the sheet
+  // would announce "Ready to issue" and enable the button for an order it never saw.
+  const clean = !!order && blockers.length === 0 && !isError;
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
