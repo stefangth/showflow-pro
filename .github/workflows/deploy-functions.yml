@@ -28,7 +28,13 @@ name: Deploy Edge Functions (production)
 # changed") is preserved best-effort by the git-diff step in the deploy job — but the
 # gate (never deploy a red commit) matters more than that optimization.
 #
-# Required repository secret (already configured; shared with db-reset-production):
+# The deploy is ALSO gated on the schema having landed (check-migrations.mjs, run
+# below). Functions and the frontend deploy on merge whether or not the migration
+# did, so an unapplied migration ships code against a schema that does not exist —
+# exactly what broke multi-date hire orders on 2026-07-24. Drift therefore blocks
+# this deploy on purpose, including for changes unrelated to the drifted migration.
+#
+# Required repository secret (already configured; shared with check-migrations):
 #   SUPABASE_ACCESS_TOKEN — a Supabase personal access token
 #                           (https://supabase.com/dashboard/account/tokens)
 
@@ -62,6 +68,7 @@ jobs:
     env:
       SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
       PROJECT_REF: epweartpzwvcasrzyueh
+      SUPABASE_PROJECT_REF: epweartpzwvcasrzyueh
     steps:
       # Check out the exact commit CI tested. For workflow_run this is the CI run's
       # head SHA; for workflow_dispatch that expression is empty so checkout falls
@@ -99,10 +106,22 @@ jobs:
             echo "Parent commit unavailable — deploying to be safe."
           fi
 
+      # Never ship functions against a schema that did not land. This is the same
+      # check that runs on PRs and on push:main; running it here too is what makes
+      # the code deploy and the schema deploy rise and fall together.
+      - uses: actions/setup-node@v4
+        if: steps.changed.outputs.deploy == 'true'
+        with:
+          node-version: "20"
+
+      - name: Verify the repo's migrations are applied to production
+        if: steps.changed.outputs.deploy == 'true'
+        run: node scripts/check-migrations.mjs
+
       - uses: supabase/setup-cli@v1
         if: steps.changed.outputs.deploy == 'true'
         with:
-          # Pinned to match the rest of CI (ci.yml, db-reset-production.yml).
+          # Pinned to match the rest of CI (ci.yml).
           version: 2.98.2
 
       - name: Show Supabase CLI version
