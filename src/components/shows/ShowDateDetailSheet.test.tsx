@@ -114,7 +114,9 @@ describe("ShowDateDetailSheet capability gates", () => {
       show_date_cast_eligibility: { data: [], error: null },
     });
     vi.mocked(useCan).mockReturnValue(true); // all capabilities on by default
-    vi.mocked(useFeature).mockReturnValue(false); // hire_orders off by default
+    // hire_orders off by default; booking_flow on by default so the booking
+    // card's own ModuleGate stays transparent for tests that aren't about it.
+    vi.mocked(useFeature).mockImplementation((feature) => feature === "booking_flow");
   });
 
   it("hire_orders on + fully filled + no order: header shows Generate hire order and drafts on click", async () => {

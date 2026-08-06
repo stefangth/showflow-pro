@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useMemo, useState, type ReactNode } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { format } from 'date-fns';
 import { toast } from 'sonner';
@@ -59,6 +59,7 @@ import { BookingRow } from '@/components/shows/BookingRow';
 import { useCancelShowDate, useDeleteShowDate } from '@/hooks/useShowDates';
 import { useAllCities } from '@/hooks/useAllCities';
 import { isSyncedDate, canHardDeleteDate } from '@/lib/catalog';
+import { ModuleGate } from '@/components/layout/ModuleGate';
 import type { Booking, Artist } from '@/types';
 
 interface Props {
@@ -68,6 +69,33 @@ interface Props {
 }
 
 type BookingWithArtist = Booking & { artist: Pick<Artist, 'id' | 'name'> };
+
+/** The booking card shell. Entitled: renders the offers / direct-book UI passed as
+ *  children. Not entitled: renders the module notice with a read-only confirmed
+ *  cast list, so a producer still sees who is booked while every control is gone. */
+export function BookingCardSection({ bookings, children }: {
+  bookings: BookingWithArtist[];
+  children: ReactNode;
+}) {
+  const confirmed = bookings.filter((b) => b.status === 'confirmed');
+  return (
+    <ModuleGate
+      feature="booking_flow"
+      preview={
+        confirmed.length > 0 ? (
+          <div className="space-y-1">
+            <p className="text-sm font-medium">Confirmed cast</p>
+            {confirmed.map((b) => (
+              <p key={b.id} className="text-sm text-muted-foreground">{b.artist?.name}</p>
+            ))}
+          </div>
+        ) : null
+      }
+    >
+      {children}
+    </ModuleGate>
+  );
+}
 
 /** Joined row shape of the show-date-detail select below — mirror the select string. */
 interface ShowDateDetailRow {
@@ -715,6 +743,7 @@ export function ShowDateDetailSheet({ showDateId, open, onOpenChange }: Props) {
 
               {/* Offers (tiered) or direct booking, gated to producers on live dates */}
               {canManage && showDate.status !== 'cancelled' && (
+                <BookingCardSection bookings={bookingsForDate ?? []}>
                 <Card>
                   <CardHeader>
                     <CardTitle className="font-display text-base">
@@ -776,6 +805,7 @@ export function ShowDateDetailSheet({ showDateId, open, onOpenChange }: Props) {
                     )}
                   </CardContent>
                 </Card>
+                </BookingCardSection>
               )}
 
               {/* Assigned Artists */}
