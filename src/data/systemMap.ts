@@ -210,7 +210,7 @@ export const SYSTEM_MAP_NODES: SystemMapNode[] = [
       Trigger: "cron every 5 min (per-org interval gate) + Settings → Airtable 'Sync now' (single org)",
       Auth: "requireCronSecret (fan-out) OR requireOrgRole(admin)+org_id (one org) · verify_jwt=false",
       Writes: "shows, show_dates, airtable_sync_log(+record), notifications (airtable_sync_held)",
-      Effects: "invokes open-offer-tier (tier 1, batches of 10) for new dates and updated dates that just gained a session but have no tier-1 row yet, gated on auto_open_tier1 ∧ artist_acceptance · Airtable Data+Meta API",
+      Effects: "invokes open-offer-tier (tier 1, batches of 10) for new dates and updated dates that just gained a session but have no tier-1 row yet, gated on the booking_flow entitlement ∧ auto_open_tier1 ∧ artist_acceptance · Airtable Data+Meta API",
       Failure: "per-org isolation; idempotent by airtable_record_id",
       Cite: "airtable-poll/index.ts",
     },
@@ -242,7 +242,7 @@ export const SYSTEM_MAP_NODES: SystemMapNode[] = [
     detail: {
       Trigger: "UI button + airtable-poll",
       Auth: "isServiceRole ∨ requireOrgRole(admin,producer)",
-      Gate: "409 when booking_flow.artist_acceptance=false (direct-booking orgs never get offers)",
+      Gate: "403 feature_disabled when the org isn't entitled to the booking_flow module (JWT callers only, checked before any pipeline work; service-role bypasses) · 409 when booking_flow.artist_acceptance=false (direct-booking orgs never get offers)",
       DryRun: "dry_run:true returns the candidate list + exclusion counts (already_booked, blocked, inactive, not_eligible, missing_skills), writes nothing",
       Writes: "bookings (suggested, primary only) · show_date_offer_tiers upsert; offer_expires_at stays null except in immediate delivery",
       Effects: "none in digest mode; immediate-delivery orgs (offer_delivery=immediate) get an offer-immediate email right away, stamped only for sends that succeeded",
@@ -261,6 +261,7 @@ export const SYSTEM_MAP_NODES: SystemMapNode[] = [
     detail: {
       Trigger: "UI (show-date sheet)",
       Auth: "isServiceRole ∨ requireOrgRole(admin,producer)",
+      Gate: "403 feature_disabled when the org isn't entitled to the booking_flow module (JWT callers only, checked after the org-scoped auth/capability check succeeds)",
       Writes: "show_date_offer_tiers.closed_at · withdraw: cancel remaining suggested (tier_closed)",
       Failure: "soft_booked/confirmed never touched; idempotent re-close",
       Cite: "close-offer-tier/index.ts:61-90",
@@ -276,6 +277,7 @@ export const SYSTEM_MAP_NODES: SystemMapNode[] = [
     detail: {
       Trigger: "hourly cron + manual",
       Auth: "requireCronOrRole(admin,producer) · verify_jwt=false",
+      Gate: "reminder pass ∧ escalation scan limited to orgs entitled to the booking_flow module (filterEntitledOrgs, single batched org_entitlements read); auto-escalation is one of two service-role paths (with airtable-poll's tier-1 auto-open) that can open a tier without ever going through open-offer-tier's own JWT-only requireFeature gate",
       Reminder: "24h-before-expiry pass, gated on expiry_reminder ∧ artist_acceptance: offer-expiry-reminder email + offer_expiring in-app, idempotent via bookings.reminder_sent_at",
       Writes:
         "expire_soft_bookings() RPC → cancels overdue suggested · notifications (offer_expiring, tier_escalated, cast_escalation_requested) · escalation stamp",
@@ -294,7 +296,7 @@ export const SYSTEM_MAP_NODES: SystemMapNode[] = [
     detail: {
       Trigger: "hourly cron + manual",
       Auth: "requireCronOrRole(admin,producer) · verify_jwt=false",
-      Gate: "per org: at_risk_alerts ∧ artist_acceptance; a gated tier is never marked still-at-risk, so its stale notification clears on the next run same as a recovered tier",
+      Gate: "per org: the booking_flow entitlement (checked before resolveBookingFlow, which fails open to permissive defaults on an entitlement-check error) ∧ at_risk_alerts ∧ artist_acceptance; a gated or unentitled tier is never marked still-at-risk, so its stale notification clears on the next run same as a recovered tier",
       Writes: "notifications (tier_at_risk), deduped per (tier,user), self-clearing on recovery",
       Effects: "none, in-app only by design",
       Cite: "tier-at-risk-watcher/index.ts:29-177",
@@ -346,7 +348,7 @@ export const SYSTEM_MAP_NODES: SystemMapNode[] = [
     detail: {
       Trigger: "hourly cron, gated to each org's Berlin hour (default 19:00)",
       Auth: "requireCronOrRole(admin,producer) · verify_jwt=false",
-      Gate: "skips direct-booking (artist_acceptance=false) and immediate-delivery (offer_delivery=immediate) orgs entirely",
+      Gate: "org list filtered to those entitled to the booking_flow module (filterEntitledOrgs) before any per-org work; skips direct-booking (artist_acceptance=false) and immediate-delivery (offer_delivery=immediate) orgs entirely",
       Writes:
         "bookings.digest_sent_at + offer_expires_at, the ONLY place the 48h clock starts for digest-mode orgs, only after emailWasSent",
       Effects: "artist-offer-digest email",
@@ -363,7 +365,7 @@ export const SYSTEM_MAP_NODES: SystemMapNode[] = [
     detail: {
       Trigger: "hourly cron, Berlin gate (default 20:00)",
       Auth: "requireCronOrRole(admin,producer) · verify_jwt=false",
-      Gate: "skips the whole org when confirmation_digest=false; NOT gated on artist_acceptance (direct-booking orgs rely on this digest as their only booking notification)",
+      Gate: "org list filtered to those entitled to the booking_flow module (filterEntitledOrgs) before any per-org work; skips the whole org when confirmation_digest=false; NOT gated on artist_acceptance (direct-booking orgs rely on this digest as their only booking notification)",
       Writes:
         "notifications (schedule_change) · change_log.digested_at · bookings.confirmation_digest_sent_at, all stamped only on success, so failures self-retry",
       Effects: "artist-confirmation-digest email",
@@ -605,10 +607,10 @@ export const SYSTEM_MAP_NODES: SystemMapNode[] = [
     subsystems: ["booking", "email", "airtable"],
     detail: {
       Guards:
-        "enforce_booking_transition (state machine, rejects) · trg_derive_org_id (cross-org, rejects) · bookings_active_artist_date_uniq (one active per artist+date) · promote_understudy_on_cancellation (accepted understudy, ordered by skill coverage of the cancelled artist's skills desc then oldest first; skills never block promotion) · slot_fill_auto_cancel · notify_booking_transition (suggested→soft_booked → producers; soft_booked→confirmed → artist; direct INSERT as confirmed → artist) · status recompute → show_dates",
+        "enforce_booking_transition (state machine, rejects) · trg_derive_org_id (cross-org, rejects) · bookings_active_artist_date_uniq (one active per artist+date) · promote_understudy_on_cancellation (gated on the booking_flow entitlement — an unentitled org's trigger returns immediately, no promotion; accepted understudy, ordered by skill coverage of the cancelled artist's skills desc then oldest first; skills never block promotion) · slot_fill_auto_cancel · notify_booking_transition (suggested→soft_booked → producers; soft_booked→confirmed → artist; direct INSERT as confirmed → artist) · status recompute → show_dates",
       StateMachine: "suggested → soft_booked → confirmed; suggested → confirmed directly under auto-confirm (producer_confirmation=false); direct-booking orgs INSERT straight to confirmed (no offer step); any → cancelled; cancelled terminal",
-      Rule: "flow-gated triggers/policies (promote_understudy_on_cancellation, the 'Artists can respond to own offers' self-confirm policy) read booking_flow via get_effective_booking_flow — entitlement-aware, so an org without the booking_flow entitlement falls back to classic defaults (understudy promotion on, artist acceptance on, producer confirmation on)",
-      Cite: "20260702120020 · 20260616162454 · 20260616161112 · 20260714104826 · 20260715103620 · 20260715130100 · 20260716235007",
+      Rule: "flow-gated triggers/policies (promote_understudy_on_cancellation, the 'Artists can respond to own offers' self-confirm policy) read booking_flow via get_effective_booking_flow — entitlement-aware, so an org without the booking_flow entitlement falls back to classic defaults (understudy promotion on, artist acceptance on, producer confirmation on); promote_understudy_on_cancellation additionally short-circuits before that read — its entitlement gate returns immediately for an unentitled org, so the config fallback above only ever matters for an entitled org with a missing settings row",
+      Cite: "20260702120020 · 20260616162454 · 20260616161112 · 20260714104826 · 20260715103620 · 20260715130100 · 20260716235007 · 20260806150000",
     },
   },
   {
