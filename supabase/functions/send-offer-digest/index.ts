@@ -2,6 +2,7 @@ import { preflight, json } from "../_shared/http.ts";
 import { requireCronOrRole } from "../_shared/auth.ts";
 import { emailWasSent, realDeps, type Deps } from "../_shared/deps.ts";
 import { getActiveOrgs, resolveOrgSetting, BOOKING_ENGINE_DEFAULTS } from "../_shared/settings.ts";
+import { filterEntitledOrgs } from "../_shared/entitlements.ts";
 import { resolveContactEmail, resolveAccountDisplayName } from "../_shared/identity.ts";
 import { resolveBookingFlow, referenceLabel } from "../_shared/bookingFlow.ts";
 import type { ArtistJoin } from "../_shared/rows.ts";
@@ -49,7 +50,10 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
 
   let orgs: Array<{ id: string }>;
   try {
-    orgs = await getActiveOrgs(admin);
+    // Module gate: only orgs entitled to booking_flow ever enter the loop below —
+    // an unentitled org gets no offer digests at all, not just a hour-gate skip.
+    // filterEntitledOrgs is a single batched org_entitlements read, not a per-org RPC.
+    orgs = await filterEntitledOrgs(admin, await getActiveOrgs(admin), 'booking_flow');
   } catch (e) {
     console.error('send-offer-digest: failed to fetch active orgs', { error: (e as Error).message });
     return json({ error: 'failed to fetch active orgs' }, 500);

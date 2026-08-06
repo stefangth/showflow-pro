@@ -4,6 +4,7 @@ import { requireCapability } from "../_shared/capabilities.ts";
 import type { Json, TablesInsert, TablesUpdate } from "../_shared/database.types.ts";
 import { realDeps, type Deps } from "../_shared/deps.ts";
 import { getActiveOrgs, resolveOrgSetting } from "../_shared/settings.ts";
+import { checkFeature } from "../_shared/entitlements.ts";
 import { resolveBookingFlow } from "../_shared/bookingFlow.ts";
 import { buildProgramKey, buildCityKey } from "../_shared/airtableKey.ts";
 import { coerceCustomValue, type CustomFieldType } from "../_shared/customFields.ts";
@@ -410,13 +411,21 @@ async function syncOrg(deps: Deps, orgId: string, baseId: string, tableName: str
   if (truncated) console.warn("airtable-poll: reached MAX_PAGES limit; sync may be incomplete", { org: orgId });
 
   // Flush tier-1 offers (resilient batch), gated on the org's booking flow. Resolve the
-  // flow once per org. Gate on BOTH switches: auto_open_tier1 (owner turned auto-open off)
-  // AND artist_acceptance — a direct-booking org has no offer step, and open-offer-tier now
-  // 409s in direct mode (Task 8), so the acceptance half avoids pointless failing invokes.
+  // flow once per org. Gate on ALL THREE switches: the booking_flow module entitlement
+  // (bookingEnabled — LOAD-BEARING: this is one of only two paths, alongside
+  // expire-offers' auto-escalation, where a service-role/cron caller can open a tier
+  // without ever going through open-offer-tier's own JWT-only requireFeature gate;
+  // resolveBookingFlow itself fails open to permissive defaults, including
+  // auto_open_tier1: true, on an entitlement-check failure, so flow.auto_open_tier1
+  // alone is NOT a safe gate for an unentitled org), auto_open_tier1 (owner turned
+  // auto-open off), AND artist_acceptance — a direct-booking org has no offer step, and
+  // open-offer-tier now 409s in direct mode (Task 8), so the acceptance half avoids
+  // pointless failing invokes. Only the auto-open is gated; the date sync above always runs.
   let tiersOpened = 0;
   let tiersAttempted = 0;
   const flow = await resolveBookingFlow(admin, orgId);
-  if (flow.auto_open_tier1 && flow.artist_acceptance) {
+  const bookingEnabled = await checkFeature(admin, orgId, "booking_flow");
+  if (bookingEnabled && flow.auto_open_tier1 && flow.artist_acceptance) {
     let candidates = [...newDateIds];
     // Also cover UPDATED dates that just gained a session but have no tier-1 row yet.
     // Over-inclusion is safe: open-offer-tier no-ops benignly for not-ready dates, so no

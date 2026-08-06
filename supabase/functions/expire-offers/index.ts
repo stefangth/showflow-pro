@@ -3,6 +3,7 @@ import { requireCronOrRole } from "../_shared/auth.ts";
 import { realDeps, emailWasSent, type Deps } from "../_shared/deps.ts";
 import { countAccepted, countPendingNotExpired, isFutureOrToday, requiredPrimarySlots } from "../_shared/tierFill.ts";
 import { getActiveOrgs } from "../_shared/settings.ts";
+import { filterEntitledOrgs } from "../_shared/entitlements.ts";
 import { resolveBookingFlow, referenceLabel, type BookingFlow } from "../_shared/bookingFlow.ts";
 import { resolveContactEmail, resolveAccountDisplayName } from "../_shared/identity.ts";
 import { resolveTierLadder, nextTierAfter } from "../_shared/eligibility.ts";
@@ -44,15 +45,21 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
   let remindersSent = 0
   let reminderOrgs: Array<{ id: string }> = []
   try {
-    reminderOrgs = await getActiveOrgs(admin)
+    // Module gate: only orgs entitled to booking_flow ever enter the reminder pass.
+    // filterEntitledOrgs is a single batched org_entitlements read, not a per-org RPC.
+    reminderOrgs = await filterEntitledOrgs(admin, await getActiveOrgs(admin), 'booking_flow')
   } catch (e) {
     console.error('expire-offers: failed to fetch active orgs for reminder pass', { error: (e as Error).message })
   }
 
-  // Active-org id set, shared by BOTH the reminder pass and the escalation scan below.
-  // The escalation scan derives its org from show_dates.org_id, which can include
-  // SUSPENDED orgs; auto-escalation (which creates bookings + emails artists) is gated on
-  // this set so a suspended org's short tier never auto-escalates.
+  // Active-AND-entitled org id set, shared by BOTH the reminder pass and the escalation
+  // scan below. The escalation scan derives its org from show_dates.org_id, which can
+  // include SUSPENDED or unentitled orgs; auto-escalation (which creates bookings +
+  // emails artists, via the internal open-offer-tier invoke below) is gated on this set
+  // so a suspended OR unentitled org's short tier never auto-escalates. This is one of
+  // only two paths (the other is airtable-poll's tier-1 auto-open) where a service-role
+  // caller can open a tier without ever going through open-offer-tier's own JWT-only
+  // requireFeature gate — LOAD-BEARING for the booking_flow module gate.
   const activeOrgIds = new Set(reminderOrgs.map((o) => o.id))
   // resolveBookingFlow cache shared across both passes; the flow doesn't change mid-run
   // and the same org can appear in the reminder pass and the escalation scan, so this

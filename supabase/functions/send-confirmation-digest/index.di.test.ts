@@ -704,6 +704,77 @@ Deno.test("send-confirmation-digest: no active org matches the hour → skipped"
   assertEquals(body.skipped, true);
 });
 
+// ─────────────────────────────────────────────────────────────────────────────
+// Task 6: module gate — booking_flow entitlement filters the active-org set
+//
+// filterEntitledOrgs (a SINGLE batched org_entitlements read, not a per-org RPC)
+// wraps getActiveOrgs() before the per-org loop, so an unentitled org never
+// enters the loop at all — not even the in-app schedule_change notification path,
+// which is otherwise unconditional (confirmation_digest only gates the email).
+// ─────────────────────────────────────────────────────────────────────────────
+
+Deno.test("send-confirmation-digest: an unentitled org is filtered out before the hour gate — no digest, no email", async () => {
+  const { deps, invokeCalls } = makeFakeDeps({
+    now: BERLIN_20_CEST, // matches the configured digest hour — would send if NOT filtered
+    tables: {
+      app_settings: APP_SETTINGS_SEED,
+      organizations: { data: [{ id: ORG_1 }], error: null },
+      bookings: { data: ONE_CONFIRMED, error: null },
+      org_entitlements: { data: [{ org_id: ORG_1, enabled: false }], error: null },
+    },
+  });
+  const res = await handle(makeRequest({ headers: cronOK }), deps);
+  assertEquals(res.status, 200);
+  const body = await res.json();
+  assertEquals(body.skipped, true, "an unentitled org never reaches the hour gate at all");
+  assertEquals(invokeCalls.filter((c) => c.name === "send-transactional-email").length, 0);
+});
+
+Deno.test("send-confirmation-digest: two active orgs match the hour, only the entitled one is processed", async () => {
+  const { deps, invokeCalls } = makeFakeDeps({
+    now: BERLIN_20_CEST,
+    tables: {
+      organizations: { data: [{ id: ORG_1 }, { id: ORG_2 }], error: null },
+      app_settings: [
+        { when: { key: "cron_secret" }, data: { value: "s" } },
+        { when: { key: "confirmation_digest_hour_berlin" }, data: [{ org_id: null, value: 20 }] },
+      ],
+      // ORG_2 explicitly disabled; ORG_1 has no row → falls back to the registry
+      // default (booking_flow defaults on).
+      org_entitlements: { data: [{ org_id: ORG_2, enabled: false }], error: null },
+      bookings: [
+        { when: { org_id: ORG_1 }, data: [{ id: "b1", artist_id: "a1", artists: { id: "a1", name: "Jo", email: "jo@x.com" }, show_dates: { date: "2026-06-10", shows: { program: "P", sub_program: "S" }, cities: { name: "Berlin" } } }] },
+        { when: { org_id: ORG_2 }, data: [{ id: "b2", artist_id: "a2", artists: { id: "a2", name: "Mo", email: "mo@x.com" }, show_dates: null }] },
+      ],
+    },
+  });
+  const res = await handle(makeRequest({ headers: cronOK }), deps);
+  const body = await res.json();
+  assertEquals(body.digests_sent, 1); // only ORG_1
+  const emails = invokeCalls.filter((c) => c.name === "send-transactional-email");
+  assertEquals(emails.length, 1);
+  assertEquals((emails[0].body as { org_id?: string }).org_id, ORG_1);
+});
+
+// Pin the fail-OPEN contract for booking_flow: a transient org_entitlements read
+// error must never silently disable live production booking traffic.
+Deno.test("send-confirmation-digest: keeps every org when the org_entitlements read errors (booking_flow fails open)", async () => {
+  const { deps, invokeCalls } = makeFakeDeps({
+    now: BERLIN_20_CEST,
+    tables: {
+      app_settings: APP_SETTINGS_SEED,
+      organizations: { data: [{ id: ORG_1 }], error: null },
+      bookings: { data: ONE_CONFIRMED, error: null },
+      org_entitlements: { data: null, error: { message: "boom" } },
+    },
+  });
+  const res = await handle(makeRequest({ headers: cronOK }), deps);
+  assertEquals(res.status, 200);
+  const body = await res.json();
+  assertEquals(body.digests_sent, 1, "booking_flow fails OPEN on an org_entitlements read error");
+  assertEquals(invokeCalls.filter((c) => c.name === "send-transactional-email").length, 1);
+});
+
 // ── ADR-0011: registered artist → login email first ───────────────────────────
 // BERLIN_20_CEST and ORG_1 are already defined above; reuse them.
 // CONF_SETTINGS: confirmation-digest-specific settings seed for these tests.

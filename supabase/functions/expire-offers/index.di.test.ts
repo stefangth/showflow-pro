@@ -1277,6 +1277,143 @@ Deno.test("expire-offers: auto_escalate invoke failure does not claim success an
 // must NOT auto-open the next tier; it falls through to the manual escalation path,
 // exactly as it behaved before auto-escalation existed (the manual path was never
 // active-scoped).
+// ─────────────────────────────────────────────────────────────────────────────
+// Task 6: module gate — booking_flow entitlement filters the reminder pass's
+// active-org set, which ALSO gates auto-escalation (activeOrgIds is derived
+// from reminderOrgs and shared by both passes).
+//
+// LOAD-BEARING: this is one of only two paths (the other is airtable-poll's
+// tier-1 auto-open) where a service-role/cron caller can open an offer tier for
+// an org without ever going through the JWT-only requireFeature gate on
+// open-offer-tier. If this filter is missing or wrong, an unentitled org's
+// short tier can still auto-escalate and open the next tier via the internal
+// invokeFunction('open-offer-tier', ...) call below.
+// ─────────────────────────────────────────────────────────────────────────────
+
+Deno.test("expire-offers LOAD-BEARING: auto_escalate is closed for an unentitled but ACTIVE org — never invokes open-offer-tier", async () => {
+  const bookings = [
+    { status: "cancelled", offer_tier: 1, offer_expires_at: null },
+    { status: "suggested", offer_tier: 1, offer_expires_at: "2026-05-01T00:00:00Z" }, // expired
+  ];
+  const { deps, invokeCalls } = makeFakeDeps({
+    tables: {
+      app_settings: [
+        { when: { key: "cron_secret" }, data: { value: CRON_SECRET } },
+        { when: { key: "booking_flow" }, data: [{ org_id: SHOW_DATE.org_id, value: { auto_escalate: true } }] },
+      ],
+      // The org IS active — proves the gate here is the entitlement, not the
+      // pre-existing active-org check (see the INACTIVE-org test below it).
+      organizations: { data: [{ id: SHOW_DATE.org_id }], error: null },
+      show_date_offer_tiers: { data: [OPEN_TIER], error: null },
+      show_dates: { data: SHOW_DATE, error: null },
+      bookings: { data: bookings, error: null },
+      cast_city_priority: { data: [{ priority: 2 }], error: null }, // a next tier IS available
+      notifications: { data: null, error: null },
+      org_memberships: { data: [{ user_id: "admin-1" }], error: null },
+      org_entitlements: { data: [{ org_id: SHOW_DATE.org_id, enabled: false }], error: null },
+    },
+    rpcs: {
+      expire_soft_bookings: { data: null, error: null },
+      resolve_show_assignments: { data: [], error: null },
+    },
+    usersById: { "admin-1": { email: "admin@example.com" } },
+    now: FIXED_NOW,
+  });
+  const res = await handle(cronReq(), deps);
+  assertEquals(res.status, 200);
+  const body = await res.json();
+  // Auto-escalation gated off by entitlement; falls through to the manual path
+  // (same fallback shape as an inactive org).
+  assertEquals(body.auto_escalated, 0);
+  assertEquals(body.escalations, 1);
+
+  const openCall = invokeCalls.find((c) => c.name === "open-offer-tier");
+  assertEquals(openCall, undefined, "LOAD-BEARING: open-offer-tier must never be invoked for an unentitled org");
+});
+
+// Also proves the reminder pass itself (the other half of the same filter) never
+// runs for an unentitled org: a due reminder that would otherwise fire is
+// silently skipped, with no email sent.
+Deno.test("expire-offers: unentitled org's reminder pass never runs (booking_flow gate on reminderOrgs)", async () => {
+  const ORG_ID = "org-1";
+  const dueBooking = {
+    id: "booking-1",
+    artist_id: "artist-1",
+    offer_expires_at: new Date(FIXED_NOW.getTime() + 12 * 3600 * 1000).toISOString(),
+    artists: { id: "artist-1", name: "Jo Performer", email: "jo@example.com", user_id: null },
+    show_dates: {
+      date: "2026-07-01",
+      custom: null,
+      show_id: "show-1",
+      city_id: "city-1",
+      shows: { program: "Ballet", sub_program: "Matinée" },
+    },
+  };
+  const { deps, invokeCalls } = makeFakeDeps({
+    now: FIXED_NOW,
+    tables: {
+      app_settings: [
+        { when: { key: "cron_secret" }, data: { value: CRON_SECRET } },
+        { when: { key: "booking_flow" }, data: [{ org_id: ORG_ID, value: { expiry_reminder: true } }] },
+      ],
+      organizations: { data: [{ id: ORG_ID }], error: null },
+      show_date_offer_tiers: { data: [], error: null },
+      bookings: { data: [dueBooking], error: null },
+      org_entitlements: { data: [{ org_id: ORG_ID, enabled: false }], error: null },
+    },
+    rpcs: {
+      expire_soft_bookings: { data: null, error: null },
+      resolve_user_contacts: { data: [], error: null },
+    },
+  });
+  const res = await handle(cronReq(), deps);
+  assertEquals(res.status, 200);
+  const body = await res.json();
+  assertEquals(body.reminders_sent, 0);
+  assertEquals(invokeCalls.filter((c) => c.name === "send-transactional-email").length, 0);
+});
+
+// Pin the fail-OPEN contract for booking_flow: a transient org_entitlements read
+// error must never silently disable live production booking traffic.
+Deno.test("expire-offers: keeps every org when the org_entitlements read errors (booking_flow fails open)", async () => {
+  const ORG_ID = "org-1";
+  const dueBooking = {
+    id: "booking-1",
+    artist_id: "artist-1",
+    offer_expires_at: new Date(FIXED_NOW.getTime() + 12 * 3600 * 1000).toISOString(),
+    artists: { id: "artist-1", name: "Jo Performer", email: "jo@example.com", user_id: null },
+    show_dates: {
+      date: "2026-07-01",
+      custom: null,
+      show_id: "show-1",
+      city_id: "city-1",
+      shows: { program: "Ballet", sub_program: "Matinée" },
+    },
+  };
+  const { deps, invokeCalls } = makeFakeDeps({
+    now: FIXED_NOW,
+    tables: {
+      app_settings: [
+        { when: { key: "cron_secret" }, data: { value: CRON_SECRET } },
+        { when: { key: "booking_flow" }, data: [{ org_id: ORG_ID, value: { expiry_reminder: true } }] },
+      ],
+      organizations: { data: [{ id: ORG_ID }], error: null },
+      show_date_offer_tiers: { data: [], error: null },
+      bookings: { data: [dueBooking], error: null },
+      org_entitlements: { data: null, error: { message: "boom" } },
+    },
+    rpcs: {
+      expire_soft_bookings: { data: null, error: null },
+      resolve_user_contacts: { data: [], error: null },
+    },
+  });
+  const res = await handle(cronReq(), deps);
+  assertEquals(res.status, 200);
+  const body = await res.json();
+  assertEquals(body.reminders_sent, 1, "booking_flow fails OPEN on an org_entitlements read error");
+  assertEquals(invokeCalls.filter((c) => c.name === "send-transactional-email").length, 1);
+});
+
 Deno.test("expire-offers: auto_escalate on an INACTIVE org does not auto-open, falls through to manual", async () => {
   const OTHER_ACTIVE_ORG = "00000000-0000-0000-0000-0000000000ff";
   const bookings = [
