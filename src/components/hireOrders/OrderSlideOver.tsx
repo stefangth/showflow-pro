@@ -1,4 +1,4 @@
-import { useRef } from "react";
+import { useRef, useState } from "react";
 import { Download, Eye, Pencil, Send } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
@@ -9,6 +9,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { HireOrderStatusBadge } from "@/components/hireOrders/HireOrderStatusBadge";
 import { OrderFactsRail } from "@/components/hireOrders/OrderFactsRail";
+import { IssuePreflightSheet, type PreflightOrder } from "./IssuePreflightSheet";
 import { formatMoney } from "@/lib/hireOrders/money";
 import { formatDateDMY, formatTimestampLocal } from "@/lib/dates";
 import type { OrderData } from "@/lib/hireOrders/types";
@@ -61,6 +62,8 @@ export function OrderSlideOver({ order, open, onOpenChange, orgId }: Props) {
   // audit trail) is withheld in that mode. Manual mode keeps it.
   const countersignMode = useHireOrderCountersignMode(orgId);
 
+  const [preflightOpen, setPreflightOpen] = useState(false);
+
   const lastOrderRef = useRef<HireOrderListRow | null>(null);
   if (order) lastOrderRef.current = order;
   const displayOrder = order ?? lastOrderRef.current;
@@ -84,9 +87,19 @@ export function OrderSlideOver({ order, open, onOpenChange, orgId }: Props) {
 
   function handleIssue() {
     if (!displayOrder) return;
+    setPreflightOpen(true);
+  }
+
+  function performIssue() {
+    if (!displayOrder) return;
     action.mutate(
       { action: "issue", org_id: orgId, order_ids: [displayOrder.id] },
-      { onSuccess: () => onOpenChange(false) },
+      {
+        onSuccess: () => {
+          setPreflightOpen(false);
+          onOpenChange(false);
+        },
+      },
     );
   }
 
@@ -129,6 +142,7 @@ export function OrderSlideOver({ order, open, onOpenChange, orgId }: Props) {
   }
 
   return (
+    <>
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent className="w-full overflow-y-auto sm:max-w-md">
         {displayOrder && (
@@ -253,5 +267,24 @@ export function OrderSlideOver({ order, open, onOpenChange, orgId }: Props) {
         )}
       </SheetContent>
     </Sheet>
+    <IssuePreflightSheet
+      open={preflightOpen}
+      onOpenChange={setPreflightOpen}
+      orgId={orgId}
+      order={
+        displayOrder
+          ? ({
+              id: displayOrder.id,
+              order_no: displayOrder.order_no,
+              artistName,
+              data,
+              terms_variant: displayOrder.terms_variant,
+            } satisfies PreflightOrder)
+          : null
+      }
+      onConfirm={performIssue}
+      isIssuing={action.isPending}
+    />
+    </>
   );
 }
