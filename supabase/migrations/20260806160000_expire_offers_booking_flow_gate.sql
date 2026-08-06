@@ -35,5 +35,3 @@ BEGIN
     AND public.is_feature_enabled(org_id, 'booking_flow');
 END;
 $$;
-
-GRANT EXECUTE ON FUNCTION public.expire_soft_bookings() TO authenticated;
