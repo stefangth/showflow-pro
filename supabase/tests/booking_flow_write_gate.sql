@@ -1,19 +1,25 @@
 -- The booking_flow module's database floor.
 --
--- Source migration: <timestamp>_booking_flow_write_gate.sql. Three RESTRICTIVE
+-- Source migrations: 20260806150000_booking_flow_write_gate.sql — three RESTRICTIVE
 -- policies on public.bookings (booking_flow_required_insert / _update / _delete)
 -- close writes for an org whose booking_flow entitlement is off, and
--- promote_understudy_on_cancellation() early-returns for the same org.
+-- promote_understudy_on_cancellation() early-returns for the same org — plus
+-- 20260806160000_expire_offers_booking_flow_gate.sql, which adds the same gate to
+-- expire_soft_bookings() (SECURITY DEFINER and fleet-wide, so RLS cannot reach it).
 --
--- Two invariants this file exists to hold:
+-- Three invariants this file exists to hold:
 --   * SELECT stays open. The gate is INSERT/UPDATE/DELETE only, never FOR ALL, so
 --     a producer in an unentitled org can still read who is already confirmed.
 --     Tests 4 and 12 both guard that, structurally and behaviourally.
 --   * SECURITY DEFINER paths still work. cascade_cancel_bookings_on_date_cancel is
 --     owned by the bookings table owner on a table without FORCE ROW LEVEL
 --     SECURITY, so cancelling a show date still cascades to its bookings even for
---     an unentitled org (test 16). If that ever regresses, cancelling a date in an
+--     an unentitled org (test 17). If that ever regresses, cancelling a date in an
 --     unentitled org would silently leave its bookings active.
+--   * Disabling the module FREEZES data, it never drains it. expire_soft_bookings()
+--     is the one path that could quietly cancel an unentitled org's whole pending
+--     backlog (cancelled is terminal, so re-enabling would not restore it), which
+--     is what tests 18 and 19 guard.
 --
 -- Every unentitled assertion is paired with the same operation in an entitled org,
 -- so a failure means "the entitlement gate", not "some other policy".
@@ -23,6 +29,7 @@
 --   …bf11 / …bf12   auth users: producer in the unentitled / entitled org
 --   …bf13           auth user: artist in the unentitled org
 --   …bf14           auth user: admin in the unentitled org (show-date cancellation)
+--   …bf15           auth user: artist in the entitled org (offer-response control)
 --   …bf2N           artists
 --   …bf3N           shows
 --   …bf4N / …bf5N   show_dates: unentitled org / entitled org
@@ -32,7 +39,7 @@ BEGIN;
 
 CREATE EXTENSION IF NOT EXISTS pgtap WITH SCHEMA extensions;
 
-SELECT plan(16);
+SELECT plan(19);
 
 -- ────────────────────────────────────────────────────────────────────────────
 -- Fixtures. session_replication_role = replica disables FK and user triggers so
@@ -46,7 +53,8 @@ INSERT INTO auth.users (id, aud, role, email, email_confirmed_at, raw_app_meta_d
   ('00000000-0000-0000-0000-00000000bf11','authenticated','authenticated','bf-prod-unent@test.com',now(),'{"provider":"email"}'::jsonb,'{}'::jsonb,now(),now()),
   ('00000000-0000-0000-0000-00000000bf12','authenticated','authenticated','bf-prod-ent@test.com',  now(),'{"provider":"email"}'::jsonb,'{}'::jsonb,now(),now()),
   ('00000000-0000-0000-0000-00000000bf13','authenticated','authenticated','bf-artist-unent@test.com',now(),'{"provider":"email"}'::jsonb,'{}'::jsonb,now(),now()),
-  ('00000000-0000-0000-0000-00000000bf14','authenticated','authenticated','bf-admin-unent@test.com', now(),'{"provider":"email"}'::jsonb,'{}'::jsonb,now(),now());
+  ('00000000-0000-0000-0000-00000000bf14','authenticated','authenticated','bf-admin-unent@test.com', now(),'{"provider":"email"}'::jsonb,'{}'::jsonb,now(),now()),
+  ('00000000-0000-0000-0000-00000000bf15','authenticated','authenticated','bf-artist-ent@test.com',  now(),'{"provider":"email"}'::jsonb,'{}'::jsonb,now(),now());
 
 INSERT INTO public.organizations (id, name, slug) VALUES
   ('00000000-0000-0000-0000-00000000bf01','BF Entitled',  'bf-entitled'),
@@ -56,7 +64,8 @@ INSERT INTO public.org_memberships (org_id, user_id, role) VALUES
   ('00000000-0000-0000-0000-00000000bf02','00000000-0000-0000-0000-00000000bf11','producer'),
   ('00000000-0000-0000-0000-00000000bf01','00000000-0000-0000-0000-00000000bf12','producer'),
   ('00000000-0000-0000-0000-00000000bf02','00000000-0000-0000-0000-00000000bf13','artist'),
-  ('00000000-0000-0000-0000-00000000bf02','00000000-0000-0000-0000-00000000bf14','admin');
+  ('00000000-0000-0000-0000-00000000bf02','00000000-0000-0000-0000-00000000bf14','admin'),
+  ('00000000-0000-0000-0000-00000000bf01','00000000-0000-0000-0000-00000000bf15','artist');
 
 INSERT INTO public.artists (id, name, user_id, org_id) VALUES
   ('00000000-0000-0000-0000-00000000bf21','BF Artist U1','00000000-0000-0000-0000-00000000bf13','00000000-0000-0000-0000-00000000bf02'),
@@ -64,7 +73,8 @@ INSERT INTO public.artists (id, name, user_id, org_id) VALUES
   ('00000000-0000-0000-0000-00000000bf23','BF Artist U3', NULL, '00000000-0000-0000-0000-00000000bf02'),
   ('00000000-0000-0000-0000-00000000bf24','BF Artist U4', NULL, '00000000-0000-0000-0000-00000000bf02'),
   ('00000000-0000-0000-0000-00000000bf25','BF Artist E1', NULL, '00000000-0000-0000-0000-00000000bf01'),
-  ('00000000-0000-0000-0000-00000000bf26','BF Artist E2', NULL, '00000000-0000-0000-0000-00000000bf01');
+  ('00000000-0000-0000-0000-00000000bf26','BF Artist E2', NULL, '00000000-0000-0000-0000-00000000bf01'),
+  ('00000000-0000-0000-0000-00000000bf27','BF Artist E3','00000000-0000-0000-0000-00000000bf15','00000000-0000-0000-0000-00000000bf01');
 
 INSERT INTO public.shows (id, program, sub_program, main_cast_slots, understudy_slots, org_id) VALUES
   ('00000000-0000-0000-0000-00000000bf31','bf-unent','main', 1, 1, '00000000-0000-0000-0000-00000000bf02'),
@@ -79,15 +89,20 @@ INSERT INTO public.show_dates (id, show_id, date, session_1, org_id) VALUES
   ('00000000-0000-0000-0000-00000000bf44','00000000-0000-0000-0000-00000000bf31','2099-08-04','19:00'::time,'00000000-0000-0000-0000-00000000bf02'),
   ('00000000-0000-0000-0000-00000000bf45','00000000-0000-0000-0000-00000000bf31','2099-08-05','19:00'::time,'00000000-0000-0000-0000-00000000bf02'),
   ('00000000-0000-0000-0000-00000000bf46','00000000-0000-0000-0000-00000000bf31','2099-08-06','19:00'::time,'00000000-0000-0000-0000-00000000bf02'),
-  ('00000000-0000-0000-0000-00000000bf47','00000000-0000-0000-0000-00000000bf31','2099-08-07','19:00'::time,'00000000-0000-0000-0000-00000000bf02');
+  ('00000000-0000-0000-0000-00000000bf47','00000000-0000-0000-0000-00000000bf31','2099-08-07','19:00'::time,'00000000-0000-0000-0000-00000000bf02'),
+  ('00000000-0000-0000-0000-00000000bf48','00000000-0000-0000-0000-00000000bf31','2099-08-08','19:00'::time,'00000000-0000-0000-0000-00000000bf02');
 
 -- Entitled-org control dates.
 INSERT INTO public.show_dates (id, show_id, date, session_1, org_id) VALUES
   ('00000000-0000-0000-0000-00000000bf51','00000000-0000-0000-0000-00000000bf32','2099-09-01','19:00'::time,'00000000-0000-0000-0000-00000000bf01'),
   ('00000000-0000-0000-0000-00000000bf52','00000000-0000-0000-0000-00000000bf32','2099-09-02','19:00'::time,'00000000-0000-0000-0000-00000000bf01'),
   ('00000000-0000-0000-0000-00000000bf53','00000000-0000-0000-0000-00000000bf32','2099-09-03','19:00'::time,'00000000-0000-0000-0000-00000000bf01'),
-  ('00000000-0000-0000-0000-00000000bf54','00000000-0000-0000-0000-00000000bf32','2099-09-04','19:00'::time,'00000000-0000-0000-0000-00000000bf01');
+  ('00000000-0000-0000-0000-00000000bf54','00000000-0000-0000-0000-00000000bf32','2099-09-04','19:00'::time,'00000000-0000-0000-0000-00000000bf01'),
+  ('00000000-0000-0000-0000-00000000bf55','00000000-0000-0000-0000-00000000bf32','2099-09-05','19:00'::time,'00000000-0000-0000-0000-00000000bf01'),
+  ('00000000-0000-0000-0000-00000000bf56','00000000-0000-0000-0000-00000000bf32','2099-09-06','19:00'::time,'00000000-0000-0000-0000-00000000bf01');
 
+-- offer_expires_at is only set on the two expiry fixtures (bf6d / bf6e); every other
+-- row leaves it NULL so expire_soft_bookings() can never touch it.
 INSERT INTO public.bookings (id, show_date_id, artist_id, status, is_understudy, org_id) VALUES
   -- unentitled org
   ('00000000-0000-0000-0000-00000000bf61','00000000-0000-0000-0000-00000000bf42','00000000-0000-0000-0000-00000000bf24','suggested',  false,'00000000-0000-0000-0000-00000000bf02'),
@@ -101,7 +116,13 @@ INSERT INTO public.bookings (id, show_date_id, artist_id, status, is_understudy,
   ('00000000-0000-0000-0000-00000000bf68','00000000-0000-0000-0000-00000000bf52','00000000-0000-0000-0000-00000000bf25','suggested',  false,'00000000-0000-0000-0000-00000000bf01'),
   ('00000000-0000-0000-0000-00000000bf69','00000000-0000-0000-0000-00000000bf53','00000000-0000-0000-0000-00000000bf25','suggested',  false,'00000000-0000-0000-0000-00000000bf01'),
   ('00000000-0000-0000-0000-00000000bf6a','00000000-0000-0000-0000-00000000bf54','00000000-0000-0000-0000-00000000bf25','confirmed',  false,'00000000-0000-0000-0000-00000000bf01'),
-  ('00000000-0000-0000-0000-00000000bf6b','00000000-0000-0000-0000-00000000bf54','00000000-0000-0000-0000-00000000bf26','soft_booked',true, '00000000-0000-0000-0000-00000000bf01');
+  ('00000000-0000-0000-0000-00000000bf6b','00000000-0000-0000-0000-00000000bf54','00000000-0000-0000-0000-00000000bf26','soft_booked',true, '00000000-0000-0000-0000-00000000bf01'),
+  ('00000000-0000-0000-0000-00000000bf6c','00000000-0000-0000-0000-00000000bf55','00000000-0000-0000-0000-00000000bf27','suggested',  false,'00000000-0000-0000-0000-00000000bf01');
+
+-- Expiry fixtures for tests 18-19: one already-lapsed 'suggested' offer per org.
+INSERT INTO public.bookings (id, show_date_id, artist_id, status, is_understudy, org_id, offer_expires_at) VALUES
+  ('00000000-0000-0000-0000-00000000bf6d','00000000-0000-0000-0000-00000000bf48','00000000-0000-0000-0000-00000000bf22','suggested',false,'00000000-0000-0000-0000-00000000bf02', now() - interval '1 hour'),
+  ('00000000-0000-0000-0000-00000000bf6e','00000000-0000-0000-0000-00000000bf56','00000000-0000-0000-0000-00000000bf26','suggested',false,'00000000-0000-0000-0000-00000000bf01', now() - interval '1 hour');
 
 SET session_replication_role = DEFAULT;
 
@@ -230,8 +251,10 @@ SELECT is(
 RESET ROLE;
 
 -- ────────────────────────────────────────────────────────────────────────────
--- 13. The artist offer-response path is closed too — "Artists can respond to own
---     offers" is permissive, so the restrictive gate composes with AND over it.
+-- 13-14. The artist offer-response path is closed too — "Artists can respond to own
+--        offers" is permissive, so the restrictive gate composes with AND over it.
+--        The entitled control proves the block is the entitlement and not that
+--        policy's own suggested-only USING clause.
 -- ────────────────────────────────────────────────────────────────────────────
 
 SELECT set_config('request.jwt.claims', '{"sub":"00000000-0000-0000-0000-00000000bf13","role":"authenticated"}', true);
@@ -245,8 +268,19 @@ SELECT is(
   'suggested',
   'unentitled org: artist cannot accept their own offer');
 
+SELECT set_config('request.jwt.claims', '{"sub":"00000000-0000-0000-0000-00000000bf15","role":"authenticated"}', true);
+SET LOCAL ROLE authenticated;
+UPDATE public.bookings SET status = 'soft_booked'
+WHERE id = '00000000-0000-0000-0000-00000000bf6c';
+RESET ROLE;
+
+SELECT is(
+  (SELECT status::text FROM public.bookings WHERE id = '00000000-0000-0000-0000-00000000bf6c'),
+  'soft_booked',
+  'entitled org: the same artist offer acceptance still applies');
+
 -- ────────────────────────────────────────────────────────────────────────────
--- 14-15. promote_understudy_on_cancellation(). Cancelling the confirmed primary
+-- 15-16. promote_understudy_on_cancellation(). Cancelling the confirmed primary
 --        runs as the (RLS-bypassing) owner, so only the trigger's own module gate
 --        can stop the promotion.
 -- ────────────────────────────────────────────────────────────────────────────
@@ -268,7 +302,7 @@ SELECT is(
   'entitled org: understudy is still promoted when the primary cancels');
 
 -- ────────────────────────────────────────────────────────────────────────────
--- 16. The SECURITY DEFINER escape hatch. An admin cancelling a show date is a
+-- 17. The SECURITY DEFINER escape hatch. An admin cancelling a show date is a
 --     plain authenticated UPDATE on show_dates; the cascade to bookings happens in
 --     cascade_cancel_bookings_on_date_cancel, which is SECURITY DEFINER and owned
 --     by the bookings table owner, so it is not subject to the new gate. If this
@@ -285,6 +319,29 @@ SELECT is(
   (SELECT status::text FROM public.bookings WHERE id = '00000000-0000-0000-0000-00000000bf67'),
   'cancelled',
   'unentitled org: show-date cancellation still cascades to its bookings');
+
+-- ────────────────────────────────────────────────────────────────────────────
+-- 18-19. expire_soft_bookings(). The hourly expire-offers cron calls this RPC with
+--        the service-role client, and the function is SECURITY DEFINER and
+--        fleet-wide, so the RESTRICTIVE policies above cannot reach it: its own
+--        is_feature_enabled predicate is the only thing standing between an
+--        unentitled org and losing its entire pending backlog to a terminal
+--        'cancelled'. The entitled control is required, not optional — an
+--        unentitled-only assertion would also pass if the function stopped
+--        expiring anything at all.
+-- ────────────────────────────────────────────────────────────────────────────
+
+SELECT public.expire_soft_bookings();
+
+SELECT is(
+  (SELECT status::text FROM public.bookings WHERE id = '00000000-0000-0000-0000-00000000bf6d'),
+  'suggested',
+  'unentitled org: a lapsed offer is frozen, not expired');
+
+SELECT is(
+  (SELECT status::text FROM public.bookings WHERE id = '00000000-0000-0000-0000-00000000bf6e'),
+  'cancelled',
+  'entitled org: the same lapsed offer is still expired');
 
 SELECT * FROM finish();
 ROLLBACK;
