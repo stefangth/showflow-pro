@@ -1,0 +1,99 @@
+import { useState } from "react";
+import { useCan } from "@/hooks/useCapabilities";
+import { useHireOrderSetupStatus } from "@/hooks/useHireOrderSetup";
+import type { SetupStepKey } from "@/lib/hireOrders/setupStatus";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
+import { SetupStepRow } from "./SetupStepRow";
+import { LetterheadStep } from "./LetterheadStep";
+import { TermsStep } from "./TermsStep";
+import { CountersignStep } from "./CountersignStep";
+import { ProducerWaitingCard } from "./ProducerWaitingCard";
+import { useRailDismissed } from "./useRailDismissed";
+
+const TITLES: Record<SetupStepKey, string> = {
+  letterhead: "Letterhead",
+  terms: "Terms template",
+  countersign: "Countersigning",
+};
+
+const HINTS: Record<SetupStepKey, { todo: string; done: string }> = {
+  letterhead: {
+    todo: "Legal name, address, registration line. Prints on every order.",
+    done: "Set. It prints at the top of every order.",
+  },
+  terms: {
+    todo: "The wording on the back page. Start from a template.",
+    done: "Set. Edit the wording any time in Settings.",
+  },
+  countersign: {
+    todo: "How artists sign. The default is signing outside ShowFlow.",
+    done: "Chosen. Change it any time in Settings.",
+  },
+};
+
+/**
+ * The hire-order setup rail: a persistent checklist beside the working orders page.
+ *
+ * Renders nothing at all once the org is set up or the viewer has hidden it, so it is a
+ * genuinely temporary surface. Setup happens here, not in Settings, but every panel
+ * writes through the same data path as the Settings cards.
+ */
+export function SetupRail({ orgId }: { orgId: string | null }) {
+  const canEditSettings = useCan("edit_hire_order_settings");
+  const { status, isLoading } = useHireOrderSetupStatus(orgId);
+  const [dismissed, dismiss] = useRailDismissed(orgId);
+  const [open, setOpen] = useState<SetupStepKey | null>(null);
+
+  if (isLoading || dismissed || status.complete) return null;
+  if (!canEditSettings) return <ProducerWaitingCard steps={status.steps} />;
+
+  const toggle = (key: SetupStepKey) => setOpen((cur) => (cur === key ? null : key));
+
+  return (
+    <Card className="overflow-hidden">
+      <CardContent className="p-0">
+        <div className="border-b border-border p-4">
+          <div className="flex items-center justify-between">
+            <p className="text-[10px] font-semibold uppercase tracking-wider text-accent-600">
+              Set up · {status.doneCount} of {status.totalCount}
+            </p>
+            <Button variant="ghost" size="sm" className="h-auto p-1 text-xs" onClick={dismiss}>
+              Hide
+            </Button>
+          </div>
+          <p className="mt-1.5 font-display text-base font-semibold">Get hire orders ready</p>
+          <p className="mt-1 text-xs leading-[19px] text-muted-foreground">
+            You can draft orders right now. These are only needed before the first one goes out.
+          </p>
+          <div className="mt-3 flex gap-1">
+            {status.steps.map((s) => (
+              <span
+                key={s.key}
+                className={`h-[3px] w-full rounded-full ${s.done ? "bg-accent-500" : "bg-muted"}`}
+              />
+            ))}
+          </div>
+        </div>
+        <div>
+          {status.steps.map((s, i) => (
+            <SetupStepRow
+              key={s.key}
+              index={i + 1}
+              title={TITLES[s.key]}
+              hint={s.done ? HINTS[s.key].done : HINTS[s.key].todo}
+              done={s.done}
+              blocksIssue={s.blocksIssue}
+              expanded={open === s.key}
+              onToggle={() => toggle(s.key)}
+            >
+              {s.key === "letterhead" && <LetterheadStep orgId={orgId} onDone={() => setOpen(null)} />}
+              {s.key === "terms" && <TermsStep orgId={orgId} onDone={() => setOpen(null)} />}
+              {s.key === "countersign" && <CountersignStep orgId={orgId} onDone={() => setOpen(null)} />}
+            </SetupStepRow>
+          ))}
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
