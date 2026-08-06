@@ -51,7 +51,7 @@ describe("BlockerList", () => {
   // one field onto LETTERHEAD_DEFAULT's blanks and erase agent_name / agent_email /
   // agent_signature_path, which this control never renders. Same guard shape as
   // LetterheadStep.tsx: no input until the read has actually landed.
-  it("does not offer the letterhead save control before the stored value has loaded, so a click cannot blind-overwrite it", async () => {
+  it("does not offer the letterhead save control when the stored value could not be read, so a click cannot blind-overwrite it", async () => {
     seedClient({ app_settings: { data: null, error: new Error("boom") } });
     const blockers: Blocker[] = [{ key: "missing_letterhead", scope: "org", fixable: true }];
     renderWithProviders(<BlockerList orgId="org-1" blockers={blockers} onFixOrderField={vi.fn()} />);

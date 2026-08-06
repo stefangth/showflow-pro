@@ -1,5 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { computeBlockers, BLOCKER_COPY } from "./preflight";
+import { orderReadyIssues } from "./validate";
 import type { OrderData } from "./types";
 import type { HireOrderTermsSetting } from "./terms";
 
@@ -62,6 +63,23 @@ describe("computeBlockers", () => {
       "missing_letterhead",
       "missing_terms",
     ]);
+  });
+
+  // `computeBlockers` filters `orderReadyIssues`' output through `isBlockerKey`, so an
+  // unknown code is DROPPED rather than surfaced. `orderReadyIssues` is one half of a
+  // pair mirrored into the edge function and is explicitly meant to change in lockstep
+  // with it: the day a fifth code lands there, a preflight that silently discarded it
+  // would say "Ready to issue" and enable the button for an order `issueOne` refuses.
+  // This pins the two vocabularies together from a file the change would not touch.
+  it("carries every code orderReadyIssues can emit through as a blocker, never dropping one", () => {
+    const codes = orderReadyIssues({}, null);
+    const blockers = computeBlockers({
+      // TERMS resolves to real clauses, so `missing_terms` is not added on top here and
+      // the two lists are comparable one-for-one.
+      data: {}, letterhead: null, terms: TERMS, termsVariant: "t1", canEditSettings: true,
+    });
+    expect(codes.length).toBeGreaterThan(0);
+    expect([...blockers.map((b) => b.key)].sort()).toEqual([...codes].sort());
   });
 
   it("has copy for every key it can emit", () => {

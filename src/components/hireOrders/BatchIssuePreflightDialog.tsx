@@ -54,7 +54,10 @@ export function BatchIssuePreflightDialog({
     enabled: !!orgId && open,
     queryFn: () => resolveOrgSetting<Letterhead>(supabase, orgId, "hire_order_letterhead", LETTERHEAD_DEFAULT),
   });
-  const terms = useOrgTerms(orgId);
+  // Gated on `open` like the letterhead query above it: the two halves of one check
+  // should not read on different schedules, and this dialog is mounted on every
+  // /hire-orders render, so an ungated read here costs a round trip per page load.
+  const terms = useOrgTerms(open ? orgId : null);
   const isLoading = !!orgId && (letterhead.isLoading || terms.isLoading);
   // Carried forward from plan 1's review: an unread setting is not an empty setting.
   // A failed read must not present a clean bill of health -- see useOrderBlockers,
