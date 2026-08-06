@@ -1,6 +1,7 @@
 import { describe, expect, it, vi, beforeEach } from "vitest";
 import { fireEvent, screen, waitFor } from "@testing-library/react";
 import { renderWithProviders } from "@/test/renderWithProviders";
+import { createFakeSupabase, type TableSeed } from "@/test/supabaseFake";
 import { OrdersTable } from "./OrdersTable";
 import type { HireOrderListRow } from "@/data/hireOrders";
 
@@ -9,8 +10,19 @@ import type { HireOrderListRow } from "@/data/hireOrders";
 // hand-rolled supabase client chain).
 vi.mock("sonner", () => ({ toast: { success: vi.fn(), error: vi.fn(), info: vi.fn(), warning: vi.fn() } }));
 vi.mock("@/data/hireOrders", () => ({ invokeHireOrderAction: vi.fn() }));
+// The always-mounted BatchIssuePreflightDialog reads useCan (needs an AuthProvider
+// otherwise) and the org's app_settings (useOrgTerms fires regardless of whether the
+// dialog is open). Stub the capability and swap in the call-recording fake client.
+vi.mock("@/hooks/useCapabilities", () => ({ useCan: () => true }));
 
 import { invokeHireOrderAction } from "@/data/hireOrders";
+
+const { client } = vi.hoisted(() => ({ client: {} as Record<string, unknown> }));
+vi.mock("@/integrations/supabase/client", () => ({ supabase: client }));
+function seedClient(seed: Record<string, TableSeed>) {
+  for (const key of Object.keys(client)) delete client[key];
+  Object.assign(client, createFakeSupabase(seed));
+}
 
 /** A minimal HireOrderListRow, only the fields OrdersTable reads. */
 function order(overrides: Partial<HireOrderListRow> & { id: string; order_no: string }): HireOrderListRow {
@@ -23,6 +35,8 @@ function order(overrides: Partial<HireOrderListRow> & { id: string; order_no: st
     ...overrides,
   } as HireOrderListRow;
 }
+
+beforeEach(() => seedClient({ app_settings: { data: [], error: null } }));
 
 describe("OrdersTable keyboard access", () => {
   it("opens the row via onRowClick on Enter and Space, without needing a mouse", () => {
@@ -63,11 +77,48 @@ describe("OrdersTable keyboard access", () => {
 });
 
 describe("OrdersTable batch issue selection", () => {
-  beforeEach(() => vi.clearAllMocks());
+  beforeEach(() => {
+    vi.clearAllMocks();
+    // Both rows below must pass the preflight check (fee, recipient email, date, plus
+    // an org with a letterhead and terms configured) so the batch dialog's confirm
+    // button offers to issue both -- the failure/success split under test happens at
+    // the edge function, past the client-side preflight.
+    seedClient({
+      app_settings: [
+        {
+          when: { key: "hire_order_letterhead" },
+          data: [{ org_id: "org-1", value: { legal_name: "Aurora GmbH", address_lines: [], registration_line: "" } }],
+        },
+        {
+          when: { key: "hire_order_terms" },
+          data: [{
+            org_id: "org-1",
+            value: { templates: [{ id: "t1", name: "Standard", clauses: [{ title: "Fee", body: "14 days." }] }], default_id: "t1" },
+          }],
+        },
+      ],
+    });
+  });
+
+  const readyData = {
+    fee: { value: "1000.00", source: "manual" as const },
+    recipient_email: { value: "a@e.de", source: "manual" as const },
+    date: { value: "2026-02-01", source: "manual" as const },
+  };
 
   function selectBoth() {
     fireEvent.click(screen.getByRole("checkbox", { name: /select order ho-2026-0201-1/i }));
     fireEvent.click(screen.getByRole("checkbox", { name: /select order ho-2026-0301-1/i }));
+  }
+
+  /** Click "Issue selected" (opens the batch preflight dialog), wait for it to report
+   *  both rows clean, then click its confirm button -- the dialog now sits between
+   *  the selection-bar button and the actual mutation. */
+  async function openDialogAndConfirm(expectedCount: number) {
+    fireEvent.click(screen.getByRole("button", { name: /issue selected/i }));
+    const confirmBtn = await screen.findByRole("button", { name: new RegExp(`Issue ${expectedCount} orders?`, "i") });
+    await waitFor(() => expect(confirmBtn).toBeEnabled());
+    fireEvent.click(confirmBtn);
   }
 
   it("keeps a failed order selected and drops the succeeded one after a partial batch-issue failure", async () => {
@@ -76,13 +127,13 @@ describe("OrdersTable batch issue selection", () => {
       failed: [{ order_id: "ho-2", issues: ["missing_fee"] }],
     });
     const orders = [
-      order({ id: "ho-1", order_no: "HO-2026-0201-1" }),
-      order({ id: "ho-2", order_no: "HO-2026-0301-1" }),
+      order({ id: "ho-1", order_no: "HO-2026-0201-1", terms_variant: "t1", data: readyData }),
+      order({ id: "ho-2", order_no: "HO-2026-0301-1", terms_variant: "t1", data: readyData }),
     ];
     renderWithProviders(<OrdersTable orders={orders} orgId="org-1" onRowClick={() => {}} />);
 
     selectBoth();
-    fireEvent.click(screen.getByRole("button", { name: /issue selected/i }));
+    await openDialogAndConfirm(2);
 
     // ho-2 failed to issue -- it must stay checked so the producer can fix
     // it (e.g. add the missing fee) and retry immediately, without having
@@ -99,13 +150,13 @@ describe("OrdersTable batch issue selection", () => {
   it("clears the whole selection when every order in the batch issues successfully", async () => {
     vi.mocked(invokeHireOrderAction).mockResolvedValue({ issued: ["ho-1", "ho-2"], failed: [] });
     const orders = [
-      order({ id: "ho-1", order_no: "HO-2026-0201-1" }),
-      order({ id: "ho-2", order_no: "HO-2026-0301-1" }),
+      order({ id: "ho-1", order_no: "HO-2026-0201-1", terms_variant: "t1", data: readyData }),
+      order({ id: "ho-2", order_no: "HO-2026-0301-1", terms_variant: "t1", data: readyData }),
     ];
     renderWithProviders(<OrdersTable orders={orders} orgId="org-1" onRowClick={() => {}} />);
 
     selectBoth();
-    fireEvent.click(screen.getByRole("button", { name: /issue selected/i }));
+    await openDialogAndConfirm(2);
 
     await waitFor(() => {
       expect(screen.queryByText(/selected/i)).not.toBeInTheDocument();

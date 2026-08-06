@@ -5,8 +5,10 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Checkbox } from "@/components/ui/checkbox";
 import { Button } from "@/components/ui/button";
 import { HireOrderStatusBadge } from "@/components/hireOrders/HireOrderStatusBadge";
+import { BatchIssuePreflightDialog, type BatchPreflightOrder } from "./BatchIssuePreflightDialog";
 import { formatMoney } from "@/lib/hireOrders/money";
 import { formatDateDMY } from "@/lib/dates";
+import type { OrderData } from "@/lib/hireOrders/types";
 import { useHireOrderAction, type IssueResult } from "@/hooks/useHireOrders";
 import type { HireOrderListRow } from "@/data/hireOrders";
 
@@ -31,6 +33,7 @@ interface Props {
  */
 export function OrdersTable({ orders, orgId, onRowClick }: Props) {
   const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [batchOpen, setBatchOpen] = useState(false);
   const action = useHireOrderAction();
 
   // Prune the selection to whatever is currently present in `orders`: the
@@ -76,11 +79,9 @@ export function OrdersTable({ orders, orgId, onRowClick }: Props) {
     });
   };
 
-  const handleIssueSelected = () => {
-    // Recompute from `orders` (currently visible) rather than trusting the
-    // raw `selected` Set: only ids that are both still present and issuable
-    // are ever sent to the mutation.
-    const idsToIssue = orders.filter((o) => selected.has(o.id) && isIssuable(o.status)).map((o) => o.id);
+  const handleIssueSelected = () => setBatchOpen(true);
+
+  const issueIds = (idsToIssue: string[]) => {
     if (idsToIssue.length === 0) return;
     action.mutate(
       { action: "issue", org_id: orgId, order_ids: idsToIssue },
@@ -101,6 +102,7 @@ export function OrdersTable({ orders, orgId, onRowClick }: Props) {
         },
       },
     );
+    setBatchOpen(false);
   };
 
   return (
@@ -113,6 +115,22 @@ export function OrdersTable({ orders, orgId, onRowClick }: Props) {
           </Button>
         </div>
       )}
+      <BatchIssuePreflightDialog
+        open={batchOpen}
+        onOpenChange={setBatchOpen}
+        orgId={orgId}
+        orders={orders
+          .filter((o) => selected.has(o.id) && isIssuable(o.status))
+          .map((o) => ({
+            id: o.id,
+            order_no: o.order_no,
+            artistName: o.artists?.name ?? "Unknown artist",
+            data: (o.data ?? {}) as OrderData,
+            terms_variant: o.terms_variant,
+          } satisfies BatchPreflightOrder))}
+        onConfirm={issueIds}
+        isIssuing={action.isPending}
+      />
       <Card>
         <CardContent className="p-0 overflow-x-auto">
           <Table>
