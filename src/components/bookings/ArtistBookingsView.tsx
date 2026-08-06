@@ -19,6 +19,7 @@ import { fetchMyCancelledDateBookings, mergeArtistCancelledDates, type Cancelled
 import { useMyArtist } from '@/hooks/useMyArtist';
 import { useMyHireOrders } from '@/hooks/useHireOrders';
 import { useFeature } from '@/hooks/useEntitlements';
+import { ModuleGate } from '@/components/layout/ModuleGate';
 import { useBookingFlow, useReferenceField } from '@/hooks/useBookingFlow';
 import { bookingStatusBadgeClass } from '@/lib/bookings';
 import { BOOKING_FLOW_DEFAULTS, referenceLabel } from '@/lib/bookingFlow';
@@ -153,6 +154,7 @@ export function ArtistBookingsView() {
 
       <ColumnLayoutEditor pageKey="bookings-artist" />
 
+      <ModuleGate feature="booking_flow">
       {bookingsError ? (
         <Alert variant="destructive">
           <AlertDescription>Failed to load your bookings. Please refresh.</AlertDescription>
@@ -301,6 +303,7 @@ export function ArtistBookingsView() {
           }}
         />
       )}
+      </ModuleGate>
 
       <ShowDateDetailSheet
         showDateId={activeShowDateId}

@@ -55,9 +55,13 @@ vi.mock("@/hooks/useArtistEligibleDates", () => ({
   useArtistEligibleDates: () => ({ data: ELIGIBLE, isLoading: false }),
 }));
 
-const featureHolder = { enabled: true };
+// Task 4 added a booking_flow gate around the whole list region; keep it on
+// independently of hireOrdersEnabled so toggling hire_orders in these tests
+// doesn't also hide the booking rows the assertions read.
+const featureHolder = { hireOrdersEnabled: true };
 vi.mock("@/hooks/useEntitlements", () => ({
-  useFeature: () => featureHolder.enabled,
+  useFeature: (feature: string) =>
+    feature === "hire_orders" ? featureHolder.hireOrdersEnabled : true,
 }));
 
 vi.mock("react-router-dom", () => ({
@@ -96,7 +100,7 @@ import { ArtistBookingsView } from "./ArtistBookingsView";
 
 describe("ArtistBookingsView hire-order chip (Task 14)", () => {
   it("shows a Hire order chip linking to the detail route for a date with an issued order", async () => {
-    featureHolder.enabled = true;
+    featureHolder.hireOrdersEnabled = true;
     seedClient({
       bookings: [
         {
@@ -124,7 +128,7 @@ describe("ArtistBookingsView hire-order chip (Task 14)", () => {
   });
 
   it("does not show a chip when there is no matching hire order for a date", async () => {
-    featureHolder.enabled = true;
+    featureHolder.hireOrdersEnabled = true;
     seedClient({
       bookings: [
         {
@@ -143,7 +147,7 @@ describe("ArtistBookingsView hire-order chip (Task 14)", () => {
   });
 
   it("hides the chip when the hire_orders feature is off, even with a matching order", async () => {
-    featureHolder.enabled = false;
+    featureHolder.hireOrdersEnabled = false;
     seedClient({
       bookings: [
         {

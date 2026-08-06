@@ -15,6 +15,7 @@ import { toast } from 'sonner';
 import { ArtistDashboard } from '@/components/dashboard/ArtistDashboard';
 import { TierAttentionCard } from '@/components/dashboard/TierAttentionCard';
 import { DirectBookingCard } from '@/components/dashboard/DirectBookingCard';
+import { ModuleGate } from '@/components/layout/ModuleGate';
 import { showSlots } from '@/lib/settings';
 import { formatDateDMY } from '@/lib/dates';
 import { useReferenceField, useBookingFlow } from '@/hooks/useBookingFlow';
@@ -41,6 +42,12 @@ export default function DashboardPage() {
     return <ArtistDashboard />;
   }
   return <ProducerDashboard />;
+}
+
+/** Producer dashboard booking region. One gate for both attention cards, since
+ *  neither is meaningful without the booking module. */
+export function ProducerBookingSection({ children }: { children: React.ReactNode }) {
+  return <ModuleGate feature="booking_flow">{children}</ModuleGate>;
 }
 
 function ProducerDashboard() {
@@ -290,18 +297,20 @@ function ProducerDashboard() {
         </Card>
       )}
 
-      {flow.artist_acceptance && (
-        <TierAttentionCard
-          items={attentionItems}
-          hint={deliveryHint(flow)}
-          reference={reference}
-          customFieldKey={customFieldKey}
-        />
-      )}
+      <ProducerBookingSection>
+        {flow.artist_acceptance && (
+          <TierAttentionCard
+            items={attentionItems}
+            hint={deliveryHint(flow)}
+            reference={reference}
+            customFieldKey={customFieldKey}
+          />
+        )}
 
-      {!flow.artist_acceptance && (
-        <DirectBookingCard items={directItems} reference={reference} customFieldKey={customFieldKey} />
-      )}
+        {!flow.artist_acceptance && (
+          <DirectBookingCard items={directItems} reference={reference} customFieldKey={customFieldKey} />
+        )}
+      </ProducerBookingSection>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
         {cards.map((c, i) => (
