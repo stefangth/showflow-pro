@@ -10,6 +10,9 @@ import {
 import { BOOKING_ENGINE_DEFAULTS } from "@/config/app.config";
 import type { Json } from "@/integrations/supabase/types";
 import { FEATURE_KEYS, FEATURE_REGISTRY, type FeatureKey } from "@/lib/entitlements";
+import { TERMS_LIBRARY_KEY } from "@/data/hireOrders";
+import { HIRE_ORDER_STARTER_TERMS } from "@/lib/hireOrders/starterTerms";
+import type { HireOrderTemplate } from "@/lib/hireOrders/terms";
 import { parseLines, serializeLines, parseCasts, serializeCasts } from "./templateText";
 import { POLL_INTERVAL_PRESETS, MIN_POLL_INTERVAL_MINUTES } from "@/lib/airtablePoll";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -29,6 +32,7 @@ export function PlatformDefaultsTab() {
       <BookingEngineDefaultsCard />
       <AirtableDefaultsCard />
       <DefaultModulesCard />
+      <HireOrderTermsLibraryCard />
     </div>
   );
 }
@@ -281,6 +285,89 @@ function DefaultModulesCard() {
             </div>
           );
         })}
+      </CardContent>
+    </Card>
+  );
+}
+
+interface TermsLibraryValue {
+  templates: HireOrderTemplate[];
+}
+
+/**
+ * The platform hire-order terms library. Orgs import a COPY of these into their own
+ * `hire_order_terms`, so editing here never changes contract text an org is already
+ * issuing. Stored as JSON because the shape is nested; the starter set is the fallback
+ * when no row exists, so there is nothing to seed in a new environment.
+ */
+function HireOrderTermsLibraryCard() {
+  const qc = useQueryClient();
+  const { data, isLoading, isError, error } = useQuery({
+    queryKey: ["platform", "terms-library"],
+    queryFn: () =>
+      resolveOrgSetting<TermsLibraryValue>(supabase, null, TERMS_LIBRARY_KEY, {
+        templates: HIRE_ORDER_STARTER_TERMS,
+      }),
+  });
+
+  const [text, setText] = useState("");
+  const [parseError, setParseError] = useState<string | null>(null);
+  const seededRef = useRef(false);
+  useEffect(() => {
+    if (!data || seededRef.current) return;
+    seededRef.current = true;
+    setText(JSON.stringify(data.templates ?? HIRE_ORDER_STARTER_TERMS, null, 2));
+  }, [data]);
+
+  const save = useMutation({
+    mutationFn: () => {
+      let templates: HireOrderTemplate[];
+      try {
+        templates = JSON.parse(text) as HireOrderTemplate[];
+      } catch {
+        throw new Error("That is not valid JSON");
+      }
+      if (!Array.isArray(templates)) throw new Error("Expected an array of templates");
+      for (const t of templates) {
+        if (!t || typeof t.id !== "string" || typeof t.name !== "string" || !Array.isArray(t.clauses)) {
+          throw new Error("Every template needs an id, a name and a clauses array");
+        }
+      }
+      return savePlatformSetting(supabase, TERMS_LIBRARY_KEY, { templates } as unknown as Json);
+    },
+    onSuccess: () => {
+      setParseError(null);
+      qc.invalidateQueries({ queryKey: ["platform", "terms-library"] });
+      qc.invalidateQueries({ queryKey: ["hire-orders", "terms-library"] });
+      toast.success("Terms library saved");
+    },
+    onError: (e: Error) => setParseError(e.message),
+  });
+
+  if (isLoading) return <Skeleton className="h-64 w-full" />;
+  if (isError) return <Alert variant="destructive"><AlertDescription>{(error as Error).message}</AlertDescription></Alert>;
+
+  return (
+    <Card>
+      <CardHeader><CardTitle className="font-display">Hire order terms library</CardTitle></CardHeader>
+      <CardContent className="space-y-4">
+        <p className="text-sm text-muted-foreground">
+          Templates an organization can add to its own hire-order terms in one click. Organizations get a copy they
+          own, so changes here never alter terms already in use. Shape:{" "}
+          <code>{`[{ "id": "...", "name": "...", "clauses": [{ "title": "...", "body": "..." }] }]`}</code>
+        </p>
+        <div className="space-y-1.5">
+          <Label htmlFor="t-terms-library">Templates (JSON)</Label>
+          <Textarea
+            id="t-terms-library"
+            rows={16}
+            className="font-mono text-xs"
+            value={text}
+            onChange={(e) => setText(e.target.value)}
+          />
+        </div>
+        {parseError && <Alert variant="destructive"><AlertDescription>{parseError}</AlertDescription></Alert>}
+        <Button onClick={() => save.mutate()} disabled={save.isPending}>Save library</Button>
       </CardContent>
     </Card>
   );
