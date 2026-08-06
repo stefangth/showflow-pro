@@ -2,6 +2,14 @@
 
 What's new in ShowFlow, newest first.
 
+## 1.14.0 — August 6, 2026
+
+*Getting hire orders ready*
+
+### New
+- **Hire order setup checklist** — A checklist beside your hire orders shows exactly what is needed before the first order can be sent, and lets you set it right there. It disappears once you are set up.
+- **Ready-made terms templates** — Start from a prepared set of engagement terms instead of writing clauses from scratch. You get your own copy, so editing it changes nothing for anyone else.
+
 ## 1.13.0 — July 25, 2026
 
 *Clearer fees on multi-date hire orders*

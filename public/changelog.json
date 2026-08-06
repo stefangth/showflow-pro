@@ -1,5 +1,23 @@
 [
   {
+    "version": "1.14.0",
+    "date": "2026-08-06",
+    "dateLabel": "August 6, 2026",
+    "title": "Getting hire orders ready",
+    "changes": {
+      "new": [
+        {
+          "title": "Hire order setup checklist",
+          "description": "A checklist beside your hire orders shows exactly what is needed before the first order can be sent, and lets you set it right there. It disappears once you are set up."
+        },
+        {
+          "title": "Ready-made terms templates",
+          "description": "Start from a prepared set of engagement terms instead of writing clauses from scratch. You get your own copy, so editing it changes nothing for anyone else."
+        }
+      ]
+    }
+  },
+  {
     "version": "1.13.0",
     "date": "2026-07-25",
     "dateLabel": "July 25, 2026",
