@@ -16,7 +16,9 @@
 
 - **`any` is banned.** Lint runs `--max-warnings 0`. Where supabase-js cannot infer a joined-row shape, declare a local row `interface` and cast once at the query result with `as unknown as Row[]`, immediately after the error check.
 - **No em dashes or en dashes in product copy** (UI strings, changelog). Use a period, comma, colon or middot.
-- **Semantic design tokens only.** Accent numbered stops (`accent-50` to `accent-900`) and the amber and green stops are plain hex and **do not support Tailwind opacity modifiers**.
+- **Semantic design tokens.** Two separate rules, both learned the hard way in the previous plan:
+  1. **`tailwind.config.ts` defines an `accent` key mapping `accent-50`..`accent-900` to `var(--accent-*)`, but defines NO `amber` and NO `green` key.** So `text-amber-600` / `text-green-500` silently resolve to Tailwind's *default* palette and miss the `.dark` overrides in `src/index.css` (`--amber-600` becomes `#F2B23C` under `.dark`). Always use the arbitrary-value form: `bg-[var(--amber-100)]`, `text-[var(--amber-600)]`, `text-[var(--green-500)]`. House precedent: `src/components/ui/badge.tsx:25`, `src/components/settings/bookingFlow/FlowRail.tsx:20`, `src/components/hireOrders/OrderTimeline.tsx:65`. For an amber status chip prefer the existing `badgeVariants({ variant: "risk" })` over hand-rolled classes.
+  2. **The numbered accent stops are immutable across light and dark** (identical hex in `:root` and `.dark`). They are plain hex, so they take no opacity modifier (`bg-accent-500/20` yields a solid colour silently), and bare `text-accent-600` on a neutral card surface is a fixed dark violet that fails in dark mode. Use `text-primary` or `text-muted-foreground` for accent-ish text on a card. An accent stop paired with its own tinted background (`text-accent-700` on `bg-accent-50`) is the established house pairing and is fine.
 - **Test-first.** Write the failing test, run it, watch it fail, then implement.
 - **Tests import the real module.** `computeBlockers` must call `orderReadyIssues`, not restate its rules, and its test must assert that behaviour rather than duplicate it.
 - **No `vi.mock('@/integrations/supabase/client')` chains.** Use `createFakeSupabase` with the `vi.hoisted` client-swap idiom.
@@ -34,6 +36,44 @@
 | Type check (app) | `npx tsc -p tsconfig.app.json --noEmit` |
 | Lint gate | `npm run lint` |
 | Dev server | Use the `preview_start` browser tool, never `npm run dev` in a shell |
+
+---
+
+## Carried forward from plan 1's review
+
+Plan 1 shipped, was reviewed, and needed a fix wave. Three of its findings change what
+this plan's code should say. **These override the task text below where they conflict.**
+
+**1. An unread setting is not an empty setting.** Plan 1's rail treated a still-loading
+or failed read as a known value, which let a save write a default over real data. Every
+hook here has the same shape, so:
+
+- `useOrderBlockers` (Task 2) must **not** paper over a failed read. `terms.data ??
+  EMPTY_TERMS` reports `missing_terms` when the truth is "could not read the setting".
+  For an issue gate that direction is fail-safe, so it may still block, but the hook must
+  return an `isError` the callers can render honestly instead of telling the producer
+  "no clauses are configured" when nothing was read. Add `isError` to its return type
+  alongside `isLoading` and surface it.
+- `BlockerList`'s `TermsFix` (Task 3) calls `useImportTermsTemplates`, which **now throws**
+  when the org's terms have not been read, precisely so an import can never replace a
+  library it could not see. Guard the control on the query's loading and error state
+  rather than letting the click throw.
+- `IssuePreflightSheet` and `BatchIssuePreflightDialog` must not present a clean bill of
+  health derived from an unread org setting. If the reads failed, say so and disable
+  Issue rather than enabling it.
+
+Match the guard shape already in `LetterheadStep.tsx:62-71` and `CountersignStep.tsx:51-60`.
+
+**2. `useOrgTerms` changed signature.** It now falls back to `HIRE_ORDER_DEFAULT_TERMS`
+rather than a null-ish value, and `computeSetupStatus`'s `SetupStatusInput.terms` is now
+`HireOrderTermsSetting | null | undefined`. Read the current source in
+`src/hooks/useHireOrderSetup.ts` before wiring anything to it. Do not trust this plan's
+snippets over the code that actually exists.
+
+**3. A retiring component must collapse its layout.** Plan 1 shipped a grid that reserved
+340px forever after the rail returned `null`. If anything here renders conditionally
+inside a fixed grid track, the visibility rule and the grid template must read from one
+shared flag. See `useSetupRailVisible.ts` and `HireOrdersPage.tsx:97-98,130-133`.
 
 ---
 
@@ -597,7 +637,7 @@ export function BlockerList({ orgId, blockers, onFixOrderField, idPrefix = "bloc
     <div className="space-y-2.5">
       {blockers.map((b) => (
         <div key={b.key} className="flex gap-2.5 rounded-lg border border-border p-3">
-          <AlertCircle className="mt-0.5 h-4 w-4 shrink-0 text-amber-600" />
+          <AlertCircle className="mt-0.5 h-4 w-4 shrink-0 text-[var(--amber-600)]" />
           <div className="min-w-0 flex-1">
             <p className="text-sm font-medium">{BLOCKER_COPY[b.key].label}</p>
             <p className="mt-0.5 text-xs text-muted-foreground">{BLOCKER_COPY[b.key].detail}</p>
@@ -819,7 +859,7 @@ export function IssuePreflightSheet({
             <Skeleton className="h-24 w-full" />
           ) : clean ? (
             <div className="flex items-center gap-2.5 rounded-lg border border-border p-3">
-              <CheckCircle2 className="h-4 w-4 shrink-0 text-green-500" />
+              <CheckCircle2 className="h-4 w-4 shrink-0 text-[var(--green-500)]" />
               <p className="text-sm text-muted-foreground">Everything this order needs is in place.</p>
             </div>
           ) : (
@@ -1124,7 +1164,7 @@ export function BatchIssuePreflightDialog({
                 <div key={order.id} className="rounded-lg border border-border p-3">
                   <p className="text-sm font-medium">{order.artistName}</p>
                   <p className="font-mono text-xs text-muted-foreground">{order.order_no ?? "Draft"}</p>
-                  <p className="mt-1 text-xs text-amber-600">
+                  <p className="mt-1 text-xs text-[var(--amber-600)]">
                     {blockers.map((b) => BLOCKER_COPY[b.key].label).join(", ")}
                   </p>
                 </div>
