@@ -25,6 +25,11 @@ vi.mock("react-router-dom", () => ({
     <a href={to} className={className}>{children}</a>
   ),
 }));
+// The rail is exercised on its own in SetupRail.test.tsx; stub it here so this
+// page's tests don't also have to seed its three app_settings reads.
+vi.mock("@/components/hireOrders/setup/SetupRail", () => ({
+  SetupRail: () => <div data-testid="setup-rail" />,
+}));
 
 function seedClient(seed: Record<string, TableSeed>) {
   for (const key of Object.keys(client)) delete client[key];
@@ -419,5 +424,24 @@ describe("HireOrdersPage", () => {
     await waitFor(() => expect(screen.queryByText(/is off for this organization/)).not.toBeInTheDocument());
     expect(screen.getByRole("button", { name: /new order/i })).toBeEnabled();
     expect(screen.getByRole("button", { name: /import from spreadsheet/i })).toBeEnabled();
+  });
+
+  it("mounts the setup rail", async () => {
+    renderPage();
+    await screen.findByText("Hire orders");
+    expect(screen.getByTestId("setup-rail")).toBeInTheDocument();
+  });
+
+  it("points at the dates that are ready when there are no orders yet", async () => {
+    // No hire_orders at all (noOrdersYet), and two fully-filled show_dates with
+    // no active order covering them (fetchDatesReadyForHireOrder's real logic,
+    // exercised through the real useDatesReadyForHireOrder hook against the
+    // fake client, not a hook mock).
+    seedFor([], {
+      show_dates: { data: [{ id: "d1", status: "fully_filled" }, { id: "d2", status: "fully_filled" }], error: null },
+      hire_order_dates: { data: [], error: null },
+    });
+    renderPage();
+    expect(await screen.findByText(/2 dates are fully cast and ready/i)).toBeInTheDocument();
   });
 });

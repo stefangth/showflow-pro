@@ -1,19 +1,22 @@
 import { useEffect, useMemo, useState } from "react";
 import { Search } from "lucide-react";
+import { Link } from "react-router-dom";
 import { useAuth } from "@/features/auth/AuthContext";
 import { useEntitlements } from "@/hooks/useEntitlements";
-import { useHireOrders } from "@/hooks/useHireOrders";
+import { useHireOrders, useDatesReadyForHireOrder } from "@/hooks/useHireOrders";
 import { OrdersKpis } from "@/components/hireOrders/OrdersKpis";
 import { computeOrderKpis } from "@/lib/hireOrders/kpis";
 import { OrdersTable } from "@/components/hireOrders/OrdersTable";
 import { OrderSlideOver } from "@/components/hireOrders/OrderSlideOver";
 import { NewOrderWizard } from "@/components/hireOrders/NewOrderWizard";
 import { HireOrderImportDialog } from "@/components/hireOrders/import/HireOrderImportDialog";
+import { SetupRail } from "@/components/hireOrders/setup/SetupRail";
 import { FeatureOffBanner } from "@/components/layout/FeatureOffBanner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import type { HireOrderStatus } from "@/data/hireOrders";
+import { ROUTES } from "@/config/app.config";
 
 /** The spreadsheet-import wizard shipped in Task 5. */
 const IMPORT_READY = true;
@@ -79,6 +82,10 @@ export default function HireOrdersPage() {
   );
   const { data: filteredOrders = [], isLoading } = useHireOrders(orgId, filters);
 
+  const { data: ready } = useDatesReadyForHireOrder(orgId);
+  const readyCount = ready?.readyIds.length ?? 0;
+  const noOrdersYet = allOrders.length === 0;
+
   const stats = computeOrderKpis(allOrders);
   const selectedOrder =
     filteredOrders.find((o) => o.id === slideOverId) ?? allOrders.find((o) => o.id === slideOverId) ?? null;
@@ -109,39 +116,54 @@ export default function HireOrdersPage() {
 
       <OrdersKpis orders={allOrders} />
 
-      <div className="flex flex-wrap items-center gap-3">
-        <div className="flex items-center gap-1.5">
-          {STATUS_CHIPS.map((chip) => (
-            <Button
-              key={chip.value}
-              size="sm"
-              variant={statusChip === chip.value ? "default" : "outline"}
-              onClick={() => setStatusChip(chip.value)}
-            >
-              {chip.label}
-            </Button>
-          ))}
-        </div>
-        <div className="relative min-w-[200px] max-w-md flex-1">
-          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-          <Input
-            placeholder="Search order number or artist"
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            className="pl-10"
-          />
-        </div>
-      </div>
+      <div className="grid gap-5 lg:grid-cols-[1fr_340px] lg:items-start">
+        <div className="min-w-0 space-y-4">
+          <div className="flex flex-wrap items-center gap-3">
+            <div className="flex items-center gap-1.5">
+              {STATUS_CHIPS.map((chip) => (
+                <Button
+                  key={chip.value}
+                  size="sm"
+                  variant={statusChip === chip.value ? "default" : "outline"}
+                  onClick={() => setStatusChip(chip.value)}
+                >
+                  {chip.label}
+                </Button>
+              ))}
+            </div>
+            <div className="relative min-w-[200px] max-w-md flex-1">
+              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+              <Input
+                placeholder="Search order number or artist"
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                className="pl-10"
+              />
+            </div>
+          </div>
 
-      {!orgId ? (
-        <p className="py-12 text-center text-muted-foreground">Select an organization to view hire orders.</p>
-      ) : isLoading ? (
-        <div className="space-y-2">
-          {[1, 2, 3].map((i) => <Skeleton key={i} className="h-12" />)}
+          {!orgId ? (
+            <p className="py-12 text-center text-muted-foreground">Select an organization to view hire orders.</p>
+          ) : isLoading ? (
+            <div className="space-y-2">
+              {[1, 2, 3].map((i) => <Skeleton key={i} className="h-12" />)}
+            </div>
+          ) : (
+            <OrdersTable orders={filteredOrders} orgId={orgId} onRowClick={setSlideOverId} />
+          )}
+
+          {noOrdersYet && readyCount > 0 && (
+            <p className="text-xs text-muted-foreground">
+              {readyCount} {readyCount === 1 ? "date is" : "dates are"} fully cast and ready for an order.{" "}
+              <Link to={ROUTES.BOOKINGS} className="text-accent-600 underline-offset-2 hover:underline">
+                Generate from Shows and bookings
+              </Link>
+              , or use New order above.
+            </p>
+          )}
         </div>
-      ) : (
-        <OrdersTable orders={filteredOrders} orgId={orgId} onRowClick={setSlideOverId} />
-      )}
+        <SetupRail orgId={orgId} />
+      </div>
 
       <OrderSlideOver
         order={selectedOrder}
