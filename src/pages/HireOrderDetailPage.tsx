@@ -275,6 +275,21 @@ function HireOrderDetail({
               className="h-[600px] w-full rounded-lg border border-border bg-background lg:h-[720px]"
             />
           )}
+          {canSign && (
+            <div className="mt-3 rounded-lg border border-accent-200 bg-accent-50 p-4">
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <div className="min-w-0">
+                  <p className="text-sm font-semibold text-accent-700">This order needs your signature</p>
+                  <p className="mt-0.5 text-sm text-muted-foreground">
+                    Read the document above, then sign. You get a countersigned PDF by email straight after.
+                  </p>
+                </div>
+                <Button className="shrink-0" onClick={() => setSignOpen(true)}>
+                  Countersign
+                </Button>
+              </div>
+            </div>
+          )}
         </div>
 
         {/* RIGHT: status rail */}
@@ -304,7 +319,6 @@ function HireOrderDetail({
               <PrimaryAction
                 canManage={canManage}
                 canManageCountersign={canManageCountersign}
-                canSign={canSign}
                 status={order.status}
                 isElectronic={isElectronic}
                 hasPdf={hasPdf}
@@ -312,7 +326,6 @@ function HireOrderDetail({
                 downloadBusy={downloadBusy}
                 onCountersign={onCountersign}
                 countersignBusy={countersignBusy}
-                onSign={() => setSignOpen(true)}
               />
             </CardContent>
           </Card>
@@ -328,7 +341,6 @@ function HireOrderDetail({
 interface ActionProps {
   canManage: boolean;
   canManageCountersign: boolean;
-  canSign: boolean;
   status: string;
   isElectronic: boolean;
   hasPdf: boolean;
@@ -336,30 +348,20 @@ interface ActionProps {
   downloadBusy: boolean;
   onCountersign: () => void;
   countersignBusy: boolean;
-  onSign: () => void;
 }
 
 /** The role- and status-driven primary control in the rail. Producers/admins
  *  can mark an issued order countersigned in MANUAL mode (and see a confirmation
  *  once done); in electronic mode that manual flip is withheld — the order must
  *  be completed by the artist's in-app signature, so a manager sees only a hint.
- *  The linked artist gets an in-app Review & sign action on an issued
- *  electronic-mode order; everyone else only ever gets a download control.
- *  `canManageCountersign` gates the Mark-countersigned action itself, on top of
- *  the broad producer/admin split. */
+ *  The linked artist's own signing affordance lives in the strip directly under
+ *  the document (see `canSign` in `HireOrderDetail`), not here, so a signer never
+ *  reaches this component's branches -- it falls through to the plain download
+ *  control below like any other non-manager viewer. `canManageCountersign` gates
+ *  the Mark-countersigned action itself, on top of the broad producer/admin split. */
 function PrimaryAction({
-  canManage, canManageCountersign, canSign, status, isElectronic, hasPdf, onDownload, downloadBusy, onCountersign, countersignBusy, onSign,
+  canManage, canManageCountersign, status, isElectronic, hasPdf, onDownload, downloadBusy, onCountersign, countersignBusy,
 }: ActionProps) {
-  if (canSign) {
-    return (
-      <div className="space-y-2">
-        <Button className="w-full" onClick={onSign}>Review &amp; sign</Button>
-        <Button variant="outline" className="w-full" onClick={onDownload} disabled={!hasPdf || downloadBusy}>
-          <Download className="mr-1 h-4 w-4" /> Download PDF
-        </Button>
-      </div>
-    );
-  }
   if (canManage && status === "issued") {
     // Electronic mode: the artist completes the order in-app; no manual flip.
     if (isElectronic) {

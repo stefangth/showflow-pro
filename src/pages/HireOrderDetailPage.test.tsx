@@ -84,6 +84,34 @@ function renderPage(id = "ho-1") {
   );
 }
 
+/** The artists row linked to useEffectiveUserId's fixed "user-1", in the same org as
+ *  the seeded order -- the piece no existing test in this file seeds, so `canArtistSign`
+ *  has never evaluated true here before. Matches `order().artist_id` ("ar-1"). */
+const LINKED_ARTIST = { id: "ar-1", org_id: "org-1", user_id: "user-1", name: "Ada Lovelace" };
+
+/** Renders the page as the linked artist on an issued, electronic-mode order --
+ *  the one state where `canArtistSign` is true and the signing strip should appear. */
+async function renderArtistViewingSignableOrder() {
+  authAs("artist");
+  seedClient({
+    hire_orders: { data: order(), error: null },
+    "fn:generate-hire-orders": { data: { url: SIGNED_URL }, error: null },
+    app_settings: { data: [{ org_id: "org-1", value: { mode: "electronic" } }], error: null },
+    artists: { data: LINKED_ARTIST, error: null },
+  });
+  renderPage();
+  await screen.findByText("Performance hire order");
+}
+
+/** Renders the same issued order for a producer -- canManage is true, so
+ *  canArtistSign is false regardless of countersign mode or artist linkage. */
+async function renderProducerViewingIssuedOrder() {
+  authAs("producer");
+  seedFor(order());
+  renderPage();
+  await screen.findByText("Performance hire order");
+}
+
 describe("HireOrderDetailPage", () => {
   beforeEach(() => { seedFor(order()); vi.mocked(useCan).mockReturnValue(true); });
 
@@ -297,5 +325,18 @@ describe("HireOrderDetailPage", () => {
     renderPage();
     expect(await screen.findByText(/couldn't load the document/i)).toBeInTheDocument();
     expect(screen.queryByTitle(/hire order document/i)).not.toBeInTheDocument();
+  });
+});
+
+describe("artist signing strip", () => {
+  it("shows a signing prompt directly under the document when the artist may sign", async () => {
+    await renderArtistViewingSignableOrder();
+    expect(screen.getByText(/needs your signature/i)).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /Countersign/i })).toBeInTheDocument();
+  });
+
+  it("shows no signing strip for a producer viewing the same order", async () => {
+    await renderProducerViewingIssuedOrder();
+    expect(screen.queryByText(/needs your signature/i)).not.toBeInTheDocument();
   });
 });
