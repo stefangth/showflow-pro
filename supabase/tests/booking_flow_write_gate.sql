@@ -1,10 +1,10 @@
 -- The booking_flow module's database floor.
 --
--- Source migrations: 20260806150000_booking_flow_write_gate.sql — three RESTRICTIVE
+-- Source migrations: 20260806151854_booking_flow_write_gate.sql — three RESTRICTIVE
 -- policies on public.bookings (booking_flow_required_insert / _update / _delete)
 -- close writes for an org whose booking_flow entitlement is off, and
 -- promote_understudy_on_cancellation() early-returns for the same org — plus
--- 20260806160000_expire_offers_booking_flow_gate.sql, which adds the same gate to
+-- 20260806151909_expire_offers_booking_flow_gate.sql, which adds the same gate to
 -- expire_soft_bookings() (SECURITY DEFINER and fleet-wide, so RLS cannot reach it).
 --
 -- Three invariants this file exists to hold:

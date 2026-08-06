@@ -3,7 +3,7 @@
 -- The hourly expire-offers cron calls this RPC with the service-role client before
 -- any org or entitlement filtering, and the function itself is SECURITY DEFINER and
 -- fleet-wide, so it bypasses the RESTRICTIVE booking_flow_required_* policies added
--- in 20260806150000_booking_flow_write_gate.sql by design.
+-- in 20260806151854_booking_flow_write_gate.sql by design.
 --
 -- Without an org predicate that made disabling the module DRAIN an org instead of
 -- FREEZING it: every 'suggested' offer past its deadline was cancelled within the
