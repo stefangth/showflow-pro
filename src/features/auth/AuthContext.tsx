@@ -103,6 +103,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const switchOrg = (orgId: string) => {
     setCurrentOrgId(orgId);
     localStorage.setItem('showflow.currentOrg', orgId);
+    // An impersonated user is an identity inside the org being LEFT: their roles are
+    // membership-scoped, and they would not appear in the new org's user list, so the
+    // UI offers no way to clear a stale one. Reset here rather than at each call site —
+    // the sidebar switcher, the editor toolbar, the platform console's "enter org" and
+    // the suspended-org screen all route through this function.
+    setViewAsUserState(null);
     queryClient.invalidateQueries();
   };
 

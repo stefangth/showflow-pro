@@ -1,14 +1,17 @@
-import { Eye, Pencil, Settings, User, X } from 'lucide-react';
+import { Building2, Eye, Pencil, Settings, User, X } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
+import { useLocation } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Separator } from '@/components/ui/separator';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { useAuth } from '@/features/auth/AuthContext';
-import type { AppRole } from '@/config/app.config';
+import { ROUTES, type AppRole } from '@/config/app.config';
 import { supabase } from '@/integrations/supabase/client';
+import { isOrgSuspended, orgOptionLabel } from '@/lib/orgs';
 import { useEditor } from './EditorContext';
+import { canUseEditor } from './editorAccess';
 import { EditorSidePanel } from './EditorSidePanel';
 
 interface IamUser {
@@ -18,14 +21,14 @@ interface IamUser {
 }
 
 export function EditorToolbar() {
-  const { roles, viewAsRole, setViewAsRole, viewAsUser, setViewAsUser, currentOrg } = useAuth();
+  const { roles, viewAsRole, setViewAsRole, viewAsUser, setViewAsUser, currentOrg, orgs, switchOrg, isSuperAdmin } = useAuth();
   const { isEditorMode, enableEditorMode, disableEditorMode, isSidePanelOpen, setSidePanelOpen } = useEditor();
 
-  const isRealAdmin = roles.includes('admin');
+  const canEdit = canUseEditor(roles, isSuperAdmin);
 
   const { data: iamUsers } = useQuery({
     queryKey: ['admin-iam-users', currentOrg?.id],
-    enabled: isRealAdmin && isEditorMode,
+    enabled: canEdit && isEditorMode,
     queryFn: async () => {
       const { data, error } = await supabase.functions.invoke('admin-list-users', {
         body: { org_id: currentOrg?.id },
@@ -38,7 +41,7 @@ export function EditorToolbar() {
     staleTime: 60_000,
   });
 
-  if (!isRealAdmin) return null;
+  if (!canEdit) return null;
 
   if (!isEditorMode) {
     return (
@@ -67,6 +70,38 @@ export function EditorToolbar() {
         </Badge>
 
         <Separator orientation="vertical" className="h-5 bg-warning/30" />
+
+        {orgs.length > 1 && (
+          <div className="flex items-center gap-2 shrink-0">
+            <Building2 className="h-4 w-4 text-muted-foreground" />
+            <span className="text-muted-foreground text-xs">Org:</span>
+            <Select
+              value={currentOrg?.id ?? ''}
+              // switchOrg clears the impersonated user itself, so every entry point
+              // gets that behavior, not just this one.
+              onValueChange={v => { if (v !== currentOrg?.id) switchOrg(v); }}
+            >
+              <SelectTrigger className="h-7 w-44 text-xs" aria-label="Editor organization">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {orgs.map(o => (
+                  <SelectItem
+                    key={o.id}
+                    value={o.id}
+                    className="text-xs"
+                    // Entering a suspended org swaps the layout for SuspendedOrgScreen,
+                    // taking this toolbar with it — a one-way trip. Super-admins bypass
+                    // that check, so it is only a trap for ordinary admins.
+                    disabled={isOrgSuspended(o) && !isSuperAdmin}
+                  >
+                    {orgOptionLabel(o)}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        )}
 
         <div className="flex items-center gap-2 shrink-0">
           <Eye className="h-4 w-4 text-muted-foreground" />
@@ -154,12 +189,48 @@ export function EditorToolbar() {
   );
 }
 
+/**
+ * Which source file backs the route being viewed. Editor-mode only: it is a wayfinding
+ * aid for whoever is configuring the page, not product UI.
+ */
+const ROUTE_TO_FILE: Record<string, string> = {
+  [ROUTES.DASHBOARD]:    'DashboardPage.tsx',
+  [ROUTES.BOOKINGS]:     'ShowsBookingsPage.tsx',
+  [ROUTES.PRODUCTIONS]:  'ProductionsPage.tsx',
+  [ROUTES.HIRE_ORDERS]:  'HireOrdersPage.tsx',
+  [ROUTES.ARTISTS]:      'ArtistsPage.tsx',
+  [ROUTES.AVAILABILITY]: 'AvailabilityPage.tsx',
+  [ROUTES.ADMIN]:        'AdminPage.tsx',
+  [ROUTES.SETTINGS]:     'SettingsPage.tsx',
+  [ROUTES.CHATS]:        'ChatsListPage.tsx',
+};
+
+/**
+ * The page-file badge shown above page content in editor mode. Self-gating, like the
+ * toolbar and the toggle, so its host does not have to restate who may see the editor.
+ */
+export function EditorPageBadge() {
+  const { roles, isSuperAdmin } = useAuth();
+  const { isEditorMode } = useEditor();
+  const location = useLocation();
+
+  if (!isEditorMode || !canUseEditor(roles, isSuperAdmin)) return null;
+
+  return (
+    <div className="mb-4">
+      <Badge variant="neutral" className="font-mono">
+        {ROUTE_TO_FILE[location.pathname] ?? 'Unknown page'}
+      </Badge>
+    </div>
+  );
+}
+
 /** Toggle button rendered inside the topbar for admins when editor mode is off. */
 export function EditorModeToggle() {
-  const { roles } = useAuth();
+  const { roles, isSuperAdmin } = useAuth();
   const { isEditorMode, enableEditorMode, disableEditorMode } = useEditor();
 
-  if (!roles.includes('admin')) return null;
+  if (!canUseEditor(roles, isSuperAdmin)) return null;
 
   return (
     <Tooltip>

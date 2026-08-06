@@ -6,6 +6,7 @@ import type { Json } from '@/integrations/supabase/types';
 import { useAuth } from '@/features/auth/AuthContext';
 import { upsertOrgSetting } from '@/data/settings';
 import { resolveEditorRows, type EditorSettingRow } from './orgEditorConfig';
+import { canUseEditor } from './editorAccess';
 import type { AppRole } from '@/config/app.config';
 import { resolveColumnTemplate, pageColumnDefs, COMPUTED_LABELS, customFieldDefToColumnDef, CUSTOM_FIELD_PAGES } from './columnRegistries';
 import { fetchCustomFieldDefs, type CustomFieldDefinition } from '@/data/customFields';
@@ -48,31 +49,46 @@ interface EditorContextType {
 const EditorContext = createContext<EditorContextType | undefined>(undefined);
 
 export function EditorProvider({ children }: { children: ReactNode }) {
-  const { roles, currentOrg } = useAuth();
-  const isRealAdmin = roles.includes('admin');
+  const { roles, currentOrg, isSuperAdmin } = useAuth();
+  const canEdit = canUseEditor(roles, isSuperAdmin);
   const orgId = currentOrg?.id ?? null;
   const qc = useQueryClient();
 
-  const [isEditorMode, setIsEditorMode] = useState(
-    () => isRealAdmin && localStorage.getItem(EDITOR_MODE_KEY) === 'true'
-  );
+  const [isEditorMode, setIsEditorMode] = useState(false);
   const [isSidePanelOpen, setSidePanelOpen] = useState(false);
 
-  // Sync localStorage whenever isEditorMode changes
+  // Restore the persisted flag once access is known — NOT in the useState initializer.
+  // EditorProvider mounts inside AuthProvider above the routes, so on the very first
+  // render identity has not loaded: roles is [] and isSuperAdmin is false, making
+  // canEdit false for everyone. An initializer runs once and would never see access
+  // arrive, and a write-through effect on that same render would delete the flag it
+  // was meant to read.
   useEffect(() => {
-    if (isEditorMode) {
-      localStorage.setItem(EDITOR_MODE_KEY, 'true');
-    } else {
-      localStorage.removeItem(EDITOR_MODE_KEY);
+    if (canEdit && localStorage.getItem(EDITOR_MODE_KEY) === 'true') {
+      setIsEditorMode(true);
     }
-  }, [isEditorMode]);
+  }, [canEdit]);
 
-  // If the user loses admin role, exit editor mode
+  // If the user loses editor access, exit editor mode. The stored flag is left alone so
+  // regaining access restores it; sign-out clears it explicitly in AuthContext.
   useEffect(() => {
-    if (!isRealAdmin && isEditorMode) {
+    if (!canEdit && isEditorMode) {
       setIsEditorMode(false);
     }
-  }, [isRealAdmin, isEditorMode]);
+  }, [canEdit, isEditorMode]);
+
+  // Persistence is written at the two user actions rather than by an effect mirroring
+  // state, so it can never fire on a render where access is still unresolved.
+  const enableEditorMode = useCallback(() => {
+    setIsEditorMode(true);
+    localStorage.setItem(EDITOR_MODE_KEY, 'true');
+  }, []);
+
+  const disableEditorMode = useCallback(() => {
+    setIsEditorMode(false);
+    setSidePanelOpen(false);
+    localStorage.removeItem(EDITOR_MODE_KEY);
+  }, []);
 
   // Fetch editor configs — org-scoped (override ?? platform default), keyed by orgId
   const { data: rawSettings, isLoading: isConfigLoading } = useQuery({
@@ -212,8 +228,8 @@ export function EditorProvider({ children }: { children: ReactNode }) {
 
   const value = useMemo<EditorContextType>(() => ({
     isEditorMode,
-    enableEditorMode: () => setIsEditorMode(true),
-    disableEditorMode: () => { setIsEditorMode(false); setSidePanelOpen(false); },
+    enableEditorMode,
+    disableEditorMode,
     isSidePanelOpen,
     setSidePanelOpen,
     pageAccess,
@@ -230,6 +246,7 @@ export function EditorProvider({ children }: { children: ReactNode }) {
     getCustomFieldDefs,
   }), [
     isEditorMode,
+    enableEditorMode, disableEditorMode,
     isSidePanelOpen,
     pageAccess, columnTemplates, tablePermissions, isConfigLoading,
     savePageAccess, saveColumnTemplate, saveTablePermission,

@@ -3,6 +3,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { Button } from '@/components/ui/button';
 import { Check, ChevronsUpDown, Building2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { isOrgSuspended } from '@/lib/orgs';
 
 /**
  * Sidebar organization switcher. Renders nothing when there is no active org,
@@ -51,7 +52,7 @@ export function OrgSwitcher({ collapsed }: { collapsed?: boolean }) {
           >
             <Check className={cn('h-4 w-4 shrink-0', o.id === currentOrg.id ? 'opacity-100' : 'opacity-0')} />
             <span className="truncate">{o.name}</span>
-            {o.status === 'suspended' && <span className="ml-auto text-[10px] text-muted-foreground">suspended</span>}
+            {isOrgSuspended(o) && <span className="ml-auto text-[10px] text-muted-foreground">suspended</span>}
           </button>
         ))}
       </PopoverContent>

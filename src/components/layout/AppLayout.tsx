@@ -13,7 +13,7 @@ import { NAV_ITEMS, visibleNavItems, groupNavBySections } from '@/components/lay
 import { cn } from '@/lib/utils';
 import { useSettingsWarnings } from '@/hooks/useSettingsWarnings';
 import { useEditorConfig } from '@/features/editor/EditorContext';
-import { EditorToolbar, EditorModeToggle } from '@/features/editor/EditorToolbar';
+import { EditorToolbar, EditorModeToggle, EditorPageBadge } from '@/features/editor/EditorToolbar';
 import { StageMark } from '@/components/brand/StageMark';
 import { BrandWordmark } from '@/components/brand/BrandWordmark';
 import { OrgSwitcher } from '@/components/layout/OrgSwitcher';
@@ -29,18 +29,6 @@ import type { AppRole } from '@/types';
 interface AppLayoutProps {
   children: React.ReactNode;
 }
-
-const ROUTE_TO_FILE: Record<string, string> = {
-  [ROUTES.DASHBOARD]:    'DashboardPage.tsx',
-  [ROUTES.BOOKINGS]:     'ShowsBookingsPage.tsx',
-  [ROUTES.PRODUCTIONS]:  'ProductionsPage.tsx',
-  [ROUTES.HIRE_ORDERS]:  'HireOrdersPage.tsx',
-  [ROUTES.ARTISTS]:      'ArtistsPage.tsx',
-  [ROUTES.AVAILABILITY]: 'AvailabilityPage.tsx',
-  [ROUTES.ADMIN]:        'AdminPage.tsx',
-  [ROUTES.SETTINGS]:     'SettingsPage.tsx',
-  [ROUTES.CHATS]:        'ChatsListPage.tsx',
-};
 
 const ROUTE_TO_LABEL: Record<string, string> = Object.fromEntries(NAV_ITEMS.map((i) => [i.to, i.label]));
 
@@ -343,7 +331,7 @@ export default function AppLayout({ children }: AppLayoutProps) {
 
           <div className="flex-1" />
           <div className="flex items-center gap-1">
-            {isRealAdmin && <EditorModeToggle />}
+            <EditorModeToggle />
 
             <ThemeToggle />
 
@@ -374,17 +362,11 @@ export default function AppLayout({ children }: AppLayoutProps) {
         </header>
 
         {/* Editor toolbar */}
-        {isEditorMode && isRealAdmin && <EditorToolbar />}
+        <EditorToolbar />
 
         {/* Page content */}
         <main className="flex-1 overflow-y-auto p-4 sm:p-6">
-          {isEditorMode && isRealAdmin && (
-            <div className="mb-4">
-              <Badge variant="neutral" className="font-mono">
-                {ROUTE_TO_FILE[location.pathname] ?? 'Unknown page'}
-              </Badge>
-            </div>
-          )}
+          <EditorPageBadge />
           {children}
         </main>
       </div>
