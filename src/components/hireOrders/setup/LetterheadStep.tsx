@@ -9,6 +9,8 @@ import { LetterheadFields } from "@/components/settings/hireOrders/fields/Letter
 import { linesFromText, mergeLetterhead, serializeLines } from "@/lib/hireOrders/letterhead";
 import type { Json } from "@/integrations/supabase/types";
 import { Button } from "@/components/ui/button";
+import { Skeleton } from "@/components/ui/skeleton";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 
 /** The rail's letterhead panel. Writes the SAME app_settings key through the SAME
  *  upsertOrgSetting call as the Settings card, so the Settings change-history rail
@@ -52,6 +54,21 @@ export function LetterheadStep({ orgId, onDone }: { orgId: string | null; onDone
     },
     onError: (e: Error) => toast.error(e.message),
   });
+
+  // Same guards as LetterheadCard, for the same reason. Rendering the form before the
+  // read has landed (or after it failed) seeds it from LETTERHEAD_DEFAULT's blanks, and
+  // Confirm then merges onto `undefined`: the agent name, agent email and agent
+  // signature path are written back empty and the org's signature PNG is orphaned.
+  if (stored.isLoading) return <Skeleton className="h-40 w-full" />;
+  if (stored.isError) {
+    return (
+      <Alert variant="destructive">
+        <AlertDescription>
+          Could not load the letterhead. {(stored.error as Error).message}
+        </AlertDescription>
+      </Alert>
+    );
+  }
 
   return (
     <div className="space-y-3">

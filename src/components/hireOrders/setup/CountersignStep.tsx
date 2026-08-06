@@ -8,6 +8,8 @@ import type { HireOrderCountersign } from "@/components/settings/hireOrders/Coun
 import { CountersignFields } from "@/components/settings/hireOrders/fields/CountersignFields";
 import type { Json } from "@/integrations/supabase/types";
 import { Button } from "@/components/ui/button";
+import { Skeleton } from "@/components/ui/skeleton";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 
 /** The rail's countersign panel. Unlike the other two steps this one is not a blocker:
  *  the inherited manual mode issues perfectly well. Saving is what turns an inherited
@@ -42,6 +44,20 @@ export function CountersignStep({ orgId, onDone }: { orgId: string | null; onDon
     },
     onError: (e: Error) => toast.error(e.message),
   });
+
+  // Same guards as CountersignCard. An unread setting seeds COUNTERSIGN_DEFAULT
+  // (manual), and Save would then write that over a stored electronic mode, silently
+  // stopping artists signing in-app.
+  if (stored.isLoading) return <Skeleton className="h-24 w-full" />;
+  if (stored.isError) {
+    return (
+      <Alert variant="destructive">
+        <AlertDescription>
+          Could not load the countersign setting. {(stored.error as Error).message}
+        </AlertDescription>
+      </Alert>
+    );
+  }
 
   return (
     <div className="space-y-3">
