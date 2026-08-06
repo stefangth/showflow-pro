@@ -222,7 +222,7 @@ export function ShowDateDetailSheet({ showDateId, open, onOpenChange }: Props) {
   const blockedQ = useQuery({
     queryKey: ['blocked-dates', 'for-date', showDate?.date ?? null],
     enabled: canManage && !flow.artist_acceptance && !!showDate?.date,
-    queryFn: () => fetchBlockedArtistIds(supabase, { date: showDate!.date }),
+    queryFn: () => fetchBlockedArtistIds(supabase, { date: showDate!.date, orgId: orgId ?? null }),
   });
 
   const { data: orgSkills } = useSkills();

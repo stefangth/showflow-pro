@@ -41,6 +41,22 @@ export interface UpdateShowPatch {
 const SHOW_COLS =
   "id, program, sub_program, category, description, status, main_cast_slots, understudy_slots, airtable_program_key, sort_order, created_at";
 
+/** Show options for the cast-priority scope picker, in the catalog's display order. */
+export async function fetchShowOptions(
+  client: SupabaseClient<Database>,
+  orgId: string | null,
+): Promise<Pick<ShowRow, "id" | "program" | "sub_program">[]> {
+  if (!orgId) return [];
+  const { data, error } = await client
+    .from("shows")
+    .select("id, program, sub_program")
+    .eq("org_id", orgId)
+    .order("sort_order", { ascending: true, nullsFirst: false })
+    .order("program");
+  if (error) throw error;
+  return (data ?? []) as Pick<ShowRow, "id" | "program" | "sub_program">[];
+}
+
 /** Minimal show identities for the cast-eligibility matrix columns, org-scoped. */
 export async function fetchShowsForEligibility(
   client: SupabaseClient<Database>,

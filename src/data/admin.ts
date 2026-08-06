@@ -14,28 +14,35 @@ export type AdminAuditLog = Database["public"]["Tables"]["booking_audit_log"]["R
   booking: { artist: { name: string } | null } | null;
 };
 
-/** Most-recent booking audit-log rows (newest first), capped at `limit`. */
+/** The org's most-recent booking audit-log rows (newest first), capped at `limit`.
+ *  Org-filtered: RLS returns every org a super-admin or multi-org member can read. */
 export async function fetchAdminAuditLogs(
   client: SupabaseClient<Database>,
   limit: number,
+  orgId: string | null,
 ): Promise<AdminAuditLog[]> {
+  if (!orgId) return [];
   const { data, error } = await client
     .from("booking_audit_log")
     .select("*, booking:bookings(artist:artists(name))")
+    .eq("org_id", orgId)
     .order("created_at", { ascending: false })
     .limit(limit);
   if (error) throw error;
   return (data ?? []) as AdminAuditLog[];
 }
 
-/** Most-recent Airtable sync-log rows (newest first), capped at `limit`. */
+/** The org's most-recent Airtable sync-log rows (newest first), capped at `limit`. */
 export async function fetchAdminSyncLogs(
   client: SupabaseClient<Database>,
   limit: number,
+  orgId: string | null,
 ): Promise<Database["public"]["Tables"]["airtable_sync_log"]["Row"][]> {
+  if (!orgId) return [];
   const { data, error } = await client
     .from("airtable_sync_log")
     .select("*")
+    .eq("org_id", orgId)
     .order("synced_at", { ascending: false })
     .limit(limit);
   if (error) throw error;

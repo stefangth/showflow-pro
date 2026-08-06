@@ -24,13 +24,15 @@ export default function AdminPage() {
   const [tab, setTab] = useState(initialTab);
 
   const { data: auditLogs, isError: auditError } = useQuery({
-    queryKey: ['admin-audit'],
-    queryFn: () => fetchAdminAuditLogs(supabase, AUDIT_LOG_LIMIT),
+    queryKey: ['admin-audit', currentOrg?.id],
+    enabled: !!currentOrg,
+    queryFn: () => fetchAdminAuditLogs(supabase, AUDIT_LOG_LIMIT, currentOrg?.id ?? null),
   });
 
   const { data: syncLogs, isError: syncError } = useQuery({
-    queryKey: ['admin-sync'],
-    queryFn: () => fetchAdminSyncLogs(supabase, SYNC_LOG_LIMIT),
+    queryKey: ['admin-sync', currentOrg?.id],
+    enabled: !!currentOrg,
+    queryFn: () => fetchAdminSyncLogs(supabase, SYNC_LOG_LIMIT, currentOrg?.id ?? null),
   });
 
   const { data: stats } = useQuery({
