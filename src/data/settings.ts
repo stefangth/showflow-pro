@@ -92,6 +92,28 @@ export async function upsertOrgSetting(
 }
 
 /**
+ * Whether the org has ITS OWN row for `key`, as opposed to inheriting the platform
+ * default or a code fallback. `resolveOrgSetting` deliberately cannot answer this: it
+ * returns a value, not its provenance. The setup rail needs the distinction, because
+ * inheriting COUNTERSIGN_DEFAULT is not the same as an admin having chosen a mode.
+ */
+export async function hasOrgSettingRow(
+  client: SupabaseClient<Database>,
+  orgId: string | null,
+  key: string,
+): Promise<boolean> {
+  if (!orgId) return false;
+  const { data, error } = await client
+    .from("app_settings")
+    .select("key")
+    .eq("key", key)
+    .eq("org_id", orgId)
+    .limit(1);
+  if (error) throw error;
+  return (data ?? []).length > 0;
+}
+
+/**
  * Reduce a batched `app_settings` read (multiple keys, org rows + platform defaults mixed)
  * to the effective row per key: the org's own row (org_id = the org) wins over the platform
  * default (org_id IS NULL). The canonical "org row wins" resolver shared by every multi-key
