@@ -153,7 +153,10 @@ hand-rolling disabled styling five times is how five slightly different disabled
 get born.
 
 "Inert" means: interactive controls disabled, the region visually muted, and no queries
-fired for data the user cannot act on.
+fired for data the user cannot act on. The last clause is why the locked branch does not
+render its live children at all — mounting them would fire their queries. Instead it
+renders the notice plus an optional static `preview` (e.g. the read-only confirmed cast
+list), which the consumer supplies.
 
 Applied to:
 
