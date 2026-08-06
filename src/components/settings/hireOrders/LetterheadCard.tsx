@@ -6,11 +6,12 @@ import { resolveOrgSetting, upsertOrgSetting } from "@/data/settings";
 import { uploadAgentSignature, fetchAgentSignatureUrl } from "@/data/hireOrders";
 import type { Json } from "@/integrations/supabase/types";
 import { LETTERHEAD_DEFAULT } from "./defaults";
+import { linesFromText, serializeLines } from "@/lib/hireOrders/letterhead";
+import { LetterheadFields } from "./fields/LetterheadFields";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 
@@ -26,21 +27,6 @@ export interface Letterhead {
    *  drawn on the producer line of issued PDFs. Uploaded via the edge action;
    *  persisted here by Save. */
   agent_signature_path?: string | null;
-}
-
-/** One address line per row. On SAVE only: trim trailing whitespace per line
- *  (leading indentation + interior blanks preserved), then drop empty lines from
- *  the top and bottom so a stray leading/trailing Enter is not stored. */
-function linesFromText(text: string): string[] {
-  const lines = text.split("\n").map((l) => l.replace(/\s+$/, ""));
-  let start = 0;
-  let end = lines.length;
-  while (start < end && lines[start] === "") start++;
-  while (end > start && lines[end - 1] === "") end--;
-  return lines.slice(start, end);
-}
-function serializeLines(lines: string[]): string {
-  return lines.join("\n");
 }
 
 export function LetterheadCard({ orgId, readOnly = false }: { orgId: string | null; readOnly?: boolean }) {
@@ -149,104 +135,80 @@ export function LetterheadCard({ orgId, readOnly = false }: { orgId: string | nu
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
-        <div className="space-y-1.5">
-          <Label htmlFor="ho-legal-name">Legal name</Label>
-          <Input
-            id="ho-legal-name"
-            value={form.legal_name}
-            placeholder="Aurora Productions GmbH"
-            disabled={readOnly}
-            onChange={(e) => setForm((f) => ({ ...f, legal_name: e.target.value }))}
-          />
-        </div>
-        <div className="space-y-1.5">
-          <Label htmlFor="ho-address">Address</Label>
-          <Textarea
-            id="ho-address"
-            rows={3}
-            value={addressText}
-            placeholder={"Street and number\nPostal code and city\nCountry"}
-            disabled={readOnly}
-            onChange={(e) => setAddressText(e.target.value)}
-          />
-          <p className="text-xs text-muted-foreground">One line per row.</p>
-        </div>
-        <div className="space-y-1.5">
-          <Label htmlFor="ho-registration">Registration line</Label>
-          <Input
-            id="ho-registration"
-            value={form.registration_line}
-            placeholder="Registered at Amtsgericht Berlin, HRB 123456"
-            disabled={readOnly}
-            onChange={(e) => setForm((f) => ({ ...f, registration_line: e.target.value }))}
-          />
-        </div>
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <div className="space-y-1.5">
-            <Label htmlFor="ho-agent-name">Agent name (optional)</Label>
-            <Input
-              id="ho-agent-name"
-              value={form.agent_name ?? ""}
-              disabled={readOnly}
-              onChange={(e) => setForm((f) => ({ ...f, agent_name: e.target.value }))}
-            />
-          </div>
-          <div className="space-y-1.5">
-            <Label htmlFor="ho-agent-email">Agent email (optional)</Label>
-            <Input
-              id="ho-agent-email"
-              type="email"
-              value={form.agent_email ?? ""}
-              disabled={readOnly}
-              onChange={(e) => setForm((f) => ({ ...f, agent_email: e.target.value }))}
-            />
-          </div>
-        </div>
-        <div className="space-y-2">
-          <Label>Agent signature (optional)</Label>
-          <p className="text-xs text-muted-foreground">
-            A PNG of the booking agent's signature, drawn on the producer line of issued hire orders. Save the letterhead to apply.
-          </p>
-          {hasSignature && (
-            <div className="flex items-center gap-3 rounded-md border border-border p-2 w-fit">
-              {previewUrl ? (
-                <img
-                  src={previewUrl}
-                  alt="Agent signature preview"
-                  className="h-12 w-auto max-w-[200px] object-contain"
-                />
-              ) : (
-                <span className="text-sm text-muted-foreground">Signature on file</span>
-              )}
-              {!readOnly && (
-                <Button type="button" variant="ghost" size="sm" onClick={removeSignature}>
-                  Remove
-                </Button>
-              )}
-            </div>
-          )}
-          {!readOnly && (
-            <>
-              <input
-                ref={fileRef}
-                type="file"
-                accept="image/png"
-                className="hidden"
-                onChange={onPickSignatureFile}
-                aria-label="Upload agent signature PNG"
+        <LetterheadFields
+          value={form}
+          addressText={addressText}
+          onChange={setForm}
+          onAddressTextChange={setAddressText}
+          readOnly={readOnly}
+        >
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div className="space-y-1.5">
+              <Label htmlFor="ho-agent-name">Agent name (optional)</Label>
+              <Input
+                id="ho-agent-name"
+                value={form.agent_name ?? ""}
+                disabled={readOnly}
+                onChange={(e) => setForm((f) => ({ ...f, agent_name: e.target.value }))}
               />
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                disabled={uploadSig.isPending || !orgId}
-                onClick={() => fileRef.current?.click()}
-              >
-                {hasSignature ? "Replace signature" : "Upload PNG"}
-              </Button>
-            </>
-          )}
-        </div>
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="ho-agent-email">Agent email (optional)</Label>
+              <Input
+                id="ho-agent-email"
+                type="email"
+                value={form.agent_email ?? ""}
+                disabled={readOnly}
+                onChange={(e) => setForm((f) => ({ ...f, agent_email: e.target.value }))}
+              />
+            </div>
+          </div>
+          <div className="space-y-2">
+            <Label>Agent signature (optional)</Label>
+            <p className="text-xs text-muted-foreground">
+              A PNG of the booking agent's signature, drawn on the producer line of issued hire orders. Save the letterhead to apply.
+            </p>
+            {hasSignature && (
+              <div className="flex items-center gap-3 rounded-md border border-border p-2 w-fit">
+                {previewUrl ? (
+                  <img
+                    src={previewUrl}
+                    alt="Agent signature preview"
+                    className="h-12 w-auto max-w-[200px] object-contain"
+                  />
+                ) : (
+                  <span className="text-sm text-muted-foreground">Signature on file</span>
+                )}
+                {!readOnly && (
+                  <Button type="button" variant="ghost" size="sm" onClick={removeSignature}>
+                    Remove
+                  </Button>
+                )}
+              </div>
+            )}
+            {!readOnly && (
+              <>
+                <input
+                  ref={fileRef}
+                  type="file"
+                  accept="image/png"
+                  className="hidden"
+                  onChange={onPickSignatureFile}
+                  aria-label="Upload agent signature PNG"
+                />
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  disabled={uploadSig.isPending || !orgId}
+                  onClick={() => fileRef.current?.click()}
+                >
+                  {hasSignature ? "Replace signature" : "Upload PNG"}
+                </Button>
+              </>
+            )}
+          </div>
+        </LetterheadFields>
         <Button onClick={() => save.mutate()} disabled={readOnly || save.isPending || !orgId}>
           Save letterhead
         </Button>

@@ -106,10 +106,10 @@ describe("HireOrdersTab", () => {
     const countersignCard = countersignHeading.parentElement!.parentElement!;
     const radios = within(countersignCard).getAllByRole("radio");
     expect(radios).toHaveLength(2);
-    expect(screen.getByRole("radio", { name: /manual/i })).toBeInTheDocument();
-    expect(screen.getByRole("radio", { name: /electronic signature/i })).toBeInTheDocument();
-    expect(screen.getByRole("radio", { name: /manual/i })).toHaveAttribute("aria-checked", "true");
-    expect(screen.getByRole("radio", { name: /electronic signature/i })).toHaveAttribute("aria-checked", "false");
+    expect(screen.getByRole("radio", { name: /outside showflow/i })).toBeInTheDocument();
+    expect(screen.getByRole("radio", { name: /artist signs in showflow/i })).toBeInTheDocument();
+    expect(screen.getByRole("radio", { name: /outside showflow/i })).toHaveAttribute("aria-checked", "true");
+    expect(screen.getByRole("radio", { name: /artist signs in showflow/i })).toHaveAttribute("aria-checked", "false");
     expect(screen.queryByText(/documenso/i)).not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: /test connection/i })).not.toBeInTheDocument();
   });
@@ -120,7 +120,7 @@ describe("HireOrdersTab", () => {
     await screen.findByText("Countersign mode");
     expect(screen.queryByLabelText(/also email producers the signed copy/i)).not.toBeInTheDocument();
 
-    fireEvent.click(screen.getByRole("radio", { name: /electronic signature/i }));
+    fireEvent.click(screen.getByRole("radio", { name: /artist signs in showflow/i }));
     const checkbox = screen.getByRole("checkbox", { name: /also email producers the signed copy/i });
     expect(checkbox).toBeInTheDocument();
     expect(checkbox).toHaveAttribute("aria-checked", "false");
@@ -133,7 +133,7 @@ describe("HireOrdersTab", () => {
     authAs("org-on");
     renderTab();
     await screen.findByText("Countersign mode");
-    fireEvent.click(screen.getByRole("radio", { name: /electronic signature/i }));
+    fireEvent.click(screen.getByRole("radio", { name: /artist signs in showflow/i }));
     fireEvent.click(screen.getByRole("checkbox", { name: /also email producers the signed copy/i }));
     fireEvent.click(screen.getByRole("button", { name: "Save countersign mode" }));
 
@@ -237,7 +237,7 @@ describe("HireOrdersTab", () => {
       expect(screen.getByRole("button", { name: "Save terms" })).toBeDisabled();
       // Countersign mode: read floor keeps "manual" visibly selected even though the
       // radios can't be changed.
-      const manualRadio = await screen.findByRole("radio", { name: /manual/i });
+      const manualRadio = await screen.findByRole("radio", { name: /outside showflow/i });
       expect(manualRadio).toBeDisabled();
       expect(manualRadio).toHaveAttribute("aria-checked", "true");
       expect(screen.getByRole("button", { name: "Save countersign mode" })).toBeDisabled();
@@ -249,7 +249,7 @@ describe("HireOrdersTab", () => {
 
       expect(await screen.findByLabelText("Legal name")).toBeEnabled();
       expect(screen.getByRole("button", { name: "Save letterhead" })).toBeEnabled();
-      expect(screen.getByRole("radio", { name: /manual/i })).toBeEnabled();
+      expect(screen.getByRole("radio", { name: /outside showflow/i })).toBeEnabled();
     });
   });
 

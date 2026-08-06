@@ -25,6 +25,17 @@ vi.mock("react-router-dom", () => ({
     <a href={to} className={className}>{children}</a>
   ),
 }));
+// The rail is exercised on its own in SetupRail.test.tsx; stub it here so this
+// page's tests don't also have to seed its three app_settings reads. The page
+// reads the same visibility decision the rail does (a null child does not
+// collapse a grid track), so the stub covers both exports.
+const { railVisible } = vi.hoisted(() => ({ railVisible: { value: true } }));
+vi.mock("@/components/hireOrders/setup/SetupRail", () => ({
+  SetupRail: () => <div data-testid="setup-rail" />,
+}));
+vi.mock("@/components/hireOrders/setup/useSetupRailVisible", () => ({
+  useSetupRailVisible: () => railVisible.value,
+}));
 
 function seedClient(seed: Record<string, TableSeed>) {
   for (const key of Object.keys(client)) delete client[key];
@@ -34,11 +45,12 @@ function seedClient(seed: Record<string, TableSeed>) {
 import { useAuth } from "@/features/auth/AuthContext";
 import HireOrdersPage from "./HireOrdersPage";
 
-function authAs(role: "admin" | "producer" = "producer", orgId = "org-1") {
+function authAs(role: "admin" | "producer" = "producer", orgId = "org-1", isSuperAdmin = false) {
   vi.mocked(useAuth).mockReturnValue({
     currentOrg: { id: orgId, name: "Aurora Productions", slug: "aurora" },
     hasRole: (r: string) => r === role,
     roles: [role],
+    isSuperAdmin,
   } as never);
 }
 
@@ -98,6 +110,49 @@ const ROWS = [
 
 const SIGNED_URL = "https://signed.example/orders/ho-3.pdf?token=abc";
 
+// The bulk-issue tests below now go through BatchIssuePreflightDialog, which checks
+// every selected order's data (fee, recipient email, date, terms) against the org's
+// letterhead and terms before it will offer to issue anything. ROWS' fixtures don't
+// carry a `data.fee`/`data.date`/`terms_variant` (the KPI/table tests that use ROWS
+// unmodified never needed them), so the two bulk-issue tests below seed their own
+// clean rows and a configured org, matching the fake's documented gotcha: the two
+// app_settings keys must be separate array `when` entries or one read clobbers the other.
+const READY_APP_SETTINGS: TableSeed = [
+  {
+    when: { key: "hire_order_letterhead" },
+    data: [{ org_id: "org-1", value: { legal_name: "Aurora GmbH", address_lines: [], registration_line: "" } }],
+  },
+  {
+    when: { key: "hire_order_terms" },
+    data: [{
+      org_id: "org-1",
+      value: { templates: [{ id: "standard", name: "Standard", clauses: [{ title: "Fee", body: "14 days." }] }], default_id: "standard" },
+    }],
+  },
+];
+
+function readyOrder(overrides: Record<string, unknown> = {}) {
+  return order({
+    terms_variant: "standard",
+    data: {
+      artist_name: { value: "Ada Lovelace", source: "showflow" },
+      recipient_email: { value: "ada@example.com", source: "showflow" },
+      date: { value: "2026-02-01", source: "showflow" },
+      fee: { value: "1000.00", source: "manual" },
+    },
+    ...overrides,
+  });
+}
+
+/** Click "Issue selected" (now opens BatchIssuePreflightDialog), wait for it to
+ *  report the expected count clean, then confirm from the dialog. */
+async function openBulkDialogAndConfirm(expectedCount: number) {
+  fireEvent.click(screen.getByRole("button", { name: /issue selected/i }));
+  const confirmBtn = await screen.findByRole("button", { name: new RegExp(`Issue ${expectedCount} orders?`, "i") });
+  await waitFor(() => expect(confirmBtn).toBeEnabled());
+  fireEvent.click(confirmBtn);
+}
+
 function seedFor(rows: Record<string, unknown>[], extra: Record<string, TableSeed> = {}) {
   seedClient({
     hire_orders: { data: rows, error: null },
@@ -119,6 +174,7 @@ describe("HireOrdersPage", () => {
   beforeEach(() => {
     navigate.mockClear();
     authAs("producer");
+    railVisible.value = true;
     seedFor(ROWS);
   });
 
@@ -311,13 +367,23 @@ describe("HireOrdersPage", () => {
   });
 
   it("issues the selected draft/ready orders via the bulk bar", async () => {
+    seedFor(
+      [
+        readyOrder({ id: "ho-1", order_no: "HO-2026-0201-1", status: "draft", fee_amount: 1000, created_at: "2026-01-10T09:00:00Z" }),
+        readyOrder({
+          id: "ho-2", order_no: "HO-2026-0301-1", status: "ready", fee_amount: 2000, created_at: "2026-01-09T09:00:00Z",
+          artists: { name: "Zed Zeta" }, show_dates: { date: "2026-03-01", venue: "West Wing" },
+        }),
+      ],
+      { app_settings: READY_APP_SETTINGS },
+    );
     renderPage();
     await screen.findByText("HO-2026-0201-1");
     fireEvent.click(screen.getByRole("checkbox", { name: /select order ho-2026-0201-1/i }));
     fireEvent.click(screen.getByRole("checkbox", { name: /select order ho-2026-0301-1/i }));
     const issueBtn = screen.getByRole("button", { name: /issue selected/i });
     expect(issueBtn).toBeEnabled();
-    fireEvent.click(issueBtn);
+    await openBulkDialogAndConfirm(2);
     await waitFor(() => {
       const calls = (client.calls ?? []) as { table: string; method: string; args: unknown[] }[];
       const invoke = calls.find((c) => c.table === "fn:generate-hire-orders" && c.method === "invoke");
@@ -343,6 +409,17 @@ describe("HireOrdersPage", () => {
   });
 
   it("sends only the still-visible, still-issuable ids when a filter change hides part of a prior selection", async () => {
+    seedFor(
+      [
+        readyOrder({ id: "ho-1", order_no: "HO-2026-0201-1", status: "draft", fee_amount: 1000, created_at: "2026-01-10T09:00:00Z" }),
+        readyOrder({
+          id: "ho-2", order_no: "HO-2026-0301-1", status: "ready", fee_amount: 2000, created_at: "2026-01-09T09:00:00Z",
+          artists: { name: "Zed Zeta" }, show_dates: { date: "2026-03-01", venue: "West Wing" },
+        }),
+        ...ROWS.slice(2),
+      ],
+      { app_settings: READY_APP_SETTINGS },
+    );
     renderPage();
     await screen.findByText("HO-2026-0201-1");
     fireEvent.click(screen.getByRole("checkbox", { name: /select order ho-2026-0201-1/i })); // ho-1, draft
@@ -355,7 +432,7 @@ describe("HireOrdersPage", () => {
     await waitFor(() => expect(screen.queryByText("HO-2026-0301-1")).not.toBeInTheDocument());
     expect(screen.getByText("HO-2026-0201-1")).toBeInTheDocument();
 
-    fireEvent.click(screen.getByRole("button", { name: /issue selected/i }));
+    await openBulkDialogAndConfirm(1);
     await waitFor(() => {
       const calls = (client.calls ?? []) as { table: string; method: string; args: unknown[] }[];
       const invoke = calls.find((c) => c.table === "fn:generate-hire-orders" && c.method === "invoke");
@@ -419,5 +496,84 @@ describe("HireOrdersPage", () => {
     await waitFor(() => expect(screen.queryByText(/is off for this organization/)).not.toBeInTheDocument());
     expect(screen.getByRole("button", { name: /new order/i })).toBeEnabled();
     expect(screen.getByRole("button", { name: /import from spreadsheet/i })).toBeEnabled();
+  });
+
+  it("mounts the setup rail and reserves its column", async () => {
+    renderPage();
+    await screen.findByText("Hire orders");
+    // findBy, not getBy: the rail runs on the RAW entitlement with no fail-open, so it
+    // appears once org_entitlements resolves rather than optimistically on first
+    // paint. That wait is the point. Mounting a live app_settings write surface before
+    // knowing the org is entitled is what the two-gate split exists to prevent.
+    expect(await screen.findByTestId("setup-rail")).toBeInTheDocument();
+    expect(screen.getByTestId("orders-layout").className).toContain("lg:grid-cols-[1fr_340px]");
+  });
+
+  it("drops the rail column once the rail has retired", async () => {
+    // A rail that renders null does NOT collapse its grid track: the track comes
+    // from grid-template-columns. Left unconditional, every org loses 340px of
+    // orders-table width forever once setup is done, which is the steady state.
+    railVisible.value = false;
+    renderPage();
+    await screen.findByText("Hire orders");
+    expect(screen.queryByTestId("setup-rail")).not.toBeInTheDocument();
+    expect(screen.getByTestId("orders-layout").className).not.toContain("lg:grid-cols-");
+  });
+
+  it("does not mount the setup rail when the module is off", async () => {
+    // Super-admins bypass the route's entitlement gate, and hire_orders defaults
+    // off, so a module-off org is the normal case for them. The page must not
+    // offer an interactive setup checklist right beside its own "changes cannot
+    // be saved" banner -- app_settings RLS checks role, not entitlement, so those
+    // saves would land and configure a module the org does not have.
+    seedFor(ROWS, { org_entitlements: { data: [{ feature: "hire_orders", enabled: false }], error: null } });
+    renderPage();
+    await screen.findByText(/Hire orders is off for this organization/);
+    expect(screen.queryByTestId("setup-rail")).not.toBeInTheDocument();
+  });
+
+  it("withholds the setup rail from a super-admin on a module-off org", async () => {
+    // The page runs two gates on purpose. useModuleGate exempts super-admins, so
+    // god-mode still gets the page itself and no off-state banner. The setup rail is
+    // a WRITE surface and runs on the raw entitlement instead: app_settings RLS
+    // checks role, not entitlement, so a super-admin confirming the rail here would
+    // really write those settings and configure a module this org does not have.
+    authAs("admin", "org-1", true);
+    seedFor(ROWS, { org_entitlements: { data: [{ feature: "hire_orders", enabled: false }], error: null } });
+    renderPage();
+    await screen.findByText("Hire orders");
+    expect(screen.queryByTestId("setup-rail")).not.toBeInTheDocument();
+    // The super-admin exemption is what distinguishes this from the test above.
+    expect(screen.queryByText(/Hire orders is off for this organization/)).not.toBeInTheDocument();
+  });
+
+  it("points at the dates that are ready when there are no orders yet", async () => {
+    // No hire_orders at all (noOrdersYet), and two fully-filled show_dates with
+    // no active order covering them (fetchDatesReadyForHireOrder's real logic,
+    // exercised through the real useDatesReadyForHireOrder hook against the
+    // fake client, not a hook mock).
+    seedFor([], {
+      show_dates: { data: [{ id: "d1", status: "fully_filled" }, { id: "d2", status: "fully_filled" }], error: null },
+      hire_order_dates: { data: [], error: null },
+    });
+    renderPage();
+    expect(await screen.findByText(/2 dates are fully cast and ready/i)).toBeInTheDocument();
+    // A semantic token, not a numbered accent stop: those are identical in light
+    // and dark by design, so bare on a card the link failed contrast in dark.
+    expect(screen.getByText(/Generate from Shows and bookings/).className).toContain("text-primary");
+  });
+
+  it("never points at ready dates for an org that already has orders", async () => {
+    // noOrdersYet read `allOrders.length === 0` without consulting the query's
+    // loading state, so this pointer flashed on every mount of an org that has
+    // orders, before the first page of them arrived.
+    seedFor(ROWS, {
+      show_dates: { data: [{ id: "d1", status: "fully_filled" }], error: null },
+      hire_order_dates: { data: [], error: null },
+    });
+    renderPage();
+    await screen.findByText("Hire orders");
+    await waitFor(() => expect(screen.getAllByText(/HO-2026-0201-1/).length).toBeGreaterThan(0));
+    expect(screen.queryByText(/fully cast and ready/i)).not.toBeInTheDocument();
   });
 });

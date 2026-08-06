@@ -12,6 +12,8 @@ import {
   type HireOrderClause,
   type HireOrderTermsSetting,
 } from "@/lib/hireOrders/terms";
+import { useTermsLibrary, useImportTermsTemplates } from "@/hooks/useHireOrderSetup";
+import { TermsLibraryPicker } from "./fields/TermsLibraryPicker";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -118,6 +120,10 @@ export function TermsVariantsCard({ orgId, readOnly = false }: { orgId: string |
     }
   }, [data]);
 
+  const [picked, setPicked] = useState<string[]>([]);
+  const library = useTermsLibrary();
+  const importTerms = useImportTermsTemplates(orgId);
+
   const save = useMutation({
     mutationFn: () => {
       if (!orgId) throw new Error("No active organization");
@@ -186,6 +192,40 @@ export function TermsVariantsCard({ orgId, readOnly = false }: { orgId: string |
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-6">
+        {library.data && library.data.length > 0 && (
+          <div className="space-y-3 rounded-lg border border-border p-3">
+            <div>
+              <h5 className="text-sm font-medium">Start from a template</h5>
+              <p className="text-xs text-muted-foreground">
+                Add a ready-made template to this organization. You own the copy, so editing it here changes nothing for anyone else.
+              </p>
+            </div>
+            <TermsLibraryPicker
+              library={library.data}
+              selectedIds={picked}
+              alreadyHeldIds={form.templates.map((t) => t.id)}
+              onToggle={(id) => setPicked((p) => (p.includes(id) ? p.filter((x) => x !== id) : [...p, id]))}
+              readOnly={readOnly}
+            />
+            <Button
+              size="sm"
+              variant="outline"
+              disabled={readOnly || picked.length === 0 || importTerms.isPending}
+              // The clause editor below is seeded-once local state, so the import MUST
+              // feed it the merged value. Without this, the editor keeps showing the
+              // pre-import list and the card's own Save then persists that stale list,
+              // deleting every clause the import just added.
+              onClick={() =>
+                importTerms.mutate(
+                  { templateIds: picked },
+                  { onSuccess: (next) => { setForm(next); setPicked([]); } },
+                )
+              }
+            >
+              Add to this organization
+            </Button>
+          </div>
+        )}
         {form.templates.length === 0 ? (
           <p className="rounded-lg border border-dashed border-border p-3 text-xs text-muted-foreground">
             No templates yet. Add one to start authoring terms.

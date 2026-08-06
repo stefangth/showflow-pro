@@ -7,6 +7,7 @@ import { COUNTERSIGN_DEFAULT } from "@/components/settings/hireOrders/defaults";
 import type { HireOrderCountersign } from "@/components/settings/hireOrders/CountersignCard";
 import { HIRE_ORDER_DEFAULT_TERMS } from "@/config/app.config";
 import { normalizeTermsSetting, type HireOrderTermsSetting } from "@/lib/hireOrders/terms";
+import { BLOCKER_COPY } from "@/lib/hireOrders/preflight";
 import {
   fetchHireOrdersForDate,
   fetchDatesReadyForHireOrder,
@@ -138,11 +139,12 @@ const WRITE_ACTIONS = new Set(["draft", "issue", "draft-manual", "draft-batch", 
  *  entry here fall back to the raw code rather than growing this list to cover
  *  every internal failure mode. */
 export const ISSUE_FAILURE_COPY: Record<string, string> = {
-  missing_terms: "Add terms in Settings before issuing",
-  missing_fee: "Set an engagement fee before issuing",
-  missing_recipient_email: "Add a recipient email before issuing",
-  missing_date: "Set a show date before issuing",
-  missing_letterhead: "Add a letterhead in Settings before issuing",
+  // The five readiness codes come FROM the blocker vocabulary rather than being
+  // restated here. They are the same five codes the preflight sheet, the batch dialog
+  // and the edit-page callout render, so a second map meant one blocker could read two
+  // different ways depending on which surface surfaced it, and editing one left the
+  // other stale. The entries below are the codes only the edge function emits.
+  ...Object.fromEntries(Object.entries(BLOCKER_COPY).map(([code, copy]) => [code, copy.action])),
   already_issued: "Already issued",
   // Not a real issue failure: the document was rendered, uploaded, and stamped
   // issued -- generate-hire-orders' Documenso branch reports this as a warning

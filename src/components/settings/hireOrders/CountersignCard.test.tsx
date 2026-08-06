@@ -13,9 +13,9 @@ import { CountersignCard } from "./CountersignCard";
 describe("CountersignCard", () => {
   beforeEach(() => upsert.mockClear());
 
-  it("offers Electronic and no Documenso option", async () => {
+  it("offers the in-app signing option and no Documenso option", async () => {
     renderWithProviders(<CountersignCard orgId="o1" />);
-    await waitFor(() => expect(screen.getByText(/electronic signature/i)).toBeInTheDocument());
+    await waitFor(() => expect(screen.getByText(/artist signs in showflow/i)).toBeInTheDocument());
     expect(screen.queryByText(/documenso/i)).not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: /test connection/i })).not.toBeInTheDocument();
   });

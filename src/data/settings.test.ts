@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { createFakeSupabase } from "@/test/supabaseFake";
-import { fetchShowsWithSlots, resolveOrgSetting, upsertOrgSetting, fetchShowsForLinking, linkShowAirtableKey, importShowsFromOptions, mergeOrgRows, fetchBookingFlow } from "./settings";
+import { fetchShowsWithSlots, resolveOrgSetting, upsertOrgSetting, fetchShowsForLinking, linkShowAirtableKey, importShowsFromOptions, mergeOrgRows, fetchBookingFlow, hasOrgSettingRow } from "./settings";
 import { BOOKING_FLOW_DEFAULTS, normalizeBookingFlow } from "@/lib/bookingFlow";
 
 describe("fetchShowsWithSlots", () => {
@@ -243,5 +243,32 @@ describe("fetchBookingFlow", () => {
     const flow = await fetchBookingFlow(fake as never, null);
     expect(flow).toEqual(normalizeBookingFlow(null));
     expect(fake.calls.some((c) => c.table === "rpc:is_feature_enabled")).toBe(false);
+  });
+});
+
+describe("hasOrgSettingRow", () => {
+  it("is true when the org has its own row for the key", async () => {
+    const fake = createFakeSupabase({
+      app_settings: { data: [{ key: "hire_order_countersign" }], error: null },
+    });
+    expect(await hasOrgSettingRow(fake as never, "org-1", "hire_order_countersign")).toBe(true);
+    expect(fake.calls).toContainEqual({ table: "app_settings", method: "eq", args: ["org_id", "org-1"] });
+    expect(fake.calls).toContainEqual({ table: "app_settings", method: "eq", args: ["key", "hire_order_countersign"] });
+  });
+
+  it("is false when only a platform default exists (no org row comes back)", async () => {
+    const fake = createFakeSupabase({ app_settings: { data: [], error: null } });
+    expect(await hasOrgSettingRow(fake as never, "org-1", "hire_order_countersign")).toBe(false);
+  });
+
+  it("is false without querying when there is no org", async () => {
+    const fake = createFakeSupabase({ app_settings: { data: [{ key: "x" }], error: null } });
+    expect(await hasOrgSettingRow(fake as never, null, "hire_order_countersign")).toBe(false);
+    expect(fake.calls).toEqual([]);
+  });
+
+  it("throws on a supabase error", async () => {
+    const fake = createFakeSupabase({ app_settings: { data: null, error: { message: "boom" } } });
+    await expect(hasOrgSettingRow(fake as never, "org-1", "k")).rejects.toBeTruthy();
   });
 });

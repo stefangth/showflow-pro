@@ -30,18 +30,24 @@ import HireOrderDetailPage from "./HireOrderDetailPage";
 import { useHireOrderCountersignMode } from "@/hooks/useHireOrders";
 
 describe("HireOrderDetailPage signing", () => {
-  it("shows Review & sign for the linked artist on an issued electronic order", () => {
+  // The signing entry point moved from a "Review & sign" button in the status rail
+  // onto a "This order needs your signature" strip directly under the document, with
+  // a "Countersign" button (see HireOrderDetailPage.test.tsx's "artist signing strip"
+  // suite). The frozen-issue-time-mode behaviour under test here is unchanged.
+  it("shows the signing strip for the linked artist on an issued electronic order", () => {
     vi.mocked(useHireOrderCountersignMode).mockReturnValue({ data: { mode: "electronic" } } as never);
     render(<MemoryRouter initialEntries={["/hire-orders/ho1"]}>{<HireOrderDetailPage />}</MemoryRouter>);
-    expect(screen.getByRole("button", { name: /review & sign/i })).toBeInTheDocument();
+    expect(screen.getByText(/needs your signature/i)).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /countersign/i })).toBeInTheDocument();
   });
 
-  it("keeps Review & sign for an electronic-issued order even after the org switched to manual (order-mode wins)", () => {
+  it("keeps the signing strip for an electronic-issued order even after the org switched to manual (order-mode wins)", () => {
     // The order was ISSUED electronic (issue_snapshot.countersign_mode), but the org's
     // live setting is now manual. The frozen issue-time mode must win so the artist can
     // still complete the in-app signature the DB gate requires.
     vi.mocked(useHireOrderCountersignMode).mockReturnValue({ data: { mode: "manual" } } as never);
     render(<MemoryRouter initialEntries={["/hire-orders/ho1"]}>{<HireOrderDetailPage />}</MemoryRouter>);
-    expect(screen.getByRole("button", { name: /review & sign/i })).toBeInTheDocument();
+    expect(screen.getByText(/needs your signature/i)).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /countersign/i })).toBeInTheDocument();
   });
 });

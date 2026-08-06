@@ -1,6 +1,5 @@
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { useQuery } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { ArrowLeft, RefreshCw } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
@@ -9,12 +8,8 @@ import {
   useHireOrder, useHireOrderAction, useUpdateHireOrderDraft, useHireOrderTerms, ISSUE_FAILURE_COPY,
 } from "@/hooks/useHireOrders";
 import { fetchShowflowLayerForOrder, type UpdateHireOrderDraftPatch } from "@/data/hireOrders";
-import { resolveOrgSetting } from "@/data/settings";
-import { type Letterhead } from "@/components/settings/hireOrders/LetterheadCard";
-import { LETTERHEAD_DEFAULT } from "@/components/settings/hireOrders/defaults";
 import { createSingleFlightRunner } from "@/lib/singleFlight";
 import { resolveFields } from "@/lib/hireOrders/resolveFields";
-import { orderReadyIssues } from "@/lib/hireOrders/validate";
 import { formatMoney } from "@/lib/hireOrders/money";
 import { feeCents } from "@/lib/hireOrders/feeBasis";
 import { defaultTemplateId } from "@/lib/hireOrders/terms";
@@ -28,6 +23,8 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { HireOrderStatusBadge } from "@/components/hireOrders/HireOrderStatusBadge";
 import { FieldSection } from "@/components/hireOrders/edit/FieldSection";
+import { useOrderBlockers } from "@/hooks/useOrderBlockers";
+import { SetupCallout } from "@/components/hireOrders/edit/SetupCallout";
 
 /** Kept in sync with CURRENCY_SYMBOLS in money.ts / CURRENCIES in NewOrderWizard.tsx. */
 const CURRENCIES = ["EUR", "USD", "CHF"];
@@ -166,11 +163,10 @@ export default function HireOrderEditPage() {
   const action = useHireOrderAction();
   const updateDraft = useUpdateHireOrderDraft();
 
-  const letterheadQuery = useQuery({
-    queryKey: ["app-settings", "hire_order_letterhead", orgId],
-    queryFn: () => resolveOrgSetting<Letterhead>(supabase, orgId, "hire_order_letterhead", LETTERHEAD_DEFAULT),
-    enabled: !!orgId,
-  });
+  // The org's letterhead is read by `useOrderBlockers` below, on the same
+  // ["app-settings", "hire_order_letterhead", orgId] key: this page no longer
+  // observes it separately, because nothing here reads the letterhead except the
+  // readiness rule, and that rule now lives in one place.
 
   // Org terms templates — reuses the same query key as TermsVariantsCard so the
   // cache is shared. Falls back to the shared seed defaults while loading/errored.
@@ -381,6 +377,16 @@ export default function HireOrderEditPage() {
 
   const canRefresh = !!order && (!!order.show_date_id || !!order.artist_id);
 
+  // The ONE readiness rule on this page: it feeds both the callout and the Issue
+  // gate below, and it is what the edge function's issueOne actually enforces.
+  // Called unconditionally, ABOVE the isLoading/isError/isReadOnly early returns
+  // below, because it is a hook (Rules of Hooks). Its own read state travels with
+  // it: the blockers are fail-safe, so an unread setting looks exactly like an
+  // unconfigured org and neither surface may present it as one.
+  const {
+    blockers, isLoading: blockersLoading, isError: blockersError,
+  } = useOrderBlockers(orgId, order ? { data: displayData, terms_variant: termsVariant } : null);
+
   async function handleRefresh() {
     if (!order || !canRefresh) return;
     try {
@@ -447,19 +453,33 @@ export default function HireOrderEditPage() {
     );
   }
 
-  const letterhead = letterheadQuery.data ?? LETTERHEAD_DEFAULT;
-  const readyIssues = orderReadyIssues(displayData, letterhead);
   // The stored terms_variant no longer matches any live template (its template
   // was deleted in Settings). Never silently drop or auto-correct the
   // selection -- show it as a disabled "removed" chip and require an explicit
-  // pick before Issue is allowed.
+  // pick before Issue is allowed. Stricter than the readiness rule on purpose:
+  // resolveTermsClauses falls back to the org default for a dead reference, so
+  // `blockers` alone would let a deleted reference through silently.
   const variantIsLive = terms.templates.some((t) => t.id === termsVariant);
   const hasTermsTemplates = terms.templates.length > 0;
-  const issueDisabled = readyIssues.length > 0 || action.isPending || !variantIsLive;
-  const issueTitleParts = readyIssues.map((code) => ISSUE_FAILURE_COPY[code] ?? code);
+
+  // `blockers` (computeBlockers, via useOrderBlockers above) is the readiness rule,
+  // the same one the slide-over and the bulk bar preflight on and the same one
+  // issueOne enforces server-side. It replaces this page's old `orderReadyIssues`
+  // gate, which carried no terms rule and so enabled this button for orders the
+  // server rejects with `missing_terms`. The two conditions below it are this
+  // page's own, and neither is expressible as a blocker.
+  const issueTitleParts = blockers.map((b) => ISSUE_FAILURE_COPY[b.key] ?? b.key);
   if (!variantIsLive) {
     issueTitleParts.push(hasTermsTemplates ? "Choose a terms template before issuing" : "No terms templates configured");
   }
+  const issueDisabled =
+    blockersLoading || blockersError || blockers.length > 0 || action.isPending || !variantIsLive;
+  // The read-state prefix is prepended, not substituted: `issueTitleParts` can already
+  // hold the deleted-terms-template reason, which is derived from `terms` (not from the
+  // blockers read) and is the one thing the producer can act on. Dropping it while the
+  // settings read is in flight hides it exactly when they hover to find out why.
+  if (blockersLoading) issueTitleParts.unshift("Checking this order");
+  else if (blockersError) issueTitleParts.unshift("Could not check this order. Reload the page and try again.");
   const issueTitle = issueTitleParts.length > 0 ? issueTitleParts.join(", ") : undefined;
 
   const currency = fieldString(displayData, "currency") || order.fee_currency || "EUR";
@@ -667,21 +687,24 @@ export default function HireOrderEditPage() {
         </div>
 
         {/* RIGHT: live document preview */}
-        <div className="rounded-xl border border-border bg-muted p-3 sm:p-4">
-          <div className="sticky top-4 z-10 mb-3 flex justify-center">
-            <span className="rounded-full border border-border bg-card px-3 py-1 text-xs font-medium text-muted-foreground shadow-elev1">
-              Live preview, updates as you edit
-            </span>
+        <div>
+          <SetupCallout orgId={orgId} blockers={blockers} isLoading={blockersLoading} isError={blockersError} />
+          <div className="rounded-xl border border-border bg-muted p-3 sm:p-4">
+            <div className="sticky top-4 z-10 mb-3 flex justify-center">
+              <span className="rounded-full border border-border bg-card px-3 py-1 text-xs font-medium text-muted-foreground shadow-elev1">
+                Live preview, updates as you edit
+              </span>
+            </div>
+            {previewSrc ? (
+              <iframe
+                title="Hire order live preview"
+                src={previewSrc}
+                className="h-[600px] w-full rounded-lg border border-border bg-background lg:h-[720px]"
+              />
+            ) : (
+              <Skeleton className="h-[600px] w-full rounded-lg" />
+            )}
           </div>
-          {previewSrc ? (
-            <iframe
-              title="Hire order live preview"
-              src={previewSrc}
-              className="h-[600px] w-full rounded-lg border border-border bg-background lg:h-[720px]"
-            />
-          ) : (
-            <Skeleton className="h-[600px] w-full rounded-lg" />
-          )}
         </div>
       </div>
     </div>

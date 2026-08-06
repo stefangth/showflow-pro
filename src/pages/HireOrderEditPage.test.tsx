@@ -3,7 +3,7 @@ import { fireEvent, screen, waitFor, within } from "@testing-library/react";
 import { MemoryRouter, Routes, Route } from "react-router-dom";
 import { renderWithProviders } from "@/test/renderWithProviders";
 import { createTestQueryClient } from "@/test/queryClient";
-import { createFakeSupabase, type TableSeed } from "@/test/supabaseFake";
+import { createFakeSupabase, type ArraySeedEntry, type TableSeed } from "@/test/supabaseFake";
 
 // Same harness as HireOrderDetailPage.test.tsx: a call-recording fake swapped
 // into a hoisted holder (never a hand-rolled vi.mock chain), useAuth as a
@@ -70,6 +70,34 @@ function order(overrides: Record<string, unknown> = {}) {
 
 const LETTERHEAD_READY = { legal_name: "Aurora Productions GmbH", address_lines: [], registration_line: "" };
 const PREVIEW_PDF_B64 = "QUJD";
+
+const LETTERHEAD_SEED: ArraySeedEntry = {
+  when: { key: "hire_order_letterhead" },
+  data: [{ key: "hire_order_letterhead", org_id: null, value: LETTERHEAD_READY }],
+  error: null,
+};
+
+/** A terms setting whose template actually HAS clauses.
+ *
+ *  The Issue button now shares one readiness rule with the slide-over, the bulk bar
+ *  and the edge function's `issueOne`, and that rule requires the order's variant to
+ *  resolve to at least one clause (`missing_terms`). A test that expects Issue to be
+ *  ENABLED therefore has to seed real clauses: an org whose only template is empty is
+ *  one the server refuses to issue for, so the older empty-clause seeds described a
+ *  state where an enabled button was the bug. */
+function termsSeed(templates: { id: string; name: string }[], defaultId: string): ArraySeedEntry {
+  return {
+    when: { key: "hire_order_terms" },
+    data: [{
+      org_id: "org-1",
+      value: {
+        templates: templates.map((t) => ({ ...t, clauses: [{ title: "Payment", body: "Paid within 14 days." }] })),
+        default_id: defaultId,
+      },
+    }],
+    error: null,
+  };
+}
 
 // app_settings now serves TWO keyed queries per page load (hire_order_letterhead
 // AND hire_order_terms, added for the dynamic terms picker) -- a single-object
@@ -474,8 +502,45 @@ describe("HireOrderEditPage", () => {
     expect(btn.getAttribute("title")).toContain("Add a letterhead in Settings before issuing");
   });
 
+  // I2: the three ways to issue an order (this button, the slide-over, the bulk bar)
+  // must agree, and must agree with issueOne. `orderReadyIssues` alone carries no
+  // terms rule, so a live-but-empty template used to leave this button enabled for an
+  // order the server rejects with `missing_terms` -- the post-hoc toast this whole
+  // feature exists to remove, printed right beside a callout saying the back page is
+  // empty.
+  it("blocks Issue and send when the order's terms template has no clauses, the same rule the server enforces", async () => {
+    seedFor(order({ terms_variant: "tpl-a" }), {
+      app_settings: [
+        {
+          when: { key: "hire_order_letterhead" },
+          data: [{ key: "hire_order_letterhead", org_id: null, value: LETTERHEAD_READY }],
+          error: null,
+        },
+        {
+          when: { key: "hire_order_terms" },
+          data: [
+            { org_id: "org-1", value: { templates: [{ id: "tpl-a", name: "VIP Contract", clauses: [] }], default_id: "tpl-a" } },
+          ],
+          error: null,
+        },
+      ],
+    });
+    renderPage();
+    const btn = await screen.findByRole("button", { name: /issue and send/i });
+    // The title is what proves the gate saw the terms rule: a still-loading or
+    // letterhead-only gate never produces this string.
+    await waitFor(() => expect(btn.getAttribute("title")).toContain("Add terms in Settings before issuing"));
+    expect(btn).toBeDisabled();
+    // The picked template IS live, so this is the terms rule blocking, not the
+    // removed-reference chip.
+    expect(screen.queryByRole("button", { name: /removed/i })).not.toBeInTheDocument();
+  });
+
   it("Issue and send calls the issue action when ready, and navigates to the detail page on success", async () => {
+    // order()'s stored terms_variant is "standard", so the org needs a live
+    // "standard" template WITH clauses for this order to be genuinely ready.
     seedFor(order(), {
+      app_settings: [LETTERHEAD_SEED, termsSeed([{ id: "standard", name: "Standard" }], "standard")],
       "fn:generate-hire-orders": { data: { issued: ["ho-1"], pdf_base64: PREVIEW_PDF_B64 }, error: null },
     });
     renderPage();
@@ -531,20 +596,7 @@ describe("HireOrderEditPage", () => {
 
   it("shows a disabled removed chip when the order's stored terms_variant is no longer among the org's templates, and blocks issuing until a live template is chosen", async () => {
     seedFor(order({ terms_variant: "deleted-tpl" }), {
-      app_settings: [
-        {
-          when: { key: "hire_order_letterhead" },
-          data: [{ key: "hire_order_letterhead", org_id: null, value: LETTERHEAD_READY }],
-          error: null,
-        },
-        {
-          when: { key: "hire_order_terms" },
-          data: [
-            { org_id: "org-1", value: { templates: [{ id: "tpl-a", name: "VIP Contract", clauses: [] }], default_id: "tpl-a" } },
-          ],
-          error: null,
-        },
-      ],
+      app_settings: [LETTERHEAD_SEED, termsSeed([{ id: "tpl-a", name: "VIP Contract" }], "tpl-a")],
     });
     renderPage();
     await screen.findByText("HO-2026-0201-1");
@@ -569,27 +621,8 @@ describe("HireOrderEditPage", () => {
     const newOrder = order({ terms_variant: "" });
     seedFor(newOrder, {
       app_settings: [
-        {
-          when: { key: "hire_order_letterhead" },
-          data: [{ key: "hire_order_letterhead", org_id: null, value: LETTERHEAD_READY }],
-          error: null,
-        },
-        {
-          when: { key: "hire_order_terms" },
-          data: [
-            {
-              org_id: "org-1",
-              value: {
-                templates: [
-                  { id: "tpl-a", name: "VIP Contract", clauses: [] },
-                  { id: "tpl-b", name: "Standard Package", clauses: [] },
-                ],
-                default_id: "tpl-b",
-              },
-            },
-          ],
-          error: null,
-        },
+        LETTERHEAD_SEED,
+        termsSeed([{ id: "tpl-a", name: "VIP Contract" }, { id: "tpl-b", name: "Standard Package" }], "tpl-b"),
       ],
     });
     const queryClient = createTestQueryClient();
@@ -637,6 +670,24 @@ describe("HireOrderEditPage", () => {
     const issueBtn = screen.getByRole("button", { name: /issue and send/i });
     expect(issueBtn).toBeDisabled();
     expect(issueBtn.getAttribute("title")).toContain("No terms templates configured");
+  });
+
+  // I1: the callout is fed fail-safe blockers (an unread org setting reads as a gap),
+  // so the page must hand it the read's own state and let it stay honest. Without
+  // that, a transient app_settings failure on a correctly configured org prints a
+  // confident, wrong statement about the customer's own document.
+  it("does not state a failed org-settings read as a gap on the document", async () => {
+    seedClient({
+      hire_orders: { data: order(), error: null },
+      app_settings: { data: null, error: new Error("boom") },
+      "fn:generate-hire-orders": { data: { pdf_base64: PREVIEW_PDF_B64 }, error: null },
+    });
+    renderPage();
+    await screen.findByText("HO-2026-0201-1");
+
+    await waitFor(() => expect(screen.getByText(/could not check/i)).toBeInTheDocument());
+    expect(screen.queryByText(/The header on this document is empty/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/back page of this document/i)).not.toBeInTheDocument();
   });
 
   it("surfaces a destructive alert when the order cannot be loaded", async () => {

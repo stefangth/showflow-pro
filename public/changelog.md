@@ -2,6 +2,19 @@
 
 What's new in ShowFlow, newest first.
 
+## 1.14.0 — August 6, 2026
+
+*Getting hire orders ready*
+
+### New
+- **Hire order setup checklist** — A checklist beside your hire orders shows exactly what is needed before the first order can be sent, and lets you set it right there. It disappears once you are set up.
+- **Ready-made terms templates** — Start from a prepared set of engagement terms instead of writing clauses from scratch. You get your own copy, so editing it changes nothing for anyone else.
+
+### Improved
+- **Know before you send** — Issuing a hire order now shows anything missing first, with the fix right there, instead of failing after you press send.
+- **Batch issuing is honest about what it can send** — Select any number of orders and see exactly how many can go now. The rest stay selected as drafts so you can fix them.
+- **Signing is on the document** — Artists sign right under the order they are reading, instead of in a separate window.
+
 ## 1.13.0 — July 25, 2026
 
 *Clearer fees on multi-date hire orders*
