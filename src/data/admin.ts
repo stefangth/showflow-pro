@@ -48,14 +48,17 @@ export interface AdminStats {
   bookings: number;
 }
 
-/** Header stat counts (server-side head counts — no row data crosses the wire). */
+/** Header stat counts for the org (server-side head counts — no row data crosses the
+ *  wire). Org-filtered: without it these are platform-wide totals for a super-admin. */
 export async function fetchAdminStats(
   client: SupabaseClient<Database>,
+  orgId: string | null,
 ): Promise<AdminStats> {
+  if (!orgId) return { shows: 0, artists: 0, bookings: 0 };
   const [shows, artists, bookings] = await Promise.all([
-    client.from("shows").select("*", { count: "exact", head: true }),
-    client.from("artists").select("*", { count: "exact", head: true }),
-    client.from("bookings").select("*", { count: "exact", head: true }),
+    client.from("shows").select("*", { count: "exact", head: true }).eq("org_id", orgId),
+    client.from("artists").select("*", { count: "exact", head: true }).eq("org_id", orgId),
+    client.from("bookings").select("*", { count: "exact", head: true }).eq("org_id", orgId),
   ]);
   return {
     shows: shows.count ?? 0,

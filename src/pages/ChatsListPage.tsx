@@ -1,6 +1,8 @@
 import { useMemo, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
+import { fetchMyChats } from '@/data/chats';
+import { useAuth } from '@/features/auth/AuthContext';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -12,27 +14,15 @@ import { useReferenceField } from '@/hooks/useBookingFlow';
 import { referenceLabel } from '@/lib/bookingFlow';
 import { ShowDateDetailSheet } from '@/components/shows/ShowDateDetailSheet';
 
-type ChatRow = {
-  id: string;
-  show_date_id: string;
-  created_at: string;
-  show_date: { id: string; date: string; show_id: string; show: { id: string; program: string | null; sub_program: string | null } } | null;
-};
-
 export default function ChatsListPage() {
   const [activeShowDateId, setActiveShowDateId] = useState<string | null>(null);
   const { reference, customFieldKey } = useReferenceField();
+  const { currentOrg } = useAuth();
 
   const { data: chats, isLoading } = useQuery({
-    queryKey: ['my-chats'],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from('chats')
-        .select('id, show_date_id, created_at, show_date:show_dates(id, date, show_id, show:shows(id, program, sub_program))')
-        .order('created_at', { ascending: false });
-      if (error) throw error;
-      return (data ?? []) as unknown as ChatRow[];
-    },
+    queryKey: ['my-chats', currentOrg?.id],
+    enabled: !!currentOrg,
+    queryFn: () => fetchMyChats(supabase, currentOrg?.id ?? null),
   });
 
   const visible = useMemo(() => {

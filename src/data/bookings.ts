@@ -365,3 +365,102 @@ export async function fetchTierAttention(
     })),
   }));
 }
+
+/* ------------------------------------------------------------------------- *
+ * Org-scoped list reads.
+ *
+ * These previously ran inline in the pages with no org filter. RLS does NOT
+ * narrow them to the active org — `is_org_member()` short-circuits true for
+ * super-admins and is true for every org a multi-org user belongs to — so the
+ * explicit `.eq("org_id", orgId)` below is what scopes the result. See ADR-0003.
+ * ------------------------------------------------------------------------- */
+
+export interface DateBookingCounts { confirmedMain: number; confirmedUs: number; total: number }
+
+/** Per-show-date booking tallies for the bookings grid (non-cancelled only). */
+export async function fetchBookingCountsByDate(
+  client: SupabaseClient<Database>,
+  orgId: string | null,
+): Promise<Map<string, DateBookingCounts>> {
+  const map = new Map<string, DateBookingCounts>();
+  if (!orgId) return map;
+  const { data, error } = await client
+    .from("bookings")
+    .select("show_date_id, status, is_understudy")
+    .eq("org_id", orgId)
+    .neq("status", "cancelled");
+  if (error) throw error;
+  interface CountRow { show_date_id: string; status: string; is_understudy: boolean }
+  for (const b of (data ?? []) as unknown as CountRow[]) {
+    const cur = map.get(b.show_date_id) ?? { confirmedMain: 0, confirmedUs: 0, total: 0 };
+    cur.total += 1;
+    if (b.status === "confirmed") {
+      if (b.is_understudy) cur.confirmedUs += 1;
+      else cur.confirmedMain += 1;
+    }
+    map.set(b.show_date_id, cur);
+  }
+  return map;
+}
+
+export interface BookingLite { show_date_id: string; status: string; is_understudy: boolean }
+
+/** The org's confirmed bookings, minimal projection, for dashboard slot maths. */
+export async function fetchConfirmedBookingsLite(
+  client: SupabaseClient<Database>,
+  orgId: string | null,
+): Promise<BookingLite[]> {
+  if (!orgId) return [];
+  const { data, error } = await client
+    .from("bookings")
+    .select("show_date_id, status, is_understudy")
+    .eq("org_id", orgId)
+    .eq("status", "confirmed");
+  if (error) throw error;
+  return (data ?? []) as unknown as BookingLite[];
+}
+
+export interface SoftBookedRow {
+  id: string;
+  is_understudy: boolean;
+  artist: { id: string; name: string } | null;
+  show_date: { id: string; date: string; show: { program: string | null; sub_program: string | null } | null } | null;
+}
+
+/** The org's soft-booked bookings awaiting producer confirmation. */
+export async function fetchSoftBookedRows(
+  client: SupabaseClient<Database>,
+  orgId: string | null,
+): Promise<SoftBookedRow[]> {
+  if (!orgId) return [];
+  const { data, error } = await client
+    .from("bookings")
+    .select("id, is_understudy, artist:artists(id, name), show_date:show_dates!inner(id, date, show:shows(program, sub_program))")
+    .eq("org_id", orgId)
+    .eq("status", "soft_booked")
+    .order("show_date(date)", { ascending: true });
+  if (error) throw error;
+  return (data ?? []) as unknown as SoftBookedRow[];
+}
+
+export interface BookingJoin {
+  id: string;
+  artist_id: string;
+  status: string;
+  show_date: { date: string; show: { program: string | null; sub_program: string | null } | null } | null;
+}
+
+/** The org's non-cancelled bookings with date/show context, for the artists list. */
+export async function fetchBookingsLight(
+  client: SupabaseClient<Database>,
+  orgId: string | null,
+): Promise<BookingJoin[]> {
+  if (!orgId) return [];
+  const { data, error } = await client
+    .from("bookings")
+    .select("id, artist_id, status, show_date:show_dates(date, show:shows(program, sub_program))")
+    .eq("org_id", orgId)
+    .neq("status", "cancelled");
+  if (error) throw error;
+  return (data ?? []) as unknown as BookingJoin[];
+}

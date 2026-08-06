@@ -18,7 +18,7 @@ const AUDIT_LOG_LIMIT = 50;
 const SYNC_LOG_LIMIT = 20;
 
 export default function AdminPage() {
-  const { hasRole } = useAuth();
+  const { hasRole, currentOrg } = useAuth();
   const [params, setParams] = useSearchParams();
   const initialTab = params.get('tab') || 'invites';
   const [tab, setTab] = useState(initialTab);
@@ -34,8 +34,9 @@ export default function AdminPage() {
   });
 
   const { data: stats } = useQuery({
-    queryKey: ['admin-stats'],
-    queryFn: () => fetchAdminStats(supabase),
+    queryKey: ['admin-stats', currentOrg?.id],
+    enabled: !!currentOrg,
+    queryFn: () => fetchAdminStats(supabase, currentOrg?.id ?? null),
   });
 
   const handleTabChange = (v: string) => {

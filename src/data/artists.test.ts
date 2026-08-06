@@ -9,7 +9,7 @@ describe("fetchMyArtist", () => {
   it("queries the artists table by user_id and returns the row", async () => {
     const artist = anArtist({ user_id: "u1" });
     const fake = createFakeSupabase({ artists: { data: artist, error: null } });
-    const result = await fetchMyArtist(fake as never, "u1");
+    const result = await fetchMyArtist(fake as never, "u1", "org-1");
     expect(result).toEqual(artist);
     expect(fake.calls).toContainEqual({ table: "artists", method: "eq", args: ["user_id", "u1"] });
     expect(fake.calls).toContainEqual({ table: "artists", method: "maybeSingle", args: [] });
@@ -17,12 +17,12 @@ describe("fetchMyArtist", () => {
 
   it("returns null when no row exists", async () => {
     const fake = createFakeSupabase({ artists: { data: null, error: null } });
-    expect(await fetchMyArtist(fake as never, "u1")).toBeNull();
+    expect(await fetchMyArtist(fake as never, "u1", "org-1")).toBeNull();
   });
 
   it("throws when the query errors", async () => {
     const fake = createFakeSupabase({ artists: { data: null, error: { message: "boom" } } });
-    await expect(fetchMyArtist(fake as never, "u1")).rejects.toBeTruthy();
+    await expect(fetchMyArtist(fake as never, "u1", "org-1")).rejects.toBeTruthy();
   });
 });
 

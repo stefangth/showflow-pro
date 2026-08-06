@@ -9,7 +9,8 @@ export function useSkills() {
   const { currentOrg } = useAuth();
   return useQuery({
     queryKey: ['skills', currentOrg?.id],
-    queryFn: () => fetchSkills(supabase),
+    enabled: !!currentOrg,
+    queryFn: () => fetchSkills(supabase, currentOrg?.id ?? null),
   });
 }
 

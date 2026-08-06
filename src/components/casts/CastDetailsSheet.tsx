@@ -1,6 +1,12 @@
 import { useMemo, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
+import {
+  fetchCastMembers, fetchCastEligibility, updateCast as updateCastRow,
+  addCastMember, removeCastMember, setCastEligibility, clearCastEligibility,
+} from '@/data/casts';
+import { fetchArtists } from '@/data/artists';
+import { fetchShowsForEligibility } from '@/data/shows';
 import { useAuth } from '@/features/auth/AuthContext';
 import { useCan } from '@/hooks/useCapabilities';
 import { useEditorConfig } from '@/features/editor/EditorContext';
@@ -13,7 +19,7 @@ import { Badge } from '@/components/ui/badge';
 import { Checkbox } from '@/components/ui/checkbox';
 import { toast } from 'sonner';
 import { Search, X, Plus, Users, Layers, Pencil, Check } from 'lucide-react';
-import type { Artist, Cast, Show } from '@/types';
+import type { Cast } from '@/types';
 import { showIdentityLabel } from '@/types';
 import { useAllCities } from '@/hooks/useAllCities';
 
@@ -36,13 +42,8 @@ export function CastDetailsSheet({ cast, open, onOpenChange, onArtistClick }: Pr
   const [editDescription, setEditDescription] = useState('');
 
   const updateCast = useMutation({
-    mutationFn: async ({ name, description }: { name: string; description: string }) => {
-      const { error } = await supabase
-        .from('casts')
-        .update({ name, description: description || null, updated_at: new Date().toISOString() })
-        .eq('id', cast!.id);
-      if (error) throw error;
-    },
+    mutationFn: ({ name, description }: { name: string; description: string }) =>
+      updateCastRow(supabase, cast!.id, { name, description: description || null }),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['casts'] });
       setEditMode(false);
@@ -65,48 +66,28 @@ export function CastDetailsSheet({ cast, open, onOpenChange, onArtistClick }: Pr
   const { data: members } = useQuery({
     queryKey: ['cast-members', cast?.id],
     enabled: !!cast,
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from('cast_members')
-        .select('id, artist_id, artist:artists(*)')
-        .eq('cast_id', cast!.id);
-      if (error) throw error;
-      return (data ?? []) as unknown as { id: string; artist_id: string; artist: Artist }[];
-    },
+    queryFn: () => fetchCastMembers(supabase, cast?.id ?? null),
   });
 
   const { data: artists } = useQuery({
-    queryKey: ['artists'],
-    queryFn: async () => {
-      const { data, error } = await supabase.from('artists').select('*').order('name');
-      if (error) throw error;
-      return data as Artist[];
-    },
+    queryKey: ['artists', 'list', currentOrg?.id],
+    enabled: !!currentOrg,
+    queryFn: () => fetchArtists(supabase, currentOrg?.id ?? null),
   });
 
   // Eligibility (cities × shows)
   const { data: cities } = useAllCities();
 
   const { data: shows } = useQuery({
-    queryKey: ['shows-for-eligibility'],
-    queryFn: async () => {
-      const { data, error } = await supabase.from('shows').select('id, program, sub_program').order('program');
-      if (error) throw error;
-      return data as Pick<Show, 'id' | 'program' | 'sub_program'>[];
-    },
+    queryKey: ['shows', 'for-eligibility', currentOrg?.id],
+    enabled: !!currentOrg,
+    queryFn: () => fetchShowsForEligibility(supabase, currentOrg?.id ?? null),
   });
 
   const { data: eligibility } = useQuery({
     queryKey: ['cast-eligibility', cast?.id],
     enabled: !!cast,
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from('show_cast_eligibility')
-        .select('id, city_id, show_id')
-        .eq('cast_id', cast!.id);
-      if (error) throw error;
-      return data ?? [];
-    },
+    queryFn: () => fetchCastEligibility(supabase, cast?.id ?? null),
   });
 
   const eligibilityMap = useMemo(() => {
@@ -119,10 +100,9 @@ export function CastDetailsSheet({ cast, open, onOpenChange, onArtistClick }: Pr
   const memberIds = useMemo(() => new Set((members ?? []).map(m => m.artist_id)), [members]);
 
   const addMember = useMutation({
-    mutationFn: async (artistId: string) => {
+    mutationFn: (artistId: string) => {
       if (!currentOrg) throw new Error('No active organization');
-      const { error } = await supabase.from('cast_members').insert({ cast_id: cast!.id, artist_id: artistId, org_id: currentOrg.id });
-      if (error) throw error;
+      return addCastMember(supabase, currentOrg.id, { castId: cast!.id, artistId });
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['cast-members', cast?.id] });
@@ -136,10 +116,7 @@ export function CastDetailsSheet({ cast, open, onOpenChange, onArtistClick }: Pr
   });
 
   const removeMember = useMutation({
-    mutationFn: async (memberId: string) => {
-      const { error } = await supabase.from('cast_members').delete().eq('id', memberId);
-      if (error) throw error;
-    },
+    mutationFn: (memberId: string) => removeCastMember(supabase, memberId),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['cast-members', cast?.id] });
       qc.invalidateQueries({ queryKey: ['cast-members-counts'] });
@@ -155,16 +132,12 @@ export function CastDetailsSheet({ cast, open, onOpenChange, onArtistClick }: Pr
     mutationFn: async ({ cityId, showId, on }: { cityId: string; showId: string; on: boolean }) => {
       if (!currentOrg) throw new Error('No active organization');
       if (on) {
-        const { error } = await supabase
-          .from('show_cast_eligibility')
-          .insert({ show_id: showId, city_id: cityId, cast_id: cast!.id, org_id: currentOrg.id });
-        if (error) throw error;
-      } else {
-        const rowId = eligibilityMap.get(`${cityId}:${showId}`);
-        if (!rowId) return;
-        const { error } = await supabase.from('show_cast_eligibility').delete().eq('id', rowId);
-        if (error) throw error;
+        await setCastEligibility(supabase, currentOrg.id, { castId: cast!.id, showId, cityId });
+        return;
       }
+      const rowId = eligibilityMap.get(`${cityId}:${showId}`);
+      if (!rowId) return;
+      await clearCastEligibility(supabase, rowId);
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['cast-eligibility', cast?.id] });

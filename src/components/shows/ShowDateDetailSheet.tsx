@@ -3,6 +3,8 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { format } from 'date-fns';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
+import { fetchCasts } from '@/data/casts';
+import { fetchActiveArtistOptions } from '@/data/artists';
 import { useAuth } from '@/features/auth/AuthContext';
 import { useCan } from '@/hooks/useCapabilities';
 import { useEditorConfig } from '@/features/editor/EditorContext';
@@ -57,7 +59,7 @@ import { BookingRow } from '@/components/shows/BookingRow';
 import { useCancelShowDate, useDeleteShowDate } from '@/hooks/useShowDates';
 import { useAllCities } from '@/hooks/useAllCities';
 import { isSyncedDate, canHardDeleteDate } from '@/lib/catalog';
-import type { Booking, Artist, Cast } from '@/types';
+import type { Booking, Artist } from '@/types';
 
 interface Props {
   showDateId: string | null;
@@ -146,12 +148,8 @@ export function ShowDateDetailSheet({ showDateId, open, onOpenChange }: Props) {
 
   const { data: casts } = useQuery({
     queryKey: ['casts', currentOrg?.id],
-    enabled: canManage,
-    queryFn: async () => {
-      const { data, error } = await supabase.from('casts').select('*').order('name');
-      if (error) throw error;
-      return data as Cast[];
-    },
+    enabled: canManage && !!currentOrg,
+    queryFn: () => fetchCasts(supabase, currentOrg?.id ?? null),
   });
 
   const { data: dateCastOverrides } = useQuery({
@@ -215,16 +213,8 @@ export function ShowDateDetailSheet({ showDateId, open, onOpenChange }: Props) {
   // artist's name. Only fetched when the org's flow disables artist acceptance.
   const { data: orgArtists, isError: orgArtistsError } = useQuery({
     queryKey: ['artists', 'for-eligibility', orgId],
-    enabled: canManage && !flow.artist_acceptance && !!showDateId,
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from('artists')
-        .select('id, name')
-        .eq('status', 'active')
-        .order('name');
-      if (error) throw error;
-      return (data ?? []) as { id: string; name: string }[];
-    },
+    enabled: canManage && !flow.artist_acceptance && !!showDateId && !!orgId,
+    queryFn: () => fetchActiveArtistOptions(supabase, orgId ?? null),
   });
 
   // Blocked artists for this date: the direct-book list must exclude them, the

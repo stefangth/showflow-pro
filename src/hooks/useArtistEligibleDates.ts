@@ -1,6 +1,8 @@
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useMyArtist } from './useMyArtist';
+import { useAuth } from '@/features/auth/AuthContext';
+import { fetchUpcomingShowDates } from '@/data/showDates';
 import { toDateKey } from '@/lib/dates';
 import { artistHasAllSkills } from '@/lib/eligibility';
 
@@ -33,10 +35,12 @@ export type EligibleDate = {
  */
 export function useArtistEligibleDates() {
   const { data: artist } = useMyArtist();
+  const { currentOrg } = useAuth();
+  const orgId = currentOrg?.id ?? null;
 
   return useQuery({
-    queryKey: ['artist-eligible-dates', artist?.id],
-    enabled: !!artist?.id,
+    queryKey: ['artist-eligible-dates', artist?.id, orgId],
+    enabled: !!artist?.id && !!orgId,
     queryFn: async (): Promise<EligibleDate[]> => {
       // 1. Casts the artist belongs to
       const { data: memberships } = await supabase
@@ -60,17 +64,8 @@ export function useArtistEligibleDates() {
 
       const overrideDateIds = new Set((dateOverrides ?? []).map((r) => r.show_date_id));
 
-      // 3. Fetch all upcoming show_dates with their show
+      // 3. Fetch the org's upcoming show_dates with their show
       const today = toDateKey(new Date());
-      const { data: dates, error } = await supabase
-        .from('show_dates')
-        .select(
-          'id, date, session_1, session_2, session_3, status, city_id, show_id, venue, custom, show:shows(id, program, sub_program, status)'
-        )
-        .gte('date', today)
-        .neq('status', 'cancelled')
-        .order('date', { ascending: true });
-      if (error) throw error;
 
       interface EligibleDateRow {
         id: string; date: string;
@@ -79,7 +74,13 @@ export function useArtistEligibleDates() {
         venue: string | null; custom: Record<string, unknown> | null;
         show: { id: string; program: string | null; sub_program: string | null; status: string } | null;
       }
-      const allDates = (dates ?? []) as unknown as EligibleDateRow[];
+      const allDates = await fetchUpcomingShowDates<EligibleDateRow>(
+        supabase,
+        orgId,
+        today,
+        'id, date, session_1, session_2, session_3, status, city_id, show_id, venue, custom, ' +
+          'show:shows(id, program, sub_program, status)',
+      );
 
       const showCityKey = new Set((showCity ?? []).map((r) => `${r.show_id}:${r.city_id}`));
 

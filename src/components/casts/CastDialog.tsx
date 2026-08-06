@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
+import { createCast } from '@/data/casts';
 import { useAuth } from '@/features/auth/AuthContext';
 import { useEditorConfig } from '@/features/editor/EditorContext';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
@@ -22,15 +23,11 @@ export function CastDialog() {
   const [description, setDescription] = useState('');
 
   const create = useMutation({
-    mutationFn: async () => {
+    mutationFn: () => {
       if (!currentOrg) throw new Error('No active organization');
-      const { error } = await supabase.from('casts').insert({
-        name,
-        description: description || null,
-        created_by: user?.id ?? null,
-        org_id: currentOrg.id,
+      return createCast(supabase, currentOrg.id, {
+        name, description: description || null, createdBy: user?.id ?? null,
       });
-      if (error) throw error;
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['casts'] });

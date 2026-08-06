@@ -21,7 +21,11 @@ import { useReferenceField, useBookingFlow } from '@/hooks/useBookingFlow';
 import { referenceLabel, BOOKING_FLOW_DEFAULTS } from '@/lib/bookingFlow';
 import { computeTierAttention, unfilledMainCastDates } from '@/lib/bookingCockpit';
 import { deliveryHint } from '@/lib/flowCopy';
-import { bulkConfirmSoftBooked, bulkDeclineSoftBooked, fetchTierAttention } from '@/data/bookings';
+import {
+  bulkConfirmSoftBooked, bulkDeclineSoftBooked, fetchTierAttention,
+  fetchConfirmedBookingsLite, fetchSoftBookedRows,
+} from '@/data/bookings';
+import { fetchUpcomingShowDates } from '@/data/showDates';
 
 const fadeUp = {
   initial: { opacity: 0, y: 20 },
@@ -30,13 +34,6 @@ const fadeUp = {
 
 type ShowRef = { program: string | null; sub_program: string | null; main_cast_slots: number | null; understudy_slots: number | null };
 type DateRow = { id: string; date: string; show_id: string };
-type BookingLite = { show_date_id: string; status: string; is_understudy: boolean };
-type SoftBookedRow = {
-  id: string;
-  is_understudy: boolean;
-  artist: { id: string; name: string } | null;
-  show_date: { id: string; date: string; show: { program: string | null; sub_program: string | null } | null } | null;
-};
 
 export default function DashboardPage() {
   const { hasRole } = useAuth();
@@ -63,29 +60,15 @@ function ProducerDashboard() {
   const [selected, setSelected] = useState<Set<string>>(new Set());
 
   const { data: upcomingDates } = useQuery({
-    queryKey: ['dashboard-upcoming-dates', todayStr],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from('show_dates')
-        .select('id, date, show_id, show:shows(program, sub_program, main_cast_slots, understudy_slots)')
-        .gte('date', todayStr)
-        .neq('status', 'cancelled')
-        .order('date', { ascending: true });
-      if (error) throw error;
-      return (data ?? []) as unknown as (DateRow & { show: ShowRef })[];
-    },
+    queryKey: ['dashboard-upcoming-dates', todayStr, orgId],
+    enabled: !!orgId,
+    queryFn: () => fetchUpcomingShowDates<DateRow & { show: ShowRef }>(supabase, orgId, todayStr),
   });
 
   const { data: confirmedBookings } = useQuery({
-    queryKey: ['bookings', 'confirmed-dashboard'],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from('bookings')
-        .select('show_date_id, status, is_understudy')
-        .eq('status', 'confirmed');
-      if (error) throw error;
-      return (data ?? []) as BookingLite[];
-    },
+    queryKey: ['bookings', 'confirmed-dashboard', orgId],
+    enabled: !!orgId,
+    queryFn: () => fetchConfirmedBookingsLite(supabase, orgId),
   });
 
   const confirmedCountByDate = (() => {
@@ -116,16 +99,9 @@ function ProducerDashboard() {
   );
 
   const { data: softBookedRows } = useQuery({
-    queryKey: ['bookings', 'soft-booked'],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from('bookings')
-        .select('id, is_understudy, artist:artists(id, name), show_date:show_dates!inner(id, date, show:shows(program, sub_program))')
-        .eq('status', 'soft_booked')
-        .order('show_date(date)', { ascending: true });
-      if (error) throw error;
-      return (data ?? []) as unknown as SoftBookedRow[];
-    },
+    queryKey: ['bookings', 'soft-booked', orgId],
+    enabled: !!orgId,
+    queryFn: () => fetchSoftBookedRows(supabase, orgId),
   });
 
   const { data: attentionRows } = useQuery({

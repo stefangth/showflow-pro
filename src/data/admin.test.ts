@@ -47,7 +47,7 @@ describe("fetchAdminStats", () => {
       artists: { data: null, count: 12, error: null },
       bookings: { data: null, count: 30, error: null },
     });
-    const stats = await fetchAdminStats(fake as never);
+    const stats = await fetchAdminStats(fake as never, "org-1");
     expect(stats).toEqual({ shows: 5, artists: 12, bookings: 30 });
     // Server-side head counts: no row data transferred.
     expect(fake.calls).toContainEqual({ table: "shows", method: "select", args: ["*", { count: "exact", head: true }] });
@@ -61,6 +61,6 @@ describe("fetchAdminStats", () => {
       artists: { data: null, count: null, error: null },
       bookings: { data: null, count: null, error: null },
     });
-    expect(await fetchAdminStats(fake as never)).toEqual({ shows: 0, artists: 0, bookings: 0 });
+    expect(await fetchAdminStats(fake as never, "org-1")).toEqual({ shows: 0, artists: 0, bookings: 0 });
   });
 });

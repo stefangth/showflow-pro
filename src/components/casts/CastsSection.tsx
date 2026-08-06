@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
+import { fetchCasts, fetchCastMemberCounts } from '@/data/casts';
 import { useAuth } from '@/features/auth/AuthContext';
 import { useCan } from '@/hooks/useCapabilities';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -25,22 +26,14 @@ export function CastsSection({ onArtistClick }: CastsSectionProps = {}) {
 
   const { data: casts } = useQuery({
     queryKey: ['casts', currentOrg?.id],
-    queryFn: async () => {
-      const { data, error } = await supabase.from('casts').select('*').order('name');
-      if (error) throw error;
-      return data as Cast[];
-    },
+    enabled: !!currentOrg,
+    queryFn: () => fetchCasts(supabase, currentOrg?.id ?? null),
   });
 
   const { data: counts } = useQuery({
-    queryKey: ['cast-members-counts'],
-    queryFn: async () => {
-      const { data, error } = await supabase.from('cast_members').select('cast_id');
-      if (error) throw error;
-      const map: Record<string, number> = {};
-      (data ?? []).forEach(r => { map[r.cast_id] = (map[r.cast_id] ?? 0) + 1; });
-      return map;
-    },
+    queryKey: ['cast-members-counts', currentOrg?.id],
+    enabled: !!currentOrg,
+    queryFn: () => fetchCastMemberCounts(supabase, currentOrg?.id ?? null),
   });
 
   if (!canView) return null;

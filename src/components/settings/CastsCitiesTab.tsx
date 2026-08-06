@@ -13,10 +13,9 @@ import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Plus, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
-import type { Cast } from '@/types';
 import { fetchShowPriorityRows, setShowCastPriority, clearShowCastPriority } from '@/data/eligibility';
+import { fetchCasts, fetchCastMemberCounts, fetchCastCityPriority } from '@/data/casts';
 
-type CastCityPriorityRow = { id: string; cast_id: string; city_id: string; priority: number };
 type ShowOption = { id: string; program: string; sub_program: string | null };
 
 /**
@@ -59,37 +58,19 @@ export function CastsCitiesTab({ currentOrgId, canEnter }: { currentOrgId: strin
 
   const { data: casts } = useQuery({
     queryKey: ['casts', currentOrgId],
-    enabled: canEnter,
-    queryFn: async () => {
-      const { data, error } = await supabase.from('casts').select('*').order('name');
-      if (error) throw error;
-      return data as Cast[];
-    },
+    enabled: canEnter && !!orgId,
+    queryFn: () => fetchCasts(supabase, orgId),
   });
   const { data: castCounts } = useQuery({
-    queryKey: ['cast-members-counts'],
-    enabled: canEnter,
-    queryFn: async () => {
-      const { data, error } = await supabase.from('cast_members').select('cast_id');
-      if (error) throw error;
-      const map: Record<string, number> = {};
-      (data ?? []).forEach(r => { map[r.cast_id] = (map[r.cast_id] ?? 0) + 1; });
-      return map;
-    },
+    queryKey: ['cast-members-counts', currentOrgId],
+    enabled: canEnter && !!orgId,
+    queryFn: () => fetchCastMemberCounts(supabase, orgId),
   });
 
   const { data: castCityPriorities } = useQuery({
     queryKey: ['cast-city-priority', currentOrgId],
-    enabled: canEnter,
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from('cast_city_priority')
-        .select('id, cast_id, city_id, priority')
-        .order('city_id')
-        .order('priority');
-      if (error) throw error;
-      return (data ?? []) as CastCityPriorityRow[];
-    },
+    enabled: canEnter && !!orgId,
+    queryFn: () => fetchCastCityPriority(supabase, orgId),
   });
 
   useEffect(() => {
