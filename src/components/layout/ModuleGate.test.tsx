@@ -38,4 +38,22 @@ describe("ModuleGate", () => {
     expect(screen.getByText("Ada Lovelace")).toBeInTheDocument();
     expect(screen.getByTestId("module-gate-preview")).toHaveClass("pointer-events-none");
   });
+
+  it("keeps the locked preview readable: not aria-hidden, not select-none", () => {
+    vi.mocked(useFeature).mockReturnValue(false);
+    render(
+      <ModuleGate feature="booking_flow" preview={<span>Ada Lovelace</span>}>
+        <button>Open tier</button>
+      </ModuleGate>,
+    );
+    // Decision 3 of the module gate: disabling a module freezes data, it never
+    // hides it. `getByRole`/`getByText` on the accessibility tree would both miss
+    // an aria-hidden subtree, which is exactly the regression this guards.
+    const preview = screen.getByTestId("module-gate-preview");
+    expect(preview).not.toHaveAttribute("aria-hidden");
+    expect(preview).not.toHaveClass("select-none");
+    // ...and the name is genuinely exposed to assistive tech, not merely present
+    // in the DOM (queries default to ignoring aria-hidden content).
+    expect(screen.getByText("Ada Lovelace", { ignore: "[aria-hidden='true']" })).toBeInTheDocument();
+  });
 });

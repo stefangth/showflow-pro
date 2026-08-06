@@ -32,8 +32,12 @@ export function ModuleGate({ feature, children, preview }: {
           administrator to enable it.
         </AlertDescription>
       </Alert>
+      {/* Inert, not hidden. `pointer-events-none` already removes every control,
+          and the preview exists precisely so the frozen data (e.g. the confirmed
+          cast) stays readable — so no `aria-hidden` (screen readers must reach it)
+          and no `select-none` (names have to be copyable). */}
       {preview && (
-        <div data-testid="module-gate-preview" aria-hidden className="pointer-events-none select-none opacity-60">
+        <div data-testid="module-gate-preview" className="pointer-events-none opacity-60">
           {preview}
         </div>
       )}

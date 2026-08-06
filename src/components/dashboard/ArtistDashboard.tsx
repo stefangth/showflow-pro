@@ -133,12 +133,14 @@ export function ArtistDashboard() {
     <div className="space-y-6">
       <div>
         <h1 className="font-display text-[32px] font-semibold tracking-tight">Dashboard</h1>
-        <p className="text-muted-foreground mt-1">
-          {meter.headerSentence}
-        </p>
       </div>
 
       <ModuleGate feature="booking_flow">
+        {/* Inside the gate on purpose: this sentence describes the offer pipeline
+            ("your response rate on dates you've been offered"), which does not run
+            at all without the module. */}
+        <p className="text-muted-foreground">{meter.headerSentence}</p>
+
         {bookingsError && (
           <Alert variant="destructive">
             <AlertDescription>Failed to load your offers. Please refresh.</AlertDescription>

@@ -173,4 +173,20 @@ describe("ArtistDashboard flow-aware meter (Task 3)", () => {
     renderDashboard();
     expect(await screen.findByTestId("module-gate-booking_flow")).toBeInTheDocument();
   });
+
+  it("drops the pipeline header sentence with the gated region", async () => {
+    flowHolder.flow = BOOKING_FLOW_DEFAULTS;
+    const sentence = "Your response rate on dates you've been offered.";
+
+    vi.mocked(useFeature).mockReturnValue(true);
+    const on = renderDashboard();
+    expect(await on.findByText(sentence)).toBeInTheDocument();
+    on.unmount();
+
+    vi.mocked(useFeature).mockImplementation((f) => f !== "booking_flow");
+    renderDashboard();
+    expect(await screen.findByTestId("module-gate-booking_flow")).toBeInTheDocument();
+    // The sentence describes an offer pipeline that no longer runs.
+    expect(screen.queryByText(sentence)).not.toBeInTheDocument();
+  });
 });
