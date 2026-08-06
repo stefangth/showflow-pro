@@ -3,6 +3,10 @@ import type { Database, Json } from "@/integrations/supabase/types";
 import type { EditableOrderFieldKey, OrderData } from "@/lib/hireOrders/types";
 import { feeCents } from "@/lib/hireOrders/feeBasis";
 import { readEdgeError } from "@/lib/edgeErrors";
+import { resolveOrgSetting, upsertOrgSetting } from "@/data/settings";
+import { HIRE_ORDER_STARTER_TERMS } from "@/lib/hireOrders/starterTerms";
+import { mergeTermsTemplates } from "@/lib/hireOrders/termsImport";
+import type { HireOrderTemplate, HireOrderTermsSetting } from "@/lib/hireOrders/terms";
 
 export type HireOrderStatus = Database["public"]["Enums"]["hire_order_status"];
 
@@ -638,4 +642,37 @@ export async function fetchAgentSignatureUrl(
     org_id: orgId,
   });
   return (data as { url: string | null }).url;
+}
+
+/** Platform-only app_settings key holding the terms catalogue orgs import FROM.
+ *  Distinct from `hire_order_terms` on purpose (spec §2.1): an org gets a copy it
+ *  owns, so a later platform edit never changes contract text already being issued. */
+export const TERMS_LIBRARY_KEY = "hire_order_terms_library";
+
+interface TermsLibraryValue {
+  templates: HireOrderTemplate[];
+}
+
+/**
+ * The platform terms library: the super-admin's row if one exists, else the code
+ * starter set. Readable by any authenticated member because `org_isolation` on
+ * app_settings admits `org_id is null` for SELECT.
+ */
+export async function fetchTermsLibrary(
+  client: SupabaseClient<Database>,
+): Promise<HireOrderTemplate[]> {
+  const value = await resolveOrgSetting<TermsLibraryValue>(client, null, TERMS_LIBRARY_KEY, {
+    templates: HIRE_ORDER_STARTER_TERMS,
+  });
+  return Array.isArray(value?.templates) ? value.templates : HIRE_ORDER_STARTER_TERMS;
+}
+
+/** Copy library templates into the org's own `hire_order_terms` and return the result. */
+export async function importTermsTemplates(
+  client: SupabaseClient<Database>,
+  args: { orgId: string; current: HireOrderTermsSetting; templates: HireOrderTemplate[] },
+): Promise<HireOrderTermsSetting> {
+  const next = mergeTermsTemplates(args.current, args.templates);
+  await upsertOrgSetting(client, args.orgId, "hire_order_terms", next as unknown as Json);
+  return next;
 }

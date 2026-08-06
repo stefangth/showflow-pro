@@ -15,7 +15,11 @@ import {
   fetchShowDatesLite,
   bulkImportHireOrders,
   createArtistLite,
+  fetchTermsLibrary,
+  importTermsTemplates,
+  TERMS_LIBRARY_KEY,
 } from "./hireOrders";
+import { HIRE_ORDER_STARTER_TERMS } from "@/lib/hireOrders/starterTerms";
 
 describe("fetchHireOrdersForDate", () => {
   it("filters by show_date_id and orders by created_at", async () => {
@@ -633,5 +637,48 @@ describe("createArtistLite", () => {
   it("throws on a supabase error", async () => {
     const fake = createFakeSupabase({ artists: { data: null, error: { message: "boom" } } });
     await expect(createArtistLite(fake as never, { orgId: "org-1", name: "X", email: null })).rejects.toBeTruthy();
+  });
+});
+
+describe("fetchTermsLibrary", () => {
+  it("falls back to the code starter library when no platform row exists", async () => {
+    const fake = createFakeSupabase({ app_settings: { data: [], error: null } });
+    expect(await fetchTermsLibrary(fake as never)).toEqual(HIRE_ORDER_STARTER_TERMS);
+    expect(fake.calls).toContainEqual({ table: "app_settings", method: "eq", args: ["key", TERMS_LIBRARY_KEY] });
+  });
+
+  it("returns the platform row's templates when one exists", async () => {
+    const templates = [{ id: "p1", name: "Custom", clauses: [{ title: "A", body: "B" }] }];
+    const fake = createFakeSupabase({
+      app_settings: { data: [{ org_id: null, value: { templates } }], error: null },
+    });
+    expect(await fetchTermsLibrary(fake as never)).toEqual(templates);
+  });
+
+  it("falls back when the platform row is malformed", async () => {
+    const fake = createFakeSupabase({
+      app_settings: { data: [{ org_id: null, value: { templates: "nope" } }], error: null },
+    });
+    expect(await fetchTermsLibrary(fake as never)).toEqual(HIRE_ORDER_STARTER_TERMS);
+  });
+});
+
+describe("importTermsTemplates", () => {
+  it("upserts the merged setting onto hire_order_terms and returns it", async () => {
+    const fake = createFakeSupabase({ app_settings: { data: [], error: null } });
+    const next = await importTermsTemplates(fake as never, {
+      orgId: "org-1",
+      current: { templates: [], default_id: null },
+      templates: HIRE_ORDER_STARTER_TERMS,
+    });
+    expect(next.default_id).toBe("platform-standard-engagement");
+    expect(fake.calls).toContainEqual({
+      table: "app_settings",
+      method: "upsert",
+      args: [
+        { org_id: "org-1", key: "hire_order_terms", value: next },
+        { onConflict: "org_id,key" },
+      ],
+    });
   });
 });
