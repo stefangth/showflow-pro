@@ -20,6 +20,7 @@ import { useFilterVisibility } from '@/components/filters/useFilterVisibility';
 import { EntityCalendar } from '@/components/calendar/EntityCalendar';
 import { applySort, inTimeframe } from '@/components/filters/filterUtils';
 import { ArtistBookingsView } from '@/components/bookings/ArtistBookingsView';
+import { FirstOfferCard } from '@/components/bookings/setup/FirstOfferCard';
 import { ShowDateDetailSheet } from '@/components/shows/ShowDateDetailSheet';
 import { ShowDateFormDialog } from '@/components/shows/ShowDateFormDialog';
 import { NewOrderWizard } from '@/components/hireOrders/NewOrderWizard';
@@ -91,11 +92,21 @@ const STATUS_STYLE: Record<DisplayStatus, string> = {
 
 export default function ShowsBookingsPage() {
   const { hasRole } = useAuth();
-  // hasRole respects viewAsRole simulation, so an admin viewing-as-artist gets ArtistBookingsView
+  // hasRole respects viewAsRole simulation, so an admin viewing-as-artist gets ArtistShowsBookings
   if (hasRole('artist') && !hasRole('producer') && !hasRole('admin')) {
-    return <ArtistBookingsView />;
+    return <ArtistShowsBookings />;
   }
   return <ProducerShowsBookings />;
+}
+
+function ArtistShowsBookings() {
+  const bookingOn = useFeature('booking_flow');
+  return (
+    <div className="space-y-6">
+      {bookingOn && <FirstOfferCard />}
+      <ArtistBookingsView />
+    </div>
+  );
 }
 
 function ProducerShowsBookings() {
