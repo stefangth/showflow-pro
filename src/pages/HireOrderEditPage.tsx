@@ -16,6 +16,7 @@ import { defaultTemplateId } from "@/lib/hireOrders/terms";
 import { ORDER_FIELD_KEYS, type EditableOrderFieldKey, type OrderData } from "@/lib/hireOrders/types";
 import { ROUTES, HIRE_ORDER_DEFAULT_TERMS } from "@/config/app.config";
 import { Button } from "@/components/ui/button";
+import { IconTooltip } from "@/components/common/IconTooltip";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -493,9 +494,11 @@ export default function HireOrderEditPage() {
       {/* Header */}
       <div className="flex flex-wrap items-center justify-between gap-4 border-b border-border pb-4">
         <div className="flex items-center gap-2 min-w-0">
-          <Button variant="ghost" size="icon" onClick={() => navigate(-1)} aria-label="Go back">
-            <ArrowLeft className="h-5 w-5" />
-          </Button>
+          <IconTooltip label="Go back">
+            <Button variant="ghost" size="icon" onClick={() => navigate(-1)} aria-label="Go back">
+              <ArrowLeft className="h-5 w-5" />
+            </Button>
+          </IconTooltip>
           <div className="min-w-0">
             <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Edit hire order</p>
             <div className="flex items-center gap-2">

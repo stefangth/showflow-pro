@@ -12,6 +12,7 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sh
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { IconTooltip } from '@/components/common/IconTooltip';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
@@ -771,10 +772,11 @@ export function ShowDateDetailSheet({ showDateId, open, onOpenChange }: Props) {
               {/* Date actions (edit / cancel / delete) */}
               {canManage && showDate.status !== 'cancelled' && (
                 <div className="flex flex-wrap items-center gap-2">
-                  <Button variant="outline" size="sm" onClick={() => setEditOpen(true)} disabled={!canManageShowDates}
-                    title={canManageShowDates ? undefined : "You don't have permission to edit show dates"}>
-                    {synced ? 'Edit notes' : 'Edit schedule'}
-                  </Button>
+                  <IconTooltip label={canManageShowDates ? '' : "You don't have permission to edit show dates"}>
+                    <Button variant="outline" size="sm" onClick={() => setEditOpen(true)} disabled={!canManageShowDates}>
+                      {synced ? 'Edit notes' : 'Edit schedule'}
+                    </Button>
+                  </IconTooltip>
 
                   <AlertDialog>
                     <AlertDialogTrigger asChild>
@@ -802,12 +804,13 @@ export function ShowDateDetailSheet({ showDateId, open, onOpenChange }: Props) {
 
                   {canHardDelete && (
                     <AlertDialog>
-                      <AlertDialogTrigger asChild>
-                        <Button variant="ghost" size="sm" className="text-destructive" disabled={!deletable}
-                          title={deletable ? 'Delete date' : synced ? "Synced dates can't be deleted — cancel instead" : 'Has bookings — cancel instead'}>
-                          Delete
-                        </Button>
-                      </AlertDialogTrigger>
+                      <IconTooltip label={deletable ? '' : synced ? "Synced dates can't be deleted — cancel instead" : 'Has bookings — cancel instead'}>
+                        <AlertDialogTrigger asChild>
+                          <Button variant="ghost" size="sm" className="text-destructive" disabled={!deletable}>
+                            Delete
+                          </Button>
+                        </AlertDialogTrigger>
+                      </IconTooltip>
                       <AlertDialogContent>
                         <AlertDialogHeader>
                           <AlertDialogTitle>Delete this date?</AlertDialogTitle>

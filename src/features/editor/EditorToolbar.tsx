@@ -6,6 +6,7 @@ import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Separator } from '@/components/ui/separator';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
+import { IconTooltip } from '@/components/common/IconTooltip';
 import { useAuth } from '@/features/auth/AuthContext';
 import { ROUTES, type AppRole } from '@/config/app.config';
 import { supabase } from '@/integrations/supabase/client';
@@ -177,14 +178,17 @@ export function EditorToolbar() {
         </Button>
 
         <div className="ml-auto">
-          <Button
-            variant="ghost"
-            size="icon"
-            className="h-7 w-7 text-muted-foreground hover:text-foreground"
-            onClick={disableEditorMode}
-          >
-            <X className="h-4 w-4" />
-          </Button>
+          <IconTooltip label="Exit editor mode">
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-7 w-7 text-muted-foreground hover:text-foreground"
+              onClick={disableEditorMode}
+              aria-label="Exit editor mode"
+            >
+              <X className="h-4 w-4" />
+            </Button>
+          </IconTooltip>
         </div>
       </div>
 

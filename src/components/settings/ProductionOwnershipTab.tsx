@@ -9,6 +9,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
+import { IconTooltip } from '@/components/common/IconTooltip';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Plus, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
@@ -198,14 +199,16 @@ export function ProductionOwnershipTab({ currentOrgId, canEnter }: Props) {
                     <Badge variant="outline" className="text-xs shrink-0">
                       {a.sub_program && a.city_id ? 'Exact' : a.city_id ? 'City' : a.sub_program ? 'Sub' : 'Program'}
                     </Badge>
-                    <button
-                      onClick={() => deleteAssignment.mutate(a.id)}
-                      className="p-0.5 rounded hover:bg-muted text-muted-foreground hover:text-destructive disabled:opacity-50 disabled:pointer-events-none"
-                      aria-label="Remove assignment"
-                      disabled={!canManage}
-                    >
-                      <Trash2 className="h-3.5 w-3.5" />
-                    </button>
+                    <IconTooltip label="Remove assignment">
+                      <button
+                        onClick={() => deleteAssignment.mutate(a.id)}
+                        className="p-0.5 rounded hover:bg-muted text-muted-foreground hover:text-destructive disabled:opacity-50 disabled:pointer-events-none"
+                        aria-label="Remove assignment"
+                        disabled={!canManage}
+                      >
+                        <Trash2 className="h-3.5 w-3.5" />
+                      </button>
+                    </IconTooltip>
                   </div>
                 );
               })}

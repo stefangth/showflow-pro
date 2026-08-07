@@ -14,6 +14,7 @@ import { OrgInvitePopover } from "./OrgInvitePopover";
 import { OrgMembersPopover } from "./OrgMembersPopover";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
+import { IconTooltip } from "@/components/common/IconTooltip";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Alert, AlertDescription } from "@/components/ui/alert";
@@ -97,13 +98,17 @@ export function OrganizationsTab() {
                 <div className="flex items-center justify-end gap-1">
                   <OrgInvitePopover orgId={o.org_id} />
                   <OrgMembersPopover orgId={o.org_id} />
-                  <Button size="sm" variant="ghost" onClick={() => setEditing(o)} aria-label="Edit org"><Pencil className="h-3.5 w-3.5" /></Button>
-                  <Button size="sm" variant="ghost" aria-label={o.status === "suspended" ? "Reactivate" : "Suspend"}
-                    onClick={() => o.status === "suspended"
-                      ? statusMutation.mutate({ id: o.org_id, status: "active" })
-                      : setToSuspend(o)}>
-                    {o.status === "suspended" ? <Play className="h-3.5 w-3.5" /> : <Pause className="h-3.5 w-3.5" />}
-                  </Button>
+                  <IconTooltip label="Edit org">
+                    <Button size="sm" variant="ghost" onClick={() => setEditing(o)} aria-label="Edit org"><Pencil className="h-3.5 w-3.5" /></Button>
+                  </IconTooltip>
+                  <IconTooltip label={o.status === "suspended" ? "Reactivate" : "Suspend"}>
+                    <Button size="sm" variant="ghost" aria-label={o.status === "suspended" ? "Reactivate" : "Suspend"}
+                      onClick={() => o.status === "suspended"
+                        ? statusMutation.mutate({ id: o.org_id, status: "active" })
+                        : setToSuspend(o)}>
+                      {o.status === "suspended" ? <Play className="h-3.5 w-3.5" /> : <Pause className="h-3.5 w-3.5" />}
+                    </Button>
+                  </IconTooltip>
                   <Button size="sm" variant="outline" onClick={() => enter(o.org_id)}><LogIn className="h-3.5 w-3.5 mr-1" />Enter</Button>
                 </div>
               </TableCell>

@@ -3,6 +3,7 @@ import { useParams, useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { ArrowLeft, Download, FileText, CheckCircle2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { IconTooltip } from "@/components/common/IconTooltip";
 import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
@@ -216,9 +217,11 @@ function HireOrderDetail({
       {/* Header strip */}
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div className="flex items-start gap-2 min-w-0">
-          <Button variant="ghost" size="icon" className="mt-0.5 shrink-0" onClick={navigateBack} aria-label="Go back">
-            <ArrowLeft className="h-5 w-5" />
-          </Button>
+          <IconTooltip label="Go back">
+            <Button variant="ghost" size="icon" className="mt-0.5 shrink-0" onClick={navigateBack} aria-label="Go back">
+              <ArrowLeft className="h-5 w-5" />
+            </Button>
+          </IconTooltip>
           <div className="min-w-0">
             <div className="flex items-center gap-3">
               <h1 className="font-display text-xl text-foreground">Performance hire order</h1>

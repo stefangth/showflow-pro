@@ -4,6 +4,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
+import { IconTooltip } from '@/components/common/IconTooltip';
 import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Alert, AlertDescription } from '@/components/ui/alert';
@@ -430,13 +431,15 @@ function ArtistAvailability() {
                     {parseDateOnly(b.date).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}
                   </span>
                   <span className="flex-1 text-muted-foreground">{b.reason ?? '—'}</span>
-                  <button
-                    onClick={() => removeBlock.mutate(b.id)}
-                    className="p-0.5 rounded hover:bg-muted text-muted-foreground hover:text-destructive"
-                    aria-label="Remove block"
-                  >
-                    <Trash2 className="h-3.5 w-3.5" />
-                  </button>
+                  <IconTooltip label="Remove block">
+                    <button
+                      onClick={() => removeBlock.mutate(b.id)}
+                      className="p-0.5 rounded hover:bg-muted text-muted-foreground hover:text-destructive"
+                      aria-label="Remove block"
+                    >
+                      <Trash2 className="h-3.5 w-3.5" />
+                    </button>
+                  </IconTooltip>
                 </div>
               ))}
             </div>

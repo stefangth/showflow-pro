@@ -36,7 +36,7 @@ describe("CastDetailsSheet", () => {
   it("manage_casts on: edit, remove, and add-member controls are enabled", async () => {
     renderWithProviders(<CastDetailsSheet cast={CAST} open onOpenChange={() => {}} />);
     expect(await screen.findByText("Artist One")).toBeInTheDocument();
-    expect(screen.getByTitle("Edit cast")).toBeInTheDocument();
+    expect(screen.getByLabelText("Edit cast")).toBeInTheDocument();
     expect(screen.getByLabelText("Remove Artist One")).not.toBeDisabled();
     const candidateRow = screen.getByText("Artist Two").closest("div")!.parentElement!;
     expect(within(candidateRow).getByRole("button")).not.toBeDisabled();
@@ -46,7 +46,7 @@ describe("CastDetailsSheet", () => {
     vi.mocked(useCan).mockReturnValue(false);
     renderWithProviders(<CastDetailsSheet cast={CAST} open onOpenChange={() => {}} />);
     expect(await screen.findByText("Artist One")).toBeInTheDocument();
-    expect(screen.queryByTitle("Edit cast")).not.toBeInTheDocument();
+    expect(screen.queryByLabelText("Edit cast")).not.toBeInTheDocument();
     expect(screen.getByLabelText("Remove Artist One")).toBeDisabled();
     const candidateRow = screen.getByText("Artist Two").closest("div")!.parentElement!;
     expect(within(candidateRow).getByRole("button")).toBeDisabled();

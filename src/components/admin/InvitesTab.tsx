@@ -6,6 +6,7 @@ import { fetchOrgInvitations, createInvitation, revokeInvitation, resendInvitati
 import type { AppRole } from '@/config/app.config';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
+import { IconTooltip } from '@/components/common/IconTooltip';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -101,15 +102,21 @@ export function InvitesTab() {
               <div className="flex items-center gap-1 shrink-0">
                 {inv.status === 'pending' ? (
                   <>
-                    <Button size="sm" variant="ghost" className="h-7 px-2" onClick={() => copyLink(inv.token)} aria-label="Copy invite link">
-                      <Copy className="h-3.5 w-3.5" />
-                    </Button>
-                    <Button size="sm" variant="ghost" className="h-7 px-2" onClick={() => resend.mutate(inv.id)} aria-label="Resend invitation">
-                      <RefreshCw className="h-3.5 w-3.5" />
-                    </Button>
-                    <Button size="sm" variant="ghost" className="h-7 px-2" onClick={() => revoke.mutate(inv.id)} aria-label="Revoke invitation">
-                      <X className="h-3.5 w-3.5" />
-                    </Button>
+                    <IconTooltip label="Copy invite link">
+                      <Button size="sm" variant="ghost" className="h-7 px-2" onClick={() => copyLink(inv.token)} aria-label="Copy invite link">
+                        <Copy className="h-3.5 w-3.5" />
+                      </Button>
+                    </IconTooltip>
+                    <IconTooltip label="Resend invitation">
+                      <Button size="sm" variant="ghost" className="h-7 px-2" onClick={() => resend.mutate(inv.id)} aria-label="Resend invitation">
+                        <RefreshCw className="h-3.5 w-3.5" />
+                      </Button>
+                    </IconTooltip>
+                    <IconTooltip label="Revoke invitation">
+                      <Button size="sm" variant="ghost" className="h-7 px-2" onClick={() => revoke.mutate(inv.id)} aria-label="Revoke invitation">
+                        <X className="h-3.5 w-3.5" />
+                      </Button>
+                    </IconTooltip>
                   </>
                 ) : (
                   <Badge variant="outline" className="text-xs capitalize">{inv.status}</Badge>

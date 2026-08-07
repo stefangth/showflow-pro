@@ -18,6 +18,7 @@ import { ROUTES } from "@/config/app.config";
 import { cn } from "@/lib/utils";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
+import { IconTooltip } from "@/components/common/IconTooltip";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -919,9 +920,11 @@ export function NewOrderWizard({ open, onOpenChange, orgId }: Props) {
                             aria-label={`Session ${i + 1} time`}
                           />
                           {manualSessions.length > 1 && (
-                            <Button type="button" variant="ghost" size="icon" onClick={() => removeSessionRow(i)} aria-label={`Remove session ${i + 1}`}>
-                              <Trash2 className="h-4 w-4" />
-                            </Button>
+                            <IconTooltip label="Remove session">
+                              <Button type="button" variant="ghost" size="icon" onClick={() => removeSessionRow(i)} aria-label={`Remove session ${i + 1}`}>
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            </IconTooltip>
                           )}
                         </div>
                       ))}
@@ -985,9 +988,11 @@ export function NewOrderWizard({ open, onOpenChange, orgId }: Props) {
                                   aria-label={`${label} session ${i + 1} time`}
                                 />
                                 {schedule.sessions.length > 1 && (
-                                  <Button type="button" variant="ghost" size="icon" onClick={() => removeDateSessionRow(dateId, i)} aria-label={`${label} remove session ${i + 1}`}>
-                                    <Trash2 className="h-4 w-4" />
-                                  </Button>
+                                  <IconTooltip label="Remove session">
+                                    <Button type="button" variant="ghost" size="icon" onClick={() => removeDateSessionRow(dateId, i)} aria-label={`${label} remove session ${i + 1}`}>
+                                      <Trash2 className="h-4 w-4" />
+                                    </Button>
+                                  </IconTooltip>
                                 )}
                               </div>
                             ))}

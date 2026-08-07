@@ -2,6 +2,7 @@ import { Check, Lock, LockOpen } from "lucide-react";
 import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { IconTooltip } from "@/components/common/IconTooltip";
 import type { CapabilityMatrixCell } from "@/hooks/useCapabilities";
 
 interface Props {
@@ -54,15 +55,17 @@ export function PermissionRow({ cell, mode, onToggleOverride, onToggleLock, onSe
                 onCheckedChange={(v) => onSetPlatformDefault?.(v)}
                 aria-label={`Platform default: ${def.label}`}
               />
-              <Button
-                type="button"
-                variant="ghost"
-                size="icon"
-                aria-label={policyLocked ? "Unlock" : "Lock"}
-                onClick={() => onToggleLock?.(!policyLocked)}
-              >
-                {policyLocked ? <Lock className="h-4 w-4" /> : <LockOpen className="h-4 w-4 text-muted-foreground" />}
-              </Button>
+              <IconTooltip label={policyLocked ? "Unlock" : "Lock"}>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon"
+                  aria-label={policyLocked ? "Unlock" : "Lock"}
+                  onClick={() => onToggleLock?.(!policyLocked)}
+                >
+                  {policyLocked ? <Lock className="h-4 w-4" /> : <LockOpen className="h-4 w-4 text-muted-foreground" />}
+                </Button>
+              </IconTooltip>
             </div>
           )}
         </div>

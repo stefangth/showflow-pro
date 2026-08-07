@@ -2,6 +2,7 @@ import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { render, screen, waitFor } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import React from "react";
+import { TooltipProvider } from "@/components/ui/tooltip";
 import { ArtistAvailabilityCalendar } from "./ArtistAvailabilityCalendar";
 
 // ── Mocks ─────────────────────────────────────────────────────────────────
@@ -29,7 +30,11 @@ vi.mock("@/components/availability/OfferResponseButtons", () => ({
 
 function wrapper({ children }: { children: React.ReactNode }) {
   const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } });
-  return React.createElement(QueryClientProvider, { client: qc }, children);
+  return React.createElement(
+    QueryClientProvider,
+    { client: qc },
+    React.createElement(TooltipProvider, null, children),
+  );
 }
 
 /**

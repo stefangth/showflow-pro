@@ -15,6 +15,7 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from "
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { IconTooltip } from "@/components/common/IconTooltip";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -237,16 +238,18 @@ export function UserDetailSheet({ user: propUser, open, onOpenChange }: Props) {
           <SheetDescription>{user.email}</SheetDescription>
           <div className="flex items-center gap-1 text-xs text-muted-foreground">
             <span className="font-mono truncate">{user.id}</span>
-            <Button
-              type="button"
-              size="icon"
-              variant="ghost"
-              className="h-5 w-5 shrink-0"
-              aria-label="Copy user id"
-              onClick={handleCopyId}
-            >
-              <Copy className="h-3 w-3" />
-            </Button>
+            <IconTooltip label="Copy user id">
+              <Button
+                type="button"
+                size="icon"
+                variant="ghost"
+                className="h-5 w-5 shrink-0"
+                aria-label="Copy user id"
+                onClick={handleCopyId}
+              >
+                <Copy className="h-3 w-3" />
+              </Button>
+            </IconTooltip>
           </div>
           <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted-foreground">
             <span>Created {formatLastActivity(user.created_at)}</span>

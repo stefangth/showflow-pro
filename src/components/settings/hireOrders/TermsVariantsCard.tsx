@@ -16,6 +16,7 @@ import { useTermsLibrary, useImportTermsTemplates } from "@/hooks/useHireOrderSe
 import { TermsLibraryPicker } from "./fields/TermsLibraryPicker";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { IconTooltip } from "@/components/common/IconTooltip";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
@@ -69,16 +70,18 @@ function ClauseListEditor({
                 onChange(clauses.map((c, j) => (j === i ? { ...c, title: e.target.value } : c)))
               }
             />
-            <Button
-              type="button"
-              variant="ghost"
-              size="icon"
-              aria-label={`Remove ${label} clause ${i + 1}`}
-              disabled={readOnly}
-              onClick={() => onChange(clauses.filter((_, j) => j !== i))}
-            >
-              <Trash2 className="h-3.5 w-3.5" />
-            </Button>
+            <IconTooltip label="Remove clause">
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                aria-label={`Remove ${label} clause ${i + 1}`}
+                disabled={readOnly}
+                onClick={() => onChange(clauses.filter((_, j) => j !== i))}
+              >
+                <Trash2 className="h-3.5 w-3.5" />
+              </Button>
+            </IconTooltip>
           </div>
           <Textarea
             aria-label={`${label} clause ${i + 1} body`}
@@ -261,16 +264,18 @@ export function TermsVariantsCard({ orgId, readOnly = false }: { orgId: string |
                         Default
                       </Label>
                     </div>
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="icon"
-                      aria-label={`Delete ${label}`}
-                      disabled={readOnly}
-                      onClick={() => deleteTemplate(tpl.id)}
-                    >
-                      <Trash2 className="h-3.5 w-3.5" />
-                    </Button>
+                    <IconTooltip label={`Delete ${label}`}>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon"
+                        aria-label={`Delete ${label}`}
+                        disabled={readOnly}
+                        onClick={() => deleteTemplate(tpl.id)}
+                      >
+                        <Trash2 className="h-3.5 w-3.5" />
+                      </Button>
+                    </IconTooltip>
                   </div>
                   <ClauseListEditor
                     label={label}

@@ -9,6 +9,7 @@ import { fetchCastsByArtist } from '@/data/casts';
 import { useAuth } from '@/features/auth/AuthContext';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
+import { IconTooltip } from '@/components/common/IconTooltip';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
@@ -329,28 +330,32 @@ export default function ArtistsPage() {
                             {pendingInvite && (canResendArtistInvite || canManageArtistInvitations) && (
                               <div className="flex items-center gap-1">
                                 {canResendArtistInvite && (
-                                  <Button
-                                    size="icon"
-                                    variant="ghost"
-                                    className="h-6 w-6"
-                                    aria-label="Resend invite"
-                                    onClick={(e) => { e.stopPropagation(); resendInvite.mutate(pendingInvite.id); }}
-                                    disabled={resendInvite.isPending}
-                                  >
-                                    <RefreshCw className="h-3.5 w-3.5" />
-                                  </Button>
+                                  <IconTooltip label="Resend invite">
+                                    <Button
+                                      size="icon"
+                                      variant="ghost"
+                                      className="h-6 w-6"
+                                      aria-label="Resend invite"
+                                      onClick={(e) => { e.stopPropagation(); resendInvite.mutate(pendingInvite.id); }}
+                                      disabled={resendInvite.isPending}
+                                    >
+                                      <RefreshCw className="h-3.5 w-3.5" />
+                                    </Button>
+                                  </IconTooltip>
                                 )}
                                 {canManageArtistInvitations && (
-                                  <Button
-                                    size="icon"
-                                    variant="ghost"
-                                    className="h-6 w-6"
-                                    aria-label="Revoke invite"
-                                    onClick={(e) => { e.stopPropagation(); revokeInvite.mutate(pendingInvite.id); }}
-                                    disabled={revokeInvite.isPending}
-                                  >
-                                    <X className="h-3.5 w-3.5" />
-                                  </Button>
+                                  <IconTooltip label="Revoke invite">
+                                    <Button
+                                      size="icon"
+                                      variant="ghost"
+                                      className="h-6 w-6"
+                                      aria-label="Revoke invite"
+                                      onClick={(e) => { e.stopPropagation(); revokeInvite.mutate(pendingInvite.id); }}
+                                      disabled={revokeInvite.isPending}
+                                    >
+                                      <X className="h-3.5 w-3.5" />
+                                    </Button>
+                                  </IconTooltip>
                                 )}
                               </div>
                             )}
