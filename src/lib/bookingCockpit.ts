@@ -219,12 +219,17 @@ export interface HeaderCta { kind: HeaderCtaKind; label: string }
  *  workflow itself is done. */
 export function computeHeaderCta(args: {
   artistAcceptance: boolean; acceptedCount: number; confirmedCount: number;
-  totalSlots: number | null; openTier: number | null; maxTier: number;
+  totalSlots: number | null; openTier: number | null; currentTierOpen: boolean; maxTier: number;
 }): HeaderCta {
   const none: HeaderCta = { kind: "none", label: "" };
   if (args.acceptedCount > 0) return { kind: "confirm", label: `Confirm ${args.acceptedCount} accepted` };
   if (args.totalSlots == null || args.confirmedCount >= args.totalSlots) return none;
   if (!args.artistAcceptance) return { kind: "book", label: "Book from eligibility" };
+  // A tier is still open awaiting responses — review, don't escalate. Escalation
+  // is offered only once the current tier has closed short (matches the offer
+  // engine's "escalate when a tier's window closes short" model), so the header
+  // can never live-offer a second tier concurrently from one click.
+  if (args.currentTierOpen) return { kind: "reviewOffers", label: "Review open offers" };
   if (args.openTier != null && args.openTier < args.maxTier)
     return { kind: "openTier", label: `Open tier ${args.openTier + 1}` };
   return { kind: "reviewOffers", label: "Review open offers" };

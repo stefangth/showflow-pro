@@ -547,7 +547,9 @@ export function ShowDateDetailSheet({ showDateId, open, onOpenChange }: Props) {
   const workflowCta = computeHeaderCta({
     artistAcceptance: flow.artist_acceptance,
     acceptedCount, confirmedCount, totalSlots,
-    openTier: highestOpenedTier, maxTier: tiersQ.data?.priorities.length ?? 3,
+    openTier: highestOpenedTier,
+    currentTierOpen: highestOpenTier != null,
+    maxTier: tiersQ.data?.priorities.length ?? 3,
   });
   const ctaAllowed =
     workflowCta.kind === 'confirm' ? canConfirmBookings :
@@ -562,7 +564,11 @@ export function ShowDateDetailSheet({ showDateId, open, onOpenChange }: Props) {
         break;
       }
       case 'openTier':
-        openOffers.mutate({ tier: (highestOpenedTier ?? 0) + 1, skillFilterIds: [] });
+        // Preview the next tier on the Offers tab (like TierTimeline) rather than
+        // opening it on a single header click — the actual offer-send is confirmed
+        // from the dry-run dialog, never fired directly from here.
+        setActiveTab('offers');
+        setDryRun({ tier: (highestOpenedTier ?? 0) + 1, skillFilterIds: [] });
         break;
       case 'book':
       case 'reviewOffers':
