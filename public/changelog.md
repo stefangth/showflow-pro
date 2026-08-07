@@ -7,6 +7,8 @@ What's new in ShowFlow, newest first.
 *Getting hire orders ready*
 
 ### New
+- **Show date cockpit** — Opening a date now leads with the work: an anchored header with the fill meter and one primary action, a facts and activity rail that stays put, and tabs for cast, offers, hire order, chat, and setup. Filling a date and getting it signed no longer competes with once-a-season setup.
+- **Peek a date from the list** — Hover a bookings row (or press Space) for a quick card showing who is waiting on you and how many slots are open, and confirm the accepted artists right there. Enter still opens the full date.
 - **Hire order setup checklist** — A checklist beside your hire orders shows exactly what is needed before the first order can be sent, and lets you set it right there. It disappears once you are set up.
 - **Ready-made terms templates** — Start from a prepared set of engagement terms instead of writing clauses from scratch. You get your own copy, so editing it changes nothing for anyone else.
 - **Bookings setup checklist** — A checklist beside Shows and bookings walks you through the booking flow, slot counts, cast priorities, eligibility, and response timing, then retires itself once the first offer can go out.
@@ -14,6 +16,7 @@ What's new in ShowFlow, newest first.
 - **Upcoming, past, or all dates** — Bookings, hire orders, and availability now let you switch between upcoming, past, and all dates. Bookings and availability start on upcoming; past dates appear dimmed but stay clickable everywhere they show.
 
 ### Improved
+- **One clear next step per date** — The date header shows a single primary action that follows your booking flow: confirm the artists waiting on you, open the next offer tier, book from eligibility, or generate the hire order.
 - **Know before you send** — Issuing a hire order now shows anything missing first, with the fix right there, instead of failing after you press send.
 - **Batch issuing is honest about what it can send** — Select any number of orders and see exactly how many can go now. The rest stay selected as drafts so you can fix them.
 - **Signing is on the document** — Artists sign right under the order they are reading, instead of in a separate window.
