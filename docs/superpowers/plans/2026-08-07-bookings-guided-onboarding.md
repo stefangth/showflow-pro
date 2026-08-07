@@ -13,7 +13,7 @@
 - Spec: `docs/superpowers/specs/2026-08-07-bookings-guided-onboarding-design.md`.
 - No migration, no edge-function change, no `src/integrations/supabase/types.ts` edit.
 - Semantic tokens only. No opacity modifier on any numbered accent stop (`accent-50`–`900`). Amber via the `--amber-*` vars (or the Badge `risk`/`neutral` variants), never Tailwind's built-in amber.
-- No em-dashes in user-facing copy (period, comma, colon, or middot).
+- No em-dashes in user-facing copy (period, comma, colon, or middot). **Exception:** `public/changelog.md` already uses em-dashes in its `- **Title** — description` bullets; Task 10 matches that file's existing house format rather than the prose rule.
 - Data-access functions take the client as first arg and live in `src/data/**`; hooks are thin wrappers passing the `supabase` singleton. Test data-access with `supabaseFake`, never `vi.mock` the client module chain.
 - Test-first: write the failing test before the implementation. Tests import the real module; never re-implement production logic in a test.
 - Query keys are hierarchical by domain: `['app-settings',...]`, `['shows',...]`, `['eligibility',...]`. Mutations invalidate the whole domain prefix.
@@ -2181,47 +2181,43 @@ git commit -m "mount the bookings setup rail beside the table"
 
 ---
 
-### Task 10: Release notes and version bump
+### Task 10: Release notes (fold into the last release)
 
-User-facing feature: bump the version in both places, add a changelog block, regenerate the JSON.
+User-facing feature, but per the maintainer's decision it ships **folded into the last release, 1.14.0 (August 6, 2026)** — no version bump. Add bullets to that existing changelog block and regenerate the JSON. Do NOT change `package.json` or `APP_META.VERSION`; both stay `1.14.0`.
+
+Note on copy rules: the changelog file's shipped entries use em-dashes in the `- **Title** — description` bullet form. Match the surrounding file's existing bullet punctuation exactly (that is the house format for this file) rather than the no-em-dash prose rule; the prohibition targets sentence prose, and consistency within this file wins here.
 
 **Files:**
-- Modify: `package.json` (`version`)
-- Modify: `src/config/app.config.ts` (`APP_META.VERSION`)
-- Modify: `public/changelog.md`
+- Modify: `public/changelog.md` (extend the existing `## 1.14.0` block only)
 - Regenerate: `public/changelog.json`
 
-- [ ] **Step 1: Bump the version**
+- [ ] **Step 1: Extend the 1.14.0 block**
 
-Set `version` in `package.json` and `APP_META.VERSION` in `src/config/app.config.ts` to the next MINOR (read the current value first; if it is `1.8.0`, use `1.9.0` — adjust to whatever is current, MINOR for a new feature).
+In `public/changelog.md`, leave the `## 1.14.0 — August 6, 2026` heading and its `*Getting hire orders ready*` theme unchanged. Append these bullets to that block's existing `### New` and `### Improved` lists (do not create a new version heading), end-user voice, no super-admin/platform mentions, matching the existing `- **Title** — description` bullet style:
 
-- [ ] **Step 2: Add the changelog block**
-
-Prepend a newest-first block to `public/changelog.md`, end-user voice, no em-dashes, no super-admin/platform mentions:
+Under `### New`:
 
 ```markdown
-## X.Y.Z — Aug 7, 2026
-
-*Get bookings running, guided.*
-
-### New
-- **Bookings setup checklist** — A checklist beside Shows and bookings walks you through the booking flow, slot counts, cast priorities, eligibility, and timing, and retires itself once the first offer can go out.
-- **Rehearsal** — Preview exactly who the next date would offer, and when, without creating a booking or sending an email.
-
-### Improved
-- **Clear blockers** — Each outstanding step says whether it stops offers or only stops a date filling, so you know what to fix first.
+- **Bookings setup checklist** — A checklist beside Shows and bookings walks you through the booking flow, slot counts, cast priorities, eligibility, and response timing, then retires itself once the first offer can go out.
+- **Rehearse the next date** — Preview exactly who the next date would offer, and when, without creating a booking or sending a single email.
 ```
 
-- [ ] **Step 3: Regenerate the JSON**
+Under `### Improved`:
+
+```markdown
+- **Honest setup blockers** — Each outstanding booking setup step says whether it stops offers entirely or only stops a date filling, so you know what to fix first.
+```
+
+- [ ] **Step 2: Regenerate the JSON**
 
 Run: `deno run --allow-read --allow-write scripts/changelog-to-json.ts`
-Expected: `public/changelog.json` rewritten. Never hand-edit it.
+Expected: `public/changelog.json` rewritten from the markdown. Never hand-edit it. Confirm the 1.14.0 entry now carries the new bullets and no new version object was added.
 
-- [ ] **Step 4: Commit**
+- [ ] **Step 3: Commit**
 
 ```bash
-git add package.json src/config/app.config.ts public/changelog.md public/changelog.json
-git commit -m "release notes for the bookings guided onboarding"
+git add public/changelog.md public/changelog.json
+git commit -m "note the bookings guided onboarding in the 1.14.0 changelog"
 ```
 
 ---
