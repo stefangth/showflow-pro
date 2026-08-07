@@ -243,9 +243,11 @@ export function compactEmailTheme(draft?: EmailThemeOverride | null): EmailTheme
     if (Object.keys(base).length > 0) out.base = base;
   }
   if (isRecord(draft.roles)) {
-    const roles: Record<string, EmailThemeOverride["roles"] extends Record<string, infer T> ? T : never> = {};
+    const roles: NonNullable<EmailThemeOverride["roles"]> = {};
     for (const [key, value] of Object.entries(draft.roles)) {
-      if (isRecord(value) && Object.keys(value).length > 0) roles[key] = { ...value };
+      if (isRecord(value) && Object.keys(value).length > 0) {
+        roles[key] = { ...value } as NonNullable<EmailThemeOverride["roles"]>[string];
+      }
     }
     if (Object.keys(roles).length > 0) out.roles = roles;
   }
