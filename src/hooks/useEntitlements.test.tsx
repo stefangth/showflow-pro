@@ -7,16 +7,22 @@ vi.mock("@/data/entitlements", () => ({ fetchEntitlements: vi.fn() }));
 import { useAuth } from "@/features/auth/AuthContext";
 import { fetchEntitlements } from "@/data/entitlements";
 import { renderHookWithProviders } from "@/test/renderWithProviders";
+import { partialMock } from "@/test/castHelpers";
 import { useModuleGate } from "./useEntitlements";
 
-function mockAuth(over: { isSuperAdmin?: boolean; viewAsRole?: string | null; viewAsUser?: unknown }) {
-  vi.mocked(useAuth).mockReturnValue({
-    currentOrg: { id: "org-1" },
-    isSuperAdmin: false,
-    viewAsRole: null,
-    viewAsUser: null,
-    ...over,
-  } as never);
+const ORG = { id: "org-1", name: "Acme", slug: "acme", status: "active" };
+
+function mockAuth(over: Partial<ReturnType<typeof useAuth>> = {}) {
+  vi.mocked(useAuth).mockReturnValue(
+    partialMock<ReturnType<typeof useAuth>>({
+      currentOrg: ORG,
+      isSuperAdmin: false,
+      roles: [],
+      viewAsRole: null,
+      viewAsUser: null,
+      ...over,
+    }),
+  );
 }
 
 async function gate() {
@@ -29,7 +35,7 @@ describe("useModuleGate view-as", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     // booking_flow defaults ON, so an explicit disabled row is needed to turn it off.
-    vi.mocked(fetchEntitlements).mockResolvedValue([{ feature: "booking_flow", enabled: false }] as never);
+    vi.mocked(fetchEntitlements).mockResolvedValue([{ feature: "booking_flow", enabled: false }]);
   });
 
   it("keeps god-mode for a super-admin who is NOT previewing", async () => {
@@ -37,8 +43,15 @@ describe("useModuleGate view-as", () => {
     expect((await gate()).allow).toBe(true);
   });
 
-  it("gates a super-admin previewing as a role", async () => {
-    mockAuth({ isSuperAdmin: true, viewAsRole: "producer" });
+  it("keeps god-mode when a super-admin views as a role they already hold", async () => {
+    // Selecting your own role is not impersonation, so the exemption stays and the
+    // pencil stays un-red — the gate and the indicator agree.
+    mockAuth({ isSuperAdmin: true, roles: ["admin"], viewAsRole: "admin" });
+    expect((await gate()).allow).toBe(true);
+  });
+
+  it("gates a super-admin previewing a role they do not hold", async () => {
+    mockAuth({ isSuperAdmin: true, roles: ["admin"], viewAsRole: "producer" });
     expect((await gate()).allow).toBe(false);
   });
 
@@ -48,8 +61,8 @@ describe("useModuleGate view-as", () => {
   });
 
   it("still allows a previewing super-admin when the module is actually on", async () => {
-    vi.mocked(fetchEntitlements).mockResolvedValue([{ feature: "booking_flow", enabled: true }] as never);
-    mockAuth({ isSuperAdmin: true, viewAsRole: "producer" });
+    vi.mocked(fetchEntitlements).mockResolvedValue([{ feature: "booking_flow", enabled: true }]);
+    mockAuth({ isSuperAdmin: true, roles: ["admin"], viewAsRole: "producer" });
     expect((await gate()).allow).toBe(true);
   });
 });

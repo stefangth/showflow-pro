@@ -13,6 +13,7 @@ import { ROUTES, type AppRole } from '@/config/app.config';
 import { supabase } from '@/integrations/supabase/client';
 import { isOrgSuspended, orgOptionLabel } from '@/lib/orgs';
 import { useEditor } from './EditorContext';
+import { isImpersonating } from '@/features/auth/orgRoles';
 import { canUseEditor } from './editorAccess';
 import { EditorSidePanel } from './EditorSidePanel';
 
@@ -245,8 +246,9 @@ export function EditorModeToggle() {
   // someone other than the signed-in user. It stays visible even with the editor
   // toolbar closed, where the "Viewing as" chip is not — so a super-admin can
   // never forget they are looking at a gated/limited view rather than their own.
-  const previewingOther =
-    viewAsUser != null || (viewAsRole != null && !roles.includes(viewAsRole));
+  // Same predicate the module/nav/route gates use, so the cue never disagrees
+  // with what is actually gated.
+  const previewingOther = isImpersonating({ roles, viewAsRole, viewAsUser });
   const previewLabel = viewAsUser ? (viewAsUser.email ?? 'another user') : viewAsRole;
 
   return (

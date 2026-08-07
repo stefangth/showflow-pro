@@ -99,15 +99,17 @@ describe("ShowDateDetailSheet booking status strip gating", () => {
 
   it("shows the funnel when booking_flow is on", () => {
     vi.mocked(useFeature).mockReturnValue(true);
-    render(<BookingStatusSection bookings={[]} slots={null} upNextItems={[]} programLabel="Cats" />);
+    render(<BookingStatusSection bookings={[]} slots={null} upNext={() => []} />);
     expect(screen.getByLabelText("Booking funnel")).toBeInTheDocument();
   });
 
-  it("renders nothing when booking_flow is off", () => {
+  it("renders nothing, and does not derive up-next, when booking_flow is off", () => {
     vi.mocked(useFeature).mockReturnValue(false);
+    const upNext = vi.fn(() => []);
     const { container } = render(
-      <BookingStatusSection bookings={[]} slots={null} upNextItems={[]} programLabel="Cats" />,
+      <BookingStatusSection bookings={[]} slots={null} upNext={upNext} />,
     );
     expect(container).toBeEmptyDOMElement();
+    expect(upNext).not.toHaveBeenCalled();
   });
 });

@@ -7,6 +7,7 @@ import AppLayout from '@/components/layout/AppLayout';
 import type { AppRole } from '@/config/app.config';
 import { ROUTES, requiredFeatureForPath } from '@/config/app.config';
 import { DEFAULT_PAGE_ACCESS } from '@/features/editor/types';
+import { isImpersonating } from '@/features/auth/orgRoles';
 import { useEditorConfig } from '@/features/editor/EditorContext';
 import { useEntitlements } from '@/hooks/useEntitlements';
 
@@ -48,7 +49,7 @@ export function ProtectedRoute({ children, requiredRoles }: ProtectedRouteProps)
   // screen for an org that does have the feature. Super-admins (god-mode)
   // bypass this like they bypass org role gates below.
   const requiredFeature = requiredFeatureForPath(location.pathname);
-  const impersonating = viewAsRole != null || viewAsUser != null;
+  const impersonating = isImpersonating({ roles, viewAsRole, viewAsUser });
   if (requiredFeature && !entitlementsLoading && !features.has(requiredFeature) && !(isSuperAdmin && !impersonating)) {
     const disabled = <FeatureDisabledScreen feature={requiredFeature} />;
     // A super-admin only reaches this branch while previewing (view-as); keep the

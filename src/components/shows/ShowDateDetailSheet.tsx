@@ -184,27 +184,23 @@ export function BookingCardSection({
   );
 }
 
-/** The booking funnel + up-next strip, shown to every viewer of a date. Both are
- *  pure booking-engine status, so they hide entirely when booking_flow is off (the
- *  confirmed cast stays visible via BookingCardSection's read-only preview below).
- *  Uses useModuleGate, so a super-admin previewing view-as sees it hidden too. */
-export function BookingStatusSection({ bookings, slots, upNextItems, programLabel }: {
+/** The booking funnel + up-next strip: pure booking-engine status, so they hide
+ *  entirely when booking_flow is off (the confirmed cast stays visible via
+ *  BookingCardSection's read-only preview below, and the cast-slot warning is
+ *  rendered by the caller outside this gate since slots matter beyond booking).
+ *  Uses useModuleGate, so a super-admin previewing view-as sees it hidden too.
+ *  `upNext` is a thunk so the up-next derivation runs only when the strip shows. */
+export function BookingStatusSection({ bookings, slots, upNext }: {
   bookings: Array<{ status: string; is_understudy: boolean }>;
   slots: SlotCounts | null;
-  upNextItems: UpNextItem[];
-  programLabel: string;
+  upNext: () => UpNextItem[];
 }) {
   const { allow } = useModuleGate('booking_flow');
   if (!allow) return null;
   return (
     <div className="space-y-3">
       <BookingFunnel bookings={bookings} slots={slots} />
-      <UpNextStrip items={upNextItems} />
-      {!slots && (
-        <Badge variant="secondary" className="bg-destructive/10 text-destructive">
-          Slot config missing for {programLabel}. Set cast slots in Settings.
-        </Badge>
-      )}
+      <UpNextStrip items={upNext()} />
     </div>
   );
 }
@@ -675,7 +671,7 @@ export function ShowDateDetailSheet({ showDateId, open, onOpenChange }: Props) {
               <BookingStatusSection
                 bookings={bookingsForDate ?? []}
                 slots={slotConfig}
-                upNextItems={computeUpNext({
+                upNext={() => computeUpNext({
                   flow,
                   times: effectiveTimes,
                   pendingCount: (bookingsForDate ?? []).filter((b) => b.status === 'suggested').length,
@@ -685,8 +681,14 @@ export function ShowDateDetailSheet({ showDateId, open, onOpenChange }: Props) {
                     .sort()[0] ?? null,
                   hasOpenTier: (openedQ.data ?? []).some((t) => !t.closedAt),
                 })}
-                programLabel={showDate.show?.program ?? 'this show'}
               />
+              {/* Cast-slot warning: a catalog concern (also used by hire orders),
+                  so it is NOT tied to the booking_flow gate above. */}
+              {!slotConfig && (
+                <Badge variant="secondary" className="bg-destructive/10 text-destructive">
+                  Slot config missing for {showDate.show?.program ?? 'this show'}. Set cast slots in Settings.
+                </Badge>
+              )}
 
               {/* Date configuration (producer/admin only) */}
               {canManage && (

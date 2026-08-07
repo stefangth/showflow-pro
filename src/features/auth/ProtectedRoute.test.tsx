@@ -247,6 +247,9 @@ describe("ProtectedRoute", () => {
 
       expect(screen.getByText("Hire orders is not enabled")).toBeTruthy();
       expect(screen.queryByText("Protected Content")).toBeNull();
+      // A genuine member gets the bare disabled screen, NOT the app chrome (that
+      // wrap exists only to keep the editor toolbar reachable for a super-admin).
+      expect(screen.queryByTestId("app-layout")).toBeNull();
     });
 
     it("shows the feature gate, inside AppLayout, to a super-admin previewing via view-as", () => {
