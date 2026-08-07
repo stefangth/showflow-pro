@@ -14,7 +14,7 @@ import { createFakeSupabase } from "@/test/supabaseFake";
 const ELIGIBLE = [
   {
     id: "d1",
-    date: "2099-08-10",
+    date: "2028-08-10",
     session_1: "19:00",
     session_2: null,
     session_3: null,
@@ -27,7 +27,7 @@ const ELIGIBLE = [
   },
   {
     id: "d2",
-    date: "2099-08-11",
+    date: "2028-08-11",
     session_1: "19:00",
     session_2: null,
     session_3: null,
@@ -144,7 +144,7 @@ describe("ArtistBookingsView hire-order chip (Task 14)", () => {
 
     renderWithProviders(<ArtistBookingsView />);
 
-    await screen.findByText("10/08/2099");
+    await screen.findByText("10/08/2028");
     expect(screen.queryByText("Hire order")).not.toBeInTheDocument();
   });
 
@@ -170,7 +170,7 @@ describe("ArtistBookingsView hire-order chip (Task 14)", () => {
 
     renderWithProviders(<ArtistBookingsView />);
 
-    await screen.findByText("10/08/2099");
+    await screen.findByText("10/08/2028");
     expect(screen.queryByText("Hire order")).not.toBeInTheDocument();
   });
 });

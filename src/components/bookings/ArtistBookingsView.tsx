@@ -8,14 +8,17 @@ import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { TimeframeFilter, type TimeframeValue } from '@/components/filters/TimeframeFilter';
+import { TimeframeFilter, upcomingTimeframe, type TimeframeValue } from '@/components/filters/TimeframeFilter';
 import { SortControl, type SortValue } from '@/components/filters/SortControl';
 import { ViewToggle, type ViewMode } from '@/components/filters/ViewToggle';
 import { EntityCalendar } from '@/components/calendar/EntityCalendar';
 import { applySort, inTimeframe } from '@/components/filters/filterUtils';
 import { ShowDateDetailSheet } from '@/components/shows/ShowDateDetailSheet';
 import { useArtistEligibleDates, type EligibleDate } from '@/hooks/useArtistEligibleDates';
-import { fetchMyCancelledDateBookings, mergeArtistCancelledDates, type CancelledDateEntry } from '@/data/artists';
+import {
+  fetchMyCancelledDateBookings, mergeArtistCancelledDates, type CancelledDateEntry,
+  fetchMyActiveBookedDates, mergeArtistActiveBookedDates, type ActiveBookedDateEntry,
+} from '@/data/artists';
 import { useMyArtist } from '@/hooks/useMyArtist';
 import { useMyHireOrders } from '@/hooks/useHireOrders';
 import { useFeature } from '@/hooks/useEntitlements';
@@ -24,8 +27,9 @@ import { useBookingFlow, useReferenceField } from '@/hooks/useBookingFlow';
 import { bookingStatusBadgeClass } from '@/lib/bookings';
 import { BOOKING_FLOW_DEFAULTS, referenceLabel } from '@/lib/bookingFlow';
 import { bookingsViewCopy, bookingStatusLabels } from '@/lib/flowCopy';
-import { formatDateDMY, parseDateOnly } from '@/lib/dates';
+import { formatDateDMY, parseDateOnly, isPastDate, PAST_DATE_TINT } from '@/lib/dates';
 import { showIdentityLabel } from '@/types';
+import { cn } from '@/lib/utils';
 import { ROUTES } from '@/config/app.config';
 import { useColumnTemplate, useEditorConfig } from '@/features/editor/EditorContext';
 import { useColumnHeaders } from '@/features/editor/useColumnHeaders';
@@ -33,16 +37,27 @@ import { ColumnLayoutEditor } from '@/features/editor/ColumnLayoutEditor';
 
 type BookingLite = { show_date_id: string; status: string; is_understudy: boolean };
 
-/** A row in the artist Bookings view: an eligible date or a cancelled one the artist was booked on. */
-type DateRow = EligibleDate | CancelledDateEntry;
+/**
+ * A row in the artist Bookings view: an eligible (upcoming) date, a cancelled
+ * one the artist was booked on, or an active booking merged in from
+ * `fetchMyActiveBookedDates` whose show_date fell outside the eligible-dates
+ * window (typically a past date — see the July 31 bug this merge fixes).
+ */
+type DateRow = EligibleDate | CancelledDateEntry | ActiveBookedDateEntry;
 
 /** True when the row is a cancelled date the artist had been booked on. */
 function isCancelledEntry(d: DateRow): d is CancelledDateEntry {
   return d.status === 'cancelled';
 }
 
-/** CancelledDateEntry's query never selects `custom` (it isn't reference-field aware),
- *  so only pass it through for eligible-date rows. */
+/** True when the row came from the active-booked merge rather than eligibleDates/cancelledEntries.
+ *  `is_understudy` is the only field unique to this shape among the three. */
+function isActiveBookedEntry(d: DateRow): d is ActiveBookedDateEntry {
+  return 'is_understudy' in d;
+}
+
+/** CancelledDateEntry's and ActiveBookedDateEntry's queries never select `custom`
+ *  (neither is reference-field aware), so only pass it through for eligible-date rows. */
 function customFor(d: DateRow): Record<string, unknown> | null {
   return 'custom' in d ? d.custom : null;
 }
@@ -64,7 +79,7 @@ export function ArtistBookingsView() {
   const { orderedColumns, visibleCount } = useColumnTemplate('bookings-artist');
   const { isEditorMode } = useEditorConfig();
   const columnHeaders = useColumnHeaders(orderedColumns);
-  const [timeframe, setTimeframe] = useState<TimeframeValue>({ from: null, to: null });
+  const [timeframe, setTimeframe] = useState<TimeframeValue>(() => upcomingTimeframe());
   const [sort, setSort] = useState<SortValue>('chrono_asc');
   const [view, setView] = useState<ViewMode>('list');
   const [activeShowDateId, setActiveShowDateId] = useState<string | null>(null);
@@ -94,6 +109,15 @@ export function ArtistBookingsView() {
     queryFn: () => fetchMyCancelledDateBookings(supabase, artist!.id),
   });
 
+  // Past (and any other out-of-eligible-window) active bookings — merged below
+  // so a booking whose show_date useArtistEligibleDates silently drops (it's
+  // upcoming-only) still renders. This is the July 31 fix.
+  const { data: activeBookedDates } = useQuery({
+    queryKey: ['bookings', 'artist-active-booked', artist?.id],
+    enabled: !!artist?.id && bookingFlowEnabled,
+    queryFn: () => fetchMyActiveBookedDates(supabase, artist!.id),
+  });
+
   const bookingByDateId = useMemo(() => {
     const m = new Map<string, BookingLite>();
     myBookings?.forEach((b) => m.set(b.show_date_id, b));
@@ -113,6 +137,7 @@ export function ArtistBookingsView() {
 
   const statusFor = (d: DateRow): string => {
     if (isCancelledEntry(d)) return 'cancelled';
+    if (isActiveBookedEntry(d)) return d.status;
     const b = bookingByDateId.get(d.id);
     return b ? b.status : 'unanswered';
   };
@@ -124,16 +149,20 @@ export function ArtistBookingsView() {
     const cancelledFiltered = (cancelledEntries ?? []).filter((d) =>
       inTimeframe(parseDateOnly(d.date), timeframe)
     );
+    const activeBookedFiltered = (activeBookedDates ?? []).filter((d) =>
+      inTimeframe(parseDateOnly(d.date), timeframe)
+    );
     const merged = mergeArtistCancelledDates(eligibleFiltered, cancelledFiltered);
+    const withActiveBooked = mergeArtistActiveBookedDates(merged, activeBookedFiltered);
     // Sort on the show's own program/sub_program identity (stable), never the
     // org-configurable reference label used for display below.
     return applySort(
-      merged,
+      withActiveBooked,
       sort,
       (d) => showIdentityLabel(d.show),
       (d) => parseDateOnly(d.date)
     );
-  }, [eligibleDates, cancelledEntries, timeframe, sort]);
+  }, [eligibleDates, cancelledEntries, activeBookedDates, timeframe, sort]);
 
   const calendarItems = useMemo(
     () => filtered.map((d) => ({ date: parseDateOnly(d.date), eligible: d })),
@@ -252,7 +281,7 @@ export function ArtistBookingsView() {
                     return (
                       <TableRow
                         key={d.id}
-                        className="cursor-pointer"
+                        className={cn('cursor-pointer', isPastDate(parseDateOnly(d.date)) && PAST_DATE_TINT)}
                         onClick={() => setActiveShowDateId(d.id)}
                       >
                         {orderedColumns.filter(c => c.visible).map(c => cellFor(c.columnId))}
@@ -281,7 +310,10 @@ export function ArtistBookingsView() {
               const cancelled = isCancelledEntry(d);
               return (
                 <Card
-                  className="hover:shadow-elev2 transition-shadow cursor-pointer"
+                  className={cn(
+                    'hover:shadow-elev2 transition-shadow cursor-pointer',
+                    isPastDate(it.date) && PAST_DATE_TINT,
+                  )}
                   onClick={() => setActiveShowDateId(d.id)}
                 >
                   <CardContent className="py-3 flex items-center justify-between gap-3">

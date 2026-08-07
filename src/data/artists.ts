@@ -183,3 +183,19 @@ export function mergeArtistCancelledDates<T extends { id: string }>(
   const seen = new Set(eligible.map((d) => d.id));
   return [...eligible, ...cancelled.filter((c) => !seen.has(c.id))];
 }
+
+/**
+ * Append active-booked entries whose id isn't already in the base list. Mirrors
+ * `mergeArtistCancelledDates`'s first-seen-wins semantics; used to surface a
+ * booking whose show_date falls outside `useArtistEligibleDates` (upcoming-only) —
+ * typically a past date. This is the fix for the July 31 bug where a past
+ * `soft_booked` booking was invisible to the artist because the eligible-dates
+ * query silently excludes anything before today.
+ */
+export function mergeArtistActiveBookedDates<T extends { id: string }>(
+  base: T[],
+  activeBooked: ActiveBookedDateEntry[],
+): Array<T | ActiveBookedDateEntry> {
+  const seen = new Set(base.map((d) => d.id));
+  return [...base, ...activeBooked.filter((d) => !seen.has(d.id))];
+}

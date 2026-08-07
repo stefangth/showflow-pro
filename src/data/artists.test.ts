@@ -7,9 +7,10 @@ import {
   mergeArtistCancelledDates,
   fetchPendingInvitedArtistIds,
   fetchMyActiveBookedDates,
+  mergeArtistActiveBookedDates,
 } from "./artists";
 import { partialMock } from "@/test/castHelpers";
-import type { CancelledDateEntry } from "./artists";
+import type { CancelledDateEntry, ActiveBookedDateEntry } from "./artists";
 
 describe("fetchMyArtist", () => {
   it("queries the artists table by user_id and returns the row", async () => {
@@ -158,6 +159,25 @@ describe("mergeArtistCancelledDates", () => {
   });
   it("does not duplicate a date already eligible", () => {
     expect(mergeArtistCancelledDates([{ id: "d1" }], [partialMock<CancelledDateEntry>({ id: "d1", status: "cancelled" })])).toHaveLength(1);
+  });
+});
+
+describe("mergeArtistActiveBookedDates", () => {
+  it("appends active-booked entries not already present (e.g. a past soft_booked booking outside the eligible-dates window)", () => {
+    const merged = mergeArtistActiveBookedDates(
+      [{ id: "d2" }],
+      [partialMock<ActiveBookedDateEntry>({ id: "d1", status: "soft_booked", is_understudy: false })],
+    );
+    expect(merged.map((d) => d.id).sort()).toEqual(["d1", "d2"]);
+  });
+
+  it("does not duplicate a date already present in the eligible/base list", () => {
+    expect(
+      mergeArtistActiveBookedDates(
+        [{ id: "d1" }],
+        [partialMock<ActiveBookedDateEntry>({ id: "d1", status: "confirmed", is_understudy: false })],
+      ),
+    ).toHaveLength(1);
   });
 });
 

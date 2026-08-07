@@ -4,7 +4,7 @@ import { Calendar } from '@/components/ui/calendar';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
-import { parseDateOnly, formatDateWithWeekday, toDateKey } from '@/lib/dates';
+import { parseDateOnly, formatDateWithWeekday, toDateKey, isPastDate, PAST_DATE_TINT } from '@/lib/dates';
 import { CalendarDays, ListOrdered } from 'lucide-react';
 
 interface Props<T> {
@@ -73,8 +73,12 @@ export function EntityCalendar<T>({ items, getDate, renderItem, emptyMessage = '
                 onSelect={setSelected}
                 month={month}
                 onMonthChange={setMonth}
-                modifiers={{ hasItems: datesWithItems }}
-                modifiersClassNames={{ hasItems: 'relative font-semibold text-primary after:content-[""] after:absolute after:bottom-1 after:left-1/2 after:-translate-x-1/2 after:h-1 after:w-1 after:rounded-full after:bg-primary' }}
+                modifiers={{ hasItems: datesWithItems, past: isPastDate }}
+                modifiersClassNames={{
+                  hasItems: 'relative font-semibold text-primary after:content-[""] after:absolute after:bottom-1 after:left-1/2 after:-translate-x-1/2 after:h-1 after:w-1 after:rounded-full after:bg-primary',
+                  // Dimmed but fully clickable — never combine with pointer-events-none.
+                  past: PAST_DATE_TINT,
+                }}
                 className="p-3 pointer-events-auto"
               />
             </CardContent>

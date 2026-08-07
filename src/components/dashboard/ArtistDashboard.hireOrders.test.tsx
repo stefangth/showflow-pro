@@ -111,6 +111,32 @@ describe("ArtistDashboard hire-orders card (Task 14)", () => {
     expect(screen.queryByText("Your hire orders")).not.toBeInTheDocument();
   });
 
+  it("tints a hire-order row whose snapshotted date is in the past (Plan B Task 2), leaves a future one untinted", async () => {
+    featureHolder.enabled = true;
+    seedClient({
+      bookings: [{ when: { artist_id: "artist-1" }, data: [], error: null }],
+      "my-cast-memberships": { data: [], error: null },
+      cast_members: { data: [], error: null },
+      hire_orders: {
+        data: [
+          issuedOrder({ id: "ho-past", order_no: "HO-PAST", data: { date: { value: "2020-01-01", source: "showflow" }, venue: { value: "Old Hall", source: "showflow" } } }),
+          issuedOrder({ id: "ho-future", order_no: "HO-FUTURE", data: { date: { value: "2099-01-01", source: "showflow" }, venue: { value: "New Hall", source: "showflow" } } }),
+        ],
+        error: null,
+      },
+    });
+
+    renderWithProviders(<ArtistDashboard />);
+
+    const pastRow = (await screen.findByText("HO-PAST")).closest("div.flex.items-center.justify-between");
+    const futureRow = screen.getByText("HO-FUTURE").closest("div.flex.items-center.justify-between");
+    expect(pastRow).toBeTruthy();
+    expect(futureRow).toBeTruthy();
+    expect(pastRow!.className).toMatch(/opacity-60/);
+    expect(pastRow!.className).not.toMatch(/pointer-events-none/);
+    expect(futureRow!.className).not.toMatch(/opacity-60/);
+  });
+
   it("clicking Download invokes the download-url action for that order", async () => {
     featureHolder.enabled = true;
     seedClient({

@@ -18,7 +18,7 @@ import { BOOKING_FLOW_DEFAULTS, applyPreset, type BookingFlow } from "@/lib/book
 const ELIGIBLE = [
   {
     id: "sd-1",
-    date: "2099-08-10",
+    date: "2028-08-10",
     session_1: "19:00",
     session_2: null,
     session_3: null,

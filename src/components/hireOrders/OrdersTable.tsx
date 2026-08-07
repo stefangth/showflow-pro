@@ -7,7 +7,8 @@ import { Button } from "@/components/ui/button";
 import { HireOrderStatusBadge } from "@/components/hireOrders/HireOrderStatusBadge";
 import { BatchIssuePreflightDialog, type BatchPreflightOrder } from "./BatchIssuePreflightDialog";
 import { formatMoney } from "@/lib/hireOrders/money";
-import { formatDateDMY } from "@/lib/dates";
+import { formatDateDMY, parseDateOnly, isPastDate, PAST_DATE_TINT } from "@/lib/dates";
+import { cn } from "@/lib/utils";
 import type { OrderData } from "@/lib/hireOrders/types";
 import { useHireOrderAction, type IssueResult } from "@/hooks/useHireOrders";
 import type { HireOrderListRow } from "@/data/hireOrders";
@@ -151,7 +152,10 @@ export function OrdersTable({ orders, orgId, onRowClick }: Props) {
               {orders.map((o) => (
                 <TableRow
                   key={o.id}
-                  className="cursor-pointer"
+                  className={cn(
+                    'cursor-pointer',
+                    o.show_dates?.date && isPastDate(parseDateOnly(o.show_dates.date)) && PAST_DATE_TINT,
+                  )}
                   onClick={() => onRowClick(o.id)}
                   role="button"
                   tabIndex={0}

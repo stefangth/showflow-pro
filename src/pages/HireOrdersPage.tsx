@@ -16,6 +16,9 @@ import { FeatureOffBanner } from "@/components/layout/FeatureOffBanner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
+import { TimeframeFilter, upcomingTimeframe, type TimeframeValue } from "@/components/filters/TimeframeFilter";
+import { inTimeframe } from "@/components/filters/filterUtils";
+import { parseDateOnly } from "@/lib/dates";
 import type { HireOrderStatus } from "@/data/hireOrders";
 import { ROUTES } from "@/config/app.config";
 import { cn } from "@/lib/utils";
@@ -73,6 +76,7 @@ export default function HireOrdersPage() {
   const entitledForWrites = features.has("hire_orders");
 
   const [statusChip, setStatusChip] = useState<StatusChip>("all");
+  const [timeframe, setTimeframe] = useState<TimeframeValue>(() => upcomingTimeframe());
   const [search, setSearch] = useState("");
   // The input itself stays controlled by `search` on every keystroke so
   // typing feels instant; only the value that drives the query is debounced,
@@ -94,7 +98,18 @@ export default function HireOrdersPage() {
     () => ({ status: chipToStatusFilter(statusChip), search: debouncedSearch.trim() || undefined }),
     [statusChip, debouncedSearch],
   );
-  const { data: filteredOrders = [], isLoading } = useHireOrders(orgId, filters);
+  const { data: statusSearchFilteredOrders = [], isLoading } = useHireOrders(orgId, filters);
+  // Timeframe is a client-side pass over the status/search-filtered set, by the
+  // order's show_date date. An order with no show_date on record (shouldn't
+  // normally happen -- every order snapshots from a booking's show_date) is
+  // never hidden by this filter rather than silently dropped.
+  const filteredOrders = useMemo(
+    () =>
+      statusSearchFilteredOrders.filter((o) =>
+        o.show_dates?.date ? inTimeframe(parseDateOnly(o.show_dates.date), timeframe) : true,
+      ),
+    [statusSearchFilteredOrders, timeframe],
+  );
 
   // Nothing here can be actioned while the module is off, so don't read for it.
   const { data: ready } = useDatesReadyForHireOrder(featureOn ? orgId : null);
@@ -175,6 +190,7 @@ export default function HireOrdersPage() {
                 className="pl-10"
               />
             </div>
+            <TimeframeFilter value={timeframe} onChange={setTimeframe} />
           </div>
 
           {!orgId ? (

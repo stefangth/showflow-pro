@@ -13,7 +13,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Search, Plus } from 'lucide-react';
 import { format, parseISO } from 'date-fns';
 import { ProgramFilter } from '@/components/filters/ProgramFilter';
-import { TimeframeFilter, type TimeframeValue } from '@/components/filters/TimeframeFilter';
+import { TimeframeFilter, upcomingTimeframe, type TimeframeValue } from '@/components/filters/TimeframeFilter';
 import { SortControl, type SortValue } from '@/components/filters/SortControl';
 import { ViewToggle, type ViewMode } from '@/components/filters/ViewToggle';
 import { useFilterVisibility } from '@/components/filters/useFilterVisibility';
@@ -34,7 +34,7 @@ import { useCan } from '@/hooks/useCapabilities';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { showSlots } from '@/lib/settings';
-import { parseDateOnly } from '@/lib/dates';
+import { parseDateOnly, isPastDate, PAST_DATE_TINT } from '@/lib/dates';
 import { cn } from '@/lib/utils';
 import { useReferenceField } from '@/hooks/useBookingFlow';
 import { referenceLabel } from '@/lib/bookingFlow';
@@ -130,7 +130,7 @@ function ProducerShowsBookings() {
 
   const [search, setSearch] = useState('');
   const [programs, setPrograms] = useState<string[]>([]);
-  const [timeframe, setTimeframe] = useState<TimeframeValue>({ from: null, to: null });
+  const [timeframe, setTimeframe] = useState<TimeframeValue>(() => upcomingTimeframe());
   const [statusFilter, setStatusFilter] = useState<'all' | DisplayStatus>('all');
   type ProducerSort = SortValue | `custom:${string}`;
   const [sort, setSort] = useState<ProducerSort>('chrono_asc');
@@ -478,7 +478,7 @@ function ProducerShowsBookings() {
                   return (
                     <TableRow
                       key={sd.id}
-                      className="cursor-pointer"
+                      className={cn('cursor-pointer', isPastDate(parseDateOnly(sd.date)) && PAST_DATE_TINT)}
                       tabIndex={0}
                       onClick={() => openShowDate(sd.id)}
                       onKeyDown={openShowDateOnKey(sd.id)}
@@ -505,7 +505,10 @@ function ProducerShowsBookings() {
           emptyMessage="No show dates scheduled"
           renderItem={it => (
             <Card
-              className="hover:shadow-elev2 transition-shadow cursor-pointer"
+              className={cn(
+                'hover:shadow-elev2 transition-shadow cursor-pointer',
+                isPastDate(it.date) && PAST_DATE_TINT,
+              )}
               role="button"
               tabIndex={0}
               onClick={() => openShowDate(it.showDate.id)}

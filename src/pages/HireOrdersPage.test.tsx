@@ -77,7 +77,7 @@ function order(overrides: Record<string, unknown> = {}) {
       duration_min: { value: "90", source: "showflow" },
     },
     artists: { name: "Ada Lovelace" },
-    show_dates: { date: "2026-02-01", venue: "Main Hall" },
+    show_dates: { date: "2030-02-01", venue: "Main Hall" },
     ...overrides,
   };
 }
@@ -86,24 +86,24 @@ const ROWS = [
   order({ id: "ho-1", order_no: "HO-2026-0201-1", status: "draft", fee_amount: 1000, created_at: "2026-01-10T09:00:00Z" }),
   order({
     id: "ho-2", order_no: "HO-2026-0301-1", status: "ready", fee_amount: 2000, created_at: "2026-01-09T09:00:00Z",
-    artists: { name: "Zed Zeta" }, show_dates: { date: "2026-03-01", venue: "West Wing" },
+    artists: { name: "Zed Zeta" }, show_dates: { date: "2030-03-01", venue: "West Wing" },
     data: { artist_name: { value: "Zed Zeta", source: "showflow" }, recipient_email: { value: "zed@example.com", source: "showflow" } },
   }),
   order({
     id: "ho-3", order_no: "HO-2026-0401-1", status: "issued", fee_amount: 3000, created_at: "2026-01-08T09:00:00Z",
     pdf_path: "orgs/org-1/ho-3.pdf", issued_at: "2026-01-08T10:00:00Z",
-    artists: { name: "Mira Voss" }, show_dates: { date: "2026-04-01", venue: "East Hall" },
+    artists: { name: "Mira Voss" }, show_dates: { date: "2030-04-01", venue: "East Hall" },
     data: { artist_name: { value: "Mira Voss", source: "showflow" }, recipient_email: { value: "mira@example.com", source: "showflow" } },
   }),
   order({
     id: "ho-4", order_no: "HO-2026-0501-1", status: "countersigned", fee_amount: 4000, created_at: "2026-01-07T09:00:00Z",
     pdf_path: "orgs/org-1/ho-4.pdf", issued_at: "2026-01-07T10:00:00Z", countersigned_at: "2026-01-09T10:00:00Z",
-    artists: { name: "Nico Lin" }, show_dates: { date: "2026-05-01", venue: "South Hall" },
+    artists: { name: "Nico Lin" }, show_dates: { date: "2030-05-01", venue: "South Hall" },
     data: { artist_name: { value: "Nico Lin", source: "showflow" }, recipient_email: { value: "nico@example.com", source: "showflow" } },
   }),
   order({
     id: "ho-5", order_no: "HO-2026-0601-1", status: "void", fee_amount: 5000, created_at: "2026-01-06T09:00:00Z",
-    artists: { name: "Old One" }, show_dates: { date: "2026-06-01", venue: "North Hall" },
+    artists: { name: "Old One" }, show_dates: { date: "2030-06-01", venue: "North Hall" },
     data: { artist_name: { value: "Old One", source: "showflow" } },
   }),
 ];
@@ -137,7 +137,7 @@ function readyOrder(overrides: Record<string, unknown> = {}) {
     data: {
       artist_name: { value: "Ada Lovelace", source: "showflow" },
       recipient_email: { value: "ada@example.com", source: "showflow" },
-      date: { value: "2026-02-01", source: "showflow" },
+      date: { value: "2030-02-01", source: "showflow" },
       fee: { value: "1000.00", source: "manual" },
     },
     ...overrides,
@@ -218,7 +218,7 @@ describe("HireOrdersPage", () => {
     expect(row).toHaveClass("font-mono");
     expect(screen.getByText("Ada Lovelace")).toBeInTheDocument();
     expect(screen.getByText("Main Hall")).toBeInTheDocument();
-    const dateCell = screen.getByText("01/02/2026");
+    const dateCell = screen.getByText("01/02/2030");
     expect(dateCell).toHaveClass("font-mono");
     const feeCell = screen.getByText("€1,000.00");
     expect(feeCell).toHaveClass("text-right");
@@ -372,7 +372,7 @@ describe("HireOrdersPage", () => {
         readyOrder({ id: "ho-1", order_no: "HO-2026-0201-1", status: "draft", fee_amount: 1000, created_at: "2026-01-10T09:00:00Z" }),
         readyOrder({
           id: "ho-2", order_no: "HO-2026-0301-1", status: "ready", fee_amount: 2000, created_at: "2026-01-09T09:00:00Z",
-          artists: { name: "Zed Zeta" }, show_dates: { date: "2026-03-01", venue: "West Wing" },
+          artists: { name: "Zed Zeta" }, show_dates: { date: "2030-03-01", venue: "West Wing" },
         }),
       ],
       { app_settings: READY_APP_SETTINGS },
@@ -414,7 +414,7 @@ describe("HireOrdersPage", () => {
         readyOrder({ id: "ho-1", order_no: "HO-2026-0201-1", status: "draft", fee_amount: 1000, created_at: "2026-01-10T09:00:00Z" }),
         readyOrder({
           id: "ho-2", order_no: "HO-2026-0301-1", status: "ready", fee_amount: 2000, created_at: "2026-01-09T09:00:00Z",
-          artists: { name: "Zed Zeta" }, show_dates: { date: "2026-03-01", venue: "West Wing" },
+          artists: { name: "Zed Zeta" }, show_dates: { date: "2030-03-01", venue: "West Wing" },
         }),
         ...ROWS.slice(2),
       ],
@@ -575,5 +575,71 @@ describe("HireOrdersPage", () => {
     await screen.findByText("Hire orders");
     await waitFor(() => expect(screen.getAllByText(/HO-2026-0201-1/).length).toBeGreaterThan(0));
     expect(screen.queryByText(/fully cast and ready/i)).not.toBeInTheDocument();
+  });
+
+  describe("timeframe filter (Plan B Task 2)", () => {
+    it("defaults to Upcoming: hides a past-dated order until Past/All is selected, and tints it once revealed", async () => {
+      seedFor([
+        order({
+          id: "ho-past", order_no: "HO-PAST-1", status: "draft",
+          show_dates: { date: "2020-01-01", venue: "Old Hall" },
+          artists: { name: "Past Artist" },
+        }),
+        order({
+          id: "ho-future", order_no: "HO-FUTURE-1", status: "draft",
+          show_dates: { date: "2030-01-01", venue: "New Hall" },
+          artists: { name: "Future Artist" },
+        }),
+      ]);
+      renderPage();
+      await screen.findByText("HO-FUTURE-1");
+      expect(screen.queryByText("HO-PAST-1")).not.toBeInTheDocument();
+
+      // The timeframe trigger defaults to "Upcoming"; switch it to "Any time"
+      // to reveal the past order.
+      fireEvent.click(screen.getByRole("button", { name: /^Upcoming$/ }));
+      fireEvent.click(screen.getByRole("button", { name: "Any time" }));
+
+      const pastCell = await screen.findByText("HO-PAST-1");
+      const row = pastCell.closest("tr")!;
+      expect(row.className).toMatch(/opacity-60/);
+      expect(row.className).not.toMatch(/pointer-events-none/);
+      // The future order stays visible and untinted throughout.
+      expect(screen.getByText("HO-FUTURE-1").closest("tr")!.className).not.toMatch(/opacity-60/);
+    });
+
+    it("also reveals a past order under the Past preset specifically", async () => {
+      seedFor([
+        order({
+          id: "ho-past", order_no: "HO-PAST-1", status: "draft",
+          show_dates: { date: "2020-01-01", venue: "Old Hall" },
+        }),
+      ]);
+      renderPage();
+      await screen.findByText("Hire orders");
+      expect(screen.queryByText("HO-PAST-1")).not.toBeInTheDocument();
+
+      fireEvent.click(screen.getByRole("button", { name: /^Upcoming$/ }));
+      fireEvent.click(screen.getByRole("button", { name: "Past" }));
+
+      expect(await screen.findByText("HO-PAST-1")).toBeInTheDocument();
+    });
+
+    it("keeps a revealed past order clickable (opens the slide-over)", async () => {
+      seedFor([
+        order({
+          id: "ho-past", order_no: "HO-PAST-1", status: "draft",
+          show_dates: { date: "2020-01-01", venue: "Old Hall" },
+        }),
+      ]);
+      renderPage();
+      await screen.findByText("Hire orders");
+      fireEvent.click(screen.getByRole("button", { name: /^Upcoming$/ }));
+      fireEvent.click(screen.getByRole("button", { name: "Any time" }));
+
+      const cell = await screen.findByText("HO-PAST-1");
+      fireEvent.click(cell);
+      expect(await screen.findByRole("dialog")).toBeInTheDocument();
+    });
   });
 });

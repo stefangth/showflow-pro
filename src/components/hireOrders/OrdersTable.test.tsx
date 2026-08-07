@@ -76,6 +76,31 @@ describe("OrdersTable keyboard access", () => {
   });
 });
 
+describe("OrdersTable — past-date row tint (Plan B Task 2)", () => {
+  it("tints a row whose show_date is in the past with PAST_DATE_TINT, and leaves a future row untinted", () => {
+    const orders = [
+      order({ id: "ho-past", order_no: "HO-PAST-1", show_dates: { date: "2020-01-01", venue: "Old Hall" } }),
+      order({ id: "ho-future", order_no: "HO-FUTURE-1", show_dates: { date: "2099-01-01", venue: "New Hall" } }),
+    ];
+    renderWithProviders(<OrdersTable orders={orders} orgId="org-1" onRowClick={() => {}} />);
+
+    const pastRow = screen.getByText("HO-PAST-1").closest("tr")!;
+    const futureRow = screen.getByText("HO-FUTURE-1").closest("tr")!;
+    expect(pastRow.className).toMatch(/opacity-60/);
+    expect(pastRow.className).not.toMatch(/pointer-events-none/);
+    expect(futureRow.className).not.toMatch(/opacity-60/);
+  });
+
+  it("keeps a past-dated row clickable", () => {
+    const onRowClick = vi.fn();
+    const orders = [order({ id: "ho-past", order_no: "HO-PAST-1", show_dates: { date: "2020-01-01", venue: "Old Hall" } })];
+    renderWithProviders(<OrdersTable orders={orders} orgId="org-1" onRowClick={onRowClick} />);
+
+    fireEvent.click(screen.getByText("HO-PAST-1"));
+    expect(onRowClick).toHaveBeenCalledWith("ho-past");
+  });
+});
+
 describe("OrdersTable batch issue selection", () => {
   beforeEach(() => {
     vi.clearAllMocks();
