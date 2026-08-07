@@ -60,7 +60,10 @@ export function TemplateInspector({ selected, readOnly, copyDraft, themeDraft, o
         base={base}
         baseModified={hasOwnKeys(themeDraft.base)}
         fonts={fonts}
-        fontFields={[{ key: "fontFamily", label: "Body font", kind: "sans" }, { key: "monoFamily", label: "Numeric font", kind: "mono" }]}
+        fontFields={[
+          { key: "fontFamily", label: "Body font", allowedKinds: ["sans", "serif"] },
+          { key: "monoFamily", label: "Numeric font", allowedKinds: ["mono"] },
+        ]}
         colors={COLOR_FIELDS}
         colorValues={colors}
         onBaseChange={(patch) => setBase(patch)}
@@ -77,14 +80,18 @@ export function TemplateInspector({ selected, readOnly, copyDraft, themeDraft, o
           onChange: (scale) => setBase({ scale }),
         }}
         onColorChange={(key, value) => setBase({ colors: { ...themeDraft.base?.colors, [key]: value } })}
-        numberFields={MARGIN_KEYS.map((key) => ({
-          key,
-          label: MARGIN_LABELS[key],
-          value: page[key],
-          min: 20,
-          max: key === "marginX" ? 80 : 90,
-          onChange: (margin) => setBase({ page: { ...themeDraft.base?.page, [key]: margin } }),
-        }))}
+        fieldGroups={[{
+          label: "Page margins",
+          fields: MARGIN_KEYS.map((key) => ({
+            kind: "number" as const,
+            key,
+            label: MARGIN_LABELS[key],
+            value: page[key],
+            min: 20,
+            max: key === "marginX" ? 80 : 90,
+            onChange: (margin) => setBase({ page: { ...themeDraft.base?.page, [key]: margin } }),
+          })),
+        }]}
       />
     );
   }
@@ -118,10 +125,18 @@ export function TemplateInspector({ selected, readOnly, copyDraft, themeDraft, o
           <RoleStyleControls
             role={role}
             roleDefaults={HIRE_ORDER_THEME_DEFAULTS.roles[role.key]}
-            themeDraft={themeDraft}
+            roleOverride={themeDraft.roles?.[role.key]}
             fonts={fonts}
             colorFields={COLOR_FIELDS}
-            onThemeChange={onThemeChange}
+            onRoleChange={(nextRole) => onThemeChange({
+              ...themeDraft,
+              roles: { ...themeDraft.roles, [role.key]: nextRole },
+            })}
+            onResetRole={() => {
+              const roles = { ...themeDraft.roles };
+              delete roles[role.key];
+              onThemeChange({ ...themeDraft, roles });
+            }}
             readOnly={readOnly}
           />
         </div>
