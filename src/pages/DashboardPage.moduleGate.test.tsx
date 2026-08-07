@@ -25,6 +25,20 @@ vi.mock("@/data/bookings", async (orig) => ({
   ...(await orig<typeof import("@/data/bookings")>()),
   fetchTierAttention: vi.fn(() => Promise.resolve([])),
 }));
+// First-run chrome is out of scope for this file's assertions; stub the hook with
+// show:false so the dashboard body renders live (no welcome panel / rail) and the
+// artist-onboarding hook chain it would otherwise pull in never runs.
+vi.mock("@/components/dashboard/firstRun/useDashboardFirstRun", () => ({
+  useDashboardFirstRun: () => ({
+    show: false, complete: true, dismissed: false,
+    steps: [], rules: [], offFooters: [], sample: { stats: [], queue: [], week: [] },
+    welcome: { eyebrow: "", headline: "", body: "", primaryLabel: "", secondaryLabel: "", progressLabel: "", progressFilled: 0, progressTotal: 0, progressHint: "" },
+    sectionTitle: "Today", sectionHint: "",
+    railEyebrow: "", railTitle: "", railBody: "",
+    collapsedLabel: "", collapsedHint: "", collapsedCta: "",
+    railOpen: false, openRail: vi.fn(), closeRail: vi.fn(), dismiss: vi.fn(), undismiss: vi.fn(),
+  }),
+}));
 
 import { useFeature } from "@/hooks/useEntitlements";
 import { useAuth } from "@/features/auth/AuthContext";
