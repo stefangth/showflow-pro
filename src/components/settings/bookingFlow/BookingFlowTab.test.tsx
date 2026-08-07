@@ -155,12 +155,9 @@ describe("BookingFlowTab", () => {
       expect(screen.getByRole("switch", { name: /^artist acceptance$/i })).toHaveAttribute("aria-checked", "true");
     });
 
-    // Critical-bug regression: the from-address input and EmailTemplatesCard stay editable
-    // while locked (email copy isn't part of the booking_flow module), and both write keys
-    // that flow through as `dirtyKeys` here. FlowRail already hides its Save/Discard while
-    // locked, so its "Previewing unsaved draft" banner must also stay hidden — otherwise it
-    // announces a draft with no save control anywhere on the rail (SettingsPage's page-level
-    // Save is what actually persists it; see SettingsPage.test.tsx for that half).
+    // Critical-bug regression: the from-address input stays editable while locked and its
+    // dirty key reaches this rail. The rail has no Save/Discard in that state, so it must not
+    // announce an unsaved draft that the page-level Save handles elsewhere.
     it("hides the rail's unsaved-draft banner while locked even when dirtyKeys is non-empty", async () => {
       vi.mocked(useAuth).mockReturnValue({ currentOrg: { id: "org-locked" } } as never);
       renderWithProviders(<Harness dirtyKeys={["resend_from_address"]} />);
@@ -201,9 +198,6 @@ describe("BookingFlowTab", () => {
       expect(screen.getByRole("button", { name: /direct book/i })).toBeDisabled();
       expect(screen.getByRole("switch", { name: /^artist acceptance$/i })).toBeDisabled();
       expect(screen.getByLabelText(/from address/i)).toBeDisabled();
-      // EmailTemplatesCard is part of this same capability (the whole tab, not just the
-      // flow steps) — every template's Subject field is disabled.
-      for (const subject of screen.getAllByPlaceholderText("Default subject")) expect(subject).toBeDisabled();
       // No entitlement lock notice — this is a capability gate, not a module gate.
       expect(screen.queryByText("Booking flow is not enabled")).not.toBeInTheDocument();
       // The rail's own Save/Discard is hidden (no write control to grant).
@@ -218,6 +212,14 @@ describe("BookingFlowTab", () => {
       expect(screen.getByRole("button", { name: /direct book/i })).not.toBeDisabled();
       expect(screen.getByRole("switch", { name: /^artist acceptance$/i })).not.toBeDisabled();
       expect(screen.getByLabelText(/from address/i)).not.toBeDisabled();
+    });
+
+    it("keeps the sender address here but no longer renders an email-template editor", () => {
+      renderWithProviders(<Harness />);
+
+      expect(screen.getByLabelText(/from address/i)).toBeInTheDocument();
+      expect(screen.queryByText("Email Templates")).not.toBeInTheDocument();
+      expect(screen.queryByPlaceholderText("Default subject")).not.toBeInTheDocument();
     });
   });
 });

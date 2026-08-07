@@ -16,7 +16,6 @@ import {
 import { BOOKING_ENGINE_DEFAULTS } from "@/config/app.config";
 import { fetchCustomFieldDefs } from "@/data/customFields";
 import { useSettingsAudit } from "@/hooks/useSettingsAudit";
-import { EmailTemplatesCard } from "@/components/settings/EmailTemplatesCard";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -33,9 +32,7 @@ interface Props {
   onSave: () => void;
   onDiscard: () => void;
   /** Capability floor: the org is entitled and the values render normally, but this
-   *  user (a producer without `edit_booking_settings`) can't change them. Distinct from
-   *  `locked` below (module not entitled at all) — see the from-address/EmailTemplatesCard
-   *  carve-out, which stays keyed on `locked` only. */
+   *  user (a producer without `edit_booking_settings`) can't change them. */
   readOnly?: boolean;
 }
 
@@ -173,7 +170,6 @@ export function BookingFlowTab({ get, set, dirtyKeys, saving, onSave, onDiscard,
         />
         <p className="text-xs text-muted-foreground">Overrides the default sender address for all outgoing emails.</p>
       </div>
-      <EmailTemplatesCard get={get} set={set} readOnly={readOnly} />
     </div>
   );
 }

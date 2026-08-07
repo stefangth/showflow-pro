@@ -96,13 +96,9 @@ describe("SettingsPage Booking flow tab, locked (booking_flow not entitled)", ()
     } as never);
   });
 
-  // Critical-bug regression: the from-address input and EmailTemplatesCard deliberately
-  // stay editable while the booking_flow module is locked (email copy isn't part of that
-  // module). Both write keys inside BOOKING_AUDIT_KEYS, so the OLD entitlement-blind
-  // heuristic (`activeTab === 'booking' && dirtyKeys.every(k => BOOKING_AUDIT_KEYS.includes(k))`)
-  // hid the page-level Save for this edit too — and FlowRail already hides its own Save/Discard
-  // while locked, so the edit had NO save control anywhere on the page. The fix makes the
-  // heuristic entitlement-aware: page-level Save only ever hides when the org IS entitled.
+  // Critical-bug regression: the from-address input deliberately stays editable while the
+  // booking_flow module is locked. Its dirty key used to hide the page-level Save even though
+  // FlowRail hides its own Save/Discard while locked, leaving the edit with no save control.
   it("keeps the page-level Save visible, with no rail dirty banner, when editing the from-address while locked", async () => {
     renderWithProviders(<SettingsPage />);
     fireEvent.mouseDown(await screen.findByRole("tab", { name: /booking flow/i }));
@@ -168,10 +164,20 @@ describe("SettingsPage grouped vertical nav", () => {
     await screen.findByRole("tab", { name: /scheduling/i });
     expect(screen.getByRole("tab", { name: /airtable sync/i })).toBeInTheDocument();
     expect(screen.getByRole("tab", { name: /booking flow/i })).toBeInTheDocument();
+    expect(screen.getByRole("tab", { name: /email templates/i })).toBeInTheDocument();
     expect(screen.getByRole("tab", { name: /^filters$/i })).toBeInTheDocument();
     expect(screen.getByRole("tab", { name: /^notifications$/i })).toBeInTheDocument();
     expect(screen.getByRole("tab", { name: /^organization$/i })).toBeInTheDocument();
     expect(screen.queryByRole("tab", { name: /roles & permissions/i })).not.toBeInTheDocument();
+  });
+
+  it("places Email templates in Settings and renders its grouped coverage surface", async () => {
+    vi.mocked(useAuth).mockReturnValue(DEFAULT_AUTH as never);
+    renderWithProviders(<MemoryRouter><SettingsPage /></MemoryRouter>);
+
+    fireEvent.mouseDown(await screen.findByRole("tab", { name: /email templates/i }));
+    expect(await screen.findByText("Booking engine")).toBeInTheDocument();
+    expect(screen.getByText("Password reset")).toBeInTheDocument();
   });
 });
 

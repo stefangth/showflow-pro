@@ -53,9 +53,8 @@ export function FlowRail(props: {
     <div className="flex flex-col gap-3 lg:sticky lg:top-4">
       {/* When locked, the rail offers no Save/Discard (see below), so a dirty count here
           would refer to a save control that doesn't exist on this rail. Any dirt while
-          locked comes from the from-address input or EmailTemplatesCard (both stay
-          editable and write BOOKING_AUDIT_KEYS), which the page-level Save handles
-          instead — the page-level banner carries that messaging. */}
+          locked comes from the from-address input, which the page-level Save handles
+          instead. The page-level banner carries that messaging. */}
       {!locked && dirtyCount > 0 && (
         <div className="rounded-lg bg-[var(--amber-100)] px-3 py-2 text-xs font-medium text-[var(--amber-600)]">
           Previewing unsaved draft · {dirtyCount} {dirtyCount === 1 ? "change" : "changes"}
