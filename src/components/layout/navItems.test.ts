@@ -2,9 +2,9 @@ import { describe, it, expect } from "vitest";
 import { NAV_ITEMS, visibleNavItems, groupNavBySections, type NavItem } from "./navItems";
 import { ROUTES } from "@/config/app.config";
 
-const ctx = (over: Partial<{ isEditorMode: boolean; isRealAdmin: boolean; isSuperAdmin: boolean; roles: string[]; enabledFeatures: Set<string>; entitlementsLoading: boolean }> = {}) => {
-  const { isEditorMode = false, isRealAdmin = false, isSuperAdmin = false, roles = [], enabledFeatures = new Set<string>(), entitlementsLoading = false } = over;
-  return { isEditorMode, isRealAdmin, isSuperAdmin, hasRole: (r: string) => roles.includes(r), enabledFeatures, entitlementsLoading };
+const ctx = (over: Partial<{ isEditorMode: boolean; isRealAdmin: boolean; isSuperAdmin: boolean; roles: string[]; enabledFeatures: Set<string>; entitlementsLoading: boolean; impersonating: boolean }> = {}) => {
+  const { isEditorMode = false, isRealAdmin = false, isSuperAdmin = false, roles = [], enabledFeatures = new Set<string>(), entitlementsLoading = false, impersonating = false } = over;
+  return { isEditorMode, isRealAdmin, isSuperAdmin, hasRole: (r: string) => roles.includes(r), enabledFeatures, entitlementsLoading, impersonating };
 };
 
 describe("visibleNavItems", () => {
@@ -41,6 +41,17 @@ describe("feature gating", () => {
     const on = visibleNavItems(items, ctx({ enabledFeatures: new Set(["hire_orders"]) }));
     expect(on).toHaveLength(1);
     expect(on[0].locked).toBe(false);
+  });
+
+  it("locks a feature item for a super-admin who is previewing via view-as", () => {
+    const items = [
+      { to: "/x", icon: NAV_ITEMS[0].icon, label: "X", section: "workspace", feature: "hire_orders" } as NavItem,
+    ];
+    const previewing = visibleNavItems(items, ctx({ isEditorMode: true, isRealAdmin: true, isSuperAdmin: true, impersonating: true }));
+    expect(previewing[0].locked).toBe(true);
+
+    const normal = visibleNavItems(items, ctx({ isEditorMode: true, isRealAdmin: true, isSuperAdmin: true, impersonating: false }));
+    expect(normal[0].locked).toBe(false);
   });
 
   it("gates a feature item for a non-super-admin (incl. editor-mode admin) but lets a super-admin bypass", () => {

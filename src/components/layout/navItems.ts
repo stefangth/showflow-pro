@@ -64,6 +64,7 @@ export function visibleNavItems(
     hasRole: (r: string) => boolean;
     enabledFeatures: Set<string>;
     entitlementsLoading: boolean;
+    impersonating?: boolean;
   },
 ): VisibleNavItem[] {
   // Entitlement no longer HIDES an item, it LOCKS it: a member who cannot use a
@@ -75,7 +76,11 @@ export function visibleNavItems(
   // Role gating below is unchanged and still hides outright.
   const lock = (item: NavItem): VisibleNavItem => ({
     ...item,
-    locked: !ctx.entitlementsLoading && !!item.feature && !ctx.isSuperAdmin && !ctx.enabledFeatures.has(item.feature),
+    // Super-admins are normally never locked, but a super-admin previewing another
+    // user via the editor "view as" toolbar should see that user's locks.
+    locked: !ctx.entitlementsLoading && !!item.feature
+      && (!ctx.isSuperAdmin || !!ctx.impersonating)
+      && !ctx.enabledFeatures.has(item.feature),
   });
 
   if (ctx.isEditorMode && ctx.isRealAdmin) {

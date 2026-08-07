@@ -72,7 +72,7 @@ export default function AppLayout({ children }: AppLayoutProps) {
     }
   };
 
-  const filteredNav = visibleNavItems(NAV_ITEMS, { isEditorMode, isRealAdmin, isSuperAdmin, hasRole: (r) => hasRole(r as AppRole), enabledFeatures: features, entitlementsLoading });
+  const filteredNav = visibleNavItems(NAV_ITEMS, { isEditorMode, isRealAdmin, isSuperAdmin, hasRole: (r) => hasRole(r as AppRole), enabledFeatures: features, entitlementsLoading, impersonating: viewAsRole != null || viewAsUser != null });
   const navGroups = groupNavBySections(filteredNav);
 
   const isHiddenForViewAs = (item: typeof NAV_ITEMS[number]) => {
