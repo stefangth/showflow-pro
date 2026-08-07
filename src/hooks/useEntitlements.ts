@@ -36,12 +36,16 @@ export function useFeature(feature: FeatureKey): boolean {
  *    misleading failure. `pending` lets the caller render nothing instead.
  *  - It exempts super-admins, matching visibleNavItems ("Super-admins are never
  *    locked") and ProtectedRoute. Without it those two gates would admit a
- *    super-admin to a page whose every region this gate then blanked.
+ *    super-admin to a page whose every region this gate then blanked. The
+ *    exemption is dropped while the super-admin is previewing another user via
+ *    the editor "view as" toolbar (viewAsRole/viewAsUser), so that preview is a
+ *    faithful reflection of what the gated user would see.
  */
 export function useModuleGate(feature: FeatureKey): { allow: boolean; pending: boolean } {
   const { features, isLoading } = useEntitlements();
-  const { isSuperAdmin } = useAuth();
-  if (isSuperAdmin) return { allow: true, pending: false };
+  const { isSuperAdmin, viewAsRole, viewAsUser } = useAuth();
+  const impersonating = viewAsRole != null || viewAsUser != null;
+  if (isSuperAdmin && !impersonating) return { allow: true, pending: false };
   if (isLoading) return { allow: false, pending: true };
   return { allow: features.has(feature), pending: false };
 }
