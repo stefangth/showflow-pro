@@ -69,4 +69,17 @@ describe("CockpitRail", () => {
     fireEvent.click(screen.getByRole("button", { name: /edit date setup/i }));
     expect(onEditSetup).toHaveBeenCalledOnce();
   });
+
+  it("renders read-only notes when provided", () => {
+    render(<CockpitRail {...base} notes="Press night — reduced orchestra" />);
+    expect(screen.getByText("Press night — reduced orchestra")).toBeInTheDocument();
+  });
+
+  it("with no chat preview, shows a neutral Chat affordance (never a false 'No messages yet') and navigates", () => {
+    const onOpenChat = vi.fn();
+    render(<CockpitRail {...base} chatUnread={0} chatPreview={null} onOpenChat={onOpenChat} />);
+    expect(screen.queryByText(/no messages yet/i)).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: /open the chat tab/i }));
+    expect(onOpenChat).toHaveBeenCalledOnce();
+  });
 });

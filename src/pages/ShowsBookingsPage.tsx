@@ -190,6 +190,15 @@ function ProducerShowsBookings() {
       setPeekId(null);
     }
   };
+  // Calendar-view cards are role="button"; the ARIA button pattern requires
+  // Space and Enter to both activate. They carry no peek affordance, so keep
+  // the original open-on-either behaviour rather than the list row's Space=peek.
+  const openShowDateOnCardKey = (id: string) => (e: React.KeyboardEvent<HTMLElement>) => {
+    if (e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault();
+      openShowDate(id);
+    }
+  };
   // Hover intent: a short delay before opening (avoids flashing the peek on a
   // pointer just passing through) and a short delay before closing (gives the
   // pointer time to travel from the row onto the popover itself).
@@ -650,7 +659,7 @@ function ProducerShowsBookings() {
               role="button"
               tabIndex={0}
               onClick={() => openShowDate(it.showDate.id)}
-              onKeyDown={openShowDateOnKey(it.showDate.id)}
+              onKeyDown={openShowDateOnCardKey(it.showDate.id)}
             >
               <CardContent className="py-3 flex items-center justify-between gap-3">
                 <div className="min-w-0">
@@ -682,6 +691,11 @@ function ProducerShowsBookings() {
             side="right"
             align="start"
             className="w-auto p-0"
+            // The peek is a passive hover/Space affordance. Prevent Radix's
+            // default mount auto-focus so opening the peek never steals focus
+            // onto the (destructive) Confirm button — otherwise the hint's own
+            // "Enter to open" keystroke would land on Confirm and bulk-confirm.
+            onOpenAutoFocus={e => e.preventDefault()}
             onMouseEnter={handlePopoverMouseEnter}
             onMouseLeave={handlePopoverMouseLeave}
             onClick={e => e.stopPropagation()}

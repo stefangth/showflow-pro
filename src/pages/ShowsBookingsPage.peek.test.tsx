@@ -146,6 +146,25 @@ describe("ShowsBookingsPage row peek (Milestone 1 Task 4)", () => {
     expect(screen.getByTestId("detail-sheet").getAttribute("data-open")).toBe("false");
   });
 
+  it("hover intent opens the peek after the delay and never steals focus onto the Confirm button", async () => {
+    // Guards the focus-steal fix: Radix would otherwise auto-focus the first
+    // tabbable element (Confirm) on open, so the hint's own 'Enter to open'
+    // would land on Confirm and bulk-confirm. onOpenAutoFocus preventDefault
+    // keeps focus off the destructive action.
+    renderWithProviders(<ShowsBookingsPage />);
+    const cell = await screen.findByText("Nutcracker");
+    const row = cell.closest("tr")!;
+
+    fireEvent.mouseEnter(row);
+    // Not immediate — the 250ms hover intent must elapse first.
+    expect(screen.queryByText("2 accepted waiting on you · 2 main slots open")).not.toBeInTheDocument();
+
+    // findBy polls (default 1s) until the hover-intent timer opens the peek.
+    const confirmBtn = await screen.findByRole("button", { name: /confirm 2/i });
+    expect(confirmBtn).toBeInTheDocument();
+    expect(document.activeElement).not.toBe(confirmBtn);
+  });
+
   it("Confirm N bulk-confirms the date's soft_booked bookings and invalidates the bookings domain", async () => {
     seedClient({ bookings: { data: [{ id: "b1" }, { id: "b2" }], error: null } });
     renderWithProviders(<ShowsBookingsPage />);

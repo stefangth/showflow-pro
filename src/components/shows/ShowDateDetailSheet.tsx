@@ -533,7 +533,7 @@ export function ShowDateDetailSheet({ showDateId, open, onOpenChange }: Props) {
   const workflowCta = computeHeaderCta({
     artistAcceptance: flow.artist_acceptance,
     acceptedCount, confirmedCount, totalSlots,
-    openTier: highestOpenTier, maxTier: 3,
+    openTier: highestOpenTier, maxTier: tiersQ.data?.priorities.length ?? 3,
   });
   const ctaAllowed =
     workflowCta.kind === 'confirm' ? canConfirmBookings :
@@ -656,7 +656,11 @@ export function ShowDateDetailSheet({ showDateId, open, onOpenChange }: Props) {
                 statusText={statusText}
                 statusTone={statusTone}
                 showEngineStatus={bookingModuleAllowed}
-                workflowCta={ctaAllowed && workflowCta.kind !== 'none' ? workflowCta : null}
+                // The header CTA writes on the booking path (Confirm N -> guarded
+                // status update). Gate it on the booking_flow module too, not just
+                // capability, so a module-off org can't confirm a legacy soft_booked
+                // row through the header (the rest of the booking surface is gated).
+                workflowCta={bookingModuleAllowed && ctaAllowed && workflowCta.kind !== 'none' ? workflowCta : null}
                 workflowCtaDisabled={updateBookingStatus.isPending || openOffers.isPending}
                 onWorkflowCta={onWorkflowCta}
                 showGenerateHireOrder={!!showGenerateHireOrderCta}
@@ -705,11 +709,13 @@ export function ShowDateDetailSheet({ showDateId, open, onOpenChange }: Props) {
                 venue={showDate.venue}
                 city={showDate.city?.name ?? null}
                 source={railSource}
+                notes={showDate.notes}
                 castChips={castChips}
                 skillChips={skillChips}
                 activity={bookingModuleAllowed ? activity : []}
                 chatUnread={0}
                 chatPreview={null}
+                onOpenChat={() => setActiveTab('chat')}
                 showEditSetup={canManage}
                 onEditSetup={() => setActiveTab('setup')}
               />

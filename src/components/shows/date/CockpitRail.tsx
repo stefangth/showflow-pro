@@ -9,11 +9,17 @@ export interface CockpitRailProps {
   venue: string | null;
   city: string | null;
   source: "airtable" | "manual";
+  /** Free-text date notes, shown read-only to every role (artists have no other
+   *  way to see them — there is no Setup tab / edit dialog for them). */
+  notes?: string | null;
   castChips: Array<{ label: string; kind: "inherited" | "override" }>;
   skillChips: string[];
   activity: ActivityItem[]; // pre-derived (buildActivity); rail formats iso
   chatUnread: number;
   chatPreview: string | null;
+  /** Jump to the Chat tab. When there is no live preview yet, the teaser is a
+   *  neutral affordance rather than a (possibly false) "No messages yet". */
+  onOpenChat?: () => void;
   onEditSetup: () => void; // jump to Setup tab
   /** Hidden for roles without a Setup tab (e.g. artists). Defaults to shown. */
   showEditSetup?: boolean;
@@ -36,8 +42,8 @@ const RailSection = ({ title, children }: { title: string; children: React.React
 /** The cockpit's left rail: date facts, eligibility chips, a derived activity
  *  feed, and a chat teaser. Purely presentational. */
 export function CockpitRail({
-  times, venue, city, source, castChips, skillChips, activity,
-  chatUnread, chatPreview, onEditSetup, showEditSetup = true,
+  times, venue, city, source, notes, castChips, skillChips, activity,
+  chatUnread, chatPreview, onOpenChat, onEditSetup, showEditSetup = true,
 }: CockpitRailProps) {
   return (
     <aside className="w-full shrink-0 space-y-5 border-b border-border bg-[var(--surface-2)] p-5 lg:w-72 lg:border-b-0 lg:border-r">
@@ -65,6 +71,7 @@ export function CockpitRail({
             <Database className="h-3.5 w-3.5" />
             {source === "airtable" ? "Airtable · locked" : "Manual entry"}
           </p>
+          {notes && <p className="pt-0.5 text-xs italic text-muted-foreground">{notes}</p>}
         </div>
       </RailSection>
 
@@ -113,7 +120,19 @@ export function CockpitRail({
                 {chatUnread} unread
               </Badge>
             )}
-            <p className="truncate text-muted-foreground">{chatPreview ?? "No messages yet."}</p>
+            {chatPreview ? (
+              <p className="truncate text-muted-foreground">{chatPreview}</p>
+            ) : onOpenChat ? (
+              <button
+                type="button"
+                onClick={onOpenChat}
+                className="text-left text-muted-foreground hover:text-foreground"
+              >
+                Open the Chat tab to message the cast
+              </button>
+            ) : (
+              <p className="text-muted-foreground">Message the cast in the Chat tab</p>
+            )}
           </div>
         </div>
       </RailSection>
