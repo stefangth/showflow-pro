@@ -93,11 +93,21 @@ SELECT is((SELECT count(*)::int FROM public.shows WHERE id='cccccccc-cccc-000a-0
           'super-admin in org A sees A show');
 SELECT is((SELECT count(*)::int FROM public.shows WHERE id='cccccccc-cccc-000b-0000-000000000000'),0,
           'super-admin in org A does NOT see B show');
--- …and cannot write into the org it is not currently viewing.
-SELECT throws_ok(
+-- …but WRITES are NOT fenced by the active-org header — only reads are (see
+-- 20260806104215_active_org_scoping put the active-org conjunct on both, but it
+-- was dropped from WITH CHECK in
+-- 20260807104500_org_isolation_writecheck_drop_active_org.sql). The active-org
+-- conjunct was dropped from org_isolation's WITH CHECK because it broke
+-- legitimate writes: tenant tables derive org_id from an FK parent in a BEFORE
+-- INSERT trigger, so demanding org_id = header on a server-derived, client-timing
+-- dependent value is racy. is_org_member is now the sole write gate — and a
+-- super-admin passes it for every org (god-mode), so a cross-org write succeeds
+-- regardless of which org the header names. A non-member is still blocked by
+-- is_org_member (asserted for the org-A producer above).
+SELECT lives_ok(
   $$INSERT INTO public.shows (program, sub_program, org_id)
     VALUES ('x','y','00000000-0000-0000-0000-00000000b000')$$,
-  '42501', null, 'super-admin in org A cannot insert into org B');
+  'super-admin write is not fenced by the active-org header (is_org_member is the only write gate)');
 RESET ROLE;
 
 -- Switching the header switches the visible org.
