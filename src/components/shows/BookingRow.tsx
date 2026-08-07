@@ -1,6 +1,6 @@
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { bookingStatusBadgeClass } from '@/lib/bookings';
+import { bookingStatusBadgeClass, bookingStatusDisplayLabel } from '@/lib/bookings';
 import type { Booking, Artist } from '@/types';
 
 type BookingWithArtist = Booking & { artist: Pick<Artist, 'id' | 'name'> };
@@ -27,7 +27,7 @@ export function BookingRow({ booking: b, canManage, showConfirm, onConfirm, onCa
       <div>
         <p className="font-medium text-sm">{b.artist?.name}</p>
         <Badge variant="secondary" className={`text-xs mt-1 ${bookingStatusBadgeClass(b.status)}`}>
-          {b.status.replace('_', ' ')}
+          {bookingStatusDisplayLabel(b.status)}
         </Badge>
       </div>
       {canManage && (

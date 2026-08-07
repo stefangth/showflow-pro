@@ -151,7 +151,7 @@ export function lifecycleChips(flow: BookingFlow): LifecycleChip[] {
       { label: "Confirmed", tone: "green" },
     ];
   }
-  const chips: LifecycleChip[] = [{ label: "Suggested", tone: "violet" }];
+  const chips: LifecycleChip[] = [{ label: "Offered", tone: "violet" }];
   if (flow.producer_confirmation) chips.push({ label: "Soft booked", tone: "amber" });
   chips.push({ label: "Confirmed", tone: "green" });
   return chips;

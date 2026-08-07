@@ -74,7 +74,7 @@ export function FlowTimeline({
 
   // The stage that acceptance (or a direct booking) lands on next is always the
   // second entry of the central lifecycleChips() sequence: "Direct booking" (index
-  // 0) skips straight to "Confirmed" (index 1); "Suggested" (index 0) proceeds to
+  // 0) skips straight to "Confirmed" (index 1); "Offered" (index 0) proceeds to
   // either "Soft booked" or "Confirmed" (index 1) depending on producer_confirmation.
   // Deriving from the same helper the rail uses keeps this badge from drifting out
   // of sync with FlowRail's "Resulting lifecycle" chips.
@@ -97,7 +97,7 @@ export function FlowTimeline({
         dim={respOff}
         chips={
           <>
-            <Badge variant="accent">Suggested</Badge>
+            <Badge variant="accent">Offered</Badge>
             {respOff && skippedChip}
           </>
         }

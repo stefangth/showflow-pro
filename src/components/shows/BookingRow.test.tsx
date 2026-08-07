@@ -12,12 +12,20 @@ function makeBooking(overrides: Parameters<typeof aBooking>[0] = {}) {
 }
 
 describe('BookingRow', () => {
-  it('renders the artist name and humanized status', () => {
+  it('renders the artist name and a friendly status label', () => {
     render(
       <BookingRow booking={makeBooking({ status: 'soft_booked' })} canManage={false} showConfirm onConfirm={vi.fn()} onCancel={vi.fn()} />,
     );
     expect(screen.getByText('Jane Doe')).toBeInTheDocument();
-    expect(screen.getByText('soft booked')).toBeInTheDocument();
+    expect(screen.getByText('Soft-booked')).toBeInTheDocument();
+  });
+
+  it('labels a suggested booking "Offered", never the raw enum', () => {
+    render(
+      <BookingRow booking={makeBooking({ status: 'suggested' })} canManage={false} showConfirm onConfirm={vi.fn()} onCancel={vi.fn()} />,
+    );
+    expect(screen.getByText('Offered')).toBeInTheDocument();
+    expect(screen.queryByText('suggested')).not.toBeInTheDocument();
   });
 
   it('hides action buttons when the caller cannot manage', () => {
