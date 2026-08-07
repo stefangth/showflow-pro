@@ -9,8 +9,6 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { Eye } from 'lucide-react';
 
 const EMAIL_TEMPLATE_KEYS = [
-  'signup-decision',
-  'new-signup-admin-notification',
   'cast-escalation-requested',
   'artist-offer-digest',
   'artist-confirmation-digest',
@@ -21,8 +19,6 @@ const EMAIL_TEMPLATE_KEYS = [
 type EmailTemplateKey = typeof EMAIL_TEMPLATE_KEYS[number];
 
 const EMAIL_TEMPLATE_LABELS: Record<EmailTemplateKey, string> = {
-  'signup-decision': 'Signup Decision',
-  'new-signup-admin-notification': 'New Signup · Admin Notification',
   'cast-escalation-requested': 'Cast Escalation Requested',
   'artist-offer-digest': 'Artist Offer Digest',
   'artist-confirmation-digest': 'Artist Confirmation Digest',

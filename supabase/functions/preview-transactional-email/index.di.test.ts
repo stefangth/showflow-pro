@@ -237,19 +237,6 @@ Deno.test("preview-transactional-email DI: function subject resolved correctly (
   assertEquals(entry.subject, "Your booking updates — ShowFlow");
 });
 
-Deno.test("preview-transactional-email DI: function subject resolved correctly (signup-decision, approved preview)", async () => {
-  const res = await handle(
-    authedPostRequest({ templateName: "signup-decision" }),
-    adminDeps(),
-  );
-  const { templates } = await res.json() as { templates: Array<{ templateName: string; subject: string; status: string }> };
-  assertEquals(templates.length, 1);
-  const entry = templates[0];
-  assertEquals(entry.status, "ready");
-  // signup-decision's previewData has decision='approved', so subject should reflect that
-  assertEquals(entry.subject, "You're approved on ShowFlow");
-});
-
 Deno.test("preview-transactional-email DI: function subject (cast-escalation-requested) uses previewData fields", async () => {
   const res = await handle(
     authedPostRequest({ templateName: "cast-escalation-requested" }),
@@ -267,7 +254,7 @@ Deno.test("preview-transactional-email DI: function subject (cast-escalation-req
 
 Deno.test("preview-transactional-email DI: templateName given → array of length 1", async () => {
   const res = await handle(
-    authedPostRequest({ templateName: "new-signup-admin-notification" }),
+    authedPostRequest({ templateName: "account-email-changed" }),
     adminDeps(),
   );
   assertEquals(res.status, 200);
@@ -410,7 +397,7 @@ Deno.test("preview-transactional-email DI: per-template catch structure — unkn
 Deno.test("preview-transactional-email DI: subject override replaces subject in response", async () => {
   const res = await handle(
     authedPostRequest({
-      templateName: "new-signup-admin-notification",
+      templateName: "account-email-changed",
       overrides: { subject: "Custom Subject Override" },
     }),
     adminDeps(),
@@ -425,7 +412,7 @@ Deno.test("preview-transactional-email DI: subject override replaces subject in 
 Deno.test("preview-transactional-email DI: whitespace-only subject override is ignored (original subject kept)", async () => {
   const res = await handle(
     authedPostRequest({
-      templateName: "new-signup-admin-notification",
+      templateName: "account-email-changed",
       overrides: { subject: "   " },
     }),
     adminDeps(),
@@ -434,14 +421,13 @@ Deno.test("preview-transactional-email DI: whitespace-only subject override is i
     templates: Array<{ subject: string; status: string }>;
   };
   assertEquals(templates[0].status, "ready");
-  // Original string subject for new-signup-admin-notification
-  assertEquals(templates[0].subject, "New ShowFlow signup awaiting approval");
+  assertEquals(templates[0].subject, "Your ShowFlow login email was changed");
 });
 
 Deno.test("preview-transactional-email DI: non-string subject override is ignored", async () => {
   const res = await handle(
     authedPostRequest({
-      templateName: "new-signup-admin-notification",
+      templateName: "account-email-changed",
       overrides: { subject: 42 },
     }),
     adminDeps(),
@@ -450,7 +436,7 @@ Deno.test("preview-transactional-email DI: non-string subject override is ignore
     templates: Array<{ subject: string; status: string }>;
   };
   assertEquals(templates[0].status, "ready");
-  assertEquals(templates[0].subject, "New ShowFlow signup awaiting approval");
+  assertEquals(templates[0].subject, "Your ShowFlow login email was changed");
 });
 
 Deno.test("preview-transactional-email DI: intro override is applied to html render (no render error)", async () => {
@@ -458,7 +444,7 @@ Deno.test("preview-transactional-email DI: intro override is applied to html ren
   // but we can assert the render does not fail and html is non-empty.
   const res = await handle(
     authedPostRequest({
-      templateName: "new-signup-admin-notification",
+      templateName: "account-email-changed",
       overrides: { intro: "Custom intro text for this preview." },
     }),
     adminDeps(),
@@ -487,16 +473,16 @@ Deno.test("preview-transactional-email DI: non-object overrides field is silentl
 
 // ── Specific template HTML content smoke checks ───────────────────────────────
 
-Deno.test("preview-transactional-email DI: new-signup-admin-notification html contains preview data name", async () => {
+Deno.test("preview-transactional-email DI: account-email-changed html contains preview data email", async () => {
   const res = await handle(
-    authedPostRequest({ templateName: "new-signup-admin-notification" }),
+    authedPostRequest({ templateName: "account-email-changed" }),
     adminDeps(),
   );
   const { templates } = await res.json() as {
     templates: Array<{ html: string; status: string }>;
   };
   assertEquals(templates[0].status, "ready");
-  assertEquals(templates[0].html.includes("Jane Performer"), true);
+  assertEquals(templates[0].html.includes("new@example.com"), true);
 });
 
 Deno.test("preview-transactional-email DI: artist-offer-digest html contains preview data offers", async () => {
@@ -513,11 +499,11 @@ Deno.test("preview-transactional-email DI: artist-offer-digest html contains pre
 
 // ── Registry count assertion ──────────────────────────────────────────────────
 
-Deno.test("preview-transactional-email DI: TEMPLATES registry has exactly 12 entries", async () => {
+Deno.test("preview-transactional-email DI: TEMPLATES registry has exactly 10 entries", async () => {
   // Regression guard: if a template is added/removed, this test will catch the mismatch.
   // Task 10 added 'hire-order-issued' (9 -> 10). Task 5 added 'account-email-changed' (10 -> 11).
-  // Hire-orders countersign added 'hire-order-countersigned' (11 -> 12).
-  assertEquals(EXPECTED_TEMPLATE_COUNT, 12);
+  // Hire-orders countersign added 'hire-order-countersigned'; two retired signup templates are absent.
+  assertEquals(EXPECTED_TEMPLATE_COUNT, 10);
 });
 
 // ── GET method (non-POST) ─────────────────────────────────────────────────────

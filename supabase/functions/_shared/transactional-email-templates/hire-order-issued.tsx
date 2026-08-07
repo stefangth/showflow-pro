@@ -1,111 +1,86 @@
 /// <reference types="npm:@types/react@18.3.1" />
-import * as React from 'npm:react@18.3.1'
-import {
-  Body, Button, Container, Head, Heading, Html, Preview, Section, Text,
-} from 'npm:@react-email/components@0.0.22'
-import type { TemplateEntry, TemplateData } from './registry.ts'
-import { APP_URL } from '../app-url.ts'
+import * as React from "npm:react@18.3.1";
+import { Button, Section, Text } from "npm:@react-email/components@0.0.22";
+import type { TemplateData, TemplateEntry } from "./registry.ts";
+import { APP_URL } from "../app-url.ts";
+import { EmailShell, emailRoleStyle } from "./_shell/EmailShell.tsx";
+import { applyEmailTokens, EMAIL_COPY_DEFAULTS, type EmailCopy } from "./_shell/emailCopy.ts";
+import { EMAIL_THEME_DEFAULTS, type EmailFamily, type EmailRoleKey, type EmailTheme } from "./_shell/emailTheme.ts";
 
 interface Props {
-  artist_name?: string
-  order_no?: string
-  date_label?: string
-  engagement_dates_label?: string
-  venue?: string
-  city?: string
-  fee_label?: string
-  download_url?: string
-  countersign_mode?: 'manual' | 'documenso' | string
-  signing_url?: string
-  is_fully_signed?: boolean
-  // Template-override support (applied by send-transactional-email).
-  _intro?: string
-  _cta_label?: string
-  _footer?: string
+  artist_name?: string;
+  order_no?: string;
+  date_label?: string;
+  engagement_dates_label?: string;
+  venue?: string;
+  city?: string;
+  fee_label?: string;
+  download_url?: string;
+  countersign_mode?: "manual" | "documenso" | "electronic" | string;
+  signing_url?: string;
+  is_fully_signed?: boolean;
+  _emailCopy?: EmailCopy;
+  _emailTheme?: EmailTheme;
+  _emailFamily?: EmailFamily;
+  _highlightRole?: EmailRoleKey;
 }
 
 const HireOrderIssuedEmail = ({
-  artist_name, order_no, date_label, engagement_dates_label, venue, city, fee_label,
-  download_url, countersign_mode, signing_url, is_fully_signed,
-  _intro, _cta_label, _footer,
+  artist_name,
+  order_no,
+  date_label,
+  engagement_dates_label,
+  venue,
+  city,
+  fee_label,
+  download_url,
+  countersign_mode,
+  signing_url,
+  is_fully_signed,
+  _emailCopy = EMAIL_COPY_DEFAULTS as EmailCopy,
+  _emailTheme = EMAIL_THEME_DEFAULTS,
+  _emailFamily = "pine",
+  _highlightRole,
 }: Props) => {
-  const name = artist_name || 'there'
-  const date = date_label || 'your date'
-  const engagementDates = engagement_dates_label || date
-  const place = venue || 'the venue'
-  const downloadUrl = download_url || APP_URL
-  const showSignCta = !is_fully_signed && Boolean(signing_url) &&
-    (countersign_mode === 'documenso' || countersign_mode === 'electronic')
-  const ctaLabel = _cta_label || (showSignCta ? 'Review document' : 'View and download')
-  const introText = _intro ||
-    `Your hire order for ${date} at ${place} has been issued. Review the details below and download your copy.`
-  const footerText = _footer ||
-    `Questions about this hire order. Reply to this email and we will help.`
+  const copy = _emailCopy;
+  const theme = _emailTheme;
+  const values = {
+    artistName: artist_name || copy["hire-order-issued.artistFallback"],
+    dateLabel: date_label || copy["hire-order-issued.dateFallback"],
+    venue: venue || copy["hire-order-issued.venueFallback"],
+  };
+  const engagementDates = engagement_dates_label || values.dateLabel;
+  const downloadUrl = download_url || APP_URL;
+  const showSignCta = !is_fully_signed && Boolean(signing_url) && (countersign_mode === "documenso" || countersign_mode === "electronic");
+  const documentCtaLabel = showSignCta ? copy["hire-order-issued.signCtaLabel"] : copy["hire-order-issued.ctaLabel"];
 
   return (
-    <Html lang="en" dir="ltr">
-      <Head />
-      <Preview>Your hire order for {date} at {place}</Preview>
-      <Body style={main}>
-        <Container style={container}>
-          <Heading style={h1}>Hire order issued</Heading>
-          <Text style={text}>Hi {name},</Text>
-          <Text style={text}>{introText}</Text>
-          <Section style={factsSection}>
-            {order_no ? <Text style={factRow}><strong>Order.</strong> {order_no}</Text> : null}
-            <Text style={factRow}><strong>Engagement dates.</strong> {engagementDates}</Text>
-            <Text style={factRow}><strong>Venue.</strong> {place}</Text>
-            {city ? <Text style={factRow}><strong>City.</strong> {city}</Text> : null}
-            {fee_label ? <Text style={factRow}><strong>Fee.</strong> {fee_label}</Text> : null}
-          </Section>
-          {showSignCta ? (
-            <>
-              <Text style={text}>Review and sign your hire order online to confirm.</Text>
-              <Section style={section}>
-                <Button href={signing_url || APP_URL} style={button}>Review and sign</Button>
-              </Section>
-            </>
-          ) : null}
-          <Section style={section}>
-            <Button href={downloadUrl} style={button}>{ctaLabel}</Button>
-          </Section>
-          <Text style={muted}>Or paste this link into your browser:</Text>
-          <Text style={link}>{downloadUrl}</Text>
-          {!showSignCta ? (
-            <Text style={text}>Reply to confirm, or sign and return the attached PDF.</Text>
-          ) : null}
-          <Text style={footer}>{footerText}</Text>
-        </Container>
-      </Body>
-    </Html>
-  )
-}
+    <EmailShell family={_emailFamily} theme={theme} previewText={applyEmailTokens(copy["hire-order-issued.previewText"], values)} heading={copy["hire-order-issued.heading"]} footer={copy["hire-order-issued.footer"]} cta={{ href: downloadUrl, label: documentCtaLabel }} highlightRole={_highlightRole}>
+      <Text style={{ ...emailRoleStyle(theme, "body", _highlightRole), lineHeight: "1.6", margin: "0 0 16px" }}>{applyEmailTokens(copy["hire-order-issued.greeting"], values)}</Text>
+      <Text style={{ ...emailRoleStyle(theme, "body", _highlightRole), lineHeight: "1.6", margin: "0 0 16px" }}>{applyEmailTokens(copy["hire-order-issued.intro"], values)}</Text>
+      <Section style={{ margin: "24px 0", padding: "16px 20px", backgroundColor: theme.base.colors.tileBg, borderRadius: `${theme.base.buttonRadius}px` }}>
+        {order_no && <Text style={{ ...emailRoleStyle(theme, "dataValue", _highlightRole), margin: "0 0 8px" }}><strong>{copy["hire-order-issued.orderLabel"]}</strong> {order_no}</Text>}
+        <Text style={{ ...emailRoleStyle(theme, "dataValue", _highlightRole), margin: "0 0 8px" }}><strong>{copy["hire-order-issued.engagementDatesLabel"]}</strong> {engagementDates}</Text>
+        <Text style={{ ...emailRoleStyle(theme, "dataValue", _highlightRole), margin: "0 0 8px" }}><strong>{copy["hire-order-issued.venueLabel"]}</strong> {values.venue}</Text>
+        {city && <Text style={{ ...emailRoleStyle(theme, "dataValue", _highlightRole), margin: "0 0 8px" }}><strong>{copy["hire-order-issued.cityLabel"]}</strong> {city}</Text>}
+        {fee_label && <Text style={{ ...emailRoleStyle(theme, "dataValue", _highlightRole), margin: "0" }}><strong>{copy["hire-order-issued.feeLabel"]}</strong> {fee_label}</Text>}
+      </Section>
+      {showSignCta && <>
+        <Text style={{ ...emailRoleStyle(theme, "body", _highlightRole), lineHeight: "1.6", margin: "0 0 16px" }}>{copy["hire-order-issued.signPrompt"]}</Text>
+        <Section style={{ textAlign: "center", margin: "0 0 24px" }}>
+          <Button href={signing_url || APP_URL} style={{ ...emailRoleStyle(theme, "button", _highlightRole), backgroundColor: theme.base.colors.buttonBg, borderRadius: `${theme.base.buttonRadius}px`, padding: "12px 24px", textDecoration: "none" }}>{copy["hire-order-issued.signButton"]}</Button>
+        </Section>
+      </>}
+      <Text style={{ ...emailRoleStyle(theme, "footer", _highlightRole), margin: "0 0 8px" }}>{copy["hire-order-issued.pasteLink"]}</Text>
+      <Text style={{ ...emailRoleStyle(theme, "dataValue", _highlightRole), margin: "0 0 24px" }}>{downloadUrl}</Text>
+      {!showSignCta && <Text style={{ ...emailRoleStyle(theme, "body", _highlightRole), lineHeight: "1.6", margin: "0" }}>{copy["hire-order-issued.manualPrompt"]}</Text>}
+    </EmailShell>
+  );
+};
 
 export const template = {
   component: HireOrderIssuedEmail as React.ComponentType<TemplateData>,
-  subject: (data: TemplateData) =>
-    `Your hire order for ${data?.date_label || 'your date'} at ${data?.venue || 'the venue'}`,
-  displayName: 'Hire order issued',
-  previewData: {
-    artist_name: 'Mara Lindqvist',
-    order_no: 'HO-2026-0142',
-    date_label: 'Sat, Aug 15 2026',
-    venue: 'Tempodrom',
-    city: 'Berlin',
-    fee_label: '€850.00',
-    download_url: `${APP_URL}/hire-orders/HO-2026-0142`,
-    countersign_mode: 'manual',
-  },
-} satisfies TemplateEntry
-
-const main: React.CSSProperties = { backgroundColor: '#ffffff', fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif' }
-const container: React.CSSProperties = { padding: '32px 24px', maxWidth: '560px', margin: '0 auto' }
-const h1: React.CSSProperties = { fontSize: '22px', fontWeight: 600, color: '#111827', margin: '0 0 16px' }
-const text: React.CSSProperties = { fontSize: '15px', lineHeight: '24px', color: '#374151', margin: '0 0 12px' }
-const muted: React.CSSProperties = { fontSize: '13px', lineHeight: '20px', color: '#6b7280', margin: '0 0 8px' }
-const section: React.CSSProperties = { textAlign: 'center', margin: '32px 0' }
-const link: React.CSSProperties = { fontSize: '13px', lineHeight: '20px', color: '#7c3aed', wordBreak: 'break-all', margin: '0 0 24px' }
-const button: React.CSSProperties = { backgroundColor: '#7c3aed', color: '#ffffff', fontSize: '15px', fontWeight: 600, padding: '12px 24px', borderRadius: '8px', textDecoration: 'none' }
-const footer: React.CSSProperties = { fontSize: '12px', lineHeight: '18px', color: '#9ca3af', margin: '24px 0 0' }
-const factsSection: React.CSSProperties = { margin: '16px 0', padding: '16px', backgroundColor: '#f9fafb', borderRadius: '8px' }
-const factRow: React.CSSProperties = { fontSize: '14px', lineHeight: '22px', color: '#374151', margin: '0 0 4px' }
+  subject: (data: TemplateData) => applyEmailTokens(EMAIL_COPY_DEFAULTS["hire-order-issued.subject"], { dateLabel: String(data.date_label || "your date"), venue: String(data.venue || "the venue") }),
+  displayName: "Hire order issued",
+  previewData: { artist_name: "Mara Lindqvist", order_no: "HO-2026-0142", date_label: "Sat, Aug 15 2026", venue: "Tempodrom", city: "Berlin", fee_label: "€850.00", download_url: `${APP_URL}/hire-orders/HO-2026-0142`, countersign_mode: "manual" },
+} satisfies TemplateEntry;

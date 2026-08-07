@@ -1,111 +1,64 @@
 /// <reference types="npm:@types/react@18.3.1" />
-import * as React from 'npm:react@18.3.1'
-import {
-  Body,
-  Button,
-  Container,
-  Head,
-  Heading,
-  Html,
-  Preview,
-  Section,
-  Text,
-} from 'npm:@react-email/components@0.0.22'
-import type { TemplateEntry, TemplateData } from './registry.ts'
-import { APP_URL } from '../app-url.ts'
-
-const SITE_NAME = 'ShowFlow'
+import * as React from "npm:react@18.3.1";
+import { Section, Text } from "npm:@react-email/components@0.0.22";
+import type { TemplateData, TemplateEntry } from "./registry.ts";
+import { APP_URL } from "../app-url.ts";
+import { EmailShell, emailRoleStyle } from "./_shell/EmailShell.tsx";
+import { applyEmailTokens, EMAIL_COPY_DEFAULTS, type EmailCopy } from "./_shell/emailCopy.ts";
+import { EMAIL_THEME_DEFAULTS, type EmailFamily, type EmailRoleKey, type EmailTheme } from "./_shell/emailTheme.ts";
 
 interface Props {
-  job_name?: string
-  status_code?: number | string
-  error?: string
-  last_ok_at?: string
-  dashboard_url?: string
-  _footer?: string
+  job_name?: string;
+  status_code?: number | string;
+  error?: string;
+  last_ok_at?: string;
+  dashboard_url?: string;
+  _emailCopy?: EmailCopy;
+  _emailTheme?: EmailTheme;
+  _emailFamily?: EmailFamily;
+  _highlightRole?: EmailRoleKey;
 }
 
-const CronHealthAlert = ({ job_name, status_code, error, last_ok_at, dashboard_url, _footer }: Props) => (
-  <Html lang="en" dir="ltr">
-    <Head />
-    <Preview>{`Cron health alert: ${job_name ?? 'a scheduled job'} is failing`}</Preview>
-    <Body style={main}>
-      <Container style={container}>
-        <Heading style={h1}>Scheduled job failing</Heading>
-        <Text style={text}>
-          The scheduled job <strong>{job_name ?? 'unknown'}</strong> last returned{' '}
-          <strong>{status_code ?? 'unknown'}</strong>. Part of the booking engine may be degraded until it is fixed.
-        </Text>
-        <Section style={card}>
-          <Text style={cardLabel}>Job</Text>
-          <Text style={cardValue}>{job_name ?? 'unknown'}</Text>
-          <Text style={cardLabel}>Last status</Text>
-          <Text style={cardValue}>{status_code ?? 'unknown'}</Text>
-          <Text style={cardLabel}>Last error</Text>
-          <Text style={cardValue}>{error || 'unknown'}</Text>
-          <Text style={cardLabel}>Last healthy</Text>
-          <Text style={cardValue}>{last_ok_at ?? 'unknown'}</Text>
-        </Section>
-        <Section style={{ textAlign: 'center', margin: '32px 0' }}>
-          <Button href={dashboard_url || `${APP_URL}/platform`} style={button}>
-            Open System Health
-          </Button>
-        </Section>
-        <Text style={footer}>{_footer || `The ${SITE_NAME} team`}</Text>
-      </Container>
-    </Body>
-  </Html>
-)
+const CronHealthAlert = ({
+  job_name,
+  status_code,
+  error,
+  last_ok_at,
+  dashboard_url,
+  _emailCopy = EMAIL_COPY_DEFAULTS as EmailCopy,
+  _emailTheme = EMAIL_THEME_DEFAULTS,
+  _emailFamily = "steel",
+  _highlightRole,
+}: Props) => {
+  const copy = _emailCopy;
+  const theme = _emailTheme;
+  const values = {
+    jobName: job_name ?? copy["cron-health-alert.jobFallback"],
+    statusCode: status_code ?? copy["cron-health-alert.valueFallback"],
+    error: error || copy["cron-health-alert.valueFallback"],
+    lastHealthy: last_ok_at ?? copy["cron-health-alert.valueFallback"],
+  };
+
+  return (
+    <EmailShell family={_emailFamily} theme={theme} previewText={applyEmailTokens(copy["cron-health-alert.previewText"], values)} heading={copy["cron-health-alert.heading"]} footer={copy["cron-health-alert.footer"]} cta={{ href: dashboard_url || `${APP_URL}/platform`, label: copy["cron-health-alert.ctaLabel"] }} highlightRole={_highlightRole}>
+      <Text style={{ ...emailRoleStyle(theme, "body", _highlightRole), lineHeight: "1.6", margin: "0 0 16px" }}>{applyEmailTokens(copy["cron-health-alert.intro"], values)}</Text>
+      <Section style={{ margin: "24px 0", padding: "16px 20px", backgroundColor: theme.base.colors.tileBg, borderRadius: `${theme.base.buttonRadius}px` }}>
+        <Text style={{ ...emailRoleStyle(theme, "dataLabel", _highlightRole), margin: "0 0 2px" }}>{copy["cron-health-alert.jobLabel"]}</Text>
+        <Text style={{ ...emailRoleStyle(theme, "dataValue", _highlightRole), margin: "0 0 12px" }}>{values.jobName}</Text>
+        <Text style={{ ...emailRoleStyle(theme, "dataLabel", _highlightRole), margin: "0 0 2px" }}>{copy["cron-health-alert.lastStatusLabel"]}</Text>
+        <Text style={{ ...emailRoleStyle(theme, "dataValue", _highlightRole), margin: "0 0 12px" }}>{values.statusCode}</Text>
+        <Text style={{ ...emailRoleStyle(theme, "dataLabel", _highlightRole), margin: "0 0 2px" }}>{copy["cron-health-alert.lastErrorLabel"]}</Text>
+        <Text style={{ ...emailRoleStyle(theme, "dataValue", _highlightRole), margin: "0 0 12px" }}>{values.error}</Text>
+        <Text style={{ ...emailRoleStyle(theme, "dataLabel", _highlightRole), margin: "0 0 2px" }}>{copy["cron-health-alert.lastHealthyLabel"]}</Text>
+        <Text style={{ ...emailRoleStyle(theme, "dataValue", _highlightRole), margin: "0" }}>{values.lastHealthy}</Text>
+      </Section>
+    </EmailShell>
+  );
+};
 
 export const template = {
   component: CronHealthAlert as React.ComponentType<TemplateData>,
-  subject: (data: TemplateData) =>
-    `Cron health: ${data?.job_name ?? 'a job'} is failing (${data?.status_code ?? '?'})`,
-  displayName: 'Cron health alert',
-  previewData: {
-    job_name: 'send-offer-digest',
-    status_code: 404,
-    error: 'Requested function was not found',
-    last_ok_at: '2026-06-20T19:00:00Z',
-    dashboard_url: `${APP_URL}/platform`,
-  },
-} satisfies TemplateEntry
-
-const main = {
-  backgroundColor: '#ffffff',
-  fontFamily: '"Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
-}
-const container = { padding: '32px 24px', maxWidth: '560px', margin: '0 auto' }
-const h1 = {
-  fontSize: '22px',
-  fontWeight: 700,
-  color: '#0f172a',
-  margin: '0 0 16px',
-  fontFamily: '"Space Grotesk", "Inter", -apple-system, BlinkMacSystemFont, sans-serif',
-}
-const text = { fontSize: '15px', color: '#334155', lineHeight: 1.6, margin: '0 0 16px' }
-const card = {
-  backgroundColor: '#fef2f2',
-  borderRadius: '12px',
-  padding: '16px 20px',
-  margin: '20px 0',
-}
-const cardLabel = {
-  fontSize: '12px',
-  textTransform: 'uppercase' as const,
-  letterSpacing: '0.05em',
-  color: '#991b1b',
-  margin: '12px 0 4px',
-}
-const cardValue = { fontSize: '15px', color: '#0f172a', margin: '0', fontWeight: 500 }
-const button = {
-  backgroundColor: '#7C3AED',
-  color: '#ffffff',
-  fontSize: '15px',
-  fontWeight: 600,
-  borderRadius: '10px',
-  padding: '12px 24px',
-  textDecoration: 'none',
-  display: 'inline-block',
-}
-const footer = { fontSize: '13px', color: '#64748b', margin: '32px 0 0' }
+  subject: (data: TemplateData) => applyEmailTokens(EMAIL_COPY_DEFAULTS["cron-health-alert.subject"], { jobName: String(data.job_name ?? "a job"), statusCode: String(data.status_code ?? "?") }),
+  displayName: "Cron health alert",
+  previewData: { job_name: "send-offer-digest", status_code: 404, error: "Requested function was not found", last_ok_at: "2026-06-20T19:00:00Z", dashboard_url: `${APP_URL}/platform` },
+} satisfies TemplateEntry;
