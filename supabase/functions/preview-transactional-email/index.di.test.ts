@@ -54,7 +54,7 @@ function authedPostRequest(body: unknown = {}) {
   return makeRequest({ headers: { Authorization: "Bearer jwt" }, body });
 }
 
-const EXPECTED_TEMPLATE_COUNT = Object.keys(TEMPLATES).length;
+const EXPECTED_TEMPLATE_COUNT = 10;
 
 // ── Auth contract ─────────────────────────────────────────────────────────────
 
@@ -454,6 +454,29 @@ Deno.test("preview-transactional-email DI: intro override is applied to html ren
   };
   assertEquals(templates[0].status, "ready");
   assertEquals(templates[0].html.length > 0, true);
+});
+
+Deno.test("preview-transactional-email DI: applies copy, theme, and highlight overrides", async () => {
+  const res = await handle(
+    authedPostRequest({
+      templateName: "org-invitation",
+      copyOverride: {
+        "org-invitation.subject": "Welcome {{orgName}}",
+        "org-invitation.intro": "A custom invitation for {{orgName}}.",
+      },
+      themeOverride: { base: { colors: { pageBg: "#010203" } } },
+      highlightRole: "heading",
+    }),
+    adminDeps(),
+  );
+  const { templates } = await res.json() as {
+    templates: Array<{ subject: string; html: string; status: string }>;
+  };
+  assertEquals(templates[0].status, "ready");
+  assertEquals(templates[0].subject, "Welcome Cirque Lumière");
+  assertEquals(templates[0].html.includes("A custom invitation for Cirque Lumière."), true);
+  assertEquals(templates[0].html.includes("#010203"), true);
+  assertEquals(templates[0].html.includes("outline:2px solid"), true);
 });
 
 Deno.test("preview-transactional-email DI: non-object overrides field is silently ignored", async () => {
