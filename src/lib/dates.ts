@@ -64,3 +64,17 @@ export function isPastDate(date: Date, today: Date = new Date()): boolean {
  * past dates stay fully clickable across every surface that uses it.
  */
 export const PAST_DATE_TINT = 'opacity-60';
+
+/**
+ * The past-date tint, applied by construction: returns `PAST_DATE_TINT` when
+ * `date` is in the past, else `undefined`. Every row/card that wants the
+ * shared "past but still clickable" treatment should splice this into its
+ * `cn(...)` call instead of hand-writing `isPastDate(...) && PAST_DATE_TINT`
+ * -- the inline form is easy to forget on a new surface (it was, repeatedly),
+ * where this helper can only be skipped by name. Accepts `null` for a row
+ * whose date could not be parsed (never tinted). `today` defaults to
+ * `new Date()`, same as `isPastDate`.
+ */
+export function pastRowClassName(date: Date | null, today: Date = new Date()): string | undefined {
+  return date && isPastDate(date, today) ? PAST_DATE_TINT : undefined;
+}
