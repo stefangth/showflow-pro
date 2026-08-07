@@ -1,14 +1,6 @@
 import { Lock } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
-import type { BookingSetupStep } from "@/lib/bookings/setupStatus";
-
-const LABELS: Record<string, string> = {
-  flow: "Booking flow",
-  slots: "Slots per show",
-  ladder: "Cast priorities per city",
-  eligibility: "Who is eligible",
-  timing: "Response window and digests",
-};
+import { STEP_TITLES, type BookingSetupStep } from "@/lib/bookings/setupStatus";
 
 /** Shown instead of the rail when the viewer lacks `edit_booking_settings`. Lists only
  *  steps that actually block something. Does not name the admin (list_org_members is
@@ -31,7 +23,7 @@ export function BookingProducerWaitingCard({ steps }: { steps: BookingSetupStep[
           {outstanding.map((s) => (
             <div key={s.key} className="flex items-center gap-2 rounded-md border border-border p-2.5">
               <Lock className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
-              <span className="text-sm text-muted-foreground">{LABELS[s.key] ?? s.key}</span>
+              <span className="text-sm text-muted-foreground">{STEP_TITLES[s.key] ?? s.key}</span>
             </div>
           ))}
         </div>

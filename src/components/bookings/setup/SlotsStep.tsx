@@ -4,7 +4,7 @@ import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { fetchShowsWithSlots } from "@/data/settings";
 import { updateShow } from "@/data/shows";
-import { showSlots } from "@/lib/settings";
+import { showSlots, activeShows } from "@/lib/settings";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -21,7 +21,7 @@ export function SlotsStep({ orgId, onDone }: { orgId: string | null; onDone: () 
     queryFn: () => fetchShowsWithSlots(supabase, orgId),
   });
   // Only active shows: an archived or draft show with no slot count never blocks the rail.
-  const unset = (shows.data ?? []).filter((s) => showSlots(s) === null && s.status === "active");
+  const unset = (activeShows(shows.data) ?? []).filter((s) => showSlots(s) === null);
   const [draft, setDraft] = useState<Draft>({});
   const val = (id: string, k: "main" | "us") => draft[id]?.[k] ?? "";
   const setVal = (id: string, k: "main" | "us", v: string) =>

@@ -1,3 +1,4 @@
+import { useMemo } from "react";
 import { Link } from "react-router-dom";
 import { useAllCities } from "@/hooks/useAllCities";
 import { useShows } from "@/hooks/useShows";
@@ -15,7 +16,11 @@ export function EligibilityStep({ coverage }: { coverage: LadderCoverageInputs |
     return s ? `${s.program}${s.sub_program ? ` · ${s.sub_program}` : ""}` : "Unknown show";
   };
 
-  const result = coverage ? resolveCoverage(coverage) : { uncoveredPairs: [], hasNullCity: false };
+  // Memoized so the coverage rule runs only when the inputs change, not on every render.
+  const result = useMemo(
+    () => (coverage ? resolveCoverage(coverage) : { uncoveredPairs: [], hasNullCity: false }),
+    [coverage],
+  );
 
   return (
     <div className="space-y-3">

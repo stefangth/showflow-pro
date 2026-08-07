@@ -2,13 +2,12 @@ import { useEffect, useRef, useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
-import { upsertOrgSetting } from "@/data/settings";
+import { upsertOrgSetting, DEFAULT_FLOW_TIMES } from "@/data/settings";
 import { useBookingFlow, useFlowTimes } from "@/hooks/useBookingFlow";
 import {
   applyPreset, matchPreset, normalizeBookingFlow, lifecycleChips, inPracticeRows,
-  BOOKING_FLOW_DEFAULTS, type PresetName, type FlowTimes, type LifecycleChip,
+  BOOKING_FLOW_DEFAULTS, type PresetName, type LifecycleChip,
 } from "@/lib/bookingFlow";
-import { BOOKING_ENGINE_DEFAULTS } from "@/config/app.config";
 import { FlowPresets } from "@/components/settings/bookingFlow/FlowPresets";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -19,11 +18,6 @@ const CHIP_TONE: Record<LifecycleChip["tone"], string> = {
   violet: "bg-[var(--accent-500)]", amber: "bg-[var(--amber-500)]",
   green: "bg-[var(--green-500)]", neutral: "bg-muted-foreground",
 };
-const DEFAULT_TIMES: FlowTimes = {
-  windowHours: BOOKING_ENGINE_DEFAULTS.offer_response_window_hours,
-  offerDigestHour: BOOKING_ENGINE_DEFAULTS.offer_digest_hour_berlin,
-  confirmationDigestHour: BOOKING_ENGINE_DEFAULTS.confirmation_digest_hour_berlin,
-};
 
 /** The rail's flow panel: pick a preset, see the live lifecycle and per-audience
  *  consequences (the real policy, not static prose), save through the settings path. */
@@ -32,7 +26,7 @@ export function FlowStep({ orgId, onDone }: { orgId: string | null; onDone: () =
   const { data: flow } = useBookingFlow();
   const { data: times } = useFlowTimes(orgId);
   const base = flow ?? BOOKING_FLOW_DEFAULTS;
-  const t = times ?? DEFAULT_TIMES;
+  const t = times ?? DEFAULT_FLOW_TIMES;
 
   const [selected, setSelected] = useState<PresetName>("classic");
   const seeded = useRef(false);

@@ -1,9 +1,11 @@
 import { useQuery, useMutation } from "@tanstack/react-query";
+import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useBookingFlow, useFlowTimes } from "@/hooks/useBookingFlow";
 import { useCan } from "@/hooks/useCapabilities";
 import { dryRunOfferTier, type DryRunResult } from "@/data/bookings";
 import { fetchNextRehearsalDate } from "@/data/showDates";
+import { DEFAULT_FLOW_TIMES } from "@/data/settings";
 import { hh, BOOKING_FLOW_DEFAULTS } from "@/lib/bookingFlow";
 import { toDateKey, formatDateWithWeekday } from "@/lib/dates";
 import { Button } from "@/components/ui/button";
@@ -15,10 +17,13 @@ export function RehearsalBlock({ orgId }: { orgId: string | null }) {
   const { data: flow } = useBookingFlow();
   const { data: times } = useFlowTimes(orgId);
   const canRun = useCan("run_offer_engine");
+  // Fold the date cutoff into the key so a tab left open past midnight refetches instead of
+  // serving a coverage/next-date result computed against yesterday's "today".
+  const today = toDateKey(new Date());
   const next = useQuery({
-    queryKey: ["show-dates", "next-rehearsal", orgId],
+    queryKey: ["show-dates", "next-rehearsal", orgId, today],
     enabled: !!orgId,
-    queryFn: () => fetchNextRehearsalDate(supabase, { orgId: orgId!, today: toDateKey(new Date()) }),
+    queryFn: () => fetchNextRehearsalDate(supabase, { orgId: orgId!, today }),
   });
 
   const run = useMutation({
@@ -27,6 +32,7 @@ export function RehearsalBlock({ orgId }: { orgId: string | null }) {
       if (!id) throw new Error("No date to rehearse");
       return dryRunOfferTier(supabase, { showDateId: id, tier: 1 });
     },
+    onError: (e: Error) => toast.error(`Could not run the rehearsal. ${e.message}`),
   });
 
   const acceptance = (flow ?? BOOKING_FLOW_DEFAULTS).artist_acceptance;
@@ -35,9 +41,10 @@ export function RehearsalBlock({ orgId }: { orgId: string | null }) {
   if (!next.data) return null;           // No future date with a city.
 
   const delivery = (flow ?? BOOKING_FLOW_DEFAULTS).offer_delivery;
+  const t = times ?? DEFAULT_FLOW_TIMES;
   const foot = delivery === "immediate"
-    ? `Would email immediately, window closes +${times?.windowHours ?? 48} h`
-    : `Would email in the ${hh(times?.offerDigestHour ?? 19)} digest, window closes +${times?.windowHours ?? 48} h`;
+    ? `Would email immediately, window closes +${t.windowHours} h`
+    : `Would email in the ${hh(t.offerDigestHour)} digest, window closes +${t.windowHours} h`;
   const when = formatDateWithWeekday(next.data.date);
 
   return (

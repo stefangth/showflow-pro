@@ -52,6 +52,16 @@ export interface BookingSetupStatusInput {
   coverage: LadderCoverageInputs | null | undefined;
 }
 
+/** Display title per step, shared by the rail and the producer waiting card so a rename
+ *  lands in exactly one place. */
+export const STEP_TITLES: Record<BookingSetupStepKey, string> = {
+  flow: "Booking flow",
+  slots: "Slots per show",
+  ladder: "Cast priorities per city",
+  eligibility: "Who is eligible",
+  timing: "Response window and digests",
+};
+
 const STEP_ORDER: BookingSetupStepKey[] = ["flow", "slots", "ladder", "eligibility", "timing"];
 const BLOCK: Record<BookingSetupStepKey, BlockKind> = {
   flow: null, slots: "filling", ladder: "offers", eligibility: null, timing: null,

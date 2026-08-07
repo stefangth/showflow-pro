@@ -4,6 +4,7 @@ import { useAuth } from "@/features/auth/AuthContext";
 import { useMyArtist } from "@/hooks/useMyArtist";
 import { useBookingFlow, useFlowTimes } from "@/hooks/useBookingFlow";
 import { fetchMyOpenOffersCount } from "@/data/bookings";
+import { DEFAULT_FLOW_TIMES } from "@/data/settings";
 import { inPracticeRows, BOOKING_FLOW_DEFAULTS } from "@/lib/bookingFlow";
 import { useRailDismissed } from "@/components/setup/useRailDismissed";
 import { Button } from "@/components/ui/button";
@@ -29,7 +30,7 @@ export function FirstOfferCard() {
   if (dismissed) return null;
   if (!offers.data || offers.data < 1) return null;
 
-  const t = times ?? { windowHours: 48, offerDigestHour: 19, confirmationDigestHour: 20 };
+  const t = times ?? DEFAULT_FLOW_TIMES;
   const artistRow = inPracticeRows(flow ?? BOOKING_FLOW_DEFAULTS, t).find((r) => r.who === "Artist");
 
   return (

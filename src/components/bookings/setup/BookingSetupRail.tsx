@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useCan } from "@/hooks/useCapabilities";
 import { useBookingSetupStatus } from "@/hooks/useBookingSetup";
-import type { BookingSetupStepKey, BlockKind } from "@/lib/bookings/setupStatus";
+import { STEP_TITLES, type BookingSetupStepKey, type BlockKind } from "@/lib/bookings/setupStatus";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { SetupStepRow, type SetupStepBlock } from "@/components/setup/SetupStepRow";
@@ -13,14 +13,6 @@ import { EligibilityStep } from "./EligibilityStep";
 import { TimingStep } from "./TimingStep";
 import { RehearsalBlock } from "./RehearsalBlock";
 import { BookingProducerWaitingCard } from "./BookingProducerWaitingCard";
-
-const TITLES: Record<BookingSetupStepKey, string> = {
-  flow: "Booking flow",
-  slots: "Slots per show",
-  ladder: "Cast priorities per city",
-  eligibility: "Who is eligible",
-  timing: "Response window and digests",
-};
 
 const HINTS: Record<BookingSetupStepKey, { todo: string; done: string }> = {
   flow: { todo: "Offers, or straight to booked. Everything downstream reads this.", done: "Chosen. Change it any time in Settings." },
@@ -76,7 +68,7 @@ export function BookingSetupRail({ orgId }: { orgId: string | null }) {
             <SetupStepRow
               key={s.key}
               index={i + 1}
-              title={TITLES[s.key]}
+              title={STEP_TITLES[s.key]}
               hint={s.done ? HINTS[s.key].done : HINTS[s.key].todo}
               done={s.done}
               block={s.block ? BLOCK_CHIP[s.block] : null}

@@ -3,6 +3,15 @@ import type { Database, Json } from "@/integrations/supabase/types";
 import { type BookingFlow, type FlowTimes, normalizeBookingFlow } from "@/lib/bookingFlow";
 import { BOOKING_ENGINE_DEFAULTS } from "@/config/app.config";
 
+/** Code-level fallback for the offer window and digest hours, mirroring
+ *  BOOKING_ENGINE_DEFAULTS. Shared by every surface that reads `useFlowTimes` and needs a
+ *  value while the query is loading, so the 48/19/20 numbers live in one place. */
+export const DEFAULT_FLOW_TIMES: FlowTimes = {
+  windowHours: BOOKING_ENGINE_DEFAULTS.offer_response_window_hours,
+  offerDigestHour: BOOKING_ENGINE_DEFAULTS.offer_digest_hour_berlin,
+  confirmationDigestHour: BOOKING_ENGINE_DEFAULTS.confirmation_digest_hour_berlin,
+};
+
 export interface ShowWithSlots {
   id: string;
   program: string | null;
@@ -205,19 +214,21 @@ const NUM = (v: unknown, fallback: number): number => {
 
 /** The org's effective offer window and digest hours (org row over platform default over
  *  BOOKING_ENGINE_DEFAULTS), shaped as FlowTimes for lifecycle previews and the rehearsal
- *  footer. */
+ *  footer. One round-trip: all three keys are read in a single query and merged
+ *  org-over-platform (mergeOrgRows), then coerced with the DEFAULT_FLOW_TIMES fallback. */
 export async function fetchFlowTimes(
   client: SupabaseClient<Database>,
   orgId: string | null,
 ): Promise<FlowTimes> {
-  const [w, o, c] = await Promise.all([
-    resolveOrgSetting<unknown>(client, orgId, "offer_response_window_hours", BOOKING_ENGINE_DEFAULTS.offer_response_window_hours),
-    resolveOrgSetting<unknown>(client, orgId, "offer_digest_hour_berlin", BOOKING_ENGINE_DEFAULTS.offer_digest_hour_berlin),
-    resolveOrgSetting<unknown>(client, orgId, "confirmation_digest_hour_berlin", BOOKING_ENGINE_DEFAULTS.confirmation_digest_hour_berlin),
-  ]);
+  const keys = ["offer_response_window_hours", "offer_digest_hour_berlin", "confirmation_digest_hour_berlin"];
+  let q = client.from("app_settings").select("key, value, org_id").in("key", keys);
+  q = orgId ? q.or(`org_id.eq.${orgId},org_id.is.null`) : q.is("org_id", null);
+  const { data, error } = await q;
+  if (error) throw error;
+  const byKey = mergeOrgRows((data ?? []) as { key: string; value: unknown; org_id: string | null }[]);
   return {
-    windowHours: NUM(w, BOOKING_ENGINE_DEFAULTS.offer_response_window_hours),
-    offerDigestHour: NUM(o, BOOKING_ENGINE_DEFAULTS.offer_digest_hour_berlin),
-    confirmationDigestHour: NUM(c, BOOKING_ENGINE_DEFAULTS.confirmation_digest_hour_berlin),
+    windowHours: NUM(byKey.get("offer_response_window_hours")?.value, DEFAULT_FLOW_TIMES.windowHours),
+    offerDigestHour: NUM(byKey.get("offer_digest_hour_berlin")?.value, DEFAULT_FLOW_TIMES.offerDigestHour),
+    confirmationDigestHour: NUM(byKey.get("confirmation_digest_hour_berlin")?.value, DEFAULT_FLOW_TIMES.confirmationDigestHour),
   };
 }

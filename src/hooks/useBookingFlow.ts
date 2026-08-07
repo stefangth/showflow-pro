@@ -40,6 +40,7 @@ export function useReferenceField() {
 export function useFlowTimes(orgId: string | null) {
   return useQuery({
     queryKey: ["app-settings", "flow-times", orgId],
+    enabled: !!orgId,
     queryFn: () => fetchFlowTimes(supabase, orgId),
   });
 }
