@@ -1,6 +1,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "@/integrations/supabase/types";
 import { unionSkillIds } from "@/lib/eligibility";
+import type { LadderCoverageInputs } from "@/lib/bookings/setupStatus";
 
 export interface RequiredSkillIds { showSkillIds: string[]; dateSkillIds: string[]; all: string[] }
 
@@ -135,4 +136,42 @@ export async function removeShowDateRequiredSkill(
   const { error } = await client.from("show_date_required_skills")
     .delete().eq("show_date_id", args.showDateId).eq("skill_id", args.skillId);
   if (error) throw error;
+}
+
+/** The raw rows the booking-setup coverage rule needs, in one place so the pure
+ *  `resolveCoverage` stays client-free. `today` is a YYYY-MM-DD cutoff (caller passes
+ *  the local-tz `toDateKey(new Date())`); dates on or after it are "future". */
+export async function fetchLadderCoverageInputs(
+  client: SupabaseClient<Database>,
+  args: { orgId: string; today: string },
+): Promise<LadderCoverageInputs> {
+  const dates = await client
+    .from("show_dates")
+    .select("show_id, city_id")
+    .eq("org_id", args.orgId)
+    .neq("status", "cancelled")
+    .gte("date", args.today);
+  if (dates.error) throw dates.error;
+
+  const showElig = await client
+    .from("show_cast_eligibility")
+    .select("show_id, city_id, cast_id, priority")
+    .eq("org_id", args.orgId)
+    .not("priority", "is", null);
+  if (showElig.error) throw showElig.error;
+
+  const cityPri = await client
+    .from("cast_city_priority")
+    .select("city_id, cast_id, priority")
+    .eq("org_id", args.orgId);
+  if (cityPri.error) throw cityPri.error;
+
+  const dateRows = (dates.data ?? []) as { show_id: string; city_id: string | null }[];
+  const showRows = (showElig.data ?? []) as { show_id: string; city_id: string; cast_id: string; priority: number }[];
+  const cityRows = (cityPri.data ?? []) as { city_id: string; cast_id: string; priority: number }[];
+  return {
+    futurePairs: dateRows.map((r) => ({ showId: r.show_id, cityId: r.city_id })),
+    showPriorities: showRows.map((r) => ({ showId: r.show_id, cityId: r.city_id, castId: r.cast_id, priority: r.priority })),
+    cityPriorities: cityRows.map((r) => ({ cityId: r.city_id, castId: r.cast_id, priority: r.priority })),
+  };
 }

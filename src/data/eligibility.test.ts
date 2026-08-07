@@ -1,11 +1,12 @@
 import { describe, it, expect } from "vitest";
 import { createFakeSupabase } from "@/test/supabaseFake";
+import { asSupabase } from "@/test/castHelpers";
 import {
   fetchRequiredSkillIds, fetchSkillEligibleArtistIds, fetchShowPriorityRows,
   setShowCastPriority, clearShowCastPriority,
   addShowRequiredSkill, removeShowRequiredSkill,
   addShowDateRequiredSkill, removeShowDateRequiredSkill,
-  fetchShowRequiredSkillIds,
+  fetchShowRequiredSkillIds, fetchLadderCoverageInputs,
 } from "./eligibility";
 
 describe("fetchRequiredSkillIds", () => {
@@ -122,5 +123,19 @@ describe("required-skill mutations", () => {
     expect(fake.calls.some((c) => c.table === "show_date_required_skills" && c.method === "delete")).toBe(true);
     expect(fake.calls).toContainEqual({ table: "show_date_required_skills", method: "eq", args: ["show_date_id", "d1"] });
     expect(fake.calls).toContainEqual({ table: "show_date_required_skills", method: "eq", args: ["skill_id", "s1"] });
+  });
+});
+
+describe("fetchLadderCoverageInputs", () => {
+  it("returns future pairs, show priorities, and city priorities", async () => {
+    const client = createFakeSupabase({
+      show_dates: { data: [{ show_id: "s1", city_id: "c1" }, { show_id: "s1", city_id: null }], error: null },
+      show_cast_eligibility: { data: [{ show_id: "s1", city_id: "c1", cast_id: "k1", priority: 1 }], error: null },
+      cast_city_priority: { data: [{ city_id: "c1", cast_id: "k2", priority: 2 }], error: null },
+    });
+    const r = await fetchLadderCoverageInputs(asSupabase(client), { orgId: "org-1", today: "2026-08-07" });
+    expect(r.futurePairs).toEqual([{ showId: "s1", cityId: "c1" }, { showId: "s1", cityId: null }]);
+    expect(r.showPriorities).toEqual([{ showId: "s1", cityId: "c1", castId: "k1", priority: 1 }]);
+    expect(r.cityPriorities).toEqual([{ cityId: "c1", castId: "k2", priority: 2 }]);
   });
 });

@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { createFakeSupabase } from "@/test/supabaseFake";
-import { fetchShowsWithSlots, resolveOrgSetting, upsertOrgSetting, fetchShowsForLinking, linkShowAirtableKey, importShowsFromOptions, mergeOrgRows, fetchBookingFlow, hasOrgSettingRow } from "./settings";
+import { fetchShowsWithSlots, resolveOrgSetting, upsertOrgSetting, fetchShowsForLinking, linkShowAirtableKey, importShowsFromOptions, mergeOrgRows, fetchBookingFlow, hasOrgSettingRow, fetchOwnedSettingKeys, fetchFlowTimes } from "./settings";
 import { BOOKING_FLOW_DEFAULTS, normalizeBookingFlow } from "@/lib/bookingFlow";
 
 describe("fetchShowsWithSlots", () => {
@@ -270,5 +270,26 @@ describe("hasOrgSettingRow", () => {
   it("throws on a supabase error", async () => {
     const fake = createFakeSupabase({ app_settings: { data: null, error: { message: "boom" } } });
     await expect(hasOrgSettingRow(fake as never, "org-1", "k")).rejects.toBeTruthy();
+  });
+});
+
+describe("fetchOwnedSettingKeys", () => {
+  it("returns only the org's own keys among those asked for", async () => {
+    const client = createFakeSupabase({ app_settings: { data: [{ key: "booking_flow" }], error: null } });
+    const owned = await fetchOwnedSettingKeys(client as never, "org-1", ["booking_flow", "offer_digest_hour_berlin"]);
+    expect(owned.has("booking_flow")).toBe(true);
+    expect(owned.has("offer_digest_hour_berlin")).toBe(false);
+  });
+  it("is empty for a null org", async () => {
+    const client = createFakeSupabase({});
+    expect((await fetchOwnedSettingKeys(client as never, null, ["booking_flow"])).size).toBe(0);
+  });
+});
+
+describe("fetchFlowTimes", () => {
+  it("falls back to BOOKING_ENGINE_DEFAULTS when no rows exist", async () => {
+    const client = createFakeSupabase({ app_settings: { data: [], error: null } });
+    const t = await fetchFlowTimes(client as never, "org-1");
+    expect(t).toEqual({ windowHours: 48, offerDigestHour: 19, confirmationDigestHour: 20 });
   });
 });
