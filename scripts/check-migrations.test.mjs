@@ -128,6 +128,16 @@ describe("compareMigrations", () => {
   // A production-side duplicate is a real state the operator has to be told about,
   // not a crash: the same name applied twice under different versions is exactly
   // the drift-shaped incident this script exists to explain.
+  // A duplicated name is already reported under its own heading. Letting it also
+  // land in `orphaned` prints the same name twice under two headings, which is
+  // exactly the noise someone triaging the alert does not need.
+  it("does not also report a duplicated name as orphaned", () => {
+    const applied = [m("20260101000000", "ghost"), m("20260102000000", "ghost")];
+    const result = compareMigrations([], applied);
+    expect(result.duplicated).toEqual([{ name: "ghost", versions: ["20260101000000", "20260102000000"] }]);
+    expect(result.orphaned).toEqual([]);
+  });
+
   it("reports a duplicate applied name instead of throwing", () => {
     const repo = [m("20260101000000", "a")];
     const applied = [m("20260101000000", "a"), m("20260102000000", "a")];

@@ -24,6 +24,19 @@
 --     PR. Grant yourself one locally instead, against your own database only:
 --       insert into public.platform_admins (user_id)
 --       values ('5eed0000-0000-0000-0000-000000000001');
+--   * The ORG ADMIN below is a committed credential on an internet-reachable
+--     preview project, and that is a deliberate, bounded trade rather than an
+--     oversight. An org admin can invite arbitrary addresses, read member
+--     contact details and change org settings, so the reasoning has to hold:
+--       - the repository is private, so the password and the branch project ref
+--         are visible only to people who already have repo access;
+--       - a preview branch holds only the synthetic rows in this file, and is
+--         deleted when its PR closes;
+--       - preview branches carry no function secrets today, so an invite cannot
+--         become real outbound mail.
+--     The third point is the one that can change. If branch-level secrets are
+--     ever configured — a live RESEND_API_KEY above all — this stops being
+--     acceptable: drop the admin row and grant it by hand like the super-admin.
 --   * Dates below are relative to the run date, so the fixture is NOT
 --     reproducible across days. Tests must derive expectations from
 --     `current_date` rather than hard-code a date or a grid position.

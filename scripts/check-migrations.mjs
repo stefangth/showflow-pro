@@ -150,7 +150,12 @@ export function compareMigrations(repoMigrations, appliedMigrations) {
       });
     }
   }
-  const orphaned = appliedMigrations.filter((migration) => !repoByName.has(migration.name));
+  // Skip duplicated names here for the same reason the loop above does: they are
+  // reported under their own heading, and a duplicated name with no repo file
+  // would otherwise print once per applied row under `orphaned` as well.
+  const orphaned = appliedMigrations.filter(
+    (migration) => !repoByName.has(migration.name) && !duplicateNames.has(migration.name)
+  );
 
   return { missing, orphaned, mismatched, duplicated };
 }
