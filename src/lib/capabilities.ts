@@ -59,6 +59,8 @@ export const CAPABILITY_DEFS: CapabilityDef[] = [
   // G. Integrations
   { key: "producer_can_configure_airtable", action: "configure_airtable", role: "producer", group: "Integrations", label: "Configure Airtable sync", description: "Producers can edit the Airtable mapping and keys.", risk: "sensitive", defaultEnabled: false },
   { key: "producer_can_trigger_sync", action: "trigger_sync", role: "producer", group: "Integrations", label: "Trigger a manual sync", description: "Producers can run an on-demand Airtable sync.", risk: "standard", defaultEnabled: false },
+  // H. Email
+  { key: "producer_can_edit_email_templates", action: "edit_email_templates", role: "producer", group: "Email", label: "Edit email templates", description: "Producers can change email copy and branding.", risk: "sensitive", defaultEnabled: false },
 ];
 
 export const CAPABILITY_REGISTRY: Record<string, CapabilityDef> = Object.fromEntries(
