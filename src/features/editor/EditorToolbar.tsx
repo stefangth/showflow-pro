@@ -8,6 +8,7 @@ import { Separator } from '@/components/ui/separator';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { IconTooltip } from '@/components/common/IconTooltip';
 import { useAuth } from '@/features/auth/AuthContext';
+import { cn } from '@/lib/utils';
 import { ROUTES, type AppRole } from '@/config/app.config';
 import { supabase } from '@/integrations/supabase/client';
 import { isOrgSuspended, orgOptionLabel } from '@/lib/orgs';
@@ -235,10 +236,18 @@ export function EditorPageBadge() {
 
 /** Toggle button rendered inside the topbar for admins when editor mode is off. */
 export function EditorModeToggle() {
-  const { roles, isSuperAdmin } = useAuth();
+  const { roles, isSuperAdmin, viewAsRole, viewAsUser } = useAuth();
   const { isEditorMode, enableEditorMode, disableEditorMode } = useEditor();
 
   if (!canUseEditor(roles, isSuperAdmin)) return null;
+
+  // A red pencil is a persistent reminder that the app is being previewed as
+  // someone other than the signed-in user. It stays visible even with the editor
+  // toolbar closed, where the "Viewing as" chip is not — so a super-admin can
+  // never forget they are looking at a gated/limited view rather than their own.
+  const previewingOther =
+    viewAsUser != null || (viewAsRole != null && !roles.includes(viewAsRole));
+  const previewLabel = viewAsUser ? (viewAsUser.email ?? 'another user') : viewAsRole;
 
   return (
     <Tooltip>
@@ -249,14 +258,16 @@ export function EditorModeToggle() {
           className="relative h-8 w-8"
           onClick={isEditorMode ? disableEditorMode : enableEditorMode}
         >
-          <Pencil className="h-4 w-4" />
+          <Pencil className={cn('h-4 w-4', previewingOther && 'text-destructive')} />
           {isEditorMode && (
             <span className="absolute -top-0.5 -right-0.5 h-2 w-2 rounded-full bg-warning ring-2 ring-background" />
           )}
         </Button>
       </TooltipTrigger>
       <TooltipContent side="bottom">
-        {isEditorMode ? 'Exit Editor Mode' : 'Enter Editor Mode'}
+        {previewingOther
+          ? `Viewing as ${previewLabel}. Click to change.`
+          : isEditorMode ? 'Exit Editor Mode' : 'Enter Editor Mode'}
       </TooltipContent>
     </Tooltip>
   );

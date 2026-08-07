@@ -16,7 +16,8 @@ vi.mock("./EditorSidePanel", () => ({ EditorSidePanel: () => null }));
 
 import { useAuth } from "@/features/auth/AuthContext";
 import { useEditor } from "./EditorContext";
-import { EditorToolbar, EditorPageBadge } from "./EditorToolbar";
+import { EditorToolbar, EditorPageBadge, EditorModeToggle } from "./EditorToolbar";
+import { TooltipProvider } from "@/components/ui/tooltip";
 import { MemoryRouter } from "react-router-dom";
 import { ROUTES } from "@/config/app.config";
 
@@ -184,5 +185,43 @@ describe("EditorToolbar access", () => {
     setAuth({ roles: ["producer"] });
     const { container } = renderWithProviders(<EditorToolbar />);
     expect(container.firstChild).toBeNull();
+  });
+});
+
+describe("EditorModeToggle preview indicator", () => {
+  function renderToggle() {
+    return renderWithProviders(
+      <TooltipProvider>
+        <EditorModeToggle />
+      </TooltipProvider>,
+    );
+  }
+
+  it("shades the pencil red when previewing a role other than the login role", () => {
+    setAuth({ roles: ["admin"], viewAsRole: "producer" });
+    const { container } = renderToggle();
+    expect(container.querySelector("svg")).toHaveClass("text-destructive");
+  });
+
+  it("shades the pencil red when previewing as a specific user", () => {
+    setAuth({
+      roles: ["admin"],
+      viewAsRole: null,
+      viewAsUser: { id: "u1", email: "someone@acme.test", roles: ["producer"] },
+    });
+    const { container } = renderToggle();
+    expect(container.querySelector("svg")).toHaveClass("text-destructive");
+  });
+
+  it("leaves the pencil unshaded when viewing as your own role (My Role)", () => {
+    setAuth({ roles: ["admin"], viewAsRole: null });
+    const { container } = renderToggle();
+    expect(container.querySelector("svg")).not.toHaveClass("text-destructive");
+  });
+
+  it("leaves the pencil unshaded when the chosen role equals the login role", () => {
+    setAuth({ roles: ["admin"], viewAsRole: "admin" });
+    const { container } = renderToggle();
+    expect(container.querySelector("svg")).not.toHaveClass("text-destructive");
   });
 });
