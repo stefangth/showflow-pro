@@ -78,7 +78,37 @@ describe("EmailTemplatesTab", () => {
     fetchSettings.mockReturnValueOnce(new Promise(() => {}));
     renderWithProviders(<EmailTemplatesTab readOnly={false} isSuperAdmin={false} />);
 
+    expect(await screen.findByRole("status")).toHaveTextContent("Loading saved email presentation");
     expect(await screen.findByRole("button", { name: /preview immediate offer/i })).toBeDisabled();
+  });
+
+  it("keeps preview disabled after a settings failure and retries the saved presentation read", async () => {
+    fetchSettings
+      .mockRejectedValueOnce(new Error("Settings unavailable"))
+      .mockResolvedValueOnce({
+        copy: { "offer-immediate.subject": "Recovered subject" },
+        theme: { base: { footerText: "Recovered footer" } },
+      });
+    renderWithProviders(<EmailTemplatesTab readOnly={false} isSuperAdmin={false} />);
+
+    const alert = await screen.findByRole("alert");
+    expect(alert).toHaveTextContent("Could not load the saved email presentation");
+    expect(alert).toHaveTextContent("Settings unavailable");
+    expect(screen.getByRole("button", { name: /preview immediate offer/i })).toBeDisabled();
+
+    fireEvent.click(screen.getByRole("button", { name: "Retry" }));
+    const previewButton = screen.getByRole("button", { name: /preview immediate offer/i });
+    await waitFor(() => expect(previewButton).toBeEnabled());
+    fireEvent.click(previewButton);
+
+    await waitFor(() => expect(invoke).toHaveBeenCalledWith("preview-transactional-email", {
+      body: {
+        templateName: "offer-immediate",
+        copyOverride: { "offer-immediate.subject": "Recovered subject" },
+        themeOverride: { base: { footerText: "Recovered footer" } },
+      },
+    }));
+    expect(await screen.findByTitle("Email preview")).toHaveAttribute("srcdoc", "<h1>Saved preview</h1>");
   });
 
   it("uses semantic surface tokens and removes edit actions on the read-only floor", async () => {

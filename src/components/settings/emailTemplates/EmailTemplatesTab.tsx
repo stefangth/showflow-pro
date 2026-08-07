@@ -8,6 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 
 interface EmailTemplatesTabProps {
   readOnly: boolean;
@@ -35,7 +36,7 @@ function statusVariant(status: EmailTemplateCoverage["status"]): "default" | "ne
 export function EmailTemplatesTab({ readOnly, isSuperAdmin }: EmailTemplatesTabProps) {
   const { currentOrg } = useAuth();
   const orgId = currentOrg?.id ?? null;
-  const { data: settings = { copy: {}, theme: {} }, isLoading } = useQuery({
+  const { data: settings, error, isError, isFetching, isLoading, isSuccess, refetch } = useQuery({
     queryKey: ["email-templates", "settings", orgId],
     queryFn: () => fetchEmailTemplateSettings(supabase, orgId),
     enabled: Boolean(orgId),
@@ -47,8 +48,11 @@ export function EmailTemplatesTab({ readOnly, isSuperAdmin }: EmailTemplatesTabP
   const helperText = readOnly
     ? "Preview every transactional email. Your role cannot change email copy or branding."
     : "Preview every transactional email and see the delivery details behind it.";
+  const previewDisabled = !isSuccess || !settings;
+  const settingsError = error instanceof Error ? error.message : "Please try again.";
 
   const handlePreview = async (template: EmailTemplateCoverage) => {
+    if (!settings) return;
     setPreviewOpen(true);
     setPreview({ title: template.displayName, html: "", loading: true });
     try {
@@ -75,7 +79,20 @@ export function EmailTemplatesTab({ readOnly, isSuperAdmin }: EmailTemplatesTabP
           <CardTitle className="font-display">Email templates</CardTitle>
           <CardDescription>{helperText}</CardDescription>
         </CardHeader>
-        <CardContent className="space-y-6">
+        <CardContent className="space-y-6" aria-busy={isFetching}>
+          {isLoading ? (
+            <p role="status" className="text-sm text-muted-foreground">Loading saved email presentation…</p>
+          ) : null}
+          {isError ? (
+            <Alert variant="destructive">
+              <AlertDescription className="flex flex-wrap items-center justify-between gap-3">
+                <span>Could not load the saved email presentation. {settingsError}</span>
+                <Button type="button" variant="outline" size="sm" disabled={isFetching} onClick={() => void refetch()}>
+                  Retry
+                </Button>
+              </AlertDescription>
+            </Alert>
+          ) : null}
           {GROUPS.map((group) => {
             const templates = visibleTemplates.filter((template) => template.group === group);
             return templates.length > 0 ? (
@@ -101,7 +118,7 @@ export function EmailTemplatesTab({ readOnly, isSuperAdmin }: EmailTemplatesTabP
                       <div className="flex items-center gap-2 sm:justify-self-end">
                         <Badge variant={statusVariant(template.status)}>{template.status === "editable" ? "Editable" : template.status === "external" ? "External" : "Internal"}</Badge>
                         {template.status === "editable" ? (
-                          <Button variant="outline" size="sm" aria-label={`Preview ${template.displayName}`} disabled={isLoading} onClick={() => void handlePreview(template)}>
+                          <Button variant="outline" size="sm" aria-label={`Preview ${template.displayName}`} disabled={previewDisabled} onClick={() => void handlePreview(template)}>
                             Preview
                           </Button>
                         ) : null}

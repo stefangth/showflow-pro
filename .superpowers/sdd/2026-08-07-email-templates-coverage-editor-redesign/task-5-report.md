@@ -100,3 +100,71 @@ copy/theme data has loaded.
 - App-surface classes use semantic tokens only.
 - The only concern is the documented full-suite baseline failure above. The
   owner explicitly directed that it remain outside this Task 5 commit.
+
+## Review fix round 1: failed settings read
+
+### RED
+
+Added a real `EmailTemplatesTab` regression test before changing production
+code. The test makes `fetchEmailTemplateSettings` reject, then verifies that
+Preview stays unavailable, an accessible destructive error is announced, and
+Retry restores a preview backed by the recovered saved copy and theme. The
+existing loading test was also strengthened to require an accessible status.
+
+```text
+npx vitest run src/components/settings/emailTemplates/EmailTemplatesTab.test.tsx
+
+7 tests: 5 passed, 2 failed
+- Unable to find role="status"
+- Unable to find role="alert"
+```
+
+The failure DOM also showed Preview enabled after the rejected query, proving
+the reviewed fall-through to empty copy/theme.
+
+### GREEN
+
+The query now keeps `settings` undefined until a successful read and derives
+`previewDisabled` from both `isSuccess` and actual settings data. Loading is
+announced through `role="status"`; read failures render the design-system
+destructive Alert with a Retry button; and `handlePreview` refuses to invoke
+without resolved settings.
+
+```text
+npx vitest run src/components/settings/emailTemplates/EmailTemplatesTab.test.tsx
+7 passed
+
+npx vitest run \
+  src/lib/emailTemplates/coverage.test.ts \
+  src/components/settings/emailTemplates/EmailTemplatesTab.test.tsx \
+  src/components/settings/bookingFlow/BookingFlowTab.test.tsx \
+  src/pages/SettingsPage.test.tsx \
+  src/lib/notificationCategories.test.ts
+5 files passed, 36 tests passed
+
+npx vitest run --reporter=dot --silent
+exit 0
+```
+
+The complete Vitest suite now passes after the separately approved `7296195`
+punctuation correction. That commit is not part of Task 5.
+
+### React and accessibility review
+
+- Query state is read directly during render; no derived-state effect was
+  introduced.
+- No component is defined inside another component.
+- Loading, error, group, action, and dialog branches use explicit ternaries.
+- Retry reuses the one React Query request, so it adds no request waterfall.
+- The UI uses `Card`, `Alert`, and `Button` through direct project imports and
+  semantic design tokens only.
+
+### Fix-round self-review
+
+- Removing the destructuring fallback closes the actual data-integrity gap: a
+  failed read can no longer masquerade as a successful empty configuration.
+- The guard exists both at the button and handler boundaries, so a synthetic
+  click cannot bypass the successful-query requirement.
+- Retry coverage asserts the recovered saved copy/theme at the preview function
+  boundary, not merely that a mocked fetch was called.
+- No Task 4 punctuation file was modified.
