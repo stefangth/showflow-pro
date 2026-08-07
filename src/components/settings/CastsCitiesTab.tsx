@@ -202,14 +202,14 @@ export function CastsCitiesTab({ currentOrgId, canEnter }: { currentOrgId: strin
               <Badge key={c.id} variant="secondary" className="gap-2 py-1.5 pl-3 pr-1">
                 {c.name}
                 <IconTooltip label={`Remove ${c.name}`}>
-                <button
-                  onClick={() => removeCity.mutate(c.id)}
-                  className="rounded hover:bg-background/40 p-0.5 disabled:opacity-50 disabled:pointer-events-none"
-                  aria-label={`Remove ${c.name}`}
-                  disabled={!canDeleteCity}
-                >
-                  <Trash2 className="h-3 w-3" />
-                </button>
+                  <button
+                    onClick={() => removeCity.mutate(c.id)}
+                    className="rounded hover:bg-background/40 p-0.5 disabled:opacity-50 disabled:pointer-events-none"
+                    aria-label={`Remove ${c.name}`}
+                    disabled={!canDeleteCity}
+                  >
+                    <Trash2 className="h-3 w-3" />
+                  </button>
                 </IconTooltip>
               </Badge>
             ))}
@@ -292,14 +292,14 @@ export function CastsCitiesTab({ currentOrgId, canEnter }: { currentOrgId: strin
                             </Badge>
                             <span className="text-sm flex-1">{cast?.name ?? '–'}</span>
                             <IconTooltip label="Remove assignment">
-                            <button
-                              onClick={() => deleteCastPriority.mutate(a.id)}
-                              className="rounded hover:bg-muted p-0.5 text-muted-foreground hover:text-destructive disabled:opacity-50 disabled:pointer-events-none"
-                              aria-label="Remove assignment"
-                              disabled={!canManage}
-                            >
-                              <Trash2 className="h-3.5 w-3.5" />
-                            </button>
+                              <button
+                                onClick={() => deleteCastPriority.mutate(a.id)}
+                                className="rounded hover:bg-muted p-0.5 text-muted-foreground hover:text-destructive disabled:opacity-50 disabled:pointer-events-none"
+                                aria-label="Remove assignment"
+                                disabled={!canManage}
+                              >
+                                <Trash2 className="h-3.5 w-3.5" />
+                              </button>
                             </IconTooltip>
                           </div>
                         );

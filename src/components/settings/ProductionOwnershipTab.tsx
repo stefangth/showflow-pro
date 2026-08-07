@@ -200,14 +200,14 @@ export function ProductionOwnershipTab({ currentOrgId, canEnter }: Props) {
                       {a.sub_program && a.city_id ? 'Exact' : a.city_id ? 'City' : a.sub_program ? 'Sub' : 'Program'}
                     </Badge>
                     <IconTooltip label="Remove assignment">
-                    <button
-                      onClick={() => deleteAssignment.mutate(a.id)}
-                      className="p-0.5 rounded hover:bg-muted text-muted-foreground hover:text-destructive disabled:opacity-50 disabled:pointer-events-none"
-                      aria-label="Remove assignment"
-                      disabled={!canManage}
-                    >
-                      <Trash2 className="h-3.5 w-3.5" />
-                    </button>
+                      <button
+                        onClick={() => deleteAssignment.mutate(a.id)}
+                        className="p-0.5 rounded hover:bg-muted text-muted-foreground hover:text-destructive disabled:opacity-50 disabled:pointer-events-none"
+                        aria-label="Remove assignment"
+                        disabled={!canManage}
+                      >
+                        <Trash2 className="h-3.5 w-3.5" />
+                      </button>
                     </IconTooltip>
                   </div>
                 );

@@ -34,15 +34,15 @@ export function RequiredSkillsSection({ skills, showSkillIds, dateSkillIds, onAd
           <Badge key={id} variant="outline" className="gap-1">
             {byId.get(id) ?? id}
             <IconTooltip label={`Remove ${byId.get(id) ?? id}`}>
-            <button
-              type="button"
-              aria-label={`Remove ${byId.get(id) ?? id}`}
-              disabled={pending}
-              onClick={() => onRemove(id)}
-              className="ml-0.5 hover:text-destructive"
-            >
-              <X className="h-3 w-3" />
-            </button>
+              <button
+                type="button"
+                aria-label={`Remove ${byId.get(id) ?? id}`}
+                disabled={pending}
+                onClick={() => onRemove(id)}
+                className="ml-0.5 hover:text-destructive"
+              >
+                <X className="h-3 w-3" />
+              </button>
             </IconTooltip>
           </Badge>
         ))}

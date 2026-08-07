@@ -432,13 +432,13 @@ function ArtistAvailability() {
                   </span>
                   <span className="flex-1 text-muted-foreground">{b.reason ?? '—'}</span>
                   <IconTooltip label="Remove block">
-                  <button
-                    onClick={() => removeBlock.mutate(b.id)}
-                    className="p-0.5 rounded hover:bg-muted text-muted-foreground hover:text-destructive"
-                    aria-label="Remove block"
-                  >
-                    <Trash2 className="h-3.5 w-3.5" />
-                  </button>
+                    <button
+                      onClick={() => removeBlock.mutate(b.id)}
+                      className="p-0.5 rounded hover:bg-muted text-muted-foreground hover:text-destructive"
+                      aria-label="Remove block"
+                    >
+                      <Trash2 className="h-3.5 w-3.5" />
+                    </button>
                   </IconTooltip>
                 </div>
               ))}

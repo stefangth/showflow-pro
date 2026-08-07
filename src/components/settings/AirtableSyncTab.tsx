@@ -903,7 +903,7 @@ export function AirtableSyncTab({ orgId, readOnly = false, canTriggerSync = true
                   </SelectContent>
                 </Select>
                 <IconTooltip label={`Remove ${d.label}`}>
-                  <Button size="sm" variant="ghost" onClick={() => removeCustom.mutate(d.id)} disabled={readOnly || removeCustom.isPending} aria-label={`remove ${d.label}`}>
+                  <Button size="sm" variant="ghost" onClick={() => removeCustom.mutate(d.id)} disabled={readOnly || removeCustom.isPending} aria-label={`Remove ${d.label}`}>
                     <Trash2 className="h-4 w-4" />
                   </Button>
                 </IconTooltip>
