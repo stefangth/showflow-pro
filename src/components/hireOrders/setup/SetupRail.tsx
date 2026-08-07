@@ -41,7 +41,7 @@ const HINTS: Record<SetupStepKey, { todo: string; done: string }> = {
  * writes through the same data path as the Settings cards.
  */
 export function SetupRail({ orgId }: { orgId: string | null }) {
-  const visible = useSetupRailVisible(orgId);
+  const { visible } = useSetupRailVisible(orgId);
   const canEditSettings = useCan("edit_hire_order_settings");
   const { status } = useHireOrderSetupStatus(orgId);
   const [, dismiss] = useRailDismissed("hireOrderSetup", orgId);

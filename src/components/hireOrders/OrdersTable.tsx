@@ -4,17 +4,33 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import { HireOrderStatusBadge } from "@/components/hireOrders/HireOrderStatusBadge";
 import { BatchIssuePreflightDialog, type BatchPreflightOrder } from "./BatchIssuePreflightDialog";
 import { formatMoney } from "@/lib/hireOrders/money";
-import { formatDateDMY } from "@/lib/dates";
+import { formatDateDMY, isPastDate, pastRowClassName } from "@/lib/dates";
+import { orderDate } from "@/lib/hireOrders/orderDate";
+import { cn } from "@/lib/utils";
 import type { OrderData } from "@/lib/hireOrders/types";
 import { useHireOrderAction, type IssueResult } from "@/hooks/useHireOrders";
-import type { HireOrderListRow } from "@/data/hireOrders";
+import type { HireOrderListRow, HireOrderStatus } from "@/data/hireOrders";
 
 /** Only draft/ready orders can be batch-issued. */
 function isIssuable(status: string): boolean {
   return status === "draft" || status === "ready";
+}
+
+/** Statuses that still owe the artist a signed order. Neither countersigned
+ *  (already done) nor void (a dead order is never "outstanding") belong here. */
+const OUTSTANDING_STATUSES: ReadonlySet<HireOrderStatus> = new Set(["draft", "ready", "issued"]);
+
+/** An order is overdue when its engagement date (via the shared `orderDate()`
+ *  -- the same date the timeframe filter and the past tint key on) has
+ *  already passed while the order is still outstanding (not countersigned,
+ *  not cancelled/void). A countersigned or void order is never overdue: the
+ *  paperwork is either done or moot. */
+function isOverdue(o: HireOrderListRow, rowDate: Date | null): boolean {
+  return !!rowDate && isPastDate(rowDate) && OUTSTANDING_STATUSES.has(o.status);
 }
 
 interface Props {
@@ -148,10 +164,12 @@ export function OrdersTable({ orders, orgId, onRowClick }: Props) {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {orders.map((o) => (
+              {orders.map((o) => {
+                const rowDate = orderDate(o);
+                return (
                 <TableRow
                   key={o.id}
-                  className="cursor-pointer"
+                  className={cn('cursor-pointer', pastRowClassName(rowDate))}
                   onClick={() => onRowClick(o.id)}
                   role="button"
                   tabIndex={0}
@@ -180,12 +198,18 @@ export function OrdersTable({ orders, orgId, onRowClick }: Props) {
                   <TableCell className="text-right font-mono tabular-nums text-sm">
                     {o.fee_amount != null ? formatMoney(o.fee_amount, o.fee_currency) : "Not set"}
                   </TableCell>
-                  <TableCell><HireOrderStatusBadge status={o.status} /></TableCell>
+                  <TableCell>
+                    <div className="flex items-center gap-1.5">
+                      <HireOrderStatusBadge status={o.status} />
+                      {isOverdue(o, rowDate) && <Badge variant="risk">Overdue</Badge>}
+                    </div>
+                  </TableCell>
                   <TableCell>
                     <ChevronRight className="h-4 w-4 text-muted-foreground" aria-hidden="true" />
                   </TableCell>
                 </TableRow>
-              ))}
+                );
+              })}
               {orders.length === 0 && (
                 <TableRow>
                   <TableCell colSpan={7} className="py-12 text-center text-muted-foreground">

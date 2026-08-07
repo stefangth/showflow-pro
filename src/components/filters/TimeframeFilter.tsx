@@ -18,6 +18,7 @@ interface Props {
 const presets = (): { label: string; key: string; range: () => { from: Date; to: Date } }[] => {
   const today = startOfDay(new Date());
   return [
+    { label: 'Upcoming', key: 'upcoming', range: () => ({ from: today, to: addDays(today, 3650) }) },
     { label: 'Today', key: 'today', range: () => ({ from: today, to: today }) },
     { label: 'This week', key: 'week', range: () => ({ from: startOfWeek(today, { weekStartsOn: 1 }), to: endOfWeek(today, { weekStartsOn: 1 }) }) },
     { label: 'This month', key: 'month', range: () => ({ from: startOfMonth(today), to: endOfMonth(today) }) },
@@ -26,6 +27,15 @@ const presets = (): { label: string; key: string; range: () => { from: Date; to:
     { label: 'Past', key: 'past', range: () => ({ from: addDays(today, -3650), to: addDays(today, -1) }) },
   ];
 };
+
+/** The "Upcoming" preset's value, computed at call time (not module load) — the
+ *  default timeframe for artist/producer date surfaces (past hidden, one click away).
+ *  Co-located with `TimeframeFilter` (the preset it mirrors) rather than `filterUtils.ts`. */
+// eslint-disable-next-line react-refresh/only-export-components -- pure factory, not a component; kept beside the preset list it mirrors.
+export function upcomingTimeframe(): TimeframeValue {
+  const today = startOfDay(new Date());
+  return { from: today, to: addDays(today, 3650), preset: 'upcoming' };
+}
 
 export function TimeframeFilter({ value, onChange, className }: Props) {
   const [open, setOpen] = useState(false);

@@ -1,9 +1,16 @@
 import { describe, it, expect } from "vitest";
 import { createFakeSupabase } from "@/test/supabaseFake";
 import { anArtist } from "@/test/fixtures";
-import { fetchMyArtist, fetchMyCancelledDateBookings, mergeArtistCancelledDates, fetchPendingInvitedArtistIds } from "./artists";
+import {
+  fetchMyArtist,
+  fetchMyCancelledDateBookings,
+  mergeArtistCancelledDates,
+  fetchPendingInvitedArtistIds,
+  fetchMyActiveBookedDates,
+  mergeArtistActiveBookedDates,
+} from "./artists";
 import { partialMock } from "@/test/castHelpers";
-import type { CancelledDateEntry } from "./artists";
+import type { CancelledDateEntry, ActiveBookedDateEntry } from "./artists";
 
 describe("fetchMyArtist", () => {
   it("queries the artists table by user_id and returns the row", async () => {
@@ -66,6 +73,104 @@ describe("fetchMyCancelledDateBookings", () => {
   });
 });
 
+describe("fetchMyActiveBookedDates", () => {
+  it("selects this artist's non-cancelled bookings joined to their show_date", async () => {
+    const row = {
+      show_date_id: "d1",
+      status: "soft_booked",
+      is_understudy: false,
+      show_date: {
+        id: "d1",
+        date: "2026-01-01", // in the past relative to "today" in the app
+        venue: "Hall",
+        session_1: "19:00:00",
+        session_2: null,
+        session_3: null,
+        show: { program: "X", sub_program: null },
+      },
+    };
+    const fake = createFakeSupabase({ bookings: { data: [row], error: null } });
+    const res = await fetchMyActiveBookedDates(fake as never, "a1");
+    expect(fake.calls).toContainEqual({ table: "bookings", method: "eq", args: ["artist_id", "a1"] });
+    expect(fake.calls).toContainEqual({ table: "bookings", method: "neq", args: ["status", "cancelled"] });
+    expect(res).toEqual([
+      {
+        id: "d1",
+        date: "2026-01-01",
+        venue: "Hall",
+        session_1: "19:00:00",
+        session_2: null,
+        session_3: null,
+        status: "soft_booked",
+        is_understudy: false,
+        kind: "active-booked",
+        show: { program: "X", sub_program: null },
+      },
+    ]);
+  });
+
+  it("tags every row with kind: 'active-booked' -- the explicit discriminant ArtistBookingsView's three-way row guard keys on", async () => {
+    const fake = createFakeSupabase({
+      bookings: {
+        data: [
+          {
+            show_date_id: "d1",
+            status: "confirmed",
+            is_understudy: false,
+            show_date: { id: "d1", date: "2026-03-01", venue: null, session_1: null, session_2: null, session_3: null, show: null },
+          },
+        ],
+        error: null,
+      },
+    });
+    const res = await fetchMyActiveBookedDates(fake as never, "a1");
+    expect(res[0].kind).toBe("active-booked");
+  });
+
+  it("carries is_understudy through for an understudy booking", async () => {
+    const fake = createFakeSupabase({
+      bookings: {
+        data: [
+          {
+            show_date_id: "d2",
+            status: "confirmed",
+            is_understudy: true,
+            show_date: {
+              id: "d2",
+              date: "2026-02-02",
+              venue: null,
+              session_1: null,
+              session_2: null,
+              session_3: null,
+              show: null,
+            },
+          },
+        ],
+        error: null,
+      },
+    });
+    const res = await fetchMyActiveBookedDates(fake as never, "a1");
+    expect(res[0].is_understudy).toBe(true);
+    expect(res[0].status).toBe("confirmed");
+    expect(res[0].show).toBeNull();
+  });
+
+  it("drops rows whose joined show_date is missing", async () => {
+    const fake = createFakeSupabase({
+      bookings: {
+        data: [{ show_date_id: "d1", status: "suggested", is_understudy: false, show_date: null }],
+        error: null,
+      },
+    });
+    expect(await fetchMyActiveBookedDates(fake as never, "a1")).toHaveLength(0);
+  });
+
+  it("throws when the query errors", async () => {
+    const fake = createFakeSupabase({ bookings: { data: null, error: { message: "boom" } } });
+    await expect(fetchMyActiveBookedDates(fake as never, "a1")).rejects.toBeTruthy();
+  });
+});
+
 describe("mergeArtistCancelledDates", () => {
   it("appends cancelled entries not already present", () => {
     const merged = mergeArtistCancelledDates([{ id: "d2" }], [partialMock<CancelledDateEntry>({ id: "d1", status: "cancelled" })]);
@@ -73,6 +178,25 @@ describe("mergeArtistCancelledDates", () => {
   });
   it("does not duplicate a date already eligible", () => {
     expect(mergeArtistCancelledDates([{ id: "d1" }], [partialMock<CancelledDateEntry>({ id: "d1", status: "cancelled" })])).toHaveLength(1);
+  });
+});
+
+describe("mergeArtistActiveBookedDates", () => {
+  it("appends active-booked entries not already present (e.g. a past soft_booked booking outside the eligible-dates window)", () => {
+    const merged = mergeArtistActiveBookedDates(
+      [{ id: "d2" }],
+      [partialMock<ActiveBookedDateEntry>({ id: "d1", status: "soft_booked", is_understudy: false })],
+    );
+    expect(merged.map((d) => d.id).sort()).toEqual(["d1", "d2"]);
+  });
+
+  it("does not duplicate a date already present in the eligible/base list", () => {
+    expect(
+      mergeArtistActiveBookedDates(
+        [{ id: "d1" }],
+        [partialMock<ActiveBookedDateEntry>({ id: "d1", status: "confirmed", is_understudy: false })],
+      ),
+    ).toHaveLength(1);
   });
 });
 

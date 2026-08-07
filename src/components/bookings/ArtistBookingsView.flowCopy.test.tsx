@@ -17,7 +17,7 @@ import { BOOKING_FLOW_DEFAULTS, applyPreset, type BookingFlow } from "@/lib/book
 const ELIGIBLE = [
   {
     id: "d1",
-    date: "2099-08-10",
+    date: "2028-08-10",
     session_1: "19:00",
     session_2: null,
     session_3: null,
@@ -30,7 +30,7 @@ const ELIGIBLE = [
   },
   {
     id: "d2",
-    date: "2099-08-11",
+    date: "2028-08-11",
     session_1: "19:00",
     session_2: null,
     session_3: null,
@@ -48,15 +48,27 @@ vi.mock("@/integrations/supabase/client", () => ({ supabase: client }));
 Object.assign(
   client,
   createFakeSupabase({
-    // Backs both ArtistBookingsView's own `myBookings` query and the
-    // fetchMyCancelledDateBookings query (both read the `bookings` table).
-    // The cancelled-entries query's rows lack a `show_date` field so it
-    // resolves to an empty cancelled list, which is what we want here.
+    // Backs both fetchMyCancelledDateBookings and fetchMyActiveBookedDates
+    // (both read the `bookings` table; the dedicated `myBookings` query this
+    // view used to run in parallel was removed -- Plan B Task 5). The row's
+    // `show_date` join is required for fetchMyActiveBookedDates to resolve it
+    // at all (it drops any row with no joined show_date), which is what makes
+    // d1's "confirmed" status reach `bookingByDateId` below. Its `show_date`
+    // carries no `status` field, so fetchMyCancelledDateBookings (which only
+    // keeps rows whose joined show_date.status is "cancelled") still resolves
+    // to an empty cancelled list, same as before this join was added.
     bookings: [
       {
         when: { artist_id: "artist-1" },
         data: [
-          { id: "bk-1", artist_id: "artist-1", show_date_id: "d1", status: "confirmed", is_understudy: false },
+          {
+            id: "bk-1", artist_id: "artist-1", show_date_id: "d1", status: "confirmed", is_understudy: false,
+            show_date: {
+              id: "d1", date: "2028-08-10", venue: "Stage 1",
+              session_1: "19:00", session_2: null, session_3: null,
+              show: { program: "Show A", sub_program: null },
+            },
+          },
         ],
         error: null,
       },

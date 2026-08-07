@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { Search } from "lucide-react";
+import { ListChecks, Search } from "lucide-react";
 import { Link } from "react-router-dom";
 import { useAuth } from "@/features/auth/AuthContext";
 import { useEntitlements, useModuleGate } from "@/hooks/useEntitlements";
@@ -12,13 +12,19 @@ import { NewOrderWizard } from "@/components/hireOrders/NewOrderWizard";
 import { HireOrderImportDialog } from "@/components/hireOrders/import/HireOrderImportDialog";
 import { SetupRail } from "@/components/hireOrders/setup/SetupRail";
 import { useSetupRailVisible } from "@/components/hireOrders/setup/useSetupRailVisible";
+import { useHireOrderSetupStatus } from "@/hooks/useHireOrderSetup";
+import { useRailDismissed } from "@/components/setup/useRailDismissed";
 import { FeatureOffBanner } from "@/components/layout/FeatureOffBanner";
 import { Button } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Skeleton } from "@/components/ui/skeleton";
+import { TimeframeFilter, type TimeframeValue } from "@/components/filters/TimeframeFilter";
+import { inTimeframe } from "@/components/filters/filterUtils";
+import { orderDate } from "@/lib/hireOrders/orderDate";
 import type { HireOrderStatus } from "@/data/hireOrders";
 import { ROUTES } from "@/config/app.config";
-import { cn } from "@/lib/utils";
 
 /** The spreadsheet-import wizard shipped in Task 5. */
 const IMPORT_READY = true;
@@ -73,6 +79,12 @@ export default function HireOrdersPage() {
   const entitledForWrites = features.has("hire_orders");
 
   const [statusChip, setStatusChip] = useState<StatusChip>("all");
+  // Defaults to All time (not the Upcoming preset the sibling booking surfaces
+  // use): unlike a show date, a hire order stays actionable after its
+  // engagement date passes (issue, countersign, chase an Overdue one), so
+  // hiding past orders by default would hide exactly the ones most likely to
+  // need attention.
+  const [timeframe, setTimeframe] = useState<TimeframeValue>({ from: null, to: null });
   const [search, setSearch] = useState("");
   // The input itself stays controlled by `search` on every keystroke so
   // typing feels instant; only the value that drives the query is debounced,
@@ -94,7 +106,21 @@ export default function HireOrdersPage() {
     () => ({ status: chipToStatusFilter(statusChip), search: debouncedSearch.trim() || undefined }),
     [statusChip, debouncedSearch],
   );
-  const { data: filteredOrders = [], isLoading } = useHireOrders(orgId, filters);
+  const { data: statusSearchFilteredOrders = [], isLoading } = useHireOrders(orgId, filters);
+  // Timeframe is a client-side pass over the status/search-filtered set, by
+  // the order's date -- the linked show_date's date, or (for a manual order
+  // with no linked show_date) its own snapshot `data.date` via orderDate().
+  // An order with neither (shouldn't normally happen -- every order
+  // snapshots a date one way or the other) is never hidden by this filter
+  // rather than silently dropped.
+  const filteredOrders = useMemo(
+    () =>
+      statusSearchFilteredOrders.filter((o) => {
+        const d = orderDate(o);
+        return d ? inTimeframe(d, timeframe) : true;
+      }),
+    [statusSearchFilteredOrders, timeframe],
+  );
 
   // Nothing here can be actioned while the module is off, so don't read for it.
   const { data: ready } = useDatesReadyForHireOrder(featureOn ? orgId : null);
@@ -112,8 +138,20 @@ export default function HireOrdersPage() {
   // the gate that keeps an interactive setup checklist off a page already showing
   // "changes cannot be saved", and it should not depend on another module's
   // null-handling to hold.
-  const setupRailVisible = useSetupRailVisible(entitledForWrites ? orgId : null);
+  //
+  // `visible` drives the inline callout, `reinvocable` drives the header button
+  // (Plan B Task 3's re-invoke) -- both read off the SAME hook and the same inputs, so
+  // the header button can never offer to reopen a rail that would render nothing
+  // actionable (the divergence a separately-computed `dismissed && !complete` used to
+  // allow, e.g. for a producer once nothing blocks issuing).
+  const { visible: setupRailVisible, reinvocable: setupReinvocable } = useSetupRailVisible(
+    entitledForWrites ? orgId : null,
+  );
   const showSetupRail = entitledForWrites && setupRailVisible;
+  const showSetupReinvoke = entitledForWrites && setupReinvocable;
+  const [, , undismissSetup] = useRailDismissed("hireOrderSetup", entitledForWrites ? orgId : null);
+  const { status: hireOrderSetupStatus } = useHireOrderSetupStatus(entitledForWrites ? orgId : null);
+  const [setupSheetOpen, setSetupSheetOpen] = useState(false);
 
   const stats = computeOrderKpis(allOrders);
   const selectedOrder =
@@ -135,6 +173,16 @@ export default function HireOrdersPage() {
           </p>
         </div>
         <div className="flex items-center gap-2">
+          {showSetupReinvoke && (
+            <Button
+              variant="outline"
+              className="gap-1.5"
+              onClick={() => { undismissSetup(); setSetupSheetOpen(true); }}
+            >
+              <ListChecks className="h-4 w-4" />
+              Setup checklist
+            </Button>
+          )}
           {IMPORT_READY && (
             <Button variant="outline" disabled={!featureOn} onClick={() => setImportOpen(true)}>
               Import from spreadsheet
@@ -148,60 +196,85 @@ export default function HireOrdersPage() {
 
       <OrdersKpis orders={allOrders} />
 
-      <div
-        data-testid="orders-layout"
-        className={cn("grid gap-5", showSetupRail && "lg:grid-cols-[1fr_340px] lg:items-start")}
-      >
-        <div className="min-w-0 space-y-4">
-          <div className="flex flex-wrap items-center gap-3">
-            <div className="flex items-center gap-1.5">
-              {STATUS_CHIPS.map((chip) => (
-                <Button
-                  key={chip.value}
-                  size="sm"
-                  variant={statusChip === chip.value ? "default" : "outline"}
-                  onClick={() => setStatusChip(chip.value)}
-                >
-                  {chip.label}
-                </Button>
-              ))}
+      {/* Uncramped from a fixed 340px side column (Task 3): a full-width callout
+          that opens the checklist in a Sheet, so the table below always gets
+          the full page width. */}
+      {showSetupRail && (
+        <Card className="border-dashed">
+          <CardContent className="flex flex-wrap items-center justify-between gap-3 py-4">
+            <div>
+              <p className="font-display text-sm font-semibold">Get hire orders ready</p>
+              <p className="text-xs text-muted-foreground">
+                {hireOrderSetupStatus.doneCount} of {hireOrderSetupStatus.totalCount} steps done. Only needed before the first order goes out.
+              </p>
             </div>
-            <div className="relative min-w-[200px] max-w-md flex-1">
-              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-              <Input
-                placeholder="Search order number or artist"
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                className="pl-10"
-              />
-            </div>
+            <Button size="sm" variant="outline" onClick={() => setSetupSheetOpen(true)}>
+              Open checklist
+            </Button>
+          </CardContent>
+        </Card>
+      )}
+
+      <div data-testid="orders-layout" className="space-y-4">
+        <div className="flex flex-wrap items-center gap-3">
+          <div className="flex items-center gap-1.5">
+            {STATUS_CHIPS.map((chip) => (
+              <Button
+                key={chip.value}
+                size="sm"
+                variant={statusChip === chip.value ? "default" : "outline"}
+                onClick={() => setStatusChip(chip.value)}
+              >
+                {chip.label}
+              </Button>
+            ))}
           </div>
-
-          {!orgId ? (
-            <p className="py-12 text-center text-muted-foreground">Select an organization to view hire orders.</p>
-          ) : isLoading ? (
-            <div className="space-y-2">
-              {[1, 2, 3].map((i) => <Skeleton key={i} className="h-12" />)}
-            </div>
-          ) : (
-            <OrdersTable orders={filteredOrders} orgId={orgId} onRowClick={setSlideOverId} />
-          )}
-
-          {noOrdersYet && readyCount > 0 && (
-            <p className="text-xs text-muted-foreground">
-              {readyCount} {readyCount === 1 ? "date is" : "dates are"} fully cast and ready for an order.{" "}
-              {/* text-primary, not the accent-600 stop: the numbered accent stops are
-                  immutable across modes and pair with an accent background, so bare on
-                  a card this link sat near 2.3:1 in dark. */}
-              <Link to={ROUTES.BOOKINGS} className="text-primary underline-offset-2 hover:underline">
-                Generate from Shows and bookings
-              </Link>
-              , or use New order above.
-            </p>
-          )}
+          <div className="relative min-w-[200px] max-w-md flex-1">
+            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+            <Input
+              placeholder="Search order number or artist"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              className="pl-10"
+            />
+          </div>
+          <TimeframeFilter value={timeframe} onChange={setTimeframe} />
         </div>
-        {showSetupRail && <SetupRail orgId={orgId} />}
+
+        {!orgId ? (
+          <p className="py-12 text-center text-muted-foreground">Select an organization to view hire orders.</p>
+        ) : isLoading ? (
+          <div className="space-y-2">
+            {[1, 2, 3].map((i) => <Skeleton key={i} className="h-12" />)}
+          </div>
+        ) : (
+          <OrdersTable orders={filteredOrders} orgId={orgId} onRowClick={setSlideOverId} />
+        )}
+
+        {noOrdersYet && readyCount > 0 && (
+          <p className="text-xs text-muted-foreground">
+            {readyCount} {readyCount === 1 ? "date is" : "dates are"} fully cast and ready for an order.{" "}
+            {/* text-primary, not the accent-600 stop: the numbered accent stops are
+                immutable across modes and pair with an accent background, so bare on
+                a card this link sat near 2.3:1 in dark. */}
+            <Link to={ROUTES.BOOKINGS} className="text-primary underline-offset-2 hover:underline">
+              Generate from Shows and bookings
+            </Link>
+            , or use New order above.
+          </p>
+        )}
       </div>
+
+      <Sheet open={setupSheetOpen} onOpenChange={setSetupSheetOpen}>
+        <SheetContent side="right" className="w-full overflow-y-auto sm:max-w-2xl">
+          <SheetHeader className="text-left">
+            <SheetTitle className="font-display text-base">Setup checklist</SheetTitle>
+          </SheetHeader>
+          <div className="mt-4">
+            <SetupRail orgId={entitledForWrites ? orgId : null} />
+          </div>
+        </SheetContent>
+      </Sheet>
 
       <OrderSlideOver
         order={selectedOrder}

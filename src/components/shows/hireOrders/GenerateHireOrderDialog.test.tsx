@@ -91,6 +91,13 @@ describe("GenerateHireOrderDialog", () => {
     expect(screen.getByRole("radio", { name: "Full" })).toBeInTheDocument();
   });
 
+  // Plan B Task 3: widened from sm:max-w-lg alongside the rest of the setup-rail
+  // uncramp work.
+  it("renders at the wider xl dialog width", () => {
+    renderDialog();
+    expect(screen.getByRole("dialog").className).toContain("sm:max-w-xl");
+  });
+
   it("renders one radio per org template, labelled by name, checked by the order's stored id", async () => {
     seedClient({
       hire_orders: { data: [], error: null },

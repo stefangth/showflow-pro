@@ -76,6 +76,112 @@ describe("OrdersTable keyboard access", () => {
   });
 });
 
+describe("OrdersTable — past-date row tint (Plan B Task 2)", () => {
+  it("tints a row whose show_date is in the past with PAST_DATE_TINT, and leaves a future row untinted", () => {
+    const orders = [
+      order({ id: "ho-past", order_no: "HO-PAST-1", show_dates: { date: "2020-01-01", venue: "Old Hall" } }),
+      order({ id: "ho-future", order_no: "HO-FUTURE-1", show_dates: { date: "2099-01-01", venue: "New Hall" } }),
+    ];
+    renderWithProviders(<OrdersTable orders={orders} orgId="org-1" onRowClick={() => {}} />);
+
+    const pastRow = screen.getByText("HO-PAST-1").closest("tr")!;
+    const futureRow = screen.getByText("HO-FUTURE-1").closest("tr")!;
+    expect(pastRow.className).toMatch(/opacity-60/);
+    expect(pastRow.className).not.toMatch(/pointer-events-none/);
+    expect(futureRow.className).not.toMatch(/opacity-60/);
+  });
+
+  it("keeps a past-dated row clickable", () => {
+    const onRowClick = vi.fn();
+    const orders = [order({ id: "ho-past", order_no: "HO-PAST-1", show_dates: { date: "2020-01-01", venue: "Old Hall" } })];
+    renderWithProviders(<OrdersTable orders={orders} orgId="org-1" onRowClick={onRowClick} />);
+
+    fireEvent.click(screen.getByText("HO-PAST-1"));
+    expect(onRowClick).toHaveBeenCalledWith("ho-past");
+  });
+
+  // A manual order with no linked show_date carries its date in `data.date`
+  // (a resolved snapshot field, source "manual") instead of `show_dates.date`.
+  it("tints a past manual order that has no linked show_date, falling back to its own data.date", () => {
+    const orders = [
+      order({
+        id: "ho-manual-past", order_no: "HO-MANUAL-PAST-1",
+        show_dates: null,
+        data: { date: { value: "2020-01-01", source: "manual" } },
+      }),
+      order({
+        id: "ho-manual-future", order_no: "HO-MANUAL-FUTURE-1",
+        show_dates: null,
+        data: { date: { value: "2099-01-01", source: "manual" } },
+      }),
+    ];
+    renderWithProviders(<OrdersTable orders={orders} orgId="org-1" onRowClick={() => {}} />);
+
+    const pastRow = screen.getByText("HO-MANUAL-PAST-1").closest("tr")!;
+    const futureRow = screen.getByText("HO-MANUAL-FUTURE-1").closest("tr")!;
+    expect(pastRow.className).toMatch(/opacity-60/);
+    expect(pastRow.className).not.toMatch(/pointer-events-none/);
+    expect(futureRow.className).not.toMatch(/opacity-60/);
+  });
+
+  it("keeps a past manual (no linked show_date) row clickable", () => {
+    const onRowClick = vi.fn();
+    const orders = [
+      order({
+        id: "ho-manual-past", order_no: "HO-MANUAL-PAST-1",
+        show_dates: null,
+        data: { date: { value: "2020-01-01", source: "manual" } },
+      }),
+    ];
+    renderWithProviders(<OrdersTable orders={orders} orgId="org-1" onRowClick={onRowClick} />);
+
+    fireEvent.click(screen.getByText("HO-MANUAL-PAST-1"));
+    expect(onRowClick).toHaveBeenCalledWith("ho-manual-past");
+  });
+});
+
+describe("OrdersTable — Overdue indicator (Plan B fix wave)", () => {
+  it("shows Overdue next to the status badge for a past-dated issued order", () => {
+    const orders = [
+      order({ id: "ho-1", order_no: "HO-OVERDUE-1", status: "issued", show_dates: { date: "2020-01-01", venue: "Old Hall" } }),
+    ];
+    renderWithProviders(<OrdersTable orders={orders} orgId="org-1" onRowClick={() => {}} />);
+    expect(screen.getByText("Overdue")).toBeInTheDocument();
+  });
+
+  it("does not show Overdue for a past-dated but countersigned order", () => {
+    const orders = [
+      order({ id: "ho-1", order_no: "HO-DONE-1", status: "countersigned", show_dates: { date: "2020-01-01", venue: "Old Hall" } }),
+    ];
+    renderWithProviders(<OrdersTable orders={orders} orgId="org-1" onRowClick={() => {}} />);
+    expect(screen.queryByText("Overdue")).not.toBeInTheDocument();
+  });
+
+  it("does not show Overdue for an upcoming issued order", () => {
+    const orders = [
+      order({ id: "ho-1", order_no: "HO-FUTURE-1", status: "issued", show_dates: { date: "2099-01-01", venue: "New Hall" } }),
+    ];
+    renderWithProviders(<OrdersTable orders={orders} orgId="org-1" onRowClick={() => {}} />);
+    expect(screen.queryByText("Overdue")).not.toBeInTheDocument();
+  });
+
+  it("shows Overdue for a past-dated draft order (also an outstanding status)", () => {
+    const orders = [
+      order({ id: "ho-1", order_no: "HO-DRAFT-1", status: "draft", show_dates: { date: "2020-01-01", venue: "Old Hall" } }),
+    ];
+    renderWithProviders(<OrdersTable orders={orders} orgId="org-1" onRowClick={() => {}} />);
+    expect(screen.getByText("Overdue")).toBeInTheDocument();
+  });
+
+  it("does not show Overdue for a past-dated void order", () => {
+    const orders = [
+      order({ id: "ho-1", order_no: "HO-VOID-1", status: "void", show_dates: { date: "2020-01-01", venue: "Old Hall" } }),
+    ];
+    renderWithProviders(<OrdersTable orders={orders} orgId="org-1" onRowClick={() => {}} />);
+    expect(screen.queryByText("Overdue")).not.toBeInTheDocument();
+  });
+});
+
 describe("OrdersTable batch issue selection", () => {
   beforeEach(() => {
     vi.clearAllMocks();

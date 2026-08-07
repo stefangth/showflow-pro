@@ -119,3 +119,79 @@ describe("ArtistAvailabilityCalendar — Monday-first lead pad", () => {
     }
   );
 });
+
+/**
+ * ArtistAvailabilityCalendar renders its own bespoke month grid rather than
+ * the shadcn `Calendar` that EntityCalendar (Shows&Bookings / Bookings) uses,
+ * so it never picked up the shared `PAST_DATE_TINT` past-date dimming those
+ * calendars get from DayPicker's `modifiersClassNames`. Past days here must
+ * be visibly dimmed but never made non-interactive (no `pointer-events-none`,
+ * no `disabled`), matching that same "dimmed but clickable" contract.
+ */
+describe("ArtistAvailabilityCalendar — past-date tint (Plan B Task 3)", () => {
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  beforeEach(() => {
+    vi.useFakeTimers({ toFake: ["Date"] });
+  });
+
+  function eligible(date: string) {
+    return {
+      id: `sd-${date}`,
+      date,
+      session_1: null,
+      session_2: null,
+      session_3: null,
+      status: "open",
+      city_id: null,
+      show_id: "show-1",
+      venue: null,
+      custom: null,
+      show: { id: "show-1", program: "Test Show", sub_program: null, status: "active" },
+    };
+  }
+
+  it("tints a past eligible day with the past-date class and leaves a future eligible day untinted", async () => {
+    vi.setSystemTime(new Date("2026-03-15T12:00:00Z"));
+
+    render(
+      React.createElement(ArtistAvailabilityCalendar, {
+        artistId: "artist-1",
+        eligibleDates: [eligible("2026-03-10"), eligible("2026-03-20")],
+      }),
+      { wrapper }
+    );
+
+    await waitFor(() => {
+      expect(screen.getByText("10")).toBeTruthy();
+    });
+
+    const pastCell = screen.getByText("10").closest("button")!;
+    const futureCell = screen.getByText("20").closest("button")!;
+
+    expect(pastCell.className).toMatch(/opacity-60/);
+    expect(futureCell.className).not.toMatch(/opacity-60/);
+  });
+
+  it("keeps a past eligible day fully interactive (not disabled, no pointer-events-none)", async () => {
+    vi.setSystemTime(new Date("2026-03-15T12:00:00Z"));
+
+    render(
+      React.createElement(ArtistAvailabilityCalendar, {
+        artistId: "artist-1",
+        eligibleDates: [eligible("2026-03-10")],
+      }),
+      { wrapper }
+    );
+
+    await waitFor(() => {
+      expect(screen.getByText("10")).toBeTruthy();
+    });
+
+    const pastCell = screen.getByText("10").closest("button")!;
+    expect(pastCell).not.toBeDisabled();
+    expect(pastCell.className).not.toMatch(/pointer-events-none/);
+  });
+});

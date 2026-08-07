@@ -186,6 +186,32 @@ describe("EditorToolbar access", () => {
     const { container } = renderWithProviders(<EditorToolbar />);
     expect(container.firstChild).toBeNull();
   });
+
+  // Plan B Task 4: the topbar EditorModeToggle is the single entry point into
+  // editor mode. The toolbar used to also render its own off-state Pencil
+  // button (a second, redundant way to call enableEditorMode); it must now
+  // render nothing at all until editor mode is actually on, even for a user
+  // who is otherwise allowed to use the editor.
+  it("renders nothing when editor mode is off, even for an admin who can use the editor", () => {
+    setAuth({ roles: ["admin"] });
+    vi.mocked(useEditor).mockReturnValue(
+      partialMock<ReturnType<typeof useEditor>>({
+        isEditorMode: false,
+        enableEditorMode: vi.fn(),
+        disableEditorMode: vi.fn(),
+        isSidePanelOpen: false,
+        setSidePanelOpen: vi.fn(),
+      }),
+    );
+    const { container } = renderWithProviders(<EditorToolbar />);
+    expect(container.firstChild).toBeNull();
+  });
+
+  it("still renders the full toolbar when editor mode is on", () => {
+    setAuth({ roles: ["admin"] });
+    renderWithProviders(<EditorToolbar />);
+    expect(screen.getByText("Editor Mode")).toBeInTheDocument();
+  });
 });
 
 describe("EditorModeToggle preview indicator", () => {

@@ -25,7 +25,7 @@ interface IamUser {
 
 export function EditorToolbar() {
   const { roles, viewAsRole, setViewAsRole, viewAsUser, setViewAsUser, currentOrg, orgs, switchOrg, isSuperAdmin } = useAuth();
-  const { isEditorMode, enableEditorMode, disableEditorMode, isSidePanelOpen, setSidePanelOpen } = useEditor();
+  const { isEditorMode, disableEditorMode, isSidePanelOpen, setSidePanelOpen } = useEditor();
 
   const canEdit = canUseEditor(roles, isSuperAdmin);
 
@@ -44,25 +44,11 @@ export function EditorToolbar() {
     staleTime: 60_000,
   });
 
-  if (!canEdit) return null;
-
-  if (!isEditorMode) {
-    return (
-      <Tooltip>
-        <TooltipTrigger asChild>
-          <Button
-            variant="outline"
-            size="icon"
-            className="h-8 w-8"
-            onClick={enableEditorMode}
-          >
-            <Pencil className="h-4 w-4" />
-          </Button>
-        </TooltipTrigger>
-        <TooltipContent side="bottom">Enter Editor Mode</TooltipContent>
-      </Tooltip>
-    );
-  }
+  // The topbar EditorModeToggle is the single entry point into editor mode
+  // (see below); this toolbar has nothing to show until editor mode is
+  // actually on, so it renders nothing rather than a second, redundant
+  // "enter editor mode" affordance.
+  if (!canEdit || !isEditorMode) return null;
 
   return (
     <>

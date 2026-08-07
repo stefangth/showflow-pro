@@ -12,19 +12,22 @@ import { Plus, Trash2 } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Skeleton } from '@/components/ui/skeleton';
-import { TimeframeFilter, type TimeframeValue } from '@/components/filters/TimeframeFilter';
+import { TimeframeFilter, upcomingTimeframe, type TimeframeValue } from '@/components/filters/TimeframeFilter';
 import { SortControl, type SortValue } from '@/components/filters/SortControl';
 import { ViewToggle, type ViewMode } from '@/components/filters/ViewToggle';
 import { applySort, inTimeframe } from '@/components/filters/filterUtils';
 import { useAuth } from '@/features/auth/AuthContext';
-import { useArtistEligibleDates } from '@/hooks/useArtistEligibleDates';
+import { useFeature } from '@/hooks/useEntitlements';
+import { useArtistEligibleDates, type EligibleDate } from '@/hooks/useArtistEligibleDates';
 import { useMyArtist } from '@/hooks/useMyArtist';
 import { ArtistAvailabilityCalendar } from '@/components/availability/ArtistAvailabilityCalendar';
 import { AvailabilityPicker } from '@/components/availability/AvailabilityPicker';
 import { OfferResponseButtons } from '@/components/availability/OfferResponseButtons';
 import { bookingStatusBadgeClass } from '@/lib/bookings';
-import { formatDateDMY, parseDateOnly } from '@/lib/dates';
+import { formatDateDMY, parseDateOnly, isPastDate, pastRowClassName } from '@/lib/dates';
 import { showIdentityLabel } from '@/types';
+import { fetchMyActiveBookedDates, mergeArtistActiveBookedDates, type ActiveBookedDateEntry } from '@/data/artists';
+import { cn } from '@/lib/utils';
 import { useBookingFlow, useReferenceField } from '@/hooks/useBookingFlow';
 import { BOOKING_FLOW_DEFAULTS, referenceLabel } from '@/lib/bookingFlow';
 import { availabilityPageCopy, bookingStatusLabels } from '@/lib/flowCopy';
@@ -37,6 +40,21 @@ export default function AvailabilityPage() {
   return <ArtistAvailability />;
 }
 
+/**
+ * A row in the artist Availability view: an eligible (upcoming) date, or an
+ * active booking merged in from `fetchMyActiveBookedDates` whose show_date
+ * fell outside the eligible-dates window (typically a past date). Past dates
+ * are never actionable here (no accept/decline, no block), so a merged row
+ * always renders read-only.
+ */
+type DateRow = EligibleDate | ActiveBookedDateEntry;
+
+/** ActiveBookedDateEntry's query never selects `custom` (it isn't reference-field
+ *  aware), so only pass it through for eligible-date rows. */
+function customFor(d: DateRow): Record<string, unknown> | null {
+  return 'custom' in d ? d.custom : null;
+}
+
 /* ============================================================
  * Artist view — eligibility-scoped list + calendar + blocked dates
  * ============================================================ */
@@ -44,6 +62,7 @@ function ArtistAvailability() {
   const { currentOrg } = useAuth();
   const { data: artist } = useMyArtist();
   const { data: eligibleDates, isLoading } = useArtistEligibleDates();
+  const bookingFlowEnabled = useFeature('booking_flow');
   const { reference, customFieldKey } = useReferenceField();
   const flowQ = useBookingFlow();
   const flow = flowQ.data ?? BOOKING_FLOW_DEFAULTS;
@@ -55,7 +74,7 @@ function ArtistAvailability() {
   const [searchParams, setSearchParams] = useSearchParams();
   const { toast } = useToast();
 
-  const [timeframe, setTimeframe] = useState<TimeframeValue>({ from: null, to: null });
+  const [timeframe, setTimeframe] = useState<TimeframeValue>(() => upcomingTimeframe());
   const [sort, setSort] = useState<SortValue>('chrono_asc');
   const [view, setView] = useState<ViewMode>('list');
   const [filter, setFilter] = useState<'all' | 'unanswered'>(
@@ -95,6 +114,18 @@ function ArtistAvailability() {
     myBookings?.forEach((b) => m.set(b.show_date_id, { id: b.id, status: b.status }));
     return m;
   }, [myBookings]);
+
+  // Past (and any other out-of-eligible-window) active bookings — merged into
+  // `filtered` below so a booking whose show_date useArtistEligibleDates
+  // silently drops (it's upcoming-only) still renders under Past/All.
+  // Module-gated to match the identical query in ArtistBookingsView: without
+  // this, a super-admin previewing an org with booking_flow off (route-level
+  // feature gates exempt super-admins) fired this read for no reason.
+  const { data: activeBookedDates } = useQuery({
+    queryKey: ['bookings', 'artist-active-booked', artist?.id],
+    enabled: !!artist?.id && bookingFlowEnabled,
+    queryFn: () => fetchMyActiveBookedDates(supabase, artist!.id),
+  });
 
   const statusFor = (dateId: string): string => bookingMap.get(dateId)?.status ?? 'unanswered';
 
@@ -181,16 +212,20 @@ function ArtistAvailability() {
     },
   });
 
-  const filtered = useMemo(() => {
-    let list = (eligibleDates ?? []).filter((d) =>
+  const filtered = useMemo<DateRow[]>(() => {
+    const eligibleFiltered = (eligibleDates ?? []).filter((d) =>
       inTimeframe(parseDateOnly(d.date), timeframe)
     );
+    const activeBookedFiltered = (activeBookedDates ?? []).filter((d) =>
+      inTimeframe(parseDateOnly(d.date), timeframe)
+    );
+    let list: DateRow[] = mergeArtistActiveBookedDates(eligibleFiltered, activeBookedFiltered);
     if (filter === 'unanswered') list = list.filter((d) => !respondedSet.has(d.id));
     // Sort on the show's own program/sub_program identity (stable), never the
     // org-configurable reference label — a custom-field reference would reorder
     // the list unpredictably.
     return applySort(list, sort, (d) => showIdentityLabel(d.show), (d) => parseDateOnly(d.date));
-  }, [eligibleDates, timeframe, sort, filter, respondedSet]);
+  }, [eligibleDates, activeBookedDates, timeframe, sort, filter, respondedSet]);
 
   if (!artist) {
     return (
@@ -275,7 +310,7 @@ function ArtistAvailability() {
                       );
                       case 'shows.program': return (
                         <TableCell key={colId}>
-                          {referenceLabel({ reference, show: d.show, custom: d.custom, customFieldKey })}
+                          {referenceLabel({ reference, show: d.show, custom: customFor(d), customFieldKey })}
                         </TableCell>
                       );
                       case 'shows.sub_program': return (
@@ -309,6 +344,13 @@ function ArtistAvailability() {
                         </TableCell>
                       );
                       case '_computed.blocked': {
+                        // Past dates are never actionable here — no accept/decline,
+                        // no block/pick — regardless of the underlying booking status.
+                        if (isPastDate(parseDateOnly(d.date))) {
+                          return (
+                            <TableCell key={colId} className="w-36 text-muted-foreground text-xs">—</TableCell>
+                          );
+                        }
                         const booking = bookingMap.get(d.id);
                         if (booking?.status === 'suggested') {
                           return (
@@ -334,7 +376,7 @@ function ArtistAvailability() {
                     }
                   };
                   return (
-                    <TableRow key={d.id}>
+                    <TableRow key={d.id} className={cn(pastRowClassName(parseDateOnly(d.date)))}>
                       {orderedColumns.filter(c => c.visible).map(c => cellFor(c.columnId))}
                     </TableRow>
                   );

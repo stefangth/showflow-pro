@@ -8,14 +8,17 @@ import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { TimeframeFilter, type TimeframeValue } from '@/components/filters/TimeframeFilter';
+import { TimeframeFilter, upcomingTimeframe, type TimeframeValue } from '@/components/filters/TimeframeFilter';
 import { SortControl, type SortValue } from '@/components/filters/SortControl';
 import { ViewToggle, type ViewMode } from '@/components/filters/ViewToggle';
 import { EntityCalendar } from '@/components/calendar/EntityCalendar';
 import { applySort, inTimeframe } from '@/components/filters/filterUtils';
 import { ShowDateDetailSheet } from '@/components/shows/ShowDateDetailSheet';
 import { useArtistEligibleDates, type EligibleDate } from '@/hooks/useArtistEligibleDates';
-import { fetchMyCancelledDateBookings, mergeArtistCancelledDates, type CancelledDateEntry } from '@/data/artists';
+import {
+  fetchMyCancelledDateBookings, mergeArtistCancelledDates, type CancelledDateEntry,
+  fetchMyActiveBookedDates, mergeArtistActiveBookedDates, type ActiveBookedDateEntry,
+} from '@/data/artists';
 import { useMyArtist } from '@/hooks/useMyArtist';
 import { useMyHireOrders } from '@/hooks/useHireOrders';
 import { useFeature } from '@/hooks/useEntitlements';
@@ -24,8 +27,9 @@ import { useBookingFlow, useReferenceField } from '@/hooks/useBookingFlow';
 import { bookingStatusBadgeClass } from '@/lib/bookings';
 import { BOOKING_FLOW_DEFAULTS, referenceLabel } from '@/lib/bookingFlow';
 import { bookingsViewCopy, bookingStatusLabels } from '@/lib/flowCopy';
-import { formatDateDMY, parseDateOnly } from '@/lib/dates';
+import { formatDateDMY, parseDateOnly, pastRowClassName } from '@/lib/dates';
 import { showIdentityLabel } from '@/types';
+import { cn } from '@/lib/utils';
 import { ROUTES } from '@/config/app.config';
 import { useColumnTemplate, useEditorConfig } from '@/features/editor/EditorContext';
 import { useColumnHeaders } from '@/features/editor/useColumnHeaders';
@@ -33,16 +37,32 @@ import { ColumnLayoutEditor } from '@/features/editor/ColumnLayoutEditor';
 
 type BookingLite = { show_date_id: string; status: string; is_understudy: boolean };
 
-/** A row in the artist Bookings view: an eligible date or a cancelled one the artist was booked on. */
-type DateRow = EligibleDate | CancelledDateEntry;
+/**
+ * A row in the artist Bookings view: an eligible (upcoming) date, a cancelled
+ * one the artist was booked on, or an active booking merged in from
+ * `fetchMyActiveBookedDates` whose show_date fell outside the eligible-dates
+ * window (typically a past date — see the July 31 bug this merge fixes).
+ */
+type DateRow = EligibleDate | CancelledDateEntry | ActiveBookedDateEntry;
 
 /** True when the row is a cancelled date the artist had been booked on. */
 function isCancelledEntry(d: DateRow): d is CancelledDateEntry {
   return d.status === 'cancelled';
 }
 
-/** CancelledDateEntry's query never selects `custom` (it isn't reference-field aware),
- *  so only pass it through for eligible-date rows. */
+/** True when the row came from the active-booked merge rather than eligibleDates/cancelledEntries.
+ *  Keys on the explicit `kind: 'active-booked'` discriminant `fetchMyActiveBookedDates`
+ *  stamps on every row, not a coincidental field name: an earlier version of this guard
+ *  checked `'is_understudy' in d`, which would silently misclassify an eligible-date row
+ *  the moment `EligibleDate` ever grew a field of that name. Exported for its own direct
+ *  unit test (ArtistBookingsView.rowGuard.test.ts). */
+// eslint-disable-next-line react-refresh/only-export-components -- pure type guard, not a component; kept beside the DateRow union it discriminates.
+export function isActiveBookedEntry(d: DateRow): d is ActiveBookedDateEntry {
+  return 'kind' in d && d.kind === 'active-booked';
+}
+
+/** CancelledDateEntry's and ActiveBookedDateEntry's queries never select `custom`
+ *  (neither is reference-field aware), so only pass it through for eligible-date rows. */
 function customFor(d: DateRow): Record<string, unknown> | null {
   return 'custom' in d ? d.custom : null;
 }
@@ -64,29 +84,10 @@ export function ArtistBookingsView() {
   const { orderedColumns, visibleCount } = useColumnTemplate('bookings-artist');
   const { isEditorMode } = useEditorConfig();
   const columnHeaders = useColumnHeaders(orderedColumns);
-  const [timeframe, setTimeframe] = useState<TimeframeValue>({ from: null, to: null });
+  const [timeframe, setTimeframe] = useState<TimeframeValue>(() => upcomingTimeframe());
   const [sort, setSort] = useState<SortValue>('chrono_asc');
   const [view, setView] = useState<ViewMode>('list');
   const [activeShowDateId, setActiveShowDateId] = useState<string | null>(null);
-
-  // Distinct cache key per projection (this selects `is_understudy`, not `id`).
-  // A shared key let different `select` shapes clobber each other in the React
-  // Query cache — see the note in AvailabilityPage.
-  const { data: myBookings, isError: bookingsError } = useQuery({
-    queryKey: ['bookings', 'artist-bookings-view', artist?.id],
-    // Module-gated: the list region below sits inside ModuleGate, so without
-    // booking_flow this read would be fetched and then discarded on every visit.
-    enabled: !!artist?.id && bookingFlowEnabled,
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from('bookings')
-        .select('show_date_id, status, is_understudy')
-        .eq('artist_id', artist!.id)
-        .neq('status', 'cancelled');
-      if (error) throw error;
-      return (data ?? []) as BookingLite[];
-    },
-  });
 
   const { data: cancelledEntries } = useQuery({
     queryKey: ['bookings', 'artist-cancelled', artist?.id],
@@ -94,11 +95,30 @@ export function ArtistBookingsView() {
     queryFn: () => fetchMyCancelledDateBookings(supabase, artist!.id),
   });
 
+  // Past (and any other out-of-eligible-window) active bookings — merged below
+  // so a booking whose show_date useArtistEligibleDates silently drops (it's
+  // upcoming-only) still renders. This is the July 31 fix. It also supersedes
+  // a dedicated `myBookings` query this view used to run in parallel: that
+  // query's own select (`show_date_id, status, is_understudy`, `.neq('status',
+  // 'cancelled')`) is a strict subset of this one's, so `bookingByDateId` below
+  // is derived straight from this single read instead of firing a second,
+  // near-identical one on every mount.
+  const { data: activeBookedDates, isError: bookingsError } = useQuery({
+    queryKey: ['bookings', 'artist-active-booked', artist?.id],
+    enabled: !!artist?.id && bookingFlowEnabled,
+    queryFn: () => fetchMyActiveBookedDates(supabase, artist!.id),
+  });
+
+  // `ActiveBookedDateEntry.id` IS the show_date id (see data/artists.ts), so it
+  // doubles as the lookup key `statusFor` needs for eligible (upcoming) rows --
+  // no separate flat query required.
   const bookingByDateId = useMemo(() => {
     const m = new Map<string, BookingLite>();
-    myBookings?.forEach((b) => m.set(b.show_date_id, b));
+    activeBookedDates?.forEach((b) =>
+      m.set(b.id, { show_date_id: b.id, status: b.status, is_understudy: b.is_understudy })
+    );
     return m;
-  }, [myBookings]);
+  }, [activeBookedDates]);
 
   // show_date_id -> issued/countersigned hire order id for this artist
   // (useMyHireOrders never returns any other status). First-seen wins so a
@@ -113,6 +133,7 @@ export function ArtistBookingsView() {
 
   const statusFor = (d: DateRow): string => {
     if (isCancelledEntry(d)) return 'cancelled';
+    if (isActiveBookedEntry(d)) return d.status;
     const b = bookingByDateId.get(d.id);
     return b ? b.status : 'unanswered';
   };
@@ -124,16 +145,20 @@ export function ArtistBookingsView() {
     const cancelledFiltered = (cancelledEntries ?? []).filter((d) =>
       inTimeframe(parseDateOnly(d.date), timeframe)
     );
+    const activeBookedFiltered = (activeBookedDates ?? []).filter((d) =>
+      inTimeframe(parseDateOnly(d.date), timeframe)
+    );
     const merged = mergeArtistCancelledDates(eligibleFiltered, cancelledFiltered);
+    const withActiveBooked = mergeArtistActiveBookedDates(merged, activeBookedFiltered);
     // Sort on the show's own program/sub_program identity (stable), never the
     // org-configurable reference label used for display below.
     return applySort(
-      merged,
+      withActiveBooked,
       sort,
       (d) => showIdentityLabel(d.show),
       (d) => parseDateOnly(d.date)
     );
-  }, [eligibleDates, cancelledEntries, timeframe, sort]);
+  }, [eligibleDates, cancelledEntries, activeBookedDates, timeframe, sort]);
 
   const calendarItems = useMemo(
     () => filtered.map((d) => ({ date: parseDateOnly(d.date), eligible: d })),
@@ -252,7 +277,7 @@ export function ArtistBookingsView() {
                     return (
                       <TableRow
                         key={d.id}
-                        className="cursor-pointer"
+                        className={cn('cursor-pointer', pastRowClassName(parseDateOnly(d.date)))}
                         onClick={() => setActiveShowDateId(d.id)}
                       >
                         {orderedColumns.filter(c => c.visible).map(c => cellFor(c.columnId))}
@@ -281,7 +306,10 @@ export function ArtistBookingsView() {
               const cancelled = isCancelledEntry(d);
               return (
                 <Card
-                  className="hover:shadow-elev2 transition-shadow cursor-pointer"
+                  className={cn(
+                    'hover:shadow-elev2 transition-shadow cursor-pointer',
+                    pastRowClassName(it.date),
+                  )}
                   onClick={() => setActiveShowDateId(d.id)}
                 >
                   <CardContent className="py-3 flex items-center justify-between gap-3">
