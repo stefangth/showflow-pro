@@ -38,14 +38,15 @@ export function useFeature(feature: FeatureKey): boolean {
  *  - It exempts super-admins, matching visibleNavItems ("Super-admins are never
  *    locked") and ProtectedRoute. Without it those two gates would admit a
  *    super-admin to a page whose every region this gate then blanked. The
- *    exemption is dropped while the super-admin is previewing another user or a
- *    role they do not hold via the editor "view as" toolbar (isImpersonating),
- *    so that preview faithfully reflects what the gated user would see.
+ *    exemption is dropped while the super-admin is previewing another user or any
+ *    specific role via the editor "view as" toolbar (isImpersonating) — including
+ *    a role they also hold as an org member — so the preview faithfully reflects
+ *    what that role would see, disabled-module gate and all.
  */
 export function useModuleGate(feature: FeatureKey): { allow: boolean; pending: boolean } {
   const { features, isLoading } = useEntitlements();
   const { isSuperAdmin, roles, viewAsRole, viewAsUser } = useAuth();
-  if (isSuperAdmin && !isImpersonating({ roles, viewAsRole, viewAsUser })) {
+  if (isSuperAdmin && !isImpersonating({ isSuperAdmin, roles, viewAsRole, viewAsUser })) {
     return { allow: true, pending: false };
   }
   if (isLoading) return { allow: false, pending: true };

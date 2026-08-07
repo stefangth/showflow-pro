@@ -22,3 +22,11 @@ Deno.test("preflight returns a CORS 204 for OPTIONS", () => {
 Deno.test("corsHeaders allows the x-cron-secret header", () => {
   assertEquals(corsHeaders["Access-Control-Allow-Headers"].includes("x-cron-secret"), true);
 });
+
+// The browser Supabase client attaches `x-active-org` (the org_isolation RLS
+// backstop) to EVERY request once an org is active — including functions.invoke.
+// If the preflight does not allow it, the browser blocks every cross-origin
+// edge-function call. Regression guard for that (see src/integrations/supabase/activeOrg.ts).
+Deno.test("corsHeaders allows the x-active-org header", () => {
+  assertEquals(corsHeaders["Access-Control-Allow-Headers"].includes("x-active-org"), true);
+});
