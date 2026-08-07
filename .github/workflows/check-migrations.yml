@@ -7,10 +7,13 @@ name: Check migrations applied
 # `supabase db push` aborts wholesale on it. Detect-only (never auto-applies).
 # Uses the same SUPABASE_ACCESS_TOKEN secret as deploy-functions.yml, no new secret.
 on:
-  # On a PR this is a blocking gate: drift is cheap to fix before the merge and
-  # expensive after. No `paths` filter — drift is introduced by applying OUT of
-  # band, which by definition leaves no migration file in the diff, so a path
-  # filter would skip exactly the case worth catching.
+  # On a PR this is a blocking gate for DRIFT (`--allow-missing`): a migration the
+  # PR adds cannot be in production yet, because the merge is what applies it.
+  # No `paths` filter — drift is introduced by applying OUT of band, which by
+  # definition leaves no migration file in the diff, so a path filter would skip
+  # exactly the case worth catching. The cost is accepted knowingly: every PR and
+  # every push to main now spends a runner and one Management API call, including
+  # on changes that cannot touch migrations.
   pull_request:
     branches: [main]
   # On main this is the post-merge alarm: the production apply happens after the
@@ -38,8 +41,13 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: "20"
+      # Pre-merge: enforce drift only. Post-merge: enforce everything, but poll for
+      # up to 5 minutes first, because the Supabase deploy workflow applies
+      # migrations asynchronously and its health step alone waits up to 2 minutes.
       - name: Check repo and production migrations agree on name and version
         env:
           SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
           SUPABASE_PROJECT_REF: epweartpzwvcasrzyueh
-        run: node scripts/check-migrations.mjs
+        run: >-
+          node scripts/check-migrations.mjs
+          ${{ github.event_name == 'pull_request' && '--allow-missing' || '--wait-seconds=300' }}

@@ -14,10 +14,18 @@
 --   * Nothing that fires an outbound trigger. Show dates stay `open`, which is
 --     why there are no bookings here: a date reaching `fully_filled` fires
 --     dispatch_hire_order_drafts, which calls an edge function.
+--   * NO super-admin. Preview branch projects are internet-reachable and have
+--     their own public anon key, so a platform_admins row whose password is
+--     committed in this file would be a published god-mode account on every open
+--     PR. Grant yourself one locally instead, against your own database only:
+--       insert into public.platform_admins (user_id)
+--       values ('22222222-2222-2222-2222-222222222222');
+--   * Dates below are relative to the run date, so the fixture is NOT
+--     reproducible across days. Tests must derive expectations from
+--     `current_date` rather than hard-code a date or a grid position.
 --
--- Sign in as any of the four users below with the password: showflow-dev
+-- Sign in as any of the three users below with the password: showflow-dev
 --
---   owner@example.com     super-admin (platform console, no org needed)
 --   admin@example.com     org admin
 --   producer@example.com  org producer
 --   artist@example.com    org artist, linked to the seeded artist row
@@ -25,6 +33,16 @@
 -- The bootstrap org (00000000-0000-0000-0000-00000000b007) is created by
 -- migration 20260603120100_add_org_id_to_tenant_tables.sql, so it already
 -- exists on any migrated database and is not re-created here.
+
+-- Fail with a readable message rather than a bare foreign-key violation if that
+-- ever stops being true.
+do $$
+begin
+  if not exists (select 1 from public.organizations where id = '00000000-0000-0000-0000-00000000b007') then
+    raise exception
+      'Seed expects the bootstrap org 00000000-0000-0000-0000-00000000b007 (created by migration 20260603120100). It is absent, so supabase/seed.sql needs updating to the current onboarding model.';
+  end if;
+end $$;
 
 -- ── Auth users ───────────────────────────────────────────────────────────────
 -- Created directly rather than through the Auth admin API, because a seed file
@@ -37,7 +55,6 @@ declare
 begin
   for u in
     select * from (values
-      ('11111111-1111-1111-1111-111111111111'::uuid, 'owner@example.com',    'Dev Owner'),
       ('22222222-2222-2222-2222-222222222222'::uuid, 'admin@example.com',    'Dev Admin'),
       ('33333333-3333-3333-3333-333333333333'::uuid, 'producer@example.com', 'Dev Producer'),
       ('44444444-4444-4444-4444-444444444444'::uuid, 'artist@example.com',   'Dev Artist')
@@ -75,18 +92,22 @@ end $$;
 
 -- ── Access ───────────────────────────────────────────────────────────────────
 -- Access is org membership: without a row here a user lands on NoOrgScreen.
--- The super-admin deliberately has NO membership, so the platform console path
--- (which bypasses the org gate) is what gets exercised when signing in as owner.
-insert into public.platform_admins (user_id)
-values ('11111111-1111-1111-1111-111111111111')
-on conflict (user_id) do nothing;
-
+-- See the header for why no platform_admins row is seeded.
 insert into public.org_memberships (org_id, user_id, role)
 values
   ('00000000-0000-0000-0000-00000000b007', '22222222-2222-2222-2222-222222222222', 'admin'),
   ('00000000-0000-0000-0000-00000000b007', '33333333-3333-3333-3333-333333333333', 'producer'),
   ('00000000-0000-0000-0000-00000000b007', '44444444-4444-4444-4444-444444444444', 'artist')
 on conflict (org_id, user_id, role) do nothing;
+
+-- ── Entitlements ─────────────────────────────────────────────────────────────
+-- hire_orders ships dark (FEATURE_REGISTRY defaultEnabled: false), so without an
+-- explicit row the module is invisible in every dev and preview database — for
+-- the surface under the most active development. Turn it on here; the production
+-- default is unaffected, because this file never runs against production.
+insert into public.org_entitlements (org_id, feature, enabled)
+values ('00000000-0000-0000-0000-00000000b007', 'hire_orders', true)
+on conflict do nothing;
 
 -- ── Catalog ──────────────────────────────────────────────────────────────────
 -- Tenant tables carry a NOT NULL org_id with no default, so it is always explicit.
@@ -115,7 +136,9 @@ values (
   'active',
   'Performer'
 )
-on conflict (id) do nothing;
+-- Untargeted on purpose: artists also carries a partial unique index on
+-- (org_id, user_id), which an `on conflict (id)` target would not intercept.
+on conflict do nothing;
 
 insert into public.cast_members (cast_id, artist_id, org_id)
 values (

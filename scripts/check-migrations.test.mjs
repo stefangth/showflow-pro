@@ -1,5 +1,11 @@
 import { describe, expect, it } from "vitest";
-import { compareMigrations, parseMigrationFilename } from "./check-migrations.mjs";
+import {
+  blockingFailures,
+  compareMigrations,
+  parseAppliedRows,
+  parseCliOptions,
+  parseMigrationFilename,
+} from "./check-migrations.mjs";
 
 describe("parseMigrationFilename", () => {
   it("splits the version prefix from the name", () => {
@@ -29,13 +35,13 @@ describe("compareMigrations", () => {
 
   it("reports nothing when versions and names match exactly", () => {
     const repo = [m("20260101000000", "a"), m("20260102000000", "b")];
-    expect(compareMigrations(repo, [...repo])).toEqual({ missing: [], orphaned: [], mismatched: [] });
+    expect(compareMigrations(repo, [...repo])).toEqual({ missing: [], orphaned: [], mismatched: [], duplicated: [] });
   });
 
   it("is insensitive to the order rows come back in", () => {
     const repo = [m("20260101000000", "a"), m("20260102000000", "b")];
     const applied = [m("20260102000000", "b"), m("20260101000000", "a")];
-    expect(compareMigrations(repo, applied)).toEqual({ missing: [], orphaned: [], mismatched: [] });
+    expect(compareMigrations(repo, applied)).toEqual({ missing: [], orphaned: [], mismatched: [], duplicated: [] });
   });
 
   it("reports a repo migration that was never applied", () => {
@@ -45,6 +51,7 @@ describe("compareMigrations", () => {
       missing: [m("20260102000000", "b")],
       orphaned: [],
       mismatched: [],
+      duplicated: [],
     });
   });
 
@@ -55,6 +62,7 @@ describe("compareMigrations", () => {
       missing: [],
       orphaned: [m("20260102000000", "ghost")],
       mismatched: [],
+      duplicated: [],
     });
   });
 
@@ -67,6 +75,7 @@ describe("compareMigrations", () => {
       missing: [],
       orphaned: [],
       mismatched: [{ name: "platform_audit_log", repoVersion: "20260723002807", appliedVersion: "20260723002902" }],
+      duplicated: [],
     });
   });
 
@@ -77,6 +86,7 @@ describe("compareMigrations", () => {
       missing: [m("20260103000000", "unapplied")],
       orphaned: [],
       mismatched: [{ name: "drifted", repoVersion: "20260101000000", appliedVersion: "20260102000000" }],
+      duplicated: [],
     });
   });
 
@@ -108,11 +118,83 @@ describe("compareMigrations", () => {
     });
   });
 
-  // Name is the join key, so a duplicate makes every result ambiguous. Fail loudly
-  // rather than silently comparing against whichever row happened to land last.
-  it("throws when a migration name is not unique", () => {
+  // Name is the join key, so a duplicate makes every result ambiguous. A repo-side
+  // duplicate is a repo bug the author can fix, so it throws.
+  it("throws when a repo migration name is not unique", () => {
     const dupe = [m("20260101000000", "a"), m("20260102000000", "a")];
     expect(() => compareMigrations(dupe, [])).toThrow(/duplicate migration name/i);
-    expect(() => compareMigrations([], dupe)).toThrow(/duplicate migration name/i);
+  });
+
+  // A production-side duplicate is a real state the operator has to be told about,
+  // not a crash: the same name applied twice under different versions is exactly
+  // the drift-shaped incident this script exists to explain.
+  it("reports a duplicate applied name instead of throwing", () => {
+    const repo = [m("20260101000000", "a")];
+    const applied = [m("20260101000000", "a"), m("20260102000000", "a")];
+    const result = compareMigrations(repo, applied);
+    expect(result.duplicated).toEqual([{ name: "a", versions: ["20260101000000", "20260102000000"] }]);
+    expect(result.missing).toEqual([]);
+    expect(result.mismatched).toEqual([]);
+  });
+});
+
+describe("parseAppliedRows", () => {
+  it("maps well-formed rows", () => {
+    expect(parseAppliedRows([{ version: "20260101000000", name: "a" }])).toEqual([
+      { version: "20260101000000", name: "a" },
+    ]);
+  });
+
+  // Silently dropping a row makes its repo counterpart look `missing` (wrong
+  // remediation) or makes a genuine orphan vanish and the check pass on a database
+  // db push will still refuse. The one input everything depends on fails loudly.
+  it("throws rather than dropping a malformed row", () => {
+    expect(() => parseAppliedRows([{ version: 20260101000000, name: "a" }])).toThrow(/unusable/i);
+    expect(() => parseAppliedRows([{ version: "20260101000000", name: null }])).toThrow(/unusable/i);
+    expect(() => parseAppliedRows([{ version: "20260101000000", name: "" }])).toThrow(/unusable/i);
+  });
+});
+
+describe("parseCliOptions", () => {
+  it("defaults to enforcing everything with no wait", () => {
+    expect(parseCliOptions([])).toEqual({ allowMissing: false, waitSeconds: 0 });
+  });
+
+  it("reads --allow-missing and --wait-seconds", () => {
+    expect(parseCliOptions(["--allow-missing"])).toEqual({ allowMissing: true, waitSeconds: 0 });
+    expect(parseCliOptions(["--wait-seconds=120"])).toEqual({ allowMissing: false, waitSeconds: 120 });
+  });
+
+  it("rejects an unknown flag rather than ignoring it", () => {
+    expect(() => parseCliOptions(["--nope"])).toThrow(/unknown option/i);
+    expect(() => parseCliOptions(["--wait-seconds=soon"])).toThrow(/--wait-seconds/i);
+  });
+});
+
+describe("blockingFailures", () => {
+  const empty = { missing: [], orphaned: [], mismatched: [], duplicated: [] };
+
+  it("returns nothing when everything agrees", () => {
+    expect(blockingFailures(empty, { allowMissing: false })).toEqual([]);
+  });
+
+  it("blocks on mismatched, orphaned and duplicated", () => {
+    expect(blockingFailures({ ...empty, mismatched: [{}] }, { allowMissing: false })).toEqual(["mismatched"]);
+    expect(blockingFailures({ ...empty, orphaned: [{}] }, { allowMissing: false })).toEqual(["orphaned"]);
+    expect(blockingFailures({ ...empty, duplicated: [{}] }, { allowMissing: false })).toEqual(["duplicated"]);
+  });
+
+  // At PR time a migration the PR ADDS cannot be in production yet -- the merge is
+  // what applies it. Enforcing `missing` there would fail every migration-bearing
+  // PR by construction. Drift and orphans are still meaningful pre-merge.
+  it("does not block on missing when allowMissing is set", () => {
+    expect(blockingFailures({ ...empty, missing: [{}] }, { allowMissing: true })).toEqual([]);
+    expect(blockingFailures({ ...empty, missing: [{}] }, { allowMissing: false })).toEqual(["missing"]);
+  });
+
+  it("still blocks on drift in a pre-merge run", () => {
+    expect(blockingFailures({ ...empty, missing: [{}], mismatched: [{}] }, { allowMissing: true })).toEqual([
+      "mismatched",
+    ]);
   });
 });

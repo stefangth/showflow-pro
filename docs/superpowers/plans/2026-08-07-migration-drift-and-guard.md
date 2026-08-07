@@ -53,6 +53,8 @@ The 9 pairs, verified against production on 2026-08-07:
 
 Every rename preserves relative ordering against its neighbours (checked pairwise), so replay order is unchanged.
 
+**Deliberate exception to a stated rule.** CLAUDE.md's *Things to avoid* opens with "Editing files under `supabase/migrations/`", and Task 1 edits two comment lines inside `20260728194208_cron_health_scan_volatile_again.sql`. They name a file this change renames, so leaving them alone would leave a reference that resolves to nothing. The edit is comment-only, cannot alter the schema, and is taken knowingly rather than by oversight; the alternative (a dangling filename in a file about migration integrity) reads worse.
+
 **Files:**
 - Rename: the 9 files above
 - Modify: `supabase/migrations/20260728194208_cron_health_scan_volatile_again.sql` (lines 9 and 15 name `20260728132500_cron_health_scan_answered.sql`)
