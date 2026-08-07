@@ -12,6 +12,13 @@ import { createFakeSupabase, type TableSeed } from "@/test/supabaseFake";
 // out so this file stays focused on the sheet's own capability gates.
 const { client } = vi.hoisted(() => ({ client: {} as Record<string, unknown> }));
 vi.mock("@/integrations/supabase/client", () => ({ supabase: client }));
+// The sheet calls useNavigate() (the header's read-only flow indicator links to
+// Settings). renderWithProviders mounts no Router, so stub the hook; every other
+// react-router export stays real.
+vi.mock("react-router-dom", async (orig) => ({
+  ...(await orig<typeof import("react-router-dom")>()),
+  useNavigate: () => vi.fn(),
+}));
 vi.mock("@/features/auth/AuthContext", () => ({ useAuth: vi.fn() }));
 vi.mock("@/hooks/useCapabilities", async (orig) => ({
   ...(await orig<typeof import("@/hooks/useCapabilities")>()),
@@ -106,6 +113,13 @@ function renderSheet() {
   );
 }
 
+// Controls that used to be one long scroll now live behind cockpit tabs. The
+// capability-gate assertions are unchanged; each test just activates the owning
+// tab first. (Cast is the default tab, and the Generate hire order button lives
+// in the header, so those tests need no navigation.)
+const clickTab = async (name: RegExp) =>
+  fireEvent.click(await screen.findByRole("button", { name }));
+
 describe("ShowDateDetailSheet capability gates", () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -163,24 +177,29 @@ describe("ShowDateDetailSheet capability gates", () => {
 
   it("manage_show_dates on: Edit schedule is enabled", async () => {
     renderSheet();
+    await clickTab(/^setup$/i);
     expect(await screen.findByRole("button", { name: /edit schedule/i })).toBeEnabled();
   });
 
   it("manage_show_dates off: Edit schedule is disabled, the date still reads", async () => {
     vi.mocked(useCan).mockImplementation((action: string) => action !== "manage_show_dates");
     renderSheet();
+    await clickTab(/^setup$/i);
     expect(await screen.findByRole("button", { name: /edit schedule/i })).toBeDisabled();
+    // The venue reads from the always-visible rail regardless of the active tab.
     expect(screen.getByText("Main Hall")).toBeInTheDocument();
   });
 
   it("hard_delete_show_dates on: a producer (not admin) sees an enabled Delete for a manual, booking-free date", async () => {
     renderSheet();
+    await clickTab(/^setup$/i);
     expect(await screen.findByRole("button", { name: /^delete$/i })).toBeEnabled();
   });
 
   it("hard_delete_show_dates off: Delete control is absent, Cancel date still available", async () => {
     vi.mocked(useCan).mockImplementation((action: string) => action !== "hard_delete_show_dates");
     renderSheet();
+    await clickTab(/^setup$/i);
     expect(await screen.findByRole("button", { name: /cancel date/i })).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: /^delete$/i })).not.toBeInTheDocument();
   });
@@ -188,11 +207,13 @@ describe("ShowDateDetailSheet capability gates", () => {
   it("run_offer_engine off: TierTimeline receives canManage=false", async () => {
     vi.mocked(useCan).mockImplementation((action: string) => action !== "run_offer_engine");
     renderSheet();
+    await clickTab(/^offers$/i);
     expect(await screen.findByTestId("tier-timeline-can-manage")).toHaveTextContent("false");
   });
 
   it("run_offer_engine on: TierTimeline receives canManage=true", async () => {
     renderSheet();
+    await clickTab(/^offers$/i);
     expect(await screen.findByTestId("tier-timeline-can-manage")).toHaveTextContent("true");
   });
 

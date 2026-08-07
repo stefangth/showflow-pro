@@ -15,6 +15,8 @@ export interface CockpitRailProps {
   chatUnread: number;
   chatPreview: string | null;
   onEditSetup: () => void; // jump to Setup tab
+  /** Hidden for roles without a Setup tab (e.g. artists). Defaults to shown. */
+  showEditSetup?: boolean;
 }
 
 /** ISO timestamp -> short "d MMM, HH:mm" for the activity feed. Failures (a
@@ -35,7 +37,7 @@ const RailSection = ({ title, children }: { title: string; children: React.React
  *  feed, and a chat teaser. Purely presentational. */
 export function CockpitRail({
   times, venue, city, source, castChips, skillChips, activity,
-  chatUnread, chatPreview, onEditSetup,
+  chatUnread, chatPreview, onEditSetup, showEditSetup = true,
 }: CockpitRailProps) {
   return (
     <aside className="w-full shrink-0 space-y-5 border-b border-border bg-[var(--surface-2)] p-5 lg:w-72 lg:border-b-0 lg:border-r">
@@ -116,10 +118,12 @@ export function CockpitRail({
         </div>
       </RailSection>
 
-      <Button variant="outline" size="sm" className="w-full" onClick={onEditSetup}>
-        <PenLine className="mr-1.5 h-3.5 w-3.5" />
-        Edit date setup
-      </Button>
+      {showEditSetup && (
+        <Button variant="outline" size="sm" className="w-full" onClick={onEditSetup}>
+          <PenLine className="mr-1.5 h-3.5 w-3.5" />
+          Edit date setup
+        </Button>
+      )}
     </aside>
   );
 }
