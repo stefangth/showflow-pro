@@ -10,6 +10,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
+import { IconTooltip } from '@/components/common/IconTooltip';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Plus, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
@@ -200,6 +201,7 @@ export function CastsCitiesTab({ currentOrgId, canEnter }: { currentOrgId: strin
             {(cities ?? []).map(c => (
               <Badge key={c.id} variant="secondary" className="gap-2 py-1.5 pl-3 pr-1">
                 {c.name}
+                <IconTooltip label={`Remove ${c.name}`}>
                 <button
                   onClick={() => removeCity.mutate(c.id)}
                   className="rounded hover:bg-background/40 p-0.5 disabled:opacity-50 disabled:pointer-events-none"
@@ -208,6 +210,7 @@ export function CastsCitiesTab({ currentOrgId, canEnter }: { currentOrgId: strin
                 >
                   <Trash2 className="h-3 w-3" />
                 </button>
+                </IconTooltip>
               </Badge>
             ))}
             {(cities?.length ?? 0) === 0 && <p className="text-sm text-muted-foreground">No cities yet.</p>}
@@ -288,6 +291,7 @@ export function CastsCitiesTab({ currentOrgId, canEnter }: { currentOrgId: strin
                               Tier {a.priority}
                             </Badge>
                             <span className="text-sm flex-1">{cast?.name ?? '–'}</span>
+                            <IconTooltip label="Remove assignment">
                             <button
                               onClick={() => deleteCastPriority.mutate(a.id)}
                               className="rounded hover:bg-muted p-0.5 text-muted-foreground hover:text-destructive disabled:opacity-50 disabled:pointer-events-none"
@@ -296,6 +300,7 @@ export function CastsCitiesTab({ currentOrgId, canEnter }: { currentOrgId: strin
                             >
                               <Trash2 className="h-3.5 w-3.5" />
                             </button>
+                            </IconTooltip>
                           </div>
                         );
                       })}

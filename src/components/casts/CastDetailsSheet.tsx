@@ -15,6 +15,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Button } from '@/components/ui/button';
+import { IconTooltip } from '@/components/common/IconTooltip';
 import { Badge } from '@/components/ui/badge';
 import { Checkbox } from '@/components/ui/checkbox';
 import { toast } from 'sonner';
@@ -195,9 +196,11 @@ export function CastDetailsSheet({ cast, open, onOpenChange, onArtistClick }: Pr
                 <SheetDescription>{cast?.description || 'Manage cast members and city eligibility'}</SheetDescription>
               </div>
               {canManage && (
-                <Button size="icon" variant="ghost" className="shrink-0 mt-0.5" onClick={startEdit} title="Edit cast">
-                  <Pencil className="h-4 w-4" />
-                </Button>
+                <IconTooltip label="Edit cast">
+                  <Button size="icon" variant="ghost" className="shrink-0 mt-0.5" onClick={startEdit} aria-label="Edit cast">
+                    <Pencil className="h-4 w-4" />
+                  </Button>
+                </IconTooltip>
               )}
             </div>
           )}
@@ -228,9 +231,11 @@ export function CastDetailsSheet({ cast, open, onOpenChange, onArtistClick }: Pr
                     >
                       <p className="text-sm font-medium">{m.artist.name}</p>
                     </button>
-                    <Button size="icon" variant="ghost" aria-label={`Remove ${m.artist.name}`} onClick={() => removeMember.mutate(m.id)} disabled={!canManage}>
-                      <X className="h-4 w-4" />
-                    </Button>
+                    <IconTooltip label={`Remove ${m.artist.name}`}>
+                      <Button size="icon" variant="ghost" aria-label={`Remove ${m.artist.name}`} onClick={() => removeMember.mutate(m.id)} disabled={!canManage}>
+                        <X className="h-4 w-4" />
+                      </Button>
+                    </IconTooltip>
                   </div>
                 ))}
                 {(members?.length ?? 0) === 0 && (

@@ -1,14 +1,22 @@
 import React from "react";
 import { render, renderHook, type RenderOptions } from "@testing-library/react";
 import { QueryClientProvider, type QueryClient } from "@tanstack/react-query";
+import { TooltipProvider } from "@/components/ui/tooltip";
 import { createTestQueryClient } from "./queryClient";
 
 interface Options {
   queryClient?: QueryClient;
 }
 
+// Mirror the app's global providers (see src/App.tsx): the whole tree is wrapped in a
+// TooltipProvider, so any component using a Tooltip — directly or via IconTooltip — can
+// render in tests without each test having to mount its own provider.
 function Wrapper({ queryClient, children }: { queryClient: QueryClient; children: React.ReactNode }) {
-  return <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>;
+  return (
+    <QueryClientProvider client={queryClient}>
+      <TooltipProvider>{children}</TooltipProvider>
+    </QueryClientProvider>
+  );
 }
 
 /** Render a component with a QueryClientProvider. Returns the testing-library result + the queryClient. */

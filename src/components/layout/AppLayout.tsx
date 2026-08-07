@@ -8,6 +8,7 @@ import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
+import { IconTooltip } from '@/components/common/IconTooltip';
 import { Settings, LogOut, Bell, ChevronLeft, ChevronRight, Menu, EyeOff, User, Lock } from 'lucide-react';
 import { NAV_ITEMS, visibleNavItems, groupNavBySections } from '@/components/layout/navItems';
 import { cn } from '@/lib/utils';
@@ -186,24 +187,28 @@ export default function AppLayout({ children }: AppLayoutProps) {
             <Avatar className="h-8 w-8">
               <AvatarFallback seed={user?.email ?? ''}>{initials}</AvatarFallback>
             </Avatar>
-            <Button
-              variant="ghost"
-              size="icon"
-              className="h-7 w-7 text-sidebar-foreground/70"
-              onClick={() => navigate(ROUTES.PROFILE)}
-              aria-label="Profile"
-            >
-              <User className="h-[14px] w-[14px]" />
-            </Button>
-            <Button
-              variant="ghost"
-              size="icon"
-              className="h-7 w-7 text-sidebar-foreground/70"
-              onClick={handleSignOut}
-              aria-label="Sign out"
-            >
-              <LogOut className="h-[14px] w-[14px]" />
-            </Button>
+            <IconTooltip label="Profile" side="right">
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-7 w-7 text-sidebar-foreground/70"
+                onClick={() => navigate(ROUTES.PROFILE)}
+                aria-label="Profile"
+              >
+                <User className="h-[14px] w-[14px]" />
+              </Button>
+            </IconTooltip>
+            <IconTooltip label="Sign out" side="right">
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-7 w-7 text-sidebar-foreground/70"
+                onClick={handleSignOut}
+                aria-label="Sign out"
+              >
+                <LogOut className="h-[14px] w-[14px]" />
+              </Button>
+            </IconTooltip>
           </div>
         ) : (
           <div className="rounded-[10px] border border-sidebar-border bg-background/70 px-2.5 py-2 shadow-sm">
@@ -216,11 +221,13 @@ export default function AppLayout({ children }: AppLayoutProps) {
                 <p className="text-[10.5px] text-muted-foreground leading-tight truncate">{profileSubtitle}</p>
               </div>
               <Popover open={profileMenuOpen} onOpenChange={setProfileMenuOpen}>
-                <PopoverTrigger asChild>
-                  <Button variant="ghost" size="icon" className="h-7 w-7 shrink-0 text-sidebar-foreground/60 hover:text-sidebar-foreground" aria-label="Account menu">
-                    <Settings className="h-[15px] w-[15px]" />
-                  </Button>
-                </PopoverTrigger>
+                <IconTooltip label="Account menu" side="top">
+                  <PopoverTrigger asChild>
+                    <Button variant="ghost" size="icon" className="h-7 w-7 shrink-0 text-sidebar-foreground/60 hover:text-sidebar-foreground" aria-label="Account menu">
+                      <Settings className="h-[15px] w-[15px]" />
+                    </Button>
+                  </PopoverTrigger>
+                </IconTooltip>
                 <PopoverContent align="end" side="top" sideOffset={8} className="w-44 p-1">
                   <button
                     className="flex w-full items-center gap-2.5 rounded-md px-2.5 py-2 text-[13px] text-foreground hover:bg-muted transition-colors"
@@ -266,13 +273,15 @@ export default function AppLayout({ children }: AppLayoutProps) {
         )}
       >
         {sidebarContent}
-        <button
-          onClick={() => setCollapsed(!collapsed)}
-          aria-label={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
-          className="flex items-center justify-center py-3 border-t-[0.5px] border-sidebar-border hover:bg-foreground/[0.04] transition-colors"
-        >
-          {collapsed ? <ChevronRight className="h-4 w-4" /> : <ChevronLeft className="h-4 w-4" />}
-        </button>
+        <IconTooltip label={collapsed ? 'Expand sidebar' : 'Collapse sidebar'} side="right" className="flex w-full">
+          <button
+            onClick={() => setCollapsed(!collapsed)}
+            aria-label={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+            className="flex items-center justify-center py-3 border-t-[0.5px] border-sidebar-border hover:bg-foreground/[0.04] transition-colors"
+          >
+            {collapsed ? <ChevronRight className="h-4 w-4" /> : <ChevronLeft className="h-4 w-4" />}
+          </button>
+        </IconTooltip>
       </aside>
 
       {/* Mobile overlay */}

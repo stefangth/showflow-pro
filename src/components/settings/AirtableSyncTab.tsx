@@ -3,6 +3,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { IconTooltip } from "@/components/common/IconTooltip";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
@@ -901,9 +902,11 @@ export function AirtableSyncTab({ orgId, readOnly = false, canTriggerSync = true
                     {CUSTOM_TYPES.map((t) => <SelectItem key={t} value={t}>{t}</SelectItem>)}
                   </SelectContent>
                 </Select>
-                <Button size="sm" variant="ghost" onClick={() => removeCustom.mutate(d.id)} disabled={readOnly || removeCustom.isPending} aria-label={`remove ${d.label}`}>
-                  <Trash2 className="h-4 w-4" />
-                </Button>
+                <IconTooltip label={`Remove ${d.label}`}>
+                  <Button size="sm" variant="ghost" onClick={() => removeCustom.mutate(d.id)} disabled={readOnly || removeCustom.isPending} aria-label={`remove ${d.label}`}>
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
+                </IconTooltip>
               </div>
             ))}
             <Separator />

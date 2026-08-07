@@ -1,6 +1,7 @@
 import { describe, it, expect, vi } from "vitest";
 import { render, screen } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
+import { TooltipProvider } from "@/components/ui/tooltip";
 
 // Issued ELECTRONIC (frozen in issue_snapshot). The signing surface must follow this
 // frozen issue-time mode, not the org's current setting.
@@ -36,7 +37,7 @@ describe("HireOrderDetailPage signing", () => {
   // suite). The frozen-issue-time-mode behaviour under test here is unchanged.
   it("shows the signing strip for the linked artist on an issued electronic order", () => {
     vi.mocked(useHireOrderCountersignMode).mockReturnValue({ data: { mode: "electronic" } } as never);
-    render(<MemoryRouter initialEntries={["/hire-orders/ho1"]}>{<HireOrderDetailPage />}</MemoryRouter>);
+    render(<TooltipProvider><MemoryRouter initialEntries={["/hire-orders/ho1"]}>{<HireOrderDetailPage />}</MemoryRouter></TooltipProvider>);
     expect(screen.getByText(/needs your signature/i)).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /countersign/i })).toBeInTheDocument();
   });
@@ -46,7 +47,7 @@ describe("HireOrderDetailPage signing", () => {
     // live setting is now manual. The frozen issue-time mode must win so the artist can
     // still complete the in-app signature the DB gate requires.
     vi.mocked(useHireOrderCountersignMode).mockReturnValue({ data: { mode: "manual" } } as never);
-    render(<MemoryRouter initialEntries={["/hire-orders/ho1"]}>{<HireOrderDetailPage />}</MemoryRouter>);
+    render(<TooltipProvider><MemoryRouter initialEntries={["/hire-orders/ho1"]}>{<HireOrderDetailPage />}</MemoryRouter></TooltipProvider>);
     expect(screen.getByText(/needs your signature/i)).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /countersign/i })).toBeInTheDocument();
   });

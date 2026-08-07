@@ -6,6 +6,7 @@ import {
 } from 'date-fns';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
+import { IconTooltip } from '@/components/common/IconTooltip';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -121,23 +122,27 @@ export function ArtistAvailabilityCalendar({ artistId, eligibleDates }: Props) {
     <Card>
       <CardHeader>
         <div className="flex items-center justify-between">
-          <Button
-            variant="ghost"
-            size="icon"
-            aria-label="Previous month"
-            onClick={() => setCurrentMonth(subMonths(currentMonth, 1))}
-          >
-            <ChevronLeft className="h-4 w-4" />
-          </Button>
+          <IconTooltip label="Previous month">
+            <Button
+              variant="ghost"
+              size="icon"
+              aria-label="Previous month"
+              onClick={() => setCurrentMonth(subMonths(currentMonth, 1))}
+            >
+              <ChevronLeft className="h-4 w-4" />
+            </Button>
+          </IconTooltip>
           <CardTitle className="font-display">{format(currentMonth, 'MMMM yyyy')}</CardTitle>
-          <Button
-            variant="ghost"
-            size="icon"
-            aria-label="Next month"
-            onClick={() => setCurrentMonth(addMonths(currentMonth, 1))}
-          >
-            <ChevronRight className="h-4 w-4" />
-          </Button>
+          <IconTooltip label="Next month">
+            <Button
+              variant="ghost"
+              size="icon"
+              aria-label="Next month"
+              onClick={() => setCurrentMonth(addMonths(currentMonth, 1))}
+            >
+              <ChevronRight className="h-4 w-4" />
+            </Button>
+          </IconTooltip>
         </div>
       </CardHeader>
       <CardContent>

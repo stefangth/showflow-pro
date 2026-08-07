@@ -1,5 +1,6 @@
 import { X } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
+import { IconTooltip } from "@/components/common/IconTooltip";
 import { SkillPicker } from "@/components/skills/SkillPicker";
 
 /** Per-date required skills: inherited show-level chips (read-only, labeled
@@ -32,6 +33,7 @@ export function RequiredSkillsSection({ skills, showSkillIds, dateSkillIds, onAd
         {dateSkillIds.filter((id) => !showSkillIds.includes(id)).map((id) => (
           <Badge key={id} variant="outline" className="gap-1">
             {byId.get(id) ?? id}
+            <IconTooltip label={`Remove ${byId.get(id) ?? id}`}>
             <button
               type="button"
               aria-label={`Remove ${byId.get(id) ?? id}`}
@@ -41,6 +43,7 @@ export function RequiredSkillsSection({ skills, showSkillIds, dateSkillIds, onAd
             >
               <X className="h-3 w-3" />
             </button>
+            </IconTooltip>
           </Badge>
         ))}
         {showSkillIds.length === 0 && dateSkillIds.length === 0 && (

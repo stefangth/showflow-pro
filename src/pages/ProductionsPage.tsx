@@ -9,6 +9,7 @@ import { showIdentityLabel } from "@/types";
 import { ShowFormDialog } from "@/components/catalog/ShowFormDialog";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { IconTooltip } from "@/components/common/IconTooltip";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Alert, AlertDescription } from "@/components/ui/alert";
@@ -144,22 +145,25 @@ export default function ProductionsPage() {
           </div>
         ))}
         <div className="ml-auto flex items-center gap-1 shrink-0">
-          <Button variant="ghost" size="icon" onClick={() => openEdit(s)} aria-label={`Edit ${label}`} disabled={!canManageProductions}
-            title={canManageProductions ? undefined : "You don't have permission to edit productions"}>
-            <Pencil className="h-4 w-4" />
-          </Button>
-          <Button variant="ghost" size="icon" onClick={() => onArchive(s, s.status !== "archived")} aria-label="Toggle archive" disabled={!canArchiveProductions}
-            title={canArchiveProductions ? undefined : "You don't have permission to archive productions"}>
-            {s.status === "archived" ? <ArchiveRestore className="h-4 w-4" /> : <Archive className="h-4 w-4" />}
-          </Button>
+          <IconTooltip label={canManageProductions ? `Edit ${label}` : "You don't have permission to edit productions"}>
+            <Button variant="ghost" size="icon" onClick={() => openEdit(s)} aria-label={`Edit ${label}`} disabled={!canManageProductions}>
+              <Pencil className="h-4 w-4" />
+            </Button>
+          </IconTooltip>
+          <IconTooltip label={!canArchiveProductions ? "You don't have permission to archive productions" : s.status === "archived" ? "Restore production" : "Archive production"}>
+            <Button variant="ghost" size="icon" onClick={() => onArchive(s, s.status !== "archived")} aria-label="Toggle archive" disabled={!canArchiveProductions}>
+              {s.status === "archived" ? <ArchiveRestore className="h-4 w-4" /> : <Archive className="h-4 w-4" />}
+            </Button>
+          </IconTooltip>
           {canHardDelete && (
             <AlertDialog>
-              <AlertDialogTrigger asChild>
-                <Button variant="ghost" size="icon" data-testid={`delete-${s.id}`} disabled={!deletable}
-                  title={deletable ? "Delete production" : synced ? "Synced productions can't be deleted — archive instead" : "Has dates — archive instead"}>
-                  <Trash2 className="h-4 w-4 text-destructive" />
-                </Button>
-              </AlertDialogTrigger>
+              <IconTooltip label={deletable ? "Delete production" : synced ? "Synced productions can't be deleted — archive instead" : "Has dates — archive instead"}>
+                <AlertDialogTrigger asChild>
+                  <Button variant="ghost" size="icon" data-testid={`delete-${s.id}`} disabled={!deletable} aria-label="Delete production">
+                    <Trash2 className="h-4 w-4 text-destructive" />
+                  </Button>
+                </AlertDialogTrigger>
+              </IconTooltip>
               <AlertDialogContent>
                 <AlertDialogHeader>
                   <AlertDialogTitle>Delete this production?</AlertDialogTitle>

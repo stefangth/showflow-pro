@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen, fireEvent, waitFor, within } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { TooltipProvider } from "@/components/ui/tooltip";
 import React from "react";
 
 vi.mock("@/data/platform", () => ({ setOrgCapability: vi.fn().mockResolvedValue(undefined) }));
@@ -18,7 +19,9 @@ import { CAPABILITY_DEFS, CAPABILITY_REGISTRY } from "@/lib/capabilities";
 
 function wrap() {
   const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } });
-  return ({ children }: { children: React.ReactNode }) => React.createElement(QueryClientProvider, { client: qc }, children);
+  return ({ children }: { children: React.ReactNode }) =>
+    React.createElement(QueryClientProvider, { client: qc },
+      React.createElement(TooltipProvider, null, children));
 }
 function allCells(): CapabilityMatrixCell[] {
   return CAPABILITY_DEFS.map((def) => ({ def, effective: def.defaultEnabled, locked: false, source: "registry", policyLocked: false }));

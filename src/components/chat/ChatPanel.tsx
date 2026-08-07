@@ -5,6 +5,7 @@ import { useAuth } from '@/features/auth/AuthContext';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
+import { IconTooltip } from '@/components/common/IconTooltip';
 import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
 import { MessageBubble } from './MessageBubble';
@@ -188,9 +189,11 @@ export function ChatPanel({ showDateId, showDate }: Props) {
             onChange={(e) => setDraft(e.target.value)}
             disabled={archived || send.isPending}
           />
-          <Button type="submit" size="icon" aria-label="Send message" disabled={archived || !draft.trim() || send.isPending}>
-            <Send className="h-4 w-4" />
-          </Button>
+          <IconTooltip label="Send message">
+            <Button type="submit" size="icon" aria-label="Send message" disabled={archived || !draft.trim() || send.isPending}>
+              <Send className="h-4 w-4" />
+            </Button>
+          </IconTooltip>
         </form>
       </div>
     </Card>
