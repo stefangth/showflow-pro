@@ -4,12 +4,12 @@ import { useHireOrderSetupStatus } from "@/hooks/useHireOrderSetup";
 import type { SetupStepKey } from "@/lib/hireOrders/setupStatus";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { SetupStepRow } from "./SetupStepRow";
+import { SetupStepRow } from "@/components/setup/SetupStepRow";
 import { LetterheadStep } from "./LetterheadStep";
 import { TermsStep } from "./TermsStep";
 import { CountersignStep } from "./CountersignStep";
 import { ProducerWaitingCard } from "./ProducerWaitingCard";
-import { useRailDismissed } from "./useRailDismissed";
+import { useRailDismissed } from "@/components/setup/useRailDismissed";
 import { useSetupRailVisible } from "./useSetupRailVisible";
 
 const TITLES: Record<SetupStepKey, string> = {
@@ -44,7 +44,7 @@ export function SetupRail({ orgId }: { orgId: string | null }) {
   const visible = useSetupRailVisible(orgId);
   const canEditSettings = useCan("edit_hire_order_settings");
   const { status } = useHireOrderSetupStatus(orgId);
-  const [, dismiss] = useRailDismissed(orgId);
+  const [, dismiss] = useRailDismissed("hireOrderSetup", orgId);
   const [open, setOpen] = useState<SetupStepKey | null>(null);
 
   if (!visible) return null;
@@ -88,7 +88,7 @@ export function SetupRail({ orgId }: { orgId: string | null }) {
               title={TITLES[s.key]}
               hint={s.done ? HINTS[s.key].done : HINTS[s.key].todo}
               done={s.done}
-              blocksIssue={s.blocksIssue}
+              block={s.blocksIssue ? { label: "Blocks issue", tone: "risk" } : null}
               expanded={open === s.key}
               onToggle={() => toggle(s.key)}
             >

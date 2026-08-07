@@ -1,6 +1,6 @@
 import { useCan } from "@/hooks/useCapabilities";
 import { useHireOrderSetupStatus } from "@/hooks/useHireOrderSetup";
-import { useRailDismissed } from "./useRailDismissed";
+import { useRailDismissed } from "@/components/setup/useRailDismissed";
 
 /**
  * Whether `SetupRail` will render anything at all.
@@ -14,7 +14,7 @@ import { useRailDismissed } from "./useRailDismissed";
 export function useSetupRailVisible(orgId: string | null): boolean {
   const canEditSettings = useCan("edit_hire_order_settings");
   const { status, isLoading } = useHireOrderSetupStatus(orgId);
-  const [dismissed] = useRailDismissed(orgId);
+  const [dismissed] = useRailDismissed("hireOrderSetup", orgId);
 
   // No org (or a caller passing null to gate on the `hire_orders` entitlement) means
   // nothing to set up and nothing to read. Without this the all-false status of an

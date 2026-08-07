@@ -3,23 +3,29 @@ import { Check } from "lucide-react";
 import { badgeVariants } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 
+export interface SetupStepBlock {
+  label: string;
+  /** `risk` = amber "hard" blocker; `neutral` = muted "soft" blocker. */
+  tone: "risk" | "neutral";
+}
+
 export interface SetupStepRowProps {
   /** 1-based position, shown while the step is outstanding. */
   index: number;
   title: string;
   hint: string;
   done: boolean;
-  blocksIssue: boolean;
+  block: SetupStepBlock | null;
   expanded: boolean;
   onToggle: () => void;
   children?: ReactNode;
 }
 
-/** One row of the setup rail: a tick or a number, the title, a one-line hint, and a
- *  "Blocks issue" chip only where leaving the step undone actually fails the issue
- *  action. A checklist that overstates its blockers stops being believed. */
+/** One row of a setup rail: a tick or a number, the title, a one-line hint, and an
+ *  optional chip carried by the caller. A checklist that overstates its blockers stops
+ *  being believed, so `block` is null on steps that do not block anything. */
 export function SetupStepRow({
-  index, title, hint, done, blocksIssue, expanded, onToggle, children,
+  index, title, hint, done, block, expanded, onToggle, children,
 }: SetupStepRowProps) {
   const panelId = useId();
   return (
@@ -44,13 +50,12 @@ export function SetupStepRow({
           <span className="block text-sm font-medium">{title}</span>
           <span className="mt-0.5 block text-xs leading-[17px] text-muted-foreground">{hint}</span>
         </span>
-        {/* The design-system "risk" tone, taken from the Badge's own cva so the amber
-            stays on the --amber-* vars (which carry the dark-mode override) rather than
-            Tailwind's built-in amber palette. A span, not <Badge>, because this sits
-            inside a button and a div there is invalid markup. */}
-        {!done && blocksIssue && (
-          <span className={cn(badgeVariants({ variant: "risk" }), "shrink-0 font-semibold")}>
-            Blocks issue
+        {/* A span, not <Badge>, because this sits inside a button and a div there is
+            invalid markup. The tone rides the Badge cva so amber stays on the --amber-*
+            vars (dark-mode override) rather than Tailwind's built-in amber. */}
+        {!done && block && (
+          <span className={cn(badgeVariants({ variant: block.tone }), "shrink-0 font-semibold")}>
+            {block.label}
           </span>
         )}
       </button>
