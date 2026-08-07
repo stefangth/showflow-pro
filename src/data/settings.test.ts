@@ -117,12 +117,12 @@ describe("upsertOrgSetting", () => {
 });
 
 describe("shows linking data-access", () => {
-  it("fetchShowsForLinking includes airtable_program_key + slots for the org", async () => {
-    const rows = [{ id: "s1", program: "TJE", sub_program: "TJE: Murder", main_cast_slots: null, understudy_slots: null, airtable_program_key: "TJE: Murder" }];
+  it("fetchShowsForLinking includes airtable_program_key + slots + status for the org", async () => {
+    const rows = [{ id: "s1", program: "TJE", sub_program: "TJE: Murder", main_cast_slots: null, understudy_slots: null, status: "active", airtable_program_key: "TJE: Murder" }];
     const fake = createFakeSupabase({ shows: { data: rows, error: null } });
     const res = await fetchShowsForLinking(fake as never, "org-1");
     expect(res).toEqual(rows);
-    expect(fake.calls).toContainEqual({ table: "shows", method: "select", args: ["id, program, sub_program, main_cast_slots, understudy_slots, airtable_program_key"] });
+    expect(fake.calls).toContainEqual({ table: "shows", method: "select", args: ["id, program, sub_program, main_cast_slots, understudy_slots, status, airtable_program_key"] });
     expect(fake.calls).toContainEqual({ table: "shows", method: "eq", args: ["org_id", "org-1"] });
   });
 

@@ -9,10 +9,13 @@ export const REALTIME_INVALIDATIONS: Array<{ table: string; keys: unknown[][] }>
   // (['hire-orders','ready',org] — the bookings banner + per-row CTA/chip) fresh
   // when a booking confirm/cancel flips a date's fully_filled status.
   { table: 'bookings',                   keys: [['bookings'], ['hire-orders']] },
-  { table: 'show_dates',                 keys: [['show-dates'], ['dashboard-upcoming-dates'], ['artist-eligible-dates'], ['hire-orders']] },
+  { table: 'show_dates',                 keys: [['show-dates'], ['dashboard-upcoming-dates'], ['artist-eligible-dates'], ['hire-orders'], ['eligibility']] },
   { table: 'hire_orders',                keys: [['hire-orders']] },
   { table: 'show_date_cast_eligibility', keys: [['show-date-cast-eligibility'], ['eligible-artists'], ['artist-eligible-dates']] },
-  { table: 'show_cast_eligibility',      keys: [['cast-eligibility'], ['eligible-artists'], ['artist-eligible-dates']] },
+  { table: 'show_cast_eligibility',      keys: [['cast-eligibility'], ['eligible-artists'], ['artist-eligible-dates'], ['eligibility']] },
+  // Booking-setup ladder-coverage query (['eligibility','ladder-coverage',org], the setup
+  // rail's Eligibility step) and the Casts & Cities org-wide priority editor both read this table.
+  { table: 'cast_city_priority',         keys: [['cast-city-priority'], ['eligibility']] },
   { table: 'cast_members',              keys: [['cast-members'], ['artist-casts'], ['my-cast-memberships'], ['cast-members-counts'], ['eligible-artists'], ['artist-eligible-dates']] }, // cast membership drives both eligibility queries
   { table: 'artists',                    keys: [['artists'], ['my-artist']] },
   { table: 'shows',                      keys: [['shows'], ['shows-for-eligibility'], ['shows-program-sub-programs']] },

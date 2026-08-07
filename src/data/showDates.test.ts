@@ -63,4 +63,14 @@ describe("fetchNextRehearsalDate", () => {
     const client = createFakeSupabase({ show_dates: { data: [], error: null } });
     expect(await fetchNextRehearsalDate(client as never, { orgId: "org-1", today: "2026-08-07" })).toBeNull();
   });
+
+  it("filters to future, non-cancelled dates with a city and orders/limits (calls-level pin, seed data can't prove a dropped filter)", async () => {
+    const client = createFakeSupabase({ show_dates: { data: [], error: null } });
+    await fetchNextRehearsalDate(client as never, { orgId: "org-1", today: "2026-08-07" });
+    expect(client.calls).toContainEqual({ table: "show_dates", method: "not", args: ["city_id", "is", null] });
+    expect(client.calls).toContainEqual({ table: "show_dates", method: "neq", args: ["status", "cancelled"] });
+    expect(client.calls).toContainEqual({ table: "show_dates", method: "gte", args: ["date", "2026-08-07"] });
+    expect(client.calls).toContainEqual({ table: "show_dates", method: "order", args: ["date", { ascending: true }] });
+    expect(client.calls).toContainEqual({ table: "show_dates", method: "limit", args: [1] });
+  });
 });

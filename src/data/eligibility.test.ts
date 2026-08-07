@@ -138,4 +138,16 @@ describe("fetchLadderCoverageInputs", () => {
     expect(r.showPriorities).toEqual([{ showId: "s1", cityId: "c1", castId: "k1", priority: 1 }]);
     expect(r.cityPriorities).toEqual([{ cityId: "c1", castId: "k2", priority: 2 }]);
   });
+
+  it("scopes show_cast_eligibility to prioritized rows, and show_dates to future non-cancelled dates (calls-level pin, seed data can't prove a dropped filter)", async () => {
+    const client = createFakeSupabase({
+      show_dates: { data: [], error: null },
+      show_cast_eligibility: { data: [], error: null },
+      cast_city_priority: { data: [], error: null },
+    });
+    await fetchLadderCoverageInputs(asSupabase(client), { orgId: "org-1", today: "2026-08-07" });
+    expect(client.calls).toContainEqual({ table: "show_cast_eligibility", method: "not", args: ["priority", "is", null] });
+    expect(client.calls).toContainEqual({ table: "show_dates", method: "neq", args: ["status", "cancelled"] });
+    expect(client.calls).toContainEqual({ table: "show_dates", method: "gte", args: ["date", "2026-08-07"] });
+  });
 });

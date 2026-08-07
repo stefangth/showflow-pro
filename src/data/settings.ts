@@ -145,7 +145,7 @@ export async function fetchShowsForLinking(
   if (!orgId) return [];
   const { data, error } = await client
     .from("shows")
-    .select("id, program, sub_program, main_cast_slots, understudy_slots, airtable_program_key")
+    .select("id, program, sub_program, main_cast_slots, understudy_slots, status, airtable_program_key")
     .eq("org_id", orgId).order("program").order("sub_program");
   if (error) throw error;
   return (data ?? []) as ShowLink[];

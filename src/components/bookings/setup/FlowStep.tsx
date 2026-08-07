@@ -6,7 +6,7 @@ import { upsertOrgSetting } from "@/data/settings";
 import { useBookingFlow, useFlowTimes } from "@/hooks/useBookingFlow";
 import {
   applyPreset, matchPreset, normalizeBookingFlow, lifecycleChips, inPracticeRows,
-  BOOKING_FLOW_DEFAULTS, type PresetName, type FlowTimes,
+  BOOKING_FLOW_DEFAULTS, type PresetName, type FlowTimes, type LifecycleChip,
 } from "@/lib/bookingFlow";
 import { BOOKING_ENGINE_DEFAULTS } from "@/config/app.config";
 import { FlowPresets } from "@/components/settings/bookingFlow/FlowPresets";
@@ -15,7 +15,7 @@ import { cn } from "@/lib/utils";
 import type { Json } from "@/integrations/supabase/types";
 
 const PRESET_NAMES: Record<PresetName, string> = { classic: "Classic", fasttrack: "Fast-track", direct: "Direct book" };
-const CHIP_TONE: Record<string, string> = {
+const CHIP_TONE: Record<LifecycleChip["tone"], string> = {
   violet: "bg-[var(--accent-500)]", amber: "bg-[var(--amber-500)]",
   green: "bg-[var(--green-500)]", neutral: "bg-muted-foreground",
 };
