@@ -21,6 +21,10 @@
         {
           "title": "Rehearse the next date",
           "description": "Preview exactly who the next date would offer, and when, without creating a booking or sending a single email."
+        },
+        {
+          "title": "Upcoming, past, or all dates",
+          "description": "Bookings, hire orders, and availability now let you switch between upcoming, past, and all dates. Bookings and availability start on upcoming; past dates appear dimmed but stay clickable everywhere they show."
         }
       ],
       "improved": [
@@ -39,6 +43,24 @@
         {
           "title": "Honest setup blockers",
           "description": "Each outstanding booking setup step says whether it stops offers entirely or only stops a date filling, so you know what to fix first."
+        },
+        {
+          "title": "Bring back the setup checklist",
+          "description": "Hidden the setup checklist and want it back? A button on the same screen reopens it, and the checklist now opens in a roomier panel instead of a narrow side column."
+        },
+        {
+          "title": "Overdue hire orders stay in view",
+          "description": "The hire orders list shows every order by default and flags any past its date that still needs signing as Overdue, so nothing awaiting countersignature slips out of sight."
+        },
+        {
+          "title": "Roomier new order wizard",
+          "description": "The guided new order flow is wider, giving multi-date engagements more space in the date and artist grids."
+        }
+      ],
+      "fixed": [
+        {
+          "title": "Past holds stay visible",
+          "description": "A hold on a date that has already passed no longer disappears from your bookings, so you keep a record of what you were booked for."
         }
       ]
     }

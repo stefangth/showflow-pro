@@ -11,12 +11,19 @@ What's new in ShowFlow, newest first.
 - **Ready-made terms templates** — Start from a prepared set of engagement terms instead of writing clauses from scratch. You get your own copy, so editing it changes nothing for anyone else.
 - **Bookings setup checklist** — A checklist beside Shows and bookings walks you through the booking flow, slot counts, cast priorities, eligibility, and response timing, then retires itself once the first offer can go out.
 - **Rehearse the next date** — Preview exactly who the next date would offer, and when, without creating a booking or sending a single email.
+- **Upcoming, past, or all dates** — Bookings, hire orders, and availability now let you switch between upcoming, past, and all dates. Bookings and availability start on upcoming; past dates appear dimmed but stay clickable everywhere they show.
 
 ### Improved
 - **Know before you send** — Issuing a hire order now shows anything missing first, with the fix right there, instead of failing after you press send.
 - **Batch issuing is honest about what it can send** — Select any number of orders and see exactly how many can go now. The rest stay selected as drafts so you can fix them.
 - **Signing is on the document** — Artists sign right under the order they are reading, instead of in a separate window.
 - **Honest setup blockers** — Each outstanding booking setup step says whether it stops offers entirely or only stops a date filling, so you know what to fix first.
+- **Bring back the setup checklist** — Hidden the setup checklist and want it back? A button on the same screen reopens it, and the checklist now opens in a roomier panel instead of a narrow side column.
+- **Overdue hire orders stay in view** — The hire orders list shows every order by default and flags any past its date that still needs signing as Overdue, so nothing awaiting countersignature slips out of sight.
+- **Roomier new order wizard** — The guided new order flow is wider, giving multi-date engagements more space in the date and artist grids.
+
+### Fixed
+- **Past holds stay visible** — A hold on a date that has already passed no longer disappears from your bookings, so you keep a record of what you were booked for.
 
 ## 1.13.0 — July 25, 2026
 
