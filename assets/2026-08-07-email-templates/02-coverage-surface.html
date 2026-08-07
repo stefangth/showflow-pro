@@ -1,0 +1,141 @@
+<h2>The coverage surface — every email, when it fires, who gets it</h2>
+<p class="subtitle">Replaces today's cramped override stack. One scannable registry grouped by domain, each row carrying its real trigger, recipient, and status. Clicking a row opens the editor (next screen). This is where "best-in-class coverage" lives — and where the gaps become visible.</p>
+
+<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:18px;font-size:12px">
+  <span style="padding:3px 9px;border-radius:6px;background:rgba(86,216,139,.16);color:#1a7a44;font-weight:600">Editable</span>
+  <span style="padding:3px 9px;border-radius:6px;background:rgba(90,150,255,.16);color:#2b5fd0;font-weight:600">Preview-only — gap to close</span>
+  <span style="padding:3px 9px;border-radius:6px;background:rgba(150,120,220,.18);color:#6a3fb0;font-weight:600">Internal</span>
+  <span style="padding:3px 9px;border-radius:6px;background:rgba(224,120,80,.16);color:#b1461f;font-weight:600">External — Supabase</span>
+  <span style="padding:3px 9px;border-radius:6px;background:rgba(150,150,160,.2);color:#6b6b74;font-weight:600">Unused — remove</span>
+</div>
+
+<div style="background:#fff;border-radius:14px;padding:8px 4px 12px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;color:#15131c">
+
+  <!-- helper styles via inline; group header + row -->
+  <div style="padding:14px 20px 6px;font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:#4738B0">Booking engine · 5</div>
+
+  <!-- row -->
+  <div style="display:flex;align-items:center;gap:14px;padding:11px 20px;border-top:1px solid #f1f0f4">
+    <span style="width:8px;height:8px;border-radius:50%;background:#4738B0;flex-shrink:0"></span>
+    <div style="flex:0 0 190px"><div style="font-size:13.5px;font-weight:600">New offer</div><div style="font-size:11px;color:#9a98a3">offer-immediate</div></div>
+    <div style="flex:1;font-size:12.5px;color:#4b4952">🕑 When an offer tier opens</div>
+    <div style="flex:0 0 175px;font-size:12.5px;color:#4b4952">→ The offered artist</div>
+    <div style="flex:0 0 165px;text-align:right"><span style="padding:3px 8px;border-radius:6px;background:rgba(86,216,139,.16);color:#1a7a44;font-size:11px;font-weight:600">Editable</span> <span style="font-size:10.5px;color:#b0aeb8">opt-out</span></div>
+  </div>
+  <div style="display:flex;align-items:center;gap:14px;padding:11px 20px;border-top:1px solid #f1f0f4">
+    <span style="width:8px;height:8px;border-radius:50%;background:#4738B0;flex-shrink:0"></span>
+    <div style="flex:0 0 190px"><div style="font-size:13.5px;font-weight:600">Offer digest</div><div style="font-size:11px;color:#9a98a3">artist-offer-digest</div></div>
+    <div style="flex:1;font-size:12.5px;color:#4b4952">🕑 Daily · 19:00 Berlin</div>
+    <div style="flex:0 0 175px;font-size:12.5px;color:#4b4952">→ Artists with pending offers</div>
+    <div style="flex:0 0 165px;text-align:right"><span style="padding:3px 8px;border-radius:6px;background:rgba(86,216,139,.16);color:#1a7a44;font-size:11px;font-weight:600">Editable</span> <span style="font-size:10.5px;color:#b0aeb8">opt-out</span></div>
+  </div>
+  <div style="display:flex;align-items:center;gap:14px;padding:11px 20px;border-top:1px solid #f1f0f4">
+    <span style="width:8px;height:8px;border-radius:50%;background:#4738B0;flex-shrink:0"></span>
+    <div style="flex:0 0 190px"><div style="font-size:13.5px;font-weight:600">Offer expiring</div><div style="font-size:11px;color:#9a98a3">offer-expiry-reminder</div></div>
+    <div style="flex:1;font-size:12.5px;color:#4b4952">🕑 Shortly before an offer expires</div>
+    <div style="flex:0 0 175px;font-size:12.5px;color:#4b4952">→ Artist with the pending offer</div>
+    <div style="flex:0 0 165px;text-align:right"><span style="padding:3px 8px;border-radius:6px;background:rgba(86,216,139,.16);color:#1a7a44;font-size:11px;font-weight:600">Editable</span> <span style="font-size:10.5px;color:#b0aeb8">opt-out</span></div>
+  </div>
+  <div style="display:flex;align-items:center;gap:14px;padding:11px 20px;border-top:1px solid #f1f0f4">
+    <span style="width:8px;height:8px;border-radius:50%;background:#4738B0;flex-shrink:0"></span>
+    <div style="flex:0 0 190px"><div style="font-size:13.5px;font-weight:600">Confirmation digest</div><div style="font-size:11px;color:#9a98a3">artist-confirmation-digest</div></div>
+    <div style="flex:1;font-size:12.5px;color:#4b4952">🕑 Daily · 20:00 Berlin</div>
+    <div style="flex:0 0 175px;font-size:12.5px;color:#4b4952">→ Newly confirmed artists</div>
+    <div style="flex:0 0 165px;text-align:right"><span style="padding:3px 8px;border-radius:6px;background:rgba(86,216,139,.16);color:#1a7a44;font-size:11px;font-weight:600">Editable</span> <span style="font-size:10.5px;color:#b0aeb8">opt-out</span></div>
+  </div>
+  <div style="display:flex;align-items:center;gap:14px;padding:11px 20px;border-top:1px solid #f1f0f4">
+    <span style="width:8px;height:8px;border-radius:50%;background:#883A24;flex-shrink:0"></span>
+    <div style="flex:0 0 190px"><div style="font-size:13.5px;font-weight:600">Cast escalation</div><div style="font-size:11px;color:#9a98a3">cast-escalation-requested</div></div>
+    <div style="flex:1;font-size:12.5px;color:#4b4952">🕑 A tier can't fill by its deadline</div>
+    <div style="flex:0 0 175px;font-size:12.5px;color:#4b4952">→ Producers</div>
+    <div style="flex:0 0 165px;text-align:right"><span style="padding:3px 8px;border-radius:6px;background:rgba(86,216,139,.16);color:#1a7a44;font-size:11px;font-weight:600">Editable</span> <span style="font-size:10.5px;color:#b0aeb8">opt-out</span></div>
+  </div>
+
+  <div style="padding:18px 20px 6px;font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:#1C5A44">Hire orders · 2</div>
+  <div style="display:flex;align-items:center;gap:14px;padding:11px 20px;border-top:1px solid #f1f0f4">
+    <span style="width:8px;height:8px;border-radius:50%;background:#1C5A44;flex-shrink:0"></span>
+    <div style="flex:0 0 190px"><div style="font-size:13.5px;font-weight:600">Order issued</div><div style="font-size:11px;color:#9a98a3">hire-order-issued</div></div>
+    <div style="flex:1;font-size:12.5px;color:#4b4952">🕑 Producer issues an order</div>
+    <div style="flex:0 0 175px;font-size:12.5px;color:#4b4952">→ The artist · PDF attached</div>
+    <div style="flex:0 0 165px;text-align:right"><span style="padding:3px 8px;border-radius:6px;background:rgba(86,216,139,.16);color:#1a7a44;font-size:11px;font-weight:600">Editable</span> <span style="font-size:10.5px;color:#b0aeb8">opt-out</span></div>
+  </div>
+  <div style="display:flex;align-items:center;gap:14px;padding:11px 20px;border-top:1px solid #f1f0f4;background:rgba(90,150,255,.05)">
+    <span style="width:8px;height:8px;border-radius:50%;background:#3B3F63;flex-shrink:0"></span>
+    <div style="flex:0 0 190px"><div style="font-size:13.5px;font-weight:600">Order countersigned</div><div style="font-size:11px;color:#9a98a3">hire-order-countersigned</div></div>
+    <div style="flex:1;font-size:12.5px;color:#4b4952">🕑 An order is countersigned</div>
+    <div style="flex:0 0 175px;font-size:12.5px;color:#4b4952">→ Producer + artist</div>
+    <div style="flex:0 0 165px;text-align:right"><span style="padding:3px 8px;border-radius:6px;background:rgba(90,150,255,.16);color:#2b5fd0;font-size:11px;font-weight:600">Preview-only</span></div>
+  </div>
+
+  <div style="padding:18px 20px 6px;font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:#7c3aed">Accounts &amp; access · 3</div>
+  <div style="display:flex;align-items:center;gap:14px;padding:11px 20px;border-top:1px solid #f1f0f4;background:rgba(90,150,255,.05)">
+    <span style="width:8px;height:8px;border-radius:50%;background:#4738B0;flex-shrink:0"></span>
+    <div style="flex:0 0 190px"><div style="font-size:13.5px;font-weight:600">Invitation</div><div style="font-size:11px;color:#9a98a3">org-invitation</div></div>
+    <div style="flex:1;font-size:12.5px;color:#4b4952">🕑 An admin invites someone</div>
+    <div style="flex:0 0 175px;font-size:12.5px;color:#4b4952">→ The invitee</div>
+    <div style="flex:0 0 165px;text-align:right"><span style="padding:3px 8px;border-radius:6px;background:rgba(90,150,255,.16);color:#2b5fd0;font-size:11px;font-weight:600">Preview-only</span> <span style="font-size:10.5px;color:#b0aeb8">always</span></div>
+  </div>
+  <div style="display:flex;align-items:center;gap:14px;padding:11px 20px;border-top:1px solid #f1f0f4;background:rgba(90,150,255,.05)">
+    <span style="width:8px;height:8px;border-radius:50%;background:#3B3F63;flex-shrink:0"></span>
+    <div style="flex:0 0 190px"><div style="font-size:13.5px;font-weight:600">Email changed</div><div style="font-size:11px;color:#9a98a3">account-email-changed</div></div>
+    <div style="flex:1;font-size:12.5px;color:#4b4952">🕑 A user's email is changed</div>
+    <div style="flex:0 0 175px;font-size:12.5px;color:#4b4952">→ The user · security notice</div>
+    <div style="flex:0 0 165px;text-align:right"><span style="padding:3px 8px;border-radius:6px;background:rgba(90,150,255,.16);color:#2b5fd0;font-size:11px;font-weight:600">Preview-only</span> <span style="font-size:10.5px;color:#b0aeb8">always</span></div>
+  </div>
+  <div style="display:flex;align-items:center;gap:14px;padding:11px 20px;border-top:1px solid #f1f0f4">
+    <span style="width:8px;height:8px;border-radius:50%;background:#c9c7d0;flex-shrink:0"></span>
+    <div style="flex:0 0 190px"><div style="font-size:13.5px;font-weight:600">Password reset</div><div style="font-size:11px;color:#9a98a3">Supabase Auth</div></div>
+    <div style="flex:1;font-size:12.5px;color:#4b4952">🕑 A user requests a reset</div>
+    <div style="flex:0 0 175px;font-size:12.5px;color:#4b4952">→ The user</div>
+    <div style="flex:0 0 165px;text-align:right"><span style="padding:3px 8px;border-radius:6px;background:rgba(224,120,80,.16);color:#b1461f;font-size:11px;font-weight:600">External</span></div>
+  </div>
+
+  <div style="padding:18px 20px 6px;font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:#6a3fb0">System · 1</div>
+  <div style="display:flex;align-items:center;gap:14px;padding:11px 20px;border-top:1px solid #f1f0f4">
+    <span style="width:8px;height:8px;border-radius:50%;background:#6a3fb0;flex-shrink:0"></span>
+    <div style="flex:0 0 190px"><div style="font-size:13.5px;font-weight:600">Cron health alert</div><div style="font-size:11px;color:#9a98a3">cron-health-alert</div></div>
+    <div style="flex:1;font-size:12.5px;color:#4b4952">🕑 A scheduled job fails</div>
+    <div style="flex:0 0 175px;font-size:12.5px;color:#4b4952">→ Super-admins</div>
+    <div style="flex:0 0 165px;text-align:right"><span style="padding:3px 8px;border-radius:6px;background:rgba(150,120,220,.18);color:#6a3fb0;font-size:11px;font-weight:600">Internal</span></div>
+  </div>
+
+  <div style="padding:18px 20px 6px;font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:#8a8894">Unused — never sent · 2</div>
+  <div style="display:flex;align-items:center;gap:14px;padding:11px 20px;border-top:1px solid #f1f0f4;opacity:.6">
+    <span style="width:8px;height:8px;border-radius:50%;background:#c9c7d0;flex-shrink:0"></span>
+    <div style="flex:0 0 190px"><div style="font-size:13.5px;font-weight:600;text-decoration:line-through">Signup decision</div><div style="font-size:11px;color:#9a98a3">signup-decision</div></div>
+    <div style="flex:1;font-size:12.5px;color:#9a98a3">No trigger — removed signup flow</div>
+    <div style="flex:0 0 175px;font-size:12.5px;color:#9a98a3">—</div>
+    <div style="flex:0 0 165px;text-align:right"><span style="padding:3px 8px;border-radius:6px;background:rgba(150,150,160,.2);color:#6b6b74;font-size:11px;font-weight:600">Unused</span></div>
+  </div>
+  <div style="display:flex;align-items:center;gap:14px;padding:11px 20px;border-top:1px solid #f1f0f4;opacity:.6">
+    <span style="width:8px;height:8px;border-radius:50%;background:#c9c7d0;flex-shrink:0"></span>
+    <div style="flex:0 0 190px"><div style="font-size:13.5px;font-weight:600;text-decoration:line-through">New signup · admin</div><div style="font-size:11px;color:#9a98a3">new-signup-admin-notification</div></div>
+    <div style="flex:1;font-size:12.5px;color:#9a98a3">No trigger — removed signup flow</div>
+    <div style="flex:0 0 175px;font-size:12.5px;color:#9a98a3">—</div>
+    <div style="flex:0 0 165px;text-align:right"><span style="padding:3px 8px;border-radius:6px;background:rgba(150,150,160,.2);color:#6b6b74;font-size:11px;font-weight:600">Unused</span></div>
+  </div>
+
+</div>
+
+<div class="section" style="margin-top:22px">
+  <div class="label" style="margin-bottom:10px">What this surface decides — tell me your calls</div>
+  <div class="options">
+    <div class="option" data-choice="looks-right" onclick="toggleSelect(this)">
+      <div class="letter">✓</div>
+      <div class="content"><h3>This IA is right</h3><p>Grouped registry, real trigger + recipient per row, status chips. Proceed with this as the coverage surface.</p></div>
+    </div>
+    <div class="option" data-choice="remove-orphans" onclick="toggleSelect(this)">
+      <div class="letter">1</div>
+      <div class="content"><h3>Delete the 2 orphans</h3><p>Remove signup-decision + new-signup-admin-notification (dead code + misleading "editable" today). Alternative: leave them, hidden.</p></div>
+    </div>
+    <div class="option" data-choice="close-gaps" onclick="toggleSelect(this)">
+      <div class="letter">2</div>
+      <div class="content"><h3>Close all 3 preview-only gaps</h3><p>Make invitation, countersigned, email-changed fully editable — not just previewable. (cron-health stays internal.)</p></div>
+    </div>
+    <div class="option" data-choice="row-detail" onclick="toggleSelect(this)">
+      <div class="letter">3</div>
+      <div class="content"><h3>Row → full-page editor</h3><p>Clicking a row opens the reused hire-order-style three-pane editor (next screen), not an inline drawer.</p></div>
+    </div>
+  </div>
+  <p class="subtitle" style="margin-top:14px">Multi-select or just tell me in the terminal. Anything you'd group differently, rename, or add as a column (e.g. a "last sent" / volume stat)?</p>
+</div>
