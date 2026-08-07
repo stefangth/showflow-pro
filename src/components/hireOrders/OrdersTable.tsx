@@ -4,39 +4,33 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import { HireOrderStatusBadge } from "@/components/hireOrders/HireOrderStatusBadge";
 import { BatchIssuePreflightDialog, type BatchPreflightOrder } from "./BatchIssuePreflightDialog";
 import { formatMoney } from "@/lib/hireOrders/money";
-import { formatDateDMY, parseDateOnly, isPastDate, PAST_DATE_TINT } from "@/lib/dates";
+import { formatDateDMY, isPastDate, pastRowClassName } from "@/lib/dates";
+import { orderDate } from "@/lib/hireOrders/orderDate";
 import { cn } from "@/lib/utils";
 import type { OrderData } from "@/lib/hireOrders/types";
 import { useHireOrderAction, type IssueResult } from "@/hooks/useHireOrders";
-import type { HireOrderListRow } from "@/data/hireOrders";
+import type { HireOrderListRow, HireOrderStatus } from "@/data/hireOrders";
 
 /** Only draft/ready orders can be batch-issued. */
 function isIssuable(status: string): boolean {
   return status === "draft" || status === "ready";
 }
 
-/** Read a resolved snapshot field as a trimmed string ("" when absent). Mirrors
- *  the same small helper in ArtistDashboard.tsx / HireOrderDetailPage.tsx /
- *  HireOrdersCard.tsx (kept local per that established pattern rather than a
- *  shared import). */
-function snap(data: OrderData, key: keyof OrderData): string {
-  const v = data[key]?.value;
-  if (v === null || v === undefined) return "";
-  return String(v);
-}
+/** Statuses that still owe the artist a signed order. Neither countersigned
+ *  (already done) nor void (a dead order is never "outstanding") belong here. */
+const OUTSTANDING_STATUSES: ReadonlySet<HireOrderStatus> = new Set(["draft", "ready", "issued"]);
 
-/** The date to key an order's past/upcoming state on: the linked show_date's
- *  date when there is one, else the order's own snapshot `data.date` -- a
- *  manual "no linked date" order carries its date there instead. Guards the
- *  manual value to a clean YYYY-MM-DD before parsing (see snap()); returns
- *  null when neither is available, same as before this fallback existed. */
-function orderDate(o: HireOrderListRow): Date | null {
-  if (o.show_dates?.date) return parseDateOnly(o.show_dates.date);
-  const dateStr = snap((o.data ?? {}) as OrderData, "date");
-  return /^\d{4}-\d{2}-\d{2}$/.test(dateStr) ? parseDateOnly(dateStr) : null;
+/** An order is overdue when its engagement date (via the shared `orderDate()`
+ *  -- the same date the timeframe filter and the past tint key on) has
+ *  already passed while the order is still outstanding (not countersigned,
+ *  not cancelled/void). A countersigned or void order is never overdue: the
+ *  paperwork is either done or moot. */
+function isOverdue(o: HireOrderListRow, rowDate: Date | null): boolean {
+  return !!rowDate && isPastDate(rowDate) && OUTSTANDING_STATUSES.has(o.status);
 }
 
 interface Props {
@@ -175,10 +169,7 @@ export function OrdersTable({ orders, orgId, onRowClick }: Props) {
                 return (
                 <TableRow
                   key={o.id}
-                  className={cn(
-                    'cursor-pointer',
-                    rowDate && isPastDate(rowDate) && PAST_DATE_TINT,
-                  )}
+                  className={cn('cursor-pointer', pastRowClassName(rowDate))}
                   onClick={() => onRowClick(o.id)}
                   role="button"
                   tabIndex={0}
@@ -207,7 +198,12 @@ export function OrdersTable({ orders, orgId, onRowClick }: Props) {
                   <TableCell className="text-right font-mono tabular-nums text-sm">
                     {o.fee_amount != null ? formatMoney(o.fee_amount, o.fee_currency) : "Not set"}
                   </TableCell>
-                  <TableCell><HireOrderStatusBadge status={o.status} /></TableCell>
+                  <TableCell>
+                    <div className="flex items-center gap-1.5">
+                      <HireOrderStatusBadge status={o.status} />
+                      {isOverdue(o, rowDate) && <Badge variant="risk">Overdue</Badge>}
+                    </div>
+                  </TableCell>
                   <TableCell>
                     <ChevronRight className="h-4 w-4 text-muted-foreground" aria-hidden="true" />
                   </TableCell>

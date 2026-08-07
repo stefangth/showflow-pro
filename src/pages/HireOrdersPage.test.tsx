@@ -27,18 +27,21 @@ vi.mock("react-router-dom", () => ({
 }));
 // The rail is exercised on its own in SetupRail.test.tsx; stub it here so this
 // page's tests don't also have to seed its three app_settings reads. The page
-// reads the same visibility decision the rail does (a null child does not
-// collapse a grid track), so the stub covers both exports.
-const { railVisible } = vi.hoisted(() => ({ railVisible: { value: true } }));
+// reads the same hook the rail does for `visible` (a null child does not
+// collapse a grid track) and, since Plan B's fix wave, for `reinvocable` too
+// (the header re-invoke button used to be gated independently, which could
+// offer to reopen a rail that would render nothing actionable -- now it reads
+// the exact same hook output as the callout, just a different field).
+const { railState } = vi.hoisted(() => ({
+  railState: { value: { visible: true, reinvocable: false } as { visible: boolean; reinvocable: boolean } },
+}));
 vi.mock("@/components/hireOrders/setup/SetupRail", () => ({
   SetupRail: () => <div data-testid="setup-rail" />,
 }));
 vi.mock("@/components/hireOrders/setup/useSetupRailVisible", () => ({
-  useSetupRailVisible: () => railVisible.value,
+  useSetupRailVisible: () => railState.value,
 }));
-// Plan B Task 3: the header re-invoke button reads `status.complete` directly
-// (it has to distinguish "dismissed" from "genuinely complete", which
-// `useSetupRailVisible` alone can't -- both read false). Partial mock: this
+// Still needed for the callout's "X of Y steps done" text. Partial mock: this
 // module also exports useOrgLetterhead/useOrgTerms/useImportTermsTemplates,
 // which NewOrderWizard and OrderSlideOver (unmocked here) depend on.
 const { hireOrderSetupStatus } = vi.hoisted(() => ({
@@ -186,7 +189,7 @@ describe("HireOrdersPage", () => {
   beforeEach(() => {
     navigate.mockClear();
     authAs("producer");
-    railVisible.value = true;
+    railState.value = { visible: true, reinvocable: false };
     hireOrderSetupStatus.value = { complete: false, doneCount: 0, totalCount: 3 };
     localStorage.clear();
     seedFor(ROWS);
@@ -529,7 +532,7 @@ describe("HireOrdersPage", () => {
   });
 
   it("hides the setup callout once the rail has retired", async () => {
-    railVisible.value = false;
+    railState.value = { visible: false, reinvocable: false };
     renderPage();
     await screen.findByText("Hire orders");
     expect(screen.queryByText(/get hire orders ready/i)).not.toBeInTheDocument();
@@ -543,9 +546,10 @@ describe("HireOrdersPage", () => {
   });
 
   it("shows the header re-invoke button once dismissed while setup is still incomplete", async () => {
-    // In the real (unmocked) hook, useSetupRailVisible also reads `dismissed`,
-    // so it would report false here too -- set the stub to match.
-    railVisible.value = false;
+    // The mocked hook reports what the real useSetupRailVisible would compute
+    // once dismissed: not visible (the callout is gone), but reinvocable --
+    // there's still something actionable once the header button reopens it.
+    railState.value = { visible: false, reinvocable: true };
     localStorage.setItem("showflow.hireOrderSetup.hidden.org-1", "true");
     renderPage();
     expect(await screen.findByRole("button", { name: /setup checklist/i })).toBeInTheDocument();
@@ -554,6 +558,7 @@ describe("HireOrdersPage", () => {
   });
 
   it("re-invokes on click: clears the dismissal and opens the Sheet with the rail", async () => {
+    railState.value = { visible: false, reinvocable: true };
     localStorage.setItem("showflow.hireOrderSetup.hidden.org-1", "true");
     renderPage();
     fireEvent.click(await screen.findByRole("button", { name: /setup checklist/i }));
@@ -563,8 +568,23 @@ describe("HireOrdersPage", () => {
   });
 
   it("hides the re-invoke button once setup is complete, even if previously dismissed", async () => {
+    // The real hook reports both false once complete, regardless of dismissed.
+    railState.value = { visible: false, reinvocable: false };
     localStorage.setItem("showflow.hireOrderSetup.hidden.org-1", "true");
     hireOrderSetupStatus.value = { complete: true, doneCount: 3, totalCount: 3 };
+    renderPage();
+    await screen.findByText("Hire orders");
+    expect(screen.queryByRole("button", { name: /setup checklist/i })).not.toBeInTheDocument();
+  });
+
+  it("never offers the re-invoke button in a state where the rail itself would render nothing actionable", async () => {
+    // Regression for the fix wave's finding: a producer once nothing blocks
+    // issuing is exactly the state useSetupRailVisible reports `reinvocable:
+    // false` for, even while dismissed -- the old independently-gated button
+    // (`dismissed && !complete`) would have shown here.
+    railState.value = { visible: false, reinvocable: false };
+    localStorage.setItem("showflow.hireOrderSetup.hidden.org-1", "true");
+    hireOrderSetupStatus.value = { complete: false, doneCount: 2, totalCount: 3 };
     renderPage();
     await screen.findByText("Hire orders");
     expect(screen.queryByRole("button", { name: /setup checklist/i })).not.toBeInTheDocument();
@@ -635,8 +655,8 @@ describe("HireOrdersPage", () => {
     expect(screen.queryByText(/fully cast and ready/i)).not.toBeInTheDocument();
   });
 
-  describe("timeframe filter (Plan B Task 2)", () => {
-    it("defaults to Upcoming: hides a past-dated order until Past/All is selected, and tints it once revealed", async () => {
+  describe("timeframe filter (Plan B fix wave: defaults to All time, not Upcoming)", () => {
+    it("defaults to All time: shows a past-dated order tinted, right alongside an untinted upcoming one", async () => {
       seedFor([
         order({
           id: "ho-past", order_no: "HO-PAST-1", status: "draft",
@@ -651,22 +671,41 @@ describe("HireOrdersPage", () => {
       ]);
       renderPage();
       await screen.findByText("HO-FUTURE-1");
-      expect(screen.queryByText("HO-PAST-1")).not.toBeInTheDocument();
 
-      // The timeframe trigger defaults to "Upcoming"; switch it to "Any time"
-      // to reveal the past order.
-      fireEvent.click(screen.getByRole("button", { name: /^Upcoming$/ }));
-      fireEvent.click(screen.getByRole("button", { name: "Any time" }));
-
+      // No interaction needed: unlike the sibling booking surfaces, a hire order
+      // stays actionable after its date passes, so it shows by default (grayed).
       const pastCell = await screen.findByText("HO-PAST-1");
       const row = pastCell.closest("tr")!;
       expect(row.className).toMatch(/opacity-60/);
       expect(row.className).not.toMatch(/pointer-events-none/);
-      // The future order stays visible and untinted throughout.
       expect(screen.getByText("HO-FUTURE-1").closest("tr")!.className).not.toMatch(/opacity-60/);
+
+      // The trigger itself reads "Any time", not "Upcoming".
+      expect(screen.getByRole("button", { name: "Any time" })).toBeInTheDocument();
     });
 
-    it("also reveals a past order under the Past preset specifically", async () => {
+    it("hides the past order once Upcoming is explicitly selected", async () => {
+      seedFor([
+        order({
+          id: "ho-past", order_no: "HO-PAST-1", status: "draft",
+          show_dates: { date: "2020-01-01", venue: "Old Hall" },
+        }),
+        order({
+          id: "ho-future", order_no: "HO-FUTURE-1", status: "draft",
+          show_dates: { date: "2030-01-01", venue: "New Hall" },
+        }),
+      ]);
+      renderPage();
+      await screen.findByText("HO-PAST-1");
+
+      fireEvent.click(screen.getByRole("button", { name: "Any time" }));
+      fireEvent.click(screen.getByRole("button", { name: /^Upcoming$/ }));
+
+      await waitFor(() => expect(screen.queryByText("HO-PAST-1")).not.toBeInTheDocument());
+      expect(screen.getByText("HO-FUTURE-1")).toBeInTheDocument();
+    });
+
+    it("also shows a past order under the Past preset specifically", async () => {
       seedFor([
         order({
           id: "ho-past", order_no: "HO-PAST-1", status: "draft",
@@ -675,15 +714,14 @@ describe("HireOrdersPage", () => {
       ]);
       renderPage();
       await screen.findByText("Hire orders");
-      expect(screen.queryByText("HO-PAST-1")).not.toBeInTheDocument();
 
-      fireEvent.click(screen.getByRole("button", { name: /^Upcoming$/ }));
+      fireEvent.click(screen.getByRole("button", { name: "Any time" }));
       fireEvent.click(screen.getByRole("button", { name: "Past" }));
 
       expect(await screen.findByText("HO-PAST-1")).toBeInTheDocument();
     });
 
-    it("keeps a revealed past order clickable (opens the slide-over)", async () => {
+    it("keeps a past order clickable under the default All-time filter (opens the slide-over)", async () => {
       seedFor([
         order({
           id: "ho-past", order_no: "HO-PAST-1", status: "draft",
@@ -691,9 +729,6 @@ describe("HireOrdersPage", () => {
         }),
       ]);
       renderPage();
-      await screen.findByText("Hire orders");
-      fireEvent.click(screen.getByRole("button", { name: /^Upcoming$/ }));
-      fireEvent.click(screen.getByRole("button", { name: "Any time" }));
 
       const cell = await screen.findByText("HO-PAST-1");
       fireEvent.click(cell);
@@ -706,7 +741,7 @@ describe("HireOrdersPage", () => {
     // to key off `show_dates?.date` alone, so this class of order was always
     // treated as dateless (never hidden, never tinted) regardless of how old
     // it actually was.
-    it("hides a past manual order with no linked show_date under the default Upcoming filter, and tints it once revealed", async () => {
+    it("tints a past manual order with no linked show_date under the default All-time filter", async () => {
       seedFor([
         order({
           id: "ho-manual-past", order_no: "HO-MANUAL-PAST-1", status: "draft",
@@ -719,11 +754,6 @@ describe("HireOrdersPage", () => {
         }),
       ]);
       renderPage();
-      await screen.findByText("Hire orders");
-      expect(screen.queryByText("HO-MANUAL-PAST-1")).not.toBeInTheDocument();
-
-      fireEvent.click(screen.getByRole("button", { name: /^Upcoming$/ }));
-      fireEvent.click(screen.getByRole("button", { name: "Any time" }));
 
       const pastCell = await screen.findByText("HO-MANUAL-PAST-1");
       const row = pastCell.closest("tr")!;
@@ -731,7 +761,7 @@ describe("HireOrdersPage", () => {
       expect(row.className).not.toMatch(/pointer-events-none/);
     });
 
-    it("keeps a revealed past manual (no linked show_date) order clickable", async () => {
+    it("hides a past manual (no linked show_date) order once Upcoming is selected", async () => {
       seedFor([
         order({
           id: "ho-manual-past", order_no: "HO-MANUAL-PAST-1", status: "draft",
@@ -740,13 +770,54 @@ describe("HireOrdersPage", () => {
         }),
       ]);
       renderPage();
-      await screen.findByText("Hire orders");
-      fireEvent.click(screen.getByRole("button", { name: /^Upcoming$/ }));
+      await screen.findByText("HO-MANUAL-PAST-1");
+
       fireEvent.click(screen.getByRole("button", { name: "Any time" }));
+      fireEvent.click(screen.getByRole("button", { name: /^Upcoming$/ }));
+
+      await waitFor(() => expect(screen.queryByText("HO-MANUAL-PAST-1")).not.toBeInTheDocument());
+    });
+
+    it("keeps a past manual (no linked show_date) order clickable under the default All-time filter", async () => {
+      seedFor([
+        order({
+          id: "ho-manual-past", order_no: "HO-MANUAL-PAST-1", status: "draft",
+          show_dates: null,
+          data: { date: { value: "2020-01-01", source: "manual" } },
+        }),
+      ]);
+      renderPage();
 
       const cell = await screen.findByText("HO-MANUAL-PAST-1");
       fireEvent.click(cell);
       expect(await screen.findByRole("dialog")).toBeInTheDocument();
+    });
+  });
+
+  describe("Overdue indicator (Plan B fix wave)", () => {
+    it("shows Overdue on a past-dated issued order in the table", async () => {
+      seedFor([
+        order({
+          id: "ho-overdue", order_no: "HO-OVERDUE-1", status: "issued",
+          show_dates: { date: "2020-01-01", venue: "Old Hall" },
+        }),
+      ]);
+      renderPage();
+      await screen.findByText("HO-OVERDUE-1");
+      expect(screen.getByText("Overdue")).toBeInTheDocument();
+    });
+
+    it("does not show Overdue on a past-dated countersigned order", async () => {
+      seedFor([
+        order({
+          id: "ho-done", order_no: "HO-DONE-1", status: "countersigned",
+          show_dates: { date: "2020-01-01", venue: "Old Hall" },
+          pdf_path: "orgs/org-1/ho-done.pdf", issued_at: "2020-01-02T10:00:00Z", countersigned_at: "2020-01-03T10:00:00Z",
+        }),
+      ]);
+      renderPage();
+      await screen.findByText("HO-DONE-1");
+      expect(screen.queryByText("Overdue")).not.toBeInTheDocument();
     });
   });
 });

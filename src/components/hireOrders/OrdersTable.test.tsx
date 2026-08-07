@@ -140,6 +140,48 @@ describe("OrdersTable — past-date row tint (Plan B Task 2)", () => {
   });
 });
 
+describe("OrdersTable — Overdue indicator (Plan B fix wave)", () => {
+  it("shows Overdue next to the status badge for a past-dated issued order", () => {
+    const orders = [
+      order({ id: "ho-1", order_no: "HO-OVERDUE-1", status: "issued", show_dates: { date: "2020-01-01", venue: "Old Hall" } }),
+    ];
+    renderWithProviders(<OrdersTable orders={orders} orgId="org-1" onRowClick={() => {}} />);
+    expect(screen.getByText("Overdue")).toBeInTheDocument();
+  });
+
+  it("does not show Overdue for a past-dated but countersigned order", () => {
+    const orders = [
+      order({ id: "ho-1", order_no: "HO-DONE-1", status: "countersigned", show_dates: { date: "2020-01-01", venue: "Old Hall" } }),
+    ];
+    renderWithProviders(<OrdersTable orders={orders} orgId="org-1" onRowClick={() => {}} />);
+    expect(screen.queryByText("Overdue")).not.toBeInTheDocument();
+  });
+
+  it("does not show Overdue for an upcoming issued order", () => {
+    const orders = [
+      order({ id: "ho-1", order_no: "HO-FUTURE-1", status: "issued", show_dates: { date: "2099-01-01", venue: "New Hall" } }),
+    ];
+    renderWithProviders(<OrdersTable orders={orders} orgId="org-1" onRowClick={() => {}} />);
+    expect(screen.queryByText("Overdue")).not.toBeInTheDocument();
+  });
+
+  it("shows Overdue for a past-dated draft order (also an outstanding status)", () => {
+    const orders = [
+      order({ id: "ho-1", order_no: "HO-DRAFT-1", status: "draft", show_dates: { date: "2020-01-01", venue: "Old Hall" } }),
+    ];
+    renderWithProviders(<OrdersTable orders={orders} orgId="org-1" onRowClick={() => {}} />);
+    expect(screen.getByText("Overdue")).toBeInTheDocument();
+  });
+
+  it("does not show Overdue for a past-dated void order", () => {
+    const orders = [
+      order({ id: "ho-1", order_no: "HO-VOID-1", status: "void", show_dates: { date: "2020-01-01", venue: "Old Hall" } }),
+    ];
+    renderWithProviders(<OrdersTable orders={orders} orgId="org-1" onRowClick={() => {}} />);
+    expect(screen.queryByText("Overdue")).not.toBeInTheDocument();
+  });
+});
+
 describe("OrdersTable batch issue selection", () => {
   beforeEach(() => {
     vi.clearAllMocks();

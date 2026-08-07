@@ -20,36 +20,14 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Skeleton } from "@/components/ui/skeleton";
-import { TimeframeFilter, upcomingTimeframe, type TimeframeValue } from "@/components/filters/TimeframeFilter";
+import { TimeframeFilter, type TimeframeValue } from "@/components/filters/TimeframeFilter";
 import { inTimeframe } from "@/components/filters/filterUtils";
-import { parseDateOnly } from "@/lib/dates";
-import type { HireOrderStatus, HireOrderListRow } from "@/data/hireOrders";
-import type { OrderData } from "@/lib/hireOrders/types";
+import { orderDate } from "@/lib/hireOrders/orderDate";
+import type { HireOrderStatus } from "@/data/hireOrders";
 import { ROUTES } from "@/config/app.config";
 
 /** The spreadsheet-import wizard shipped in Task 5. */
 const IMPORT_READY = true;
-
-/** Read a resolved snapshot field as a trimmed string ("" when absent). Mirrors
- *  the same small helper in ArtistDashboard.tsx / HireOrderDetailPage.tsx /
- *  HireOrdersCard.tsx / OrdersTable.tsx (kept local per that established
- *  pattern rather than a shared import). */
-function snap(data: OrderData, key: keyof OrderData): string {
-  const v = data[key]?.value;
-  if (v === null || v === undefined) return "";
-  return String(v);
-}
-
-/** The date to filter an order's timeframe by: the linked show_date's date
- *  when there is one, else the order's own snapshot `data.date` -- a manual
- *  "no linked date" order carries its date there instead of on show_dates.
- *  Guards the manual value to a clean YYYY-MM-DD before parsing (see
- *  snap()); returns null when neither is available. */
-function orderDate(o: HireOrderListRow): Date | null {
-  if (o.show_dates?.date) return parseDateOnly(o.show_dates.date);
-  const dateStr = snap((o.data ?? {}) as OrderData, "date");
-  return /^\d{4}-\d{2}-\d{2}$/.test(dateStr) ? parseDateOnly(dateStr) : null;
-}
 
 type StatusChip = "all" | "draft" | "ready" | "issued" | "countersigned";
 
@@ -101,7 +79,12 @@ export default function HireOrdersPage() {
   const entitledForWrites = features.has("hire_orders");
 
   const [statusChip, setStatusChip] = useState<StatusChip>("all");
-  const [timeframe, setTimeframe] = useState<TimeframeValue>(() => upcomingTimeframe());
+  // Defaults to All time (not the Upcoming preset the sibling booking surfaces
+  // use): unlike a show date, a hire order stays actionable after its
+  // engagement date passes (issue, countersign, chase an Overdue one), so
+  // hiding past orders by default would hide exactly the ones most likely to
+  // need attention.
+  const [timeframe, setTimeframe] = useState<TimeframeValue>({ from: null, to: null });
   const [search, setSearch] = useState("");
   // The input itself stays controlled by `search` on every keystroke so
   // typing feels instant; only the value that drives the query is debounced,
@@ -155,15 +138,19 @@ export default function HireOrdersPage() {
   // the gate that keeps an interactive setup checklist off a page already showing
   // "changes cannot be saved", and it should not depend on another module's
   // null-handling to hold.
-  const setupRailVisible = useSetupRailVisible(entitledForWrites ? orgId : null);
+  //
+  // `visible` drives the inline callout, `reinvocable` drives the header button
+  // (Plan B Task 3's re-invoke) -- both read off the SAME hook and the same inputs, so
+  // the header button can never offer to reopen a rail that would render nothing
+  // actionable (the divergence a separately-computed `dismissed && !complete` used to
+  // allow, e.g. for a producer once nothing blocks issuing).
+  const { visible: setupRailVisible, reinvocable: setupReinvocable } = useSetupRailVisible(
+    entitledForWrites ? orgId : null,
+  );
   const showSetupRail = entitledForWrites && setupRailVisible;
-  // Re-invoke: the rail moved out of the cramped 340px side column into a Sheet
-  // (Plan B Task 3). `showSetupRail` alone can't tell the header button apart
-  // from "setup is genuinely complete" -- both leave it false -- so the button
-  // reads `dismissed`/`status.complete` directly, gated the same way as above.
-  const [setupDismissed, , undismissSetup] = useRailDismissed("hireOrderSetup", entitledForWrites ? orgId : null);
+  const showSetupReinvoke = entitledForWrites && setupReinvocable;
+  const [, , undismissSetup] = useRailDismissed("hireOrderSetup", entitledForWrites ? orgId : null);
   const { status: hireOrderSetupStatus } = useHireOrderSetupStatus(entitledForWrites ? orgId : null);
-  const showSetupReinvoke = entitledForWrites && setupDismissed && !hireOrderSetupStatus.complete;
   const [setupSheetOpen, setSetupSheetOpen] = useState(false);
 
   const stats = computeOrderKpis(allOrders);
