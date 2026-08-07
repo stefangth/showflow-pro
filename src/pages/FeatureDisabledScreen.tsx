@@ -1,6 +1,7 @@
 import { Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { StageMark } from '@/components/brand/StageMark';
+import { cn } from '@/lib/utils';
 import { ROUTES } from '@/config/app.config';
 import { FEATURE_REGISTRY, type FeatureKey } from '@/lib/entitlements';
 
@@ -8,11 +9,20 @@ import { FEATURE_REGISTRY, type FeatureKey } from '@/lib/entitlements';
  * Shown by ProtectedRoute when a route is gated behind an entitlement (see
  * ROUTE_FEATURES / requiredFeatureForPath in app.config.ts) that the current
  * org does not have enabled. Mirrors SuspendedOrgScreen's layout.
+ *
+ * `embedded` swaps the full-viewport `min-h-screen` for `min-h-full` so the
+ * screen centers within a constrained parent instead of overflowing it. Used
+ * when ProtectedRoute renders this inside AppLayout's `<main>` (which is shorter
+ * than the viewport) to keep the editor toolbar reachable for a previewing
+ * super-admin; the standalone default is unchanged.
  */
-export default function FeatureDisabledScreen({ feature }: { feature: FeatureKey }) {
+export default function FeatureDisabledScreen({ feature, embedded = false }: { feature: FeatureKey; embedded?: boolean }) {
   const def = FEATURE_REGISTRY[feature];
   return (
-    <div className="flex min-h-screen flex-col items-center justify-center bg-background px-4 text-center">
+    <div className={cn(
+      'flex flex-col items-center justify-center bg-background px-4 text-center',
+      embedded ? 'min-h-full' : 'min-h-screen',
+    )}>
       <StageMark variant="tile" size={56} className="mb-6" />
       <h1 className="font-display text-2xl font-semibold tracking-tight">{def.label} is not enabled</h1>
       <p className="mt-2 max-w-md text-muted-foreground">

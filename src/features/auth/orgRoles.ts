@@ -24,6 +24,24 @@ export function effectiveHasRole(opts: {
   return roles.includes(role);
 }
 
+/**
+ * Whether the UI is being previewed as someone other than the signed-in user:
+ * a specific impersonated user, or a role the user does not actually hold.
+ * Choosing one's own role via "view as" is NOT impersonation, so it leaves
+ * god-mode intact. This is the single predicate every view-as gate keys off —
+ * the in-page ModuleGate, the nav lock, the route feature gate, and the red
+ * editor-pencil indicator — so they cannot drift apart.
+ */
+export function isImpersonating(opts: {
+  roles: AppRole[];
+  viewAsRole: AppRole | null;
+  viewAsUser: { roles: AppRole[] } | null;
+}): boolean {
+  const { roles, viewAsRole, viewAsUser } = opts;
+  if (viewAsUser != null) return true;
+  return viewAsRole != null && !roles.includes(viewAsRole);
+}
+
 /** Which orgs the switcher lists: ALL orgs for super-admins, else the user's memberships. */
 export function effectiveOrgs<T extends { id: string }>(isSuperAdmin: boolean, allOrgs: T[], membershipOrgs: T[]): T[] {
   return isSuperAdmin ? allOrgs : membershipOrgs;

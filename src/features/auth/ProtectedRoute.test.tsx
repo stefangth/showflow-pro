@@ -28,6 +28,12 @@ vi.mock("@/pages/NoOrgScreen", () => ({
 vi.mock("@/pages/SuspendedOrgScreen", () => ({
   default: () => React.createElement("div", null, "Suspended Screen"),
 }));
+// AppLayout is heavy (nav, toolbar, supabase); stub it so we can assert the
+// disabled screen is wrapped in it (toolbar stays reachable for a previewing super-admin).
+vi.mock("@/components/layout/AppLayout", () => ({
+  default: ({ children }: { children: React.ReactNode }) =>
+    React.createElement("div", { "data-testid": "app-layout" }, children),
+}));
 
 import { useAuth } from "./AuthContext";
 import { useEditorConfig } from "../editor/EditorContext";
@@ -241,6 +247,31 @@ describe("ProtectedRoute", () => {
 
       expect(screen.getByText("Hire orders is not enabled")).toBeTruthy();
       expect(screen.queryByText("Protected Content")).toBeNull();
+      // A genuine member gets the bare disabled screen, NOT the app chrome (that
+      // wrap exists only to keep the editor toolbar reachable for a super-admin).
+      expect(screen.queryByTestId("app-layout")).toBeNull();
+    });
+
+    it("shows the feature gate, inside AppLayout, to a super-admin previewing via view-as", () => {
+      vi.mocked(useAuth).mockReturnValue(partialMock<ReturnType<typeof useAuth>>({
+        user: partialMock<User>({ id: "user-1" }),
+        loading: false,
+        roles: ["admin"],
+        currentOrg: ACTIVE_ORG,
+        isSuperAdmin: true,
+        viewAsRole: "producer",
+      }));
+      vi.mocked(useEntitlements).mockReturnValue(partialMock<ReturnType<typeof useEntitlements>>({
+        features: new Set(),
+        isLoading: false,
+      }));
+
+      renderProtected();
+
+      expect(screen.getByText("Hire orders is not enabled")).toBeTruthy();
+      expect(screen.queryByText("Protected Content")).toBeNull();
+      // Wrapped in AppLayout so the editor toolbar (its child) stays reachable to exit view-as.
+      expect(screen.getByTestId("app-layout")).toBeTruthy();
     });
 
     it("renders children when the feature is enabled for the org", () => {

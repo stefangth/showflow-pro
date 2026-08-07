@@ -7,7 +7,7 @@ vi.mock("@/hooks/useEntitlements", () => {
 });
 
 import { useFeature } from "@/hooks/useEntitlements";
-import { BookingCardSection } from "./ShowDateDetailSheet";
+import { BookingCardSection, BookingStatusSection } from "./ShowDateDetailSheet";
 
 const CAST = [
   { id: "b1", status: "confirmed", is_understudy: false, artist: { id: "a1", name: "Ada Lovelace" } },
@@ -91,5 +91,25 @@ describe("ShowDateDetailSheet booking card gating", () => {
     vi.mocked(useFeature).mockReturnValue(false);
     renderSection();
     expect(screen.getAllByText("Ada Lovelace")).toHaveLength(1);
+  });
+});
+
+describe("ShowDateDetailSheet booking status strip gating", () => {
+  beforeEach(() => vi.clearAllMocks());
+
+  it("shows the funnel when booking_flow is on", () => {
+    vi.mocked(useFeature).mockReturnValue(true);
+    render(<BookingStatusSection bookings={[]} slots={null} upNext={() => []} />);
+    expect(screen.getByLabelText("Booking funnel")).toBeInTheDocument();
+  });
+
+  it("renders nothing, and does not derive up-next, when booking_flow is off", () => {
+    vi.mocked(useFeature).mockReturnValue(false);
+    const upNext = vi.fn(() => []);
+    const { container } = render(
+      <BookingStatusSection bookings={[]} slots={null} upNext={upNext} />,
+    );
+    expect(container).toBeEmptyDOMElement();
+    expect(upNext).not.toHaveBeenCalled();
   });
 });

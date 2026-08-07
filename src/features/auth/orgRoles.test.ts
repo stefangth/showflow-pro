@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { rolesForOrg, effectiveHasRole, effectiveOrgs } from "./orgRoles";
+import { rolesForOrg, effectiveHasRole, effectiveOrgs, isImpersonating } from "./orgRoles";
 
 describe("rolesForOrg", () => {
   it("returns only the roles for the given org", () => {
@@ -31,5 +31,20 @@ describe("effectiveOrgs", () => {
   it("super-admin gets all orgs; others get memberships", () => {
     expect(effectiveOrgs(true, all, mine)).toBe(all);
     expect(effectiveOrgs(false, all, mine)).toBe(mine);
+  });
+});
+
+describe("isImpersonating", () => {
+  it("is false when not previewing anyone", () => {
+    expect(isImpersonating({ roles: ["admin"], viewAsRole: null, viewAsUser: null })).toBe(false);
+  });
+  it("is true when previewing a role the user does not hold", () => {
+    expect(isImpersonating({ roles: ["admin"], viewAsRole: "producer", viewAsUser: null })).toBe(true);
+  });
+  it("is false when previewing a role the user already holds (their own view)", () => {
+    expect(isImpersonating({ roles: ["admin"], viewAsRole: "admin", viewAsUser: null })).toBe(false);
+  });
+  it("is true when previewing a specific user, whatever their roles", () => {
+    expect(isImpersonating({ roles: ["admin"], viewAsRole: null, viewAsUser: { roles: ["admin"] } })).toBe(true);
   });
 });
