@@ -21,6 +21,8 @@ import { EntityCalendar } from '@/components/calendar/EntityCalendar';
 import { applySort, inTimeframe } from '@/components/filters/filterUtils';
 import { ArtistBookingsView } from '@/components/bookings/ArtistBookingsView';
 import { FirstOfferCard } from '@/components/bookings/setup/FirstOfferCard';
+import { BookingSetupRail } from '@/components/bookings/setup/BookingSetupRail';
+import { useBookingSetupRailVisible } from '@/components/bookings/setup/useBookingSetupRailVisible';
 import { ShowDateDetailSheet } from '@/components/shows/ShowDateDetailSheet';
 import { ShowDateFormDialog } from '@/components/shows/ShowDateFormDialog';
 import { NewOrderWizard } from '@/components/hireOrders/NewOrderWizard';
@@ -33,6 +35,7 @@ import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { showSlots } from '@/lib/settings';
 import { parseDateOnly } from '@/lib/dates';
+import { cn } from '@/lib/utils';
 import { useReferenceField } from '@/hooks/useBookingFlow';
 import { referenceLabel } from '@/lib/bookingFlow';
 import { useColumnTemplate, useEditorConfig } from '@/features/editor/EditorContext';
@@ -151,6 +154,8 @@ function ProducerShowsBookings() {
   const { hasRole, currentOrg } = useAuth();
   const canManage = hasRole('admin') || hasRole('producer');
   const orgId = currentOrg?.id ?? null;
+  const bookingOn = useFeature('booking_flow');
+  const railVisible = useBookingSetupRailVisible(bookingOn ? orgId : null);
   // Hire-order CTA: module gate + generate capability + which dates are ready.
   const hireOrdersOn = useFeature('hire_orders');
   const canGenerateHireOrders = useCan('generate_hire_orders');
@@ -298,6 +303,8 @@ function ProducerShowsBookings() {
         />
       )}
 
+      <div className={cn("grid gap-6", railVisible && "lg:grid-cols-[1fr_340px] lg:items-start")}>
+        <div className="min-w-0 space-y-6">
       <div className="flex flex-wrap items-center gap-3">
         <div className="relative flex-1 min-w-[200px] max-w-md">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
@@ -525,6 +532,9 @@ function ProducerShowsBookings() {
           )}
         />
       )}
+        </div>
+        {railVisible && <BookingSetupRail orgId={orgId} />}
+      </div>
 
       <ShowDateDetailSheet
         showDateId={activeShowDateId}
