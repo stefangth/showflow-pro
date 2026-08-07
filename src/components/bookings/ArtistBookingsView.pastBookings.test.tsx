@@ -22,12 +22,13 @@ vi.mock("@/integrations/supabase/client", () => ({ supabase: client }));
 Object.assign(
   client,
   createFakeSupabase({
-    // Backs three reads on `bookings`: ArtistBookingsView's own `myBookings`
-    // query (flat shape), fetchMyCancelledDateBookings (filters this row out
-    // client-side because the joined show_date.status below is "open", not
-    // "cancelled"), and fetchMyActiveBookedDates (needs the show_date join).
-    // One seeded row serves all three since the fake matches on `.eq()` args
-    // only, not on select shape or `.neq()`.
+    // Backs two reads on `bookings`: fetchMyCancelledDateBookings (filters this
+    // row out client-side because the joined show_date.status below is "open",
+    // not "cancelled") and fetchMyActiveBookedDates (needs the show_date join;
+    // also now the sole source of `bookingByDateId`, since Plan B Task 5
+    // removed the view's separate flat `myBookings` query). One seeded row
+    // serves both since the fake matches on `.eq()` args only, not on select
+    // shape or `.neq()`.
     bookings: [
       {
         when: { artist_id: "artist-1" },

@@ -27,7 +27,7 @@ import { useBookingFlow, useReferenceField } from '@/hooks/useBookingFlow';
 import { bookingStatusBadgeClass } from '@/lib/bookings';
 import { BOOKING_FLOW_DEFAULTS, referenceLabel } from '@/lib/bookingFlow';
 import { bookingsViewCopy, bookingStatusLabels } from '@/lib/flowCopy';
-import { formatDateDMY, parseDateOnly, isPastDate, PAST_DATE_TINT } from '@/lib/dates';
+import { formatDateDMY, parseDateOnly, pastRowClassName } from '@/lib/dates';
 import { showIdentityLabel } from '@/types';
 import { cn } from '@/lib/utils';
 import { ROUTES } from '@/config/app.config';
@@ -51,9 +51,14 @@ function isCancelledEntry(d: DateRow): d is CancelledDateEntry {
 }
 
 /** True when the row came from the active-booked merge rather than eligibleDates/cancelledEntries.
- *  `is_understudy` is the only field unique to this shape among the three. */
-function isActiveBookedEntry(d: DateRow): d is ActiveBookedDateEntry {
-  return 'is_understudy' in d;
+ *  Keys on the explicit `kind: 'active-booked'` discriminant `fetchMyActiveBookedDates`
+ *  stamps on every row, not a coincidental field name: an earlier version of this guard
+ *  checked `'is_understudy' in d`, which would silently misclassify an eligible-date row
+ *  the moment `EligibleDate` ever grew a field of that name. Exported for its own direct
+ *  unit test (ArtistBookingsView.rowGuard.test.ts). */
+// eslint-disable-next-line react-refresh/only-export-components -- pure type guard, not a component; kept beside the DateRow union it discriminates.
+export function isActiveBookedEntry(d: DateRow): d is ActiveBookedDateEntry {
+  return 'kind' in d && d.kind === 'active-booked';
 }
 
 /** CancelledDateEntry's and ActiveBookedDateEntry's queries never select `custom`
@@ -84,25 +89,6 @@ export function ArtistBookingsView() {
   const [view, setView] = useState<ViewMode>('list');
   const [activeShowDateId, setActiveShowDateId] = useState<string | null>(null);
 
-  // Distinct cache key per projection (this selects `is_understudy`, not `id`).
-  // A shared key let different `select` shapes clobber each other in the React
-  // Query cache — see the note in AvailabilityPage.
-  const { data: myBookings, isError: bookingsError } = useQuery({
-    queryKey: ['bookings', 'artist-bookings-view', artist?.id],
-    // Module-gated: the list region below sits inside ModuleGate, so without
-    // booking_flow this read would be fetched and then discarded on every visit.
-    enabled: !!artist?.id && bookingFlowEnabled,
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from('bookings')
-        .select('show_date_id, status, is_understudy')
-        .eq('artist_id', artist!.id)
-        .neq('status', 'cancelled');
-      if (error) throw error;
-      return (data ?? []) as BookingLite[];
-    },
-  });
-
   const { data: cancelledEntries } = useQuery({
     queryKey: ['bookings', 'artist-cancelled', artist?.id],
     enabled: !!artist?.id && bookingFlowEnabled,
@@ -111,18 +97,28 @@ export function ArtistBookingsView() {
 
   // Past (and any other out-of-eligible-window) active bookings — merged below
   // so a booking whose show_date useArtistEligibleDates silently drops (it's
-  // upcoming-only) still renders. This is the July 31 fix.
-  const { data: activeBookedDates } = useQuery({
+  // upcoming-only) still renders. This is the July 31 fix. It also supersedes
+  // a dedicated `myBookings` query this view used to run in parallel: that
+  // query's own select (`show_date_id, status, is_understudy`, `.neq('status',
+  // 'cancelled')`) is a strict subset of this one's, so `bookingByDateId` below
+  // is derived straight from this single read instead of firing a second,
+  // near-identical one on every mount.
+  const { data: activeBookedDates, isError: bookingsError } = useQuery({
     queryKey: ['bookings', 'artist-active-booked', artist?.id],
     enabled: !!artist?.id && bookingFlowEnabled,
     queryFn: () => fetchMyActiveBookedDates(supabase, artist!.id),
   });
 
+  // `ActiveBookedDateEntry.id` IS the show_date id (see data/artists.ts), so it
+  // doubles as the lookup key `statusFor` needs for eligible (upcoming) rows --
+  // no separate flat query required.
   const bookingByDateId = useMemo(() => {
     const m = new Map<string, BookingLite>();
-    myBookings?.forEach((b) => m.set(b.show_date_id, b));
+    activeBookedDates?.forEach((b) =>
+      m.set(b.id, { show_date_id: b.id, status: b.status, is_understudy: b.is_understudy })
+    );
     return m;
-  }, [myBookings]);
+  }, [activeBookedDates]);
 
   // show_date_id -> issued/countersigned hire order id for this artist
   // (useMyHireOrders never returns any other status). First-seen wins so a
@@ -281,7 +277,7 @@ export function ArtistBookingsView() {
                     return (
                       <TableRow
                         key={d.id}
-                        className={cn('cursor-pointer', isPastDate(parseDateOnly(d.date)) && PAST_DATE_TINT)}
+                        className={cn('cursor-pointer', pastRowClassName(parseDateOnly(d.date)))}
                         onClick={() => setActiveShowDateId(d.id)}
                       >
                         {orderedColumns.filter(c => c.visible).map(c => cellFor(c.columnId))}
@@ -312,7 +308,7 @@ export function ArtistBookingsView() {
                 <Card
                   className={cn(
                     'hover:shadow-elev2 transition-shadow cursor-pointer',
-                    isPastDate(it.date) && PAST_DATE_TINT,
+                    pastRowClassName(it.date),
                   )}
                   onClick={() => setActiveShowDateId(d.id)}
                 >
