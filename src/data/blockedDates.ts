@@ -23,3 +23,21 @@ export async function fetchBlockedArtistIds(
   if (error) throw error;
   return new Set((data ?? []).map((r) => r.artist_id));
 }
+
+/**
+ * Count of the current artist's own blocked_dates rows. Used by the artist first-run
+ * readiness check (spec: "done" is satisfied by data OR ack) so an artist who has
+ * genuinely blocked real dates reads as done without also needing to dismiss the rail.
+ */
+export async function fetchMyBlockedDatesCount(
+  client: SupabaseClient<Database>,
+  args: { artistId: string },
+): Promise<number> {
+  if (!args.artistId) return 0;
+  const { data, error } = await client
+    .from("blocked_dates")
+    .select("id")
+    .eq("artist_id", args.artistId);
+  if (error) throw error;
+  return (data ?? []).length;
+}
