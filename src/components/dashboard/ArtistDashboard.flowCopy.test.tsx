@@ -122,6 +122,47 @@ vi.mock("@/hooks/useEntitlements", () => {
   return { useFeature, useModuleGate: (f: string) => ({ allow: useFeature(f), pending: false }) };
 });
 
+// The first-run layer wraps the dashboard body; with show:false it is a no-op
+// (no welcome/rail) and SamplePreview renders the live children, so the meter
+// assertions still exercise the real body. Mocked here so the real
+// useDashboardFirstRun (which reads useEntitlements/useBookingSetup/etc.) does
+// not run against this file's partial hook mocks.
+vi.mock("@/components/dashboard/firstRun/useDashboardFirstRun", () => ({
+  useDashboardFirstRun: () => ({
+    show: false,
+    complete: false,
+    dismissed: false,
+    steps: [],
+    rules: [],
+    offFooters: [],
+    sample: { stats: [], queue: [], week: [] },
+    welcome: {
+      eyebrow: "",
+      headline: "",
+      body: "",
+      primaryLabel: "",
+      secondaryLabel: "",
+      progressLabel: "",
+      progressFilled: 0,
+      progressTotal: 0,
+      progressHint: "",
+    },
+    sectionTitle: "Today",
+    sectionHint: "Live.",
+    railEyebrow: "",
+    railTitle: "",
+    railBody: "",
+    collapsedLabel: "",
+    collapsedHint: "",
+    collapsedCta: "",
+    railOpen: false,
+    openRail: () => {},
+    closeRail: () => {},
+    dismiss: () => {},
+    undismiss: () => {},
+  }),
+}));
+
 import { useFeature } from "@/hooks/useEntitlements";
 import { ArtistDashboard } from "./ArtistDashboard";
 
