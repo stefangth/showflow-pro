@@ -1,5 +1,6 @@
-import { useMemo, useState, type ReactNode } from 'react';
+import { useMemo, useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useNavigate } from 'react-router-dom';
 import { format } from 'date-fns';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
@@ -21,35 +22,35 @@ import {
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
 import { Skeleton } from '@/components/ui/skeleton';
-import { MapPin, Clock, Users, Check, ChevronsUpDown } from 'lucide-react';
+import { Users, Check, ChevronsUpDown } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useEligibleArtists } from '@/hooks/useEligibleArtists';
 import { useSkills } from '@/hooks/useSkills';
 import { useBookingFlow, useReferenceField } from '@/hooks/useBookingFlow';
-import { showSlots, type SlotCounts } from '@/lib/settings';
+import { showSlots } from '@/lib/settings';
 import {
   deriveBookingGroups, computeInheritedCastIds,
   offerResultToast, closeResultToast, deriveDirectBookList,
 } from '@/lib/bookings';
-import { computeUpNext, type UpNextItem } from '@/lib/bookingCockpit';
+import { computeUpNext, computeFunnel, computeHeaderCta, buildActivity } from '@/lib/bookingCockpit';
 import { BOOKING_FLOW_DEFAULTS, referenceLabel, type FlowTimes } from '@/lib/bookingFlow';
-import { BOOKING_ENGINE_DEFAULTS } from '@/config/app.config';
+import { ROUTES, BOOKING_ENGINE_DEFAULTS } from '@/config/app.config';
 import { formatDateDMY, parseDateOnly } from '@/lib/dates';
 import {
   openOfferTier, fetchOfferTiers, fetchOpenedTiers, closeOfferTier,
-  dryRunOfferTier, createBooking, updateBookingStatusGuarded,
+  dryRunOfferTier, createBooking, updateBookingStatusGuarded, bulkConfirmSoftBooked,
 } from '@/data/bookings';
 import {
   fetchRequiredSkillIds, fetchSkillEligibleArtistIds, addShowDateRequiredSkill, removeShowDateRequiredSkill,
 } from '@/data/eligibility';
 import { unionSkillIds } from '@/lib/eligibility';
 import { resolveOrgSetting } from '@/data/settings';
-import { BookingFunnel } from '@/components/shows/date/BookingFunnel';
-import { UpNextStrip } from '@/components/shows/date/UpNextStrip';
 import { TierTimeline } from '@/components/shows/date/TierTimeline';
 import { DryRunDialog } from '@/components/shows/date/DryRunDialog';
 import { EligibilityBookList } from '@/components/shows/date/EligibilityBookList';
 import { RequiredSkillsSection } from '@/components/shows/date/RequiredSkillsSection';
+import { CockpitHeader, type CockpitTab } from '@/components/shows/date/CockpitHeader';
+import { CockpitRail } from '@/components/shows/date/CockpitRail';
 import { fetchBlockedArtistIds } from '@/data/blockedDates';
 import { ChatPanel } from '@/components/chat/ChatPanel';
 import { HireOrdersCard } from '@/components/shows/hireOrders/HireOrdersCard';
@@ -73,7 +74,7 @@ type BookingWithArtist = Booking & { artist: Pick<Artist, 'id' | 'name'> };
 
 /** The assigned-artists card: the sheet's single cast surface. `canManage=false`
  *  renders every row without its Confirm/Cancel controls, which is exactly the
- *  shape the locked module preview needs. */
+ *  shape the read-only (module-off / artist) view needs. */
 function AssignedArtistsCard({ bookings, canManage, showConfirm, onConfirm, onCancel }: {
   bookings: BookingWithArtist[];
   canManage: boolean;
@@ -135,76 +136,6 @@ function AssignedArtistsCard({ bookings, canManage, showConfirm, onConfirm, onCa
   );
 }
 
-/** The sheet's whole booking region, behind one module gate.
- *
- *  Entitled: the offers / direct-book UI passed as children, followed by the live
- *  assigned-artists card with its Confirm/Cancel controls.
- *
- *  Not entitled: a single module notice plus the SAME assigned-artists card rendered
- *  read-only. One gate and one cast rendering on purpose — an ungated second copy of
- *  the cast both duplicated the list and left a Cancel button whose write the RLS
- *  floor would reject with a misleading "this booking changed" toast. */
-export function BookingCardSection({
-  bookings, canManage, showConfirm, onConfirm, onCancel, children,
-}: {
-  bookings: BookingWithArtist[];
-  canManage: boolean;
-  showConfirm: boolean;
-  onConfirm: (bookingId: string) => void;
-  onCancel: (bookingId: string) => void;
-  children: ReactNode;
-}) {
-  const noop = () => {};
-  // The preview exists so a frozen cast stays readable. With no cast there is
-  // nothing to keep readable, so the notice stands alone rather than being
-  // followed by a card whose only content is "No artists assigned yet".
-  const hasCast = deriveBookingGroups(bookings).active.length > 0;
-  return (
-    <ModuleGate
-      feature="booking_flow"
-      preview={hasCast ? (
-        <AssignedArtistsCard
-          bookings={bookings}
-          canManage={false}
-          showConfirm={false}
-          onConfirm={noop}
-          onCancel={noop}
-        />
-      ) : undefined}
-    >
-      {children}
-      <AssignedArtistsCard
-        bookings={bookings}
-        canManage={canManage}
-        showConfirm={showConfirm}
-        onConfirm={onConfirm}
-        onCancel={onCancel}
-      />
-    </ModuleGate>
-  );
-}
-
-/** The booking funnel + up-next strip: pure booking-engine status, so they hide
- *  entirely when booking_flow is off (the confirmed cast stays visible via
- *  BookingCardSection's read-only preview below, and the cast-slot warning is
- *  rendered by the caller outside this gate since slots matter beyond booking).
- *  Uses useModuleGate, so a super-admin previewing view-as sees it hidden too.
- *  `upNext` is a thunk so the up-next derivation runs only when the strip shows. */
-export function BookingStatusSection({ bookings, slots, upNext }: {
-  bookings: Array<{ status: string; is_understudy: boolean }>;
-  slots: SlotCounts | null;
-  upNext: () => UpNextItem[];
-}) {
-  const { allow } = useModuleGate('booking_flow');
-  if (!allow) return null;
-  return (
-    <div className="space-y-3">
-      <BookingFunnel bookings={bookings} slots={slots} />
-      <UpNextStrip items={upNext()} />
-    </div>
-  );
-}
-
 /** Joined row shape of the show-date-detail select below — mirror the select string. */
 interface ShowDateDetailRow {
   id: string;
@@ -234,6 +165,7 @@ export function ShowDateDetailSheet({ showDateId, open, onOpenChange }: Props) {
   const { hasRole, user, roles, currentOrg } = useAuth();
   const { isEditorMode } = useEditorConfig();
   const isRealAdmin = roles.includes('admin');
+  const navigate = useNavigate();
   const queryClient = useQueryClient();
   const canManage = hasRole('admin') || hasRole('producer');
   // Capability-gated mutating controls, layered on top of the broad canManage
@@ -243,6 +175,21 @@ export function ShowDateDetailSheet({ showDateId, open, onOpenChange }: Props) {
   const canHardDelete = useCan('hard_delete_show_dates');
   const canRunOfferEngine = useCan('run_offer_engine');
   const canConfirmBookings = useCan('confirm_bookings');
+  const canEditBookingSettings = useCan('edit_booking_settings');
+  // Slot meter + status line + activity feed are pure booking-engine status, so
+  // they follow the same module gate as the offers surface (super-admin exempt,
+  // fails closed while entitlements load) rather than useFeature.
+  const { allow: bookingModuleAllowed } = useModuleGate('booking_flow');
+
+  const [activeTab, setActiveTab] = useState<CockpitTab>('cast');
+  // The sheet instance is reused across dates (no key at the mount sites), so reset
+  // to the default tab whenever it opens for a different date — otherwise a stale
+  // tab (e.g. Setup) carries over. Render-time reset avoids an effect-driven flash.
+  const [tabResetFor, setTabResetFor] = useState(showDateId);
+  if (showDateId !== tabResetFor) {
+    setTabResetFor(showDateId);
+    setActiveTab('cast');
+  }
 
   const { data: showDate, isLoading } = useQuery({
     queryKey: ['show-date-detail', showDateId],
@@ -307,8 +254,9 @@ export function ShowDateDetailSheet({ showDateId, open, onOpenChange }: Props) {
   const orgId = currentOrg?.id ?? null;
 
   // Hire-order top CTA: a header shortcut mirroring the HireOrdersCard banner
-  // below. Shown when the module is on, the date is fully filled, and no active
-  // order covers it yet; drafts the single-date order for the confirmed cast.
+  // in the Hire order tab. Shown when the module is on, the date is fully filled,
+  // and no active order covers it yet; drafts the single-date order for the
+  // confirmed cast.
   const hireOrdersOn = useFeature('hire_orders');
   const canGenerateHireOrders = useCan('generate_hire_orders');
   const hireOrderAction = useHireOrderAction();
@@ -551,6 +499,16 @@ export function ShowDateDetailSheet({ showDateId, open, onOpenChange }: Props) {
     onError: (err: Error) => toast.error(err.message),
   });
 
+  // Header "Confirm N accepted": one guarded bulk update, not N per-row PATCHes.
+  const confirmAccepted = useMutation({
+    mutationFn: (ids: string[]) => bulkConfirmSoftBooked(supabase, { ids, now: new Date() }),
+    onSuccess: ({ affected }) => {
+      queryClient.invalidateQueries({ queryKey: ['bookings'] });
+      toast.success(affected ? `Confirmed ${affected}` : 'Nothing to confirm, it moved on');
+    },
+    onError: (err: Error) => toast.error(err.message),
+  });
+
   const openOffers = useMutation({
     mutationFn: ({ tier, skillFilterIds }: { tier: number; skillFilterIds: string[] }) =>
       openOfferTier(supabase, { showDateId: showDateId!, tier, skillFilterIds }),
@@ -578,379 +536,489 @@ export function ShowDateDetailSheet({ showDateId, open, onOpenChange }: Props) {
     onError: (err: Error) => toast.error(err.message),
   });
 
-  const venue = showDate?.venue;
+  // ── Derived cockpit values ──────────────────────────────────────────────
+  const bookings = bookingsForDate ?? [];
+  const funnel = computeFunnel(bookings);
+  const confirmedCount = funnel.confirmedMain + funnel.confirmedUnderstudy;
+  const acceptedCount = bookings.filter((b) => b.status === 'soft_booked').length;
+  const totalSlots = slotConfig ? slotConfig.main_cast + slotConfig.understudies : null;
+  const highestOpenTier = (openedQ.data ?? [])
+    .filter((t) => !t.closedAt)
+    .reduce<number | null>((m, t) => Math.max(m ?? 0, t.tier), null);
+  // Highest tier ever opened (open or since-closed) — the basis for "open next
+  // tier", so the escalation CTA survives closing a tier without filling it.
+  const highestOpenedTier = (openedQ.data ?? [])
+    .reduce<number | null>((m, t) => Math.max(m ?? 0, t.tier), null);
+
+  // Primary booking-workflow action for the header (hire-order terminal is the
+  // separate showGenerateHireOrderCta button below).
+  const workflowCta = computeHeaderCta({
+    artistAcceptance: flow.artist_acceptance,
+    acceptedCount, confirmedCount, totalSlots,
+    openTier: highestOpenedTier,
+    currentTierOpen: highestOpenTier != null,
+    maxTier: tiersQ.data?.priorities.length ?? 3,
+  });
+  const ctaAllowed =
+    workflowCta.kind === 'confirm' ? canConfirmBookings :
+    workflowCta.kind === 'openTier' ? canRunOfferEngine :
+    workflowCta.kind === 'book' ? canManage :
+    workflowCta.kind === 'reviewOffers' ? canManage : false;
+  const onWorkflowCta = () => {
+    switch (workflowCta.kind) {
+      case 'confirm': {
+        const ids = bookings.filter((b) => b.status === 'soft_booked').map((b) => b.id);
+        if (ids.length) confirmAccepted.mutate(ids);
+        break;
+      }
+      case 'openTier':
+        // Preview the next tier on the Offers tab (like TierTimeline) rather than
+        // opening it on a single header click — the actual offer-send is confirmed
+        // from the dry-run dialog, never fired directly from here.
+        setActiveTab('offers');
+        setDryRun({ tier: (highestOpenedTier ?? 0) + 1, skillFilterIds: [] });
+        break;
+      case 'book':
+      case 'reviewOffers':
+        setActiveTab('offers');
+        break;
+      default:
+        break;
+    }
+  };
+
+  // Header status line: reuse the existing up-next signal, degrade to a fill
+  // status. Cancelled short-circuits everything.
+  const pendingCount = bookings.filter((b) => b.status === 'suggested').length;
+  const nextExpiry = bookings
+    .filter((b) => b.status === 'suggested' && b.offer_expires_at)
+    .map((b) => b.offer_expires_at as string)
+    .sort()[0] ?? null;
+  const upNextItems = computeUpNext({
+    flow,
+    times: effectiveTimes,
+    pendingCount,
+    nextExpiry,
+    hasOpenTier: (openedQ.data ?? []).some((t) => !t.closedAt),
+  });
+  let statusText = '';
+  let statusTone: 'green' | 'amber' | 'accent' | 'muted' = 'muted';
+  if (showDate?.status === 'cancelled') {
+    statusText = 'Cancelled';
+    statusTone = 'muted';
+  } else if (totalSlots != null && confirmedCount >= totalSlots) {
+    statusText = 'All slots confirmed';
+    statusTone = 'green';
+  } else if (highestOpenTier != null) {
+    statusText = `Tier ${highestOpenTier} open`;
+    statusTone = 'amber';
+  } else if (upNextItems.length > 0) {
+    statusText = upNextItems[0].text;
+    statusTone = upNextItems[0].tone === 'amber' ? 'amber'
+      : upNextItems[0].tone === 'violet' ? 'accent' : 'muted';
+  } else if (acceptedCount > 0) {
+    statusText = `${acceptedCount} accepted, waiting on confirm`;
+    statusTone = 'amber';
+  }
+
+  const activity = buildActivity({ bookings, openedTiers: openedQ.data ?? [] });
+
+  // showDate-dependent presentational values (safe fallbacks when unloaded).
+  const title = showDate
+    ? referenceLabel({
+        reference,
+        show: showDate.show,
+        custom: (showDate.custom as Record<string, unknown> | null) ?? null,
+        customFieldKey,
+      })
+    : 'Show Date';
+  const dateLine = showDate ? format(parseDateOnly(showDate.date), 'EEEE, d MMMM yyyy') : '';
+  const sessionTimes = showDate
+    ? [showDate.session_1, showDate.session_2, showDate.session_3]
+        .filter(Boolean)
+        .map((t) => (t as string).slice(0, 5))
+        .join(' / ')
+    : '';
+  const metaLine = showDate
+    ? [sessionTimes, showDate.venue, showDate.city?.name].filter(Boolean).join(' · ')
+    : '';
+  const railSource: 'airtable' | 'manual' = showDate?.airtable_record_id ? 'airtable' : 'manual';
+  const castChips = [
+    ...Array.from(inheritedCastIds).map((cid) => ({
+      label: casts?.find((c) => c.id === cid)?.name ?? 'Cast',
+      kind: 'inherited' as const,
+    })),
+    ...Array.from(overrideCastIds).map((cid) => ({
+      label: casts?.find((c) => c.id === cid)?.name ?? 'Cast',
+      kind: 'override' as const,
+    })),
+  ];
+  const skillChips = (requiredSkillsQ.data?.all ?? [])
+    .map((id) => orgSkills?.find((s) => s.id === id)?.name)
+    .filter((n): n is string => Boolean(n));
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent side="right" className="w-full sm:max-w-3xl overflow-y-auto p-0">
-        <div className="sticky top-0 z-10 bg-background border-b border-border px-6 py-3">
-          <div className="flex items-start justify-between gap-3">
-            <SheetHeader className="text-left">
-              <SheetTitle className="font-display text-base">
-                {showDate
-                  ? referenceLabel({
-                      reference,
-                      show: showDate.show,
-                      custom: (showDate.custom as Record<string, unknown> | null) ?? null,
-                      customFieldKey,
-                    })
-                  : 'Show Date'}
-              </SheetTitle>
-              {isEditorMode && isRealAdmin && (
-                <Badge variant="outline" className="text-xs font-mono text-muted-foreground w-fit">
-                  ShowDateDetailSheet.tsx
-                </Badge>
-              )}
-            </SheetHeader>
-            {showGenerateHireOrderCta && (
-              <Button
-                size="sm"
-                className="shrink-0"
-                onClick={generateHireOrder}
-                disabled={hireOrderAction.isPending || !canGenerateHireOrders}
-                title={canGenerateHireOrders ? undefined : "You don't have permission to generate hire orders"}
-              >
-                Generate hire order
-              </Button>
-            )}
+      <SheetContent side="right" className="w-full sm:max-w-[1080px] overflow-y-auto p-0">
+        <SheetHeader className="sr-only">
+          <SheetTitle>{title}</SheetTitle>
+        </SheetHeader>
+
+        {isLoading && (
+          <div className="p-6 space-y-3">
+            <Skeleton className="h-6 w-48" />
+            <Skeleton className="h-4 w-64" />
+            <Skeleton className="h-4 w-32" />
           </div>
-        </div>
+        )}
 
-        <div className="p-6 space-y-6">
-          {isLoading && (
-            <div className="space-y-3">
-              <Skeleton className="h-6 w-48" />
-              <Skeleton className="h-4 w-64" />
-              <Skeleton className="h-4 w-32" />
+        {showDate && (
+          <>
+            <div className="sticky top-0 z-10 bg-background border-b border-border">
+              <CockpitHeader
+                title={title}
+                dateLine={dateLine}
+                metaLine={metaLine}
+                slots={slotConfig}
+                confirmedCount={confirmedCount}
+                acceptedCount={acceptedCount}
+                statusText={statusText}
+                statusTone={statusTone}
+                showEngineStatus={bookingModuleAllowed}
+                // The header CTA writes on the booking path (Confirm N -> guarded
+                // status update). Gate it on the booking_flow module too, not just
+                // capability, so a module-off org can't confirm a legacy soft_booked
+                // row through the header (the rest of the booking surface is gated).
+                workflowCta={bookingModuleAllowed && ctaAllowed && workflowCta.kind !== 'none' ? workflowCta : null}
+                workflowCtaDisabled={updateBookingStatus.isPending || openOffers.isPending || confirmAccepted.isPending}
+                onWorkflowCta={onWorkflowCta}
+                showGenerateHireOrder={!!showGenerateHireOrderCta}
+                generateDisabled={hireOrderAction.isPending || !canGenerateHireOrders}
+                generateTitle={canGenerateHireOrders ? undefined : "You don't have permission to generate hire orders"}
+                onGenerate={generateHireOrder}
+                flowLabel={flow.artist_acceptance ? 'Classic offers' : 'Direct booking'}
+                onEditFlow={canEditBookingSettings ? () => navigate(ROUTES.SETTINGS) : undefined}
+                tabs={[
+                  { id: 'cast', label: 'Cast' },
+                  { id: 'offers', label: flow.artist_acceptance ? 'Offers' : 'Book artists', hidden: !canManage },
+                  { id: 'order', label: 'Hire order', hidden: !hireOrdersOn },
+                  { id: 'chat', label: 'Chat' },
+                  { id: 'setup', label: 'Setup', hidden: !canManage },
+                ]}
+                activeTab={activeTab}
+                onTab={setActiveTab}
+                devBadge={isEditorMode && isRealAdmin}
+              />
             </div>
-          )}
 
-          {showDate && (
-            <>
-              {/* Date info */}
-              <div className="space-y-2">
-                <p className="font-display text-[26px] font-semibold tracking-tight">
-                  {format(parseDateOnly(showDate.date), 'EEEE, d MMMM yyyy')}
-                </p>
-                <div className="flex flex-wrap gap-3 text-sm text-muted-foreground">
-                  {(showDate.session_1 || showDate.session_2 || showDate.session_3) && (
-                    <span className="flex items-center gap-1">
-                      <Clock className="h-3.5 w-3.5" />
-                      {[showDate.session_1, showDate.session_2, showDate.session_3]
-                        .filter(Boolean)
-                        .map((t: string) => t.slice(0, 5))
-                        .join(' / ')}
-                    </span>
-                  )}
-                  {venue && (
-                    <span className="flex items-center gap-1">
-                      <MapPin className="h-3.5 w-3.5" />{venue}
-                    </span>
-                  )}
-                  {showDate.city?.name && (
-                    <span className="flex items-center gap-1">
-                      <MapPin className="h-3.5 w-3.5" />{showDate.city.name}
-                    </span>
-                  )}
-                </div>
-                {showDate.notes && (
-                  <p className="text-sm text-muted-foreground italic">{showDate.notes}</p>
-                )}
+            {/* Cast-slot warning: a catalog concern (also used by hire orders),
+                so it is NOT tied to the booking_flow gate. */}
+            {!slotConfig && (
+              <div className="px-6 pt-4">
+                <Badge variant="secondary" className="bg-destructive/10 text-destructive">
+                  Slot config missing for {showDate.show?.program ?? 'this show'}. Set cast slots in Settings.
+                </Badge>
               </div>
+            )}
 
-              {showDate.status === 'cancelled' && (
+            {showDate.status === 'cancelled' && (
+              <div className="px-6 pt-4">
                 <div className="rounded-lg border border-destructive/30 bg-destructive/10 p-3">
                   <p className="text-sm font-medium text-destructive">Cancelled</p>
                   {showDate.cancellation_reason && (
                     <p className="text-sm text-destructive/90 mt-0.5">{showDate.cancellation_reason}</p>
                   )}
                 </div>
-              )}
+              </div>
+            )}
 
-              {/* Booking funnel + up-next strip (gated: pure booking-engine status) */}
-              <BookingStatusSection
-                bookings={bookingsForDate ?? []}
-                slots={slotConfig}
-                upNext={() => computeUpNext({
-                  flow,
-                  times: effectiveTimes,
-                  pendingCount: (bookingsForDate ?? []).filter((b) => b.status === 'suggested').length,
-                  nextExpiry: (bookingsForDate ?? [])
-                    .filter((b) => b.status === 'suggested' && b.offer_expires_at)
-                    .map((b) => b.offer_expires_at as string)
-                    .sort()[0] ?? null,
-                  hasOpenTier: (openedQ.data ?? []).some((t) => !t.closedAt),
-                })}
+            <div className="flex flex-col lg:flex-row lg:items-stretch">
+              <CockpitRail
+                times={sessionTimes || null}
+                venue={showDate.venue}
+                city={showDate.city?.name ?? null}
+                source={railSource}
+                notes={showDate.notes}
+                castChips={castChips}
+                skillChips={skillChips}
+                activity={bookingModuleAllowed ? activity : []}
+                upNext={bookingModuleAllowed ? upNextItems : []}
+                chatUnread={0}
+                chatPreview={null}
+                onOpenChat={() => setActiveTab('chat')}
+                showEditSetup={canManage}
+                onEditSetup={() => setActiveTab('setup')}
               />
-              {/* Cast-slot warning: a catalog concern (also used by hire orders),
-                  so it is NOT tied to the booking_flow gate above. */}
-              {!slotConfig && (
-                <Badge variant="secondary" className="bg-destructive/10 text-destructive">
-                  Slot config missing for {showDate.show?.program ?? 'this show'}. Set cast slots in Settings.
-                </Badge>
-              )}
 
-              {/* Date configuration (producer/admin only) */}
-              {canManage && (
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="font-display text-base">Date configuration</CardTitle>
-                  </CardHeader>
-                  <CardContent className="space-y-4">
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                      <div>
-                        <label className="text-xs text-muted-foreground mb-1 block">City</label>
-                        <Select
-                          value={showDate.city_id ?? 'none'}
-                          onValueChange={v => updateDateCity.mutate(v === 'none' ? null : v)}
-                        >
-                          <SelectTrigger>
-                            <SelectValue placeholder="Select city" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="none">— None —</SelectItem>
-                            {(cities ?? []).map(c => (
-                              <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      </div>
-                      <div>
-                        <label className="text-xs text-muted-foreground mb-1 block">
-                          Extra eligible casts (this date)
-                        </label>
-                        <Popover>
-                          <PopoverTrigger asChild>
-                            <Button variant="outline" className="w-full justify-between">
-                              <span className="truncate">
-                                {overrideCastIds.size === 0
-                                  ? 'Add cast for this date…'
-                                  : `${overrideCastIds.size} added`}
-                              </span>
-                              <ChevronsUpDown className="h-4 w-4 ml-2 opacity-50" />
-                            </Button>
-                          </PopoverTrigger>
-                          <PopoverContent className="w-64 p-1" align="end">
-                            <div className="max-h-64 overflow-y-auto">
-                              {(casts ?? []).length === 0 && (
-                                <p className="text-xs text-muted-foreground p-2">No casts yet.</p>
-                              )}
-                              {(casts ?? []).map(c => {
-                                const on = overrideCastIds.has(c.id);
-                                return (
-                                  <button
-                                    key={c.id}
-                                    onClick={() => toggleDateCast.mutate({ castId: c.id, on: !on })}
-                                    className="flex items-center w-full px-2 py-1.5 text-sm rounded hover:bg-muted text-left"
-                                  >
-                                    <Check className={cn('h-4 w-4 mr-2', on ? 'opacity-100' : 'opacity-0')} />
-                                    {c.name}
-                                  </button>
-                                );
-                              })}
-                            </div>
-                          </PopoverContent>
-                        </Popover>
-                      </div>
-                    </div>
+              <div className="flex-1 p-5 min-h-[520px]">
+                {activeTab === 'cast' && (
+                  <AssignedArtistsCard
+                    bookings={bookings}
+                    canManage={bookingModuleAllowed && canManage}
+                    showConfirm={bookingModuleAllowed && canConfirmBookings}
+                    onConfirm={(bookingId) => updateBookingStatus.mutate({ bookingId, status: 'confirmed' })}
+                    onCancel={(bookingId) => updateBookingStatus.mutate({ bookingId, status: 'cancelled' })}
+                  />
+                )}
 
-                    {(inheritedCastIds.size > 0 || overrideCastIds.size > 0) && (
-                      <div className="space-y-1">
-                        <div className="flex flex-wrap gap-1">
-                          {Array.from(inheritedCastIds).map(cid => (
-                            <Badge key={cid} variant="outline" className="text-xs">
-                              {casts?.find(c => c.id === cid)?.name}
-                              <span className="ml-1 opacity-60">
-                                inherited{showDate.city?.name ? ` via ${showDate.city.name}` : ''}
-                              </span>
-                            </Badge>
-                          ))}
-                          {Array.from(overrideCastIds).map(cid => (
-                            <Badge key={cid} variant="secondary" className="text-xs">
-                              {casts?.find(c => c.id === cid)?.name}
-                            </Badge>
-                          ))}
+                {activeTab === 'offers' && (
+                  <ModuleGate feature="booking_flow">
+                    {canManage && showDate.status !== 'cancelled' && (
+                      <Card>
+                        <CardHeader>
+                          <CardTitle className="font-display text-base">
+                            {flow.artist_acceptance ? 'Offers' : 'Book artists'}
+                          </CardTitle>
+                        </CardHeader>
+                        <CardContent className="space-y-4">
+                          {flow.artist_acceptance ? (
+                            <>
+                              <TierTimeline
+                                showDateId={showDate.id}
+                                cityId={cityId}
+                                dateLabel={formatDateDMY(showDate.date)}
+                                flow={flow}
+                                bookings={bookingsForDate ?? []}
+                                canManage={canRunOfferEngine}
+                                hasSession={hasSession}
+                                tiers={tiersQ.data ?? { priorities: [], hasAdHoc: false }}
+                                ladderSource={tiersQ.data?.source ?? "org"}
+                                skills={orgSkills ?? []}
+                                openedTiers={openedQ.data ?? []}
+                                isLoadingTiers={tiersQ.isLoading}
+                                isLoadingOpened={openedQ.isLoading}
+                                openPending={openOffers.isPending}
+                                closePending={closeOffers.isPending}
+                                onOpenTier={(tier, skillFilterIds) => openOffers.mutate({ tier, skillFilterIds })}
+                                onCloseTier={(tier, withdraw) => closeOffers.mutate({ tier, withdraw })}
+                                onPreviewTier={(tier, skillFilterIds) => setDryRun({ tier, skillFilterIds })}
+                              />
+                              <DryRunDialog
+                                open={Boolean(dryRun)}
+                                onOpenChange={(o) => { if (!o) setDryRun(null); }}
+                                tier={dryRun?.tier ?? null}
+                                result={dryRunQ.data ?? null}
+                                loading={dryRunQ.isLoading}
+                                flow={flow}
+                                confirmPending={openOffers.isPending}
+                                onConfirm={() => {
+                                  if (dryRun) openOffers.mutate({ tier: dryRun.tier, skillFilterIds: dryRun.skillFilterIds });
+                                  setDryRun(null);
+                                }}
+                              />
+                            </>
+                          ) : (
+                            <EligibilityBookList
+                              artists={eligibleArtistList}
+                              loading={directListLoading}
+                              error={directListError}
+                              bookedArtistIds={bookedArtistIds}
+                              onBook={(artistId, isUnderstudy) =>
+                                createBookingMutation.mutate({ artistId, isUnderstudy })}
+                              booking={createBookingMutation.isPending}
+                              skills={orgSkills ?? []}
+                              selectedSkillIds={directSkillFilterIds}
+                              onSkillFilterChange={(id) =>
+                                setDirectSkillFilterIds((prev) =>
+                                  prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id])}
+                            />
+                          )}
+                        </CardContent>
+                      </Card>
+                    )}
+                  </ModuleGate>
+                )}
+
+                {activeTab === 'order' && (
+                  <HireOrdersCard
+                    showDateId={showDate.id}
+                    showDate={showDate}
+                    bookings={bookings}
+                    canManage={canManage}
+                  />
+                )}
+
+                {activeTab === 'chat' && (
+                  <ChatPanel showDateId={showDate.id} showDate={showDate.date} />
+                )}
+
+                {activeTab === 'setup' && canManage && (
+                  <div className="space-y-6">
+                    <Card>
+                      <CardHeader>
+                        <CardTitle className="font-display text-base">Date configuration</CardTitle>
+                      </CardHeader>
+                      <CardContent className="space-y-4">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                          <div>
+                            <label className="text-xs text-muted-foreground mb-1 block">City</label>
+                            <Select
+                              value={showDate.city_id ?? 'none'}
+                              onValueChange={v => updateDateCity.mutate(v === 'none' ? null : v)}
+                            >
+                              <SelectTrigger>
+                                <SelectValue placeholder="Select city" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="none">— None —</SelectItem>
+                                {(cities ?? []).map(c => (
+                                  <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          </div>
+                          <div>
+                            <label className="text-xs text-muted-foreground mb-1 block">
+                              Extra eligible casts (this date)
+                            </label>
+                            <Popover>
+                              <PopoverTrigger asChild>
+                                <Button variant="outline" className="w-full justify-between">
+                                  <span className="truncate">
+                                    {overrideCastIds.size === 0
+                                      ? 'Add cast for this date…'
+                                      : `${overrideCastIds.size} added`}
+                                  </span>
+                                  <ChevronsUpDown className="h-4 w-4 ml-2 opacity-50" />
+                                </Button>
+                              </PopoverTrigger>
+                              <PopoverContent className="w-64 p-1" align="end">
+                                <div className="max-h-64 overflow-y-auto">
+                                  {(casts ?? []).length === 0 && (
+                                    <p className="text-xs text-muted-foreground p-2">No casts yet.</p>
+                                  )}
+                                  {(casts ?? []).map(c => {
+                                    const on = overrideCastIds.has(c.id);
+                                    return (
+                                      <button
+                                        key={c.id}
+                                        onClick={() => toggleDateCast.mutate({ castId: c.id, on: !on })}
+                                        className="flex items-center w-full px-2 py-1.5 text-sm rounded hover:bg-muted text-left"
+                                      >
+                                        <Check className={cn('h-4 w-4 mr-2', on ? 'opacity-100' : 'opacity-0')} />
+                                        {c.name}
+                                      </button>
+                                    );
+                                  })}
+                                </div>
+                              </PopoverContent>
+                            </Popover>
+                          </div>
                         </div>
-                        {inheritedCastIds.size > 0 && (
-                          <p className="text-xs text-muted-foreground">
-                            Inherited casts come from the city eligibility matrix in Settings → Cities &amp; Casts. Update the city above or adjust cast eligibility there.
-                          </p>
+
+                        {(inheritedCastIds.size > 0 || overrideCastIds.size > 0) && (
+                          <div className="space-y-1">
+                            <div className="flex flex-wrap gap-1">
+                              {Array.from(inheritedCastIds).map(cid => (
+                                <Badge key={cid} variant="outline" className="text-xs">
+                                  {casts?.find(c => c.id === cid)?.name}
+                                  <span className="ml-1 opacity-60">
+                                    inherited{showDate.city?.name ? ` via ${showDate.city.name}` : ''}
+                                  </span>
+                                </Badge>
+                              ))}
+                              {Array.from(overrideCastIds).map(cid => (
+                                <Badge key={cid} variant="secondary" className="text-xs">
+                                  {casts?.find(c => c.id === cid)?.name}
+                                </Badge>
+                              ))}
+                            </div>
+                            {inheritedCastIds.size > 0 && (
+                              <p className="text-xs text-muted-foreground">
+                                Inherited casts come from the city eligibility matrix in Settings → Cities &amp; Casts. Update the city above or adjust cast eligibility there.
+                              </p>
+                            )}
+                          </div>
+                        )}
+
+                        <RequiredSkillsSection
+                          skills={orgSkills ?? []}
+                          showSkillIds={requiredSkillsQ.data?.showSkillIds ?? []}
+                          dateSkillIds={requiredSkillsQ.data?.dateSkillIds ?? []}
+                          onAdd={(id) => addDateSkill.mutate(id)}
+                          onRemove={(id) => removeDateSkill.mutate(id)}
+                          pending={addDateSkill.isPending || removeDateSkill.isPending}
+                        />
+                      </CardContent>
+                    </Card>
+
+                    {showDate.status !== 'cancelled' && (
+                      <div className="flex flex-wrap items-center gap-2">
+                        <IconTooltip label={canManageShowDates ? '' : "You don't have permission to edit show dates"}>
+                          <Button variant="outline" size="sm" onClick={() => setEditOpen(true)} disabled={!canManageShowDates}>
+                            {synced ? 'Edit notes' : 'Edit schedule'}
+                          </Button>
+                        </IconTooltip>
+
+                        <AlertDialog>
+                          <AlertDialogTrigger asChild>
+                            <Button variant="outline" size="sm">Cancel date</Button>
+                          </AlertDialogTrigger>
+                          <AlertDialogContent>
+                            <AlertDialogHeader>
+                              <AlertDialogTitle>Cancel this date?</AlertDialogTitle>
+                              <AlertDialogDescription>
+                                This releases all bookings for this date and notifies booked artists. Add a reason:
+                              </AlertDialogDescription>
+                            </AlertDialogHeader>
+                            <Input value={cancelReason} onChange={(e) => setCancelReason(e.target.value)} placeholder="Reason (e.g. venue lost)" />
+                            <AlertDialogFooter>
+                              <AlertDialogCancel>Keep date</AlertDialogCancel>
+                              <AlertDialogAction
+                                onClick={() => cancelDate.mutate({ id: showDate.id, reason: cancelReason },
+                                  { onSuccess: () => { toast.success('Date cancelled'); onOpenChange(false); },
+                                    onError: (e) => toast.error((e as Error).message) })}>
+                                Cancel date
+                              </AlertDialogAction>
+                            </AlertDialogFooter>
+                          </AlertDialogContent>
+                        </AlertDialog>
+
+                        {canHardDelete && (
+                          <AlertDialog>
+                            <IconTooltip label={deletable ? '' : synced ? "Synced dates can't be deleted — cancel instead" : 'Has bookings — cancel instead'}>
+                              <AlertDialogTrigger asChild>
+                                <Button variant="ghost" size="sm" className="text-destructive" disabled={!deletable}>
+                                  Delete
+                                </Button>
+                              </AlertDialogTrigger>
+                            </IconTooltip>
+                            <AlertDialogContent>
+                              <AlertDialogHeader>
+                                <AlertDialogTitle>Delete this date?</AlertDialogTitle>
+                                <AlertDialogDescription>This permanently removes the date. This cannot be undone.</AlertDialogDescription>
+                              </AlertDialogHeader>
+                              <AlertDialogFooter>
+                                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                <AlertDialogAction onClick={() => deleteDate.mutate(showDate.id,
+                                  { onSuccess: () => { toast.success('Date deleted'); onOpenChange(false); },
+                                    onError: (e) => toast.error((e as Error).message) })}>
+                                  Delete
+                                </AlertDialogAction>
+                              </AlertDialogFooter>
+                            </AlertDialogContent>
+                          </AlertDialog>
                         )}
                       </div>
                     )}
-
-                    <RequiredSkillsSection
-                      skills={orgSkills ?? []}
-                      showSkillIds={requiredSkillsQ.data?.showSkillIds ?? []}
-                      dateSkillIds={requiredSkillsQ.data?.dateSkillIds ?? []}
-                      onAdd={(id) => addDateSkill.mutate(id)}
-                      onRemove={(id) => removeDateSkill.mutate(id)}
-                      pending={addDateSkill.isPending || removeDateSkill.isPending}
-                    />
-                  </CardContent>
-                </Card>
-              )}
-
-              {/* Date actions (edit / cancel / delete) */}
-              {canManage && showDate.status !== 'cancelled' && (
-                <div className="flex flex-wrap items-center gap-2">
-                  <IconTooltip label={canManageShowDates ? '' : "You don't have permission to edit show dates"}>
-                    <Button variant="outline" size="sm" onClick={() => setEditOpen(true)} disabled={!canManageShowDates}>
-                      {synced ? 'Edit notes' : 'Edit schedule'}
-                    </Button>
-                  </IconTooltip>
-
-                  <AlertDialog>
-                    <AlertDialogTrigger asChild>
-                      <Button variant="outline" size="sm">Cancel date</Button>
-                    </AlertDialogTrigger>
-                    <AlertDialogContent>
-                      <AlertDialogHeader>
-                        <AlertDialogTitle>Cancel this date?</AlertDialogTitle>
-                        <AlertDialogDescription>
-                          This releases all bookings for this date and notifies booked artists. Add a reason:
-                        </AlertDialogDescription>
-                      </AlertDialogHeader>
-                      <Input value={cancelReason} onChange={(e) => setCancelReason(e.target.value)} placeholder="Reason (e.g. venue lost)" />
-                      <AlertDialogFooter>
-                        <AlertDialogCancel>Keep date</AlertDialogCancel>
-                        <AlertDialogAction
-                          onClick={() => cancelDate.mutate({ id: showDate.id, reason: cancelReason },
-                            { onSuccess: () => { toast.success('Date cancelled'); onOpenChange(false); },
-                              onError: (e) => toast.error((e as Error).message) })}>
-                          Cancel date
-                        </AlertDialogAction>
-                      </AlertDialogFooter>
-                    </AlertDialogContent>
-                  </AlertDialog>
-
-                  {canHardDelete && (
-                    <AlertDialog>
-                      <IconTooltip label={deletable ? '' : synced ? "Synced dates can't be deleted — cancel instead" : 'Has bookings — cancel instead'}>
-                        <AlertDialogTrigger asChild>
-                          <Button variant="ghost" size="sm" className="text-destructive" disabled={!deletable}>
-                            Delete
-                          </Button>
-                        </AlertDialogTrigger>
-                      </IconTooltip>
-                      <AlertDialogContent>
-                        <AlertDialogHeader>
-                          <AlertDialogTitle>Delete this date?</AlertDialogTitle>
-                          <AlertDialogDescription>This permanently removes the date. This cannot be undone.</AlertDialogDescription>
-                        </AlertDialogHeader>
-                        <AlertDialogFooter>
-                          <AlertDialogCancel>Cancel</AlertDialogCancel>
-                          <AlertDialogAction onClick={() => deleteDate.mutate(showDate.id,
-                            { onSuccess: () => { toast.success('Date deleted'); onOpenChange(false); },
-                              onError: (e) => toast.error((e as Error).message) })}>
-                            Delete
-                          </AlertDialogAction>
-                        </AlertDialogFooter>
-                      </AlertDialogContent>
-                    </AlertDialog>
-                  )}
-                </div>
-              )}
-
-              {/* The booking region: offers / direct booking (producers, live dates
-                  only) plus the assigned-artists card, behind one module gate. */}
-              <BookingCardSection
-                bookings={bookingsForDate ?? []}
-                canManage={canManage}
-                showConfirm={canConfirmBookings}
-                onConfirm={(bookingId) => updateBookingStatus.mutate({ bookingId, status: 'confirmed' })}
-                onCancel={(bookingId) => updateBookingStatus.mutate({ bookingId, status: 'cancelled' })}
-              >
-                {canManage && showDate.status !== 'cancelled' && (
-                  <Card>
-                    <CardHeader>
-                      <CardTitle className="font-display text-base">
-                        {flow.artist_acceptance ? 'Offers' : 'Book artists'}
-                      </CardTitle>
-                    </CardHeader>
-                    <CardContent className="space-y-4">
-                      {flow.artist_acceptance ? (
-                        <>
-                          <TierTimeline
-                            showDateId={showDate.id}
-                            cityId={cityId}
-                            dateLabel={formatDateDMY(showDate.date)}
-                            flow={flow}
-                            bookings={bookingsForDate ?? []}
-                            canManage={canRunOfferEngine}
-                            hasSession={hasSession}
-                            tiers={tiersQ.data ?? { priorities: [], hasAdHoc: false }}
-                            ladderSource={tiersQ.data?.source ?? "org"}
-                            skills={orgSkills ?? []}
-                            openedTiers={openedQ.data ?? []}
-                            isLoadingTiers={tiersQ.isLoading}
-                            isLoadingOpened={openedQ.isLoading}
-                            openPending={openOffers.isPending}
-                            closePending={closeOffers.isPending}
-                            onOpenTier={(tier, skillFilterIds) => openOffers.mutate({ tier, skillFilterIds })}
-                            onCloseTier={(tier, withdraw) => closeOffers.mutate({ tier, withdraw })}
-                            onPreviewTier={(tier, skillFilterIds) => setDryRun({ tier, skillFilterIds })}
-                          />
-                          <DryRunDialog
-                            open={Boolean(dryRun)}
-                            onOpenChange={(o) => { if (!o) setDryRun(null); }}
-                            tier={dryRun?.tier ?? null}
-                            result={dryRunQ.data ?? null}
-                            loading={dryRunQ.isLoading}
-                            flow={flow}
-                            confirmPending={openOffers.isPending}
-                            onConfirm={() => {
-                              if (dryRun) openOffers.mutate({ tier: dryRun.tier, skillFilterIds: dryRun.skillFilterIds });
-                              setDryRun(null);
-                            }}
-                          />
-                        </>
-                      ) : (
-                        <EligibilityBookList
-                          artists={eligibleArtistList}
-                          loading={directListLoading}
-                          error={directListError}
-                          bookedArtistIds={bookedArtistIds}
-                          onBook={(artistId, isUnderstudy) =>
-                            createBookingMutation.mutate({ artistId, isUnderstudy })}
-                          booking={createBookingMutation.isPending}
-                          skills={orgSkills ?? []}
-                          selectedSkillIds={directSkillFilterIds}
-                          onSkillFilterChange={(id) =>
-                            setDirectSkillFilterIds((prev) =>
-                              prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id])}
-                        />
-                      )}
-                    </CardContent>
-                  </Card>
+                  </div>
                 )}
-              </BookingCardSection>
+              </div>
+            </div>
 
-              {/* Hire orders (feature-gated; producer/admin management surface) */}
-              <HireOrdersCard
-                showDateId={showDate.id}
-                showDate={showDate}
-                bookings={bookingsForDate ?? []}
-                canManage={canManage}
-              />
-
-              {/* Chat */}
-              <ChatPanel showDateId={showDate.id} showDate={showDate.date} />
-
-              <ShowDateFormDialog
-                open={editOpen}
-                onOpenChange={setEditOpen}
-                mode="edit"
-                showDate={{
-                  id: showDate.id, show_id: showDate.show_id, date: showDate.date,
-                  session_1: showDate.session_1, session_2: showDate.session_2, session_3: showDate.session_3,
-                  venue: showDate.venue, city_id: showDate.city_id, notes: showDate.notes,
-                  airtable_record_id: showDate.airtable_record_id, status: showDate.status,
-                }}
-              />
-            </>
-          )}
-        </div>
+            <ShowDateFormDialog
+              open={editOpen}
+              onOpenChange={setEditOpen}
+              mode="edit"
+              showDate={{
+                id: showDate.id, show_id: showDate.show_id, date: showDate.date,
+                session_1: showDate.session_1, session_2: showDate.session_2, session_3: showDate.session_3,
+                venue: showDate.venue, city_id: showDate.city_id, notes: showDate.notes,
+                airtable_record_id: showDate.airtable_record_id, status: showDate.status,
+              }}
+            />
+          </>
+        )}
       </SheetContent>
     </Sheet>
   );

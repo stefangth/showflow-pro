@@ -204,6 +204,20 @@ export async function bulkConfirmSoftBooked(
   return { affected: (data ?? []).length };
 }
 
+/** The ids of a date's still-soft_booked bookings — the row-peek confirm target. */
+export async function fetchSoftBookedIdsForDate(
+  client: SupabaseClient<Database>,
+  showDateId: string,
+): Promise<string[]> {
+  const { data, error } = await client
+    .from("bookings")
+    .select("id")
+    .eq("show_date_id", showDateId)
+    .eq("status", "soft_booked");
+  if (error) throw error;
+  return ((data ?? []) as { id: string }[]).map((r) => r.id);
+}
+
 /**
  * Decline (cancel) all soft_booked bookings among `ids` (producer bulk-decline).
  * Only rows still in `soft_booked` are affected. Returns the number of rows changed.
@@ -375,9 +389,14 @@ export async function fetchTierAttention(
  * explicit `.eq("org_id", orgId)` below is what scopes the result. See ADR-0003.
  * ------------------------------------------------------------------------- */
 
-export interface DateBookingCounts { confirmedMain: number; confirmedUs: number; total: number }
+export interface DateBookingCounts {
+  confirmedMain: number; confirmedUs: number;
+  acceptedMain: number; acceptedUs: number;   // soft_booked, waiting on producer confirm
+  pendingMain: number; pendingUs: number;      // suggested, awaiting artist response
+  total: number;                                // all non-cancelled
+}
 
-/** Per-show-date booking tallies for the bookings grid (non-cancelled only). */
+/** Per-show-date booking tallies for the bookings grid + row peek (non-cancelled only). */
 export async function fetchBookingCountsByDate(
   client: SupabaseClient<Database>,
   orgId: string | null,
@@ -391,13 +410,19 @@ export async function fetchBookingCountsByDate(
     .neq("status", "cancelled");
   if (error) throw error;
   interface CountRow { show_date_id: string; status: string; is_understudy: boolean }
+  const zero = (): DateBookingCounts => ({
+    confirmedMain: 0, confirmedUs: 0, acceptedMain: 0, acceptedUs: 0, pendingMain: 0, pendingUs: 0, total: 0,
+  });
   for (const b of (data ?? []) as unknown as CountRow[]) {
-    const cur = map.get(b.show_date_id) ?? { confirmedMain: 0, confirmedUs: 0, total: 0 };
+    // The .neq() above already excludes cancelled rows server-side; this guard is
+    // a defensive backstop so the tally is correct even if a caller's client omits it.
+    if (b.status === "cancelled") continue;
+    const cur = map.get(b.show_date_id) ?? zero();
     cur.total += 1;
-    if (b.status === "confirmed") {
-      if (b.is_understudy) cur.confirmedUs += 1;
-      else cur.confirmedMain += 1;
-    }
+    const us = b.is_understudy;
+    if (b.status === "confirmed") { if (us) cur.confirmedUs++; else cur.confirmedMain++; }
+    else if (b.status === "soft_booked") { if (us) cur.acceptedUs++; else cur.acceptedMain++; }
+    else if (b.status === "suggested") { if (us) cur.pendingUs++; else cur.pendingMain++; }
     map.set(b.show_date_id, cur);
   }
   return map;

@@ -190,6 +190,9 @@ test.describe("Configurable eligibility: show ladders and required skills", () =
     await expect(dateRow).toBeVisible({ timeout: 15_000 });
     await dateRow.click();
 
+    // Cockpit: the direct-book list (and its empty state) is under the "Book artists" tab.
+    await page.getByRole("dialog").getByRole("button", { name: /^book artists$/i }).click();
+
     const emptyState = page.getByText(
       /No eligible artists for this date\. Check casts and city in Settings\./i
     );

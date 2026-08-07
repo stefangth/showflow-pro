@@ -146,3 +146,117 @@ export function unfilledMainCastDates(
       mainBooked: confirmedMainByDate.get(d.id) ?? 0, mainSlots: d.mainSlots as number,
     }));
 }
+
+/* ------------------------------------------------------------------------- *
+ * Show Date Cockpit + row peek helpers (2026-08 redesign).
+ * Pure: no Supabase or React imports. Consumed by CockpitHeader, CockpitRail,
+ * and the bookings-row peek.
+ * ------------------------------------------------------------------------- */
+
+export interface DatePeekSeg { tone: "confirmed" | "accepted" | "open" }
+export interface DatePeek {
+  tone: "filled" | "at-risk" | "neutral";
+  eyebrowSuffix: "filled" | "at risk" | "open";
+  headline: string;
+  meter: DatePeekSeg[];
+  acceptedWaiting: number;
+  openSlots: number;
+  confirmable: boolean;
+}
+
+/** Slot-meter segment tones (confirmed → accepted → open), the single source
+ *  the cockpit header meter and the row-peek meter both render. Clamps its own
+ *  inputs so callers may pass raw counts. */
+export function slotMeterTones(confirmed: number, accepted: number, total: number): DatePeekSeg["tone"][] {
+  const c = Math.min(total, Math.max(0, confirmed));
+  const a = Math.min(total - c, Math.max(0, accepted));
+  return Array.from({ length: total }, (_, i) => (i < c ? "confirmed" : i < c + a ? "accepted" : "open"));
+}
+
+const plural = (n: number, one: string, many: string) => `${n} ${n === 1 ? one : many}`;
+
+/** Compact summary for the bookings-row peek. Null when the date has no slot config. */
+export function computeDatePeek(args: {
+  counts: { confirmedMain: number; confirmedUs: number; acceptedMain: number; acceptedUs: number } | null;
+  slots: { main_cast: number; understudies: number } | null;
+}): DatePeek | null {
+  const { slots } = args;
+  if (!slots) return null;
+  const c = args.counts ?? { confirmedMain: 0, confirmedUs: 0, acceptedMain: 0, acceptedUs: 0 };
+  const total = slots.main_cast + slots.understudies;
+  const confirmed = Math.min(total, c.confirmedMain + c.confirmedUs);
+  const accepted = Math.min(total - confirmed, c.acceptedMain + c.acceptedUs);
+  const openSlots = Math.max(0, total - confirmed - accepted);
+  const openMain = Math.max(0, slots.main_cast - c.confirmedMain - c.acceptedMain);
+  const openUs = Math.max(0, slots.understudies - c.confirmedUs - c.acceptedUs);
+
+  const meter: DatePeekSeg[] = slotMeterTones(confirmed, accepted, total).map((tone) => ({ tone }));
+
+  let tone: DatePeek["tone"]; let eyebrowSuffix: DatePeek["eyebrowSuffix"];
+  if (confirmed >= total) { tone = "filled"; eyebrowSuffix = "filled"; }
+  else if (openSlots > 0) { tone = "at-risk"; eyebrowSuffix = "at risk"; }
+  else { tone = "neutral"; eyebrowSuffix = "open"; }
+
+  let headline: string;
+  if (confirmed >= total) {
+    headline = `All ${total} slots confirmed`;
+  } else {
+    const parts: string[] = [];
+    if (accepted > 0) parts.push(plural(accepted, "accepted waiting on you", "accepted waiting on you"));
+    if (openMain > 0) parts.push(plural(openMain, "main slot open", "main slots open"));
+    else if (openUs > 0) parts.push(plural(openUs, "understudy slot open", "understudy slots open"));
+    headline = parts.length ? parts.join(" · ") : "Ready to confirm";
+  }
+
+  return { tone, eyebrowSuffix, headline, meter, acceptedWaiting: accepted, openSlots, confirmable: accepted > 0 };
+}
+
+export type HeaderCtaKind = "confirm" | "openTier" | "reviewOffers" | "book" | "none";
+export interface HeaderCta { kind: HeaderCtaKind; label: string }
+
+/** The primary booking-workflow action for the cockpit header. The hire-order
+ *  terminal is a separate, feature-gated button, so this returns "none" once the
+ *  workflow itself is done. */
+export function computeHeaderCta(args: {
+  artistAcceptance: boolean; acceptedCount: number; confirmedCount: number;
+  totalSlots: number | null; openTier: number | null; currentTierOpen: boolean; maxTier: number;
+}): HeaderCta {
+  const none: HeaderCta = { kind: "none", label: "" };
+  if (args.acceptedCount > 0) return { kind: "confirm", label: `Confirm ${args.acceptedCount} accepted` };
+  if (args.totalSlots == null || args.confirmedCount >= args.totalSlots) return none;
+  if (!args.artistAcceptance) return { kind: "book", label: "Book from eligibility" };
+  // A tier is still open awaiting responses — review, don't escalate. Escalation
+  // is offered only once the current tier has closed short (matches the offer
+  // engine's "escalate when a tier's window closes short" model), so the header
+  // can never live-offer a second tier concurrently from one click.
+  if (args.currentTierOpen) return { kind: "reviewOffers", label: "Review open offers" };
+  // Next tier to open: 1 when none has ever been opened (openTier null), else the
+  // tier after the highest opened. Offered only while it exists in the ladder.
+  const nextTier = (args.openTier ?? 0) + 1;
+  if (nextTier <= args.maxTier) return { kind: "openTier", label: `Open tier ${nextTier}` };
+  return { kind: "reviewOffers", label: "Review open offers" };
+}
+
+export interface ActivityItem { iso: string; text: string }
+
+/** Derive a per-date activity feed from real booking + tier timestamps (no new
+ *  backend). Newest first, capped at `limit` (default 6). Formatting of `iso`
+ *  is left to the consumer to keep this pure and locale-free. */
+export function buildActivity(args: {
+  bookings: Array<{ status: string; confirmed_at: string | null; artist: { name: string } | null }>;
+  openedTiers: Array<{ tier: number; openedAt: string | null; closedAt: string | null }>;
+  limit?: number;
+}): ActivityItem[] {
+  const out: ActivityItem[] = [];
+  for (const b of args.bookings) {
+    if (b.status === "confirmed" && b.confirmed_at) {
+      out.push({ iso: b.confirmed_at, text: `${b.artist?.name ?? "Artist"} confirmed` });
+    }
+  }
+  for (const t of args.openedTiers) {
+    if (t.openedAt) out.push({ iso: t.openedAt, text: `Tier ${t.tier} opened` });
+    if (t.closedAt) out.push({ iso: t.closedAt, text: `Tier ${t.tier} closed` });
+  }
+  out.sort((a, b) => b.iso.localeCompare(a.iso));
+  return out.slice(0, args.limit ?? 6);
+}

@@ -7,6 +7,14 @@
     "changes": {
       "new": [
         {
+          "title": "Show date cockpit",
+          "description": "Opening a date now leads with the work: an anchored header with the fill meter and one primary action, a facts and activity rail that stays put, and tabs for cast, offers, hire order, chat, and setup. Filling a date and getting it signed no longer competes with once-a-season setup."
+        },
+        {
+          "title": "Peek a date from the list",
+          "description": "Hover a bookings row (or press Space) for a quick card showing who is waiting on you and how many slots are open, and confirm the accepted artists right there. Enter still opens the full date."
+        },
+        {
           "title": "Hire order setup checklist",
           "description": "A checklist beside your hire orders shows exactly what is needed before the first order can be sent, and lets you set it right there. It disappears once you are set up."
         },
@@ -28,6 +36,10 @@
         }
       ],
       "improved": [
+        {
+          "title": "One clear next step per date",
+          "description": "The date header shows a single primary action that follows your booking flow: confirm the artists waiting on you, open the next offer tier, book from eligibility, or generate the hire order."
+        },
         {
           "title": "Know before you send",
           "description": "Issuing a hire order now shows anything missing first, with the fix right there, instead of failing after you press send."

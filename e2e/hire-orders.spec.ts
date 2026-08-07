@@ -245,6 +245,9 @@ test.describe("Hire orders: producer issues, artist downloads", () => {
     await expect(dateRow).toBeVisible({ timeout: 15_000 });
     await dateRow.click();
 
+    // Cockpit: the hire-orders card (with its Generate banner) is under the "Hire order" tab.
+    await page.getByRole("dialog").getByRole("button", { name: /^hire order$/i }).click();
+
     // The hire-orders card shows a "Generate hire order" banner because there is
     // a confirmed booking with no active order yet. Clicking it drafts one order
     // (the draft action is idempotent per booking, so a re-click is a no-op), which
