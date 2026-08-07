@@ -101,6 +101,8 @@ export function CastsCitiesTab({ currentOrgId, canEnter }: { currentOrgId: strin
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['cast-city-priority'] });
+      // Same-client refresh for the setup rail's coverage query (realtime handles cross-client).
+      qc.invalidateQueries({ queryKey: ['eligibility'] });
       setNewPriorityCityId('');
       setNewPriorityCastId('');
       setNewPriorityValue(1);
@@ -116,6 +118,8 @@ export function CastsCitiesTab({ currentOrgId, canEnter }: { currentOrgId: strin
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['cast-city-priority'] });
+      // Same-client refresh for the setup rail's coverage query (realtime handles cross-client).
+      qc.invalidateQueries({ queryKey: ['eligibility'] });
       toast.success('Assignment removed');
     },
     onError: (e: Error) => toast.error(e.message ?? 'Failed to remove'),

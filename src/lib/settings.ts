@@ -22,6 +22,18 @@ export function showSlots(
 }
 
 /**
+ * The active shows only (status === "active"). Preserves `undefined` so a loading or
+ * errored read stays undefined (the setup-status fail-safe) rather than collapsing to an
+ * empty list. One home for the "active only" rule the booking-setup rail applies in two
+ * places (the status hook and the slots panel).
+ */
+export function activeShows<T extends { status: string }>(
+  shows: T[] | null | undefined,
+): T[] | undefined {
+  return shows?.filter((s) => s.status === "active");
+}
+
+/**
  * Compute which setting keys the user has edited, considering ONLY `editableKeys`
  * (the keys this form actually manages). This is an allowlist, not a union with every
  * persisted key: a key SettingsPage seeds into its draft but does not own — e.g.

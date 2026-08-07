@@ -13,6 +13,14 @@
         {
           "title": "Ready-made terms templates",
           "description": "Start from a prepared set of engagement terms instead of writing clauses from scratch. You get your own copy, so editing it changes nothing for anyone else."
+        },
+        {
+          "title": "Bookings setup checklist",
+          "description": "A checklist beside Shows and bookings walks you through the booking flow, slot counts, cast priorities, eligibility, and response timing, then retires itself once the first offer can go out."
+        },
+        {
+          "title": "Rehearse the next date",
+          "description": "Preview exactly who the next date would offer, and when, without creating a booking or sending a single email."
         }
       ],
       "improved": [
@@ -27,6 +35,10 @@
         {
           "title": "Signing is on the document",
           "description": "Artists sign right under the order they are reading, instead of in a separate window."
+        },
+        {
+          "title": "Honest setup blockers",
+          "description": "Each outstanding booking setup step says whether it stops offers entirely or only stops a date filling, so you know what to fix first."
         }
       ]
     }

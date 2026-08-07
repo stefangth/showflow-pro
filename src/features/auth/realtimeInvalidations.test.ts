@@ -47,6 +47,27 @@ describe("REALTIME_INVALIDATIONS — hire-order readiness", () => {
   });
 });
 
+describe("REALTIME_INVALIDATIONS — booking-setup ladder coverage", () => {
+  // The setup rail's coverage query (['eligibility','ladder-coverage',org], useBookingSetup.ts)
+  // reads show_dates, show_cast_eligibility, and cast_city_priority, so all three must bust
+  // ['eligibility'] for the rail to live-refresh after an out-of-rail ladder edit.
+  it("refreshes ['eligibility'] when show_dates changes", () => {
+    expect(hasKey("show_dates", "eligibility")).toBe(true);
+  });
+
+  it("refreshes ['eligibility'] when show_cast_eligibility changes", () => {
+    expect(hasKey("show_cast_eligibility", "eligibility")).toBe(true);
+  });
+
+  it("refreshes ['eligibility'] when cast_city_priority changes", () => {
+    expect(hasKey("cast_city_priority", "eligibility")).toBe(true);
+  });
+
+  it("keeps invalidating the Casts & Cities org-wide priority key (['cast-city-priority'], CastsCitiesTab.tsx) on cast_city_priority changes", () => {
+    expect(hasKey("cast_city_priority", "cast-city-priority")).toBe(true);
+  });
+});
+
 describe("REALTIME_INVALIDATIONS — map integrity", () => {
   it("lists no known-dead key prefixes (renamed/typo'd keys that no query uses)", () => {
     // Keys confirmed to have zero `useQuery` consumers in src as of this audit.

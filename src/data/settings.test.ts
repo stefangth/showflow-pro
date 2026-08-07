@@ -1,13 +1,13 @@
 import { describe, it, expect } from "vitest";
 import { createFakeSupabase } from "@/test/supabaseFake";
-import { fetchShowsWithSlots, resolveOrgSetting, upsertOrgSetting, fetchShowsForLinking, linkShowAirtableKey, importShowsFromOptions, mergeOrgRows, fetchBookingFlow, hasOrgSettingRow } from "./settings";
+import { fetchShowsWithSlots, resolveOrgSetting, upsertOrgSetting, fetchShowsForLinking, linkShowAirtableKey, importShowsFromOptions, mergeOrgRows, fetchBookingFlow, hasOrgSettingRow, fetchOwnedSettingKeys, fetchFlowTimes } from "./settings";
 import { BOOKING_FLOW_DEFAULTS, normalizeBookingFlow } from "@/lib/bookingFlow";
 
 describe("fetchShowsWithSlots", () => {
   it("selects the correct columns from shows filtered by org_id", async () => {
     const rows = [
-      { id: "s1", program: "A", sub_program: "x", main_cast_slots: 2, understudy_slots: 1 },
-      { id: "s2", program: "A", sub_program: "y", main_cast_slots: null, understudy_slots: null },
+      { id: "s1", program: "A", sub_program: "x", main_cast_slots: 2, understudy_slots: 1, status: "active" },
+      { id: "s2", program: "A", sub_program: "y", main_cast_slots: null, understudy_slots: null, status: "draft" },
     ];
     const fake = createFakeSupabase({ shows: { data: rows, error: null } });
     const result = await fetchShowsWithSlots(fake as never, "org-1");
@@ -15,7 +15,7 @@ describe("fetchShowsWithSlots", () => {
     expect(fake.calls).toContainEqual({
       table: "shows",
       method: "select",
-      args: ["id, program, sub_program, main_cast_slots, understudy_slots"],
+      args: ["id, program, sub_program, main_cast_slots, understudy_slots, status"],
     });
     expect(fake.calls).toContainEqual({
       table: "shows",
@@ -117,12 +117,12 @@ describe("upsertOrgSetting", () => {
 });
 
 describe("shows linking data-access", () => {
-  it("fetchShowsForLinking includes airtable_program_key + slots for the org", async () => {
-    const rows = [{ id: "s1", program: "TJE", sub_program: "TJE: Murder", main_cast_slots: null, understudy_slots: null, airtable_program_key: "TJE: Murder" }];
+  it("fetchShowsForLinking includes airtable_program_key + slots + status for the org", async () => {
+    const rows = [{ id: "s1", program: "TJE", sub_program: "TJE: Murder", main_cast_slots: null, understudy_slots: null, status: "active", airtable_program_key: "TJE: Murder" }];
     const fake = createFakeSupabase({ shows: { data: rows, error: null } });
     const res = await fetchShowsForLinking(fake as never, "org-1");
     expect(res).toEqual(rows);
-    expect(fake.calls).toContainEqual({ table: "shows", method: "select", args: ["id, program, sub_program, main_cast_slots, understudy_slots, airtable_program_key"] });
+    expect(fake.calls).toContainEqual({ table: "shows", method: "select", args: ["id, program, sub_program, main_cast_slots, understudy_slots, status, airtable_program_key"] });
     expect(fake.calls).toContainEqual({ table: "shows", method: "eq", args: ["org_id", "org-1"] });
   });
 
@@ -270,5 +270,26 @@ describe("hasOrgSettingRow", () => {
   it("throws on a supabase error", async () => {
     const fake = createFakeSupabase({ app_settings: { data: null, error: { message: "boom" } } });
     await expect(hasOrgSettingRow(fake as never, "org-1", "k")).rejects.toBeTruthy();
+  });
+});
+
+describe("fetchOwnedSettingKeys", () => {
+  it("returns only the org's own keys among those asked for", async () => {
+    const client = createFakeSupabase({ app_settings: { data: [{ key: "booking_flow" }], error: null } });
+    const owned = await fetchOwnedSettingKeys(client as never, "org-1", ["booking_flow", "offer_digest_hour_berlin"]);
+    expect(owned.has("booking_flow")).toBe(true);
+    expect(owned.has("offer_digest_hour_berlin")).toBe(false);
+  });
+  it("is empty for a null org", async () => {
+    const client = createFakeSupabase({});
+    expect((await fetchOwnedSettingKeys(client as never, null, ["booking_flow"])).size).toBe(0);
+  });
+});
+
+describe("fetchFlowTimes", () => {
+  it("falls back to BOOKING_ENGINE_DEFAULTS when no rows exist", async () => {
+    const client = createFakeSupabase({ app_settings: { data: [], error: null } });
+    const t = await fetchFlowTimes(client as never, "org-1");
+    expect(t).toEqual({ windowHours: 48, offerDigestHour: 19, confirmationDigestHour: 20 });
   });
 });

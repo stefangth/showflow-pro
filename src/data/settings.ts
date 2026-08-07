@@ -1,6 +1,16 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database, Json } from "@/integrations/supabase/types";
-import { type BookingFlow, normalizeBookingFlow } from "@/lib/bookingFlow";
+import { type BookingFlow, type FlowTimes, normalizeBookingFlow } from "@/lib/bookingFlow";
+import { BOOKING_ENGINE_DEFAULTS } from "@/config/app.config";
+
+/** Code-level fallback for the offer window and digest hours, mirroring
+ *  BOOKING_ENGINE_DEFAULTS. Shared by every surface that reads `useFlowTimes` and needs a
+ *  value while the query is loading, so the 48/19/20 numbers live in one place. */
+export const DEFAULT_FLOW_TIMES: FlowTimes = {
+  windowHours: BOOKING_ENGINE_DEFAULTS.offer_response_window_hours,
+  offerDigestHour: BOOKING_ENGINE_DEFAULTS.offer_digest_hour_berlin,
+  confirmationDigestHour: BOOKING_ENGINE_DEFAULTS.confirmation_digest_hour_berlin,
+};
 
 export interface ShowWithSlots {
   id: string;
@@ -8,6 +18,7 @@ export interface ShowWithSlots {
   sub_program: string | null;
   main_cast_slots: number | null;
   understudy_slots: number | null;
+  status: "active" | "archived" | "draft";
 }
 
 /** Fetch all shows for an org with their slot columns, ordered by program then sub_program. */
@@ -18,7 +29,7 @@ export async function fetchShowsWithSlots(
   if (!orgId) return [];
   const { data, error } = await client
     .from("shows")
-    .select("id, program, sub_program, main_cast_slots, understudy_slots")
+    .select("id, program, sub_program, main_cast_slots, understudy_slots, status")
     .eq("org_id", orgId)
     .order("program")
     .order("sub_program");
@@ -143,7 +154,7 @@ export async function fetchShowsForLinking(
   if (!orgId) return [];
   const { data, error } = await client
     .from("shows")
-    .select("id, program, sub_program, main_cast_slots, understudy_slots, airtable_program_key")
+    .select("id, program, sub_program, main_cast_slots, understudy_slots, status, airtable_program_key")
     .eq("org_id", orgId).order("program").order("sub_program");
   if (error) throw error;
   return (data ?? []) as ShowLink[];
@@ -174,4 +185,50 @@ export async function importShowsFromOptions(
     })),
   );
   if (error) throw error;
+}
+
+/** The subset of `keys` for which the org has its OWN app_settings row (platform-default
+ *  rows, org_id null, are excluded). Presence, not value: an inherited default is not a
+ *  decision, which is exactly what the flow/timing setup steps test. */
+export async function fetchOwnedSettingKeys(
+  client: SupabaseClient<Database>,
+  orgId: string | null,
+  keys: readonly string[],
+): Promise<Set<string>> {
+  if (!orgId) return new Set();
+  const { data, error } = await client
+    .from("app_settings")
+    .select("key")
+    .eq("org_id", orgId)
+    .in("key", [...keys]);
+  if (error) throw error;
+  return new Set(((data ?? []) as { key: string }[]).map((r) => r.key));
+}
+
+const NUM = (v: unknown, fallback: number): number => {
+  if (typeof v === "number") return v;
+  if (v === null || v === undefined || v === "") return fallback;
+  const n = Number(v);
+  return Number.isFinite(n) ? n : fallback;
+};
+
+/** The org's effective offer window and digest hours (org row over platform default over
+ *  BOOKING_ENGINE_DEFAULTS), shaped as FlowTimes for lifecycle previews and the rehearsal
+ *  footer. One round-trip: all three keys are read in a single query and merged
+ *  org-over-platform (mergeOrgRows), then coerced with the DEFAULT_FLOW_TIMES fallback. */
+export async function fetchFlowTimes(
+  client: SupabaseClient<Database>,
+  orgId: string | null,
+): Promise<FlowTimes> {
+  const keys = ["offer_response_window_hours", "offer_digest_hour_berlin", "confirmation_digest_hour_berlin"];
+  let q = client.from("app_settings").select("key, value, org_id").in("key", keys);
+  q = orgId ? q.or(`org_id.eq.${orgId},org_id.is.null`) : q.is("org_id", null);
+  const { data, error } = await q;
+  if (error) throw error;
+  const byKey = mergeOrgRows((data ?? []) as { key: string; value: unknown; org_id: string | null }[]);
+  return {
+    windowHours: NUM(byKey.get("offer_response_window_hours")?.value, DEFAULT_FLOW_TIMES.windowHours),
+    offerDigestHour: NUM(byKey.get("offer_digest_hour_berlin")?.value, DEFAULT_FLOW_TIMES.offerDigestHour),
+    confirmationDigestHour: NUM(byKey.get("confirmation_digest_hour_berlin")?.value, DEFAULT_FLOW_TIMES.confirmationDigestHour),
+  };
 }

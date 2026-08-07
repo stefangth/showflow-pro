@@ -9,11 +9,14 @@ What's new in ShowFlow, newest first.
 ### New
 - **Hire order setup checklist** — A checklist beside your hire orders shows exactly what is needed before the first order can be sent, and lets you set it right there. It disappears once you are set up.
 - **Ready-made terms templates** — Start from a prepared set of engagement terms instead of writing clauses from scratch. You get your own copy, so editing it changes nothing for anyone else.
+- **Bookings setup checklist** — A checklist beside Shows and bookings walks you through the booking flow, slot counts, cast priorities, eligibility, and response timing, then retires itself once the first offer can go out.
+- **Rehearse the next date** — Preview exactly who the next date would offer, and when, without creating a booking or sending a single email.
 
 ### Improved
 - **Know before you send** — Issuing a hire order now shows anything missing first, with the fix right there, instead of failing after you press send.
 - **Batch issuing is honest about what it can send** — Select any number of orders and see exactly how many can go now. The rest stay selected as drafts so you can fix them.
 - **Signing is on the document** — Artists sign right under the order they are reading, instead of in a separate window.
+- **Honest setup blockers** — Each outstanding booking setup step says whether it stops offers entirely or only stops a date filling, so you know what to fix first.
 
 ## 1.13.0 — July 25, 2026
 

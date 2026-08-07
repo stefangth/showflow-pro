@@ -1,7 +1,9 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { screen, fireEvent, waitFor, within } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
+import type { QueryClient } from "@tanstack/react-query";
 import { renderWithProviders } from "@/test/renderWithProviders";
+import { createTestQueryClient } from "@/test/queryClient";
 import { createFakeSupabase, type FakeSupabase } from "@/test/supabaseFake";
 
 // CastsCitiesTab imports the supabase singleton directly (no data-access layer for
@@ -49,11 +51,12 @@ function seed(overrides: Record<string, unknown> = {}) {
   Object.assign(client, fake);
 }
 
-function renderTab() {
+function renderTab(queryClient?: QueryClient) {
   return renderWithProviders(
     <MemoryRouter>
       <CastsCitiesTab currentOrgId="org-1" canEnter={true} />
     </MemoryRouter>,
+    queryClient ? { queryClient } : undefined,
   );
 }
 
@@ -150,5 +153,56 @@ describe("CastsCitiesTab - scoped priority editor", () => {
       }),
     );
     expect(fake.calls).toContainEqual({ table: "show_cast_eligibility", method: "eq", args: ["id", "sce-1"] });
+  });
+});
+
+describe("CastsCitiesTab - org-wide priority mutations also refresh the setup rail", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    seed();
+  });
+
+  it("invalidates ['eligibility'] (same-client) alongside ['cast-city-priority'] when an org-wide assignment is added", async () => {
+    const queryClient = createTestQueryClient();
+    const invalidateSpy = vi.spyOn(queryClient, "invalidateQueries");
+    renderTab(queryClient);
+
+    // The org-wide "Add assignment" city/cast/tier selects have no aria-label, so
+    // target them positionally within the "Add assignment" section.
+    const addSection = (await screen.findByText("Add assignment")).closest("div")!;
+    const combos = within(addSection).getAllByRole("combobox");
+    fireEvent.click(combos[0]); // City
+    fireEvent.click(await screen.findByRole("option", { name: "Hamburg" }));
+    fireEvent.click(combos[1]); // Cast
+    fireEvent.click(await screen.findByRole("option", { name: "Cast A" }));
+
+    // Exact match: "Assign" vs. the already-rendered "Remove assignment" button, which
+    // also contains "assign" and would otherwise match a /assign/i regex ambiguously.
+    fireEvent.click(screen.getByRole("button", { name: "Assign" }));
+
+    await waitFor(() =>
+      expect(fake.calls).toContainEqual({
+        table: "cast_city_priority",
+        method: "insert",
+        args: [{ city_id: "city-2", cast_id: "cast-1", priority: 1, org_id: "org-1" }],
+      }),
+    );
+    expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: ["cast-city-priority"] });
+    expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: ["eligibility"] });
+  });
+
+  it("invalidates ['eligibility'] (same-client) alongside ['cast-city-priority'] when an org-wide assignment is removed", async () => {
+    const queryClient = createTestQueryClient();
+    const invalidateSpy = vi.spyOn(queryClient, "invalidateQueries");
+    renderTab(queryClient);
+
+    const removeButton = await screen.findByLabelText("Remove assignment");
+    fireEvent.click(removeButton);
+
+    await waitFor(() =>
+      expect(fake.calls).toContainEqual({ table: "cast_city_priority", method: "delete", args: [] }),
+    );
+    expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: ["cast-city-priority"] });
+    expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: ["eligibility"] });
   });
 });

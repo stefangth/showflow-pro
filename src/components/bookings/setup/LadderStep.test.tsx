@@ -1,0 +1,69 @@
+import { describe, it, expect, vi } from "vitest";
+import { screen } from "@testing-library/react";
+import { MemoryRouter } from "react-router-dom";
+import { renderWithProviders } from "@/test/renderWithProviders";
+
+vi.mock("@/hooks/useAllCities", () => ({ useAllCities: () => ({ data: [{ id: "c1", name: "Hamburg" }] }) }));
+
+import { LadderStep } from "./LadderStep";
+import type { LadderCoverageInputs } from "@/lib/bookings/setupStatus";
+
+describe("LadderStep", () => {
+  it("shows the ranked-count copy when the org list has a tier-1 cast", () => {
+    const coverage: LadderCoverageInputs = {
+      futurePairs: [{ showId: "s1", cityId: "c1" }],
+      showPriorities: [],
+      cityPriorities: [{ cityId: "c1", castId: "k1", priority: 1 }],
+    };
+    renderWithProviders(
+      <MemoryRouter><LadderStep coverage={coverage} /></MemoryRouter>,
+    );
+    expect(screen.getByText(/1 tier ranked/)).toBeInTheDocument();
+  });
+
+  it("does not claim 'no casts ranked' when only a show-scoped tier-1 row covers the city", () => {
+    // The org-wide list is empty for this city, but a show-scoped row covers it at tier 1.
+    // resolveCoverage/EligibilityStep treat this city as covered, so LadderStep must not
+    // contradict that with "No casts ranked." or "nothing at tier 1."
+    const coverage: LadderCoverageInputs = {
+      futurePairs: [{ showId: "s1", cityId: "c1" }],
+      showPriorities: [{ showId: "s1", cityId: "c1", castId: "k9", priority: 1 }],
+      cityPriorities: [],
+    };
+    renderWithProviders(
+      <MemoryRouter><LadderStep coverage={coverage} /></MemoryRouter>,
+    );
+    expect(screen.getByText(/Ranked per show/)).toBeInTheDocument();
+    expect(screen.queryByText(/No casts ranked/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/nothing at tier 1/)).not.toBeInTheDocument();
+  });
+
+  it("flags that some shows use their own list when the city has show-scoped overrides", () => {
+    // The org list covers the city at tier 1, but one show also has its own scoped rows.
+    // The city-level summary can't see whether that per-show override opens to nobody at
+    // tier 1, so it appends a caveat pointing at EligibilityStep ("Who is eligible")
+    // rather than implying the city is fully covered.
+    const coverage: LadderCoverageInputs = {
+      futurePairs: [{ showId: "s1", cityId: "c1" }, { showId: "s2", cityId: "c1" }],
+      showPriorities: [{ showId: "s2", cityId: "c1", castId: "k2", priority: 2 }],
+      cityPriorities: [{ cityId: "c1", castId: "k1", priority: 1 }],
+    };
+    renderWithProviders(
+      <MemoryRouter><LadderStep coverage={coverage} /></MemoryRouter>,
+    );
+    expect(screen.getByText(/1 tier ranked/)).toBeInTheDocument();
+    expect(screen.getByText(/Some shows here use their own cast list/)).toBeInTheDocument();
+  });
+
+  it("shows no per-show caveat when the city has no show-scoped overrides", () => {
+    const coverage: LadderCoverageInputs = {
+      futurePairs: [{ showId: "s1", cityId: "c1" }],
+      showPriorities: [],
+      cityPriorities: [{ cityId: "c1", castId: "k1", priority: 1 }],
+    };
+    renderWithProviders(
+      <MemoryRouter><LadderStep coverage={coverage} /></MemoryRouter>,
+    );
+    expect(screen.queryByText(/use their own cast list/)).not.toBeInTheDocument();
+  });
+});
