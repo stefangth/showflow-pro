@@ -51,11 +51,14 @@ export function ProtectedRoute({ children, requiredRoles }: ProtectedRouteProps)
   const requiredFeature = requiredFeatureForPath(location.pathname);
   const impersonating = isImpersonating({ roles, viewAsRole, viewAsUser });
   if (requiredFeature && !entitlementsLoading && !features.has(requiredFeature) && !(isSuperAdmin && !impersonating)) {
-    const disabled = <FeatureDisabledScreen feature={requiredFeature} />;
     // A super-admin only reaches this branch while previewing (view-as); keep the
     // editor toolbar (which lives inside AppLayout) on screen so they can exit the
-    // preview. A genuine member has no toolbar and needs no chrome here.
-    return isSuperAdmin ? <AppLayout>{disabled}</AppLayout> : disabled;
+    // preview, and render the disabled screen `embedded` so it centers within
+    // AppLayout's <main> instead of overflowing it. A genuine member has no
+    // toolbar and gets the standalone full-viewport screen.
+    return isSuperAdmin
+      ? <AppLayout><FeatureDisabledScreen feature={requiredFeature} embedded /></AppLayout>
+      : <FeatureDisabledScreen feature={requiredFeature} />;
   }
 
   // Admins in editor mode bypass all route role gates — they can navigate anywhere.
