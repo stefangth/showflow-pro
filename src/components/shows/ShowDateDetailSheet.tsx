@@ -26,12 +26,12 @@ import { cn } from '@/lib/utils';
 import { useEligibleArtists } from '@/hooks/useEligibleArtists';
 import { useSkills } from '@/hooks/useSkills';
 import { useBookingFlow, useReferenceField } from '@/hooks/useBookingFlow';
-import { showSlots } from '@/lib/settings';
+import { showSlots, type SlotCounts } from '@/lib/settings';
 import {
   deriveBookingGroups, computeInheritedCastIds,
   offerResultToast, closeResultToast, deriveDirectBookList,
 } from '@/lib/bookings';
-import { computeUpNext } from '@/lib/bookingCockpit';
+import { computeUpNext, type UpNextItem } from '@/lib/bookingCockpit';
 import { BOOKING_FLOW_DEFAULTS, referenceLabel, type FlowTimes } from '@/lib/bookingFlow';
 import { BOOKING_ENGINE_DEFAULTS } from '@/config/app.config';
 import { formatDateDMY, parseDateOnly } from '@/lib/dates';
@@ -54,7 +54,7 @@ import { fetchBlockedArtistIds } from '@/data/blockedDates';
 import { ChatPanel } from '@/components/chat/ChatPanel';
 import { HireOrdersCard } from '@/components/shows/hireOrders/HireOrdersCard';
 import { useHireOrdersForDate, useHireOrderAction } from '@/hooks/useHireOrders';
-import { useFeature } from '@/hooks/useEntitlements';
+import { useFeature, useModuleGate } from '@/hooks/useEntitlements';
 import { ShowDateFormDialog } from '@/components/shows/ShowDateFormDialog';
 import { BookingRow } from '@/components/shows/BookingRow';
 import { useCancelShowDate, useDeleteShowDate } from '@/hooks/useShowDates';
@@ -181,6 +181,31 @@ export function BookingCardSection({
         onCancel={onCancel}
       />
     </ModuleGate>
+  );
+}
+
+/** The booking funnel + up-next strip, shown to every viewer of a date. Both are
+ *  pure booking-engine status, so they hide entirely when booking_flow is off (the
+ *  confirmed cast stays visible via BookingCardSection's read-only preview below).
+ *  Uses useModuleGate, so a super-admin previewing view-as sees it hidden too. */
+export function BookingStatusSection({ bookings, slots, upNextItems, programLabel }: {
+  bookings: Array<{ status: string; is_understudy: boolean }>;
+  slots: SlotCounts | null;
+  upNextItems: UpNextItem[];
+  programLabel: string;
+}) {
+  const { allow } = useModuleGate('booking_flow');
+  if (!allow) return null;
+  return (
+    <div className="space-y-3">
+      <BookingFunnel bookings={bookings} slots={slots} />
+      <UpNextStrip items={upNextItems} />
+      {!slots && (
+        <Badge variant="secondary" className="bg-destructive/10 text-destructive">
+          Slot config missing for {programLabel}. Set cast slots in Settings.
+        </Badge>
+      )}
+    </div>
   );
 }
 
@@ -646,27 +671,22 @@ export function ShowDateDetailSheet({ showDateId, open, onOpenChange }: Props) {
                 </div>
               )}
 
-              {/* Booking funnel + up-next strip */}
-              <div className="space-y-3">
-                <BookingFunnel bookings={bookingsForDate ?? []} slots={slotConfig} />
-                <UpNextStrip
-                  items={computeUpNext({
-                    flow,
-                    times: effectiveTimes,
-                    pendingCount: (bookingsForDate ?? []).filter((b) => b.status === 'suggested').length,
-                    nextExpiry: (bookingsForDate ?? [])
-                      .filter((b) => b.status === 'suggested' && b.offer_expires_at)
-                      .map((b) => b.offer_expires_at as string)
-                      .sort()[0] ?? null,
-                    hasOpenTier: (openedQ.data ?? []).some((t) => !t.closedAt),
-                  })}
-                />
-                {!slotConfig && (
-                  <Badge variant="secondary" className="bg-destructive/10 text-destructive">
-                    Slot config missing for {showDate.show?.program ?? 'this show'}. Set cast slots in Settings.
-                  </Badge>
-                )}
-              </div>
+              {/* Booking funnel + up-next strip (gated: pure booking-engine status) */}
+              <BookingStatusSection
+                bookings={bookingsForDate ?? []}
+                slots={slotConfig}
+                upNextItems={computeUpNext({
+                  flow,
+                  times: effectiveTimes,
+                  pendingCount: (bookingsForDate ?? []).filter((b) => b.status === 'suggested').length,
+                  nextExpiry: (bookingsForDate ?? [])
+                    .filter((b) => b.status === 'suggested' && b.offer_expires_at)
+                    .map((b) => b.offer_expires_at as string)
+                    .sort()[0] ?? null,
+                  hasOpenTier: (openedQ.data ?? []).some((t) => !t.closedAt),
+                })}
+                programLabel={showDate.show?.program ?? 'this show'}
+              />
 
               {/* Date configuration (producer/admin only) */}
               {canManage && (
