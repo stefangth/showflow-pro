@@ -140,6 +140,9 @@ test.describe("Chat access control — booking status gates chat participation",
     await expect(chatCard).toBeVisible({ timeout: 15_000 });
     await chatCard.click();
 
+    // Cockpit: the chat thread is under the "Chat" tab.
+    await page.getByRole("dialog").getByRole("button", { name: /^chat$/i }).click();
+
     // ShowDateDetailSheet → ChatPanel renders the message input for participants.
     const input = page.getByPlaceholder(/write a message/i);
     await expect(input).toBeVisible({ timeout: 15_000 });

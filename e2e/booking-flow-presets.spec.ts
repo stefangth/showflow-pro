@@ -184,6 +184,9 @@ test.describe("Booking flow presets: one happy path per preset", () => {
     await expect(dateRow).toBeVisible({ timeout: 15_000 });
     await dateRow.click();
 
+    // Cockpit: the direct-book list lives under the "Book artists" tab.
+    await page.getByRole("dialog").getByRole("button", { name: /^book artists$/i }).click();
+
     // EligibilityBookList fails closed with Skeletons until the eligibility,
     // blocked, org-artist and bookings queries all resolve, so wait for the
     // seeded artist's Book button itself, not just the card. Only that artist is

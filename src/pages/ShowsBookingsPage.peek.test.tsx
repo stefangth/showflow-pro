@@ -60,7 +60,8 @@ vi.mock("@/hooks/useBookingFlow", () => ({
   useReferenceField: () => ({ reference: { source: "show" }, customFieldKey: null }),
 }));
 vi.mock("@/hooks/useEntitlements", () => ({
-  useFeature: () => false,
+  // booking_flow on so the peek's Confirm is offered; hire_orders off.
+  useFeature: (f: string) => f === "booking_flow",
 }));
 vi.mock("@/hooks/useCapabilities", () => ({
   useCan: () => true,

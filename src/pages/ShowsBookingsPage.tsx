@@ -705,7 +705,7 @@ function ProducerShowsBookings() {
                 counts: bookingCounts?.get(peekedShowDate.id) ?? null,
                 slots: showSlots(peekedShowDate.show),
               })}
-              canConfirm={canConfirmBookings}
+              canConfirm={canConfirmBookings && bookingOn}
               confirming={confirmingPeek}
               onConfirm={() => confirmPeek(peekedShowDate.id)}
               onOpen={() => { setPeekId(null); openShowDate(peekedShowDate.id); }}
