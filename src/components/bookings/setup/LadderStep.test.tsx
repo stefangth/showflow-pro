@@ -37,4 +37,33 @@ describe("LadderStep", () => {
     expect(screen.queryByText(/No casts ranked/)).not.toBeInTheDocument();
     expect(screen.queryByText(/nothing at tier 1/)).not.toBeInTheDocument();
   });
+
+  it("flags that some shows use their own list when the city has show-scoped overrides", () => {
+    // The org list covers the city at tier 1, but one show also has its own scoped rows.
+    // The city-level summary can't see whether that per-show override opens to nobody at
+    // tier 1, so it appends a caveat pointing at EligibilityStep ("Who is eligible")
+    // rather than implying the city is fully covered.
+    const coverage: LadderCoverageInputs = {
+      futurePairs: [{ showId: "s1", cityId: "c1" }, { showId: "s2", cityId: "c1" }],
+      showPriorities: [{ showId: "s2", cityId: "c1", castId: "k2", priority: 2 }],
+      cityPriorities: [{ cityId: "c1", castId: "k1", priority: 1 }],
+    };
+    renderWithProviders(
+      <MemoryRouter><LadderStep coverage={coverage} /></MemoryRouter>,
+    );
+    expect(screen.getByText(/1 tier ranked/)).toBeInTheDocument();
+    expect(screen.getByText(/Some shows here use their own cast list/)).toBeInTheDocument();
+  });
+
+  it("shows no per-show caveat when the city has no show-scoped overrides", () => {
+    const coverage: LadderCoverageInputs = {
+      futurePairs: [{ showId: "s1", cityId: "c1" }],
+      showPriorities: [],
+      cityPriorities: [{ cityId: "c1", castId: "k1", priority: 1 }],
+    };
+    renderWithProviders(
+      <MemoryRouter><LadderStep coverage={coverage} /></MemoryRouter>,
+    );
+    expect(screen.queryByText(/use their own cast list/)).not.toBeInTheDocument();
+  });
 });

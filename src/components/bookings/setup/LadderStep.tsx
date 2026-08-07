@@ -7,7 +7,13 @@ import type { LadderCoverageInputs } from "@/lib/bookings/setupStatus";
  *  A city counts as covered when EITHER the org-wide priority list has a tier-1 row OR a
  *  show-scoped `show_cast_eligibility` row does, matching resolveCoverage/resolveTierLadder
  *  (show scope wins outright when present) so this panel never contradicts EligibilityStep.
- *  Deep edits happen in Settings. */
+ *
+ *  Coverage is really per (show, city): a show-scoped override wins outright for that show,
+ *  even without a tier 1, so one show in a city can be uncovered while the city's org ladder
+ *  looks fine. This city-level summary cannot see that, so whenever a city has any
+ *  show-scoped rows it appends a caveat pointing at the per-pair gap list ("Who is
+ *  eligible") rather than implying the city summary is the whole story. Deep edits happen
+ *  in Settings. */
 export function LadderStep({ coverage }: { coverage: LadderCoverageInputs | undefined }) {
   const cities = useAllCities();
   const nameOf = (id: string) => (cities.data ?? []).find((c) => c.id === id)?.name ?? "Unknown city";
@@ -25,9 +31,9 @@ export function LadderStep({ coverage }: { coverage: LadderCoverageInputs | unde
             .filter((r) => r.cityId === cid)
             .sort((a, b) => a.priority - b.priority);
           const hasOrgTier1 = tiers.some((r) => r.priority === 1);
-          const showScopedTier1 = (coverage?.showPriorities ?? []).some(
-            (r) => r.cityId === cid && r.priority === 1,
-          );
+          const cityShowScoped = (coverage?.showPriorities ?? []).filter((r) => r.cityId === cid);
+          const showScopedTier1 = cityShowScoped.some((r) => r.priority === 1);
+          const hasShowScoped = cityShowScoped.length > 0;
           return (
             <div key={cid} className="rounded-md border border-border bg-card p-2.5">
               <p className="text-xs font-semibold">{nameOf(cid)}</p>
@@ -40,6 +46,11 @@ export function LadderStep({ coverage }: { coverage: LadderCoverageInputs | unde
                       ? "No casts ranked."
                       : "Ranked, but nothing at tier 1."}
               </p>
+              {hasShowScoped && (
+                <p className="mt-0.5 text-[11px] text-muted-foreground">
+                  Some shows here use their own cast list. See Who is eligible for gaps.
+                </p>
+              )}
             </div>
           );
         })}
