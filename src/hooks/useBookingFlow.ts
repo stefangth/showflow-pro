@@ -1,7 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/features/auth/AuthContext";
-import { fetchBookingFlow } from "@/data/settings";
+import { fetchBookingFlow, fetchFlowTimes } from "@/data/settings";
 import { fetchCustomFieldDefs } from "@/data/customFields";
 
 /** The org's effective (normalized) booking-flow policy. Thin wrapper over fetchBookingFlow. */
@@ -33,4 +33,13 @@ export function useReferenceField() {
       ? (defsQ.data ?? []).find((d) => d.id === reference.custom_field_id)?.key ?? null
       : null;
   return { reference, customFieldKey };
+}
+
+/** The org's effective offer window and digest hours, for lifecycle previews and the
+ *  rehearsal footer. */
+export function useFlowTimes(orgId: string | null) {
+  return useQuery({
+    queryKey: ["app-settings", "flow-times", orgId],
+    queryFn: () => fetchFlowTimes(supabase, orgId),
+  });
 }
