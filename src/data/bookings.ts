@@ -406,9 +406,9 @@ export async function fetchBookingCountsByDate(
     const cur = map.get(b.show_date_id) ?? zero();
     cur.total += 1;
     const us = b.is_understudy;
-    if (b.status === "confirmed") { us ? cur.confirmedUs++ : cur.confirmedMain++; }
-    else if (b.status === "soft_booked") { us ? cur.acceptedUs++ : cur.acceptedMain++; }
-    else if (b.status === "suggested") { us ? cur.pendingUs++ : cur.pendingMain++; }
+    if (b.status === "confirmed") { if (us) cur.confirmedUs++; else cur.confirmedMain++; }
+    else if (b.status === "soft_booked") { if (us) cur.acceptedUs++; else cur.acceptedMain++; }
+    else if (b.status === "suggested") { if (us) cur.pendingUs++; else cur.pendingMain++; }
     map.set(b.show_date_id, cur);
   }
   return map;

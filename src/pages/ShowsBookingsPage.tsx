@@ -1,8 +1,9 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
-import { fetchBookingCountsByDate } from '@/data/bookings';
+import { bulkConfirmSoftBooked, fetchBookingCountsByDate } from '@/data/bookings';
 import { fetchShowDatesList } from '@/data/showDates';
 import { useAuth } from '@/features/auth/AuthContext';
 import { Card, CardContent } from '@/components/ui/card';
@@ -11,6 +12,10 @@ import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
+import { Popover, PopoverContent } from '@/components/ui/popover';
+import { PopoverAnchor } from '@radix-ui/react-popover';
+import { RowPeek } from '@/components/bookings/RowPeek';
+import { computeDatePeek } from '@/lib/bookingCockpit';
 import { Search, Plus, ListChecks } from 'lucide-react';
 import { format, parseISO } from 'date-fns';
 import { ProgramFilter } from '@/components/filters/ProgramFilter';
@@ -37,7 +42,7 @@ import { useCan } from '@/hooks/useCapabilities';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { showSlots } from '@/lib/settings';
-import { parseDateOnly, pastRowClassName } from '@/lib/dates';
+import { formatDateWithWeekday, parseDateOnly, pastRowClassName } from '@/lib/dates';
 import { cn } from '@/lib/utils';
 import { useReferenceField } from '@/hooks/useBookingFlow';
 import { referenceLabel } from '@/lib/bookingFlow';
@@ -146,11 +151,66 @@ function ProducerShowsBookings() {
   const [view, setView] = useState<ViewMode>('list');
   const [activeShowDateId, setActiveShowDateId] = useState<string | null>(null);
   const openShowDate = (id: string) => setActiveShowDateId(id);
-  const openShowDateOnKey = (id: string) => (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter' || e.key === ' ') {
+
+  // Row peek: Space opens a compact popover summarizing the date's fill (via
+  // computeDatePeek), Enter still opens the full ShowDateDetailSheet (unchanged
+  // click behavior), Escape closes an open peek. Anchored to whichever row/card
+  // is active via a ref rather than one Popover per row, since columns are
+  // admin-configurable (no fixed cell to anchor to).
+  const [peekId, setPeekId] = useState<string | null>(null);
+  const peekAnchorRef = useRef<HTMLElement | null>(null);
+  const hoverTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const closeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [confirmingPeek, setConfirmingPeek] = useState(false);
+
+  const clearHoverTimer = () => {
+    if (hoverTimerRef.current) { clearTimeout(hoverTimerRef.current); hoverTimerRef.current = null; }
+  };
+  const clearCloseTimer = () => {
+    if (closeTimerRef.current) { clearTimeout(closeTimerRef.current); closeTimerRef.current = null; }
+  };
+  useEffect(() => () => { clearHoverTimer(); clearCloseTimer(); }, []);
+
+  const openShowDateOnKey = (id: string) => (e: React.KeyboardEvent<HTMLElement>) => {
+    if (e.key === 'Enter') {
       e.preventDefault();
+      clearHoverTimer();
+      clearCloseTimer();
+      setPeekId(null);
       openShowDate(id);
+    } else if (e.key === ' ') {
+      e.preventDefault();
+      clearHoverTimer();
+      clearCloseTimer();
+      peekAnchorRef.current = e.currentTarget;
+      setPeekId(id);
+    } else if (e.key === 'Escape') {
+      clearHoverTimer();
+      clearCloseTimer();
+      setPeekId(null);
     }
+  };
+  // Hover intent: a short delay before opening (avoids flashing the peek on a
+  // pointer just passing through) and a short delay before closing (gives the
+  // pointer time to travel from the row onto the popover itself).
+  const handleRowMouseEnter = (id: string) => (e: React.MouseEvent<HTMLTableRowElement>) => {
+    clearCloseTimer();
+    const row = e.currentTarget;
+    clearHoverTimer();
+    hoverTimerRef.current = setTimeout(() => {
+      peekAnchorRef.current = row;
+      setPeekId(id);
+    }, 250);
+  };
+  const handleRowMouseLeave = () => {
+    clearHoverTimer();
+    clearCloseTimer();
+    closeTimerRef.current = setTimeout(() => setPeekId(null), 150);
+  };
+  const handlePopoverMouseEnter = () => clearCloseTimer();
+  const handlePopoverMouseLeave = () => {
+    clearCloseTimer();
+    closeTimerRef.current = setTimeout(() => setPeekId(null), 150);
   };
   const [newDateOpen, setNewDateOpen] = useState(false);
   const [wizardOpen, setWizardOpen] = useState(false);
@@ -173,6 +233,8 @@ function ProducerShowsBookings() {
   // Hire-order CTA: module gate + generate capability + which dates are ready.
   const hireOrdersOn = useFeature('hire_orders');
   const canGenerateHireOrders = useCan('generate_hire_orders');
+  // Row peek's Confirm action, gated the same as the sheet's own confirm control.
+  const canConfirmBookings = useCan('confirm_bookings');
   const { data: hireOrderReady } = useDatesReadyForHireOrder(hireOrdersOn ? orgId : null);
   const readyCount = hireOrderReady?.readyIds.length ?? 0;
   const readySet = useMemo(() => new Set(hireOrderReady?.readyIds ?? []), [hireOrderReady]);
@@ -187,6 +249,31 @@ function ProducerShowsBookings() {
   const pendingHireOrderDateId = hireOrderAction.isPending
     ? (hireOrderAction.variables as { show_date_id?: string } | undefined)?.show_date_id
     : undefined;
+
+  /** The peek's Confirm action: lazily fetch the date's soft_booked ids, bulk-confirm
+   *  them, then invalidate the whole bookings domain (never just the counts sub-key). */
+  async function confirmPeek(showDateId: string) {
+    setConfirmingPeek(true);
+    try {
+      const { data, error } = await supabase
+        .from('bookings')
+        .select('id')
+        .eq('show_date_id', showDateId)
+        .eq('status', 'soft_booked');
+      if (error) throw error;
+      const ids = ((data ?? []) as { id: string }[]).map((r) => r.id);
+      if (ids.length) {
+        const { affected } = await bulkConfirmSoftBooked(supabase, { ids, now: new Date() });
+        toast.success(affected ? `Confirmed ${affected}` : 'Nothing to confirm, it moved on');
+        queryClient.invalidateQueries({ queryKey: ['bookings'] });
+      }
+    } catch (e) {
+      toast.error((e as Error).message);
+    } finally {
+      setConfirmingPeek(false);
+      setPeekId(null);
+    }
+  }
 
   useEffect(() => {
     const status = searchParams.get('status');
@@ -282,6 +369,11 @@ function ProducerShowsBookings() {
   const calendarItems = useMemo(() =>
     filtered.map(sd => ({ showDate: sd, date: parseDateOnly(sd.date) })),
     [filtered]
+  );
+
+  const peekedShowDate = useMemo(
+    () => (peekId ? filtered.find(sd => sd.id === peekId) ?? null : null),
+    [filtered, peekId]
   );
 
   const updateStatusFilter = (v: 'all' | DisplayStatus) => {
@@ -526,6 +618,8 @@ function ProducerShowsBookings() {
                       tabIndex={0}
                       onClick={() => openShowDate(sd.id)}
                       onKeyDown={openShowDateOnKey(sd.id)}
+                      onMouseEnter={handleRowMouseEnter(sd.id)}
+                      onMouseLeave={handleRowMouseLeave}
                     >
                       {orderedColumns.filter(c => c.visible).map(c => cellFor(c.columnId))}
                     </TableRow>
@@ -580,6 +674,32 @@ function ProducerShowsBookings() {
         />
       )}
       </div>
+
+      {peekedShowDate && (
+        <Popover open onOpenChange={o => { if (!o) setPeekId(null); }}>
+          <PopoverAnchor virtualRef={peekAnchorRef} />
+          <PopoverContent
+            side="right"
+            align="start"
+            className="w-auto p-0"
+            onMouseEnter={handlePopoverMouseEnter}
+            onMouseLeave={handlePopoverMouseLeave}
+            onClick={e => e.stopPropagation()}
+          >
+            <RowPeek
+              dateLabel={formatDateWithWeekday(peekedShowDate.date)}
+              peek={computeDatePeek({
+                counts: bookingCounts?.get(peekedShowDate.id) ?? null,
+                slots: showSlots(peekedShowDate.show),
+              })}
+              canConfirm={canConfirmBookings}
+              confirming={confirmingPeek}
+              onConfirm={() => confirmPeek(peekedShowDate.id)}
+              onOpen={() => { setPeekId(null); openShowDate(peekedShowDate.id); }}
+            />
+          </PopoverContent>
+        </Popover>
+      )}
 
       <Sheet open={setupSheetOpen} onOpenChange={setSetupSheetOpen}>
         <SheetContent side="right" className="w-full overflow-y-auto sm:max-w-2xl">
