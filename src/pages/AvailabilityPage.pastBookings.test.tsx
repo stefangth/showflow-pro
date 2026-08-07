@@ -4,13 +4,12 @@ import { renderWithProviders } from "@/test/renderWithProviders";
 import { createFakeSupabase } from "@/test/supabaseFake";
 
 /**
- * Plan B Task 2: AvailabilityPage must default to the "Upcoming" timeframe
- * (past hidden, one click away) and merge the artist's past active bookings
- * (`fetchMyActiveBookedDates`) into the rendered set, since
+ * AvailabilityPage defaults to All time and merges the artist's past active
+ * bookings (`fetchMyActiveBookedDates`) into the rendered set, since
  * `useArtistEligibleDates` only ever returns upcoming show_dates. A past
- * merged row is read-only (no AvailabilityPicker / OfferResponseButtons —
- * past dates aren't actionable for availability declaration) and grayed via
- * PAST_DATE_TINT, but stays visible under Past/All.
+ * merged row shows by default, is read-only (no AvailabilityPicker /
+ * OfferResponseButtons — past dates aren't actionable for availability
+ * declaration) and grayed via PAST_DATE_TINT; switching to Upcoming hides it.
  */
 
 const ELIGIBLE: unknown[] = [];
@@ -89,19 +88,11 @@ vi.mock("@/features/editor/ColumnLayoutEditor", () => ({ ColumnLayoutEditor: () 
 import AvailabilityPage from "./AvailabilityPage";
 
 describe("AvailabilityPage — past active booking merge (Plan B Task 2)", () => {
-  it("hides the past soft_booked booking under the default (Upcoming) timeframe", async () => {
+  it("shows the past soft_booked booking by default (All time), grayed and read-only", async () => {
     renderWithProviders(<AvailabilityPage />);
-    await screen.findByText(/no eligible dates yet/i);
-    expect(screen.queryByText("Old Hall")).not.toBeInTheDocument();
-  });
 
-  it("reveals it, grayed and read-only, under Past/All — and it stays clickable via the row itself", async () => {
-    renderWithProviders(<AvailabilityPage />);
-    await screen.findByText(/no eligible dates yet/i);
-
-    fireEvent.click(screen.getByRole("button", { name: /^Upcoming$/ }));
-    fireEvent.click(screen.getByRole("button", { name: "Any time" }));
-
+    // The artist view defaults to All time, so a past hold is visible without
+    // touching the filter.
     const venueCell = await screen.findByText("Old Hall");
     const row = venueCell.closest("tr")!;
     expect(row.className).toMatch(/opacity-60/);
@@ -110,5 +101,18 @@ describe("AvailabilityPage — past active booking merge (Plan B Task 2)", () =>
     // Read-only: no interactive availability control for a past row.
     expect(screen.queryByRole("button", { name: /accept/i })).not.toBeInTheDocument();
     expect(screen.queryByRole("combobox", { name: /available|unavailable/i })).not.toBeInTheDocument();
+  });
+
+  it("hides the past soft_booked booking when the Upcoming preset is selected", async () => {
+    renderWithProviders(<AvailabilityPage />);
+    // Visible by default (All time)...
+    await screen.findByText("Old Hall");
+
+    // ...but switching to Upcoming excludes the past row (trigger reads "Any time").
+    fireEvent.click(screen.getByRole("button", { name: /^Any time$/ }));
+    fireEvent.click(screen.getByRole("button", { name: "Upcoming" }));
+
+    await screen.findByText(/no eligible dates yet/i);
+    expect(screen.queryByText("Old Hall")).not.toBeInTheDocument();
   });
 });

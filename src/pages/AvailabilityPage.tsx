@@ -12,7 +12,7 @@ import { Plus, Trash2 } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Skeleton } from '@/components/ui/skeleton';
-import { TimeframeFilter, upcomingTimeframe, type TimeframeValue } from '@/components/filters/TimeframeFilter';
+import { TimeframeFilter, type TimeframeValue } from '@/components/filters/TimeframeFilter';
 import { SortControl, type SortValue } from '@/components/filters/SortControl';
 import { ViewToggle, type ViewMode } from '@/components/filters/ViewToggle';
 import { applySort, inTimeframe } from '@/components/filters/filterUtils';
@@ -74,7 +74,9 @@ function ArtistAvailability() {
   const [searchParams, setSearchParams] = useSearchParams();
   const { toast } = useToast();
 
-  const [timeframe, setTimeframe] = useState<TimeframeValue>(() => upcomingTimeframe());
+  // Default to All time (see ArtistBookingsView): an artist should see every date
+  // they hold a commitment on, past holds included, without switching the filter.
+  const [timeframe, setTimeframe] = useState<TimeframeValue>({ from: null, to: null });
   const [sort, setSort] = useState<SortValue>('chrono_asc');
   const [view, setView] = useState<ViewMode>('list');
   const [filter, setFilter] = useState<'all' | 'unanswered'>(
