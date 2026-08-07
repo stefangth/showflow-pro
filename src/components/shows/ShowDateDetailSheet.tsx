@@ -182,6 +182,14 @@ export function ShowDateDetailSheet({ showDateId, open, onOpenChange }: Props) {
   const { allow: bookingModuleAllowed } = useModuleGate('booking_flow');
 
   const [activeTab, setActiveTab] = useState<CockpitTab>('cast');
+  // The sheet instance is reused across dates (no key at the mount sites), so reset
+  // to the default tab whenever it opens for a different date — otherwise a stale
+  // tab (e.g. Setup) carries over. Render-time reset avoids an effect-driven flash.
+  const [tabResetFor, setTabResetFor] = useState(showDateId);
+  if (showDateId !== tabResetFor) {
+    setTabResetFor(showDateId);
+    setActiveTab('cast');
+  }
 
   const { data: showDate, isLoading } = useQuery({
     queryKey: ['show-date-detail', showDateId],

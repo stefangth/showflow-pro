@@ -15,6 +15,9 @@ describe("computeHeaderCta", () => {
   it("classic, current tier closed short with room to escalate -> Open next tier", () =>
     expect(computeHeaderCta({ ...base, openTier: 1 })).toEqual({ kind: "openTier", label: "Open tier 2" }));
 
+  it("classic, no tier ever opened (openTier null) -> Open tier 1", () =>
+    expect(computeHeaderCta({ ...base, openTier: null })).toEqual({ kind: "openTier", label: "Open tier 1" }));
+
   it("classic, current tier still open awaiting responses -> Review open offers (no premature escalation)", () =>
     expect(computeHeaderCta({ ...base, openTier: 1, currentTierOpen: true })).toEqual({ kind: "reviewOffers", label: "Review open offers" }));
 

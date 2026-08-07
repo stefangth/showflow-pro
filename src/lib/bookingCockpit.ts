@@ -230,8 +230,10 @@ export function computeHeaderCta(args: {
   // engine's "escalate when a tier's window closes short" model), so the header
   // can never live-offer a second tier concurrently from one click.
   if (args.currentTierOpen) return { kind: "reviewOffers", label: "Review open offers" };
-  if (args.openTier != null && args.openTier < args.maxTier)
-    return { kind: "openTier", label: `Open tier ${args.openTier + 1}` };
+  // Next tier to open: 1 when none has ever been opened (openTier null), else the
+  // tier after the highest opened. Offered only while it exists in the ladder.
+  const nextTier = (args.openTier ?? 0) + 1;
+  if (nextTier <= args.maxTier) return { kind: "openTier", label: `Open tier ${nextTier}` };
   return { kind: "reviewOffers", label: "Review open offers" };
 }
 
