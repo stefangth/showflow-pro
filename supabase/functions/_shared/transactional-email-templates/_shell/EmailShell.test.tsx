@@ -30,3 +30,29 @@ Deno.test("EmailShell renders a resilient violet hero without unsupported layout
   assertEquals(html.includes("backdrop-filter"), false);
   assertEquals(html.includes("display:flex"), false);
 });
+
+Deno.test("EmailShell uses the resolved theme button color for its CTA", async () => {
+  const theme = {
+    ...EMAIL_THEME_DEFAULTS,
+    base: {
+      ...EMAIL_THEME_DEFAULTS.base,
+      colors: { ...EMAIL_THEME_DEFAULTS.base.colors, buttonBg: "#1257A6" },
+    },
+  };
+  const html = await renderAsync(
+    React.createElement(
+      EmailShell,
+      {
+        family: "violet",
+        theme,
+        previewText: "Preview text",
+        heading: "A booking update",
+        footer: "The ShowFlow team",
+        cta: { href: "https://app.showflow.pro/availability", label: "Review booking" },
+      },
+      React.createElement("p", null, "Booking details"),
+    ),
+  );
+
+  assertStringIncludes(html, "background-color:#1257A6");
+});

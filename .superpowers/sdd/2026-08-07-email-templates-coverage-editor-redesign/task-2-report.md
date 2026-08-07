@@ -123,3 +123,34 @@ passed without `--no-check`.
 
 `deno fmt` could not run with this pinned version for the same unsupported
 lockfile reason. The targeted files passed `git diff --check` instead.
+
+## Fix round 1 — persisted CTA color
+
+Review found that the CTA took `EMAIL_FAMILY_ACCENTS[family].buttonBg` instead
+of the resolved `theme.base.colors.buttonBg`. This prevented a valid persisted
+org theme override from affecting the CTA, while the family color is intended
+only for the hero fallback and gradient.
+
+### RED
+
+Added a second real-render `EmailShell` test with `buttonBg: "#1257A6"`.
+
+```bash
+npx --yes deno@2.1.14 test --no-lock --node-modules-dir=none --no-check --allow-all \
+  supabase/functions/_shared/transactional-email-templates/_shell/EmailShell.test.tsx
+```
+
+It failed as expected because output contained the violet accent CTA background
+`background-color:#4738B0`, not `background-color:#1257A6`.
+
+### GREEN
+
+Changed only the CTA declaration to use `colors.buttonBg`; hero `bgcolor` and
+gradient remain family-accent-derived. The same test then passed:
+
+```text
+ok | 2 passed | 0 failed
+```
+
+Final focused-suite, Deno check, mirror-check, and diff-check evidence is
+recorded with the fix commit.

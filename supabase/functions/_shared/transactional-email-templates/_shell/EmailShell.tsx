@@ -121,7 +121,7 @@ export function EmailShell({
                       href={cta.href}
                       style={{
                         ...roleStyle(theme, "button", highlightRole),
-                        backgroundColor: accent.buttonBg,
+                        backgroundColor: colors.buttonBg,
                         borderRadius: `${theme.base.buttonRadius}px`,
                         padding: "12px 24px",
                         textDecoration: "none",
