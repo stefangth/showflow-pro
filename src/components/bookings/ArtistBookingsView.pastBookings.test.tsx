@@ -7,9 +7,10 @@ import { createFakeSupabase } from "@/test/supabaseFake";
  * Plan B Task 2 — regression test for the July 31 bug: an artist's past
  * `soft_booked` booking was invisible on this view because
  * `useArtistEligibleDates` only returns UPCOMING show_dates, and the view had
- * nothing else feeding it past dates. `fetchMyActiveBookedDates` (Task 1) now
- * gets merged in so a past active booking surfaces under Past/All, grayed via
- * PAST_DATE_TINT, and stays hidden under the new default (Upcoming).
+ * nothing else feeding it past dates. `fetchMyActiveBookedDates` merges the
+ * artist's past active bookings in, and the artist view now defaults to All
+ * time, so a past hold surfaces by default (grayed via PAST_DATE_TINT) — an
+ * artist always sees where they are booked — while switching to Upcoming hides it.
  */
 
 // No upcoming eligible dates at all — isolates the merged past-booking row.
@@ -110,22 +111,11 @@ vi.mock("@/components/shows/ShowDateDetailSheet", () => ({
 import { ArtistBookingsView } from "./ArtistBookingsView";
 
 describe("ArtistBookingsView — past active booking merge (July 31 regression)", () => {
-  it("hides the past soft_booked booking under the default (Upcoming) timeframe", async () => {
+  it("shows the past soft_booked booking by default (All time), grayed, and clickable", async () => {
     renderWithProviders(<ArtistBookingsView />);
-    await screen.findByText(/no eligible dates yet/i);
-    expect(screen.queryByText("Old Hall")).not.toBeInTheDocument();
-    expect(screen.queryByText("15/01/2026")).not.toBeInTheDocument();
-  });
 
-  it("reveals the past soft_booked booking, grayed, when Past/All is selected — and it stays clickable", async () => {
-    renderWithProviders(<ArtistBookingsView />);
-    await screen.findByText(/no eligible dates yet/i);
-
-    // Open the timeframe popover (trigger reads "Upcoming" by default) and
-    // switch to "Any time" so the past row is no longer excluded.
-    fireEvent.click(screen.getByRole("button", { name: /Upcoming/ }));
-    fireEvent.click(screen.getByRole("button", { name: "Any time" }));
-
+    // The artist view defaults to All time, so a past hold is visible without
+    // touching the filter — an artist should always see where they are booked.
     const dateCell = await screen.findByText("15/01/2026");
     expect(screen.getByText("Old Hall")).toBeInTheDocument();
     expect(screen.getByText("Hold placed")).toBeInTheDocument();
@@ -143,11 +133,25 @@ describe("ArtistBookingsView — past active booking merge (July 31 regression)"
     expect(sheet.getAttribute("data-open")).toBe("true");
   });
 
-  it("also reveals it under the Past preset specifically", async () => {
+  it("hides the past soft_booked booking when the Upcoming preset is selected", async () => {
     renderWithProviders(<ArtistBookingsView />);
-    await screen.findByText(/no eligible dates yet/i);
+    // Visible by default (All time)...
+    await screen.findByText("15/01/2026");
 
-    fireEvent.click(screen.getByRole("button", { name: /Upcoming/ }));
+    // ...but switching to Upcoming excludes the past row (trigger reads "Any time").
+    fireEvent.click(screen.getByRole("button", { name: /Any time/ }));
+    fireEvent.click(screen.getByRole("button", { name: "Upcoming" }));
+
+    await screen.findByText(/no eligible dates yet/i);
+    expect(screen.queryByText("Old Hall")).not.toBeInTheDocument();
+    expect(screen.queryByText("15/01/2026")).not.toBeInTheDocument();
+  });
+
+  it("still shows it under the Past preset specifically", async () => {
+    renderWithProviders(<ArtistBookingsView />);
+    await screen.findByText("15/01/2026");
+
+    fireEvent.click(screen.getByRole("button", { name: /Any time/ }));
     fireEvent.click(screen.getByRole("button", { name: "Past" }));
 
     expect(await screen.findByText("15/01/2026")).toBeInTheDocument();
