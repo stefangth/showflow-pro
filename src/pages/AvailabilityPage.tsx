@@ -17,13 +17,14 @@ import { SortControl, type SortValue } from '@/components/filters/SortControl';
 import { ViewToggle, type ViewMode } from '@/components/filters/ViewToggle';
 import { applySort, inTimeframe } from '@/components/filters/filterUtils';
 import { useAuth } from '@/features/auth/AuthContext';
+import { useFeature } from '@/hooks/useEntitlements';
 import { useArtistEligibleDates, type EligibleDate } from '@/hooks/useArtistEligibleDates';
 import { useMyArtist } from '@/hooks/useMyArtist';
 import { ArtistAvailabilityCalendar } from '@/components/availability/ArtistAvailabilityCalendar';
 import { AvailabilityPicker } from '@/components/availability/AvailabilityPicker';
 import { OfferResponseButtons } from '@/components/availability/OfferResponseButtons';
 import { bookingStatusBadgeClass } from '@/lib/bookings';
-import { formatDateDMY, parseDateOnly, isPastDate, PAST_DATE_TINT } from '@/lib/dates';
+import { formatDateDMY, parseDateOnly, isPastDate, pastRowClassName } from '@/lib/dates';
 import { showIdentityLabel } from '@/types';
 import { fetchMyActiveBookedDates, mergeArtistActiveBookedDates, type ActiveBookedDateEntry } from '@/data/artists';
 import { cn } from '@/lib/utils';
@@ -61,6 +62,7 @@ function ArtistAvailability() {
   const { currentOrg } = useAuth();
   const { data: artist } = useMyArtist();
   const { data: eligibleDates, isLoading } = useArtistEligibleDates();
+  const bookingFlowEnabled = useFeature('booking_flow');
   const { reference, customFieldKey } = useReferenceField();
   const flowQ = useBookingFlow();
   const flow = flowQ.data ?? BOOKING_FLOW_DEFAULTS;
@@ -116,9 +118,12 @@ function ArtistAvailability() {
   // Past (and any other out-of-eligible-window) active bookings — merged into
   // `filtered` below so a booking whose show_date useArtistEligibleDates
   // silently drops (it's upcoming-only) still renders under Past/All.
+  // Module-gated to match the identical query in ArtistBookingsView: without
+  // this, a super-admin previewing an org with booking_flow off (route-level
+  // feature gates exempt super-admins) fired this read for no reason.
   const { data: activeBookedDates } = useQuery({
     queryKey: ['bookings', 'artist-active-booked', artist?.id],
-    enabled: !!artist?.id,
+    enabled: !!artist?.id && bookingFlowEnabled,
     queryFn: () => fetchMyActiveBookedDates(supabase, artist!.id),
   });
 
@@ -371,7 +376,7 @@ function ArtistAvailability() {
                     }
                   };
                   return (
-                    <TableRow key={d.id} className={cn(isPastDate(parseDateOnly(d.date)) && PAST_DATE_TINT)}>
+                    <TableRow key={d.id} className={cn(pastRowClassName(parseDateOnly(d.date)))}>
                       {orderedColumns.filter(c => c.visible).map(c => cellFor(c.columnId))}
                     </TableRow>
                   );
