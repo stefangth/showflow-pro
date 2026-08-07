@@ -3,6 +3,7 @@ import { useAuth } from './AuthContext';
 import NoOrgScreen from '@/pages/NoOrgScreen';
 import SuspendedOrgScreen from '@/pages/SuspendedOrgScreen';
 import FeatureDisabledScreen from '@/pages/FeatureDisabledScreen';
+import AppLayout from '@/components/layout/AppLayout';
 import type { AppRole } from '@/config/app.config';
 import { ROUTES, requiredFeatureForPath } from '@/config/app.config';
 import { DEFAULT_PAGE_ACCESS } from '@/features/editor/types';
@@ -15,7 +16,7 @@ interface ProtectedRouteProps {
 }
 
 export function ProtectedRoute({ children, requiredRoles }: ProtectedRouteProps) {
-  const { user, loading, roles, currentOrg, isSuperAdmin } = useAuth();
+  const { user, loading, roles, currentOrg, isSuperAdmin, viewAsRole, viewAsUser } = useAuth();
   const { isEditorMode, pageAccess } = useEditorConfig();
   const { features, isLoading: entitlementsLoading } = useEntitlements();
   const location = useLocation();
@@ -47,8 +48,13 @@ export function ProtectedRoute({ children, requiredRoles }: ProtectedRouteProps)
   // screen for an org that does have the feature. Super-admins (god-mode)
   // bypass this like they bypass org role gates below.
   const requiredFeature = requiredFeatureForPath(location.pathname);
-  if (requiredFeature && !entitlementsLoading && !features.has(requiredFeature) && !isSuperAdmin) {
-    return <FeatureDisabledScreen feature={requiredFeature} />;
+  const impersonating = viewAsRole != null || viewAsUser != null;
+  if (requiredFeature && !entitlementsLoading && !features.has(requiredFeature) && !(isSuperAdmin && !impersonating)) {
+    const disabled = <FeatureDisabledScreen feature={requiredFeature} />;
+    // A super-admin only reaches this branch while previewing (view-as); keep the
+    // editor toolbar (which lives inside AppLayout) on screen so they can exit the
+    // preview. A genuine member has no toolbar and needs no chrome here.
+    return isSuperAdmin ? <AppLayout>{disabled}</AppLayout> : disabled;
   }
 
   // Admins in editor mode bypass all route role gates — they can navigate anywhere.
