@@ -48,3 +48,19 @@ export function formatDateWithWeekday(input: string | Date): string {
 export function toDateKey(d: Date): string {
   return format(d, 'yyyy-MM-dd');
 }
+
+/**
+ * True iff `date` is strictly before the start of `today` — a date-only,
+ * timezone-safe comparison (via `toDateKey`, so time-of-day on either side is
+ * ignored). Today itself is never "past". `today` defaults to `new Date()`.
+ */
+export function isPastDate(date: Date, today: Date = new Date()): boolean {
+  return toDateKey(date) < toDateKey(today);
+}
+
+/**
+ * Shared "dimmed but interactive" class for a past-date row/card/cell.
+ * Deliberately opacity-only — never combine with `pointer-events-none` — so
+ * past dates stay fully clickable across every surface that uses it.
+ */
+export const PAST_DATE_TINT = 'opacity-60';

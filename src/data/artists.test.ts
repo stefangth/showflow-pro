@@ -1,7 +1,13 @@
 import { describe, it, expect } from "vitest";
 import { createFakeSupabase } from "@/test/supabaseFake";
 import { anArtist } from "@/test/fixtures";
-import { fetchMyArtist, fetchMyCancelledDateBookings, mergeArtistCancelledDates, fetchPendingInvitedArtistIds } from "./artists";
+import {
+  fetchMyArtist,
+  fetchMyCancelledDateBookings,
+  mergeArtistCancelledDates,
+  fetchPendingInvitedArtistIds,
+  fetchMyActiveBookedDates,
+} from "./artists";
 import { partialMock } from "@/test/castHelpers";
 import type { CancelledDateEntry } from "./artists";
 
@@ -63,6 +69,85 @@ describe("fetchMyCancelledDateBookings", () => {
   it("throws when the query errors", async () => {
     const fake = createFakeSupabase({ bookings: { data: null, error: { message: "boom" } } });
     await expect(fetchMyCancelledDateBookings(fake as never, "a1")).rejects.toBeTruthy();
+  });
+});
+
+describe("fetchMyActiveBookedDates", () => {
+  it("selects this artist's non-cancelled bookings joined to their show_date", async () => {
+    const row = {
+      show_date_id: "d1",
+      status: "soft_booked",
+      is_understudy: false,
+      show_date: {
+        id: "d1",
+        date: "2026-01-01", // in the past relative to "today" in the app
+        venue: "Hall",
+        session_1: "19:00:00",
+        session_2: null,
+        session_3: null,
+        show: { program: "X", sub_program: null },
+      },
+    };
+    const fake = createFakeSupabase({ bookings: { data: [row], error: null } });
+    const res = await fetchMyActiveBookedDates(fake as never, "a1");
+    expect(fake.calls).toContainEqual({ table: "bookings", method: "eq", args: ["artist_id", "a1"] });
+    expect(fake.calls).toContainEqual({ table: "bookings", method: "neq", args: ["status", "cancelled"] });
+    expect(res).toEqual([
+      {
+        id: "d1",
+        date: "2026-01-01",
+        venue: "Hall",
+        session_1: "19:00:00",
+        session_2: null,
+        session_3: null,
+        status: "soft_booked",
+        is_understudy: false,
+        show: { program: "X", sub_program: null },
+      },
+    ]);
+  });
+
+  it("carries is_understudy through for an understudy booking", async () => {
+    const fake = createFakeSupabase({
+      bookings: {
+        data: [
+          {
+            show_date_id: "d2",
+            status: "confirmed",
+            is_understudy: true,
+            show_date: {
+              id: "d2",
+              date: "2026-02-02",
+              venue: null,
+              session_1: null,
+              session_2: null,
+              session_3: null,
+              show: null,
+            },
+          },
+        ],
+        error: null,
+      },
+    });
+    const res = await fetchMyActiveBookedDates(fake as never, "a1");
+    expect(res[0].is_understudy).toBe(true);
+    expect(res[0].status).toBe("confirmed");
+    expect(res[0].show).toBeNull();
+  });
+
+  it("drops rows whose joined show_date is missing", async () => {
+    const fake = createFakeSupabase({
+      bookings: {
+        data: [{ show_date_id: "d1", status: "suggested", is_understudy: false, show_date: null }],
+        error: null,
+      },
+    });
+    expect(await fetchMyActiveBookedDates(fake as never, "a1")).toHaveLength(0);
+  });
+
+  it("throws when the query errors", async () => {
+    const fake = createFakeSupabase({ bookings: { data: null, error: { message: "boom" } } });
+    await expect(fetchMyActiveBookedDates(fake as never, "a1")).rejects.toBeTruthy();
   });
 });
 

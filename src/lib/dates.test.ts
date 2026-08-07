@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { parseDateOnly, formatDateDMY, formatTimestampDMY, formatDateWithWeekday, toDateKey } from "./dates";
+import { parseDateOnly, formatDateDMY, formatTimestampDMY, formatDateWithWeekday, toDateKey, isPastDate, PAST_DATE_TINT } from "./dates";
 
 describe("parseDateOnly", () => {
   it("parses a YYYY-MM-DD string at local midnight (no UTC drift)", () => {
@@ -50,5 +50,34 @@ describe("formatDateWithWeekday", () => {
   it("prefixes the abbreviated weekday", () => {
     // 2026-04-23 is a Thursday
     expect(formatDateWithWeekday("2026-04-23")).toBe("Thu, 23/04/2026");
+  });
+});
+
+describe("isPastDate", () => {
+  const today = new Date("2026-04-23T10:30:00");
+
+  it("returns true for yesterday", () => {
+    expect(isPastDate(new Date("2026-04-22T23:59:59"), today)).toBe(true);
+  });
+
+  it("returns false for today, regardless of time-of-day", () => {
+    expect(isPastDate(new Date("2026-04-23T00:00:00"), today)).toBe(false);
+    expect(isPastDate(new Date("2026-04-23T23:59:59"), today)).toBe(false);
+  });
+
+  it("returns false for tomorrow", () => {
+    expect(isPastDate(new Date("2026-04-24T00:00:00"), today)).toBe(false);
+  });
+
+  it("defaults `today` to now when omitted", () => {
+    const twoDaysAgo = new Date(Date.now() - 1000 * 60 * 60 * 24 * 2);
+    expect(isPastDate(twoDaysAgo)).toBe(true);
+  });
+});
+
+describe("PAST_DATE_TINT", () => {
+  it("is the shared dimmed-but-interactive class (opacity only, no pointer-events change)", () => {
+    expect(PAST_DATE_TINT).toBe("opacity-60");
+    expect(PAST_DATE_TINT).not.toMatch(/pointer-events/);
   });
 });
