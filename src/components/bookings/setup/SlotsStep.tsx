@@ -20,7 +20,8 @@ export function SlotsStep({ orgId, onDone }: { orgId: string | null; onDone: () 
     enabled: !!orgId,
     queryFn: () => fetchShowsWithSlots(supabase, orgId),
   });
-  const unset = (shows.data ?? []).filter((s) => showSlots(s) === null);
+  // Only active shows: an archived or draft show with no slot count never blocks the rail.
+  const unset = (shows.data ?? []).filter((s) => showSlots(s) === null && s.status === "active");
   const [draft, setDraft] = useState<Draft>({});
   const val = (id: string, k: "main" | "us") => draft[id]?.[k] ?? "";
   const setVal = (id: string, k: "main" | "us", v: string) =>

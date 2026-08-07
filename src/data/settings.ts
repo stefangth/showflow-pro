@@ -9,6 +9,7 @@ export interface ShowWithSlots {
   sub_program: string | null;
   main_cast_slots: number | null;
   understudy_slots: number | null;
+  status: "active" | "archived" | "draft";
 }
 
 /** Fetch all shows for an org with their slot columns, ordered by program then sub_program. */
@@ -19,7 +20,7 @@ export async function fetchShowsWithSlots(
   if (!orgId) return [];
   const { data, error } = await client
     .from("shows")
-    .select("id, program, sub_program, main_cast_slots, understudy_slots")
+    .select("id, program, sub_program, main_cast_slots, understudy_slots, status")
     .eq("org_id", orgId)
     .order("program")
     .order("sub_program");

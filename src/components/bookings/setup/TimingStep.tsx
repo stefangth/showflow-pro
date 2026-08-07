@@ -29,10 +29,20 @@ export function TimingStep({ orgId, onDone }: { orgId: string | null; onDone: ()
   const save = useMutation({
     mutationFn: async () => {
       if (!orgId) throw new Error("No active organization");
+      const windowHours = Number(win);
+      const offerHour = Number(offer);
+      const confirmationHour = Number(conf);
+      // A cleared field reads as Number("") === 0, and a 0-hour offer window is acted on
+      // by the engine (offers would expire the instant they open). Guard before writing.
+      const validWindow = Number.isInteger(windowHours) && windowHours >= 1;
+      const validDigestHour = (h: number) => Number.isInteger(h) && h >= 0 && h <= 23;
+      if (!validWindow || !validDigestHour(offerHour) || !validDigestHour(confirmationHour)) {
+        throw new Error("Enter a window of at least 1 hour and digest hours between 0 and 23.");
+      }
       await Promise.all([
-        upsertOrgSetting(supabase, orgId, "offer_response_window_hours", Number(win)),
-        upsertOrgSetting(supabase, orgId, "offer_digest_hour_berlin", Number(offer)),
-        upsertOrgSetting(supabase, orgId, "confirmation_digest_hour_berlin", Number(conf)),
+        upsertOrgSetting(supabase, orgId, "offer_response_window_hours", windowHours),
+        upsertOrgSetting(supabase, orgId, "offer_digest_hour_berlin", offerHour),
+        upsertOrgSetting(supabase, orgId, "confirmation_digest_hour_berlin", confirmationHour),
       ]);
     },
     onSuccess: () => {

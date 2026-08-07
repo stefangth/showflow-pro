@@ -35,4 +35,40 @@ describe("useBookingSetupStatus", () => {
     expect(result.current.isLoading).toBe(false);
     expect(result.current.status.doneCount).toBe(0);
   });
+
+  it("does not keep the slots step outstanding for an archived show with unset slots", async () => {
+    seed({
+      app_settings: { data: [{ key: "booking_flow" }], error: null },
+      shows: {
+        data: [
+          { id: "s1", program: "Archived show", sub_program: null, main_cast_slots: null, understudy_slots: null, status: "archived" },
+        ],
+        error: null,
+      },
+      show_dates: { data: [], error: null },
+      show_cast_eligibility: { data: [], error: null },
+      cast_city_priority: { data: [], error: null },
+    });
+    const { result } = renderHookWithProviders(() => useBookingSetupStatus("org-1"));
+    await waitFor(() => expect(result.current.isLoading).toBe(false));
+    expect(result.current.status.steps.find((s) => s.key === "slots")!.done).toBe(true);
+  });
+
+  it("keeps the slots step outstanding for an active show with unset slots", async () => {
+    seed({
+      app_settings: { data: [{ key: "booking_flow" }], error: null },
+      shows: {
+        data: [
+          { id: "s1", program: "Active show", sub_program: null, main_cast_slots: null, understudy_slots: null, status: "active" },
+        ],
+        error: null,
+      },
+      show_dates: { data: [], error: null },
+      show_cast_eligibility: { data: [], error: null },
+      cast_city_priority: { data: [], error: null },
+    });
+    const { result } = renderHookWithProviders(() => useBookingSetupStatus("org-1"));
+    await waitFor(() => expect(result.current.isLoading).toBe(false));
+    expect(result.current.status.steps.find((s) => s.key === "slots")!.done).toBe(false);
+  });
 });

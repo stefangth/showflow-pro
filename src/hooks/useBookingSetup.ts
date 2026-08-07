@@ -46,7 +46,10 @@ export function useBookingSetupStatus(orgId: string | null): {
   const ownedSet = owned.data;
   const status = computeBookingSetupStatus({
     flowChosen: ownedSet ? ownedSet.has("booking_flow") : false,
-    shows: shows.data,
+    // Only active shows are counted (the spec: "every active show") — an archived or draft
+    // show with unset slots must never keep this step outstanding. undefined stays
+    // undefined (not []) while shows.data hasn't loaded yet, preserving the fail-safe.
+    shows: shows.data?.filter((s) => s.status === "active"),
     timingChosen: ownedSet ? TIMING_KEYS.every((k) => ownedSet.has(k)) : false,
     coverage: coverage.data,
   });

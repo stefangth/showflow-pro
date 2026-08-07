@@ -6,8 +6,8 @@ import { BOOKING_FLOW_DEFAULTS, normalizeBookingFlow } from "@/lib/bookingFlow";
 describe("fetchShowsWithSlots", () => {
   it("selects the correct columns from shows filtered by org_id", async () => {
     const rows = [
-      { id: "s1", program: "A", sub_program: "x", main_cast_slots: 2, understudy_slots: 1 },
-      { id: "s2", program: "A", sub_program: "y", main_cast_slots: null, understudy_slots: null },
+      { id: "s1", program: "A", sub_program: "x", main_cast_slots: 2, understudy_slots: 1, status: "active" },
+      { id: "s2", program: "A", sub_program: "y", main_cast_slots: null, understudy_slots: null, status: "draft" },
     ];
     const fake = createFakeSupabase({ shows: { data: rows, error: null } });
     const result = await fetchShowsWithSlots(fake as never, "org-1");
@@ -15,7 +15,7 @@ describe("fetchShowsWithSlots", () => {
     expect(fake.calls).toContainEqual({
       table: "shows",
       method: "select",
-      args: ["id, program, sub_program, main_cast_slots, understudy_slots"],
+      args: ["id, program, sub_program, main_cast_slots, understudy_slots, status"],
     });
     expect(fake.calls).toContainEqual({
       table: "shows",
