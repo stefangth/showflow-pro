@@ -14,7 +14,7 @@ import { HireOrderStatusBadge } from '@/components/hireOrders/HireOrderStatusBad
 import { useFeature } from '@/hooks/useEntitlements';
 import { ModuleGate } from '@/components/layout/ModuleGate';
 import { useAuth } from '@/features/auth/AuthContext';
-import { formatDateDMY, parseDateOnly, isPastDate, PAST_DATE_TINT } from '@/lib/dates';
+import { formatDateDMY, parseDateOnly, pastRowClassName } from '@/lib/dates';
 import { cn } from '@/lib/utils';
 import { useBookingFlow, useReferenceField } from '@/hooks/useBookingFlow';
 import { referenceLabel, BOOKING_FLOW_DEFAULTS } from '@/lib/bookingFlow';
@@ -253,13 +253,13 @@ export function ArtistDashboard() {
                 .join(' · ');
               // dateStr is a resolved snapshot field, not always a clean YYYY-MM-DD
               // (see snap()) -- guard the shape before treating it as a date.
-              const isPast = /^\d{4}-\d{2}-\d{2}$/.test(dateStr) && isPastDate(parseDateOnly(dateStr));
+              const parsedDate = /^\d{4}-\d{2}-\d{2}$/.test(dateStr) ? parseDateOnly(dateStr) : null;
               return (
                 <div
                   key={o.id}
                   className={cn(
                     'flex items-center justify-between gap-3 rounded-lg border border-border p-3',
-                    isPast && PAST_DATE_TINT,
+                    pastRowClassName(parsedDate),
                   )}
                 >
                   <Link to={ROUTES.HIRE_ORDER_DETAIL.replace(':id', o.id)} className="min-w-0 flex-1">

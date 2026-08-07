@@ -77,9 +77,15 @@ vi.mock("@/hooks/useEntitlements", () => ({
 vi.mock("@/hooks/useCapabilities", () => ({
   useCan: () => true,
 }));
-const { railVisible } = vi.hoisted(() => ({ railVisible: { value: false } }));
+// `visible` drives the inline callout, `reinvocable` drives the header
+// re-invoke button -- both read off this one mocked hook (Plan B fix wave:
+// the button used to be gated independently and could drift from the rail's
+// own eligibility).
+const { railState } = vi.hoisted(() => ({
+  railState: { value: { visible: false, reinvocable: false } as { visible: boolean; reinvocable: boolean } },
+}));
 vi.mock("@/components/bookings/setup/useBookingSetupRailVisible", () => ({
-  useBookingSetupRailVisible: () => railVisible.value,
+  useBookingSetupRailVisible: () => railState.value,
 }));
 // The rail is exercised on its own in BookingSetupRail.test.tsx; stub it here so
 // this page's tests don't also have to seed its five app_settings/shows reads.
@@ -128,7 +134,7 @@ import ShowsBookingsPage from "./ShowsBookingsPage";
 beforeEach(() => {
   localStorage.clear();
   featureFlags.value = {};
-  railVisible.value = false;
+  railState.value = { visible: false, reinvocable: false };
   bookingSetupStatus.value = { complete: false, doneCount: 0, totalCount: 5 };
 });
 
@@ -191,7 +197,7 @@ describe("ShowsBookingsPage — setup checklist uncramp + re-invoke (Plan B Task
 
   it("shows a full-width inline callout (not a cramped side column) while setup is incomplete and visible", async () => {
     featureFlags.value = { booking_flow: true };
-    railVisible.value = true;
+    railState.value = { visible: true, reinvocable: false };
     renderWithProviders(<ShowsBookingsPage />);
     expect(await screen.findByText(/get bookings running/i)).toBeInTheDocument();
     // No fixed side-column grid track left anywhere on the page.
@@ -200,14 +206,18 @@ describe("ShowsBookingsPage — setup checklist uncramp + re-invoke (Plan B Task
 
   it("opens the checklist in a Sheet from the inline callout", async () => {
     featureFlags.value = { booking_flow: true };
-    railVisible.value = true;
+    railState.value = { visible: true, reinvocable: false };
     renderWithProviders(<ShowsBookingsPage />);
     fireEvent.click(await screen.findByRole("button", { name: /open checklist/i }));
     expect(await screen.findByTestId("booking-setup-rail")).toBeInTheDocument();
   });
 
   it("shows the header re-invoke button once dismissed while setup is still incomplete, and hides the callout", async () => {
+    // The mocked hook reports what the real useBookingSetupRailVisible would
+    // compute once dismissed: not visible (the callout is gone), but
+    // reinvocable -- there's still something actionable once reopened.
     featureFlags.value = { booking_flow: true };
+    railState.value = { visible: false, reinvocable: true };
     localStorage.setItem("showflow.bookingSetup.hidden.org-1", "true");
     renderWithProviders(<ShowsBookingsPage />);
     expect(await screen.findByRole("button", { name: /setup checklist/i })).toBeInTheDocument();
@@ -216,6 +226,7 @@ describe("ShowsBookingsPage — setup checklist uncramp + re-invoke (Plan B Task
 
   it("re-invokes on click: clears the dismissal and opens the Sheet with the rail", async () => {
     featureFlags.value = { booking_flow: true };
+    railState.value = { visible: false, reinvocable: true };
     localStorage.setItem("showflow.bookingSetup.hidden.org-1", "true");
     renderWithProviders(<ShowsBookingsPage />);
     fireEvent.click(await screen.findByRole("button", { name: /setup checklist/i }));
@@ -225,9 +236,26 @@ describe("ShowsBookingsPage — setup checklist uncramp + re-invoke (Plan B Task
   });
 
   it("hides the re-invoke button once setup is complete, even if previously dismissed", async () => {
+    // The real hook reports both false once complete, regardless of dismissed.
     featureFlags.value = { booking_flow: true };
+    railState.value = { visible: false, reinvocable: false };
     localStorage.setItem("showflow.bookingSetup.hidden.org-1", "true");
     bookingSetupStatus.value = { complete: true, doneCount: 5, totalCount: 5 };
+    renderWithProviders(<ShowsBookingsPage />);
+    await screen.findByText("Future Show");
+    expect(screen.queryByRole("button", { name: /setup checklist/i })).not.toBeInTheDocument();
+  });
+
+  it("never offers the re-invoke button in a state where the rail itself would render nothing actionable", async () => {
+    // Regression for the fix wave's finding: a non-editor once offers are
+    // already possible is exactly the state useBookingSetupRailVisible
+    // reports `reinvocable: false` for, even while dismissed -- the old
+    // independently-gated button (`dismissed && !complete`) would have
+    // shown here.
+    featureFlags.value = { booking_flow: true };
+    railState.value = { visible: false, reinvocable: false };
+    localStorage.setItem("showflow.bookingSetup.hidden.org-1", "true");
+    bookingSetupStatus.value = { complete: false, doneCount: 4, totalCount: 5 };
     renderWithProviders(<ShowsBookingsPage />);
     await screen.findByText("Future Show");
     expect(screen.queryByRole("button", { name: /setup checklist/i })).not.toBeInTheDocument();

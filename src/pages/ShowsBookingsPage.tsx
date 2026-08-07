@@ -37,7 +37,7 @@ import { useCan } from '@/hooks/useCapabilities';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { showSlots } from '@/lib/settings';
-import { parseDateOnly, isPastDate, PAST_DATE_TINT } from '@/lib/dates';
+import { parseDateOnly, pastRowClassName } from '@/lib/dates';
 import { cn } from '@/lib/utils';
 import { useReferenceField } from '@/hooks/useBookingFlow';
 import { referenceLabel } from '@/lib/bookingFlow';
@@ -158,14 +158,17 @@ function ProducerShowsBookings() {
   const canManage = hasRole('admin') || hasRole('producer');
   const orgId = currentOrg?.id ?? null;
   const bookingOn = useFeature('booking_flow');
-  const railVisible = useBookingSetupRailVisible(bookingOn ? orgId : null);
-  // Re-invoke: the rail moved out of the cramped 340px side column into a Sheet
-  // (Plan B Task 3). `railVisible` alone can't tell the header button apart from
-  // "setup is genuinely complete" -- both leave it false -- so the button reads
-  // `dismissed`/`status.complete` directly instead.
-  const [bookingSetupDismissed, , undismissBookingSetup] = useRailDismissed('bookingSetup', bookingOn ? orgId : null);
+  // `visible` drives the inline callout, `reinvocable` drives the header button
+  // (Plan B Task 3's re-invoke) -- both read off the SAME hook and the same inputs, so
+  // the header button can never offer to reopen a rail that would render nothing
+  // actionable (the divergence a separately-computed `dismissed && !complete` used to
+  // allow, e.g. for a non-editor once offers are already possible).
+  const { visible: railVisible, reinvocable: bookingSetupReinvocable } = useBookingSetupRailVisible(
+    bookingOn ? orgId : null,
+  );
+  const [, , undismissBookingSetup] = useRailDismissed('bookingSetup', bookingOn ? orgId : null);
   const { status: bookingSetupStatus } = useBookingSetupStatus(bookingOn ? orgId : null);
-  const showSetupReinvoke = bookingOn && bookingSetupDismissed && !bookingSetupStatus.complete;
+  const showSetupReinvoke = bookingOn && bookingSetupReinvocable;
   const [setupSheetOpen, setSetupSheetOpen] = useState(false);
   // Hire-order CTA: module gate + generate capability + which dates are ready.
   const hireOrdersOn = useFeature('hire_orders');
@@ -519,7 +522,7 @@ function ProducerShowsBookings() {
                   return (
                     <TableRow
                       key={sd.id}
-                      className={cn('cursor-pointer', isPastDate(parseDateOnly(sd.date)) && PAST_DATE_TINT)}
+                      className={cn('cursor-pointer', pastRowClassName(parseDateOnly(sd.date)))}
                       tabIndex={0}
                       onClick={() => openShowDate(sd.id)}
                       onKeyDown={openShowDateOnKey(sd.id)}
@@ -548,7 +551,7 @@ function ProducerShowsBookings() {
             <Card
               className={cn(
                 'hover:shadow-elev2 transition-shadow cursor-pointer',
-                isPastDate(it.date) && PAST_DATE_TINT,
+                pastRowClassName(it.date),
               )}
               role="button"
               tabIndex={0}
