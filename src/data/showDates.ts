@@ -101,3 +101,23 @@ export async function fetchUpcomingShowDates<T>(
   if (error) throw error;
   return (data ?? []) as unknown as T[];
 }
+
+/** The soonest future, non-cancelled show date that has a city, for the setup-rail
+ *  rehearsal. Null when none qualifies (a date without a city cannot resolve a tier). */
+export async function fetchNextRehearsalDate(
+  client: SupabaseClient<Database>,
+  args: { orgId: string; today: string },
+): Promise<{ id: string; date: string } | null> {
+  const { data, error } = await client
+    .from("show_dates")
+    .select("id, date")
+    .eq("org_id", args.orgId)
+    .neq("status", "cancelled")
+    .not("city_id", "is", null)
+    .gte("date", args.today)
+    .order("date", { ascending: true })
+    .limit(1);
+  if (error) throw error;
+  const row = ((data ?? []) as { id: string; date: string }[])[0];
+  return row ? { id: row.id, date: row.date } : null;
+}

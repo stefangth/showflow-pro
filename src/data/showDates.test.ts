@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { createFakeSupabase } from "@/test/supabaseFake";
-import { createShowDate, updateShowDate, cancelShowDate, deleteShowDate, fetchShowDatesForShow } from "./showDates";
+import { createShowDate, updateShowDate, cancelShowDate, deleteShowDate, fetchShowDatesForShow, fetchNextRehearsalDate } from "./showDates";
 
 describe("showDates data-access", () => {
   it("createShowDate inserts mapped fields (no status set) and returns id", async () => {
@@ -47,5 +47,20 @@ describe("showDates data-access", () => {
     const fake = createFakeSupabase({});
     expect(await fetchShowDatesForShow(fake as never, null)).toEqual([]);
     expect(fake.calls).toEqual([]);
+  });
+});
+
+describe("fetchNextRehearsalDate", () => {
+  it("returns the soonest future non-cancelled date that has a city", async () => {
+    const client = createFakeSupabase({
+      show_dates: { data: [{ id: "d1", date: "2026-09-18", city_id: "c1" }], error: null },
+    });
+    const r = await fetchNextRehearsalDate(client as never, { orgId: "org-1", today: "2026-08-07" });
+    expect(r).toEqual({ id: "d1", date: "2026-09-18" });
+  });
+
+  it("returns null when nothing qualifies", async () => {
+    const client = createFakeSupabase({ show_dates: { data: [], error: null } });
+    expect(await fetchNextRehearsalDate(client as never, { orgId: "org-1", today: "2026-08-07" })).toBeNull();
   });
 });
