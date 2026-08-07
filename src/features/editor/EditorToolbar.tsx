@@ -248,7 +248,7 @@ export function EditorModeToggle() {
   // never forget they are looking at a gated/limited view rather than their own.
   // Same predicate the module/nav/route gates use, so the cue never disagrees
   // with what is actually gated.
-  const previewingOther = isImpersonating({ roles, viewAsRole, viewAsUser });
+  const previewingOther = isImpersonating({ isSuperAdmin, roles, viewAsRole, viewAsUser });
   const previewLabel = viewAsUser ? (viewAsUser.email ?? 'another user') : viewAsRole;
 
   return (

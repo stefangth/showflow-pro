@@ -43,11 +43,12 @@ describe("useModuleGate view-as", () => {
     expect((await gate()).allow).toBe(true);
   });
 
-  it("keeps god-mode when a super-admin views as a role they already hold", async () => {
-    // Selecting your own role is not impersonation, so the exemption stays and the
-    // pencil stays un-red — the gate and the indicator agree.
+  it("gates a super-admin previewing a role they also hold (departs from god-mode)", async () => {
+    // A super-admin's real view is god-mode; previewing "Admin" — even though they
+    // hold that org role — is a restricted preview, so the gate engages and the
+    // pencil goes red. Every role below super-admin sees the disabled-module gate.
     mockAuth({ isSuperAdmin: true, roles: ["admin"], viewAsRole: "admin" });
-    expect((await gate()).allow).toBe(true);
+    expect((await gate()).allow).toBe(false);
   });
 
   it("gates a super-admin previewing a role they do not hold", async () => {

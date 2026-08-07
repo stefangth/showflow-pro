@@ -43,8 +43,8 @@ export const NAV_ITEMS: NavItem[] = [
  *  the org does not have the module, but hiding it entirely leaves members unable
  *  to tell the module exists. Super-admins are not locked (they administer
  *  entitlements, and ProtectedRoute lets them through to the off-state page),
- *  except while previewing another user via the editor "view as" toolbar, when
- *  they see that user's locks. See isImpersonating. */
+ *  except while previewing another user or any specific role via the editor
+ *  "view as" toolbar, when they see that perspective's locks. See isImpersonating. */
 export type VisibleNavItem = NavItem & { locked: boolean };
 
 export interface NavSectionGroup<T extends NavItem = NavItem> { section: NavSection; label: string; items: T[]; }
@@ -80,7 +80,8 @@ export function visibleNavItems(
   const lock = (item: NavItem): VisibleNavItem => ({
     ...item,
     // Super-admins are normally never locked, but a super-admin previewing another
-    // user via the editor "view as" toolbar should see that user's locks.
+    // user or any specific role via the editor "view as" toolbar should see that
+    // perspective's locks.
     locked: !ctx.entitlementsLoading && !!item.feature
       && (!ctx.isSuperAdmin || !!ctx.impersonating)
       && !ctx.enabledFeatures.has(item.feature),

@@ -25,21 +25,31 @@ export function effectiveHasRole(opts: {
 }
 
 /**
- * Whether the UI is being previewed as someone other than the signed-in user:
- * a specific impersonated user, or a role the user does not actually hold.
- * Choosing one's own role via "view as" is NOT impersonation, so it leaves
- * god-mode intact. This is the single predicate every view-as gate keys off —
- * the in-page ModuleGate, the nav lock, the route feature gate, and the red
- * editor-pencil indicator — so they cannot drift apart.
+ * Whether the UI is being previewed as someone other than the signed-in user's
+ * real perspective: a specific impersonated user, or a role that perspective
+ * does not already cover. This is the single predicate every view-as gate keys
+ * off — the in-page ModuleGate, the nav lock, the route feature gate, and the
+ * red editor-pencil indicator — so they cannot drift apart.
+ *
+ * The signed-in user's "real perspective" depends on who they are:
+ *  - A super-admin's real view is god-mode (every module, every org), so
+ *    previewing ANY specific role departs from it — even a role they also hold
+ *    as an org member. Without this, a super-admin who is also an org admin
+ *    could not preview the "module disabled" gate by choosing "Admin": the
+ *    god-mode exemption stayed on and a disabled module rendered as enabled.
+ *  - A non-super-admin's real view IS their org roles, so choosing a role they
+ *    already hold is a no-op and NOT impersonation.
  */
 export function isImpersonating(opts: {
+  isSuperAdmin?: boolean;
   roles: AppRole[];
   viewAsRole: AppRole | null;
   viewAsUser: { roles: AppRole[] } | null;
 }): boolean {
-  const { roles, viewAsRole, viewAsUser } = opts;
+  const { isSuperAdmin = false, roles, viewAsRole, viewAsUser } = opts;
   if (viewAsUser != null) return true;
-  return viewAsRole != null && !roles.includes(viewAsRole);
+  if (viewAsRole == null) return false;
+  return isSuperAdmin || !roles.includes(viewAsRole);
 }
 
 /** Which orgs the switcher lists: ALL orgs for super-admins, else the user's memberships. */

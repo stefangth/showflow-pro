@@ -49,7 +49,7 @@ export function ProtectedRoute({ children, requiredRoles }: ProtectedRouteProps)
   // screen for an org that does have the feature. Super-admins (god-mode)
   // bypass this like they bypass org role gates below.
   const requiredFeature = requiredFeatureForPath(location.pathname);
-  const impersonating = isImpersonating({ roles, viewAsRole, viewAsUser });
+  const impersonating = isImpersonating({ isSuperAdmin, roles, viewAsRole, viewAsUser });
   if (requiredFeature && !entitlementsLoading && !features.has(requiredFeature) && !(isSuperAdmin && !impersonating)) {
     // A super-admin only reaches this branch while previewing (view-as); keep the
     // editor toolbar (which lives inside AppLayout) on screen so they can exit the

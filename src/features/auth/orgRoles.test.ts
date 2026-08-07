@@ -47,4 +47,19 @@ describe("isImpersonating", () => {
   it("is true when previewing a specific user, whatever their roles", () => {
     expect(isImpersonating({ roles: ["admin"], viewAsRole: null, viewAsUser: { roles: ["admin"] } })).toBe(true);
   });
+
+  // A super-admin's real perspective is god-mode (every module, every org), so
+  // previewing ANY specific role departs from it — even a role they also hold as
+  // an org member. Without this, a super-admin who is also an org admin could not
+  // preview the "module disabled" gate by choosing "Admin": the exemption stayed
+  // on and the disabled module rendered as enabled.
+  it("is true when a super-admin previews a role they also hold (departs from god-mode)", () => {
+    expect(isImpersonating({ isSuperAdmin: true, roles: ["admin"], viewAsRole: "admin", viewAsUser: null })).toBe(true);
+  });
+  it("is false when a super-admin is on their own view (no role/user preview)", () => {
+    expect(isImpersonating({ isSuperAdmin: true, roles: ["admin"], viewAsRole: null, viewAsUser: null })).toBe(false);
+  });
+  it("still treats a plain admin's own-role preview as not impersonating", () => {
+    expect(isImpersonating({ isSuperAdmin: false, roles: ["admin"], viewAsRole: "admin", viewAsUser: null })).toBe(false);
+  });
 });
