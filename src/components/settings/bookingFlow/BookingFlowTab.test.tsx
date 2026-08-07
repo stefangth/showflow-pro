@@ -82,10 +82,10 @@ describe("BookingFlowTab", () => {
 
   it("shows the resulting lifecycle chips in the rail", () => {
     renderWithProviders(<Harness />);
-    // "Suggested"/"Soft booked" also appear as timeline step badges, so scope the
+    // "Offered"/"Soft booked" also appear as timeline step badges, so scope the
     // assertion to the rail's Resulting lifecycle card to keep it unambiguous.
     const lifecycle = screen.getByText("Resulting lifecycle").parentElement as HTMLElement;
-    expect(within(lifecycle).getByText("Suggested")).toBeInTheDocument();
+    expect(within(lifecycle).getByText("Offered")).toBeInTheDocument();
     expect(within(lifecycle).getByText("Soft booked")).toBeInTheDocument();
   });
 

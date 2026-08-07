@@ -98,16 +98,16 @@ describe("presets", () => {
 const TIMES = { windowHours: 48, offerDigestHour: 19, confirmationDigestHour: 20 };
 
 describe("lifecycleChips", () => {
-  it("classic: suggested → soft booked → confirmed", () => {
+  it("classic: offered → soft booked → confirmed", () => {
     expect(lifecycleChips(BOOKING_FLOW_DEFAULTS).map((c) => c.label)).toEqual([
-      "Suggested",
+      "Offered",
       "Soft booked",
       "Confirmed",
     ]);
   });
-  it("auto-confirm: suggested → confirmed", () => {
+  it("auto-confirm: offered → confirmed", () => {
     const flow = normalizeBookingFlow({ producer_confirmation: false });
-    expect(lifecycleChips(flow).map((c) => c.label)).toEqual(["Suggested", "Confirmed"]);
+    expect(lifecycleChips(flow).map((c) => c.label)).toEqual(["Offered", "Confirmed"]);
   });
   it("direct: direct booking → confirmed", () => {
     const flow = applyPreset(BOOKING_FLOW_DEFAULTS, "direct");

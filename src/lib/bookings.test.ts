@@ -3,11 +3,24 @@ import {
   deriveBookingGroups, computeInheritedCastIds,
   buildOfferTierOptions, offerResultToast, offerConfirmCopy,
   pendingOfferCount, closeConfirmCopy, closeResultToast,
-  bookingStatusBadgeClass, shouldAutoOpenTier1, deriveDirectBookList,
+  bookingStatusBadgeClass, bookingStatusDisplayLabel, shouldAutoOpenTier1, deriveDirectBookList,
 } from "./bookings";
 
 type B = { artist_id: string; status: string; is_understudy: boolean };
 const b = (o: Partial<B>): B => ({ artist_id: "a1", status: "suggested", is_understudy: false, ...o });
+
+describe("bookingStatusDisplayLabel", () => {
+  it("maps known statuses to producer-facing labels", () => {
+    expect(bookingStatusDisplayLabel("suggested")).toBe("Offered");
+    expect(bookingStatusDisplayLabel("soft_booked")).toBe("Soft-booked");
+    expect(bookingStatusDisplayLabel("confirmed")).toBe("Confirmed");
+    expect(bookingStatusDisplayLabel("cancelled")).toBe("Cancelled");
+  });
+
+  it("humanizes an unknown status instead of surfacing the raw token", () => {
+    expect(bookingStatusDisplayLabel("some_new_state")).toBe("Some new state");
+  });
+});
 
 describe("deriveBookingGroups", () => {
   it("excludes cancelled bookings from every group", () => {

@@ -28,6 +28,32 @@ export function bookingStatusBadgeClass(status: string): string {
   return BOOKING_STATUS_BADGE_CLASS[status] ?? "";
 }
 
+// ── Producer-facing status display label ───────────────────────────────────────
+// The artist-facing labels live in `bookingStatusLabels` (flowCopy) and read from
+// the artist's side ("Offer pending" / "Hold placed"). This is the producer-facing
+// noun for the SAME booking status, used where a producer reads a booking's state
+// (e.g. ShowDateDetailSheet's assigned-artists rows). `suggested` is exactly what
+// open-offer-tier creates when the offer goes out to the artist, so it reads as
+// "Offered", never the internal enum. Unknown values humanize.
+const BOOKING_STATUS_DISPLAY_LABEL: Record<string, string> = {
+  suggested: "Offered",
+  soft_booked: "Soft-booked",
+  confirmed: "Confirmed",
+  cancelled: "Cancelled",
+};
+
+/**
+ * Human display label for a booking status on producer surfaces. Unknown statuses
+ * fall back to a humanized form (underscores → spaces, first letter capitalized),
+ * so a new enum value never surfaces the raw token.
+ */
+export function bookingStatusDisplayLabel(status: string): string {
+  const known = BOOKING_STATUS_DISPLAY_LABEL[status];
+  if (known) return known;
+  const spaced = status.replace(/_/g, " ");
+  return spaced.charAt(0).toUpperCase() + spaced.slice(1);
+}
+
 export interface BookingLike {
   artist_id: string;
   status: string;

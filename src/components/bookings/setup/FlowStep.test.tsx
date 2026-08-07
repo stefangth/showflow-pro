@@ -23,7 +23,7 @@ describe("FlowStep", () => {
     expect(await screen.findByText("Classic")).toBeInTheDocument();
     expect(screen.getByText("Fast-track")).toBeInTheDocument();
     expect(screen.getByText("Direct book")).toBeInTheDocument();
-    // Classic lifecycle chips: Suggested / Soft booked / Confirmed
+    // Classic lifecycle chips: Offered / Soft booked / Confirmed
     expect(screen.getByText("Soft booked")).toBeInTheDocument();
   });
 });
