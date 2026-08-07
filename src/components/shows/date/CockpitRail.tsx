@@ -2,7 +2,8 @@ import { format } from "date-fns";
 import { Clock, MapPin, Database, PenLine, MessageSquare } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import type { ActivityItem } from "@/lib/bookingCockpit";
+import type { ActivityItem, UpNextItem } from "@/lib/bookingCockpit";
+import { UpNextStrip } from "./UpNextStrip";
 
 export interface CockpitRailProps {
   times: string | null; // "14:00 / 19:30"
@@ -15,6 +16,8 @@ export interface CockpitRailProps {
   castChips: Array<{ label: string; kind: "inherited" | "override" }>;
   skillChips: string[];
   activity: ActivityItem[]; // pre-derived (buildActivity); rail formats iso
+  /** Engine "up next" pills (digest send, expiring offers, auto-escalate). */
+  upNext?: UpNextItem[];
   chatUnread: number;
   chatPreview: string | null;
   /** Jump to the Chat tab. When there is no live preview yet, the teaser is a
@@ -42,7 +45,7 @@ const RailSection = ({ title, children }: { title: string; children: React.React
 /** The cockpit's left rail: date facts, eligibility chips, a derived activity
  *  feed, and a chat teaser. Purely presentational. */
 export function CockpitRail({
-  times, venue, city, source, notes, castChips, skillChips, activity,
+  times, venue, city, source, notes, castChips, skillChips, activity, upNext = [],
   chatUnread, chatPreview, onOpenChat, onEditSetup, showEditSetup = true,
 }: CockpitRailProps) {
   return (
@@ -97,6 +100,8 @@ export function CockpitRail({
           </div>
         )}
       </RailSection>
+
+      <UpNextStrip items={upNext} />
 
       {activity.length > 0 && (
         <RailSection title="Activity">

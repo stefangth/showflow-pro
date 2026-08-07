@@ -1,12 +1,7 @@
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-import type { DatePeek, DatePeekSeg } from "@/lib/bookingCockpit";
-
-const SEG_BG: Record<DatePeekSeg["tone"], string> = {
-  confirmed: "bg-[var(--green-500)]",
-  accepted: "bg-accent-400",
-  open: "bg-[var(--surface-3)]",
-};
+import type { DatePeek } from "@/lib/bookingCockpit";
+import { SlotMeter } from "@/components/shows/date/SlotMeter";
 
 const EYEBROW_TONE: Record<DatePeek["tone"], string> = {
   filled: "text-[var(--green-600)]",
@@ -32,11 +27,7 @@ export function RowPeek({ dateLabel, peek, canConfirm, confirming, onConfirm, on
       {peek ? (
         <>
           <p className="mt-1.5 text-sm font-medium">{peek.headline}</p>
-          <div className="mt-2.5 flex gap-[3px]">
-            {peek.meter.map((s, i) => (
-              <span key={i} className={cn("h-1.5 flex-1 rounded-[2px]", SEG_BG[s.tone])} />
-            ))}
-          </div>
+          <SlotMeter className="mt-2.5" tones={peek.meter.map((s) => s.tone)} />
         </>
       ) : (
         <p className="mt-1.5 text-sm text-muted-foreground">Set cast slots in Settings to track fill.</p>

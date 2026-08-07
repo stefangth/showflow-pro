@@ -241,4 +241,28 @@ describe("ShowDateDetailSheet capability gates", () => {
     renderSheet();
     expect(await screen.findByRole("button", { name: /^confirm$/i })).toBeInTheDocument();
   });
+
+  it("booking_flow on: the header shows 'Confirm N accepted' for a soft_booked booking", async () => {
+    seedClient({
+      show_dates: { data: SHOW_DATE, error: null },
+      bookings: { data: [SOFT_BOOKED], error: null },
+      casts: { data: [], error: null },
+      show_date_cast_eligibility: { data: [], error: null },
+    });
+    renderSheet();
+    expect(await screen.findByRole("button", { name: /confirm 1 accepted/i })).toBeInTheDocument();
+  });
+
+  it("booking_flow off: no header 'Confirm accepted' CTA even with a soft_booked booking (module gate)", async () => {
+    vi.mocked(useFeature).mockReturnValue(false); // booking_flow (and hire_orders) off
+    seedClient({
+      show_dates: { data: SHOW_DATE, error: null },
+      bookings: { data: [SOFT_BOOKED], error: null },
+      casts: { data: [], error: null },
+      show_date_cast_eligibility: { data: [], error: null },
+    });
+    renderSheet();
+    await screen.findByText("Main Hall");
+    expect(screen.queryByRole("button", { name: /confirm .*accepted/i })).not.toBeInTheDocument();
+  });
 });

@@ -164,6 +164,15 @@ export interface DatePeek {
   confirmable: boolean;
 }
 
+/** Slot-meter segment tones (confirmed → accepted → open), the single source
+ *  the cockpit header meter and the row-peek meter both render. Clamps its own
+ *  inputs so callers may pass raw counts. */
+export function slotMeterTones(confirmed: number, accepted: number, total: number): DatePeekSeg["tone"][] {
+  const c = Math.min(total, Math.max(0, confirmed));
+  const a = Math.min(total - c, Math.max(0, accepted));
+  return Array.from({ length: total }, (_, i) => (i < c ? "confirmed" : i < c + a ? "accepted" : "open"));
+}
+
 const plural = (n: number, one: string, many: string) => `${n} ${n === 1 ? one : many}`;
 
 /** Compact summary for the bookings-row peek. Null when the date has no slot config. */
@@ -181,8 +190,7 @@ export function computeDatePeek(args: {
   const openMain = Math.max(0, slots.main_cast - c.confirmedMain - c.acceptedMain);
   const openUs = Math.max(0, slots.understudies - c.confirmedUs - c.acceptedUs);
 
-  const meter: DatePeekSeg[] = Array.from({ length: total }, (_, i) =>
-    ({ tone: i < confirmed ? "confirmed" : i < confirmed + accepted ? "accepted" : "open" }));
+  const meter: DatePeekSeg[] = slotMeterTones(confirmed, accepted, total).map((tone) => ({ tone }));
 
   let tone: DatePeek["tone"]; let eyebrowSuffix: DatePeek["eyebrowSuffix"];
   if (confirmed >= total) { tone = "filled"; eyebrowSuffix = "filled"; }

@@ -204,6 +204,20 @@ export async function bulkConfirmSoftBooked(
   return { affected: (data ?? []).length };
 }
 
+/** The ids of a date's still-soft_booked bookings — the row-peek confirm target. */
+export async function fetchSoftBookedIdsForDate(
+  client: SupabaseClient<Database>,
+  showDateId: string,
+): Promise<string[]> {
+  const { data, error } = await client
+    .from("bookings")
+    .select("id")
+    .eq("show_date_id", showDateId)
+    .eq("status", "soft_booked");
+  if (error) throw error;
+  return ((data ?? []) as { id: string }[]).map((r) => r.id);
+}
+
 /**
  * Decline (cancel) all soft_booked bookings among `ids` (producer bulk-decline).
  * Only rows still in `soft_booked` are affected. Returns the number of rows changed.

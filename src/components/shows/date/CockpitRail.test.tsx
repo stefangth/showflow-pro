@@ -70,6 +70,13 @@ describe("CockpitRail", () => {
     expect(onEditSetup).toHaveBeenCalledOnce();
   });
 
+  it("renders up-next pills (digest / escalate) when provided", () => {
+    render(<CockpitRail {...base} upNext={[{ tone: "amber", text: "3 offers expire Fri" }, { tone: "neutral", text: "Auto-escalate: on" }]} />);
+    expect(screen.getByText(/up next/i)).toBeInTheDocument();
+    expect(screen.getByText("3 offers expire Fri")).toBeInTheDocument();
+    expect(screen.getByText("Auto-escalate: on")).toBeInTheDocument();
+  });
+
   it("renders read-only notes when provided", () => {
     render(<CockpitRail {...base} notes="Press night — reduced orchestra" />);
     expect(screen.getByText("Press night — reduced orchestra")).toBeInTheDocument();

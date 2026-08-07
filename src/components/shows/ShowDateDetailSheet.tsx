@@ -38,7 +38,7 @@ import { ROUTES, BOOKING_ENGINE_DEFAULTS } from '@/config/app.config';
 import { formatDateDMY, parseDateOnly } from '@/lib/dates';
 import {
   openOfferTier, fetchOfferTiers, fetchOpenedTiers, closeOfferTier,
-  dryRunOfferTier, createBooking, updateBookingStatusGuarded,
+  dryRunOfferTier, createBooking, updateBookingStatusGuarded, bulkConfirmSoftBooked,
 } from '@/data/bookings';
 import {
   fetchRequiredSkillIds, fetchSkillEligibleArtistIds, addShowDateRequiredSkill, removeShowDateRequiredSkill,
@@ -491,6 +491,16 @@ export function ShowDateDetailSheet({ showDateId, open, onOpenChange }: Props) {
     onError: (err: Error) => toast.error(err.message),
   });
 
+  // Header "Confirm N accepted": one guarded bulk update, not N per-row PATCHes.
+  const confirmAccepted = useMutation({
+    mutationFn: (ids: string[]) => bulkConfirmSoftBooked(supabase, { ids, now: new Date() }),
+    onSuccess: ({ affected }) => {
+      queryClient.invalidateQueries({ queryKey: ['bookings'] });
+      toast.success(affected ? `Confirmed ${affected}` : 'Nothing to confirm, it moved on');
+    },
+    onError: (err: Error) => toast.error(err.message),
+  });
+
   const openOffers = useMutation({
     mutationFn: ({ tier, skillFilterIds }: { tier: number; skillFilterIds: string[] }) =>
       openOfferTier(supabase, { showDateId: showDateId!, tier, skillFilterIds }),
@@ -527,13 +537,17 @@ export function ShowDateDetailSheet({ showDateId, open, onOpenChange }: Props) {
   const highestOpenTier = (openedQ.data ?? [])
     .filter((t) => !t.closedAt)
     .reduce<number | null>((m, t) => Math.max(m ?? 0, t.tier), null);
+  // Highest tier ever opened (open or since-closed) — the basis for "open next
+  // tier", so the escalation CTA survives closing a tier without filling it.
+  const highestOpenedTier = (openedQ.data ?? [])
+    .reduce<number | null>((m, t) => Math.max(m ?? 0, t.tier), null);
 
   // Primary booking-workflow action for the header (hire-order terminal is the
   // separate showGenerateHireOrderCta button below).
   const workflowCta = computeHeaderCta({
     artistAcceptance: flow.artist_acceptance,
     acceptedCount, confirmedCount, totalSlots,
-    openTier: highestOpenTier, maxTier: tiersQ.data?.priorities.length ?? 3,
+    openTier: highestOpenedTier, maxTier: tiersQ.data?.priorities.length ?? 3,
   });
   const ctaAllowed =
     workflowCta.kind === 'confirm' ? canConfirmBookings :
@@ -542,13 +556,13 @@ export function ShowDateDetailSheet({ showDateId, open, onOpenChange }: Props) {
     workflowCta.kind === 'reviewOffers' ? canManage : false;
   const onWorkflowCta = () => {
     switch (workflowCta.kind) {
-      case 'confirm':
-        bookings
-          .filter((b) => b.status === 'soft_booked')
-          .forEach((b) => updateBookingStatus.mutate({ bookingId: b.id, status: 'confirmed' }));
+      case 'confirm': {
+        const ids = bookings.filter((b) => b.status === 'soft_booked').map((b) => b.id);
+        if (ids.length) confirmAccepted.mutate(ids);
         break;
+      }
       case 'openTier':
-        openOffers.mutate({ tier: (highestOpenTier ?? 0) + 1, skillFilterIds: [] });
+        openOffers.mutate({ tier: (highestOpenedTier ?? 0) + 1, skillFilterIds: [] });
         break;
       case 'book':
       case 'reviewOffers':
@@ -574,7 +588,7 @@ export function ShowDateDetailSheet({ showDateId, open, onOpenChange }: Props) {
     hasOpenTier: (openedQ.data ?? []).some((t) => !t.closedAt),
   });
   let statusText = '';
-  let statusTone: 'green' | 'amber' | 'muted' = 'muted';
+  let statusTone: 'green' | 'amber' | 'accent' | 'muted' = 'muted';
   if (showDate?.status === 'cancelled') {
     statusText = 'Cancelled';
     statusTone = 'muted';
@@ -586,7 +600,8 @@ export function ShowDateDetailSheet({ showDateId, open, onOpenChange }: Props) {
     statusTone = 'amber';
   } else if (upNextItems.length > 0) {
     statusText = upNextItems[0].text;
-    statusTone = upNextItems[0].tone === 'amber' ? 'amber' : 'muted';
+    statusTone = upNextItems[0].tone === 'amber' ? 'amber'
+      : upNextItems[0].tone === 'violet' ? 'accent' : 'muted';
   } else if (acceptedCount > 0) {
     statusText = `${acceptedCount} accepted, waiting on confirm`;
     statusTone = 'amber';
@@ -661,7 +676,7 @@ export function ShowDateDetailSheet({ showDateId, open, onOpenChange }: Props) {
                 // capability, so a module-off org can't confirm a legacy soft_booked
                 // row through the header (the rest of the booking surface is gated).
                 workflowCta={bookingModuleAllowed && ctaAllowed && workflowCta.kind !== 'none' ? workflowCta : null}
-                workflowCtaDisabled={updateBookingStatus.isPending || openOffers.isPending}
+                workflowCtaDisabled={updateBookingStatus.isPending || openOffers.isPending || confirmAccepted.isPending}
                 onWorkflowCta={onWorkflowCta}
                 showGenerateHireOrder={!!showGenerateHireOrderCta}
                 generateDisabled={hireOrderAction.isPending || !canGenerateHireOrders}
@@ -713,6 +728,7 @@ export function ShowDateDetailSheet({ showDateId, open, onOpenChange }: Props) {
                 castChips={castChips}
                 skillChips={skillChips}
                 activity={bookingModuleAllowed ? activity : []}
+                upNext={bookingModuleAllowed ? upNextItems : []}
                 chatUnread={0}
                 chatPreview={null}
                 onOpenChat={() => setActiveTab('chat')}

@@ -3,7 +3,7 @@ import { useSearchParams } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
-import { bulkConfirmSoftBooked, fetchBookingCountsByDate } from '@/data/bookings';
+import { bulkConfirmSoftBooked, fetchBookingCountsByDate, fetchSoftBookedIdsForDate } from '@/data/bookings';
 import { fetchShowDatesList } from '@/data/showDates';
 import { useAuth } from '@/features/auth/AuthContext';
 import { Card, CardContent } from '@/components/ui/card';
@@ -260,22 +260,18 @@ function ProducerShowsBookings() {
     : undefined;
 
   /** The peek's Confirm action: lazily fetch the date's soft_booked ids, bulk-confirm
-   *  them, then invalidate the whole bookings domain (never just the counts sub-key). */
+   *  them, then invalidate the whole bookings domain (never just the counts sub-key).
+   *  Always gives feedback and refreshes, even when the cached count was stale and no
+   *  rows remain to confirm. */
   async function confirmPeek(showDateId: string) {
     setConfirmingPeek(true);
     try {
-      const { data, error } = await supabase
-        .from('bookings')
-        .select('id')
-        .eq('show_date_id', showDateId)
-        .eq('status', 'soft_booked');
-      if (error) throw error;
-      const ids = ((data ?? []) as { id: string }[]).map((r) => r.id);
-      if (ids.length) {
-        const { affected } = await bulkConfirmSoftBooked(supabase, { ids, now: new Date() });
-        toast.success(affected ? `Confirmed ${affected}` : 'Nothing to confirm, it moved on');
-        queryClient.invalidateQueries({ queryKey: ['bookings'] });
-      }
+      const ids = await fetchSoftBookedIdsForDate(supabase, showDateId);
+      const { affected } = ids.length
+        ? await bulkConfirmSoftBooked(supabase, { ids, now: new Date() })
+        : { affected: 0 };
+      toast.success(affected ? `Confirmed ${affected}` : 'Nothing to confirm, it moved on');
+      queryClient.invalidateQueries({ queryKey: ['bookings'] });
     } catch (e) {
       toast.error((e as Error).message);
     } finally {
@@ -685,7 +681,10 @@ function ProducerShowsBookings() {
       </div>
 
       {peekedShowDate && (
-        <Popover open onOpenChange={o => { if (!o) setPeekId(null); }}>
+        // key=peekId remounts the popover when the active row changes, forcing
+        // Radix to re-measure against the new anchor instead of keeping the prior
+        // row's position when the pointer moves between rows without closing.
+        <Popover key={peekId} open onOpenChange={o => { if (!o) setPeekId(null); }}>
           <PopoverAnchor virtualRef={peekAnchorRef} />
           <PopoverContent
             side="right"

@@ -2,6 +2,8 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Settings2 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { slotMeterTones } from "@/lib/bookingCockpit";
+import { SlotMeter } from "./SlotMeter";
 
 export type CockpitTab = "cast" | "offers" | "order" | "chat" | "setup";
 export interface CockpitTabDef {
@@ -19,7 +21,7 @@ export interface CockpitHeaderProps {
   confirmedCount: number;
   acceptedCount: number;
   statusText: string;
-  statusTone: "green" | "amber" | "muted";
+  statusTone: "green" | "amber" | "accent" | "muted";
   /** Booking-engine status (slot meter + status line) is gated by booking_flow.
    *  Defaults to shown; the sheet passes the module gate through here. */
   showEngineStatus?: boolean;
@@ -38,15 +40,10 @@ export interface CockpitHeaderProps {
   devBadge?: boolean; // isEditorMode && isRealAdmin
 }
 
-const SEG_BG: Record<"confirmed" | "accepted" | "open", string> = {
-  confirmed: "bg-[var(--green-500)]",
-  accepted: "bg-accent-400",
-  open: "bg-[var(--surface-3)]",
-};
-
 const STATUS_DOT: Record<CockpitHeaderProps["statusTone"], string> = {
   green: "bg-[var(--green-600)]",
   amber: "bg-[var(--amber-600)]",
+  accent: "bg-accent-500",
   muted: "bg-[var(--text-muted)]",
 };
 
@@ -62,10 +59,6 @@ export function CockpitHeader({
   flowLabel, onEditFlow, tabs, activeTab, onTab, devBadge,
 }: CockpitHeaderProps) {
   const total = slots ? slots.main_cast + slots.understudies : 0;
-  const confirmed = Math.min(total, confirmedCount);
-  const accepted = Math.min(total - confirmed, acceptedCount);
-  const segTone = (i: number): "confirmed" | "accepted" | "open" =>
-    i < confirmed ? "confirmed" : i < confirmed + accepted ? "accepted" : "open";
 
   return (
     <div className="px-6 py-3.5">
@@ -103,11 +96,12 @@ export function CockpitHeader({
       {/* Slot meter + status line: pure booking-engine status, gated by booking_flow. */}
       {showEngineStatus && slots && (
         <div className="mt-3 flex items-center gap-4">
-          <div className="flex flex-1 gap-[3px]" data-testid="cockpit-slot-meter" aria-label="Slot fill">
-            {Array.from({ length: total }, (_, i) => (
-              <span key={i} className={cn("h-1.5 flex-1 rounded-[2px]", SEG_BG[segTone(i)])} />
-            ))}
-          </div>
+          <SlotMeter
+            tones={slotMeterTones(confirmedCount, acceptedCount, total)}
+            className="flex-1"
+            testId="cockpit-slot-meter"
+            ariaLabel="Slot fill"
+          />
           {statusText && (
             <span className="flex shrink-0 items-center gap-1.5 text-xs text-muted-foreground">
               <span className={cn("h-2 w-2 rounded-full", STATUS_DOT[statusTone])} />
