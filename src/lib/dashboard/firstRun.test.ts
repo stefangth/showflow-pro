@@ -1,7 +1,8 @@
 // src/lib/dashboard/firstRun.test.ts
 import { it, expect } from "vitest";
-import { composeOnboarding, welcomeCopy, railHeaderCopy, collapsedCopy } from "./firstRun";
-import type { ComposeInput, DashboardRole, ModuleOnboardingDef, ModuleStatusLite } from "./types";
+import { composeArtist, composeOnboarding, welcomeCopy, railHeaderCopy, collapsedCopy } from "./firstRun";
+import { ARTIST_ONBOARDING } from "./moduleOnboarding";
+import type { ComposeInput, DashboardRole, ModuleOnboardingDef, ModuleStatusLite, OnboardingCtx } from "./types";
 
 const bookingDef: ModuleOnboardingDef<"flow" | "slots"> = {
   key: "booking_flow",
@@ -63,6 +64,33 @@ it("complete is true when every enabled module status is complete", () => {
 it("offFooters come from disabled licensable modules", () => {
   const input: ComposeInput = { enabled: new Set(["booking_flow"]), role: "admin", moduleStatuses: { booking_flow: bookingStatus }, ctx };
   expect(composeOnboarding(input, registry).offFooters).toEqual(["Hire orders is off. Ask your account manager to switch it on."]);
+});
+
+const artistStatus: ModuleStatusLite = {
+  steps: [
+    { key: "accountLinked", done: true, block: null },
+    { key: "blockDates", done: false, block: null },
+    { key: "notifications", done: false, block: null },
+  ],
+  complete: false,
+};
+
+it("composeArtist carries ARTIST_ONBOARDING metadata over booking_flow only", () => {
+  const r = composeArtist(artistStatus, ARTIST_ONBOARDING, ctx);
+  expect(r.steps).toHaveLength(3);
+  expect(r.steps.map((s) => s.key)).toEqual(["accountLinked", "blockDates", "notifications"]);
+  expect(r.steps.map((s) => s.title)).toEqual(["Account linked", "Block what you cannot play", "Notifications"]);
+  expect(r.steps.every((s) => s.moduleKey === "booking_flow")).toBe(true);
+  expect(r.steps.map((s) => s.done)).toEqual([true, false, false]);
+  expect(r.complete).toBe(false); // mirrors the status
+  expect(r.offFooters).toEqual([]);
+});
+
+it("composeArtist rules reflect ctx.artistAcceptance", () => {
+  const digest = composeArtist(artistStatus, ARTIST_ONBOARDING, { ...ctx, artistAcceptance: true } as OnboardingCtx);
+  expect(digest.rules.some((rule) => rule.title === "Offers arrive in a daily digest")).toBe(true);
+  const direct = composeArtist(artistStatus, ARTIST_ONBOARDING, { ...ctx, artistAcceptance: false } as OnboardingCtx);
+  expect(direct.rules.some((rule) => rule.title === "You are booked directly")).toBe(true);
 });
 
 it("welcomeCopy interpolates org name and progress", () => {

@@ -1,8 +1,9 @@
 // src/lib/dashboard/firstRun.ts
 import { FEATURE_KEYS, type FeatureKey } from "@/lib/entitlements";
 import type {
-  ComposeInput, ComposeResult, ComposedStep, DashboardRole,
-  ModuleOnboardingDef, OnboardingCtx, SamplePreviewData, WelcomeCopy,
+  ComposeInput, ComposeResult, ComposedStep, DashboardRole, InheritedRule,
+  ModuleOnboardingDef, ModuleStatusLite, OnboardingCtx, OnboardingStepMeta,
+  SamplePreviewData, WelcomeCopy,
 } from "./types";
 
 export function composeOnboarding(
@@ -30,6 +31,27 @@ export function composeOnboarding(
 
   const offFooters = FEATURE_KEYS.filter((k) => !enabled.has(k)).map((k) => registry[k].offFooter);
   return { steps, complete, rules, offFooters };
+}
+
+/**
+ * Artist composition path. Artists have no org-engine setup, so their `booking_flow`
+ * slice never goes through `MODULE_ONBOARDING` (whose booking steps are keyed by the
+ * engine keys). Their step metadata + rules come from `ARTIST_ONBOARDING`, and only
+ * `booking_flow` ever contributes — so a hire-orders entitlement can never leak the
+ * admin letterhead/terms/countersign steps into an artist's rail.
+ */
+export function composeArtist(
+  status: ModuleStatusLite,
+  def: { steps: Record<string, OnboardingStepMeta>; rules: (ctx: OnboardingCtx) => InheritedRule[] },
+  ctx: OnboardingCtx,
+): ComposeResult {
+  const steps: ComposedStep[] = [];
+  for (const s of status.steps) {
+    const meta = def.steps[s.key];
+    if (!meta) continue;
+    steps.push({ ...meta, key: s.key, moduleKey: "booking_flow", done: s.done, block: s.block });
+  }
+  return { steps, complete: status.complete, rules: def.rules(ctx), offFooters: [] };
 }
 
 // ---- Copy (ported from the prototype's renderVals; org name + counts interpolated).

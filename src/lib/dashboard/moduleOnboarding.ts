@@ -3,7 +3,12 @@ import { ROUTES } from "@/config/app.config";
 import type { FeatureKey } from "@/lib/entitlements";
 import { STEP_TITLES, type BookingSetupStepKey } from "@/lib/bookings/setupStatus";
 import type { SetupStepKey } from "@/lib/hireOrders/setupStatus";
-import type { ModuleOnboardingDef } from "./types";
+import type {
+  InheritedRule,
+  ModuleOnboardingDef,
+  OnboardingCtx,
+  OnboardingStepMeta,
+} from "./types";
 
 export const bookingOnboarding: ModuleOnboardingDef<BookingSetupStepKey> = {
   key: "booking_flow",
@@ -40,4 +45,26 @@ export const hireOrderOnboarding: ModuleOnboardingDef<SetupStepKey> = {
 export const MODULE_ONBOARDING: Record<FeatureKey, ModuleOnboardingDef<string>> = {
   booking_flow: bookingOnboarding,
   hire_orders: hireOrderOnboarding,
+};
+
+// ---- Artist personal readiness (B.4). Artists have no org-engine setup, so they
+// do NOT go through MODULE_ONBOARDING (whose booking_flow steps are keyed by the
+// engine keys). They get their own step metadata and rules, booking_flow only.
+export const ARTIST_STEP_KEYS = ["accountLinked", "blockDates", "notifications"] as const;
+export type ArtistStepKey = typeof ARTIST_STEP_KEYS[number];
+
+export const ARTIST_ONBOARDING: {
+  steps: Record<ArtistStepKey, OnboardingStepMeta>;
+  rules: (ctx: OnboardingCtx) => InheritedRule[];
+} = {
+  steps: {
+    accountLinked: { title: "Account linked", todoHint: "Your profile is connected to the roster.", doneHint: "You are linked to the roster.", ctaLabel: "View profile", ctaRoute: ROUTES.PROFILE },
+    blockDates: { title: "Block what you cannot play", todoHint: "Offers skip blocked dates before they are sent, so you only get asked about dates that work.", doneHint: "Your calendar is up to date.", ctaLabel: "Open availability", ctaRoute: ROUTES.AVAILABILITY },
+    notifications: { title: "Notifications", todoHint: "Email is on. Add a phone number for same-day offers.", doneHint: "You will hear about new offers.", ctaLabel: "Add number", ctaRoute: ROUTES.PROFILE },
+  },
+  rules: (ctx) => ([
+    { title: "Eligibility comes from your cast", hint: "Only your cast's dates can ever be offered to you." },
+    { title: ctx.artistAcceptance ? "Offers arrive in a daily digest" : "You are booked directly", hint: ctx.artistAcceptance ? "One digest a day, not a mail per date." : "There is no offer step; you are added straight to the date." },
+    { title: "You have a response window", hint: "After it passes the offer expires and goes to the next tier." },
+  ]),
 };
