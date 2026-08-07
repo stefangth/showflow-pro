@@ -1,6 +1,6 @@
 import * as React from 'npm:react@18.3.1'
 import { renderAsync } from 'npm:@react-email/components@0.0.22'
-import { resolveTemplatePresentation, TEMPLATES, type TemplateData } from '../_shared/transactional-email-templates/registry.ts'
+import { legacyTemplateSubjectOverride, resolveTemplatePresentation, TEMPLATES, type TemplateData } from '../_shared/transactional-email-templates/registry.ts'
 import { legacyEmailOverridesToCopy, type EmailCopyOverride } from '../_shared/transactional-email-templates/_shell/emailCopy.ts'
 import type { EmailThemeOverride } from '../_shared/transactional-email-templates/_shell/emailTheme.ts'
 import { preflight, json } from "../_shared/http.ts";
@@ -258,6 +258,10 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
     const copyOverride = copySetting ?? legacyEmailOverridesToCopy(legacyOverrides)
     const presentation = resolveTemplatePresentation(templateName, templateData, {
       copyOverride,
+      copyIsExplicit: copySetting !== null,
+      legacySubjectOverride: copySetting === null
+        ? legacyTemplateSubjectOverride(legacyOverrides, templateName)
+        : undefined,
       themeOverride: themeSetting,
     })
     if (!presentation) throw new Error(`Template '${templateName}' not found during presentation resolution`)

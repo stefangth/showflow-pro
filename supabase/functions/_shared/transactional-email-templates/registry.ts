@@ -5,6 +5,7 @@ import {
   resolveEmailCopy,
   type EmailCopy,
   type EmailCopyOverride,
+  type EmailTemplateKey,
 } from './_shell/emailCopy.ts'
 import {
   resolveEmailTheme,
@@ -62,6 +63,10 @@ export interface TemplatePresentation {
 
 export interface TemplatePresentationOptions {
   copyOverride?: EmailCopyOverride | string | null
+  /** Whether copyOverride came from the flattened setting rather than legacy mapping. */
+  copyIsExplicit?: boolean
+  /** One-release compatibility input for legacy email_template_overrides.subject. */
+  legacySubjectOverride?: unknown
   themeOverride?: EmailThemeOverride | string | null
   highlightRole?: unknown
 }
@@ -76,15 +81,74 @@ function isEmailRoleKey(value: unknown): value is EmailRoleKey {
     value === 'button' || value === 'footer'
 }
 
-function subjectOverride(templateName: string, copyOverride: unknown, data: TemplateData): string | undefined {
-  if (!isRecord(copyOverride)) return undefined
-  const value = copyOverride[`${templateName}.subject`]
-  if (typeof value !== 'string' || value.trim() === '') return undefined
-  const tokens: Record<string, string | number> = {}
-  for (const [key, candidate] of Object.entries(data)) {
-    if (typeof candidate === 'string' || typeof candidate === 'number') tokens[key] = candidate
-  }
-  return applyEmailTokens(value.trim(), tokens)
+function offerCount(data: TemplateData): number {
+  return Array.isArray(data.offers) ? data.offers.length : 0
+}
+
+function hasConfirmationUpdates(data: TemplateData): boolean {
+  return (Array.isArray(data.scheduleChanges) && data.scheduleChanges.length > 0) ||
+    (Array.isArray(data.cancellations) && data.cancellations.length > 0)
+}
+
+type SubjectResolver = (data: TemplateData, copy: EmailCopy) => string
+
+const SUBJECT_RESOLVERS = {
+  'offer-immediate': (data, copy) => applyEmailTokens(copy['offer-immediate.subject'], {
+    referenceLabel: String(data.referenceLabel),
+    date: String(data.date),
+  }),
+  'artist-offer-digest': (data, copy) => {
+    const count = offerCount(data)
+    const pendingOffer = count === 1
+      ? copy['artist-offer-digest.pendingOfferSingular']
+      : copy['artist-offer-digest.pendingOfferPlural']
+    return applyEmailTokens(copy['artist-offer-digest.subject'], { count, pendingOffer })
+  },
+  'offer-expiry-reminder': (data, copy) => {
+    const count = offerCount(data)
+    return count === 1
+      ? copy['offer-expiry-reminder.subjectSingular']
+      : applyEmailTokens(copy['offer-expiry-reminder.subjectPlural'], { count })
+  },
+  'artist-confirmation-digest': (data, copy) => hasConfirmationUpdates(data)
+    ? copy['artist-confirmation-digest.subjectUpdates']
+    : copy['artist-confirmation-digest.subjectConfirmed'],
+  'cast-escalation-requested': (data, copy) => applyEmailTokens(copy['cast-escalation-requested.subject'], {
+    tier: String(data.tier ?? '?'),
+    program: String(data.program ?? 'show'),
+    date: String(data.date ?? '?'),
+  }),
+  'hire-order-issued': (data, copy) => applyEmailTokens(copy['hire-order-issued.subject'], {
+    dateLabel: String(data.date_label || 'your date'),
+    venue: String(data.venue || 'the venue'),
+  }),
+  'hire-order-countersigned': (data, copy) => applyEmailTokens(copy['hire-order-countersigned.subject'], {
+    dateLabel: String(data.date_label || 'your date'),
+  }),
+  'org-invitation': (data, copy) => applyEmailTokens(copy['org-invitation.subject'], {
+    orgName: String(data.orgName || 'an organization'),
+  }),
+  'account-email-changed': (_data, copy) => copy['account-email-changed.subject'],
+  'cron-health-alert': (data, copy) => applyEmailTokens(copy['cron-health-alert.subject'], {
+    jobName: String(data.job_name ?? 'a job'),
+    statusCode: String(data.status_code ?? '?'),
+  }),
+} satisfies Record<EmailTemplateKey, SubjectResolver>
+
+/** Extract the historical generic subject field without extending its lifetime. */
+export function legacyTemplateSubjectOverride(overrides: unknown, templateName: string): unknown {
+  if (!isRecord(overrides)) return undefined
+  const templateOverride = overrides[templateName]
+  return isRecord(templateOverride) ? templateOverride.subject : undefined
+}
+
+function resolvedSubject(templateName: string, data: TemplateData, copy: EmailCopy, fallback: string): string {
+  const resolver = SUBJECT_RESOLVERS[templateName as EmailTemplateKey]
+  return resolver ? resolver(data, copy) : fallback
+}
+
+function legacySubject(value: unknown): string | undefined {
+  return typeof value === 'string' && value.trim() !== '' ? value.trim() : undefined
 }
 
 /**
@@ -106,8 +170,15 @@ export function resolveTemplatePresentation(
     ? template.subject(data)
     : template.subject
 
+  // A supplied flattened copy map is always the authoritative new model, including
+  // an intentional empty map. Generic legacy subjects only apply when the caller
+  // explicitly selected the one-release compatibility path.
+  const copyIsExplicit = options.copyIsExplicit ??
+    (options.copyOverride !== undefined && options.copyOverride !== null)
+  const subject = resolvedSubject(templateName, data, copy, defaultSubject)
+
   return {
-    subject: subjectOverride(templateName, options.copyOverride, data) ?? defaultSubject,
+    subject: copyIsExplicit ? subject : legacySubject(options.legacySubjectOverride) ?? subject,
     props: {
       ...data,
       _emailCopy: copy,

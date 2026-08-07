@@ -899,6 +899,41 @@ Deno.test("send-transactional-email: maps legacy copy only while new copy is abs
   assertEquals((await sendWithCopy({})).subject, "You're invited to join Studio on ShowFlow");
 });
 
+Deno.test("send-transactional-email: retains legacy generic subjects for conditional templates", async () => {
+  const ORG = "00000000-0000-0000-0000-0000000000b3";
+  const sendLegacySubject = async (templateName: string, templateData: Record<string, unknown>, subject: string) => {
+    const { fetchImpl, fetchCalls } = recordingFetch();
+    const { deps } = makeFakeDeps({
+      envVars: ENV,
+      tables: {
+        ...happyPathTables(),
+        app_settings: [
+          { when: { key: "email_copy" }, data: [], error: null },
+          { when: { key: "email_theme" }, data: [], error: null },
+          { when: { key: "email_template_overrides" }, data: [{ org_id: ORG, value: { [templateName]: { subject } } }], error: null },
+        ],
+      },
+      fetchImpl,
+    });
+    const response = await handle(authedReq({
+      body: { templateName, recipientEmail: "artist@example.com", org_id: ORG, templateData },
+    }), deps);
+    assertEquals(response.status, 200);
+    const resend = fetchCalls.find((call) => call.url.includes("api.resend.com"));
+    assertExists(resend);
+    return JSON.parse(String((resend!.init as RequestInit).body)) as { subject: string };
+  };
+
+  assertEquals(
+    (await sendLegacySubject("offer-expiry-reminder", { offers: [{}] }, "Legacy expiry subject")).subject,
+    "Legacy expiry subject",
+  );
+  assertEquals(
+    (await sendLegacySubject("artist-confirmation-digest", { bookings: [{}] }, "Legacy confirmation subject")).subject,
+    "Legacy confirmation subject",
+  );
+});
+
 Deno.test("characterization: used token + not suppressed → returns { success: false, reason: 'email_suppressed' }", async () => {
   // characterization: when existingToken.used_at is set and the email is NOT suppressed,
   // the handler's safety fallback (line ~131-133 in index.ts) returns email_suppressed anyway.

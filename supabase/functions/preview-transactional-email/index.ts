@@ -1,6 +1,6 @@
 import * as React from 'npm:react@18.3.1'
 import { renderAsync } from 'npm:@react-email/components@0.0.22'
-import { resolveTemplatePresentation, TEMPLATES, type TemplateData } from '../_shared/transactional-email-templates/registry.ts'
+import { legacyTemplateSubjectOverride, resolveTemplatePresentation, TEMPLATES, type TemplateData } from '../_shared/transactional-email-templates/registry.ts'
 import { legacyEmailOverridesToCopy, type EmailCopyOverride } from '../_shared/transactional-email-templates/_shell/emailCopy.ts'
 import type { EmailThemeOverride } from '../_shared/transactional-email-templates/_shell/emailTheme.ts'
 import { preflight, json } from "../_shared/http.ts";
@@ -20,6 +20,7 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
   let templateName: string | undefined
   let overrides: TemplateData = {}
   let copyOverride: EmailCopyOverride = {}
+  let hasCopyOverride = false
   let themeOverride: EmailThemeOverride = {}
   let highlightRole: unknown
   try {
@@ -31,6 +32,7 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
       }
       if (body.copyOverride && typeof body.copyOverride === 'object') {
         copyOverride = body.copyOverride as EmailCopyOverride
+        hasCopyOverride = true
       }
       if (body.themeOverride && typeof body.themeOverride === 'object') {
         themeOverride = body.themeOverride as EmailThemeOverride
@@ -83,7 +85,11 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
       // making the documented flattened copyOverride win on any collision.
       const legacyCopy = legacyEmailOverridesToCopy({ [name]: overrides })
       const presentation = resolveTemplatePresentation(name, entry.previewData, {
-        copyOverride: { ...legacyCopy, ...copyOverride },
+        copyOverride: hasCopyOverride ? copyOverride : legacyCopy,
+        copyIsExplicit: hasCopyOverride,
+        legacySubjectOverride: hasCopyOverride
+          ? undefined
+          : legacyTemplateSubjectOverride({ [name]: overrides }, name),
         themeOverride,
         highlightRole,
       })

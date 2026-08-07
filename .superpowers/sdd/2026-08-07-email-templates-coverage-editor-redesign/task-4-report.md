@@ -66,3 +66,90 @@ It is blocked before checking this task's modules by `133` pre-existing Deno 2.1
 ## Concerns
 
 No task-specific functional concerns. The two whole-suite hire-order PDF golden failures and the checked-Deno compatibility errors are unrelated baseline/environment concerns noted above.
+
+## Review fix round 1: complete subject resolution
+
+### RED
+
+Before changing production code, added real production-registry coverage in
+`registry.presentation.test.ts` and ran:
+
+```text
+npx --yes deno@2.1.14 test --no-lock --no-check --allow-all --node-modules-dir=none \
+  supabase/functions/_shared/transactional-email-templates/registry.presentation.test.ts
+
+FAILED | 0 passed | 3 failed
+```
+
+Concrete failures proved all reviewed gaps: expiry singular returned the default
+instead of custom copy; legacy expiry returned the default instead of its generic
+legacy subject; and digest returned literal `{{count}} {{pendingOffer}}` instead
+of derived values. The three tests also cover expiry plural, both confirmation
+branches, legacy confirmation, hire-order issued/countersigned snake_case data,
+and cron snake_case data.
+
+### GREEN
+
+- A typed `SUBJECT_RESOLVERS` map in the sole registry presentation resolver now
+  derives each template's subject from complete resolved `EmailCopy` and a
+  template-specific token context.
+- Send and preview pass a generic legacy subject only through an explicit
+  compatibility input. A flattened `copyOverride`/stored `email_copy` (including
+  an intentional `{}`) wins; legacy subjects remain highest priority only when
+  the new setting is absent.
+- `send-transactional-email` DI coverage additionally proves both formerly
+  affected conditional templates retain legacy generic subjects in the real
+  service-role pipeline.
+- Root-cause verification found an existing default mismatch: confirmation copy
+  said `on ShowFlow`, while the established subject callback and preview test
+  said `— ShowFlow`. The editable source default was aligned to the established
+  subject behavior and regenerated with `npm run sync:mirrors`.
+
+Focused verification after the fix:
+
+```text
+registry presentation: 3 passed
+preview-transactional-email DI: 38 passed
+send-transactional-email DI: 36 passed
+ok | 77 passed | 0 failed
+
+npx vitest run src/data/emailTemplates.test.ts
+4 passed
+
+npx tsc --noEmit
+exit 0
+npm run lint
+exit 0
+npm run sync:mirrors:check
+All mirrors in sync.
+git diff --check 961759381c769ddf361177b541581f279e35ee90
+exit 0
+```
+
+The new registry module also passed explicit Deno checking and testing with no
+`--no-check`:
+
+```text
+npx --yes deno@2.1.14 check --no-lock --node-modules-dir=none \
+  supabase/functions/_shared/transactional-email-templates/registry.ts
+npx --yes deno@2.1.14 test --no-lock --allow-all --node-modules-dir=none \
+  supabase/functions/_shared/transactional-email-templates/registry.presentation.test.ts
+
+ok | 3 passed | 0 failed
+```
+
+The explicit no-`--no-check` run across send and preview still reaches the
+unrelated existing hire-order PDF dependency graph first and reports the same
+133 Deno 2.1.14 errors (`fontInflate.ts` generic `Uint8Array` and `render.tsx`
+React UMD-global JSX), not Task 4 modules.
+
+### Fix-round self-review and concerns
+
+- Subject construction is not duplicated in either handler; both use the one
+  typed registry path.
+- Service-role authorization, fail-closed suppression/preferences and logging,
+  attachment validation, idempotency, and rendering flow were untouched; all
+  36 send DI tests passed.
+- Preview remains admin/producer-only; all 38 preview DI tests passed.
+- No task-specific functional concerns remain. The handler-level Deno type-check
+  baseline remains blocked by the unrelated PDF graph described above.
