@@ -1,8 +1,26 @@
 import { describe, expect, it, vi } from "vitest";
 import { fireEvent, render, screen } from "@testing-library/react";
 import { TemplateOutline } from "./TemplateOutline";
+import { TemplateOutline as GenericTemplateOutline } from "../../templateEditor/TemplateOutline";
 
 describe("TemplateOutline", () => {
+  it("selects generic string role keys and takes modified state from its callback", () => {
+    const onSelect = vi.fn();
+    render(
+      <GenericTemplateOutline
+        document={{ key: "theme", label: "Theme" }}
+        sections={[{ title: "Copy", roles: [{ key: "intro", label: "Introduction" }] }]}
+        selected="theme"
+        onSelect={onSelect}
+        isModified={(key) => key === "intro"}
+      />,
+    );
+
+    expect(screen.getByRole("button", { name: "Introduction, modified" })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Introduction, modified" }));
+    expect(onSelect).toHaveBeenCalledWith("intro");
+  });
+
   it("lists a Document entry and every section", () => {
     render(<TemplateOutline selected="document" onSelect={vi.fn()} copyDraft={{}} themeDraft={{}} />);
     expect(screen.getByRole("button", { name: /Document/ })).toBeInTheDocument();

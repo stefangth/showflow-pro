@@ -13,7 +13,6 @@ import { ROUTES } from "@/config/app.config";
 import {
   HIRE_ORDER_COPY_DEFAULTS,
   resolveHireOrderCopy,
-  type CopyKey,
   type HireOrderCopy,
 } from "@/lib/hireOrders/pdf/pdfCopy";
 import {
@@ -30,7 +29,8 @@ import type { Json } from "@/integrations/supabase/types";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { ResizableHandle, ResizablePanel, ResizablePanelGroup } from "@/components/ui/resizable";
+import { compactCopyMap, compactThemeMap } from "../../templateEditor/overrideMap";
+import { TemplateEditorShell } from "../../templateEditor/TemplateEditorShell";
 import { TemplateOutline } from "./TemplateOutline";
 import { TemplateInspector } from "./TemplateInspector";
 import { TemplateDocumentPane } from "./TemplateDocumentPane";
@@ -43,51 +43,11 @@ const THEME_DEFAULT: HireOrderThemeOverride = {};
  *  untouched field is simply absent, never sent as an explicit override (see
  *  the theme_override note below — the same rule applies to copy). */
 function compactCopy(form: Partial<HireOrderCopy>): Partial<HireOrderCopy> {
-  const out: Partial<HireOrderCopy> = {};
-  for (const key of Object.keys(HIRE_ORDER_COPY_DEFAULTS) as CopyKey[]) {
-    const v = form[key];
-    if (typeof v === "string" && v.trim() !== "" && v !== HIRE_ORDER_COPY_DEFAULTS[key]) {
-      out[key] = v;
-    }
-  }
-  return out;
+  return compactCopyMap(form, HIRE_ORDER_COPY_DEFAULTS) as Partial<HireOrderCopy>;
 }
 
-/** True for a non-null object with at least one own key - the same tolerant
- *  check TemplateOutline / TemplateInspector use to decide "modified" (kept
- *  local here too rather than shared, since it is four lines and none of
- *  these three files import from one another). */
-function hasOwnKeys(value: unknown): boolean {
-  return typeof value === "object" && value !== null && Object.keys(value).length > 0;
-}
-
-/**
- * Unlike compactCopy above, the theme draft is not built field-by-field
- * against a flat default map, so it needs its own pass: drop a role entry
- * that carries no fields (TemplateInspector's "Document font" clears a
- * role's one-and-only field by deleting that field, not the whole role -
- * see clearRoleField - so a role can legitimately end up hollow, `{}`,
- * without ever going through the whole-role Reset) and drop `base` when it
- * is likewise empty. Compaction only removes hollow entries that resolve
- * identically to "absent" - it never touches a role or base that still
- * carries a real field, and never invents one that was not already there.
- * Same "unchanged means absent" principle compactCopy already applies to
- * copy, now applied on the theme side before it reaches storage - a hollow
- * `{}` is harmless in memory (hasOwnKeys already treats it as unmodified)
- * but stored settings are hand-editable JSON that people read.
- */
 function compactTheme(draft: HireOrderThemeOverride): HireOrderThemeOverride {
-  const next: HireOrderThemeOverride = { ...draft };
-  if (!hasOwnKeys(next.base)) delete next.base;
-  if (next.roles) {
-    const roles: NonNullable<HireOrderThemeOverride["roles"]> = {};
-    for (const [role, style] of Object.entries(next.roles)) {
-      if (hasOwnKeys(style)) roles[role] = style;
-    }
-    if (Object.keys(roles).length > 0) next.roles = roles;
-    else delete next.roles;
-  }
-  return next;
+  return compactThemeMap(draft);
 }
 
 /**
@@ -227,57 +187,38 @@ export default function TemplateEditorPage({ readOnly: readOnlyProp }: { readOnl
   }
 
   return (
-    <div className="flex h-full flex-col gap-3">
-      <div className="flex items-center justify-between gap-3">
-        <div className="flex items-center gap-2">
-          <Button asChild variant="ghost" size="sm">
-            <Link to={ROUTES.SETTINGS}><ArrowLeft className="mr-1 h-4 w-4" />Settings</Link>
-          </Button>
-          <h1 className="font-display text-lg">PDF template</h1>
-        </div>
-        <div className="flex items-center gap-2">
+    <TemplateEditorShell
+      title="PDF template"
+      breadcrumb={
+        <Button asChild variant="ghost" size="sm">
+          <Link to={ROUTES.SETTINGS}><ArrowLeft className="mr-1 h-4 w-4" />Settings</Link>
+        </Button>
+      }
+      actions={
+        <>
           <Button variant="outline" size="sm" onClick={() => exact.mutate()} disabled={exact.isPending || !orgId}>
             Open exact PDF
           </Button>
-          <Button
-            variant="outline"
-            size="sm"
-            disabled={readOnly}
-            onClick={() => { setCopyDraft({}); setThemeDraft({}); }}
-          >
+          <Button variant="outline" size="sm" disabled={readOnly} onClick={() => { setCopyDraft({}); setThemeDraft({}); }}>
             Reset all
           </Button>
           <Button size="sm" onClick={() => save.mutate()} disabled={readOnly || save.isPending || !orgId}>
             Save template
           </Button>
-        </div>
-      </div>
-
-      <ResizablePanelGroup direction="horizontal" className="flex-1 rounded-lg border">
-        <ResizablePanel defaultSize={22} minSize={16}>
-          <TemplateOutline
-            selected={selected}
-            onSelect={setSelected}
-            copyDraft={copyDraft}
-            themeDraft={themeDraft}
-          />
-        </ResizablePanel>
-        <ResizableHandle withHandle />
-        <ResizablePanel defaultSize={50} minSize={30}>
-          <TemplateDocumentPane input={renderInput} />
-        </ResizablePanel>
-        <ResizableHandle withHandle />
-        <ResizablePanel defaultSize={28} minSize={20}>
-          <TemplateInspector
-            selected={selected}
-            readOnly={readOnly}
-            copyDraft={copyDraft}
-            themeDraft={themeDraft}
-            onCopyChange={setCopyDraft}
-            onThemeChange={setThemeDraft}
-          />
-        </ResizablePanel>
-      </ResizablePanelGroup>
-    </div>
+        </>
+      }
+      outline={<TemplateOutline selected={selected} onSelect={setSelected} copyDraft={copyDraft} themeDraft={themeDraft} />}
+      preview={<TemplateDocumentPane input={renderInput} />}
+      inspector={
+        <TemplateInspector
+          selected={selected}
+          readOnly={readOnly}
+          copyDraft={copyDraft}
+          themeDraft={themeDraft}
+          onCopyChange={setCopyDraft}
+          onThemeChange={setThemeDraft}
+        />
+      }
+    />
   );
 }
