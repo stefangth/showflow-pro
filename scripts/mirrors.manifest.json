@@ -2,6 +2,18 @@
   "entries": [
     {
       "mode": "file",
+      "source": "src/lib/emailTemplates/emailTheme.ts",
+      "target": "supabase/functions/_shared/transactional-email-templates/_shell/emailTheme.ts",
+      "why": "Editable transactional-email theme registry. Browser editor and Edge EmailShell resolve the same safe defaults."
+    },
+    {
+      "mode": "file",
+      "source": "src/lib/emailTemplates/emailCopy.ts",
+      "target": "supabase/functions/_shared/transactional-email-templates/_shell/emailCopy.ts",
+      "why": "Editable transactional-email copy registry. Browser editor and edge delivery share the same default text and legacy migration helper."
+    },
+    {
+      "mode": "file",
       "source": "src/lib/hireOrders/pdf/pdfCopy.ts",
       "target": "supabase/functions/_shared/hire-order-pdf/pdfCopy.ts",
       "why": "Editable PDF copy registry. Edge renderer reads it and freezes it into issue_snapshot."

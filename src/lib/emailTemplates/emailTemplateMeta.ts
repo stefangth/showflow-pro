@@ -1,0 +1,55 @@
+// Frontend-only copy-field metadata. The email renderer consumes the mirrored
+// defaults, while the editor uses these labels, multiline choices, and token
+// hints to build its controls.
+
+import type { EmailCopyKey, EmailTemplateKey } from "./emailCopy";
+
+export interface EmailCopyFieldMeta {
+  key: EmailCopyKey;
+  label: string;
+  tokens: string[];
+  multiline?: boolean;
+}
+
+export interface EmailTemplateCopyFields {
+  templateKey: EmailTemplateKey;
+  label: string;
+  fields: EmailCopyFieldMeta[];
+}
+
+function field(key: EmailCopyKey, label: string, tokens: string[] = [], multiline = false): EmailCopyFieldMeta {
+  return { key, label, tokens, ...(multiline ? { multiline: true } : {}) };
+}
+
+export const EMAIL_TEMPLATE_COPY_FIELDS: EmailTemplateCopyFields[] = [
+  { templateKey: "offer-immediate", label: "Immediate offer", fields: [
+    field("offer-immediate.subject", "Subject", ["referenceLabel", "date"]), field("offer-immediate.heading", "Heading"), field("offer-immediate.greeting", "Greeting", ["displayName"]), field("offer-immediate.greetingAnonymous", "Anonymous greeting"), field("offer-immediate.intro", "Intro", ["referenceLabel", "where", "hours"], true), field("offer-immediate.ctaLabel", "CTA label"), field("offer-immediate.footer", "Footer", [], true), field("offer-immediate.previewText", "Preview text", ["referenceLabel"]), field("offer-immediate.showLabel", "Show label"), field("offer-immediate.dateLabel", "Date label"), field("offer-immediate.showFallback", "Show fallback"),
+  ] },
+  { templateKey: "artist-offer-digest", label: "Artist offer digest", fields: [
+    field("artist-offer-digest.subject", "Subject", ["count", "pendingOffer"]), field("artist-offer-digest.heading", "Heading", ["count", "pendingOffer"]), field("artist-offer-digest.greeting", "Greeting", ["displayName"]), field("artist-offer-digest.greetingAnonymous", "Anonymous greeting"), field("artist-offer-digest.intro", "Intro", ["count", "pendingOffer"], true), field("artist-offer-digest.ctaLabel", "CTA label"), field("artist-offer-digest.footer", "Footer", [], true), field("artist-offer-digest.previewText", "Preview text", ["count", "pendingOffer"]), field("artist-offer-digest.pendingOfferSingular", "Pending offer singular"), field("artist-offer-digest.pendingOfferPlural", "Pending offer plural"), field("artist-offer-digest.showLabel", "Show label"), field("artist-offer-digest.dateLabel", "Date label"), field("artist-offer-digest.cityLabel", "City label"), field("artist-offer-digest.expiresLabel", "Expires label"),
+  ] },
+  { templateKey: "offer-expiry-reminder", label: "Offer expiry reminder", fields: [
+    field("offer-expiry-reminder.subjectSingular", "Singular subject"), field("offer-expiry-reminder.subjectPlural", "Plural subject", ["count"]), field("offer-expiry-reminder.headingSingular", "Singular heading"), field("offer-expiry-reminder.headingPlural", "Plural heading", ["count"]), field("offer-expiry-reminder.greeting", "Greeting", ["displayName"]), field("offer-expiry-reminder.greetingAnonymous", "Anonymous greeting"), field("offer-expiry-reminder.introSingular", "Singular intro", [], true), field("offer-expiry-reminder.introPlural", "Plural intro", ["count"], true), field("offer-expiry-reminder.ctaLabelSingular", "Singular CTA label"), field("offer-expiry-reminder.ctaLabelPlural", "Plural CTA label"), field("offer-expiry-reminder.footer", "Footer", [], true), field("offer-expiry-reminder.previewSingular", "Singular preview text"), field("offer-expiry-reminder.previewPlural", "Plural preview text", ["count"]), field("offer-expiry-reminder.offerLine", "Offer list line", ["referenceLabel", "date", "expiresAt"], true),
+  ] },
+  { templateKey: "artist-confirmation-digest", label: "Artist confirmation digest", fields: [
+    field("artist-confirmation-digest.subjectUpdates", "Updates subject"), field("artist-confirmation-digest.subjectConfirmed", "Confirmation subject"), field("artist-confirmation-digest.headingUpdates", "Updates heading"), field("artist-confirmation-digest.headingConfirmed", "Confirmation heading"), field("artist-confirmation-digest.greeting", "Greeting", ["displayName"]), field("artist-confirmation-digest.greetingAnonymous", "Anonymous greeting"), field("artist-confirmation-digest.introUpdates", "Updates intro", [], true), field("artist-confirmation-digest.introConfirmed", "Confirmation intro", [], true), field("artist-confirmation-digest.footer", "Footer", [], true), field("artist-confirmation-digest.cancelledHeading", "Cancelled heading"), field("artist-confirmation-digest.scheduleChangesHeading", "Schedule changes heading"), field("artist-confirmation-digest.confirmedHeading", "Confirmed heading"), field("artist-confirmation-digest.showLabel", "Show label"), field("artist-confirmation-digest.dateLabel", "Date label"), field("artist-confirmation-digest.cityLabel", "City label"), field("artist-confirmation-digest.reasonLabel", "Reason label"), field("artist-confirmation-digest.changeLabel", "Change label"), field("artist-confirmation-digest.reasonFallback", "Reason fallback"), field("artist-confirmation-digest.emptyState", "Empty state", [], true),
+  ] },
+  { templateKey: "cast-escalation-requested", label: "Cast escalation requested", fields: [
+    field("cast-escalation-requested.subject", "Subject", ["tier", "program", "date"]), field("cast-escalation-requested.heading", "Heading"), field("cast-escalation-requested.intro", "Incident summary", ["tier", "program", "date", "accepted", "required"], true), field("cast-escalation-requested.followup", "Follow-up", [], true), field("cast-escalation-requested.ctaLabel", "CTA label"), field("cast-escalation-requested.footer", "Footer", [], true), field("cast-escalation-requested.previewText", "Preview text", ["tier", "program", "date"]), field("cast-escalation-requested.showLabel", "Show label"), field("cast-escalation-requested.dateLabel", "Date label"), field("cast-escalation-requested.tierLabel", "Tier label"), field("cast-escalation-requested.filledLabel", "Filled label"), field("cast-escalation-requested.slotsLabel", "Slots label"), field("cast-escalation-requested.showFallback", "Show fallback"), field("cast-escalation-requested.dateFallback", "Date fallback"),
+  ] },
+  { templateKey: "hire-order-issued", label: "Hire order issued", fields: [
+    field("hire-order-issued.subject", "Subject", ["dateLabel", "venue"]), field("hire-order-issued.heading", "Heading"), field("hire-order-issued.greeting", "Greeting", ["artistName"]), field("hire-order-issued.intro", "Intro", ["dateLabel", "venue"], true), field("hire-order-issued.ctaLabel", "CTA label"), field("hire-order-issued.signCtaLabel", "Electronic CTA label"), field("hire-order-issued.footer", "Footer", [], true), field("hire-order-issued.previewText", "Preview text", ["dateLabel", "venue"]), field("hire-order-issued.orderLabel", "Order label"), field("hire-order-issued.engagementDatesLabel", "Engagement dates label"), field("hire-order-issued.venueLabel", "Venue label"), field("hire-order-issued.cityLabel", "City label"), field("hire-order-issued.feeLabel", "Fee label"), field("hire-order-issued.signPrompt", "Signature prompt", [], true), field("hire-order-issued.signButton", "Signature button"), field("hire-order-issued.pasteLink", "Paste-link prompt", [], true), field("hire-order-issued.manualPrompt", "Manual-signature prompt", [], true), field("hire-order-issued.artistFallback", "Artist fallback"), field("hire-order-issued.dateFallback", "Date fallback"), field("hire-order-issued.venueFallback", "Venue fallback"),
+  ] },
+  { templateKey: "hire-order-countersigned", label: "Hire order countersigned", fields: [
+    field("hire-order-countersigned.subject", "Subject", ["dateLabel"]), field("hire-order-countersigned.heading", "Heading"), field("hire-order-countersigned.greeting", "Greeting", ["artistName"]), field("hire-order-countersigned.intro", "Intro", ["dateLabel", "venue"], true), field("hire-order-countersigned.ctaLabel", "CTA label"), field("hire-order-countersigned.footer", "Footer", [], true), field("hire-order-countersigned.previewText", "Preview text", ["dateLabel"]), field("hire-order-countersigned.orderLabel", "Order label"), field("hire-order-countersigned.dateLabel", "Date label"), field("hire-order-countersigned.venueLabel", "Venue label"), field("hire-order-countersigned.artistFallback", "Artist fallback"), field("hire-order-countersigned.dateFallback", "Date fallback"), field("hire-order-countersigned.venueFallback", "Venue fallback"),
+  ] },
+  { templateKey: "org-invitation", label: "Organization invitation", fields: [
+    field("org-invitation.subject", "Subject", ["orgName"]), field("org-invitation.heading", "Heading", ["orgName"]), field("org-invitation.greeting", "Greeting"), field("org-invitation.intro", "Intro", ["orgName", "roleSuffix"], true), field("org-invitation.roleSuffix", "Role suffix", ["role"]), field("org-invitation.ctaLabel", "CTA label"), field("org-invitation.footer", "Footer", [], true), field("org-invitation.previewText", "Preview text", ["orgName"]), field("org-invitation.invitedBy", "Invited-by line", ["inviterEmail"]), field("org-invitation.pasteLink", "Paste-link prompt", [], true), field("org-invitation.orgFallback", "Organization fallback"),
+  ] },
+  { templateKey: "account-email-changed", label: "Account email changed", fields: [
+    field("account-email-changed.subject", "Subject"), field("account-email-changed.heading", "Heading"), field("account-email-changed.greeting", "Greeting"), field("account-email-changed.intro", "Intro", [], true), field("account-email-changed.footer", "Footer", [], true), field("account-email-changed.previewText", "Preview text"), field("account-email-changed.previousEmailLabel", "Previous-email label"), field("account-email-changed.newEmailLabel", "New-email label"), field("account-email-changed.signInPrompt", "Sign-in prompt", ["signInUrl"], true), field("account-email-changed.emailFallback", "Email fallback"),
+  ] },
+  { templateKey: "cron-health-alert", label: "Cron health alert", fields: [
+    field("cron-health-alert.subject", "Subject", ["jobName", "statusCode"]), field("cron-health-alert.heading", "Heading"), field("cron-health-alert.intro", "Intro", ["jobName", "statusCode"], true), field("cron-health-alert.ctaLabel", "CTA label"), field("cron-health-alert.footer", "Footer", [], true), field("cron-health-alert.previewText", "Preview text", ["jobName"]), field("cron-health-alert.jobLabel", "Job label"), field("cron-health-alert.lastStatusLabel", "Last-status label"), field("cron-health-alert.lastErrorLabel", "Last-error label"), field("cron-health-alert.lastHealthyLabel", "Last-healthy label"), field("cron-health-alert.jobFallback", "Job fallback"), field("cron-health-alert.valueFallback", "Value fallback"),
+  ] },
+];
