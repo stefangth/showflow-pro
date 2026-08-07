@@ -66,8 +66,8 @@ export const EMAIL_COPY_DEFAULTS = {
   "offer-expiry-reminder.previewPlural": "Reminder: {{count}} offers expire soon on ShowFlow",
   "offer-expiry-reminder.offerLine": "{{referenceLabel}} on {{date}}: respond by {{expiresAt}}",
 
-  "artist-confirmation-digest.subjectUpdates": "Your booking updates — ShowFlow",
-  "artist-confirmation-digest.subjectConfirmed": "Your bookings are confirmed — ShowFlow",
+  "artist-confirmation-digest.subjectUpdates": "Your booking updates on ShowFlow",
+  "artist-confirmation-digest.subjectConfirmed": "Your bookings are confirmed on ShowFlow",
   "artist-confirmation-digest.headingUpdates": "Your booking updates",
   "artist-confirmation-digest.headingConfirmed": "Your bookings are confirmed",
   "artist-confirmation-digest.greeting": "Hi {{displayName}},",

@@ -45,6 +45,20 @@ Deno.test('registry presentation: resolves conditional expiry and confirmation s
   assertEquals(confirmationConfirmed.subject, 'Custom bookings confirmed')
 })
 
+Deno.test('registry presentation: uses compliant default confirmation subjects', () => {
+  const updates = resolveTemplatePresentation('artist-confirmation-digest', {
+    scheduleChanges: [{ show: 'Riverdance' }],
+  })
+  const confirmed = resolveTemplatePresentation('artist-confirmation-digest', {
+    bookings: [{ show: 'Riverdance' }],
+  })
+
+  assertExists(updates)
+  assertExists(confirmed)
+  assertEquals(updates.subject, 'Your booking updates on ShowFlow')
+  assertEquals(confirmed.subject, 'Your bookings are confirmed on ShowFlow')
+})
+
 Deno.test('registry presentation: keeps legacy generic subjects only as explicit fallback semantics', () => {
   const expiry = resolveTemplatePresentation('offer-expiry-reminder', { offers: [{}] }, {
     legacySubjectOverride: 'Legacy expiry subject',

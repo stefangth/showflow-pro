@@ -234,7 +234,7 @@ Deno.test("preview-transactional-email DI: function subject resolved correctly (
   assertEquals(entry.status, "ready");
   // artist-confirmation-digest now has a FUNCTION subject; its previewData includes a
   // schedule change + a cancellation, so it resolves to the neutral "updates" subject.
-  assertEquals(entry.subject, "Your booking updates — ShowFlow");
+  assertEquals(entry.subject, "Your booking updates on ShowFlow");
 });
 
 Deno.test("preview-transactional-email DI: function subject (cast-escalation-requested) uses previewData fields", async () => {

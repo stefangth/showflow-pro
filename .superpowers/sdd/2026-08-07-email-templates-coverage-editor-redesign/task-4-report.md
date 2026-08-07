@@ -153,3 +153,63 @@ React UMD-global JSX), not Task 4 modules.
 - Preview remains admin/producer-only; all 38 preview DI tests passed.
 - No task-specific functional concerns remain. The handler-level Deno type-check
   baseline remains blocked by the unrelated PDF graph described above.
+
+## Review fix round 2: confirmation subject punctuation
+
+### RED
+
+The downstream full suite found the editable-copy punctuation invariant failing.
+It was reproduced before production edits:
+
+```text
+npx vitest run src/lib/emailTemplates/emailCopy.test.ts
+
+Test Files  1 failed (1)
+Tests  1 failed | 9 passed (10)
+expected 'Your booking updates — ShowFlow' not to match /[–—]/
+```
+
+A new real registry regression test was added before the fix and independently
+failed with the current delivered subject:
+
+```text
+registry presentation: uses compliant default confirmation subjects ... FAILED
+expected "Your booking updates — ShowFlow" to equal
+"Your booking updates on ShowFlow"
+FAILED | 3 passed | 1 failed
+```
+
+### GREEN
+
+- Restored the compliant, punctuation-free `on ShowFlow` wording in the editable
+  copy source of truth and regenerated the Edge mirror with `npm run sync:mirrors`.
+- Aligned the legacy `digestEmailSubject` callback and its test expectation to
+  the same wording, retaining the updates-versus-confirmed semantics.
+- Updated the real preview expectation and added exact default-branch registry
+  assertions, so source copy, fallback callback, preview, and send/registry
+  presentation remain consistent.
+
+```text
+npx vitest run src/lib/emailTemplates/emailCopy.test.ts \
+  src/lib/emailTemplates/emailTheme.test.ts \
+  src/lib/emailTemplates/coverage.test.ts src/data/emailTemplates.test.ts
+Test Files  4 passed (4)
+Tests  24 passed (24)
+
+pinned Deno affected suites (registry, scheduleChanges, preview, send)
+ok | 85 passed | 0 failed
+
+npx tsc --noEmit; npm run lint; registry Deno check; mirror check; diff check
+all passed
+```
+
+### Fix-round self-review and concerns
+
+- Only Task 4 copy, subject-callback, mirror, and adjacent real-module test
+  files changed; no Task 5 files were touched.
+- The approved user-editable defaults now satisfy the global no-em/en-dash
+  invariant while preserving both confirmation subject branches.
+- No task-specific concerns remain. A broader `vitest run --silent` was started
+  in this execution environment but did not produce its final summary before
+  the runner session closed; focused source and affected-handler suites above
+  completed successfully.
