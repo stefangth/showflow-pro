@@ -1,12 +1,25 @@
 name: Check migrations applied
 
-# Fails when a migration merged to main has NOT been applied to production.
-# Detect-only (never auto-applies). Name-based, drift-tolerant. Uses the same
-# SUPABASE_ACCESS_TOKEN secret as deploy-functions.yml, no new secret.
+# Fails when the repo's migrations and production's recorded migrations disagree:
+# a migration that was never applied, one applied with no repo file, or one applied
+# under a DIFFERENT version than its filename. That last case is the one that
+# silently disabled production deploys for two weeks from 2026-07-23, because
+# `supabase db push` aborts wholesale on it. Detect-only (never auto-applies).
+# Uses the same SUPABASE_ACCESS_TOKEN secret as deploy-functions.yml, no new secret.
 on:
+  # On a PR this is a blocking gate for DRIFT (`--allow-missing`): a migration the
+  # PR adds cannot be in production yet, because the merge is what applies it.
+  # No `paths` filter — drift is introduced by applying OUT of band, which by
+  # definition leaves no migration file in the diff, so a path filter would skip
+  # exactly the case worth catching. The cost is accepted knowingly: every PR and
+  # every push to main now spends a runner and one Management API call, including
+  # on changes that cannot touch migrations.
+  pull_request:
+    branches: [main]
+  # On main this is the post-merge alarm: the production apply happens after the
+  # merge, so nothing at PR time can prove it succeeded.
   push:
     branches: [main]
-    paths: ["supabase/migrations/**"]
   workflow_dispatch: {}
 
 # Least-privilege: the job never authenticates to GitHub with GITHUB_TOKEN, only
@@ -17,13 +30,24 @@ permissions:
 jobs:
   check-migrations:
     runs-on: ubuntu-latest
+    # A fork PR cannot see repository secrets, so the job would fail on a missing
+    # token rather than on real drift. Skip it there instead of showing a red check
+    # that says nothing about the migrations.
+    if: >-
+      github.event_name != 'pull_request' ||
+      github.event.pull_request.head.repo.full_name == github.repository
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
           node-version: "20"
-      - name: Check every repo migration is applied to production
+      # Pre-merge: enforce drift only. Post-merge: enforce everything, but poll for
+      # up to 5 minutes first, because the Supabase deploy workflow applies
+      # migrations asynchronously and its health step alone waits up to 2 minutes.
+      - name: Check repo and production migrations agree on name and version
         env:
           SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
           SUPABASE_PROJECT_REF: epweartpzwvcasrzyueh
-        run: node scripts/check-migrations.mjs
+        run: >-
+          node scripts/check-migrations.mjs
+          ${{ github.event_name == 'pull_request' && '--allow-missing' || '--wait-seconds=300' }}

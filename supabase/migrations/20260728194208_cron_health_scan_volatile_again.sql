@@ -6,13 +6,13 @@
 -- statement, which lets it cache the rows and hide responses that landed mid-transaction -- exactly
 -- the fresh responses this watcher exists to observe.
 --
--- 20260728132500_cron_health_scan_answered.sql had to DROP + CREATE (adding answered_at changes the
+-- 20260728144736_cron_health_scan_answered.sql had to DROP + CREATE (adding answered_at changes the
 -- return type, which CREATE OR REPLACE cannot do) and was written from the ORIGINAL 20260623040837
 -- body as its template, which predates the volatility fix -- so it silently reintroduced STABLE.
 -- Confirmed live on the production project: provolatile = 's'.
 --
 -- CREATE OR REPLACE is sufficient here because the return type is unchanged; the body below is
--- byte-identical to 20260728132500 apart from the volatility keyword. Grants survive REPLACE, but
+-- byte-identical to 20260728144736 apart from the volatility keyword. Grants survive REPLACE, but
 -- they are re-applied to keep this file a complete statement of the function's exposure.
 CREATE OR REPLACE FUNCTION public.cron_health_scan()
 RETURNS TABLE (

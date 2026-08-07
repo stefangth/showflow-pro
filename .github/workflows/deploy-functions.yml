@@ -28,7 +28,18 @@ name: Deploy Edge Functions (production)
 # changed") is preserved best-effort by the git-diff step in the deploy job — but the
 # gate (never deploy a red commit) matters more than that optimization.
 #
-# Required repository secret (already configured; shared with db-reset-production):
+# The deploy is ALSO gated on the schema having landed (check-migrations.mjs, run
+# below), so an unapplied migration cannot ship edge functions against a schema
+# that does not exist — what broke multi-date hire orders on 2026-07-24. Drift
+# blocks this deploy on purpose, including for changes unrelated to the drifted
+# migration.
+#
+# SCOPE: this covers EDGE FUNCTIONS ONLY. The Vercel frontend builds and promotes
+# straight off the merge commit and is not gated by anything here, so the same
+# failure can still reach users through the UI. Closing that half needs a separate
+# mechanism on the Vercel side.
+#
+# Required repository secret (already configured; shared with check-migrations):
 #   SUPABASE_ACCESS_TOKEN — a Supabase personal access token
 #                           (https://supabase.com/dashboard/account/tokens)
 
@@ -61,6 +72,9 @@ jobs:
       github.event.workflow_run.conclusion == 'success'
     env:
       SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+      # Single source of truth for the target project: check-migrations.mjs reads
+      # PROJECT_REF when SUPABASE_PROJECT_REF is unset, so there is nothing here
+      # that can be repointed to a different project than the deploy targets.
       PROJECT_REF: epweartpzwvcasrzyueh
     steps:
       # Check out the exact commit CI tested. For workflow_run this is the CI run's
@@ -99,10 +113,26 @@ jobs:
             echo "Parent commit unavailable — deploying to be safe."
           fi
 
+      # Never ship functions against a schema that did not land. This is the same
+      # check that runs on PRs and on push:main; running it here too is what makes
+      # the code deploy and the schema deploy rise and fall together.
+      - uses: actions/setup-node@v4
+        if: steps.changed.outputs.deploy == 'true'
+        with:
+          node-version: "20"
+
+      # Polls for up to 5 minutes: the Supabase deploy workflow applies migrations
+      # asynchronously and may still be mid-apply when CI finishes. Failing here
+      # has a side effect — workflow_run will not re-fire, so recovery needs a
+      # manual dispatch — which is exactly why it waits rather than reading once.
+      - name: Verify the repo's migrations are applied to production
+        if: steps.changed.outputs.deploy == 'true'
+        run: node scripts/check-migrations.mjs --wait-seconds=300
+
       - uses: supabase/setup-cli@v1
         if: steps.changed.outputs.deploy == 'true'
         with:
-          # Pinned to match the rest of CI (ci.yml, db-reset-production.yml).
+          # Pinned to match the rest of CI (ci.yml).
           version: 2.98.2
 
       - name: Show Supabase CLI version
