@@ -118,8 +118,14 @@ export async function fetchMyCancelledDateBookings(
  * show_date's. Shaped like `CancelledDateEntry` so callers can render both
  * uniformly; unlike `useArtistEligibleDates` (upcoming-only), this includes
  * past dates — it's the row source that makes past bookings renderable.
+ *
+ * `kind` is a literal discriminant tag, not just a field that happens to be
+ * unique among the row shapes a caller might union together (like the old
+ * `'is_understudy' in d` guard relied on): a new field landing on a sibling
+ * type can't silently break the `in` check the way a coincidental key could.
  */
 export interface ActiveBookedDateEntry {
+  kind: "active-booked";
   id: string; // show_date id
   date: string;
   venue: string | null;
@@ -163,6 +169,7 @@ export async function fetchMyActiveBookedDates(
   return ((data ?? []) as unknown as ActiveBookingRow[])
     .filter((b): b is ActiveBookingRow & { show_date: NonNullable<ActiveBookingRow["show_date"]> } => !!b.show_date)
     .map((b) => ({
+      kind: "active-booked" as const,
       id: b.show_date.id,
       date: b.show_date.date,
       venue: b.show_date.venue,

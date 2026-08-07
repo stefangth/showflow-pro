@@ -103,9 +103,28 @@ describe("fetchMyActiveBookedDates", () => {
         session_3: null,
         status: "soft_booked",
         is_understudy: false,
+        kind: "active-booked",
         show: { program: "X", sub_program: null },
       },
     ]);
+  });
+
+  it("tags every row with kind: 'active-booked' -- the explicit discriminant ArtistBookingsView's three-way row guard keys on", async () => {
+    const fake = createFakeSupabase({
+      bookings: {
+        data: [
+          {
+            show_date_id: "d1",
+            status: "confirmed",
+            is_understudy: false,
+            show_date: { id: "d1", date: "2026-03-01", venue: null, session_1: null, session_2: null, session_3: null, show: null },
+          },
+        ],
+        error: null,
+      },
+    });
+    const res = await fetchMyActiveBookedDates(fake as never, "a1");
+    expect(res[0].kind).toBe("active-booked");
   });
 
   it("carries is_understudy through for an understudy booking", async () => {
