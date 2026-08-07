@@ -213,6 +213,13 @@ describe("NewOrderWizard", () => {
     expect(document.body.textContent).not.toMatch(/[—–]/);
   });
 
+  // Plan B Task 3: widened from sm:max-w-3xl so step 1's artist×date matrix and
+  // step 3's running-order editor have room to breathe.
+  it("renders at the wider 5xl dialog width", () => {
+    renderWizard();
+    expect(screen.getByRole("dialog").className).toContain("sm:max-w-5xl");
+  });
+
   it("picking No linked date switches step 1 to manual date/venue/city inputs", () => {
     renderWizard();
     expect(screen.getByRole("combobox", { name: /select artist/i })).toBeInTheDocument();

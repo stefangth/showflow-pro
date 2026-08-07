@@ -1,4 +1,4 @@
-import { describe, it, expect, vi } from "vitest";
+import { describe, it, expect, vi, beforeEach } from "vitest";
 import { screen, fireEvent } from "@testing-library/react";
 import { renderWithProviders } from "@/test/renderWithProviders";
 
@@ -70,14 +70,27 @@ vi.mock("@/components/filters/useFilterVisibility", () => ({
 vi.mock("@/hooks/useBookingFlow", () => ({
   useReferenceField: () => ({ reference: { source: "show" }, customFieldKey: null }),
 }));
+const { featureFlags } = vi.hoisted(() => ({ featureFlags: { value: {} as Record<string, boolean> } }));
 vi.mock("@/hooks/useEntitlements", () => ({
-  useFeature: () => false,
+  useFeature: (key: string) => featureFlags.value[key] ?? false,
 }));
 vi.mock("@/hooks/useCapabilities", () => ({
   useCan: () => true,
 }));
+const { railVisible } = vi.hoisted(() => ({ railVisible: { value: false } }));
 vi.mock("@/components/bookings/setup/useBookingSetupRailVisible", () => ({
-  useBookingSetupRailVisible: () => false,
+  useBookingSetupRailVisible: () => railVisible.value,
+}));
+// The rail is exercised on its own in BookingSetupRail.test.tsx; stub it here so
+// this page's tests don't also have to seed its five app_settings/shows reads.
+vi.mock("@/components/bookings/setup/BookingSetupRail", () => ({
+  BookingSetupRail: () => <div data-testid="booking-setup-rail" />,
+}));
+const { bookingSetupStatus } = vi.hoisted(() => ({
+  bookingSetupStatus: { value: { complete: false, doneCount: 0, totalCount: 5 } as { complete: boolean; doneCount: number; totalCount: number } },
+}));
+vi.mock("@/hooks/useBookingSetup", () => ({
+  useBookingSetupStatus: () => ({ status: bookingSetupStatus.value, coverage: undefined, isLoading: false, isError: false }),
 }));
 vi.mock("@/hooks/useHireOrders", () => ({
   useDatesReadyForHireOrder: () => ({ data: undefined }),
@@ -111,6 +124,13 @@ vi.mock("@/components/shows/ShowDateFormDialog", () => ({ ShowDateFormDialog: ()
 vi.mock("@/components/hireOrders/NewOrderWizard", () => ({ NewOrderWizard: () => null }));
 
 import ShowsBookingsPage from "./ShowsBookingsPage";
+
+beforeEach(() => {
+  localStorage.clear();
+  featureFlags.value = {};
+  railVisible.value = false;
+  bookingSetupStatus.value = { complete: false, doneCount: 0, totalCount: 5 };
+});
 
 describe("ShowsBookingsPage — producer timeframe default + past tint (Plan B Task 2)", () => {
   it("defaults to Upcoming: shows the future date, hides the past one", async () => {
@@ -150,5 +170,66 @@ describe("ShowsBookingsPage — producer timeframe default + past tint (Plan B T
 
     expect(await screen.findByText("Past Show")).toBeInTheDocument();
     expect(screen.queryByText("Future Show")).not.toBeInTheDocument();
+  });
+});
+
+/**
+ * Plan B Task 3: the setup rail moved out of the cramped 340px grid column into
+ * a right-side Sheet, and a dismissed-but-incomplete rail is now re-invokable
+ * from a persistent header button (previously there was no way back once
+ * "Hide" was clicked). booking_flow must be on for any of this to matter --
+ * the page's own gate nulls out the org id (and therefore the rail) otherwise.
+ */
+describe("ShowsBookingsPage — setup checklist uncramp + re-invoke (Plan B Task 3)", () => {
+  it("shows no re-invoke button and no inline callout by default (not dismissed, rail not visible)", async () => {
+    featureFlags.value = { booking_flow: true };
+    renderWithProviders(<ShowsBookingsPage />);
+    await screen.findByText("Future Show");
+    expect(screen.queryByRole("button", { name: /setup checklist/i })).not.toBeInTheDocument();
+    expect(screen.queryByTestId("booking-setup-rail")).not.toBeInTheDocument();
+  });
+
+  it("shows a full-width inline callout (not a cramped side column) while setup is incomplete and visible", async () => {
+    featureFlags.value = { booking_flow: true };
+    railVisible.value = true;
+    renderWithProviders(<ShowsBookingsPage />);
+    expect(await screen.findByText(/get bookings running/i)).toBeInTheDocument();
+    // No fixed side-column grid track left anywhere on the page.
+    expect(document.querySelector(".lg\\:grid-cols-\\[1fr_340px\\]")).toBeNull();
+  });
+
+  it("opens the checklist in a Sheet from the inline callout", async () => {
+    featureFlags.value = { booking_flow: true };
+    railVisible.value = true;
+    renderWithProviders(<ShowsBookingsPage />);
+    fireEvent.click(await screen.findByRole("button", { name: /open checklist/i }));
+    expect(await screen.findByTestId("booking-setup-rail")).toBeInTheDocument();
+  });
+
+  it("shows the header re-invoke button once dismissed while setup is still incomplete, and hides the callout", async () => {
+    featureFlags.value = { booking_flow: true };
+    localStorage.setItem("showflow.bookingSetup.hidden.org-1", "true");
+    renderWithProviders(<ShowsBookingsPage />);
+    expect(await screen.findByRole("button", { name: /setup checklist/i })).toBeInTheDocument();
+    expect(screen.queryByText(/get bookings running/i)).not.toBeInTheDocument();
+  });
+
+  it("re-invokes on click: clears the dismissal and opens the Sheet with the rail", async () => {
+    featureFlags.value = { booking_flow: true };
+    localStorage.setItem("showflow.bookingSetup.hidden.org-1", "true");
+    renderWithProviders(<ShowsBookingsPage />);
+    fireEvent.click(await screen.findByRole("button", { name: /setup checklist/i }));
+
+    expect(await screen.findByTestId("booking-setup-rail")).toBeInTheDocument();
+    expect(localStorage.getItem("showflow.bookingSetup.hidden.org-1")).toBeNull();
+  });
+
+  it("hides the re-invoke button once setup is complete, even if previously dismissed", async () => {
+    featureFlags.value = { booking_flow: true };
+    localStorage.setItem("showflow.bookingSetup.hidden.org-1", "true");
+    bookingSetupStatus.value = { complete: true, doneCount: 5, totalCount: 5 };
+    renderWithProviders(<ShowsBookingsPage />);
+    await screen.findByText("Future Show");
+    expect(screen.queryByRole("button", { name: /setup checklist/i })).not.toBeInTheDocument();
   });
 });

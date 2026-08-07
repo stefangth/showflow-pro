@@ -10,7 +10,8 @@ import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Search, Plus } from 'lucide-react';
+import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
+import { Search, Plus, ListChecks } from 'lucide-react';
 import { format, parseISO } from 'date-fns';
 import { ProgramFilter } from '@/components/filters/ProgramFilter';
 import { TimeframeFilter, upcomingTimeframe, type TimeframeValue } from '@/components/filters/TimeframeFilter';
@@ -23,6 +24,8 @@ import { ArtistBookingsView } from '@/components/bookings/ArtistBookingsView';
 import { FirstOfferCard } from '@/components/bookings/setup/FirstOfferCard';
 import { BookingSetupRail } from '@/components/bookings/setup/BookingSetupRail';
 import { useBookingSetupRailVisible } from '@/components/bookings/setup/useBookingSetupRailVisible';
+import { useBookingSetupStatus } from '@/hooks/useBookingSetup';
+import { useRailDismissed } from '@/components/setup/useRailDismissed';
 import { ShowDateDetailSheet } from '@/components/shows/ShowDateDetailSheet';
 import { ShowDateFormDialog } from '@/components/shows/ShowDateFormDialog';
 import { NewOrderWizard } from '@/components/hireOrders/NewOrderWizard';
@@ -156,6 +159,14 @@ function ProducerShowsBookings() {
   const orgId = currentOrg?.id ?? null;
   const bookingOn = useFeature('booking_flow');
   const railVisible = useBookingSetupRailVisible(bookingOn ? orgId : null);
+  // Re-invoke: the rail moved out of the cramped 340px side column into a Sheet
+  // (Plan B Task 3). `railVisible` alone can't tell the header button apart from
+  // "setup is genuinely complete" -- both leave it false -- so the button reads
+  // `dismissed`/`status.complete` directly instead.
+  const [bookingSetupDismissed, , undismissBookingSetup] = useRailDismissed('bookingSetup', bookingOn ? orgId : null);
+  const { status: bookingSetupStatus } = useBookingSetupStatus(bookingOn ? orgId : null);
+  const showSetupReinvoke = bookingOn && bookingSetupDismissed && !bookingSetupStatus.complete;
+  const [setupSheetOpen, setSetupSheetOpen] = useState(false);
   // Hire-order CTA: module gate + generate capability + which dates are ready.
   const hireOrdersOn = useFeature('hire_orders');
   const canGenerateHireOrders = useCan('generate_hire_orders');
@@ -289,7 +300,19 @@ function ProducerShowsBookings() {
           <h1 className="font-display text-[32px] font-semibold tracking-tight">Shows &amp; Bookings</h1>
           <p className="text-muted-foreground mt-1">All scheduled dates and cast status in one place.</p>
         </div>
-        {canManage && <Button onClick={() => setNewDateOpen(true)}>New date</Button>}
+        <div className="flex items-center gap-2">
+          {showSetupReinvoke && (
+            <Button
+              variant="outline"
+              className="gap-1.5"
+              onClick={() => { undismissBookingSetup(); setSetupSheetOpen(true); }}
+            >
+              <ListChecks className="h-4 w-4" />
+              Setup checklist
+            </Button>
+          )}
+          {canManage && <Button onClick={() => setNewDateOpen(true)}>New date</Button>}
+        </div>
       </div>
 
       {canManage && hireOrdersOn && readyCount > 0 && (
@@ -303,8 +326,26 @@ function ProducerShowsBookings() {
         />
       )}
 
-      <div className={cn("grid gap-6", railVisible && "lg:grid-cols-[1fr_340px] lg:items-start")}>
-        <div className="min-w-0 space-y-6">
+      {/* Uncramped from a fixed 340px side column (Task 3): a full-width callout
+          that opens the checklist in a Sheet, so the table below always gets
+          the full page width. */}
+      {railVisible && (
+        <Card className="border-dashed">
+          <CardContent className="flex flex-wrap items-center justify-between gap-3 py-4">
+            <div>
+              <p className="font-display text-sm font-semibold">Get bookings running</p>
+              <p className="text-xs text-muted-foreground">
+                {bookingSetupStatus.doneCount} of {bookingSetupStatus.totalCount} steps done. These are what the first offer needs.
+              </p>
+            </div>
+            <Button size="sm" variant="outline" onClick={() => setSetupSheetOpen(true)}>
+              Open checklist
+            </Button>
+          </CardContent>
+        </Card>
+      )}
+
+      <div className="min-w-0 space-y-6">
       <div className="flex flex-wrap items-center gap-3">
         <div className="relative flex-1 min-w-[200px] max-w-md">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
@@ -535,9 +576,18 @@ function ProducerShowsBookings() {
           )}
         />
       )}
-        </div>
-        {railVisible && <BookingSetupRail orgId={orgId} />}
       </div>
+
+      <Sheet open={setupSheetOpen} onOpenChange={setSetupSheetOpen}>
+        <SheetContent side="right" className="w-full overflow-y-auto sm:max-w-2xl">
+          <SheetHeader className="text-left">
+            <SheetTitle className="font-display text-base">Setup checklist</SheetTitle>
+          </SheetHeader>
+          <div className="mt-4">
+            <BookingSetupRail orgId={bookingOn ? orgId : null} />
+          </div>
+        </SheetContent>
+      </Sheet>
 
       <ShowDateDetailSheet
         showDateId={activeShowDateId}

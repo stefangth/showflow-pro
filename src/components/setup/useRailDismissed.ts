@@ -25,7 +25,10 @@ function subscribe(onChange: () => void): () => void {
   };
 }
 
-export function useRailDismissed(namespace: string, orgId: string | null): [boolean, () => void] {
+export function useRailDismissed(
+  namespace: string,
+  orgId: string | null,
+): [boolean, () => void, () => void] {
   const dismissed = useSyncExternalStore(
     subscribe,
     () => localStorage.getItem(storageKey(namespace, orgId)) === "true",
@@ -34,5 +37,14 @@ export function useRailDismissed(namespace: string, orgId: string | null): [bool
     localStorage.setItem(storageKey(namespace, orgId), "true");
     for (const notify of listeners) notify();
   }, [namespace, orgId]);
-  return [dismissed, dismiss];
+  // The other half of `dismiss`: a rail hidden once had no way back short of
+  // clearing localStorage by hand. Removing the key (rather than writing
+  // "false") keeps a fresh browser and a "showed it again" browser
+  // indistinguishable, which is the state `dismissed` already treats as
+  // equivalent (`=== "true"`, not a boolean parse).
+  const undismiss = useCallback(() => {
+    localStorage.removeItem(storageKey(namespace, orgId));
+    for (const notify of listeners) notify();
+  }, [namespace, orgId]);
+  return [dismissed, dismiss, undismiss];
 }

@@ -666,7 +666,7 @@ export function NewOrderWizard({ open, onOpenChange, orgId }: Props) {
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
-      <DialogContent className="max-h-[85vh] overflow-y-auto sm:max-w-3xl">
+      <DialogContent className="max-h-[85vh] overflow-y-auto sm:max-w-5xl">
         <DialogHeader>
           <DialogTitle className="font-display">New hire order</DialogTitle>
           <DialogDescription>Confirm the engagement, set the fee, and issue a hire order.</DialogDescription>

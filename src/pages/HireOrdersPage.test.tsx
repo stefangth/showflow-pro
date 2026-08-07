@@ -36,6 +36,18 @@ vi.mock("@/components/hireOrders/setup/SetupRail", () => ({
 vi.mock("@/components/hireOrders/setup/useSetupRailVisible", () => ({
   useSetupRailVisible: () => railVisible.value,
 }));
+// Plan B Task 3: the header re-invoke button reads `status.complete` directly
+// (it has to distinguish "dismissed" from "genuinely complete", which
+// `useSetupRailVisible` alone can't -- both read false). Partial mock: this
+// module also exports useOrgLetterhead/useOrgTerms/useImportTermsTemplates,
+// which NewOrderWizard and OrderSlideOver (unmocked here) depend on.
+const { hireOrderSetupStatus } = vi.hoisted(() => ({
+  hireOrderSetupStatus: { value: { complete: false, doneCount: 0, totalCount: 3 } as { complete: boolean; doneCount: number; totalCount: number } },
+}));
+vi.mock("@/hooks/useHireOrderSetup", async (orig) => ({
+  ...(await orig<typeof import("@/hooks/useHireOrderSetup")>()),
+  useHireOrderSetupStatus: () => ({ status: hireOrderSetupStatus.value, isLoading: false }),
+}));
 
 function seedClient(seed: Record<string, TableSeed>) {
   for (const key of Object.keys(client)) delete client[key];
@@ -175,6 +187,8 @@ describe("HireOrdersPage", () => {
     navigate.mockClear();
     authAs("producer");
     railVisible.value = true;
+    hireOrderSetupStatus.value = { complete: false, doneCount: 0, totalCount: 3 };
+    localStorage.clear();
     seedFor(ROWS);
   });
 
@@ -498,26 +512,70 @@ describe("HireOrdersPage", () => {
     expect(screen.getByRole("button", { name: /import from spreadsheet/i })).toBeEnabled();
   });
 
-  it("mounts the setup rail and reserves its column", async () => {
+  it("shows a full-width setup callout (not a cramped side column) and opens the checklist in a Sheet on click", async () => {
     renderPage();
     await screen.findByText("Hire orders");
     // findBy, not getBy: the rail runs on the RAW entitlement with no fail-open, so it
     // appears once org_entitlements resolves rather than optimistically on first
     // paint. That wait is the point. Mounting a live app_settings write surface before
     // knowing the org is entitled is what the two-gate split exists to prevent.
+    expect(await screen.findByText(/get hire orders ready/i)).toBeInTheDocument();
+    // No fixed side-column grid track anywhere on the page (Plan B Task 3 uncramp).
+    expect(document.querySelector(".lg\\:grid-cols-\\[1fr_340px\\]")).toBeNull();
+    expect(screen.queryByTestId("setup-rail")).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: /open checklist/i }));
     expect(await screen.findByTestId("setup-rail")).toBeInTheDocument();
-    expect(screen.getByTestId("orders-layout").className).toContain("lg:grid-cols-[1fr_340px]");
   });
 
-  it("drops the rail column once the rail has retired", async () => {
-    // A rail that renders null does NOT collapse its grid track: the track comes
-    // from grid-template-columns. Left unconditional, every org loses 340px of
-    // orders-table width forever once setup is done, which is the steady state.
+  it("hides the setup callout once the rail has retired", async () => {
     railVisible.value = false;
     renderPage();
     await screen.findByText("Hire orders");
+    expect(screen.queryByText(/get hire orders ready/i)).not.toBeInTheDocument();
     expect(screen.queryByTestId("setup-rail")).not.toBeInTheDocument();
-    expect(screen.getByTestId("orders-layout").className).not.toContain("lg:grid-cols-");
+  });
+
+  it("shows no re-invoke button by default (not dismissed)", async () => {
+    renderPage();
+    await screen.findByText("Hire orders");
+    expect(screen.queryByRole("button", { name: /setup checklist/i })).not.toBeInTheDocument();
+  });
+
+  it("shows the header re-invoke button once dismissed while setup is still incomplete", async () => {
+    // In the real (unmocked) hook, useSetupRailVisible also reads `dismissed`,
+    // so it would report false here too -- set the stub to match.
+    railVisible.value = false;
+    localStorage.setItem("showflow.hireOrderSetup.hidden.org-1", "true");
+    renderPage();
+    expect(await screen.findByRole("button", { name: /setup checklist/i })).toBeInTheDocument();
+    // The dismissed rail leaves no callout behind either.
+    expect(screen.queryByText(/get hire orders ready/i)).not.toBeInTheDocument();
+  });
+
+  it("re-invokes on click: clears the dismissal and opens the Sheet with the rail", async () => {
+    localStorage.setItem("showflow.hireOrderSetup.hidden.org-1", "true");
+    renderPage();
+    fireEvent.click(await screen.findByRole("button", { name: /setup checklist/i }));
+
+    expect(await screen.findByTestId("setup-rail")).toBeInTheDocument();
+    expect(localStorage.getItem("showflow.hireOrderSetup.hidden.org-1")).toBeNull();
+  });
+
+  it("hides the re-invoke button once setup is complete, even if previously dismissed", async () => {
+    localStorage.setItem("showflow.hireOrderSetup.hidden.org-1", "true");
+    hireOrderSetupStatus.value = { complete: true, doneCount: 3, totalCount: 3 };
+    renderPage();
+    await screen.findByText("Hire orders");
+    expect(screen.queryByRole("button", { name: /setup checklist/i })).not.toBeInTheDocument();
+  });
+
+  it("does not show the re-invoke button when the module is off, even if dismissed", async () => {
+    localStorage.setItem("showflow.hireOrderSetup.hidden.org-1", "true");
+    seedFor(ROWS, { org_entitlements: { data: [{ feature: "hire_orders", enabled: false }], error: null } });
+    renderPage();
+    await screen.findByText(/Hire orders is off for this organization/);
+    expect(screen.queryByRole("button", { name: /setup checklist/i })).not.toBeInTheDocument();
   });
 
   it("does not mount the setup rail when the module is off", async () => {

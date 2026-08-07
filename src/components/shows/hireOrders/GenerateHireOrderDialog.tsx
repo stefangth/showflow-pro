@@ -212,7 +212,7 @@ export function GenerateHireOrderDialog({ open, onOpenChange, order, showDate, o
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-lg">
+      <DialogContent className="sm:max-w-xl">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2 font-display">
             <Ticket className="h-5 w-5 text-accent-700" />
