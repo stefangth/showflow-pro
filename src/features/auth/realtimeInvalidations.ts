@@ -22,6 +22,7 @@ export const REALTIME_INVALIDATIONS: Array<{ table: string; keys: unknown[][] }>
   { table: 'casts',                      keys: [['casts']] },
   { table: 'cities',                     keys: [['cities']] },
   { table: 'app_settings',               keys: [['app-settings']] },
+  { table: 'org_entitlements',           keys: [['entitlements']] },
   { table: 'profiles',                   keys: [['chat-author-profiles']] },
   { table: 'chat_messages',              keys: [['chat-messages']] },
   { table: 'chats',                      keys: [['chat'], ['my-chats']] },
