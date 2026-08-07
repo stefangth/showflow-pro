@@ -42,7 +42,12 @@ describe("bookings list reads are org-scoped", () => {
       ],
     });
     const res = await fetchBookingCountsByDate(fake as never, ORG);
-    expect(res.get("d1")).toEqual({ confirmedMain: 1, confirmedUs: 1, total: 3 });
+    expect(res.get("d1")).toEqual({
+      confirmedMain: 1, confirmedUs: 1,
+      acceptedMain: 1, acceptedUs: 0,
+      pendingMain: 0, pendingUs: 0,
+      total: 3,
+    });
     expect(res.has("d9")).toBe(false);
     expect(fake.calls).toContainEqual({ table: "bookings", method: "eq", args: ["org_id", ORG] });
     expect(fake.calls).toContainEqual({ table: "bookings", method: "neq", args: ["status", "cancelled"] });
