@@ -32,11 +32,16 @@
 --         are visible only to people who already have repo access;
 --       - a preview branch holds only the synthetic rows in this file, and is
 --         deleted when its PR closes;
---       - preview branches carry no function secrets today, so an invite cannot
---         become real outbound mail.
---     The third point is the one that can change. If branch-level secrets are
---     ever configured — a live RESEND_API_KEY above all — this stops being
---     acceptable: drop the admin row and grant it by hand like the super-admin.
+--       - and, ASSUMED BUT NOT VERIFIED, preview branches carry no function
+--         secrets, so an invite cannot become real outbound mail.
+--     That third point is an assumption, not a checked fact: nothing in this
+--     repo or in CI reads branch-level secrets, so if someone configures one in
+--     the Supabase dashboard — a live RESEND_API_KEY above all — nothing here
+--     fails and this comment is the only thing standing between that and a
+--     working invite path from a published credential.
+--     So treat it as a standing condition, not a footnote. Before configuring
+--     ANY branch-level secret, delete the admin row below and grant that role by
+--     hand the way the super-admin already is.
 --   * Dates below are relative to the run date, so the fixture is NOT
 --     reproducible across days. Tests must derive expectations from
 --     `current_date` rather than hard-code a date or a grid position.
