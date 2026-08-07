@@ -61,12 +61,23 @@ describe("compactEmailCopy", () => {
 });
 
 describe("email copy registry", () => {
-  it("has a default for every metadata field and metadata for no orphan default", () => {
+  it("has metadata for every editable default and no orphan metadata field", () => {
     const metadataKeys = EMAIL_TEMPLATE_COPY_FIELDS.flatMap(({ fields }) =>
       fields.map(({ key }) => key),
     ).sort();
+    const editableDefaultKeys = Object.keys(EMAIL_COPY_DEFAULTS)
+      .filter((key) => !key.startsWith("cron-health-alert."))
+      .sort();
 
-    expect(Object.keys(EMAIL_COPY_DEFAULTS).sort()).toEqual(metadataKeys);
+    expect(editableDefaultKeys).toEqual(metadataKeys);
+  });
+
+  it("keeps internal cron copy deliverable without exposing it to the editor", () => {
+    expect(EMAIL_COPY_DEFAULTS["cron-health-alert.heading"])
+      .toBe("Scheduled job failing");
+    expect(EMAIL_TEMPLATE_COPY_FIELDS.some(
+      ({ templateKey }) => templateKey === "cron-health-alert",
+    )).toBe(false);
   });
 
   it("keeps dynamic plural branches as explicit singular and plural entries", () => {
