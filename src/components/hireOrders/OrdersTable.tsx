@@ -18,6 +18,27 @@ function isIssuable(status: string): boolean {
   return status === "draft" || status === "ready";
 }
 
+/** Read a resolved snapshot field as a trimmed string ("" when absent). Mirrors
+ *  the same small helper in ArtistDashboard.tsx / HireOrderDetailPage.tsx /
+ *  HireOrdersCard.tsx (kept local per that established pattern rather than a
+ *  shared import). */
+function snap(data: OrderData, key: keyof OrderData): string {
+  const v = data[key]?.value;
+  if (v === null || v === undefined) return "";
+  return String(v);
+}
+
+/** The date to key an order's past/upcoming state on: the linked show_date's
+ *  date when there is one, else the order's own snapshot `data.date` -- a
+ *  manual "no linked date" order carries its date there instead. Guards the
+ *  manual value to a clean YYYY-MM-DD before parsing (see snap()); returns
+ *  null when neither is available, same as before this fallback existed. */
+function orderDate(o: HireOrderListRow): Date | null {
+  if (o.show_dates?.date) return parseDateOnly(o.show_dates.date);
+  const dateStr = snap((o.data ?? {}) as OrderData, "date");
+  return /^\d{4}-\d{2}-\d{2}$/.test(dateStr) ? parseDateOnly(dateStr) : null;
+}
+
 interface Props {
   orders: HireOrderListRow[];
   orgId: string;
@@ -149,12 +170,14 @@ export function OrdersTable({ orders, orgId, onRowClick }: Props) {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {orders.map((o) => (
+              {orders.map((o) => {
+                const rowDate = orderDate(o);
+                return (
                 <TableRow
                   key={o.id}
                   className={cn(
                     'cursor-pointer',
-                    o.show_dates?.date && isPastDate(parseDateOnly(o.show_dates.date)) && PAST_DATE_TINT,
+                    rowDate && isPastDate(rowDate) && PAST_DATE_TINT,
                   )}
                   onClick={() => onRowClick(o.id)}
                   role="button"
@@ -189,7 +212,8 @@ export function OrdersTable({ orders, orgId, onRowClick }: Props) {
                     <ChevronRight className="h-4 w-4 text-muted-foreground" aria-hidden="true" />
                   </TableCell>
                 </TableRow>
-              ))}
+                );
+              })}
               {orders.length === 0 && (
                 <TableRow>
                   <TableCell colSpan={7} className="py-12 text-center text-muted-foreground">

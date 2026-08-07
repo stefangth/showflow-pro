@@ -699,5 +699,54 @@ describe("HireOrdersPage", () => {
       fireEvent.click(cell);
       expect(await screen.findByRole("dialog")).toBeInTheDocument();
     });
+
+    // A manual order created with no linked show_date carries its own date in
+    // `data.date` (a resolved snapshot field, source "manual") instead of
+    // `show_dates.date` -- the timeframe predicate and the past tint both used
+    // to key off `show_dates?.date` alone, so this class of order was always
+    // treated as dateless (never hidden, never tinted) regardless of how old
+    // it actually was.
+    it("hides a past manual order with no linked show_date under the default Upcoming filter, and tints it once revealed", async () => {
+      seedFor([
+        order({
+          id: "ho-manual-past", order_no: "HO-MANUAL-PAST-1", status: "draft",
+          show_dates: null,
+          artists: null,
+          data: {
+            artist_name: { value: "Manual Artist", source: "manual" },
+            date: { value: "2020-01-01", source: "manual" },
+          },
+        }),
+      ]);
+      renderPage();
+      await screen.findByText("Hire orders");
+      expect(screen.queryByText("HO-MANUAL-PAST-1")).not.toBeInTheDocument();
+
+      fireEvent.click(screen.getByRole("button", { name: /^Upcoming$/ }));
+      fireEvent.click(screen.getByRole("button", { name: "Any time" }));
+
+      const pastCell = await screen.findByText("HO-MANUAL-PAST-1");
+      const row = pastCell.closest("tr")!;
+      expect(row.className).toMatch(/opacity-60/);
+      expect(row.className).not.toMatch(/pointer-events-none/);
+    });
+
+    it("keeps a revealed past manual (no linked show_date) order clickable", async () => {
+      seedFor([
+        order({
+          id: "ho-manual-past", order_no: "HO-MANUAL-PAST-1", status: "draft",
+          show_dates: null,
+          data: { date: { value: "2020-01-01", source: "manual" } },
+        }),
+      ]);
+      renderPage();
+      await screen.findByText("Hire orders");
+      fireEvent.click(screen.getByRole("button", { name: /^Upcoming$/ }));
+      fireEvent.click(screen.getByRole("button", { name: "Any time" }));
+
+      const cell = await screen.findByText("HO-MANUAL-PAST-1");
+      fireEvent.click(cell);
+      expect(await screen.findByRole("dialog")).toBeInTheDocument();
+    });
   });
 });

@@ -23,11 +23,33 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { TimeframeFilter, upcomingTimeframe, type TimeframeValue } from "@/components/filters/TimeframeFilter";
 import { inTimeframe } from "@/components/filters/filterUtils";
 import { parseDateOnly } from "@/lib/dates";
-import type { HireOrderStatus } from "@/data/hireOrders";
+import type { HireOrderStatus, HireOrderListRow } from "@/data/hireOrders";
+import type { OrderData } from "@/lib/hireOrders/types";
 import { ROUTES } from "@/config/app.config";
 
 /** The spreadsheet-import wizard shipped in Task 5. */
 const IMPORT_READY = true;
+
+/** Read a resolved snapshot field as a trimmed string ("" when absent). Mirrors
+ *  the same small helper in ArtistDashboard.tsx / HireOrderDetailPage.tsx /
+ *  HireOrdersCard.tsx / OrdersTable.tsx (kept local per that established
+ *  pattern rather than a shared import). */
+function snap(data: OrderData, key: keyof OrderData): string {
+  const v = data[key]?.value;
+  if (v === null || v === undefined) return "";
+  return String(v);
+}
+
+/** The date to filter an order's timeframe by: the linked show_date's date
+ *  when there is one, else the order's own snapshot `data.date` -- a manual
+ *  "no linked date" order carries its date there instead of on show_dates.
+ *  Guards the manual value to a clean YYYY-MM-DD before parsing (see
+ *  snap()); returns null when neither is available. */
+function orderDate(o: HireOrderListRow): Date | null {
+  if (o.show_dates?.date) return parseDateOnly(o.show_dates.date);
+  const dateStr = snap((o.data ?? {}) as OrderData, "date");
+  return /^\d{4}-\d{2}-\d{2}$/.test(dateStr) ? parseDateOnly(dateStr) : null;
+}
 
 type StatusChip = "all" | "draft" | "ready" | "issued" | "countersigned";
 
@@ -102,15 +124,18 @@ export default function HireOrdersPage() {
     [statusChip, debouncedSearch],
   );
   const { data: statusSearchFilteredOrders = [], isLoading } = useHireOrders(orgId, filters);
-  // Timeframe is a client-side pass over the status/search-filtered set, by the
-  // order's show_date date. An order with no show_date on record (shouldn't
-  // normally happen -- every order snapshots from a booking's show_date) is
-  // never hidden by this filter rather than silently dropped.
+  // Timeframe is a client-side pass over the status/search-filtered set, by
+  // the order's date -- the linked show_date's date, or (for a manual order
+  // with no linked show_date) its own snapshot `data.date` via orderDate().
+  // An order with neither (shouldn't normally happen -- every order
+  // snapshots a date one way or the other) is never hidden by this filter
+  // rather than silently dropped.
   const filteredOrders = useMemo(
     () =>
-      statusSearchFilteredOrders.filter((o) =>
-        o.show_dates?.date ? inTimeframe(parseDateOnly(o.show_dates.date), timeframe) : true,
-      ),
+      statusSearchFilteredOrders.filter((o) => {
+        const d = orderDate(o);
+        return d ? inTimeframe(d, timeframe) : true;
+      }),
     [statusSearchFilteredOrders, timeframe],
   );
 

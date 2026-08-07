@@ -10,7 +10,7 @@ import { IconTooltip } from '@/components/common/IconTooltip';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { toDateKey } from '@/lib/dates';
+import { toDateKey, isPastDate, PAST_DATE_TINT } from '@/lib/dates';
 import { AvailabilityPicker } from './AvailabilityPicker';
 import { OfferResponseButtons } from './OfferResponseButtons';
 import type { EligibleDate } from '@/hooks/useArtistEligibleDates';
@@ -171,6 +171,12 @@ export function ArtistAvailabilityCalendar({ artistId, eligibleDates }: Props) {
             const isSoftBooked = !isConfirmed && softBookedSet.has(dateStr);
             const isSuggested = !isConfirmed && !isSoftBooked && suggestedSet.has(dateStr);
             const isBlocked = blockedSet.has(dateStr);
+            // Bespoke grid (not shadcn Calendar/EntityCalendar), so it doesn't get
+            // DayPicker's `modifiersClassNames` past-date dimming for free -- apply
+            // the same shared, opacity-only tint by hand. Never combine with
+            // `disabled`/`pointer-events-none`: a past eligible date must stay
+            // clickable (availability toggling, offer response).
+            const isPast = isPastDate(day);
 
             const shade = isConfirmed
               ? 'bg-success/30 text-success-foreground'
@@ -195,7 +201,8 @@ export function ArtistAvailabilityCalendar({ artistId, eligibleDates }: Props) {
                     ? 'hover:opacity-90 cursor-pointer'
                     : isBlocked
                     ? 'opacity-60 cursor-default'
-                    : 'opacity-50 cursor-default'
+                    : 'opacity-50 cursor-default',
+                  isPast && PAST_DATE_TINT
                 )}
               >
                 <span className="text-sm font-medium">{format(day, 'd')}</span>
