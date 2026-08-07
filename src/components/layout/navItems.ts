@@ -41,8 +41,10 @@ export const NAV_ITEMS: NavItem[] = [
 
 /** A nav item resolved for one viewer. `locked` means "show it, grayed and inert":
  *  the org does not have the module, but hiding it entirely leaves members unable
- *  to tell the module exists. Super-admins are never locked — they administer
- *  entitlements, and ProtectedRoute lets them through to the off-state page. */
+ *  to tell the module exists. Super-admins are not locked (they administer
+ *  entitlements, and ProtectedRoute lets them through to the off-state page),
+ *  except while previewing another user via the editor "view as" toolbar, when
+ *  they see that user's locks. See isImpersonating. */
 export type VisibleNavItem = NavItem & { locked: boolean };
 
 export interface NavSectionGroup<T extends NavItem = NavItem> { section: NavSection; label: string; items: T[]; }
@@ -68,9 +70,10 @@ export function visibleNavItems(
   },
 ): VisibleNavItem[] {
   // Entitlement no longer HIDES an item, it LOCKS it: a member who cannot use a
-  // module should still be able to see that it exists. Super-admins are never
-  // locked, consistent with ProtectedRoute exempting them from the route-level
-  // feature gate. While entitlements are still loading, fail OPEN (never lock)
+  // module should still be able to see that it exists. Super-admins are not
+  // locked (consistent with ProtectedRoute exempting them from the route-level
+  // feature gate), except while previewing another user via view-as (see the
+  // lock closure below). While entitlements are still loading, fail OPEN (never lock)
   // so an entitled org doesn't see the item flash locked for one round-trip,
   // matching ProtectedRoute and HireOrdersPage's fail-open loading behavior.
   // Role gating below is unchanged and still hides outright.
