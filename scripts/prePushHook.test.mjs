@@ -6,7 +6,7 @@
 // a convenience gate, NOT the source of truth — GitHub CI stays the enforced
 // gate and runs on the merged commit regardless.
 //
-// Two things a future edit could silently break, each guarded below:
+// Three things a future edit could silently break, each guarded below:
 //   1. The hook must be tracked AND recorded executable in the index — a 100644
 //      blob is checked out non-executable, and git then silently skips it, so a
 //      clone/CI checkout would install a dead hook.

@@ -6,7 +6,7 @@
   "scripts": {
     "dev": "vite",
     "dev:prod": "vite --mode prod",
-    "prepare": "git config core.hooksPath .githooks 2>/dev/null || true",
+    "prepare": "git rev-parse --git-dir >/dev/null 2>&1 && git config core.hooksPath .githooks || true",
     "build": "vite build",
     "build:dev": "vite build --mode development",
     "lint": "eslint . --max-warnings 0",
