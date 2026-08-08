@@ -144,7 +144,8 @@ export function BookingFlowTab({ get, set, dirtyKeys, saving, onSave, onDiscard,
         <Alert>
           <AlertTitle>Booking flow is off</AlertTitle>
           <AlertDescription>
-            No offers, reminders or confirmations run for this workspace. Pick a flow above to turn it on.
+            No new offers open, and no reminders, digests or confirmations are sent. Offers already
+            sent still run out their response window. Pick a flow above to turn it on.
           </AlertDescription>
         </Alert>
       )}

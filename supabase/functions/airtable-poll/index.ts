@@ -413,8 +413,10 @@ async function syncOrg(deps: Deps, orgId: string, baseId: string, tableName: str
   // Flush tier-1 offers (resilient batch), gated on the org's booking flow. Resolve the
   // flow once per org. Gate on ALL FOUR switches: flow.active (the booking-flow master
   // switch — an admin can pause the whole booking engine without disabling the booking_flow
-  // module: while off, no cron path (auto-open, escalation, reminders, digests, at-risk) and
-  // no manual open-offer-tier runs, so nothing here opens a tier either), the booking_flow
+  // module: while off, none of the gated engine paths run (auto-open, escalation, reminders,
+  // digests, at-risk) and manual open-offer-tier is refused, so nothing here opens a tier
+  // either; the one thing still ticking is offer-expiry cancellation, which gates on the
+  // module entitlement (expire_soft_bookings), not this JSONB switch), the booking_flow
   // module entitlement (bookingEnabled — LOAD-BEARING: this is one of only two paths,
   // alongside expire-offers' auto-escalation, where a service-role/cron caller can open a
   // tier without ever going through open-offer-tier's own JWT-only requireFeature gate;

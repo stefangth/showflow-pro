@@ -5,7 +5,7 @@ const PRESET_META: Record<PresetName, { name: string; desc: string; dotClass: st
   classic: { name: "Classic", desc: "Offer → artist accepts → producer confirms. Today's flow.", dotClass: "bg-primary" },
   fasttrack: { name: "Fast-track", desc: "Auto-opened, immediate offers; acceptance confirms instantly.", dotClass: "bg-[var(--green-500)]" },
   direct: { name: "Direct book", desc: "No offers; producers book artists from eligibility lists.", dotClass: "bg-[var(--amber-500)]" },
-  off: { name: "Off", desc: "Booking flow paused. No offers, reminders or confirmations run.", dotClass: "bg-muted-foreground" },
+  off: { name: "Off", desc: "Booking flow paused. No new offers, reminders, digests or confirmations are sent.", dotClass: "bg-muted-foreground" },
 };
 
 interface Props {

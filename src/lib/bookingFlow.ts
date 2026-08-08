@@ -176,9 +176,9 @@ export interface PracticeRow {
 export function inPracticeRows(flow: BookingFlow, times: FlowTimes): PracticeRow[] {
   if (flow.active === false) {
     return [
-      { who: "Artist", text: "Gets no offers while the flow is off." },
+      { who: "Artist", text: "Gets no new offers while the flow is off." },
       { who: "Producer", text: "Nothing to review; turn a flow on to start booking." },
-      { who: "Automation", text: "Nothing runs while the flow is off." },
+      { who: "Automation", text: "Nothing new runs while the flow is off; offers already sent still time out." },
     ];
   }
   let artist: string;
@@ -231,7 +231,7 @@ export interface PreviewRow {
 
 export function flowPreviewRows(flow: BookingFlow, times: FlowTimes): PreviewRow[] {
   if (flow.active === false) {
-    return [{ at: "·", text: "The flow is paused; no offers, reminders or confirmations run." }];
+    return [{ at: "·", text: "The flow is paused; no new offers, reminders, digests or confirmations are sent." }];
   }
   const rows: PreviewRow[] = [
     { at: "09:02", text: "Date created (Airtable sync or in-app) · 12 eligible artists in tier 1" },
