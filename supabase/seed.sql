@@ -188,3 +188,103 @@ values
    '5eed0000-0000-0000-0000-0000000000e2', current_date + 28,
    '5eed0000-0000-0000-0000-0000000000c1', 'Example Venue', 'open', '15:00', 75)
 on conflict (id) do nothing;
+
+-- ── Scale-up: a fuller world, heavy on FUTURE show dates ─────────────────────
+-- Same rules as everything above — synthetic only, ids in the `5eed…` namespace,
+-- `on conflict do nothing`, and show_dates kept `open` so no fill-status or
+-- hire-order dispatch trigger fires. The bulk rows (extra artists and the future
+-- dates) are generated with generate_series so the calendar is densely populated
+-- without a hand-written row each; their ids are built from the row number,
+-- still inside `5eed…`. Everything is additive to the rows above.
+
+-- More cities (multi-venue feel).
+insert into public.cities (id, org_id, name) values
+  ('5eed0000-0000-0000-0000-0000000000c2', '00000000-0000-0000-0000-00000000b007', 'Rivertown'),
+  ('5eed0000-0000-0000-0000-0000000000c3', '00000000-0000-0000-0000-00000000b007', 'Lakeside'),
+  ('5eed0000-0000-0000-0000-0000000000c4', '00000000-0000-0000-0000-00000000b007', 'Hillford'),
+  ('5eed0000-0000-0000-0000-0000000000c5', '00000000-0000-0000-0000-00000000b007', 'Port Meadow')
+on conflict (id) do nothing;
+
+-- More casts.
+insert into public.casts (id, org_id, name, description) values
+  ('5eed0000-0000-0000-0000-0000000000cb', '00000000-0000-0000-0000-00000000b007', 'Ensemble B', 'Seeded cast for local development.'),
+  ('5eed0000-0000-0000-0000-0000000000cc', '00000000-0000-0000-0000-00000000b007', 'Ensemble C', 'Seeded cast for local development.')
+on conflict (id) do nothing;
+
+-- More shows (varied programmes and slot shapes).
+insert into public.shows (id, org_id, program, sub_program, category, description, status, main_cast_slots, understudy_slots, sort_order) values
+  ('5eed0000-0000-0000-0000-0000000000e3', '00000000-0000-0000-0000-00000000b007', 'Late Night Revue',   'Set C', 'Club',       'Seeded show for local development.', 'active', 3, 1, 3),
+  ('5eed0000-0000-0000-0000-0000000000e4', '00000000-0000-0000-0000-00000000b007', 'Family Spectacular', 'Set D', 'Main stage', 'Seeded show for local development.', 'active', 4, 2, 4),
+  ('5eed0000-0000-0000-0000-0000000000e5', '00000000-0000-0000-0000-00000000b007', 'Chamber Session',    'Set E', 'Studio',     'Seeded show for local development.', 'active', 2, 0, 5),
+  ('5eed0000-0000-0000-0000-0000000000e6', '00000000-0000-0000-0000-00000000b007', 'Touring Gala',       'Set F', 'Arena',      'Seeded show for local development.', 'active', 5, 2, 6)
+on conflict (id) do nothing;
+
+-- 15 more catalog artists (no login; user_id null). Deterministic 5eed ids
+-- 5eed0000-…-0000000a0001 … 000f. cast_role rotates for variety.
+insert into public.artists (id, org_id, user_id, name, email, status, cast_role)
+select
+  ('5eed0000-0000-0000-0000-0000000a' || lpad(to_hex(n), 4, '0'))::uuid,
+  '00000000-0000-0000-0000-00000000b007',
+  null,
+  'Ensemble Artist ' || lpad(n::text, 2, '0'),
+  'artist-' || lpad(n::text, 2, '0') || '@example.com',
+  'active',
+  (array['Performer','Vocalist','Dancer','Musician','Understudy'])[1 + (n % 5)]
+from generate_series(1, 15) as n
+on conflict do nothing;
+
+-- Spread those artists across the three casts.
+insert into public.cast_members (cast_id, artist_id, org_id)
+select
+  (array[
+    '5eed0000-0000-0000-0000-0000000000ca',
+    '5eed0000-0000-0000-0000-0000000000cb',
+    '5eed0000-0000-0000-0000-0000000000cc'
+  ]::uuid[])[1 + (n % 3)],
+  ('5eed0000-0000-0000-0000-0000000a' || lpad(to_hex(n), 4, '0'))::uuid,
+  '00000000-0000-0000-0000-00000000b007'
+from generate_series(1, 15) as n
+on conflict do nothing;
+
+-- FUTURE show dates: for each of the six shows, 12 dates on a per-show cadence,
+-- from a few days out to ~5 months ahead, rotating through the five cities. Kept
+-- `open`. Ids are 5eed0000-…-0000000dNNNN by row number (distinct from d1..d3).
+with cfg (show_id, interval_days, session_1, duration_minutes, city_seed) as (
+  values
+    ('5eed0000-0000-0000-0000-0000000000e1'::uuid,  7, '19:30', 90,  0),
+    ('5eed0000-0000-0000-0000-0000000000e2'::uuid, 10, '15:00', 75,  1),
+    ('5eed0000-0000-0000-0000-0000000000e3'::uuid,  6, '21:00', 60,  2),
+    ('5eed0000-0000-0000-0000-0000000000e4'::uuid, 14, '14:00', 120, 3),
+    ('5eed0000-0000-0000-0000-0000000000e5'::uuid,  9, '18:00', 80,  4),
+    ('5eed0000-0000-0000-0000-0000000000e6'::uuid, 12, '20:00', 100, 0)
+),
+gen as (
+  select
+    cfg.show_id,
+    cfg.session_1,
+    cfg.duration_minutes,
+    1 + ((cfg.city_seed + wk.k) % 5) as idx,
+    (current_date + 3 + cfg.interval_days * wk.k)::date as d,
+    row_number() over (order by cfg.show_id, wk.k) as rn
+  from cfg
+  cross join generate_series(0, 11) as wk(k)
+)
+insert into public.show_dates (id, org_id, show_id, date, city_id, venue, status, session_1, duration_minutes)
+select
+  ('5eed0000-0000-0000-0000-0000000d' || lpad(to_hex(gen.rn::int), 4, '0'))::uuid,
+  '00000000-0000-0000-0000-00000000b007',
+  gen.show_id,
+  gen.d,
+  (array[
+    '5eed0000-0000-0000-0000-0000000000c1',
+    '5eed0000-0000-0000-0000-0000000000c2',
+    '5eed0000-0000-0000-0000-0000000000c3',
+    '5eed0000-0000-0000-0000-0000000000c4',
+    '5eed0000-0000-0000-0000-0000000000c5'
+  ]::uuid[])[gen.idx],
+  (array['Grand Theatre','Riverside Hall','Lakeside Arena','Hillford Playhouse','Port Meadow Stage']::text[])[gen.idx],
+  'open',
+  gen.session_1,
+  gen.duration_minutes
+from gen
+on conflict (id) do nothing;
