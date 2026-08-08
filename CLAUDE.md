@@ -126,6 +126,12 @@ src/
                    #   ROUTES.HIRE_ORDER_TEMPLATE: outline / live browser-rendered PDF /
                    #   inspector panes over the semantic role registry in
                    #   src/lib/hireOrders/pdf/pdfTheme.ts)
+                   #   + emailTemplates/ (Settings → Email templates: EmailTemplatesTab, the coverage
+                   #   registry of every transactional email with trigger/recipient/status + preview,
+                   #   and EmailTemplateEditorPage at ROUTES.EMAIL_TEMPLATE over email_copy/email_theme;
+                   #   gated by the edit_email_templates capability)
+                   #   + templateEditor/ (domain-neutral editor kit — shell, generic outline, copy +
+                   #   role-style controls, override-map helpers — shared by the PDF and email editors)
     layout/        # AppLayout (sidebar + topbar shell), NotificationsList (notification bell popover)
     ui/            # shadcn primitives — DO NOT edit by hand, regenerate via shadcn
   config/
@@ -134,7 +140,7 @@ src/
                    #   that take the Supabase client as a parameter. Hooks are thin wrappers.
                    #   Domains: account, admin, artistImport, artists, airtableKey, airtableMapping,
                    #   airtableSchema, airtableSettings, airtableSync, bookings, cities, customFields,
-                   #   entitlements, hireOrders, invitations, members, notificationPreferences,
+                   #   emailTemplates, entitlements, hireOrders, invitations, members, notificationPreferences,
                    #   notifications, orgs, platform, profiles, remoteSheet, settings, shows, showDates,
                    #   skills, systemMap.
                    #   Test with supabaseFake.ts (never vi.mock the client).
