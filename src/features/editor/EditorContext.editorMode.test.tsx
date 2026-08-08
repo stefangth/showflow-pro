@@ -117,3 +117,31 @@ describe("EditorProvider persistence", () => {
     expect(localStorage.getItem(KEY)).toBeNull();
   });
 });
+
+describe("EditorProvider toolbar visibility", () => {
+  it("hides and shows the toolbar without leaving editor mode", () => {
+    setAuth(["admin"], false);
+    const { result } = renderEditor();
+    act(() => result.current.enableEditorMode());
+    expect(result.current.isToolbarHidden).toBe(false);
+
+    act(() => result.current.hideToolbar());
+    expect(result.current.isToolbarHidden).toBe(true);
+    expect(result.current.isEditorMode).toBe(true); // still in editor mode
+
+    act(() => result.current.showToolbar());
+    expect(result.current.isToolbarHidden).toBe(false);
+  });
+
+  it("re-shows the bar when editor mode is re-entered after a hidden exit", () => {
+    setAuth(["admin"], false);
+    const { result } = renderEditor();
+    act(() => result.current.enableEditorMode());
+    act(() => result.current.hideToolbar());
+    expect(result.current.isToolbarHidden).toBe(true);
+
+    act(() => result.current.disableEditorMode());
+    act(() => result.current.enableEditorMode());
+    expect(result.current.isToolbarHidden).toBe(false);
+  });
+});

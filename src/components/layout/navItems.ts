@@ -1,6 +1,6 @@
 import { LayoutDashboard, BookOpen, Clock, Settings, Shield, MessageSquare, Users, Building2, Theater, FileSignature } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
-import { ROUTES } from '@/config/app.config';
+import { ROUTES, type AppRole } from '@/config/app.config';
 import type { FeatureKey } from '@/lib/entitlements';
 
 export type NavSection = 'workspace' | 'catalog' | 'system';
@@ -97,4 +97,31 @@ export function visibleNavItems(
       return item.roles.some((r) => ctx.hasRole(r));
     })
     .map(lock);
+}
+
+/**
+ * Should this item read as "hidden for the previewed perspective" in editor mode?
+ * When true the sidebar dims it and stamps an EyeOff, so a super-admin previewing
+ * a role/user can see which entries that perspective would NOT have — without the
+ * item actually disappearing (view-as never removes items, only annotates them).
+ *
+ * Two independent gates decide real visibility, so both are checked here:
+ *  - `superAdmin` items are visible ONLY to super-admins. No previewable perspective
+ *    is ever a super-admin — `viewAsRole` is an AppRole (admin/producer/artist) and
+ *    `viewAsUser` carries only org roles — so any active preview hides them. Missing
+ *    this axis is why Platform never dimmed (it has no `roles`, only `superAdmin`).
+ *  - `roles` items are visible to those roles; an item with neither gate (Dashboard,
+ *    Chats) is universal and never dimmed.
+ */
+export function isHiddenForViewAs(
+  item: NavItem,
+  ctx: { isEditorMode: boolean; viewAsRole: AppRole | null; viewAsUser: { roles: AppRole[] } | null },
+): boolean {
+  if (!ctx.isEditorMode) return false;
+  const impersonating = !!ctx.viewAsUser || ctx.viewAsRole !== null;
+  if (item.superAdmin) return impersonating;
+  if (!item.roles) return false;
+  if (ctx.viewAsUser) return !item.roles.some((r) => ctx.viewAsUser!.roles.includes(r as AppRole));
+  if (ctx.viewAsRole === null) return false;
+  return !item.roles.includes(ctx.viewAsRole);
 }

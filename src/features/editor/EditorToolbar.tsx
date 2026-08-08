@@ -1,4 +1,4 @@
-import { Building2, Eye, Pencil, Settings, User, X } from 'lucide-react';
+import { Building2, ChevronUp, Eye, Pencil, Settings, User, X } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 import { useLocation } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
@@ -25,9 +25,18 @@ interface IamUser {
 
 export function EditorToolbar() {
   const { roles, viewAsRole, setViewAsRole, viewAsUser, setViewAsUser, currentOrg, orgs, switchOrg, isSuperAdmin } = useAuth();
-  const { isEditorMode, disableEditorMode, isSidePanelOpen, setSidePanelOpen } = useEditor();
+  const { isEditorMode, disableEditorMode, isToolbarHidden, hideToolbar, isSidePanelOpen, setSidePanelOpen } = useEditor();
 
   const canEdit = canUseEditor(roles, isSuperAdmin);
+
+  // Exiting editor mode means becoming yourself again: drop any active "view as"
+  // preview so a leftover impersonation can't silently outlive the toolbar. Hiding
+  // the bar (below) deliberately does NOT do this — it keeps the preview alive.
+  const exitEditor = () => {
+    setViewAsRole(null);
+    setViewAsUser(null);
+    disableEditorMode();
+  };
 
   const { data: iamUsers } = useQuery({
     queryKey: ['admin-iam-users', currentOrg?.id],
@@ -47,8 +56,9 @@ export function EditorToolbar() {
   // The topbar EditorModeToggle is the single entry point into editor mode
   // (see below); this toolbar has nothing to show until editor mode is
   // actually on, so it renders nothing rather than a second, redundant
-  // "enter editor mode" affordance.
-  if (!canEdit || !isEditorMode) return null;
+  // "enter editor mode" affordance. When the bar is hidden (but editor mode
+  // is still on) it also renders nothing — the topbar pencil brings it back.
+  if (!canEdit || !isEditorMode || isToolbarHidden) return null;
 
   return (
     <>
@@ -165,13 +175,24 @@ export function EditorToolbar() {
           Page Settings
         </Button>
 
-        <div className="ml-auto">
-          <IconTooltip label="Exit editor mode">
+        <div className="ml-auto flex items-center gap-1">
+          <IconTooltip label="Hide bar (stay in editor mode)">
             <Button
               variant="ghost"
               size="icon"
               className="h-7 w-7 text-muted-foreground hover:text-foreground"
-              onClick={disableEditorMode}
+              onClick={hideToolbar}
+              aria-label="Hide editor bar"
+            >
+              <ChevronUp className="h-4 w-4" />
+            </Button>
+          </IconTooltip>
+          <IconTooltip label="Exit editor mode (back to your role)">
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-7 w-7 text-muted-foreground hover:text-foreground"
+              onClick={exitEditor}
               aria-label="Exit editor mode"
             >
               <X className="h-4 w-4" />
@@ -221,21 +242,34 @@ export function EditorPageBadge() {
   );
 }
 
-/** Toggle button rendered inside the topbar for admins when editor mode is off. */
+/** Topbar pencil: enters editor mode when off, and toggles the toolbar's
+ *  visibility when on. It intentionally does NOT exit — exiting (and dropping the
+ *  "view as" preview) is the toolbar's X, a deliberate, less reversible action. This
+ *  is also the only way to bring the bar back after it has been hidden. */
 export function EditorModeToggle() {
   const { roles, isSuperAdmin, viewAsRole, viewAsUser } = useAuth();
-  const { isEditorMode, enableEditorMode, disableEditorMode } = useEditor();
+  const { isEditorMode, enableEditorMode, isToolbarHidden, hideToolbar, showToolbar } = useEditor();
 
   if (!canUseEditor(roles, isSuperAdmin)) return null;
 
   // A red pencil is a persistent reminder that the app is being previewed as
   // someone other than the signed-in user. It stays visible even with the editor
-  // toolbar closed, where the "Viewing as" chip is not — so a super-admin can
+  // toolbar hidden, where the "Viewing as" chip is not — so a super-admin can
   // never forget they are looking at a gated/limited view rather than their own.
   // Same predicate the module/nav/route gates use, so the cue never disagrees
   // with what is actually gated.
   const previewingOther = isImpersonating({ isSuperAdmin, roles, viewAsRole, viewAsUser });
   const previewLabel = viewAsUser ? (viewAsUser.email ?? 'another user') : viewAsRole;
+
+  const handleClick = () => {
+    if (!isEditorMode) enableEditorMode();
+    else if (isToolbarHidden) showToolbar();
+    else hideToolbar();
+  };
+
+  const label = !isEditorMode
+    ? 'Enter editor mode'
+    : isToolbarHidden ? 'Show editor bar' : 'Hide editor bar';
 
   return (
     <Tooltip>
@@ -244,7 +278,7 @@ export function EditorModeToggle() {
           variant={isEditorMode ? 'secondary' : 'ghost'}
           size="icon"
           className="relative h-8 w-8"
-          onClick={isEditorMode ? disableEditorMode : enableEditorMode}
+          onClick={handleClick}
         >
           <Pencil className={cn('h-4 w-4', previewingOther && 'text-destructive')} />
           {isEditorMode && (
@@ -253,9 +287,7 @@ export function EditorModeToggle() {
         </Button>
       </TooltipTrigger>
       <TooltipContent side="bottom">
-        {previewingOther
-          ? `Viewing as ${previewLabel}. Click to change.`
-          : isEditorMode ? 'Exit Editor Mode' : 'Enter Editor Mode'}
+        {previewingOther ? `Viewing as ${previewLabel}. ${label}.` : label}
       </TooltipContent>
     </Tooltip>
   );
