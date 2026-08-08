@@ -94,6 +94,25 @@ Both run all layers, continue past failures, and print a summary. Individual
 layers are still available directly: `npm run test`, `test:coverage`, `test:db`,
 `test:functions`, `test:e2e`.
 
+### The pre-push hook
+
+`npm ci` installs a git **pre-push hook** — the `prepare` script points
+`core.hooksPath` at the tracked `.githooks/` directory. It runs `verify:fast`
+before every push so the Docker-free layers fail on your machine instead of in a
+red CI run. It deliberately does **not** run `verify:full`: a Docker cold-start
+on every push would just train everyone to reach for `--no-verify`. Bypass a
+single push when you need to (a WIP push, a docs-only branch):
+
+```bash
+git push --no-verify             # git skips the hook entirely
+SHOWFLOW_SKIP_VERIFY=1 git push  # targeted skip, still logged
+```
+
+The hook is a convenience gate, not the enforced one — GitHub CI still runs on
+the merged commit regardless, and the prod edge-function deploy keys off a green
+CI run. The hook only shortens the loop. Guarded by
+`scripts/prePushHook.test.mjs`.
+
 ---
 
 ## How the flip works (reference)
