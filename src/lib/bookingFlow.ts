@@ -176,7 +176,7 @@ export interface PracticeRow {
 export function inPracticeRows(flow: BookingFlow, times: FlowTimes): PracticeRow[] {
   if (flow.active === false) {
     return [
-      { who: "Artist", text: "Gets no offers or bookings while the flow is off." },
+      { who: "Artist", text: "Gets no offers while the flow is off." },
       { who: "Producer", text: "Nothing to review; turn a flow on to start booking." },
       { who: "Automation", text: "Nothing runs while the flow is off." },
     ];

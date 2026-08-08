@@ -946,6 +946,28 @@ Deno.test("send-confirmation-digest: confirmation_digest:false still delivers in
   assertEquals((stamp!.args[0] as { digested_at?: string }).digested_at, BERLIN_20_CEST.toISOString());
 });
 
+Deno.test("send-confirmation-digest: booking_flow.active:false → NO confirmation digest, even at the configured hour with a fresh confirmation", async () => {
+  // The `if (!flow.active) continue;` gate (index.ts ~line 138) overrides the usual
+  // "direct-booking orgs are not gated" behavior: when the flow itself is off, the
+  // engine is paused and this org must get no confirmation digest at all, regardless
+  // of confirmation_digest_hour_berlin matching and a newly-confirmed booking existing.
+  const settings = [
+    ...APP_SETTINGS_SEED,
+    { when: { key: "booking_flow" }, data: [{ org_id: ORG_1, value: { active: false } }] },
+  ];
+  const { deps, invokeCalls, calls } = baseDeps(
+    { app_settings: settings, bookings: { data: ONE_CONFIRMED, error: null } },
+    BERLIN_20_CEST, // matches the configured digest hour — would send if the flow were active
+  );
+  const res = await handle(makeRequest({ headers: cronOK }), deps);
+  const body = await res.json();
+  assertEquals(res.status, 200);
+  assertEquals(body.digests_sent, 0, "an inactive booking flow must suppress the confirmation digest");
+  assertEquals(invokeCalls.some((c) => c.name === "send-transactional-email"), false);
+  const stamp = calls.find((c) => c.table === "bookings" && c.method === "update");
+  assertEquals(stamp, undefined, "must not stamp confirmation_digest_sent_at when the flow is inactive");
+});
+
 Deno.test("send-confirmation-digest: templateData confirmed items carry the custom-field label when the flow selects a custom reference", async () => {
   const confirmed = [{
     id: "b1", artist_id: "a1",

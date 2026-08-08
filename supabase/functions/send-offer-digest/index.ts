@@ -80,6 +80,8 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
       console.error('send-offer-digest: booking flow read failed', { org: org.id, error: (e as Error).message });
       continue;
     }
+    // Booking flow off for this org: the engine is paused, so send no offer digest.
+    if (!flow.active) continue;
     const isImmediate = flow.offer_delivery === 'immediate';
 
     // A per-org settings read failure must not abort the other orgs' digests.

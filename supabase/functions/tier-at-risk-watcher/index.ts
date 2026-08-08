@@ -135,7 +135,7 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
       }
       flowByOrg.set(orgId, flow)
     }
-    if (!flow.at_risk_alerts || !flow.artist_acceptance) continue
+    if (!flow.active || !flow.at_risk_alerts || !flow.artist_acceptance) continue
 
     const program = sdRow.show?.program
     const subProgram = sdRow.show?.sub_program

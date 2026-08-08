@@ -133,6 +133,10 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
       continue;
     }
 
+    // Booking flow off for this org: the engine is paused, so send no confirmation digest
+    // (this overrides the usual "direct-booking orgs are not gated" note when the flow is off).
+    if (!flow.active) continue;
+
     // Resolve the org's reference-field display once per org (mirrors send-offer-digest).
     let customFieldKey: string | null = null;
     if (flow.reference_field.source === 'custom' && flow.reference_field.custom_field_id) {

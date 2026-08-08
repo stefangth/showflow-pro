@@ -909,6 +909,13 @@ Deno.test("open-offer-tier: tier upsert failure → offers still created + tier_
 
 const FLOW_DIRECT = { data: [{ org_id: "org-A", value: { artist_acceptance: false } }], error: null };
 
+// Master switch: booking_flow.active === false pauses the WHOLE flow, independent
+// of artist_acceptance. Seeding artist_acceptance:true here isolates this gate from
+// the "direct booking mode" gate below (which fires on artist_acceptance:false) —
+// this must 409 on the `active` check specifically, before ever inspecting
+// artist_acceptance.
+const FLOW_INACTIVE = { data: [{ org_id: "org-A", value: { active: false, artist_acceptance: true } }], error: null };
+
 Deno.test("open-offer-tier: direct-booking org → 409, nothing written", async () => {
   const { deps, calls } = makeFakeDeps({
     envVars,
@@ -921,6 +928,22 @@ Deno.test("open-offer-tier: direct-booking org → 409, nothing written", async 
   assertEquals(res.status, 409);
   const body = await res.json();
   assertEquals(body.error, "Direct booking mode: offers are disabled for this organization.");
+  assertEquals(calls.some((c) => c.table === "bookings" && c.method === "insert"), false);
+  assertEquals(calls.some((c) => c.table === "show_date_offer_tiers" && c.method === "upsert"), false);
+});
+
+Deno.test("open-offer-tier: booking flow inactive (active:false) → 409, nothing written", async () => {
+  const { deps, calls } = makeFakeDeps({
+    envVars,
+    tables: {
+      show_dates: { data: { ...SHOW_DATE_OPEN, org_id: "org-A" }, error: null },
+      app_settings: FLOW_INACTIVE,
+    },
+  });
+  const res = await handle(makeRequest({ headers: SVC, body: { show_date_id: "d1", tier: 1 } }), deps);
+  assertEquals(res.status, 409);
+  const body = await res.json();
+  assertEquals(body.error, "Booking flow is off for this organization.");
   assertEquals(calls.some((c) => c.table === "bookings" && c.method === "insert"), false);
   assertEquals(calls.some((c) => c.table === "show_date_offer_tiers" && c.method === "upsert"), false);
 });

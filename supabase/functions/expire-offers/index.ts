@@ -87,7 +87,10 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
       }
       flowByOrg.set(org.id, flow)
     }
-    if (!flow.artist_acceptance || !flow.expiry_reminder) continue
+    // flow.active gates the reminder pass too (consistent with the auto-escalation gate
+    // below): when the booking flow is off, the whole engine is paused, so a pending offer
+    // opened before the switch does not get an expiry reminder emailed.
+    if (!flow.active || !flow.artist_acceptance || !flow.expiry_reminder) continue
 
     // Resolve the org's reference-field display once per org (mirrors send-offer-digest).
     let customFieldKey: string | null = null
