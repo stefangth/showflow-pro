@@ -70,6 +70,21 @@ describe("CockpitRail", () => {
     expect(onEditSetup).toHaveBeenCalledOnce();
   });
 
+  it("renders the Up next block (digest / auto-escalate) when items are provided", () => {
+    render(<CockpitRail {...base} upNext={[
+      { tone: "violet", text: "Digest sends daily · 18:00" },
+      { tone: "neutral", text: "Auto-escalate: off" },
+    ]} />);
+    expect(screen.getByText(/up next/i)).toBeInTheDocument();
+    expect(screen.getByText("Digest sends daily · 18:00")).toBeInTheDocument();
+    expect(screen.getByText("Auto-escalate: off")).toBeInTheDocument();
+  });
+
+  it("omits the Up next block when there are no items", () => {
+    render(<CockpitRail {...base} upNext={[]} />);
+    expect(screen.queryByText(/up next/i)).not.toBeInTheDocument();
+  });
+
   it("renders read-only notes when provided", () => {
     render(<CockpitRail {...base} notes="Press night — reduced orchestra" />);
     expect(screen.getByText("Press night — reduced orchestra")).toBeInTheDocument();

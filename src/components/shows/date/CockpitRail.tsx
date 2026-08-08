@@ -1,6 +1,7 @@
 import { Clock, MapPin, Ticket } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import type { ActivityItem } from "@/lib/bookingCockpit";
+import { cn } from "@/lib/utils";
+import type { ActivityItem, UpNextItem } from "@/lib/bookingCockpit";
 
 export interface CockpitRailProps {
   times: string | null; // "14:00 / 19:30"
@@ -12,6 +13,9 @@ export interface CockpitRailProps {
   notes?: string | null;
   castChips: Array<{ label: string; kind: "inherited" | "override" }>;
   skillChips: string[];
+  /** Lower-priority engine signals (digest-send, auto-escalate). The time-
+   *  critical offers-expiry lives in the header status line, not here. */
+  upNext?: UpNextItem[];
   activity: ActivityItem[]; // pre-derived (buildActivity); rail formats iso
   chatUnread: number;
   chatPreview: string | null;
@@ -67,8 +71,14 @@ const SectionLabel = ({ children }: { children: React.ReactNode }) => (
 
 /** The cockpit's left rail: date facts, eligibility chips, a derived activity
  *  feed, and a chat teaser, separated by hairline dividers. Purely presentational. */
+const UP_NEXT_DOT: Record<UpNextItem["tone"], string> = {
+  violet: "bg-accent-500",
+  amber: "bg-[var(--amber-600)]",
+  neutral: "bg-[var(--text-faint)]",
+};
+
 export function CockpitRail({
-  times, venue, city, source, notes, castChips, skillChips, activity,
+  times, venue, city, source, notes, castChips, skillChips, upNext = [], activity,
   chatUnread, chatPreview, onOpenChat, onEditSetup, showEditSetup = true,
 }: CockpitRailProps) {
   return (
@@ -144,6 +154,26 @@ export function CockpitRail({
           </Button>
         )}
       </div>
+
+      {upNext.length > 0 && (
+        <>
+          <Divider />
+          <div className="space-y-2">
+            <SectionLabel>Up next</SectionLabel>
+            <div className="flex flex-col items-start gap-1.5">
+              {upNext.map((it, i) => (
+                <span
+                  key={`${it.tone}-${i}`}
+                  className="inline-flex items-center gap-2 rounded-[var(--radius-pill)] border-[0.5px] border-[var(--line-strong)] bg-[var(--surface)] px-2.5 py-1 text-xs text-muted-foreground"
+                >
+                  <span className={cn("h-1.5 w-1.5 shrink-0 rounded-full", UP_NEXT_DOT[it.tone])} />
+                  {it.text}
+                </span>
+              ))}
+            </div>
+          </div>
+        </>
+      )}
 
       {activity.length > 0 && (
         <>

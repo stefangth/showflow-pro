@@ -624,7 +624,11 @@ export function ShowDateDetailSheet({ showDateId, open, onOpenChange, pager }: P
     statusText = 'All slots confirmed';
     statusTone = 'green';
   } else if (highestOpenTier != null) {
-    statusText = `Tier ${highestOpenTier} open`;
+    // Fold the offers-expiry signal into the open-tier status (matches the
+    // reference "Tier N open · N offers expire …"); the lower-priority digest /
+    // auto-escalate pills go to the rail's Up next block below.
+    const expiryItem = upNextItems.find((i) => /expire/i.test(i.text));
+    statusText = expiryItem ? `Tier ${highestOpenTier} open · ${expiryItem.text}` : `Tier ${highestOpenTier} open`;
     statusTone = 'amber';
   } else if (upNextItems.length > 0) {
     statusText = upNextItems[0].text;
@@ -810,6 +814,9 @@ export function ShowDateDetailSheet({ showDateId, open, onOpenChange, pager }: P
                   notes={showDate.notes}
                   castChips={castChips}
                   skillChips={skillChips}
+                  // Expiry is folded into the header status line; the rail keeps
+                  // the lower-priority digest-send / auto-escalate signals.
+                  upNext={bookingModuleAllowed ? upNextItems.filter((i) => !/expire/i.test(i.text)) : []}
                   activity={bookingModuleAllowed ? activity : []}
                   chatUnread={0}
                   chatPreview={null}

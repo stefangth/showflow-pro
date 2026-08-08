@@ -121,6 +121,10 @@ export default function DevCockpitHarness() {
         { label: "Cast C", kind: "override" },
       ]}
       skillChips={["Aerial rig", "Pointe"]}
+      upNext={[
+        { tone: "violet", text: "Digest sends daily · 18:00" },
+        { tone: "neutral", text: "Auto-escalate: off" },
+      ]}
       activity={ACTIVITY}
       chatUnread={3}
       chatPreview={'Lena Vogt · "Can I swap to the 19:30 only?"'}
