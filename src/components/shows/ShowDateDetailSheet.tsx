@@ -551,7 +551,9 @@ export function ShowDateDetailSheet({ showDateId, open, onOpenChange, pager }: P
   });
 
   // ── Derived cockpit values ──────────────────────────────────────────────
-  const bookings = bookingsForDate ?? [];
+  // Stable reference (react-query data or a constant empty array) so memoized
+  // consumers like castGroups don't bust on every render.
+  const bookings = useMemo(() => bookingsForDate ?? [], [bookingsForDate]);
   const funnel = computeFunnel(bookings);
   const confirmedCount = funnel.confirmedMain + funnel.confirmedUnderstudy;
   const acceptedCount = bookings.filter((b) => b.status === 'soft_booked').length;
@@ -676,21 +678,32 @@ export function ShowDateDetailSheet({ showDateId, open, onOpenChange, pager }: P
     .filter((n): n is string => Boolean(n));
 
   // Only the Cast tab (module-on path) consumes these groups; skip the remap when
-  // the sheet is closed, still loading, or degrading to AssignedArtistsCard.
-  const castGroups = open && showDate && bookingModuleAllowed
-    ? buildCastGroups(bookings, slotConfig, {
-        canConfirm: canManage && canConfirmBookings,
-        onConfirm: (bookingId) => updateBookingStatus.mutate({ bookingId, status: 'confirmed' }),
-        canCancel: canManage,
-        onCancel: (bookingId) => updateBookingStatus.mutate({ bookingId, status: 'cancelled' }),
-        // Opening a slot goes to the offers/book tab: gate on the capability that
-        // actually drives it (run_offer_engine for classic offers, canManage for
-        // direct booking) — not confirm_bookings — and label it per flow.
-        canOpenSlot: flow.artist_acceptance ? canRunOfferEngine : canManage,
-        slotActionLabel: flow.artist_acceptance ? 'Open next tier' : 'Book artist',
-        onOpenSlot: () => setActiveTab('offers'),
-      })
-    : [];
+  // the sheet is closed, still loading, or degrading to AssignedArtistsCard, and
+  // memoize the mapping like the sibling deriveBookingGroups call. `mutate` is
+  // referentially stable (react-query), so the row handlers stay stable too.
+  const mutateBookingStatus = updateBookingStatus.mutate;
+  const castGroups = useMemo(
+    () =>
+      open && showDate && bookingModuleAllowed
+        ? buildCastGroups(bookings, slotConfig, {
+            canConfirm: canManage && canConfirmBookings,
+            onConfirm: (bookingId) => mutateBookingStatus({ bookingId, status: 'confirmed' }),
+            canCancel: canManage,
+            onCancel: (bookingId) => mutateBookingStatus({ bookingId, status: 'cancelled' }),
+            // Opening a slot goes to the offers/book tab: gate on the capability that
+            // actually drives it (run_offer_engine for classic offers, canManage for
+            // direct booking) — not confirm_bookings — and label it per flow.
+            canOpenSlot: flow.artist_acceptance ? canRunOfferEngine : canManage,
+            slotActionLabel: flow.artist_acceptance ? 'Open next tier' : 'Book artist',
+            onOpenSlot: () => setActiveTab('offers'),
+          })
+        : [],
+    [
+      open, showDate, bookingModuleAllowed, bookings, slotConfig, canManage,
+      canConfirmBookings, canRunOfferEngine, flow.artist_acceptance,
+      mutateBookingStatus, setActiveTab,
+    ],
+  );
 
   // Persistent hire-order footer state (mirrors the prototype's footer bar).
   const footerReady = totalSlots != null && confirmedCount >= totalSlots;

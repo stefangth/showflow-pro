@@ -100,7 +100,9 @@ export function buildCastGroups(
       rows.push({
         id: `${isUnderstudy ? "us" : "main"}-open-${i}`,
         open: true,
-        meta: pending > 0 ? `${pending} ${pending === 1 ? "offer" : "offers"} pending` : "No booking yet",
+        // `pending` is a group total, so annotate only the first open row —
+        // repeating "N offers pending" on every open slot reads as N-per-slot.
+        meta: i === 0 && pending > 0 ? `${pending} ${pending === 1 ? "offer" : "offers"} pending` : "No booking yet",
         slotActionLabel: opts.canOpenSlot ? opts.slotActionLabel : undefined,
         onSlotAction: opts.onOpenSlot,
       });

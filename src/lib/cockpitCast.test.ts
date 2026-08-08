@@ -47,6 +47,18 @@ describe("buildCastGroups", () => {
     expect(open?.meta).toBe("1 offer pending");
   });
 
+  it("annotates the pending-offers total only on the first open slot", () => {
+    // 1 suggested + capacity 4 → 1 named row + 3 open rows; the "1 offer pending"
+    // note must appear once, not repeated on every open slot.
+    const [main] = buildCastGroups(
+      [b({ id: "s1", status: "suggested", offer_tier: 2 })],
+      { main_cast: 4, understudies: 0 },
+      opts(),
+    );
+    const openMetas = main.rows.filter((r) => r.open).map((r) => r.meta);
+    expect(openMetas).toEqual(["1 offer pending", "No booking yet", "No booking yet"]);
+  });
+
   it("shows a Confirm callback only on accepted rows when canConfirm", () => {
     const [main] = buildCastGroups(
       [b({ id: "a1", status: "soft_booked" }), b({ id: "c1", status: "confirmed" })],
