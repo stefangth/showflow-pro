@@ -139,7 +139,7 @@ describe("ShowDateDetailSheet capability gates", () => {
     vi.mocked(useFeature).mockImplementation((feature) => feature === "booking_flow");
   });
 
-  it("hire_orders on + fully filled + no order: header shows Generate hire order and drafts on click", async () => {
+  it("hire_orders on + fully filled + no order: Generate hire order shows and drafts on click", async () => {
     vi.mocked(useFeature).mockReturnValue(true);
     seedClient({
       show_dates: { data: { ...SHOW_DATE, status: "fully_filled" }, error: null },
@@ -150,9 +150,11 @@ describe("ShowDateDetailSheet capability gates", () => {
       "fn:generate-hire-orders": { data: { created: ["ho-x"], skipped: [] }, error: null },
     });
     renderSheet();
-    const btn = await screen.findByRole("button", { name: /generate hire order/i });
-    expect(btn).toBeEnabled();
-    fireEvent.click(btn);
+    // Fully filled surfaces the CTA in both the header and the persistent footer
+    // (both fire the same draft action); assert it exists and click the first.
+    const btns = await screen.findAllByRole("button", { name: /generate hire order/i });
+    expect(btns[0]).toBeEnabled();
+    fireEvent.click(btns[0]);
     await waitFor(() => {
       const calls = (client.calls ?? []) as { table: string; method: string; args: unknown[] }[];
       const invoke = calls.find((c) => c.table === "fn:generate-hire-orders" && c.method === "invoke");

@@ -72,8 +72,8 @@ describe("CockpitRail", () => {
 
   it("renders the Up next block (digest / auto-escalate) when items are provided", () => {
     render(<CockpitRail {...base} upNext={[
-      { tone: "violet", text: "Digest sends daily · 18:00" },
-      { tone: "neutral", text: "Auto-escalate: off" },
+      { kind: "digest", tone: "violet", text: "Digest sends daily · 18:00" },
+      { kind: "escalate", tone: "neutral", text: "Auto-escalate: off" },
     ]} />);
     expect(screen.getByText(/up next/i)).toBeInTheDocument();
     expect(screen.getByText("Digest sends daily · 18:00")).toBeInTheDocument();

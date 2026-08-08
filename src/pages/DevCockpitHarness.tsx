@@ -122,8 +122,8 @@ export default function DevCockpitHarness() {
       ]}
       skillChips={["Aerial rig", "Pointe"]}
       upNext={[
-        { tone: "violet", text: "Digest sends daily · 18:00" },
-        { tone: "neutral", text: "Auto-escalate: off" },
+        { kind: "digest", tone: "violet", text: "Digest sends daily · 18:00" },
+        { kind: "escalate", tone: "neutral", text: "Auto-escalate: off" },
       ]}
       activity={ACTIVITY}
       chatUnread={3}

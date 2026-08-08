@@ -32,7 +32,7 @@ import {
   deriveBookingGroups, computeInheritedCastIds,
   offerResultToast, closeResultToast, deriveDirectBookList,
 } from '@/lib/bookings';
-import { computeUpNext, computeFunnel, computeHeaderCta, buildActivity } from '@/lib/bookingCockpit';
+import { computeUpNext, computeFunnel, computeHeaderCta, buildActivity, computeHireFooter } from '@/lib/bookingCockpit';
 import { BOOKING_FLOW_DEFAULTS, referenceLabel, type FlowTimes } from '@/lib/bookingFlow';
 import { ROUTES, BOOKING_ENGINE_DEFAULTS } from '@/config/app.config';
 import { formatDateDMY, parseDateOnly } from '@/lib/dates';
@@ -629,7 +629,7 @@ export function ShowDateDetailSheet({ showDateId, open, onOpenChange, pager }: P
     // Fold the offers-expiry signal into the open-tier status (matches the
     // reference "Tier N open · N offers expire …"); the lower-priority digest /
     // auto-escalate pills go to the rail's Up next block below.
-    const expiryItem = upNextItems.find((i) => /expire/i.test(i.text));
+    const expiryItem = upNextItems.find((i) => i.kind === 'expiry');
     statusText = expiryItem ? `Tier ${highestOpenTier} open · ${expiryItem.text}` : `Tier ${highestOpenTier} open`;
     statusTone = 'amber';
   } else if (upNextItems.length > 0) {
@@ -706,8 +706,15 @@ export function ShowDateDetailSheet({ showDateId, open, onOpenChange, pager }: P
   );
 
   // Persistent hire-order footer state (mirrors the prototype's footer bar).
-  const footerReady = totalSlots != null && confirmedCount >= totalSlots;
-  const footerRemaining = totalSlots != null ? Math.max(0, totalSlots - confirmedCount) : 0;
+  // Readiness follows the DB's fully_filled definition (per-role), same as the
+  // header CTA — a flat confirmed>=total sum could green-light drafting while a
+  // role is still short.
+  const hireFooter = computeHireFooter({
+    status: showDate?.status ?? null,
+    slots: slotConfig,
+    confirmedMain: funnel.confirmedMain,
+    confirmedUnderstudy: funnel.confirmedUnderstudy,
+  });
   const showFooter = open && hireOrdersOn && canManage && !!slotConfig && showDate?.status !== 'cancelled';
   const footer = showFooter
     ? dateHasActiveOrder
@@ -716,13 +723,11 @@ export function ShowDateDetailSheet({ showDateId, open, onOpenChange, pager }: P
           ctaLabel: 'Open hire order', ctaDisabled: false, onCta: () => setActiveTab('order'),
         }
       : {
-          badgeLabel: footerReady ? 'READY' : `${footerRemaining} LEFT`,
-          ready: footerReady,
-          detail: footerReady
-            ? 'All slots confirmed — drafts one order per artist'
-            : `Waiting on ${footerRemaining} of ${totalSlots} slots`,
-          ctaLabel: footerReady ? 'Generate hire order' : 'Generate',
-          ctaDisabled: !footerReady || hireOrderAction.isPending || !canGenerateHireOrders,
+          badgeLabel: hireFooter.badgeLabel,
+          ready: hireFooter.ready,
+          detail: hireFooter.detail,
+          ctaLabel: hireFooter.ready ? 'Generate hire order' : 'Generate',
+          ctaDisabled: !hireFooter.ready || hireOrderAction.isPending || !canGenerateHireOrders,
           onCta: generateHireOrder,
         }
     : null;
@@ -829,7 +834,7 @@ export function ShowDateDetailSheet({ showDateId, open, onOpenChange, pager }: P
                   skillChips={skillChips}
                   // Expiry is folded into the header status line; the rail keeps
                   // the lower-priority digest-send / auto-escalate signals.
-                  upNext={bookingModuleAllowed ? upNextItems.filter((i) => !/expire/i.test(i.text)) : []}
+                  upNext={bookingModuleAllowed ? upNextItems.filter((i) => i.kind !== 'expiry') : []}
                   activity={bookingModuleAllowed ? activity : []}
                   chatUnread={0}
                   chatPreview={null}

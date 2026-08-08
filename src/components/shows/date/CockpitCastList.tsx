@@ -2,10 +2,12 @@ import { cn } from "@/lib/utils";
 
 export type CastTone = "green" | "violet" | "amber";
 
+// Use the semantic tokens (not raw hex) so avatars adapt in dark mode, matching
+// the status badges below — CLAUDE.md: never hardcode colors.
 const AVATAR_TONE: Record<CastTone, string> = {
-  green: "bg-[#E7F5EC] text-[#157F3D]",
-  violet: "bg-[#E5DEFF] text-[#4738B0]",
-  amber: "bg-[#FCF1DA] text-[#9A6314]",
+  green: "bg-[var(--green-100)] text-[var(--green-600)]",
+  violet: "bg-accent-100 text-accent-700",
+  amber: "bg-[var(--amber-100)] text-[var(--amber-600)]",
 };
 
 export interface CastRow {
