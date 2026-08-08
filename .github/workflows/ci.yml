@@ -116,11 +116,13 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      # Unpinned: installs the latest Supabase CLI, so CI tracks the same version
+      # developers get from brew instead of freezing on an old release. This is
+      # safe because the schema/tests were made CLI-version-independent — the
+      # explicit table-grants migration (…_grant_public_table_privileges_to_roles)
+      # and the [auth] redirect block in supabase/config.toml — rather than relying
+      # on a specific CLI's default grant/auth bootstrap.
       - uses: supabase/setup-cli@v1
-        with:
-          # Pin the CLI so pgTAP/migration behavior cannot change underneath CI.
-          # Bump intentionally when upgrading the local Supabase stack.
-          version: 2.98.2
 
       - name: Show Supabase CLI version
         run: supabase --version
@@ -219,9 +221,8 @@ jobs:
 
       - run: npm ci
 
+      # Unpinned — see the db-tests job above for why this is safe.
       - uses: supabase/setup-cli@v1
-        with:
-          version: 2.98.2
 
       - name: Start Supabase local stack
         id: start

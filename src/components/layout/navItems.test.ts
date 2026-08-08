@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
-import { NAV_ITEMS, visibleNavItems, groupNavBySections, type NavItem } from "./navItems";
-import { ROUTES } from "@/config/app.config";
+import { NAV_ITEMS, visibleNavItems, groupNavBySections, isHiddenForViewAs, type NavItem } from "./navItems";
+import { ROUTES, type AppRole } from "@/config/app.config";
 
 const ctx = (over: Partial<{ isEditorMode: boolean; isRealAdmin: boolean; isSuperAdmin: boolean; roles: string[]; enabledFeatures: Set<string>; entitlementsLoading: boolean; impersonating: boolean }> = {}) => {
   const { isEditorMode = false, isRealAdmin = false, isSuperAdmin = false, roles = [], enabledFeatures = new Set<string>(), entitlementsLoading = false, impersonating = false } = over;
@@ -161,6 +161,47 @@ describe("availability nav item", () => {
   it("leaves Availability unlocked when booking_flow is on", () => {
     const items = visibleNavItems(NAV_ITEMS, ctx({ roles: ["artist"], enabledFeatures: new Set(["booking_flow"]) }));
     expect(items.find((i) => i.to === ROUTES.AVAILABILITY)?.locked).toBe(false);
+  });
+});
+
+describe("isHiddenForViewAs", () => {
+  const platform = NAV_ITEMS.find((i) => i.label === "Platform")!;
+  const admin = NAV_ITEMS.find((i) => i.label === "Admin")!;
+  const dashboard = NAV_ITEMS.find((i) => i.label === "Dashboard")!;
+  const view = (over: Partial<{ isEditorMode: boolean; viewAsRole: AppRole | null; viewAsUser: { roles: AppRole[] } | null }> = {}) =>
+    ({ isEditorMode: true, viewAsRole: null, viewAsUser: null, ...over });
+
+  it("never dims anything outside editor mode", () => {
+    expect(isHiddenForViewAs(platform, view({ isEditorMode: false, viewAsRole: "producer" }))).toBe(false);
+  });
+
+  it("does not dim the super-admin Platform entry when viewing as your real self", () => {
+    expect(isHiddenForViewAs(platform, view())).toBe(false);
+  });
+
+  it("dims the Platform entry when previewing any role (the bug: it never used to)", () => {
+    expect(isHiddenForViewAs(platform, view({ viewAsRole: "admin" }))).toBe(true);
+    expect(isHiddenForViewAs(platform, view({ viewAsRole: "producer" }))).toBe(true);
+    expect(isHiddenForViewAs(platform, view({ viewAsRole: "artist" }))).toBe(true);
+  });
+
+  it("dims the Platform entry when previewing any specific user", () => {
+    expect(isHiddenForViewAs(platform, view({ viewAsUser: { roles: ["admin"] } }))).toBe(true);
+  });
+
+  it("dims a role-gated item for a perspective without that role", () => {
+    expect(isHiddenForViewAs(admin, view({ viewAsRole: "producer" }))).toBe(true);
+    expect(isHiddenForViewAs(admin, view({ viewAsUser: { roles: ["producer"] } }))).toBe(true);
+  });
+
+  it("does not dim a role-gated item for a perspective that holds the role", () => {
+    expect(isHiddenForViewAs(admin, view({ viewAsRole: "admin" }))).toBe(false);
+    expect(isHiddenForViewAs(admin, view({ viewAsUser: { roles: ["admin", "producer"] } }))).toBe(false);
+  });
+
+  it("never dims a universal item (no roles, no superAdmin) like Dashboard", () => {
+    expect(isHiddenForViewAs(dashboard, view({ viewAsRole: "artist" }))).toBe(false);
+    expect(isHiddenForViewAs(dashboard, view({ viewAsUser: { roles: [] } }))).toBe(false);
   });
 });
 

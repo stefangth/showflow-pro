@@ -27,6 +27,12 @@ interface EditorContextType {
   isEditorMode: boolean;
   enableEditorMode: () => void;
   disableEditorMode: () => void;
+  /** Editor mode stays ON but the toolbar is tucked away. Distinct from exiting:
+   *  view-as and all editor behavior remain active; only the bar is out of sight.
+   *  Session-only (not persisted) — a reload restores editor mode with the bar shown. */
+  isToolbarHidden: boolean;
+  hideToolbar: () => void;
+  showToolbar: () => void;
   isSidePanelOpen: boolean;
   setSidePanelOpen: (open: boolean) => void;
   // Configs
@@ -55,6 +61,7 @@ export function EditorProvider({ children }: { children: ReactNode }) {
   const qc = useQueryClient();
 
   const [isEditorMode, setIsEditorMode] = useState(false);
+  const [isToolbarHidden, setToolbarHidden] = useState(false);
   const [isSidePanelOpen, setSidePanelOpen] = useState(false);
 
   // Restore the persisted flag once access is known — NOT in the useState initializer.
@@ -81,14 +88,20 @@ export function EditorProvider({ children }: { children: ReactNode }) {
   // state, so it can never fire on a render where access is still unresolved.
   const enableEditorMode = useCallback(() => {
     setIsEditorMode(true);
+    // Entering always shows the bar, even if it was tucked away in a prior session.
+    setToolbarHidden(false);
     localStorage.setItem(EDITOR_MODE_KEY, 'true');
   }, []);
 
   const disableEditorMode = useCallback(() => {
     setIsEditorMode(false);
     setSidePanelOpen(false);
+    setToolbarHidden(false);
     localStorage.removeItem(EDITOR_MODE_KEY);
   }, []);
+
+  const hideToolbar = useCallback(() => setToolbarHidden(true), []);
+  const showToolbar = useCallback(() => setToolbarHidden(false), []);
 
   // Fetch editor configs — org-scoped (override ?? platform default), keyed by orgId
   const { data: rawSettings, isLoading: isConfigLoading } = useQuery({
@@ -230,6 +243,9 @@ export function EditorProvider({ children }: { children: ReactNode }) {
     isEditorMode,
     enableEditorMode,
     disableEditorMode,
+    isToolbarHidden,
+    hideToolbar,
+    showToolbar,
     isSidePanelOpen,
     setSidePanelOpen,
     pageAccess,
@@ -247,6 +263,7 @@ export function EditorProvider({ children }: { children: ReactNode }) {
   }), [
     isEditorMode,
     enableEditorMode, disableEditorMode,
+    isToolbarHidden, hideToolbar, showToolbar,
     isSidePanelOpen,
     pageAccess, columnTemplates, tablePermissions, isConfigLoading,
     savePageAccess, saveColumnTemplate, saveTablePermission,

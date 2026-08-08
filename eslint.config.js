@@ -23,7 +23,11 @@ export default tseslint.config(
   // Build output and the v8 coverage HTML report (both gitignored — ESLint does
   // not read .gitignore). `npm run test:coverage` writes coverage/, whose vendored
   // istanbul report scripts otherwise trip --max-warnings 0 on the next lint.
-  { ignores: ["dist", "coverage"] },
+  // `supabase/.temp` is the Supabase CLI's scratch dir (edge-runtime bootstrap,
+  // pooler URL, etc.), created whenever the local stack is running. Its generated,
+  // single-line index.ts trips --max-warnings 0, so a running stack must not make
+  // `npm run lint` fail — same reasoning as coverage/ above.
+  { ignores: ["dist", "coverage", "supabase/.temp"] },
   // App, tests, e2e, scripts — browser runtime, Vite fast refresh.
   {
     extends: [js.configs.recommended, ...tseslint.configs.recommended],

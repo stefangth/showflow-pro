@@ -43,7 +43,12 @@ export default defineConfig({
   globalSetup: "./global-setup.ts",
   fullyParallel: false,
   forbidOnly: !!process.env.CI,
-  retries: process.env.CI ? 1 : 0,
+  // Retry once locally too, not just in CI. Cross-stack e2e has irreducible
+  // transient flakes — cold Vite first-compile, sonner toast timing, stack
+  // warmup — and `verify:full` exists to mirror CI ("green here ≈ green in CI").
+  // With local retries at 0, a single blip diverged local from CI (which retries),
+  // so keep the retry policy identical on both.
+  retries: 1,
   workers: 1,
   reporter: process.env.CI ? "github" : "list",
   timeout: 60_000,

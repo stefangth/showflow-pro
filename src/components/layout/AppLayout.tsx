@@ -11,7 +11,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { IconTooltip } from '@/components/common/IconTooltip';
 import { Settings, LogOut, Bell, ChevronLeft, ChevronRight, Menu, EyeOff, User, Lock } from 'lucide-react';
-import { NAV_ITEMS, visibleNavItems, groupNavBySections } from '@/components/layout/navItems';
+import { NAV_ITEMS, visibleNavItems, groupNavBySections, isHiddenForViewAs } from '@/components/layout/navItems';
 import { cn } from '@/lib/utils';
 import { useSettingsWarnings } from '@/hooks/useSettingsWarnings';
 import { useEditorConfig } from '@/features/editor/EditorContext';
@@ -76,14 +76,6 @@ export default function AppLayout({ children }: AppLayoutProps) {
   const filteredNav = visibleNavItems(NAV_ITEMS, { isEditorMode, isRealAdmin, isSuperAdmin, hasRole: (r) => hasRole(r as AppRole), enabledFeatures: features, entitlementsLoading, impersonating: isImpersonating({ isSuperAdmin, roles, viewAsRole, viewAsUser }) });
   const navGroups = groupNavBySections(filteredNav);
 
-  const isHiddenForViewAs = (item: typeof NAV_ITEMS[number]) => {
-    if (!isEditorMode) return false;
-    if (!item.roles) return false;
-    if (viewAsUser) return !item.roles.some(r => viewAsUser.roles.includes(r as AppRole));
-    if (viewAsRole === null) return false;
-    return !item.roles.includes(viewAsRole);
-  };
-
   const sidebarContent = (
     <div className="flex flex-col h-full">
       {/* Logo */}
@@ -108,7 +100,7 @@ export default function AppLayout({ children }: AppLayoutProps) {
             )}
             {group.items.map(item => {
               const showWarningDot = item.to === ROUTES.SETTINGS && hasAnyWarning;
-              const hiddenForRole = isHiddenForViewAs(item);
+              const hiddenForRole = isHiddenForViewAs(item, { isEditorMode, viewAsRole, viewAsUser });
               const badgeCount = item.badge ? navCounts[item.badge] : 0;
               if (item.locked) {
                 return (
