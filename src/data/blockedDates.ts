@@ -26,8 +26,8 @@ export async function fetchBlockedArtistIds(
 
 /**
  * Count of the current artist's own blocked_dates rows. Used by the artist first-run
- * readiness check (spec: "done" is satisfied by data OR ack) so an artist who has
- * genuinely blocked real dates reads as done without also needing to dismiss the rail.
+ * readiness check: "done" is satisfied only by real data (a blocked date exists), not
+ * by dismissing the welcome panel; see useArtistOnboardingStatus.ts.
  */
 export async function fetchMyBlockedDatesCount(
   client: SupabaseClient<Database>,

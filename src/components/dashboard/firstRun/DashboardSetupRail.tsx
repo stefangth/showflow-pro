@@ -22,7 +22,7 @@ function StepRow({ step, index }: { step: ComposedStep; index: number }) {
     <div className="flex items-start gap-2.5 border-b border-border px-3.5 py-3">
       {step.done ? (
         <span className="mt-0.5 flex h-[18px] w-[18px] shrink-0 items-center justify-center rounded-full bg-accent-500">
-          <Check className="h-3 w-3 text-white" strokeWidth={3} />
+          <Check className="h-3 w-3 text-primary-foreground" strokeWidth={3} />
         </span>
       ) : (
         <span className="mt-0.5 flex h-[18px] w-[18px] shrink-0 items-center justify-center rounded-full border border-border text-[10px] font-semibold text-muted-foreground/70">{index}</span>
@@ -31,7 +31,7 @@ function StepRow({ step, index }: { step: ComposedStep; index: number }) {
         <div className="text-sm font-medium text-foreground">{step.title}</div>
         <div className="mt-0.5 text-xs leading-[17px] text-muted-foreground text-pretty">{step.done ? step.doneHint : step.todoHint}</div>
         {!step.done && canAct && (
-          <Link to={step.ctaRoute} className="mt-2 inline-block rounded-lg bg-accent-500 px-3 py-1.5 text-xs font-medium text-white hover:bg-accent-600">{step.ctaLabel}</Link>
+          <Link to={step.ctaRoute} className="mt-2 inline-block rounded-lg bg-accent-500 px-3 py-1.5 text-xs font-medium text-primary-foreground hover:bg-accent-600">{step.ctaLabel}</Link>
         )}
       </div>
       {!step.done && step.block && (
@@ -59,7 +59,7 @@ export function DashboardSetupRail({ eyebrow, title, body, complete, steps, rule
         <div>
           {rules.map((r, i) => (
             <div key={i} className="flex items-start gap-2.5 border-b border-border px-3.5 py-3">
-              <span className="mt-0.5 flex h-[18px] w-[18px] shrink-0 items-center justify-center rounded-full bg-accent-500"><Check className="h-3 w-3 text-white" strokeWidth={3} /></span>
+              <span className="mt-0.5 flex h-[18px] w-[18px] shrink-0 items-center justify-center rounded-full bg-accent-500"><Check className="h-3 w-3 text-primary-foreground" strokeWidth={3} /></span>
               <div className="min-w-0 flex-1">
                 <div className="text-sm font-medium text-foreground">{r.title}</div>
                 <div className="mt-0.5 text-xs leading-[17px] text-muted-foreground text-pretty">{r.hint}</div>
