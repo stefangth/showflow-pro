@@ -25,7 +25,7 @@ export interface EmailShellProps {
   previewText: string;
   heading: string;
   subheading?: string;
-  children: React.ReactNode;
+  children?: React.ReactNode;
   footer?: string;
   cta?: EmailShellCta;
   /** Preview-only outline used by the template editor. */
