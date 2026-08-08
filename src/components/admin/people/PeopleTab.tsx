@@ -49,6 +49,10 @@ export function PeopleTab() {
     [search, allMembers, pendingInvites],
   );
   const hasSearch = search.trim().length > 0;
+  // Duplicate detection needs both lists; if either query is still loading or has
+  // errored (a state that never self-resolves), hold invites so a real duplicate
+  // can't slip through an empty members/invites list.
+  const dedupeUnready = isLoading || isError || invitesLoading || invitesError;
 
   const copyLink = async (token: string) => {
     try { await navigator.clipboard?.writeText(acceptInviteUrl(token)); toast.success("Invite link copied"); }
@@ -64,7 +68,7 @@ export function PeopleTab() {
       <Card>
         <CardHeader><CardTitle className="font-display">Invite people</CardTitle></CardHeader>
         <CardContent>
-          <InviteBar members={allMembers} invites={pendingInvites} invitesLoading={invitesLoading} onOpenBulk={() => setBulkOpen(true)} />
+          <InviteBar members={allMembers} invites={pendingInvites} dedupeUnready={dedupeUnready} onOpenBulk={() => setBulkOpen(true)} />
         </CardContent>
       </Card>
 
@@ -114,7 +118,7 @@ export function PeopleTab() {
         <p className="text-sm text-muted-foreground text-center py-6">No members yet.</p>
       )}
 
-      <BulkInviteDialog open={bulkOpen} onOpenChange={setBulkOpen} members={allMembers} invites={pendingInvites} invitesLoading={invitesLoading} />
+      <BulkInviteDialog open={bulkOpen} onOpenChange={setBulkOpen} members={allMembers} invites={pendingInvites} dedupeUnready={dedupeUnready} />
 
       <AlertDialog open={target !== null} onOpenChange={(o) => !o && setTarget(null)}>
         <AlertDialogContent>
