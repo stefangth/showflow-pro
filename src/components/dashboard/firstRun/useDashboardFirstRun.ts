@@ -17,11 +17,12 @@ import {
   SAMPLE_PREVIEW,
 } from "@/lib/dashboard/firstRun";
 import { ARTIST_ONBOARDING, MODULE_ONBOARDING } from "@/lib/dashboard/moduleOnboarding";
+import type { FeatureKey } from "@/lib/entitlements";
 import type {
   ComposeResult,
   DashboardFirstRunState,
   DashboardRole,
-  ModuleStatuses,
+  ModuleStatusLite,
   OnboardingCtx,
 } from "@/lib/dashboard/types";
 import { useArtistOnboardingStatus } from "./useArtistOnboardingStatus";
@@ -70,8 +71,11 @@ export function useDashboardFirstRun(role: DashboardRole): DashboardFirstRunStat
   const canEditSetup = canEditBookingSettings || canEditHireSettings;
 
   // Only the admin/producer branch reads `moduleStatuses`; the artist branch composes
-  // its own booking_flow slice via ARTIST_ONBOARDING and never touches it.
-  const moduleStatuses: ModuleStatuses = {
+  // its own booking_flow slice via ARTIST_ONBOARDING and never touches it. Typed as an
+  // exhaustive `Record<FeatureKey, …>` (not the Partial `ModuleStatuses`) so adding a
+  // third module is a compile error here, not a silently-dropped rail — the same
+  // anti-drift stance as MODULE_ONBOARDING's parity test.
+  const moduleStatuses: Record<FeatureKey, ModuleStatusLite> = {
     booking_flow: booking.status,
     hire_orders: {
       // hire-order steps carry `blocksIssue` (not offers/filling); map it to the

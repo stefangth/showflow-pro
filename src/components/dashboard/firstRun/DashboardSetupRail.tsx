@@ -45,7 +45,7 @@ function StepRow({ step, index }: { step: ComposedStep; index: number }) {
 
 export function DashboardSetupRail({ eyebrow, title, body, complete, steps, rules, offFooters, onClose, onDismiss }: DashboardSetupRailProps) {
   return (
-    <div className="w-[340px] shrink-0 overflow-hidden rounded-lg border-[0.5px] border-border bg-card shadow-elev3">
+    <div className="w-full md:w-[340px] md:shrink-0 order-first md:order-none overflow-hidden rounded-lg border-[0.5px] border-border bg-card shadow-elev3">
       <div className="border-b border-border p-4">
         <div className="flex items-center justify-between">
           <div className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground/70">{eyebrow}</div>

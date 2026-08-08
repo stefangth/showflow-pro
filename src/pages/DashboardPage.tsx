@@ -242,7 +242,7 @@ function ProducerDashboard() {
         ? <DashboardWelcomeCollapsed label={fr.collapsedLabel} hint={fr.collapsedHint} ctaLabel={fr.collapsedCta} onOpen={fr.openRail} />
         : <DashboardWelcome welcome={fr.welcome} onPrimary={fr.openRail} onSecondary={fr.dismiss} />)}
 
-      <div className="flex items-start gap-6">
+      <div className="flex flex-col gap-6 md:flex-row md:items-start">
         <div className="min-w-0 flex-1">
           <SamplePreview complete={!fr.show || fr.complete || !datesSettled || hasData} sample={fr.sample} sectionTitle={fr.sectionTitle} sectionHint={fr.sectionHint}>
             <div className="space-y-6">

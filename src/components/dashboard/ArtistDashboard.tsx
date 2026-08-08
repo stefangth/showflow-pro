@@ -152,7 +152,7 @@ export function ArtistDashboard() {
           <DashboardWelcome welcome={fr.welcome} onPrimary={fr.openRail} onSecondary={fr.dismiss} />
         ))}
 
-      <div className="flex items-start gap-6">
+      <div className="flex flex-col gap-6 md:flex-row md:items-start">
         <div className="min-w-0 flex-1">
           <div className="space-y-6">
             <div>
