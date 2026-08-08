@@ -1,4 +1,26 @@
+import { readFileSync, existsSync } from "node:fs";
+import { resolve } from "node:path";
 import { defineConfig, devices } from "@playwright/test";
+
+/**
+ * Load the generated local-stack env (`.env.development.local`, written by
+ * `npm run local:up`) so global-setup.ts sees SUPABASE_URL /
+ * SUPABASE_SERVICE_ROLE_KEY when running against the local database — without the
+ * developer exporting them by hand. Only fills keys that are not already set, so
+ * CI (which injects these via GITHUB_ENV and has no such file) is unaffected.
+ */
+function loadLocalEnv(): void {
+  const path = resolve(process.cwd(), ".env.development.local");
+  if (!existsSync(path)) return;
+  for (const line of readFileSync(path, "utf8").split("\n")) {
+    const match = line.match(/^\s*([A-Za-z_][A-Za-z0-9_]*)\s*=\s*(.*)$/);
+    if (!match) continue;
+    const key = match[1];
+    if (process.env[key] !== undefined) continue;
+    process.env[key] = match[2].trim().replace(/^["']|["']$/g, "");
+  }
+}
+loadLocalEnv();
 
 /**
  * Playwright E2E configuration for Showflow Pro.
