@@ -10,7 +10,7 @@ const b = (over: Partial<CastBookingLike>): CastBookingLike => ({
   artist: over.artist ?? { name: "Ada Lovelace" },
 });
 
-const opts = () => ({ canConfirm: true, onConfirm: vi.fn(), canCancel: true, onCancel: vi.fn(), onOpenSlot: vi.fn() });
+const opts = () => ({ canConfirm: true, onConfirm: vi.fn(), canCancel: true, onCancel: vi.fn(), canOpenSlot: true, slotActionLabel: "Open next tier", onOpenSlot: vi.fn() });
 
 describe("buildCastGroups", () => {
   it("splits main and understudy groups with confirmed 'N of M' counts", () => {
@@ -51,7 +51,7 @@ describe("buildCastGroups", () => {
     const [main] = buildCastGroups(
       [b({ id: "a1", status: "soft_booked" }), b({ id: "c1", status: "confirmed" })],
       { main_cast: 2, understudies: 0 },
-      { canConfirm: true, onConfirm: vi.fn(), canCancel: true, onCancel: vi.fn(), onOpenSlot: vi.fn() },
+      { canConfirm: true, onConfirm: vi.fn(), canCancel: true, onCancel: vi.fn(), canOpenSlot: true, slotActionLabel: "Open next tier", onOpenSlot: vi.fn() },
     );
     const accepted = main.rows.find((r) => r.status === "accepted");
     const confirmed = main.rows.find((r) => r.status === "confirmed");
@@ -63,7 +63,7 @@ describe("buildCastGroups", () => {
     const [main] = buildCastGroups(
       [b({ id: "a1", status: "soft_booked" })],
       { main_cast: 1, understudies: 0 },
-      { canConfirm: false, onConfirm: vi.fn(), canCancel: true, onCancel: vi.fn(), onOpenSlot: vi.fn() },
+      { canConfirm: false, onConfirm: vi.fn(), canCancel: true, onCancel: vi.fn(), canOpenSlot: true, slotActionLabel: "Open next tier", onOpenSlot: vi.fn() },
     );
     expect(main.rows.find((r) => r.status === "accepted")?.onConfirm).toBeUndefined();
   });
@@ -82,5 +82,35 @@ describe("buildCastGroups", () => {
       opts(),
     );
     expect(main.rows.filter((r) => !r.open)).toHaveLength(1);
+  });
+
+  it("keeps an over-capacity understudy visible when understudies were reduced to 0", () => {
+    // Capacity reduced to 0 after the booking; the artist must not silently vanish.
+    const groups = buildCastGroups(
+      [b({ id: "u1", status: "confirmed", is_understudy: true })],
+      { main_cast: 4, understudies: 0 },
+      opts(),
+    );
+    const us = groups.find((g) => g.key === "us");
+    expect(us).toBeDefined();
+    expect(us!.rows.filter((r) => !r.open).map((r) => r.id)).toEqual(["u1"]);
+    expect(us!.rows.some((r) => r.open)).toBe(false); // no negative/open padding
+  });
+
+  it("open-slot action label comes from slotActionLabel and gates on canOpenSlot (not canConfirm)", () => {
+    const slots = { main_cast: 2, understudies: 0 };
+    // Direct-flow label, and canOpenSlot true even though canConfirm is false.
+    const [directMain] = buildCastGroups([b({ id: "c", status: "confirmed" })], slots, {
+      canConfirm: false, onConfirm: vi.fn(), canCancel: true, onCancel: vi.fn(),
+      canOpenSlot: true, slotActionLabel: "Book artist", onOpenSlot: vi.fn(),
+    });
+    expect(directMain.rows.find((r) => r.open)?.slotActionLabel).toBe("Book artist");
+
+    // canOpenSlot false hides the action even when canConfirm is true.
+    const [gatedMain] = buildCastGroups([b({ id: "c", status: "confirmed" })], slots, {
+      canConfirm: true, onConfirm: vi.fn(), canCancel: true, onCancel: vi.fn(),
+      canOpenSlot: false, slotActionLabel: "Open next tier", onOpenSlot: vi.fn(),
+    });
+    expect(gatedMain.rows.find((r) => r.open)?.slotActionLabel).toBeUndefined();
   });
 });

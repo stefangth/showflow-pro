@@ -54,6 +54,13 @@ export interface BuildCastGroupsOpts {
   /** Whether the viewer may cancel a booking (broad producer/admin gate). */
   canCancel: boolean;
   onCancel: (bookingId: string) => void;
+  /** Whether the viewer may act on an open slot — the capability that gates the
+   *  target action, NOT confirm_bookings: run_offer_engine for the classic offer
+   *  flow, plain canManage for direct booking. */
+  canOpenSlot: boolean;
+  /** Flow-appropriate open-slot label ("Open next tier" classic / "Book artist"
+   *  direct). */
+  slotActionLabel: string;
   /** Jump to the offers/book tab from an open slot. */
   onOpenSlot: () => void;
 }
@@ -94,7 +101,7 @@ export function buildCastGroups(
         id: `${isUnderstudy ? "us" : "main"}-open-${i}`,
         open: true,
         meta: pending > 0 ? `${pending} ${pending === 1 ? "offer" : "offers"} pending` : "No booking yet",
-        slotActionLabel: opts.canConfirm ? "Open next tier" : undefined,
+        slotActionLabel: opts.canOpenSlot ? opts.slotActionLabel : undefined,
         onSlotAction: opts.onOpenSlot,
       });
     }
@@ -108,7 +115,10 @@ export function buildCastGroups(
   };
 
   const groups: CastGroup[] = [make(false, "Main cast", slots ? slots.main_cast : null)];
-  const wantUnderstudies = slots ? slots.understudies > 0 : active.some((b) => b.is_understudy);
+  // Show the understudies group whenever it has capacity OR an active understudy
+  // booking exists — otherwise a booking left over after capacity was reduced to 0
+  // would silently vanish from the tab while still counted in the header/footer.
+  const wantUnderstudies = (slots ? slots.understudies > 0 : false) || active.some((b) => b.is_understudy);
   if (wantUnderstudies) groups.push(make(true, "Understudies", slots ? slots.understudies : null));
   return groups;
 }

@@ -679,6 +679,11 @@ export function ShowDateDetailSheet({ showDateId, open, onOpenChange, pager }: P
         onConfirm: (bookingId) => updateBookingStatus.mutate({ bookingId, status: 'confirmed' }),
         canCancel: canManage,
         onCancel: (bookingId) => updateBookingStatus.mutate({ bookingId, status: 'cancelled' }),
+        // Opening a slot goes to the offers/book tab: gate on the capability that
+        // actually drives it (run_offer_engine for classic offers, canManage for
+        // direct booking) — not confirm_bookings — and label it per flow.
+        canOpenSlot: flow.artist_acceptance ? canRunOfferEngine : canManage,
+        slotActionLabel: flow.artist_acceptance ? 'Open next tier' : 'Book artist',
         onOpenSlot: () => setActiveTab('offers'),
       })
     : [];
