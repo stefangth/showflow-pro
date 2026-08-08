@@ -29,3 +29,20 @@ alter default privileges for role postgres in schema public
   grant all on tables to anon, authenticated, service_role;
 alter default privileges for role postgres in schema public
   grant all on sequences to anon, authenticated, service_role;
+
+-- NOTE (artists PII): the blanket SELECT above covers public.artists, whose
+-- email/phone are "protected" by column-level REVOKEs in migration
+-- 20260425202310. Those REVOKEs only bite when NO table-level SELECT grant
+-- exists — in Postgres a table-level SELECT covers every column, so a column
+-- REVOKE is moot alongside it. Production already has that table-level grant
+-- (verified: authenticated has table + email + phone SELECT on artists today),
+-- because Supabase's default GRANT ALL was never revoked there. This migration
+-- therefore does NOT change the artists PII posture — it is a true no-op on prod
+-- and only brings fresh local/CI stacks in line with it.
+--
+-- It intentionally does NOT try to enforce that column restriction here: the app
+-- reads artists through the authenticated client with `select *` /
+-- `select id,name,email` (src/data/artists.ts, src/data/hireOrders.ts), so
+-- enforcing it would 403 those reads for every user. Properly closing the
+-- exposure is an app-level change (a privileged read path or a non-PII view) and
+-- is tracked separately, out of scope for this grants-parity migration.
