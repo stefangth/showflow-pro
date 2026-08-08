@@ -7,20 +7,20 @@
 -- dead since April 2026; the schema implied a protection it did not provide.
 --
 -- The REAL control is the RLS SELECT policies on public.artists (admin/producer see
--- all org artists; the linked artist sees their own record). Column grants cannot
--- express admin-vs-member because both are the same `authenticated` role, so they are
--- the wrong tool here and must not be relied on. This migration documents that, and
--- removes the vestigial `anon` contact-column grant as a harmless belt (anon reads no
--- artist rows under RLS regardless).
+-- all org artists; the linked artist sees their own record; super-admins see all).
+-- Column grants cannot express admin-vs-member because both are the same
+-- `authenticated` role, so they are the wrong tool here and must not be relied on.
+--
+-- We deliberately do NOT add a column-level REVOKE belt: `authenticated` and `anon`
+-- both hold a table-level SELECT grant on public.artists, and a table grant covers
+-- every column, so any `REVOKE SELECT (email, phone)` would be inert (has_column_privilege
+-- stays true) -- exactly the trap that produced this bug. This migration only records
+-- the real control in the schema so future readers do not re-add dead grant machinery.
 
 COMMENT ON COLUMN public.artists.email IS
-  'PII. Readable only by admin/producer (all org artists) or the linked artist (self), '
+  'PII. Readable only by admin/producer (all org artists), a platform super-admin, or the linked artist (self), '
   'enforced by the RLS SELECT policies on public.artists. Column grants do NOT gate this, do not rely on them.';
 
 COMMENT ON COLUMN public.artists.phone IS
-  'PII. Readable only by admin/producer (all org artists) or the linked artist (self), '
+  'PII. Readable only by admin/producer (all org artists), a platform super-admin, or the linked artist (self), '
   'enforced by the RLS SELECT policies on public.artists. Column grants do NOT gate this, do not rely on them.';
-
--- Belt at the grant layer for the public/anon role (no-op behaviorally; anon has no
--- permissive SELECT policy on artists so it reads no rows either way).
-REVOKE SELECT (email, phone) ON public.artists FROM anon;
