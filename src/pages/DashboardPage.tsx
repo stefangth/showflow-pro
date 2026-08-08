@@ -15,6 +15,11 @@ import { toast } from 'sonner';
 import { ArtistDashboard } from '@/components/dashboard/ArtistDashboard';
 import { TierAttentionCard } from '@/components/dashboard/TierAttentionCard';
 import { DirectBookingCard } from '@/components/dashboard/DirectBookingCard';
+import { useDashboardFirstRun } from '@/components/dashboard/firstRun/useDashboardFirstRun';
+import { DashboardWelcome } from '@/components/dashboard/firstRun/DashboardWelcome';
+import { DashboardWelcomeCollapsed } from '@/components/dashboard/firstRun/DashboardWelcomeCollapsed';
+import { DashboardSetupRail } from '@/components/dashboard/firstRun/DashboardSetupRail';
+import { SamplePreview } from '@/components/dashboard/firstRun/SamplePreview';
 import { ModuleGate } from '@/components/layout/ModuleGate';
 import { useFeature } from '@/hooks/useEntitlements';
 import { showSlots } from '@/lib/settings';
@@ -60,8 +65,10 @@ function ProducerDashboard() {
   const in30 = format(addDays(today, 30), 'yyyy-MM-dd');
 
   const qc = useQueryClient();
-  const { currentOrg } = useAuth();
+  const { currentOrg, hasRole } = useAuth();
   const orgId = currentOrg?.id ?? null;
+  const role = hasRole('admin') ? 'admin' : 'producer';
+  const fr = useDashboardFirstRun(role);
   // Only the bulk Confirm action is capability-gated (decline/cancel is deliberately not).
   const canConfirmBookings = useCan('confirm_bookings');
   const bookingFlowEnabled = useFeature('booking_flow');
@@ -220,14 +227,31 @@ function ProducerDashboard() {
     },
   ];
 
+  // Sample-vs-live keys off real data, not setup-completeness: an org that already
+  // has dates (but hasn't finished every setup step) must show its real body, not a
+  // greyed sample. `fr.complete` still drives only the welcome/collapsed panel copy.
+  const hasData = (upcomingDates?.length ?? 0) > 0;
+  // ...but only once the dates query has settled: while `upcomingDates` is still
+  // undefined on a cold load, `hasData` is a false negative, so a configured org would
+  // briefly flash the sample. Treat "not settled yet" as live to avoid that flash.
+  const datesSettled = upcomingDates !== undefined;
+
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="font-display text-[32px] font-semibold tracking-tight">Dashboard</h1>
-        <p className="text-muted-foreground mt-1">Cast confirmation status across upcoming dates.</p>
-      </div>
+      {fr.show && (fr.dismissed
+        ? <DashboardWelcomeCollapsed label={fr.collapsedLabel} hint={fr.collapsedHint} ctaLabel={fr.collapsedCta} onOpen={fr.openRail} />
+        : <DashboardWelcome welcome={fr.welcome} onPrimary={fr.openRail} onSecondary={fr.dismiss} />)}
 
-      <ProducerBookingSection>
+      <div className="flex flex-col gap-6 md:flex-row md:items-start">
+        <div className="min-w-0 flex-1">
+          <SamplePreview complete={!fr.show || fr.complete || !datesSettled || hasData} sample={fr.sample} sectionTitle={fr.sectionTitle} sectionHint={fr.sectionHint}>
+            <div className="space-y-6">
+              <div>
+                <h1 className="font-display text-[32px] font-semibold tracking-tight">Dashboard</h1>
+                <p className="text-muted-foreground mt-1">Cast confirmation status across upcoming dates.</p>
+              </div>
+
+              <ProducerBookingSection>
         {/* Ready to confirm. Backlog-driven, not policy-driven: under auto-confirm,
             new soft_booked rows do not arise, so the card self-hides; any that
             exist are backlog from a previous policy and need the affordance.
@@ -353,6 +377,23 @@ function ProducerDashboard() {
             </Link>
           </motion.div>
         ))}
+              </div>
+            </div>
+          </SamplePreview>
+        </div>
+        {fr.show && fr.railOpen && (
+          <DashboardSetupRail
+            eyebrow={fr.railEyebrow}
+            title={fr.railTitle}
+            body={fr.railBody}
+            complete={fr.complete}
+            steps={fr.steps}
+            rules={fr.rules}
+            offFooters={fr.offFooters}
+            onClose={fr.closeRail}
+            onDismiss={fr.dismiss}
+          />
+        )}
       </div>
     </div>
   );

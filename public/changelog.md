@@ -2,6 +2,17 @@
 
 What's new in ShowFlow, newest first.
 
+## 1.15.0 — August 8, 2026
+
+*A guided first run on your dashboard*
+
+### New
+- **Dashboard first run** — A welcome panel greets you on the dashboard and opens a setup checklist on demand. It shows exactly the steps your workspace needs, adapts to the modules your organization has turned on, and collapses to a single line you can reopen any time.
+- **The rules you inherited** — Once setup is complete, the same panel becomes a short, read-only summary of how your organization works, so anyone who joins can see the decisions behind every number on the page.
+
+### Improved
+- **A dashboard that fills in as you go** — Until your workspace has real dates, the dashboard shows a clearly marked sample of what it becomes, then switches to your live numbers once setup is done.
+
 ## 1.14.0 — August 6, 2026
 
 *Getting hire orders ready*
