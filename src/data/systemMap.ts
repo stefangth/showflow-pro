@@ -210,7 +210,7 @@ export const SYSTEM_MAP_NODES: SystemMapNode[] = [
       Trigger: "cron every 5 min (per-org interval gate) + Settings → Airtable 'Sync now' (single org)",
       Auth: "requireCronSecret (fan-out) OR requireOrgRole(admin)+org_id (one org) · verify_jwt=false",
       Writes: "shows, show_dates, airtable_sync_log(+record), notifications (airtable_sync_held)",
-      Effects: "invokes open-offer-tier (tier 1, batches of 10) for new dates and updated dates that just gained a session but have no tier-1 row yet, gated on the booking_flow entitlement ∧ auto_open_tier1 ∧ artist_acceptance · Airtable Data+Meta API",
+      Effects: "invokes open-offer-tier (tier 1, batches of 10) for new dates and updated dates that just gained a session but have no tier-1 row yet, gated on the booking_flow entitlement ∧ booking flow active (not switched off) ∧ auto_open_tier1 ∧ artist_acceptance · Airtable Data+Meta API",
       Failure: "per-org isolation; idempotent by airtable_record_id",
       Cite: "airtable-poll/index.ts",
     },
@@ -277,7 +277,7 @@ export const SYSTEM_MAP_NODES: SystemMapNode[] = [
     detail: {
       Trigger: "hourly cron + manual",
       Auth: "requireCronOrRole(admin,producer) · verify_jwt=false",
-      Gate: "reminder pass ∧ escalation scan limited to orgs entitled to the booking_flow module (filterEntitledOrgs, single batched org_entitlements read); auto-escalation is one of two service-role paths (with airtable-poll's tier-1 auto-open) that can open a tier without ever going through open-offer-tier's own JWT-only requireFeature gate; expire_soft_bookings() itself carries a second, independent copy of the same gate (AND is_feature_enabled(org_id,'booking_flow')) so a lapsed offer in an unentitled org is frozen, not cancelled",
+      Gate: "reminder pass ∧ escalation scan limited to orgs entitled to the booking_flow module (filterEntitledOrgs, single batched org_entitlements read); auto-escalation is additionally gated on the booking flow being active (not switched off, flow.active) ∧ the org being active (not suspended, activeOrgIds); it is one of two service-role paths (with airtable-poll's tier-1 auto-open) that can open a tier without ever going through open-offer-tier's own JWT-only requireFeature gate; expire_soft_bookings() itself carries a second, independent copy of the entitlement gate (AND is_feature_enabled(org_id,'booking_flow')) so a lapsed offer in an unentitled org is frozen, not cancelled",
       Reminder: "24h-before-expiry pass, gated on expiry_reminder ∧ artist_acceptance: offer-expiry-reminder email + offer_expiring in-app, idempotent via bookings.reminder_sent_at",
       Writes:
         "expire_soft_bookings() RPC (gated on booking_flow) → cancels overdue suggested in entitled orgs only · notifications (offer_expiring, tier_escalated, cast_escalation_requested) · escalation stamp",

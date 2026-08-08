@@ -1438,6 +1438,62 @@ Deno.test("airtable-poll: artist_acceptance=false (direct booking) → no open-o
   assertEquals(body.tiers_opened, 0);
 });
 
+// The gate is `flow.active && flow.auto_open_tier1 && flow.artist_acceptance`. The two
+// tests above cover the auto_open_tier1 and artist_acceptance halves; this covers the
+// master `active` switch — even with auto_open_tier1 and artist_acceptance both ON, a
+// booking flow switched off (active: false) must suppress tier-1 auto-open entirely.
+Deno.test("airtable-poll: booking_flow active=false → no open-offer-tier invocations", async () => {
+  const { deps, invokeCalls } = makeFakeDeps({
+    tables: {
+      app_settings: [
+        { when: { key: "cron_secret" }, data: { value: "secret123" } },
+        // booking_flow is switched off for ORG, even though auto_open_tier1 and
+        // artist_acceptance are both otherwise ON.
+        { when: { key: "booking_flow" }, data: [{ org_id: ORG, value: { active: false, auto_open_tier1: true, artist_acceptance: true } }] },
+        ...ENABLED_SETTINGS,
+      ],
+      organizations: { data: [{ id: ORG }], error: null },
+      shows: { data: [{ id: "show-uuid-1", airtable_program_key: "TestShow" }], error: null },
+      cities: { data: [{ id: "city-uuid-berlin", airtable_city_key: "berlin" }], error: null },
+      show_dates: { data: [], error: null },
+      airtable_sync_log: { data: { id: "log-1" }, error: null },
+      airtable_sync_record_log: { data: [], error: null },
+      org_memberships: { data: [], error: null },
+      notifications: { data: null, error: null },
+    },
+    rpcs: { get_org_airtable_key: { data: "key", error: null }, get_cron_secret: { data: "secret123", error: null } },
+    fetchImpl: () =>
+      Promise.resolve(
+        makeAirtableResponse([makeRecord("recNEW003", { Date: "2026-07-17", SubProgram: "TestShow" })]),
+      ) as Promise<Response>,
+  });
+
+  // Give the inserted new date a real id so, WITHOUT the active gate, tier 1 WOULD open.
+  const originalFrom = bindFakeFrom(deps.admin);
+  setFakeFrom(deps.admin, (table: string) => {
+    const chain = originalFrom(table);
+    if (table === "show_dates") {
+      const originalInsert = chain.insert.bind(chain);
+      chain.insert = (payload: unknown) => {
+        const insertChain = (originalInsert as (x: unknown) => ReturnType<typeof originalInsert>)(payload);
+        insertChain.single = () => Promise.resolve({ data: { id: "new-date-uuid-003" }, error: null });
+        return insertChain;
+      };
+    }
+    return chain;
+  });
+
+  const res = await handle(authReq(), deps);
+  assertEquals(res.status, 200);
+  const body = await res.json();
+  assertEquals(body.new_dates, 1);
+
+  // Gate is off (booking flow inactive) → the batch never invokes open-offer-tier.
+  const offerCalls = invokeCalls.filter((c) => c.name === "open-offer-tier");
+  assertEquals(offerCalls.length, 0);
+  assertEquals(body.tiers_opened, 0);
+});
+
 // ─────────────────────────────────────────────────────────────────────────────
 // Task 6: module gate — booking_flow entitlement gates ONLY the tier-1 auto-open,
 // not the date sync itself. syncOrg is shared by the cron fan-out AND the manual

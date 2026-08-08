@@ -313,12 +313,15 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
     // used to open this tier). If one exists, close this tier and open the next
     // automatically instead of just asking a human to do it. No next tier (or
     // auto-escalate off) falls through to the manual escalation path below, unchanged.
-    // Auto-escalation is gated on the org being ACTIVE: a suspended org's short tier must
-    // NOT auto-open the next tier (which would create suggested bookings + email artists).
-    // A suspended org falls through to the manual escalation path below, unchanged: the
-    // same behavior it had before auto-escalation existed (the manual path was never
-    // active-scoped, so this preserves it).
-    if (flow.auto_escalate && activeOrgIds.has(orgId) && row.tier !== 99) {
+    // Auto-escalation is gated on the org being ACTIVE (activeOrgIds — org suspension, not
+    // the flow's own switch): a suspended org's short tier must NOT auto-open the next tier
+    // (which would create suggested bookings + email artists). It is ALSO gated on
+    // flow.active, the booking-flow master switch: an admin can turn automation off
+    // without disabling the whole booking_flow module, so a flow marked inactive must not
+    // auto-open the next tier either. Either gate failing falls through to the manual
+    // escalation path below, unchanged: the same behavior it had before auto-escalation
+    // existed (the manual path was never active-scoped, so this preserves it).
+    if (flow.active && flow.auto_escalate && activeOrgIds.has(orgId) && row.tier !== 99) {
       let nextTier: number | undefined
       if (sdRow.city_id) {
         // Next tier comes from the SAME effective ladder that opened this tier
