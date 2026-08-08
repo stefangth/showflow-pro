@@ -109,7 +109,6 @@ export interface DashboardFirstRunState {
   openRail: () => void;
   closeRail: () => void;
   dismiss: () => void;
-  undismiss: () => void;
 }
 
 // Component prop contracts (Wave A components bind to these).

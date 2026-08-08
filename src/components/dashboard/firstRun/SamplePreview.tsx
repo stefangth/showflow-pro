@@ -20,7 +20,13 @@ export function SamplePreview({ complete, sample, sectionTitle, sectionHint, chi
       )}
 
       {!complete && sample ? (
-        <div className="flex flex-col gap-4 opacity-[.55]" aria-hidden>
+        <>
+          {/* The fixture below is decorative fake data (aria-hidden). Give assistive
+              tech a real text equivalent so it is not silently skipped. */}
+          <span className="sr-only">
+            Sample preview. Your organization has no dates yet; real bookings, offers and dates replace this once setup adds them.
+          </span>
+          <div className="flex flex-col gap-4 opacity-[.55]" aria-hidden>
           <div className="flex gap-3">
             {sample.stats.map((s) => (
               <div key={s.title} className="flex-1 rounded-lg border-[0.5px] border-border bg-card p-3.5">
@@ -56,7 +62,8 @@ export function SamplePreview({ complete, sample, sectionTitle, sectionHint, chi
               </div>
             ))}
           </div>
-        </div>
+          </div>
+        </>
       ) : (
         children
       )}

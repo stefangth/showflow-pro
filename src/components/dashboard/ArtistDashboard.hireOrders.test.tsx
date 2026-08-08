@@ -83,7 +83,6 @@ vi.mock("@/components/dashboard/firstRun/useDashboardFirstRun", () => ({
     openRail: () => {},
     closeRail: () => {},
     dismiss: () => {},
-    undismiss: () => {},
   }),
 }));
 

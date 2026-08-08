@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useAuth } from "@/features/auth/AuthContext";
+import { useCan } from "@/hooks/useCapabilities";
 import { useEntitlements } from "@/hooks/useEntitlements";
 import { useBookingSetupStatus } from "@/hooks/useBookingSetup";
 import { useHireOrderSetupStatus } from "@/hooks/useHireOrderSetup";
@@ -57,9 +58,16 @@ export function useDashboardFirstRun(role: DashboardRole): DashboardFirstRunStat
   const flow = useBookingFlow().data ?? BOOKING_FLOW_DEFAULTS;
 
   const [railOpen, setRailOpen] = useState(false);
-  const [dismissed, dismiss, undismiss] = useRailDismissed("dashboardWelcome", orgId);
+  const [dismissed, dismiss] = useRailDismissed("dashboardWelcome", orgId);
 
   const ctx: OnboardingCtx = { orgName, artistAcceptance: flow.artist_acceptance, counts };
+  // A producer granted either edit_* capability can actually do the org setup, so the
+  // copy drops the "only an admin can do these" framing for them (admins always can;
+  // artists never have these capabilities, so their branch is unaffected). Both hooks
+  // are read unconditionally — `||` would short-circuit the second call (rules-of-hooks).
+  const canEditBookingSettings = useCan("edit_booking_settings");
+  const canEditHireSettings = useCan("edit_hire_order_settings");
+  const canEditSetup = canEditBookingSettings || canEditHireSettings;
 
   // Only the admin/producer branch reads `moduleStatuses`; the artist branch composes
   // its own booking_flow slice via ARTIST_ONBOARDING and never touches it.
@@ -82,8 +90,8 @@ export function useDashboardFirstRun(role: DashboardRole): DashboardFirstRunStat
   const total = composed.steps.length;
   const remaining = total - filled;
 
-  const welcome = welcomeCopy(role, composed.complete, ctx, { filled, total });
-  const railHead = railHeaderCopy(role, composed.complete);
+  const welcome = welcomeCopy(role, composed.complete, ctx, { filled, total }, canEditSetup);
+  const railHead = railHeaderCopy(role, composed.complete, canEditSetup);
   const collapsed = collapsedCopy(role, composed.complete, remaining);
 
   // No-flicker: hidden while entitlements load, and when no licensed module contributes
@@ -133,6 +141,5 @@ export function useDashboardFirstRun(role: DashboardRole): DashboardFirstRunStat
       setRailOpen(false);
       dismiss();
     },
-    undismiss,
   };
 }

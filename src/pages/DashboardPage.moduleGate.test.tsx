@@ -36,7 +36,7 @@ vi.mock("@/components/dashboard/firstRun/useDashboardFirstRun", () => ({
     sectionTitle: "Today", sectionHint: "",
     railEyebrow: "", railTitle: "", railBody: "",
     collapsedLabel: "", collapsedHint: "", collapsedCta: "",
-    railOpen: false, openRail: vi.fn(), closeRail: vi.fn(), dismiss: vi.fn(), undismiss: vi.fn(),
+    railOpen: false, openRail: vi.fn(), closeRail: vi.fn(), dismiss: vi.fn(),
   }),
 }));
 

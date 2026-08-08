@@ -49,6 +49,9 @@ vi.mock("@/hooks/useBookingFlow", () => ({
 vi.mock("@/features/auth/AuthContext", () => ({
   useAuth: () => ({ currentOrg: { id: "o1", name: "Halle Kollektiv" } }),
 }));
+// Producer copy is capability-aware; default the grant off so the admin/producer/artist
+// composition assertions below exercise the non-capable framing.
+vi.mock("@/hooks/useCapabilities", () => ({ useCan: () => false }));
 vi.mock("@/components/setup/useRailDismissed", () => ({
   useRailDismissed: () => [false, vi.fn(), vi.fn()],
 }));

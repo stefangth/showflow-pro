@@ -231,6 +231,10 @@ function ProducerDashboard() {
   // has dates (but hasn't finished every setup step) must show its real body, not a
   // greyed sample. `fr.complete` still drives only the welcome/collapsed panel copy.
   const hasData = (upcomingDates?.length ?? 0) > 0;
+  // ...but only once the dates query has settled: while `upcomingDates` is still
+  // undefined on a cold load, `hasData` is a false negative, so a configured org would
+  // briefly flash the sample. Treat "not settled yet" as live to avoid that flash.
+  const datesSettled = upcomingDates !== undefined;
 
   return (
     <div className="space-y-6">
@@ -240,7 +244,7 @@ function ProducerDashboard() {
 
       <div className="flex items-start gap-6">
         <div className="min-w-0 flex-1">
-          <SamplePreview complete={!fr.show || fr.complete || hasData} sample={fr.sample} sectionTitle={fr.sectionTitle} sectionHint={fr.sectionHint}>
+          <SamplePreview complete={!fr.show || fr.complete || !datesSettled || hasData} sample={fr.sample} sectionTitle={fr.sectionTitle} sectionHint={fr.sectionHint}>
             <div className="space-y-6">
               <div>
                 <h1 className="font-display text-[32px] font-semibold tracking-tight">Dashboard</h1>

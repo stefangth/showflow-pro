@@ -144,9 +144,22 @@ it("railHeaderCopy covers every role x complete branch", () => {
 
 it("railHeaderCopy never points the artist at Settings (they have no access)", () => {
   expect(railHeaderCopy("artist", true).body).not.toMatch(/Settings/);
-  // Admins keep the Settings pointer; producers and artists do not.
+  // Admins keep the Settings pointer; a producer without the grant does not.
   expect(railHeaderCopy("admin", true).body).toMatch(/Settings/);
   expect(railHeaderCopy("producer", true).body).not.toMatch(/Settings/);
+});
+
+it("treats a capability-granted producer as set-up-capable (no 'only an admin' framing)", () => {
+  // A producer granted edit_* capabilities can reach Settings, so the "only an admin" /
+  // "you cannot change these" copy must not apply to them.
+  expect(railHeaderCopy("producer", true, true).body).toMatch(/Settings/);
+  expect(railHeaderCopy("producer", false, true).body).not.toMatch(/Only an admin/);
+  const capable = welcomeCopy("producer", false, ctx, { filled: 0, total: 3 }, true);
+  expect(capable.progressHint).not.toBe("Only an admin can do these");
+  expect(capable.primaryLabel).toBe("Start setup");
+  // Default (no capability) keeps the admin-gated framing.
+  expect(railHeaderCopy("producer", false).body).toMatch(/Only an admin/);
+  expect(welcomeCopy("producer", false, ctx, { filled: 0, total: 3 }).progressHint).toBe("Only an admin can do these");
 });
 
 const COLLAPSED_ROWS: { role: DashboardRole; complete: boolean; remaining: number; label: string; cta: string; hint?: string }[] = [

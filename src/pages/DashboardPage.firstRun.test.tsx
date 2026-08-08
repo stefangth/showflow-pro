@@ -38,7 +38,7 @@ function frState(overrides: Record<string, unknown> = {}) {
     sectionTitle: "What this page becomes", sectionHint: "Sample rows.",
     railEyebrow: "Set up", railTitle: "Get running", railBody: "b",
     collapsedLabel: "Set up in progress", collapsedHint: "4 steps left", collapsedCta: "Resume",
-    railOpen: false, openRail: vi.fn(), closeRail: vi.fn(), dismiss: vi.fn(), undismiss: vi.fn(),
+    railOpen: false, openRail: vi.fn(), closeRail: vi.fn(), dismiss: vi.fn(),
     ...overrides,
   };
 }

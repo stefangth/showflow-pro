@@ -1,7 +1,18 @@
 import { Link } from "react-router-dom";
 import { Check } from "lucide-react";
 import { useCan } from "@/hooks/useCapabilities";
-import type { ComposedStep, DashboardSetupRailProps } from "@/lib/dashboard/types";
+import { badgeVariants } from "@/components/ui/badge";
+import { cn } from "@/lib/utils";
+import type { ComposedStep, DashboardSetupRailProps, SetupBlock } from "@/lib/dashboard/types";
+
+// One shared "hard/soft blocker" chip vocabulary, using the same `badgeVariants`
+// tokens (risk = amber, neutral = muted) as the sibling `SetupStepRow`, so the same
+// "Blocks X" concept renders identically across the Bookings and Dashboard rails.
+const BLOCK_CHIP: Record<Exclude<SetupBlock, null>, { tone: "risk" | "neutral"; label: string }> = {
+  offers: { tone: "risk", label: "Blocks offers" },
+  filling: { tone: "neutral", label: "Blocks filling" },
+  issuing: { tone: "risk", label: "Blocks issuing" },
+};
 
 function StepRow({ step, index }: { step: ComposedStep; index: number }) {
   // Hooks may not be conditional: always read the capability, ignore when the step has none.
@@ -23,14 +34,10 @@ function StepRow({ step, index }: { step: ComposedStep; index: number }) {
           <Link to={step.ctaRoute} className="mt-2 inline-block rounded-lg bg-accent-500 px-3 py-1.5 text-xs font-medium text-white hover:bg-accent-600">{step.ctaLabel}</Link>
         )}
       </div>
-      {!step.done && step.block === "offers" && (
-        <span className="shrink-0 rounded bg-warning/15 px-1.5 py-0.5 text-[11px] font-semibold text-warning">Blocks offers</span>
-      )}
-      {!step.done && step.block === "filling" && (
-        <span className="shrink-0 rounded bg-muted px-1.5 py-0.5 text-[11px] font-semibold text-muted-foreground">Blocks filling</span>
-      )}
-      {!step.done && step.block === "issuing" && (
-        <span className="shrink-0 rounded bg-warning/15 px-1.5 py-0.5 text-[11px] font-semibold text-warning">Blocks issuing</span>
+      {!step.done && step.block && (
+        <span className={cn(badgeVariants({ variant: BLOCK_CHIP[step.block].tone }), "shrink-0 font-semibold")}>
+          {BLOCK_CHIP[step.block].label}
+        </span>
       )}
     </div>
   );

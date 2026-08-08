@@ -58,6 +58,9 @@ export function composeArtist(
 export function welcomeCopy(
   role: DashboardRole, complete: boolean, ctx: OnboardingCtx,
   progress: { filled: number; total: number },
+  // A producer granted edit_booking_settings / edit_hire_order_settings can actually
+  // do the org setup, so the "only an admin" framing must not apply to them.
+  canEditSetup = false,
 ): WelcomeCopy {
   const org = ctx.orgName;
   const base = { eyebrow: "Welcome", progressFilled: progress.filled, progressTotal: progress.total };
@@ -73,7 +76,7 @@ export function welcomeCopy(
       : `${pending} artist${pending === 1 ? "" : "s"} ${pending === 1 ? "is" : "are"} waiting on a confirm from you.`;
     return complete
       ? { ...base, headline: `You have joined ${org}`, body: pendingBody, primaryLabel: "How this org works", secondaryLabel: "Dismiss", progressLabel: `Set up · ${progress.total} of ${progress.total}`, progressHint: "The rules you inherited" }
-      : { ...base, headline: `${org} is still being set up`, body: "Dates, offers and confirmations appear here the moment the first import lands.", primaryLabel: "See what is outstanding", secondaryLabel: "Later", progressLabel: `Org setup · ${progress.filled} of ${progress.total}`, progressHint: "Only an admin can do these" };
+      : { ...base, headline: `${org} is still being set up`, body: "Dates, offers and confirmations appear here the moment the first import lands.", primaryLabel: canEditSetup ? "Start setup" : "See what is outstanding", secondaryLabel: "Later", progressLabel: `Org setup · ${progress.filled} of ${progress.total}`, progressHint: canEditSetup ? "About 15 minutes" : "Only an admin can do these" };
   }
   // artist
   return complete
@@ -81,14 +84,14 @@ export function welcomeCopy(
     : { ...base, headline: `${org} added you to the roster`, body: "Offers arrive by email and land on this page. Block the dates you cannot play first, so you only get asked about dates that work.", primaryLabel: "Start setup", secondaryLabel: "Later", progressLabel: `Set up · ${progress.filled} of ${progress.total}`, progressHint: "About 2 minutes" };
 }
 
-export function railHeaderCopy(role: DashboardRole, complete: boolean) {
+export function railHeaderCopy(role: DashboardRole, complete: boolean, canEditSetup = false) {
   if (complete) {
     return {
       eyebrow: role === "artist" ? "How offers work here" : "How this org works",
       title: "The rules you inherited",
-      // Only admins can reach Settings (App.tsx gates it to admin/producer, and
-      // producers cannot edit there either); artists have no Settings access at all.
-      body: role === "admin"
+      // Admins can always reach Settings; a producer can too when granted the edit_*
+      // capabilities. Everyone else (producer without the grant, artist) cannot.
+      body: role === "admin" || (role === "producer" && canEditSetup)
         ? "You can change them in Settings, but every number on this page follows them today."
         : role === "producer"
           ? "You cannot change these, but every number on this page follows them."
@@ -96,7 +99,9 @@ export function railHeaderCopy(role: DashboardRole, complete: boolean) {
     };
   }
   if (role === "admin") return { eyebrow: "Set up", title: "Get the workspace running", body: "Some of these block the first offer. Nothing here stops you using the rest of the app." };
-  if (role === "producer") return { eyebrow: "Org setup", title: "What is still outstanding", body: "Only an admin can do these. This is here so you know why the page is empty, not so you can fix it." };
+  if (role === "producer") return canEditSetup
+    ? { eyebrow: "Org setup", title: "What is still outstanding", body: "Some of these block the first offer. Nothing here stops you using the rest of the app." }
+    : { eyebrow: "Org setup", title: "What is still outstanding", body: "Only an admin can do these. This is here so you know why the page is empty, not so you can fix it." };
   return { eyebrow: "Set up", title: "Before your first offer", body: "None of this blocks anything. It just makes the offers you get worth answering." };
 }
 
