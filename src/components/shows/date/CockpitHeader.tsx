@@ -1,9 +1,21 @@
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Settings2 } from "lucide-react";
+import { MoreHorizontal, Settings2, TriangleAlert } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { slotMeterTones } from "@/lib/bookingCockpit";
 import { SlotMeter } from "./SlotMeter";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+
+export interface CockpitOverflowAction {
+  label: string;
+  onSelect: () => void;
+  destructive?: boolean;
+}
 
 export type CockpitTab = "cast" | "offers" | "order" | "chat" | "setup";
 export interface CockpitTabDef {
@@ -18,6 +30,9 @@ export interface CockpitHeaderProps {
   dateLine: string; // "Thursday, 12 March 2026"
   metaLine: string; // "14:00 / 19:30 · Volksbühne, Berlin"
   slots: { main_cast: number; understudies: number } | null;
+  /** Shown in place of the slot meter when the date has no slot config, so the
+   *  warning lives where the meter would be rather than as a full-width strip. */
+  slotWarning?: string;
   confirmedCount: number;
   acceptedCount: number;
   statusText: string;
@@ -38,6 +53,9 @@ export interface CockpitHeaderProps {
   activeTab: CockpitTab;
   onTab: (t: CockpitTab) => void;
   devBadge?: boolean; // isEditorMode && isRealAdmin
+  /** Actions for the ⋯ overflow menu. When empty/absent, the ⋯ button is hidden
+   *  (no dead affordance — e.g. artists get no overflow actions). */
+  overflowActions?: CockpitOverflowAction[];
 }
 
 const STATUS_DOT: Record<CockpitHeaderProps["statusTone"], string> = {
@@ -47,16 +65,23 @@ const STATUS_DOT: Record<CockpitHeaderProps["statusTone"], string> = {
   muted: "bg-[var(--text-muted)]",
 };
 
+const STATUS_TEXT: Record<CockpitHeaderProps["statusTone"], string> = {
+  green: "text-[var(--green-600)]",
+  amber: "text-[var(--amber-600)]",
+  accent: "text-accent-600",
+  muted: "text-muted-foreground",
+};
+
 /** Anchored cockpit header: title, slot meter + status, the primary booking
  *  workflow CTA, the (separate) hire-order terminal button, a read-only flow
  *  indicator, and the tab bar. Purely presentational; all data + handlers come
  *  from ShowDateDetailSheet. */
 export function CockpitHeader({
-  title, dateLine, metaLine, slots, confirmedCount, acceptedCount,
+  title, dateLine, metaLine, slots, slotWarning, confirmedCount, acceptedCount,
   statusText, statusTone, showEngineStatus = true,
   workflowCta, workflowCtaDisabled, onWorkflowCta,
   showGenerateHireOrder, generateDisabled, generateTitle, onGenerate,
-  flowLabel, onEditFlow, tabs, activeTab, onTab, devBadge,
+  flowLabel, onEditFlow, tabs, activeTab, onTab, devBadge, overflowActions = [],
 }: CockpitHeaderProps) {
   const total = slots ? slots.main_cast + slots.understudies : 0;
 
@@ -64,24 +89,24 @@ export function CockpitHeader({
     <div className="px-6 py-3.5">
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
-          <p className="font-display text-base font-semibold tracking-tight truncate">{title}</p>
+          <p className="truncate text-[11px] font-semibold uppercase leading-[14px] tracking-[1.6px] text-accent-600">{title}</p>
           {devBadge && (
             <Badge variant="outline" className="mt-1 text-xs font-mono text-muted-foreground w-fit">
               ShowDateDetailSheet.tsx
             </Badge>
           )}
-          <p className="font-display text-[22px] font-semibold tracking-tight mt-1">{dateLine}</p>
-          <p className="text-sm text-muted-foreground mt-0.5">{metaLine}</p>
+          <p className="mt-[5px] font-display text-[22px] font-semibold leading-7 tracking-[-0.3px]">{dateLine}</p>
+          <p className="mt-1 text-[13px] leading-[18px] text-muted-foreground">{metaLine}</p>
         </div>
         <div className="flex shrink-0 items-center gap-2">
           {workflowCta && (
-            <Button size="sm" onClick={onWorkflowCta} disabled={workflowCtaDisabled}>
+            <Button size="default" className="text-sm" onClick={onWorkflowCta} disabled={workflowCtaDisabled}>
               {workflowCta.label}
             </Button>
           )}
           {showGenerateHireOrder && (
             <Button
-              size="sm"
+              size="default"
               variant={workflowCta ? "outline" : "default"}
               onClick={onGenerate}
               disabled={generateDisabled}
@@ -90,46 +115,90 @@ export function CockpitHeader({
               Generate hire order
             </Button>
           )}
+          {overflowActions.length > 0 && (
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <button
+                  type="button"
+                  aria-label="More actions"
+                  className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-[var(--radius-m)] border border-[var(--line-strong)] bg-[var(--surface)] text-[var(--text-muted)] transition-colors hover:bg-[var(--surface-2)]"
+                >
+                  <MoreHorizontal className="h-[18px] w-[18px]" />
+                </button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                {overflowActions.map((a) => (
+                  <DropdownMenuItem
+                    key={a.label}
+                    onSelect={a.onSelect}
+                    className={cn(a.destructive && "text-destructive focus:text-destructive")}
+                  >
+                    {a.label}
+                  </DropdownMenuItem>
+                ))}
+              </DropdownMenuContent>
+            </DropdownMenu>
+          )}
         </div>
       </div>
 
-      {/* Slot meter + status line: pure booking-engine status, gated by booking_flow. */}
-      {showEngineStatus && slots && (
-        <div className="mt-3 flex items-center gap-4">
-          <SlotMeter
-            tones={slotMeterTones(confirmedCount, acceptedCount, total)}
-            className="flex-1"
-            testId="cockpit-slot-meter"
-            ariaLabel="Slot fill"
-          />
-          {statusText && (
-            <span className="flex shrink-0 items-center gap-1.5 text-xs text-muted-foreground">
-              <span className={cn("h-2 w-2 rounded-full", STATUS_DOT[statusTone])} />
-              {statusText}
+      {/* Status row: slot meter + booking-engine status (gated by booking_flow) on
+       *  the left; the app-only, low-prominence flow indicator sits at the right so
+       *  it does not add a row and the tab bar keeps the reference rhythm. */}
+      <div className="mt-3.5 flex flex-wrap items-center justify-between gap-x-3.5 gap-y-2">
+        <div className="flex flex-wrap items-center gap-x-3.5 gap-y-2">
+          {showEngineStatus && slots && (
+            <>
+              <div className="flex items-center gap-2">
+                <span className="font-mono text-xs font-medium text-foreground">{confirmedCount} of {total} slots</span>
+                <SlotMeter
+                  fixed
+                  tones={slotMeterTones(confirmedCount, acceptedCount, total)}
+                  testId="cockpit-slot-meter"
+                  ariaLabel="Slot fill"
+                />
+              </div>
+              {statusText && (
+                <>
+                  <span className="h-3.5 w-px bg-[var(--line)]" />
+                  <span className={cn("inline-flex items-center gap-1.5 text-xs", STATUS_TEXT[statusTone])}>
+                    <span className={cn("h-1.5 w-1.5 rounded-[2px]", STATUS_DOT[statusTone])} />
+                    {statusText}
+                  </span>
+                </>
+              )}
+            </>
+          )}
+          {/* No slot config: the meter can't render, so its warning takes the
+              meter's place rather than a full-width banner strip below the tabs. */}
+          {!slots && slotWarning && (
+            <span className="inline-flex items-center gap-1.5 text-xs font-medium text-[var(--amber-600)]">
+              <TriangleAlert className="h-3.5 w-3.5 shrink-0" />
+              {slotWarning}
             </span>
           )}
         </div>
-      )}
 
-      {/* Read-only flow indicator; a Settings link only for those who may edit it. */}
-      <div className="mt-2 flex items-center gap-1.5 text-xs text-muted-foreground">
-        <span>Flow:</span>
-        {onEditFlow ? (
-          <button
-            type="button"
-            onClick={onEditFlow}
-            className="inline-flex items-center gap-1 font-medium text-accent-600 hover:underline"
-          >
-            <Settings2 className="h-3 w-3" />
-            {flowLabel}
-          </button>
-        ) : (
-          <span className="font-medium text-foreground">{flowLabel}</span>
-        )}
+        {/* Read-only flow indicator; a subtle Settings affordance only for those who may edit it. */}
+        <div className="inline-flex items-center gap-1.5 text-xs text-muted-foreground">
+          <span>Flow:</span>
+          {onEditFlow ? (
+            <button
+              type="button"
+              onClick={onEditFlow}
+              className="inline-flex items-center gap-1 font-medium text-muted-foreground transition-colors hover:text-foreground"
+            >
+              <Settings2 className="h-3 w-3" />
+              {flowLabel}
+            </button>
+          ) : (
+            <span className="font-medium text-foreground">{flowLabel}</span>
+          )}
+        </div>
       </div>
 
       {/* Tab bar */}
-      <div className="mt-3 flex gap-1 border-b border-border">
+      <div className="mt-3.5 flex gap-0.5 border-b border-border">
         {tabs.filter((t) => !t.hidden).map((t) => {
           const active = t.id === activeTab;
           return (
@@ -138,15 +207,24 @@ export function CockpitHeader({
               type="button"
               onClick={() => onTab(t.id)}
               className={cn(
-                "-mb-px border-b-2 px-3 py-2 text-sm transition-colors",
+                "-mb-px border-b-2 px-3 py-[9px] text-[13px] leading-4 transition-colors",
                 active
                   ? "border-accent-500 text-foreground font-semibold"
-                  : "border-transparent text-muted-foreground hover:text-foreground",
+                  : "border-transparent font-medium text-muted-foreground hover:text-foreground",
               )}
             >
               {t.label}
               {t.badge && (
-                <span className="ml-1.5 rounded-full bg-accent-100 px-1.5 py-0.5 text-[11px] text-accent-700">
+                <span
+                  className={cn(
+                    "ml-1.5 rounded-[var(--radius-xs)] px-[5px] py-px font-mono text-[10px] font-semibold leading-[14px]",
+                    t.id === "order"
+                      ? t.badge === "READY"
+                        ? "bg-[var(--green-100)] text-[var(--green-600)]"
+                        : "bg-[var(--amber-100)] text-[var(--amber-600)]"
+                      : "bg-[var(--surface-3)] text-muted-foreground",
+                  )}
+                >
                   {t.badge}
                 </span>
               )}

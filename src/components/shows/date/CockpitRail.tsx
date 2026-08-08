@@ -1,9 +1,6 @@
-import { format } from "date-fns";
-import { Clock, MapPin, Database, PenLine, MessageSquare } from "lucide-react";
-import { Badge } from "@/components/ui/badge";
+import { Clock, MapPin, Ticket } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import type { ActivityItem, UpNextItem } from "@/lib/bookingCockpit";
-import { UpNextStrip } from "./UpNextStrip";
+import type { ActivityItem } from "@/lib/bookingCockpit";
 
 export interface CockpitRailProps {
   times: string | null; // "14:00 / 19:30"
@@ -16,8 +13,6 @@ export interface CockpitRailProps {
   castChips: Array<{ label: string; kind: "inherited" | "override" }>;
   skillChips: string[];
   activity: ActivityItem[]; // pre-derived (buildActivity); rail formats iso
-  /** Engine "up next" pills (digest send, expiring offers, auto-escalate). */
-  upNext?: UpNextItem[];
   chatUnread: number;
   chatPreview: string | null;
   /** Jump to the Chat tab. When there is no live preview yet, the teaser is a
@@ -28,126 +23,174 @@ export interface CockpitRailProps {
   showEditSetup?: boolean;
 }
 
-/** ISO timestamp -> short "d MMM, HH:mm" for the activity feed. Failures (a
- *  malformed iso) fall back to the raw string rather than throwing. */
-function shortStamp(iso: string): string {
+// The booking clock is Berlin-anchored (digest hours, expiry windows), so the
+// activity column buckets and formats in Europe/Berlin — not the viewer's local
+// timezone, which would flip the day/time near midnight for non-Berlin viewers.
+const BERLIN_TZ = "Europe/Berlin";
+const berlinDayKey = (d: Date): string =>
+  new Intl.DateTimeFormat("en-CA", { timeZone: BERLIN_TZ, year: "numeric", month: "2-digit", day: "2-digit" }).format(d);
+const berlinClock = (d: Date): string =>
+  new Intl.DateTimeFormat("en-GB", { timeZone: BERLIN_TZ, hour: "2-digit", minute: "2-digit", hour12: false }).format(d);
+const berlinDayMonth = (d: Date): string =>
+  new Intl.DateTimeFormat("en-GB", { timeZone: BERLIN_TZ, day: "2-digit", month: "short" }).format(d);
+
+/** ISO timestamp -> compact mono stamp for the activity column: a Berlin clock
+ *  time ("11:04") when the entry falls on the same Berlin day as the newest one,
+ *  else a Berlin date ("09 Mar"). Failures fall back to the raw string. */
+function shortStamp(iso: string, newestIso?: string): string {
   const d = new Date(iso);
-  return Number.isNaN(d.getTime()) ? iso : format(d, "d MMM, HH:mm");
+  if (Number.isNaN(d.getTime())) return iso;
+  if (newestIso) {
+    const newest = new Date(newestIso);
+    if (!Number.isNaN(newest.getTime()) && berlinDayKey(d) === berlinDayKey(newest)) {
+      return berlinClock(d);
+    }
+  }
+  return berlinDayMonth(d);
 }
 
-const RailSection = ({ title, children }: { title: string; children: React.ReactNode }) => (
-  <div className="space-y-2">
-    <p className="text-[11px] font-semibold uppercase tracking-[0.13em] text-muted-foreground">{title}</p>
-    {children}
-  </div>
+/** Swap straight quotes for typographic ones so chat previews read like the
+ *  designed reference ("..." -> "..."). Purely presentational. */
+function smartQuotes(text: string): string {
+  return text
+    .replace(/(^|[\s([{<])"/g, "$1“")
+    .replace(/"/g, "”")
+    .replace(/(^|[\s([{<])'/g, "$1‘")
+    .replace(/'/g, "’");
+}
+
+const Divider = () => <div className="h-px bg-[var(--line)]" />;
+
+const SectionLabel = ({ children }: { children: React.ReactNode }) => (
+  <p className="text-[11px] font-semibold uppercase leading-[14px] tracking-[1.6px] text-muted-foreground">{children}</p>
 );
 
 /** The cockpit's left rail: date facts, eligibility chips, a derived activity
- *  feed, and a chat teaser. Purely presentational. */
+ *  feed, and a chat teaser, separated by hairline dividers. Purely presentational. */
 export function CockpitRail({
-  times, venue, city, source, notes, castChips, skillChips, activity, upNext = [],
+  times, venue, city, source, notes, castChips, skillChips, activity,
   chatUnread, chatPreview, onOpenChat, onEditSetup, showEditSetup = true,
 }: CockpitRailProps) {
   return (
-    <aside className="w-full shrink-0 space-y-5 border-b border-border bg-[var(--surface-2)] p-5 lg:w-72 lg:border-b-0 lg:border-r">
-      <RailSection title="Date">
-        <div className="space-y-1.5 text-sm">
+    <aside className="w-full shrink-0 space-y-4 border-b border-[var(--line)] bg-[var(--surface-2)] p-[18px] lg:w-72 lg:border-b-0 lg:border-r">
+      {/* Date facts */}
+      <div className="space-y-2">
+        <SectionLabel>Date</SectionLabel>
+        <div className="space-y-[7px] text-[13px] text-muted-foreground">
           {times && (
-            <p className="flex items-center gap-1.5">
-              <Clock className="h-3.5 w-3.5 text-muted-foreground" />
-              {times}
+            <p className="flex items-center gap-2">
+              <Clock className="h-3.5 w-3.5 shrink-0" />
+              <span className="font-mono text-xs">{times}</span>
             </p>
           )}
-          {venue && (
-            <p className="flex items-center gap-1.5">
-              <MapPin className="h-3.5 w-3.5 text-muted-foreground" />
-              {venue}
+          {(venue || city) && (
+            <p className="flex items-center gap-2">
+              <MapPin className="h-3.5 w-3.5 shrink-0" />
+              {[venue, city].filter(Boolean).join(", ")}
             </p>
           )}
-          {city && (
-            <p className="flex items-center gap-1.5">
-              <MapPin className="h-3.5 w-3.5 text-muted-foreground" />
-              {city}
-            </p>
-          )}
-          <p className="flex items-center gap-1.5 text-xs text-muted-foreground">
-            <Database className="h-3.5 w-3.5" />
+          <p className="flex items-center gap-2">
+            <Ticket className="h-3.5 w-3.5 shrink-0" />
             {source === "airtable" ? "Airtable · locked" : "Manual entry"}
           </p>
           {notes && <p className="pt-0.5 text-xs italic text-muted-foreground">{notes}</p>}
         </div>
-      </RailSection>
+      </div>
 
-      <RailSection title="Eligibility">
+      <Divider />
+
+      {/* Eligibility */}
+      <div className="space-y-2">
+        <SectionLabel>Eligibility</SectionLabel>
         {castChips.length === 0 && skillChips.length === 0 ? (
           <p className="text-xs text-muted-foreground">No eligibility restrictions.</p>
         ) : (
-          <div className="flex flex-wrap gap-1">
-            {castChips.map((c) => (
-              <Badge
-                key={`${c.kind}-${c.label}`}
-                variant={c.kind === "inherited" ? "outline" : "secondary"}
-                className="text-xs"
-              >
-                {c.label}
-              </Badge>
-            ))}
+          <div className="flex flex-wrap gap-[5px]">
+            {castChips.map((c) =>
+              c.kind === "inherited" ? (
+                <span
+                  key={`inherited-${c.label}`}
+                  className="rounded-[var(--radius-xs)] border-[0.5px] border-[var(--line-strong)] px-[7px] py-[3px] text-xs text-muted-foreground"
+                >
+                  {c.label} <span className="opacity-60">inherited</span>
+                </span>
+              ) : (
+                <span
+                  key={`override-${c.label}`}
+                  className="rounded-[var(--radius-xs)] bg-[var(--surface-3)] px-[7px] py-[3px] text-xs font-medium text-foreground"
+                >
+                  {c.label}
+                </span>
+              ),
+            )}
             {skillChips.map((s) => (
-              <Badge key={s} variant="outline" className="text-xs border-accent-300 text-accent-700">
+              <span
+                key={s}
+                className="rounded-[var(--radius-xs)] bg-accent-100 px-[7px] py-[3px] text-xs font-medium text-accent-700"
+              >
                 {s}
-              </Badge>
+              </span>
             ))}
           </div>
         )}
-      </RailSection>
-
-      <UpNextStrip items={upNext} />
+        {showEditSetup && (
+          <Button
+            variant="outline"
+            size="sm"
+            className="mt-1 h-[30px] w-full rounded-[var(--radius-m)] border-[0.5px] border-[var(--line-strong)] bg-[var(--surface)] text-xs font-medium text-[var(--text)] hover:bg-[var(--surface-3)] hover:text-[var(--text)]"
+            onClick={onEditSetup}
+          >
+            Edit date setup
+          </Button>
+        )}
+      </div>
 
       {activity.length > 0 && (
-        <RailSection title="Activity">
-          <ul data-testid="cockpit-activity" className="space-y-1.5">
-            {activity.map((a, i) => (
-              <li key={`${a.iso}-${i}`} className="text-sm">
-                <span className="text-foreground">{a.text}</span>
-                <span className="ml-1.5 text-xs text-muted-foreground">{shortStamp(a.iso)}</span>
-              </li>
-            ))}
-          </ul>
-        </RailSection>
-      )}
-
-      <RailSection title="Chat">
-        <div className="flex items-start gap-1.5 text-sm">
-          <MessageSquare className="mt-0.5 h-3.5 w-3.5 text-muted-foreground" />
-          <div className="min-w-0 flex-1">
-            {chatUnread > 0 && (
-              <Badge data-testid="chat-unread" className="mb-1 h-5 px-1.5 text-[11px]">
-                {chatUnread} unread
-              </Badge>
-            )}
-            {chatPreview ? (
-              <p className="truncate text-muted-foreground">{chatPreview}</p>
-            ) : onOpenChat ? (
-              <button
-                type="button"
-                onClick={onOpenChat}
-                className="text-left text-muted-foreground hover:text-foreground"
-              >
-                Open the Chat tab to message the cast
-              </button>
-            ) : (
-              <p className="text-muted-foreground">Message the cast in the Chat tab</p>
-            )}
+        <>
+          <Divider />
+          <div className="space-y-2.5">
+            <SectionLabel>Activity</SectionLabel>
+            <ul data-testid="cockpit-activity" className="space-y-[11px]">
+              {activity.map((a, i) => (
+                <li key={`${a.iso}-${i}`} className="grid grid-cols-[46px_1fr] gap-2">
+                  <span className="font-mono text-[11px] font-medium leading-4 text-[var(--text-faint)]">{shortStamp(a.iso, activity[0]?.iso)}</span>
+                  <span className="text-xs leading-4 text-muted-foreground">{a.text}</span>
+                </li>
+              ))}
+            </ul>
           </div>
-        </div>
-      </RailSection>
-
-      {showEditSetup && (
-        <Button variant="outline" size="sm" className="w-full" onClick={onEditSetup}>
-          <PenLine className="mr-1.5 h-3.5 w-3.5" />
-          Edit date setup
-        </Button>
+        </>
       )}
+
+      <Divider />
+
+      {/* Chat teaser */}
+      <div className="space-y-2">
+        <div className="flex items-center justify-between">
+          <SectionLabel>Chat</SectionLabel>
+          {chatUnread > 0 && (
+            <span
+              data-testid="chat-unread"
+              className="rounded-[var(--radius-xs)] bg-accent-500 px-1.5 py-px font-mono text-[10px] font-semibold leading-[15px] text-white"
+            >
+              {chatUnread}
+            </span>
+          )}
+        </div>
+        {chatPreview ? (
+          <p className="text-xs leading-[17px] text-muted-foreground">{smartQuotes(chatPreview)}</p>
+        ) : onOpenChat ? (
+          <button
+            type="button"
+            onClick={onOpenChat}
+            className="text-left text-xs leading-[17px] text-muted-foreground hover:text-foreground"
+          >
+            Open the Chat tab to message the cast
+          </button>
+        ) : (
+          <p className="text-xs leading-[17px] text-muted-foreground">Message the cast in the Chat tab</p>
+        )}
+      </div>
     </aside>
   );
 }

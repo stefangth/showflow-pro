@@ -34,3 +34,10 @@ supabase/.temp/
 
 # Visual brainstorming companion (superpowers)
 .superpowers/
+
+# Dev-only visual-regression tooling for the Show Date Cockpit.
+# public/ref is a generated reference render (regenerate via the scaffold in
+# scripts/shoot-cockpit.mjs' README note); it must never ship in the public/ build.
+public/ref/
+screenshots/
+scratchpad_peek.png

@@ -17,16 +17,24 @@ export function SlotMeter({
   className,
   testId,
   ariaLabel,
+  fixed = false,
 }: {
   tones: DatePeekSeg["tone"][];
   className?: string;
   testId?: string;
   ariaLabel?: string;
+  /** Fixed 16px-wide segments (the cockpit header meter) instead of stretching
+   *  each segment to fill (the row-peek meter). */
+  fixed?: boolean;
 }) {
   return (
-    <div className={cn("flex gap-[3px]", className)} data-testid={testId} aria-label={ariaLabel}>
+    <div
+      className={cn("flex gap-[3px]", fixed ? "shrink-0" : "", className)}
+      data-testid={testId}
+      aria-label={ariaLabel}
+    >
       {tones.map((t, i) => (
-        <span key={i} className={cn("h-1.5 flex-1 rounded-[2px]", SLOT_SEG_BG[t])} />
+        <span key={i} className={cn("h-1.5 rounded-[2px]", fixed ? "w-4" : "flex-1", SLOT_SEG_BG[t])} />
       ))}
     </div>
   );

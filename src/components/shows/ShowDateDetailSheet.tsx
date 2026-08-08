@@ -51,6 +51,11 @@ import { EligibilityBookList } from '@/components/shows/date/EligibilityBookList
 import { RequiredSkillsSection } from '@/components/shows/date/RequiredSkillsSection';
 import { CockpitHeader, type CockpitTab } from '@/components/shows/date/CockpitHeader';
 import { CockpitRail } from '@/components/shows/date/CockpitRail';
+import { CockpitShell } from '@/components/shows/date/CockpitShell';
+import { CockpitPager } from '@/components/shows/date/CockpitPager';
+import { CockpitFooter } from '@/components/shows/date/CockpitFooter';
+import { CockpitCastList } from '@/components/shows/date/CockpitCastList';
+import { buildCastGroups } from '@/lib/cockpitCast';
 import { fetchBlockedArtistIds } from '@/data/blockedDates';
 import { ChatPanel } from '@/components/chat/ChatPanel';
 import { HireOrdersCard } from '@/components/shows/hireOrders/HireOrdersCard';
@@ -68,6 +73,15 @@ interface Props {
   showDateId: string | null;
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  /** Optional prev/next pager, supplied only from a list context (the bookings
+   *  page) so the cockpit can walk the current filtered/sorted list. Omitted by
+   *  the artist and chat call sites, which have no such list. */
+  pager?: {
+    index: number; // 1-based position in the list
+    total: number;
+    onPrev: () => void;
+    onNext: () => void;
+  };
 }
 
 type BookingWithArtist = Booking & { artist: Pick<Artist, 'id' | 'name'> };
@@ -161,7 +175,7 @@ interface ShowDateDetailRow {
   city: { id: string; name: string } | null;
 }
 
-export function ShowDateDetailSheet({ showDateId, open, onOpenChange }: Props) {
+export function ShowDateDetailSheet({ showDateId, open, onOpenChange, pager }: Props) {
   const { hasRole, user, roles, currentOrg } = useAuth();
   const { isEditorMode } = useEditorConfig();
   const isRealAdmin = roles.includes('admin');
@@ -657,6 +671,40 @@ export function ShowDateDetailSheet({ showDateId, open, onOpenChange }: Props) {
     .map((id) => orgSkills?.find((s) => s.id === id)?.name)
     .filter((n): n is string => Boolean(n));
 
+  // Only the Cast tab (module-on path) consumes these groups; skip the remap when
+  // the sheet is closed, still loading, or degrading to AssignedArtistsCard.
+  const castGroups = open && showDate && bookingModuleAllowed
+    ? buildCastGroups(bookings, slotConfig, {
+        canConfirm: canManage && canConfirmBookings,
+        onConfirm: (bookingId) => updateBookingStatus.mutate({ bookingId, status: 'confirmed' }),
+        canCancel: canManage,
+        onCancel: (bookingId) => updateBookingStatus.mutate({ bookingId, status: 'cancelled' }),
+        onOpenSlot: () => setActiveTab('offers'),
+      })
+    : [];
+
+  // Persistent hire-order footer state (mirrors the prototype's footer bar).
+  const footerReady = totalSlots != null && confirmedCount >= totalSlots;
+  const footerRemaining = totalSlots != null ? Math.max(0, totalSlots - confirmedCount) : 0;
+  const showFooter = open && hireOrdersOn && canManage && !!slotConfig && showDate?.status !== 'cancelled';
+  const footer = showFooter
+    ? dateHasActiveOrder
+      ? {
+          badgeLabel: 'DRAFTED', ready: true, detail: 'A hire order already covers this date',
+          ctaLabel: 'Open hire order', ctaDisabled: false, onCta: () => setActiveTab('order'),
+        }
+      : {
+          badgeLabel: footerReady ? 'READY' : `${footerRemaining} LEFT`,
+          ready: footerReady,
+          detail: footerReady
+            ? 'All slots confirmed — drafts one order per artist'
+            : `Waiting on ${footerRemaining} of ${totalSlots} slots`,
+          ctaLabel: footerReady ? 'Generate hire order' : 'Generate',
+          ctaDisabled: !footerReady || hireOrderAction.isPending || !canGenerateHireOrders,
+          onCta: generateHireOrder,
+        }
+    : null;
+
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent side="right" className="w-full sm:max-w-[1080px] overflow-y-auto p-0">
@@ -674,91 +722,111 @@ export function ShowDateDetailSheet({ showDateId, open, onOpenChange }: Props) {
 
         {showDate && (
           <>
-            <div className="sticky top-0 z-10 bg-background border-b border-border">
-              <CockpitHeader
-                title={title}
-                dateLine={dateLine}
-                metaLine={metaLine}
-                slots={slotConfig}
-                confirmedCount={confirmedCount}
-                acceptedCount={acceptedCount}
-                statusText={statusText}
-                statusTone={statusTone}
-                showEngineStatus={bookingModuleAllowed}
-                // The header CTA writes on the booking path (Confirm N -> guarded
-                // status update). Gate it on the booking_flow module too, not just
-                // capability, so a module-off org can't confirm a legacy soft_booked
-                // row through the header (the rest of the booking surface is gated).
-                workflowCta={bookingModuleAllowed && ctaAllowed && workflowCta.kind !== 'none' ? workflowCta : null}
-                workflowCtaDisabled={updateBookingStatus.isPending || openOffers.isPending || confirmAccepted.isPending}
-                onWorkflowCta={onWorkflowCta}
-                showGenerateHireOrder={!!showGenerateHireOrderCta}
-                generateDisabled={hireOrderAction.isPending || !canGenerateHireOrders}
-                generateTitle={canGenerateHireOrders ? undefined : "You don't have permission to generate hire orders"}
-                onGenerate={generateHireOrder}
-                flowLabel={flow.artist_acceptance ? 'Classic offers' : 'Direct booking'}
-                onEditFlow={canEditBookingSettings ? () => navigate(ROUTES.SETTINGS) : undefined}
-                tabs={[
-                  { id: 'cast', label: 'Cast' },
-                  { id: 'offers', label: flow.artist_acceptance ? 'Offers' : 'Book artists', hidden: !canManage },
-                  { id: 'order', label: 'Hire order', hidden: !hireOrdersOn },
-                  { id: 'chat', label: 'Chat' },
-                  { id: 'setup', label: 'Setup', hidden: !canManage },
-                ]}
-                activeTab={activeTab}
-                onTab={setActiveTab}
-                devBadge={isEditorMode && isRealAdmin}
-              />
-            </div>
-
-            {/* Cast-slot warning: a catalog concern (also used by hire orders),
-                so it is NOT tied to the booking_flow gate. */}
-            {!slotConfig && (
-              <div className="px-6 pt-4">
-                <Badge variant="secondary" className="bg-destructive/10 text-destructive">
-                  Slot config missing for {showDate.show?.program ?? 'this show'}. Set cast slots in Settings.
-                </Badge>
-              </div>
-            )}
-
-            {showDate.status === 'cancelled' && (
-              <div className="px-6 pt-4">
-                <div className="rounded-lg border border-destructive/30 bg-destructive/10 p-3">
-                  <p className="text-sm font-medium text-destructive">Cancelled</p>
-                  {showDate.cancellation_reason && (
-                    <p className="text-sm text-destructive/90 mt-0.5">{showDate.cancellation_reason}</p>
-                  )}
-                </div>
-              </div>
-            )}
-
-            <div className="flex flex-col lg:flex-row lg:items-stretch">
-              <CockpitRail
-                times={sessionTimes || null}
-                venue={showDate.venue}
-                city={showDate.city?.name ?? null}
-                source={railSource}
-                notes={showDate.notes}
-                castChips={castChips}
-                skillChips={skillChips}
-                activity={bookingModuleAllowed ? activity : []}
-                upNext={bookingModuleAllowed ? upNextItems : []}
-                chatUnread={0}
-                chatPreview={null}
-                onOpenChat={() => setActiveTab('chat')}
-                showEditSetup={canManage}
-                onEditSetup={() => setActiveTab('setup')}
-              />
-
-              <div className="flex-1 p-5 min-h-[520px]">
-                {activeTab === 'cast' && (
-                  <AssignedArtistsCard
-                    bookings={bookings}
-                    canManage={bookingModuleAllowed && canManage}
-                    showConfirm={bookingModuleAllowed && canConfirmBookings}
-                    onConfirm={(bookingId) => updateBookingStatus.mutate({ bookingId, status: 'confirmed' })}
-                    onCancel={(bookingId) => updateBookingStatus.mutate({ bookingId, status: 'cancelled' })}
+            <CockpitShell
+              header={
+                <>
+                {pager && (
+                  <CockpitPager
+                    label={`Date ${pager.index} of ${pager.total}`}
+                    onPrev={pager.onPrev}
+                    onNext={pager.onNext}
+                    prevDisabled={pager.index <= 1}
+                    nextDisabled={pager.index >= pager.total}
                   />
+                )}
+                <CockpitHeader
+                  title={title}
+                  dateLine={dateLine}
+                  metaLine={metaLine}
+                  slots={slotConfig}
+                  slotWarning={!slotConfig ? `Slot config missing for ${showDate.show?.program ?? 'this show'}. Set cast slots in Settings.` : undefined}
+                  confirmedCount={confirmedCount}
+                  acceptedCount={acceptedCount}
+                  statusText={statusText}
+                  statusTone={statusTone}
+                  showEngineStatus={bookingModuleAllowed}
+                  // The header CTA writes on the booking path (Confirm N -> guarded
+                  // status update). Gate it on the booking_flow module too, not just
+                  // capability, so a module-off org can't confirm a legacy soft_booked
+                  // row through the header (the rest of the booking surface is gated).
+                  workflowCta={bookingModuleAllowed && ctaAllowed && workflowCta.kind !== 'none' ? workflowCta : null}
+                  workflowCtaDisabled={updateBookingStatus.isPending || openOffers.isPending || confirmAccepted.isPending}
+                  onWorkflowCta={onWorkflowCta}
+                  showGenerateHireOrder={!!showGenerateHireOrderCta}
+                  generateDisabled={hireOrderAction.isPending || !canGenerateHireOrders}
+                  generateTitle={canGenerateHireOrders ? undefined : "You don't have permission to generate hire orders"}
+                  onGenerate={generateHireOrder}
+                  flowLabel={flow.artist_acceptance ? 'Classic offers' : 'Direct booking'}
+                  onEditFlow={canEditBookingSettings ? () => navigate(ROUTES.SETTINGS) : undefined}
+                  tabs={[
+                    { id: 'cast', label: 'Cast' },
+                    { id: 'offers', label: flow.artist_acceptance ? 'Offers' : 'Book artists', hidden: !canManage },
+                    { id: 'order', label: 'Hire order', hidden: !hireOrdersOn },
+                    { id: 'chat', label: 'Chat' },
+                    { id: 'setup', label: 'Setup', hidden: !canManage },
+                  ]}
+                  activeTab={activeTab}
+                  onTab={setActiveTab}
+                  devBadge={isEditorMode && isRealAdmin}
+                  overflowActions={canManage ? [
+                    { label: 'Edit date setup', onSelect: () => setActiveTab('setup') },
+                    // Same capability gate as the Setup-tab Edit control: opening the
+                    // schedule/notes dialog requires manage_show_dates, not just the
+                    // broad admin|producer read gate.
+                    ...(canManageShowDates
+                      ? [{ label: synced ? 'Edit notes' : 'Edit schedule', onSelect: () => setEditOpen(true) }]
+                      : []),
+                  ] : []}
+                />
+                </>
+              }
+              banner={
+                <>
+                  {/* Slot-config-missing now renders inline in the header (in the
+                      meter's place); only the cancelled notice remains a banner. */}
+                  {showDate.status === 'cancelled' && (
+                    <div className="px-6 pt-4">
+                      <div className="rounded-lg border border-destructive/30 bg-destructive/10 p-3">
+                        <p className="text-sm font-medium text-destructive">Cancelled</p>
+                        {showDate.cancellation_reason && (
+                          <p className="text-sm text-destructive/90 mt-0.5">{showDate.cancellation_reason}</p>
+                        )}
+                      </div>
+                    </div>
+                  )}
+                </>
+              }
+              rail={
+                <CockpitRail
+                  times={sessionTimes || null}
+                  venue={showDate.venue}
+                  city={showDate.city?.name ?? null}
+                  source={railSource}
+                  notes={showDate.notes}
+                  castChips={castChips}
+                  skillChips={skillChips}
+                  activity={bookingModuleAllowed ? activity : []}
+                  chatUnread={0}
+                  chatPreview={null}
+                  onOpenChat={() => setActiveTab('chat')}
+                  showEditSetup={canManage}
+                  onEditSetup={() => setActiveTab('setup')}
+                />
+              }
+              footer={footer ? <CockpitFooter {...footer} /> : undefined}
+            >
+                {activeTab === 'cast' && (
+                  bookingModuleAllowed ? (
+                    <CockpitCastList groups={castGroups} />
+                  ) : (
+                    <AssignedArtistsCard
+                      bookings={bookings}
+                      canManage={false}
+                      showConfirm={false}
+                      onConfirm={(bookingId) => updateBookingStatus.mutate({ bookingId, status: 'confirmed' })}
+                      onCancel={(bookingId) => updateBookingStatus.mutate({ bookingId, status: 'cancelled' })}
+                    />
+                  )
                 )}
 
                 {activeTab === 'offers' && (
@@ -1003,8 +1071,7 @@ export function ShowDateDetailSheet({ showDateId, open, onOpenChange }: Props) {
                     )}
                   </div>
                 )}
-              </div>
-            </div>
+            </CockpitShell>
 
             <ShowDateFormDialog
               open={editOpen}

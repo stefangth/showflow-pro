@@ -381,6 +381,19 @@ function ProducerShowsBookings() {
     [filtered, peekId]
   );
 
+  // Cockpit pager: walk the current filtered/sorted list from the open sheet.
+  const sheetPager = useMemo(() => {
+    if (!activeShowDateId) return undefined;
+    const i = filtered.findIndex(sd => sd.id === activeShowDateId);
+    if (i < 0) return undefined;
+    return {
+      index: i + 1,
+      total: filtered.length,
+      onPrev: () => { if (i > 0) openShowDate(filtered[i - 1].id); },
+      onNext: () => { if (i < filtered.length - 1) openShowDate(filtered[i + 1].id); },
+    };
+  }, [activeShowDateId, filtered]);
+
   const updateStatusFilter = (v: 'all' | DisplayStatus) => {
     setStatusFilter(v);
     const next = new URLSearchParams(searchParams);
@@ -687,8 +700,13 @@ function ProducerShowsBookings() {
         <Popover key={peekId} open onOpenChange={o => { if (!o) setPeekId(null); }}>
           <PopoverAnchor virtualRef={peekAnchorRef} />
           <PopoverContent
-            side="right"
+            // Anchor is the full-width row, so `side="right"` shoved the 320px
+            // peek off the right edge of the viewport. Drop it below the row,
+            // left-aligned, and let Radix flip/shift to stay fully on-screen.
+            side="bottom"
             align="start"
+            sideOffset={6}
+            collisionPadding={12}
             className="w-auto p-0"
             // The peek is a passive hover/Space affordance. Prevent Radix's
             // default mount auto-focus so opening the peek never steals focus
@@ -729,6 +747,7 @@ function ProducerShowsBookings() {
         showDateId={activeShowDateId}
         open={!!activeShowDateId}
         onOpenChange={o => { if (!o) setActiveShowDateId(null); }}
+        pager={sheetPager}
       />
       <ShowDateFormDialog open={newDateOpen} onOpenChange={setNewDateOpen} mode="create" />
       <NewOrderWizard open={wizardOpen} onOpenChange={setWizardOpen} orgId={orgId} />

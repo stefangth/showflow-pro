@@ -22,11 +22,11 @@ const base: CockpitRailProps = {
 };
 
 describe("CockpitRail", () => {
-  it("renders date facts: times, venue, city, and the Airtable source", () => {
+  it("renders date facts: times, venue + city on one line, and the Airtable source", () => {
     render(<CockpitRail {...base} />);
     expect(screen.getByText("14:00 / 19:30")).toBeInTheDocument();
-    expect(screen.getByText("Volksbühne")).toBeInTheDocument();
-    expect(screen.getByText("Berlin")).toBeInTheDocument();
+    // Venue and city share a single map-pin line, matching the reference.
+    expect(screen.getByText("Volksbühne, Berlin")).toBeInTheDocument();
     expect(screen.getByText(/airtable/i)).toBeInTheDocument();
   });
 
@@ -68,13 +68,6 @@ describe("CockpitRail", () => {
     render(<CockpitRail {...base} onEditSetup={onEditSetup} />);
     fireEvent.click(screen.getByRole("button", { name: /edit date setup/i }));
     expect(onEditSetup).toHaveBeenCalledOnce();
-  });
-
-  it("renders up-next pills (digest / escalate) when provided", () => {
-    render(<CockpitRail {...base} upNext={[{ tone: "amber", text: "3 offers expire Fri" }, { tone: "neutral", text: "Auto-escalate: on" }]} />);
-    expect(screen.getByText(/up next/i)).toBeInTheDocument();
-    expect(screen.getByText("3 offers expire Fri")).toBeInTheDocument();
-    expect(screen.getByText("Auto-escalate: on")).toBeInTheDocument();
   });
 
   it("renders read-only notes when provided", () => {

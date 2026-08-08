@@ -34,6 +34,11 @@ import HireOrderDetailPage from "./pages/HireOrderDetailPage";
 import HireOrderEditPage from "./pages/HireOrderEditPage";
 import NotFound from "./pages/NotFound";
 
+// DEV-ONLY visual harness for the Show Date Cockpit (see DevCockpitHarness.tsx).
+// `import.meta.env.DEV` is statically false in production builds, so both the
+// import and the route below are dead-code-eliminated from deployed bundles.
+const DevCockpitHarness = import.meta.env.DEV ? lazy(() => import("./pages/DevCockpitHarness")) : null;
+
 // Lazy-loaded so @react-pdf/renderer (the browser PDF preview it drives) stays
 // out of the main bundle — it only loads when an admin/producer actually opens
 // the template editor. Same pattern as DocumentationTab's System Map tabs.
@@ -54,6 +59,9 @@ const App = () => (
           <Routes>
             <Route path={ROUTES.HOME} element={<Navigate to={ROUTES.LOGIN} replace />} />
             <Route path={ROUTES.LOGIN} element={<LoginPage />} />
+            {DevCockpitHarness && (
+              <Route path="/dev/cockpit" element={<Suspense fallback={null}><DevCockpitHarness /></Suspense>} />
+            )}
             <Route path={ROUTES.SIGNUP} element={<Navigate to={ROUTES.LOGIN} replace />} />
             <Route path={ROUTES.DASHBOARD} element={<ProtectedRoute><AppLayout><DashboardPage /></AppLayout></ProtectedRoute>} />
             <Route path={ROUTES.ARTISTS} element={<ProtectedRoute requiredRoles={['admin', 'producer']}><AppLayout><ArtistsPage /></AppLayout></ProtectedRoute>} />
