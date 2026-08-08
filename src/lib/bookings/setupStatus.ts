@@ -44,7 +44,8 @@ export interface CoverageResult {
 export interface BookingSetupStatusInput {
   /** The org has its OWN booking_flow row (inheriting the classic default is not a choice). */
   flowChosen: boolean;
-  /** shows-with-slots; undefined while unread → slots reported outstanding. */
+  /** shows-with-slots; undefined while unread, or an empty array (no shows yet), → slots
+   *  reported outstanding. An empty array is no longer vacuously done. */
   shows: { main_cast_slots: number | null; understudy_slots: number | null }[] | null | undefined;
   /** The org has its own row for all three timing keys. */
   timingChosen: boolean;
@@ -85,14 +86,18 @@ export function resolveCoverage(inputs: LadderCoverageInputs): CoverageResult {
 
 export function computeBookingSetupStatus(input: BookingSetupStatusInput): BookingSetupStatus {
   const coverage = input.coverage ? resolveCoverage(input.coverage) : undefined;
+  const futureCount = input.coverage?.futurePairs.length ?? 0;
   const done: Record<BookingSetupStepKey, boolean> = {
     flow: input.flowChosen,
-    // An empty shows array is vacuously done (nothing unconfigured); undefined is unread.
+    // An empty shows array is now OUTSTANDING (nothing to configure yet, so the step cannot
+    // be reported done); undefined is unread and also outstanding.
     slots: Array.isArray(input.shows)
-      ? input.shows.every((s) => s.main_cast_slots != null && s.understudy_slots != null)
+      ? input.shows.length > 0 && input.shows.every((s) => s.main_cast_slots != null && s.understudy_slots != null)
       : false,
-    ladder: coverage ? coverage.uncoveredPairs.length === 0 : false,
-    eligibility: coverage ? coverage.uncoveredPairs.length === 0 && !coverage.hasNullCity : false,
+    ladder: coverage ? futureCount > 0 && coverage.uncoveredPairs.length === 0 : false,
+    eligibility: coverage
+      ? futureCount > 0 && coverage.uncoveredPairs.length === 0 && !coverage.hasNullCity
+      : false,
     timing: input.timingChosen,
   };
   const steps = STEP_ORDER.map((key) => ({ key, done: done[key], block: BLOCK[key] }));

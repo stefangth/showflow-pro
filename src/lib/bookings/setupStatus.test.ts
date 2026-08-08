@@ -1,8 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { resolveCoverage, computeBookingSetupStatus, type LadderCoverageInputs } from "./setupStatus";
 
-const emptyCoverage: LadderCoverageInputs = { futurePairs: [], showPriorities: [], cityPriorities: [] };
-
 describe("resolveCoverage", () => {
   it("covers a pair when the city list has a tier-1 cast", () => {
     const r = resolveCoverage({
@@ -53,7 +51,17 @@ describe("resolveCoverage", () => {
 });
 
 describe("computeBookingSetupStatus", () => {
-  const base = { flowChosen: true, shows: [], timingChosen: true, coverage: emptyCoverage };
+  const doneCoverage: LadderCoverageInputs = {
+    futurePairs: [{ showId: "s1", cityId: "c1" }],
+    showPriorities: [{ showId: "s1", cityId: "c1", castId: "k1", priority: 1 }],
+    cityPriorities: [],
+  };
+  const base = {
+    flowChosen: true,
+    shows: [{ main_cast_slots: 4, understudy_slots: 1 }],
+    timingChosen: true,
+    coverage: doneCoverage,
+  };
 
   it("orders the five steps and blocks only ladder/slots", () => {
     const s = computeBookingSetupStatus(base);
@@ -68,6 +76,33 @@ describe("computeBookingSetupStatus", () => {
     expect(s.complete).toBe(true);
     expect(s.canOffer).toBe(true);
     expect(s.doneCount).toBe(5);
+  });
+
+  it("a fresh empty org reads 0 of 5 (no shows, no dates)", () => {
+    const status = computeBookingSetupStatus({
+      flowChosen: false,
+      shows: [],
+      timingChosen: false,
+      coverage: { futurePairs: [], showPriorities: [], cityPriorities: [] },
+    });
+    expect(status.doneCount).toBe(0);
+    expect(status.steps.find((s) => s.key === "slots")!.done).toBe(false);
+    expect(status.steps.find((s) => s.key === "ladder")!.done).toBe(false);
+    expect(status.steps.find((s) => s.key === "eligibility")!.done).toBe(false);
+  });
+
+  it("slots/ladder/eligibility flip to done once real data covers them", () => {
+    const status = computeBookingSetupStatus({
+      flowChosen: true,
+      shows: [{ main_cast_slots: 4, understudy_slots: 1 }],
+      timingChosen: true,
+      coverage: {
+        futurePairs: [{ showId: "s1", cityId: "c1" }],
+        showPriorities: [{ showId: "s1", cityId: "c1", castId: "k1", priority: 1 }],
+        cityPriorities: [],
+      },
+    });
+    expect(status.complete).toBe(true);
   });
 
   it("slots outstanding when any show has a null count", () => {
