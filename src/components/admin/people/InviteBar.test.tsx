@@ -45,4 +45,12 @@ describe("InviteBar duplicate detection", () => {
     fireEvent.change(screen.getByPlaceholderText(/invitee@email.com/i), { target: { value: "new@x.com" } });
     expect(screen.getByRole("button", { name: /^invite$/i })).not.toBeDisabled();
   });
+
+  it("holds Invite disabled while the invites query is still loading", () => {
+    renderWithProviders(<InviteBar members={members} invites={[]} invitesLoading onOpenBulk={vi.fn()} />);
+    // A fresh address that would otherwise be sendable must wait until duplicate
+    // detection has the pending list, so a not-yet-loaded dup can't slip through.
+    fireEvent.change(screen.getByPlaceholderText(/invitee@email.com/i), { target: { value: "new@x.com" } });
+    expect(screen.getByRole("button", { name: /^invite$/i })).toBeDisabled();
+  });
 });

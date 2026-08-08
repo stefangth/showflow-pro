@@ -16,10 +16,12 @@ export interface InviteBarProps {
   members: OrgMember[];
   invites: Invitation[];
   onOpenBulk: () => void;
+  /** Duplicate detection can't see pending invites until the query settles; hold sends until then. */
+  invitesLoading?: boolean;
 }
 
 /** Inline single invite with live duplicate detection + a bulk-invite entry point. */
-export function InviteBar({ members, invites, onOpenBulk }: InviteBarProps) {
+export function InviteBar({ members, invites, onOpenBulk, invitesLoading = false }: InviteBarProps) {
   const { currentOrg } = useAuth();
   const [email, setEmail] = useState("");
   const [role, setRole] = useState<AppRole>("artist");
@@ -34,7 +36,7 @@ export function InviteBar({ members, invites, onOpenBulk }: InviteBarProps) {
     ? invites.find((i) => i.status === "pending" && i.email.toLowerCase() === trimmed.toLowerCase())
     : undefined;
 
-  const canInvite = !!currentOrg && isValidEmail(trimmed) && match === "none" && !create.isPending;
+  const canInvite = !!currentOrg && isValidEmail(trimmed) && match === "none" && !create.isPending && !invitesLoading;
 
   return (
     <div className="space-y-2">
@@ -43,7 +45,7 @@ export function InviteBar({ members, invites, onOpenBulk }: InviteBarProps) {
           e.preventDefault();
           if (!currentOrg) return;
           if (!isValidEmail(trimmed)) { toast.error("Enter a valid email address"); return; }
-          if (match !== "none") return;
+          if (invitesLoading || match !== "none") return;
           create.mutate({ email: trimmed, role }, { onSuccess: () => setEmail("") });
         }}
         className="flex flex-col sm:flex-row gap-2"
