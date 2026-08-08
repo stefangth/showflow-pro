@@ -113,6 +113,12 @@ the merged commit regardless, and the prod edge-function deploy keys off a green
 CI run. The hook only shortens the loop. Guarded by
 `scripts/prePushHook.test.mjs`.
 
+> **Heads-up:** `core.hooksPath` is repo-wide, so once `npm ci` installs it git
+> looks **only** in `.githooks/` — any personal, untracked hooks you keep in
+> `.git/hooks/` (a local `pre-commit`, `commit-msg`, etc.) stop firing. This is
+> the same tradeoff husky makes. If you rely on such a hook, move it into
+> `.githooks/` (it is tracked, so commit it) or chain to it from there.
+
 ---
 
 ## How the flip works (reference)
