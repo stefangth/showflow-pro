@@ -6,11 +6,17 @@ import { createFakeSupabase } from "@/test/supabaseFake";
 
 /**
  * Task 11: ArtistDashboard is wrapped in the first-run layer (role "artist").
- * The existing body (offer meter + hire orders + My Casts) moves inside
- * SamplePreview; a welcome panel greets the artist above it. This test mocks
- * useDashboardFirstRun and asserts the artist welcome headline renders. The
- * data harness is copied from ArtistDashboard.hireOrders.test.tsx so the body's
- * queries/hooks resolve and the `if (!artist)` early guard passes.
+ * A welcome panel and setup rail greet the artist above/beside the body, but
+ * the body itself (offer meter + hire orders + My Casts) always renders live
+ * -- it is never replaced by SamplePreview's greyed sample fixture, even when
+ * the artist's own setup is incomplete (fr.complete: false). Unlike an admin
+ * configuring an empty org, an artist has real per-user content (pending
+ * offers, hire orders awaiting signature, cast memberships) immediately, so
+ * hiding it behind a sample would hide genuinely actionable content. This
+ * test mocks useDashboardFirstRun and asserts both the welcome headline and
+ * the real body render. The data harness is copied from
+ * ArtistDashboard.hireOrders.test.tsx so the body's queries/hooks resolve and
+ * the `if (!artist)` early guard passes.
  */
 
 const { client } = vi.hoisted(() => ({ client: {} as Record<string, unknown> }));
@@ -92,5 +98,18 @@ describe("ArtistDashboard first-run (Task 11)", () => {
       </MemoryRouter>,
     );
     expect(await screen.findByText(/added you to the roster/)).toBeInTheDocument();
+  });
+
+  it("always renders the real body live, even with setup incomplete (fr.complete: false)", async () => {
+    renderWithProviders(
+      <MemoryRouter>
+        <ArtistDashboard />
+      </MemoryRouter>,
+    );
+    // The real body (My Casts card) renders regardless of fr.complete.
+    expect(await screen.findByText("My Casts")).toBeInTheDocument();
+    // SamplePreview's "Sample" badge (shown only when !complete) never appears
+    // -- the artist body is no longer wrapped in SamplePreview at all.
+    expect(screen.queryByText("Sample")).not.toBeInTheDocument();
   });
 });
