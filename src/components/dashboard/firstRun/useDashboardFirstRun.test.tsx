@@ -24,7 +24,7 @@ const h = vi.hoisted(() => {
     entitlements: vi.fn(() => ({ features: new Set(["booking_flow"]), isLoading: false })),
     bookingStatus: vi.fn(defaultBooking),
     hireStatus: vi.fn(() => ({ status: { steps: [], complete: true }, isLoading: false })),
-    artistStatus: vi.fn(() => ({ status: { steps: [], complete: true }, ackBlock: () => {}, ackNotify: () => {}, isLoading: false })),
+    artistStatus: vi.fn(() => ({ status: { steps: [], complete: true }, isLoading: false })),
   };
 });
 
@@ -65,7 +65,7 @@ afterEach(() => {
   h.entitlements.mockReturnValue({ features: new Set(["booking_flow"]), isLoading: false });
   h.bookingStatus.mockImplementation(h.defaultBooking);
   h.hireStatus.mockReturnValue({ status: { steps: [], complete: true }, isLoading: false });
-  h.artistStatus.mockReturnValue({ status: { steps: [], complete: true }, ackBlock: () => {}, ackNotify: () => {}, isLoading: false });
+  h.artistStatus.mockReturnValue({ status: { steps: [], complete: true }, isLoading: false });
 });
 
 describe("useDashboardFirstRun", () => {
@@ -105,8 +105,6 @@ describe("useDashboardFirstRun", () => {
         ],
         complete: false,
       },
-      ackBlock: () => {},
-      ackNotify: () => {},
       isLoading: false,
     });
     const { result } = renderHook(() => useDashboardFirstRun("artist"));
@@ -138,8 +136,6 @@ describe("useDashboardFirstRun", () => {
         ],
         complete: false,
       },
-      ackBlock: () => {},
-      ackNotify: () => {},
       isLoading: false,
     });
     const { result } = renderHook(() => useDashboardFirstRun("artist"));
@@ -184,11 +180,11 @@ describe("useDashboardFirstRun", () => {
     expect(withoutHireKeys).not.toContain("letterhead");
   });
 
-  it("an artist's dismiss only collapses the rail; it never marks the optional steps done", () => {
-    // Regression guard for the "Later is resumable" behavior: dismiss must not ack a
-    // step, so the composed state stays incomplete and the collapsed chip keeps nudging.
-    const ackBlock = vi.fn();
-    const ackNotify = vi.fn();
+  it("an artist's dismiss collapses the rail (resumable, so it just closes)", () => {
+    // dismiss's only observable effect here is setRailOpen(false); completion comes from
+    // the status hook, not from dismiss (that "never marks done" guarantee lives in
+    // useArtistOnboardingStatus, which has no ack path). Assert the effect that a
+    // regression could actually break.
     h.artistStatus.mockReturnValue({
       status: {
         steps: [
@@ -196,8 +192,6 @@ describe("useDashboardFirstRun", () => {
         ],
         complete: false,
       },
-      ackBlock,
-      ackNotify,
       isLoading: false,
     });
     const { result } = renderHook(() => useDashboardFirstRun("artist"));
@@ -205,8 +199,5 @@ describe("useDashboardFirstRun", () => {
     expect(result.current.railOpen).toBe(true);
     act(() => result.current.dismiss());
     expect(result.current.railOpen).toBe(false);
-    expect(result.current.complete).toBe(false);
-    expect(ackBlock).not.toHaveBeenCalled();
-    expect(ackNotify).not.toHaveBeenCalled();
   });
 });
