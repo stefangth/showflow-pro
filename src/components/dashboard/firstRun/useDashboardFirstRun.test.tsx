@@ -102,7 +102,6 @@ describe("useDashboardFirstRun", () => {
       status: {
         steps: [
           { key: "blockDates", done: false, block: null },
-          { key: "notifications", done: false, block: null },
         ],
         complete: false,
       },
@@ -113,7 +112,7 @@ describe("useDashboardFirstRun", () => {
     const { result } = renderHook(() => useDashboardFirstRun("artist"));
     const s = result.current;
     expect(s.show).toBe(true);
-    expect(s.steps.map((x) => x.key)).toEqual(["blockDates", "notifications"]);
+    expect(s.steps.map((x) => x.key)).toEqual(["blockDates"]);
     expect(s.welcome.headline).toContain("Halle Kollektiv");
   });
 
@@ -136,7 +135,6 @@ describe("useDashboardFirstRun", () => {
       status: {
         steps: [
           { key: "blockDates", done: false, block: null },
-          { key: "notifications", done: false, block: null },
         ],
         complete: false,
       },
@@ -146,7 +144,7 @@ describe("useDashboardFirstRun", () => {
     });
     const { result } = renderHook(() => useDashboardFirstRun("artist"));
     const keys = result.current.steps.map((x) => x.key);
-    expect(keys).toEqual(["blockDates", "notifications"]);
+    expect(keys).toEqual(["blockDates"]);
     expect(keys).not.toContain("letterhead");
     expect(keys).not.toContain("terms");
     expect(keys).not.toContain("countersign");
@@ -195,7 +193,6 @@ describe("useDashboardFirstRun", () => {
       status: {
         steps: [
           { key: "blockDates", done: false, block: null },
-          { key: "notifications", done: false, block: null },
         ],
         complete: false,
       },
