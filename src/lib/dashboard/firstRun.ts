@@ -86,9 +86,13 @@ export function railHeaderCopy(role: DashboardRole, complete: boolean) {
     return {
       eyebrow: role === "artist" ? "How offers work here" : "How this org works",
       title: "The rules you inherited",
-      body: role === "producer"
-        ? "You cannot change these, but every number on this page follows them."
-        : "You can change them in Settings, but every number on this page follows them today.",
+      // Only admins can reach Settings (App.tsx gates it to admin/producer, and
+      // producers cannot edit there either); artists have no Settings access at all.
+      body: role === "admin"
+        ? "You can change them in Settings, but every number on this page follows them today."
+        : role === "producer"
+          ? "You cannot change these, but every number on this page follows them."
+          : "You cannot change these. Every offer you get follows them.",
     };
   }
   if (role === "admin") return { eyebrow: "Set up", title: "Get the workspace running", body: "Some of these block the first offer. Nothing here stops you using the rest of the app." };
@@ -97,7 +101,7 @@ export function railHeaderCopy(role: DashboardRole, complete: boolean) {
 }
 
 export function collapsedCopy(role: DashboardRole, complete: boolean, remaining: number) {
-  if (complete) return { label: "Set up · done", hint: role === "artist" ? "How offers reach you" : "Booking flow, dates, cast slots, your team", cta: "How this org works" };
+  if (complete) return { label: "Set up · done", hint: role === "artist" ? "How offers reach you" : "Booking flow, dates, cast slots, your team", cta: role === "artist" ? "How offers work here" : "How this org works" };
   return {
     label: role === "producer" ? "Org setup in progress" : "Set up in progress",
     hint: `${remaining} step${remaining === 1 ? "" : "s"} left`,

@@ -15,7 +15,7 @@ export const bookingOnboarding: ModuleOnboardingDef<BookingSetupStepKey> = {
   steps: {
     flow: { title: STEP_TITLES.flow, todoHint: "Offers, or straight to booked. Everything downstream reads this.", doneHint: "Chosen. Change it any time in Settings.", ctaLabel: "Choose flow", ctaRoute: ROUTES.SETTINGS, ctaCapability: "edit_booking_settings" },
     slots: { title: STEP_TITLES.slots, todoHint: "A show with no slot count never reads as full.", doneHint: "Set on every show.", ctaLabel: "Set slots", ctaRoute: ROUTES.PRODUCTIONS, ctaCapability: "edit_booking_settings" },
-    ladder: { title: STEP_TITLES.ladder, todoHint: "The order offers go out in, per city.", doneHint: "Every scheduled city has a tier 1 cast.", ctaLabel: "Open bookings", ctaRoute: ROUTES.BOOKINGS, ctaCapability: "edit_booking_settings" },
+    ladder: { title: STEP_TITLES.ladder, todoHint: "The order offers go out in, per city.", doneHint: "Every scheduled city has a tier-1 cast.", ctaLabel: "Open bookings", ctaRoute: ROUTES.BOOKINGS, ctaCapability: "edit_booking_settings" },
     eligibility: { title: STEP_TITLES.eligibility, todoHint: "Which casts can be offered which show in which city.", doneHint: "Every scheduled show and city has a cast.", ctaLabel: "Open bookings", ctaRoute: ROUTES.BOOKINGS, ctaCapability: "edit_booking_settings" },
     timing: { title: STEP_TITLES.timing, todoHint: "How long artists get, and when mail goes out.", doneHint: "Window and digest hours set.", ctaLabel: "Set timing", ctaRoute: ROUTES.SETTINGS, ctaCapability: "edit_booking_settings" },
   },

@@ -142,6 +142,13 @@ it("railHeaderCopy covers every role x complete branch", () => {
   }
 });
 
+it("railHeaderCopy never points the artist at Settings (they have no access)", () => {
+  expect(railHeaderCopy("artist", true).body).not.toMatch(/Settings/);
+  // Admins keep the Settings pointer; producers and artists do not.
+  expect(railHeaderCopy("admin", true).body).toMatch(/Settings/);
+  expect(railHeaderCopy("producer", true).body).not.toMatch(/Settings/);
+});
+
 const COLLAPSED_ROWS: { role: DashboardRole; complete: boolean; remaining: number; label: string; cta: string; hint?: string }[] = [
   { role: "admin", complete: true, remaining: 0, label: "Set up · done", cta: "How this org works" },
   { role: "admin", complete: false, remaining: 1, label: "Set up in progress", cta: "Resume", hint: "1 step left" },
@@ -149,7 +156,7 @@ const COLLAPSED_ROWS: { role: DashboardRole; complete: boolean; remaining: numbe
   { role: "producer", complete: true, remaining: 0, label: "Set up · done", cta: "How this org works" },
   { role: "producer", complete: false, remaining: 1, label: "Org setup in progress", cta: "See what is outstanding", hint: "1 step left" },
   { role: "producer", complete: false, remaining: 2, label: "Org setup in progress", cta: "See what is outstanding", hint: "2 steps left" },
-  { role: "artist", complete: true, remaining: 0, label: "Set up · done", cta: "How this org works" },
+  { role: "artist", complete: true, remaining: 0, label: "Set up · done", cta: "How offers work here" },
   { role: "artist", complete: false, remaining: 1, label: "Set up in progress", cta: "Resume", hint: "1 step left" },
   { role: "artist", complete: false, remaining: 2, label: "Set up in progress", cta: "Resume", hint: "2 steps left" },
 ];
