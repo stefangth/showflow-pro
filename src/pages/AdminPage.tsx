@@ -9,8 +9,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { format } from 'date-fns';
 import { Users, Activity, Database } from 'lucide-react';
 import { useSearchParams } from 'react-router-dom';
-import { InvitesTab } from '@/components/admin/InvitesTab';
-import { MembersTab } from '@/components/admin/MembersTab';
+import { PeopleTab } from '@/components/admin/people/PeopleTab';
 import { fetchAdminAuditLogs, fetchAdminSyncLogs, fetchAdminStats } from '@/data/admin';
 
 /** Row caps for the admin activity panels. */
@@ -20,7 +19,8 @@ const SYNC_LOG_LIMIT = 20;
 export default function AdminPage() {
   const { hasRole, currentOrg } = useAuth();
   const [params, setParams] = useSearchParams();
-  const initialTab = params.get('tab') || 'invites';
+  const rawTab = params.get('tab') || 'people';
+  const initialTab = rawTab === 'invites' || rawTab === 'members' ? 'people' : rawTab;
   const [tab, setTab] = useState(initialTab);
 
   const { data: auditLogs, isError: auditError } = useQuery({
@@ -81,18 +81,13 @@ export default function AdminPage() {
 
       <Tabs value={tab} onValueChange={handleTabChange}>
         <TabsList>
-          <TabsTrigger value="invites">Invites</TabsTrigger>
-          <TabsTrigger value="members">Members</TabsTrigger>
+          <TabsTrigger value="people">People</TabsTrigger>
           <TabsTrigger value="audit">Audit Log</TabsTrigger>
           <TabsTrigger value="sync">Sync Status</TabsTrigger>
         </TabsList>
 
-        <TabsContent value="invites" className="mt-4">
-          <InvitesTab />
-        </TabsContent>
-
-        <TabsContent value="members" className="mt-4">
-          <MembersTab />
+        <TabsContent value="people" className="mt-4">
+          <PeopleTab />
         </TabsContent>
 
         <TabsContent value="audit" className="mt-4">
