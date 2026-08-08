@@ -29,7 +29,7 @@ export function PeopleTab() {
   const [bulkOpen, setBulkOpen] = useState(false);
   const [target, setTarget] = useState<{ user_id: string; email: string | null } | null>(null);
 
-  const { data: invites, isError: invitesError } = useQuery({
+  const { data: invites, isError: invitesError, isLoading: invitesLoading } = useQuery({
     queryKey: ["org-invitations", currentOrg?.id],
     enabled: !!currentOrg,
     queryFn: () => fetchOrgInvitations(supabase, currentOrg!.id),
@@ -64,7 +64,7 @@ export function PeopleTab() {
       <Card>
         <CardHeader><CardTitle className="font-display">Invite people</CardTitle></CardHeader>
         <CardContent>
-          <InviteBar members={allMembers} invites={pendingInvites} onOpenBulk={() => setBulkOpen(true)} />
+          <InviteBar members={allMembers} invites={pendingInvites} invitesLoading={invitesLoading} onOpenBulk={() => setBulkOpen(true)} />
         </CardContent>
       </Card>
 
@@ -114,7 +114,7 @@ export function PeopleTab() {
         <p className="text-sm text-muted-foreground text-center py-6">No members yet.</p>
       )}
 
-      <BulkInviteDialog open={bulkOpen} onOpenChange={setBulkOpen} members={allMembers} invites={pendingInvites} />
+      <BulkInviteDialog open={bulkOpen} onOpenChange={setBulkOpen} members={allMembers} invites={pendingInvites} invitesLoading={invitesLoading} />
 
       <AlertDialog open={target !== null} onOpenChange={(o) => !o && setTarget(null)}>
         <AlertDialogContent>
