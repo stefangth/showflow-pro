@@ -13,7 +13,9 @@ import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import type { Json } from "@/integrations/supabase/types";
 
-// "off" label is a type-satisfying placeholder; the off-state UI is a later task.
+// FlowPresets now always renders an Off tile (see FlowPresets.tsx), so this map needs
+// a real label for it too: selecting Off here saves booking_flow with active: false,
+// same as the Settings surface.
 const PRESET_NAMES: Record<PresetName, string> = { classic: "Classic", fasttrack: "Fast-track", direct: "Direct book", off: "Off" };
 const CHIP_TONE: Record<LifecycleChip["tone"], string> = {
   violet: "bg-[var(--accent-500)]", amber: "bg-[var(--amber-500)]",

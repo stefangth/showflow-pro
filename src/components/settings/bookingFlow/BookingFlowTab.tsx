@@ -49,6 +49,11 @@ export function BookingFlowTab({ get, set, dirtyKeys, saving, onSave, onDiscard,
   // Either reason disables the flow steps/presets/rail-save; only `locked` swaps in the
   // classic-defaults display and its own alert copy.
   const stepsDisabled = locked || readOnly;
+  const preset = matchPreset(flow);
+  // Presets stay clickable in the off state so the admin can turn the flow back on;
+  // only the editors below (timeline + rail) disable. Skip when already stepsDisabled
+  // so the off banner doesn't compete with the entitlement/capability alert.
+  const isOff = !stepsDisabled && preset === "off";
 
   // SettingsPage's `get` returns '' for keys with no draft/persisted value, so a
   // bare `?? default` would leave `Number('')` === 0. Coerce explicitly instead.
@@ -135,7 +140,15 @@ export function BookingFlowTab({ get, set, dirtyKeys, saving, onSave, onDiscard,
           </AlertDescription>
         </Alert>
       )}
-      <FlowPresets active={matchPreset(flow)} onSelect={onPreset} disabled={stepsDisabled} />
+      {isOff && (
+        <Alert>
+          <AlertTitle>Booking flow is off</AlertTitle>
+          <AlertDescription>
+            No offers, reminders or confirmations run for this workspace. Pick a flow above to turn it on.
+          </AlertDescription>
+        </Alert>
+      )}
+      <FlowPresets active={preset} onSelect={onPreset} disabled={stepsDisabled} />
       <div className="grid gap-5 lg:grid-cols-[1fr_340px]">
         <FlowTimeline
           flow={flow}
@@ -144,7 +157,7 @@ export function BookingFlowTab({ get, set, dirtyKeys, saving, onSave, onDiscard,
           onTimesChange={onTimesChange}
           customFields={customFields}
           referencePreview={referencePreview}
-          disabled={stepsDisabled}
+          disabled={stepsDisabled || isOff}
         />
         <FlowRail
           flow={flow}
@@ -156,7 +169,7 @@ export function BookingFlowTab({ get, set, dirtyKeys, saving, onSave, onDiscard,
           audit={audit.data ?? []}
           isLoading={audit.isLoading}
           isError={audit.isError}
-          locked={stepsDisabled}
+          locked={stepsDisabled || isOff}
         />
       </div>
       <div className="max-w-sm space-y-2">
