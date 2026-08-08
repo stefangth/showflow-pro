@@ -25,6 +25,9 @@ export interface BulkInviteDialogProps {
 
 type Kind = "invalid" | "member" | "pending" | "ok";
 
+/** Max invitations sent in parallel per chunk, so a large paste stays bounded. */
+const SEND_CONCURRENCY = 5;
+
 /** Paste multiple emails, pick one role, invite the clean ones; skips are reported. */
 export function BulkInviteDialog({ open, onOpenChange, members, invites }: BulkInviteDialogProps) {
   const { currentOrg } = useAuth();
@@ -55,15 +58,19 @@ export function BulkInviteDialog({ open, onOpenChange, members, invites }: BulkI
   const submit = async () => {
     if (!currentOrg || okCount === 0) return;
     setSending(true);
+    const okRows = rows.filter((r) => r.kind === "ok");
     let sent = 0;
     let failed = 0;
-    for (const r of rows) {
-      if (r.kind !== "ok") continue;
-      try {
-        await createInvitation(supabase, { orgId: currentOrg.id, email: r.email, role });
-        sent += 1;
-      } catch {
-        failed += 1;
+    // Send in bounded-concurrency chunks so a large paste doesn't serialize one
+    // edge-function round-trip per address, while still capping parallel load.
+    for (let i = 0; i < okRows.length; i += SEND_CONCURRENCY) {
+      const chunk = okRows.slice(i, i + SEND_CONCURRENCY);
+      const results = await Promise.allSettled(
+        chunk.map((r) => createInvitation(supabase, { orgId: currentOrg.id, email: r.email, role })),
+      );
+      for (const res of results) {
+        if (res.status === "fulfilled") sent += 1;
+        else failed += 1;
       }
     }
     const skipped = rows.length - okCount;
