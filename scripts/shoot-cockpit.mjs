@@ -17,7 +17,9 @@
 //      colors_and_type.css, drop an icon sprite in assets/icons.svg, and wrap
 //      the prototype's <head> to load ./react.js, ./react-dom.js, ./support.js.
 // (Ask the assistant to re-run the scaffold — it has the exact recipe.)
-import { chromium } from "playwright";
+// `@playwright/test` re-exports the same launchers and is the package listed in
+// package.json (the bare `playwright` package is only a transitive dep).
+import { chromium } from "@playwright/test";
 import { mkdirSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";

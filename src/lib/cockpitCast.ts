@@ -83,6 +83,11 @@ export function buildCastGroups(
     const named = inGroup.filter((b) => NAMED.has(b.status));
     const confirmed = inGroup.filter((b) => b.status === "confirmed").length;
     const pending = inGroup.filter((b) => b.status === "suggested").length;
+    // Only confirmed/accepted actually fill a slot — the same semantics the header
+    // meter uses. `suggested` (merely offered) bookings are shown as extra named
+    // rows layered on top; a tier is routinely offered to more candidates than
+    // there are slots, so they must NOT consume the open-slot rows.
+    const filled = inGroup.filter((b) => b.status === "confirmed" || b.status === "soft_booked").length;
 
     const rows: CastRow[] = named.map((b) => ({
       id: b.id,
@@ -94,8 +99,9 @@ export function buildCastGroups(
       onCancel: opts.canCancel ? () => opts.onCancel(b.id) : undefined,
     }));
 
-    const cap = capacity ?? named.length;
-    const open = Math.max(0, cap - named.length);
+    // Open dashed rows = unfilled slots (capacity minus filled). Unknown capacity
+    // (unconfigured date) → no open rows, but named/offered rows still render.
+    const open = capacity != null ? Math.max(0, capacity - filled) : 0;
     for (let i = 0; i < open; i++) {
       rows.push({
         id: `${isUnderstudy ? "us" : "main"}-open-${i}`,

@@ -15,7 +15,7 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sh
 import { Popover, PopoverContent } from '@/components/ui/popover';
 import { PopoverAnchor } from '@radix-ui/react-popover';
 import { RowPeek } from '@/components/bookings/RowPeek';
-import { computeDatePeek } from '@/lib/bookingCockpit';
+import { computeDatePeek, pagerPosition } from '@/lib/bookingCockpit';
 import { Search, Plus, ListChecks } from 'lucide-react';
 import { format, parseISO } from 'date-fns';
 import { ProgramFilter } from '@/components/filters/ProgramFilter';
@@ -383,14 +383,13 @@ function ProducerShowsBookings() {
 
   // Cockpit pager: walk the current filtered/sorted list from the open sheet.
   const sheetPager = useMemo(() => {
-    if (!activeShowDateId) return undefined;
-    const i = filtered.findIndex(sd => sd.id === activeShowDateId);
-    if (i < 0) return undefined;
+    const pos = pagerPosition(filtered.map(sd => sd.id), activeShowDateId);
+    if (!pos) return undefined;
     return {
-      index: i + 1,
-      total: filtered.length,
-      onPrev: () => { if (i > 0) openShowDate(filtered[i - 1].id); },
-      onNext: () => { if (i < filtered.length - 1) openShowDate(filtered[i + 1].id); },
+      index: pos.index,
+      total: pos.total,
+      onPrev: () => { if (pos.prevId) openShowDate(pos.prevId); },
+      onNext: () => { if (pos.nextId) openShowDate(pos.nextId); },
     };
   }, [activeShowDateId, filtered]);
 

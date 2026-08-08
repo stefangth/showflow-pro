@@ -260,3 +260,25 @@ export function buildActivity(args: {
   out.sort((a, b) => b.iso.localeCompare(a.iso));
   return out.slice(0, args.limit ?? 6);
 }
+
+export interface PagerPosition {
+  index: number; // 1-based position of the active id in the list
+  total: number;
+  prevId: string | null; // null at the first item
+  nextId: string | null; // null at the last item
+}
+
+/** Position of `activeId` within an ordered list of ids, for the cockpit's
+ *  prev/next pager. Null when there is no active id or it is not in the list
+ *  (e.g. the open date was filtered out) — the caller then hides the pager. */
+export function pagerPosition(ids: string[], activeId: string | null): PagerPosition | null {
+  if (!activeId) return null;
+  const i = ids.indexOf(activeId);
+  if (i < 0) return null;
+  return {
+    index: i + 1,
+    total: ids.length,
+    prevId: i > 0 ? ids[i - 1] : null,
+    nextId: i < ids.length - 1 ? ids[i + 1] : null,
+  };
+}

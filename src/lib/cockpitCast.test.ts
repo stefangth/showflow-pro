@@ -48,15 +48,27 @@ describe("buildCastGroups", () => {
   });
 
   it("annotates the pending-offers total only on the first open slot", () => {
-    // 1 suggested + capacity 4 → 1 named row + 3 open rows; the "1 offer pending"
-    // note must appear once, not repeated on every open slot.
+    // 1 suggested + capacity 4, 0 filled → 1 named row + 4 open rows; the
+    // "1 offer pending" note must appear once, not repeated on every open slot.
     const [main] = buildCastGroups(
       [b({ id: "s1", status: "suggested", offer_tier: 2 })],
       { main_cast: 4, understudies: 0 },
       opts(),
     );
     const openMetas = main.rows.filter((r) => r.open).map((r) => r.meta);
-    expect(openMetas).toEqual(["1 offer pending", "No booking yet", "No booking yet"]);
+    expect(openMetas).toEqual(["1 offer pending", "No booking yet", "No booking yet", "No booking yet"]);
+  });
+
+  it("does not let offered (suggested) bookings consume open slots — meter parity", () => {
+    // A tier is offered to more candidates than slots: 6 offered, capacity 4,
+    // none accepted → 6 named "Offered" rows PLUS 4 open slots (not 0), matching
+    // the header meter's "0 of 4" and keeping the open-slot action available.
+    const suggested = Array.from({ length: 6 }, (_, i) => b({ id: `s${i}`, status: "suggested" }));
+    const [main] = buildCastGroups(suggested, { main_cast: 4, understudies: 0 }, opts());
+    expect(main.rows.filter((r) => !r.open)).toHaveLength(6);
+    expect(main.rows.filter((r) => r.open)).toHaveLength(4);
+    expect(main.rows.find((r) => r.open)?.slotActionLabel).toBe("Open next tier");
+    expect(main.count).toBe("0 of 4");
   });
 
   it("shows a Confirm callback only on accepted rows when canConfirm", () => {
