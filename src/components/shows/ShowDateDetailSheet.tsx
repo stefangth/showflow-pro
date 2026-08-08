@@ -225,7 +225,10 @@ export function ShowDateDetailSheet({ showDateId, open, onOpenChange, pager }: P
 
   const showId = showDate?.show_id ?? null;
   const cityId = showDate?.city_id ?? null;
-  const slotConfig = showSlots(showDate?.show);
+  // showSlots returns a fresh object literal each call; memoize so slotConfig has
+  // a stable identity across renders where the show is unchanged — otherwise it
+  // would defeat the castGroups useMemo that depends on it.
+  const slotConfig = useMemo(() => showSlots(showDate?.show), [showDate?.show]);
 
   const { data: bookingsForDate, isError: bookingsError } = useQuery({
     queryKey: ['bookings', 'for-date', showDateId],
