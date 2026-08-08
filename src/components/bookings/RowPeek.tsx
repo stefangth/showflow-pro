@@ -21,7 +21,7 @@ export interface RowPeekProps {
 export function RowPeek({ dateLabel, peek, canConfirm, confirming, onConfirm, onOpen }: RowPeekProps) {
   return (
     <div className="w-80 p-3.5">
-      <p className={cn("text-[11px] font-semibold uppercase tracking-[0.13em]", peek ? EYEBROW_TONE[peek.tone] : "text-muted-foreground")}>
+      <p className={cn("text-[11px] font-semibold uppercase tracking-[1.6px]", peek ? EYEBROW_TONE[peek.tone] : "text-muted-foreground")}>
         {dateLabel}{peek ? ` · ${peek.eyebrowSuffix}` : " · unconfigured"}
       </p>
       {peek ? (
@@ -34,11 +34,17 @@ export function RowPeek({ dateLabel, peek, canConfirm, confirming, onConfirm, on
       )}
       <div className="mt-3.5 flex gap-2">
         {peek?.confirmable && canConfirm && (
-          <Button size="sm" className="flex-1" disabled={confirming} onClick={onConfirm}>
+          <Button className="h-9 flex-1 text-sm" disabled={confirming} onClick={onConfirm}>
             {confirming ? "Confirming…" : `Confirm ${peek.acceptedWaiting}`}
           </Button>
         )}
-        <Button size="sm" variant="outline" className="flex-1" onClick={onOpen}>Open date</Button>
+        <Button
+          variant="outline"
+          className="h-9 flex-1 border-[0.5px] border-[var(--line-strong)] bg-[var(--surface)] text-sm hover:bg-[var(--surface-2)]"
+          onClick={onOpen}
+        >
+          Open date
+        </Button>
       </div>
       <p className="mt-2.5 font-mono text-[11px] text-[var(--text-faint)]">Space to peek · Enter to open</p>
     </div>

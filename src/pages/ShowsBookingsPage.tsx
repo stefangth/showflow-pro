@@ -15,7 +15,7 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sh
 import { Popover, PopoverContent } from '@/components/ui/popover';
 import { PopoverAnchor } from '@radix-ui/react-popover';
 import { RowPeek } from '@/components/bookings/RowPeek';
-import { computeDatePeek } from '@/lib/bookingCockpit';
+import { computeDatePeek, pagerPosition } from '@/lib/bookingCockpit';
 import { Search, Plus, ListChecks } from 'lucide-react';
 import { format, parseISO } from 'date-fns';
 import { ProgramFilter } from '@/components/filters/ProgramFilter';
@@ -381,6 +381,18 @@ function ProducerShowsBookings() {
     [filtered, peekId]
   );
 
+  // Cockpit pager: walk the current filtered/sorted list from the open sheet.
+  const sheetPager = useMemo(() => {
+    const pos = pagerPosition(filtered.map(sd => sd.id), activeShowDateId);
+    if (!pos) return undefined;
+    return {
+      index: pos.index,
+      total: pos.total,
+      onPrev: () => { if (pos.prevId) openShowDate(pos.prevId); },
+      onNext: () => { if (pos.nextId) openShowDate(pos.nextId); },
+    };
+  }, [activeShowDateId, filtered]);
+
   const updateStatusFilter = (v: 'all' | DisplayStatus) => {
     setStatusFilter(v);
     const next = new URLSearchParams(searchParams);
@@ -687,8 +699,13 @@ function ProducerShowsBookings() {
         <Popover key={peekId} open onOpenChange={o => { if (!o) setPeekId(null); }}>
           <PopoverAnchor virtualRef={peekAnchorRef} />
           <PopoverContent
-            side="right"
+            // Anchor is the full-width row, so `side="right"` shoved the 320px
+            // peek off the right edge of the viewport. Drop it below the row,
+            // left-aligned, and let Radix flip/shift to stay fully on-screen.
+            side="bottom"
             align="start"
+            sideOffset={6}
+            collisionPadding={12}
             className="w-auto p-0"
             // The peek is a passive hover/Space affordance. Prevent Radix's
             // default mount auto-focus so opening the peek never steals focus
@@ -729,6 +746,7 @@ function ProducerShowsBookings() {
         showDateId={activeShowDateId}
         open={!!activeShowDateId}
         onOpenChange={o => { if (!o) setActiveShowDateId(null); }}
+        pager={sheetPager}
       />
       <ShowDateFormDialog open={newDateOpen} onOpenChange={setNewDateOpen} mode="create" />
       <NewOrderWizard open={wizardOpen} onOpenChange={setWizardOpen} orgId={orgId} />
