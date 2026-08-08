@@ -8,8 +8,9 @@ export type StepCapability = "edit_booking_settings" | "edit_hire_order_settings
 
 export type DashboardRole = "admin" | "producer" | "artist";
 
-/** Mirrors lib/bookings/setupStatus BlockKind. */
-export type SetupBlock = "offers" | "filling" | null;
+/** Booking BlockKind ("offers"/"filling") plus "issuing" for hire-order steps
+ *  (letterhead/terms) that block issuing, so the rail chips them for parity. */
+export type SetupBlock = "offers" | "filling" | "issuing" | null;
 
 export interface OnboardingStepMeta {
   title: string;

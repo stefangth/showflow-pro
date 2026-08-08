@@ -62,7 +62,9 @@ export function useDashboardFirstRun(role: DashboardRole): DashboardFirstRunStat
   const moduleStatuses: ModuleStatuses = {
     booking_flow: booking.status,
     hire_orders: {
-      steps: hire.status.steps.map((s) => ({ key: s.key, done: s.done, block: null })),
+      // hire-order steps carry `blocksIssue` (not offers/filling); map it to the
+      // "issuing" block so letterhead/terms chip in the rail like booking's blockers.
+      steps: hire.status.steps.map((s) => ({ key: s.key, done: s.done, block: s.blocksIssue ? ("issuing" as const) : null })),
       complete: hire.status.complete,
     },
   };

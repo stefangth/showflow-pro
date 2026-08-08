@@ -88,4 +88,20 @@ describe("DashboardPage first-run layer", () => {
     expect(await screen.findByRole("heading", { name: "Dashboard" })).toBeInTheDocument();
     expect(screen.queryByText("Live dates")).not.toBeInTheDocument();
   });
+
+  it("renders the live body when the org already has dates, even while setup is incomplete", async () => {
+    // The data-presence override: complete is false, but a real upcoming date exists,
+    // so the body must go live (not the greyed Sample).
+    vi.mocked(useDashboardFirstRun).mockReturnValue(frState({ complete: false }) as never);
+    seedClient({
+      show_dates: { data: [{ id: "d1", date: "2099-12-31", show_id: "s1", status: "confirmed", show: { program: "Show", sub_program: null, main_cast_slots: 1, understudy_slots: 0 } }], error: null },
+      bookings: [
+        { when: { status: "confirmed" }, data: [], error: null },
+        { when: { status: "soft_booked" }, data: [], error: null },
+      ],
+    });
+    renderWithProviders(<MemoryRouter><DashboardPage /></MemoryRouter>);
+    expect(await screen.findByRole("heading", { name: "Dashboard" })).toBeInTheDocument();
+    expect(screen.queryByText("Live dates")).not.toBeInTheDocument();
+  });
 });

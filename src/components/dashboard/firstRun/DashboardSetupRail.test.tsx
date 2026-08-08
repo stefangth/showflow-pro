@@ -40,6 +40,14 @@ it("does not show a block chip on an already-done step", () => {
   expect(screen.queryByText("Blocks offers")).not.toBeInTheDocument();
 });
 
+it("shows a 'Blocks issuing' chip on a not-done hire-order step that blocks issuing", () => {
+  const issuingStep: ComposedStep[] = [
+    { key: "letterhead", moduleKey: "hire_orders", title: "Letterhead", todoHint: "Set it.", doneHint: "Set.", ctaLabel: "Set letterhead", ctaRoute: "/settings", ctaCapability: "edit_hire_order_settings", done: false, block: "issuing" },
+  ];
+  render(<MemoryRouter><DashboardSetupRail eyebrow="Set up" title="Get running" body="Body." complete={false} steps={issuingStep} rules={[]} offFooters={[]} onClose={vi.fn()} onDismiss={vi.fn()} /></MemoryRouter>);
+  expect(screen.getByText("Blocks issuing")).toBeInTheDocument();
+});
+
 it("hides the CTA when the viewer lacks the step's capability", () => {
   vi.mocked(useCan).mockReturnValue(false);
   const gatedStep: ComposedStep[] = [

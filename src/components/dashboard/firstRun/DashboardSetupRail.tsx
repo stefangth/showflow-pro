@@ -29,6 +29,9 @@ function StepRow({ step, index }: { step: ComposedStep; index: number }) {
       {!step.done && step.block === "filling" && (
         <span className="shrink-0 rounded bg-muted px-1.5 py-0.5 text-[11px] font-semibold text-muted-foreground">Blocks filling</span>
       )}
+      {!step.done && step.block === "issuing" && (
+        <span className="shrink-0 rounded bg-warning/15 px-1.5 py-0.5 text-[11px] font-semibold text-warning">Blocks issuing</span>
+      )}
     </div>
   );
 }
