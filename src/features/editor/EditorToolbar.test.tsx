@@ -28,6 +28,7 @@ const GONE = { id: "o3", name: "Dormant Co", slug: "dormant", status: "suspended
 function setAuth(over: Partial<ReturnType<typeof useAuth>> = {}) {
   const switchOrg = vi.fn();
   const setViewAsUser = vi.fn();
+  const setViewAsRole = vi.fn();
   vi.mocked(useAuth).mockReturnValue(
     partialMock<ReturnType<typeof useAuth>>({
       roles: ["admin"],
@@ -36,13 +37,13 @@ function setAuth(over: Partial<ReturnType<typeof useAuth>> = {}) {
       currentOrg: ACME,
       switchOrg,
       viewAsRole: null,
-      setViewAsRole: vi.fn(),
+      setViewAsRole,
       viewAsUser: null,
       setViewAsUser,
       ...over,
     }),
   );
-  return { switchOrg, setViewAsUser };
+  return { switchOrg, setViewAsUser, setViewAsRole };
 }
 
 function orgSelect() {
@@ -57,11 +58,31 @@ beforeEach(() => {
       isEditorMode: true,
       enableEditorMode: vi.fn(),
       disableEditorMode: vi.fn(),
+      isToolbarHidden: false,
+      hideToolbar: vi.fn(),
+      showToolbar: vi.fn(),
       isSidePanelOpen: false,
       setSidePanelOpen: vi.fn(),
     }),
   );
 });
+
+/** Override the editor-context mock for a single test, keeping the beforeEach defaults. */
+function setEditor(over: Partial<ReturnType<typeof useEditor>> = {}) {
+  vi.mocked(useEditor).mockReturnValue(
+    partialMock<ReturnType<typeof useEditor>>({
+      isEditorMode: true,
+      enableEditorMode: vi.fn(),
+      disableEditorMode: vi.fn(),
+      isToolbarHidden: false,
+      hideToolbar: vi.fn(),
+      showToolbar: vi.fn(),
+      isSidePanelOpen: false,
+      setSidePanelOpen: vi.fn(),
+      ...over,
+    }),
+  );
+}
 
 describe("EditorToolbar org selector", () => {
   it("is absent for a single-org admin", () => {
@@ -214,6 +235,48 @@ describe("EditorToolbar access", () => {
   });
 });
 
+describe("EditorToolbar exit vs. hide", () => {
+  it("hides the bar (staying in editor mode) via the Hide button, without resetting view-as", () => {
+    const { setViewAsUser, setViewAsRole } = setAuth({ viewAsRole: "producer" });
+    const hideToolbar = vi.fn();
+    const disableEditorMode = vi.fn();
+    setEditor({ hideToolbar, disableEditorMode });
+
+    renderWithProviders(<EditorToolbar />);
+    fireEvent.click(screen.getByLabelText("Hide editor bar"));
+
+    expect(hideToolbar).toHaveBeenCalledTimes(1);
+    expect(disableEditorMode).not.toHaveBeenCalled();
+    expect(setViewAsRole).not.toHaveBeenCalled();
+    expect(setViewAsUser).not.toHaveBeenCalled();
+  });
+
+  it("Exit resets view-as to your real role AND exits editor mode", () => {
+    const { setViewAsUser, setViewAsRole } = setAuth({
+      viewAsRole: null,
+      viewAsUser: { id: "u1", email: "someone@acme.test", roles: ["producer"] },
+    });
+    const disableEditorMode = vi.fn();
+    const hideToolbar = vi.fn();
+    setEditor({ disableEditorMode, hideToolbar });
+
+    renderWithProviders(<EditorToolbar />);
+    fireEvent.click(screen.getByLabelText("Exit editor mode"));
+
+    expect(setViewAsRole).toHaveBeenCalledWith(null);
+    expect(setViewAsUser).toHaveBeenCalledWith(null);
+    expect(disableEditorMode).toHaveBeenCalledTimes(1);
+    expect(hideToolbar).not.toHaveBeenCalled();
+  });
+
+  it("renders nothing when the bar is hidden but editor mode is still on", () => {
+    setAuth();
+    setEditor({ isEditorMode: true, isToolbarHidden: true });
+    const { container } = renderWithProviders(<EditorToolbar />);
+    expect(container.firstChild).toBeNull();
+  });
+});
+
 describe("EditorModeToggle preview indicator", () => {
   function renderToggle() {
     return renderWithProviders(
@@ -249,5 +312,56 @@ describe("EditorModeToggle preview indicator", () => {
     setAuth({ roles: ["admin"], viewAsRole: "admin" });
     const { container } = renderToggle();
     expect(container.querySelector("svg")).not.toHaveClass("text-destructive");
+  });
+});
+
+describe("EditorModeToggle actions", () => {
+  function renderToggle() {
+    return renderWithProviders(
+      <TooltipProvider>
+        <EditorModeToggle />
+      </TooltipProvider>,
+    );
+  }
+
+  it("enters editor mode when it is off", () => {
+    setAuth();
+    const enableEditorMode = vi.fn();
+    const hideToolbar = vi.fn();
+    const showToolbar = vi.fn();
+    setEditor({ isEditorMode: false, enableEditorMode, hideToolbar, showToolbar });
+
+    renderToggle();
+    fireEvent.click(screen.getByRole("button"));
+
+    expect(enableEditorMode).toHaveBeenCalledTimes(1);
+    expect(hideToolbar).not.toHaveBeenCalled();
+    expect(showToolbar).not.toHaveBeenCalled();
+  });
+
+  it("hides the bar when editor mode is on and the bar is showing", () => {
+    setAuth();
+    const hideToolbar = vi.fn();
+    const showToolbar = vi.fn();
+    setEditor({ isEditorMode: true, isToolbarHidden: false, hideToolbar, showToolbar });
+
+    renderToggle();
+    fireEvent.click(screen.getByRole("button"));
+
+    expect(hideToolbar).toHaveBeenCalledTimes(1);
+    expect(showToolbar).not.toHaveBeenCalled();
+  });
+
+  it("shows the bar again when it is hidden (never exiting)", () => {
+    setAuth();
+    const showToolbar = vi.fn();
+    const disableEditorMode = vi.fn();
+    setEditor({ isEditorMode: true, isToolbarHidden: true, showToolbar, disableEditorMode });
+
+    renderToggle();
+    fireEvent.click(screen.getByRole("button"));
+
+    expect(showToolbar).toHaveBeenCalledTimes(1);
+    expect(disableEditorMode).not.toHaveBeenCalled();
   });
 });

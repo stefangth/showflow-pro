@@ -35,7 +35,10 @@ describe("PlatformDefaultsTab — booking engine defaults", () => {
     (fetchPlatformBookingDefaults as ReturnType<typeof vi.fn>).mockResolvedValue(DEFAULTS);
     renderWithProviders(<PlatformDefaultsTab />);
     const fromInput = await screen.findByLabelText("Default sender address (Resend)");
-    expect((fromInput as HTMLInputElement).value).toBe("Platform <p@x.com>");
+    // findByLabelText resolves the moment the input exists — during the loading
+    // render, when it still holds the fallback value. Wait for the async-loaded
+    // value before asserting, or this races the query resolution under load.
+    await waitFor(() => expect((fromInput as HTMLInputElement).value).toBe("Platform <p@x.com>"));
     expect((screen.getByLabelText("Offer response window (hours)") as HTMLInputElement).value).toBe("36");
     expect((screen.getByLabelText("Offer digest hour (Berlin)") as HTMLInputElement).value).toBe("18");
     expect((screen.getByLabelText("Confirmation digest hour (Berlin)") as HTMLInputElement).value).toBe("21");
@@ -45,6 +48,9 @@ describe("PlatformDefaultsTab — booking engine defaults", () => {
     (fetchPlatformBookingDefaults as ReturnType<typeof vi.fn>).mockResolvedValue(DEFAULTS);
     renderWithProviders(<PlatformDefaultsTab />);
     const fromInput = await screen.findByLabelText("Default sender address (Resend)");
+    // Wait for the defaults to load before editing, so the untouched fields carry
+    // the loaded values (not the loading fallback) into the save payload.
+    await waitFor(() => expect((fromInput as HTMLInputElement).value).toBe("Platform <p@x.com>"));
     fireEvent.change(fromInput, { target: { value: "New <n@ew.com>" } });
     fireEvent.click(screen.getByRole("button", { name: "Save booking defaults" }));
     await waitFor(() =>
