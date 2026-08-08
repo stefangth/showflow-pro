@@ -6,9 +6,11 @@ const DOT: Record<SampleQueueRow["tone"], string> = {
 };
 
 export function SamplePreview({ complete, sample, sectionTitle, sectionHint, children }: SamplePreviewProps) {
+  // Show the greyed sample only when setup is incomplete AND a sample fixture was
+  // supplied. A surface with no fixture (the artist body) always renders its children.
   return (
     <div className="flex flex-col gap-4">
-      {!complete && (
+      {!complete && sample && (
         <div className="flex items-center gap-2">
           <div className="font-display text-[17px] font-semibold tracking-tight text-foreground">{sectionTitle}</div>
           <span className="rounded bg-muted px-1.5 py-0.5 text-[11px] font-semibold text-muted-foreground">Sample</span>
@@ -17,9 +19,7 @@ export function SamplePreview({ complete, sample, sectionTitle, sectionHint, chi
         </div>
       )}
 
-      {complete ? (
-        children
-      ) : (
+      {!complete && sample ? (
         <div className="flex flex-col gap-4 opacity-[.55]" aria-hidden>
           <div className="flex gap-3">
             {sample.stats.map((s) => (
@@ -57,6 +57,8 @@ export function SamplePreview({ complete, sample, sectionTitle, sectionHint, chi
             ))}
           </div>
         </div>
+      ) : (
+        children
       )}
     </div>
   );

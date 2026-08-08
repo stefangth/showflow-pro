@@ -68,7 +68,6 @@ it("offFooters come from disabled licensable modules", () => {
 
 const artistStatus: ModuleStatusLite = {
   steps: [
-    { key: "accountLinked", done: true, block: null },
     { key: "blockDates", done: false, block: null },
     { key: "notifications", done: false, block: null },
   ],
@@ -77,11 +76,11 @@ const artistStatus: ModuleStatusLite = {
 
 it("composeArtist carries ARTIST_ONBOARDING metadata over booking_flow only", () => {
   const r = composeArtist(artistStatus, ARTIST_ONBOARDING, ctx);
-  expect(r.steps).toHaveLength(3);
-  expect(r.steps.map((s) => s.key)).toEqual(["accountLinked", "blockDates", "notifications"]);
-  expect(r.steps.map((s) => s.title)).toEqual(["Account linked", "Block what you cannot play", "Notifications"]);
+  expect(r.steps).toHaveLength(2);
+  expect(r.steps.map((s) => s.key)).toEqual(["blockDates", "notifications"]);
+  expect(r.steps.map((s) => s.title)).toEqual(["Block what you cannot play", "Notifications"]);
   expect(r.steps.every((s) => s.moduleKey === "booking_flow")).toBe(true);
-  expect(r.steps.map((s) => s.done)).toEqual([true, false, false]);
+  expect(r.steps.map((s) => s.done)).toEqual([false, false]);
   expect(r.complete).toBe(false); // mirrors the status
   expect(r.offFooters).toEqual([]);
 });

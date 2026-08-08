@@ -5,11 +5,13 @@ import { useAuth } from "@/features/auth/AuthContext";
 import { useRailDismissed } from "@/components/setup/useRailDismissed";
 import type { ModuleStatusLite, ModuleStepState } from "@/lib/dashboard/types";
 
-/** Artist "personal readiness" status: account linkage, block-dates readiness,
- *  and notification reachability. Unlike the licensed modules (booking, hire
- *  orders), this isn't gated by an entitlement or composed via
- *  `MODULE_ONBOARDING` — every artist gets it, so it's assembled directly from
- *  the existing read hooks plus one lightweight blocked-dates count read. */
+/** Artist "personal readiness" status: block-dates readiness and notification
+ *  reachability. Unlike the licensed modules (booking, hire orders), this isn't
+ *  gated by an entitlement or composed via `MODULE_ONBOARDING` — every artist gets
+ *  it, so it's assembled directly from the existing read hooks plus one lightweight
+ *  blocked-dates count read. Account linkage is not a step: the dashboard only mounts
+ *  for an already-linked artist (ArtistDashboard early-returns otherwise), so it could
+ *  never be an open todo. */
 export function useArtistOnboardingStatus(): {
   status: ModuleStatusLite;
   ackBlock: () => void;
@@ -24,7 +26,6 @@ export function useArtistOnboardingStatus(): {
   const [blockAcked, ackBlock] = useRailDismissed("artistBlockAck", orgId);
   const [notifyAcked, ackNotify] = useRailDismissed("artistNotifyAck", orgId);
 
-  const accountLinked = !!artist;
   // "done" is satisfied by either real data (the artist has already blocked
   // >= 1 date) or the ack, so a genuinely-open artist reaches complete without
   // separately dismissing the rail.
@@ -32,7 +33,6 @@ export function useArtistOnboardingStatus(): {
   const notifications = !!profile?.phone || notifyAcked;
 
   const steps: ModuleStepState[] = [
-    { key: "accountLinked", done: accountLinked, block: null },
     { key: "blockDates", done: blockDates, block: null },
     { key: "notifications", done: notifications, block: null },
   ];

@@ -105,7 +105,9 @@ export function collapsedCopy(role: DashboardRole, complete: boolean, remaining:
   };
 }
 
-export const SAMPLE_PREVIEW: Record<DashboardRole, SamplePreviewData> = {
+// Only admin/producer render the sample preview (the empty-org "what this becomes"
+// state). Artists always have real per-user content, so there is no artist fixture.
+export const SAMPLE_PREVIEW: Record<Exclude<DashboardRole, "artist">, SamplePreviewData> = {
   admin: {
     stats: [
       { title: "Live dates", value: "34", label: "upcoming" },
@@ -138,23 +140,6 @@ export const SAMPLE_PREVIEW: Record<DashboardRole, SamplePreviewData> = {
       { date: "10 Aug", ref: "Kammerkonzert · Halle B", status: "Cast complete" },
       { date: "12 Aug", ref: "Kammerkonzert · Halle B", status: "Tier 2 open · 1 of 3" },
       { date: "14 Aug", ref: "Nachtstück · Studio", status: "2 offers expire 17:00" },
-    ],
-  },
-  artist: {
-    stats: [
-      { title: "Open offers", value: "2", label: "to answer" },
-      { title: "Confirmed", value: "5", label: "dates" },
-      { title: "Blocked", value: "3", label: "dates" },
-    ],
-    queue: [
-      { title: "Offer for Nachtstück · Studio", hint: "Tier 1 · main cast · expires 17:00 today", when: "17:00", cta: "Answer", tone: "warning" },
-      { title: "Offer for Kammerkonzert · Halle B", hint: "Tier 2 · understudy · expires Sun 09 Aug", when: "09 Aug", cta: "Answer", tone: "accent" },
-      { title: "Hire order is ready to sign", hint: "Kammerkonzert 12 Aug · 480 EUR", when: "today", cta: "Sign", tone: "faint" },
-    ],
-    week: [
-      { date: "10 Aug", ref: "Kammerkonzert · Halle B", status: "Confirmed · main" },
-      { date: "12 Aug", ref: "Kammerkonzert · Halle B", status: "Confirmed · main" },
-      { date: "14 Aug", ref: "Nachtstück · Studio", status: "Offer pending" },
     ],
   },
 };

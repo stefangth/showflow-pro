@@ -50,7 +50,10 @@ export const MODULE_ONBOARDING: Record<FeatureKey, ModuleOnboardingDef<string>> 
 // ---- Artist personal readiness (B.4). Artists have no org-engine setup, so they
 // do NOT go through MODULE_ONBOARDING (whose booking_flow steps are keyed by the
 // engine keys). They get their own step metadata and rules, booking_flow only.
-export const ARTIST_STEP_KEYS = ["accountLinked", "blockDates", "notifications"] as const;
+// Only genuinely actionable steps are listed: account linkage is a precondition for
+// the dashboard rendering at all (ArtistDashboard early-returns without an artist),
+// so it is never an open todo and is excluded from the count.
+export const ARTIST_STEP_KEYS = ["blockDates", "notifications"] as const;
 export type ArtistStepKey = typeof ARTIST_STEP_KEYS[number];
 
 export const ARTIST_ONBOARDING: {
@@ -58,7 +61,6 @@ export const ARTIST_ONBOARDING: {
   rules: (ctx: OnboardingCtx) => InheritedRule[];
 } = {
   steps: {
-    accountLinked: { title: "Account linked", todoHint: "Your profile is connected to the roster.", doneHint: "You are linked to the roster.", ctaLabel: "View profile", ctaRoute: ROUTES.PROFILE },
     blockDates: { title: "Block what you cannot play", todoHint: "Offers skip blocked dates before they are sent, so you only get asked about dates that work.", doneHint: "Your calendar is up to date.", ctaLabel: "Open availability", ctaRoute: ROUTES.AVAILABILITY },
     notifications: { title: "Notifications", todoHint: "Email is on. Add a phone number for same-day offers.", doneHint: "You will hear about new offers.", ctaLabel: "Add number", ctaRoute: ROUTES.PROFILE },
   },

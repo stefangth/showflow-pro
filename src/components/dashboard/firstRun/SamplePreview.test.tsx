@@ -37,3 +37,15 @@ it("renders live children when complete", () => {
   expect(screen.getByText("LIVE")).toBeInTheDocument();
   expect(screen.queryByText("Sample")).not.toBeInTheDocument();
 });
+
+it("renders live children (no Sample) when no sample is supplied, even if incomplete", () => {
+  // The artist surface mounts SamplePreview without a fixture; the greyed sample must
+  // never appear and the real body must render regardless of `complete`.
+  render(
+    <SamplePreview complete={false}>
+      <div>LIVE</div>
+    </SamplePreview>
+  );
+  expect(screen.getByText("LIVE")).toBeInTheDocument();
+  expect(screen.queryByText("Sample")).not.toBeInTheDocument();
+});

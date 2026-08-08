@@ -53,7 +53,7 @@ describe("useArtistOnboardingStatus", () => {
 
     const { result } = renderHook(() => useArtistOnboardingStatus());
     const s = result.current.status;
-    expect(s.steps.find((x) => x.key === "accountLinked")!.done).toBe(true);
+    expect(s.steps.map((x) => x.key)).toEqual(["blockDates", "notifications"]);
     expect(s.steps.find((x) => x.key === "blockDates")!.done).toBe(false);
     expect(s.steps.find((x) => x.key === "notifications")!.done).toBe(false);
     expect(s.complete).toBe(false);
@@ -71,7 +71,6 @@ describe("useArtistOnboardingStatus", () => {
 
     const { result } = renderHook(() => useArtistOnboardingStatus());
     const s = result.current.status;
-    expect(s.steps.find((x) => x.key === "accountLinked")!.done).toBe(true);
     expect(s.steps.find((x) => x.key === "blockDates")!.done).toBe(true);
     expect(s.steps.find((x) => x.key === "notifications")!.done).toBe(true);
     expect(s.complete).toBe(true);

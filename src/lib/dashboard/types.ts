@@ -94,9 +94,11 @@ export interface DashboardFirstRunState {
   rules: InheritedRule[];
   offFooters: string[];
   welcome: WelcomeCopy;
-  sample: SamplePreviewData;
-  sectionTitle: string;
-  sectionHint: string;
+  // Admin/producer only (the empty-org sample preview). Absent for the artist role,
+  // whose dashboard body always renders live.
+  sample?: SamplePreviewData;
+  sectionTitle?: string;
+  sectionHint?: string;
   railEyebrow: string;
   railTitle: string;
   railBody: string;
@@ -119,6 +121,8 @@ export interface DashboardSetupRailProps {
   onClose: () => void; onDismiss: () => void;
 }
 export interface SamplePreviewProps {
-  complete: boolean; sample: SamplePreviewData;
-  sectionTitle: string; sectionHint: string; children: ReactNode;
+  // `sample` (with its section copy) is optional: when absent the component renders
+  // its live children, so an artist surface can mount it without a sample fixture.
+  complete: boolean; sample?: SamplePreviewData;
+  sectionTitle?: string; sectionHint?: string; children: ReactNode;
 }

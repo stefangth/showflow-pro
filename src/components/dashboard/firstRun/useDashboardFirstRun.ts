@@ -42,13 +42,17 @@ export function useDashboardFirstRun(role: DashboardRole): DashboardFirstRunStat
   const orgName = currentOrg?.name ?? "your workspace";
 
   const { features, isLoading } = useEntitlements();
-  // Artists never consume these org-setup readiness reads (their slice composes via
-  // ARTIST_ONBOARDING), so pass null to disable the queries and avoid firing/retrying
-  // org-config reads (cast priorities, hire-order settings) an artist has no RLS access to.
-  const setupOrgId = role === "artist" ? null : orgId;
-  const booking = useBookingSetupStatus(setupOrgId); // admin/producer slice
+  // Gate each module's readiness reads on BOTH role and the module's entitlement.
+  // Artists never consume these org-setup reads (their slice composes via
+  // ARTIST_ONBOARDING); and an org that has not licensed a module must not pay for its
+  // settings reads on every dashboard load (hire_orders ships dark, so most orgs would).
+  // `composeOnboarding` already drops an unlicensed module, so disabling its query never
+  // changes the output. Mirrors the `featureOn ? orgId : null` gate in ShowsBookingsPage.
+  const bookingOrgId = role !== "artist" && features.has("booking_flow") ? orgId : null;
+  const hireOrgId = role !== "artist" && features.has("hire_orders") ? orgId : null;
+  const booking = useBookingSetupStatus(bookingOrgId); // admin/producer slice
   const artist = useArtistOnboardingStatus(); // artist slice (called unconditionally)
-  const hire = useHireOrderSetupStatus(setupOrgId);
+  const hire = useHireOrderSetupStatus(hireOrgId);
   const counts = useNavCounts();
   const flow = useBookingFlow().data ?? BOOKING_FLOW_DEFAULTS;
 
@@ -91,6 +95,19 @@ export function useDashboardFirstRun(role: DashboardRole): DashboardFirstRunStat
     : ((features.has("booking_flow") && booking.isLoading) || (features.has("hire_orders") && hire.isLoading));
   const show = !isLoading && !statusLoading && composed.steps.length > 0;
 
+  // The greyed sample fixture is an admin/producer concept (the empty-org preview).
+  // Artists always render their real per-user body, so they carry no sample and these
+  // three fields stay absent for that role.
+  const samplePreview = role === "artist"
+    ? {}
+    : {
+        sample: SAMPLE_PREVIEW[role],
+        sectionTitle: composed.complete ? "Today" : "What this page becomes",
+        sectionHint: composed.complete
+          ? "Live. Everything below is yours to act on."
+          : "Sample rows. Yours replace them once the org has dates.",
+      };
+
   return {
     show,
     complete: composed.complete,
@@ -99,11 +116,7 @@ export function useDashboardFirstRun(role: DashboardRole): DashboardFirstRunStat
     rules: composed.rules,
     offFooters: composed.offFooters,
     welcome,
-    sample: SAMPLE_PREVIEW[role],
-    sectionTitle: composed.complete ? "Today" : "What this page becomes",
-    sectionHint: composed.complete
-      ? "Live. Everything below is yours to act on."
-      : "Sample rows. Yours replace them once the org has dates.",
+    ...samplePreview,
     railEyebrow: railHead.eyebrow,
     railTitle: railHead.title,
     railBody: railHead.body,

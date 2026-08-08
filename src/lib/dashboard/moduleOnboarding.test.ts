@@ -36,9 +36,10 @@ it("ARTIST_ONBOARDING step keys match ARTIST_STEP_KEYS (drift guard)", () => {
 });
 
 it("ARTIST_STEP_KEYS match the keys useArtistOnboardingStatus produces", () => {
-  // Hardcoded expectation mirrors the three steps assembled in
-  // useArtistOnboardingStatus (accountLinked / blockDates / notifications).
-  expect([...ARTIST_STEP_KEYS].sort()).toEqual(["accountLinked", "blockDates", "notifications"]);
+  // Hardcoded expectation mirrors the actionable steps assembled in
+  // useArtistOnboardingStatus (blockDates / notifications). Account linkage is a
+  // precondition, not a step, so it is deliberately absent.
+  expect([...ARTIST_STEP_KEYS].sort()).toEqual(["blockDates", "notifications"]);
 });
 
 it("artist CTA routes are real ROUTES values and no copy uses em/en dashes", () => {

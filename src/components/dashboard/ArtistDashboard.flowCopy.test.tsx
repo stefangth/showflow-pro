@@ -122,11 +122,11 @@ vi.mock("@/hooks/useEntitlements", () => {
   return { useFeature, useModuleGate: (f: string) => ({ allow: useFeature(f), pending: false }) };
 });
 
-// The first-run layer wraps the dashboard body; with show:false it is a no-op
-// (no welcome/rail) and SamplePreview renders the live children, so the meter
-// assertions still exercise the real body. Mocked here so the real
-// useDashboardFirstRun (which reads useEntitlements/useBookingSetup/etc.) does
-// not run against this file's partial hook mocks.
+// The first-run layer greets the artist above the dashboard body; with show:false it
+// is a no-op (no welcome/rail) and the real body renders directly, so the meter
+// assertions still exercise it. Mocked here so the real useDashboardFirstRun (which
+// reads useEntitlements/useBookingSetup/etc.) does not run against this file's partial
+// hook mocks.
 vi.mock("@/components/dashboard/firstRun/useDashboardFirstRun", () => ({
   useDashboardFirstRun: () => ({
     show: false,
