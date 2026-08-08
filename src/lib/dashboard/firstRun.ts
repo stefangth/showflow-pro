@@ -93,7 +93,7 @@ export function railHeaderCopy(role: DashboardRole, complete: boolean) {
 }
 
 export function collapsedCopy(role: DashboardRole, complete: boolean, remaining: number) {
-  if (complete) return { label: role === "admin" ? "Set up · done" : "Set up · done", hint: role === "artist" ? "How offers reach you" : "Booking flow, dates, cast slots, your team", cta: "How this org works" };
+  if (complete) return { label: "Set up · done", hint: role === "artist" ? "How offers reach you" : "Booking flow, dates, cast slots, your team", cta: "How this org works" };
   return {
     label: role === "producer" ? "Org setup in progress" : "Set up in progress",
     hint: `${remaining} step${remaining === 1 ? "" : "s"} left`,

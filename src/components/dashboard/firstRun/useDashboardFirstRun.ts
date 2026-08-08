@@ -77,8 +77,13 @@ export function useDashboardFirstRun(role: DashboardRole): DashboardFirstRunStat
   const collapsed = collapsedCopy(role, composed.complete, remaining);
 
   // No-flicker: hidden while entitlements load, and when no licensed module contributes
-  // a step there is nothing to onboard.
-  const show = !isLoading && composed.steps.length > 0;
+  // a step there is nothing to onboard. The relevant module-status loading is also
+  // folded in so a configured org never briefly renders the "database is empty" +
+  // greyed Sample state while the heavier setup reads are still resolving.
+  const statusLoading = role === "artist"
+    ? artist.isLoading
+    : ((features.has("booking_flow") && booking.isLoading) || (features.has("hire_orders") && hire.isLoading));
+  const show = !isLoading && !statusLoading && composed.steps.length > 0;
 
   return {
     show,
@@ -104,6 +109,7 @@ export function useDashboardFirstRun(role: DashboardRole): DashboardFirstRunStat
     closeRail: () => setRailOpen(false),
     dismiss: () => {
       setRailOpen(false);
+      if (role === "artist") { artist.ackBlock(); artist.ackNotify(); }
       dismiss();
     },
     undismiss,

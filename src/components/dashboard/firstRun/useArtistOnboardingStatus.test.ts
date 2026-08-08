@@ -37,7 +37,7 @@ describe("useArtistOnboardingStatus", () => {
       partialMock<ReturnType<typeof useAuth>>({ currentOrg: { id: "o1" } as never })
     );
     vi.mocked(useMyBlockedDatesCount).mockReturnValue(
-      partialMock<ReturnType<typeof useMyBlockedDatesCount>>({ data: 0 })
+      partialMock<ReturnType<typeof useMyBlockedDatesCount>>({ data: 0, isLoading: false })
     );
   });
 
@@ -85,7 +85,7 @@ describe("useArtistOnboardingStatus", () => {
       partialMock<ReturnType<typeof useMyProfile>>({ data: { phone: null } as never })
     );
     vi.mocked(useMyBlockedDatesCount).mockReturnValue(
-      partialMock<ReturnType<typeof useMyBlockedDatesCount>>({ data: 2 })
+      partialMock<ReturnType<typeof useMyBlockedDatesCount>>({ data: 2, isLoading: false })
     );
     blockAck = false;
     notifyAck = false;
@@ -95,5 +95,20 @@ describe("useArtistOnboardingStatus", () => {
     expect(s.steps.find((x) => x.key === "blockDates")!.done).toBe(true);
     // notifications is still gated on phone/ack, unaffected by blocked-dates data
     expect(s.steps.find((x) => x.key === "notifications")!.done).toBe(false);
+  });
+
+  it("surfaces the blocked-dates query loading state", () => {
+    vi.mocked(useMyArtist).mockReturnValue(
+      partialMock<ReturnType<typeof useMyArtist>>({ data: { id: "a1", name: "Nora" } as never })
+    );
+    vi.mocked(useMyProfile).mockReturnValue(
+      partialMock<ReturnType<typeof useMyProfile>>({ data: { phone: null } as never })
+    );
+    vi.mocked(useMyBlockedDatesCount).mockReturnValue(
+      partialMock<ReturnType<typeof useMyBlockedDatesCount>>({ data: undefined, isLoading: true })
+    );
+
+    const { result } = renderHook(() => useArtistOnboardingStatus());
+    expect(result.current.isLoading).toBe(true);
   });
 });
