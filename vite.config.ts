@@ -13,10 +13,11 @@ function supabaseTargetBanner(url: string | undefined): Plugin {
     apply: "serve",
     configResolved() {
       if (!url) return;
-      const isLocal = /127\.0\.0\.1|localhost/.test(url);
+      const host = url.replace(/^https?:\/\//, "").replace(/\/$/, "");
+      const isLocal = /127\.0\.0\.1|localhost/.test(host);
       const label = isLocal
-        ? "LOCAL (127.0.0.1:54321)"
-        : `PRODUCTION (${url.replace(/^https?:\/\//, "").split(".")[0]})`;
+        ? `LOCAL (${host})`
+        : `PRODUCTION (${host.split(".")[0]})`;
       console.log(`\n▶ Supabase: ${label}\n`);
     },
   };

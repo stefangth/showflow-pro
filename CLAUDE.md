@@ -70,7 +70,7 @@ VITE_SUPABASE_PROJECT_ID=<project-id>
 
 These are public values (anon key, not service role). Never commit `.env`. The service role key is used only inside edge functions via `Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')`.
 
-**Optional local dev auto-login.** To skip the login screen while running `npm run dev`, set `VITE_DEV_AUTOLOGIN=true` plus `VITE_DEV_AUTOLOGIN_EMAIL` / `VITE_DEV_AUTOLOGIN_PASSWORD` (a real account for this project's Supabase) in your gitignored `.env` — `AuthProvider` then auto-signs-in on mount so gated routes render. It's an ordinary password sign-in (RLS is unchanged) and the whole path is guarded by `import.meta.env.DEV`, so it is dead-stripped from production builds and can never run on a deployed server. Keep these vars unset in any hosting provider. See `src/features/auth/devAutoLogin.ts`.
+**Optional local dev auto-login.** To skip the login screen while running `npm run dev`, set `VITE_DEV_AUTOLOGIN=true` plus `VITE_DEV_AUTOLOGIN_EMAIL` / `VITE_DEV_AUTOLOGIN_PASSWORD` (a real account for this project's Supabase) in your gitignored `.env` — `AuthProvider` then auto-signs-in on mount so gated routes render. It's an ordinary password sign-in (RLS is unchanged) and the whole path is guarded by `import.meta.env.DEV`, so it is dead-stripped from production builds and can never run on a deployed server. Keep these vars unset in any hosting provider. See `src/features/auth/devAutoLogin.ts`. (When running against the LOCAL stack, these are already set for you in the committed `.env.development` — autologin as the seeded `admin@example.com` — so you don't need them in `.env`; see the [local-development-stack runbook](docs/runbooks/local-development-stack.md).)
 
 ---
 

@@ -284,7 +284,7 @@ select
   ]::uuid[])[gen.idx],
   (array['Grand Theatre','Riverside Hall','Lakeside Arena','Hillford Playhouse','Port Meadow Stage']::text[])[gen.idx],
   'open',
-  gen.session_1,
+  gen.session_1::time,
   gen.duration_minutes
 from gen
 on conflict (id) do nothing;
