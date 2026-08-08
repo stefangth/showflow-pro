@@ -63,6 +63,14 @@ describe("pre-push hook (.githooks/pre-push)", () => {
     expect(code).toMatch(/verify:fast|verify\.sh --fast/);
     expect(code).not.toMatch(/verify:full|verify\.sh --full/);
   });
+
+  it("scans for committed secrets before pushing", () => {
+    const code = readFileSync(hookPath, "utf8")
+      .split("\n")
+      .filter((l) => !/^\s*#/.test(l))
+      .join("\n");
+    expect(code).toMatch(/scan:secrets/);
+  });
 });
 
 describe("prepare script installs the hook path", () => {

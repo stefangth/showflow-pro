@@ -30,5 +30,11 @@ fi
 repo_root="$(git rev-parse --show-toplevel)"
 cd "$repo_root" || exit 1
 
+# Secret scan first — cheapest possible fail, and the one that keeps a hardcoded
+# credential (the Resend-key class of leak) off the remote. Mirrored by the CI
+# "Lint" job so a --no-verify bypass is still caught server-side.
+echo "pre-push: scanning tracked files for secrets…" >&2
+npm run --silent scan:secrets
+
 echo "pre-push: running verify:fast (bypass with --no-verify or SHOWFLOW_SKIP_VERIFY=1)…" >&2
 npm run --silent verify:fast
