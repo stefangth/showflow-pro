@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/features/auth/AuthContext';
@@ -22,6 +22,13 @@ export default function AdminPage() {
   const rawTab = params.get('tab') || 'people';
   const initialTab = rawTab === 'invites' || rawTab === 'members' ? 'people' : rawTab;
   const [tab, setTab] = useState(initialTab);
+
+  useEffect(() => {
+    if (rawTab === 'invites' || rawTab === 'members') {
+      setParams((p) => { p.set('tab', 'people'); return p; }, { replace: true });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const { data: auditLogs, isError: auditError } = useQuery({
     queryKey: ['admin-audit', currentOrg?.id],
