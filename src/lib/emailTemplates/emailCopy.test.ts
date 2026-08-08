@@ -45,7 +45,7 @@ describe("resolveEmailCopy", () => {
     });
 
     expect(resolved["offer-immediate.heading"]).toBe("Your next performance");
-    expect(resolved["offer-immediate.footer"]).toBe("The ShowFlow team");
+    expect(resolved["offer-immediate.footer"]).toBe("Questions? Reach out to your point of contact and they'll be glad to help.");
     expect(EMAIL_COPY_DEFAULTS["offer-immediate.heading"]).toBe("You have a new offer");
   });
 });

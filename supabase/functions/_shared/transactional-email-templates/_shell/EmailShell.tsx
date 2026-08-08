@@ -13,6 +13,7 @@ import {
 } from "npm:@react-email/components@0.0.22";
 import type { EmailFamily, EmailRoleKey, EmailTheme } from "./emailTheme.ts";
 import { EMAIL_FAMILY_ACCENTS } from "./emailTheme.ts";
+import { APP_URL } from "../../app-url.ts";
 
 export interface EmailShellCta {
   href: string;
@@ -95,7 +96,27 @@ export function EmailShell({
                     padding: "28px 32px",
                   }}
                 >
-                  <Text style={{ ...roleStyle(theme, "header", highlightRole), margin: "0 0 12px" }}>ShowFlow</Text>
+                  <table role="presentation" cellPadding="0" cellSpacing="0" style={{ margin: "0 0 14px", borderCollapse: "collapse" }}>
+                    <tbody>
+                      <tr>
+                        <td style={{ paddingRight: "9px", verticalAlign: "middle" }}>
+                          {/* Hosted white mark (public/email/showflow-mark.png, served from APP_URL). alt="" keeps
+                              it decorative: the "ShowFlow" wordmark beside it is live text, so the brand name still
+                              reads when images are blocked. */}
+                          <img
+                            src={`${APP_URL}/email/showflow-mark.png`}
+                            width="24"
+                            height="24"
+                            alt=""
+                            style={{ display: "block", border: "0", outline: "none", textDecoration: "none" }}
+                          />
+                        </td>
+                        <td style={{ verticalAlign: "middle" }}>
+                          <Text style={{ ...roleStyle(theme, "header", highlightRole), margin: "0" }}>ShowFlow</Text>
+                        </td>
+                      </tr>
+                    </tbody>
+                  </table>
                   <Heading style={{ ...roleStyle(theme, "heading", highlightRole), margin: "0" }}>{heading}</Heading>
                   {subheading && (
                     <Text style={{ ...roleStyle(theme, "subheading", highlightRole), margin: "10px 0 0", lineHeight: "1.5" }}>
@@ -124,7 +145,7 @@ export function EmailShell({
                       href={cta.href}
                       style={{
                         ...roleStyle(theme, "button", highlightRole),
-                        backgroundColor: colors.buttonBg,
+                        backgroundColor: accent.buttonBg,
                         borderRadius: `${theme.base.buttonRadius}px`,
                         padding: "12px 24px",
                         textDecoration: "none",
