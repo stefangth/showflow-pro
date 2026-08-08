@@ -5,6 +5,9 @@ const PRESET_META: Record<PresetName, { name: string; desc: string; dotClass: st
   classic: { name: "Classic", desc: "Offer → artist accepts → producer confirms. Today's flow.", dotClass: "bg-primary" },
   fasttrack: { name: "Fast-track", desc: "Auto-opened, immediate offers; acceptance confirms instantly.", dotClass: "bg-[var(--green-500)]" },
   direct: { name: "Direct book", desc: "No offers; producers book artists from eligibility lists.", dotClass: "bg-[var(--amber-500)]" },
+  // "off" entry is a type-satisfying placeholder (not rendered: the tile grid maps
+  // over BOOKING_FLOW_PRESETS keys, which exclude "off"). The off-state UI is a later task.
+  off: { name: "Off", desc: "Booking flow paused; no offers or bookings run.", dotClass: "bg-muted-foreground" },
 };
 
 interface Props {

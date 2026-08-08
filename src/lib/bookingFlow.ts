@@ -20,6 +20,8 @@ export interface BookingFlow {
   producer_confirmation: boolean;
   confirmation_digest: boolean;
   understudy_promotion: boolean;
+  /** Master switch: false = the whole flow is paused (the "off" preset). Defaults true. */
+  active: boolean;
   reference_field: ReferenceField;
 }
 
@@ -36,14 +38,15 @@ export const BOOKING_FLOW_DEFAULTS: BookingFlow = {
   producer_confirmation: true,
   confirmation_digest: true,
   understudy_promotion: true,
+  active: true,
   reference_field: { source: "show" },
 };
 
-export type PresetName = "classic" | "fasttrack" | "direct";
+export type PresetName = "classic" | "fasttrack" | "direct" | "off";
 
-type FlowFields = Omit<BookingFlow, "reference_field">;
+type FlowFields = Omit<BookingFlow, "reference_field" | "active">;
 
-export const BOOKING_FLOW_PRESETS: Record<PresetName, FlowFields> = {
+export const BOOKING_FLOW_PRESETS: Record<Exclude<PresetName, "off">, FlowFields> = {
   classic: {
     auto_open_tier1: true,
     auto_escalate: false,
@@ -89,6 +92,8 @@ export function normalizeBookingFlow(value: unknown): BookingFlow {
   const bool = (key: keyof FlowFields): boolean =>
     typeof raw[key] === "boolean" ? (raw[key] as boolean) : (BOOKING_FLOW_DEFAULTS[key] as boolean);
 
+  const active = typeof raw.active === "boolean" ? raw.active : BOOKING_FLOW_DEFAULTS.active;
+
   const delivery: OfferDelivery = raw.offer_delivery === "immediate" ? "immediate" : "digest";
 
   const rawRef =
@@ -111,6 +116,7 @@ export function normalizeBookingFlow(value: unknown): BookingFlow {
     producer_confirmation: bool("producer_confirmation"),
     confirmation_digest: bool("confirmation_digest"),
     understudy_promotion: bool("understudy_promotion"),
+    active,
     reference_field,
   };
   if (!flow.artist_acceptance) flow.producer_confirmation = true;
@@ -118,11 +124,13 @@ export function normalizeBookingFlow(value: unknown): BookingFlow {
 }
 
 export function applyPreset(flow: BookingFlow, preset: PresetName): BookingFlow {
-  return { ...flow, ...BOOKING_FLOW_PRESETS[preset] };
+  if (preset === "off") return { ...flow, active: false };
+  return { ...flow, ...BOOKING_FLOW_PRESETS[preset], active: true };
 }
 
 export function matchPreset(flow: BookingFlow): PresetName | "custom" {
-  for (const name of Object.keys(BOOKING_FLOW_PRESETS) as PresetName[]) {
+  if (!flow.active) return "off";
+  for (const name of Object.keys(BOOKING_FLOW_PRESETS) as Exclude<PresetName, "off">[]) {
     const preset = BOOKING_FLOW_PRESETS[name];
     if (FLOW_FIELD_KEYS.every((key) => flow[key] === preset[key])) return name;
   }
@@ -285,6 +293,7 @@ const FLOW_FIELD_LABELS: Record<keyof BookingFlow, string> = {
   producer_confirmation: "Producer confirmation",
   confirmation_digest: "Confirmation digest",
   understudy_promotion: "Understudy promotion",
+  active: "Booking flow",
   reference_field: "Reference field",
 };
 

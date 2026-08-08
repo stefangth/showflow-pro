@@ -64,8 +64,8 @@ describe("normalizeBookingFlow", () => {
 });
 
 describe("presets", () => {
-  it("classic preset equals the defaults (minus reference_field)", () => {
-    const { reference_field: _ref, ...defaults } = BOOKING_FLOW_DEFAULTS;
+  it("classic preset equals the defaults (minus reference_field and active)", () => {
+    const { reference_field: _ref, active: _active, ...defaults } = BOOKING_FLOW_DEFAULTS;
     expect(BOOKING_FLOW_PRESETS.classic).toEqual(defaults);
   });
 
@@ -266,5 +266,28 @@ describe("describeAuditEntry", () => {
     expect(
       describeAuditEntry({ key: "booking_flow", old_value: BOOKING_FLOW_DEFAULTS, new_value: BOOKING_FLOW_DEFAULTS }),
     ).toBe("No effective change");
+  });
+});
+
+describe("active master switch", () => {
+  it("defaults active=true when the key is absent (legacy/no-row parity)", () => {
+    expect(normalizeBookingFlow(null).active).toBe(true);
+    expect(normalizeBookingFlow({}).active).toBe(true);
+  });
+  it("round-trips active=false", () => {
+    expect(normalizeBookingFlow({ active: false }).active).toBe(false);
+  });
+  it("matchPreset returns 'off' iff inactive, regardless of fields", () => {
+    expect(matchPreset(normalizeBookingFlow({ active: false }))).toBe("off");
+    expect(matchPreset(normalizeBookingFlow(null))).toBe("classic"); // active + classic fields
+  });
+  it("applyPreset('off') deactivates but preserves fields; a real preset reactivates", () => {
+    const base = normalizeBookingFlow(null);
+    const off = applyPreset(base, "off");
+    expect(off.active).toBe(false);
+    expect(off.auto_open_tier1).toBe(base.auto_open_tier1); // fields preserved
+    const back = applyPreset(off, "fasttrack");
+    expect(back.active).toBe(true);
+    expect(back.auto_escalate).toBe(true); // fasttrack field applied
   });
 });
