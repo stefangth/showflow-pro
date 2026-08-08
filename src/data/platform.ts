@@ -208,13 +208,22 @@ export async function fetchPlatformOrgStats(client: SupabaseClient<Database>): P
   return (data ?? []) as unknown as OrgStat[];
 }
 
-/** Provision a new org + seed catalog + invite first admin (super-admin only). Returns org_id. */
+/** Provision a new org + seed catalog + invite first admin (super-admin only). Returns org_id.
+ *  `features`, when passed, selects which module entitlements the new org starts with and is
+ *  forwarded as `entitlements` in the request body for the edge function to seed. */
 export async function provisionOrg(
   client: SupabaseClient<Database>,
-  args: { name: string; slug: string; adminEmail: string; role?: AppRole; appOrigin: string },
+  args: { name: string; slug: string; adminEmail: string; role?: AppRole; appOrigin: string; features?: Record<FeatureKey, boolean> },
 ): Promise<string> {
   const { data, error } = await client.functions.invoke("provision-org", {
-    body: { name: args.name, slug: args.slug, admin_email: args.adminEmail, role: args.role ?? "admin", app_origin: args.appOrigin },
+    body: {
+      name: args.name,
+      slug: args.slug,
+      admin_email: args.adminEmail,
+      role: args.role ?? "admin",
+      app_origin: args.appOrigin,
+      ...(args.features ? { entitlements: args.features } : {}),
+    },
   });
   if (error) throw error;
   const payload = data as { error?: string; org_id?: string };
