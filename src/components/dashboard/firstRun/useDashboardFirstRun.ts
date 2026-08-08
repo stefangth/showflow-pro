@@ -126,9 +126,11 @@ export function useDashboardFirstRun(role: DashboardRole): DashboardFirstRunStat
     railOpen,
     openRail: () => setRailOpen(true),
     closeRail: () => setRailOpen(false),
+    // Dismiss only collapses the panel; it never marks a step done. For artists the two
+    // optional steps reach "done" solely from real data (a blocked date / a phone), so
+    // "Later" stays honest and resumable via the collapsed chip's "Resume".
     dismiss: () => {
       setRailOpen(false);
-      if (role === "artist") { artist.ackBlock(); artist.ackNotify(); }
       dismiss();
     },
     undismiss,

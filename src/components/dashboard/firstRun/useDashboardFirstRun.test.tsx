@@ -183,7 +183,9 @@ describe("useDashboardFirstRun", () => {
     expect(withoutHireKeys).not.toContain("letterhead");
   });
 
-  it("an artist's dismiss acks both optional personal steps (the escape hatch)", () => {
+  it("an artist's dismiss only collapses the rail; it never marks the optional steps done", () => {
+    // Regression guard for the "Later is resumable" behavior: dismiss must not ack a
+    // step, so the composed state stays incomplete and the collapsed chip keeps nudging.
     const ackBlock = vi.fn();
     const ackNotify = vi.fn();
     h.artistStatus.mockReturnValue({
@@ -199,8 +201,12 @@ describe("useDashboardFirstRun", () => {
       isLoading: false,
     });
     const { result } = renderHook(() => useDashboardFirstRun("artist"));
+    act(() => result.current.openRail());
+    expect(result.current.railOpen).toBe(true);
     act(() => result.current.dismiss());
-    expect(ackBlock).toHaveBeenCalledTimes(1);
-    expect(ackNotify).toHaveBeenCalledTimes(1);
+    expect(result.current.railOpen).toBe(false);
+    expect(result.current.complete).toBe(false);
+    expect(ackBlock).not.toHaveBeenCalled();
+    expect(ackNotify).not.toHaveBeenCalled();
   });
 });
