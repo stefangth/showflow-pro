@@ -1,5 +1,5 @@
 // src/components/admin/people/BulkInviteDialog.tsx
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
@@ -32,6 +32,11 @@ export function BulkInviteDialog({ open, onOpenChange, members, invites }: BulkI
   const [text, setText] = useState("");
   const [role, setRole] = useState<AppRole>("artist");
   const [sending, setSending] = useState(false);
+
+  // Clear the paste + role when the dialog closes so a reopen starts fresh.
+  useEffect(() => {
+    if (!open) { setText(""); setRole("artist"); }
+  }, [open]);
 
   const rows = useMemo(() => {
     return parseEmails(text).map((email) => {
