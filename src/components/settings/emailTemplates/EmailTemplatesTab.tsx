@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
+import { generatePath, Link } from "react-router-dom";
 import { useAuth } from "@/features/auth/AuthContext";
 import { fetchEmailTemplateSettings } from "@/data/emailTemplates";
 import { supabase } from "@/integrations/supabase/client";
@@ -9,6 +10,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import { ROUTES } from "@/config/app.config";
 
 interface EmailTemplatesTabProps {
   readOnly: boolean;
@@ -120,6 +122,16 @@ export function EmailTemplatesTab({ readOnly, isSuperAdmin }: EmailTemplatesTabP
                         {template.status === "editable" ? (
                           <Button variant="outline" size="sm" aria-label={`Preview ${template.displayName}`} disabled={previewDisabled} onClick={() => void handlePreview(template)}>
                             Preview
+                          </Button>
+                        ) : null}
+                        {template.status === "editable" && !readOnly ? (
+                          <Button asChild size="sm">
+                            <Link
+                              aria-label={`Edit ${template.displayName}`}
+                              to={generatePath(ROUTES.EMAIL_TEMPLATE, { templateKey: template.key })}
+                            >
+                              Edit
+                            </Link>
                           </Button>
                         ) : null}
                       </div>

@@ -1,6 +1,7 @@
 import { fireEvent, screen, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { renderWithProviders } from "@/test/renderWithProviders";
+import { MemoryRouter } from "react-router-dom";
 
 const { invoke, fetchSettings } = vi.hoisted(() => ({
   invoke: vi.fn(),
@@ -19,6 +20,12 @@ vi.mock("@/data/emailTemplates", () => ({
 
 import { EmailTemplatesTab } from "./EmailTemplatesTab";
 
+function renderTab(props: { readOnly: boolean; isSuperAdmin: boolean }) {
+  return renderWithProviders(
+    <MemoryRouter><EmailTemplatesTab {...props} /></MemoryRouter>,
+  );
+}
+
 describe("EmailTemplatesTab", () => {
   beforeEach(() => {
     invoke.mockResolvedValue({
@@ -32,7 +39,7 @@ describe("EmailTemplatesTab", () => {
   });
 
   it("groups all customer and external rows while keeping internal system delivery private", async () => {
-    renderWithProviders(<EmailTemplatesTab readOnly={false} isSuperAdmin={false} />);
+    renderTab({ readOnly: false, isSuperAdmin: false });
 
     expect(await screen.findByText("Booking engine")).toBeInTheDocument();
     expect(screen.getByText("Hire orders")).toBeInTheDocument();
@@ -46,7 +53,7 @@ describe("EmailTemplatesTab", () => {
   });
 
   it("shows the internal system row only to super-admins", async () => {
-    renderWithProviders(<EmailTemplatesTab readOnly={false} isSuperAdmin />);
+    renderTab({ readOnly: false, isSuperAdmin: true });
 
     expect(await screen.findByText("System")).toBeInTheDocument();
     expect(screen.getByText("Cron health alert")).toBeInTheDocument();
@@ -56,7 +63,7 @@ describe("EmailTemplatesTab", () => {
   });
 
   it("requests a preview with saved copy and theme, then renders it in a sandboxed iframe", async () => {
-    renderWithProviders(<EmailTemplatesTab readOnly={false} isSuperAdmin={false} />);
+    renderTab({ readOnly: false, isSuperAdmin: false });
 
     const previewButton = await screen.findByRole("button", { name: /preview immediate offer/i });
     await waitFor(() => expect(previewButton).toBeEnabled());
@@ -76,7 +83,7 @@ describe("EmailTemplatesTab", () => {
 
   it("waits for the effective saved presentation before enabling preview", async () => {
     fetchSettings.mockReturnValueOnce(new Promise(() => {}));
-    renderWithProviders(<EmailTemplatesTab readOnly={false} isSuperAdmin={false} />);
+    renderTab({ readOnly: false, isSuperAdmin: false });
 
     expect(await screen.findByRole("status")).toHaveTextContent("Loading saved email presentation");
     expect(await screen.findByRole("button", { name: /preview immediate offer/i })).toBeDisabled();
@@ -89,7 +96,7 @@ describe("EmailTemplatesTab", () => {
         copy: { "offer-immediate.subject": "Recovered subject" },
         theme: { base: { footerText: "Recovered footer" } },
       });
-    renderWithProviders(<EmailTemplatesTab readOnly={false} isSuperAdmin={false} />);
+    renderTab({ readOnly: false, isSuperAdmin: false });
 
     const alert = await screen.findByRole("alert");
     expect(alert).toHaveTextContent("Could not load the saved email presentation");
@@ -112,7 +119,7 @@ describe("EmailTemplatesTab", () => {
   });
 
   it("uses semantic surface tokens and removes edit actions on the read-only floor", async () => {
-    renderWithProviders(<EmailTemplatesTab readOnly isSuperAdmin={false} />);
+    renderTab({ readOnly: true, isSuperAdmin: false });
 
     const section = await screen.findByTestId("email-template-group-Booking engine");
     expect(section).toHaveClass("bg-card", "border-border", "text-foreground");
@@ -121,9 +128,20 @@ describe("EmailTemplatesTab", () => {
   });
 
   it("does not offer previews for the external password-reset email", async () => {
-    renderWithProviders(<EmailTemplatesTab readOnly={false} isSuperAdmin={false} />);
+    renderTab({ readOnly: false, isSuperAdmin: false });
 
     expect(await screen.findByText("Password reset")).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: /preview password reset/i })).not.toBeInTheDocument();
+  });
+
+  it("links only editable rows to the exact editor route", async () => {
+    renderTab({ readOnly: false, isSuperAdmin: true });
+
+    expect(await screen.findByRole("link", { name: "Edit Immediate offer" })).toHaveAttribute(
+      "href",
+      "/settings/email-templates/offer-immediate",
+    );
+    expect(screen.queryByRole("link", { name: /edit password reset/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: /edit cron health alert/i })).not.toBeInTheDocument();
   });
 });
