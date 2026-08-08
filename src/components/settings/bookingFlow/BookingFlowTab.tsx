@@ -169,7 +169,11 @@ export function BookingFlowTab({ get, set, dirtyKeys, saving, onSave, onDiscard,
           audit={audit.data ?? []}
           isLoading={audit.isLoading}
           isError={audit.isError}
-          locked={stepsDisabled || isOff}
+          // NOT `|| isOff`: the off state must keep the rail's Save/Discard so an admin can
+          // actually persist "Off". SettingsPage hides its page-level Save for booking-scoped
+          // dirt (it assumes this rail carries it), so locking the rail here would leave no way
+          // to save the choice. Only the timeline editors above disable in the off state.
+          locked={stepsDisabled}
         />
       </div>
       <div className="max-w-sm space-y-2">
