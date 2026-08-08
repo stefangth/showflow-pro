@@ -4,6 +4,8 @@ import { realDeps, type Deps } from "../_shared/deps.ts";
 import { deliverOrgInvitation } from "../_shared/invitations.ts";
 import { resolveOrgSetting } from "../_shared/settings.ts";
 import { FEATURE_KEYS, FEATURE_REGISTRY, type FeatureKey } from "../_shared/entitlements.ts";
+import { normalizeBookingFlow } from "../_shared/bookingFlow.ts";
+import type { Json } from "../_shared/database.types.ts";
 
 type Body = {
   name: string;
@@ -11,6 +13,7 @@ type Body = {
   admin_email: string;
   role?: "admin" | "producer" | "artist";
   app_origin: string;
+  entitlements?: Record<string, boolean>;
 };
 
 export async function handle(req: Request, deps: Deps): Promise<Response> {
@@ -41,8 +44,10 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
     }
     const { org_id, token } = data as { org_id: string; token: string };
 
-    // Seed org_entitlements from the platform default_entitlements setting (falls back to
-    // each feature's registry default when the platform setting is unset). Best-effort: a
+    // Seed org_entitlements. An explicit `entitlements` body from the picker wins per
+    // feature (validated against FEATURE_KEYS — unknown keys are ignored); any feature it
+    // omits falls back to the platform default_entitlements setting (falls back in turn to
+    // each feature's registry default when that platform setting is unset). Best-effort: a
     // seeding failure must not undo the org that was just created, so log and continue —
     // same resilience posture as the invite delivery below.
     try {
@@ -52,13 +57,30 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
       const defaultEntitlements = await resolveOrgSetting<Record<FeatureKey, boolean>>(
         deps.admin, null, "default_entitlements", fallbackDefaults,
       );
+      const requested = body?.entitlements ?? null;
       const entitlementRows = FEATURE_KEYS.map((feature) => ({
         org_id,
         feature,
-        enabled: defaultEntitlements[feature] ?? FEATURE_REGISTRY[feature].defaultEnabled,
+        enabled: requested && typeof requested[feature] === "boolean"
+          ? requested[feature]
+          : (defaultEntitlements[feature] ?? FEATURE_REGISTRY[feature].defaultEnabled),
       }));
       const { error: entitlementsError } = await deps.admin.from("org_entitlements").insert(entitlementRows);
       if (entitlementsError) console.error("provision-org: entitlement seeding failed", entitlementsError.message);
+
+      // Land a freshly enabled booking_flow in the "off" state so the org doesn't start
+      // dispatching offers before someone configures it. Best-effort, same posture as above.
+      const bookingEnabled = entitlementRows.find((r) => r.feature === "booking_flow")?.enabled ?? false;
+      if (bookingEnabled) {
+        try {
+          const offFlow = normalizeBookingFlow({ active: false });
+          const { error: flowErr } = await deps.admin.from("app_settings")
+            .upsert({ org_id, key: "booking_flow", value: offFlow as unknown as Json }, { onConflict: "org_id,key" });
+          if (flowErr) console.error("provision-org: off-flow seed failed", flowErr.message);
+        } catch (e) {
+          console.error("provision-org: off-flow seed failed", (e as Error).message);
+        }
+      }
     } catch (e) {
       console.error("provision-org: entitlement seeding failed", (e as Error).message);
     }
