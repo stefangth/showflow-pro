@@ -35,6 +35,7 @@ import { useColumnTemplate, useEditorConfig } from '@/features/editor/EditorCont
 import { useColumnHeaders } from '@/features/editor/useColumnHeaders';
 import { ColumnLayoutEditor } from '@/features/editor/ColumnLayoutEditor';
 import { useToast } from '@/hooks/use-toast';
+import { useRailDismissed } from '@/components/setup/useRailDismissed';
 
 export default function AvailabilityPage() {
   return <ArtistAvailability />;
@@ -60,6 +61,12 @@ function customFor(d: DateRow): Record<string, unknown> | null {
  * ============================================================ */
 function ArtistAvailability() {
   const { currentOrg } = useAuth();
+  // Mark that the artist has seen their availability. This completes the dashboard
+  // first-run "block dates" step for an open-calendar artist: nothing to block is a
+  // valid end state, so opening this page counts as handling it (see
+  // useArtistOnboardingStatus). Per-org, localStorage-backed, harmless for non-artists.
+  const [, markAvailabilityVisited] = useRailDismissed('artistVisitedAvailability', currentOrg?.id ?? null);
+  useEffect(() => { markAvailabilityVisited(); }, [markAvailabilityVisited]);
   const { data: artist } = useMyArtist();
   const { data: eligibleDates, isLoading } = useArtistEligibleDates();
   const bookingFlowEnabled = useFeature('booking_flow');

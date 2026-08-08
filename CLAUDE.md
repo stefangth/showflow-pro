@@ -48,6 +48,12 @@ deno check --node-modules-dir=none supabase/functions/*/index.ts  # the edge run
 
 CI runs `vitest run --coverage` (not a bare `vitest run`): the thresholds in `vitest.config.ts` only apply under `--coverage`, and the suite is executed exactly once — do not add a second job that re-runs it uninstrumented.
 
+### Running locally against a local database
+
+**`npm run dev` targets a LOCAL Supabase stack, not production.** The committed `.env.development` points Vite at `127.0.0.1`; production is the explicit opt-in `npm run dev:prod` (watch the `▶ Supabase: LOCAL|PRODUCTION` banner the dev server prints). This is what lets agents work without mutating real customer data. One-time: install a container runtime (OrbStack) + `npm run local:setup`. Each session: `npm run local:up` (boots the stack, applies migrations + `seed.sql` → logins `admin@`/`producer@`/`artist@example.com`, password `showflow-dev`; writes the gitignored `.env.development.local` with the live keys), then `npm run dev`. Stop with `npm run local:down`; wipe/re-seed with `npm run local:reset`.
+
+Run the CI stack locally with the two-tier convention: **`npm run verify:fast`** (Docker-free inner loop — lint, typecheck, build, unit+coverage, Deno) and **`npm run verify:full`** (adds pgTAP + Playwright e2e; needs the local stack). Full runbook: [`docs/runbooks/local-development-stack.md`](docs/runbooks/local-development-stack.md).
+
 Edge functions deploy automatically **on merge to `main`** via `.github/workflows/deploy-functions.yml`: the Supabase CLI deploys every function in `supabase/functions/` to the live project (`epweartpzwvcasrzyueh`). No manual deploy step for changes that land on `main`. When you add a **new** function, give it a `[functions.<name>]` block in `supabase/config.toml` (default `verify_jwt = true`; set `false` for public webhooks and cron callers that use `X-Cron-Secret`) — an unlisted function would deploy with JWT verification forced on and break those callers. To deploy off-cycle (a backfill, or before a merge) run the workflow manually (Actions → "Deploy Edge Functions" → Run workflow) or use the Supabase MCP `deploy_edge_function`. Removing a function still needs a manual `supabase functions delete <name>` — the deploy never deletes.
 
 ---
@@ -64,7 +70,7 @@ VITE_SUPABASE_PROJECT_ID=<project-id>
 
 These are public values (anon key, not service role). Never commit `.env`. The service role key is used only inside edge functions via `Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')`.
 
-**Optional local dev auto-login.** To skip the login screen while running `npm run dev`, set `VITE_DEV_AUTOLOGIN=true` plus `VITE_DEV_AUTOLOGIN_EMAIL` / `VITE_DEV_AUTOLOGIN_PASSWORD` (a real account for this project's Supabase) in your gitignored `.env` — `AuthProvider` then auto-signs-in on mount so gated routes render. It's an ordinary password sign-in (RLS is unchanged) and the whole path is guarded by `import.meta.env.DEV`, so it is dead-stripped from production builds and can never run on a deployed server. Keep these vars unset in any hosting provider. See `src/features/auth/devAutoLogin.ts`.
+**Optional local dev auto-login.** To skip the login screen while running `npm run dev`, set `VITE_DEV_AUTOLOGIN=true` plus `VITE_DEV_AUTOLOGIN_EMAIL` / `VITE_DEV_AUTOLOGIN_PASSWORD` (a real account for this project's Supabase) in your gitignored `.env` — `AuthProvider` then auto-signs-in on mount so gated routes render. It's an ordinary password sign-in (RLS is unchanged) and the whole path is guarded by `import.meta.env.DEV`, so it is dead-stripped from production builds and can never run on a deployed server. Keep these vars unset in any hosting provider. See `src/features/auth/devAutoLogin.ts`. (When running against the LOCAL stack, these are already set for you in the committed `.env.development` — autologin as the seeded `admin@example.com` — so you don't need them in `.env`; see the [local-development-stack runbook](docs/runbooks/local-development-stack.md).)
 
 ---
 

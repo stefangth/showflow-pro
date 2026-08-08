@@ -1,5 +1,29 @@
 [
   {
+    "version": "1.15.0",
+    "date": "2026-08-08",
+    "dateLabel": "August 8, 2026",
+    "title": "A guided first run on your dashboard",
+    "changes": {
+      "new": [
+        {
+          "title": "Dashboard first run",
+          "description": "A welcome panel greets you on the dashboard and opens a setup checklist on demand. It shows exactly the steps your workspace needs, adapts to the modules your organization has turned on, and collapses to a single line you can reopen any time."
+        },
+        {
+          "title": "The rules you inherited",
+          "description": "Once setup is complete, the same panel becomes a short, read-only summary of how your organization works, so anyone who joins can see the decisions behind every number on the page."
+        }
+      ],
+      "improved": [
+        {
+          "title": "A dashboard that fills in as you go",
+          "description": "Until your workspace has real dates, the dashboard shows a clearly marked sample of what it becomes, then switches to your live numbers once setup is done."
+        }
+      ]
+    }
+  },
+  {
     "version": "1.14.0",
     "date": "2026-08-06",
     "dateLabel": "August 6, 2026",

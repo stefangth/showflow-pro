@@ -1,10 +1,11 @@
 {
   "name": "vite_react_shadcn_ts",
   "private": true,
-  "version": "1.14.0",
+  "version": "1.15.0",
   "type": "module",
   "scripts": {
     "dev": "vite",
+    "dev:prod": "vite --mode prod",
     "build": "vite build",
     "build:dev": "vite build --mode development",
     "lint": "eslint . --max-warnings 0",
@@ -13,8 +14,14 @@
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",
     "test:db": "supabase test db",
-    "test:functions": "deno test --allow-all supabase/functions/",
+    "test:functions": "deno test --allow-all --node-modules-dir=none supabase/functions/",
     "test:e2e": "playwright test --config=e2e/playwright.config.ts",
+    "local:setup": "playwright install chromium",
+    "local:up": "bash scripts/local-up.sh",
+    "local:down": "supabase stop",
+    "local:reset": "supabase db reset",
+    "verify:fast": "bash scripts/verify.sh --fast",
+    "verify:full": "bash scripts/verify.sh --full",
     "sync:mirrors": "node scripts/sync-mirrors.mjs",
     "sync:mirrors:check": "node scripts/sync-mirrors.mjs --check"
   },

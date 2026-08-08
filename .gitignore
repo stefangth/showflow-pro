@@ -28,9 +28,22 @@ coverage
 .env
 .env.*
 !.env.example
+# The committed local-dev default: points the app at the LOCAL Supabase stack
+# (127.0.0.1) so `npm run dev` and tests never touch prod. It holds only the
+# published local anon key (a public client key) — no secrets. The live keys,
+# incl. the service-role key, land in the gitignored `.env.development.local`
+# written by `npm run local:up`.
+!.env.development
 
 # Supabase CLI cache
 supabase/.temp/
 
 # Visual brainstorming companion (superpowers)
 .superpowers/
+
+# Dev-only visual-regression tooling for the Show Date Cockpit.
+# public/ref is a generated reference render (regeneration is documented in the
+# header of scripts/shoot-cockpit.mjs); it must never ship in the public/ build.
+public/ref/
+screenshots/
+scratchpad_peek.png

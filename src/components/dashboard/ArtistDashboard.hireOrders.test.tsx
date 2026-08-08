@@ -46,6 +46,46 @@ vi.mock("@/hooks/useEntitlements", () => {
   return { useFeature, useModuleGate: () => ({ allow: useFeature(), pending: false }) };
 });
 
+// The first-run layer greets the artist above the dashboard body; with show:false it
+// is a no-op (no welcome/rail) and the real body renders directly, so this card's
+// assertions still exercise it. Mocked here so the real useDashboardFirstRun (which
+// reads useEntitlements/useBookingSetup/etc.) does not run against this file's partial
+// hook mocks.
+vi.mock("@/components/dashboard/firstRun/useDashboardFirstRun", () => ({
+  useDashboardFirstRun: () => ({
+    show: false,
+    complete: false,
+    dismissed: false,
+    steps: [],
+    rules: [],
+    offFooters: [],
+    sample: { stats: [], queue: [], week: [] },
+    welcome: {
+      eyebrow: "",
+      headline: "",
+      body: "",
+      primaryLabel: "",
+      secondaryLabel: "",
+      progressLabel: "",
+      progressFilled: 0,
+      progressTotal: 0,
+      progressHint: "",
+    },
+    sectionTitle: "Today",
+    sectionHint: "Live.",
+    railEyebrow: "",
+    railTitle: "",
+    railBody: "",
+    collapsedLabel: "",
+    collapsedHint: "",
+    collapsedCta: "",
+    railOpen: false,
+    openRail: () => {},
+    closeRail: () => {},
+    dismiss: () => {},
+  }),
+}));
+
 import { ArtistDashboard } from "./ArtistDashboard";
 
 function issuedOrder(overrides: Record<string, unknown> = {}) {

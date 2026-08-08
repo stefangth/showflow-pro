@@ -68,6 +68,12 @@ describe("REALTIME_INVALIDATIONS — booking-setup ladder coverage", () => {
   });
 });
 
+describe("REALTIME_INVALIDATIONS — runtime entitlement propagation", () => {
+  it("refreshes ['entitlements'] when org_entitlements changes", () => {
+    expect(hasKey("org_entitlements", "entitlements")).toBe(true);
+  });
+});
+
 describe("REALTIME_INVALIDATIONS — map integrity", () => {
   it("lists no known-dead key prefixes (renamed/typo'd keys that no query uses)", () => {
     // Keys confirmed to have zero `useQuery` consumers in src as of this audit.

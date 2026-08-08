@@ -25,6 +25,9 @@ export function computeFunnel(
 }
 
 export interface UpNextItem {
+  /** Structured discriminant so consumers can route items (e.g. fold `expiry`
+   *  into the header status) without matching the human-readable `text`. */
+  kind: "digest" | "expiry" | "escalate" | "direct";
   tone: "violet" | "amber" | "neutral";
   text: string;
 }
@@ -50,20 +53,21 @@ export function computeUpNext(args: {
 }): UpNextItem[] {
   const { flow, times, pendingCount, nextExpiry, hasOpenTier } = args;
   if (!flow.artist_acceptance) {
-    return [{ tone: "neutral", text: "Direct booking: producers book from the eligibility list" }];
+    return [{ kind: "direct", tone: "neutral", text: "Direct booking: producers book from the eligibility list" }];
   }
   const items: UpNextItem[] = [];
   if (pendingCount > 0 && flow.offer_delivery === "digest") {
-    items.push({ tone: "violet", text: `Digest sends daily · ${hh(times.offerDigestHour)}` });
+    items.push({ kind: "digest", tone: "violet", text: `Digest sends daily · ${hh(times.offerDigestHour)}` });
   }
   if (pendingCount > 0 && nextExpiry) {
     items.push({
+      kind: "expiry",
       tone: "amber",
       text: `${pendingCount} ${pendingCount === 1 ? "offer expires" : "offers expire"} ${formatDateWithWeekday(berlinDayKey(nextExpiry))}`,
     });
   }
   if (hasOpenTier) {
-    items.push({ tone: "neutral", text: `Auto-escalate: ${flow.auto_escalate ? "on" : "off"}` });
+    items.push({ kind: "escalate", tone: "neutral", text: `Auto-escalate: ${flow.auto_escalate ? "on" : "off"}` });
   }
   return items;
 }
@@ -259,4 +263,64 @@ export function buildActivity(args: {
   }
   out.sort((a, b) => b.iso.localeCompare(a.iso));
   return out.slice(0, args.limit ?? 6);
+}
+
+export interface HireFooterState {
+  /** Ready to draft the hire order. Mirrors the DB's `fully_filled` (both roles
+   *  at capacity) — the same signal the header CTA uses — not a flat sum. */
+  ready: boolean;
+  remaining: number;
+  badgeLabel: string; // "READY" | "N LEFT"
+  detail: string;
+}
+
+/**
+ * State for the persistent hire-order footer. `ready` follows the DB's
+ * `fully_filled` definition (each role independently meets capacity), so it can
+ * never green-light "Generate" while, say, main cast is over-confirmed but
+ * understudies are short. `remaining` is per-role too, not a flat total.
+ */
+export function computeHireFooter(args: {
+  status: string | null;
+  slots: { main_cast: number; understudies: number } | null;
+  confirmedMain: number;
+  confirmedUnderstudy: number;
+}): HireFooterState {
+  const { slots } = args;
+  const ready = args.status === "fully_filled";
+  const total = slots ? slots.main_cast + slots.understudies : 0;
+  const remaining = slots
+    ? Math.max(0, slots.main_cast - args.confirmedMain) +
+      Math.max(0, slots.understudies - args.confirmedUnderstudy)
+    : 0;
+  return {
+    ready,
+    remaining,
+    badgeLabel: ready ? "READY" : `${remaining} LEFT`,
+    detail: ready
+      ? "All slots confirmed — drafts one order per artist"
+      : `Waiting on ${remaining} of ${total} slots`,
+  };
+}
+
+export interface PagerPosition {
+  index: number; // 1-based position of the active id in the list
+  total: number;
+  prevId: string | null; // null at the first item
+  nextId: string | null; // null at the last item
+}
+
+/** Position of `activeId` within an ordered list of ids, for the cockpit's
+ *  prev/next pager. Null when there is no active id or it is not in the list
+ *  (e.g. the open date was filtered out) — the caller then hides the pager. */
+export function pagerPosition(ids: string[], activeId: string | null): PagerPosition | null {
+  if (!activeId) return null;
+  const i = ids.indexOf(activeId);
+  if (i < 0) return null;
+  return {
+    index: i + 1,
+    total: ids.length,
+    prevId: i > 0 ? ids[i - 1] : null,
+    nextId: i < ids.length - 1 ? ids[i + 1] : null,
+  };
 }

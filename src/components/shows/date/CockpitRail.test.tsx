@@ -22,11 +22,11 @@ const base: CockpitRailProps = {
 };
 
 describe("CockpitRail", () => {
-  it("renders date facts: times, venue, city, and the Airtable source", () => {
+  it("renders date facts: times, venue + city on one line, and the Airtable source", () => {
     render(<CockpitRail {...base} />);
     expect(screen.getByText("14:00 / 19:30")).toBeInTheDocument();
-    expect(screen.getByText("Volksbühne")).toBeInTheDocument();
-    expect(screen.getByText("Berlin")).toBeInTheDocument();
+    // Venue and city share a single map-pin line, matching the reference.
+    expect(screen.getByText("Volksbühne, Berlin")).toBeInTheDocument();
     expect(screen.getByText(/airtable/i)).toBeInTheDocument();
   });
 
@@ -70,11 +70,19 @@ describe("CockpitRail", () => {
     expect(onEditSetup).toHaveBeenCalledOnce();
   });
 
-  it("renders up-next pills (digest / escalate) when provided", () => {
-    render(<CockpitRail {...base} upNext={[{ tone: "amber", text: "3 offers expire Fri" }, { tone: "neutral", text: "Auto-escalate: on" }]} />);
+  it("renders the Up next block (digest / auto-escalate) when items are provided", () => {
+    render(<CockpitRail {...base} upNext={[
+      { kind: "digest", tone: "violet", text: "Digest sends daily · 18:00" },
+      { kind: "escalate", tone: "neutral", text: "Auto-escalate: off" },
+    ]} />);
     expect(screen.getByText(/up next/i)).toBeInTheDocument();
-    expect(screen.getByText("3 offers expire Fri")).toBeInTheDocument();
-    expect(screen.getByText("Auto-escalate: on")).toBeInTheDocument();
+    expect(screen.getByText("Digest sends daily · 18:00")).toBeInTheDocument();
+    expect(screen.getByText("Auto-escalate: off")).toBeInTheDocument();
+  });
+
+  it("omits the Up next block when there are no items", () => {
+    render(<CockpitRail {...base} upNext={[]} />);
+    expect(screen.queryByText(/up next/i)).not.toBeInTheDocument();
   });
 
   it("renders read-only notes when provided", () => {
