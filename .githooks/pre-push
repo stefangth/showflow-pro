@@ -1,0 +1,34 @@
+#!/usr/bin/env bash
+#
+# Pre-push hook — runs the Docker-free CI mirror (verify:fast) before a push so
+# the cheap layers (lint + mirror-sync, typecheck app+tools, build, unit tests +
+# coverage, Deno checks + tests) fail on your machine instead of burning a red
+# GitHub CI run.
+#
+# This is a convenience gate, NOT the source of truth. GitHub CI stays the
+# enforced gate: it runs on the merged commit regardless, and the prod
+# edge-function deploy keys off a green CI run (see .github/workflows). The hook
+# only shortens the loop; it never makes CI skippable.
+#
+# verify:full (pgTAP + Playwright, needs the Docker stack) is deliberately NOT
+# run here — a container cold-start on every push would just train everyone to
+# reach for --no-verify, and a bypassed hook protects nothing.
+#
+# Bypass when you need to (a WIP push, a docs-only branch):
+#   git push --no-verify            # git skips every pre-push hook
+#   SHOWFLOW_SKIP_VERIFY=1 git push # targeted skip, still logged
+#
+# Installed by the `prepare` npm script (git config core.hooksPath .githooks),
+# so `npm ci` wires it up. Guarded by scripts/prePushHook.test.mjs.
+set -uo pipefail
+
+if [ "${SHOWFLOW_SKIP_VERIFY:-}" = "1" ]; then
+  echo "pre-push: SHOWFLOW_SKIP_VERIFY=1 set — skipping verify:fast" >&2
+  exit 0
+fi
+
+repo_root="$(git rev-parse --show-toplevel)"
+cd "$repo_root" || exit 1
+
+echo "pre-push: running verify:fast (bypass with --no-verify or SHOWFLOW_SKIP_VERIFY=1)…" >&2
+npm run --silent verify:fast
