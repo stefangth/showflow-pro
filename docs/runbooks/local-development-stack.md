@@ -113,6 +113,15 @@ published local-dev key (a public client key). The service-role key lives only i
 the gitignored `.env.development.local`. Production builds run in production mode
 and never load `.env.development`.
 
+> **Note on `npm run build:dev`** (`vite build --mode development`): because it
+> builds in *development* mode, it now loads `.env.development` and bakes
+> `http://127.0.0.1:54321` into the bundle — a **local**-pointed build, not a
+> prod one. `import.meta.env.DEV` is still `false` in any `vite build`, so the
+> autologin path stays stripped; only the Supabase URL/anon key differ. Nothing
+> in CI or Vercel uses `build:dev` (Vercel runs `npm run build`, production
+> mode), so this is inert for deploys — but if you want a prod-pointed bundle,
+> use `npm run build`.
+
 ---
 
 ## Troubleshooting

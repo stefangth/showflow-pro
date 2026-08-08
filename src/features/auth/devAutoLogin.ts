@@ -32,8 +32,12 @@ export interface DevAutoLoginAuth {
  * - It performs an ordinary password sign-in; it does NOT bypass Supabase RLS.
  *   Server-side authorization is unchanged — the real security boundary is
  *   untouched.
- * - Credentials come from gitignored local `.env` only (`VITE_DEV_AUTOLOGIN_*`),
- *   never committed and never set in the hosting provider.
+ * - Credentials come only from local dev env vars (`VITE_DEV_AUTOLOGIN_*`):
+ *   either a gitignored `.env` / `.env.development.local`, or the committed
+ *   `.env.development`, which carries the SYNTHETIC seeded admin
+ *   (`admin@example.com`) for the local Supabase stack — never a real account,
+ *   and never set in the hosting provider. With the DEV guard above, these
+ *   reads are stripped from any deployed build regardless.
  *
  * No-ops when not opted in, when credentials are absent, or when a session
  * already exists (a persisted login is never overridden).
