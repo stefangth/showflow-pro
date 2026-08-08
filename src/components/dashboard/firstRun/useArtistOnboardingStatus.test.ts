@@ -43,10 +43,10 @@ describe("useArtistOnboardingStatus", () => {
 
   it("account linked but block/notify not acked, no blocked dates, and no phone => incomplete", () => {
     vi.mocked(useMyArtist).mockReturnValue(
-      partialMock<ReturnType<typeof useMyArtist>>({ data: { id: "a1", name: "Nora" } as never })
+      partialMock<ReturnType<typeof useMyArtist>>({ data: { id: "a1", name: "Nora" } as never, isLoading: false })
     );
     vi.mocked(useMyProfile).mockReturnValue(
-      partialMock<ReturnType<typeof useMyProfile>>({ data: { phone: null } as never })
+      partialMock<ReturnType<typeof useMyProfile>>({ data: { phone: null } as never, isLoading: false })
     );
     blockAck = false;
     notifyAck = false;
@@ -61,10 +61,10 @@ describe("useArtistOnboardingStatus", () => {
 
   it("phone set and both acks true => complete", () => {
     vi.mocked(useMyArtist).mockReturnValue(
-      partialMock<ReturnType<typeof useMyArtist>>({ data: { id: "a1", name: "Nora" } as never })
+      partialMock<ReturnType<typeof useMyArtist>>({ data: { id: "a1", name: "Nora" } as never, isLoading: false })
     );
     vi.mocked(useMyProfile).mockReturnValue(
-      partialMock<ReturnType<typeof useMyProfile>>({ data: { phone: "+49 170 0000000" } as never })
+      partialMock<ReturnType<typeof useMyProfile>>({ data: { phone: "+49 170 0000000" } as never, isLoading: false })
     );
     blockAck = true;
     notifyAck = true;
@@ -79,10 +79,10 @@ describe("useArtistOnboardingStatus", () => {
 
   it("blockDates is done from real data alone, without any ack", () => {
     vi.mocked(useMyArtist).mockReturnValue(
-      partialMock<ReturnType<typeof useMyArtist>>({ data: { id: "a1", name: "Nora" } as never })
+      partialMock<ReturnType<typeof useMyArtist>>({ data: { id: "a1", name: "Nora" } as never, isLoading: false })
     );
     vi.mocked(useMyProfile).mockReturnValue(
-      partialMock<ReturnType<typeof useMyProfile>>({ data: { phone: null } as never })
+      partialMock<ReturnType<typeof useMyProfile>>({ data: { phone: null } as never, isLoading: false })
     );
     vi.mocked(useMyBlockedDatesCount).mockReturnValue(
       partialMock<ReturnType<typeof useMyBlockedDatesCount>>({ data: 2, isLoading: false })
@@ -99,13 +99,28 @@ describe("useArtistOnboardingStatus", () => {
 
   it("surfaces the blocked-dates query loading state", () => {
     vi.mocked(useMyArtist).mockReturnValue(
-      partialMock<ReturnType<typeof useMyArtist>>({ data: { id: "a1", name: "Nora" } as never })
+      partialMock<ReturnType<typeof useMyArtist>>({ data: { id: "a1", name: "Nora" } as never, isLoading: false })
     );
     vi.mocked(useMyProfile).mockReturnValue(
-      partialMock<ReturnType<typeof useMyProfile>>({ data: { phone: null } as never })
+      partialMock<ReturnType<typeof useMyProfile>>({ data: { phone: null } as never, isLoading: false })
     );
     vi.mocked(useMyBlockedDatesCount).mockReturnValue(
       partialMock<ReturnType<typeof useMyBlockedDatesCount>>({ data: undefined, isLoading: true })
+    );
+
+    const { result } = renderHook(() => useArtistOnboardingStatus());
+    expect(result.current.isLoading).toBe(true);
+  });
+
+  it("surfaces the artist or profile query loading state even when blocked-dates is not loading", () => {
+    vi.mocked(useMyArtist).mockReturnValue(
+      partialMock<ReturnType<typeof useMyArtist>>({ data: undefined, isLoading: true })
+    );
+    vi.mocked(useMyProfile).mockReturnValue(
+      partialMock<ReturnType<typeof useMyProfile>>({ data: { phone: null } as never, isLoading: false })
+    );
+    vi.mocked(useMyBlockedDatesCount).mockReturnValue(
+      partialMock<ReturnType<typeof useMyBlockedDatesCount>>({ data: 0, isLoading: false })
     );
 
     const { result } = renderHook(() => useArtistOnboardingStatus());

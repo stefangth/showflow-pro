@@ -18,9 +18,9 @@ export function useArtistOnboardingStatus(): {
 } {
   const { currentOrg } = useAuth();
   const orgId = currentOrg?.id ?? null;
-  const { data: artist } = useMyArtist();
-  const { data: profile } = useMyProfile();
-  const { data: blockedCount, isLoading } = useMyBlockedDatesCount(artist?.id ?? null);
+  const { data: artist, isLoading: artistLoading } = useMyArtist();
+  const { data: profile, isLoading: profileLoading } = useMyProfile();
+  const { data: blockedCount, isLoading: blockedLoading } = useMyBlockedDatesCount(artist?.id ?? null);
   const [blockAcked, ackBlock] = useRailDismissed("artistBlockAck", orgId);
   const [notifyAcked, ackNotify] = useRailDismissed("artistNotifyAck", orgId);
 
@@ -36,5 +36,10 @@ export function useArtistOnboardingStatus(): {
     { key: "blockDates", done: blockDates, block: null },
     { key: "notifications", done: notifications, block: null },
   ];
-  return { status: { steps, complete: steps.every((s) => s.done) }, ackBlock, ackNotify, isLoading };
+  return {
+    status: { steps, complete: steps.every((s) => s.done) },
+    ackBlock,
+    ackNotify,
+    isLoading: artistLoading || profileLoading || blockedLoading,
+  };
 }
