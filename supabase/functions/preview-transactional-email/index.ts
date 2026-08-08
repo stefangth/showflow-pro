@@ -1,6 +1,8 @@
 import * as React from 'npm:react@18.3.1'
 import { renderAsync } from 'npm:@react-email/components@0.0.22'
-import { TEMPLATES, type TemplateData } from '../_shared/transactional-email-templates/registry.ts'
+import { legacyTemplateSubjectOverride, resolveTemplatePresentation, TEMPLATES, type TemplateData } from '../_shared/transactional-email-templates/registry.ts'
+import { legacyEmailOverridesToCopy, type EmailCopyOverride } from '../_shared/transactional-email-templates/_shell/emailCopy.ts'
+import type { EmailThemeOverride } from '../_shared/transactional-email-templates/_shell/emailTheme.ts'
 import { preflight, json } from "../_shared/http.ts";
 import { requireRole } from "../_shared/auth.ts";
 import { realDeps, type Deps } from "../_shared/deps.ts";
@@ -17,6 +19,10 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
   // Parse body
   let templateName: string | undefined
   let overrides: TemplateData = {}
+  let copyOverride: EmailCopyOverride = {}
+  let hasCopyOverride = false
+  let themeOverride: EmailThemeOverride = {}
+  let highlightRole: unknown
   try {
     if (req.method === 'POST') {
       const body = await req.json().catch(() => ({}))
@@ -24,6 +30,14 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
       if (body.overrides && typeof body.overrides === 'object') {
         overrides = body.overrides
       }
+      if (body.copyOverride && typeof body.copyOverride === 'object') {
+        copyOverride = body.copyOverride as EmailCopyOverride
+        hasCopyOverride = true
+      }
+      if (body.themeOverride && typeof body.themeOverride === 'object') {
+        themeOverride = body.themeOverride as EmailThemeOverride
+      }
+      highlightRole = body.highlightRole
     }
   } catch {
     // ignore
@@ -67,27 +81,28 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
     }
 
     try {
-      // Merge overrides into previewData
-      const previewData = { ...entry.previewData }
-      if (overrides.intro) previewData._intro = overrides.intro
-      if (overrides.cta_label) previewData._cta_label = overrides.cta_label
-      if (overrides.footer) previewData._footer = overrides.footer
+      // `overrides` is the legacy preview payload. Keep it compatible while
+      // making the documented flattened copyOverride win on any collision.
+      const legacyCopy = legacyEmailOverridesToCopy({ [name]: overrides })
+      const presentation = resolveTemplatePresentation(name, entry.previewData, {
+        copyOverride: hasCopyOverride ? copyOverride : legacyCopy,
+        copyIsExplicit: hasCopyOverride,
+        legacySubjectOverride: hasCopyOverride
+          ? undefined
+          : legacyTemplateSubjectOverride({ [name]: overrides }, name),
+        themeOverride,
+        highlightRole,
+      })
+      if (!presentation) throw new Error(`Template '${name}' not found during presentation resolution`)
 
       const html = await renderAsync(
-        React.createElement(entry.component, previewData)
+        React.createElement(entry.component, presentation.props)
       )
-
-      let resolvedSubject = typeof entry.subject === 'function'
-        ? entry.subject(previewData)
-        : entry.subject
-      if (overrides.subject && typeof overrides.subject === 'string' && overrides.subject.trim()) {
-        resolvedSubject = overrides.subject.trim()
-      }
 
       results.push({
         templateName: name,
         displayName,
-        subject: resolvedSubject,
+        subject: presentation.subject,
         html,
         status: 'ready',
       })

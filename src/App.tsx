@@ -43,6 +43,7 @@ const DevCockpitHarness = import.meta.env.DEV ? lazy(() => import("./pages/DevCo
 // out of the main bundle — it only loads when an admin/producer actually opens
 // the template editor. Same pattern as DocumentationTab's System Map tabs.
 const TemplateEditorPage = lazy(() => import("@/components/settings/hireOrders/template/TemplateEditorPage"));
+const EmailTemplateEditorPage = lazy(() => import("@/pages/EmailTemplateEditorPage"));
 
 const queryClient = new QueryClient();
 
@@ -85,6 +86,18 @@ const App = () => (
             <Route path={ROUTES.AVAILABILITY} element={<ProtectedRoute requiredRoles={['artist']}><AppLayout><AvailabilityPage /></AppLayout></ProtectedRoute>} />
             <Route path={ROUTES.ADMIN} element={<ProtectedRoute requiredRoles={['admin']}><AppLayout><AdminPage /></AppLayout></ProtectedRoute>} />
             <Route path={ROUTES.SETTINGS} element={<ProtectedRoute requiredRoles={['admin', 'producer']}><AppLayout><SettingsPage /></AppLayout></ProtectedRoute>} />
+            <Route
+              path={ROUTES.EMAIL_TEMPLATE}
+              element={
+                <ProtectedRoute requiredRoles={['admin', 'producer']}>
+                  <AppLayout>
+                    <Suspense fallback={<Skeleton className="h-[80vh] w-full" />}>
+                      <EmailTemplateEditorPage />
+                    </Suspense>
+                  </AppLayout>
+                </ProtectedRoute>
+              }
+            />
             <Route path={ROUTES.CHATS} element={<ProtectedRoute><AppLayout><ChatsListPage /></AppLayout></ProtectedRoute>} />
             <Route path={ROUTES.PROFILE} element={<ProtectedRoute><AppLayout><ProfilePage /></AppLayout></ProtectedRoute>} />
             <Route path={ROUTES.PLATFORM} element={<PlatformRoute><AppLayout><PlatformPage /></AppLayout></PlatformRoute>} />

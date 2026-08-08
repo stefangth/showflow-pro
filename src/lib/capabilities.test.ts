@@ -11,10 +11,10 @@ import { resolveCapability, resolveAllCapabilities } from "./capabilities";
 import { CAPABILITY_GROUPS, capabilitiesByGroup } from "./capabilities";
 
 describe("capability registry", () => {
-  it("has 27 producer rights, all role=producer, unique keys", () => {
-    expect(CAPABILITY_DEFS).toHaveLength(27);
+  it("has 28 producer rights, all role=producer, unique keys", () => {
+    expect(CAPABILITY_DEFS).toHaveLength(28);
     expect(CAPABILITY_DEFS.every((d) => d.role === "producer")).toBe(true);
-    expect(new Set(CAPABILITY_KEYS).size).toBe(27);
+    expect(new Set(CAPABILITY_KEYS).size).toBe(28);
   });
 
   it("pins the spec defaults (§5 / §9)", () => {
@@ -31,6 +31,20 @@ describe("capability registry", () => {
     expect(on("producer_can_edit_booking_settings")).toBe(false);
     expect(on("producer_can_rename_org")).toBe(false);
     expect(on("producer_can_configure_airtable")).toBe(false);
+    expect(on("producer_can_edit_email_templates")).toBe(false);
+  });
+
+  it("defines the sensitive, opt-in email-template editing grant", () => {
+    expect(capabilityByKey("producer_can_edit_email_templates")).toMatchObject({
+      key: "producer_can_edit_email_templates",
+      action: "edit_email_templates",
+      role: "producer",
+      group: "Email",
+      label: "Edit email templates",
+      description: "Producers can change email copy and branding.",
+      risk: "sensitive",
+      defaultEnabled: false,
+    });
   });
 
   it("capabilityFor maps (role, action) to its def", () => {
@@ -88,14 +102,14 @@ describe("layered resolver", () => {
 
   it("resolveAllCapabilities covers every registry key", () => {
     const map = resolveAllCapabilities([], []);
-    expect(map.size).toBe(27);
+    expect(map.size).toBe(28);
     expect(map.get("producer_can_invite")!.effective).toBe(true);
     expect(map.get("producer_can_rename_org")!.effective).toBe(false);
   });
 });
 
 describe("capability grouping", () => {
-  it("lists the 7 groups in registry order", () => {
+  it("lists the 8 groups in registry order", () => {
     expect(CAPABILITY_GROUPS).toEqual([
       "Members & access",
       "Productions & show dates",
@@ -104,12 +118,13 @@ describe("capability grouping", () => {
       "Hire orders",
       "Settings & organization",
       "Integrations",
+      "Email",
     ]);
   });
-  it("capabilitiesByGroup partitions all 27 defs, preserving order", () => {
+  it("capabilitiesByGroup partitions all 28 defs, preserving order", () => {
     const groups = capabilitiesByGroup();
     expect(groups.map((g) => g.group)).toEqual(CAPABILITY_GROUPS);
-    expect(groups.reduce((n, g) => n + g.defs.length, 0)).toBe(27);
+    expect(groups.reduce((n, g) => n + g.defs.length, 0)).toBe(28);
     expect(groups[0].defs.every((d) => d.group === "Members & access")).toBe(true);
   });
 });

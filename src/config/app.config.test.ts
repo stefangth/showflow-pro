@@ -1,7 +1,11 @@
 import { describe, it, expect, afterEach } from "vitest";
-import { BOOKING_ENGINE_DEFAULTS, ROUTE_FEATURES, requiredFeatureForPath } from "./app.config";
+import { BOOKING_ENGINE_DEFAULTS, ROUTES, ROUTE_FEATURES, requiredFeatureForPath } from "./app.config";
 
 describe("config/app.config", () => {
+  it("exposes the exact dynamic email template editor route", () => {
+    expect(ROUTES.EMAIL_TEMPLATE).toBe("/settings/email-templates/:templateKey");
+  });
+
   it("BOOKING_ENGINE_DEFAULTS holds the canonical booking-engine fallbacks (mirror of supabase/functions/_shared/settings.ts)", () => {
     expect(BOOKING_ENGINE_DEFAULTS).toEqual({
       offer_response_window_hours: 48,

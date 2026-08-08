@@ -833,6 +833,107 @@ Deno.test("send-transactional-email: uses the org's resend_from_address override
   assertEquals(sentFrom, "Org A <a@org-a.com>");
 });
 
+Deno.test("send-transactional-email: applies new copy and theme settings to the rendered delivery", async () => {
+  const ORG = "00000000-0000-0000-0000-0000000000b1";
+  const { fetchImpl, fetchCalls } = recordingFetch();
+  const { deps } = makeFakeDeps({
+    envVars: ENV,
+    tables: {
+      ...happyPathTables(),
+      app_settings: [
+        { when: { key: "email_copy" }, data: [{ org_id: ORG, value: {
+          "org-invitation.subject": "Welcome {{orgName}}",
+          "org-invitation.intro": "A custom invitation for {{orgName}}.",
+        } }], error: null },
+        { when: { key: "email_theme" }, data: [{ org_id: ORG, value: { base: { colors: { pageBg: "#010203" } } } }], error: null },
+        { when: { key: "email_template_overrides" }, data: [], error: null },
+      ],
+    },
+    fetchImpl,
+  });
+
+  const res = await handle(authedReq({
+    body: {
+      templateName: "org-invitation",
+      recipientEmail: "invitee@example.com",
+      org_id: ORG,
+      templateData: { orgName: "Studio" },
+    },
+  }), deps);
+  assertEquals(res.status, 200);
+  const resend = fetchCalls.find((call) => call.url.includes("api.resend.com"));
+  assertExists(resend);
+  const sent = JSON.parse(String((resend!.init as RequestInit).body)) as { subject: string; html: string };
+  assertEquals(sent.subject, "Welcome Studio");
+  assertEquals(sent.html.includes("A custom invitation for Studio."), true);
+  assertEquals(sent.html.includes("#010203"), true);
+});
+
+Deno.test("send-transactional-email: maps legacy copy only while new copy is absent", async () => {
+  const ORG = "00000000-0000-0000-0000-0000000000b2";
+  const legacy = { "org-invitation": { subject: "Legacy invitation" } };
+  const sendWithCopy = async (copy: unknown) => {
+    const { fetchImpl, fetchCalls } = recordingFetch();
+    const { deps } = makeFakeDeps({
+      envVars: ENV,
+      tables: {
+        ...happyPathTables(),
+        app_settings: [
+          { when: { key: "email_copy" }, data: copy === null ? [] : [{ org_id: ORG, value: copy }], error: null },
+          { when: { key: "email_theme" }, data: [], error: null },
+          { when: { key: "email_template_overrides" }, data: [{ org_id: ORG, value: legacy }], error: null },
+        ],
+      },
+      fetchImpl,
+    });
+    const res = await handle(authedReq({
+      body: { templateName: "org-invitation", recipientEmail: "invitee@example.com", org_id: ORG, templateData: { orgName: "Studio" } },
+    }), deps);
+    assertEquals(res.status, 200);
+    const resend = fetchCalls.find((call) => call.url.includes("api.resend.com"));
+    assertExists(resend);
+    return JSON.parse(String((resend!.init as RequestInit).body)) as { subject: string };
+  };
+
+  assertEquals((await sendWithCopy(null)).subject, "Legacy invitation");
+  assertEquals((await sendWithCopy({})).subject, "You're invited to join Studio on ShowFlow");
+});
+
+Deno.test("send-transactional-email: retains legacy generic subjects for conditional templates", async () => {
+  const ORG = "00000000-0000-0000-0000-0000000000b3";
+  const sendLegacySubject = async (templateName: string, templateData: Record<string, unknown>, subject: string) => {
+    const { fetchImpl, fetchCalls } = recordingFetch();
+    const { deps } = makeFakeDeps({
+      envVars: ENV,
+      tables: {
+        ...happyPathTables(),
+        app_settings: [
+          { when: { key: "email_copy" }, data: [], error: null },
+          { when: { key: "email_theme" }, data: [], error: null },
+          { when: { key: "email_template_overrides" }, data: [{ org_id: ORG, value: { [templateName]: { subject } } }], error: null },
+        ],
+      },
+      fetchImpl,
+    });
+    const response = await handle(authedReq({
+      body: { templateName, recipientEmail: "artist@example.com", org_id: ORG, templateData },
+    }), deps);
+    assertEquals(response.status, 200);
+    const resend = fetchCalls.find((call) => call.url.includes("api.resend.com"));
+    assertExists(resend);
+    return JSON.parse(String((resend!.init as RequestInit).body)) as { subject: string };
+  };
+
+  assertEquals(
+    (await sendLegacySubject("offer-expiry-reminder", { offers: [{}] }, "Legacy expiry subject")).subject,
+    "Legacy expiry subject",
+  );
+  assertEquals(
+    (await sendLegacySubject("artist-confirmation-digest", { bookings: [{}] }, "Legacy confirmation subject")).subject,
+    "Legacy confirmation subject",
+  );
+});
+
 Deno.test("characterization: used token + not suppressed → returns { success: false, reason: 'email_suppressed' }", async () => {
   // characterization: when existingToken.used_at is set and the email is NOT suppressed,
   // the handler's safety fallback (line ~131-133 in index.ts) returns email_suppressed anyway.

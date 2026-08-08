@@ -24,7 +24,7 @@ describe("notification category model", () => {
 
   it("returns null for critical/unmapped templates (always send)", () => {
     expect(categoryForTemplate("org-invitation")).toBeNull();
-    expect(categoryForTemplate("new-signup-admin-notification")).toBeNull();
+    expect(categoryForTemplate("account-email-changed")).toBeNull();
   });
 
   it("maps the three hire-orders in-app types and the hire-order-issued/countersigned templates to hire_orders", () => {

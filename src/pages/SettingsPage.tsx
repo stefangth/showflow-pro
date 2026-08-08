@@ -28,6 +28,7 @@ import { BookingFlowTab } from '@/components/settings/bookingFlow/BookingFlowTab
 import { BOOKING_AUDIT_KEYS } from '@/components/settings/bookingFlow/auditKeys';
 import { HireOrdersTab } from '@/components/settings/hireOrders/HireOrdersTab';
 import { PermissionsTab } from '@/components/settings/permissions/PermissionsTab';
+import { EmailTemplatesTab } from '@/components/settings/emailTemplates/EmailTemplatesTab';
 
 type FilterKey = 'program' | 'timeframe' | 'sort' | 'status';
 const FILTER_KEYS: FilterKey[] = ['program', 'timeframe', 'sort', 'status'];
@@ -39,7 +40,6 @@ const ROLES: ('producer' | 'artist')[] = ['producer', 'artist'];
 // counts as dirty — iterating only persisted rows would leave it unsavable.
 const EDITABLE_SETTING_KEYS: readonly string[] = [
   ...Object.keys(BOOKING_ENGINE_DEFAULTS),
-  'email_template_overrides',
   'filters_visibility',
   'notifications_enabled',
   'booking_flow',
@@ -152,6 +152,7 @@ export default function SettingsPage() {
   const canEditHireOrderSettings = useCan('edit_hire_order_settings');
   const canEditFilterSettings = useCan('edit_filter_settings');
   const canRenameOrg = useCan('rename_org');
+  const canEditEmailTemplates = useCan('edit_email_templates');
 
   // Controlled so we know which tab is active: the Booking flow tab renders its own
   // scoped Save/Discard in FlowRail, and the page-level control must defer to it there.
@@ -171,12 +172,9 @@ export default function SettingsPage() {
   // booking_flow module. If the draft also holds a dirty key from another tab (e.g. edited
   // on Notifications, then switched here), keep the page-level control visible so that other
   // change stays reachable: the rail's Save only ever writes BOOKING_AUDIT_KEYS, so it cannot
-  // save it. When the org is NOT entitled, FlowRail hides its own Save/Discard entirely (the
-  // flow fields are locked read-only) but the from-address input and EmailTemplatesCard stay
-  // editable — both write keys inside BOOKING_AUDIT_KEYS (resend_from_address,
-  // email_template_overrides). Without the entitlement check those edits would be dirty,
-  // hidePageLevelSave would still fire, and the user would have no Save control anywhere on
-  // the page (a locked org has no rail Save to fall back to).
+  // save it. When the org is NOT entitled, FlowRail hides its own Save/Discard entirely while
+  // the from-address input stays editable. Without the entitlement check that edit would hide
+  // the page-level Save and leave the user without any save control.
   const hidePageLevelSave =
     activeTab === 'booking' && bookingFlowEntitled && dirtyKeys.every(k => BOOKING_AUDIT_KEYS.includes(k));
 
@@ -245,6 +243,7 @@ export default function SettingsPage() {
     { heading: "Automation", items: [
       { value: "airtable", label: "Airtable Sync", icon: Database, show: isAdmin || isProducer },
       { value: "booking", label: "Booking flow", icon: Wand2, show: isAdmin || isProducer },
+      { value: "email-templates", label: "Email templates", icon: Bell, show: isAdmin || isProducer },
       { value: "scheduling", label: "Scheduling", icon: Clock, show: true, dot: schedulingWarnings > 0 },
       { value: "hire-orders", label: "Hire orders", icon: FileSignature, show: (isAdmin || isProducer) && hireOrdersEntitled },
     ] },
@@ -432,6 +431,10 @@ export default function SettingsPage() {
             onDiscard={handleDiscardBooking}
             readOnly={!canEditBookingSettings}
           />
+        </TabsContent>
+
+        <TabsContent value="email-templates" className="mt-4">
+          <EmailTemplatesTab readOnly={!canEditEmailTemplates} isSuperAdmin={isSuperAdmin} />
         </TabsContent>
 
         {(isAdmin || isProducer) && hireOrdersEntitled && (

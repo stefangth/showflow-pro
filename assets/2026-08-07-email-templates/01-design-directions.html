@@ -1,0 +1,117 @@
+<h2>How far do we push the landing-page look into email?</h2>
+<p class="subtitle">The "What it does" cards lean on dark gradients, glass blur, and Geist. Email clients treat those very differently from a browser. Same offer email, three honest translations. Click the one that feels right.</p>
+
+<div class="section" style="background:var(--card-bg,#fff);border:1px solid rgba(128,128,128,.2);border-radius:10px;padding:14px 16px;margin-bottom:26px">
+  <div class="label" style="margin-bottom:10px">What actually survives an email client (Outlook Windows is the hard floor)</div>
+  <div style="display:flex;flex-wrap:wrap;gap:8px;font-size:12.5px">
+    <span style="padding:4px 10px;border-radius:999px;background:rgba(86,216,139,.16);color:#1a7a44">✓ Solid colour blocks &amp; bulletproof buttons — everywhere</span>
+    <span style="padding:4px 10px;border-radius:999px;background:rgba(242,178,60,.18);color:#8a5a00">△ CSS gradients — need a solid fallback (Outlook shows flat)</span>
+    <span style="padding:4px 10px;border-radius:999px;background:rgba(242,178,60,.18);color:#8a5a00">△ Geist / web fonts — only Apple Mail &amp; iOS; else system fallback</span>
+    <span style="padding:4px 10px;border-radius:999px;background:rgba(242,178,60,.18);color:#8a5a00">△ Dark backgrounds — clients auto-invert unpredictably</span>
+    <span style="padding:4px 10px;border-radius:999px;background:rgba(224,80,80,.16);color:#b1341f">✗ Glass / backdrop-blur — unsupported, silently drops</span>
+    <span style="padding:4px 10px;border-radius:999px;background:rgba(224,80,80,.16);color:#b1341f">✗ Flexbox / grid layout — use tables</span>
+  </div>
+</div>
+
+<div style="display:flex;flex-direction:column;gap:22px">
+
+  <!-- ============ A ============ -->
+  <div class="card" data-choice="a" onclick="toggleSelect(this)" style="cursor:pointer">
+    <div class="card-image" style="background:#eceaf1;padding:26px;display:block">
+      <div style="max-width:480px;margin:0 auto;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif">
+        <div style="font-size:11px;color:#8a8894;margin-bottom:8px">Subject &nbsp;·&nbsp; A date just opened — Fri 26 Jun, Colosseum</div>
+        <div style="background:#fff;border-radius:12px;overflow:hidden;box-shadow:0 1px 3px rgba(0,0,0,.08)">
+          <!-- header band: SOLID brand violet -->
+          <div style="background:#4738B0;padding:16px 24px;display:flex;align-items:center;gap:9px">
+            <span style="width:20px;height:20px;border-radius:5px;background:#fff;display:inline-block"></span>
+            <span style="color:#fff;font-weight:600;font-size:14px;letter-spacing:-.2px">ShowFlow</span>
+          </div>
+          <div style="padding:26px 24px">
+            <div style="font-size:20px;font-weight:600;color:#15131c;letter-spacing:-.3px">A date just opened</div>
+            <p style="margin:12px 0 0;font-size:14px;line-height:1.55;color:#4b4952">Hi Ines — you can perform this date. Respond by <b>Thu 19:00</b> to hold your place; after that it advances to the next cast tier.</p>
+            <table style="width:100%;border-collapse:separate;border-spacing:0;margin:18px 0 4px;border:1px solid #ececf0;border-radius:8px;overflow:hidden">
+              <tr>
+                <td style="padding:9px 12px;border-right:1px solid #ececf0"><div style="font-size:9px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:#9a98a3">Date</div><div style="font-family:ui-monospace,Menlo,monospace;font-size:12.5px;color:#15131c;margin-top:2px">26.06.2026</div></td>
+                <td style="padding:9px 12px;border-right:1px solid #ececf0"><div style="font-size:9px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:#9a98a3">Venue</div><div style="font-size:12.5px;color:#15131c;margin-top:2px">Colosseum</div></td>
+                <td style="padding:9px 12px"><div style="font-size:9px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:#9a98a3">Role</div><div style="font-size:12.5px;color:#15131c;margin-top:2px">Aerial lead</div></td>
+              </tr>
+            </table>
+            <a style="display:inline-block;margin-top:16px;background:#4738B0;color:#fff;font-size:14px;font-weight:600;padding:11px 22px;border-radius:8px;text-decoration:none">View &amp; respond</a>
+            <p style="margin:22px 0 0;font-size:11.5px;color:#9a98a3">You're in the Aerial Ensemble cast. Manage your availability in ShowFlow.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>A · Clean brand</h3>
+      <p>Light body, <b>solid</b> violet header band, system fonts, table-built data tiles. Pixel-identical in every client including Outlook. The "cards" DNA shows up as one confident brand colour, not gradients. Safest, most universal, least distinctive.</p>
+    </div>
+  </div>
+
+  <!-- ============ B ============ -->
+  <div class="card" data-choice="b" onclick="toggleSelect(this)" style="cursor:pointer">
+    <div class="card-image" style="background:#eceaf1;padding:26px;display:block">
+      <div style="max-width:480px;margin:0 auto;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif">
+        <div style="font-size:11px;color:#8a8894;margin-bottom:8px">Subject &nbsp;·&nbsp; A date just opened — Fri 26 Jun, Colosseum</div>
+        <div style="background:#fff;border-radius:12px;overflow:hidden;box-shadow:0 1px 3px rgba(0,0,0,.08)">
+          <!-- header HERO: gradient + radial glow, solid #322685 fallback via bgcolor -->
+          <div style="background:#322685;background-image:radial-gradient(120% 90% at 18% 0%,rgba(168,142,255,.45),transparent 60%),linear-gradient(168deg,#4738B0,#1E175A);padding:30px 24px 26px">
+            <div style="display:flex;align-items:center;gap:9px;margin-bottom:18px">
+              <span style="width:20px;height:20px;border-radius:5px;background:rgba(255,255,255,.9);display:inline-block"></span>
+              <span style="color:rgba(255,255,255,.9);font-weight:600;font-size:13px;letter-spacing:-.2px">ShowFlow</span>
+            </div>
+            <div style="font-size:22px;font-weight:600;color:#fff;letter-spacing:-.4px">A date just opened</div>
+            <div style="font-size:12.5px;color:#cdc3ff;margin-top:6px">Aerial · Tier 1 · respond by Thu 19:00</div>
+          </div>
+          <div style="padding:24px">
+            <p style="margin:0;font-size:14px;line-height:1.55;color:#4b4952">Hi Ines — you can perform this date. Hold your place before the deadline; after that it advances to the next cast tier.</p>
+            <table style="width:100%;border-collapse:separate;border-spacing:0;margin:18px 0 4px;border:1px solid #ececf0;border-radius:8px;overflow:hidden">
+              <tr>
+                <td style="padding:9px 12px;border-right:1px solid #ececf0"><div style="font-size:9px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:#9a98a3">Date</div><div style="font-family:ui-monospace,Menlo,monospace;font-size:12.5px;color:#15131c;margin-top:2px">26.06.2026</div></td>
+                <td style="padding:9px 12px;border-right:1px solid #ececf0"><div style="font-size:9px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:#9a98a3">Venue</div><div style="font-size:12.5px;color:#15131c;margin-top:2px">Colosseum</div></td>
+                <td style="padding:9px 12px"><div style="font-size:9px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:#9a98a3">Role</div><div style="font-size:12.5px;color:#15131c;margin-top:2px">Aerial lead</div></td>
+              </tr>
+            </table>
+            <a style="display:inline-block;margin-top:16px;background:#4738B0;color:#fff;font-size:14px;font-weight:600;padding:11px 22px;border-radius:8px;text-decoration:none">View &amp; respond</a>
+            <p style="margin:22px 0 0;font-size:11.5px;color:#9a98a3">You're in the Aerial Ensemble cast. Manage your availability in ShowFlow.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>B · Jewel-tone hero &nbsp;<span style="font-size:11px;font-weight:700;color:#4738B0;background:#ece9fb;padding:2px 8px;border-radius:999px;vertical-align:middle">RECOMMENDED</span></h3>
+      <p>A gradient header hero (violet→indigo + glow) with a <b>solid Outlook fallback</b>, over the same robust light body. Each email family carries its own landing-page colour — offers violet, availability ember, casts cyan, hire orders pine/steel. Closest honest echo of the cards; degrades to a flat brand band where gradients aren't supported.</p>
+    </div>
+  </div>
+
+  <!-- ============ C ============ -->
+  <div class="card" data-choice="c" onclick="toggleSelect(this)" style="cursor:pointer">
+    <div class="card-image" style="background:#0f0c1e;padding:26px;display:block">
+      <div style="max-width:480px;margin:0 auto;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif">
+        <div style="font-size:11px;color:#6a6880;margin-bottom:8px">Subject &nbsp;·&nbsp; A date just opened — Fri 26 Jun, Colosseum</div>
+        <div style="border-radius:14px;overflow:hidden;background:#322685;background-image:radial-gradient(120% 80% at 20% 0%,rgba(168,142,255,.28),transparent 60%),linear-gradient(168deg,#2a2178,#161046);border:.5px solid rgba(255,255,255,.1)">
+          <div style="padding:28px 24px">
+            <div style="display:flex;align-items:center;gap:9px;margin-bottom:20px">
+              <span style="width:20px;height:20px;border-radius:5px;background:rgba(255,255,255,.16);display:inline-block"></span>
+              <span style="color:rgba(255,255,255,.82);font-weight:600;font-size:13px">ShowFlow</span>
+            </div>
+            <div style="font-size:22px;font-weight:600;color:#fff;letter-spacing:-.4px">A date just opened</div>
+            <p style="margin:12px 0 0;font-size:14px;line-height:1.55;color:rgba(255,255,255,.68)">Hi Ines — you can perform this date. Respond by <b style="color:#fff">Thu 19:00</b> to hold your place.</p>
+            <div style="display:flex;gap:1px;margin:18px 0 4px;background:rgba(255,255,255,.1);border-radius:8px;overflow:hidden">
+              <div style="flex:1;background:rgba(255,255,255,.06);padding:9px 12px"><div style="font-size:9px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:rgba(255,255,255,.45)">Date</div><div style="font-family:ui-monospace,Menlo,monospace;font-size:12.5px;color:#fff;margin-top:2px">26.06.2026</div></div>
+              <div style="flex:1;background:rgba(255,255,255,.06);padding:9px 12px"><div style="font-size:9px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:rgba(255,255,255,.45)">Venue</div><div style="font-size:12.5px;color:#fff;margin-top:2px">Colosseum</div></div>
+              <div style="flex:1;background:rgba(255,255,255,.06);padding:9px 12px"><div style="font-size:9px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:rgba(255,255,255,.45)">Role</div><div style="font-size:12.5px;color:#fff;margin-top:2px">Aerial lead</div></div>
+            </div>
+            <a style="display:inline-block;margin-top:16px;background:#a88eff;color:#1a1440;font-size:14px;font-weight:700;padding:11px 22px;border-radius:8px;text-decoration:none">View &amp; respond</a>
+            <p style="margin:22px 0 0;font-size:11.5px;color:rgba(255,255,255,.4)">You're in the Aerial Ensemble cast.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>C · Dark card</h3>
+      <p>The landing card itself, as an email: dark ground, glassy-looking tiles (faked with solid fills — real blur can't render), violet CTA. Boldest brand match. The honest cost: Outlook shows a flat dark box with no gradient/rounding; Gmail &amp; Outlook.com may auto-invert the dark to grey; image-blocking and dark-on-dark hurt legibility. Highest risk, least predictable across clients.</p>
+    </div>
+  </div>
+
+</div>

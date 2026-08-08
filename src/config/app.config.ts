@@ -183,6 +183,7 @@ export const ROUTES = {
   HIRE_ORDER_DETAIL: '/hire-orders/:id',
   HIRE_ORDER_EDIT: '/hire-orders/:id/edit',
   HIRE_ORDER_TEMPLATE: '/settings/hire-orders/template',
+  EMAIL_TEMPLATE: '/settings/email-templates/:templateKey',
 } as const;
 
 /** Number of days after a show date that its chat is hidden from the UI */

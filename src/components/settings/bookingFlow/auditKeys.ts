@@ -9,5 +9,4 @@ export const BOOKING_AUDIT_KEYS = [
   "offer_digest_hour_berlin",
   "confirmation_digest_hour_berlin",
   "resend_from_address",
-  "email_template_overrides",
 ];

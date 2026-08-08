@@ -1,6 +1,8 @@
 import * as React from 'npm:react@18.3.1'
 import { renderAsync } from 'npm:@react-email/components@0.0.22'
-import { TEMPLATES, type TemplateData } from '../_shared/transactional-email-templates/registry.ts'
+import { legacyTemplateSubjectOverride, resolveTemplatePresentation, TEMPLATES, type TemplateData } from '../_shared/transactional-email-templates/registry.ts'
+import { legacyEmailOverridesToCopy, type EmailCopyOverride } from '../_shared/transactional-email-templates/_shell/emailCopy.ts'
+import type { EmailThemeOverride } from '../_shared/transactional-email-templates/_shell/emailTheme.ts'
 import { preflight, json } from "../_shared/http.ts";
 import { realDeps, type Deps, type EmailAttachment } from "../_shared/deps.ts";
 import { resolveOrgSetting, BOOKING_ENGINE_DEFAULTS } from "../_shared/settings.ts";
@@ -233,12 +235,6 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
     return json({ success: false, reason: 'email_suppressed' }, 200)
   }
 
-  // Render template (overrides merged below after reading app_settings)
-  const resolvedSubject =
-    typeof template.subject === 'function'
-      ? template.subject(templateData)
-      : template.subject
-
   // Render + send (including resolving org settings) are wrapped so a THROWN error
   // (a failed app_settings read inside resolveOrgSetting, a renderAsync failure, or a
   // network error from deps.fetch — distinct from the handled `!sendResponse.ok` case
@@ -247,30 +243,33 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
   // outage from monitoring.
   let sendData: { id: string; [key: string]: unknown }
   try {
-    // Read from-address and template overrides for this org (org override ?? platform default).
+    // Read from-address and presentation settings for this org (org override ?? platform default).
     const fromAddress = await resolveOrgSetting<string>(
       admin, orgId, 'resend_from_address', BOOKING_ENGINE_DEFAULTS.resend_from_address)
 
-    const overrides = await resolveOrgSetting<TemplateData>(
+    // `null` distinguishes a missing new copy setting from a deliberately stored
+    // empty map, which suppresses the one-release legacy backfill.
+    const copySetting = await resolveOrgSetting<EmailCopyOverride | null>(
+      admin, orgId, 'email_copy', null)
+    const themeSetting = await resolveOrgSetting<EmailThemeOverride>(
+      admin, orgId, 'email_theme', {})
+    const legacyOverrides = await resolveOrgSetting<unknown>(
       admin, orgId, 'email_template_overrides', {})
-    const templateOverride = (overrides[templateName] ?? {}) as TemplateData
+    const copyOverride = copySetting ?? legacyEmailOverridesToCopy(legacyOverrides)
+    const presentation = resolveTemplatePresentation(templateName, templateData, {
+      copyOverride,
+      copyIsExplicit: copySetting !== null,
+      legacySubjectOverride: copySetting === null
+        ? legacyTemplateSubjectOverride(legacyOverrides, templateName)
+        : undefined,
+      themeOverride: themeSetting,
+    })
+    if (!presentation) throw new Error(`Template '${templateName}' not found during presentation resolution`)
 
-    // Apply subject override
-    let resolvedSubjectFinal = resolvedSubject
-    if (templateOverride.subject && typeof templateOverride.subject === 'string' && templateOverride.subject.trim()) {
-      resolvedSubjectFinal = templateOverride.subject.trim()
-    }
-
-    // Merge _intro, _cta_label, _footer into templateData (non-null values only)
-    const mergedTemplateData = { ...templateData }
-    if (templateOverride.intro) mergedTemplateData._intro = templateOverride.intro
-    if (templateOverride.cta_label) mergedTemplateData._cta_label = templateOverride.cta_label
-    if (templateOverride.footer) mergedTemplateData._footer = templateOverride.footer
-
-    // Render template with merged data
-    const html = await renderAsync(React.createElement(template.component, mergedTemplateData))
+    // Render template with its resolved presentation props.
+    const html = await renderAsync(React.createElement(template.component, presentation.props))
     const plainText = await renderAsync(
-      React.createElement(template.component, mergedTemplateData),
+      React.createElement(template.component, presentation.props),
       { plainText: true }
     )
 
@@ -292,7 +291,7 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
       body: JSON.stringify({
         from: fromAddress,
         to: [effectiveRecipient],
-        subject: resolvedSubjectFinal,
+        subject: presentation.subject,
         html,
         text: plainText,
         headers: {
