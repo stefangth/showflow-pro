@@ -71,7 +71,9 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
       // Land a freshly enabled booking_flow in the "off" state so the org doesn't start
       // dispatching offers before someone configures it. Best-effort, same posture as above.
       const bookingEnabled = entitlementRows.find((r) => r.feature === "booking_flow")?.enabled ?? false;
-      if (bookingEnabled) {
+      // Only seed the off-flow row if the entitlement insert actually landed — otherwise the
+      // two writes could disagree (an off flow row for an org whose entitlements never wrote).
+      if (!entitlementsError && bookingEnabled) {
         try {
           const offFlow = normalizeBookingFlow({ active: false });
           const { error: flowErr } = await deps.admin.from("app_settings")

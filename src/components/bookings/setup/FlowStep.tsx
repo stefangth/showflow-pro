@@ -13,9 +13,9 @@ import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import type { Json } from "@/integrations/supabase/types";
 
-// FlowPresets now always renders an Off tile (see FlowPresets.tsx), so this map needs
-// a real label for it too: selecting Off here saves booking_flow with active: false,
-// same as the Settings surface.
+// Onboarding hides the "Off" tile (FlowPresets showOff={false}): pausing the flow is a
+// deliberate Settings action, and choosing Off here would leave the setup step outstanding
+// (flowChosen requires an active flow). The map still needs the key for the PresetName type.
 const PRESET_NAMES: Record<PresetName, string> = { classic: "Classic", fasttrack: "Fast-track", direct: "Direct book", off: "Off" };
 const CHIP_TONE: Record<LifecycleChip["tone"], string> = {
   violet: "bg-[var(--accent-500)]", amber: "bg-[var(--amber-500)]",
@@ -37,7 +37,9 @@ export function FlowStep({ orgId, onDone }: { orgId: string | null; onDone: () =
     if (!flow || seeded.current) return;
     seeded.current = true;
     const m = matchPreset(flow);
-    if (m !== "custom") setSelected(m);
+    // "off" is not offered in onboarding, so an org sitting in the seeded-off state
+    // defaults the suggestion to a real preset rather than an unselectable Off.
+    if (m !== "custom" && m !== "off") setSelected(m);
   }, [flow]);
 
   const preview = normalizeBookingFlow(applyPreset(base, selected));
@@ -62,7 +64,7 @@ export function FlowStep({ orgId, onDone }: { orgId: string | null; onDone: () =
       <p className="text-xs text-muted-foreground">
         This decides what artists see and what the app calls things. Pick one, read what it does, change it any time in Settings.
       </p>
-      <FlowPresets active={selected} onSelect={(p) => setSelected(p)} />
+      <FlowPresets active={selected} onSelect={(p) => setSelected(p)} showOff={false} />
       <div>
         <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">A booking then goes</p>
         <div className="mt-2 flex flex-wrap items-center gap-1.5">

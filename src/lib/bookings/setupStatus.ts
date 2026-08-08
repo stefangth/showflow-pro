@@ -42,10 +42,16 @@ export interface CoverageResult {
 }
 
 export interface BookingSetupStatusInput {
-  /** The org has its OWN booking_flow row (inheriting the classic default is not a choice). */
+  /** The org has its OWN booking_flow row AND that flow is active (inheriting the classic
+   *  default, or a paused/off flow, is not a choice). */
   flowChosen: boolean;
-  /** shows-with-slots; undefined while unread, or an empty array (no shows yet), → slots
-   *  reported outstanding. An empty array is no longer vacuously done. */
+  /** The org has at least one show of ANY status (active, archived, or draft). This is the
+   *  "not a blank org" signal: it distinguishes a never-configured org (→ the data-driven
+   *  steps stay outstanding, an honest 0-of-N) from a configured org that simply has no
+   *  ACTIVE shows or no UPCOMING dates right now (e.g. between seasons). */
+  hasAnyShows: boolean;
+  /** active shows-with-slots; undefined while unread. Slots is done only when the org has
+   *  shows (hasAnyShows) and every active show has both slot counts set. */
   shows: { main_cast_slots: number | null; understudy_slots: number | null }[] | null | undefined;
   /** The org has its own row for all three timing keys. */
   timingChosen: boolean;
@@ -87,16 +93,22 @@ export function resolveCoverage(inputs: LadderCoverageInputs): CoverageResult {
 export function computeBookingSetupStatus(input: BookingSetupStatusInput): BookingSetupStatus {
   const coverage = input.coverage ? resolveCoverage(input.coverage) : undefined;
   const futureCount = input.coverage?.futurePairs.length ?? 0;
+  // A blank org (no shows at all, any status) has nothing configured, so the data-driven steps
+  // stay outstanding → an honest 0-of-N. Once the org has real shows — even if none are active
+  // or it has no upcoming dates — those steps fall back to "nothing left to configure", so an
+  // established org between seasons is not dragged back to "setup in progress".
   const done: Record<BookingSetupStepKey, boolean> = {
     flow: input.flowChosen,
-    // An empty shows array is now OUTSTANDING (nothing to configure yet, so the step cannot
-    // be reported done); undefined is unread and also outstanding.
-    slots: Array.isArray(input.shows)
-      ? input.shows.length > 0 && input.shows.every((s) => s.main_cast_slots != null && s.understudy_slots != null)
+    slots: input.hasAnyShows && Array.isArray(input.shows)
+      ? input.shows.every((s) => s.main_cast_slots != null && s.understudy_slots != null)
       : false,
-    ladder: coverage ? futureCount > 0 && coverage.uncoveredPairs.length === 0 : false,
-    eligibility: coverage
-      ? futureCount > 0 && coverage.uncoveredPairs.length === 0 && !coverage.hasNullCity
+    // With no upcoming (show, city) pairs there is nothing to cover, so a configured org is
+    // done; with future pairs, every one needs a tier-1 cast (and a city, for eligibility).
+    ladder: input.hasAnyShows && coverage
+      ? futureCount === 0 || coverage.uncoveredPairs.length === 0
+      : false,
+    eligibility: input.hasAnyShows && coverage
+      ? futureCount === 0 || (coverage.uncoveredPairs.length === 0 && !coverage.hasNullCity)
       : false,
     timing: input.timingChosen,
   };

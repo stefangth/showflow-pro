@@ -153,6 +153,9 @@ export function hh(hour: number): string {
 }
 
 export function lifecycleChips(flow: BookingFlow): LifecycleChip[] {
+  // Only an explicit active===false is "off"; a flow missing the field (a pre-active literal)
+  // reads as active, since active defaults true everywhere it is normalized.
+  if (flow.active === false) return [{ label: "Off", tone: "neutral" }];
   if (!flow.artist_acceptance) {
     return [
       { label: "Direct booking", tone: "neutral" },
@@ -171,6 +174,13 @@ export interface PracticeRow {
 }
 
 export function inPracticeRows(flow: BookingFlow, times: FlowTimes): PracticeRow[] {
+  if (flow.active === false) {
+    return [
+      { who: "Artist", text: "Gets no offers or bookings while the flow is off." },
+      { who: "Producer", text: "Nothing to review; turn a flow on to start booking." },
+      { who: "Automation", text: "Nothing runs while the flow is off." },
+    ];
+  }
   let artist: string;
   if (flow.artist_acceptance) {
     const delivery =
@@ -220,6 +230,9 @@ export interface PreviewRow {
 }
 
 export function flowPreviewRows(flow: BookingFlow, times: FlowTimes): PreviewRow[] {
+  if (flow.active === false) {
+    return [{ at: "·", text: "The flow is paused; no offers, reminders or confirmations run." }];
+  }
   const rows: PreviewRow[] = [
     { at: "09:02", text: "Date created (Airtable sync or in-app) · 12 eligible artists in tier 1" },
   ];
@@ -293,7 +306,7 @@ const FLOW_FIELD_LABELS: Record<keyof BookingFlow, string> = {
   producer_confirmation: "Producer confirmation",
   confirmation_digest: "Confirmation digest",
   understudy_promotion: "Understudy promotion",
-  active: "Booking flow",
+  active: "Booking automation",
   reference_field: "Reference field",
 };
 

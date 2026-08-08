@@ -8,7 +8,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { provisionOrg } from "@/data/platform";
 import { slugify } from "./platformFormat";
 import { FEATURE_KEYS, FEATURE_REGISTRY, type FeatureKey } from "@/lib/entitlements";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogTrigger, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -60,7 +60,10 @@ export function NewOrgDialog() {
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild><Button>New organization</Button></DialogTrigger>
       <DialogContent>
-        <DialogHeader><DialogTitle>New organization</DialogTitle></DialogHeader>
+        <DialogHeader>
+          <DialogTitle>New organization</DialogTitle>
+          <DialogDescription>Create an organization and invite its first admin.</DialogDescription>
+        </DialogHeader>
         <form onSubmit={form.handleSubmit((v) => mutation.mutate(v))} className="space-y-4">
           <div className="space-y-1.5">
             <Label htmlFor="name">Name</Label>

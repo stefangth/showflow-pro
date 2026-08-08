@@ -291,3 +291,26 @@ describe("active master switch", () => {
     expect(back.auto_escalate).toBe(true); // fasttrack field applied
   });
 });
+
+describe("preview helpers reflect the off state", () => {
+  const times = { windowHours: 48, offerDigestHour: 19, confirmationDigestHour: 20 };
+  const offFlow = applyPreset(BOOKING_FLOW_DEFAULTS, "off"); // classic fields, active:false
+
+  it("lifecycleChips collapses to a single Off chip when inactive", () => {
+    expect(lifecycleChips(offFlow)).toEqual([{ label: "Off", tone: "neutral" }]);
+    // sanity: an active flow still yields the full lifecycle (not the off branch)
+    expect(lifecycleChips(BOOKING_FLOW_DEFAULTS).length).toBeGreaterThan(1);
+  });
+
+  it("inPracticeRows says nothing runs when inactive", () => {
+    const rows = inPracticeRows(offFlow, times);
+    expect(rows.map((r) => r.who)).toEqual(["Artist", "Producer", "Automation"]);
+    expect(rows.every((r) => /off|nothing/i.test(r.text))).toBe(true);
+  });
+
+  it("flowPreviewRows shows a single paused row when inactive", () => {
+    const rows = flowPreviewRows(offFlow, times);
+    expect(rows).toHaveLength(1);
+    expect(rows[0].text).toMatch(/paused/i);
+  });
+});

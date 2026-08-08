@@ -53,10 +53,10 @@ describe("useBookingSetupStatus", () => {
     expect(result.current.status.steps.find((s) => s.key === "flow")!.done).toBe(false);
   });
 
-  it("filters an archived show out of the active set, leaving slots outstanding (no vacuous-done)", async () => {
-    // An archived show is excluded by activeShows, so this org has zero ACTIVE shows.
-    // With no vacuous-done, zero active shows is itself outstanding, not done, distinct
-    // from the archived show's own unset slots never blocking the step.
+  it("counts an archived-only org as configured, so slots is not dragged outstanding", async () => {
+    // An archived show is excluded by activeShows (zero ACTIVE shows), but it still makes
+    // hasAnyShows true — the org is not blank. With no active shows left to slot, the slots
+    // step falls back to done rather than nagging an org that is simply between seasons.
     seed({
       app_settings: { data: [{ key: "booking_flow" }], error: null },
       shows: {
@@ -71,7 +71,7 @@ describe("useBookingSetupStatus", () => {
     });
     const { result } = renderHookWithProviders(() => useBookingSetupStatus("org-1"));
     await waitFor(() => expect(result.current.isLoading).toBe(false));
-    expect(result.current.status.steps.find((s) => s.key === "slots")!.done).toBe(false);
+    expect(result.current.status.steps.find((s) => s.key === "slots")!.done).toBe(true);
   });
 
   it("keeps the slots step outstanding for an active show with unset slots", async () => {

@@ -12,15 +12,26 @@ interface Props {
   active: PresetName | "custom";
   onSelect: (p: PresetName) => void;
   disabled?: boolean;
+  /** Whether to offer the "Off" tile. Settings shows it; the onboarding rail hides it,
+   *  because pausing the flow is a deliberate Settings action, not a way to "get started". */
+  showOff?: boolean;
 }
 
-export function FlowPresets({ active, onSelect, disabled }: Props) {
+export function FlowPresets({ active, onSelect, disabled, showOff = true }: Props) {
   const presets: PresetName[] = [
     ...(Object.keys(BOOKING_FLOW_PRESETS) as Exclude<PresetName, "off">[]),
-    "off",
+    ...(showOff ? (["off"] as const) : []),
   ];
+  // Preset buttons + the Custom tile: 5 columns with Off, 4 without, so the row stays full.
   return (
-    <div className="grid grid-cols-2 gap-2.5 md:grid-cols-5" role="group" aria-label="Flow presets">
+    <div
+      className={cn(
+        "grid grid-cols-2 gap-2.5",
+        showOff ? "md:grid-cols-5" : "md:grid-cols-4",
+      )}
+      role="group"
+      aria-label="Flow presets"
+    >
       {presets.map((p) => (
         <button
           key={p}

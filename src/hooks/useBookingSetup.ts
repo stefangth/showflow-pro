@@ -51,12 +51,15 @@ export function useBookingSetupStatus(orgId: string | null): {
   });
 
   const isLoading = !!orgId && (owned.isLoading || shows.isLoading || coverage.isLoading || flow.isLoading);
-  const isError = owned.isError || shows.isError || coverage.isError;
+  const isError = owned.isError || shows.isError || coverage.isError || flow.isError;
   const ownedSet = owned.data;
   const status = computeBookingSetupStatus({
     // The org must own its own booking_flow row AND have that flow currently active
     // (inheriting the classic default, or an inactive flow, is not a choice).
     flowChosen: ownedSet ? ownedSet.has("booking_flow") && flow.data?.active === true : false,
+    // Any show of any status (active/archived/draft) marks the org as "not blank"; the raw
+    // shows.data is unfiltered, unlike the activeShows() slice passed as `shows` below.
+    hasAnyShows: Array.isArray(shows.data) && shows.data.length > 0,
     // Only active shows are counted (the spec: "every active show") — an archived or draft
     // show with unset slots must never keep this step outstanding. `activeShows` preserves
     // undefined while shows.data hasn't loaded yet, preserving the fail-safe.
