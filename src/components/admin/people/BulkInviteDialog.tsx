@@ -35,13 +35,12 @@ export function BulkInviteDialog({ open, onOpenChange, members, invites }: BulkI
 
   const rows = useMemo(() => {
     return parseEmails(text).map((email) => {
-      let kind: Kind = "ok";
+      let kind: Kind;
       if (!isValidEmail(email)) kind = "invalid";
-      else kind = matchContact(email, members, invites) === "member"
-        ? "member"
-        : matchContact(email, members, invites) === "pending"
-          ? "pending"
-          : "ok";
+      else {
+        const m = matchContact(email, members, invites);
+        kind = m === "member" ? "member" : m === "pending" ? "pending" : "ok";
+      }
       return { email, kind };
     });
   }, [text, members, invites]);
