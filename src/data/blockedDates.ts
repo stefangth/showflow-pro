@@ -34,10 +34,10 @@ export async function fetchMyBlockedDatesCount(
   args: { artistId: string },
 ): Promise<number> {
   if (!args.artistId) return 0;
-  const { data, error } = await client
+  const { count, error } = await client
     .from("blocked_dates")
-    .select("id")
+    .select("id", { count: "exact", head: true })
     .eq("artist_id", args.artistId);
   if (error) throw error;
-  return (data ?? []).length;
+  return count ?? 0;
 }

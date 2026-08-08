@@ -42,9 +42,13 @@ export function useDashboardFirstRun(role: DashboardRole): DashboardFirstRunStat
   const orgName = currentOrg?.name ?? "your workspace";
 
   const { features, isLoading } = useEntitlements();
-  const booking = useBookingSetupStatus(orgId); // admin/producer slice
+  // Artists never consume these org-setup readiness reads (their slice composes via
+  // ARTIST_ONBOARDING), so pass null to disable the queries and avoid firing/retrying
+  // org-config reads (cast priorities, hire-order settings) an artist has no RLS access to.
+  const setupOrgId = role === "artist" ? null : orgId;
+  const booking = useBookingSetupStatus(setupOrgId); // admin/producer slice
   const artist = useArtistOnboardingStatus(); // artist slice (called unconditionally)
-  const hire = useHireOrderSetupStatus(orgId);
+  const hire = useHireOrderSetupStatus(setupOrgId);
   const counts = useNavCounts();
   const flow = useBookingFlow().data ?? BOOKING_FLOW_DEFAULTS;
 

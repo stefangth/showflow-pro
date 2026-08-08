@@ -227,6 +227,11 @@ function ProducerDashboard() {
     },
   ];
 
+  // Sample-vs-live keys off real data, not setup-completeness: an org that already
+  // has dates (but hasn't finished every setup step) must show its real body, not a
+  // greyed sample. `fr.complete` still drives only the welcome/collapsed panel copy.
+  const hasData = (upcomingDates?.length ?? 0) > 0;
+
   return (
     <div className="space-y-6">
       {fr.show && (fr.dismissed
@@ -235,7 +240,7 @@ function ProducerDashboard() {
 
       <div className="flex items-start gap-6">
         <div className="min-w-0 flex-1">
-          <SamplePreview complete={!fr.show || fr.complete} sample={fr.sample} sectionTitle={fr.sectionTitle} sectionHint={fr.sectionHint}>
+          <SamplePreview complete={!fr.show || fr.complete || hasData} sample={fr.sample} sectionTitle={fr.sectionTitle} sectionHint={fr.sectionHint}>
             <div className="space-y-6">
               <div>
                 <h1 className="font-display text-[32px] font-semibold tracking-tight">Dashboard</h1>

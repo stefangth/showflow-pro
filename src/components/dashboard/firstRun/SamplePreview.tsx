@@ -8,12 +8,14 @@ const DOT: Record<SampleQueueRow["tone"], string> = {
 export function SamplePreview({ complete, sample, sectionTitle, sectionHint, children }: SamplePreviewProps) {
   return (
     <div className="flex flex-col gap-4">
-      <div className="flex items-center gap-2">
-        <div className="font-display text-[17px] font-semibold tracking-tight text-foreground">{sectionTitle}</div>
-        {!complete && <span className="rounded bg-muted px-1.5 py-0.5 text-[11px] font-semibold text-muted-foreground">Sample</span>}
-        <span className="flex-1" />
-        <div className="text-xs text-muted-foreground/70">{sectionHint}</div>
-      </div>
+      {!complete && (
+        <div className="flex items-center gap-2">
+          <div className="font-display text-[17px] font-semibold tracking-tight text-foreground">{sectionTitle}</div>
+          <span className="rounded bg-muted px-1.5 py-0.5 text-[11px] font-semibold text-muted-foreground">Sample</span>
+          <span className="flex-1" />
+          <div className="text-xs text-muted-foreground/70">{sectionHint}</div>
+        </div>
+      )}
 
       {complete ? (
         children

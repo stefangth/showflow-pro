@@ -25,16 +25,23 @@ vi.mock("@/data/bookings", async (orig) => ({
 }));
 
 vi.mock("@/components/dashboard/firstRun/useDashboardFirstRun", () => ({
-  useDashboardFirstRun: () => ({
+  useDashboardFirstRun: vi.fn(),
+}));
+
+// Settable first-run state so the sample-vs-live body switch can be exercised.
+function frState(overrides: Record<string, unknown> = {}) {
+  return {
     show: true, complete: false, dismissed: false,
-    steps: [], rules: [], offFooters: [], sample: { stats: [], queue: [], week: [] },
+    steps: [], rules: [], offFooters: [],
+    sample: { stats: [{ title: "Live dates", value: "34", label: "upcoming" }], queue: [], week: [] },
     welcome: { eyebrow: "Welcome", headline: "You are the first admin at Halle Kollektiv", body: "b", primaryLabel: "Start setup", secondaryLabel: "Later", progressLabel: "Set up · 0 of 4", progressFilled: 0, progressTotal: 4, progressHint: "About 15 minutes" },
     sectionTitle: "What this page becomes", sectionHint: "Sample rows.",
     railEyebrow: "Set up", railTitle: "Get running", railBody: "b",
     collapsedLabel: "Set up in progress", collapsedHint: "4 steps left", collapsedCta: "Resume",
     railOpen: false, openRail: vi.fn(), closeRail: vi.fn(), dismiss: vi.fn(), undismiss: vi.fn(),
-  }),
-}));
+    ...overrides,
+  };
+}
 
 function seedClient(seed: Record<string, TableSeed>) {
   for (const key of Object.keys(client)) delete client[key];
@@ -42,10 +49,12 @@ function seedClient(seed: Record<string, TableSeed>) {
 }
 
 import { useAuth } from "@/features/auth/AuthContext";
+import { useDashboardFirstRun } from "@/components/dashboard/firstRun/useDashboardFirstRun";
 import DashboardPage from "./DashboardPage";
 
 beforeEach(() => {
   vi.clearAllMocks();
+  vi.mocked(useDashboardFirstRun).mockReturnValue(frState() as never);
   vi.mocked(useAuth).mockReturnValue({
     hasRole: (r: string) => r === "admin",
     currentOrg: { id: "o1", name: "Halle Kollektiv" },
@@ -63,5 +72,20 @@ describe("DashboardPage first-run layer", () => {
   it("renders the welcome panel above the producer dashboard", async () => {
     renderWithProviders(<MemoryRouter><DashboardPage /></MemoryRouter>);
     expect(await screen.findByText(/first admin at Halle Kollektiv/)).toBeInTheDocument();
+  });
+
+  it("shows the greyed Sample (not the live body) when setup is incomplete and the org has no dates", async () => {
+    vi.mocked(useDashboardFirstRun).mockReturnValue(frState({ complete: false }) as never);
+    renderWithProviders(<MemoryRouter><DashboardPage /></MemoryRouter>);
+    // Sample fixture stat is visible; the real body heading is not rendered.
+    expect(await screen.findByText("Live dates")).toBeInTheDocument();
+    expect(screen.queryByRole("heading", { name: "Dashboard" })).not.toBeInTheDocument();
+  });
+
+  it("renders the live body (not the Sample) when setup is complete", async () => {
+    vi.mocked(useDashboardFirstRun).mockReturnValue(frState({ complete: true }) as never);
+    renderWithProviders(<MemoryRouter><DashboardPage /></MemoryRouter>);
+    expect(await screen.findByRole("heading", { name: "Dashboard" })).toBeInTheDocument();
+    expect(screen.queryByText("Live dates")).not.toBeInTheDocument();
   });
 });

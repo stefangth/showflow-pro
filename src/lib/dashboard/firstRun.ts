@@ -67,8 +67,12 @@ export function welcomeCopy(
       : { ...base, headline: `You are the first admin at ${org}`, body: "The database is empty. A few steps put real dates on this page, and the sample below becomes yours.", primaryLabel: "Start setup", secondaryLabel: "Later", progressLabel: `Set up · ${progress.filled} of ${progress.total}`, progressHint: "About 15 minutes" };
   }
   if (role === "producer") {
+    const pending = ctx.counts.pendingConfirmations;
+    const pendingBody = pending === 0
+      ? "No confirmations are waiting on you right now."
+      : `${pending} artist${pending === 1 ? "" : "s"} ${pending === 1 ? "is" : "are"} waiting on a confirm from you.`;
     return complete
-      ? { ...base, headline: `You have joined ${org}`, body: `${ctx.counts.pendingConfirmations} artists are waiting on a confirm from you.`, primaryLabel: "How this org works", secondaryLabel: "Dismiss", progressLabel: `Set up · ${progress.total} of ${progress.total}`, progressHint: "The rules you inherited" }
+      ? { ...base, headline: `You have joined ${org}`, body: pendingBody, primaryLabel: "How this org works", secondaryLabel: "Dismiss", progressLabel: `Set up · ${progress.total} of ${progress.total}`, progressHint: "The rules you inherited" }
       : { ...base, headline: `${org} is still being set up`, body: "Dates, offers and confirmations appear here the moment the first import lands.", primaryLabel: "See what is outstanding", secondaryLabel: "Later", progressLabel: `Org setup · ${progress.filled} of ${progress.total}`, progressHint: "Only an admin can do these" };
   }
   // artist

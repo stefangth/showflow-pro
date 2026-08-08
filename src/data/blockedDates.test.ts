@@ -25,14 +25,14 @@ describe("blockedDates data-access", () => {
     await expect(fetchBlockedArtistIds(fake as never, { date: "2026-07-20", orgId: "org-1" })).rejects.toBeTruthy();
   });
 
-  it("fetchMyBlockedDatesCount filters by artist_id and returns the row count", async () => {
+  it("fetchMyBlockedDatesCount filters by artist_id and returns the head count", async () => {
     const fake = createFakeSupabase({
-      blocked_dates: { data: [{ id: "b1" }, { id: "b2" }, { id: "b3" }], error: null },
+      blocked_dates: { data: [], error: null, count: 3 },
     });
     const count = await fetchMyBlockedDatesCount(fake as never, { artistId: "a1" });
     expect(count).toBe(3);
     expect(fake.calls).toContainEqual({ table: "blocked_dates", method: "eq", args: ["artist_id", "a1"] });
-    expect(fake.calls).toContainEqual({ table: "blocked_dates", method: "select", args: ["id"] });
+    expect(fake.calls).toContainEqual({ table: "blocked_dates", method: "select", args: ["id", { count: "exact", head: true }] });
   });
 
   it("fetchMyBlockedDatesCount returns 0 when the artist has no blocked dates", async () => {
