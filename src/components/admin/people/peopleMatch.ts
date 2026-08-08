@@ -11,7 +11,7 @@ export function isValidEmail(email: string): boolean {
 export function parseEmails(text: string): string[] {
   const out: string[] = [];
   const seen = new Set<string>();
-  for (const raw of text.split(/[\s,]+/)) {
+  for (const raw of text.split(/[\s,;]+/)) {
     const token = raw.trim();
     if (!token) continue;
     const key = token.toLowerCase();

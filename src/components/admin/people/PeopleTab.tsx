@@ -1,14 +1,13 @@
 // src/components/admin/people/PeopleTab.tsx
-import { useState } from "react";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useMemo, useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { Search } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/features/auth/AuthContext";
-import {
-  fetchOrgInvitations, revokeInvitation, resendInvitation, acceptInviteUrl,
-} from "@/data/invitations";
+import { fetchOrgInvitations, acceptInviteUrl } from "@/data/invitations";
 import { useOrgMembers, useRemoveOrgMember, useSetOrgMemberRole } from "@/hooks/useOrgMembers";
+import { useInvitationMutations } from "@/hooks/useInvitationMutations";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -26,12 +25,11 @@ import { MemberRow } from "./MemberRow";
 /** One searchable people directory: invite bar on top, pending + members below. */
 export function PeopleTab() {
   const { currentOrg, user } = useAuth();
-  const qc = useQueryClient();
   const [search, setSearch] = useState("");
   const [bulkOpen, setBulkOpen] = useState(false);
   const [target, setTarget] = useState<{ user_id: string; email: string | null } | null>(null);
 
-  const { data: invites } = useQuery({
+  const { data: invites, isError: invitesError } = useQuery({
     queryKey: ["org-invitations", currentOrg?.id],
     enabled: !!currentOrg,
     queryFn: () => fetchOrgInvitations(supabase, currentOrg!.id),
@@ -39,23 +37,19 @@ export function PeopleTab() {
   const { data: members, isLoading, isError, error } = useOrgMembers(currentOrg?.id);
   const remove = useRemoveOrgMember(currentOrg?.id ?? "");
   const setRole = useSetOrgMemberRole(currentOrg?.id ?? "");
+  const { resend, revoke } = useInvitationMutations(currentOrg?.id);
 
-  const allMembers = members ?? [];
-  const allInvites = invites ?? [];
-  const pendingInvites = allInvites.filter((i) => i.status === "pending");
-  const filtered = filterPeople(search, allMembers, pendingInvites);
+  const allMembers = useMemo(() => members ?? [], [members]);
+  const pendingInvites = useMemo(
+    () => (invites ?? []).filter((i) => i.status === "pending"),
+    [invites],
+  );
+  const filtered = useMemo(
+    () => filterPeople(search, allMembers, pendingInvites),
+    [search, allMembers, pendingInvites],
+  );
   const hasSearch = search.trim().length > 0;
 
-  const revoke = useMutation({
-    mutationFn: (id: string) => revokeInvitation(supabase, id),
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ["org-invitations"] }); toast.success("Invitation revoked"); },
-    onError: (e: Error) => toast.error(e?.message ?? "Could not revoke invitation"),
-  });
-  const resend = useMutation({
-    mutationFn: (id: string) => resendInvitation(supabase, id),
-    onSuccess: () => toast.success("Invitation re-sent"),
-    onError: (e: Error) => toast.error(e?.message ?? "Could not resend invitation"),
-  });
   const copyLink = async (token: string) => {
     try { await navigator.clipboard?.writeText(acceptInviteUrl(token)); toast.success("Invite link copied"); }
     catch { toast.error("Could not copy link"); }
@@ -81,6 +75,7 @@ export function PeopleTab() {
 
       {isLoading && <Skeleton className="h-10 w-full" />}
       {isError && <Alert variant="destructive"><AlertDescription>{(error as Error).message}</AlertDescription></Alert>}
+      {invitesError && <Alert variant="destructive"><AlertDescription>Failed to load pending invitations.</AlertDescription></Alert>}
 
       {showPending && (
         <Card>
@@ -115,7 +110,7 @@ export function PeopleTab() {
       )}
 
       {nothing && <p className="text-sm text-muted-foreground text-center py-6">No people match "{search.trim()}".</p>}
-      {!hasSearch && allMembers.length === 0 && !isLoading && (
+      {!hasSearch && allMembers.length === 0 && !isLoading && !isError && (
         <p className="text-sm text-muted-foreground text-center py-6">No members yet.</p>
       )}
 
