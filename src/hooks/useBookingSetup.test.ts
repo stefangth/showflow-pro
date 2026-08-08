@@ -36,7 +36,27 @@ describe("useBookingSetupStatus", () => {
     expect(result.current.status.doneCount).toBe(0);
   });
 
-  it("does not keep the slots step outstanding for an archived show with unset slots", async () => {
+  it("does not mark flow chosen when the org's own booking_flow row is inactive", async () => {
+    // Owning the row is not enough on its own: the flow must also be active.
+    seed({
+      app_settings: {
+        data: [{ key: "booking_flow", org_id: "org-1", value: { active: false } }],
+        error: null,
+      },
+      shows: { data: [], error: null },
+      show_dates: { data: [], error: null },
+      show_cast_eligibility: { data: [], error: null },
+      cast_city_priority: { data: [], error: null },
+    });
+    const { result } = renderHookWithProviders(() => useBookingSetupStatus("org-1"));
+    await waitFor(() => expect(result.current.isLoading).toBe(false));
+    expect(result.current.status.steps.find((s) => s.key === "flow")!.done).toBe(false);
+  });
+
+  it("counts an archived-only org as configured, so slots is not dragged outstanding", async () => {
+    // An archived show is excluded by activeShows (zero ACTIVE shows), but it still makes
+    // hasAnyShows true — the org is not blank. With no active shows left to slot, the slots
+    // step falls back to done rather than nagging an org that is simply between seasons.
     seed({
       app_settings: { data: [{ key: "booking_flow" }], error: null },
       shows: {

@@ -1111,6 +1111,47 @@ Deno.test("expire-offers: no reminder when artist_acceptance is false (even if e
   assertEquals(invokeCalls.some((c) => c.name === "send-transactional-email"), false);
 });
 
+// The gate is `!flow.active || !flow.artist_acceptance || !flow.expiry_reminder`. The
+// variants above cover the two flags; this covers `active`, the booking-flow master
+// switch: an org that switched automation off must not get expiry reminders even
+// when both `artist_acceptance` and `expiry_reminder` are otherwise on.
+Deno.test("expire-offers: no reminder when booking_flow.active is false (even with acceptance + reminder on)", async () => {
+  const ORG_ID = "org-1";
+  const dueBooking = {
+    id: "booking-1",
+    artist_id: "artist-1",
+    offer_expires_at: new Date(FIXED_NOW.getTime() + 12 * 3600 * 1000).toISOString(),
+    artists: { id: "artist-1", name: "Jo Performer", email: "jo@example.com", user_id: null },
+    show_dates: {
+      date: "2026-07-01",
+      custom: null,
+      show_id: "show-1",
+      city_id: "city-1",
+      shows: { program: "Ballet", sub_program: "Matinée" },
+    },
+  };
+  const { deps, invokeCalls } = makeFakeDeps({
+    now: FIXED_NOW,
+    tables: {
+      app_settings: [
+        { when: { key: "cron_secret" }, data: { value: CRON_SECRET } },
+        {
+          when: { key: "booking_flow" },
+          data: [{ org_id: ORG_ID, value: { active: false, artist_acceptance: true, expiry_reminder: true } }],
+        },
+      ],
+      organizations: { data: [{ id: ORG_ID }], error: null },
+      show_date_offer_tiers: { data: [], error: null },
+      bookings: { data: [dueBooking], error: null },
+    },
+    rpcs: { expire_soft_bookings: { data: null, error: null } },
+  });
+  const res = await handle(cronReq(), deps);
+  assertEquals(res.status, 200);
+  assertEquals((await res.json()).reminders_sent, 0);
+  assertEquals(invokeCalls.some((c) => c.name === "send-transactional-email"), false);
+});
+
 // ─── Milestone C — Task 12: auto-escalation of short tiers ───────────────────
 //
 // Runs inside the same per-tier scan as the manual escalation path, gated on
@@ -1475,6 +1516,60 @@ Deno.test("expire-offers: auto_escalate on an INACTIVE org does not auto-open, f
   const updateArg = tierUpdate!.args[0] as { escalation_notified_at?: string; closed_at?: string };
   assertEquals(updateArg.escalation_notified_at, FIXED_NOW.toISOString());
   assertEquals(updateArg.closed_at, undefined);
+});
+
+// The gate is `flow.active && flow.auto_escalate && activeOrgIds.has(orgId) && row.tier !== 99`.
+// This covers the master `active` switch (distinct from the org-suspension activeOrgIds
+// check above): a booking flow switched off (active: false) must suppress auto-escalation
+// even though the org itself is active and auto_escalate is on, falling through to the
+// same manual escalation path as an inactive org.
+Deno.test("expire-offers: booking_flow active=false does not auto-escalate, falls through to manual", async () => {
+  const bookings = [
+    { status: "cancelled", offer_tier: 1, offer_expires_at: null },
+    { status: "suggested", offer_tier: 1, offer_expires_at: "2026-05-01T00:00:00Z" }, // expired
+  ];
+  const { deps, calls, invokeCalls } = makeFakeDeps({
+    tables: {
+      app_settings: [
+        { when: { key: "cron_secret" }, data: { value: CRON_SECRET } },
+        // Booking flow is switched off for this org, even though auto_escalate is ON.
+        { when: { key: "booking_flow" }, data: [{ org_id: SHOW_DATE.org_id, value: { auto_escalate: true, active: false } }] },
+      ],
+      // The org itself IS active — proves this gate is the flow's own `active` switch,
+      // not the pre-existing org-suspension activeOrgIds check (see the INACTIVE-org
+      // test above it).
+      organizations: { data: [{ id: SHOW_DATE.org_id }], error: null },
+      show_date_offer_tiers: { data: [OPEN_TIER], error: null },
+      show_dates: { data: SHOW_DATE, error: null },
+      bookings: { data: bookings, error: null },
+      cast_city_priority: { data: [{ priority: 2 }], error: null }, // a next tier IS available
+      notifications: { data: null, error: null },
+      org_memberships: { data: [{ user_id: "admin-1" }], error: null },
+    },
+    rpcs: {
+      expire_soft_bookings: { data: null, error: null },
+      resolve_show_assignments: { data: [], error: null },
+    },
+    usersById: { "admin-1": { email: "admin@example.com" } },
+    now: FIXED_NOW,
+  });
+  const res = await handle(cronReq(), deps);
+  assertEquals(res.status, 200);
+  const body = await res.json();
+  // Auto-escalation gated off by the flow's active switch; manual path fires instead.
+  assertEquals(body.auto_escalated, 0);
+  assertEquals(body.escalations, 1);
+
+  // No open-offer-tier invoke: the auto branch was skipped because the flow is inactive.
+  const openCall = invokeCalls.find((c) => c.name === "open-offer-tier");
+  assertEquals(openCall, undefined);
+
+  // Manual escalation notification was produced (pre-PR behavior for this org).
+  const notifInsert = calls.find((c) => c.table === "notifications" && c.method === "insert");
+  assertExists(notifInsert);
+  const rows = notifInsert!.args[0] as Array<{ type: string }>;
+  assertEquals(rows.length, 1);
+  assertEquals(rows[0].type, "cast_escalation_requested");
 });
 
 // ─── Task 5: ladder-aware auto-escalation next-tier lookup ───────────────────

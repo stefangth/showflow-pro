@@ -22,6 +22,8 @@ export interface BookingFlow {
   producer_confirmation: boolean;
   confirmation_digest: boolean;
   understudy_promotion: boolean;
+  /** Master switch: false = the whole flow is paused (the "off" preset). Defaults true. */
+  active: boolean;
   reference_field: ReferenceField;
 }
 
@@ -38,10 +40,11 @@ export const BOOKING_FLOW_DEFAULTS: BookingFlow = {
   producer_confirmation: true,
   confirmation_digest: true,
   understudy_promotion: true,
+  active: true,
   reference_field: { source: "show" },
 };
 
-type FlowFields = Omit<BookingFlow, "reference_field">;
+type FlowFields = Omit<BookingFlow, "reference_field" | "active">;
 
 export function normalizeBookingFlow(value: unknown): BookingFlow {
   const raw =
@@ -50,6 +53,8 @@ export function normalizeBookingFlow(value: unknown): BookingFlow {
       : {};
   const bool = (key: keyof FlowFields): boolean =>
     typeof raw[key] === "boolean" ? (raw[key] as boolean) : (BOOKING_FLOW_DEFAULTS[key] as boolean);
+
+  const active = typeof raw.active === "boolean" ? raw.active : BOOKING_FLOW_DEFAULTS.active;
 
   const delivery: OfferDelivery = raw.offer_delivery === "immediate" ? "immediate" : "digest";
 
@@ -73,6 +78,7 @@ export function normalizeBookingFlow(value: unknown): BookingFlow {
     producer_confirmation: bool("producer_confirmation"),
     confirmation_digest: bool("confirmation_digest"),
     understudy_promotion: bool("understudy_promotion"),
+    active,
     reference_field,
   };
   if (!flow.artist_acceptance) flow.producer_confirmation = true;

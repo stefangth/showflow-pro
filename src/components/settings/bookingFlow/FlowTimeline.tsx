@@ -78,7 +78,9 @@ export function FlowTimeline({
   // either "Soft booked" or "Confirmed" (index 1) depending on producer_confirmation.
   // Deriving from the same helper the rail uses keeps this badge from drifting out
   // of sync with FlowRail's "Resulting lifecycle" chips.
-  const nextStageChip = lifecycleChips(flow)[1];
+  // Off state returns a single "Off" chip, so there is no index-1 stage; fall back to it
+  // (the whole timeline is disabled in the off state, so this badge is just greyed context).
+  const nextStageChip = lifecycleChips(flow)[1] ?? lifecycleChips(flow)[0];
   const nextStageBadgeVariant = nextStageChip.tone === "amber" ? "hold" : "confirmed";
 
   return (

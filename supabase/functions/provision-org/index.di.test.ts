@@ -102,3 +102,79 @@ Deno.test("provision-org: falls back to registry defaults when default_entitleme
   assertEquals(rows.find((r) => r.feature === "booking_flow")?.enabled, true);
   assertEquals(rows.find((r) => r.feature === "hire_orders")?.enabled, false);
 });
+
+// ---------------------------------------------------------------------------
+// Task 5: explicit `entitlements` request body seeds those exact rows
+// (validated against FEATURE_KEYS, falls back to default_entitlements /
+// registry defaults for any key it omits), and enabling booking_flow at
+// creation time also seeds an inactive (off) booking_flow app_settings row.
+// ---------------------------------------------------------------------------
+
+Deno.test("provision-org: explicit entitlements body seeds those exact rows", async () => {
+  const { deps, calls } = makeFakeDeps({
+    authUser: { id: "u1" },
+    tables: { platform_admins: { data: { user_id: "u1" }, error: null } },
+    rpcs: { provision_org: { data: { org_id: "org-9", token: "tok-9" }, error: null } },
+    usersById: { u2: { email: "a@acme.com" } },
+  });
+  const res = await handle(
+    makeRequest({
+      headers: { Authorization: "Bearer x" },
+      body: { ...body, entitlements: { booking_flow: false, hire_orders: true } },
+    }),
+    deps,
+  );
+  assertEquals(res.status, 200);
+
+  const insertCall = calls.find((c) => c.table === "org_entitlements" && c.method === "insert");
+  assertEquals(insertCall !== undefined, true);
+  const rows = insertCall!.args[0] as Array<{ org_id: string; feature: string; enabled: boolean }>;
+  assertEquals(rows.length, FEATURE_KEYS.length);
+  assertEquals(rows.every((r) => r.org_id === "org-9"), true);
+  assertEquals(rows.find((r) => r.feature === "booking_flow")?.enabled, false);
+  assertEquals(rows.find((r) => r.feature === "hire_orders")?.enabled, true);
+});
+
+Deno.test("provision-org: enabling booking_flow seeds an inactive (off) flow policy", async () => {
+  const { deps, calls } = makeFakeDeps({
+    authUser: { id: "u1" },
+    tables: { platform_admins: { data: { user_id: "u1" }, error: null } },
+    rpcs: { provision_org: { data: { org_id: "org-9", token: "tok-9" }, error: null } },
+    usersById: { u2: { email: "a@acme.com" } },
+  });
+  const res = await handle(
+    makeRequest({
+      headers: { Authorization: "Bearer x" },
+      body: { ...body, entitlements: { booking_flow: true } },
+    }),
+    deps,
+  );
+  assertEquals(res.status, 200);
+
+  const upsertCall = calls.find((c) => c.table === "app_settings" && c.method === "upsert");
+  assertEquals(upsertCall !== undefined, true);
+  const row = upsertCall!.args[0] as { org_id: string; key: string; value: { active: boolean } };
+  assertEquals(row.org_id, "org-9");
+  assertEquals(row.key, "booking_flow");
+  assertEquals(row.value.active, false);
+});
+
+Deno.test("provision-org: leaving booking_flow disabled does not seed an off-flow policy", async () => {
+  const { deps, calls } = makeFakeDeps({
+    authUser: { id: "u1" },
+    tables: { platform_admins: { data: { user_id: "u1" }, error: null } },
+    rpcs: { provision_org: { data: { org_id: "org-9", token: "tok-9" }, error: null } },
+    usersById: { u2: { email: "a@acme.com" } },
+  });
+  const res = await handle(
+    makeRequest({
+      headers: { Authorization: "Bearer x" },
+      body: { ...body, entitlements: { booking_flow: false } },
+    }),
+    deps,
+  );
+  assertEquals(res.status, 200);
+
+  const upsertCall = calls.find((c) => c.table === "app_settings" && c.method === "upsert");
+  assertEquals(upsertCall, undefined);
+});

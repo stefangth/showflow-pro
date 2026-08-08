@@ -859,6 +859,39 @@ Deno.test("send-offer-digest: immediate-delivery org with no unstamped bookings 
   assertEquals(body.digests_sent, 0);
 });
 
+// ─────────────────────────────────────────────────────────────────────────────
+// booking_flow.active gate: the engine paused for this org → no digest at all
+//
+// `if (!flow.active) continue;` runs immediately after resolveBookingFlow, before
+// the hour gate and before processedOrgs.push. An inactive org must receive no
+// digest even when its digest hour matches now AND it has a pending suggested
+// offer sitting there — the whole booking engine is paused for that org.
+// ─────────────────────────────────────────────────────────────────────────────
+
+Deno.test("send-offer-digest: booking_flow.active=false → org paused, no digest even at its configured hour with a pending offer", async () => {
+  const pending = [{
+    id: "b1", artist_id: "a1",
+    artists: { id: "a1", name: "Jo", email: "jo@x.com" },
+    show_dates: { date: "2026-06-10", shows: { program: "P", sub_program: "S" }, cities: { name: "Berlin" } },
+  }];
+  const settings = [
+    ...APP_SETTINGS_SEED,
+    {
+      when: { key: "booking_flow" },
+      data: [{ org_id: ORG_1, value: { active: false, artist_acceptance: true, offer_delivery: "digest" } }],
+    },
+  ];
+  // BERLIN_19_CEST matches the seeded offer_digest_hour_berlin=19 — if the active
+  // gate were missing, this org would otherwise be processed and send a digest.
+  const { deps, invokeCalls } = baseDeps({ app_settings: settings, bookings: { data: pending, error: null } }, BERLIN_19_CEST);
+  const res = await handle(makeRequest({ headers: cronOK }), deps);
+  const body = await res.json();
+  assertEquals(res.status, 200);
+  // The org never reaches processedOrgs, so the handler reports the skipped shape.
+  assertEquals(body.skipped, true, "an inactive booking_flow org never reaches the hour gate at all");
+  assertEquals(invokeCalls.filter((c) => c.name === "send-transactional-email").length, 0);
+});
+
 Deno.test("send-offer-digest: direct-mode org is skipped", async () => {
   const pending = [{
     id: "b1", artist_id: "a1",

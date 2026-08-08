@@ -97,6 +97,12 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
   // (an unauthorized caller still gets 401/403, not a flow probe) and BEFORE any
   // pipeline work.
   const flow = await resolveBookingFlow(deps.admin, showDate.org_id)
+  // Booking flow off: the whole engine is paused, so even a manual "open next tier" is
+  // refused until an admin turns the flow back on (the cron auto-open/escalation callers
+  // already gate on flow.active before reaching here, so this only blocks manual callers).
+  if (!flow.active) {
+    return json({ error: 'Booking flow is off for this organization.' }, 409)
+  }
   if (!flow.artist_acceptance) {
     return json({ error: 'Direct booking mode: offers are disabled for this organization.' }, 409)
   }

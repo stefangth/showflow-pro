@@ -1163,6 +1163,44 @@ Deno.test("tier-at-risk-watcher: disabling at_risk_alerts clears the org's exist
   assertEquals(inArgs[1].includes("notif-stale"), true);
 });
 
+Deno.test("tier-at-risk-watcher: org with booking_flow.active=false produces no notifications", async () => {
+  // Same shape as the at_risk_alerts=false test above, but this time only the
+  // top-level `active` flag is off (at_risk_alerts and artist_acceptance are both
+  // true) — proving the `!flow.active` arm of the gate on its own, independent of
+  // the other two conditions in `if (!flow.active || !flow.at_risk_alerts || !flow.artist_acceptance) continue`.
+  const ORG_ID = "00000000-0000-0000-0000-000000000001"; // makeShowDate's default org
+  const tierId = "tier-inactive";
+  const sdId = "sd-inactive";
+
+  const { deps, calls } = makeFakeDeps({
+    tables: {
+      app_settings: [
+        { when: { key: "cron_secret" }, data: { value: "secret-val" } },
+        {
+          when: { key: "booking_flow" },
+          data: [{ org_id: ORG_ID, value: { active: false, at_risk_alerts: true, artist_acceptance: true } }],
+        },
+      ],
+      show_date_offer_tiers: { data: [makeTier(tierId, sdId)], error: null },
+      notifications: { data: [], error: null },
+      show_dates: { data: makeShowDate(sdId, "MusicalA", "MainShow"), error: null },
+      // Would be at-risk (1 pending < 3 required) if the org's booking flow were active.
+      bookings: { data: [{ status: "suggested" }], error: null },
+    },
+    rpcs: {
+      resolve_show_assignments: { data: [{ producer_user_id: "prod-1" }], error: null },
+    },
+  });
+
+  const res = await handle(makeRequest({ headers: CRON_OK }), deps);
+  assertEquals(res.status, 200);
+  const body = await res.json();
+  assertEquals(body.at_risk_count, 0, "org with booking_flow.active=false must not be counted at-risk");
+
+  const insertCalls = calls.filter((c) => c.table === "notifications" && c.method === "insert");
+  assertEquals(insertCalls.length, 0, "no notification inserted when the org's booking flow is inactive");
+});
+
 // ── Task 6: module gate — per-org booking_flow entitlement (checkFeature) ─────
 //
 // Unlike the other cron callers, this handler never calls getActiveOrgs — it

@@ -64,8 +64,8 @@ describe("normalizeBookingFlow", () => {
 });
 
 describe("presets", () => {
-  it("classic preset equals the defaults (minus reference_field)", () => {
-    const { reference_field: _ref, ...defaults } = BOOKING_FLOW_DEFAULTS;
+  it("classic preset equals the defaults (minus reference_field and active)", () => {
+    const { reference_field: _ref, active: _active, ...defaults } = BOOKING_FLOW_DEFAULTS;
     expect(BOOKING_FLOW_PRESETS.classic).toEqual(defaults);
   });
 
@@ -266,5 +266,51 @@ describe("describeAuditEntry", () => {
     expect(
       describeAuditEntry({ key: "booking_flow", old_value: BOOKING_FLOW_DEFAULTS, new_value: BOOKING_FLOW_DEFAULTS }),
     ).toBe("No effective change");
+  });
+});
+
+describe("active master switch", () => {
+  it("defaults active=true when the key is absent (legacy/no-row parity)", () => {
+    expect(normalizeBookingFlow(null).active).toBe(true);
+    expect(normalizeBookingFlow({}).active).toBe(true);
+  });
+  it("round-trips active=false", () => {
+    expect(normalizeBookingFlow({ active: false }).active).toBe(false);
+  });
+  it("matchPreset returns 'off' iff inactive, regardless of fields", () => {
+    expect(matchPreset(normalizeBookingFlow({ active: false }))).toBe("off");
+    expect(matchPreset(normalizeBookingFlow(null))).toBe("classic"); // active + classic fields
+  });
+  it("applyPreset('off') deactivates but preserves fields; a real preset reactivates", () => {
+    const base = normalizeBookingFlow(null);
+    const off = applyPreset(base, "off");
+    expect(off.active).toBe(false);
+    expect(off.auto_open_tier1).toBe(base.auto_open_tier1); // fields preserved
+    const back = applyPreset(off, "fasttrack");
+    expect(back.active).toBe(true);
+    expect(back.auto_escalate).toBe(true); // fasttrack field applied
+  });
+});
+
+describe("preview helpers reflect the off state", () => {
+  const times = { windowHours: 48, offerDigestHour: 19, confirmationDigestHour: 20 };
+  const offFlow = applyPreset(BOOKING_FLOW_DEFAULTS, "off"); // classic fields, active:false
+
+  it("lifecycleChips collapses to a single Off chip when inactive", () => {
+    expect(lifecycleChips(offFlow)).toEqual([{ label: "Off", tone: "neutral" }]);
+    // sanity: an active flow still yields the full lifecycle (not the off branch)
+    expect(lifecycleChips(BOOKING_FLOW_DEFAULTS).length).toBeGreaterThan(1);
+  });
+
+  it("inPracticeRows says nothing runs when inactive", () => {
+    const rows = inPracticeRows(offFlow, times);
+    expect(rows.map((r) => r.who)).toEqual(["Artist", "Producer", "Automation"]);
+    expect(rows.every((r) => /off|nothing/i.test(r.text))).toBe(true);
+  });
+
+  it("flowPreviewRows shows a single paused row when inactive", () => {
+    const rows = flowPreviewRows(offFlow, times);
+    expect(rows).toHaveLength(1);
+    expect(rows[0].text).toMatch(/paused/i);
   });
 });

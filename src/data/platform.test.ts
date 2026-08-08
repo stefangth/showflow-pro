@@ -36,6 +36,29 @@ describe("data/platform", () => {
     expect(fake.calls).toContainEqual({ table: "fn:provision-org", method: "invoke", args: [{ name: "Acme", slug: "acme", admin_email: "a@acme.com", role: "admin", app_origin: "https://app.test" }] });
   });
 
+  it("provisionOrg forwards features as the entitlements body", async () => {
+    const fake = createFakeSupabase({ "fn:provision-org": { data: { org_id: "o9" }, error: null } });
+    await provisionOrg(fake as never, {
+      name: "Acme",
+      slug: "acme",
+      adminEmail: "a@acme.com",
+      appOrigin: "https://app.test",
+      features: { booking_flow: true, hire_orders: false },
+    });
+    expect(fake.calls).toContainEqual({
+      table: "fn:provision-org",
+      method: "invoke",
+      args: [{
+        name: "Acme",
+        slug: "acme",
+        admin_email: "a@acme.com",
+        role: "admin",
+        app_origin: "https://app.test",
+        entitlements: { booking_flow: true, hire_orders: false },
+      }],
+    });
+  });
+
   it("setOrgStatus updates organizations.status by id", async () => {
     const fake = createFakeSupabase({ organizations: { data: null, error: null } });
     await setOrgStatus(fake as never, "o1", "suspended");

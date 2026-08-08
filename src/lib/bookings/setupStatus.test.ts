@@ -1,8 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { resolveCoverage, computeBookingSetupStatus, type LadderCoverageInputs } from "./setupStatus";
 
-const emptyCoverage: LadderCoverageInputs = { futurePairs: [], showPriorities: [], cityPriorities: [] };
-
 describe("resolveCoverage", () => {
   it("covers a pair when the city list has a tier-1 cast", () => {
     const r = resolveCoverage({
@@ -53,7 +51,18 @@ describe("resolveCoverage", () => {
 });
 
 describe("computeBookingSetupStatus", () => {
-  const base = { flowChosen: true, shows: [], timingChosen: true, coverage: emptyCoverage };
+  const doneCoverage: LadderCoverageInputs = {
+    futurePairs: [{ showId: "s1", cityId: "c1" }],
+    showPriorities: [{ showId: "s1", cityId: "c1", castId: "k1", priority: 1 }],
+    cityPriorities: [],
+  };
+  const base = {
+    flowChosen: true,
+    hasAnyShows: true,
+    shows: [{ main_cast_slots: 4, understudy_slots: 1 }],
+    timingChosen: true,
+    coverage: doneCoverage,
+  };
 
   it("orders the five steps and blocks only ladder/slots", () => {
     const s = computeBookingSetupStatus(base);
@@ -68,6 +77,66 @@ describe("computeBookingSetupStatus", () => {
     expect(s.complete).toBe(true);
     expect(s.canOffer).toBe(true);
     expect(s.doneCount).toBe(5);
+  });
+
+  it("a fresh empty org reads 0 of 5 (no shows, no dates)", () => {
+    const status = computeBookingSetupStatus({
+      flowChosen: false,
+      hasAnyShows: false,
+      shows: [],
+      timingChosen: false,
+      coverage: { futurePairs: [], showPriorities: [], cityPriorities: [] },
+    });
+    expect(status.doneCount).toBe(0);
+    expect(status.steps.find((s) => s.key === "slots")!.done).toBe(false);
+    expect(status.steps.find((s) => s.key === "ladder")!.done).toBe(false);
+    expect(status.steps.find((s) => s.key === "eligibility")!.done).toBe(false);
+  });
+
+  it("slots/ladder/eligibility flip to done once real data covers them", () => {
+    const status = computeBookingSetupStatus({
+      flowChosen: true,
+      hasAnyShows: true,
+      shows: [{ main_cast_slots: 4, understudy_slots: 1 }],
+      timingChosen: true,
+      coverage: {
+        futurePairs: [{ showId: "s1", cityId: "c1" }],
+        showPriorities: [{ showId: "s1", cityId: "c1", castId: "k1", priority: 1 }],
+        cityPriorities: [],
+      },
+    });
+    expect(status.complete).toBe(true);
+  });
+
+  it("an established org with shows but no upcoming dates stays complete (between seasons)", () => {
+    // hasAnyShows is true (the org has real shows, though none are active/upcoming) and there
+    // are no future (show,city) pairs to cover, so ladder/eligibility are done, not outstanding.
+    const status = computeBookingSetupStatus({
+      flowChosen: true,
+      hasAnyShows: true,
+      shows: [{ main_cast_slots: 4, understudy_slots: 1 }],
+      timingChosen: true,
+      coverage: { futurePairs: [], showPriorities: [], cityPriorities: [] },
+    });
+    expect(status.steps.find((s) => s.key === "ladder")!.done).toBe(true);
+    expect(status.steps.find((s) => s.key === "eligibility")!.done).toBe(true);
+    expect(status.complete).toBe(true);
+  });
+
+  it("a blank org with no shows is not vacuously complete even with empty coverage", () => {
+    // Same empty coverage as above, but hasAnyShows is false → the data-driven steps stay
+    // outstanding so a never-configured org reads 0-of-N rather than falsely complete.
+    const status = computeBookingSetupStatus({
+      flowChosen: true,
+      hasAnyShows: false,
+      shows: [],
+      timingChosen: true,
+      coverage: { futurePairs: [], showPriorities: [], cityPriorities: [] },
+    });
+    expect(status.steps.find((s) => s.key === "slots")!.done).toBe(false);
+    expect(status.steps.find((s) => s.key === "ladder")!.done).toBe(false);
+    expect(status.steps.find((s) => s.key === "eligibility")!.done).toBe(false);
+    expect(status.complete).toBe(false);
   });
 
   it("slots outstanding when any show has a null count", () => {
@@ -92,7 +161,7 @@ describe("computeBookingSetupStatus", () => {
 
   it("treats unread inputs as outstanding (fail-safe)", () => {
     const s = computeBookingSetupStatus({
-      flowChosen: false, shows: undefined, timingChosen: false, coverage: undefined,
+      flowChosen: false, hasAnyShows: false, shows: undefined, timingChosen: false, coverage: undefined,
     });
     expect(s.doneCount).toBe(0);
     expect(s.canOffer).toBe(false);

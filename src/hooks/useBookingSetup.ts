@@ -1,6 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { fetchShowsWithSlots, fetchOwnedSettingKeys } from "@/data/settings";
+import { fetchShowsWithSlots, fetchOwnedSettingKeys, fetchBookingFlow } from "@/data/settings";
 import { fetchLadderCoverageInputs } from "@/data/eligibility";
 import { activeShows } from "@/lib/settings";
 import { toDateKey } from "@/lib/dates";
@@ -44,12 +44,22 @@ export function useBookingSetupStatus(orgId: string | null): {
     enabled: !!orgId,
     queryFn: () => fetchLadderCoverageInputs(supabase, { orgId: orgId!, today }),
   });
+  const flow = useQuery({
+    queryKey: ["app-settings", "booking-flow", orgId],
+    enabled: !!orgId,
+    queryFn: () => fetchBookingFlow(supabase, orgId),
+  });
 
-  const isLoading = !!orgId && (owned.isLoading || shows.isLoading || coverage.isLoading);
-  const isError = owned.isError || shows.isError || coverage.isError;
+  const isLoading = !!orgId && (owned.isLoading || shows.isLoading || coverage.isLoading || flow.isLoading);
+  const isError = owned.isError || shows.isError || coverage.isError || flow.isError;
   const ownedSet = owned.data;
   const status = computeBookingSetupStatus({
-    flowChosen: ownedSet ? ownedSet.has("booking_flow") : false,
+    // The org must own its own booking_flow row AND have that flow currently active
+    // (inheriting the classic default, or an inactive flow, is not a choice).
+    flowChosen: ownedSet ? ownedSet.has("booking_flow") && flow.data?.active === true : false,
+    // Any show of any status (active/archived/draft) marks the org as "not blank"; the raw
+    // shows.data is unfiltered, unlike the activeShows() slice passed as `shows` below.
+    hasAnyShows: Array.isArray(shows.data) && shows.data.length > 0,
     // Only active shows are counted (the spec: "every active show") — an archived or draft
     // show with unset slots must never keep this step outstanding. `activeShows` preserves
     // undefined while shows.data hasn't loaded yet, preserving the fail-safe.

@@ -222,4 +222,33 @@ describe("BookingFlowTab", () => {
       expect(screen.queryByPlaceholderText("Default subject")).not.toBeInTheDocument();
     });
   });
+
+  describe("off state", () => {
+    it("shows the Off state: banner + Off tile pressed when the flow is inactive", () => {
+      renderWithProviders(<Harness orgFlow={{ ...BOOKING_FLOW_DEFAULTS, active: false }} />);
+
+      expect(screen.getByText(/booking flow is off/i)).toBeInTheDocument();
+      expect(screen.getByRole("button", { name: /^Off\b/i })).toHaveAttribute("aria-pressed", "true");
+    });
+
+    it("selecting a real preset from Off turns the flow active", () => {
+      renderWithProviders(<Harness orgFlow={{ ...BOOKING_FLOW_DEFAULTS, active: false }} />);
+
+      fireEvent.click(screen.getByRole("button", { name: /^Classic\b/i }));
+
+      expect(screen.queryByText(/booking flow is off/i)).not.toBeInTheDocument();
+      expect(screen.getByRole("button", { name: /^Classic\b/i })).toHaveAttribute("aria-pressed", "true");
+    });
+
+    it("keeps the rail Save available in the off state so the Off choice is persistable", () => {
+      // Regression: the off state must NOT lock the rail, or both the rail Save and the
+      // page-level Save (hidden for booking-scoped dirt) vanish and Off can never be saved.
+      renderWithProviders(
+        <Harness orgFlow={{ ...BOOKING_FLOW_DEFAULTS, active: false }} dirtyKeys={["booking_flow"]} />,
+      );
+
+      expect(screen.getByRole("button", { name: /^Save/i })).toBeInTheDocument();
+      expect(screen.getByText(/previewing unsaved draft/i)).toBeInTheDocument();
+    });
+  });
 });

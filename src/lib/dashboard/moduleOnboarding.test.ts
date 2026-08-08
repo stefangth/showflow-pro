@@ -10,7 +10,7 @@ it("has one contribution per FeatureKey (no orphans, no gaps)", () => {
 });
 
 it("booking step keys cover exactly the engine's step keys", () => {
-  const engineKeys = computeBookingSetupStatus({ flowChosen: false, shows: [], timingChosen: false, coverage: null })
+  const engineKeys = computeBookingSetupStatus({ flowChosen: false, hasAnyShows: false, shows: [], timingChosen: false, coverage: null })
     .steps.map((s) => s.key).sort();
   expect(Object.keys(bookingOnboarding.steps).sort()).toEqual(engineKeys);
 });
