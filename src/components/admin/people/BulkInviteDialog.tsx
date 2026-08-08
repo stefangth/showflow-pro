@@ -21,8 +21,12 @@ export interface BulkInviteDialogProps {
   onOpenChange: (o: boolean) => void;
   members: OrgMember[];
   invites: Invitation[];
-  /** Duplicate detection is blind until the invites query settles; block sends until then. */
-  invitesLoading?: boolean;
+  /**
+   * Duplicate detection is blind until BOTH the members and invites queries have
+   * settled successfully; block sends until then so an already-a-member or
+   * already-invited address can't slip through an empty list.
+   */
+  dedupeUnready?: boolean;
 }
 
 type Kind = "invalid" | "member" | "pending" | "ok";
@@ -31,7 +35,7 @@ type Kind = "invalid" | "member" | "pending" | "ok";
 const SEND_CONCURRENCY = 5;
 
 /** Paste multiple emails, pick one role, invite the clean ones; skips are reported. */
-export function BulkInviteDialog({ open, onOpenChange, members, invites, invitesLoading = false }: BulkInviteDialogProps) {
+export function BulkInviteDialog({ open, onOpenChange, members, invites, dedupeUnready = false }: BulkInviteDialogProps) {
   const { currentOrg } = useAuth();
   const qc = useQueryClient();
   const [text, setText] = useState("");
@@ -129,7 +133,7 @@ export function BulkInviteDialog({ open, onOpenChange, members, invites, invites
         </div>
         <DialogFooter>
           <Button variant="ghost" onClick={() => onOpenChange(false)} disabled={sending}>Cancel</Button>
-          <Button onClick={submit} disabled={sending || okCount === 0 || invitesLoading}>
+          <Button onClick={submit} disabled={sending || okCount === 0 || dedupeUnready}>
             {sending ? "Inviting…" : `Invite ${okCount || ""}`.trim()}
           </Button>
         </DialogFooter>
