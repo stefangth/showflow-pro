@@ -112,7 +112,14 @@ function EmailTemplateEditorWorkspace({ template, readOnly }: WorkspaceProps) {
             size="sm"
             disabled={readOnly}
             onClick={() => {
-              setCopyDraft({});
+              // copyDraft is seeded from the org-wide email_copy map, so clearing it
+              // wholesale would wipe every other template's copy. Reset only this
+              // template's copy keys, plus the shared theme this editor also edits.
+              setCopyDraft((prev) => {
+                const next = { ...prev };
+                for (const field of template.fields) delete next[field.key];
+                return next;
+              });
               setThemeDraft({});
             }}
           >

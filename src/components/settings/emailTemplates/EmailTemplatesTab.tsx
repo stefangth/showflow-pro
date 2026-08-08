@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { generatePath, Link } from "react-router-dom";
 import { useAuth } from "@/features/auth/AuthContext";
@@ -39,12 +39,13 @@ export function EmailTemplatesTab({ readOnly, isSuperAdmin }: EmailTemplatesTabP
   const { currentOrg } = useAuth();
   const orgId = currentOrg?.id ?? null;
   const { data: settings, error, isError, isFetching, isLoading, isSuccess, refetch } = useQuery({
-    queryKey: ["email-templates", "settings", orgId],
+    queryKey: ["app-settings", "email-templates", orgId],
     queryFn: () => fetchEmailTemplateSettings(supabase, orgId),
     enabled: Boolean(orgId),
   });
   const [previewOpen, setPreviewOpen] = useState(false);
   const [preview, setPreview] = useState<PreviewState>({ title: "", html: "", loading: false });
+  const previewRun = useRef(0);
 
   const visibleTemplates = EMAIL_TEMPLATE_COVERAGE.filter((template) => isVisibleTemplate(template, isSuperAdmin));
   const helperText = readOnly
@@ -55,6 +56,9 @@ export function EmailTemplatesTab({ readOnly, isSuperAdmin }: EmailTemplatesTabP
 
   const handlePreview = async (template: EmailTemplateCoverage) => {
     if (!settings) return;
+    // Guard against a slower earlier request resolving after a newer one and
+    // overwriting the dialog with the wrong template's HTML.
+    const runId = ++previewRun.current;
     setPreviewOpen(true);
     setPreview({ title: template.displayName, html: "", loading: true });
     try {
@@ -65,10 +69,12 @@ export function EmailTemplatesTab({ readOnly, isSuperAdmin }: EmailTemplatesTabP
           themeOverride: settings.theme,
         },
       });
+      if (runId !== previewRun.current) return;
       if (error) throw error;
       const html = data?.templates?.[0]?.html;
       setPreview({ title: template.displayName, html: typeof html === "string" ? html : "<p>No preview available.</p>", loading: false });
     } catch (error) {
+      if (runId !== previewRun.current) return;
       const message = error instanceof Error ? error.message : "Unknown error";
       setPreview({ title: template.displayName, html: `<p>Preview failed: ${message}</p>`, loading: false });
     }

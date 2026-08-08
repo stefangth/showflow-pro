@@ -67,16 +67,19 @@ export function EmailShell({
       <Head>
         <meta name="color-scheme" content="light" />
         <meta name="supported-color-schemes" content="light" />
-        <Font
-          fontFamily="Geist"
-          fallbackFontFamily="Arial"
-          webFont={{
-            url: "https://cdn.jsdelivr.net/fontsource/fonts/geist@latest/latin-400-normal.woff2",
-            format: "woff2",
-          }}
-          fontWeight={400}
-          fontStyle="normal"
-        />
+        {[400, 500, 600, 700].map((weight) => (
+          <Font
+            key={weight}
+            fontFamily="Geist"
+            fallbackFontFamily="Arial"
+            webFont={{
+              url: `https://cdn.jsdelivr.net/fontsource/fonts/geist@5.3.0/latin-${weight}-normal.woff2`,
+              format: "woff2",
+            }}
+            fontWeight={weight}
+            fontStyle="normal"
+          />
+        ))}
       </Head>
       <Preview>{previewText}</Preview>
       <Body style={{ margin: "0", backgroundColor: colors.pageBg, fontFamily: theme.base.bodyFamily }}>

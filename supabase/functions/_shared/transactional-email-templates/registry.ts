@@ -94,8 +94,8 @@ type SubjectResolver = (data: TemplateData, copy: EmailCopy) => string
 
 const SUBJECT_RESOLVERS = {
   'offer-immediate': (data, copy) => applyEmailTokens(copy['offer-immediate.subject'], {
-    referenceLabel: String(data.referenceLabel),
-    date: String(data.date),
+    referenceLabel: String(data.referenceLabel || copy['offer-immediate.showFallback']),
+    date: String(data.date || '?'),
   }),
   'artist-offer-digest': (data, copy) => {
     const count = offerCount(data)
@@ -151,6 +151,17 @@ function legacySubject(value: unknown): string | undefined {
   return typeof value === 'string' && value.trim() !== '' ? value.trim() : undefined
 }
 
+/** Only the selected template's copy keys, so a component never carries the full
+ *  multi-template copy dictionary in its props (keys are all `${templateName}.field`). */
+function copyForTemplate(copy: EmailCopy, templateName: string): EmailCopy {
+  const prefix = `${templateName}.`
+  const subset: Record<string, string> = {}
+  for (const [key, value] of Object.entries(copy)) {
+    if (key.startsWith(prefix)) subset[key] = value
+  }
+  return subset as EmailCopy
+}
+
 /**
  * The sole bridge from registry metadata and editable presentation settings to
  * component props and subject. Both delivery and preview use this path so the
@@ -181,7 +192,7 @@ export function resolveTemplatePresentation(
     subject: copyIsExplicit ? subject : legacySubject(options.legacySubjectOverride) ?? subject,
     props: {
       ...data,
-      _emailCopy: copy,
+      _emailCopy: copyForTemplate(copy, templateName),
       _emailTheme: theme,
       _emailFamily: template.family,
       ...(isEmailRoleKey(options.highlightRole) ? { _highlightRole: options.highlightRole } : {}),

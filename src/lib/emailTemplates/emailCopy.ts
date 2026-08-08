@@ -216,23 +216,28 @@ export function compactEmailCopy(draft?: EmailCopyOverride | null): Partial<Reco
   return compacted;
 }
 
-/** Translate the one-release legacy settings shape into the flattened registry. */
+/** Translate the one-release legacy settings shape into the flattened registry.
+ *  A single legacy field fans out to every matching copy variant, so templates
+ *  whose copy is split into singular/plural or updates/confirmed keys (which have
+ *  no flat `.subject`/`.intro`/`.ctaLabel`) still receive the override instead of
+ *  silently dropping it. */
 export function legacyEmailOverridesToCopy(value: unknown): Partial<Record<EmailCopyKey, string>> {
   if (!isRecord(value)) return {};
-  const fields = {
-    subject: "subject",
-    intro: "intro",
-    cta_label: "ctaLabel",
-    footer: "footer",
-  } as const;
+  const fields: Record<string, readonly string[]> = {
+    subject: ["subject", "subjectSingular", "subjectPlural", "subjectUpdates", "subjectConfirmed"],
+    intro: ["intro", "introSingular", "introPlural", "introUpdates", "introConfirmed"],
+    cta_label: ["ctaLabel", "ctaLabelSingular", "ctaLabelPlural"],
+    footer: ["footer"],
+  };
   const converted: Partial<Record<EmailCopyKey, string>> = {};
   for (const [template, legacy] of Object.entries(value)) {
     if (!EMAIL_TEMPLATE_KEYS.includes(template as EmailTemplateKey) || !isRecord(legacy)) continue;
-    for (const [legacyField, copyField] of Object.entries(fields)) {
-      const copyKey = `${template}.${copyField}`;
+    for (const [legacyField, copyFields] of Object.entries(fields)) {
       const candidate = legacy[legacyField];
-      if (isCopyKey(copyKey) && typeof candidate === "string" && candidate.trim() !== "") {
-        converted[copyKey] = candidate;
+      if (typeof candidate !== "string" || candidate.trim() === "") continue;
+      for (const copyField of copyFields) {
+        const copyKey = `${template}.${copyField}`;
+        if (isCopyKey(copyKey)) converted[copyKey] = candidate;
       }
     }
   }
