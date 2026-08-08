@@ -23,9 +23,7 @@ export default tseslint.config(
   // Build output and the v8 coverage HTML report (both gitignored — ESLint does
   // not read .gitignore). `npm run test:coverage` writes coverage/, whose vendored
   // istanbul report scripts otherwise trip --max-warnings 0 on the next lint.
-  // Workflow scripts run in the orchestration runtime (top-level `return`,
-  // injected globals like `agent`/`parallel`); they are not app/browser code.
-  { ignores: ["dist", "coverage", "scripts/*.workflow.mjs"] },
+  { ignores: ["dist", "coverage"] },
   // App, tests, e2e, scripts — browser runtime, Vite fast refresh.
   {
     extends: [js.configs.recommended, ...tseslint.configs.recommended],

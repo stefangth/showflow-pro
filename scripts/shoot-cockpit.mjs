@@ -5,6 +5,18 @@
 //   node scripts/shoot-cockpit.mjs
 //
 // Requires the dev server on :8080 and Playwright chromium installed.
+//
+// The reference under public/ref/ is DEV-ONLY and gitignored (it embeds the
+// design prototype + a copy of React UMD and must never ship in public/). It is
+// not present in a fresh checkout — regenerate it before running this pipeline:
+//   1. Save the design project's "Show Date Cockpit - Prototype.dc.html" +
+//      "support.js" locally.
+//   2. mkdir -p public/ref/assets and public/ref/_ds/<design-system-id>/
+//   3. Copy support.js and node_modules/react{,-dom}/umd/*.production.min.js
+//      into public/ref/, mirror src/index.css :root tokens into the DS
+//      colors_and_type.css, drop an icon sprite in assets/icons.svg, and wrap
+//      the prototype's <head> to load ./react.js, ./react-dom.js, ./support.js.
+// (Ask the assistant to re-run the scaffold — it has the exact recipe.)
 import { chromium } from "playwright";
 import { mkdirSync } from "node:fs";
 import { fileURLToPath } from "node:url";
