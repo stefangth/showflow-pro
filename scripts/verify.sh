@@ -5,7 +5,14 @@
 #   verify.sh --fast   Docker-free inner loop: lint, mirrors, typecheck (app +
 #                      tools), build, unit tests + coverage, Deno checks + tests.
 #   verify.sh --full   The pre-PR-to-main gate: everything in --fast, then the
-#                      Docker-gated layers — pgTAP (test:db) and Playwright e2e.
+#                      Docker-gated layers — a fresh DB reset (see below), pgTAP
+#                      (test:db) and Playwright e2e.
+#
+# --full RESETS the local database (wipes dev data + reseeds) before pgTAP. pgTAP
+# runs against the live local DB without resetting it and several suites assert on
+# pristine seed, so a dev DB dirtied by prior e2e/manual runs would otherwise fail
+# pgTAP on data rather than code. This matches CI (always a fresh stack); e2e below
+# already mutates the DB, so --full was never data-preserving.
 #
 # Runs every layer, CONTINUES past failures, prints a summary, and exits non-zero
 # if any layer failed OR was skipped. A skipped or failed layer never reads as a
@@ -62,6 +69,11 @@ run "deno:test"        npm run --silent test:functions
 if [ "$full" -eq 1 ]; then
   if docker info >/dev/null 2>&1; then
     run "local:up"          bash scripts/local-up.sh
+    # Reset to a clean, seeded DB so pgTAP is hermetic (see header). This WIPES
+    # local dev data. pgTAP runs next against the fresh state; e2e runs after and
+    # is free to mutate it.
+    echo "  ⚠  Resetting the local database (wipes dev data, reseeds) so pgTAP is hermetic…"
+    run "db reset"          npm run --silent local:reset
     run "db (pgTAP)"        npm run --silent test:db
     run "e2e (playwright)"  npm run --silent test:e2e
   else

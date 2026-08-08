@@ -1,6 +1,24 @@
 project_id = "epweartpzwvcasrzyueh"
 
 # ─────────────────────────────────────────────────────────────────────────────
+# Auth — LOCAL STACK ONLY (config.toml configures the local `supabase start`
+# stack and preview branches; production auth is configured in the Supabase
+# dashboard and is NOT touched by this file — the deploy only reads the
+# [functions.*] blocks below, see deploy-functions.yml).
+#
+# The local app + Playwright e2e server run on :8080 (vite config;
+# e2e/playwright.config.ts baseURL). GoTrue only honours an auth redirect_to
+# that matches site_url or an entry in additional_redirect_urls; anything else
+# silently falls back to site_url. We declare :8080 explicitly so recovery /
+# invite / confirmation links land on the running app — instead of inheriting
+# the CLI's built-in default (127.0.0.1:3000), which drifts between CLI versions
+# and dead-ended the reset-password e2e on a port with nothing on it.
+# ─────────────────────────────────────────────────────────────────────────────
+[auth]
+site_url = "http://127.0.0.1:8080"
+additional_redirect_urls = ["http://localhost:8080", "http://127.0.0.1:8080"]
+
+# ─────────────────────────────────────────────────────────────────────────────
 # Edge function JWT verification — pinned per function.
 #
 # `supabase functions deploy` (.github/workflows/deploy-functions.yml) applies
