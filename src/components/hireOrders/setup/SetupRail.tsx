@@ -10,7 +10,6 @@ import { TermsStep } from "./TermsStep";
 import { CountersignStep } from "./CountersignStep";
 import { ProducerWaitingCard } from "./ProducerWaitingCard";
 import { useRailDismissed } from "@/components/setup/useRailDismissed";
-import { useSetupRailVisible } from "./useSetupRailVisible";
 
 const TITLES: Record<SetupStepKey, string> = {
   letterhead: "Letterhead",
@@ -41,13 +40,16 @@ const HINTS: Record<SetupStepKey, { todo: string; done: string }> = {
  * writes through the same data path as the Settings cards.
  */
 export function SetupRail({ orgId, initialStep }: { orgId: string | null; initialStep?: SetupStepKey }) {
-  const { visible } = useSetupRailVisible(orgId);
   const canEditSettings = useCan("edit_hire_order_settings");
   const { status } = useHireOrderSetupStatus(orgId);
   const [, dismiss] = useRailDismissed("hireOrderSetup", orgId);
   const [open, setOpen] = useState<SetupStepKey | null>(initialStep ?? null);
 
-  if (!visible) return null;
+  // No self-hide on dismissed/complete: this rail is mounted only inside SetupChecklistSheet
+  // (gated by its `open` prop), and whether to SHOW the entry to it is the caller's job via
+  // useSetupRailVisible. Gating here too meant a step opened from the dashboard (which uses a
+  // different dismiss key) mounted a blank Sheet once hireOrderSetup was dismissed. Mirrors
+  // BookingSetupRail, which has never self-hidden.
   if (!canEditSettings) return <ProducerWaitingCard steps={status.steps} />;
 
   const toggle = (key: SetupStepKey) => setOpen((cur) => (cur === key ? null : key));

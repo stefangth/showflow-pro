@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { fireEvent, screen, waitFor } from "@testing-library/react";
+import { fireEvent, screen } from "@testing-library/react";
 import { renderWithProviders } from "@/test/renderWithProviders";
 import { createFakeSupabase, type TableSeed } from "@/test/supabaseFake";
 
@@ -46,86 +46,17 @@ describe("SetupRail", () => {
     expect(screen.getByText("Waiting on your admin").className).toContain("var(--amber-600)");
   });
 
-  it("renders nothing once the org is fully set up", async () => {
-    // Array-form seed, matched on the `key` eq(): a single-object seed can't tell
-    // three different app_settings keys apart (the fake doesn't filter by plain
-    // eq()), so all three rows seeded together would collide, every query would
-    // resolve to the first (letterhead) row, and the assertion below would pass
-    // for the wrong reason -- the rail stuck loading-then-null forever, not
-    // because setup was genuinely complete. See useHireOrderSetup.test.ts for the
-    // same fix on the same underlying fake behavior.
-    seedClient({
-      app_settings: [
-        {
-          when: { key: "hire_order_letterhead" },
-          data: [{ key: "hire_order_letterhead", org_id: "org-1", value: { legal_name: "Aurora GmbH", address_lines: [], registration_line: "" } }],
-        },
-        {
-          when: { key: "hire_order_terms" },
-          data: [{ key: "hire_order_terms", org_id: "org-1", value: { templates: [{ id: "t1", name: "Standard", clauses: [{ title: "Fee", body: "14 days." }] }], default_id: "t1" } }],
-        },
-        {
-          when: { key: "hire_order_countersign" },
-          data: [{ key: "hire_order_countersign", org_id: "org-1", value: { mode: "electronic" } }],
-        },
-      ],
-    });
-    const { container, queryClient } = renderWithProviders(<SetupRail orgId="org-1" />);
-    // The component renders null in BOTH the initial-loading state and the
-    // genuinely-complete state, so asserting on an empty container right away
-    // would pass trivially before the queries ever resolve. Wait for all three
-    // underlying reads to settle first, then check the container is STILL empty.
-    await waitFor(() => {
-      expect(queryClient.getQueryState(["app-settings", "hire_order_letterhead", "org-1"])?.status).toBe("success");
-      expect(queryClient.getQueryState(["app-settings", "hire_order_terms", "org-1"])?.status).toBe("success");
-      expect(queryClient.getQueryState(["app-settings", "hire_order_countersign", "exists", "org-1"])?.status).toBe("success");
-    });
-    expect(container).toBeEmptyDOMElement();
-  });
-
-  it("renders nothing when previously dismissed for this org", async () => {
+  // SetupRail no longer self-hides on dismissed / complete / no-org / producer-nothing-
+  // blocks: that visibility decision belongs to useSetupRailVisible (see
+  // useSetupRailVisible.test.ts, which covers all four). This rail is a dumb content surface
+  // mounted only inside SetupChecklistSheet's `open`, so it must always render its steps --
+  // otherwise a step opened from the dashboard (a different dismiss key) blanks the Sheet.
+  it("still renders its steps when the rail was previously dismissed (never blanks the Sheet)", async () => {
     localStorage.setItem("showflow.hireOrderSetup.hidden.org-1", "true");
-    const { container } = renderWithProviders(<SetupRail orgId="org-1" />);
-    await waitFor(() => expect(container).toBeEmptyDOMElement());
-  });
-
-  it("shows the rail again after switching to an org that never dismissed it", async () => {
-    // The route does not remount on switchOrg, so a dismissal read once at mount
-    // would hide the rail for the rest of the session on every other org, i.e. on
-    // exactly the newly provisioned org that needs it.
-    localStorage.setItem("showflow.hireOrderSetup.hidden.org-1", "true");
-    const { container, rerender } = renderWithProviders(<SetupRail orgId="org-1" />);
-    await waitFor(() => expect(container).toBeEmptyDOMElement());
-
-    rerender(<SetupRail orgId="org-2" />);
+    renderWithProviders(<SetupRail orgId="org-1" />);
     expect(await screen.findByText("Letterhead")).toBeInTheDocument();
-  });
-
-  it("renders nothing for a producer once nothing blocks issuing", async () => {
-    // Letterhead and terms set, no countersign row. Countersign never blocks issuing,
-    // so telling a producer an admin must "finish setup before anything can be sent"
-    // would be false and would never clear.
-    canRef.value = false;
-    seedClient({
-      app_settings: [
-        {
-          when: { key: "hire_order_letterhead" },
-          data: [{ key: "hire_order_letterhead", org_id: "org-1", value: { legal_name: "Aurora GmbH", address_lines: [], registration_line: "" } }],
-        },
-        {
-          when: { key: "hire_order_terms" },
-          data: [{ key: "hire_order_terms", org_id: "org-1", value: { templates: [{ id: "t1", name: "Standard", clauses: [{ title: "Fee", body: "14 days." }] }], default_id: "t1" } }],
-        },
-        { when: { key: "hire_order_countersign" }, data: [] },
-      ],
-    });
-    const { container, queryClient } = renderWithProviders(<SetupRail orgId="org-1" />);
-    await waitFor(() => {
-      expect(queryClient.getQueryState(["app-settings", "hire_order_letterhead", "org-1"])?.status).toBe("success");
-      expect(queryClient.getQueryState(["app-settings", "hire_order_terms", "org-1"])?.status).toBe("success");
-      expect(queryClient.getQueryState(["app-settings", "hire_order_countersign", "exists", "org-1"])?.status).toBe("success");
-    });
-    expect(container).toBeEmptyDOMElement();
+    expect(screen.getByText("Terms template")).toBeInTheDocument();
+    expect(screen.getByText("Countersigning")).toBeInTheDocument();
   });
 
   it("styles the blocking chip with the design-system amber tokens", async () => {
