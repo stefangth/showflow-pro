@@ -39,6 +39,33 @@ Deno.test("exists + slot allowed: mints magiclink and sends exactly one magic-li
   assertEquals(params.options.redirectTo.includes("/auth/callback?redirect=%2Fdashboard"), true);
 });
 
+Deno.test("safe redirect_path is threaded into the callback redirect", async () => {
+  const { deps, calls } = makeFakeDeps({
+    authUsersByEmail: { "user@x.com": { id: "uid-1" } },
+    rpcs: { claim_login_link_slot: { data: true } },
+  });
+  const res = await handle(post({ email: "user@x.com", app_origin: CANON, redirect_path: "/accept-invite?token=abc" }), deps);
+  assertEquals(res.status, 200);
+  const gen = calls.find((c) => c.table === "auth.admin.generateLink");
+  const params = gen!.args[0] as { options: { redirectTo: string } };
+  assertEquals(
+    params.options.redirectTo.includes(`/auth/callback?redirect=${encodeURIComponent("/accept-invite?token=abc")}`),
+    true,
+  );
+});
+
+Deno.test("unsafe redirect_path (protocol-relative) is clamped to /dashboard", async () => {
+  const { deps, calls } = makeFakeDeps({
+    authUsersByEmail: { "user@x.com": { id: "uid-1" } },
+    rpcs: { claim_login_link_slot: { data: true } },
+  });
+  const res = await handle(post({ email: "user@x.com", app_origin: CANON, redirect_path: "//evil.example/x" }), deps);
+  assertEquals(res.status, 200);
+  const gen = calls.find((c) => c.table === "auth.admin.generateLink");
+  const params = gen!.args[0] as { options: { redirectTo: string } };
+  assertEquals(params.options.redirectTo.includes("/auth/callback?redirect=%2Fdashboard"), true);
+});
+
 Deno.test("no account: 200 ok, no email, no throttle write", async () => {
   const { deps, calls, invokeCalls } = makeFakeDeps({
     authUsersByEmail: {},

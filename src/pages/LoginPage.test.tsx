@@ -60,6 +60,19 @@ describe("LoginPage magic-link action", () => {
     expect(toastSuccess).toHaveBeenCalledWith(expect.stringMatching(/if that email exists/i));
   });
 
+  it("forwards a safe ?redirect= (accept-invite bounce) to requestLoginLink", async () => {
+    requestLoginLink.mockResolvedValueOnce(undefined);
+    renderWithProviders(
+      <MemoryRouter initialEntries={["/login?redirect=%2Faccept-invite%3Ftoken%3Dx"]}>
+        <LoginPage />
+      </MemoryRouter>,
+    );
+    fireEvent.change(screen.getByLabelText(/email/i), { target: { value: "user@x.com" } });
+    fireEvent.click(screen.getByRole("button", { name: /email me a sign-in link/i }));
+    await waitFor(() => expect(requestLoginLink).toHaveBeenCalled());
+    expect(requestLoginLink.mock.calls[0][3]).toBe("/accept-invite?token=x");
+  });
+
   it("rejected request still shows the same success toast (no enumeration)", async () => {
     requestLoginLink.mockRejectedValueOnce(new Error("boom"));
     renderPage();

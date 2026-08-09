@@ -13,6 +13,16 @@ describe("requestLoginLink", () => {
     });
   });
 
+  it("forwards a redirect_path when given, and omits the key when not", async () => {
+    const fake = createFakeSupabase({ "fn:send-login-link": { data: { ok: true }, error: null } });
+    await requestLoginLink(fake as never, "user@x.com", "https://app.showflow.pro", "/accept-invite?token=x");
+    expect(fake.calls).toContainEqual({
+      table: "fn:send-login-link",
+      method: "invoke",
+      args: [{ email: "user@x.com", app_origin: "https://app.showflow.pro", redirect_path: "/accept-invite?token=x" }],
+    });
+  });
+
   it("throws on a transport error", async () => {
     const fake = createFakeSupabase({ "fn:send-login-link": { data: null, error: { message: "network" } } });
     await expect(

@@ -2,10 +2,25 @@ import { preflight, json } from "../_shared/http.ts";
 import { realDeps, type Deps } from "../_shared/deps.ts";
 import { safeAppOrigin } from "../_shared/appOrigin.ts";
 
-type Body = { email?: string; app_origin?: string };
+type Body = { email?: string; app_origin?: string; redirect_path?: string };
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const COOLDOWN_SECONDS = 60;
 
+/** Clamp the caller-supplied post-login destination to a safe in-app relative path;
+ *  anything absolute / protocol-relative / missing falls back to the dashboard. Mirrors
+ *  safeRelativeRedirect in src/features/auth/resetPassword.ts (AuthCallbackPage re-clamps
+ *  this same value before navigating, so this is defense-in-depth, not the only guard). */
+function safeRedirectPath(p: string | undefined): string {
+  return p && p.startsWith("/") && !p.startsWith("//") ? p : "/dashboard";
+}
+
+// Note on the no-enumeration guarantee: it holds at the RESPONSE-SHAPE level — every branch
+// below returns an identical `200 {ok:true}` (or an identical generic 500) whether or not the
+// address has an account. Wall-clock timing does differ (a non-account returns after one indexed
+// lookup; a real account additionally claims a slot, mints a link and sends mail), and that is a
+// deliberately accepted residual: the endpoint is per-email throttled, the account set (org
+// invitees/members) is low-sensitivity, and a constant-time floor would tax every genuine login
+// with only imperfect protection. Revisit with a timing floor if the threat model tightens.
 export async function handle(req: Request, deps: Deps): Promise<Response> {
   if (req.method === "OPTIONS") return preflight();
   try {
@@ -34,7 +49,7 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
     }
     if (allowed !== true) return json({ ok: true }); // within cooldown; no second email, no leak
 
-    const redirectTo = `${appOrigin}/auth/callback?redirect=${encodeURIComponent("/dashboard")}`;
+    const redirectTo = `${appOrigin}/auth/callback?redirect=${encodeURIComponent(safeRedirectPath(body?.redirect_path))}`;
     const { data, error } = await deps.admin.auth.admin.generateLink({
       type: "magiclink",
       email,

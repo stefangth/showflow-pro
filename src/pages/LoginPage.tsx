@@ -77,8 +77,12 @@ export default function LoginPage() {
     }
     setLinkSending(true);
     const sent = 'If that email exists, a sign-in link is on its way.';
+    // Thread the same validated ?redirect= the password path honors (line 60), so an
+    // accept-invite bounce completes the invitation instead of landing on /dashboard.
+    const redirect = searchParams.get('redirect');
+    const safeRedirect = redirect && redirect.startsWith('/') && !redirect.startsWith('//') ? redirect : undefined;
     try {
-      await requestLoginLink(supabase, trimmed, window.location.origin);
+      await requestLoginLink(supabase, trimmed, window.location.origin, safeRedirect);
       toast.success(sent);
     } catch {
       // Keep the confirmation oracle-safe: identical whether or not the address exists,
