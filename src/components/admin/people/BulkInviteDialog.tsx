@@ -63,7 +63,7 @@ export function BulkInviteDialog({ open, onOpenChange, members, invites, dedupeH
   const okCount = rows.filter((r) => r.kind === "ok").length;
 
   const submit = async () => {
-    if (!currentOrg || okCount === 0) return;
+    if (!currentOrg || okCount === 0 || dedupeUnready) return;
     setSending(true);
     const okRows = rows.filter((r) => r.kind === "ok");
     let sent = 0;
