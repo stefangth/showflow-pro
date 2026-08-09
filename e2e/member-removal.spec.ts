@@ -25,10 +25,10 @@ test.describe("Member removal", () => {
   test("admin removes a member via the Members tab (DB is the oracle)", async ({ page }) => {
     const member = await findUserByEmail(MEMBER_EMAIL);
     await loginAsAndAwaitDashboard(page, ADMIN_EMAIL, ADMIN_PASSWORD);
-    await page.goto("/admin?tab=members");
+    await page.goto("/admin?tab=members"); // legacy deep link, normalizes to the People pane
 
-    // The member has no display name, so MembersTab shows the email on both the name and
-    // sub-text lines — match the first.
+    // The member has no display name, so the People pane's member row shows the email on
+    // both the name and sub-text lines — match the first.
     await expect(page.getByText(MEMBER_EMAIL).first()).toBeVisible({ timeout: 15_000 });
     // The shared bootstrap org has many members, so scope the Remove click to the member's
     // own row (grandparent of the email text), then confirm in the dialog.
