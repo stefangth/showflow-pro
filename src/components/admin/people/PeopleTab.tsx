@@ -51,8 +51,14 @@ export function PeopleTab() {
   const hasSearch = search.trim().length > 0;
   // Duplicate detection needs both lists; if either query is still loading or has
   // errored (a state that never self-resolves), hold invites so a real duplicate
-  // can't slip through an empty members/invites list.
-  const dedupeUnready = isLoading || isError || invitesLoading || invitesError;
+  // can't slip through an empty members/invites list. The hint explains the disabled
+  // Invite button; an error state persists, so say so rather than "still checking".
+  const dedupeHint = (isLoading || invitesLoading)
+    ? "Checking existing people…"
+    : (isError || invitesError)
+    ? "Can't verify duplicates right now, so new invites are paused."
+    : null;
+  const dedupeUnready = !!dedupeHint;
 
   const copyLink = async (token: string) => {
     try { await navigator.clipboard?.writeText(acceptInviteUrl(token)); toast.success("Invite link copied"); }
@@ -73,7 +79,7 @@ export function PeopleTab() {
           <InviteBar
             members={allMembers}
             invites={pendingInvites}
-            dedupeUnready={dedupeUnready}
+            dedupeHint={dedupeHint}
             onOpenBulk={() => setBulkOpen(true)}
             onResend={(id) => resend.mutate(id)}
             resendPendingId={resend.isPending ? (resend.variables ?? null) : null}
