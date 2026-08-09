@@ -82,6 +82,10 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
         .select("user_id")
         .eq("org_id", body.org_id)
         .eq("user_id", existingUserId as string)
+        // org_memberships holds one row PER ROLE, so a multi-role member returns
+        // several rows for (org_id, user_id); cap at one to avoid PostgREST's
+        // "multiple rows returned" error on .maybeSingle() (same as _shared/auth.ts).
+        .limit(1)
         .maybeSingle();
       if (membership) {
         return json({ error: "That email already belongs to a member of this organization." }, 409);
