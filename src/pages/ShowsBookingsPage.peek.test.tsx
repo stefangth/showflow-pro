@@ -73,7 +73,20 @@ vi.mock("@/components/bookings/setup/BookingSetupRail", () => ({
   BookingSetupRail: () => <div data-testid="booking-setup-rail" />,
 }));
 vi.mock("@/hooks/useBookingSetup", () => ({
-  useBookingSetupStatus: () => ({ status: { complete: false, doneCount: 0, totalCount: 5 }, coverage: undefined, isLoading: false, isError: false }),
+  // Full steps array: useModuleOnboardingRail composes the banner rail off status.steps.
+  useBookingSetupStatus: () => ({
+    status: {
+      steps: [
+        { key: "flow", done: false, block: null },
+        { key: "slots", done: false, block: "filling" },
+        { key: "ladder", done: false, block: "offers" },
+        { key: "eligibility", done: false, block: null },
+        { key: "timing", done: false, block: null },
+      ],
+      doneCount: 0, totalCount: 5, canOffer: false, complete: false,
+    },
+    coverage: undefined, isLoading: false, isError: false,
+  }),
 }));
 vi.mock("@/hooks/useHireOrders", () => ({
   useDatesReadyForHireOrder: () => ({ data: undefined }),

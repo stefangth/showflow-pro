@@ -11,7 +11,6 @@ import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { Popover, PopoverContent } from '@/components/ui/popover';
 import { PopoverAnchor } from '@radix-ui/react-popover';
 import { RowPeek } from '@/components/bookings/RowPeek';
@@ -27,10 +26,11 @@ import { EntityCalendar } from '@/components/calendar/EntityCalendar';
 import { applySort, inTimeframe } from '@/components/filters/filterUtils';
 import { ArtistBookingsView } from '@/components/bookings/ArtistBookingsView';
 import { FirstOfferCard } from '@/components/bookings/setup/FirstOfferCard';
-import { BookingSetupRail } from '@/components/bookings/setup/BookingSetupRail';
-import { useBookingSetupRailVisible } from '@/components/bookings/setup/useBookingSetupRailVisible';
-import { useBookingSetupStatus } from '@/hooks/useBookingSetup';
+import { DashboardSetupRail } from '@/components/dashboard/firstRun/DashboardSetupRail';
+import { useModuleOnboardingRail } from '@/components/setup/useModuleOnboardingRail';
+import { SetupChecklistSheet } from '@/components/setup/SetupChecklistSheet';
 import { useRailDismissed } from '@/components/setup/useRailDismissed';
+import type { ComposedStep } from '@/lib/dashboard/types';
 import { ShowDateDetailSheet } from '@/components/shows/ShowDateDetailSheet';
 import { ShowDateFormDialog } from '@/components/shows/ShowDateFormDialog';
 import { NewOrderWizard } from '@/components/hireOrders/NewOrderWizard';
@@ -232,13 +232,13 @@ function ProducerShowsBookings() {
   // the header button can never offer to reopen a rail that would render nothing
   // actionable (the divergence a separately-computed `dismissed && !complete` used to
   // allow, e.g. for a non-editor once offers are already possible).
-  const { visible: railVisible, reinvocable: bookingSetupReinvocable } = useBookingSetupRailVisible(
-    bookingOn ? orgId : null,
-  );
+  const rail = useModuleOnboardingRail('booking_flow', bookingOn ? orgId : null);
+  const railVisible = bookingOn && rail.show;
   const [, , undismissBookingSetup] = useRailDismissed('bookingSetup', bookingOn ? orgId : null);
-  const { status: bookingSetupStatus } = useBookingSetupStatus(bookingOn ? orgId : null);
-  const showSetupReinvoke = bookingOn && bookingSetupReinvocable;
+  const showSetupReinvoke = bookingOn && rail.reinvocable;
   const [setupSheetOpen, setSetupSheetOpen] = useState(false);
+  const [setupStep, setSetupStep] = useState<string | undefined>(undefined);
+  const openSetupAt = (step: ComposedStep) => { setSetupStep(step.key); setSetupSheetOpen(true); };
   // Hire-order CTA: module gate + generate capability + which dates are ready.
   const hireOrdersOn = useFeature('hire_orders');
   const canGenerateHireOrders = useCan('generate_hire_orders');
@@ -438,23 +438,26 @@ function ProducerShowsBookings() {
         />
       )}
 
-      {/* Uncramped from a fixed 340px side column (Task 3): a full-width callout
-          that opens the checklist in a Sheet, so the table below always gets
-          the full page width. */}
+      {/* The dashboard-style setup rail, module-scoped, near the top of the page. Its step
+          buttons open the inline checklist Sheet at that step (the "do it here" surface);
+          Hide dismisses it on this surface only. */}
       {railVisible && (
-        <Card className="border-dashed">
-          <CardContent className="flex flex-wrap items-center justify-between gap-3 py-4">
-            <div>
-              <p className="font-display text-sm font-semibold">Get bookings running</p>
-              <p className="text-xs text-muted-foreground">
-                {bookingSetupStatus.doneCount} of {bookingSetupStatus.totalCount} steps done. These are what the first offer needs.
-              </p>
-            </div>
-            <Button size="sm" variant="outline" onClick={() => setSetupSheetOpen(true)}>
-              Open checklist
-            </Button>
-          </CardContent>
-        </Card>
+        <DashboardSetupRail
+          layout="banner"
+          eyebrow={rail.eyebrow}
+          title={rail.title}
+          body={rail.body}
+          complete={false}
+          steps={rail.steps}
+          rules={rail.rules}
+          offFooters={rail.offFooters}
+          progressLabel={rail.progressLabel}
+          progressFilled={rail.progressFilled}
+          progressTotal={rail.progressTotal}
+          onStepAction={openSetupAt}
+          onClose={rail.dismiss}
+          onDismiss={rail.dismiss}
+        />
       )}
 
       <div className="min-w-0 space-y-6">
@@ -731,16 +734,13 @@ function ProducerShowsBookings() {
         </Popover>
       )}
 
-      <Sheet open={setupSheetOpen} onOpenChange={setSetupSheetOpen}>
-        <SheetContent side="right" className="w-full overflow-y-auto sm:max-w-2xl">
-          <SheetHeader className="text-left">
-            <SheetTitle className="font-display text-base">Setup checklist</SheetTitle>
-          </SheetHeader>
-          <div className="mt-4">
-            <BookingSetupRail orgId={bookingOn ? orgId : null} />
-          </div>
-        </SheetContent>
-      </Sheet>
+      <SetupChecklistSheet
+        feature="booking_flow"
+        orgId={bookingOn ? orgId : null}
+        open={setupSheetOpen}
+        onOpenChange={setSetupSheetOpen}
+        initialStep={setupStep}
+      />
 
       <ShowDateDetailSheet
         showDateId={activeShowDateId}
