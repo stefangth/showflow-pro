@@ -175,7 +175,7 @@ export default function HireOrdersPage() {
             <Button
               variant="outline"
               className="gap-1.5"
-              onClick={() => { undismissSetup(); setSetupSheetOpen(true); }}
+              onClick={() => { setSetupStep(undefined); undismissSetup(); setSetupSheetOpen(true); }}
             >
               <ListChecks className="h-4 w-4" />
               Setup checklist

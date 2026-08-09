@@ -98,6 +98,9 @@ export function useModuleOnboardingRail(feature: FeatureKey, orgId: string | nul
   const total = composed.steps.length;
   const railHeader = MODULE_ONBOARDING[feature].railHeader;
   const viz = feature === "hire_orders" ? hireViz : bookingViz;
+  // One label word drives both the eyebrow and the progress rail so they never disagree,
+  // matching the dashboard's own non-editor "Org setup · N of M" convention (firstRun.ts).
+  const setupWord = canEdit ? "Set up" : "Org setup";
 
   return {
     show: viz.visible,
@@ -112,14 +115,14 @@ export function useModuleOnboardingRail(feature: FeatureKey, orgId: string | nul
     // Role-aware header: an editor gets the action-framed module copy; a viewer who cannot
     // edit (a default producer) gets an honest "an admin finishes these" explanation
     // instead of a "Get X running" header whose step buttons are all hidden from them.
-    eyebrow: canEdit ? "Set up" : "Org setup",
+    eyebrow: setupWord,
     title: railHeader.title,
     body: canEdit
       ? railHeader.body
       : "Only an admin can finish these. They are listed so you know why the module is not ready yet.",
     progressFilled: filled,
     progressTotal: total,
-    progressLabel: `Set up · ${filled} of ${total}`,
+    progressLabel: `${setupWord} · ${filled} of ${total}`,
     dismiss,
   };
 }

@@ -73,6 +73,12 @@ vi.mock("@/hooks/useBookingFlow", () => ({
 const { featureFlags } = vi.hoisted(() => ({ featureFlags: { value: {} as Record<string, boolean> } }));
 vi.mock("@/hooks/useEntitlements", () => ({
   useFeature: (key: string) => featureFlags.value[key] ?? false,
+  // The setup rail's write gate reads the raw entitlement set (no fail-open), so mirror
+  // featureFlags into a Set for `features.has(...)`.
+  useEntitlements: () => ({
+    features: new Set(Object.keys(featureFlags.value).filter((k) => featureFlags.value[k])),
+    isLoading: false,
+  }),
 }));
 vi.mock("@/hooks/useCapabilities", () => ({
   useCan: () => true,

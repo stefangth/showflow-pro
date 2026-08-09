@@ -64,6 +64,9 @@ it("explains, for a viewer who cannot edit, that an admin finishes the setup", a
   await waitFor(() => expect(result.current.progressTotal).toBe(3));
   expect(result.current.eyebrow).toBe("Org setup");
   expect(result.current.body).toMatch(/only an admin/i);
+  // Progress label follows the same role-aware word as the eyebrow (no "Org setup" on the
+  // left with "Set up · N of M" on the right).
+  expect(result.current.progressLabel).toMatch(/^Org setup · \d+ of 3$/);
 });
 
 it("never surfaces a sibling module's off-state footer (the scoped module is always entitled here)", async () => {
