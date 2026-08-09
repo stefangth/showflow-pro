@@ -73,8 +73,9 @@ describe("pre-push hook (.githooks/pre-push)", () => {
     // `set -uo pipefail` (no `-e`), so without an explicit `|| exit` a failing
     // scan (exit 1) falls through to verify:fast and the hook exits with
     // verify:fast's code — silently pushing the secret. Assert the guard, not
-    // just the string. (Guards the review finding on PR #229.)
-    expect(code).toMatch(/scan:secrets\b[^\n]*\|\|\s*exit\b/);
+    // just the string. (Guards the review finding on PR #229.) Matches either
+    // the npm alias (`scan:secrets`) or the direct `scan-secrets.mjs --prepush`.
+    expect(code).toMatch(/scan[:-]secrets\b[^\n]*\|\|\s*exit\b/);
   });
 });
 
