@@ -1,6 +1,6 @@
 import { format } from "date-fns";
 import { Check, Settings as SettingsIcon } from "lucide-react";
-import type { AppRole } from "@/config/app.config";
+import { type AppRole, roleLabel } from "@/config/app.config";
 import type { OrgMember } from "@/data/members";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -29,7 +29,7 @@ export function MemberRow({ member: m, isSelf, onSetRole, setRolePending, onRequ
       </div>
       <div className="flex items-center gap-1 shrink-0">
         <Badge variant="secondary" className="text-xs">Active</Badge>
-        {m.roles.map((r) => <Badge key={r} variant="secondary" className="text-xs capitalize">{r}</Badge>)}
+        {m.roles.map((r) => <Badge key={r} variant="secondary" className="text-xs">{roleLabel(r)}</Badge>)}
         <Popover>
           <PopoverTrigger asChild>
             <Button size="sm" variant="outline" className="h-7 px-2 text-xs" aria-label={`Edit roles for ${m.email}`}>
@@ -44,10 +44,10 @@ export function MemberRow({ member: m, isSelf, onSetRole, setRolePending, onRequ
                   key={r}
                   disabled={setRolePending}
                   onClick={() => onSetRole({ userId: m.user_id, role: r, action: has ? "remove" : "add" })}
-                  className="flex items-center w-full px-2 py-1.5 text-sm rounded hover:bg-muted text-left capitalize disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="flex items-center w-full px-2 py-1.5 text-sm rounded hover:bg-muted text-left disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   <Check className={cn("h-4 w-4 mr-2", has ? "opacity-100" : "opacity-0")} />
-                  {r}
+                  {roleLabel(r)}
                 </button>
               );
             })}

@@ -1,5 +1,5 @@
 import { describe, it, expect, afterEach } from "vitest";
-import { BOOKING_ENGINE_DEFAULTS, ROUTES, ROUTE_FEATURES, requiredFeatureForPath } from "./app.config";
+import { BOOKING_ENGINE_DEFAULTS, ROLE_LABELS, ROUTES, ROUTE_FEATURES, requiredFeatureForPath, roleLabel } from "./app.config";
 
 describe("config/app.config", () => {
   it("exposes the exact dynamic email template editor route", () => {
@@ -13,6 +13,23 @@ describe("config/app.config", () => {
       confirmation_digest_hour_berlin: 20,
       resend_from_address: "ShowFlow <noreply@showflow.pro>",
     });
+  });
+});
+
+describe("roleLabel", () => {
+  it("labels the producer role 'Production Team' (covers producers + project managers)", () => {
+    expect(roleLabel("producer")).toBe("Production Team");
+    expect(ROLE_LABELS.producer).toBe("Production Team");
+  });
+
+  it("keeps admin and artist as their capitalized names", () => {
+    expect(roleLabel("admin")).toBe("Admin");
+    expect(roleLabel("artist")).toBe("Artist");
+  });
+
+  it("falls back to the raw value for an unknown role string", () => {
+    expect(roleLabel("super-admin")).toBe("super-admin");
+    expect(roleLabel("")).toBe("");
   });
 });
 

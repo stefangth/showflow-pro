@@ -119,7 +119,7 @@ describe("UserDetailSheet", () => {
   it("swaps the role: remove then add, exactly one success toast", async () => {
     renderWithProviders(<UserDetailSheet user={BASE_USER} open onOpenChange={() => {}} />);
     fireEvent.click(screen.getByRole("combobox", { name: "Role for Acme" }));
-    fireEvent.click(await screen.findByRole("option", { name: "producer" }));
+    fireEvent.click(await screen.findByRole("option", { name: "Production Team" }));
     await flush();
 
     await waitFor(() => expect(toast.success).toHaveBeenCalledWith("Role updated"));
@@ -143,7 +143,7 @@ describe("UserDetailSheet", () => {
     );
     renderWithProviders(<UserDetailSheet user={BASE_USER} open onOpenChange={() => {}} />);
     fireEvent.click(screen.getByRole("combobox", { name: "Role for Acme" }));
-    fireEvent.click(await screen.findByRole("option", { name: "producer" }));
+    fireEvent.click(await screen.findByRole("option", { name: "Production Team" }));
     await flush();
 
     await waitFor(() => expect(toast.error).toHaveBeenCalledTimes(1));
@@ -234,7 +234,7 @@ describe("UserDetailSheet", () => {
     await flush();
 
     fireEvent.click(screen.getByRole("combobox", { name: "Role to add" }));
-    fireEvent.click(await screen.findByRole("option", { name: "producer" }));
+    fireEvent.click(await screen.findByRole("option", { name: "Production Team" }));
     await flush();
 
     fireEvent.click(screen.getByRole("button", { name: "Add" }));

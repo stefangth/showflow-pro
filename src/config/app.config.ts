@@ -159,6 +159,22 @@ export const ROLES = {
 
 export type AppRole = (typeof ROLES)[keyof typeof ROLES];
 
+/**
+ * Human-facing labels for each org role. The `producer` role now covers both
+ * show producers and project managers (hire orders), so it reads "Production Team"
+ * in the UI while the enum value stays `producer` — the DB enum, RLS policies, and
+ * edge functions all key off the literal `producer`, so only the display label changes.
+ */
+export const ROLE_LABELS: Record<AppRole, string> = {
+  admin: 'Admin',
+  producer: 'Production Team',
+  artist: 'Artist',
+};
+
+/** Display label for a role. Tolerant of unknown strings (falls back to the raw value). */
+export const roleLabel = (role: string): string =>
+  ROLE_LABELS[role as AppRole] ?? role;
+
 /** Route paths */
 export const ROUTES = {
   HOME: '/',

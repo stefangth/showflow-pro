@@ -11,7 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Separator } from '@/components/ui/separator';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import type { AppRole } from '@/config/app.config';
-import { ROUTES } from '@/config/app.config';
+import { ROUTES, roleLabel } from '@/config/app.config';
 import { useEditor } from './EditorContext';
 import {
   DEFAULT_PAGE_ACCESS,
@@ -159,8 +159,8 @@ function AccessTab({
                         onCheckedChange={() => toggleRole(route, role)}
                         disabled={route === ROUTES.ADMIN && role === 'admin'}
                       />
-                      <Label htmlFor={`${route}-${role}`} className="text-xs capitalize cursor-pointer">
-                        {role}
+                      <Label htmlFor={`${route}-${role}`} className="text-xs cursor-pointer">
+                        {roleLabel(role)}
                       </Label>
                     </div>
                   ))}
@@ -255,7 +255,7 @@ function PermissionsTab({
           <div className="grid grid-cols-4 gap-2 mb-2 px-1">
             <span className="text-xs font-medium text-muted-foreground">Table</span>
             {ALL_ROLES.map(r => (
-              <span key={r} className="text-xs font-medium text-muted-foreground capitalize text-center">{r}</span>
+              <span key={r} className="text-xs font-medium text-muted-foreground text-center">{roleLabel(r)}</span>
             ))}
           </div>
 

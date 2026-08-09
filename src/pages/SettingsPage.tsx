@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { Link } from 'react-router-dom';
-import { ROUTES, BOOKING_ENGINE_DEFAULTS } from '@/config/app.config';
+import { ROUTES, BOOKING_ENGINE_DEFAULTS, roleLabel } from '@/config/app.config';
 import { useSettingsWarnings } from '@/hooks/useSettingsWarnings';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
@@ -389,7 +389,7 @@ export default function SettingsPage() {
                             const row = pageVis[role] ?? {};
                             return (
                               <tr key={role} className="border-t border-border">
-                                <td className="py-2 pr-4 capitalize font-medium">{role}</td>
+                                <td className="py-2 pr-4 font-medium">{roleLabel(role)}</td>
                                 {FILTER_KEYS.map(key => (
                                   <td key={key} className="text-center py-2 px-2">
                                     <Switch
