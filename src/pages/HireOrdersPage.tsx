@@ -10,15 +10,14 @@ import { OrdersTable } from "@/components/hireOrders/OrdersTable";
 import { OrderSlideOver } from "@/components/hireOrders/OrderSlideOver";
 import { NewOrderWizard } from "@/components/hireOrders/NewOrderWizard";
 import { HireOrderImportDialog } from "@/components/hireOrders/import/HireOrderImportDialog";
-import { SetupRail } from "@/components/hireOrders/setup/SetupRail";
-import { useSetupRailVisible } from "@/components/hireOrders/setup/useSetupRailVisible";
-import { useHireOrderSetupStatus } from "@/hooks/useHireOrderSetup";
+import { DashboardSetupRail } from "@/components/dashboard/firstRun/DashboardSetupRail";
+import { useModuleOnboardingRail } from "@/components/setup/useModuleOnboardingRail";
+import { SetupChecklistSheet } from "@/components/setup/SetupChecklistSheet";
 import { useRailDismissed } from "@/components/setup/useRailDismissed";
+import type { ComposedStep } from "@/lib/dashboard/types";
 import { FeatureOffBanner } from "@/components/layout/FeatureOffBanner";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Skeleton } from "@/components/ui/skeleton";
 import { TimeframeFilter, type TimeframeValue } from "@/components/filters/TimeframeFilter";
 import { inTimeframe } from "@/components/filters/filterUtils";
@@ -144,14 +143,13 @@ export default function HireOrdersPage() {
   // the header button can never offer to reopen a rail that would render nothing
   // actionable (the divergence a separately-computed `dismissed && !complete` used to
   // allow, e.g. for a producer once nothing blocks issuing).
-  const { visible: setupRailVisible, reinvocable: setupReinvocable } = useSetupRailVisible(
-    entitledForWrites ? orgId : null,
-  );
-  const showSetupRail = entitledForWrites && setupRailVisible;
-  const showSetupReinvoke = entitledForWrites && setupReinvocable;
+  const rail = useModuleOnboardingRail("hire_orders", entitledForWrites ? orgId : null);
+  const showSetupRail = entitledForWrites && rail.show;
+  const showSetupReinvoke = entitledForWrites && rail.reinvocable;
   const [, , undismissSetup] = useRailDismissed("hireOrderSetup", entitledForWrites ? orgId : null);
-  const { status: hireOrderSetupStatus } = useHireOrderSetupStatus(entitledForWrites ? orgId : null);
   const [setupSheetOpen, setSetupSheetOpen] = useState(false);
+  const [setupStep, setSetupStep] = useState<string | undefined>(undefined);
+  const openSetupAt = (step: ComposedStep) => { setSetupStep(step.key); setSetupSheetOpen(true); };
 
   const stats = computeOrderKpis(allOrders);
   const selectedOrder =
@@ -194,26 +192,29 @@ export default function HireOrdersPage() {
         </div>
       </div>
 
-      <OrdersKpis orders={allOrders} />
-
-      {/* Uncramped from a fixed 340px side column (Task 3): a full-width callout
-          that opens the checklist in a Sheet, so the table below always gets
-          the full page width. */}
+      {/* The dashboard-style setup rail, module-scoped, above the KPIs. Its step
+          buttons open the inline checklist Sheet at that step (the "do it here"
+          surface); Hide dismisses it on this surface only. */}
       {showSetupRail && (
-        <Card className="border-dashed">
-          <CardContent className="flex flex-wrap items-center justify-between gap-3 py-4">
-            <div>
-              <p className="font-display text-sm font-semibold">Get hire orders ready</p>
-              <p className="text-xs text-muted-foreground">
-                {hireOrderSetupStatus.doneCount} of {hireOrderSetupStatus.totalCount} steps done. Only needed before the first order goes out.
-              </p>
-            </div>
-            <Button size="sm" variant="outline" onClick={() => setSetupSheetOpen(true)}>
-              Open checklist
-            </Button>
-          </CardContent>
-        </Card>
+        <DashboardSetupRail
+          layout="banner"
+          eyebrow={rail.eyebrow}
+          title={rail.title}
+          body={rail.body}
+          complete={false}
+          steps={rail.steps}
+          rules={rail.rules}
+          offFooters={rail.offFooters}
+          progressLabel={rail.progressLabel}
+          progressFilled={rail.progressFilled}
+          progressTotal={rail.progressTotal}
+          onStepAction={openSetupAt}
+          onClose={rail.dismiss}
+          onDismiss={rail.dismiss}
+        />
       )}
+
+      <OrdersKpis orders={allOrders} />
 
       <div data-testid="orders-layout" className="space-y-4">
         <div className="flex flex-wrap items-center gap-3">
@@ -265,16 +266,13 @@ export default function HireOrdersPage() {
         )}
       </div>
 
-      <Sheet open={setupSheetOpen} onOpenChange={setSetupSheetOpen}>
-        <SheetContent side="right" className="w-full overflow-y-auto sm:max-w-2xl">
-          <SheetHeader className="text-left">
-            <SheetTitle className="font-display text-base">Setup checklist</SheetTitle>
-          </SheetHeader>
-          <div className="mt-4">
-            <SetupRail orgId={entitledForWrites ? orgId : null} />
-          </div>
-        </SheetContent>
-      </Sheet>
+      <SetupChecklistSheet
+        feature="hire_orders"
+        orgId={entitledForWrites ? orgId : null}
+        open={setupSheetOpen}
+        onOpenChange={setSetupSheetOpen}
+        initialStep={setupStep}
+      />
 
       <OrderSlideOver
         order={selectedOrder}

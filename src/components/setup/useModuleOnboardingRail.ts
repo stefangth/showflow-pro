@@ -1,14 +1,11 @@
 import { useAuth } from "@/features/auth/AuthContext";
 import { useBookingSetupStatus } from "@/hooks/useBookingSetup";
 import { useHireOrderSetupStatus } from "@/hooks/useHireOrderSetup";
-import { useNavCounts } from "@/hooks/useNavCounts";
-import { useBookingFlow } from "@/hooks/useBookingFlow";
 import { useBookingSetupRailVisible } from "@/components/bookings/setup/useBookingSetupRailVisible";
 import { useSetupRailVisible } from "@/components/hireOrders/setup/useSetupRailVisible";
 import { useRailDismissed } from "@/components/setup/useRailDismissed";
 import { composeOnboarding } from "@/lib/dashboard/firstRun";
 import { MODULE_ONBOARDING } from "@/lib/dashboard/moduleOnboarding";
-import { BOOKING_FLOW_DEFAULTS } from "@/lib/bookingFlow";
 import type { FeatureKey } from "@/lib/entitlements";
 import type {
   ComposedStep, DashboardRole, InheritedRule, ModuleStatuses, ModuleStatusLite, OnboardingCtx,
@@ -45,14 +42,18 @@ const DISMISS_KEY: Record<FeatureKey, string> = {
  * Completion comes from the same status hooks the dashboard reads, so a step done on the
  * dashboard reads done here. Visibility and dismissal reuse the module's existing
  * rail-visibility hook and its localStorage key, so show/hide behaves exactly as the
- * page's previous callout did.
+ * page's previous callout did. `orgId` is the caller's already-entitlement-gated org
+ * (null keeps every read idle), matching how the pages gate their setup reads.
  *
  * Both modules' status + visibility hooks are called unconditionally (rules of hooks) with
  * the non-selected one gated to a null org so its queries stay idle.
+ *
+ * `ctx.rules` are computed but only rendered by DashboardSetupRail in its complete state,
+ * which the module rail never shows (it retires when complete), so `artistAcceptance` and
+ * `counts` here are inert placeholders rather than live reads.
  */
-export function useModuleOnboardingRail(feature: FeatureKey): ModuleOnboardingRail {
+export function useModuleOnboardingRail(feature: FeatureKey, orgId: string | null): ModuleOnboardingRail {
   const { currentOrg, hasRole } = useAuth();
-  const orgId = currentOrg?.id ?? null;
   const role: DashboardRole = hasRole("admin") ? "admin" : "producer";
 
   const bookingOrg = feature === "booking_flow" ? orgId : null;
@@ -63,14 +64,12 @@ export function useModuleOnboardingRail(feature: FeatureKey): ModuleOnboardingRa
   const hireViz = useSetupRailVisible(hireOrg);
   const hire = useHireOrderSetupStatus(hireOrg);
 
-  const counts = useNavCounts();
-  const flow = useBookingFlow().data ?? BOOKING_FLOW_DEFAULTS;
   const [, dismiss] = useRailDismissed(DISMISS_KEY[feature], orgId);
 
   const ctx: OnboardingCtx = {
     orgName: currentOrg?.name ?? "your workspace",
-    artistAcceptance: flow.artist_acceptance,
-    counts,
+    artistAcceptance: false,
+    counts: { pendingConfirmations: 0, openOffers: 0, awaitingCountersign: 0 },
   };
 
   // hire-order steps carry `blocksIssue`; map to the "issuing" block for parity with the

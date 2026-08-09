@@ -9,11 +9,6 @@ vi.mock("@/hooks/useCapabilities", () => ({ useCan: () => true }));
 vi.mock("@/features/auth/AuthContext", () => ({
   useAuth: () => ({ currentOrg: { id: "org-1", name: "Test Org" }, hasRole: (r: string) => r === "admin" }),
 }));
-vi.mock("@/hooks/useNavCounts", () => ({
-  useNavCounts: () => ({ pendingConfirmations: 0, openOffers: 0, awaitingCountersign: 0 }),
-}));
-vi.mock("@/hooks/useBookingFlow", () => ({ useBookingFlow: () => ({ data: undefined }) }));
-
 import { createFakeSupabase, type TableSeed } from "@/test/supabaseFake";
 function seed(s: Record<string, TableSeed>) {
   for (const k of Object.keys(client)) delete client[k];
@@ -39,7 +34,7 @@ beforeEach(() => {
 });
 
 it("composes the booking module with its header copy and progress totals", async () => {
-  const { result } = renderHook(() => useModuleOnboardingRail("booking_flow"), { wrapper });
+  const { result } = renderHook(() => useModuleOnboardingRail("booking_flow", "org-1"), { wrapper });
   await waitFor(() => expect(result.current.progressTotal).toBe(5));
   expect(result.current.title).toBe("Get bookings running");
   expect(result.current.steps).toHaveLength(5);
@@ -48,7 +43,7 @@ it("composes the booking module with its header copy and progress totals", async
 });
 
 it("composes the hire-orders module with its header copy and three steps", async () => {
-  const { result } = renderHook(() => useModuleOnboardingRail("hire_orders"), { wrapper });
+  const { result } = renderHook(() => useModuleOnboardingRail("hire_orders", "org-1"), { wrapper });
   await waitFor(() => expect(result.current.progressTotal).toBe(3));
   expect(result.current.title).toBe("Get hire orders ready");
   expect(result.current.steps.map((s) => s.moduleKey)).toEqual(["hire_orders", "hire_orders", "hire_orders"]);
