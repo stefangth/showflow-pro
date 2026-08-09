@@ -137,6 +137,12 @@ describe("SetupRail", () => {
     expect(chip.className).toContain("var(--amber-600)");
   });
 
+  it("opens the step named by initialStep", async () => {
+    renderWithProviders(<SetupRail orgId="org-1" initialStep="terms" />);
+    const termsToggle = await screen.findByRole("button", { name: /Terms template/ });
+    expect(termsToggle).toHaveAttribute("aria-expanded", "true");
+  });
+
   it("associates each disclosure button with the panel it expands", async () => {
     renderWithProviders(<SetupRail orgId="org-1" />);
     const button = (await screen.findByText("Letterhead")).closest("button") as HTMLButtonElement;

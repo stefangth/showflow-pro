@@ -49,6 +49,14 @@ describe("BookingSetupRail", () => {
     expect(screen.getByText("Blocks filling")).toBeInTheDocument();
   });
 
+  it("opens the step named by initialStep", async () => {
+    renderWithProviders(<MemoryRouter><BookingSetupRail orgId="org-1" initialStep="timing" /></MemoryRouter>);
+    const timingToggle = await screen.findByRole("button", { name: /Response window and digests/ });
+    expect(timingToggle).toHaveAttribute("aria-expanded", "true");
+    const flowToggle = screen.getByRole("button", { name: /Booking flow/ });
+    expect(flowToggle).toHaveAttribute("aria-expanded", "false");
+  });
+
   it("shows the waiting card to a viewer who cannot edit booking settings", async () => {
     canRef.value = false;
     // Force an offers-blocking gap so a non-editor is shown the card at all.
