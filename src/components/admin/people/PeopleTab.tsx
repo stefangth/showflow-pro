@@ -170,7 +170,7 @@ export function PeopleTab() {
         <p className="text-sm text-muted-foreground text-center py-6">No members yet.</p>
       )}
 
-      <BulkInviteDialog open={bulkOpen} onOpenChange={setBulkOpen} members={allMembers} invites={pendingInvites} dedupeUnready={dedupeUnready} />
+      <BulkInviteDialog open={bulkOpen} onOpenChange={setBulkOpen} members={allMembers} invites={pendingInvites} dedupeHint={dedupeHint} />
 
       <AlertDialog open={target !== null} onOpenChange={(o) => !o && setTarget(null)}>
         <AlertDialogContent>
