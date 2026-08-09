@@ -48,3 +48,15 @@ it("composes the hire-orders module with its header copy and three steps", async
   expect(result.current.title).toBe("Get hire orders ready");
   expect(result.current.steps.map((s) => s.moduleKey)).toEqual(["hire_orders", "hire_orders", "hire_orders"]);
 });
+
+it("never surfaces a sibling module's off-state footer (the scoped module is always entitled here)", async () => {
+  // composeOnboarding derives offFooters from every feature NOT in `enabled`; a
+  // single-module set would otherwise always report the sibling module "off".
+  const booking = renderHook(() => useModuleOnboardingRail("booking_flow", "org-1"), { wrapper });
+  await waitFor(() => expect(booking.result.current.progressTotal).toBe(5));
+  expect(booking.result.current.offFooters).toEqual([]);
+
+  const hire = renderHook(() => useModuleOnboardingRail("hire_orders", "org-1"), { wrapper });
+  await waitFor(() => expect(hire.result.current.progressTotal).toBe(3));
+  expect(hire.result.current.offFooters).toEqual([]);
+});
