@@ -118,6 +118,15 @@ export interface DashboardSetupRailProps {
   eyebrow: string; title: string; body: string; complete: boolean;
   steps: ComposedStep[]; rules: InheritedRule[]; offFooters: string[];
   onClose: () => void; onDismiss: () => void;
+  /** "rail" (default) = dashboard side column; "banner" = full-width module header. */
+  layout?: "rail" | "banner";
+  /** When set, a not-done step renders a button that calls this instead of a Link. */
+  onStepAction?: (step: ComposedStep) => void;
+  /** Banner layout only: the top-right segmented progress rail. */
+  progressLabel?: string;
+  progressFilled?: number;
+  progressTotal?: number;
+  progressHint?: string;
 }
 export interface SamplePreviewProps {
   // `sample` (with its section copy) is optional: when absent the component renders
