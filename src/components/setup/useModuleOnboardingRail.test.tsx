@@ -1,5 +1,5 @@
 import { it, expect, vi, beforeEach } from "vitest";
-import { renderHook, waitFor } from "@testing-library/react";
+import { renderHook, waitFor, act } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import type { ReactNode } from "react";
 
@@ -79,4 +79,28 @@ it("never surfaces a sibling module's off-state footer (the scoped module is alw
   const hire = renderHook(() => useModuleOnboardingRail("hire_orders", "org-1"), { wrapper });
   await waitFor(() => expect(hire.result.current.progressTotal).toBe(3));
   expect(hire.result.current.offFooters).toEqual([]);
+});
+
+it("is 'banner' by default and passes the mode through", async () => {
+  const { result } = renderHook(() => useModuleOnboardingRail("hire_orders", "org-1"), { wrapper });
+  await waitFor(() => expect(result.current.mode).toBe("banner"));
+});
+
+it("collapses to a bar when dismissed, exposing progress copy and an expand() that re-expands", async () => {
+  localStorage.setItem("showflow.hireOrderSetup.hidden.org-1", "true");
+  const { result } = renderHook(() => useModuleOnboardingRail("hire_orders", "org-1"), { wrapper });
+  await waitFor(() => expect(result.current.mode).toBe("collapsed"));
+  expect(result.current.collapsedLabel).toBe("Set up in progress");
+  expect(result.current.collapsedHint).toBe("3 steps left");
+  expect(result.current.collapsedCta).toBe("Resume");
+  act(() => result.current.expand());
+  await waitFor(() => expect(result.current.mode).toBe("banner"));
+});
+
+it("labels the collapsed bar 'Org setup' for a viewer who cannot edit", async () => {
+  canRef.value = false;
+  localStorage.setItem("showflow.hireOrderSetup.hidden.org-1", "true");
+  const { result } = renderHook(() => useModuleOnboardingRail("hire_orders", "org-1"), { wrapper });
+  await waitFor(() => expect(result.current.mode).toBe("collapsed"));
+  expect(result.current.collapsedLabel).toBe("Org setup in progress");
 });

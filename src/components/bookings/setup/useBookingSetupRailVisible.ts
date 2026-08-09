@@ -1,38 +1,29 @@
 import { useCan } from "@/hooks/useCapabilities";
 import { useBookingSetupStatus } from "@/hooks/useBookingSetup";
 import { useRailDismissed } from "@/components/setup/useRailDismissed";
+import type { SetupRailMode } from "@/components/setup/setupRailMode";
 
 export interface BookingSetupRailVisibility {
-  /** Whether `BookingSetupRail` will render anything at all right now. */
-  visible: boolean;
-  /**
-   * Whether the header's "Setup checklist" re-invoke button should show: `visible`'s own
-   * eligibility minus the dismissed check, since re-invoking IS clearing that dismissal.
-   * Computed from the same inputs as `visible` so the two can't drift the way an
-   * independently-gated header button once did (Plan B fix wave). Mirrors
-   * `hireOrders/setup/useSetupRailVisible`.
-   */
-  reinvocable: boolean;
+  /** Which booking onboarding surface the page should show right now. */
+  mode: SetupRailMode;
 }
 
-const HIDDEN: BookingSetupRailVisibility = { visible: false, reinvocable: false };
+const HIDDEN: BookingSetupRailVisibility = { mode: "hidden" };
 
 /**
- * Whether `BookingSetupRail` renders anything, and whether the header re-invoke button
- * should show. Its own module rather than a second export from the rail, because
- * ShowsBookingsPage must know the answer before it picks its grid template: a null child
- * does not collapse a grid track. Mirrors `hireOrders/setup/useSetupRailVisible`.
+ * Which booking onboarding surface to render. Mirrors
+ * `hireOrders/setup/useSetupRailVisible`: "banner" wizard, "collapsed" bar,
+ * permanent "button" once complete, or "hidden". `complete` is checked after the
+ * actionable gate so the button only reaches viewers who can act on setup.
  */
 export function useBookingSetupRailVisible(orgId: string | null): BookingSetupRailVisibility {
   const canEdit = useCan("edit_booking_settings");
   const { status, isLoading } = useBookingSetupStatus(orgId);
   const [dismissed] = useRailDismissed("bookingSetup", orgId);
 
-  if (!orgId || isLoading || status.complete) return HIDDEN;
-
-  // A non-editor (producer without edit_booking_settings) is only shown the waiting card
-  // while offers are actually blocked, so an org that can already offer never shows a
-  // producer a blocker no admin action would clear.
+  if (!orgId || isLoading) return HIDDEN;
   const actionable = canEdit || !status.canOffer;
-  return { visible: actionable && !dismissed, reinvocable: actionable && dismissed };
+  if (!actionable) return HIDDEN;
+  if (status.complete) return { mode: "button" };
+  return { mode: dismissed ? "collapsed" : "banner" };
 }
