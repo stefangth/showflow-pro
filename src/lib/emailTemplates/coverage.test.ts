@@ -3,7 +3,7 @@ import { EMAIL_TEMPLATE_CATEGORY } from "@/lib/notificationCategories";
 import { EMAIL_TEMPLATE_COVERAGE } from "./coverage";
 
 describe("EMAIL_TEMPLATE_COVERAGE", () => {
-  it("lists the approved ten live delivery templates plus the external password reset in registry order", () => {
+  it("lists the approved eleven delivered templates plus the external password reset in registry order", () => {
     expect(EMAIL_TEMPLATE_COVERAGE.map((template) => template.key)).toEqual([
       "offer-immediate",
       "artist-offer-digest",
@@ -14,6 +14,7 @@ describe("EMAIL_TEMPLATE_COVERAGE", () => {
       "hire-order-countersigned",
       "org-invitation",
       "account-email-changed",
+      "magic-link",
       "password-reset",
       "cron-health-alert",
     ]);
@@ -44,6 +45,11 @@ describe("EMAIL_TEMPLATE_COVERAGE", () => {
       status: "internal",
       family: null,
       category: "internal",
+    });
+    expect(EMAIL_TEMPLATE_COVERAGE.find((template) => template.key === "magic-link")).toMatchObject({
+      group: "Accounts & access",
+      status: "internal",
+      category: "critical",
     });
   });
 

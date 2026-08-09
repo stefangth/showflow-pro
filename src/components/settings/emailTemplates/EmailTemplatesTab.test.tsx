@@ -49,6 +49,8 @@ describe("EmailTemplatesTab", () => {
     expect(screen.getByText("Password reset")).toBeInTheDocument();
     expect(screen.queryByText("System")).not.toBeInTheDocument();
     expect(screen.queryByText("Cron health alert")).not.toBeInTheDocument();
+    // magic-link is an internal template too, so it is hidden from non-super-admins.
+    expect(screen.queryByText("Sign-in link")).not.toBeInTheDocument();
     expect(screen.getByText("External")).toBeInTheDocument();
   });
 
@@ -57,9 +59,13 @@ describe("EmailTemplatesTab", () => {
 
     expect(await screen.findByText("System")).toBeInTheDocument();
     expect(screen.getByText("Cron health alert")).toBeInTheDocument();
-    expect(screen.getByText("Internal")).toBeInTheDocument();
+    // Two internal rows are now visible to super-admins: the cron health alert and the sign-in link.
+    expect(screen.getByText("Sign-in link")).toBeInTheDocument();
+    expect(screen.getAllByText("Internal")).toHaveLength(2);
     expect(screen.queryByRole("button", { name: /edit cron health alert/i })).not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: /preview cron health alert/i })).not.toBeInTheDocument();
+    // magic-link is internal, so it is listed for oversight but never editable.
+    expect(screen.queryByRole("button", { name: /edit sign-in link/i })).not.toBeInTheDocument();
   });
 
   it("requests a preview with saved copy and theme, then renders it in a sandboxed iframe", async () => {
