@@ -20,7 +20,10 @@ import { DashboardWelcome } from '@/components/dashboard/firstRun/DashboardWelco
 import { DashboardWelcomeCollapsed } from '@/components/dashboard/firstRun/DashboardWelcomeCollapsed';
 import { DashboardSetupRail } from '@/components/dashboard/firstRun/DashboardSetupRail';
 import { SamplePreview } from '@/components/dashboard/firstRun/SamplePreview';
+import { SetupChecklistSheet } from '@/components/setup/SetupChecklistSheet';
 import { ModuleGate } from '@/components/layout/ModuleGate';
+import type { ComposedStep } from '@/lib/dashboard/types';
+import type { FeatureKey } from '@/lib/entitlements';
 import { useFeature } from '@/hooks/useEntitlements';
 import { showSlots } from '@/lib/settings';
 import { formatDateDMY } from '@/lib/dates';
@@ -75,6 +78,11 @@ function ProducerDashboard() {
   const { reference, customFieldKey } = useReferenceField();
   const flow = useBookingFlow().data ?? BOOKING_FLOW_DEFAULTS;
   const [selected, setSelected] = useState<Set<string>>(new Set());
+  // A rail step opens that module's inline setup Sheet at the step, in place — no more
+  // routing away to Settings/Productions. The dashboard hosts both modules' Sheets and
+  // picks by the step's moduleKey.
+  const [setupSheet, setSetupSheet] = useState<{ feature: FeatureKey; step: string } | null>(null);
+  const openSetupAt = (step: ComposedStep) => setSetupSheet({ feature: step.moduleKey, step: step.key });
 
   const { data: upcomingDates } = useQuery({
     queryKey: ['dashboard-upcoming-dates', todayStr, orgId],
@@ -390,11 +398,19 @@ function ProducerDashboard() {
             steps={fr.steps}
             rules={fr.rules}
             offFooters={fr.offFooters}
+            onStepAction={openSetupAt}
             onClose={fr.closeRail}
             onDismiss={fr.dismiss}
           />
         )}
       </div>
+      <SetupChecklistSheet
+        feature={setupSheet?.feature ?? 'booking_flow'}
+        orgId={orgId}
+        open={setupSheet !== null}
+        onOpenChange={(o) => { if (!o) setSetupSheet(null); }}
+        initialStep={setupSheet?.step}
+      />
     </div>
   );
 }
