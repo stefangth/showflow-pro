@@ -33,11 +33,11 @@ const BLOCK_CHIP: Record<Exclude<BlockKind, null>, SetupStepBlock> = {
  * which the page also reads to choose its grid template). Setup happens here, but every
  * panel writes through the same path as its Settings card.
  */
-export function BookingSetupRail({ orgId }: { orgId: string | null }) {
+export function BookingSetupRail({ orgId, initialStep }: { orgId: string | null; initialStep?: BookingSetupStepKey }) {
   const canEdit = useCan("edit_booking_settings");
   const { status, coverage } = useBookingSetupStatus(orgId);
   const [, dismiss] = useRailDismissed("bookingSetup", orgId);
-  const [open, setOpen] = useState<BookingSetupStepKey | null>("flow");
+  const [open, setOpen] = useState<BookingSetupStepKey | null>(initialStep ?? "flow");
 
   if (!canEdit) return <BookingProducerWaitingCard steps={status.steps} />;
 

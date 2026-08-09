@@ -40,12 +40,12 @@ const HINTS: Record<SetupStepKey, { todo: string; done: string }> = {
  * genuinely temporary surface. Setup happens here, not in Settings, but every panel
  * writes through the same data path as the Settings cards.
  */
-export function SetupRail({ orgId }: { orgId: string | null }) {
+export function SetupRail({ orgId, initialStep }: { orgId: string | null; initialStep?: SetupStepKey }) {
   const { visible } = useSetupRailVisible(orgId);
   const canEditSettings = useCan("edit_hire_order_settings");
   const { status } = useHireOrderSetupStatus(orgId);
   const [, dismiss] = useRailDismissed("hireOrderSetup", orgId);
-  const [open, setOpen] = useState<SetupStepKey | null>(null);
+  const [open, setOpen] = useState<SetupStepKey | null>(initialStep ?? null);
 
   if (!visible) return null;
   if (!canEditSettings) return <ProducerWaitingCard steps={status.steps} />;
