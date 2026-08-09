@@ -7,17 +7,19 @@
 -- pass (observed in production before this guard existed).
 BEGIN;
 CREATE EXTENSION IF NOT EXISTS pgtap;
-SELECT plan(5);
+SELECT plan(7);
 
 SELECT upsert_health_daily('[{"day":"2000-01-01","fn":"t","runs":288,"failures":3,"rejected":0,"worst_status":500,"p95_ms":900}]'::jsonb);
 SELECT is((SELECT runs FROM health_daily WHERE day='2000-01-01' AND fn='t'), 288, 'first write lands');
+SELECT is((SELECT unauthorized FROM health_daily WHERE day='2000-01-01' AND fn='t'), 0, 'unauthorized defaults to 0 when absent from the payload');
 
 SELECT upsert_health_daily('[{"day":"2000-01-01","fn":"t","runs":12,"failures":0,"rejected":0,"worst_status":200,"p95_ms":100}]'::jsonb);
 SELECT is((SELECT runs FROM health_daily WHERE day='2000-01-01' AND fn='t'), 288, 'a truncated re-read does not shrink the day');
 SELECT is((SELECT failures FROM health_daily WHERE day='2000-01-01' AND fn='t'), 3, 'the whole row is preserved, not just runs');
 
-SELECT upsert_health_daily('[{"day":"2000-01-01","fn":"t","runs":300,"failures":4,"rejected":1,"worst_status":502,"p95_ms":950}]'::jsonb);
+SELECT upsert_health_daily('[{"day":"2000-01-01","fn":"t","runs":300,"failures":4,"rejected":1,"unauthorized":1,"worst_status":502,"p95_ms":950}]'::jsonb);
 SELECT is((SELECT runs FROM health_daily WHERE day='2000-01-01' AND fn='t'), 300, 'a fuller read still updates the day');
+SELECT is((SELECT unauthorized FROM health_daily WHERE day='2000-01-01' AND fn='t'), 1, 'a fuller read updates unauthorized too');
 
 -- The recompute-and-overwrite design depends on this: a pg_cron double-fire must be a no-op.
 SELECT upsert_health_daily('[{"day":"2000-01-01","fn":"t","runs":300,"failures":4,"rejected":1,"worst_status":502,"p95_ms":950}]'::jsonb);

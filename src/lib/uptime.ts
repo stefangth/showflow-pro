@@ -6,7 +6,8 @@ export interface HealthDay {
   fn: string;
   runs: number;
   failures: number;         // 5xx plus "no response at all"
-  rejected: number;         // 4xx
+  rejected: number;         // 4xx (all of them, incl. 401)
+  unauthorized: number;     // 401 subset of `rejected` (unauthorized callers)
   worst_status: number | null;
   p95_ms: number | null;
 }
@@ -41,20 +42,13 @@ function classify(row: HealthDay): DayState {
   if (row.runs === 0) return "nodata";
   if (row.failures >= row.runs) return "down";
   if (row.failures > 0) return "degraded";
-  // 401 (unauthorized) is the auth layer working, not the function failing, so a reject rate made
-  // of 401s must not read as degraded — otherwise unauthorized traffic from an unknown caller
-  // (e.g. a non-prod stack firing at prod, or an expired-JWT browser poll) paints a healthy
-  // function amber next to a 100% uptime label. health_daily stores no per-status breakdown, so
-  // worst_status is the only signal: when it is exactly 401 (and there are no 5xx, handled above),
-  // the day's worst outcome was an unauthorized rejection. The count stays visible in the tooltip.
-  //
-  // Known limitation of this frontend-only heuristic: worst_status is max(codes), so a day that
-  // mixes 401 with a genuine 400 (the only 4xx numerically below 401) reports worst_status 401 and
-  // its 400s escape this check. 403/404/409/422 and every 5xx are all > 401, so their presence
-  // still trips it. The precise fix is a per-status health_daily.unauthorized column (a fast-follow
-  // once the local stack is available to regenerate types); the live EdgeFunctionsPanel path already
-  // uses exact byStatus counts and has no such gap.
-  if (row.worst_status !== 401 && row.rejected / row.runs > REJECT_RATE_BUDGET) return "degraded";
+  // 401 (unauthorized) is the auth layer working, not the function failing, so it is excluded from
+  // the reject rate: unauthorized traffic from an unknown caller (a non-prod stack firing at prod,
+  // an expired-JWT browser poll) must not paint a healthy function amber next to a 100% uptime
+  // label. `unauthorized` is the exact 401 subset of `rejected` (both written by health-rollup),
+  // so (rejected - unauthorized) is the genuine, health-relevant 4xx count. The 401s stay visible
+  // in the tooltip.
+  if ((row.rejected - row.unauthorized) / row.runs > REJECT_RATE_BUDGET) return "degraded";
   return "operational";
 }
 

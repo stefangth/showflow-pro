@@ -60,6 +60,20 @@ Deno.test("counts a 4xx as rejected, not as a failure", async () => {
   const row = upserted(calls).find((r) => r.fn === "expire-offers");
   assertEquals(row?.failures, 0);
   assertEquals(row?.rejected, 1);
+  assertEquals(row?.unauthorized, 1); // a 401 is also counted as unauthorized (a subset of rejected)
+});
+
+Deno.test("counts a 401 as unauthorized but a non-401 4xx only as rejected", async () => {
+  const { deps, calls } = depsFor("expire-offers", [
+    { function_id: "id-1", status_code: 401, execution_time_ms: 100, timestamp: "2026-08-04T09:00:00Z" },
+    { function_id: "id-1", status_code: 403, execution_time_ms: 100, timestamp: "2026-08-04T09:05:00Z" },
+  ]);
+
+  await handle(cronReq(), deps);
+
+  const row = upserted(calls).find((r) => r.fn === "expire-offers");
+  assertEquals(row?.rejected, 2);     // both 4xx
+  assertEquals(row?.unauthorized, 1); // only the 401 (the 403 is a genuine rejection)
 });
 
 Deno.test("a run with no status code at all counts as a failure", async () => {

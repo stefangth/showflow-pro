@@ -106,7 +106,7 @@ describe("EdgeFunctionsPanel", () => {
         metrics={[metric({ fn: "create-invitation" })]}
         healthDaily={[{
           day: new Date().toISOString().slice(0, 10), fn: "create-invitation",
-          runs: 4, failures: 0, rejected: 0, worst_status: 200, p95_ms: 800,
+          runs: 4, failures: 0, rejected: 0, unauthorized: 0, worst_status: 200, p95_ms: 800,
         }]}
       />,
     );

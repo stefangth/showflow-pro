@@ -4,7 +4,7 @@ import { fetchHealthDaily } from "./platform";
 
 const row = {
   day: "2026-08-04", fn: "airtable-poll", runs: 288,
-  failures: 1, rejected: 0, worst_status: 502, p95_ms: 4200,
+  failures: 1, rejected: 0, unauthorized: 0, worst_status: 502, p95_ms: 4200,
 };
 
 describe("fetchHealthDaily", () => {
