@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { screen } from "@testing-library/react";
+import { screen, fireEvent } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import { renderWithProviders } from "@/test/renderWithProviders";
 import { createFakeSupabase, type TableSeed } from "@/test/supabaseFake";
@@ -26,6 +26,12 @@ vi.mock("@/data/bookings", async (orig) => ({
 
 vi.mock("@/components/dashboard/firstRun/useDashboardFirstRun", () => ({
   useDashboardFirstRun: vi.fn(),
+}));
+// The Sheet host is exercised on its own (SetupChecklistSheet.test.tsx); here we only
+// need to prove a rail step opens it in place with the right module + step.
+vi.mock("@/components/setup/SetupChecklistSheet", () => ({
+  SetupChecklistSheet: ({ open, feature, initialStep }: { open: boolean; feature: string; initialStep?: string }) =>
+    open ? <div data-testid="setup-sheet" data-feature={feature} data-step={initialStep ?? ""} /> : null,
 }));
 
 // Settable first-run state so the sample-vs-live body switch can be exercised.
@@ -87,6 +93,21 @@ describe("DashboardPage first-run layer", () => {
     renderWithProviders(<MemoryRouter><DashboardPage /></MemoryRouter>);
     expect(await screen.findByRole("heading", { name: "Dashboard" })).toBeInTheDocument();
     expect(screen.queryByText("Live dates")).not.toBeInTheDocument();
+  });
+
+  it("opens the module setup Sheet in place when a rail step is clicked (no navigation)", async () => {
+    vi.mocked(useDashboardFirstRun).mockReturnValue(frState({
+      railOpen: true,
+      steps: [
+        { key: "flow", moduleKey: "booking_flow", title: "Booking flow", todoHint: "t", doneHint: "d", ctaLabel: "Choose flow", ctaRoute: "/settings", ctaCapability: "edit_booking_settings", done: false, block: null },
+      ],
+    }) as never);
+    renderWithProviders(<MemoryRouter><DashboardPage /></MemoryRouter>);
+    expect(screen.queryByTestId("setup-sheet")).not.toBeInTheDocument();
+    fireEvent.click(await screen.findByRole("button", { name: "Choose flow" }));
+    const sheet = screen.getByTestId("setup-sheet");
+    expect(sheet.getAttribute("data-feature")).toBe("booking_flow");
+    expect(sheet.getAttribute("data-step")).toBe("flow");
   });
 
   it("renders the live body when the org already has dates, even while setup is incomplete", async () => {
