@@ -13,6 +13,11 @@ import { createFakeSupabase, type TableSeed } from "@/test/supabaseFake";
 const { client } = vi.hoisted(() => ({ client: {} as Record<string, unknown> }));
 vi.mock("@/integrations/supabase/client", () => ({ supabase: client }));
 vi.mock("@/features/auth/AuthContext", () => ({ useAuth: vi.fn() }));
+// The banner setup rail (DashboardSetupRail) and the module-scoped hook both read useCan
+// for step CTAs. Real useCan already resolves true in this harness (the slide-over's
+// Issue/Void buttons rely on it), so a flat true mock is behavior-preserving and keeps the
+// null-org booking-visibility branch inside useModuleOnboardingRail from needing providers.
+vi.mock("@/hooks/useCapabilities", () => ({ useCan: () => true }));
 // The page now always mounts NewOrderWizard (Task 2), which calls useNavigate
 // for its "Open order" success action; OrderSlideOver's Edit button (Task 2b)
 // also navigates. A stable spy (not a fresh vi.fn() per call) lets tests
@@ -41,11 +46,25 @@ vi.mock("@/components/hireOrders/setup/SetupRail", () => ({
 vi.mock("@/components/hireOrders/setup/useSetupRailVisible", () => ({
   useSetupRailVisible: () => railState.value,
 }));
-// Still needed for the callout's "X of Y steps done" text. Partial mock: this
-// module also exports useOrgLetterhead/useOrgTerms/useImportTermsTemplates,
+// Feeds useModuleOnboardingRail's compose (the banner rail's steps + progress). The real
+// hook reads status.steps + status.complete, so the mock must carry a full steps array.
+// Partial mock: this module also exports useOrgLetterhead/useOrgTerms/useImportTermsTemplates,
 // which NewOrderWizard and OrderSlideOver (unmocked here) depend on.
+type HireStatus = {
+  steps: { key: string; done: boolean; blocksIssue: boolean }[];
+  doneCount: number; totalCount: number; canIssue: boolean; complete: boolean;
+};
 const { hireOrderSetupStatus } = vi.hoisted(() => ({
-  hireOrderSetupStatus: { value: { complete: false, doneCount: 0, totalCount: 3 } as { complete: boolean; doneCount: number; totalCount: number } },
+  hireOrderSetupStatus: {
+    value: {
+      steps: [
+        { key: "letterhead", done: false, blocksIssue: true },
+        { key: "terms", done: false, blocksIssue: true },
+        { key: "countersign", done: false, blocksIssue: false },
+      ],
+      doneCount: 0, totalCount: 3, canIssue: false, complete: false,
+    } as HireStatus,
+  },
 }));
 vi.mock("@/hooks/useHireOrderSetup", async (orig) => ({
   ...(await orig<typeof import("@/hooks/useHireOrderSetup")>()),
@@ -67,6 +86,18 @@ function authAs(role: "admin" | "producer" = "producer", orgId = "org-1", isSupe
     roles: [role],
     isSuperAdmin,
   } as never);
+}
+
+/** Build a hire-order setup status with `done` of the three steps complete. */
+function makeHireStatus(done: number, complete: boolean): HireStatus {
+  return {
+    steps: [
+      { key: "letterhead", done: done > 0, blocksIssue: true },
+      { key: "terms", done: done > 1, blocksIssue: true },
+      { key: "countersign", done: done > 2, blocksIssue: false },
+    ],
+    doneCount: done, totalCount: 3, canIssue: done >= 2, complete,
+  };
 }
 
 /** A hire_orders row shaped like fetchHireOrders returns it (artist + show_date joined). */
@@ -190,7 +221,7 @@ describe("HireOrdersPage", () => {
     navigate.mockClear();
     authAs("producer");
     railState.value = { visible: true, reinvocable: false };
-    hireOrderSetupStatus.value = { complete: false, doneCount: 0, totalCount: 3 };
+    hireOrderSetupStatus.value = makeHireStatus(0, false);
     localStorage.clear();
     seedFor(ROWS);
   });
@@ -515,7 +546,7 @@ describe("HireOrdersPage", () => {
     expect(screen.getByRole("button", { name: /import from spreadsheet/i })).toBeEnabled();
   });
 
-  it("shows a full-width setup callout (not a cramped side column) and opens the checklist in a Sheet on click", async () => {
+  it("shows the banner setup rail (not a cramped side column) and opens the checklist Sheet at a clicked step", async () => {
     renderPage();
     await screen.findByText("Hire orders");
     // findBy, not getBy: the rail runs on the RAW entitlement with no fail-open, so it
@@ -527,8 +558,18 @@ describe("HireOrdersPage", () => {
     expect(document.querySelector(".lg\\:grid-cols-\\[1fr_340px\\]")).toBeNull();
     expect(screen.queryByTestId("setup-rail")).not.toBeInTheDocument();
 
-    fireEvent.click(screen.getByRole("button", { name: /open checklist/i }));
+    // A step button opens the inline checklist Sheet expanded at that step.
+    fireEvent.click(screen.getByRole("button", { name: "Set letterhead" }));
     expect(await screen.findByTestId("setup-rail")).toBeInTheDocument();
+  });
+
+  it("places the setup rail above the KPI tiles and drops the old dashed callout button", async () => {
+    renderPage();
+    const railTitle = await screen.findByText(/get hire orders ready/i);
+    const kpis = screen.getByTestId("orders-kpis");
+    // Rail precedes the KPI region in document order (Node.DOCUMENT_POSITION_FOLLOWING = 4).
+    expect(railTitle.compareDocumentPosition(kpis) & 4).toBeTruthy();
+    expect(screen.queryByRole("button", { name: /open checklist/i })).not.toBeInTheDocument();
   });
 
   it("hides the setup callout once the rail has retired", async () => {
@@ -571,7 +612,7 @@ describe("HireOrdersPage", () => {
     // The real hook reports both false once complete, regardless of dismissed.
     railState.value = { visible: false, reinvocable: false };
     localStorage.setItem("showflow.hireOrderSetup.hidden.org-1", "true");
-    hireOrderSetupStatus.value = { complete: true, doneCount: 3, totalCount: 3 };
+    hireOrderSetupStatus.value = makeHireStatus(3, true);
     renderPage();
     await screen.findByText("Hire orders");
     expect(screen.queryByRole("button", { name: /setup checklist/i })).not.toBeInTheDocument();
@@ -584,7 +625,7 @@ describe("HireOrdersPage", () => {
     // (`dismissed && !complete`) would have shown here.
     railState.value = { visible: false, reinvocable: false };
     localStorage.setItem("showflow.hireOrderSetup.hidden.org-1", "true");
-    hireOrderSetupStatus.value = { complete: false, doneCount: 2, totalCount: 3 };
+    hireOrderSetupStatus.value = makeHireStatus(2, false);
     renderPage();
     await screen.findByText("Hire orders");
     expect(screen.queryByRole("button", { name: /setup checklist/i })).not.toBeInTheDocument();
