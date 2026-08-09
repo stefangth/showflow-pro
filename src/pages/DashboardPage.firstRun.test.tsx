@@ -110,6 +110,20 @@ describe("DashboardPage first-run layer", () => {
     expect(sheet.getAttribute("data-step")).toBe("flow");
   });
 
+  it("routes a hire-order rail step to the hire-orders Sheet (by moduleKey)", async () => {
+    vi.mocked(useDashboardFirstRun).mockReturnValue(frState({
+      railOpen: true,
+      steps: [
+        { key: "letterhead", moduleKey: "hire_orders", title: "Letterhead", todoHint: "t", doneHint: "d", ctaLabel: "Set letterhead", ctaRoute: "/settings", ctaCapability: "edit_hire_order_settings", done: false, block: "issuing" },
+      ],
+    }) as never);
+    renderWithProviders(<MemoryRouter><DashboardPage /></MemoryRouter>);
+    fireEvent.click(await screen.findByRole("button", { name: "Set letterhead" }));
+    const sheet = screen.getByTestId("setup-sheet");
+    expect(sheet.getAttribute("data-feature")).toBe("hire_orders");
+    expect(sheet.getAttribute("data-step")).toBe("letterhead");
+  });
+
   it("renders the live body when the org already has dates, even while setup is incomplete", async () => {
     // The data-presence override: complete is false, but a real upcoming date exists,
     // so the body must go live (not the greyed Sample).

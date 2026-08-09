@@ -99,7 +99,11 @@ export function useModuleOnboardingRail(feature: FeatureKey, orgId: string | nul
     reinvocable: viz.reinvocable,
     steps: composed.steps,
     rules: composed.rules,
-    offFooters: composed.offFooters,
+    // Deliberately empty: composeOnboarding derives off-footers from every feature NOT in
+    // `enabled`, and this hook forces a single-module set, so composed.offFooters would
+    // always claim the *sibling* module is off. The page only renders this rail when the
+    // scoped module is entitled, so there is no off-state upsell to show here at all.
+    offFooters: [],
     eyebrow: "Set up",
     title: railHeader.title,
     body: railHeader.body,
