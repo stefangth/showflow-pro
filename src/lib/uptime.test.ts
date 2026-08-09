@@ -43,6 +43,20 @@ describe("buildUptimeCells", () => {
     expect(buildUptimeCells([row({ runs: 100, rejected: 5 })], 30, now)[29].state).toBe("operational");
   });
 
+  it("stays operational when the day's only rejections are unauthorized 401s", () => {
+    // 401 = the auth layer working, not the function failing. A day whose worst status is 401 and
+    // has no 5xx (e.g. a non-prod stack firing at prod) must not read amber next to a 100% uptime
+    // label. health_daily has no per-status breakdown, so worst_status is the signal.
+    const cells = buildUptimeCells([row({ runs: 348, rejected: 233, failures: 0, worst_status: 401 })], 30, now);
+    expect(cells[29].state).toBe("operational");
+  });
+
+  it("still degrades on genuine (non-401) 4xx above the budget", () => {
+    // worst_status 422 -> a real client/app rejection, not unauthorized traffic.
+    const cells = buildUptimeCells([row({ runs: 100, rejected: 40, failures: 0, worst_status: 422 })], 30, now);
+    expect(cells[29].state).toBe("degraded");
+  });
+
   it("treats a day the function was idle as nodata, not as an outage", () => {
     // Zero invocations means nobody called it, which is not the same as it being broken.
     const cells = buildUptimeCells([row({ runs: 0, failures: 0, worst_status: null })], 30, now);
@@ -104,6 +118,16 @@ describe("describeUptimeDay", () => {
     });
     expect(text).toContain("2 failures");
     expect(text).toContain("3 rejected");
+  });
+
+  it("keeps unauthorized 401s visible in the tooltip even on an operational day", () => {
+    // The day is green (available), but the tooltip must still disclose the rejected traffic.
+    const text = describeUptimeDay({
+      day: "2026-08-04", state: "operational", runs: 348, failures: 0, rejected: 233, worstStatus: 401,
+    });
+    expect(text).toContain("no failures");
+    expect(text).toContain("233 rejected");
+    expect(text).toContain("HTTP 401");
   });
 
   it("says all runs succeeded on a clean day, without a status code", () => {

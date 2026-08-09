@@ -69,6 +69,46 @@ describe("deriveEdgeFnStatus", () => {
   });
 });
 
+describe("401 (unauthorized) is not a health fault", () => {
+  // A 401 is the auth layer correctly rejecting an unauthenticated caller, not the function
+  // failing. Unauthorized traffic (e.g. a non-prod stack firing at prod, or an expired-JWT
+  // browser poll) must never drag a healthy function to degraded/down. 401 is read from the
+  // byStatus histogram; every other 4xx stays a real fault.
+  it("keeps a cron job operational when it is flooded with 401s (the prod scenario)", () => {
+    // 115 real 200s + 233 foreign 401s: 0.67 raw 4xx rate, but 0 genuine rejections.
+    expect(deriveJobStatus("healthy",
+      metric({ invocations: 348, rejected: 233, byStatus: { "200": 115, "401": 233 } }), BUDGET))
+      .toBe("operational");
+  });
+  it("keeps an on-demand function operational when every call is an unauthorized 401", () => {
+    expect(deriveEdgeFnStatus(
+      metric({ invocations: 50, rejected: 50, byStatus: { "401": 50 } }), BUDGET))
+      .toBe("operational");
+  });
+  it("still degrades on genuine (non-401) 4xx above budget, even mixed with 401 noise", () => {
+    // 40 ok, 40 unauthorized 401, 20 genuine 403 -> non-401 reject rate 20/60 = 33% > 20%.
+    expect(deriveEdgeFnStatus(
+      metric({ invocations: 100, rejected: 60, byStatus: { "200": 40, "401": 40, "403": 20 } }), BUDGET))
+      .toBe("degraded");
+  });
+  it("still marks a function down when its real (non-401) calls all fail", () => {
+    // 5 genuine 5xx + 5 foreign 401: the 5 real calls all failed -> down.
+    expect(deriveEdgeFnStatus(
+      metric({ invocations: 10, errors: 5, rejected: 5, byStatus: { "500": 5, "401": 5 } }), BUDGET))
+      .toBe("down");
+  });
+  it("gives no health reason for a 401-flooded but otherwise healthy function", () => {
+    expect(describeEdgeFnHealth(
+      metric({ invocations: 348, rejected: 233, byStatus: { "200": 115, "401": 233 } }), BUDGET))
+      .toBeNull();
+  });
+  it("reports the non-401 rejection rate in the explanation", () => {
+    expect(describeEdgeFnHealth(
+      metric({ invocations: 100, rejected: 60, byStatus: { "200": 40, "401": 40, "403": 20 } }), BUDGET))
+      .toBe("4xx rejection rate 33.3% exceeds the 20.0% budget");
+  });
+});
+
 describe("health-status explanations", () => {
   it("explains a scheduled job whose p95 latency exceeds its budget", () => {
     expect(describeJobHealth("healthy", metric({ p95Ms: 15_000 }), BUDGET))

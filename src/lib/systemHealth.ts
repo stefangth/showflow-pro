@@ -60,19 +60,36 @@ export const CRON_JOB_TO_FN: Record<string, string> = {
  *  Edge functions panel (they belong to the Scheduled jobs panel). Single source of truth. */
 export const CRON_FNS = new Set(Object.values(CRON_JOB_TO_FN));
 
+/** 401 = unauthorized. The auth layer correctly rejecting an unauthenticated caller is not the
+ *  function failing, so 401 is excluded from every health decision (error/reject rate and the
+ *  all-failed -> down check). It stays visible in the byStatus histogram and the run timeline.
+ *  Every other 4xx (400/403/404/409/422 ...) is a real fault. Read from byStatus because
+ *  `rejected` lumps all 4xx together. */
+export const unauthorizedCount = (m: EdgeFnMetric | null): number =>
+  m ? (m.byStatus?.["401"] ?? 0) : 0;
+
+/** 4xx rejections that count against health: all 4xx minus 401. Never negative. */
+export const healthRejected = (m: EdgeFnMetric | null): number =>
+  m ? Math.max(0, m.rejected - unauthorizedCount(m)) : 0;
+
+/** Invocations that count toward health: the total minus unauthorized (401) traffic. Health
+ *  rates use this as the denominator so foreign 401s neither inflate nor mask a signal. */
+const realCalls = (m: EdgeFnMetric | null): number =>
+  m ? Math.max(0, m.invocations - unauthorizedCount(m)) : 0;
+
 const errorRate = (m: EdgeFnMetric | null): number =>
-  m && m.invocations > 0 ? m.errors / m.invocations : 0;
+  m && realCalls(m) > 0 ? m.errors / realCalls(m) : 0;
 
 const rejectRate = (m: EdgeFnMetric | null): number =>
-  m && m.invocations > 0 ? m.rejected / m.invocations : 0;
+  m && realCalls(m) > 0 ? healthRejected(m) / realCalls(m) : 0;
 
 const percent = (value: number) => `${(value * 100).toFixed(1)}%`;
 const seconds = (milliseconds: number) => `${(milliseconds / 1000).toFixed(1)}s`;
 
 function metricHealthReason(metric: EdgeFnMetric | null, budget: HealthBudget): string | null {
   if (!metric || metric.invocations === 0) return null;
-  if (metric.errors + metric.rejected === metric.invocations) {
-    return `All ${metric.invocations} recent calls failed or were rejected`;
+  if (realCalls(metric) > 0 && metric.errors + healthRejected(metric) === realCalls(metric)) {
+    return `All ${realCalls(metric)} recent calls failed or were rejected`;
   }
   if (errorRate(metric) > budget.errorRate) {
     return `5xx error rate ${percent(errorRate(metric))} exceeds the ${percent(budget.errorRate)} budget`;
@@ -94,7 +111,7 @@ export function deriveJobStatus(cron: CronStatus, metric: EdgeFnMetric | null, b
   // green, and ranked below 'degraded' so a brand-new job can't mask a real degraded signal in rollups.
   if (cron === "unknown") return "pending";
   if (metric) {
-    if (metric.invocations > 0 && metric.errors + metric.rejected === metric.invocations) return "down";
+    if (realCalls(metric) > 0 && metric.errors + healthRejected(metric) === realCalls(metric)) return "down";
     if (errorRate(metric) > budget.errorRate) return "degraded";
     if (rejectRate(metric) > budget.rejectRate) return "degraded";
     if (metric.p95Ms !== null && metric.p95Ms > budget.p95Ms) return "degraded";
@@ -111,14 +128,14 @@ export function describeJobHealth(cron: CronStatus, metric: EdgeFnMetric | null,
 }
 
 /** On-demand functions: no schedule/stale concept; derive purely from metrics.
- *  4xx counts as a fault alongside 5xx — a function that rejects every caller is
- *  as unavailable as one that crashes, and the run timeline has always drawn it
- *  that way. Keeping the two rates separate lets an occasional validation 400 pass
- *  while a sustained rejection rate does not. */
+ *  Non-401 4xx counts as a fault alongside 5xx — a function that rejects every legitimate
+ *  caller is as unavailable as one that crashes, and the run timeline has always drawn it
+ *  that way. Keeping the two rates separate lets an occasional validation 400 pass while a
+ *  sustained rejection rate does not. 401 (unauthorized) is excluded — see healthRejected. */
 export function deriveEdgeFnStatus(metric: EdgeFnMetric | null, budget: HealthBudget): HealthState {
   if (!metric || metric.invocations === 0) return "operational";
-  // Nothing got through in the window, whatever the reason.
-  if (metric.errors + metric.rejected === metric.invocations) return "down";
+  // Every real (non-401) call in the window was an error or a rejection.
+  if (realCalls(metric) > 0 && metric.errors + healthRejected(metric) === realCalls(metric)) return "down";
   if (errorRate(metric) > budget.errorRate) return "degraded";
   if (rejectRate(metric) > budget.rejectRate) return "degraded";
   if (metric.p95Ms !== null && metric.p95Ms > budget.p95Ms) return "degraded";

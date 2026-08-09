@@ -41,7 +41,13 @@ function classify(row: HealthDay): DayState {
   if (row.runs === 0) return "nodata";
   if (row.failures >= row.runs) return "down";
   if (row.failures > 0) return "degraded";
-  if (row.rejected / row.runs > REJECT_RATE_BUDGET) return "degraded";
+  // 401 (unauthorized) is the auth layer working, not the function failing, so a reject rate made
+  // of 401s must not read as degraded — otherwise unauthorized traffic from an unknown caller
+  // (e.g. a non-prod stack firing at prod, or an expired-JWT browser poll) paints a healthy
+  // function amber next to a 100% uptime label. health_daily stores no per-status breakdown, so
+  // worst_status is the only signal: when it is exactly 401 (and there are no 5xx, handled above),
+  // the day's worst outcome was an unauthorized rejection. The count stays visible in the tooltip.
+  if (row.worst_status !== 401 && row.rejected / row.runs > REJECT_RATE_BUDGET) return "degraded";
   return "operational";
 }
 

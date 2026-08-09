@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { StatusPill, StatusDot, LatencyStat } from "./primitives";
 import { UptimeBar } from "./UptimeBar";
 import { RecentRunsList } from "./RecentRunsList";
-import { describeEdgeFnHealth, deriveEdgeFnStatus, CRON_FNS, type EdgeFnMetric } from "@/lib/systemHealth";
+import { describeEdgeFnHealth, deriveEdgeFnStatus, healthRejected, CRON_FNS, type EdgeFnMetric } from "@/lib/systemHealth";
 import { SYSTEM_HEALTH_BUDGET as budget, SYSTEM_HEALTH } from "@/config/app.config";
 import type { HealthDay } from "@/lib/uptime";
 import { useEdgeFnLogs } from "@/hooks/useSystemHealth";
@@ -24,14 +24,18 @@ function EdgeFnRow({ m, rollup }: { m: EdgeFnMetric; rollup: HealthDay[] }) {
   const state = deriveEdgeFnStatus(m, budget);
   const chips = statusChips(m.byStatus);
   const succeeded = m.invocations - m.errors - m.rejected;
-  const hasFaults = m.errors + m.rejected > 0;
+  // Health-relevant rejections exclude 401 (unauthorized) — see healthRejected. The raw 401
+  // count stays visible in the byStatus chips below and in the recent-errors drill-down, but it
+  // must not colour this summary red or the row would contradict its own operational status pill.
+  const rejected = healthRejected(m);
+  const hasFaults = m.errors + rejected > 0;
   const reason = describeEdgeFnHealth(m, budget);
   // A single combined line, not three separate spans: splitting it per stat would duplicate
   // the same numbers into extra DOM nodes, which is redundant for sighted and screen-reader
   // users alike. It covers the last 24h (the Analytics window), whereas the bar above covers
   // 30 days — the two are different clocks and the row reads top-down from long to short.
-  const summary = m.rejected > 0
-    ? `${m.invocations} calls, ${m.rejected} rejected, ${m.errors} errors`
+  const summary = rejected > 0
+    ? `${m.invocations} calls, ${rejected} rejected, ${m.errors} errors`
     : `${m.invocations} calls, ${m.errors} errors`;
   // Lazy: only fires when the row is expanded. The ANALYTICS PAT is rate-limited to
   // 60 req/min and the panel already polls every 60s, so a query per row on every
@@ -50,7 +54,7 @@ function EdgeFnRow({ m, rollup }: { m: EdgeFnMetric; rollup: HealthDay[] }) {
       </div>
       <div className="mt-2 flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
         <LatencyStat p95Ms={m.p95Ms} />
-        <span className={m.rejected > 0 || m.errors > 0 ? "text-destructive" : undefined}>· {summary}</span>
+        <span className={rejected > 0 || m.errors > 0 ? "text-destructive" : undefined}>· {summary}</span>
       </div>
       {reason && <p className="mt-2 text-xs text-muted-foreground">{reason}</p>}
       {chips.length > 0 && (
