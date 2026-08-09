@@ -4,7 +4,7 @@
 --   0000…ac001 org
 BEGIN;
 CREATE EXTENSION IF NOT EXISTS pgtap WITH SCHEMA extensions;
-SELECT plan(12);
+SELECT plan(14);
 
 SET session_replication_role = replica;
 
@@ -142,6 +142,26 @@ SELECT is(
   (SELECT user_id FROM public.artists WHERE id = '00000000-0000-0000-0000-00000000a503'),
   'aaaaaaaa-aaaa-ac04-0000-000000000000'::uuid,
   'legacy email path still links by lowercased email');
+
+-- 13-14. Accept routes through ensure_invitation_membership: a plain-email artist invite
+--        with NO matching artists row must auto-create the artist profile. The count
+--        assertion goes red on the OLD accept (which never auto-created), green after wiring.
+SET session_replication_role = replica;
+INSERT INTO public.organizations (id, name, slug)
+VALUES ('00000000-0000-0000-0000-0000000ac0f1','Accept AutoCreate Org','accept-autocreate-org');
+INSERT INTO auth.users (id, aud, role, email, email_confirmed_at, raw_app_meta_data, raw_user_meta_data, created_at, updated_at)
+VALUES ('aaaaaaaa-aaaa-ac06-0000-000000000000','authenticated','authenticated','accept-f@test.com', now(),'{"provider":"email"}','{}',now(),now());
+INSERT INTO public.org_invitations (org_id, email, role, token, status)
+VALUES ('00000000-0000-0000-0000-0000000ac0f1','accept-f@test.com','artist','tok-accept-fff','pending');
+SET session_replication_role = DEFAULT;
+SELECT set_config('request.jwt.claims','{"sub":"aaaaaaaa-aaaa-ac06-0000-000000000000","role":"authenticated"}',true);
+SET LOCAL ROLE authenticated;
+SELECT lives_ok($$ SELECT public.accept_invitation('tok-accept-fff') $$,'plain artist invite accepts');
+RESET ROLE;
+SELECT is(
+  (SELECT count(*)::int FROM public.artists
+   WHERE org_id='00000000-0000-0000-0000-0000000ac0f1' AND user_id='aaaaaaaa-aaaa-ac06-0000-000000000000'),
+  1, 'accept auto-creates the artist profile for a plain-email artist invite');
 
 SELECT * FROM finish();
 ROLLBACK;
