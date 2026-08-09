@@ -16,7 +16,7 @@ import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { filterPeople } from "./peopleMatch";
+import { filterPeople, filterInvitesByEmail } from "./peopleMatch";
 import { InviteBar } from "./InviteBar";
 import { BulkInviteDialog } from "./BulkInviteDialog";
 import { InviteRow } from "./InviteRow";
@@ -44,9 +44,19 @@ export function PeopleTab() {
     () => (invites ?? []).filter((i) => i.status === "pending"),
     [invites],
   );
+  // Accepted/revoked invitations, newest-first (fetchOrgInvitations already orders desc),
+  // shown as read-only history so the pane isn't only "pending".
+  const historyInvites = useMemo(
+    () => (invites ?? []).filter((i) => i.status === "accepted" || i.status === "revoked"),
+    [invites],
+  );
   const filtered = useMemo(
     () => filterPeople(search, allMembers, pendingInvites),
     [search, allMembers, pendingInvites],
+  );
+  const filteredHistory = useMemo(
+    () => filterInvitesByEmail(search, historyInvites),
+    [search, historyInvites],
   );
   const hasSearch = search.trim().length > 0;
   // Duplicate detection needs both lists; if either query is still loading or has
@@ -67,10 +77,11 @@ export function PeopleTab() {
 
   const showPending = filtered.invites.length > 0;
   const showMembers = filtered.members.length > 0;
+  const showHistory = filteredHistory.length > 0;
   // Only claim "no matches" once both queries have actually settled successfully.
   // dedupeUnready covers loading AND error, so the skeleton or the destructive alert
   // explains the empty lists during those states instead of a contradictory empty copy.
-  const nothing = hasSearch && !showPending && !showMembers && !dedupeUnready;
+  const nothing = hasSearch && !showPending && !showMembers && !showHistory && !dedupeUnready;
 
   return (
     <div className="space-y-4">
@@ -131,6 +142,23 @@ export function PeopleTab() {
                   onError: (e) => toast.error((e as Error).message),
                 })}
                 onRequestRemove={setTarget}
+              />
+            ))}
+          </CardContent>
+        </Card>
+      )}
+
+      {showHistory && (
+        <Card>
+          <CardHeader><CardTitle className="font-display text-base">Invitation history</CardTitle></CardHeader>
+          <CardContent className="space-y-2">
+            {filteredHistory.map((inv) => (
+              <InviteRow
+                key={inv.id}
+                invite={inv}
+                onCopyLink={() => {}}
+                onResend={() => {}}
+                onRevoke={() => {}}
               />
             ))}
           </CardContent>

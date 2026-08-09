@@ -33,7 +33,9 @@ vi.mock("@/hooks/useOrgMembers", () => ({
 vi.mock("@/data/invitations", async (orig) => ({
   ...(await orig<typeof import("@/data/invitations")>()),
   fetchOrgInvitations: () => Promise.resolve([
-    { id: "i1", org_id: "org-1", email: "kim@x.com", role: "artist", status: "pending", token: "t", expires_at: "2026-12-01T00:00:00Z", created_at: "2026-01-01T00:00:00Z" },
+    { id: "i1", org_id: "org-1", email: "kim@x.com", role: "artist", status: "pending", token: "t", expires_at: "2026-12-01T00:00:00Z", created_at: "2026-03-01T00:00:00Z" },
+    { id: "i2", org_id: "org-1", email: "dana@x.com", role: "producer", status: "accepted", token: "t2", expires_at: "2026-12-01T00:00:00Z", created_at: "2026-02-01T00:00:00Z" },
+    { id: "i3", org_id: "org-1", email: "rex@x.com", role: "artist", status: "revoked", token: "t3", expires_at: "2026-12-01T00:00:00Z", created_at: "2026-01-01T00:00:00Z" },
   ]),
 }));
 
@@ -55,6 +57,15 @@ describe("PeopleTab", () => {
     fireEvent.change(screen.getByPlaceholderText(/search people/i), { target: { value: "kim" } });
     expect(screen.queryByText("bob@x.com")).not.toBeInTheDocument();
     expect(screen.getByText("kim@x.com")).toBeInTheDocument();
+  });
+
+  it("shows accepted and revoked invitations under Invitation history", async () => {
+    renderWithProviders(<PeopleTab />);
+    expect(await screen.findByText("dana@x.com")).toBeInTheDocument();
+    expect(screen.getByText("rex@x.com")).toBeInTheDocument();
+    expect(screen.getByText(/invitation history/i)).toBeInTheDocument();
+    expect(screen.getByText(/^accepted$/i)).toBeInTheDocument();
+    expect(screen.getByText(/^revoked$/i)).toBeInTheDocument();
   });
 
   it("does not show the no-match empty state while the members query is still loading", () => {
