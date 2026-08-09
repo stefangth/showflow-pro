@@ -70,7 +70,14 @@ export function PeopleTab() {
       <Card>
         <CardHeader><CardTitle className="font-display">Invite people</CardTitle></CardHeader>
         <CardContent>
-          <InviteBar members={allMembers} invites={pendingInvites} dedupeUnready={dedupeUnready} onOpenBulk={() => setBulkOpen(true)} />
+          <InviteBar
+            members={allMembers}
+            invites={pendingInvites}
+            dedupeUnready={dedupeUnready}
+            onOpenBulk={() => setBulkOpen(true)}
+            onResend={(id) => resend.mutate(id)}
+            resendPendingId={resend.isPending ? (resend.variables ?? null) : null}
+          />
         </CardContent>
       </Card>
 

@@ -17,6 +17,11 @@ export interface InviteBarProps {
   members: OrgMember[];
   invites: Invitation[];
   onOpenBulk: () => void;
+  /** Resend a pending invite. Owned by the parent so the bar hint and the Pending
+   *  list share one mutation (a resend in flight disables both affordances). */
+  onResend: (id: string) => void;
+  /** Id of the invite whose resend is currently in flight, or null. */
+  resendPendingId?: string | null;
   /**
    * Duplicate detection can't be trusted until BOTH the members and invites
    * queries have settled successfully; hold sends until then so an already-a-member
@@ -26,11 +31,11 @@ export interface InviteBarProps {
 }
 
 /** Inline single invite with live duplicate detection + a bulk-invite entry point. */
-export function InviteBar({ members, invites, onOpenBulk, dedupeUnready = false }: InviteBarProps) {
+export function InviteBar({ members, invites, onOpenBulk, onResend, resendPendingId = null, dedupeUnready = false }: InviteBarProps) {
   const { currentOrg } = useAuth();
   const [email, setEmail] = useState("");
   const [role, setRole] = useState<AppRole>("artist");
-  const { create, resend } = useInvitationMutations(currentOrg?.id);
+  const { create } = useInvitationMutations(currentOrg?.id);
 
   const trimmed = email.trim();
   const match = useMemo(
@@ -75,7 +80,7 @@ export function InviteBar({ members, invites, onOpenBulk, dedupeUnready = false 
       {match === "pending" && pendingInvite && (
         <p className="text-xs text-muted-foreground flex items-center gap-2">
           Already invited (pending).
-          <Button size="sm" variant="link" className="h-auto p-0 text-xs" disabled={resend.isPending} onClick={() => resend.mutate(pendingInvite.id)}>
+          <Button size="sm" variant="link" className="h-auto p-0 text-xs" disabled={resendPendingId === pendingInvite.id} onClick={() => onResend(pendingInvite.id)}>
             Resend
           </Button>
         </p>
