@@ -6,6 +6,7 @@ import type { ComposeInput, DashboardRole, ModuleOnboardingDef, ModuleStatusLite
 
 const bookingDef: ModuleOnboardingDef<"flow" | "slots"> = {
   key: "booking_flow",
+  railHeader: { title: "Get bookings running", body: "b" },
   steps: {
     flow: { title: "Booking flow", todoHint: "t", doneHint: "d", ctaLabel: "Choose", ctaRoute: "/settings", ctaCapability: "edit_booking_settings" },
     slots: { title: "Slots per show", todoHint: "t", doneHint: "d", ctaLabel: "Set", ctaRoute: "/productions", ctaCapability: "edit_booking_settings" },
@@ -15,6 +16,7 @@ const bookingDef: ModuleOnboardingDef<"flow" | "slots"> = {
 };
 const hireDef: ModuleOnboardingDef<"letterhead"> = {
   key: "hire_orders",
+  railHeader: { title: "Get hire orders ready", body: "b" },
   steps: { letterhead: { title: "Letterhead", todoHint: "t", doneHint: "d", ctaLabel: "Set", ctaRoute: "/settings/hire-orders" } },
   rules: () => [],
   offFooter: "Hire orders is off. Ask your account manager to switch it on.",

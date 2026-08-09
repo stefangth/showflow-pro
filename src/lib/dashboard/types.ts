@@ -48,6 +48,8 @@ export interface ModuleOnboardingDef<StepKey extends string> {
   key: FeatureKey;
   /** Exhaustive per engine step key — a missing/renamed key is a compile error. */
   steps: Record<StepKey, OnboardingStepMeta>;
+  /** Header copy for the module-scoped rail rendered on the module page. */
+  railHeader: { title: string; body: string };
   rules: (role: DashboardRole, ctx: OnboardingCtx) => InheritedRule[];
   /** Shown when the module is NOT licensed (the upsell nudge). */
   offFooter: string;

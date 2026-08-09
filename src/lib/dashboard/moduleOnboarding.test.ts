@@ -31,6 +31,14 @@ it("every CTA route is a real ROUTES value and no copy uses em/en dashes", () =>
   }
 });
 
+it("every module has railHeader copy with no em/en dashes", () => {
+  for (const def of [bookingOnboarding, hireOrderOnboarding]) {
+    expect(def.railHeader.title.length).toBeGreaterThan(0);
+    expect(def.railHeader.body.length).toBeGreaterThan(0);
+    expect(`${def.railHeader.title}${def.railHeader.body}`).not.toMatch(/[—–]/);
+  }
+});
+
 it("ARTIST_ONBOARDING step keys match ARTIST_STEP_KEYS (drift guard)", () => {
   expect(Object.keys(ARTIST_ONBOARDING.steps).sort()).toEqual([...ARTIST_STEP_KEYS].sort());
 });

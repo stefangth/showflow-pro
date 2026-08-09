@@ -12,6 +12,10 @@ import type {
 
 export const bookingOnboarding: ModuleOnboardingDef<BookingSetupStepKey> = {
   key: "booking_flow",
+  railHeader: {
+    title: "Get bookings running",
+    body: "Dates keep syncing and you can edit them now. These are what the first offer needs.",
+  },
   steps: {
     flow: { title: STEP_TITLES.flow, todoHint: "Offers, or straight to booked. Everything downstream reads this.", doneHint: "Chosen. Change it any time in Settings.", ctaLabel: "Choose flow", ctaRoute: ROUTES.SETTINGS, ctaCapability: "edit_booking_settings" },
     slots: { title: STEP_TITLES.slots, todoHint: "A show with no slot count never reads as full.", doneHint: "Set on every show.", ctaLabel: "Set slots", ctaRoute: ROUTES.PRODUCTIONS, ctaCapability: "edit_booking_settings" },
@@ -30,6 +34,10 @@ export const bookingOnboarding: ModuleOnboardingDef<BookingSetupStepKey> = {
 
 export const hireOrderOnboarding: ModuleOnboardingDef<SetupStepKey> = {
   key: "hire_orders",
+  railHeader: {
+    title: "Get hire orders ready",
+    body: "You can draft orders right now. These are only needed before the first one goes out.",
+  },
   steps: {
     letterhead: { title: "Letterhead", todoHint: "Your name, address and logo on every hire order.", doneHint: "Set. Every order uses it.", ctaLabel: "Set letterhead", ctaRoute: ROUTES.SETTINGS, ctaCapability: "edit_hire_order_settings" },
     terms: { title: "Terms", todoHint: "The clauses printed on the engagement sheet.", doneHint: "A terms variant is chosen.", ctaLabel: "Choose terms", ctaRoute: ROUTES.SETTINGS, ctaCapability: "edit_hire_order_settings" },
