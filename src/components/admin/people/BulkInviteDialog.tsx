@@ -22,11 +22,11 @@ export interface BulkInviteDialogProps {
   members: OrgMember[];
   invites: Invitation[];
   /**
-   * Duplicate detection is blind until BOTH the members and invites queries have
-   * settled successfully; block sends until then so an already-a-member or
-   * already-invited address can't slip through an empty list.
+   * When set, duplicate detection can't be trusted yet (members/invites still loading,
+   * or a query errored); sending is held and this string is shown as the reason, matching
+   * InviteBar so the disabled Invite is never unexplained. Null = ready.
    */
-  dedupeUnready?: boolean;
+  dedupeHint?: string | null;
 }
 
 type Kind = "invalid" | "member" | "pending" | "ok";
@@ -35,7 +35,8 @@ type Kind = "invalid" | "member" | "pending" | "ok";
 const SEND_CONCURRENCY = 5;
 
 /** Paste multiple emails, pick one role, invite the clean ones; skips are reported. */
-export function BulkInviteDialog({ open, onOpenChange, members, invites, dedupeUnready = false }: BulkInviteDialogProps) {
+export function BulkInviteDialog({ open, onOpenChange, members, invites, dedupeHint = null }: BulkInviteDialogProps) {
+  const dedupeUnready = !!dedupeHint;
   const { currentOrg } = useAuth();
   const { createOne, invalidateInvitations } = useInvitationMutations(currentOrg?.id);
   const [text, setText] = useState("");
@@ -138,7 +139,8 @@ export function BulkInviteDialog({ open, onOpenChange, members, invites, dedupeU
             </div>
           )}
         </div>
-        <DialogFooter>
+        <DialogFooter className="sm:items-center">
+          {dedupeHint && <p className="text-xs text-muted-foreground sm:mr-auto">{dedupeHint}</p>}
           <Button variant="ghost" onClick={() => onOpenChange(false)} disabled={sending}>Cancel</Button>
           <Button onClick={submit} disabled={sending || okCount === 0 || dedupeUnready}>
             {sending ? "Inviting…" : `Invite ${okCount || ""}`.trim()}

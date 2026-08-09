@@ -63,6 +63,15 @@ describe("BulkInviteDialog", () => {
     );
   });
 
+  it("shows the dedupe hint and disables submit while duplicate detection is unready", () => {
+    renderWithProviders(
+      <BulkInviteDialog open onOpenChange={vi.fn()} members={[]} invites={[]} dedupeHint="Checking existing people…" />,
+    );
+    fireEvent.change(screen.getByRole("textbox"), { target: { value: "new@x.com" } });
+    expect(screen.getByText(/checking existing people/i)).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /^invite 1$/i })).toBeDisabled();
+  });
+
   it("keeps the dialog open and repopulates only the failed addresses on partial failure", async () => {
     const onOpenChange = vi.fn();
     createInvitation.mockImplementation((_client: unknown, args: unknown) => {
