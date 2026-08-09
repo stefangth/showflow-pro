@@ -65,15 +65,19 @@ export const CRON_FNS = new Set(Object.values(CRON_JOB_TO_FN));
  *  all-failed -> down check). It stays visible in the byStatus histogram and the run timeline.
  *  Every other 4xx (400/403/404/409/422 ...) is a real fault. Read from byStatus because
  *  `rejected` lumps all 4xx together. */
-export const unauthorizedCount = (m: EdgeFnMetric | null): number =>
+const unauthorizedCount = (m: EdgeFnMetric | null): number =>
   m ? (m.byStatus?.["401"] ?? 0) : 0;
 
 /** 4xx rejections that count against health: all 4xx minus 401. Never negative. */
 export const healthRejected = (m: EdgeFnMetric | null): number =>
   m ? Math.max(0, m.rejected - unauthorizedCount(m)) : 0;
 
-/** Invocations that count toward health: the total minus unauthorized (401) traffic. Health
- *  rates use this as the denominator so foreign 401s neither inflate nor mask a signal. */
+/** Invocations that count toward health: the total minus unauthorized (401) traffic. Both the
+ *  error rate and the reject rate divide by this — 401 is excluded from the numerator AND the
+ *  denominator — so a rate reads as "the fraction of authenticated traffic that failed."
+ *  This is a deliberate refinement of the design doc's numerator-only formula (§B.2): leaving
+ *  401s in the denominator would let a flood of unauthorized probes dilute, and so hide, a real
+ *  403/5xx spike. The trade-off is stricter alerting for functions with a heavy 401 mix. */
 const realCalls = (m: EdgeFnMetric | null): number =>
   m ? Math.max(0, m.invocations - unauthorizedCount(m)) : 0;
 
@@ -131,7 +135,11 @@ export function describeJobHealth(cron: CronStatus, metric: EdgeFnMetric | null,
  *  Non-401 4xx counts as a fault alongside 5xx — a function that rejects every legitimate
  *  caller is as unavailable as one that crashes, and the run timeline has always drawn it
  *  that way. Keeping the two rates separate lets an occasional validation 400 pass while a
- *  sustained rejection rate does not. 401 (unauthorized) is excluded — see healthRejected. */
+ *  sustained rejection rate does not. 401 (unauthorized) is excluded — see healthRejected.
+ *  Accepted trade-off of that exclusion: if every legitimate caller of a user-facing function
+ *  started getting 401 (a total auth outage), realCalls falls to 0 and this reads operational —
+ *  there is no non-401 signal left to flag. Cron/service-role callers still have the
+ *  cron-health-watcher and 403 backstops; a purely JWT-authed on-demand function does not. */
 export function deriveEdgeFnStatus(metric: EdgeFnMetric | null, budget: HealthBudget): HealthState {
   if (!metric || metric.invocations === 0) return "operational";
   // Every real (non-401) call in the window was an error or a rejection.

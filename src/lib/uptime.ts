@@ -47,6 +47,13 @@ function classify(row: HealthDay): DayState {
   // function amber next to a 100% uptime label. health_daily stores no per-status breakdown, so
   // worst_status is the only signal: when it is exactly 401 (and there are no 5xx, handled above),
   // the day's worst outcome was an unauthorized rejection. The count stays visible in the tooltip.
+  //
+  // Known limitation of this frontend-only heuristic: worst_status is max(codes), so a day that
+  // mixes 401 with a genuine 400 (the only 4xx numerically below 401) reports worst_status 401 and
+  // its 400s escape this check. 403/404/409/422 and every 5xx are all > 401, so their presence
+  // still trips it. The precise fix is a per-status health_daily.unauthorized column (a fast-follow
+  // once the local stack is available to regenerate types); the live EdgeFunctionsPanel path already
+  // uses exact byStatus counts and has no such gap.
   if (row.worst_status !== 401 && row.rejected / row.runs > REJECT_RATE_BUDGET) return "degraded";
   return "operational";
 }
