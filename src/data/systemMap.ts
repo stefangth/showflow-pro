@@ -40,8 +40,9 @@ export const SYSTEM_MAP_NODES: SystemMapNode[] = [
     detail: {
       Fires: "airtable-poll",
       Auth: "X-Cron-Secret from Vault via private.cron_secret()",
+      Host: "net.http_post URL from private.functions_base_url(): prod host by default, seed.sql overrides to the local stack so non-prod stacks (local/CI/preview) never dispatch at prod; same resolver backs the dispatch_hire_order_drafts trigger",
       Note: "per-org interval gate: skips an org until airtable_poll_interval_minutes has elapsed (min 5, 60s grace)",
-      Cite: "supabase/migrations/20260624101342_cron_dispatch_timeout.sql",
+      Cite: "20260809140000_functions_base_url_env_resolver.sql + 20260624101342_cron_dispatch_timeout.sql",
     },
   },
   {
