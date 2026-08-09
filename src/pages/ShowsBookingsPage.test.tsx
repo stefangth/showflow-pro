@@ -92,8 +92,25 @@ vi.mock("@/components/bookings/setup/useBookingSetupRailVisible", () => ({
 vi.mock("@/components/bookings/setup/BookingSetupRail", () => ({
   BookingSetupRail: () => <div data-testid="booking-setup-rail" />,
 }));
+// The banner rail's steps come from useModuleOnboardingRail, which reads this status's
+// `steps` + `complete`, so the mock must carry a full steps array (not just counts).
+type BookingStatus = {
+  steps: { key: string; done: boolean; block: "offers" | "filling" | null }[];
+  doneCount: number; totalCount: number; canOffer: boolean; complete: boolean;
+};
 const { bookingSetupStatus } = vi.hoisted(() => ({
-  bookingSetupStatus: { value: { complete: false, doneCount: 0, totalCount: 5 } as { complete: boolean; doneCount: number; totalCount: number } },
+  bookingSetupStatus: {
+    value: {
+      steps: [
+        { key: "flow", done: false, block: null },
+        { key: "slots", done: false, block: "filling" },
+        { key: "ladder", done: false, block: "offers" },
+        { key: "eligibility", done: false, block: null },
+        { key: "timing", done: false, block: null },
+      ],
+      doneCount: 0, totalCount: 5, canOffer: false, complete: false,
+    } as BookingStatus,
+  },
 }));
 vi.mock("@/hooks/useBookingSetup", () => ({
   useBookingSetupStatus: () => ({ status: bookingSetupStatus.value, coverage: undefined, isLoading: false, isError: false }),
@@ -131,11 +148,23 @@ vi.mock("@/components/hireOrders/NewOrderWizard", () => ({ NewOrderWizard: () =>
 
 import ShowsBookingsPage from "./ShowsBookingsPage";
 
+/** Build a booking setup status with `done` of the five steps complete. */
+function makeBookingStatus(done: number, complete: boolean): BookingStatus {
+  const keys = ["flow", "slots", "ladder", "eligibility", "timing"] as const;
+  const block: Record<string, "offers" | "filling" | null> = {
+    flow: null, slots: "filling", ladder: "offers", eligibility: null, timing: null,
+  };
+  return {
+    steps: keys.map((k, i) => ({ key: k, done: i < done, block: block[k] })),
+    doneCount: done, totalCount: 5, canOffer: done >= 3, complete,
+  };
+}
+
 beforeEach(() => {
   localStorage.clear();
   featureFlags.value = {};
   railState.value = { visible: false, reinvocable: false };
-  bookingSetupStatus.value = { complete: false, doneCount: 0, totalCount: 5 };
+  bookingSetupStatus.value = makeBookingStatus(0, false);
 });
 
 describe("ShowsBookingsPage — producer timeframe default + past tint (Plan B Task 2)", () => {
@@ -204,11 +233,14 @@ describe("ShowsBookingsPage — setup checklist uncramp + re-invoke (Plan B Task
     expect(document.querySelector(".lg\\:grid-cols-\\[1fr_340px\\]")).toBeNull();
   });
 
-  it("opens the checklist in a Sheet from the inline callout", async () => {
+  it("opens the checklist Sheet at the clicked step, and drops the old dashed callout button", async () => {
     featureFlags.value = { booking_flow: true };
     railState.value = { visible: true, reinvocable: false };
     renderWithProviders(<ShowsBookingsPage />);
-    fireEvent.click(await screen.findByRole("button", { name: /open checklist/i }));
+    await screen.findByText(/get bookings running/i);
+    // The old dashed "Open checklist" button is gone; each step opens the Sheet in place.
+    expect(screen.queryByRole("button", { name: /open checklist/i })).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Choose flow" }));
     expect(await screen.findByTestId("booking-setup-rail")).toBeInTheDocument();
   });
 
@@ -240,7 +272,7 @@ describe("ShowsBookingsPage — setup checklist uncramp + re-invoke (Plan B Task
     featureFlags.value = { booking_flow: true };
     railState.value = { visible: false, reinvocable: false };
     localStorage.setItem("showflow.bookingSetup.hidden.org-1", "true");
-    bookingSetupStatus.value = { complete: true, doneCount: 5, totalCount: 5 };
+    bookingSetupStatus.value = makeBookingStatus(5, true);
     renderWithProviders(<ShowsBookingsPage />);
     await screen.findByText("Future Show");
     expect(screen.queryByRole("button", { name: /setup checklist/i })).not.toBeInTheDocument();
@@ -255,7 +287,7 @@ describe("ShowsBookingsPage — setup checklist uncramp + re-invoke (Plan B Task
     featureFlags.value = { booking_flow: true };
     railState.value = { visible: false, reinvocable: false };
     localStorage.setItem("showflow.bookingSetup.hidden.org-1", "true");
-    bookingSetupStatus.value = { complete: false, doneCount: 4, totalCount: 5 };
+    bookingSetupStatus.value = makeBookingStatus(4, false);
     renderWithProviders(<ShowsBookingsPage />);
     await screen.findByText("Future Show");
     expect(screen.queryByRole("button", { name: /setup checklist/i })).not.toBeInTheDocument();
