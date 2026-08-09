@@ -24,15 +24,23 @@
 -- exists under supabase/functions/. There is nothing left for this migration to touch there, so it is
 -- intentionally skipped rather than reintroducing a dispatch call that was deliberately removed.
 
--- 1) Resolver: override GUC if set and non-empty, else the production host (the single place the
---    production host lives). Fail-safe: a missing override can only ever mis-target local, never prod.
+-- 1) Resolver: read the override from a table, not a GUC. seed.sql runs as the non-owner
+--    `postgres` role, which cannot `ALTER DATABASE/ROLE ... SET` a parameter (fails with
+--    SQLSTATE 42501 on the Supabase stack, local and CI), but can INSERT into a table this
+--    migration owns. Default (no row present) is the production host -- the single place it
+--    lives. Fail-safe: a missing override can only ever mis-target local, never prod.
+create table if not exists private.runtime_config (
+  key   text primary key,
+  value text not null
+);
+
 create or replace function private.functions_base_url()
 returns text
 language sql stable security definer
 set search_path = public
 as $$
   select coalesce(
-    nullif(current_setting('app.functions_base_url', true), ''),
+    (select nullif(value, '') from private.runtime_config where key = 'functions_base_url'),
     'https://epweartpzwvcasrzyueh.supabase.co'
   );
 $$;

@@ -294,7 +294,8 @@ on conflict (id) do nothing;
 -- and that noise pollutes prod's System Health metrics). seed.sql never runs on production, so the
 -- migration's production default (private.functions_base_url) is untouched there. Any non-prod value
 -- satisfies the goal (do not hit prod); http://kong:8000 is the local stack's internal gateway.
-do $$
-begin
-  execute format('alter database %I set app.functions_base_url = %L', current_database(), 'http://kong:8000');
-end $$;
+-- A plain INSERT (not ALTER DATABASE ... SET): the seed runs as the non-owner `postgres` role,
+-- which lacks privilege to set a database/role parameter but owns private.runtime_config.
+insert into private.runtime_config (key, value)
+values ('functions_base_url', 'http://kong:8000')
+on conflict (key) do update set value = excluded.value;

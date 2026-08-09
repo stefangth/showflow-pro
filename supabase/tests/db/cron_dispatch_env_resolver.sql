@@ -1,6 +1,6 @@
 -- Guard: no in-DB edge-function dispatcher may hardcode the production host; they must resolve it at
 -- dispatch time via private.functions_base_url(), and the resolver must default to production when no
--- override GUC is set. Regression guard for 20260809140000_functions_base_url_env_resolver.
+-- override row exists. Regression guard for 20260809140000_functions_base_url_env_resolver.
 --
 -- NOTE: the on_auth_user_created notify-signup dispatcher (introduced in
 -- 20260423103651_3100e13e-9907-4d33-b74a-1dc3d0017262.sql) is not covered here because it no longer
@@ -29,9 +29,9 @@ SELECT is(
      AND pg_get_functiondef(p.oid) LIKE '%epweartpzwvcasrzyueh.supabase.co%'),
   0, 'trigger dispatchers use the resolver, not a hardcoded prod host');
 
-SELECT set_config('app.functions_base_url', '', true);  -- SET LOCAL: unset the seed override
+DELETE FROM private.runtime_config WHERE key = 'functions_base_url';  -- rolled back with this txn
 SELECT is(private.functions_base_url(), 'https://epweartpzwvcasrzyueh.supabase.co',
-          'functions_base_url() defaults to the production host when unset');
+          'functions_base_url() defaults to the production host when no override row exists');
 
 SELECT * FROM finish();
 ROLLBACK;
