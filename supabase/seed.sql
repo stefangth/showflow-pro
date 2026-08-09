@@ -288,3 +288,13 @@ select
   gen.duration_minutes
 from gen
 on conflict (id) do nothing;
+
+-- Point in-DB edge-function dispatch at the LOCAL stack instead of production, so local/CI/preview
+-- pg_cron jobs and triggers never fire at prod (prod rejects their mismatched cron secret with 401
+-- and that noise pollutes prod's System Health metrics). seed.sql never runs on production, so the
+-- migration's production default (private.functions_base_url) is untouched there. Any non-prod value
+-- satisfies the goal (do not hit prod); http://kong:8000 is the local stack's internal gateway.
+do $$
+begin
+  execute format('alter database %I set app.functions_base_url = %L', current_database(), 'http://kong:8000');
+end $$;
