@@ -34,6 +34,11 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          # Full history so the secret scan can inspect EACH pushed commit's
+          # diff, not just the tip tree — catches a secret added then removed
+          # within the same PR (it stays in permanent history regardless).
+          fetch-depth: 0
 
       - uses: actions/setup-node@v4
         with:
@@ -41,6 +46,17 @@ jobs:
           cache: npm
 
       - run: npm ci
+
+      # Runs on every PR/push, INCLUDING cloud-session commits and any
+      # `git push --no-verify` bypass — the layer that catches a hardcoded
+      # credential a local pre-push hook can never see. Scans the tip tree, and
+      # on a PR the added lines of every commit in the range. See scripts/scan-secrets.mjs.
+      - name: Scan for committed secrets
+        run: |
+          node scripts/scan-secrets.mjs
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            node scripts/scan-secrets.mjs --range "${{ github.event.pull_request.base.sha }}..${{ github.event.pull_request.head.sha }}"
+          fi
 
       - name: Check generated mirrors are in sync
         run: npm run sync:mirrors:check

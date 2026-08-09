@@ -30,5 +30,17 @@ fi
 repo_root="$(git rev-parse --show-toplevel)"
 cd "$repo_root" || exit 1
 
+# Secret scan first — cheapest possible fail, and the one that keeps a hardcoded
+# credential (the Resend-key class of leak) off the remote. Mirrored by the CI
+# "Lint" job so a --no-verify bypass is still caught server-side.
+echo "pre-push: scanning pushed commits + tracked files for secrets…" >&2
+# `|| exit 1` is load-bearing: the hook runs `set -uo pipefail` (no `-e`), so a
+# bare failing statement would fall through to verify:fast and the hook would
+# exit with verify:fast's code — pushing the secret anyway. Abort explicitly.
+# --prepush consumes git's ref-update lines on stdin and scans each pushed
+# commit's diff (so an add-then-remove within the push is still caught), plus a
+# tracked-tree snapshot. Mirrored by the CI "Lint" job for --no-verify bypasses.
+node scripts/scan-secrets.mjs --prepush || exit 1
+
 echo "pre-push: running verify:fast (bypass with --no-verify or SHOWFLOW_SKIP_VERIFY=1)…" >&2
 npm run --silent verify:fast
