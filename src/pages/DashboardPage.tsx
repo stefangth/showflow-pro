@@ -80,9 +80,13 @@ function ProducerDashboard() {
   const [selected, setSelected] = useState<Set<string>>(new Set());
   // A rail step opens that module's inline setup Sheet at the step, in place — no more
   // routing away to Settings/Productions. The dashboard hosts both modules' Sheets and
-  // picks by the step's moduleKey.
-  const [setupSheet, setSetupSheet] = useState<{ feature: FeatureKey; step: string } | null>(null);
-  const openSetupAt = (step: ComposedStep) => setSetupSheet({ feature: step.moduleKey, step: step.key });
+  // picks by the step's moduleKey. Open state is tracked separately from the selection so
+  // the last-opened {feature, step} persists through the Sheet's ~300ms close animation
+  // (SetupChecklistSheet keeps its content mounted for the exit) — nulling it on close would
+  // flip the content to the other module mid-slide-out.
+  const [setupOpen, setSetupOpen] = useState(false);
+  const [setupSel, setSetupSel] = useState<{ feature: FeatureKey; step: string } | null>(null);
+  const openSetupAt = (step: ComposedStep) => { setSetupSel({ feature: step.moduleKey, step: step.key }); setSetupOpen(true); };
 
   const { data: upcomingDates } = useQuery({
     queryKey: ['dashboard-upcoming-dates', todayStr, orgId],
@@ -405,11 +409,11 @@ function ProducerDashboard() {
         )}
       </div>
       <SetupChecklistSheet
-        feature={setupSheet?.feature ?? 'booking_flow'}
+        feature={setupSel?.feature ?? 'booking_flow'}
         orgId={orgId}
-        open={setupSheet !== null}
-        onOpenChange={(o) => { if (!o) setSetupSheet(null); }}
-        initialStep={setupSheet?.step}
+        open={setupOpen}
+        onOpenChange={setSetupOpen}
+        initialStep={setupSel?.step}
       />
     </div>
   );

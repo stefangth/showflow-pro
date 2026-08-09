@@ -27,11 +27,16 @@ vi.mock("@/data/bookings", async (orig) => ({
 vi.mock("@/components/dashboard/firstRun/useDashboardFirstRun", () => ({
   useDashboardFirstRun: vi.fn(),
 }));
-// The Sheet host is exercised on its own (SetupChecklistSheet.test.tsx); here we only
-// need to prove a rail step opens it in place with the right module + step.
+// The Sheet host is exercised on its own (SetupChecklistSheet.test.tsx); here we only need
+// to prove a rail step opens it in place with the right module + step. Always rendered
+// (mirrors the real component staying mounted through its close animation) and exposes a
+// close button, so a test can assert what content shows WHILE it closes.
 vi.mock("@/components/setup/SetupChecklistSheet", () => ({
-  SetupChecklistSheet: ({ open, feature, initialStep }: { open: boolean; feature: string; initialStep?: string }) =>
-    open ? <div data-testid="setup-sheet" data-feature={feature} data-step={initialStep ?? ""} /> : null,
+  SetupChecklistSheet: ({ open, feature, initialStep, onOpenChange }: { open: boolean; feature: string; initialStep?: string; onOpenChange: (o: boolean) => void }) => (
+    <div data-testid="setup-sheet" data-open={String(open)} data-feature={feature} data-step={initialStep ?? ""}>
+      <button data-testid="setup-sheet-close" onClick={() => onOpenChange(false)}>close</button>
+    </div>
+  ),
 }));
 
 // Settable first-run state so the sample-vs-live body switch can be exercised.
@@ -103,11 +108,30 @@ describe("DashboardPage first-run layer", () => {
       ],
     }) as never);
     renderWithProviders(<MemoryRouter><DashboardPage /></MemoryRouter>);
-    expect(screen.queryByTestId("setup-sheet")).not.toBeInTheDocument();
+    expect(screen.getByTestId("setup-sheet").getAttribute("data-open")).toBe("false");
     fireEvent.click(await screen.findByRole("button", { name: "Choose flow" }));
     const sheet = screen.getByTestId("setup-sheet");
+    expect(sheet.getAttribute("data-open")).toBe("true");
     expect(sheet.getAttribute("data-feature")).toBe("booking_flow");
     expect(sheet.getAttribute("data-step")).toBe("flow");
+  });
+
+  it("keeps the opened module's content while the Sheet closes (no wrong-module flash)", async () => {
+    vi.mocked(useDashboardFirstRun).mockReturnValue(frState({
+      railOpen: true,
+      steps: [
+        { key: "letterhead", moduleKey: "hire_orders", title: "Letterhead", todoHint: "t", doneHint: "d", ctaLabel: "Set letterhead", ctaRoute: "/settings", ctaCapability: "edit_hire_order_settings", done: false, block: "issuing" },
+      ],
+    }) as never);
+    renderWithProviders(<MemoryRouter><DashboardPage /></MemoryRouter>);
+    fireEvent.click(await screen.findByRole("button", { name: "Set letterhead" }));
+    expect(screen.getByTestId("setup-sheet").getAttribute("data-feature")).toBe("hire_orders");
+    // Closing must keep feature = hire_orders through the exit animation, not flip to the
+    // fallback booking_flow (the Sheet stays mounted while it slides out).
+    fireEvent.click(screen.getByTestId("setup-sheet-close"));
+    const sheet = screen.getByTestId("setup-sheet");
+    expect(sheet.getAttribute("data-open")).toBe("false");
+    expect(sheet.getAttribute("data-feature")).toBe("hire_orders");
   });
 
   it("routes a hire-order rail step to the hire-orders Sheet (by moduleKey)", async () => {
