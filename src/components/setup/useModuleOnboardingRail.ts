@@ -5,7 +5,7 @@ import { useHireOrderSetupStatus } from "@/hooks/useHireOrderSetup";
 import { useBookingSetupRailVisible } from "@/components/bookings/setup/useBookingSetupRailVisible";
 import { useSetupRailVisible } from "@/components/hireOrders/setup/useSetupRailVisible";
 import { useRailDismissed } from "@/components/setup/useRailDismissed";
-import { composeOnboarding } from "@/lib/dashboard/firstRun";
+import { collapsedCopy, composeOnboarding } from "@/lib/dashboard/firstRun";
 import { MODULE_ONBOARDING } from "@/lib/dashboard/moduleOnboarding";
 import type { FeatureKey } from "@/lib/entitlements";
 import type { SetupRailMode } from "@/components/setup/setupRailMode";
@@ -128,7 +128,10 @@ export function useModuleOnboardingRail(feature: FeatureKey, orgId: string | nul
     progressTotal: total,
     progressLabel: `${setupWord} · ${filled} of ${total}`,
     collapsedLabel: `${setupWord} in progress`,
-    collapsedHint: `${remaining} step${remaining === 1 ? "" : "s"} left`,
+    // Reuse the dashboard collapsed-bar's own "N steps left" pluralization so the two
+    // bars can't drift; the label stays canEdit-based (matches eyebrow/progressLabel)
+    // and the CTA is a deliberate "Resume" override (the bar re-expands, not open-steps).
+    collapsedHint: collapsedCopy(role, false, remaining).hint,
     collapsedCta: "Resume",
     dismiss,
     expand,

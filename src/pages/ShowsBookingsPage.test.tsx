@@ -84,8 +84,9 @@ vi.mock("@/hooks/useEntitlements", () => ({
     isLoading: entLoading.value,
   }),
 }));
+const { canRef } = vi.hoisted(() => ({ canRef: { value: true } }));
 vi.mock("@/hooks/useCapabilities", () => ({
-  useCan: () => true,
+  useCan: () => canRef.value,
 }));
 // `visible` drives the inline callout, `reinvocable` drives the header
 // re-invoke button -- both read off this one mocked hook (Plan B fix wave:
@@ -174,6 +175,7 @@ beforeEach(() => {
   localStorage.clear();
   featureFlags.value = {};
   entLoading.value = false;
+  canRef.value = true;
   railState.value = { mode: "hidden" };
   bookingSetupStatus.value = makeBookingStatus(0, false);
 });
@@ -233,6 +235,21 @@ describe("ShowsBookingsPage — setup checklist uncramp + re-invoke (Plan B Task
     await screen.findByText("Future Show");
     expect(screen.queryByRole("button", { name: /setup checklist/i })).not.toBeInTheDocument();
     expect(screen.queryByTestId("booking-setup-rail")).not.toBeInTheDocument();
+    // The hidden mode must not render the collapsed bar either (symmetric with
+    // HireOrdersPage's hidden-state test).
+    expect(screen.queryByText(/set up in progress/i)).not.toBeInTheDocument();
+  });
+
+  it("labels the collapsed bar 'Org setup' for a viewer who cannot edit", async () => {
+    // Both other setup tests run with useCan -> true; this exercises the non-editor
+    // collapsed label the adapter derives from canEdit.
+    featureFlags.value = { booking_flow: true };
+    canRef.value = false;
+    railState.value = { mode: "collapsed" };
+    localStorage.setItem("showflow.bookingSetup.hidden.org-1", "true");
+    renderWithProviders(<ShowsBookingsPage />);
+    await screen.findByText("Future Show");
+    expect(await screen.findByText(/org setup in progress/i)).toBeInTheDocument();
   });
 
   it("shows a full-width inline callout (not a cramped side column) while setup is incomplete and visible", async () => {
