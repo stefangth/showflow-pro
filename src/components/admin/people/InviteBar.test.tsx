@@ -1,6 +1,6 @@
 // src/components/admin/people/InviteBar.test.tsx
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { screen, fireEvent, waitFor } from "@testing-library/react";
+import { screen, fireEvent } from "@testing-library/react";
 import { renderWithProviders } from "@/test/renderWithProviders";
 import type { OrgMember } from "@/data/members";
 import type { Invitation } from "@/data/invitations";
@@ -9,11 +9,9 @@ vi.mock("@/integrations/supabase/client", () => ({ supabase: {} }));
 vi.mock("@/features/auth/AuthContext", () => ({
   useAuth: () => ({ currentOrg: { id: "org-1" } }),
 }));
-const resendInvitation = vi.fn((..._a: unknown[]) => Promise.resolve());
 const createInvitation = vi.fn((..._a: unknown[]) => Promise.resolve());
 vi.mock("@/data/invitations", async (orig) => ({
   ...(await orig<typeof import("@/data/invitations")>()),
-  resendInvitation: (...a: unknown[]) => resendInvitation(...a),
   createInvitation: (...a: unknown[]) => createInvitation(...a),
 }));
 
@@ -26,22 +24,29 @@ describe("InviteBar duplicate detection", () => {
   beforeEach(() => vi.clearAllMocks());
 
   it("disables Invite and warns when the email is already a member", () => {
-    renderWithProviders(<InviteBar members={members} invites={invites} onOpenBulk={vi.fn()} />);
+    renderWithProviders(<InviteBar members={members} invites={invites} onOpenBulk={vi.fn()} onResend={vi.fn()} />);
     fireEvent.change(screen.getByPlaceholderText(/invitee@email.com/i), { target: { value: "bob@x.com" } });
     expect(screen.getByText(/already a member/i)).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /^invite$/i })).toBeDisabled();
   });
 
-  it("offers Resend when the email is already invited (pending)", async () => {
-    renderWithProviders(<InviteBar members={members} invites={invites} onOpenBulk={vi.fn()} />);
+  it("delegates Resend to the parent when the email is already invited (pending)", () => {
+    const onResend = vi.fn();
+    renderWithProviders(<InviteBar members={members} invites={invites} onOpenBulk={vi.fn()} onResend={onResend} />);
     fireEvent.change(screen.getByPlaceholderText(/invitee@email.com/i), { target: { value: "kim@x.com" } });
     expect(screen.getByText(/already invited/i)).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: /resend/i }));
-    await waitFor(() => expect(resendInvitation).toHaveBeenCalled());
+    expect(onResend).toHaveBeenCalledWith("i1");
+  });
+
+  it("disables the Resend hint while that invite's resend is in flight", () => {
+    renderWithProviders(<InviteBar members={members} invites={invites} onOpenBulk={vi.fn()} onResend={vi.fn()} resendPendingId="i1" />);
+    fireEvent.change(screen.getByPlaceholderText(/invitee@email.com/i), { target: { value: "kim@x.com" } });
+    expect(screen.getByRole("button", { name: /resend/i })).toBeDisabled();
   });
 
   it("enables Invite for a fresh address", () => {
-    renderWithProviders(<InviteBar members={members} invites={invites} onOpenBulk={vi.fn()} />);
+    renderWithProviders(<InviteBar members={members} invites={invites} onOpenBulk={vi.fn()} onResend={vi.fn()} />);
     fireEvent.change(screen.getByPlaceholderText(/invitee@email.com/i), { target: { value: "new@x.com" } });
     expect(screen.getByRole("button", { name: /^invite$/i })).not.toBeDisabled();
   });
@@ -50,7 +55,7 @@ describe("InviteBar duplicate detection", () => {
     // dedupeUnready stands in for either the members or invites query being
     // unsettled/errored; a fresh address that would otherwise be sendable must
     // wait, so a not-yet-loaded member/pending dup can't slip through empty lists.
-    renderWithProviders(<InviteBar members={[]} invites={[]} dedupeUnready onOpenBulk={vi.fn()} />);
+    renderWithProviders(<InviteBar members={[]} invites={[]} dedupeUnready onOpenBulk={vi.fn()} onResend={vi.fn()} />);
     fireEvent.change(screen.getByPlaceholderText(/invitee@email.com/i), { target: { value: "new@x.com" } });
     expect(screen.getByRole("button", { name: /^invite$/i })).toBeDisabled();
   });
