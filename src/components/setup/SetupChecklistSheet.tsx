@@ -17,10 +17,12 @@ interface SetupChecklistSheetProps {
 /**
  * Shared host for the inline setup rails in a right-side Sheet, opened at a chosen step.
  *
- * The rail is remounted via `key={initialStep}` so each open re-seeds its accordion, and
- * is only rendered while `open` so a closed Sheet does not run the rail's setting reads.
- * This is the "do it here" surface that the dashboard-style rail's step buttons open on
- * every page (dashboard, bookings, hire orders).
+ * The rail is remounted via `key={initialStep}` so each open re-seeds its accordion. It is
+ * rendered unconditionally inside SheetContent (not gated on `open`): Radix only mounts
+ * SheetContent while the Sheet is open OR mid-exit-animation, so a fully-closed Sheet runs
+ * no rail reads, while a closing one keeps its content visible through the 300ms slide-out
+ * instead of blank-flashing. This is the "do it here" surface that the dashboard-style
+ * rail's step buttons open on every page (dashboard, bookings, hire orders).
  */
 export function SetupChecklistSheet({ feature, orgId, open, onOpenChange, initialStep }: SetupChecklistSheetProps) {
   return (
@@ -30,9 +32,9 @@ export function SetupChecklistSheet({ feature, orgId, open, onOpenChange, initia
           <SheetTitle className="font-display text-base">Setup checklist</SheetTitle>
         </SheetHeader>
         <div className="mt-4">
-          {open && (feature === "hire_orders"
+          {feature === "hire_orders"
             ? <SetupRail key={initialStep ?? "none"} orgId={orgId} initialStep={initialStep as SetupStepKey | undefined} />
-            : <BookingSetupRail key={initialStep ?? "none"} orgId={orgId} initialStep={initialStep as BookingSetupStepKey | undefined} />)}
+            : <BookingSetupRail key={initialStep ?? "none"} orgId={orgId} initialStep={initialStep as BookingSetupStepKey | undefined} />}
         </div>
       </SheetContent>
     </Sheet>
