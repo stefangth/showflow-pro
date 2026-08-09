@@ -10,11 +10,6 @@ export type Json =
   | Json[]
 
 export type Database = {
-  // Allows to automatically instantiate createClient with right options
-  // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
-  __InternalSupabase: {
-    PostgrestVersion: "14.5"
-  }
   graphql_public: {
     Tables: {
       [_ in never]: never
@@ -286,6 +281,21 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      auth_link_throttle: {
+        Row: {
+          email: string
+          last_sent_at: string
+        }
+        Insert: {
+          email: string
+          last_sent_at?: string
+        }
+        Update: {
+          email?: string
+          last_sent_at?: string
+        }
+        Relationships: []
       }
       blocked_dates: {
         Row: {
@@ -2216,6 +2226,7 @@ export type Database = {
     }
     Functions: {
       accept_invitation: { Args: { p_token: string }; Returns: Json }
+      active_org_id: { Args: never; Returns: string }
       add_platform_admin: { Args: { p_email: string }; Returns: string }
       anonymize_user: { Args: { p_user: string }; Returns: undefined }
       app_setting_capability: { Args: { _key: string }; Returns: string }
@@ -2233,6 +2244,10 @@ export type Database = {
       }
       capability_default: { Args: { _capability: string }; Returns: boolean }
       category_of: { Args: { p_type: string }; Returns: string }
+      claim_login_link_slot: {
+        Args: { p_cooldown_seconds: number; p_email: string }
+        Returns: boolean
+      }
       compute_show_date_status: {
         Args: { p_show_date_id: string }
         Returns: undefined
@@ -2618,3 +2633,4 @@ export const Constants = {
     },
   },
 } as const
+
