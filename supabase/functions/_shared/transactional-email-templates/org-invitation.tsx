@@ -52,5 +52,5 @@ export const template = {
   component: OrgInvitationEmail as React.ComponentType<TemplateData>,
   subject: (data: TemplateData) => applyEmailTokens(EMAIL_COPY_DEFAULTS["org-invitation.subject"], { orgName: String(data.orgName || "an organization") }),
   displayName: "Organization invitation",
-  previewData: { orgName: "Cirque Lumière", role: "producer", inviterEmail: "admin@cirque.example", token: "previewtoken1234567890abcdef" },
+  previewData: { orgName: "Cirque Lumière", role: "Production Team", inviterEmail: "admin@cirque.example", token: "previewtoken1234567890abcdef" },
 } satisfies TemplateEntry;

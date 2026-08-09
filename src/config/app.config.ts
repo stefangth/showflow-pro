@@ -169,7 +169,7 @@ export type AppRole = (typeof ROLES)[keyof typeof ROLES];
  * supabase/functions/_shared/roles.ts (npm run sync:mirrors) so the invite email
  * renders the same label; the surrounding imports differ per runtime.
  */
-export const ROLE_LABELS: Record<'admin' | 'producer' | 'artist', string> = {
+export const ROLE_LABELS: Record<AppRole, string> = {
   admin: 'Admin',
   producer: 'Production Team',
   artist: 'Artist',
