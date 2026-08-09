@@ -64,12 +64,17 @@ describe("pre-push hook (.githooks/pre-push)", () => {
     expect(code).not.toMatch(/verify:full|verify\.sh --full/);
   });
 
-  it("scans for committed secrets before pushing", () => {
+  it("scans for committed secrets AND aborts the push when any are found", () => {
     const code = readFileSync(hookPath, "utf8")
       .split("\n")
       .filter((l) => !/^\s*#/.test(l))
       .join("\n");
-    expect(code).toMatch(/scan:secrets/);
+    // The scan must both run and STOP the push on a hit. The hook uses
+    // `set -uo pipefail` (no `-e`), so without an explicit `|| exit` a failing
+    // scan (exit 1) falls through to verify:fast and the hook exits with
+    // verify:fast's code — silently pushing the secret. Assert the guard, not
+    // just the string. (Guards the review finding on PR #229.)
+    expect(code).toMatch(/scan:secrets\b[^\n]*\|\|\s*exit\b/);
   });
 });
 

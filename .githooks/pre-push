@@ -34,7 +34,10 @@ cd "$repo_root" || exit 1
 # credential (the Resend-key class of leak) off the remote. Mirrored by the CI
 # "Lint" job so a --no-verify bypass is still caught server-side.
 echo "pre-push: scanning tracked files for secrets…" >&2
-npm run --silent scan:secrets
+# `|| exit 1` is load-bearing: the hook runs `set -uo pipefail` (no `-e`), so a
+# bare failing statement would fall through to verify:fast and the hook would
+# exit with verify:fast's code — pushing the secret anyway. Abort explicitly.
+npm run --silent scan:secrets || exit 1
 
 echo "pre-push: running verify:fast (bypass with --no-verify or SHOWFLOW_SKIP_VERIFY=1)…" >&2
 npm run --silent verify:fast
