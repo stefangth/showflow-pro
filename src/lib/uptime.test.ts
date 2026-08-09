@@ -5,7 +5,7 @@ import { buildUptimeCells, uptimePercent, describeUptimeDay, type HealthDay } fr
 // construction would shift the expected keys on a developer machine outside UTC.
 const now = new Date("2026-08-04T12:00:00Z");
 const row = (over: Partial<HealthDay> = {}): HealthDay => ({
-  day: "2026-08-04", fn: "airtable-poll", runs: 100, failures: 0, rejected: 0,
+  day: "2026-08-04", fn: "airtable-poll", runs: 100, failures: 0, rejected: 0, unauthorized: 0,
   worst_status: 200, p95_ms: 900, ...over,
 });
 
@@ -41,6 +41,28 @@ describe("buildUptimeCells", () => {
 
   it("tolerates an occasional 4xx below the budget", () => {
     expect(buildUptimeCells([row({ runs: 100, rejected: 5 })], 30, now)[29].state).toBe("operational");
+  });
+
+  it("stays operational when the day's rejections are all unauthorized 401s", () => {
+    // 401 = the auth layer working, not the function failing. When every rejection is a 401
+    // (e.g. a non-prod stack firing at prod), (rejected - unauthorized) is 0, so the day must not
+    // read amber next to a 100% uptime label.
+    const cells = buildUptimeCells([row({ runs: 348, rejected: 233, unauthorized: 233, failures: 0 })], 30, now);
+    expect(cells[29].state).toBe("operational");
+  });
+
+  it("still degrades on genuine (non-401) 4xx above the budget", () => {
+    const cells = buildUptimeCells([row({ runs: 100, rejected: 40, unauthorized: 0, worst_status: 422 })], 30, now);
+    expect(cells[29].state).toBe("degraded");
+  });
+
+  it("degrades on genuine 4xx even when mixed with 401s (the precise column closes the old heuristic's gap)", () => {
+    // 40 unauthorized 401s + 30 genuine 400s over 100 runs. worst_status is 401 (max code), which
+    // the old frontend-only heuristic would have wrongly exempted; the exact unauthorized count does
+    // not: (70 - 40) / 100 = 30% > 20% budget.
+    const cells = buildUptimeCells(
+      [row({ runs: 100, rejected: 70, unauthorized: 40, failures: 0, worst_status: 401 })], 30, now);
+    expect(cells[29].state).toBe("degraded");
   });
 
   it("treats a day the function was idle as nodata, not as an outage", () => {
@@ -104,6 +126,16 @@ describe("describeUptimeDay", () => {
     });
     expect(text).toContain("2 failures");
     expect(text).toContain("3 rejected");
+  });
+
+  it("keeps unauthorized 401s visible in the tooltip even on an operational day", () => {
+    // The day is green (available), but the tooltip must still disclose the rejected traffic.
+    const text = describeUptimeDay({
+      day: "2026-08-04", state: "operational", runs: 348, failures: 0, rejected: 233, worstStatus: 401,
+    });
+    expect(text).toContain("no failures");
+    expect(text).toContain("233 rejected");
+    expect(text).toContain("HTTP 401");
   });
 
   it("says all runs succeeded on a clean day, without a status code", () => {

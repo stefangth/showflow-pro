@@ -39,6 +39,7 @@ interface DailyRow {
   runs: number;
   failures: number;
   rejected: number;
+  unauthorized: number;
   worst_status: number | null;
   p95_ms: number | null;
 }
@@ -65,6 +66,9 @@ function aggregate(rows: RawRow[], idToSlug: Map<string, string>, days: Set<stri
     // status 0 means the run produced no HTTP response at all — as much a failure as a 5xx.
     const failures = rs.filter((r) => status(r) <= 0 || status(r) >= 500).length;
     const rejected = rs.filter((r) => status(r) >= 400 && status(r) < 500).length;
+    // 401 subset of `rejected`: unauthorized callers (the auth layer working), excluded from the
+    // uptime bar's degraded classification. See uptime.ts classify() and the design doc B1.
+    const unauthorized = rs.filter((r) => status(r) === 401).length;
     const lat = rs.map((r) => Number(r.execution_time_ms)).filter((n) => Number.isFinite(n)).sort((a, b) => a - b);
     // Nearest-rank p95: ceil(0.95 * N) - 1. Plain floor returns the max when N is a multiple of 20.
     const p95 = lat.length === 0 ? null : lat[Math.min(lat.length - 1, Math.max(0, Math.ceil(0.95 * lat.length) - 1))];
@@ -75,6 +79,7 @@ function aggregate(rows: RawRow[], idToSlug: Map<string, string>, days: Set<stri
       runs: rs.length,
       failures,
       rejected,
+      unauthorized,
       worst_status: codes.length ? Math.max(...codes) : null,
       p95_ms: p95 === null ? null : Math.round(p95),
     };

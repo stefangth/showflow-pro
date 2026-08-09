@@ -6,7 +6,8 @@ export interface HealthDay {
   fn: string;
   runs: number;
   failures: number;         // 5xx plus "no response at all"
-  rejected: number;         // 4xx
+  rejected: number;         // 4xx (all of them, incl. 401)
+  unauthorized: number;     // 401 subset of `rejected` (unauthorized callers)
   worst_status: number | null;
   p95_ms: number | null;
 }
@@ -41,7 +42,13 @@ function classify(row: HealthDay): DayState {
   if (row.runs === 0) return "nodata";
   if (row.failures >= row.runs) return "down";
   if (row.failures > 0) return "degraded";
-  if (row.rejected / row.runs > REJECT_RATE_BUDGET) return "degraded";
+  // 401 (unauthorized) is the auth layer working, not the function failing, so it is excluded from
+  // the reject rate: unauthorized traffic from an unknown caller (a non-prod stack firing at prod,
+  // an expired-JWT browser poll) must not paint a healthy function amber next to a 100% uptime
+  // label. `unauthorized` is the exact 401 subset of `rejected` (both written by health-rollup),
+  // so (rejected - unauthorized) is the genuine, health-relevant 4xx count. The 401s stay visible
+  // in the tooltip.
+  if ((row.rejected - row.unauthorized) / row.runs > REJECT_RATE_BUDGET) return "degraded";
   return "operational";
 }
 

@@ -1,9 +1,10 @@
 BEGIN;
 CREATE EXTENSION IF NOT EXISTS pgtap;
-SELECT plan(6);
+SELECT plan(7);
 
 SELECT has_table('public', 'health_daily', 'health_daily exists');
 SELECT col_is_pk('public', 'health_daily', ARRAY['day','fn'], 'PK is (day, fn)');
+SELECT has_column('public', 'health_daily', 'unauthorized', 'health_daily has the unauthorized (401) column');
 SELECT ok(
   (SELECT relrowsecurity FROM pg_class WHERE oid = 'public.health_daily'::regclass),
   'RLS is enabled on health_daily'

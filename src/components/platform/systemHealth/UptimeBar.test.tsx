@@ -5,7 +5,7 @@ import type { HealthDay } from "@/lib/uptime";
 
 const now = new Date("2026-08-04T12:00:00Z");
 const row = (over: Partial<HealthDay> = {}): HealthDay => ({
-  day: "2026-08-04", fn: "airtable-poll", runs: 288, failures: 0, rejected: 0,
+  day: "2026-08-04", fn: "airtable-poll", runs: 288, failures: 0, rejected: 0, unauthorized: 0,
   worst_status: 200, p95_ms: 900, ...over,
 });
 

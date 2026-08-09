@@ -5,11 +5,21 @@ import { EdgeFunctionsPanel } from "./EdgeFunctionsPanel";
 import * as systemHealthHooks from "@/hooks/useSystemHealth";
 import type { EdgeFnMetric } from "@/lib/systemHealth";
 
+// Default fault fixture uses 403 (forbidden), a GENUINE rejection: it exercises the
+// rejected/fault/drill-down/Down UI. 401 (unauthorized) is deliberately NOT the default because
+// it is now excluded from health (see the "401 is unauthorized traffic" tests below) — using it
+// here would make these fault assertions pass for the wrong reason.
 const metric = (over: Partial<EdgeFnMetric> = {}): EdgeFnMetric => ({
   fn: "open-offer-tier", invocations: 48, errors: 0, rejected: 48,
-  byStatus: { "401": 48 }, p50Ms: 300, p95Ms: 400,
-  lastInvokedAt: "2026-07-21T09:00:00Z", lastStatus: 401,
-  lastFailure: { status: 401, at: "2026-07-21T09:00:00Z" }, recent: [], ...over,
+  byStatus: { "403": 48 }, p50Ms: 300, p95Ms: 400,
+  lastInvokedAt: "2026-07-21T09:00:00Z", lastStatus: 403,
+  lastFailure: { status: 403, at: "2026-07-21T09:00:00Z" }, recent: [], ...over,
+});
+
+// An on-demand function whose only non-2xx are unauthorized 401s (e.g. an expired-JWT browser
+// poll, or a non-prod stack firing at prod). Under the health model this is operational.
+const unauthorizedMetric = (over: Partial<EdgeFnMetric> = {}): EdgeFnMetric => metric({
+  byStatus: { "401": 48 }, lastStatus: 401, lastFailure: { status: 401, at: "2026-07-21T09:00:00Z" }, ...over,
 });
 
 describe("EdgeFunctionsPanel", () => {
@@ -17,7 +27,7 @@ describe("EdgeFunctionsPanel", () => {
 
   it("shows the status-code breakdown so the failure is identifiable", () => {
     renderWithProviders(<EdgeFunctionsPanel metrics={[metric()]} healthDaily={[]} />);
-    expect(screen.getByText("401 × 48")).toBeInTheDocument();
+    expect(screen.getByText("403 × 48")).toBeInTheDocument();
   });
 
   it("reports rejected calls alongside errors", () => {
@@ -96,10 +106,37 @@ describe("EdgeFunctionsPanel", () => {
         metrics={[metric({ fn: "create-invitation" })]}
         healthDaily={[{
           day: new Date().toISOString().slice(0, 10), fn: "create-invitation",
-          runs: 4, failures: 0, rejected: 0, worst_status: 200, p95_ms: 800,
+          runs: 4, failures: 0, rejected: 0, unauthorized: 0, worst_status: 200, p95_ms: 800,
         }]}
       />,
     );
     expect(container.querySelectorAll("[data-uptime-day]")).toHaveLength(30);
+  });
+
+  // 401 is unauthorized traffic (the auth layer working), not the function failing.
+  it("treats an all-401 function as Operational, not Down", () => {
+    renderWithProviders(<EdgeFunctionsPanel metrics={[unauthorizedMetric()]} healthDaily={[]} />);
+    expect(screen.getByText("Operational")).toBeInTheDocument();
+    expect(screen.queryByText("Down")).not.toBeInTheDocument();
+  });
+
+  it("keeps 401s visible as a chip but out of the rejected summary", () => {
+    renderWithProviders(<EdgeFunctionsPanel metrics={[unauthorizedMetric()]} healthDaily={[]} />);
+    expect(screen.getByText("401 × 48")).toBeInTheDocument();          // histogram still discloses them
+    expect(screen.getByText(/48 calls, 0 errors/)).toBeInTheDocument(); // summary excludes 401
+    expect(screen.queryByText(/rejected/)).not.toBeInTheDocument();
+  });
+
+  it("offers no error drill-down when the only non-2xx are 401s", () => {
+    renderWithProviders(<EdgeFunctionsPanel metrics={[unauthorizedMetric()]} healthDaily={[]} />);
+    expect(screen.queryByRole("button", { name: /view recent errors/i })).not.toBeInTheDocument();
+  });
+
+  it("does not show the 'no 2xx' note for an all-401 (Operational) row", () => {
+    // succeeded === 0 for an all-401 window, but the note is gated on genuine (non-401) faults so
+    // it can't render directly under a green Operational pill.
+    renderWithProviders(<EdgeFunctionsPanel metrics={[unauthorizedMetric()]} healthDaily={[]} />);
+    expect(screen.getByText("Operational")).toBeInTheDocument();
+    expect(screen.queryByText(/no 2xx in this window/)).not.toBeInTheDocument();
   });
 });

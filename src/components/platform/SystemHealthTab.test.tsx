@@ -81,13 +81,30 @@ describe("SystemHealthTab", () => {
       fn: "airtable-poll", invocations: 12, errors: 0, rejected: 0, byStatus: { "200": 12 }, p50Ms: 200, p95Ms: 300,
       lastInvokedAt: "2026-07-21T09:00:00Z", lastStatus: 200, lastFailure: null, recent: [],
     }, {
-      fn: "open-offer-tier", invocations: 48, errors: 0, rejected: 48, byStatus: { "401": 48 }, p50Ms: 300, p95Ms: 400,
-      lastInvokedAt: "2026-07-21T09:00:00Z", lastStatus: 401,
-      lastFailure: { status: 401, at: "2026-07-21T09:00:00Z" }, recent: [],
+      // 403 (forbidden) is a genuine rejection fault, so this on-demand function is flagged. 401
+      // would NOT flag it — that case is covered by the test below.
+      fn: "open-offer-tier", invocations: 48, errors: 0, rejected: 48, byStatus: { "403": 48 }, p50Ms: 300, p95Ms: 400,
+      lastInvokedAt: "2026-07-21T09:00:00Z", lastStatus: 403,
+      lastFailure: { status: 403, at: "2026-07-21T09:00:00Z" }, recent: [],
     }]);
     vi.spyOn(platform, "fetchEmailHealth").mockResolvedValue(emailFixture);
     renderWithProviders(<SystemHealthTab />);
     expect(await screen.findByText(/1 on-demand · 1 flagged/)).toBeInTheDocument();
     expect(screen.queryByText(/2 active/)).not.toBeInTheDocument();
+  });
+
+  it("does not flag an on-demand function whose only non-2xx are unauthorized 401s", async () => {
+    // A function hit by expired-JWT browser polls (or a non-prod stack firing at prod) rejects
+    // those with 401 while serving its real callers. That is operational, not flagged.
+    vi.spyOn(platform, "fetchCronHealth").mockResolvedValue([]);
+    vi.spyOn(platform, "fetchEdgeFnMetrics").mockResolvedValue([{
+      fn: "open-offer-tier", invocations: 348, errors: 0, rejected: 233,
+      byStatus: { "200": 115, "401": 233 }, p50Ms: 300, p95Ms: 400,
+      lastInvokedAt: "2026-07-21T09:00:00Z", lastStatus: 401,
+      lastFailure: { status: 401, at: "2026-07-21T09:00:00Z" }, recent: [],
+    }]);
+    vi.spyOn(platform, "fetchEmailHealth").mockResolvedValue(emailFixture);
+    renderWithProviders(<SystemHealthTab />);
+    expect(await screen.findByText(/1 on-demand · 0 flagged/)).toBeInTheDocument();
   });
 });

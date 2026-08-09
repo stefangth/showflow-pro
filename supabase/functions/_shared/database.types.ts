@@ -981,6 +981,7 @@ export type Database = {
           p95_ms: number | null
           rejected: number
           runs: number
+          unauthorized: number
           updated_at: string
           worst_status: number | null
         }
@@ -991,6 +992,7 @@ export type Database = {
           p95_ms?: number | null
           rejected?: number
           runs?: number
+          unauthorized?: number
           updated_at?: string
           worst_status?: number | null
         }
@@ -1001,6 +1003,7 @@ export type Database = {
           p95_ms?: number | null
           rejected?: number
           runs?: number
+          unauthorized?: number
           updated_at?: string
           worst_status?: number | null
         }
@@ -2296,6 +2299,7 @@ export type Database = {
           p95_ms: number
           rejected: number
           runs: number
+          unauthorized: number
           worst_status: number
         }[]
       }

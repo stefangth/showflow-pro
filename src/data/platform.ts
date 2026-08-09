@@ -105,6 +105,7 @@ export async function fetchHealthDaily(
     runs: row.runs,
     failures: row.failures,
     rejected: row.rejected,
+    unauthorized: row.unauthorized,
     // Nullable in the table: an idle day has no status code and no latency sample. Coercing
     // either to 0 would print "HTTP 0" / "0.0s" as though they were measurements.
     worst_status: row.worst_status,

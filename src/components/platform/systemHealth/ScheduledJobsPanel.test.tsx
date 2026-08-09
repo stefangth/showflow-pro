@@ -50,7 +50,7 @@ describe("ScheduledJobsPanel", () => {
         metrics={[metric]}
         healthDaily={[{
           day: new Date().toISOString().slice(0, 10), fn: "cron-health-watcher",
-          runs: 96, failures: 0, rejected: 0, worst_status: 200, p95_ms: 4000,
+          runs: 96, failures: 0, rejected: 0, unauthorized: 0, worst_status: 200, p95_ms: 4000,
         }]}
       />,
     );
@@ -68,7 +68,7 @@ describe("ScheduledJobsPanel", () => {
         metrics={[]}
         healthDaily={[{
           day: new Date().toISOString().slice(0, 10), fn: "send-offer-digest",
-          runs: 4, failures: 1, rejected: 0, worst_status: 500, p95_ms: 1000,
+          runs: 4, failures: 1, rejected: 0, unauthorized: 0, worst_status: 500, p95_ms: 1000,
         }]}
       />,
     );
