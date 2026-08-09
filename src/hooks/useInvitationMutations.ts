@@ -13,9 +13,15 @@ export function useInvitationMutations(orgId: string | null | undefined) {
   const qc = useQueryClient();
   const invalidate = () => qc.invalidateQueries({ queryKey: ["org-invitations"] });
 
+  // The single network call, in one place. `create` wraps it with the single-invite
+  // toast + invalidation; batch callers (bulk dialog) reuse `createOne` directly and
+  // do their own aggregate toast + one end-of-run `invalidate`, so the actual create
+  // args never drift between the two surfaces.
+  const createOne = (vars: { email: string; role: AppRole }) =>
+    createInvitation(supabase, { orgId: orgId!, email: vars.email, role: vars.role });
+
   const create = useMutation({
-    mutationFn: (vars: { email: string; role: AppRole }) =>
-      createInvitation(supabase, { orgId: orgId!, email: vars.email, role: vars.role }),
+    mutationFn: createOne,
     onSuccess: () => { invalidate(); toast.success("Invitation sent"); },
     onError: (e: Error) => toast.error(e?.message ?? "Could not send invitation"),
   });
@@ -32,5 +38,5 @@ export function useInvitationMutations(orgId: string | null | undefined) {
     onError: (e: Error) => toast.error(e?.message ?? "Could not revoke invitation"),
   });
 
-  return { create, resend, revoke };
+  return { create, createOne, resend, revoke, invalidateInvitations: invalidate };
 }

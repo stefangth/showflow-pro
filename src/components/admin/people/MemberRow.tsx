@@ -6,8 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
-
-const ALL_ROLES: AppRole[] = ["admin", "producer", "artist"];
+import { ROLE_OPTIONS } from "./roleOptions";
 
 export interface MemberRowProps {
   member: OrgMember;
@@ -38,7 +37,7 @@ export function MemberRow({ member: m, isSelf, onSetRole, setRolePending, onRequ
             </Button>
           </PopoverTrigger>
           <PopoverContent className="w-48 p-1" align="end">
-            {ALL_ROLES.map((r) => {
+            {ROLE_OPTIONS.map((r) => {
               const has = m.roles.includes(r);
               return (
                 <button
