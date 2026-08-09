@@ -69,6 +69,25 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
       role = "artist";
     }
 
+    // Server-side duplicate guard. The People pane's live duplicate detection is a
+    // UX aid only — enforce it here so a direct call, a stale page, or two admins in
+    // the same window can't create a redundant invite. Already-a-member is checked
+    // explicitly; an existing *pending* invite for the same email is enforced by the
+    // partial unique index on (org_id, lower(email)) WHERE status='pending' and mapped
+    // from the 23505 below (revoked/accepted invites stay re-invitable).
+    const { data: existingUserId } = await admin.rpc("get_user_id_by_email", { p_email: email });
+    if (existingUserId) {
+      const { data: membership } = await admin
+        .from("org_memberships")
+        .select("user_id")
+        .eq("org_id", body.org_id)
+        .eq("user_id", existingUserId as string)
+        .maybeSingle();
+      if (membership) {
+        return json({ error: "That email already belongs to a member of this organization." }, 409);
+      }
+    }
+
     const insertRow: TablesInsert<"org_invitations"> = { org_id: body.org_id, email, role, invited_by: inviterId };
     if (artistId) insertRow.artist_id = artistId;
 
@@ -79,6 +98,10 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
       .select('id, org_id, email, role, status, token, expires_at, artist_id')
       .single();
     if (insErr || !invite) {
+      // 23505 = unique_violation on the pending-invite index → a live invite exists.
+      if ((insErr as { code?: string } | null)?.code === "23505") {
+        return json({ error: "That email already has a pending invitation." }, 409);
+      }
       return json({ error: insErr?.message ?? 'Could not create invitation' }, 500);
     }
 

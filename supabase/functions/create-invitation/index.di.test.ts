@@ -232,3 +232,41 @@ Deno.test("create-invitation DI: admin still invites a producer → 200 (unchang
   const res = await handle(inviteReq({ org_id: "org-1", email: "invitee@x.com", role: "producer" }), deps);
   assertEquals(res.status, 200);
 });
+
+// === Server-side duplicate guard ===
+
+Deno.test("create-invitation DI: email already belongs to an org member → 409", async () => {
+  // get_user_id_by_email resolves the invitee to u2; the org_memberships seed (which
+  // also authorizes the admin caller) means u2 is a member of the org → reject.
+  const { deps, calls } = adminDeps({ authUsersByEmail: { "invitee@x.com": { id: "u2" } } });
+  const res = await handle(inviteReq({ org_id: "org-1", email: "invitee@x.com", role: "producer" }), deps);
+  assertEquals(res.status, 409);
+  const body = await res.json() as { error: string };
+  assertEquals(/already belongs to a member/i.test(body.error), true);
+  // Rejected before any insert.
+  assertEquals(calls.some((c) => c.table === "org_invitations" && c.method === "insert"), false);
+});
+
+Deno.test("create-invitation DI: existing pending invite (unique violation) → 409", async () => {
+  // Invitee is net-new (no authUsersByEmail), so the member check is skipped; the
+  // partial unique index rejects the insert with 23505, mapped to a friendly 409.
+  const { deps } = adminDeps({
+    tables: {
+      org_memberships: { data: { role: "admin" }, error: null },
+      org_invitations: { data: null, error: { code: "23505", message: "duplicate key value violates unique constraint" } },
+      organizations: { data: { name: "Acme" }, error: null },
+    },
+  });
+  const res = await handle(inviteReq({ org_id: "org-1", email: "invitee@x.com", role: "producer" }), deps);
+  assertEquals(res.status, 409);
+  const body = await res.json() as { error: string };
+  assertEquals(/already has a pending invitation/i.test(body.error), true);
+});
+
+Deno.test("create-invitation DI: non-member fresh email still invites → 200 (member check is skip-safe)", async () => {
+  // authUsersByEmail unseeded → get_user_id_by_email returns null → membership lookup
+  // skipped → normal insert path, proving the guard doesn't block net-new invitees.
+  const { deps } = adminDeps();
+  const res = await handle(inviteReq({ org_id: "org-1", email: "fresh@x.com", role: "producer" }), deps);
+  assertEquals(res.status, 200);
+});
