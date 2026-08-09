@@ -1,4 +1,5 @@
 import { useAuth } from "@/features/auth/AuthContext";
+import { useCan } from "@/hooks/useCapabilities";
 import { useBookingSetupStatus } from "@/hooks/useBookingSetup";
 import { useHireOrderSetupStatus } from "@/hooks/useHireOrderSetup";
 import { useBookingSetupRailVisible } from "@/components/bookings/setup/useBookingSetupRailVisible";
@@ -55,6 +56,10 @@ const DISMISS_KEY: Record<FeatureKey, string> = {
 export function useModuleOnboardingRail(feature: FeatureKey, orgId: string | null): ModuleOnboardingRail {
   const { currentOrg, hasRole } = useAuth();
   const role: DashboardRole = hasRole("admin") ? "admin" : "producer";
+  // Whether the viewer can actually do this module's setup. Producers default to false
+  // for both edit_* capabilities, and the visibility hook still shows them the rail while
+  // a blocker exists — so the header must explain that, not imply an action they lack.
+  const canEdit = useCan(feature === "hire_orders" ? "edit_hire_order_settings" : "edit_booking_settings");
 
   const bookingOrg = feature === "booking_flow" ? orgId : null;
   const hireOrg = feature === "hire_orders" ? orgId : null;
@@ -104,9 +109,14 @@ export function useModuleOnboardingRail(feature: FeatureKey, orgId: string | nul
     // always claim the *sibling* module is off. The page only renders this rail when the
     // scoped module is entitled, so there is no off-state upsell to show here at all.
     offFooters: [],
-    eyebrow: "Set up",
+    // Role-aware header: an editor gets the action-framed module copy; a viewer who cannot
+    // edit (a default producer) gets an honest "an admin finishes these" explanation
+    // instead of a "Get X running" header whose step buttons are all hidden from them.
+    eyebrow: canEdit ? "Set up" : "Org setup",
     title: railHeader.title,
-    body: railHeader.body,
+    body: canEdit
+      ? railHeader.body
+      : "Only an admin can finish these. They are listed so you know why the module is not ready yet.",
     progressFilled: filled,
     progressTotal: total,
     progressLabel: `Set up · ${filled} of ${total}`,

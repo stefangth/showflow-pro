@@ -5,7 +5,8 @@ import type { ReactNode } from "react";
 
 const { client } = vi.hoisted(() => ({ client: {} as Record<string, unknown> }));
 vi.mock("@/integrations/supabase/client", () => ({ supabase: client }));
-vi.mock("@/hooks/useCapabilities", () => ({ useCan: () => true }));
+const { canRef } = vi.hoisted(() => ({ canRef: { value: true } }));
+vi.mock("@/hooks/useCapabilities", () => ({ useCan: () => canRef.value }));
 vi.mock("@/features/auth/AuthContext", () => ({
   useAuth: () => ({ currentOrg: { id: "org-1", name: "Test Org" }, hasRole: (r: string) => r === "admin" }),
 }));
@@ -24,6 +25,7 @@ function wrapper({ children }: { children: ReactNode }) {
 
 beforeEach(() => {
   localStorage.clear();
+  canRef.value = true;
   seed({
     app_settings: { data: [], error: null },
     shows: { data: [], error: null },
@@ -47,6 +49,21 @@ it("composes the hire-orders module with its header copy and three steps", async
   await waitFor(() => expect(result.current.progressTotal).toBe(3));
   expect(result.current.title).toBe("Get hire orders ready");
   expect(result.current.steps.map((s) => s.moduleKey)).toEqual(["hire_orders", "hire_orders", "hire_orders"]);
+});
+
+it("gives an editor the action-framed module header", async () => {
+  const { result } = renderHook(() => useModuleOnboardingRail("booking_flow", "org-1"), { wrapper });
+  await waitFor(() => expect(result.current.progressTotal).toBe(5));
+  expect(result.current.eyebrow).toBe("Set up");
+  expect(result.current.body).toBe("Dates keep syncing and you can edit them now. These are what the first offer needs.");
+});
+
+it("explains, for a viewer who cannot edit, that an admin finishes the setup", async () => {
+  canRef.value = false;
+  const { result } = renderHook(() => useModuleOnboardingRail("hire_orders", "org-1"), { wrapper });
+  await waitFor(() => expect(result.current.progressTotal).toBe(3));
+  expect(result.current.eyebrow).toBe("Org setup");
+  expect(result.current.body).toMatch(/only an admin/i);
 });
 
 it("never surfaces a sibling module's off-state footer (the scoped module is always entitled here)", async () => {
