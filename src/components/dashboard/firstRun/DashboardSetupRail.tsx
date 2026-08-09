@@ -47,19 +47,19 @@ function StepRow({ step, index, onAction }: { step: ComposedStep; index: number;
   );
 }
 
-/** Banner-layout only: the segmented progress rail that on the dashboard lives top-right in
- *  the welcome banner. Colors adapt to the card surface (accent fill / muted track). */
+/** Banner-layout only: the segmented progress rail, rendered inside the violet hero
+ *  header, so it mirrors the dashboard welcome card's white-on-accent progress exactly. */
 function ProgressCluster({ label, filled, total, hint }: { label?: string; filled?: number; total?: number; hint?: string }) {
   if (!total) return null;
   return (
     <div className="shrink-0 text-right">
-      {label && <div className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground/70">{label}</div>}
+      {label && <div className="text-[11px] font-semibold uppercase tracking-wider text-primary-foreground/60">{label}</div>}
       <div className="mt-2 flex justify-end gap-1">
         {Array.from({ length: total }).map((_, i) => (
-          <div key={i} className={`h-[3px] w-[34px] rounded-full ${i < (filled ?? 0) ? "bg-accent-500" : "bg-muted"}`} />
+          <div key={i} className={`h-[3px] w-[34px] rounded-full ${i < (filled ?? 0) ? "bg-primary-foreground/90" : "bg-primary-foreground/25"}`} />
         ))}
       </div>
-      {hint && <div className="mt-2 text-xs text-muted-foreground">{hint}</div>}
+      {hint && <div className="mt-2 text-xs text-primary-foreground/60">{hint}</div>}
     </div>
   );
 }
@@ -74,30 +74,30 @@ export function DashboardSetupRail({
       "overflow-hidden rounded-lg border-[0.5px] border-border bg-card shadow-elev3",
       banner ? "w-full" : "w-full md:w-[340px] md:shrink-0 order-first md:order-none",
     )}>
-      <div className="border-b border-border p-4">
-        {banner ? (
-          <div className="flex items-start justify-between gap-8">
-            <div className="min-w-0">
-              <div className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground/70">{eyebrow}</div>
-              <div className="mt-1.5 font-display text-base font-semibold text-foreground">{title}</div>
-              <p className="mt-1 text-xs leading-[19px] text-muted-foreground text-pretty">{body}</p>
-            </div>
-            <div className="flex flex-col items-end gap-3">
-              <button onClick={onClose} className="rounded-md px-1.5 py-0.5 text-xs text-muted-foreground hover:bg-muted">Hide</button>
-              <ProgressCluster label={progressLabel} filled={progressFilled} total={progressTotal} hint={progressHint} />
-            </div>
+      {banner ? (
+        // Violet hero, mirroring DashboardWelcome (bg-accent-500 + primary-foreground),
+        // so the module rail's top reads as the same hero as the dashboard welcome card.
+        <div className="flex items-start justify-between gap-8 bg-accent-500 p-5 text-primary-foreground">
+          <div className="min-w-0">
+            <div className="text-[11px] font-semibold uppercase tracking-wider text-primary-foreground/60">{eyebrow}</div>
+            <div className="mt-2 font-display text-xl font-semibold leading-tight tracking-tight text-primary-foreground text-pretty">{title}</div>
+            <p className="mt-1.5 text-sm leading-[21px] text-primary-foreground/80 text-pretty">{body}</p>
           </div>
-        ) : (
-          <>
-            <div className="flex items-center justify-between">
-              <div className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground/70">{eyebrow}</div>
-              <button onClick={onClose} className="rounded-md px-1.5 py-0.5 text-xs text-muted-foreground hover:bg-muted">Close</button>
-            </div>
-            <div className="mt-1.5 font-display text-base font-semibold text-foreground">{title}</div>
-            <p className="mt-1 text-xs leading-[19px] text-muted-foreground text-pretty">{body}</p>
-          </>
-        )}
-      </div>
+          <div className="flex flex-col items-end gap-3">
+            <button onClick={onClose} className="rounded-md px-1.5 py-0.5 text-xs text-primary-foreground/80 hover:bg-primary-foreground/10">Hide</button>
+            <ProgressCluster label={progressLabel} filled={progressFilled} total={progressTotal} hint={progressHint} />
+          </div>
+        </div>
+      ) : (
+        <div className="border-b border-border p-4">
+          <div className="flex items-center justify-between">
+            <div className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground/70">{eyebrow}</div>
+            <button onClick={onClose} className="rounded-md px-1.5 py-0.5 text-xs text-muted-foreground hover:bg-muted">Close</button>
+          </div>
+          <div className="mt-1.5 font-display text-base font-semibold text-foreground">{title}</div>
+          <p className="mt-1 text-xs leading-[19px] text-muted-foreground text-pretty">{body}</p>
+        </div>
+      )}
 
       {complete ? (
         <div>
