@@ -1,4 +1,4 @@
-import { assertEquals } from "https://deno.land/std@0.224.0/assert/mod.ts";
+import { assertEquals, assertRejects } from "https://deno.land/std@0.224.0/assert/mod.ts";
 import { deliverOrgInvitation } from "./invitations.ts";
 import { makeFakeDeps } from "./testing.ts";
 
@@ -49,4 +49,13 @@ Deno.test("deliverOrgInvitation: existing user -> magic link actionLink to /auth
   assertEquals(params.type, "magiclink");
   assertEquals(params.options.redirectTo.includes("/auth/callback?redirect="), true);
   assertEquals(params.options.redirectTo.includes("%2Faccept-invite%3Ftoken%3Dtok-1"), true);
+});
+
+Deno.test("deliverOrgInvitation: generateLink without action_link throws and sends no email", async () => {
+  const { deps, invokeCalls } = makeFakeDeps({
+    usersById: { "uid-1": { email: "known@x.com" } }, // existing-user branch
+    generateLinkResult: { data: { properties: {} }, error: null }, // resolved, but no action_link
+  });
+  await assertRejects(() => deliverOrgInvitation(deps, { ...base, email: "known@x.com" }));
+  assertEquals(invokeCalls.filter((c) => c.name === "send-transactional-email").length, 0);
 });

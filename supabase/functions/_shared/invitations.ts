@@ -61,6 +61,15 @@ export async function deliverOrgInvitation(deps: Deps, args: DeliverInviteArgs):
     actionLink = (data as { properties?: { action_link?: string } })?.properties?.action_link;
   }
 
+  // Guard both branches the way send-login-link does: a generateLink that resolves without an
+  // action_link would leave `actionLink` undefined, and org-invitation.tsx would silently fall
+  // back to the bare token URL — re-introducing the exact dead-end this change fixes (an existing
+  // user with no session lands on /login with no way in). Fail loudly instead (mirrors the throws).
+  if (!actionLink) {
+    console.error("deliverOrgInvitation: generateLink returned no action_link", { existingUser: exists });
+    throw new Error("generateLink returned no action_link");
+  }
+
   await deps.sendEmail({
     template_name: "org-invitation",
     recipient_email: args.email,
