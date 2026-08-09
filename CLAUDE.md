@@ -98,8 +98,12 @@ These are public values (anon key, not service role). Never commit `.env`. The s
 ```
 src/
   components/
-    admin/         # Admin-only UI (InvitesTab — org invite management;
-                   #   MembersTab — org member list + removal)
+    admin/         # Admin-only UI. people/ — the unified People pane (Admin > People):
+                   #   PeopleTab (orchestrator: one search over pending invites + members),
+                   #   InviteBar (inline invite + live duplicate detection + bulk trigger),
+                   #   BulkInviteDialog, InviteRow, MemberRow, and pure helpers
+                   #   peopleMatch.ts (isValidEmail/parseEmails/matchContact/filterPeople) +
+                   #   roleOptions.ts (shared ROLE_OPTIONS)
     artists/       # ArtistProfileSheet
     availability/  # ArtistAvailabilityCalendar, AvailabilityPicker, OfferResponseButtons
     bookings/      # ArtistBookingsView and booking surfaces
