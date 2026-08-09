@@ -1,6 +1,6 @@
 // src/components/admin/people/peopleMatch.test.ts
 import { describe, it, expect } from "vitest";
-import { isValidEmail, parseEmails, matchContact, filterPeople } from "./peopleMatch";
+import { isValidEmail, parseEmails, matchContact, filterPeople, filterInvitesByEmail } from "./peopleMatch";
 import type { OrgMember } from "@/data/members";
 import type { Invitation } from "@/data/invitations";
 
@@ -51,5 +51,14 @@ describe("filterPeople", () => {
     expect(filterPeople("zoe", [member(), m2], []).members).toHaveLength(1);
     expect(filterPeople("kim", [member()], [invite()]).invites).toHaveLength(1);
     expect(filterPeople("bob", [member()], [invite()]).members).toHaveLength(1);
+  });
+});
+
+describe("filterInvitesByEmail", () => {
+  it("passes through on empty query and filters by email case-insensitively otherwise", () => {
+    const list = [invite({ email: "kim@x.com" }), invite({ id: "i2", email: "sam@y.com" })];
+    expect(filterInvitesByEmail("  ", list)).toHaveLength(2);
+    expect(filterInvitesByEmail("KIM", list).map((i) => i.email)).toEqual(["kim@x.com"]);
+    expect(filterInvitesByEmail("zzz", list)).toHaveLength(0);
   });
 });

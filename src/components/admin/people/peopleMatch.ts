@@ -34,6 +34,13 @@ export function matchContact(
   return "none";
 }
 
+/** Case-insensitive email substring filter for a list of invitations (empty query = passthrough). */
+export function filterInvitesByEmail(query: string, invites: Invitation[]): Invitation[] {
+  const q = query.trim().toLowerCase();
+  if (!q) return invites;
+  return invites.filter((i) => i.email.toLowerCase().includes(q));
+}
+
 export function filterPeople(
   query: string,
   members: OrgMember[],
@@ -45,6 +52,6 @@ export function filterPeople(
     members: members.filter(
       (m) => (m.display_name ?? "").toLowerCase().includes(q) || (m.email ?? "").toLowerCase().includes(q),
     ),
-    invites: invites.filter((i) => i.email.toLowerCase().includes(q)),
+    invites: filterInvitesByEmail(query, invites),
   };
 }
