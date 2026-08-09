@@ -140,11 +140,10 @@ export default function HireOrdersPage() {
   // "changes cannot be saved", and it should not depend on another module's
   // null-handling to hold.
   //
-  // `visible` drives the inline callout, `reinvocable` drives the header button
-  // (Plan B Task 3's re-invoke) -- both read off the SAME hook and the same inputs, so
-  // the header button can never offer to reopen a rail that would render nothing
-  // actionable (the divergence a separately-computed `dismissed && !complete` used to
-  // allow, e.g. for a producer once nothing blocks issuing).
+  // `rail.mode` is one of "banner" (full wizard), "collapsed" (compact bar,
+  // re-expandable), "button" (setup complete, permanent header re-entry), or
+  // "hidden" (nothing actionable). All four render states below key off this
+  // single value, behind the same write-gate as the rail itself.
   const rail = useModuleOnboardingRail("hire_orders", entitledForWrites ? orgId : null);
   const setupMode = entitledForWrites ? rail.mode : "hidden";
   const [setupSheetOpen, setSetupSheetOpen] = useState(false);

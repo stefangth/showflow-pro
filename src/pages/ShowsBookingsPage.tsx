@@ -235,11 +235,10 @@ function ProducerShowsBookings() {
   // resolved entitlement (no super-admin exemption -- app_settings RLS checks role, not
   // entitlement). Mirrors HireOrdersPage's `entitledForWrites`.
   const bookingEntitledForWrites = !entitlementsLoading && features.has('booking_flow');
-  // `visible` drives the inline callout, `reinvocable` drives the header button
-  // (Plan B Task 3's re-invoke) -- both read off the SAME hook and the same inputs, so
-  // the header button can never offer to reopen a rail that would render nothing
-  // actionable (the divergence a separately-computed `dismissed && !complete` used to
-  // allow, e.g. for a non-editor once offers are already possible).
+  // `rail.mode` is one of "banner" (full wizard), "collapsed" (compact bar,
+  // re-expandable), "button" (setup complete, permanent header re-entry), or
+  // "hidden" (nothing actionable). All four render states below key off this
+  // single value, behind the same write-gate as the rail itself.
   const rail = useModuleOnboardingRail('booking_flow', bookingEntitledForWrites ? orgId : null);
   const setupMode = bookingEntitledForWrites ? rail.mode : 'hidden';
   const [setupSheetOpen, setSetupSheetOpen] = useState(false);
