@@ -329,8 +329,10 @@ export function createFakeClient(opts: FakeClientOptions = {}) {
           }),
         inviteUserByEmail: (email: string, _opts?: unknown) =>
           Promise.resolve(opts.inviteResult ?? { data: { user: { id: "invited", email } }, error: null }),
-        generateLink: (_params: unknown) =>
-          Promise.resolve(opts.generateLinkResult ?? { data: { properties: { action_link: "https://link.test/invite" } }, error: null }),
+        generateLink: (params: unknown) => {
+          calls.push({ table: "auth.admin.generateLink", method: "generate", args: [params] });
+          return Promise.resolve(opts.generateLinkResult ?? { data: { properties: { action_link: "https://link.test/invite" } }, error: null });
+        },
         deleteUser: (_id: string) =>
           Promise.resolve(opts.deleteUserResult ?? { data: { user: null }, error: null }),
       },

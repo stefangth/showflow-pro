@@ -66,7 +66,7 @@ describe("email copy registry", () => {
       fields.map(({ key }) => key),
     ).sort();
     const editableDefaultKeys = Object.keys(EMAIL_COPY_DEFAULTS)
-      .filter((key) => !key.startsWith("cron-health-alert."))
+      .filter((key) => !key.startsWith("cron-health-alert.") && !key.startsWith("magic-link."))
       .sort();
 
     expect(editableDefaultKeys).toEqual(metadataKeys);

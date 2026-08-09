@@ -30,18 +30,25 @@ Deno.test("provision-org: net-new admin → RPC + branded email with actionLink,
   assertEquals((sent[0].body as { templateData: { actionLink?: string } }).templateData.actionLink, "https://app.test/reset-password?redirect=x");
 });
 
-Deno.test("provision-org: existing admin → branded email with NO actionLink", async () => {
-  const { deps, invokeCalls } = makeFakeDeps({
+Deno.test("provision-org: existing admin → branded email with a magic-link actionLink", async () => {
+  // Invite hardening: an existing auth user now gets a one-click magic link (type:'magiclink'
+  // to /auth/callback) instead of an empty actionLink that forced the unbranded reset flow.
+  const { deps, invokeCalls, calls } = makeFakeDeps({
     authUser: { id: "u1" },
     tables: { platform_admins: { data: { user_id: "u1" }, error: null } },
     rpcs: { provision_org: { data: { org_id: "org-9", token: "tok-9" }, error: null } },
     usersById: { u2: { email: "a@acme.com" } }, // existing
+    generateLinkResult: { data: { properties: { action_link: "https://app.test/auth/callback?redirect=y" } }, error: null },
   });
   const res = await handle(makeRequest({ headers: { Authorization: "Bearer x" }, body }), deps);
   assertEquals(res.status, 200);
   const sent = invokeCalls.filter((c) => c.name === "send-transactional-email");
   assertEquals(sent.length, 1);
-  assertEquals((sent[0].body as { templateData: { actionLink?: string } }).templateData.actionLink, undefined);
+  assertEquals((sent[0].body as { templateData: { actionLink?: string } }).templateData.actionLink, "https://app.test/auth/callback?redirect=y");
+  const gen = calls.find((c) => c.table === "auth.admin.generateLink");
+  const params = gen!.args[0] as { type: string; options: { redirectTo: string } };
+  assertEquals(params.type, "magiclink");
+  assertEquals(params.options.redirectTo.includes("/auth/callback?redirect="), true);
 });
 
 Deno.test("provision-org: 409 on duplicate slug", async () => {

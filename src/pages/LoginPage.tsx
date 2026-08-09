@@ -11,6 +11,10 @@ import { useConsent } from '@/features/consent/ConsentContext';
 import { motion, useReducedMotion } from 'framer-motion';
 import { StageMark } from '@/components/brand/StageMark';
 import { cn } from '@/lib/utils';
+import { toast } from 'sonner';
+import { requestLoginLink } from '@/data/authLinks';
+import { safeRelativeRedirect } from '@/features/auth/resetPassword';
+import { supabase } from '@/integrations/supabase/client';
 import heroShow from '@/assets/auth/hero-show.jpg';
 
 function friendlyAuthError(message: string): string {
@@ -34,6 +38,7 @@ export default function LoginPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
+  const [linkSending, setLinkSending] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const emailRef = useRef<HTMLInputElement>(null);
   const loadingRef = useRef(false);
@@ -52,8 +57,7 @@ export default function LoginPage() {
     try {
       await signIn(email, password);
       // Honor a relative ?redirect= (e.g. the accept-invite flow); never an absolute/external URL.
-      const redirect = searchParams.get('redirect');
-      navigate(redirect && redirect.startsWith('/') && !redirect.startsWith('//') ? redirect : ROUTES.DASHBOARD);
+      navigate(safeRelativeRedirect(searchParams.get('redirect'), ROUTES.DASHBOARD));
     } catch (err) {
       setError(friendlyAuthError((err as Error).message ?? 'Something went wrong. Please try again.'));
       setPassword('');
@@ -61,6 +65,31 @@ export default function LoginPage() {
     } finally {
       loadingRef.current = false;
       setLoading(false);
+    }
+  };
+
+  const onEmailLink = async () => {
+    const trimmed = email.trim();
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmed)) {
+      setError('Enter a valid email address first.');
+      emailRef.current?.focus();
+      return;
+    }
+    setLinkSending(true);
+    const sent = 'If that email exists, a sign-in link is on its way.';
+    // Thread the same validated ?redirect= the password path honors, so an accept-invite
+    // bounce completes the invitation. safeRelativeRedirect falls back to /dashboard, which
+    // the edge function also clamps to, so passing it explicitly is harmless.
+    const redirect = safeRelativeRedirect(searchParams.get('redirect'), ROUTES.DASHBOARD);
+    try {
+      await requestLoginLink(supabase, trimmed, window.location.origin, redirect);
+      toast.success(sent);
+    } catch {
+      // Keep the confirmation oracle-safe: identical whether or not the address exists,
+      // and on a server fault (the spec's locked no-enumeration decision).
+      toast.success(sent);
+    } finally {
+      setLinkSending(false);
     }
   };
 
@@ -114,7 +143,7 @@ export default function LoginPage() {
             </div>
 
             {/* Headline over the photo */}
-            <h1 className="mb-7 max-w-sm font-display text-3xl font-semibold leading-[1.15] tracking-tight text-[var(--auth-fg)] sm:text-[34px]">
+            <h1 className="mb-7 max-w-sm text-balance font-display text-3xl font-semibold leading-[1.15] tracking-tight text-[var(--auth-fg)] sm:text-[34px]">
               Casting, scheduling and confirmations, all in one place.
             </h1>
 
@@ -159,17 +188,27 @@ export default function LoginPage() {
                     required
                   />
                 </div>
-                <div className="-mt-1 text-right">
+                <Button type="submit" className="w-full" disabled={loading || linkSending}>
+                  {loading ? 'Signing in...' : 'Sign in'}
+                </Button>
+                {/* Gap the hairline around the label instead of knocking out a filled chip:
+                    over the translucent card a card-colored fill would compound and darken. */}
+                <div className="my-1 flex items-center gap-3" aria-hidden="true">
+                  <span className="h-px flex-1 bg-[var(--auth-hairline)]" />
+                  <span className="text-xs text-muted-foreground">or</span>
+                  <span className="h-px flex-1 bg-[var(--auth-hairline)]" />
+                </div>
+                <Button type="button" variant="default" className="w-full" disabled={loading || linkSending} onClick={onEmailLink}>
+                  {linkSending ? 'Sending...' : 'Email me a sign-in link'}
+                </Button>
+                <div className="mt-3 text-center">
                   <Link
                     to={ROUTES.RESET_PASSWORD}
-                    className="text-xs text-muted-foreground underline-offset-2 hover:text-foreground hover:underline"
+                    className="inline-block py-2.5 text-xs text-muted-foreground underline underline-offset-2 hover:text-foreground"
                   >
                     Forgot password?
                   </Link>
                 </div>
-                <Button type="submit" className="w-full" disabled={loading}>
-                  {loading ? 'Signing in...' : 'Sign in'}
-                </Button>
               </form>
 
               <div className="mt-5 space-y-2 border-t border-[var(--auth-hairline)] pt-4">

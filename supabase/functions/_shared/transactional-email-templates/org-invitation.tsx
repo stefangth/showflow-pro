@@ -33,6 +33,11 @@ const OrgInvitationEmail = ({
   const copy = _emailCopy;
   const theme = _emailTheme;
   const org = orgName || copy["org-invitation.orgFallback"];
+  // Both the CTA and the paste-line fallback use the one-click action link, which is always
+  // minted now (invite link for net-new, magic link for existing) and works in both cases.
+  // A net-new invitee needs this link (not the bare token URL) because the token accept URL
+  // has no session/account for them and would dead-end at /login. It falls back to the token
+  // accept URL only if no action link was produced.
   const acceptUrl = actionLink || (token ? `${APP_URL}/accept-invite?token=${token}` : APP_URL);
   const roleSuffix = role ? applyEmailTokens(copy["org-invitation.roleSuffix"], { role }) : "";
   const values = { orgName: org, roleSuffix, inviterEmail: inviterEmail ?? "" };

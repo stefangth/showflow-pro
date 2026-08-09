@@ -36,6 +36,7 @@ import { template as offerExpiryReminder } from './offer-expiry-reminder.tsx'
 import { template as hireOrderIssued } from './hire-order-issued.tsx'
 import { template as hireOrderCountersigned } from './hire-order-countersigned.tsx'
 import { template as accountEmailChanged } from './account-email-changed.tsx'
+import { template as magicLink } from './magic-link.tsx'
 
 type RegisteredTemplateEntry = TemplateEntry & { family: EmailFamily }
 
@@ -50,6 +51,7 @@ export const TEMPLATES: Record<string, RegisteredTemplateEntry> = {
   'hire-order-issued': { ...hireOrderIssued, family: 'pine' },
   'hire-order-countersigned': { ...hireOrderCountersigned, family: 'steel' },
   'account-email-changed': { ...accountEmailChanged, family: 'steel' },
+  'magic-link': { ...magicLink, family: 'violet' },
 }
 
 export interface TemplatePresentation {
@@ -133,6 +135,7 @@ const SUBJECT_RESOLVERS = {
     jobName: String(data.job_name ?? 'a job'),
     statusCode: String(data.status_code ?? '?'),
   }),
+  'magic-link': (_data, copy) => copy['magic-link.subject'],
 } satisfies Record<EmailTemplateKey, SubjectResolver>
 
 /** Extract the historical generic subject field without extending its lifetime. */

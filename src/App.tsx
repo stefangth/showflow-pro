@@ -28,6 +28,7 @@ import PrivacyPage from "./pages/PrivacyPage";
 import ImpressumPage from "./pages/ImpressumPage";
 import AcceptInvitePage from "./pages/AcceptInvitePage";
 import ResetPasswordPage from "./pages/ResetPasswordPage";
+import AuthCallbackPage from "./pages/AuthCallbackPage";
 import ProductionsPage from "./pages/ProductionsPage";
 import HireOrdersPage from "./pages/HireOrdersPage";
 import HireOrderDetailPage from "./pages/HireOrderDetailPage";
@@ -103,6 +104,7 @@ const App = () => (
             <Route path={ROUTES.PLATFORM} element={<PlatformRoute><AppLayout><PlatformPage /></AppLayout></PlatformRoute>} />
             <Route path={ROUTES.ACCEPT_INVITE} element={<AcceptInvitePage />} />
             <Route path={ROUTES.RESET_PASSWORD} element={<ResetPasswordPage />} />
+            <Route path={ROUTES.AUTH_CALLBACK} element={<AuthCallbackPage />} />
             <Route path={ROUTES.UNSUBSCRIBE} element={<UnsubscribePage />} />
             <Route path={ROUTES.PRIVACY} element={<PrivacyPage />} />
             <Route path={ROUTES.IMPRESSUM} element={<ImpressumPage />} />
