@@ -23,15 +23,15 @@ export interface InviteBarProps {
   /** Id of the invite whose resend is currently in flight, or null. */
   resendPendingId?: string | null;
   /**
-   * Duplicate detection can't be trusted until BOTH the members and invites
-   * queries have settled successfully; hold sends until then so an already-a-member
-   * or already-invited address can't slip through an empty list.
+   * When set, duplicate detection can't be trusted yet (members/invites still
+   * loading, or a query errored) — the invite is held and this string is shown as
+   * the reason, so the disabled Invite button is never unexplained. Null = ready.
    */
-  dedupeUnready?: boolean;
+  dedupeHint?: string | null;
 }
 
 /** Inline single invite with live duplicate detection + a bulk-invite entry point. */
-export function InviteBar({ members, invites, onOpenBulk, onResend, resendPendingId = null, dedupeUnready = false }: InviteBarProps) {
+export function InviteBar({ members, invites, onOpenBulk, onResend, resendPendingId = null, dedupeHint = null }: InviteBarProps) {
   const { currentOrg } = useAuth();
   const [email, setEmail] = useState("");
   const [role, setRole] = useState<AppRole>("artist");
@@ -46,6 +46,7 @@ export function InviteBar({ members, invites, onOpenBulk, onResend, resendPendin
     ? invites.find((i) => i.status === "pending" && i.email.toLowerCase() === trimmed.toLowerCase())
     : undefined;
 
+  const dedupeUnready = !!dedupeHint;
   const canInvite = !!currentOrg && isValidEmail(trimmed) && match === "none" && !create.isPending && !dedupeUnready;
 
   return (
@@ -74,17 +75,18 @@ export function InviteBar({ members, invites, onOpenBulk, onResend, resendPendin
           <UserPlus className="h-4 w-4 mr-1" />Bulk invite
         </Button>
       </form>
-      {match === "member" && (
+      {dedupeUnready ? (
+        <p className="text-xs text-muted-foreground">{dedupeHint}</p>
+      ) : match === "member" ? (
         <p className="text-xs text-muted-foreground">Already a member of this organization.</p>
-      )}
-      {match === "pending" && pendingInvite && (
+      ) : match === "pending" && pendingInvite ? (
         <p className="text-xs text-muted-foreground flex items-center gap-2">
           Already invited (pending).
           <Button size="sm" variant="link" className="h-auto p-0 text-xs" disabled={resendPendingId === pendingInvite.id} onClick={() => onResend(pendingInvite.id)}>
             Resend
           </Button>
         </p>
-      )}
+      ) : null}
     </div>
   );
 }

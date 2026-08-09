@@ -51,12 +51,16 @@ describe("InviteBar duplicate detection", () => {
     expect(screen.getByRole("button", { name: /^invite$/i })).not.toBeDisabled();
   });
 
-  it("holds Invite disabled while duplicate detection is unready", () => {
-    // dedupeUnready stands in for either the members or invites query being
+  it("holds Invite disabled and shows the reason while duplicate detection is unready", () => {
+    // dedupeHint stands in for either the members or invites query being
     // unsettled/errored; a fresh address that would otherwise be sendable must
-    // wait, so a not-yet-loaded member/pending dup can't slip through empty lists.
-    renderWithProviders(<InviteBar members={[]} invites={[]} dedupeUnready onOpenBulk={vi.fn()} onResend={vi.fn()} />);
+    // wait, so a not-yet-loaded member/pending dup can't slip through empty lists,
+    // and the disabled button is explained rather than silent.
+    renderWithProviders(
+      <InviteBar members={[]} invites={[]} dedupeHint="Checking existing people…" onOpenBulk={vi.fn()} onResend={vi.fn()} />,
+    );
     fireEvent.change(screen.getByPlaceholderText(/invitee@email.com/i), { target: { value: "new@x.com" } });
     expect(screen.getByRole("button", { name: /^invite$/i })).toBeDisabled();
+    expect(screen.getByText(/checking existing people/i)).toBeInTheDocument();
   });
 });
