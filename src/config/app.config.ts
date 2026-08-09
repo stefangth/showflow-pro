@@ -194,6 +194,7 @@ export const ROUTES = {
   SETTINGS: '/settings',
   PROFILE: '/profile',
   RESET_PASSWORD: '/reset-password',
+  AUTH_CALLBACK: '/auth/callback',
   CHATS: '/chats',
   PRIVACY: '/privacy',
   IMPRESSUM: '/impressum',

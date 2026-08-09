@@ -20,6 +20,13 @@ describe("safeRelativeRedirect", () => {
     expect(safeRelativeRedirect("https://evil.com", "/login")).toBe("/login");
     expect(safeRelativeRedirect(null, "/login")).toBe("/login");
   });
+  it("safeRelativeRedirect: callback targets", () => {
+    expect(safeRelativeRedirect(null, "/dashboard")).toBe("/dashboard");
+    expect(safeRelativeRedirect("//evil.com", "/dashboard")).toBe("/dashboard");
+    expect(safeRelativeRedirect("http://x", "/dashboard")).toBe("/dashboard");
+    expect(safeRelativeRedirect("/accept-invite?token=x", "/dashboard")).toBe("/accept-invite?token=x");
+    expect(safeRelativeRedirect("/dashboard", "/dashboard")).toBe("/dashboard");
+  });
 });
 
 describe("newPasswordSchema", () => {
