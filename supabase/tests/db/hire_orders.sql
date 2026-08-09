@@ -575,7 +575,7 @@ SELECT is(
 SELECT is(
   (SELECT count(*)::int FROM net.http_request_queue
    WHERE id > current_setting('ho_dispatch.checkpoint')::bigint
-     AND url = 'https://epweartpzwvcasrzyueh.supabase.co/functions/v1/generate-hire-orders'),
+     AND url = private.functions_base_url() || '/functions/v1/generate-hire-orders'),
   1,
   'entitlement ON: the fully_filled transition enqueues exactly one generate-hire-orders dispatch');
 
@@ -583,7 +583,7 @@ SELECT ok(
   EXISTS(
     SELECT 1 FROM net.http_request_queue
     WHERE id > current_setting('ho_dispatch.checkpoint')::bigint
-      AND url = 'https://epweartpzwvcasrzyueh.supabase.co/functions/v1/generate-hire-orders'
+      AND url = private.functions_base_url() || '/functions/v1/generate-hire-orders'
       AND convert_from(body, 'utf8') LIKE '%"action": "draft"%'
       AND convert_from(body, 'utf8') LIKE '%"notify": true%'
       AND convert_from(body, 'utf8') LIKE '%"org_id": "00000000-0000-0000-0000-00000000f0a1"%'
@@ -596,7 +596,7 @@ SELECT ok(
   EXISTS(
     SELECT 1 FROM net.http_request_queue
     WHERE id > current_setting('ho_dispatch.checkpoint')::bigint
-      AND url = 'https://epweartpzwvcasrzyueh.supabase.co/functions/v1/generate-hire-orders'
+      AND url = private.functions_base_url() || '/functions/v1/generate-hire-orders'
       AND headers->>'X-Cron-Secret' = private.cron_secret()
       AND timeout_milliseconds = 30000
   ),
@@ -617,7 +617,7 @@ SELECT is(
 SELECT is(
   (SELECT count(*)::int FROM net.http_request_queue
    WHERE id > current_setting('ho_dispatch.checkpoint')::bigint
-     AND url = 'https://epweartpzwvcasrzyueh.supabase.co/functions/v1/generate-hire-orders'),
+     AND url = private.functions_base_url() || '/functions/v1/generate-hire-orders'),
   0,
   'entitlement OFF (default, no org_entitlements row): the same fully_filled transition enqueues nothing');
 
