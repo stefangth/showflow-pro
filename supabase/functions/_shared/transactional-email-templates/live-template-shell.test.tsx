@@ -12,12 +12,13 @@ const LIVE_TEMPLATE_KEYS = [
   "cron-health-alert",
   "hire-order-countersigned",
   "hire-order-issued",
+  "magic-link",
   "offer-expiry-reminder",
   "offer-immediate",
   "org-invitation",
 ].sort();
 
-Deno.test("the registry contains exactly the ten live templates with a family", () => {
+Deno.test("the registry contains exactly the eleven live templates with a family", () => {
   assertEquals(Object.keys(TEMPLATES).sort(), LIVE_TEMPLATE_KEYS);
   for (const key of LIVE_TEMPLATE_KEYS) {
     assertEquals(typeof TEMPLATES[key].family, "string", `${key} has a family`);
