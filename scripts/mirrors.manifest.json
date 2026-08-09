@@ -88,6 +88,14 @@
       "start": "// >>> ENTITLEMENTS REGISTRY MIRROR (keep byte-identical with the twin file) >>>",
       "end": "// <<< ENTITLEMENTS REGISTRY MIRROR <<<",
       "why": "Feature registry + pure resolvers. The edge file adds DB-backed helpers below the block that have no frontend mirror."
+    },
+    {
+      "mode": "block",
+      "source": "src/config/app.config.ts",
+      "target": "supabase/functions/_shared/roles.ts",
+      "start": "// >>> ROLE LABELS MIRROR (keep byte-identical with the twin file) >>>",
+      "end": "// <<< ROLE LABELS MIRROR <<<",
+      "why": "Org-role display labels. The org-invitation email renders the friendly label ('Production Team') instead of the raw enum; the surrounding imports differ per runtime."
     }
   ]
 }

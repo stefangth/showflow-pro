@@ -159,13 +159,17 @@ export const ROLES = {
 
 export type AppRole = (typeof ROLES)[keyof typeof ROLES];
 
+// >>> ROLE LABELS MIRROR (keep byte-identical with the twin file) >>>
 /**
  * Human-facing labels for each org role. The `producer` role now covers both
  * show producers and project managers (hire orders), so it reads "Production Team"
- * in the UI while the enum value stays `producer` — the DB enum, RLS policies, and
- * edge functions all key off the literal `producer`, so only the display label changes.
+ * in the UI (and in the org-invitation email) while the enum value stays `producer` —
+ * the DB enum, RLS policies, and edge functions all key off the literal `producer`,
+ * so only the display label changes. Mirrored to
+ * supabase/functions/_shared/roles.ts (npm run sync:mirrors) so the invite email
+ * renders the same label; the surrounding imports differ per runtime.
  */
-export const ROLE_LABELS: Record<AppRole, string> = {
+export const ROLE_LABELS: Record<'admin' | 'producer' | 'artist', string> = {
   admin: 'Admin',
   producer: 'Production Team',
   artist: 'Artist',
@@ -173,7 +177,8 @@ export const ROLE_LABELS: Record<AppRole, string> = {
 
 /** Display label for a role. Tolerant of unknown strings (falls back to the raw value). */
 export const roleLabel = (role: string): string =>
-  ROLE_LABELS[role as AppRole] ?? role;
+  ROLE_LABELS[role as keyof typeof ROLE_LABELS] ?? role;
+// <<< ROLE LABELS MIRROR <<<
 
 /** Route paths */
 export const ROUTES = {

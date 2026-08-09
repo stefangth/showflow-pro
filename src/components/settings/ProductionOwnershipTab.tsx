@@ -114,7 +114,7 @@ export function ProductionOwnershipTab({ currentOrgId, canEnter }: Props) {
         <CardHeader>
           <CardTitle className="font-display">Production Ownership</CardTitle>
           <CardDescription>
-            Map Production Team users to show scopes for notification routing. The most-specific match wins:
+            Map {roleLabel("producer")} users to show scopes for notification routing. The most-specific match wins:
             (program + sub-program + city) beats (program + city) beats (program + sub-program) beats (program only).
             Admins are always fallback recipients.
           </CardDescription>
