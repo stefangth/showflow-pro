@@ -69,7 +69,7 @@ function EdgeFnRow({ m, rollup }: { m: EdgeFnMetric; rollup: HealthDay[] }) {
               {c.code} × {c.count}
             </span>
           ))}
-          {succeeded === 0 && (
+          {hasFaults && succeeded === 0 && (
             <span className="text-muted-foreground">no 2xx in this window</span>
           )}
         </div>

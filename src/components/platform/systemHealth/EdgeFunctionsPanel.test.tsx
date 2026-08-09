@@ -131,4 +131,12 @@ describe("EdgeFunctionsPanel", () => {
     renderWithProviders(<EdgeFunctionsPanel metrics={[unauthorizedMetric()]} healthDaily={[]} />);
     expect(screen.queryByRole("button", { name: /view recent errors/i })).not.toBeInTheDocument();
   });
+
+  it("does not show the 'no 2xx' note for an all-401 (Operational) row", () => {
+    // succeeded === 0 for an all-401 window, but the note is gated on genuine (non-401) faults so
+    // it can't render directly under a green Operational pill.
+    renderWithProviders(<EdgeFunctionsPanel metrics={[unauthorizedMetric()]} healthDaily={[]} />);
+    expect(screen.getByText("Operational")).toBeInTheDocument();
+    expect(screen.queryByText(/no 2xx in this window/)).not.toBeInTheDocument();
+  });
 });

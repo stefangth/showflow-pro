@@ -66,11 +66,16 @@ $$;
 REVOKE ALL ON FUNCTION public.upsert_health_daily(jsonb) FROM public, anon, authenticated;
 GRANT EXECUTE ON FUNCTION public.upsert_health_daily(jsonb) TO service_role;
 
--- One-time historical backfill: rows whose only badness is 401 (no 5xx, worst 4xx = 401) get their
--- rejected count attributed to unauthorized, so the already-recorded amber cron-function cells on the
--- 30-day bar flip to operational immediately. Days older than ~2 cannot be recomputed by health-rollup
--- (Analytics retains only 24h), so this is the only way to reconcile them. Safe: the affected cron
--- endpoints only ever receive 401 as their 4xx, so unauthorized = rejected is exact for them.
+-- One-time historical backfill: attribute a cron function's 401-only rejected count to unauthorized,
+-- so its already-recorded amber cells on the 30-day bar flip to operational immediately. Days older
+-- than ~2 cannot be recomputed by health-rollup (Analytics retains only 24h), so this is the only way
+-- to reconcile them. SCOPED to the cron function slugs (CRON_JOB_TO_FN values): only those endpoints
+-- are guaranteed 401-only, so `unauthorized = rejected` is exact. A blanket update would mis-attribute
+-- a genuine same-day 400 on a user-facing function as unauthorized (worst_status is max(codes), so a
+-- 400+401 day still has worst_status 401) -- the exact gap this column exists to close.
 update public.health_daily
    set unauthorized = rejected
- where failures = 0 and worst_status = 401 and unauthorized = 0;
+ where failures = 0 and worst_status = 401 and unauthorized = 0
+   and fn = any(array['send-offer-digest','send-confirmation-digest','expire-offers',
+                      'tier-at-risk-watcher','airtable-poll','cron-health-watcher',
+                      'email-health-watcher','health-rollup']);
