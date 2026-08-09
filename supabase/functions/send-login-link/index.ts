@@ -42,6 +42,12 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
     });
     if (error) throw error;
     const actionLink = (data as { properties?: { action_link?: string } })?.properties?.action_link;
+    if (!actionLink) {
+      // generateLink resolved without a usable link: treat as a fault rather than ship an
+      // email whose only CTA has an empty href.
+      console.error("send-login-link: generateLink returned no action_link");
+      return json({ error: "Internal error" }, 500);
+    }
     await deps.sendEmail({
       template_name: "magic-link",
       recipient_email: email,

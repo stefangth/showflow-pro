@@ -10,7 +10,7 @@
 -- inside its window.
 BEGIN;
 CREATE EXTENSION IF NOT EXISTS pgtap WITH SCHEMA extensions;
-SELECT plan(12);
+SELECT plan(17);
 
 -- Structure + RLS posture
 SELECT has_table('public', 'auth_link_throttle', 'auth_link_throttle table exists');
@@ -33,6 +33,21 @@ SELECT throws_ok($$ DELETE FROM public.auth_link_throttle $$, '42501', NULL,
   'authenticated cannot DELETE auth_link_throttle');
 SELECT throws_ok($$ SELECT public.claim_login_link_slot('a@x.com', 60) $$, '42501', NULL,
   'authenticated cannot EXECUTE claim_login_link_slot');
+RESET ROLE;
+
+-- Same grant-layer denial for the anon role (also revoked in the migration). A future
+-- blanket GRANT to anon would flip these red.
+SET LOCAL ROLE anon;
+SELECT throws_ok($$ SELECT * FROM public.auth_link_throttle $$, '42501', NULL,
+  'anon cannot SELECT auth_link_throttle');
+SELECT throws_ok($$ INSERT INTO public.auth_link_throttle(email) VALUES ('a@x.com') $$, '42501', NULL,
+  'anon cannot INSERT auth_link_throttle');
+SELECT throws_ok($$ UPDATE public.auth_link_throttle SET last_sent_at = now() $$, '42501', NULL,
+  'anon cannot UPDATE auth_link_throttle');
+SELECT throws_ok($$ DELETE FROM public.auth_link_throttle $$, '42501', NULL,
+  'anon cannot DELETE auth_link_throttle');
+SELECT throws_ok($$ SELECT public.claim_login_link_slot('a@x.com', 60) $$, '42501', NULL,
+  'anon cannot EXECUTE claim_login_link_slot');
 RESET ROLE;
 
 -- RPC behavior (superuser/service context in the test harness).

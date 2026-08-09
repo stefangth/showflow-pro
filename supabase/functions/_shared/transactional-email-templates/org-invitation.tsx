@@ -33,10 +33,12 @@ const OrgInvitationEmail = ({
   const copy = _emailCopy;
   const theme = _emailTheme;
   const org = orgName || copy["org-invitation.orgFallback"];
-  // The CTA uses the one-click action link when present; the paste line always shows the
-  // stable token accept URL, since the minted action link is single-use and expires.
+  // Both the CTA and the paste-line fallback use the one-click action link, which is always
+  // minted now (invite link for net-new, magic link for existing) and works in both cases.
+  // A net-new invitee needs this link (not the bare token URL) because the token accept URL
+  // has no session/account for them and would dead-end at /login. It falls back to the token
+  // accept URL only if no action link was produced.
   const acceptUrl = actionLink || (token ? `${APP_URL}/accept-invite?token=${token}` : APP_URL);
-  const pasteUrl = token ? `${APP_URL}/accept-invite?token=${token}` : APP_URL;
   const roleSuffix = role ? applyEmailTokens(copy["org-invitation.roleSuffix"], { role }) : "";
   const values = { orgName: org, roleSuffix, inviterEmail: inviterEmail ?? "" };
 
@@ -46,7 +48,7 @@ const OrgInvitationEmail = ({
       <Text style={{ ...emailRoleStyle(theme, "body", _highlightRole), lineHeight: "1.6", margin: "0 0 16px" }}>{applyEmailTokens(copy["org-invitation.intro"], values)}</Text>
       {inviterEmail && <Text style={{ ...emailRoleStyle(theme, "footer", _highlightRole), margin: "0 0 16px" }}>{applyEmailTokens(copy["org-invitation.invitedBy"], values)}</Text>}
       <Text style={{ ...emailRoleStyle(theme, "footer", _highlightRole), margin: "0 0 8px" }}>{copy["org-invitation.pasteLink"]}</Text>
-      <Text style={{ ...emailRoleStyle(theme, "dataValue", _highlightRole), margin: "0" }}>{pasteUrl}</Text>
+      <Text style={{ ...emailRoleStyle(theme, "dataValue", _highlightRole), margin: "0" }}>{acceptUrl}</Text>
     </EmailShell>
   );
 };

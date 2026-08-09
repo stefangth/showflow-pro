@@ -38,7 +38,7 @@ export default function AuthCallbackPage() {
         <div className="mx-auto"><StageMark variant="tile" size={52} /></div>
         {failed ? (
           <>
-            <p className="text-sm text-muted-foreground">That link has expired. Request a new sign-in link.</p>
+            <p className="text-sm text-muted-foreground">That link has expired or was already used. Request a new sign-in link, or ask your admin to resend your invitation if you were invited.</p>
             <Link to={ROUTES.LOGIN} className="text-sm font-medium underline-offset-2 hover:underline">
               Back to sign in
             </Link>

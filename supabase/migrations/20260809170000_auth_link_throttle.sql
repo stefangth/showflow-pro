@@ -14,6 +14,10 @@ alter table public.auth_link_throttle enable row level security;
 revoke all on public.auth_link_throttle from anon, authenticated;
 grant all on public.auth_link_throttle to service_role;
 
+-- Index the prune predicate: claim_login_link_slot deletes stale rows by last_sent_at on
+-- every call, so keep that scan index-backed rather than a sequential scan as the table grows.
+create index auth_link_throttle_last_sent_at_idx on public.auth_link_throttle (last_sent_at);
+
 -- Atomic claim: returns true and stamps last_sent_at when the cooldown has elapsed
 -- (or no row exists), false when still within the window. Also prunes stale rows.
 create or replace function public.claim_login_link_slot(
