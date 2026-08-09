@@ -8,6 +8,7 @@ import type { OrgMember } from "@/data/members";
 import type { AppRole } from "@/config/app.config";
 import { useInvitationMutations } from "@/hooks/useInvitationMutations";
 import { isValidEmail, matchContact } from "./peopleMatch";
+import { ROLE_OPTIONS } from "./roleOptions";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -58,9 +59,9 @@ export function InviteBar({ members, invites, onOpenBulk, dedupeUnready = false 
         <Select value={role} onValueChange={(v) => setRole(v as AppRole)}>
           <SelectTrigger className="w-full sm:w-40"><SelectValue /></SelectTrigger>
           <SelectContent>
-            <SelectItem value="admin">Admin</SelectItem>
-            <SelectItem value="producer">Producer</SelectItem>
-            <SelectItem value="artist">Artist</SelectItem>
+            {ROLE_OPTIONS.map((r) => (
+              <SelectItem key={r} value={r} className="capitalize">{r}</SelectItem>
+            ))}
           </SelectContent>
         </Select>
         <Button type="submit" disabled={!canInvite}>Invite</Button>

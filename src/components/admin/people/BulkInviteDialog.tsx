@@ -1,13 +1,13 @@
 // src/components/admin/people/BulkInviteDialog.tsx
 import { useEffect, useMemo, useState } from "react";
-import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/features/auth/AuthContext";
-import { createInvitation, type Invitation } from "@/data/invitations";
+import { type Invitation } from "@/data/invitations";
 import type { OrgMember } from "@/data/members";
 import type { AppRole } from "@/config/app.config";
+import { useInvitationMutations } from "@/hooks/useInvitationMutations";
 import { parseEmails, isValidEmail, matchContact } from "./peopleMatch";
+import { ROLE_OPTIONS } from "./roleOptions";
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription,
 } from "@/components/ui/dialog";
@@ -37,7 +37,7 @@ const SEND_CONCURRENCY = 5;
 /** Paste multiple emails, pick one role, invite the clean ones; skips are reported. */
 export function BulkInviteDialog({ open, onOpenChange, members, invites, dedupeUnready = false }: BulkInviteDialogProps) {
   const { currentOrg } = useAuth();
-  const qc = useQueryClient();
+  const { createOne, invalidateInvitations } = useInvitationMutations(currentOrg?.id);
   const [text, setText] = useState("");
   const [role, setRole] = useState<AppRole>("artist");
   const [sending, setSending] = useState(false);
@@ -72,7 +72,7 @@ export function BulkInviteDialog({ open, onOpenChange, members, invites, dedupeU
     for (let i = 0; i < okRows.length; i += SEND_CONCURRENCY) {
       const chunk = okRows.slice(i, i + SEND_CONCURRENCY);
       const results = await Promise.allSettled(
-        chunk.map((r) => createInvitation(supabase, { orgId: currentOrg.id, email: r.email, role })),
+        chunk.map((r) => createOne({ email: r.email, role })),
       );
       for (const res of results) {
         if (res.status === "fulfilled") sent += 1;
@@ -81,7 +81,7 @@ export function BulkInviteDialog({ open, onOpenChange, members, invites, dedupeU
     }
     const skipped = rows.length - okCount;
     setSending(false);
-    qc.invalidateQueries({ queryKey: ["org-invitations"] });
+    invalidateInvitations();
     const parts = [`${sent} invited`];
     if (skipped > 0) parts.push(`${skipped} skipped`);
     if (failed > 0) parts.push(`${failed} failed`);
@@ -115,9 +115,9 @@ export function BulkInviteDialog({ open, onOpenChange, members, invites, dedupeU
           <Select value={role} onValueChange={(v) => setRole(v as AppRole)}>
             <SelectTrigger className="w-full sm:w-40"><SelectValue /></SelectTrigger>
             <SelectContent>
-              <SelectItem value="admin">Admin</SelectItem>
-              <SelectItem value="producer">Producer</SelectItem>
-              <SelectItem value="artist">Artist</SelectItem>
+              {ROLE_OPTIONS.map((r) => (
+                <SelectItem key={r} value={r} className="capitalize">{r}</SelectItem>
+              ))}
             </SelectContent>
           </Select>
           {rows.length > 0 && (

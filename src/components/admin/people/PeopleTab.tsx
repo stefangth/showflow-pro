@@ -61,7 +61,9 @@ export function PeopleTab() {
 
   const showPending = filtered.invites.length > 0;
   const showMembers = filtered.members.length > 0;
-  const nothing = hasSearch && !showPending && !showMembers;
+  // Only claim "no matches" when the data actually loaded; on error the destructive
+  // alert already explains the empty lists, so don't contradict it.
+  const nothing = hasSearch && !showPending && !showMembers && !isError && !invitesError;
 
   return (
     <div className="space-y-4">
