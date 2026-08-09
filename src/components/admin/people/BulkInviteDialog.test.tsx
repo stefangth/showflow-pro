@@ -62,4 +62,25 @@ describe("BulkInviteDialog", () => {
       expect.objectContaining({ orgId: "org-1", email: "new@x.com", role: "artist" }),
     );
   });
+
+  it("keeps the dialog open and repopulates only the failed addresses on partial failure", async () => {
+    const onOpenChange = vi.fn();
+    createInvitation.mockImplementation((_client: unknown, args: unknown) => {
+      const email = (args as { email: string }).email;
+      return email === "boom@x.com" ? Promise.reject(new Error("edge fail")) : Promise.resolve();
+    });
+    renderWithProviders(
+      <BulkInviteDialog open onOpenChange={onOpenChange} members={[bob]} invites={[kimInvite]} />,
+    );
+    fireEvent.change(screen.getByRole("textbox"), {
+      target: { value: "new@x.com, boom@x.com" },
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: "Invite 2" }));
+
+    // Both were attempted, one failed; dialog stays open with just the failed address left.
+    await waitFor(() => expect((screen.getByRole("textbox") as HTMLTextAreaElement).value).toBe("boom@x.com"));
+    expect(createInvitation).toHaveBeenCalledTimes(2);
+    expect(onOpenChange).not.toHaveBeenCalledWith(false);
+  });
 });

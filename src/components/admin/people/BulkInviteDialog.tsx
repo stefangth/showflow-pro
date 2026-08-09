@@ -66,7 +66,7 @@ export function BulkInviteDialog({ open, onOpenChange, members, invites, dedupeU
     setSending(true);
     const okRows = rows.filter((r) => r.kind === "ok");
     let sent = 0;
-    let failed = 0;
+    const failedEmails: string[] = [];
     // Send in bounded-concurrency chunks so a large paste doesn't serialize one
     // edge-function round-trip per address, while still capping parallel load.
     for (let i = 0; i < okRows.length; i += SEND_CONCURRENCY) {
@@ -74,21 +74,28 @@ export function BulkInviteDialog({ open, onOpenChange, members, invites, dedupeU
       const results = await Promise.allSettled(
         chunk.map((r) => createOne({ email: r.email, role })),
       );
-      for (const res of results) {
+      results.forEach((res, j) => {
         if (res.status === "fulfilled") sent += 1;
-        else failed += 1;
-      }
+        else failedEmails.push(chunk[j].email);
+      });
     }
+    const failed = failedEmails.length;
     const skipped = rows.length - okCount;
     setSending(false);
     invalidateInvitations();
     const parts = [`${sent} invited`];
     if (skipped > 0) parts.push(`${skipped} skipped`);
     if (failed > 0) parts.push(`${failed} failed`);
-    if (failed > 0) toast.error(parts.join(" · "));
-    else toast.success(parts.join(" · "));
-    setText("");
-    onOpenChange(false);
+    if (failed > 0) {
+      // Keep the dialog open and repopulate it with only the failed addresses so a
+      // partial failure is retryable without re-pasting (and re-classifying) the rest.
+      toast.error(parts.join(" · "));
+      setText(failedEmails.join("\n"));
+    } else {
+      toast.success(parts.join(" · "));
+      setText("");
+      onOpenChange(false);
+    }
   };
 
   const badgeFor = (kind: Kind) =>
