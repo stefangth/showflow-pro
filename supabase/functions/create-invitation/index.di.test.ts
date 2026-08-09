@@ -152,6 +152,19 @@ Deno.test("create-invitation DI: net-new invitee → branded email WITH actionLi
   assertEquals((emails[0].body as { templateData: { actionLink?: string } }).templateData.actionLink, "https://app.test/reset-password?redirect=x");
 });
 
+Deno.test("create-invitation DI: net-new account minting fails → no dead-link email, still 200", async () => {
+  // A net-new invitee whose account cannot be minted (generateLink errors) has neither an
+  // existing account nor an actionLink, so a plain-link email would be a dead end. The
+  // invitation row still exists (request succeeds), but no unusable email is sent.
+  const { deps, invokeCalls } = adminDeps({
+    usersById: {}, // net-new (no existing auth user)
+    generateLinkResult: { data: null, error: { message: "could not create user" } },
+  });
+  const res = await handle(inviteReq({ org_id: "org-1", email: "invitee@x.com", role: "producer" }), deps);
+  assertEquals(res.status, 200);
+  assertEquals(invokeCalls.filter((c) => c.name === "send-transactional-email").length, 0);
+});
+
 // === Spec A: optional artist_id (deterministic link from the artist surface) ===
 
 Deno.test("create-invitation DI: valid artist_id → stamps artist_id + forces role artist", async () => {

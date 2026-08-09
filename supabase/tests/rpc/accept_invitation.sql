@@ -4,7 +4,7 @@
 --   0000…ac001 org
 BEGIN;
 CREATE EXTENSION IF NOT EXISTS pgtap WITH SCHEMA extensions;
-SELECT plan(14);
+SELECT plan(15);
 
 SET session_replication_role = replica;
 
@@ -58,12 +58,15 @@ SELECT is(
   (SELECT status FROM public.org_invitations WHERE token = 'tok-accept-aaa'),
   'accepted', 'invitation is marked accepted');
 
--- 6. The same token cannot be reused
+-- 6. Idempotent self-heal race: re-accepting YOUR OWN already-accepted invite (e.g. after
+--    claim_my_invitations flipped it to accepted on bootstrap) returns success, not a bogus
+--    'invalid or expired' P0002 — this is the fix for the invite-link happy path.
 SELECT set_config('request.jwt.claims','{"sub":"aaaaaaaa-aaaa-ac01-0000-000000000000","role":"authenticated"}',true);
 SET LOCAL ROLE authenticated;
-SELECT throws_ok(
-  $$ SELECT public.accept_invitation('tok-accept-aaa') $$,
-  'P0002', null, 'an accepted invitation cannot be reused');
+SELECT is(
+  (public.accept_invitation('tok-accept-aaa') ->> 'org_id'),
+  '00000000-0000-0000-0000-0000000ac001',
+  'idempotent: re-accepting your own already-accepted invite returns org_id');
 RESET ROLE;
 
 -- === Spec A: artist_id-first linking ===
@@ -162,6 +165,15 @@ SELECT is(
   (SELECT count(*)::int FROM public.artists
    WHERE org_id='00000000-0000-0000-0000-0000000ac0f1' AND user_id='aaaaaaaa-aaaa-ac06-0000-000000000000'),
   1, 'accept auto-creates the artist profile for a plain-email artist invite');
+
+-- 15. The idempotent path is guarded: a DIFFERENT user (wrong email, not a member of the
+--     org) still cannot redeem an already-accepted token — it raises, not returns success.
+SELECT set_config('request.jwt.claims','{"sub":"aaaaaaaa-aaaa-ac02-0000-000000000000","role":"authenticated"}',true);
+SET LOCAL ROLE authenticated;
+SELECT throws_ok(
+  $$ SELECT public.accept_invitation('tok-accept-aaa') $$,
+  'P0002', null, 'accepted token cannot be redeemed by a different (non-member) user');
+RESET ROLE;
 
 SELECT * FROM finish();
 ROLLBACK;

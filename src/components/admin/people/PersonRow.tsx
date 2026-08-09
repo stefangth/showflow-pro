@@ -36,12 +36,15 @@ export function PersonRow({
           {person.displayName || person.email}
         </p>
         <p className="text-xs text-muted-foreground truncate">{person.email}</p>
-        {!invited && (
+        {invited ? (
+          // Invited rows show the role as text here; active rows show it as badges on the
+          // right (below), so only render this line for invited rows to avoid duplication.
+          <p className="text-xs text-muted-foreground">{person.roles.map(roleLabel).join(", ")}</p>
+        ) : (
           <p className="text-xs text-muted-foreground">
             {person.lastSignInAt ? `Last seen ${format(new Date(person.lastSignInAt), "dd/MM/yyyy HH:mm")}` : "Never signed in"}
           </p>
         )}
-        <p className="text-xs text-muted-foreground">{person.roles.map(roleLabel).join(", ")}</p>
       </div>
       <div className="flex items-center gap-1 shrink-0">
         <Badge variant="outline" className={cn("text-xs", invited ? "border-warning text-warning" : "border-success text-success")}>

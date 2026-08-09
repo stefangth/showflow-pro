@@ -41,12 +41,18 @@ begin
       get diagnostics v_cnt = row_count;
       v_linked := v_cnt > 0;
     else
-      -- Plain email invite: claim an unclaimed row by lowercased email.
+      -- Plain email invite: claim an unclaimed row by lowercased email. Guard against the
+      -- artists(org_id,user_id) partial-unique index the same way the artist_id branch does
+      -- (no-op when the caller already owns an artist in this org, rather than raising).
       update public.artists a
          set user_id = p_user
        where a.org_id = v_inv.org_id
          and a.user_id is null
-         and lower(a.email) = lower(v_inv.email);
+         and lower(a.email) = lower(v_inv.email)
+         and not exists (
+           select 1 from public.artists o
+           where o.org_id = v_inv.org_id and o.user_id = p_user
+         );
       get diagnostics v_cnt = row_count;
       if v_cnt = 0
          and not exists (
@@ -93,6 +99,21 @@ begin
   for update;
 
   if v_inv.id is null then
+    -- Idempotent path: claim_my_invitations runs on every authenticated load (BEFORE
+    -- AcceptInvitePage's effect) and may have already flipped THIS token to 'accepted'
+    -- for THIS user. Treat "already accepted by me + I'm a member of that org" as success
+    -- so the invite-link happy path doesn't surface a bogus "invalid or expired" error.
+    select * into v_inv
+    from public.org_invitations
+    where token = p_token and status = 'accepted';
+    if v_inv.id is not null
+       and lower(v_inv.email) = lower(coalesce(v_email, ''))
+       and exists (
+         select 1 from public.org_memberships m
+         where m.org_id = v_inv.org_id and m.user_id = v_uid
+       ) then
+      return jsonb_build_object('org_id', v_inv.org_id, 'artist_linked', true);
+    end if;
     raise exception 'Invalid or expired invitation' using errcode = 'P0002';
   end if;
 
@@ -191,6 +212,9 @@ begin
 
   -- Resolve the invitee's auth user and drop the (org, user, invited-role) membership the
   -- invite created. Only that exact role row — an independently-earned role is untouched.
+  -- This is safe by construction: create-invitation rejects inviting an existing member
+  -- (409), so a still-pending invite's (org,user,invited-role) row can only be the one the
+  -- invite itself created at invite time.
   select id into v_user from auth.users where lower(email) = lower(v_inv.email);
   if v_user is not null then
     lock table public.org_memberships in share row exclusive mode;
