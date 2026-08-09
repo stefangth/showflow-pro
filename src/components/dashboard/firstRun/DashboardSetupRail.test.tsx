@@ -1,5 +1,5 @@
 import { it, expect, vi, beforeEach } from "vitest";
-import { render, screen } from "@testing-library/react";
+import { render, screen, fireEvent } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import { DashboardSetupRail } from "./DashboardSetupRail";
 import type { ComposedStep } from "@/lib/dashboard/types";
@@ -56,4 +56,23 @@ it("hides the CTA when the viewer lacks the step's capability", () => {
   render(<MemoryRouter><DashboardSetupRail eyebrow="Org setup" title="What is outstanding" body="Body." complete={false} steps={gatedStep} rules={[]} offFooters={[]} onClose={vi.fn()} onDismiss={vi.fn()} /></MemoryRouter>);
   expect(screen.getByText("Slots per show")).toBeInTheDocument();
   expect(screen.queryByText("Set slots")).not.toBeInTheDocument();
+});
+
+it("calls onStepAction instead of navigating when provided", () => {
+  const onStepAction = vi.fn();
+  render(<MemoryRouter><DashboardSetupRail eyebrow="Set up · 1 of 2" title="Get running" body="Body." complete={false} steps={steps} rules={[]} offFooters={[]} onClose={vi.fn()} onDismiss={vi.fn()} onStepAction={onStepAction} /></MemoryRouter>);
+  const btn = screen.getByRole("button", { name: "Set slots" });
+  fireEvent.click(btn);
+  expect(onStepAction).toHaveBeenCalledWith(expect.objectContaining({ key: "slots" }));
+});
+
+it("renders a Link (not a button) for a step when onStepAction is absent", () => {
+  render(<MemoryRouter><DashboardSetupRail eyebrow="Set up" title="Get running" body="Body." complete={false} steps={steps} rules={[]} offFooters={[]} onClose={vi.fn()} onDismiss={vi.fn()} /></MemoryRouter>);
+  const cta = screen.getByText("Set slots");
+  expect(cta.closest("a")).toHaveAttribute("href", "/productions");
+});
+
+it("renders the banner progress cluster in banner layout", () => {
+  render(<MemoryRouter><DashboardSetupRail layout="banner" eyebrow="Set up" title="Get bookings running" body="Body." complete={false} steps={steps} rules={[]} offFooters={[]} onClose={vi.fn()} onDismiss={vi.fn()} progressLabel="Set up · 1 of 5" progressFilled={1} progressTotal={5} /></MemoryRouter>);
+  expect(screen.getByText("Set up · 1 of 5")).toBeInTheDocument();
 });

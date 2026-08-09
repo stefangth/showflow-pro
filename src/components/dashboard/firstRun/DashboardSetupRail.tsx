@@ -14,10 +14,12 @@ const BLOCK_CHIP: Record<Exclude<SetupBlock, null>, { tone: "risk" | "neutral"; 
   issuing: { tone: "risk", label: "Blocks issuing" },
 };
 
-function StepRow({ step, index }: { step: ComposedStep; index: number }) {
+function StepRow({ step, index, onAction }: { step: ComposedStep; index: number; onAction?: (step: ComposedStep) => void }) {
   // Hooks may not be conditional: always read the capability, ignore when the step has none.
   const allowed = useCan(step.ctaCapability ?? "");
   const canAct = !step.ctaCapability || allowed;
+  // One CTA look shared by the in-place button and the route-out Link fallback.
+  const ctaClass = "mt-2 inline-block rounded-lg bg-accent-500 px-3 py-1.5 text-xs font-medium text-primary-foreground hover:bg-accent-600";
   return (
     <div className="flex items-start gap-2.5 border-b border-border px-3.5 py-3">
       {step.done ? (
@@ -31,7 +33,9 @@ function StepRow({ step, index }: { step: ComposedStep; index: number }) {
         <div className="text-sm font-medium text-foreground">{step.title}</div>
         <div className="mt-0.5 text-xs leading-[17px] text-muted-foreground text-pretty">{step.done ? step.doneHint : step.todoHint}</div>
         {!step.done && canAct && (
-          <Link to={step.ctaRoute} className="mt-2 inline-block rounded-lg bg-accent-500 px-3 py-1.5 text-xs font-medium text-primary-foreground hover:bg-accent-600">{step.ctaLabel}</Link>
+          onAction
+            ? <button type="button" onClick={() => onAction(step)} className={ctaClass}>{step.ctaLabel}</button>
+            : <Link to={step.ctaRoute} className={ctaClass}>{step.ctaLabel}</Link>
         )}
       </div>
       {!step.done && step.block && (
@@ -43,16 +47,56 @@ function StepRow({ step, index }: { step: ComposedStep; index: number }) {
   );
 }
 
-export function DashboardSetupRail({ eyebrow, title, body, complete, steps, rules, offFooters, onClose, onDismiss }: DashboardSetupRailProps) {
+/** Banner-layout only: the segmented progress rail that on the dashboard lives top-right in
+ *  the welcome banner. Colors adapt to the card surface (accent fill / muted track). */
+function ProgressCluster({ label, filled, total, hint }: { label?: string; filled?: number; total?: number; hint?: string }) {
+  if (!total) return null;
   return (
-    <div className="w-full md:w-[340px] md:shrink-0 order-first md:order-none overflow-hidden rounded-lg border-[0.5px] border-border bg-card shadow-elev3">
+    <div className="shrink-0 text-right">
+      {label && <div className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground/70">{label}</div>}
+      <div className="mt-2 flex justify-end gap-1">
+        {Array.from({ length: total }).map((_, i) => (
+          <div key={i} className={`h-[3px] w-[34px] rounded-full ${i < (filled ?? 0) ? "bg-accent-500" : "bg-muted"}`} />
+        ))}
+      </div>
+      {hint && <div className="mt-2 text-xs text-muted-foreground">{hint}</div>}
+    </div>
+  );
+}
+
+export function DashboardSetupRail({
+  eyebrow, title, body, complete, steps, rules, offFooters, onClose, onDismiss,
+  layout = "rail", onStepAction, progressLabel, progressFilled, progressTotal, progressHint,
+}: DashboardSetupRailProps) {
+  const banner = layout === "banner";
+  return (
+    <div className={cn(
+      "overflow-hidden rounded-lg border-[0.5px] border-border bg-card shadow-elev3",
+      banner ? "w-full" : "w-full md:w-[340px] md:shrink-0 order-first md:order-none",
+    )}>
       <div className="border-b border-border p-4">
-        <div className="flex items-center justify-between">
-          <div className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground/70">{eyebrow}</div>
-          <button onClick={onClose} className="rounded-md px-1.5 py-0.5 text-xs text-muted-foreground hover:bg-muted">Close</button>
-        </div>
-        <div className="mt-1.5 font-display text-base font-semibold text-foreground">{title}</div>
-        <p className="mt-1 text-xs leading-[19px] text-muted-foreground text-pretty">{body}</p>
+        {banner ? (
+          <div className="flex items-start justify-between gap-8">
+            <div className="min-w-0">
+              <div className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground/70">{eyebrow}</div>
+              <div className="mt-1.5 font-display text-base font-semibold text-foreground">{title}</div>
+              <p className="mt-1 text-xs leading-[19px] text-muted-foreground text-pretty">{body}</p>
+            </div>
+            <div className="flex flex-col items-end gap-3">
+              <button onClick={onClose} className="rounded-md px-1.5 py-0.5 text-xs text-muted-foreground hover:bg-muted">Hide</button>
+              <ProgressCluster label={progressLabel} filled={progressFilled} total={progressTotal} hint={progressHint} />
+            </div>
+          </div>
+        ) : (
+          <>
+            <div className="flex items-center justify-between">
+              <div className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground/70">{eyebrow}</div>
+              <button onClick={onClose} className="rounded-md px-1.5 py-0.5 text-xs text-muted-foreground hover:bg-muted">Close</button>
+            </div>
+            <div className="mt-1.5 font-display text-base font-semibold text-foreground">{title}</div>
+            <p className="mt-1 text-xs leading-[19px] text-muted-foreground text-pretty">{body}</p>
+          </>
+        )}
       </div>
 
       {complete ? (
@@ -68,7 +112,7 @@ export function DashboardSetupRail({ eyebrow, title, body, complete, steps, rule
           ))}
         </div>
       ) : (
-        <div>{steps.map((s, i) => <StepRow key={`${s.moduleKey}:${s.key}`} step={s} index={i + 1} />)}</div>
+        <div>{steps.map((s, i) => <StepRow key={`${s.moduleKey}:${s.key}`} step={s} index={i + 1} onAction={onStepAction} />)}</div>
       )}
 
       <div className="flex items-center gap-2 px-3.5 py-3">
