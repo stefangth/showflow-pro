@@ -11,6 +11,9 @@ import { useConsent } from '@/features/consent/ConsentContext';
 import { motion, useReducedMotion } from 'framer-motion';
 import { StageMark } from '@/components/brand/StageMark';
 import { cn } from '@/lib/utils';
+import { toast } from 'sonner';
+import { requestLoginLink } from '@/data/authLinks';
+import { supabase } from '@/integrations/supabase/client';
 import heroShow from '@/assets/auth/hero-show.jpg';
 
 function friendlyAuthError(message: string): string {
@@ -34,6 +37,7 @@ export default function LoginPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
+  const [linkSending, setLinkSending] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const emailRef = useRef<HTMLInputElement>(null);
   const loadingRef = useRef(false);
@@ -61,6 +65,19 @@ export default function LoginPage() {
     } finally {
       loadingRef.current = false;
       setLoading(false);
+    }
+  };
+
+  const onEmailLink = async () => {
+    if (!email) { setError('Enter your email first.'); emailRef.current?.focus(); return; }
+    setLinkSending(true);
+    try {
+      await requestLoginLink(supabase, email, window.location.origin);
+      toast.success('If that email exists, a sign-in link is on its way.');
+    } catch {
+      toast.success('If that email exists, a sign-in link is on its way.');
+    } finally {
+      setLinkSending(false);
     }
   };
 
@@ -159,7 +176,19 @@ export default function LoginPage() {
                     required
                   />
                 </div>
-                <div className="-mt-1 text-right">
+                <Button type="submit" className="w-full" disabled={loading}>
+                  {loading ? 'Signing in...' : 'Sign in'}
+                </Button>
+                <div className="relative my-1" aria-hidden="true">
+                  <div className="absolute inset-0 flex items-center"><span className="w-full border-t border-[var(--auth-hairline)]" /></div>
+                  <div className="relative flex justify-center text-xs">
+                    <span className="bg-[var(--auth-card)] px-2 text-muted-foreground">or</span>
+                  </div>
+                </div>
+                <Button type="button" variant="default" className="w-full" disabled={linkSending} onClick={onEmailLink}>
+                  {linkSending ? 'Sending...' : 'Email me a sign-in link'}
+                </Button>
+                <div className="mt-3 text-center">
                   <Link
                     to={ROUTES.RESET_PASSWORD}
                     className="text-xs text-muted-foreground underline-offset-2 hover:text-foreground hover:underline"
@@ -167,9 +196,6 @@ export default function LoginPage() {
                     Forgot password?
                   </Link>
                 </div>
-                <Button type="submit" className="w-full" disabled={loading}>
-                  {loading ? 'Signing in...' : 'Sign in'}
-                </Button>
               </form>
 
               <div className="mt-5 space-y-2 border-t border-[var(--auth-hairline)] pt-4">
