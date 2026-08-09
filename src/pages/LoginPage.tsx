@@ -13,6 +13,7 @@ import { StageMark } from '@/components/brand/StageMark';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
 import { requestLoginLink } from '@/data/authLinks';
+import { safeRelativeRedirect } from '@/features/auth/resetPassword';
 import { supabase } from '@/integrations/supabase/client';
 import heroShow from '@/assets/auth/hero-show.jpg';
 
@@ -56,8 +57,7 @@ export default function LoginPage() {
     try {
       await signIn(email, password);
       // Honor a relative ?redirect= (e.g. the accept-invite flow); never an absolute/external URL.
-      const redirect = searchParams.get('redirect');
-      navigate(redirect && redirect.startsWith('/') && !redirect.startsWith('//') ? redirect : ROUTES.DASHBOARD);
+      navigate(safeRelativeRedirect(searchParams.get('redirect'), ROUTES.DASHBOARD));
     } catch (err) {
       setError(friendlyAuthError((err as Error).message ?? 'Something went wrong. Please try again.'));
       setPassword('');
@@ -77,12 +77,12 @@ export default function LoginPage() {
     }
     setLinkSending(true);
     const sent = 'If that email exists, a sign-in link is on its way.';
-    // Thread the same validated ?redirect= the password path honors (line 60), so an
-    // accept-invite bounce completes the invitation instead of landing on /dashboard.
-    const redirect = searchParams.get('redirect');
-    const safeRedirect = redirect && redirect.startsWith('/') && !redirect.startsWith('//') ? redirect : undefined;
+    // Thread the same validated ?redirect= the password path honors, so an accept-invite
+    // bounce completes the invitation. safeRelativeRedirect falls back to /dashboard, which
+    // the edge function also clamps to, so passing it explicitly is harmless.
+    const redirect = safeRelativeRedirect(searchParams.get('redirect'), ROUTES.DASHBOARD);
     try {
-      await requestLoginLink(supabase, trimmed, window.location.origin, safeRedirect);
+      await requestLoginLink(supabase, trimmed, window.location.origin, redirect);
       toast.success(sent);
     } catch {
       // Keep the confirmation oracle-safe: identical whether or not the address exists,

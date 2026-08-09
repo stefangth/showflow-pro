@@ -7,7 +7,7 @@ const base = {
   role: "artist",
   token: "tok-1",
   inviterEmail: "boss@acme.com",
-  appOrigin: "https://app.test",
+  appOrigin: "http://localhost:8080", // allowlisted by safeAppOrigin so it flows through unchanged
   idempotencyKey: "org-invitation-1",
   orgId: "org-1",
 };
@@ -49,6 +49,18 @@ Deno.test("deliverOrgInvitation: existing user -> magic link actionLink to /auth
   assertEquals(params.type, "magiclink");
   assertEquals(params.options.redirectTo.includes("/auth/callback?redirect="), true);
   assertEquals(params.options.redirectTo.includes("%2Faccept-invite%3Ftoken%3Dtok-1"), true);
+});
+
+Deno.test("deliverOrgInvitation: a foreign appOrigin is never minted into the redirect", async () => {
+  const { deps, calls } = makeFakeDeps({
+    usersById: { "uid-1": { email: "known@x.com" } }, // existing-user magic-link branch
+    generateLinkResult: { data: { properties: { action_link: "https://link.example/magic" } }, error: null },
+  });
+  await deliverOrgInvitation(deps, { ...base, email: "known@x.com", appOrigin: "https://evil.example" });
+  const gen = calls.find((c) => c.table === "auth.admin.generateLink")!;
+  const params = gen.args[0] as { options: { redirectTo: string } };
+  assertEquals(params.options.redirectTo.includes("evil.example"), false); // foreign origin dropped
+  assertEquals(params.options.redirectTo.includes("/auth/callback?redirect="), true);
 });
 
 Deno.test("deliverOrgInvitation: generateLink without action_link throws and sends no email", async () => {

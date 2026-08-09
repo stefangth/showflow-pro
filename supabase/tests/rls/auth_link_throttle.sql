@@ -1,7 +1,7 @@
 -- pgTAP: auth_link_throttle grant-layer denial + claim_login_link_slot behavior.
 --
--- auth_link_throttle is auth infrastructure (per-email cooldown for server-minted
--- magic-link / re-invite links). It is NOT tenant data: no org_id, RLS enabled with
+-- auth_link_throttle is auth infrastructure (per-email cooldown for the public magic-link
+-- login endpoint, send-login-link). It is NOT tenant data: no org_id, RLS enabled with
 -- ZERO policies, and all grants revoked from anon/authenticated. Only the service role
 -- (via the SECURITY DEFINER claim_login_link_slot RPC) reads or writes it. This test
 -- proves the deny-all posture at the grant layer (a downgraded `authenticated` role

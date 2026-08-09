@@ -1,4 +1,6 @@
 import type { Deps } from "./deps.ts";
+import { safeAppOrigin } from "./appOrigin.ts";
+import { appUrl } from "./app-url.ts";
 
 export interface DeliverInviteArgs {
   email: string;
@@ -37,10 +39,17 @@ export async function deliverOrgInvitation(deps: Deps, args: DeliverInviteArgs):
   const acceptPath = `/accept-invite?token=${args.token}`;
   const exists = await userExistsByEmail(deps, args.email);
 
+  // Defense-in-depth: never mint an auth link to a caller-supplied origin that isn't
+  // allowlisted. create-invitation / resend-invitation / provision-org pass app_origin
+  // through with only a trailing-slash trim; a foreign origin would otherwise land in the
+  // invite (and, new in this PR, the existing-user magic-link) redirect. Fall back to the
+  // canonical app origin rather than reject, so a legitimate off-list origin still delivers.
+  const origin = safeAppOrigin(args.appOrigin, deps) ?? appUrl(deps.env).replace(/\/+$/, "");
+
   let actionLink: string | undefined;
   if (!exists) {
     // NET-NEW: invite link creates the account, lands on set-password, then accept.
-    const redirectTo = `${args.appOrigin}/reset-password?redirect=${encodeURIComponent(acceptPath)}`;
+    const redirectTo = `${origin}/reset-password?redirect=${encodeURIComponent(acceptPath)}`;
     const { data, error } = await deps.admin.auth.admin.generateLink({
       type: "invite",
       email: args.email,
@@ -51,7 +60,7 @@ export async function deliverOrgInvitation(deps: Deps, args: DeliverInviteArgs):
   } else {
     // EXISTING (re-invite / passwordless / expired): magic link logs them in and lands
     // on accept via /auth/callback. They can set a password later in-app on ProfilePage.
-    const redirectTo = `${args.appOrigin}/auth/callback?redirect=${encodeURIComponent(acceptPath)}`;
+    const redirectTo = `${origin}/auth/callback?redirect=${encodeURIComponent(acceptPath)}`;
     const { data, error } = await deps.admin.auth.admin.generateLink({
       type: "magiclink",
       email: args.email,

@@ -1,5 +1,6 @@
--- Per-email cooldown for server-minted auth links (magic-link login + re-invite).
--- Auth infrastructure, keyed by email, NOT org-scoped and NOT tenant data.
+-- Per-email cooldown for the public magic-link login endpoint (send-login-link). The
+-- authenticated re-invite path (resend-invitation) is gated by org-role auth, not this
+-- throttle. Auth infrastructure, keyed by email, NOT org-scoped and NOT tenant data.
 create table public.auth_link_throttle (
   email        text        primary key,
   last_sent_at timestamptz not null default now()
