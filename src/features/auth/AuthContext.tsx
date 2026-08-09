@@ -69,6 +69,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   // Tracks whether any real resolution has landed, so a failed initial-session
   // bootstrap can't clobber a good signed-in state an auth event already set.
   const resolvedRef = useRef(false);
+  // User ids we've already run the invite self-heal for this session, so
+  // claim_my_invitations fires once per user (first resolution) instead of on
+  // every token refresh / org switch — it's a server-side no-op after the first call.
+  const claimedInvitesRef = useRef<Set<string>>(new Set());
 
   const setViewAsUser = (u: ViewAsUser | null) => {
     setViewAsUserState(u);
@@ -119,10 +123,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   /** Fetch memberships + super-admin status (+ all orgs for super-admins); default the active org. */
   const loadIdentity = async (userId: string) => {
-    // Best-effort self-heal: reconcile any pending invitations for this user's email BEFORE
-    // reading memberships, so an invitee who arrived via recovery/plain-login (never hitting
-    // /accept-invite) still lands with membership + artist profile. Never blocks bootstrap.
-    try { await claimMyInvitations(supabase); } catch { /* non-fatal */ }
+    // Best-effort self-heal (once per user per session): reconcile any pending invitations
+    // for this user's email BEFORE reading memberships, so an invitee who arrived via
+    // recovery/plain-login (never hitting /accept-invite) still lands with membership +
+    // artist profile. Skipped on later resolutions (token refresh, org switch) since it's a
+    // no-op then. Never blocks bootstrap.
+    if (!claimedInvitesRef.current.has(userId)) {
+      claimedInvitesRef.current.add(userId);
+      try { await claimMyInvitations(supabase); } catch { /* non-fatal */ }
+    }
     try {
       const data = await fetchMyMemberships(supabase, userId);
       setMemberships(data);

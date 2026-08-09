@@ -102,12 +102,20 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
         });
         if (memErr) console.error("provision-org: membership link failed", (memErr as { message?: string }).message);
       }
-      const inviter = auth.userId ? await deps.admin.auth.admin.getUserById(auth.userId) : null;
-      await sendOrgInvitationEmail(deps, {
-        email, orgName: name, role, token,
-        inviterEmail: inviter?.data?.user?.email ?? undefined,
-        appOrigin, idempotencyKey: `org-invitation-${org_id}`, orgId: org_id, actionLink,
-      });
+      // Only email when the first admin can actually authenticate: an existing account
+      // (userId) or a freshly minted set-password link (actionLink). A link-less email to an
+      // account-less user is a dead end; skip it (claim_my_invitations self-heals membership
+      // on their first sign-in regardless). Mirrors create-invitation's guard.
+      if (userId || actionLink) {
+        const inviter = auth.userId ? await deps.admin.auth.admin.getUserById(auth.userId) : null;
+        await sendOrgInvitationEmail(deps, {
+          email, orgName: name, role, token,
+          inviterEmail: inviter?.data?.user?.email ?? undefined,
+          appOrigin, idempotencyKey: `org-invitation-${org_id}`, orgId: org_id, actionLink,
+        });
+      } else {
+        console.error("provision-org: skipped invite email — first-admin account minting failed");
+      }
     } catch (e) {
       console.error("provision-org: invite delivery failed", (e as Error).message);
     }

@@ -38,6 +38,13 @@ describe("matchContact", () => {
   it("returns none when nothing matches", () => {
     expect(matchContact("new@x.com", [member()], [invite()])).toBe("none");
   });
+  it("prefers pending over an existing membership row (invite-time member is still pending)", () => {
+    // Membership-at-invite-time: a not-yet-accepted invitee is in BOTH lists. matchContact
+    // must return "pending" (so the invite bar offers Resend), mirroring buildPeople.
+    const both = member({ email: "c@x.com", user_id: "u3" });
+    const pend = invite({ email: "c@x.com" });
+    expect(matchContact("C@x.com", [both], [pend])).toBe("pending");
+  });
 });
 
 describe("buildPeople", () => {

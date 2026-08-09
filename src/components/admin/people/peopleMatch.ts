@@ -30,8 +30,11 @@ export function matchContact(
 ): "member" | "pending" | "none" {
   const needle = email.trim().toLowerCase();
   if (!needle) return "none";
-  if (members.some((m) => (m.email ?? "").toLowerCase() === needle)) return "member";
+  // Pending invite wins over an existing membership row: with membership-at-invite-time a
+  // not-yet-accepted invitee sits in BOTH lists, and the invite bar / bulk dialog should
+  // treat them as "pending" (offer Resend), mirroring buildPeople's precedence.
   if (invites.some((i) => i.status === "pending" && i.email.toLowerCase() === needle)) return "pending";
+  if (members.some((m) => (m.email ?? "").toLowerCase() === needle)) return "member";
   return "none";
 }
 
