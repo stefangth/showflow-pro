@@ -67,15 +67,17 @@ export default function HireOrdersPage() {
   // answer is known. That replaces the old `entitlementsLoading || ...` fail-open,
   // which existed only to suppress that flash and had no better tool at the time.
   const { allow: featureOn, pending: featurePending } = useModuleGate("hire_orders");
-  // `entitledForWrites` governs what this page lets anyone CHANGE, and is the raw
-  // entitlement: no fail-open, and no super-admin exemption. useModuleGate exempts
-  // super-admins so god-mode can read any org's surfaces, which is right for viewing
-  // and wrong here -- app_settings RLS checks role, not entitlement, so a super-admin
-  // confirming the setup rail on an unentitled org would really write those settings
-  // and configure a module the org does not have, next to a banner saying changes
-  // cannot be saved.
-  const { features } = useEntitlements();
-  const entitledForWrites = features.has("hire_orders");
+  // `entitledForWrites` governs what this page lets anyone CHANGE. It must NOT fail open
+  // while entitlements load: useEntitlements().features falls back to each feature's
+  // registry default during that window (hire_orders defaults off, but do not rely on
+  // that), so a default-on module would briefly read as entitled and mount a live
+  // settings-write surface. Gate on !loading AND the resolved entitlement -- the same
+  // "treat loading as not-entitled" stance useModuleGate takes with its `pending` flag.
+  // No super-admin exemption (useModuleGate has one, right for viewing, wrong here):
+  // app_settings RLS checks role, not entitlement, so a super-admin confirming the setup
+  // rail on an unentitled org would really write those settings.
+  const { features, isLoading: entitlementsLoading } = useEntitlements();
+  const entitledForWrites = !entitlementsLoading && features.has("hire_orders");
 
   const [statusChip, setStatusChip] = useState<StatusChip>("all");
   // Defaults to All time (not the Upcoming preset the sibling booking surfaces

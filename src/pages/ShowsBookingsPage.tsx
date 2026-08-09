@@ -227,14 +227,14 @@ function ProducerShowsBookings() {
   const canManage = hasRole('admin') || hasRole('producer');
   const orgId = currentOrg?.id ?? null;
   const bookingOn = useFeature('booking_flow');
-  const { features } = useEntitlements();
-  // The setup rail is a WRITE surface (its Sheet persists app_settings), so it gates on the
-  // RAW entitlement, never `useFeature`. useFeature fails open to booking_flow's
-  // default-on while entitlements load, which would briefly mount a live settings-write
-  // surface for an org that has booking off -- app_settings RLS checks role, not
-  // entitlement, so those writes would actually land. Mirrors HireOrdersPage's
-  // `entitledForWrites`.
-  const bookingEntitledForWrites = features.has('booking_flow');
+  const { features, isLoading: entitlementsLoading } = useEntitlements();
+  // The setup rail is a WRITE surface (its Sheet persists app_settings), so it must NOT
+  // fail open while entitlements load. `features.has()` alone is not enough: it falls back
+  // to registry defaults during the load window, and booking_flow defaults ON, so a booking
+  // -off org would briefly mount a live settings-write surface. Gate on !loading AND the
+  // resolved entitlement (no super-admin exemption -- app_settings RLS checks role, not
+  // entitlement). Mirrors HireOrdersPage's `entitledForWrites`.
+  const bookingEntitledForWrites = !entitlementsLoading && features.has('booking_flow');
   // `visible` drives the inline callout, `reinvocable` drives the header button
   // (Plan B Task 3's re-invoke) -- both read off the SAME hook and the same inputs, so
   // the header button can never offer to reopen a rail that would render nothing
