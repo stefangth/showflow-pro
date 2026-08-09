@@ -2,7 +2,7 @@ import { preflight, json } from "../_shared/http.ts";
 import { requireOrgRole } from "../_shared/auth.ts";
 import { requireCapability } from "../_shared/capabilities.ts";
 import { realDeps, type Deps } from "../_shared/deps.ts";
-import { deliverOrgInvitation } from "../_shared/invitations.ts";
+import { ensureInvitedUser, sendOrgInvitationEmail } from "../_shared/invitations.ts";
 
 type Body = { invitation_id: string; app_origin: string };
 
@@ -36,7 +36,18 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
 
     const { data: org } = await deps.admin
       .from("organizations").select("name").eq("id", invite.org_id).maybeSingle();
-    await deliverOrgInvitation(deps, {
+
+    // Resolve the invitee account, idempotently re-assert their membership (covers the
+    // stranded/hand-created cases from the runbook), then resend a fresh action link.
+    const { userId, actionLink } = await ensureInvitedUser(deps, {
+      email: invite.email, appOrigin, token: invite.token,
+    });
+    if (userId) {
+      await deps.admin.rpc("ensure_invitation_membership", {
+        p_invitation: invite.id, p_user: userId,
+      });
+    }
+    await sendOrgInvitationEmail(deps, {
       email: invite.email,
       orgName: (org as { name?: string } | null)?.name ?? undefined,
       role: invite.role,
@@ -44,6 +55,7 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
       appOrigin,
       idempotencyKey: `org-invitation-resend-${invite.id}`,
       orgId: invite.org_id,
+      actionLink,
     });
 
     return json({ ok: true });

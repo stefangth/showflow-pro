@@ -1,7 +1,7 @@
 import { preflight, json } from "../_shared/http.ts";
 import { requireSuperAdmin } from "../_shared/auth.ts";
 import { realDeps, type Deps } from "../_shared/deps.ts";
-import { deliverOrgInvitation } from "../_shared/invitations.ts";
+import { ensureInvitedUser, sendOrgInvitationEmail } from "../_shared/invitations.ts";
 import { resolveOrgSetting } from "../_shared/settings.ts";
 import { FEATURE_KEYS, FEATURE_REGISTRY, type FeatureKey } from "../_shared/entitlements.ts";
 import { normalizeBookingFlow } from "../_shared/bookingFlow.ts";
@@ -87,18 +87,26 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
       console.error("provision-org: entitlement seeding failed", (e as Error).message);
     }
 
-    // Bootstrap + branded invite via the unified helper (net-new gets an account + set-password link).
+    // Resolve the invitation id created inside provision_org (it returns only {org_id, token}),
+    // then create the first-admin's account + membership NOW, before the branded email.
+    // Best-effort/logged: the org + invitation already exist and claim_my_invitations
+    // self-heals on the admin's first sign-in, so a link failure must not undo the org.
     try {
+      const { data: invRow } = await deps.admin
+        .from("org_invitations").select("id").eq("token", token).maybeSingle();
+      const invitationId = (invRow as { id?: string } | null)?.id;
+      const { userId, actionLink } = await ensureInvitedUser(deps, { email, appOrigin, token });
+      if (invitationId && userId) {
+        const { error: memErr } = await deps.admin.rpc("ensure_invitation_membership", {
+          p_invitation: invitationId, p_user: userId,
+        });
+        if (memErr) console.error("provision-org: membership link failed", (memErr as { message?: string }).message);
+      }
       const inviter = auth.userId ? await deps.admin.auth.admin.getUserById(auth.userId) : null;
-      await deliverOrgInvitation(deps, {
-        email,
-        orgName: name,
-        role,
-        token,
+      await sendOrgInvitationEmail(deps, {
+        email, orgName: name, role, token,
         inviterEmail: inviter?.data?.user?.email ?? undefined,
-        appOrigin,
-        idempotencyKey: `org-invitation-${org_id}`,
-        orgId: org_id,
+        appOrigin, idempotencyKey: `org-invitation-${org_id}`, orgId: org_id, actionLink,
       });
     } catch (e) {
       console.error("provision-org: invite delivery failed", (e as Error).message);

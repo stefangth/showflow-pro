@@ -11,42 +11,39 @@ export interface DeliverInviteArgs {
   orgId?: string;
 }
 
-/** True if an auth user already exists for `email` (paginated listUsers). */
-export async function userExistsByEmail(deps: Deps, email: string): Promise<boolean> {
-  const target = email.toLowerCase();
-  for (let page = 1; ; page++) {
-    const { data: list, error } = await deps.admin.auth.admin.listUsers({ page, perPage: 200 });
-    // A swallowed error returns users:[] → an existing user would be misrouted through the
-    // net-new path and get a duplicate account. Fail loudly instead.
-    if (error) throw error;
-    const users = (list?.users ?? []) as Array<{ email?: string }>;
-    if (users.some((u) => u.email?.toLowerCase() === target)) return true;
-    if (users.length < 200) return false;
-  }
+/**
+ * Resolve the auth user for an invite, creating a net-new account when needed.
+ * Existing users: id via get_user_id_by_email (no email sent here, no link minted).
+ * Net-new users: mint a Supabase invite action link (this also creates the account;
+ * Supabase sends no email of its own) that lands on
+ * /reset-password?redirect=/accept-invite?token=… and return both the new id and the
+ * action_link.
+ */
+export async function ensureInvitedUser(
+  deps: Deps,
+  args: { email: string; appOrigin: string; token: string },
+): Promise<{ userId: string | null; actionLink?: string }> {
+  const email = args.email.toLowerCase();
+  const { data: existingId } = await deps.admin.rpc("get_user_id_by_email", { p_email: email });
+  if (existingId) return { userId: existingId as string };
+
+  const acceptPath = `/accept-invite?token=${args.token}`;
+  const redirectTo = `${args.appOrigin}/reset-password?redirect=${encodeURIComponent(acceptPath)}`;
+  const { data, error } = await deps.admin.auth.admin.generateLink({
+    type: "invite",
+    email: args.email,
+    options: { redirectTo },
+  });
+  if (error) throw error;
+  const d = data as { properties?: { action_link?: string }; user?: { id?: string } } | null;
+  return { userId: d?.user?.id ?? null, actionLink: d?.properties?.action_link };
 }
 
-/**
- * Deliver ONE branded org-invitation email. For a net-new user we mint a Supabase
- * invite action link (this also creates the account; Supabase sends no email of its
- * own) that lands on /reset-password?redirect=/accept-invite?token=… so the user sets
- * a password and then accepts. Existing users get the plain accept link.
- */
-export async function deliverOrgInvitation(deps: Deps, args: DeliverInviteArgs): Promise<void> {
-  const acceptPath = `/accept-invite?token=${args.token}`;
-  const exists = await userExistsByEmail(deps, args.email);
-
-  let actionLink: string | undefined;
-  if (!exists) {
-    const redirectTo = `${args.appOrigin}/reset-password?redirect=${encodeURIComponent(acceptPath)}`;
-    const { data, error } = await deps.admin.auth.admin.generateLink({
-      type: "invite",
-      email: args.email,
-      options: { redirectTo },
-    });
-    if (error) throw error;
-    actionLink = (data as { properties?: { action_link?: string } })?.properties?.action_link;
-  }
-
+/** Deliver ONE branded org-invitation email (best-effort at the call site). */
+export async function sendOrgInvitationEmail(
+  deps: Deps,
+  args: DeliverInviteArgs & { actionLink?: string },
+): Promise<void> {
   await deps.sendEmail({
     template_name: "org-invitation",
     recipient_email: args.email,
@@ -56,7 +53,7 @@ export async function deliverOrgInvitation(deps: Deps, args: DeliverInviteArgs):
       role: args.role,
       token: args.token,
       inviterEmail: args.inviterEmail,
-      actionLink,
+      actionLink: args.actionLink,
     },
     idempotency_key: args.idempotencyKey,
   });

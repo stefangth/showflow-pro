@@ -3,7 +3,7 @@ import { requireOrgRole } from "../_shared/auth.ts";
 import { requireCapability } from "../_shared/capabilities.ts";
 import type { TablesInsert } from "../_shared/database.types.ts";
 import { realDeps, type Deps } from "../_shared/deps.ts";
-import { deliverOrgInvitation } from "../_shared/invitations.ts";
+import { ensureInvitedUser, sendOrgInvitationEmail } from "../_shared/invitations.ts";
 import { roleLabel } from "../_shared/roles.ts";
 
 type Body = {
@@ -110,13 +110,36 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
       return json({ error: insErr?.message ?? 'Could not create invitation' }, 500);
     }
 
-    // Best-effort delivery. The invitation already exists, so a send failure does not
-    // fail the request — the admin can copy the accept link instead.
+    // Membership at invite time (best-effort, mirroring provision-org). Reuse the
+    // existingUserId already resolved for the duplicate guard above; only mint a net-new
+    // account (which also creates the auth user + action link) when the invitee is new.
+    // A failure here does NOT fail the request: the invitation row exists and
+    // claim_my_invitations reconciles membership on the invitee's first sign-in.
+    let userId: string | null = (existingUserId as string | null) ?? null;
+    let actionLink: string | undefined;
+    try {
+      if (!userId) {
+        const ensured = await ensureInvitedUser(deps, { email: invite.email, appOrigin, token: invite.token });
+        userId = ensured.userId;
+        actionLink = ensured.actionLink;
+      }
+      if (userId) {
+        const { error: memErr } = await admin.rpc("ensure_invitation_membership", {
+          p_invitation: invite.id, p_user: userId,
+        });
+        if (memErr) console.error("create-invitation: membership link failed", (memErr as { message?: string }).message);
+      }
+    } catch (e) {
+      console.error("create-invitation: membership provisioning failed", (e as Error).message);
+    }
+
+    // Best-effort delivery. The invitation + membership already exist, so a send failure
+    // does not fail the request — the admin can copy the accept link instead.
     try {
       const { data: org } = await admin
         .from('organizations').select('name').eq('id', body.org_id).maybeSingle();
       const inviter = inviterId ? await admin.auth.admin.getUserById(inviterId) : null;
-      await deliverOrgInvitation(deps, {
+      await sendOrgInvitationEmail(deps, {
         email: invite.email,
         orgName: (org as { name?: string } | null)?.name ?? undefined,
         role: roleLabel(invite.role),
@@ -125,6 +148,7 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
         appOrigin,
         idempotencyKey: `org-invitation-${invite.id}`,
         orgId: body.org_id,
+        actionLink,
       });
     } catch (e) {
       console.error('create-invitation: delivery failed', (e as Error).message);

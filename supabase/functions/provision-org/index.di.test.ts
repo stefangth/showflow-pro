@@ -35,13 +35,32 @@ Deno.test("provision-org: existing admin → branded email with NO actionLink", 
     authUser: { id: "u1" },
     tables: { platform_admins: { data: { user_id: "u1" }, error: null } },
     rpcs: { provision_org: { data: { org_id: "org-9", token: "tok-9" }, error: null } },
-    usersById: { u2: { email: "a@acme.com" } }, // existing
+    authUsersByEmail: { "a@acme.com": { id: "u2" } }, // existing (resolved via get_user_id_by_email)
   });
   const res = await handle(makeRequest({ headers: { Authorization: "Bearer x" }, body }), deps);
   assertEquals(res.status, 200);
   const sent = invokeCalls.filter((c) => c.name === "send-transactional-email");
   assertEquals(sent.length, 1);
   assertEquals((sent[0].body as { templateData: { actionLink?: string } }).templateData.actionLink, undefined);
+});
+
+Deno.test("provision-org: creates first-admin membership at invite time via RPC", async () => {
+  const { deps, calls } = makeFakeDeps({
+    authUser: { id: "u1" },
+    tables: {
+      platform_admins: { data: { user_id: "u1" }, error: null },
+      org_invitations: { data: { id: "inv-9" }, error: null }, // token lookup returns the invitation id
+    },
+    rpcs: {
+      provision_org: { data: { org_id: "org-9", token: "tok-9" }, error: null },
+      ensure_invitation_membership: { data: true, error: null },
+    },
+    generateLinkResult: { data: { properties: { action_link: "https://app.test/reset-password?redirect=x" }, user: { id: "new-admin" } }, error: null },
+  });
+  const res = await handle(makeRequest({ headers: { Authorization: "Bearer x" }, body }), deps);
+  assertEquals(res.status, 200);
+  const rpcCall = calls.find((c) => c.table === "rpc:ensure_invitation_membership");
+  assertEquals(rpcCall?.args, [{ p_invitation: "inv-9", p_user: "new-admin" }]);
 });
 
 Deno.test("provision-org: 409 on duplicate slug", async () => {

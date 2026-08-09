@@ -16,6 +16,28 @@ Deno.test("resend-invitation: super-admin re-sends the invite email", async () =
   assertEquals(invokeCalls.filter((c) => c.name === "send-transactional-email").length, 1);
 });
 
+Deno.test("resend-invitation DI: resends email + reasserts membership via RPC", async () => {
+  const { deps, calls, invokeCalls } = makeFakeDeps({
+    authUser: { id: "u1" },
+    usersById: { u1: { email: "admin@acme.test" } },
+    tables: {
+      org_memberships: { data: { role: "admin" }, error: null },
+      org_invitations: { data: { id: "inv1", org_id: "org-1", email: "invitee@x.com", role: "producer", status: "pending", token: "tok123" }, error: null },
+      organizations: { data: { name: "Acme" }, error: null },
+    },
+    authUsersByEmail: { "invitee@x.com": { id: "existing-invitee" } },
+    rpcs: { ensure_invitation_membership: { data: true, error: null } },
+  });
+  const res = await handle(
+    makeRequest({ headers: { Authorization: "Bearer jwt" }, body: { invitation_id: "inv1", app_origin: "https://app.test" } }),
+    deps,
+  );
+  assertEquals(res.status, 200);
+  const rpcCall = calls.find((c) => c.table === "rpc:ensure_invitation_membership");
+  assertEquals(rpcCall?.args, [{ p_invitation: "inv1", p_user: "existing-invitee" }]);
+  assertEquals(invokeCalls.filter((c) => c.name === "send-transactional-email").length, 1);
+});
+
 Deno.test("resend-invitation: opaque 403 for unknown invitation (no existence leak)", async () => {
   const { deps } = makeFakeDeps({
     authUser: { id: "u1" },

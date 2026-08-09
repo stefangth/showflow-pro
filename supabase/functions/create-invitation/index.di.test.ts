@@ -8,7 +8,7 @@
  *  - caller not an admin of the target org → 403
  *  - admin → 200 { ok, invitation }; inserts org_invitations with the (lowercased)
  *    email + invited_by = caller; delivers the 'org-invitation' email to the invitee
- *    (net-new invitees get an actionLink via the unified deliverOrgInvitation helper).
+ *    (net-new invitees get an actionLink via ensureInvitedUser + sendOrgInvitationEmail).
  *
  * requireOrgRole reads org_memberships (eq user_id, eq org_id, in role, maybeSingle);
  * the fake's maybeSingle applies the .in("role",[...]) filter, so a single seed row
@@ -121,6 +121,23 @@ Deno.test("create-invitation DI: sends the org-invitation email to the invitee w
   assertEquals(msg.templateData.inviterEmail, "admin@acme.test");
   // The email renders the friendly role label, not the raw enum ('producer').
   assertEquals(msg.templateData.role, "Production Team");
+});
+
+Deno.test("create-invitation DI: admin → creates membership at invite time via RPC (net-new invitee)", async () => {
+  const { deps, calls } = adminDeps({
+    // Net-new invitee → resolved through generateLink (which returns the new user id).
+    // No authUsersByEmail, so the duplicate-member 409 guard is skipped.
+    generateLinkResult: {
+      data: { properties: { action_link: "https://app.test/reset-password?redirect=x" }, user: { id: "new-invitee" } },
+      error: null,
+    },
+    rpcs: { ensure_invitation_membership: { data: true, error: null } },
+  });
+  const res = await handle(inviteReq({ org_id: "org-1", email: "invitee@x.com", role: "producer" }), deps);
+  assertEquals(res.status, 200);
+  const rpcCall = calls.find((c) => c.table === "rpc:ensure_invitation_membership");
+  assertExists(rpcCall);
+  assertEquals(rpcCall!.args, [{ p_invitation: "inv1", p_user: "new-invitee" }]);
 });
 
 Deno.test("create-invitation DI: net-new invitee → branded email WITH actionLink", async () => {
