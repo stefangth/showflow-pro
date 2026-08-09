@@ -71,13 +71,16 @@ vi.mock("@/hooks/useBookingFlow", () => ({
   useReferenceField: () => ({ reference: { source: "show" }, customFieldKey: null }),
 }));
 const { featureFlags } = vi.hoisted(() => ({ featureFlags: { value: {} as Record<string, boolean> } }));
+// Settable entitlements-loading flag so a test can exercise the "loading window must not
+// fail open" write-gate on the setup rail.
+const { entLoading } = vi.hoisted(() => ({ entLoading: { value: false } }));
 vi.mock("@/hooks/useEntitlements", () => ({
   useFeature: (key: string) => featureFlags.value[key] ?? false,
-  // The setup rail's write gate reads the raw entitlement set (no fail-open), so mirror
-  // featureFlags into a Set for `features.has(...)`.
+  // The setup rail's write gate reads the raw entitlement set AND the loading flag (no
+  // fail-open), so mirror featureFlags into a Set for `features.has(...)`.
   useEntitlements: () => ({
     features: new Set(Object.keys(featureFlags.value).filter((k) => featureFlags.value[k])),
-    isLoading: false,
+    isLoading: entLoading.value,
   }),
 }));
 vi.mock("@/hooks/useCapabilities", () => ({
@@ -169,6 +172,7 @@ function makeBookingStatus(done: number, complete: boolean): BookingStatus {
 beforeEach(() => {
   localStorage.clear();
   featureFlags.value = {};
+  entLoading.value = false;
   railState.value = { visible: false, reinvocable: false };
   bookingSetupStatus.value = makeBookingStatus(0, false);
 });
@@ -237,6 +241,17 @@ describe("ShowsBookingsPage — setup checklist uncramp + re-invoke (Plan B Task
     expect(await screen.findByText(/get bookings running/i)).toBeInTheDocument();
     // No fixed side-column grid track left anywhere on the page.
     expect(document.querySelector(".lg\\:grid-cols-\\[1fr_340px\\]")).toBeNull();
+  });
+
+  it("does not mount the setup rail while entitlements are still loading (no fail-open on default-on booking_flow)", async () => {
+    // booking_flow defaults ON, so `features.has('booking_flow')` reads true during the
+    // load window; the write-gate must still withhold the rail until loading resolves.
+    featureFlags.value = { booking_flow: true };
+    railState.value = { visible: true, reinvocable: false };
+    entLoading.value = true;
+    renderWithProviders(<ShowsBookingsPage />);
+    await screen.findByText("Future Show");
+    expect(screen.queryByText(/get bookings running/i)).not.toBeInTheDocument();
   });
 
   it("opens the checklist Sheet at the clicked step, and drops the old dashed callout button", async () => {
