@@ -4,7 +4,7 @@ import { toast } from "sonner";
 import { useAuth } from "@/features/auth/AuthContext";
 import { type Invitation } from "@/data/invitations";
 import type { OrgMember } from "@/data/members";
-import type { AppRole } from "@/config/app.config";
+import { type AppRole, roleLabel } from "@/config/app.config";
 import { useInvitationMutations } from "@/hooks/useInvitationMutations";
 import { parseEmails, isValidEmail, matchContact } from "./peopleMatch";
 import { ROLE_OPTIONS } from "./roleOptions";
@@ -124,7 +124,7 @@ export function BulkInviteDialog({ open, onOpenChange, members, invites, dedupeH
             <SelectTrigger className="w-full sm:w-40"><SelectValue /></SelectTrigger>
             <SelectContent>
               {ROLE_OPTIONS.map((r) => (
-                <SelectItem key={r} value={r} className="capitalize">{r}</SelectItem>
+                <SelectItem key={r} value={r}>{roleLabel(r)}</SelectItem>
               ))}
             </SelectContent>
           </Select>

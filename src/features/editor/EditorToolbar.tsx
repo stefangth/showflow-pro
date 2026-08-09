@@ -9,7 +9,7 @@ import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip
 import { IconTooltip } from '@/components/common/IconTooltip';
 import { useAuth } from '@/features/auth/AuthContext';
 import { cn } from '@/lib/utils';
-import { ROUTES, type AppRole } from '@/config/app.config';
+import { ROUTES, type AppRole, roleLabel } from '@/config/app.config';
 import { supabase } from '@/integrations/supabase/client';
 import { isOrgSuspended, orgOptionLabel } from '@/lib/orgs';
 import { useEditor } from './EditorContext';
@@ -122,9 +122,9 @@ export function EditorToolbar() {
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="__real__">My Role</SelectItem>
-              <SelectItem value="admin">Admin</SelectItem>
-              <SelectItem value="producer">Producer</SelectItem>
-              <SelectItem value="artist">Artist</SelectItem>
+              <SelectItem value="admin">{roleLabel("admin")}</SelectItem>
+              <SelectItem value="producer">{roleLabel("producer")}</SelectItem>
+              <SelectItem value="artist">{roleLabel("artist")}</SelectItem>
               {viewAsUser && <SelectItem value="__user__" disabled>From user</SelectItem>}
             </SelectContent>
           </Select>
@@ -155,7 +155,7 @@ export function EditorToolbar() {
                 <SelectItem key={u.id} value={u.id} className="text-xs">
                   <span className="font-mono">{u.email}</span>
                   {u.roles.length > 0 && (
-                    <span className="ml-2 text-muted-foreground">— {u.roles.join(', ')}</span>
+                    <span className="ml-2 text-muted-foreground">— {u.roles.map(roleLabel).join(', ')}</span>
                   )}
                 </SelectItem>
               ))}

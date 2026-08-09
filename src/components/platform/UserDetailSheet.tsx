@@ -8,7 +8,7 @@ import {
 } from "@/hooks/usePlatformUsers";
 import { fetchAllOrgs } from "@/data/platform";
 import { fetchArtistsLite } from "@/data/hireOrders";
-import { ROLES, type AppRole } from "@/config/app.config";
+import { ROLES, type AppRole, roleLabel } from "@/config/app.config";
 import type { PlatformUser, PlatformUserMembership } from "@/data/platformUsers";
 import { formatLastActivity } from "./platformFormat";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from "@/components/ui/sheet";
@@ -319,7 +319,7 @@ export function UserDetailSheet({ user: propUser, open, onOpenChange }: Props) {
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
-                        {ROLE_OPTIONS.map((r) => <SelectItem key={r} value={r}>{r}</SelectItem>)}
+                        {ROLE_OPTIONS.map((r) => <SelectItem key={r} value={r}>{roleLabel(r)}</SelectItem>)}
                       </SelectContent>
                     </Select>
                   </div>
@@ -397,7 +397,7 @@ export function UserDetailSheet({ user: propUser, open, onOpenChange }: Props) {
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    {ROLE_OPTIONS.map((r) => <SelectItem key={r} value={r}>{r}</SelectItem>)}
+                    {ROLE_OPTIONS.map((r) => <SelectItem key={r} value={r}>{roleLabel(r)}</SelectItem>)}
                   </SelectContent>
                 </Select>
               </div>

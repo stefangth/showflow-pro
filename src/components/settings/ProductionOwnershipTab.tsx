@@ -5,6 +5,7 @@ import { fetchShowAssignments, fetchProgramSubProgramPairs } from '@/data/showAs
 import { useCan } from '@/hooks/useCapabilities';
 import { useAllCities } from '@/hooks/useAllCities';
 import { fetchOrgProducers } from '@/data/orgs';
+import { roleLabel } from '@/config/app.config';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
@@ -113,7 +114,7 @@ export function ProductionOwnershipTab({ currentOrgId, canEnter }: Props) {
         <CardHeader>
           <CardTitle className="font-display">Production Ownership</CardTitle>
           <CardDescription>
-            Map producer users to show scopes for notification routing. The most-specific match wins:
+            Map {roleLabel("producer")} users to show scopes for notification routing. The most-specific match wins:
             (program + sub-program + city) beats (program + city) beats (program + sub-program) beats (program only).
             Admins are always fallback recipients.
           </CardDescription>
@@ -122,9 +123,9 @@ export function ProductionOwnershipTab({ currentOrgId, canEnter }: Props) {
           {/* Add assignment form */}
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3 items-end">
             <div className="space-y-1">
-              <Label className="text-xs">Producer</Label>
+              <Label className="text-xs">{roleLabel("producer")}</Label>
               <Select value={newAssignUserId} onValueChange={setNewAssignUserId}>
-                <SelectTrigger><SelectValue placeholder="Select producer…" /></SelectTrigger>
+                <SelectTrigger><SelectValue placeholder="Select a team member…" /></SelectTrigger>
                 <SelectContent>
                   {(producerUsers ?? []).map(u => (
                     <SelectItem key={u.user_id} value={u.user_id}>

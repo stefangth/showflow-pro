@@ -5,7 +5,7 @@ import { Badge } from '@/components/ui/badge';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { Separator } from '@/components/ui/separator';
 import { useAuth } from '@/features/auth/AuthContext';
-import type { AppRole } from '@/config/app.config';
+import { type AppRole, roleLabel } from '@/config/app.config';
 import { useEditor, useEditorConfig } from './EditorContext';
 import { disambiguateLabels } from './columnRegistries';
 import type { ColumnTemplate } from './types';
@@ -127,8 +127,8 @@ export function ColumnLayoutEditor({ pageKey }: ColumnLayoutEditorProps) {
       {/* Label */}
       <span className="text-xs text-muted-foreground shrink-0 font-medium flex items-center gap-1.5">
         Columns
-        <Badge variant="outline" className="text-xs border-warning/60 text-warning py-0 capitalize">
-          {effectiveRole}
+        <Badge variant="outline" className="text-xs border-warning/60 text-warning py-0">
+          {roleLabel(effectiveRole)}
         </Badge>
       </span>
 

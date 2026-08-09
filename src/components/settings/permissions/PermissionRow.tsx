@@ -3,6 +3,7 @@ import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { IconTooltip } from "@/components/common/IconTooltip";
+import { roleLabel } from "@/config/app.config";
 import type { CapabilityMatrixCell } from "@/hooks/useCapabilities";
 
 interface Props {
@@ -38,15 +39,15 @@ export function PermissionRow({ cell, mode, onToggleOverride, onToggleLock, onSe
           <span className="text-[11px] text-muted-foreground">Admin</span>
           <Check className="h-4 w-4 text-muted-foreground" role="img" aria-label="Admins always have this right" />
         </div>
-        {/* Producer control */}
+        {/* Production Team control */}
         <div className="flex flex-col items-center gap-1 w-24">
-          <span className="text-[11px] text-muted-foreground">Producer</span>
+          <span className="text-[11px] text-muted-foreground">{roleLabel("producer")}</span>
           {mode === "org" ? (
             <Switch
               checked={effective}
               disabled={locked}
               onCheckedChange={(v) => onToggleOverride(v)}
-              aria-label={`Producer: ${def.label}`}
+              aria-label={`${roleLabel("producer")}: ${def.label}`}
             />
           ) : (
             <div className="flex items-center gap-2">

@@ -88,7 +88,7 @@ describe("UsersTab", () => {
     });
     renderWithProviders(<UsersTab />);
 
-    await selectOption("Role filter", "producer");
+    await selectOption("Role filter", "Production Team");
     expect(screen.queryByText("Ada")).not.toBeInTheDocument();
     expect(screen.getByText("Grace")).toBeInTheDocument();
 

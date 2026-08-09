@@ -3,7 +3,7 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import { NavLink, Link } from 'react-router-dom';
 import { useAuth } from '@/features/auth/AuthContext';
 import { isImpersonating } from '@/features/auth/orgRoles';
-import { ROUTES } from '@/config/app.config';
+import { ROUTES, roleLabel } from '@/config/app.config';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
@@ -59,10 +59,10 @@ export default function AppLayout({ children }: AppLayoutProps) {
   const displayName = (myProfile?.display_name?.trim() || user?.email?.split('@')[0] || 'Account');
   const initials = displayName.slice(0, 2).toUpperCase();
   const primaryRole = roles[0];
-  const roleLabel = primaryRole
-    ? primaryRole[0].toUpperCase() + primaryRole.slice(1)
+  const roleText = primaryRole
+    ? roleLabel(primaryRole)
     : (isSuperAdmin ? 'Super Admin' : 'No role');
-  const profileSubtitle = currentOrg ? `${roleLabel} · ${currentOrg.name}` : roleLabel;
+  const profileSubtitle = currentOrg ? `${roleText} · ${currentOrg.name}` : roleText;
 
   const handleSignOut = async () => {
     try {
@@ -239,13 +239,13 @@ export default function AppLayout({ children }: AppLayoutProps) {
             </div>
             {viewAsRole && isEditorMode && !viewAsUser && (
               <Badge variant="outline" className="mt-2 border-warning text-warning">
-                Viewing as: {viewAsRole}
+                Viewing as: {roleLabel(viewAsRole)}
               </Badge>
             )}
             {viewAsUser && isEditorMode && (
               <div className="mt-2 space-y-0.5">
                 <Badge variant="outline" className="border-warning text-warning">
-                  Viewing as: {viewAsUser.roles.join(', ') || 'no role'}
+                  Viewing as: {viewAsUser.roles.map(roleLabel).join(', ') || 'no role'}
                 </Badge>
                 <p className="text-[10px] font-mono text-warning truncate">{viewAsUser.email}</p>
               </div>

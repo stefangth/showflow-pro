@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Mail } from "lucide-react";
-import type { AppRole } from "@/config/app.config";
+import { type AppRole, roleLabel } from "@/config/app.config";
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
@@ -69,9 +69,9 @@ export function OrgInvitePopover({ orgId }: { orgId: string }) {
             <Select value={role} onValueChange={(v) => setRole(v as AppRole)}>
               <SelectTrigger className="h-8 flex-1 text-xs"><SelectValue /></SelectTrigger>
               <SelectContent>
-                <SelectItem value="admin">Admin</SelectItem>
-                <SelectItem value="producer">Producer</SelectItem>
-                <SelectItem value="artist">Artist</SelectItem>
+                <SelectItem value="admin">{roleLabel("admin")}</SelectItem>
+                <SelectItem value="producer">{roleLabel("producer")}</SelectItem>
+                <SelectItem value="artist">{roleLabel("artist")}</SelectItem>
               </SelectContent>
             </Select>
             <Button

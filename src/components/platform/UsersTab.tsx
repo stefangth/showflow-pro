@@ -2,7 +2,7 @@ import { useMemo, useState } from "react";
 import { usePlatformUsers } from "@/hooks/usePlatformUsers";
 import { UserDetailSheet } from "./UserDetailSheet";
 import { formatLastActivity } from "./platformFormat";
-import { ROLES, type AppRole } from "@/config/app.config";
+import { ROLES, type AppRole, roleLabel } from "@/config/app.config";
 import type { PlatformUser } from "@/data/platformUsers";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Input } from "@/components/ui/input";
@@ -98,7 +98,7 @@ export function UsersTab() {
           </SelectTrigger>
           <SelectContent>
             <SelectItem value={ALL}>All roles</SelectItem>
-            {ROLE_OPTIONS.map((r) => <SelectItem key={r} value={r}>{r}</SelectItem>)}
+            {ROLE_OPTIONS.map((r) => <SelectItem key={r} value={r}>{roleLabel(r)}</SelectItem>)}
           </SelectContent>
         </Select>
         <Select value={statusFilter} onValueChange={setStatusFilter}>
@@ -145,7 +145,7 @@ export function UsersTab() {
                     {overflowCount > 0 && <Badge variant="outline">+{overflowCount}</Badge>}
                   </div>
                 </TableCell>
-                <TableCell className="text-muted-foreground">{roles.join(", ")}</TableCell>
+                <TableCell className="text-muted-foreground">{roles.map(roleLabel).join(", ")}</TableCell>
                 <TableCell>{isLinked && <Badge variant="outline">Linked</Badge>}</TableCell>
                 <TableCell className="text-muted-foreground">{formatLastActivity(u.last_sign_in_at)}</TableCell>
                 <TableCell>

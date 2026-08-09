@@ -113,12 +113,14 @@ Deno.test("create-invitation DI: sends the org-invitation email to the invitee w
   await handle(inviteReq({ org_id: "org-1", email: "invitee@x.com", role: "producer" }), deps);
   const emails = invokeCalls.filter((c) => c.name === "send-transactional-email");
   assertEquals(emails.length, 1);
-  const msg = emails[0].body as { template_name: string; recipient_email: string; templateData: { token: string; orgName: string; inviterEmail: string } };
+  const msg = emails[0].body as { template_name: string; recipient_email: string; templateData: { token: string; orgName: string; inviterEmail: string; role: string } };
   assertEquals(msg.template_name, "org-invitation");
   assertEquals(msg.recipient_email, "invitee@x.com");
   assertEquals(msg.templateData.token, "tok123");
   assertEquals(msg.templateData.orgName, "Acme");
   assertEquals(msg.templateData.inviterEmail, "admin@acme.test");
+  // The email renders the friendly role label, not the raw enum ('producer').
+  assertEquals(msg.templateData.role, "Production Team");
 });
 
 Deno.test("create-invitation DI: net-new invitee → branded email WITH actionLink", async () => {

@@ -2,6 +2,7 @@ import { Copy, X, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { IconTooltip } from "@/components/common/IconTooltip";
+import { roleLabel } from "@/config/app.config";
 import type { Invitation } from "@/data/invitations";
 
 export interface InviteRowProps {
@@ -32,7 +33,7 @@ export function InviteRow({ invite, onCopyLink, onResend, onRevoke, resendPendin
     <div className="flex items-center justify-between gap-2 p-3 rounded-lg border border-border">
       <div className="min-w-0">
         <p className={`font-medium text-sm truncate ${isPending ? "" : "text-muted-foreground"}`}>{invite.email}</p>
-        <p className="text-xs text-muted-foreground capitalize">{invite.role}</p>
+        <p className="text-xs text-muted-foreground">{roleLabel(invite.role)}</p>
       </div>
       <div className="flex items-center gap-1 shrink-0">
         <Badge variant="outline" className={`text-xs ${pill.className}`}>{pill.label}</Badge>
