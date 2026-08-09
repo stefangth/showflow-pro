@@ -88,7 +88,15 @@ export function PeopleTab() {
           <CardHeader><CardTitle className="font-display text-base">Pending invitations</CardTitle></CardHeader>
           <CardContent className="space-y-2">
             {filtered.invites.map((inv) => (
-              <InviteRow key={inv.id} invite={inv} onCopyLink={copyLink} onResend={(id) => resend.mutate(id)} onRevoke={(id) => revoke.mutate(id)} />
+              <InviteRow
+                key={inv.id}
+                invite={inv}
+                onCopyLink={copyLink}
+                onResend={(id) => resend.mutate(id)}
+                onRevoke={(id) => revoke.mutate(id)}
+                resendPending={resend.isPending && resend.variables === inv.id}
+                revokePending={revoke.isPending && revoke.variables === inv.id}
+              />
             ))}
           </CardContent>
         </Card>

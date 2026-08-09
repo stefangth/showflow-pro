@@ -9,10 +9,13 @@ export interface InviteRowProps {
   onCopyLink: (token: string) => void;
   onResend: (id: string) => void;
   onRevoke: (id: string) => void;
+  /** True while this row's resend/revoke is in flight, so a double-click can't fire twice. */
+  resendPending?: boolean;
+  revokePending?: boolean;
 }
 
 /** One pending org invitation, with copy-link / resend / revoke actions. */
-export function InviteRow({ invite, onCopyLink, onResend, onRevoke }: InviteRowProps) {
+export function InviteRow({ invite, onCopyLink, onResend, onRevoke, resendPending = false, revokePending = false }: InviteRowProps) {
   return (
     <div className="flex items-center justify-between gap-2 p-3 rounded-lg border border-border">
       <div className="min-w-0">
@@ -27,12 +30,12 @@ export function InviteRow({ invite, onCopyLink, onResend, onRevoke }: InviteRowP
           </Button>
         </IconTooltip>
         <IconTooltip label="Resend invitation">
-          <Button size="sm" variant="ghost" className="h-7 px-2" onClick={() => onResend(invite.id)} aria-label="Resend invitation">
+          <Button size="sm" variant="ghost" className="h-7 px-2" disabled={resendPending} onClick={() => onResend(invite.id)} aria-label="Resend invitation">
             <RefreshCw className="h-3.5 w-3.5" />
           </Button>
         </IconTooltip>
         <IconTooltip label="Revoke invitation">
-          <Button size="sm" variant="ghost" className="h-7 px-2" onClick={() => onRevoke(invite.id)} aria-label="Revoke invitation">
+          <Button size="sm" variant="ghost" className="h-7 px-2" disabled={revokePending} onClick={() => onRevoke(invite.id)} aria-label="Revoke invitation">
             <X className="h-3.5 w-3.5" />
           </Button>
         </IconTooltip>

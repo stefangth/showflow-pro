@@ -93,8 +93,8 @@ export function BulkInviteDialog({ open, onOpenChange, members, invites, dedupeU
 
   const badgeFor = (kind: Kind) =>
     kind === "ok" ? null : (
-      <Badge variant="outline" className="text-xs capitalize">
-        {kind === "member" ? "already a member" : kind === "pending" ? "already invited" : "invalid"}
+      <Badge variant="outline" className="text-xs">
+        {kind === "member" ? "Already a member" : kind === "pending" ? "Already invited" : "Invalid"}
       </Badge>
     );
 

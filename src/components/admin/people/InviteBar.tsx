@@ -75,7 +75,7 @@ export function InviteBar({ members, invites, onOpenBulk, dedupeUnready = false 
       {match === "pending" && pendingInvite && (
         <p className="text-xs text-muted-foreground flex items-center gap-2">
           Already invited (pending).
-          <Button size="sm" variant="link" className="h-auto p-0 text-xs" onClick={() => resend.mutate(pendingInvite.id)}>
+          <Button size="sm" variant="link" className="h-auto p-0 text-xs" disabled={resend.isPending} onClick={() => resend.mutate(pendingInvite.id)}>
             Resend
           </Button>
         </p>
