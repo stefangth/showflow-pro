@@ -27,9 +27,9 @@ import { applySort, inTimeframe } from '@/components/filters/filterUtils';
 import { ArtistBookingsView } from '@/components/bookings/ArtistBookingsView';
 import { FirstOfferCard } from '@/components/bookings/setup/FirstOfferCard';
 import { DashboardSetupRail } from '@/components/dashboard/firstRun/DashboardSetupRail';
+import { DashboardWelcomeCollapsed } from '@/components/dashboard/firstRun/DashboardWelcomeCollapsed';
 import { useModuleOnboardingRail } from '@/components/setup/useModuleOnboardingRail';
 import { SetupChecklistSheet } from '@/components/setup/SetupChecklistSheet';
-import { useRailDismissed } from '@/components/setup/useRailDismissed';
 import type { ComposedStep } from '@/lib/dashboard/types';
 import { ShowDateDetailSheet } from '@/components/shows/ShowDateDetailSheet';
 import { ShowDateFormDialog } from '@/components/shows/ShowDateFormDialog';
@@ -241,9 +241,7 @@ function ProducerShowsBookings() {
   // actionable (the divergence a separately-computed `dismissed && !complete` used to
   // allow, e.g. for a non-editor once offers are already possible).
   const rail = useModuleOnboardingRail('booking_flow', bookingEntitledForWrites ? orgId : null);
-  const railVisible = bookingEntitledForWrites && rail.show;
-  const [, , undismissBookingSetup] = useRailDismissed('bookingSetup', bookingEntitledForWrites ? orgId : null);
-  const showSetupReinvoke = bookingEntitledForWrites && rail.reinvocable;
+  const setupMode = bookingEntitledForWrites ? rail.mode : 'hidden';
   const [setupSheetOpen, setSetupSheetOpen] = useState(false);
   const [setupStep, setSetupStep] = useState<string | undefined>(undefined);
   const openSetupAt = (step: ComposedStep) => { setSetupStep(step.key); setSetupSheetOpen(true); };
@@ -421,11 +419,11 @@ function ProducerShowsBookings() {
           <p className="text-muted-foreground mt-1">All scheduled dates and cast status in one place.</p>
         </div>
         <div className="flex items-center gap-2">
-          {showSetupReinvoke && (
+          {setupMode === "button" && (
             <Button
               variant="outline"
               className="gap-1.5"
-              onClick={() => { setSetupStep(undefined); undismissBookingSetup(); setSetupSheetOpen(true); }}
+              onClick={() => { setSetupStep(undefined); setSetupSheetOpen(true); }}
             >
               <ListChecks className="h-4 w-4" />
               Setup checklist
@@ -449,7 +447,7 @@ function ProducerShowsBookings() {
       {/* The dashboard-style setup rail, module-scoped, near the top of the page. Its step
           buttons open the inline checklist Sheet at that step (the "do it here" surface);
           Hide dismisses it on this surface only. */}
-      {railVisible && (
+      {setupMode === "banner" && (
         <DashboardSetupRail
           layout="banner"
           eyebrow={rail.eyebrow}
@@ -465,6 +463,14 @@ function ProducerShowsBookings() {
           onStepAction={openSetupAt}
           onClose={rail.dismiss}
           onDismiss={rail.dismiss}
+        />
+      )}
+      {setupMode === "collapsed" && (
+        <DashboardWelcomeCollapsed
+          label={rail.collapsedLabel}
+          hint={rail.collapsedHint}
+          ctaLabel={rail.collapsedCta}
+          onOpen={rail.expand}
         />
       )}
 

@@ -17,50 +17,40 @@ beforeEach(() => {
 });
 
 describe("useBookingSetupRailVisible", () => {
-  it("is not visible without an org", () => {
+  it("is 'hidden' without an org", () => {
     const { result } = renderHookWithProviders(() => useBookingSetupRailVisible(null));
-    expect(result.current).toEqual({ visible: false, reinvocable: false });
+    expect(result.current).toEqual({ mode: "hidden" });
   });
-  it("is visible for an admin who can edit while setup is incomplete", () => {
+
+  it("is 'banner' for an editor while setup is incomplete and not dismissed", () => {
     const { result } = renderHookWithProviders(() => useBookingSetupRailVisible("org-1"));
-    expect(result.current.visible).toBe(true);
+    expect(result.current.mode).toBe("banner");
   });
-  it("hides for a non-editor once offers are already possible", () => {
+
+  it("is 'collapsed' for an editor once dismissed while incomplete", () => {
+    localStorage.setItem("showflow.bookingSetup.hidden.org-1", "true");
+    const { result } = renderHookWithProviders(() => useBookingSetupRailVisible("org-1"));
+    expect(result.current.mode).toBe("collapsed");
+  });
+
+  it("is 'hidden' for a non-editor once offers are already possible", () => {
     canRef.value = false;
     statusRef.value = { status: { complete: false, canOffer: true } as never, isLoading: false };
     const { result } = renderHookWithProviders(() => useBookingSetupRailVisible("org-1"));
-    expect(result.current.visible).toBe(false);
+    expect(result.current.mode).toBe("hidden");
   });
-  it("hides once setup is complete", () => {
+
+  it("is 'button' once complete (editor), even if previously dismissed", () => {
+    statusRef.value = { status: { complete: true, canOffer: true } as never, isLoading: false };
+    localStorage.setItem("showflow.bookingSetup.hidden.org-1", "true");
+    const { result } = renderHookWithProviders(() => useBookingSetupRailVisible("org-1"));
+    expect(result.current.mode).toBe("button");
+  });
+
+  it("is 'hidden' once complete for a non-editor", () => {
+    canRef.value = false;
     statusRef.value = { status: { complete: true, canOffer: true } as never, isLoading: false };
     const { result } = renderHookWithProviders(() => useBookingSetupRailVisible("org-1"));
-    expect(result.current.visible).toBe(false);
-  });
-
-  // The finding this covers: the header re-invoke button used to be gated
-  // independently (`dismissed && !complete`), so it could offer to reopen a
-  // rail that -- once undismissed -- would render nothing actionable.
-  // `reinvocable` is exactly `visible` minus the dismissed check.
-  describe("reinvocable", () => {
-    it("is true once a genuinely actionable rail has been dismissed", () => {
-      localStorage.setItem("showflow.bookingSetup.hidden.org-1", "true");
-      const { result } = renderHookWithProviders(() => useBookingSetupRailVisible("org-1"));
-      expect(result.current).toEqual({ visible: false, reinvocable: true });
-    });
-
-    it("is false when dismissed but nothing would be actionable once reopened (non-editor, offers already possible)", () => {
-      canRef.value = false;
-      statusRef.value = { status: { complete: false, canOffer: true } as never, isLoading: false };
-      localStorage.setItem("showflow.bookingSetup.hidden.org-1", "true");
-      const { result } = renderHookWithProviders(() => useBookingSetupRailVisible("org-1"));
-      expect(result.current).toEqual({ visible: false, reinvocable: false });
-    });
-
-    it("is false once setup is complete, even if previously dismissed", () => {
-      statusRef.value = { status: { complete: true, canOffer: true } as never, isLoading: false };
-      localStorage.setItem("showflow.bookingSetup.hidden.org-1", "true");
-      const { result } = renderHookWithProviders(() => useBookingSetupRailVisible("org-1"));
-      expect(result.current).toEqual({ visible: false, reinvocable: false });
-    });
+    expect(result.current.mode).toBe("hidden");
   });
 });

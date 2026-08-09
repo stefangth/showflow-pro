@@ -8,16 +8,14 @@ import { useRailDismissed } from "@/components/setup/useRailDismissed";
 import { composeOnboarding } from "@/lib/dashboard/firstRun";
 import { MODULE_ONBOARDING } from "@/lib/dashboard/moduleOnboarding";
 import type { FeatureKey } from "@/lib/entitlements";
+import type { SetupRailMode } from "@/components/setup/setupRailMode";
 import type {
   ComposedStep, DashboardRole, InheritedRule, ModuleStatuses, ModuleStatusLite, OnboardingCtx,
 } from "@/lib/dashboard/types";
 
 export interface ModuleOnboardingRail {
-  /** Whether the banner rail should render right now (entitled, actionable, not dismissed,
-   *  not complete, not loading — delegated to the module's existing visibility hook). */
-  show: boolean;
-  /** Dismissed-but-would-otherwise-show: drives the header "Setup checklist" button. */
-  reinvocable: boolean;
+  /** Which onboarding surface to render on the module page. */
+  mode: SetupRailMode;
   steps: ComposedStep[];
   rules: InheritedRule[];
   offFooters: string[];
@@ -29,6 +27,12 @@ export interface ModuleOnboardingRail {
   progressLabel: string;
   /** Hide the rail on this surface (module dismiss key). */
   dismiss: () => void;
+  /** Collapsed-bar copy (used when mode === "collapsed"). Mirrors the dashboard bar. */
+  collapsedLabel: string;
+  collapsedHint: string;
+  collapsedCta: string;
+  /** Re-expand the collapsed bar into the full banner (clears the dismissal). */
+  expand: () => void;
 }
 
 const DISMISS_KEY: Record<FeatureKey, string> = {
@@ -69,7 +73,7 @@ export function useModuleOnboardingRail(feature: FeatureKey, orgId: string | nul
   const hireViz = useSetupRailVisible(hireOrg);
   const hire = useHireOrderSetupStatus(hireOrg);
 
-  const [, dismiss] = useRailDismissed(DISMISS_KEY[feature], orgId);
+  const [, dismiss, expand] = useRailDismissed(DISMISS_KEY[feature], orgId);
 
   const ctx: OnboardingCtx = {
     orgName: currentOrg?.name ?? "your workspace",
@@ -96,6 +100,7 @@ export function useModuleOnboardingRail(feature: FeatureKey, orgId: string | nul
   );
   const filled = composed.steps.filter((s) => s.done).length;
   const total = composed.steps.length;
+  const remaining = total - filled;
   const railHeader = MODULE_ONBOARDING[feature].railHeader;
   const viz = feature === "hire_orders" ? hireViz : bookingViz;
   // One label word drives both the eyebrow and the progress rail so they never disagree,
@@ -103,8 +108,7 @@ export function useModuleOnboardingRail(feature: FeatureKey, orgId: string | nul
   const setupWord = canEdit ? "Set up" : "Org setup";
 
   return {
-    show: viz.visible,
-    reinvocable: viz.reinvocable,
+    mode: viz.mode,
     steps: composed.steps,
     rules: composed.rules,
     // Deliberately empty: composeOnboarding derives off-footers from every feature NOT in
@@ -123,6 +127,10 @@ export function useModuleOnboardingRail(feature: FeatureKey, orgId: string | nul
     progressFilled: filled,
     progressTotal: total,
     progressLabel: `${setupWord} · ${filled} of ${total}`,
+    collapsedLabel: `${setupWord} in progress`,
+    collapsedHint: `${remaining} step${remaining === 1 ? "" : "s"} left`,
+    collapsedCta: "Resume",
     dismiss,
+    expand,
   };
 }
