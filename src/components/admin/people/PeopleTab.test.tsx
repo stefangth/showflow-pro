@@ -57,6 +57,14 @@ describe("PeopleTab", () => {
     expect(screen.getByText("kim@x.com")).toBeInTheDocument();
   });
 
+  it("does not show the no-match empty state while the members query is still loading", () => {
+    h.membersState.data = undefined;
+    h.membersState.isLoading = true;
+    renderWithProviders(<PeopleTab />);
+    fireEvent.change(screen.getByPlaceholderText(/search people/i), { target: { value: "zzz" } });
+    expect(screen.queryByText(/no people match/i)).not.toBeInTheDocument();
+  });
+
   it("on a members load error shows the alert and NOT the empty state", () => {
     h.membersState.data = undefined;
     h.membersState.isError = true;

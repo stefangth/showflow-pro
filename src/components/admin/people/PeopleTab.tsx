@@ -67,9 +67,10 @@ export function PeopleTab() {
 
   const showPending = filtered.invites.length > 0;
   const showMembers = filtered.members.length > 0;
-  // Only claim "no matches" when the data actually loaded; on error the destructive
-  // alert already explains the empty lists, so don't contradict it.
-  const nothing = hasSearch && !showPending && !showMembers && !isError && !invitesError;
+  // Only claim "no matches" once both queries have actually settled successfully.
+  // dedupeUnready covers loading AND error, so the skeleton or the destructive alert
+  // explains the empty lists during those states instead of a contradictory empty copy.
+  const nothing = hasSearch && !showPending && !showMembers && !dedupeUnready;
 
   return (
     <div className="space-y-4">
