@@ -37,7 +37,7 @@ import { NewOrderWizard } from '@/components/hireOrders/NewOrderWizard';
 import { HireOrderReadyBanner } from '@/components/hireOrders/HireOrderReadyBanner';
 import { useDatesReadyForHireOrder, useHireOrderAction } from '@/hooks/useHireOrders';
 import { HireOrderStatusBadge } from '@/components/hireOrders/HireOrderStatusBadge';
-import { useFeature } from '@/hooks/useEntitlements';
+import { useFeature, useEntitlements } from '@/hooks/useEntitlements';
 import { useCan } from '@/hooks/useCapabilities';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -227,15 +227,23 @@ function ProducerShowsBookings() {
   const canManage = hasRole('admin') || hasRole('producer');
   const orgId = currentOrg?.id ?? null;
   const bookingOn = useFeature('booking_flow');
+  const { features } = useEntitlements();
+  // The setup rail is a WRITE surface (its Sheet persists app_settings), so it gates on the
+  // RAW entitlement, never `useFeature`. useFeature fails open to booking_flow's
+  // default-on while entitlements load, which would briefly mount a live settings-write
+  // surface for an org that has booking off -- app_settings RLS checks role, not
+  // entitlement, so those writes would actually land. Mirrors HireOrdersPage's
+  // `entitledForWrites`.
+  const bookingEntitledForWrites = features.has('booking_flow');
   // `visible` drives the inline callout, `reinvocable` drives the header button
   // (Plan B Task 3's re-invoke) -- both read off the SAME hook and the same inputs, so
   // the header button can never offer to reopen a rail that would render nothing
   // actionable (the divergence a separately-computed `dismissed && !complete` used to
   // allow, e.g. for a non-editor once offers are already possible).
-  const rail = useModuleOnboardingRail('booking_flow', bookingOn ? orgId : null);
-  const railVisible = bookingOn && rail.show;
-  const [, , undismissBookingSetup] = useRailDismissed('bookingSetup', bookingOn ? orgId : null);
-  const showSetupReinvoke = bookingOn && rail.reinvocable;
+  const rail = useModuleOnboardingRail('booking_flow', bookingEntitledForWrites ? orgId : null);
+  const railVisible = bookingEntitledForWrites && rail.show;
+  const [, , undismissBookingSetup] = useRailDismissed('bookingSetup', bookingEntitledForWrites ? orgId : null);
+  const showSetupReinvoke = bookingEntitledForWrites && rail.reinvocable;
   const [setupSheetOpen, setSetupSheetOpen] = useState(false);
   const [setupStep, setSetupStep] = useState<string | undefined>(undefined);
   const openSetupAt = (step: ComposedStep) => { setSetupStep(step.key); setSetupSheetOpen(true); };
@@ -417,7 +425,7 @@ function ProducerShowsBookings() {
             <Button
               variant="outline"
               className="gap-1.5"
-              onClick={() => { undismissBookingSetup(); setSetupSheetOpen(true); }}
+              onClick={() => { setSetupStep(undefined); undismissBookingSetup(); setSetupSheetOpen(true); }}
             >
               <ListChecks className="h-4 w-4" />
               Setup checklist
@@ -736,7 +744,7 @@ function ProducerShowsBookings() {
 
       <SetupChecklistSheet
         feature="booking_flow"
-        orgId={bookingOn ? orgId : null}
+        orgId={bookingEntitledForWrites ? orgId : null}
         open={setupSheetOpen}
         onOpenChange={setSetupSheetOpen}
         initialStep={setupStep}

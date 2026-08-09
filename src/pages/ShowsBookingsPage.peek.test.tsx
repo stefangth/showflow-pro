@@ -62,6 +62,7 @@ vi.mock("@/hooks/useBookingFlow", () => ({
 vi.mock("@/hooks/useEntitlements", () => ({
   // booking_flow on so the peek's Confirm is offered; hire_orders off.
   useFeature: (f: string) => f === "booking_flow",
+  useEntitlements: () => ({ features: new Set(["booking_flow"]), isLoading: false }),
 }));
 vi.mock("@/hooks/useCapabilities", () => ({
   useCan: () => true,
