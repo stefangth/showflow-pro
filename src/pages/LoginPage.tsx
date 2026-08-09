@@ -69,13 +69,21 @@ export default function LoginPage() {
   };
 
   const onEmailLink = async () => {
-    if (!email) { setError('Enter your email first.'); emailRef.current?.focus(); return; }
+    const trimmed = email.trim();
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmed)) {
+      setError('Enter a valid email address first.');
+      emailRef.current?.focus();
+      return;
+    }
     setLinkSending(true);
+    const sent = 'If that email exists, a sign-in link is on its way.';
     try {
-      await requestLoginLink(supabase, email, window.location.origin);
-      toast.success('If that email exists, a sign-in link is on its way.');
+      await requestLoginLink(supabase, trimmed, window.location.origin);
+      toast.success(sent);
     } catch {
-      toast.success('If that email exists, a sign-in link is on its way.');
+      // Keep the confirmation oracle-safe: identical whether or not the address exists,
+      // and on a server fault (the spec's locked no-enumeration decision).
+      toast.success(sent);
     } finally {
       setLinkSending(false);
     }
@@ -131,7 +139,7 @@ export default function LoginPage() {
             </div>
 
             {/* Headline over the photo */}
-            <h1 className="mb-7 max-w-sm font-display text-3xl font-semibold leading-[1.15] tracking-tight text-[var(--auth-fg)] sm:text-[34px]">
+            <h1 className="mb-7 max-w-sm text-balance font-display text-3xl font-semibold leading-[1.15] tracking-tight text-[var(--auth-fg)] sm:text-[34px]">
               Casting, scheduling and confirmations, all in one place.
             </h1>
 
@@ -176,22 +184,23 @@ export default function LoginPage() {
                     required
                   />
                 </div>
-                <Button type="submit" className="w-full" disabled={loading}>
+                <Button type="submit" className="w-full" disabled={loading || linkSending}>
                   {loading ? 'Signing in...' : 'Sign in'}
                 </Button>
-                <div className="relative my-1" aria-hidden="true">
-                  <div className="absolute inset-0 flex items-center"><span className="w-full border-t border-[var(--auth-hairline)]" /></div>
-                  <div className="relative flex justify-center text-xs">
-                    <span className="bg-[var(--auth-card)] px-2 text-muted-foreground">or</span>
-                  </div>
+                {/* Gap the hairline around the label instead of knocking out a filled chip:
+                    over the translucent card a card-colored fill would compound and darken. */}
+                <div className="my-1 flex items-center gap-3" aria-hidden="true">
+                  <span className="h-px flex-1 bg-[var(--auth-hairline)]" />
+                  <span className="text-xs text-muted-foreground">or</span>
+                  <span className="h-px flex-1 bg-[var(--auth-hairline)]" />
                 </div>
-                <Button type="button" variant="default" className="w-full" disabled={linkSending} onClick={onEmailLink}>
+                <Button type="button" variant="default" className="w-full" disabled={loading || linkSending} onClick={onEmailLink}>
                   {linkSending ? 'Sending...' : 'Email me a sign-in link'}
                 </Button>
                 <div className="mt-3 text-center">
                   <Link
                     to={ROUTES.RESET_PASSWORD}
-                    className="text-xs text-muted-foreground underline-offset-2 hover:text-foreground hover:underline"
+                    className="inline-block py-2.5 text-xs text-muted-foreground underline underline-offset-2 hover:text-foreground"
                   >
                     Forgot password?
                   </Link>

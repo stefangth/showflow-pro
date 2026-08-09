@@ -1,9 +1,14 @@
 import { useEffect, useState } from "react";
-import { useNavigate, useSearchParams, Link } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { safeRelativeRedirect } from "@/features/auth/resetPassword";
 import { ROUTES } from "@/config/app.config";
 import { StageMark } from "@/components/brand/StageMark";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+
+/** How long to wait for a session before treating the link as dead. */
+const WATCHDOG_MS = 8000;
 
 /** Read at render time, BEFORE supabase-js (detectSessionInUrl) strips the hash. */
 function hashHasError(): boolean {
@@ -11,9 +16,15 @@ function hashHasError(): boolean {
   return Boolean(hash.get("error") || hash.get("error_description"));
 }
 
+/**
+ * Public landing for magic-link and invite-link redirects. Resolves the session from the
+ * URL and forwards to a validated relative redirect; on an expired/used link it shows a
+ * recovery card. Uses the same centered-card treatment as ResetPasswordPage / AcceptInvitePage.
+ */
 export default function AuthCallbackPage() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
+  // Synchronous initializer: captures the GoTrue error hash before the async strip.
   const [failed, setFailed] = useState<boolean>(() => hashHasError());
 
   useEffect(() => {
@@ -27,29 +38,39 @@ export default function AuthCallbackPage() {
     const { data: sub } = supabase.auth.onAuthStateChange((event, session) => {
       if (event === "SIGNED_IN" && session) go();
     });
-    const t = setTimeout(() => { if (!done) setFailed(true); }, 8000);
+    // Watchdog only for the genuine no-signal case (no session AND no error hash arrived).
+    const t = setTimeout(() => { if (!done) setFailed(true); }, WATCHDOG_MS);
     return () => { clearTimeout(t); sub.subscription.unsubscribe(); };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-background p-4">
-      <div className="w-full max-w-md text-center space-y-4">
-        <div className="mx-auto"><StageMark variant="tile" size={52} /></div>
-        {failed ? (
-          <>
-            <p className="text-sm text-muted-foreground">That link has expired or was already used. Request a new sign-in link, or ask your admin to resend your invitation if you were invited.</p>
-            <Link to={ROUTES.LOGIN} className="text-sm font-medium underline-offset-2 hover:underline">
+      {/* role="status" + aria-live so the loading -> recovery transition is announced. */}
+      <Card className="w-full max-w-md" role="status" aria-live="polite">
+        <CardHeader className="text-center space-y-3">
+          <div className="mx-auto"><StageMark variant="tile" size={52} /></div>
+          <CardTitle className="font-display text-2xl font-semibold tracking-tight">
+            {failed ? "This link didn't work" : "Signing you in"}
+          </CardTitle>
+          <CardDescription>
+            {failed
+              ? "It expired or was already used. Sign in to request a fresh link, or ask your admin to resend your invitation."
+              : "Hold on while we finish signing you in."}
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4 text-center">
+          {failed ? (
+            <Button className="w-full" autoFocus onClick={() => navigate(ROUTES.LOGIN)}>
               Back to sign in
-            </Link>
-          </>
-        ) : (
-          <div className="flex flex-col items-center gap-3">
-            <div className="animate-spin h-8 w-8 border-4 border-primary border-t-transparent rounded-full" />
-            <p className="text-sm text-muted-foreground">Signing you in...</p>
-          </div>
-        )}
-      </div>
+            </Button>
+          ) : (
+            <div className="flex justify-center py-2" aria-hidden="true">
+              <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent motion-reduce:animate-none" />
+            </div>
+          )}
+        </CardContent>
+      </Card>
     </div>
   );
 }

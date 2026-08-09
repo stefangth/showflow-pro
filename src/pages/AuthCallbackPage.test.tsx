@@ -57,7 +57,7 @@ describe("AuthCallbackPage", () => {
     vi.useFakeTimers();
     renderAt("/auth/callback");
     act(() => { vi.advanceTimersByTime(8000); });
-    expect(screen.getByText(/request a new sign-in link/i)).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /back to sign in/i })).toBeInTheDocument();
     vi.useRealTimers();
   });
 });
