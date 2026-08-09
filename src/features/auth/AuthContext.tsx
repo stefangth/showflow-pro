@@ -6,6 +6,7 @@ import type { User, Session } from '@supabase/supabase-js';
 import type { AppRole } from '@/config/app.config';
 import { fetchMyMemberships, type Membership, type Organization } from '@/data/orgs';
 import { fetchIsSuperAdmin, fetchAllOrgs } from '@/data/platform';
+import { claimMyInvitations } from '@/data/invitations';
 import { rolesForOrg, effectiveHasRole, effectiveOrgs } from './orgRoles';
 import { REALTIME_INVALIDATIONS } from './realtimeInvalidations';
 import { resolveSessionIdentity, computeAuthReady, bootstrapAuth, type SessionIdentityHandlers } from './sessionState';
@@ -118,6 +119,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   /** Fetch memberships + super-admin status (+ all orgs for super-admins); default the active org. */
   const loadIdentity = async (userId: string) => {
+    // Best-effort self-heal: reconcile any pending invitations for this user's email BEFORE
+    // reading memberships, so an invitee who arrived via recovery/plain-login (never hitting
+    // /accept-invite) still lands with membership + artist profile. Never blocks bootstrap.
+    try { await claimMyInvitations(supabase); } catch { /* non-fatal */ }
     try {
       const data = await fetchMyMemberships(supabase, userId);
       setMemberships(data);

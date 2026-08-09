@@ -48,7 +48,12 @@ export default function ResetPasswordPage() {
     e.preventDefault();
     setSending(true);
     try {
-      await requestPasswordReset(supabase, email, `${window.location.origin}${ROUTES.RESET_PASSWORD}`);
+      // Defense-in-depth: if the user reached this page via /reset-password?redirect=…
+      // (e.g. an expired invite link), carry that redirect into the recovery link so they
+      // land back on /accept-invite after setting a password.
+      const redirect = searchParams.get("redirect");
+      const redirectTo = `${window.location.origin}${ROUTES.RESET_PASSWORD}${redirect ? `?redirect=${encodeURIComponent(redirect)}` : ""}`;
+      await requestPasswordReset(supabase, email, redirectTo);
       toast.success("If that email exists, a reset link is on its way");
     } catch (err) {
       toast.error((err as Error).message);

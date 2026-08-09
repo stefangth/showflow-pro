@@ -53,10 +53,12 @@ describe("PeopleTab", () => {
   it("shows members and pending invites, and filters both via one search", async () => {
     renderWithProviders(<PeopleTab />);
     expect(screen.getByText("bob@x.com")).toBeInTheDocument();
-    expect(await screen.findByText("kim@x.com")).toBeInTheDocument();
+    // kim is an invited-only person (no display name), so PersonRow renders her email
+    // on both the title and subtitle line — match with getAllByText.
+    expect(await screen.findAllByText("kim@x.com")).not.toHaveLength(0);
     fireEvent.change(screen.getByPlaceholderText(/search people/i), { target: { value: "kim" } });
     expect(screen.queryByText("bob@x.com")).not.toBeInTheDocument();
-    expect(screen.getByText("kim@x.com")).toBeInTheDocument();
+    expect(screen.getAllByText("kim@x.com").length).toBeGreaterThan(0);
   });
 
   it("shows accepted and revoked invitations under Invitation history", async () => {

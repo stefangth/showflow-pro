@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { createFakeSupabase } from "@/test/supabaseFake";
-import { createInvitation, fetchOrgInvitations, revokeInvitation, acceptInvitation, acceptInviteUrl, resendInvitation, inviteArtistToApp, fetchPendingArtistInvitations } from "./invitations";
+import { createInvitation, fetchOrgInvitations, revokeInvitation, claimMyInvitations, acceptInvitation, acceptInviteUrl, resendInvitation, inviteArtistToApp, fetchPendingArtistInvitations } from "./invitations";
 
 const INV = { id: "inv1", org_id: "o1", email: "x@y.com", role: "producer", status: "pending", token: "tok123", expires_at: "2099-01-01" };
 
@@ -44,16 +44,27 @@ describe("fetchOrgInvitations", () => {
 });
 
 describe("revokeInvitation", () => {
-  it("updates status to revoked for the id", async () => {
-    const fake = createFakeSupabase({ org_invitations: { data: null, error: null } });
+  it("calls the revoke_invitation RPC with the id", async () => {
+    const fake = createFakeSupabase({ "rpc:revoke_invitation": { data: null, error: null } });
     await revokeInvitation(fake as never, "inv1");
-    expect(fake.calls).toContainEqual({ table: "org_invitations", method: "update", args: [{ status: "revoked" }] });
-    expect(fake.calls).toContainEqual({ table: "org_invitations", method: "eq", args: ["id", "inv1"] });
+    expect(fake.calls).toContainEqual({ table: "rpc:revoke_invitation", method: "rpc", args: [{ p_id: "inv1" }] });
   });
-
   it("throws on error", async () => {
-    const fake = createFakeSupabase({ org_invitations: { data: null, error: { message: "boom" } } });
+    const fake = createFakeSupabase({ "rpc:revoke_invitation": { data: null, error: { message: "boom" } } });
     await expect(revokeInvitation(fake as never, "inv1")).rejects.toBeTruthy();
+  });
+});
+
+describe("claimMyInvitations", () => {
+  it("calls claim_my_invitations and returns the count", async () => {
+    const fake = createFakeSupabase({ "rpc:claim_my_invitations": { data: 2, error: null } });
+    const n = await claimMyInvitations(fake as never);
+    expect(n).toBe(2);
+    expect(fake.calls).toContainEqual({ table: "rpc:claim_my_invitations", method: "rpc", args: [undefined] });
+  });
+  it("returns 0 when data is null", async () => {
+    const fake = createFakeSupabase({ "rpc:claim_my_invitations": { data: null, error: null } });
+    expect(await claimMyInvitations(fake as never)).toBe(0);
   });
 });
 

@@ -11,7 +11,10 @@ import type { AppRole } from "@/config/app.config";
  */
 export function useInvitationMutations(orgId: string | null | undefined) {
   const qc = useQueryClient();
-  const invalidate = () => qc.invalidateQueries({ queryKey: ["org-invitations"] });
+  const invalidate = () => {
+    qc.invalidateQueries({ queryKey: ["org-invitations"] });
+    qc.invalidateQueries({ queryKey: ["members"] });
+  };
 
   // The single network call, in one place. `create` wraps it with the single-invite
   // toast + invalidation; batch callers (bulk dialog) reuse `createOne` directly and

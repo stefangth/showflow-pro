@@ -123,7 +123,7 @@ describe("ArtistsPage — Part B pending-invite revoke/resend controls", () => {
     await waitFor(() => expect(screen.getByText("Ivy Invited")).toBeInTheDocument());
     fireEvent.click(screen.getByRole("button", { name: "Revoke invite" }));
     await waitFor(() =>
-      expect(client.calls).toContainEqual({ table: "org_invitations", method: "update", args: [{ status: "revoked" }] }),
+      expect(client.calls).toContainEqual({ table: "rpc:revoke_invitation", method: "rpc", args: [{ p_id: "inv-1" }] }),
     );
   });
 

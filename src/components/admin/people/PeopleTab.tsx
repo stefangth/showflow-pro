@@ -16,11 +16,11 @@ import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { filterPeople, filterInvitesByEmail } from "./peopleMatch";
+import { buildPeople, filterPeopleList, filterInvitesByEmail } from "./peopleMatch";
 import { InviteBar } from "./InviteBar";
 import { BulkInviteDialog } from "./BulkInviteDialog";
-import { InviteRow } from "./InviteRow";
-import { MemberRow } from "./MemberRow";
+import { InviteRow } from "./InviteRow"; // still used by the read-only history card
+import { PersonRow } from "./PersonRow";
 
 /** One searchable people directory: invite bar on top, pending + members below. */
 export function PeopleTab() {
@@ -50,10 +50,8 @@ export function PeopleTab() {
     () => (invites ?? []).filter((i) => i.status === "accepted" || i.status === "revoked"),
     [invites],
   );
-  const filtered = useMemo(
-    () => filterPeople(search, allMembers, pendingInvites),
-    [search, allMembers, pendingInvites],
-  );
+  const people = useMemo(() => buildPeople(allMembers, pendingInvites), [allMembers, pendingInvites]);
+  const filteredPeople = useMemo(() => filterPeopleList(search, people), [search, people]);
   const filteredHistory = useMemo(
     () => filterInvitesByEmail(search, historyInvites),
     [search, historyInvites],
@@ -68,20 +66,18 @@ export function PeopleTab() {
     : (isError || invitesError)
     ? "Can't verify duplicates right now, so new invites are paused."
     : null;
-  const dedupeUnready = !!dedupeHint;
 
   const copyLink = async (token: string) => {
     try { await navigator.clipboard?.writeText(acceptInviteUrl(token)); toast.success("Invite link copied"); }
     catch { toast.error("Could not copy link"); }
   };
 
-  const showPending = filtered.invites.length > 0;
-  const showMembers = filtered.members.length > 0;
+  const showPeople = filteredPeople.length > 0;
   const showHistory = filteredHistory.length > 0;
   // Only claim "no matches" once both queries have actually settled successfully.
-  // dedupeUnready covers loading AND error, so the skeleton or the destructive alert
+  // dedupeHint covers loading AND error, so the skeleton or the destructive alert
   // explains the empty lists during those states instead of a contradictory empty copy.
-  const nothing = hasSearch && !showPending && !showMembers && !showHistory && !dedupeUnready;
+  const nothing = hasSearch && !showPeople && !showHistory && !dedupeHint;
 
   return (
     <div className="space-y-4">
@@ -108,40 +104,26 @@ export function PeopleTab() {
       {isError && <Alert variant="destructive"><AlertDescription>{(error as Error).message}</AlertDescription></Alert>}
       {invitesError && <Alert variant="destructive"><AlertDescription>Failed to load pending invitations.</AlertDescription></Alert>}
 
-      {showPending && (
+      {showPeople && (
         <Card>
-          <CardHeader><CardTitle className="font-display text-base">Pending invitations</CardTitle></CardHeader>
+          <CardHeader><CardTitle className="font-display text-base">People</CardTitle></CardHeader>
           <CardContent className="space-y-2">
-            {filtered.invites.map((inv) => (
-              <InviteRow
-                key={inv.id}
-                invite={inv}
+            {filteredPeople.map((p) => (
+              <PersonRow
+                key={p.emailKey}
+                person={p}
+                isSelf={p.userId === user?.id}
                 onCopyLink={copyLink}
                 onResend={(id) => resend.mutate(id)}
                 onRevoke={(id) => revoke.mutate(id)}
-                resendPending={resend.isPending && resend.variables === inv.id}
-                revokePending={revoke.isPending && revoke.variables === inv.id}
-              />
-            ))}
-          </CardContent>
-        </Card>
-      )}
-
-      {showMembers && (
-        <Card>
-          <CardHeader><CardTitle className="font-display text-base">Members</CardTitle></CardHeader>
-          <CardContent className="space-y-2">
-            {filtered.members.map((m) => (
-              <MemberRow
-                key={m.user_id}
-                member={m}
-                isSelf={m.user_id === user?.id}
-                setRolePending={setRole.isPending}
                 onSetRole={(vars) => setRole.mutate(vars, {
                   onSuccess: () => toast.success("Role updated"),
                   onError: (e) => toast.error((e as Error).message),
                 })}
                 onRequestRemove={setTarget}
+                resendPending={resend.isPending && resend.variables === p.invitation?.id}
+                revokePending={revoke.isPending && revoke.variables === p.invitation?.id}
+                setRolePending={setRole.isPending}
               />
             ))}
           </CardContent>
@@ -166,8 +148,8 @@ export function PeopleTab() {
       )}
 
       {nothing && <p className="text-sm text-muted-foreground text-center py-6">No people match "{search.trim()}".</p>}
-      {!hasSearch && allMembers.length === 0 && !isLoading && !isError && (
-        <p className="text-sm text-muted-foreground text-center py-6">No members yet.</p>
+      {!hasSearch && people.length === 0 && !showHistory && !isLoading && !isError && (
+        <p className="text-sm text-muted-foreground text-center py-6">No people yet.</p>
       )}
 
       <BulkInviteDialog open={bulkOpen} onOpenChange={setBulkOpen} members={allMembers} invites={pendingInvites} dedupeHint={dedupeHint} />
