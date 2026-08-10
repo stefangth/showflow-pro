@@ -17,6 +17,10 @@ type Body = {
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
+// Shared by the two duplicate-pending paths (the invite-time membership branch and the
+// 23505 unique-violation backstop) so a future copy edit can't update one and miss the other.
+const PENDING_INVITE_ERROR = "That email already has a pending invitation.";
+
 export async function handle(req: Request, deps: Deps): Promise<Response> {
   if (req.method === "OPTIONS") return preflight();
 
@@ -102,7 +106,7 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
           .limit(1)
           .maybeSingle();
         if (pendingInvite) {
-          return json({ error: "That email already has a pending invitation." }, 409);
+          return json({ error: PENDING_INVITE_ERROR }, 409);
         }
         return json({ error: "That email already belongs to a member of this organization." }, 409);
       }
@@ -120,7 +124,7 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
     if (insErr || !invite) {
       // 23505 = unique_violation on the pending-invite index → a live invite exists.
       if ((insErr as { code?: string } | null)?.code === "23505") {
-        return json({ error: "That email already has a pending invitation." }, 409);
+        return json({ error: PENDING_INVITE_ERROR }, 409);
       }
       return json({ error: insErr?.message ?? 'Could not create invitation' }, 500);
     }
