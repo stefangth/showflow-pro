@@ -23,8 +23,8 @@
     "local:reset": "supabase db reset",
     "verify:fast": "bash scripts/verify.sh --fast",
     "verify:full": "bash scripts/verify.sh --full",
-    "sync:mirrors": "node scripts/sync-mirrors.mjs",
-    "sync:mirrors:check": "node scripts/sync-mirrors.mjs --check",
+    "sync:mirrors": "node scripts/sync-mirrors.mjs && node scripts/build-trust-json.mjs",
+    "sync:mirrors:check": "node scripts/sync-mirrors.mjs --check && node scripts/build-trust-json.mjs --check",
     "scan:secrets": "node scripts/scan-secrets.mjs"
   },
   "dependencies": {

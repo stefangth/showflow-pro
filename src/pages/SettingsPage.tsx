@@ -16,13 +16,14 @@ import { Switch } from '@/components/ui/switch';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { toast } from 'sonner';
-import { Settings as SettingsIcon, Database, Bell, Wand2, Save, SlidersHorizontal, MapPin, Clock, BookOpen, UserCog, Building2, FileSignature, ShieldCheck } from 'lucide-react';
+import { Settings as SettingsIcon, Database, Bell, Wand2, Save, SlidersHorizontal, MapPin, Clock, BookOpen, UserCog, Building2, FileSignature, ShieldCheck, Lock } from 'lucide-react';
 import { upsertOrgSetting, mergeOrgRows } from '@/data/settings';
 import { computeSettingsDirtyKeys } from '@/lib/settings';
 import { AirtableSyncTab } from '@/components/settings/AirtableSyncTab';
 import { OrganizationTab } from '@/components/settings/OrganizationTab';
 import { CastsCitiesTab } from '@/components/settings/CastsCitiesTab';
 import { ProductionOwnershipTab } from '@/components/settings/ProductionOwnershipTab';
+import { TrustDataTab } from '@/components/settings/trust/TrustDataTab';
 import { DocumentationTab } from '@/components/settings/DocumentationTab';
 import { BookingFlowTab } from '@/components/settings/bookingFlow/BookingFlowTab';
 import { BOOKING_AUDIT_KEYS } from '@/components/settings/bookingFlow/auditKeys';
@@ -237,6 +238,7 @@ export default function SettingsPage() {
     { heading: "Organization", items: [
       { value: "organization", label: "Organization", icon: Building2, show: isAdmin || isProducer },
       { value: "permissions", label: "Roles & permissions", icon: ShieldCheck, show: isAdmin },
+      { value: "trust", label: "Trust & data", icon: Lock, show: isAdmin || isProducer },
       { value: "production-ownership", label: "Production Ownership", icon: UserCog, show: isAdmin || isProducer },
       { value: "casts-cities", label: "Casts & Cities", icon: MapPin, show: true },
     ] },
@@ -355,6 +357,12 @@ export default function SettingsPage() {
         {isAdmin && (
           <TabsContent value="permissions" className="mt-4">
             <PermissionsTab />
+          </TabsContent>
+        )}
+
+        {(isAdmin || isProducer) && (
+          <TabsContent value="trust" className="mt-4">
+            <TrustDataTab />
           </TabsContent>
         )}
 
