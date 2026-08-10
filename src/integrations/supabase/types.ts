@@ -7,11 +7,6 @@ export type Json =
   | Json[]
 
 export type Database = {
-  // Allows to automatically instantiate createClient with right options
-  // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
-  __InternalSupabase: {
-    PostgrestVersion: "14.5"
-  }
   graphql_public: {
     Tables: {
       [_ in never]: never
@@ -1202,6 +1197,7 @@ export type Database = {
           status: Database["public"]["Enums"]["hire_order_status"]
           terms_variant: string
           updated_at: string
+          viewed_at: string | null
         }
         Insert: {
           agent_email?: string | null
@@ -1230,6 +1226,7 @@ export type Database = {
           status?: Database["public"]["Enums"]["hire_order_status"]
           terms_variant?: string
           updated_at?: string
+          viewed_at?: string | null
         }
         Update: {
           agent_email?: string | null
@@ -1258,6 +1255,7 @@ export type Database = {
           status?: Database["public"]["Enums"]["hire_order_status"]
           terms_variant?: string
           updated_at?: string
+          viewed_at?: string | null
         }
         Relationships: [
           {
@@ -2367,6 +2365,7 @@ export type Database = {
       }
       is_org_member: { Args: { _org: string; _uid: string }; Returns: boolean }
       is_super_admin: { Args: { _uid: string }; Returns: boolean }
+      list_org_admin_names: { Args: { p_org: string }; Returns: string[] }
       list_org_members: {
         Args: { p_org: string }
         Returns: {
@@ -2389,6 +2388,7 @@ export type Database = {
           user_id: string
         }[]
       }
+      mark_hire_order_seen: { Args: { p_order: string }; Returns: undefined }
       mark_invitation_resent: { Args: { p_id: string }; Returns: undefined }
       merge_cities: {
         Args: { p_losers: string[]; p_survivor: string }
@@ -2648,3 +2648,4 @@ export const Constants = {
     },
   },
 } as const
+
