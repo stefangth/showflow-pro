@@ -41,6 +41,32 @@ Deno.test("resend-invitation DI: resends email + reasserts membership via RPC", 
   assertEquals(stamp?.args, [{ p_id: "inv1" }]);
 });
 
+Deno.test("resend-invitation: suppressed/skipped send does NOT stamp the resend counter", async () => {
+  const { deps, calls, invokeCalls } = makeFakeDeps({
+    authUser: { id: "u1" },
+    usersById: { u1: { email: "admin@acme.test" } },
+    tables: {
+      org_memberships: { data: { role: "admin" }, error: null },
+      org_invitations: { data: { id: "inv1", org_id: "org-1", email: "bounced@x.com", role: "producer", status: "pending", token: "tok123" }, error: null },
+      organizations: { data: { name: "Acme" }, error: null },
+    },
+    authUsersByEmail: { "bounced@x.com": { id: "existing-invitee" } },
+    rpcs: { ensure_invitation_membership: { data: true, error: null }, mark_invitation_resent: { data: null, error: null } },
+    // send-transactional-email returns 200 { success: false } for a suppressed address —
+    // a skip, not a delivery. The resend counter must NOT advance in that case.
+    emailResult: { data: { success: false, reason: "email_suppressed" }, error: null },
+  });
+  const res = await handle(
+    makeRequest({ headers: { Authorization: "Bearer jwt" }, body: { invitation_id: "inv1", app_origin: "https://app.test" } }),
+    deps,
+  );
+  // The request still succeeds (best-effort resend), the email attempt was made...
+  assertEquals(res.status, 200);
+  assertEquals(invokeCalls.filter((c) => c.name === "send-transactional-email").length, 1);
+  // ...but no stamp, because nothing was delivered.
+  assertEquals(calls.some((c) => c.table === "rpc:mark_invitation_resent"), false);
+});
+
 Deno.test("resend-invitation: opaque 403 for unknown invitation (no existence leak)", async () => {
   const { deps } = makeFakeDeps({
     authUser: { id: "u1" },
