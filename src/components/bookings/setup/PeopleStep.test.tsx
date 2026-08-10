@@ -13,6 +13,15 @@ vi.mock("@/hooks/useCapabilities", async (orig) => ({
   useCan: vi.fn(),
 }));
 
+// The team-invite line points at /admin, which is an ADMIN-ONLY route (App.tsx), and no
+// capability distinguishes an admin from a producer who was granted one: CAPABILITY_DEFS
+// only ever grants a producer something an admin already has. So the panel reads the role,
+// and the tests drive it from here.
+const { rolesRef } = vi.hoisted(() => ({ rolesRef: { value: ["admin"] as string[] } }));
+vi.mock("@/features/auth/AuthContext", () => ({
+  useAuth: () => ({ hasRole: (r: string) => rolesRef.value.includes(r) }),
+}));
+
 import { useCan } from "@/hooks/useCapabilities";
 import { buttonVariants } from "@/components/ui/button";
 import { PeopleStep } from "./PeopleStep";
@@ -27,6 +36,7 @@ const renderPeople = (count: number | null, inactiveCount: number | null = null)
 
 beforeEach(() => {
   vi.mocked(useCan).mockReturnValue(true);
+  rolesRef.value = ["admin"];
 });
 
 describe("PeopleStep", () => {
@@ -118,12 +128,42 @@ describe("PeopleStep", () => {
     //
     // The unregistered case is what survives, and it is the point being made: no account,
     // so only the card address exists, so the artist can be added before they ever sign in.
-    renderPeople(0);
+    //
+    // It is stated as ROUTING, not as a send. "An artist with no account IS EMAILED at the
+    // address on their card" reads as a promise that mail goes out, and this is the one
+    // sentence on the panel that does not branch on `flow.active`, so under the "off" preset
+    // (every digest function skips a paused org) it was the panel's only false claim. "Any
+    // email for X goes to Y" is true whether or not this org ever sends one.
+    const { container } = renderPeople(0);
     expect(screen.queryByText(/reach(es)?\s+them/i)).not.toBeInTheDocument();
     expect(screen.queryByText(/anything the app emails/i)).not.toBeInTheDocument();
+    expect(container.textContent).not.toMatch(/is emailed/i);
     expect(
-      screen.getByText(/an artist with no account is emailed at the address on their card/i),
+      screen.getByText(/any email for an artist with no account goes to the address on their card/i),
     ).toBeInTheDocument();
+  });
+
+  it("tells an admin that producers and fellow admins join somewhere else entirely", () => {
+    // The step is titled "Add your artists" and every word under it is about the roster, so
+    // an admin who works this rail end to end is never told the rest of their team exists as
+    // a thing to invite. The roster is not that surface: an artist row is a catalog record,
+    // while a producer or admin is an org membership created from Admin, People. Naming it
+    // in one clause is the difference between "my org is set up" and "my org is set up and I
+    // am the only person in it".
+    renderPeople(0);
+    expect(screen.getByRole("link", { name: /admin, people/i })).toHaveAttribute("href", ROUTES.ADMIN);
+    expect(screen.getByText(/this roster is artists only/i)).toBeInTheDocument();
+  });
+
+  it("does not send a producer to the admin-only page that invites them", () => {
+    // ROUTES.ADMIN is `requiredRoles={['admin']}` in App.tsx, so for a producer this line
+    // would name a control they cannot open, and a page they would be bounced off.
+    rolesRef.value = ["producer"];
+    renderPeople(0);
+    expect(screen.queryByRole("link", { name: /admin, people/i })).not.toBeInTheDocument();
+    expect(screen.queryByText(/this roster is artists only/i)).not.toBeInTheDocument();
+    // Everything the roster panel is actually for still reads.
+    expect(screen.getByText(/only artists on this roster whose status is active can be booked/i)).toBeInTheDocument();
   });
 
   it("says who can be added rather than what 'one' refers to", () => {

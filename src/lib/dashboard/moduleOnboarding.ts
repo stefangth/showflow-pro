@@ -10,6 +10,38 @@ import type {
   OnboardingStepMeta,
 } from "./types";
 
+/**
+ * The one place this tip is worded, because two surfaces render it and they render it at
+ * OPPOSITE times.
+ *
+ * As a `rules` entry (below) it belongs to the rail's COMPLETE state, so on its own it only
+ * ever reached an admin who had already finished setup. The gap it answers is the other one:
+ * nothing suggests looking at the app as an artist WHILE you are still building it, which is
+ * exactly when the decisions it would inform are being made. So `BookingSetupRail` also
+ * prints it in its footer, which is on screen from the first unfinished step onward.
+ *
+ * Admin (or super-admin) only, wherever it renders: Editor Mode is gated by
+ * editorAccess.canUseEditor, so a producer told to use it would be sent to a control that is
+ * not in their toolbar.
+ *
+ * The hint stops at what the toolbar can deliver. Its "as user" picker is filled from
+ * admin-list-users, an auth.users enumeration, so an artist who is on the roster but holds no
+ * account is not selectable at all; the always-available fallback is the "Viewing as: Artist"
+ * role option, which switches the shell but leaves the admin as themselves, so useMyArtist
+ * finds no artist row. Both surfaces sit next to a roster panel that has just said an artist
+ * needs no account, which is precisely when the picker is empty, so the precondition is
+ * stated rather than assumed.
+ *
+ * That precondition is the ACCOUNT, not a recent sign-in: the picker enumerates auth.users,
+ * so an artist who accepted their invitation and never came back is still in it. "Account" is
+ * also the word the product already uses at the one place an admin can check, the artist
+ * card's account-status chip (AccountStatusChip: "Active account" / "No account").
+ */
+export const VIEW_AS_ARTIST_TIP: InheritedRule = {
+  title: "See it as your artists do",
+  hint: "The pencil icon top right opens the editor bar, where you can switch to the artist view. Once an artist has an account, you can preview the app as that exact person.",
+};
+
 export const bookingOnboarding: ModuleOnboardingDef<BookingSetupStepKey> = {
   key: "booking_flow",
   // Flow-neutral, unlike the steps and rules below it. `railHeader` is a flat pair of
@@ -23,7 +55,13 @@ export const bookingOnboarding: ModuleOnboardingDef<BookingSetupStepKey> = {
     body: "Dates keep syncing and you can edit them now. These are what the first booking needs.",
   },
   steps: {
-    flow: { title: STEP_TITLES.flow, todoHint: "Offers, or straight to booked. Everything downstream reads this.", doneHint: "Chosen. Change it any time in Settings.", ctaLabel: "Choose flow", ctaRoute: ROUTES.SETTINGS, ctaCapability: "edit_booking_settings" },
+    // Deep-linked, like the coverage links in LadderStep/EligibilityStep: the flow control
+    // lives in Settings, Booking flow, and a bare ROUTES.SETTINGS opens Organization for an
+    // admin and Scheduling for a producer, so "Choose flow" landed on a pane without it.
+    // Only latent today, because DashboardSetupRail renders this Link only when its host
+    // passes no onStepAction and every current host passes one, but the fallback is what an
+    // unknown next host gets.
+    flow: { title: STEP_TITLES.flow, todoHint: "Offers, or straight to booked. Everything downstream reads this.", doneHint: "Chosen. Change it any time in Settings.", ctaLabel: "Choose flow", ctaRoute: `${ROUTES.SETTINGS}?tab=booking`, ctaCapability: "edit_booking_settings" },
     // Gated on `add_artists`, not `edit_booking_settings`: adding artists is roster work, so
     // a producer who cannot change booking settings still gets an actionable CTA here (that
     // capability defaults on), while an org that revoked it gets a read-only row instead of
@@ -72,7 +110,9 @@ export const bookingOnboarding: ModuleOnboardingDef<BookingSetupStepKey> = {
     // an answer window), not what one flow does with it: "how long artists get" presumed a
     // pipeline where artists answer, which a direct-book org does not run. TimingStep's own
     // panel reads the real flow and narrates what THIS org does with these hours.
-    timing: { title: STEP_TITLES.timing, todoHint: "When booking email goes out, and the answer window.", doneHint: "Hours set. Change them any time in Settings.", ctaLabel: "Set timing", ctaRoute: ROUTES.SETTINGS, ctaCapability: "edit_booking_settings" },
+    // Deep-linked for the same reason as `flow` above: the send hours live in Settings,
+    // Booking flow, and "Set timing" has to land on them.
+    timing: { title: STEP_TITLES.timing, todoHint: "When booking email goes out, and the answer window.", doneHint: "Hours set. Change them any time in Settings.", ctaLabel: "Set timing", ctaRoute: `${ROUTES.SETTINGS}?tab=booking`, ctaCapability: "edit_booking_settings" },
   },
   // This block is the rail's COMPLETE state: it narrates how this org works, as fact. Rule
   // one already branches on the flow, so every rule under it has to branch too. A
@@ -94,19 +134,9 @@ export const bookingOnboarding: ModuleOnboardingDef<BookingSetupStepKey> = {
       : [
           { title: "Nothing to accept", hint: "An artist you add to a date is booked. It shows in their calendar as confirmed." },
         ]),
-    // Admins only: Editor Mode is gated by editorAccess.canUseEditor (org admin or
-    // super-admin), so a producer told to use it would be sent to a control they cannot see.
-    //
-    // The hint stops at what the toolbar can deliver. Its "as user" picker is filled from
-    // admin-list-users, an auth.users enumeration, so an artist who is on the roster but
-    // has never signed in is not selectable at all; the always-available fallback is the
-    // "Viewing as: Artist" role option, which switches the shell but leaves the admin as
-    // themselves, so useMyArtist finds no artist row. Since this rule renders once setup is
-    // complete, right after the people step said an artist needs no account to be added, an
-    // over-promise here lands exactly when the picker is empty.
-    ...(role === "admin"
-      ? [{ title: "See it as your artists do", hint: "The pencil icon top right opens the editor bar, where you can switch to the artist view. Once an artist has logged in, you can preview the app as that exact person." }]
-      : []),
+    // Admins only, and the same object BookingSetupRail's footer renders (see
+    // VIEW_AS_ARTIST_TIP above for why it is shared and why it is worded the way it is).
+    ...(role === "admin" ? [VIEW_AS_ARTIST_TIP] : []),
   ]),
   offFooter: "Booking flow is off for this org. Ask your account manager to switch it on.",
 };

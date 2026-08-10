@@ -21,7 +21,10 @@ export interface OnboardingStepMeta {
   todoHint: string;
   doneHint: string;
   ctaLabel: string;
-  ctaRoute: string; // a ROUTES.* value
+  /** A `ROUTES.*` value, optionally with a query string (`${ROUTES.SETTINGS}?tab=booking`)
+   *  so a CTA lands on the section its label names. DashboardSetupRail passes it straight
+   *  to `<Link to>`, which takes a path plus search. */
+  ctaRoute: string;
   /** When set and the viewer lacks it, the step renders read-only (no CTA). */
   ctaCapability?: StepCapability;
 }

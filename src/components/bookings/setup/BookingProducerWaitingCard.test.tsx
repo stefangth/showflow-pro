@@ -9,6 +9,13 @@ vi.mock("@/hooks/useCapabilities", async (orig) => ({
   useCan: vi.fn(),
 }));
 
+// The embedded PeopleStep reads the role for its admin-only "invite the rest of your team"
+// line (ROUTES.ADMIN is admin-gated). This card is the NON-editor surface, so its viewer is
+// a producer and that line is expected to stay off.
+vi.mock("@/features/auth/AuthContext", () => ({
+  useAuth: () => ({ hasRole: (r: string) => r === "producer" }),
+}));
+
 import { useCan } from "@/hooks/useCapabilities";
 import { BookingProducerWaitingCard } from "./BookingProducerWaitingCard";
 

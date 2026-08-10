@@ -70,13 +70,15 @@ export function formatExpiresOn(expiresAt: string | null | undefined): string | 
 
 Closes A3.2 (no invite-your-people step), A3.3 (what happens tonight), A3.1 (concept links), A3.4 (view-as suggestion) + shared enabler: Settings tab deep-links.
 
-**Files:**
-- Modify: `src/lib/bookings/setupStatus.ts` (new step key `people`), `src/hooks/useBookingSetup.ts` (feed `artistCount`), `src/data/artists.ts` (add `fetchArtistCount`)
-- Modify: `src/lib/dashboard/moduleOnboarding.ts` (people step meta + admin view-as rule)
-- Modify: `src/pages/SettingsPage.tsx` + Create: `src/lib/settingsTabs.ts` (pure `resolveInitialTab`)
-- Modify: `src/components/bookings/setup/TimingStep.tsx` + Create: `src/lib/bookings/timingCopy.ts` (pure `describeTonight`)
-- Modify: `src/components/bookings/setup/LadderStep.tsx`, `EligibilityStep.tsx` (docs link)
-- Tests: co-located for every module above (setupStatus, moduleOnboarding parity, settingsTabs, timingCopy, TimingStep render, SettingsPage seed)
+**Files:** (amended after implementation — the original list was written before the step's real blast radius was known. A new step key is consumed by every surface that composes booking setup, and a flow-aware panel needs the org's flow passed in, so the set below is what the branch actually carries. The commit agent must land all of it: the subset in the first draft does not typecheck on its own.)
+
+- Engine + data: `src/lib/bookings/setupStatus.ts` (new step key `people`, `blockFor` per flow), `src/hooks/useBookingSetup.ts` (`artistCount` + the on-demand `useInactiveArtistCount`), `src/data/artists.ts` (`fetchArtistCount`, `fetchInactiveArtistCount`), `src/hooks/useBookingFlow.ts` (accepts an org override, so a rail panel reads the RAIL's org, not the shell's)
+- Registries: `src/lib/dashboard/moduleOnboarding.ts` (people step meta, `VIEW_AS_ARTIST_TIP`, flow-branched rules), `src/lib/dashboard/setupBlocks.ts` + `types.ts` (the shared "Blocks X" chip vocabulary and the widened `SetupBlock` union), `src/lib/dashboard/firstRun.ts`
+- Copy modules (pure, new): `src/lib/bookings/timingCopy.ts` (`describeTonight`, `timingScopeNote`), `src/lib/bookings/coverageCopy.ts` (`ladderScopeNote`, `eligibilityScopeNote`), `src/lib/settingsTabs.ts` (`resolveInitialTab`)
+- Setup panels: `src/components/bookings/setup/` — `BookingSetupRail.tsx`, `BookingProducerWaitingCard.tsx`, `PeopleStep.tsx` (new), `FlowStep.tsx`, `TimingStep.tsx`, `LadderStep.tsx`, `EligibilityStep.tsx`, `RehearsalBlock.tsx`, `FirstOfferCard.tsx`
+- Shared first-run surfaces: `src/components/dashboard/firstRun/DashboardSetupRail.tsx`, `src/components/dashboard/firstRun/useDashboardFirstRun.ts`
+- Settings: `src/pages/SettingsPage.tsx` (`?tab=` seed + re-follow)
+- Tests: co-located for every module above, plus the composed surfaces the new step flows into — `src/components/setup/useModuleOnboardingRail.test.tsx`, `src/components/dashboard/ArtistDashboard.firstRun.test.tsx`, `src/pages/ShowsBookingsPage.peek.test.tsx`, `src/hooks/useBookingSetup.test.ts`, `src/data/artists.test.ts`
 
 **Interfaces (produced):**
 ```ts
@@ -105,6 +107,8 @@ export function describeTonight(v: { offerHour: number; confirmHour: number; win
 - [ ] **Step 6 (test first):** `timingCopy.test.ts` for both branches + no dashes; implement `describeTonight`; render it in `TimingStep` under the existing helper text (`text-xs text-muted-foreground`), live-updating from the form values. Pass.
 - [ ] **Step 7:** Ladder + Eligibility steps: append link row `How casts and tiers work` → `` `${ROUTES.SETTINGS}?tab=docs` `` next to the existing "Rank casts in Settings" links. Snapshot/queries in existing step tests.
 - [ ] **Step 8 (test first):** `moduleOnboarding.test.ts`: `bookingOnboarding.rules('admin', ctx)` contains a rule titled `See it as your artists do`; `rules('producer', ctx)` does not (producers cannot use Editor Mode). Implement: hint `Editor Mode, the pencil icon top right, can view this app exactly as one of your artists.` Pass.
+  - **Amended:** `rules` is the rail's COMPLETE state, so a tip that lives only there reaches an admin *after* setup, while the gap (research line 98) is that nothing suggests view-as *during* it. The tip is therefore an exported `VIEW_AS_ARTIST_TIP` object rendered by two surfaces: the `rules` block above, and the `BookingSetupRail` footer, which exists only while setup is unfinished. Gated on `canUseEditor(roles, isSuperAdmin)` at the render site, so a super-admin visiting an org they never joined gets it too.
+  - **Amended (A3.2 scope):** the `people` step is the artist roster, but PeopleStep also carries one admin-gated clause naming `Admin, People` as where producers and fellow admins are invited, so an admin who works the whole rail is not left thinking the roster is the whole answer to "invite my people". Membership invites themselves stay out of the setup rail: they are not a booking-readiness gate.
 - [ ] **Step 9:** Commit `feat: booking setup gains people step, tonight narrative, concept links, view-as tip`.
 
 ### WP2: Accepting an invite lands on an informative success moment

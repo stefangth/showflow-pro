@@ -1,8 +1,10 @@
 import { useState } from "react";
+import { useAuth } from "@/features/auth/AuthContext";
+import { canUseEditor } from "@/features/editor/editorAccess";
 import { useCan } from "@/hooks/useCapabilities";
 import { useBookingSetupStatus, useInactiveArtistCount } from "@/hooks/useBookingSetup";
 import { type BookingSetupStepKey } from "@/lib/bookings/setupStatus";
-import { bookingOnboarding } from "@/lib/dashboard/moduleOnboarding";
+import { bookingOnboarding, VIEW_AS_ARTIST_TIP } from "@/lib/dashboard/moduleOnboarding";
 import { SETUP_BLOCK_CHIPS } from "@/lib/dashboard/setupBlocks";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -14,6 +16,7 @@ import { SlotsStep } from "./SlotsStep";
 import { LadderStep } from "./LadderStep";
 import { EligibilityStep } from "./EligibilityStep";
 import { TimingStep } from "./TimingStep";
+import { TonightNote } from "./TonightNote";
 import { RehearsalBlock } from "./RehearsalBlock";
 import { BookingProducerWaitingCard } from "./BookingProducerWaitingCard";
 
@@ -35,16 +38,25 @@ const HEADER = bookingOnboarding.railHeader;
  */
 export function BookingSetupRail({ orgId, initialStep }: { orgId: string | null; initialStep?: BookingSetupStepKey }) {
   const canEdit = useCan("edit_booking_settings");
-  const { status, coverage, artistCount } = useBookingSetupStatus(orgId);
+  // Editor Mode is admin-or-super-admin, never a capability (see editorAccess.canUseEditor),
+  // and `roles` is scoped to the active org, so the super-admin arm is what keeps the tip in
+  // step with the toolbar for someone visiting an org they never joined.
+  const { roles, isSuperAdmin } = useAuth();
+  const { status, coverage, artistCount, isLoading } = useBookingSetupStatus(orgId);
   const [, dismiss] = useRailDismissed("bookingSetup", orgId);
   const [open, setOpen] = useState<BookingSetupStepKey | null>(initialStep ?? "flow");
+  // `!isLoading` is load-bearing, not belt-and-braces: an unread roster is reported
+  // outstanding (the engine treats a null count as 0), so this is true for every org for the
+  // first frame, and firing the read there would defeat the gate for all of them. Waiting
+  // costs the panel nothing, since its parked line needs the ACTIVE count to have landed too.
+  const peopleOutstanding = !isLoading && status.steps.some((s) => s.key === "people" && !s.done);
   // Read on demand rather than as part of readiness: this count decorates one sentence in
-  // PeopleStep, and PeopleStep is on screen in exactly two cases. Either the roster row is
-  // expanded here, or this viewer gets the waiting card below, which renders the panel
-  // whenever the roster step is outstanding (and a card with nothing outstanding never
-  // renders at all: useBookingSetupRailVisible hides this whole surface for a non-editor the
-  // moment canOffer flips true). Declared before the early return so the hook order is fixed.
-  const inactiveArtistCount = useInactiveArtistCount(orgId, !canEdit || open === "people");
+  // PeopleStep, and the condition below is exactly when that sentence is on screen. An
+  // editor sees the panel when the roster row is expanded; everyone else gets the waiting
+  // card, which embeds the panel only while the roster step is still outstanding. Gating the
+  // non-editor arm on `!canEdit` alone billed every producer for a head count their card was
+  // never going to print. Declared before the early return so the hook order is fixed.
+  const inactiveArtistCount = useInactiveArtistCount(orgId, canEdit ? open === "people" : peopleOutstanding);
 
   // The roster step is not gated by `edit_booking_settings`, so the waiting card gets the
   // count and renders it as real work rather than as one more padlock.
@@ -104,6 +116,26 @@ export function BookingSetupRail({ orgId, initialStep }: { orgId: string | null;
             </SetupStepRow>
           ))}
         </div>
+        {/* The schedule the sixth row configures, stated where a collapsed row cannot hide
+            it. Suppressed while that row is open: TimingStep prints the same narrative from
+            its LIVE inputs, under a scope note that carries the timezone, so leaving this
+            one up would put the fact on the card twice and, mid-edit, in two versions. */}
+        {open !== "timing" && <TonightNote orgId={orgId} />}
+        {/* Not a step and not a blocker, so it sits under them rather than among them: it is
+            the one thing on this rail that is worth doing WHILE the steps are unfinished
+            rather than after. The registry's `rules` block carries the same object, but that
+            block is the rail's complete state, so on its own the tip only ever reached an
+            admin who had already made every decision it would have informed. This surface is
+            the other half: it is on screen from the first unfinished step onward, so the tip
+            reaches an admin while the decisions it informs are still open. (It stays
+            reachable afterwards too: once setup completes, useBookingSetupRailVisible turns
+            the rail into a "button" and SetupChecklistSheet renders this same component.) */}
+        {canUseEditor(roles, isSuperAdmin) && (
+          <div className="border-t border-border px-4 py-3">
+            <p className="text-xs font-medium text-foreground">{VIEW_AS_ARTIST_TIP.title}</p>
+            <p className="mt-0.5 text-xs leading-[17px] text-muted-foreground">{VIEW_AS_ARTIST_TIP.hint}</p>
+          </div>
+        )}
         <RehearsalBlock orgId={orgId} />
       </CardContent>
     </Card>

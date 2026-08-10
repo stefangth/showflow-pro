@@ -40,6 +40,19 @@ describe("EligibilityStep", () => {
     expect(screen.getByText(/Hamburg/)).toBeInTheDocument();
   });
 
+  it("lands the edit link on the section its own label names", () => {
+    // Same defect as LadderStep's twin link: the label reads "Settings, Casts and cities"
+    // while the href was bare /settings, which opens Organization for an admin and
+    // Scheduling for a producer.
+    renderWithProviders(
+      <MemoryRouter><EligibilityStep coverage={uncovered} orgId="org-1" /></MemoryRouter>,
+    );
+    expect(screen.getByRole("link", { name: /link casts in settings, casts and cities/i })).toHaveAttribute(
+      "href",
+      `${ROUTES.SETTINGS}?tab=casts-cities`,
+    );
+  });
+
   it("offers the concept explanation next to the edit link, deep-linked to Documentation", () => {
     // Same house vocabulary as LadderStep, same escape hatch.
     renderWithProviders(

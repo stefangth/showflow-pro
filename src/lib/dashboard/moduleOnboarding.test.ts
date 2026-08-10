@@ -1,9 +1,10 @@
 import { it, expect } from "vitest";
-import { ARTIST_ONBOARDING, ARTIST_STEP_KEYS, MODULE_ONBOARDING, bookingOnboarding, hireOrderOnboarding } from "./moduleOnboarding";
+import { ARTIST_ONBOARDING, ARTIST_STEP_KEYS, MODULE_ONBOARDING, VIEW_AS_ARTIST_TIP, bookingOnboarding, hireOrderOnboarding } from "./moduleOnboarding";
 import { FEATURE_KEYS } from "@/lib/entitlements";
 import { computeBookingSetupStatus } from "@/lib/bookings/setupStatus";
 import { computeSetupStatus } from "@/lib/hireOrders/setupStatus";
 import { ROUTES } from "@/config/app.config";
+import { SETTINGS_TAB_PARAMS } from "@/lib/settingsTabs";
 import { CAPABILITY_DEFS } from "@/lib/capabilities";
 
 it("has one contribution per FeatureKey (no orphans, no gaps)", () => {
@@ -277,11 +278,31 @@ it("promises only what the view-as control can actually do, and names its precon
   // nothing: they get the artist shell, not that person's data. This rule renders in the
   // rail's COMPLETE state, straight after the people panel said an artist can be added
   // before they ever sign in, which is precisely when the picker holds no artists.
+  //
+  // The precondition is stated as the ACCOUNT, not a login. admin-list-users enumerates
+  // auth.users, so an artist who accepted their invitation and has not been back since is
+  // still in the picker, and "once they have logged in" reads as a recency condition that
+  // would have the admin waiting for nothing. "Account" is also the word the product
+  // already uses at the only place an admin can check: the artist card's account-status
+  // chip ("Active account" / "No account", see AccountStatusChip).
   const ctx = { orgName: "Test Org", artistAcceptance: true, counts: { pendingConfirmations: 0, openOffers: 0, awaitingCountersign: 0 } };
   const tip = bookingOnboarding.rules("admin", ctx).find((r) => r.title === "See it as your artists do")!;
-  expect(tip.hint).toMatch(/logged in/i);
+  expect(tip.hint).toMatch(/has an account/i);
+  expect(tip.hint).not.toMatch(/logged in|signed in|logs in/i);
   expect(tip.hint).not.toMatch(/exactly as they do/i);
   expect(tip.hint).not.toMatch(/\bany artist\b/i);
+});
+
+it("keeps the view-as tip as one shared object, since two surfaces render it", () => {
+  // `rules` is the rail's COMPLETE state, so as a rule alone this tip only ever reached an
+  // admin who had already finished setup. The gap it answers is the opposite one: nothing
+  // suggests viewing the app as an artist WHILE you are still setting it up. So
+  // BookingSetupRail renders it in its own footer too, and that surface is on screen only
+  // while setup is unfinished. One exported object rather than two literals: a reworded tip
+  // that lands on one of the two surfaces is exactly the drift this registry exists to stop.
+  const ctx = ctxFor(true);
+  const fromRules = bookingOnboarding.rules("admin", ctx).find((r) => r.title === VIEW_AS_ARTIST_TIP.title);
+  expect(fromRules).toBe(VIEW_AS_ARTIST_TIP);
 });
 
 it("no inherited rule copy uses em/en dashes", () => {
@@ -299,12 +320,48 @@ it("no inherited rule copy uses em/en dashes", () => {
   for (const r of rules) expect(`${r.title}${r.hint}`).not.toMatch(/[—–]/);
 });
 
+// A ctaRoute is rendered by DashboardSetupRail as `<Link to={step.ctaRoute}>`, which takes a
+// path AND a query string. So the invariant is on the PATH: the query is the deep-link
+// (`?tab=`), and pinning the whole string to Object.values(ROUTES) would have banned exactly
+// the honest link the labels below promise.
+const routePath = (to: string) => to.split("?")[0];
+/** Every `?tab=` a step may carry has to be one SettingsPage will actually open. */
+const tabParam = (to: string) => new URLSearchParams(to.split("?")[1] ?? "").get("tab");
+
 it("every CTA route is a real ROUTES value and no copy uses em/en dashes", () => {
   const all = [bookingOnboarding, hireOrderOnboarding].flatMap((d) => Object.values(d.steps));
   for (const s of all) {
-    expect(Object.values(ROUTES)).toContain(s.ctaRoute);
+    expect(Object.values(ROUTES)).toContain(routePath(s.ctaRoute));
+    const tab = tabParam(s.ctaRoute);
+    if (tab !== null) {
+      expect(routePath(s.ctaRoute)).toBe(ROUTES.SETTINGS);
+      expect(SETTINGS_TAB_PARAMS).toContain(tab);
+    }
     expect(`${s.title}${s.todoHint}${s.doneHint}${s.ctaLabel}`).not.toMatch(/[—–]/);
   }
+});
+
+it("the two Settings steps deep-link to the tab their label names", () => {
+  // "Choose flow" and "Set timing" both live in Settings, Booking flow. A bare
+  // ROUTES.SETTINGS lands on Organization for an admin and Scheduling for a producer, so
+  // the CTA opened a pane with neither control on it and left the reader to find the tab.
+  // Same fix, same reason, as the LadderStep/EligibilityStep links one screen away.
+  //
+  // Latent rather than live today: DashboardSetupRail only renders the Link when its host
+  // passes no onStepAction, and every current host passes one. It is the fallback that has
+  // to be right, because nothing tells the next host to supply a handler.
+  expect(bookingOnboarding.steps.flow.ctaRoute).toBe(`${ROUTES.SETTINGS}?tab=booking`);
+  expect(bookingOnboarding.steps.timing.ctaRoute).toBe(`${ROUTES.SETTINGS}?tab=booking`);
+});
+
+it("leaves the hire-order steps on bare Settings", () => {
+  // `hire-orders` is deliberately absent from SETTINGS_TAB_PARAMS: the tab is
+  // entitlement-gated and the pure resolver cannot see an org's entitlement, so deep-linking
+  // it would strand an unentitled org on an empty pane. These three keep the bare route.
+  for (const s of Object.values(hireOrderOnboarding.steps)) {
+    expect(s.ctaRoute).toBe(ROUTES.SETTINGS);
+  }
+  expect(SETTINGS_TAB_PARAMS as readonly string[]).not.toContain("hire-orders");
 });
 
 it("every module has railHeader copy with no em/en dashes", () => {
@@ -341,7 +398,7 @@ it("ARTIST_STEP_KEYS match the keys useArtistOnboardingStatus produces", () => {
 
 it("artist CTA routes are real ROUTES values and no copy uses em/en dashes", () => {
   for (const s of Object.values(ARTIST_ONBOARDING.steps)) {
-    expect(Object.values(ROUTES)).toContain(s.ctaRoute);
+    expect(Object.values(ROUTES)).toContain(routePath(s.ctaRoute));
     expect(`${s.title}${s.todoHint}${s.doneHint}${s.ctaLabel}`).not.toMatch(/[—–]/);
   }
 });

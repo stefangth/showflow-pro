@@ -45,6 +45,30 @@ export const TIMING_BOUNDS_ERROR =
 
 const BERLIN = "Hours are Berlin time.";
 
+/** The same fact for one hour. `BERLIN` is plural because `timingScopeNote` prints it over
+ *  the panel's three hour INPUTS, which is right there and wrong on a surface that has no
+ *  inputs and has just named a single clock time. See `berlinNoteFor`. */
+const BERLIN_ONE = "That hour is Berlin time.";
+
+/** Every clock time an already-composed sentence states. `hh` renders "HH:00", so this is
+ *  what the sentence itself put on screen, not a re-derivation of the flow branches. */
+const CLOCK_TIME = /\b\d{2}:\d{2}\b/g;
+
+/**
+ * The timezone line to append to a finished sentence, agreeing in number with the clock
+ * times that sentence states, or `null` when it states none.
+ *
+ * The `null` case is real rather than defensive: an immediate-delivery org with the
+ * confirmation digest off is told "offers email straight away. Artists get 48 hours to
+ * answer", where the only number is an elapsed duration. A timezone note there answers a
+ * question the sentence never raised.
+ */
+export function berlinNoteFor(line: string): string | null {
+  const count = line.match(CLOCK_TIME)?.length ?? 0;
+  if (count === 0) return null;
+  return count === 1 ? BERLIN_ONE : BERLIN;
+}
+
 /**
  * What the confirmation hour still does once the confirmation DIGEST is switched off, which
  * is the one clause on this panel that is easiest to get wrong.
@@ -195,4 +219,30 @@ export function describeTonight(times: FlowTimes, flow: TonightFlow | null | und
     ? `, and confirmations mail at ${hh(times.confirmationDigestHour)}.`
     : ".";
   return `${opening} Artists get ${window} to answer${tail}`;
+}
+
+/**
+ * The same sentence for a surface that does NOT print `timingScopeNote` above it.
+ *
+ * `describeTonight` states its clock times bare because the panel it was written for
+ * always carries the scope note, which is the single place the timezone is established.
+ * The setup rail prints the schedule in its own footer, where the collapsed timing row
+ * would otherwise keep it hidden until someone expands it, and there is no scope note
+ * there: bare "19:00" on that surface is a guess for anyone not sitting in Berlin.
+ *
+ * A wrapper rather than a flag on `describeTonight`, so the silence rules stay in one
+ * place: this speaks exactly when that sentence speaks, and appending a timezone to
+ * nothing is not a sentence.
+ *
+ * The note is chosen from the composed line (`berlinNoteFor`) rather than fixed, because
+ * three of the four speaking flows state exactly one hour and one states none at all.
+ */
+export function describeTonightStandalone(
+  times: FlowTimes,
+  flow: TonightFlow | null | undefined,
+): string | null {
+  const line = describeTonight(times, flow);
+  if (!line) return null;
+  const note = berlinNoteFor(line);
+  return note ? `${line} ${note}` : line;
 }

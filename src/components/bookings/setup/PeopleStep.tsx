@@ -1,5 +1,6 @@
 import { Link } from "react-router-dom";
 import { ROUTES } from "@/config/app.config";
+import { useAuth } from "@/features/auth/AuthContext";
 import { useCan } from "@/hooks/useCapabilities";
 import { Button } from "@/components/ui/button";
 
@@ -51,6 +52,11 @@ export function PeopleStep({
   // kept producer_can_invite). Promising it to a viewer whose card has no invite button
   // would send them looking for a control that is not there.
   const canInvite = useCan("invite_artists");
+  // Read as a ROLE, not as a capability: CAPABILITY_DEFS only ever grants a producer
+  // something an admin already has, so no `useCan` answer separates the two, and
+  // ROUTES.ADMIN is `requiredRoles={['admin']}` in App.tsx.
+  const { hasRole } = useAuth();
+  const isOrgAdmin = hasRole("admin");
   return (
     <div className="space-y-3">
       <p className="text-xs text-muted-foreground">
@@ -90,24 +96,47 @@ export function PeopleStep({
             : `The artists page lists ${inactiveCount} artists on this roster whose status is not active.`}
         </p>
       )}
-      {/* Scoped to the artist it is true for, and stated as a mechanism rather than as a
-          promise of mail. Two shipped states email an artist nothing at all (the "off"
-          preset, which every digest function skips, and a direct-book org with
-          confirmation_digest off), so "emails reach them" is not true under every flow. And
-          the address is not universal either: resolveContactEmail (identity.ts, ADR-0011)
+      {/* Scoped twice over: to the artist the claim is true for, and to routing rather than
+          to sending.
+
+          WHO: the address is not universal. resolveContactEmail (identity.ts, ADR-0011)
           returns the AUTH email first and falls back to the card, so a registered artist is
           reached at their login address, which create-invitation can set to something other
           than the card. The unregistered artist is where the claim holds, and that is the
           case being made: no account, so only the card address exists.
+
+          WHETHER: this is the one sentence on the panel that cannot branch on the org's flow,
+          so it must hold under every preset, and two shipped states email an artist nothing
+          at all (the "off" preset, which every digest function skips, and a direct-book org
+          with confirmation_digest off). "An artist with no account IS EMAILED at ..." reads
+          as a send. "Any email for an artist with no account GOES TO ..." is a routing rule:
+          true whether or not this org ever sends one.
+
           The subject is named ("add an artist") rather than left as "add one", which read
           as either the account or the artist. */}
       <p className="text-xs text-muted-foreground">
-        An artist with no account is emailed at the address on their card, so you can add an
-        artist before they ever sign in.{" "}
+        Any email for an artist with no account goes to the address on their card, so you can
+        add an artist before they ever sign in.{" "}
         {canInvite
           ? "You can send a login invite from the artist card whenever you like."
           : "An admin can send login invites later."}
       </p>
+      {/* The step is titled "Add your artists" and everything above is the roster, so an
+          admin who works this rail end to end is never told the rest of their team is a
+          thing to invite. They are two different objects: an artist is a catalog row (which
+          is why an account is optional, three lines up), while a producer or a fellow admin
+          is an org MEMBERSHIP, created from Admin, People and from nowhere else. One clause,
+          because this panel is not that surface; it just stops the roster from reading as
+          the whole answer to "invite my people".
+
+          Admin-gated, because ROUTES.ADMIN is admin-only: for a producer this would name a
+          page they get bounced off. */}
+      {isOrgAdmin && (
+        <p className="text-xs text-muted-foreground">
+          This roster is artists only. Producers and fellow admins are invited from{" "}
+          <Link to={ROUTES.ADMIN} className="text-primary underline">Admin, People</Link>.
+        </p>
+      )}
       {/* A real primary action, not a text link in a paragraph. Every host that composes
           the booking steps (DashboardPage, ShowsBookingsPage, HireOrdersPage) passes
           onStepAction, so the step's "Add artists" CTA opens this panel instead of

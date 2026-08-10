@@ -1,6 +1,7 @@
 import { describe, it, expect } from "vitest";
 import {
   describeTonight,
+  describeTonightStandalone,
   timingScopeNote,
   isValidWindowHours,
   isValidDigestHour,
@@ -166,6 +167,75 @@ describe("describeTonight", () => {
   });
 });
 
+// The rail footer prints this sentence where TimingStep's collapsed row would otherwise
+// keep it hidden, and that surface has no `timingScopeNote` above it to carry the
+// timezone. Composed here rather than at the call site so the two halves of the panel's
+// division of labour stay one decision.
+describe("describeTonightStandalone", () => {
+  it("is the same sentence with the timezone the missing scope note would have carried", () => {
+    expect(describeTonightStandalone(times, classic)).toBe(
+      `${describeTonight(times, classic)} Hours are Berlin time.`,
+    );
+  });
+
+  it("names the timezone under every flow that says anything at all", () => {
+    // The bare hours are the whole point of the sentence: printed on a surface with no
+    // scope note, "19:00" with no zone is a guess for any org not sitting in Berlin.
+    for (const flow of [classic, fasttrack, direct]) {
+      expect(describeTonightStandalone(times, flow)).toMatch(/Berlin/);
+    }
+  });
+
+  it("agrees in number with the clock times the sentence actually states", () => {
+    // The plural is inherited from `timingScopeNote`, where it is right because that note
+    // sits over three hour INPUTS. Here there are no inputs, only the times this one
+    // sentence just named, and three of the four speaking flows name exactly one:
+    // "Newly confirmed artists get the confirmation digest at 20:00. Hours are Berlin time."
+    // was the panel's vocabulary printed on a surface that does not have the panel's fields.
+    expect(describeTonightStandalone(times, classic)).toContain("Hours are Berlin time.");
+    for (const flow of [fasttrack, direct, { ...classic, confirmation_digest: false }]) {
+      const line = describeTonightStandalone(times, flow)!;
+      expect(line.match(/\d{2}:\d{2}/g)).toHaveLength(1);
+      expect(line).toContain("That hour is Berlin time.");
+      expect(line).not.toContain("Hours are");
+    }
+  });
+
+  it("adds no timezone to a sentence that states no clock time at all", () => {
+    // Immediate delivery with the confirmation digest off: the sentence is "offers email
+    // straight away" plus a window in elapsed hours, and there is no clock time on it to
+    // put a zone on. The window is a duration, not a Berlin hour, so a timezone line here
+    // would have been answering a question the sentence never raised.
+    const flow = { ...fasttrack, confirmation_digest: false };
+    const line = describeTonightStandalone(times, flow)!;
+    expect(line).toBe(describeTonight(times, flow));
+    expect(line).not.toMatch(/Berlin/);
+  });
+
+  it("falls silent exactly where describeTonight does, never on its own terms", () => {
+    // A wrapper that spoke in a case the sentence itself refuses (an unread flow, a paused
+    // org, a direct-book org with no confirmation digest, a mid-edit value the save guard
+    // would reject) would put a claim on the rail that the panel below it denies.
+    const cases: Array<[FlowTimes, typeof classic | null | undefined]> = [
+      [times, null],
+      [times, undefined],
+      [times, off],
+      [times, { ...direct, confirmation_digest: false }],
+      [{ ...times, windowHours: Number.NaN }, classic],
+    ];
+    for (const [t, flow] of cases) {
+      expect(describeTonight(t, flow)).toBeNull();
+      expect(describeTonightStandalone(t, flow)).toBeNull();
+    }
+  });
+
+  it("uses no em or en dashes", () => {
+    for (const flow of [classic, fasttrack, direct]) {
+      expect(describeTonightStandalone(times, flow)).not.toMatch(/[—–]/);
+    }
+  });
+});
+
 // The panel used to print one fixed line above the narrative ("An artist offered at the
 // digest hour has until that hour, window later"), which is only true of the classic
 // digest pipeline: it contradicts the narrative at a fast-track org and is the ONLY copy
@@ -207,6 +277,21 @@ describe("timingScopeNote", () => {
     // window and the offer hour are dead settings, while the confirmation hour still runs.
     // It names the live field but not its VALUE: this note takes no times (it renders
     // before the org's hours load), and describeTonight states the hour underneath it.
+    //
+    // "Change nothing" is a claim about these two FIELDS, and the exact-string assertion
+    // below is what keeps it from widening into one about sends, which would be false for
+    // an org that switched away from offers with a tier still open. Both halves were
+    // checked against every reader rather than assumed:
+    //  - `offer_response_window_hours` is read in exactly two places, open-offer-tier
+    //    (409s on !artist_acceptance, ~L106) and send-offer-digest (`continue`s on it,
+    //    ~L103); `offer_digest_hour_berlin` only in the latter. Neither value can act for
+    //    this org, so editing them here really is inert.
+    //  - offers ALREADY open are unaffected by editing them too. expire-offers never reads
+    //    either key: its expiry pass calls expire_soft_bookings(), which is gated on the
+    //    booking_flow ENTITLEMENT (migration 20260806151909) and acts on the
+    //    `offer_expires_at` stamped when each offer was created. So a live deadline cannot
+    //    move from this panel, and the sentence stays silent about those rows rather than
+    //    posing a puzzle to the many direct-book orgs that never ran a tier at all.
     const line = timingScopeNote(direct);
     expect(line).toBe(
       "Hours are Berlin time. You book artists directly, so the offer window and the offer digest hour change nothing. Only the confirmation hour is live.",

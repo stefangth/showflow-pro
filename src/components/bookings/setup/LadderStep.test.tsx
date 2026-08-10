@@ -73,6 +73,21 @@ describe("LadderStep", () => {
     expect(screen.getByText(/Some shows here use their own cast list/)).toBeInTheDocument();
   });
 
+  it("lands the edit link on the section its own label names", () => {
+    // The label says "Settings, Casts and cities" and used to point at bare /settings,
+    // which opens Organization for an admin and Scheduling for a producer: the one link on
+    // this panel that names its destination was the one that did not go there. Its sibling
+    // (the docs link below) has been honouring `?tab=` since deep-linking landed.
+    const coverage: LadderCoverageInputs = { futurePairs: [], showPriorities: [], cityPriorities: [] };
+    renderWithProviders(
+      <MemoryRouter><LadderStep coverage={coverage} orgId="org-1" /></MemoryRouter>,
+    );
+    expect(screen.getByRole("link", { name: /rank casts in settings, casts and cities/i })).toHaveAttribute(
+      "href",
+      `${ROUTES.SETTINGS}?tab=casts-cities`,
+    );
+  });
+
   it("offers the concept explanation next to the edit link, deep-linked to Documentation", () => {
     // "Tier", "cast" and "ladder" are all house vocabulary. The panel names them, so it
     // also has to say where they are explained. The label names the destination because

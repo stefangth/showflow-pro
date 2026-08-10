@@ -66,7 +66,10 @@ export function LadderStep({ coverage, orgId }: { coverage: LadderCoverageInputs
         })}
       </div>
       <div className="flex flex-wrap gap-x-4 gap-y-1">
-        <Link to={ROUTES.SETTINGS} className="text-xs text-primary underline">
+        {/* Deep-linked, because the label names the section: bare /settings opens
+            Organization for an admin and Scheduling for a producer, so the one link here
+            that promised a destination was the one that missed it. */}
+        <Link to={`${ROUTES.SETTINGS}?tab=casts-cities`} className="text-xs text-primary underline">
           Rank casts in Settings, Casts and cities
         </Link>
         {/* The panel talks in casts and tiers before anyone has been told what they are.
