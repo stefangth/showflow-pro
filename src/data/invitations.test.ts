@@ -108,6 +108,41 @@ describe("resendInvitation", () => {
     const fake = createFakeSupabase({ "fn:resend-invitation": { data: null, error: { message: "boom" } } });
     await expect(resendInvitation(fake as never, "inv-9")).rejects.toBeTruthy();
   });
+
+  it("surfaces the server's error sentence, not the opaque invoke message", async () => {
+    // supabase-js throws "Edge Function returned a non-2xx status code" and hides the body
+    // on error.context (see src/lib/edgeErrors.ts). The 422/502 sentences resend-invitation
+    // returns are written for the admin reading the toast, so they must survive the throw.
+    const serverError = Object.assign(new Error("Edge Function returned a non-2xx status code"), {
+      context: new Response(
+        JSON.stringify({ error: "That address has unsubscribed or previously bounced, so ShowFlow will not email it. Ask them to check spam, or invite a different address." }),
+        { status: 422 },
+      ),
+    });
+    const fake = createFakeSupabase({ "fn:resend-invitation": { data: null, error: serverError } });
+    await expect(resendInvitation(fake as never, "inv-9")).rejects.toThrow(
+      "That address has unsubscribed or previously bounced, so ShowFlow will not email it. Ask them to check spam, or invite a different address.",
+    );
+  });
+});
+
+describe("createInvitation error bodies", () => {
+  // Same contract as resendInvitation below-the-fold: create-invitation returns its
+  // refusals (duplicate pending invite, existing member, invalid role) as non-2xx JSON
+  // bodies whose sentences are written for the admin's toast, and supabase-js hides
+  // them behind the opaque invoke error. The husk must not be what the admin reads.
+  it("surfaces the server's error sentence, not the opaque invoke message", async () => {
+    const serverError = Object.assign(new Error("Edge Function returned a non-2xx status code"), {
+      context: new Response(
+        JSON.stringify({ error: "A pending invitation for this email already exists." }),
+        { status: 409 },
+      ),
+    });
+    const fake = createFakeSupabase({ "fn:create-invitation": { data: null, error: serverError } });
+    await expect(
+      createInvitation(fake as never, { orgId: "org-1", email: "a@example.com", role: "artist" }),
+    ).rejects.toThrow("A pending invitation for this email already exists.");
+  });
 });
 
 describe("createInvitation with artistId", () => {

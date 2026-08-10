@@ -87,10 +87,77 @@ it("composeArtist carries ARTIST_ONBOARDING metadata over booking_flow only", ()
 });
 
 it("composeArtist rules reflect ctx.artistAcceptance", () => {
-  const digest = composeArtist(artistStatus, ARTIST_ONBOARDING, { ...ctx, artistAcceptance: true } as OnboardingCtx);
-  expect(digest.rules.some((rule) => rule.title === "Offers arrive in a daily digest")).toBe(true);
+  const offers = composeArtist(artistStatus, ARTIST_ONBOARDING, { ...ctx, artistAcceptance: true } as OnboardingCtx);
+  // Titled by the channel, not by the batching: offer_delivery is per org, so an artist at
+  // a fast-track org gets the mail the moment a tier opens, not in a daily digest.
+  expect(offers.rules.some((rule) => rule.title === "Offers arrive by email")).toBe(true);
   const direct = composeArtist(artistStatus, ARTIST_ONBOARDING, { ...ctx, artistAcceptance: false } as OnboardingCtx);
   expect(direct.rules.some((rule) => rule.title === "You are booked directly")).toBe(true);
+  // A direct-book artist has no offer to answer, so the window rule is not theirs.
+  expect(direct.rules.some((rule) => rule.title === "You have a response window")).toBe(false);
+});
+
+it("never tells a direct-book artist that offers are on the way", () => {
+  // welcomeCopy is the headline card directly above the rules block, and that block already
+  // branches on the flow: a direct-book org (artist_acceptance false) never opens a tier,
+  // so ARTIST_ONBOARDING tells that artist "You are booked directly". The card used to
+  // announce "Offers arrive by email and land on this page" over the top of it, which made
+  // the one surface contradict itself.
+  const direct = { ...ctx, artistAcceptance: false } as OnboardingCtx;
+  for (const complete of [true, false]) {
+    const w = welcomeCopy("artist", complete, direct, { filled: 1, total: 2 });
+    expect(`${w.headline} ${w.body}`).not.toMatch(/\boffers?\b/i);
+    expect(w.body.length).toBeGreaterThan(0);
+    expect(`${w.headline}${w.body}`).not.toMatch(/[—–]/);
+  }
+  // An org that does run offers keeps the offer narrative.
+  expect(welcomeCopy("artist", false, ctx, { filled: 1, total: 2 }).body).toMatch(/^Offers arrive by email/);
+  expect(welcomeCopy("artist", true, ctx, { filled: 2, total: 2 }).headline).toMatch(/offers/i);
+});
+
+it("labels the artist's rules block without naming a pipeline the org may not run", () => {
+  // railHeaderCopy and collapsedCopy take no ctx, so their artist labels render unchanged at
+  // a direct-book org. "How offers work here" is itself a claim that offers exist, and it
+  // sat directly on top of a rules list saying they do not. These labels carry no flow.
+  expect(railHeaderCopy("artist", true).eyebrow).toBe("How booking works here");
+  expect(railHeaderCopy("artist", true).body).not.toMatch(/\boffers?\b/i);
+  expect(railHeaderCopy("artist", false).title).not.toMatch(/\boffers?\b/i);
+  expect(railHeaderCopy("artist", false).body).not.toMatch(/\boffers?\b/i);
+  expect(collapsedCopy("artist", true, 0).cta).toBe("How booking works here");
+  expect(collapsedCopy("artist", true, 0).hint).not.toMatch(/\boffers?\b/i);
+  // The producer/admin labels are untouched: their rails cover the whole org, not a pipeline.
+  expect(railHeaderCopy("admin", true).eyebrow).toBe("How this org works");
+});
+
+it("never names an offer in a rail header, at any role or grant", () => {
+  // railHeaderCopy takes no ctx, so every string it returns is printed unchanged at a
+  // direct-book org. The artist branch was already swept for this; the admin and producer
+  // bodies still said "Some of these block the first offer" while sitting directly above
+  // step rows the engine chips "Blocks booking" for exactly that org (blockFor in
+  // src/lib/bookings/setupStatus.ts). Same false pipeline, louder position.
+  for (const role of ["admin", "producer", "artist"] as const) {
+    for (const complete of [true, false]) {
+      for (const canEditSetup of [true, false]) {
+        const r = railHeaderCopy(role, complete, canEditSetup);
+        expect(`${r.eyebrow} ${r.title} ${r.body}`).not.toMatch(/\boffers?\b/i);
+      }
+    }
+  }
+});
+
+it("never tells a direct-book producer that offers will appear here", () => {
+  // Same defect one card up. welcomeCopy DOES take ctx, and its artist branch already reads
+  // ctx.artistAcceptance, so the producer body branches rather than going flow-neutral: an
+  // org that runs offers keeps the fuller narrative.
+  const direct = { ...ctx, artistAcceptance: false } as OnboardingCtx;
+  for (const complete of [true, false]) {
+    const w = welcomeCopy("producer", complete, direct, { filled: 1, total: 4 });
+    expect(`${w.headline} ${w.body}`).not.toMatch(/\boffers?\b/i);
+    expect(w.body.length).toBeGreaterThan(0);
+    expect(`${w.headline}${w.body}`).not.toMatch(/[—–]/);
+  }
+  // An org that does run offers still gets told about them.
+  expect(welcomeCopy("producer", false, ctx, { filled: 1, total: 4 }).body).toMatch(/offers/i);
 });
 
 it("welcomeCopy interpolates org name and progress", () => {
@@ -99,6 +166,21 @@ it("welcomeCopy interpolates org name and progress", () => {
   expect(w.progressTotal).toBe(4);
   expect(w.progressFilled).toBe(1);
   expect(w.body).not.toMatch(/[—–]/); // no em/en dashes
+});
+
+// welcomeCopy has no org-maturity input: `complete` only says setup steps are
+// outstanding, which is just as true for the SECOND admin joining an org already
+// holding shows, dates, and artists (verified live: 6 shows / 75 dates / 25 artists
+// rendered under this very card). Copy on this branch must therefore claim nothing
+// about being first and nothing about the database being empty.
+it("incomplete-admin welcome claims neither firstness nor an empty database", () => {
+  const w = welcomeCopy("admin", false, ctx, { filled: 1, total: 4 });
+  expect(`${w.headline} ${w.body}`).not.toMatch(/first admin/i);
+  expect(`${w.headline} ${w.body}`).not.toMatch(/database is empty|empty/i);
+  expect(w.headline).toBe("Finish setting up Halle Kollektiv");
+  expect(w.body).toBe(
+    "A few decisions still shape how this workspace runs. Walk the remaining steps, because every number on this page follows them.",
+  );
 });
 
 // ---- Table-driven coverage over the full role x complete matrix for the three
@@ -111,7 +193,7 @@ const WELCOME_ROWS: { role: DashboardRole; complete: boolean; primaryLabel: stri
   { role: "admin", complete: false, primaryLabel: "Start setup", orgInHeadline: true },
   { role: "producer", complete: true, primaryLabel: "How this org works", orgInHeadline: true },
   { role: "producer", complete: false, primaryLabel: "See what is outstanding", orgInHeadline: true },
-  { role: "artist", complete: true, primaryLabel: "How offers work here", orgInHeadline: false },
+  { role: "artist", complete: true, primaryLabel: "How booking works here", orgInHeadline: false },
   { role: "artist", complete: false, primaryLabel: "Start setup", orgInHeadline: true },
 ];
 
@@ -130,8 +212,8 @@ const RAIL_ROWS: { role: DashboardRole; complete: boolean; eyebrow: string; titl
   { role: "admin", complete: false, eyebrow: "Set up", title: "Get the workspace running" },
   { role: "producer", complete: true, eyebrow: "How this org works", title: "The rules you inherited" },
   { role: "producer", complete: false, eyebrow: "Org setup", title: "What is still outstanding" },
-  { role: "artist", complete: true, eyebrow: "How offers work here", title: "The rules you inherited" },
-  { role: "artist", complete: false, eyebrow: "Set up", title: "Before your first offer" },
+  { role: "artist", complete: true, eyebrow: "How booking works here", title: "The rules you inherited" },
+  { role: "artist", complete: false, eyebrow: "Set up", title: "Before your first booking" },
 ];
 
 it("railHeaderCopy covers every role x complete branch", () => {
@@ -170,7 +252,7 @@ const COLLAPSED_ROWS: { role: DashboardRole; complete: boolean; remaining: numbe
   { role: "producer", complete: true, remaining: 0, label: "Set up · done", cta: "How this org works" },
   { role: "producer", complete: false, remaining: 1, label: "Org setup in progress", cta: "See what is outstanding", hint: "1 step left" },
   { role: "producer", complete: false, remaining: 2, label: "Org setup in progress", cta: "See what is outstanding", hint: "2 steps left" },
-  { role: "artist", complete: true, remaining: 0, label: "Set up · done", cta: "How offers work here" },
+  { role: "artist", complete: true, remaining: 0, label: "Set up · done", cta: "How booking works here" },
   { role: "artist", complete: false, remaining: 1, label: "Set up in progress", cta: "Resume", hint: "1 step left" },
   { role: "artist", complete: false, remaining: 2, label: "Set up in progress", cta: "Resume", hint: "2 steps left" },
 ];

@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { screen, fireEvent, waitFor } from "@testing-library/react";
-import { MemoryRouter } from "react-router-dom";
+import { Link, MemoryRouter } from "react-router-dom";
 import { renderWithProviders } from "@/test/renderWithProviders";
 import { createFakeSupabase } from "@/test/supabaseFake";
 
@@ -42,7 +42,13 @@ vi.mock("@/hooks/useCapabilities", async (orig) => ({
 
 import { useAuth } from "@/features/auth/AuthContext";
 import { useCan } from "@/hooks/useCapabilities";
+import { SETTINGS_TAB_PARAMS } from "@/lib/settingsTabs";
 import SettingsPage from "./SettingsPage";
+
+// Every render wraps in a MemoryRouter: the page reads `?tab=` through useSearchParams and
+// several tabs render react-router <Link>s (ShowSlotsEditor on "scheduling", the Artists
+// link in CastsCitiesTab), neither of which works without Router context. In the app the
+// page is always mounted inside a <Route>, so this matches production.
 
 const DEFAULT_AUTH = {
   hasRole: () => true,
@@ -68,7 +74,7 @@ describe("SettingsPage Booking flow tab Save affordance", () => {
   // page-level header Save button (and the "unsaved changes" banner) stayed visible too,
   // so the same draft showed two Save affordances at once while that tab was active.
   it("hides the page-level Save while the booking tab holds only booking-key dirt", async () => {
-    renderWithProviders(<SettingsPage />);
+    renderWithProviders(<MemoryRouter><SettingsPage /></MemoryRouter>);
     // Radix TabsTrigger activates on mousedown (not click) — see @radix-ui/react-tabs.
     fireEvent.mouseDown(await screen.findByRole("tab", { name: /booking flow/i }));
     fireEvent.click(await screen.findByRole("button", { name: /direct book/i }));
@@ -79,7 +85,7 @@ describe("SettingsPage Booking flow tab Save affordance", () => {
   });
 
   it("keeps the page-level Save when the dirt is on another tab", async () => {
-    renderWithProviders(<SettingsPage />);
+    renderWithProviders(<MemoryRouter><SettingsPage /></MemoryRouter>);
     fireEvent.mouseDown(await screen.findByRole("tab", { name: /^notifications$/i }));
     fireEvent.click(await screen.findByRole("switch"));
 
@@ -100,7 +106,7 @@ describe("SettingsPage Booking flow tab, locked (booking_flow not entitled)", ()
   // booking_flow module is locked. Its dirty key used to hide the page-level Save even though
   // FlowRail hides its own Save/Discard while locked, leaving the edit with no save control.
   it("keeps the page-level Save visible, with no rail dirty banner, when editing the from-address while locked", async () => {
-    renderWithProviders(<SettingsPage />);
+    renderWithProviders(<MemoryRouter><SettingsPage /></MemoryRouter>);
     fireEvent.mouseDown(await screen.findByRole("tab", { name: /booking flow/i }));
     await waitFor(() => expect(screen.getByText("Booking flow is not enabled")).toBeInTheDocument());
 
@@ -121,7 +127,7 @@ describe("SettingsPage Booking flow tab, locked (booking_flow not entitled)", ()
   // page-level Save (unchanged from before this fix) — the rail's own Save/Discard covers it.
   it("still hides the page-level Save for an entitled org editing a flow field", async () => {
     vi.mocked(useAuth).mockReturnValue(DEFAULT_AUTH as never);
-    renderWithProviders(<SettingsPage />);
+    renderWithProviders(<MemoryRouter><SettingsPage /></MemoryRouter>);
     fireEvent.mouseDown(await screen.findByRole("tab", { name: /booking flow/i }));
     fireEvent.click(await screen.findByRole("button", { name: /direct book/i }));
 
@@ -131,10 +137,6 @@ describe("SettingsPage Booking flow tab, locked (booking_flow not entitled)", ()
 });
 
 describe("SettingsPage grouped vertical nav", () => {
-  // Both tests below land on (or switch to) a tab whose content renders a react-router
-  // <Link> (ShowSlotsEditor on "scheduling", the Artists-page link in CastsCitiesTab on
-  // "casts-cities") — renderWithProviders alone has no Router context, so wrap in a
-  // MemoryRouter here (same pattern as HireOrderDetailPage.test.tsx / FeatureDisabledScreen.test.tsx).
   it("renders group headings and switches content", async () => {
     vi.mocked(useAuth).mockReturnValue(DEFAULT_AUTH as never);
     renderWithProviders(<MemoryRouter><SettingsPage /></MemoryRouter>);
@@ -178,6 +180,125 @@ describe("SettingsPage grouped vertical nav", () => {
     fireEvent.mouseDown(await screen.findByRole("tab", { name: /email templates/i }));
     expect(await screen.findByText("Booking engine")).toBeInTheDocument();
     expect(screen.getByText("Password reset")).toBeInTheDocument();
+  });
+});
+
+describe("SettingsPage ?tab= deep link", () => {
+  it("opens the tab named in the query string", async () => {
+    vi.mocked(useAuth).mockReturnValue(DEFAULT_AUTH as never);
+    renderWithProviders(
+      <MemoryRouter initialEntries={["/settings?tab=airtable"]}><SettingsPage /></MemoryRouter>,
+    );
+    expect(await screen.findByRole("tab", { name: /airtable sync/i })).toHaveAttribute("aria-selected", "true");
+  });
+
+  it("lands on the admin default when no tab is named", async () => {
+    vi.mocked(useAuth).mockReturnValue(DEFAULT_AUTH as never);
+    renderWithProviders(<MemoryRouter initialEntries={["/settings"]}><SettingsPage /></MemoryRouter>);
+    expect(await screen.findByRole("tab", { name: /^organization$/i })).toHaveAttribute("aria-selected", "true");
+  });
+
+  it("ignores an admin-only tab asked for by a producer", async () => {
+    vi.mocked(useAuth).mockReturnValue({ ...DEFAULT_AUTH, hasRole: (r: string) => r === "producer" } as never);
+    renderWithProviders(
+      <MemoryRouter initialEntries={["/settings?tab=permissions"]}><SettingsPage /></MemoryRouter>,
+    );
+    expect(await screen.findByRole("tab", { name: /scheduling/i })).toHaveAttribute("aria-selected", "true");
+  });
+
+  // The registry in settingsTabs.ts is a list of strings; only the page knows whether each
+  // one still names a section it renders. Renaming a TabsTrigger value (or dropping a
+  // section) would leave Tabs holding a value with no trigger and no content: the deep link
+  // would open a blank page and no pure test could see it.
+  it.each([...SETTINGS_TAB_PARAMS])("selects a real section for ?tab=%s", async (tab) => {
+    vi.mocked(useAuth).mockReturnValue(DEFAULT_AUTH as never);
+    renderWithProviders(
+      <MemoryRouter initialEntries={[`/settings?tab=${tab}`]}><SettingsPage /></MemoryRouter>,
+    );
+    const triggers = await screen.findAllByRole("tab");
+    expect(triggers.filter((t) => t.getAttribute("aria-selected") === "true")).toHaveLength(1);
+  });
+
+  // The ADMIN_ONLY list in settingsTabs.ts is a literal, while the real gate is the per-item
+  // `show` predicate in this page's navGroups. Nothing ties them together: move any listed
+  // tab behind `isAdmin` (as "permissions" already is) without adding it to ADMIN_ONLY and
+  // resolveInitialTab would hand a producer a value with no trigger and no content, leaving
+  // the deep link on a blank page. Running the same sweep as a producer is what pins them.
+  it.each([...SETTINGS_TAB_PARAMS])("selects a real section for a producer at ?tab=%s", async (tab) => {
+    vi.mocked(useAuth).mockReturnValue({ ...DEFAULT_AUTH, hasRole: (r: string) => r === "producer" } as never);
+    renderWithProviders(
+      <MemoryRouter initialEntries={[`/settings?tab=${tab}`]}><SettingsPage /></MemoryRouter>,
+    );
+    const triggers = await screen.findAllByRole("tab");
+    expect(triggers.filter((t) => t.getAttribute("aria-selected") === "true")).toHaveLength(1);
+  });
+
+  it("leaves the entitlement-gated hire-orders tab out of deep linking, from the page's side too", async () => {
+    // An org without the hire_orders entitlement renders no such trigger, so honouring the
+    // param would strand it on an empty pane. The page lands on the admin default instead.
+    vi.mocked(useAuth).mockReturnValue(DEFAULT_AUTH as never);
+    renderWithProviders(
+      <MemoryRouter initialEntries={["/settings?tab=hire-orders"]}><SettingsPage /></MemoryRouter>,
+    );
+    expect(await screen.findByRole("tab", { name: /^organization$/i })).toHaveAttribute("aria-selected", "true");
+  });
+
+  it("still lets the user switch tabs after arriving through a deep link", async () => {
+    // The param seeds the tab; it must not pin the page there. This is also the guard on
+    // the re-seed effect below: an effect that fired on every render (rather than on a
+    // change of the param) would snap the page straight back to "airtable" here.
+    vi.mocked(useAuth).mockReturnValue(DEFAULT_AUTH as never);
+    renderWithProviders(
+      <MemoryRouter initialEntries={["/settings?tab=airtable"]}><SettingsPage /></MemoryRouter>,
+    );
+    fireEvent.mouseDown(await screen.findByRole("tab", { name: /casts & cities/i }));
+    expect(await screen.findByRole("tab", { name: /casts & cities/i })).toHaveAttribute("aria-selected", "true");
+  });
+
+  it("opens the named tab when a deep link arrives while the page is already open", async () => {
+    // Seeding from a lazy useState initializer alone runs once per MOUNT. Every deep link
+    // on this branch (LadderStep, EligibilityStep) is rendered off Settings, so it always
+    // remounts the page and the gap was invisible. A notification deep-link clicked while
+    // the user is already sitting on Settings changes the URL and nothing else: the page
+    // has to follow the param, not just the mount.
+    vi.mocked(useAuth).mockReturnValue(DEFAULT_AUTH as never);
+    renderWithProviders(
+      <MemoryRouter initialEntries={["/settings?tab=airtable"]}>
+        <Link to="/settings?tab=docs">deep link</Link>
+        <SettingsPage />
+      </MemoryRouter>,
+    );
+    expect(await screen.findByRole("tab", { name: /airtable sync/i })).toHaveAttribute("aria-selected", "true");
+    // Switch by hand in between, so this proves the effect follows the param rather than
+    // simply re-running on any state change.
+    fireEvent.mouseDown(screen.getByRole("tab", { name: /casts & cities/i }));
+    expect(await screen.findByRole("tab", { name: /casts & cities/i })).toHaveAttribute("aria-selected", "true");
+
+    fireEvent.click(screen.getByRole("link", { name: /deep link/i }));
+    expect(await screen.findByRole("tab", { name: /documentation/i })).toHaveAttribute("aria-selected", "true");
+  });
+
+  it("follows a repeat deep link to the tab the user has since navigated away from", async () => {
+    // Keying the re-seed on the param VALUE alone makes the second click on the same link a
+    // dead click: the URL is already `?tab=airtable`, so the param does not change, the
+    // effect does not re-run, and the page sits wherever the user last switched to by hand.
+    // Reachable from any Settings-to-Settings link (the sync-held notification is the one
+    // this branch ships); the cross-page ones remount the page and hid the gap. The effect
+    // keys on the navigation itself, so each click is honoured.
+    vi.mocked(useAuth).mockReturnValue(DEFAULT_AUTH as never);
+    renderWithProviders(
+      <MemoryRouter initialEntries={["/settings?tab=airtable"]}>
+        <Link to="/settings?tab=airtable">sync report</Link>
+        <SettingsPage />
+      </MemoryRouter>,
+    );
+    expect(await screen.findByRole("tab", { name: /airtable sync/i })).toHaveAttribute("aria-selected", "true");
+
+    fireEvent.mouseDown(screen.getByRole("tab", { name: /casts & cities/i }));
+    expect(await screen.findByRole("tab", { name: /casts & cities/i })).toHaveAttribute("aria-selected", "true");
+
+    fireEvent.click(screen.getByRole("link", { name: /sync report/i }));
+    expect(await screen.findByRole("tab", { name: /airtable sync/i })).toHaveAttribute("aria-selected", "true");
   });
 });
 

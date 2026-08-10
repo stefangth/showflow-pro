@@ -255,7 +255,7 @@ export function AirtableSyncTab({ orgId, readOnly = false, canTriggerSync = true
     },
     onError: (_e, _patch, ctx) => {
       if (ctx?.prev) qc.setQueryData(SETTINGS_KEY, ctx.prev);
-      toast.error("Couldn't save Airtable settings — your last change wasn't stored.");
+      toast.error("Couldn't save Airtable settings. Your last change wasn't stored.");
       // Reconcile against the DB only when we rolled back: an overlapping save may have
       // snapshotted (then reverted) a different key's successful write. A clean success
       // needs no refetch — its optimistic cache already matches the DB.
@@ -270,9 +270,9 @@ export function AirtableSyncTab({ orgId, readOnly = false, canTriggerSync = true
     mutationFn: () => triggerAirtableSyncNow(supabase, orgId!),
     onSuccess: (res: SyncNowResult) => {
       if (res.orgs_synced > 0 && res.result) {
-        toast.success(`Synced — ${res.result.new_dates} new, ${res.result.updated} updated`);
+        toast.success(`Synced: ${res.result.new_dates} new, ${res.result.updated} updated`);
       } else {
-        toast.warning("Sync didn't run — check your Airtable configuration below");
+        toast.warning("Sync didn't run. Check your Airtable configuration below");
       }
       qc.invalidateQueries({ queryKey: ["airtable", "sync-log", orgId] });
       // Prefix match: the unresolved query is keyed by the sync-log id, not orgId.
@@ -474,7 +474,7 @@ export function AirtableSyncTab({ orgId, readOnly = false, canTriggerSync = true
       const rows = planProgramImport([pair], showsQ.data ?? []);
       // Empty plan = the option is already covered by an existing/legacy catalog show; creating
       // nothing must not report success. (A legacy sub-only-keyed show auto-links on the next sync.)
-      if (rows.length === 0) throw new Error("Already matches a catalog show — it will link on the next sync.");
+      if (rows.length === 0) throw new Error("Already matches a catalog show. It will link on the next sync.");
       await importShowsFromOptions(supabase, orgId!, rows);
     },
     onSuccess: () => { qc.invalidateQueries({ queryKey: ["shows"] }); toast.success("Show created and linked"); },
@@ -668,7 +668,7 @@ export function AirtableSyncTab({ orgId, readOnly = false, canTriggerSync = true
               <p className="text-xs text-muted-foreground text-right">
                 {(() => {
                   const last = syncLogQ.data?.synced_at ?? null;
-                  if (!last) return "Not synced yet — runs on the next cycle.";
+                  if (!last) return "Not synced yet. Runs on the next cycle.";
                   const next = nextSyncAt(last, s.airtable_poll_interval_minutes);
                   const lastStr = new Date(last).toLocaleString();
                   const nextStr = next ? next.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) : "—";
@@ -680,7 +680,7 @@ export function AirtableSyncTab({ orgId, readOnly = false, canTriggerSync = true
 
           {!!s.airtable_sync_enabled && !keyStatusQ.isLoading && !keyPresent && (
             <Alert variant="destructive">
-              <AlertDescription>Sync is on but no API key is saved — the poll can't run until you add a key below.</AlertDescription>
+              <AlertDescription>Sync is on but no API key is saved. The poll can't run until you add a key below.</AlertDescription>
             </Alert>
           )}
 
@@ -820,7 +820,7 @@ export function AirtableSyncTab({ orgId, readOnly = false, canTriggerSync = true
               <AutosaveStatus state={saveState} />
             </div>
             <CardDescription>
-              Map each ShowFlow field to a column in <strong>{selectedTable.name}</strong>. Catalog links are keyed on the <strong>Sub-program</strong> option — map the Sub-program field to enable linking below.
+              Map each ShowFlow field to a column in <strong>{selectedTable.name}</strong>. Catalog links are keyed on the <strong>Sub-program</strong> option: map the Sub-program field to enable linking below.
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
@@ -883,7 +883,7 @@ export function AirtableSyncTab({ orgId, readOnly = false, canTriggerSync = true
           <CardHeader>
             <CardTitle className="font-display">Custom fields</CardTitle>
             <CardDescription>
-              Capture extra Airtable fields as typed columns on show dates — shown, filtered, and sorted in the producer Shows &amp; Bookings table (toggle them on via the column editor). These are display metadata only; they never affect bookings, slots, or offers.
+              Capture extra Airtable fields as typed columns on show dates: shown, filtered, and sorted in the producer Shows &amp; Bookings table (toggle them on via the column editor). These are display metadata only; they never affect bookings, slots, or offers.
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
@@ -919,7 +919,7 @@ export function AirtableSyncTab({ orgId, readOnly = false, canTriggerSync = true
                   if (!af) return;
                   const key = slugifyKey(af.name);
                   if (customDefs.some((d) => d.key === key)) {
-                    toast.error(`A custom field with key "${key}" already exists — rename or remove it first.`);
+                    toast.error(`A custom field with key "${key}" already exists. Rename or remove it first.`);
                     return;
                   }
                   addCustom.mutate({ name: af.name, type: af.type, options: af.options });
@@ -943,7 +943,7 @@ export function AirtableSyncTab({ orgId, readOnly = false, canTriggerSync = true
           <CardHeader>
             <CardTitle className="font-display">4 · Catalog links</CardTitle>
             <CardDescription>
-              Link each Airtable option to a ShowFlow show/city, or create one inline. The sync resolves records against these links; anything unlinked is held, never dropped. New shows start with no slot config — set counts in the Shows tab.
+              Link each Airtable option to a ShowFlow show/city, or create one inline. The sync resolves records against these links; anything unlinked is held, never dropped. New shows start with no slot config. Set counts in the Shows tab.
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-8">
@@ -1000,7 +1000,7 @@ export function AirtableSyncTab({ orgId, readOnly = false, canTriggerSync = true
         <Card>
           <CardHeader>
             <CardTitle className="font-display">Duplicate cities</CardTitle>
-            <CardDescription>Cities whose names match (ignoring case/spacing). Pick the one to keep and merge — its bookings, eligibility, and producer routing are preserved; the others are removed.</CardDescription>
+            <CardDescription>Cities whose names match (ignoring case/spacing). Pick the one to keep and merge: its bookings, eligibility, and producer routing are preserved; the others are removed.</CardDescription>
           </CardHeader>
           <CardContent className="space-y-6">
             {dupeGroups.map((g) => {
@@ -1035,7 +1035,7 @@ export function AirtableSyncTab({ orgId, readOnly = false, canTriggerSync = true
                     </AlertDialog>
                   </div>
                   <ul className="text-xs text-muted-foreground">
-                    {g.cities.map((c) => <li key={c.id}>{c.name}{c.id === survivor ? " — kept" : " — removed"}</li>)}
+                    {g.cities.map((c) => <li key={c.id}>{c.name}{c.id === survivor ? " · kept" : " · removed"}</li>)}
                   </ul>
                 </div>
               );
@@ -1048,7 +1048,11 @@ export function AirtableSyncTab({ orgId, readOnly = false, canTriggerSync = true
       <Card>
         <CardHeader>
           <CardTitle className="font-display">Last sync report</CardTitle>
-          <CardDescription>The most recent Airtable poll. Held records were not matched to a linked program — link the option above and they import on the next run. Errored records hit a write error and are worth investigating.</CardDescription>
+          {/* Cause-neutral, mirroring the airtable-sync-held email whose CTA lands here:
+              held has more than one cause (a blank date cell as well as an unlinked
+              program), so this must not assert the mapping-only one. The record rows
+              below carry each held record's actual reason. */}
+          <CardDescription>The most recent Airtable poll. Held records could not be brought into ShowFlow: the rows below say which ones and why. Fix the cause and they import on the next run. Errored records hit a write error and are worth investigating.</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           {!syncLogQ.data ? (

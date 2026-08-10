@@ -3,6 +3,17 @@ import type { EmailFamily } from "./emailTheme";
 
 export type EmailTemplateCoverageStatus = "editable" | "external" | "internal";
 export type EmailTemplateCoverageCategory = NotificationCategory | "critical" | "internal";
+/**
+ * Who sees the row in Settings -> Email templates when `status` is "internal"
+ * (a status of "editable"/"external" is always visible to everyone; this field
+ * is only read for "internal" rows). "platform" (the default when the field is
+ * omitted) keeps the row hidden from org admins, e.g. cron-health-alert and
+ * magic-link, which are platform-only or not meant to surface per-org customization
+ * hooks. "org" keeps a row that can't be copy-edited still visible to the org
+ * admins it's actually about, e.g. airtable-sync-held: they can't reword it, but
+ * they need to know it exists.
+ */
+export type EmailTemplateAudience = "org" | "platform";
 
 export interface EmailTemplateCoverage {
   key: string;
@@ -12,6 +23,7 @@ export interface EmailTemplateCoverage {
   trigger: string;
   recipient: string;
   status: EmailTemplateCoverageStatus;
+  audience?: EmailTemplateAudience;
   category: EmailTemplateCoverageCategory;
 }
 
@@ -139,5 +151,16 @@ export const EMAIL_TEMPLATE_COVERAGE: readonly EmailTemplateCoverage[] = [
     recipient: "Super-admins",
     status: "internal",
     category: "internal",
+  },
+  {
+    key: "airtable-sync-held",
+    displayName: "Airtable sync held",
+    group: "System",
+    family: "violet",
+    trigger: "A record is newly held, or a sync stops importing (airtable-poll)",
+    recipient: "Org admins",
+    status: "internal", // rendered from defaults, not per-org editable (like cron-health-alert)
+    audience: "org", // unlike cron-health-alert/magic-link, org admins ARE the audience: stays visible to them
+    category: "internal", // operational status alert, not preference-gated (like cron-health-alert)
   },
 ];

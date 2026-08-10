@@ -45,7 +45,7 @@ function frState(overrides: Record<string, unknown> = {}) {
     show: true, complete: false, dismissed: false,
     steps: [], rules: [], offFooters: [],
     sample: { stats: [{ title: "Live dates", value: "34", label: "upcoming" }], queue: [], week: [] },
-    welcome: { eyebrow: "Welcome", headline: "You are the first admin at Halle Kollektiv", body: "b", primaryLabel: "Start setup", secondaryLabel: "Later", progressLabel: "Set up · 0 of 4", progressFilled: 0, progressTotal: 4, progressHint: "About 15 minutes" },
+    welcome: { eyebrow: "Welcome", headline: "Finish setting up Halle Kollektiv", body: "b", primaryLabel: "Start setup", secondaryLabel: "Later", progressLabel: "Set up · 0 of 4", progressFilled: 0, progressTotal: 4, progressHint: "About 15 minutes" },
     sectionTitle: "What this page becomes", sectionHint: "Sample rows.",
     railEyebrow: "Set up", railTitle: "Get running", railBody: "b",
     collapsedLabel: "Set up in progress", collapsedHint: "4 steps left", collapsedCta: "Resume",
@@ -82,7 +82,7 @@ beforeEach(() => {
 describe("DashboardPage first-run layer", () => {
   it("renders the welcome panel above the producer dashboard", async () => {
     renderWithProviders(<MemoryRouter><DashboardPage /></MemoryRouter>);
-    expect(await screen.findByText(/first admin at Halle Kollektiv/)).toBeInTheDocument();
+    expect(await screen.findByText(/Finish setting up Halle Kollektiv/)).toBeInTheDocument();
   });
 
   it("shows the greyed Sample (not the live body) when setup is incomplete and the org has no dates", async () => {

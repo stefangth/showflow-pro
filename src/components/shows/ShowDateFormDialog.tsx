@@ -9,15 +9,17 @@ import { useAuth } from "@/features/auth/AuthContext";
 import { useShows } from "@/hooks/useShows";
 import { useCities } from "@/hooks/useCities";
 import { useCreateShowDate, useUpdateShowDate } from "@/hooks/useShowDates";
-import { useBookingFlow } from "@/hooks/useBookingFlow";
+import { useBookingFlow, useFlowTimes } from "@/hooks/useBookingFlow";
+import { useEntitlements } from "@/hooks/useEntitlements";
 import { openOfferTier, fetchOpenedTiers } from "@/data/bookings";
 import { fetchShowDatesForShow } from "@/data/showDates";
 import { isSyncedDate, findDuplicateDate } from "@/lib/catalog";
 import { shouldAutoOpenTier1 } from "@/lib/bookings";
 import { showSlots } from "@/lib/settings";
+import { scheduleChangeNote } from "@/lib/notifications/scheduleChangeCopy";
 import { showIdentityLabel } from "@/types";
 import { toDateKey, parseDateOnly, formatDateDMY } from "@/lib/dates";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -61,6 +63,21 @@ export function ShowDateFormDialog({
   const { data: shows } = useShows();
   const { data: cities } = useCities();
   const { data: flow } = useBookingFlow();
+  const { data: flowTimes } = useFlowTimes(currentOrg?.id ?? null);
+  // This note makes a factual claim about what the server-side digest pipeline will do for
+  // THIS org (send-confirmation-digest only ever iterates entitled orgs, filterEntitledOrgs
+  // in _shared/settings.ts), not a permission check on whether the current user may use a
+  // gated surface. useModuleGate is the right hook for the latter, but its super-admin
+  // exemption (matching ModuleGate/ProtectedRoute's god-mode convention) would make a
+  // non-impersonating super-admin editing a date in a genuinely unentitled org see this note
+  // assert a pipeline that will not actually run for that org: useModuleGate.allow is true
+  // for them regardless of the org's real row. Reading useEntitlements().features directly
+  // has no such exemption, so the claim always reflects the org's actual entitlement. isLoading
+  // still fails closed (no note while unresolved) for the same reason useModuleGate's `pending`
+  // did: a plausible but wrong claim is worse than a brief silence.
+  const { features: entitledFeatures, isLoading: entitlementsLoading } = useEntitlements();
+  const bookingFlowEnabled = entitledFeatures.has("booking_flow");
+  const bookingFlowPending = entitlementsLoading;
   const create = useCreateShowDate();
   const update = useUpdateShowDate();
   const synced = mode === "edit" && !!showDate && isSyncedDate(showDate);
@@ -173,6 +190,17 @@ export function ShowDateFormDialog({
   const pending = create.isPending || update.isPending;
   const err = form.formState.errors;
   const selectedDate = dateStr ? parseDateOnly(dateStr) : undefined;
+  // Synced dates disable the session inputs below (Airtable owns them), so a note about
+  // the consequence of changing one here would not be true for this dialog. Also withheld
+  // until useFlowTimes actually resolves: falling back to the platform default hour while
+  // it loads used to state a plausible but wrong hour for any org configured to a
+  // different one. A brief silence is honest; a stale hour is not. Same reasoning for
+  // bookingFlowPending: scheduleChangeNote already treats a false entitlement as "no
+  // note", but gating here too keeps the condition self-documenting and symmetric with the
+  // flowTimes check right next to it.
+  const changeNote = mode === "edit" && !synced && flowTimes !== undefined && !bookingFlowPending
+    ? scheduleChangeNote(bookingFlowEnabled, flow, flowTimes.confirmationDigestHour)
+    : null;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -182,6 +210,7 @@ export function ShowDateFormDialog({
             {mode === "edit" ? "Edit date" : "New date"}
             {synced && <Badge variant="secondary" className="bg-muted text-muted-foreground">Synced from Airtable</Badge>}
           </DialogTitle>
+          {changeNote && <DialogDescription className="text-xs">{changeNote}</DialogDescription>}
         </DialogHeader>
         <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
           <div className="space-y-1.5">
@@ -208,6 +237,13 @@ export function ShowDateFormDialog({
                   onSelect={(d) => d && form.setValue("date", toDateKey(d), { shouldValidate: true })} />
               </PopoverContent>
             </Popover>
+            {/* log_show_date_schedule_change only fires on session_1/2/3/status, never on the
+                date column itself, so moving this dialog's own headline field notifies nobody.
+                Tied to changeNote's own visibility so it only appears when the schedule note
+                above it does (edit mode, not synced, notifications actually a live concept). */}
+            {changeNote && (
+              <p className="text-xs text-muted-foreground">Moving the date itself does not notify booked artists.</p>
+            )}
             {err.date && <p className="text-xs text-destructive">{err.date.message}</p>}
             {dupWarning && <p className="text-xs text-warning">{dupWarning}</p>}
           </div>

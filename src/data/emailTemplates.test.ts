@@ -90,6 +90,31 @@ describe("previewEmailTemplate", () => {
     });
   });
 
+  // The role switcher previews org-invitation's four role action lines by overriding
+  // the template's sample data; the whole request object is the invoke body, so the
+  // override must survive the call untouched.
+  it("forwards a sample-data override for variant previews", async () => {
+    const client = createFakeSupabase({
+      "fn:preview-transactional-email": {
+        data: { templates: [{ html: "<h1>Admin variant</h1>" }] },
+        error: null,
+      },
+    });
+    const request = {
+      templateName: "org-invitation",
+      copyOverride: {},
+      themeOverride: {},
+      dataOverride: { roleKey: "admin", role: "Admin" },
+    } as const;
+
+    await expect(previewEmailTemplate(client as never, request)).resolves.toBe("<h1>Admin variant</h1>");
+    expect(client.calls).toContainEqual({
+      table: "fn:preview-transactional-email",
+      method: "invoke",
+      args: [request],
+    });
+  });
+
   it("rejects edge errors and malformed preview responses", async () => {
     const failed = createFakeSupabase({
       "fn:preview-transactional-email": { data: null, error: { message: "render failed" } },

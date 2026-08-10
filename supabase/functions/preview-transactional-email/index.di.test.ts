@@ -54,7 +54,7 @@ function authedPostRequest(body: unknown = {}) {
   return makeRequest({ headers: { Authorization: "Bearer jwt" }, body });
 }
 
-const EXPECTED_TEMPLATE_COUNT = 11;
+const EXPECTED_TEMPLATE_COUNT = 12;
 
 // ── Auth contract ─────────────────────────────────────────────────────────────
 
@@ -462,7 +462,7 @@ Deno.test("preview-transactional-email DI: applies copy, theme, and highlight ov
       templateName: "org-invitation",
       copyOverride: {
         "org-invitation.subject": "Welcome {{orgName}}",
-        "org-invitation.intro": "A custom invitation for {{orgName}}.",
+        "org-invitation.productIntro": "A custom invitation for {{orgName}}.",
       },
       themeOverride: { base: { colors: { pageBg: "#010203" } } },
       highlightRole: "heading",
@@ -477,6 +477,50 @@ Deno.test("preview-transactional-email DI: applies copy, theme, and highlight ov
   assertEquals(templates[0].html.includes("A custom invitation for Cirque Lumière."), true);
   assertEquals(templates[0].html.includes("#010203"), true);
   assertEquals(templates[0].html.includes("outline:2px solid"), true);
+});
+
+// The org-invitation template renders ONE of four role action lines, selected by its
+// sample data's roleKey/offersExpected. Without a data override the Settings preview
+// could only ever show the producer variant, leaving three separately-editable
+// sentences unpreviewable before save. dataOverride merges over previewData for the
+// requested template so the editor's role switcher can render each variant.
+Deno.test("preview-transactional-email DI: dataOverride merges over the template's sample data", async () => {
+  const res = await handle(
+    authedPostRequest({
+      templateName: "org-invitation",
+      dataOverride: { roleKey: "admin", role: "Admin" },
+    }),
+    adminDeps(),
+  );
+  const { templates } = await res.json() as {
+    templates: Array<{ html: string; status: string }>;
+  };
+  assertEquals(templates[0].status, "ready");
+  assertEquals(templates[0].html.includes("full control of this workspace"), true, "admin action line renders");
+  assertEquals(templates[0].html.includes("plan productions and show dates"), false, "producer line is replaced");
+});
+
+Deno.test("preview-transactional-email DI: without dataOverride the sample data is untouched", async () => {
+  const res = await handle(
+    authedPostRequest({ templateName: "org-invitation" }),
+    adminDeps(),
+  );
+  const { templates } = await res.json() as {
+    templates: Array<{ html: string; status: string }>;
+  };
+  assertEquals(templates[0].html.includes("plan productions and show dates"), true, "producer sample stays the default");
+});
+
+Deno.test("preview-transactional-email DI: non-object dataOverride is silently ignored", async () => {
+  const res = await handle(
+    authedPostRequest({ templateName: "org-invitation", dataOverride: "roleKey=admin" }),
+    adminDeps(),
+  );
+  const { templates } = await res.json() as {
+    templates: Array<{ html: string; status: string }>;
+  };
+  assertEquals(templates[0].status, "ready");
+  assertEquals(templates[0].html.includes("plan productions and show dates"), true);
 });
 
 Deno.test("preview-transactional-email DI: non-object overrides field is silently ignored", async () => {
@@ -522,12 +566,13 @@ Deno.test("preview-transactional-email DI: artist-offer-digest html contains pre
 
 // ── Registry count assertion ──────────────────────────────────────────────────
 
-Deno.test("preview-transactional-email DI: TEMPLATES registry has exactly 11 entries", async () => {
+Deno.test("preview-transactional-email DI: TEMPLATES registry has exactly 12 entries", async () => {
   // Regression guard: if a template is added/removed, this test will catch the mismatch.
   // Task 10 added 'hire-order-issued' (9 -> 10). Task 5 added 'account-email-changed' (10 -> 11).
   // Hire-orders countersign added 'hire-order-countersigned'; two retired signup templates are absent.
   // The magic-link sign-in email added 'magic-link' (10 -> 11).
-  assertEquals(EXPECTED_TEMPLATE_COUNT, 11);
+  // Airtable sync held alert email added 'airtable-sync-held' (11 -> 12).
+  assertEquals(EXPECTED_TEMPLATE_COUNT, 12);
 });
 
 // ── GET method (non-POST) ─────────────────────────────────────────────────────

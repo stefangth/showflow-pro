@@ -6,8 +6,13 @@
 // cast_city_priority for the city) and only ever OVER-reports: it drives an
 // affordance, and open-offer-tier remains authoritative.
 
-export type BookingSetupStepKey = "flow" | "slots" | "ladder" | "eligibility" | "timing";
-export type BlockKind = "offers" | "filling" | null;
+export type BookingSetupStepKey = "flow" | "people" | "slots" | "ladder" | "eligibility" | "timing";
+/** What an outstanding step costs the org, in that org's own vocabulary. "offers" and
+ *  "booking" are the SAME hard gate seen under two flows: an org that runs offers reads the
+ *  specific consequence, a direct-book org (which never opens a tier) reads the general one
+ *  that is true either way. "filling" is the soft one: the pipeline still runs. `null` is
+ *  not only "soft": a step can cost a given org nothing at all (see `blockFor`). */
+export type BlockKind = "offers" | "booking" | "filling" | null;
 
 export interface BookingSetupStep {
   key: BookingSetupStepKey;
@@ -57,22 +62,76 @@ export interface BookingSetupStatusInput {
   timingChosen: boolean;
   /** undefined while unread → ladder/eligibility reported outstanding. */
   coverage: LadderCoverageInputs | null | undefined;
+  /** How many ACTIVE artists the org has on its roster (fetchArtistCount scopes to
+   *  `status = 'active'`, the same population open-offer-tier reads, so this gate cannot
+   *  clear for an org whose whole roster is parked). `null` = unreadable (loading or a
+   *  failed read) and is treated as 0, so the step reports outstanding rather than falsely
+   *  done. */
+  artistCount: number | null;
+  /** Whether this org's resolved flow runs offers (`booking_flow.artist_acceptance`).
+   *  `null` = not read yet. It changes no step's DONE-ness, only what an outstanding step
+   *  costs: the wording of the hard gate `people` holds under either flow, and whether
+   *  `ladder` is a gate at all (it is one only for an org that opens tiers). See `blockFor`,
+   *  which is the single place both of those are decided. */
+  artistAcceptance: boolean | null;
 }
 
 /** Display title per step, shared by the rail and the producer waiting card so a rename
  *  lands in exactly one place. */
 export const STEP_TITLES: Record<BookingSetupStepKey, string> = {
   flow: "Booking flow",
+  people: "Add your artists",
   slots: "Slots per show",
   ladder: "Cast priorities per city",
   eligibility: "Who is eligible",
-  timing: "Response window and digests",
+  timing: "Email timing",
 };
 
-const STEP_ORDER: BookingSetupStepKey[] = ["flow", "slots", "ladder", "eligibility", "timing"];
-const BLOCK: Record<BookingSetupStepKey, BlockKind> = {
-  flow: null, slots: "filling", ladder: "offers", eligibility: null, timing: null,
-};
+const STEP_ORDER: BookingSetupStepKey[] = ["flow", "people", "slots", "ladder", "eligibility", "timing"];
+
+/** The two wordings of the same hard gate. Both are counted by `canOffer`, so which one a
+ *  step carries changes what the chip says and nothing else. */
+const HARD_BLOCKS: readonly BlockKind[] = ["offers", "booking"];
+
+/**
+ * What an outstanding step costs THIS org, read from its flow.
+ *
+ * Two different questions are answered here, and they were briefly answered the same way,
+ * which is what made the ladder chip false:
+ *
+ * - `people` is a hard gate under every preset. An empty roster means there is nobody to
+ *   offer a date to AND nobody to book one to. Only the WORDING branches: a direct-book org
+ *   never opens a tier, so "Blocks offers" would name a pipeline it does not run, while
+ *   "Blocks booking" is true either way (and so is also what an unread flow says, since it
+ *   cannot become false once the flow lands).
+ *
+ * - `ladder` is not a gate for a direct-book org at all. `cast_city_priority`, and the
+ *   `priority` column on `show_cast_eligibility`, are read by `resolveTierLadder`
+ *   (supabase/functions/_shared/eligibility.ts) and by `fetchOfferTiers`
+ *   (src/data/bookings.ts): both exist only to open a tier. The direct-book picker is
+ *   `deriveDirectBookList` (src/lib/bookings.ts) over `useEligibleArtists`, which reads the
+ *   cast ROWS and ignores their priority entirely, so that org books every date with no
+ *   ladder ranked at all. It therefore chips "Blocks offers" or nothing, never "Blocks
+ *   booking". The unread flow takes the same `null`: `canOffer` is read only by surfaces
+ *   that gate on `isLoading` first (`useBookingSetupRailVisible`, `useDashboardFirstRun`),
+ *   so an optimistic null is never rendered as readiness, whereas a chip that is false for
+ *   half the orgs would be rendered as fact.
+ *
+ * `eligibility` stays unchipped under both flows: it is the per-pair detail behind the same
+ * coverage rule `ladder` already gates on, so chipping it too would double-count one gap.
+ */
+function blockFor(key: BookingSetupStepKey, artistAcceptance: boolean | null): BlockKind {
+  switch (key) {
+    case "people":
+      return artistAcceptance === true ? "offers" : "booking";
+    case "ladder":
+      return artistAcceptance === true ? "offers" : null;
+    case "slots":
+      return "filling";
+    default:
+      return null;
+  }
+}
 
 export function resolveCoverage(inputs: LadderCoverageInputs): CoverageResult {
   const uncoveredPairs: { showId: string; cityId: string }[] = [];
@@ -99,6 +158,10 @@ export function computeBookingSetupStatus(input: BookingSetupStatusInput): Booki
   // established org between seasons is not dragged back to "setup in progress".
   const done: Record<BookingSetupStepKey, boolean> = {
     flow: input.flowChosen,
+    // Unlike the show-driven steps this needs no hasAnyShows guard: a roster is a roster
+    // whether or not the org has scheduled anything yet. Counted against the ACTIVE roster
+    // so this agrees with what a tier would actually resolve to.
+    people: (input.artistCount ?? 0) > 0,
     slots: input.hasAnyShows && Array.isArray(input.shows)
       ? input.shows.every((s) => s.main_cast_slots != null && s.understudy_slots != null)
       : false,
@@ -112,12 +175,19 @@ export function computeBookingSetupStatus(input: BookingSetupStatusInput): Booki
       : false,
     timing: input.timingChosen,
   };
-  const steps = STEP_ORDER.map((key) => ({ key, done: done[key], block: BLOCK[key] }));
+  const steps = STEP_ORDER.map((key) => ({
+    key,
+    done: done[key],
+    block: blockFor(key, input.artistAcceptance),
+  }));
   return {
     steps,
     doneCount: steps.filter((s) => s.done).length,
     totalCount: steps.length,
-    canOffer: steps.every((s) => s.block !== "offers" || s.done),
+    // Both hard wordings gate this, so a direct-book org's rail stays up for exactly the
+    // same gaps as an offers org's. Reading only "offers" here would have let a direct-book
+    // org's empty roster count as ready.
+    canOffer: steps.every((s) => !HARD_BLOCKS.includes(s.block) || s.done),
     complete: steps.every((s) => s.done),
   };
 }

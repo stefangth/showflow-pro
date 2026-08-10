@@ -201,6 +201,30 @@ describe("AirtableSyncTab — last sync report", () => {
     renderTab();
     expect(await screen.findByText(/No sync has run yet/i)).toBeInTheDocument();
   });
+
+  // The airtable-sync-held email is deliberately cause-neutral (held_unresolved has more
+  // than one cause: a blank date cell as well as an unlinked program), and its CTA lands
+  // HERE. This card must not re-assert the mapping-only cause the email avoids, and must
+  // promise exactly what the record rows below actually deliver (the email's own words:
+  // "which ones and why"). Copy rule: no em/en dashes in user-facing prose.
+  it("sync-report description stays cause-neutral and points at the per-record reasons", async () => {
+    (fetchLatestSyncLog as ReturnType<typeof vi.fn>).mockResolvedValue({
+      id: "log-1", status: "partial", imported_count: 3, new_count: 2, updated_count: 1, held_count: 1, error_details: null, synced_at: "2026-06-17T10:00:00Z",
+    });
+    (fetchUnresolvedRecords as ReturnType<typeof vi.fn>).mockResolvedValue([]);
+    renderTab();
+    const description = await screen.findByText(/The most recent Airtable poll/i);
+    expect(description.textContent).not.toMatch(/not matched to a linked program/i);
+    expect(description.textContent).toMatch(/which ones and why/i);
+    expect(description.textContent).not.toMatch(/[—–]/);
+  });
+
+  it("the not-synced-yet hint uses no em dash", async () => {
+    (fetchLatestSyncLog as ReturnType<typeof vi.fn>).mockResolvedValue(null);
+    (fetchUnresolvedRecords as ReturnType<typeof vi.fn>).mockResolvedValue([]);
+    renderTab({ airtable_sync_enabled: true });
+    expect(await screen.findByText("Not synced yet. Runs on the next cycle.")).toBeInTheDocument();
+  });
 });
 
 describe("AirtableSyncTab — duplicate cities", () => {

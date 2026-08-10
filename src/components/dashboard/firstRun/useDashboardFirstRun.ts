@@ -56,7 +56,12 @@ export function useDashboardFirstRun(role: DashboardRole): DashboardFirstRunStat
   const artist = useArtistOnboardingStatus(); // artist slice (called unconditionally)
   const hire = useHireOrderSetupStatus(hireOrgId);
   const counts = useNavCounts();
-  const flow = useBookingFlow().data ?? BOOKING_FLOW_DEFAULTS;
+  // Not gated to `bookingOrgId`: an ARTIST needs this read too. Their welcome copy and
+  // their rules block both branch on `artist_acceptance`, so it is the org's flow, not the
+  // artist's own readiness, that decides whether this card talks about offers at all.
+  // `flowQ.isLoading` is folded into `statusLoading` below for the same reason.
+  const flowQ = useBookingFlow();
+  const flow = flowQ.data ?? BOOKING_FLOW_DEFAULTS;
 
   const [railOpen, setRailOpen] = useState(false);
   const [dismissed, dismiss] = useRailDismissed("dashboardWelcome", orgId);
@@ -102,9 +107,17 @@ export function useDashboardFirstRun(role: DashboardRole): DashboardFirstRunStat
   // a step there is nothing to onboard. The relevant module-status loading is also
   // folded in so a configured org never briefly renders the "database is empty" +
   // greyed Sample state while the heavier setup reads are still resolving.
-  const statusLoading = role === "artist"
+  //
+  // The flow read is folded in for EVERY role, because the fallback while it is in flight
+  // is BOOKING_FLOW_DEFAULTS, which runs offers. For admin and producer that was already
+  // covered by accident: useBookingSetupStatus issues the identical
+  // ["app-settings","booking-flow",orgId] query, so booking.isLoading held the card until
+  // the same row landed. An artist has every booking query disabled (bookingOrgId is null),
+  // so nothing held it: a direct-book artist read "Your first offers are on their way"
+  // above a rules block saying there are no offers, until the flow resolved.
+  const statusLoading = flowQ.isLoading || (role === "artist"
     ? artist.isLoading
-    : ((features.has("booking_flow") && booking.isLoading) || (features.has("hire_orders") && hire.isLoading));
+    : ((features.has("booking_flow") && booking.isLoading) || (features.has("hire_orders") && hire.isLoading)));
   const show = !isLoading && !statusLoading && composed.steps.length > 0;
 
   // The greyed sample fixture is an admin/producer concept (the empty-org preview).

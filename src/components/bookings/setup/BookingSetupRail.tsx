@@ -1,31 +1,34 @@
 import { useState } from "react";
+import { useAuth } from "@/features/auth/AuthContext";
+import { canUseEditor } from "@/features/editor/editorAccess";
 import { useCan } from "@/hooks/useCapabilities";
-import { useBookingSetupStatus } from "@/hooks/useBookingSetup";
-import { STEP_TITLES, type BookingSetupStepKey, type BlockKind } from "@/lib/bookings/setupStatus";
+import { useBookingSetupStatus, useInactiveArtistCount } from "@/hooks/useBookingSetup";
+import { type BookingSetupStepKey } from "@/lib/bookings/setupStatus";
+import { bookingOnboarding, VIEW_AS_ARTIST_TIP } from "@/lib/dashboard/moduleOnboarding";
+import { SETUP_BLOCK_CHIPS } from "@/lib/dashboard/setupBlocks";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { SetupStepRow, type SetupStepBlock } from "@/components/setup/SetupStepRow";
+import { SetupStepRow } from "@/components/setup/SetupStepRow";
 import { useRailDismissed } from "@/components/setup/useRailDismissed";
 import { FlowStep } from "./FlowStep";
+import { PeopleStep } from "./PeopleStep";
 import { SlotsStep } from "./SlotsStep";
 import { LadderStep } from "./LadderStep";
 import { EligibilityStep } from "./EligibilityStep";
 import { TimingStep } from "./TimingStep";
+import { TonightNote } from "./TonightNote";
 import { RehearsalBlock } from "./RehearsalBlock";
 import { BookingProducerWaitingCard } from "./BookingProducerWaitingCard";
 
-const HINTS: Record<BookingSetupStepKey, { todo: string; done: string }> = {
-  flow: { todo: "Offers, or straight to booked. Everything downstream reads this.", done: "Chosen. Change it any time in Settings." },
-  slots: { todo: "A show with no slot count never reads as full.", done: "Set on every show." },
-  ladder: { todo: "The order offers go out in, per city.", done: "Every scheduled city has a tier-1 cast." },
-  eligibility: { todo: "Which casts can be offered which show in which city.", done: "Every scheduled show and city has a cast." },
-  timing: { todo: "How long artists get, and when mail goes out.", done: "Window and digest hours set." },
-};
-
-const BLOCK_CHIP: Record<Exclude<BlockKind, null>, SetupStepBlock> = {
-  offers: { label: "Blocks offers", tone: "risk" },
-  filling: { label: "Blocks filling", tone: "neutral" },
-};
+// Titles and hints come from `bookingOnboarding.steps`, the same registry the dashboard
+// rail renders, so the two surfaces cannot word the same step differently. This file used
+// to hold a second copy of every string.
+const META = bookingOnboarding.steps;
+// The header is read the same way, for the same reason. It was a verbatim duplicate of the
+// registry's, which the ShowsBookingsPage banner renders through useModuleOnboardingRail:
+// two copies of one sentence on two surfaces of the same module, so a fix to either could
+// land on one and not the other.
+const HEADER = bookingOnboarding.railHeader;
 
 /**
  * The bookings setup rail beside the Shows and bookings table. Renders nothing once setup
@@ -35,11 +38,37 @@ const BLOCK_CHIP: Record<Exclude<BlockKind, null>, SetupStepBlock> = {
  */
 export function BookingSetupRail({ orgId, initialStep }: { orgId: string | null; initialStep?: BookingSetupStepKey }) {
   const canEdit = useCan("edit_booking_settings");
-  const { status, coverage } = useBookingSetupStatus(orgId);
+  // Editor Mode is admin-or-super-admin, never a capability (see editorAccess.canUseEditor),
+  // and `roles` is scoped to the active org, so the super-admin arm is what keeps the tip in
+  // step with the toolbar for someone visiting an org they never joined.
+  const { roles, isSuperAdmin } = useAuth();
+  const { status, coverage, artistCount, isLoading } = useBookingSetupStatus(orgId);
   const [, dismiss] = useRailDismissed("bookingSetup", orgId);
   const [open, setOpen] = useState<BookingSetupStepKey | null>(initialStep ?? "flow");
+  // `!isLoading` is load-bearing, not belt-and-braces: an unread roster is reported
+  // outstanding (the engine treats a null count as 0), so this is true for every org for the
+  // first frame, and firing the read there would defeat the gate for all of them. Waiting
+  // costs the panel nothing, since its parked line needs the ACTIVE count to have landed too.
+  const peopleOutstanding = !isLoading && status.steps.some((s) => s.key === "people" && !s.done);
+  // Read on demand rather than as part of readiness: this count decorates one sentence in
+  // PeopleStep, and the condition below is exactly when that sentence is on screen. An
+  // editor sees the panel when the roster row is expanded; everyone else gets the waiting
+  // card, which embeds the panel only while the roster step is still outstanding. Gating the
+  // non-editor arm on `!canEdit` alone billed every producer for a head count their card was
+  // never going to print. Declared before the early return so the hook order is fixed.
+  const inactiveArtistCount = useInactiveArtistCount(orgId, canEdit ? open === "people" : peopleOutstanding);
 
-  if (!canEdit) return <BookingProducerWaitingCard steps={status.steps} />;
+  // The roster step is not gated by `edit_booking_settings`, so the waiting card gets the
+  // count and renders it as real work rather than as one more padlock.
+  if (!canEdit) {
+    return (
+      <BookingProducerWaitingCard
+        steps={status.steps}
+        artistCount={artistCount}
+        inactiveArtistCount={inactiveArtistCount}
+      />
+    );
+  }
 
   const toggle = (key: BookingSetupStepKey) => setOpen((cur) => (cur === key ? null : key));
 
@@ -53,10 +82,8 @@ export function BookingSetupRail({ orgId, initialStep }: { orgId: string | null;
             </p>
             <Button variant="ghost" size="sm" className="h-auto p-1 text-xs" onClick={dismiss}>Hide</Button>
           </div>
-          <p className="mt-1.5 font-display text-base font-semibold">Get bookings running</p>
-          <p className="mt-1 text-xs leading-[19px] text-muted-foreground">
-            Dates keep syncing and you can edit them now. These are what the first offer needs.
-          </p>
+          <p className="mt-1.5 font-display text-base font-semibold">{HEADER.title}</p>
+          <p className="mt-1 text-xs leading-[19px] text-muted-foreground">{HEADER.body}</p>
           <div className="mt-3 flex gap-1">
             {status.steps.map((s) => (
               <span key={s.key} className={`h-[3px] w-full rounded-full ${s.done ? "bg-accent-500" : "bg-muted"}`} />
@@ -68,21 +95,47 @@ export function BookingSetupRail({ orgId, initialStep }: { orgId: string | null;
             <SetupStepRow
               key={s.key}
               index={i + 1}
-              title={STEP_TITLES[s.key]}
-              hint={s.done ? HINTS[s.key].done : HINTS[s.key].todo}
+              title={META[s.key].title}
+              hint={s.done ? META[s.key].doneHint : META[s.key].todoHint}
               done={s.done}
-              block={s.block ? BLOCK_CHIP[s.block] : null}
+              block={s.block ? SETUP_BLOCK_CHIPS[s.block] : null}
               expanded={open === s.key}
               onToggle={() => toggle(s.key)}
             >
-              {s.key === "flow" && <FlowStep orgId={orgId} onDone={() => setOpen("slots")} />}
+              {s.key === "flow" && <FlowStep orgId={orgId} onDone={() => setOpen("people")} />}
+              {s.key === "people" && (
+                <PeopleStep count={artistCount} inactiveCount={inactiveArtistCount} />
+              )}
               {s.key === "slots" && <SlotsStep orgId={orgId} onDone={() => setOpen(null)} />}
-              {s.key === "ladder" && <LadderStep coverage={coverage} />}
-              {s.key === "eligibility" && <EligibilityStep coverage={coverage} />}
+              {/* Both coverage panels open with a flow-aware sentence, so they take the
+                  rail's own orgId rather than resolving the shell's active org themselves
+                  (same rule as TimingStep below them). */}
+              {s.key === "ladder" && <LadderStep coverage={coverage} orgId={orgId} />}
+              {s.key === "eligibility" && <EligibilityStep coverage={coverage} orgId={orgId} />}
               {s.key === "timing" && <TimingStep orgId={orgId} onDone={() => setOpen(null)} />}
             </SetupStepRow>
           ))}
         </div>
+        {/* The schedule the sixth row configures, stated where a collapsed row cannot hide
+            it. Suppressed while that row is open: TimingStep prints the same narrative from
+            its LIVE inputs, under a scope note that carries the timezone, so leaving this
+            one up would put the fact on the card twice and, mid-edit, in two versions. */}
+        {open !== "timing" && <TonightNote orgId={orgId} />}
+        {/* Not a step and not a blocker, so it sits under them rather than among them: it is
+            the one thing on this rail that is worth doing WHILE the steps are unfinished
+            rather than after. The registry's `rules` block carries the same object, but that
+            block is the rail's complete state, so on its own the tip only ever reached an
+            admin who had already made every decision it would have informed. This surface is
+            the other half: it is on screen from the first unfinished step onward, so the tip
+            reaches an admin while the decisions it informs are still open. (It stays
+            reachable afterwards too: once setup completes, useBookingSetupRailVisible turns
+            the rail into a "button" and SetupChecklistSheet renders this same component.) */}
+        {canUseEditor(roles, isSuperAdmin) && (
+          <div className="border-t border-border px-4 py-3">
+            <p className="text-xs font-medium text-foreground">{VIEW_AS_ARTIST_TIP.title}</p>
+            <p className="mt-0.5 text-xs leading-[17px] text-muted-foreground">{VIEW_AS_ARTIST_TIP.hint}</p>
+          </div>
+        )}
         <RehearsalBlock orgId={orgId} />
       </CardContent>
     </Card>

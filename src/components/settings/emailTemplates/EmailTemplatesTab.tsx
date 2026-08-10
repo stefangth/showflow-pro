@@ -26,13 +26,38 @@ interface PreviewState {
 const GROUPS = ["Booking engine", "Hire orders", "Accounts & access", "System"] as const;
 
 function isVisibleTemplate(template: EmailTemplateCoverage, isSuperAdmin: boolean): boolean {
-  return template.status !== "internal" || isSuperAdmin;
+  if (template.status !== "internal") return true;
+  // "internal" only hides a row from the org itself when nobody in the org is the
+  // audience (audience defaults to "platform" — cron-health-alert, magic-link).
+  // A row whose recipients ARE org admins (audience: "org", e.g. airtable-sync-held)
+  // stays visible to them: they can't edit it, but they need to know it exists.
+  return template.audience === "org" || isSuperAdmin;
 }
 
 function statusVariant(status: EmailTemplateCoverage["status"]): "default" | "neutral" | "outline" {
   if (status === "editable") return "default";
   if (status === "internal") return "neutral";
   return "outline";
+}
+
+function canPreview(template: EmailTemplateCoverage): boolean {
+  if (template.status === "editable") return true;
+  // An "internal" row still renders from the same registry entry as an editable one
+  // (preview-transactional-email works off defaults when there is no per-org copy
+  // override), so audience: "org" rows (e.g. airtable-sync-held) stay previewable: an
+  // admin who can see the row because it is about them should be able to read what it
+  // actually says, even though they can't reword it. Platform-only internal rows
+  // (audience: "platform", e.g. cron-health-alert, magic-link) are not addressed by
+  // this WP and stay preview-less.
+  return template.status === "internal" && template.audience === "org";
+}
+
+function statusLabel(template: EmailTemplateCoverage): string {
+  if (template.status === "editable") return "Editable";
+  if (template.status === "external") return "External";
+  // "internal" + org audience means "we render it, you can't reword it" rather than
+  // "this is platform plumbing you shouldn't be able to see at all" — say so plainly.
+  return template.audience === "org" ? "Automatic" : "Internal";
 }
 
 export function EmailTemplatesTab({ readOnly, isSuperAdmin }: EmailTemplatesTabProps) {
@@ -71,8 +96,21 @@ export function EmailTemplatesTab({ readOnly, isSuperAdmin }: EmailTemplatesTabP
       });
       if (runId !== previewRun.current) return;
       if (error) throw error;
-      const html = data?.templates?.[0]?.html;
-      setPreview({ title: template.displayName, html: typeof html === "string" ? html : "<p>No preview available.</p>", loading: false });
+      // A HTTP 200 { status: "render_failed", errorMessage, html: "" } is the real
+      // failure shape from preview-transactional-email (an unregistered or broken
+      // template) — it does not throw, so it must be checked explicitly. Without this,
+      // an admin sees a blank iframe with no explanation, which is exactly the row
+      // most exposed to it during the window between a frontend deploy and the
+      // functions deploy landing a newly-added template. `status` is optional to stay
+      // compatible with any caller that hands back a bare { html } shape.
+      const result = data?.templates?.[0] as { html?: string; status?: string; errorMessage?: string } | undefined;
+      if (result?.status === "render_failed") {
+        const message = result.errorMessage || "Unknown error";
+        setPreview({ title: template.displayName, html: `<p>Preview failed: ${message}</p>`, loading: false });
+        return;
+      }
+      const html = result?.html;
+      setPreview({ title: template.displayName, html: typeof html === "string" && html.length > 0 ? html : "<p>No preview available.</p>", loading: false });
     } catch (error) {
       if (runId !== previewRun.current) return;
       const message = error instanceof Error ? error.message : "Unknown error";
@@ -124,8 +162,8 @@ export function EmailTemplatesTab({ readOnly, isSuperAdmin }: EmailTemplatesTabP
                       </div>
                       <p className="text-sm text-muted-foreground">{template.trigger}</p>
                       <div className="flex items-center gap-2 sm:justify-self-end">
-                        <Badge variant={statusVariant(template.status)}>{template.status === "editable" ? "Editable" : template.status === "external" ? "External" : "Internal"}</Badge>
-                        {template.status === "editable" ? (
+                        <Badge variant={statusVariant(template.status)}>{statusLabel(template)}</Badge>
+                        {canPreview(template) ? (
                           <Button variant="outline" size="sm" aria-label={`Preview ${template.displayName}`} disabled={previewDisabled} onClick={() => void handlePreview(template)}>
                             Preview
                           </Button>

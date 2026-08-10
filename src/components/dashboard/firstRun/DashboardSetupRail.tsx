@@ -3,16 +3,10 @@ import { Check } from "lucide-react";
 import { useCan } from "@/hooks/useCapabilities";
 import { badgeVariants } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
-import type { ComposedStep, DashboardSetupRailProps, SetupBlock } from "@/lib/dashboard/types";
-
-// One shared "hard/soft blocker" chip vocabulary, using the same `badgeVariants`
-// tokens (risk = amber, neutral = muted) as the sibling `SetupStepRow`, so the same
-// "Blocks X" concept renders identically across the Bookings and Dashboard rails.
-const BLOCK_CHIP: Record<Exclude<SetupBlock, null>, { tone: "risk" | "neutral"; label: string }> = {
-  offers: { tone: "risk", label: "Blocks offers" },
-  filling: { tone: "neutral", label: "Blocks filling" },
-  issuing: { tone: "risk", label: "Blocks issuing" },
-};
+import type { ComposedStep, DashboardSetupRailProps } from "@/lib/dashboard/types";
+// The one "Blocks X" vocabulary, shared with BookingSetupRail: this rail and that one
+// render the SAME step to the same viewer, and each used to hold its own copy of the map.
+import { SETUP_BLOCK_CHIPS } from "@/lib/dashboard/setupBlocks";
 
 function StepRow({ step, index, onAction }: { step: ComposedStep; index: number; onAction?: (step: ComposedStep) => void }) {
   // Hooks may not be conditional: always read the capability, ignore when the step has none.
@@ -39,8 +33,8 @@ function StepRow({ step, index, onAction }: { step: ComposedStep; index: number;
         )}
       </div>
       {!step.done && step.block && (
-        <span className={cn(badgeVariants({ variant: BLOCK_CHIP[step.block].tone }), "shrink-0 font-semibold")}>
-          {BLOCK_CHIP[step.block].label}
+        <span className={cn(badgeVariants({ variant: SETUP_BLOCK_CHIPS[step.block].tone }), "shrink-0 font-semibold")}>
+          {SETUP_BLOCK_CHIPS[step.block].label}
         </span>
       )}
     </div>

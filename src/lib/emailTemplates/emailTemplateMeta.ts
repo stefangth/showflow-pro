@@ -2,6 +2,7 @@
 // defaults, while the editor uses these labels, multiline choices, and token
 // hints to build its controls.
 
+import { roleLabel } from "@/config/app.config";
 import type { EmailCopyKey, EmailTemplateKey } from "./emailCopy";
 
 export interface EmailCopyFieldMeta {
@@ -11,10 +12,21 @@ export interface EmailCopyFieldMeta {
   multiline?: boolean;
 }
 
+/** One selectable preview state for a template whose rendered copy is chosen by its
+ *  data rather than only by the copy map. `data` is merged over the template's
+ *  registered sample data by the preview edge function. */
+export interface EmailPreviewVariant {
+  label: string;
+  data: Record<string, string | boolean>;
+}
+
 export interface EmailTemplateCopyFields {
   templateKey: EmailTemplateKey;
   label: string;
   fields: EmailCopyFieldMeta[];
+  /** When present, the editor renders a variant switcher above the preview. The first
+   *  entry is the default and must match what the template's own sample data renders. */
+  previewVariants?: EmailPreviewVariant[];
 }
 
 function field(key: EmailCopyKey, label: string, tokens: string[] = [], multiline = false): EmailCopyFieldMeta {
@@ -43,8 +55,19 @@ export const EMAIL_TEMPLATE_COPY_FIELDS: EmailTemplateCopyFields[] = [
   { templateKey: "hire-order-countersigned", label: "Hire order countersigned", fields: [
     field("hire-order-countersigned.subject", "Subject", ["dateLabel"]), field("hire-order-countersigned.heading", "Heading"), field("hire-order-countersigned.greeting", "Greeting", ["artistName"]), field("hire-order-countersigned.intro", "Intro", ["dateLabel", "venue"], true), field("hire-order-countersigned.ctaLabel", "CTA label"), field("hire-order-countersigned.footer", "Footer", [], true), field("hire-order-countersigned.previewText", "Preview text", ["dateLabel"]), field("hire-order-countersigned.orderLabel", "Order label"), field("hire-order-countersigned.dateLabel", "Date label"), field("hire-order-countersigned.venueLabel", "Venue label"), field("hire-order-countersigned.artistFallback", "Artist fallback"), field("hire-order-countersigned.dateFallback", "Date fallback"), field("hire-order-countersigned.venueFallback", "Venue fallback"),
   ] },
-  { templateKey: "org-invitation", label: "Organization invitation", fields: [
-    field("org-invitation.subject", "Subject", ["orgName"]), field("org-invitation.heading", "Heading", ["orgName"]), field("org-invitation.greeting", "Greeting"), field("org-invitation.intro", "Intro", ["orgName", "roleSuffix"], true), field("org-invitation.roleSuffix", "Role suffix", ["role"]), field("org-invitation.ctaLabel", "CTA label"), field("org-invitation.footer", "Footer", [], true), field("org-invitation.previewText", "Preview text", ["orgName"]), field("org-invitation.invitedBy", "Invited-by line", ["inviterEmail"]), field("org-invitation.pasteLink", "Paste-link prompt", [], true), field("org-invitation.orgFallback", "Organization fallback"),
+  // previewVariants: the four role action lines are separately editable below but the
+  // template renders exactly ONE, selected by roleKey/offersExpected in its sample
+  // data — without the switcher, three of the four edited sentences could never be
+  // previewed before saving. Producer first: it matches the template's own sample data,
+  // so the default preview is unchanged. Labels come from roleLabel() so a display
+  // rename (e.g. producer → "Production Team") propagates here on its own.
+  { templateKey: "org-invitation", label: "Organization invitation", previewVariants: [
+    { label: roleLabel("producer"), data: { roleKey: "producer", role: roleLabel("producer") } },
+    { label: roleLabel("admin"), data: { roleKey: "admin", role: roleLabel("admin") } },
+    { label: `${roleLabel("artist")} (direct book)`, data: { roleKey: "artist", role: roleLabel("artist"), offersExpected: false } },
+    { label: `${roleLabel("artist")} (offer flow)`, data: { roleKey: "artist", role: roleLabel("artist"), offersExpected: true } },
+  ], fields: [
+    field("org-invitation.subject", "Subject", ["orgName"]), field("org-invitation.heading", "Heading", ["orgName"]), field("org-invitation.greeting", "Greeting"), field("org-invitation.productIntro", "Product intro", ["orgName"], true), field("org-invitation.roleIntro", "Role intro opener", ["role"], true), field("org-invitation.roleIntroAdmin", "Role action line (admin)", [], true), field("org-invitation.roleIntroProducer", "Role action line (production team)", [], true), field("org-invitation.roleIntroArtist", "Role action line (artist, direct book)", [], true), field("org-invitation.roleIntroArtistOffers", "Role action line (artist, offer flow)", [], true), field("org-invitation.ctaLabel", "CTA label"), field("org-invitation.ctaHintNewUser", "Button reassurance (new account)", [], true), field("org-invitation.ctaHintExistingUser", "Button reassurance (existing account)", [], true), field("org-invitation.ctaHintFallback", "Button reassurance (no direct sign in link)", [], true), field("org-invitation.expiryLine", "Expiry line", ["expiresOn"], true), field("org-invitation.expiryFallback", "Expiry fallback", [], true), field("org-invitation.footer", "Footer", [], true), field("org-invitation.previewText", "Preview text", ["orgName"]), field("org-invitation.invitedBy", "Invited-by line", ["inviter"], true), field("org-invitation.inviterFallback", "Inviter fallback (system-provisioned orgs)"), field("org-invitation.pasteLink", "Paste-link prompt", [], true), field("org-invitation.linkRecovery", "Link recovery hint", [], true), field("org-invitation.orgFallback", "Organization fallback"),
   ] },
   { templateKey: "account-email-changed", label: "Account email changed", fields: [
     field("account-email-changed.subject", "Subject"), field("account-email-changed.heading", "Heading"), field("account-email-changed.greeting", "Greeting"), field("account-email-changed.intro", "Intro", [], true), field("account-email-changed.footer", "Footer", [], true), field("account-email-changed.previewText", "Preview text"), field("account-email-changed.previousEmailLabel", "Previous-email label"), field("account-email-changed.newEmailLabel", "New-email label"), field("account-email-changed.signInPrompt", "Sign-in prompt", ["signInUrl"], true), field("account-email-changed.emailFallback", "Email fallback"),

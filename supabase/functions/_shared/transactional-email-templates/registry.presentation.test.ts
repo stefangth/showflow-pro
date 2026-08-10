@@ -125,3 +125,24 @@ Deno.test('registry presentation: derives subject tokens for digest and snake_ca
   assertEquals(countersigned.subject, 'Countersigned 13 August')
   assertEquals(cron.subject, 'Cron nightly-digest returned 503')
 })
+
+Deno.test('registry presentation: airtable-sync-held default subject names the org', () => {
+  const presentation = resolveTemplatePresentation('airtable-sync-held', {
+    orgName: 'Riverdance Co',
+    heldCount: 3,
+    settingsUrl: 'https://app.showflow.pro/settings?tab=airtable',
+  })
+
+  assertExists(presentation)
+  assertEquals(presentation.subject, 'Airtable sync needs attention in Riverdance Co')
+})
+
+Deno.test('registry presentation: airtable-sync-held subject falls back when orgName is missing', () => {
+  const presentation = resolveTemplatePresentation('airtable-sync-held', {
+    heldCount: 1,
+    settingsUrl: 'https://app.showflow.pro/settings?tab=airtable',
+  })
+
+  assertExists(presentation)
+  assertEquals(presentation.subject, 'Airtable sync needs attention in your organization')
+})

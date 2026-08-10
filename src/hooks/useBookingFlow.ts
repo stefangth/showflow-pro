@@ -4,12 +4,26 @@ import { useAuth } from "@/features/auth/AuthContext";
 import { fetchBookingFlow, fetchFlowTimes } from "@/data/settings";
 import { fetchCustomFieldDefs } from "@/data/customFields";
 
-/** The org's effective (normalized) booking-flow policy. Thin wrapper over fetchBookingFlow. */
-export function useBookingFlow() {
+/** The org's effective (normalized) booking-flow policy. Thin wrapper over fetchBookingFlow.
+ *
+ *  Defaults to the shell's active org. Pass `orgOverride` from a surface that is already
+ *  keyed on an org id of its own (TimingStep seeds and resets on an `orgId` prop) so the
+ *  flow and the rest of that surface cannot be resolved from two independent sources: the
+ *  org switcher lives in the app shell and does not unmount those panels, so a window where
+ *  the two disagree would narrate one org's flow beside another org's values. */
+export function useBookingFlow(orgOverride?: string | null) {
   const { currentOrg } = useAuth();
-  const orgId = currentOrg?.id ?? null;
+  const orgId = orgOverride !== undefined ? orgOverride : currentOrg?.id ?? null;
   return useQuery({
     queryKey: ["app-settings", "booking-flow", orgId],
+    // No org, no flow: fetchBookingFlow(client, null) reads the PLATFORM default
+    // settings row and returns a flow belonging to no org. Every null-org caller
+    // (AcceptInvitePage before its invites resolve, the setup panels for a
+    // super-admin outside any org) discards that result, so the read was one stray
+    // app_settings query per mount. Disabled, the query reports isLoading false, so
+    // callers folding it into a readiness gate are not held up by an org they
+    // don't have.
+    enabled: orgId !== null,
     queryFn: () => fetchBookingFlow(supabase, orgId),
   });
 }

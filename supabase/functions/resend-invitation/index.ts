@@ -2,7 +2,8 @@ import { preflight, json } from "../_shared/http.ts";
 import { requireOrgRole } from "../_shared/auth.ts";
 import { requireCapability } from "../_shared/capabilities.ts";
 import { emailWasSent, realDeps, type Deps } from "../_shared/deps.ts";
-import { ensureInvitedUser, sendOrgInvitationEmail } from "../_shared/invitations.ts";
+import { ensureInvitedUser, formatExpiresOn, resendIdempotencyKey, resolveArtistOffersExpected, resolveInviterName, sendOrgInvitationEmail } from "../_shared/invitations.ts";
+import { roleLabel } from "../_shared/roles.ts";
 
 type Body = { invitation_id: string; app_origin: string };
 
@@ -14,9 +15,12 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
     const appOrigin = body?.app_origin?.replace(/\/$/, "");
     if (!body?.invitation_id || !appOrigin) return json({ error: "Invalid payload" }, 400);
 
+    // The invitation row's own expires_at is the single source of truth for the expiry
+    // statement (see the Global Constraints in the admin-journey-gaps plan): a resend
+    // does not push the window out, it just restates whatever the row already says.
     const { data: invite } = await deps.admin
       .from("org_invitations")
-      .select("id, org_id, email, role, token, status")
+      .select("id, org_id, email, role, token, status, invited_by, expires_at, resent_count")
       .eq("id", body.invitation_id)
       .maybeSingle();
 
@@ -34,12 +38,30 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
 
     if (invite.status !== "pending") return json({ error: "Invitation is not pending" }, 409);
 
+    // status stays 'pending' forever (nothing flips it to 'expired'; accept_invitation
+    // checks expires_at > now() at accept time instead), so the check above does not
+    // catch an invitation whose window already passed. A resend never pushes expires_at
+    // out (see the comment on the read below), so left unguarded this would email a
+    // concrete PAST date ("works until 1 January 2026...") attached to a link
+    // accept_invitation will reject regardless. Catch it here, before any email sends,
+    // and point the admin at the one path that actually works: revoke, then re-invite
+    // (create-invitation's pending-invite unique index blocks a second pending row for
+    // the same email while this one still exists).
+    //
+    // The EXACT day (formatExpiresOn): this is a past-tense
+    // fact about when the window closed, so understating it by a day would tell the
+    // admin the invitation lasted less time than it actually did.
+    const expiresOn = formatExpiresOn(invite.expires_at);
+    if (invite.expires_at && new Date(invite.expires_at).getTime() <= deps.now().getTime()) {
+      return json({ error: `This invitation expired on ${expiresOn}. Revoke it, then send a fresh invite.` }, 409);
+    }
+
     const { data: org } = await deps.admin
       .from("organizations").select("name").eq("id", invite.org_id).maybeSingle();
 
     // Resolve the invitee account, idempotently re-assert their membership (covers the
     // stranded/hand-created cases from the runbook), then resend a fresh action link.
-    const { userId, actionLink } = await ensureInvitedUser(deps, {
+    const { userId, actionLink, isNewUser } = await ensureInvitedUser(deps, {
       email: invite.email, appOrigin, token: invite.token,
     });
     if (userId) {
@@ -48,29 +70,91 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
       });
       if (memErr) console.error("resend-invitation: membership link failed", (memErr as { message?: string }).message);
     }
-    const sendResult = await sendOrgInvitationEmail(deps, {
-      email: invite.email,
-      orgName: (org as { name?: string } | null)?.name ?? undefined,
-      role: invite.role,
-      token: invite.token,
-      appOrigin,
-      idempotencyKey: `org-invitation-resend-${invite.id}`,
-      orgId: invite.org_id,
-      actionLink,
-    });
+    // Unlike create-invitation and provision-org (where the row/org just created is the
+    // artifact and the email is a bonus), a RESEND's entire deliverable IS the email: the
+    // membership work above already succeeded whether or not the email goes out, so a
+    // silent { ok: true } here would tell the caller "done" while the invitee gets
+    // nothing. Gate the response on emailWasSent (see _shared/deps.ts) instead of assuming
+    // a call that didn't throw means delivery happened, and surface both failure shapes
+    // (a thrown error and a resolved-but-unsuccessful send) as one honest error response.
+    //
+    // The idempotency key (resendIdempotencyKey, _shared/invitations.ts) folds in
+    // resent_count (the value BEFORE this send's own mark_invitation_resent bump below)
+    // AND a coarse now()-bucket, not just invite.id: send-transactional-email forwards
+    // this key to Resend as its `Idempotency-Key` header, which Resend treats as "the
+    // same logical send" for 24 hours and replies 200 for the ORIGINAL message on any
+    // repeat within that window without re-delivering. A key scoped to invite.id alone
+    // would make every resend of the same invitation within 24h of the last one collapse
+    // into that guarantee. resent_count alone narrows that to "within one resend
+    // attempt" (two requests racing before either one's stamp lands read the same
+    // resent_count and get the same key, so a double-click or network retry still
+    // dedupes as intended) but mark_invitation_resent's write is best-effort: if it
+    // silently fails after a real send succeeded, a later GENUINE resend would still
+    // read the same stale resent_count and collide for the rest of that 24-hour window.
+    // The now()-bucket bounds that exposure to minutes instead of a full day, without
+    // weakening the in-flight-duplicate guarantee (see resendIdempotencyKey's own doc
+    // comment for the full reasoning).
+    try {
+      // Best-effort: resolveInviterName is an unrelated profiles read plus an Admin API
+      // call, and a failure there must not abort a resend whose email was never even
+      // attempted, nor get reported to the admin as a delivery failure. Degrade to
+      // omitting the "Invited by" line instead (see sendOrgInvitationEmail/org-invitation.tsx,
+      // which already renders no line at all when neither name nor email is known).
+      const inviter = await resolveInviterName(deps, invite.invited_by)
+        .catch((): { name?: string; email?: string } => ({}));
+      // Only relevant to an artist invite (see DeliverInviteArgs.offersExpected).
+      // resolveArtistOffersExpected already fails closed to false on any error, so no
+      // extra .catch is needed here.
+      const offersExpected = invite.role === "artist"
+        ? await resolveArtistOffersExpected(deps.admin, invite.org_id)
+        : undefined;
+      const result = await sendOrgInvitationEmail(deps, {
+        email: invite.email,
+        orgName: (org as { name?: string } | null)?.name ?? undefined,
+        role: roleLabel(invite.role),
+        roleKey: invite.role,
+        token: invite.token,
+        inviterEmail: inviter.email,
+        inviterName: inviter.name,
+        expiresOn: formatExpiresOn(invite.expires_at),
+        isNewUser,
+        offersExpected,
+        appOrigin,
+        idempotencyKey: resendIdempotencyKey(invite.id, invite.resent_count ?? 0, deps.now()),
+        orgId: invite.org_id,
+        actionLink,
+      });
+      if (!emailWasSent(result)) {
+        console.error("resend-invitation: email did not send", result.error ?? result.data);
+        // A suppressed address (hard bounce / unsubscribe, see send-transactional-email)
+        // stays suppressed until the row leaves suppressed_emails: retrying can never
+        // succeed for it, so the generic "try again" copy below would be a false
+        // promise. Tell the admin the real, permanent reason instead. `pref_disabled`
+        // cannot actually reach this branch (org-invitation has no notification
+        // category, see EMAIL_TEMPLATE_CATEGORY in _shared/notificationCategories.ts)
+        // but is deliberately not special-cased: an unrecognized/absent reason falls
+        // through to the transient-failure copy below, which stays true for it too.
+        const reason = (result.data as { reason?: string } | null | undefined)?.reason;
+        if (reason === "email_suppressed") {
+          return json({
+            error: "That address has unsubscribed or previously bounced, so ShowFlow will not email it. Ask them to check spam, or invite a different address.",
+          }, 422);
+        }
+        return json({ error: "Could not resend the invitation email. Try again in a moment." }, 502);
+      }
+    } catch (e) {
+      console.error("resend-invitation: delivery failed", (e as Error).message);
+      return json({ error: "Could not resend the invitation email. Try again in a moment." }, 502);
+    }
 
-    // Stamp the resend so other admins can see WHEN (and how often) it was last resent — but
-    // ONLY when the email actually delivered. A suppressed/bounced address comes back as
-    // HTTP 200 { success: false }; stamping that would tell the next admin "just resent" when
-    // nothing reached the invitee (see emailWasSent). Best-effort otherwise: a failed stamp on a
-    // real send must not fail the request (just a stale counter).
-    if (emailWasSent(sendResult)) {
+    // Delivery confirmed above (any failure already returned 422/502). Stamp the resend so
+    // other admins can see WHEN (and how often) it was last resent. Best-effort: a failed
+    // stamp on a real send must not fail the request (just a stale counter).
+    try {
       const { error: stampErr } = await deps.admin.rpc("mark_invitation_resent", { p_id: invite.id });
       if (stampErr) console.error("resend-invitation: mark-resent failed", (stampErr as { message?: string }).message);
-    } else {
-      console.warn("resend-invitation: email not delivered — leaving resend counter unstamped", {
-        invitation: invite.id, error: sendResult.error ?? null,
-      });
+    } catch (se) {
+      console.error("resend-invitation: mark-resent threw", (se as Error).message);
     }
 
     return json({ ok: true });

@@ -10,24 +10,133 @@ import type {
   OnboardingStepMeta,
 } from "./types";
 
+/**
+ * The one place this tip is worded, because two surfaces render it and they render it at
+ * OPPOSITE times.
+ *
+ * As a `rules` entry (below) it belongs to the rail's COMPLETE state, so on its own it only
+ * ever reached an admin who had already finished setup. The gap it answers is the other one:
+ * nothing suggests looking at the app as an artist WHILE you are still building it, which is
+ * exactly when the decisions it would inform are being made. So `BookingSetupRail` also
+ * prints it in its footer, which is on screen from the first unfinished step onward.
+ *
+ * Admin (or super-admin) only, wherever it renders: Editor Mode is gated by
+ * editorAccess.canUseEditor, so a producer told to use it would be sent to a control that is
+ * not in their toolbar.
+ *
+ * The hint stops at what the toolbar can deliver. Its "as user" picker is filled from
+ * admin-list-users, an auth.users enumeration, so an artist who is on the roster but holds no
+ * account is not selectable at all; the always-available fallback is the "Viewing as: Artist"
+ * role option, which switches the shell but leaves the admin as themselves, so useMyArtist
+ * finds no artist row. Both surfaces sit next to a roster panel that has just said an artist
+ * needs no account, which is precisely when the picker is empty, so the precondition is
+ * stated rather than assumed.
+ *
+ * That precondition is the ACCOUNT, not a recent sign-in: the picker enumerates auth.users,
+ * so an artist who accepted their invitation and never came back is still in it. "Account" is
+ * also the word the product already uses at the one place an admin can check, the artist
+ * card's account-status chip (AccountStatusChip: "Active account" / "No account").
+ */
+export const VIEW_AS_ARTIST_TIP: InheritedRule = {
+  title: "See it as your artists do",
+  hint: "The pencil icon top right opens the editor bar, where you can switch to the artist view. Once an artist has an account, you can preview the app as that exact person.",
+};
+
 export const bookingOnboarding: ModuleOnboardingDef<BookingSetupStepKey> = {
   key: "booking_flow",
+  // Flow-neutral, unlike the steps and rules below it. `railHeader` is a flat pair of
+  // strings and neither consumer has a ctx to branch on: useModuleOnboardingRail prints it
+  // as the ShowsBookingsPage banner, BookingSetupRail as its own card header. So it renders
+  // unchanged at a direct-book org (artist_acceptance false), which never opens a tier, and
+  // "what the first offer needs" sat one line above rows the engine chips "Blocks booking"
+  // for precisely that org. "The first booking" holds under every preset.
   railHeader: {
     title: "Get bookings running",
-    body: "Dates keep syncing and you can edit them now. These are what the first offer needs.",
+    body: "Dates keep syncing and you can edit them now. These are what the first booking needs.",
   },
   steps: {
-    flow: { title: STEP_TITLES.flow, todoHint: "Offers, or straight to booked. Everything downstream reads this.", doneHint: "Chosen. Change it any time in Settings.", ctaLabel: "Choose flow", ctaRoute: ROUTES.SETTINGS, ctaCapability: "edit_booking_settings" },
+    // Deep-linked, like the coverage links in LadderStep/EligibilityStep: the flow control
+    // lives in Settings, Booking flow, and a bare ROUTES.SETTINGS opens Organization for an
+    // admin and Scheduling for a producer, so "Choose flow" landed on a pane without it.
+    // Only latent today, because DashboardSetupRail renders this Link only when its host
+    // passes no onStepAction and every current host passes one, but the fallback is what an
+    // unknown next host gets.
+    flow: { title: STEP_TITLES.flow, todoHint: "Offers, or straight to booked. Everything downstream reads this.", doneHint: "Chosen. Change it any time in Settings.", ctaLabel: "Choose flow", ctaRoute: `${ROUTES.SETTINGS}?tab=booking`, ctaCapability: "edit_booking_settings" },
+    // Gated on `add_artists`, not `edit_booking_settings`: adding artists is roster work, so
+    // a producer who cannot change booking settings still gets an actionable CTA here (that
+    // capability defaults on), while an org that revoked it gets a read-only row instead of
+    // a button leading nowhere. The setup sheet this CTA opens honours the same split, see
+    // BookingProducerWaitingCard.
+    // The hint names no pipeline: this row sits directly under the flow step, where an org
+    // can pick direct book (artist_acceptance false) and never send an offer at all.
+    //
+    // Nor does it promise delivery. Two shipped states email an artist nothing whatsoever:
+    // the "off" preset (active false), which every digest function skips, and a direct-book
+    // org with confirmation_digest off.
+    //
+    // ONE LINE, and only the consequence. SetupStepRow prints this hint in the row header
+    // and keeps it there while the panel is expanded underneath, and the default first-run
+    // path arrives with this row already open (FlowStep's onDone opens `people`; the
+    // dashboard rail's "Add artists" opens the sheet at `people`). So whatever this hint
+    // says, PeopleStep may not say again. It used to carry the card-address explanation as
+    // well, which the panel then repeated verbatim two lines lower. The panel owns the
+    // mechanism, the counts and the address/invite explanation; this row owns the
+    // consequence, at the length of its siblings.
+    //
+    // Consequence first, not an instruction: DashboardSetupRail hides a step's CTA from a
+    // viewer without its capability, so a producer in an org that revoked add_artists reads
+    // this hint with no button under it. "Import your roster" would hand them a task and no
+    // control; what is broken reads the same with or without the CTA, like every sibling.
+    people: { title: STEP_TITLES.people, todoHint: "Nobody to book until your roster has active artists.", doneHint: "Your roster has active artists on it.", ctaLabel: "Add artists", ctaRoute: ROUTES.ARTISTS, ctaCapability: "add_artists" },
     slots: { title: STEP_TITLES.slots, todoHint: "A show with no slot count never reads as full.", doneHint: "Set on every show.", ctaLabel: "Set slots", ctaRoute: ROUTES.PRODUCTIONS, ctaCapability: "edit_booking_settings" },
-    ladder: { title: STEP_TITLES.ladder, todoHint: "The order offers go out in, per city.", doneHint: "Every scheduled city has a tier-1 cast.", ctaLabel: "Open bookings", ctaRoute: ROUTES.BOOKINGS, ctaCapability: "edit_booking_settings" },
-    eligibility: { title: STEP_TITLES.eligibility, todoHint: "Which casts can be offered which show in which city.", doneHint: "Every scheduled show and city has a cast.", ctaLabel: "Open bookings", ctaRoute: ROUTES.BOOKINGS, ctaCapability: "edit_booking_settings" },
-    timing: { title: STEP_TITLES.timing, todoHint: "How long artists get, and when mail goes out.", doneHint: "Window and digest hours set.", ctaLabel: "Set timing", ctaRoute: ROUTES.SETTINGS, ctaCapability: "edit_booking_settings" },
+    // These two hints name what the row HOLDS, not what one flow does with it, and that is
+    // forced by the shape of this record: `steps` is flat, neither consumer passes a ctx,
+    // so both strings render verbatim at a direct-book org. That org never opens a tier,
+    // and the ladder in particular is read by nothing it runs (cast_city_priority and the
+    // priority column on show_cast_eligibility are read by resolveTierLadder and
+    // fetchOfferTiers, both offer-only; the direct-book picker is deriveDirectBookList over
+    // useEligibleArtists, which ignores priority). So "The order offers go out in" was not
+    // a vague hint for that reader, it was a false one.
+    //
+    // The consequence, which is the half that really does differ, is stated by the panels
+    // these hints sit above: LadderStep and EligibilityStep read the org's flow and say what
+    // an unranked city or an unmatched show costs THIS org (src/lib/bookings/coverageCopy.ts).
+    // "Review coverage" over "Open bookings": on the bookings page itself these buttons
+    // open the inline checklist Sheet in place, so a label naming the page they already
+    // sit on read as a no-op. The label says what happens on every surface.
+    ladder: { title: STEP_TITLES.ladder, todoHint: "Your casts ranked per city, tier 1 first.", doneHint: "Every scheduled city has a tier-1 cast.", ctaLabel: "Review coverage", ctaRoute: ROUTES.BOOKINGS, ctaCapability: "edit_booking_settings" },
+    eligibility: { title: STEP_TITLES.eligibility, todoHint: "Which casts belong to which show, in which city.", doneHint: "Every scheduled show and city has a cast.", ctaLabel: "Review coverage", ctaRoute: ROUTES.BOOKINGS, ctaCapability: "edit_booking_settings" },
+    // Like ladder and eligibility above, the hint names what the row HOLDS (send hours and
+    // an answer window), not what one flow does with it: "how long artists get" presumed a
+    // pipeline where artists answer, which a direct-book org does not run. TimingStep's own
+    // panel reads the real flow and narrates what THIS org does with these hours.
+    // Deep-linked for the same reason as `flow` above: the send hours live in Settings,
+    // Booking flow, and "Set timing" has to land on them.
+    timing: { title: STEP_TITLES.timing, todoHint: "When booking email goes out, and the answer window.", doneHint: "Hours set. Change them any time in Settings.", ctaLabel: "Set timing", ctaRoute: `${ROUTES.SETTINGS}?tab=booking`, ctaCapability: "edit_booking_settings" },
   },
+  // This block is the rail's COMPLETE state: it narrates how this org works, as fact. Rule
+  // one already branches on the flow, so every rule under it has to branch too. A
+  // direct-book org (artist_acceptance false) never opens a tier, which means it has no
+  // offer digest, no response window and no accepted offer waiting on a producer: those
+  // three rules used to be printed to it anyway, directly contradicting the rule above them.
   rules: (role, ctx) => ([
     { title: ctx.artistAcceptance ? "Offers with tiers" : "Direct booking", hint: ctx.artistAcceptance ? "Tier 1 goes out first. Tier 2 opens later if unfilled." : "Producers book straight from the eligibility list." },
-    { title: "Daily offer digest", hint: "Offers batch overnight rather than mailing instantly." },
-    { title: "Response window", hint: "After it passes the offer expires and the tier reopens." },
-    { title: role === "producer" ? "Confirm is on you" : "Confirm is manual", hint: "An accepted offer waits for a producer. That is the queue on this page." },
+    ...(ctx.artistAcceptance
+      ? [
+          // Names no delivery mode: offer_delivery is per org, and the shipped fast-track
+          // preset sets "immediate", where open-offer-tier mails at tier open and
+          // send-offer-digest skips the hour gate. TimingStep's own narrative reads the
+          // real flow and states which of the two this org runs.
+          { title: "Offers go out by email", hint: "Artists answer from the email. Your timing settings decide whether it leaves at once or waits for the next digest." },
+          { title: "Response window", hint: "After it passes the offer expires and the tier reopens." },
+          { title: role === "producer" ? "Confirm is on you" : "Confirm is manual", hint: "An accepted offer waits for a producer. That is the queue on this page." },
+        ]
+      : [
+          { title: "Nothing to accept", hint: "An artist you add to a date is booked. It shows in their calendar as confirmed." },
+        ]),
+    // Admins only, and the same object BookingSetupRail's footer renders (see
+    // VIEW_AS_ARTIST_TIP above for why it is shared and why it is worded the way it is).
+    ...(role === "admin" ? [VIEW_AS_ARTIST_TIP] : []),
   ]),
   offFooter: "Booking flow is off for this org. Ask your account manager to switch it on.",
 };
@@ -69,11 +178,39 @@ export const ARTIST_ONBOARDING: {
   rules: (ctx: OnboardingCtx) => InheritedRule[];
 } = {
   steps: {
-    blockDates: { title: "Block what you cannot play", todoHint: "Offers skip blocked dates before they are sent, so you only get asked about dates that work.", doneHint: "Your calendar is up to date.", ctaLabel: "Open availability", ctaRoute: ROUTES.AVAILABILITY },
+    // Flow-neutral on purpose. This record takes no ctx, so the hint renders unchanged at a
+    // direct-book org, which never sends an offer: "offers skip blocked dates before they
+    // are sent" described a pipeline that org does not run. Blocked dates are honoured on
+    // BOTH paths (open-offer-tier skips blocked_dates server-side; deriveDirectBookList
+    // drops blocked artists from the direct-book picker), so the mechanism is what it says.
+    blockDates: { title: "Block what you cannot play", todoHint: "Blocked dates come off the list before anyone books you, so you only hear about dates that work.", doneHint: "Your calendar is up to date.", ctaLabel: "Open availability", ctaRoute: ROUTES.AVAILABILITY },
   },
+  // Same rule as the org-side registry above: an artist whose org books directly never
+  // sees an offer, so nothing here may describe one as theirs. The window rule used to be
+  // printed to them regardless, right under a rule saying they are booked directly.
   rules: (ctx) => ([
-    { title: "Eligibility comes from your cast", hint: "Only your cast's dates can ever be offered to you." },
-    { title: ctx.artistAcceptance ? "Offers arrive in a daily digest" : "You are booked directly", hint: ctx.artistAcceptance ? "One digest a day, not a mail per date." : "There is no offer step; you are added straight to the date." },
-    { title: "You have a response window", hint: "After it passes the offer expires and goes to the next tier." },
+    ...(ctx.artistAcceptance
+      ? [
+          // Offer-scoped, and it has to stay that way. The flow-neutral version ("you can
+          // only be booked on your cast's dates") is false at a direct-book org that never
+          // configured eligibility: useEligibleArtists resolves artistIds to null, meaning
+          // "no restriction", and deriveDirectBookList (src/lib/bookings.ts) then hands
+          // ShowDateDetailSheet's picker EVERY active org artist, so a producer can book
+          // someone onto a date belonging to none of their casts. On the offer side the
+          // limit holds by construction: a tier IS a cast (resolveTierLadder), so an org
+          // with no ladder opens no tier and sends nothing.
+          { title: "Eligibility comes from your cast", hint: "Your casts decide which dates can be offered to you." },
+          // No delivery mode named: a fast-track org emails the moment a tier opens.
+          { title: "Offers arrive by email", hint: "Your producer's timing decides whether that is the daily digest or the moment a tier opens." },
+          { title: "You have a response window", hint: "After it passes the offer expires and goes to the next tier." },
+        ]
+      : [
+          { title: "You are booked directly", hint: "There is no offer step. A date booked for you appears in your calendar as confirmed." },
+          // Dropping the cast rule must not leave this artist with a single line telling
+          // them everything happens to them. Blocking is the one lever they have when there
+          // is nothing to decline, and it is the mechanism, not a guarantee: blocked
+          // artists are filtered out of the list the direct-book picker is built from.
+          { title: "Blocking is how you say no", hint: "Blocked dates come out of the list your producer books from, and that is where your say goes." },
+        ]),
   ]),
 };
