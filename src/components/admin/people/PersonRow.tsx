@@ -1,11 +1,13 @@
 import { format } from "date-fns";
-import { Copy, X, RefreshCw, Check, Settings as SettingsIcon } from "lucide-react";
+import { Copy, X, RefreshCw, Mail, Settings as SettingsIcon } from "lucide-react";
 import { type AppRole, roleLabel } from "@/config/app.config";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import {
+  DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuLabel, DropdownMenuCheckboxItem,
+} from "@/components/ui/dropdown-menu";
 import { IconTooltip } from "@/components/common/IconTooltip";
-import { cn } from "@/lib/utils";
 import { ROLE_OPTIONS } from "./roleOptions";
 import type { Person } from "./peopleMatch";
 
@@ -22,89 +24,149 @@ export interface PersonRowProps {
   setRolePending?: boolean;
 }
 
-/** One person in the merged directory: Invited (invite actions) or Active (role editor + remove). */
+/** Two-letter initials from a display name (or the local part of an email as a fallback). */
+function initials(name: string): string {
+  const parts = name.trim().split(/\s+/).filter(Boolean);
+  if (parts.length === 0) return "?";
+  if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
+  return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+}
+
+/**
+ * Role badges shown for both invited and active rows — one visual language. Rendered in a fixed-width
+ * column (always an element so the column is held even with no roles) so the role badges form one
+ * vertical band down the whole directory, across both subgroups.
+ */
+function RoleBadges({ roles }: { roles: AppRole[] }) {
+  if (roles.length === 0) return <div className="hidden sm:block sm:w-44" aria-hidden />;
+  return (
+    <div className="flex flex-wrap items-center gap-1 sm:w-44 sm:justify-end">
+      {roles.map((r) => (
+        <Badge key={r} variant="secondary" className="border-border/60 font-normal">{roleLabel(r)}</Badge>
+      ))}
+    </div>
+  );
+}
+
+/**
+ * One person in the merged directory (rendered as a listitem). A leading avatar anchors the row —
+ * tone-coloured initials for a member, a muted envelope for a pending invite. Identity stacks above the
+ * controls on mobile and sits inline on ≥sm. Role is rendered as badges for BOTH invited and active
+ * people; the Invited/Active split is carried by the subgroup headers in PeopleTab, not a per-row pill.
+ * Both row types give their trailing controls an equal fixed-width action zone, and the active zone
+ * reserves the Remove slot even on the self row — so the role column and the primary action land in one
+ * vertical column down every row, in both subgroups. Destructive controls (revoke, remove) use the
+ * theme-aware destructive foreground token (--red-600) so they read apart from the neutral copy/resend/
+ * roles controls and stay legible in dark mode.
+ */
 export function PersonRow({
   person, isSelf, onCopyLink, onResend, onRevoke, onSetRole, onRequestRemove,
   resendPending = false, revokePending = false, setRolePending = false,
 }: PersonRowProps) {
   const invited = person.status === "invited";
   const inv = person.invitation;
+  const hasName = Boolean(person.displayName);
+  const meta = invited
+    ? (inv?.created_at ? `Invited ${format(new Date(inv.created_at), "dd/MM/yyyy")}` : "Awaiting acceptance")
+    : (person.lastSignInAt ? `Last seen ${format(new Date(person.lastSignInAt), "dd/MM/yyyy HH:mm")}` : "Never signed in");
+
   return (
-    <div className="flex items-center justify-between gap-2 p-3 rounded-lg border border-border">
-      <div className="min-w-0">
-        <p className={`font-medium text-sm truncate ${invited && !person.displayName ? "text-muted-foreground" : ""}`}>
-          {person.displayName || person.email}
-        </p>
-        <p className="text-xs text-muted-foreground truncate">{person.email}</p>
-        {invited ? (
-          // Invited rows show the role as text here; active rows show it as badges on the
-          // right (below), so only render this line for invited rows to avoid duplication.
-          <p className="text-xs text-muted-foreground">{person.roles.map(roleLabel).join(", ")}</p>
-        ) : (
-          <p className="text-xs text-muted-foreground">
-            {person.lastSignInAt ? `Last seen ${format(new Date(person.lastSignInAt), "dd/MM/yyyy HH:mm")}` : "Never signed in"}
-          </p>
-        )}
+    <div role="listitem" className="flex flex-col gap-3 py-3 sm:flex-row sm:items-center sm:gap-4">
+      {/* Identity — avatar + text; full width on mobile, flexes on ≥sm */}
+      <div className="flex min-w-0 flex-1 items-center gap-3">
+        <Avatar aria-hidden className="h-9 w-9">
+          {invited
+            ? <AvatarFallback><Mail className="h-4 w-4 text-muted-foreground" /></AvatarFallback>
+            : <AvatarFallback seed={person.emailKey}>{initials(person.displayName || person.email)}</AvatarFallback>}
+        </Avatar>
+        <div className="flex min-w-0 flex-col gap-0.5">
+          <div className="flex items-center gap-2">
+            <p className="truncate text-sm font-medium" title={person.displayName || person.email}>
+              {person.displayName || person.email}
+            </p>
+            {isSelf && (
+              <Badge variant="secondary" className="shrink-0 border-border/60 px-1.5 text-[10px] font-medium uppercase tracking-wide">
+                You
+              </Badge>
+            )}
+          </div>
+          {/* Only render the email as a subtitle when a distinct name occupies the primary line —
+              otherwise the primary line already IS the email (no duplicate). */}
+          {hasName && (
+            <p className="truncate text-xs text-muted-foreground" title={person.email}>{person.email}</p>
+          )}
+          <p className="truncate text-xs text-muted-foreground">{meta}</p>
+        </div>
       </div>
-      <div className="flex items-center gap-1 shrink-0">
-        <Badge variant="outline" className={cn("text-xs", invited ? "border-warning text-warning" : "border-success text-success")}>
-          {invited ? "Invited" : "Active"}
-        </Badge>
+
+      {/* Roles + actions — wraps under identity on mobile, fixed columns on ≥sm */}
+      <div className="flex flex-wrap items-center gap-2 pl-12 sm:flex-nowrap sm:justify-end sm:pl-0">
+        <RoleBadges roles={person.roles} />
 
         {invited && inv ? (
-          <>
+          <div className="flex items-center justify-end gap-1 sm:w-40">
             <IconTooltip label="Copy invite link">
-              <Button size="sm" variant="ghost" className="h-7 px-2" onClick={() => onCopyLink(inv.token)} aria-label="Copy invite link">
-                <Copy className="h-3.5 w-3.5" />
+              <Button size="sm" variant="ghost" className="h-9 w-9 p-0 sm:h-8 sm:w-8" onClick={() => onCopyLink(inv.token)} aria-label={`Copy invite link for ${inv.email}`}>
+                <Copy className="h-4 w-4" />
               </Button>
             </IconTooltip>
             <IconTooltip label="Resend invitation">
-              <Button size="sm" variant="ghost" className="h-7 px-2" disabled={resendPending} onClick={() => onResend(inv.id)} aria-label="Resend invitation">
-                <RefreshCw className="h-3.5 w-3.5" />
+              <Button size="sm" variant="ghost" className="h-9 w-9 p-0 sm:h-8 sm:w-8" disabled={resendPending} onClick={() => onResend(inv.id)} aria-label={`Resend invitation to ${inv.email}`}>
+                <RefreshCw className={`h-4 w-4 ${resendPending ? "animate-spin" : ""}`} />
               </Button>
             </IconTooltip>
             <IconTooltip label="Revoke invitation">
-              <Button size="sm" variant="ghost" className="h-7 px-2" disabled={revokePending} onClick={() => onRevoke(inv.id)} aria-label="Revoke invitation">
-                <X className="h-3.5 w-3.5" />
+              <Button
+                size="sm" variant="ghost"
+                className="ml-0.5 h-9 w-9 p-0 text-[var(--red-600)] hover:bg-[var(--red-100)] sm:h-8 sm:w-8"
+                disabled={revokePending} onClick={() => onRevoke(inv.id)} aria-label={`Revoke invitation for ${inv.email}`}
+              >
+                <X className="h-4 w-4" />
               </Button>
             </IconTooltip>
-          </>
+          </div>
         ) : (
-          <>
-            {person.roles.map((r) => <Badge key={r} variant="secondary" className="text-xs">{roleLabel(r)}</Badge>)}
+          <div className="flex items-center justify-end gap-1 sm:w-40">
             {person.userId && (
-              <Popover>
-                <PopoverTrigger asChild>
-                  <Button size="sm" variant="outline" className="h-7 px-2 text-xs" aria-label={`Edit roles for ${person.email}`}>
-                    <SettingsIcon className="h-3 w-3 mr-1" />Roles
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button size="sm" variant="outline" className="h-9 gap-1.5 px-2.5 text-xs sm:h-8" aria-label={`Edit roles for ${person.email}`}>
+                    <SettingsIcon className="h-4 w-4" />Roles
                   </Button>
-                </PopoverTrigger>
-                <PopoverContent className="w-48 p-1" align="end">
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-52">
+                  <DropdownMenuLabel>Roles</DropdownMenuLabel>
                   {ROLE_OPTIONS.map((r) => {
                     const has = person.roles.includes(r);
                     return (
-                      <button
+                      <DropdownMenuCheckboxItem
                         key={r}
+                        checked={has}
                         disabled={setRolePending}
-                        onClick={() => onSetRole({ userId: person.userId!, role: r, action: has ? "remove" : "add" })}
-                        className="flex items-center w-full px-2 py-1.5 text-sm rounded hover:bg-muted text-left disabled:opacity-50 disabled:cursor-not-allowed"
+                        onSelect={(e) => e.preventDefault()}
+                        onCheckedChange={() => onSetRole({ userId: person.userId!, role: r, action: has ? "remove" : "add" })}
                       >
-                        <Check className={cn("h-4 w-4 mr-2", has ? "opacity-100" : "opacity-0")} />
                         {roleLabel(r)}
-                      </button>
+                      </DropdownMenuCheckboxItem>
                     );
                   })}
-                </PopoverContent>
-              </Popover>
+                </DropdownMenuContent>
+              </DropdownMenu>
             )}
-            <Button
-              size="sm" variant="ghost" className="h-7 px-2 text-xs"
-              disabled={isSelf || !person.userId}
-              onClick={() => onRequestRemove({ user_id: person.userId!, email: person.email })}
-            >
-              {isSelf ? "You" : "Remove"}
-            </Button>
-          </>
+            {/* Reserve the Remove slot even on the self row so Roles stays in column. */}
+            <div className="flex sm:w-[4.75rem] sm:justify-end">
+              {!isSelf && person.userId && (
+                <Button
+                  size="sm" variant="ghost"
+                  className="h-9 px-2.5 text-xs text-[var(--red-600)] hover:bg-[var(--red-100)] sm:h-8"
+                  onClick={() => onRequestRemove({ user_id: person.userId!, email: person.email })}
+                  aria-label={`Remove ${person.displayName || person.email}`}
+                >
+                  Remove
+                </Button>
+              )}
+            </div>
+          </div>
         )}
       </div>
     </div>

@@ -1,5 +1,5 @@
 // src/components/admin/people/PeopleTab.tsx
-import { useMemo, useState } from "react";
+import { useMemo, useState, type ReactNode } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { Search } from "lucide-react";
@@ -28,6 +28,7 @@ export function PeopleTab() {
   const [search, setSearch] = useState("");
   const [bulkOpen, setBulkOpen] = useState(false);
   const [target, setTarget] = useState<{ user_id: string; email: string | null } | null>(null);
+  const [revokeTarget, setRevokeTarget] = useState<{ id: string; email: string | null } | null>(null);
 
   const { data: invites, isError: invitesError, isLoading: invitesLoading } = useQuery({
     queryKey: ["org-invitations", currentOrg?.id],
@@ -52,10 +53,10 @@ export function PeopleTab() {
   );
   const people = useMemo(() => buildPeople(allMembers, pendingInvites), [allMembers, pendingInvites]);
   const filteredPeople = useMemo(() => filterPeopleList(search, people), [search, people]);
-  const filteredHistory = useMemo(
-    () => filterInvitesByEmail(search, historyInvites),
-    [search, historyInvites],
-  );
+  const invitedPeople = useMemo(() => filteredPeople.filter((p) => p.status === "invited"), [filteredPeople]);
+  const activePeople = useMemo(() => filteredPeople.filter((p) => p.status === "active"), [filteredPeople]);
+  // Search scopes the whole pane: history responds to the same query (empty query passes through).
+  const filteredHistory = useMemo(() => filterInvitesByEmail(search, historyInvites), [search, historyInvites]);
   const hasSearch = search.trim().length > 0;
   // Duplicate detection needs both lists; if either query is still loading or has
   // errored (a state that never self-resolves), hold invites so a real duplicate
@@ -72,17 +73,31 @@ export function PeopleTab() {
     catch { toast.error("Could not copy link"); }
   };
 
-  const showPeople = filteredPeople.length > 0;
   const showHistory = filteredHistory.length > 0;
-  // Only claim "no matches" once both queries have actually settled successfully.
-  // dedupeHint covers loading AND error, so the skeleton or the destructive alert
-  // explains the empty lists during those states instead of a contradictory empty copy.
-  const nothing = hasSearch && !showPeople && !showHistory && !dedupeHint;
+
+  const renderPerson = (p: (typeof filteredPeople)[number]) => (
+    <PersonRow
+      key={p.emailKey}
+      person={p}
+      isSelf={p.userId === user?.id}
+      onCopyLink={copyLink}
+      onResend={(id) => resend.mutate(id)}
+      onRevoke={(id) => setRevokeTarget({ id, email: p.email })}
+      onSetRole={(vars) => setRole.mutate(vars, {
+        onSuccess: () => toast.success("Role updated"),
+        onError: (e) => toast.error((e as Error).message),
+      })}
+      onRequestRemove={setTarget}
+      resendPending={resend.isPending && resend.variables === p.invitation?.id}
+      revokePending={revoke.isPending && revoke.variables === p.invitation?.id}
+      setRolePending={setRole.isPending}
+    />
+  );
 
   return (
     <div className="space-y-4">
       <Card>
-        <CardHeader><CardTitle className="font-display">Invite people</CardTitle></CardHeader>
+        <CardHeader><CardTitle className="font-display text-base">Invite people</CardTitle></CardHeader>
         <CardContent>
           <InviteBar
             members={allMembers}
@@ -95,61 +110,70 @@ export function PeopleTab() {
         </CardContent>
       </Card>
 
-      <div className="relative">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-        <Input className="pl-9" placeholder="Search people" value={search} onChange={(e) => setSearch(e.target.value)} />
-      </div>
-
-      {isLoading && <Skeleton className="h-10 w-full" />}
-      {isError && <Alert variant="destructive"><AlertDescription>{(error as Error).message}</AlertDescription></Alert>}
-      {invitesError && <Alert variant="destructive"><AlertDescription>Failed to load pending invitations.</AlertDescription></Alert>}
-
-      {showPeople && (
-        <Card>
-          <CardHeader><CardTitle className="font-display text-base">People</CardTitle></CardHeader>
-          <CardContent className="space-y-2">
-            {filteredPeople.map((p) => (
-              <PersonRow
-                key={p.emailKey}
-                person={p}
-                isSelf={p.userId === user?.id}
-                onCopyLink={copyLink}
-                onResend={(id) => resend.mutate(id)}
-                onRevoke={(id) => revoke.mutate(id)}
-                onSetRole={(vars) => setRole.mutate(vars, {
-                  onSuccess: () => toast.success("Role updated"),
-                  onError: (e) => toast.error((e as Error).message),
-                })}
-                onRequestRemove={setTarget}
-                resendPending={resend.isPending && resend.variables === p.invitation?.id}
-                revokePending={revoke.isPending && revoke.variables === p.invitation?.id}
-                setRolePending={setRole.isPending}
-              />
-            ))}
-          </CardContent>
-        </Card>
-      )}
+      <Card>
+        <CardHeader className="flex flex-col gap-3 space-y-0 sm:flex-row sm:items-center sm:justify-between">
+          <CardTitle className="font-display text-base">People</CardTitle>
+          <div className="relative w-full sm:w-64">
+            <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+            <Input
+              className="pl-9"
+              placeholder="Search people"
+              aria-label="Search people"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+            />
+          </div>
+        </CardHeader>
+        <CardContent className="space-y-5">
+          {/* Announce filter results to assistive tech without moving focus (WCAG 4.1.3). */}
+          <p className="sr-only" role="status" aria-live="polite">
+            {hasSearch
+              ? `${filteredPeople.length} ${filteredPeople.length === 1 ? "person matches" : "people match"} your search${filteredHistory.length > 0 ? `, plus ${filteredHistory.length} in invitation history` : ""}.`
+              : ""}
+          </p>
+          {invitesError && (
+            <Alert variant="destructive"><AlertDescription>Failed to load pending invitations.</AlertDescription></Alert>
+          )}
+          {isLoading ? (
+            <div className="space-y-2"><Skeleton className="h-14 w-full" /><Skeleton className="h-14 w-full" /></div>
+          ) : isError ? (
+            <Alert variant="destructive"><AlertDescription>{(error as Error).message}</AlertDescription></Alert>
+          ) : filteredPeople.length === 0 ? (
+            <p className="py-6 text-center text-sm text-muted-foreground">
+              {hasSearch
+                ? (filteredHistory.length > 0
+                    ? `No members or pending invites match "${search.trim()}". See invitation history below.`
+                    : `No members or pending invites match "${search.trim()}".`)
+                : "No people yet."}
+            </p>
+          ) : (
+            <>
+              {invitedPeople.length > 0 && (
+                <PeopleGroup label="Pending invites" count={invitedPeople.length}>
+                  {invitedPeople.map(renderPerson)}
+                </PeopleGroup>
+              )}
+              {activePeople.length > 0 && (
+                <PeopleGroup label="Members" count={activePeople.length}>
+                  {activePeople.map(renderPerson)}
+                </PeopleGroup>
+              )}
+            </>
+          )}
+        </CardContent>
+      </Card>
 
       {showHistory && (
         <Card>
           <CardHeader><CardTitle className="font-display text-base">Invitation history</CardTitle></CardHeader>
-          <CardContent className="space-y-2">
-            {filteredHistory.map((inv) => (
-              <InviteRow
-                key={inv.id}
-                invite={inv}
-                onCopyLink={() => {}}
-                onResend={() => {}}
-                onRevoke={() => {}}
-              />
-            ))}
+          <CardContent>
+            <div role="list" aria-label="Invitation history" className="divide-y divide-border">
+              {filteredHistory.map((inv) => (
+                <InviteRow key={inv.id} invite={inv} />
+              ))}
+            </div>
           </CardContent>
         </Card>
-      )}
-
-      {nothing && <p className="text-sm text-muted-foreground text-center py-6">No people match "{search.trim()}".</p>}
-      {!hasSearch && people.length === 0 && !showHistory && !isLoading && !isError && (
-        <p className="text-sm text-muted-foreground text-center py-6">No people yet.</p>
       )}
 
       <BulkInviteDialog open={bulkOpen} onOpenChange={setBulkOpen} members={allMembers} invites={pendingInvites} dedupeHint={dedupeHint} />
@@ -175,6 +199,42 @@ export function PeopleTab() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      <AlertDialog open={revokeTarget !== null} onOpenChange={(o) => !o && setRevokeTarget(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Revoke invitation?</AlertDialogTitle>
+            <AlertDialogDescription>
+              {revokeTarget?.email} will no longer be able to accept this invitation. You can invite them again later.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={() => {
+              if (!revokeTarget) return;
+              revoke.mutate(revokeTarget.id, {
+                onSuccess: () => toast.success("Invitation revoked"),
+                onError: (e) => toast.error((e as Error).message),
+              });
+              setRevokeTarget(null);
+            }}>Revoke</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
+  );
+}
+
+/** A labelled, counted subgroup ("Pending invites · 3" / "Members · 4") wrapping divided rows. */
+function PeopleGroup({ label, count, children }: { label: string; count: number; children: ReactNode }) {
+  const headingId = `people-group-${label.toLowerCase().replace(/\s+/g, "-")}`;
+  return (
+    <section>
+      <h3 id={headingId} className="mb-1 px-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+        {label}
+        <span className="ml-1.5 font-normal tabular-nums text-muted-foreground">· {count}</span>
+      </h3>
+      <div role="list" aria-labelledby={headingId} className="divide-y divide-border">{children}</div>
+    </section>
   );
 }
