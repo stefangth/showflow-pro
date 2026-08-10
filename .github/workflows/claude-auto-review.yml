@@ -61,7 +61,7 @@ jobs:
             exit 1
           fi
 
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
         with:
           # On an @claude comment, and on a manual dispatch, the event ref is the
           # default branch, so check out the PR head explicitly; pull_request
