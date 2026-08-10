@@ -44,4 +44,11 @@ describe("PersonRow", () => {
     screen.getByRole("button", { name: /revoke invitation/i }).click();
     expect(onRevoke).toHaveBeenCalledWith("inv1");
   });
+
+  it("shows resend info on a pending row once it has been resent", () => {
+    const p = invitedFixture();
+    p.invitation = { ...p.invitation!, last_resent_at: "2026-08-10T14:30:00Z", resent_count: 2 };
+    renderWithProviders(<PersonRow person={p} isSelf={false} onCopyLink={noop} onResend={noop} onRevoke={noop} onSetRole={noop} onRequestRemove={noop} />);
+    expect(screen.getByText(/Resent 2.*last/i)).toBeInTheDocument();
+  });
 });

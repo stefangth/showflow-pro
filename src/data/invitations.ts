@@ -13,6 +13,9 @@ export interface Invitation {
   created_at?: string;
   /** Set when the invite was created from a specific catalog artist (deterministic link). */
   artist_id?: string | null;
+  /** When the invite was last resent + how many times, surfaced so multiple admins can coordinate. */
+  last_resent_at?: string | null;
+  resent_count?: number;
 }
 
 /** Absolute accept-invite link for an invitation token (for copy-to-clipboard). */
@@ -61,7 +64,7 @@ export async function fetchOrgInvitations(
 ): Promise<Invitation[]> {
   const { data, error } = await client
     .from("org_invitations")
-    .select("id, org_id, email, role, status, token, expires_at, created_at, artist_id")
+    .select("id, org_id, email, role, status, token, expires_at, created_at, artist_id, last_resent_at, resent_count")
     .eq("org_id", orgId)
     .order("created_at", { ascending: false });
   if (error) throw error;
