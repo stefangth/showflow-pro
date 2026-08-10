@@ -1,11 +1,11 @@
 import { preflight, json } from "../_shared/http.ts";
 import { requireSuperAdmin } from "../_shared/auth.ts";
 import { realDeps, type Deps } from "../_shared/deps.ts";
-import { ensureInvitedUser, formatExpiryThrough, sendOrgInvitationEmail, SYSTEM_INVITER_NAME } from "../_shared/invitations.ts";
+import { ensureInvitedUser, formatExpiresOn, resolveArtistOffersExpected, sendOrgInvitationEmail, SYSTEM_INVITER_NAME } from "../_shared/invitations.ts";
 import { roleLabel } from "../_shared/roles.ts";
 import { resolveOrgSetting } from "../_shared/settings.ts";
 import { FEATURE_KEYS, FEATURE_REGISTRY, type FeatureKey } from "../_shared/entitlements.ts";
-import { normalizeBookingFlow, resolveBookingFlow } from "../_shared/bookingFlow.ts";
+import { normalizeBookingFlow } from "../_shared/bookingFlow.ts";
 import type { Json } from "../_shared/database.types.ts";
 
 type Body = {
@@ -119,17 +119,21 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
         // intra-org name or address reads as legitimate. There is nothing to resolve here
         // (no profiles read, no Admin API call), so there is also no failure mode to
         // guard against.
-        const artistAcceptance = role === "artist"
-          ? await resolveBookingFlow(deps.admin, org_id)
-            .then((flow) => flow.artist_acceptance)
-            .catch((): undefined => undefined)
+        // Only relevant when the first invitee is an artist (role defaults to 'admin' and
+        // usually is, but the Body type does allow 'artist'). resolveArtistOffersExpected
+        // reads the org's booking_flow live (including the offFlow seed just written
+        // above, when it landed), so a fresh org still starting in the "off" preset
+        // correctly resolves to false rather than the module's usual defaults; it also
+        // already fails closed to false on any error, so no extra .catch is needed here.
+        const offersExpected = role === "artist"
+          ? await resolveArtistOffersExpected(deps.admin, org_id)
           : undefined;
         await sendOrgInvitationEmail(deps, {
           email, orgName: name, role: roleLabel(role), roleKey: role, token,
           inviterName: SYSTEM_INVITER_NAME,
-          expiresOn: formatExpiryThrough((invRow as { expires_at?: string } | null)?.expires_at),
+          expiresOn: formatExpiresOn((invRow as { expires_at?: string } | null)?.expires_at),
           isNewUser,
-          artistAcceptance,
+          offersExpected,
           appOrigin, idempotencyKey: `org-invitation-${org_id}`, orgId: org_id, actionLink,
         });
       } else {

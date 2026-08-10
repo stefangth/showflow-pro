@@ -2,8 +2,9 @@ import { assertEquals } from "./test-asserts.ts";
 import {
   ensureInvitedUser,
   formatExpiresOn,
-  formatExpiryThrough,
   ORG_INVITATION_EXPIRY_DAYS,
+  resendIdempotencyKey,
+  resolveArtistOffersExpected,
   resolveInviterName,
   sendOrgInvitationEmail,
   SYSTEM_INVITER_NAME,
@@ -105,7 +106,6 @@ Deno.test("formatExpiresOn: renders a long-form, date-only string with no time a
   // no reason to know or care what timezone the booking engine runs on, unlike the digest
   // emails which genuinely are Berlin-scheduled and say so. This is the EXACT calendar
   // day, not the guaranteed-valid one the email body actually renders; see
-  // formatExpiryThrough below for that.
   assertEquals(formatExpiresOn("2026-08-24T07:00:00.000Z"), "August 24, 2026");
 });
 
@@ -124,68 +124,56 @@ Deno.test("formatExpiresOn: unparsable input returns undefined instead of 'Inval
   assertEquals(formatExpiresOn("not-a-date"), undefined);
 });
 
-Deno.test("formatExpiryThrough: renders the day BEFORE the exact expiry day, since expires_at keeps its creation time-of-day and accept_invitation checks it to the second", () => {
-  // Regression for the class of bug where the email claimed a window one day wider than
-  // the DB actually honors: a row created 2026-08-10 14:30Z with the 14-day default
-  // expires 2026-08-24T14:30:00Z, so "open through August 24" would be false for anyone
-  // who reads the email on August 24 itself after 14:30Z. formatExpiryThrough must state
-  // the prior day instead, which is guaranteed valid in full.
-  assertEquals(formatExpiryThrough("2026-08-24T14:30:00.000Z"), "August 23, 2026");
-});
+// `now` is fixed well before the expiry in every test below (2026-08-01, three weeks
+// ahead of the 2026-08-24 expiries used throughout) unless a test is specifically about
+// the near-expiry clamp: it exercises the 48-hour step-back in isolation, the same way
+// the function behaved before `now` became a required parameter.
+const FAR_FROM_EXPIRY_NOW = new Date("2026-08-01T00:00:00.000Z");
 
-Deno.test("formatExpiryThrough: a mid-day expiry still renders the prior calendar day, not the same day", () => {
-  // The exact boundary case the fix targets: expires_at at noon, nowhere near midnight,
-  // still must not render its own calendar day (only the first 12 hours of that day
-  // would actually be safe to claim).
-  assertEquals(formatExpiryThrough("2026-08-24T12:00:00.000Z"), "August 23, 2026");
-});
+// ── the near-expiry clamp (resend-invitation's own failure mode) ──────────────────
+//
+// A resend restates an EXISTING row's expires_at, which can legitimately happen at any
+// point in the invitation's life, including its final 48 hours. Without a `now`-aware
+// an earlier revision's date arithmetic would state an already-past-looking day here
+// from the reader's point of view, which reads as an already-expired invitation even
+// though the window (and the resend) are both still genuinely valid.
 
-Deno.test("formatExpiryThrough: even an expiry at 00:00:00 UTC (the earliest possible time-of-day) still steps back a full day", () => {
-  // The tightest case: if expires_at itself were exactly midnight, the exact day would
-  // actually be safe for its own full 24 hours. formatExpiryThrough still renders the
-  // prior day here (a one-day-conservative rendering is always correct, just not always
-  // maximally tight), keeping the function simple and its guarantee unconditional rather
-  // than branching on the row's time-of-day.
-  assertEquals(formatExpiryThrough("2026-08-24T00:00:00.000Z"), "August 23, 2026");
-});
-
-Deno.test("formatExpiryThrough: undefined/null input returns undefined", () => {
-  assertEquals(formatExpiryThrough(undefined), undefined);
-  assertEquals(formatExpiryThrough(null), undefined);
-});
-
-Deno.test("formatExpiryThrough: unparsable input returns undefined instead of 'Invalid Date'", () => {
-  assertEquals(formatExpiryThrough("not-a-date"), undefined);
-});
-
-Deno.test("resolveInviterName: prefers profiles.display_name over the auth email", async () => {
+Deno.test("resolveInviterName: prefers profiles.display_name over the auth email, and omits email once a name is known", async () => {
+  // Regression: once display_name resolves, no template ever renders inviterEmail (the
+  // org-invitation "Invited by" line does inviterName || inviterEmail, and name already
+  // won), so the function short-circuits BEFORE calling auth.admin.getUserById, and
+  // never surfaces a colleague's raw email in the result at all. usersById is seeded
+  // here specifically so a regression that DID still call the Admin API would show up
+  // as an unwanted `email` in the result, rather than this test passing either way.
   const { deps } = makeFakeDeps({
     tables: { profiles: { data: { display_name: "Jane Admin" }, error: null } },
     usersById: { "user-1": { email: "jane@acme.test" } },
   });
   const inviter = await resolveInviterName(deps, "user-1");
-  assertEquals(inviter, { name: "Jane Admin", email: "jane@acme.test" });
+  assertEquals(inviter, { name: "Jane Admin" });
 });
 
-Deno.test("resolveInviterName: name is undefined when display_name is unset, leaving the email fallback to the template", async () => {
+Deno.test("resolveInviterName: name is absent (not just falsy) when display_name is unset, leaving the email fallback to the template", async () => {
   // The org-invitation template already does inviterName || inviterEmail when it builds
   // the "Invited by" line; resolveInviterName pre-filling name with email here would make
-  // that fallback dead code, so name must come back unset, not equal to email.
+  // that fallback dead code, so name must come back unset, not equal to email. Only this
+  // (no-display_name) path reaches the Admin API call at all, since that is the one case
+  // where the caller genuinely needs the email.
   const { deps } = makeFakeDeps({
     tables: { profiles: { data: null, error: null } },
     usersById: { "user-1": { email: "jane@acme.test" } },
   });
   const inviter = await resolveInviterName(deps, "user-1");
-  assertEquals(inviter, { name: undefined, email: "jane@acme.test" });
+  assertEquals(inviter, { email: "jane@acme.test" });
 });
 
-Deno.test("resolveInviterName: name is undefined when display_name is blank/whitespace", async () => {
+Deno.test("resolveInviterName: name is absent when display_name is blank/whitespace", async () => {
   const { deps } = makeFakeDeps({
     tables: { profiles: { data: { display_name: "   " }, error: null } },
     usersById: { "user-1": { email: "jane@acme.test" } },
   });
   const inviter = await resolveInviterName(deps, "user-1");
-  assertEquals(inviter, { name: undefined, email: "jane@acme.test" });
+  assertEquals(inviter, { email: "jane@acme.test" });
 });
 
 Deno.test("resolveInviterName: no inviterId returns {} (nothing to resolve)", async () => {
@@ -195,13 +183,14 @@ Deno.test("resolveInviterName: no inviterId returns {} (nothing to resolve)", as
 });
 
 Deno.test("ORG_INVITATION_EXPIRY_DAYS matches the org_invitations.expires_at column default in the migrations", async () => {
-  // Regression: ORG_INVITATION_EXPIRY_DAYS is a hand-kept TS twin of the DB default,
-  // used only by the generic expiryFallback copy and the Settings preview's sample date
-  // (every real send states the row's actual expires_at, see formatExpiresOn). This reads
-  // the migration SQL back, the same guard pattern
-  // src/lib/capabilityDefaultsSql.test.ts uses for capability_default(), so a future change
-  // to the column default without a matching edit here fails a test instead of silently
-  // shipping an email that states a window the DB doesn't honor.
+  // Regression: ORG_INVITATION_EXPIRY_DAYS is a hand-kept TS twin of the DB default, with
+  // exactly one consumer left: org-invitation.tsx's previewData.expiresOn (the Settings >
+  // Email templates preview's sample date; every real send states the row's actual
+  // expires_at instead, see the removed step-back helper). expiryFallback does NOT read this
+  // constant, on purpose (see its own doc comment in emailCopy.ts). This reads the
+  // migration SQL back, the same guard pattern src/lib/capabilityDefaultsSql.test.ts uses
+  // for capability_default(), so a future change to the column default without a matching
+  // edit here fails a test instead of silently leaving the preview stale.
   const migrationsDir = new URL("../../migrations/", import.meta.url);
   const filenames: string[] = [];
   for await (const entry of Deno.readDir(migrationsDir)) {
@@ -235,16 +224,14 @@ Deno.test("ORG_INVITATION_EXPIRY_DAYS matches the org_invitations.expires_at col
   );
 });
 
-Deno.test("org-invitation.expiryFallback stays consistent with ORG_INVITATION_EXPIRY_DAYS", () => {
-  // The fallback copy states a duration in plain English rather than a {{token}} (so it
-  // reads naturally in the template editor's live preview too), which means nothing type
-  // checks it against the real constant. Pin the two together here so a future change to
-  // ORG_INVITATION_EXPIRY_DAYS without a matching copy edit fails a test instead of
-  // shipping a silently wrong invitation email.
-  assertEquals(
-    EMAIL_COPY_DEFAULTS["org-invitation.expiryFallback"].includes(String(ORG_INVITATION_EXPIRY_DAYS)),
-    true,
-  );
+Deno.test("org-invitation.expiryFallback never pins an exact day count that could drift out of sync with the dated line's own conservative rendering", () => {
+  // Regression: this copy used to hardcode "14 days" (matching ORG_INVITATION_EXPIRY_DAYS
+  // exactly), while the dated line every real send actually renders (expiryLine, via
+  // formatExpiresOn) states the same window exactly, so a drifted constant here would
+  // cross-timezone safety. Stating a firmer, longer-sounding number here than the line
+  // most invitees actually see is misleading, so this copy states no day count at all;
+  // pin only that no stray digit has crept back in.
+  assertEquals(/\d/.test(EMAIL_COPY_DEFAULTS["org-invitation.expiryFallback"]), false);
 });
 
 Deno.test("SYSTEM_INVITER_NAME reads straight off the editable copy registry, not a hardcoded literal", () => {
@@ -254,4 +241,123 @@ Deno.test("SYSTEM_INVITER_NAME reads straight off the editable copy registry, no
   // by this constant instead of leaving a stale duplicate string behind in provision-org.
   assertEquals(SYSTEM_INVITER_NAME, EMAIL_COPY_DEFAULTS["org-invitation.inviterFallback"]);
   assertEquals(SYSTEM_INVITER_NAME, "the ShowFlow team");
+});
+
+// ── resolveArtistOffersExpected ──────────────────────────────────────────────
+// Regression coverage for the gap where the org-invitation email promised emailed
+// booking offers in org states where no offer can ever actually be sent: an org whose
+// booking_flow module is unentitled, and a freshly provisioned org whose booking_flow is
+// still in the "off" preset (active: false), both used to read as "offers coming"
+// because the OLD computation read resolveBookingFlow(...).artist_acceptance alone,
+// which fails OPEN to BOOKING_FLOW_DEFAULTS (artist_acceptance: true) in exactly those
+// two cases.
+
+Deno.test("resolveArtistOffersExpected: true when entitled, active, and artist_acceptance all check out", async () => {
+  const { deps } = makeFakeDeps({
+    rpcs: { is_feature_enabled: { data: true, error: null } },
+    tables: {
+      app_settings: [
+        { when: { key: "booking_flow" }, data: [{ org_id: "org-1", key: "booking_flow", value: { active: true, artist_acceptance: true } }], error: null },
+      ],
+    },
+  });
+  assertEquals(await resolveArtistOffersExpected(deps.admin, "org-1"), true);
+});
+
+Deno.test("resolveArtistOffersExpected: true with NO stored override, since BOOKING_FLOW_DEFAULTS is active + artist_acceptance", async () => {
+  // The common case: most orgs never touch booking_flow at all.
+  const { deps } = makeFakeDeps({
+    rpcs: { is_feature_enabled: { data: true, error: null } },
+  });
+  assertEquals(await resolveArtistOffersExpected(deps.admin, "org-1"), true);
+});
+
+Deno.test("resolveArtistOffersExpected: false for a direct-book org (artist_acceptance: false), even though it is entitled and active", async () => {
+  const { deps } = makeFakeDeps({
+    rpcs: { is_feature_enabled: { data: true, error: null } },
+    tables: {
+      app_settings: [
+        { when: { key: "booking_flow" }, data: [{ org_id: "org-1", key: "booking_flow", value: { artist_acceptance: false } }], error: null },
+      ],
+    },
+  });
+  assertEquals(await resolveArtistOffersExpected(deps.admin, "org-1"), false);
+});
+
+Deno.test("resolveArtistOffersExpected: false when the module is unentitled, regardless of what resolveBookingFlow falls back to", async () => {
+  // The exact regression: resolveBookingFlow ALONE would return BOOKING_FLOW_DEFAULTS
+  // here (artist_acceptance: true) since it fails open to the defaults on an unentitled
+  // org, which is why this function checks the entitlement itself instead of trusting
+  // resolveBookingFlow's return value.
+  const { deps } = makeFakeDeps({
+    rpcs: { is_feature_enabled: { data: false, error: null } },
+  });
+  assertEquals(await resolveArtistOffersExpected(deps.admin, "org-1"), false);
+});
+
+Deno.test("resolveArtistOffersExpected: false when the flow is paused (active: false), the exact seed provision-org writes for every freshly provisioned org with booking enabled", async () => {
+  // The other half of the regression: an org entitled to booking_flow but still in the
+  // "off" preset (see provision-org's offFlow seed, normalizeBookingFlow({active:false})).
+  // artist_acceptance is left unset in that stored row, so it defaults true; without
+  // also checking flow.active this would incorrectly read as "offers coming".
+  const { deps } = makeFakeDeps({
+    rpcs: { is_feature_enabled: { data: true, error: null } },
+    tables: {
+      app_settings: [
+        { when: { key: "booking_flow" }, data: [{ org_id: "org-1", key: "booking_flow", value: { active: false } }], error: null },
+      ],
+    },
+  });
+  assertEquals(await resolveArtistOffersExpected(deps.admin, "org-1"), false);
+});
+
+Deno.test("resolveArtistOffersExpected: false when the entitlement RPC itself errors, not the fail-open true that routing through checkFeature would produce", async () => {
+  // The blocker this closes: checkFeature's own booking_flow fail-open reads
+  // `{ data, error }` off the RPC and RETURNS true on an error, it never throws, so a
+  // try/catch wrapped around a call to checkFeature can never observe an
+  // is_feature_enabled fault at all. Before the fix, this exact seed made
+  // resolveArtistOffersExpected return true for an org whose entitlement state is
+  // actually unknown, which would render roleIntroArtistOffers ("You will get emailed
+  // booking offers...") on a promise that org might never be able to keep. Calling the
+  // RPC directly (see the doc comment above the function) and reading `error` ourselves
+  // is what gives this function its own, opposite (fail-CLOSED) direction.
+  const { deps } = makeFakeDeps({
+    rpcs: { is_feature_enabled: { data: null, error: { message: "db blip", code: "57014" } } },
+  });
+  assertEquals(await resolveArtistOffersExpected(deps.admin, "org-1"), false);
+});
+
+// ── resendIdempotencyKey ──────────────────────────────────────────────────────
+
+Deno.test("resendIdempotencyKey: the same inviteId/resentCount/now bucket always mints the same key", () => {
+  const now = new Date("2026-06-01T12:00:00.000Z");
+  const a = resendIdempotencyKey("inv1", 0, now);
+  const b = resendIdempotencyKey("inv1", 0, now);
+  assertEquals(a, b);
+});
+
+Deno.test("resendIdempotencyKey: a higher resentCount mints a different key even at the same instant", () => {
+  const now = new Date("2026-06-01T12:00:00.000Z");
+  const a = resendIdempotencyKey("inv1", 0, now);
+  const b = resendIdempotencyKey("inv1", 3, now);
+  assertEquals(a === b, false);
+});
+
+Deno.test("resendIdempotencyKey: real time crossing a bucket boundary mints a different key even with an unchanged (stale) resentCount", () => {
+  // The regression this guards: mark_invitation_resent's write is best-effort. If it
+  // silently fails after a real send succeeded, the next resend request re-reads the
+  // SAME resentCount. Without a time component, that request would mint the identical
+  // key and Resend would dedupe it against the first send for up to 24 hours, silently
+  // swallowing a genuine later resend. A resend requested well after (here, 30 minutes,
+  // several RESEND_IDEMPOTENCY_BUCKET_MS buckets later) must still get a fresh key.
+  const first = resendIdempotencyKey("inv1", 0, new Date("2026-06-01T12:00:00.000Z"));
+  const muchLater = resendIdempotencyKey("inv1", 0, new Date("2026-06-01T12:30:00.000Z"));
+  assertEquals(first === muchLater, false);
+});
+
+Deno.test("resendIdempotencyKey: two requests racing within the same short window still get the same key (in-flight dedupe preserved)", () => {
+  // A double-click or network retry, milliseconds apart, must still dedupe at Resend.
+  const first = resendIdempotencyKey("inv1", 0, new Date("2026-06-01T12:00:00.000Z"));
+  const momentsLater = resendIdempotencyKey("inv1", 0, new Date("2026-06-01T12:00:00.500Z"));
+  assertEquals(first, momentsLater);
 });

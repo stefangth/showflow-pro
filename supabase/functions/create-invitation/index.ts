@@ -3,9 +3,8 @@ import { requireOrgRole } from "../_shared/auth.ts";
 import { requireCapability } from "../_shared/capabilities.ts";
 import type { TablesInsert } from "../_shared/database.types.ts";
 import { realDeps, type Deps } from "../_shared/deps.ts";
-import { ensureInvitedUser, formatExpiryThrough, resolveInviterName, sendOrgInvitationEmail } from "../_shared/invitations.ts";
+import { ensureInvitedUser, formatExpiresOn, resolveArtistOffersExpected, resolveInviterName, sendOrgInvitationEmail } from "../_shared/invitations.ts";
 import { roleLabel } from "../_shared/roles.ts";
-import { resolveBookingFlow } from "../_shared/bookingFlow.ts";
 
 type Body = {
   org_id: string;
@@ -153,15 +152,13 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
       }
     } catch (e) {
       console.error("create-invitation: membership provisioning failed", (e as Error).message);
-      // ensureInvitedUser throws before it can report which branch it took, which would
-      // otherwise leave isNewUser undefined. existingUserId, resolved above BEFORE this try
-      // block, already answers the question for a known account: it can only fail to sign
-      // in via the (now-broken) magic link, never need a password prompt. This branch also
-      // has no actionLink, so today's template renders ctaHintFallback regardless (see
-      // org-invitation.tsx's `!actionLink` check, which wins over isNewUser) — kept anyway
-      // so templateData.isNewUser stays factually correct for this invitee rather than
-      // silently wrong, in case a future template branch ever reads it in the no-link case.
-      if (existingUserId) isNewUser = false;
+      // ensureInvitedUser threw before setting actionLink, which stays undefined on this
+      // path. org-invitation.tsx's ctaHint checks `!actionLink` FIRST, before it ever
+      // looks at isNewUser, so isNewUser has no effect on the rendered email here
+      // regardless of what it is set to; leaving it undefined (the existing local
+      // default) is enough. See "falls back to an honest sign-in hint even when
+      // isNewUser was never resolved and there is no action link" in
+      // org-invitation.test.ts for the render-level proof of that precedence.
     }
 
     // Best-effort delivery — but only if the invitee has a usable path to authenticate:
@@ -179,14 +176,12 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
         // invitee's only way in); degrade to omitting the "Invited by" line instead.
         const inviter = await resolveInviterName(deps, inviterId)
           .catch((): { name?: string; email?: string } => ({}));
-        // Only relevant to an artist invite (see DeliverInviteArgs.artistAcceptance);
-        // best-effort like the inviter-name resolution above, since a failed read here
-        // must not skip the invitee's only way in either. Undefined (the safe, common
-        // default) degrades to the template's own offers-aware fallback.
-        const artistAcceptance = role === "artist"
-          ? await resolveBookingFlow(admin, body.org_id)
-            .then((flow) => flow.artist_acceptance)
-            .catch((): undefined => undefined)
+        // Only relevant to an artist invite (see DeliverInviteArgs.offersExpected).
+        // resolveArtistOffersExpected already fails closed to false on any error, so no
+        // extra .catch is needed here (unlike resolveInviterName above, which needs one
+        // to keep a Promise.all-adjacent partial failure from throwing).
+        const offersExpected = role === "artist"
+          ? await resolveArtistOffersExpected(admin, body.org_id)
           : undefined;
         await sendOrgInvitationEmail(deps, {
           email: invite.email,
@@ -196,9 +191,9 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
           token: invite.token,
           inviterEmail: inviter.email,
           inviterName: inviter.name,
-          expiresOn: formatExpiryThrough(invite.expires_at),
+          expiresOn: formatExpiresOn(invite.expires_at),
           isNewUser,
-          artistAcceptance,
+          offersExpected,
           appOrigin,
           idempotencyKey: `org-invitation-${invite.id}`,
           orgId: body.org_id,

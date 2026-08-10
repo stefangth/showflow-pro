@@ -165,17 +165,22 @@ export const EMAIL_COPY_DEFAULTS = {
   "org-invitation.roleIntroProducer": "You plan productions and show dates, and book artists into them.",
   // No "where that is turned on" hedge: a brand-new invitee has no way to decode who
   // turns it on or where, so the sentence states what is always true instead. This is
-  // the FLOW-NEUTRAL artist line: org-invitation.tsx renders it only for a direct-book
-  // org (booking_flow.artist_acceptance: false, see _shared/bookingFlow.ts), where there
-  // never is an offer step to mention. See roleIntroArtistOffers immediately below for
-  // the line most artist invitees actually see.
+  // the FLOW-NEUTRAL artist line: org-invitation.tsx renders it by default, and always
+  // for a direct-book org (booking_flow.artist_acceptance: false) or one where the
+  // booking_flow module is unentitled or paused (booking_flow.active: false, the preset
+  // every freshly provisioned org starts in), where there never is an offer step to
+  // mention. See resolveArtistOffersExpected in _shared/invitations.ts for the full
+  // gate. See roleIntroArtistOffers immediately below for the line an artist sees only
+  // once that gate has actually confirmed offers are coming.
   "org-invitation.roleIntroArtist": "You get booked for shows and see every confirmed engagement.",
-  // Rendered instead of roleIntroArtist whenever the inviting org's
-  // booking_flow.artist_acceptance is true, the default for every org that has never
-  // turned it off (BOOKING_FLOW_DEFAULTS in _shared/bookingFlow.ts), so this is what
-  // MOST artist invitees actually receive: it names the one thing they will really do,
-  // respond to emailed offers, instead of staying silent on it the way the flow-neutral
-  // line above has to.
+  // Rendered instead of roleIntroArtist ONLY when resolveArtistOffersExpected
+  // (_shared/invitations.ts) has confirmed the inviting org's booking_flow is entitled,
+  // active, AND set to accept offers (booking_flow.artist_acceptance: true) for real:
+  // the caller never assumes this from BOOKING_FLOW_DEFAULTS alone, since an unentitled
+  // or still-paused org would otherwise get a promise that never comes true. For the
+  // (majority of) orgs where this all checks out, it names the one thing the artist will
+  // really do, respond to emailed offers, instead of staying silent on it the way the
+  // flow-neutral line above has to.
   "org-invitation.roleIntroArtistOffers": "You will get emailed booking offers to accept or decline, and you can see every confirmed engagement.",
   "org-invitation.ctaLabel": "Accept invitation",
   // These used to end with "If it ever stops working, ask whoever invited you to send a
@@ -208,19 +213,18 @@ export const EMAIL_COPY_DEFAULTS = {
   // stops working after expiresOn is only the accept_invitation flow this invitation
   // drives, never the invitee's org access.
   //
-  // "through", not "until": {{expiresOn}} is rendered by formatExpiryThrough
-  // (_shared/invitations.ts), which deliberately states one calendar day EARLIER than
-  // the invitation row's real, second-exact cutoff (accept_invitation checks
-  // expires_at > now()). expires_at keeps the creation time-of-day, so the calendar day
-  // it falls on is only reliable for PART of that day; formatExpiryThrough steps back a
-  // full 24 hours before formatting, which is always still before the real cutoff
-  // regardless of what time-of-day it falls at (see the doc comment on
-  // formatExpiryThrough for the proof). "Open until August 24" would be false for a
-  // reader who opens this email on August 24 itself, after the cutoff's time-of-day;
-  // "open through August 23" (the conservative, guaranteed day) reads true for that same
-  // reader no matter what hour they open the email.
-  "org-invitation.expiryLine": "This invitation is open through {{expiresOn}}.",
-  "org-invitation.expiryFallback": "This invitation is open for 14 days from when it was sent.",
+  // The dated claim is about the INVITATION: {{expiresOn}} is the row's exact expires_at
+  // day (formatExpiresOn, no arithmetic). Everything the date cannot promise is owned by
+  // the second sentence instead: the sign-in button is a single-use action link that dies
+  // within hours, and near the window's end even the dated day is partly over. "Ask for
+  // it to be resent" covers both, and resend-invitation refuses an already-lapsed row
+  // (409 with revoke-and-reinvite guidance), so following the remedy can never produce a
+  // claim falser than this line.
+  "org-invitation.expiryLine": "Your invitation is valid until {{expiresOn}}. If the sign-in button stops working, ask for it to be resent.",
+  // Fires only when expires_at itself could not be resolved (effectively prevented by the
+  // NOT NULL column default): it makes no day-count claim at all, because there is no row
+  // to derive one from. The remedy sentence is the whole message.
+  "org-invitation.expiryFallback": "If the sign-in button stops working, ask for the invitation to be resent.",
   "org-invitation.footer": "If you weren't expecting this invitation, you can safely ignore this email.",
   "org-invitation.previewText": "You're invited to join {{orgName}} on ShowFlow",
   "org-invitation.invitedBy": "Invited by {{inviter}}.",

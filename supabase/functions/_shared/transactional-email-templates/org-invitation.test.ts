@@ -114,15 +114,21 @@ Deno.test("org-invitation email: the recovery hint (what to do if this doesn't w
 Deno.test("org-invitation email: states the real expiry date from the invitation row", async () => {
   const html = await renderInvite({ orgName: "Cirque Lumière", token: "tok", expiresOn: "August 24, 2026" });
   assert(
-    html.includes("This invitation is open through August 24, 2026."),
+    html.includes("Your invitation is valid until August 24, 2026. If the sign-in button stops working, ask for it to be resent."),
     "states the concrete expiry date, scoped to the INVITATION (the emailed action link's own TTL is shorter and unrelated)",
   );
-  assert(!html.includes("This invitation is open for 14 days"), "does not also show the generic fallback once a real date is known");
+  assert(
+    !html.includes(EMAIL_COPY_DEFAULTS["org-invitation.expiryFallback"]),
+    "does not also show the generic fallback once a real date is known",
+  );
 });
 
 Deno.test("org-invitation email: falls back to a generic expiry statement when no date is known", async () => {
   const html = await renderInvite({ orgName: "Cirque Lumière", token: "tok" });
-  assert(html.includes("This invitation is open for 14 days from when it was sent."), "every invite states SOME expiry, never silence");
+  assert(
+    html.includes(EMAIL_COPY_DEFAULTS["org-invitation.expiryFallback"]),
+    "every invite states SOME expiry, never silence",
+  );
 });
 
 Deno.test("org-invitation email: the expiry statement never claims the emailed link itself stays valid for the stated window", async () => {
@@ -182,7 +188,7 @@ Deno.test("org-invitation email: reads product, then role, then expiry, then who
   const iGreeting = html.indexOf(EMAIL_COPY_DEFAULTS["org-invitation.greeting"]);
   const iProduct = html.indexOf("plans its shows and books the artists for them");
   const iRole = html.indexOf("Your role is Production Team.");
-  const iExpiry = html.indexOf("This invitation is open through August 24, 2026.");
+  const iExpiry = html.indexOf("Your invitation is valid until August 24, 2026. If the sign-in button stops working, ask for it to be resent.");
   const iInvitedBy = html.indexOf("Invited by Jane Admin.");
   const iCtaHint = html.indexOf("The button signs you in directly");
   const iCtaLabel = html.indexOf(EMAIL_COPY_DEFAULTS["org-invitation.ctaLabel"]);
@@ -222,7 +228,7 @@ Deno.test("org-invitation email: does not repeat the org name in three consecuti
     token: "tok",
   });
   assert(html.includes("Your role is Production Team."), "roleIntro drops the org name");
-  assert(html.includes("This invitation is open through August 24, 2026."), "expiryLine drops the org name");
+  assert(html.includes("Your invitation is valid until August 24, 2026. If the sign-in button stops working, ask for it to be resent."), "expiryLine drops the org name");
 });
 
 Deno.test("org-invitation email: the artist role line does not hedge availability behind an undecodable clause", async () => {
@@ -230,31 +236,36 @@ Deno.test("org-invitation email: the artist role line does not hedge availabilit
   assert(!/turned on/i.test(html), "a brand-new artist cannot decode 'where that is turned on'");
 });
 
-Deno.test("org-invitation email: an artist invite tells them about offers by default, since booking_flow.artist_acceptance defaults true", async () => {
-  // artistAcceptance omitted entirely: the common case (most orgs never turn it off, see
-  // BOOKING_FLOW_DEFAULTS in _shared/bookingFlow.ts). Regression for the gap where the
-  // artist line stayed flow-neutral even for orgs whose artists really do get offers.
+Deno.test("org-invitation email: an artist invite stays flow-neutral by default, since offersExpected must be PROVEN true, not assumed", async () => {
+  // offersExpected omitted entirely. Regression for the INVERSE gap: the template used
+  // to default to the offers-aware line whenever artistAcceptance was anything but
+  // explicitly false, which meant an unentitled or still-paused org (both of which
+  // resolveArtistOffersExpected, _shared/invitations.ts, resolves to false) would have
+  // rendered a promise ("you will get emailed offers") that could never come true. The
+  // caller (create-invitation/resend-invitation/provision-org) is the one place that
+  // actually knows whether offers are coming; the template must not assume it.
   const html = await renderInvite({ orgName: "Cirque Lumière", role: "Artist", roleKey: "artist", token: "tok" });
-  assert(html.includes(EMAIL_COPY_DEFAULTS["org-invitation.roleIntroArtistOffers"]), "renders the offers-aware action line by default");
+  assert(html.includes(EMAIL_COPY_DEFAULTS["org-invitation.roleIntroArtist"]), "renders the flow-neutral action line by default");
+  assert(!html.includes(EMAIL_COPY_DEFAULTS["org-invitation.roleIntroArtistOffers"]), "does not also render the offers-aware line");
+});
+
+Deno.test("org-invitation email: offersExpected: true renders the offers-aware line, for the (majority) org where it is actually confirmed", async () => {
+  const html = await renderInvite({ orgName: "Cirque Lumière", role: "Artist", roleKey: "artist", token: "tok", offersExpected: true });
+  assert(html.includes(EMAIL_COPY_DEFAULTS["org-invitation.roleIntroArtistOffers"]), "renders the offers-aware action line");
   assert(!html.includes(EMAIL_COPY_DEFAULTS["org-invitation.roleIntroArtist"]), "does not also render the flow-neutral line");
 });
 
-Deno.test("org-invitation email: artistAcceptance: true explicitly also renders the offers-aware line", async () => {
-  const html = await renderInvite({ orgName: "Cirque Lumière", role: "Artist", roleKey: "artist", token: "tok", artistAcceptance: true });
-  assert(html.includes(EMAIL_COPY_DEFAULTS["org-invitation.roleIntroArtistOffers"]), "renders the offers-aware action line");
-});
-
-Deno.test("org-invitation email: a direct-book org (artistAcceptance: false) never claims an offer step it does not have", async () => {
-  const html = await renderInvite({ orgName: "Cirque Lumière", role: "Artist", roleKey: "artist", token: "tok", artistAcceptance: false });
+Deno.test("org-invitation email: offersExpected: false never claims an offer step the org does not have", async () => {
+  const html = await renderInvite({ orgName: "Cirque Lumière", role: "Artist", roleKey: "artist", token: "tok", offersExpected: false });
   assert(html.includes(EMAIL_COPY_DEFAULTS["org-invitation.roleIntroArtist"]), "renders the flattened, flow-neutral action line instead");
-  assertEquals(html.toLowerCase().includes("offer"), false, "a direct-book org's artists never see offers, so the email must not claim one");
+  assertEquals(html.toLowerCase().includes("offer"), false, "an org with no confirmed offer step must not have the email claim one");
 });
 
-Deno.test("org-invitation email: artistAcceptance is irrelevant for a non-artist role", async () => {
-  // A false artistAcceptance must not leak into the admin/producer action lines, which
+Deno.test("org-invitation email: offersExpected is irrelevant for a non-artist role", async () => {
+  // A true offersExpected must not leak into the admin/producer action lines, which
   // never branch on it.
-  const html = await renderInvite({ orgName: "Cirque Lumière", role: "Production Team", roleKey: "producer", token: "tok", artistAcceptance: false });
-  assert(html.includes("You plan productions and show dates, and book artists into them."), "producer line is unaffected by artistAcceptance");
+  const html = await renderInvite({ orgName: "Cirque Lumière", role: "Production Team", roleKey: "producer", token: "tok", offersExpected: true });
+  assert(html.includes("You plan productions and show dates, and book artists into them."), "producer line is unaffected by offersExpected");
 });
 
 Deno.test("org-invitation email: preview data renders every section without a stray {{token}} placeholder", async () => {
@@ -280,8 +291,8 @@ Deno.test("org-invitation email: the new-account reassurance does not overclaim 
 
 Deno.test("org-invitation email: a stored org override for a role action line renders that org's own wording", async () => {
   const copy = { ...EMAIL_COPY_DEFAULTS, "org-invitation.roleIntroArtist": "You will always be booked directly, no offers involved." };
-  // artistAcceptance: false selects the flow-neutral roleIntroArtist line (the one
-  // overridden here) rather than the default offers-aware roleIntroArtistOffers.
-  const html = await renderInvite({ orgName: "Cirque Lumière", role: "Artist", roleKey: "artist", token: "tok", artistAcceptance: false, _emailCopy: copy });
+  // offersExpected omitted (the default) selects the flow-neutral roleIntroArtist line
+  // (the one overridden here) rather than the offers-aware roleIntroArtistOffers.
+  const html = await renderInvite({ orgName: "Cirque Lumière", role: "Artist", roleKey: "artist", token: "tok", _emailCopy: copy });
   assert(html.includes("You will always be booked directly, no offers involved."), "an org's own override for the role action line is honored");
 });

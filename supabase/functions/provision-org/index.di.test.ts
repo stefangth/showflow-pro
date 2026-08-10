@@ -69,10 +69,9 @@ Deno.test("provision-org: sends the role label, roleKey, and expiresOn derived f
   const msg = sent[0].body as { templateData: { role: string; roleKey: string; expiresOn: string } };
   assertEquals(msg.templateData.role, "Admin");
   assertEquals(msg.templateData.roleKey, "admin");
-  // formatExpiryThrough, not the exact calendar day of expires_at: one day earlier, the
-  // last day fully guaranteed to still be valid (see its doc comment in
-  // _shared/invitations.ts).
-  assertEquals(msg.templateData.expiresOn, "August 23, 2026");
+  // The exact calendar day of the row's expires_at (formatExpiresOn, no arithmetic);
+  // the expiryLine's remedy sentence owns the edges a date cannot.
+  assertEquals(msg.templateData.expiresOn, "August 24, 2026");
 });
 
 Deno.test("provision-org: always uses the generic ShowFlow team inviter line, even when the operator has a display name on file, and never resolves or forwards their personal name or email", async () => {
@@ -277,10 +276,13 @@ Deno.test("provision-org: leaving booking_flow disabled does not seed an off-flo
 // ---------------------------------------------------------------------------
 // The New Organization picker can provision a first "admin" account with any
 // role (a producer- or artist-first org is a legitimate, if rare, choice), so
-// artistAcceptance branching applies here too whenever role is "artist".
+// offersExpected branching (resolveArtistOffersExpected, _shared/invitations.ts)
+// applies here too whenever role is "artist". Requires entitled + active +
+// artist_acceptance all to check out, not artist_acceptance alone: see the
+// unentitled and paused-preset regressions below for the exact gap this closes.
 // ---------------------------------------------------------------------------
 
-Deno.test("provision-org: role artist resolves artistAcceptance from the org's own booking_flow setting", async () => {
+Deno.test("provision-org: role artist resolves offersExpected from the org's own booking_flow setting", async () => {
   const { deps, invokeCalls } = makeFakeDeps({
     authUser: { id: "u1" },
     tables: {
@@ -297,11 +299,56 @@ Deno.test("provision-org: role artist resolves artistAcceptance from the org's o
   assertEquals(res.status, 200);
   const sent = invokeCalls.filter((c) => c.name === "send-transactional-email");
   assertEquals(sent.length, 1);
-  const msg = sent[0].body as { templateData: { artistAcceptance?: boolean } };
-  assertEquals(msg.templateData.artistAcceptance, false);
+  const msg = sent[0].body as { templateData: { offersExpected?: boolean } };
+  assertEquals(msg.templateData.offersExpected, false);
 });
 
-Deno.test("provision-org: role admin (the common case) never resolves artistAcceptance", async () => {
+Deno.test("provision-org: role artist in an UNENTITLED org resolves offersExpected to false, never resolveBookingFlow's fail-open defaults", async () => {
+  // Regression: resolveBookingFlow ALONE would return BOOKING_FLOW_DEFAULTS here
+  // (artist_acceptance: true) since it fails open to the defaults on an unentitled org.
+  const { deps, invokeCalls } = makeFakeDeps({
+    authUser: { id: "u1" },
+    tables: { platform_admins: { data: { user_id: "u1" }, error: null } },
+    rpcs: {
+      provision_org: { data: { org_id: "org-9", token: "tok-9" }, error: null },
+      is_feature_enabled: { data: false, error: null },
+    },
+    usersById: {},
+    generateLinkResult: { data: { properties: { action_link: "https://app.test/reset-password?redirect=x" } }, error: null },
+  });
+  const res = await handle(makeRequest({ headers: { Authorization: "Bearer x" }, body: { ...body, role: "artist" } }), deps);
+  assertEquals(res.status, 200);
+  const sent = invokeCalls.filter((c) => c.name === "send-transactional-email");
+  const msg = sent[0].body as { templateData: { offersExpected?: boolean } };
+  assertEquals(msg.templateData.offersExpected, false);
+});
+
+Deno.test("provision-org: role artist in a freshly provisioned org still in the PAUSED preset (booking_flow.active: false) resolves offersExpected to false", async () => {
+  // Regression: this is the exact seed provision-org's own entitlement-seeding step
+  // writes for every freshly provisioned org with booking enabled
+  // (normalizeBookingFlow({active:false})). artist_acceptance is unset in that stored
+  // row (defaults true), so without also checking flow.active this would incorrectly
+  // read as "offers coming" for an org that has not even turned booking on yet.
+  const { deps, invokeCalls } = makeFakeDeps({
+    authUser: { id: "u1" },
+    tables: {
+      platform_admins: { data: { user_id: "u1" }, error: null },
+      app_settings: [
+        { when: { key: "booking_flow" }, data: [{ org_id: "org-9", key: "booking_flow", value: { active: false } }], error: null },
+      ],
+    },
+    rpcs: { provision_org: { data: { org_id: "org-9", token: "tok-9" }, error: null } },
+    usersById: {},
+    generateLinkResult: { data: { properties: { action_link: "https://app.test/reset-password?redirect=x" } }, error: null },
+  });
+  const res = await handle(makeRequest({ headers: { Authorization: "Bearer x" }, body: { ...body, role: "artist" } }), deps);
+  assertEquals(res.status, 200);
+  const sent = invokeCalls.filter((c) => c.name === "send-transactional-email");
+  const msg = sent[0].body as { templateData: { offersExpected?: boolean } };
+  assertEquals(msg.templateData.offersExpected, false);
+});
+
+Deno.test("provision-org: role admin (the common case) never resolves offersExpected", async () => {
   const { deps, invokeCalls } = makeFakeDeps({
     authUser: { id: "u1" },
     tables: { platform_admins: { data: { user_id: "u1" }, error: null } },
@@ -312,6 +359,6 @@ Deno.test("provision-org: role admin (the common case) never resolves artistAcce
   const res = await handle(makeRequest({ headers: { Authorization: "Bearer x" }, body }), deps);
   assertEquals(res.status, 200);
   const sent = invokeCalls.filter((c) => c.name === "send-transactional-email");
-  const msg = sent[0].body as { templateData: { artistAcceptance?: boolean } };
-  assertEquals(msg.templateData.artistAcceptance, undefined);
+  const msg = sent[0].body as { templateData: { offersExpected?: boolean } };
+  assertEquals(msg.templateData.offersExpected, undefined);
 });

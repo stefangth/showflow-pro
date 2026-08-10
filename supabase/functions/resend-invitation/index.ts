@@ -2,9 +2,8 @@ import { preflight, json } from "../_shared/http.ts";
 import { requireOrgRole } from "../_shared/auth.ts";
 import { requireCapability } from "../_shared/capabilities.ts";
 import { emailWasSent, realDeps, type Deps } from "../_shared/deps.ts";
-import { ensureInvitedUser, formatExpiresOn, formatExpiryThrough, resolveInviterName, sendOrgInvitationEmail } from "../_shared/invitations.ts";
+import { ensureInvitedUser, formatExpiresOn, resendIdempotencyKey, resolveArtistOffersExpected, resolveInviterName, sendOrgInvitationEmail } from "../_shared/invitations.ts";
 import { roleLabel } from "../_shared/roles.ts";
-import { resolveBookingFlow } from "../_shared/bookingFlow.ts";
 
 type Body = { invitation_id: string; app_origin: string };
 
@@ -49,8 +48,7 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
     // (create-invitation's pending-invite unique index blocks a second pending row for
     // the same email while this one still exists).
     //
-    // Deliberately the EXACT day (formatExpiresOn), not the conservative "through"
-    // rendering (formatExpiryThrough) the email body uses below: this is a past-tense
+    // The EXACT day (formatExpiresOn): this is a past-tense
     // fact about when the window closed, so understating it by a day would tell the
     // admin the invitation lasted less time than it actually did.
     const expiresOn = formatExpiresOn(invite.expires_at);
@@ -80,19 +78,22 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
     // a call that didn't throw means delivery happened, and surface both failure shapes
     // (a thrown error and a resolved-but-unsuccessful send) as one honest error response.
     //
-    // The idempotency key folds in resent_count (the value BEFORE this send's own
-    // mark_invitation_resent bump below), not just invite.id: send-transactional-email
-    // forwards this key to Resend as its `Idempotency-Key` header, which Resend treats as
-    // "the same logical send" for 24 hours and replies 200 for the ORIGINAL message on any
+    // The idempotency key (resendIdempotencyKey, _shared/invitations.ts) folds in
+    // resent_count (the value BEFORE this send's own mark_invitation_resent bump below)
+    // AND a coarse now()-bucket, not just invite.id: send-transactional-email forwards
+    // this key to Resend as its `Idempotency-Key` header, which Resend treats as "the
+    // same logical send" for 24 hours and replies 200 for the ORIGINAL message on any
     // repeat within that window without re-delivering. A key scoped to invite.id alone
     // would make every resend of the same invitation within 24h of the last one collapse
-    // into that guarantee: emailWasSent(result) would read true (Resend genuinely did send
-    // something, once), mark_invitation_resent would stamp the counter, and the invitee
-    // would receive nothing new. Since resent_count only advances AFTER a real send
-    // succeeds (see the stamp below), two requests that race before either one's stamp
-    // lands still read the same resent_count and get the same key, so an accidental
-    // double-click or network retry still dedupes exactly as intended. A deliberate second
-    // resend, even minutes later, reads the bumped count from the row and gets a fresh key.
+    // into that guarantee. resent_count alone narrows that to "within one resend
+    // attempt" (two requests racing before either one's stamp lands read the same
+    // resent_count and get the same key, so a double-click or network retry still
+    // dedupes as intended) but mark_invitation_resent's write is best-effort: if it
+    // silently fails after a real send succeeded, a later GENUINE resend would still
+    // read the same stale resent_count and collide for the rest of that 24-hour window.
+    // The now()-bucket bounds that exposure to minutes instead of a full day, without
+    // weakening the in-flight-duplicate guarantee (see resendIdempotencyKey's own doc
+    // comment for the full reasoning).
     try {
       // Best-effort: resolveInviterName is an unrelated profiles read plus an Admin API
       // call, and a failure there must not abort a resend whose email was never even
@@ -101,14 +102,11 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
       // which already renders no line at all when neither name nor email is known).
       const inviter = await resolveInviterName(deps, invite.invited_by)
         .catch((): { name?: string; email?: string } => ({}));
-      // Only relevant to an artist invite (see DeliverInviteArgs.artistAcceptance);
-      // best-effort like the inviter-name resolution above, since a failed read here
-      // must not abort a resend either. Undefined (the safe, common default) degrades
-      // to the template's own offers-aware fallback.
-      const artistAcceptance = invite.role === "artist"
-        ? await resolveBookingFlow(deps.admin, invite.org_id)
-          .then((flow) => flow.artist_acceptance)
-          .catch((): undefined => undefined)
+      // Only relevant to an artist invite (see DeliverInviteArgs.offersExpected).
+      // resolveArtistOffersExpected already fails closed to false on any error, so no
+      // extra .catch is needed here.
+      const offersExpected = invite.role === "artist"
+        ? await resolveArtistOffersExpected(deps.admin, invite.org_id)
         : undefined;
       const result = await sendOrgInvitationEmail(deps, {
         email: invite.email,
@@ -118,11 +116,11 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
         token: invite.token,
         inviterEmail: inviter.email,
         inviterName: inviter.name,
-        expiresOn: formatExpiryThrough(invite.expires_at),
+        expiresOn: formatExpiresOn(invite.expires_at),
         isNewUser,
-        artistAcceptance,
+        offersExpected,
         appOrigin,
-        idempotencyKey: `org-invitation-resend-${invite.id}-${invite.resent_count ?? 0}`,
+        idempotencyKey: resendIdempotencyKey(invite.id, invite.resent_count ?? 0, deps.now()),
         orgId: invite.org_id,
         actionLink,
       });

@@ -1,6 +1,7 @@
 import { assert, assertEquals, assertExists } from "https://deno.land/std@0.224.0/assert/mod.ts";
 import { handle } from "./index.ts";
 import { makeFakeDeps, makeRequest } from "../_shared/testing.ts";
+import { resendIdempotencyKey } from "../_shared/invitations.ts";
 
 Deno.test("resend-invitation: super-admin re-sends the invite email", async () => {
   const { deps, invokeCalls } = makeFakeDeps({
@@ -97,11 +98,11 @@ Deno.test("resend-invitation DI: sends the role label, roleKey, expiresOn from t
   };
   assertEquals(msg.templateData.role, "Production Team");
   assertEquals(msg.templateData.roleKey, "producer");
-  // The DB is the single source of truth: this states the invitation row's real
-  // expires_at, run through formatExpiryThrough (one day earlier than the exact
-  // calendar day, the last day fully guaranteed to still be valid), not a value
-  // invented or refreshed by this endpoint.
-  assertEquals(msg.templateData.expiresOn, "August 23, 2026");
+  // The DB is the single source of truth: the invitation row's real expires_at, its
+  // exact calendar day (formatExpiresOn, no arithmetic), not a value invented or
+  // refreshed by this endpoint. The email's remedy sentence, not date math, covers the
+  // short-lived action link and the window's partly-elapsed final day.
+  assertEquals(msg.templateData.expiresOn, "August 24, 2026");
   assertEquals(msg.templateData.inviterName, "Original Inviter");
 });
 
@@ -137,6 +138,44 @@ Deno.test("resend-invitation: still resends successfully when resolving the invi
   const msg = emails[0].body as { templateData: { inviterName?: string; inviterEmail?: string } };
   assertEquals(msg.templateData.inviterName, undefined);
   assertEquals(msg.templateData.inviterEmail, undefined);
+});
+
+Deno.test("resend-invitation DI: a resend inside the invitation's final 48 hours still states the row's exact expiry day", async () => {
+  // now = Aug 23 09:00Z, expires_at = Aug 24 10:00Z: a genuinely valid, 25-hours-left
+  // invitation, well short of the 409 "already expired" gate above. An earlier revision
+  // did date arithmetic here (a 48-hour "guaranteed day" step-back, then a clamp to the
+  // undated fallback) and each step minted a new false claim in some reachable state.
+  // The shipped contract is simpler: state the exact day the row expires, and let the
+  // expiryLine's remedy sentence ("ask for it to be resent") own the edges no date can.
+  const now = new Date("2026-08-23T09:00:00.000Z");
+  const { deps, invokeCalls } = makeFakeDeps({
+    authUser: { id: "u1" },
+    usersById: { u1: { email: "admin@acme.test" } },
+    now,
+    tables: {
+      org_memberships: { data: { role: "admin" }, error: null },
+      org_invitations: {
+        data: {
+          id: "inv1", org_id: "org-1", email: "invitee@x.com", role: "producer", status: "pending",
+          token: "tok123", expires_at: "2026-08-24T10:00:00.000Z",
+        },
+        error: null,
+      },
+      organizations: { data: { name: "Acme" }, error: null },
+    },
+  });
+  const res = await handle(
+    makeRequest({ headers: { Authorization: "Bearer jwt" }, body: { invitation_id: "inv1", app_origin: "https://app.test" } }),
+    deps,
+  );
+  // Still a genuinely successful resend: this is NOT the already-expired 409 path above.
+  // The email states the row's real, exact expiry day even this close to the wire; the
+  // remedy sentence in the same line is what keeps the claim safe on the final day.
+  assertEquals(res.status, 200);
+  const emails = invokeCalls.filter((c) => c.name === "send-transactional-email");
+  assertEquals(emails.length, 1);
+  const msg = emails[0].body as { templateData: { expiresOn?: string } };
+  assertEquals(msg.templateData.expiresOn, "August 24, 2026");
 });
 
 Deno.test("resend-invitation DI: never writes to the invitation row (expires_at is read-only here)", async () => {
@@ -259,9 +298,11 @@ Deno.test("resend-invitation DI: a later, deliberate resend (higher resent_count
   // signal that distinguishes "the same resend attempt, retried" from "a new resend,
   // requested later" — it only advances after mark_invitation_resent runs, i.e. after a
   // previous attempt's send is already confirmed delivered.
+  const now = new Date("2026-06-01T12:00:00.000Z"); // matches makeFakeDeps' default fixedNow
   const { deps, invokeCalls } = makeFakeDeps({
     authUser: { id: "u1" },
     usersById: { u1: { email: "admin@acme.test" } },
+    now,
     tables: {
       org_memberships: { data: { role: "admin" }, error: null },
       org_invitations: {
@@ -281,8 +322,8 @@ Deno.test("resend-invitation DI: a later, deliberate resend (higher resent_count
   const emails = invokeCalls.filter((c) => c.name === "send-transactional-email");
   assertEquals(emails.length, 1);
   const key = (emails[0].body as { idempotency_key?: string }).idempotency_key;
-  assertEquals(key, "org-invitation-resend-inv1-3");
-  assertEquals(key === "org-invitation-resend-inv1-0", false, "a nonzero resent_count must not collide with the very first resend's key");
+  assertEquals(key, resendIdempotencyKey("inv1", 3, now));
+  assertEquals(key === resendIdempotencyKey("inv1", 0, now), false, "a nonzero resent_count must not collide with the very first resend's key");
 });
 
 Deno.test("resend-invitation: net-new pending invite → branded email with actionLink", async () => {
@@ -457,7 +498,12 @@ Deno.test("resend-invitation: admin bypasses the capability gate entirely (never
   assertEquals(calls.some((c) => c.table === "rpc:is_capability_enabled"), false);
 });
 
-Deno.test("resend-invitation DI: an artist invite resolves artistAcceptance from the org's own booking_flow setting", async () => {
+// offersExpected (see resolveArtistOffersExpected, _shared/invitations.ts) requires
+// entitled + active + artist_acceptance all to check out, not artist_acceptance alone:
+// see the two regression tests below (unentitled, and the paused "off" preset) for the
+// exact gap this closes.
+
+Deno.test("resend-invitation DI: an artist invite resolves offersExpected from the org's own booking_flow setting", async () => {
   const { deps, invokeCalls } = makeFakeDeps({
     authUser: { id: "u1" },
     usersById: { u1: { email: "admin@acme.test" } },
@@ -483,11 +529,73 @@ Deno.test("resend-invitation DI: an artist invite resolves artistAcceptance from
   assertEquals(res.status, 200);
   const emails = invokeCalls.filter((c) => c.name === "send-transactional-email");
   assertEquals(emails.length, 1);
-  const msg = emails[0].body as { templateData: { artistAcceptance?: boolean } };
-  assertEquals(msg.templateData.artistAcceptance, false);
+  const msg = emails[0].body as { templateData: { offersExpected?: boolean } };
+  assertEquals(msg.templateData.offersExpected, false);
 });
 
-Deno.test("resend-invitation DI: a non-artist invite never resolves artistAcceptance (irrelevant to that role)", async () => {
+Deno.test("resend-invitation DI: an artist invite in an UNENTITLED org resolves offersExpected to false, never resolveBookingFlow's fail-open defaults", async () => {
+  // Regression: resolveBookingFlow ALONE would return BOOKING_FLOW_DEFAULTS here
+  // (artist_acceptance: true) since it fails open to the defaults on an unentitled org.
+  const { deps, invokeCalls } = makeFakeDeps({
+    authUser: { id: "u1" },
+    usersById: { u1: { email: "admin@acme.test" } },
+    tables: {
+      org_memberships: { data: { role: "admin" }, error: null },
+      org_invitations: {
+        data: {
+          id: "inv1", org_id: "org-1", email: "invitee@x.com", role: "artist", status: "pending",
+          token: "tok123", expires_at: "2099-01-01T00:00:00Z",
+        },
+        error: null,
+      },
+      organizations: { data: { name: "Acme" }, error: null },
+    },
+    rpcs: { is_feature_enabled: { data: false, error: null } },
+  });
+  const res = await handle(
+    makeRequest({ headers: { Authorization: "Bearer jwt" }, body: { invitation_id: "inv1", app_origin: "https://app.test" } }),
+    deps,
+  );
+  assertEquals(res.status, 200);
+  const emails = invokeCalls.filter((c) => c.name === "send-transactional-email");
+  const msg = emails[0].body as { templateData: { offersExpected?: boolean } };
+  assertEquals(msg.templateData.offersExpected, false);
+});
+
+Deno.test("resend-invitation DI: an artist invite in a freshly provisioned but still-PAUSED org (booking_flow.active: false) resolves offersExpected to false", async () => {
+  // Regression: this is the exact seed provision-org writes for every freshly
+  // provisioned org with booking enabled. artist_acceptance is unset in that stored row
+  // (defaults true), so without also checking flow.active this would incorrectly read
+  // as "offers coming" for an org that has not even turned booking on yet.
+  const { deps, invokeCalls } = makeFakeDeps({
+    authUser: { id: "u1" },
+    usersById: { u1: { email: "admin@acme.test" } },
+    tables: {
+      org_memberships: { data: { role: "admin" }, error: null },
+      org_invitations: {
+        data: {
+          id: "inv1", org_id: "org-1", email: "invitee@x.com", role: "artist", status: "pending",
+          token: "tok123", expires_at: "2099-01-01T00:00:00Z",
+        },
+        error: null,
+      },
+      organizations: { data: { name: "Acme" }, error: null },
+      app_settings: [
+        { when: { key: "booking_flow" }, data: [{ org_id: "org-1", key: "booking_flow", value: { active: false } }], error: null },
+      ],
+    },
+  });
+  const res = await handle(
+    makeRequest({ headers: { Authorization: "Bearer jwt" }, body: { invitation_id: "inv1", app_origin: "https://app.test" } }),
+    deps,
+  );
+  assertEquals(res.status, 200);
+  const emails = invokeCalls.filter((c) => c.name === "send-transactional-email");
+  const msg = emails[0].body as { templateData: { offersExpected?: boolean } };
+  assertEquals(msg.templateData.offersExpected, false);
+});
+
+Deno.test("resend-invitation DI: a non-artist invite never resolves offersExpected (irrelevant to that role)", async () => {
   const { deps, invokeCalls } = makeFakeDeps({
     authUser: { id: "u1" },
     usersById: { u1: { email: "admin@acme.test" } },
@@ -503,6 +611,44 @@ Deno.test("resend-invitation DI: a non-artist invite never resolves artistAccept
   );
   assertEquals(res.status, 200);
   const emails = invokeCalls.filter((c) => c.name === "send-transactional-email");
-  const msg = emails[0].body as { templateData: { artistAcceptance?: boolean } };
-  assertEquals(msg.templateData.artistAcceptance, undefined);
+  const msg = emails[0].body as { templateData: { offersExpected?: boolean } };
+  assertEquals(msg.templateData.offersExpected, undefined);
+});
+
+Deno.test("resend-invitation DI: a resend requested well after a previous attempt's mark_invitation_resent stamp silently failed still gets a fresh idempotency key", async () => {
+  // Regression: mark_invitation_resent is best-effort. If it fails silently after a real
+  // send succeeded, resent_count on the row never advances. Without the now()-bucket
+  // folded into resendIdempotencyKey, a later GENUINE resend would read the same stale
+  // resent_count, mint the identical key, and Resend would dedupe it against the first
+  // send for up to 24 hours, silently swallowing the second resend. Simulated here via
+  // two separate deps instances (same stale resent_count: 0, `now` 30 minutes apart,
+  // several RESEND_IDEMPOTENCY_BUCKET_MS buckets) rather than one request racing itself.
+  const seed = {
+    authUser: { id: "u1" },
+    usersById: { u1: { email: "admin@acme.test" } },
+    tables: {
+      org_memberships: { data: { role: "admin" }, error: null },
+      org_invitations: {
+        data: {
+          id: "inv1", org_id: "org-1", email: "invitee@x.com", role: "producer", status: "pending",
+          token: "tok123", expires_at: "2027-01-01T00:00:00Z", resent_count: 0,
+        },
+        error: null,
+      },
+      organizations: { data: { name: "Acme" }, error: null },
+    },
+  };
+  const req = () => makeRequest({ headers: { Authorization: "Bearer jwt" }, body: { invitation_id: "inv1", app_origin: "https://app.test" } });
+
+  const { deps: depsA, invokeCalls: callsA } = makeFakeDeps({ ...seed, now: new Date("2026-06-01T12:00:00.000Z") });
+  await handle(req(), depsA);
+  const keyA = (callsA.filter((c) => c.name === "send-transactional-email")[0].body as { idempotency_key?: string }).idempotency_key;
+
+  const { deps: depsB, invokeCalls: callsB } = makeFakeDeps({ ...seed, now: new Date("2026-06-01T12:30:00.000Z") });
+  await handle(req(), depsB);
+  const keyB = (callsB.filter((c) => c.name === "send-transactional-email")[0].body as { idempotency_key?: string }).idempotency_key;
+
+  assertExists(keyA);
+  assertExists(keyB);
+  assertEquals(keyA === keyB, false, "a resend 30 minutes later must not collide with the earlier one, even at the same stale resent_count");
 });

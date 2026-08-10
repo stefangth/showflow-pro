@@ -3,7 +3,7 @@ import * as React from "npm:react@18.3.1";
 import { Text } from "npm:@react-email/components@0.0.22";
 import type { TemplateData, TemplateEntry } from "./registry.ts";
 import { APP_URL } from "../app-url.ts";
-import { formatExpiryThrough, ORG_INVITATION_EXPIRY_DAYS } from "../invitations.ts";
+import { formatExpiresOn, ORG_INVITATION_EXPIRY_DAYS } from "../invitations.ts";
 import { EmailShell, emailRoleStyle } from "./_shell/EmailShell.tsx";
 import { applyEmailTokens, EMAIL_COPY_DEFAULTS, type EmailCopy } from "./_shell/emailCopy.ts";
 import { EMAIL_THEME_DEFAULTS, type EmailFamily, type EmailRoleKey, type EmailTheme } from "./_shell/emailTheme.ts";
@@ -23,10 +23,12 @@ interface Props {
   /** See DeliverInviteArgs.isNewUser in _shared/invitations.ts. Undefined defaults to the
    *  new-user copy (the common case: most invites are a first invite). */
   isNewUser?: boolean;
-  /** See DeliverInviteArgs.artistAcceptance in _shared/invitations.ts. Only consulted when
-   *  roleKey === 'artist'; undefined defaults to true (offers-aware copy), matching
-   *  BOOKING_FLOW_DEFAULTS.artist_acceptance. */
-  artistAcceptance?: boolean;
+  /** See DeliverInviteArgs.offersExpected in _shared/invitations.ts. Only consulted when
+   *  roleKey === 'artist'; must be EXPLICITLY true to render the offers-aware copy.
+   *  Undefined (and false) render the flow-neutral line, since that line stays true
+   *  whether or not offers are really coming and the offers-aware line is a promise
+   *  that must be proven, not assumed. */
+  offersExpected?: boolean;
   token?: string;
   actionLink?: string;
   _emailCopy?: EmailCopy;
@@ -43,7 +45,7 @@ const OrgInvitationEmail = ({
   inviterName,
   expiresOn,
   isNewUser,
-  artistAcceptance,
+  offersExpected,
   token,
   actionLink,
   _emailCopy = EMAIL_COPY_DEFAULTS as EmailCopy,
@@ -76,16 +78,21 @@ const OrgInvitationEmail = ({
   // per-role copy, not the third-person ROLE_DESCRIPTIONS caption used elsewhere (see the
   // doc comment on ROLE_DESCRIPTIONS in src/config/app.config.ts for why those two can't
   // share one string). Selected by roleKey (the raw enum), not by the display label.
-  // The artist line branches on artistAcceptance (booking_flow.artist_acceptance, see
-  // DeliverInviteArgs.artistAcceptance): the offers-aware line for the common case
-  // (true/undefined, matching BOOKING_FLOW_DEFAULTS), the flattened flow-neutral line
-  // only for a direct-book org (explicitly false), which never opens an offer at all.
+  // The artist line branches on offersExpected (see DeliverInviteArgs.offersExpected in
+  // _shared/invitations.ts, resolved by resolveArtistOffersExpected): the offers-aware
+  // line ONLY when explicitly true (the caller has confirmed booking_flow is entitled,
+  // active, and set to accept offers for this org), the flattened flow-neutral line for
+  // everything else, including undefined. This is deliberately the opposite default
+  // direction from most flags here: undefined must NOT fall through to the common-case
+  // copy, because the common-case copy is a promise ("you will get emailed offers") that
+  // has to be proven true for this specific org, not assumed true because most orgs
+  // never turn it off.
   const roleActionLine = roleKey === "admin"
     ? copy["org-invitation.roleIntroAdmin"]
     : roleKey === "producer"
       ? copy["org-invitation.roleIntroProducer"]
       : roleKey === "artist"
-        ? (artistAcceptance === false ? copy["org-invitation.roleIntroArtist"] : copy["org-invitation.roleIntroArtistOffers"])
+        ? (offersExpected === true ? copy["org-invitation.roleIntroArtistOffers"] : copy["org-invitation.roleIntroArtist"])
         : "";
   // Only state the role when BOTH the label and a matching action line resolved: a role
   // name with no recognized roleKey would render a dangling "Your role is X." with
@@ -162,8 +169,9 @@ export const template = {
     inviterName: "Jane Admin",
     inviterEmail: "admin@cirque.example",
     // Computed from the real helper (rather than a hand-typed date string) so the
-    // Settings preview can never drift from what a real send actually renders.
-    expiresOn: formatExpiryThrough(
+    // Settings preview can never drift from what a real send actually renders: a
+    // freshly minted 14-day row's exact expiry day.
+    expiresOn: formatExpiresOn(
       new Date(Date.now() + ORG_INVITATION_EXPIRY_DAYS * 24 * 60 * 60 * 1000).toISOString(),
     ),
     isNewUser: true,
