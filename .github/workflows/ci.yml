@@ -23,6 +23,14 @@ on:
         type: string
 
 
+# Least privilege for every job below: CI only ever checks out the repo and uploads an
+# artifact, and never calls `gh` or the API, so a read-only token is sufficient. Without this
+# the workflow inherits the repository default, which CodeQL flags
+# (actions/missing-workflow-permissions). Any job that later needs to write (post a comment,
+# push a tag) should declare its own job-level `permissions:` rather than widening this.
+permissions:
+  contents: read
+
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true

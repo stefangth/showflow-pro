@@ -12,13 +12,38 @@ permissions:
 
 jobs:
   claude:
+    # First half of the untrusted-checkout mitigation (CodeQL: actions/untrusted-checkout/high):
+    # who is allowed to ASK. claude-code-action refuses actors without write access, but that
+    # gate lives inside the action and runs AFTER the checkout below, so the job is gated here
+    # too. On its own this is NOT sufficient — it says nothing about whose code gets checked
+    # out, and an owner commenting `@claude` on a drive-by fork PR would still pull attacker
+    # code into the workspace. The "Refuse PRs from forks" step below covers that half.
     if: |
       github.event.issue.pull_request &&
-      contains(github.event.comment.body, '@claude')
+      contains(github.event.comment.body, '@claude') &&
+      contains(fromJSON('["OWNER", "MEMBER", "COLLABORATOR"]'), github.event.comment.author_association)
 
     runs-on: ubuntu-latest
 
     steps:
+      # Second half of the mitigation: whose CODE may be checked out. `refs/pull/N/head`
+      # resolves to the head commit even when it lives in a fork, and `issue_comment` runs in
+      # the BASE repo context with this repo's secrets and a `contents: write` token — the
+      # classic pwn request. anthropics/claude-code-action docs/security.md is explicit: "Do
+      # not check out an untrusted ref into the workspace root before this action." Every PR
+      # in this repo is a branch of the repo itself, so refusing forks outright costs nothing.
+      # If fork support is ever wanted, check out the base branch and pass the head into a
+      # subdirectory via `--add-dir` instead of relaxing this.
+      - name: Refuse PRs from forks
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          head_repo=$(gh api "repos/${{ github.repository }}/pulls/${{ github.event.issue.number }}" --jq .head.repo.full_name)
+          if [ "$head_repo" != "${{ github.repository }}" ]; then
+            echo "::error::PR head lives in $head_repo, not ${{ github.repository }}. Refusing to check out untrusted code."
+            exit 1
+          fi
+
       - name: Checkout PR branch
         uses: actions/checkout@v4
         with:

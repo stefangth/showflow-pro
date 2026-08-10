@@ -1,0 +1,51 @@
+# Without this file Dependabot only ever raises *alerts*, never PRs — which is how 43 open
+# alerts accumulated with nothing on the PR list. Everything here is grouped aggressively so a
+# solo maintainer gets a couple of reviewable PRs a week rather than a PR per advisory.
+#
+# Scope note: this is a Vite SPA, so almost the entire dependency tree is build-time only. The
+# packages that actually reach a browser are the React/Radix/router/recharts runtime set —
+# those get their own group so a risky bump is never buried in a 40-package devDependency PR.
+version: 2
+updates:
+  - package-ecosystem: npm
+    directory: "/"
+    schedule:
+      interval: weekly
+      day: monday
+    open-pull-requests-limit: 5
+    labels: ["dependencies"]
+    commit-message:
+      prefix: "deps"
+      prefix-development: "deps-dev"
+    groups:
+      # Build/test tooling: vite, vitest, eslint, tailwind, playwright, types. Never ships to
+      # a user, so these can move together and are safe to merge on a green CI run.
+      dev-tooling:
+        dependency-type: development
+        update-types: ["minor", "patch"]
+      # Shipped runtime code. Patch-only as a group; a minor or major on anything a user's
+      # browser executes gets its own PR so it can be reviewed and exercised on its own.
+      runtime-patches:
+        dependency-type: production
+        update-types: ["patch"]
+      # Security updates are a SEPARATE stream and groups default to
+      # `applies-to: version-updates`, so the two groups above do not cover them. Dependabot
+      # security updates are currently off (Settings > Code security); without this group,
+      # switching them on would open one ungrouped PR per advisory — and
+      # `open-pull-requests-limit` does not apply to that stream, so nothing would cap the
+      # burst. Keep both streams grouped so enabling the setting stays a one-click decision.
+      security:
+        applies-to: security-updates
+        patterns: ["*"]
+
+  - package-ecosystem: github-actions
+    directory: "/"
+    schedule:
+      interval: weekly
+      day: monday
+    labels: ["dependencies", "github-actions"]
+    commit-message:
+      prefix: "ci"
+    groups:
+      actions:
+        patterns: ["*"]
