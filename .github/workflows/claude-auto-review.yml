@@ -18,19 +18,49 @@ on:
 
 jobs:
   review:
-    # PR events (opened/synchronize) always review, as does an explicit manual
-    # dispatch. A comment only triggers a re-review when it @claude-mentions on a
-    # pull request (not a plain issue).
+    # PR events (opened/synchronize) review, as does an explicit manual dispatch. A comment
+    # only triggers a re-review when it @claude-mentions on a pull request (not a plain issue).
+    #
+    # Every path is additionally gated on the actor being trusted, because the checkout step
+    # below pulls the PR head into the workspace root while `issue_comment` runs in the BASE
+    # repo context with this repo's secrets (CodeQL: actions/untrusted-checkout/high). The
+    # repo is public, so without this any fork author could aim the review agent at their own
+    # code. `workflow_dispatch` needs write access to trigger at all, so it needs no guard.
+    # This gate covers who may ASK; the "Refuse PRs from forks" step covers whose code runs.
+    #
+    # Known gap: Dependabot PRs have author_association CONTRIBUTOR, so they do NOT match and
+    # are skipped silently. That is deliberate — GitHub withholds secrets from
+    # Dependabot-triggered `pull_request` runs, so CLAUDE_CODE_OAUTH_TOKEN would be empty and
+    # the job could only fail. Dependency PRs (see .github/dependabot.yml) are reviewed by
+    # hand; re-run one through `workflow_dispatch` to get an automated pass over it.
     if: >-
-      github.event_name == 'pull_request' ||
+      (github.event_name == 'pull_request' &&
+        contains(fromJSON('["OWNER", "MEMBER", "COLLABORATOR"]'), github.event.pull_request.author_association)) ||
       github.event_name == 'workflow_dispatch' ||
-      (github.event.issue.pull_request && contains(github.event.comment.body, '@claude'))
+      (github.event.issue.pull_request &&
+        contains(github.event.comment.body, '@claude') &&
+        contains(fromJSON('["OWNER", "MEMBER", "COLLABORATOR"]'), github.event.comment.author_association))
     runs-on: ubuntu-latest
     permissions:
       contents: read
       pull-requests: write
       id-token: write
     steps:
+      # `refs/pull/N/head` resolves to the head commit even when it lives in a fork, and the
+      # comment/dispatch paths run in the BASE repo context with this repo's secrets. Refuse
+      # anything whose head is not a branch of this repo, per claude-code-action's
+      # docs/security.md ("Do not check out an untrusted ref into the workspace root").
+      - name: Refuse PRs from forks
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR: ${{ github.event.pull_request.number || github.event.issue.number || inputs.pr }}
+        run: |
+          head_repo=$(gh api "repos/${{ github.repository }}/pulls/$PR" --jq .head.repo.full_name)
+          if [ "$head_repo" != "${{ github.repository }}" ]; then
+            echo "::error::PR head lives in $head_repo, not ${{ github.repository }}. Refusing to check out untrusted code."
+            exit 1
+          fi
+
       - uses: actions/checkout@v6
         with:
           # On an @claude comment, and on a manual dispatch, the event ref is the
