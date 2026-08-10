@@ -22,5 +22,5 @@ Deno.test("preview-transactional-email: admin JWT → 200", async () => {
   const res = await handle(makeRequest({ headers: { Authorization: "Bearer jwt" }, body: {} }), deps);
   assertEquals(res.status, 200);
   const { templates } = await res.json() as { templates: unknown[] };
-  assertEquals(templates.length, 11);
+  assertEquals(templates.length, 12);
 });

@@ -54,7 +54,7 @@ function authedPostRequest(body: unknown = {}) {
   return makeRequest({ headers: { Authorization: "Bearer jwt" }, body });
 }
 
-const EXPECTED_TEMPLATE_COUNT = 11;
+const EXPECTED_TEMPLATE_COUNT = 12;
 
 // ── Auth contract ─────────────────────────────────────────────────────────────
 
@@ -522,12 +522,13 @@ Deno.test("preview-transactional-email DI: artist-offer-digest html contains pre
 
 // ── Registry count assertion ──────────────────────────────────────────────────
 
-Deno.test("preview-transactional-email DI: TEMPLATES registry has exactly 11 entries", async () => {
+Deno.test("preview-transactional-email DI: TEMPLATES registry has exactly 12 entries", async () => {
   // Regression guard: if a template is added/removed, this test will catch the mismatch.
   // Task 10 added 'hire-order-issued' (9 -> 10). Task 5 added 'account-email-changed' (10 -> 11).
   // Hire-orders countersign added 'hire-order-countersigned'; two retired signup templates are absent.
   // The magic-link sign-in email added 'magic-link' (10 -> 11).
-  assertEquals(EXPECTED_TEMPLATE_COUNT, 11);
+  // Airtable sync held alert email added 'airtable-sync-held' (11 -> 12).
+  assertEquals(EXPECTED_TEMPLATE_COUNT, 12);
 });
 
 // ── GET method (non-POST) ─────────────────────────────────────────────────────
