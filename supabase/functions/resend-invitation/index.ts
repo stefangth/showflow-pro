@@ -1,7 +1,7 @@
 import { preflight, json } from "../_shared/http.ts";
 import { requireOrgRole } from "../_shared/auth.ts";
 import { requireCapability } from "../_shared/capabilities.ts";
-import { realDeps, type Deps } from "../_shared/deps.ts";
+import { emailWasSent, realDeps, type Deps } from "../_shared/deps.ts";
 import { ensureInvitedUser, sendOrgInvitationEmail } from "../_shared/invitations.ts";
 
 type Body = { invitation_id: string; app_origin: string };
@@ -48,7 +48,7 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
       });
       if (memErr) console.error("resend-invitation: membership link failed", (memErr as { message?: string }).message);
     }
-    await sendOrgInvitationEmail(deps, {
+    const sendResult = await sendOrgInvitationEmail(deps, {
       email: invite.email,
       orgName: (org as { name?: string } | null)?.name ?? undefined,
       role: invite.role,
@@ -59,10 +59,19 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
       actionLink,
     });
 
-    // Stamp the resend so other admins can see WHEN (and how often) it was last resent. Best-effort:
-    // the email already went out, so a failed stamp must not fail the request (just a stale counter).
-    const { error: stampErr } = await deps.admin.rpc("mark_invitation_resent", { p_id: invite.id });
-    if (stampErr) console.error("resend-invitation: mark-resent failed", (stampErr as { message?: string }).message);
+    // Stamp the resend so other admins can see WHEN (and how often) it was last resent — but
+    // ONLY when the email actually delivered. A suppressed/bounced address comes back as
+    // HTTP 200 { success: false }; stamping that would tell the next admin "just resent" when
+    // nothing reached the invitee (see emailWasSent). Best-effort otherwise: a failed stamp on a
+    // real send must not fail the request (just a stale counter).
+    if (emailWasSent(sendResult)) {
+      const { error: stampErr } = await deps.admin.rpc("mark_invitation_resent", { p_id: invite.id });
+      if (stampErr) console.error("resend-invitation: mark-resent failed", (stampErr as { message?: string }).message);
+    } else {
+      console.warn("resend-invitation: email not delivered — leaving resend counter unstamped", {
+        invitation: invite.id, error: sendResult.error ?? null,
+      });
+    }
 
     return json({ ok: true });
   } catch (e) {

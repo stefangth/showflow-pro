@@ -1,4 +1,4 @@
-import type { Deps } from "./deps.ts";
+import type { Deps, InvokeResult } from "./deps.ts";
 import { safeAppOrigin } from "./appOrigin.ts";
 import { appUrl } from "./app-url.ts";
 
@@ -72,12 +72,17 @@ export async function ensureInvitedUser(
   return { userId: d?.user?.id ?? null, actionLink };
 }
 
-/** Deliver ONE branded org-invitation email (best-effort at the call site). */
+/**
+ * Deliver ONE branded org-invitation email (best-effort at the call site). Returns the
+ * raw send result so a caller can gate a "successful send" side effect on actual delivery
+ * via `emailWasSent(result)` — `sendEmail` never throws, and a suppressed/skipped address
+ * comes back as HTTP 200 `{ success: false }`. Callers that don't care can ignore it.
+ */
 export async function sendOrgInvitationEmail(
   deps: Deps,
   args: DeliverInviteArgs & { actionLink?: string },
-): Promise<void> {
-  await deps.sendEmail({
+): Promise<InvokeResult> {
+  return await deps.sendEmail({
     template_name: "org-invitation",
     recipient_email: args.email,
     org_id: args.orgId,

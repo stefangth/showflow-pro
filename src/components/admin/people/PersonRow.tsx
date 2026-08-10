@@ -67,11 +67,12 @@ export function PersonRow({
   const inv = person.invitation;
   const hasName = Boolean(person.displayName);
   // On a pending row, append the last-resend so multiple admins can see it was already resent
-  // (and how often) — e.g. "Invited 09/08/2026 · Resent 2× · last 10/08 14:30".
+  // (and how often) — e.g. "Invited 09/08/2026 · Resent 2× · last 10/08/2026 14:30". The
+  // timestamp carries the year to match the sibling "Invited"/"Last seen" metas (an invite can
+  // sit pending across a year boundary before it's resent, so the year isn't redundant).
+  const resentAt = inv?.last_resent_at ? format(new Date(inv.last_resent_at), "dd/MM/yyyy HH:mm") : "";
   const resentMeta = inv?.last_resent_at
-    ? ` · ${(inv.resent_count ?? 1) > 1
-        ? `Resent ${inv.resent_count}× · last ${format(new Date(inv.last_resent_at), "dd/MM HH:mm")}`
-        : `Resent ${format(new Date(inv.last_resent_at), "dd/MM HH:mm")}`}`
+    ? ` · ${(inv.resent_count ?? 1) > 1 ? `Resent ${inv.resent_count}× · last ${resentAt}` : `Resent ${resentAt}`}`
     : "";
   const meta = invited
     ? (inv?.created_at ? `Invited ${format(new Date(inv.created_at), "dd/MM/yyyy")}` : "Awaiting acceptance") + resentMeta
