@@ -168,6 +168,21 @@ it("welcomeCopy interpolates org name and progress", () => {
   expect(w.body).not.toMatch(/[—–]/); // no em/en dashes
 });
 
+// welcomeCopy has no org-maturity input: `complete` only says setup steps are
+// outstanding, which is just as true for the SECOND admin joining an org already
+// holding shows, dates, and artists (verified live: 6 shows / 75 dates / 25 artists
+// rendered under this very card). Copy on this branch must therefore claim nothing
+// about being first and nothing about the database being empty.
+it("incomplete-admin welcome claims neither firstness nor an empty database", () => {
+  const w = welcomeCopy("admin", false, ctx, { filled: 1, total: 4 });
+  expect(`${w.headline} ${w.body}`).not.toMatch(/first admin/i);
+  expect(`${w.headline} ${w.body}`).not.toMatch(/database is empty|empty/i);
+  expect(w.headline).toBe("Finish setting up Halle Kollektiv");
+  expect(w.body).toBe(
+    "A few decisions still shape how this workspace runs. Walk the remaining steps, because every number on this page follows them.",
+  );
+});
+
 // ---- Table-driven coverage over the full role x complete matrix for the three
 // copy functions. Expected values are hardcoded (not re-derived from the same
 // branching as the implementation) so a future copy edit that changes a label,

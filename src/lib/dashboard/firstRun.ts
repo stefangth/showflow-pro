@@ -67,7 +67,11 @@ export function welcomeCopy(
   if (role === "admin") {
     return complete
       ? { ...base, headline: "This workspace is already set up", body: "Nothing to configure. Walk the decisions behind it, because every number on this page follows them.", primaryLabel: "How this org works", secondaryLabel: "Dismiss", progressLabel: `Set up · ${progress.total} of ${progress.total}`, progressHint: "The rules you inherited" }
-      : { ...base, headline: `You are the first admin at ${org}`, body: "The database is empty. A few steps put real dates on this page, and the sample below becomes yours.", primaryLabel: "Start setup", secondaryLabel: "Later", progressLabel: `Set up · ${progress.filled} of ${progress.total}`, progressHint: "About 15 minutes" };
+      // No firstness or emptiness claims: `complete` only says setup steps are
+      // outstanding, which is equally true for the second admin joining an org that
+      // already holds shows, dates, and artists. The old copy ("You are the first
+      // admin" / "The database is empty.") was false in exactly that state.
+      : { ...base, headline: `Finish setting up ${org}`, body: "A few decisions still shape how this workspace runs. Walk the remaining steps, because every number on this page follows them.", primaryLabel: "Start setup", secondaryLabel: "Later", progressLabel: `Set up · ${progress.filled} of ${progress.total}`, progressHint: "About 15 minutes" };
   }
   if (role === "producer") {
     const pending = ctx.counts.pendingConfirmations;

@@ -5,15 +5,15 @@ import { DashboardWelcome } from "./DashboardWelcome";
 import { DashboardWelcomeCollapsed } from "./DashboardWelcomeCollapsed";
 
 const welcome = {
-  eyebrow: "Welcome", headline: "You are the first admin at Halle Kollektiv",
-  body: "The database is empty.", primaryLabel: "Start setup", secondaryLabel: "Later",
+  eyebrow: "Welcome", headline: "Finish setting up Halle Kollektiv",
+  body: "A few decisions still shape how this workspace runs.", primaryLabel: "Start setup", secondaryLabel: "Later",
   progressLabel: "Set up · 1 of 4", progressFilled: 1, progressTotal: 4, progressHint: "About 15 minutes",
 };
 
 it("renders copy and fires primary/secondary", () => {
   const onPrimary = vi.fn(), onSecondary = vi.fn();
   render(<DashboardWelcome welcome={welcome} onPrimary={onPrimary} onSecondary={onSecondary} />);
-  expect(screen.getByText(/first admin at Halle Kollektiv/)).toBeInTheDocument();
+  expect(screen.getByText(/Finish setting up Halle Kollektiv/)).toBeInTheDocument();
   fireEvent.click(screen.getByRole("button", { name: "Start setup" }));
   fireEvent.click(screen.getByRole("button", { name: "Later" }));
   expect(onPrimary).toHaveBeenCalledOnce();
