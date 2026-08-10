@@ -140,12 +140,48 @@ export const EMAIL_COPY_DEFAULTS = {
   "org-invitation.subject": "You're invited to join {{orgName}} on ShowFlow",
   "org-invitation.heading": "Join {{orgName}}",
   "org-invitation.greeting": "Hi,",
-  "org-invitation.intro": "You've been invited to join {{orgName}} on ShowFlow{{roleSuffix}}. Accept the invitation to set up your account and get started.",
-  "org-invitation.roleSuffix": " as {{role}}",
+  // Deliberately generic rather than naming the booking pipeline as fact: hire_orders and
+  // booking_flow are independently toggleable per org (see src/lib/entitlements.ts), so an
+  // org running hire orders without booking_flow on would read a sentence describing work
+  // its account cannot do if this named "books artists" or "confirms casts" specifically.
+  // Entitlements are not plumbed into this email (no per-org context is available at invite
+  // time before the invitee has ever seen the app), so the sentence stays true for every
+  // module mix instead of picking one to describe.
+  "org-invitation.productIntro": "ShowFlow is how {{orgName}} runs its show production work.",
+  // roleIntro states the role plainly ("as {{role}}"), not "on the {{role}} side": that
+  // phrasing read naturally for single-noun labels but not for "Production Team". It also
+  // drops {{orgName}} on purpose (see the "org-invitation body does not repeat the org
+  // name" test below) since productIntro right above it already named the org once.
+  "org-invitation.roleIntro": "You are joining as {{role}}.",
+  // The three roleIntro* action lines below are the second-person twin of ROLE_DESCRIPTIONS
+  // (src/config/app.config.ts): same facts, different grammatical person, kept as separate
+  // strings because a sentence opening "You are joining..." cannot continue into a
+  // subjectless third-person clause. Review both together when either changes.
+  "org-invitation.roleIntroAdmin": "You get full control of this workspace, including people, casts, settings, and every booking.",
+  "org-invitation.roleIntroProducer": "You plan productions and show dates, and book artists into them.",
+  // No "where that is turned on" hedge: a brand-new invitee has no way to decode who
+  // turns it on or where, so the sentence states what is always true instead.
+  "org-invitation.roleIntroArtist": "You get booked for shows and see every confirmed engagement.",
   "org-invitation.ctaLabel": "Accept invitation",
-  "org-invitation.footer": "This invitation expires in 14 days. If you weren't expecting it, you can safely ignore this email.",
+  "org-invitation.ctaHintNewUser": "The button opens ShowFlow and asks you to choose a password. That is all you need to get in. If it ever stops working, ask whoever invited you to send a fresh one.",
+  "org-invitation.ctaHintExistingUser": "The button signs you in directly. No password needed from this email. If it ever stops working, ask whoever invited you to send a fresh one.",
+  "org-invitation.ctaHintFallback": "The button takes you to a sign in page. Use your existing password, or choose Forgot password there if you do not have one yet.",
+  // "works until"/"works for" rather than "is held": "held" reads as "queued for
+  // delivery"; "works" says directly what the reader needs to know (the window this
+  // invitation stays valid). Also drops {{orgName}} for the same repetition reason as
+  // roleIntro above.
+  //
+  // Scoped to "this invitation link", not "this invitation" bare: membership is created
+  // at invite time (ensure_invitation_membership, see create-invitation/resend-invitation/
+  // provision-org), so an invitee who can authenticate through any path, not only this
+  // link, is already an org member regardless of this date. Stating it as "the link"
+  // keeps the sentence true to what actually stops working after expiresOn: only the
+  // accept_invitation flow this specific link drives, never the invitee's org access.
+  "org-invitation.expiryLine": "This invitation link works until {{expiresOn}}.",
+  "org-invitation.expiryFallback": "This invitation link works for 14 days.",
+  "org-invitation.footer": "If you weren't expecting this invitation, you can safely ignore this email.",
   "org-invitation.previewText": "You're invited to join {{orgName}} on ShowFlow",
-  "org-invitation.invitedBy": "Invited by {{inviterEmail}}.",
+  "org-invitation.invitedBy": "Invited by {{inviter}}.",
   "org-invitation.pasteLink": "Or paste this link into your browser:",
   "org-invitation.orgFallback": "an organization",
 
@@ -206,23 +242,77 @@ function isCopyKey(value: string): value is EmailCopyKey {
   return Object.prototype.hasOwnProperty.call(EMAIL_COPY_DEFAULTS, value);
 }
 
-/** Merge valid, non-blank per-org copy over a fresh complete default record. */
+/**
+ * Retired copy keys carried forward onto their closest surviving replacement, so an org
+ * that customized one before it was retired keeps SOME visible effect of that
+ * customization instead of silently reverting to the stock default. `org-invitation.intro`
+ * (the pre-WP1 combined product+role sentence) is the only one with a clean positional
+ * match: both it and `productIntro` are the email's opening explanatory sentence.
+ * `org-invitation.roleSuffix` (a " as {{role}}" fragment appended to the old intro) has no
+ * equivalent slot in the new three-line role structure (roleIntro / roleIntroAdmin /
+ * roleIntroProducer / roleIntroArtist) and is intentionally NOT carried forward: the
+ * fragment doesn't compose into any of the new strings without reading as a
+ * grammar error, so an org that customized only roleSuffix already lost that
+ * customization's visible effect the moment role became its own dedicated set of strings.
+ */
+const LEGACY_KEY_CARRY_FORWARD: Record<string, EmailCopyKey> = {
+  "org-invitation.intro": "org-invitation.productIntro",
+};
+
+/** Whether a raw override value counts as explicitly set, for override-precedence
+ *  purposes: a non-blank string. A key present but all-whitespace must be treated the
+ *  same as a key that is absent everywhere this matters (an explicit new-key override
+ *  wins over a legacy carry-forward value, but only a MEANINGFUL one). */
+function hasExplicitValue(value: unknown): value is string {
+  return typeof value === "string" && value.trim() !== "";
+}
+
+/** Fold any LEGACY_KEY_CARRY_FORWARD source values onto their current-key equivalent
+ *  in a plain object, when the RAW input has no explicit (non-blank) value of its own
+ *  under the current key. Shared by resolveEmailCopy (folds onto a fresh
+ *  defaults-plus-overrides record, for rendering a send) and compactEmailCopy (folds
+ *  onto the raw draft before filtering, for persisting from the settings editor), so a
+ *  customization saved under a retired key is honored identically by both: a send must
+ *  never silently revert to stock copy, and the editor must never silently drop the
+ *  customization the moment it loads the draft (compactEmailCopy alone used to filter
+ *  out any key not in EMAIL_COPY_DEFAULTS, which includes every retired legacy key). */
+function withLegacyCarryForward<T extends Record<string, unknown>>(raw: Record<string, unknown>, target: T): T {
+  for (const [legacyKey, newKey] of Object.entries(LEGACY_KEY_CARRY_FORWARD)) {
+    const legacyValue = raw[legacyKey];
+    if (hasExplicitValue(legacyValue) && !hasExplicitValue(raw[newKey])) {
+      (target as Record<string, unknown>)[newKey] = legacyValue;
+    }
+  }
+  return target;
+}
+
+/** Merge valid, non-blank per-org copy over a fresh complete default record. An explicit
+ *  (non-blank) override for the CURRENT key always wins over a carried-forward legacy
+ *  one; a present-but-blank current-key value does not count as explicit, so the legacy
+ *  value still carries forward in that case. */
 export function resolveEmailCopy(override?: EmailCopyOverride | string | null): EmailCopy {
   const input = parseOverride(override);
-  const resolved = { ...EMAIL_COPY_DEFAULTS } as EmailCopy;
+  const raw = input as Record<string, unknown>;
+  const resolved = withLegacyCarryForward(raw, { ...EMAIL_COPY_DEFAULTS } as EmailCopy);
   for (const key of Object.keys(EMAIL_COPY_DEFAULTS) as EmailCopyKey[]) {
     const value = input[key];
-    if (typeof value === "string" && value.trim() !== "") resolved[key] = value;
+    if (hasExplicitValue(value)) resolved[key] = value;
   }
   return resolved;
 }
 
-/** Persist only meaningful values that differ from the built-in default. */
+/** Persist only meaningful values that differ from the built-in default. Migrates any
+ *  legacy-key value onto its current-key equivalent first (see withLegacyCarryForward),
+ *  so a draft seeded straight from a stored override (EmailTemplateEditorPage does this
+ *  on load, and again on every save) keeps a customization saved under a retired key
+ *  instead of losing it the instant compaction runs. */
 export function compactEmailCopy(draft?: EmailCopyOverride | null): Partial<Record<EmailCopyKey, string>> {
   if (!draft || !isRecord(draft)) return {};
+  const raw = draft as Record<string, unknown>;
+  const migrated = withLegacyCarryForward(raw, { ...raw });
   const compacted: Partial<Record<EmailCopyKey, string>> = {};
-  for (const [key, value] of Object.entries(draft)) {
-    if (isCopyKey(key) && typeof value === "string" && value.trim() !== "" && value !== EMAIL_COPY_DEFAULTS[key]) {
+  for (const [key, value] of Object.entries(migrated)) {
+    if (isCopyKey(key) && hasExplicitValue(value) && value !== EMAIL_COPY_DEFAULTS[key]) {
       compacted[key] = value;
     }
   }

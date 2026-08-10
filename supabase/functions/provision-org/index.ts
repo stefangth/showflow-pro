@@ -1,7 +1,8 @@
 import { preflight, json } from "../_shared/http.ts";
 import { requireSuperAdmin } from "../_shared/auth.ts";
 import { realDeps, type Deps } from "../_shared/deps.ts";
-import { ensureInvitedUser, sendOrgInvitationEmail } from "../_shared/invitations.ts";
+import { ensureInvitedUser, formatExpiresOn, resolveInviterName, sendOrgInvitationEmail } from "../_shared/invitations.ts";
+import { roleLabel } from "../_shared/roles.ts";
 import { resolveOrgSetting } from "../_shared/settings.ts";
 import { FEATURE_KEYS, FEATURE_REGISTRY, type FeatureKey } from "../_shared/entitlements.ts";
 import { normalizeBookingFlow } from "../_shared/bookingFlow.ts";
@@ -93,9 +94,9 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
     // self-heals on the admin's first sign-in, so a link failure must not undo the org.
     try {
       const { data: invRow } = await deps.admin
-        .from("org_invitations").select("id").eq("token", token).maybeSingle();
+        .from("org_invitations").select("id, expires_at").eq("token", token).maybeSingle();
       const invitationId = (invRow as { id?: string } | null)?.id;
-      const { userId, actionLink } = await ensureInvitedUser(deps, { email, appOrigin, token });
+      const { userId, actionLink, isNewUser } = await ensureInvitedUser(deps, { email, appOrigin, token });
       if (invitationId && userId) {
         const { error: memErr } = await deps.admin.rpc("ensure_invitation_membership", {
           p_invitation: invitationId, p_user: userId,
@@ -107,10 +108,17 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
       // account-less user is a dead end; skip it (claim_my_invitations self-heals membership
       // on their first sign-in regardless). Mirrors create-invitation's guard.
       if (userId || actionLink) {
-        const inviter = auth.userId ? await deps.admin.auth.admin.getUserById(auth.userId) : null;
+        // The first admin of a brand-new org is a stranger to the super-admin provisioning
+        // it, so the "Invited by" line should read a real name when one is on file, not the
+        // platform operator's raw personal inbox address. Same resolver every other invite
+        // path uses (create-invitation, resend-invitation), for a consistent "who invited me".
+        const inviter = auth.userId ? await resolveInviterName(deps, auth.userId) : {};
         await sendOrgInvitationEmail(deps, {
-          email, orgName: name, role, token,
-          inviterEmail: inviter?.data?.user?.email ?? undefined,
+          email, orgName: name, role: roleLabel(role), roleKey: role, token,
+          inviterEmail: inviter.email,
+          inviterName: inviter.name,
+          expiresOn: formatExpiresOn((invRow as { expires_at?: string } | null)?.expires_at),
+          isNewUser,
           appOrigin, idempotencyKey: `org-invitation-${org_id}`, orgId: org_id, actionLink,
         });
       } else {

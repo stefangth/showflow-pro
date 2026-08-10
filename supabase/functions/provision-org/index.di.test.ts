@@ -51,6 +51,64 @@ Deno.test("provision-org: existing admin → branded email with a magic-link act
   assertEquals(params.options.redirectTo.includes("/auth/callback?redirect="), true);
 });
 
+Deno.test("provision-org: sends the role label, roleKey, and expiresOn derived from the invitation row", async () => {
+  const { deps, invokeCalls } = makeFakeDeps({
+    authUser: { id: "u1" },
+    tables: {
+      platform_admins: { data: { user_id: "u1" }, error: null },
+      org_invitations: { data: { id: "inv-9", expires_at: "2026-08-24T00:00:00Z" }, error: null },
+    },
+    rpcs: { provision_org: { data: { org_id: "org-9", token: "tok-9" }, error: null } },
+    usersById: {},
+    generateLinkResult: { data: { properties: { action_link: "https://app.test/reset-password?redirect=x" } }, error: null },
+  });
+  const res = await handle(makeRequest({ headers: { Authorization: "Bearer x" }, body }), deps);
+  assertEquals(res.status, 200);
+  const sent = invokeCalls.filter((c) => c.name === "send-transactional-email");
+  assertEquals(sent.length, 1);
+  const msg = sent[0].body as { templateData: { role: string; roleKey: string; expiresOn: string } };
+  assertEquals(msg.templateData.role, "Admin");
+  assertEquals(msg.templateData.roleKey, "admin");
+  assertEquals(msg.templateData.expiresOn, "24 August 2026, 02:00 Berlin time");
+});
+
+Deno.test("provision-org: resolves the super-admin's display name for the invited-by line, not their raw personal email", async () => {
+  // The first admin of a brand-new org is a stranger to the super-admin provisioning it,
+  // so "Invited by" must prefer a resolvable display name over the operator's inbox
+  // address, the same way create-invitation/resend-invitation already do.
+  const { deps, invokeCalls } = makeFakeDeps({
+    authUser: { id: "u1" },
+    usersById: { u1: { email: "owner@platform.test" } },
+    tables: {
+      platform_admins: { data: { user_id: "u1" }, error: null },
+      profiles: { data: { display_name: "Jordan Owner" }, error: null },
+    },
+    rpcs: { provision_org: { data: { org_id: "org-9", token: "tok-9" }, error: null } },
+    generateLinkResult: { data: { properties: { action_link: "https://app.test/reset-password?redirect=x" } }, error: null },
+  });
+  const res = await handle(makeRequest({ headers: { Authorization: "Bearer x" }, body }), deps);
+  assertEquals(res.status, 200);
+  const sent = invokeCalls.filter((c) => c.name === "send-transactional-email");
+  assertEquals(sent.length, 1);
+  const msg = sent[0].body as { templateData: { inviterName?: string; inviterEmail?: string } };
+  assertEquals(msg.templateData.inviterName, "Jordan Owner");
+  assertEquals(msg.templateData.inviterEmail, "owner@platform.test");
+});
+
+Deno.test("provision-org: net-new first admin → templateData.isNewUser is true", async () => {
+  const { deps, invokeCalls } = makeFakeDeps({
+    authUser: { id: "u1" },
+    tables: { platform_admins: { data: { user_id: "u1" }, error: null } },
+    rpcs: { provision_org: { data: { org_id: "org-9", token: "tok-9" }, error: null } },
+    usersById: {}, // net-new
+    generateLinkResult: { data: { properties: { action_link: "https://app.test/reset-password?redirect=x" } }, error: null },
+  });
+  const res = await handle(makeRequest({ headers: { Authorization: "Bearer x" }, body }), deps);
+  assertEquals(res.status, 200);
+  const sent = invokeCalls.filter((c) => c.name === "send-transactional-email");
+  assertEquals((sent[0].body as { templateData: { isNewUser?: boolean } }).templateData.isNewUser, true);
+});
+
 Deno.test("provision-org: creates first-admin membership at invite time via RPC", async () => {
   const { deps, calls } = makeFakeDeps({
     authUser: { id: "u1" },

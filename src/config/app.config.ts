@@ -178,6 +178,41 @@ export const ROLE_LABELS: Record<AppRole, string> = {
 /** Display label for a role. Tolerant of unknown strings (falls back to the raw value). */
 export const roleLabel = (role: string): string =>
   ROLE_LABELS[role as keyof typeof ROLE_LABELS] ?? role;
+
+/**
+ * One-sentence explanation of what each role can do, shown wherever someone needs to
+ * understand a role before they act on it: the People pane's role dropdown (a caption
+ * under each role option) and the accept-invite success screen are the planned
+ * consumers, not yet built. The org-invitation email states its own second-person
+ * version instead (org-invitation.roleIntroAdmin/Producer/Artist in
+ * src/lib/emailTemplates/emailCopy.ts): "You are joining..." cannot grammatically
+ * continue into a third-person clause, so review both together when either changes, but
+ * they are not required to match word for word. Mirrored to
+ * supabase/functions/_shared/roles.ts (npm run sync:mirrors) so every runtime renders
+ * the same text; the surrounding imports differ per runtime.
+ *
+ * Three constraints keep every sentence true regardless of an org's configuration:
+ * stays silent on offers and digests (artist acceptance is a per-org toggle, and a
+ * direct-book org never opens an offer at all); stays silent on specific route names
+ * (which screens exist depends on entitlements the invitee's own org may not have
+ * turned on, so the artist line names the ACTION, "declares availability", rather than
+ * a route); and states each role's DEFAULT grant, not one invitee's resolved
+ * capabilities (several producer permissions are individually org-toggleable, so a
+ * producer may not actually get everything this sentence describes).
+ */
+export const ROLE_DESCRIPTIONS: Record<AppRole, string> = {
+  admin: 'Full control of this workspace, including people, casts, settings, and every booking.',
+  producer: 'Plans productions and show dates, and books artists into them.',
+  artist: 'Gets booked for shows and sees every confirmed engagement. Declares availability where that is turned on.',
+};
+
+/** One-sentence description of what a role can do. Tolerant of unknown strings
+ *  (falls back to an empty string), mirroring roleLabel's fallback semantics so a
+ *  future enum value that hasn't been added to the registry yet degrades to "no
+ *  second sentence" rather than an undefined-riddled render. */
+export function roleDescription(role: string): string {
+  return ROLE_DESCRIPTIONS[role as keyof typeof ROLE_DESCRIPTIONS] ?? '';
+}
 // <<< ROLE LABELS MIRROR <<<
 
 /** Route paths */

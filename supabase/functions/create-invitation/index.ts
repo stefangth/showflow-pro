@@ -3,7 +3,7 @@ import { requireOrgRole } from "../_shared/auth.ts";
 import { requireCapability } from "../_shared/capabilities.ts";
 import type { TablesInsert } from "../_shared/database.types.ts";
 import { realDeps, type Deps } from "../_shared/deps.ts";
-import { ensureInvitedUser, sendOrgInvitationEmail } from "../_shared/invitations.ts";
+import { ensureInvitedUser, formatExpiresOn, resolveInviterName, sendOrgInvitationEmail } from "../_shared/invitations.ts";
 import { roleLabel } from "../_shared/roles.ts";
 
 type Body = {
@@ -134,6 +134,7 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
     // membership on the invitee's first sign-in.
     let userId: string | null = (existingUserId as string | null) ?? null;
     let actionLink: string | undefined;
+    let isNewUser: boolean | undefined;
     try {
       // Mint the right link for EVERY invitee (net-new → set-password invite link; existing →
       // magic link, incl. passwordless/expired), the same way provision-org/resend-invitation do,
@@ -142,6 +143,7 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
       const ensured = await ensureInvitedUser(deps, { email: invite.email, appOrigin, token: invite.token });
       userId = ensured.userId ?? userId;
       actionLink = ensured.actionLink;
+      isNewUser = ensured.isNewUser;
       if (userId) {
         const { error: memErr } = await admin.rpc("ensure_invitation_membership", {
           p_invitation: invite.id, p_user: userId,
@@ -150,6 +152,15 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
       }
     } catch (e) {
       console.error("create-invitation: membership provisioning failed", (e as Error).message);
+      // ensureInvitedUser throws before it can report which branch it took, which would
+      // otherwise leave isNewUser undefined. existingUserId, resolved above BEFORE this try
+      // block, already answers the question for a known account: it can only fail to sign
+      // in via the (now-broken) magic link, never need a password prompt. This branch also
+      // has no actionLink, so today's template renders ctaHintFallback regardless (see
+      // org-invitation.tsx's `!actionLink` check, which wins over isNewUser) — kept anyway
+      // so templateData.isNewUser stays factually correct for this invitee rather than
+      // silently wrong, in case a future template branch ever reads it in the no-link case.
+      if (existingUserId) isNewUser = false;
     }
 
     // Best-effort delivery — but only if the invitee has a usable path to authenticate:
@@ -161,13 +172,17 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
       try {
         const { data: org } = await admin
           .from('organizations').select('name').eq('id', body.org_id).maybeSingle();
-        const inviter = inviterId ? await admin.auth.admin.getUserById(inviterId) : null;
+        const inviter = await resolveInviterName(deps, inviterId);
         await sendOrgInvitationEmail(deps, {
           email: invite.email,
           orgName: (org as { name?: string } | null)?.name ?? undefined,
           role: roleLabel(invite.role),
+          roleKey: invite.role,
           token: invite.token,
-          inviterEmail: inviter?.data?.user?.email ?? undefined,
+          inviterEmail: inviter.email,
+          inviterName: inviter.name,
+          expiresOn: formatExpiresOn(invite.expires_at),
+          isNewUser,
           appOrigin,
           idempotencyKey: `org-invitation-${invite.id}`,
           orgId: body.org_id,

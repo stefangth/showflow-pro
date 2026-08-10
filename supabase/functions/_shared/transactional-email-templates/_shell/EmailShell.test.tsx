@@ -37,6 +37,53 @@ Deno.test("EmailShell renders a resilient violet hero without unsupported layout
   assertStringIncludes(html, "ShowFlow");
 });
 
+Deno.test("EmailShell renders postCta content after the button and before the footer", async () => {
+  const html = await renderAsync(
+    React.createElement(
+      EmailShell,
+      {
+        family: "violet",
+        theme: EMAIL_THEME_DEFAULTS,
+        previewText: "Preview text",
+        heading: "A booking update",
+        footer: "The ShowFlow team",
+        cta: { href: "https://app.showflow.pro/availability", label: "Review booking" },
+        postCta: React.createElement("p", null, "Or paste this link into your browser: https://app.showflow.pro/availability"),
+      },
+      React.createElement("p", null, "Booking details"),
+    ),
+  );
+
+  const iCta = html.indexOf("Review booking");
+  const iPostCta = html.indexOf("Or paste this link");
+  const iFooter = html.indexOf("The ShowFlow team");
+  assertStringIncludes(html, "Or paste this link into your browser");
+  if (iCta < 0 || iPostCta < 0 || iFooter < 0) throw new Error("expected all three sections to render");
+  if (!(iCta < iPostCta && iPostCta < iFooter)) {
+    throw new Error(`expected cta < postCta < footer, got ${iCta} < ${iPostCta} < ${iFooter}`);
+  }
+});
+
+Deno.test("EmailShell omits the postCta block entirely when not provided", async () => {
+  const html = await renderAsync(
+    React.createElement(
+      EmailShell,
+      {
+        family: "violet",
+        theme: EMAIL_THEME_DEFAULTS,
+        previewText: "Preview text",
+        heading: "A booking update",
+        footer: "The ShowFlow team",
+        cta: { href: "https://app.showflow.pro/availability", label: "Review booking" },
+      },
+      React.createElement("p", null, "Booking details"),
+    ),
+  );
+  // No stray empty table block: existing templates that never pass postCta must render
+  // identically to before this prop existed.
+  assertStringIncludes(html, "Review booking");
+});
+
 Deno.test("EmailShell colors the CTA with the family accent, not the base theme button color", async () => {
   const theme = {
     ...EMAIL_THEME_DEFAULTS,

@@ -123,6 +123,54 @@ Deno.test("create-invitation DI: sends the org-invitation email to the invitee w
   assertEquals(msg.templateData.role, "Production Team");
 });
 
+Deno.test("create-invitation DI: sends roleKey, expiresOn (from the invitation row), and inviterName (from profiles.display_name)", async () => {
+  const { deps, invokeCalls } = adminDeps({
+    tables: {
+      org_memberships: { data: { role: "admin" }, error: null },
+      org_invitations: {
+        data: { id: "inv1", org_id: "org-1", email: "invitee@x.com", role: "producer", status: "pending", token: "tok123", expires_at: "2026-08-24T00:00:00Z" },
+        error: null,
+      },
+      organizations: { data: { name: "Acme" }, error: null },
+      profiles: { data: { display_name: "Jane Admin" }, error: null },
+    },
+  });
+  await handle(inviteReq({ org_id: "org-1", email: "invitee@x.com", role: "producer" }), deps);
+  const emails = invokeCalls.filter((c) => c.name === "send-transactional-email");
+  assertEquals(emails.length, 1);
+  const msg = emails[0].body as {
+    templateData: { role: string; roleKey: string; expiresOn: string; inviterName: string };
+  };
+  assertEquals(msg.templateData.role, "Production Team");
+  // The raw enum, not the label: the template uses it to select which second-person
+  // role action line to render (see org-invitation.tsx's roleActionLine).
+  assertEquals(msg.templateData.roleKey, "producer");
+  assertEquals(msg.templateData.expiresOn, "24 August 2026, 02:00 Berlin time");
+  assertEquals(msg.templateData.inviterName, "Jane Admin");
+});
+
+Deno.test("create-invitation DI: no profiles.display_name for the inviter → inviterName is unset, inviterEmail carries it for the template's own fallback", async () => {
+  // resolveInviterName no longer pre-fills name with email (that would make the template's
+  // own `inviterName || inviterEmail` fallback dead code); the edge function must forward
+  // both fields as-is and let the template render the email as the "Invited by" line.
+  const { deps, invokeCalls } = adminDeps({
+    tables: {
+      org_memberships: { data: { role: "admin" }, error: null },
+      org_invitations: {
+        data: { id: "inv1", org_id: "org-1", email: "invitee@x.com", role: "producer", status: "pending", token: "tok123", expires_at: "2026-08-24T00:00:00Z" },
+        error: null,
+      },
+      organizations: { data: { name: "Acme" }, error: null },
+      profiles: { data: null, error: null },
+    },
+  });
+  await handle(inviteReq({ org_id: "org-1", email: "invitee@x.com", role: "producer" }), deps);
+  const emails = invokeCalls.filter((c) => c.name === "send-transactional-email");
+  const msg = emails[0].body as { templateData: { inviterName?: string; inviterEmail?: string } };
+  assertEquals(msg.templateData.inviterName, undefined);
+  assertEquals(msg.templateData.inviterEmail, "admin@acme.test");
+});
+
 Deno.test("create-invitation DI: admin → creates membership at invite time via RPC (net-new invitee)", async () => {
   const { deps, calls } = adminDeps({
     // Net-new invitee → resolved through generateLink (which returns the new user id).
@@ -150,6 +198,73 @@ Deno.test("create-invitation DI: net-new invitee → branded email WITH actionLi
   const emails = invokeCalls.filter((c) => c.name === "send-transactional-email");
   assertEquals(emails.length, 1);
   assertEquals((emails[0].body as { templateData: { actionLink?: string } }).templateData.actionLink, "https://app.test/reset-password?redirect=x");
+});
+
+Deno.test("create-invitation DI: net-new invitee → templateData.isNewUser is true", async () => {
+  const { deps, invokeCalls } = adminDeps({
+    usersById: {}, // invitee is net-new (no existing auth user)
+    generateLinkResult: { data: { properties: { action_link: "https://app.test/reset-password?redirect=x" } }, error: null },
+  });
+  await handle(inviteReq({ org_id: "org-1", email: "invitee@x.com", role: "producer" }), deps);
+  const emails = invokeCalls.filter((c) => c.name === "send-transactional-email");
+  assertEquals((emails[0].body as { templateData: { isNewUser?: boolean } }).templateData.isNewUser, true);
+});
+
+Deno.test("create-invitation DI: existing invitee (magic link) → templateData.isNewUser is false", async () => {
+  // The invitee already has an auth account but is NOT yet a member of this org (an
+  // array-matched org_memberships seed keeps the admin caller's own membership check
+  // separate from the invitee's, which must resolve to "not a member" so the request
+  // proceeds past the duplicate-member guard).
+  const { deps, invokeCalls } = adminDeps({
+    tables: {
+      org_memberships: [
+        { when: { user_id: "u1" }, data: { role: "admin" } },
+        { when: { user_id: "existing-invitee" }, data: null },
+      ],
+      org_invitations: {
+        data: { id: "inv1", org_id: "org-1", email: "invitee@x.com", role: "producer", status: "pending", token: "tok123", expires_at: "2099-01-01T00:00:00Z" },
+        error: null,
+      },
+      organizations: { data: { name: "Acme" }, error: null },
+    },
+    authUsersByEmail: { "invitee@x.com": { id: "existing-invitee" } },
+    generateLinkResult: { data: { properties: { action_link: "https://app.test/auth/callback?redirect=y" } }, error: null },
+    rpcs: { ensure_invitation_membership: { data: true, error: null } },
+  });
+  const res = await handle(inviteReq({ org_id: "org-1", email: "invitee@x.com", role: "producer" }), deps);
+  assertEquals(res.status, 200);
+  const emails = invokeCalls.filter((c) => c.name === "send-transactional-email");
+  assertEquals(emails.length, 1);
+  assertEquals((emails[0].body as { templateData: { isNewUser?: boolean } }).templateData.isNewUser, false);
+});
+
+Deno.test("create-invitation DI: existing invitee whose magic-link mint fails still gets the existing-user reassurance, not the new-user one", async () => {
+  // ensureInvitedUser can throw AFTER existingUserId was already resolved (generateLink
+  // failure). The catch block used to leave isNewUser undefined, and the template treats
+  // undefined the same as a net-new account — promising a password prompt to someone whose
+  // account already exists and who will actually be bounced to /login with a broken link.
+  const { deps, invokeCalls } = adminDeps({
+    tables: {
+      org_memberships: [
+        { when: { user_id: "u1" }, data: { role: "admin" } },
+        { when: { user_id: "existing-invitee" }, data: null },
+      ],
+      org_invitations: {
+        data: { id: "inv1", org_id: "org-1", email: "invitee@x.com", role: "producer", status: "pending", token: "tok123", expires_at: "2099-01-01T00:00:00Z" },
+        error: null,
+      },
+      organizations: { data: { name: "Acme" }, error: null },
+    },
+    authUsersByEmail: { "invitee@x.com": { id: "existing-invitee" } },
+    generateLinkResult: { data: null, error: { message: "mail service unavailable" } },
+  });
+  const res = await handle(inviteReq({ org_id: "org-1", email: "invitee@x.com", role: "producer" }), deps);
+  assertEquals(res.status, 200);
+  const emails = invokeCalls.filter((c) => c.name === "send-transactional-email");
+  assertEquals(emails.length, 1);
+  const msg = emails[0].body as { templateData: { isNewUser?: boolean; actionLink?: string } };
+  assertEquals(msg.templateData.isNewUser, false);
+  assertEquals(msg.templateData.actionLink, undefined);
 });
 
 Deno.test("create-invitation DI: net-new account minting fails → no dead-link email, still 200", async () => {
