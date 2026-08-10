@@ -66,9 +66,16 @@ begin
            select 1 from public.artists o
            where o.org_id = v_inv.org_id and o.user_id = p_user
          ) then
-        -- No claimable row and the user owns none → auto-create a minimal profile.
-        insert into public.artists (org_id, user_id, email, name)
-        values (v_inv.org_id, p_user, lower(v_inv.email), split_part(v_inv.email, '@', 1));
+        -- No claimable row and the user owns none → auto-create a minimal profile. Guard the
+        -- check→insert TOCTOU: a concurrent invite-time / self-heal call for the same user can
+        -- insert first and trip the artists(org_id,user_id) partial-unique index. That row is
+        -- the desired end state, so swallow the unique-violation rather than erroring the caller.
+        begin
+          insert into public.artists (org_id, user_id, email, name)
+          values (v_inv.org_id, p_user, lower(v_inv.email), split_part(v_inv.email, '@', 1));
+        exception when unique_violation then
+          null;
+        end;
       end if;
     end if;
   end if;
@@ -119,7 +126,15 @@ begin
          select 1 from public.org_memberships m
          where m.org_id = v_inv.org_id and m.user_id = v_uid
        ) then
-      return jsonb_build_object('org_id', v_inv.org_id, 'artist_linked', true);
+      -- Report the ACTUAL artist-link state rather than hardcoding true: a non-artist invite
+      -- has nothing to link (true), an artist invite is linked iff the user owns an artist in
+      -- the org. Otherwise the earlier call's genuine link failure (owner-guard branch) would be
+      -- silently swallowed and AcceptInvitePage would hide its "couldn't auto-link" notice.
+      return jsonb_build_object('org_id', v_inv.org_id, 'artist_linked',
+        v_inv.role <> 'artist' or exists (
+          select 1 from public.artists a
+          where a.org_id = v_inv.org_id and a.user_id = v_uid
+        ));
     end if;
     raise exception 'Invalid or expired invitation' using errcode = 'P0002';
   end if;

@@ -129,8 +129,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     // artist profile. Skipped on later resolutions (token refresh, org switch) since it's a
     // no-op then. Never blocks bootstrap.
     if (!claimedInvitesRef.current.has(userId)) {
-      claimedInvitesRef.current.add(userId);
-      try { await claimMyInvitations(supabase); } catch { /* non-fatal */ }
+      try {
+        await claimMyInvitations(supabase);
+        // Mark done only AFTER it succeeds, so a transient failure retries on the next
+        // identity resolution instead of silently disabling self-heal for the session.
+        claimedInvitesRef.current.add(userId);
+      } catch { /* non-fatal; will retry on the next resolution */ }
     }
     try {
       const data = await fetchMyMemberships(supabase, userId);
