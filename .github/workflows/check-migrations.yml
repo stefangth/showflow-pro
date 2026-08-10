@@ -43,6 +43,13 @@ jobs:
     # runs to satisfy a check a lockfile bump can never fail — drift comes from applying
     # out of band, which Dependabot does not do. Scoped to `pull_request` so the
     # post-merge alarm on `push` keeps running unconditionally.
+    #
+    # Known gap: `user.login` is the PR's ORIGINAL author and GitHub never changes it,
+    # so hand-pushing a commit onto an open Dependabot PR keeps the branch exempt. That
+    # is the deliberate trade for a condition that survives manual re-runs (`github.actor`
+    # would flip to whoever clicked re-run and start failing on the empty token again).
+    # It only bites if someone adds a migration to a dependency PR — do that in its own
+    # PR, where the check runs.
     if: >-
       github.event_name != 'pull_request' ||
       (github.event.pull_request.head.repo.full_name == github.repository &&
