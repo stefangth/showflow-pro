@@ -52,17 +52,17 @@ Statuses: `open` · `in progress` · `shipped (branch)` · `merged` · `supersed
 | A0.3 | Email: who invited me | shipped (branch) | inviter display name via resolveInviterName, fallback email |
 | A0.4 | Email: expiry prominence | shipped (branch) | expiresOn from the row; expired invite = honest 409 on resend |
 | A1.1 | Account-vs-login narration | shipped (branch) | #238 mechanics + isNewUser-aware ctaHint (two truthful variants) |
-| A1.2 | Org/role preview on accept | re-scoped (WP2, wave 2) | #239 creates membership at invite time, so no confirm gate; success card instead |
-| A1.3 | What did accepting commit me to | in progress (WP2, wave 2) | success card: org, role, next steps |
+| A1.2 | Org/role preview on accept | shipped (branch) | success card (WP2, exit A/0 blockers at cap 7); role x flow x artistLinked-aware next-step lines |
+| A1.3 | What did accepting commit me to | shipped (branch) | success card: org, role, capability-checked next step (producer line reads producer_can_confirm_bookings) |
 | A3.1 | Concepts not linked from rail steps | shipped (branch) | docs-tab deep link; SettingsPage ?tab= enabler |
 | A3.2 | No invite-your-people step | shipped (branch) | `people` step, done = ≥1 ACTIVE artist, flow-aware chip via blockFor |
 | A3.3 | "What happens tonight" narrative | shipped (branch) | describeTonight reads the full flow (off/immediate/digest states) |
 | A3.4 | Artist-side preview never suggested | shipped (branch) | admin-only rule, scoped to what the picker can actually do |
-| A4.1 | Notifications don't deep-link | in progress (WP4a) | entityRoutes map; benefits all roles |
-| A4.2 | Airtable sync-held has no email | in progress (WP4b) | new template + send in airtable-poll |
-| A4.3 | Member-change consequences | partially superseded by PR #239 | remove dialog now narrates; WP4a adds role descriptions to role menu |
-| A4.4 | Schedule-edit: who gets told when | in progress (WP4a) | digest-hour line in ShowDateFormDialog edit mode |
-| A5.1 | Suspended screen: no contact | in progress (WP4a) | SUPPORT_EMAIL mechanism ships dark (null) — owner must set a real address |
+| A4.1 | Notifications don't deep-link | shipped (branch) | entityRoutes map, reachability-gated (role/entitlement); WP4a capped at B, its last blocker fixed in closure |
+| A4.2 | Airtable sync-held has no email | shipped (branch) | airtable-sync-held template + in-app notify + set-keyed idempotency; WP4b capped at B, grammar blockers fixed in closure |
+| A4.3 | Member-change consequences | shipped (branch) | remove dialog narrates (#239); role menu carries ROLE_DESCRIPTIONS (WP4a) |
+| A4.4 | Schedule-edit: who gets told when | shipped (branch) | scheduleChangeNote, flow-aware; digest-off wording corrected in closure (never names the off email) |
+| A5.1 | Suspended screen: no contact | mechanism shipped, DARK | SupportContactLine works; APP_META.SUPPORT_EMAIL is null so the live screen still shows no contact. OWNER TO-DO: set a real address |
 
 Plan: `docs/superpowers/plans/2026-08-10-admin-journey-gaps.md` (2 waves, implementer+critic
 loops to S-tier, 5-round cap).
@@ -122,6 +122,22 @@ email CTA · R5.4 deletion: hire orders/in-flight offers. All `open`.
   wrong. Owner sets the value to activate the suspended-screen contact line.
 - 2026-08-10: Settings tabs were not URL-addressable; `?tab=` chosen over path segments to
   avoid touching route registration.
+- 2026-08-10 (wave 2 done): WP2 exit A/0 blockers, WP4a and WP4b capped at B; every
+  remaining blocker was precisely diagnosed and fixed in a post-workflow closure pass
+  (commits 0c3a0a7..da2708c): digest-off note wording, sync-held number agreement
+  (email + in-app), sync-report card made cause-neutral + prose em-dash sweep,
+  first-run welcome de-falsified for later admins of populated orgs, useBookingFlow
+  null-org enabled gate, create-invitation error bodies surfaced, and an invitation
+  email preview role switcher (dataOverride through preview-transactional-email).
+  Verify:fast green after each step.
+- 2026-08-10: local-stack gotcha — the shared local Supabase stack serves edge functions
+  from whichever WORKTREE ran `local:up` last; a stale mount renders old templates in
+  previews/Mailpit. If live email/edge behavior looks pre-branch, `supabase stop` +
+  `npm run local:up` from the current worktree.
+- Residual polish (non-blocking, from final critic improvement lists): AcceptInvitePage
+  test naming nit (`user: null` case), setup-status call-arg assertions pin hook
+  identity, sync-held email answers "did it work" but not per-record "why" (report
+  carries it), coverage-row trigger text implies every-run sends.
 
 ## End-of-session checklist
 
