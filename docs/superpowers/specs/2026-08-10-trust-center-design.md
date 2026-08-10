@@ -34,6 +34,9 @@ Where the source design and the code disagreed, the code won. The corrections:
 | Documents: DPA PDF, security overview PDF, Art. 30 records PDF, subprocessor CSV | Privacy policy, Terms, Impressum (web) + a DPA "on request" mailto | Only the three web documents exist. |
 | 1c "Export organisation data" button | Per-user export in Profile + org deletion by request | `export-org-data` and `delete_org` are `requireSuperAdmin`. Org admins have no org-level export. |
 | Recovery: "point-in-time recovery" | Rolling 30-day backup window only | PITR is a plan feature we cannot evidence from the repo. The 30-day window is stated in the privacy policy. |
+| "Rights marked sensitive stay off until an administrator turns them on" / "9 sensitive and off by default" | "Nine are sensitive. Nine ship off. They are different sets." | Found while writing the tests. `issue_hire_orders` and `void_hire_orders` are `risk: "sensitive"` with `defaultEnabled: true`. Both counts happen to be nine, which is exactly why conflating them was easy to miss. |
+| "Subprocessor list · section 6 of the privacy policy" | Section 5 | The Art. 28 processor table is in §5, *Recipients and processors*; §6 is international transfers. |
+| Document links as site-relative paths | Absolute, per document | The list renders on two hosts that do not carry the same documents: the app has no `/terms`, and `showflow.pro/privacy` is the marketing site's policy, not the product policy the claim tables are drawn from. |
 
 ## Verified claim inventory
 
