@@ -14,7 +14,21 @@ import { Button } from "@/components/ui/button";
  *  (creating nothing, sending nothing), and shows who would be offered and when. Hidden
  *  under Direct book (no offers to rehearse) and when no date qualifies. */
 export function RehearsalBlock({ orgId }: { orgId: string | null }) {
-  const { data: flow } = useBookingFlow();
+  // The org this block was HANDED, not whichever org the shell happens to be on. The gate
+  // below ("is this a direct-book org?") and the send times in the footer would otherwise
+  // come from two independent sources: `useBookingFlow()` resolves its own org out of
+  // AuthContext while `useFlowTimes` keys on the prop. The org switcher lives in the app
+  // shell and does not unmount this block, so that window is real, and it is the worst
+  // possible one: gate on org A's artist_acceptance, narrate org B's hours, and a
+  // direct-book org gets shown a full offer rehearsal. Same rule as TimingStep.
+  //
+  // `orgId ? ... : null` is not defensive noise: `useBookingFlow` has no `enabled` gate, so
+  // a null org still runs fetchBookingFlow(client, null), which reads the PLATFORM DEFAULT
+  // settings row and normalizes a missing one to BOOKING_FLOW_DEFAULTS. The result is a
+  // truthy, offers-shaped flow belonging to no org, which would walk straight past the
+  // unknown-flow guard below. No org, no flow to rehearse.
+  const flowQ = useBookingFlow(orgId);
+  const flow = orgId ? flowQ.data : null;
   const { data: times } = useFlowTimes(orgId);
   const canRun = useCan("run_offer_engine");
   // Fold the date cutoff into the key so a tab left open past midnight refetches instead of

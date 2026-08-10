@@ -23,7 +23,11 @@ import type { LadderCoverageInputs } from "@/lib/bookings/setupStatus";
  *  active org, for the same reason TimingStep takes one. */
 export function LadderStep({ coverage, orgId }: { coverage: LadderCoverageInputs | undefined; orgId: string | null }) {
   const cities = useAllCities();
-  const { data: flow } = useBookingFlow(orgId);
+  // Gated on the org, not just on the query: `useBookingFlow` has no `enabled`, so a null
+  // org still resolves the PLATFORM DEFAULT row into a truthy, offers-shaped flow. Same
+  // reasoning (and same one-liner) as TimingStep and EligibilityStep.
+  const flowQ = useBookingFlow(orgId);
+  const flow = orgId ? flowQ.data : null;
   const nameOf = (id: string) => (cities.data ?? []).find((c) => c.id === id)?.name ?? "Unknown city";
 
   const cityIds = [...new Set((coverage?.futurePairs ?? []).map((p) => p.cityId).filter((x): x is string => !!x))];

@@ -3,6 +3,7 @@ import { screen } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import { renderWithProviders } from "@/test/renderWithProviders";
 import { ROUTES } from "@/config/app.config";
+import { bookingOnboarding } from "@/lib/dashboard/moduleOnboarding";
 
 // The "Add or import artists" affordance is the `add_artists` capability, not a booking
 // setting, so the panel has to ask for that one specifically. Mocked rather than seeded so
@@ -16,47 +17,70 @@ import { useCan } from "@/hooks/useCapabilities";
 import { buttonVariants } from "@/components/ui/button";
 import { PeopleStep } from "./PeopleStep";
 
+// Both props are required on the component (a host that forgets the parked count would
+// otherwise silently drop the reconciliation the panel exists to make), so the tests that
+// do not care about the parked half say so explicitly here rather than in every render.
+const renderPeople = (count: number | null, inactiveCount: number | null = null) =>
+  renderWithProviders(
+    <MemoryRouter><PeopleStep count={count} inactiveCount={inactiveCount} /></MemoryRouter>,
+  );
+
 beforeEach(() => {
   vi.mocked(useCan).mockReturnValue(true);
 });
 
 describe("PeopleStep", () => {
-  it("says there is nobody to book while the roster is empty", () => {
-    renderWithProviders(<MemoryRouter><PeopleStep count={0} /></MemoryRouter>);
-    expect(screen.getByText(/nobody to book/i)).toBeInTheDocument();
+  it("says the roster holds no active artists while it is empty", () => {
+    renderPeople(0);
+    expect(screen.getByText(/no active artists right now/i)).toBeInTheDocument();
+  });
+
+  it("does not reprint the row hint it renders directly underneath", () => {
+    // SetupStepRow keeps the step's hint in the row header while the panel is expanded, and
+    // the default first-run path lands here with the row already open (FlowStep's onDone
+    // opens `people`; the dashboard rail's "Add artists" opens the sheet at `people`). So a
+    // sentence in both is printed twice, two lines apart. The hint owns the consequence,
+    // this panel owns the mechanism, the counts and the address/invite explanation.
+    const { container } = renderPeople(0, 6);
+    const hint = bookingOnboarding.steps.people.todoHint;
+    expect(container.textContent).not.toContain(hint);
+    // The opening clause duplicated in meaning too ("Nobody to book until your roster has
+    // active artists." over "No active artists, so there is nobody to book."), which no
+    // amount of exact-string checking would have caught.
+    expect(container.textContent).not.toMatch(/nobody to book/i);
   });
 
   it("states the consequence in terms every flow shares, not just offers", () => {
     // A direct-book org (artist_acceptance false) never opens a tier, so wording the
     // blocker as "no offers can go out" would describe a pipeline it does not run. What
-    // is true under every preset is that an empty roster leaves nobody to book.
-    renderWithProviders(<MemoryRouter><PeopleStep count={0} /></MemoryRouter>);
+    // is true under every preset is that only an active artist can be booked.
+    renderPeople(0);
     expect(screen.queryByText(/offer/i)).not.toBeInTheDocument();
     expect(screen.queryByText(/\btier\b/i)).not.toBeInTheDocument();
-    expect(screen.getByText(/can be booked/i)).toBeInTheDocument();
+    expect(screen.getByText(/only artists on this roster whose status is active can be booked/i)).toBeInTheDocument();
   });
 
   it("reports the roster size as ACTIVE artists, the ones a tier can reach", () => {
     // fetchArtistCount is scoped to status = 'active' to match the offer engine, so the
     // panel must not overstate it as the whole roster.
-    renderWithProviders(<MemoryRouter><PeopleStep count={4} /></MemoryRouter>);
+    renderPeople(4);
     expect(screen.getByText(/4 active artists on your roster/i)).toBeInTheDocument();
-    expect(screen.queryByText(/nobody to book/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/no active artists right now/i)).not.toBeInTheDocument();
   });
 
   it("singularizes a one-artist roster", () => {
-    renderWithProviders(<MemoryRouter><PeopleStep count={1} /></MemoryRouter>);
+    renderPeople(1);
     expect(screen.getByText(/1 active artist on your roster/i)).toBeInTheDocument();
   });
 
   it("does not claim an empty roster while the count is still unread", () => {
-    renderWithProviders(<MemoryRouter><PeopleStep count={null} /></MemoryRouter>);
-    expect(screen.queryByText(/nobody to book/i)).not.toBeInTheDocument();
+    renderPeople(null);
+    expect(screen.queryByText(/no active artists right now/i)).not.toBeInTheDocument();
     expect(screen.queryByText(/on your roster/i)).not.toBeInTheDocument();
   });
 
   it("names where the login invite lives instead of leaving it dangling", () => {
-    renderWithProviders(<MemoryRouter><PeopleStep count={0} /></MemoryRouter>);
+    renderPeople(0);
     expect(screen.getByText(/from the artist card/i)).toBeInTheDocument();
   });
 
@@ -65,7 +89,7 @@ describe("PeopleStep", () => {
     // kept producer_can_invite). Without it the card has no invite control at all, so the
     // promise has to move to whoever can keep it.
     vi.mocked(useCan).mockImplementation((action: string) => action !== "invite_artists");
-    renderWithProviders(<MemoryRouter><PeopleStep count={0} /></MemoryRouter>);
+    renderPeople(0);
     expect(screen.queryByText(/from the artist card/i)).not.toBeInTheDocument();
     expect(screen.getByText(/an admin can send login invites later/i)).toBeInTheDocument();
     // Adding is a different right and is unaffected.
@@ -74,8 +98,8 @@ describe("PeopleStep", () => {
 
   it("still says an account is not a prerequisite when invites are someone else's job", () => {
     vi.mocked(useCan).mockImplementation((action: string) => action !== "invite_artists");
-    renderWithProviders(<MemoryRouter><PeopleStep count={0} /></MemoryRouter>);
-    expect(screen.getByText(/no account is needed/i)).toBeInTheDocument();
+    renderPeople(0);
+    expect(screen.getByText(/before they ever sign in/i)).toBeInTheDocument();
   });
 
   it("scopes the address claim to the artist it is actually true for", () => {
@@ -93,8 +117,8 @@ describe("PeopleStep", () => {
     // after which every digest goes to the login address, not the card.
     //
     // The unregistered case is what survives, and it is the point being made: no account,
-    // so only the card address exists, so no account is needed to add one.
-    renderWithProviders(<MemoryRouter><PeopleStep count={0} /></MemoryRouter>);
+    // so only the card address exists, so the artist can be added before they ever sign in.
+    renderPeople(0);
     expect(screen.queryByText(/reach(es)?\s+them/i)).not.toBeInTheDocument();
     expect(screen.queryByText(/anything the app emails/i)).not.toBeInTheDocument();
     expect(
@@ -102,8 +126,16 @@ describe("PeopleStep", () => {
     ).toBeInTheDocument();
   });
 
+  it("says who can be added rather than what 'one' refers to", () => {
+    // "...so no account is needed to add one" left "one" pointing at either the account or
+    // the artist. The subject is named instead.
+    const { container } = renderPeople(0);
+    expect(container.textContent).not.toMatch(/to add one/i);
+    expect(screen.getByText(/so you can add an artist before they ever sign in/i)).toBeInTheDocument();
+  });
+
   it("links to the artists page, where both adding and importing live", () => {
-    renderWithProviders(<MemoryRouter><PeopleStep count={0} /></MemoryRouter>);
+    renderPeople(0);
     expect(screen.getByRole("link", { name: /add or import artists/i })).toHaveAttribute("href", ROUTES.ARTISTS);
   });
 
@@ -117,7 +149,7 @@ describe("PeopleStep", () => {
     // Compared against the real `buttonVariants` output rather than a hardcoded utility
     // string: the claim is "this is a default-variant sm Button", and a token or variant
     // rename should move both sides together instead of failing a test about a class name.
-    renderWithProviders(<MemoryRouter><PeopleStep count={0} /></MemoryRouter>);
+    renderPeople(0);
     const classes = screen.getByRole("link", { name: /add or import artists/i }).className.split(/\s+/);
     expect(classes).toEqual(expect.arrayContaining(buttonVariants({ size: "sm" }).split(/\s+/)));
   });
@@ -126,16 +158,79 @@ describe("PeopleStep", () => {
     // fetchArtistCount counts ACTIVE artists only, so this branch also covers an org whose
     // whole roster is set inactive between seasons. "No active artists yet" would tell them
     // they never added anyone.
-    renderWithProviders(<MemoryRouter><PeopleStep count={0} /></MemoryRouter>);
-    expect(screen.queryByText(/yet/i)).not.toBeInTheDocument();
-    expect(screen.getByText(/No active artists, so there is nobody to book/i)).toBeInTheDocument();
+    const { container } = renderPeople(0);
+    expect(container.textContent).not.toMatch(/\byet\b/i);
+    expect(screen.getByText(/your roster has no active artists right now/i)).toBeInTheDocument();
+  });
+
+  it("reconciles its active count with the fuller roster the artists page will show", () => {
+    // The panel counts ACTIVE artists; ArtistsPage renders every artist with a status badge
+    // and applies no default status filter. Without this line an org reads "no active
+    // artists", clicks the CTA, and lands on a page listing six people, left to work out
+    // for itself which number is lying. So the line names that page rather than making the
+    // reader infer which surface the second number belongs to.
+    renderPeople(0, 6);
+    expect(screen.getByText(/your roster has no active artists right now/i)).toBeInTheDocument();
+    expect(
+      screen.getByText(/the artists page lists 6 artists on this roster whose status is not active/i),
+    ).toBeInTheDocument();
+  });
+
+  it("does not restate the bookability rule the panel already opened with", () => {
+    // Line one is the rule ("only ... active can be booked"); this line is a fact about six
+    // specific records. Ending it "...and cannot be booked" re-derived the rule from the
+    // fact three rows below where the rule was stated, which is the same say-it-twice fault
+    // the row hint above the panel was fixed for.
+    const { container } = renderPeople(0, 6);
+    expect(container.textContent).not.toMatch(/cannot be booked/i);
+    expect(
+      screen.getByText(/only artists on this roster whose status is active can be booked/i),
+    ).toBeInTheDocument();
+  });
+
+  it("adds the same reconciliation to a roster that is only partly parked", () => {
+    renderPeople(2, 3);
+    expect(screen.getByText(/2 active artists on your roster/i)).toBeInTheDocument();
+    expect(
+      screen.getByText(/the artists page lists 3 artists on this roster whose status is not active/i),
+    ).toBeInTheDocument();
+  });
+
+  it("singularizes one parked artist", () => {
+    renderPeople(2, 1);
+    expect(
+      screen.getByText(/the artists page lists 1 artist on this roster whose status is not active/i),
+    ).toBeInTheDocument();
+  });
+
+  it("says nothing about parked artists when there are none, or when the count is unread", () => {
+    // Same rule as the active count: the panel states no number it cannot vouch for, and a
+    // failed or still-loading read is not a claim that the roster is fully active. The count
+    // is decorative, so its absence must not change what the panel says about booking.
+    for (const inactive of [0, null]) {
+      const { unmount } = renderPeople(2, inactive);
+      expect(screen.queryByText(/whose status is not active/i)).not.toBeInTheDocument();
+      expect(screen.getByText(/2 active artists on your roster/i)).toBeInTheDocument();
+      unmount();
+    }
+  });
+
+  it("drops the parked line when the active count is the read that failed", () => {
+    // The two counts are separate reads and the parked one is deliberately outside the
+    // active one's loading/error handling, so "active unreadable, parked readable" is a
+    // reachable state. On its own, "the artists page lists 6 artists on this roster whose
+    // status is not active." is a number with nothing to reconcile it against, which is the
+    // exact confusion the line was added to remove.
+    renderPeople(null, 6);
+    expect(screen.queryByText(/whose status is not active/i)).not.toBeInTheDocument();
   });
 
   it("offers no add link to a viewer who may not add artists", () => {
     vi.mocked(useCan).mockImplementation((action: string) => action !== "add_artists");
-    renderWithProviders(<MemoryRouter><PeopleStep count={0} /></MemoryRouter>);
+    renderPeople(0);
     expect(screen.queryByRole("link", { name: /add or import artists/i })).not.toBeInTheDocument();
     // The consequence still has to be readable: they need to know why booking is stuck.
-    expect(screen.getByText(/nobody to book/i)).toBeInTheDocument();
+    expect(screen.getByText(/only artists on this roster whose status is active can be booked/i)).toBeInTheDocument();
+    expect(screen.getByText(/no active artists right now/i)).toBeInTheDocument();
   });
 });

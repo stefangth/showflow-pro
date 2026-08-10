@@ -24,31 +24,33 @@ it("hire-order step keys cover exactly the engine's step keys", () => {
   expect(Object.keys(hireOrderOnboarding.steps).sort()).toEqual(engineKeys);
 });
 
-it("scopes the address claim to the artist it is actually true for", () => {
-  // Two separate over-claims have to stay out of this sentence.
+it("states the people consequence once and leaves the explaining to the panel", () => {
+  // SetupStepRow prints a step's hint in the collapsed row header AND keeps it there while
+  // the panel is expanded underneath, so anything said in both is printed twice, about two
+  // lines apart. This hint used to carry the whole card-address explanation as well as the
+  // consequence, and PeopleStep said the same two things again: the default first-run path
+  // (FlowStep's onDone opens `people`; the dashboard rail's "Add artists" opens the sheet
+  // at `people`) showed the duplicate, not some edge case.
   //
-  // (1) Delivery. Two shipped states send an artist no email at all: the "off" preset
-  //     (active false), where every digest function skips the org outright, and a
-  //     direct-book org with the confirmation digest switched off. "Email reaches them,
-  //     so nobody has to log in first" is false in both.
-  // (2) The address. `resolveContactEmail` (supabase/functions/_shared/identity.ts,
-  //     ADR-0011) returns the AUTH email first and falls back to the artist card only when
-  //     there is none, so "anything the app emails an artist goes to the address on their
-  //     card" is false for a REGISTERED artist. That divergence is reachable:
-  //     create-invitation links an invite to an artist row by `artist_id`, so the invite
-  //     can go to a different address than the card carries, and every digest after
-  //     acceptance uses the login address.
-  //
-  // What survives both is the unregistered case, which is the entire point being made:
-  // an artist with no account has only the card address, so no account is needed to add one.
+  // One owner per fact: the row states the consequence in one line, the way every sibling
+  // does ("A show with no slot count never reads as full."), and PeopleStep owns the
+  // mechanism, the counts and the address/invite explanation. The scoping of that address
+  // claim is enforced where it now lives, in PeopleStep.test.tsx.
   const people = bookingOnboarding.steps.people;
+  expect(people.todoHint).toBe("Nobody to book until your roster has active artists.");
+  expect(people.todoHint).not.toMatch(/emailed at the address on their card/i);
+  // The row hint slot is documented as a one-line hint. Held against the real siblings
+  // rather than a magic number, so the rule survives a rewording of any of them.
+  const siblings = Object.entries(bookingOnboarding.steps)
+    .filter(([key]) => key !== "people")
+    .map(([, s]) => s.todoHint.length);
+  expect(people.todoHint.length).toBeLessThanOrEqual(Math.max(...siblings));
+  // Neither half may promise delivery: the "off" preset (every digest function skips a
+  // paused org) and a direct-book org with confirmation_digest off email an artist nothing.
   expect(`${people.todoHint}${people.doneHint}`).not.toMatch(/reach(es)?\s+them|log in/i);
-  expect(people.todoHint).not.toMatch(/anything the app emails/i);
-  expect(people.todoHint).toMatch(/an artist with no account is emailed at the address on their card/i);
-  expect(people.todoHint).toMatch(/no account is needed/i);
 });
 
-it("the people step points at the artists page and says an account is not a prerequisite", () => {
+it("the people step points at the artists page", () => {
   const people = bookingOnboarding.steps.people;
   expect(people.title).toBe("Add your artists");
   // Every host that composes these steps (DashboardPage, ShowsBookingsPage, HireOrdersPage)
@@ -61,7 +63,6 @@ it("the people step points at the artists page and says an account is not a prer
   // booking settings must still get this CTA (producer_can_add_artists defaults on), and a
   // producer whose org revoked add_artists must not be handed a button they cannot use.
   expect(people.ctaCapability).toBe("add_artists");
-  expect(people.todoHint).toMatch(/email/i);
   // A direct-book org (artist_acceptance false) never sends an offer, and direct book is
   // chosen one row above this one on the same rail, so this hint cannot promise offers.
   // PeopleStep, the panel this hint is printed over, is held to the same rule.
@@ -172,7 +173,6 @@ it("leads the people hint with the consequence, the way its siblings do", () => 
   // reads as full."), which is readable whether or not the CTA is there.
   const people = bookingOnboarding.steps.people;
   expect(people.todoHint).toMatch(/^Nobody to book/);
-  expect(people.todoHint).toMatch(/email/i);
   // Names the roster as the reader's, not as "this roster": on the dashboard rail this hint
   // renders next to a step title with no roster anywhere on screen, so a demonstrative has
   // nothing to point at. It only reads right on the bookings rail, where PeopleStep is open
@@ -275,8 +275,8 @@ it("promises only what the view-as control can actually do, and names its precon
   // always-available fallback, the "Viewing as: Artist" role option, sets viewAsRole and
   // no viewAsUser, so useEffectiveUserId still returns the admin and useMyArtist resolves
   // nothing: they get the artist shell, not that person's data. This rule renders in the
-  // rail's COMPLETE state, straight after the people step said an artist needs no account
-  // to be added, which is precisely when the picker holds no artists.
+  // rail's COMPLETE state, straight after the people panel said an artist can be added
+  // before they ever sign in, which is precisely when the picker holds no artists.
   const ctx = { orgName: "Test Org", artistAcceptance: true, counts: { pendingConfirmations: 0, openOffers: 0, awaitingCountersign: 0 } };
   const tip = bookingOnboarding.rules("admin", ctx).find((r) => r.title === "See it as your artists do")!;
   expect(tip.hint).toMatch(/logged in/i);

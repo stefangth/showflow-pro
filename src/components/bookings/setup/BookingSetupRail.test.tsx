@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { screen, waitFor } from "@testing-library/react";
+import { screen, waitFor, fireEvent } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import { renderWithProviders } from "@/test/renderWithProviders";
 
@@ -20,11 +20,26 @@ vi.mock("@/hooks/useBookingFlow", () => ({
   useFlowTimes: () => ({ data: undefined }),
 }));
 
-import { createFakeSupabase, type TableSeed } from "@/test/supabaseFake";
+import { createFakeSupabase, type TableSeed, type RecordedCall } from "@/test/supabaseFake";
 function seed(s: Record<string, TableSeed>) {
   for (const k of Object.keys(client)) delete client[k];
   Object.assign(client, createFakeSupabase(s));
 }
+const calls = () => client.calls as RecordedCall[];
+
+/** An org whose whole roster is parked: the array seed routes the readiness read
+ *  (eq status = 'active') to 0 and the people panel's own read (neq) to 6. */
+const parkedRoster: Record<string, TableSeed> = {
+  app_settings: { data: [], error: null },
+  shows: { data: [], error: null },
+  show_dates: { data: [], error: null },
+  show_cast_eligibility: { data: [], error: null },
+  cast_city_priority: { data: [], error: null },
+  artists: [
+    { when: { status: "active" }, data: null, error: null, count: 0 },
+    { data: null, error: null, count: 6 },
+  ],
+};
 
 import { BookingSetupRail } from "./BookingSetupRail";
 import { bookingOnboarding } from "@/lib/dashboard/moduleOnboarding";
@@ -97,6 +112,55 @@ describe("BookingSetupRail", () => {
     expect(screen.getByRole("link", { name: /add or import artists/i })).toBeInTheDocument();
   });
 
+  it("says each thing once across the row hint and the panel under it", async () => {
+    // The duplication this guards is only visible once composed: SetupStepRow keeps the row
+    // hint on screen while the panel is expanded beneath it, and this is the DEFAULT first
+    // run state (FlowStep's onDone opens `people`, and the dashboard's "Add artists" opens
+    // the sheet here). The row printed "Nobody to book until your roster has active
+    // artists." and the panel answered "No active artists, so there is nobody to book." two
+    // lines lower, plus the same card-address sentence verbatim in both.
+    const { container } = renderWithProviders(
+      <MemoryRouter><BookingSetupRail orgId="org-1" initialStep="people" /></MemoryRouter>,
+    );
+    // The row owns the consequence.
+    expect(await screen.findByText(/nobody to book/i)).toBeInTheDocument();
+    expect(container.textContent?.match(/nobody to book/gi)).toHaveLength(1);
+    // The panel owns the state and the mechanism, and says neither of them twice.
+    expect(await screen.findByText(/no active artists right now/i)).toBeInTheDocument();
+    expect(container.textContent?.match(/emailed at the address on their card/gi)).toHaveLength(1);
+  });
+
+  it("reconciles the people panel's active count with the roster its own CTA opens", async () => {
+    // End to end for the two head counts: the rail's CTA goes to ArtistsPage, which lists
+    // every artist with no default status filter, so an all-parked org must not be sent
+    // there having just been told there is nobody on the roster. The array seed routes the
+    // eq('status','active') query to 0 and the neq one to 6.
+    seed(parkedRoster);
+    renderWithProviders(<MemoryRouter><BookingSetupRail orgId="org-1" initialStep="people" /></MemoryRouter>);
+    expect(await screen.findByText(/nobody to book/i)).toBeInTheDocument();
+    expect(
+      await screen.findByText(/the artists page lists 6 artists on this roster whose status is not active/i),
+    ).toBeInTheDocument();
+  });
+
+  it("only pays for the parked-roster count while the panel that prints it is open", async () => {
+    // The parked count decorates one sentence inside a collapsed panel, so it is read on
+    // demand rather than folded into the readiness hook every admin and producer surface
+    // calls. `neq` is that read's signature (the readiness count eq's status = 'active').
+    seed(parkedRoster);
+    renderWithProviders(<MemoryRouter><BookingSetupRail orgId="org-1" initialStep="flow" /></MemoryRouter>);
+    expect(await screen.findByText("Add your artists")).toBeInTheDocument();
+    // Everything else the rail reads has settled by now, so a missing neq is a real absence.
+    await waitFor(() => expect(screen.getAllByText("Blocks offers").length).toBeGreaterThan(0));
+    expect(calls().some((c) => c.table === "artists" && c.method === "neq")).toBe(false);
+
+    // ...and it does fire once the admin opens that panel.
+    fireEvent.click(screen.getByRole("button", { name: /Add your artists/ }));
+    expect(
+      await screen.findByText(/the artists page lists 6 artists on this roster whose status is not active/i),
+    ).toBeInTheDocument();
+  });
+
   it("opens the step named by initialStep", async () => {
     renderWithProviders(<MemoryRouter><BookingSetupRail orgId="org-1" initialStep="timing" /></MemoryRouter>);
     const timingToggle = await screen.findByRole("button", { name: /Email timing/ });
@@ -155,7 +219,9 @@ describe("BookingSetupRail", () => {
       artists: { data: null, error: null, count: 0 },
     });
     renderWithProviders(<MemoryRouter><BookingSetupRail orgId="org-1" initialStep="people" /></MemoryRouter>);
-    expect(await screen.findByText(/nobody to book/i)).toBeInTheDocument();
+    // The waiting card renders the panel without the rail's step rows, so it carries no
+    // hint: the reason has to be readable from the panel's own lines.
+    expect(await screen.findByText(/no active artists right now/i)).toBeInTheDocument();
     expect(screen.getByRole("link", { name: /add or import artists/i })).toBeInTheDocument();
   });
 });

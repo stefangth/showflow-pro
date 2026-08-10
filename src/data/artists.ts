@@ -72,6 +72,33 @@ export async function fetchArtistCount(
   return count ?? 0;
 }
 
+/**
+ * How many roster rows `fetchArtistCount` leaves out: every artist whose status is not
+ * `active`. A head count for the same reason.
+ *
+ * This exists to reconcile two numbers a first-run admin otherwise has to reconcile alone.
+ * The setup panel reports ACTIVE artists (the population the offer engine reads), while
+ * ArtistsPage lists the whole roster with no default status filter, so an org that parked
+ * its people between seasons is told "your roster has no active artists right now" and then
+ * lands on a page full of artists.
+ *
+ * `neq` rather than `eq(status, 'inactive')`: artist_status is active | inactive | on_leave,
+ * and an on-leave artist is exactly as unbookable as an inactive one, so anything narrower
+ * would undercount and leave the same gap it is meant to close.
+ */
+export async function fetchInactiveArtistCount(
+  client: SupabaseClient<Database>,
+  orgId: string,
+): Promise<number> {
+  const { count, error } = await client
+    .from("artists")
+    .select("*", { count: "exact", head: true })
+    .eq("org_id", orgId)
+    .neq("status", "active");
+  if (error) throw error;
+  return count ?? 0;
+}
+
 /** Minimal active-artist options for the direct-book / eligibility pickers. */
 export async function fetchActiveArtistOptions(
   client: SupabaseClient<Database>,

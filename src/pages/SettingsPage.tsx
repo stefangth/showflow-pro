@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { Link, useSearchParams } from 'react-router-dom';
+import { Link, useLocation, useSearchParams } from 'react-router-dom';
 import { ROUTES, BOOKING_ENGINE_DEFAULTS, roleLabel } from '@/config/app.config';
 import { resolveInitialTab } from '@/lib/settingsTabs';
 import { useSettingsWarnings } from '@/hooks/useSettingsWarnings';
@@ -166,22 +166,31 @@ export default function SettingsPage() {
   // Every link that ships on this branch (the concept links in LadderStep/EligibilityStep)
   // is rendered off Settings, so it always remounts the page, but a notification deep-link
   // clicked while the user is already sitting on Settings only changes the URL: without the
-  // effect below the page would ignore it. The effect keys on the raw param, so a manual
-  // switch (which does not touch the URL) is never undone by a re-render. It also re-runs on
-  // `isAdmin`, which is what a producer switching orgs needs: an admin-only tab resolves back
-  // to their default rather than leaving them on a pane with no trigger and no content.
+  // effect below the page would ignore it. It also re-runs on `isAdmin`, which is what a
+  // producer switching orgs needs: an admin-only tab resolves back to their default rather
+  // than leaving them on a pane with no trigger and no content.
+  //
+  // Keyed on `location.key`, the identity of the NAVIGATION, not on the param value: a
+  // second click on the same in-app link (the sync-held notification lands on
+  // `?tab=airtable`, and the user may have switched tabs by hand in between) leaves the URL
+  // byte-identical, so a value-keyed effect would not re-run and the click would be dead.
+  // A manual tab switch is plain local state and touches neither the URL nor the key, so it
+  // is still never undone by a re-render.
   //
   // Widened to `string` on purpose: the seed is a SettingsTabParam, but Tabs.onValueChange
   // hands back a plain string (and "hire-orders", deliberately not a deep-link target, is a
   // reachable tab), so narrowing the state to the whitelist would reject legitimate switches.
   const [searchParams] = useSearchParams();
   const tabParam = searchParams.get('tab');
+  const navKey = useLocation().key;
   const [activeTab, setActiveTab] = useState<string>(() => resolveInitialTab(tabParam, isAdmin));
   useEffect(() => {
     // No param means "wherever you were": a link into plain /settings must not drag someone
     // off the tab they are working on back to the role default.
     if (tabParam) setActiveTab(resolveInitialTab(tabParam, isAdmin));
-  }, [tabParam, isAdmin]);
+    // `navKey` is a trigger, not an input: nothing in the callback reads it, which is
+    // exactly the point, since a repeat navigation changes nothing else the callback sees.
+  }, [tabParam, isAdmin, navKey]);
   // Keep the Tabs ARIA orientation matched to the actual layout axis: the nav rail is
   // vertical on md+ but a horizontal scroll row below md, so arrow-key roving (Up/Down
   // vs Left/Right) follows the visual direction at each breakpoint. Breakpoint (768px)

@@ -99,8 +99,14 @@ describe("describeTonight", () => {
   });
 
   it("still says nothing to a direct-book org that sends no confirmation digest", () => {
-    // Then all three fields are dead settings and the scope note says exactly that.
+    // No tier, so no offer digest and no window; no confirmation mail either. The one thing
+    // that IS still true of that org's panel (its confirmation hour times the in-app
+    // schedule-change notifications) is a fact about the FIELD, not a schedule, so the scope
+    // note carries it and this sentence stays silent rather than printing a third variant.
     expect(describeTonight(times, { ...direct, confirmation_digest: false })).toBeNull();
+    expect(timingScopeNote({ ...direct, confirmation_digest: false })).toContain(
+      "The confirmation hour still runs",
+    );
   });
 
   it("says nothing rather than a NaN hour while a direct-book org retypes that field", () => {
@@ -185,10 +191,14 @@ describe("timingScopeNote", () => {
     expect(timingScopeNote(null)).toBe("Hours are Berlin time.");
   });
 
-  it("says nothing goes out while the whole flow is paused", () => {
-    // Every digest function skips a paused org, so hours saved here change nothing yet.
+  it("scopes the paused note to the three fields on this panel", () => {
+    // Both readers of these keys (send-offer-digest, send-confirmation-digest) bail on
+    // `!flow.active`, so the fields themselves really are inert. What is NOT true is that
+    // the product goes quiet: hire-order issue mail, org invitations and chat notifications
+    // all keep sending with the booking flow off, and this panel does not read as
+    // booking-scoped to someone seeing it on their first day.
     expect(timingScopeNote(off)).toBe(
-      "Hours are Berlin time. Nothing is sent while the booking flow is off.",
+      "Hours are Berlin time. These hours change nothing while the booking flow is off.",
     );
   });
 
@@ -203,15 +213,51 @@ describe("timingScopeNote", () => {
     );
   });
 
-  it("promises no confirmation mail to a direct-book org that sends no confirmation digest", () => {
-    const line = timingScopeNote({ ...direct, confirmation_digest: false });
-    expect(line).toBe(
-      "Hours are Berlin time. You book artists directly and send no confirmation digest, so none of these hours change anything.",
+  it("never calls the confirmation hour dead, because it also times the in-app notifications", () => {
+    // The correction to an earlier version of this note, which told a direct-book org with
+    // the confirmation digest off that "none of these hours change anything".
+    //
+    // send-confirmation-digest gates its per-artist EMAIL loop on `flow.confirmation_digest`
+    // and NOTHING else: the in-app `schedule_change` notification insert and the
+    // `show_date_change_log.digested_at` stamp both sit ABOVE that check and run for every
+    // org whose `confirmation_digest_hour_berlin` matches the current Berlin hour. That step
+    // is not gated on `artist_acceptance` either, which is what makes it reachable for a
+    // direct-book org at all. So with the digest off this hour still decides when a
+    // cancellation or a retime reaches a booked artist, under BOTH flows, and an admin told
+    // the field was inert would leave it wherever it sits and delay those by up to a day.
+    // FlowTimeline renders confirmation_digest as an independent switch, so the state is one
+    // click away from any preset.
+    const live =
+      "The confirmation hour still runs: it sets when booked artists are notified of schedule changes in the app.";
+    expect(timingScopeNote({ ...direct, confirmation_digest: false })).toBe(
+      `Hours are Berlin time. You book artists directly, so the offer window and the offer digest hour change nothing. ${live}`,
+    );
+    // Same fact from the offers side: describeTonight drops its "confirmations mail at"
+    // clause when the digest is off, so without this the "Confirmations" input sat on an
+    // offers org's panel with nothing anywhere saying what it still does.
+    expect(timingScopeNote({ ...classic, confirmation_digest: false })).toBe(
+      `Hours are Berlin time. ${live}`,
     );
   });
 
+  it("leaves the confirmation hour to describeTonight while the digest is on", () => {
+    // Then the sentence below this note states the hour itself ("and confirmations mail at
+    // 20:00" / "the confirmation digest at 20:00"), so explaining the field here too would
+    // put the same fact on one small panel twice.
+    expect(timingScopeNote(classic)).not.toMatch(/confirmation hour/);
+    expect(timingScopeNote(fasttrack)).not.toMatch(/confirmation hour/);
+  });
+
   it("uses no em or en dashes", () => {
-    const flows = [classic, fasttrack, direct, off, { ...direct, confirmation_digest: false }, null];
+    const flows = [
+      classic,
+      fasttrack,
+      direct,
+      off,
+      { ...direct, confirmation_digest: false },
+      { ...classic, confirmation_digest: false },
+      null,
+    ];
     for (const flow of flows) expect(timingScopeNote(flow)).not.toMatch(/[—–]/);
   });
 });

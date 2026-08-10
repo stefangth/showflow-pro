@@ -3,15 +3,20 @@ import { screen, waitFor, fireEvent, cleanup } from "@testing-library/react";
 import { QueryClient } from "@tanstack/react-query";
 import { renderWithProviders } from "@/test/renderWithProviders";
 
-const { flowRef, canRef, nextRef, dryRun } = vi.hoisted(() => ({
+const { flowRef, canRef, nextRef, dryRun, flowOrgSpy, timesOrgSpy } = vi.hoisted(() => ({
   flowRef: { value: { artist_acceptance: true, offer_delivery: "digest" } as Record<string, unknown> },
   canRef: { value: true },
   nextRef: { value: { id: "d1", date: "2026-09-18" } as { id: string; date: string } | null },
   dryRun: vi.fn(() => Promise.resolve({ candidates: [{ id: "a1", name: "Anna Kessler" }], excluded: {}, message: undefined })),
+  flowOrgSpy: vi.fn(),
+  timesOrgSpy: vi.fn(),
 }));
 vi.mock("@/hooks/useBookingFlow", () => ({
-  useBookingFlow: () => ({ data: flowRef.value }),
-  useFlowTimes: () => ({ data: { windowHours: 48, offerDigestHour: 19, confirmationDigestHour: 20 } }),
+  useBookingFlow: (orgId?: string | null) => { flowOrgSpy(orgId); return { data: flowRef.value }; },
+  useFlowTimes: (orgId: string | null) => {
+    timesOrgSpy(orgId);
+    return { data: { windowHours: 48, offerDigestHour: 19, confirmationDigestHour: 20 } };
+  },
 }));
 vi.mock("@/hooks/useCapabilities", () => ({ useCan: () => canRef.value }));
 vi.mock("@/data/bookings", () => ({ dryRunOfferTier: dryRun }));
@@ -25,9 +30,34 @@ beforeEach(() => {
   canRef.value = true;
   nextRef.value = { id: "d1", date: "2026-09-18" };
   dryRun.mockClear();
+  flowOrgSpy.mockClear();
+  timesOrgSpy.mockClear();
 });
 
 describe("RehearsalBlock", () => {
+  it("resolves its flow and its hours from the same org, the one it was handed", async () => {
+    // The gate ("is this a direct-book org?") and the send times in the footer come from two
+    // different hooks, and this block used to take the flow from `useBookingFlow()`, which
+    // resolves its OWN org out of AuthContext, while the hours keyed on the `orgId` prop.
+    // The org switcher lives in the app shell and does not unmount this block, so with the
+    // rail mounted for one org and the shell switched to another it would gate on one org's
+    // artist_acceptance and narrate the other org's hours: a direct-book org shown a full
+    // offer rehearsal. One org source, stated once.
+    renderWithProviders(<RehearsalBlock orgId="org-9" />);
+    await screen.findByText("See it run before it runs");
+    expect(flowOrgSpy).toHaveBeenCalledWith("org-9");
+    expect(timesOrgSpy).toHaveBeenCalledWith("org-9");
+  });
+
+  it("narrates nothing when it has no org, rather than the platform defaults", async () => {
+    // `useBookingFlow` has no `enabled` gate, so a null org still runs
+    // fetchBookingFlow(client, null), which reads the PLATFORM DEFAULT settings row and
+    // normalizes a missing one to BOOKING_FLOW_DEFAULTS: a truthy, offers-shaped flow
+    // belonging to no org. Rehearsing that would show a dry run of nobody's pipeline.
+    const { container } = renderWithProviders(<RehearsalBlock orgId={null} />);
+    await waitFor(() => expect(container).toBeEmptyDOMElement());
+  });
+
   it("runs the dry run and lists candidates", async () => {
     renderWithProviders(<RehearsalBlock orgId="org-1" />);
     fireEvent.click(await screen.findByRole("button", { name: /run the rehearsal/i }));

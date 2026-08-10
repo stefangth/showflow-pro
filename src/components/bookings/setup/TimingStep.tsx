@@ -30,7 +30,13 @@ export function TimingStep({ orgId, onDone }: { orgId: string | null; onDone: ()
   // above key on the `orgId` prop. Every shipped host passes `currentOrg?.id`, so the two
   // agree today, but the flow is what decides whether the sentence under these fields is
   // about a digest, an instant send, or nothing at all. One org source, stated once.
-  const { data: flow } = useBookingFlow(orgId);
+  // The null-org narrowing is not defensive noise: `useBookingFlow` has no `enabled` gate,
+  // so a null org still runs fetchBookingFlow(client, null), which reads the PLATFORM
+  // DEFAULT settings row and normalizes a missing one to BOOKING_FLOW_DEFAULTS. The result
+  // is a truthy, offers-shaped flow belonging to no org, which would walk straight past the
+  // unknown-flow branches that timingCopy documents at length. No org, no flow to narrate.
+  const flowQ = useBookingFlow(orgId);
+  const flow = orgId ? flowQ.data : null;
   // Views of the org's stored timing, not copies seeded into state by an effect.
   // Save persists these three verbatim, so a copy that still held the code defaults
   // wrote 48/19/20 over the org's real timing -- and with no gate below, that was

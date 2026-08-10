@@ -277,6 +277,29 @@ describe("SettingsPage ?tab= deep link", () => {
     fireEvent.click(screen.getByRole("link", { name: /deep link/i }));
     expect(await screen.findByRole("tab", { name: /documentation/i })).toHaveAttribute("aria-selected", "true");
   });
+
+  it("follows a repeat deep link to the tab the user has since navigated away from", async () => {
+    // Keying the re-seed on the param VALUE alone makes the second click on the same link a
+    // dead click: the URL is already `?tab=airtable`, so the param does not change, the
+    // effect does not re-run, and the page sits wherever the user last switched to by hand.
+    // Reachable from any Settings-to-Settings link (the sync-held notification is the one
+    // this branch ships); the cross-page ones remount the page and hid the gap. The effect
+    // keys on the navigation itself, so each click is honoured.
+    vi.mocked(useAuth).mockReturnValue(DEFAULT_AUTH as never);
+    renderWithProviders(
+      <MemoryRouter initialEntries={["/settings?tab=airtable"]}>
+        <Link to="/settings?tab=airtable">sync report</Link>
+        <SettingsPage />
+      </MemoryRouter>,
+    );
+    expect(await screen.findByRole("tab", { name: /airtable sync/i })).toHaveAttribute("aria-selected", "true");
+
+    fireEvent.mouseDown(screen.getByRole("tab", { name: /casts & cities/i }));
+    expect(await screen.findByRole("tab", { name: /casts & cities/i })).toHaveAttribute("aria-selected", "true");
+
+    fireEvent.click(screen.getByRole("link", { name: /sync report/i }));
+    expect(await screen.findByRole("tab", { name: /airtable sync/i })).toHaveAttribute("aria-selected", "true");
+  });
 });
 
 describe("SettingsPage producer capability read-only floor", () => {

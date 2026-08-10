@@ -18,7 +18,11 @@ import { ROUTES } from "@/config/app.config";
 export function EligibilityStep({ coverage, orgId }: { coverage: LadderCoverageInputs | undefined; orgId: string | null }) {
   const cities = useAllCities();
   const shows = useShows();
-  const { data: flow } = useBookingFlow(orgId);
+  // Gated on the org, not just on the query: `useBookingFlow` has no `enabled`, so a null
+  // org still resolves the PLATFORM DEFAULT row into a truthy, offers-shaped flow that would
+  // state the wrong consequence for an org this panel has not identified.
+  const flowQ = useBookingFlow(orgId);
+  const flow = orgId ? flowQ.data : null;
   const cityName = (id: string) => (cities.data ?? []).find((c) => c.id === id)?.name ?? "Unknown city";
   const showName = (id: string) => {
     const s = (shows.data ?? []).find((x) => x.id === id);

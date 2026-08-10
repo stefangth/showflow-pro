@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useCan } from "@/hooks/useCapabilities";
-import { useBookingSetupStatus } from "@/hooks/useBookingSetup";
+import { useBookingSetupStatus, useInactiveArtistCount } from "@/hooks/useBookingSetup";
 import { type BookingSetupStepKey } from "@/lib/bookings/setupStatus";
 import { bookingOnboarding } from "@/lib/dashboard/moduleOnboarding";
 import { SETUP_BLOCK_CHIPS } from "@/lib/dashboard/setupBlocks";
@@ -38,10 +38,25 @@ export function BookingSetupRail({ orgId, initialStep }: { orgId: string | null;
   const { status, coverage, artistCount } = useBookingSetupStatus(orgId);
   const [, dismiss] = useRailDismissed("bookingSetup", orgId);
   const [open, setOpen] = useState<BookingSetupStepKey | null>(initialStep ?? "flow");
+  // Read on demand rather than as part of readiness: this count decorates one sentence in
+  // PeopleStep, and PeopleStep is on screen in exactly two cases. Either the roster row is
+  // expanded here, or this viewer gets the waiting card below, which renders the panel
+  // whenever the roster step is outstanding (and a card with nothing outstanding never
+  // renders at all: useBookingSetupRailVisible hides this whole surface for a non-editor the
+  // moment canOffer flips true). Declared before the early return so the hook order is fixed.
+  const inactiveArtistCount = useInactiveArtistCount(orgId, !canEdit || open === "people");
 
   // The roster step is not gated by `edit_booking_settings`, so the waiting card gets the
   // count and renders it as real work rather than as one more padlock.
-  if (!canEdit) return <BookingProducerWaitingCard steps={status.steps} artistCount={artistCount} />;
+  if (!canEdit) {
+    return (
+      <BookingProducerWaitingCard
+        steps={status.steps}
+        artistCount={artistCount}
+        inactiveArtistCount={inactiveArtistCount}
+      />
+    );
+  }
 
   const toggle = (key: BookingSetupStepKey) => setOpen((cur) => (cur === key ? null : key));
 
@@ -76,7 +91,9 @@ export function BookingSetupRail({ orgId, initialStep }: { orgId: string | null;
               onToggle={() => toggle(s.key)}
             >
               {s.key === "flow" && <FlowStep orgId={orgId} onDone={() => setOpen("people")} />}
-              {s.key === "people" && <PeopleStep count={artistCount} />}
+              {s.key === "people" && (
+                <PeopleStep count={artistCount} inactiveCount={inactiveArtistCount} />
+              )}
               {s.key === "slots" && <SlotsStep orgId={orgId} onDone={() => setOpen(null)} />}
               {/* Both coverage panels open with a flow-aware sentence, so they take the
                   rail's own orgId rather than resolving the shell's active org themselves

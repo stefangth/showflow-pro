@@ -132,4 +132,17 @@ describe("LadderStep", () => {
     expect(screen.getByText("Your casts ranked per city, tier 1 first.")).toBeInTheDocument();
     expect(screen.queryByText(/asked first,/)).not.toBeInTheDocument();
   });
+
+  it("narrates no pipeline without an org either, whatever the platform default resolves to", () => {
+    // `useBookingFlow` has no `enabled` gate, so a null org still runs
+    // fetchBookingFlow(client, null): resolveOrgSetting then reads only the PLATFORM DEFAULT
+    // row and normalizeBookingFlow falls back to BOOKING_FLOW_DEFAULTS (artist_acceptance
+    // true). The hook therefore hands this panel a truthy, offers-shaped flow that belongs
+    // to no org, which would defeat the unknown-flow branch above by printing the offers
+    // pipeline instead. The panel's own org is what decides, so it gates on that.
+    flowRef.value = BOOKING_FLOW_DEFAULTS;
+    renderWithProviders(<MemoryRouter><LadderStep coverage={empty} orgId={null} /></MemoryRouter>);
+    expect(screen.getByText("Your casts ranked per city, tier 1 first.")).toBeInTheDocument();
+    expect(screen.queryByText(/asked first,/)).not.toBeInTheDocument();
+  });
 });

@@ -36,21 +36,20 @@ export const bookingOnboarding: ModuleOnboardingDef<BookingSetupStepKey> = {
     // the "off" preset (active false), which every digest function skips, and a direct-book
     // org with confirmation_digest off.
     //
-    // And it does not generalise the address. `resolveContactEmail`
-    // (supabase/functions/_shared/identity.ts, ADR-0011) returns the AUTH email first and
-    // falls back to the artist card only when there is none, so "anything the app emails an
-    // artist goes to the address on their card" is false for a REGISTERED artist, and
-    // reachably so: create-invitation links an invite to an artist row by `artist_id`, so
-    // the invite can go somewhere other than the card, and every digest after acceptance
-    // uses the login address. The unregistered case is where the claim is both true and
-    // load-bearing, and it is the whole point: no account, so only the card address exists,
-    // so no account is needed to add one. PeopleStep, the panel printed under this hint,
-    // makes the same point the same way.
+    // ONE LINE, and only the consequence. SetupStepRow prints this hint in the row header
+    // and keeps it there while the panel is expanded underneath, and the default first-run
+    // path arrives with this row already open (FlowStep's onDone opens `people`; the
+    // dashboard rail's "Add artists" opens the sheet at `people`). So whatever this hint
+    // says, PeopleStep may not say again. It used to carry the card-address explanation as
+    // well, which the panel then repeated verbatim two lines lower. The panel owns the
+    // mechanism, the counts and the address/invite explanation; this row owns the
+    // consequence, at the length of its siblings.
+    //
     // Consequence first, not an instruction: DashboardSetupRail hides a step's CTA from a
     // viewer without its capability, so a producer in an org that revoked add_artists reads
     // this hint with no button under it. "Import your roster" would hand them a task and no
     // control; what is broken reads the same with or without the CTA, like every sibling.
-    people: { title: STEP_TITLES.people, todoHint: "Nobody to book until your roster has active artists. An artist with no account is emailed at the address on their card, so no account is needed to add one.", doneHint: "Your roster has active artists on it.", ctaLabel: "Add artists", ctaRoute: ROUTES.ARTISTS, ctaCapability: "add_artists" },
+    people: { title: STEP_TITLES.people, todoHint: "Nobody to book until your roster has active artists.", doneHint: "Your roster has active artists on it.", ctaLabel: "Add artists", ctaRoute: ROUTES.ARTISTS, ctaCapability: "add_artists" },
     slots: { title: STEP_TITLES.slots, todoHint: "A show with no slot count never reads as full.", doneHint: "Set on every show.", ctaLabel: "Set slots", ctaRoute: ROUTES.PRODUCTIONS, ctaCapability: "edit_booking_settings" },
     // These two hints name what the row HOLDS, not what one flow does with it, and that is
     // forced by the shape of this record: `steps` is flat, neither consumer passes a ctx,

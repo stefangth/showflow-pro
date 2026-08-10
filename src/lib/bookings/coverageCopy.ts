@@ -55,7 +55,14 @@ export function eligibilityScopeNote(flow: CoverageFlow | null | undefined): str
   if (!flow.artist_acceptance) {
     // "Active" is load-bearing: the direct-book picker is built from
     // fetchActiveArtistOptions, so a parked artist is not in it either way.
-    return `${what} A show and city with no match can be booked from your whole active roster.`;
+    //
+    // The trailing clause is load-bearing too. `artistIds: null` means "this pair adds no
+    // restriction", NOT "the picker lists everyone": `deriveDirectBookList`
+    // (src/lib/bookings.ts) then filters that set by `fetchRequiredSkillIds` and
+    // `fetchBlockedArtistIds`, both wired at ShowDateDetailSheet.tsx. Naming them keeps the
+    // sentence from promising a roster the Book dialog will not show, while the contrast
+    // this line exists for (wide open, not "nobody") is untouched.
+    return `${what} A show and city with no match can be booked from your whole active roster, minus anyone blocked on that date or missing a required skill.`;
   }
   return `${what} Without a match, a tier opens to nobody.`;
 }

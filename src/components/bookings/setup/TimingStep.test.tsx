@@ -195,12 +195,17 @@ describe("TimingStep", () => {
     expect(container.textContent?.match(/Berlin/g) ?? []).toHaveLength(1);
   });
 
-  it("says nothing to a direct-book org that also switched the confirmation digest off", async () => {
-    // Then every field on the panel is a dead setting, and the scope note says exactly that.
+  it("keeps the confirmation hour explained for a direct-book org with the digest off", async () => {
+    // No mail of any kind for this org, so the narrative stays silent. The panel must still
+    // not read as three dead fields: `send-confirmation-digest` creates the in-app
+    // schedule_change notifications ABOVE its confirmation_digest check and is not gated on
+    // artist_acceptance, so this hour is when a cancellation reaches a booked artist.
     flowRef.value = { ...applyPreset(BOOKING_FLOW_DEFAULTS, "direct"), confirmation_digest: false };
     renderWithProviders(<TimingStep orgId="org-1" onDone={() => {}} />);
-    expect(await screen.findByText(/none of these hours change anything/)).toBeInTheDocument();
+    expect(await screen.findByText(/The confirmation hour still runs/)).toBeInTheDocument();
+    expect(screen.getByText(/notified of schedule changes in the app/)).toBeInTheDocument();
     expect(screen.queryByText(/confirmation digest at/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/none of these hours change anything/)).not.toBeInTheDocument();
   });
 
   it("says nothing at all while the flow is paused", async () => {
@@ -223,6 +228,19 @@ describe("TimingStep", () => {
       expect(screen.queryByText(/has until that hour/)).not.toBeInTheDocument();
       unmount();
     }
+  });
+
+  it("narrates no flow without an org, whatever the platform default resolves to", async () => {
+    // `useBookingFlow` has no `enabled` gate, so with a null org fetchBookingFlow still runs
+    // and resolveOrgSetting reads the PLATFORM DEFAULT row, with normalizeBookingFlow
+    // falling back to BOOKING_FLOW_DEFAULTS. That is a truthy, offers-shaped flow belonging
+    // to no org, and the scope note's unknown-flow branch exists precisely so this panel
+    // never describes a pipeline it has not read for the org in front of it.
+    flowRef.value = { ...BOOKING_FLOW_DEFAULTS, artist_acceptance: false, confirmation_digest: false };
+    renderWithProviders(<TimingStep orgId={null} onDone={() => {}} />);
+    expect(await screen.findByText("Hours are Berlin time.")).toBeInTheDocument();
+    expect(screen.queryByText(/You book artists directly/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/The confirmation hour still runs/)).not.toBeInTheDocument();
   });
 
   it("keeps the timezone on screen under every flow", async () => {
@@ -253,10 +271,14 @@ describe("TimingStep", () => {
     expect(screen.getByText(/change nothing/)).toBeInTheDocument();
   });
 
-  it("tells a paused org that nothing goes out yet", async () => {
+  it("tells a paused org that these fields are inert, without claiming the app goes quiet", async () => {
+    // Hire-order issue mail, org invitations and chat notifications all keep sending with
+    // the booking flow off, so the claim is scoped to the three inputs above it.
     flowRef.value = applyPreset(BOOKING_FLOW_DEFAULTS, "off");
     renderWithProviders(<TimingStep orgId="org-1" onDone={() => {}} />);
-    expect(await screen.findByText(/Nothing is sent while the booking flow is off/)).toBeInTheDocument();
+    expect(
+      await screen.findByText(/These hours change nothing while the booking flow is off/),
+    ).toBeInTheDocument();
   });
 
   it("does not promise a digest to a fast-track org, which mails at tier open", async () => {
@@ -271,6 +293,9 @@ describe("TimingStep", () => {
     renderWithProviders(<TimingStep orgId="org-1" onDone={() => {}} />);
     expect(await screen.findByText(/When a tier opens/)).toBeInTheDocument();
     expect(screen.queryByText(/confirmations mail/)).not.toBeInTheDocument();
+    // But the "Confirmations" input is still on screen and still drives the in-app
+    // schedule-change notifications, so it may not be left standing unexplained.
+    expect(screen.getByText(/The confirmation hour still runs/)).toBeInTheDocument();
   });
 
   it("rejects a digest hour outside 0..23", async () => {

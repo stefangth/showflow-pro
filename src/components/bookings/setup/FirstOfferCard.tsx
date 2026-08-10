@@ -17,7 +17,18 @@ export function FirstOfferCard() {
   const { currentOrg } = useAuth();
   const orgId = currentOrg?.id ?? null;
   const { data: artist } = useMyArtist();
-  const { data: flow } = useBookingFlow();
+  // One org, resolved once and passed to both reads. The sentence below is a single flow
+  // narrated with a single org's send hours, and leaving the flow on `useBookingFlow()`'s
+  // own AuthContext lookup left the two free to drift the moment either source changed.
+  // Same rule as TimingStep and RehearsalBlock.
+  //
+  // `orgId ? ... : null` for the same reason those panels apply it: `useBookingFlow` has no
+  // enabled gate, so with no org fetchBookingFlow still runs and resolves the PLATFORM
+  // DEFAULT settings row. Narrating that would tell this artist how bookings work somewhere
+  // other than their own org. The fallback below is the shipped default either way today,
+  // but the guard is what makes that a decision rather than a coincidence.
+  const flowQ = useBookingFlow(orgId);
+  const flow = orgId ? flowQ.data : null;
   const { data: times } = useFlowTimes(orgId);
   const [dismissed, dismiss] = useRailDismissed("artistFirstOffer", orgId);
 

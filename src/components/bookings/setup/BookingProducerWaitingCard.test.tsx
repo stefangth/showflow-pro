@@ -28,8 +28,12 @@ const steps = (
   { key: "timing", done: over.timing ?? true, block: null },
 ];
 
-const render = (s: BookingSetupStep[], count: number | null) =>
-  renderWithProviders(<MemoryRouter><BookingProducerWaitingCard steps={s} artistCount={count} /></MemoryRouter>);
+const render = (s: BookingSetupStep[], count: number | null, inactive: number | null = null) =>
+  renderWithProviders(
+    <MemoryRouter>
+      <BookingProducerWaitingCard steps={s} artistCount={count} inactiveArtistCount={inactive} />
+    </MemoryRouter>,
+  );
 
 beforeEach(() => {
   vi.mocked(useCan).mockReturnValue(true);
@@ -48,14 +52,26 @@ describe("BookingProducerWaitingCard", () => {
   // was shown "Add your artists" as a LOCKED row: an enabled button leading to a padlock.
   it("makes the roster step actionable rather than locking it behind the admin", () => {
     render(steps(), 0);
-    expect(screen.getByText(/nobody to book/i)).toBeInTheDocument();
+    // This card has no step rows, so it carries none of the rail's hints: what the producer
+    // reads is the panel's own state and mechanism lines.
+    expect(screen.getByText(/no active artists right now/i)).toBeInTheDocument();
     expect(screen.getByRole("link", { name: /add or import artists/i })).toBeInTheDocument();
+  });
+
+  it("passes the parked-roster count through, so the producer reads the same reconciliation", () => {
+    // This card embeds the very same PeopleStep and sends the producer to the very same
+    // unfiltered ArtistsPage, so dropping the second count here would leave exactly one of
+    // the two roles staring at two numbers that do not add up.
+    render(steps(), 0, 6);
+    expect(
+      screen.getByText(/the artists page lists 6 artists on this roster whose status is not active/i),
+    ).toBeInTheDocument();
   });
 
   it("reports the active roster size once artists exist", () => {
     render(steps({ people: true }), 6);
     // Done, so it is neither a locked row nor an outstanding panel.
-    expect(screen.queryByText(/nobody to book/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/no active artists right now/i)).not.toBeInTheDocument();
     expect(screen.queryByRole("link", { name: /add or import artists/i })).not.toBeInTheDocument();
   });
 
@@ -76,7 +92,8 @@ describe("BookingProducerWaitingCard", () => {
     expect(screen.queryByText(/that one is yours/i)).not.toBeInTheDocument();
     expect(screen.getByText(/an admin has to finish setup/i)).toBeInTheDocument();
     // The panel still renders: they need to read why booking is stuck.
-    expect(screen.getByText(/nobody to book/i)).toBeInTheDocument();
+    expect(screen.getByText(/only artists on this roster whose status is active can be booked/i)).toBeInTheDocument();
+    expect(screen.getByText(/no active artists right now/i)).toBeInTheDocument();
   });
 
   it("still says an admin has to finish setup while admin-gated steps are outstanding", () => {
@@ -134,6 +151,7 @@ describe("BookingProducerWaitingCard", () => {
     vi.mocked(useCan).mockImplementation((action: string) => action !== "add_artists");
     render(steps(), 0);
     expect(screen.queryByRole("link", { name: /add or import artists/i })).not.toBeInTheDocument();
-    expect(screen.getByText(/nobody to book/i)).toBeInTheDocument();
+    expect(screen.getByText(/only artists on this roster whose status is active can be booked/i)).toBeInTheDocument();
+    expect(screen.getByText(/no active artists right now/i)).toBeInTheDocument();
   });
 });

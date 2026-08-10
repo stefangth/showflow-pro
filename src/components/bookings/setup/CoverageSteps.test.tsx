@@ -84,4 +84,18 @@ describe("EligibilityStep", () => {
     );
     expect(screen.getByText("Which casts belong to a show in a city.")).toBeInTheDocument();
   });
+
+  it("narrates no consequence without an org either, whatever the platform default resolves to", () => {
+    // `useBookingFlow` has no `enabled` gate: with a null org fetchBookingFlow still runs,
+    // resolveOrgSetting reads only the PLATFORM DEFAULT row, and normalizeBookingFlow falls
+    // back to BOOKING_FLOW_DEFAULTS (artist_acceptance true). That truthy, org-less flow
+    // would slip past the unknown-flow branch above and state the offers consequence for an
+    // org this panel has not identified.
+    flowRef.value = BOOKING_FLOW_DEFAULTS;
+    renderWithProviders(
+      <MemoryRouter><EligibilityStep coverage={uncovered} orgId={null} /></MemoryRouter>,
+    );
+    expect(screen.getByText("Which casts belong to a show in a city.")).toBeInTheDocument();
+    expect(screen.queryByText(/opens to nobody/)).not.toBeInTheDocument();
+  });
 });

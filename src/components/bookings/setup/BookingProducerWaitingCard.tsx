@@ -20,9 +20,14 @@ import { PeopleStep } from "./PeopleStep";
 export function BookingProducerWaitingCard({
   steps,
   artistCount,
+  inactiveArtistCount,
 }: {
   steps: BookingSetupStep[];
   artistCount: number | null;
+  /** The parked rest of the roster, carried straight through to the embedded PeopleStep:
+   *  this card sends the producer to the same unfiltered ArtistsPage the admin rail does,
+   *  so it owes them the same reconciliation. */
+  inactiveArtistCount: number | null;
 }) {
   // Same capability PeopleStep asks for, and for the same reason: with
   // producer_can_add_artists off this viewer has no add control anywhere, so the roster is
@@ -67,7 +72,7 @@ export function BookingProducerWaitingCard({
           <div className="rounded-md border border-border p-2.5">
             <p className="text-sm">{STEP_TITLES.people}</p>
             <div className="mt-2">
-              <PeopleStep count={artistCount} />
+              <PeopleStep count={artistCount} inactiveCount={inactiveArtistCount} />
             </div>
           </div>
         )}

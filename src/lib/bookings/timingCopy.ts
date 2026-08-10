@@ -46,6 +46,33 @@ export const TIMING_BOUNDS_ERROR =
 const BERLIN = "Hours are Berlin time.";
 
 /**
+ * What the confirmation hour still does once the confirmation DIGEST is switched off, which
+ * is the one clause on this panel that is easiest to get wrong.
+ *
+ * `send-confirmation-digest` gates its per-artist email loop on `flow.confirmation_digest`
+ * and nothing else. The in-app `schedule_change` notification insert and the
+ * `show_date_change_log.digested_at` stamp both sit ABOVE that check, so they run for every
+ * active, entitled org whose `confirmation_digest_hour_berlin` matches the current Berlin
+ * hour, and they are not gated on `artist_acceptance` either. That is exactly why an earlier
+ * version of this note was wrong to tell a direct-book org with the digest off that "none of
+ * these hours change anything": the field it called dead is the one that decides when a
+ * cancellation or a retime reaches a booked artist, up to a day later than the admin thinks.
+ *
+ * "Booked artists" and "in the app" are both literal, and neither word is padding. The
+ * insert only covers artists holding a booking on the changed date (an active one, or the
+ * one cancelled with the date) who also have an account, since it keys on
+ * `b.artists?.user_id`. And what arrives at this hour is the NOTIFICATION: the change itself
+ * is live in their schedule the moment it is saved, so "sees the change" would be wrong
+ * where "is notified" is right.
+ */
+const CONFIRMATION_HOUR_STILL_LIVE =
+  "The confirmation hour still runs: it sets when booked artists are notified of schedule changes in the app.";
+
+/** The two fields a direct-book org can edit all day without changing anything. */
+const DIRECT_BOOK_DEAD_FIELDS =
+  "You book artists directly, so the offer window and the offer digest hour change nothing.";
+
+/**
  * The one line this panel can always print, whatever the flow.
  *
  * It replaces a fixed helper line that described the classic digest deadline as universal.
@@ -65,19 +92,51 @@ export function timingScopeNote(flow: TonightFlow | null | undefined): string {
   // Unknown flow: state only the timezone. Same rule as describeTonight, which refuses to
   // narrate a flow it has not read rather than assume the classic one.
   if (!flow) return BERLIN;
-  // The "off" preset. Every digest function skips a paused org, so hours saved on this
-  // panel change nothing until the flow is switched back on.
-  if (flow.active === false) return `${BERLIN} Nothing is sent while the booking flow is off.`;
+  // The "off" preset. Both readers of these three keys (send-offer-digest,
+  // send-confirmation-digest) `continue` past a paused org, so hours saved on this panel
+  // change nothing until the flow is switched back on.
+  //
+  // Scoped to THESE FIELDS rather than to the product. An unqualified "nothing is sent" is
+  // false and reads as the whole app to a first-run admin: hire-order issue mail, org
+  // invitations and chat notifications all keep going out while the booking flow is off.
+  if (flow.active === false) {
+    return `${BERLIN} These hours change nothing while the booking flow is off.`;
+  }
+  const parts = [BERLIN];
   if (!flow.artist_acceptance) {
     // Direct book: no tier is ever opened, so two of the three fields on this panel are
     // dead settings. The third still runs, but only while the confirmation digest is on.
     // Which field is live, not what it is set to: this note takes no times so that it can
     // render before the org's hours load, and `describeTonight` states the hour below it.
-    return flow.confirmation_digest
-      ? `${BERLIN} You book artists directly, so the offer window and the offer digest hour change nothing. Only the confirmation hour is live.`
-      : `${BERLIN} You book artists directly and send no confirmation digest, so none of these hours change anything.`;
+    //
+    // "Change nothing" is a claim about these two FIELDS, and it was checked against every
+    // reader of both keys rather than assumed. `offer_response_window_hours` is read in
+    // exactly two places, `open-offer-tier/index.ts` (immediate delivery) and
+    // `send-offer-digest/index.ts`; `offer_digest_hour_berlin` only in the latter. Both
+    // functions bail on `!flow.artist_acceptance` (open-offer-tier ~L106,
+    // send-offer-digest ~L103) before either value can act, so editing them here is inert
+    // for this org.
+    //
+    // Note what this deliberately does NOT claim: that no offer is still in flight. An org
+    // that switched away from offers with a tier open still has pending rows, and
+    // `expire_soft_bookings()` is gated on the booking_flow ENTITLEMENT only, so they do
+    // still expire. That is driven by each booking's stamped `offer_expires_at`, not by
+    // this field, so re-reading the window here would not move those deadlines. Narrating
+    // them is also not this function's job: it takes no times and no tier data on purpose,
+    // and a sentence about leftover offers would be a puzzle for the many direct-book orgs
+    // that never ran a tier at all.
+    parts.push(DIRECT_BOOK_DEAD_FIELDS);
+    // The contrast, but only where it is the whole truth. With the digest ON the third
+    // field's job is stated by `describeTonight` right underneath ("the confirmation digest
+    // at 20:00"), so this names it live and stops.
+    if (flow.confirmation_digest) parts.push("Only the confirmation hour is live.");
   }
-  return BERLIN;
+  // Digest off, under EITHER flow: the panel would otherwise leave the "Confirmations"
+  // input unexplained (describeTonight drops its confirmation clause with the digest off,
+  // and for a direct-book org falls silent entirely) while that hour still times the in-app
+  // schedule-change notifications. See CONFIRMATION_HOUR_STILL_LIVE for the code path.
+  if (!flow.confirmation_digest) parts.push(CONFIRMATION_HOUR_STILL_LIVE);
+  return parts.join(" ");
 }
 
 /**
@@ -93,8 +152,11 @@ export function timingScopeNote(flow: TonightFlow | null | undefined): string {
  *  - `active` is false. The "off" preset pauses the whole flow, and every digest function
  *    skips a paused org, so nothing at all goes out.
  *  - `artist_acceptance` is false AND the confirmation digest is off. That org opens no
- *    tier, so it has no offer digest and no response window to narrate, and with the
- *    confirmation digest off there is nothing left on this panel that runs at all.
+ *    tier, so it has no offer digest and no response window to narrate, and no confirmation
+ *    mail either. Its confirmation HOUR is not dead (it still times the in-app
+ *    schedule-change notifications), but that is a fact about the field rather than a
+ *    schedule, so `timingScopeNote` carries it and this sentence stays silent instead of
+ *    printing a third variant of it with a clock time attached.
  *  - a value the sentence would actually state is outside what TimingStep's save guard
  *    accepts (a cleared field arrives as `NaN`). Mid-edit the sentence disappears rather
  *    than claiming "NaN:00", and it never describes a schedule the org could not save.

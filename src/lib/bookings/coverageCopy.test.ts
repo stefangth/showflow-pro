@@ -71,6 +71,18 @@ describe("eligibilityScopeNote", () => {
     expect(line).not.toMatch(/nobody/);
   });
 
+  it("names the two filters that survive an unmatched pair, so 'whole roster' is not a promise", () => {
+    // deriveDirectBookList (src/lib/bookings.ts) takes the unrestricted `artistIds: null`
+    // set and then applies TWO more filters that are reachable from this very panel's org:
+    // fetchRequiredSkillIds and fetchBlockedArtistIds, both wired in
+    // ShowDateDetailSheet.tsx. So "your whole active roster" full stop is an overstatement
+    // of what the Book picker will actually list. The contrast that carries the sentence
+    // (a wide-open list, not "nobody") survives naming them.
+    const line = eligibilityScopeNote(direct);
+    expect(line).toMatch(/blocked/);
+    expect(line).toMatch(/skill/);
+  });
+
   it("states only what the rows hold while the flow is unread", () => {
     for (const flow of [null, undefined]) {
       expect(eligibilityScopeNote(flow)).toBe("Which casts belong to a show in a city.");
