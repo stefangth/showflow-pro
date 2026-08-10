@@ -32,16 +32,18 @@ beforeEach(() => {
     show_dates: { data: [], error: null },
     show_cast_eligibility: { data: [], error: null },
     cast_city_priority: { data: [], error: null },
+    // Head count, so the seed carries `count` rather than rows (see fetchArtistCount).
+    artists: { data: null, error: null, count: 0 },
   });
 });
 
 it("composes the booking module with its header copy and progress totals", async () => {
   const { result } = renderHook(() => useModuleOnboardingRail("booking_flow", "org-1"), { wrapper });
-  await waitFor(() => expect(result.current.progressTotal).toBe(5));
+  await waitFor(() => expect(result.current.progressTotal).toBe(6));
   expect(result.current.title).toBe("Get bookings running");
-  expect(result.current.steps).toHaveLength(5);
+  expect(result.current.steps).toHaveLength(6);
   expect(result.current.progressFilled).toBe(0);
-  expect(result.current.progressLabel).toContain("of 5");
+  expect(result.current.progressLabel).toContain("of 6");
 });
 
 it("composes the hire-orders module with its header copy and three steps", async () => {
@@ -53,9 +55,11 @@ it("composes the hire-orders module with its header copy and three steps", async
 
 it("gives an editor the action-framed module header", async () => {
   const { result } = renderHook(() => useModuleOnboardingRail("booking_flow", "org-1"), { wrapper });
-  await waitFor(() => expect(result.current.progressTotal).toBe(5));
+  await waitFor(() => expect(result.current.progressTotal).toBe(6));
   expect(result.current.eyebrow).toBe("Set up");
-  expect(result.current.body).toBe("Dates keep syncing and you can edit them now. These are what the first offer needs.");
+  // Flow-neutral by design: this banner has no ctx, so the same sentence reaches a
+  // direct-book org that never opens a tier (see bookingOnboarding.railHeader).
+  expect(result.current.body).toBe("Dates keep syncing and you can edit them now. These are what the first booking needs.");
 });
 
 it("explains, for a viewer who cannot edit, that an admin finishes the setup", async () => {
@@ -73,7 +77,7 @@ it("never surfaces a sibling module's off-state footer (the scoped module is alw
   // composeOnboarding derives offFooters from every feature NOT in `enabled`; a
   // single-module set would otherwise always report the sibling module "off".
   const booking = renderHook(() => useModuleOnboardingRail("booking_flow", "org-1"), { wrapper });
-  await waitFor(() => expect(booking.result.current.progressTotal).toBe(5));
+  await waitFor(() => expect(booking.result.current.progressTotal).toBe(6));
   expect(booking.result.current.offFooters).toEqual([]);
 
   const hire = renderHook(() => useModuleOnboardingRail("hire_orders", "org-1"), { wrapper });

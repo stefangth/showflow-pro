@@ -75,7 +75,7 @@ vi.mock("@/components/dashboard/firstRun/useDashboardFirstRun", () => ({
     sectionTitle: "What this page becomes",
     sectionHint: "Sample rows.",
     railEyebrow: "Set up",
-    railTitle: "Before your first offer",
+    railTitle: "Before your first booking",
     railBody: "b",
     collapsedLabel: "Set up in progress",
     collapsedHint: "1 step left",
