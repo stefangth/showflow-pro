@@ -70,6 +70,7 @@ describe("FlowStep", () => {
     expect(screen.getByRole("alert")).toHaveTextContent(/could not load the booking flow/i);
     expect(screen.getByRole("alert")).toHaveTextContent("permission denied");
     expect(screen.queryByRole("button", { name: /^use /i })).not.toBeInTheDocument();
+  });
 
   it("reads the flow for the org it was handed, not for whatever org the shell is on", async () => {
     // The Save writes to the orgId prop and the suggested preset is a view of the flow read
