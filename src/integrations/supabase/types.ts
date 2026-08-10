@@ -1470,7 +1470,9 @@ export type Database = {
           expires_at: string
           id: string
           invited_by: string | null
+          last_resent_at: string | null
           org_id: string
+          resent_count: number
           role: Database["public"]["Enums"]["app_role"]
           status: string
           token: string
@@ -1483,7 +1485,9 @@ export type Database = {
           expires_at?: string
           id?: string
           invited_by?: string | null
+          last_resent_at?: string | null
           org_id: string
+          resent_count?: number
           role: Database["public"]["Enums"]["app_role"]
           status?: string
           token?: string
@@ -1496,7 +1500,9 @@ export type Database = {
           expires_at?: string
           id?: string
           invited_by?: string | null
+          last_resent_at?: string | null
           org_id?: string
+          resent_count?: number
           role?: Database["public"]["Enums"]["app_role"]
           status?: string
           token?: string
@@ -2383,6 +2389,7 @@ export type Database = {
           user_id: string
         }[]
       }
+      mark_invitation_resent: { Args: { p_id: string }; Returns: undefined }
       merge_cities: {
         Args: { p_losers: string[]; p_survivor: string }
         Returns: undefined

@@ -26,7 +26,7 @@ Deno.test("resend-invitation DI: resends email + reasserts membership via RPC", 
       organizations: { data: { name: "Acme" }, error: null },
     },
     authUsersByEmail: { "invitee@x.com": { id: "existing-invitee" } },
-    rpcs: { ensure_invitation_membership: { data: true, error: null } },
+    rpcs: { ensure_invitation_membership: { data: true, error: null }, mark_invitation_resent: { data: null, error: null } },
   });
   const res = await handle(
     makeRequest({ headers: { Authorization: "Bearer jwt" }, body: { invitation_id: "inv1", app_origin: "https://app.test" } }),
@@ -36,6 +36,9 @@ Deno.test("resend-invitation DI: resends email + reasserts membership via RPC", 
   const rpcCall = calls.find((c) => c.table === "rpc:ensure_invitation_membership");
   assertEquals(rpcCall?.args, [{ p_invitation: "inv1", p_user: "existing-invitee" }]);
   assertEquals(invokeCalls.filter((c) => c.name === "send-transactional-email").length, 1);
+  // Stamps the resend so other admins can see when/how often it was resent.
+  const stamp = calls.find((c) => c.table === "rpc:mark_invitation_resent");
+  assertEquals(stamp?.args, [{ p_id: "inv1" }]);
 });
 
 Deno.test("resend-invitation: opaque 403 for unknown invitation (no existence leak)", async () => {

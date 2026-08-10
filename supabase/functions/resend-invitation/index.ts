@@ -59,6 +59,11 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
       actionLink,
     });
 
+    // Stamp the resend so other admins can see WHEN (and how often) it was last resent. Best-effort:
+    // the email already went out, so a failed stamp must not fail the request (just a stale counter).
+    const { error: stampErr } = await deps.admin.rpc("mark_invitation_resent", { p_id: invite.id });
+    if (stampErr) console.error("resend-invitation: mark-resent failed", (stampErr as { message?: string }).message);
+
     return json({ ok: true });
   } catch (e) {
     console.error("resend-invitation error", e);
