@@ -53,6 +53,7 @@ describe("PeopleTab", () => {
   it("shows members and pending invites, and filters both via one search", async () => {
     renderWithProviders(<PeopleTab />);
     expect(screen.getByText("bob@x.com")).toBeInTheDocument();
+    // kim is an invited-only person (no display name), so her email is the primary line.
     expect(await screen.findByText("kim@x.com")).toBeInTheDocument();
     fireEvent.change(screen.getByPlaceholderText(/search people/i), { target: { value: "kim" } });
     expect(screen.queryByText("bob@x.com")).not.toBeInTheDocument();
@@ -88,7 +89,7 @@ describe("PeopleTab", () => {
   it("removing a member opens the confirm dialog and calls the remove mutation", async () => {
     renderWithProviders(<PeopleTab />);
     // The self row (admin-1) shows "You"; only bob's row has a "Remove" trigger.
-    fireEvent.click(screen.getByRole("button", { name: /^remove$/i }));
+    fireEvent.click(screen.getByRole("button", { name: /remove bob/i }));
     const dialog = await screen.findByRole("alertdialog");
     fireEvent.click(within(dialog).getByRole("button", { name: /^remove$/i }));
     expect(h.removeMutate).toHaveBeenCalledWith("bob-2", expect.anything());

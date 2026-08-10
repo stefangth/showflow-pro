@@ -99,16 +99,24 @@ export async function fetchPendingArtistInvitations(
   }));
 }
 
-/** Revoke a pending invitation. */
+/** Revoke a pending invitation and remove the membership it created (admin/super-admin RPC). */
 export async function revokeInvitation(
   client: SupabaseClient<Database>,
   id: string,
 ): Promise<void> {
-  const { error } = await client
-    .from("org_invitations")
-    .update({ status: "revoked" })
-    .eq("id", id);
+  const { error } = await client.rpc("revoke_invitation", { p_id: id });
   if (error) throw error;
+}
+
+/**
+ * Reconcile any pending invitations for the signed-in user's email (membership + artist
+ * profile + status), for any auth path. Best-effort: callers ignore the count. Returns the
+ * number of invitations claimed.
+ */
+export async function claimMyInvitations(client: SupabaseClient<Database>): Promise<number> {
+  const { data, error } = await client.rpc("claim_my_invitations");
+  if (error) throw error;
+  return (data as number | null) ?? 0;
 }
 
 /**

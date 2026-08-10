@@ -1,49 +1,17 @@
-import { assertEquals, assertRejects } from "https://deno.land/std@0.224.0/assert/mod.ts";
-import { deliverOrgInvitation } from "./invitations.ts";
+import { assertEquals } from "./test-asserts.ts";
+import { ensureInvitedUser, sendOrgInvitationEmail } from "./invitations.ts";
 import { makeFakeDeps } from "./testing.ts";
 
-const base = {
-  orgName: "Acme",
-  role: "artist",
-  token: "tok-1",
-  inviterEmail: "boss@acme.com",
-  appOrigin: "http://localhost:8080", // allowlisted by safeAppOrigin so it flows through unchanged
-  idempotencyKey: "org-invitation-1",
-  orgId: "org-1",
-};
+const APP_ORIGIN = "http://localhost:8080"; // allowlisted by safeAppOrigin so it flows through unchanged
 
-Deno.test("deliverOrgInvitation: net-new user → invite link to /reset-password embedded in branded email", async () => {
-  const { deps, invokeCalls, calls } = makeFakeDeps({
-    usersById: {}, // no existing user with this email → net-new
-    generateLinkResult: { data: { properties: { action_link: "https://app.test/reset-password?redirect=%2Faccept-invite%3Ftoken%3Dtok-1" } }, error: null },
-  });
-  await deliverOrgInvitation(deps, { ...base, email: "new@acme.com" });
-
-  const sent = invokeCalls.filter((c) => c.name === "send-transactional-email");
-  assertEquals(sent.length, 1);
-  const body = sent[0].body as { template_name: string; templateData: { actionLink?: string } };
-  assertEquals(body.template_name, "org-invitation");
-  assertEquals(body.templateData.actionLink, "https://app.test/reset-password?redirect=%2Faccept-invite%3Ftoken%3Dtok-1");
-
-  const gen = calls.find((c) => c.table === "auth.admin.generateLink")!;
-  const params = gen.args[0] as { type: string; options: { redirectTo: string } };
-  assertEquals(params.type, "invite");
-  assertEquals(params.options.redirectTo.includes("/reset-password?redirect="), true);
-  assertEquals(params.options.redirectTo.includes("%2Faccept-invite%3Ftoken%3Dtok-1"), true);
-});
-
-Deno.test("deliverOrgInvitation: existing user -> magic link actionLink to /auth/callback", async () => {
-  const { deps, invokeCalls, calls } = makeFakeDeps({
-    usersById: { "uid-1": { email: "known@x.com" } }, // makes userExistsByEmail true
+Deno.test("ensureInvitedUser: existing user → magic link to /auth/callback + id", async () => {
+  const { deps, calls } = makeFakeDeps({
+    authUsersByEmail: { "known@x.com": { id: "u9" } }, // existing (resolved via get_user_id_by_email)
     generateLinkResult: { data: { properties: { action_link: "https://link.example/magic" } }, error: null },
   });
-  await deliverOrgInvitation(deps, { ...base, email: "known@x.com" });
-
-  const sent = invokeCalls.filter((c) => c.name === "send-transactional-email");
-  assertEquals(sent.length, 1);
-  const body = sent[0].body as { templateData: { actionLink?: string } };
-  assertEquals(body.templateData.actionLink, "https://link.example/magic"); // non-empty now
-
+  const r = await ensureInvitedUser(deps, { email: "known@x.com", appOrigin: APP_ORIGIN, token: "tok-1" });
+  assertEquals(r.userId, "u9");
+  assertEquals(r.actionLink, "https://link.example/magic");
   const gen = calls.find((c) => c.table === "auth.admin.generateLink")!;
   const params = gen.args[0] as { type: string; options: { redirectTo: string } };
   assertEquals(params.type, "magiclink");
@@ -51,23 +19,59 @@ Deno.test("deliverOrgInvitation: existing user -> magic link actionLink to /auth
   assertEquals(params.options.redirectTo.includes("%2Faccept-invite%3Ftoken%3Dtok-1"), true);
 });
 
-Deno.test("deliverOrgInvitation: a foreign appOrigin is never minted into the redirect", async () => {
+Deno.test("ensureInvitedUser: net-new user → invite link to /reset-password + id", async () => {
   const { deps, calls } = makeFakeDeps({
-    usersById: { "uid-1": { email: "known@x.com" } }, // existing-user magic-link branch
+    generateLinkResult: {
+      data: { properties: { action_link: "https://link.example/invite" }, user: { id: "new-1" } },
+      error: null,
+    },
+  });
+  const r = await ensureInvitedUser(deps, { email: "new@acme.com", appOrigin: APP_ORIGIN, token: "tok-1" });
+  assertEquals(r.userId, "new-1");
+  assertEquals(r.actionLink, "https://link.example/invite");
+  const gen = calls.find((c) => c.table === "auth.admin.generateLink")!;
+  const params = gen.args[0] as { type: string; options: { redirectTo: string } };
+  assertEquals(params.type, "invite");
+  assertEquals(params.options.redirectTo.includes("/reset-password?redirect="), true);
+  assertEquals(params.options.redirectTo.includes("%2Faccept-invite%3Ftoken%3Dtok-1"), true);
+});
+
+Deno.test("ensureInvitedUser: a foreign appOrigin is never minted into the redirect", async () => {
+  const { deps, calls } = makeFakeDeps({
+    authUsersByEmail: { "known@x.com": { id: "u9" } },
     generateLinkResult: { data: { properties: { action_link: "https://link.example/magic" } }, error: null },
   });
-  await deliverOrgInvitation(deps, { ...base, email: "known@x.com", appOrigin: "https://evil.example" });
+  await ensureInvitedUser(deps, { email: "known@x.com", appOrigin: "https://evil.example", token: "tok-1" });
   const gen = calls.find((c) => c.table === "auth.admin.generateLink")!;
   const params = gen.args[0] as { options: { redirectTo: string } };
   assertEquals(params.options.redirectTo.includes("evil.example"), false); // foreign origin dropped
   assertEquals(params.options.redirectTo.includes("/auth/callback?redirect="), true);
 });
 
-Deno.test("deliverOrgInvitation: generateLink without action_link throws and sends no email", async () => {
-  const { deps, invokeCalls } = makeFakeDeps({
-    usersById: { "uid-1": { email: "known@x.com" } }, // existing-user branch
+Deno.test("ensureInvitedUser: generateLink without action_link throws", async () => {
+  const { deps } = makeFakeDeps({
+    authUsersByEmail: { "known@x.com": { id: "u9" } },
     generateLinkResult: { data: { properties: {} }, error: null }, // resolved, but no action_link
   });
-  await assertRejects(() => deliverOrgInvitation(deps, { ...base, email: "known@x.com" }));
-  assertEquals(invokeCalls.filter((c) => c.name === "send-transactional-email").length, 0);
+  let threw = false;
+  try {
+    await ensureInvitedUser(deps, { email: "known@x.com", appOrigin: APP_ORIGIN, token: "tok-1" });
+  } catch {
+    threw = true;
+  }
+  assertEquals(threw, true);
+});
+
+Deno.test("sendOrgInvitationEmail: sends org-invitation with the action link", async () => {
+  const { deps, invokeCalls } = makeFakeDeps();
+  await sendOrgInvitationEmail(deps, {
+    email: "new@acme.com", orgName: "Acme", role: "artist", token: "tok-1",
+    inviterEmail: "boss@acme.com", appOrigin: APP_ORIGIN, idempotencyKey: "org-invitation-1",
+    orgId: "org-1", actionLink: "https://link.example/invite",
+  });
+  const sent = invokeCalls.filter((c) => c.name === "send-transactional-email");
+  assertEquals(sent.length, 1);
+  const body = sent[0].body as { template_name: string; templateData: { actionLink?: string } };
+  assertEquals(body.template_name, "org-invitation");
+  assertEquals(body.templateData.actionLink, "https://link.example/invite");
 });

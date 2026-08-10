@@ -1,61 +1,44 @@
-import { Copy, X, RefreshCw } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { format } from "date-fns";
+import { Mail } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
-import { IconTooltip } from "@/components/common/IconTooltip";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { roleLabel } from "@/config/app.config";
 import type { Invitation } from "@/data/invitations";
 
 export interface InviteRowProps {
   invite: Invitation;
-  onCopyLink: (token: string) => void;
-  onResend: (id: string) => void;
-  onRevoke: (id: string) => void;
-  /** True while this row's resend/revoke is in flight, so a double-click can't fire twice. */
-  resendPending?: boolean;
-  revokePending?: boolean;
 }
 
-/** Status pill styling. Pending is actionable (warning); accepted/revoked are history. */
-const STATUS_PILL: Record<string, { label: string; className: string }> = {
-  pending: { label: "Pending", className: "border-warning text-warning" },
-  accepted: { label: "Accepted", className: "border-success text-success" },
-  revoked: { label: "Revoked", className: "text-muted-foreground" },
+/** History status → a tonal DS badge variant (both clear WCAG AA on the card, unlike outline text). */
+const STATUS: Record<string, { label: string; variant: "confirmed" | "neutral" }> = {
+  accepted: { label: "Accepted", variant: "confirmed" },
+  revoked: { label: "Revoked", variant: "neutral" },
 };
 
 /**
- * One org invitation. Pending invites are actionable (copy link / resend / revoke);
- * accepted and revoked invites are shown as read-only history with a status pill.
+ * One read-only invitation-history row (accepted / revoked), rendered as a listitem. It shares the
+ * directory's grammar: a muted envelope avatar (an invitation record, not yet/never a member), the same
+ * secondary role Badge, and the send date that anchors the chronology this card is named for. Actionable
+ * pending-invite controls (copy / resend / revoke) live only in PersonRow — this is the history surface.
  */
-export function InviteRow({ invite, onCopyLink, onResend, onRevoke, resendPending = false, revokePending = false }: InviteRowProps) {
-  const pill = STATUS_PILL[invite.status] ?? { label: invite.status, className: "text-muted-foreground" };
-  const isPending = invite.status === "pending";
+export function InviteRow({ invite }: InviteRowProps) {
+  const status = STATUS[invite.status] ?? { label: invite.status, variant: "neutral" as const };
   return (
-    <div className="flex items-center justify-between gap-2 p-3 rounded-lg border border-border">
-      <div className="min-w-0">
-        <p className={`font-medium text-sm truncate ${isPending ? "" : "text-muted-foreground"}`}>{invite.email}</p>
-        <p className="text-xs text-muted-foreground">{roleLabel(invite.role)}</p>
+    <div role="listitem" className="flex flex-col gap-2 py-3 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
+      <div className="flex min-w-0 items-center gap-3">
+        <Avatar aria-hidden className="h-9 w-9">
+          <AvatarFallback><Mail className="h-4 w-4 text-muted-foreground" /></AvatarFallback>
+        </Avatar>
+        <div className="flex min-w-0 flex-col gap-0.5">
+          <p className="truncate text-sm font-medium text-muted-foreground" title={invite.email}>{invite.email}</p>
+          {invite.created_at && (
+            <p className="truncate text-xs text-muted-foreground">Invited {format(new Date(invite.created_at), "dd/MM/yyyy")}</p>
+          )}
+        </div>
       </div>
-      <div className="flex items-center gap-1 shrink-0">
-        <Badge variant="outline" className={`text-xs ${pill.className}`}>{pill.label}</Badge>
-        {isPending && (
-          <>
-            <IconTooltip label="Copy invite link">
-              <Button size="sm" variant="ghost" className="h-7 px-2" onClick={() => onCopyLink(invite.token)} aria-label="Copy invite link">
-                <Copy className="h-3.5 w-3.5" />
-              </Button>
-            </IconTooltip>
-            <IconTooltip label="Resend invitation">
-              <Button size="sm" variant="ghost" className="h-7 px-2" disabled={resendPending} onClick={() => onResend(invite.id)} aria-label="Resend invitation">
-                <RefreshCw className="h-3.5 w-3.5" />
-              </Button>
-            </IconTooltip>
-            <IconTooltip label="Revoke invitation">
-              <Button size="sm" variant="ghost" className="h-7 px-2" disabled={revokePending} onClick={() => onRevoke(invite.id)} aria-label="Revoke invitation">
-                <X className="h-3.5 w-3.5" />
-              </Button>
-            </IconTooltip>
-          </>
-        )}
+      <div className="flex flex-wrap items-center gap-2 pl-12 sm:flex-nowrap sm:justify-end sm:pl-0">
+        <Badge variant="secondary" className="border-border/60 font-normal">{roleLabel(invite.role)}</Badge>
+        <Badge variant={status.variant}>{status.label}</Badge>
       </div>
     </div>
   );

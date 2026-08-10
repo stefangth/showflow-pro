@@ -3,7 +3,7 @@ import { requireOrgRole } from "../_shared/auth.ts";
 import { requireCapability } from "../_shared/capabilities.ts";
 import type { TablesInsert } from "../_shared/database.types.ts";
 import { realDeps, type Deps } from "../_shared/deps.ts";
-import { deliverOrgInvitation } from "../_shared/invitations.ts";
+import { ensureInvitedUser, sendOrgInvitationEmail } from "../_shared/invitations.ts";
 import { roleLabel } from "../_shared/roles.ts";
 
 type Body = {
@@ -110,24 +110,55 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
       return json({ error: insErr?.message ?? 'Could not create invitation' }, 500);
     }
 
-    // Best-effort delivery. The invitation already exists, so a send failure does not
-    // fail the request — the admin can copy the accept link instead.
+    // Membership at invite time (best-effort, mirroring provision-org). A failure here does
+    // NOT fail the request: the invitation row exists and claim_my_invitations reconciles
+    // membership on the invitee's first sign-in.
+    let userId: string | null = (existingUserId as string | null) ?? null;
+    let actionLink: string | undefined;
     try {
-      const { data: org } = await admin
-        .from('organizations').select('name').eq('id', body.org_id).maybeSingle();
-      const inviter = inviterId ? await admin.auth.admin.getUserById(inviterId) : null;
-      await deliverOrgInvitation(deps, {
-        email: invite.email,
-        orgName: (org as { name?: string } | null)?.name ?? undefined,
-        role: roleLabel(invite.role),
-        token: invite.token,
-        inviterEmail: inviter?.data?.user?.email ?? undefined,
-        appOrigin,
-        idempotencyKey: `org-invitation-${invite.id}`,
-        orgId: body.org_id,
-      });
+      // Mint the right link for EVERY invitee (net-new → set-password invite link; existing →
+      // magic link, incl. passwordless/expired), the same way provision-org/resend-invitation do,
+      // so the email always carries a working way in. Reusing existingUserId alone would skip the
+      // mint for an existing non-member and dead-end them on the bare token link.
+      const ensured = await ensureInvitedUser(deps, { email: invite.email, appOrigin, token: invite.token });
+      userId = ensured.userId ?? userId;
+      actionLink = ensured.actionLink;
+      if (userId) {
+        const { error: memErr } = await admin.rpc("ensure_invitation_membership", {
+          p_invitation: invite.id, p_user: userId,
+        });
+        if (memErr) console.error("create-invitation: membership link failed", (memErr as { message?: string }).message);
+      }
     } catch (e) {
-      console.error('create-invitation: delivery failed', (e as Error).message);
+      console.error("create-invitation: membership provisioning failed", (e as Error).message);
+    }
+
+    // Best-effort delivery — but only if the invitee has a usable path to authenticate:
+    // an existing account (userId) or a freshly minted set-password link (actionLink). If a
+    // net-new account failed to mint above (neither is set), a plain-link email would be a
+    // dead end for an account-less user, so skip it; the invitation row exists and the admin
+    // can resend/copy-link. A send failure still does not fail the request.
+    if (userId || actionLink) {
+      try {
+        const { data: org } = await admin
+          .from('organizations').select('name').eq('id', body.org_id).maybeSingle();
+        const inviter = inviterId ? await admin.auth.admin.getUserById(inviterId) : null;
+        await sendOrgInvitationEmail(deps, {
+          email: invite.email,
+          orgName: (org as { name?: string } | null)?.name ?? undefined,
+          role: roleLabel(invite.role),
+          token: invite.token,
+          inviterEmail: inviter?.data?.user?.email ?? undefined,
+          appOrigin,
+          idempotencyKey: `org-invitation-${invite.id}`,
+          orgId: body.org_id,
+          actionLink,
+        });
+      } catch (e) {
+        console.error('create-invitation: delivery failed', (e as Error).message);
+      }
+    } else {
+      console.error('create-invitation: skipped delivery — net-new account minting failed (no account to authenticate)');
     }
 
     return json({ ok: true, invitation: invite });
