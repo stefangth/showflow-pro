@@ -1,7 +1,7 @@
 -- Tests for public.revoke_invitation(p_id): status flip + membership removal + gates.
 BEGIN;
 CREATE EXTENSION IF NOT EXISTS pgtap WITH SCHEMA extensions;
-SELECT plan(8);
+SELECT plan(9);
 
 SET session_replication_role = replica;
 INSERT INTO auth.users (id, aud, role, email, email_confirmed_at, raw_app_meta_data, raw_user_meta_data, created_at, updated_at)
@@ -30,6 +30,10 @@ VALUES ('00000000-0000-0000-0000-00000000d113','00000000-0000-0000-0000-0000000d
 -- An already-accepted invitation must be un-revokable (would otherwise strip membership).
 INSERT INTO public.org_invitations (id, org_id, email, role, token, status)
 VALUES ('00000000-0000-0000-0000-00000000d112','00000000-0000-0000-0000-0000000d1001','rev-invitee@test.com','artist','tok-rev-acc','accepted');
+-- An artist row ensure_invitation_membership claimed for invitee2 at invite time (by email);
+-- revoking the still-pending artist invite must un-claim it, not strand it linked to a stranger.
+INSERT INTO public.artists (id, org_id, user_id, email, name)
+VALUES ('00000000-0000-0000-0000-0000000a1105','00000000-0000-0000-0000-0000000d1001','dddddddd-dddd-d105-0000-000000000000','rev-invitee2@test.com','Rev Invitee2');
 SET session_replication_role = DEFAULT;
 
 -- 1. A non-admin outsider cannot revoke (gate fires before the status guard).
@@ -69,6 +73,11 @@ SELECT is(
   (SELECT count(*)::int FROM public.org_memberships
    WHERE org_id='00000000-0000-0000-0000-0000000d1001' AND user_id='dddddddd-dddd-d105-0000-000000000000' AND role='artist'),
   0, 'super-admin revoke removed the invite-created membership');
+-- 9. That revoke also un-claimed the artist row (the invitee has no remaining membership), so
+--    no catalog artist is left pointing at a now-stranger.
+SELECT is(
+  (SELECT user_id FROM public.artists WHERE id='00000000-0000-0000-0000-0000000a1105'),
+  NULL, 'revoke un-claimed the invite-linked artist when no membership remains');
 
 SELECT * FROM finish();
 ROLLBACK;

@@ -212,10 +212,9 @@ export function PeopleTab() {
             <AlertDialogCancel>Cancel</AlertDialogCancel>
             <AlertDialogAction onClick={() => {
               if (!revokeTarget) return;
-              revoke.mutate(revokeTarget.id, {
-                onSuccess: () => toast.success("Invitation revoked"),
-                onError: (e) => toast.error((e as Error).message),
-              });
+              // useInvitationMutations.revoke already toasts + invalidates on success/error;
+              // don't pass call-site callbacks or the toast fires twice.
+              revoke.mutate(revokeTarget.id);
               setRevokeTarget(null);
             }}>Revoke</AlertDialogAction>
           </AlertDialogFooter>

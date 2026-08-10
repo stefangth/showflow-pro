@@ -39,7 +39,14 @@ begin
            where o.org_id = v_inv.org_id and o.user_id = p_user
          );
       get diagnostics v_cnt = row_count;
-      v_linked := v_cnt > 0;
+      -- artist_linked is true if we just linked it OR it was already linked to this user by
+      -- an earlier call to this idempotent function (invite-time, then accept / self-heal),
+      -- so a repeat call never reports a genuinely-linked artist as unlinked. It stays false
+      -- only when the target catalog artist is claimed by someone else / the owner guard skips it.
+      v_linked := v_cnt > 0 or exists (
+        select 1 from public.artists a
+        where a.id = v_inv.artist_id and a.org_id = v_inv.org_id and a.user_id = p_user
+      );
     else
       -- Plain email invite: claim an unclaimed row by lowercased email. Guard against the
       -- artists(org_id,user_id) partial-unique index the same way the artist_id branch does
@@ -231,6 +238,28 @@ begin
     end if;
     delete from public.org_memberships
     where org_id = v_inv.org_id and user_id = v_user and role = v_inv.role;
+
+    -- Reverse the artist link ensure_invitation_membership created at invite time, but only
+    -- if revoking leaves the invitee with NO membership in the org (an independently-earned
+    -- membership legitimately keeps its artist link). Unlink, never delete: a real catalog
+    -- artist is only un-claimed (user_id → null), and an auto-created placeholder is left as
+    -- an unclaimed orphan rather than being destroyed. Without this, revoking a still-pending
+    -- artist invite would strand a catalog artist pointing at a now-stranger, or an orphaned
+    -- auto-created profile with no owning membership.
+    if v_inv.role = 'artist'
+       and not exists (
+         select 1 from public.org_memberships
+         where org_id = v_inv.org_id and user_id = v_user
+       ) then
+      update public.artists a
+         set user_id = null
+       where a.org_id = v_inv.org_id
+         and a.user_id = v_user
+         and (
+           (v_inv.artist_id is not null and a.id = v_inv.artist_id)
+           or (v_inv.artist_id is null and lower(a.email) = lower(v_inv.email))
+         );
+    end if;
   end if;
 end;
 $$;

@@ -27,12 +27,14 @@ test.describe("Member removal", () => {
     await loginAsAndAwaitDashboard(page, ADMIN_EMAIL, ADMIN_PASSWORD);
     await page.goto("/admin?tab=members"); // legacy deep link, normalizes to the People pane
 
-    // The member has no display name, so the People pane's member row shows the email on
-    // both the name and sub-text lines — match the first.
+    // The member has no display name, so the People pane shows the email as the row's
+    // primary line.
     await expect(page.getByText(MEMBER_EMAIL).first()).toBeVisible({ timeout: 15_000 });
     // The shared bootstrap org has many members, so scope the Remove click to the member's
-    // own row (grandparent of the email text), then confirm in the dialog.
-    await page.getByText(MEMBER_EMAIL).first().locator("xpath=../..").getByRole("button", { name: /^remove$/i }).click();
+    // own listitem row (the Remove control is now labelled "Remove <name/email>"), then
+    // confirm in the dialog.
+    const memberRow = page.getByRole("listitem").filter({ hasText: MEMBER_EMAIL });
+    await memberRow.getByRole("button", { name: /^remove/i }).click();
     await page.getByRole("alertdialog").getByRole("button", { name: /^remove$/i }).click(); // AlertDialog confirm
 
     await expect(async () => {
