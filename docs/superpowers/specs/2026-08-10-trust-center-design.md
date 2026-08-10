@@ -185,11 +185,18 @@ The only code change in Phase 1. TDD, following the pattern in
 matching the harness in `supabase/tests/rls/artists_contact_privacy.sql`. Fixture: two users
 in one org, one user in a second org.
 
-Assertions, all of which must fail before the fix:
+Two of these are red tests and three are regression guards. Expect 3 to 5 to pass on the
+first run against the current policy, which is the point of them, so do not go looking for a
+broken harness when they come up green.
+
+Must fail before the fix, since they are the bug:
 
 1. As co-org member B: `select phone from profiles where user_id = A` returns empty.
 2. As co-org member B: `select display_name from profiles where user_id = A` returns empty
    (direct table read is no longer the path).
+
+Already true today, and must stay true after:
+
 3. As user A: own row still readable, `phone` included.
 4. As a super-admin: any row readable.
 5. As the second-org user: no rows for A, phone or otherwise.
