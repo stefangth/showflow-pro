@@ -31,7 +31,11 @@ export function useInvitationMutations(orgId: string | null | undefined) {
 
   const resend = useMutation({
     mutationFn: (id: string) => resendInvitation(supabase, id),
-    onSuccess: () => toast.success("Invitation re-sent"),
+    // Invalidate like create/revoke: the resend stamps last_resent_at/resent_count
+    // server-side, and the People row reads those from ['org-invitations']. Without
+    // this, the "Resent …" meta stays stale in-session — the exact coordination gap
+    // this is meant to close.
+    onSuccess: () => { invalidate(); toast.success("Invitation re-sent"); },
     onError: (e: Error) => toast.error(e?.message ?? "Could not resend invitation"),
   });
 
