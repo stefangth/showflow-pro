@@ -43,9 +43,10 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
       email: invite.email, appOrigin, token: invite.token,
     });
     if (userId) {
-      await deps.admin.rpc("ensure_invitation_membership", {
+      const { error: memErr } = await deps.admin.rpc("ensure_invitation_membership", {
         p_invitation: invite.id, p_user: userId,
       });
+      if (memErr) console.error("resend-invitation: membership link failed", (memErr as { message?: string }).message);
     }
     await sendOrgInvitationEmail(deps, {
       email: invite.email,
