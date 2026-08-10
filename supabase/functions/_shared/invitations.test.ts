@@ -124,20 +124,6 @@ Deno.test("formatExpiresOn: unparsable input returns undefined instead of 'Inval
   assertEquals(formatExpiresOn("not-a-date"), undefined);
 });
 
-// `now` is fixed well before the expiry in every test below (2026-08-01, three weeks
-// ahead of the 2026-08-24 expiries used throughout) unless a test is specifically about
-// the near-expiry clamp: it exercises the 48-hour step-back in isolation, the same way
-// the function behaved before `now` became a required parameter.
-const FAR_FROM_EXPIRY_NOW = new Date("2026-08-01T00:00:00.000Z");
-
-// ── the near-expiry clamp (resend-invitation's own failure mode) ──────────────────
-//
-// A resend restates an EXISTING row's expires_at, which can legitimately happen at any
-// point in the invitation's life, including its final 48 hours. Without a `now`-aware
-// an earlier revision's date arithmetic would state an already-past-looking day here
-// from the reader's point of view, which reads as an already-expired invitation even
-// though the window (and the resend) are both still genuinely valid.
-
 Deno.test("resolveInviterName: prefers profiles.display_name over the auth email, and omits email once a name is known", async () => {
   // Regression: once display_name resolves, no template ever renders inviterEmail (the
   // org-invitation "Invited by" line does inviterName || inviterEmail, and name already
