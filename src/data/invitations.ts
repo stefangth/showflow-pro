@@ -39,7 +39,10 @@ export async function createInvitation(
   };
   if (args.artistId) body.artist_id = args.artistId;
   const { data, error } = await client.functions.invoke("create-invitation", { body });
-  if (error) throw error;
+  // Same as resendInvitation below: the edge function's refusal sentences (duplicate
+  // pending invite, existing member) arrive as non-2xx JSON bodies that supabase-js
+  // hides behind an opaque invoke error. Read the body back out for the admin's toast.
+  if (error) throw new Error(await readEdgeError(error));
   const payload = data as { error?: string; invitation?: Invitation };
   if (payload?.error) throw new Error(payload.error);
   if (!payload?.invitation) throw new Error("Invitation was not created");

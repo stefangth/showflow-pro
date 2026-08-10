@@ -126,6 +126,25 @@ describe("resendInvitation", () => {
   });
 });
 
+describe("createInvitation error bodies", () => {
+  // Same contract as resendInvitation below-the-fold: create-invitation returns its
+  // refusals (duplicate pending invite, existing member, invalid role) as non-2xx JSON
+  // bodies whose sentences are written for the admin's toast, and supabase-js hides
+  // them behind the opaque invoke error. The husk must not be what the admin reads.
+  it("surfaces the server's error sentence, not the opaque invoke message", async () => {
+    const serverError = Object.assign(new Error("Edge Function returned a non-2xx status code"), {
+      context: new Response(
+        JSON.stringify({ error: "A pending invitation for this email already exists." }),
+        { status: 409 },
+      ),
+    });
+    const fake = createFakeSupabase({ "fn:create-invitation": { data: null, error: serverError } });
+    await expect(
+      createInvitation(fake as never, { orgId: "org-1", email: "a@example.com", role: "artist" }),
+    ).rejects.toThrow("A pending invitation for this email already exists.");
+  });
+});
+
 describe("createInvitation with artistId", () => {
   it("forwards artist_id in the function body when provided", async () => {
     const fake = createFakeSupabase({ "fn:create-invitation": { data: { invitation: INV }, error: null } });
