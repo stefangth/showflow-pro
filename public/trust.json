@@ -22,7 +22,7 @@
     },
     {
       "icon": "globe",
-      "label": "Data residency",
+      "label": "Database region",
       "value": "European Union (Ireland)"
     },
     {

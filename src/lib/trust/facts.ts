@@ -114,7 +114,11 @@ export interface Kpi {
 /** The four facts a reviewer scans first. Each is checkable. */
 export const TRUST_KPIS: Kpi[] = [
   { icon: "lock", label: "Tenant isolation", value: "Row-level, asserted on every commit" },
-  { icon: "globe", label: "Data residency", value: "European Union (Ireland)" },
+  // Scoped to the database on purpose. The Postgres project is eu-west-1, but
+  // hosting and transactional email are US processors under DPF + SCCs, so a
+  // bare "Data residency: EU" would overclaim. The subprocessor table carries
+  // the per-processor regions.
+  { icon: "globe", label: "Database region", value: "European Union (Ireland)" },
   { icon: "server", label: "Subprocessors", value: "6 named, 2 consent-only" },
   { icon: "users", label: "Access control", value: "28 rights, 9 sensitive, 9 off by default" },
 ];
