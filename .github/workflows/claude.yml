@@ -45,7 +45,7 @@ jobs:
           fi
 
       - name: Checkout PR branch
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
         with:
           repository: ${{ github.event.repository.full_name }}
           ref: refs/pull/${{ github.event.issue.number }}/head

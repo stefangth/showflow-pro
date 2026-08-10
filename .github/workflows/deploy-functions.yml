@@ -81,7 +81,7 @@ jobs:
       # head SHA; for workflow_dispatch that expression is empty so checkout falls
       # back to the branch the workflow was dispatched from. fetch-depth: 2 gives us
       # the parent commit needed by the "did functions change" diff below.
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           ref: ${{ github.event.workflow_run.head_sha }}
           fetch-depth: 2
@@ -116,7 +116,7 @@ jobs:
       # Never ship functions against a schema that did not land. This is the same
       # check that runs on PRs and on push:main; running it here too is what makes
       # the code deploy and the schema deploy rise and fall together.
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v7
         if: steps.changed.outputs.deploy == 'true'
         with:
           node-version: "20"
@@ -129,7 +129,7 @@ jobs:
         if: steps.changed.outputs.deploy == 'true'
         run: node scripts/check-migrations.mjs --wait-seconds=300
 
-      - uses: supabase/setup-cli@v1
+      - uses: supabase/setup-cli@v3
         if: steps.changed.outputs.deploy == 'true'
         with:
           # Pinned to match the rest of CI (ci.yml).
