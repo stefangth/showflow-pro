@@ -234,4 +234,28 @@ describe("EmailTemplateEditorPage", () => {
     expect(screen.getByLabelText("Subject")).toBeDisabled();
     expect(await screen.findByTitle("Email template preview")).toHaveAttribute("srcdoc", "<h1>Rendered draft</h1>");
   });
+
+  // org-invitation renders ONE of four separately-editable role action lines, selected
+  // by its sample data. Without this switcher the preview only ever showed the producer
+  // variant, so three of the four edited sentences were unpreviewable before saving.
+  it("switches the org-invitation preview between the declared role variants", async () => {
+    renderPage();
+    await screen.findByRole("group", { name: "Preview as" });
+    const lastPaneProps = () =>
+      vi.mocked(EmailPreviewPane).mock.calls.at(-1)?.[0] as { dataOverride?: Record<string, unknown> };
+    // Default = the first declared variant, which mirrors the template's own sample data.
+    expect(lastPaneProps().dataOverride).toMatchObject({ roleKey: "producer" });
+    fireEvent.click(screen.getByRole("button", { name: "Admin" }));
+    expect(lastPaneProps().dataOverride).toMatchObject({ roleKey: "admin" });
+    fireEvent.click(screen.getByRole("button", { name: "Artist (offer flow)" }));
+    expect(lastPaneProps().dataOverride).toMatchObject({ roleKey: "artist", offersExpected: true });
+    fireEvent.click(screen.getByRole("button", { name: "Artist (direct book)" }));
+    expect(lastPaneProps().dataOverride).toMatchObject({ roleKey: "artist", offersExpected: false });
+  });
+
+  it("renders no variant switcher for a template without declared variants", async () => {
+    renderPage("account-email-changed");
+    expect(await screen.findByTitle("Email template preview")).toBeInTheDocument();
+    expect(screen.queryByRole("group", { name: "Preview as" })).not.toBeInTheDocument();
+  });
 });

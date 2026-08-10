@@ -23,6 +23,10 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
   let hasCopyOverride = false
   let themeOverride: EmailThemeOverride = {}
   let highlightRole: unknown
+  // Sample-data override for the requested template. A template that renders one of
+  // several variants off its data (org-invitation's four role action lines) is
+  // otherwise only previewable in whichever variant its previewData hardcodes.
+  let dataOverride: TemplateData = {}
   try {
     if (req.method === 'POST') {
       const body = await req.json().catch(() => ({}))
@@ -38,6 +42,9 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
         themeOverride = body.themeOverride as EmailThemeOverride
       }
       highlightRole = body.highlightRole
+      if (body.dataOverride && typeof body.dataOverride === 'object' && !Array.isArray(body.dataOverride)) {
+        dataOverride = body.dataOverride as TemplateData
+      }
     }
   } catch {
     // ignore
@@ -84,7 +91,12 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
       // `overrides` is the legacy preview payload. Keep it compatible while
       // making the documented flattened copyOverride win on any collision.
       const legacyCopy = legacyEmailOverridesToCopy({ [name]: overrides })
-      const presentation = resolveTemplatePresentation(name, entry.previewData, {
+      // Only the explicitly requested template gets the data override: in list mode
+      // (no templateName) every template renders its own registered sample data.
+      const previewData = name === templateName
+        ? { ...entry.previewData, ...dataOverride }
+        : entry.previewData
+      const presentation = resolveTemplatePresentation(name, previewData, {
         copyOverride: hasCopyOverride ? copyOverride : legacyCopy,
         copyIsExplicit: hasCopyOverride,
         legacySubjectOverride: hasCopyOverride

@@ -479,6 +479,50 @@ Deno.test("preview-transactional-email DI: applies copy, theme, and highlight ov
   assertEquals(templates[0].html.includes("outline:2px solid"), true);
 });
 
+// The org-invitation template renders ONE of four role action lines, selected by its
+// sample data's roleKey/offersExpected. Without a data override the Settings preview
+// could only ever show the producer variant, leaving three separately-editable
+// sentences unpreviewable before save. dataOverride merges over previewData for the
+// requested template so the editor's role switcher can render each variant.
+Deno.test("preview-transactional-email DI: dataOverride merges over the template's sample data", async () => {
+  const res = await handle(
+    authedPostRequest({
+      templateName: "org-invitation",
+      dataOverride: { roleKey: "admin", role: "Admin" },
+    }),
+    adminDeps(),
+  );
+  const { templates } = await res.json() as {
+    templates: Array<{ html: string; status: string }>;
+  };
+  assertEquals(templates[0].status, "ready");
+  assertEquals(templates[0].html.includes("full control of this workspace"), true, "admin action line renders");
+  assertEquals(templates[0].html.includes("plan productions and show dates"), false, "producer line is replaced");
+});
+
+Deno.test("preview-transactional-email DI: without dataOverride the sample data is untouched", async () => {
+  const res = await handle(
+    authedPostRequest({ templateName: "org-invitation" }),
+    adminDeps(),
+  );
+  const { templates } = await res.json() as {
+    templates: Array<{ html: string; status: string }>;
+  };
+  assertEquals(templates[0].html.includes("plan productions and show dates"), true, "producer sample stays the default");
+});
+
+Deno.test("preview-transactional-email DI: non-object dataOverride is silently ignored", async () => {
+  const res = await handle(
+    authedPostRequest({ templateName: "org-invitation", dataOverride: "roleKey=admin" }),
+    adminDeps(),
+  );
+  const { templates } = await res.json() as {
+    templates: Array<{ html: string; status: string }>;
+  };
+  assertEquals(templates[0].status, "ready");
+  assertEquals(templates[0].html.includes("plan productions and show dates"), true);
+});
+
 Deno.test("preview-transactional-email DI: non-object overrides field is silently ignored", async () => {
   const res = await handle(
     authedPostRequest({
