@@ -15,6 +15,7 @@ export const EMAIL_TEMPLATE_KEYS = [
   "hire-order-countersigned",
   "org-invitation",
   "account-email-changed",
+  "magic-link",
   "cron-health-alert",
 ] as const;
 
@@ -155,6 +156,15 @@ export const EMAIL_COPY_DEFAULTS = {
   "account-email-changed.newEmailLabel": "New email",
   "account-email-changed.signInPrompt": "Sign in at {{signInUrl}} using your new email address.",
   "account-email-changed.emailFallback": "unknown",
+
+  "magic-link.subject": "Your sign-in link for ShowFlow",
+  "magic-link.heading": "Sign in to ShowFlow",
+  "magic-link.greeting": "Hi,",
+  "magic-link.intro": "Use the button below to sign in. This link works once and expires shortly. If you did not request it, you can ignore this email.",
+  "magic-link.ctaLabel": "Sign in",
+  "magic-link.footer": "For your security, this link can only be used once.",
+  "magic-link.previewText": "Your one-time sign-in link for ShowFlow",
+  "magic-link.pasteLink": "Or paste this link into your browser:",
 
   "cron-health-alert.subject": "Cron health: {{jobName}} is failing ({{statusCode}})",
   "cron-health-alert.heading": "Scheduled job failing",

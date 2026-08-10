@@ -284,6 +284,21 @@ export type Database = {
           },
         ]
       }
+      auth_link_throttle: {
+        Row: {
+          email: string
+          last_sent_at: string
+        }
+        Insert: {
+          email: string
+          last_sent_at?: string
+        }
+        Update: {
+          email?: string
+          last_sent_at?: string
+        }
+        Relationships: []
+      }
       blocked_dates: {
         Row: {
           artist_id: string
@@ -2231,6 +2246,10 @@ export type Database = {
       }
       capability_default: { Args: { _capability: string }; Returns: boolean }
       category_of: { Args: { p_type: string }; Returns: string }
+      claim_login_link_slot: {
+        Args: { p_cooldown_seconds: number; p_email: string }
+        Returns: boolean
+      }
       claim_my_invitations: { Args: never; Returns: number }
       compute_show_date_status: {
         Args: { p_show_date_id: string }

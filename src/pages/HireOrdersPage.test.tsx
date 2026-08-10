@@ -3,6 +3,7 @@ import { describe, expect, it, vi, beforeEach } from "vitest";
 import { fireEvent, screen, waitFor, within } from "@testing-library/react";
 import { renderWithProviders } from "@/test/renderWithProviders";
 import { createFakeSupabase, type TableSeed } from "@/test/supabaseFake";
+import type { SetupRailMode } from "@/components/setup/setupRailMode";
 
 // Same harness as HireOrderDetailPage.test.tsx: a call-recording fake swapped
 // into a hoisted holder (never a hand-rolled vi.mock chain), and useAuth as a
@@ -38,7 +39,7 @@ vi.mock("react-router-dom", () => ({
 // offer to reopen a rail that would render nothing actionable -- now it reads
 // the exact same hook output as the callout, just a different field).
 const { railState } = vi.hoisted(() => ({
-  railState: { value: { visible: true, reinvocable: false } as { visible: boolean; reinvocable: boolean } },
+  railState: { value: { mode: "banner" } as { mode: SetupRailMode } },
 }));
 vi.mock("@/components/hireOrders/setup/SetupRail", () => ({
   SetupRail: () => <div data-testid="setup-rail" />,
@@ -220,7 +221,7 @@ describe("HireOrdersPage", () => {
   beforeEach(() => {
     navigate.mockClear();
     authAs("producer");
-    railState.value = { visible: true, reinvocable: false };
+    railState.value = { mode: "banner" };
     hireOrderSetupStatus.value = makeHireStatus(0, false);
     localStorage.clear();
     seedFor(ROWS);
@@ -572,12 +573,14 @@ describe("HireOrdersPage", () => {
     expect(screen.queryByRole("button", { name: /open checklist/i })).not.toBeInTheDocument();
   });
 
-  it("hides the setup callout once the rail has retired", async () => {
-    railState.value = { visible: false, reinvocable: false };
+  it("shows nothing when the rail is hidden", async () => {
+    railState.value = { mode: "hidden" };
     renderPage();
     await screen.findByText("Hire orders");
     expect(screen.queryByText(/get hire orders ready/i)).not.toBeInTheDocument();
     expect(screen.queryByTestId("setup-rail")).not.toBeInTheDocument();
+    expect(screen.queryByText(/set up in progress/i)).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /setup checklist/i })).not.toBeInTheDocument();
   });
 
   it("shows no re-invoke button by default (not dismissed)", async () => {
@@ -586,49 +589,47 @@ describe("HireOrdersPage", () => {
     expect(screen.queryByRole("button", { name: /setup checklist/i })).not.toBeInTheDocument();
   });
 
-  it("shows the header re-invoke button once dismissed while setup is still incomplete", async () => {
-    // The mocked hook reports what the real useSetupRailVisible would compute
-    // once dismissed: not visible (the callout is gone), but reinvocable --
-    // there's still something actionable once the header button reopens it.
-    railState.value = { visible: false, reinvocable: true };
+  it("collapses to a bar, not the checklist button, when dismissed while setup is incomplete", async () => {
+    railState.value = { mode: "collapsed" };
     localStorage.setItem("showflow.hireOrderSetup.hidden.org-1", "true");
     renderPage();
-    expect(await screen.findByRole("button", { name: /setup checklist/i })).toBeInTheDocument();
-    // The dismissed rail leaves no callout behind either.
+    await screen.findByText("Hire orders");
+    // Not the completed-state button and not the full wizard:
+    expect(screen.queryByRole("button", { name: /setup checklist/i })).not.toBeInTheDocument();
     expect(screen.queryByText(/get hire orders ready/i)).not.toBeInTheDocument();
+    // The compact progress bar with a Resume affordance:
+    expect(await screen.findByText(/set up in progress/i)).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /resume/i })).toBeInTheDocument();
   });
 
-  it("re-invokes on click: clears the dismissal and opens the Sheet with the rail", async () => {
-    railState.value = { visible: false, reinvocable: true };
+  it("the collapsed bar's Resume clears the dismissal so the wizard re-expands", async () => {
+    railState.value = { mode: "collapsed" };
     localStorage.setItem("showflow.hireOrderSetup.hidden.org-1", "true");
     renderPage();
-    fireEvent.click(await screen.findByRole("button", { name: /setup checklist/i }));
-
-    expect(await screen.findByTestId("setup-rail")).toBeInTheDocument();
+    fireEvent.click(await screen.findByRole("button", { name: /resume/i }));
     expect(localStorage.getItem("showflow.hireOrderSetup.hidden.org-1")).toBeNull();
   });
 
-  it("hides the re-invoke button once setup is complete, even if previously dismissed", async () => {
-    // The real hook reports both false once complete, regardless of dismissed.
-    railState.value = { visible: false, reinvocable: false };
-    localStorage.setItem("showflow.hireOrderSetup.hidden.org-1", "true");
+  it("shows the permanent checklist button once setup is complete, and it opens the Sheet", async () => {
+    railState.value = { mode: "button" };
     hireOrderSetupStatus.value = makeHireStatus(3, true);
     renderPage();
-    await screen.findByText("Hire orders");
-    expect(screen.queryByRole("button", { name: /setup checklist/i })).not.toBeInTheDocument();
+    const btn = await screen.findByRole("button", { name: /setup checklist/i });
+    // No bar and no full wizard in the complete state:
+    expect(screen.queryByText(/set up in progress/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/get hire orders ready/i)).not.toBeInTheDocument();
+    fireEvent.click(btn);
+    expect(await screen.findByTestId("setup-rail")).toBeInTheDocument();
   });
 
-  it("never offers the re-invoke button in a state where the rail itself would render nothing actionable", async () => {
-    // Regression for the fix wave's finding: a producer once nothing blocks
-    // issuing is exactly the state useSetupRailVisible reports `reinvocable:
-    // false` for, even while dismissed -- the old independently-gated button
-    // (`dismissed && !complete`) would have shown here.
-    railState.value = { visible: false, reinvocable: false };
+  it("shows neither the bar nor the button in the hidden (not actionable) state", async () => {
+    railState.value = { mode: "hidden" };
     localStorage.setItem("showflow.hireOrderSetup.hidden.org-1", "true");
     hireOrderSetupStatus.value = makeHireStatus(2, false);
     renderPage();
     await screen.findByText("Hire orders");
     expect(screen.queryByRole("button", { name: /setup checklist/i })).not.toBeInTheDocument();
+    expect(screen.queryByText(/set up in progress/i)).not.toBeInTheDocument();
   });
 
   it("does not show the re-invoke button when the module is off, even if dismissed", async () => {

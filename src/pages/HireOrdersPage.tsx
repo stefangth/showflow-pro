@@ -11,9 +11,9 @@ import { OrderSlideOver } from "@/components/hireOrders/OrderSlideOver";
 import { NewOrderWizard } from "@/components/hireOrders/NewOrderWizard";
 import { HireOrderImportDialog } from "@/components/hireOrders/import/HireOrderImportDialog";
 import { DashboardSetupRail } from "@/components/dashboard/firstRun/DashboardSetupRail";
+import { DashboardWelcomeCollapsed } from "@/components/dashboard/firstRun/DashboardWelcomeCollapsed";
 import { useModuleOnboardingRail } from "@/components/setup/useModuleOnboardingRail";
 import { SetupChecklistSheet } from "@/components/setup/SetupChecklistSheet";
-import { useRailDismissed } from "@/components/setup/useRailDismissed";
 import type { ComposedStep } from "@/lib/dashboard/types";
 import { FeatureOffBanner } from "@/components/layout/FeatureOffBanner";
 import { Button } from "@/components/ui/button";
@@ -140,15 +140,12 @@ export default function HireOrdersPage() {
   // "changes cannot be saved", and it should not depend on another module's
   // null-handling to hold.
   //
-  // `visible` drives the inline callout, `reinvocable` drives the header button
-  // (Plan B Task 3's re-invoke) -- both read off the SAME hook and the same inputs, so
-  // the header button can never offer to reopen a rail that would render nothing
-  // actionable (the divergence a separately-computed `dismissed && !complete` used to
-  // allow, e.g. for a producer once nothing blocks issuing).
+  // `rail.mode` is one of "banner" (full wizard), "collapsed" (compact bar,
+  // re-expandable), "button" (setup complete, permanent header re-entry), or
+  // "hidden" (nothing actionable). All four render states below key off this
+  // single value, behind the same write-gate as the rail itself.
   const rail = useModuleOnboardingRail("hire_orders", entitledForWrites ? orgId : null);
-  const showSetupRail = entitledForWrites && rail.show;
-  const showSetupReinvoke = entitledForWrites && rail.reinvocable;
-  const [, , undismissSetup] = useRailDismissed("hireOrderSetup", entitledForWrites ? orgId : null);
+  const setupMode = entitledForWrites ? rail.mode : "hidden";
   const [setupSheetOpen, setSetupSheetOpen] = useState(false);
   const [setupStep, setSetupStep] = useState<string | undefined>(undefined);
   const openSetupAt = (step: ComposedStep) => { setSetupStep(step.key); setSetupSheetOpen(true); };
@@ -173,11 +170,11 @@ export default function HireOrdersPage() {
           </p>
         </div>
         <div className="flex items-center gap-2">
-          {showSetupReinvoke && (
+          {setupMode === "button" && (
             <Button
               variant="outline"
               className="gap-1.5"
-              onClick={() => { setSetupStep(undefined); undismissSetup(); setSetupSheetOpen(true); }}
+              onClick={() => { setSetupStep(undefined); setSetupSheetOpen(true); }}
             >
               <ListChecks className="h-4 w-4" />
               Setup checklist
@@ -197,7 +194,7 @@ export default function HireOrdersPage() {
       {/* The dashboard-style setup rail, module-scoped, above the KPIs. Its step
           buttons open the inline checklist Sheet at that step (the "do it here"
           surface); Hide dismisses it on this surface only. */}
-      {showSetupRail && (
+      {setupMode === "banner" && (
         <DashboardSetupRail
           layout="banner"
           eyebrow={rail.eyebrow}
@@ -213,6 +210,14 @@ export default function HireOrdersPage() {
           onStepAction={openSetupAt}
           onClose={rail.dismiss}
           onDismiss={rail.dismiss}
+        />
+      )}
+      {setupMode === "collapsed" && (
+        <DashboardWelcomeCollapsed
+          label={rail.collapsedLabel}
+          hint={rail.collapsedHint}
+          ctaLabel={rail.collapsedCta}
+          onOpen={rail.expand}
         />
       )}
 

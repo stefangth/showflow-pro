@@ -111,6 +111,16 @@ export const EMAIL_TEMPLATE_COVERAGE: readonly EmailTemplateCoverage[] = [
     category: "critical",
   },
   {
+    key: "magic-link",
+    displayName: "Sign-in link",
+    group: "Accounts & access",
+    family: "violet",
+    trigger: "User requests a sign-in link (send-login-link)",
+    recipient: "The user",
+    status: "internal", // like cron-health-alert: rendered from defaults, not per-org editable
+    category: "critical", // literal; NOT in EMAIL_TEMPLATE_CATEGORY, so never preference-gated
+  },
+  {
     key: "password-reset",
     displayName: "Password reset",
     group: "Accounts & access",
