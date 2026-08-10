@@ -1,7 +1,7 @@
 -- Tests for public.revoke_invitation(p_id): status flip + membership removal + gates.
 BEGIN;
 CREATE EXTENSION IF NOT EXISTS pgtap WITH SCHEMA extensions;
-SELECT plan(9);
+SELECT plan(11);
 
 SET session_replication_role = replica;
 INSERT INTO auth.users (id, aud, role, email, email_confirmed_at, raw_app_meta_data, raw_user_meta_data, created_at, updated_at)
@@ -10,7 +10,8 @@ VALUES
   ('dddddddd-dddd-d102-0000-000000000000','authenticated','authenticated','rev-invitee@test.com', now(),'{"provider":"email"}','{}',now(),now()),
   ('dddddddd-dddd-d103-0000-000000000000','authenticated','authenticated','rev-outsider@test.com', now(),'{"provider":"email"}','{}',now(),now()),
   ('dddddddd-dddd-d104-0000-000000000000','authenticated','authenticated','rev-super@test.com', now(),'{"provider":"email"}','{}',now(),now()),
-  ('dddddddd-dddd-d105-0000-000000000000','authenticated','authenticated','rev-invitee2@test.com', now(),'{"provider":"email"}','{}',now(),now());
+  ('dddddddd-dddd-d105-0000-000000000000','authenticated','authenticated','rev-invitee2@test.com', now(),'{"provider":"email"}','{}',now(),now()),
+  ('dddddddd-dddd-d106-0000-000000000000','authenticated','authenticated','rev-producer@test.com', now(),'{"provider":"email"}','{}',now(),now());
 INSERT INTO public.organizations (id, name, slug)
 VALUES ('00000000-0000-0000-0000-0000000d1001','Revoke Org','revoke-org');
 -- A super-admin who is NOT a member of the org (the platform OrgInvitePopover path).
@@ -34,6 +35,14 @@ VALUES ('00000000-0000-0000-0000-00000000d112','00000000-0000-0000-0000-0000000d
 -- revoking the still-pending artist invite must un-claim it, not strand it linked to a stranger.
 INSERT INTO public.artists (id, org_id, user_id, email, name)
 VALUES ('00000000-0000-0000-0000-0000000a1105','00000000-0000-0000-0000-0000000d1001','dddddddd-dddd-d105-0000-000000000000','rev-invitee2@test.com','Rev Invitee2');
+-- A producer (default capability producer_can_manage_invitations = true) plus one artist invite
+-- they may revoke and one producer invite they may not (capability is artist-scoped).
+INSERT INTO public.org_memberships (org_id, user_id, role)
+VALUES ('00000000-0000-0000-0000-0000000d1001','dddddddd-dddd-d106-0000-000000000000','producer');
+INSERT INTO public.org_invitations (id, org_id, email, role, token, status)
+VALUES
+  ('00000000-0000-0000-0000-00000000d114','00000000-0000-0000-0000-0000000d1001','rev-artistinv@test.com','artist','tok-rev-art','pending'),
+  ('00000000-0000-0000-0000-00000000d115','00000000-0000-0000-0000-0000000d1001','rev-prodinv@test.com','producer','tok-rev-prod','pending');
 SET session_replication_role = DEFAULT;
 
 -- 1. A non-admin outsider cannot revoke (gate fires before the status guard).
@@ -78,6 +87,14 @@ SELECT is(
 SELECT is(
   (SELECT user_id FROM public.artists WHERE id='00000000-0000-0000-0000-0000000a1105'),
   NULL, 'revoke un-claimed the invite-linked artist when no membership remains');
+-- 10. A producer with the (default-on) producer_can_manage_invitations capability may revoke an
+--     ARTIST invite (parity with the pre-existing RLS this RPC replaced).
+SELECT set_config('request.jwt.claims','{"sub":"dddddddd-dddd-d106-0000-000000000000","role":"authenticated"}',true);
+SET LOCAL ROLE authenticated;
+SELECT lives_ok($$ SELECT public.revoke_invitation('00000000-0000-0000-0000-00000000d114') $$,'producer with capability revokes an artist invite');
+-- 11. …but the capability is artist-scoped: a producer cannot revoke a non-artist (producer) invite.
+SELECT throws_ok($$ SELECT public.revoke_invitation('00000000-0000-0000-0000-00000000d115') $$,'42501', NULL,'producer cannot revoke a non-artist invite');
+RESET ROLE;
 
 SELECT * FROM finish();
 ROLLBACK;

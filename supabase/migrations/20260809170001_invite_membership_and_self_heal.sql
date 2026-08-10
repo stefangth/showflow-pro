@@ -225,8 +225,20 @@ begin
     raise exception 'Invitation not found' using errcode = 'P0002';
   end if;
 
-  if not (public.has_org_role(v_caller, v_inv.org_id, 'admin') or public.is_super_admin(v_caller)) then
-    raise exception 'Forbidden: org admin only' using errcode = '42501';
+  -- Admin / super-admin may revoke any invite; a producer may revoke an ARTIST invite when the
+  -- org's producer_can_manage_invitations capability is on (default true) — restoring the access
+  -- the pre-existing "Producers revoke artist invitations" RLS policy granted before this RPC
+  -- became the sole revoke path (used by the producer-reachable Artists page).
+  if not (
+    public.has_org_role(v_caller, v_inv.org_id, 'admin')
+    or public.is_super_admin(v_caller)
+    or (
+      v_inv.role = 'artist'
+      and public.has_org_role(v_caller, v_inv.org_id, 'producer')
+      and public.is_capability_enabled(v_inv.org_id, 'producer_can_manage_invitations')
+    )
+  ) then
+    raise exception 'Forbidden: not permitted to revoke this invitation' using errcode = '42501';
   end if;
 
   if v_inv.status <> 'pending' then
