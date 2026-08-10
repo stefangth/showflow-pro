@@ -202,7 +202,10 @@ declare
   v_inv    public.org_invitations;
   v_user   uuid;
 begin
-  select * into v_inv from public.org_invitations where id = p_id;
+  -- FOR UPDATE serializes with accept_invitation's row lock: if a concurrent accept flips
+  -- this invite pending → accepted, our read blocks until it commits and then sees 'accepted',
+  -- so the status guard below fires instead of un-accepting a just-accepted invite.
+  select * into v_inv from public.org_invitations where id = p_id for update;
   if v_inv.id is null then
     raise exception 'Invitation not found' using errcode = 'P0002';
   end if;

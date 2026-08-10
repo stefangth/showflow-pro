@@ -110,19 +110,19 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
       return json({ error: insErr?.message ?? 'Could not create invitation' }, 500);
     }
 
-    // Membership at invite time (best-effort, mirroring provision-org). Reuse the
-    // existingUserId already resolved for the duplicate guard above; only mint a net-new
-    // account (which also creates the auth user + action link) when the invitee is new.
-    // A failure here does NOT fail the request: the invitation row exists and
-    // claim_my_invitations reconciles membership on the invitee's first sign-in.
+    // Membership at invite time (best-effort, mirroring provision-org). A failure here does
+    // NOT fail the request: the invitation row exists and claim_my_invitations reconciles
+    // membership on the invitee's first sign-in.
     let userId: string | null = (existingUserId as string | null) ?? null;
     let actionLink: string | undefined;
     try {
-      if (!userId) {
-        const ensured = await ensureInvitedUser(deps, { email: invite.email, appOrigin, token: invite.token });
-        userId = ensured.userId;
-        actionLink = ensured.actionLink;
-      }
+      // Mint the right link for EVERY invitee (net-new → set-password invite link; existing →
+      // magic link, incl. passwordless/expired), the same way provision-org/resend-invitation do,
+      // so the email always carries a working way in. Reusing existingUserId alone would skip the
+      // mint for an existing non-member and dead-end them on the bare token link.
+      const ensured = await ensureInvitedUser(deps, { email: invite.email, appOrigin, token: invite.token });
+      userId = ensured.userId ?? userId;
+      actionLink = ensured.actionLink;
       if (userId) {
         const { error: memErr } = await admin.rpc("ensure_invitation_membership", {
           p_invitation: invite.id, p_user: userId,
