@@ -3,7 +3,7 @@ import * as React from "npm:react@18.3.1";
 import { Text } from "npm:@react-email/components@0.0.22";
 import type { TemplateData, TemplateEntry } from "./registry.ts";
 import { APP_URL } from "../app-url.ts";
-import { formatExpiresOn, ORG_INVITATION_EXPIRY_DAYS } from "../invitations.ts";
+import { formatExpiryThrough, ORG_INVITATION_EXPIRY_DAYS } from "../invitations.ts";
 import { EmailShell, emailRoleStyle } from "./_shell/EmailShell.tsx";
 import { applyEmailTokens, EMAIL_COPY_DEFAULTS, type EmailCopy } from "./_shell/emailCopy.ts";
 import { EMAIL_THEME_DEFAULTS, type EmailFamily, type EmailRoleKey, type EmailTheme } from "./_shell/emailTheme.ts";
@@ -23,6 +23,10 @@ interface Props {
   /** See DeliverInviteArgs.isNewUser in _shared/invitations.ts. Undefined defaults to the
    *  new-user copy (the common case: most invites are a first invite). */
   isNewUser?: boolean;
+  /** See DeliverInviteArgs.artistAcceptance in _shared/invitations.ts. Only consulted when
+   *  roleKey === 'artist'; undefined defaults to true (offers-aware copy), matching
+   *  BOOKING_FLOW_DEFAULTS.artist_acceptance. */
+  artistAcceptance?: boolean;
   token?: string;
   actionLink?: string;
   _emailCopy?: EmailCopy;
@@ -39,6 +43,7 @@ const OrgInvitationEmail = ({
   inviterName,
   expiresOn,
   isNewUser,
+  artistAcceptance,
   token,
   actionLink,
   _emailCopy = EMAIL_COPY_DEFAULTS as EmailCopy,
@@ -71,23 +76,28 @@ const OrgInvitationEmail = ({
   // per-role copy, not the third-person ROLE_DESCRIPTIONS caption used elsewhere (see the
   // doc comment on ROLE_DESCRIPTIONS in src/config/app.config.ts for why those two can't
   // share one string). Selected by roleKey (the raw enum), not by the display label.
+  // The artist line branches on artistAcceptance (booking_flow.artist_acceptance, see
+  // DeliverInviteArgs.artistAcceptance): the offers-aware line for the common case
+  // (true/undefined, matching BOOKING_FLOW_DEFAULTS), the flattened flow-neutral line
+  // only for a direct-book org (explicitly false), which never opens an offer at all.
   const roleActionLine = roleKey === "admin"
     ? copy["org-invitation.roleIntroAdmin"]
     : roleKey === "producer"
       ? copy["org-invitation.roleIntroProducer"]
       : roleKey === "artist"
-        ? copy["org-invitation.roleIntroArtist"]
+        ? (artistAcceptance === false ? copy["org-invitation.roleIntroArtist"] : copy["org-invitation.roleIntroArtistOffers"])
         : "";
   // Only state the role when BOTH the label and a matching action line resolved: a role
-  // name with no recognized roleKey would render a dangling "You are joining as X."
-  // with nothing after it.
+  // name with no recognized roleKey would render a dangling "Your role is X." with
+  // nothing after it.
   const showRoleIntro = Boolean(role && roleActionLine);
   const roleIntroText = `${applyEmailTokens(copy["org-invitation.roleIntro"], values)} ${roleActionLine}`;
   // Every invite states SOME expiry so it never reads as open-ended: the real date from the
   // invitation row when known, else the generic fallback statement. The line is about the
   // invitation itself staying valid, not about the button working: the CTA's own TTL (a
   // short-lived Supabase action link) is unrelated to and usually shorter than this window,
-  // and ctaHint below already tells the reader what to do if the button itself stops working.
+  // and linkRecovery (in postCta, below) already tells the reader what to do if the button
+  // itself stops working.
   const expiryText = expiresOn
     ? applyEmailTokens(copy["org-invitation.expiryLine"], values)
     : copy["org-invitation.expiryFallback"];
@@ -111,7 +121,13 @@ const OrgInvitationEmail = ({
   const pasteLink = (
     <>
       <Text style={{ ...emailRoleStyle(theme, "footer", _highlightRole), margin: "0 0 8px" }}>{copy["org-invitation.pasteLink"]}</Text>
-      <Text style={{ ...emailRoleStyle(theme, "dataValue", _highlightRole), margin: "0" }}>{acceptUrl}</Text>
+      <Text style={{ ...emailRoleStyle(theme, "dataValue", _highlightRole), margin: "0 0 8px" }}>{acceptUrl}</Text>
+      {/* The recovery clause used to trail ctaHintNewUser/ctaHintExistingUser, right
+          before the button; it lives here now, after the paste-link fallback, so it
+          reads as the last word on "getting in" (covering both the button AND the
+          pasted link) instead of a hedge planted right before the reader's first
+          attempt at the button. */}
+      <Text style={{ ...emailRoleStyle(theme, "footer", _highlightRole), margin: "0" }}>{copy["org-invitation.linkRecovery"]}</Text>
     </>
   );
 
@@ -147,7 +163,7 @@ export const template = {
     inviterEmail: "admin@cirque.example",
     // Computed from the real helper (rather than a hand-typed date string) so the
     // Settings preview can never drift from what a real send actually renders.
-    expiresOn: formatExpiresOn(
+    expiresOn: formatExpiryThrough(
       new Date(Date.now() + ORG_INVITATION_EXPIRY_DAYS * 24 * 60 * 60 * 1000).toISOString(),
     ),
     isNewUser: true,

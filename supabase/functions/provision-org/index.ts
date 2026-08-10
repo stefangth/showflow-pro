@@ -1,11 +1,11 @@
 import { preflight, json } from "../_shared/http.ts";
 import { requireSuperAdmin } from "../_shared/auth.ts";
 import { realDeps, type Deps } from "../_shared/deps.ts";
-import { ensureInvitedUser, formatExpiresOn, resolveInviterName, sendOrgInvitationEmail } from "../_shared/invitations.ts";
+import { ensureInvitedUser, formatExpiryThrough, sendOrgInvitationEmail, SYSTEM_INVITER_NAME } from "../_shared/invitations.ts";
 import { roleLabel } from "../_shared/roles.ts";
 import { resolveOrgSetting } from "../_shared/settings.ts";
 import { FEATURE_KEYS, FEATURE_REGISTRY, type FeatureKey } from "../_shared/entitlements.ts";
-import { normalizeBookingFlow } from "../_shared/bookingFlow.ts";
+import { normalizeBookingFlow, resolveBookingFlow } from "../_shared/bookingFlow.ts";
 import type { Json } from "../_shared/database.types.ts";
 
 type Body = {
@@ -108,17 +108,28 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
       // account-less user is a dead end; skip it (claim_my_invitations self-heals membership
       // on their first sign-in regardless). Mirrors create-invitation's guard.
       if (userId || actionLink) {
-        // The first admin of a brand-new org is a stranger to the super-admin provisioning
-        // it, so the "Invited by" line should read a real name when one is on file, not the
-        // platform operator's raw personal inbox address. Same resolver every other invite
-        // path uses (create-invitation, resend-invitation), for a consistent "who invited me".
-        const inviter = auth.userId ? await resolveInviterName(deps, auth.userId) : {};
+        // The first admin of a brand-new org is a total stranger to the super-admin
+        // provisioning it, so "Invited by" always reads a generic, org-neutral line here:
+        // never the platform operator's own display name or personal inbox address. A
+        // stranger has no more context for "Jordan Owner" than for owner@platform.test,
+        // so forwarding either would read as no more trustworthy than a spam sender's,
+        // not less anonymous. This is DIFFERENT from create-invitation/resend-invitation,
+        // which do resolve and forward a real name (falling back to email): their inviter
+        // is a colleague within the SAME org the recipient is already joining, where an
+        // intra-org name or address reads as legitimate. There is nothing to resolve here
+        // (no profiles read, no Admin API call), so there is also no failure mode to
+        // guard against.
+        const artistAcceptance = role === "artist"
+          ? await resolveBookingFlow(deps.admin, org_id)
+            .then((flow) => flow.artist_acceptance)
+            .catch((): undefined => undefined)
+          : undefined;
         await sendOrgInvitationEmail(deps, {
           email, orgName: name, role: roleLabel(role), roleKey: role, token,
-          inviterEmail: inviter.email,
-          inviterName: inviter.name,
-          expiresOn: formatExpiresOn((invRow as { expires_at?: string } | null)?.expires_at),
+          inviterName: SYSTEM_INVITER_NAME,
+          expiresOn: formatExpiryThrough((invRow as { expires_at?: string } | null)?.expires_at),
           isNewUser,
+          artistAcceptance,
           appOrigin, idempotencyKey: `org-invitation-${org_id}`, orgId: org_id, actionLink,
         });
       } else {

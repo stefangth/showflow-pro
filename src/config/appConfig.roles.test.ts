@@ -58,16 +58,18 @@ describe("roleDescription", () => {
 
   it("never names the /availability route, since that route is gated by the booking_flow entitlement and an org without it has artists who cannot reach it", () => {
     // ROUTE_FEATURES gates '/availability' behind 'booking_flow' (see app.config.ts above).
-    // The artist description names the ACTION ("declares availability"), never the route
-    // itself, so it stays true for an artist in an org where that module is off.
+    // The artist description says nothing about declaring availability at all (an
+    // earlier hedged version was dropped as undecodable to a brand-new invitee, see the
+    // doc comment on ROLE_DESCRIPTIONS), so it stays true for an artist in an org where
+    // that module is off.
     expect(roleDescription("artist").toLowerCase()).not.toContain("/availability");
   });
 
   it("the org-invitation.roleIntro opener reads as a complete sentence for every role label, not a dangling fragment", () => {
-    // Import the ACTUAL template string (rather than re-typing "You are joining as
-    // {{role}}." here) so a future edit to roleIntro's punctuation is exercised
-    // by this test instead of silently leaving a stale hardcoded copy behind that keeps
-    // passing no matter what roleIntro actually says.
+    // Import the ACTUAL template string (rather than re-typing "Your role is {{role}}."
+    // here) so a future edit to roleIntro's punctuation is exercised by this test
+    // instead of silently leaving a stale hardcoded copy behind that keeps passing no
+    // matter what roleIntro actually says.
     for (const role of ALL_ROLES) {
       const sentence = applyEmailTokens(EMAIL_COPY_DEFAULTS["org-invitation.roleIntro"], {
         orgName: "Acme",
@@ -78,10 +80,12 @@ describe("roleDescription", () => {
     }
   });
 
-  it("roleIntro states the role directly, not the stilted 'on the {{role}} side' phrasing", () => {
-    // 'on the Production Team side' reads awkwardly for the one label that isn't a
-    // single noun; a plain 'You are joining as {{role}}.' reads naturally for all three.
+  it("roleIntro states the role directly, not 'you are joining as {{role}}' or the stilted 'on the {{role}} side' phrasing", () => {
+    // 'You are joining as Production Team.' parses as the invitee BEING a team rather
+    // than joining one; 'on the Production Team side' reads awkwardly too. A plain
+    // 'Your role is {{role}}.' reads naturally for all three labels.
     expect(EMAIL_COPY_DEFAULTS["org-invitation.roleIntro"]).not.toContain(" side");
+    expect(EMAIL_COPY_DEFAULTS["org-invitation.roleIntro"].toLowerCase()).not.toContain("you are joining as");
   });
 });
 
@@ -102,14 +106,46 @@ describe("org-invitation body does not repeat the org name in every consecutive 
   });
 });
 
+describe("org-invitation.productIntro", () => {
+  // A0.1 asks the invitation email to say what ShowFlow actually IS for a stranger who has
+  // never seen the product before. "Plans shows" and "books artists" are core, always-on
+  // concepts (never gated by an entitlement, see src/lib/entitlements.ts), so naming them
+  // is always true; the roleIntro action lines below name the same two facts again in
+  // second person for the invitee's specific role.
+  const productIntro = EMAIL_COPY_DEFAULTS["org-invitation.productIntro"];
+
+  it("names what ShowFlow does (shows, artists), not just a tautology about production work", () => {
+    expect(productIntro.toLowerCase()).toContain("shows");
+    expect(productIntro.toLowerCase()).toContain("artists");
+  });
+
+  it("never uses em or en dashes", () => {
+    expect(productIntro).not.toMatch(/[—–]/);
+  });
+
+  it("never states a specific booking flow (offers) as fact, since artist_acceptance is a per-org toggle and a direct-book org never opens one", () => {
+    expect(productIntro.toLowerCase()).not.toContain("offer");
+  });
+});
+
 describe("org-invitation expiry copy", () => {
-  it("uses a plain 'works until'/'works for' verb rather than the opaque 'is held'", () => {
+  it("does not use the opaque 'is held' verb", () => {
     // 'held' can read as 'queued for delivery' rather than 'the window this invite is
-    // valid for'; 'works until'/'works for' says directly what the reader needs to know.
+    // valid for'.
     expect(EMAIL_COPY_DEFAULTS["org-invitation.expiryLine"]).not.toMatch(/\bheld\b/);
     expect(EMAIL_COPY_DEFAULTS["org-invitation.expiryFallback"]).not.toMatch(/\bheld\b/);
-    expect(EMAIL_COPY_DEFAULTS["org-invitation.expiryLine"]).toMatch(/\bworks\b/);
-    expect(EMAIL_COPY_DEFAULTS["org-invitation.expiryFallback"]).toMatch(/\bworks\b/);
+  });
+
+  it("states the invitation's own validity window, never the emailed link's TTL", () => {
+    // The rendered CTA href (and its paste-link fallback) is a short-lived Supabase
+    // action link, magiclink or invite, that typically expires in hours and is consumed
+    // on first use. That is unrelated to, and usually much shorter than, the 14-day
+    // window accept_invitation actually checks (org_invitations.expires_at). A claim
+    // like "the link in this email works until {{expiresOn}}" would be false for most
+    // of that window, so the copy must scope the statement to the invitation itself,
+    // never to "the link" or "this email".
+    expect(EMAIL_COPY_DEFAULTS["org-invitation.expiryLine"]).not.toMatch(/\blink\b/i);
+    expect(EMAIL_COPY_DEFAULTS["org-invitation.expiryFallback"]).not.toMatch(/\blink\b/i);
   });
 });
 
@@ -118,6 +154,50 @@ describe("org-invitation.roleIntroArtist", () => {
     // A brand-new artist has no way to know who turns that on or where; the sentence
     // reads stronger, and just as truthfully, without the hedge.
     expect(EMAIL_COPY_DEFAULTS["org-invitation.roleIntroArtist"]).not.toMatch(/turned on/i);
+  });
+});
+
+describe("org-invitation.roleIntroArtistOffers", () => {
+  // Rendered instead of roleIntroArtist whenever the inviting org's
+  // booking_flow.artist_acceptance is true (BOOKING_FLOW_DEFAULTS, the majority case):
+  // unlike the flow-neutral line, THIS one is allowed, and expected, to name offers.
+  it("is a non-empty, dash-free, period-terminated sentence", () => {
+    const line = EMAIL_COPY_DEFAULTS["org-invitation.roleIntroArtistOffers"];
+    expect(line.trim().length).toBeGreaterThan(0);
+    expect(line).not.toMatch(/[—–]/);
+    expect(line.endsWith(".")).toBe(true);
+  });
+
+  it("tells the artist about the emailed offers they will actually receive", () => {
+    expect(EMAIL_COPY_DEFAULTS["org-invitation.roleIntroArtistOffers"].toLowerCase()).toContain("offer");
+  });
+
+  it("never names the /availability route, since that route is gated by the booking_flow entitlement", () => {
+    expect(EMAIL_COPY_DEFAULTS["org-invitation.roleIntroArtistOffers"].toLowerCase()).not.toContain("/availability");
+  });
+});
+
+describe("org-invitation.inviterFallback and linkRecovery", () => {
+  // Both moved out of hardcoded literals (provision-org's "the ShowFlow team", and the
+  // "if it ever stops working" clause that used to trail ctaHintNewUser/
+  // ctaHintExistingUser) into editable copy keys, so they need the same dash guard every
+  // other line in this email gets.
+  it("inviterFallback is a non-empty, dash-free fallback name", () => {
+    const line = EMAIL_COPY_DEFAULTS["org-invitation.inviterFallback"];
+    expect(line.trim().length).toBeGreaterThan(0);
+    expect(line).not.toMatch(/[—–]/);
+  });
+
+  it("linkRecovery is a non-empty, dash-free, period-terminated sentence", () => {
+    const line = EMAIL_COPY_DEFAULTS["org-invitation.linkRecovery"];
+    expect(line.trim().length).toBeGreaterThan(0);
+    expect(line).not.toMatch(/[—–]/);
+    expect(line.endsWith(".")).toBe(true);
+  });
+
+  it("the button-reassurance lines no longer carry their own recovery clause (it lives in linkRecovery now)", () => {
+    expect(EMAIL_COPY_DEFAULTS["org-invitation.ctaHintNewUser"].toLowerCase()).not.toContain("send a fresh one");
+    expect(EMAIL_COPY_DEFAULTS["org-invitation.ctaHintExistingUser"].toLowerCase()).not.toContain("send a fresh one");
   });
 });
 

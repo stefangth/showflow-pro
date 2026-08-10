@@ -2,8 +2,9 @@ import { preflight, json } from "../_shared/http.ts";
 import { requireOrgRole } from "../_shared/auth.ts";
 import { requireCapability } from "../_shared/capabilities.ts";
 import { emailWasSent, realDeps, type Deps } from "../_shared/deps.ts";
-import { ensureInvitedUser, formatExpiresOn, resolveInviterName, sendOrgInvitationEmail } from "../_shared/invitations.ts";
+import { ensureInvitedUser, formatExpiresOn, formatExpiryThrough, resolveInviterName, sendOrgInvitationEmail } from "../_shared/invitations.ts";
 import { roleLabel } from "../_shared/roles.ts";
+import { resolveBookingFlow } from "../_shared/bookingFlow.ts";
 
 type Body = { invitation_id: string; app_origin: string };
 
@@ -20,7 +21,7 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
     // does not push the window out, it just restates whatever the row already says.
     const { data: invite } = await deps.admin
       .from("org_invitations")
-      .select("id, org_id, email, role, token, status, invited_by, expires_at")
+      .select("id, org_id, email, role, token, status, invited_by, expires_at, resent_count")
       .eq("id", body.invitation_id)
       .maybeSingle();
 
@@ -47,6 +48,11 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
     // and point the admin at the one path that actually works: revoke, then re-invite
     // (create-invitation's pending-invite unique index blocks a second pending row for
     // the same email while this one still exists).
+    //
+    // Deliberately the EXACT day (formatExpiresOn), not the conservative "through"
+    // rendering (formatExpiryThrough) the email body uses below: this is a past-tense
+    // fact about when the window closed, so understating it by a day would tell the
+    // admin the invitation lasted less time than it actually did.
     const expiresOn = formatExpiresOn(invite.expires_at);
     if (invite.expires_at && new Date(invite.expires_at).getTime() <= deps.now().getTime()) {
       return json({ error: `This invitation expired on ${expiresOn}. Revoke it, then send a fresh invite.` }, 409);
@@ -73,8 +79,37 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
     // nothing. Gate the response on emailWasSent (see _shared/deps.ts) instead of assuming
     // a call that didn't throw means delivery happened, and surface both failure shapes
     // (a thrown error and a resolved-but-unsuccessful send) as one honest error response.
+    //
+    // The idempotency key folds in resent_count (the value BEFORE this send's own
+    // mark_invitation_resent bump below), not just invite.id: send-transactional-email
+    // forwards this key to Resend as its `Idempotency-Key` header, which Resend treats as
+    // "the same logical send" for 24 hours and replies 200 for the ORIGINAL message on any
+    // repeat within that window without re-delivering. A key scoped to invite.id alone
+    // would make every resend of the same invitation within 24h of the last one collapse
+    // into that guarantee: emailWasSent(result) would read true (Resend genuinely did send
+    // something, once), mark_invitation_resent would stamp the counter, and the invitee
+    // would receive nothing new. Since resent_count only advances AFTER a real send
+    // succeeds (see the stamp below), two requests that race before either one's stamp
+    // lands still read the same resent_count and get the same key, so an accidental
+    // double-click or network retry still dedupes exactly as intended. A deliberate second
+    // resend, even minutes later, reads the bumped count from the row and gets a fresh key.
     try {
-      const inviter = await resolveInviterName(deps, invite.invited_by);
+      // Best-effort: resolveInviterName is an unrelated profiles read plus an Admin API
+      // call, and a failure there must not abort a resend whose email was never even
+      // attempted, nor get reported to the admin as a delivery failure. Degrade to
+      // omitting the "Invited by" line instead (see sendOrgInvitationEmail/org-invitation.tsx,
+      // which already renders no line at all when neither name nor email is known).
+      const inviter = await resolveInviterName(deps, invite.invited_by)
+        .catch((): { name?: string; email?: string } => ({}));
+      // Only relevant to an artist invite (see DeliverInviteArgs.artistAcceptance);
+      // best-effort like the inviter-name resolution above, since a failed read here
+      // must not abort a resend either. Undefined (the safe, common default) degrades
+      // to the template's own offers-aware fallback.
+      const artistAcceptance = invite.role === "artist"
+        ? await resolveBookingFlow(deps.admin, invite.org_id)
+          .then((flow) => flow.artist_acceptance)
+          .catch((): undefined => undefined)
+        : undefined;
       const result = await sendOrgInvitationEmail(deps, {
         email: invite.email,
         orgName: (org as { name?: string } | null)?.name ?? undefined,
@@ -83,10 +118,11 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
         token: invite.token,
         inviterEmail: inviter.email,
         inviterName: inviter.name,
-        expiresOn,
+        expiresOn: formatExpiryThrough(invite.expires_at),
         isNewUser,
+        artistAcceptance,
         appOrigin,
-        idempotencyKey: `org-invitation-resend-${invite.id}`,
+        idempotencyKey: `org-invitation-resend-${invite.id}-${invite.resent_count ?? 0}`,
         orgId: invite.org_id,
         actionLink,
       });

@@ -37,19 +37,26 @@ export const roleLabel = (role: string): string =>
  * supabase/functions/_shared/roles.ts (npm run sync:mirrors) so every runtime renders
  * the same text; the surrounding imports differ per runtime.
  *
- * Three constraints keep every sentence true regardless of an org's configuration:
- * stays silent on offers and digests (artist acceptance is a per-org toggle, and a
- * direct-book org never opens an offer at all); stays silent on specific route names
- * (which screens exist depends on entitlements the invitee's own org may not have
- * turned on, so the artist line names the ACTION, "declares availability", rather than
- * a route); and states each role's DEFAULT grant, not one invitee's resolved
- * capabilities (several producer permissions are individually org-toggleable, so a
- * producer may not actually get everything this sentence describes).
+ * Two constraints keep every sentence true regardless of an org's configuration: stays
+ * silent on offers and digests (artist acceptance is a per-org toggle, and a
+ * direct-book org never opens an offer at all); and states each role's DEFAULT grant,
+ * not one invitee's resolved capabilities (several producer permissions are
+ * individually org-toggleable, so a producer may not actually get everything this
+ * sentence describes).
+ *
+ * The artist line deliberately says nothing about declaring availability: that action
+ * lives behind /availability, itself gated by the booking_flow entitlement (see
+ * ROUTE_FEATURES in src/config/app.config.ts), so an org with that module off has
+ * artists who cannot reach it at all. An earlier draft hedged with "where that is
+ * turned on" to stay true for that case, but a brand-new invitee has no way to decode
+ * who turns it on or where, so the sentence omits the claim entirely instead of
+ * hedging it. This matches org-invitation.roleIntroArtist, which never mentioned it
+ * either.
  */
 export const ROLE_DESCRIPTIONS: Record<AppRole, string> = {
   admin: 'Full control of this workspace, including people, casts, settings, and every booking.',
   producer: 'Plans productions and show dates, and books artists into them.',
-  artist: 'Gets booked for shows and sees every confirmed engagement. Declares availability where that is turned on.',
+  artist: 'Gets booked for shows and sees every confirmed engagement.',
 };
 
 /** One-sentence description of what a role can do. Tolerant of unknown strings

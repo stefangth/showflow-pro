@@ -16,8 +16,8 @@ Deno.test("org-invitation email: explains the product and, when the role is know
     roleKey: "producer",
     token: "tok",
   });
-  assert(html.includes("ShowFlow is how Cirque Lumière runs its show production work"), "shows what ShowFlow is for, naming the org");
-  assert(html.includes("You are joining as Production Team."), "states the role the invitee is joining as");
+  assert(html.includes("ShowFlow is where Cirque Lumière plans its shows and books the artists for them"), "shows what ShowFlow is for, naming the org");
+  assert(html.includes("Your role is Production Team."), "states the invitee's role");
   assert(
     html.includes("You plan productions and show dates, and book artists into them."),
     "explains what the role can do",
@@ -37,15 +37,15 @@ Deno.test("org-invitation email: states the role name exactly once", async () =>
 
 Deno.test("org-invitation email: omits the role paragraph entirely when the role is unknown", async () => {
   const html = await renderInvite({ orgName: "Cirque Lumière", token: "tok" });
-  assert(!html.includes("You are joining"), "no role statement when role was never resolved");
+  assert(!html.includes("Your role is"), "no role statement when role was never resolved");
 });
 
 Deno.test("org-invitation email: omits the role paragraph when roleKey has no matching action line (no dangling fragment)", async () => {
   // A role LABEL with no recognized roleKey (e.g. a hand-typed value, or a future role the
-  // registry hasn't caught up with) must not render a dangling "You are joining as X."
-  // with nothing after it.
+  // registry hasn't caught up with) must not render a dangling "Your role is X." with
+  // nothing after it.
   const html = await renderInvite({ orgName: "Cirque Lumière", role: "Mystery Role", token: "tok" });
-  assert(!html.includes("You are joining"), "no dangling role fragment when the action line is missing");
+  assert(!html.includes("Your role is"), "no dangling role fragment when the action line is missing");
 });
 
 const ACTION_LINK = "https://app.showflow.pro/auth/callback?redirect=%2Faccept-invite";
@@ -101,18 +101,41 @@ Deno.test("org-invitation email: falls back to an honest sign-in hint even when 
   );
 });
 
+Deno.test("org-invitation email: the recovery hint (what to do if this doesn't work) lives once, beside the paste-link fallback, not duplicated on the button reassurance", async () => {
+  // Regression: ctaHintNewUser/ctaHintExistingUser used to end with "If it ever stops
+  // working, ask whoever invited you to send a fresh one."; that clause now lives only
+  // in linkRecovery, rendered after the paste-link fallback below the button.
+  const html = await renderInvite({ orgName: "Cirque Lumière", token: "tok", isNewUser: true, actionLink: ACTION_LINK });
+  assert(html.includes(EMAIL_COPY_DEFAULTS["org-invitation.linkRecovery"]), "the recovery hint renders");
+  const occurrences = html.split("send a fresh").length - 1;
+  assertEquals(occurrences, 1, "the recovery language appears exactly once, not duplicated on the button reassurance");
+});
+
 Deno.test("org-invitation email: states the real expiry date from the invitation row", async () => {
   const html = await renderInvite({ orgName: "Cirque Lumière", token: "tok", expiresOn: "August 24, 2026" });
   assert(
-    html.includes("This invitation link works until August 24, 2026."),
-    "states the concrete expiry date, scoped to the LINK (membership already exists by invite time)",
+    html.includes("This invitation is open through August 24, 2026."),
+    "states the concrete expiry date, scoped to the INVITATION (the emailed action link's own TTL is shorter and unrelated)",
   );
-  assert(!html.includes("This invitation link works for 14 days."), "does not also show the generic fallback once a real date is known");
+  assert(!html.includes("This invitation is open for 14 days"), "does not also show the generic fallback once a real date is known");
 });
 
 Deno.test("org-invitation email: falls back to a generic expiry statement when no date is known", async () => {
   const html = await renderInvite({ orgName: "Cirque Lumière", token: "tok" });
-  assert(html.includes("This invitation link works for 14 days."), "every invite states SOME expiry, never silence");
+  assert(html.includes("This invitation is open for 14 days from when it was sent."), "every invite states SOME expiry, never silence");
+});
+
+Deno.test("org-invitation email: the expiry statement never claims the emailed link itself stays valid for the stated window", async () => {
+  // The rendered CTA/paste-link is a short-lived Supabase action link (magiclink or
+  // invite, see ensureInvitedUser in _shared/invitations.ts) that typically expires in
+  // hours and is consumed on first use: much shorter than, and unrelated to, the 14-day
+  // window accept_invitation actually checks. A reader who opens this email on day 3 and
+  // is told "the link ... works until day 14" would click a dead link with no
+  // explanation. The statement must be scoped to the invitation, never the link.
+  const withDate = await renderInvite({ orgName: "Cirque Lumière", token: "tok", expiresOn: "August 24, 2026" });
+  assert(!withDate.toLowerCase().includes("the link in this email works"), "does not claim the emailed link itself stays valid");
+  const withoutDate = await renderInvite({ orgName: "Cirque Lumière", token: "tok" });
+  assert(!withoutDate.toLowerCase().includes("the link in this email works"), "does not claim the emailed link itself stays valid (fallback copy)");
 });
 
 Deno.test("org-invitation email: invited-by line prefers the inviter's display name over their email", async () => {
@@ -144,7 +167,7 @@ Deno.test("org-invitation email: footer stays generic, expiry wording lives in t
   );
 });
 
-Deno.test("org-invitation email: reads product, then role, then expiry, then who invited you, then the button reassurance, then the button, then the paste-link fallback, then the footer", async () => {
+Deno.test("org-invitation email: reads product, then role, then expiry, then who invited you, then the button reassurance, then the button, then the paste-link fallback, then the link-recovery hint, then the footer", async () => {
   const html = await renderInvite({
     orgName: "Cirque Lumière",
     role: "Production Team",
@@ -157,19 +180,20 @@ Deno.test("org-invitation email: reads product, then role, then expiry, then who
     actionLink: ACTION_LINK,
   });
   const iGreeting = html.indexOf(EMAIL_COPY_DEFAULTS["org-invitation.greeting"]);
-  const iProduct = html.indexOf("runs its show production work");
-  const iRole = html.indexOf("You are joining as Production Team.");
-  const iExpiry = html.indexOf("This invitation link works until August 24, 2026.");
+  const iProduct = html.indexOf("plans its shows and books the artists for them");
+  const iRole = html.indexOf("Your role is Production Team.");
+  const iExpiry = html.indexOf("This invitation is open through August 24, 2026.");
   const iInvitedBy = html.indexOf("Invited by Jane Admin.");
   const iCtaHint = html.indexOf("The button signs you in directly");
   const iCtaLabel = html.indexOf(EMAIL_COPY_DEFAULTS["org-invitation.ctaLabel"]);
-  // The paste-link fallback now lives in EmailShell's postCta slot, below the button: it
-  // is a fallback FOR the button, so a reader sees the button first and only reaches the
-  // raw URL if the button itself didn't work for them.
+  // The paste-link fallback and the link-recovery hint both live in EmailShell's postCta
+  // slot, below the button: they are fallbacks FOR the button, so a reader sees the
+  // button first and only reaches this material if the button itself didn't work.
   const iPasteLink = html.indexOf(EMAIL_COPY_DEFAULTS["org-invitation.pasteLink"]);
+  const iLinkRecovery = html.indexOf(EMAIL_COPY_DEFAULTS["org-invitation.linkRecovery"]);
   const iFooter = html.indexOf("If you weren&#x27;t expecting this invitation");
 
-  for (const i of [iGreeting, iProduct, iRole, iExpiry, iInvitedBy, iCtaHint, iCtaLabel, iPasteLink, iFooter]) {
+  for (const i of [iGreeting, iProduct, iRole, iExpiry, iInvitedBy, iCtaHint, iCtaLabel, iPasteLink, iLinkRecovery, iFooter]) {
     assert(i >= 0, "every expected section is present in the rendered email");
   }
   assert(iGreeting < iProduct, "greeting precedes the product explanation");
@@ -179,7 +203,8 @@ Deno.test("org-invitation email: reads product, then role, then expiry, then who
   assert(iInvitedBy < iCtaHint, "who invited them precedes the button reassurance");
   assert(iCtaHint < iCtaLabel, "the button reassurance sits immediately before the actual accept button");
   assert(iCtaLabel < iPasteLink, "the accept button precedes its paste-link fallback");
-  assert(iPasteLink < iFooter, "the paste-link fallback precedes the footer disclaimer");
+  assert(iPasteLink < iLinkRecovery, "the paste-link fallback precedes the link-recovery hint");
+  assert(iLinkRecovery < iFooter, "the link-recovery hint precedes the footer disclaimer");
 });
 
 Deno.test("org-invitation email: does not repeat the org name in three consecutive body sentences", async () => {
@@ -196,13 +221,40 @@ Deno.test("org-invitation email: does not repeat the org name in three consecuti
     expiresOn: "August 24, 2026",
     token: "tok",
   });
-  assert(html.includes("You are joining as Production Team."), "roleIntro drops the org name");
-  assert(html.includes("This invitation link works until August 24, 2026."), "expiryLine drops the org name");
+  assert(html.includes("Your role is Production Team."), "roleIntro drops the org name");
+  assert(html.includes("This invitation is open through August 24, 2026."), "expiryLine drops the org name");
 });
 
 Deno.test("org-invitation email: the artist role line does not hedge availability behind an undecodable clause", async () => {
   const html = await renderInvite({ orgName: "Cirque Lumière", role: "Artist", roleKey: "artist", token: "tok" });
   assert(!/turned on/i.test(html), "a brand-new artist cannot decode 'where that is turned on'");
+});
+
+Deno.test("org-invitation email: an artist invite tells them about offers by default, since booking_flow.artist_acceptance defaults true", async () => {
+  // artistAcceptance omitted entirely: the common case (most orgs never turn it off, see
+  // BOOKING_FLOW_DEFAULTS in _shared/bookingFlow.ts). Regression for the gap where the
+  // artist line stayed flow-neutral even for orgs whose artists really do get offers.
+  const html = await renderInvite({ orgName: "Cirque Lumière", role: "Artist", roleKey: "artist", token: "tok" });
+  assert(html.includes(EMAIL_COPY_DEFAULTS["org-invitation.roleIntroArtistOffers"]), "renders the offers-aware action line by default");
+  assert(!html.includes(EMAIL_COPY_DEFAULTS["org-invitation.roleIntroArtist"]), "does not also render the flow-neutral line");
+});
+
+Deno.test("org-invitation email: artistAcceptance: true explicitly also renders the offers-aware line", async () => {
+  const html = await renderInvite({ orgName: "Cirque Lumière", role: "Artist", roleKey: "artist", token: "tok", artistAcceptance: true });
+  assert(html.includes(EMAIL_COPY_DEFAULTS["org-invitation.roleIntroArtistOffers"]), "renders the offers-aware action line");
+});
+
+Deno.test("org-invitation email: a direct-book org (artistAcceptance: false) never claims an offer step it does not have", async () => {
+  const html = await renderInvite({ orgName: "Cirque Lumière", role: "Artist", roleKey: "artist", token: "tok", artistAcceptance: false });
+  assert(html.includes(EMAIL_COPY_DEFAULTS["org-invitation.roleIntroArtist"]), "renders the flattened, flow-neutral action line instead");
+  assertEquals(html.toLowerCase().includes("offer"), false, "a direct-book org's artists never see offers, so the email must not claim one");
+});
+
+Deno.test("org-invitation email: artistAcceptance is irrelevant for a non-artist role", async () => {
+  // A false artistAcceptance must not leak into the admin/producer action lines, which
+  // never branch on it.
+  const html = await renderInvite({ orgName: "Cirque Lumière", role: "Production Team", roleKey: "producer", token: "tok", artistAcceptance: false });
+  assert(html.includes("You plan productions and show dates, and book artists into them."), "producer line is unaffected by artistAcceptance");
 });
 
 Deno.test("org-invitation email: preview data renders every section without a stray {{token}} placeholder", async () => {
@@ -227,7 +279,9 @@ Deno.test("org-invitation email: the new-account reassurance does not overclaim 
 });
 
 Deno.test("org-invitation email: a stored org override for a role action line renders that org's own wording", async () => {
-  const copy = { ...EMAIL_COPY_DEFAULTS, "org-invitation.roleIntroArtist": "You will get booking offers by email." };
-  const html = await renderInvite({ orgName: "Cirque Lumière", role: "Artist", roleKey: "artist", token: "tok", _emailCopy: copy });
-  assert(html.includes("You will get booking offers by email."), "an org's own override for the role action line is honored");
+  const copy = { ...EMAIL_COPY_DEFAULTS, "org-invitation.roleIntroArtist": "You will always be booked directly, no offers involved." };
+  // artistAcceptance: false selects the flow-neutral roleIntroArtist line (the one
+  // overridden here) rather than the default offers-aware roleIntroArtistOffers.
+  const html = await renderInvite({ orgName: "Cirque Lumière", role: "Artist", roleKey: "artist", token: "tok", artistAcceptance: false, _emailCopy: copy });
+  assert(html.includes("You will always be booked directly, no offers involved."), "an org's own override for the role action line is honored");
 });

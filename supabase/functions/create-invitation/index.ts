@@ -3,8 +3,9 @@ import { requireOrgRole } from "../_shared/auth.ts";
 import { requireCapability } from "../_shared/capabilities.ts";
 import type { TablesInsert } from "../_shared/database.types.ts";
 import { realDeps, type Deps } from "../_shared/deps.ts";
-import { ensureInvitedUser, formatExpiresOn, resolveInviterName, sendOrgInvitationEmail } from "../_shared/invitations.ts";
+import { ensureInvitedUser, formatExpiryThrough, resolveInviterName, sendOrgInvitationEmail } from "../_shared/invitations.ts";
 import { roleLabel } from "../_shared/roles.ts";
+import { resolveBookingFlow } from "../_shared/bookingFlow.ts";
 
 type Body = {
   org_id: string;
@@ -172,7 +173,21 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
       try {
         const { data: org } = await admin
           .from('organizations').select('name').eq('id', body.org_id).maybeSingle();
-        const inviter = await resolveInviterName(deps, inviterId);
+        // Best-effort: resolveInviterName is an unrelated profiles read plus an Admin API
+        // call. A failure there must not skip the whole email (this caller's outer catch
+        // would otherwise treat it identically to a real send failure, dropping the
+        // invitee's only way in); degrade to omitting the "Invited by" line instead.
+        const inviter = await resolveInviterName(deps, inviterId)
+          .catch((): { name?: string; email?: string } => ({}));
+        // Only relevant to an artist invite (see DeliverInviteArgs.artistAcceptance);
+        // best-effort like the inviter-name resolution above, since a failed read here
+        // must not skip the invitee's only way in either. Undefined (the safe, common
+        // default) degrades to the template's own offers-aware fallback.
+        const artistAcceptance = role === "artist"
+          ? await resolveBookingFlow(admin, body.org_id)
+            .then((flow) => flow.artist_acceptance)
+            .catch((): undefined => undefined)
+          : undefined;
         await sendOrgInvitationEmail(deps, {
           email: invite.email,
           orgName: (org as { name?: string } | null)?.name ?? undefined,
@@ -181,8 +196,9 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
           token: invite.token,
           inviterEmail: inviter.email,
           inviterName: inviter.name,
-          expiresOn: formatExpiresOn(invite.expires_at),
+          expiresOn: formatExpiryThrough(invite.expires_at),
           isNewUser,
+          artistAcceptance,
           appOrigin,
           idempotencyKey: `org-invitation-${invite.id}`,
           orgId: body.org_id,

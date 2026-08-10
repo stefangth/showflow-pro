@@ -137,49 +137,107 @@ export const EMAIL_COPY_DEFAULTS = {
   "org-invitation.subject": "You're invited to join {{orgName}} on ShowFlow",
   "org-invitation.heading": "Join {{orgName}}",
   "org-invitation.greeting": "Hi,",
-  // Deliberately generic rather than naming the booking pipeline as fact: hire_orders and
-  // booking_flow are independently toggleable per org (see src/lib/entitlements.ts), so an
-  // org running hire orders without booking_flow on would read a sentence describing work
-  // its account cannot do if this named "books artists" or "confirms casts" specifically.
-  // Entitlements are not plumbed into this email (no per-org context is available at invite
-  // time before the invitee has ever seen the app), so the sentence stays true for every
-  // module mix instead of picking one to describe.
-  "org-invitation.productIntro": "ShowFlow is how {{orgName}} runs its show production work.",
-  // roleIntro states the role plainly ("as {{role}}"), not "on the {{role}} side": that
-  // phrasing read naturally for single-noun labels but not for "Production Team". It also
-  // drops {{orgName}} on purpose (see the "org-invitation body does not repeat the org
-  // name" test below) since productIntro right above it already named the org once.
-  "org-invitation.roleIntro": "You are joining as {{role}}.",
+  // Names the two things every org does regardless of its module mix (plans shows,
+  // books the artists for them): both are core, always-on concepts, not something an
+  // entitlement can turn off. What stays out is the MECHANISM behind "books": hire_orders
+  // and the offer/digest machinery in booking_flow are independently toggleable per org
+  // (see src/lib/entitlements.ts), and artist_acceptance is a further per-org toggle (an
+  // org can book straight to confirmed with no offer step at all, see
+  // _shared/bookingFlow.ts). "Books the artists" is true either way; "sends offers" or
+  // "confirms casts via hire orders" would not be. The roleIntro action lines below name
+  // the same two facts again in second person, scoped to the invitee's specific role.
+  "org-invitation.productIntro": "ShowFlow is where {{orgName}} plans its shows and books the artists for them.",
+  // roleIntro states the role plainly ("Your role is {{role}}."), not "you are joining
+  // as {{role}}": that phrasing parses as the invitee BEING a team once {{role}} is
+  // "Production Team" rather than joining one, and "on the {{role}} side" reads
+  // awkwardly for that same non-single-noun label. It also drops {{orgName}} on purpose
+  // (see the "org-invitation body does not repeat the org name" test below) since
+  // productIntro right above it already named the org once.
+  "org-invitation.roleIntro": "Your role is {{role}}.",
   // The three roleIntro* action lines below are the second-person twin of ROLE_DESCRIPTIONS
   // (src/config/app.config.ts): same facts, different grammatical person, kept as separate
-  // strings because a sentence opening "You are joining..." cannot continue into a
+  // strings because a sentence opening "Your role is..." cannot continue into a
   // subjectless third-person clause. Review both together when either changes.
   "org-invitation.roleIntroAdmin": "You get full control of this workspace, including people, casts, settings, and every booking.",
   "org-invitation.roleIntroProducer": "You plan productions and show dates, and book artists into them.",
   // No "where that is turned on" hedge: a brand-new invitee has no way to decode who
-  // turns it on or where, so the sentence states what is always true instead.
+  // turns it on or where, so the sentence states what is always true instead. This is
+  // the FLOW-NEUTRAL artist line: org-invitation.tsx renders it only for a direct-book
+  // org (booking_flow.artist_acceptance: false, see _shared/bookingFlow.ts), where there
+  // never is an offer step to mention. See roleIntroArtistOffers immediately below for
+  // the line most artist invitees actually see.
   "org-invitation.roleIntroArtist": "You get booked for shows and see every confirmed engagement.",
+  // Rendered instead of roleIntroArtist whenever the inviting org's
+  // booking_flow.artist_acceptance is true, the default for every org that has never
+  // turned it off (BOOKING_FLOW_DEFAULTS in _shared/bookingFlow.ts), so this is what
+  // MOST artist invitees actually receive: it names the one thing they will really do,
+  // respond to emailed offers, instead of staying silent on it the way the flow-neutral
+  // line above has to.
+  "org-invitation.roleIntroArtistOffers": "You will get emailed booking offers to accept or decline, and you can see every confirmed engagement.",
   "org-invitation.ctaLabel": "Accept invitation",
-  "org-invitation.ctaHintNewUser": "The button opens ShowFlow and asks you to choose a password. That is all you need to get in. If it ever stops working, ask whoever invited you to send a fresh one.",
-  "org-invitation.ctaHintExistingUser": "The button signs you in directly. No password needed from this email. If it ever stops working, ask whoever invited you to send a fresh one.",
+  // These used to end with "If it ever stops working, ask whoever invited you to send a
+  // fresh one." That recovery clause now lives in linkRecovery (below), rendered beside
+  // the paste-link fallback instead of here, so the sentence right before the button
+  // stays a plain, undiluted reassurance about what clicking it does rather than a hedge
+  // about it failing, planted right where the reader is about to click.
+  "org-invitation.ctaHintNewUser": "The button opens ShowFlow and asks you to choose a password. That is all you need to get in.",
+  "org-invitation.ctaHintExistingUser": "The button signs you in directly. No password needed from this email.",
   "org-invitation.ctaHintFallback": "The button takes you to a sign in page. Use your existing password, or choose Forgot password there if you do not have one yet.",
-  // "works until"/"works for" rather than "is held": "held" reads as "queued for
-  // delivery"; "works" says directly what the reader needs to know (the window this
-  // invitation stays valid). Also drops {{orgName}} for the same repetition reason as
-  // roleIntro above.
+  // "is open", not "is held": "held" reads as "queued for delivery" rather than "the
+  // window this invitation is valid for". Also drops {{orgName}} for the same
+  // repetition reason as roleIntro above.
   //
-  // Scoped to "this invitation link", not "this invitation" bare: membership is created
-  // at invite time (ensure_invitation_membership, see create-invitation/resend-invitation/
-  // provision-org), so an invitee who can authenticate through any path, not only this
-  // link, is already an org member regardless of this date. Stating it as "the link"
-  // keeps the sentence true to what actually stops working after expiresOn: only the
-  // accept_invitation flow this specific link drives, never the invitee's org access.
-  "org-invitation.expiryLine": "This invitation link works until {{expiresOn}}.",
-  "org-invitation.expiryFallback": "This invitation link works for 14 days.",
+  // Scoped to "This invitation", never to "the link in this email": the button's href
+  // (and the paste-link fallback right below it, see org-invitation.tsx's acceptUrl) is
+  // a short-lived Supabase action link (magiclink for an existing account, invite for a
+  // net-new one, see ensureInvitedUser in _shared/invitations.ts) whose own TTL is
+  // GoTrue's mailer OTP expiry, hours, not days, and is consumed on first use besides.
+  // Saying "the link in this email works until {{expiresOn}}" would be false for most
+  // of that window: the LINK typically stops working long before {{expiresOn}} arrives,
+  // while the INVITATION (org_invitations.expires_at, the value accept_invitation
+  // actually checks) stays valid the whole time regardless of that link's fate.
+  // linkRecovery (below, beside the paste-link fallback) now covers what to do if the
+  // button itself stops working, so this line only needs to state what stays true for
+  // its full stated duration: the invitation itself. Membership is also created at
+  // invite time (ensure_invitation_membership, see
+  // create-invitation/resend-invitation/provision-org), so an invitee who authenticates
+  // through any path is already an org member regardless of this date; what actually
+  // stops working after expiresOn is only the accept_invitation flow this invitation
+  // drives, never the invitee's org access.
+  //
+  // "through", not "until": {{expiresOn}} is rendered by formatExpiryThrough
+  // (_shared/invitations.ts), which deliberately states one calendar day EARLIER than
+  // the invitation row's real, second-exact cutoff (accept_invitation checks
+  // expires_at > now()). expires_at keeps the creation time-of-day, so the calendar day
+  // it falls on is only reliable for PART of that day; formatExpiryThrough steps back a
+  // full 24 hours before formatting, which is always still before the real cutoff
+  // regardless of what time-of-day it falls at (see the doc comment on
+  // formatExpiryThrough for the proof). "Open until August 24" would be false for a
+  // reader who opens this email on August 24 itself, after the cutoff's time-of-day;
+  // "open through August 23" (the conservative, guaranteed day) reads true for that same
+  // reader no matter what hour they open the email.
+  "org-invitation.expiryLine": "This invitation is open through {{expiresOn}}.",
+  "org-invitation.expiryFallback": "This invitation is open for 14 days from when it was sent.",
   "org-invitation.footer": "If you weren't expecting this invitation, you can safely ignore this email.",
   "org-invitation.previewText": "You're invited to join {{orgName}} on ShowFlow",
   "org-invitation.invitedBy": "Invited by {{inviter}}.",
+  // Sent as the template's `inviterName` only by provision-org, for a brand-new org's
+  // first-admin invite: that recipient is a stranger to the platform operator
+  // personally, so forwarding the operator's own display name or personal inbox address
+  // would read as no more trustworthy than a spam sender's (a stranger has no more
+  // context for "Jordan Owner" than for owner@platform.test). A generic, still-truthful
+  // line beats a personalized one nobody can place. create-invitation and
+  // resend-invitation never send this: their inviter is a colleague within the SAME org
+  // the recipient is already joining, where resolveInviterName's own name-or-email
+  // fallback already reads as legitimate.
+  "org-invitation.inviterFallback": "the ShowFlow team",
   "org-invitation.pasteLink": "Or paste this link into your browser:",
+  // Rendered right after the paste-link fallback (EmailShell's postCta slot, below the
+  // button), not beside the button itself: this is what to do when NEITHER the button
+  // NOR the pasted link works, so it reads as the last word on getting in rather than a
+  // hedge planted immediately before the reader's first attempt (see ctaHintNewUser /
+  // ctaHintExistingUser above, which used to carry this same clause).
+  "org-invitation.linkRecovery": "If none of this works, ask whoever invited you to send a fresh invitation.",
   "org-invitation.orgFallback": "an organization",
 
   "account-email-changed.subject": "Your ShowFlow login email was changed",

@@ -98,9 +98,45 @@ Deno.test("resend-invitation DI: sends the role label, roleKey, expiresOn from t
   assertEquals(msg.templateData.role, "Production Team");
   assertEquals(msg.templateData.roleKey, "producer");
   // The DB is the single source of truth: this states the invitation row's real
-  // expires_at, not a value invented or refreshed by this endpoint.
-  assertEquals(msg.templateData.expiresOn, "24 August 2026, 02:00 Berlin time");
+  // expires_at, run through formatExpiryThrough (one day earlier than the exact
+  // calendar day, the last day fully guaranteed to still be valid), not a value
+  // invented or refreshed by this endpoint.
+  assertEquals(msg.templateData.expiresOn, "August 23, 2026");
   assertEquals(msg.templateData.inviterName, "Original Inviter");
+});
+
+Deno.test("resend-invitation: still resends successfully when resolving the inviter's display name fails (best-effort, not the deliverable)", async () => {
+  // resolveInviterName does an unrelated profiles read plus an Admin API getUserById call.
+  // A failure there must not abort a resend whose email was never even attempted, and must
+  // never be reported to the admin as an email delivery failure: it should degrade to
+  // omitting the "Invited by" line instead.
+  const { deps, invokeCalls } = makeFakeDeps({
+    authUser: { id: "u1" },
+    usersById: { u1: { email: "admin@acme.test" } },
+    tables: {
+      org_memberships: { data: { role: "admin" }, error: null },
+      org_invitations: {
+        data: {
+          id: "inv1", org_id: "org-1", email: "invitee@x.com", role: "producer", status: "pending",
+          token: "tok123", invited_by: "orig-inviter",
+        },
+        error: null,
+      },
+      organizations: { data: { name: "Acme" }, error: null },
+    },
+  });
+  (deps.admin.auth.admin as { getUserById: unknown }).getUserById = () => Promise.reject(new Error("directory down"));
+
+  const res = await handle(
+    makeRequest({ headers: { Authorization: "Bearer jwt" }, body: { invitation_id: "inv1", app_origin: "https://app.test" } }),
+    deps,
+  );
+  assertEquals(res.status, 200);
+  const emails = invokeCalls.filter((c) => c.name === "send-transactional-email");
+  assertEquals(emails.length, 1, "the email is still attempted despite the inviter-name lookup failing");
+  const msg = emails[0].body as { templateData: { inviterName?: string; inviterEmail?: string } };
+  assertEquals(msg.templateData.inviterName, undefined);
+  assertEquals(msg.templateData.inviterEmail, undefined);
 });
 
 Deno.test("resend-invitation DI: never writes to the invitation row (expires_at is read-only here)", async () => {
@@ -182,7 +218,13 @@ Deno.test("resend-invitation: 409 for an invitation whose window has already pas
   assertEquals(invokeCalls.filter((c) => c.name === "send-transactional-email").length, 0, "never sends an email for an already-expired invitation");
 });
 
-Deno.test("resend-invitation DI: the idempotency key is stable per invitation, so a duplicate in-flight resend dedupes at Resend rather than double-sending", async () => {
+Deno.test("resend-invitation DI: the idempotency key is stable within one resend attempt (same resent_count), so a duplicate in-flight request dedupes at Resend rather than double-sending", async () => {
+  // The fake returns the SAME static row (resent_count never advances between reads,
+  // since nothing in this test simulates mark_invitation_resent's write landing), which
+  // is exactly the in-flight-duplicate scenario this key stability protects: two requests
+  // that race before either one's stamp lands both read the same resent_count and must
+  // mint the same key, so a double-click or network retry dedupes at Resend instead of
+  // sending the invitee two emails.
   const { deps, invokeCalls } = makeFakeDeps({
     authUser: { id: "u1" },
     usersById: { u1: { email: "admin@acme.test" } },
@@ -205,7 +247,42 @@ Deno.test("resend-invitation DI: the idempotency key is stable per invitation, s
   assertEquals(emails.length, 2);
   const keys = emails.map((c) => (c.body as { idempotency_key?: string }).idempotency_key);
   assertExists(keys[0]);
-  assertEquals(keys[0], keys[1], "same invitation resent twice mints the same key, matching create-invitation's per-invitation scheme");
+  assertEquals(keys[0], keys[1], "two requests reading the same resent_count mint the same key");
+});
+
+Deno.test("resend-invitation DI: a later, deliberate resend (higher resent_count) mints a DIFFERENT idempotency key, so it is not swallowed by Resend's 24h dedup window", async () => {
+  // Regression: a key scoped to invite.id alone (with no per-attempt component) would make
+  // this second, genuinely separate resend collapse into Resend's Idempotency-Key
+  // deduplication for the FIRST send: Resend would reply 200 for the original message,
+  // emailWasSent(result) would read true, mark_invitation_resent would stamp the counter,
+  // and the invitee would receive nothing for this second click. resent_count is the
+  // signal that distinguishes "the same resend attempt, retried" from "a new resend,
+  // requested later" — it only advances after mark_invitation_resent runs, i.e. after a
+  // previous attempt's send is already confirmed delivered.
+  const { deps, invokeCalls } = makeFakeDeps({
+    authUser: { id: "u1" },
+    usersById: { u1: { email: "admin@acme.test" } },
+    tables: {
+      org_memberships: { data: { role: "admin" }, error: null },
+      org_invitations: {
+        data: {
+          id: "inv1", org_id: "org-1", email: "invitee@x.com", role: "producer", status: "pending",
+          token: "tok123", expires_at: "2027-01-01T00:00:00Z", resent_count: 3,
+        },
+        error: null,
+      },
+      organizations: { data: { name: "Acme" }, error: null },
+    },
+  });
+  await handle(
+    makeRequest({ headers: { Authorization: "Bearer jwt" }, body: { invitation_id: "inv1", app_origin: "https://app.test" } }),
+    deps,
+  );
+  const emails = invokeCalls.filter((c) => c.name === "send-transactional-email");
+  assertEquals(emails.length, 1);
+  const key = (emails[0].body as { idempotency_key?: string }).idempotency_key;
+  assertEquals(key, "org-invitation-resend-inv1-3");
+  assertEquals(key === "org-invitation-resend-inv1-0", false, "a nonzero resent_count must not collide with the very first resend's key");
 });
 
 Deno.test("resend-invitation: net-new pending invite → branded email with actionLink", async () => {
@@ -378,4 +455,54 @@ Deno.test("resend-invitation: admin bypasses the capability gate entirely (never
   const res = await handle(makeRequest({ headers: { Authorization: "Bearer x" }, body: { invitation_id: "inv-1", app_origin: "https://app.test" } }), deps);
   assertEquals(res.status, 200);
   assertEquals(calls.some((c) => c.table === "rpc:is_capability_enabled"), false);
+});
+
+Deno.test("resend-invitation DI: an artist invite resolves artistAcceptance from the org's own booking_flow setting", async () => {
+  const { deps, invokeCalls } = makeFakeDeps({
+    authUser: { id: "u1" },
+    usersById: { u1: { email: "admin@acme.test" } },
+    tables: {
+      org_memberships: { data: { role: "admin" }, error: null },
+      org_invitations: {
+        data: {
+          id: "inv1", org_id: "org-1", email: "invitee@x.com", role: "artist", status: "pending",
+          token: "tok123", expires_at: "2099-01-01T00:00:00Z",
+        },
+        error: null,
+      },
+      organizations: { data: { name: "Acme" }, error: null },
+      app_settings: [
+        { when: { key: "booking_flow" }, data: [{ org_id: "org-1", key: "booking_flow", value: { artist_acceptance: false } }], error: null },
+      ],
+    },
+  });
+  const res = await handle(
+    makeRequest({ headers: { Authorization: "Bearer jwt" }, body: { invitation_id: "inv1", app_origin: "https://app.test" } }),
+    deps,
+  );
+  assertEquals(res.status, 200);
+  const emails = invokeCalls.filter((c) => c.name === "send-transactional-email");
+  assertEquals(emails.length, 1);
+  const msg = emails[0].body as { templateData: { artistAcceptance?: boolean } };
+  assertEquals(msg.templateData.artistAcceptance, false);
+});
+
+Deno.test("resend-invitation DI: a non-artist invite never resolves artistAcceptance (irrelevant to that role)", async () => {
+  const { deps, invokeCalls } = makeFakeDeps({
+    authUser: { id: "u1" },
+    usersById: { u1: { email: "admin@acme.test" } },
+    tables: {
+      org_memberships: { data: { role: "admin" }, error: null },
+      org_invitations: { data: { id: "inv1", org_id: "org-1", email: "invitee@x.com", role: "producer", status: "pending", token: "tok123" }, error: null },
+      organizations: { data: { name: "Acme" }, error: null },
+    },
+  });
+  const res = await handle(
+    makeRequest({ headers: { Authorization: "Bearer jwt" }, body: { invitation_id: "inv1", app_origin: "https://app.test" } }),
+    deps,
+  );
+  assertEquals(res.status, 200);
+  const emails = invokeCalls.filter((c) => c.name === "send-transactional-email");
+  const msg = emails[0].body as { templateData: { artistAcceptance?: boolean } };
+  assertEquals(msg.templateData.artistAcceptance, undefined);
 });

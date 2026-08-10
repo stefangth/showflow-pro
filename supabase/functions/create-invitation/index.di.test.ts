@@ -145,7 +145,10 @@ Deno.test("create-invitation DI: sends roleKey, expiresOn (from the invitation r
   // The raw enum, not the label: the template uses it to select which second-person
   // role action line to render (see org-invitation.tsx's roleActionLine).
   assertEquals(msg.templateData.roleKey, "producer");
-  assertEquals(msg.templateData.expiresOn, "24 August 2026, 02:00 Berlin time");
+  // formatExpiryThrough, not the exact calendar day of expires_at: one day earlier, the
+  // last day fully guaranteed to still be valid (see its doc comment in
+  // _shared/invitations.ts).
+  assertEquals(msg.templateData.expiresOn, "August 23, 2026");
   assertEquals(msg.templateData.inviterName, "Jane Admin");
 });
 
@@ -169,6 +172,22 @@ Deno.test("create-invitation DI: no profiles.display_name for the inviter → in
   const msg = emails[0].body as { templateData: { inviterName?: string; inviterEmail?: string } };
   assertEquals(msg.templateData.inviterName, undefined);
   assertEquals(msg.templateData.inviterEmail, "admin@acme.test");
+});
+
+Deno.test("create-invitation DI: still sends the invitation email when resolving the inviter's display name fails (best-effort, not the deliverable)", async () => {
+  // resolveInviterName does an unrelated profiles read plus an Admin API getUserById
+  // call. Without a catch, its rejection would hit this caller's outer try/catch (whose
+  // catch clause only logs) and skip sendOrgInvitationEmail entirely — turning an
+  // unrelated lookup failure into a silently un-sent invite for a brand-new invitee with
+  // no other way in. It must degrade to omitting the "Invited by" line instead.
+  const { deps, invokeCalls } = adminDeps();
+  (deps.admin.auth.admin as { getUserById: unknown }).getUserById = () => Promise.reject(new Error("directory down"));
+  await handle(inviteReq({ org_id: "org-1", email: "invitee@x.com", role: "producer" }), deps);
+  const emails = invokeCalls.filter((c) => c.name === "send-transactional-email");
+  assertEquals(emails.length, 1, "the invitation email is still sent despite the inviter-name lookup failing");
+  const msg = emails[0].body as { templateData: { inviterName?: string; inviterEmail?: string } };
+  assertEquals(msg.templateData.inviterName, undefined);
+  assertEquals(msg.templateData.inviterEmail, undefined);
 });
 
 Deno.test("create-invitation DI: admin → creates membership at invite time via RPC (net-new invitee)", async () => {
@@ -446,4 +465,52 @@ Deno.test("create-invitation DI: non-member fresh email still invites → 200 (m
   const { deps } = adminDeps();
   const res = await handle(inviteReq({ org_id: "org-1", email: "fresh@x.com", role: "producer" }), deps);
   assertEquals(res.status, 200);
+});
+
+Deno.test("create-invitation DI: an artist invite resolves artistAcceptance from the org's own booking_flow setting", async () => {
+  const { deps, invokeCalls } = adminDeps({
+    tables: {
+      org_memberships: { data: { role: "admin" }, error: null },
+      org_invitations: {
+        data: { id: "inv1", org_id: "org-1", email: "invitee@x.com", role: "artist", status: "pending", token: "tok123", expires_at: "2099-01-01T00:00:00Z" },
+        error: null,
+      },
+      organizations: { data: { name: "Acme" }, error: null },
+      // resolveOrgSetting reads app_settings via a `key`-matched array seed (mirrors the
+      // pattern used across the other booking-flow DI tests, e.g. provision-org's).
+      app_settings: [
+        { when: { key: "booking_flow" }, data: [{ org_id: "org-1", key: "booking_flow", value: { artist_acceptance: false } }], error: null },
+      ],
+    },
+  });
+  await handle(inviteReq({ org_id: "org-1", email: "invitee@x.com", role: "artist" }), deps);
+  const emails = invokeCalls.filter((c) => c.name === "send-transactional-email");
+  assertEquals(emails.length, 1);
+  const msg = emails[0].body as { templateData: { artistAcceptance?: boolean } };
+  assertEquals(msg.templateData.artistAcceptance, false);
+});
+
+Deno.test("create-invitation DI: an artist invite defaults artistAcceptance to true when the org has no booking_flow override", async () => {
+  const { deps, invokeCalls } = adminDeps({
+    tables: {
+      org_memberships: { data: { role: "admin" }, error: null },
+      org_invitations: {
+        data: { id: "inv1", org_id: "org-1", email: "invitee@x.com", role: "artist", status: "pending", token: "tok123", expires_at: "2099-01-01T00:00:00Z" },
+        error: null,
+      },
+      organizations: { data: { name: "Acme" }, error: null },
+    },
+  });
+  await handle(inviteReq({ org_id: "org-1", email: "invitee@x.com", role: "artist" }), deps);
+  const emails = invokeCalls.filter((c) => c.name === "send-transactional-email");
+  const msg = emails[0].body as { templateData: { artistAcceptance?: boolean } };
+  assertEquals(msg.templateData.artistAcceptance, true);
+});
+
+Deno.test("create-invitation DI: a non-artist invite never resolves artistAcceptance (irrelevant to that role)", async () => {
+  const { deps, invokeCalls } = adminDeps();
+  await handle(inviteReq({ org_id: "org-1", email: "invitee@x.com", role: "producer" }), deps);
+  const emails = invokeCalls.filter((c) => c.name === "send-transactional-email");
+  const msg = emails[0].body as { templateData: { artistAcceptance?: boolean } };
+  assertEquals(msg.templateData.artistAcceptance, undefined);
 });

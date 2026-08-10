@@ -2,9 +2,11 @@ import { assertEquals } from "./test-asserts.ts";
 import {
   ensureInvitedUser,
   formatExpiresOn,
+  formatExpiryThrough,
   ORG_INVITATION_EXPIRY_DAYS,
   resolveInviterName,
   sendOrgInvitationEmail,
+  SYSTEM_INVITER_NAME,
 } from "./invitations.ts";
 import { makeFakeDeps } from "./testing.ts";
 import { EMAIL_COPY_DEFAULTS } from "./transactional-email-templates/_shell/emailCopy.ts";
@@ -98,18 +100,19 @@ Deno.test("sendOrgInvitationEmail: returns the raw send result so a caller can g
   assertEquals((result.data as { success?: unknown } | null)?.success, false);
 });
 
-Deno.test("formatExpiresOn: renders a long-form date and time in Europe/Berlin", () => {
-  // 2026-08-24T22:30:00Z is already 2026-08-25, 00:30 in Berlin (UTC+2 in August), so this
-  // also pins down that the function formats in the invitation's reference timezone
-  // rather than UTC (an expiry near midnight must not read as the wrong calendar day).
-  assertEquals(formatExpiresOn("2026-08-24T22:30:00.000Z"), "25 August 2026, 00:30 Berlin time");
+Deno.test("formatExpiresOn: renders a long-form, date-only string with no time and no timezone name", () => {
+  // Date-only and tenant-neutral on purpose: an org-invitation goes to a stranger who has
+  // no reason to know or care what timezone the booking engine runs on, unlike the digest
+  // emails which genuinely are Berlin-scheduled and say so. This is the EXACT calendar
+  // day, not the guaranteed-valid one the email body actually renders; see
+  // formatExpiryThrough below for that.
+  assertEquals(formatExpiresOn("2026-08-24T07:00:00.000Z"), "August 24, 2026");
 });
 
-Deno.test("formatExpiresOn: states the time, not just the date, so the email never claims a window later than accept_invitation's exact-to-the-second check", () => {
-  // A row expiring at 09:00 Berlin must not render as "valid all day" via a date-only
-  // "24 August 2026" statement, which is what let an invitee click through at 18:00
-  // the same day only to be rejected by accept_invitation's `expires_at > now()` check.
-  assertEquals(formatExpiresOn("2026-08-24T07:00:00.000Z"), "24 August 2026, 09:00 Berlin time");
+Deno.test("formatExpiresOn: formats in UTC, so the calendar day is deterministic regardless of server locale", () => {
+  // 2026-08-24T22:30:00Z is still 2026-08-24 in UTC (it would already be 2026-08-25 in
+  // Europe/Berlin); pins the function to UTC rather than a locale/server-dependent zone.
+  assertEquals(formatExpiresOn("2026-08-24T22:30:00.000Z"), "August 24, 2026");
 });
 
 Deno.test("formatExpiresOn: undefined/null input returns undefined", () => {
@@ -119,6 +122,40 @@ Deno.test("formatExpiresOn: undefined/null input returns undefined", () => {
 
 Deno.test("formatExpiresOn: unparsable input returns undefined instead of 'Invalid Date'", () => {
   assertEquals(formatExpiresOn("not-a-date"), undefined);
+});
+
+Deno.test("formatExpiryThrough: renders the day BEFORE the exact expiry day, since expires_at keeps its creation time-of-day and accept_invitation checks it to the second", () => {
+  // Regression for the class of bug where the email claimed a window one day wider than
+  // the DB actually honors: a row created 2026-08-10 14:30Z with the 14-day default
+  // expires 2026-08-24T14:30:00Z, so "open through August 24" would be false for anyone
+  // who reads the email on August 24 itself after 14:30Z. formatExpiryThrough must state
+  // the prior day instead, which is guaranteed valid in full.
+  assertEquals(formatExpiryThrough("2026-08-24T14:30:00.000Z"), "August 23, 2026");
+});
+
+Deno.test("formatExpiryThrough: a mid-day expiry still renders the prior calendar day, not the same day", () => {
+  // The exact boundary case the fix targets: expires_at at noon, nowhere near midnight,
+  // still must not render its own calendar day (only the first 12 hours of that day
+  // would actually be safe to claim).
+  assertEquals(formatExpiryThrough("2026-08-24T12:00:00.000Z"), "August 23, 2026");
+});
+
+Deno.test("formatExpiryThrough: even an expiry at 00:00:00 UTC (the earliest possible time-of-day) still steps back a full day", () => {
+  // The tightest case: if expires_at itself were exactly midnight, the exact day would
+  // actually be safe for its own full 24 hours. formatExpiryThrough still renders the
+  // prior day here (a one-day-conservative rendering is always correct, just not always
+  // maximally tight), keeping the function simple and its guarantee unconditional rather
+  // than branching on the row's time-of-day.
+  assertEquals(formatExpiryThrough("2026-08-24T00:00:00.000Z"), "August 23, 2026");
+});
+
+Deno.test("formatExpiryThrough: undefined/null input returns undefined", () => {
+  assertEquals(formatExpiryThrough(undefined), undefined);
+  assertEquals(formatExpiryThrough(null), undefined);
+});
+
+Deno.test("formatExpiryThrough: unparsable input returns undefined instead of 'Invalid Date'", () => {
+  assertEquals(formatExpiryThrough("not-a-date"), undefined);
 });
 
 Deno.test("resolveInviterName: prefers profiles.display_name over the auth email", async () => {
@@ -208,4 +245,13 @@ Deno.test("org-invitation.expiryFallback stays consistent with ORG_INVITATION_EX
     EMAIL_COPY_DEFAULTS["org-invitation.expiryFallback"].includes(String(ORG_INVITATION_EXPIRY_DAYS)),
     true,
   );
+});
+
+Deno.test("SYSTEM_INVITER_NAME reads straight off the editable copy registry, not a hardcoded literal", () => {
+  // provision-org sends this for its first-admin invite (the recipient is a stranger to
+  // the platform operator, see the doc comment on org-invitation.inviterFallback in
+  // emailCopy.ts). Pinning it here means a future edit to the copy default is exercised
+  // by this constant instead of leaving a stale duplicate string behind in provision-org.
+  assertEquals(SYSTEM_INVITER_NAME, EMAIL_COPY_DEFAULTS["org-invitation.inviterFallback"]);
+  assertEquals(SYSTEM_INVITER_NAME, "the ShowFlow team");
 });
